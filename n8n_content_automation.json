@@ -1,0 +1,314 @@
+{
+  "name": "Automatización Contenido Social - Claude AI",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "0 8 * * *"
+            }
+          ]
+        }
+      },
+      "id": "node-schedule",
+      "name": "Schedule - 8AM Diario",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "operation": "read",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Ideas",
+          "mode": "name"
+        },
+        "filtersUI": {
+          "values": [
+            {
+              "lookupColumn": "status",
+              "lookupValue": "pendiente"
+            }
+          ]
+        },
+        "options": {
+          "returnFirstMatch": true
+        }
+      },
+      "id": "node-sheets-read",
+      "name": "Google Sheets - Leer Idea",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [460, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GSHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://api.anthropic.com/v1/messages",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "x-api-key",
+              "value": "={{ $env.ANTHROPIC_API_KEY }}"
+            },
+            {
+              "name": "anthropic-version",
+              "value": "2023-06-01"
+            },
+            {
+              "name": "content-type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": []
+        },
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"model\": \"claude-sonnet-4-6\",\n  \"max_tokens\": 1500,\n  \"system\": \"Eres un experto en marketing digital y creación de contenido viral para redes sociales.\\n\\nTu tarea es generar contenido para TikTok, Instagram y Facebook basado en la idea que te proporciono.\\n\\nREGLAS ESTRICTAS:\\n- Responde ÚNICAMENTE con JSON válido, sin texto adicional, sin markdown, sin bloques de código.\\n- El JSON debe tener exactamente estas 3 llaves.\\n- Si no puedes generar alguna sección, pon un string vacío, nunca omitas las llaves.\\n\\nFORMATO DE RESPUESTA OBLIGATORIO:\\n{\\n  \\\"tiktok_script\\\": \\\"Guion de 60-90 segundos con hook poderoso en las primeras 3 palabras. Incluye indicaciones visuales entre [corchetes]. Incluye 5 hashtags virales al final separados por espacios.\\\",\\n  \\\"instagram_caption\\\": \\\"Caption visual con emojis estratégicos, máximo 150 palabras, CTA al final. Incluye 20-25 hashtags mixtos al final.\\\",\\n  \\\"facebook_post\\\": \\\"Texto conversacional de 100-200 palabras, pregunta abierta al final para generar comentarios, tono cercano y humano.\\\"\\n}\",\n  \"messages\": [\n    {\n      \"role\": \"user\",\n      \"content\": \"Genera contenido para la siguiente idea:\\n\\nIdea: {{ $json.idea }}\\nNicho/Industria: {{ $json.niche }}\\nTono de marca: {{ $json.tono ?? 'profesional y cercano' }}\\n\\nRecuerda: responde SOLO con el JSON, sin texto adicional.\"\n    }\n  ]\n}",
+        "options": {
+          "timeout": 60000
+        }
+      },
+      "id": "node-claude-api",
+      "name": "Claude API - Generar Contenido",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [680, 300]
+    },
+    {
+      "parameters": {
+        "jsCode": "// Extraer y parsear la respuesta de Claude\nconst item = $input.item.json;\n\n// La respuesta de Claude viene en content[0].text\nlet raw = '';\ntry {\n  raw = item.content[0].text;\n} catch (e) {\n  throw new Error('No se pudo leer content[0].text: ' + JSON.stringify(item));\n}\n\n// Limpiar posibles bloques markdown\nconst cleaned = raw\n  .replace(/```json\\n?/gi, '')\n  .replace(/```\\n?/g, '')\n  .trim();\n\n// Intentar parsear el JSON\nlet parsed;\ntry {\n  parsed = JSON.parse(cleaned);\n} catch (e) {\n  // Si falla, intentar extraer el JSON con regex\n  const match = cleaned.match(/\\{[\\s\\S]*\\}/);\n  if (match) {\n    try {\n      parsed = JSON.parse(match[0]);\n    } catch (e2) {\n      throw new Error('Claude no devolvió JSON válido. Raw: ' + raw.substring(0, 200));\n    }\n  } else {\n    throw new Error('No se encontró JSON en la respuesta. Raw: ' + raw.substring(0, 200));\n  }\n}\n\n// Validar que existan las 3 llaves esperadas\nconst required = ['tiktok_script', 'instagram_caption', 'facebook_post'];\nfor (const key of required) {\n  if (typeof parsed[key] === 'undefined') {\n    parsed[key] = '';\n  }\n}\n\nconst fecha = new Date().toISOString().split('T')[0];\n\nreturn [\n  {\n    json: {\n      tiktok_script: parsed.tiktok_script,\n      instagram_caption: parsed.instagram_caption,\n      facebook_post: parsed.facebook_post,\n      fecha: fecha,\n      idea_original: $('Google Sheets - Leer Idea').item.json.idea ?? '',\n      niche: $('Google Sheets - Leer Idea').item.json.niche ?? '',\n      row_number: $('Google Sheets - Leer Idea').item.json.row_number ?? ''\n    }\n  }\n];"
+      },
+      "id": "node-parse-json",
+      "name": "Code - Parsear Respuesta Claude",
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [900, 300]
+    },
+    {
+      "parameters": {
+        "operation": "append",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Contenido Listo",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "fecha": "={{ $json.fecha }}",
+            "idea_original": "={{ $json.idea_original }}",
+            "niche": "={{ $json.niche }}",
+            "tiktok_script": "={{ $json.tiktok_script }}",
+            "instagram_caption": "={{ $json.instagram_caption }}",
+            "facebook_post": "={{ $json.facebook_post }}",
+            "status": "pendiente_revision",
+            "aprobado": "NO"
+          }
+        },
+        "options": {}
+      },
+      "id": "node-sheets-append",
+      "name": "Google Sheets - Guardar Contenido",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1120, 300],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GSHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "YOUR_GOOGLE_SHEET_ID",
+          "mode": "id"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "Ideas",
+          "mode": "name"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "status": "procesada"
+          }
+        },
+        "where": {
+          "values": [
+            {
+              "lookupColumn": "idea",
+              "lookupValue": "={{ $('Code - Parsear Respuesta Claude').item.json.idea_original }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "node-sheets-update",
+      "name": "Google Sheets - Marcar Idea Procesada",
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.4,
+      "position": [1120, 480],
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "YOUR_GSHEETS_CREDENTIAL_ID",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "=✅ *Contenido del {{ $('Code - Parsear Respuesta Claude').item.json.fecha }} listo para revisión*\n\n📌 *Idea:* {{ $('Code - Parsear Respuesta Claude').item.json.idea_original }}\n🏷️ *Nicho:* {{ $('Code - Parsear Respuesta Claude').item.json.niche }}\n\n🎵 *TikTok:*\n{{ $('Code - Parsear Respuesta Claude').item.json.tiktok_script.substring(0, 200) }}...\n\n📸 *Instagram:*\n{{ $('Code - Parsear Respuesta Claude').item.json.instagram_caption.substring(0, 200) }}...\n\n👥 *Facebook:*\n{{ $('Code - Parsear Respuesta Claude').item.json.facebook_post.substring(0, 200) }}...\n\n👉 Revisa el contenido completo en Google Sheets y cambia el status a *aprobado* para publicar.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "node-telegram",
+      "name": "Telegram - Notificar Revisión",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [1340, 300],
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "chatId": "YOUR_TELEGRAM_CHAT_ID",
+        "text": "=❌ *Error en el flujo de contenido*\n\nFecha: {{ new Date().toISOString() }}\nError: {{ $json.error?.message ?? 'Error desconocido' }}\n\nRevisa el flujo en n8n.",
+        "additionalFields": {
+          "parse_mode": "Markdown"
+        }
+      },
+      "id": "node-telegram-error",
+      "name": "Telegram - Notificar Error",
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [900, 520],
+      "credentials": {
+        "telegramApi": {
+          "id": "YOUR_TELEGRAM_CREDENTIAL_ID",
+          "name": "Telegram account"
+        }
+      }
+    }
+  ],
+  "connections": {
+    "Schedule - 8AM Diario": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Leer Idea",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Leer Idea": {
+      "main": [
+        [
+          {
+            "node": "Claude API - Generar Contenido",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Claude API - Generar Contenido": {
+      "main": [
+        [
+          {
+            "node": "Code - Parsear Respuesta Claude",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code - Parsear Respuesta Claude": {
+      "main": [
+        [
+          {
+            "node": "Google Sheets - Guardar Contenido",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Google Sheets - Marcar Idea Procesada",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Sheets - Guardar Contenido": {
+      "main": [
+        [
+          {
+            "node": "Telegram - Notificar Revisión",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "settings": {
+    "executionOrder": "v1",
+    "saveManualExecutions": true,
+    "callerPolicy": "workflowsFromSameOwner",
+    "errorWorkflow": ""
+  },
+  "staticData": null,
+  "meta": {
+    "templateId": "fabrick-content-automation-v1",
+    "instanceId": "fabrick-automation"
+  },
+  "pinData": {},
+  "versionId": "1.0.0",
+  "triggerCount": 0,
+  "tags": [
+    {
+      "name": "content-automation"
+    },
+    {
+      "name": "claude-ai"
+    },
+    {
+      "name": "social-media"
+    }
+  ]
+}

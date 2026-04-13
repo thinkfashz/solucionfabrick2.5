@@ -1,0 +1,6 @@
+services:
+  fabrick:
+    image: fabrick
+    build:
+      context: .
+      dockerfile: ./Dockerfile

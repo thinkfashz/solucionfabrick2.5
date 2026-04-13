@@ -1,4 +1,4 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
 import LandingSections from '@/components/LandingSections';
@@ -16,7 +16,11 @@ export const metadata: Metadata = {
     siteName: 'Fabrick',
   },
   robots: 'index, follow',
-  viewport: 'width=device-width, initial-scale=1',
+};
+
+export const viewport: Viewport = {
+  width: 'device-width',
+  initialScale: 1,
 };
 
 export default function Home() {

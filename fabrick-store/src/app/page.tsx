@@ -1,16 +1,17 @@
 import type { Metadata } from 'next';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
+import QuickAccessRoutes from '@/components/QuickAccessRoutes';
 import LandingSections from '@/components/LandingSections';
 
 export const metadata: Metadata = {
-  title: 'Fabrick — Soluciones Integrales de Construcción y Remodelación | Chile',
-  description: 'Soluciones completas de construcción, remodelación y suministro de materiales premium. Un solo equipo especializado, un solo estándar de excelencia.',
-  keywords: ['construcción Chile', 'remodelación residencial', 'materiales construcción', 'ingeniería residencial', 'fabrick'],
+  title: 'Fabrick - Soluciones Integrales de Construccion y Remodelacion | Chile',
+  description: 'Soluciones completas de construccion, remodelacion y suministro de materiales premium. Un solo equipo especializado, un solo estandar de excelencia.',
+  keywords: ['construccion Chile', 'remodelacion residencial', 'materiales construccion', 'ingenieria residencial', 'fabrick'],
   authors: [{ name: 'Fabrick' }],
   openGraph: {
-    title: 'Fabrick — Ingeniería Residencial Integral',
-    description: 'Desde cimientos hasta acabados finales. Un equipo. Un estándar.',
+    title: 'Fabrick - Ingenieria Residencial Integral',
+    description: 'Desde cimientos hasta acabados finales. Un equipo. Un estandar.',
     type: 'website',
     url: 'https://fabrick.cl',
     siteName: 'Fabrick',
@@ -22,7 +23,6 @@ export const metadata: Metadata = {
 export default function Home() {
   return (
     <>
-      {/* JSON-LD Schema */}
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
@@ -30,7 +30,7 @@ export default function Home() {
             '@context': 'https://schema.org',
             '@type': 'LocalBusiness',
             name: 'Fabrick',
-            description: 'Soluciones integrales de construcción y remodelación',
+            description: 'Soluciones integrales de construccion y remodelacion',
             url: 'https://fabrick.cl',
             image: 'https://fabrick.cl/og-image.jpg',
             telephone: '+56912345678',
@@ -39,13 +39,14 @@ export default function Home() {
               addressCountry: 'CL',
             },
             areaServed: 'CL',
-            serviceType: ['Construcción', 'Remodelación', 'Suministro de Materiales'],
+            serviceType: ['Construccion', 'Remodelacion', 'Suministro de Materiales'],
           }),
         }}
       />
       <div className="bg-gradient-to-b from-black via-zinc-950 to-black min-h-screen overflow-x-hidden">
         <Navbar />
         <Hero />
+        <QuickAccessRoutes />
         <LandingSections />
       </div>
     </>

@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import TiendaSection from './TiendaSection';
@@ -325,10 +326,21 @@ export default function LandingSections() {
           <TiendaSection />
         </div>
           <div className="text-center mt-10 animate-on-scroll">
-            <button className="px-12 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.2em] rounded-full hover:bg-white transition-all hover:scale-105 shadow-[0_10px_30px_rgba(250,204,21,0.2)] inline-flex items-center gap-4 group">
-              Explorar Catálogo Completo
-              <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-            </button>
+            <div className="flex items-center justify-center gap-4 flex-wrap">
+              <Link
+                href="/tienda"
+                className="px-12 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.2em] rounded-full hover:bg-white transition-all hover:scale-105 shadow-[0_10px_30px_rgba(250,204,21,0.2)] inline-flex items-center gap-4 group"
+              >
+                Explorar Catalogo Completo
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
+              </Link>
+              <Link
+                href="/sync"
+                className="px-8 py-5 border border-yellow-400/30 text-yellow-400 text-xs uppercase tracking-[0.2em] rounded-full hover:bg-yellow-400/10 transition-all"
+              >
+                Panel Sync
+              </Link>
+            </div>
           </div>
         </div>
       </section>
@@ -481,3 +493,4 @@ export default function LandingSections() {
     </div>
   );
 }
+

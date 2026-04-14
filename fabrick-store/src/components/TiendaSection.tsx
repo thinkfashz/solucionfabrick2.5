@@ -20,12 +20,10 @@ interface TiendaSectionProps {
 
 export default function TiendaSection({
   limit = 6,
-  title = 'Catalogo conectado a tu proyecto',
-  description = 'Productos y materiales visibles para el cliente, actualizados automaticamente y listos para cotizar o comprar.',
+  title = 'Catálogo de Soluciones Fabrick',
+  description = 'Productos y materiales visibles para el cliente, actualizados automáticamente y listos para cotizar o comprar.',
   primaryCtaHref = '/soluciones',
-  primaryCtaLabel = 'Ver catalogo completo',
-  secondaryCtaHref = '/tienda',
-  secondaryCtaLabel = 'Abrir tienda interactiva',
+  primaryCtaLabel = 'Ver catálogo completo',
 }: TiendaSectionProps) {
   const router = useRouter();
   const { products, loading, connected, lastEvent, hasLiveData } = useCatalogProducts();
@@ -52,19 +50,19 @@ export default function TiendaSection({
   return (
     <section className="py-10">
       <div className="text-center mb-14">
-        <p className="text-yellow-400/80 text-xs tracking-[0.4em] uppercase font-semibold mb-4">Catalogo de Soluciones</p>
-        <h2 className="font-playfair text-4xl md:text-6xl font-bold text-white">
+        <p className="text-yellow-400/80 text-xs tracking-[0.4em] uppercase font-semibold mb-4 hero-text-fade" style={{ animationDelay: '0s' }}>Catálogo de Soluciones</p>
+        <h2 className="font-playfair text-4xl md:text-6xl font-bold text-white hero-text-fade" style={{ animationDelay: '0.15s' }}>
           {title.split(' ').slice(0, -2).join(' ')} <span className="shimmer-gold">{title.split(' ').slice(-2).join(' ')}</span>
         </h2>
-        <p className="text-white/45 mt-4 max-w-2xl mx-auto text-sm leading-relaxed">{description}</p>
+        <p className="text-white/45 mt-4 max-w-2xl mx-auto text-sm leading-relaxed hero-text-fade" style={{ animationDelay: '0.3s' }}>{description}</p>
 
-        <div className="inline-flex flex-wrap items-center justify-center gap-2 mt-6 rounded-full border border-yellow-400/15 bg-black/40 px-4 py-2 text-xs">
+        <div className="inline-flex flex-wrap items-center justify-center gap-2 mt-6 rounded-full border border-yellow-400/15 bg-black/40 px-4 py-2 text-xs hero-text-fade" style={{ animationDelay: '0.45s' }}>
           <span className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-yellow-400'}`} />
           <span className="text-zinc-300">
-            {hasLiveData ? 'Catalogo actualizado automaticamente desde la base de datos' : 'Mostrando seleccion destacada mientras cargan los productos'}
+            {hasLiveData ? 'Catálogo actualizado automáticamente desde la base de datos' : 'Mostrando selección destacada mientras cargan los productos'}
           </span>
           {lastEvent?.product?.name ? (
-            <span className="text-zinc-500">� Ultimo cambio: {lastEvent.product.name}</span>
+            <span className="text-zinc-500">· Último cambio: {lastEvent.product.name}</span>
           ) : null}
         </div>
       </div>
@@ -77,8 +75,8 @@ export default function TiendaSection({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {visibleProducts.map((prod) => (
-            <article key={prod.id} className="card-3d glass-card rounded-4xl overflow-hidden group relative">
+          {visibleProducts.map((prod, i) => (
+            <article key={prod.id} className="card-3d glass-card rounded-4xl overflow-hidden group relative slide-up" style={{ animationDelay: `${i * 0.08}s` }}>
               <div className="relative h-48 bg-white/5 overflow-hidden">
                 {prod.img ? (
                   <img
@@ -151,12 +149,6 @@ export default function TiendaSection({
         >
           {primaryCtaLabel}
           <ArrowRight className="h-4 w-4" />
-        </Link>
-        <Link
-          href={secondaryCtaHref}
-          className="inline-flex items-center gap-3 rounded-full border border-yellow-400/30 px-8 py-4 text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-400 transition hover:bg-yellow-400/10"
-        >
-          {secondaryCtaLabel}
         </Link>
       </div>
     </section>

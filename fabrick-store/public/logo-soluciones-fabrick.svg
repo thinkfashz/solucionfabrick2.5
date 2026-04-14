@@ -1,51 +1,37 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
-  <title id="title">SOLUCIONES FABRICK</title>
-  <desc id="desc">Isologo con techo minimalista amarillo industrial y texto negro mate en estilo 3D.</desc>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-labelledby="sfTitle sfDesc">
+  <title id="sfTitle">SOLUCIONES FABRICK</title>
+  <desc id="sfDesc">Isologo con techo minimalista amarillo industrial y texto blanco.</desc>
 
   <defs>
-    <linearGradient id="roofTop" x1="0" y1="0" x2="1" y2="1">
+    <linearGradient id="sfRoofTop" x1="0" y1="0" x2="1" y2="1">
       <stop offset="0%" stop-color="#FFE17A"/>
       <stop offset="65%" stop-color="#FFC700"/>
       <stop offset="100%" stop-color="#E2AE00"/>
     </linearGradient>
-
-    <linearGradient id="roofSide" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#E2AE00"/>
-      <stop offset="100%" stop-color="#BC8D00"/>
+    <linearGradient id="sfRoofSide" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#D4A000"/>
+      <stop offset="100%" stop-color="#A07400"/>
     </linearGradient>
-
-    <linearGradient id="textFace" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0%" stop-color="#1A1A1A"/>
-      <stop offset="100%" stop-color="#000000"/>
-    </linearGradient>
-
-    <linearGradient id="textExtrude" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0%" stop-color="#333333"/>
-      <stop offset="100%" stop-color="#111111"/>
-    </linearGradient>
-
-    <filter id="shadowSoft" x="-30%" y="-30%" width="160%" height="200%">
-      <feDropShadow dx="0" dy="10" stdDeviation="10" flood-color="#000" flood-opacity="0.22"/>
-    </filter>
-
-    <filter id="shadowText" x="-20%" y="-30%" width="150%" height="180%">
-      <feDropShadow dx="0" dy="6" stdDeviation="6" flood-color="#000" flood-opacity="0.28"/>
+    <filter id="sfShadow" x="-20%" y="-30%" width="140%" height="200%">
+      <feDropShadow dx="0" dy="8" stdDeviation="10" flood-color="#000" flood-opacity="0.30"/>
     </filter>
   </defs>
 
-  <rect width="1200" height="700" fill="#F8F8F8"/>
-
-  <g transform="translate(0,15)" filter="url(#shadowSoft)">
-    <path d="M 300 210 L 600 60 L 900 210 L 860 210 L 600 90 L 340 210 Z" fill="url(#roofTop)"/>
-    <path d="M 340 210 L 600 90 L 600 116 L 372 220 L 340 220 Z" fill="url(#roofSide)" opacity="0.95"/>
-    <path d="M 860 210 L 600 90 L 600 116 L 828 220 L 860 220 Z" fill="#CFA000" opacity="0.9"/>
-
-    <rect x="736" y="122" width="54" height="84" rx="8" fill="url(#roofTop)"/>
-    <rect x="742" y="132" width="42" height="70" rx="6" fill="#E9B600"/>
+  <!-- Roof icon -->
+  <g transform="translate(120, 30)" filter="url(#sfShadow)">
+    <path d="M 0 200 L 180 20 L 360 200 L 330 200 L 180 50 L 30 200 Z" fill="url(#sfRoofTop)"/>
+    <path d="M 30 200 L 180 50 L 180 80 L 55 215 L 30 215 Z" fill="url(#sfRoofSide)" opacity="0.95"/>
+    <path d="M 330 200 L 180 50 L 180 80 L 305 215 L 330 215 Z" fill="#8A6000" opacity="0.9"/>
+    <rect x="236" y="80" width="46" height="70" rx="7" fill="url(#sfRoofTop)"/>
   </g>
 
-  <g transform="translate(0,10)" filter="url(#shadowText)">
-    <text x="604" y="388" text-anchor="middle" font-family="Montserrat, Poppins, Arial, sans-serif" font-size="106" font-weight="800" letter-spacing="8" fill="url(#textExtrude)">SOLUCIONES FABRICK</text>
-    <text x="600" y="372" text-anchor="middle" font-family="Montserrat, Poppins, Arial, sans-serif" font-size="106" font-weight="800" letter-spacing="8" fill="url(#textFace)">SOLUCIONES FABRICK</text>
-  </g>
+  <!-- Text block -->
+  <text x="560" y="180" text-anchor="start"
+    font-family="Montserrat, Poppins, Arial, sans-serif"
+    font-size="88" font-weight="700" letter-spacing="12"
+    fill="#FFFFFF" opacity="0.75">SOLUCIONES</text>
+  <text x="560" y="310" text-anchor="start"
+    font-family="Montserrat, Poppins, Arial, sans-serif"
+    font-size="120" font-weight="900" letter-spacing="14"
+    fill="#FFFFFF">FABRICK</text>
 </svg>

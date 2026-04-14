@@ -9,70 +9,70 @@ interface Props {
 export default function FabrickLogo({ className = '', animate = false, onClick }: Props) {
   return (
     <div
-      className={`select-none cursor-pointer group transition-all duration-300 hover:scale-[1.02] ${className}`}
+      className={`select-none cursor-pointer transition-all duration-300 hover:scale-[1.02] ${className}`}
       onClick={onClick}
     >
-      {/* Mobile/tablet: usar el SVG como imagen */}
-      <img
-        src="/logo-soluciones-fabrick.svg"
-        alt="Soluciones Fabrick"
-        className="block md:hidden h-12 w-auto"
-      />
+      <svg
+        viewBox="0 0 300 52"
+        className={`h-10 md:h-12 w-auto ${animate ? 'drop-shadow-[0_0_10px_rgba(255,199,0,0.45)]' : ''}`}
+        aria-label="Soluciones Fabrick"
+        role="img"
+        xmlns="http://www.w3.org/2000/svg"
+      >
+        <defs>
+          <linearGradient id="fabLogoRoofTop" x1="0" y1="0" x2="1" y2="1">
+            <stop offset="0%" stopColor="#FFE17A" />
+            <stop offset="65%" stopColor="#FFC700" />
+            <stop offset="100%" stopColor="#E2AE00" />
+          </linearGradient>
+          <linearGradient id="fabLogoRoofSide" x1="0" y1="0" x2="0" y2="1">
+            <stop offset="0%" stopColor="#D4A000" />
+            <stop offset="100%" stopColor="#A07400" />
+          </linearGradient>
+          <filter id="fabLogoGlow" x="-20%" y="-30%" width="140%" height="180%">
+            <feDropShadow dx="0" dy="2" stdDeviation="3" floodColor="#FFC700" floodOpacity="0.35" />
+          </filter>
+        </defs>
 
-      {/* Desktop: version vectorial nativa con relieve */}
-      <div className="hidden md:flex items-center gap-4">
-        <svg
-          viewBox="0 0 420 220"
-          className={`h-14 w-auto ${animate ? 'drop-shadow-[0_0_8px_rgba(255,199,0,0.35)]' : ''}`}
-          aria-hidden="true"
+        {/* Roof icon — apex at (30, 2), base at y=38 */}
+        <g filter="url(#fabLogoGlow)">
+          {/* Top face */}
+          <path d="M 2 37 L 30 3 L 58 37 L 52 37 L 30 9 L 8 37 Z" fill="url(#fabLogoRoofTop)" />
+          {/* Left side face */}
+          <path d="M 8 37 L 30 9 L 30 14 L 11 40 L 8 40 Z" fill="url(#fabLogoRoofSide)" />
+          {/* Right side face */}
+          <path d="M 52 37 L 30 9 L 30 14 L 49 40 L 52 40 Z" fill="#9A6E00" opacity="0.9" />
+          {/* Window / accent block */}
+          <rect x="39" y="15" width="7" height="12" rx="1.5" fill="url(#fabLogoRoofTop)" />
+        </g>
+
+        {/* SOLUCIONES */}
+        <text
+          x="72"
+          y="22"
+          fontFamily="Montserrat, Poppins, Arial, sans-serif"
+          fontSize="10.5"
+          fontWeight="700"
+          letterSpacing="2.8"
+          fill="#FFFFFF"
+          opacity="0.72"
         >
-          <defs>
-            <linearGradient id="roofTopDesktop" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#FFE17A" />
-              <stop offset="70%" stopColor="#FFC700" />
-              <stop offset="100%" stopColor="#E2AE00" />
-            </linearGradient>
-            <linearGradient id="roofSideDesktop" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#E2AE00" />
-              <stop offset="100%" stopColor="#BC8D00" />
-            </linearGradient>
-          </defs>
+          SOLUCIONES
+        </text>
 
-          <g transform="translate(0,8)">
-            <path d="M 44 70 L 160 18 L 276 70 L 260 70 L 160 28 L 60 70 Z" fill="url(#roofTopDesktop)" />
-            <path d="M 60 70 L 160 28 L 160 38 L 72 74 L 60 74 Z" fill="url(#roofSideDesktop)" />
-            <path d="M 260 70 L 160 28 L 160 38 L 248 74 L 260 74 Z" fill="#CFA000" />
-            <rect x="210" y="38" width="20" height="30" rx="2.5" fill="#FFC700" />
-          </g>
-
-          <g transform="translate(0,8)">
-            <text
-              x="160"
-              y="128"
-              textAnchor="middle"
-              fontFamily="Montserrat, Poppins, Arial, sans-serif"
-              fontSize="25"
-              fontWeight="800"
-              letterSpacing="2"
-              fill="#222"
-            >
-              SOLUCIONES
-            </text>
-            <text
-              x="160"
-              y="154"
-              textAnchor="middle"
-              fontFamily="Montserrat, Poppins, Arial, sans-serif"
-              fontSize="25"
-              fontWeight="800"
-              letterSpacing="2"
-              fill="#000"
-            >
-              FABRICK
-            </text>
-          </g>
-        </svg>
-      </div>
+        {/* FABRICK */}
+        <text
+          x="72"
+          y="44"
+          fontFamily="Montserrat, Poppins, Arial, sans-serif"
+          fontSize="21"
+          fontWeight="900"
+          letterSpacing="3.5"
+          fill="#FFFFFF"
+        >
+          FABRICK
+        </text>
+      </svg>
     </div>
   );
 }

@@ -1,15 +1,21 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
-  <title id="title">SOLUCIONES FABRICK monocromo oscuro</title>
-  <desc id="desc">Version monocroma clara para usarse sobre fondos oscuros.</desc>
-  <rect width="1200" height="700" fill="#050505"/>
-  <g transform="translate(0,15)">
-    <path d="M 300 210 L 600 60 L 900 210 L 860 210 L 600 90 L 340 210 Z" fill="#FFFFFF"/>
-    <path d="M 340 210 L 600 90 L 600 116 L 372 220 L 340 220 Z" fill="#EDEDED" opacity="0.95"/>
-    <path d="M 860 210 L 600 90 L 600 116 L 828 220 L 860 220 Z" fill="#D9D9D9" opacity="0.88"/>
-    <rect x="736" y="122" width="54" height="84" rx="8" fill="#FFFFFF"/>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 420" role="img" aria-labelledby="sfoTitle sfoDesc">
+  <title id="sfoTitle">SOLUCIONES FABRICK monocromo oscuro</title>
+  <desc id="sfoDesc">Versión monocroma clara para fondos oscuros. Fondo transparente.</desc>
+
+  <!-- Roof icon -->
+  <g transform="translate(120, 30)">
+    <path d="M 0 200 L 180 20 L 360 200 L 330 200 L 180 50 L 30 200 Z" fill="#FFFFFF"/>
+    <path d="M 30 200 L 180 50 L 180 80 L 55 215 L 30 215 Z" fill="#EDEDED" opacity="0.95"/>
+    <path d="M 330 200 L 180 50 L 180 80 L 305 215 L 330 215 Z" fill="#D0D0D0" opacity="0.90"/>
+    <rect x="236" y="80" width="46" height="70" rx="7" fill="#FFFFFF"/>
   </g>
-  <g transform="translate(0,10)">
-    <text x="604" y="388" text-anchor="middle" font-family="Montserrat, Poppins, Arial, sans-serif" font-size="106" font-weight="800" letter-spacing="8" fill="#7A7A7A">SOLUCIONES FABRICK</text>
-    <text x="600" y="372" text-anchor="middle" font-family="Montserrat, Poppins, Arial, sans-serif" font-size="106" font-weight="800" letter-spacing="8" fill="#FFFFFF">SOLUCIONES FABRICK</text>
-  </g>
+
+  <text x="560" y="180" text-anchor="start"
+    font-family="Montserrat, Poppins, Arial, sans-serif"
+    font-size="88" font-weight="700" letter-spacing="12"
+    fill="#FFFFFF" opacity="0.65">SOLUCIONES</text>
+  <text x="560" y="310" text-anchor="start"
+    font-family="Montserrat, Poppins, Arial, sans-serif"
+    font-size="120" font-weight="900" letter-spacing="14"
+    fill="#FFFFFF">FABRICK</text>
 </svg>

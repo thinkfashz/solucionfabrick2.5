@@ -118,11 +118,14 @@ const CheckoutApp = () => {
   const [isSuccess, setIsSuccess] = useState(false);
 
   const [shippingName, setShippingName] = useState('');
+  const [shippingEmail, setShippingEmail] = useState('');
   const [shippingPhone, setShippingPhone] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
   const [shippingRegion, setShippingRegion] = useState('');
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState('');
+  const [checkoutError, setCheckoutError] = useState('');
+  const [orderId, setOrderId] = useState('');
 
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '').substring(0, 16);
@@ -269,21 +272,106 @@ const CheckoutApp = () => {
     return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(value);
   };
 
-  const handleConfirmInvestment = () => {
+  const handleConfirmInvestment = async () => {
+    if (isProcessing) return;
+
+    setCheckoutError('');
+
+    if (!shippingName || !shippingEmail || !shippingAddress || !shippingRegion) {
+      setCheckoutError('Completa los datos de despacho y contacto antes de confirmar.');
+      return;
+    }
+
     setIsProcessing(true);
     setProcessProgress(0);
-    let prog = 0;
+
+    const payload = {
+      items: [
+        {
+          productoId: product.id,
+          cantidad: 1,
+          precioUnitario: product.price,
+          nombre: product.name,
+        },
+      ],
+      region: shippingRegion,
+      shippingAddress,
+      cliente: {
+        nombre: shippingName,
+        email: shippingEmail,
+        telefono: shippingPhone,
+      },
+    };
+
+    let prog = 10;
+    setProcessProgress(prog);
+
+    try {
+      const validateRes = await fetch('/api/orders/check/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const validateBody = await validateRes.json();
+      if (!validateRes.ok || !validateBody?.valid) {
+        const firstError = validateBody?.errors?.[0]?.message ?? 'Validación fallida del checkout.';
+        throw new Error(firstError);
+      }
+
+      prog = 45;
+      setProcessProgress(prog);
+
+      const checkoutRes = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const checkoutBody = await checkoutRes.json();
+      if (!checkoutRes.ok || !checkoutBody?.data?.id) {
+        throw new Error(checkoutBody?.error ?? 'No se pudo crear la orden.');
+      }
+
+      const createdOrderId = checkoutBody.data.id as string;
+      setOrderId(createdOrderId);
+
+      prog = 75;
+      setProcessProgress(prog);
+
+      await fetch('/api/payments/webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'x-idempotency-key': `sim-${createdOrderId}`,
+        },
+        body: JSON.stringify({
+          eventType: 'payment.succeeded',
+          orderId: createdOrderId,
+          paymentId: `SIM-${Date.now()}`,
+          status: 'succeeded',
+          amount: checkoutBody.data?.resumen?.total ?? product.price,
+          currency: 'CLP',
+        }),
+      });
+
+      setProcessProgress(100);
+      setTimeout(() => {
+        setIsSuccess(true);
+      }, 600);
+    } catch (e) {
+      setCheckoutError(e instanceof Error ? e.message : 'Error procesando checkout.');
+      setIsProcessing(false);
+      setProcessProgress(0);
+      return;
+    }
+
+    let cleanupProg = 100;
     const interval = setInterval(() => {
-      prog += Math.floor(Math.random() * 6) + 2; 
-      if (prog >= 100) {
-        prog = 100;
-        setProcessProgress(prog);
+      cleanupProg += 0;
+      if (cleanupProg >= 100) {
+        setProcessProgress(100);
         clearInterval(interval);
-        setTimeout(() => {
-          setIsSuccess(true);
-        }, 800);
-      } else {
-        setProcessProgress(prog);
       }
     }, 300);
   };
@@ -372,6 +460,9 @@ const CheckoutApp = () => {
                  <h2 className="text-4xl md:text-5xl font-black uppercase tracking-tighter leading-none">
                    Proyecto <br/><span className="text-yellow-400">Confirmado</span>
                  </h2>
+                 {orderId && (
+                   <p className="text-xs uppercase tracking-[0.35em] text-yellow-400/80">Orden: {orderId}</p>
+                 )}
                  <p className="text-zinc-300 text-sm font-light pt-4 max-w-md mx-auto leading-relaxed">
                    Su inversión está asegurada bajo nuestros protocolos. Nuestro equipo de ingeniería ya tiene su orden y su arquitecto personal se pondrá en contacto a la brevedad.
                  </p>
@@ -556,10 +647,15 @@ const CheckoutApp = () => {
                 <form className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
                     <input type="text" value={shippingName} onChange={(e) => setShippingName(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Nombre Contacto" />
+                    <input type="email" value={shippingEmail} onChange={(e) => setShippingEmail(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Email Contacto" />
+                  </div>
+                  <div className="grid md:grid-cols-2 gap-6">
                     <input type="tel" value={shippingPhone} onChange={(e) => setShippingPhone(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Teléfono Móvil" />
+                    <div className="hidden md:block" />
                   </div>
                   <input type="text" value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Dirección Completa" />
                   <input type="text" value={shippingRegion} onChange={(e) => setShippingRegion(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Región / Estado" />
+                  {checkoutError && <p className="text-xs text-red-400">{checkoutError}</p>}
                   <div className="pt-8 flex gap-4">
                     <button onClick={() => changeStep(1)} type="button" className="px-8 py-5 border border-white/20 rounded-full bg-black text-white font-bold text-xs uppercase hover:border-yellow-400 transition-colors">Volver</button>
                     <button onClick={() => changeStep(3)} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs rounded-full shadow-[0_15px_40px_rgba(250,204,21,0.2)] hover:bg-white transition-colors">Ir al Pago Seguro</button>
@@ -664,10 +760,11 @@ const CheckoutApp = () => {
                     <button onClick={() => changeStep(2)} type="button" className="px-6 py-5 border border-white/20 rounded-full bg-black hover:border-yellow-400 transition-colors text-white">
                       <ArrowLeft className="w-5 h-5" />
                     </button>
-                    <button onClick={handleConfirmInvestment} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-[11px] md:text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all transform active:scale-95 flex justify-center items-center gap-3 shadow-[0_15px_40px_rgba(250,204,21,0.3)]">
+                    <button disabled={isProcessing} onClick={handleConfirmInvestment} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-[11px] md:text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all transform active:scale-95 flex justify-center items-center gap-3 shadow-[0_15px_40px_rgba(250,204,21,0.3)] disabled:opacity-50 disabled:cursor-not-allowed">
                       <Lock className="w-4 h-4" /> Confirmar Inversión
                     </button>
                   </div>
+                  {checkoutError && <p className="text-xs text-red-400 pt-2">{checkoutError}</p>}
                 </form>
               </div>
             )}

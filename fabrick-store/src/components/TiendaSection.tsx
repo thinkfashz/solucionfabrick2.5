@@ -1,12 +1,31 @@
 'use client';
 
 import { useRealtimeProducts } from '@/hooks/useRealtimeProducts';
+import { useRouter } from 'next/navigation';
 
 const CLP = (n: number) =>
   new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n);
 
 export default function TiendaSection() {
+  const router = useRouter();
   const { products, loading, connected, lastEvent } = useRealtimeProducts();
+
+  const goToCheckout = (prod: {
+    id: string;
+    name: string;
+    price: number;
+    image_url?: string;
+    category_id?: string;
+  }) => {
+    const params = new URLSearchParams({
+      productId: String(prod.id),
+      name: prod.name,
+      price: String(prod.price),
+      category: prod.category_id ?? 'General',
+      img: prod.image_url ?? '',
+    });
+    router.push(`/checkout?${params.toString()}`);
+  };
 
   return (
     <section id="tienda" className="py-32 px-6 max-w-7xl mx-auto">
@@ -91,7 +110,16 @@ export default function TiendaSection() {
                       </p>
                     )}
                   </div>
-                  <button className="px-5 py-2.5 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-semibold tracking-wider hover:bg-yellow-400 hover:text-black transition-all duration-300">
+                  <button
+                    onClick={() => goToCheckout({
+                      id: prod.id,
+                      name: prod.name,
+                      price: prod.price,
+                      image_url: prod.image_url,
+                      category_id: String(prod.category_id ?? ''),
+                    })}
+                    className="px-5 py-2.5 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-semibold tracking-wider hover:bg-yellow-400 hover:text-black transition-all duration-300"
+                  >
                     Adquirir
                   </button>
                 </div>

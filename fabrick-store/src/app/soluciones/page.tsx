@@ -1,19 +1,30 @@
 import type { Metadata } from 'next';
-import Hero from '@/components/Hero';
-import LandingSections from '@/components/LandingSections';
-import Navbar from '@/components/Navbar';
+import TiendaSection from '@/components/TiendaSection';
+import SectionPageShell from '@/components/SectionPageShell';
 
 export const metadata: Metadata = {
-  title: 'Soluciones Fabrick — Experiencia Inmersiva',
-  description: 'Soluciones completas para el hogar, desde el inicio hasta el final. Materiales, mano de obra y diseño centralizado.',
+  title: 'Soluciones | Fabrick',
+  description: 'Catalogo de soluciones, materiales y productos conectados automaticamente con la tienda Fabrick.',
 };
 
 export default function SolucionesPage() {
   return (
-    <div className="bg-gradient-to-b from-black via-zinc-950 to-black min-h-screen overflow-x-hidden">
-      <Navbar />
-      <Hero />
-      <LandingSections />
-    </div>
+    <SectionPageShell
+      eyebrow="Soluciones"
+      title="Catalogo completo de productos y materiales"
+      description="Esta pagina muestra la misma base de productos que ves en la tienda, actualizada automaticamente para que el cliente siempre vea informacion vigente."
+      primaryAction={{ href: '/tienda', label: 'Abrir tienda interactiva' }}
+      secondaryAction={{ href: '/contacto', label: 'Solicitar asesoria' }}
+    >
+      <TiendaSection
+        limit={0}
+        title="Catalogo completo conectado"
+        description="Todo el catalogo visible para el cliente, alimentado desde la base y sincronizado con la tienda en una sola experiencia."
+        primaryCtaHref="/contacto"
+        primaryCtaLabel="Hablar con un asesor"
+        secondaryCtaHref="/tienda"
+        secondaryCtaLabel="Ver experiencia tienda"
+      />
+    </SectionPageShell>
   );
 }

@@ -220,3 +220,30 @@ body {
 .route-transition-out body {
   animation: route-cinematic-out 0.34s cubic-bezier(0.55, 0, 1, 0.45) forwards;
 }
+
+:root {
+  color-scheme: dark;
+}
+
+html, body {
+  min-height: 100%;
+  overscroll-behavior-y: none;
+}
+
+body.app-shell {
+  min-height: 100dvh;
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  touch-action: manipulation;
+}
+
+input, textarea, button, select {
+  font: inherit;
+}
+
+@media (max-width: 768px) {
+  body.app-shell {
+    background-image: radial-gradient(circle at top, rgba(250, 204, 21, 0.06), transparent 28%);
+  }
+}

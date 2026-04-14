@@ -8,26 +8,13 @@ import { navigateWithTransition } from '@/lib/routeTransition';
 type NavLink = { label: string; href: string };
 
 const NAV_LINKS: NavLink[] = [
-  { label: 'Servicios', href: '/#servicios' },
-  { label: 'Evolucion', href: '/#evolucion' },
+  { label: 'Servicios', href: '/servicios' },
+  { label: 'Evolucion', href: '/evolucion' },
   { label: 'Soluciones', href: '/soluciones' },
   { label: 'Tienda', href: '/tienda' },
-  { label: 'Proyectos', href: '/#proyectos' },
-  { label: 'Sync', href: '/sync' },
+  { label: 'Proyectos', href: '/proyectos' },
+  { label: 'Contacto', href: '/contacto' },
 ];
-
-function scrollTo(id: string) {
-  if (id === 'inicio') {
-    window.scrollTo({ top: 0, behavior: 'smooth' });
-    return;
-  }
-
-  const el = document.getElementById(id);
-  if (!el) return;
-
-  const top = el.getBoundingClientRect().top + window.pageYOffset - 80;
-  window.scrollTo({ top, behavior: 'smooth' });
-}
 
 export default function Navbar() {
   const [open, setOpen] = useState(false);
@@ -48,18 +35,6 @@ export default function Navbar() {
 
   const handleNav = (href: string) => {
     setOpen(false);
-
-    if (href.startsWith('/#')) {
-      if (window.location.pathname !== '/') {
-        navigateWithTransition(href);
-        return;
-      }
-
-      const id = href.replace('/#', '');
-      scrollTo(id);
-      return;
-    }
-
     navigateWithTransition(href);
   };
 
@@ -72,7 +47,7 @@ export default function Navbar() {
             : 'bg-black/60 backdrop-blur-md'
         }`}
       >
-        <FabrickLogo onClick={() => handleNav('/#inicio')} />
+        <FabrickLogo onClick={() => handleNav('/')} />
 
         <div className="hidden lg:flex gap-8 items-center">
           {NAV_LINKS.map(({ label, href }) => (
@@ -86,7 +61,7 @@ export default function Navbar() {
           ))}
           <div className="w-px h-4 bg-white/20" />
           <button
-            onClick={() => handleNav('/auth')}
+            onClick={() => handleNav('/mi-cuenta')}
             className="text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-yellow-400 transition-colors"
           >
             Mi Cuenta
@@ -115,13 +90,15 @@ export default function Navbar() {
       >
         <div className="flex flex-col gap-0 text-center w-full px-8">
           {[
-            { label: 'Inicio', href: '/#inicio' },
+            { label: 'Inicio', href: '/' },
             ...NAV_LINKS,
-            { label: 'Contacto', href: '/#contacto' },
+            { label: 'Garantias', href: '/garantias' },
+            { label: 'Mi Cuenta', href: '/mi-cuenta' },
+            { label: 'Ajustes', href: '/ajustes' },
             { label: 'Checkout', href: '/checkout' },
           ].map(({ label, href }) => (
             <button
-              key={href}
+              key={`${label}-${href}`}
               onClick={() => handleNav(href)}
               className="text-xl font-light uppercase tracking-[0.2em] text-white hover:text-yellow-400 active:text-yellow-400 transition-colors w-full py-5 border-b border-white/5"
             >

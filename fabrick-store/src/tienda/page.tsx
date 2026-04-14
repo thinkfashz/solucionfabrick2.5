@@ -101,24 +101,31 @@ const MENU_OPTIONS = [
 ];
 
 function FabrickLogo({ className = '', centered = false, active = false, onClick }: { className?: string; centered?: boolean; active?: boolean; onClick?: () => void }) {
-	return (
-		<div onClick={onClick} className={`flex items-center gap-3 select-none cursor-pointer group ${centered ? 'flex-col text-center' : ''} ${className}`}>
-			<div className={`relative ${centered ? 'w-14 h-14' : 'w-9 h-9'} transition-all duration-700`}>
-				<div className={`absolute inset-0 bg-yellow-400/20 blur-xl rounded-full transition-opacity duration-500 ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-				<svg viewBox="0 0 68 60" className="w-full h-full relative z-10 overflow-visible">
-					<path d="M 28 16 C 28 4, 10 4, 10 20 C 10 34, 28 28, 28 42 C 28 56, 10 56, 10 44" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
-					<path d="M 44 48 L 44 16 C 44 8, 48 6, 54 6 L 58 6 M 44 28 L 54 28" fill="none" stroke="#FFFFFF" strokeWidth="2.5" strokeLinecap="round" />
-					<path d="M 28 16 C 28 4, 10 4, 10 20 C 10 34, 28 28, 28 42 C 28 56, 10 56, 10 44" fill="none" stroke="#FACC15" strokeWidth="3.5" strokeLinecap="round" strokeDasharray="30 100" className="animate-[run-light_4s_linear_infinite]" />
-				</svg>
-			</div>
-			<div className={`flex flex-col ${centered ? 'items-center mt-2' : 'text-left'}`}>
-				<span className="font-bold uppercase tracking-[0.3em] text-white/90 text-[10px] md:text-sm leading-none">Soluciones</span>
-				<span className="text-yellow-400 font-black tracking-[0.6em] uppercase text-[6px] md:text-[8px]">Fabrick</span>
-			</div>
-		</div>
-	);
-}
+return (
+<div onClick={onClick} className={`select-none cursor-pointer ${className}`}>
+<img
+src="/logo-soluciones-fabrick.svg"
+alt="Soluciones Fabrick"
+className={`block md:hidden ${centered ? 'w-44' : 'w-32'} h-auto object-contain drop-shadow-[0_6px_14px_rgba(0,0,0,0.25)] ${active ? 'opacity-100' : 'opacity-95 group-hover:opacity-100'}`}
+/>
 
+<div className={`hidden md:flex items-center gap-3 group ${centered ? 'flex-col text-center' : ''}`}>
+<div className={`relative ${centered ? 'w-14 h-14' : 'w-9 h-9'} transition-all duration-700`}>
+<div className={`absolute inset-0 bg-yellow-400/20 blur-xl rounded-full transition-opacity duration-500 ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
+<svg viewBox="0 0 68 60" className="w-full h-full relative z-10 overflow-visible">
+<path d="M 8 36 L 34 10 L 60 36" fill="none" stroke="#FACC15" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
+<path d="M 14 38 H 54" fill="none" stroke="#EAB308" strokeWidth="3" strokeLinecap="round" />
+<rect x="40" y="18" width="8" height="10" rx="1.5" fill="#FACC15" opacity="0.9" />
+</svg>
+</div>
+<div className={`flex flex-col ${centered ? 'items-center mt-2' : 'text-left'}`}>
+<span className="font-bold uppercase tracking-[0.3em] text-white/90 text-[10px] md:text-sm leading-none">Soluciones</span>
+<span className="text-yellow-400 font-black tracking-[0.6em] uppercase text-[6px] md:text-[8px]">Fabrick</span>
+</div>
+</div>
+</div>
+);
+}
 function SilverGoldButton({ children, onClick, className = '' }: { children: React.ReactNode; onClick?: React.MouseEventHandler<HTMLButtonElement>; className?: string }) {
 	return (
 		<button
@@ -552,3 +559,5 @@ export default function TiendaClientPage() {
 		</div>
 	);
 }
+
+

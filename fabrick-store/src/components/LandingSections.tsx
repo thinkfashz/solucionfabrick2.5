@@ -5,6 +5,7 @@ import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import TiendaSection from './TiendaSection';
+import FabrickLogo from './FabrickLogo';
 import {
   Hammer, Home, Droplet, Layers, PaintRoller, ShieldCheck, Package,
   Droplets, Lightbulb, Cpu, Warehouse, Armchair, Fingerprint, ArrowRight,
@@ -448,16 +449,7 @@ export default function LandingSections() {
       <footer className="bg-black py-10 md:py-16 border-t border-white/5">
         <div className="max-w-7xl mx-auto px-4 md:px-12 flex flex-col md:flex-row justify-between items-center gap-8">
           {/* Logo */}
-          <div className="flex items-center gap-3">
-            <svg viewBox="0 0 68 60" className="w-10 h-10 overflow-visible">
-              <path d="M 28 16 C 28 4, 10 4, 10 20 C 10 34, 28 28, 28 42 C 28 56, 10 56, 10 44" fill="none" stroke="#FACC15" strokeWidth="2.5" strokeLinecap="round"/>
-              <path d="M 44 48 L 44 16 C 44 8, 48 6, 54 6 L 58 6 M 44 28 L 54 28" fill="none" stroke="#FACC15" strokeWidth="2.5" strokeLinecap="round"/>
-            </svg>
-            <div>
-              <div className="font-medium uppercase tracking-[0.25em] text-base text-white">Soluciones</div>
-              <div className="text-[8px] text-yellow-400 font-bold tracking-[0.6em] uppercase">Fabrick</div>
-            </div>
-          </div>
+          <FabrickLogo className="pointer-events-none" />
 
           <div className="text-center">
             <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mb-1">
@@ -493,4 +485,7 @@ export default function LandingSections() {
     </div>
   );
 }
+
+
+
 

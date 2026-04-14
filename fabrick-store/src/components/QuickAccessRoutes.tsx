@@ -4,7 +4,7 @@ import { Store, Wrench, User, RefreshCcw, CreditCard, ArrowRight } from 'lucide-
 const ROUTES = [
   {
     title: 'Tienda',
-    description: 'Catalogo completo y compra directa.',
+    description: 'Catálogo completo y compra directa.',
     href: '/tienda',
     Icon: Store,
   },
@@ -22,13 +22,13 @@ const ROUTES = [
   },
   {
     title: 'Sync',
-    description: 'Panel tecnico de sincronizacion en tiempo real.',
+    description: 'Panel técnico de sincronización en tiempo real.',
     href: '/sync',
     Icon: RefreshCcw,
   },
   {
     title: 'Checkout',
-    description: 'Flujo de pago y confirmacion.',
+    description: 'Flujo de pago y confirmación.',
     href: '/checkout',
     Icon: CreditCard,
   },
@@ -40,7 +40,6 @@ export default function QuickAccessRoutes() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-8 md:mb-10 text-center">
           <p className="text-yellow-400/70 text-[10px] tracking-[0.35em] uppercase">Accesos Directos</p>
-          <h2 className="text-white text-2xl md:text-3xl font-playfair mt-2">Navegacion por URLs</h2>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

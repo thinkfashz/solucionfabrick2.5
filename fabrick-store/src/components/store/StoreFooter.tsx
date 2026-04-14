@@ -8,7 +8,7 @@ export default function StoreFooter() {
     <footer className="py-16 border-t border-white/5">
       <div className="max-w-4xl mx-auto px-6 text-center">
         {/* Logo */}
-        <p className="font-playfair text-lg tracking-[0.25em] text-white/60 uppercase mb-4">Fabrick</p>
+        <p className="font-playfair text-lg tracking-[0.25em] text-white/60 uppercase mb-4">Soluciones Fabrick</p>
 
         {/* Social */}
         <div className="flex items-center justify-center gap-6 mb-6">
@@ -27,7 +27,7 @@ export default function StoreFooter() {
         </div>
 
         <p className="text-[11px] text-white/20 tracking-widest">
-          © {new Date().getFullYear()} Fabrick. Todos los derechos reservados.
+          © {new Date().getFullYear()} Soluciones Fabrick. Todos los derechos reservados.
         </p>
       </div>
     </footer>

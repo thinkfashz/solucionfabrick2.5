@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@insforge/sdk": "latest",
+    "animejs": "^3.2.2",
     "framer-motion": "^12.38.0",
     "gsap": "^3.12.5",
     "lucide-react": "^0.460.0",
@@ -18,6 +19,7 @@
     "react-dom": "^18"
   },
   "devDependencies": {
+    "@types/animejs": "^3.1.13",
     "@types/node": "^20",
     "@types/react": "^18",
     "@types/react-dom": "^18",

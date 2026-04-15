@@ -309,8 +309,11 @@ const CheckoutApp = () => {
 
     // --- MercadoPago tokenization ---
     let mpToken: string | null = null;
+    const mpPublicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY;
+    const isTestMode = !mpPublicKey || mpPublicKey === 'TEST-PUBLIC-KEY';
+
     try {
-      const mpPublicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || 'TEST-PUBLIC-KEY';
+      const resolvedKey = mpPublicKey || 'TEST-PUBLIC-KEY';
 
       // Load MercadoPago SDK if not already present
       if (!window.MercadoPago) {
@@ -326,7 +329,7 @@ const CheckoutApp = () => {
         });
       }
 
-      const mp = new window.MercadoPago(mpPublicKey);
+      const mp = new window.MercadoPago(resolvedKey);
       const [expMonth, expYear] = cardExpiry.split('/');
       const rawCardNumber = cardNumber.replace(/\s/g, '');
 
@@ -342,8 +345,15 @@ const CheckoutApp = () => {
 
       mpToken = tokenResult.id;
     } catch (tokenErr) {
-      // Non-blocking: proceed with order even if tokenization fails (sandbox/test mode)
-      console.warn('MP tokenization skipped:', tokenErr instanceof Error ? tokenErr.message : tokenErr);
+      if (!isTestMode) {
+        // In production with a real key, tokenization failure should block checkout
+        setCheckoutError('No se pudo procesar la tarjeta. Verifica los datos e intenta nuevamente.');
+        setIsProcessing(false);
+        setProcessProgress(0);
+        return;
+      }
+      // In test/sandbox mode, skip tokenization and proceed
+      console.warn('MP tokenization skipped (test mode):', tokenErr instanceof Error ? tokenErr.message : tokenErr);
     }
     // --- end tokenization ---
 
@@ -403,6 +413,15 @@ const CheckoutApp = () => {
 
       // --- MercadoPago payment ---
       if (mpToken) {
+        const rawNum = cardNumber.replace(/\s/g, '');
+        const detectedMethod = rawNum.startsWith('4')
+          ? 'visa'
+          : /^5[1-5]/.test(rawNum)
+          ? 'master'
+          : /^3[47]/.test(rawNum)
+          ? 'amex'
+          : 'visa';
+
         try {
           const mpRes = await fetch('/api/payments/mercadopago', {
             method: 'POST',
@@ -413,7 +432,7 @@ const CheckoutApp = () => {
               description: product.name,
               email: shippingEmail,
               installments: 1,
-              payment_method_id: 'visa',
+              payment_method_id: detectedMethod,
             }),
           });
           const mpBody = await mpRes.json();

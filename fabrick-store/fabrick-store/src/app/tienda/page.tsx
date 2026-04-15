@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import TiendaClientPage from '@/tienda/page';
+import TiendaClientPage from '@/tienda/TiendaClientPage';
 
 export const metadata: Metadata = {
   title: 'Tienda | Fabrick',

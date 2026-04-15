@@ -242,6 +242,13 @@ input, textarea, button, select {
   font: inherit;
 }
 
+/* ── Splash screen logo pulse ── */
+@keyframes pulse-logo {
+  0%, 100% { opacity: 0.9; filter: drop-shadow(0 0 12px rgba(250,204,21,0.3)); }
+  50%       { opacity: 1;   filter: drop-shadow(0 0 28px rgba(250,204,21,0.65)); }
+}
+.animate-pulse-logo { animation: pulse-logo 1.8s ease-in-out infinite; }
+
 @media (max-width: 768px) {
   body.app-shell {
     background-image: radial-gradient(circle at top, rgba(250, 204, 21, 0.06), transparent 28%);

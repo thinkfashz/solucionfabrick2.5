@@ -1,6 +1,8 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
+import SplashScreen from '@/components/SplashScreen';
+import RouteTransitionOverlay from '@/components/RouteTransitionOverlay';
 
 export const metadata: Metadata = {
   title: 'FABRICK - Ingenieria Residencial de Precision',
@@ -39,6 +41,8 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="bg-black text-white antialiased app-shell">
+        <SplashScreen />
+        <RouteTransitionOverlay />
         {children}
         <InstallAppPrompt />
       </body>

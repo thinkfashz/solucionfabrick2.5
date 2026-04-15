@@ -17,7 +17,6 @@ import {
 	LayoutGrid,
 	Trash2,
 	Sparkles,
-	Award,
 	Clock,
 	Ruler,
 	AlertCircle,
@@ -26,9 +25,11 @@ import {
 	MapPin,
 	Search,
 	Star,
+	Heart,
 } from 'lucide-react';
 
 const CART_CACHE_KEY = 'fabrick.tienda.cart.v1';
+const FAVORITES_KEY = 'fabrick.tienda.favorites.v1';
 
 type Product = {
 	id: string;
@@ -101,7 +102,7 @@ const PRODUCTS: Product[] = [
 const MENU_OPTIONS = [
 	{ icon: HomeIcon, label: 'Inicio' },
 	{ icon: LayoutGrid, label: 'Ver Catálogo' },
-	{ icon: Award, label: 'Garantías' },
+	{ icon: Heart, label: 'Favoritos' },
 	{ icon: User, label: 'Mi Cuenta' },
 	{ icon: Settings, label: 'Ajustes' },
 ];
@@ -128,13 +129,17 @@ export default function TiendaClientPage() {
 	const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [isCartOpen, setIsCartOpen] = useState(false);
+	const [isFavoritesOpen, setIsFavoritesOpen] = useState(false);
 	const [showExitConfirm, setShowExitConfirm] = useState(false);
 	const [cart, setCart] = useState<Product[]>([]);
-	const [activeMenuIndex, setActiveMenuIndex] = useState(0);
+	const [favorites, setFavorites] = useState<Product[]>([]);
 	const [gsapReady, setGsapReady] = useState(false);
+	const [headerVisible, setHeaderVisible] = useState(true);
+	const [navVisible, setNavVisible] = useState(true);
 
 	const cartIconRef = useRef<HTMLDivElement>(null);
 	const gsapRef = useRef<null | typeof import('gsap').default>(null);
+	const lastScrollYRef = useRef(0);
 
 	const liveProducts: Product[] = useMemo(() => {
 		if (!dbProducts.length) return PRODUCTS;
@@ -211,7 +216,9 @@ export default function TiendaClientPage() {
 			setSelectedProduct(null);
 			window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
 		}
-		if (label === 'Garantías') router.push('/soluciones');
+		if (label === 'Favoritos') setIsFavoritesOpen(true);
+		if (label === 'Mi Cuenta') router.push('/mi-cuenta');
+		if (label === 'Ajustes') router.push('/ajustes');
 	};
 
 	const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>, product: Product) => {
@@ -247,6 +254,16 @@ export default function TiendaClientPage() {
 		setSelectedProduct(product);
 	};
 
+	const toggleFavorite = (product: Product) => {
+		setFavorites((prev) =>
+			prev.some((f) => f.id === product.id)
+				? prev.filter((f) => f.id !== product.id)
+				: [...prev, product],
+		);
+	};
+
+	const isFavorite = (id: string) => favorites.some((f) => f.id === id);
+
 	useEffect(() => {
 		try {
 			const raw = localStorage.getItem(CART_CACHE_KEY);
@@ -265,6 +282,42 @@ export default function TiendaClientPage() {
 			// Ignorar errores de quota/storage
 		}
 	}, [cart]);
+
+	useEffect(() => {
+		try {
+			const raw = localStorage.getItem(FAVORITES_KEY);
+			if (!raw) return;
+			const parsed = JSON.parse(raw) as Product[];
+			if (Array.isArray(parsed)) setFavorites(parsed);
+		} catch {
+			// Ignorar errores de parseo/storage
+		}
+	}, []);
+
+	useEffect(() => {
+		try {
+			localStorage.setItem(FAVORITES_KEY, JSON.stringify(favorites));
+		} catch {
+			// Ignorar errores de quota/storage
+		}
+	}, [favorites]);
+
+	useEffect(() => {
+		const handleScroll = () => {
+			const current = window.scrollY;
+			const last = lastScrollYRef.current;
+			if (current > last + 4) {
+				setHeaderVisible(false);
+				setNavVisible(false);
+			} else if (current < last - 4) {
+				setHeaderVisible(true);
+				setNavVisible(true);
+			}
+			lastScrollYRef.current = current;
+		};
+		window.addEventListener('scroll', handleScroll, { passive: true });
+		return () => window.removeEventListener('scroll', handleScroll);
+	}, []);
 
 	const [activeCategory, setActiveCategory] = useState('Todos');
 	const [activeBottomTab, setActiveBottomTab] = useState(0);
@@ -363,10 +416,26 @@ export default function TiendaClientPage() {
 				.cat-pill-active { background: #facc15; color: #000; }
 				.cat-pill { transition: all 0.2s; }
 				.cat-pill:hover { background: rgba(250,204,21,0.15); }
+				/* Favorites heart glow */
+				@keyframes fav-glow {
+					0% { box-shadow: 0 0 0 0 rgba(250,204,21,0.6); }
+					50% { box-shadow: 0 0 0 10px rgba(250,204,21,0); }
+					100% { box-shadow: 0 0 0 0 rgba(250,204,21,0); }
+				}
+				.fav-glow { animation: fav-glow 0.5s ease-out; }
+				/* Menu item stagger slide-in */
+				@keyframes menu-slide-in {
+					from { opacity: 0; transform: translateX(30px); }
+					to { opacity: 1; transform: translateX(0); }
+				}
+				.menu-item-animate {
+					opacity: 0;
+					animation: menu-slide-in 0.35s ease-out forwards;
+				}
 			`}</style>
 
 			{/* ═══════════════════════════════════════════════════════ MOBILE TOP BAR */}
-			<header className="md:hidden fixed top-0 left-0 w-full z-[100] flex items-center justify-between px-4 py-3 bg-black/60 backdrop-blur-xl border-b border-white/5">
+			<header className={`md:hidden fixed top-0 left-0 w-full z-[100] flex items-center justify-between px-4 py-3 bg-black/60 backdrop-blur-xl border-b border-white/5 transition-transform duration-300 ${headerVisible ? 'translate-y-0' : '-translate-y-full'}`}>
 				<FabrickLogo onClick={() => (selectedProduct ? setShowExitConfirm(true) : router.push('/'))} />
 				<div className="flex items-center gap-4">
 					<button className="icon-glow text-white/60 transition-all duration-300">
@@ -529,6 +598,12 @@ export default function TiendaClientPage() {
 										<div className="relative mx-4 rounded-xl overflow-hidden aspect-video">
 											<img src={p.img} className="card-img w-full h-full object-cover" alt={p.name} />
 											<div className="absolute inset-0 bg-gradient-to-t from-black/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+											<button
+												className="absolute top-2 right-2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/50 backdrop-blur-sm border border-white/10 transition-all duration-300 hover:border-yellow-400/50"
+												onClick={(e) => { e.stopPropagation(); toggleFavorite(p); }}
+											>
+												<Heart size={14} className={isFavorite(p.id) ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-500'} />
+											</button>
 										</div>
 										{/* Info */}
 										<div className="flex flex-col gap-2 px-4 pt-3 pb-4 flex-1">
@@ -556,12 +631,12 @@ export default function TiendaClientPage() {
 			</div>
 
 			{/* ═══════════════════════════════════════════════════════ MOBILE BOTTOM NAV */}
-			<nav className="md:hidden bottom-nav fixed bottom-0 left-0 w-full z-[90] flex items-center justify-around px-2 py-2">
+			<nav className={`md:hidden bottom-nav fixed bottom-0 left-0 w-full z-[90] flex items-center justify-around px-2 py-2 transition-transform duration-300 ${navVisible ? 'translate-y-0' : 'translate-y-full'}`}>
 				{[
 					{ icon: HomeIcon, label: 'Inicio', action: () => router.push('/') },
 					{ icon: LayoutGrid, label: 'Catálogo', action: () => { setActiveBottomTab(1); setSelectedProduct(null); } },
 					{ icon: ShoppingBag, label: 'Carrito', action: () => { setActiveBottomTab(2); setIsCartOpen(true); } },
-					{ icon: User, label: 'Cuenta', action: () => setActiveBottomTab(3) },
+					{ icon: Heart, label: 'Favoritos', action: () => { setActiveBottomTab(3); setIsFavoritesOpen(true); } },
 					{ icon: Settings, label: 'Ajustes', action: () => { setActiveBottomTab(4); setIsMenuOpen(true); } },
 				].map((tab, i) => (
 					<button
@@ -574,6 +649,13 @@ export default function TiendaClientPage() {
 								<tab.icon size={21} />
 								<div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-yellow-400 rounded-full flex items-center justify-center text-black text-[7px] font-black">
 									{cart.length}
+								</div>
+							</div>
+						) : i === 3 && favorites.length > 0 ? (
+							<div className="relative">
+								<Heart size={21} className={activeBottomTab === 3 ? 'fill-yellow-400' : ''} />
+								<div className="absolute -top-1.5 -right-1.5 w-3.5 h-3.5 bg-yellow-400 rounded-full flex items-center justify-center text-black text-[7px] font-black">
+									{favorites.length}
 								</div>
 							</div>
 						) : (
@@ -690,27 +772,51 @@ export default function TiendaClientPage() {
 			{isMenuOpen && (
 				<div className="fixed inset-0 z-[210] flex justify-end">
 					<div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsMenuOpen(false)} />
-					<div className="relative w-full max-w-[300px] bg-zinc-950 border-l border-white/5 h-full p-10 flex flex-col shadow-2xl panel-in">
-						<FabrickLogo className="mb-16 self-center" />
-						<div className="flex-1 relative flex items-center justify-center">
-							<div className="wheel-selector" />
-							<div className="flex-1 h-80 overflow-y-auto scrollbar-hide py-40 snap-y snap-mandatory text-center">
-								{MENU_OPTIONS.map((item, i) => (
-									<button
-										key={item.label}
-										onMouseEnter={() => setActiveMenuIndex(i)}
-										onClick={() => handleMenuAction(item.label)}
-										className={`h-[60px] w-full flex items-center justify-center gap-6 transition-all duration-500 snap-center ${activeMenuIndex === i ? 'opacity-100 scale-125' : 'opacity-10 scale-90 blur-[1.5px]'}`}
-									>
-										<item.icon size={18} className={activeMenuIndex === i ? 'text-yellow-400' : 'text-zinc-500'} />
-										<span className={`text-xs font-black uppercase tracking-[0.4em] ${activeMenuIndex === i ? 'text-white' : 'text-zinc-600'}`}>{item.label}</span>
-									</button>
-								))}
-							</div>
+					<div className="relative w-full max-w-[300px] bg-zinc-950 border-l border-white/5 h-full flex flex-col shadow-2xl panel-in overflow-hidden">
+						{/* Logo header */}
+						<div className="flex items-center justify-center py-10 border-b border-white/5 bg-black/40">
+							<FabrickLogo />
 						</div>
-						<button onClick={() => setIsMenuOpen(false)} className="mt-auto self-center text-zinc-700 hover:text-white uppercase text-[8px] font-black tracking-[0.8em] py-4">
-							Cerrar Panel
-						</button>
+						{/* Menu items */}
+						<div className="flex-1 flex flex-col py-6 px-4 gap-1 overflow-y-auto scrollbar-hide">
+							{[
+								{ icon: HomeIcon, label: 'Inicio' },
+								{ icon: LayoutGrid, label: 'Ver Catálogo' },
+								{ icon: Heart, label: 'Favoritos' },
+								{ icon: User, label: 'Mi Cuenta' },
+								{ icon: Settings, label: 'Ajustes' },
+							].map((item, i) => (
+								<button
+									key={item.label}
+									onClick={() => handleMenuAction(item.label)}
+									className="menu-item-animate group w-full flex items-center gap-4 px-5 py-4 rounded-2xl transition-all duration-200 hover:bg-yellow-400/5 border border-transparent hover:border-yellow-400/10 text-left"
+									style={{ animationDelay: `${i * 60}ms` }}
+								>
+									<item.icon size={18} className="text-zinc-500 group-hover:text-yellow-400 transition-colors duration-200 shrink-0" />
+									<span className="text-sm font-black uppercase tracking-[0.3em] text-zinc-400 group-hover:text-white transition-colors duration-200">
+										{item.label}
+									</span>
+									{item.label === 'Favoritos' && favorites.length > 0 && (
+										<span className="ml-auto text-[8px] font-black bg-yellow-400 text-black rounded-full w-5 h-5 flex items-center justify-center shrink-0">
+											{favorites.length}
+										</span>
+									)}
+								</button>
+							))}
+						</div>
+						{/* Divider + bottom actions */}
+						<div className="h-px bg-white/5 mx-4" />
+						<div className="p-6 space-y-3">
+							<button className="w-full py-3 bg-yellow-400/10 border border-yellow-400/20 rounded-full text-yellow-400 font-black text-[9px] uppercase tracking-[0.4em] hover:bg-yellow-400/20 transition-all duration-200">
+								Iniciar Sesión
+							</button>
+							<button
+								onClick={() => setIsMenuOpen(false)}
+								className="w-full py-3 text-zinc-700 hover:text-white font-black uppercase text-[8px] tracking-[0.8em] transition-colors duration-200"
+							>
+								Cerrar ×
+							</button>
+						</div>
 					</div>
 				</div>
 			)}
@@ -805,6 +911,116 @@ export default function TiendaClientPage() {
 									Confirmar Pedido
 								</button>
 								<SilverGoldButton className="w-full" onClick={() => { setIsCartOpen(false); }}>
+									Seguir Comprando
+								</SilverGoldButton>
+							</div>
+						)}
+					</div>
+				</div>
+			)}
+
+			{/* ═══════════════════════════════════════════════════════ FAVORITES DRAWER */}
+			{isFavoritesOpen && (
+				<div className="fixed inset-0 z-[220] flex overflow-hidden">
+					<div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsFavoritesOpen(false)} />
+					{/* Mobile: slide up from bottom */}
+					<div className="md:hidden absolute bottom-0 left-0 w-full bg-zinc-950 border-t border-white/10 rounded-t-3xl shadow-2xl cart-mobile flex flex-col max-h-[85dvh]">
+						<div className="flex items-center justify-between px-5 py-4 border-b border-white/5 sticky top-0 bg-zinc-950/95 backdrop-blur-sm">
+							<div className="absolute left-1/2 -translate-x-1/2 top-2 w-10 h-1 bg-white/20 rounded-full" />
+							<p className="font-black uppercase tracking-[0.4em] text-xs text-white mt-2 flex items-center gap-2">
+								<Heart size={14} className="text-yellow-400 fill-yellow-400" /> Favoritos
+							</p>
+							<button onClick={() => setIsFavoritesOpen(false)} className="text-zinc-500 hover:text-white transition-colors mt-2"><X size={20} /></button>
+						</div>
+						<div className="flex-1 overflow-y-auto p-4 space-y-3 scrollbar-hide">
+							{favorites.length === 0 ? (
+								<div className="h-40 flex flex-col items-center justify-center opacity-20 gap-3">
+									<Heart size={40} />
+									<p className="text-sm font-black uppercase tracking-widest">Sin favoritos</p>
+								</div>
+							) : favorites.map((item, idx) => (
+								<div key={`${item.id}-${idx}`} className="flex items-center gap-3 bg-black/40 p-3 rounded-2xl border border-white/5 hover:border-yellow-400/20 transition-colors">
+									<div className="w-16 h-16 rounded-xl overflow-hidden border border-white/10 shrink-0">
+										<img src={item.img} className="w-full h-full object-cover" alt={item.name} />
+									</div>
+									<div className="flex-1 min-w-0">
+										<h4 className="font-black uppercase text-xs text-white tracking-wide truncate">{item.name}</h4>
+										<p className="text-yellow-400 font-mono text-sm mt-0.5">${item.price.toLocaleString()}</p>
+									</div>
+									<div className="flex flex-col gap-1 shrink-0 items-center">
+										<button
+											onClick={() => { setIsFavoritesOpen(false); goToCheckout(item); }}
+											className="text-[8px] font-black uppercase tracking-wider bg-yellow-400 text-black px-3 py-1.5 rounded-full hover:bg-yellow-300 transition-colors"
+										>
+											Comprar
+										</button>
+										<button onClick={() => toggleFavorite(item)} className="text-zinc-600 hover:text-red-400 p-1">
+											<Trash2 size={14} />
+										</button>
+									</div>
+								</div>
+							))}
+						</div>
+						{favorites.length > 0 && (
+							<div className="p-4 bg-black/80 border-t border-white/5 space-y-3 sticky bottom-0">
+								<button
+									className="btn-watercolor w-full bg-yellow-400 text-black font-black text-[10px] uppercase tracking-[0.3em] py-3.5 transition-all duration-300 hover:bg-yellow-300 active:scale-95 shadow-[0_0_20px_rgba(250,204,21,0.25)]"
+									onClick={() => { setIsFavoritesOpen(false); goToCheckout(favorites[0]); }}
+								>
+									Ir al Checkout
+								</button>
+								<SilverGoldButton className="w-full" onClick={() => setIsFavoritesOpen(false)}>
+									Seguir Comprando
+								</SilverGoldButton>
+							</div>
+						)}
+					</div>
+					{/* Desktop: slide from right */}
+					<div className="hidden md:flex absolute top-0 right-0 h-full w-[400px] bg-zinc-950 border-l border-white/10 shadow-2xl cart-desktop flex-col">
+						<div className="flex items-center justify-between px-6 py-5 border-b border-white/5 bg-black/60 backdrop-blur-md sticky top-0">
+							<p className="font-black uppercase tracking-[0.4em] text-sm text-white flex items-center gap-2">
+								<Heart size={16} className="text-yellow-400 fill-yellow-400" /> Favoritos
+							</p>
+							<button onClick={() => setIsFavoritesOpen(false)} className="text-zinc-500 hover:text-white transition-colors"><X size={20} /></button>
+						</div>
+						<div className="flex-1 overflow-y-auto p-5 space-y-3 scrollbar-hide">
+							{favorites.length === 0 ? (
+								<div className="h-40 flex flex-col items-center justify-center opacity-20 gap-3">
+									<Heart size={48} />
+									<p className="text-sm font-black uppercase tracking-widest">Sin favoritos</p>
+								</div>
+							) : favorites.map((item, idx) => (
+								<div key={`${item.id}-${idx}`} className="flex items-center gap-4 bg-black/40 p-4 rounded-2xl border border-white/5 hover:border-yellow-400/20 transition-colors">
+									<div className="w-20 h-20 rounded-xl overflow-hidden border border-white/10 shrink-0">
+										<img src={item.img} className="w-full h-full object-cover" alt={item.name} />
+									</div>
+									<div className="flex-1 min-w-0">
+										<h4 className="font-black uppercase text-sm text-white tracking-wide truncate">{item.name}</h4>
+										<p className="text-yellow-400 font-mono text-base mt-1">${item.price.toLocaleString()}</p>
+									</div>
+									<div className="flex flex-col gap-2 shrink-0 items-center">
+										<button
+											onClick={() => { setIsFavoritesOpen(false); goToCheckout(item); }}
+											className="text-[8px] font-black uppercase tracking-wider bg-yellow-400 text-black px-3 py-1.5 rounded-full hover:bg-yellow-300 transition-colors"
+										>
+											Comprar
+										</button>
+										<button onClick={() => toggleFavorite(item)} className="text-zinc-600 hover:text-red-400 p-1.5">
+											<Trash2 size={16} />
+										</button>
+									</div>
+								</div>
+							))}
+						</div>
+						{favorites.length > 0 && (
+							<div className="p-6 bg-black/80 border-t border-white/5 space-y-4 sticky bottom-0">
+								<button
+									className="btn-watercolor w-full bg-yellow-400 text-black font-black text-[11px] uppercase tracking-[0.3em] py-4 transition-all duration-300 hover:bg-yellow-300 active:scale-95 shadow-[0_0_25px_rgba(250,204,21,0.3)]"
+									onClick={() => { setIsFavoritesOpen(false); goToCheckout(favorites[0]); }}
+								>
+									Ir al Checkout
+								</button>
+								<SilverGoldButton className="w-full" onClick={() => setIsFavoritesOpen(false)}>
 									Seguir Comprando
 								</SilverGoldButton>
 							</div>

@@ -24,7 +24,6 @@ import {
 	MessageCircle,
 	MapPin,
 	Search,
-	ChevronRight,
 	Star,
 } from 'lucide-react';
 
@@ -785,6 +784,9 @@ export default function TiendaClientPage() {
 								>
 									Confirmar Pedido
 								</button>
+								<SilverGoldButton className="w-full" onClick={() => setIsCartOpen(false)}>
+									Seguir Comprando
+								</SilverGoldButton>
 							</div>
 						)}
 					</div>
@@ -873,8 +875,7 @@ export default function TiendaClientPage() {
 				</div>
 			)}
 
-			{/* Unused ChevronRight import used subtly */}
-			<span className="hidden"><ChevronRight /></span>
+			{/* Exit confirm modal ends above */}
 		</div>
 	);
 }

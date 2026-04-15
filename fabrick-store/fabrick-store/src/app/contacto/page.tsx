@@ -1,5 +1,8 @@
-import type { Metadata } from 'next';
-import { MapPin, Phone, Mail, Clock, MessageCircle } from 'lucide-react';
+'use client';
+
+import { useState, useRef } from 'react';
+import { useSearchParams } from 'next/navigation';
+import { MapPin, Phone, Mail, Clock, MessageCircle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import ContactMap from '@/components/ContactMap';
 import SectionPageShell from '@/components/SectionPageShell';
 
@@ -44,12 +47,37 @@ const PROJECT_TYPES = [
   'Otro',
 ];
 
-export const metadata: Metadata = {
-  title: 'Contacto | Fabrick',
-  description: 'Contacta a Soluciones Fabrick. Respondemos en menos de 24 horas. Oficina en Providencia, Santiago.',
-};
-
 export default function ContactoPage() {
+  const searchParams = useSearchParams();
+  const alreadySent = searchParams.get('enviado') === '1';
+
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>(
+    alreadySent ? 'success' : 'idle',
+  );
+  const formRef = useRef<HTMLFormElement>(null);
+
+  async function handleSubmit(e: React.FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setStatus('loading');
+    const formData = new FormData(e.currentTarget);
+    const body = Object.fromEntries(formData.entries());
+    try {
+      const res = await fetch('/api/presupuesto', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      });
+      if (res.ok) {
+        setStatus('success');
+        formRef.current?.reset();
+      } else {
+        setStatus('error');
+      }
+    } catch {
+      setStatus('error');
+    }
+  }
+
   return (
     <SectionPageShell
       eyebrow="Contacto"
@@ -101,7 +129,26 @@ export default function ContactoPage() {
           <p className="mt-3 text-sm leading-relaxed text-zinc-400">
             Cuanto más detalle compartas, mejor podremos orientarte desde el primer contacto.
           </p>
-          <form action="/api/presupuesto" method="POST" className="mt-8 space-y-4">
+
+          {status === 'success' && (
+            <div className="mt-6 flex items-start gap-3 rounded-2xl border border-green-500/30 bg-green-500/10 px-5 py-4">
+              <CheckCircle className="mt-0.5 h-5 w-5 shrink-0 text-green-400" />
+              <p className="text-sm font-semibold text-green-400">
+                ¡Mensaje enviado! Nos pondremos en contacto en menos de 24 horas.
+              </p>
+            </div>
+          )}
+
+          {status === 'error' && (
+            <div className="mt-6 flex items-start gap-3 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4">
+              <XCircle className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+              <p className="text-sm font-semibold text-red-400">
+                Ocurrió un error al enviar. Inténtalo nuevamente o escríbenos por WhatsApp.
+              </p>
+            </div>
+          )}
+
+          <form ref={formRef} onSubmit={handleSubmit} className="mt-8 space-y-4">
             <div className="grid gap-4 sm:grid-cols-2">
               <input
                 name="nombre"
@@ -141,9 +188,11 @@ export default function ContactoPage() {
             />
             <button
               type="submit"
-              className="w-full rounded-2xl bg-yellow-400 px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-black transition hover:bg-white"
+              disabled={status === 'loading'}
+              className="flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-black transition hover:bg-white disabled:opacity-60"
             >
-              Enviar solicitud
+              {status === 'loading' && <Loader2 className="h-4 w-4 animate-spin" />}
+              {status === 'loading' ? 'Enviando…' : 'Enviar solicitud'}
             </button>
           </form>
           <p className="mt-4 text-center text-[10px] text-zinc-600">

@@ -9,7 +9,7 @@ import FabrickLogo from './FabrickLogo';
 import {
   Hammer, Home, Droplet, Layers, PaintRoller, ShieldCheck, Package,
   Droplets, Lightbulb, Cpu, Warehouse, Armchair, Fingerprint, ArrowRight,
-  Star, MapPin, ShoppingBag, Sparkles, Award, TrendingUp, MessageSquare,
+  Star, MapPin, ShoppingBag, Sparkles, Award, TrendingUp, MessageSquare, Gamepad2,
 } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -75,6 +75,7 @@ const NAV_CARDS = [
   { href: '/evolucion',  Icon: TrendingUp,     title: 'Evolución',   desc: '8 años de experiencia' },
   { href: '/contacto',   Icon: MessageSquare,  title: 'Contacto',    desc: 'Inicia tu proyecto hoy' },
   { href: '/garantias',  Icon: ShieldCheck,    title: 'Garantías',   desc: 'Tu tranquilidad asegurada' },
+  { href: '/juego',      Icon: Gamepad2,        title: 'Juego',       desc: 'Constructor de bloques' },
 ];
 
 /* ════════════════════════════════════════════════════════════

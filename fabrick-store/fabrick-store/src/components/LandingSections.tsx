@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useRef } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -9,7 +9,7 @@ import FabrickLogo from './FabrickLogo';
 import {
   Hammer, Home, Droplet, Layers, PaintRoller, ShieldCheck, Package,
   Droplets, Lightbulb, Cpu, Warehouse, Armchair, Fingerprint, ArrowRight,
-  Star, MapPin,
+  Star, MapPin, ShoppingBag, Sparkles, Award, TrendingUp, MessageSquare,
 } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -68,12 +68,20 @@ const REVIEWS = [
   { n: 'José V.', type: 'Construcción Estructural', t: 'Como ingeniero, soy sumamente exigente. Al ver la precisión con la que trabajan el Metalcon y saber que estoy respaldado por un Seguro Sísmico, supe que mi inversión estaba segura.' },
 ];
 
+const NAV_CARDS = [
+  { href: '/tienda',     Icon: ShoppingBag,   title: 'Boutique',    desc: 'Materiales y productos premium' },
+  { href: '/soluciones', Icon: Sparkles,       title: 'Soluciones',  desc: 'Servicios integrales' },
+  { href: '/proyectos',  Icon: Award,          title: 'Proyectos',   desc: 'Resultados comprobados' },
+  { href: '/evolucion',  Icon: TrendingUp,     title: 'Evolución',   desc: '8 años de experiencia' },
+  { href: '/contacto',   Icon: MessageSquare,  title: 'Contacto',    desc: 'Inicia tu proyecto hoy' },
+  { href: '/garantias',  Icon: ShieldCheck,    title: 'Garantías',   desc: 'Tu tranquilidad asegurada' },
+];
+
 /* ════════════════════════════════════════════════════════════
    COMPONENTE
 ════════════════════════════════════════════════════════════ */
 export default function LandingSections() {
   const progressBarRef = useRef<HTMLDivElement>(null);
-  const [trajProgress, setTrajProgress] = useState(0);
 
   /* ── GSAP + anime.js scroll animations ── */
   useEffect(() => {
@@ -136,6 +144,50 @@ export default function LandingSections() {
           }
         );
       });
+
+      /* Nav cards: staggered entry */
+      gsap.utils.toArray<HTMLElement>('.nav-card').forEach((card, i) => {
+        gsap.fromTo(card,
+          { y: 40, opacity: 0, scale: 0.92 },
+          {
+            y: 0, opacity: 1, scale: 1,
+            duration: 0.75, ease: 'power3.out',
+            delay: i * 0.08,
+            scrollTrigger: { trigger: card, start: 'top 92%', toggleActions: 'play none none none' },
+          }
+        );
+      });
+
+      /* Progress bar: scroll-triggered */
+      if (progressBarRef.current) {
+        gsap.fromTo(progressBarRef.current,
+          { height: '0%' },
+          {
+            height: '100%',
+            ease: 'none',
+            scrollTrigger: {
+              trigger: '#evolucion',
+              start: 'top 70%',
+              end: 'bottom 25%',
+              scrub: 1.5,
+            },
+          }
+        );
+      }
+
+      /* Trajectory steps: scroll-triggered reveal */
+      gsap.set('.traj-step', { opacity: 0, x: -20 });
+      gsap.utils.toArray<HTMLElement>('.traj-step').forEach((step) => {
+        gsap.to(step, {
+          opacity: 1, x: 0,
+          duration: 0.8, ease: 'power2.out',
+          scrollTrigger: {
+            trigger: step,
+            start: 'top 87%',
+            toggleActions: 'play none none reverse',
+          },
+        });
+      });
     });
 
     /* anime.js – contador "8 Años" (se activa por IntersectionObserver) */
@@ -162,28 +214,48 @@ export default function LandingSections() {
     return () => ctx.revert();
   }, []);
 
-  /* ── Trajectory loop (20s, 10fps updates) ── */
-  useEffect(() => {
-    let raf: number;
-    let last = 0;
-    const start = Date.now();
-    const DURATION = 20000;
-    const animate = () => {
-      const now = Date.now();
-      if (now - last > 100) {
-        last = now;
-        const p = ((now - start) % DURATION) / DURATION * 100;
-        setTrajProgress(p);
-        if (progressBarRef.current) progressBarRef.current.style.height = `${p}%`;
-      }
-      raf = requestAnimationFrame(animate);
-    };
-    raf = requestAnimationFrame(animate);
-    return () => cancelAnimationFrame(raf);
-  }, []);
-
   return (
     <div className="bg-black text-white overflow-x-hidden">
+
+      {/* ══ NAVEGACIÓN ══════════════════════════════════════════ */}
+      <section className="py-16 md:py-24 px-4 md:px-12 border-t border-white/5 bg-black">
+        <div className="max-w-7xl mx-auto">
+          <div className="text-center mb-10 md:mb-14 animate-on-scroll">
+            <span className="text-yellow-400 font-medium tracking-[0.4em] text-[10px] uppercase block mb-3">
+              Explora Fabrick
+            </span>
+            <h2 className="text-2xl md:text-4xl font-light uppercase tracking-tighter text-white/90">
+              Todo lo que <span className="font-bold text-yellow-400">necesitas</span>
+            </h2>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3 md:gap-4">
+            {NAV_CARDS.map(({ href, Icon, title, desc }, i) => (
+              <Link
+                key={i}
+                href={href}
+                className="nav-card group relative rounded-[2rem] border border-white/8 bg-zinc-950/80 backdrop-blur-md p-5 md:p-6 flex flex-col items-center text-center gap-3 hover:border-yellow-400/40 hover:bg-zinc-900/80 transition-all duration-500 hover:shadow-[0_0_30px_rgba(250,204,21,0.08)] cursor-pointer"
+              >
+                {/* Icon container */}
+                <div className="w-14 h-14 rounded-full bg-black border border-white/10 flex items-center justify-center group-hover:border-yellow-400/60 group-hover:shadow-[0_0_20px_rgba(250,204,21,0.25)] transition-all duration-500 flex-shrink-0">
+                  <Icon className="w-6 h-6 text-zinc-400 group-hover:text-yellow-400 transition-colors duration-500" />
+                </div>
+                {/* Text */}
+                <div>
+                  <h3 className="font-bold uppercase text-xs tracking-wider text-white group-hover:text-yellow-400 transition-colors duration-300 mb-1">
+                    {title}
+                  </h3>
+                  <p className="text-[9px] text-zinc-500 leading-relaxed group-hover:text-zinc-400 transition-colors duration-300">
+                    {desc}
+                  </p>
+                </div>
+                {/* Arrow */}
+                <ArrowRight className="w-3.5 h-3.5 text-zinc-700 group-hover:text-yellow-400 group-hover:translate-x-1 transition-all duration-300 mt-auto" />
+              </Link>
+            ))}
+          </div>
+        </div>
+      </section>
 
       {/* ══ SERVICIOS ════════════════════════════════════════ */}
       <section id="servicios" className="py-24 md:py-36 px-4 md:px-12 border-t border-white/5">
@@ -241,25 +313,39 @@ export default function LandingSections() {
           </div>
 
           <div className="relative flex flex-row items-stretch gap-6 md:gap-16 pt-4 animate-on-scroll">
-            {/* Barra de progreso */}
-            <div className="w-1.5 md:w-2 flex-shrink-0 bg-zinc-900 border border-white/5 rounded-full relative overflow-hidden ml-2 md:ml-0">
+            {/* ── Barra de progreso scroll-triggered con gradiente amarillo ── */}
+            <div
+              className="flex-shrink-0 bg-zinc-900 border border-yellow-400/10 rounded-full relative ml-2 md:ml-0 self-stretch"
+              style={{ width: '3px' }}
+            >
+              {/* Tick marks cada fase */}
+              {Array.from({ length: 6 }).map((_, i) => (
+                <div
+                  key={i}
+                  className="absolute left-1/2 -translate-x-1/2 w-2 h-2 rounded-full bg-yellow-400/20 border border-yellow-400/50 z-10"
+                  style={{ top: `${i * 20}%` }}
+                />
+              ))}
+              {/* Fill gradiente */}
               <div
                 ref={progressBarRef}
-                className="absolute top-0 left-0 w-full rounded-full bg-white"
-                style={{ height: '0%', boxShadow: '0 0 15px rgba(250,204,21,0.8), 0 0 30px rgba(250,204,21,0.5)' }}
+                className="absolute top-0 left-0 w-full rounded-full z-0"
+                style={{
+                  height: '0%',
+                  background: 'linear-gradient(to bottom, #facc15, #f97316)',
+                  boxShadow: '0 0 20px rgba(250,204,21,0.9), 0 0 50px rgba(250,204,21,0.5)',
+                }}
               />
             </div>
 
             {/* Fases */}
             <div className="flex-1 flex flex-col justify-between gap-8 md:gap-14 py-2">
               {TRAJECTORY.map((step, i) => {
-                const threshold = (i / TRAJECTORY.length) * 100;
-                const isActive  = trajProgress >= threshold;
-                const isLast    = i === TRAJECTORY.length - 1;
+                const isLast = i === TRAJECTORY.length - 1;
 
-                if (isLast && isActive) {
+                if (isLast) {
                   return (
-                    <div key={i} className="flex flex-col items-start md:items-center text-left md:text-center mt-4">
+                    <div key={i} className="traj-step flex flex-col items-start md:items-center text-left md:text-center mt-4">
                       <div className="relative mb-5">
                         <div className="absolute inset-0 bg-yellow-400 blur-[40px] opacity-25 rounded-full" />
                         <div className="w-20 h-20 md:w-28 md:h-28 bg-black border border-yellow-400/50 rounded-full flex items-center justify-center relative z-10 shadow-[0_0_30px_rgba(250,204,21,0.3)]">
@@ -282,15 +368,15 @@ export default function LandingSections() {
                 return (
                   <div
                     key={i}
-                    className={`flex flex-col transition-all duration-500 ${isActive ? 'opacity-100 translate-x-0' : 'opacity-25 -translate-x-3'}`}
+                    className="traj-step flex flex-col border-l-2 border-yellow-400/30 pl-4 hover:border-yellow-400 transition-colors duration-300"
                   >
-                    <span className={`text-[9px] font-bold uppercase tracking-widest mb-1 ${isActive ? 'text-yellow-400' : 'text-zinc-600'}`}>
+                    <span className="text-[9px] font-bold uppercase tracking-widest mb-1 text-yellow-400/70">
                       Fase 0{i + 1}
                     </span>
-                    <h3 className={`font-medium uppercase text-lg md:text-2xl mb-1 ${isActive ? 'text-white' : 'text-zinc-600'}`}>
+                    <h3 className="font-medium uppercase text-lg md:text-2xl mb-1 text-white">
                       {step.role}
                     </h3>
-                    <p className={`text-[9px] md:text-xs font-light leading-relaxed max-w-xl ${isActive ? 'text-zinc-400' : 'text-zinc-700'}`}>
+                    <p className="text-[9px] md:text-xs font-light leading-relaxed max-w-xl text-zinc-400">
                       {step.desc}
                     </p>
                   </div>
@@ -507,47 +593,76 @@ export default function LandingSections() {
         </div>
       </section>
 
-      {/* ══ FOOTER ═══════════════════════════════════════════ */}
-      <footer className="bg-black py-10 md:py-16 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-4 md:px-12 flex flex-col md:flex-row justify-between items-center gap-8">
-          {/* Logo */}
-          <FabrickLogo className="pointer-events-none" />
-
-          <div className="text-center">
-            <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mb-1">
-              Soluciones Integrales para el Hogar Moderno.
+      {/* ══ FOOTER EMOCIONAL ══════════════════════════════════ */}
+      <section className="relative overflow-hidden border-t border-white/5">
+        {/* Casa de ensueño */}
+        <div className="relative h-[55vh] md:h-[65vh] overflow-hidden">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2075&auto=format&fit=crop"
+            alt="Casa de ensueño Fabrick"
+            className="w-full h-full object-cover scale-105"
+          />
+          <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black" />
+          <div className="absolute inset-0 flex flex-col items-center justify-end pb-12 md:pb-20 px-6 text-center">
+            <h2 className="text-2xl sm:text-3xl md:text-5xl font-light text-white mb-4 max-w-3xl leading-tight drop-shadow-2xl">
+              Tu hogar es más que{' '}
+              <span className="font-bold text-yellow-400">cuatro paredes.</span>
+            </h2>
+            <p className="text-zinc-300 max-w-2xl text-xs sm:text-sm md:text-base leading-relaxed font-light drop-shadow-lg">
+              Es el lugar donde tu familia ríe, descansa y sueña. Merecen un espacio construido con amor, precisión
+              y el compromiso de quienes realmente saben lo que hacen. En Fabrick, cada ladrillo que colocamos
+              lleva la promesa de que tu tranquilidad siempre valdrá más que cualquier costo.
             </p>
-            <p className="text-zinc-700 text-[9px] uppercase tracking-widest">
-              © {new Date().getFullYear()} Soluciones Fabrick. Todos los derechos reservados.
-            </p>
-          </div>
-
-          {/* Redes sociales */}
-          <div className="flex gap-4 items-center">
-            {[
-              { Icon: MetaIcon,      href: '#' },
-              { Icon: TikTokIcon,    href: '#' },
-              { Icon: InstagramIcon, href: '#' },
-            ].map(({ Icon, href }, i) => (
-              <a
-                key={i} href={href}
-                className="relative group w-11 h-11 flex items-center justify-center"
-              >
-                <div className="absolute inset-0 bg-yellow-400 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300 shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
-                <div className="absolute inset-0 rounded-full border border-white/10 group-hover:border-transparent transition-colors" />
-                <div className="relative z-10 text-zinc-400 group-hover:text-black transition-colors">
-                  <Icon />
-                </div>
-              </a>
-            ))}
           </div>
         </div>
-      </footer>
+
+        {/* Footer bottom bar */}
+        <footer className="bg-black py-12 md:py-16">
+          <div className="max-w-7xl mx-auto px-4 md:px-12 flex flex-col items-center gap-8">
+            <FabrickLogo className="pointer-events-none" />
+
+            {/* CTA */}
+            <Link
+              href="/contacto"
+              className="btn-watercolor px-10 py-4 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.2em] rounded-full hover:bg-white transition-all hover:scale-105 shadow-[0_10px_30px_rgba(250,204,21,0.3)] inline-flex items-center gap-3 group"
+            >
+              Comienza tu proyecto
+              <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+            </Link>
+
+            {/* Redes sociales */}
+            <div className="flex gap-4 items-center">
+              {[
+                { Icon: MetaIcon,      href: '#', label: 'Facebook' },
+                { Icon: TikTokIcon,    href: '#', label: 'TikTok' },
+                { Icon: InstagramIcon, href: '#', label: 'Instagram' },
+              ].map(({ Icon, href, label }, i) => (
+                <a
+                  key={i} href={href} aria-label={label}
+                  className="relative group w-11 h-11 flex items-center justify-center"
+                >
+                  <div className="absolute inset-0 bg-yellow-400 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300 shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
+                  <div className="absolute inset-0 rounded-full border border-white/10 group-hover:border-transparent transition-colors" />
+                  <div className="relative z-10 text-zinc-400 group-hover:text-black transition-colors">
+                    <Icon />
+                  </div>
+                </a>
+              ))}
+            </div>
+
+            <div className="text-center space-y-1">
+              <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest">
+                Soluciones Integrales para el Hogar Moderno.
+              </p>
+              <p className="text-zinc-700 text-[9px] uppercase tracking-widest">
+                © {new Date().getFullYear()} Soluciones Fabrick · Todos los derechos reservados
+              </p>
+            </div>
+          </div>
+        </footer>
+      </section>
 
     </div>
   );
 }
-
-
-
-

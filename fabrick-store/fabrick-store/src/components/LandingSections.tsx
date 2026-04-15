@@ -75,14 +75,17 @@ export default function LandingSections() {
   const progressBarRef = useRef<HTMLDivElement>(null);
   const [trajProgress, setTrajProgress] = useState(0);
 
-  /* ── GSAP scroll animations ── */
+  /* ── GSAP + anime.js scroll animations ── */
   useEffect(() => {
     const ctx = gsap.context(() => {
+
+      /* Reveal genérico con fade + slide */
       document.querySelectorAll<HTMLElement>('.animate-on-scroll').forEach((el) => {
         gsap.fromTo(el,
-          { y: 40, opacity: 0 },
+          { y: 50, opacity: 0, filter: 'blur(4px)' },
           {
-            y: 0, opacity: 1, duration: 1.2, ease: 'power3.out',
+            y: 0, opacity: 1, filter: 'blur(0px)',
+            duration: 1.1, ease: 'power3.out',
             scrollTrigger: {
               trigger: el,
               start: 'top 88%',
@@ -92,11 +95,70 @@ export default function LandingSections() {
         );
       });
 
+      /* Tarjetas de servicio: efecto cascada desde abajo */
+      gsap.utils.toArray<HTMLElement>('.service-card').forEach((card, i) => {
+        gsap.fromTo(card,
+          { y: 70, opacity: 0, scale: 0.93, rotateX: 6 },
+          {
+            y: 0, opacity: 1, scale: 1, rotateX: 0,
+            duration: 0.9, ease: 'power3.out',
+            delay: i * 0.07,
+            scrollTrigger: { trigger: card, start: 'top 90%', toggleActions: 'play none none none' },
+          }
+        );
+      });
+
+      /* Reviews: slide desde los lados */
+      gsap.utils.toArray<HTMLElement>('.review-card').forEach((card, i) => {
+        const dir = i % 2 === 0 ? -60 : 60;
+        gsap.fromTo(card,
+          { x: dir, opacity: 0 },
+          {
+            x: 0, opacity: 1, duration: 1, ease: 'power3.out',
+            scrollTrigger: { trigger: card, start: 'top 88%', toggleActions: 'play none none none' },
+          }
+        );
+      });
+
+      /* Iconos de tienda: levitación suave con GSAP */
       gsap.to('.store-icon-wrapper', {
-        y: -8, duration: 2, repeat: -1, yoyo: true,
-        ease: 'sine.inOut', stagger: 0.15,
+        y: -10, duration: 2.2, repeat: -1, yoyo: true,
+        ease: 'sine.inOut', stagger: 0.18,
+      });
+
+      /* Línea de división: expand desde centro */
+      gsap.utils.toArray<HTMLElement>('.divider-line').forEach((el) => {
+        gsap.fromTo(el,
+          { scaleX: 0, opacity: 0 },
+          {
+            scaleX: 1, opacity: 1, duration: 1.2, ease: 'power2.inOut',
+            scrollTrigger: { trigger: el, start: 'top 90%' },
+          }
+        );
       });
     });
+
+    /* anime.js – contador "8 Años" (se activa por IntersectionObserver) */
+    const counterEl = document.querySelector<HTMLElement>('.traj-counter');
+    if (counterEl) {
+      const obs = new IntersectionObserver(([entry]) => {
+        if (!entry.isIntersecting) return;
+        obs.disconnect();
+        import('animejs').then(({ default: anime }) => {
+          const obj = { val: 0 };
+          anime({
+            targets: obj,
+            val: 8,
+            round: 1,
+            duration: 2200,
+            easing: 'easeOutExpo',
+            update() { counterEl.textContent = `${obj.val}`; },
+          });
+        });
+      }, { threshold: 0.4 });
+      obs.observe(counterEl);
+    }
+
     return () => ctx.revert();
   }, []);
 
@@ -142,7 +204,7 @@ export default function LandingSections() {
             {SERVICIOS.map(({ Icon, title, desc, img, wide }, i) => (
               <div
                 key={i}
-                className={`group relative rounded-[1.5rem] md:rounded-[2rem] border border-white/10 overflow-hidden flex flex-col items-start justify-end min-h-[280px] animate-on-scroll ${wide ? 'sm:col-span-2 xl:col-span-2' : ''}`}
+                className={`service-card group relative rounded-[1.5rem] md:rounded-[2rem] border border-white/10 overflow-hidden flex flex-col items-start justify-end min-h-[280px] ${wide ? 'sm:col-span-2 xl:col-span-2' : ''}`}
               >
                 <div className="absolute inset-0 z-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -170,7 +232,7 @@ export default function LandingSections() {
               El Camino de la Autoridad
             </span>
             <h2 className="text-4xl md:text-6xl font-light uppercase tracking-tighter mt-6 mb-6">
-              <span className="font-bold text-yellow-400">8 Años</span> de Evolución
+              <span className="font-bold text-yellow-400"><span className="traj-counter">8</span> Años</span> de Evolución
             </h2>
             <p className="text-zinc-400 max-w-3xl mx-auto text-xs md:text-base font-light leading-relaxed">
               Nuestra experiencia no es teórica. Años dominando el terreno, perfeccionando desde el cimiento
@@ -361,7 +423,7 @@ export default function LandingSections() {
             {REVIEWS.map((rev, i) => (
               <div
                 key={i}
-                className="bg-black p-8 md:p-10 rounded-[2rem] border border-white/5 hover:border-yellow-400/30 transition-colors relative animate-on-scroll"
+                className="review-card bg-black p-8 md:p-10 rounded-[2rem] border border-white/5 hover:border-yellow-400/30 transition-colors relative"
               >
                 <div className="flex gap-1 mb-6">
                   {Array.from({ length: 5 }).map((_, s) => (

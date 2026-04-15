@@ -8,20 +8,29 @@ import { useRealtimeProducts } from '@/hooks/useRealtimeProducts';
 import { useCart, formatCLP } from '@/hooks/useCart';
 import { Star, Check, Truck, ArrowLeft, ShoppingCart, ChevronRight } from 'lucide-react';
 
-/* ─── Animation variants ─────────────────────────────────────── */
+/* ─── Animation variants (motion.dev / framer-motion) ───────── */
 const containerVariants = {
   hidden:   { opacity: 0 },
-  visible:  { opacity: 1, transition: { staggerChildren: 0.09, delayChildren: 0.15 } },
-};
+  visible:  {
+    opacity: 1,
+    transition: { staggerChildren: 0.1, delayChildren: 0.2 },
+  },
+} as const;
 
 const itemVariants = {
-  hidden:   { opacity: 0, y: 22 },
-  visible:  { opacity: 1, y: 0, transition: { duration: 0.55 } },
+  hidden:   { opacity: 0, y: 28, filter: 'blur(4px)' },
+  visible:  {
+    opacity: 1, y: 0, filter: 'blur(0px)',
+    transition: { type: 'spring' as const, stiffness: 120, damping: 18, mass: 0.8 },
+  },
 };
 
 const imageVariants = {
-  hidden:   { opacity: 0, scale: 0.96 },
-  visible:  { opacity: 1, scale: 1, transition: { duration: 0.75 } },
+  hidden:   { opacity: 0, scale: 0.93 },
+  visible:  {
+    opacity: 1, scale: 1,
+    transition: { type: 'spring' as const, stiffness: 90, damping: 20 },
+  },
 };
 
 /* ─── Skeleton ────────────────────────────────────────────────── */
@@ -276,13 +285,15 @@ export default function ProductPage() {
                 ) : (
                   <motion.button
                     key="add"
-                    initial={{ opacity: 0, scale: 0.96, y: 4 }}
+                    initial={{ opacity: 0, scale: 0.94, y: 6 }}
                     animate={{ opacity: 1, scale: 1,  y: 0 }}
-                    exit={{    opacity: 0, scale: 0.96, y: -4 }}
-                    transition={{ duration: 0.25 }}
+                    exit={{    opacity: 0, scale: 0.94, y: -6 }}
+                    whileHover={{ scale: 1.025, boxShadow: '0 0 28px rgba(250,204,21,0.18)' }}
+                    whileTap={{ scale: 0.97 }}
+                    transition={{ type: 'spring', stiffness: 300, damping: 22 }}
                     onClick={handleAddToCart}
                     disabled={product!.stock !== undefined && product!.stock < 1}
-                    className="w-full py-4 rounded-xl relative overflow-hidden group transition-all duration-300
+                    className="w-full py-4 rounded-xl relative overflow-hidden group
                       bg-gradient-to-r from-zinc-800 to-zinc-700 border border-white/[0.09] text-white
                       hover:border-yellow-400/35 hover:from-zinc-700 hover:to-zinc-600
                       disabled:opacity-40 disabled:cursor-not-allowed

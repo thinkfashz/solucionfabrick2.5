@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef } from 'react';
+import { useState, useRef, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { MapPin, Phone, Mail, Clock, MessageCircle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import ContactMap from '@/components/ContactMap';
@@ -47,7 +47,7 @@ const PROJECT_TYPES = [
   'Otro',
 ];
 
-export default function ContactoPage() {
+function ContactoPageInner() {
   const searchParams = useSearchParams();
   const alreadySent = searchParams.get('enviado') === '1';
 
@@ -201,5 +201,13 @@ export default function ContactoPage() {
         </div>
       </div>
     </SectionPageShell>
+  );
+}
+
+export default function ContactoPage() {
+  return (
+    <Suspense fallback={null}>
+      <ContactoPageInner />
+    </Suspense>
   );
 }

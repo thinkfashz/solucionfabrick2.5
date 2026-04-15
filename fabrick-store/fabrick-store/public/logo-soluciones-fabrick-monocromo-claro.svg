@@ -1,15 +1,15 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 700" role="img" aria-labelledby="title desc">
-  <title id="title">SOLUCIONES FABRICK monocromo claro</title>
-  <desc id="desc">Version monocroma oscura para usarse sobre fondos claros.</desc>
-  <rect width="1200" height="700" fill="#F8F8F8"/>
-  <g transform="translate(0,15)">
-    <path d="M 300 210 L 600 60 L 900 210 L 860 210 L 600 90 L 340 210 Z" fill="#111111"/>
-    <path d="M 340 210 L 600 90 L 600 116 L 372 220 L 340 220 Z" fill="#222222" opacity="0.92"/>
-    <path d="M 860 210 L 600 90 L 600 116 L 828 220 L 860 220 Z" fill="#000000" opacity="0.86"/>
-    <rect x="736" y="122" width="54" height="84" rx="8" fill="#111111"/>
-  </g>
-  <g transform="translate(0,10)">
-    <text x="604" y="388" text-anchor="middle" font-family="Montserrat, Poppins, Arial, sans-serif" font-size="106" font-weight="800" letter-spacing="8" fill="#444444">SOLUCIONES FABRICK</text>
-    <text x="600" y="372" text-anchor="middle" font-family="Montserrat, Poppins, Arial, sans-serif" font-size="106" font-weight="800" letter-spacing="8" fill="#111111">SOLUCIONES FABRICK</text>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 214 52" role="img" aria-labelledby="mco-title">
+  <title id="mco-title">Soluciones Fabrick — monocromo oscuro</title>
+
+  <!-- Icon: bold architectural peak (dark, for light backgrounds) -->
+  <path d="M 2,46 L 21,4 L 40,46 L 33,46 L 21,13 L 9,46 Z" fill="#111111"/>
+  <path d="M 9,46 L 21,13 L 21,19 L 14,46 Z" fill="#333333" opacity="0.75"/>
+  <rect x="25" y="11" width="8" height="20" rx="1.5" fill="#111111"/>
+
+  <!-- Separator -->
+  <line x1="52" y1="9" x2="52" y2="44" stroke="rgba(0,0,0,0.15)" stroke-width="1"/>
+
+  <!-- Wordmark: dark version for light backgrounds -->
+  <text x="61" y="26" font-family="Montserrat, Poppins, Arial, sans-serif" font-size="9.5" font-weight="500" letter-spacing="3" fill="rgba(0,0,0,0.45)">SOLUCIONES</text>
+  <text x="60" y="47" font-family="Montserrat, Poppins, Arial, sans-serif" font-size="25" font-weight="900" letter-spacing="1.5" fill="#111111">FABRICK</text>
 </svg>

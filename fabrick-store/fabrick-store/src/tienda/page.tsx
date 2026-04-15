@@ -103,26 +103,29 @@ const MENU_OPTIONS = [
 function FabrickLogo({ className = '', centered = false, active = false, onClick }: { className?: string; centered?: boolean; active?: boolean; onClick?: () => void }) {
 return (
 <div onClick={onClick} className={`select-none cursor-pointer ${className}`}>
-<img
-src="/logo-soluciones-fabrick.svg"
-alt="Soluciones Fabrick"
-className={`block md:hidden ${centered ? 'w-44' : 'w-32'} h-auto object-contain drop-shadow-[0_6px_14px_rgba(0,0,0,0.25)] ${active ? 'opacity-100' : 'opacity-95 group-hover:opacity-100'}`}
-/>
-
-<div className={`hidden md:flex items-center gap-3 group ${centered ? 'flex-col text-center' : ''}`}>
-<div className={`relative ${centered ? 'w-14 h-14' : 'w-9 h-9'} transition-all duration-700`}>
-<div className={`absolute inset-0 bg-yellow-400/20 blur-xl rounded-full transition-opacity duration-500 ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-<svg viewBox="0 0 68 60" className="w-full h-full relative z-10 overflow-visible">
-<path d="M 8 36 L 34 10 L 60 36" fill="none" stroke="#FACC15" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-<path d="M 14 38 H 54" fill="none" stroke="#EAB308" strokeWidth="3" strokeLinecap="round" />
-<rect x="40" y="18" width="8" height="10" rx="1.5" fill="#FACC15" opacity="0.9" />
-</svg>
-</div>
-<div className={`flex flex-col ${centered ? 'items-center mt-2' : 'text-left'}`}>
-<span className="font-bold uppercase tracking-[0.3em] text-white/90 text-[10px] md:text-sm leading-none">Soluciones</span>
-<span className="text-yellow-400 font-black tracking-[0.6em] uppercase text-[6px] md:text-[8px]">Fabrick</span>
-</div>
-</div>
+  <svg
+    viewBox="0 0 214 52"
+    className={`${centered ? 'h-14' : 'h-10'} w-auto transition-all duration-300 ${active ? 'drop-shadow-[0_0_12px_rgba(255,199,0,0.5)]' : 'opacity-95 hover:opacity-100'}`}
+    role="img"
+    aria-label="Soluciones Fabrick"
+  >
+    <defs>
+      <linearGradient id="tfl-gold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#FFE566" />
+        <stop offset="100%" stopColor="#FFC700" />
+      </linearGradient>
+      <linearGradient id="tfl-depth" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#B37E00" />
+        <stop offset="100%" stopColor="#D9A100" />
+      </linearGradient>
+    </defs>
+    <path d="M 2,46 L 21,4 L 40,46 L 33,46 L 21,13 L 9,46 Z" fill="url(#tfl-gold)" />
+    <path d="M 9,46 L 21,13 L 21,19 L 14,46 Z" fill="url(#tfl-depth)" opacity="0.75" />
+    <rect x="25" y="11" width="8" height="20" rx="1.5" fill="#FFC700" />
+    <line x1="52" y1="9" x2="52" y2="44" stroke="rgba(255,255,255,0.13)" strokeWidth="1" />
+    <text x="61" y="26" fontFamily="Montserrat, Poppins, Arial, sans-serif" fontSize="9.5" fontWeight="500" letterSpacing="3" fill="rgba(255,255,255,0.5)">SOLUCIONES</text>
+    <text x="60" y="47" fontFamily="Montserrat, Poppins, Arial, sans-serif" fontSize="25" fontWeight="900" letterSpacing="1.5" fill="#FFFFFF">FABRICK</text>
+  </svg>
 </div>
 );
 }

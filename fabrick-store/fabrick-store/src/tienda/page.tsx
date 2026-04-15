@@ -965,7 +965,7 @@ export default function TiendaClientPage() {
 							<div className="p-4 bg-black/80 border-t border-white/5 space-y-3 sticky bottom-0">
 								<button
 									className="btn-watercolor w-full bg-yellow-400 text-black font-black text-[10px] uppercase tracking-[0.3em] py-3.5 transition-all duration-300 hover:bg-yellow-300 active:scale-95 shadow-[0_0_20px_rgba(250,204,21,0.25)]"
-									onClick={() => { setIsFavoritesOpen(false); goToCheckout(favorites[0]); }}
+									onClick={() => { setIsFavoritesOpen(false); router.push('/checkout'); }}
 								>
 									Ir al Checkout
 								</button>
@@ -1016,7 +1016,7 @@ export default function TiendaClientPage() {
 							<div className="p-6 bg-black/80 border-t border-white/5 space-y-4 sticky bottom-0">
 								<button
 									className="btn-watercolor w-full bg-yellow-400 text-black font-black text-[11px] uppercase tracking-[0.3em] py-4 transition-all duration-300 hover:bg-yellow-300 active:scale-95 shadow-[0_0_25px_rgba(250,204,21,0.3)]"
-									onClick={() => { setIsFavoritesOpen(false); goToCheckout(favorites[0]); }}
+									onClick={() => { setIsFavoritesOpen(false); router.push('/checkout'); }}
 								>
 									Ir al Checkout
 								</button>

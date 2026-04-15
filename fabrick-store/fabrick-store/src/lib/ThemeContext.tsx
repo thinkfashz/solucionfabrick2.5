@@ -51,6 +51,7 @@ const ThemeContext = createContext<ThemeContextValue>({
 });
 
 function applyTheme(theme: Theme) {
+  if (typeof window === 'undefined') return;
   const root = document.documentElement;
   root.setAttribute('data-theme', theme);
   const vars = THEME_VARS[theme];

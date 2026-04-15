@@ -79,7 +79,10 @@ export default function Hero() {
           .from('.hero-divider', { scaleX: 0, duration: 0.7, ease: 'power2.inOut' }, '-=0.5')
 
           /* CTAs */
-          .from('.hero-cta-item', { y: 24, opacity: 0, duration: 0.6, stagger: 0.14 }, '-=0.4');
+          .from('.hero-cta-item', { y: 24, opacity: 0, duration: 0.6, stagger: 0.14 }, '-=0.4')
+
+          /* Scroll indicator */
+          .from('.hero-scroll-indicator', { opacity: 0, y: 10, duration: 0.6 }, '-=0.2');
 
         /* Pulso permanente en los anillos */
         gsap.to('.hero-ring', {
@@ -102,6 +105,15 @@ export default function Hero() {
           ease: 'sine.inOut',
           stagger: 1.5,
         });
+
+        /* Scroll indicator bounce */
+        gsap.to('.hero-scroll-indicator', {
+          y: 8,
+          duration: 1.2,
+          repeat: -1,
+          yoyo: true,
+          ease: 'sine.inOut',
+        });
       }, heroRef);
     };
     init();
@@ -117,8 +129,29 @@ export default function Hero() {
     <section
       id="inicio"
       ref={heroRef}
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden"
+      style={{ backgroundColor: 'var(--bg, #000)' }}
     >
+      {/* Background architecture image */}
+      <div
+        className="absolute inset-0 z-0 ink-wash"
+        style={{
+          backgroundImage:
+            'url(https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2075&auto=format&fit=crop)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
+          opacity: 0.08,
+        }}
+      />
+
+      {/* Gradient overlay */}
+      <div
+        className="absolute inset-0 z-0"
+        style={{
+          background: 'linear-gradient(to bottom, var(--bg,#000) 0%, transparent 30%, transparent 70%, var(--bg,#000) 100%)',
+        }}
+      />
+
       {/* Partículas */}
       <div ref={particleRef} className="absolute inset-0 pointer-events-none z-0 overflow-hidden" />
 
@@ -151,38 +184,77 @@ export default function Hero() {
           </span>
         </div>
 
-        {/* Título – cada línea animada independiente */}
-        <h1 className="font-playfair text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.1] mb-6 overflow-hidden">
-          <span className="hero-title-line block">Soluciones</span>
-          <span className="hero-title-line block shimmer-gold">Completas</span>
+        {/* Título – tres líneas animadas independientes */}
+        <h1
+          className="font-playfair text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold leading-[1.1] mb-6 overflow-hidden"
+          style={{ color: 'var(--fg, #fff)' }}
+        >
+          <span className="hero-title-line block">Construimos tu</span>
+          <span className="hero-title-line block shimmer-gold">Sueño</span>
+          <span className="hero-title-line block">en Realidad</span>
         </h1>
 
         <div className="hero-divider w-24 h-[2px] bg-gradient-to-r from-transparent via-yellow-400 to-transparent mx-auto mb-8 origin-center" />
 
-        <p className="hero-subtitle text-lg sm:text-xl md:text-2xl text-zinc-400 max-w-2xl mx-auto leading-relaxed font-light">
-          Desde el inicio hasta el final.{' '}
-          <span className="text-white font-normal">Un solo equipo.</span>{' '}
-          <span className="text-yellow-400/90">Un solo estándar.</span>
+        <p
+          className="hero-subtitle text-lg sm:text-xl md:text-2xl max-w-2xl mx-auto leading-relaxed font-light"
+          style={{ color: 'var(--fg2, #a1a1aa)' }}
+        >
+          Tu hogar merece lo mejor.{' '}
+          <span style={{ color: 'var(--fg, #fff)' }} className="font-normal">
+            Desde los cimientos hasta cada detalle,
+          </span>{' '}
+          <span className="text-yellow-400/90">
+            nuestro equipo de élite transforma espacios ordinarios en experiencias extraordinarias.
+          </span>
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
           <a
             href="/#servicios"
-            className="hero-cta-item group relative px-8 py-4 bg-yellow-400 text-black font-semibold rounded-full overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_rgba(250,204,21,0.4)]"
+            className="hero-cta-item btn-watercolor group relative px-8 py-4 bg-yellow-400 text-black font-semibold overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_rgba(250,204,21,0.5)] hover:bg-yellow-300"
+            style={{ borderRadius: '50% 45% 55% 45% / 48% 52% 45% 55%' }}
           >
             <span className="relative z-10 uppercase tracking-wider text-sm">Explorar Servicios</span>
-            <div className="absolute inset-0 bg-yellow-300 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
           </a>
           <a
             href="/tienda"
-            className="hero-cta-item px-8 py-4 border border-yellow-400/30 text-yellow-400 font-semibold rounded-full transition-all duration-300 hover:bg-yellow-400/10 hover:border-yellow-400/60 uppercase tracking-wider text-sm"
+            className="hero-cta-item relative px-8 py-4 border-2 border-yellow-400/40 text-yellow-400 font-semibold rounded-full transition-all duration-300 hover:bg-yellow-400/10 hover:border-yellow-400 uppercase tracking-wider text-sm overflow-hidden group"
           >
-            Ir a Tienda
+            <span className="relative z-10">Ir a Tienda</span>
+            <span className="absolute inset-0 border-2 border-yellow-400/0 group-hover:border-yellow-400/30 rounded-full transition-all duration-500 scale-110 group-hover:scale-100" />
           </a>
         </div>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent" />
+      {/* Scroll-down indicator */}
+      <div className="hero-scroll-indicator absolute bottom-10 left-1/2 -translate-x-1/2 flex flex-col items-center gap-2 pointer-events-none">
+        <span
+          className="text-[10px] uppercase tracking-[0.3em] font-medium"
+          style={{ color: 'var(--fg2, #a1a1aa)' }}
+        >
+          Scroll
+        </span>
+        <svg
+          viewBox="0 0 20 30"
+          className="w-5 h-7 opacity-60"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="1.5"
+          style={{ color: 'var(--accent, #facc15)' }}
+        >
+          <rect x="2" y="2" width="16" height="26" rx="8" />
+          <circle cx="10" cy="9" r="2.5" fill="currentColor" stroke="none">
+            <animate attributeName="cy" values="9;17;9" dur="1.8s" repeatCount="indefinite" />
+            <animate attributeName="opacity" values="1;0.2;1" dur="1.8s" repeatCount="indefinite" />
+          </circle>
+        </svg>
+      </div>
+
+      <div
+        className="absolute bottom-0 left-0 right-0 h-32 pointer-events-none"
+        style={{ background: 'linear-gradient(to top, var(--bg,#000), transparent)' }}
+      />
     </section>
   );
 }

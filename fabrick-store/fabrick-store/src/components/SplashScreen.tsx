@@ -10,11 +10,16 @@ export default function SplashScreen() {
   const [exiting, setExiting] = useState(false);
 
   useEffect(() => {
-    // Show on first visit per session
-    const alreadyShown = sessionStorage.getItem(SPLASH_KEY);
+    // Show on first visit per session; guard against unavailable sessionStorage
+    let alreadyShown = false;
+    try {
+      alreadyShown = !!sessionStorage.getItem(SPLASH_KEY);
+      if (!alreadyShown) sessionStorage.setItem(SPLASH_KEY, '1');
+    } catch {
+      // sessionStorage unavailable (private mode, etc.) — skip splash
+      return;
+    }
     if (alreadyShown) return;
-
-    sessionStorage.setItem(SPLASH_KEY, '1');
     setVisible(true);
 
     // Animate progress bar

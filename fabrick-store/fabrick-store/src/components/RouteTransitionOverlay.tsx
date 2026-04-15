@@ -3,6 +3,9 @@
 import { useEffect, useState } from 'react';
 import { TRANSITION_EVENT } from '@/lib/routeTransition';
 
+/** Progress stops here so the bar never "completes" before navigation */
+const MAX_PROGRESS = 96;
+
 export default function RouteTransitionOverlay() {
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
@@ -16,9 +19,9 @@ export default function RouteTransitionOverlay() {
       const duration = 340;
 
       const tick = () => {
-        const pct = Math.min(96, Math.round(((Date.now() - start) / duration) * 96));
+        const pct = Math.min(MAX_PROGRESS, Math.round(((Date.now() - start) / duration) * MAX_PROGRESS));
         setProgress(pct);
-        if (pct < 96) requestAnimationFrame(tick);
+        if (pct < MAX_PROGRESS) requestAnimationFrame(tick);
       };
       requestAnimationFrame(tick);
     };

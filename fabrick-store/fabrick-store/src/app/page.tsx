@@ -16,7 +16,6 @@ export const metadata: Metadata = {
     siteName: 'Fabrick',
   },
   robots: 'index, follow',
-  viewport: 'width=device-width, initial-scale=1',
 };
 
 export default function Home() {

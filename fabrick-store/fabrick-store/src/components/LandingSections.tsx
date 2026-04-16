@@ -241,12 +241,12 @@ export default function LandingSections() {
           </div>
 
           <div className="relative flex flex-row items-stretch gap-6 md:gap-16 pt-4 animate-on-scroll">
-            {/* Barra de progreso */}
-            <div className="w-1.5 md:w-2 flex-shrink-0 bg-zinc-900 border border-white/5 rounded-full relative overflow-hidden ml-2 md:ml-0">
+            {/* Barra de progreso — amarillo/negro premium */}
+            <div className="w-2 md:w-3 flex-shrink-0 traj-track relative overflow-hidden ml-2 md:ml-0">
               <div
                 ref={progressBarRef}
-                className="absolute top-0 left-0 w-full rounded-full bg-white"
-                style={{ height: '0%', boxShadow: '0 0 15px rgba(250,204,21,0.8), 0 0 30px rgba(250,204,21,0.5)' }}
+                className="traj-fill absolute top-0 left-0 w-full"
+                style={{ height: '0%' }}
               />
             </div>
 
@@ -259,22 +259,29 @@ export default function LandingSections() {
 
                 if (isLast && isActive) {
                   return (
-                    <div key={i} className="flex flex-col items-start md:items-center text-left md:text-center mt-4">
-                      <div className="relative mb-5">
-                        <div className="absolute inset-0 bg-yellow-400 blur-[40px] opacity-25 rounded-full" />
-                        <div className="w-20 h-20 md:w-28 md:h-28 bg-black border border-yellow-400/50 rounded-full flex items-center justify-center relative z-10 shadow-[0_0_30px_rgba(250,204,21,0.3)]">
-                          <ShieldCheck className="w-9 h-9 md:w-12 md:h-12 text-yellow-400" />
+                    <div key={i} className="flex flex-col items-start md:items-center text-left md:text-center mt-6 gap-5">
+                      {/* Ícono + badge separados — sin posición absoluta superpuesta */}
+                      <div className="flex flex-col items-start md:items-center gap-3">
+                        <div className="relative">
+                          <div className="absolute inset-0 bg-yellow-400 blur-[40px] opacity-30 rounded-full" />
+                          <div className="w-20 h-20 md:w-24 md:h-24 bg-black border-2 border-yellow-400/60 rounded-full flex items-center justify-center relative z-10 shadow-[0_0_30px_rgba(250,204,21,0.35)]">
+                            <ShieldCheck className="w-9 h-9 md:w-11 md:h-11 text-yellow-400" />
+                          </div>
                         </div>
-                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-black font-bold uppercase text-[9px] tracking-widest px-4 py-1 rounded-full whitespace-nowrap">
-                          Calidad Total
-                        </div>
+                        {/* Badge debajo del círculo, nunca encima del texto */}
+                        <span className="inline-flex items-center gap-1.5 bg-yellow-400 text-black font-black uppercase text-[8px] tracking-[0.22em] px-4 py-1.5 rounded-full">
+                          ★ Calidad Total
+                        </span>
                       </div>
-                      <h3 className="font-bold uppercase text-xl md:text-3xl text-white mb-2 tracking-tight">
-                        Empresa Sólida y Confiable
-                      </h3>
-                      <p className="text-xs md:text-sm tracking-widest uppercase leading-relaxed max-w-2xl text-zinc-400 font-light">
-                        {step.desc}
-                      </p>
+
+                      <div>
+                        <h3 className="font-bold uppercase text-xl md:text-3xl text-white mb-2 tracking-tight leading-tight">
+                          Empresa Sólida y Confiable
+                        </h3>
+                        <p className="text-[10px] md:text-sm tracking-widest uppercase leading-relaxed max-w-2xl text-zinc-400 font-light">
+                          {step.desc}
+                        </p>
+                      </div>
                     </div>
                   );
                 }

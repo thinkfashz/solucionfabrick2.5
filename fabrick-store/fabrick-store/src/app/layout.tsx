@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
+import { ThemeProvider } from '@/context/ThemeContext';
 
 export const metadata: Metadata = {
   title: 'FABRICK - Ingenieria Residencial de Precision',
@@ -38,9 +39,11 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className="bg-black text-white antialiased app-shell">
-        {children}
-        <InstallAppPrompt />
+      <body className="bg-[var(--bg-primary)] text-[var(--text-primary)] antialiased app-shell transition-colors duration-400">
+        <ThemeProvider>
+          {children}
+          <InstallAppPrompt />
+        </ThemeProvider>
       </body>
     </html>
   );

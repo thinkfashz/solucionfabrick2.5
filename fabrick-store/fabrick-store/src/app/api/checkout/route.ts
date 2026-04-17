@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
 import { calculateCheckoutSummary, validateCheckoutPayload, type CheckoutPayload } from '@/lib/checkout';
+import { createMercadoPagoPreference } from '@/lib/mercadopago';
 
 export async function POST(request: Request) {
   try {
@@ -56,15 +57,27 @@ export async function POST(request: Request) {
       persisted = true;
     }
 
+    const preference = await createMercadoPagoPreference({
+      orderId: orden.id,
+      payload: body,
+      summary: resumen,
+    });
+
     return NextResponse.json(
       {
         data: orden,
         persistence: persisted ? 'db' : 'memory',
         warning: persistenceWarning,
+        payment: {
+          provider: 'mercado_pago',
+          preferenceId: preference.id,
+          checkoutUrl: preference.init_point || preference.sandbox_init_point || null,
+        },
       },
-      { status: 201 }
+      { status: 201 },
     );
-  } catch {
-    return NextResponse.json({ error: 'Error interno al procesar el checkout.' }, { status: 500 });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Error interno al procesar el checkout.';
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 }

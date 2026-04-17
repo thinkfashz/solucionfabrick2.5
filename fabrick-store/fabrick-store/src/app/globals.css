@@ -216,6 +216,38 @@ body {
   animation: shimmer 4s linear infinite;
 }
 
+/* ── Sweep de luz sobre botones ── */
+@keyframes btn-sweep {
+  0%   { transform: translateX(-100%) skewX(-15deg); opacity: 0; }
+  45%  { opacity: 0.4; }
+  100% { transform: translateX(250%) skewX(-15deg); opacity: 0; }
+}
+.btn-sweep::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(90deg, transparent, rgba(255,255,255,0.35), transparent);
+  animation: btn-sweep 2.8s ease-in-out infinite;
+  pointer-events: none;
+}
+
+/* ── Gradiente de borde animado ── */
+@keyframes border-spin {
+  to { --border-angle: 360deg; }
+}
+@property --border-angle {
+  syntax: '<angle>';
+  initial-value: 0deg;
+  inherits: false;
+}
+.border-glow-animated {
+  border: 1.5px solid transparent;
+  background:
+    linear-gradient(#000, #000) padding-box,
+    conic-gradient(from var(--border-angle), transparent 60%, #facc15 85%, transparent 100%) border-box;
+  animation: border-spin 4s linear infinite;
+}
+
 /* ═══════════════════════════════════════════════════════
    GLOW PULSE
 ═══════════════════════════════════════════════════════ */
@@ -232,6 +264,23 @@ body {
   }
 }
 .glow-pulse { animation: glow-pulse 2.2s ease-in-out infinite; }
+
+/* ── Ping dorado (dot animado) ── */
+@keyframes ping-gold {
+  0%   { transform: scale(1); opacity: 0.7; }
+  75%, 100% { transform: scale(2.2); opacity: 0; }
+}
+.ping-gold {
+  position: relative;
+}
+.ping-gold::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: rgba(250,204,21,0.5);
+  animation: ping-gold 1.5s cubic-bezier(0,0,0.2,1) infinite;
+}
 
 /* ═══════════════════════════════════════════════════════
    FLOAT SUAVE
@@ -373,6 +422,41 @@ body {
   background: #facc15;
   box-shadow: 0 0 16px 4px rgba(250,204,21,0.9);
   animation: glow-pulse 1.4s ease-in-out infinite;
+}
+
+/* ── Skeleton shimmer ── */
+@keyframes skeleton-wave {
+  0%   { background-position: -400px 0; }
+  100% { background-position: 400px 0; }
+}
+.skeleton-wave {
+  background: linear-gradient(90deg, rgba(255,255,255,0.03) 25%, rgba(255,255,255,0.07) 50%, rgba(255,255,255,0.03) 75%);
+  background-size: 800px 100%;
+  animation: skeleton-wave 1.4s ease-in-out infinite;
+}
+
+/* ── Reveal clip-path curtain (usado por GSAP) ── */
+.reveal-clip { clip-path: inset(0 100% 0 0); }
+
+/* ── Magnetic hover (activado por JS) ── */
+.magnetic { transition: transform 0.35s cubic-bezier(0.23,1,0.32,1); }
+
+/* ── Línea decorativa animada ── */
+@keyframes line-expand {
+  from { transform: scaleX(0); }
+  to   { transform: scaleX(1); }
+}
+.line-expand { animation: line-expand 1.2s cubic-bezier(0.22,1,0.36,1) forwards; transform-origin: center; }
+
+/* ── Morphing de fondo (gradiente animado) ── */
+@keyframes morph-bg {
+  0%   { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+  50%  { border-radius: 30% 60% 70% 40% / 50% 60% 30% 60%; }
+  100% { border-radius: 60% 40% 30% 70% / 60% 30% 70% 40%; }
+}
+.morph-blob {
+  animation: morph-bg 8s ease-in-out infinite;
+  background: radial-gradient(ellipse at center, rgba(250,204,21,0.08) 0%, transparent 70%);
 }
 
 /* ═══════════════════════════════════════════════════════

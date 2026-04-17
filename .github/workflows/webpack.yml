@@ -26,4 +26,4 @@ jobs:
       run: |
         cd fabrick-store/fabrick-store
         npm install
-        npx webpack
+        npm run build

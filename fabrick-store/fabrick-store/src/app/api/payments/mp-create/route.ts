@@ -84,7 +84,7 @@ export async function POST(request: Request): Promise<NextResponse> {
   const mpStatus = mpResponse.status;
 
   if (mpStatus === 'approved') {
-    await insforge.database
+    const { error: dbError } = await insforge.database
       .from('orders')
       .update({
         status: 'pagada',
@@ -93,6 +93,19 @@ export async function POST(request: Request): Promise<NextResponse> {
         updated_at: new Date().toISOString(),
       })
       .eq('id', orderId);
+
+    if (dbError) {
+      return NextResponse.json(
+        {
+          ok: false,
+          status: mpStatus,
+          paymentId: mpPaymentId,
+          detail: `Pago aprobado pero error al actualizar la orden: ${dbError.message}`,
+          error: 'db_update_failed',
+        },
+        { status: 500 },
+      );
+    }
   }
 
   return NextResponse.json({

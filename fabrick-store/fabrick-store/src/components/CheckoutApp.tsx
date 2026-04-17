@@ -790,13 +790,9 @@ const CheckoutApp = () => {
                     amount={product.price}
                     orderId={mpOrderId || orderId}
                     payerEmail={shippingEmail}
-                    onSuccess={(paymentId, status) => {
-                      setOrderId(mpOrderId || orderId);
+                    onSuccess={(_paymentId, _status) => {
                       setIsProcessing(true);
                       setProcessProgress(100);
-                      // Update DB if needed (already done in api/payments/mp-create)
-                      void status;
-                      void paymentId;
                       setTimeout(() => setIsSuccess(true), 600);
                     }}
                     onError={(error) => {
@@ -807,7 +803,7 @@ const CheckoutApp = () => {
                 </div>
 
                 <div className="flex gap-4 pt-2">
-                  <button onClick={() => { setMpOrderId(''); changeStep(2); }} type="button" className="px-6 py-5 border border-white/20 rounded-full bg-black hover:border-yellow-400 transition-colors text-white">
+                  <button onClick={() => changeStep(2)} type="button" className="px-6 py-5 border border-white/20 rounded-full bg-black hover:border-yellow-400 transition-colors text-white">
                     <ArrowLeft className="w-5 h-5" />
                   </button>
                 </div>

@@ -104,7 +104,7 @@ export default function MercadoPagoBrick({
                   issuer_id: formData.issuer_id,
                   installments: formData.installments,
                   payer: {
-                    email: payerEmail || formData.payer?.email,
+                    email: payerEmail ?? formData.payer?.email,
                     identification: formData.payer?.identification,
                   },
                   amount,

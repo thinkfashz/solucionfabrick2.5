@@ -571,7 +571,7 @@ export default function LandingSections() {
                 <a
                   key={href}
                   href={href}
-                  className="text-[10px] font-medium uppercase tracking-[0.22em] text-zinc-500 hover:text-yellow-400 transition-colors duration-300 min-h-[44px] flex items-center"
+                  className="text-xs font-medium uppercase tracking-[0.22em] text-zinc-500 hover:text-yellow-400 transition-colors duration-300 min-h-[44px] flex items-center touch-target"
                 >
                   {label}
                 </a>

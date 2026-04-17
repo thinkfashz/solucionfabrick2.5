@@ -367,8 +367,11 @@ input, textarea, button, select {
     background-image: radial-gradient(circle at top, rgba(250, 204, 21, 0.06), transparent 28%);
   }
 
-  /* Touch-friendly minimum tap target */
-  button, a {
+  /* Touch-friendly minimum tap target for interactive elements */
+  .touch-target {
     min-height: 44px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
   }
 }

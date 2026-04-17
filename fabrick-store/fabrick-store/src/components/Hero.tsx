@@ -22,6 +22,7 @@ function initCanvasParticles(canvas: HTMLCanvasElement): () => void {
     size: number;
     speedX: number; speedY: number;
     opacity: number; opacityDir: number;
+    baseR: number; baseG: number; baseB: number;
   };
 
   const make = (): Particle => ({
@@ -32,6 +33,7 @@ function initCanvasParticles(canvas: HTMLCanvasElement): () => void {
     speedY:     -(Math.random() * 0.45 + 0.15),
     opacity:    Math.random() * 0.45 + 0.1,
     opacityDir: Math.random() > 0.5 ? 1 : -1,
+    baseR:      201, baseG: 169, baseB: 110,
   });
 
   const particles: Particle[] = Array.from({ length: 24 }, make);
@@ -47,11 +49,13 @@ function initCanvasParticles(canvas: HTMLCanvasElement): () => void {
         p.y = canvas.height + 8;
         p.x = Math.random() * canvas.width;
       }
+      const op    = p.opacity;
+      const glow  = op * 0.5;
       ctx.beginPath();
       ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fillStyle   = `rgba(201,169,110,${p.opacity})`;
+      ctx.fillStyle   = `rgba(${p.baseR},${p.baseG},${p.baseB},${op.toFixed(3)})`;
       ctx.shadowBlur  = p.size * 4;
-      ctx.shadowColor = `rgba(250,204,21,${p.opacity * 0.5})`;
+      ctx.shadowColor = `rgba(250,204,21,${glow.toFixed(3)})`;
       ctx.fill();
       ctx.shadowBlur  = 0;
     }

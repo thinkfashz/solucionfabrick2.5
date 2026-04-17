@@ -4,6 +4,7 @@ import InstallAppPrompt from '@/components/InstallAppPrompt';
 import SmoothScrollProvider from '@/components/SmoothScrollProvider';
 import LoadingScreen from '@/components/LoadingScreen';
 import PageTransition from '@/components/PageTransition';
+import PromoBanner from '@/components/PromoBanner';
 
 export const metadata: Metadata = {
   title: 'FABRICK - Ingenieria Residencial de Precision',
@@ -47,6 +48,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <PageTransition />
         {children}
         <InstallAppPrompt />
+        <PromoBanner />
       </body>
     </html>
   );

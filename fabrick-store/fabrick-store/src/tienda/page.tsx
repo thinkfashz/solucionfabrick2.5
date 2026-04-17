@@ -21,6 +21,7 @@ import {
 	Ruler,
 	AlertCircle,
 } from 'lucide-react';
+import BannerCarousel from '@/components/BannerCarousel';
 
 const CART_CACHE_KEY = 'fabrick.tienda.cart.v1';
 
@@ -329,6 +330,11 @@ export default function TiendaClientPage() {
 					</button>
 				</div>
 			</nav>
+
+			{/* Promotional banner carousel — shown at top below navbar */}
+			<div className="pt-[72px]">
+				<BannerCarousel />
+			</div>
 
 			{!selectedProduct && (
 				<>

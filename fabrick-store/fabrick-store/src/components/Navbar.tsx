@@ -4,6 +4,7 @@ import { useState, useEffect } from 'react';
 import { X, Menu } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
 import { navigateWithTransition } from '@/lib/routeTransition';
+import { insforge } from '@/lib/insforge';
 
 type NavLink = { label: string; href: string };
 
@@ -19,11 +20,29 @@ const NAV_LINKS: NavLink[] = [
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [hasOffers, setHasOffers] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    async function checkOffers() {
+      try {
+        const { data } = await insforge.database
+          .from('productos')
+          .select('id')
+          .eq('en_oferta', true)
+          .eq('activo', true)
+          .limit(1);
+        setHasOffers(!!(data && data.length > 0));
+      } catch {
+        setHasOffers(false);
+      }
+    }
+    void checkOffers();
   }, []);
 
   useEffect(() => {
@@ -54,9 +73,12 @@ export default function Navbar() {
             <button
               key={href}
               onClick={() => handleNav(href)}
-              className="nav-link-animated text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 hover:text-yellow-400 transition-colors"
+              className="nav-link-animated relative text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 hover:text-yellow-400 transition-colors"
             >
               {label}
+              {label === 'Tienda' && hasOffers && (
+                <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              )}
             </button>
           ))}
           <div className="w-px h-4 bg-white/20" />
@@ -100,9 +122,12 @@ export default function Navbar() {
             <button
               key={`${label}-${href}`}
               onClick={() => handleNav(href)}
-              className="text-xl font-light uppercase tracking-[0.2em] text-white hover:text-yellow-400 active:text-yellow-400 transition-colors w-full py-5 border-b border-white/5"
+              className="relative text-xl font-light uppercase tracking-[0.2em] text-white hover:text-yellow-400 active:text-yellow-400 transition-colors w-full py-5 border-b border-white/5"
             >
               {label}
+              {label === 'Tienda' && hasOffers && (
+                <span className="absolute top-1/2 -translate-y-1/2 ml-2 inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+              )}
             </button>
           ))}
           <button

@@ -14,6 +14,8 @@ export interface Product {
   stock?: number;
   image_url?: string;
   featured?: boolean;
+  activo?: boolean;
+  tagline?: string;
   rating?: number;
   delivery_days?: string;
   discount_percentage?: number;
@@ -71,7 +73,8 @@ export function useRealtimeProducts() {
     setLoading((prev) => (products.length ? prev : true));
     const { data, error } = await insforge.database
       .from('products')
-      .select('id, name, description, price, stock, image_url, featured, rating, delivery_days, discount_percentage, specifications, category_id')
+      .select('id, name, description, price, stock, image_url, featured, activo, tagline, rating, delivery_days, discount_percentage, specifications, category_id')
+      .eq('activo', true)
       .order('featured', { ascending: false })
       .order('created_at', { ascending: false });
 

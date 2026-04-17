@@ -9,8 +9,14 @@ export default function AdminDashboard({ email }: { email: string }) {
 
   async function handleLogout() {
     setLoggingOut(true);
-    await fetch('/api/admin/logout', { method: 'POST' });
-    router.replace('/admin/login');
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+    } catch {
+      // Proceed with redirect even if the network request fails
+    } finally {
+      setLoggingOut(false);
+      router.replace('/admin/login');
+    }
   }
 
   return (

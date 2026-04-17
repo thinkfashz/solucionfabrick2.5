@@ -10,12 +10,19 @@ import {
   SESSION_TTL_MS,
 } from '@/lib/adminAuth';
 
-/** Resolve client IP from common proxy headers or socket. */
+/** Resolve client IP from proxy headers.
+ * Uses x-real-ip first (set by Vercel/Nginx, cannot be spoofed by clients).
+ * Falls back to the LAST entry in x-forwarded-for, which is appended by the
+ * outermost trusted proxy rather than the client.
+ */
 function getClientIp(request: Request): string {
-  const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) return forwarded.split(',')[0].trim();
   const realIp = request.headers.get('x-real-ip');
   if (realIp) return realIp.trim();
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) {
+    const parts = forwarded.split(',');
+    return parts[parts.length - 1].trim();
+  }
   return 'unknown';
 }
 
@@ -47,10 +54,13 @@ export async function POST(request: Request) {
   }
 
   // ── InsForge authentication ──────────────────────────────────
-  const insforge = createClient({
-    baseUrl: process.env.NEXT_PUBLIC_INSFORGE_URL!,
-    anonKey: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY!,
-  });
+  const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
+  if (!baseUrl || !anonKey) {
+    return NextResponse.json({ error: 'Configuración de servidor incompleta.' }, { status: 500 });
+  }
+
+  const insforge = createClient({ baseUrl, anonKey });
 
   const { data: authData, error: authError } = await insforge.auth.signInWithPassword({
     email,
@@ -85,7 +95,7 @@ export async function POST(request: Request) {
   clearFailedAttempts(ip);
 
   const exp = Date.now() + SESSION_TTL_MS;
-  const sessionValue = encodeSession({ email, exp });
+  const sessionValue = await encodeSession({ email, exp });
 
   const response = NextResponse.json({ ok: true });
   response.cookies.set(ADMIN_COOKIE_NAME, sessionValue, {

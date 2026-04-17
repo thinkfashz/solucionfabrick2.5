@@ -16,7 +16,7 @@ export default async function AdminPage() {
     redirect('/admin/login');
   }
 
-  const session = decodeSession(sessionCookie.value);
+  const session = await decodeSession(sessionCookie.value);
   if (!session) {
     redirect('/admin/login');
   }

@@ -59,13 +59,52 @@ export interface AdminSessionPayload {
   exp: number; // Unix ms
 }
 
-export function encodeSession(payload: AdminSessionPayload): string {
-  return Buffer.from(JSON.stringify(payload)).toString('base64url');
+/**
+ * Returns the HMAC-SHA256 signing key derived from ADMIN_SESSION_SECRET env var.
+ * Falls back to a fixed default if the env var is not set (development only).
+ */
+async function getSigningKey(): Promise<CryptoKey> {
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error('ADMIN_SESSION_SECRET environment variable is required in production.');
+    }
+    // Development-only fallback — MUST be replaced with a real secret in production
+    console.warn('[AdminAuth] ADMIN_SESSION_SECRET is not set. Using insecure dev default.');
+  }
+  const keyMaterial = await crypto.subtle.importKey(
+    'raw',
+    new TextEncoder().encode(secret ?? 'fabrick-admin-dev-only-secret'),
+    { name: 'HMAC', hash: 'SHA-256' },
+    false,
+    ['sign', 'verify']
+  );
+  return keyMaterial;
 }
 
-export function decodeSession(value: string): AdminSessionPayload | null {
+/** Creates a signed session token: base64url(payload).base64url(signature) */
+export async function encodeSession(payload: AdminSessionPayload): Promise<string> {
+  const data = Buffer.from(JSON.stringify(payload)).toString('base64url');
+  const key = await getSigningKey();
+  const sig = await crypto.subtle.sign('HMAC', key, new TextEncoder().encode(data));
+  const sigB64 = Buffer.from(sig).toString('base64url');
+  return `${data}.${sigB64}`;
+}
+
+/** Verifies the HMAC signature and returns the payload, or null if invalid/expired. */
+export async function decodeSession(value: string): Promise<AdminSessionPayload | null> {
   try {
-    const payload = JSON.parse(Buffer.from(value, 'base64url').toString('utf-8')) as AdminSessionPayload;
+    const dotIdx = value.lastIndexOf('.');
+    if (dotIdx === -1) return null;
+    const data = value.slice(0, dotIdx);
+    const sigB64 = value.slice(dotIdx + 1);
+
+    const key = await getSigningKey();
+    const sigBytes = Buffer.from(sigB64, 'base64url');
+    const valid = await crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(data));
+    if (!valid) return null;
+
+    const payload = JSON.parse(Buffer.from(data, 'base64url').toString('utf-8')) as AdminSessionPayload;
     if (typeof payload.email !== 'string' || typeof payload.exp !== 'number') return null;
     if (Date.now() > payload.exp) return null;
     return payload;

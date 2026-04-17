@@ -5,6 +5,7 @@ import SmoothScrollProvider from '@/components/SmoothScrollProvider';
 import LoadingScreen from '@/components/LoadingScreen';
 import PageTransition from '@/components/PageTransition';
 import PromoBanner from '@/components/PromoBanner';
+import { ThemeProvider } from '@/context/ThemeContext';
 
 export const metadata: Metadata = {
   title: 'FABRICK - Ingenieria Residencial de Precision',
@@ -43,12 +44,14 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="bg-black text-white antialiased app-shell">
-        <SmoothScrollProvider />
-        <LoadingScreen />
-        <PageTransition />
-        {children}
-        <InstallAppPrompt />
-        <PromoBanner />
+        <ThemeProvider>
+          <SmoothScrollProvider />
+          <LoadingScreen />
+          <PageTransition />
+          {children}
+          <InstallAppPrompt />
+          <PromoBanner />
+        </ThemeProvider>
       </body>
     </html>
   );

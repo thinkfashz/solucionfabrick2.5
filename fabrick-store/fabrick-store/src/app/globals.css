@@ -448,3 +448,129 @@ input, textarea, button, select {
 .img-zoom:hover img {
   transform: scale(1.08);
 }
+
+/* ═══════════════════════════════════════════════════════
+   THEME SYSTEM — dark (default) / light via .theme-light
+   ═══════════════════════════════════════════════════════ */
+:root {
+  --bg-primary:   #000000;
+  --bg-secondary: #0a0a0a;
+  --text-primary: #ffffff;
+  --text-muted:   #a1a1aa;
+  --border-main:  rgba(255,255,255,0.08);
+  --border-gold:  rgba(250,204,21,0.4);
+  --accent:       #facc15;
+  --glass-bg:     rgba(255,255,255,0.04);
+  --glass-border: rgba(255,255,255,0.08);
+  --glass-shine:  rgba(255,255,255,0.06);
+}
+html.theme-light {
+  --bg-primary:   #f8f5f0;
+  --bg-secondary: #ede9e3;
+  --text-primary: #1a1a1a;
+  --text-muted:   #52525b;
+  --border-main:  rgba(0,0,0,0.10);
+  --border-gold:  rgba(180,130,0,0.4);
+  --accent:       #b8860b;
+  --glass-bg:     rgba(0,0,0,0.03);
+  --glass-border: rgba(0,0,0,0.10);
+  --glass-shine:  rgba(255,255,255,0.50);
+}
+
+/* ═══════════════════════════
+   LIQUID GLASS COMPONENT KIT
+   ═══════════════════════════ */
+.liquid-glass {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
+  box-shadow: inset 0 1px 0 var(--glass-shine), 0 4px 24px rgba(0,0,0,0.18);
+}
+.liquid-btn {
+  position: relative;
+  overflow: hidden;
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition: border-color 0.25s, box-shadow 0.25s, transform 0.15s;
+}
+.liquid-btn:hover {
+  border-color: var(--border-gold);
+  box-shadow: 0 0 24px rgba(250,204,21,0.15);
+  transform: translateY(-1px);
+}
+.liquid-btn:active { transform: scale(0.97); }
+.liquid-btn-gold {
+  background: linear-gradient(135deg, rgba(250,204,21,0.9) 0%, rgba(234,179,8,0.85) 100%);
+  border: 1px solid rgba(250,204,21,0.6);
+  color: #000;
+  box-shadow: 0 4px 20px rgba(250,204,21,0.25);
+}
+.liquid-btn-gold:hover { box-shadow: 0 4px 32px rgba(250,204,21,0.45); }
+.liquid-btn-clear {
+  background: transparent;
+  border: 1px solid var(--border-main);
+  color: var(--text-primary);
+}
+.liquid-input {
+  background: var(--glass-bg);
+  border: 1px solid var(--glass-border);
+  backdrop-filter: blur(8px);
+  color: var(--text-primary);
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+.liquid-input:focus {
+  outline: none;
+  border-color: var(--border-gold);
+  box-shadow: 0 0 0 3px rgba(250,204,21,0.12);
+}
+
+/* ═══════════════════════════════
+   TRAJECTORY / PROGRESS BAR
+   ═══════════════════════════════ */
+.traj-track {
+  background: #18181b;
+  border-radius: 9999px;
+  overflow: hidden;
+}
+.traj-fill {
+  background: linear-gradient(90deg, #facc15 0%, #eab308 60%, #ca8a04 100%);
+  border-radius: 9999px;
+  box-shadow: 0 0 12px rgba(250,204,21,0.5);
+  position: relative;
+}
+.traj-fill::after {
+  content: '';
+  position: absolute;
+  right: -4px;
+  top: 50%;
+  transform: translateY(-50%);
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: #facc15;
+  box-shadow: 0 0 8px 3px rgba(250,204,21,0.6);
+}
+
+/* ═══════════════════════
+   THEME TOGGLE BUTTON
+   ═══════════════════════ */
+.theme-toggle {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid var(--border-main);
+  background: var(--glass-bg);
+  color: var(--text-muted);
+  cursor: pointer;
+  transition: color 0.2s, border-color 0.2s, background 0.2s;
+}
+.theme-toggle:hover {
+  color: var(--accent);
+  border-color: var(--border-gold);
+}

@@ -23,6 +23,7 @@ jobs:
         node-version: ${{ matrix.node-version }}
 
     - name: Build
+      working-directory: fabrick-store/fabrick-store
       run: |
         cd fabrick-store/fabrick-store
         npm install

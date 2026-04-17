@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
+import ThemeProvider from '@/components/ThemeProvider';
 
 export const metadata: Metadata = {
   title: 'FABRICK - Ingenieria Residencial de Precision',
@@ -32,16 +33,19 @@ export const viewport: Viewport = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="es" className="scroll-smooth">
+    <html lang="es" className="scroll-smooth" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
-      <body className="bg-black text-white antialiased app-shell">
-        {children}
-        <InstallAppPrompt />
+      <body className="antialiased app-shell" style={{ backgroundColor: 'var(--bg)', color: 'var(--text)' }}>
+        <ThemeProvider>
+          {children}
+          <InstallAppPrompt />
+        </ThemeProvider>
       </body>
     </html>
   );
 }
+

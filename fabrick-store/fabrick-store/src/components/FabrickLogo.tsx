@@ -12,67 +12,31 @@ export default function FabrickLogo({ className = '', animate = false, onClick }
       className={`select-none cursor-pointer group transition-all duration-300 hover:scale-[1.02] ${className}`}
       onClick={onClick}
     >
-      {/* Mobile/tablet: usar el SVG como imagen */}
-      <img
-        src="/logo-soluciones-fabrick.svg"
-        alt="Soluciones Fabrick"
-        className="block md:hidden h-12 w-auto"
-      />
-
-      {/* Desktop: version vectorial nativa con relieve */}
-      <div className="hidden md:flex items-center gap-4">
-        <svg
-          viewBox="0 0 420 220"
-          className={`h-14 w-auto ${animate ? 'drop-shadow-[0_0_8px_rgba(255,199,0,0.35)]' : ''}`}
-          aria-hidden="true"
+      <div className="flex items-center gap-2.5">
+        {/* SF symbol in gold */}
+        <div
+          className="flex items-center justify-center rounded-sm font-black text-base leading-none shrink-0 text-[#c9a96e] border-2 border-[#c9a96e]"
+          style={{
+            width: '2.2rem',
+            height: '2.2rem',
+            fontFamily: 'Montserrat, Poppins, Arial, sans-serif',
+            letterSpacing: '0.02em',
+          }}
         >
-          <defs>
-            <linearGradient id="roofTopDesktop" x1="0" y1="0" x2="1" y2="1">
-              <stop offset="0%" stopColor="#FFE17A" />
-              <stop offset="70%" stopColor="#FFC700" />
-              <stop offset="100%" stopColor="#E2AE00" />
-            </linearGradient>
-            <linearGradient id="roofSideDesktop" x1="0" y1="0" x2="0" y2="1">
-              <stop offset="0%" stopColor="#E2AE00" />
-              <stop offset="100%" stopColor="#BC8D00" />
-            </linearGradient>
-          </defs>
+          SF
+        </div>
 
-          <g transform="translate(0,8)">
-            <path d="M 44 70 L 160 18 L 276 70 L 260 70 L 160 28 L 60 70 Z" fill="url(#roofTopDesktop)" />
-            <path d="M 60 70 L 160 28 L 160 38 L 72 74 L 60 74 Z" fill="url(#roofSideDesktop)" />
-            <path d="M 260 70 L 160 28 L 160 38 L 248 74 L 260 74 Z" fill="#CFA000" />
-            <rect x="210" y="38" width="20" height="30" rx="2.5" fill="#FFC700" />
-          </g>
-
-          <g transform="translate(0,8)">
-            <text
-              x="160"
-              y="128"
-              textAnchor="middle"
-              fontFamily="Montserrat, Poppins, Arial, sans-serif"
-              fontSize="25"
-              fontWeight="800"
-              letterSpacing="2"
-              fill="#222"
-            >
-              SOLUCIONES
-            </text>
-            <text
-              x="160"
-              y="154"
-              textAnchor="middle"
-              fontFamily="Montserrat, Poppins, Arial, sans-serif"
-              fontSize="25"
-              fontWeight="800"
-              letterSpacing="2"
-              fill="#000"
-            >
-              FABRICK
-            </text>
-          </g>
-        </svg>
+        {/* Text block */}
+        <div className="flex flex-col leading-tight">
+          <span className="text-[10px] md:text-[11px] font-normal uppercase tracking-[0.25em] text-[var(--text)]">
+            SOLUCIONES
+          </span>
+          <span className="text-sm md:text-base font-bold uppercase tracking-[0.15em] text-[#c9a96e]">
+            FABRICK
+          </span>
+        </div>
       </div>
     </div>
   );
 }
+

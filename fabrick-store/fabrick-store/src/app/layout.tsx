@@ -1,6 +1,9 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
+import SmoothScrollProvider from '@/components/SmoothScrollProvider';
+import LoadingScreen from '@/components/LoadingScreen';
+import PageTransition from '@/components/PageTransition';
 import PromoBanner from '@/components/PromoBanner';
 
 export const metadata: Metadata = {
@@ -40,6 +43,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <meta name="mobile-web-app-capable" content="yes" />
       </head>
       <body className="bg-black text-white antialiased app-shell">
+        <SmoothScrollProvider />
+        <LoadingScreen />
+        <PageTransition />
         {children}
         <InstallAppPrompt />
         <PromoBanner />

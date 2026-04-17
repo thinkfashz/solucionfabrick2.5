@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import { useScroll, useTransform, motion } from 'framer-motion';
 
 /* Canvas API – elegant golden floating particles */
 function initCanvasParticles(canvas: HTMLCanvasElement): () => void {
@@ -70,6 +71,11 @@ export default function Hero() {
   const heroRef   = useRef<HTMLDivElement>(null);
   const canvasRef = useRef<HTMLCanvasElement>(null);
 
+  /* framer-motion parallax on scroll */
+  const { scrollY } = useScroll();
+  const bgY = useTransform(scrollY, [0, 600], [0, -120]);
+  const glowY = useTransform(scrollY, [0, 600], [0, -60]);
+
   /* GSAP timeline – main entrance */
   useEffect(() => {
     let ctx: any;
@@ -127,14 +133,30 @@ export default function Hero() {
       ref={heroRef}
       className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black"
     >
-      {/* Radial golden background gradient */}
-      <div
+      {/* Parallax background layer */}
+      <motion.div
         className="absolute inset-0 pointer-events-none z-0"
-        style={{
-          background:
-            'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(201,169,110,0.08) 0%, rgba(250,204,21,0.03) 40%, transparent 70%)',
-        }}
-      />
+        style={{ y: bgY }}
+      >
+        {/* Radial golden background gradient */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(201,169,110,0.08) 0%, rgba(250,204,21,0.03) 40%, transparent 70%)',
+          }}
+        />
+
+        {/* Background grid */}
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(250,204,21,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,0.3) 1px, transparent 1px)',
+            backgroundSize: '60px 60px',
+          }}
+        />
+      </motion.div>
 
       {/* Canvas golden particles */}
       <canvas
@@ -142,24 +164,16 @@ export default function Hero() {
         className="absolute inset-0 w-full h-full pointer-events-none z-0"
       />
 
-      {/* Background glows */}
-      <div className="hero-glow absolute top-20 left-10 w-72 h-72 rounded-full bg-yellow-400/5 blur-3xl pointer-events-none" />
-      <div className="hero-glow absolute bottom-20 right-10 w-96 h-96 rounded-full bg-yellow-400/6 blur-3xl pointer-events-none" />
+      {/* Background glows – parallax */}
+      <motion.div style={{ y: glowY }} className="absolute inset-0 pointer-events-none z-0">
+        <div className="hero-glow absolute top-20 left-10 w-72 h-72 rounded-full bg-yellow-400/5 blur-3xl" />
+        <div className="hero-glow absolute bottom-20 right-10 w-96 h-96 rounded-full bg-yellow-400/6 blur-3xl" />
+      </motion.div>
 
       {/* Decorative rings */}
       <div className="hero-ring absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] border border-yellow-400/8 rounded-full pointer-events-none" />
       <div className="hero-ring absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] border border-yellow-400/12 rounded-full pointer-events-none" />
       <div className="hero-ring absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] border border-yellow-400/6 rounded-full pointer-events-none" />
-
-      {/* Background grid */}
-      <div
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(250,204,21,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,0.3) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }}
-      />
 
       {/* Content */}
       <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
@@ -193,7 +207,7 @@ export default function Hero() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
           <a
             href="/#servicios"
-            className="hero-cta-item group relative px-8 py-4 min-h-[44px] bg-yellow-400 text-black font-semibold rounded-full overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_rgba(250,204,21,0.55),0_0_80px_rgba(250,204,21,0.2)] btn-sweep"
+            className="hero-cta-item btn-shimmer group relative px-8 py-4 min-h-[44px] bg-yellow-400 text-black font-semibold rounded-full overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_rgba(250,204,21,0.55),0_0_80px_rgba(250,204,21,0.2)] btn-sweep"
           >
             <span className="relative z-10 uppercase tracking-wider text-sm">Explorar Servicios</span>
             <div className="absolute inset-0 bg-yellow-300 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />

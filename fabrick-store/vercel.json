@@ -1,6 +1,5 @@
 {
-  "buildCommand": "cd fabrick-store && npm run build",
+  "buildCommand": "cd fabrick-store && npm install && npm run build",
   "outputDirectory": "fabrick-store/.next",
-  "installCommand": "cd fabrick-store && npm install",
   "framework": "nextjs"
 }

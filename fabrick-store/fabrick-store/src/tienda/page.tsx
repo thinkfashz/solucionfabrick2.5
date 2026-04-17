@@ -156,18 +156,20 @@ export default function TiendaClientPage() {
 
 	const liveProducts: Product[] = useMemo(() => {
 		if (!dbProducts.length) return PRODUCTS;
-		return dbProducts.map((p) => ({
-			id: p.id,
-			name: p.name,
-			price: p.price,
-			category: p.category_id || 'General',
-			tagline: p.delivery_days ? `Entrega ${p.delivery_days}` : 'Calidad profesional para tu proyecto',
-			description: p.description || 'Producto sincronizado desde Fabrick Store.',
-			features: ['Calidad garantizada', p.stock != null ? `Stock: ${p.stock}` : 'Stock sujeto a confirmación', p.featured ? 'Producto destacado' : 'Disponible'],
-			dimensions: 'Especificación en ficha técnica',
-			delivery: p.delivery_days || 'A coordinar',
-			img: p.image_url || 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=2070&auto=format&fit=crop',
-		}));
+		return dbProducts
+			.filter((p) => p.activo !== false)
+			.map((p) => ({
+				id: p.id,
+				name: p.name,
+				price: p.price,
+				category: p.category_id || 'General',
+				tagline: p.tagline || (p.delivery_days ? `Entrega ${p.delivery_days}` : 'Calidad profesional para tu proyecto'),
+				description: p.description || 'Producto sincronizado desde Fabrick Store.',
+				features: ['Calidad garantizada', p.stock != null ? `Stock: ${p.stock}` : 'Stock sujeto a confirmación', p.featured ? 'Producto destacado' : 'Disponible'],
+				dimensions: 'Especificación en ficha técnica',
+				delivery: p.delivery_days || 'A coordinar',
+				img: p.image_url || 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=2070&auto=format&fit=crop',
+			}));
 	}, [dbProducts]);
 
 	useEffect(() => {
@@ -559,5 +561,6 @@ export default function TiendaClientPage() {
 		</div>
 	);
 }
+
 
 

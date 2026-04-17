@@ -204,8 +204,21 @@ export default function LandingSections() {
             {SERVICIOS.map(({ Icon, title, desc, img, wide }, i) => (
               <div
                 key={i}
-                className={`service-card group relative rounded-[1.5rem] md:rounded-[2rem] border border-white/10 overflow-hidden flex flex-col items-start justify-end min-h-[280px] ${wide ? 'sm:col-span-2 xl:col-span-2' : ''}`}
+                className={`service-card service-card-premium group relative rounded-[1.5rem] md:rounded-[2rem] overflow-hidden flex flex-col items-start justify-end min-h-[280px] ${wide ? 'sm:col-span-2 xl:col-span-2' : ''}`}
               >
+                {/* Semi-transparent phase number background */}
+                <span
+                  aria-hidden="true"
+                  className="absolute top-4 right-5 font-playfair font-bold leading-none select-none pointer-events-none z-[1]"
+                  style={{
+                    fontSize: 'clamp(4rem, 10vw, 7rem)',
+                    color: 'rgba(250,204,21,0.07)',
+                    lineHeight: 1,
+                  }}
+                >
+                  {String(i + 1).padStart(2, '0')}
+                </span>
+
                 <div className="absolute inset-0 z-0">
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img src={img} alt={title} className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-1000" />
@@ -508,39 +521,88 @@ export default function LandingSections() {
       </section>
 
       {/* ══ FOOTER ═══════════════════════════════════════════ */}
-      <footer className="bg-black py-10 md:py-16 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-4 md:px-12 flex flex-col md:flex-row justify-between items-center gap-8">
-          {/* Logo */}
-          <FabrickLogo className="pointer-events-none" />
+      <footer className="py-14 md:py-20 border-t border-white/5" style={{ background: '#050505' }}>
+        <div className="max-w-7xl mx-auto px-4 md:px-12">
 
-          <div className="text-center">
-            <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mb-1">
-              Soluciones Integrales para el Hogar Moderno.
-            </p>
-            <p className="text-zinc-700 text-[9px] uppercase tracking-widest">
-              © {new Date().getFullYear()} Soluciones Fabrick. Todos los derechos reservados.
-            </p>
-          </div>
-
-          {/* Redes sociales */}
-          <div className="flex gap-4 items-center">
-            {[
-              { Icon: MetaIcon,      href: '#' },
-              { Icon: TikTokIcon,    href: '#' },
-              { Icon: InstagramIcon, href: '#' },
-            ].map(({ Icon, href }, i) => (
-              <a
-                key={i} href={href}
-                className="relative group w-11 h-11 flex items-center justify-center"
+          {/* Top area: SF glow + tagline */}
+          <div className="flex flex-col items-center mb-10 md:mb-14">
+            <div className="relative mb-4">
+              <span
+                className="font-playfair font-black text-yellow-400 select-none leading-none"
+                style={{
+                  fontSize: 'clamp(3.5rem, 12vw, 7rem)',
+                  textShadow:
+                    '0 0 30px rgba(250,204,21,0.55), 0 0 60px rgba(250,204,21,0.3), 0 0 120px rgba(250,204,21,0.15)',
+                  letterSpacing: '0.06em',
+                }}
               >
-                <div className="absolute inset-0 bg-yellow-400 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300 shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
-                <div className="absolute inset-0 rounded-full border border-white/10 group-hover:border-transparent transition-colors" />
-                <div className="relative z-10 text-zinc-400 group-hover:text-black transition-colors">
-                  <Icon />
-                </div>
-              </a>
-            ))}
+                SF
+              </span>
+            </div>
+            <p className="font-cormorant text-zinc-400 text-base md:text-lg italic tracking-widest text-center">
+              Soluciones Integrales para el Hogar Moderno
+            </p>
           </div>
+
+          {/* Golden separator */}
+          <div
+            className="divider-line mb-10 md:mb-14 origin-center"
+            style={{
+              height: '1px',
+              background: 'linear-gradient(90deg, transparent 0%, rgba(201,169,110,0.6) 30%, rgba(250,204,21,0.8) 50%, rgba(201,169,110,0.6) 70%, transparent 100%)',
+            }}
+          />
+
+          {/* Bottom row */}
+          <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+            {/* Logo */}
+            <FabrickLogo className="pointer-events-none" />
+
+            {/* Nav links */}
+            <nav className="flex flex-wrap justify-center gap-x-8 gap-y-3">
+              {[
+                { label: 'Servicios',  href: '/servicios' },
+                { label: 'Evolución',  href: '/evolucion' },
+                { label: 'Soluciones', href: '/soluciones' },
+                { label: 'Tienda',     href: '/tienda' },
+                { label: 'Proyectos',  href: '/proyectos' },
+                { label: 'Contacto',   href: '/contacto' },
+              ].map(({ label, href }) => (
+                <a
+                  key={href}
+                  href={href}
+                  className="text-xs font-medium uppercase tracking-[0.22em] text-zinc-500 hover:text-yellow-400 transition-colors duration-300 min-h-[44px] flex items-center touch-target"
+                >
+                  {label}
+                </a>
+              ))}
+            </nav>
+
+            {/* Social icons */}
+            <div className="flex gap-4 items-center">
+              {[
+                { Icon: MetaIcon,      href: '#' },
+                { Icon: TikTokIcon,    href: '#' },
+                { Icon: InstagramIcon, href: '#' },
+              ].map(({ Icon, href }, i) => (
+                <a
+                  key={i} href={href}
+                  className="relative group w-11 h-11 flex items-center justify-center"
+                >
+                  <div className="absolute inset-0 bg-yellow-400 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300 shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
+                  <div className="absolute inset-0 rounded-full border border-white/10 group-hover:border-transparent transition-colors" />
+                  <div className="relative z-10 text-zinc-400 group-hover:text-black transition-colors">
+                    <Icon />
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Copyright */}
+          <p className="text-center text-zinc-700 text-[9px] uppercase tracking-[0.35em] mt-10 font-light">
+            © {new Date().getFullYear()} Soluciones Fabrick · Todos los derechos reservados
+          </p>
         </div>
       </footer>
 

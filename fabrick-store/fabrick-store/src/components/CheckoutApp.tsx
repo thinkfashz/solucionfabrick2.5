@@ -447,7 +447,7 @@ const CheckoutApp = () => {
       </style>
 
       {/* OVERLAY DE PROCESAMIENTO / ÉXITO */}
-      {isProcessing && (
+      {(isProcessing || isSuccess) && (
         <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
           
           {!isSuccess ? (

@@ -27,7 +27,8 @@ export async function GET() {
     }
 
     return NextResponse.json({ data: json.data ?? [] });
-  } catch {
+  } catch (err: unknown) {
+    console.error('Meta ads fetch error:', err);
     return NextResponse.json({ error: 'Error interno al consultar Meta API.' }, { status: 500 });
   }
 }

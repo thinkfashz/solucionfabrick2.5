@@ -3,8 +3,9 @@ import { NextRequest, NextResponse } from 'next/server';
 const META_API_VERSION = 'v20.0';
 const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
 
-// CLP to USD approximate conversion (Meta requires USD in cents for daily budget)
-// 1 USD ≈ 950 CLP (approximate; Meta validates minimum budget server-side)
+// CLP to USD approximate conversion (Meta requires USD in cents for daily budget when
+// the ad account currency is USD). Update this rate periodically to reflect current FX.
+// 1 USD ≈ 950 CLP (approximate)
 const CLP_TO_USD_RATE = 950;
 
 interface CreateAdPayload {
@@ -81,11 +82,16 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Faltan campos requeridos.' }, { status: 400 });
   }
 
-  // Convert CLP to USD cents (Meta accepts daily_budget in cents of the account currency,
-  // but accounts set to USD need USD cents)
+  // Convert CLP to USD cents. NOTE: This assumes the Meta ad account is configured in USD.
+  // For accounts in other currencies, remove this conversion and pass presupuestoCLP directly
+  // as the daily_budget in the account currency (Meta accepts whole numbers in the smallest
+  // unit of the account currency, e.g. CLP does not use cents).
   const dailyBudgetUsdCents = Math.round((presupuestoCLP / CLP_TO_USD_RATE) * 100);
 
-  // Build targeting spec
+  // Build targeting spec.
+  // NOTE: Meta requires numeric region_id values for sub-country targeting. Since those IDs
+  // require a lookup against the Meta Targeting Search API, all options here target at the
+  // country level (CL). The UI still shows region labels for future implementation.
   const location = LOCATION_MAP[ubicacion] ?? { country: 'CL' };
   const geoLocations: Record<string, unknown> = { countries: [location.country] };
   if (location.region) {
@@ -178,6 +184,7 @@ export async function POST(request: NextRequest) {
       { status: 201 }
     );
   } catch (err: unknown) {
+    console.error('Meta create ad error:', err);
     const msg = err instanceof Error ? err.message : 'Error desconocido al crear anuncio en Meta';
     return NextResponse.json({ error: msg }, { status: 502 });
   }

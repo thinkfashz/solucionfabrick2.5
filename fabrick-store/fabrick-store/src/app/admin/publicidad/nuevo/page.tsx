@@ -74,7 +74,11 @@ export default function NuevoAnuncioPage() {
       return;
     }
     setImageFile(file);
-    setImagePreview(URL.createObjectURL(file));
+    const objectUrl = URL.createObjectURL(file);
+    // Ensure we only set blob: URLs (safe, created from local File objects)
+    if (objectUrl.startsWith('blob:')) {
+      setImagePreview(objectUrl);
+    }
     setError(null);
   };
 

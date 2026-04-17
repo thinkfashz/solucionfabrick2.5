@@ -68,7 +68,8 @@ export async function POST(request: NextRequest) {
     }
 
     return NextResponse.json({ hash: imageData.hash, url: imageData.url });
-  } catch {
+  } catch (err: unknown) {
+    console.error('Meta upload error:', err);
     return NextResponse.json(
       { error: 'Error interno al subir la imagen.' },
       { status: 500 }

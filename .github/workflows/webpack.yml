@@ -24,5 +24,6 @@ jobs:
 
     - name: Build
       run: |
+        cd fabrick-store/fabrick-store
         npm install
         npx webpack

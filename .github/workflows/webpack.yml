@@ -23,6 +23,7 @@ jobs:
         node-version: ${{ matrix.node-version }}
 
     - name: Build
+      working-directory: fabrick-store/fabrick-store
       run: |
         npm install
-        npx webpack
+        npm run build

@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTheme } from 'next-themes';
 import FabrickLogo from './FabrickLogo';
 import { navigateWithTransition } from '@/lib/routeTransition';
+import { insforge } from '@/lib/insforge';
 
 type NavLink = { label: string; href: string };
 
@@ -22,6 +23,7 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const [hasOffers, setHasOffers] = useState(false);
   const { theme, setTheme } = useTheme();
 
   useEffect(() => {
@@ -32,6 +34,23 @@ export default function Navbar() {
     const onScroll = () => setScrolled(window.scrollY > 10);
     window.addEventListener('scroll', onScroll, { passive: true });
     return () => window.removeEventListener('scroll', onScroll);
+  }, []);
+
+  useEffect(() => {
+    async function checkOffers() {
+      try {
+        const { data } = await insforge.database
+          .from('productos')
+          .select('id')
+          .eq('en_oferta', true)
+          .eq('activo', true)
+          .limit(1);
+        setHasOffers(!!(data && data.length > 0));
+      } catch {
+        setHasOffers(false);
+      }
+    }
+    void checkOffers();
   }, []);
 
   useEffect(() => {
@@ -67,6 +86,9 @@ export default function Navbar() {
               className="relative text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 hover:text-yellow-400 transition-colors duration-200 group"
             >
               {label}
+              {label === 'Tienda' && hasOffers && (
+                <span className="absolute -top-1 -right-2 w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+              )}
               <span className="absolute -bottom-0.5 left-0 w-0 h-px bg-yellow-400 group-hover:w-full transition-all duration-300" />
             </button>
           ))}
@@ -190,9 +212,12 @@ export default function Navbar() {
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: 0.05 + i * 0.04, duration: 0.3 }}
                   onClick={() => handleNav(href)}
-                  className="text-xl font-light uppercase tracking-[0.2em] text-white hover:text-yellow-400 active:text-yellow-400 transition-colors w-full py-5 border-b border-white/5"
+                  className="relative text-xl font-light uppercase tracking-[0.2em] text-white hover:text-yellow-400 active:text-yellow-400 transition-colors w-full py-5 border-b border-white/5"
                 >
                   {label}
+                  {label === 'Tienda' && hasOffers && (
+                    <span className="absolute top-1/2 -translate-y-1/2 ml-2 inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                  )}
                 </motion.button>
               ))}
               <motion.button
@@ -211,4 +236,3 @@ export default function Navbar() {
     </>
   );
 }
-

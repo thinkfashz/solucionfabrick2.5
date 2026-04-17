@@ -17,8 +17,9 @@ module.exports = {
         },
       },
       fontFamily: {
-        playfair: ['Playfair Display', 'serif'],
-        inter: ['Inter', 'sans-serif'],
+        playfair:   ['Playfair Display', 'serif'],
+        inter:      ['Inter', 'sans-serif'],
+        cormorant:  ['Cormorant Garamond', 'serif'],
       },
       borderRadius: {
         '4xl': '2rem',

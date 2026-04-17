@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
 import ThemeProvider from '@/components/ThemeProvider';
+import PromoBanner from '@/components/PromoBanner';
 
 export const metadata: Metadata = {
   title: 'FABRICK - Ingenieria Residencial de Precision',
@@ -43,9 +44,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           {children}
           <InstallAppPrompt />
+          <PromoBanner />
         </ThemeProvider>
       </body>
     </html>
   );
 }
-

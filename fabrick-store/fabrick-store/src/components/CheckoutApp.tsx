@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useEffect, useRef, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useSearchParams } from 'next/navigation';
 import { 
   ArrowLeft, ShieldCheck, Lock, Truck, 
@@ -8,6 +9,8 @@ import {
   Wifi, Battery, Wrench, Check
 } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
+
+const MercadoPagoBrick = dynamic(() => import('./MercadoPagoBrick'), { ssr: false });
 
 // --- COMPONENTE LOGO BASE (Para la animación de carga) ---
 const FabrickLogoBase = () => (
@@ -126,6 +129,10 @@ const CheckoutApp = () => {
   const [locationError, setLocationError] = useState('');
   const [checkoutError, setCheckoutError] = useState('');
   const [orderId, setOrderId] = useState('');
+
+  // MercadoPago Brick state
+  const [mpOrderId, setMpOrderId] = useState('');
+  const [mpOrderLoading, setMpOrderLoading] = useState(false);
 
   const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value.replace(/\D/g, '').substring(0, 16);
@@ -270,6 +277,69 @@ const CheckoutApp = () => {
 
   const formatCLP = (value: number) => {
     return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(value);
+  };
+
+  const handleGoToPayment = async () => {
+    setCheckoutError('');
+
+    if (!shippingName || !shippingEmail || !shippingAddress || !shippingRegion) {
+      setCheckoutError('Completa todos los datos de despacho antes de continuar.');
+      return;
+    }
+
+    setMpOrderLoading(true);
+
+    const payload = {
+      items: [
+        {
+          productoId: product.id,
+          cantidad: 1,
+          precioUnitario: product.price,
+          nombre: product.name,
+        },
+      ],
+      region: shippingRegion,
+      shippingAddress,
+      cliente: {
+        nombre: shippingName,
+        email: shippingEmail,
+        telefono: shippingPhone,
+      },
+    };
+
+    try {
+      const validateRes = await fetch('/api/orders/check/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const validateBody = await validateRes.json();
+      if (!validateRes.ok || !validateBody?.valid) {
+        const firstError = validateBody?.errors?.[0]?.message ?? 'Validación fallida del checkout.';
+        throw new Error(firstError);
+      }
+
+      const checkoutRes = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const checkoutBody = await checkoutRes.json();
+      if (!checkoutRes.ok || !checkoutBody?.data?.id) {
+        throw new Error(checkoutBody?.error ?? 'No se pudo crear la orden.');
+      }
+
+      const createdOrderId = checkoutBody.data.id as string;
+      setMpOrderId(createdOrderId);
+      setOrderId(createdOrderId);
+      changeStep(3);
+    } catch (e) {
+      setCheckoutError(e instanceof Error ? e.message : 'Error preparando el pago.');
+    } finally {
+      setMpOrderLoading(false);
+    }
   };
 
   const handleConfirmInvestment = async () => {
@@ -658,7 +728,9 @@ const CheckoutApp = () => {
                   {checkoutError && <p className="text-xs text-red-400">{checkoutError}</p>}
                   <div className="pt-8 flex gap-4">
                     <button onClick={() => changeStep(1)} type="button" className="px-8 py-5 border border-white/20 rounded-full bg-black text-white font-bold text-xs uppercase hover:border-yellow-400 transition-colors">Volver</button>
-                    <button onClick={() => changeStep(3)} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs rounded-full shadow-[0_15px_40px_rgba(250,204,21,0.2)] hover:bg-white transition-colors">Ir al Pago Seguro</button>
+                    <button onClick={handleGoToPayment} disabled={mpOrderLoading} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs rounded-full shadow-[0_15px_40px_rgba(250,204,21,0.2)] hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed">
+                      {mpOrderLoading ? 'Preparando pago...' : 'Ir al Pago Seguro'}
+                    </button>
                   </div>
                 </form>
               </div>
@@ -712,60 +784,33 @@ const CheckoutApp = () => {
                   </div>
                 </div>
 
-                {/* TARJETA DE CRÉDITO INTERACTIVA 3D */}
-                <div className="perspective-1000 w-full max-w-md mx-auto h-56 pt-2">
-                  <div className={`relative w-full h-full transition-transform duration-700 transform-style-3d ${isCardFlipped ? 'rotate-y-180' : ''}`}>
-                    <div className="absolute w-full h-full backface-hidden bg-gradient-to-tr from-zinc-800 to-zinc-950 border border-white/10 rounded-3xl p-6 flex flex-col justify-between overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                       <div className="absolute -top-10 -left-10 w-32 h-32 bg-yellow-400/20 blur-3xl rounded-full animate-pulse" />
-                       <div className="flex justify-between items-center relative z-10">
-                         <div className="w-12 h-8 rounded-md bg-gradient-to-br from-zinc-300 via-yellow-200 to-yellow-600 opacity-90 shadow-inner" />
-                       </div>
-                       <div className="relative z-10 mt-4">
-                         <div className={`font-mono text-xl tracking-[0.15em] transition-colors ${cardNumber ? 'text-white' : 'text-white/30'}`}>
-                           {cardNumber || '0000 0000 0000 0000'}
-                         </div>
-                       </div>
-                       <div className="flex justify-between items-end relative z-10 mt-4">
-                         <div>
-                           <div className="text-[8px] uppercase tracking-widest text-yellow-400/80 mb-1">Titular</div>
-                           <div className={`font-bold text-xs uppercase tracking-widest ${cardName ? 'text-white' : 'text-white/30'}`}>{cardName || 'NOMBRE APELLIDO'}</div>
-                         </div>
-                         <div>
-                           <div className="text-[8px] uppercase tracking-widest text-yellow-400/80 text-right mb-1">Vence</div>
-                           <div className={`font-mono text-xs text-right ${cardExpiry ? 'text-white' : 'text-white/30'}`}>{cardExpiry || 'MM/AA'}</div>
-                         </div>
-                       </div>
-                    </div>
-                    <div className="absolute w-full h-full backface-hidden rotate-y-180 bg-gradient-to-tr from-zinc-800 to-zinc-950 border border-white/10 rounded-3xl overflow-hidden flex flex-col">
-                       <div className="w-full h-12 bg-black/80 mt-6" />
-                       <div className="px-6 mt-6">
-                         <div className="text-[8px] uppercase tracking-widest text-zinc-500 text-right mb-1 pr-2">CVC</div>
-                         <div className="w-full h-10 bg-white/90 rounded flex items-center justify-end px-4">
-                           <span className="font-mono text-sm text-black italic font-bold">{cardCVC || '•••'}</span>
-                         </div>
-                       </div>
-                    </div>
-                  </div>
+                {/* MERCADOPAGO CHECKOUT BRICK */}
+                <div className="bg-black/40 border border-white/5 rounded-[2rem] p-6">
+                  <MercadoPagoBrick
+                    amount={product.price}
+                    orderId={mpOrderId || orderId}
+                    payerEmail={shippingEmail}
+                    onSuccess={(paymentId, status) => {
+                      setOrderId(mpOrderId || orderId);
+                      setIsProcessing(true);
+                      setProcessProgress(100);
+                      // Update DB if needed (already done in api/payments/mp-create)
+                      void status;
+                      void paymentId;
+                      setTimeout(() => setIsSuccess(true), 600);
+                    }}
+                    onError={(error) => {
+                      setCheckoutError(error);
+                    }}
+                  />
+                  {checkoutError && <p className="text-xs text-red-400 pt-4">{checkoutError}</p>}
                 </div>
 
-                <form className="space-y-6 pt-6">
-                  <input type="text" value={cardName} onChange={(e) => setCardName(e.target.value.toUpperCase())} onFocus={() => setIsCardFlipped(false)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Nombre en la Tarjeta" />
-                  <input type="text" value={cardNumber} onChange={handleCardNumberChange} onFocus={() => setIsCardFlipped(false)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm font-mono text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="0000 0000 0000 0000" />
-                  <div className="grid grid-cols-2 gap-6">
-                    <input type="text" value={cardExpiry} onChange={handleExpiryChange} onFocus={() => setIsCardFlipped(false)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm font-mono text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="MM/AA" />
-                    <input type="password" maxLength={4} value={cardCVC} onChange={(e) => setCardCVC(e.target.value.replace(/\D/g, ''))} onFocus={() => setIsCardFlipped(true)} onBlur={() => setIsCardFlipped(false)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm font-mono text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="CVC" />
-                  </div>
-
-                  <div className="pt-8 flex gap-4">
-                    <button onClick={() => changeStep(2)} type="button" className="px-6 py-5 border border-white/20 rounded-full bg-black hover:border-yellow-400 transition-colors text-white">
-                      <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <button disabled={isProcessing} onClick={handleConfirmInvestment} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-[11px] md:text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all transform active:scale-95 flex justify-center items-center gap-3 shadow-[0_15px_40px_rgba(250,204,21,0.3)] disabled:opacity-50 disabled:cursor-not-allowed">
-                      <Lock className="w-4 h-4" /> Confirmar Inversión
-                    </button>
-                  </div>
-                  {checkoutError && <p className="text-xs text-red-400 pt-2">{checkoutError}</p>}
-                </form>
+                <div className="flex gap-4 pt-2">
+                  <button onClick={() => { setMpOrderId(''); changeStep(2); }} type="button" className="px-6 py-5 border border-white/20 rounded-full bg-black hover:border-yellow-400 transition-colors text-white">
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
             )}
 

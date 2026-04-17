@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@insforge/sdk": "latest",
+    "@mercadopago/sdk-react": "^1.0.7",
     "animejs": "^3.2.2",
     "framer-motion": "^12.38.0",
     "gsap": "^3.12.5",

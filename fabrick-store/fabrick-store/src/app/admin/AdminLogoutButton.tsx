@@ -10,7 +10,10 @@ export default function AdminLogoutButton() {
   async function handleLogout() {
     setLoading(true);
     try {
-      await fetch('/api/admin/logout', { method: 'POST' });
+      const res = await fetch('/api/admin/logout', { method: 'POST' });
+      if (!res.ok) {
+        console.error('[AdminLogout] Server returned', res.status);
+      }
     } catch {
       // Proceed with redirect even if the network request fails
     } finally {

@@ -4,8 +4,12 @@
 @tailwind components;
 @tailwind utilities;
 
-* {
+html {
   scroll-behavior: smooth;
+  scroll-padding-top: 80px;
+}
+
+* {
   box-sizing: border-box;
 }
 
@@ -339,4 +343,74 @@ input, textarea, button, select {
   body.app-shell {
     background-image: radial-gradient(circle at top, rgba(250, 204, 21, 0.06), transparent 28%);
   }
+}
+
+/* ── Nav link: animated underline ── */
+.nav-link-animated {
+  position: relative;
+}
+.nav-link-animated::after {
+  content: '';
+  position: absolute;
+  bottom: -3px;
+  left: 0;
+  width: 100%;
+  height: 1.5px;
+  background: #facc15;
+  transform: scaleX(0);
+  transform-origin: right;
+  transition: transform 0.3s cubic-bezier(0.23, 1, 0.32, 1);
+}
+.nav-link-animated:hover::after {
+  transform: scaleX(1);
+  transform-origin: left;
+}
+
+/* ── Service card hover: scale + golden glow ── */
+.service-card-hover {
+  transition: transform 0.35s cubic-bezier(0.23,1,0.32,1), box-shadow 0.35s ease, border-color 0.35s ease;
+}
+.service-card-hover:hover {
+  transform: scale(1.02) translateY(-4px);
+  box-shadow: 0 0 40px rgba(250,204,21,0.15), 0 20px 60px rgba(0,0,0,0.5);
+  border-color: rgba(250,204,21,0.3);
+}
+
+/* ── Button shimmer gold ── */
+.btn-shimmer {
+  position: relative;
+  overflow: hidden;
+}
+.btn-shimmer::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent 0%,
+    rgba(255,255,255,0.25) 50%,
+    transparent 100%
+  );
+  transform: skewX(-15deg);
+}
+.btn-shimmer:hover::after {
+  animation: btn-shimmer-sweep 0.6s ease forwards;
+}
+@keyframes btn-shimmer-sweep {
+  from { left: -100%; }
+  to   { left: 160%; }
+}
+
+/* ── Image zoom on hover ── */
+.img-zoom {
+  overflow: hidden;
+}
+.img-zoom img {
+  transition: transform 0.6s cubic-bezier(0.23,1,0.32,1);
+}
+.img-zoom:hover img {
+  transform: scale(1.08);
 }

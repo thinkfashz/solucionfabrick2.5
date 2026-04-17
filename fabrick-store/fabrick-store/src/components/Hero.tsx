@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect } from 'react';
+import { useScroll, useTransform, motion } from 'framer-motion';
 
 /* Genera partículas doradas flotantes con anime.js */
 function spawnParticles(container: HTMLElement) {
@@ -38,6 +39,11 @@ function spawnParticles(container: HTMLElement) {
 export default function Hero() {
   const heroRef    = useRef<HTMLDivElement>(null);
   const particleRef = useRef<HTMLDivElement>(null);
+
+  /* framer-motion parallax on scroll */
+  const { scrollY } = useScroll();
+  const bgY = useTransform(scrollY, [0, 600], [0, -120]);
+  const glowY = useTransform(scrollY, [0, 600], [0, -60]);
 
   /* GSAP timeline – entrada principal */
   useEffect(() => {
@@ -78,7 +84,7 @@ export default function Hero() {
           /* Línea divisoria */
           .from('.hero-divider', { scaleX: 0, duration: 0.7, ease: 'power2.inOut' }, '-=0.5')
 
-          /* CTAs */
+          /* CTAs con stagger */
           .from('.hero-cta-item', { y: 24, opacity: 0, duration: 0.6, stagger: 0.14 }, '-=0.4');
 
         /* Pulso permanente en los anillos */
@@ -92,7 +98,7 @@ export default function Hero() {
           stagger: 0.6,
         });
 
-        /* Glows de fondo: movimiento suave parallax */
+        /* Glows de fondo: movimiento suave */
         gsap.to('.hero-glow', {
           y: -30,
           x: 20,
@@ -119,27 +125,35 @@ export default function Hero() {
       ref={heroRef}
       className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black"
     >
+      {/* Parallax background layer */}
+      <motion.div
+        className="absolute inset-0 pointer-events-none z-0"
+        style={{ y: bgY }}
+      >
+        {/* Grid de fondo */}
+        <div
+          className="absolute inset-0 opacity-[0.03]"
+          style={{
+            backgroundImage:
+              'linear-gradient(rgba(250,204,21,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,0.3) 1px, transparent 1px)',
+            backgroundSize: '60px 60px',
+          }}
+        />
+      </motion.div>
+
       {/* Partículas */}
       <div ref={particleRef} className="absolute inset-0 pointer-events-none z-0 overflow-hidden" />
 
-      {/* Glows de fondo */}
-      <div className="hero-glow absolute top-20 left-10 w-72 h-72 rounded-full bg-yellow-400/5 blur-3xl pointer-events-none" />
-      <div className="hero-glow absolute bottom-20 right-10 w-96 h-96 rounded-full bg-yellow-400/6 blur-3xl pointer-events-none" />
+      {/* Glows de fondo – parallax suave */}
+      <motion.div style={{ y: glowY }} className="absolute inset-0 pointer-events-none z-0">
+        <div className="hero-glow absolute top-20 left-10 w-72 h-72 rounded-full bg-yellow-400/5 blur-3xl" />
+        <div className="hero-glow absolute bottom-20 right-10 w-96 h-96 rounded-full bg-yellow-400/6 blur-3xl" />
+      </motion.div>
 
       {/* Anillos decorativos */}
       <div className="hero-ring absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] border border-yellow-400/8 rounded-full pointer-events-none" />
       <div className="hero-ring absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] border border-yellow-400/12 rounded-full pointer-events-none" />
       <div className="hero-ring absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] border border-yellow-400/6 rounded-full pointer-events-none" />
-
-      {/* Grid de fondo */}
-      <div
-        className="absolute inset-0 opacity-[0.03] pointer-events-none"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(250,204,21,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,0.3) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }}
-      />
 
       {/* Contenido */}
       <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
@@ -168,7 +182,7 @@ export default function Hero() {
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
           <a
             href="/#servicios"
-            className="hero-cta-item group relative px-8 py-4 bg-yellow-400 text-black font-semibold rounded-full overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_rgba(250,204,21,0.4)]"
+            className="hero-cta-item btn-shimmer group relative px-8 py-4 bg-yellow-400 text-black font-semibold rounded-full overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_rgba(250,204,21,0.4)]"
           >
             <span className="relative z-10 uppercase tracking-wider text-sm">Explorar Servicios</span>
             <div className="absolute inset-0 bg-yellow-300 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
@@ -186,3 +200,4 @@ export default function Hero() {
     </section>
   );
 }
+

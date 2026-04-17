@@ -75,11 +75,13 @@ export default function BannerCarousel() {
 
   useEffect(() => {
     if (paused || count === 0) return;
-    intervalRef.current = setInterval(next, 5000);
+    intervalRef.current = setInterval(() => {
+      setCurrent((c) => (c + 1) % count);
+    }, 5000);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };
-  }, [paused, count, current]);
+  }, [paused, count]);
 
   const handleTouchStart = (e: React.TouchEvent) => {
     touchStartX.current = e.touches[0].clientX;

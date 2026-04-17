@@ -154,8 +154,12 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
       setForm((f) => ({ ...f, image_url: publicUrl }));
     } catch {
       // Fallback: try to create an object URL for preview only
-      const localUrl = URL.createObjectURL(file);
-      setForm((f) => ({ ...f, image_url: localUrl }));
+      try {
+        const localUrl = URL.createObjectURL(file);
+        setForm((f) => ({ ...f, image_url: localUrl }));
+      } catch {
+        // If object URL creation also fails, leave image_url empty
+      }
       showToast('Storage no disponible. Ingresa una URL de imagen manual.', 'error');
     } finally {
       setUploading(false);
@@ -199,7 +203,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
 
     setSaving(false);
     if (error) {
-      showToast('Error al guardar el producto: ' + (error.message ?? 'Inténtalo de nuevo'), 'error');
+      showToast('Error al guardar el producto. Por favor, inténtalo de nuevo.', 'error');
     } else {
       showToast(mode === 'create' ? '✓ Producto creado exitosamente' : '✓ Producto actualizado correctamente');
       setTimeout(() => router.push('/admin/productos'), 1200);

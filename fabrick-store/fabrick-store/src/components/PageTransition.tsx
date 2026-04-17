@@ -1,26 +1,12 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
-
-let overlay: HTMLDivElement | null = null;
-
 /**
- * Mounts once in the layout and exposes an imperative API used by routeTransition.ts.
- * The overlay fades IN (black + SF logo) → short hold → route changes → fades OUT.
+ * Mounts once in the layout. Provides a full-screen black overlay with the
+ * SF gold logo for cinematic page transitions triggered by routeTransition.ts.
  */
 export default function PageTransition() {
-  const containerRef = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    // Expose the DOM node so routeTransition can trigger animations
-    if (containerRef.current) overlay = containerRef.current;
-    return () => { overlay = null; };
-  }, []);
-
   return (
     <div
-      ref={containerRef}
       id="page-transition-overlay"
       style={{
         position: 'fixed',
@@ -62,22 +48,4 @@ export default function PageTransition() {
       </svg>
     </div>
   );
-}
-
-/** Call this from routeTransition.ts instead of the CSS class approach */
-export function triggerPageTransition(href: string, duration = 600) {
-  if (typeof window === 'undefined') return;
-  const el = document.getElementById('page-transition-overlay') as HTMLDivElement | null;
-  if (!el) {
-    window.location.href = href;
-    return;
-  }
-
-  el.style.pointerEvents = 'all';
-  el.style.opacity = '1';
-  el.style.transition = 'opacity 0.25s cubic-bezier(0.16,1,0.3,1)';
-
-  setTimeout(() => {
-    window.location.href = href;
-  }, duration / 2);
 }

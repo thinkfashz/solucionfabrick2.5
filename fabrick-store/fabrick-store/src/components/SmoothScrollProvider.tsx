@@ -2,9 +2,14 @@
 
 import { useEffect } from 'react';
 
+interface LenisInstance {
+  raf: (time: number) => void;
+  destroy: () => void;
+}
+
 export default function SmoothScrollProvider() {
   useEffect(() => {
-    let lenis: any;
+    let lenis: LenisInstance | undefined;
 
     const init = async () => {
       const Lenis = (await import('lenis')).default;
@@ -14,10 +19,10 @@ export default function SmoothScrollProvider() {
         smoothWheel: true,
         wheelMultiplier: 0.9,
         touchMultiplier: 1.5,
-      });
+      }) as LenisInstance;
 
       function raf(time: number) {
-        lenis.raf(time);
+        lenis!.raf(time);
         requestAnimationFrame(raf);
       }
       requestAnimationFrame(raf);

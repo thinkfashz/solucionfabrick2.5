@@ -1,10 +1,11 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Menu } from 'lucide-react';
+import { X, Menu, Sun, Moon } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
 import { navigateWithTransition } from '@/lib/routeTransition';
 import { insforge } from '@/lib/insforge';
+import { useTheme } from '@/context/ThemeContext';
 
 type NavLink = { label: string; href: string };
 
@@ -21,6 +22,7 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [hasOffers, setHasOffers] = useState(false);
+  const { theme, toggle } = useTheme();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -73,7 +75,7 @@ export default function Navbar() {
             <button
               key={href}
               onClick={() => handleNav(href)}
-              className="relative text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 hover:text-yellow-400 transition-colors"
+              className="nav-link-animated relative text-[10px] font-medium uppercase tracking-[0.2em] text-zinc-400 hover:text-yellow-400 transition-colors"
             >
               {label}
               {label === 'Tienda' && hasOffers && (
@@ -94,15 +96,23 @@ export default function Navbar() {
           >
             Iniciar Sesion
           </button>
+          <button onClick={toggle} className="theme-toggle" aria-label="Cambiar tema">
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+          </button>
         </div>
 
-        <button
-          className="lg:hidden text-white hover:text-yellow-400 transition-colors p-2"
-          onClick={() => setOpen(!open)}
-          aria-label="Menu"
-        >
-          {open ? <X size={26} /> : <Menu size={26} />}
-        </button>
+        <div className="lg:hidden flex items-center gap-2">
+          <button onClick={toggle} className="theme-toggle" aria-label="Cambiar tema">
+            {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
+          </button>
+          <button
+            className="text-white hover:text-yellow-400 transition-colors p-2"
+            onClick={() => setOpen(!open)}
+            aria-label="Menu"
+          >
+            {open ? <X size={26} /> : <Menu size={26} />}
+          </button>
+        </div>
       </nav>
 
       <div

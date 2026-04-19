@@ -1,11 +1,13 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Menu, Sun, Moon } from 'lucide-react';
+import { X, Menu, Sun, Moon, LogOut, User } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
 import { navigateWithTransition } from '@/lib/routeTransition';
 import { insforge } from '@/lib/insforge';
 import { useTheme } from '@/context/ThemeContext';
+import { useAuth } from '@/context/AuthContext';
+import { getInitials } from '@/lib/initials';
 
 type NavLink = { label: string; href: string };
 
@@ -18,11 +20,27 @@ const NAV_LINKS: NavLink[] = [
   { label: 'Contacto', href: '/contacto' },
 ];
 
+function UserAvatar({ name, email, onClick }: { name?: string; email?: string; onClick: () => void }) {
+  const initials = getInitials(name || email);
+
+  return (
+    <button
+      onClick={onClick}
+      className="relative flex h-8 w-8 items-center justify-center rounded-full bg-yellow-400 text-[11px] font-black text-black ring-2 ring-yellow-400/30 transition hover:ring-yellow-400/60 hover:scale-105"
+      aria-label="Mi cuenta"
+      title={name || email || 'Mi cuenta'}
+    >
+      {initials || <User className="h-4 w-4" />}
+    </button>
+  );
+}
+
 export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [hasOffers, setHasOffers] = useState(false);
   const { theme, toggle } = useTheme();
+  const { user, signOut } = useAuth();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -59,6 +77,12 @@ export default function Navbar() {
     navigateWithTransition(href);
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    setOpen(false);
+    navigateWithTransition('/');
+  };
+
   return (
     <>
       <nav
@@ -70,6 +94,7 @@ export default function Navbar() {
       >
         <FabrickLogo onClick={() => handleNav('/')} />
 
+        {/* Desktop nav */}
         <div className="hidden lg:flex gap-8 items-center">
           {NAV_LINKS.map(({ label, href }) => (
             <button
@@ -84,70 +109,121 @@ export default function Navbar() {
             </button>
           ))}
           <div className="w-px h-4 bg-white/20" />
-          <button
-            onClick={() => handleNav('/mi-cuenta')}
-            className="text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-yellow-400 transition-colors"
-          >
-            Mi Cuenta
-          </button>
-          <button
-            onClick={() => handleNav('/auth')}
-            className="px-5 py-2 rounded-full border border-yellow-400/40 text-yellow-400 text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-400/10 hover:border-yellow-400 transition-all"
-          >
-            Iniciar Sesion
-          </button>
+          {user ? (
+            <>
+              <UserAvatar name={user.name} email={user.email} onClick={() => handleNav('/mi-cuenta')} />
+              <button
+                onClick={() => void handleSignOut()}
+                className="text-[10px] font-medium uppercase tracking-widest text-zinc-500 hover:text-red-400 transition-colors"
+                title="Cerrar sesión"
+              >
+                <LogOut className="h-4 w-4" />
+              </button>
+            </>
+          ) : (
+            <button
+              onClick={() => handleNav('/auth')}
+              className="px-5 py-2 rounded-full border border-yellow-400/40 text-yellow-400 text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-400/10 hover:border-yellow-400 transition-all"
+            >
+              Iniciar Sesión
+            </button>
+          )}
           <button onClick={toggle} className="theme-toggle" aria-label="Cambiar tema">
             {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </button>
         </div>
 
-        <div className="lg:hidden flex items-center gap-2">
+        {/* Mobile right controls */}
+        <div className="lg:hidden flex items-center gap-3">
+          {user && (
+            <UserAvatar name={user.name} email={user.email} onClick={() => handleNav('/mi-cuenta')} />
+          )}
           <button onClick={toggle} className="theme-toggle" aria-label="Cambiar tema">
             {theme === 'dark' ? <Sun size={14} /> : <Moon size={14} />}
           </button>
           <button
-            className="text-white hover:text-yellow-400 transition-colors p-2"
+            className="text-white hover:text-yellow-400 transition-colors p-1"
             onClick={() => setOpen(!open)}
             aria-label="Menu"
           >
-            {open ? <X size={26} /> : <Menu size={26} />}
+            {open ? <X size={22} /> : <Menu size={22} />}
           </button>
         </div>
       </nav>
 
+      {/* Mobile menu – minimalist slide-in panel */}
       <div
-        className={`fixed inset-0 z-40 bg-black/97 backdrop-blur-2xl flex flex-col items-center justify-center transition-transform duration-500 ease-in-out lg:hidden ${
+        className={`fixed inset-y-0 right-0 z-40 w-72 max-w-[85vw] flex flex-col transition-transform duration-400 ease-[cubic-bezier(0.32,0,0.67,0)] lg:hidden ${
           open ? 'translate-x-0' : 'translate-x-full'
         }`}
       >
-        <div className="flex flex-col gap-0 text-center w-full px-8">
-          {[
-            { label: 'Inicio', href: '/' },
-            ...NAV_LINKS,
-            { label: 'Garantias', href: '/garantias' },
-            { label: 'Mi Cuenta', href: '/mi-cuenta' },
-            { label: 'Ajustes', href: '/ajustes' },
-            { label: 'Checkout', href: '/checkout' },
-          ].map(({ label, href }) => (
-            <button
-              key={`${label}-${href}`}
-              onClick={() => handleNav(href)}
-              className="relative text-xl font-light uppercase tracking-[0.2em] text-white hover:text-yellow-400 active:text-yellow-400 transition-colors w-full py-5 border-b border-white/5"
-            >
-              {label}
-              {label === 'Tienda' && hasOffers && (
-                <span className="absolute top-1/2 -translate-y-1/2 ml-2 inline-block w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
-              )}
-            </button>
-          ))}
-          <button
-            onClick={() => handleNav('/auth')}
-            className="mt-6 py-5 bg-yellow-400 text-black font-bold uppercase text-sm tracking-widest rounded-full hover:bg-white transition-all w-full text-center block"
-          >
-            Iniciar Sesion
-          </button>
+        {/* Background */}
+        <div className="absolute inset-0 bg-[#0a0a0b]/98 backdrop-blur-2xl border-l border-white/6" />
+
+        <div className="relative z-10 flex flex-col h-full pt-20 pb-8 px-6">
+          {/* Nav items */}
+          <nav className="flex-1 space-y-1">
+            {[{ label: 'Inicio', href: '/' }, ...NAV_LINKS].map(({ label, href }) => (
+              <button
+                key={`${label}-${href}`}
+                onClick={() => handleNav(href)}
+                className="group flex w-full items-center justify-between px-4 py-3.5 rounded-2xl text-sm font-medium text-zinc-300 hover:bg-white/5 hover:text-yellow-400 transition-all duration-200"
+              >
+                <span className="tracking-wide">{label}</span>
+                {label === 'Tienda' && hasOffers && (
+                  <span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />
+                )}
+              </button>
+            ))}
+          </nav>
+
+          {/* Divider */}
+          <div className="my-4 h-px bg-white/6" />
+
+          {/* Bottom actions */}
+          <div className="space-y-2">
+            {user ? (
+              <>
+                <button
+                  onClick={() => handleNav('/mi-cuenta')}
+                  className="flex w-full items-center gap-3 px-4 py-3.5 rounded-2xl bg-yellow-400/8 border border-yellow-400/20 text-sm font-semibold text-yellow-400 hover:bg-yellow-400/12 transition-all"
+                >
+                  <div className="flex h-7 w-7 items-center justify-center rounded-full bg-yellow-400 text-[10px] font-black text-black flex-shrink-0">
+                    {getInitials(user.name || user.email) || 'U'}
+                  </div>
+                  <div className="text-left min-w-0">
+                    <p className="text-xs font-bold truncate">{user.name || 'Mi cuenta'}</p>
+                    <p className="text-[10px] text-yellow-400/60 truncate">{user.email || ''}</p>
+                  </div>
+                </button>
+                <button
+                  onClick={() => void handleSignOut()}
+                  className="flex w-full items-center gap-3 px-4 py-3 rounded-2xl text-sm text-zinc-500 hover:bg-white/5 hover:text-red-400 transition-all"
+                >
+                  <LogOut className="h-4 w-4" />
+                  <span>Cerrar sesión</span>
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => handleNav('/auth')}
+                className="w-full py-3.5 rounded-2xl bg-yellow-400 text-black text-sm font-black uppercase tracking-widest hover:bg-yellow-300 transition-all"
+              >
+                Iniciar Sesión
+              </button>
+            )}
+          </div>
         </div>
       </div>
+
+      {/* Backdrop overlay */}
+      {open && (
+        <div
+          className="fixed inset-0 z-30 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setOpen(false)}
+        />
+      )}
     </>
   );
 }
+

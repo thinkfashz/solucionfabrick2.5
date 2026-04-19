@@ -2,7 +2,6 @@
 
 import { useRef, useEffect } from 'react';
 import { useScroll, useTransform, motion } from 'framer-motion';
-import Link from 'next/link';
 
 /* Canvas API – elegant golden floating particles */
 function initCanvasParticles(canvas: HTMLCanvasElement): () => void {
@@ -79,7 +78,7 @@ export default function Hero() {
 
   /* GSAP timeline – main entrance */
   useEffect(() => {
-    let ctx: { revert: () => void } | undefined;
+    let ctx: any;
     const init = async () => {
       const gsap = (await import('gsap')).default;
       ctx = gsap.context(() => {
@@ -206,19 +205,19 @@ export default function Hero() {
         </p>
 
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
-          <Link
+          <a
             href="/#servicios"
             className="hero-cta-item btn-shimmer group relative px-8 py-4 min-h-[44px] bg-yellow-400 text-black font-semibold rounded-full overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_rgba(250,204,21,0.55),0_0_80px_rgba(250,204,21,0.2)] btn-sweep"
           >
             <span className="relative z-10 uppercase tracking-wider text-sm">Explorar Servicios</span>
             <div className="absolute inset-0 bg-yellow-300 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-          </Link>
-          <Link
+          </a>
+          <a
             href="/tienda"
             className="hero-cta-item flex items-center justify-center min-h-[44px] px-8 py-4 border border-yellow-400/30 text-yellow-400 font-semibold rounded-full transition-all duration-300 hover:bg-yellow-400/10 hover:border-yellow-400/60 hover:shadow-[0_0_20px_rgba(250,204,21,0.2)] uppercase tracking-wider text-sm"
           >
             Ir a Tienda
-          </Link>
+          </a>
         </div>
       </div>
 

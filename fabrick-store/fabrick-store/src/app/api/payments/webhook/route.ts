@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createHmac } from 'node:crypto';
 import { insforge } from '@/lib/insforge';
-import { normalizeOrderStatus } from '@/lib/commerce';
 import { getMercadoPagoPayment, mapMercadoPagoStatus, verifyMercadoPagoSignature } from '@/lib/mercadopago';
 
 type GenericPaymentWebhookBody = {
@@ -47,13 +46,14 @@ async function persistWebhookLog(idempotencyKey: string, payload: unknown, order
 }
 
 async function updateOrderStatus(orderId: string, paymentId: string | null, status: string) {
-  const mappedOrderStatus = normalizeOrderStatus(
+  const mappedOrderStatus =
     status === 'succeeded'
-      ? 'confirmado'
-      : status === 'failed' || status === 'refunded'
-        ? 'cancelado'
-        : mapMercadoPagoStatus(status),
-  );
+      ? 'pagada'
+      : status === 'failed'
+        ? 'fallida'
+        : status === 'refunded'
+          ? 'reembolsada'
+          : mapMercadoPagoStatus(status);
 
   const { error: updateError } = await insforge.database
     .from('orders')

@@ -6,6 +6,8 @@ import LoadingScreen from '@/components/LoadingScreen';
 import PageTransition from '@/components/PageTransition';
 import PromoBanner from '@/components/PromoBanner';
 import { ThemeProvider } from '@/context/ThemeContext';
+import { AuthProvider } from '@/context/AuthContext';
+import UserProfileModal from '@/components/UserProfileModal';
 
 export const metadata: Metadata = {
   title: 'FABRICK - Ingenieria Residencial de Precision',
@@ -45,12 +47,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       </head>
       <body className="bg-black text-white antialiased app-shell">
         <ThemeProvider>
-          <SmoothScrollProvider />
-          <LoadingScreen />
-          <PageTransition />
-          {children}
-          <InstallAppPrompt />
-          <PromoBanner />
+          <AuthProvider>
+            <SmoothScrollProvider />
+            <LoadingScreen />
+            <PageTransition />
+            {children}
+            <InstallAppPrompt />
+            <PromoBanner />
+            <UserProfileModal />
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

@@ -135,7 +135,7 @@ export default function AuthPage() {
     const { data, error: err } = await insforge.auth.signInWithPassword({ email, password });
     setLoading(false);
     if (err) { setError(err.message); return; }
-    if (data) router.push('/');
+    if (data) router.push('/mi-cuenta');
   }
 
   /* ── VERIFICAR EMAIL ── */
@@ -144,7 +144,7 @@ export default function AuthPage() {
     const { data, error: err } = await insforge.auth.verifyEmail({ email, otp });
     setLoading(false);
     if (err) { setError(err.message); return; }
-    if (data) { setSuccess('¡Email verificado! Redirigiendo...'); setTimeout(() => router.push('/'), 1500); }
+    if (data) { setSuccess('¡Email verificado! Redirigiendo...'); setTimeout(() => router.push('/mi-cuenta'), 1500); }
   }
 
   /* ── REENVIAR CÓDIGO ── */
@@ -193,7 +193,7 @@ export default function AuthPage() {
     reset();
     await insforge.auth.signInWithOAuth({
       provider,
-      redirectTo: `${window.location.origin}/`,
+      redirectTo: `${window.location.origin}/mi-cuenta`,
     });
   }
 

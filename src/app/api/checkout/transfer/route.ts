@@ -13,7 +13,7 @@ export async function POST(request: Request) {
     }
 
     const resumen = calculateCheckoutSummary(items, region);
-    const id = `FBK-T-${Date.now()}-${Math.random().toString(36).slice(2, 7).toUpperCase()}`;
+    const id = `FBK-T-${Date.now()}-${crypto.randomUUID().split('-')[0].toUpperCase()}`;
     const now = new Date().toISOString();
 
     const { error: insertError } = await insforge.database

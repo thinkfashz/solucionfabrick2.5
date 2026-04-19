@@ -636,7 +636,7 @@ export default function TiendaClientPage() {
 										Confirmar mi Pedido
 									</SilverGoldButton>
 									<button
-										onClick={(e) => { handleAddToCart(e as unknown as React.MouseEvent<HTMLButtonElement>, selectedProduct); setSelectedProduct(null); }}
+										onClick={(e) => { handleAddToCart(e, selectedProduct); setSelectedProduct(null); }}
 										className="w-full sm:w-auto py-5 sm:px-10 rounded-full border border-white/15 text-white/60 font-semibold text-[10px] uppercase tracking-widest hover:border-yellow-400/30 hover:text-white/80 transition-all"
 									>
 										Añadir al Carrito

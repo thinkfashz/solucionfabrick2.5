@@ -442,8 +442,9 @@ const CheckoutApp = () => {
           .select('status')
           .eq('id', transferOrderId)
           .single();
-        if (active && data && typeof (data as { status?: string }).status === 'string') {
-          setTransferOrderStatus((data as { status: string }).status);
+        const status = (data as { status?: string } | null)?.status;
+        if (active && typeof status === 'string') {
+          setTransferOrderStatus(status);
         }
       } catch { /* silent */ }
     };

@@ -7,9 +7,20 @@ import { useSearchParams } from 'next/navigation';
 import { 
   ArrowLeft, ShieldCheck, Lock, Truck, 
   CheckCircle2, ChevronRight, Fingerprint,
-  Wifi, Battery, Wrench, Check
+  Wifi, Battery, Wrench, Check, Building2, Copy, ExternalLink,
+  CreditCard, RefreshCw
 } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
+
+// ── Bank account data (configurable via env vars) ──────────────────────────
+const BANK_INFO = {
+  bank:       process.env.NEXT_PUBLIC_BANK_NAME           ?? 'Banco de Chile',
+  holder:     process.env.NEXT_PUBLIC_BANK_ACCOUNT_HOLDER ?? 'Soluciones Fabrick SpA',
+  rut:        process.env.NEXT_PUBLIC_BANK_ACCOUNT_RUT    ?? '77.890.123-4',
+  type:       process.env.NEXT_PUBLIC_BANK_ACCOUNT_TYPE   ?? 'Cuenta Corriente',
+  number:     process.env.NEXT_PUBLIC_BANK_ACCOUNT_NUMBER ?? '0123456789',
+  email:      process.env.NEXT_PUBLIC_BANK_ACCOUNT_EMAIL  ?? 'pagos@solucionesfabrick.cl',
+};
 
 // --- COMPONENTE FUEGOS ARTIFICIALES PREMIUM ---
 const PremiumFireworks = () => {
@@ -46,13 +57,47 @@ const PremiumFireworks = () => {
   );
 };
 
+// ── Copy-to-clipboard helper ──────────────────────────────────────────────
+function CopyField({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+  const copy = () => {
+    navigator.clipboard.writeText(value).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }).catch(() => {});
+  };
+  return (
+    <div className="rounded-2xl border border-white/10 bg-black/50 p-4 flex items-center justify-between gap-3">
+      <div className="min-w-0">
+        <p className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1">{label}</p>
+        <p className="text-white text-sm font-mono font-bold truncate">{value}</p>
+      </div>
+      <button
+        onClick={copy}
+        className={`flex-shrink-0 flex items-center gap-1.5 px-3 py-2 rounded-xl border text-[10px] font-bold uppercase tracking-wider transition-all ${copied ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400' : 'border-white/10 text-zinc-400 hover:border-yellow-400/30 hover:text-yellow-400'}`}
+      >
+        {copied ? <Check size={12} /> : <Copy size={12} />}
+        {copied ? 'Copiado' : 'Copiar'}
+      </button>
+    </div>
+  );
+}
+
 const CheckoutApp = () => {
   const searchParams = useSearchParams();
   const [step, setStep] = useState(1); 
   const [gsapLoaded, setGsapLoaded] = useState(false);
   const stepContentRef = useRef<HTMLDivElement>(null);
   
-  // Estado de Seguridad
+  // Payment method selection: 'mercadopago' | 'transfer'
+  const [paymentMethod, setPaymentMethod] = useState<'mercadopago' | 'transfer'>('mercadopago');
+  
+  // Transfer order state
+  const [transferOrderId, setTransferOrderId] = useState('');
+  const [transferOrderCreating, setTransferOrderCreating] = useState(false);
+  const [transferOrderReady, setTransferOrderReady] = useState(false);
+  const [transferOrderStatus, setTransferOrderStatus] = useState('pendiente');
+  const [transferOrderTotal, setTransferOrderTotal] = useState(0);
   const [secureConnectionProgress, setSecureConnectionProgress] = useState(0);
 
   // Estados del Procesamiento Final de Compra
@@ -330,6 +375,83 @@ const CheckoutApp = () => {
       }
     }, 300);
   };
+
+  // ── Bank Transfer: create order then show bank details ───────────────────
+  const handleTransferOrder = async () => {
+    if (transferOrderCreating || transferOrderReady) return;
+    setCheckoutError('');
+
+    if (!shippingName || !shippingEmail || !shippingAddress || !shippingRegion) {
+      setCheckoutError('Completa los datos de despacho antes de generar la orden.');
+      return;
+    }
+
+    setTransferOrderCreating(true);
+
+    const payload = {
+      items: [
+        {
+          productoId: product.id,
+          cantidad: 1,
+          precioUnitario: product.price,
+          nombre: product.name,
+        },
+      ],
+      region: shippingRegion,
+      shippingAddress,
+      cliente: {
+        nombre: shippingName,
+        email: shippingEmail,
+        telefono: shippingPhone,
+      },
+      paymentMethod: 'transfer',
+    };
+
+    try {
+      // Create order via /api/checkout/transfer
+      const res = await fetch('/api/checkout/transfer', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json();
+      if (!res.ok || !body?.data?.id) {
+        throw new Error(body?.error ?? 'No se pudo crear la orden de transferencia.');
+      }
+      setTransferOrderId(body.data.id as string);
+      setTransferOrderTotal(body.data.resumen?.total ?? product.price);
+      setTransferOrderStatus('pendiente_transferencia');
+      setTransferOrderReady(true);
+    } catch (e) {
+      setCheckoutError(e instanceof Error ? e.message : 'Error creando la orden.');
+    } finally {
+      setTransferOrderCreating(false);
+    }
+  };
+
+  // ── Poll transfer order status every 10s ─────────────────────────────────
+  useEffect(() => {
+    if (!transferOrderReady || !transferOrderId) return;
+    let active = true;
+
+    const poll = async () => {
+      try {
+        const { insforge } = await import('@/lib/insforge');
+        const { data } = await insforge.database
+          .from('orders')
+          .select('status')
+          .eq('id', transferOrderId)
+          .single();
+        if (active && data && typeof (data as { status?: string }).status === 'string') {
+          setTransferOrderStatus((data as { status: string }).status);
+        }
+      } catch { /* silent */ }
+    };
+
+    void poll();
+    const interval = setInterval(() => void poll(), 10_000);
+    return () => { active = false; clearInterval(interval); };
+  }, [transferOrderReady, transferOrderId]);
 
   return (
     <div className="bg-black text-white min-h-screen font-sans selection:bg-yellow-400 selection:text-black overflow-x-hidden pb-20">
@@ -613,7 +735,7 @@ const CheckoutApp = () => {
                   {checkoutError && <p className="text-xs text-red-400">{checkoutError}</p>}
                   <div className="pt-8 flex gap-4">
                     <button onClick={() => changeStep(1)} type="button" className="px-8 py-5 border border-white/20 rounded-full bg-black text-white font-bold text-xs uppercase hover:border-yellow-400 transition-colors">Volver</button>
-                    <button onClick={() => changeStep(3)} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs rounded-full shadow-[0_15px_40px_rgba(250,204,21,0.2)] hover:bg-white transition-colors">Continuar a Mercado Pago</button>
+                    <button onClick={() => changeStep(3)} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs rounded-full shadow-[0_15px_40px_rgba(250,204,21,0.2)] hover:bg-white transition-colors">Continuar al Pago</button>
                   </div>
                 </form>
               </div>
@@ -622,87 +744,223 @@ const CheckoutApp = () => {
             {step === 3 && (
               <div className="space-y-8 animate-fade-up">
                 
-                {/* ANIMACIÓN DE CONEXIÓN SEGURA */}
-                <div className="bg-black/50 border border-white/5 rounded-[2rem] p-5 mb-8 relative overflow-hidden">
+                {/* SECURE CONNECTION */}
+                <div className="bg-black/50 border border-white/5 rounded-[2rem] p-5 relative overflow-hidden">
                   <div className="absolute top-0 left-0 w-full h-full bg-emerald-500/5 opacity-50" />
-                  
                   <div className="flex justify-between items-center mb-3 relative z-10 px-2">
                     <div className="flex items-center gap-2">
                       <ShieldCheck className={`w-4 h-4 transition-colors duration-300 ${secureConnectionProgress === 100 ? 'text-emerald-500' : 'text-zinc-600'}`} />
                       <span className="text-[9px] uppercase tracking-widest font-bold">
-                         <span className="text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]">Fabrick</span> <span className="text-zinc-400">Secure</span>
+                        <span className="text-yellow-400 drop-shadow-[0_0_8px_rgba(250,204,21,0.8)]">Fabrick</span> <span className="text-zinc-400">Secure</span>
                       </span>
                     </div>
-                    
                     <div className="flex-1 flex justify-center px-4">
-                       <Lock className={`w-3 h-3 ${secureConnectionProgress === 100 ? 'text-emerald-500' : 'text-zinc-700'} transition-colors`} />
+                      <Lock className={`w-3 h-3 ${secureConnectionProgress === 100 ? 'text-emerald-500' : 'text-zinc-700'} transition-colors`} />
                     </div>
-
                     <div className="flex items-center gap-2">
                       <span className="text-[9px] uppercase tracking-widest text-zinc-400 font-bold">Red Bancaria</span>
                       <ShieldCheck className={`w-4 h-4 transition-colors duration-300 ${secureConnectionProgress === 100 ? 'text-emerald-500' : 'text-zinc-600'}`} />
                     </div>
                   </div>
-
-                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden relative z-10 shadow-[inset_0_1px_3px_rgba(0,0,0,0.5)]">
+                  <div className="w-full h-2 bg-zinc-900 rounded-full overflow-hidden relative z-10">
                     <div
                       className={`absolute top-0 left-0 h-full transition-all duration-[150ms] ease-out shadow-[0_0_15px_rgba(16,185,129,0.8)] ${secureConnectionProgress === 100 ? 'bg-tunnel-flow w-full' : 'bg-emerald-500'}`}
                       style={secureConnectionProgress < 100 ? { width: `${secureConnectionProgress}%` } : {}}
                     />
                   </div>
-
                   <div className="mt-3 text-center relative z-10">
                     <span className={`text-[8px] md:text-[9px] font-mono tracking-[0.2em] uppercase transition-colors duration-300 ${secureConnectionProgress === 100 ? 'text-emerald-500 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]' : 'text-yellow-400 animate-pulse'}`}>
-                      {secureConnectionProgress === 100
-                        ? '✓ Flujo cifrado de extremo a extremo activo'
-                        : 'Estableciendo conexión bancaria encriptada...'}
+                      {secureConnectionProgress === 100 ? '✓ Flujo cifrado de extremo a extremo activo' : 'Estableciendo conexión bancaria encriptada...'}
                     </span>
                   </div>
                 </div>
 
-                <div className="flex justify-between items-start">
-                  <div>
-                    <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase">Paso Final</span>
-                    <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-2 mt-1">Pago <span className="text-yellow-400">Protegido</span></h3>
-                  </div>
+                <div>
+                  <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase">Paso Final</span>
+                  <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-2 mt-1">
+                    Método de <span className="text-yellow-400">Pago</span>
+                  </h3>
+                  <p className="text-zinc-400 text-sm">Elige cómo deseas completar tu compra.</p>
                 </div>
 
-                <div className="bg-gradient-to-br from-zinc-900 to-black border border-white/10 rounded-[2rem] p-8 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
-                  <div className="flex items-center justify-between gap-4">
-                    <div>
-                      <p className="text-[9px] uppercase tracking-[0.35em] text-yellow-400 font-bold">Mercado Pago</p>
-                      <h4 className="text-2xl font-black uppercase tracking-tighter mt-2">Finalización externa segura</h4>
+                {/* PAYMENT METHOD SELECTOR */}
+                <div className="grid sm:grid-cols-2 gap-4">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('mercadopago')}
+                    className={`rounded-2xl border p-5 text-left transition-all ${paymentMethod === 'mercadopago' ? 'border-yellow-400/50 bg-yellow-400/8' : 'border-white/8 bg-black/30 hover:border-white/15'}`}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${paymentMethod === 'mercadopago' ? 'bg-yellow-400/20' : 'bg-white/5'}`}>
+                        <CreditCard className={`w-4 h-4 ${paymentMethod === 'mercadopago' ? 'text-yellow-400' : 'text-zinc-400'}`} />
+                      </div>
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-auto ${paymentMethod === 'mercadopago' ? 'border-yellow-400 bg-yellow-400' : 'border-zinc-600'}`}>
+                        {paymentMethod === 'mercadopago' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                      </div>
                     </div>
-                    <div className="w-12 h-12 rounded-full border border-yellow-400/30 bg-yellow-400/10 flex items-center justify-center">
-                      <Lock className="w-5 h-5 text-yellow-400" />
-                    </div>
-                  </div>
+                    <p className={`font-bold text-sm ${paymentMethod === 'mercadopago' ? 'text-yellow-400' : 'text-white'}`}>Mercado Pago</p>
+                    <p className="text-zinc-500 text-[10px] mt-1">Tarjeta, débito, transferencia. Flujo seguro externo.</p>
+                  </button>
 
-                  <p className="text-sm text-zinc-300 leading-relaxed">
-                    Para proteger tus datos, Fabrick ya no captura los datos de la tarjeta dentro del sitio. Al continuar, serás redirigido a Mercado Pago para completar el pago real con su flujo oficial.
-                  </p>
-
-                  <div className="grid sm:grid-cols-2 gap-4 text-xs uppercase tracking-widest">
-                    <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
-                      <div className="text-zinc-500 mb-2">Proveedor</div>
-                      <div className="text-white font-bold">Mercado Pago</div>
+                  <button
+                    type="button"
+                    onClick={() => { setPaymentMethod('transfer'); setTransferOrderReady(false); setTransferOrderId(''); }}
+                    className={`rounded-2xl border p-5 text-left transition-all ${paymentMethod === 'transfer' ? 'border-yellow-400/50 bg-yellow-400/8' : 'border-white/8 bg-black/30 hover:border-white/15'}`}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${paymentMethod === 'transfer' ? 'bg-yellow-400/20' : 'bg-white/5'}`}>
+                        <Building2 className={`w-4 h-4 ${paymentMethod === 'transfer' ? 'text-yellow-400' : 'text-zinc-400'}`} />
+                      </div>
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-auto ${paymentMethod === 'transfer' ? 'border-yellow-400 bg-yellow-400' : 'border-zinc-600'}`}>
+                        {paymentMethod === 'transfer' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                      </div>
                     </div>
-                    <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
-                      <div className="text-zinc-500 mb-2">Monto referencial</div>
-                      <div className="text-white font-bold">{formatCLP(product.price)}</div>
-                    </div>
-                  </div>
+                    <p className={`font-bold text-sm ${paymentMethod === 'transfer' ? 'text-yellow-400' : 'text-white'}`}>Transferencia Bancaria</p>
+                    <p className="text-zinc-500 text-[10px] mt-1">Deposita directamente en nuestra cuenta. Sin comisiones.</p>
+                  </button>
                 </div>
 
-                <div className="pt-8 flex gap-4">
+                {/* MERCADO PAGO PANEL */}
+                {paymentMethod === 'mercadopago' && (
+                  <div className="bg-gradient-to-br from-zinc-900 to-black border border-white/10 rounded-[2rem] p-8 space-y-5">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="text-[9px] uppercase tracking-[0.35em] text-yellow-400 font-bold">Mercado Pago</p>
+                        <h4 className="text-2xl font-black uppercase tracking-tighter mt-2">Finalización externa segura</h4>
+                      </div>
+                      <div className="w-12 h-12 rounded-full border border-yellow-400/30 bg-yellow-400/10 flex items-center justify-center">
+                        <Lock className="w-5 h-5 text-yellow-400" />
+                      </div>
+                    </div>
+                    <p className="text-sm text-zinc-300 leading-relaxed">
+                      Al continuar serás redirigido a Mercado Pago para completar el pago con flujo oficial seguro. Acepta tarjeta, débito y más métodos.
+                    </p>
+                    <div className="grid sm:grid-cols-2 gap-4 text-xs uppercase tracking-widest">
+                      <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
+                        <div className="text-zinc-500 mb-2">Proveedor</div>
+                        <div className="text-white font-bold">Mercado Pago</div>
+                      </div>
+                      <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-4">
+                        <div className="text-zinc-500 mb-2">Monto total</div>
+                        <div className="text-yellow-400 font-bold text-base">{formatCLP(product.price)}</div>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* BANK TRANSFER PANEL */}
+                {paymentMethod === 'transfer' && (
+                  <div className="space-y-5">
+                    {!transferOrderReady ? (
+                      <div className="bg-gradient-to-br from-zinc-900 to-black border border-white/10 rounded-[2rem] p-8 space-y-5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-12 h-12 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center">
+                            <Building2 className="w-5 h-5 text-yellow-400" />
+                          </div>
+                          <div>
+                            <p className="text-[9px] uppercase tracking-[0.35em] text-yellow-400 font-bold">Transferencia Bancaria</p>
+                            <h4 className="text-xl font-black uppercase tracking-tighter">Datos de Pago Directo</h4>
+                          </div>
+                        </div>
+                        <p className="text-sm text-zinc-300 leading-relaxed">
+                          Genera tu orden para obtener el número de referencia y los datos bancarios. La orden queda registrada en nuestro sistema en tiempo real.
+                        </p>
+                        <div className="rounded-2xl border border-white/8 bg-black/40 p-5 space-y-3">
+                          <p className="text-[9px] uppercase tracking-widest text-zinc-500 mb-4">Vista previa de datos bancarios</p>
+                          {[
+                            { label: 'Banco', value: BANK_INFO.bank },
+                            { label: 'Titular', value: BANK_INFO.holder },
+                            { label: 'Tipo de Cuenta', value: BANK_INFO.type },
+                            { label: 'Monto', value: formatCLP(product.price) },
+                          ].map((row) => (
+                            <div key={row.label} className="flex justify-between text-sm">
+                              <span className="text-zinc-500">{row.label}</span>
+                              <span className={row.label === 'Monto' ? 'text-yellow-400 font-bold' : 'text-white font-medium'}>{row.value}</span>
+                            </div>
+                          ))}
+                        </div>
+                        {checkoutError && <p className="text-xs text-red-400 bg-red-500/10 border border-red-500/20 px-4 py-2 rounded-xl">{checkoutError}</p>}
+                      </div>
+                    ) : (
+                      /* TRANSFER ORDER READY */
+                      <div className="space-y-5">
+                        <div className={`rounded-2xl border p-4 flex items-center gap-3 ${
+                          ['confirmado','en_preparacion','enviado','entregado'].includes(transferOrderStatus)
+                            ? 'border-emerald-500/30 bg-emerald-500/8'
+                            : 'border-yellow-400/20 bg-yellow-400/5'
+                        }`}>
+                          <div className={`w-3 h-3 rounded-full flex-shrink-0 animate-pulse ${['confirmado','entregado'].includes(transferOrderStatus) ? 'bg-emerald-400' : 'bg-yellow-400'}`} />
+                          <div className="flex-1">
+                            <p className="text-white text-sm font-semibold">
+                              {['pendiente_transferencia','pendiente'].includes(transferOrderStatus)
+                                ? '⏳ En espera de tu transferencia'
+                                : transferOrderStatus === 'confirmado' ? '✓ Pago confirmado'
+                                : `Estado: ${transferOrderStatus}`}
+                            </p>
+                            <p className="text-zinc-500 text-[10px]">Actualizando en tiempo real · Orden #{transferOrderId}</p>
+                          </div>
+                          {transferOrderStatus === 'confirmado' && <CheckCircle2 className="w-5 h-5 text-emerald-400 flex-shrink-0" />}
+                        </div>
+
+                        <div className="grid sm:grid-cols-2 gap-4">
+                          <div className="rounded-2xl border border-white/10 bg-black/50 p-5">
+                            <p className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">N° de Orden (Referencia)</p>
+                            <p className="text-white font-mono font-bold text-sm break-all">{transferOrderId}</p>
+                          </div>
+                          <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-5">
+                            <p className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Monto a Transferir</p>
+                            <p className="text-yellow-400 font-black text-xl">{formatCLP(transferOrderTotal || product.price)}</p>
+                          </div>
+                        </div>
+
+                        <div className="rounded-[2rem] border border-white/8 bg-black/40 p-6 space-y-4">
+                          <div className="flex items-center gap-2 mb-5">
+                            <Building2 className="w-4 h-4 text-yellow-400" />
+                            <p className="text-[9px] uppercase tracking-[0.35em] text-yellow-400/80 font-bold">Datos Bancarios para Transferencia</p>
+                          </div>
+                          <CopyField label="Banco" value={BANK_INFO.bank} />
+                          <CopyField label="Titular / Empresa" value={BANK_INFO.holder} />
+                          <CopyField label="RUT Empresa" value={BANK_INFO.rut} />
+                          <CopyField label="Tipo de Cuenta" value={BANK_INFO.type} />
+                          <CopyField label="N° de Cuenta" value={BANK_INFO.number} />
+                          <CopyField label="Email para Comprobante" value={BANK_INFO.email} />
+                          <CopyField label="Monto exacto" value={formatCLP(transferOrderTotal || product.price)} />
+                          <CopyField label="Referencia / Glosa" value={transferOrderId} />
+                        </div>
+
+                        <div className="rounded-2xl border border-blue-500/20 bg-blue-500/8 p-4">
+                          <p className="text-blue-300 text-xs leading-relaxed">
+                            <strong>Instrucciones:</strong> Transfiere el monto exacto. En <em>comentario o glosa</em> incluye el <strong>N° de Orden</strong>. Envía el comprobante a <strong>{BANK_INFO.email}</strong>. Tu pedido será confirmado en máximo 24 horas hábiles.
+                          </p>
+                        </div>
+
+                        <a
+                          href={`mailto:${BANK_INFO.email}?subject=Comprobante%20${transferOrderId}&body=Adjunto%20comprobante%20de%20transferencia%20para%20la%20orden%20${transferOrderId}.`}
+                          className="flex items-center justify-center gap-2 w-full py-4 rounded-full border border-yellow-400/25 text-yellow-400 font-bold text-[10px] uppercase tracking-widest hover:bg-yellow-400/10 transition-all"
+                        >
+                          <ExternalLink size={13} /> Enviar Comprobante por Email
+                        </a>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                <div className="pt-6 flex gap-4">
                   <button onClick={() => changeStep(2)} type="button" className="px-6 py-5 border border-white/20 rounded-full bg-black hover:border-yellow-400 transition-colors text-white">
                     <ArrowLeft className="w-5 h-5" />
                   </button>
-                  <button disabled={isProcessing} onClick={handleConfirmInvestment} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-[11px] md:text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all transform active:scale-95 flex justify-center items-center gap-3 shadow-[0_15px_40px_rgba(250,204,21,0.3)] disabled:opacity-50 disabled:cursor-not-allowed">
-                    <Lock className="w-4 h-4" /> Pagar en Mercado Pago
-                  </button>
+                  {paymentMethod === 'mercadopago' && (
+                    <button disabled={isProcessing} onClick={handleConfirmInvestment} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all flex justify-center items-center gap-3 shadow-[0_15px_40px_rgba(250,204,21,0.3)] disabled:opacity-50 disabled:cursor-not-allowed">
+                      <Lock className="w-4 h-4" /> Pagar en Mercado Pago
+                    </button>
+                  )}
+                  {paymentMethod === 'transfer' && !transferOrderReady && (
+                    <button disabled={transferOrderCreating} onClick={() => void handleTransferOrder()} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all flex justify-center items-center gap-3 disabled:opacity-60">
+                      {transferOrderCreating ? <><RefreshCw className="w-4 h-4 animate-spin" /> Procesando...</> : <><Building2 className="w-4 h-4" /> Generar Orden de Transferencia</>}
+                    </button>
+                  )}
                 </div>
-                {checkoutError && <p className="text-xs text-red-400 pt-2">{checkoutError}</p>}
+                {checkoutError && paymentMethod === 'mercadopago' && <p className="text-xs text-red-400 pt-2">{checkoutError}</p>}
               </div>
             )}
 

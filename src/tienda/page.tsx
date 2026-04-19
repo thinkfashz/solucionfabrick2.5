@@ -5,6 +5,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { useCatalogProducts } from '@/hooks/useCatalogProducts';
+import { useAuth } from '@/context/AuthContext';
+import { getInitials } from '@/lib/initials';
 import {
 	ShoppingBag,
 	Menu,
@@ -22,6 +24,12 @@ import {
 	Clock,
 	Ruler,
 	AlertCircle,
+	LogOut,
+	ChevronRight,
+	Star,
+	Package,
+	ArrowRight,
+	Phone,
 } from 'lucide-react';
 import BannerCarousel from '@/components/BannerCarousel';
 
@@ -96,11 +104,11 @@ const PRODUCTS: Product[] = [
 ];
 
 const MENU_OPTIONS = [
-	{ icon: Home, label: 'Inicio' },
-	{ icon: LayoutGrid, label: 'Ver Catálogo' },
-	{ icon: Award, label: 'Garantías' },
-	{ icon: User, label: 'Mi Cuenta' },
-	{ icon: Settings, label: 'Ajustes' },
+	{ icon: Home, label: 'Inicio', description: 'Volver a la página principal', href: '/' },
+	{ icon: LayoutGrid, label: 'Ver Catálogo', description: 'Explorar todos nuestros productos', href: null },
+	{ icon: Award, label: 'Garantías', description: 'Conoce nuestra política de garantías', href: '/garantias' },
+	{ icon: User, label: 'Mi Cuenta', description: 'Perfil y panel de pedidos', href: '/mi-cuenta' },
+	{ icon: Settings, label: 'Ajustes', description: 'Configuración de tu cuenta', href: '/ajustes' },
 ];
 
 function FabrickLogo({ className = '', centered = false, active = false, onClick }: { className?: string; centered?: boolean; active?: boolean; onClick?: () => void }) {
@@ -148,13 +156,13 @@ function SilverGoldButton({ children, onClick, className = '' }: { children: Rea
 
 export default function TiendaClientPage() {
 	const router = useRouter();
+	const { user, signOut } = useAuth();
 	const { products: catalogProducts, loading: productsLoading, connected: realtimeConnected } = useCatalogProducts();
 	const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [isCartOpen, setIsCartOpen] = useState(false);
 	const [showExitConfirm, setShowExitConfirm] = useState(false);
 	const [cart, setCart] = useState<Product[]>([]);
-	const [activeMenuIndex, setActiveMenuIndex] = useState(0);
 	const [gsapReady, setGsapReady] = useState(false);
 
 	const cartIconRef = useRef<HTMLDivElement>(null);
@@ -216,14 +224,21 @@ export default function TiendaClientPage() {
 		router.push(`/checkout?${params.toString()}`);
 	};
 
-	const handleMenuAction = (label: string) => {
+	const handleMenuAction = (item: typeof MENU_OPTIONS[number]) => {
 		setIsMenuOpen(false);
-		if (label === 'Inicio') router.push('/');
-		if (label === 'Ver Catálogo') {
+		if (item.label === 'Inicio') { router.push('/'); return; }
+		if (item.label === 'Ver Catálogo') {
 			setSelectedProduct(null);
-			window.scrollTo({ top: window.innerHeight, behavior: 'smooth' });
+			setTimeout(() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' }), 100);
+			return;
 		}
-		if (label === 'Garantías') router.push('/soluciones');
+		if (item.href) { router.push(item.href); return; }
+	};
+
+	const handleSignOut = async () => {
+		setIsMenuOpen(false);
+		await signOut();
+		router.push('/');
 	};
 
 	const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>, product: Product) => {
@@ -256,8 +271,7 @@ export default function TiendaClientPage() {
 	};
 
 	const handleSelectProduct = (product: Product) => {
-		setCart((prev) => [...prev, product]);
-		setIsCartOpen(true);
+		setSelectedProduct(product);
 	};
 
 	useEffect(() => {
@@ -284,12 +298,6 @@ export default function TiendaClientPage() {
 			<style>{`
 				.scrollbar-hide::-webkit-scrollbar { display: none; }
 				.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
-				.wheel-selector {
-					position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
-					width: 130%; height: 60px; border-top: 1px solid rgba(250, 204, 21, 0.3);
-					border-bottom: 1px solid rgba(250, 204, 21, 0.3); pointer-events: none;
-					background: linear-gradient(90deg, transparent, rgba(250, 204, 21, 0.05), transparent);
-				}
 				.cart-border-run { animation: border-flow 12s linear infinite; }
 				@keyframes border-flow { 0% { stroke-dashoffset: 2000; } 100% { stroke-dashoffset: 0; } }
 				.aura-glow-bg {
@@ -301,138 +309,338 @@ export default function TiendaClientPage() {
 					100% { transform: scale(1.2) translate(5%, 5%); }
 				}
 				.welcome-box {
-					background: rgba(10, 10, 10, 0.4);
+					background: rgba(10, 10, 10, 0.45);
 					backdrop-filter: blur(40px);
-					border: 1px solid rgba(255, 255, 255, 0.03);
+					border: 1px solid rgba(255, 255, 255, 0.05);
+				}
+				.menu-drawer-enter {
+					animation: slideInRight 0.35s cubic-bezier(0.16, 1, 0.3, 1) both;
+				}
+				@keyframes slideInRight {
+					from { transform: translateX(100%); opacity: 0; }
+					to { transform: translateX(0); opacity: 1; }
+				}
+				.menu-item-hover {
+					transition: background 0.2s, border-color 0.2s, transform 0.2s;
+				}
+				.menu-item-hover:hover {
+					background: rgba(250, 204, 21, 0.06);
+					border-color: rgba(250, 204, 21, 0.2);
+					transform: translateX(4px);
+				}
+				.product-badge-shine {
+					background: linear-gradient(135deg, rgba(250,204,21,0.15) 0%, rgba(250,204,21,0.05) 100%);
 				}
 			`}</style>
 
-			<nav className="fixed top-0 left-0 w-full z-[100] bg-black/10 backdrop-blur-xl border-b border-white/5 py-5 px-6 md:px-12 flex justify-between items-center transition-all duration-1000">
+			{/* ── NAVBAR ── */}
+			<nav className="fixed top-0 left-0 w-full z-[100] bg-black/20 backdrop-blur-xl border-b border-white/5 py-4 px-5 md:px-10 flex justify-between items-center transition-all duration-500">
 				<FabrickLogo onClick={() => (selectedProduct ? setShowExitConfirm(true) : router.push('/'))} />
-				<div className="flex items-center gap-6">
-					<div ref={cartIconRef} className="relative cursor-pointer transition-all duration-300 p-2" onClick={() => setIsCartOpen(true)}>
-						<div className="absolute top-0 right-0 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center text-black text-[8px] font-black shadow-[0_0_15px_#FACC15]">
-							{cart.length}
-						</div>
-						<ShoppingBag size={22} className="text-white/70" />
+
+				<div className="flex items-center gap-3">
+					{/* Real-time dot */}
+					<span
+						title={realtimeConnected ? 'Catálogo en tiempo real' : 'Reconectando...'}
+						className={`hidden sm:block w-2 h-2 rounded-full transition-colors ${realtimeConnected ? 'bg-emerald-400 shadow-[0_0_6px_#4ade80]' : 'bg-zinc-600'}`}
+					/>
+
+					{/* User avatar / login */}
+					{user ? (
+						<button
+							onClick={() => router.push('/mi-cuenta')}
+							className="flex items-center gap-2 px-3 py-1.5 rounded-full border border-white/10 bg-white/5 hover:border-yellow-400/40 hover:bg-yellow-400/5 transition-all"
+							title="Mi Cuenta"
+						>
+							<div className="w-6 h-6 rounded-full bg-yellow-400 flex items-center justify-center text-black text-[9px] font-black">
+								{getInitials(user.name || user.email)}
+							</div>
+							<span className="hidden md:block text-[10px] font-semibold text-white/70 uppercase tracking-wider max-w-[80px] truncate">
+								{user.name?.split(' ')[0] || 'Cuenta'}
+							</span>
+						</button>
+					) : (
+						<button
+							onClick={() => router.push('/auth')}
+							className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-white/10 text-[10px] font-semibold text-white/50 uppercase tracking-wider hover:border-yellow-400/30 hover:text-white/80 transition-all"
+						>
+							<User size={12} /> Ingresar
+						</button>
+					)}
+
+					{/* Cart */}
+					<div
+						ref={cartIconRef}
+						className="relative cursor-pointer transition-all duration-300 p-2"
+						onClick={() => setIsCartOpen(true)}
+					>
+						{cart.length > 0 && (
+							<div className="absolute -top-0.5 -right-0.5 w-4 h-4 bg-yellow-400 rounded-full flex items-center justify-center text-black text-[8px] font-black shadow-[0_0_10px_#FACC15]">
+								{cart.length}
+							</div>
+						)}
+						<ShoppingBag size={22} className="text-white/70 hover:text-white transition-colors" />
 					</div>
-					<button onClick={() => setIsMenuOpen(true)} className="p-2 text-white/70 hover:text-white transition-colors">
-						<Menu size={24} />
+
+					{/* Hamburger */}
+					<button
+						onClick={() => setIsMenuOpen(true)}
+						className="p-2 text-white/70 hover:text-white transition-colors rounded-lg hover:bg-white/5"
+						aria-label="Abrir menú"
+					>
+						<Menu size={22} />
 					</button>
 				</div>
 			</nav>
 
-			{/* Promotional banner carousel — shown at top below navbar */}
-			<div className="pt-[72px]">
+			{/* Promotional banner carousel */}
+			<div className="pt-[64px]">
 				<BannerCarousel />
 			</div>
 
+			{/* ── HERO + CATALOGUE ── */}
 			{!selectedProduct && (
 				<>
-					<section className="h-[100dvh] flex flex-col items-center justify-center text-center px-6 relative overflow-hidden">
+					{/* Hero */}
+					<section className="relative h-[100dvh] flex flex-col items-center justify-center text-center px-6 overflow-hidden">
 						<div className="aura-glow-bg absolute inset-0 z-0" />
-						<img src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=2070&auto=format&fit=crop" className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale-[0.5]" alt="" />
-						<div className="relative z-10 welcome-box p-10 md:p-20 rounded-[3rem] max-w-5xl shadow-[0_50px_100px_rgba(0,0,0,0.8)]">
-							<div className="inline-flex items-center gap-3 px-6 py-2 rounded-full border border-yellow-400/20 bg-black/40 mb-8">
-								<Sparkles size={14} className="text-yellow-400 animate-pulse" />
+						<img
+							src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=2070&auto=format&fit=crop"
+							className="absolute inset-0 w-full h-full object-cover opacity-25 scale-105"
+							style={{ filter: 'grayscale(40%) brightness(0.7)' }}
+							alt="Boutique Fabrick"
+						/>
+						{/* Gradient overlay */}
+						<div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black z-[1]" />
+
+						<div className="relative z-10 welcome-box p-8 md:p-16 rounded-[2.5rem] max-w-4xl shadow-[0_60px_120px_rgba(0,0,0,0.9)]">
+							<div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full border border-yellow-400/25 bg-yellow-400/8 mb-7">
+								<Sparkles size={13} className="text-yellow-400 animate-pulse" />
 								<span className="text-yellow-400 font-black tracking-[0.5em] text-[9px] uppercase">Boutique Fabrick</span>
 							</div>
-							<h1 className="text-4xl md:text-[90px] font-black uppercase tracking-tighter leading-[0.9] text-white mb-10">
-								Bienvenido a <br />
-								<span className="text-transparent" style={{ WebkitTextStroke: '1px rgba(255,255,255,0.6)' }}>
-									Nuestra Boutique.
+
+							<h1 className="text-4xl sm:text-6xl md:text-[76px] font-black uppercase tracking-tighter leading-[0.88] text-white mb-7">
+								Materiales de<br />
+								<span
+									className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent"
+								>
+									Alto Estándar
 								</span>
 							</h1>
-							<p className="text-zinc-400 text-sm md:text-xl font-light max-w-2xl mx-auto leading-relaxed tracking-widest opacity-90 mb-12 uppercase">
-								Cada producto está pensado para elevar tu hogar: ingeniería precisa, materiales nobles y la tranquilidad de comprar calidad real.
+
+							<p className="text-zinc-300 text-sm md:text-base font-light max-w-2xl mx-auto leading-relaxed mb-10 tracking-wide">
+								Cada producto seleccionado para elevar tu hogar con ingeniería precisa, materiales nobles y la tranquilidad de comprar calidad real.
 							</p>
+
+							<div className="flex flex-col sm:flex-row gap-3 justify-center">
+								<button
+									onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
+									className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-yellow-400 text-black font-black uppercase text-[10px] tracking-[0.35em] hover:bg-yellow-300 transition-all hover:scale-105 shadow-[0_0_30px_rgba(250,204,21,0.3)]"
+								>
+									<Package size={14} /> Ver Colección
+								</button>
+								<button
+									onClick={() => router.push('/contacto')}
+									className="inline-flex items-center gap-2 px-8 py-4 rounded-full border border-white/15 text-white/70 font-semibold uppercase text-[10px] tracking-[0.35em] hover:border-yellow-400/40 hover:text-white transition-all"
+								>
+									<Phone size={14} /> Contactar
+								</button>
+							</div>
+						</div>
+
+						{/* Scroll indicator */}
+						<div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 opacity-40">
+							<span className="text-[9px] uppercase tracking-[0.4em] text-white">Explorar</span>
+							<div className="w-px h-10 bg-gradient-to-b from-white to-transparent" />
 						</div>
 					</section>
 
-					<main className="max-w-6xl mx-auto px-6 pb-48 space-y-32 md:space-y-48 relative z-10">
-						<div className="flex items-center justify-between px-1">
-							<p className="text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-								{productsLoading ? 'Cargando productos...' : `${liveProducts.length} productos sincronizados`}
-							</p>
-							<p className={`text-[10px] uppercase tracking-[0.25em] ${realtimeConnected ? 'text-emerald-400' : 'text-zinc-600'}`}>
-								{realtimeConnected ? 'Tiempo real activo' : 'Sincronización en reconexión'}
-							</p>
+					{/* Products catalogue */}
+					<main className="max-w-6xl mx-auto px-5 md:px-8 pb-48 relative z-10">
+
+						{/* Section header */}
+						<div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-16 pt-16 border-t border-white/5">
+							<div>
+								<p className="text-[9px] uppercase tracking-[0.4em] text-yellow-400/70 mb-2">Nuestro catálogo</p>
+								<h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-white">
+									{productsLoading ? 'Cargando...' : `${liveProducts.length} Productos`}
+								</h2>
+							</div>
+							<div className="flex items-center gap-2">
+								<span className={`w-2 h-2 rounded-full ${realtimeConnected ? 'bg-emerald-400 shadow-[0_0_6px_#4ade80]' : 'bg-zinc-600'}`} />
+								<span className={`text-[10px] uppercase tracking-widest ${realtimeConnected ? 'text-emerald-400' : 'text-zinc-600'}`}>
+									{realtimeConnected ? 'Sincronizado en vivo' : 'Reconectando...'}
+								</span>
+							</div>
 						</div>
-						{liveProducts.map((p) => (
-							<div key={p.id} className="scroll-reveal group flex flex-col md:flex-row items-center gap-12 md:gap-24">
-								<div className="w-full md:w-1/2 aspect-[4/5] overflow-hidden rounded-[3rem] border border-white/5 shadow-2xl relative cursor-pointer" onClick={() => handleSelectProduct(p)}>
-									<img src={p.img} className="w-full h-full object-cover grayscale-[0.6] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-[2.5s] ease-out" alt={p.name} />
-									<div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
-								</div>
-								<div className="w-full md:w-1/2 space-y-8 text-center md:text-left">
-									<span className="text-yellow-400 font-bold tracking-[0.5em] text-[10px] uppercase border-b border-yellow-400/20 pb-2 inline-block">Categoría: {p.category}</span>
-									<h3 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none text-white">{p.name}</h3>
-									<p className="text-zinc-400 text-sm md:text-lg font-light leading-relaxed tracking-wide italic">&ldquo;{p.tagline}&rdquo;</p>
-									<div className="flex flex-col md:flex-row items-center gap-8 pt-4">
-										<p className="font-mono text-3xl font-bold text-white/90">${p.price.toLocaleString()}</p>
-										<SilverGoldButton onClick={() => goToCheckout(p)}>Ver Detalle</SilverGoldButton>
-										<SilverGoldButton onClick={(e) => handleAddToCart(e, p)}>Añadir</SilverGoldButton>
+
+						{/* Products */}
+						<div className="space-y-28 md:space-y-40">
+							{liveProducts.map((p, idx) => (
+								<div key={p.id} className={`scroll-reveal group flex flex-col ${idx % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} items-center gap-10 md:gap-20`}>
+									{/* Image */}
+									<div
+										className="w-full md:w-1/2 aspect-[4/5] overflow-hidden rounded-[2.5rem] border border-white/5 shadow-[0_30px_80px_rgba(0,0,0,0.7)] relative cursor-pointer"
+										onClick={() => handleSelectProduct(p)}
+									>
+										<img
+											src={p.img}
+											className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-[2s] ease-out"
+											alt={p.name}
+										/>
+										<div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+										{/* Category badge */}
+										<span className="absolute top-5 left-5 px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest font-bold product-badge-shine border border-yellow-400/20 text-yellow-400">
+											{p.category}
+										</span>
+										{(p as { discountPercentage?: number }).discountPercentage ? (
+											<span className="absolute top-5 right-5 px-3 py-1 rounded-full bg-red-500/90 text-white text-[9px] font-black uppercase tracking-wider">
+												-{(p as { discountPercentage?: number }).discountPercentage}%
+											</span>
+										) : null}
+										{/* Quick action overlay */}
+										<div className="absolute inset-x-0 bottom-0 translate-y-full group-hover:translate-y-0 transition-transform duration-500 p-5">
+											<div className="flex gap-2">
+												<button
+													onClick={(e) => { e.stopPropagation(); handleSelectProduct(p); }}
+													className="flex-1 py-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold uppercase tracking-wider hover:bg-white/20 transition-all flex items-center justify-center gap-2"
+												>
+													<ArrowRight size={13} /> Ver Detalle
+												</button>
+												<button
+													onClick={(e) => { e.stopPropagation(); handleAddToCart(e, p); }}
+													className="flex-1 py-3 rounded-full bg-yellow-400/90 text-black text-[10px] font-black uppercase tracking-wider hover:bg-yellow-400 transition-all"
+												>
+													Añadir
+												</button>
+											</div>
+										</div>
+									</div>
+
+									{/* Info */}
+									<div className="w-full md:w-1/2 space-y-6 text-center md:text-left">
+										<div>
+											<p className="text-[9px] uppercase tracking-[0.4em] text-yellow-400/70 mb-3">{p.category}</p>
+											<h3 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-[0.9] text-white group-hover:text-yellow-50 transition-colors">
+												{p.name}
+											</h3>
+										</div>
+
+										<p className="text-zinc-400 text-sm md:text-base font-light leading-relaxed italic max-w-sm">
+											&ldquo;{p.tagline}&rdquo;
+										</p>
+
+										{(p as { rating?: number }).rating ? (
+											<div className="flex items-center gap-1 justify-center md:justify-start">
+												{[...Array(5)].map((_, si) => (
+													<Star
+														key={si}
+														size={12}
+														className={si < Math.round((p as { rating?: number }).rating ?? 0) ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-700 fill-zinc-700'}
+													/>
+												))}
+												<span className="text-zinc-500 text-xs ml-1">{((p as { rating?: number }).rating ?? 0).toFixed(1)}</span>
+											</div>
+										) : null}
+
+										<div className="pt-2">
+											<p className="text-[9px] uppercase tracking-widest text-zinc-600 mb-1">Inversión</p>
+											<div className="flex items-baseline gap-3 justify-center md:justify-start">
+												<span className="font-mono text-3xl md:text-4xl font-bold text-white">${p.price.toLocaleString()}</span>
+												{(p as { discountPercentage?: number }).discountPercentage ? (
+													<span className="text-xs text-zinc-600 line-through">
+														${Math.round(p.price / (1 - ((p as { discountPercentage?: number }).discountPercentage ?? 0) / 100)).toLocaleString()}
+													</span>
+												) : null}
+											</div>
+										</div>
+
+										<div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start pt-2">
+											<SilverGoldButton onClick={() => goToCheckout(p)}>
+												Comprar Ahora
+											</SilverGoldButton>
+											<button
+												onClick={(e) => handleAddToCart(e, p)}
+												className="px-6 py-3 rounded-full border border-white/10 text-white/60 text-[10px] font-bold uppercase tracking-widest hover:border-yellow-400/30 hover:text-white/90 transition-all"
+											>
+												Añadir al Carrito
+											</button>
+										</div>
 									</div>
 								</div>
-							</div>
-						))}
+							))}
+						</div>
 					</main>
 				</>
 			)}
 
+			{/* ── PRODUCT DETAIL VIEW ── */}
 			{selectedProduct && (
 				<div className="fixed inset-0 z-[150] bg-black overflow-y-auto scrollbar-hide cinematic-panel-enter">
 					<div className="w-full min-h-[150vh] relative">
 						<section className="h-[95dvh] w-full sticky top-0 overflow-hidden z-0">
 							<img src={selectedProduct.img} className="w-full h-full object-cover" alt={selectedProduct.name} />
 							<div className="absolute inset-0 bg-gradient-to-b from-black/30 via-transparent to-black" />
-							<button onClick={() => setSelectedProduct(null)} className="absolute top-10 right-10 text-white/40 hover:text-white transition-colors p-4 z-50">
-								<X size={32} />
+							<button
+								onClick={() => setSelectedProduct(null)}
+								className="absolute top-8 right-8 text-white/40 hover:text-white transition-colors p-3 z-50 bg-black/30 backdrop-blur-sm rounded-full border border-white/10"
+							>
+								<X size={20} />
 							</button>
+							<div className="absolute bottom-12 left-8 z-10">
+								<span className="text-[9px] uppercase tracking-[0.4em] text-yellow-400/80 block mb-2">{selectedProduct.category}</span>
+								<h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter text-white">{selectedProduct.name}</h2>
+							</div>
 						</section>
 
-						<div className="relative z-10 bg-black pt-24 pb-40 shadow-[0_-100px_150px_rgba(0,0,0,1)] px-8 border-t border-white/5">
-							<div className="max-w-4xl mx-auto space-y-20">
-								<div className="text-center md:text-left space-y-8">
-									<FabrickLogo active className="mb-8" />
-									<h2 className="text-5xl md:text-[80px] font-black uppercase tracking-tighter leading-[0.8] text-white">{selectedProduct.name}</h2>
-									<p className="text-zinc-400 text-xl md:text-2xl font-light leading-relaxed max-w-2xl">{selectedProduct.description}</p>
+						<div className="relative z-10 bg-black pt-20 pb-40 shadow-[0_-120px_150px_rgba(0,0,0,1)] px-6 md:px-10 border-t border-white/5">
+							<div className="max-w-4xl mx-auto space-y-16">
+								<div className="space-y-6">
+									<FabrickLogo active className="mb-4" />
+									<p className="text-zinc-400 text-lg md:text-xl font-light leading-relaxed max-w-2xl">{selectedProduct.description}</p>
 								</div>
 
-								<div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+								<div className="grid grid-cols-1 md:grid-cols-2 gap-5">
 									{selectedProduct.features.map((f) => (
-										<div key={f} className="flex items-center gap-6 p-8 bg-zinc-950 rounded-[2rem] border border-white/5 shadow-inner hover:border-yellow-400/30 transition-colors">
-											<Zap className="text-yellow-400" size={24} />
+										<div key={f} className="flex items-center gap-5 p-6 bg-zinc-950 rounded-2xl border border-white/5 shadow-inner hover:border-yellow-400/20 transition-colors">
+											<div className="w-10 h-10 rounded-xl bg-yellow-400/10 flex items-center justify-center flex-shrink-0">
+												<Zap className="text-yellow-400" size={18} />
+											</div>
 											<span className="text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-300">{f}</span>
 										</div>
 									))}
 								</div>
 
-								<div className="flex flex-col md:flex-row items-center justify-between py-12 border-y border-white/10 gap-10 text-center md:text-left">
-									<div className="flex gap-12 text-zinc-500 font-mono text-[10px] uppercase tracking-[0.4em]">
-										<div className="space-y-3">
-											<p className="text-zinc-700 font-black">Dimensión</p>
-											<p className="text-white flex items-center justify-center md:justify-start gap-3">
-												<Ruler size={16} /> {selectedProduct.dimensions}
+								<div className="flex flex-col md:flex-row items-center justify-between py-10 border-y border-white/8 gap-8 text-center md:text-left">
+									<div className="flex gap-10 text-zinc-500 font-mono text-[10px] uppercase tracking-[0.3em]">
+										<div className="space-y-2">
+											<p className="text-zinc-600 font-black text-[9px]">Dimensión</p>
+											<p className="text-white flex items-center justify-center md:justify-start gap-2">
+												<Ruler size={14} /> {selectedProduct.dimensions}
 											</p>
 										</div>
-										<div className="space-y-3">
-											<p className="text-zinc-700 font-black">Entrega</p>
-											<p className="text-white flex items-center justify-center md:justify-start gap-3">
-												<Clock size={16} /> {selectedProduct.delivery}
+										<div className="space-y-2">
+											<p className="text-zinc-600 font-black text-[9px]">Entrega</p>
+											<p className="text-white flex items-center justify-center md:justify-start gap-2">
+												<Clock size={14} /> {selectedProduct.delivery}
 											</p>
 										</div>
 									</div>
 									<div>
-										<p className="text-[10px] text-zinc-500 uppercase tracking-widest mb-3 font-black">Inversión Final</p>
-										<p className="text-5xl md:text-6xl font-black text-white">${selectedProduct.price.toLocaleString()}</p>
+										<p className="text-[9px] text-zinc-500 uppercase tracking-widest mb-2 font-black">Precio Final</p>
+										<p className="text-4xl md:text-5xl font-black text-white">${selectedProduct.price.toLocaleString()}</p>
 									</div>
 								</div>
 
-								<div className="flex justify-center pb-16">
-									<SilverGoldButton className="w-full md:w-auto py-6 md:px-20 text-[10px]" onClick={() => goToCheckout(selectedProduct)}>
+								<div className="flex flex-col sm:flex-row gap-4 justify-center pb-12">
+									<SilverGoldButton className="w-full sm:w-auto py-5 sm:px-16" onClick={() => goToCheckout(selectedProduct)}>
 										Confirmar mi Pedido
 									</SilverGoldButton>
+									<button
+										onClick={(e) => { handleAddToCart(e as unknown as React.MouseEvent<HTMLButtonElement>, selectedProduct); setSelectedProduct(null); }}
+										className="w-full sm:w-auto py-5 sm:px-10 rounded-full border border-white/15 text-white/60 font-semibold text-[10px] uppercase tracking-widest hover:border-yellow-400/30 hover:text-white/80 transition-all"
+									>
+										Añadir al Carrito
+									</button>
 								</div>
 							</div>
 						</div>
@@ -440,66 +648,199 @@ export default function TiendaClientPage() {
 				</div>
 			)}
 
+			{/* ── HAMBURGER MENU DRAWER ── */}
 			{isMenuOpen && (
 				<div className="fixed inset-0 z-[210] flex justify-end">
-					<div className="absolute inset-0 cinematic-overlay" onClick={() => setIsMenuOpen(false)} />
-					<div className="relative w-full max-w-[300px] bg-zinc-950 border-l border-white/5 h-full p-10 flex flex-col shadow-2xl cinematic-panel-enter">
-						<FabrickLogo className="mb-16 self-center" />
-						<div className="flex-1 relative flex items-center justify-center">
-							<div className="wheel-selector" />
-							<div className="flex-1 h-80 overflow-y-auto scrollbar-hide py-40 snap-y snap-mandatory text-center">
-								{MENU_OPTIONS.map((item, i) => (
-									<button key={item.label} onMouseEnter={() => setActiveMenuIndex(i)} onClick={() => handleMenuAction(item.label)} className={`h-[60px] w-full flex items-center justify-center gap-6 transition-all duration-500 snap-center ${activeMenuIndex === i ? 'opacity-100 scale-125' : 'opacity-10 scale-90 blur-[1.5px]'}`}>
-										<item.icon size={18} className={activeMenuIndex === i ? 'text-yellow-400' : 'text-zinc-500'} />
-										<span className={`text-xs font-black uppercase tracking-[0.4em] ${activeMenuIndex === i ? 'text-white' : 'text-zinc-600'}`}>{item.label}</span>
-									</button>
-								))}
-							</div>
-						</div>
-						<button onClick={() => setIsMenuOpen(false)} className="mt-auto self-center text-zinc-700 hover:text-white uppercase text-[8px] font-black tracking-[0.8em] py-4">
-							Cerrar Panel
-						</button>
-					</div>
-				</div>
-			)}
+					{/* Backdrop */}
+					<div
+						className="absolute inset-0 bg-black/70 backdrop-blur-md"
+						onClick={() => setIsMenuOpen(false)}
+					/>
 
-			{isCartOpen && (
-				<div className="fixed inset-0 z-[220] flex items-center justify-center p-0 md:p-12 overflow-hidden">
-					<div className="absolute inset-0 cinematic-overlay" onClick={() => setIsCartOpen(false)} />
-					<div className="relative w-full h-full max-w-5xl max-h-[85vh] bg-zinc-950 md:rounded-[4rem] border border-white/5 shadow-2xl flex flex-col overflow-hidden cinematic-panel-enter">
-						<div className="absolute inset-0 bg-gradient-to-tr from-yellow-400/5 via-transparent to-yellow-400/5 opacity-50" />
-						<svg className="absolute inset-0 w-full h-full pointer-events-none rounded-[3rem]">
-							<rect width="100%" height="100%" fill="none" stroke="rgba(250,204,21,0.05)" strokeWidth="1" rx="48" />
-							<rect width="100%" height="100%" fill="none" stroke="#FACC15" strokeWidth="2" strokeDasharray="10 1000" className="cart-border-run" rx="48" />
-						</svg>
-						<div className="p-8 md:p-12 border-b border-white/5 flex flex-col items-center relative z-10 bg-black/40 backdrop-blur-md">
-							<FabrickLogo centered />
-							<button onClick={() => setIsCartOpen(false)} className="absolute top-10 right-10 text-zinc-600 hover:text-white transition-colors">
-								<X size={24} />
+					{/* Panel */}
+					<div className="relative w-full max-w-[320px] bg-[#0a0a0c] border-l border-white/6 h-full flex flex-col shadow-[0_0_80px_rgba(0,0,0,0.9)] menu-drawer-enter overflow-hidden">
+						{/* Gold top line */}
+						<div className="h-px w-full bg-gradient-to-r from-transparent via-yellow-400/50 to-transparent" />
+
+						{/* Header */}
+						<div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
+							<FabrickLogo />
+							<button
+								onClick={() => setIsMenuOpen(false)}
+								className="w-8 h-8 flex items-center justify-center rounded-full border border-white/10 text-zinc-500 hover:border-white/25 hover:text-white transition-all"
+							>
+								<X size={15} />
 							</button>
 						</div>
 
-						<div className="flex-1 overflow-y-auto p-8 space-y-10 scrollbar-hide relative z-10">
+						{/* User card */}
+						{user ? (
+							<div className="mx-4 mt-4 p-4 rounded-2xl border border-yellow-400/12 bg-yellow-400/5">
+								<div className="flex items-center gap-3">
+									<div className="w-10 h-10 rounded-2xl bg-yellow-400 flex items-center justify-center text-black font-black text-sm flex-shrink-0">
+										{getInitials(user.name || user.email)}
+									</div>
+									<div className="flex-1 min-w-0">
+										<p className="text-white text-sm font-semibold truncate">{user.name || 'Mi Cuenta'}</p>
+										<p className="text-zinc-500 text-[10px] truncate">{user.email}</p>
+									</div>
+									<ChevronRight size={14} className="text-zinc-600 flex-shrink-0" />
+								</div>
+								<button
+									onClick={() => { setIsMenuOpen(false); router.push('/mi-cuenta'); }}
+									className="mt-3 w-full py-2 rounded-xl border border-yellow-400/20 text-yellow-400 text-[10px] font-bold uppercase tracking-wider hover:bg-yellow-400/10 transition-all"
+								>
+									Ver panel de pedidos
+								</button>
+							</div>
+						) : (
+							<div className="mx-4 mt-4 p-4 rounded-2xl border border-white/6 bg-white/3">
+								<p className="text-zinc-400 text-xs mb-3">Inicia sesión para ver tu historial de pedidos</p>
+								<button
+									onClick={() => { setIsMenuOpen(false); router.push('/auth'); }}
+									className="w-full py-2.5 rounded-xl bg-yellow-400 text-black font-black text-[10px] uppercase tracking-wider hover:bg-yellow-300 transition-all"
+								>
+									Ingresar / Registrarse
+								</button>
+							</div>
+						)}
+
+						{/* Navigation */}
+						<nav className="flex-1 overflow-y-auto px-4 py-4 scrollbar-hide">
+							<p className="text-[8px] uppercase tracking-[0.4em] text-zinc-600 mb-3 px-2">Navegación</p>
+
+							<div className="space-y-1">
+								{MENU_OPTIONS.map((item) => (
+									<button
+										key={item.label}
+										onClick={() => handleMenuAction(item)}
+										className="menu-item-hover w-full flex items-center gap-4 p-3.5 rounded-xl border border-transparent text-left group"
+									>
+										<div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-yellow-400/12 transition-colors">
+											<item.icon size={16} className="text-zinc-400 group-hover:text-yellow-400 transition-colors" />
+										</div>
+										<div className="flex-1 min-w-0">
+											<p className="text-white text-sm font-semibold leading-none mb-1">{item.label}</p>
+											<p className="text-zinc-500 text-[10px] leading-none truncate">{item.description}</p>
+										</div>
+										<ChevronRight size={13} className="text-zinc-700 group-hover:text-yellow-400/60 transition-colors flex-shrink-0" />
+									</button>
+								))}
+							</div>
+
+							{/* Divider */}
+							<div className="my-4 h-px bg-white/5 mx-2" />
+
+							{/* Cart shortcut */}
+							<button
+								onClick={() => { setIsMenuOpen(false); setIsCartOpen(true); }}
+								className="menu-item-hover w-full flex items-center gap-4 p-3.5 rounded-xl border border-transparent text-left group"
+							>
+								<div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0 relative group-hover:bg-yellow-400/12 transition-colors">
+									<ShoppingBag size={16} className="text-zinc-400 group-hover:text-yellow-400 transition-colors" />
+									{cart.length > 0 && (
+										<span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full text-black text-[8px] font-black flex items-center justify-center">
+											{cart.length}
+										</span>
+									)}
+								</div>
+								<div className="flex-1 min-w-0">
+									<p className="text-white text-sm font-semibold leading-none mb-1">Mi Carrito</p>
+									<p className="text-zinc-500 text-[10px] leading-none">
+										{cart.length === 0 ? 'Carrito vacío' : `${cart.length} producto${cart.length !== 1 ? 's' : ''} — $${cartTotal.toLocaleString()}`}
+									</p>
+								</div>
+								<ChevronRight size={13} className="text-zinc-700 group-hover:text-yellow-400/60 transition-colors flex-shrink-0" />
+							</button>
+
+							{/* Sign out (if logged in) */}
+							{user && (
+								<>
+									<div className="my-4 h-px bg-white/5 mx-2" />
+									<button
+										onClick={() => void handleSignOut()}
+										className="w-full flex items-center gap-4 p-3.5 rounded-xl border border-transparent hover:border-red-500/20 hover:bg-red-500/5 text-left group transition-all"
+									>
+										<div className="w-9 h-9 rounded-xl bg-red-500/8 flex items-center justify-center flex-shrink-0">
+											<LogOut size={15} className="text-red-400/70 group-hover:text-red-400 transition-colors" />
+										</div>
+										<div className="flex-1">
+											<p className="text-red-400/80 text-sm font-semibold group-hover:text-red-400 transition-colors">Cerrar Sesión</p>
+											<p className="text-zinc-600 text-[10px]">Salir de tu cuenta</p>
+										</div>
+									</button>
+								</>
+							)}
+						</nav>
+
+						{/* Footer of menu */}
+						<div className="px-6 pb-6 pt-4 border-t border-white/5">
+							<div className="flex justify-center gap-5 mb-4">
+								<a href="https://instagram.com" target="_blank" rel="noreferrer" className="text-zinc-600 hover:text-pink-400 transition-colors">
+									<Instagram size={18} />
+								</a>
+								<a href="https://facebook.com" target="_blank" rel="noreferrer" className="text-zinc-600 hover:text-blue-400 transition-colors">
+									<Facebook size={18} />
+								</a>
+							</div>
+							<p className="text-[8px] text-zinc-700 uppercase tracking-[0.6em] text-center">
+								© 2026 Soluciones Fabrick
+							</p>
+						</div>
+
+						{/* Bottom gold line */}
+						<div className="h-px w-full bg-gradient-to-r from-transparent via-yellow-400/30 to-transparent" />
+					</div>
+				</div>
+			)}
+
+			{/* ── CART DRAWER ── */}
+			{isCartOpen && (
+				<div className="fixed inset-0 z-[220] flex items-center justify-center p-0 md:p-10 overflow-hidden">
+					<div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={() => setIsCartOpen(false)} />
+					<div className="relative w-full h-full max-w-4xl max-h-[88vh] bg-[#0a0a0c] md:rounded-[3rem] border border-white/6 shadow-2xl flex flex-col overflow-hidden cinematic-panel-enter">
+						<div className="absolute inset-0 bg-gradient-to-tr from-yellow-400/4 via-transparent to-yellow-400/4 opacity-60 pointer-events-none" />
+						<svg className="absolute inset-0 w-full h-full pointer-events-none md:rounded-[3rem]">
+							<rect width="100%" height="100%" fill="none" stroke="rgba(250,204,21,0.04)" strokeWidth="1" rx="48" />
+							<rect width="100%" height="100%" fill="none" stroke="#FACC15" strokeWidth="1.5" strokeDasharray="10 1000" className="cart-border-run" rx="48" />
+						</svg>
+
+						{/* Cart header */}
+						<div className="p-7 md:p-10 border-b border-white/5 flex items-center justify-between relative z-10 bg-black/50 backdrop-blur-md">
+							<div>
+								<p className="text-[9px] uppercase tracking-[0.4em] text-yellow-400/70">Tu Selección</p>
+								<h3 className="text-xl font-black uppercase tracking-tight text-white">
+									Mi Carrito {cart.length > 0 && <span className="text-yellow-400">({cart.length})</span>}
+								</h3>
+							</div>
+							<button onClick={() => setIsCartOpen(false)} className="w-9 h-9 rounded-full border border-white/10 flex items-center justify-center text-zinc-500 hover:text-white hover:border-white/25 transition-all">
+								<X size={16} />
+							</button>
+						</div>
+
+						<div className="flex-1 overflow-y-auto p-6 md:p-8 space-y-4 scrollbar-hide relative z-10">
 							{cart.length === 0 ? (
-								<div className="h-full flex flex-col items-center justify-center opacity-10 space-y-6">
-									<ShoppingBag size={80} />
-									<p className="text-xl font-black uppercase tracking-[1em]">Vacio</p>
+								<div className="h-full flex flex-col items-center justify-center gap-5 opacity-30">
+									<ShoppingBag size={60} />
+									<p className="text-base font-black uppercase tracking-[0.5em]">Carrito Vacío</p>
+									<p className="text-xs text-zinc-500">Explora nuestra boutique</p>
 								</div>
 							) : (
 								cart.map((item, idx) => (
-									<div key={`${item.id}-${idx}`} className="flex flex-col md:flex-row items-center gap-10 bg-black/40 p-8 rounded-[2rem] border border-white/5 shadow-inner snap-center transition-all hover:border-yellow-400/20">
-										<div className="w-32 h-32 md:w-44 md:h-44 rounded-3xl overflow-hidden shadow-2xl border border-white/10 flex-shrink-0">
-											<img src={item.img} className="w-full h-full object-cover grayscale" alt={item.name} />
+									<div key={`${item.id}-${idx}`} className="flex items-center gap-5 bg-white/3 p-5 rounded-2xl border border-white/5 hover:border-yellow-400/15 transition-all">
+										<div className="w-16 h-16 md:w-20 md:h-20 rounded-xl overflow-hidden border border-white/10 flex-shrink-0">
+											<img src={item.img} className="w-full h-full object-cover" alt={item.name} />
 										</div>
-										<div className="flex-1 text-center md:text-left">
-											<h4 className="font-black uppercase text-xl text-white tracking-widest">{item.name}</h4>
-											<p className="text-yellow-400 font-mono text-lg mt-2">${item.price.toLocaleString()}</p>
+										<div className="flex-1 min-w-0">
+											<h4 className="font-bold text-sm text-white truncate">{item.name}</h4>
+											<p className="text-yellow-400 text-sm font-mono mt-0.5">${item.price.toLocaleString()}</p>
+											<p className="text-zinc-600 text-[10px] uppercase tracking-wider mt-1">{item.category}</p>
 										</div>
 										<button
 											onClick={() => setCart((prev) => prev.filter((_, i) => i !== idx))}
-											className="text-zinc-600 hover:text-red-500 p-4"
+											className="text-zinc-600 hover:text-red-400 p-2 transition-colors rounded-lg hover:bg-red-500/10"
 										>
-											<Trash2 size={24} />
+											<Trash2 size={16} />
 										</button>
 									</div>
 								))
@@ -507,12 +848,13 @@ export default function TiendaClientPage() {
 						</div>
 
 						{cart.length > 0 && (
-							<div className="p-10 md:p-12 bg-black/80 border-t border-white/5 flex flex-col items-center space-y-6 relative z-10">
-								<p className="text-[10px] text-zinc-600 uppercase tracking-widest font-black w-full text-center">
-									Total Confirmado: <span className="text-white text-3xl ml-4">${cartTotal.toLocaleString()}</span>
-								</p>
-								<SilverGoldButton className="w-full max-w-sm py-6" onClick={() => goToCheckout()}>
-									Solicitar Pedido
+							<div className="p-7 md:p-10 bg-black/70 border-t border-white/5 flex flex-col gap-5 relative z-10">
+								<div className="flex items-center justify-between">
+									<span className="text-zinc-400 text-sm uppercase tracking-widest font-medium">Total</span>
+									<span className="text-white text-2xl font-black">${cartTotal.toLocaleString()}</span>
+								</div>
+								<SilverGoldButton className="w-full py-5 text-[10px]" onClick={() => { setIsCartOpen(false); goToCheckout(); }}>
+									Proceder al Pago
 								</SilverGoldButton>
 							</div>
 						)}
@@ -520,35 +862,98 @@ export default function TiendaClientPage() {
 				</div>
 			)}
 
-			<footer className="py-24 border-t border-white/5 flex flex-col items-center gap-10 bg-black relative z-10 text-center">
-				<FabrickLogo centered />
-				<div className="flex gap-10 items-center">
-					<Instagram size={20} className="text-zinc-800 hover:text-yellow-400 transition-all cursor-pointer transform hover:scale-125" />
-					<Facebook size={20} className="text-zinc-800 hover:text-yellow-400 transition-all cursor-pointer transform hover:scale-125" />
+			{/* ── FOOTER ── */}
+			<footer className="bg-black border-t border-white/5 relative z-10">
+				{/* Top footer */}
+				<div className="max-w-5xl mx-auto px-6 py-16 grid grid-cols-1 sm:grid-cols-3 gap-10">
+					{/* Brand */}
+					<div className="sm:col-span-1 flex flex-col items-start gap-5">
+						<FabrickLogo />
+						<p className="text-zinc-500 text-xs leading-relaxed max-w-[200px]">
+							Boutique de componentes premium para proyectos residenciales de alto estándar.
+						</p>
+						<div className="flex gap-4">
+							<a href="https://instagram.com" target="_blank" rel="noreferrer" className="text-zinc-700 hover:text-pink-400 transition-all hover:scale-110">
+								<Instagram size={18} />
+							</a>
+							<a href="https://facebook.com" target="_blank" rel="noreferrer" className="text-zinc-700 hover:text-blue-400 transition-all hover:scale-110">
+								<Facebook size={18} />
+							</a>
+						</div>
+					</div>
+
+					{/* Links */}
+					<div>
+						<p className="text-[9px] uppercase tracking-[0.4em] text-zinc-600 mb-4">Tienda</p>
+						<ul className="space-y-2.5">
+							{[
+								{ label: 'Catálogo', onClick: () => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' }) },
+								{ label: 'Garantías', onClick: () => router.push('/garantias') },
+								{ label: 'Contacto', onClick: () => router.push('/contacto') },
+							].map((l) => (
+								<li key={l.label}>
+									<button onClick={l.onClick} className="text-zinc-500 text-sm hover:text-yellow-400 transition-colors">
+										{l.label}
+									</button>
+								</li>
+							))}
+						</ul>
+					</div>
+
+					<div>
+						<p className="text-[9px] uppercase tracking-[0.4em] text-zinc-600 mb-4">Mi Cuenta</p>
+						<ul className="space-y-2.5">
+							{[
+								{ label: 'Iniciar Sesión', onClick: () => router.push('/auth') },
+								{ label: 'Panel de Pedidos', onClick: () => router.push('/mi-cuenta') },
+								{ label: 'Ajustes', onClick: () => router.push('/ajustes') },
+							].map((l) => (
+								<li key={l.label}>
+									<button onClick={l.onClick} className="text-zinc-500 text-sm hover:text-yellow-400 transition-colors">
+										{l.label}
+									</button>
+								</li>
+							))}
+						</ul>
+					</div>
 				</div>
-				<p className="text-[7px] text-zinc-800 uppercase tracking-[1em] font-medium">© 2026 Soluciones Fabrick • Ingeniería para tu Vida</p>
+
+				{/* Bottom bar */}
+				<div className="border-t border-white/5 px-6 py-6 flex flex-col sm:flex-row items-center justify-between gap-3 max-w-5xl mx-auto">
+					<p className="text-[9px] text-zinc-700 uppercase tracking-[0.5em]">
+						© 2026 Soluciones Fabrick SpA · Todos los derechos reservados
+					</p>
+					<div className="flex items-center gap-4">
+						<span className="text-[9px] text-zinc-700 uppercase tracking-wider">Ingeniería para tu Vida</span>
+						<div className={`w-1.5 h-1.5 rounded-full ${realtimeConnected ? 'bg-emerald-500' : 'bg-zinc-700'}`} />
+					</div>
+				</div>
 			</footer>
 
+			{/* ── EXIT CONFIRM ── */}
 			{showExitConfirm && (
-				<div className="fixed inset-0 z-[500] cinematic-overlay flex items-center justify-center p-6">
-					<div className="bg-zinc-950 border border-white/10 p-12 rounded-[3rem] max-w-sm text-center space-y-8 shadow-2xl cinematic-panel-enter">
-						<AlertCircle className="w-16 h-16 text-yellow-400 mx-auto animate-pulse" />
+				<div className="fixed inset-0 z-[500] bg-black/80 backdrop-blur-md flex items-center justify-center p-6">
+					<div className="bg-zinc-950 border border-white/10 p-10 rounded-[2rem] max-w-sm w-full text-center space-y-6 shadow-2xl cinematic-panel-enter">
+						<AlertCircle className="w-12 h-12 text-yellow-400 mx-auto animate-pulse" />
 						<div className="space-y-2">
-							<h3 className="text-xl font-black uppercase tracking-widest text-white">¿Regresar al Inicio?</h3>
-							<p className="text-zinc-600 text-[10px] uppercase tracking-widest leading-relaxed">Tu selección actual se mantendrá en la bolsa.</p>
+							<h3 className="text-lg font-black uppercase tracking-widest text-white">¿Regresar al Inicio?</h3>
+							<p className="text-zinc-500 text-xs leading-relaxed">Tu carrito permanecerá guardado.</p>
 						</div>
-						<div className="flex flex-col gap-4">
+						<div className="flex flex-col gap-3">
 							<button
 								onClick={() => {
 									setSelectedProduct(null);
 									setShowExitConfirm(false);
 									router.push('/');
 								}}
-								className="w-full py-5 bg-yellow-400 text-black font-black uppercase text-[10px] tracking-widest rounded-full"
+								className="w-full py-4 bg-yellow-400 text-black font-black uppercase text-[10px] tracking-widest rounded-full hover:bg-yellow-300 transition-all"
 							>
 								Confirmar
 							</button>
-							<button onClick={() => setShowExitConfirm(false)} className="w-full py-5 bg-white/5 text-zinc-500 font-black uppercase text-[10px] tracking-widest rounded-full border border-white/5">
+							<button
+								onClick={() => setShowExitConfirm(false)}
+								className="w-full py-4 bg-white/5 text-zinc-400 font-semibold uppercase text-[10px] tracking-widest rounded-full border border-white/8 hover:bg-white/8 transition-all"
+							>
 								Cancelar
 							</button>
 						</div>
@@ -558,6 +963,3 @@ export default function TiendaClientPage() {
 		</div>
 	);
 }
-
-
-

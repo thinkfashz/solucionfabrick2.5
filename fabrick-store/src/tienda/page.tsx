@@ -1,8 +1,10 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useRealtimeProducts } from '@/hooks/useRealtimeProducts';
+import { useCatalogProducts } from '@/hooks/useCatalogProducts';
 import {
 	ShoppingBag,
 	Menu,
@@ -21,6 +23,7 @@ import {
 	Ruler,
 	AlertCircle,
 } from 'lucide-react';
+import BannerCarousel from '@/components/BannerCarousel';
 
 const CART_CACHE_KEY = 'fabrick.tienda.cart.v1';
 
@@ -103,26 +106,29 @@ const MENU_OPTIONS = [
 function FabrickLogo({ className = '', centered = false, active = false, onClick }: { className?: string; centered?: boolean; active?: boolean; onClick?: () => void }) {
 return (
 <div onClick={onClick} className={`select-none cursor-pointer ${className}`}>
-<img
-src="/logo-soluciones-fabrick.svg"
-alt="Soluciones Fabrick"
-className={`block md:hidden ${centered ? 'w-44' : 'w-32'} h-auto object-contain drop-shadow-[0_6px_14px_rgba(0,0,0,0.25)] ${active ? 'opacity-100' : 'opacity-95 group-hover:opacity-100'}`}
-/>
-
-<div className={`hidden md:flex items-center gap-3 group ${centered ? 'flex-col text-center' : ''}`}>
-<div className={`relative ${centered ? 'w-14 h-14' : 'w-9 h-9'} transition-all duration-700`}>
-<div className={`absolute inset-0 bg-yellow-400/20 blur-xl rounded-full transition-opacity duration-500 ${active ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`} />
-<svg viewBox="0 0 68 60" className="w-full h-full relative z-10 overflow-visible">
-<path d="M 8 36 L 34 10 L 60 36" fill="none" stroke="#FACC15" strokeWidth="5" strokeLinecap="round" strokeLinejoin="round" />
-<path d="M 14 38 H 54" fill="none" stroke="#EAB308" strokeWidth="3" strokeLinecap="round" />
-<rect x="40" y="18" width="8" height="10" rx="1.5" fill="#FACC15" opacity="0.9" />
-</svg>
-</div>
-<div className={`flex flex-col ${centered ? 'items-center mt-2' : 'text-left'}`}>
-<span className="font-bold uppercase tracking-[0.3em] text-white/90 text-[10px] md:text-sm leading-none">Soluciones</span>
-<span className="text-yellow-400 font-black tracking-[0.6em] uppercase text-[6px] md:text-[8px]">Fabrick</span>
-</div>
-</div>
+  <svg
+    viewBox="0 0 214 52"
+    className={`${centered ? 'h-14' : 'h-10'} w-auto transition-all duration-300 ${active ? 'drop-shadow-[0_0_12px_rgba(255,199,0,0.5)]' : 'opacity-95 hover:opacity-100'}`}
+    role="img"
+    aria-label="Soluciones Fabrick"
+  >
+    <defs>
+      <linearGradient id="tfl-gold" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor="#FFE566" />
+        <stop offset="100%" stopColor="#FFC700" />
+      </linearGradient>
+      <linearGradient id="tfl-depth" x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor="#B37E00" />
+        <stop offset="100%" stopColor="#D9A100" />
+      </linearGradient>
+    </defs>
+    <path d="M 2,46 L 21,4 L 40,46 L 33,46 L 21,13 L 9,46 Z" fill="url(#tfl-gold)" />
+    <path d="M 9,46 L 21,13 L 21,19 L 14,46 Z" fill="url(#tfl-depth)" opacity="0.75" />
+    <rect x="25" y="11" width="8" height="20" rx="1.5" fill="#FFC700" />
+    <line x1="52" y1="9" x2="52" y2="44" stroke="rgba(255,255,255,0.13)" strokeWidth="1" />
+    <text x="61" y="26" fontFamily="Montserrat, Poppins, Arial, sans-serif" fontSize="9.5" fontWeight="500" letterSpacing="3" fill="rgba(255,255,255,0.5)">SOLUCIONES</text>
+    <text x="60" y="47" fontFamily="Montserrat, Poppins, Arial, sans-serif" fontSize="25" fontWeight="900" letterSpacing="1.5" fill="#FFFFFF">FABRICK</text>
+  </svg>
 </div>
 );
 }
@@ -142,7 +148,7 @@ function SilverGoldButton({ children, onClick, className = '' }: { children: Rea
 
 export default function TiendaClientPage() {
 	const router = useRouter();
-	const { products: dbProducts, loading: productsLoading, connected: realtimeConnected } = useRealtimeProducts();
+	const { products: catalogProducts, loading: productsLoading, connected: realtimeConnected } = useCatalogProducts();
 	const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [isCartOpen, setIsCartOpen] = useState(false);
@@ -154,21 +160,9 @@ export default function TiendaClientPage() {
 	const cartIconRef = useRef<HTMLDivElement>(null);
 	const gsapRef = useRef<null | typeof import('gsap').default>(null);
 
-	const liveProducts: Product[] = useMemo(() => {
-		if (!dbProducts.length) return PRODUCTS;
-		return dbProducts.map((p) => ({
-			id: p.id,
-			name: p.name,
-			price: p.price,
-			category: p.category_id || 'General',
-			tagline: p.delivery_days ? `Entrega ${p.delivery_days}` : 'Calidad profesional para tu proyecto',
-			description: p.description || 'Producto sincronizado desde Fabrick Store.',
-			features: ['Calidad garantizada', p.stock != null ? `Stock: ${p.stock}` : 'Stock sujeto a confirmación', p.featured ? 'Producto destacado' : 'Disponible'],
-			dimensions: 'Especificación en ficha técnica',
-			delivery: p.delivery_days || 'A coordinar',
-			img: p.image_url || 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=2070&auto=format&fit=crop',
-		}));
-	}, [dbProducts]);
+	const liveProducts = useMemo<Product[]>(() => {
+		return catalogProducts.length ? (catalogProducts as Product[]) : PRODUCTS;
+	}, [catalogProducts]);
 
 	useEffect(() => {
 		let mounted = true;
@@ -328,6 +322,11 @@ export default function TiendaClientPage() {
 				</div>
 			</nav>
 
+			{/* Promotional banner carousel — shown at top below navbar */}
+			<div className="pt-[72px]">
+				<BannerCarousel />
+			</div>
+
 			{!selectedProduct && (
 				<>
 					<section className="h-[100dvh] flex flex-col items-center justify-center text-center px-6 relative overflow-hidden">
@@ -368,7 +367,7 @@ export default function TiendaClientPage() {
 								<div className="w-full md:w-1/2 space-y-8 text-center md:text-left">
 									<span className="text-yellow-400 font-bold tracking-[0.5em] text-[10px] uppercase border-b border-yellow-400/20 pb-2 inline-block">Categoría: {p.category}</span>
 									<h3 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none text-white">{p.name}</h3>
-									<p className="text-zinc-400 text-sm md:text-lg font-light leading-relaxed tracking-wide italic">"{p.tagline}"</p>
+									<p className="text-zinc-400 text-sm md:text-lg font-light leading-relaxed tracking-wide italic">&ldquo;{p.tagline}&rdquo;</p>
 									<div className="flex flex-col md:flex-row items-center gap-8 pt-4">
 										<p className="font-mono text-3xl font-bold text-white/90">${p.price.toLocaleString()}</p>
 										<SilverGoldButton onClick={() => goToCheckout(p)}>Ver Detalle</SilverGoldButton>
@@ -559,5 +558,6 @@ export default function TiendaClientPage() {
 		</div>
 	);
 }
+
 
 

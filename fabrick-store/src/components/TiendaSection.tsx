@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Sparkles } from 'lucide-react';
@@ -64,7 +66,7 @@ export default function TiendaSection({
             {hasLiveData ? 'Catalogo actualizado automaticamente desde la base de datos' : 'Mostrando seleccion destacada mientras cargan los productos'}
           </span>
           {lastEvent?.product?.name ? (
-            <span className="text-zinc-500">· Ultimo cambio: {lastEvent.product.name}</span>
+            <span className="text-zinc-500">Â· Ultimo cambio: {lastEvent.product.name}</span>
           ) : null}
         </div>
       </div>

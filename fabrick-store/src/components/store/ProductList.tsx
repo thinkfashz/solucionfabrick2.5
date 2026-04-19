@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import React, { useRef, useEffect, useCallback } from 'react';
 import { useRealtimeProducts } from '@/hooks/useRealtimeProducts';
 import { formatCLP } from '@/hooks/useCart';
@@ -15,29 +17,44 @@ export default function ProductList({ onSelectProduct, onAddToCart, cartIconRef 
   const { products, loading, connected } = useRealtimeProducts();
   const listRef = useRef<HTMLDivElement>(null);
 
-  // GSAP scroll-reveal
+  /* ── GSAP scroll-reveal con efecto alternado izq/der ── */
   useEffect(() => {
     if (loading || !listRef.current) return;
     let ctx: ReturnType<typeof import('gsap').default.context> | undefined;
 
     (async () => {
       const { default: gsap } = await import('gsap');
-      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
+      const { ScrollTrigger }  = await import('gsap/ScrollTrigger');
       gsap.registerPlugin(ScrollTrigger);
 
       ctx = gsap.context(() => {
         gsap.utils.toArray<HTMLElement>('.product-card').forEach((card, i) => {
-          gsap.fromTo(
-            card,
-            { opacity: 0, y: 60, scale: 0.95 },
-            {
-              opacity: 1, y: 0, scale: 1,
-              duration: 0.8,
-              ease: 'power3.out',
-              delay: i * 0.08,
-              scrollTrigger: { trigger: card, start: 'top 85%', toggleActions: 'play none none none' },
-            }
-          );
+          const isEven = i % 2 === 0;
+
+          /* Imagen: entra desde el lado exterior */
+          const img = card.querySelector<HTMLElement>('.pc-image');
+          if (img) {
+            gsap.fromTo(img,
+              { x: isEven ? -60 : 60, opacity: 0, scale: 0.94 },
+              {
+                x: 0, opacity: 1, scale: 1, duration: 1, ease: 'power3.out',
+                scrollTrigger: { trigger: card, start: 'top 85%', toggleActions: 'play none none none' },
+              }
+            );
+          }
+
+          /* Info: entra desde el lado interior con delay */
+          const info = card.querySelector<HTMLElement>('.pc-info');
+          if (info) {
+            gsap.fromTo(info,
+              { x: isEven ? 40 : -40, opacity: 0, filter: 'blur(6px)' },
+              {
+                x: 0, opacity: 1, filter: 'blur(0px)',
+                duration: 1, ease: 'power3.out', delay: 0.15,
+                scrollTrigger: { trigger: card, start: 'top 85%', toggleActions: 'play none none none' },
+              }
+            );
+          }
         });
       }, listRef.current!);
     })();
@@ -45,38 +62,57 @@ export default function ProductList({ onSelectProduct, onAddToCart, cartIconRef 
     return () => ctx?.revert();
   }, [loading, products.length]);
 
+  /* ── GSAP fly-to-cart animado ── */
   const flyToCart = useCallback((e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
     onAddToCart(product);
 
     if (!cartIconRef.current || !product.image_url) return;
     const btn = (e.target as HTMLElement).closest('.product-card');
-    const img = btn?.querySelector('img');
+    const img = btn?.querySelector<HTMLImageElement>('img');
     if (!img) return;
 
-    const srcRect = img.getBoundingClientRect();
+    const srcRect  = img.getBoundingClientRect();
     const destRect = cartIconRef.current.getBoundingClientRect();
 
     const clone = img.cloneNode(true) as HTMLImageElement;
-    clone.style.cssText = `
-      position:fixed; z-index:9999; pointer-events:none;
-      top:${srcRect.top}px; left:${srcRect.left}px;
-      width:${srcRect.width}px; height:${srcRect.height}px;
-      border-radius:8px; object-fit:cover;
-      transition: all 0.6s cubic-bezier(0.22,1,0.36,1);
-    `;
+    Object.assign(clone.style, {
+      position: 'fixed',
+      zIndex: '9999',
+      pointerEvents: 'none',
+      top: `${srcRect.top}px`,
+      left: `${srcRect.left}px`,
+      width: `${srcRect.width}px`,
+      height: `${srcRect.height}px`,
+      borderRadius: '12px',
+      objectFit: 'cover',
+      willChange: 'transform, opacity',
+    });
     document.body.appendChild(clone);
 
-    requestAnimationFrame(() => {
-      clone.style.top = `${destRect.top}px`;
-      clone.style.left = `${destRect.left}px`;
-      clone.style.width = '24px';
-      clone.style.height = '24px';
-      clone.style.opacity = '0.3';
-      clone.style.borderRadius = '50%';
-    });
+    import('gsap').then(({ default: gsap }) => {
+      gsap.to(clone, {
+        top: destRect.top + destRect.height / 2,
+        left: destRect.left + destRect.width / 2,
+        width: 0,
+        height: 0,
+        opacity: 0,
+        borderRadius: '50%',
+        duration: 0.65,
+        ease: 'power3.in',
+        onComplete: () => clone.remove(),
+      });
 
-    setTimeout(() => clone.remove(), 700);
+      /* Rebote en el ícono del carrito */
+      gsap.fromTo(cartIconRef.current!,
+        { scale: 1 },
+        {
+          scale: 1.35, duration: 0.18, ease: 'power2.out',
+          yoyo: true, repeat: 1,
+          onComplete: () => { gsap.set(cartIconRef.current!, { scale: 1 }); },
+        },
+      );
+    });
   }, [onAddToCart, cartIconRef]);
 
   if (loading) {
@@ -84,7 +120,7 @@ export default function ProductList({ onSelectProduct, onAddToCart, cartIconRef 
       <section className="px-6 py-20">
         <div className="max-w-5xl mx-auto grid grid-cols-1 md:grid-cols-2 gap-8">
           {[...Array(4)].map((_, i) => (
-            <div key={i} className="h-80 rounded-2xl bg-white/5 shimmer-gold" />
+            <div key={i} className="h-80 rounded-2xl bg-white/5 animate-pulse" />
           ))}
         </div>
       </section>
@@ -93,7 +129,7 @@ export default function ProductList({ onSelectProduct, onAddToCart, cartIconRef 
 
   return (
     <section ref={listRef} className="px-6 py-20">
-      {/* Connection indicator */}
+      {/* Indicador tiempo real */}
       <div className="max-w-5xl mx-auto mb-8 flex items-center gap-2 text-xs text-white/30">
         <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'}`} />
         {connected ? 'Tiempo real activo' : 'Reconectando...'}
@@ -101,9 +137,9 @@ export default function ProductList({ onSelectProduct, onAddToCart, cartIconRef 
 
       <div className="max-w-5xl mx-auto space-y-24">
         {products.map((product, i) => {
-          const isEven = i % 2 === 0;
+          const isEven      = i % 2 === 0;
           const hasDiscount = product.discount_percentage && product.discount_percentage > 0;
-          const finalPrice = hasDiscount
+          const finalPrice  = hasDiscount
             ? product.price * (1 - (product.discount_percentage! / 100))
             : product.price;
 
@@ -115,8 +151,8 @@ export default function ProductList({ onSelectProduct, onAddToCart, cartIconRef 
                 isEven ? 'md:flex-row' : 'md:flex-row-reverse'
               } gap-8 items-center`}
             >
-              {/* Image */}
-              <div className="w-full md:w-1/2 relative overflow-hidden rounded-2xl aspect-[4/5]">
+              {/* Imagen */}
+              <div className="pc-image w-full md:w-1/2 relative overflow-hidden rounded-2xl aspect-[4/5]">
                 {product.image_url ? (
                   <img
                     src={product.image_url}
@@ -137,7 +173,7 @@ export default function ProductList({ onSelectProduct, onAddToCart, cartIconRef 
               </div>
 
               {/* Info */}
-              <div className="w-full md:w-1/2 space-y-4">
+              <div className="pc-info w-full md:w-1/2 space-y-4">
                 <h3 className="font-playfair text-2xl md:text-3xl text-white group-hover:text-yellow-400 transition-colors">
                   {product.name}
                 </h3>

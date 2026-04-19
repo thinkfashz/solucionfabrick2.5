@@ -1,11 +1,14 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import TiendaSection from './TiendaSection';
 import FabrickLogo from './FabrickLogo';
+import ScrollReveal, { ScrollRevealGroup, ScrollRevealItem } from './ScrollReveal';
 import {
   Hammer, Home, Droplet, Layers, PaintRoller, ShieldCheck, Package,
   Droplets, Lightbulb, Cpu, Warehouse, Armchair, Fingerprint, ArrowRight,
@@ -75,14 +78,17 @@ export default function LandingSections() {
   const progressBarRef = useRef<HTMLDivElement>(null);
   const [trajProgress, setTrajProgress] = useState(0);
 
-  /* ── GSAP scroll animations ── */
+  /* ── GSAP + anime.js scroll animations ── */
   useEffect(() => {
     const ctx = gsap.context(() => {
+
+      /* Reveal genérico con fade + slide */
       document.querySelectorAll<HTMLElement>('.animate-on-scroll').forEach((el) => {
         gsap.fromTo(el,
-          { y: 40, opacity: 0 },
+          { y: 50, opacity: 0, filter: 'blur(4px)' },
           {
-            y: 0, opacity: 1, duration: 1.2, ease: 'power3.out',
+            y: 0, opacity: 1, filter: 'blur(0px)',
+            duration: 1.1, ease: 'power3.out',
             scrollTrigger: {
               trigger: el,
               start: 'top 88%',
@@ -92,11 +98,70 @@ export default function LandingSections() {
         );
       });
 
+      /* Tarjetas de servicio: efecto cascada desde abajo */
+      gsap.utils.toArray<HTMLElement>('.service-card').forEach((card, i) => {
+        gsap.fromTo(card,
+          { y: 70, opacity: 0, scale: 0.93, rotateX: 6 },
+          {
+            y: 0, opacity: 1, scale: 1, rotateX: 0,
+            duration: 0.9, ease: 'power3.out',
+            delay: i * 0.07,
+            scrollTrigger: { trigger: card, start: 'top 90%', toggleActions: 'play none none none' },
+          }
+        );
+      });
+
+      /* Reviews: slide desde los lados */
+      gsap.utils.toArray<HTMLElement>('.review-card').forEach((card, i) => {
+        const dir = i % 2 === 0 ? -60 : 60;
+        gsap.fromTo(card,
+          { x: dir, opacity: 0 },
+          {
+            x: 0, opacity: 1, duration: 1, ease: 'power3.out',
+            scrollTrigger: { trigger: card, start: 'top 88%', toggleActions: 'play none none none' },
+          }
+        );
+      });
+
+      /* Iconos de tienda: levitación suave con GSAP */
       gsap.to('.store-icon-wrapper', {
-        y: -8, duration: 2, repeat: -1, yoyo: true,
-        ease: 'sine.inOut', stagger: 0.15,
+        y: -10, duration: 2.2, repeat: -1, yoyo: true,
+        ease: 'sine.inOut', stagger: 0.18,
+      });
+
+      /* Línea de división: expand desde centro */
+      gsap.utils.toArray<HTMLElement>('.divider-line').forEach((el) => {
+        gsap.fromTo(el,
+          { scaleX: 0, opacity: 0 },
+          {
+            scaleX: 1, opacity: 1, duration: 1.2, ease: 'power2.inOut',
+            scrollTrigger: { trigger: el, start: 'top 90%' },
+          }
+        );
       });
     });
+
+    /* anime.js – contador "8 Años" (se activa por IntersectionObserver) */
+    const counterEl = document.querySelector<HTMLElement>('.traj-counter');
+    if (counterEl) {
+      const obs = new IntersectionObserver(([entry]) => {
+        if (!entry.isIntersecting) return;
+        obs.disconnect();
+        import('animejs').then(({ default: anime }) => {
+          const obj = { val: 0 };
+          anime({
+            targets: obj,
+            val: 8,
+            round: 1,
+            duration: 2200,
+            easing: 'easeOutExpo',
+            update() { counterEl.textContent = `${obj.val}`; },
+          });
+        });
+      }, { threshold: 0.4 });
+      obs.observe(counterEl);
+    }
+
     return () => ctx.revert();
   }, []);
 
@@ -126,7 +191,7 @@ export default function LandingSections() {
       {/* ══ SERVICIOS ════════════════════════════════════════ */}
       <section id="servicios" className="py-24 md:py-36 px-4 md:px-12 border-t border-white/5">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16 md:mb-24 animate-on-scroll">
+          <ScrollReveal className="text-center mb-16 md:mb-24">
             <span className="text-yellow-400 font-medium tracking-[0.4em] text-[10px] uppercase block mb-3">
               El Ciclo 360°
             </span>
@@ -136,49 +201,63 @@ export default function LandingSections() {
             <p className="text-zinc-400 text-sm tracking-widest uppercase max-w-xl mx-auto mt-3">
               Cada área de su hogar bajo el control de expertos.
             </p>
-          </div>
+          </ScrollReveal>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5">
+          <ScrollRevealGroup className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5" stagger={0.09}>
             {SERVICIOS.map(({ Icon, title, desc, img, wide }, i) => (
-              <div
-                key={i}
-                className={`group relative rounded-[1.5rem] md:rounded-[2rem] border border-white/10 overflow-hidden flex flex-col items-start justify-end min-h-[280px] animate-on-scroll ${wide ? 'sm:col-span-2 xl:col-span-2' : ''}`}
-              >
-                <div className="absolute inset-0 z-0">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img src={img} alt={title} className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-1000" />
-                  <div className="absolute inset-0 bg-gradient-to-t from-black via-black/75 to-black/25 group-hover:via-black/60 transition-all duration-500" />
-                </div>
-                <div className="relative z-10 p-6 md:p-8 w-full">
-                  <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center mb-4 group-hover:-translate-y-2 transition-transform duration-500">
-                    <Icon className="w-5 h-5 text-white group-hover:text-yellow-400 transition-colors duration-500" />
+              <ScrollRevealItem key={i} className={wide ? 'sm:col-span-2 xl:col-span-2' : ''}>
+                <div
+                  className="service-card service-card-premium service-card-hover group relative rounded-[1.5rem] md:rounded-[2rem] overflow-hidden flex flex-col items-start justify-end min-h-[280px]"
+                >
+                  {/* Semi-transparent phase number background */}
+                  <span
+                    aria-hidden="true"
+                    className="absolute top-4 right-5 font-playfair font-bold leading-none select-none pointer-events-none z-[1]"
+                    style={{
+                      fontSize: 'clamp(4rem, 10vw, 7rem)',
+                      color: 'rgba(250,204,21,0.07)',
+                      lineHeight: 1,
+                    }}
+                  >
+                    {String(i + 1).padStart(2, '0')}
+                  </span>
+
+                  <div className="absolute inset-0 z-0">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={img} alt={title} className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-1000" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black via-black/75 to-black/25 group-hover:via-black/60 transition-all duration-500" />
                   </div>
-                  <h3 className="font-bold uppercase text-sm mb-1.5 tracking-wide text-white">{title}</h3>
-                  <p className="text-[10px] md:text-xs text-zinc-300 font-light leading-relaxed">{desc}</p>
+                  <div className="relative z-10 p-6 md:p-8 w-full">
+                    <div className="w-11 h-11 rounded-full bg-white/10 backdrop-blur-md border border-white/20 flex items-center justify-center mb-4 group-hover:-translate-y-2 transition-transform duration-500">
+                      <Icon className="w-5 h-5 text-white group-hover:text-yellow-400 transition-colors duration-500" />
+                    </div>
+                    <h3 className="font-bold uppercase text-sm mb-1.5 tracking-wide text-white">{title}</h3>
+                    <p className="text-[10px] md:text-xs text-zinc-300 font-light leading-relaxed">{desc}</p>
+                  </div>
                 </div>
-              </div>
+              </ScrollRevealItem>
             ))}
-          </div>
+          </ScrollRevealGroup>
         </div>
       </section>
 
       {/* ══ EVOLUCIÓN ════════════════════════════════════════ */}
       <section id="evolucion" className="py-24 md:py-36 px-4 md:px-12 bg-zinc-950 border-y border-white/5 overflow-hidden">
         <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16 md:mb-24 animate-on-scroll">
+          <ScrollReveal className="text-center mb-16 md:mb-24">
             <span className="text-yellow-400 font-medium tracking-[0.4em] text-[10px] uppercase border-b border-yellow-400/30 pb-2">
               El Camino de la Autoridad
             </span>
             <h2 className="text-4xl md:text-6xl font-light uppercase tracking-tighter mt-6 mb-6">
-              <span className="font-bold text-yellow-400">8 Años</span> de Evolución
+              <span className="font-bold text-yellow-400"><span className="traj-counter">8</span> Años</span> de Evolución
             </h2>
             <p className="text-zinc-400 max-w-3xl mx-auto text-xs md:text-base font-light leading-relaxed">
               Nuestra experiencia no es teórica. Años dominando el terreno, perfeccionando desde el cimiento
               más profundo hasta convertirnos en una empresa capaz de gestionar todo el ciclo vital de tu hogar.
             </p>
-          </div>
+          </ScrollReveal>
 
-          <div className="relative flex flex-row items-stretch gap-6 md:gap-16 pt-4 animate-on-scroll">
+          <ScrollReveal delay={0.1} className="relative flex flex-row items-stretch gap-6 md:gap-16 pt-4">
             {/* Barra de progreso */}
             <div className="w-1.5 md:w-2 flex-shrink-0 bg-zinc-900 border border-white/5 rounded-full relative overflow-hidden ml-2 md:ml-0">
               <div
@@ -235,7 +314,7 @@ export default function LandingSections() {
                 );
               })}
             </div>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -247,7 +326,7 @@ export default function LandingSections() {
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/85 to-black" />
         </div>
         <div className="max-w-7xl mx-auto relative z-10">
-          <div className="text-center mb-16 md:mb-24 animate-on-scroll">
+          <ScrollReveal className="text-center mb-16 md:mb-24">
             <h2 className="text-3xl sm:text-4xl md:text-5xl font-light uppercase tracking-tighter leading-none">
               Construimos su tranquilidad,
               <br /><span className="font-bold text-yellow-400">ladrillo a ladrillo.</span>
@@ -256,46 +335,54 @@ export default function LandingSections() {
               En Soluciones Fabrick eliminamos la incertidumbre. Gestionamos todo el proceso
               para que usted solo disfrute del resultado.
             </p>
-          </div>
+          </ScrollReveal>
 
-          <div className="grid md:grid-cols-2 gap-4 md:gap-5 mb-4 md:mb-5 animate-on-scroll">
+          <ScrollRevealGroup className="grid md:grid-cols-2 gap-4 md:gap-5 mb-4 md:mb-5" stagger={0.12}>
             {[
               { t: 'Respaldo Real de 5 Años', d: 'Conocemos el rigor técnico con el que trabajamos. Si algo necesita ajuste, estaremos ahí. Su tranquilidad está asegurada a largo plazo.' },
               { t: 'Cuentas Claras, Confianza Plena', d: 'Sin sorpresas a mitad de camino. Comunicación humana y transparente para que sepa qué sucede en todo momento.' },
             ].map(({ t, d }) => (
-              <div key={t} className="bg-zinc-950/80 backdrop-blur-md p-8 md:p-10 rounded-[2rem] border border-white/5 hover:border-yellow-400/20 transition-colors">
-                <h3 className="text-white font-medium uppercase tracking-widest text-xs md:text-sm mb-3">{t}</h3>
-                <p className="text-zinc-400 font-light text-xs md:text-sm leading-relaxed">{d}</p>
-              </div>
+              <ScrollRevealItem key={t}>
+                <div className="bg-zinc-950/80 backdrop-blur-md p-8 md:p-10 rounded-[2rem] border border-white/5 hover:border-yellow-400/20 transition-colors">
+                  <h3 className="text-white font-medium uppercase tracking-widest text-xs md:text-sm mb-3">{t}</h3>
+                  <p className="text-zinc-400 font-light text-xs md:text-sm leading-relaxed">{d}</p>
+                </div>
+              </ScrollRevealItem>
             ))}
-          </div>
+          </ScrollRevealGroup>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5 animate-on-scroll">
-            <div className="bg-zinc-950/80 backdrop-blur-md p-6 md:p-8 rounded-[2rem] border border-white/5">
-              <h3 className="text-white font-medium uppercase tracking-wider text-xs mb-2">Cariño por el Detalle</h3>
-              <p className="text-zinc-500 font-light text-[10px] md:text-xs leading-relaxed">Pequeños rincones bien terminados son los que transforman una casa en un verdadero hogar.</p>
-            </div>
-            <div className="bg-zinc-950/80 backdrop-blur-md p-6 md:p-8 rounded-[2rem] border border-white/5">
-              <h3 className="text-white font-medium uppercase tracking-wider text-xs mb-2">Su Esencia</h3>
-              <p className="text-zinc-500 font-light text-[10px] md:text-xs leading-relaxed">Adaptamos cada espacio para que refleje fielmente la personalidad y estilo de su familia.</p>
-            </div>
-            <div className="bg-yellow-400 p-6 md:p-8 rounded-[2rem] text-black">
-              <div className="flex items-center gap-3 mb-3">
-                <ShieldCheck className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
-                <h3 className="font-bold uppercase tracking-wider text-[10px] md:text-sm">Protegiendo lo Importante</h3>
+          <ScrollRevealGroup className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5" stagger={0.1}>
+            <ScrollRevealItem>
+              <div className="bg-zinc-950/80 backdrop-blur-md p-6 md:p-8 rounded-[2rem] border border-white/5">
+                <h3 className="text-white font-medium uppercase tracking-wider text-xs mb-2">Cariño por el Detalle</h3>
+                <p className="text-zinc-500 font-light text-[10px] md:text-xs leading-relaxed">Pequeños rincones bien terminados son los que transforman una casa en un verdadero hogar.</p>
               </div>
-              <p className="text-black/80 font-medium text-[10px] md:text-xs leading-relaxed">
-                Seguro de Reparación ante Sismos. Porque lo más valioso no es la estructura, sino quienes viven dentro.
-              </p>
-            </div>
-          </div>
+            </ScrollRevealItem>
+            <ScrollRevealItem>
+              <div className="bg-zinc-950/80 backdrop-blur-md p-6 md:p-8 rounded-[2rem] border border-white/5">
+                <h3 className="text-white font-medium uppercase tracking-wider text-xs mb-2">Su Esencia</h3>
+                <p className="text-zinc-500 font-light text-[10px] md:text-xs leading-relaxed">Adaptamos cada espacio para que refleje fielmente la personalidad y estilo de su familia.</p>
+              </div>
+            </ScrollRevealItem>
+            <ScrollRevealItem>
+              <div className="bg-yellow-400 p-6 md:p-8 rounded-[2rem] text-black">
+                <div className="flex items-center gap-3 mb-3">
+                  <ShieldCheck className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
+                  <h3 className="font-bold uppercase tracking-wider text-[10px] md:text-sm">Protegiendo lo Importante</h3>
+                </div>
+                <p className="text-black/80 font-medium text-[10px] md:text-xs leading-relaxed">
+                  Seguro de Reparación ante Sismos. Porque lo más valioso no es la estructura, sino quienes viven dentro.
+                </p>
+              </div>
+            </ScrollRevealItem>
+          </ScrollRevealGroup>
         </div>
       </section>
 
       {/* ══ TIENDA ════════════════════════════════════════════ */}
       <section id="tienda" className="py-24 md:py-36 px-4 md:px-12 bg-black border-t border-white/5">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-16 md:mb-20 animate-on-scroll">
+          <ScrollReveal className="text-center mb-16 md:mb-20">
             <span className="text-yellow-400 font-bold tracking-[0.5em] text-[10px] uppercase">Selección Exclusiva</span>
             <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter mt-3">
               Insumos de <span className="text-zinc-600">Autor</span>
@@ -304,33 +391,34 @@ export default function LandingSections() {
               No construimos con lo básico. Proveemos materiales de grado arquitectónico que transforman
               un simple espacio en una obra maestra.
             </p>
-          </div>
+          </ScrollReveal>
 
           {/* Categorías */}
-          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 mb-12 animate-on-scroll">
+          <ScrollRevealGroup className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 mb-12" stagger={0.08}>
             {PRODUCTOS.map(({ Icon, t, d }, i) => (
-              <div
-                key={i}
-                className="relative p-5 md:p-7 rounded-[1.5rem] bg-zinc-950/80 border border-white/5 hover:border-yellow-400/40 hover:bg-zinc-900 transition-all duration-500 group"
-              >
-                <div className="store-icon-wrapper w-14 h-14 md:w-16 md:h-16 mx-auto bg-black rounded-full flex items-center justify-center border border-white/10 mb-4 group-hover:border-yellow-400 transition-colors group-hover:shadow-[0_0_20px_rgba(250,204,21,0.2)]">
-                  <Icon className="w-7 h-7 md:w-8 md:h-8 text-zinc-400 group-hover:text-yellow-400 transition-colors duration-500" />
+              <ScrollRevealItem key={i}>
+                <div
+                  className="relative p-5 md:p-7 rounded-[1.5rem] bg-zinc-950/80 border border-white/5 hover:border-yellow-400/40 hover:bg-zinc-900 transition-all duration-500 group"
+                >
+                  <div className="store-icon-wrapper w-14 h-14 md:w-16 md:h-16 mx-auto bg-black rounded-full flex items-center justify-center border border-white/10 mb-4 group-hover:border-yellow-400 transition-colors group-hover:shadow-[0_0_20px_rgba(250,204,21,0.2)]">
+                    <Icon className="w-7 h-7 md:w-8 md:h-8 text-zinc-400 group-hover:text-yellow-400 transition-colors duration-500" />
+                  </div>
+                  <h4 className="font-black text-xs uppercase tracking-wider mb-1.5 text-white group-hover:text-yellow-400 transition-colors text-center">{t}</h4>
+                  <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest leading-relaxed text-center">{d}</p>
                 </div>
-                <h4 className="font-black text-xs uppercase tracking-wider mb-1.5 text-white group-hover:text-yellow-400 transition-colors text-center">{t}</h4>
-                <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest leading-relaxed text-center">{d}</p>
-              </div>
+              </ScrollRevealItem>
             ))}
-          </div>
+          </ScrollRevealGroup>
 
           {/* Productos reales desde InsForge */}
-        <div className="animate-on-scroll">
-          <TiendaSection />
-        </div>
-          <div className="text-center mt-10 animate-on-scroll">
+          <ScrollReveal>
+            <TiendaSection />
+          </ScrollReveal>
+          <ScrollReveal delay={0.1} className="text-center mt-10">
             <div className="flex items-center justify-center gap-4 flex-wrap">
               <Link
                 href="/tienda"
-                className="px-12 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.2em] rounded-full hover:bg-white transition-all hover:scale-105 shadow-[0_10px_30px_rgba(250,204,21,0.2)] inline-flex items-center gap-4 group"
+                className="btn-shimmer px-12 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.2em] rounded-full hover:bg-white transition-all hover:scale-105 shadow-[0_10px_30px_rgba(250,204,21,0.2)] inline-flex items-center gap-4 group"
               >
                 Explorar Catalogo Completo
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
@@ -342,52 +430,53 @@ export default function LandingSections() {
                 Panel Sync
               </Link>
             </div>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* ══ PROYECTOS / REVIEWS ══════════════════════════════ */}
       <section id="proyectos" className="py-24 md:py-36 px-4 md:px-12 bg-zinc-950 border-t border-white/5">
         <div className="max-w-7xl mx-auto">
-          <div className="text-center mb-14 md:mb-20 animate-on-scroll">
+          <ScrollReveal className="text-center mb-14 md:mb-20">
             <span className="text-yellow-400 font-bold tracking-[0.5em] text-[10px] uppercase">Garantía Comprobada</span>
             <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mt-3 mb-3">
               Resultados <span className="text-zinc-600">Innegables</span>
             </h2>
             <div className="w-14 h-1 bg-yellow-400 mx-auto rounded-full" />
-          </div>
+          </ScrollReveal>
 
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6">
+          <ScrollRevealGroup className="grid grid-cols-1 md:grid-cols-3 gap-5 md:gap-6" stagger={0.12}>
             {REVIEWS.map((rev, i) => (
-              <div
-                key={i}
-                className="bg-black p-8 md:p-10 rounded-[2rem] border border-white/5 hover:border-yellow-400/30 transition-colors relative animate-on-scroll"
-              >
-                <div className="flex gap-1 mb-6">
-                  {Array.from({ length: 5 }).map((_, s) => (
-                    <Star key={s} className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-zinc-300 text-xs md:text-sm leading-relaxed mb-8 font-light">"{rev.t}"</p>
-                <div className="flex items-center gap-3 border-t border-white/5 pt-5">
-                  <div className="w-11 h-11 rounded-full border border-yellow-400/30 flex items-center justify-center font-black text-yellow-400 text-base bg-zinc-900 flex-shrink-0">
-                    {rev.n.charAt(0)}
+              <ScrollRevealItem key={i} direction={i % 2 === 0 ? 'left' : 'right'}>
+                <div
+                  className="review-card bg-black p-8 md:p-10 rounded-[2rem] border border-white/5 hover:border-yellow-400/30 transition-colors relative"
+                >
+                  <div className="flex gap-1 mb-6">
+                    {Array.from({ length: 5 }).map((_, s) => (
+                      <Star key={s} className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
+                    ))}
                   </div>
-                  <div>
-                    <h4 className="font-bold text-xs uppercase tracking-wider">{rev.n}</h4>
-                    <span className="text-[9px] text-yellow-400 uppercase tracking-widest">{rev.type}</span>
+                  <p className="text-zinc-300 text-xs md:text-sm leading-relaxed mb-8 font-light">&ldquo;{rev.t}&rdquo;</p>
+                  <div className="flex items-center gap-3 border-t border-white/5 pt-5">
+                    <div className="w-11 h-11 rounded-full border border-yellow-400/30 flex items-center justify-center font-black text-yellow-400 text-base bg-zinc-900 flex-shrink-0">
+                      {rev.n.charAt(0)}
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-xs uppercase tracking-wider">{rev.n}</h4>
+                      <span className="text-[9px] text-yellow-400 uppercase tracking-widest">{rev.type}</span>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </ScrollRevealItem>
             ))}
-          </div>
+          </ScrollRevealGroup>
         </div>
       </section>
 
       {/* ══ CONTACTO ═════════════════════════════════════════ */}
       <section id="contacto" className="py-24 md:py-36 px-4 md:px-12 bg-black border-t border-white/5">
         <div className="max-w-7xl mx-auto grid lg:grid-cols-2 gap-10 md:gap-16 items-center">
-          <div className="animate-on-scroll space-y-8">
+          <ScrollReveal className="space-y-8">
             <div>
               <span className="text-yellow-400 font-bold tracking-[0.4em] text-[10px] uppercase">Contacto Directo</span>
               <h2 className="text-4xl md:text-7xl font-black uppercase tracking-tighter mt-3 leading-none">
@@ -399,9 +488,9 @@ export default function LandingSections() {
               </p>
             </div>
             {/* Mapa */}
-            <div className="w-full h-52 md:h-72 bg-zinc-900 rounded-[2rem] border border-white/5 flex flex-col items-center justify-center relative overflow-hidden group">
+            <div className="img-zoom w-full h-52 md:h-72 bg-zinc-900 rounded-[2rem] border border-white/5 flex flex-col items-center justify-center relative overflow-hidden group">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=1000&auto=format&fit=crop" alt="Mapa Santiago" className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale group-hover:scale-105 transition-transform duration-700" />
+              <img src="https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=1000&auto=format&fit=crop" alt="Mapa Santiago" className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale" />
               <div className="absolute inset-0 bg-black/40" />
               <div className="w-14 h-14 bg-yellow-400 rounded-full flex items-center justify-center relative z-10 mb-3 shadow-[0_0_20px_rgba(250,204,21,0.4)] animate-pulse">
                 <MapPin className="w-7 h-7 text-black" />
@@ -410,9 +499,9 @@ export default function LandingSections() {
                 Oficina Central · Santiago
               </span>
             </div>
-          </div>
+          </ScrollReveal>
 
-          <div className="bg-zinc-950 p-7 md:p-12 rounded-[2rem] border border-white/5 animate-on-scroll">
+          <ScrollReveal delay={0.15} className="bg-zinc-950 p-7 md:p-12 rounded-[2rem] border border-white/5">
             <form action="/api/presupuesto" method="POST" className="space-y-6">
               {[
                 { label: 'Nombre Completo',    name: 'nombre', type: 'text',  ph: 'Ej. Juan Pérez' },
@@ -436,49 +525,98 @@ export default function LandingSections() {
               </div>
               <button
                 type="submit"
-                className="w-full py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.2em] rounded-2xl hover:bg-white transition-all hover:scale-[1.02] active:scale-95 glow-pulse"
+                className="btn-shimmer w-full py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.2em] rounded-2xl hover:bg-white transition-all hover:scale-[1.02] active:scale-95 glow-pulse"
               >
                 Solicitar Evaluación
               </button>
             </form>
-          </div>
+          </ScrollReveal>
         </div>
       </section>
 
       {/* ══ FOOTER ═══════════════════════════════════════════ */}
-      <footer className="bg-black py-10 md:py-16 border-t border-white/5">
-        <div className="max-w-7xl mx-auto px-4 md:px-12 flex flex-col md:flex-row justify-between items-center gap-8">
-          {/* Logo */}
-          <FabrickLogo className="pointer-events-none" />
+      <footer className="py-14 md:py-20 border-t border-white/5" style={{ background: '#050505' }}>
+        <div className="max-w-7xl mx-auto px-4 md:px-12">
 
-          <div className="text-center">
-            <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest mb-1">
-              Soluciones Integrales para el Hogar Moderno.
-            </p>
-            <p className="text-zinc-700 text-[9px] uppercase tracking-widest">
-              © {new Date().getFullYear()} Soluciones Fabrick. Todos los derechos reservados.
-            </p>
-          </div>
-
-          {/* Redes sociales */}
-          <div className="flex gap-4 items-center">
-            {[
-              { Icon: MetaIcon,      href: '#' },
-              { Icon: TikTokIcon,    href: '#' },
-              { Icon: InstagramIcon, href: '#' },
-            ].map(({ Icon, href }, i) => (
-              <a
-                key={i} href={href}
-                className="relative group w-11 h-11 flex items-center justify-center"
+          {/* Top area: SF glow + tagline */}
+          <div className="flex flex-col items-center mb-10 md:mb-14">
+            <div className="relative mb-4">
+              <span
+                className="font-playfair font-black text-yellow-400 select-none leading-none"
+                style={{
+                  fontSize: 'clamp(3.5rem, 12vw, 7rem)',
+                  textShadow:
+                    '0 0 30px rgba(250,204,21,0.55), 0 0 60px rgba(250,204,21,0.3), 0 0 120px rgba(250,204,21,0.15)',
+                  letterSpacing: '0.06em',
+                }}
               >
-                <div className="absolute inset-0 bg-yellow-400 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300 shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
-                <div className="absolute inset-0 rounded-full border border-white/10 group-hover:border-transparent transition-colors" />
-                <div className="relative z-10 text-zinc-400 group-hover:text-black transition-colors">
-                  <Icon />
-                </div>
-              </a>
-            ))}
+                SF
+              </span>
+            </div>
+            <p className="font-cormorant text-zinc-400 text-base md:text-lg italic tracking-widest text-center">
+              Soluciones Integrales para el Hogar Moderno
+            </p>
           </div>
+
+          {/* Golden separator */}
+          <div
+            className="divider-line mb-10 md:mb-14 origin-center"
+            style={{
+              height: '1px',
+              background: 'linear-gradient(90deg, transparent 0%, rgba(201,169,110,0.6) 30%, rgba(250,204,21,0.8) 50%, rgba(201,169,110,0.6) 70%, transparent 100%)',
+            }}
+          />
+
+          {/* Bottom row */}
+          <div className="flex flex-col md:flex-row justify-between items-center gap-8">
+            {/* Logo */}
+            <FabrickLogo className="pointer-events-none" />
+
+            {/* Nav links */}
+            <nav className="flex flex-wrap justify-center gap-x-8 gap-y-3">
+              {[
+                { label: 'Servicios',  href: '/servicios' },
+                { label: 'Evolución',  href: '/evolucion' },
+                { label: 'Soluciones', href: '/soluciones' },
+                { label: 'Tienda',     href: '/tienda' },
+                { label: 'Proyectos',  href: '/proyectos' },
+                { label: 'Contacto',   href: '/contacto' },
+              ].map(({ label, href }) => (
+                <a
+                  key={href}
+                  href={href}
+                  className="text-xs font-medium uppercase tracking-[0.22em] text-zinc-500 hover:text-yellow-400 transition-colors duration-300 min-h-[44px] flex items-center touch-target"
+                >
+                  {label}
+                </a>
+              ))}
+            </nav>
+
+            {/* Social icons */}
+            <div className="flex gap-4 items-center">
+              {[
+                { Icon: MetaIcon,      href: '#' },
+                { Icon: TikTokIcon,    href: '#' },
+                { Icon: InstagramIcon, href: '#' },
+              ].map(({ Icon, href }, i) => (
+                <a
+                  key={i} href={href}
+                  className="relative group w-11 h-11 flex items-center justify-center"
+                >
+                  <div className="absolute inset-0 bg-yellow-400 rounded-full scale-0 group-hover:scale-100 transition-transform duration-300 shadow-[0_0_15px_rgba(250,204,21,0.5)]" />
+                  <div className="absolute inset-0 rounded-full border border-white/10 group-hover:border-transparent transition-colors" />
+                  <div className="relative z-10 text-zinc-400 group-hover:text-black transition-colors">
+                    <Icon />
+                  </div>
+                </a>
+              ))}
+            </div>
+          </div>
+
+          {/* Copyright */}
+          <p className="text-center text-zinc-700 text-[9px] uppercase tracking-[0.35em] mt-10 font-light">
+            © {new Date().getFullYear()} Soluciones Fabrick · Todos los derechos reservados
+          </p>
         </div>
       </footer>
 

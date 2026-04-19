@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { 
@@ -8,58 +10,6 @@ import {
   Wifi, Battery, Wrench, Check
 } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
-
-// --- COMPONENTE LOGO BASE (Para la animación de carga) ---
-const FabrickLogoBase = () => (
-  <div className="flex items-center gap-3 select-none justify-center">
-    <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
-      <svg
-        viewBox="0 0 68 60"
-        className="w-full h-full overflow-visible drop-shadow-[0_0_10px_rgba(250,204,21,0.2)]"
-      >
-        {/* Trazos estáticos blancos */}
-        <path
-          pathLength="100"
-          d="M 28 16 C 28 4, 10 4, 10 20 C 10 34, 28 28, 28 42 C 28 56, 10 56, 10 44"
-          fill="none" stroke="#FFFFFF" strokeWidth="2.5"
-          strokeLinecap="round" strokeLinejoin="round"
-          style={{ filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.6))' }}
-        />
-        <path
-          pathLength="100"
-          d="M 44 48 L 44 16 C 44 8, 48 6, 54 6 L 58 6 M 44 28 L 54 28"
-          fill="none" stroke="#FFFFFF" strokeWidth="2.5"
-          strokeLinecap="round" strokeLinejoin="round"
-          style={{ filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.6))' }}
-        />
-        {/* Luz viajera amarilla — S */}
-        <path
-          pathLength="100"
-          d="M 28 16 C 28 4, 10 4, 10 20 C 10 34, 28 28, 28 42 C 28 56, 10 56, 10 44"
-          fill="none" stroke="#FACC15" strokeWidth="3.5"
-          strokeLinecap="round" strokeLinejoin="round"
-          strokeDasharray="25 100"
-          style={{
-            animation: 'run-light 3s linear infinite',
-            filter: 'drop-shadow(0 0 8px #FACC15) drop-shadow(0 0 15px #FACC15)',
-          }}
-        />
-        {/* Luz viajera amarilla — F */}
-        <path
-          pathLength="100"
-          d="M 44 48 L 44 16 C 44 8, 48 6, 54 6 L 58 6 M 44 28 L 54 28"
-          fill="none" stroke="#FACC15" strokeWidth="3.5"
-          strokeLinecap="round" strokeLinejoin="round"
-          strokeDasharray="25 100"
-          style={{
-            animation: 'run-light 3.5s linear infinite',
-            filter: 'drop-shadow(0 0 8px #FACC15) drop-shadow(0 0 15px #FACC15)',
-          }}
-        />
-      </svg>
-    </div>
-  </div>
-);
 
 // --- COMPONENTE FUEGOS ARTIFICIALES PREMIUM ---
 const PremiumFireworks = () => {
@@ -101,13 +51,6 @@ const CheckoutApp = () => {
   const [step, setStep] = useState(1); 
   const [gsapLoaded, setGsapLoaded] = useState(false);
   const stepContentRef = useRef<HTMLDivElement>(null);
-
-  // Estados de Tarjeta
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardName, setCardName] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCVC, setCardCVC] = useState('');
-  const [isCardFlipped, setIsCardFlipped] = useState(false);
   
   // Estado de Seguridad
   const [secureConnectionProgress, setSecureConnectionProgress] = useState(0);
@@ -127,21 +70,6 @@ const CheckoutApp = () => {
   const [checkoutError, setCheckoutError] = useState('');
   const [orderId, setOrderId] = useState('');
 
-  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').substring(0, 16);
-    const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
-    setCardNumber(formatted);
-  };
-
-  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').substring(0, 4);
-    if (value.length >= 3) {
-      setCardExpiry(`${value.substring(0, 2)}/${value.substring(2, 4)}`);
-    } else {
-      setCardExpiry(value);
-    }
-  };
-
   const product = {
     id: searchParams.get('productId') || 'FBK-01',
     name: searchParams.get('name') || 'Cerradura Biométrica Titanio V2',
@@ -150,6 +78,16 @@ const CheckoutApp = () => {
     shipping: 0,
     image: searchParams.get('img') || 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=2070&auto=format&fit=crop',
   };
+
+  const returnedPaymentStatus =
+    searchParams.get('payment_status') ||
+    searchParams.get('status') ||
+    searchParams.get('collection_status') ||
+    '';
+  const returnedOrderId =
+    searchParams.get('external_reference') ||
+    searchParams.get('merchant_order_id') ||
+    '';
 
   const requestSatelliteAutofill = () => {
     if (!navigator.geolocation) {
@@ -214,6 +152,37 @@ const CheckoutApp = () => {
     loadGSAP();
     window.scrollTo(0, 0);
   }, []);
+
+  useEffect(() => {
+    if (returnedOrderId) {
+      setOrderId(returnedOrderId);
+    }
+
+    if (!returnedPaymentStatus) {
+      return;
+    }
+
+    const normalized = returnedPaymentStatus.toLowerCase();
+    setIsProcessing(false);
+
+    if (['success', 'approved'].includes(normalized)) {
+      setCheckoutError('');
+      setProcessProgress(100);
+      setIsSuccess(true);
+      return;
+    }
+
+    setIsSuccess(false);
+    setProcessProgress(0);
+    setStep(3);
+
+    if (['pending', 'in_process', 'in_mediation'].includes(normalized)) {
+      setCheckoutError('Mercado Pago indicó que el pago quedó pendiente. Te avisaremos cuando sea confirmado.');
+      return;
+    }
+
+    setCheckoutError('Mercado Pago no aprobó el pago. Puedes intentarlo nuevamente.');
+  }, [returnedOrderId, returnedPaymentStatus]);
 
   useEffect(() => {
     if (!gsapLoaded || !window.gsap) return;
@@ -334,31 +303,17 @@ const CheckoutApp = () => {
       }
 
       const createdOrderId = checkoutBody.data.id as string;
+      const checkoutUrl = checkoutBody?.payment?.checkoutUrl as string | null;
       setOrderId(createdOrderId);
 
-      prog = 75;
+      if (!checkoutUrl) {
+        throw new Error('No se pudo iniciar Mercado Pago para esta orden.');
+      }
+
+      prog = 100;
       setProcessProgress(prog);
-
-      await fetch('/api/payments/webhook', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-idempotency-key': `sim-${createdOrderId}`,
-        },
-        body: JSON.stringify({
-          eventType: 'payment.succeeded',
-          orderId: createdOrderId,
-          paymentId: `SIM-${Date.now()}`,
-          status: 'succeeded',
-          amount: checkoutBody.data?.resumen?.total ?? product.price,
-          currency: 'CLP',
-        }),
-      });
-
-      setProcessProgress(100);
-      setTimeout(() => {
-        setIsSuccess(true);
-      }, 600);
+      window.location.href = checkoutUrl;
+      return;
     } catch (e) {
       setCheckoutError(e instanceof Error ? e.message : 'Error procesando checkout.');
       setIsProcessing(false);
@@ -463,9 +418,9 @@ const CheckoutApp = () => {
                  {orderId && (
                    <p className="text-xs uppercase tracking-[0.35em] text-yellow-400/80">Orden: {orderId}</p>
                  )}
-                 <p className="text-zinc-300 text-sm font-light pt-4 max-w-md mx-auto leading-relaxed">
-                   Su inversión está asegurada bajo nuestros protocolos. Nuestro equipo de ingeniería ya tiene su orden y su arquitecto personal se pondrá en contacto a la brevedad.
-                 </p>
+                   <p className="text-zinc-300 text-sm font-light pt-4 max-w-md mx-auto leading-relaxed">
+                     Mercado Pago confirmó tu transacción y Fabrick ya recibió la orden. Nuestro equipo de ingeniería continuará el proceso y te contactará a la brevedad.
+                   </p>
                </div>
 
                <div className="mt-12 bg-gradient-to-b from-zinc-900 to-black border border-white/10 rounded-[2rem] p-8 w-full relative z-10 shadow-2xl backdrop-blur-xl">
@@ -474,7 +429,7 @@ const CheckoutApp = () => {
                  <div className="flex justify-between items-center mb-6 pb-6 border-b border-white/5">
                    <div className="text-left">
                      <div className="text-[8px] uppercase tracking-widest text-zinc-500 mb-2">Código de Expediente</div>
-                     <div className="font-mono text-sm md:text-base text-white tracking-widest">#FBK-88942A</div>
+                       <div className="font-mono text-sm md:text-base text-white tracking-widest">{orderId ? `#${orderId}` : 'Pendiente de asignación'}</div>
                    </div>
                    <div className="text-right">
                      <div className="text-[8px] uppercase tracking-widest text-zinc-500 mb-2">Inversión Total</div>
@@ -483,7 +438,7 @@ const CheckoutApp = () => {
                  </div>
                  
                  <div className="text-center">
-                   <p className="text-[8px] text-zinc-600 uppercase tracking-widest">Recibo digital enviado a su correo electrónico.</p>
+                   <p className="text-[8px] text-zinc-600 uppercase tracking-widest">Recibirás la confirmación del pago en Mercado Pago y en tu correo electrónico.</p>
                  </div>
                </div>
 
@@ -658,7 +613,7 @@ const CheckoutApp = () => {
                   {checkoutError && <p className="text-xs text-red-400">{checkoutError}</p>}
                   <div className="pt-8 flex gap-4">
                     <button onClick={() => changeStep(1)} type="button" className="px-8 py-5 border border-white/20 rounded-full bg-black text-white font-bold text-xs uppercase hover:border-yellow-400 transition-colors">Volver</button>
-                    <button onClick={() => changeStep(3)} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs rounded-full shadow-[0_15px_40px_rgba(250,204,21,0.2)] hover:bg-white transition-colors">Ir al Pago Seguro</button>
+                    <button onClick={() => changeStep(3)} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs rounded-full shadow-[0_15px_40px_rgba(250,204,21,0.2)] hover:bg-white transition-colors">Continuar a Mercado Pago</button>
                   </div>
                 </form>
               </div>
@@ -708,64 +663,46 @@ const CheckoutApp = () => {
                 <div className="flex justify-between items-start">
                   <div>
                     <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase">Paso Final</span>
-                    <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-2 mt-1">Inversión <span className="text-yellow-400">Protegida</span></h3>
+                    <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-2 mt-1">Pago <span className="text-yellow-400">Protegido</span></h3>
                   </div>
                 </div>
 
-                {/* TARJETA DE CRÉDITO INTERACTIVA 3D */}
-                <div className="perspective-1000 w-full max-w-md mx-auto h-56 pt-2">
-                  <div className={`relative w-full h-full transition-transform duration-700 transform-style-3d ${isCardFlipped ? 'rotate-y-180' : ''}`}>
-                    <div className="absolute w-full h-full backface-hidden bg-gradient-to-tr from-zinc-800 to-zinc-950 border border-white/10 rounded-3xl p-6 flex flex-col justify-between overflow-hidden shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-                       <div className="absolute -top-10 -left-10 w-32 h-32 bg-yellow-400/20 blur-3xl rounded-full animate-pulse" />
-                       <div className="flex justify-between items-center relative z-10">
-                         <div className="w-12 h-8 rounded-md bg-gradient-to-br from-zinc-300 via-yellow-200 to-yellow-600 opacity-90 shadow-inner" />
-                       </div>
-                       <div className="relative z-10 mt-4">
-                         <div className={`font-mono text-xl tracking-[0.15em] transition-colors ${cardNumber ? 'text-white' : 'text-white/30'}`}>
-                           {cardNumber || '0000 0000 0000 0000'}
-                         </div>
-                       </div>
-                       <div className="flex justify-between items-end relative z-10 mt-4">
-                         <div>
-                           <div className="text-[8px] uppercase tracking-widest text-yellow-400/80 mb-1">Titular</div>
-                           <div className={`font-bold text-xs uppercase tracking-widest ${cardName ? 'text-white' : 'text-white/30'}`}>{cardName || 'NOMBRE APELLIDO'}</div>
-                         </div>
-                         <div>
-                           <div className="text-[8px] uppercase tracking-widest text-yellow-400/80 text-right mb-1">Vence</div>
-                           <div className={`font-mono text-xs text-right ${cardExpiry ? 'text-white' : 'text-white/30'}`}>{cardExpiry || 'MM/AA'}</div>
-                         </div>
-                       </div>
+                <div className="bg-gradient-to-br from-zinc-900 to-black border border-white/10 rounded-[2rem] p-8 space-y-5 shadow-[0_20px_50px_rgba(0,0,0,0.35)]">
+                  <div className="flex items-center justify-between gap-4">
+                    <div>
+                      <p className="text-[9px] uppercase tracking-[0.35em] text-yellow-400 font-bold">Mercado Pago</p>
+                      <h4 className="text-2xl font-black uppercase tracking-tighter mt-2">Finalización externa segura</h4>
                     </div>
-                    <div className="absolute w-full h-full backface-hidden rotate-y-180 bg-gradient-to-tr from-zinc-800 to-zinc-950 border border-white/10 rounded-3xl overflow-hidden flex flex-col">
-                       <div className="w-full h-12 bg-black/80 mt-6" />
-                       <div className="px-6 mt-6">
-                         <div className="text-[8px] uppercase tracking-widest text-zinc-500 text-right mb-1 pr-2">CVC</div>
-                         <div className="w-full h-10 bg-white/90 rounded flex items-center justify-end px-4">
-                           <span className="font-mono text-sm text-black italic font-bold">{cardCVC || '•••'}</span>
-                         </div>
-                       </div>
+                    <div className="w-12 h-12 rounded-full border border-yellow-400/30 bg-yellow-400/10 flex items-center justify-center">
+                      <Lock className="w-5 h-5 text-yellow-400" />
+                    </div>
+                  </div>
+
+                  <p className="text-sm text-zinc-300 leading-relaxed">
+                    Para proteger tus datos, Fabrick ya no captura los datos de la tarjeta dentro del sitio. Al continuar, serás redirigido a Mercado Pago para completar el pago real con su flujo oficial.
+                  </p>
+
+                  <div className="grid sm:grid-cols-2 gap-4 text-xs uppercase tracking-widest">
+                    <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
+                      <div className="text-zinc-500 mb-2">Proveedor</div>
+                      <div className="text-white font-bold">Mercado Pago</div>
+                    </div>
+                    <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
+                      <div className="text-zinc-500 mb-2">Monto referencial</div>
+                      <div className="text-white font-bold">{formatCLP(product.price)}</div>
                     </div>
                   </div>
                 </div>
 
-                <form className="space-y-6 pt-6">
-                  <input type="text" value={cardName} onChange={(e) => setCardName(e.target.value.toUpperCase())} onFocus={() => setIsCardFlipped(false)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Nombre en la Tarjeta" />
-                  <input type="text" value={cardNumber} onChange={handleCardNumberChange} onFocus={() => setIsCardFlipped(false)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm font-mono text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="0000 0000 0000 0000" />
-                  <div className="grid grid-cols-2 gap-6">
-                    <input type="text" value={cardExpiry} onChange={handleExpiryChange} onFocus={() => setIsCardFlipped(false)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm font-mono text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="MM/AA" />
-                    <input type="password" maxLength={4} value={cardCVC} onChange={(e) => setCardCVC(e.target.value.replace(/\D/g, ''))} onFocus={() => setIsCardFlipped(true)} onBlur={() => setIsCardFlipped(false)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm font-mono text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="CVC" />
-                  </div>
-
-                  <div className="pt-8 flex gap-4">
-                    <button onClick={() => changeStep(2)} type="button" className="px-6 py-5 border border-white/20 rounded-full bg-black hover:border-yellow-400 transition-colors text-white">
-                      <ArrowLeft className="w-5 h-5" />
-                    </button>
-                    <button disabled={isProcessing} onClick={handleConfirmInvestment} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-[11px] md:text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all transform active:scale-95 flex justify-center items-center gap-3 shadow-[0_15px_40px_rgba(250,204,21,0.3)] disabled:opacity-50 disabled:cursor-not-allowed">
-                      <Lock className="w-4 h-4" /> Confirmar Inversión
-                    </button>
-                  </div>
-                  {checkoutError && <p className="text-xs text-red-400 pt-2">{checkoutError}</p>}
-                </form>
+                <div className="pt-8 flex gap-4">
+                  <button onClick={() => changeStep(2)} type="button" className="px-6 py-5 border border-white/20 rounded-full bg-black hover:border-yellow-400 transition-colors text-white">
+                    <ArrowLeft className="w-5 h-5" />
+                  </button>
+                  <button disabled={isProcessing} onClick={handleConfirmInvestment} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-[11px] md:text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all transform active:scale-95 flex justify-center items-center gap-3 shadow-[0_15px_40px_rgba(250,204,21,0.3)] disabled:opacity-50 disabled:cursor-not-allowed">
+                    <Lock className="w-4 h-4" /> Pagar en Mercado Pago
+                  </button>
+                </div>
+                {checkoutError && <p className="text-xs text-red-400 pt-2">{checkoutError}</p>}
               </div>
             )}
 

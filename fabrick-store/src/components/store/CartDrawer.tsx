@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import React from 'react';
 import { X, Plus, Minus, Trash2 } from 'lucide-react';
 import type { CartItem } from '@/hooks/useCart';

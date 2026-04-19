@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import React, { useEffect, useRef } from 'react';
 import { X, Star, Check, Truck } from 'lucide-react';
 import type { Product } from '@/hooks/useRealtimeProducts';

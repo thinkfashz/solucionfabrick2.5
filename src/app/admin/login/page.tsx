@@ -63,11 +63,12 @@ export default function AdminLoginPage() {
   async function handleSetupSend() {
     resetMessages();
     setLoading(true);
-    await insforge.auth.sendResetPasswordEmail({
+    const { error: err } = await insforge.auth.sendResetPasswordEmail({
       email: setupEmail.trim().toLowerCase(),
       redirectTo: `${window.location.origin}/admin/login`,
     });
     setLoading(false);
+    if (err) { setError(err.message); return; }
     setSuccess('Si el correo existe, recibirás un código en minutos. Revisa tu bandeja de entrada.');
     setScreen('setup-code');
   }

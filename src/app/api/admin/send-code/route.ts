@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createClient } from '@insforge/sdk';
 import { createOtp } from '@/lib/otpStore';
 
-const ALLOWED_ADMIN_EMAIL = 'feduardomsz@gmail.com';
+const ALLOWED_ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'feduardomsz@gmail.com';
 
 function otpEmailHtml(code: string): string {
   return `<!DOCTYPE html>

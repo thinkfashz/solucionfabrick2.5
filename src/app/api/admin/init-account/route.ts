@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@insforge/sdk';
 
-const ADMIN_EMAIL = 'feduardomsz@gmail.com';
-const ADMIN_INITIAL_PASSWORD = '8dediciembre';
+const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'feduardomsz@gmail.com';
+const ADMIN_INITIAL_PASSWORD = process.env.ADMIN_INITIAL_PASSWORD || '8dediciembre';
 
 export async function POST() {
   const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';

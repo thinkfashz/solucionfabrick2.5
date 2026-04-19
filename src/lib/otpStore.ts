@@ -15,7 +15,8 @@ const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 
 /** Generates and stores a 6-digit OTP for the given email. Returns the code. */
 export function createOtp(email: string): string {
-  const code = String(Math.floor(100000 + Math.random() * 900000));
+  // Use crypto.randomInt for cryptographically secure OTP generation
+  const code = String(crypto.getRandomValues(new Uint32Array(1))[0] % 900000 + 100000).padStart(6, '0');
   otpStore.set(email.toLowerCase(), { code, expiresAt: Date.now() + OTP_TTL_MS });
   return code;
 }

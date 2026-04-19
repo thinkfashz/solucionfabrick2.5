@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 
+function normalizeBase64Url(value: string): string {
+  const base64 = value.replace(/-/g, '+').replace(/_/g, '/')
+  const padding = (4 - (base64.length % 4)) % 4
+  return base64 + '='.repeat(padding)
+}
+
 /** Edge-compatible session validation (no Buffer dependency). */
 async function isValidSession(value: string): Promise<boolean> {
   try {
@@ -19,7 +25,7 @@ async function isValidSession(value: string): Promise<boolean> {
     )
 
     // Convert base64url to Uint8Array
-    const base64 = sigB64.replace(/-/g, '+').replace(/_/g, '/')
+    const base64 = normalizeBase64Url(sigB64)
     const binaryStr = atob(base64)
     const sigBytes = new Uint8Array(binaryStr.length)
     for (let i = 0; i < binaryStr.length; i++) sigBytes[i] = binaryStr.charCodeAt(i)
@@ -28,7 +34,7 @@ async function isValidSession(value: string): Promise<boolean> {
     if (!valid) return false
 
     // Decode and validate payload expiry
-    const payloadBase64 = data.replace(/-/g, '+').replace(/_/g, '/')
+    const payloadBase64 = normalizeBase64Url(data)
     const payloadStr = atob(payloadBase64)
     const payload = JSON.parse(payloadStr) as { exp?: number }
     if (typeof payload.exp !== 'number') return false

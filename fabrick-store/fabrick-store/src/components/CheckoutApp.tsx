@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import React, { useEffect, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { 
@@ -8,58 +10,6 @@ import {
   Wifi, Battery, Wrench, Check
 } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
-
-// --- COMPONENTE LOGO BASE (Para la animación de carga) ---
-const FabrickLogoBase = () => (
-  <div className="flex items-center gap-3 select-none justify-center">
-    <div className="relative w-10 h-10 flex items-center justify-center flex-shrink-0">
-      <svg
-        viewBox="0 0 68 60"
-        className="w-full h-full overflow-visible drop-shadow-[0_0_10px_rgba(250,204,21,0.2)]"
-      >
-        {/* Trazos estáticos blancos */}
-        <path
-          pathLength="100"
-          d="M 28 16 C 28 4, 10 4, 10 20 C 10 34, 28 28, 28 42 C 28 56, 10 56, 10 44"
-          fill="none" stroke="#FFFFFF" strokeWidth="2.5"
-          strokeLinecap="round" strokeLinejoin="round"
-          style={{ filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.6))' }}
-        />
-        <path
-          pathLength="100"
-          d="M 44 48 L 44 16 C 44 8, 48 6, 54 6 L 58 6 M 44 28 L 54 28"
-          fill="none" stroke="#FFFFFF" strokeWidth="2.5"
-          strokeLinecap="round" strokeLinejoin="round"
-          style={{ filter: 'drop-shadow(0 0 3px rgba(255,255,255,0.6))' }}
-        />
-        {/* Luz viajera amarilla — S */}
-        <path
-          pathLength="100"
-          d="M 28 16 C 28 4, 10 4, 10 20 C 10 34, 28 28, 28 42 C 28 56, 10 56, 10 44"
-          fill="none" stroke="#FACC15" strokeWidth="3.5"
-          strokeLinecap="round" strokeLinejoin="round"
-          strokeDasharray="25 100"
-          style={{
-            animation: 'run-light 3s linear infinite',
-            filter: 'drop-shadow(0 0 8px #FACC15) drop-shadow(0 0 15px #FACC15)',
-          }}
-        />
-        {/* Luz viajera amarilla — F */}
-        <path
-          pathLength="100"
-          d="M 44 48 L 44 16 C 44 8, 48 6, 54 6 L 58 6 M 44 28 L 54 28"
-          fill="none" stroke="#FACC15" strokeWidth="3.5"
-          strokeLinecap="round" strokeLinejoin="round"
-          strokeDasharray="25 100"
-          style={{
-            animation: 'run-light 3.5s linear infinite',
-            filter: 'drop-shadow(0 0 8px #FACC15) drop-shadow(0 0 15px #FACC15)',
-          }}
-        />
-      </svg>
-    </div>
-  </div>
-);
 
 // --- COMPONENTE FUEGOS ARTIFICIALES PREMIUM ---
 const PremiumFireworks = () => {
@@ -101,13 +51,6 @@ const CheckoutApp = () => {
   const [step, setStep] = useState(1); 
   const [gsapLoaded, setGsapLoaded] = useState(false);
   const stepContentRef = useRef<HTMLDivElement>(null);
-
-  // Estados de Tarjeta
-  const [cardNumber, setCardNumber] = useState('');
-  const [cardName, setCardName] = useState('');
-  const [cardExpiry, setCardExpiry] = useState('');
-  const [cardCVC, setCardCVC] = useState('');
-  const [isCardFlipped, setIsCardFlipped] = useState(false);
   
   // Estado de Seguridad
   const [secureConnectionProgress, setSecureConnectionProgress] = useState(0);
@@ -126,21 +69,6 @@ const CheckoutApp = () => {
   const [locationError, setLocationError] = useState('');
   const [checkoutError, setCheckoutError] = useState('');
   const [orderId, setOrderId] = useState('');
-
-  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').substring(0, 16);
-    const formatted = value.match(/.{1,4}/g)?.join(' ') || value;
-    setCardNumber(formatted);
-  };
-
-  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const value = e.target.value.replace(/\D/g, '').substring(0, 4);
-    if (value.length >= 3) {
-      setCardExpiry(`${value.substring(0, 2)}/${value.substring(2, 4)}`);
-    } else {
-      setCardExpiry(value);
-    }
-  };
 
   const product = {
     id: searchParams.get('productId') || 'FBK-01',

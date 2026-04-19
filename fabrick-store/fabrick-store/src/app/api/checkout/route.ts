@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       resumen,
       shippingAddress: shippingAddress ?? '',
       region,
-      estado: 'pendiente_pago',
+      estado: 'pendiente',
       creadoEn: new Date().toISOString(),
     };
 
@@ -48,6 +48,7 @@ export async function POST(request: Request) {
           currency: resumen.moneda,
           status: orden.estado,
           created_at: orden.creadoEn,
+          updated_at: orden.creadoEn,
         },
       ]);
 

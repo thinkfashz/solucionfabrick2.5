@@ -1,8 +1,12 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+/* eslint-disable @next/next/no-img-element */
+
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { insforge } from '@/lib/insforge';
+import { buildProductTagline, resolveCategoryName } from '@/lib/commerce';
+import { useCategories } from '@/hooks/useCategories';
 import { Pencil, Trash2, Plus, Search, Wifi, WifiOff } from 'lucide-react';
 
 /* ── Types ── */
@@ -21,8 +25,6 @@ interface AdminProduct {
 }
 
 /* ── Helpers ── */
-const CATEGORIES = ['Todos', 'Seguridad', 'Iluminación', 'Grifería', 'Revestimiento', 'Premium', 'Destacados'];
-
 function formatCLP(n: number) {
   return '$' + n.toLocaleString('es-CL') + ' CLP';
 }
@@ -94,6 +96,7 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
 ════════════════════════════════════════════════ */
 export default function AdminProductosPage() {
   const router = useRouter();
+  const { categories, categoryMap } = useCategories();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
@@ -177,13 +180,28 @@ export default function AdminProductosPage() {
     }
   }
 
+  const filterOptions = useMemo(() => {
+    return ['Todos', 'Destacados', 'Activos', 'Bajo stock', ...categories.map((category) => category.name)];
+  }, [categories]);
+
+  const productMetrics = useMemo(() => {
+    const total = products.length;
+    const active = products.filter((product) => product.activo !== false).length;
+    const featured = products.filter((product) => product.featured).length;
+    const lowStock = products.filter((product) => (product.stock ?? 0) > 0 && (product.stock ?? 0) <= 5).length;
+
+    return { total, active, featured, lowStock };
+  }, [products]);
+
   /* ── Filter ── */
   const filtered = products.filter((p) => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
     if (!matchSearch) return false;
     if (activeCategory === 'Todos') return true;
     if (activeCategory === 'Destacados') return !!p.featured;
-    return (p.category_id || '').toLowerCase() === activeCategory.toLowerCase();
+    if (activeCategory === 'Activos') return p.activo !== false;
+    if (activeCategory === 'Bajo stock') return (p.stock ?? 0) > 0 && (p.stock ?? 0) <= 5;
+    return resolveCategoryName(p.category_id, categoryMap).toLowerCase() === activeCategory.toLowerCase();
   });
 
   return (
@@ -211,6 +229,20 @@ export default function AdminProductosPage() {
       </div>
 
       <div className="px-6 py-6 space-y-5">
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {[
+            { label: 'Catálogo total', value: productMetrics.total, tone: 'text-white' },
+            { label: 'Productos activos', value: productMetrics.active, tone: 'text-emerald-400' },
+            { label: 'Destacados', value: productMetrics.featured, tone: 'text-[#c9a96e]' },
+            { label: 'Stock crítico', value: productMetrics.lowStock, tone: 'text-amber-400' },
+          ].map((metric) => (
+            <div key={metric.label} className="rounded-2xl border border-white/8 bg-zinc-950/70 p-4">
+              <p className="text-[10px] uppercase tracking-[0.24em] text-zinc-500">{metric.label}</p>
+              <p className={`mt-3 text-3xl font-black ${metric.tone}`}>{metric.value}</p>
+            </div>
+          ))}
+        </div>
+
         {/* ── Filters ── */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Search */}
@@ -227,7 +259,7 @@ export default function AdminProductosPage() {
 
           {/* Category tabs */}
           <div className="flex flex-wrap gap-2">
-            {CATEGORIES.map((cat) => (
+            {filterOptions.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
@@ -287,12 +319,12 @@ export default function AdminProductosPage() {
                     {/* Nombre */}
                     <td className="px-4 py-3">
                       <div className="font-medium text-white">{product.name}</div>
-                      {product.tagline && <div className="text-zinc-500 text-xs mt-0.5">{product.tagline}</div>}
+                      <div className="text-zinc-500 text-xs mt-0.5">{buildProductTagline(product.tagline, undefined)}</div>
                     </td>
                     {/* Categoría */}
                     <td className="px-4 py-3">
                       <span className="px-2.5 py-1 rounded-full bg-zinc-800 border border-white/10 text-xs text-zinc-300">
-                        {product.category_id || '—'}
+                        {resolveCategoryName(product.category_id, categoryMap)}
                       </span>
                     </td>
                     {/* Precio */}

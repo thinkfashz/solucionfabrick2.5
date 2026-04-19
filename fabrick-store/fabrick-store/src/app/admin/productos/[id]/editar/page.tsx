@@ -39,7 +39,7 @@ export default function EditarProductoPage() {
           name: p.name ?? '',
           description: p.description ?? '',
           price: p.price != null ? String(p.price) : '',
-          category_id: p.category_id ?? 'General',
+          category_id: p.category_id ?? '',
           stock: p.stock != null ? String(p.stock) : '',
           tagline: p.tagline ?? '',
           image_url: p.image_url ?? '',

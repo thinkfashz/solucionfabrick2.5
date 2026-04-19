@@ -3,54 +3,21 @@
 import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { insforge } from '@/lib/insforge';
+import {
+  ORDER_STATUS_LABELS,
+  formatCLP,
+  normalizeOrderRecord,
+  orderStatusColor,
+  orderStatusLabel,
+  shortRecordId,
+  type OrderStatus,
+} from '@/lib/commerce';
 
-type OrderStatus =
-  | 'pendiente'
-  | 'confirmado'
-  | 'en_preparacion'
-  | 'enviado'
-  | 'entregado'
-  | 'cancelado';
+type Order = ReturnType<typeof normalizeOrderRecord>;
 
-interface Order {
-  id: string;
-  customer_name: string;
-  customer_email: string;
-  total: number;
-  currency: string;
-  status: OrderStatus;
-  created_at: string;
-}
-
-const STATUS_COLORS: Record<OrderStatus, string> = {
-  pendiente:      '#f59e0b',
-  confirmado:     '#3b82f6',
-  en_preparacion: '#f97316',
-  enviado:        '#8b5cf6',
-  entregado:      '#22c55e',
-  cancelado:      '#ef4444',
-};
-
-const STATUS_LABELS: Record<OrderStatus, string> = {
-  pendiente:      'Pendiente',
-  confirmado:     'Confirmado',
-  en_preparacion: 'En preparación',
-  enviado:        'Enviado',
-  entregado:      'Entregado',
-  cancelado:      'Cancelado',
-};
-
-const ALL_STATUSES = Object.keys(STATUS_LABELS) as OrderStatus[];
+const ALL_STATUSES = Object.keys(ORDER_STATUS_LABELS) as OrderStatus[];
 
 const POLL_INTERVAL_MS = 30_000;
-
-function formatCLP(amount: number) {
-  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(amount);
-}
-
-function shortId(id: string) {
-  return id.slice(-8).toUpperCase();
-}
 
 export default function PedidosPage() {
   const [orders, setOrders]         = useState<Order[]>([]);
@@ -67,20 +34,9 @@ export default function PedidosPage() {
       .order('created_at', { ascending: false });
 
     if (!error && data && isMounted.current) {
-      setOrders(data as Order[]);
+      setOrders((data as Record<string, unknown>[]).map((order) => normalizeOrderRecord(order)));
     }
     if (isMounted.current) setLoading(false);
-  }, []);
-
-  const applyPatch = useCallback((payload: Partial<Order> & { operation?: string }) => {
-    if (!payload.id || !isMounted.current) return;
-    setOrders((prev) => {
-      const idx = prev.findIndex((o) => o.id === payload.id);
-      if (idx === -1) return [payload as Order, ...prev];
-      const updated = [...prev];
-      updated[idx] = { ...updated[idx], ...payload };
-      return updated;
-    });
   }, []);
 
   useEffect(() => {
@@ -102,12 +58,8 @@ export default function PedidosPage() {
           realtimeOk = true;
           if (isMounted.current) setConnected(true);
 
-          insforge.realtime.on('INSERT_order', (p: Partial<Order> & { operation?: string }) => {
-            if (isMounted.current) applyPatch({ ...p, operation: 'INSERT' });
-          });
-          insforge.realtime.on('UPDATE_order', (p: Partial<Order> & { operation?: string }) => {
-            if (isMounted.current) applyPatch({ ...p, operation: 'UPDATE' });
-          });
+          insforge.realtime.on('INSERT_order', () => { if (isMounted.current) void fetchOrders(); });
+          insforge.realtime.on('UPDATE_order', () => { if (isMounted.current) void fetchOrders(); });
           insforge.realtime.on('connect', () => { if (isMounted.current) setConnected(true); });
           insforge.realtime.on('disconnect', () => { if (isMounted.current) setConnected(false); });
         }
@@ -135,7 +87,7 @@ export default function PedidosPage() {
         insforge.realtime.disconnect();
       } catch { /* ignorar */ }
     };
-  }, [fetchOrders, applyPatch]);
+  }, [fetchOrders]);
 
   const filtered = filter === 'todos' ? orders : orders.filter((o) => o.status === filter);
 
@@ -194,9 +146,13 @@ export default function PedidosPage() {
                 className={`rounded-full px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition ${
                   filter === s ? 'text-black' : 'border border-white/10 text-zinc-400 hover:text-white'
                 }`}
-                style={filter === s ? { background: STATUS_COLORS[s] } : { borderColor: `${STATUS_COLORS[s]}33` }}
+                style={
+                  filter === s
+                    ? { background: orderStatusColor(s) }
+                    : { borderColor: `${orderStatusColor(s)}33` }
+                }
               >
-                {STATUS_LABELS[s]} ({count})
+                {ORDER_STATUS_LABELS[s]} ({count})
               </button>
             );
           })}
@@ -208,7 +164,7 @@ export default function PedidosPage() {
             <div className="flex items-center justify-center py-24 text-zinc-500 text-sm">Cargando pedidos…</div>
           ) : filtered.length === 0 ? (
             <div className="flex items-center justify-center py-24 text-zinc-500 text-sm">
-              No hay pedidos{filter !== 'todos' ? ` con estado "${STATUS_LABELS[filter as OrderStatus]}"` : ''}.
+              No hay pedidos{filter !== 'todos' ? ` con estado "${ORDER_STATUS_LABELS[filter as OrderStatus]}"` : ''}.
             </div>
           ) : (
             <div className="overflow-x-auto">
@@ -229,7 +185,7 @@ export default function PedidosPage() {
                       key={order.id}
                       className={`border-b border-white/5 transition hover:bg-white/[0.03] ${i % 2 === 0 ? '' : 'bg-white/[0.01]'}`}
                     >
-                      <td className="px-6 py-4 font-mono text-xs text-zinc-400">{shortId(order.id)}</td>
+                      <td className="px-6 py-4 font-mono text-xs text-zinc-400">{shortRecordId(order.id)}</td>
                       <td className="px-6 py-4">
                         <div className="font-semibold text-white">{order.customer_name}</div>
                         <div className="text-xs text-zinc-500">{order.customer_email}</div>
@@ -246,11 +202,11 @@ export default function PedidosPage() {
                         <span
                           className="inline-flex items-center rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest"
                           style={{
-                            background: `${STATUS_COLORS[order.status] ?? '#6b7280'}22`,
-                            color: STATUS_COLORS[order.status] ?? '#6b7280',
+                            background: `${orderStatusColor(order.status)}22`,
+                            color: orderStatusColor(order.status),
                           }}
                         >
-                          {STATUS_LABELS[order.status] ?? order.status}
+                          {orderStatusLabel(order.status)}
                         </span>
                       </td>
                       <td className="px-6 py-4 text-center">

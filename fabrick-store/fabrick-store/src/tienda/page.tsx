@@ -1,8 +1,10 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { useRealtimeProducts } from '@/hooks/useRealtimeProducts';
+import { useCatalogProducts } from '@/hooks/useCatalogProducts';
 import {
 	ShoppingBag,
 	Menu,
@@ -146,7 +148,7 @@ function SilverGoldButton({ children, onClick, className = '' }: { children: Rea
 
 export default function TiendaClientPage() {
 	const router = useRouter();
-	const { products: dbProducts, loading: productsLoading, connected: realtimeConnected } = useRealtimeProducts();
+	const { products: catalogProducts, loading: productsLoading, connected: realtimeConnected } = useCatalogProducts();
 	const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [isCartOpen, setIsCartOpen] = useState(false);
@@ -158,23 +160,9 @@ export default function TiendaClientPage() {
 	const cartIconRef = useRef<HTMLDivElement>(null);
 	const gsapRef = useRef<null | typeof import('gsap').default>(null);
 
-	const liveProducts: Product[] = useMemo(() => {
-		if (!dbProducts.length) return PRODUCTS;
-		return dbProducts
-			.filter((p) => p.activo !== false)
-			.map((p) => ({
-				id: p.id,
-				name: p.name,
-				price: p.price,
-				category: p.category_id || 'General',
-				tagline: p.tagline || (p.delivery_days ? `Entrega ${p.delivery_days}` : 'Calidad profesional para tu proyecto'),
-				description: p.description || 'Producto sincronizado desde Fabrick Store.',
-				features: ['Calidad garantizada', p.stock != null ? `Stock: ${p.stock}` : 'Stock sujeto a confirmación', p.featured ? 'Producto destacado' : 'Disponible'],
-				dimensions: 'Especificación en ficha técnica',
-				delivery: p.delivery_days || 'A coordinar',
-				img: p.image_url || 'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=2070&auto=format&fit=crop',
-			}));
-	}, [dbProducts]);
+	const liveProducts = useMemo<Product[]>(() => {
+		return catalogProducts.length ? (catalogProducts as Product[]) : PRODUCTS;
+	}, [catalogProducts]);
 
 	useEffect(() => {
 		let mounted = true;
@@ -379,7 +367,7 @@ export default function TiendaClientPage() {
 								<div className="w-full md:w-1/2 space-y-8 text-center md:text-left">
 									<span className="text-yellow-400 font-bold tracking-[0.5em] text-[10px] uppercase border-b border-yellow-400/20 pb-2 inline-block">Categoría: {p.category}</span>
 									<h3 className="text-4xl md:text-6xl font-black uppercase tracking-tighter leading-none text-white">{p.name}</h3>
-									<p className="text-zinc-400 text-sm md:text-lg font-light leading-relaxed tracking-wide italic">"{p.tagline}"</p>
+									<p className="text-zinc-400 text-sm md:text-lg font-light leading-relaxed tracking-wide italic">&ldquo;{p.tagline}&rdquo;</p>
 									<div className="flex flex-col md:flex-row items-center gap-8 pt-4">
 										<p className="font-mono text-3xl font-bold text-white/90">${p.price.toLocaleString()}</p>
 										<SilverGoldButton onClick={() => goToCheckout(p)}>Ver Detalle</SilverGoldButton>

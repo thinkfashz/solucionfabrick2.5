@@ -1,6 +1,3 @@
-import { NextResponse } from 'next/server';
-
-const ALIGN_SCHEMA_SQL = `
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS activo BOOLEAN DEFAULT true;
@@ -152,34 +149,3 @@ ALTER TABLE public.admin_users ADD COLUMN IF NOT EXISTS nombre TEXT;
 ALTER TABLE public.admin_users ADD COLUMN IF NOT EXISTS rol TEXT DEFAULT 'admin';
 
 CREATE UNIQUE INDEX IF NOT EXISTS admin_users_email_idx ON public.admin_users (email);
-`;
-
-export async function POST(request: Request) {
-  const callerApiKey = request.headers.get('x-api-key');
-  if (callerApiKey !== process.env.INSFORGE_API_KEY) {
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-  }
-
-  const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
-  const adminApiKey = process.env.INSFORGE_API_KEY;
-
-  if (!baseUrl || !adminApiKey) {
-    return NextResponse.json({ error: 'InsForge environment is incomplete.' }, { status: 500 });
-  }
-
-  const response = await fetch(`${baseUrl}/api/database/advance/rawsql/unrestricted`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': adminApiKey,
-    },
-    body: JSON.stringify({ query: ALIGN_SCHEMA_SQL }),
-  });
-
-  const data = await response.json().catch(() => ({}));
-  if (!response.ok) {
-    return NextResponse.json({ error: data }, { status: response.status });
-  }
-
-  return NextResponse.json({ success: true, data });
-}

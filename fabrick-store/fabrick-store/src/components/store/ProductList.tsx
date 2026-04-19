@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import React, { useRef, useEffect, useCallback } from 'react';
 import { useRealtimeProducts } from '@/hooks/useRealtimeProducts';
 import { formatCLP } from '@/hooks/useCart';

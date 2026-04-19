@@ -1,1 +1,16 @@
 .vercel
+node_modules
+.next
+tmp
+*.log
+*.tsbuildinfo
+.env
+.env.local
+.env.*.local
+.insforge
+.insforge/
+.insforge-*.log
+.insforge-*.json
+cookies.txt
+headers.txt
+admin_headers.txt

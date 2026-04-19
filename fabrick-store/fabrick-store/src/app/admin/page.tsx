@@ -1,376 +1,435 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import {
+  ArrowRight,
+  BarChart3,
+  Megaphone,
+  Package,
+  RefreshCw,
+  Settings,
+  ShoppingCart,
+  Truck,
+  Users,
+  Wifi,
+  WifiOff,
+} from 'lucide-react';
 import { insforge } from '@/lib/insforge';
+import {
+  formatCLP,
+  normalizeOrderRecord,
+  orderStatusColor,
+  orderStatusLabel,
+  resolveCategoryName,
+  shortRecordId,
+} from '@/lib/commerce';
+import { useCategories } from '@/hooks/useCategories';
 
-/* ── Tipos ── */
-type Tab = 'dashboard' | 'productos' | 'ordenes';
-
-interface Product {
+interface DashboardProduct {
   id: string;
   name: string;
   price: number;
-  stock: number;
-  featured: boolean;
-  category_id: string | null;
+  stock?: number;
+  featured?: boolean;
+  activo?: boolean;
+  category_id?: string;
+  created_at?: string;
 }
 
-interface Order {
+interface DashboardDelivery {
   id: string;
-  customer_name: string;
-  customer_email: string;
-  total: number;
+  order_id: string;
+  customer_name?: string;
   status: string;
-  created_at: string;
+  responsible?: string;
+  estimated_date?: string;
+  updated_at?: string;
 }
 
-/* ── Helpers ── */
-function formatPrice(n: number) {
-  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n);
-}
-
-function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    pendiente_pago: 'bg-yellow-400/15 text-yellow-400 border-yellow-400/30',
-    pagado: 'bg-green-500/15 text-green-400 border-green-500/30',
-    enviado: 'bg-blue-500/15 text-blue-400 border-blue-500/30',
-    entregado: 'bg-emerald-500/15 text-emerald-400 border-emerald-500/30',
-    cancelado: 'bg-red-500/15 text-red-400 border-red-500/30',
-  };
-  const cls = map[status] ?? 'bg-white/10 text-white/50 border-white/20';
+function MetricCard({
+  label,
+  value,
+  note,
+  tone = 'text-white',
+}: {
+  label: string;
+  value: string | number;
+  note: string;
+  tone?: string;
+}) {
   return (
-    <span className={`px-2.5 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest border ${cls}`}>
-      {status.replace(/_/g, ' ')}
-    </span>
-  );
-}
-
-/* ── Stat card ── */
-function StatCard({ label, value, sub }: { label: string; value: string | number; sub?: string }) {
-  return (
-    <div className="rounded-3xl border border-white/8 bg-zinc-950/80 p-6 flex flex-col gap-2">
-      <p className="text-white/40 text-[10px] uppercase tracking-widest">{label}</p>
-      <p className="text-3xl font-bold text-white">{value}</p>
-      {sub && <p className="text-white/30 text-xs">{sub}</p>}
+    <div className="rounded-[1.75rem] border border-white/8 bg-zinc-950/70 p-5">
+      <p className="text-[10px] uppercase tracking-[0.28em] text-zinc-500">{label}</p>
+      <p className={`mt-3 text-3xl font-black ${tone}`}>{value}</p>
+      <p className="mt-2 text-sm text-zinc-500">{note}</p>
     </div>
   );
 }
 
-/* ════════════════════════════════════════════════
-   ADMIN PAGE
-════════════════════════════════════════════════ */
+function ActionCard({
+  href,
+  title,
+  description,
+  icon: Icon,
+}: {
+  href: string;
+  title: string;
+  description: string;
+  icon: typeof Package;
+}) {
+  return (
+    <Link
+      href={href}
+      className="group rounded-[1.75rem] border border-white/8 bg-[linear-gradient(180deg,rgba(24,24,27,0.92),rgba(9,9,11,0.96))] p-5 transition hover:border-[#c9a96e]/40 hover:bg-zinc-950"
+    >
+      <div className="flex items-center justify-between">
+        <Icon className="h-5 w-5 text-[#c9a96e]" />
+        <ArrowRight className="h-4 w-4 text-zinc-600 transition group-hover:translate-x-1 group-hover:text-[#c9a96e]" />
+      </div>
+      <h2 className="mt-5 text-lg font-bold text-white">{title}</h2>
+      <p className="mt-2 text-sm leading-relaxed text-zinc-500">{description}</p>
+    </Link>
+  );
+}
+
+function Panel({ title, subtitle, children }: { title: string; subtitle: string; children: React.ReactNode }) {
+  return (
+    <section className="rounded-[2rem] border border-white/8 bg-zinc-950/70 p-6">
+      <div className="mb-5 flex items-end justify-between gap-4">
+        <div>
+          <p className="text-[10px] uppercase tracking-[0.28em] text-[#c9a96e]">{title}</p>
+          <h2 className="mt-2 text-lg font-bold text-white">{subtitle}</h2>
+        </div>
+      </div>
+      {children}
+    </section>
+  );
+}
+
 export default function AdminPage() {
   const router = useRouter();
-  const [tab, setTab] = useState<Tab>('dashboard');
+  const { categoryMap } = useCategories();
+  const [products, setProducts] = useState<DashboardProduct[]>([]);
+  const [orders, setOrders] = useState<ReturnType<typeof normalizeOrderRecord>[]>([]);
+  const [deliveries, setDeliveries] = useState<DashboardDelivery[]>([]);
   const [loading, setLoading] = useState(true);
-  const [userEmail, setUserEmail] = useState('');
-
-  const [products, setProducts] = useState<Product[]>([]);
-  const [orders, setOrders] = useState<Order[]>([]);
-  const [prodLoading, setProdLoading] = useState(false);
-  const [ordLoading, setOrdLoading] = useState(false);
+  const [refreshing, setRefreshing] = useState(false);
+  const [connected, setConnected] = useState(false);
   const [error, setError] = useState('');
 
-  /* ── Auth check: middleware validates cookie, this sets the display email ── */
+  const loadDashboard = useCallback(async (isManualRefresh = false) => {
+    if (isManualRefresh) {
+      setRefreshing(true);
+    } else {
+      setLoading(true);
+    }
+
+    setError('');
+
+    const [productResponse, orderResponse, deliveryResponse] = await Promise.all([
+      insforge.database
+        .from('products')
+        .select('id, name, price, stock, featured, activo, category_id, created_at')
+        .order('created_at', { ascending: false })
+        .limit(250),
+      insforge.database
+        .from('orders')
+        .select('id, customer_name, customer_email, customer_phone, region, shipping_address, items, subtotal, tax, shipping_fee, total, currency, status, created_at, updated_at, payment_id, payment_status')
+        .order('created_at', { ascending: false })
+        .limit(250),
+      insforge.database
+        .from('deliveries')
+        .select('id, order_id, customer_name, status, responsible, estimated_date, updated_at')
+        .order('updated_at', { ascending: false })
+        .limit(200),
+    ]);
+
+    if (productResponse.error || orderResponse.error || deliveryResponse.error) {
+      setError(productResponse.error?.message || orderResponse.error?.message || deliveryResponse.error?.message || 'No se pudo cargar el dashboard.');
+    } else {
+      setProducts((productResponse.data ?? []) as DashboardProduct[]);
+      setOrders(((orderResponse.data ?? []) as Record<string, unknown>[]).map((order) => normalizeOrderRecord(order)));
+      setDeliveries((deliveryResponse.data ?? []) as DashboardDelivery[]);
+    }
+
+    setLoading(false);
+    setRefreshing(false);
+  }, []);
+
   useEffect(() => {
+    let disposed = false;
+    void loadDashboard();
+
     (async () => {
       try {
-        const { data, error: err } = await insforge.auth.getCurrentUser();
-        if (!err && data?.user) {
-          setUserEmail(data.user.email ?? '');
+        await insforge.realtime.connect();
+        if (disposed) return;
+
+        const subscriptions = await Promise.all([
+          insforge.realtime.subscribe('products'),
+          insforge.realtime.subscribe('orders'),
+          insforge.realtime.subscribe('deliveries'),
+        ]);
+
+        if (subscriptions.every((subscription) => subscription.ok)) {
+          setConnected(true);
+          insforge.realtime.on('INSERT_product', () => { if (!disposed) void loadDashboard(true); });
+          insforge.realtime.on('UPDATE_product', () => { if (!disposed) void loadDashboard(true); });
+          insforge.realtime.on('DELETE_product', () => { if (!disposed) void loadDashboard(true); });
+          insforge.realtime.on('INSERT_order', () => { if (!disposed) void loadDashboard(true); });
+          insforge.realtime.on('UPDATE_order', () => { if (!disposed) void loadDashboard(true); });
+          insforge.realtime.on('INSERT_delivery', () => { if (!disposed) void loadDashboard(true); });
+          insforge.realtime.on('UPDATE_delivery', () => { if (!disposed) void loadDashboard(true); });
         }
+
+        insforge.realtime.on('connect', () => { if (!disposed) setConnected(true); });
+        insforge.realtime.on('disconnect', () => { if (!disposed) setConnected(false); });
       } catch {
-        // No-op: middleware already protects this route
+        setConnected(false);
       }
-      setLoading(false);
     })();
-  }, [router]);
 
-  /* ── Load productos ── */
-  const loadProducts = useCallback(async () => {
-    setProdLoading(true);
-    setError('');
-    const { data, error: err } = await insforge.database
-      .from('products')
-      .select('id, name, price, stock, featured, category_id')
-      .order('created_at', { ascending: false })
-      .limit(50);
-    setProdLoading(false);
-    if (err) { setError(err.message); return; }
-    setProducts((data as Product[]) ?? []);
-  }, []);
+    return () => {
+      disposed = true;
+      try {
+        insforge.realtime.unsubscribe('products');
+        insforge.realtime.unsubscribe('orders');
+        insforge.realtime.unsubscribe('deliveries');
+        insforge.realtime.disconnect();
+      } catch {
+        // Ignore cleanup failures.
+      }
+    };
+  }, [loadDashboard]);
 
-  /* ── Load ordenes ── */
-  const loadOrders = useCallback(async () => {
-    setOrdLoading(true);
-    setError('');
-    const { data, error: err } = await insforge.database
-      .from('orders')
-      .select('id, customer_name, customer_email, total, status, created_at')
-      .order('created_at', { ascending: false })
-      .limit(50);
-    setOrdLoading(false);
-    if (err) { setError(err.message); return; }
-    setOrders((data as Order[]) ?? []);
-  }, []);
+  const metrics = useMemo(() => {
+    const activeProducts = products.filter((product) => product.activo !== false).length;
+    const lowStock = products.filter((product) => (product.stock ?? 0) > 0 && (product.stock ?? 0) <= 5).length;
+    const pendingOrders = orders.filter((order) => order.status === 'pendiente' || order.status === 'en_preparacion').length;
+    const activeCustomers = new Set(orders.map((order) => order.customer_email).filter(Boolean)).size;
+    const realizedRevenue = orders
+      .filter((order) => order.status !== 'cancelado')
+      .reduce((accumulator, order) => accumulator + order.total, 0);
+    const inFlightDeliveries = deliveries.filter((delivery) => delivery.status === 'pendiente' || delivery.status === 'en_camino').length;
 
-  useEffect(() => {
-    if (loading) return;
-    loadProducts();
-    loadOrders();
-  }, [loading, loadProducts, loadOrders]);
+    return {
+      activeProducts,
+      lowStock,
+      pendingOrders,
+      activeCustomers,
+      realizedRevenue,
+      inFlightDeliveries,
+    };
+  }, [deliveries, orders, products]);
 
-  /* ── Logout ── */
+  const recentOrders = useMemo(() => orders.slice(0, 5), [orders]);
+
+  const stockFocus = useMemo(() => {
+    return [...products]
+      .filter((product) => product.activo !== false)
+      .sort((left, right) => (left.stock ?? Number.MAX_SAFE_INTEGER) - (right.stock ?? Number.MAX_SAFE_INTEGER))
+      .slice(0, 5);
+  }, [products]);
+
+  const categoryCoverage = useMemo(() => {
+    const categoryCounts = new Map<string, number>();
+
+    for (const product of products) {
+      const categoryName = resolveCategoryName(product.category_id, categoryMap);
+      categoryCounts.set(categoryName, (categoryCounts.get(categoryName) ?? 0) + 1);
+    }
+
+    return [...categoryCounts.entries()]
+      .sort((left, right) => right[1] - left[1])
+      .slice(0, 5);
+  }, [categoryMap, products]);
+
+  const deliverySnapshot = useMemo(() => deliveries.slice(0, 5), [deliveries]);
+
   async function handleLogout() {
     await fetch('/api/admin/logout', { method: 'POST' });
     router.push('/admin/login');
   }
 
-  /* ── Update order status ── */
-  async function updateOrderStatus(id: string, status: string) {
-    const { error: err } = await insforge.database
-      .from('orders')
-      .update({ status })
-      .eq('id', id);
-    if (err) { setError(err.message); return; }
-    setOrders((prev) => prev.map((o) => (o.id === id ? { ...o, status } : o)));
-  }
-
-  /* ── Toggle featured ── */
-  async function toggleFeatured(id: string, current: boolean) {
-    const { error: err } = await insforge.database
-      .from('products')
-      .update({ featured: !current })
-      .eq('id', id);
-    if (err) { setError(err.message); return; }
-    setProducts((prev) => prev.map((p) => (p.id === id ? { ...p, featured: !current } : p)));
-  }
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-black flex items-center justify-center">
-        <div className="flex flex-col items-center gap-4">
-          <svg className="w-8 h-8 animate-spin text-yellow-400" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"/>
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z"/>
-          </svg>
-          <p className="text-white/40 text-sm">Verificando acceso…</p>
-        </div>
-      </div>
-    );
-  }
-
-  const totalRevenue = orders.reduce((sum, o) => sum + (o.total ?? 0), 0);
-  const pendingOrders = orders.filter((o) => o.status === 'pendiente_pago').length;
-
   return (
-    <div className="flex flex-col gap-8">
-      {/* ── User info + logout ── */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="font-playfair text-3xl font-bold text-white mb-1">Panel de Control</h1>
-          <p className="text-white/40 text-sm">{userEmail}</p>
+    <div className="space-y-8">
+      <section className="rounded-[2rem] border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(201,169,110,0.18),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(9,9,11,0.98))] p-6 md:p-8">
+        <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
+          <div>
+            <p className="text-[10px] uppercase tracking-[0.32em] text-[#c9a96e]">Centro de control</p>
+            <h1 className="mt-3 font-playfair text-4xl font-black text-white md:text-5xl">Operación unificada de Fabrick</h1>
+            <p className="mt-4 max-w-3xl text-sm leading-relaxed text-zinc-400 md:text-base">
+              Catálogo, pedidos, entregas y reportes quedan sincronizados contra la base real. El objetivo aquí es decidir rápido, no perseguir pantallas rotas.
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3">
+            <span
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-300"
+            >
+              {connected ? <Wifi className="h-3.5 w-3.5 text-emerald-400" /> : <WifiOff className="h-3.5 w-3.5 text-amber-400" />}
+              {connected ? 'Tiempo real activo' : 'Modo sincronización'}
+            </span>
+            <button
+              onClick={() => void loadDashboard(true)}
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-300 transition hover:border-[#c9a96e]/40 hover:text-[#c9a96e]"
+            >
+              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              Refrescar
+            </button>
+            <button
+              onClick={handleLogout}
+              className="rounded-full border border-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400 transition hover:border-red-500/40 hover:text-red-400"
+            >
+              Cerrar sesión
+            </button>
+          </div>
         </div>
-        <button
-          onClick={handleLogout}
-          className="px-4 py-2 rounded-full border border-white/15 text-white/50 text-xs font-medium hover:border-red-500/50 hover:text-red-400 transition-all"
-        >
-          Cerrar sesión
-        </button>
-      </div>
+      </section>
 
-      {/* ── Tabs ── */}
-      <div className="flex gap-2">
-        {([
-          { key: 'dashboard', label: 'Dashboard' },
-          { key: 'productos', label: `Productos${products.length ? ` (${products.length})` : ''}` },
-          { key: 'ordenes', label: `Órdenes${orders.length ? ` (${orders.length})` : ''}` },
-        ] as { key: Tab; label: string }[]).map(({ key, label }) => (
-          <button
-            key={key}
-            onClick={() => setTab(key)}
-            className={`px-5 py-2.5 rounded-full text-xs font-bold uppercase tracking-widest transition-all ${
-              tab === key
-                ? 'bg-yellow-400 text-black'
-                : 'border border-white/10 text-white/50 hover:border-yellow-400/40 hover:text-yellow-400'
-            }`}
-          >
-            {label}
-          </button>
-        ))}
-      </div>
-
-      {/* ── Error ── */}
       {error && (
-        <div className="px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-sm">
+        <div className="rounded-[1.5rem] border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-300">
           {error}
         </div>
       )}
 
-      {/* ════ DASHBOARD ════ */}
-      {tab === 'dashboard' && (
-        <div className="flex flex-col gap-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-            <StatCard label="Productos" value={products.length} sub="en catálogo" />
-            <StatCard label="Órdenes" value={orders.length} sub="totales" />
-            <StatCard label="Pendientes" value={pendingOrders} sub="por cobrar" />
-            <StatCard label="Ingresos" value={formatPrice(totalRevenue)} sub="acumulados" />
-          </div>
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <MetricCard label="Productos activos" value={metrics.activeProducts} note={`${metrics.lowStock} con stock crítico`} tone="text-emerald-400" />
+        <MetricCard label="Pedidos abiertos" value={metrics.pendingOrders} note={`${orders.length} pedidos en total`} tone="text-amber-400" />
+        <MetricCard label="Clientes con actividad" value={metrics.activeCustomers} note="Correos únicos con compras registradas" tone="text-white" />
+        <MetricCard label="Ingresos no cancelados" value={formatCLP(metrics.realizedRevenue)} note={`${metrics.inFlightDeliveries} entregas en curso`} tone="text-[#c9a96e]" />
+      </div>
 
-          {/* Últimas órdenes */}
-          <div>
-            <h2 className="text-white/60 text-xs uppercase tracking-widest mb-4">Últimas 5 órdenes</h2>
-            {ordLoading ? (
-              <p className="text-white/30 text-sm">Cargando…</p>
-            ) : orders.length === 0 ? (
-              <p className="text-white/30 text-sm">Sin órdenes aún.</p>
-            ) : (
-              <div className="rounded-3xl border border-white/8 overflow-hidden">
-                <table className="w-full text-sm">
-                  <thead>
-                    <tr className="border-b border-white/8 bg-white/3">
-                      <th className="text-left px-5 py-3 text-white/30 text-[10px] uppercase tracking-widest font-medium">ID</th>
-                      <th className="text-left px-5 py-3 text-white/30 text-[10px] uppercase tracking-widest font-medium hidden md:table-cell">Cliente</th>
-                      <th className="text-right px-5 py-3 text-white/30 text-[10px] uppercase tracking-widest font-medium">Total</th>
-                      <th className="text-center px-5 py-3 text-white/30 text-[10px] uppercase tracking-widest font-medium">Estado</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {orders.slice(0, 5).map((o) => (
-                      <tr key={o.id} className="border-b border-white/5 last:border-0 hover:bg-white/3 transition-colors">
-                        <td className="px-5 py-4 text-yellow-400 font-mono text-xs">{o.id}</td>
-                        <td className="px-5 py-4 text-white/70 hidden md:table-cell">{o.customer_name}</td>
-                        <td className="px-5 py-4 text-right text-white font-medium">{formatPrice(o.total)}</td>
-                        <td className="px-5 py-4 text-center"><StatusBadge status={o.status} /></td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+        <ActionCard href="/admin/productos" title="Catálogo" description="Gestiona productos, categorías activas y visibilidad en tienda sin salir del panel." icon={Package} />
+        <ActionCard href="/admin/pedidos" title="Pedidos" description="Supervisa cobros, confirma compras y baja directo al detalle operativo." icon={ShoppingCart} />
+        <ActionCard href="/admin/entregas" title="Entregas" description="Coordina responsables, fechas estimadas y cierre logístico desde una sola vista." icon={Truck} />
+        <ActionCard href="/admin/reportes" title="Reportes" description="Mira volumen, ventas y productos dominantes sin exportar datos manualmente." icon={BarChart3} />
+        <ActionCard href="/admin/clientes" title="Clientes" description="Revisa historial de compra, recurrencia y contexto comercial por contacto." icon={Users} />
+        <ActionCard href="/admin/publicidad" title="Publicidad" description="Conecta la adquisición pagada con el inventario y la demanda real del catálogo." icon={Megaphone} />
+        <ActionCard href="/admin/configuracion" title="Configuración" description="Centraliza datos del negocio, parámetros de contacto y seguridad operativa." icon={Settings} />
+        <ActionCard href="/admin/productos/nuevo" title="Alta rápida" description="Crea nuevos productos sin rodeos cuando necesites publicar catálogo o stock." icon={Package} />
+      </div>
 
-      {/* ════ PRODUCTOS ════ */}
-      {tab === 'productos' && (
-        <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="font-playfair text-3xl font-bold text-white mb-1">Productos</h1>
-              <p className="text-white/40 text-sm">{products.length} productos en catálogo</p>
-            </div>
-            <button
-              onClick={loadProducts}
-              className="px-4 py-2 rounded-full border border-white/10 text-white/50 text-xs hover:border-yellow-400/40 hover:text-yellow-400 transition-all"
-            >
-              Actualizar
-            </button>
-          </div>
-
-          {prodLoading ? (
-            <p className="text-white/30 text-sm">Cargando productos…</p>
-          ) : products.length === 0 ? (
-            <div className="rounded-3xl border border-white/8 bg-zinc-950/80 p-12 text-center">
-              <p className="text-white/30">No hay productos en la base de datos.</p>
-            </div>
+      <div className="grid gap-6 xl:grid-cols-[1.2fr_0.8fr]">
+        <Panel title="Pedidos recientes" subtitle="Lo último que requiere revisión">
+          {loading ? (
+            <p className="text-sm text-zinc-500">Cargando actividad…</p>
+          ) : recentOrders.length === 0 ? (
+            <p className="text-sm text-zinc-500">Todavía no hay pedidos registrados en esta base.</p>
           ) : (
-            <div className="rounded-3xl border border-white/8 overflow-hidden">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/8 bg-white/3">
-                    <th className="text-left px-5 py-3 text-white/30 text-[10px] uppercase tracking-widest font-medium">Nombre</th>
-                    <th className="text-right px-5 py-3 text-white/30 text-[10px] uppercase tracking-widest font-medium hidden md:table-cell">Precio</th>
-                    <th className="text-right px-5 py-3 text-white/30 text-[10px] uppercase tracking-widest font-medium hidden sm:table-cell">Stock</th>
-                    <th className="text-center px-5 py-3 text-white/30 text-[10px] uppercase tracking-widest font-medium">Destacado</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {products.map((p) => (
-                    <tr key={p.id} className="border-b border-white/5 last:border-0 hover:bg-white/3 transition-colors">
-                      <td className="px-5 py-4 text-white font-medium">{p.name}</td>
-                      <td className="px-5 py-4 text-right text-white/70 hidden md:table-cell">{formatPrice(p.price)}</td>
-                      <td className="px-5 py-4 text-right text-white/70 hidden sm:table-cell">{p.stock ?? '—'}</td>
-                      <td className="px-5 py-4 text-center">
-                        <button
-                          onClick={() => toggleFeatured(p.id, p.featured)}
-                          className={`w-8 h-8 rounded-full border transition-all text-xs font-bold ${
-                            p.featured
-                              ? 'bg-yellow-400 border-yellow-400 text-black'
-                              : 'border-white/15 text-white/30 hover:border-yellow-400/40 hover:text-yellow-400'
-                          }`}
-                        >
-                          ★
-                        </button>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* ════ ÓRDENES ════ */}
-      {tab === 'ordenes' && (
-        <div className="flex flex-col gap-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h1 className="font-playfair text-3xl font-bold text-white mb-1">Órdenes</h1>
-              <p className="text-white/40 text-sm">{orders.length} órdenes registradas</p>
-            </div>
-            <button
-              onClick={loadOrders}
-              className="px-4 py-2 rounded-full border border-white/10 text-white/50 text-xs hover:border-yellow-400/40 hover:text-yellow-400 transition-all"
-            >
-              Actualizar
-            </button>
-          </div>
-
-          {ordLoading ? (
-            <p className="text-white/30 text-sm">Cargando órdenes…</p>
-          ) : orders.length === 0 ? (
-            <div className="rounded-3xl border border-white/8 bg-zinc-950/80 p-12 text-center">
-              <p className="text-white/30">No hay órdenes aún.</p>
-            </div>
-          ) : (
-            <div className="flex flex-col gap-3">
-              {orders.map((o) => (
-                <div key={o.id} className="rounded-3xl border border-white/8 bg-zinc-950/80 p-5 flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex flex-col gap-1">
-                    <span className="text-yellow-400 font-mono text-xs">{o.id}</span>
-                    <span className="text-white font-medium">{o.customer_name}</span>
-                    <span className="text-white/40 text-xs">{o.customer_email}</span>
-                    <span className="text-white/30 text-xs">
-                      {new Date(o.created_at).toLocaleDateString('es-CL')}
+            <div className="space-y-3">
+              {recentOrders.map((order) => (
+                <Link
+                  key={order.id}
+                  href={`/admin/pedidos/${order.id}`}
+                  className="flex flex-col gap-3 rounded-[1.4rem] border border-white/8 bg-black/30 p-4 transition hover:border-[#c9a96e]/40 hover:bg-black/40 md:flex-row md:items-center md:justify-between"
+                >
+                  <div>
+                    <p className="font-mono text-xs uppercase tracking-[0.22em] text-zinc-500">{shortRecordId(order.id)}</p>
+                    <p className="mt-2 text-base font-bold text-white">{order.customer_name}</p>
+                    <p className="text-sm text-zinc-500">{order.customer_email || 'Sin correo registrado'}</p>
+                  </div>
+                  <div className="flex flex-col items-start gap-3 md:items-end">
+                    <span
+                      className="inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em]"
+                      style={{
+                        background: `${orderStatusColor(order.status)}22`,
+                        color: orderStatusColor(order.status),
+                      }}
+                    >
+                      {orderStatusLabel(order.status)}
                     </span>
+                    <p className="text-lg font-black text-[#c9a96e]">{formatCLP(order.total)}</p>
                   </div>
-                  <div className="flex flex-col md:items-end gap-3">
-                    <span className="text-white font-bold text-lg">{formatPrice(o.total)}</span>
-                    <div className="flex flex-wrap gap-2">
-                      <StatusBadge status={o.status} />
-                      <select
-                        value={o.status}
-                        onChange={(e) => updateOrderStatus(o.id, e.target.value)}
-                        className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-white/60 text-[10px] uppercase tracking-widest focus:outline-none focus:border-yellow-400/50 cursor-pointer"
-                      >
-                        <option value="pendiente_pago">Pendiente pago</option>
-                        <option value="pagado">Pagado</option>
-                        <option value="enviado">Enviado</option>
-                        <option value="entregado">Entregado</option>
-                        <option value="cancelado">Cancelado</option>
-                      </select>
-                    </div>
-                  </div>
-                </div>
+                </Link>
               ))}
             </div>
           )}
+        </Panel>
+
+        <div className="space-y-6">
+          <Panel title="Inventario" subtitle="Productos que piden atención inmediata">
+            {stockFocus.length === 0 ? (
+              <p className="text-sm text-zinc-500">No hay productos activos todavía.</p>
+            ) : (
+              <div className="space-y-3">
+                {stockFocus.map((product) => (
+                  <div key={product.id} className="rounded-[1.4rem] border border-white/8 bg-black/30 p-4">
+                    <div className="flex items-start justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-white">{product.name}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.22em] text-zinc-500">
+                          {resolveCategoryName(product.category_id, categoryMap)}
+                        </p>
+                      </div>
+                      <span className={`text-sm font-black ${(product.stock ?? 0) <= 5 ? 'text-amber-400' : 'text-zinc-300'}`}>
+                        {product.stock ?? '—'} un.
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          <Panel title="Cobertura" subtitle="Cómo está distribuido el catálogo">
+            {categoryCoverage.length === 0 ? (
+              <p className="text-sm text-zinc-500">Sin categorías cargadas todavía.</p>
+            ) : (
+              <div className="space-y-3">
+                {categoryCoverage.map(([name, count]) => (
+                  <div key={name}>
+                    <div className="mb-2 flex items-center justify-between text-sm">
+                      <span className="text-zinc-300">{name}</span>
+                      <span className="font-semibold text-white">{count}</span>
+                    </div>
+                    <div className="h-2 rounded-full bg-white/6">
+                      <div
+                        className="h-2 rounded-full bg-[#c9a96e]"
+                        style={{ width: `${Math.max(10, (count / Math.max(products.length, 1)) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
+
+          <Panel title="Despacho" subtitle="Entregas con movimiento reciente">
+            {deliverySnapshot.length === 0 ? (
+              <p className="text-sm text-zinc-500">Aún no se han generado entregas para pedidos.</p>
+            ) : (
+              <div className="space-y-3">
+                {deliverySnapshot.map((delivery) => (
+                  <div key={delivery.id} className="rounded-[1.4rem] border border-white/8 bg-black/30 p-4">
+                    <div className="flex items-center justify-between gap-4">
+                      <div>
+                        <p className="font-semibold text-white">{delivery.customer_name || 'Entrega sin cliente'}</p>
+                        <p className="mt-1 text-xs uppercase tracking-[0.22em] text-zinc-500">
+                          Pedido {shortRecordId(delivery.order_id)}
+                        </p>
+                      </div>
+                      <span className="rounded-full bg-white/6 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.24em] text-zinc-300">
+                        {delivery.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    {(delivery.responsible || delivery.estimated_date) && (
+                      <p className="mt-3 text-sm text-zinc-500">
+                        {delivery.responsible ? `Responsable: ${delivery.responsible}` : 'Responsable pendiente'}
+                        {delivery.responsible && delivery.estimated_date ? ' · ' : ''}
+                        {delivery.estimated_date ? `ETA ${delivery.estimated_date}` : ''}
+                      </p>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Panel>
         </div>
-      )}
+      </div>
     </div>
   );
 }
-

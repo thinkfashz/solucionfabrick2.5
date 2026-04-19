@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { insforge } from '@/lib/insforge';
 import { Save, Eye, EyeOff, Check } from 'lucide-react';
 
@@ -105,6 +105,42 @@ export default function ConfiguracionPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  useEffect(() => {
+    async function loadBusinessConfig() {
+      const { data, error } = await insforge.database
+        .from('business_config')
+        .select('id, nombre, rut, direccion, ciudad, whatsapp, email_contacto, sitio_web')
+        .eq('id', 'main')
+        .limit(1);
+
+      if (error || !Array.isArray(data) || data.length === 0) {
+        return;
+      }
+
+      const config = data[0] as {
+        nombre?: string;
+        rut?: string;
+        direccion?: string;
+        ciudad?: string;
+        whatsapp?: string;
+        email_contacto?: string;
+        sitio_web?: string;
+      };
+
+      setNegocio({
+        nombre: config.nombre ?? '',
+        rut: config.rut ?? '',
+        direccion: config.direccion ?? '',
+        ciudad: config.ciudad ?? '',
+        whatsapp: config.whatsapp ?? '',
+        emailContacto: config.email_contacto ?? '',
+        sitioWeb: config.sitio_web ?? '',
+      });
+    }
+
+    void loadBusinessConfig();
+  }, []);
 
   /* ── Guardar datos del negocio (upsert en tabla business_config) ── */
   async function handleSaveNegocio(e: React.FormEvent) {

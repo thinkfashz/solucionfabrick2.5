@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import type { Product } from '@/hooks/useRealtimeProducts';
 import SilverGoldButton from './SilverGoldButton';
 

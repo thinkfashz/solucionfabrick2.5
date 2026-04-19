@@ -37,27 +37,44 @@ function extractUser(raw: Record<string, unknown>): AuthUser {
   };
 }
 
+/**
+ * Typed interface for the extended InsForge auth object.
+ * InsForge SDK is a custom BaaS whose TypeScript types don't expose
+ * getUser / getSession / onAuthStateChange / signOut – but the runtime
+ * object may include them (Supabase-compatible surface). We call each
+ * method only after verifying it exists at runtime.
+ */
+interface InsforgeAuthExtended {
+  getUser?: () => Promise<{ data?: { user?: Record<string, unknown> }; error?: unknown }>;
+  getSession?: () => Promise<{ data?: { session?: { user?: Record<string, unknown> } }; error?: unknown }>;
+  onAuthStateChange?: (
+    cb: (event: string, session: Record<string, unknown> | null) => void
+  ) => { data?: { subscription?: { unsubscribe: () => void } } };
+  signOut?: () => Promise<unknown>;
+}
+
+function getExtendedAuth(): InsforgeAuthExtended {
+  return insforge.auth as InsforgeAuthExtended;
+}
+
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
 
   const loadUser = useCallback(async () => {
     try {
-      // Try getUser first (Supabase-compatible pattern)
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const auth = insforge.auth as any;
+      const auth = getExtendedAuth();
       if (typeof auth.getUser === 'function') {
         const { data, error } = await auth.getUser();
         if (!error && data?.user) {
-          setUser(extractUser(data.user as Record<string, unknown>));
+          setUser(extractUser(data.user));
           return;
         }
       }
-      // Fallback: getSession
       if (typeof auth.getSession === 'function') {
         const { data, error } = await auth.getSession();
         if (!error && data?.session?.user) {
-          setUser(extractUser(data.session.user as Record<string, unknown>));
+          setUser(extractUser(data.session.user));
           return;
         }
       }
@@ -74,8 +91,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
     // Subscribe to auth state changes if available
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const auth = insforge.auth as any;
+      const auth = getExtendedAuth();
       if (typeof auth.onAuthStateChange === 'function') {
         const { data } = auth.onAuthStateChange(
           (_event: string, session: Record<string, unknown> | null) => {
@@ -95,7 +111,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         };
       }
     } catch {
-      // onAuthStateChange not available
+      // onAuthStateChange not available in this InsForge version
     }
 
     return undefined;
@@ -103,8 +119,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signOut = useCallback(async () => {
     try {
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const auth = insforge.auth as any;
+      const auth = getExtendedAuth();
       if (typeof auth.signOut === 'function') {
         await auth.signOut();
       }

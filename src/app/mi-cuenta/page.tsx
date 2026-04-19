@@ -9,6 +9,7 @@ import { useAuth } from '@/context/AuthContext';
 import { insforge } from '@/lib/insforge';
 import { formatCLP, normalizeOrderRecord, orderStatusColor, orderStatusLabel, shortRecordId } from '@/lib/commerce';
 import { getStoredProfile, type UserProfile } from '@/components/UserProfileModal';
+import { getInitials } from '@/lib/initials';
 
 /* ── Status icon helper ── */
 function StatusIcon({ status }: { status: string }) {
@@ -20,12 +21,7 @@ function StatusIcon({ status }: { status: string }) {
 
 /* ── User initials avatar ── */
 function BigAvatar({ name, email }: { name?: string; email?: string }) {
-  const initials = (() => {
-    const display = name || email || '';
-    const parts = display.split(/\s+|@/);
-    if (parts.length >= 2 && parts[1]) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return display.slice(0, 2).toUpperCase();
-  })();
+  const initials = getInitials(name || email);
   return (
     <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl bg-yellow-400 text-2xl font-black text-black shadow-[0_0_30px_rgba(250,204,21,0.35)] ring-4 ring-yellow-400/20">
       {initials || <User className="h-9 w-9" />}

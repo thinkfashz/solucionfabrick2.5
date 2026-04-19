@@ -7,6 +7,7 @@ import { navigateWithTransition } from '@/lib/routeTransition';
 import { insforge } from '@/lib/insforge';
 import { useTheme } from '@/context/ThemeContext';
 import { useAuth } from '@/context/AuthContext';
+import { getInitials } from '@/lib/initials';
 
 type NavLink = { label: string; href: string };
 
@@ -20,12 +21,7 @@ const NAV_LINKS: NavLink[] = [
 ];
 
 function UserAvatar({ name, email, onClick }: { name?: string; email?: string; onClick: () => void }) {
-  const initials = (() => {
-    const display = name || email || '';
-    const parts = display.split(/\s+|@/);
-    if (parts.length >= 2 && parts[1]) return (parts[0][0] + parts[1][0]).toUpperCase();
-    return display.slice(0, 2).toUpperCase();
-  })();
+  const initials = getInitials(name || email);
 
   return (
     <button
@@ -129,7 +125,7 @@ export default function Navbar() {
               onClick={() => handleNav('/auth')}
               className="px-5 py-2 rounded-full border border-yellow-400/40 text-yellow-400 text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-400/10 hover:border-yellow-400 transition-all"
             >
-              Iniciar Sesion
+              Iniciar Sesión
             </button>
           )}
           <button onClick={toggle} className="theme-toggle" aria-label="Cambiar tema">
@@ -193,7 +189,7 @@ export default function Navbar() {
                   className="flex w-full items-center gap-3 px-4 py-3.5 rounded-2xl bg-yellow-400/8 border border-yellow-400/20 text-sm font-semibold text-yellow-400 hover:bg-yellow-400/12 transition-all"
                 >
                   <div className="flex h-7 w-7 items-center justify-center rounded-full bg-yellow-400 text-[10px] font-black text-black flex-shrink-0">
-                    {(user.name || user.email || 'U').slice(0, 2).toUpperCase()}
+                    {getInitials(user.name || user.email) || 'U'}
                   </div>
                   <div className="text-left min-w-0">
                     <p className="text-xs font-bold truncate">{user.name || 'Mi cuenta'}</p>

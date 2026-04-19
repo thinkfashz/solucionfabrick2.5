@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { insforge } from '@/lib/insforge';
+import { formatCLP, normalizeOrderRecord } from '@/lib/commerce';
 import {
   BarChart,
   Bar,
@@ -13,11 +14,6 @@ import {
 } from 'recharts';
 import { Download, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 
-/* ── Helpers de formato ── */
-function formatCLP(amount: number) {
-  return '$' + Math.round(amount).toLocaleString('es-CL').replace(/,/g, '.');
-}
-
 function formatDate(iso: string) {
   if (!iso) return '—';
   const d = new Date(iso);
@@ -28,15 +24,7 @@ function formatDate(iso: string) {
 }
 
 /* ── Tipos ── */
-interface Order {
-  id: string;
-  customer_name: string;
-  customer_email: string;
-  total: number;
-  status: string;
-  created_at: string;
-  items: { name: string; quantity: number; price: number }[];
-}
+type Order = ReturnType<typeof normalizeOrderRecord>;
 
 interface WeekData {
   semana: string;
@@ -99,7 +87,7 @@ export default function ReportesPage() {
         .limit(1000);
 
       if (err) { setError(err.message); setLoading(false); return; }
-      setOrders((data ?? []) as Order[]);
+      setOrders(((data ?? []) as Record<string, unknown>[]).map((order) => normalizeOrderRecord(order)));
       setLoading(false);
     }
     load();
@@ -134,7 +122,7 @@ export default function ReportesPage() {
         if (!map.has(key)) map.set(key, { name: key, qty: 0, revenue: 0 });
         const p = map.get(key)!;
         p.qty += item.quantity ?? 1;
-        p.revenue += (item.price ?? 0) * (item.quantity ?? 1);
+        p.revenue += item.subtotal ?? 0;
       }
     }
     return Array.from(map.values())

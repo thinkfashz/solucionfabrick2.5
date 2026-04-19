@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { insforge } from '@/lib/insforge';
 
@@ -203,9 +204,9 @@ export default function AuthPage() {
       <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[500px] h-[500px] rounded-full bg-yellow-400/5 blur-[100px] pointer-events-none" />
 
       {/* Logo */}
-      <a href="/" className="relative z-10 font-playfair text-2xl font-black tracking-[0.35em] text-yellow-400 mb-10 hover:drop-shadow-[0_0_12px_rgba(250,204,21,0.9)] transition-all duration-300">
+      <Link href="/" className="relative z-10 font-playfair text-2xl font-black tracking-[0.35em] text-yellow-400 mb-10 hover:drop-shadow-[0_0_12px_rgba(250,204,21,0.9)] transition-all duration-300">
         FABRICK
-      </a>
+      </Link>
 
       {/* Card */}
       <div className="relative z-10 w-full max-w-md glass-card rounded-5xl p-8 md:p-10">

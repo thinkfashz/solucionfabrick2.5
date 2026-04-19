@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useEffect, useRef, useState } from 'react';
 import Link from 'next/link';
 import gsap from 'gsap';
@@ -454,7 +456,7 @@ export default function LandingSections() {
                       <Star key={s} className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
                     ))}
                   </div>
-                  <p className="text-zinc-300 text-xs md:text-sm leading-relaxed mb-8 font-light">"{rev.t}"</p>
+                  <p className="text-zinc-300 text-xs md:text-sm leading-relaxed mb-8 font-light">&ldquo;{rev.t}&rdquo;</p>
                   <div className="flex items-center gap-3 border-t border-white/5 pt-5">
                     <div className="w-11 h-11 rounded-full border border-yellow-400/30 flex items-center justify-center font-black text-yellow-400 text-base bg-zinc-900 flex-shrink-0">
                       {rev.n.charAt(0)}

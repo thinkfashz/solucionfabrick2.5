@@ -1,6 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
+import { buildProductTagline, resolveCategoryName } from '@/lib/commerce';
+import { useCategories } from '@/hooks/useCategories';
 import { Product as RealtimeProduct, useRealtimeProducts } from '@/hooks/useRealtimeProducts';
 
 export interface CatalogProduct {
@@ -79,15 +81,13 @@ export const FALLBACK_CATALOG_PRODUCTS: CatalogProduct[] = [
   },
 ];
 
-function mapRealtimeProductToCatalogProduct(product: RealtimeProduct): CatalogProduct {
+function mapRealtimeProductToCatalogProduct(product: RealtimeProduct, categoryMap: Record<string, string>): CatalogProduct {
   return {
     id: product.id,
     name: product.name,
     price: product.price,
-    category: product.category_id || 'General',
-    tagline: product.delivery_days
-      ? `Disponible ${product.delivery_days}`
-      : 'Calidad profesional para tu proyecto',
+    category: resolveCategoryName(product.category_id, categoryMap),
+    tagline: buildProductTagline(product.tagline, product.delivery_days),
     description: product.description || 'Producto sincronizado automaticamente desde nuestro catalogo.',
     features: [
       'Calidad garantizada',
@@ -110,13 +110,14 @@ function mapRealtimeProductToCatalogProduct(product: RealtimeProduct): CatalogPr
 
 export function useCatalogProducts() {
   const realtime = useRealtimeProducts();
+  const { categoryMap } = useCategories();
 
   const products = useMemo(() => {
     if (realtime.products.length > 0) {
-      return realtime.products.map(mapRealtimeProductToCatalogProduct);
+      return realtime.products.map((product) => mapRealtimeProductToCatalogProduct(product, categoryMap));
     }
     return FALLBACK_CATALOG_PRODUCTS;
-  }, [realtime.products]);
+  }, [categoryMap, realtime.products]);
 
   return {
     products,

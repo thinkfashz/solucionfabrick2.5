@@ -2,12 +2,8 @@
 
 import { useEffect, useState, useCallback } from 'react';
 import { insforge } from '@/lib/insforge';
+import { formatCLP, normalizeOrderRecord, orderStatusColor, orderStatusLabel } from '@/lib/commerce';
 import { Search, X, ExternalLink } from 'lucide-react';
-
-/* ── Helpers de formato ── */
-function formatCLP(amount: number) {
-  return '$' + Math.round(amount).toLocaleString('es-CL').replace(/,/g, '.');
-}
 
 function formatDate(iso: string) {
   if (!iso) return '—';
@@ -19,17 +15,7 @@ function formatDate(iso: string) {
 }
 
 /* ── Tipos ── */
-interface Order {
-  id: string;
-  customer_name: string;
-  customer_email: string;
-  customer_phone: string | null;
-  total: number;
-  status: string;
-  created_at: string;
-  region: string;
-  items: { name: string; quantity: number; price: number }[];
-}
+type Order = ReturnType<typeof normalizeOrderRecord>;
 
 interface Client {
   email: string;
@@ -42,17 +28,16 @@ interface Client {
 
 /* ── Badge de estado ── */
 function StatusBadge({ status }: { status: string }) {
-  const map: Record<string, string> = {
-    pendiente_pago: 'bg-yellow-400/10 text-yellow-400 border-yellow-400/20',
-    pagado: 'bg-green-500/10 text-green-400 border-green-500/20',
-    enviado: 'bg-blue-500/10 text-blue-400 border-blue-500/20',
-    entregado: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20',
-    cancelado: 'bg-red-500/10 text-red-400 border-red-500/20',
-  };
-  const cls = map[status] ?? 'bg-zinc-700/30 text-zinc-400 border-zinc-700';
   return (
-    <span className={`inline-block border rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${cls}`}>
-      {status.replace(/_/g, ' ')}
+    <span
+      className="inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
+      style={{
+        borderColor: `${orderStatusColor(status)}33`,
+        background: `${orderStatusColor(status)}14`,
+        color: orderStatusColor(status),
+      }}
+    >
+      {orderStatusLabel(status)}
     </span>
   );
 }
@@ -113,7 +98,7 @@ function OrderHistoryModal({ client, onClose }: { client: Client; onClose: () =>
                   <ul className="mt-3 space-y-1">
                     {order.items.map((item, i) => (
                       <li key={i} className="text-xs text-zinc-500">
-                        {item.quantity}× {item.name} — {formatCLP(item.price * item.quantity)}
+                        {item.quantity}× {item.name} — {formatCLP(item.subtotal)}
                       </li>
                     ))}
                   </ul>
@@ -131,7 +116,6 @@ function OrderHistoryModal({ client, onClose }: { client: Client; onClose: () =>
    PÁGINA PRINCIPAL
 ════════════════════════════════════════════════ */
 export default function ClientesPage() {
-  const [allOrders, setAllOrders] = useState<Order[]>([]);
   const [clients, setClients] = useState<Client[]>([]);
   const [filtered, setFiltered] = useState<Client[]>([]);
   const [search, setSearch] = useState('');
@@ -151,8 +135,7 @@ export default function ClientesPage() {
 
       if (err) { setError(err.message); setLoading(false); return; }
 
-      const orders: Order[] = (data ?? []) as Order[];
-      setAllOrders(orders);
+      const orders: Order[] = ((data ?? []) as Record<string, unknown>[]).map((order) => normalizeOrderRecord(order));
 
       // Agrupar por email
       const map = new Map<string, Client>();

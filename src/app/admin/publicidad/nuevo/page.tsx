@@ -1,5 +1,7 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
+
 import { useState, useRef, useCallback } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Upload, CheckCircle, ExternalLink, AlertCircle, Loader2 } from 'lucide-react';

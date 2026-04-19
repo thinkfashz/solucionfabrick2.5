@@ -1,11 +1,12 @@
 'use client';
 
-import { useRef, useState } from 'react';
+/* eslint-disable @next/next/no-img-element */
+
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { insforge } from '@/lib/insforge';
+import { useCategories } from '@/hooks/useCategories';
 import { Upload, ArrowLeft } from 'lucide-react';
-
-const CATEGORY_OPTIONS = ['Seguridad', 'Iluminación', 'Grifería', 'Revestimiento', 'Premium', 'General'];
 
 /* ── Helpers ── */
 function formatDisplayPrice(raw: string) {
@@ -94,13 +95,14 @@ interface ProductFormProps {
 ════════════════════════════════════════════════ */
 export default function ProductForm({ initialData, productId, mode }: ProductFormProps) {
   const router = useRouter();
+  const { categories } = useCategories();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<ProductFormData>({
     name: initialData?.name ?? '',
     description: initialData?.description ?? '',
     price: initialData?.price ?? '',
-    category_id: initialData?.category_id ?? 'General',
+    category_id: initialData?.category_id ?? '',
     stock: initialData?.stock ?? '',
     tagline: initialData?.tagline ?? '',
     image_url: initialData?.image_url ?? '',
@@ -115,6 +117,20 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  const categoryOptions = useMemo(() => {
+    const options = categories.map((category) => ({ value: category.id, label: category.name }));
+    if (form.category_id && !options.some((option) => option.value === form.category_id)) {
+      options.unshift({ value: form.category_id, label: form.category_id });
+    }
+    return options;
+  }, [categories, form.category_id]);
+
+  useEffect(() => {
+    if (!form.category_id && categoryOptions.length > 0) {
+      setForm((current) => ({ ...current, category_id: categoryOptions[0].value }));
+    }
+  }, [categoryOptions, form.category_id]);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -303,9 +319,13 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
             onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
             className={inputClass}
           >
-            {CATEGORY_OPTIONS.map((cat) => (
-              <option key={cat} value={cat}>{cat}</option>
-            ))}
+            {categoryOptions.length === 0 ? (
+              <option value="">Sin categorías disponibles</option>
+            ) : (
+              categoryOptions.map((category) => (
+                <option key={category.value} value={category.value}>{category.label}</option>
+              ))
+            )}
           </select>
         </Field>
 

@@ -208,14 +208,17 @@ export function verifyMercadoPagoSignature(args: {
 export function mapMercadoPagoStatus(status?: string) {
   switch (status) {
     case 'approved':
-      return 'pagada';
+      return 'confirmado';
+    case 'authorized':
+    case 'in_process':
+    case 'pending':
+      return 'pendiente';
     case 'rejected':
     case 'cancelled':
-      return 'fallida';
     case 'refunded':
     case 'charged_back':
-      return 'reembolsada';
+      return 'cancelado';
     default:
-      return 'pendiente_pago';
+      return 'pendiente';
   }
 }

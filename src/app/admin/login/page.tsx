@@ -20,7 +20,7 @@ export default function AdminLoginPage() {
   const [screen, setScreen] = useState<Screen>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [setupEmail, setSetupEmail] = useState('admin@fabrick.cl');
+  const [setupEmail, setSetupEmail] = useState('feduardomsz@gmail.com');
   const [otp, setOtp] = useState('');
   const [resetToken, setResetToken] = useState('');
   const [newPassword, setNewPassword] = useState('');
@@ -139,7 +139,7 @@ export default function AdminLoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="admin@fabrick.cl"
+                  placeholder="feduardomsz@gmail.com"
                   required
                   disabled={loading}
                   className={inputClass}

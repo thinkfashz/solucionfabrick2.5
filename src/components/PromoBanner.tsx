@@ -93,16 +93,15 @@ export default function PromoBanner() {
           transition={{ type: 'spring', stiffness: 220, damping: 22, delay: 0 }}
           className={[
             'fixed z-[200] pointer-events-auto',
-            // Desktop: bottom-right; Mobile: bottom-center above footer
+            // Desktop: bottom-right; Mobile: anchored left+right so it stretches to fill the gap (= centered)
             'bottom-5 right-5',
-            'max-sm:right-1/2 max-sm:translate-x-1/2 max-sm:bottom-20',
-            // Ensure at least 80px from top (covered by inline style constraint)
+            'max-sm:left-5 max-sm:bottom-20',
           ].join(' ')}
-          style={{ maxWidth: 320, top: 'auto' }}
+          style={{ top: 'auto' }}
           role="dialog"
           aria-label="Oferta especial"
         >
-          <div className="relative rounded-2xl border border-yellow-400/60 bg-black shadow-[0_8px_40px_rgba(250,204,21,0.25)] overflow-hidden w-[320px] max-sm:w-[calc(100vw-40px)]">
+          <div className="relative rounded-2xl border border-yellow-400/60 bg-black shadow-[0_8px_40px_rgba(250,204,21,0.25)] overflow-hidden w-[320px] max-sm:w-full">
             {/* Close button */}
             <button
               onClick={handleClose}

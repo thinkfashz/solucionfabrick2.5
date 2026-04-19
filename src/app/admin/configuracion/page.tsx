@@ -338,7 +338,7 @@ export default function ConfiguracionPage() {
                   type="email"
                   value={pwdEmail}
                   onChange={setPwdEmail}
-                  placeholder="admin@fabrick.cl"
+                  placeholder="feduardomsz@gmail.com"
                   hint="Recibirás un código de verificación en este correo."
                 />
                 {passwordMsg && <Toast msg={passwordMsg.text} type={passwordMsg.type} />}

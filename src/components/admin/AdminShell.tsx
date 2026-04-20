@@ -1,16 +1,19 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  ArrowUpRight, BarChart3, ChevronRight, ExternalLink, Hammer, LogOut, Menu,
-  Megaphone, Package, Radio, Settings, ShoppingCart, Truck, Users, X,
+  ArrowUpRight, BarChart3, ChevronRight, ExternalLink, Hammer, Home, LogOut, Menu,
+  Megaphone, MoreHorizontal, Package, Radio, Settings, ShieldCheck, ShoppingCart,
+  Truck, Users, X,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 
-const navSections = [
+type NavLink = { href: string; label: string; description: string; icon: typeof Package; superadminOnly?: boolean };
+
+const navSections: { title: string; links: NavLink[] }[] = [
   {
     title: 'Visión general',
     links: [
@@ -39,9 +42,27 @@ const navSections = [
     title: 'Sistema',
     links: [
       { href: '/admin/observatory', label: 'Observatory', description: 'Red en tiempo real', icon: Radio },
+      { href: '/admin/equipo', label: 'Equipo', description: 'Roles, invitaciones y aprobaciones', icon: ShieldCheck, superadminOnly: true },
     ],
   },
 ];
+
+/** Human labels for breadcrumb segments. Keep in sync with the nav links above. */
+const PATH_LABELS: Record<string, string> = {
+  '/admin': 'Centro de control',
+  '/admin/productos': 'Productos',
+  '/admin/productos/nuevo': 'Nuevo producto',
+  '/admin/proyectos': 'Proyectos',
+  '/admin/pedidos': 'Pedidos',
+  '/admin/entregas': 'Entregas',
+  '/admin/clientes': 'Clientes',
+  '/admin/reportes': 'Reportes',
+  '/admin/publicidad': 'Publicidad',
+  '/admin/publicidad/nuevo': 'Nueva campaña',
+  '/admin/configuracion': 'Configuración',
+  '/admin/observatory': 'Observatory',
+  '/admin/equipo': 'Equipo',
+};
 
 function NavItem({ href, label, description, icon: Icon, active, onNavigate }: {
   href: string; label: string; description: string; icon: typeof Package; active: boolean; onNavigate?: () => void;
@@ -75,11 +96,17 @@ function NavItem({ href, label, description, icon: Icon, active, onNavigate }: {
   );
 }
 
-function SidebarContent({ pathname, onNavigate, onLogout }: {
+function SidebarContent({ pathname, onNavigate, onLogout, role }: {
   pathname: string;
   onNavigate?: () => void;
   onLogout: () => void;
+  role: string | null;
 }) {
+  const sections = navSections.map((section) => ({
+    ...section,
+    links: section.links.filter((l) => !l.superadminOnly || role === 'superadmin'),
+  })).filter((s) => s.links.length > 0);
+
   return (
     <div className="space-y-4">
       {/* Brand block with logo inside the panel */}
@@ -107,7 +134,7 @@ function SidebarContent({ pathname, onNavigate, onLogout }: {
 
       {/* Navigation card */}
       <nav className="rounded-3xl border border-white/10 bg-[linear-gradient(180deg,#0e0e10,#0a0a0b)] p-4 shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
-        {navSections.map((section) => (
+        {sections.map((section) => (
           <div key={section.title} className="mb-4 last:mb-0">
             <p className="mb-2.5 ml-1 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
               {section.title}
@@ -157,6 +184,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [role, setRole] = useState<string | null>(null);
+  const [now, setNow] = useState<Date | null>(null);
 
   // Ten-minute inactivity auto-logout.
   useAdminIdleLogout(10 * 60 * 1000);
@@ -176,6 +205,43 @@ export function AdminShell({ children }: { children: ReactNode }) {
     }
   }, [mobileOpen]);
 
+  // Fetch current admin role once so we can toggle superadmin-only links.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/me', { cache: 'no-store' });
+        if (!res.ok || cancelled) return;
+        const json = (await res.json()) as { rol?: string };
+        if (!cancelled) setRole(json.rol ?? null);
+      } catch {
+        // best-effort: leave role null → superadmin links hidden.
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  // Live clock (updates every second). We hydrate with null + set on mount to
+  // avoid SSR/CSR text mismatches around the seconds field.
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  // Breadcrumb derived from pathname. Falls back to the last segment, prettified.
+  const breadcrumb = useMemo(() => {
+    if (!pathname) return 'Panel';
+    if (PATH_LABELS[pathname]) return PATH_LABELS[pathname];
+    // Match deepest known prefix, e.g. /admin/pedidos/abc123 → "Pedidos".
+    const segs = pathname.split('/').filter(Boolean);
+    for (let i = segs.length; i > 0; i--) {
+      const candidate = '/' + segs.slice(0, i).join('/');
+      if (PATH_LABELS[candidate]) return PATH_LABELS[candidate];
+    }
+    return 'Panel';
+  }, [pathname]);
+
   async function handleLogout() {
     try {
       await fetch('/api/admin/logout', { method: 'POST' });
@@ -192,6 +258,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
+  /* ── Bottom nav (móvil) — 4 prioritarios + Más ───────────────────────── */
+  const bottomItems: { href: string; label: string; icon: typeof Home }[] = [
+    { href: '/admin',             label: 'Home', icon: Home },
+    { href: '/admin/productos',   label: 'Prod', icon: Package },
+    { href: '/admin/pedidos',     label: 'Ped',  icon: ShoppingCart },
+    { href: '/admin/observatory', label: 'Obs',  icon: Radio },
+  ];
+  const isBottomActive = (href: string) => pathname === href;
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Ambient background */}
@@ -205,7 +280,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         <div className="absolute inset-0 bg-black/90 backdrop-blur-2xl" />
         <div className="relative mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 py-3 md:px-6">
           {/* Brand + mobile menu toggle */}
-          <div className="flex items-center gap-3">
+          <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
@@ -231,6 +306,29 @@ export function AdminShell({ children }: { children: ReactNode }) {
                 <span className="mt-0.5 text-[9px] uppercase tracking-[0.3em] text-zinc-500">Admin · Control room</span>
               </span>
             </Link>
+
+            {/* Breadcrumb (hidden on small screens) */}
+            <div className="hidden min-w-0 items-center gap-2 border-l border-white/10 pl-3 md:flex">
+              <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-zinc-600" />
+              <span className="truncate text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-400">
+                {breadcrumb}
+              </span>
+            </div>
+          </div>
+
+          {/* Center: live clock (md+) */}
+          <div className="hidden flex-1 items-center justify-center md:flex" aria-hidden={!now}>
+            {now && (
+              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-3 py-1.5">
+                <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
+                  {now.toLocaleDateString('es-CL', { weekday: 'short', day: '2-digit', month: 'short' })}
+                </span>
+                <span className="text-[11px] font-bold tabular-nums text-white">
+                  {now.toLocaleTimeString('es-CL', { hour12: false })}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Right actions */}
@@ -251,14 +349,27 @@ export function AdminShell({ children }: { children: ReactNode }) {
             </button>
           </div>
         </div>
+
+        {/* Mobile breadcrumb row (only <md) */}
+        <div className="relative mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 pb-2 md:hidden">
+          <span className="truncate text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-400">
+            {breadcrumb}
+          </span>
+          {now && (
+            <span className="flex items-center gap-1.5 text-[10px] font-semibold tabular-nums text-zinc-400">
+              <span className="h-1 w-1 rounded-full bg-yellow-400 animate-pulse" />
+              {now.toLocaleTimeString('es-CL', { hour12: false })}
+            </span>
+          )}
+        </div>
       </header>
 
       {/* Layout */}
-      <div className="relative z-10 mx-auto grid max-w-[1600px] gap-5 px-3 sm:px-4 md:px-6 py-4 md:py-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="relative z-10 mx-auto grid max-w-[1600px] gap-5 px-3 pb-24 sm:px-4 md:px-6 py-4 md:py-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:pb-6">
 
         {/* Desktop sidebar */}
         <aside className="hidden lg:block lg:sticky lg:top-[80px] lg:h-[calc(100vh-96px)] lg:overflow-y-auto scrollbar-hide">
-          <SidebarContent pathname={pathname} onLogout={handleLogout} />
+          <SidebarContent pathname={pathname} onLogout={handleLogout} role={role} />
         </aside>
 
         {/* Main content */}
@@ -287,10 +398,48 @@ export function AdminShell({ children }: { children: ReactNode }) {
               pathname={pathname}
               onNavigate={() => setMobileOpen(false)}
               onLogout={handleLogout}
+              role={role}
             />
           </div>
         </div>
       )}
+
+      {/* Bottom navigation (móvil / tablet vertical) */}
+      <nav
+        aria-label="Navegación inferior"
+        className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black/95 backdrop-blur-xl lg:hidden"
+        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
+      >
+        <div className="mx-auto flex max-w-[1600px] items-stretch justify-around">
+          {bottomItems.map((item) => {
+            const active = isBottomActive(item.href);
+            const Icon = item.icon;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                className="group relative flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em]"
+                style={{ minHeight: 56 }}
+              >
+                <Icon className={`h-5 w-5 transition-colors ${active ? 'text-yellow-400' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
+                <span className={active ? 'text-yellow-400' : 'text-zinc-500'}>{item.label}</span>
+                {active && <span className="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.7)]" />}
+              </Link>
+            );
+          })}
+          {/* Más → opens full drawer */}
+          <button
+            type="button"
+            onClick={() => setMobileOpen(true)}
+            className="group relative flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em]"
+            style={{ minHeight: 56 }}
+            aria-label="Más opciones"
+          >
+            <MoreHorizontal className="h-5 w-5 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
+            <span className="text-zinc-500">Más</span>
+          </button>
+        </div>
+      </nav>
     </div>
   );
 }

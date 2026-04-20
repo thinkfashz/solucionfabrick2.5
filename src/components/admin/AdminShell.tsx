@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   ArrowUpRight, BarChart3, ChevronRight, ExternalLink,
-  Megaphone, Package, Settings, ShoppingCart, Truck, Users,
+  Megaphone, Package, Radio, Settings, ShoppingCart, Truck, Users,
 } from 'lucide-react';
 
 const navSections = [
@@ -30,6 +30,12 @@ const navSections = [
     links: [
       { href: '/admin/publicidad', label: 'Publicidad', description: 'Meta Ads', icon: Megaphone },
       { href: '/admin/configuracion', label: 'Configuración', description: 'Parámetros y seguridad', icon: Settings },
+    ],
+  },
+  {
+    title: 'Sistema',
+    links: [
+      { href: '/admin/observatory', label: 'Observatory', description: 'Red en tiempo real', icon: Radio },
     ],
   },
 ];

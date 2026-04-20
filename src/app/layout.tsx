@@ -10,6 +10,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import UserProfileModal from '@/components/UserProfileModal';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
+import Analytics from '@/components/Analytics';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.solucionesfabrick.com'),
@@ -100,6 +101,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <PromoBanner />
             <UserProfileModal />
             <WhatsAppButton />
+            <Analytics />
           </AuthProvider>
         </ThemeProvider>
       </body>

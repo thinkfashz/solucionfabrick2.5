@@ -23,6 +23,7 @@ const SERVICES = [
     features: ['Estudio de suelo previo', 'Hormigón H-30 certificado', 'Supervisión estructural continua'],
     price: 'Desde $850.000',
     icon: Hammer,
+    href: null,
   },
   {
     title: 'Estructuras Metalcon',
@@ -30,6 +31,7 @@ const SERVICES = [
     features: ['Perfiles galvanizados de 1ª calidad', 'Plano estructural incluido', 'Garantía de 5 años en estructura'],
     price: 'Desde $1.200.000',
     icon: Home,
+    href: '/servicios/metalcon',
   },
   {
     title: 'Gasfitería certificada',
@@ -37,6 +39,7 @@ const SERVICES = [
     features: ['Certificación SEC incluida', 'Materiales de primera marca', 'Prueba de presión post-instalación'],
     price: 'Desde $320.000',
     icon: Droplet,
+    href: '/servicios/gasfiteria',
   },
   {
     title: 'Revestimientos y aislación',
@@ -44,6 +47,7 @@ const SERVICES = [
     features: ['Aislación lana de vidrio o roca', 'Placa Volcanita certificada', 'Reducción sonora de hasta 42 dB'],
     price: 'Desde $480.000',
     icon: Layers,
+    href: null,
   },
   {
     title: 'Pintura y acabados',
@@ -51,6 +55,7 @@ const SERVICES = [
     features: ['Preparación de superficie incluida', 'Pinturas Sipa o Sherwin-Williams', 'Mínimo 2 manos de aplicación'],
     price: 'Desde $180.000',
     icon: PaintRoller,
+    href: null,
   },
   {
     title: 'Seguridad y domótica',
@@ -58,6 +63,7 @@ const SERVICES = [
     features: ['Cámaras IP 4K con almacenamiento', 'Cerradura digital con huella', 'App de control remoto incluida'],
     price: 'Desde $650.000',
     icon: ShieldCheck,
+    href: null,
   },
   {
     title: 'Instalaciones eléctricas',
@@ -65,6 +71,7 @@ const SERVICES = [
     features: ['Plano eléctrico actualizado', 'Certificación SEC obligatoria', 'Tablero modular con diferencial'],
     price: 'Desde $290.000',
     icon: Zap,
+    href: '/servicios/electricidad',
   },
   {
     title: 'Mantención y reparaciones',
@@ -72,6 +79,7 @@ const SERVICES = [
     features: ['Visita de diagnóstico incluida', 'Informe técnico escrito', 'Plan de mantención anual'],
     price: 'Desde $95.000',
     icon: Wrench,
+    href: null,
   },
   {
     title: 'Paisajismo y exteriores',
@@ -79,13 +87,15 @@ const SERVICES = [
     features: ['Diseño de terraza o jardín', 'Iluminación exterior LED', 'Materiales resistentes a la intemperie'],
     price: 'Desde $420.000',
     icon: Trees,
+    href: null,
   },
   {
-    title: 'Remodelación integral',
+    title: 'Ampliaciones y remodelación integral',
     description: 'Transformamos espacios completos coordinando todos los oficios. Un solo contrato, un solo equipo, cero dolores de cabeza.',
     features: ['Coordinación total del proyecto', 'Cronograma con hitos semanales', 'Garantía de entrega a tiempo'],
     price: 'Cotización personalizada',
     icon: Building2,
+    href: '/servicios/ampliaciones',
   },
   {
     title: 'Inspección técnica',
@@ -93,6 +103,7 @@ const SERVICES = [
     features: ['Informe fotográfico completo', 'Estimación de costos de reparación', 'Entrega en 48 horas'],
     price: 'Desde $150.000',
     icon: ScanLine,
+    href: null,
   },
   {
     title: 'Diseño de interiores',
@@ -100,6 +111,7 @@ const SERVICES = [
     features: ['Renders 3D del espacio', 'Selección de materiales premium', 'Coordinación con obra incluida'],
     price: 'Desde $380.000',
     icon: Sparkles,
+    href: null,
   },
 ];
 
@@ -137,27 +149,41 @@ export default function ServiciosPage() {
 
       {/* Services grid */}
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
-        {SERVICES.map(({ title, description, features, price, icon: Icon }) => (
-          <article key={title} className="group flex flex-col rounded-[2rem] border border-white/5 bg-zinc-950/85 p-8 transition hover:border-yellow-400/30">
-            <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-yellow-400/20 bg-black transition group-hover:border-yellow-400/50 group-hover:bg-yellow-400/5">
-              <Icon className="h-6 w-6 text-yellow-400" />
-            </div>
-            <h2 className="text-lg font-bold uppercase tracking-[0.15em] text-white">{title}</h2>
-            <p className="mt-3 text-sm leading-relaxed text-zinc-400">{description}</p>
-            <ul className="mt-5 space-y-2">
-              {features.map((f) => (
-                <li key={f} className="flex items-start gap-2 text-xs text-zinc-400">
-                  <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-400" />
-                  {f}
-                </li>
-              ))}
-            </ul>
-            <div className="mt-6 flex items-center justify-between border-t border-white/5 pt-5">
-              <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Precio referencial</span>
-              <span className="text-sm font-bold text-yellow-400">{price}</span>
-            </div>
-          </article>
-        ))}
+        {SERVICES.map(({ title, description, features, price, icon: Icon, href }) => {
+          const cardClasses = 'group flex flex-col rounded-[2rem] border border-white/5 bg-zinc-950/85 p-8 transition hover:border-yellow-400/30';
+          const body = (
+            <>
+              <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-yellow-400/20 bg-black transition group-hover:border-yellow-400/50 group-hover:bg-yellow-400/5">
+                <Icon className="h-6 w-6 text-yellow-400" />
+              </div>
+              <h2 className="text-lg font-bold uppercase tracking-[0.15em] text-white">{title}</h2>
+              <p className="mt-3 text-sm leading-relaxed text-zinc-400">{description}</p>
+              <ul className="mt-5 space-y-2">
+                {features.map((f) => (
+                  <li key={f} className="flex items-start gap-2 text-xs text-zinc-400">
+                    <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-400" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+              <div className="mt-6 flex items-center justify-between border-t border-white/5 pt-5">
+                <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+                  {href ? 'Ver detalle →' : 'Precio referencial'}
+                </span>
+                <span className="text-sm font-bold text-yellow-400">{price}</span>
+              </div>
+            </>
+          );
+          return href ? (
+            <Link key={title} href={href} className={cardClasses}>
+              {body}
+            </Link>
+          ) : (
+            <article key={title} className={cardClasses}>
+              {body}
+            </article>
+          );
+        })}
       </div>
 
       {/* Bottom CTA */}

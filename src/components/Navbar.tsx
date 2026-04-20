@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Menu, Home, Wrench, TrendingUp, Lightbulb, ShoppingBag, Building2, Phone, Gamepad2, ShieldCheck } from 'lucide-react';
+import { X, Menu, Home, Wrench, TrendingUp, Lightbulb, ShoppingBag, Building2, Phone, Gamepad2, ShieldCheck, BookOpen, Layers } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
 import ThemeToggle from './ThemeToggle';
 import { navigateWithTransition } from '@/lib/routeTransition';
@@ -24,6 +24,8 @@ const MENU_ITEMS = [
   { label: 'Soluciones', href: '/soluciones', Icon: Lightbulb },
   { label: 'Tienda',     href: '/tienda',     Icon: ShoppingBag },
   { label: 'Proyectos',  href: '/proyectos',  Icon: Building2 },
+  { label: 'Casos',      href: '/casos',      Icon: Layers },
+  { label: 'Blog',       href: '/blog',       Icon: BookOpen },
   { label: 'Contacto',   href: '/contacto',   Icon: Phone },
   { label: 'Garantías',  href: '/garantias',  Icon: ShieldCheck },
   { label: 'Juego',      href: '/juego',      Icon: Gamepad2 },

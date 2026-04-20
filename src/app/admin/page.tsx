@@ -2,7 +2,6 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
   BarChart3,
@@ -82,11 +81,11 @@ function ActionCard({
   return (
     <Link
       href={href}
-      className="group rounded-[1.75rem] border border-white/8 bg-[linear-gradient(180deg,rgba(24,24,27,0.92),rgba(9,9,11,0.96))] p-5 transition hover:border-[#c9a96e]/40 hover:bg-zinc-950"
+      className="group rounded-[1.75rem] border border-white/8 bg-[linear-gradient(180deg,rgba(24,24,27,0.92),rgba(9,9,11,0.96))] p-5 transition hover:border-yellow-400/40 hover:bg-zinc-950"
     >
       <div className="flex items-center justify-between">
-        <Icon className="h-5 w-5 text-[#c9a96e]" />
-        <ArrowRight className="h-4 w-4 text-zinc-600 transition group-hover:translate-x-1 group-hover:text-[#c9a96e]" />
+        <Icon className="h-5 w-5 text-yellow-400" />
+        <ArrowRight className="h-4 w-4 text-zinc-600 transition group-hover:translate-x-1 group-hover:text-yellow-400" />
       </div>
       <h2 className="mt-5 text-lg font-bold text-white">{title}</h2>
       <p className="mt-2 text-sm leading-relaxed text-zinc-500">{description}</p>
@@ -99,7 +98,7 @@ function Panel({ title, subtitle, children }: { title: string; subtitle: string;
     <section className="rounded-[2rem] border border-white/8 bg-zinc-950/70 p-6">
       <div className="mb-5 flex items-end justify-between gap-4">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.28em] text-[#c9a96e]">{title}</p>
+          <p className="text-[10px] uppercase tracking-[0.28em] text-yellow-400">{title}</p>
           <h2 className="mt-2 text-lg font-bold text-white">{subtitle}</h2>
         </div>
       </div>
@@ -109,7 +108,6 @@ function Panel({ title, subtitle, children }: { title: string; subtitle: string;
 }
 
 export default function AdminPage() {
-  const router = useRouter();
   const { categoryMap } = useCategories();
   const [products, setProducts] = useState<DashboardProduct[]>([]);
   const [orders, setOrders] = useState<ReturnType<typeof normalizeOrderRecord>[]>([]);
@@ -248,17 +246,12 @@ export default function AdminPage() {
 
   const deliverySnapshot = useMemo(() => deliveries.slice(0, 5), [deliveries]);
 
-  async function handleLogout() {
-    await fetch('/api/admin/logout', { method: 'POST' });
-    router.push('/admin/login');
-  }
-
   return (
     <div className="space-y-8">
       <section className="rounded-[2rem] border border-white/8 bg-[radial-gradient(circle_at_top_left,rgba(201,169,110,0.18),transparent_34%),linear-gradient(180deg,rgba(24,24,27,0.92),rgba(9,9,11,0.98))] p-6 md:p-8">
         <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
           <div>
-            <p className="text-[10px] uppercase tracking-[0.32em] text-[#c9a96e]">Centro de control</p>
+            <p className="text-[10px] uppercase tracking-[0.32em] text-yellow-400">Centro de control</p>
             <h1 className="mt-3 font-playfair text-4xl font-black text-white md:text-5xl">Operación unificada de Fabrick</h1>
             <p className="mt-4 max-w-3xl text-sm leading-relaxed text-zinc-400 md:text-base">
               Catálogo, pedidos, entregas y reportes quedan sincronizados contra la base real. El objetivo aquí es decidir rápido, no perseguir pantallas rotas.
@@ -274,16 +267,10 @@ export default function AdminPage() {
             </span>
             <button
               onClick={() => void loadDashboard(true)}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-300 transition hover:border-[#c9a96e]/40 hover:text-[#c9a96e]"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-300 transition hover:border-yellow-400/40 hover:text-yellow-400"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
               Refrescar
-            </button>
-            <button
-              onClick={handleLogout}
-              className="rounded-full border border-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400 transition hover:border-red-500/40 hover:text-red-400"
-            >
-              Cerrar sesión
             </button>
           </div>
         </div>
@@ -299,7 +286,7 @@ export default function AdminPage() {
         <MetricCard label="Productos activos" value={metrics.activeProducts} note={`${metrics.lowStock} con stock crítico`} tone="text-emerald-400" />
         <MetricCard label="Pedidos abiertos" value={metrics.pendingOrders} note={`${orders.length} pedidos en total`} tone="text-amber-400" />
         <MetricCard label="Clientes con actividad" value={metrics.activeCustomers} note="Correos únicos con compras registradas" tone="text-white" />
-        <MetricCard label="Ingresos no cancelados" value={formatCLP(metrics.realizedRevenue)} note={`${metrics.inFlightDeliveries} entregas en curso`} tone="text-[#c9a96e]" />
+        <MetricCard label="Ingresos no cancelados" value={formatCLP(metrics.realizedRevenue)} note={`${metrics.inFlightDeliveries} entregas en curso`} tone="text-yellow-400" />
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -325,7 +312,7 @@ export default function AdminPage() {
                 <Link
                   key={order.id}
                   href={`/admin/pedidos/${order.id}`}
-                  className="flex flex-col gap-3 rounded-[1.4rem] border border-white/8 bg-black/30 p-4 transition hover:border-[#c9a96e]/40 hover:bg-black/40 md:flex-row md:items-center md:justify-between"
+                  className="flex flex-col gap-3 rounded-[1.4rem] border border-white/8 bg-black/30 p-4 transition hover:border-yellow-400/40 hover:bg-black/40 md:flex-row md:items-center md:justify-between"
                 >
                   <div>
                     <p className="font-mono text-xs uppercase tracking-[0.22em] text-zinc-500">{shortRecordId(order.id)}</p>
@@ -342,7 +329,7 @@ export default function AdminPage() {
                     >
                       {orderStatusLabel(order.status)}
                     </span>
-                    <p className="text-lg font-black text-[#c9a96e]">{formatCLP(order.total)}</p>
+                    <p className="text-lg font-black text-yellow-400">{formatCLP(order.total)}</p>
                   </div>
                 </Link>
               ))}
@@ -388,7 +375,7 @@ export default function AdminPage() {
                     </div>
                     <div className="h-2 rounded-full bg-white/6">
                       <div
-                        className="h-2 rounded-full bg-[#c9a96e]"
+                        className="h-2 rounded-full bg-yellow-400"
                         style={{ width: `${Math.max(10, (count / Math.max(products.length, 1)) * 100)}%` }}
                       />
                     </div>

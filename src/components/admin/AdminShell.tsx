@@ -1,12 +1,14 @@
 'use client';
 
-import type { ReactNode } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
+import Image from 'next/image';
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { usePathname, useRouter } from 'next/navigation';
 import {
-  ArrowUpRight, BarChart3, ChevronRight, ExternalLink, Hammer,
-  Megaphone, Package, Radio, Settings, ShoppingCart, Truck, Users,
+  ArrowUpRight, BarChart3, ChevronRight, ExternalLink, Hammer, LogOut, Menu,
+  Megaphone, Package, Radio, Settings, ShoppingCart, Truck, Users, X,
 } from 'lucide-react';
+import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 
 const navSections = [
   {
@@ -30,7 +32,7 @@ const navSections = [
     title: 'Expansión',
     links: [
       { href: '/admin/publicidad', label: 'Publicidad', description: 'Meta Ads', icon: Megaphone },
-      { href: '/admin/configuracion', label: 'Configuración', description: 'Parámetros y seguridad', icon: Settings },
+      { href: '/admin/configuracion', label: 'Configuración', description: 'Parámetros e integraciones', icon: Settings },
     ],
   },
   {
@@ -41,125 +43,254 @@ const navSections = [
   },
 ];
 
-function NavItem({ href, label, description, icon: Icon, active }: {
-  href: string; label: string; description: string; icon: typeof Package; active: boolean;
+function NavItem({ href, label, description, icon: Icon, active, onNavigate }: {
+  href: string; label: string; description: string; icon: typeof Package; active: boolean; onNavigate?: () => void;
 }) {
   return (
-    <Link href={href} className={`group relative flex items-center gap-3 rounded-[1.15rem] px-3.5 py-3 transition-all duration-200 ${
-      active
-        ? 'bg-[linear-gradient(135deg,rgba(201,169,110,0.15),rgba(201,169,110,0.06))] border border-[#c9a96e]/25 shadow-[inset_0_1px_0_rgba(201,169,110,0.2)]'
-        : 'border border-transparent hover:border-white/8 hover:bg-white/[0.04]'
-    }`}>
-      {/* Icon */}
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className={`group relative flex items-center gap-3 rounded-2xl px-3.5 py-3 transition-all duration-200 ${
+        active
+          ? 'bg-yellow-400/15 border border-yellow-400/40 shadow-[inset_0_1px_0_rgba(250,204,21,0.25)]'
+          : 'border border-transparent hover:border-white/10 hover:bg-white/[0.04]'
+      }`}
+    >
       <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl transition-colors ${
-        active ? 'bg-[#c9a96e] text-black shadow-[0_2px_8px_rgba(201,169,110,0.45)]' : 'bg-white/6 text-[#c9a96e]'
+        active ? 'bg-yellow-400 text-black shadow-[0_2px_10px_rgba(250,204,21,0.55)]' : 'bg-white/5 text-yellow-400'
       }`}>
         <Icon className="h-3.5 w-3.5" />
       </span>
 
-      {/* Text */}
       <span className="flex-1 min-w-0">
-        <span className={`block text-[12.5px] font-semibold leading-tight ${active ? 'text-[#c9a96e]' : 'text-zinc-300 group-hover:text-white'} transition-colors`}>
+        <span className={`block text-[13px] font-semibold leading-tight ${active ? 'text-yellow-400' : 'text-zinc-200 group-hover:text-white'} transition-colors`}>
           {label}
         </span>
-        <span className="block text-[10.5px] text-zinc-600 leading-tight mt-0.5">{description}</span>
+        <span className="block text-[10.5px] text-zinc-500 leading-tight mt-0.5">{description}</span>
       </span>
 
-      {/* Active arrow */}
-      {active && <ArrowUpRight className="h-3.5 w-3.5 flex-shrink-0 text-[#c9a96e]" />}
+      {active && <ArrowUpRight className="h-3.5 w-3.5 flex-shrink-0 text-yellow-400" />}
       {!active && <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity" />}
     </Link>
   );
 }
 
+function SidebarContent({ pathname, onNavigate, onLogout }: {
+  pathname: string;
+  onNavigate?: () => void;
+  onLogout: () => void;
+}) {
+  return (
+    <div className="space-y-4">
+      {/* Brand block with logo inside the panel */}
+      <div className="rounded-3xl border border-yellow-400/20 bg-[linear-gradient(180deg,rgba(24,24,27,0.95),rgba(0,0,0,0.9))] p-4 shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+        <Link href="/admin" onClick={onNavigate} className="flex items-center gap-3">
+          <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-yellow-400 p-1.5 shadow-[0_4px_12px_rgba(250,204,21,0.35)]">
+            <Image
+              src="/logo-soluciones-fabrick-monocromo-claro.svg"
+              alt="Soluciones Fabrick"
+              width={96}
+              height={24}
+              className="h-auto w-full"
+              priority
+            />
+          </span>
+          <div className="min-w-0">
+            <p className="font-playfair text-lg font-black tracking-[0.18em] text-yellow-400 leading-none">FABRICK</p>
+            <div className="mt-1 flex items-center gap-1.5">
+              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+              <p className="text-[9px] uppercase tracking-[0.28em] text-zinc-500">Admin control</p>
+            </div>
+          </div>
+        </Link>
+      </div>
+
+      {/* Navigation card */}
+      <nav className="rounded-3xl border border-white/10 bg-[linear-gradient(180deg,#0e0e10,#0a0a0b)] p-4 shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
+        {navSections.map((section) => (
+          <div key={section.title} className="mb-4 last:mb-0">
+            <p className="mb-2.5 ml-1 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
+              {section.title}
+            </p>
+            <div className="space-y-1">
+              {section.links.map((link) => (
+                <NavItem
+                  key={link.href}
+                  href={link.href}
+                  label={link.label}
+                  description={link.description}
+                  icon={link.icon}
+                  active={pathname === link.href}
+                  onNavigate={onNavigate}
+                />
+              ))}
+            </div>
+          </div>
+        ))}
+      </nav>
+
+      {/* Logout + status */}
+      <div className="rounded-3xl border border-white/10 bg-[#0a0a0b]/80 p-4 space-y-3">
+        <button
+          onClick={onLogout}
+          className="flex w-full items-center justify-center gap-2 rounded-full border border-white/15 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-300 transition hover:border-red-500/50 hover:text-red-400"
+        >
+          <LogOut className="h-3.5 w-3.5" />
+          Cerrar sesión
+        </button>
+        <div className="flex items-center gap-2">
+          <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
+          <p className="text-[9.5px] uppercase tracking-[0.28em] text-zinc-500 font-semibold">Sistema activo</p>
+        </div>
+        <p className="text-[11px] leading-relaxed text-zinc-500">
+          Datos en tiempo real. InsForge sincronizado. Cierre de sesión automático tras 10 min de inactividad.
+        </p>
+        <p className="text-[10px] text-zinc-600">
+          © {new Date().getFullYear()} Fabrick · Admin
+        </p>
+      </div>
+    </div>
+  );
+}
+
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
+  const router = useRouter();
+  const [mobileOpen, setMobileOpen] = useState(false);
+
+  // Ten-minute inactivity auto-logout.
+  useAdminIdleLogout(10 * 60 * 1000);
+
+  // Close drawer on navigation.
+  useEffect(() => {
+    setMobileOpen(false);
+  }, [pathname]);
+
+  // Prevent background scroll while mobile drawer is open.
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    if (mobileOpen) {
+      const prev = document.body.style.overflow;
+      document.body.style.overflow = 'hidden';
+      return () => { document.body.style.overflow = prev; };
+    }
+  }, [mobileOpen]);
+
+  async function handleLogout() {
+    try {
+      await fetch('/api/admin/logout', { method: 'POST' });
+    } catch {
+      // ignore
+    }
+    router.replace('/admin/login');
+  }
+
+  // Observatory renders full-screen; skip the shell chrome while on it.
+  const isObservatory = pathname?.startsWith('/admin/observatory');
+
+  if (isObservatory) {
+    return <>{children}</>;
+  }
 
   return (
-    <div className="min-h-screen bg-[#050505] text-white">
+    <div className="min-h-screen bg-black text-white">
       {/* Ambient background */}
       <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute top-0 left-0 h-[500px] w-[500px] rounded-full bg-[#c9a96e]/5 blur-[120px]" />
-        <div className="absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full bg-yellow-400/3 blur-[100px]" />
+        <div className="absolute top-0 left-0 h-[500px] w-[500px] rounded-full bg-yellow-400/[0.06] blur-[120px]" />
+        <div className="absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full bg-yellow-300/[0.04] blur-[100px]" />
       </div>
 
       {/* Top header */}
-      <header className="sticky top-0 z-50 border-b border-white/[0.06]">
-        <div className="absolute inset-0 bg-[#080808]/90 backdrop-blur-2xl" />
-        <div className="relative mx-auto flex max-w-[1600px] items-center justify-between gap-4 px-6 py-3.5">
-          {/* Brand */}
-          <div className="flex items-center gap-4">
-            <div className="flex flex-col">
-              <Link href="/" className="font-playfair text-[22px] font-black tracking-[0.22em] text-[#c9a96e] hover:text-white transition-colors leading-none">
-                FABRICK
-              </Link>
-              <div className="flex items-center gap-2 mt-0.5">
-                <div className="h-1 w-1 rounded-full bg-green-500 animate-pulse" />
-                <p className="text-[9px] uppercase tracking-[0.35em] text-zinc-600">Admin · Control room</p>
-              </div>
-            </div>
+      <header className="sticky top-0 z-40 border-b border-white/[0.08]">
+        <div className="absolute inset-0 bg-black/90 backdrop-blur-2xl" />
+        <div className="relative mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 py-3 md:px-6">
+          {/* Brand + mobile menu toggle */}
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={() => setMobileOpen(true)}
+              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-yellow-400 transition hover:border-yellow-400/40 hover:bg-white/5 lg:hidden"
+              aria-label="Abrir menú"
+            >
+              <Menu className="h-5 w-5" />
+            </button>
+
+            <Link href="/admin" className="flex items-center gap-2.5 min-w-0">
+              <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-yellow-400 p-1.5 shadow-[0_4px_12px_rgba(250,204,21,0.35)]">
+                <Image
+                  src="/logo-soluciones-fabrick-monocromo-claro.svg"
+                  alt="Soluciones Fabrick"
+                  width={80}
+                  height={20}
+                  className="h-auto w-full"
+                  priority
+                />
+              </span>
+              <span className="hidden flex-col leading-none sm:flex">
+                <span className="font-playfair text-lg font-black tracking-[0.2em] text-yellow-400">FABRICK</span>
+                <span className="mt-0.5 text-[9px] uppercase tracking-[0.3em] text-zinc-500">Admin · Control room</span>
+              </span>
+            </Link>
           </div>
 
           {/* Right actions */}
-          <div className="flex items-center gap-3">
+          <div className="flex items-center gap-2">
             <Link
               href="/tienda"
-              className="flex items-center gap-1.5 rounded-full border border-white/10 px-4 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400 hover:border-[#c9a96e]/40 hover:text-[#c9a96e] transition-all"
+              className="hidden sm:flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-300 hover:border-yellow-400/40 hover:text-yellow-400 transition-all"
             >
               Ver tienda <ExternalLink className="h-3 w-3" />
             </Link>
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-300 transition hover:border-red-500/50 hover:text-red-400"
+              title="Cerrar sesión"
+            >
+              <LogOut className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline">Salir</span>
+            </button>
           </div>
         </div>
       </header>
 
       {/* Layout */}
-      <div className="relative z-10 mx-auto grid max-w-[1600px] gap-6 px-4 md:px-6 py-6 lg:grid-cols-[280px_minmax(0,1fr)]">
+      <div className="relative z-10 mx-auto grid max-w-[1600px] gap-5 px-3 sm:px-4 md:px-6 py-4 md:py-6 lg:grid-cols-[280px_minmax(0,1fr)]">
 
-        {/* ── Sidebar ── */}
-        <aside className="lg:sticky lg:top-[65px] lg:h-[calc(100vh-90px)] lg:overflow-y-auto space-y-4 scrollbar-hide">
-
-          {/* Navigation card */}
-          <div className="rounded-[1.75rem] border border-white/[0.07] bg-[linear-gradient(180deg,#0e0e10,#0a0a0b)] p-4 shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
-            {navSections.map((section) => (
-              <div key={section.title} className="mb-4 last:mb-0">
-                <p className="mb-2.5 ml-1 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-600">
-                  {section.title}
-                </p>
-                <div className="space-y-1">
-                  {section.links.map((link) => (
-                    <NavItem
-                      key={link.href}
-                      href={link.href}
-                      label={link.label}
-                      description={link.description}
-                      icon={link.icon}
-                      active={pathname === link.href}
-                    />
-                  ))}
-                </div>
-              </div>
-            ))}
-          </div>
-
-          {/* Status card */}
-          <div className="rounded-[1.75rem] border border-white/[0.06] bg-[#0a0a0b]/80 p-5">
-            <div className="flex items-center gap-2 mb-3">
-              <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-              <p className="text-[9.5px] uppercase tracking-[0.28em] text-zinc-500 font-semibold">Sistema activo</p>
-            </div>
-            <p className="text-xs leading-relaxed text-zinc-500">
-              Datos en tiempo real. InsForge conectado y sincronizado.
-            </p>
-            <div className="mt-3 h-px bg-gradient-to-r from-[#c9a96e]/20 via-[#c9a96e]/40 to-transparent" />
-            <p className="mt-3 text-[10px] text-zinc-600">
-              © {new Date().getFullYear()} Fabrick · Admin
-            </p>
-          </div>
+        {/* Desktop sidebar */}
+        <aside className="hidden lg:block lg:sticky lg:top-[80px] lg:h-[calc(100vh-96px)] lg:overflow-y-auto scrollbar-hide">
+          <SidebarContent pathname={pathname} onLogout={handleLogout} />
         </aside>
 
-        {/* ── Main content ── */}
+        {/* Main content */}
         <main className="min-w-0">{children}</main>
       </div>
+
+      {/* Mobile drawer */}
+      {mobileOpen && (
+        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
+          <div
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
+            onClick={() => setMobileOpen(false)}
+          />
+          <div className="relative ml-auto h-full w-[85%] max-w-[320px] overflow-y-auto border-l border-white/10 bg-black p-4 shadow-2xl animate-in slide-in-from-right">
+            <div className="mb-3 flex items-center justify-end">
+              <button
+                type="button"
+                onClick={() => setMobileOpen(false)}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-zinc-300 hover:text-white hover:border-yellow-400/40"
+                aria-label="Cerrar menú"
+              >
+                <X className="h-4 w-4" />
+              </button>
+            </div>
+            <SidebarContent
+              pathname={pathname}
+              onNavigate={() => setMobileOpen(false)}
+              onLogout={handleLogout}
+            />
+          </div>
+        </div>
+      )}
     </div>
   );
 }

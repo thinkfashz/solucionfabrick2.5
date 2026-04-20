@@ -36,8 +36,9 @@ const SERVICES = [
 ];
 
 export const metadata: Metadata = {
-  title: 'Servicios | Fabrick',
-  description: 'Servicios integrales de construccion, remodelacion y seguridad para el hogar.',
+  title: 'Servicios de Construcción',
+  description: 'Servicios integrales de construcción, remodelación y seguridad para el hogar en la Región del Maule, Chile.',
+  alternates: { canonical: 'https://www.solucionesfabrick.com/servicios' },
 };
 
 export default function ServiciosPage() {
@@ -45,9 +46,9 @@ export default function ServiciosPage() {
     <SectionPageShell
       eyebrow="Servicios"
       title="Un equipo para todo el proyecto"
-      description="Desde la base estructural hasta los detalles finales, cada servicio opera bajo un mismo estandar de calidad y coordinacion."
-      primaryAction={{ href: '/contacto', label: 'Solicitar evaluacion' }}
-      secondaryAction={{ href: '/tienda', label: 'Ver tienda' }}
+      description="Desde la base estructural hasta los detalles finales, cada servicio opera bajo un mismo estándar de calidad y coordinación."
+      primaryAction={{ href: '/contacto', label: 'Solicitar evaluación' }}
+      secondaryAction={{ href: '/tienda', label: 'Ver catálogo' }}
     >
       <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
         {SERVICES.map(({ title, description, icon: Icon }) => (

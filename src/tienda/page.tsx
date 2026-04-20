@@ -343,7 +343,7 @@ export default function TiendaClientPage() {
 				<div className="flex items-center gap-3">
 					{/* Real-time dot */}
 					<span
-						title={realtimeConnected ? 'Catálogo en tiempo real' : 'Reconectando...'}
+						title={realtimeConnected ? 'Catálogo en tiempo real' : 'Cargando catálogo'}
 						className={`hidden sm:block w-2 h-2 rounded-full transition-colors ${realtimeConnected ? 'bg-emerald-400 shadow-[0_0_6px_#4ade80]' : 'bg-zinc-600'}`}
 					/>
 
@@ -403,17 +403,17 @@ export default function TiendaClientPage() {
 			{/* ── CATALOGUE ── */}
 			{!selectedProduct && (
 				<>
-					{/* Intro strip (replaces big Boutique/Alto Estándar hero) */}
+					{/* Intro strip (Catálogo Fabrick) */}
 					<section className="relative px-6 md:px-10 pt-10 pb-6 max-w-6xl mx-auto">
 						<div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
 							<div>
-								<p className="text-[9px] uppercase tracking-[0.5em] text-yellow-400/70 mb-3">Tienda Fabrick</p>
+								<p className="text-[9px] uppercase tracking-[0.5em] text-yellow-400/70 mb-3">Catálogo Fabrick</p>
 								<h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-[0.95] text-white">
-									Materiales conectados<br />
-									<span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent">a la obra real</span>
+									Materiales que instalamos<br />
+									<span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent">en tu obra</span>
 								</h1>
 								<p className="mt-4 text-zinc-400 text-sm max-w-xl leading-relaxed">
-									Precios, stock y promociones sincronizados en vivo. Pulsa cualquier producto para abrir su ficha técnica completa.
+									Cada material de este catálogo es seleccionado, adquirido e instalado por nuestro equipo certificado directamente en tu proyecto.
 								</p>
 							</div>
 							<div className="flex flex-col sm:flex-row gap-3">
@@ -446,8 +446,8 @@ export default function TiendaClientPage() {
 							</div>
 							<div className="flex items-center gap-2">
 								<span className={`w-2 h-2 rounded-full ${realtimeConnected ? 'bg-emerald-400 shadow-[0_0_6px_#4ade80]' : 'bg-zinc-600'}`} />
-								<span className={`text-[10px] uppercase tracking-widest ${realtimeConnected ? 'text-emerald-400' : 'text-zinc-600'}`}>
-									{realtimeConnected ? 'Sincronizado en vivo' : 'Reconectando...'}
+								<span className={`text-[10px] uppercase tracking-widest ${realtimeConnected ? 'text-emerald-400' : 'text-zinc-500'}`}>
+									{realtimeConnected ? 'Catálogo actualizado' : 'Cargando catálogo'}
 								</span>
 							</div>
 						</div>
@@ -814,7 +814,7 @@ export default function TiendaClientPage() {
 								<div className="h-full flex flex-col items-center justify-center gap-5 opacity-30">
 									<ShoppingBag size={60} />
 									<p className="text-base font-black uppercase tracking-[0.5em]">Carrito Vacío</p>
-									<p className="text-xs text-zinc-500">Explora nuestra boutique</p>
+									<p className="text-xs text-zinc-500">Explora nuestro catálogo</p>
 								</div>
 							) : (
 								cart.map((item, idx) => (
@@ -861,7 +861,7 @@ export default function TiendaClientPage() {
 					<div className="sm:col-span-1 flex flex-col items-start gap-5">
 						<FabrickLogo />
 						<p className="text-zinc-500 text-xs leading-relaxed max-w-[200px]">
-							Boutique de componentes premium para proyectos residenciales de alto estándar.
+							Catálogo de materiales premium que instalamos directamente en tu obra, como parte de tu proyecto Fabrick.
 						</p>
 						<div className="flex gap-4">
 							<a href="https://instagram.com" target="_blank" rel="noreferrer" className="text-zinc-700 hover:text-pink-400 transition-all hover:scale-110">

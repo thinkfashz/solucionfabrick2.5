@@ -4,9 +4,10 @@ import Link from 'next/link';
 import { ArrowRight, Layers, Home, Package, Sparkles, Truck, Hammer } from 'lucide-react';
 
 export const metadata: Metadata = {
-  title: 'Soluciones | Fabrick',
+  title: 'Servicios de Construcción y Remodelación',
   description:
-    'Paquetes llave en mano: piso industrializado, paneles Metalcon 60/90, estructura, revestimientos y suministro de materiales.',
+    'Paquetes llave en mano: piso industrializado, paneles Metalcon 60/90, estructura, revestimientos, gasfitería y electricidad. Ejecutado por el equipo Fabrick en la Región del Maule, Chile.',
+  alternates: { canonical: 'https://www.solucionesfabrick.com/soluciones' },
 };
 
 interface SolutionItem {
@@ -95,17 +96,17 @@ const GROUPS: SolutionGroup[] = [
   {
     id: 'suministro',
     icon: Truck,
-    eyebrow: 'Suministro',
-    title: 'Despacho de materiales',
+    eyebrow: 'Materiales seleccionados',
+    title: 'Materiales elegidos por nuestros especialistas',
     intro:
-      'Compra con precio de mayorista y despacho directo a obra. Catálogo completo sincronizado con la tienda Fabrick.',
+      'Nuestros materiales son seleccionados, adquiridos e instalados por el equipo Fabrick directamente en tu obra. No vendemos suelto — ejecutamos completo.',
     items: [
-      { name: 'Materiales gruesos', spec: 'Cemento, fierro, áridos', description: 'Despacho en camión, mínimo 1 saco / 1 barra 12 mm.' },
-      { name: 'Perfiles Metalcon', spec: '60, 90, 100 mm · C y U', description: 'Tiras de 6 m, perfiles galvanizados G90 certificados.' },
-      { name: 'Placas y revestimientos', spec: 'OSB, volcanita, fibrocemento, PVC', description: 'Corte opcional a medida según plano de obra.' },
-      { name: 'Gasfitería y eléctrico', spec: 'PPR, cable LH, automáticos', description: 'Certificación SEC incluida en obras ejecutadas por Fabrick.' },
+      { name: 'Materiales gruesos', spec: 'Cemento, fierro, áridos', description: 'Cada material llega a la obra en la cantidad exacta que el proyecto necesita. Sin excedentes ni mermas innecesarias.' },
+      { name: 'Perfiles Metalcon', spec: '60, 90, 100 mm · C y U', description: 'Perfiles galvanizados G90 certificados, seleccionados para la carga estructural de tu vivienda.' },
+      { name: 'Placas y revestimientos', spec: 'OSB, volcanita, fibrocemento, PVC', description: 'Cortes y terminaciones definidas directamente con plano de obra y equipo instalador.' },
+      { name: 'Gasfitería y eléctrico', spec: 'PPR, cable LH, automáticos', description: 'Instalación certificada SEC incluida en obras ejecutadas por Fabrick.' },
     ],
-    ctaLabel: 'Abrir tienda',
+    ctaLabel: 'Ver catálogo',
     ctaHref: '/tienda',
   },
 ];

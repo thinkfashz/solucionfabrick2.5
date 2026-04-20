@@ -129,11 +129,13 @@ export default function ProductList({ onSelectProduct, onAddToCart, cartIconRef 
 
   return (
     <section ref={listRef} className="px-6 py-20">
-      {/* Indicador tiempo real */}
-      <div className="max-w-5xl mx-auto mb-8 flex items-center gap-2 text-xs text-white/30">
-        <span className={`w-2 h-2 rounded-full ${connected ? 'bg-green-400' : 'bg-red-400'}`} />
-        {connected ? 'Tiempo real activo' : 'Reconectando...'}
-      </div>
+      {/* Indicador de catálogo — sin textos técnicos */}
+      {connected ? (
+        <div className="max-w-5xl mx-auto mb-8 flex items-center gap-2 text-xs text-white/30">
+          <span className="w-2 h-2 rounded-full bg-emerald-400" />
+          Catálogo actualizado
+        </div>
+      ) : null}
 
       <div className="max-w-5xl mx-auto space-y-24">
         {products.map((product, i) => {

@@ -13,7 +13,7 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 
 const DEFAULT_NUMBER = '56912345678'; // Chile fallback; override via NEXT_PUBLIC_WHATSAPP_NUMBER
-const DEFAULT_MESSAGE = 'Hola Fabrick, me gustaría coordinar una asesoría para mi proyecto.';
+const DEFAULT_MESSAGE = 'Hola Soluciones Fabrick, me interesa cotizar un proyecto de construcción o remodelación. ¿Pueden asesorarme?';
 
 function WhatsAppIcon({ size = 22 }: { size?: number }) {
   return (
@@ -62,7 +62,8 @@ export default function WhatsAppButton({
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      aria-label="Conversar por WhatsApp con Soluciones Fabrick"
+      aria-label="Cotiza por WhatsApp con Soluciones Fabrick"
+      title="Cotiza por WhatsApp"
       className="group fixed z-[9500] bottom-5 right-5 sm:bottom-7 sm:right-7 flex items-center gap-2 pointer-events-auto pr-0 sm:pr-4 rounded-full shadow-[0_18px_40px_rgba(0,0,0,0.45)] bg-[#25D366] text-white transition-all duration-300 hover:shadow-[0_22px_60px_rgba(37,211,102,0.45)] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80"
       style={{ WebkitTapHighlightColor: 'transparent' }}
     >

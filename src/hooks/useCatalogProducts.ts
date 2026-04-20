@@ -81,7 +81,26 @@ export const FALLBACK_CATALOG_PRODUCTS: CatalogProduct[] = [
   },
 ];
 
+const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
+  Seguridad: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=800&auto=format&fit=crop',
+  Iluminacion: 'https://images.unsplash.com/photo-1565814329452-e1efa11c5e8a?q=80&w=800&auto=format&fit=crop',
+  Griferia: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop',
+  Revestimiento: 'https://images.unsplash.com/photo-1615873968403-89e068629265?q=80&w=800&auto=format&fit=crop',
+  SmartHome: 'https://images.unsplash.com/photo-1558618666-fcd25c85cd64?q=80&w=800&auto=format&fit=crop',
+  Construccion: 'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=800&auto=format&fit=crop',
+  Interiores: 'https://images.unsplash.com/photo-1616137466211-f939a420be84?q=80&w=800&auto=format&fit=crop',
+  Puertas: 'https://images.unsplash.com/photo-1558618047-3c8c76ca7d13?q=80&w=800&auto=format&fit=crop',
+  Pintura: 'https://images.unsplash.com/photo-1562259949-e8e7689d7828?q=80&w=800&auto=format&fit=crop',
+  Herramientas: 'https://images.unsplash.com/photo-1572981779307-38b8cabb2407?q=80&w=800&auto=format&fit=crop',
+};
+
+const DEFAULT_FALLBACK_IMAGE =
+  'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=800&auto=format&fit=crop';
+
 function mapRealtimeProductToCatalogProduct(product: RealtimeProduct, categoryMap: Record<string, string>): CatalogProduct {
+  const category = product.category_id || 'General';
+  const fallbackImage =
+    CATEGORY_FALLBACK_IMAGES[category] ?? DEFAULT_FALLBACK_IMAGE;
   return {
     id: product.id,
     name: product.name,
@@ -99,9 +118,7 @@ function mapRealtimeProductToCatalogProduct(product: RealtimeProduct, categoryMa
         ? String(product.specifications['medidas'])
         : 'Especificacion en ficha tecnica',
     delivery: product.delivery_days || 'Entrega a coordinar',
-    img:
-      product.image_url ||
-      'https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=2070&auto=format&fit=crop',
+    img: product.image_url || fallbackImage,
     featured: product.featured,
     rating: product.rating,
     discountPercentage: product.discount_percentage,

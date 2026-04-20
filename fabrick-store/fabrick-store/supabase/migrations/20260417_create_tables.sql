@@ -63,11 +63,11 @@ CREATE TABLE IF NOT EXISTS order_items (
 CREATE TABLE IF NOT EXISTS deliveries (
   id             UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
   order_id       UUID        NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
-  status         VARCHAR(50) DEFAULT 'pendiente',
+  status         VARCHAR(50)  DEFAULT 'pendiente',
   estimated_date DATE,
   responsible    VARCHAR(255),
   notes          TEXT,
-  created_at     TIMESTAMPTZ DEFAULT now()
+  created_at     TIMESTAMPTZ  DEFAULT now()
 );
 
 -- ----------------------------------------------------------------

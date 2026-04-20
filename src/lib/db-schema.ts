@@ -1,6 +1,10 @@
--- InsForge database schema for fabrick-store
--- Column names use English to match the application query layer.
-
+/**
+ * Canonical InsForge database schema for fabrick-store.
+ * Contains the initial CREATE TABLE statements for a fresh database.
+ * Imported by /api/setup-db so there is a single source of truth
+ * shared between the migration file and the runtime setup endpoint.
+ */
+export const DB_SCHEMA_SQL = `
 -- ----------------------------------------------------------------
 -- products
 -- ----------------------------------------------------------------
@@ -129,3 +133,4 @@ BEGIN
   END IF;
 END;
 $$;
+`;

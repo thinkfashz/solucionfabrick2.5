@@ -1,49 +1,30 @@
-import { timingSafeEqual } from 'crypto';
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
 
 const META_API_VERSION = 'v20.0';
 const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
-const META_UPLOAD_SECRET_HEADER = 'x-meta-upload-secret';
 
-function isAuthorizedRequest(request: NextRequest, expectedSecret: string) {
-  const providedSecret = request.headers.get(META_UPLOAD_SECRET_HEADER);
-
-  if (!providedSecret) {
-    return false;
-  }
-
-  const expectedBuffer = Buffer.from(expectedSecret, 'utf8');
-  const providedBuffer = Buffer.from(providedSecret, 'utf8');
-
-  if (expectedBuffer.length !== providedBuffer.length) {
-    return false;
-  }
-
-  return timingSafeEqual(expectedBuffer, providedBuffer);
+async function isAdminSession(): Promise<boolean> {
+  const adminAccessToken = process.env.ADMIN_ACCESS_TOKEN;
+  if (!adminAccessToken) return false;
+  const adminSession = (await cookies()).get('admin_session')?.value;
+  return adminSession === adminAccessToken;
 }
 
 export async function POST(request: NextRequest) {
+  if (!(await isAdminSession())) {
+    return NextResponse.json({ error: 'No autorizado.' }, { status: 401 });
+  }
+
   const accessToken = process.env.META_ACCESS_TOKEN;
   const adAccountId = process.env.META_AD_ACCOUNT_ID;
-  const uploadSecret = process.env.META_UPLOAD_SHARED_SECRET;
 
   if (!accessToken || !adAccountId) {
     return NextResponse.json(
       { error: 'Variables de entorno META_ACCESS_TOKEN o META_AD_ACCOUNT_ID no configuradas.' },
       { status: 503 }
     );
-  }
-
-  if (!uploadSecret) {
-    return NextResponse.json(
-      { error: 'Variable de entorno META_UPLOAD_SHARED_SECRET no configurada.' },
-      { status: 503 }
-    );
-  }
-
-  if (!isAuthorizedRequest(request, uploadSecret)) {
-    return NextResponse.json({ error: 'No autorizado.' }, { status: 401 });
   }
 
   try {

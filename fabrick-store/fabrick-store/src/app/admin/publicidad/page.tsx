@@ -115,7 +115,7 @@ export default function PublicidadPage() {
       {!loading && !error && ads.length === 0 && (
         <div className="rounded-[2rem] border border-white/5 bg-white/[0.02] p-16 text-center">
           <p className="text-zinc-500 text-sm uppercase tracking-widest mb-6">
-            No hay anuncios activos en esta cuenta
+            No hay anuncios en esta cuenta
           </p>
           <Link
             href="/admin/publicidad/nuevo"

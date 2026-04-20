@@ -1,6 +1,6 @@
 import Link from 'next/link';
 import { cookies } from 'next/headers';
-import { unauthorized } from 'next/navigation';
+import { redirect } from 'next/navigation';
 import FabrickLogo from '@/components/FabrickLogo';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
@@ -8,7 +8,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
   const adminSession = (await cookies()).get('admin_session')?.value;
 
   if (!adminAccessToken || adminSession !== adminAccessToken) {
-    unauthorized();
+    redirect('/auth');
   }
 
   return (

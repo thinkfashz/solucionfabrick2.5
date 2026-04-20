@@ -1,4 +1,4 @@
-import { timingSafeEqual } from 'crypto';
+import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
 
 const META_API_VERSION = 'v20.0';
@@ -34,6 +34,13 @@ const LOCATION_MAP: Record<string, { country: string; region?: string }> = {
   chile: { country: 'CL' },
 };
 
+async function isAdminSession(): Promise<boolean> {
+  const adminAccessToken = process.env.ADMIN_ACCESS_TOKEN;
+  if (!adminAccessToken) return false;
+  const adminSession = (await cookies()).get('admin_session')?.value;
+  return adminSession === adminAccessToken;
+}
+
 async function metaPost(path: string, body: Record<string, unknown>, accessToken: string) {
   const res = await fetch(`${META_GRAPH_URL}${path}`, {
     method: 'POST',
@@ -47,38 +54,14 @@ async function metaPost(path: string, body: Record<string, unknown>, accessToken
   return json as Record<string, unknown>;
 }
 
-function isAuthorizedMetaRequest(requestSecret: string | null, configuredSecret: string) {
-  if (!requestSecret) {
-    return false;
-  }
-
-  const requestBuffer = Buffer.from(requestSecret, 'utf8');
-  const configuredBuffer = Buffer.from(configuredSecret, 'utf8');
-
-  if (requestBuffer.length !== configuredBuffer.length) {
-    return false;
-  }
-
-  return timingSafeEqual(requestBuffer, configuredBuffer);
-}
-
 export async function POST(request: NextRequest) {
+  if (!(await isAdminSession())) {
+    return NextResponse.json({ error: 'No autorizado.' }, { status: 401 });
+  }
+
   const accessToken = process.env.META_ACCESS_TOKEN;
   const adAccountId = process.env.META_AD_ACCOUNT_ID;
   const pageId = process.env.META_PAGE_ID;
-  const adminSecret = process.env.META_ADMIN_SECRET;
-
-  if (!adminSecret) {
-    return NextResponse.json(
-      { error: 'Variable META_ADMIN_SECRET no configurada.' },
-      { status: 503 }
-    );
-  }
-
-  const requestSecret = request.headers.get('x-meta-admin-secret');
-  if (!isAuthorizedMetaRequest(requestSecret, adminSecret)) {
-    return NextResponse.json({ error: 'No autorizado.' }, { status: 401 });
-  }
 
   if (!accessToken || !adAccountId) {
     return NextResponse.json(

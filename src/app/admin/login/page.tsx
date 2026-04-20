@@ -20,7 +20,7 @@ export default function AdminLoginPage() {
   const [screen, setScreen] = useState<Screen>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [setupEmail, setSetupEmail] = useState('feduardomsz@gmail.com');
+  const [setupEmail, setSetupEmail] = useState('f.eduardomicolta@gmail.com');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
@@ -174,7 +174,7 @@ export default function AdminLoginPage() {
       }
 
       setSuccess(json.message ?? '¡Cuenta creada! Ya puedes iniciar sesión.');
-      setEmail('feduardomsz@gmail.com');
+      setEmail('f.eduardomicolta@gmail.com');
       setScreen('login');
     } catch {
       setError('Error de red. Inténtalo de nuevo.');
@@ -223,7 +223,7 @@ export default function AdminLoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="feduardomsz@gmail.com"
+                  placeholder="f.eduardomicolta@gmail.com"
                   required
                   disabled={loading}
                   className={inputClass}

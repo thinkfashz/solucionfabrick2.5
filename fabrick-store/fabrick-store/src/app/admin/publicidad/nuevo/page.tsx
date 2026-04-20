@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import Link from 'next/link';
 import { ArrowLeft, Upload, CheckCircle, ExternalLink, AlertCircle, Loader2 } from 'lucide-react';
 
@@ -53,6 +53,14 @@ export default function NuevoAnuncioPage() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
 
+  useEffect(() => {
+    return () => {
+      if (imagePreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
+    };
+  }, [imagePreview]);
+
   const [form, setForm] = useState<FormState>({
     titulo: '',
     texto: '',
@@ -77,6 +85,9 @@ export default function NuevoAnuncioPage() {
     const objectUrl = URL.createObjectURL(file);
     // Ensure we only set blob: URLs (safe, created from local File objects)
     if (objectUrl.startsWith('blob:')) {
+      if (imagePreview?.startsWith('blob:')) {
+        URL.revokeObjectURL(imagePreview);
+      }
       setImagePreview(objectUrl);
     }
     setError(null);

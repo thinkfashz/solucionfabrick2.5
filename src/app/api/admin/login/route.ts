@@ -6,21 +6,10 @@ import {
   clearFailedAttempts,
   blockedSecondsRemaining,
   encodeSession,
+  getClientIp,
   ADMIN_COOKIE_NAME,
   SESSION_TTL_MS,
 } from '@/lib/adminAuth';
-
-/** Resolve client IP from proxy headers. */
-function getClientIp(request: Request): string {
-  const realIp = request.headers.get('x-real-ip');
-  if (realIp) return realIp.trim();
-  const forwarded = request.headers.get('x-forwarded-for');
-  if (forwarded) {
-    const parts = forwarded.split(',');
-    return parts[parts.length - 1].trim();
-  }
-  return 'unknown';
-}
 
 export async function POST(request: Request) {
   const ip = getClientIp(request);

@@ -3,8 +3,8 @@
  * Rate limit store is in-memory — resets on server restart (suitable for Edge/Node runtime).
  */
 
-const RATE_LIMIT_MAX_ATTEMPTS = 5;
-const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
+const RATE_LIMIT_MAX_ATTEMPTS = 10;
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
 
 interface RateLimitEntry {
   count: number;
@@ -12,6 +12,18 @@ interface RateLimitEntry {
 }
 
 const rateLimitStore = new Map<string, RateLimitEntry>();
+
+/** Resolve client IP from proxy headers (x-real-ip / x-forwarded-for). */
+export function getClientIp(request: Request): string {
+  const realIp = request.headers.get('x-real-ip');
+  if (realIp) return realIp.trim();
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) {
+    const parts = forwarded.split(',');
+    return parts[parts.length - 1].trim();
+  }
+  return 'unknown';
+}
 
 /** Returns true if the IP is currently blocked. */
 export function isRateLimited(ip: string): boolean {

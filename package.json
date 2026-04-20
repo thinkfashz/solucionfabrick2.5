@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@insforge/sdk": "latest",
+    "@insforge/sdk": "^1.2.5",
     "animejs": "^3.2.2",
     "framer-motion": "^12.38.0",
     "gsap": "^3.12.5",

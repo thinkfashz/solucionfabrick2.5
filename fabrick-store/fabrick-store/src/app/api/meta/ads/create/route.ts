@@ -1,5 +1,5 @@
-import { cookies } from 'next/headers';
 import { NextRequest, NextResponse } from 'next/server';
+import { isAdminSession } from '@/lib/adminAuth';
 
 const META_API_VERSION = 'v20.0';
 const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
@@ -33,13 +33,6 @@ const LOCATION_MAP: Record<string, { country: string; region?: string }> = {
   metropolitana: { country: 'CL', region: 'Santiago Metropolitan Region' },
   chile: { country: 'CL' },
 };
-
-async function isAdminSession(): Promise<boolean> {
-  const adminAccessToken = process.env.ADMIN_ACCESS_TOKEN;
-  if (!adminAccessToken) return false;
-  const adminSession = (await cookies()).get('admin_session')?.value;
-  return adminSession === adminAccessToken;
-}
 
 async function metaPost(path: string, body: Record<string, unknown>, accessToken: string) {
   const res = await fetch(`${META_GRAPH_URL}${path}`, {

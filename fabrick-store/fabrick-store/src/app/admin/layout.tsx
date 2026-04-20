@@ -1,13 +1,10 @@
 import Link from 'next/link';
-import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import FabrickLogo from '@/components/FabrickLogo';
+import { isAdminSession } from '@/lib/adminAuth';
 
 export default async function AdminLayout({ children }: { children: React.ReactNode }) {
-  const adminAccessToken = process.env.ADMIN_ACCESS_TOKEN;
-  const adminSession = (await cookies()).get('admin_session')?.value;
-
-  if (!adminAccessToken || adminSession !== adminAccessToken) {
+  if (!(await isAdminSession())) {
     redirect('/auth');
   }
 

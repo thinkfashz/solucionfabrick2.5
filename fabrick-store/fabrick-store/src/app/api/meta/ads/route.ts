@@ -1,15 +1,9 @@
 import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
+import { isAdminSession } from '@/lib/adminAuth';
 
 const META_API_VERSION = 'v20.0';
 const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
-
-async function isAdminSession(): Promise<boolean> {
-  const adminAccessToken = process.env.ADMIN_ACCESS_TOKEN;
-  if (!adminAccessToken) return false;
-  const adminSession = (await cookies()).get('admin_session')?.value;
-  return adminSession === adminAccessToken;
-}
 
 export async function GET() {
   if (!(await isAdminSession())) {

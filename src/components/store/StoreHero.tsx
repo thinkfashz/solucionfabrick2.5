@@ -11,7 +11,7 @@ export default function StoreHero() {
 
       {/* Welcome box */}
       <div className="welcome-box relative z-10 text-center px-8 py-12 max-w-lg">
-        <p className="text-yellow-400/70 text-xs tracking-[0.4em] uppercase mb-4">✦ Boutique Fabrick ✦</p>
+        <p className="text-yellow-400/70 text-xs tracking-[0.4em] uppercase mb-4">✦ Catálogo Fabrick ✦</p>
         <h1 className="font-playfair text-4xl md:text-5xl leading-tight text-white mb-4 whitespace-pre-line">
           {'Bienvenido a la experiencia\nFabrick'}
         </h1>

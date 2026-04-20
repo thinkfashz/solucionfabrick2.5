@@ -22,53 +22,35 @@ interface TiendaSectionProps {
 
 export default function TiendaSection({
   limit = 6,
-  title = 'Conectados a tus proyectos',
-  description = 'Materiales sincronizados en vivo con la obra real: precios, stock y entregas siempre al día. Pulsa cualquier producto para ver su ficha técnica completa.',
-  primaryCtaHref = '/soluciones',
-  primaryCtaLabel = 'Ver catalogo completo',
-  secondaryCtaHref = '/tienda',
-  secondaryCtaLabel = 'Abrir tienda interactiva',
+  title = 'Materiales que instalamos en tu obra',
+  description = 'Cada material de este catálogo es seleccionado e instalado por nuestro equipo certificado directamente en tu proyecto. Pulsa cualquier producto para ver su ficha técnica.',
+  primaryCtaHref = '/tienda',
+  primaryCtaLabel = 'Ver catálogo completo',
+  secondaryCtaHref = '/contacto',
+  secondaryCtaLabel = 'Hablar con un asesor',
 }: TiendaSectionProps) {
   const router = useRouter();
-  const { products, loading, connected, lastEvent, hasLiveData } = useCatalogProducts();
+  const { products, loading, hasLiveData } = useCatalogProducts();
 
   const visibleProducts = limit > 0 ? products.slice(0, limit) : products;
-
-  const goToCheckout = (prod: {
-    id: string;
-    name: string;
-    price: number;
-    img?: string;
-    category?: string;
-  }) => {
-    const params = new URLSearchParams({
-      productId: String(prod.id),
-      name: prod.name,
-      price: String(prod.price),
-      category: prod.category ?? 'General',
-      img: prod.img ?? '',
-    });
-    router.push(`/checkout?${params.toString()}`);
-  };
 
   return (
     <section className="py-10">
       <div className="text-center mb-14">
-        <p className="text-yellow-400/80 text-xs tracking-[0.4em] uppercase font-semibold mb-4">Catalogo de Soluciones</p>
+        <p className="text-yellow-400/80 text-xs tracking-[0.4em] uppercase font-semibold mb-4">Catálogo Fabrick</p>
         <h2 className="font-playfair text-4xl md:text-6xl font-bold text-white">
           {title.split(' ').slice(0, -2).join(' ')} <span className="shimmer-gold">{title.split(' ').slice(-2).join(' ')}</span>
         </h2>
         <p className="text-white/45 mt-4 max-w-2xl mx-auto text-sm leading-relaxed">{description}</p>
 
-        <div className="inline-flex flex-wrap items-center justify-center gap-2 mt-6 rounded-full border border-yellow-400/15 bg-black/40 px-4 py-2 text-xs">
-          <span className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-yellow-400'}`} />
-          <span className="text-zinc-300">
-            {hasLiveData ? 'Catalogo actualizado automaticamente desde la base de datos' : 'Mostrando seleccion destacada mientras cargan los productos'}
-          </span>
-          {lastEvent?.product?.name ? (
-            <span className="text-zinc-500">· Ultimo cambio: {lastEvent.product.name}</span>
-          ) : null}
-        </div>
+        {!hasLiveData && !loading ? (
+          <div className="inline-flex flex-wrap items-center justify-center gap-2 mt-6 rounded-full border border-yellow-400/15 bg-black/40 px-4 py-2 text-xs">
+            <span className="h-2 w-2 rounded-full bg-yellow-400" />
+            <span className="text-zinc-300">
+              Estamos cargando nuestro catálogo. Vuelve pronto.
+            </span>
+          </div>
+        ) : null}
       </div>
 
       {loading ? (
@@ -88,11 +70,11 @@ export default function TiendaSection({
             <article
               key={prod.id}
               className="card-3d glass-card rounded-4xl overflow-hidden group relative cursor-pointer focus-within:ring-2 focus-within:ring-yellow-400/60"
-              onClick={() => router.push(`/producto/${prod.id}`)}
+              onClick={() => router.push(`/tienda/${prod.id}`)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  router.push(`/producto/${prod.id}`);
+                  router.push(`/tienda/${prod.id}`);
                 }
               }}
               role="link"
@@ -154,17 +136,11 @@ export default function TiendaSection({
                   <button
                     onClick={(e) => {
                       e.stopPropagation();
-                      goToCheckout({
-                        id: prod.id,
-                        name: prod.name,
-                        price: finalPrice,
-                        img: prod.img,
-                        category: prod.category,
-                      });
+                      router.push(`/tienda/${prod.id}`);
                     }}
                     className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-semibold tracking-wider hover:bg-yellow-400 hover:text-black transition-all duration-300"
                   >
-                    Cotizar
+                    Ver producto
                     <Sparkles className="h-3.5 w-3.5" />
                   </button>
                 </div>

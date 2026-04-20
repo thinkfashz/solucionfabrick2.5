@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   ArrowUpRight, BarChart3, ChevronRight, ExternalLink, Hammer, Home, LogOut, Menu,
-  Megaphone, MoreHorizontal, Package, Radio, Settings, ShieldCheck, ShoppingCart,
+  Megaphone, MoreHorizontal, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart,
   Truck, Users, X,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
@@ -35,6 +35,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Expansión',
     links: [
       { href: '/admin/publicidad', label: 'Publicidad', description: 'Meta Ads', icon: Megaphone },
+      { href: '/admin/publicar', label: 'Publicar', description: 'Posts para redes sociales', icon: Send },
       { href: '/admin/configuracion', label: 'Configuración', description: 'Parámetros e integraciones', icon: Settings },
     ],
   },
@@ -59,6 +60,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/reportes': 'Reportes',
   '/admin/publicidad': 'Publicidad',
   '/admin/publicidad/nuevo': 'Nueva campaña',
+  '/admin/publicar': 'Publicar',
   '/admin/configuracion': 'Configuración',
   '/admin/observatory': 'Observatory',
   '/admin/equipo': 'Equipo',

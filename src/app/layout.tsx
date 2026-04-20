@@ -11,9 +11,47 @@ import UserProfileModal from '@/components/UserProfileModal';
 import WhatsAppButton from '@/components/WhatsAppButton';
 
 export const metadata: Metadata = {
-  title: 'FABRICK - Ingenieria Residencial de Precision',
-  description: 'Construccion industrializada, revestimientos de lujo y soluciones de ingenieria residencial. 8 anos de excelencia en Chile.',
-  keywords: 'construccion modular, Metalcom, Wall Panels, PVC Marmol, casas industrializadas, Fabrick 70',
+  metadataBase: new URL('https://www.solucionesfabrick.com'),
+  title: {
+    default: 'Soluciones Fabrick | Construcción y Remodelación en Maule, Chile',
+    template: '%s | Soluciones Fabrick',
+  },
+  description:
+    'Empresa de construcción y remodelación residencial en la Región del Maule, Chile. Estructura Metalcon, gasfitería, electricidad y proyectos llave en mano. 8 años de experiencia. Evaluación gratuita.',
+  keywords: [
+    'construcción Maule',
+    'remodelación Linares',
+    'construcción Longaví',
+    'Metalcon Chile',
+    'empresa construcción Talca',
+    'remodelación residencial Chile',
+    'construcción llave en mano Maule',
+    'gasfitería Linares',
+    'electricidad Maule',
+    'ampliación vivienda Chile',
+  ],
+  authors: [{ name: 'Soluciones Fabrick' }],
+  openGraph: {
+    title: 'Soluciones Fabrick | Tu Obra en Buenas Manos',
+    description:
+      'Construcción y remodelación residencial en el Maule. Metalcon, gasfitería, electricidad y más. Evaluación gratuita.',
+    url: 'https://www.solucionesfabrick.com',
+    siteName: 'Soluciones Fabrick',
+    locale: 'es_CL',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary_large_image',
+    title: 'Soluciones Fabrick',
+    description: 'Construcción y remodelación residencial en Chile',
+  },
+  robots: {
+    index: true,
+    follow: true,
+  },
+  alternates: {
+    canonical: 'https://www.solucionesfabrick.com',
+  },
   manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,

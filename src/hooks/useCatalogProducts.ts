@@ -113,15 +113,18 @@ export function useCatalogProducts() {
   const { categoryMap } = useCategories();
 
   const products = useMemo(() => {
-    if (realtime.products.length > 0) {
-      return realtime.products.map((product) => mapRealtimeProductToCatalogProduct(product, categoryMap));
+    // While DB fetch hasn't completed yet, show fallback (loading state UX)
+    if (!realtime.fetchComplete) {
+      return FALLBACK_CATALOG_PRODUCTS;
     }
-    return FALLBACK_CATALOG_PRODUCTS;
-  }, [categoryMap, realtime.products]);
+    // DB fetch is done — map live results (may be empty if all products are inactive)
+    return realtime.products.map((product) => mapRealtimeProductToCatalogProduct(product, categoryMap));
+  }, [categoryMap, realtime.products, realtime.fetchComplete]);
 
   return {
     products,
-    loading: realtime.loading && realtime.products.length === 0,
+    loading: realtime.loading && !realtime.fetchComplete,
+    fetchComplete: realtime.fetchComplete,
     connected: realtime.connected,
     lastEvent: realtime.lastEvent,
     updateCount: realtime.updateCount,

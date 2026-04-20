@@ -30,12 +30,15 @@ function formatCLP(n: number) {
 }
 
 /* ── Toggle switch ── */
-function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) {
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#facc15]/50 focus:ring-offset-2 focus:ring-offset-black ${
         checked ? 'bg-[#facc15]' : 'bg-zinc-700'
       }`}
     >
@@ -340,6 +343,7 @@ export default function AdminProductosPage() {
                       <Toggle
                         checked={product.activo !== false}
                         onChange={(v) => handleToggle(product, 'activo', v)}
+                        label={`Activo: ${product.name}`}
                       />
                     </td>
                     {/* Destacado toggle */}
@@ -347,6 +351,7 @@ export default function AdminProductosPage() {
                       <Toggle
                         checked={!!product.featured}
                         onChange={(v) => handleToggle(product, 'featured', v)}
+                        label={`Destacado: ${product.name}`}
                       />
                     </td>
                     {/* Acciones */}

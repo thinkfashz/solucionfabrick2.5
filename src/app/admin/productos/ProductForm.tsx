@@ -20,11 +20,14 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   return (
     <button
       type="button"
+      role="switch"
+      aria-checked={checked}
+      aria-label={label}
       onClick={() => onChange(!checked)}
       className="flex items-center gap-3 group"
     >
       <div
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#facc15]/50 focus:ring-offset-2 focus:ring-offset-black ${
           checked ? 'bg-[#facc15]' : 'bg-zinc-700'
         }`}
       >
@@ -117,6 +120,23 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  /* previewUrl holds a temporary blob: URL for local preview only — never saved to DB */
+  const [previewUrl, setPreviewUrl] = useState<string>('');
+  const prevPreviewUrl = useRef<string>('');
+
+  /* Revoke stale objectURL when previewUrl changes or component unmounts */
+  useEffect(() => {
+    if (prevPreviewUrl.current && prevPreviewUrl.current !== previewUrl) {
+      URL.revokeObjectURL(prevPreviewUrl.current);
+    }
+    prevPreviewUrl.current = previewUrl;
+    return () => {
+      if (prevPreviewUrl.current) {
+        URL.revokeObjectURL(prevPreviewUrl.current);
+        prevPreviewUrl.current = '';
+      }
+    };
+  }, [previewUrl]);
 
   const categoryOptions = useMemo(() => {
     const options = categories.map((category) => ({ value: category.id, label: category.name }));
@@ -147,6 +167,12 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
   /* ── Image upload ── */
   async function handleImageUpload(file: File) {
     setUploading(true);
+    /* Show local preview immediately while uploading */
+    try {
+      const localBlob = URL.createObjectURL(file);
+      setPreviewUrl(localBlob);
+    } catch { /* ignore if browser doesn't support it */ }
+
     try {
       const ext = file.name.split('.').pop() ?? 'jpg';
       const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -167,15 +193,12 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
           : (publicUrlResult as { data?: { publicUrl?: string }; publicUrl?: string })?.data?.publicUrl ??
             (publicUrlResult as { publicUrl?: string })?.publicUrl ??
             '';
+
+      /* Upload succeeded — store the persistent URL in form, clear the blob preview */
       setForm((f) => ({ ...f, image_url: publicUrl }));
+      setPreviewUrl('');
     } catch {
-      // Fallback: try to create an object URL for preview only
-      try {
-        const localUrl = URL.createObjectURL(file);
-        setForm((f) => ({ ...f, image_url: localUrl }));
-      } catch {
-        // If object URL creation also fails, leave image_url empty
-      }
+      /* Storage failed — keep the blob preview visible but do NOT save blob URL to form/DB */
       showToast('Storage no disponible. Ingresa una URL de imagen manual.', 'error');
     } finally {
       setUploading(false);
@@ -332,13 +355,13 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
         {/* Imagen */}
         <Field label="Imagen del producto">
           <div className="space-y-3">
-            {/* Preview */}
-            {form.image_url && (
+            {/* Preview: show blob preview during upload, or the saved URL */}
+            {(previewUrl || form.image_url) && (
               <div className="relative w-full h-48 rounded-xl overflow-hidden border border-white/10">
-                <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
+                <img src={previewUrl || form.image_url} alt="Preview" className="w-full h-full object-cover" />
                 <button
                   type="button"
-                  onClick={() => setForm((f) => ({ ...f, image_url: '' }))}
+                  onClick={() => { setForm((f) => ({ ...f, image_url: '' })); setPreviewUrl(''); }}
                   className="absolute top-2 right-2 bg-black/60 rounded-full p-1.5 text-white/70 hover:text-white transition-colors"
                 >
                   ✕

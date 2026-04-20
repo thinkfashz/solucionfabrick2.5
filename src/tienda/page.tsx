@@ -157,7 +157,7 @@ function SilverGoldButton({ children, onClick, className = '' }: { children: Rea
 export default function TiendaClientPage() {
 	const router = useRouter();
 	const { user, signOut } = useAuth();
-	const { products: catalogProducts, loading: productsLoading, connected: realtimeConnected } = useCatalogProducts();
+	const { products: catalogProducts, loading: productsLoading, connected: realtimeConnected, fetchComplete } = useCatalogProducts();
 	const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [isCartOpen, setIsCartOpen] = useState(false);
@@ -169,8 +169,11 @@ export default function TiendaClientPage() {
 	const gsapRef = useRef<null | typeof import('gsap').default>(null);
 
 	const liveProducts = useMemo<Product[]>(() => {
+		// After DB fetch completes, show the live result (possibly empty)
+		if (fetchComplete) return catalogProducts as Product[];
+		// While loading, show fallback products
 		return catalogProducts.length ? (catalogProducts as Product[]) : PRODUCTS;
-	}, [catalogProducts]);
+	}, [catalogProducts, fetchComplete]);
 
 	useEffect(() => {
 		let mounted = true;
@@ -454,7 +457,14 @@ export default function TiendaClientPage() {
 
 						{/* Products */}
 						<div className="space-y-28 md:space-y-40">
-							{liveProducts.map((p, idx) => (
+							{fetchComplete && liveProducts.length === 0 ? (
+								<div className="flex flex-col items-center justify-center py-32 text-center gap-4">
+									<span className="text-5xl">📦</span>
+									<p className="text-white/60 text-lg">No hay productos disponibles en este momento</p>
+									<p className="text-white/30 text-sm">Vuelve pronto para ver nuestro catálogo actualizado</p>
+								</div>
+							) : (
+							liveProducts.map((p, idx) => (
 								<div key={p.id} className={`scroll-reveal group flex flex-col ${idx % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} items-center gap-10 md:gap-20`}>
 									{/* Image */}
 									<div
@@ -557,7 +567,8 @@ export default function TiendaClientPage() {
 										</div>
 									</div>
 								</div>
-							))}
+							))
+							)}
 						</div>
 					</main>
 				</>

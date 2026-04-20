@@ -5,6 +5,7 @@ import { useSearchParams } from 'next/navigation';
 import { MapPin, Phone, Mail, Clock, MessageCircle, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import ContactMap from '@/components/ContactMap';
 import SectionPageShell from '@/components/SectionPageShell';
+import TurnstileWidget from '@/components/TurnstileWidget';
 
 const CONTACT_INFO = [
   {
@@ -186,6 +187,7 @@ function ContactoForm() {
               placeholder="Cuéntanos sobre tu proyecto: qué necesitas, superficie estimada, plazo deseado..."
               className="w-full rounded-2xl border border-white/10 bg-black px-5 py-4 text-sm text-white placeholder:text-zinc-600 focus:border-yellow-400 focus:outline-none"
             />
+            <TurnstileWidget action="contact" />
             <button
               type="submit"
               disabled={status === 'loading'}

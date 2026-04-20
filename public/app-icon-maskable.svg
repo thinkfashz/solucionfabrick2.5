@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-labelledby="maskable-title">
+  <title id="maskable-title">Fabrick</title>
+  <defs>
+    <linearGradient id="m-bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#111111"/>
+      <stop offset="100%" stop-color="#080808"/>
+    </linearGradient>
+    <linearGradient id="m-gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFE566"/>
+      <stop offset="100%" stop-color="#FFC700"/>
+    </linearGradient>
+    <linearGradient id="m-depth" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#B37E00"/>
+      <stop offset="100%" stop-color="#D9A100"/>
+    </linearGradient>
+  </defs>
+
+  <!-- Full-bleed background (required for maskable) -->
+  <rect width="512" height="512" fill="url(#m-bg)"/>
+  <ellipse cx="256" cy="360" rx="150" ry="50" fill="#FFC700" opacity="0.06"/>
+
+  <!-- Icon constrained to 80% safe zone: 410x410 centered → icon ref 38x42, scale 7 → 266x294, center at (123, 109) -->
+  <g transform="translate(123, 109) scale(7)">
+    <path d="M 2,42 L 19,4 L 36,42 L 30,42 L 19,12 L 8,42 Z" fill="url(#m-gold)"/>
+    <path d="M 8,42 L 19,12 L 19,18 L 12,42 Z" fill="url(#m-depth)" opacity="0.75"/>
+    <rect x="23" y="10" width="7" height="18" rx="1.5" fill="#FFC700"/>
+  </g>
+</svg>

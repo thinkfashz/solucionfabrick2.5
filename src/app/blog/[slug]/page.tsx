@@ -5,6 +5,10 @@ import { getContent, listContent } from '@/lib/content';
 
 const BASE_URL = 'https://www.solucionesfabrick.com';
 
+// Dynamic rendering is required so the middleware-generated CSP nonce is
+// available to the inline JSON-LD <script> tags inside ArticlePage.
+export const dynamic = 'force-dynamic';
+
 export function generateStaticParams() {
   return listContent('blog').map((item) => ({ slug: item.slug }));
 }

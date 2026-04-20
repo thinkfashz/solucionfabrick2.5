@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { Check, ArrowRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import SectionPageShell from '@/components/SectionPageShell';
@@ -32,7 +33,8 @@ const RELATED_TITLES: Record<string, string> = {
   ampliaciones: 'Ampliaciones residenciales',
 };
 
-export default function ServicePage({ content }: { content: ServicePageContent }) {
+export default async function ServicePage({ content }: { content: ServicePageContent }) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   const { slug, eyebrow, heroTitle, heroDescription, icon: Icon, overview, serviceType, priceFrom, scope, process, faqs, relatedSlugs } = content;
   const url = `${BASE_URL}/servicios/${slug}`;
 
@@ -81,9 +83,9 @@ export default function ServicePage({ content }: { content: ServicePageContent }
       secondaryAction={{ href: '/servicios', label: 'Todos los servicios' }}
     >
       {/* JSON-LD */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceLd) }} />
+      <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       {/* Breadcrumb */}
       <nav aria-label="Migas de pan" className="mb-6 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-500">

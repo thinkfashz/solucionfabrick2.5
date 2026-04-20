@@ -148,3 +148,50 @@ self.addEventListener('fetch', (event) => {
 self.addEventListener('message', (event) => {
   if (event.data === 'SKIP_WAITING') self.skipWaiting();
 });
+
+// ── Web Push ────────────────────────────────────────────────────
+self.addEventListener('push', (event) => {
+  let payload = { title: 'Soluciones Fabrick', body: 'Tienes una nueva notificación.', url: '/', icon: '/icon-192.png', tag: 'fabrick' };
+  try {
+    if (event.data) {
+      const data = event.data.json();
+      payload = { ...payload, ...data };
+    }
+  } catch (err) {
+    // Payload wasn't JSON — fall back to the raw text in body.
+    try {
+      if (event.data) payload.body = event.data.text();
+    } catch (_) { /* ignore */ }
+  }
+
+  event.waitUntil(
+    self.registration.showNotification(payload.title, {
+      body: payload.body,
+      icon: payload.icon || '/icon-192.png',
+      badge: '/icon-192.png',
+      tag: payload.tag || 'fabrick',
+      data: { url: payload.url || '/' },
+    })
+  );
+});
+
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  const targetUrl = (event.notification.data && event.notification.data.url) || '/';
+  event.waitUntil(
+    self.clients.matchAll({ type: 'window', includeUncontrolled: true }).then((clientsArr) => {
+      const origin = self.location.origin;
+      for (const client of clientsArr) {
+        try {
+          const clientUrl = new URL(client.url);
+          if (clientUrl.origin === origin && 'focus' in client) {
+            client.navigate(targetUrl).catch(() => undefined);
+            return client.focus();
+          }
+        } catch (_) { /* ignore */ }
+      }
+      if (self.clients.openWindow) return self.clients.openWindow(targetUrl);
+      return undefined;
+    })
+  );
+});

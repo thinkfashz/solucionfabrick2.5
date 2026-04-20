@@ -1,13 +1,15 @@
 ﻿/** @type {import('next').NextConfig} */
 const securityHeaders = [
   { key: 'X-Content-Type-Options', value: 'nosniff' },
-  { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
   { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
   {
     key: 'Permissions-Policy',
     value: 'camera=(), microphone=(), geolocation=(self), interest-cohort=()',
   },
   { key: 'X-DNS-Prefetch-Control', value: 'on' },
+  // Note: the Content-Security-Policy and X-Frame-Options equivalents
+  // (`frame-ancestors 'none'`) are emitted per-request by middleware.ts so that
+  // each navigation gets a fresh nonce for inline JSON-LD scripts.
 ];
 
 const nextConfig = {

@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import { headers } from 'next/headers';
 import { Calendar, Clock, User, ArrowLeft, MapPin, Briefcase, Timer, Target } from 'lucide-react';
 import SectionPageShell from '@/components/SectionPageShell';
 import type { ContentPost, ContentMeta } from '@/lib/content';
@@ -12,7 +13,8 @@ interface ArticlePageProps {
   related: ContentMeta[];
 }
 
-export default function ArticlePage({ post, related }: ArticlePageProps) {
+export default async function ArticlePage({ post, related }: ArticlePageProps) {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   const { type, slug, title, description, date, author, cover, tags, html, readingMinutes } = post;
   const url = `${BASE_URL}/${type}/${slug}`;
 
@@ -52,8 +54,8 @@ export default function ArticlePage({ post, related }: ArticlePageProps) {
       primaryAction={{ href: '/contacto', label: 'Cotizar mi proyecto' }}
       secondaryAction={{ href: `/${type}`, label: `Volver a ${TYPE_LABELS[type]}` }}
     >
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(articleLd) }} />
+      <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       {/* Breadcrumb */}
       <nav aria-label="Migas de pan" className="mb-6 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-500">

@@ -10,6 +10,7 @@ import { insforge } from '@/lib/insforge';
 import { formatCLP, normalizeOrderRecord, orderStatusColor, orderStatusLabel, shortRecordId } from '@/lib/commerce';
 import { getStoredProfile, type UserProfile } from '@/components/UserProfileModal';
 import { getInitials } from '@/lib/initials';
+import PushOptIn from '@/components/PushOptIn';
 
 /* ── Status icon helper ── */
 function StatusIcon({ status }: { status: string }) {
@@ -202,6 +203,11 @@ export default function MiCuentaPage() {
             <p className="text-xl font-black text-yellow-400">{formatCLP(totalSpent)}</p>
           </div>
         )}
+
+        {/* ── Push notifications opt-in ── */}
+        <div className="mb-8">
+          <PushOptIn />
+        </div>
 
         {/* ── Orders ── */}
         <section>

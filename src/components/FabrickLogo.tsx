@@ -7,11 +7,21 @@ interface Props {
 }
 
 export default function FabrickLogo({ className = '', animate = false, onClick }: Props) {
+  const isInteractive = typeof onClick === 'function';
+
   return (
     <div
-      className={`select-none cursor-pointer group transition-all duration-300 hover:scale-[1.02] ${className}`}
+      className={`select-none transition-all duration-300 hover:scale-[1.02] group ${isInteractive ? 'cursor-pointer' : ''} ${className}`}
       onClick={onClick}
+      role={isInteractive ? 'button' : 'img'}
       aria-label="Soluciones Fabrick"
+      tabIndex={isInteractive ? 0 : undefined}
+      onKeyDown={isInteractive ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      } : undefined}
     >
       {/* Mobile: compact inline SVG */}
       <svg

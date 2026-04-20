@@ -181,7 +181,7 @@ export default function Hero() {
         <div className="hero-badge inline-flex items-center gap-2 px-4 py-2 mb-8 border rounded-full bg-yellow-400/8 backdrop-blur-sm hero-badge-pulse">
           <span className="w-2 h-2 rounded-full bg-yellow-400 ping-gold" />
           <span className="text-xs uppercase tracking-[0.25em] text-yellow-400/90 font-medium">
-            Experiencia Inmersiva Fabrick
+            Un equipo · un estándar · una obra completa
           </span>
         </div>
 

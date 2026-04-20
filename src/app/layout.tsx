@@ -8,6 +8,7 @@ import PromoBanner from '@/components/PromoBanner';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import UserProfileModal from '@/components/UserProfileModal';
+import WhatsAppButton from '@/components/WhatsAppButton';
 
 export const metadata: Metadata = {
   title: 'FABRICK - Ingenieria Residencial de Precision',
@@ -55,6 +56,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <InstallAppPrompt />
             <PromoBanner />
             <UserProfileModal />
+            <WhatsAppButton />
           </AuthProvider>
         </ThemeProvider>
       </body>

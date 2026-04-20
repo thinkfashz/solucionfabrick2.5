@@ -574,3 +574,10 @@ html.theme-light {
   color: var(--accent);
   border-color: var(--border-gold);
 }
+
+/* WhatsApp floating button pulse */
+@keyframes wa-pulse {
+  0%   { transform: scale(0.95); opacity: 0.55; }
+  70%  { transform: scale(1.25); opacity: 0;    }
+  100% { transform: scale(1.25); opacity: 0;    }
+}

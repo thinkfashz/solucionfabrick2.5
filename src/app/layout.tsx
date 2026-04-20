@@ -9,6 +9,7 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import UserProfileModal from '@/components/UserProfileModal';
 import WhatsAppButton from '@/components/WhatsAppButton';
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.solucionesfabrick.com'),
@@ -61,9 +62,12 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/app-icon.svg', type: 'image/svg+xml' },
+      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
+      { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
     ],
-    apple: [{ url: '/app-icon.svg', type: 'image/svg+xml' }],
+    apple: [
+      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+    ],
     shortcut: ['/favicon.svg'],
   },
 };
@@ -91,6 +95,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <LoadingScreen />
             <PageTransition />
             {children}
+            <ServiceWorkerRegister />
             <InstallAppPrompt />
             <PromoBanner />
             <UserProfileModal />

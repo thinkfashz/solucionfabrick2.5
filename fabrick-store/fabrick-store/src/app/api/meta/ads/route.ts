@@ -2,8 +2,42 @@ import { NextResponse } from 'next/server';
 
 const META_API_VERSION = 'v20.0';
 const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
+const META_ADS_API_SECRET_HEADER = 'x-admin-secret';
 
-export async function GET() {
+function isAuthorized(request: Request) {
+  const expectedSecret = process.env.META_ADS_API_SECRET;
+
+  if (!expectedSecret) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: 'Variable de entorno META_ADS_API_SECRET no configurada.' },
+        { status: 503 }
+      ),
+    };
+  }
+
+  const providedSecret = request.headers.get(META_ADS_API_SECRET_HEADER);
+
+  if (providedSecret !== expectedSecret) {
+    return {
+      ok: false,
+      response: NextResponse.json(
+        { error: 'No autorizado.' },
+        { status: 401 }
+      ),
+    };
+  }
+
+  return { ok: true as const };
+}
+
+export async function GET(request: Request) {
+  const auth = isAuthorized(request);
+  if (!auth.ok) {
+    return auth.response;
+  }
+
   const accessToken = process.env.META_ACCESS_TOKEN;
   const adAccountId = process.env.META_AD_ACCOUNT_ID;
 

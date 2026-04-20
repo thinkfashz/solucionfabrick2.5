@@ -1,7 +1,16 @@
 import Link from 'next/link';
+import { cookies } from 'next/headers';
+import { unauthorized } from 'next/navigation';
 import FabrickLogo from '@/components/FabrickLogo';
 
-export default function AdminLayout({ children }: { children: React.ReactNode }) {
+export default async function AdminLayout({ children }: { children: React.ReactNode }) {
+  const adminAccessToken = process.env.ADMIN_ACCESS_TOKEN;
+  const adminSession = (await cookies()).get('admin_session')?.value;
+
+  if (!adminAccessToken || adminSession !== adminAccessToken) {
+    unauthorized();
+  }
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-zinc-950 to-black text-white">
       <header className="border-b border-white/5 bg-black/80 backdrop-blur-xl px-4 py-3 md:px-10 flex items-center justify-between sticky top-0 z-50">

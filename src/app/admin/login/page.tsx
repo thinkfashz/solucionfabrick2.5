@@ -13,7 +13,7 @@ function LockIcon() {
   );
 }
 
-type Screen = 'login' | 'setup-send' | 'setup-code' | 'setup-password' | 'init-account';
+type Screen = 'login' | 'setup-send' | 'setup-password' | 'init-account';
 
 export default function AdminLoginPage() {
   const router = useRouter();
@@ -59,50 +59,12 @@ export default function AdminLoginPage() {
     }
   }
 
-  /** Sends OTP via InsForge emails.send() through our server endpoint */
+  /** Requests a password-reset code using InsForge's native auth flow. */
   async function handleSetupSend() {
     resetMessages();
     setLoading(true);
 
     try {
-      const res = await fetch('/api/admin/send-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: setupEmail.trim().toLowerCase() }),
-      });
-      const json = await res.json();
-      if (!res.ok) {
-        setError(json.error ?? 'Error al enviar el código.');
-        return;
-      }
-      setSuccess('Código enviado. Revisa tu bandeja de entrada (y carpeta de spam).');
-      setScreen('setup-code');
-    } catch {
-      setError('Error de red. Inténtalo de nuevo.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  /** Verifies our custom OTP server-side, then exchanges InsForge reset token */
-  async function handleSetupCode() {
-    resetMessages();
-    setLoading(true);
-
-    try {
-      // Step 1: verify our custom OTP
-      const verifyRes = await fetch('/api/admin/verify-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: setupEmail.trim().toLowerCase(), code: otp }),
-      });
-      const verifyJson = await verifyRes.json();
-      if (!verifyRes.ok) {
-        setError(verifyJson.error ?? 'Código incorrecto.');
-        return;
-      }
-
-      // Step 2: OTP verified — now request InsForge's reset token via their native flow
       const { error: sendErr } = await insforge.auth.sendResetPasswordEmail({
         email: setupEmail.trim().toLowerCase(),
         redirectTo: `${window.location.origin}/admin/login`,
@@ -111,10 +73,9 @@ export default function AdminLoginPage() {
         setError(sendErr.message);
         return;
       }
-
-      setSuccess('Identidad verificada. Ahora recibirás el código de restablecimiento de InsForge. Ingrésalo a continuación.');
-      setScreen('setup-password');
+      setSuccess('Código enviado. Revisa tu bandeja de entrada (y carpeta de spam).');
       setOtp('');
+      setScreen('setup-password');
     } catch {
       setError('Error de red. Inténtalo de nuevo.');
     } finally {
@@ -122,19 +83,19 @@ export default function AdminLoginPage() {
     }
   }
 
-  /** Exchanges InsForge OTP for a reset token, then sets the new password */
+  /** Exchanges the reset code for a token, then sets the new password. */
   async function handleSetupPassword() {
     resetMessages();
     setLoading(true);
 
     try {
-      // Exchange the InsForge reset code for a token
+      // Exchange the reset code for a token
       const { data, error: exchangeErr } = await insforge.auth.exchangeResetPasswordToken({
         email: setupEmail.trim().toLowerCase(),
         code: otp,
       });
       if (exchangeErr || !data?.token) {
-        setError(exchangeErr?.message ?? 'Código InsForge inválido o expirado.');
+        setError(exchangeErr?.message ?? 'Código inválido o expirado.');
         return;
       }
 
@@ -351,7 +312,7 @@ export default function AdminLoginPage() {
             </div>
 
             <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-zinc-400 text-xs leading-relaxed">
-              Se enviará un código de verificación directamente a tu correo a través de nuestro sistema de email.
+              Se enviará un código de verificación de 6 dígitos a tu correo para que puedas establecer una nueva contraseña.
             </div>
 
             {error && (
@@ -382,52 +343,7 @@ export default function AdminLoginPage() {
           </div>
         )}
 
-        {/* ── SETUP: VERIFICAR CÓDIGO (nuestro OTP) ── */}
-        {screen === 'setup-code' && (
-          <div className="flex flex-col gap-5">
-            <div className="text-center">
-              <h1 className="text-white text-xl font-bold tracking-wide">Ingresar Código</h1>
-              <p className="text-zinc-500 text-xs mt-1">Código enviado a <span className="text-yellow-400/80">{setupEmail}</span></p>
-            </div>
-
-            <div className="flex flex-col gap-2">
-              <label className="text-white/50 text-[10px] tracking-widest uppercase">Código de 6 dígitos</label>
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={otp}
-                onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                placeholder="000000"
-                disabled={loading}
-                className="bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-white text-2xl font-bold tracking-[0.5em] text-center placeholder:text-white/20 focus:outline-none focus:border-yellow-400/60 transition-all disabled:opacity-40"
-              />
-            </div>
-
-            {error && (
-              <div className="px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
-                {error}
-              </div>
-            )}
-
-            <button
-              onClick={() => void handleSetupCode()}
-              disabled={loading || otp.length !== 6}
-              className="w-full py-4 rounded-full bg-yellow-400 text-black text-sm font-bold tracking-[0.2em] uppercase hover:bg-yellow-300 transition-colors disabled:opacity-60"
-            >
-              {loading ? 'Verificando...' : 'Verificar código'}
-            </button>
-
-            <button
-              onClick={() => { resetMessages(); setScreen('setup-send'); }}
-              className="text-zinc-500 hover:text-white text-xs text-center transition-colors"
-            >
-              ← Volver
-            </button>
-          </div>
-        )}
-
-        {/* ── SETUP: NUEVA CONTRASEÑA (código InsForge + nueva contraseña) ── */}
+        {/* ── SETUP: NUEVA CONTRASEÑA (código recibido por email + nueva contraseña) ── */}
         {screen === 'setup-password' && (
           <div className="flex flex-col gap-5">
             <div className="text-center">
@@ -436,11 +352,11 @@ export default function AdminLoginPage() {
             </div>
 
             <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-zinc-400 text-xs leading-relaxed">
-              Ingresa el código de restablecimiento que InsForge envió a <span className="text-yellow-400/80">{setupEmail}</span> y tu nueva contraseña.
+              Ingresa el código de 6 dígitos enviado a <span className="text-yellow-400/80">{setupEmail}</span> y tu nueva contraseña.
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-white/50 text-[10px] tracking-widest uppercase">Código InsForge (6 dígitos)</label>
+              <label className="text-white/50 text-[10px] tracking-widest uppercase">Código de verificación</label>
               <input
                 type="text"
                 inputMode="numeric"

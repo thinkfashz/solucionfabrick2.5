@@ -29,9 +29,12 @@ async function parseBody(request: Request): Promise<FormFields> {
 async function sendEmail(fields: FormFields): Promise<void> {
   const { SMTP_USER, SMTP_PASS } = process.env;
   if (!SMTP_USER || !SMTP_PASS) {
-    console.log('[presupuesto] SMTP_USER/SMTP_PASS not set – skipping email. Form data:', fields);
+    console.warn('[presupuesto] SMTP_USER/SMTP_PASS not set – skipping email.');
     return;
   }
+
+  const escape = (s: string) =>
+    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
   const transporter = nodemailer.createTransport({
     service: 'gmail',
@@ -41,18 +44,18 @@ async function sendEmail(fields: FormFields): Promise<void> {
   const html = `
     <h2>Nueva solicitud de presupuesto - Fabrick</h2>
     <table cellpadding="8" cellspacing="0" style="border-collapse:collapse">
-      <tr><td><b>Nombre:</b></td><td>${fields.nombre}</td></tr>
-      <tr><td><b>Email:</b></td><td>${fields.email}</td></tr>
-      <tr><td><b>Teléfono:</b></td><td>${fields.telefono ?? '—'}</td></tr>
-      <tr><td><b>Tipo de proyecto:</b></td><td>${fields.tipo_proyecto ?? '—'}</td></tr>
-      <tr><td><b>Descripción:</b></td><td>${fields.descripcion ?? '—'}</td></tr>
+      <tr><td><b>Nombre:</b></td><td>${escape(fields.nombre)}</td></tr>
+      <tr><td><b>Email:</b></td><td>${escape(fields.email)}</td></tr>
+      <tr><td><b>Teléfono:</b></td><td>${escape(fields.telefono ?? '—')}</td></tr>
+      <tr><td><b>Tipo de proyecto:</b></td><td>${escape(fields.tipo_proyecto ?? '—')}</td></tr>
+      <tr><td><b>Descripción:</b></td><td>${escape(fields.descripcion ?? '—')}</td></tr>
     </table>
   `;
 
   await transporter.sendMail({
     from: `"Fabrick Contacto" <${SMTP_USER}>`,
     to: 'f.eduardomicolta@gmail.com',
-    subject: `Nueva solicitud de presupuesto de ${fields.nombre}`,
+    subject: `Nueva solicitud de presupuesto de ${escape(fields.nombre)}`,
     html,
   });
 }

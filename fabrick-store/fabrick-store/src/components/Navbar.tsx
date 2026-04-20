@@ -41,11 +41,16 @@ export default function Navbar() {
   }, []);
 
   useEffect(() => {
+    let mountedTimeout: ReturnType<typeof setTimeout> | undefined;
     document.body.style.overflow = open ? 'hidden' : '';
-    if (open) setTimeout(() => setMounted(true), 10);
-    else setMounted(false);
+    if (open) {
+      mountedTimeout = setTimeout(() => setMounted(true), 10);
+    } else {
+      setMounted(false);
+    }
     return () => {
       document.body.style.overflow = '';
+      if (mountedTimeout) clearTimeout(mountedTimeout);
     };
   }, [open]);
 

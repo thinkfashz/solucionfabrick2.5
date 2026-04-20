@@ -1,35 +1,41 @@
 import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 
-const mp = new MercadoPagoConfig({
-  accessToken: process.env.MP_ACCESS_TOKEN ?? 'TEST-ACCESS-TOKEN',
-  options: { timeout: 5000 }
-});
-
 export async function POST(request: Request) {
+  const accessToken = process.env.MP_ACCESS_TOKEN;
+  if (!accessToken) {
+    return NextResponse.json({ error: 'Pasarela de pago no configurada en el servidor.' }, { status: 500 });
+  }
+
   try {
     const body = await request.json();
     const {
-      token,        // Card token from frontend tokenization
-      amount,       // Amount in CLP
-      description,  // Product description
-      email,        // Payer email
-      installments, // Number of installments (default 1)
+      token,
+      amount,
+      description,
+      email,
+      installments,
     } = body;
 
     if (!token || !amount || !email) {
       return NextResponse.json({ error: 'Datos incompletos para procesar el pago.' }, { status: 400 });
     }
 
+    const numericAmount = Number(amount);
+    if (!Number.isFinite(numericAmount) || numericAmount <= 0) {
+      return NextResponse.json({ error: 'El monto del pago debe ser un número positivo.' }, { status: 400 });
+    }
+
+    const mp = new MercadoPagoConfig({ accessToken, options: { timeout: 5000 } });
     const payment = new Payment(mp);
     const response = await payment.create({
       body: {
-        transaction_amount: Number(amount),
-        token: token,
+        transaction_amount: numericAmount,
+        token,
         description: description || 'Compra en Fabrick Store',
         installments: Number(installments) || 1,
         payment_method_id: body.payment_method_id || 'visa',
-        payer: { email: email },
+        payer: { email },
       }
     });
 

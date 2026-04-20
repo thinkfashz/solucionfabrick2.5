@@ -316,31 +316,57 @@ const CheckoutApp = () => {
       const resolvedKey = mpPublicKey || 'TEST-PUBLIC-KEY';
 
       // Load MercadoPago SDK if not already present
+      await new Promise<void>((resolve, reject) => {
+        const handleReady = () => {
+          if (window.MercadoPago) {
+            resolve();
+          } else {
+            reject(new Error('El SDK de MercadoPago no estuvo disponible después de cargar el script.'));
+          }
+        };
+        const handleError = () => reject(new Error('No se pudo cargar el SDK de MercadoPago.'));
+
+        if (window.MercadoPago) { resolve(); return; }
+
+        const existing = document.getElementById('mp-sdk-script');
+        if (existing instanceof HTMLScriptElement) {
+          existing.addEventListener('load', handleReady, { once: true });
+          existing.addEventListener('error', handleError, { once: true });
+          return;
+        }
+
+        const script = document.createElement('script');
+        script.id = 'mp-sdk-script';
+        script.src = 'https://sdk.mercadopago.com/js/v2';
+        script.addEventListener('load', handleReady, { once: true });
+        script.addEventListener('error', handleError, { once: true });
+        document.head.appendChild(script);
+      });
+
       if (!window.MercadoPago) {
-        await new Promise<void>((resolve, reject) => {
-          const existing = document.getElementById('mp-sdk-script');
-          if (existing) { resolve(); return; }
-          const script = document.createElement('script');
-          script.id = 'mp-sdk-script';
-          script.src = 'https://sdk.mercadopago.com/js/v2';
-          script.onload = () => resolve();
-          script.onerror = () => reject(new Error('No se pudo cargar el SDK de MercadoPago.'));
-          document.head.appendChild(script);
-        });
+        throw new Error('El SDK de MercadoPago no está disponible.');
       }
 
+      // Validate card expiry format (MM/AA or MM/AAAA)
+      const expiryParts = cardExpiry.split('/');
+      if (expiryParts.length !== 2 || !expiryParts[0] || !expiryParts[1]) {
+        throw new Error('Formato de fecha de expiración inválido. Usa MM/AA.');
+      }
+      const expMonth = expiryParts[0].trim();
+      const expYearRaw = expiryParts[1].trim();
+      const expYear = expYearRaw.length === 2 ? `20${expYearRaw}` : expYearRaw;
+
       const mp = new window.MercadoPago(resolvedKey);
-      const [expMonth, expYear] = cardExpiry.split('/');
       const rawCardNumber = cardNumber.replace(/\s/g, '');
 
       const tokenResult = await mp.createCardToken({
         cardNumber: rawCardNumber,
         cardholderName: cardName,
         cardExpirationMonth: expMonth,
-        cardExpirationYear: expYear.length === 2 ? `20${expYear}` : expYear,
+        cardExpirationYear: expYear,
         securityCode: cardCVC,
         identificationType: 'RUT',
-        identificationNumber: '',
+        identificationNumber: '0',
       });
 
       mpToken = tokenResult.id;

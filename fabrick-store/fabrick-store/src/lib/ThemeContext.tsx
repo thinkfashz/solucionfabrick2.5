@@ -64,15 +64,23 @@ export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setThemeState] = useState<Theme>('dark');
 
   useEffect(() => {
-    const stored = localStorage.getItem('fabrick-theme') as Theme | null;
-    const initial: Theme = stored && ['dark', 'light', 'gold'].includes(stored) ? stored : 'dark';
-    setThemeState(initial);
-    applyTheme(initial);
+    try {
+      const stored = localStorage.getItem('fabrick-theme') as Theme | null;
+      const initial: Theme = stored && ['dark', 'light', 'gold'].includes(stored) ? stored : 'dark';
+      setThemeState(initial);
+      applyTheme(initial);
+    } catch {
+      applyTheme('dark');
+    }
   }, []);
 
   const setTheme = (t: Theme) => {
     setThemeState(t);
-    localStorage.setItem('fabrick-theme', t);
+    try {
+      localStorage.setItem('fabrick-theme', t);
+    } catch {
+      // Ignorar errores de almacenamiento (Safari privado, etc.)
+    }
     applyTheme(t);
   };
 

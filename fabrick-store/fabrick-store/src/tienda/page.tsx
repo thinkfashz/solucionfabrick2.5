@@ -99,14 +99,6 @@ const PRODUCTS: Product[] = [
 	},
 ];
 
-const MENU_OPTIONS = [
-	{ icon: HomeIcon, label: 'Inicio' },
-	{ icon: LayoutGrid, label: 'Ver Catálogo' },
-	{ icon: Heart, label: 'Favoritos' },
-	{ icon: User, label: 'Mi Cuenta' },
-	{ icon: Settings, label: 'Ajustes' },
-];
-
 const CATEGORIES = ['Todos', 'Seguridad', 'Iluminación', 'Grifería', 'Revestimiento', 'Premium', 'Destacados'];
 
 function SilverGoldButton({ children, onClick, className = '' }: { children: React.ReactNode; onClick?: React.MouseEventHandler<HTMLButtonElement>; className?: string }) {
@@ -250,10 +242,6 @@ export default function TiendaClientPage() {
 		});
 	};
 
-	const handleSelectProduct = (product: Product) => {
-		setSelectedProduct(product);
-	};
-
 	const toggleFavorite = (product: Product) => {
 		setFavorites((prev) =>
 			prev.some((f) => f.id === product.id)
@@ -323,10 +311,15 @@ export default function TiendaClientPage() {
 	const [activeBottomTab, setActiveBottomTab] = useState(0);
 	const [searchQuery, setSearchQuery] = useState('');
 
+	const normalizeCat = (s: string) =>
+		s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim().toLowerCase();
+
 	const filteredProducts = useMemo(() => {
 		let list = liveProducts;
-		if (activeCategory !== 'Todos') list = list.filter((p) => p.category === activeCategory);
-		if (searchQuery.trim()) list = list.filter((p) => p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.category.toLowerCase().includes(searchQuery.toLowerCase()));
+		const normActive = normalizeCat(activeCategory);
+		const normQuery = searchQuery.trim().toLowerCase();
+		if (normActive !== 'todos') list = list.filter((p) => normalizeCat(p.category) === normActive);
+		if (normQuery) list = list.filter((p) => p.name.toLowerCase().includes(normQuery) || normalizeCat(p.category).includes(normQuery));
 		return list;
 	}, [liveProducts, activeCategory, searchQuery]);
 
@@ -364,13 +357,6 @@ export default function TiendaClientPage() {
 					60%  { border-radius: 40% 60% 45% 55% / 55% 45% 60% 40%; }
 					80%  { border-radius: 50% 50% 55% 45% / 40% 60% 45% 55%; }
 					100% { border-radius: 60% 40% 55% 45% / 50% 60% 40% 50%; }
-				}
-				.btn-watercolor {
-					animation: wc-morph 6s ease-in-out infinite;
-					border-radius: 60% 40% 55% 45% / 50% 60% 40% 50%;
-				}
-				.btn-watercolor:hover {
-					animation: wc-morph 2s ease-in-out infinite;
 				}
 				/* Card yellow glow on hover */
 				.product-card:hover {

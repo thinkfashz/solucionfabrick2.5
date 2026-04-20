@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { insforge } from '@/lib/insforge';
-import { Save, Eye, EyeOff, Check } from 'lucide-react';
+import { Save, Eye, EyeOff, Check, Info, UserCog } from 'lucide-react';
 
 /* ── Input reutilizable ── */
 function Field({
@@ -105,6 +105,33 @@ export default function ConfiguracionPage() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [savingPassword, setSavingPassword] = useState(false);
   const [passwordMsg, setPasswordMsg] = useState<{ text: string; type: 'success' | 'error' } | null>(null);
+
+  /* ── Estado de la sesión actual del admin ── */
+  const [adminEmail, setAdminEmail] = useState<string | null>(null);
+  const [loadingAdmin, setLoadingAdmin] = useState(true);
+
+  useEffect(() => {
+    async function loadAdminSession() {
+      try {
+        const res = await fetch('/api/admin/me', { cache: 'no-store' });
+        if (!res.ok) {
+          setAdminEmail(null);
+          return;
+        }
+        const json = (await res.json()) as { authenticated?: boolean; email?: string };
+        if (json.authenticated && typeof json.email === 'string') {
+          setAdminEmail(json.email);
+          setPwdEmail(json.email);
+        }
+      } catch {
+        setAdminEmail(null);
+      } finally {
+        setLoadingAdmin(false);
+      }
+    }
+
+    void loadAdminSession();
+  }, []);
 
   useEffect(() => {
     async function loadBusinessConfig() {
@@ -246,6 +273,26 @@ export default function ConfiguracionPage() {
       </div>
 
       <div className="flex flex-col gap-8 max-w-2xl">
+        {/* ── Sesión actual del admin ── */}
+        <div className="rounded-[2rem] border border-white/10 bg-zinc-950/80 p-8">
+          <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 mb-4">Sesión actual</h2>
+          <div className="flex items-center gap-4">
+            <div className="flex-shrink-0 w-12 h-12 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center">
+              <UserCog className="w-5 h-5 text-yellow-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-xs uppercase tracking-widest text-zinc-500">Admin conectado</p>
+              {loadingAdmin ? (
+                <p className="text-white text-sm mt-1">Cargando…</p>
+              ) : adminEmail ? (
+                <p className="text-white text-sm font-medium truncate mt-1">{adminEmail}</p>
+              ) : (
+                <p className="text-zinc-500 text-sm mt-1">No se pudo leer la sesión.</p>
+              )}
+            </div>
+          </div>
+        </div>
+
         {/* ── Datos del negocio ── */}
         <form onSubmit={handleSaveNegocio}>
           <Section title="Datos del negocio">
@@ -339,7 +386,11 @@ export default function ConfiguracionPage() {
                   value={pwdEmail}
                   onChange={setPwdEmail}
                   placeholder="feduardomsz@gmail.com"
-                  hint="Recibirás un código de verificación en este correo."
+                  hint={
+                    adminEmail && pwdEmail === adminEmail
+                      ? 'Prellenado con el email de tu sesión actual. Recibirás un código en este correo.'
+                      : 'Recibirás un código de verificación en este correo.'
+                  }
                 />
                 {passwordMsg && <Toast msg={passwordMsg.text} type={passwordMsg.type} />}
                 <div className="flex justify-end pt-2">
@@ -420,6 +471,17 @@ export default function ConfiguracionPage() {
             )}
           </Section>
         </form>
+
+        {/* ── Nota informativa ── */}
+        <div className="rounded-2xl border border-white/10 bg-zinc-950/60 p-5 flex gap-3">
+          <Info className="w-4 h-4 text-zinc-400 flex-shrink-0 mt-0.5" />
+          <p className="text-xs text-zinc-400 leading-relaxed">
+            ¿Necesitas cambiar el <span className="text-zinc-200">email</span> o el{' '}
+            <span className="text-zinc-200">nombre</span> del admin? Hazlo desde el panel de InsForge
+            (Auth → Users) o desde la tabla <code className="px-1.5 py-0.5 rounded bg-zinc-900 border border-white/10 text-zinc-300">admin_users</code>{' '}
+            (Database → Tables). El SDK no expone esos cambios directamente.
+          </p>
+        </div>
       </div>
     </div>
   );

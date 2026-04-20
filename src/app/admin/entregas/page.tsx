@@ -82,6 +82,23 @@ export default function EntregasPage() {
     let realtimeOk = false;
 
     (async () => {
+      const startPolling = () => {
+        if (pollTimer.current) return; // already running
+        const poll = () => {
+          if (!isMounted.current) return;
+          void fetchDeliveries();
+          pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
+        };
+        pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
+      };
+
+      const stopPolling = () => {
+        if (pollTimer.current) {
+          clearTimeout(pollTimer.current);
+          pollTimer.current = null;
+        }
+      };
+
       try {
         await insforge.realtime.connect();
         if (cleanup) return;
@@ -99,20 +116,25 @@ export default function EntregasPage() {
           insforge.realtime.on('UPDATE_delivery', (p: Partial<Delivery> & { operation?: string }) => {
             if (isMounted.current) applyPatch({ ...p, operation: 'UPDATE' });
           });
-          insforge.realtime.on('connect', () => { if (isMounted.current) setConnected(true); });
-          insforge.realtime.on('disconnect', () => { if (isMounted.current) setConnected(false); });
+          insforge.realtime.on('connect', () => {
+            if (isMounted.current) {
+              setConnected(true);
+              stopPolling();
+            }
+          });
+          insforge.realtime.on('disconnect', () => {
+            if (isMounted.current) {
+              setConnected(false);
+              startPolling();
+            }
+          });
         }
       } catch {
         realtimeOk = false;
       }
 
       if (!realtimeOk && !cleanup && isMounted.current) {
-        const poll = () => {
-          if (!isMounted.current) return;
-          fetchDeliveries();
-          pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
-        };
-        pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
+        startPolling();
       }
     })();
 
@@ -180,10 +202,17 @@ export default function EntregasPage() {
     }
 
     // Sync order status (best-effort — delivery is already marked)
-    await insforge.database
+    const { error: orderSyncErr } = await insforge.database
       .from('orders')
       .update({ status: 'entregado' })
       .eq('id', delivery.order_id);
+
+    if (orderSyncErr) {
+      console.warn('Entrega marcada, pero no se pudo sincronizar el estado del pedido:', orderSyncErr);
+      window.alert(
+        'La entrega se marcó como entregada, pero no se pudo actualizar el estado del pedido. Verifica la sincronización en el detalle del pedido.'
+      );
+    }
 
     setDeliveries((prev) =>
       prev.map((d) => d.id === delivery.id ? { ...d, status: 'entregado', updated_at: now } : d),

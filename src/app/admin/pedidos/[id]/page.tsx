@@ -30,6 +30,7 @@ export default function PedidoDetallePage() {
   const [saving, setSaving]       = useState(false);
   const [saved, setSaved]         = useState(false);
   const [error, setError]         = useState<string | null>(null);
+  const [warning, setWarning]     = useState<string | null>(null);
 
   const fetchOrder = useCallback(async () => {
     if (!orderId) return;
@@ -55,6 +56,7 @@ export default function PedidoDetallePage() {
     if (!order) return;
     setSaving(true);
     setError(null);
+    setWarning(null);
     setSaved(false);
 
     // 1. Update order status
@@ -69,20 +71,35 @@ export default function PedidoDetallePage() {
       return;
     }
 
-    // 2. Upsert delivery record
-    const deliveryPayload = {
-      order_id:       order.id,
-      customer_name:  order.customer_name,
-      address:        order.shipping_address,
-      status:         deliveryStatusFromOrderStatus(newStatus),
-      notes:          notes.trim() || null,
-      updated_at:     new Date().toISOString(),
+    // Reflect the new status immediately in the UI
+    setOrder((prev) => prev ? { ...prev, status: newStatus } : prev);
+
+    // 2. Upsert delivery record — only include notes/address when non-empty to avoid overwriting existing values
+    const deliveryBase = {
+      order_id:      order.id,
+      customer_name: order.customer_name,
+      status:        deliveryStatusFromOrderStatus(newStatus),
+      updated_at:    new Date().toISOString(),
     };
 
-    const { data: existingDelivery } = await insforge.database
+    const deliveryPayload = {
+      ...deliveryBase,
+      ...(order.shipping_address ? { address: order.shipping_address } : {}),
+      ...(notes.trim() ? { notes: notes.trim() } : {}),
+    };
+
+    const { data: existingDelivery, error: deliverySelectErr } = await insforge.database
       .from('deliveries')
       .select('id')
       .eq('order_id', order.id);
+
+    if (deliverySelectErr) {
+      setWarning(`Estado actualizado, pero falló verificar entrega existente: ${deliverySelectErr.message}`);
+      setSaving(false);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 3000);
+      return;
+    }
 
     if (existingDelivery && Array.isArray(existingDelivery) && existingDelivery.length > 0) {
       const { error: deliveryUpdateErr } = await insforge.database
@@ -90,9 +107,8 @@ export default function PedidoDetallePage() {
         .update(deliveryPayload)
         .eq('order_id', order.id);
       if (deliveryUpdateErr) {
-        setError(`Estado actualizado, pero falló actualizar entrega: ${deliveryUpdateErr.message}`);
+        setWarning(`Estado actualizado, pero falló sincronizar entrega: ${deliveryUpdateErr.message}`);
         setSaving(false);
-        setOrder((prev) => prev ? { ...prev, status: newStatus } : prev);
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
         return;
@@ -100,18 +116,16 @@ export default function PedidoDetallePage() {
     } else {
       const { error: deliveryInsertErr } = await insforge.database
         .from('deliveries')
-        .insert([{ ...deliveryPayload, created_at: new Date().toISOString() }]);
+        .insert([{ ...deliveryPayload, address: deliveryPayload.address ?? '', created_at: new Date().toISOString() }]);
       if (deliveryInsertErr) {
-        setError(`Estado actualizado, pero falló crear entrega: ${deliveryInsertErr.message}`);
+        setWarning(`Estado actualizado, pero falló crear registro de entrega: ${deliveryInsertErr.message}`);
         setSaving(false);
-        setOrder((prev) => prev ? { ...prev, status: newStatus } : prev);
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
         return;
       }
     }
 
-    setOrder((prev) => prev ? { ...prev, status: newStatus } : prev);
     setSaved(true);
     setSaving(false);
     setTimeout(() => setSaved(false), 3000);
@@ -294,7 +308,10 @@ export default function PedidoDetallePage() {
           {error && (
             <p className="mt-3 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</p>
           )}
-          {saved && (
+          {warning && (
+            <p className="mt-3 rounded-xl bg-yellow-500/10 px-4 py-3 text-sm text-yellow-400">{warning}</p>
+          )}
+          {saved && !warning && (
             <p className="mt-3 rounded-xl bg-green-500/10 px-4 py-3 text-sm text-green-400">
               Estado actualizado correctamente.
             </p>

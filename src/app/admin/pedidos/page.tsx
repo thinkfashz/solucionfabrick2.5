@@ -47,6 +47,23 @@ export default function PedidosPage() {
     let realtimeOk = false;
 
     (async () => {
+      const startPolling = () => {
+        if (pollTimer.current) return; // already running
+        const poll = () => {
+          if (!isMounted.current) return;
+          void fetchOrders();
+          pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
+        };
+        pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
+      };
+
+      const stopPolling = () => {
+        if (pollTimer.current) {
+          clearTimeout(pollTimer.current);
+          pollTimer.current = null;
+        }
+      };
+
       try {
         await insforge.realtime.connect();
         if (cleanup) return;
@@ -60,8 +77,18 @@ export default function PedidosPage() {
 
           insforge.realtime.on('INSERT_order', () => { if (isMounted.current) void fetchOrders(); });
           insforge.realtime.on('UPDATE_order', () => { if (isMounted.current) void fetchOrders(); });
-          insforge.realtime.on('connect', () => { if (isMounted.current) setConnected(true); });
-          insforge.realtime.on('disconnect', () => { if (isMounted.current) setConnected(false); });
+          insforge.realtime.on('connect', () => {
+            if (isMounted.current) {
+              setConnected(true);
+              stopPolling();
+            }
+          });
+          insforge.realtime.on('disconnect', () => {
+            if (isMounted.current) {
+              setConnected(false);
+              startPolling();
+            }
+          });
         }
       } catch {
         realtimeOk = false;
@@ -69,12 +96,7 @@ export default function PedidosPage() {
 
       // Fallback polling cuando realtime no está disponible
       if (!realtimeOk && !cleanup && isMounted.current) {
-        const poll = () => {
-          if (!isMounted.current) return;
-          fetchOrders();
-          pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
-        };
-        pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
+        startPolling();
       }
     })();
 

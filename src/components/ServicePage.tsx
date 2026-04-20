@@ -23,6 +23,7 @@ export interface ServicePageContent {
 }
 
 const BASE_URL = 'https://www.solucionesfabrick.com';
+const PROVIDER_PHONE = `+${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '56912345678'}`;
 
 const RELATED_TITLES: Record<string, string> = {
   metalcon: 'Estructuras Metalcon',
@@ -43,7 +44,7 @@ export default function ServicePage({ content }: { content: ServicePageContent }
       '@type': 'LocalBusiness',
       name: 'Soluciones Fabrick',
       url: BASE_URL,
-      telephone: '+56912345678',
+      telephone: PROVIDER_PHONE,
       areaServed: { '@type': 'AdministrativeArea', name: 'Región del Maule, Chile' },
     },
     areaServed: 'Región del Maule, Chile',

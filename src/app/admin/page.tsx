@@ -16,11 +16,10 @@ import {
   TrendingUp,
   Truck,
   Users,
-  Wifi,
-  WifiOff,
 } from 'lucide-react';
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
 import { insforge } from '@/lib/insforge';
+import SyncStatusButton from '@/components/admin/SyncStatusButton';
 import {
   formatCLP,
   normalizeOrderRecord,
@@ -417,10 +416,7 @@ export default function AdminPage() {
           </div>
 
           <div className="flex flex-wrap items-center gap-3">
-            <span className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-300">
-              {connected ? <Wifi className="h-3.5 w-3.5 text-emerald-400" /> : <WifiOff className="h-3.5 w-3.5 text-amber-400" />}
-              {connected ? 'Tiempo real activo' : 'Modo sincronización'}
-            </span>
+            <SyncStatusButton />
             <button
               onClick={() => void loadDashboard(true)}
               className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-300 transition hover:border-yellow-400/40 hover:text-yellow-400"

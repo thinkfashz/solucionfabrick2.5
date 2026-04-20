@@ -271,7 +271,10 @@ export default function TiendaClientPage() {
 	};
 
 	const handleSelectProduct = (product: Product) => {
-		setSelectedProduct(product);
+		// Navigate to the full detail page so the user sees all information
+		// (image, specs, stock, description, price breakdown) instead of the
+		// in-page overlay which was confusing.
+		router.push(`/producto/${product.id}`);
 	};
 
 	useEffect(() => {
@@ -392,65 +395,41 @@ export default function TiendaClientPage() {
 				</div>
 			</nav>
 
-			{/* Promotional banner carousel */}
+			{/* Promotional banner carousel - now also acts as hero */}
 			<div className="pt-[64px]">
 				<BannerCarousel />
 			</div>
 
-			{/* ── HERO + CATALOGUE ── */}
+			{/* ── CATALOGUE ── */}
 			{!selectedProduct && (
 				<>
-					{/* Hero */}
-					<section className="relative h-[100dvh] flex flex-col items-center justify-center text-center px-6 overflow-hidden">
-						<div className="aura-glow-bg absolute inset-0 z-0" />
-						<img
-							src="https://images.unsplash.com/photo-1600607687920-4e2a09cf159d?q=80&w=2070&auto=format&fit=crop"
-							className="absolute inset-0 w-full h-full object-cover opacity-25 scale-105"
-							style={{ filter: 'grayscale(40%) brightness(0.7)' }}
-							alt="Boutique Fabrick"
-						/>
-						{/* Gradient overlay */}
-						<div className="absolute inset-0 bg-gradient-to-b from-black/60 via-transparent to-black z-[1]" />
-
-						<div className="relative z-10 welcome-box p-8 md:p-16 rounded-[2.5rem] max-w-4xl shadow-[0_60px_120px_rgba(0,0,0,0.9)]">
-							<div className="inline-flex items-center gap-2.5 px-5 py-2 rounded-full border border-yellow-400/25 bg-yellow-400/8 mb-7">
-								<Sparkles size={13} className="text-yellow-400 animate-pulse" />
-								<span className="text-yellow-400 font-black tracking-[0.5em] text-[9px] uppercase">Boutique Fabrick</span>
+					{/* Intro strip (replaces big Boutique/Alto Estándar hero) */}
+					<section className="relative px-6 md:px-10 pt-10 pb-6 max-w-6xl mx-auto">
+						<div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
+							<div>
+								<p className="text-[9px] uppercase tracking-[0.5em] text-yellow-400/70 mb-3">Tienda Fabrick</p>
+								<h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-[0.95] text-white">
+									Materiales conectados<br />
+									<span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent">a la obra real</span>
+								</h1>
+								<p className="mt-4 text-zinc-400 text-sm max-w-xl leading-relaxed">
+									Precios, stock y promociones sincronizados en vivo. Pulsa cualquier producto para abrir su ficha técnica completa.
+								</p>
 							</div>
-
-							<h1 className="text-4xl sm:text-6xl md:text-[76px] font-black uppercase tracking-tighter leading-[0.88] text-white mb-7">
-								Materiales de<br />
-								<span
-									className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent"
-								>
-									Alto Estándar
-								</span>
-							</h1>
-
-							<p className="text-zinc-300 text-sm md:text-base font-light max-w-2xl mx-auto leading-relaxed mb-10 tracking-wide">
-								Cada producto seleccionado para elevar tu hogar con ingeniería precisa, materiales nobles y la tranquilidad de comprar calidad real.
-							</p>
-
-							<div className="flex flex-col sm:flex-row gap-3 justify-center">
+							<div className="flex flex-col sm:flex-row gap-3">
 								<button
-									onClick={() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' })}
-									className="inline-flex items-center gap-2 px-8 py-4 rounded-full bg-yellow-400 text-black font-black uppercase text-[10px] tracking-[0.35em] hover:bg-yellow-300 transition-all hover:scale-105 shadow-[0_0_30px_rgba(250,204,21,0.3)]"
+									onClick={() => window.scrollTo({ top: window.innerHeight * 0.85, behavior: 'smooth' })}
+									className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-yellow-400 text-black font-black uppercase text-[10px] tracking-[0.3em] hover:bg-yellow-300 transition-all hover:scale-105 shadow-[0_0_30px_rgba(250,204,21,0.3)]"
 								>
-									<Package size={14} /> Ver Colección
+									<Package size={13} /> Ver colección
 								</button>
 								<button
 									onClick={() => router.push('/contacto')}
-									className="inline-flex items-center gap-2 px-8 py-4 rounded-full border border-white/15 text-white/70 font-semibold uppercase text-[10px] tracking-[0.35em] hover:border-yellow-400/40 hover:text-white transition-all"
+									className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-white/15 text-white/70 font-semibold uppercase text-[10px] tracking-[0.3em] hover:border-yellow-400/40 hover:text-white transition-all"
 								>
-									<Phone size={14} /> Contactar
+									<Phone size={13} /> Contactar
 								</button>
 							</div>
-						</div>
-
-						{/* Scroll indicator */}
-						<div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 opacity-40">
-							<span className="text-[9px] uppercase tracking-[0.4em] text-white">Explorar</span>
-							<div className="w-px h-10 bg-gradient-to-b from-white to-transparent" />
 						</div>
 					</section>
 
@@ -493,8 +472,8 @@ export default function TiendaClientPage() {
 											{p.category}
 										</span>
 										{(p as { discountPercentage?: number }).discountPercentage ? (
-											<span className="absolute top-5 right-5 px-3 py-1 rounded-full bg-red-500/90 text-white text-[9px] font-black uppercase tracking-wider">
-												-{(p as { discountPercentage?: number }).discountPercentage}%
+											<span className="absolute top-5 right-5 flex items-center gap-1 px-3 py-1 rounded-full bg-red-500/95 text-white text-[9px] font-black uppercase tracking-wider shadow-[0_0_22px_rgba(239,68,68,0.55)]">
+												<span className="motion-safe:animate-pulse">●</span> Última Oferta · -{(p as { discountPercentage?: number }).discountPercentage}%
 											</span>
 										) : null}
 										{/* Quick action overlay */}
@@ -543,15 +522,26 @@ export default function TiendaClientPage() {
 										) : null}
 
 										<div className="pt-2">
-											<p className="text-[9px] uppercase tracking-widest text-zinc-600 mb-1">Inversión</p>
-											<div className="flex items-baseline gap-3 justify-center md:justify-start">
-												<span className="font-mono text-3xl md:text-4xl font-bold text-white">${p.price.toLocaleString()}</span>
-												{(p as { discountPercentage?: number }).discountPercentage ? (
-													<span className="text-xs text-zinc-600 line-through">
-														${Math.round(p.price / (1 - ((p as { discountPercentage?: number }).discountPercentage ?? 0) / 100)).toLocaleString()}
-													</span>
-												) : null}
-											</div>
+											<p className="text-[9px] uppercase tracking-widest text-zinc-600 mb-1">
+												{(p as { discountPercentage?: number }).discountPercentage ? 'Precio promocional' : 'Inversión'}
+											</p>
+											{(() => {
+												const pct = (p as { discountPercentage?: number }).discountPercentage ?? 0;
+												const finalPrice = pct > 0 ? Math.round(p.price * (1 - pct / 100)) : p.price;
+												return (
+													<div className="flex items-baseline gap-3 justify-center md:justify-start flex-wrap">
+														<span className="font-mono text-3xl md:text-4xl font-bold text-white">${finalPrice.toLocaleString()}</span>
+														{pct > 0 ? (
+															<>
+																<span className="text-base text-zinc-500 line-through">${p.price.toLocaleString()}</span>
+																<span className="px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 text-[9px] font-black uppercase tracking-wider">
+																	Ahorras ${Math.round(p.price - finalPrice).toLocaleString()}
+																</span>
+															</>
+														) : null}
+													</div>
+												);
+											})()}
 										</div>
 
 										<div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start pt-2">
@@ -710,11 +700,12 @@ export default function TiendaClientPage() {
 							<p className="text-[8px] uppercase tracking-[0.4em] text-zinc-600 mb-3 px-2">Navegación</p>
 
 							<div className="space-y-1">
-								{MENU_OPTIONS.map((item) => (
+								{MENU_OPTIONS.map((item, i) => (
 									<button
 										key={item.label}
 										onClick={() => handleMenuAction(item)}
-										className="menu-item-hover w-full flex items-center gap-4 p-3.5 rounded-xl border border-transparent text-left group"
+										className="menu-item-hover menu-item-reveal w-full flex items-center gap-4 p-3.5 rounded-xl border border-transparent text-left group"
+										style={{ animationDelay: `${120 + i * 55}ms` }}
 									>
 										<div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-yellow-400/12 transition-colors">
 											<item.icon size={16} className="text-zinc-400 group-hover:text-yellow-400 transition-colors" />

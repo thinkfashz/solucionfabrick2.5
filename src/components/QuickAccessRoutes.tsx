@@ -1,34 +1,34 @@
 import Link from 'next/link';
-import { Store, Wrench, User, RefreshCcw, CreditCard, ArrowRight } from 'lucide-react';
+import { Store, Wrench, User, Briefcase, CreditCard, ArrowRight } from 'lucide-react';
 
 const ROUTES = [
   {
     title: 'Tienda',
-    description: 'Catalogo completo y compra directa.',
+    description: 'Materiales y productos seleccionados, listos para tu proyecto.',
     href: '/tienda',
     Icon: Store,
   },
   {
     title: 'Soluciones',
-    description: 'Servicios integrales y cobertura completa.',
+    description: 'Paquetes llave en mano: piso, estructura metalcon, revestimientos.',
     href: '/soluciones',
     Icon: Wrench,
   },
   {
-    title: 'Cuenta',
-    description: 'Accede o crea tu cuenta de cliente.',
+    title: 'Proyectos',
+    description: 'Obras terminadas con detalles técnicos y materiales usados.',
+    href: '/proyectos',
+    Icon: Briefcase,
+  },
+  {
+    title: 'Mi cuenta',
+    description: 'Accede o crea tu cuenta para seguir tus pedidos.',
     href: '/auth',
     Icon: User,
   },
   {
-    title: 'Sync',
-    description: 'Panel tecnico de sincronizacion en tiempo real.',
-    href: '/sync',
-    Icon: RefreshCcw,
-  },
-  {
     title: 'Checkout',
-    description: 'Flujo de pago y confirmacion.',
+    description: 'Compra segura, paga con transferencia o tarjeta sin salir del sitio.',
     href: '/checkout',
     Icon: CreditCard,
   },
@@ -40,7 +40,10 @@ export default function QuickAccessRoutes() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-8 md:mb-10 text-center">
           <p className="text-yellow-400/70 text-[10px] tracking-[0.35em] uppercase">Accesos Directos</p>
-          <h2 className="text-white text-2xl md:text-3xl font-playfair mt-2">Navegacion por URLs</h2>
+          <h2 className="text-white text-2xl md:text-3xl font-playfair mt-2">Conectados a tus proyectos</h2>
+          <p className="text-zinc-400 text-sm mt-3 max-w-xl mx-auto leading-relaxed">
+            Cada enlace lleva directo a una etapa real del ecosistema Fabrick. Un solo equipo, un solo estándar, visible de principio a fin.
+          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
@@ -58,7 +61,7 @@ export default function QuickAccessRoutes() {
                 <p className="text-zinc-400 text-xs mt-1 leading-relaxed">{description}</p>
               </div>
               <span className="inline-flex items-center gap-2 text-yellow-400/80 text-[11px] tracking-wide mt-auto">
-                Ir a {href}
+                Entrar
                 <ArrowRight className="w-3.5 h-3.5 group-hover:translate-x-1 transition-transform" />
               </span>
             </Link>

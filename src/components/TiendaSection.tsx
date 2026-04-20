@@ -22,8 +22,8 @@ interface TiendaSectionProps {
 
 export default function TiendaSection({
   limit = 6,
-  title = 'Catalogo conectado a tu proyecto',
-  description = 'Productos y materiales visibles para el cliente, actualizados automaticamente y listos para cotizar o comprar.',
+  title = 'Conectados a tus proyectos',
+  description = 'Materiales sincronizados en vivo con la obra real: precios, stock y entregas siempre al día. Pulsa cualquier producto para ver su ficha técnica completa.',
   primaryCtaHref = '/soluciones',
   primaryCtaLabel = 'Ver catalogo completo',
   secondaryCtaHref = '/tienda',
@@ -79,8 +79,26 @@ export default function TiendaSection({
         </div>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {visibleProducts.map((prod) => (
-            <article key={prod.id} className="card-3d glass-card rounded-4xl overflow-hidden group relative">
+          {visibleProducts.map((prod) => {
+            const hasDiscount = (prod.discountPercentage ?? 0) > 0;
+            const finalPrice = hasDiscount
+              ? Math.round(prod.price * (1 - (prod.discountPercentage ?? 0) / 100))
+              : prod.price;
+            return (
+            <article
+              key={prod.id}
+              className="card-3d glass-card rounded-4xl overflow-hidden group relative cursor-pointer focus-within:ring-2 focus-within:ring-yellow-400/60"
+              onClick={() => router.push(`/producto/${prod.id}`)}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter' || e.key === ' ') {
+                  e.preventDefault();
+                  router.push(`/producto/${prod.id}`);
+                }
+              }}
+              role="link"
+              tabIndex={0}
+              aria-label={`Ver detalles de ${prod.name}`}
+            >
               <div className="relative h-48 bg-white/5 overflow-hidden">
                 {prod.img ? (
                   <img
@@ -99,9 +117,9 @@ export default function TiendaSection({
                     Destacado
                   </span>
                 ) : null}
-                {prod.discountPercentage ? (
-                  <span className="absolute top-3 right-3 px-3 py-1 rounded-full bg-red-500 text-white text-[10px] font-bold">
-                    -{prod.discountPercentage}%
+                {hasDiscount ? (
+                  <span className="absolute top-3 right-3 flex items-center gap-1 px-3 py-1 rounded-full bg-red-500 text-white text-[10px] font-black tracking-wider uppercase shadow-[0_0_18px_rgba(239,68,68,0.55)]">
+                    <span className="motion-safe:animate-pulse">●</span> Última Oferta · -{prod.discountPercentage}%
                   </span>
                 ) : null}
               </div>
@@ -123,17 +141,27 @@ export default function TiendaSection({
 
                 <div className="flex items-end justify-between mt-auto pt-4 border-t border-white/5 gap-4">
                   <div>
-                    <p className="text-yellow-400 font-bold text-2xl font-playfair">{CLP(prod.price)}</p>
+                    {hasDiscount ? (
+                      <div className="flex items-baseline gap-2">
+                        <p className="text-yellow-400 font-bold text-2xl font-playfair">{CLP(finalPrice)}</p>
+                        <p className="text-zinc-500 text-xs line-through">{CLP(prod.price)}</p>
+                      </div>
+                    ) : (
+                      <p className="text-yellow-400 font-bold text-2xl font-playfair">{CLP(prod.price)}</p>
+                    )}
                     <p className="text-white/30 text-xs mt-0.5">{prod.category}</p>
                   </div>
                   <button
-                    onClick={() => goToCheckout({
-                      id: prod.id,
-                      name: prod.name,
-                      price: prod.price,
-                      img: prod.img,
-                      category: prod.category,
-                    })}
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      goToCheckout({
+                        id: prod.id,
+                        name: prod.name,
+                        price: finalPrice,
+                        img: prod.img,
+                        category: prod.category,
+                      });
+                    }}
                     className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-semibold tracking-wider hover:bg-yellow-400 hover:text-black transition-all duration-300"
                   >
                     Cotizar
@@ -142,7 +170,8 @@ export default function TiendaSection({
                 </div>
               </div>
             </article>
-          ))}
+            );
+          })}
         </div>
       )}
 

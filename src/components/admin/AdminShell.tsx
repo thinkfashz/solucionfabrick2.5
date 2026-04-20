@@ -4,7 +4,7 @@ import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  ArrowUpRight, BarChart3, ChevronRight, ExternalLink,
+  ArrowUpRight, BarChart3, ChevronRight, ExternalLink, Hammer,
   Megaphone, Package, Radio, Settings, ShoppingCart, Truck, Users,
 } from 'lucide-react';
 
@@ -19,6 +19,7 @@ const navSections = [
     title: 'Operación',
     links: [
       { href: '/admin/productos', label: 'Productos', description: 'Catálogo y stock', icon: Package },
+      { href: '/admin/proyectos', label: 'Proyectos', description: 'Obras terminadas visibles al cliente', icon: Hammer },
       { href: '/admin/pedidos', label: 'Pedidos', description: 'Cobros y estados', icon: ShoppingCart },
       { href: '/admin/entregas', label: 'Entregas', description: 'Seguimiento logístico', icon: Truck },
       { href: '/admin/clientes', label: 'Clientes', description: 'Historial y recurrencia', icon: Users },

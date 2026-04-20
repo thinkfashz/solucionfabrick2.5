@@ -1,6 +1,5 @@
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
-import QuickAccessRoutes from '@/components/QuickAccessRoutes';
 import LandingSections from '@/components/LandingSections';
 
 export default function Home() {
@@ -39,7 +38,6 @@ export default function Home() {
       <div className="bg-gradient-to-b from-black via-zinc-950 to-black min-h-screen overflow-x-hidden">
         <Navbar />
         <Hero />
-        <QuickAccessRoutes />
         <LandingSections />
       </div>
     </>

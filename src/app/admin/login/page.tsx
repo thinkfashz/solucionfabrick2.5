@@ -336,6 +336,26 @@ export default function AdminLoginPage() {
                   </span>
                 ) : 'Acceder'}
               </button>
+
+              <button
+                type="button"
+                onClick={() => {
+                  if (typeof window === 'undefined') return;
+                  if (!window.PublicKeyCredential || !navigator.credentials) {
+                    setError('Tu navegador no soporta huella digital.');
+                    return;
+                  }
+                  setSuccess('Registra tu huella desde /admin/equipo (próximamente).');
+                }}
+                disabled={loading}
+                className="w-full py-3 rounded-full border border-white/10 bg-white/5 text-white text-xs font-bold tracking-[0.2em] uppercase hover:bg-white/10 transition-colors disabled:opacity-60 mt-2"
+              >
+                <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 1.1.9 2 2 2s2-.9 2-2-.9-2-2-2-2 .9-2 2zM12 15c-2.7 0-5.8 1.3-6 2h12c-.2-.7-3.3-2-6-2z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2C9.2 2 7 4.2 7 7v3H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V12c0-1.1-.9-2-2-2h-1V7c0-2.8-2.2-5-5-5z" />
+                </svg>
+                Huella Digital
+              </button>
             </form>
 
             <div className="mt-5 flex flex-col gap-2">

@@ -56,7 +56,7 @@ export async function POST(request: Request) {
 
   const { data: adminRows, error: dbError } = await insforge.database
     .from('admin_users')
-    .select('email')
+    .select('email, rol, aprobado')
     .eq('email', email)
     .limit(1);
 
@@ -68,10 +68,21 @@ export async function POST(request: Request) {
     );
   }
 
+  const adminUser = adminRows[0] as { email: string; rol?: string; aprobado?: boolean };
+
+  if (adminUser.aprobado === false) {
+    recordFailedAttempt(ip);
+    return NextResponse.json(
+      { error: 'Tu cuenta está pendiente de aprobación.' },
+      { status: 403 }
+    );
+  }
+
   clearFailedAttempts(ip);
 
+  const rol = (adminUser.rol ?? 'admin') as 'superadmin' | 'admin' | 'viewer';
   const exp = Date.now() + SESSION_TTL_MS;
-  const sessionValue = await encodeSession({ email, exp });
+  const sessionValue = await encodeSession({ email, exp, rol });
 
   const response = NextResponse.json({ ok: true });
   response.cookies.set(ADMIN_COOKIE_NAME, sessionValue, {

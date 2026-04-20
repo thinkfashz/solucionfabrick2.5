@@ -69,6 +69,7 @@ export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 export interface AdminSessionPayload {
   email: string;
   exp: number; // Unix ms
+  rol?: 'superadmin' | 'admin' | 'viewer';
 }
 
 /**

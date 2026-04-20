@@ -16,7 +16,6 @@ export default function ProyectoDetailPage() {
   const [project, setProject] = useState<FabrickProject | null>(() => {
     return getSeedProjects().find((p) => p.id === id) || null;
   });
-  const [loading, setLoading] = useState(true);
   const [notFound, setNotFound] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
 
@@ -37,8 +36,6 @@ export default function ProyectoDetailPage() {
         }
       } catch {
         if (!project && !cancelled) setNotFound(true);
-      } finally {
-        if (!cancelled) setLoading(false);
       }
     })();
     return () => {
@@ -200,7 +197,6 @@ export default function ProyectoDetailPage() {
           </div>
         </div>
 
-        {loading ? null : null}
       </div>
     </SectionPageShell>
   );

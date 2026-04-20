@@ -12,7 +12,6 @@ export default function Home() {
       'Empresa de construcción y remodelación residencial en la Región del Maule, Chile.',
     url: 'https://www.solucionesfabrick.com',
     image: 'https://www.solucionesfabrick.com/og-image.jpg',
-    telephone: '',
     address: {
       '@type': 'PostalAddress',
       addressLocality: 'Linares',

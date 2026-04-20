@@ -46,7 +46,8 @@ export default function ContactForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok && res.status !== 202) {
+      // Any 2xx (including 201 on write, 202 on graceful fallback) is success.
+      if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(json.error || 'No pudimos enviar tu solicitud.');
       }

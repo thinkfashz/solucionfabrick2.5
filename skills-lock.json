@@ -1,10 +1,555 @@
-{
-  "version": 1,
-  "skills": {
-    "find-skills": {
-      "source": "vercel-labs/skills",
-      "sourceType": "github",
-      "computedHash": "9e1c8b3103f92fa8092568a44fe64858de7c5c9dc65ce4bea8f168080e889cfd"
-    }
-  }
+﻿{
+    "version":  1,
+    "skills":  {
+                   "ads-audit":  {
+                                     "source":  "local",
+                                     "sourceType":  "local",
+                                     "computedHash":  "8f27498ab4e16138caab09afe40351abd7c7bbd24d83c42cc2e70de1267c0bed"
+                                 },
+                   "ads-budget":  {
+                                      "source":  "local",
+                                      "sourceType":  "local",
+                                      "computedHash":  "7d1a5fee77788876fe70afbb9ab60fd8650c426337551a043008a0bda5a6f323"
+                                  },
+                   "ads-creative":  {
+                                        "source":  "local",
+                                        "sourceType":  "local",
+                                        "computedHash":  "9049e4543e3fb581dcf6584443ab7c790e40b869b0b2c1012903063d66841c1b"
+                                    },
+                   "ads-google":  {
+                                      "source":  "local",
+                                      "sourceType":  "local",
+                                      "computedHash":  "5cc06704d57513b7defa7b2b98e662293a9c5d97188e2e0f49a7d326b3900f29"
+                                  },
+                   "ads-meta":  {
+                                    "source":  "local",
+                                    "sourceType":  "local",
+                                    "computedHash":  "3cea57caa35f2277ede34d61fd54d57c24703310ae1f8e0557cdb51347592627"
+                                },
+                   "ads-plan":  {
+                                    "source":  "local",
+                                    "sourceType":  "local",
+                                    "computedHash":  "8a56da4efbef02a343996155e34350776c966a461722581bad7ac6906eebceca"
+                                },
+                   "ads-tiktok":  {
+                                      "source":  "local",
+                                      "sourceType":  "local",
+                                      "computedHash":  "7b93acb46ba62b34fed3fd98281f2a17093c923f5be95989b3a32a7facd6efe9"
+                                  },
+                   "ai-seo":  {
+                                  "source":  "local",
+                                  "sourceType":  "local",
+                                  "computedHash":  "e3875ebe1f7c1bb2bbab82a8567620c800b6ce449e82852e19b88f64b252d6b5"
+                              },
+                   "application-performance-performance-optimization":  {
+                                                                            "source":  "local",
+                                                                            "sourceType":  "local",
+                                                                            "computedHash":  "cbf5f6b1a11b44324aedf82a744956637503f5b1f68befcfff117fe4a734bbfb"
+                                                                        },
+                   "autonomous-agents":  {
+                                             "source":  "local",
+                                             "sourceType":  "local",
+                                             "computedHash":  "78fff27eca6495e81d396162bac48625727852d0737f16f9fe0889ab2d5f111f"
+                                         },
+                   "claimable-postgres":  {
+                                              "source":  "local",
+                                              "sourceType":  "local",
+                                              "computedHash":  "5f4316d9ffd8c117636cc75f05a18ee1abaaa7dcc199ce9b25c31d67dbba7363"
+                                          },
+                   "clean-code":  {
+                                      "source":  "local",
+                                      "sourceType":  "local",
+                                      "computedHash":  "761c7bac0f5c0ef3001b24d97d690558439a4b7003e969cea986096f91f85886"
+                                  },
+                   "code-review-checklist":  {
+                                                 "source":  "local",
+                                                 "sourceType":  "local",
+                                                 "computedHash":  "7e4ebf9de19835496b2fa71e9c7394952911fc9b5ecf9f5ed2e6152bfafb2784"
+                                             },
+                   "code-reviewer":  {
+                                         "source":  "local",
+                                         "sourceType":  "local",
+                                         "computedHash":  "6803a1fdde61e41d29db323d31f00eb089f7bef3f560ee22fbf395c36e2e35e1"
+                                     },
+                   "code-review-excellence":  {
+                                                  "source":  "local",
+                                                  "sourceType":  "local",
+                                                  "computedHash":  "e25db5747c970fce5a5ba997fb26f7bf3944c4ef10dba827a7d1b3cf53e4e0cb"
+                                              },
+                   "code-simplifier":  {
+                                           "source":  "local",
+                                           "sourceType":  "local",
+                                           "computedHash":  "3474e40ceddee3ded7b51288329dad74dc3fd529b3a60aea7772f3270aa2a7a4"
+                                       },
+                   "convex":  {
+                                  "source":  "local",
+                                  "sourceType":  "local",
+                                  "computedHash":  "8c9c35d0ba2b27961516b4a2f45807d136c963b911f2d807e80849b79f0c5800"
+                              },
+                   "database":  {
+                                    "source":  "local",
+                                    "sourceType":  "local",
+                                    "computedHash":  "c703140241cc3749de3cc0a60605c699878a4de74fdc55a35abe348f420ddf93"
+                                },
+                   "database-admin":  {
+                                          "source":  "local",
+                                          "sourceType":  "local",
+                                          "computedHash":  "11f4272e6e5b707209a11ee4cce2be5314059a6bcbde64e3396e0aa0a8e0de62"
+                                      },
+                   "database-architect":  {
+                                              "source":  "local",
+                                              "sourceType":  "local",
+                                              "computedHash":  "9a4e45747c25c90bcacd4ed6ac9268afb790bcddc147eb7e5e240dacbe0e818d"
+                                          },
+                   "database-cloud-optimization-cost-optimize":  {
+                                                                     "source":  "local",
+                                                                     "sourceType":  "local",
+                                                                     "computedHash":  "30eee2785e4d6dcbaa8bf25766c9e58718990f810209391641f1b42964ec8848"
+                                                                 },
+                   "database-design":  {
+                                           "source":  "local",
+                                           "sourceType":  "local",
+                                           "computedHash":  "58df105129eb59b8915f6623184e11c99bd919df4d268cf3625aa21588e5df0f"
+                                       },
+                   "database-migration":  {
+                                              "source":  "local",
+                                              "sourceType":  "local",
+                                              "computedHash":  "cd1b6c880e1b571cc922f1e9a28a99efc86ab7be1de71e545e8210907b848f23"
+                                          },
+                   "database-migrations-migration-observability":  {
+                                                                       "source":  "local",
+                                                                       "sourceType":  "local",
+                                                                       "computedHash":  "20a0a8c02e83421f66d3e5d39e4d6f3b8d7762fc60456e520008556b33b13f62"
+                                                                   },
+                   "database-optimizer":  {
+                                              "source":  "local",
+                                              "sourceType":  "local",
+                                              "computedHash":  "754cc6e98f3bb485fd321c7b547ac6452816ee53688b456153fa4b63d32ea01f"
+                                          },
+                   "dbt-transformation-patterns":  {
+                                                       "source":  "local",
+                                                       "sourceType":  "local",
+                                                       "computedHash":  "64c36f965b384b15daee3145a2eb20fc6b742f513d6aa3337e866f3449271c18"
+                                                   },
+                   "dispatching-parallel-agents":  {
+                                                       "source":  "local",
+                                                       "sourceType":  "local",
+                                                       "computedHash":  "222941ab935894aeabf7f005a1bbf6a645f2cb8c294037eef141933f793e6f45"
+                                                   },
+                   "drizzle-orm-expert":  {
+                                              "source":  "local",
+                                              "sourceType":  "local",
+                                              "computedHash":  "b7dfc04ed17af2190c36fc7fd57bfec60931103eecb0e223fa8c13b85ff81393"
+                                          },
+                   "dx-optimizer":  {
+                                        "source":  "local",
+                                        "sourceType":  "local",
+                                        "computedHash":  "808af3821f076d2f5c8348973282d1cbfbdd1a9a77b9b61497a313a536692400"
+                                    },
+                   "find-skills":  {
+                                       "source":  "vercel-labs/skills",
+                                       "sourceType":  "github",
+                                       "computedHash":  "1e85f6f9686e145aca4a124e3b704b9bbea9aa87e08515c1e352eee70f6e6e7a"
+                                   },
+                   "firebase":  {
+                                    "source":  "local",
+                                    "sourceType":  "local",
+                                    "computedHash":  "226dccbda4c1a7dce9b060fc2e6708f4f14188d4f7799a41af17c5f9b27ed4db"
+                                },
+                   "fixing-motion-performance":  {
+                                                     "source":  "local",
+                                                     "sourceType":  "local",
+                                                     "computedHash":  "656f8dec9bea96b787e09e35093b33f9015bc2c20753498e7ca5d1e0ffcbab92"
+                                                 },
+                   "gsap-core":  {
+                                     "source":  "local",
+                                     "sourceType":  "local",
+                                     "computedHash":  "de938eefd9a5bc6335216a17783788cd21408923ead290cda5871b7d61db66b8"
+                                 },
+                   "gsap-frameworks":  {
+                                           "source":  "local",
+                                           "sourceType":  "local",
+                                           "computedHash":  "6c7db98a913ea4f30cbfaa322e202d52999891b0fe60f217c1987bff525e92d5"
+                                       },
+                   "gsap-performance":  {
+                                            "source":  "local",
+                                            "sourceType":  "local",
+                                            "computedHash":  "2dd51f19a7fcabe1c06caee9e61554485696d05003396c528237aba970a959ce"
+                                        },
+                   "gsap-plugins":  {
+                                        "source":  "local",
+                                        "sourceType":  "local",
+                                        "computedHash":  "9e13e83e4a1606da4b37d8bd25cc9963c79496b4ec805486ce6a84085719ef6b"
+                                    },
+                   "gsap-react":  {
+                                      "source":  "local",
+                                      "sourceType":  "local",
+                                      "computedHash":  "fd1ce4fa883a256e6578f13a4271b494a18dffaaa6111ab64ca1bc97d4dd8b21"
+                                  },
+                   "gsap-scrolltrigger":  {
+                                              "source":  "local",
+                                              "sourceType":  "local",
+                                              "computedHash":  "e6612777bcce1617d3b9e061b2f671fb0f36379684d0c61f7a1baa06d7f7a989"
+                                          },
+                   "gsap-timeline":  {
+                                         "source":  "local",
+                                         "sourceType":  "local",
+                                         "computedHash":  "fbe7a2b9e66e66d2c956f650583d48385498b677ba1292f1dce9d1ffb1a77ea0"
+                                     },
+                   "gsap-utils":  {
+                                      "source":  "local",
+                                      "sourceType":  "local",
+                                      "computedHash":  "f71503f423561eeb5567ae8ee41e4363c85fd3970a8feaeac2c2b18309596bab"
+                                  },
+                   "kaizen":  {
+                                  "source":  "local",
+                                  "sourceType":  "local",
+                                  "computedHash":  "e7cacdf60c4786968c90fd743496b756eebf01e8d55b3d432a963f89ac10374e"
+                              },
+                   "lint-and-validate":  {
+                                             "source":  "local",
+                                             "sourceType":  "local",
+                                             "computedHash":  "506aa70230a7b0d7bf097cbe0cd15dd95a547f6d413782f34279eb169031a51d"
+                                         },
+                   "local-legal-seo-audit":  {
+                                                 "source":  "local",
+                                                 "sourceType":  "local",
+                                                 "computedHash":  "6a8d309ee8b7ec59221df25a00587d3d758ba8b5878f986b307eab2969138819"
+                                             },
+                   "multi-agent-brainstorming":  {
+                                                     "source":  "local",
+                                                     "sourceType":  "local",
+                                                     "computedHash":  "6c5bf3e9cc2836c5bd1f9010f92eced580fd2b6cc698875248de8bd3173fe49f"
+                                                 },
+                   "multi-agent-patterns":  {
+                                                "source":  "local",
+                                                "sourceType":  "local",
+                                                "computedHash":  "51d650867be383d4cc9be7fc9968c7684e714706039600b8905dc663e92350a4"
+                                            },
+                   "nextjs-supabase-auth":  {
+                                                "source":  "local",
+                                                "sourceType":  "local",
+                                                "computedHash":  "c4fe40c7eb84f0f4ff7249588a657a70f0c56be40dacb5398dbded96bdef93b9"
+                                            },
+                   "nosql-expert":  {
+                                        "source":  "local",
+                                        "sourceType":  "local",
+                                        "computedHash":  "6ef1dd1296e1dd6b4eae57c61e5306ecd52601cf84f5df49c38a125ba1d7d8d1"
+                                    },
+                   "parallel-agents":  {
+                                           "source":  "local",
+                                           "sourceType":  "local",
+                                           "computedHash":  "2bee10f23a8580775aed630f33b8e244d193c8e7b9a5f11bae5a27f8fb5a090e"
+                                       },
+                   "performance-engineer":  {
+                                                "source":  "local",
+                                                "sourceType":  "local",
+                                                "computedHash":  "111317aaf5f037e3c211d8abb4f85cb533e4b80d06eaa17b14da237266f90331"
+                                            },
+                   "performance-optimizer":  {
+                                                 "source":  "local",
+                                                 "sourceType":  "local",
+                                                 "computedHash":  "ae074282787dca43720754bb50f98a90c6b2c479338a8a143e5bcf8a80ef441b"
+                                             },
+                   "performance-profiling":  {
+                                                 "source":  "local",
+                                                 "sourceType":  "local",
+                                                 "computedHash":  "76a5bad89d2d53ef0daaa47a2f078f332b04db571ac0c9ec8cc12c2649bb5166"
+                                             },
+                   "postgres-best-practices":  {
+                                                   "source":  "local",
+                                                   "sourceType":  "local",
+                                                   "computedHash":  "95d121ee17ae0f70ab03ef3c73f753f97447d0dda56a2c75b58cb9442e59d0b9"
+                                               },
+                   "postgresql":  {
+                                      "source":  "local",
+                                      "sourceType":  "local",
+                                      "computedHash":  "188f991529689a4d409f2397f5ed2ac233c3ccf0e85ed6f1bf37f03bb3ad7149"
+                                  },
+                   "postgresql-optimization":  {
+                                                   "source":  "local",
+                                                   "sourceType":  "local",
+                                                   "computedHash":  "a3a158a31f57eff2c7fabd201ea37d0c8baa9950a9258d4e66ea8e94c9092b85"
+                                               },
+                   "prisma-expert":  {
+                                         "source":  "local",
+                                         "sourceType":  "local",
+                                         "computedHash":  "69b9bd65a72e7e3bba6b8249ea7fac582732453239333d4e324758ca99bacaf4"
+                                     },
+                   "production-code-audit":  {
+                                                 "source":  "local",
+                                                 "sourceType":  "local",
+                                                 "computedHash":  "1a3d53586110bdcde7171860b98dc8b6984b88ce737da31e86c06425f3a7c647"
+                                             },
+                   "programmatic-seo":  {
+                                            "source":  "local",
+                                            "sourceType":  "local",
+                                            "computedHash":  "2f774c65bec2989e6642b2219098e5214762952f6b7c9da3a3af2cf822dab2b1"
+                                        },
+                   "python-performance-optimization":  {
+                                                           "source":  "local",
+                                                           "sourceType":  "local",
+                                                           "computedHash":  "5adacd76984b8cc1aedf3df3f807c08e067b1678ec4b9465f5b9f0e917cdfce0"
+                                                       },
+                   "react-component-performance":  {
+                                                       "source":  "local",
+                                                       "sourceType":  "local",
+                                                       "computedHash":  "546654942c259455fb3ef4082286d7c64ebf87f67ce462556733ffacf5ac8811"
+                                                   },
+                   "seo":  {
+                               "source":  "local",
+                               "sourceType":  "local",
+                               "computedHash":  "3735a040c09f827429648d9010353a5749ad7390938110e9eb2fb9826b21095a"
+                           },
+                   "seo-aeo-blog-writer":  {
+                                               "source":  "local",
+                                               "sourceType":  "local",
+                                               "computedHash":  "3308033af31403c1510897408991d2e0b1f31d271a80e8d8d8834ffeb0e8d6ae"
+                                           },
+                   "seo-aeo-content-cluster":  {
+                                                   "source":  "local",
+                                                   "sourceType":  "local",
+                                                   "computedHash":  "8f901eda75019f7230d5fcf086a22ffb3c890c6e34901ed9607e5030a4cf195a"
+                                               },
+                   "seo-aeo-content-quality-auditor":  {
+                                                           "source":  "local",
+                                                           "sourceType":  "local",
+                                                           "computedHash":  "1cae733568c551fd23159ae65df764016b35e1a142303a7d2f99af576571ad26"
+                                                       },
+                   "seo-aeo-internal-linking":  {
+                                                    "source":  "local",
+                                                    "sourceType":  "local",
+                                                    "computedHash":  "547db289f46a878a0223d139905a0f6c3eb103e057412a9a7ae6c86e9a9757ac"
+                                                },
+                   "seo-aeo-keyword-research":  {
+                                                    "source":  "local",
+                                                    "sourceType":  "local",
+                                                    "computedHash":  "8a1943c7a02f7d9c3b517b7f7a0853dc9a7893a2f9e380aa780f2bee33da437e"
+                                                },
+                   "seo-aeo-landing-page-writer":  {
+                                                       "source":  "local",
+                                                       "sourceType":  "local",
+                                                       "computedHash":  "9557a5a49261c7e9091e195f6c79ca15aa3961bcaa14a1545abaf7986c1d83c0"
+                                                   },
+                   "seo-aeo-meta-description-generator":  {
+                                                              "source":  "local",
+                                                              "sourceType":  "local",
+                                                              "computedHash":  "f1fcfac02f7aa1335a96fe8d9324e8ae92379339e36740653e4709519f731317"
+                                                          },
+                   "seo-aeo-schema-generator":  {
+                                                    "source":  "local",
+                                                    "sourceType":  "local",
+                                                    "computedHash":  "196855bf0dc59dab13f6a9c324cbda4a749562aaad1581e933f673fc5031f16c"
+                                                },
+                   "seo-audit":  {
+                                     "source":  "local",
+                                     "sourceType":  "local",
+                                     "computedHash":  "b64c072802f51600888de75674174235247d767c1bc06ce8fae9463b782d023a"
+                                 },
+                   "seo-authority-builder":  {
+                                                 "source":  "local",
+                                                 "sourceType":  "local",
+                                                 "computedHash":  "bbceea8a26c3950f07714ca92b6f8b3d1cdfec7ad0c2320c48a7a3266c9747eb"
+                                             },
+                   "seo-cannibalization-detector":  {
+                                                        "source":  "local",
+                                                        "sourceType":  "local",
+                                                        "computedHash":  "e23a7906e1c7a1b26e943a8a55bb61def6f51dd4eaf5c438c9ba468a99fe6ffa"
+                                                    },
+                   "seo-competitor-pages":  {
+                                                "source":  "local",
+                                                "sourceType":  "local",
+                                                "computedHash":  "e2d5afab401bf458928cb9cb28431008e351d25d9d81a99b947d714dd93e2c4d"
+                                            },
+                   "seo-content":  {
+                                       "source":  "local",
+                                       "sourceType":  "local",
+                                       "computedHash":  "551c9fa042aa6f12f68a5fc7a4d656b14a10030c3358fb397964827825192514"
+                                   },
+                   "seo-content-auditor":  {
+                                               "source":  "local",
+                                               "sourceType":  "local",
+                                               "computedHash":  "83283d6a3b593d09b5c2dcd85f70ecced2ac2281be68655cda7d63ba233290a4"
+                                           },
+                   "seo-content-planner":  {
+                                               "source":  "local",
+                                               "sourceType":  "local",
+                                               "computedHash":  "2c13dda428bd1ecd44b9901b638e18862f89024918cfcb1cc35273204e6f39da"
+                                           },
+                   "seo-content-refresher":  {
+                                                 "source":  "local",
+                                                 "sourceType":  "local",
+                                                 "computedHash":  "0c5b618d3aba331393d8436514cdee4e3329f3d6f5c125a9f2772586454ef666"
+                                             },
+                   "seo-content-writer":  {
+                                              "source":  "local",
+                                              "sourceType":  "local",
+                                              "computedHash":  "393eb9eb9e606bed226b42bfb83ca1c38b8acc7ef824ed6571584fce94bcaddc"
+                                          },
+                   "seo-dataforseo":  {
+                                          "source":  "local",
+                                          "sourceType":  "local",
+                                          "computedHash":  "3a2f19f1d09aa3a153fbc7d70c07c07e7342db0bb815bd47dcd93b7fb5c663e3"
+                                      },
+                   "seo-forensic-incident-response":  {
+                                                          "source":  "local",
+                                                          "sourceType":  "local",
+                                                          "computedHash":  "bf37f97e3d0799a1dc57ba56510aa7176abdf3b75f2c5ed843f33f5214d550ff"
+                                                      },
+                   "seo-fundamentals":  {
+                                            "source":  "local",
+                                            "sourceType":  "local",
+                                            "computedHash":  "757f102e4535ec827a7864526367d5b6e56e9bcb5fe4aa0925b1bcf3c949d57c"
+                                        },
+                   "seo-geo":  {
+                                   "source":  "local",
+                                   "sourceType":  "local",
+                                   "computedHash":  "9ff42ca8c8f01640ba81499a505d748943a8ebd82f6528c1c360252b32a21a88"
+                               },
+                   "seo-hreflang":  {
+                                        "source":  "local",
+                                        "sourceType":  "local",
+                                        "computedHash":  "80b09051f55c5d4348a311c7ec6f69aeaa59385e11dc73f5e4729b80073186b6"
+                                    },
+                   "seo-image-gen":  {
+                                         "source":  "local",
+                                         "sourceType":  "local",
+                                         "computedHash":  "e6919aa5f4344cae205ed4461604aac3669c00930a652dd98cdd0813233021eb"
+                                     },
+                   "seo-images":  {
+                                      "source":  "local",
+                                      "sourceType":  "local",
+                                      "computedHash":  "c939a5de1a93b470a67bdcaafe64914c9d4998507af03424e206145306578e6b"
+                                  },
+                   "seo-keyword-strategist":  {
+                                                  "source":  "local",
+                                                  "sourceType":  "local",
+                                                  "computedHash":  "653bb39d8bff9ab5874fe5c013678dca4454edf4375062d77b95d6290a0e3843"
+                                              },
+                   "seo-meta-optimizer":  {
+                                              "source":  "local",
+                                              "sourceType":  "local",
+                                              "computedHash":  "906ae91c49165b1893cc26fdcc9fca952edb4ad7e0b25e9f0e38194a33009f8a"
+                                          },
+                   "seo-page":  {
+                                    "source":  "local",
+                                    "sourceType":  "local",
+                                    "computedHash":  "eac79761866074588241db0f4f1aba3848bcdcfe51c0db0ac84a3fc581c05655"
+                                },
+                   "seo-plan":  {
+                                    "source":  "local",
+                                    "sourceType":  "local",
+                                    "computedHash":  "e9c945d2ac0e4b3ef0a182aa7fc53c206a12b334ab610d410c23922600537598"
+                                },
+                   "seo-programmatic":  {
+                                            "source":  "local",
+                                            "sourceType":  "local",
+                                            "computedHash":  "7e214b03ff96946ce968b6fb9d161b8bcaf9e14db2ec964ecc3bf5b301ae09fc"
+                                        },
+                   "seo-schema":  {
+                                      "source":  "local",
+                                      "sourceType":  "local",
+                                      "computedHash":  "2d10f12b31fe151507f5c0a083e90c7fc005f4fd60e4dff2911e69f35e7a0037"
+                                  },
+                   "seo-sitemap":  {
+                                       "source":  "local",
+                                       "sourceType":  "local",
+                                       "computedHash":  "1fb76acf70ab5567eab9b79744fd71a60e1886c849e3c29d63221a0d587dbbd5"
+                                   },
+                   "seo-snippet-hunter":  {
+                                              "source":  "local",
+                                              "sourceType":  "local",
+                                              "computedHash":  "a30be2a3a88898019011a43321e6dc57ce279abe782f417fecc3cb731650de59"
+                                          },
+                   "seo-structure-architect":  {
+                                                   "source":  "local",
+                                                   "sourceType":  "local",
+                                                   "computedHash":  "e8d7d73b05919c4a85239ee4d94ad06f4c45d117afc99489515ac100af2dd9d5"
+                                               },
+                   "seo-technical":  {
+                                         "source":  "local",
+                                         "sourceType":  "local",
+                                         "computedHash":  "55b5fd4145ec5592ad8ba68f545dd236c6499ac0e18dd28d7802f3fcd29defe4"
+                                     },
+                   "speed":  {
+                                 "source":  "local",
+                                 "sourceType":  "local",
+                                 "computedHash":  "07efb07fa6120956d5a0982801eb466922eb8da17dcc54d5ba4e51cffb14b94a"
+                             },
+                   "sql-injection-testing":  {
+                                                 "source":  "local",
+                                                 "sourceType":  "local",
+                                                 "computedHash":  "05a6946d189464ead2ba6cb806747856f56119c6a2b0183cc9932ac959ec7eeb"
+                                             },
+                   "sql-optimization-patterns":  {
+                                                     "source":  "local",
+                                                     "sourceType":  "local",
+                                                     "computedHash":  "7696a690ef032077734fd2883ee90ae151c7c6b72226a7a97e68c9a8a449e00c"
+                                                 },
+                   "sql-pro":  {
+                                   "source":  "local",
+                                   "sourceType":  "local",
+                                   "computedHash":  "2c2f125ab2d6a10ad36b825c890f9a094181825a397f0cd3115ed370ebc2a5f7"
+                               },
+                   "supabase-automation":  {
+                                               "source":  "local",
+                                               "sourceType":  "local",
+                                               "computedHash":  "40e946d1bad6497b016ffa995d380d1bbe2b3e74557559f5172880bd383610c5"
+                                           },
+                   "using-neon":  {
+                                      "source":  "local",
+                                      "sourceType":  "local",
+                                      "computedHash":  "d7e80b4a5ff679fbde17f56ed1bf28fd985a3a20f2ea34f4a627214dd0e47628"
+                                  },
+                   "vector-database-engineer":  {
+                                                    "source":  "local",
+                                                    "sourceType":  "local",
+                                                    "computedHash":  "93ff1d6e606aa42c1cdfcf77e7305e9208729f2ebfb23b18c466ea970b2f8857"
+                                                },
+                   "vercel-agent":  {
+                                        "source":  "local",
+                                        "sourceType":  "local",
+                                        "computedHash":  "3749f1a638e5bc7faaab9ebee9c785b186f00da14c3af2c3bbe5bbacdd9c8dc4"
+                                    },
+                   "vercel-ai-sdk-expert":  {
+                                                "source":  "local",
+                                                "sourceType":  "local",
+                                                "computedHash":  "b5cd609b43772e04280516de7f6a05eb876a923044deb9fe9def639e86b36311"
+                                            },
+                   "vercel-automation":  {
+                                             "source":  "local",
+                                             "sourceType":  "local",
+                                             "computedHash":  "fefca9fd1bf79273029f187f6a14cc9fd0648bc797da7932a46ab738be623576"
+                                         },
+                   "vercel-cli":  {
+                                      "source":  "local",
+                                      "sourceType":  "local",
+                                      "computedHash":  "fd38f9d5a5a382fa0027ff92063616c70b823297e7ecc19dcd5944f35cf20ea4"
+                                  },
+                   "vercel-deployment":  {
+                                             "source":  "local",
+                                             "sourceType":  "local",
+                                             "computedHash":  "a14dbf327b28a42cfd6229358c7c14086db500ea843bab2112d2fc6cd0db00ac"
+                                         },
+                   "vercel-functions":  {
+                                            "source":  "local",
+                                            "sourceType":  "local",
+                                            "computedHash":  "640e52e53ceb25705f2c5da32eeea4d8cf915526ed9ab46cf04ea686f180f79d"
+                                        },
+                   "vercel-sandbox":  {
+                                          "source":  "local",
+                                          "sourceType":  "local",
+                                          "computedHash":  "fe0a75fb623bdb482ac9333e42bae61ef04f6f185079b8714902d2d278f0edd7"
+                                      },
+                   "vercel-storage":  {
+                                          "source":  "local",
+                                          "sourceType":  "local",
+                                          "computedHash":  "723026e9a4971a9d41053b95fa20eccbd70d8291d2f62457d17816de574e7e96"
+                                      },
+                   "web-performance-optimization":  {
+                                                        "source":  "local",
+                                                        "sourceType":  "local",
+                                                        "computedHash":  "222c6c73bd4de7e365588f0aeaa5f4c918fb04a68317b5193d3b0f5f1268afc0"
+                                                    }
+               }
 }

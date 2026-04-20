@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Maximize2, Minimize2, X } from 'lucide-react';
 import { insforge } from '@/lib/insforge';
+import IsometricMap, { type IsoNodeId, type IsoNodeStatus } from '@/components/Observatory/IsometricMap';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
@@ -79,9 +80,9 @@ const DEFAULT_STATUSES = Object.fromEntries(
 // ─── color helpers ────────────────────────────────────────────────────────────
 
 const STATUS_COLOR: Record<NodeStatus, string> = {
-  online:       '#facc15',
-  slow:         '#f59e0b',
-  offline:      '#ff3333',
+  online:       '#00ff88',
+  slow:         '#f5c800',
+  offline:      '#ff3344',
   unknown:      '#4a5568',
   unconfigured: '#525252',
 };
@@ -94,130 +95,9 @@ const STATUS_LABEL: Record<NodeStatus, string> = {
   unconfigured: 'NO CONFIG.',
 };
 
-/** Approximate signal strength (0-100) per service for the progress bar view. */
-function statusToSignal(status: NodeStatus, latency: number): number {
-  if (status === 'online') return latency > 0 ? Math.max(30, 100 - Math.min(70, latency / 10)) : 95;
-  if (status === 'slow') return 55;
-  if (status === 'offline') return 8;
-  if (status === 'unconfigured') return 0;
-  return 20;
-}
-
 function hex2rgba(hex: string, alpha: number): string {
   const v = parseInt(hex.replace('#', ''), 16);
   return `rgba(${(v >> 16) & 255},${(v >> 8) & 255},${v & 255},${alpha})`;
-}
-
-// ─── matrix rain constants ────────────────────────────────────────────────────
-
-const RAIN_CHARS =
-  'ｦｧｨｩｪｫｬｭｮｯｰｱｲｳｴｵｶｷｸｹｺｻｼｽｾｿﾀﾁﾂﾃﾄﾅﾆﾇﾈﾉﾊﾋﾌﾍﾎﾏﾐﾑﾒﾓﾔﾕﾖﾗﾘﾙﾚﾛﾜﾝ01ABCDEFG';
-
-// ─── compute node screen positions ───────────────────────────────────────────
-
-function computePositions(W: number, H: number): Record<NodeId, { x: number; y: number }> {
-  const cx = W * 0.5;
-  const cy = H * 0.5;
-  const radius = Math.min(W, H) * 0.36;
-  const out: Partial<Record<NodeId, { x: number; y: number }>> = {
-    insforge: { x: cx, y: cy },
-  };
-  for (const n of NODES) {
-    if (n.isCenter || n.angle == null) continue;
-    const rad = (n.angle * Math.PI) / 180;
-    out[n.id] = { x: cx + radius * Math.cos(rad), y: cy + radius * Math.sin(rad) };
-  }
-  return out as Record<NodeId, { x: number; y: number }>;
-}
-
-// ─── canvas drawing ───────────────────────────────────────────────────────────
-
-function drawNetworkFrame(
-  ctx: CanvasRenderingContext2D,
-  W: number,
-  H: number,
-  t: number,
-  statuses: Record<NodeId, NodeStatus>,
-) {
-  const pos = computePositions(W, H);
-
-  // Edges
-  EDGES.forEach(([a, b], i) => {
-    const as = statuses[a];
-    const bs = statuses[b];
-    const color =
-      as === 'offline' || bs === 'offline' ? '#ff3333' :
-      as === 'slow'    || bs === 'slow'    ? '#ffcc00' :
-      '#facc15';
-
-    const from = pos[a];
-    const to   = pos[b];
-    const dx   = to.x - from.x;
-    const dy   = to.y - from.y;
-
-    // Line
-    ctx.beginPath();
-    ctx.moveTo(from.x, from.y);
-    ctx.lineTo(to.x, to.y);
-    ctx.strokeStyle = hex2rgba(color, 0.15);
-    ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Two traveling dots per edge
-    for (let d = 0; d < 2; d++) {
-      const phase = ((t * 0.00022 + i * 0.17 + d * 0.5) % 1 + 1) % 1;
-      ctx.beginPath();
-      ctx.arc(from.x + dx * phase, from.y + dy * phase, 2.5, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.fill();
-    }
-  });
-
-  // Nodes
-  NODES.forEach((n, idx) => {
-    const p      = pos[n.id];
-    const status = statuses[n.id];
-    const color  = STATUS_COLOR[status];
-    const base   = n.isCenter ? 22 : 15;
-    const pulse  = Math.sin(t / 900 + idx * 0.8) * 0.12 + 0.88;
-    const r      = base * pulse;
-
-    // Glow halo
-    const grd = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, r * 3.5);
-    grd.addColorStop(0, hex2rgba(color, status === 'unknown' ? 0.04 : 0.2));
-    grd.addColorStop(1, hex2rgba(color, 0));
-    ctx.beginPath();
-    ctx.arc(p.x, p.y, r * 3.5, 0, Math.PI * 2);
-    ctx.fillStyle = grd;
-    ctx.fill();
-
-    // Node ring (blinks when offline)
-    const visible = status !== 'offline' || Math.floor(t / 400) % 2 === 0;
-    if (visible) {
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
-      ctx.fillStyle = '#000';
-      ctx.fill();
-      ctx.strokeStyle = color;
-      ctx.lineWidth = n.isCenter ? 2.5 : 2;
-      ctx.stroke();
-
-      // Inner pulsing core
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, r * 0.35, 0, Math.PI * 2);
-      ctx.fillStyle = color;
-      ctx.globalAlpha = pulse;
-      ctx.fill();
-      ctx.globalAlpha = 1;
-    }
-
-    // Label below node
-    ctx.fillStyle = '#eab308';
-    ctx.font = `${n.isCenter ? 10 : 8}px monospace`;
-    ctx.textAlign = 'center';
-    ctx.textBaseline = 'top';
-    ctx.fillText(n.label, p.x, p.y + r + 6);
-  });
 }
 
 // ─── component ────────────────────────────────────────────────────────────────
@@ -227,11 +107,9 @@ export default function ObservatoryPage() {
   // Instance-local event id counter (avoids shared state across hot-reloads / instances)
   const evtId = useRef(0);
 
-  // Canvas refs
-  const graphRef  = useRef<HTMLCanvasElement>(null);
-  const rainRef   = useRef<HTMLCanvasElement>(null);
+  // Canvas refs — kept only for the ResizeObserver-based IsometricMap component,
+  // which handles its own rendering. No longer need a rain or graph canvas here.
   const animRef   = useRef<number>(0);
-  const rainCols  = useRef<number[]>([]);
 
   // Status ref (used by canvas without triggering re-render)
   const statusRef = useRef<Record<NodeId, NodeStatus>>({ ...DEFAULT_STATUSES });
@@ -419,75 +297,12 @@ export default function ObservatoryPage() {
   }, [runHealthCheck]);
 
   // ── canvas animation loop ────────────────────────────────────────────────────
+  // The isometric map renders itself via <IsometricMap />; no top-level rAF
+  // loop is needed anymore. We keep `animRef` to preserve the public ref shape
+  // in case future subcomponents want to coordinate frames.
   useEffect(() => {
-    const graph = graphRef.current;
-    const rain  = rainRef.current;
-    if (!graph || !rain) return;
-
-    const gCtx = graph.getContext('2d');
-    const rCtx = rain.getContext('2d');
-    if (!gCtx || !rCtx) return;
-
-    // Capture as non-null for use inside nested closures
-    const rainCtx  = rCtx;
-    const graphCtx = gCtx;
-
-    const CS = 14; // rain character size (px)
-
-    function resize() {
-      if (!graph || !rain) return;
-      graph.width  = graph.offsetWidth;
-      graph.height = graph.offsetHeight;
-      rain.width   = rain.offsetWidth;
-      rain.height  = rain.offsetHeight;
-      rainCols.current = Array.from(
-        { length: Math.floor(rain.width / CS) },
-        () => Math.floor(Math.random() * (rain.height / CS)),
-      );
-      rainCtx.fillStyle = '#000';
-      rainCtx.fillRect(0, 0, rain.width, rain.height);
-    }
-
-    const ro = new ResizeObserver(resize);
-    ro.observe(graph);
-    resize();
-
-    let lastRain = 0;
-
-    function frame(t: number) {
-      if (!graph || !rain) return;
-
-      // Rain canvas — throttled to ~30 fps
-      if (t - lastRain > 33) {
-        lastRain = t;
-        rainCtx.fillStyle = 'rgba(0,0,0,0.06)';
-        rainCtx.fillRect(0, 0, rain.width, rain.height);
-        rainCtx.fillStyle = '#facc15';
-        rainCtx.font = `${CS}px monospace`;
-        const cols = rainCols.current;
-        for (let i = 0; i < cols.length; i++) {
-          rainCtx.fillText(
-            RAIN_CHARS[Math.floor(Math.random() * RAIN_CHARS.length)],
-            i * CS,
-            cols[i] * CS,
-          );
-          if (cols[i] * CS > rain.height && Math.random() > 0.975) cols[i] = 0;
-          else cols[i]++;
-        }
-      }
-
-      // Graph canvas — 60 fps
-      graphCtx.clearRect(0, 0, graph.width, graph.height);
-      drawNetworkFrame(graphCtx, graph.width, graph.height, t, statusRef.current);
-
-      animRef.current = requestAnimationFrame(frame);
-    }
-
-    animRef.current = requestAnimationFrame(frame);
-
     return () => {
-      cancelAnimationFrame(animRef.current);
-      ro.disconnect();
+      if (animRef.current) cancelAnimationFrame(animRef.current);
     };
   }, []);
 
@@ -571,13 +386,20 @@ export default function ObservatoryPage() {
               className="h-auto w-full"
             />
           </span>
-          <span
-            className="truncate text-[11px] font-bold uppercase tracking-[0.25em] transition-opacity duration-300 sm:text-sm sm:tracking-[0.3em]"
-            style={{ color: '#facc15', opacity: blink ? 1 : 0.4 }}
-          >
-            <span className="sm:hidden">FABRICK NET</span>
-            <span className="hidden sm:inline">◈ FABRICK LIVE NETWORK</span>
-          </span>
+          <div className="min-w-0 leading-tight">
+            <p
+              className="truncate text-[11px] font-bold uppercase tracking-[0.25em] transition-opacity duration-300 sm:text-sm sm:tracking-[0.3em]"
+              style={{ color: '#facc15', opacity: blink ? 1 : 0.4 }}
+            >
+              FABRICK NET
+            </p>
+            <p
+              className="hidden text-[8px] uppercase tracking-[0.3em] sm:block"
+              style={{ color: 'rgba(250,204,21,0.55)' }}
+            >
+              Network Observatory
+            </p>
+          </div>
         </div>
 
         <div className="flex-1" />
@@ -617,81 +439,60 @@ export default function ObservatoryPage() {
       {/* ── main body ───────────────────────────────────────────────────────── */}
       <div className="relative flex flex-1 flex-col overflow-hidden md:flex-row">
 
-        {/* ── MOBILE VIEW: BlackBerry-style signal bars per service ── */}
-        <div className="flex flex-1 flex-col overflow-y-auto p-4 md:hidden">
-          <div className="space-y-2.5">
-            {NODES.filter((n) => !n.isCenter).map((n) => {
+        {/* ── Isometric network map (desktop + mobile) ── */}
+        <div className="flex flex-1 flex-col overflow-y-auto p-3 md:p-4">
+          <IsometricMap
+            statuses={
+              Object.fromEntries(
+                Object.entries(statuses).filter(([id]) => id !== 'usuarios'),
+              ) as Partial<Record<IsoNodeId, IsoNodeStatus>>
+            }
+          />
+
+          {/* Per-service status legend (mobile only; desktop has the sidebar) */}
+          <div className="mt-4 grid grid-cols-2 gap-1.5 md:hidden">
+            {NODES.filter((n) => !n.isCenter && n.id !== 'usuarios').map((n) => {
               const status = statuses[n.id];
-              const lat = latencies[n.id] ?? 0;
               const note = notes[n.id];
-              const signal = statusToSignal(status, lat);
+              const lat = latencies[n.id] ?? 0;
               const color = STATUS_COLOR[status];
               const subtitle =
                 status === 'unconfigured'
-                  ? (note ?? 'Credenciales pendientes')
+                  ? (note ?? 'No config.')
                   : status === 'offline'
                     ? (note ?? 'Sin conexión')
                     : lat > 0
                       ? `${lat} ms`
-                      : status === 'unknown' ? 'Comprobando…' : 'Estable';
+                      : status === 'unknown' ? '···' : 'OK';
               return (
                 <div
                   key={n.id}
-                  className="rounded-xl px-3 py-2.5"
+                  className="flex items-center justify-between rounded-md px-2 py-1.5"
                   style={{
                     border: `1px solid ${hex2rgba(color, 0.25)}`,
                     background: `linear-gradient(90deg, ${hex2rgba(color, 0.05)}, rgba(0,0,0,0.4))`,
                   }}
                 >
-                  <div className="mb-1.5 flex items-center justify-between gap-2">
-                    <div className="flex items-center gap-2 min-w-0">
-                      <span
-                        className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
-                        style={{
-                          background: color,
-                          boxShadow: status === 'online' ? `0 0 6px ${color}` : 'none',
-                        }}
-                      />
-                      <span
-                        className="truncate text-[11px] font-bold uppercase tracking-[0.2em]"
-                        style={{ color: '#facc15' }}
-                      >
-                        {n.label}
-                      </span>
-                    </div>
-                    <span
-                      className="shrink-0 text-[9px] font-bold uppercase tracking-[0.18em]"
-                      style={{ color }}
-                    >
-                      {STATUS_LABEL[status]}
-                    </span>
-                  </div>
-                  {/* BlackBerry-style segmented loading bar */}
-                  <div className="flex h-2 w-full items-stretch gap-[3px]">
-                    {Array.from({ length: 12 }).map((_, idx) => {
-                      const filled = idx / 12 * 100 < signal;
-                      return (
-                        <div
-                          key={idx}
-                          className="flex-1 rounded-[2px]"
-                          style={{
-                            background: filled ? color : 'rgba(255,255,255,0.05)',
-                            opacity: filled ? 1 : 0.5,
-                          }}
-                        />
-                      );
-                    })}
-                  </div>
-                  <p className="mt-1.5 text-[9.5px] uppercase tracking-[0.22em]" style={{ color: hex2rgba(color, 0.75) }}>
-                    {subtitle}
-                  </p>
+                  <span
+                    className="truncate text-[9px] font-bold uppercase tracking-[0.18em]"
+                    style={{ color: '#facc15' }}
+                  >
+                    {n.label}
+                  </span>
+                  <span
+                    className="ml-2 shrink-0 text-[8px] font-bold uppercase tracking-[0.15em]"
+                    style={{ color }}
+                    title={subtitle}
+                  >
+                    {STATUS_LABEL[status]}
+                  </span>
                 </div>
               );
             })}
           </div>
 
           {/* Live events — compact on mobile */}
-          <div className="mt-5 rounded-xl border border-yellow-400/15 bg-black/60 p-3">
+          <div className="mt-4 rounded-xl border border-yellow-400/15 bg-black/60 p-3 md:hidden">
             <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.3em]" style={{ color: '#eab308' }}>
               ◈ Live events
             </p>
@@ -714,21 +515,6 @@ export default function ObservatoryPage() {
               )}
             </div>
           </div>
-        </div>
-
-        {/* ── DESKTOP VIEW: canvas graph + events panel ── */}
-        <div className="relative hidden flex-1 overflow-hidden md:block">
-          {/* Matrix rain background */}
-          <canvas
-            ref={rainRef}
-            className="absolute inset-0 h-full w-full"
-            style={{ opacity: 0.18 }}
-          />
-          {/* Network graph foreground */}
-          <canvas
-            ref={graphRef}
-            className="absolute inset-0 h-full w-full"
-          />
         </div>
 
         {/* Live events panel (desktop) */}

@@ -12,9 +12,37 @@ html {
   box-sizing: border-box;
 }
 
+html,
+body,
+header,
+nav,
+main,
+footer,
+section,
+article,
+aside,
+div,
+p,
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+a,
+button,
+span {
+  transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease;
+}
+
+html {
+  background-color: var(--bg);
+  color: var(--text);
+}
+
 body {
-  background-color: #000000;
-  color: #ffffff;
+  background-color: var(--bg);
+  color: var(--text);
   font-family: 'Inter', sans-serif;
   -webkit-font-smoothing: antialiased;
 }
@@ -345,6 +373,10 @@ body {
 }
 
 :root {
+  color-scheme: light;
+}
+
+.dark {
   color-scheme: dark;
 }
 

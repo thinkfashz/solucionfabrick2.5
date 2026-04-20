@@ -23,8 +23,9 @@ import SocialPostCard, {
   type SocialPostTheme,
 } from './SocialPostCard';
 import HistoryTable, { type HistoryRow } from './HistoryTable';
+import { MAX_SOCIAL_IMAGES } from '@/lib/social';
 
-const MAX_IMAGES = 10;
+const MAX_IMAGES = MAX_SOCIAL_IMAGES;
 
 interface UploadedImage {
   url: string;
@@ -293,8 +294,8 @@ export default function PublishStudio() {
       return;
     }
     const when = new Date(form.programarEn);
-    if (Number.isNaN(when.getTime()) || when.getTime() < Date.now()) {
-      setStatus({ kind: 'error', label: 'Selecciona una fecha/hora futura válida.' });
+    if (Number.isNaN(when.getTime()) || when.getTime() < Date.now() + 60_000) {
+      setStatus({ kind: 'error', label: 'Selecciona una fecha/hora al menos 1 minuto en el futuro.' });
       return;
     }
     setStatus({ kind: 'working', label: 'Programando…' });

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
+import { MAX_SOCIAL_IMAGES } from '@/lib/social';
 
 /**
  * Social media post persistence.
@@ -88,7 +89,7 @@ export async function POST(request: NextRequest) {
   const estadoRaw = trim(body.estado, MAX.estado) || 'borrador';
   const estado = VALID_ESTADOS.has(estadoRaw) ? estadoRaw : 'borrador';
 
-  const imagenes = Array.isArray(body.imagenes) ? body.imagenes.slice(0, 10) : [];
+  const imagenes = Array.isArray(body.imagenes) ? body.imagenes.slice(0, MAX_SOCIAL_IMAGES) : [];
   const plataformas =
     body.plataformas && typeof body.plataformas === 'object' && !Array.isArray(body.plataformas)
       ? (body.plataformas as Record<string, unknown>)

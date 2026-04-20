@@ -26,7 +26,18 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'La imagen supera 8 MB.' }, { status: 413 });
     }
 
-    const ext = file.name.includes('.') ? file.name.split('.').pop() : 'jpg';
+    const ALLOWED_EXT = new Set(['jpg', 'jpeg', 'png', 'gif', 'webp']);
+    const ALLOWED_MIME = new Set([
+      'image/jpeg',
+      'image/png',
+      'image/gif',
+      'image/webp',
+    ]);
+    if (!ALLOWED_MIME.has(file.type)) {
+      return NextResponse.json({ error: 'Formato no permitido. Usa JPG, PNG, GIF o WEBP.' }, { status: 415 });
+    }
+    const rawExt = file.name.includes('.') ? file.name.split('.').pop()?.toLowerCase() : '';
+    const ext = rawExt && ALLOWED_EXT.has(rawExt) ? rawExt : 'jpg';
     const path = `social/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
     const { error: uploadError } = await insforge.storage

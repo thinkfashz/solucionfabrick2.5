@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import { X, Menu, Home, Wrench, TrendingUp, Lightbulb, ShoppingBag, Building2, Phone, Gamepad2, ShieldCheck, BookOpen, Layers } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
 import ThemeToggle from './ThemeToggle';
@@ -32,6 +33,7 @@ const MENU_ITEMS = [
 ];
 
 export default function Navbar() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -58,7 +60,7 @@ export default function Navbar() {
 
   const handleNav = (href: string) => {
     setOpen(false);
-    navigateWithTransition(href);
+    navigateWithTransition(href, router);
   };
 
   return (

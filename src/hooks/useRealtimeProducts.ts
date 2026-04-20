@@ -32,6 +32,7 @@ interface RealtimeEvent {
 export function useRealtimeProducts() {
   const [products, setProducts]       = useState<Product[]>([]);
   const [loading, setLoading]         = useState(true);
+  const [fetchComplete, setFetchComplete] = useState(false);
   const [connected, setConnected]     = useState(false);
   const [lastEvent, setLastEvent]     = useState<RealtimeEvent | null>(null);
   const [updateCount, setUpdateCount] = useState(0);
@@ -74,7 +75,7 @@ export function useRealtimeProducts() {
     const { data, error } = await insforge.database
       .from('products')
       .select('id, name, description, price, stock, image_url, featured, activo, tagline, rating, delivery_days, discount_percentage, specifications, category_id')
-      .eq('activo', true)
+      .neq('activo', false)
       .order('featured', { ascending: false })
       .order('created_at', { ascending: false });
 
@@ -83,7 +84,10 @@ export function useRealtimeProducts() {
       setProducts(typed);
       persistCache(typed);
     }
-    if (isMounted.current) setLoading(false);
+    if (isMounted.current) {
+      setLoading(false);
+      setFetchComplete(true);
+    }
   }, [persistCache, products.length]);
 
   /* ── Aplicar patch cuando llega evento real-time ── */
@@ -92,6 +96,15 @@ export function useRealtimeProducts() {
 
     setProducts((prev) => {
       const idx = prev.findIndex((p) => p.id === payload.id);
+
+      // If product was set to activo=false, remove it from the tienda list
+      if (payload.activo === false) {
+        if (idx === -1) return prev;
+        const updated = prev.filter((p) => p.id !== payload.id);
+        persistCache(updated);
+        return updated;
+      }
+
       if (idx === -1) {
         // INSERT — agregar al inicio
         const newProduct = { ...payload } as Product;
@@ -157,5 +170,5 @@ export function useRealtimeProducts() {
     };
   }, [loadFromCache, loadProducts, applyPatch]);
 
-  return { products, loading, connected, lastEvent, updateCount, reload: loadProducts };
+  return { products, loading, fetchComplete, connected, lastEvent, updateCount, reload: loadProducts };
 }

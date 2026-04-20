@@ -1,12 +1,11 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { insforge } from '@/lib/insforge';
-import { useCategories } from '@/hooks/useCategories';
 import { Upload, ArrowLeft } from 'lucide-react';
+
+const CATEGORY_OPTIONS = ['Seguridad', 'Iluminación', 'Grifería', 'Revestimiento', 'Premium', 'General'];
 
 /* ── Helpers ── */
 function formatDisplayPrice(raw: string) {
@@ -20,15 +19,12 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
   return (
     <button
       type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
       onClick={() => onChange(!checked)}
       className="flex items-center gap-3 group"
     >
       <div
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#facc15]/50 focus:ring-offset-2 focus:ring-offset-black ${
-          checked ? 'bg-[#facc15]' : 'bg-zinc-700'
+        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
+          checked ? 'bg-[#c9a96e]' : 'bg-zinc-700'
         }`}
       >
         <span
@@ -48,7 +44,7 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
     <div
       className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl text-sm font-medium shadow-xl border ${
         type === 'success'
-          ? 'bg-zinc-900 border-[#facc15]/40 text-[#facc15]'
+          ? 'bg-zinc-900 border-[#c9a96e]/40 text-[#c9a96e]'
           : 'bg-zinc-900 border-red-500/40 text-red-400'
       }`}
     >
@@ -62,7 +58,7 @@ function Field({ label, children, required }: { label: string; children: React.R
   return (
     <div className="flex flex-col gap-2">
       <label className="text-xs tracking-widest uppercase text-zinc-500">
-        {label}{required && <span className="text-[#facc15] ml-1">*</span>}
+        {label}{required && <span className="text-[#c9a96e] ml-1">*</span>}
       </label>
       {children}
     </div>
@@ -70,7 +66,7 @@ function Field({ label, children, required }: { label: string; children: React.R
 }
 
 const inputClass =
-  'bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-[#facc15]/50 transition-colors';
+  'bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-[#c9a96e]/50 transition-colors';
 
 /* ════════════════════════════════════════════════
    PROPS
@@ -98,14 +94,13 @@ interface ProductFormProps {
 ════════════════════════════════════════════════ */
 export default function ProductForm({ initialData, productId, mode }: ProductFormProps) {
   const router = useRouter();
-  const { categories } = useCategories();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<ProductFormData>({
     name: initialData?.name ?? '',
     description: initialData?.description ?? '',
     price: initialData?.price ?? '',
-    category_id: initialData?.category_id ?? '',
+    category_id: initialData?.category_id ?? 'General',
     stock: initialData?.stock ?? '',
     tagline: initialData?.tagline ?? '',
     image_url: initialData?.image_url ?? '',
@@ -120,37 +115,6 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
-  /* previewUrl holds a temporary blob: URL for local preview only — never saved to DB */
-  const [previewUrl, setPreviewUrl] = useState<string>('');
-  const prevPreviewUrl = useRef<string>('');
-
-  /* Revoke stale objectURL when previewUrl changes or component unmounts */
-  useEffect(() => {
-    if (prevPreviewUrl.current && prevPreviewUrl.current !== previewUrl) {
-      URL.revokeObjectURL(prevPreviewUrl.current);
-    }
-    prevPreviewUrl.current = previewUrl;
-    return () => {
-      if (prevPreviewUrl.current) {
-        URL.revokeObjectURL(prevPreviewUrl.current);
-        prevPreviewUrl.current = '';
-      }
-    };
-  }, [previewUrl]);
-
-  const categoryOptions = useMemo(() => {
-    const options = categories.map((category) => ({ value: category.id, label: category.name }));
-    if (form.category_id && !options.some((option) => option.value === form.category_id)) {
-      options.unshift({ value: form.category_id, label: form.category_id });
-    }
-    return options;
-  }, [categories, form.category_id]);
-
-  useEffect(() => {
-    if (!form.category_id && categoryOptions.length > 0) {
-      setForm((current) => ({ ...current, category_id: categoryOptions[0].value }));
-    }
-  }, [categoryOptions, form.category_id]);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
     setToast({ message, type });
@@ -167,12 +131,6 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
   /* ── Image upload ── */
   async function handleImageUpload(file: File) {
     setUploading(true);
-    /* Show local preview immediately while uploading */
-    try {
-      const localBlob = URL.createObjectURL(file);
-      setPreviewUrl(localBlob);
-    } catch { /* ignore if browser doesn't support it */ }
-
     try {
       const ext = file.name.split('.').pop() ?? 'jpg';
       const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
@@ -193,12 +151,15 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
           : (publicUrlResult as { data?: { publicUrl?: string }; publicUrl?: string })?.data?.publicUrl ??
             (publicUrlResult as { publicUrl?: string })?.publicUrl ??
             '';
-
-      /* Upload succeeded — store the persistent URL in form, clear the blob preview */
       setForm((f) => ({ ...f, image_url: publicUrl }));
-      setPreviewUrl('');
     } catch {
-      /* Storage failed — keep the blob preview visible but do NOT save blob URL to form/DB */
+      // Fallback: try to create an object URL for preview only
+      try {
+        const localUrl = URL.createObjectURL(file);
+        setForm((f) => ({ ...f, image_url: localUrl }));
+      } catch {
+        // If object URL creation also fails, leave image_url empty
+      }
       showToast('Storage no disponible. Ingresa una URL de imagen manual.', 'error');
     } finally {
       setUploading(false);
@@ -342,26 +303,22 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
             onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
             className={inputClass}
           >
-            {categoryOptions.length === 0 ? (
-              <option value="">Sin categorías disponibles</option>
-            ) : (
-              categoryOptions.map((category) => (
-                <option key={category.value} value={category.value}>{category.label}</option>
-              ))
-            )}
+            {CATEGORY_OPTIONS.map((cat) => (
+              <option key={cat} value={cat}>{cat}</option>
+            ))}
           </select>
         </Field>
 
         {/* Imagen */}
         <Field label="Imagen del producto">
           <div className="space-y-3">
-            {/* Preview: show blob preview during upload, or the saved URL */}
-            {(previewUrl || form.image_url) && (
+            {/* Preview */}
+            {form.image_url && (
               <div className="relative w-full h-48 rounded-xl overflow-hidden border border-white/10">
-                <img src={previewUrl || form.image_url} alt="Preview" className="w-full h-full object-cover" />
+                <img src={form.image_url} alt="Preview" className="w-full h-full object-cover" />
                 <button
                   type="button"
-                  onClick={() => { setForm((f) => ({ ...f, image_url: '' })); setPreviewUrl(''); }}
+                  onClick={() => setForm((f) => ({ ...f, image_url: '' }))}
                   className="absolute top-2 right-2 bg-black/60 rounded-full p-1.5 text-white/70 hover:text-white transition-colors"
                 >
                   ✕
@@ -421,7 +378,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
             type="submit"
             disabled={saving || uploading}
             className="w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-            style={{ background: '#facc15', color: '#000' }}
+            style={{ background: '#c9a96e', color: '#000' }}
           >
             {saving ? 'Guardando…' : mode === 'create' ? 'Crear Producto' : 'Guardar Cambios'}
           </button>

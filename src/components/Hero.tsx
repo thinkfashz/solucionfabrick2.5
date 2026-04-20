@@ -178,11 +178,20 @@ export default function Hero() {
       {/* Content */}
       <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
         {/* Badge with pulse animation */}
-        <div className="hero-badge inline-flex items-center gap-2 px-4 py-2 mb-8 border rounded-full bg-yellow-400/8 backdrop-blur-sm hero-badge-pulse">
+        <div className="hero-badge inline-flex items-center gap-2 px-4 py-2 mb-5 border rounded-full bg-yellow-400/8 backdrop-blur-sm hero-badge-pulse">
           <span className="w-2 h-2 rounded-full bg-yellow-400 ping-gold" />
           <span className="text-xs uppercase tracking-[0.25em] text-yellow-400/90 font-medium">
             Un equipo · un estándar · una obra completa
           </span>
+        </div>
+
+        {/* Urgency / trust bar */}
+        <div className="mx-auto mb-8 flex max-w-xl flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border border-yellow-400/15 bg-black/60 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.18em] text-yellow-400/90 md:text-[11px]">
+          <span className="inline-flex items-center gap-1.5">✓ Evaluación gratuita</span>
+          <span className="text-yellow-400/30">·</span>
+          <span className="inline-flex items-center gap-1.5">✓ Presupuesto en 24h</span>
+          <span className="text-yellow-400/30">·</span>
+          <span className="inline-flex items-center gap-1.5">✓ Sin compromiso</span>
         </div>
 
         {/* Title */}

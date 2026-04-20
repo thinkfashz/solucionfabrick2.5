@@ -51,7 +51,7 @@ const SERVICIOS = [
   { Icon: Layers,     title: 'Revestimiento', desc: 'Aislación térmica, acústica y preparación de superficies.', img: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?q=80&w=800&auto=format&fit=crop' },
   { Icon: PaintRoller,title: 'Pintura',       desc: 'Terminaciones finas, sellado y paletas de alta durabilidad.', img: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=800&auto=format&fit=crop' },
   { Icon: ShieldCheck,title: 'Seguridad',     desc: 'CCTV, domótica y controles de acceso inteligentes.', img: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=800&auto=format&fit=crop' },
-  { Icon: Package,    title: 'Suministro',    desc: 'Materiales de primera mano. Calidad sin sobrecostos de intermediarios.', img: 'https://images.unsplash.com/photo-1504307651254-35680f356f12?q=80&w=800&auto=format&fit=crop', wide: true },
+  { Icon: Package,    title: 'Materiales Seleccionados', desc: 'Cada material usado en tu obra es elegido por nuestros especialistas e instalado por nuestro equipo. Sin intermediarios.', img: 'https://images.unsplash.com/photo-1504307651254-35680f356f12?q=80&w=800&auto=format&fit=crop', wide: true },
 ];
 
 const PRODUCTOS = [
@@ -66,9 +66,9 @@ const PRODUCTOS = [
 ];
 
 const REVIEWS = [
-  { n: 'Juan P.', type: 'Remodelación Total', t: 'No tuve que coordinar a ningún maestro ni buscar materiales; Fabrick se encargó desde el hormigón hasta la grifería. Mi casa parece de revista y el proceso fue cero estrés.' },
-  { n: 'María S.', type: 'Seguridad & Accesos', t: 'Lo que más valoro es la transparencia. Me entregaron un cronograma estricto y lo cumplieron al pie de la letra. La automatización y los acabados son de un nivel superior.' },
-  { n: 'José V.', type: 'Construcción Estructural', t: 'Como ingeniero, soy sumamente exigente. Al ver la precisión con la que trabajan el Metalcon y saber que estoy respaldado por un Seguro Sísmico, supe que mi inversión estaba segura.' },
+  { n: 'Juan P.', type: 'Ampliación en Longaví', t: 'No tuve que coordinar a ningún maestro ni buscar materiales; Fabrick se encargó desde el hormigón hasta la grifería. Mi casa parece de revista y el proceso fue cero estrés.' },
+  { n: 'María S.', type: 'Remodelación en Talca', t: 'Lo que más valoro es la transparencia. Me entregaron un cronograma estricto y lo cumplieron al pie de la letra. La automatización y los acabados son de un nivel superior.' },
+  { n: 'José V.', type: 'Obra estructural en Linares', t: 'Como ingeniero, soy sumamente exigente. Al ver la precisión con la que trabajan el Metalcon y saber que estoy respaldado por una garantía estructural, supe que mi inversión estaba segura.' },
 ];
 
 /* ════════════════════════════════════════════════════════════
@@ -420,14 +420,8 @@ export default function LandingSections() {
                 href="/tienda"
                 className="btn-shimmer px-12 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.2em] rounded-full hover:bg-white transition-all hover:scale-105 shadow-[0_10px_30px_rgba(250,204,21,0.2)] inline-flex items-center gap-4 group"
               >
-                Explorar Catalogo Completo
+                Explorar Catálogo Completo
                 <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-              </Link>
-              <Link
-                href="/sync"
-                className="px-8 py-5 border border-yellow-400/30 text-yellow-400 text-xs uppercase tracking-[0.2em] rounded-full hover:bg-yellow-400/10 transition-all"
-              >
-                Panel Sync
               </Link>
             </div>
           </ScrollReveal>

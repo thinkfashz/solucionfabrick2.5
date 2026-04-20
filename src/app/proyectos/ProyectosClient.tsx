@@ -138,13 +138,13 @@ export default function ProyectosClient() {
                   </ul>
                 </div>
 
-                <button
-                  onClick={() => setSelected(project)}
+                <Link
+                  href={`/proyectos/${project.id}`}
                   className="inline-flex w-full items-center justify-center gap-2 rounded-full bg-yellow-400/10 border border-yellow-400/30 px-5 py-3 text-[10px] font-black uppercase tracking-[0.25em] text-yellow-400 transition hover:bg-yellow-400 hover:text-black"
                 >
-                  Ver detalles completos
+                  Ver detalles
                   <ArrowRight size={12} />
-                </button>
+                </Link>
               </div>
             </article>
           ))}

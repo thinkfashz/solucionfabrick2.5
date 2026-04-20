@@ -25,11 +25,13 @@ export default function AdminLoginPage() {
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [isBlocked, setIsBlocked] = useState(false);
   const [success, setSuccess] = useState('');
 
   function resetMessages() {
     setError('');
     setSuccess('');
+    setIsBlocked(false);
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -48,10 +50,38 @@ export default function AdminLoginPage() {
 
       if (!res.ok) {
         setError(json.error ?? 'Error al iniciar sesión.');
+        if (res.status === 429) setIsBlocked(true);
         return;
       }
 
       router.replace('/admin');
+    } catch {
+      setError('Error de red. Inténtalo de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  /** Best-effort call to clear the caller's IP rate-limit block. */
+  async function requestUnlock(): Promise<void> {
+    try {
+      await fetch('/api/admin/unlock', { method: 'POST' });
+    } catch {
+      // Non-fatal: if unlock fails the user can still wait for the window to expire.
+    }
+  }
+
+  /** Clears the IP rate-limit block after the user has recovered their password. */
+  async function handleUnlock() {
+    resetMessages();
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/unlock', { method: 'POST' });
+      if (!res.ok) {
+        setError('No se pudo desbloquear. Intenta nuevamente en unos segundos.');
+        return;
+      }
+      setSuccess('Bloqueo eliminado. Ya puedes intentar iniciar sesión.');
     } catch {
       setError('Error de red. Inténtalo de nuevo.');
     } finally {
@@ -105,6 +135,10 @@ export default function AdminLoginPage() {
         return;
       }
 
+      // The user just proved control of the admin email, so clear any
+      // previous rate-limit block for this IP to let them log in immediately.
+      await requestUnlock();
+
       setSuccess('¡Contraseña configurada! Ya puedes iniciar sesión.');
       setEmail(setupEmail.trim().toLowerCase());
       setScreen('login');
@@ -130,9 +164,14 @@ export default function AdminLoginPage() {
       }
 
       if (json.alreadyExists) {
+        // Account already exists — still clear any IP lockout so the user
+        // can proceed directly to login / reset from here.
+        await requestUnlock();
         setError(json.message ?? 'La cuenta ya existe. Usa la opción de recuperación.');
         return;
       }
+
+      await requestUnlock();
 
       setSuccess(json.message ?? '¡Cuenta creada! Ya puedes iniciar sesión.');
       setEmail('f.eduardomicolta@gmail.com');
@@ -207,6 +246,16 @@ export default function AdminLoginPage() {
               {error && (
                 <div className="px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
                   {error}
+                  {isBlocked && (
+                    <button
+                      type="button"
+                      onClick={() => void handleUnlock()}
+                      disabled={loading}
+                      className="mt-3 w-full py-2 rounded-full border border-red-400/40 text-red-200 hover:bg-red-500/10 transition-colors text-[11px] tracking-widest uppercase disabled:opacity-60"
+                    >
+                      Desbloquear ahora
+                    </button>
+                  )}
                 </div>
               )}
 

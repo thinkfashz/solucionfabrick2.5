@@ -167,18 +167,33 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'InsForge environment is incomplete.' }, { status: 500 });
   }
 
-  const response = await fetch(`${baseUrl}/api/database/advance/rawsql/unrestricted`, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-      'x-api-key': adminApiKey,
-    },
-    body: JSON.stringify({ query: ALIGN_SCHEMA_SQL }),
-  });
+  let response: Response;
+  try {
+    response = await fetch(`${baseUrl}/api/database/advance/rawsql/unrestricted`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': adminApiKey,
+      },
+      body: JSON.stringify({ query: ALIGN_SCHEMA_SQL }),
+      cache: 'no-store',
+      signal: AbortSignal.timeout(30_000),
+    });
+  } catch (err) {
+    console.error('Setup DB fetch failed', err);
+    return NextResponse.json(
+      { error: 'Could not reach database API', code: 'FETCH_ERROR' },
+      { status: 502 }
+    );
+  }
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    return NextResponse.json({ error: data }, { status: response.status });
+    console.error('Setup DB SQL API request failed', { status: response.status, body: data });
+    return NextResponse.json(
+      { error: 'Failed to set up database', code: 'SQL_API_ERROR' },
+      { status: response.status }
+    );
   }
 
   return NextResponse.json({ success: true, data });

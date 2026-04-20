@@ -109,9 +109,11 @@ const CheckoutApp = () => {
   const [shippingEmail, setShippingEmail] = useState('');
   const [shippingPhone, setShippingPhone] = useState('');
   const [shippingAddress, setShippingAddress] = useState('');
+  const [shippingHouseNumber, setShippingHouseNumber] = useState('');
   const [shippingRegion, setShippingRegion] = useState('');
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState('');
+  const [incomingDataPhase, setIncomingDataPhase] = useState<'idle' | 'scanning' | 'received'>('idle');
   const [checkoutError, setCheckoutError] = useState('');
   const [orderId, setOrderId] = useState('');
 
@@ -142,6 +144,7 @@ const CheckoutApp = () => {
 
     setLocationError('');
     setLocationLoading(true);
+    setIncomingDataPhase('scanning');
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
@@ -152,12 +155,16 @@ const CheckoutApp = () => {
 
           if (!response.ok || !payload?.data) {
             setLocationError('No se pudo obtener tu dirección automáticamente.');
+            setIncomingDataPhase('idle');
             return;
           }
 
           const d = payload.data;
+          // Separate street from house number so the user sees them in different fields
+          const streetOnly = (d.road || '').toString().trim();
+          const houseNumber = (d.houseNumber || '').toString().trim();
           const suggestedAddress = [
-            [d.road, d.houseNumber].filter(Boolean).join(' ').trim(),
+            streetOnly,
             d.city,
             d.postcode,
             d.country,
@@ -165,23 +172,32 @@ const CheckoutApp = () => {
             .filter(Boolean)
             .join(', ');
 
+          // Show the "received" phase briefly before confirming, so the animation
+          // feels like real incoming satellite data.
+          setIncomingDataPhase('received');
+          await new Promise((r) => setTimeout(r, 900));
+
           const confirmFill = window.confirm(
             `Detectamos esta ubicación: ${d.displayName || suggestedAddress}. ¿Quieres autocompletar los datos de despacho?`,
           );
 
           if (confirmFill) {
             if (suggestedAddress) setShippingAddress(suggestedAddress);
+            if (houseNumber) setShippingHouseNumber(houseNumber);
             if (d.region) setShippingRegion(d.region);
           }
         } catch {
           setLocationError('Error al consultar el servicio de ubicación.');
         } finally {
           setLocationLoading(false);
+          // Fade out the overlay shortly after
+          setTimeout(() => setIncomingDataPhase('idle'), 600);
         }
       },
       () => {
         setLocationLoading(false);
         setLocationError('No se obtuvo permiso de ubicación.');
+        setIncomingDataPhase('idle');
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
     );
@@ -310,6 +326,7 @@ const CheckoutApp = () => {
       ],
       region: shippingRegion,
       shippingAddress,
+      shippingHouseNumber,
       cliente: {
         nombre: shippingName,
         email: shippingEmail,
@@ -399,6 +416,7 @@ const CheckoutApp = () => {
       ],
       region: shippingRegion,
       shippingAddress,
+      shippingHouseNumber,
       cliente: {
         nombre: shippingName,
         email: shippingEmail,
@@ -722,6 +740,56 @@ const CheckoutApp = () => {
                 </div>
                 {locationError && <p className="text-xs text-red-400">{locationError}</p>}
 
+                {/* ── Incoming satellite data animation ── */}
+                {incomingDataPhase !== 'idle' && (
+                  <div
+                    className={`relative overflow-hidden rounded-2xl border p-5 transition-colors ${
+                      incomingDataPhase === 'received'
+                        ? 'border-emerald-400/40 bg-emerald-400/5'
+                        : 'border-yellow-400/40 bg-yellow-400/5'
+                    }`}
+                    role="status"
+                    aria-live="polite"
+                  >
+                    {/* Animated scan line */}
+                    <div
+                      aria-hidden
+                      className={`pointer-events-none absolute inset-y-0 left-0 w-1/4 ${
+                        incomingDataPhase === 'scanning'
+                          ? 'motion-safe:animate-[scan-slide_1.2s_linear_infinite]'
+                          : 'hidden'
+                      }`}
+                      style={{
+                        background:
+                          'linear-gradient(90deg, transparent, rgba(250,204,21,0.35), transparent)',
+                      }}
+                    />
+                    <div className="relative z-10 flex items-center gap-3">
+                      <div
+                        className={`flex h-9 w-9 items-center justify-center rounded-full ${
+                          incomingDataPhase === 'received'
+                            ? 'bg-emerald-400/20 text-emerald-300'
+                            : 'bg-yellow-400/20 text-yellow-300'
+                        }`}
+                      >
+                        {incomingDataPhase === 'received' ? '✓' : '◉'}
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/80">
+                          {incomingDataPhase === 'scanning'
+                            ? 'Recibiendo datos del satélite...'
+                            : 'Datos recibidos — listos para autocompletar'}
+                        </p>
+                        <p className="mt-1 text-[11px] text-zinc-400">
+                          {incomingDataPhase === 'scanning'
+                            ? 'Consultando ubicación, calle, número y región.'
+                            : 'Confirma para volcar los datos en el formulario.'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+                )}
+
                 <form className="space-y-6">
                   <div className="grid md:grid-cols-2 gap-6">
                     <input type="text" value={shippingName} onChange={(e) => setShippingName(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Nombre Contacto" />
@@ -731,8 +799,18 @@ const CheckoutApp = () => {
                     <input type="tel" value={shippingPhone} onChange={(e) => setShippingPhone(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Teléfono Móvil" />
                     <div className="hidden md:block" />
                   </div>
-                  <input type="text" value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Dirección Completa" />
-                  <input type="text" value={shippingRegion} onChange={(e) => setShippingRegion(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Región / Estado" />
+                  <input type="text" value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Calle / Dirección (ej: Av. Apoquindo 4700)" />
+                  <div className="grid md:grid-cols-2 gap-6">
+                    <input
+                      type="text"
+                      inputMode="numeric"
+                      value={shippingHouseNumber}
+                      onChange={(e) => setShippingHouseNumber(e.target.value)}
+                      className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors"
+                      placeholder="Número de casa / depto (ej: 123, Dpto 402)"
+                    />
+                    <input type="text" value={shippingRegion} onChange={(e) => setShippingRegion(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Región / Estado" />
+                  </div>
                   {checkoutError && <p className="text-xs text-red-400">{checkoutError}</p>}
                   <div className="pt-8 flex gap-4">
                     <button onClick={() => changeStep(1)} type="button" className="px-8 py-5 border border-white/20 rounded-full bg-black text-white font-bold text-xs uppercase hover:border-yellow-400 transition-colors">Volver</button>

@@ -700,11 +700,12 @@ export default function TiendaClientPage() {
 							<p className="text-[8px] uppercase tracking-[0.4em] text-zinc-600 mb-3 px-2">Navegación</p>
 
 							<div className="space-y-1">
-								{MENU_OPTIONS.map((item) => (
+								{MENU_OPTIONS.map((item, i) => (
 									<button
 										key={item.label}
 										onClick={() => handleMenuAction(item)}
-										className="menu-item-hover w-full flex items-center gap-4 p-3.5 rounded-xl border border-transparent text-left group"
+										className="menu-item-hover menu-item-reveal w-full flex items-center gap-4 p-3.5 rounded-xl border border-transparent text-left group"
+										style={{ animationDelay: `${120 + i * 55}ms` }}
 									>
 										<div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0 group-hover:bg-yellow-400/12 transition-colors">
 											<item.icon size={16} className="text-zinc-400 group-hover:text-yellow-400 transition-colors" />

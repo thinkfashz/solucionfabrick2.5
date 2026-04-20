@@ -22,10 +22,7 @@ jobs:
       with:
         node-version: ${{ matrix.node-version }}
 
-    - name: Install dependencies
-      working-directory: fabrick-store/fabrick-store
-      run: npm install
-
-    - name: Build Next.js app
-      working-directory: fabrick-store/fabrick-store
-      run: npm run build
+    - name: Build
+      run: |
+        npm install
+        npm run build

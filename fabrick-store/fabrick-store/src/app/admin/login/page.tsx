@@ -1,100 +1,127 @@
 'use client';
 
-import { useState, useTransition } from 'react';
-import { loginAdmin } from './actions';
+import { useState } from 'react';
+import { useRouter } from 'next/navigation';
+
+function LockIcon() {
+  return (
+    <svg className="w-7 h-7 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+        d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+    </svg>
+  );
+}
 
 export default function AdminLoginPage() {
+  const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  const [isPending, startTransition] = useTransition();
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
-    startTransition(async () => {
-      const result = await loginAdmin(email, password);
-      if (result?.error) setError(result.error);
-    });
+    setLoading(true);
+
+    try {
+      const res = await fetch('/api/admin/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+      });
+
+      const json = await res.json();
+
+      if (!res.ok) {
+        setError(json.error ?? 'Error al iniciar sesión.');
+        return;
+      }
+
+      router.replace('/admin');
+    } catch {
+      setError('Error de red. Inténtalo de nuevo.');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
-    <div
-      className="min-h-screen flex items-center justify-center px-4"
-      style={{ backgroundColor: '#0a0a0a' }}
-    >
-      <div className="w-full max-w-sm">
-        {/* Logo */}
-        <div className="text-center mb-8">
-          <h1
-            className="text-2xl font-bold tracking-[0.25em] uppercase mb-2"
-            style={{ color: '#c9a96e' }}
-          >
-            SOLUCIONES FABRICK
-          </h1>
-          <p className="text-white/50 text-sm tracking-widest uppercase">
-            Panel Administrativo
-          </p>
+    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4">
+      {/* Background orb */}
+      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-yellow-400/5 blur-[80px] pointer-events-none" />
+
+      {/* Logo */}
+      <span className="relative z-10 font-playfair text-2xl font-black tracking-[0.35em] text-yellow-400 mb-10 select-none">
+        FABRICK
+      </span>
+
+      {/* Card */}
+      <div className="relative z-10 w-full max-w-sm rounded-[2rem] border border-white/10 bg-zinc-950/90 p-8 shadow-2xl">
+        {/* Icon */}
+        <div className="w-14 h-14 rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center mx-auto mb-6">
+          <LockIcon />
         </div>
 
-        {/* Card */}
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-2xl border border-white/10 bg-white/5 p-8 flex flex-col gap-5"
-        >
-          {/* Email */}
+        <div className="text-center mb-8">
+          <h1 className="text-white text-xl font-bold tracking-wide">Panel Administrador</h1>
+          <p className="text-zinc-500 text-xs mt-1 tracking-wider">ACCESO RESTRINGIDO</p>
+        </div>
+
+        <form onSubmit={handleSubmit} className="flex flex-col gap-5">
           <div className="flex flex-col gap-2">
-            <label className="text-white/50 text-xs tracking-widest uppercase">
-              Email
-            </label>
+            <label className="text-white/50 text-[10px] tracking-widest uppercase">Email</label>
             <input
               type="email"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
-              required
               placeholder="admin@fabrick.cl"
-              className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#c9a96e]/60 transition-colors duration-200"
+              required
+              disabled={loading}
+              className="bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-yellow-400/60 transition-all disabled:opacity-40"
             />
           </div>
 
-          {/* Password */}
           <div className="flex flex-col gap-2">
-            <label className="text-white/50 text-xs tracking-widest uppercase">
-              Contraseña
-            </label>
+            <label className="text-white/50 text-[10px] tracking-widest uppercase">Contraseña</label>
             <input
               type="password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              required
               placeholder="••••••••"
-              className="bg-black/40 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-[#c9a96e]/60 transition-colors duration-200"
+              required
+              disabled={loading}
+              className="bg-white/5 border border-white/10 rounded-2xl px-5 py-3.5 text-white text-sm placeholder:text-white/20 focus:outline-none focus:border-yellow-400/60 transition-all disabled:opacity-40"
             />
           </div>
 
-          {/* Error */}
           {error && (
-            <p className="text-red-400 text-xs bg-red-500/10 border border-red-500/20 rounded-xl px-4 py-3">
+            <div className="px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
               {error}
-            </p>
+            </div>
           )}
 
-          {/* Submit */}
           <button
             type="submit"
-            disabled={isPending}
-            className="w-full py-3.5 rounded-xl text-black text-sm font-bold tracking-[0.15em] uppercase transition-opacity duration-200 disabled:opacity-60"
-            style={{ backgroundColor: '#c9a96e' }}
+            disabled={loading}
+            className="w-full py-4 rounded-full bg-yellow-400 text-black text-sm font-bold tracking-[0.2em] uppercase hover:bg-yellow-300 transition-colors disabled:opacity-60 mt-1"
           >
-            {isPending ? 'Verificando...' : 'Ingresar al Panel'}
+            {loading ? (
+              <span className="flex items-center justify-center gap-2">
+                <svg className="w-4 h-4 animate-spin" viewBox="0 0 24 24" fill="none">
+                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                </svg>
+                Verificando...
+              </span>
+            ) : 'Acceder'}
           </button>
         </form>
-
-        {/* Footer note */}
-        <p className="text-center text-white/25 text-xs mt-6">
-          Acceso restringido — Solo personal autorizado Fabrick
-        </p>
       </div>
+
+      <p className="relative z-10 mt-8 text-white/15 text-[10px] text-center tracking-widest uppercase">
+        Acceso exclusivo · Soluciones Fabrick
+      </p>
     </div>
   );
 }

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-labelledby="fav-title">
+  <title id="fav-title">Fabrick</title>
+  <defs>
+    <linearGradient id="fav-gold" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="#FFE566"/>
+      <stop offset="100%" stop-color="#FFC700"/>
+    </linearGradient>
+    <linearGradient id="fav-depth" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stop-color="#B37E00"/>
+      <stop offset="100%" stop-color="#D9A100"/>
+    </linearGradient>
+    <filter id="fav-glow" x="-40%" y="-40%" width="180%" height="180%">
+      <feGaussianBlur in="SourceGraphic" stdDeviation="10" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Dark rounded background -->
+  <rect width="256" height="256" rx="56" fill="#090909"/>
+
+  <!-- Subtle glow behind peak -->
+  <ellipse cx="128" cy="176" rx="72" ry="24" fill="#FFC700" opacity="0.07"/>
+
+  <!-- Icon: bold peak scaled to fit canvas (icon ref: 38×42 → scale ~4.5, offset to center) -->
+  <!-- Icon width=38, height=42; scaled 4.5x → 171×189; center offset x=(256-171)/2=42.5, y=(256-189)/2=33.5 -->
+  <g transform="translate(42.5, 33.5) scale(4.5)" filter="url(#fav-glow)">
+    <path d="M 2,42 L 19,4 L 36,42 L 30,42 L 19,12 L 8,42 Z" fill="url(#fav-gold)"/>
+    <path d="M 8,42 L 19,12 L 19,18 L 12,42 Z" fill="url(#fav-depth)" opacity="0.75"/>
+    <rect x="23" y="10" width="7" height="18" rx="1.5" fill="#FFC700"/>
+  </g>
+</svg>

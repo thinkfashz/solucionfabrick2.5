@@ -1,6 +1,5 @@
 services:
   fabrick:
-    image: fabrick
-    build:
-      context: .
-      dockerfile: ./Dockerfile
+    image: casasfabrick/fabrick-store:latest
+    ports:
+      - "3000:3000"

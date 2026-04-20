@@ -202,14 +202,12 @@ function drawNetworkFrame(
   });
 }
 
-// ─── event id counter (module-level, safe) ────────────────────────────────────
-
-let evtId = 0;
-
 // ─── component ────────────────────────────────────────────────────────────────
 
 export default function ObservatoryPage() {
   const router = useRouter();
+  // Instance-local event id counter (avoids shared state across hot-reloads / instances)
+  const evtId = useRef(0);
 
   // Canvas refs
   const graphRef  = useRef<HTMLCanvasElement>(null);
@@ -239,7 +237,7 @@ export default function ObservatoryPage() {
     setEvents((prev) => [
       ...prev.slice(-49),
       {
-        id:     String(++evtId),
+        id:     String(++evtId.current),
         ts:     new Date().toLocaleTimeString('es-CL', { hour12: false }),
         text,
         status,
@@ -309,7 +307,9 @@ export default function ObservatoryPage() {
         insforge.realtime.on('UPDATE_order',     mkHandler('orders',     'UPDATE'));
         insforge.realtime.on('INSERT_delivery',  mkHandler('deliveries', 'INSERT'));
         insforge.realtime.on('UPDATE_delivery',  mkHandler('deliveries', 'UPDATE'));
-      } catch { /* silent — realtime is best-effort */ }
+      } catch (err) {
+        console.error('[Observatory] realtime connect error:', err);
+      }
     })();
 
     return () => {
@@ -319,7 +319,9 @@ export default function ObservatoryPage() {
         insforge.realtime.unsubscribe('orders');
         insforge.realtime.unsubscribe('deliveries');
         insforge.realtime.disconnect();
-      } catch { /* ignore cleanup errors */ }
+      } catch (err) {
+        console.error('[Observatory] realtime cleanup error:', err);
+      }
     };
   }, [addEvent]);
 
@@ -340,6 +342,10 @@ export default function ObservatoryPage() {
     const rCtx = rain.getContext('2d');
     if (!gCtx || !rCtx) return;
 
+    // Capture as non-null for use inside nested closures
+    const rainCtx  = rCtx;
+    const graphCtx = gCtx;
+
     const CS = 14; // rain character size (px)
 
     function resize() {
@@ -352,8 +358,8 @@ export default function ObservatoryPage() {
         { length: Math.floor(rain.width / CS) },
         () => Math.floor(Math.random() * (rain.height / CS)),
       );
-      rCtx!.fillStyle = '#000';
-      rCtx!.fillRect(0, 0, rain.width, rain.height);
+      rainCtx.fillStyle = '#000';
+      rainCtx.fillRect(0, 0, rain.width, rain.height);
     }
 
     const ro = new ResizeObserver(resize);
@@ -368,13 +374,13 @@ export default function ObservatoryPage() {
       // Rain canvas — throttled to ~30 fps
       if (t - lastRain > 33) {
         lastRain = t;
-        rCtx!.fillStyle = 'rgba(0,0,0,0.06)';
-        rCtx!.fillRect(0, 0, rain.width, rain.height);
-        rCtx!.fillStyle = '#00ff41';
-        rCtx!.font = `${CS}px monospace`;
+        rainCtx.fillStyle = 'rgba(0,0,0,0.06)';
+        rainCtx.fillRect(0, 0, rain.width, rain.height);
+        rainCtx.fillStyle = '#00ff41';
+        rainCtx.font = `${CS}px monospace`;
         const cols = rainCols.current;
         for (let i = 0; i < cols.length; i++) {
-          rCtx!.fillText(
+          rainCtx.fillText(
             RAIN_CHARS[Math.floor(Math.random() * RAIN_CHARS.length)],
             i * CS,
             cols[i] * CS,
@@ -385,8 +391,8 @@ export default function ObservatoryPage() {
       }
 
       // Graph canvas — 60 fps
-      gCtx!.clearRect(0, 0, graph.width, graph.height);
-      drawNetworkFrame(gCtx!, graph.width, graph.height, t, statusRef.current);
+      graphCtx.clearRect(0, 0, graph.width, graph.height);
+      drawNetworkFrame(graphCtx, graph.width, graph.height, t, statusRef.current);
 
       animRef.current = requestAnimationFrame(frame);
     }

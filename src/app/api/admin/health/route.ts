@@ -49,7 +49,9 @@ export async function GET() {
         : { status: 'offline', latency: -1 };
   }
 
-  // USUARIOS ACTIVOS is always considered online (represents end-user layer)
+  // USUARIOS ACTIVOS is a synthetic node representing the end-user/browser layer in the
+  // network topology visualisation. It is not a checkable external service; we derive its
+  // status from Vercel (the hosting layer end-users hit), so it is always reported online here.
   services['usuarios'] = { status: 'online', latency: 0 };
 
   const allValues = Object.values(services);

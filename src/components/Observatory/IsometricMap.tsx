@@ -9,10 +9,11 @@
  * on a dotted-grid board, connected by energy lines with traveling
  * light pulses.
  *
- * Sizing is responsive:
- *   - Desktop : 800 × 500, full-size cubes
- *   - Tablet  : 600 × 400, full-size cubes
- *   - Mobile  : fullwidth × 360, cubes at half size
+ * Sizing is responsive (driven by the wrapper's `--iso-map-h` CSS variable
+ * and the canvas `layout()` helper):
+ *   - Desktop (>=1024px) : 500px tall, full-size cubes
+ *   - Tablet  (>=768px)  : 400px tall, full-size cubes
+ *   - Mobile             : 360px tall, cubes drawn at ~60% size
  *
  * Only the visual layer lives here — the caller is responsible for
  * running the health-check polling and passing down per-node statuses.
@@ -364,14 +365,13 @@ export default function IsometricMap({ statuses }: IsometricMapProps) {
         // Cube geometry
         const cube = cubeGeometry(p.x, p.y, tile * 0.75, cubeH);
 
-        // Top face uses the node's brand color tinted by the status color so
-        // the health state is unambiguous even at a glance.
+        // Top face uses the status color directly when the node has a
+        // meaningful health signal; otherwise we fall back to the node's
+        // brand color (unknown) or the grey "unconfigured" swatch.
         const topFill =
-          status === 'online' ? color
-          : status === 'offline' ? color
-          : status === 'slow' ? color
-          : status === 'unconfigured' ? STATUS_COLOR.unconfigured
-          : n.color;
+          status === 'unconfigured' ? STATUS_COLOR.unconfigured
+          : status === 'unknown'    ? n.color
+          : color;
 
         fillPolygon(ctx, cube.left,  darken(topFill, 0.55));
         fillPolygon(ctx, cube.right, darken(topFill, 0.35));

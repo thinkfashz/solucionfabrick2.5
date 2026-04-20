@@ -107,9 +107,7 @@ export default function ObservatoryPage() {
   // Instance-local event id counter (avoids shared state across hot-reloads / instances)
   const evtId = useRef(0);
 
-  // Canvas refs — kept only for the ResizeObserver-based IsometricMap component,
-  // which handles its own rendering. No longer need a rain or graph canvas here.
-  const animRef   = useRef<number>(0);
+  // (Legacy canvas refs removed: IsometricMap now renders itself.)
 
   // Status ref (used by canvas without triggering re-render)
   const statusRef = useRef<Record<NodeId, NodeStatus>>({ ...DEFAULT_STATUSES });
@@ -296,15 +294,7 @@ export default function ObservatoryPage() {
     return () => clearInterval(id);
   }, [runHealthCheck]);
 
-  // ── canvas animation loop ────────────────────────────────────────────────────
-  // The isometric map renders itself via <IsometricMap />; no top-level rAF
-  // loop is needed anymore. We keep `animRef` to preserve the public ref shape
-  // in case future subcomponents want to coordinate frames.
-  useEffect(() => {
-    return () => {
-      if (animRef.current) cancelAnimationFrame(animRef.current);
-    };
-  }, []);
+  // (Legacy canvas animation loop removed: IsometricMap owns its own rAF loop.)
 
   // ── title blink ──────────────────────────────────────────────────────────────
   useEffect(() => {

@@ -195,7 +195,15 @@ export async function GET() {
       // The InsForge filter builder isn't a plain Promise until awaited, so
       // wrap the call in an async IIFE and swallow any error.
       void (async () => {
-        try { await client.database.from('observatory_logs').insert(rows); } catch { /* ignore */ }
+        try { await client.database.from('observatory_logs').insert(rows); }
+        catch (err) {
+          // Best-effort telemetry: surface the error only in development so
+          // missing tables / RLS policies are easy to diagnose locally without
+          // spamming production logs.
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('[health] observatory_logs insert failed:', err);
+          }
+        }
       })();
     }
   } catch {

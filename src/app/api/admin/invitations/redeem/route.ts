@@ -58,33 +58,28 @@ export async function POST(request: Request) {
 
     const invitation = invitations[0] as { id: string; rol: string };
 
-    // Try to create auth account
-    let authSuccess = false;
+    // Try to create the auth account, then ALWAYS verify the password by
+    // signing in. This closes a subtle hole: if `signUp` is idempotent for an
+    // already-registered email (no error returned), we'd otherwise mark the
+    // invitation as used without checking the password, letting an attacker
+    // burn valid codes without successful authentication.
     const { error: signUpError } = await insforge.auth.signUp({
       email,
       password,
       name: nombre,
     });
 
-    if (signUpError) {
-      // User might already exist, try sign in
-      const { error: signInError } = await insforge.auth.signInWithPassword({
-        email,
-        password,
-      });
+    const { error: signInError } = await insforge.auth.signInWithPassword({
+      email,
+      password,
+    });
 
-      if (signInError) {
-        return NextResponse.json({ 
-          error: 'No se pudo crear o verificar la cuenta: ' + (signUpError.message || signInError.message) 
-        }, { status: 400 });
-      }
-      authSuccess = true;
-    } else {
-      authSuccess = true;
-    }
-
-    if (!authSuccess) {
-      return NextResponse.json({ error: 'Error al crear cuenta.' }, { status: 500 });
+    if (signInError) {
+      const message = signUpError?.message || signInError.message || 'Credenciales inválidas.';
+      return NextResponse.json(
+        { error: 'No se pudo verificar la cuenta: ' + message },
+        { status: 400 },
+      );
     }
 
     // Upsert admin_users row

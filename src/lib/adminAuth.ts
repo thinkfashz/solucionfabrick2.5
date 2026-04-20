@@ -125,3 +125,15 @@ export async function decodeSession(value: string): Promise<AdminSessionPayload 
     return null;
   }
 }
+
+/**
+ * Returns true if the current request carries a valid HMAC-signed admin_session cookie.
+ * Used in server components / layouts to gate admin access.
+ */
+export async function isAdminSession(): Promise<boolean> {
+  const { cookies } = await import('next/headers');
+  const adminSession = (await cookies()).get('admin_session')?.value;
+  if (!adminSession) return false;
+  const payload = await decodeSession(adminSession).catch(() => null);
+  return payload !== null;
+}

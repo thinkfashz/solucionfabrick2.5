@@ -91,8 +91,17 @@ export async function POST(request: NextRequest) {
     }
 
     // Meta returns { images: { <filename>: { hash, url, ... } } }
-    const images = metaJson.images as Record<string, { hash: string; url: string }>;
-    const imageData = Object.values(images)[0];
+    const images = metaJson.images as unknown;
+
+    if (!images || typeof images !== 'object' || Array.isArray(images)) {
+      return NextResponse.json(
+        { error: 'Meta no retornó datos de imagen válidos.' },
+        { status: 502 }
+      );
+    }
+
+    const imageEntries = Object.values(images as Record<string, { hash?: string; url?: string }>);
+    const imageData = imageEntries[0];
 
     if (!imageData?.hash) {
       return NextResponse.json({ error: 'Meta no retornó un hash de imagen.' }, { status: 502 });

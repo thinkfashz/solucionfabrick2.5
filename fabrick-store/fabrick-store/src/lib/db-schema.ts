@@ -1,11 +1,14 @@
--- InsForge database schema for fabrick-store
--- Column names use English to match the application query layer.
-
+/**
+ * Canonical InsForge database schema for fabrick-store.
+ * Imported by /api/setup-db so there is a single source of truth
+ * shared between the migration file and the runtime setup endpoint.
+ */
+export const DB_SCHEMA_SQL = `
 -- ----------------------------------------------------------------
 -- products
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS products (
-  id                  UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
+  id                  UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
   name                VARCHAR(255) NOT NULL,
   description         TEXT,
   price               INTEGER      NOT NULL,
@@ -26,7 +29,7 @@ CREATE TABLE IF NOT EXISTS products (
 -- orders
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS orders (
-  id               UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
+  id               UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
   customer_name    VARCHAR(255),
   customer_email   VARCHAR(255),
   customer_phone   VARCHAR(20),
@@ -49,12 +52,12 @@ CREATE TABLE IF NOT EXISTS orders (
 -- order_items
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS order_items (
-  id           UUID    DEFAULT gen_random_uuid() PRIMARY KEY,
-  order_id     UUID    NOT NULL REFERENCES orders(id)   ON DELETE CASCADE,
-  product_id   UUID    NOT NULL REFERENCES products(id) ON DELETE CASCADE,
-  product_name VARCHAR(255),
-  quantity     INTEGER NOT NULL,
-  unit_price   INTEGER NOT NULL
+  id              UUID    DEFAULT gen_random_uuid() PRIMARY KEY,
+  order_id        UUID    NOT NULL REFERENCES orders(id) ON DELETE CASCADE,
+  product_id      UUID    NOT NULL REFERENCES products(id) ON DELETE CASCADE,
+  product_name    VARCHAR(255),
+  quantity        INTEGER NOT NULL,
+  unit_price      INTEGER NOT NULL
 );
 
 -- ----------------------------------------------------------------
@@ -74,7 +77,7 @@ CREATE TABLE IF NOT EXISTS deliveries (
 -- admin_users
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS admin_users (
-  id         UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
+  id         UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
   email      VARCHAR(255) UNIQUE NOT NULL,
   name       VARCHAR(255),
   role       VARCHAR(50)  DEFAULT 'admin',
@@ -85,8 +88,8 @@ CREATE TABLE IF NOT EXISTS admin_users (
 -- payment_webhooks
 -- ----------------------------------------------------------------
 CREATE TABLE IF NOT EXISTS payment_webhooks (
-  id               UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
-  idempotency_key  TEXT         UNIQUE NOT NULL,
+  id               UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  idempotency_key  TEXT        UNIQUE NOT NULL,
   event_type       VARCHAR(100),
   order_id         TEXT,
   payment_id       TEXT,
@@ -109,7 +112,8 @@ $$ LANGUAGE plpgsql;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger WHERE tgname = 'trg_products_updated_at'
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'trg_products_updated_at'
   ) THEN
     CREATE TRIGGER trg_products_updated_at
       BEFORE UPDATE ON products
@@ -121,7 +125,8 @@ $$;
 DO $$
 BEGIN
   IF NOT EXISTS (
-    SELECT 1 FROM pg_trigger WHERE tgname = 'trg_orders_updated_at'
+    SELECT 1 FROM pg_trigger
+    WHERE tgname = 'trg_orders_updated_at'
   ) THEN
     CREATE TRIGGER trg_orders_updated_at
       BEFORE UPDATE ON orders
@@ -129,3 +134,4 @@ BEGIN
   END IF;
 END;
 $$;
+`;

@@ -1,3 +1,4 @@
+import { timingSafeEqual } from 'crypto';
 import { NextRequest, NextResponse } from 'next/server';
 
 const META_API_VERSION = 'v20.0';
@@ -46,10 +47,38 @@ async function metaPost(path: string, body: Record<string, unknown>, accessToken
   return json as Record<string, unknown>;
 }
 
+function isAuthorizedMetaRequest(requestSecret: string | null, configuredSecret: string) {
+  if (!requestSecret) {
+    return false;
+  }
+
+  const requestBuffer = Buffer.from(requestSecret, 'utf8');
+  const configuredBuffer = Buffer.from(configuredSecret, 'utf8');
+
+  if (requestBuffer.length !== configuredBuffer.length) {
+    return false;
+  }
+
+  return timingSafeEqual(requestBuffer, configuredBuffer);
+}
+
 export async function POST(request: NextRequest) {
   const accessToken = process.env.META_ACCESS_TOKEN;
   const adAccountId = process.env.META_AD_ACCOUNT_ID;
   const pageId = process.env.META_PAGE_ID;
+  const adminSecret = process.env.META_ADMIN_SECRET;
+
+  if (!adminSecret) {
+    return NextResponse.json(
+      { error: 'Variable META_ADMIN_SECRET no configurada.' },
+      { status: 503 }
+    );
+  }
+
+  const requestSecret = request.headers.get('x-meta-admin-secret');
+  if (!isAuthorizedMetaRequest(requestSecret, adminSecret)) {
+    return NextResponse.json({ error: 'No autorizado.' }, { status: 401 });
+  }
 
   if (!accessToken || !adAccountId) {
     return NextResponse.json(

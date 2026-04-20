@@ -25,7 +25,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
     >
       <div
         className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${
-          checked ? 'bg-[#c9a96e]' : 'bg-zinc-700'
+          checked ? 'bg-[#facc15]' : 'bg-zinc-700'
         }`}
       >
         <span
@@ -45,7 +45,7 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
     <div
       className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl text-sm font-medium shadow-xl border ${
         type === 'success'
-          ? 'bg-zinc-900 border-[#c9a96e]/40 text-[#c9a96e]'
+          ? 'bg-zinc-900 border-[#facc15]/40 text-[#facc15]'
           : 'bg-zinc-900 border-red-500/40 text-red-400'
       }`}
     >
@@ -59,7 +59,7 @@ function Field({ label, children, required }: { label: string; children: React.R
   return (
     <div className="flex flex-col gap-2">
       <label className="text-xs tracking-widest uppercase text-zinc-500">
-        {label}{required && <span className="text-[#c9a96e] ml-1">*</span>}
+        {label}{required && <span className="text-[#facc15] ml-1">*</span>}
       </label>
       {children}
     </div>
@@ -67,7 +67,7 @@ function Field({ label, children, required }: { label: string; children: React.R
 }
 
 const inputClass =
-  'bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-[#c9a96e]/50 transition-colors';
+  'bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-[#facc15]/50 transition-colors';
 
 /* ════════════════════════════════════════════════
    PROPS
@@ -398,7 +398,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
             type="submit"
             disabled={saving || uploading}
             className="w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-            style={{ background: '#c9a96e', color: '#000' }}
+            style={{ background: '#facc15', color: '#000' }}
           >
             {saving ? 'Guardando…' : mode === 'create' ? 'Crear Producto' : 'Guardar Cambios'}
           </button>

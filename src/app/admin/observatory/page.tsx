@@ -7,7 +7,7 @@ import { insforge } from '@/lib/insforge';
 
 // ─── types ────────────────────────────────────────────────────────────────────
 
-type NodeStatus = 'online' | 'slow' | 'offline' | 'unknown';
+type NodeStatus = 'online' | 'slow' | 'offline' | 'unknown' | 'unconfigured';
 
 type NodeId =
   | 'insforge'
@@ -35,8 +35,8 @@ interface Metrics {
 }
 
 interface HealthApiResponse {
-  services: Record<string, { status: NodeStatus; latency: number }>;
-  metrics: { avgLatency: number; uptime: number; offlineServices: number };
+  services: Record<string, { status: NodeStatus; latency: number; note?: string }>;
+  metrics: { avgLatency: number; uptime: number; offlineServices: number; unconfiguredServices?: number };
 }
 
 // ─── graph config ─────────────────────────────────────────────────────────────
@@ -79,11 +79,29 @@ const DEFAULT_STATUSES = Object.fromEntries(
 // ─── color helpers ────────────────────────────────────────────────────────────
 
 const STATUS_COLOR: Record<NodeStatus, string> = {
-  online:  '#00ff41',
-  slow:    '#ffcc00',
-  offline: '#ff3333',
-  unknown: '#4a5568',
+  online:       '#facc15',
+  slow:         '#f59e0b',
+  offline:      '#ff3333',
+  unknown:      '#4a5568',
+  unconfigured: '#525252',
 };
+
+const STATUS_LABEL: Record<NodeStatus, string> = {
+  online:       'ONLINE',
+  slow:         'LENTO',
+  offline:      'OFFLINE',
+  unknown:      '···',
+  unconfigured: 'NO CONFIG.',
+};
+
+/** Approximate signal strength (0-100) per service for the progress bar view. */
+function statusToSignal(status: NodeStatus, latency: number): number {
+  if (status === 'online') return latency > 0 ? Math.max(30, 100 - Math.min(70, latency / 10)) : 95;
+  if (status === 'slow') return 55;
+  if (status === 'offline') return 8;
+  if (status === 'unconfigured') return 0;
+  return 20;
+}
 
 function hex2rgba(hex: string, alpha: number): string {
   const v = parseInt(hex.replace('#', ''), 16);
@@ -130,7 +148,7 @@ function drawNetworkFrame(
     const color =
       as === 'offline' || bs === 'offline' ? '#ff3333' :
       as === 'slow'    || bs === 'slow'    ? '#ffcc00' :
-      '#00ff41';
+      '#facc15';
 
     const from = pos[a];
     const to   = pos[b];
@@ -194,7 +212,7 @@ function drawNetworkFrame(
     }
 
     // Label below node
-    ctx.fillStyle = '#00cc33';
+    ctx.fillStyle = '#eab308';
     ctx.font = `${n.isCenter ? 10 : 8}px monospace`;
     ctx.textAlign = 'center';
     ctx.textBaseline = 'top';
@@ -227,10 +245,19 @@ export default function ObservatoryPage() {
 
   // React state (UI)
   const [statuses,    setStatuses]    = useState<Record<NodeId, NodeStatus>>({ ...DEFAULT_STATUSES });
+  const [latencies,   setLatencies]   = useState<Record<NodeId, number>>({} as Record<NodeId, number>);
+  const [notes,       setNotes]       = useState<Record<NodeId, string>>({} as Record<NodeId, string>);
   const [events,      setEvents]      = useState<LiveEvent[]>([]);
   const [metrics,     setMetrics]     = useState<Metrics>({ rpm: 0, latency: 0, uptime: 100, errors: 0 });
   const [blink,       setBlink]       = useState(true);
   const [fullscreen,  setFullscreen]  = useState(false);
+  // 60-second activity timeline (BlackBerry-style bar). Each element is a
+  // bucket of 1 second and tracks whichever event is the most severe for that
+  // second so a single `error` dominates a bucket full of `ok` pings.
+  type ActivityLevel = 'idle' | 'ok' | 'slow' | 'error';
+  const [activity, setActivity] = useState<ActivityLevel[]>(() =>
+    Array.from({ length: 60 }, () => 'idle' as ActivityLevel),
+  );
 
   // ── add event to feed ────────────────────────────────────────────────────────
   const addEvent = useCallback((text: string, status: NodeStatus) => {
@@ -243,6 +270,32 @@ export default function ObservatoryPage() {
         status,
       },
     ]);
+    // Feed the 60s activity timeline. The newest bucket (index 59 = "now")
+    // accumulates the most severe level seen in the last second so a single
+    // error dominates even when surrounded by healthy pings.
+    const level: ActivityLevel =
+      status === 'online'  ? 'ok'
+      : status === 'slow'  ? 'slow'
+      : status === 'offline' ? 'error'
+      : 'idle';
+    setActivity((prev) => {
+      const next = prev.slice();
+      const current = next[next.length - 1];
+      const severity = { idle: 0, ok: 1, slow: 2, error: 3 } as const;
+      if (severity[level] >= severity[current]) {
+        next[next.length - 1] = level;
+      }
+      return next;
+    });
+  }, []);
+
+  // Shift the activity buffer one bucket to the left every second (scrolling
+  // right-to-left like the BlackBerry signal history).
+  useEffect(() => {
+    const id = setInterval(() => {
+      setActivity((prev) => [...prev.slice(1), 'idle']);
+    }, 1000);
+    return () => clearInterval(id);
   }, []);
 
   // ── health check (runs immediately + every 30 s) ─────────────────────────────
@@ -256,16 +309,27 @@ export default function ObservatoryPage() {
       const data: HealthApiResponse = await res.json();
 
       const next: Record<NodeId, NodeStatus> = { ...statusRef.current };
+      const nextLat: Record<NodeId, number> = {} as Record<NodeId, number>;
+      const nextNote: Record<NodeId, string> = {} as Record<NodeId, string>;
       for (const [id, svc] of Object.entries(data.services)) {
         if (id in next) {
           next[id as NodeId] = svc.status;
-          const latStr = svc.latency > 0 ? `${svc.latency}ms` : 'timeout';
+          nextLat[id as NodeId] = svc.latency;
+          if (svc.note) nextNote[id as NodeId] = svc.note;
+          const latStr =
+            svc.status === 'unconfigured'
+              ? (svc.note ?? 'sin credenciales')
+              : svc.latency > 0
+                ? `${svc.latency}ms`
+                : 'timeout';
           addEvent(`Ping ${id.toUpperCase()} · ${latStr}`, svc.status);
         }
       }
 
       statusRef.current = next;
       setStatuses({ ...next });
+      setLatencies((prev) => ({ ...prev, ...nextLat }));
+      setNotes((prev) => ({ ...prev, ...nextNote }));
       setMetrics((prev) => ({
         rpm:     prev.rpm,
         latency: data.metrics.avgLatency,
@@ -290,6 +354,9 @@ export default function ObservatoryPage() {
           insforge.realtime.subscribe('products'),
           insforge.realtime.subscribe('orders'),
           insforge.realtime.subscribe('deliveries'),
+          // Streams every ping the health endpoint writes so multiple admin
+          // tabs share the same live feed without each one polling /api/admin/health.
+          insforge.realtime.subscribe('observatory_logs').catch(() => {}),
         ]);
 
         const mkHandler = (table: string, action: string) => () => {
@@ -307,6 +374,24 @@ export default function ObservatoryPage() {
         insforge.realtime.on('UPDATE_order',     mkHandler('orders',     'UPDATE'));
         insforge.realtime.on('INSERT_delivery',  mkHandler('deliveries', 'INSERT'));
         insforge.realtime.on('UPDATE_delivery',  mkHandler('deliveries', 'UPDATE'));
+
+        // Stream health pings written by /api/admin/health (observatory_logs).
+        // Use type assertion — the SDK types don't know about this custom table.
+        const rt = insforge.realtime as unknown as { on: (evt: string, cb: (p: unknown) => void) => void };
+        rt.on('INSERT_observatory_log', (payload: unknown) => {
+          if (disposed) return;
+          const row = (payload && typeof payload === 'object' && 'record' in payload
+            ? (payload as { record?: { servicio?: string; mensaje?: string; status?: string } }).record
+            : undefined) ?? (payload as { servicio?: string; mensaje?: string; status?: string });
+          const svc = row?.servicio ?? '?';
+          const msg = row?.mensaje ?? 'ping';
+          const status: NodeStatus =
+            row?.status === 'ok'  ? 'online'
+            : row?.status === 'slow' ? 'slow'
+            : row?.status === 'error' ? 'offline'
+            : 'unknown';
+          addEvent(`${svc.toUpperCase()} · ${msg}`, status);
+        });
       } catch (err) {
         console.error('[Observatory] realtime connect error:', err);
       }
@@ -318,6 +403,7 @@ export default function ObservatoryPage() {
         insforge.realtime.unsubscribe('products');
         insforge.realtime.unsubscribe('orders');
         insforge.realtime.unsubscribe('deliveries');
+        try { insforge.realtime.unsubscribe('observatory_logs'); } catch { /* ignore */ }
         insforge.realtime.disconnect();
       } catch (err) {
         console.error('[Observatory] realtime cleanup error:', err);
@@ -376,7 +462,7 @@ export default function ObservatoryPage() {
         lastRain = t;
         rainCtx.fillStyle = 'rgba(0,0,0,0.06)';
         rainCtx.fillRect(0, 0, rain.width, rain.height);
-        rainCtx.fillStyle = '#00ff41';
+        rainCtx.fillStyle = '#facc15';
         rainCtx.font = `${CS}px monospace`;
         const cols = rainCols.current;
         for (let i = 0; i < cols.length; i++) {
@@ -462,26 +548,37 @@ export default function ObservatoryPage() {
     >
       {/* ── top bar ─────────────────────────────────────────────────────────── */}
       <div
-        className="relative z-10 flex shrink-0 items-center gap-3 px-4 py-2.5"
-        style={{ borderBottom: '1px solid rgba(0,255,65,0.12)', background: 'rgba(0,0,0,0.96)' }}
+        className="relative z-10 flex shrink-0 items-center gap-2 px-3 py-2 sm:gap-3 sm:px-4 sm:py-2.5"
+        style={{ borderBottom: '1px solid rgba(250,204,21,0.12)', background: 'rgba(0,0,0,0.96)' }}
       >
         {/* Close */}
         <button
           onClick={() => router.push('/admin')}
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/5"
-          style={{ border: '1px solid rgba(0,255,65,0.3)', color: '#00ff41' }}
+          style={{ border: '1px solid rgba(250,204,21,0.3)', color: '#facc15' }}
           title="Volver al admin"
         >
           <X className="h-3.5 w-3.5" />
         </button>
 
-        {/* Title */}
-        <span
-          className="text-sm font-bold uppercase tracking-[0.3em] transition-opacity duration-300"
-          style={{ color: '#00ff41', opacity: blink ? 1 : 0.4 }}
-        >
-          ◈ FABRICK LIVE NETWORK
-        </span>
+        {/* Logo + Title */}
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-yellow-400 p-1">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo-soluciones-fabrick-monocromo-claro.svg"
+              alt="Fabrick"
+              className="h-auto w-full"
+            />
+          </span>
+          <span
+            className="truncate text-[11px] font-bold uppercase tracking-[0.25em] transition-opacity duration-300 sm:text-sm sm:tracking-[0.3em]"
+            style={{ color: '#facc15', opacity: blink ? 1 : 0.4 }}
+          >
+            <span className="sm:hidden">FABRICK NET</span>
+            <span className="hidden sm:inline">◈ FABRICK LIVE NETWORK</span>
+          </span>
+        </div>
 
         <div className="flex-1" />
 
@@ -491,14 +588,14 @@ export default function ObservatoryPage() {
             <div
               key={label}
               className="hidden sm:block rounded px-3 py-1 text-center"
-              style={{ border: '1px solid rgba(0,255,65,0.18)', background: 'rgba(0,255,65,0.04)' }}
+              style={{ border: '1px solid rgba(250,204,21,0.18)', background: 'rgba(250,204,21,0.04)' }}
             >
-              <p className="text-[8px] uppercase tracking-[0.2em]" style={{ color: '#00cc33' }}>
+              <p className="text-[8px] uppercase tracking-[0.2em]" style={{ color: '#eab308' }}>
                 {label}
               </p>
               <p
                 className="text-sm font-bold leading-tight"
-                style={{ color: warn ? '#ff3333' : '#00ff41' }}
+                style={{ color: warn ? '#ff3333' : '#facc15' }}
               >
                 {val}
               </p>
@@ -510,7 +607,7 @@ export default function ObservatoryPage() {
         <button
           onClick={toggleFS}
           className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full transition-colors hover:bg-white/5"
-          style={{ border: '1px solid rgba(0,255,65,0.3)', color: '#00ff41' }}
+          style={{ border: '1px solid rgba(250,204,21,0.3)', color: '#facc15' }}
           title="Pantalla completa (F)"
         >
           {fullscreen ? <Minimize2 className="h-3.5 w-3.5" /> : <Maximize2 className="h-3.5 w-3.5" />}
@@ -518,10 +615,109 @@ export default function ObservatoryPage() {
       </div>
 
       {/* ── main body ───────────────────────────────────────────────────────── */}
-      <div className="relative flex flex-1 overflow-hidden">
+      <div className="relative flex flex-1 flex-col overflow-hidden md:flex-row">
 
-        {/* Graph canvas area */}
-        <div className="relative flex-1 overflow-hidden">
+        {/* ── MOBILE VIEW: BlackBerry-style signal bars per service ── */}
+        <div className="flex flex-1 flex-col overflow-y-auto p-4 md:hidden">
+          <div className="space-y-2.5">
+            {NODES.filter((n) => !n.isCenter).map((n) => {
+              const status = statuses[n.id];
+              const lat = latencies[n.id] ?? 0;
+              const note = notes[n.id];
+              const signal = statusToSignal(status, lat);
+              const color = STATUS_COLOR[status];
+              const subtitle =
+                status === 'unconfigured'
+                  ? (note ?? 'Credenciales pendientes')
+                  : status === 'offline'
+                    ? (note ?? 'Sin conexión')
+                    : lat > 0
+                      ? `${lat} ms`
+                      : status === 'unknown' ? 'Comprobando…' : 'Estable';
+              return (
+                <div
+                  key={n.id}
+                  className="rounded-xl px-3 py-2.5"
+                  style={{
+                    border: `1px solid ${hex2rgba(color, 0.25)}`,
+                    background: `linear-gradient(90deg, ${hex2rgba(color, 0.05)}, rgba(0,0,0,0.4))`,
+                  }}
+                >
+                  <div className="mb-1.5 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <span
+                        className="h-1.5 w-1.5 flex-shrink-0 rounded-full"
+                        style={{
+                          background: color,
+                          boxShadow: status === 'online' ? `0 0 6px ${color}` : 'none',
+                        }}
+                      />
+                      <span
+                        className="truncate text-[11px] font-bold uppercase tracking-[0.2em]"
+                        style={{ color: '#facc15' }}
+                      >
+                        {n.label}
+                      </span>
+                    </div>
+                    <span
+                      className="shrink-0 text-[9px] font-bold uppercase tracking-[0.18em]"
+                      style={{ color }}
+                    >
+                      {STATUS_LABEL[status]}
+                    </span>
+                  </div>
+                  {/* BlackBerry-style segmented loading bar */}
+                  <div className="flex h-2 w-full items-stretch gap-[3px]">
+                    {Array.from({ length: 12 }).map((_, idx) => {
+                      const filled = idx / 12 * 100 < signal;
+                      return (
+                        <div
+                          key={idx}
+                          className="flex-1 rounded-[2px]"
+                          style={{
+                            background: filled ? color : 'rgba(255,255,255,0.05)',
+                            opacity: filled ? 1 : 0.5,
+                          }}
+                        />
+                      );
+                    })}
+                  </div>
+                  <p className="mt-1.5 text-[9.5px] uppercase tracking-[0.22em]" style={{ color: hex2rgba(color, 0.75) }}>
+                    {subtitle}
+                  </p>
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Live events — compact on mobile */}
+          <div className="mt-5 rounded-xl border border-yellow-400/15 bg-black/60 p-3">
+            <p className="mb-2 text-[9px] font-bold uppercase tracking-[0.3em]" style={{ color: '#eab308' }}>
+              ◈ Live events
+            </p>
+            <div
+              className="max-h-52 overflow-y-auto space-y-1"
+              style={{ scrollbarWidth: 'none' }}
+            >
+              {events.length === 0 ? (
+                <p className="text-[11px]" style={{ color: 'rgba(250,204,21,0.3)' }}>
+                  Conectando al sistema…
+                </p>
+              ) : (
+                events.slice(-20).map((ev) => (
+                  <div key={ev.id} className="flex items-start gap-2" style={{ fontSize: 10, lineHeight: '1.7' }}>
+                    <span className="mt-px shrink-0" style={{ color: STATUS_COLOR[ev.status] }}>●</span>
+                    <span className="shrink-0" style={{ color: 'rgba(250,204,21,0.45)' }}>{ev.ts}</span>
+                    <span style={{ color: '#eab308', wordBreak: 'break-word' }}>{ev.text}</span>
+                  </div>
+                ))
+              )}
+            </div>
+          </div>
+        </div>
+
+        {/* ── DESKTOP VIEW: canvas graph + events panel ── */}
+        <div className="relative hidden flex-1 overflow-hidden md:block">
           {/* Matrix rain background */}
           <canvas
             ref={rainRef}
@@ -535,22 +731,22 @@ export default function ObservatoryPage() {
           />
         </div>
 
-        {/* Live events panel */}
+        {/* Live events panel (desktop) */}
         <div
-          className="relative z-10 flex w-72 shrink-0 flex-col overflow-hidden"
+          className="relative z-10 hidden w-72 shrink-0 flex-col overflow-hidden md:flex"
           style={{
-            borderLeft: '1px solid rgba(0,255,65,0.12)',
-            background: 'rgba(0,4,0,0.94)',
+            borderLeft: '1px solid rgba(250,204,21,0.12)',
+            background: 'rgba(0,0,0,0.94)',
           }}
         >
           {/* Panel header */}
           <div
             className="shrink-0 px-4 py-2.5"
-            style={{ borderBottom: '1px solid rgba(0,255,65,0.12)' }}
+            style={{ borderBottom: '1px solid rgba(250,204,21,0.12)' }}
           >
             <p
               className="text-[9px] font-bold uppercase tracking-[0.3em]"
-              style={{ color: '#00cc33' }}
+              style={{ color: '#eab308' }}
             >
               ◈ LIVE EVENTS
             </p>
@@ -563,7 +759,7 @@ export default function ObservatoryPage() {
             style={{ scrollbarWidth: 'none' }}
           >
             {events.length === 0 ? (
-              <p className="text-xs" style={{ color: 'rgba(0,255,65,0.3)' }}>
+              <p className="text-xs" style={{ color: 'rgba(250,204,21,0.3)' }}>
                 Conectando al sistema…
               </p>
             ) : (
@@ -579,10 +775,10 @@ export default function ObservatoryPage() {
                   >
                     ●
                   </span>
-                  <span className="shrink-0" style={{ color: 'rgba(0,255,65,0.45)' }}>
+                  <span className="shrink-0" style={{ color: 'rgba(250,204,21,0.45)' }}>
                     {ev.ts}
                   </span>
-                  <span style={{ color: '#00cc33', wordBreak: 'break-word' }}>{ev.text}</span>
+                  <span style={{ color: '#eab308', wordBreak: 'break-word' }}>{ev.text}</span>
                 </div>
               ))
             )}
@@ -591,27 +787,68 @@ export default function ObservatoryPage() {
           {/* Services status legend */}
           <div
             className="shrink-0 px-4 py-3 space-y-1.5"
-            style={{ borderTop: '1px solid rgba(0,255,65,0.12)' }}
+            style={{ borderTop: '1px solid rgba(250,204,21,0.12)' }}
           >
             <p
               className="mb-2 text-[8px] uppercase tracking-[0.3em]"
-              style={{ color: 'rgba(0,255,65,0.4)' }}
+              style={{ color: 'rgba(250,204,21,0.4)' }}
             >
               SERVICIOS
             </p>
             {NODES.filter((n) => !n.isCenter).map((n) => (
               <div key={n.id} className="flex items-center justify-between" style={{ fontSize: 10 }}>
-                <span style={{ color: '#00cc33' }}>{n.label}</span>
+                <span style={{ color: '#eab308' }}>{n.label}</span>
                 <span
                   className="font-bold"
                   style={{ color: STATUS_COLOR[statuses[n.id]] }}
                 >
-                  {statuses[n.id] === 'unknown' ? '···' : statuses[n.id].toUpperCase()}
+                  {STATUS_LABEL[statuses[n.id]]}
                 </span>
               </div>
             ))}
           </div>
         </div>
+      </div>
+
+      {/* ── BlackBerry-style activity bar (móvil) ───────────────────────────── */}
+      {/*
+        60-segment timeline of the last minute of activity. Each segment is a
+        single second; segment height encodes severity (error > slow > ok).
+        Auto-scrolls right-to-left: the rightmost bar is "now".
+      */}
+      <div
+        className="flex shrink-0 items-center gap-2 border-t px-3 py-2 md:hidden"
+        style={{ borderColor: 'rgba(250,204,21,0.12)', background: 'rgba(0,0,0,0.96)' }}
+        aria-label="Actividad de los últimos 60 segundos"
+      >
+        <span className="shrink-0 text-[8px] font-bold uppercase tracking-[0.3em]" style={{ color: '#eab308' }}>
+          60s
+        </span>
+        <div className="flex flex-1 items-end gap-[2px]" style={{ height: 28 }}>
+          {activity.map((lvl, idx) => {
+            const color =
+              lvl === 'error' ? '#ff3333'
+              : lvl === 'slow' ? '#facc15'
+              : lvl === 'ok'   ? '#00ff88'
+              : 'rgba(250,204,21,0.12)';
+            const height =
+              lvl === 'error' ? 26
+              : lvl === 'slow' ? 18
+              : lvl === 'ok'   ? 12
+              : 4;
+            return (
+              <div
+                key={idx}
+                className="flex-1 rounded-sm transition-all"
+                style={{ height, background: color, minWidth: 2, opacity: lvl === 'idle' ? 0.4 : 1 }}
+                title={`${60 - idx}s · ${lvl}`}
+              />
+            );
+          })}
+        </div>
+        <span className="shrink-0 text-[8px] font-bold uppercase tracking-[0.3em]" style={{ color: '#facc15' }}>
+          NOW
+        </span>
       </div>
     </div>
   );

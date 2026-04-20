@@ -36,7 +36,7 @@ function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean
       type="button"
       onClick={() => onChange(!checked)}
       className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
-        checked ? 'bg-[#c9a96e]' : 'bg-zinc-700'
+        checked ? 'bg-[#facc15]' : 'bg-zinc-700'
       }`}
     >
       <span
@@ -82,7 +82,7 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
     <div
       className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl text-sm font-medium shadow-xl border ${
         type === 'success'
-          ? 'bg-zinc-900 border-[#c9a96e]/40 text-[#c9a96e]'
+          ? 'bg-zinc-900 border-[#facc15]/40 text-[#facc15]'
           : 'bg-zinc-900 border-red-500/40 text-red-400'
       }`}
     >
@@ -220,7 +220,7 @@ export default function AdminProductosPage() {
           <button
             onClick={() => router.push('/admin/productos/nuevo')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
-            style={{ background: '#c9a96e', color: '#000' }}
+            style={{ background: '#facc15', color: '#000' }}
           >
             <Plus className="w-4 h-4" />
             Nuevo Producto
@@ -233,7 +233,7 @@ export default function AdminProductosPage() {
           {[
             { label: 'Catálogo total', value: productMetrics.total, tone: 'text-white' },
             { label: 'Productos activos', value: productMetrics.active, tone: 'text-emerald-400' },
-            { label: 'Destacados', value: productMetrics.featured, tone: 'text-[#c9a96e]' },
+            { label: 'Destacados', value: productMetrics.featured, tone: 'text-[#facc15]' },
             { label: 'Stock crítico', value: productMetrics.lowStock, tone: 'text-amber-400' },
           ].map((metric) => (
             <div key={metric.label} className="rounded-2xl border border-white/8 bg-zinc-950/70 p-4">
@@ -253,7 +253,7 @@ export default function AdminProductosPage() {
               placeholder="Buscar por nombre…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-zinc-900 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#c9a96e]/50 transition-colors"
+              className="w-full bg-zinc-900 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#facc15]/50 transition-colors"
             />
           </div>
 
@@ -268,7 +268,7 @@ export default function AdminProductosPage() {
                     ? 'text-black'
                     : 'bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:border-white/20'
                 }`}
-                style={activeCategory === cat ? { background: '#c9a96e' } : {}}
+                style={activeCategory === cat ? { background: '#facc15' } : {}}
               >
                 {cat}
               </button>
@@ -328,7 +328,7 @@ export default function AdminProductosPage() {
                       </span>
                     </td>
                     {/* Precio */}
-                    <td className="px-4 py-3 text-[#c9a96e] font-semibold">
+                    <td className="px-4 py-3 text-[#facc15] font-semibold">
                       {formatCLP(product.price)}
                     </td>
                     {/* Stock */}

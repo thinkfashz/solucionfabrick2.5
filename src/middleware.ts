@@ -49,11 +49,30 @@ async function isValidSession(value: string): Promise<boolean> {
 export async function middleware(request: NextRequest) {
   const isAdmin = request.nextUrl.pathname.startsWith('/admin')
   const isLogin = request.nextUrl.pathname === '/admin/login'
+  const isJoin = request.nextUrl.pathname === '/admin/unirse'
 
-  if (isAdmin && !isLogin) {
+  if (isAdmin && !isLogin && !isJoin) {
     const sessionCookie = request.cookies.get('admin_session')
     if (!sessionCookie?.value || !(await isValidSession(sessionCookie.value))) {
       return NextResponse.redirect(new URL('/admin/login', request.url))
+    }
+
+    // Check role restriction for /admin/equipo
+    if (request.nextUrl.pathname.startsWith('/admin/equipo')) {
+      try {
+        const dotIdx = sessionCookie.value.lastIndexOf('.')
+        if (dotIdx !== -1) {
+          const data = sessionCookie.value.slice(0, dotIdx)
+          const payloadBase64 = normalizeBase64Url(data)
+          const payloadStr = atob(payloadBase64)
+          const payload = JSON.parse(payloadStr) as { rol?: string }
+          if (payload.rol !== 'superadmin') {
+            return NextResponse.redirect(new URL('/admin?forbidden=team', request.url))
+          }
+        }
+      } catch {
+        return NextResponse.redirect(new URL('/admin/login', request.url))
+      }
     }
   }
 

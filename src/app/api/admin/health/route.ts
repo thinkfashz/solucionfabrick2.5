@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
+import { createClient } from '@insforge/sdk';
 
-type ServiceStatus = 'online' | 'slow' | 'offline';
+type ServiceStatus = 'online' | 'slow' | 'offline' | 'unconfigured';
 
 interface ServiceResult {
   status: ServiceStatus;
   latency: number;
+  /** Optional short note shown in the UI (e.g. "sin credenciales"). */
+  note?: string;
 }
 
 async function pingUrl(url: string, timeoutMs = 5000): Promise<ServiceResult> {
@@ -23,31 +26,129 @@ async function pingUrl(url: string, timeoutMs = 5000): Promise<ServiceResult> {
   }
 }
 
+/**
+ * Probe an authenticated API. If there is no credential configured the
+ * service is reported as `unconfigured` instead of `offline` so the admin
+ * panel can distinguish "never set up" from "set up but not responding".
+ */
+async function probeAuthenticated(
+  credential: string | undefined | null,
+  url: string | null,
+  timeoutMs = 5000,
+): Promise<ServiceResult> {
+  if (!credential) {
+    return { status: 'unconfigured', latency: 0, note: 'sin credenciales' };
+  }
+  if (!url) {
+    return { status: 'online', latency: 0, note: 'credencial presente' };
+  }
+  const start = Date.now();
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const res = await fetch(url, { signal: controller.signal, cache: 'no-store' });
+    clearTimeout(timer);
+    const latency = Date.now() - start;
+    if (res.ok) {
+      return { status: latency > 800 ? 'slow' : 'online', latency };
+    }
+    return { status: 'offline', latency, note: `HTTP ${res.status}` };
+  } catch {
+    clearTimeout(timer);
+    return { status: 'offline', latency: Date.now() - start, note: 'timeout' };
+  }
+}
+
+/**
+ * Load credentials for external integrations from the InsForge `integrations`
+ * table. Gracefully falls back to environment variables for callers that want
+ * to set them via Vercel/dotenv instead of the admin UI.
+ */
+async function loadIntegrationCredentials(): Promise<Record<string, Record<string, string>>> {
+  const out: Record<string, Record<string, string>> = {};
+
+  // Env-var fallbacks first so they always show up as "configured".
+  if (process.env.META_ACCESS_TOKEN) {
+    out.meta = {
+      access_token: process.env.META_ACCESS_TOKEN,
+      ad_account_id: process.env.META_AD_ACCOUNT_ID ?? '',
+    };
+  }
+  if (process.env.GOOGLE_ADS_ACCESS_TOKEN) {
+    out.google_ads = { access_token: process.env.GOOGLE_ADS_ACCESS_TOKEN };
+  }
+  if (process.env.TIKTOK_ADS_ACCESS_TOKEN) {
+    out.tiktok = { access_token: process.env.TIKTOK_ADS_ACCESS_TOKEN };
+  }
+
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
+    if (!baseUrl || !anonKey) return out;
+    const client = createClient({ baseUrl, anonKey });
+    const { data } = await client.database.from('integrations').select('provider, credentials');
+    if (Array.isArray(data)) {
+      for (const row of data as Array<{ provider?: string; credentials?: Record<string, string> }>) {
+        if (row.provider && row.credentials && typeof row.credentials === 'object') {
+          out[row.provider] = { ...out[row.provider], ...row.credentials };
+        }
+      }
+    }
+  } catch {
+    // Table may not exist yet; callers must handle the "unconfigured" status.
+  }
+  return out;
+}
+
 export async function GET() {
   const insforgeUrl =
     process.env.NEXT_PUBLIC_INSFORGE_URL ?? 'https://txv86efe.us-east.insforge.app';
 
-  const checks: { id: string; url: string }[] = [
+  const creds = await loadIntegrationCredentials();
+
+  const publicChecks: { id: string; url: string }[] = [
     { id: 'vercel',      url: 'https://solucionesfabrick.com' },
     { id: 'insforge',    url: insforgeUrl },
     { id: 'cloudflare',  url: 'https://cloudflare.com' },
     { id: 'github',      url: 'https://github.com' },
-    { id: 'meta',        url: 'https://graph.facebook.com' },
     { id: 'mercadopago', url: 'https://api.mercadopago.com' },
-    { id: 'tiktok',      url: 'https://ads.tiktok.com' },
-    { id: 'google',      url: 'https://ads.google.com' },
   ];
 
-  const settled = await Promise.allSettled(checks.map((c) => pingUrl(c.url)));
+  const publicResults = await Promise.allSettled(publicChecks.map((c) => pingUrl(c.url)));
 
   const services: Record<string, ServiceResult> = {};
-  for (let i = 0; i < checks.length; i++) {
-    const result = settled[i];
-    services[checks[i].id] =
+  for (let i = 0; i < publicChecks.length; i++) {
+    const result = publicResults[i];
+    services[publicChecks[i].id] =
       result.status === 'fulfilled'
         ? result.value
         : { status: 'offline', latency: -1 };
   }
+
+  // Authenticated probes — real connectivity depends on whether the user has
+  // supplied API credentials (either via env or the `integrations` table).
+  const metaToken = creds.meta?.access_token;
+  const googleToken = creds.google_ads?.access_token;
+  const tiktokToken = creds.tiktok?.access_token;
+
+  const [metaRes, googleRes, tiktokRes] = await Promise.all([
+    probeAuthenticated(
+      metaToken,
+      metaToken ? `https://graph.facebook.com/v20.0/me?access_token=${encodeURIComponent(metaToken)}` : null,
+    ),
+    probeAuthenticated(
+      googleToken,
+      null, // Google Ads API requires full OAuth; presence of a token is enough here.
+    ),
+    probeAuthenticated(
+      tiktokToken,
+      null, // TikTok Ads API requires advertiser_id + signed requests; presence of token is enough.
+    ),
+  ]);
+
+  services.meta = metaRes;
+  services.google = googleRes;
+  services.tiktok = tiktokRes;
 
   // USUARIOS ACTIVOS is a synthetic node representing the end-user/browser layer in the
   // network topology visualisation. It is not a checkable external service; we derive its
@@ -61,13 +162,63 @@ export async function GET() {
       ? Math.round(withLatency.reduce((sum, s) => sum + s.latency, 0) / withLatency.length)
       : 0;
   const offlineCount = allValues.filter((s) => s.status === 'offline').length;
-  const uptime =
-    Math.round(((allValues.length - offlineCount) / allValues.length) * 1000) / 10;
+  // Uptime only counts services that are actually configured — otherwise brand-new
+  // accounts would look permanently degraded.
+  const configuredCount = allValues.filter((s) => s.status !== 'unconfigured').length;
+  const uptime = configuredCount > 0
+    ? Math.round(((configuredCount - offlineCount) / configuredCount) * 1000) / 10
+    : 100;
+
+  // Persist per-service ping results to the `observatory_logs` table so the
+  // Observatory live feed (subscribed via InsForge realtime) and the admin
+  // dashboard alerts panel can stream them in real time. Failures are swallowed
+  // — the table might not exist yet and that shouldn't break the health check.
+  try {
+    const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
+    const anonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
+    if (baseUrl && anonKey) {
+      const client = createClient({ baseUrl, anonKey });
+      const rows = Object.entries(services).map(([id, svc]) => ({
+        tipo: 'ping',
+        servicio: id,
+        mensaje: svc.note
+          ? `${id.toUpperCase()} · ${svc.note}`
+          : `${id.toUpperCase()} · ${svc.latency > 0 ? `${svc.latency}ms` : svc.status}`,
+        latencia: svc.latency ?? 0,
+        status:
+          svc.status === 'online'  ? 'ok'
+          : svc.status === 'slow'  ? 'slow'
+          : svc.status === 'offline' ? 'error'
+          : 'unconfigured',
+      }));
+      // Fire-and-forget; never await long enough to block the response.
+      // The InsForge filter builder isn't a plain Promise until awaited, so
+      // wrap the call in an async IIFE and swallow any error.
+      void (async () => {
+        try { await client.database.from('observatory_logs').insert(rows); }
+        catch (err) {
+          // Best-effort telemetry: surface the error only in development so
+          // missing tables / RLS policies are easy to diagnose locally without
+          // spamming production logs.
+          if (process.env.NODE_ENV !== 'production') {
+            console.error('[health] observatory_logs insert failed:', err);
+          }
+        }
+      })();
+    }
+  } catch {
+    // ignore — logging is best-effort.
+  }
 
   return NextResponse.json(
     {
       services,
-      metrics: { avgLatency, uptime, offlineServices: offlineCount },
+      metrics: {
+        avgLatency,
+        uptime,
+        offlineServices: offlineCount,
+        unconfiguredServices: allValues.filter((s) => s.status === 'unconfigured').length,
+      },
       timestamp: new Date().toISOString(),
     },
     { headers: { 'Cache-Control': 'no-store' } },

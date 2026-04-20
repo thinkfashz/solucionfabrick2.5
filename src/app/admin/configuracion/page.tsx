@@ -2,7 +2,71 @@
 
 import { useEffect, useState } from 'react';
 import { insforge } from '@/lib/insforge';
-import { Save, Eye, EyeOff, Check, Info, UserCog } from 'lucide-react';
+import { Save, Eye, EyeOff, Check, Info, UserCog, KeyRound, Trash2, CheckCircle2 } from 'lucide-react';
+
+/* ── Integraciones de APIs externas ── */
+type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok';
+
+interface ProviderField {
+  key: string;
+  label: string;
+  placeholder?: string;
+  type?: 'text' | 'password';
+}
+
+interface ProviderDefinition {
+  id: ProviderKey;
+  label: string;
+  description: string;
+  fields: ProviderField[];
+}
+
+const PROVIDERS: ProviderDefinition[] = [
+  {
+    id: 'meta',
+    label: 'Meta · Facebook / Instagram Ads',
+    description: 'Token de acceso y ID de la cuenta publicitaria para leer campañas de Meta en tiempo real.',
+    fields: [
+      { key: 'access_token', label: 'Access token', type: 'password', placeholder: 'EAAG...' },
+      { key: 'ad_account_id', label: 'Ad account ID', placeholder: '1234567890' },
+      { key: 'page_id', label: 'Page ID (opcional)', placeholder: '1000000000' },
+    ],
+  },
+  {
+    id: 'google',
+    label: 'Google APIs',
+    description: 'Credenciales de Google para Login, Maps, Analytics u otros servicios OAuth.',
+    fields: [
+      { key: 'client_id', label: 'OAuth client ID', placeholder: 'xxxxx.apps.googleusercontent.com' },
+      { key: 'client_secret', label: 'OAuth client secret', type: 'password' },
+      { key: 'refresh_token', label: 'Refresh token', type: 'password' },
+    ],
+  },
+  {
+    id: 'google_ads',
+    label: 'Google Ads',
+    description: 'Developer token + Customer ID para consumir Google Ads API (requiere OAuth refresh token).',
+    fields: [
+      { key: 'developer_token', label: 'Developer token', type: 'password' },
+      { key: 'customer_id', label: 'Customer ID', placeholder: '123-456-7890' },
+      { key: 'login_customer_id', label: 'Login customer ID (MCC)', placeholder: '987-654-3210' },
+    ],
+  },
+  {
+    id: 'tiktok',
+    label: 'TikTok for Business · Ads',
+    description: 'Access token y Advertiser ID para TikTok Marketing API.',
+    fields: [
+      { key: 'access_token', label: 'Access token', type: 'password' },
+      { key: 'advertiser_id', label: 'Advertiser ID', placeholder: '7123456789012345678' },
+    ],
+  },
+];
+
+interface ProviderStatus {
+  credentials: Record<string, { set: boolean; preview: string }>;
+  updated_at?: string;
+}
 
 /* ── Input reutilizable ── */
 function Field({
@@ -109,6 +173,87 @@ export default function ConfiguracionPage() {
   /* ── Estado de la sesión actual del admin ── */
   const [adminEmail, setAdminEmail] = useState<string | null>(null);
   const [loadingAdmin, setLoadingAdmin] = useState(true);
+
+  /* ── Integraciones de APIs externas ── */
+  const [integrations, setIntegrations] = useState<Record<string, ProviderStatus>>({});
+  const [integrationInputs, setIntegrationInputs] = useState<Record<string, Record<string, string>>>({});
+  const [integrationMsg, setIntegrationMsg] = useState<Record<string, { text: string; type: 'success' | 'error' } | null>>({});
+  const [savingIntegration, setSavingIntegration] = useState<string | null>(null);
+  const [loadingIntegrations, setLoadingIntegrations] = useState(true);
+  const [integrationsError, setIntegrationsError] = useState<string | null>(null);
+
+  async function loadIntegrations() {
+    setLoadingIntegrations(true);
+    setIntegrationsError(null);
+    try {
+      const res = await fetch('/api/admin/integrations', { cache: 'no-store' });
+      const json = await res.json();
+      if (!res.ok) {
+        setIntegrationsError(json.hint ?? json.error ?? 'No se pudieron leer las integraciones.');
+        return;
+      }
+      setIntegrations(json.providers ?? {});
+    } catch {
+      setIntegrationsError('Error de red al consultar integraciones.');
+    } finally {
+      setLoadingIntegrations(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadIntegrations();
+  }, []);
+
+  async function handleSaveIntegration(provider: ProviderKey) {
+    const credentials = integrationInputs[provider] ?? {};
+    const hasInput = Object.values(credentials).some((v) => v && v.trim().length > 0);
+    if (!hasInput) {
+      setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: 'Ingresa al menos un campo para guardar.', type: 'error' } }));
+      return;
+    }
+    setSavingIntegration(provider);
+    setIntegrationMsg((prev) => ({ ...prev, [provider]: null }));
+    try {
+      const res = await fetch('/api/admin/integrations', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, credentials }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: json.hint ?? json.error ?? 'Error al guardar.', type: 'error' } }));
+        return;
+      }
+      setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: 'Credenciales guardadas en InsForge.', type: 'success' } }));
+      setIntegrationInputs((prev) => ({ ...prev, [provider]: {} }));
+      await loadIntegrations();
+    } catch {
+      setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: 'Error de red.', type: 'error' } }));
+    } finally {
+      setSavingIntegration(null);
+    }
+  }
+
+  async function handleDeleteIntegration(provider: ProviderKey) {
+    if (typeof window !== 'undefined' && !window.confirm(`¿Eliminar credenciales de ${provider.toUpperCase()}?`)) return;
+    setSavingIntegration(provider);
+    setIntegrationMsg((prev) => ({ ...prev, [provider]: null }));
+    try {
+      const res = await fetch(`/api/admin/integrations?provider=${encodeURIComponent(provider)}`, { method: 'DELETE' });
+      const json = await res.json();
+      if (!res.ok) {
+        setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: json.error ?? 'Error al eliminar.', type: 'error' } }));
+        return;
+      }
+      setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: 'Credenciales eliminadas.', type: 'success' } }));
+      setIntegrationInputs((prev) => ({ ...prev, [provider]: {} }));
+      await loadIntegrations();
+    } catch {
+      setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: 'Error de red.', type: 'error' } }));
+    } finally {
+      setSavingIntegration(null);
+    }
+  }
 
   useEffect(() => {
     async function loadAdminSession() {
@@ -268,11 +413,11 @@ export default function ConfiguracionPage() {
   return (
     <div>
       <div className="mb-8">
-        <h1 className="font-playfair text-4xl font-bold text-white">Configuración</h1>
-        <p className="text-zinc-400 text-sm mt-1">Gestiona los datos de tu negocio y credenciales de acceso.</p>
+        <h1 className="font-playfair text-3xl sm:text-4xl font-bold text-white">Configuración</h1>
+        <p className="text-zinc-400 text-sm mt-1">Datos del negocio, credenciales de acceso e integraciones con APIs externas.</p>
       </div>
 
-      <div className="flex flex-col gap-8 max-w-2xl">
+      <div className="flex flex-col gap-8 max-w-3xl">
         {/* ── Sesión actual del admin ── */}
         <div className="rounded-[2rem] border border-white/10 bg-zinc-950/80 p-8">
           <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 mb-4">Sesión actual</h2>
@@ -374,6 +519,123 @@ export default function ConfiguracionPage() {
             </div>
           </Section>
         </form>
+
+        {/* ── Integraciones de APIs externas ── */}
+        <div className="rounded-[2rem] border border-yellow-400/20 bg-[linear-gradient(180deg,rgba(24,24,27,0.9),rgba(0,0,0,0.9))] p-6 sm:p-8">
+          <div className="mb-5 flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-400/10 border border-yellow-400/30">
+              <KeyRound className="w-5 h-5 text-yellow-400" />
+            </div>
+            <div>
+              <h2 className="text-sm font-bold uppercase tracking-widest text-yellow-400">Integraciones externas</h2>
+              <p className="text-[11px] text-zinc-500 mt-0.5">
+                Las claves se guardan cifradas en InsForge (tabla <code className="px-1 rounded bg-zinc-900 text-zinc-300">integrations</code>) y se cargan automáticamente en cada sesión.
+              </p>
+            </div>
+          </div>
+
+          {integrationsError && (
+            <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-xs text-red-300">
+              {integrationsError}
+            </div>
+          )}
+
+          <div className="flex flex-col gap-5">
+            {PROVIDERS.map((prov) => {
+              const status = integrations[prov.id];
+              const inputs = integrationInputs[prov.id] ?? {};
+              const msg = integrationMsg[prov.id];
+              const isConfigured = status && Object.values(status.credentials).some((c) => c.set);
+              return (
+                <div key={prov.id} className="rounded-2xl border border-white/10 bg-black/40 p-4 sm:p-5">
+                  <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2">
+                        <p className="text-sm font-bold text-white">{prov.label}</p>
+                        <span
+                          className={`inline-flex items-center gap-1 rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${
+                            isConfigured
+                              ? 'border-green-500/30 bg-green-500/10 text-green-400'
+                              : 'border-zinc-700 bg-zinc-900 text-zinc-500'
+                          }`}
+                        >
+                          {isConfigured && <CheckCircle2 className="h-3 w-3" />}
+                          {isConfigured ? 'Conectado' : 'No configurado'}
+                        </span>
+                      </div>
+                      <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">{prov.description}</p>
+                      {status?.updated_at && (
+                        <p className="mt-1 text-[10px] text-zinc-600">
+                          Actualizado: {new Date(status.updated_at).toLocaleString('es-CL')}
+                        </p>
+                      )}
+                    </div>
+                    {isConfigured && (
+                      <button
+                        type="button"
+                        onClick={() => void handleDeleteIntegration(prov.id)}
+                        disabled={savingIntegration === prov.id}
+                        className="flex items-center gap-1.5 rounded-full border border-red-500/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400 transition hover:border-red-500/50 hover:bg-red-500/10 disabled:opacity-50 shrink-0"
+                      >
+                        <Trash2 className="h-3 w-3" />
+                        Eliminar
+                      </button>
+                    )}
+                  </div>
+
+                  <div className="grid gap-3 sm:grid-cols-2">
+                    {prov.fields.map((field) => {
+                      const existing = status?.credentials?.[field.key];
+                      return (
+                        <Field
+                          key={field.key}
+                          label={field.label}
+                          type={field.type ?? 'text'}
+                          value={inputs[field.key] ?? ''}
+                          onChange={(v) =>
+                            setIntegrationInputs((prev) => ({
+                              ...prev,
+                              [prov.id]: { ...(prev[prov.id] ?? {}), [field.key]: v },
+                            }))
+                          }
+                          placeholder={existing?.set ? existing.preview : (field.placeholder ?? '')}
+                          hint={existing?.set ? 'Valor actual oculto. Deja vacío para mantenerlo.' : undefined}
+                          disabled={loadingIntegrations || savingIntegration === prov.id}
+                        />
+                      );
+                    })}
+                  </div>
+
+                  {msg && <div className="mt-3"><Toast msg={msg.text} type={msg.type} /></div>}
+
+                  <div className="mt-4 flex justify-end">
+                    <button
+                      type="button"
+                      onClick={() => void handleSaveIntegration(prov.id)}
+                      disabled={savingIntegration === prov.id || loadingIntegrations}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-yellow-400 text-black text-[11px] font-bold uppercase tracking-widest hover:bg-yellow-300 transition-colors disabled:opacity-60"
+                    >
+                      {savingIntegration === prov.id ? (
+                        <>
+                          <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
+                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
+                          </svg>
+                          Guardando…
+                        </>
+                      ) : (
+                        <>
+                          <Save className="w-3.5 h-3.5" />
+                          Guardar
+                        </>
+                      )}
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
 
         {/* ── Cambiar contraseña ── */}
         <form onSubmit={pwdStep === 'email' ? handleSendCode : handleChangePassword}>

@@ -115,7 +115,7 @@ export default function AdminProyectosPage() {
     <div className="px-6 py-10 md:px-10">
       <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.35em] text-[#c9a96e]">Proyectos</p>
+          <p className="text-[10px] uppercase tracking-[0.35em] text-[#facc15]">Proyectos</p>
           <h1 className="mt-1 text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
             Gestión de obras
           </h1>
@@ -128,7 +128,7 @@ export default function AdminProyectosPage() {
         </div>
         <button
           onClick={() => setCreating(true)}
-          className="inline-flex items-center gap-2 rounded-xl bg-[#c9a96e] px-5 py-3 text-xs font-bold uppercase tracking-wider text-black transition hover:bg-[#d8bc84]"
+          className="inline-flex items-center gap-2 rounded-xl bg-[#facc15] px-5 py-3 text-xs font-bold uppercase tracking-wider text-black transition hover:bg-[#fde047]"
         >
           <Plus size={14} /> Nuevo proyecto
         </button>
@@ -180,7 +180,7 @@ export default function AdminProyectosPage() {
               <div className="flex flex-1 flex-col justify-between p-4">
                 <div>
                   <div className="mb-1 flex items-center gap-2">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-[#c9a96e]">{p.category}</p>
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-[#facc15]">{p.category}</p>
                     {p.featured ? <span className="text-[9px] text-yellow-400">★</span> : null}
                   </div>
                   <h3 className="text-sm font-bold uppercase leading-tight text-white">{p.title}</h3>
@@ -191,7 +191,7 @@ export default function AdminProyectosPage() {
                 <div className="mt-3 flex gap-2">
                   <button
                     onClick={() => setEditing(p)}
-                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/10 py-2 text-[10px] uppercase tracking-wider text-white/70 hover:border-[#c9a96e]/40 hover:text-white"
+                    className="inline-flex flex-1 items-center justify-center gap-1.5 rounded-lg border border-white/10 py-2 text-[10px] uppercase tracking-wider text-white/70 hover:border-[#facc15]/40 hover:text-white"
                   >
                     <Pencil size={11} /> Editar
                   </button>
@@ -236,7 +236,7 @@ export default function AdminProyectosPage() {
         <div
           className={`fixed bottom-6 right-6 z-50 rounded-xl border px-5 py-3 text-sm font-medium shadow-xl ${
             toast.type === 'success'
-              ? 'border-[#c9a96e]/40 bg-zinc-900 text-[#c9a96e]'
+              ? 'border-[#facc15]/40 bg-zinc-900 text-[#facc15]'
               : 'border-red-500/40 bg-zinc-900 text-red-400'
           }`}
         >
@@ -306,7 +306,7 @@ function ProjectForm({
               value={form.title}
               onChange={(e) => set('title', e.target.value)}
               required
-              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#c9a96e]/60"
+              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
             />
           </Field>
 
@@ -317,14 +317,14 @@ function ProjectForm({
                 onChange={(e) => set('location', e.target.value)}
                 required
                 placeholder="Comuna, Región"
-                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#c9a96e]/60"
+                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
               />
             </Field>
             <Field label="Categoría" required>
               <select
                 value={form.category}
                 onChange={(e) => set('category', e.target.value)}
-                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#c9a96e]/60"
+                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
               >
                 <option>Vivienda nueva</option>
                 <option>Remodelación</option>
@@ -342,7 +342,7 @@ function ProjectForm({
                 value={form.year}
                 onChange={(e) => set('year', Number(e.target.value))}
                 required
-                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#c9a96e]/60"
+                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
               />
             </Field>
             <Field label="Superficie (m²)" required>
@@ -351,7 +351,7 @@ function ProjectForm({
                 value={form.area_m2}
                 onChange={(e) => set('area_m2', Number(e.target.value))}
                 required
-                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#c9a96e]/60"
+                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
               />
             </Field>
             <Field label="Destacado">
@@ -360,7 +360,7 @@ function ProjectForm({
                 onClick={() => set('featured', !form.featured)}
                 className={`w-full rounded-xl border px-4 py-3 text-sm font-bold transition ${
                   form.featured
-                    ? 'border-[#c9a96e] bg-[#c9a96e]/15 text-[#c9a96e]'
+                    ? 'border-[#facc15] bg-[#facc15]/15 text-[#facc15]'
                     : 'border-white/10 bg-zinc-900 text-zinc-400 hover:border-white/20'
                 }`}
               >
@@ -375,7 +375,7 @@ function ProjectForm({
               onChange={(e) => set('summary', e.target.value)}
               required
               rows={2}
-              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#c9a96e]/60"
+              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
             />
           </Field>
 
@@ -385,7 +385,7 @@ function ProjectForm({
               onChange={(e) => set('description', e.target.value)}
               required
               rows={5}
-              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#c9a96e]/60"
+              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
             />
           </Field>
 
@@ -395,7 +395,7 @@ function ProjectForm({
                 value={(form.materials || []).join('\n')}
                 onChange={(e) => setList('materials', e.target.value)}
                 rows={6}
-                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#c9a96e]/60"
+                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
               />
             </Field>
             <Field label="Alcance ejecutado (uno por línea)">
@@ -403,7 +403,7 @@ function ProjectForm({
                 value={(form.scope || []).join('\n')}
                 onChange={(e) => setList('scope', e.target.value)}
                 rows={6}
-                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#c9a96e]/60"
+                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
               />
             </Field>
           </div>
@@ -413,7 +413,7 @@ function ProjectForm({
               value={(form.highlights || []).join('\n')}
               onChange={(e) => setList('highlights', e.target.value)}
               rows={4}
-              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#c9a96e]/60"
+              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
             />
           </Field>
         </div>
@@ -425,7 +425,7 @@ function ProjectForm({
               onChange={(e) => set('hero_image', e.target.value)}
               required
               placeholder="https://..."
-              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#c9a96e]/60"
+              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
             />
           </Field>
           {form.hero_image ? (
@@ -442,7 +442,7 @@ function ProjectForm({
               onChange={(e) => setList('gallery', e.target.value)}
               rows={4}
               placeholder="https://..."
-              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#c9a96e]/60"
+              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
             />
           </Field>
 
@@ -450,7 +450,7 @@ function ProjectForm({
             <button
               type="submit"
               disabled={saving}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#c9a96e] py-3 text-xs font-bold uppercase tracking-wider text-black transition hover:bg-[#d8bc84] disabled:opacity-60"
+              className="inline-flex items-center justify-center gap-2 rounded-xl bg-[#facc15] py-3 text-xs font-bold uppercase tracking-wider text-black transition hover:bg-[#fde047] disabled:opacity-60"
             >
               <Save size={14} /> {saving ? 'Guardando...' : 'Guardar proyecto'}
             </button>

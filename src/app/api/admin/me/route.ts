@@ -20,5 +20,6 @@ export async function GET(request: NextRequest) {
     authenticated: true,
     email: payload.email,
     exp: payload.exp,
+    rol: payload.rol ?? 'admin',
   });
 }

@@ -4,19 +4,62 @@ import { useEffect, useState, useCallback } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { insforge } from '@/lib/insforge';
-import {
-  deliveryStatusFromOrderStatus,
-  formatCLP,
-  normalizeOrderRecord,
-  ORDER_STATUS_LABELS,
-  orderStatusColor,
-  orderStatusLabel,
-  type OrderStatus,
-} from '@/lib/commerce';
 
-type Order = ReturnType<typeof normalizeOrderRecord>;
+type OrderStatus =
+  | 'pendiente'
+  | 'confirmado'
+  | 'en_preparacion'
+  | 'enviado'
+  | 'entregado'
+  | 'cancelado';
 
-const ALL_STATUSES = Object.keys(ORDER_STATUS_LABELS) as OrderStatus[];
+interface LineItem {
+  productoId: string | number;
+  nombre?: string;
+  cantidad: number;
+  precioUnitario: number;
+}
+
+interface Order {
+  id: string;
+  customer_name: string;
+  customer_email: string;
+  customer_phone?: string;
+  region: string;
+  shipping_address?: string;
+  items: LineItem[];
+  subtotal: number;
+  tax: number;
+  shipping_fee: number;
+  total: number;
+  currency: string;
+  status: OrderStatus;
+  created_at: string;
+}
+
+const STATUS_COLORS: Record<OrderStatus, string> = {
+  pendiente:      '#f59e0b',
+  confirmado:     '#3b82f6',
+  en_preparacion: '#f97316',
+  enviado:        '#8b5cf6',
+  entregado:      '#22c55e',
+  cancelado:      '#ef4444',
+};
+
+const STATUS_LABELS: Record<OrderStatus, string> = {
+  pendiente:      'Pendiente',
+  confirmado:     'Confirmado',
+  en_preparacion: 'En preparación',
+  enviado:        'Enviado',
+  entregado:      'Entregado',
+  cancelado:      'Cancelado',
+};
+
+const ALL_STATUSES = Object.keys(STATUS_LABELS) as OrderStatus[];
+
+function formatCLP(amount: number) {
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(amount);
+}
 
 export default function PedidoDetallePage() {
   const params  = useParams();
@@ -30,7 +73,6 @@ export default function PedidoDetallePage() {
   const [saving, setSaving]       = useState(false);
   const [saved, setSaved]         = useState(false);
   const [error, setError]         = useState<string | null>(null);
-  const [warning, setWarning]     = useState<string | null>(null);
 
   const fetchOrder = useCallback(async () => {
     if (!orderId) return;
@@ -41,7 +83,7 @@ export default function PedidoDetallePage() {
       .eq('id', orderId);
 
     if (!fetchErr && data && Array.isArray(data) && data.length > 0) {
-      const o = normalizeOrderRecord(data[0] as Record<string, unknown>);
+      const o = data[0] as Order;
       setOrder(o);
       setNewStatus(o.status);
     }
@@ -56,7 +98,6 @@ export default function PedidoDetallePage() {
     if (!order) return;
     setSaving(true);
     setError(null);
-    setWarning(null);
     setSaved(false);
 
     // 1. Update order status
@@ -71,35 +112,20 @@ export default function PedidoDetallePage() {
       return;
     }
 
-    // Reflect the new status immediately in the UI
-    setOrder((prev) => prev ? { ...prev, status: newStatus } : prev);
-
-    // 2. Upsert delivery record — only include notes/address when non-empty to avoid overwriting existing values
-    const deliveryBase = {
-      order_id:      order.id,
-      customer_name: order.customer_name,
-      status:        deliveryStatusFromOrderStatus(newStatus),
-      updated_at:    new Date().toISOString(),
-    };
-
+    // 2. Upsert delivery record
     const deliveryPayload = {
-      ...deliveryBase,
-      ...(order.shipping_address ? { address: order.shipping_address } : {}),
-      ...(notes.trim() ? { notes: notes.trim() } : {}),
+      order_id:       order.id,
+      customer_name:  order.customer_name,
+      address:        order.shipping_address ?? '',
+      status:         newStatus === 'entregado' ? 'entregado' : newStatus === 'enviado' ? 'en_camino' : 'pendiente',
+      notes:          notes.trim() || null,
+      updated_at:     new Date().toISOString(),
     };
 
-    const { data: existingDelivery, error: deliverySelectErr } = await insforge.database
+    const { data: existingDelivery } = await insforge.database
       .from('deliveries')
       .select('id')
       .eq('order_id', order.id);
-
-    if (deliverySelectErr) {
-      setWarning(`Estado actualizado, pero falló verificar entrega existente: ${deliverySelectErr.message}`);
-      setSaving(false);
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-      return;
-    }
 
     if (existingDelivery && Array.isArray(existingDelivery) && existingDelivery.length > 0) {
       const { error: deliveryUpdateErr } = await insforge.database
@@ -107,8 +133,9 @@ export default function PedidoDetallePage() {
         .update(deliveryPayload)
         .eq('order_id', order.id);
       if (deliveryUpdateErr) {
-        setWarning(`Estado actualizado, pero falló sincronizar entrega: ${deliveryUpdateErr.message}`);
+        setError(`Estado actualizado, pero falló actualizar entrega: ${deliveryUpdateErr.message}`);
         setSaving(false);
+        setOrder((prev) => prev ? { ...prev, status: newStatus } : prev);
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
         return;
@@ -116,16 +143,18 @@ export default function PedidoDetallePage() {
     } else {
       const { error: deliveryInsertErr } = await insforge.database
         .from('deliveries')
-        .insert([{ ...deliveryPayload, address: deliveryPayload.address ?? '', created_at: new Date().toISOString() }]);
+        .insert([{ ...deliveryPayload, created_at: new Date().toISOString() }]);
       if (deliveryInsertErr) {
-        setWarning(`Estado actualizado, pero falló crear registro de entrega: ${deliveryInsertErr.message}`);
+        setError(`Estado actualizado, pero falló crear entrega: ${deliveryInsertErr.message}`);
         setSaving(false);
+        setOrder((prev) => prev ? { ...prev, status: newStatus } : prev);
         setSaved(true);
         setTimeout(() => setSaved(false), 3000);
         return;
       }
     }
 
+    setOrder((prev) => prev ? { ...prev, status: newStatus } : prev);
     setSaved(true);
     setSaving(false);
     setTimeout(() => setSaved(false), 3000);
@@ -148,7 +177,7 @@ export default function PedidoDetallePage() {
     );
   }
 
-  const items = order.items;
+  const items: LineItem[] = Array.isArray(order.items) ? order.items : [];
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-zinc-950 to-black text-white">
@@ -171,11 +200,11 @@ export default function PedidoDetallePage() {
           <span
             className="inline-flex items-center rounded-full px-4 py-2 text-[10px] font-bold uppercase tracking-widest"
             style={{
-              background: `${orderStatusColor(order.status)}22`,
-              color: orderStatusColor(order.status),
+              background: `${STATUS_COLORS[order.status]}22`,
+              color: STATUS_COLORS[order.status],
             }}
           >
-            {orderStatusLabel(order.status)}
+            {STATUS_LABELS[order.status]}
           </span>
         </div>
       </div>
@@ -242,10 +271,10 @@ export default function PedidoDetallePage() {
                   <tbody>
                     {items.map((item, i) => (
                       <tr key={i} className="border-b border-white/5">
-                        <td className="px-6 py-3 text-zinc-200">{item.name}</td>
-                        <td className="px-6 py-3 text-center text-zinc-300">{item.quantity}</td>
-                        <td className="px-6 py-3 text-right text-zinc-300">{formatCLP(item.unitPrice)}</td>
-                        <td className="px-6 py-3 text-right font-semibold text-white">{formatCLP(item.subtotal)}</td>
+                        <td className="px-6 py-3 text-zinc-200">{item.nombre ?? `Producto ${item.productoId}`}</td>
+                        <td className="px-6 py-3 text-center text-zinc-300">{item.cantidad}</td>
+                        <td className="px-6 py-3 text-right text-zinc-300">{formatCLP(item.precioUnitario)}</td>
+                        <td className="px-6 py-3 text-right font-semibold text-white">{formatCLP(item.cantidad * item.precioUnitario)}</td>
                       </tr>
                     ))}
                   </tbody>
@@ -287,7 +316,7 @@ export default function PedidoDetallePage() {
                 className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-yellow-400/50"
               >
                 {ALL_STATUSES.map((s) => (
-                  <option key={s} value={s}>{ORDER_STATUS_LABELS[s]}</option>
+                  <option key={s} value={s}>{STATUS_LABELS[s]}</option>
                 ))}
               </select>
             </div>
@@ -308,10 +337,7 @@ export default function PedidoDetallePage() {
           {error && (
             <p className="mt-3 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-400">{error}</p>
           )}
-          {warning && (
-            <p className="mt-3 rounded-xl bg-yellow-500/10 px-4 py-3 text-sm text-yellow-400">{warning}</p>
-          )}
-          {saved && !warning && (
+          {saved && (
             <p className="mt-3 rounded-xl bg-green-500/10 px-4 py-3 text-sm text-green-400">
               Estado actualizado correctamente.
             </p>

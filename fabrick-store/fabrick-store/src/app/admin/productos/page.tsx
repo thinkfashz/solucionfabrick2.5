@@ -1,12 +1,8 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { insforge } from '@/lib/insforge';
-import { buildProductTagline, resolveCategoryName } from '@/lib/commerce';
-import { useCategories } from '@/hooks/useCategories';
 import { Pencil, Trash2, Plus, Search, Wifi, WifiOff } from 'lucide-react';
 
 /* ── Types ── */
@@ -25,21 +21,20 @@ interface AdminProduct {
 }
 
 /* ── Helpers ── */
+const CATEGORIES = ['Todos', 'Seguridad', 'Iluminación', 'Grifería', 'Revestimiento', 'Premium', 'Destacados'];
+
 function formatCLP(n: number) {
   return '$' + n.toLocaleString('es-CL') + ' CLP';
 }
 
 /* ── Toggle switch ── */
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) {
+function Toggle({ checked, onChange }: { checked: boolean; onChange: (v: boolean) => void }) {
   return (
     <button
       type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
       onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#facc15]/50 focus:ring-offset-2 focus:ring-offset-black ${
-        checked ? 'bg-[#facc15]' : 'bg-zinc-700'
+      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none ${
+        checked ? 'bg-[#c9a96e]' : 'bg-zinc-700'
       }`}
     >
       <span
@@ -85,7 +80,7 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
     <div
       className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl text-sm font-medium shadow-xl border ${
         type === 'success'
-          ? 'bg-zinc-900 border-[#facc15]/40 text-[#facc15]'
+          ? 'bg-zinc-900 border-[#c9a96e]/40 text-[#c9a96e]'
           : 'bg-zinc-900 border-red-500/40 text-red-400'
       }`}
     >
@@ -99,7 +94,6 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
 ════════════════════════════════════════════════ */
 export default function AdminProductosPage() {
   const router = useRouter();
-  const { categories, categoryMap } = useCategories();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [connected, setConnected] = useState(false);
@@ -183,28 +177,13 @@ export default function AdminProductosPage() {
     }
   }
 
-  const filterOptions = useMemo(() => {
-    return ['Todos', 'Destacados', 'Activos', 'Bajo stock', ...categories.map((category) => category.name)];
-  }, [categories]);
-
-  const productMetrics = useMemo(() => {
-    const total = products.length;
-    const active = products.filter((product) => product.activo !== false).length;
-    const featured = products.filter((product) => product.featured).length;
-    const lowStock = products.filter((product) => (product.stock ?? 0) > 0 && (product.stock ?? 0) <= 5).length;
-
-    return { total, active, featured, lowStock };
-  }, [products]);
-
   /* ── Filter ── */
   const filtered = products.filter((p) => {
     const matchSearch = p.name.toLowerCase().includes(search.toLowerCase());
     if (!matchSearch) return false;
     if (activeCategory === 'Todos') return true;
     if (activeCategory === 'Destacados') return !!p.featured;
-    if (activeCategory === 'Activos') return p.activo !== false;
-    if (activeCategory === 'Bajo stock') return (p.stock ?? 0) > 0 && (p.stock ?? 0) <= 5;
-    return resolveCategoryName(p.category_id, categoryMap).toLowerCase() === activeCategory.toLowerCase();
+    return (p.category_id || '').toLowerCase() === activeCategory.toLowerCase();
   });
 
   return (
@@ -223,7 +202,7 @@ export default function AdminProductosPage() {
           <button
             onClick={() => router.push('/admin/productos/nuevo')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
-            style={{ background: '#facc15', color: '#000' }}
+            style={{ background: '#c9a96e', color: '#000' }}
           >
             <Plus className="w-4 h-4" />
             Nuevo Producto
@@ -232,20 +211,6 @@ export default function AdminProductosPage() {
       </div>
 
       <div className="px-6 py-6 space-y-5">
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          {[
-            { label: 'Catálogo total', value: productMetrics.total, tone: 'text-white' },
-            { label: 'Productos activos', value: productMetrics.active, tone: 'text-emerald-400' },
-            { label: 'Destacados', value: productMetrics.featured, tone: 'text-[#facc15]' },
-            { label: 'Stock crítico', value: productMetrics.lowStock, tone: 'text-amber-400' },
-          ].map((metric) => (
-            <div key={metric.label} className="rounded-2xl border border-white/8 bg-zinc-950/70 p-4">
-              <p className="text-[10px] uppercase tracking-[0.24em] text-zinc-500">{metric.label}</p>
-              <p className={`mt-3 text-3xl font-black ${metric.tone}`}>{metric.value}</p>
-            </div>
-          ))}
-        </div>
-
         {/* ── Filters ── */}
         <div className="flex flex-wrap items-center gap-3">
           {/* Search */}
@@ -256,13 +221,13 @@ export default function AdminProductosPage() {
               placeholder="Buscar por nombre…"
               value={search}
               onChange={(e) => setSearch(e.target.value)}
-              className="w-full bg-zinc-900 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#facc15]/50 transition-colors"
+              className="w-full bg-zinc-900 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-[#c9a96e]/50 transition-colors"
             />
           </div>
 
           {/* Category tabs */}
           <div className="flex flex-wrap gap-2">
-            {filterOptions.map((cat) => (
+            {CATEGORIES.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
@@ -271,7 +236,7 @@ export default function AdminProductosPage() {
                     ? 'text-black'
                     : 'bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:border-white/20'
                 }`}
-                style={activeCategory === cat ? { background: '#facc15' } : {}}
+                style={activeCategory === cat ? { background: '#c9a96e' } : {}}
               >
                 {cat}
               </button>
@@ -322,16 +287,16 @@ export default function AdminProductosPage() {
                     {/* Nombre */}
                     <td className="px-4 py-3">
                       <div className="font-medium text-white">{product.name}</div>
-                      <div className="text-zinc-500 text-xs mt-0.5">{buildProductTagline(product.tagline, undefined)}</div>
+                      {product.tagline && <div className="text-zinc-500 text-xs mt-0.5">{product.tagline}</div>}
                     </td>
                     {/* Categoría */}
                     <td className="px-4 py-3">
                       <span className="px-2.5 py-1 rounded-full bg-zinc-800 border border-white/10 text-xs text-zinc-300">
-                        {resolveCategoryName(product.category_id, categoryMap)}
+                        {product.category_id || '—'}
                       </span>
                     </td>
                     {/* Precio */}
-                    <td className="px-4 py-3 text-[#facc15] font-semibold">
+                    <td className="px-4 py-3 text-[#c9a96e] font-semibold">
                       {formatCLP(product.price)}
                     </td>
                     {/* Stock */}
@@ -343,7 +308,6 @@ export default function AdminProductosPage() {
                       <Toggle
                         checked={product.activo !== false}
                         onChange={(v) => handleToggle(product, 'activo', v)}
-                        label={`Activo: ${product.name}`}
                       />
                     </td>
                     {/* Destacado toggle */}
@@ -351,7 +315,6 @@ export default function AdminProductosPage() {
                       <Toggle
                         checked={!!product.featured}
                         onChange={(v) => handleToggle(product, 'featured', v)}
-                        label={`Destacado: ${product.name}`}
                       />
                     </td>
                     {/* Acciones */}

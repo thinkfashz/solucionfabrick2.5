@@ -1,10 +1,13 @@
+import { timingSafeEqual } from 'crypto';
+import { cookies } from 'next/headers';
+
 /**
  * Admin authentication helpers: rate limiting + session management.
  * Rate limit store is in-memory — resets on server restart (suitable for Edge/Node runtime).
  */
 
-const RATE_LIMIT_MAX_ATTEMPTS = 10;
-const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+const RATE_LIMIT_MAX_ATTEMPTS = 5;
+const RATE_LIMIT_WINDOW_MS = 15 * 60 * 1000; // 15 minutes
 
 interface RateLimitEntry {
   count: number;
@@ -69,12 +72,11 @@ export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 export interface AdminSessionPayload {
   email: string;
   exp: number; // Unix ms
-  rol?: 'superadmin' | 'admin' | 'viewer';
 }
 
 /**
  * Returns the HMAC-SHA256 signing key derived from ADMIN_SESSION_SECRET env var.
- * Falls back to a fixed default if the env var is not set (development only).
+ * Throws in production if the env var is missing.
  */
 async function getSigningKey(): Promise<CryptoKey> {
   const secret = process.env.ADMIN_SESSION_SECRET;
@@ -85,14 +87,13 @@ async function getSigningKey(): Promise<CryptoKey> {
     // Development-only fallback — MUST be replaced with a real secret in production
     console.warn('[AdminAuth] ADMIN_SESSION_SECRET is not set. Using insecure dev default.');
   }
-  const keyMaterial = await crypto.subtle.importKey(
+  return crypto.subtle.importKey(
     'raw',
     new TextEncoder().encode(secret ?? 'fabrick-admin-dev-only-secret'),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign', 'verify']
   );
-  return keyMaterial;
 }
 
 /** Creates a signed session token: base64url(payload).base64url(signature) */
@@ -127,13 +128,24 @@ export async function decodeSession(value: string): Promise<AdminSessionPayload 
 }
 
 /**
- * Returns true if the current request carries a valid HMAC-signed admin_session cookie.
- * Used in server components / layouts to gate admin access.
+ * Returns true if the current request carries a valid admin_session cookie.
+ * Checks the HMAC-signed session first; falls back to constant-time comparison
+ * against ADMIN_ACCESS_TOKEN for backward compatibility.
  */
 export async function isAdminSession(): Promise<boolean> {
-  const { cookies } = await import('next/headers');
   const adminSession = (await cookies()).get('admin_session')?.value;
   if (!adminSession) return false;
+
+  // Primary: validate HMAC-signed session token
   const payload = await decodeSession(adminSession).catch(() => null);
-  return payload !== null;
+  if (payload) return true;
+
+  // Fallback: static token comparison (constant-time)
+  const adminAccessToken = process.env.ADMIN_ACCESS_TOKEN;
+  if (!adminAccessToken) return false;
+  const expected = Buffer.from(adminAccessToken, 'utf8');
+  const provided = Buffer.from(adminSession, 'utf8');
+  if (expected.length !== provided.length) return false;
+  return timingSafeEqual(expected, provided);
 }
+

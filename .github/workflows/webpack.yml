@@ -1,4 +1,4 @@
-name: NodeJS with Webpack
+name: Next.js Build CI
 
 on:
   push:

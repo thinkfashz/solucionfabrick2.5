@@ -9,7 +9,12 @@
  *  - skipWaiting + clients.claim for fast updates
  */
 
-const VERSION = 'fabrick-sw-v1';
+// Bump this whenever the SW logic changes OR when we need to purge caches that
+// might hold broken HTML from a previous deploy (e.g. the pre-fix `/admin/login`
+// black-screen HTML cached before v2). Increasing the version causes the
+// `activate` handler to delete every cache whose key does not start with
+// VERSION, forcing a clean slate on users' devices.
+const VERSION = 'fabrick-sw-v2';
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const IMAGE_CACHE = `${VERSION}-images`;
@@ -58,6 +63,23 @@ function isApiRequest(url) {
   return url.pathname.startsWith('/api/');
 }
 
+/**
+ * Admin surfaces (the panel pages and their API endpoints) are personalized,
+ * auth-gated, and must never be served from a Service Worker cache. Caching
+ * them has caused "black screen" regressions on users' devices whenever a
+ * previous deploy shipped a broken CSP/nonce combination: the broken HTML
+ * stayed in RUNTIME_CACHE and kept being served even after the server was
+ * fixed. Bypassing these paths entirely means the browser talks to the origin
+ * directly, exactly as if no Service Worker were installed.
+ */
+function isAdminRequest(url) {
+  return (
+    url.pathname === '/admin' ||
+    url.pathname.startsWith('/admin/') ||
+    url.pathname.startsWith('/api/admin/')
+  );
+}
+
 async function cacheFirst(request, cacheName) {
   const cache = await caches.open(cacheName);
   const cached = await cache.match(request);
@@ -91,6 +113,12 @@ self.addEventListener('fetch', (event) => {
 
   const url = new URL(request.url);
   if (url.origin !== self.location.origin) return;
+
+  // Never intercept admin pages or admin APIs. They are personalized and
+  // auth-gated; letting the browser go straight to the network guarantees the
+  // latest HTML + CSP nonce always wins and avoids the stale-cache black
+  // screen regression.
+  if (isAdminRequest(url)) return;
 
   // Navigation requests (HTML documents)
   if (request.mode === 'navigate') {

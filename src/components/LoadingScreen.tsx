@@ -3,29 +3,62 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 
+const SESSION_FLAG = 'fabrick.loadingScreen.seen.v1';
+
 export default function LoadingScreen() {
-  const [visible, setVisible] = useState(true);
+  // Only show the splash on the very first visit of a browser session.
+  // Subsequent client-side navigations and refreshes skip it so the app
+  // never feels "stuck" on the SF animation.
+  const [visible, setVisible] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      return sessionStorage.getItem(SESSION_FLAG) !== '1';
+    } catch {
+      return true;
+    }
+  });
   const [progress, setProgress] = useState(0);
 
   useEffect(() => {
+    if (!visible) return;
+
+    try {
+      sessionStorage.setItem(SESSION_FLAG, '1');
+    } catch {
+      // Ignore storage errors (private mode, quota, etc.)
+    }
+
     // Animate progress bar from 0 → 100
     const startTime = Date.now();
     const duration = 1400;
+    let rafId: number | null = null;
 
     const frame = () => {
       const elapsed = Date.now() - startTime;
       const p = Math.min((elapsed / duration) * 100, 100);
       setProgress(p);
       if (p < 100) {
-        requestAnimationFrame(frame);
+        rafId = requestAnimationFrame(frame);
       } else {
         // Hold briefly then fade out
-        setTimeout(() => setVisible(false), 200);
+        window.setTimeout(() => setVisible(false), 200);
       }
     };
 
-    requestAnimationFrame(frame);
-  }, []);
+    rafId = requestAnimationFrame(frame);
+
+    // Safety net: no matter what (tab throttling, RAF failure, broken
+    // animation lib), hide the splash after 3s so the app never stays stuck.
+    const safety = window.setTimeout(() => {
+      setProgress(100);
+      setVisible(false);
+    }, 3000);
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      window.clearTimeout(safety);
+    };
+  }, [visible]);
 
   return (
     <AnimatePresence>

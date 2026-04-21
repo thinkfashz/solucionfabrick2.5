@@ -2,10 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePathname } from 'next/navigation';
 
 const SESSION_FLAG = 'fabrick.loadingScreen.seen.v1';
 
 export default function LoadingScreen() {
+  const pathname = usePathname();
+  // The admin panel must never be covered by the splash. Skip rendering it
+  // entirely on `/admin/*` so a stuck splash can never block the control room.
+  const isAdmin = pathname?.startsWith('/admin') ?? false;
+
   // Only show the splash on the very first visit of a browser session.
   // Subsequent client-side navigations and refreshes skip it so the app
   // never feels "stuck" on the SF animation.
@@ -70,7 +76,7 @@ export default function LoadingScreen() {
 
   return (
     <AnimatePresence>
-      {visible && !hardHidden && (
+      {visible && !hardHidden && !isAdmin && (
         <motion.div
           key="loading"
           className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center loading-screen-failsafe"

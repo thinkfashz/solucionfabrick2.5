@@ -1,12 +1,18 @@
 import { createClient } from '@insforge/sdk';
 
-// Public client-side values. The anon key is safe to expose in frontend code.
-// Configure NEXT_PUBLIC_INSFORGE_URL and NEXT_PUBLIC_INSFORGE_ANON_KEY in your deployment
-// environment; the defaults below are only used for local development convenience.
-const INSFORGE_URL =
-  process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
-const INSFORGE_ANON_KEY =
-  process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY || 'ik_7e23032539c2dc64d5d27ca29d07b928';
+// Required environment variables. Set them in .env.local for development and
+// in your deployment platform (e.g. Vercel) for production.
+// See .env.example for the variable names and expected format.
+const INSFORGE_URL = process.env.NEXT_PUBLIC_INSFORGE_URL;
+const INSFORGE_ANON_KEY = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
+
+if (!INSFORGE_URL || !INSFORGE_ANON_KEY) {
+  throw new Error(
+    'Missing required InsForge configuration. ' +
+      'Set NEXT_PUBLIC_INSFORGE_URL and NEXT_PUBLIC_INSFORGE_ANON_KEY ' +
+      'in your environment (.env.local for development, deployment env vars for production).',
+  );
+}
 
 export const insforge = createClient({
   baseUrl: INSFORGE_URL,

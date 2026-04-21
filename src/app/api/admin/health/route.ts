@@ -101,14 +101,13 @@ async function loadIntegrationCredentials(): Promise<Record<string, Record<strin
 }
 
 export async function GET() {
-  const insforgeUrl =
-    process.env.NEXT_PUBLIC_INSFORGE_URL ?? 'https://txv86efe.us-east.insforge.app';
+  const insforgeUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
 
   const creds = await loadIntegrationCredentials();
 
   const publicChecks: { id: string; url: string }[] = [
     { id: 'vercel',      url: 'https://solucionesfabrick.com' },
-    { id: 'insforge',    url: insforgeUrl },
+    ...(insforgeUrl ? [{ id: 'insforge', url: insforgeUrl }] : []),
     { id: 'cloudflare',  url: 'https://cloudflare.com' },
     { id: 'github',      url: 'https://github.com' },
     { id: 'mercadopago', url: 'https://api.mercadopago.com' },
@@ -117,6 +116,9 @@ export async function GET() {
   const publicResults = await Promise.allSettled(publicChecks.map((c) => pingUrl(c.url)));
 
   const services: Record<string, ServiceResult> = {};
+  if (!insforgeUrl) {
+    services['insforge'] = { status: 'unconfigured', latency: -1 } as ServiceResult;
+  }
   for (let i = 0; i < publicChecks.length; i++) {
     const result = publicResults[i];
     services[publicChecks[i].id] =

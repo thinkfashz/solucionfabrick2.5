@@ -4,11 +4,11 @@ import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 
 // Shared transition used for every auto-hide path.
-const HIDE_TRANSITION = 'opacity 0.4s cubic-bezier(0.16,1,0.3,1)';
+const HIDE_TRANSITION = 'opacity 0.3s cubic-bezier(0.16,1,0.3,1)';
 // How long after the overlay becomes opaque we force it back off, regardless
-// of router state. Tuned to be longer than a typical route hydration but
-// short enough that the user never perceives the app as "stuck".
-const AUTO_HIDE_DELAY_MS = 1500;
+// of router state. Kept very short so the user never perceives the app as
+// "stuck" on the cinematic overlay — even on slow routes or SSR redirects.
+const AUTO_HIDE_DELAY_MS = 800;
 // Inline `opacity` values ≤ this count as "hidden" for observer purposes. We
 // treat unparseable values as opaque so a hard-hide is still scheduled — it
 // is always safe to hide an overlay that is already invisible.
@@ -210,7 +210,8 @@ export default function PageTransition() {
         />
       </div>
 
-      {/* Tiny status text */}
+      {/* Tiny status text (intentionally empty — overlay auto-hides within
+          800ms, no copy needed). */}
       <div
         style={{
           fontFamily: 'ui-monospace, SFMono-Regular, monospace',
@@ -218,10 +219,10 @@ export default function PageTransition() {
           letterSpacing: '0.35em',
           color: 'rgba(255,255,255,0.25)',
           textTransform: 'uppercase',
+          minHeight: '1em',
         }}
-      >
-        Cargando experiencia
-      </div>
+      />
+
     </div>
   );
 }

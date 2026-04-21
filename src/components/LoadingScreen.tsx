@@ -34,7 +34,7 @@ export default function LoadingScreen() {
 
     // Animate progress bar from 0 → 100
     const startTime = Date.now();
-    const duration = 1400;
+    const duration = 600;
     let rafId: number | null = null;
 
     const frame = () => {
@@ -45,14 +45,14 @@ export default function LoadingScreen() {
         rafId = requestAnimationFrame(frame);
       } else {
         // Hold briefly then fade out
-        window.setTimeout(() => setVisible(false), 200);
+        window.setTimeout(() => setVisible(false), 100);
       }
     };
 
     rafId = requestAnimationFrame(frame);
 
     // Safety net: no matter what (tab throttling, RAF failure, broken
-    // animation lib), hide the splash after 3s so the app never stays stuck.
+    // animation lib), hide the splash after 800ms so the app never stays stuck.
     // We also force `hardHidden` which bypasses `AnimatePresence`'s exit
     // animation — if framer-motion fails to run the exit for any reason,
     // the splash still disappears from the DOM.
@@ -60,7 +60,7 @@ export default function LoadingScreen() {
       setProgress(100);
       setVisible(false);
       setHardHidden(true);
-    }, 3000);
+    }, 800);
 
     return () => {
       if (rafId !== null) cancelAnimationFrame(rafId);

@@ -11,7 +11,7 @@ type NavLink = { label: string; href: string };
 
 const NAV_LINKS: NavLink[] = [
   { label: 'Servicios', href: '/servicios' },
-  { label: 'Evolucion', href: '/evolucion' },
+  { label: 'Evolución', href: '/evolucion' },
   { label: 'Soluciones', href: '/soluciones' },
   { label: 'Tienda', href: '/tienda' },
   { label: 'Proyectos', href: '/proyectos' },
@@ -108,7 +108,7 @@ export default function Navbar() {
             onClick={() => handleNav('/auth')}
             className="px-5 py-2 rounded-full border border-yellow-400/40 text-yellow-400 text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-400/10 hover:border-yellow-400 transition-all"
           >
-            Iniciar Sesion
+            Iniciar Sesión
           </button>
         </div>
 

@@ -157,7 +157,7 @@ function SilverGoldButton({ children, onClick, className = '' }: { children: Rea
 export default function TiendaClientPage() {
 	const router = useRouter();
 	const { user, signOut } = useAuth();
-	const { products: catalogProducts, loading: productsLoading, connected: realtimeConnected, fetchComplete } = useCatalogProducts();
+	const { products: catalogProducts, connected: realtimeConnected, fetchComplete } = useCatalogProducts();
 	const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
 	const [isCartOpen, setIsCartOpen] = useState(false);
@@ -444,7 +444,7 @@ export default function TiendaClientPage() {
 							<div>
 								<p className="text-[9px] uppercase tracking-[0.4em] text-yellow-400/70 mb-2">Nuestro catálogo</p>
 								<h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-white">
-									{productsLoading ? 'Cargando...' : `${liveProducts.length} Productos`}
+									{liveProducts.length} Productos
 								</h2>
 							</div>
 							<div className="flex items-center gap-2">

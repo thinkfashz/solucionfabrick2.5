@@ -510,17 +510,6 @@ export default function LandingSections() {
           <ScrollReveal>
             <TiendaSection />
           </ScrollReveal>
-          <ScrollReveal delay={0.1} className="text-center mt-10">
-            <div className="flex items-center justify-center gap-4 flex-wrap">
-              <Link
-                href="/tienda"
-                className="btn-shimmer px-12 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.2em] rounded-full hover:bg-white transition-all hover:scale-105 shadow-[0_10px_30px_rgba(250,204,21,0.2)] inline-flex items-center gap-4 group"
-              >
-                Explorar Catálogo Completo
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-              </Link>
-            </div>
-          </ScrollReveal>
         </div>
       </section>
 

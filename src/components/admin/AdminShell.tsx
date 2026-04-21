@@ -256,7 +256,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
   // Observatory renders full-screen; skip the shell chrome while on it.
   const isObservatory = pathname?.startsWith('/admin/observatory');
 
-  if (isObservatory) {
+  // The login page must not show the admin chrome (header, sidebar, bottom
+  // nav). Otherwise an unauthenticated visitor to /admin/login sees the admin
+  // navigation rendered on top of the login form — in particular the fixed
+  // bottom bar appears as an overlay/banner stuck to the bottom of the page.
+  const isLogin = pathname === '/admin/login';
+
+  if (isObservatory || isLogin) {
     return <>{children}</>;
   }
 

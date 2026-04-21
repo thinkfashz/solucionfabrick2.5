@@ -18,6 +18,10 @@ export default function LoadingScreen() {
     }
   });
   const [progress, setProgress] = useState(0);
+  // Hard kill switch. If something prevents `AnimatePresence` from running
+  // the exit animation (stale framer-motion, provider unmount, etc.) we
+  // still want the splash gone — this skips rendering entirely.
+  const [hardHidden, setHardHidden] = useState(false);
 
   useEffect(() => {
     if (!visible) return;
@@ -49,9 +53,13 @@ export default function LoadingScreen() {
 
     // Safety net: no matter what (tab throttling, RAF failure, broken
     // animation lib), hide the splash after 3s so the app never stays stuck.
+    // We also force `hardHidden` which bypasses `AnimatePresence`'s exit
+    // animation — if framer-motion fails to run the exit for any reason,
+    // the splash still disappears from the DOM.
     const safety = window.setTimeout(() => {
       setProgress(100);
       setVisible(false);
+      setHardHidden(true);
     }, 3000);
 
     return () => {
@@ -62,7 +70,7 @@ export default function LoadingScreen() {
 
   return (
     <AnimatePresence>
-      {visible && (
+      {visible && !hardHidden && (
         <motion.div
           key="loading"
           className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center"

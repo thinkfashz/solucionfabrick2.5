@@ -3,26 +3,102 @@
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 
+// Shared transition used for every auto-hide path.
+const HIDE_TRANSITION = 'opacity 0.4s cubic-bezier(0.16,1,0.3,1)';
+// How long after the overlay becomes opaque we force it back off, regardless
+// of router state. Tuned to be longer than a typical route hydration but
+// short enough that the user never perceives the app as "stuck".
+const AUTO_HIDE_DELAY_MS = 1500;
+// Inline `opacity` values ≤ this count as "hidden" for observer purposes. We
+// treat unparseable values as opaque so a hard-hide is still scheduled — it
+// is always safe to hide an overlay that is already invisible.
+const OPACITY_HIDDEN_THRESHOLD = 0.05;
+
 /**
  * Full-screen cinematic page transition overlay — BlackBerry-style.
  *
  * Mounted once at the root. `routeTransition.ts` toggles its visibility
- * when a navigation starts. This component listens to `usePathname()` and
- * automatically fades the overlay out the moment the destination route is
- * mounted, so the overlay can never get "stuck" on slow/heavy pages like
- * `/tienda`.
+ * when a navigation starts. This component owns the overlay's *auto-hide*
+ * contract end-to-end so it can never get "stuck" on slow/heavy routes
+ * (like `/tienda` with the full catalog or `/admin` with recharts), on
+ * server-side redirects (e.g. middleware bouncing `/admin → /admin/login`),
+ * or when the user clicks a link to the current route.
+ *
+ * Three independent safety nets run at once:
+ *  1. A `usePathname()` effect fades the overlay out as soon as the
+ *     destination route mounts.
+ *  2. A `MutationObserver` on the overlay's `style` attribute schedules a
+ *     hard-hide 1.5s after *any* time the overlay is made opaque, no
+ *     matter who flipped it on — so even same-URL clicks recover.
+ *  3. On mount, we force the overlay to `opacity: 0` / `pointer-events:
+ *     none` so that a reload landing on the stuck state immediately
+ *     clears it.
  */
 export default function PageTransition() {
   const pathname = usePathname();
   const prevPathRef = useRef<string | null>(null);
 
+  // ── Safety net #3: on first mount, force the overlay hidden so any
+  // "stuck" state from a previous SSR/redirect is cleared immediately.
+  useEffect(() => {
+    const el = document.getElementById('page-transition-overlay') as HTMLDivElement | null;
+    if (!el) return;
+    el.style.transition = HIDE_TRANSITION;
+    el.style.opacity = '0';
+    el.style.pointerEvents = 'none';
+  }, []);
+
+  // ── Safety net #2: observe the overlay's own visibility. Every time it
+  // becomes opaque (from any source — route change, direct DOM toggle,
+  // programmatic show) schedule a guaranteed hard-hide. This decouples
+  // the auto-hide from whoever showed the overlay and from the router.
+  useEffect(() => {
+    const el = document.getElementById('page-transition-overlay') as HTMLDivElement | null;
+    if (!el) return;
+
+    let safety: ReturnType<typeof setTimeout> | null = null;
+
+    const scheduleHide = () => {
+      if (safety !== null) clearTimeout(safety);
+      safety = setTimeout(() => {
+        el.style.transition = HIDE_TRANSITION;
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+      }, AUTO_HIDE_DELAY_MS);
+    };
+
+    const isOpaque = () => {
+      const raw = el.style.opacity;
+      if (raw === '' || raw === '0') return false;
+      const n = Number(raw);
+      // NaN → treat as opaque so we still schedule a hide; it's always safe
+      // to hide an already-hidden overlay.
+      return Number.isNaN(n) ? true : n > OPACITY_HIDDEN_THRESHOLD;
+    };
+
+    if (isOpaque()) scheduleHide();
+
+    const observer = new MutationObserver(() => {
+      if (isOpaque()) scheduleHide();
+    });
+    observer.observe(el, { attributes: true, attributeFilter: ['style'] });
+
+    return () => {
+      observer.disconnect();
+      if (safety !== null) clearTimeout(safety);
+    };
+  }, []);
+
+  // ── Safety net #1: fade out whenever the route actually commits.
   useEffect(() => {
     // Skip the very first render — there's nothing to transition from.
     if (prevPathRef.current === null) {
       prevPathRef.current = pathname;
       return;
     }
-    if (prevPathRef.current === pathname) return;
+    // Even when the pathname is unchanged (e.g. user clicked a link to the
+    // page they're already on), fall through so we still clear any overlay
+    // that `navigateWithTransition` may have raised.
     prevPathRef.current = pathname;
 
     const el = document.getElementById('page-transition-overlay') as HTMLDivElement | null;
@@ -35,7 +111,7 @@ export default function PageTransition() {
     let raf2: number | null = null;
     raf1 = requestAnimationFrame(() => {
       raf2 = requestAnimationFrame(() => {
-        el.style.transition = 'opacity 0.4s cubic-bezier(0.16,1,0.3,1)';
+        el.style.transition = HIDE_TRANSITION;
         el.style.opacity = '0';
         el.style.pointerEvents = 'none';
       });

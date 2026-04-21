@@ -54,13 +54,10 @@ async function isValidSession(value: string): Promise<boolean> {
  * (JSON-LD) can opt-in via `headers().get('x-nonce')`.
  */
 function withSecurityHeaders(
-  request: NextRequest,
   response: NextResponse,
   nonce: string,
+  csp: string,
 ): NextResponse {
-  const isDev = process.env.NODE_ENV !== 'production'
-  const csp = buildCsp({ nonce, isDev })
-
   // Make the nonce available to downstream route handlers / server components.
   response.headers.set('x-nonce', nonce)
   response.headers.set('Content-Security-Policy', csp)
@@ -84,6 +81,8 @@ function isHtmlRequest(request: NextRequest): boolean {
 export async function middleware(request: NextRequest) {
   const nonce = generateNonce()
   const isHtml = isHtmlRequest(request)
+  const isDev = process.env.NODE_ENV !== 'production'
+  const csp = buildCsp({ nonce, isDev })
 
   // Admin gate (unchanged, but now also emits the CSP nonce on its responses).
   const isAdmin = request.nextUrl.pathname.startsWith('/admin')
@@ -94,7 +93,7 @@ export async function middleware(request: NextRequest) {
     const sessionCookie = request.cookies.get('admin_session')
     if (!sessionCookie?.value || !(await isValidSession(sessionCookie.value))) {
       const redirect = NextResponse.redirect(new URL('/admin/login', request.url))
-      return isHtml ? withSecurityHeaders(request, redirect, nonce) : redirect
+      return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
     }
 
     // Check role restriction for /admin/equipo
@@ -108,12 +107,12 @@ export async function middleware(request: NextRequest) {
           const payload = JSON.parse(payloadStr) as { rol?: string }
           if (payload.rol !== 'superadmin') {
             const redirect = NextResponse.redirect(new URL('/admin?forbidden=team', request.url))
-            return isHtml ? withSecurityHeaders(request, redirect, nonce) : redirect
+            return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
           }
         }
       } catch {
         const redirect = NextResponse.redirect(new URL('/admin/login', request.url))
-        return isHtml ? withSecurityHeaders(request, redirect, nonce) : redirect
+        return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
       }
     }
   }
@@ -121,11 +120,17 @@ export async function middleware(request: NextRequest) {
   if (!isHtml) return NextResponse.next()
 
   // Forward the nonce on the REQUEST so server components can read it via `headers()`.
+  // Next.js also reads the `Content-Security-Policy` request header to discover
+  // the nonce and automatically tag the framework's own <script> tags
+  // (bootstrap + chunk loaders) with it. Without this, `'strict-dynamic'` blocks
+  // every `/_next/static/chunks/*.js` because none of them are nonced and the
+  // host allowlist is ignored under strict-dynamic.
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set('Content-Security-Policy', csp)
 
   const response = NextResponse.next({ request: { headers: requestHeaders } })
-  return withSecurityHeaders(request, response, nonce)
+  return withSecurityHeaders(response, nonce, csp)
 }
 
 export const config = {

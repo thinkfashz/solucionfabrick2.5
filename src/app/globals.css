@@ -258,6 +258,37 @@ body {
   animation: text-reveal 3s linear infinite;
 }
 
+/* ── LoadingScreen fail-safe ──
+   Defensive CSS fallback so the SSR-rendered splash overlay can never trap
+   the page behind a black screen if React hydration never runs (e.g. a
+   CSP-blocked script, a JS error, or an extremely slow network). Framer
+   Motion normally drives the exit, but if JS never executes this keyframe
+   still fades the overlay out and disables pointer events so the page
+   underneath becomes visible and interactive. CSS animations override
+   non-!important inline styles on the animated properties, so this wins
+   over the SSR-emitted `style="opacity:1"` from framer-motion. */
+@keyframes loading-screen-failsafe {
+  0%,
+  60% {
+    opacity: 1;
+    pointer-events: auto;
+    visibility: visible;
+  }
+  99% {
+    opacity: 0;
+    pointer-events: none;
+    visibility: visible;
+  }
+  100% {
+    opacity: 0;
+    pointer-events: none;
+    visibility: hidden;
+  }
+}
+.loading-screen-failsafe {
+  animation: loading-screen-failsafe 4s ease-in-out 1.5s forwards;
+}
+
 /* ── Hero fade-up ── */
 @keyframes fade-up {
   0%   { opacity: 0; transform: translateY(20px) scale(0.98); filter: blur(4px); }

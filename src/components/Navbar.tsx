@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { X, Menu, Home, Wrench, TrendingUp, Lightbulb, ShoppingBag, Building2, Phone, Gamepad2, ShieldCheck, BookOpen, Layers } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
-import ThemeToggle from './ThemeToggle';
 import { navigateWithTransition } from '@/lib/routeTransition';
 
 type NavLink = { label: string; href: string };
@@ -96,8 +95,6 @@ export default function Navbar() {
             </button>
           ))}
           <div className="w-px h-4 bg-white/20" />
-          <ThemeToggle />
-          <div className="w-px h-4 bg-white/20" />
           <button
             onClick={() => handleNav('/mi-cuenta')}
             className="text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-yellow-400 transition-colors"
@@ -119,10 +116,6 @@ export default function Navbar() {
         >
           {open ? <X size={26} /> : <Menu size={26} />}
         </button>
-        {/* Mobile theme toggle — always visible in header */}
-        <div className="lg:hidden">
-          <ThemeToggle />
-        </div>
       </nav>
 
       {/* Full-screen glamorous mobile menu */}

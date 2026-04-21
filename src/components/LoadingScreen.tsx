@@ -73,7 +73,7 @@ export default function LoadingScreen() {
       {visible && !hardHidden && (
         <motion.div
           key="loading"
-          className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center"
+          className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center loading-screen-failsafe"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: 0.5, ease: 'easeInOut' } }}
         >

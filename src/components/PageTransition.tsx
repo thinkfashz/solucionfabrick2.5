@@ -38,15 +38,26 @@ export default function PageTransition() {
   const pathname = usePathname();
   const prevPathRef = useRef<string | null>(null);
 
+  // Admin panel intentionally renders without any cinematic transition
+  // overlay. The global overlay has historically been able to get "stuck"
+  // opaque on top of `/admin/*`, blocking all interaction with the control
+  // room. For the admin we unconditionally force it hidden on every render
+  // and skip mounting the overlay markup entirely.
+  const isAdmin = pathname?.startsWith('/admin') ?? false;
+
   // ── Safety net #3: on first mount, force the overlay hidden so any
   // "stuck" state from a previous SSR/redirect is cleared immediately.
+  // When navigating into /admin we also force-hide on every pathname
+  // change (with `transition: none` so there is no fade animation) so a
+  // previously-raised overlay can never cover the panel.
   useEffect(() => {
+    if (typeof document === 'undefined') return;
     const el = document.getElementById('page-transition-overlay') as HTMLDivElement | null;
     if (!el) return;
-    el.style.transition = HIDE_TRANSITION;
+    el.style.transition = isAdmin ? 'none' : HIDE_TRANSITION;
     el.style.opacity = '0';
     el.style.pointerEvents = 'none';
-  }, []);
+  }, [isAdmin, pathname]);
 
   // ── Safety net #2: observe the overlay's own visibility. Every time it
   // becomes opaque (from any source — route change, direct DOM toggle,
@@ -122,6 +133,10 @@ export default function PageTransition() {
       if (raf2 !== null) cancelAnimationFrame(raf2);
     };
   }, [pathname]);
+
+  // Admin routes render no overlay at all — transitions are instantaneous
+  // so the panel can never get covered by a stuck black screen.
+  if (isAdmin) return null;
 
   return (
     <div

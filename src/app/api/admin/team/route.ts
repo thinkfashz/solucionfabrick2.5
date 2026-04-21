@@ -1,18 +1,11 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { createClient } from '@insforge/sdk';
+import { insforge } from '@/lib/insforge';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
-async function getInsforgeClient() {
-  const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
-  const anonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY || 'ik_7e23032539c2dc64d5d27ca29d07b928';
-  return createClient({ baseUrl, anonKey });
-}
-
 async function checkSuperadmin(sessionEmail: string): Promise<boolean> {
-  const insforge = await getInsforgeClient();
   const { data, error } = await insforge.database
     .from('admin_users')
     .select('rol')
@@ -33,8 +26,6 @@ export async function GET(request: NextRequest) {
   if (!payload) {
     return NextResponse.json({ error: 'Sesión inválida.' }, { status: 401 });
   }
-
-  const insforge = await getInsforgeClient();
 
   try {
     const { data, error } = await insforge.database
@@ -94,8 +85,6 @@ export async function PATCH(request: NextRequest) {
   if (!email || !['approve', 'reject', 'set_role'].includes(action)) {
     return NextResponse.json({ error: 'Email y acción válida son requeridos.' }, { status: 400 });
   }
-
-  const insforge = await getInsforgeClient();
 
   try {
     if (action === 'approve') {

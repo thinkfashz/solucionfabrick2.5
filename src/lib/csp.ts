@@ -1,10 +1,11 @@
 /**
  * Content-Security-Policy builder for Soluciones Fabrick.
  *
- * Strategy: strict, nonce-based CSP with `'strict-dynamic'`. No `'unsafe-inline'`
- * or `'unsafe-eval'` for scripts. The middleware generates a fresh nonce per
- * navigation request and propagates it via `x-nonce` request header so that
- * inline server-rendered `<script>` tags (currently only JSON-LD) can opt-in.
+ * Strategy: nonce-based CSP backed by an explicit host allowlist. No
+ * `'unsafe-inline'` or `'unsafe-eval'` for scripts. The middleware generates a
+ * fresh nonce per navigation request and propagates it via the `x-nonce`
+ * request header so that inline server-rendered `<script>` tags (currently
+ * only JSON-LD) can opt-in.
  *
  * Trusted third-party origins are allowlisted explicitly:
  *  - Cloudflare Turnstile (bot protection on /contacto)
@@ -13,10 +14,14 @@
  *  - InsForge backend (connect-src only)
  *  - Google Fonts (stylesheet + woff/woff2)
  *
- * With `'strict-dynamic'`, the nonce is the only real gate for scripts; host
- * allowlists are ignored by modern browsers for script-src but kept for
- * CSP 1/2 fallback compatibility. They ARE still enforced for style-src,
- * img-src, connect-src, etc.
+ * We intentionally do NOT use `'strict-dynamic'`: it forces every script to be
+ * gated by a nonce that matches the per-request value, but Next.js bakes nonces
+ * into the HTML of statically prerendered routes at build time. Those
+ * build-time nonces never match what middleware emits at request time, so
+ * under `'strict-dynamic'` every `/_next/static/chunks/*.js` on an SSG route
+ * would be blocked and the page would never hydrate. Instead we rely on
+ * `'self'` for same-origin Next.js chunks, the nonce for inline JSON-LD, and
+ * the explicit host allowlist for trusted third parties.
  */
 
 export interface CspBuildOptions {
@@ -47,8 +52,7 @@ export function buildCsp({ nonce, isDev = false }: CspBuildOptions): string {
   const scriptSrc = [
     "'self'",
     `'nonce-${nonce}'`,
-    "'strict-dynamic'",
-    // Retained for older browsers lacking `'strict-dynamic'`; ignored by modern ones.
+    // Trusted third-party script origins. Enforced directly (no `'strict-dynamic'`).
     ...CLOUDFLARE_HOSTS,
     ...MERCADOPAGO_HOSTS,
     ...VERCEL_HOSTS,

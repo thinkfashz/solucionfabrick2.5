@@ -18,9 +18,24 @@ describe('generateNonce', () => {
 });
 
 describe('buildCsp', () => {
-  it('embeds the nonce in script-src', () => {
+  it('embeds the nonce and self in script-src without strict-dynamic', () => {
     const csp = buildCsp({ nonce: 'ABC123' });
-    expect(csp).toContain("script-src 'self' 'nonce-ABC123' 'strict-dynamic'");
+    const [, scriptPart] = /script-src ([^;]+);/.exec(csp) ?? [];
+    expect(scriptPart).toBeTruthy();
+    expect(scriptPart).toContain("'self'");
+    expect(scriptPart).toContain("'nonce-ABC123'");
+    // strict-dynamic breaks statically prerendered routes because build-time
+    // nonces don't match per-request ones. See src/lib/csp.ts for rationale.
+    expect(scriptPart).not.toContain("'strict-dynamic'");
+  });
+
+  it('allowlists trusted third-party script origins in script-src', () => {
+    const csp = buildCsp({ nonce: 'n' });
+    const [, scriptPart] = /script-src ([^;]+);/.exec(csp) ?? [];
+    expect(scriptPart).toBeTruthy();
+    expect(scriptPart).toContain('challenges.cloudflare.com');
+    expect(scriptPart).toContain('mercadopago.com');
+    expect(scriptPart).toContain('va.vercel-scripts.com');
   });
 
   it("does not include 'unsafe-inline' or 'unsafe-eval' in script-src in production", () => {

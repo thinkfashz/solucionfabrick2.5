@@ -121,10 +121,10 @@ export async function middleware(request: NextRequest) {
 
   // Forward the nonce on the REQUEST so server components can read it via `headers()`.
   // Next.js also reads the `Content-Security-Policy` request header to discover
-  // the nonce and automatically tag the framework's own <script> tags
-  // (bootstrap + chunk loaders) with it. Without this, `'strict-dynamic'` blocks
-  // every `/_next/static/chunks/*.js` because none of them are nonced and the
-  // host allowlist is ignored under strict-dynamic.
+  // the nonce and automatically tag the framework's own <script> tags with it
+  // when rendering dynamically. Statically prerendered routes don't get that
+  // per-request tagging, which is why we no longer rely on `'strict-dynamic'`:
+  // same-origin Next.js chunks load under `'self'` regardless of render mode.
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-nonce', nonce)
   requestHeaders.set('Content-Security-Policy', csp)

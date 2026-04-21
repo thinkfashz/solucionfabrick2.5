@@ -1,13 +1,52 @@
 'use client';
 
+import { useEffect, useRef } from 'react';
+import { usePathname } from 'next/navigation';
+
 /**
  * Full-screen cinematic page transition overlay — BlackBerry-style.
  *
- * Mounted once at the root. `routeTransition.ts` toggles its visibility.
- * While visible the user sees the Fabrick SF logo with a progress bar
- * and a subtle shimmer, evoking the classic device boot screen.
+ * Mounted once at the root. `routeTransition.ts` toggles its visibility
+ * when a navigation starts. This component listens to `usePathname()` and
+ * automatically fades the overlay out the moment the destination route is
+ * mounted, so the overlay can never get "stuck" on slow/heavy pages like
+ * `/tienda`.
  */
 export default function PageTransition() {
+  const pathname = usePathname();
+  const prevPathRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    // Skip the very first render — there's nothing to transition from.
+    if (prevPathRef.current === null) {
+      prevPathRef.current = pathname;
+      return;
+    }
+    if (prevPathRef.current === pathname) return;
+    prevPathRef.current = pathname;
+
+    const el = document.getElementById('page-transition-overlay') as HTMLDivElement | null;
+    if (!el) return;
+
+    // Wait two animation frames so the new route has a chance to paint
+    // behind the overlay before we fade out — this avoids a visible flash
+    // of the previous page while the router is still committing.
+    let raf1: number | null = null;
+    let raf2: number | null = null;
+    raf1 = requestAnimationFrame(() => {
+      raf2 = requestAnimationFrame(() => {
+        el.style.transition = 'opacity 0.4s cubic-bezier(0.16,1,0.3,1)';
+        el.style.opacity = '0';
+        el.style.pointerEvents = 'none';
+      });
+    });
+
+    return () => {
+      if (raf1 !== null) cancelAnimationFrame(raf1);
+      if (raf2 !== null) cancelAnimationFrame(raf2);
+    };
+  }, [pathname]);
+
   return (
     <div
       id="page-transition-overlay"

@@ -210,7 +210,8 @@ export default function PageTransition() {
         />
       </div>
 
-      {/* Tiny status text */}
+      {/* Tiny status text (intentionally empty — overlay auto-hides within
+          800ms, no copy needed). */}
       <div
         style={{
           fontFamily: 'ui-monospace, SFMono-Regular, monospace',
@@ -218,10 +219,10 @@ export default function PageTransition() {
           letterSpacing: '0.35em',
           color: 'rgba(255,255,255,0.25)',
           textTransform: 'uppercase',
+          minHeight: '1em',
         }}
-      >
-        &nbsp;
-      </div>
+      />
+
     </div>
   );
 }

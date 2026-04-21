@@ -82,10 +82,24 @@ export default function AdminLoginPage() {
         body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
       });
 
-      const json = await res.json();
+      // Parse body defensively: the server normally returns JSON, but if an
+      // unhandled error escapes the route handler Next.js returns an HTML error
+      // page, and `res.json()` would throw — masking the real HTTP status as a
+      // generic "network error".
+      let json: { error?: string; code?: string } = {};
+      try {
+        json = await res.json();
+      } catch {
+        // Non-JSON body (likely an HTML 5xx error page). Leave json empty and
+        // fall through so the status-based branch below renders a real message.
+      }
 
       if (!res.ok) {
-        setError(json.error ?? 'Error al iniciar sesión.');
+        const fallback =
+          res.status >= 500
+            ? 'Error del servidor. Intenta nuevamente en unos segundos.'
+            : 'Error al iniciar sesión.';
+        setError(json.error ?? fallback);
         if (res.status === 429) setIsBlocked(true);
         return;
       }

@@ -26,7 +26,7 @@ export default function TiendaSection({
   primaryCtaLabel = 'Ver catálogo completo',
 }: TiendaSectionProps) {
   const router = useRouter();
-  const { products, loading, hasLiveData } = useCatalogProducts();
+  const { products } = useCatalogProducts();
 
   const visibleProducts = limit > 0 ? products.slice(0, limit) : products;
 
@@ -38,25 +38,9 @@ export default function TiendaSection({
           {title.split(' ').slice(0, -2).join(' ')} <span className="shimmer-gold">{title.split(' ').slice(-2).join(' ')}</span>
         </h2>
         <p className="text-white/45 mt-4 max-w-2xl mx-auto text-sm leading-relaxed hero-text-fade" style={{ animationDelay: '0.3s', animationFillMode: 'both' }}>{description}</p>
-
-        {!hasLiveData && !loading ? (
-          <div className="inline-flex flex-wrap items-center justify-center gap-2 mt-6 rounded-full border border-yellow-400/15 bg-black/40 px-4 py-2 text-xs hero-text-fade" style={{ animationDelay: '0.45s', animationFillMode: 'both' }}>
-            <span className="h-2 w-2 rounded-full bg-yellow-400" />
-            <span className="text-zinc-300">
-              Estamos cargando nuestro catálogo. Vuelve pronto.
-            </span>
-          </div>
-        ) : null}
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="rounded-4xl bg-white/5 h-72 animate-pulse" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
           {visibleProducts.map((prod, i) => {
             const hasDiscount = (prod.discountPercentage ?? 0) > 0;
             const finalPrice = hasDiscount
@@ -146,7 +130,6 @@ export default function TiendaSection({
             );
           })}
         </div>
-      )}
 
       <div className="mt-12 flex flex-wrap items-center justify-center gap-4">
         <Link

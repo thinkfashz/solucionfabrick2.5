@@ -54,9 +54,9 @@ export function navigateWithTransition(path: string, router?: Router) {
     window.setTimeout(go, 120);
 
     // Hard safety net: never allow the overlay to stay visible for more
-    // than 1.8s, regardless of what happens with routing, rendering, or
+    // than 800ms, regardless of what happens with routing, rendering, or
     // same-URL clicks. This is the backstop that guarantees stability.
-    window.setTimeout(hideOverlay, 1800);
+    window.setTimeout(hideOverlay, 800);
   } else {
     // Fallback: CSS class animation
     document.documentElement.classList.add('route-transition-out');

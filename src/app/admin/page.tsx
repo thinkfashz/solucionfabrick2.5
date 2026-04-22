@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
+  Activity,
   AlertTriangle,
   ArrowRight,
   BarChart3,
@@ -15,14 +16,27 @@ import {
   TrendingDown,
   TrendingUp,
   Truck,
+  UserPlus,
   Users,
 } from 'lucide-react';
-import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer } from 'recharts';
+import {
+  BarChart,
+  Bar,
+  CartesianGrid,
+  Line,
+  LineChart,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from 'recharts';
 import { insforge } from '@/lib/insforge';
 import SyncStatusButton from '@/components/admin/SyncStatusButton';
 import {
   formatCLP,
   normalizeOrderRecord,
+  normalizeOrderStatus,
+  ORDER_STATUS_COLORS,
   orderStatusColor,
   orderStatusLabel,
   resolveCategoryName,
@@ -57,6 +71,17 @@ interface ObservatoryLog {
   text: string;
   status?: string;
   created_at?: string;
+}
+
+function formatTimeAgo(timestampMs: number): string {
+  const diff = Date.now() - timestampMs;
+  if (diff < 60_000) return 'hace segundos';
+  const minutes = Math.floor(diff / 60_000);
+  if (minutes < 60) return `hace ${minutes} min`;
+  const hours = Math.floor(minutes / 60);
+  if (hours < 24) return `hace ${hours} h`;
+  const days = Math.floor(hours / 24);
+  return `hace ${days} d`;
 }
 
 // Count-up hook with easeOutCubic
@@ -134,6 +159,10 @@ export default function AdminPage() {
   const [products, setProducts] = useState<DashboardProduct[]>([]);
   const [orders, setOrders] = useState<ReturnType<typeof normalizeOrderRecord>[]>([]);
   const [deliveries, setDeliveries] = useState<DashboardDelivery[]>([]);
+  const [leadsToday, setLeadsToday] = useState(0);
+  const [activityFeed, setActivityFeed] = useState<
+    { id: string; ts: number; customer: string; total: number; status: string }[]
+  >([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [connected, setConnected] = useState(false);
@@ -155,30 +184,68 @@ export default function AdminPage() {
 
     setError('');
 
-    const [productResponse, orderResponse, deliveryResponse] = await Promise.all([
-      insforge.database
-        .from('products')
-        .select('id, name, price, stock, featured, activo, category_id, created_at')
-        .order('created_at', { ascending: false })
-        .limit(250),
-      insforge.database
-        .from('orders')
-        .select('id, customer_name, customer_email, customer_phone, region, shipping_address, items, subtotal, tax, shipping_fee, total, currency, status, created_at, updated_at, payment_id, payment_status')
-        .order('created_at', { ascending: false })
-        .limit(250),
-      insforge.database
-        .from('deliveries')
-        .select('id, order_id, customer_name, status, responsible, estimated_date, updated_at')
-        .order('updated_at', { ascending: false })
-        .limit(200),
-    ]);
+    const todayStart = new Date();
+    todayStart.setHours(0, 0, 0, 0);
+    const todayISO = todayStart.toISOString();
 
-    if (productResponse.error || orderResponse.error || deliveryResponse.error) {
-      setError(productResponse.error?.message || orderResponse.error?.message || deliveryResponse.error?.message || 'No se pudo cargar el dashboard.');
+    const [productResponse, orderResponse, deliveryResponse, leadsResponse] =
+      await Promise.allSettled([
+        insforge.database
+          .from('products')
+          .select('id, name, price, stock, featured, activo, category_id, created_at')
+          .order('created_at', { ascending: false })
+          .limit(250),
+        insforge.database
+          .from('orders')
+          .select('id, customer_name, customer_email, customer_phone, region, shipping_address, items, subtotal, tax, shipping_fee, total, currency, status, created_at, updated_at, payment_id, payment_status')
+          .order('created_at', { ascending: false })
+          .limit(250),
+        insforge.database
+          .from('deliveries')
+          .select('id, order_id, customer_name, status, responsible, estimated_date, updated_at')
+          .order('updated_at', { ascending: false })
+          .limit(200),
+        insforge.database
+          .from('leads')
+          .select('id', { count: 'exact', head: true })
+          .gte('created_at', todayISO),
+      ]);
+
+    const productResult =
+      productResponse.status === 'fulfilled' ? productResponse.value : null;
+    const orderResult =
+      orderResponse.status === 'fulfilled' ? orderResponse.value : null;
+    const deliveryResult =
+      deliveryResponse.status === 'fulfilled' ? deliveryResponse.value : null;
+
+    const firstError =
+      productResult?.error?.message ||
+      orderResult?.error?.message ||
+      deliveryResult?.error?.message;
+
+    if (!productResult && !orderResult && !deliveryResult) {
+      setError('No se pudo cargar el dashboard.');
+    } else if (firstError) {
+      setError(firstError);
     } else {
-      setProducts((productResponse.data ?? []) as DashboardProduct[]);
-      setOrders(((orderResponse.data ?? []) as Record<string, unknown>[]).map((order) => normalizeOrderRecord(order)));
-      setDeliveries((deliveryResponse.data ?? []) as DashboardDelivery[]);
+      setProducts((productResult?.data ?? []) as DashboardProduct[]);
+      setOrders(
+        ((orderResult?.data ?? []) as Record<string, unknown>[]).map((order) =>
+          normalizeOrderRecord(order),
+        ),
+      );
+      setDeliveries((deliveryResult?.data ?? []) as DashboardDelivery[]);
+    }
+
+    // Leads count: graceful fallback to 0 if table/column missing.
+    if (
+      leadsResponse.status === 'fulfilled' &&
+      !leadsResponse.value.error &&
+      typeof leadsResponse.value.count === 'number'
+    ) {
+      setLeadsToday(leadsResponse.value.count);
+    } else {
+      setLeadsToday(0);
     }
 
     setLoading(false);
@@ -250,7 +317,29 @@ export default function AdminPage() {
           insforge.realtime.on('INSERT_product', () => { if (!disposed) void loadDashboard(true); });
           insforge.realtime.on('UPDATE_product', () => { if (!disposed) void loadDashboard(true); });
           insforge.realtime.on('DELETE_product', () => { if (!disposed) void loadDashboard(true); });
-          insforge.realtime.on('INSERT_order', () => { if (!disposed) void loadDashboard(true); });
+          insforge.realtime.on('INSERT_order', (payload: unknown) => {
+            if (!disposed) {
+              if (payload && typeof payload === 'object') {
+                const record = payload as Record<string, unknown>;
+                const totalRaw = record.total;
+                const total =
+                  typeof totalRaw === 'number'
+                    ? totalRaw
+                    : Number(totalRaw) || 0;
+                setActivityFeed((prev) => [
+                  {
+                    id: String(record.id ?? `${Date.now()}-${Math.random()}`),
+                    ts: Date.now(),
+                    customer: String(record.customer_name ?? 'Cliente'),
+                    total,
+                    status: String(record.status ?? 'pendiente'),
+                  },
+                  ...prev,
+                ].slice(0, 10));
+              }
+              void loadDashboard(true);
+            }
+          });
           insforge.realtime.on('UPDATE_order', () => { if (!disposed) void loadDashboard(true); });
           insforge.realtime.on('INSERT_delivery', () => { if (!disposed) void loadDashboard(true); });
           insforge.realtime.on('UPDATE_delivery', () => { if (!disposed) void loadDashboard(true); });
@@ -297,14 +386,38 @@ export default function AdminPage() {
     const prevMonth = currentMonth === 0 ? 11 : currentMonth - 1;
     const prevYear = currentMonth === 0 ? currentYear - 1 : currentYear;
 
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+
+    // Start of the current week (Monday 00:00 local).
+    const weekStart = new Date(todayStart);
+    const dayOfWeek = weekStart.getDay(); // 0 = Sunday
+    const daysSinceMonday = (dayOfWeek + 6) % 7;
+    weekStart.setDate(weekStart.getDate() - daysSinceMonday);
+
     // Active products
     const activeProducts = products.filter((product) => product.activo !== false);
     const activeProductsCount = activeProducts.length;
     const zeroStock = activeProducts.filter((product) => (product.stock ?? 0) === 0).length;
 
+    // Orders created today
+    const ordersTodayCount = orders.filter((order) => {
+      const created = new Date(order.created_at);
+      return created >= todayStart;
+    }).length;
+
+    // Paid revenue this week (normalized status "confirmado" includes pagada/paid/approved).
+    const paidThisWeekRevenue = orders
+      .filter((order) => {
+        if (order.status !== 'confirmado') return false;
+        const created = new Date(order.created_at);
+        return created >= weekStart;
+      })
+      .reduce((sum, order) => sum + order.total, 0);
+
     // Pending orders (new, preparing, pending)
     const pendingOrders = orders.filter((order) =>
-      ['new', 'preparing', 'pending', 'pendiente', 'en_preparacion'].includes(order.status)
+      ['pendiente', 'en_preparacion'].includes(order.status)
     );
     const pendingOrdersCount = pendingOrders.length;
     const oldPending = pendingOrders.filter((order) => {
@@ -350,6 +463,8 @@ export default function AdminPage() {
     return {
       activeProductsCount,
       zeroStock,
+      ordersTodayCount,
+      paidThisWeekRevenue,
       pendingOrdersCount,
       oldPending,
       thisMonthRevenue,
@@ -391,10 +506,37 @@ export default function AdminPage() {
     return weeks;
   }, [orders, isMobile]);
 
+  // Daily revenue for the last 7 days (paid/confirmed orders only).
+  const ventasPorDia = useMemo(() => {
+    const now = new Date();
+    const days: { fecha: string; total: number }[] = [];
+    const dayLabels = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+
+    for (let i = 6; i >= 0; i--) {
+      const dayStart = new Date(now);
+      dayStart.setDate(now.getDate() - i);
+      dayStart.setHours(0, 0, 0, 0);
+      const dayEnd = new Date(dayStart);
+      dayEnd.setHours(23, 59, 59, 999);
+
+      const total = orders
+        .filter((order) => {
+          if (order.status !== 'confirmado') return false;
+          const created = new Date(order.created_at);
+          return created >= dayStart && created <= dayEnd;
+        })
+        .reduce((sum, order) => sum + order.total, 0);
+
+      days.push({ fecha: dayLabels[dayStart.getDay()], total });
+    }
+
+    return days;
+  }, [orders]);
+
   const animatedActiveProducts = useCountUp(metrics.activeProductsCount);
-  const animatedPendingOrders = useCountUp(metrics.pendingOrdersCount);
-  const animatedCustomers = useCountUp(metrics.customersCount);
-  const animatedRevenue = useCountUp(metrics.thisMonthRevenue);
+  const animatedOrdersToday = useCountUp(metrics.ordersTodayCount);
+  const animatedLeadsToday = useCountUp(leadsToday);
+  const animatedPaidWeekRevenue = useCountUp(metrics.paidThisWeekRevenue);
 
   const formattedTime = currentTime.toLocaleDateString('es-CL', {
     weekday: 'long',
@@ -434,15 +576,33 @@ export default function AdminPage() {
         </div>
       )}
 
-      {/* Four metric cards */}
+      {/* Four metric cards — Task 9 KPIs (pedidos hoy · ingresos semana · productos activos · leads nuevos) */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        {/* Revenue */}
+        {/* Pedidos hoy */}
+        <div className="rounded-3xl border border-white/10 border-l-4 border-l-yellow-400 bg-gradient-to-br from-zinc-900 to-black p-5">
+          <div className="flex items-center gap-2 text-yellow-400">
+            <ShoppingCart className="h-4 w-4" />
+            <p className="text-[10px] font-bold uppercase tracking-widest">Pedidos hoy</p>
+          </div>
+          <p className="mt-3 text-3xl font-black text-white">{animatedOrdersToday}</p>
+          {metrics.pendingOrdersCount > 0 ? (
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-amber-400">
+              <AlertTriangle className="h-4 w-4" />
+              {metrics.pendingOrdersCount} pendientes
+              {metrics.oldPending > 0 ? ` · ${metrics.oldPending} +24h` : ''}
+            </p>
+          ) : (
+            <p className="mt-2 text-sm text-zinc-500">Sin pedidos pendientes</p>
+          )}
+        </div>
+
+        {/* Ingresos semana */}
         <div className="rounded-3xl border border-white/10 border-l-4 border-l-yellow-400 bg-gradient-to-br from-zinc-900 to-black p-5">
           <div className="flex items-center gap-2 text-yellow-400">
             <DollarSign className="h-4 w-4" />
-            <p className="text-xs font-bold uppercase tracking-wider">Ingresos mes</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest">Ingresos semana</p>
           </div>
-          <p className="mt-3 text-3xl font-black text-white">{formatCLP(animatedRevenue)}</p>
+          <p className="mt-3 text-3xl font-black text-white">{formatCLP(animatedPaidWeekRevenue)}</p>
           <p className="mt-2 flex items-center gap-1.5 text-sm text-zinc-500">
             {metrics.revenueChange >= 0 ? (
               <TrendingUp className="h-4 w-4 text-green-400" />
@@ -450,59 +610,92 @@ export default function AdminPage() {
               <TrendingDown className="h-4 w-4 text-red-400" />
             )}
             <span className={metrics.revenueChange >= 0 ? 'text-green-400' : 'text-red-400'}>
-              {metrics.revenueChange >= 0 ? '↑' : '↓'} {Math.abs(Math.round(metrics.revenueChange))}% vs anterior
+              {metrics.revenueChange >= 0 ? '↑' : '↓'} {Math.abs(Math.round(metrics.revenueChange))}% mes vs anterior
             </span>
           </p>
         </div>
 
-        {/* Products */}
+        {/* Productos activos */}
         <div className="rounded-3xl border border-white/10 border-l-4 border-l-yellow-400 bg-gradient-to-br from-zinc-900 to-black p-5">
           <div className="flex items-center gap-2 text-yellow-400">
             <Package className="h-4 w-4" />
-            <p className="text-xs font-bold uppercase tracking-wider">Productos</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest">Productos activos</p>
           </div>
           <p className="mt-3 text-3xl font-black text-white">{animatedActiveProducts}</p>
-          {metrics.zeroStock > 0 && (
+          {metrics.zeroStock > 0 ? (
             <p className="mt-2 flex items-center gap-1.5 text-sm text-amber-400">
               <AlertTriangle className="h-4 w-4" />
-              ⚠ {metrics.zeroStock} sin stock
+              {metrics.zeroStock} sin stock
             </p>
-          )}
-          {metrics.zeroStock === 0 && (
+          ) : (
             <p className="mt-2 text-sm text-zinc-500">Todos con stock disponible</p>
           )}
         </div>
 
-        {/* Pending orders */}
+        {/* Leads nuevos */}
         <div className="rounded-3xl border border-white/10 border-l-4 border-l-yellow-400 bg-gradient-to-br from-zinc-900 to-black p-5">
           <div className="flex items-center gap-2 text-yellow-400">
-            <ShoppingCart className="h-4 w-4" />
-            <p className="text-xs font-bold uppercase tracking-wider">Pedidos pendientes</p>
+            <UserPlus className="h-4 w-4" />
+            <p className="text-[10px] font-bold uppercase tracking-widest">Leads nuevos</p>
           </div>
-          <p className="mt-3 text-3xl font-black text-white">{animatedPendingOrders}</p>
-          {metrics.oldPending > 0 && (
-            <p className="mt-2 flex items-center gap-1.5 text-sm text-amber-400">
-              <AlertTriangle className="h-4 w-4" />
-              ⚠ {metrics.oldPending} +24h
-            </p>
-          )}
-          {metrics.oldPending === 0 && (
-            <p className="mt-2 text-sm text-zinc-500">Sin pedidos antiguos</p>
-          )}
-        </div>
-
-        {/* Customers */}
-        <div className="rounded-3xl border border-white/10 border-l-4 border-l-yellow-400 bg-gradient-to-br from-zinc-900 to-black p-5">
-          <div className="flex items-center gap-2 text-yellow-400">
-            <Users className="h-4 w-4" />
-            <p className="text-xs font-bold uppercase tracking-wider">Clientes</p>
-          </div>
-          <p className="mt-3 text-3xl font-black text-white">{animatedCustomers}</p>
-          <p className="mt-2 text-sm text-zinc-500">{metrics.newCustomersThisMonth} este mes</p>
+          <p className="mt-3 text-3xl font-black text-white">{animatedLeadsToday}</p>
+          <p className="mt-2 text-sm text-zinc-500">
+            {metrics.customersCount} clientes · {metrics.newCustomersThisMonth} nuevos mes
+          </p>
         </div>
       </div>
 
-      {/* Bar chart */}
+      {/* Ingresos por día (últimos 7 días) — recharts LineChart */}
+      <div className="rounded-3xl border border-white/5 bg-zinc-950 p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="font-playfair text-xl font-bold text-white">Ingresos por día · 7 días</h2>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-zinc-500">
+            Solo pedidos pagados
+          </span>
+        </div>
+        <div className="mt-4 h-64">
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={ventasPorDia}>
+              <CartesianGrid stroke="#1a1a1a" />
+              <XAxis
+                dataKey="fecha"
+                stroke="#52525b"
+                tick={{ fill: '#a1a1aa', fontSize: 10 }}
+                axisLine={{ stroke: 'rgba(255,255,255,0.05)' }}
+              />
+              <YAxis
+                stroke="#52525b"
+                tick={{ fill: '#a1a1aa', fontSize: 10 }}
+                axisLine={{ stroke: 'rgba(255,255,255,0.05)' }}
+                hide={isMobile}
+                tickFormatter={(value: number) =>
+                  value >= 1000 ? `${Math.round(value / 1000)}k` : String(value)
+                }
+              />
+              <Tooltip
+                contentStyle={{
+                  background: '#09090b',
+                  border: '1px solid #facc1533',
+                  borderRadius: 12,
+                  color: '#facc15',
+                }}
+                cursor={{ stroke: 'rgba(250,204,21,0.2)' }}
+                formatter={(value: number) => [formatCLP(value), 'Ingresos']}
+              />
+              <Line
+                type="monotone"
+                dataKey="total"
+                stroke="#facc15"
+                strokeWidth={2}
+                dot={{ fill: '#facc15', r: 3 }}
+                activeDot={{ r: 5 }}
+              />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      </div>
+
+      {/* Pedidos por semana — mantenemos la vista histórica (BarChart) */}
       <div className="rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-900 to-black p-6">
         <h2 className="font-playfair text-xl font-bold text-white">Pedidos por semana</h2>
         <div className="mt-4 h-64">
@@ -636,6 +829,64 @@ export default function AdminPage() {
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Live activity feed — Task 9: realtime INSERT on orders */}
+      <div className="rounded-3xl border border-white/5 bg-zinc-950 p-6">
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 font-playfair text-xl font-bold text-white">
+            <Activity className="h-5 w-5 text-yellow-400" />
+            Actividad en tiempo real
+          </h2>
+          <span
+            className={`flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest ${
+              connected ? 'text-green-400' : 'text-zinc-500'
+            }`}
+          >
+            <span
+              className={`h-2 w-2 rounded-full ${
+                connected ? 'animate-pulse bg-green-400' : 'bg-zinc-600'
+              }`}
+            />
+            {connected ? 'Conectado' : 'Esperando'}
+          </span>
+        </div>
+        {activityFeed.length === 0 ? (
+          <p className="mt-4 text-sm text-zinc-500">
+            Esperando nuevos pedidos en vivo… Cuando entre un pedido lo verás aquí al instante.
+          </p>
+        ) : (
+          <ul className="mt-4 space-y-2">
+            {activityFeed.map((event) => {
+              const status = normalizeOrderStatus(event.status);
+              const color = ORDER_STATUS_COLORS[status];
+              return (
+                <li
+                  key={event.id}
+                  className="flex items-center justify-between gap-3 rounded-2xl border border-white/5 bg-black/30 p-3"
+                >
+                  <div className="flex items-center gap-3 min-w-0">
+                    <span
+                      className="h-2 w-2 flex-none rounded-full"
+                      style={{ background: color, boxShadow: `0 0 8px ${color}` }}
+                    />
+                    <div className="min-w-0">
+                      <p className="truncate text-sm text-zinc-200">
+                        Nuevo pedido #{shortRecordId(event.id)} · {event.customer}
+                      </p>
+                      <p className="text-[10px] uppercase tracking-widest text-zinc-500">
+                        {formatTimeAgo(event.ts)}
+                      </p>
+                    </div>
+                  </div>
+                  <span className="text-sm font-bold text-yellow-400">
+                    {formatCLP(event.total)}
+                  </span>
+                </li>
+              );
+            })}
+          </ul>
+        )}
       </div>
 
       {/* Quick Actions section */}

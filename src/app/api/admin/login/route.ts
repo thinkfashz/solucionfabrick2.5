@@ -1,6 +1,12 @@
 import { NextResponse } from 'next/server';
 import { insforge, getMissingAdminEnvVars } from '@/lib/insforge';
 
+const BOOTSTRAP_ADMIN_EMAIL = (
+  process.env.ADMIN_EMAIL || 'f.eduardomicolta@gmail.com'
+)
+  .trim()
+  .toLowerCase();
+
 /**
  * Builds the JSON body for a 500 response when the deployment is missing
  * required env vars. Centralised so the pre-check and the catch-all error
@@ -92,12 +98,37 @@ export async function POST(request: Request) {
 
     const adminUser = adminRows[0] as { email: string; rol?: string; aprobado?: boolean };
 
-    if (adminUser.aprobado === false) {
+    // The bootstrap admin (ADMIN_EMAIL) is the owner of the installation and
+    // must never be blocked by the "pending approval" gate — there is nobody
+    // above them who could approve. If the team/invitations feature added an
+    // `aprobado` column that defaulted to false on their row, we treat them
+    // as approved here and best-effort heal the row so subsequent reads
+    // agree.
+    const isBootstrapAdmin = email === BOOTSTRAP_ADMIN_EMAIL;
+
+    if (adminUser.aprobado === false && !isBootstrapAdmin) {
       recordFailedAttempt(ip);
       return NextResponse.json(
         { error: 'Tu cuenta está pendiente de aprobación.' },
         { status: 403 }
       );
+    }
+
+    if (isBootstrapAdmin && adminUser.aprobado === false) {
+      // Fire-and-forget: never block login on this maintenance update, but
+      // do log any DB error so the operator can diagnose persistent issues.
+      void insforge.database
+        .from('admin_users')
+        .update({ aprobado: true, rol: adminUser.rol ?? 'superadmin' })
+        .eq('email', email)
+        .then((result: { error?: { message?: string } | null }) => {
+          if (result?.error) {
+            console.error(
+              '[admin/login] failed to self-approve bootstrap admin:',
+              result.error.message ?? result.error
+            );
+          }
+        });
     }
 
     clearFailedAttempts(ip);

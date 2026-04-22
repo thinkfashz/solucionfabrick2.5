@@ -156,8 +156,13 @@ export default function AdminLoginPage() {
       setSuccess('Código enviado. Revisa tu bandeja de entrada (y carpeta de spam).');
       setOtp('');
       setScreen('setup-password');
-    } catch {
-      setError('Error de red. Inténtalo de nuevo.');
+    } catch (err) {
+      // Surface the real cause instead of a blanket "Error de red" so the
+      // operator can tell apart network failures from CSP blocks, missing
+      // NEXT_PUBLIC_INSFORGE_* env vars (which make the SDK throw on first
+      // use), or unexpected SDK errors.
+      const message = err instanceof Error ? err.message : String(err);
+      setError(`No se pudo enviar el código: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -192,8 +197,9 @@ export default function AdminLoginPage() {
       setSuccess('¡Contraseña configurada! Ya puedes iniciar sesión.');
       setEmail(setupEmail.trim().toLowerCase());
       setScreen('login');
-    } catch {
-      setError('Error de red. Inténtalo de nuevo.');
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      setError(`No se pudo completar la recuperación: ${message}`);
     } finally {
       setLoading(false);
     }

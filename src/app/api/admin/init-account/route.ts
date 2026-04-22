@@ -27,16 +27,27 @@ export async function POST() {
     );
   }
 
-  // Ensure the admin email is in the admin_users table
+  // Ensure the admin email is in the admin_users table AND approved. Without
+  // `aprobado: true` the login route will block this bootstrap account with
+  // "Tu cuenta está pendiente de aprobación." once the team/invitations
+  // feature is in use (which adds an `aprobado` column defaulting to false).
+  const bootstrapRow = {
+    email: ADMIN_EMAIL,
+    nombre: 'Admin Fabrick',
+    rol: 'superadmin',
+    aprobado: true,
+  };
+
   const { error: dbError } = await insforge.database
     .from('admin_users')
-    .upsert([{ email: ADMIN_EMAIL }], { onConflict: 'email' });
+    .upsert([bootstrapRow], { onConflict: 'email' });
 
   if (dbError) {
-    // Try a plain insert as fallback
+    // Try a plain insert as fallback, then a best-effort update in case the
+    // row already exists with aprobado=false from a previous run.
     const { error: insertError } = await insforge.database
       .from('admin_users')
-      .insert([{ email: ADMIN_EMAIL }]);
+      .insert([bootstrapRow]);
 
     if (
       insertError &&
@@ -44,6 +55,15 @@ export async function POST() {
       !insertError.message.toLowerCase().includes('unique')
     ) {
       console.error('[AdminInit] DB error:', insertError);
+    }
+
+    // Row likely exists — force-approve the bootstrap admin.
+    const { error: approveError } = await insforge.database
+      .from('admin_users')
+      .update({ aprobado: true, rol: 'superadmin' })
+      .eq('email', ADMIN_EMAIL);
+    if (approveError) {
+      console.error('[AdminInit] failed to force-approve bootstrap admin:', approveError);
     }
   }
 

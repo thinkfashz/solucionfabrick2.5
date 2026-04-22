@@ -75,17 +75,19 @@ function AnimatedNumber({ value }: { value: number }) {
   return <>{formatCLP(display)}</>;
 }
 
+const ACCENT = '#facc15';
+
 const panelStyle: React.CSSProperties = {
   background: 'rgba(6,10,18,0.88)',
   backdropFilter: 'blur(12px)',
   WebkitBackdropFilter: 'blur(12px)',
-  border: '1px solid rgba(79,142,247,0.18)',
+  border: '1px solid rgba(250,204,21,0.22)',
   borderRadius: 12,
   padding: '16px',
 };
 
 const panelTitleStyle: React.CSSProperties = {
-  color: '#4f8ef7',
+  color: ACCENT,
   fontSize: 9,
   letterSpacing: '0.3em',
   textTransform: 'uppercase',
@@ -102,9 +104,18 @@ const TABS: Array<{ id: TabId; label: string }> = [
   { id: 'overview', label: 'Overview' },
 ];
 
-export default function ObservatoryHUD({ data }: { data: ObservatoryData }) {
+export default function ObservatoryHUD({
+  data,
+  vehicleCount = 0,
+  logs = [],
+}: {
+  data: ObservatoryData;
+  vehicleCount?: number;
+  logs?: Array<{ msg: string; color: string }>;
+}) {
   const now = useNow();
   const [tab, setTab] = useState<TabId>('produccion');
+  const [hudVisible, setHudVisible] = useState(true);
 
   const kpis: Array<{
     label: string;
@@ -128,8 +139,38 @@ export default function ObservatoryHUD({ data }: { data: ObservatoryData }) {
       className="absolute inset-0 pointer-events-none"
       style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
     >
+      {/* ── HEADER / TOGGLE ───────────────────────────────────────────── */}
+      <div className="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-auto">
+        <button
+          type="button"
+          onClick={() => setHudVisible((v) => !v)}
+          style={{
+            background: 'rgba(6,10,18,0.88)',
+            backdropFilter: 'blur(12px)',
+            WebkitBackdropFilter: 'blur(12px)',
+            border: `1px solid ${ACCENT}55`,
+            borderRadius: 8,
+            padding: '6px 14px',
+            color: ACCENT,
+            fontSize: 10,
+            letterSpacing: '0.25em',
+            textTransform: 'uppercase',
+            fontWeight: 700,
+            cursor: 'pointer',
+          }}
+        >
+          {hudVisible ? '◀ Toggle HUD ▶' : '▶ Toggle HUD ◀'}
+        </button>
+      </div>
+
       {/* ── PANEL IZQUIERDO ───────────────────────────────────────────── */}
-      <div className="absolute top-4 left-4 w-64 flex flex-col gap-3 pointer-events-auto">
+      <div
+        className="absolute top-20 left-4 w-64 flex flex-col gap-3 pointer-events-auto"
+        style={{
+          transform: hudVisible ? 'translateX(0)' : 'translateX(-110%)',
+          transition: 'transform 0.35s ease',
+        }}
+      >
         <div style={panelStyle}>
           <div
             style={{
@@ -143,7 +184,7 @@ export default function ObservatoryHUD({ data }: { data: ObservatoryData }) {
           >
             ● OBSERVATORY · LIVE
           </div>
-          <div style={{ color: '#4f8ef7', fontSize: 11, marginTop: 6 }}>
+          <div style={{ color: ACCENT, fontSize: 11, marginTop: 6 }}>
             {now
               ? now.toLocaleDateString('es-CL', {
                   weekday: 'short',
@@ -151,7 +192,7 @@ export default function ObservatoryHUD({ data }: { data: ObservatoryData }) {
                   month: 'short',
                 })
               : '—'}{' '}
-            <span style={{ color: '#facc15' }}>
+            <span style={{ color: ACCENT }}>
               {now
                 ? now.toLocaleTimeString('es-CL', {
                     hour: '2-digit',
@@ -166,6 +207,34 @@ export default function ObservatoryHUD({ data }: { data: ObservatoryData }) {
               Último sync: {timeAgo(data.lastUpdated.toISOString())}
             </div>
           )}
+          <div
+            style={{
+              marginTop: 10,
+              paddingTop: 8,
+              borderTop: `1px solid ${ACCENT}22`,
+            }}
+          >
+            <p
+              style={{
+                color: '#6b7280',
+                fontSize: 9,
+                textTransform: 'uppercase',
+                letterSpacing: '0.2em',
+              }}
+            >
+              Data Vehicles Active
+            </p>
+            <p
+              style={{
+                color: ACCENT,
+                fontSize: 22,
+                fontWeight: 900,
+                lineHeight: 1.1,
+              }}
+            >
+              {vehicleCount}
+            </p>
+          </div>
         </div>
 
         {/* KPIs */}
@@ -202,7 +271,13 @@ export default function ObservatoryHUD({ data }: { data: ObservatoryData }) {
       </div>
 
       {/* ── PANEL DERECHO ─────────────────────────────────────────────── */}
-      <div className="absolute top-4 right-4 w-72 flex flex-col gap-3 pointer-events-auto">
+      <div
+        className="absolute top-20 right-4 w-72 flex flex-col gap-3 pointer-events-auto"
+        style={{
+          transform: hudVisible ? 'translateX(0)' : 'translateX(110%)',
+          transition: 'transform 0.35s ease',
+        }}
+      >
         {/* Servicios */}
         <div style={panelStyle}>
           <p style={panelTitleStyle}>Servicios</p>
@@ -256,6 +331,38 @@ export default function ObservatoryHUD({ data }: { data: ObservatoryData }) {
           </div>
         </div>
 
+        {/* Terminal: recent logs */}
+        <div style={panelStyle}>
+          <p style={panelTitleStyle}>Terminal · Data Flow</p>
+          {logs.length === 0 ? (
+            <p style={{ color: '#6b7280', fontSize: 11 }}>
+              Esperando eventos…
+            </p>
+          ) : (
+            <div
+              className="flex flex-col gap-1"
+              style={{ maxHeight: 260, overflowY: 'auto' }}
+            >
+              {logs.slice(0, 30).map((l, i) => (
+                <p
+                  key={i}
+                  style={{
+                    color: l.color,
+                    fontSize: 10,
+                    lineHeight: 1.4,
+                    fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
+                    whiteSpace: 'nowrap',
+                    overflow: 'hidden',
+                    textOverflow: 'ellipsis',
+                  }}
+                >
+                  &gt; {l.msg}
+                </p>
+              ))}
+            </div>
+          )}
+        </div>
+
         {/* Últimas órdenes */}
         <div style={panelStyle}>
           <p style={panelTitleStyle}>Últimas órdenes</p>
@@ -270,7 +377,7 @@ export default function ObservatoryHUD({ data }: { data: ObservatoryData }) {
                   key={o.id}
                   className="flex items-center justify-between gap-2"
                   style={{
-                    borderBottom: '1px solid rgba(79,142,247,0.08)',
+                    borderBottom: `1px solid ${ACCENT}14`,
                     paddingBottom: 6,
                   }}
                 >
@@ -324,10 +431,10 @@ export default function ObservatoryHUD({ data }: { data: ObservatoryData }) {
                 type="button"
                 onClick={() => setTab(t.id)}
                 style={{
-                  background: active ? 'rgba(79,142,247,0.18)' : 'transparent',
-                  color: active ? '#4f8ef7' : '#94a3b8',
+                  background: active ? `${ACCENT}2c` : 'transparent',
+                  color: active ? ACCENT : '#94a3b8',
                   border: active
-                    ? '1px solid rgba(79,142,247,0.4)'
+                    ? `1px solid ${ACCENT}66`
                     : '1px solid transparent',
                   borderRadius: 8,
                   padding: '6px 14px',

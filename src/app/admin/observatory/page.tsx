@@ -1,5 +1,6 @@
 'use client';
 
+import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import ObservatoryHUD from './ObservatoryHUD';
 import { useObservatoryData } from './useObservatoryData';
@@ -7,10 +8,10 @@ import { useObservatoryData } from './useObservatoryData';
 const ObservatoryScene = dynamic(() => import('./ObservatoryScene'), {
   ssr: false,
   loading: () => (
-    <div className="flex h-full w-full items-center justify-center bg-[#060a12]">
+    <div className="flex h-full w-full items-center justify-center bg-[#010103]">
       <div
         style={{
-          color: '#4f8ef7',
+          color: '#facc15',
           fontSize: 11,
           letterSpacing: '0.3em',
           textTransform: 'uppercase',
@@ -26,12 +27,22 @@ const ObservatoryScene = dynamic(() => import('./ObservatoryScene'), {
 
 export default function ObservatoryPage() {
   const data = useObservatoryData();
+  const [logs, setLogs] = useState<Array<{ msg: string; color: string }>>([]);
+  const [vehicleCount, setVehicleCount] = useState(6);
+
+  const handleLog = useCallback((msg: string, color: string) => {
+    setLogs((prev) => [{ msg, color }, ...prev].slice(0, 30));
+  }, []);
 
   return (
-    <div className="relative h-screen w-full overflow-hidden bg-[#060a12]">
+    <div className="relative h-screen w-full overflow-hidden bg-[#010103]">
       {/* Vista 3D solo en desktop */}
       <div className="hidden md:block absolute inset-0">
-        <ObservatoryScene data={data} />
+        <ObservatoryScene
+          data={data}
+          onLog={handleLog}
+          onVehicleCount={setVehicleCount}
+        />
       </div>
 
       {/* Fallback móvil */}
@@ -46,7 +57,11 @@ export default function ObservatoryPage() {
       </div>
 
       {/* HUD superpuesto en todos los dispositivos */}
-      <ObservatoryHUD data={data} />
+      <ObservatoryHUD
+        data={data}
+        logs={logs}
+        vehicleCount={vehicleCount}
+      />
     </div>
   );
 }

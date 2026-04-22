@@ -52,9 +52,9 @@ export function useObservatoryData(): ObservatoryData {
 
       const [prod, ped, leads, orders, revenue] = await Promise.allSettled([
         insforge.database
-          .from('productos')
+          .from('products')
           .select('id', { count: 'exact', head: true })
-          .eq('activo', true),
+          .neq('activo', false),
         insforge.database
           .from('orders')
           .select('id', { count: 'exact', head: true })

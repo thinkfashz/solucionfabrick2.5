@@ -11,7 +11,7 @@
  *   - NEXT_PUBLIC_INSFORGE_URL : URL base del proyecto InsForge (ej. https://xxxx.us-east.insforge.app)
  *   - INSFORGE_API_KEY         : API key de administrador del proyecto InsForge
  *
- * El script ejecuta 12 operaciones SQL en orden. Por cada una imprime
+ * El script ejecuta 13 operaciones SQL en orden. Por cada una imprime
  * ✅ o ❌ con el error, y al final un resumen "X tablas creadas, X errores".
  */
 
@@ -156,6 +156,14 @@ const STEPS: SqlStep[] = [
   imagen_url TEXT,
   activo BOOLEAN DEFAULT true,
   created_at TIMESTAMPTZ DEFAULT now()
+);`,
+  },
+  {
+    name: 'integrations',
+    query: `CREATE TABLE IF NOT EXISTS integrations (
+  provider    TEXT        PRIMARY KEY,
+  credentials JSONB       NOT NULL DEFAULT '{}'::jsonb,
+  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );`,
   },
   {

@@ -1,5 +1,22 @@
 import { NextResponse } from 'next/server';
-import { insforge } from '@/lib/insforge';
+import { insforge, getMissingAdminEnvVars } from '@/lib/insforge';
+
+/**
+ * Builds the JSON body for a 500 response when the deployment is missing
+ * required env vars. Centralised so the pre-check and the catch-all error
+ * handler always emit the same shape/text.
+ */
+function misconfiguredResponse(missing: string[]) {
+  const error =
+    missing.length > 0
+      ? `Error de configuración del servidor. Faltan variables de entorno: ${missing.join(', ')}. ` +
+        'Configúralas en el panel de tu hosting (por ejemplo Vercel → Settings → Environment Variables, marcadas para Production) y vuelve a desplegar.'
+      : 'Error de configuración del servidor. Contacta al administrador.';
+  return NextResponse.json(
+    { error, code: 'SERVER_MISCONFIGURED', missing },
+    { status: 500 }
+  );
+}
 import {
   isRateLimited,
   recordFailedAttempt,
@@ -15,6 +32,15 @@ export async function POST(request: Request) {
   const ip = getClientIp(request);
 
   try {
+    // Fail fast with a self-diagnostic message if the deployment is missing
+    // required env vars. This surfaces the exact variable names in the login
+    // form so the operator can fix Vercel/Next config without reading logs.
+    // Only variable *names* are exposed — never values.
+    const missing = getMissingAdminEnvVars();
+    if (missing.length > 0) {
+      return misconfiguredResponse(missing);
+    }
+
     if (isRateLimited(ip)) {
       const remaining = blockedSecondsRemaining(ip);
       return NextResponse.json(
@@ -101,12 +127,16 @@ export async function POST(request: Request) {
     const isMissingConfig = /Missing required InsForge configuration|ADMIN_SESSION_SECRET/i.test(
       message
     );
+    if (isMissingConfig) {
+      // Belt-and-braces: the top-of-handler pre-check should already have
+      // caught this, but if some other env var (e.g. one read lazily deeper
+      // in the stack) is missing, still surface the names we know about.
+      return misconfiguredResponse(getMissingAdminEnvVars());
+    }
     return NextResponse.json(
       {
-        error: isMissingConfig
-          ? 'Error de configuración del servidor. Contacta al administrador.'
-          : 'Error interno del servidor. Intenta nuevamente en unos segundos.',
-        code: isMissingConfig ? 'SERVER_MISCONFIGURED' : 'SERVER_ERROR',
+        error: 'Error interno del servidor. Intenta nuevamente en unos segundos.',
+        code: 'SERVER_ERROR',
       },
       { status: 500 }
     );

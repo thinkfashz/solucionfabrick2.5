@@ -19,6 +19,25 @@ function requireEnv(name: string): string {
   return value;
 }
 
+/**
+ * Returns the list of env var NAMES (never values) that the admin stack needs
+ * but are missing in the current runtime. Used by admin API routes to return
+ * a helpful, self-diagnostic 500 so the operator can fix the deployment
+ * configuration without having to inspect server logs.
+ *
+ * `ADMIN_SESSION_SECRET` is only required in production — development has an
+ * insecure fallback (see `src/lib/adminAuth.ts:getSigningKey`).
+ */
+export function getMissingAdminEnvVars(): string[] {
+  const missing: string[] = [];
+  if (!process.env.NEXT_PUBLIC_INSFORGE_URL) missing.push('NEXT_PUBLIC_INSFORGE_URL');
+  if (!process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY) missing.push('NEXT_PUBLIC_INSFORGE_ANON_KEY');
+  if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_SESSION_SECRET) {
+    missing.push('ADMIN_SESSION_SECRET');
+  }
+  return missing;
+}
+
 let _insforge: InsForgeClient | undefined;
 let _insforgeAdmin: InsForgeClient | undefined;
 

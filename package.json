@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "@insforge/sdk": "^1.2.5",
+    "@mercadopago/sdk-react": "^1.0.7",
     "@radix-ui/react-switch": "^1.1.3",
     "@vercel/analytics": "^2.0.1",
     "animejs": "^3.2.2",

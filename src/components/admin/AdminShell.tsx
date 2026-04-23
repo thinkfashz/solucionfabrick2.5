@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  ArrowUpRight, BarChart3, ChevronRight, ExternalLink, Hammer, LogOut, Menu,
+  ArrowUpRight, BarChart3, ChevronRight, Database, ExternalLink, Hammer, LogOut, Menu,
   Megaphone, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart,
   Truck, Users, X,
 } from 'lucide-react';
@@ -44,6 +44,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Sistema',
     links: [
       { href: '/admin/observatory', label: 'Observatory', description: 'Red en tiempo real', icon: Radio },
+      { href: '/admin/setup', label: 'Setup', description: 'Verificar tablas InsForge', icon: Database, superadminOnly: true },
       { href: '/admin/equipo', label: 'Equipo', description: 'Roles, invitaciones y aprobaciones', icon: ShieldCheck, superadminOnly: true },
     ],
   },
@@ -64,6 +65,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/publicar': 'Publicar',
   '/admin/configuracion': 'Configuración',
   '/admin/observatory': 'Observatory',
+  '/admin/setup': 'Setup',
   '/admin/equipo': 'Equipo',
 };
 

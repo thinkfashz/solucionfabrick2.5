@@ -13,145 +13,16 @@ import {
   X,
   AlertTriangle,
 } from 'lucide-react';
-
-/* ──────────────────────────────────────────────────────────
- * shadcn-style primitives (locales)
- * Implementaciones ligeras inspiradas en shadcn/ui que usan
- * los tokens CSS añadidos en globals.css (--card, --primary…).
- * ─────────────────────────────────────────────────────────*/
-
-function Card({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return (
-    <div
-      className={`rounded-2xl border border-white/10 bg-zinc-950/80 backdrop-blur-sm shadow-lg ${className}`}
-    >
-      {children}
-    </div>
-  );
-}
-
-function CardHeader({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`p-6 border-b border-white/5 ${className}`}>{children}</div>;
-}
-
-function CardTitle({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <h2 className={`text-xl font-semibold text-white ${className}`}>{children}</h2>;
-}
-
-function CardDescription({
-  children,
-  className = '',
-}: {
-  children: React.ReactNode;
-  className?: string;
-}) {
-  return <p className={`mt-1 text-sm text-zinc-400 ${className}`}>{children}</p>;
-}
-
-function CardContent({ children, className = '' }: { children: React.ReactNode; className?: string }) {
-  return <div className={`p-6 ${className}`}>{children}</div>;
-}
-
-type BadgeVariant = 'success' | 'destructive' | 'warning' | 'muted';
-
-function Badge({
-  children,
-  variant = 'muted',
-  className = '',
-}: {
-  children: React.ReactNode;
-  variant?: BadgeVariant;
-  className?: string;
-}) {
-  const styles: Record<BadgeVariant, string> = {
-    success: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
-    destructive: 'bg-red-500/15 text-red-300 border-red-500/30',
-    warning: 'bg-amber-500/15 text-amber-300 border-amber-500/30',
-    muted: 'bg-white/5 text-zinc-300 border-white/10',
-  };
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs font-medium ${styles[variant]} ${className}`}
-    >
-      {children}
-    </span>
-  );
-}
-
-type ButtonVariant = 'primary' | 'secondary' | 'ghost' | 'outline';
-
-function Button({
-  children,
-  onClick,
-  variant = 'primary',
-  disabled = false,
-  type = 'button',
-  className = '',
-  asChild = false,
-  href,
-  target,
-  rel,
-  ariaLabel,
-}: {
-  children: React.ReactNode;
-  onClick?: () => void;
-  variant?: ButtonVariant;
-  disabled?: boolean;
-  type?: 'button' | 'submit';
-  className?: string;
-  asChild?: boolean;
-  href?: string;
-  target?: string;
-  rel?: string;
-  ariaLabel?: string;
-}) {
-  const base =
-    'inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-semibold transition-colors disabled:opacity-50 disabled:cursor-not-allowed focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60';
-  const styles: Record<ButtonVariant, string> = {
-    primary: 'bg-yellow-400 text-black hover:bg-yellow-300',
-    secondary: 'bg-white/10 text-white hover:bg-white/15',
-    ghost: 'bg-transparent text-zinc-300 hover:bg-white/5',
-    outline: 'border border-white/15 text-white hover:bg-white/5',
-  };
-  const cls = `${base} ${styles[variant]} ${className}`;
-
-  if (asChild && href) {
-    return (
-      <a href={href} target={target} rel={rel} className={cls} aria-label={ariaLabel}>
-        {children}
-      </a>
-    );
-  }
-  return (
-    <button
-      type={type}
-      onClick={onClick}
-      disabled={disabled}
-      className={cls}
-      aria-label={ariaLabel}
-    >
-      {children}
-    </button>
-  );
-}
-
-function Progress({ value, className = '' }: { value: number; className?: string }) {
-  const safe = Math.max(0, Math.min(100, Math.round(value)));
-  return (
-    <div
-      role="progressbar"
-      aria-valuenow={safe}
-      aria-valuemin={0}
-      aria-valuemax={100}
-      className={`relative h-2 w-full overflow-hidden rounded-full bg-white/10 ${className}`}
-    >
-      <div
-        className="h-full rounded-full bg-yellow-400 transition-all duration-500"
-        style={{ width: `${safe}%` }}
-      />
-    </div>
-  );
-}
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import { Progress } from '@/components/ui/progress';
 
 /* ──────────────────────────────────────────────────────────
  * Tipos / utilidades
@@ -255,7 +126,7 @@ export default function AdminSetupPage() {
   const allReady = total > 0 && okCount === total;
 
   const dashboardUrl = setup?.dashboardUrl ?? null;
-  const missingEnv = useMemo(() => setup?.missingEnv ?? [], [setup?.missingEnv]);
+  const missingEnv = useMemo(() => setup?.missingEnv ?? [], [setup]);
 
   return (
     <div className="min-h-screen bg-black text-white">
@@ -271,7 +142,7 @@ export default function AdminSetupPage() {
               requeridas por el panel admin.
             </p>
           </div>
-          <Button onClick={handleVerify} disabled={loading} variant="primary">
+          <Button onClick={handleVerify} disabled={loading} variant="default">
             {loading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -287,8 +158,8 @@ export default function AdminSetupPage() {
         </header>
 
         {/* 1. Estado de conexión */}
-        <Card>
-          <CardHeader>
+        <Card className="backdrop-blur-sm">
+          <CardHeader className="border-b border-white/5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <CardTitle>1. Conexión con InsForge</CardTitle>
@@ -323,8 +194,8 @@ export default function AdminSetupPage() {
         </Card>
 
         {/* 2. Tablas requeridas */}
-        <Card>
-          <CardHeader>
+        <Card className="backdrop-blur-sm">
+          <CardHeader className="border-b border-white/5">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <CardTitle>2. Tablas requeridas</CardTitle>
@@ -387,8 +258,8 @@ export default function AdminSetupPage() {
         </Card>
 
         {/* 3-4. Acciones */}
-        <Card>
-          <CardHeader>
+        <Card className="backdrop-blur-sm">
+          <CardHeader className="border-b border-white/5">
             <CardTitle>3. Crear las tablas</CardTitle>
             <CardDescription>
               Copia el SQL y ejecútalo en el editor SQL del dashboard de InsForge.
@@ -399,17 +270,16 @@ export default function AdminSetupPage() {
               <Button
                 onClick={() => setShowSqlModal(true)}
                 disabled={!setup?.sql}
-                variant="primary"
+                variant="default"
               >
                 Ver instrucciones SQL
               </Button>
               <Button
-                asChild
-                href={dashboardUrl ?? '#'}
-                target={dashboardUrl ? '_blank' : undefined}
-                rel={dashboardUrl ? 'noopener noreferrer' : undefined}
                 variant="outline"
                 disabled={!dashboardUrl}
+                onClick={() => {
+                  if (dashboardUrl) window.open(dashboardUrl, '_blank', 'noopener,noreferrer');
+                }}
               >
                 <ExternalLink className="w-4 h-4" />
                 Abrir dashboard InsForge
@@ -464,7 +334,7 @@ export default function AdminSetupPage() {
                   onClick={() => setShowSqlModal(false)}
                   variant="ghost"
                   className="!px-2"
-                  ariaLabel="Cerrar"
+                  aria-label="Cerrar"
                 >
                   <X className="w-5 h-5" />
                   <span className="sr-only">Cerrar</span>
@@ -509,7 +379,7 @@ function ConnectionBadge({ state }: { state: ConnectionState }) {
     );
   }
   return (
-    <Badge variant="muted">
+    <Badge variant="secondary">
       <Loader2 className="w-3.5 h-3.5 animate-spin" />
       Comprobando…
     </Badge>

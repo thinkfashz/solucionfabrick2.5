@@ -11,9 +11,10 @@ export const runtime = 'nodejs';
  * POST /api/admin/setup-tables
  *
  * Ejecuta `scripts/create-tables.sql` contra InsForge usando el endpoint
- * `/api/database/advance/rawsql`. Divide el archivo en bloques por el marcador
- * `-- TABLA:` (o `-- SEED:`) y ejecuta cada bloque por separado para poder
- * reportar el resultado individual de cada tabla y continuar aunque uno falle.
+ * `/api/database/advance/rawsql/unrestricted`. Divide el archivo en bloques
+ * por el marcador `-- TABLA:` (o `-- SEED:`) y ejecuta cada bloque por
+ * separado para poder reportar el resultado individual de cada tabla y
+ * continuar aunque uno falle.
  *
  * Seguridad: requiere sesión de administrador (cookie `admin_session`).
  * Requiere las variables de entorno `NEXT_PUBLIC_INSFORGE_URL` y
@@ -75,12 +76,16 @@ async function runRawSql(
   apiKey: string,
   query: string,
 ): Promise<void> {
-  const url = `${baseUrl.replace(/\/+$/, '')}/api/database/advance/rawsql`;
+  // Use the `/unrestricted` variant because we are running DDL
+  // (CREATE TABLE / CREATE INDEX / seed INSERTs). Only the `x-api-key`
+  // header is sent: including `Authorization: Bearer <apikey>` in addition
+  // makes InsForge try to validate the value as a user JWT first, which
+  // fails with AUTH_INVALID_API_KEY.
+  const url = `${baseUrl.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
       'x-api-key': apiKey,
     },
     body: JSON.stringify({ query }),

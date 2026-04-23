@@ -66,7 +66,9 @@ async function checkTable(
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${apiKey}`,
+        // Send only `x-api-key`. Adding `Authorization: Bearer <apikey>` makes
+        // InsForge try to validate the value as a user JWT first, which fails
+        // with AUTH_INVALID_API_KEY.
         'x-api-key': apiKey,
       },
       body: JSON.stringify({ query }),

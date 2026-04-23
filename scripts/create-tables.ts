@@ -2,7 +2,7 @@
  * scripts/create-tables.ts
  *
  * Crea todas las tablas faltantes en InsForge usando la API REST
- * (`POST /api/database/advance/rawsql`) directamente con `fetch`.
+ * (`POST /api/database/advance/rawsql/unrestricted`) directamente con `fetch`.
  *
  * Uso:
  *   NEXT_PUBLIC_INSFORGE_URL=...  INSFORGE_API_KEY=...  npx tsx scripts/create-tables.ts
@@ -199,12 +199,15 @@ async function runRawSql(
   apiKey: string,
   query: string
 ): Promise<void> {
-  const url = `${baseUrl.replace(/\/+$/, '')}/api/database/advance/rawsql`;
+  // DDL requires the `/unrestricted` endpoint. We only send `x-api-key`:
+  // including `Authorization: Bearer <apikey>` makes InsForge try to
+  // validate the value as a user JWT first, which fails with
+  // AUTH_INVALID_API_KEY.
+  const url = `${baseUrl.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
       'x-api-key': apiKey,
     },
     body: JSON.stringify({ query }),

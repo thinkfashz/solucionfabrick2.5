@@ -95,7 +95,7 @@ export function useObservatoryData(): ObservatoryData {
 
       // Latencias simuladas — se pueden reemplazar por health-checks reales.
       const latencies = {
-        vercel: Math.round(10 + Math.random() * 20),
+        vercel: Math.round(8 + Math.random() * 15),
         insforge: Math.round(5 + Math.random() * 15),
         github: Math.round(20 + Math.random() * 40),
         mercadopago: Math.round(15 + Math.random() * 35),

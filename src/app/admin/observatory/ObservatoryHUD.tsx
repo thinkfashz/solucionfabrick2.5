@@ -139,8 +139,8 @@ export default function ObservatoryHUD({
       className="absolute inset-0 pointer-events-none"
       style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
     >
-      {/* ── HEADER / TOGGLE ───────────────────────────────────────────── */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-auto">
+      {/* ── HEADER / TOGGLE (desktop only) ────────────────────────────── */}
+      <div className="hidden md:block absolute top-4 left-1/2 -translate-x-1/2 pointer-events-auto">
         <button
           type="button"
           onClick={() => setHudVisible((v) => !v)}

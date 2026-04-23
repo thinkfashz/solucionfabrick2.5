@@ -137,8 +137,16 @@ export default function AdminProyectosPage() {
       {source === 'seed' && (
         <div className="mb-6 flex items-start gap-3 rounded-xl border border-yellow-500/30 bg-yellow-500/5 p-4 text-xs text-yellow-200">
           <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-          <div>
-            Se está mostrando la lista por defecto porque la tabla <code className="rounded bg-black/40 px-1">projects</code> aún no existe en InsForge. Crea la tabla con los campos mostrados en el formulario para habilitar el CRUD completo. Mientras tanto, los 5 proyectos precargados se muestran automáticamente en la página pública <Link href="/proyectos" className="underline">/proyectos</Link>.
+          <div className="flex-1">
+            <p>
+              Se está mostrando la lista por defecto porque la tabla <code className="rounded bg-black/40 px-1">projects</code> aún no existe en InsForge. Crea la tabla con los campos mostrados en el formulario para habilitar el CRUD completo. Mientras tanto, los 5 proyectos precargados se muestran automáticamente en la página pública <Link href="/proyectos" className="underline">/proyectos</Link>.
+            </p>
+            <Link
+              href="/admin/setup"
+              className="mt-3 inline-flex items-center gap-2 rounded-lg border border-yellow-500/40 bg-yellow-500/10 px-3 py-2 text-[11px] font-bold uppercase tracking-wider text-yellow-200 transition hover:bg-yellow-500/20"
+            >
+              Crear tablas en InsForge
+            </Link>
           </div>
         </div>
       )}

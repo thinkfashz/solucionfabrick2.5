@@ -9,21 +9,20 @@ export const runtime = 'nodejs';
 
 /**
  * Tablas que el panel admin de Fabrick necesita en InsForge para
- * funcionar correctamente. El orden refleja el script
- * `scripts/create-tables.sql`.
+ * funcionar correctamente. Coincide con `EXPECTED_TABLES` en
+ * `src/app/api/admin/setup-tables/route.ts` y con los bloques
+ * `-- TABLA:` de `scripts/create-tables.sql`.
  */
 const REQUIRED_TABLES = [
+  'productos',
+  'orders',
+  'leads',
+  'posts',
   'projects',
-  'notifications',
-  'observatory_logs',
-  'posts_social',
-  'admin_invitations',
-  'admin_webauthn_credentials',
-  'servicios',
+  'cupones',
+  'configuracion',
+  'admin_users',
   'banners',
-  'site_config',
-  'testimonios',
-  'integrations',
 ] as const;
 
 type TableStatus = {

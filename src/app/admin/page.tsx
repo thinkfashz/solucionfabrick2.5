@@ -32,6 +32,9 @@ import {
 } from 'recharts';
 import { insforge } from '@/lib/insforge';
 import SyncStatusButton from '@/components/admin/SyncStatusButton';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import {
   formatCLP,
   normalizeOrderRecord,
@@ -140,17 +143,22 @@ function ActionCard({
   icon: typeof Package;
 }) {
   return (
-    <Link
-      href={href}
-      className="group rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-900 to-black p-5 transition hover:border-yellow-400/40 hover:shadow-[0_0_30px_rgba(250,204,21,0.15)]"
+    <Button
+      asChild
+      variant="outline"
+      className="group h-auto justify-start whitespace-normal rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-900 to-black p-5 text-left transition hover:border-yellow-400/40 hover:shadow-[0_0_30px_rgba(250,204,21,0.15)]"
     >
-      <div className="flex items-center justify-between">
-        <Icon className="h-5 w-5 text-yellow-400" />
-        <ArrowRight className="h-4 w-4 text-zinc-600 transition group-hover:translate-x-1 group-hover:text-yellow-400" />
-      </div>
-      <h2 className="mt-5 text-lg font-bold text-white">{title}</h2>
-      <p className="mt-2 text-sm leading-relaxed text-zinc-500">{description}</p>
-    </Link>
+      <Link href={href}>
+        <div className="flex w-full flex-col">
+          <div className="flex items-center justify-between">
+            <Icon className="h-5 w-5 text-yellow-400" />
+            <ArrowRight className="h-4 w-4 text-zinc-600 transition group-hover:translate-x-1 group-hover:text-yellow-400" />
+          </div>
+          <h2 className="mt-5 text-lg font-bold text-white">{title}</h2>
+          <p className="mt-2 text-sm leading-relaxed text-zinc-500">{description}</p>
+        </div>
+      </Link>
+    </Button>
   );
 }
 
@@ -559,13 +567,14 @@ export default function AdminPage() {
 
           <div className="flex flex-wrap items-center gap-3">
             <SyncStatusButton />
-            <button
+            <Button
               onClick={() => void loadDashboard(true)}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-300 transition hover:border-yellow-400/40 hover:text-yellow-400"
+              variant="outline"
+              className="rounded-full px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-300"
             >
               <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
               Refrescar
-            </button>
+            </Button>
           </div>
         </div>
       </section>
@@ -579,70 +588,78 @@ export default function AdminPage() {
       {/* Four metric cards — Task 9 KPIs (pedidos hoy · ingresos semana · productos activos · leads nuevos) */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         {/* Pedidos hoy */}
-        <div className="rounded-3xl border border-white/10 border-l-4 border-l-yellow-400 bg-gradient-to-br from-zinc-900 to-black p-5">
-          <div className="flex items-center gap-2 text-yellow-400">
+        <Card className="border-l-4 border-l-yellow-400 p-5">
+          <CardHeader className="flex flex-row items-center gap-2 space-y-0 p-0 text-yellow-400">
             <ShoppingCart className="h-4 w-4" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">Pedidos hoy</p>
-          </div>
-          <p className="mt-3 text-3xl font-black text-white">{animatedOrdersToday}</p>
-          {metrics.pendingOrdersCount > 0 ? (
-            <p className="mt-2 flex items-center gap-1.5 text-sm text-amber-400">
-              <AlertTriangle className="h-4 w-4" />
-              {metrics.pendingOrdersCount} pendientes
-              {metrics.oldPending > 0 ? ` · ${metrics.oldPending} +24h` : ''}
-            </p>
-          ) : (
-            <p className="mt-2 text-sm text-zinc-500">Sin pedidos pendientes</p>
-          )}
-        </div>
+            <CardTitle className="text-[10px] font-bold uppercase tracking-widest">Pedidos hoy</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <p className="mt-3 text-3xl font-black text-white">{animatedOrdersToday}</p>
+            {metrics.pendingOrdersCount > 0 ? (
+              <p className="mt-2 flex items-center gap-1.5 text-sm text-amber-400">
+                <AlertTriangle className="h-4 w-4" />
+                {metrics.pendingOrdersCount} pendientes
+                {metrics.oldPending > 0 ? ` · ${metrics.oldPending} +24h` : ''}
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-zinc-500">Sin pedidos pendientes</p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Ingresos semana */}
-        <div className="rounded-3xl border border-white/10 border-l-4 border-l-yellow-400 bg-gradient-to-br from-zinc-900 to-black p-5">
-          <div className="flex items-center gap-2 text-yellow-400">
+        <Card className="border-l-4 border-l-yellow-400 p-5">
+          <CardHeader className="flex flex-row items-center gap-2 space-y-0 p-0 text-yellow-400">
             <DollarSign className="h-4 w-4" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">Ingresos semana</p>
-          </div>
-          <p className="mt-3 text-3xl font-black text-white">{formatCLP(animatedPaidWeekRevenue)}</p>
-          <p className="mt-2 flex items-center gap-1.5 text-sm text-zinc-500">
-            {metrics.revenueChange >= 0 ? (
-              <TrendingUp className="h-4 w-4 text-green-400" />
-            ) : (
-              <TrendingDown className="h-4 w-4 text-red-400" />
-            )}
-            <span className={metrics.revenueChange >= 0 ? 'text-green-400' : 'text-red-400'}>
-              {metrics.revenueChange >= 0 ? '↑' : '↓'} {Math.abs(Math.round(metrics.revenueChange))}% mes vs anterior
-            </span>
-          </p>
-        </div>
+            <CardTitle className="text-[10px] font-bold uppercase tracking-widest">Ingresos semana</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <p className="mt-3 text-3xl font-black text-white">{formatCLP(animatedPaidWeekRevenue)}</p>
+            <p className="mt-2 flex items-center gap-1.5 text-sm text-zinc-500">
+              {metrics.revenueChange >= 0 ? (
+                <TrendingUp className="h-4 w-4 text-green-400" />
+              ) : (
+                <TrendingDown className="h-4 w-4 text-red-400" />
+              )}
+              <span className={metrics.revenueChange >= 0 ? 'text-green-400' : 'text-red-400'}>
+                {metrics.revenueChange >= 0 ? '↑' : '↓'} {Math.abs(Math.round(metrics.revenueChange))}% mes vs anterior
+              </span>
+            </p>
+          </CardContent>
+        </Card>
 
         {/* Productos activos */}
-        <div className="rounded-3xl border border-white/10 border-l-4 border-l-yellow-400 bg-gradient-to-br from-zinc-900 to-black p-5">
-          <div className="flex items-center gap-2 text-yellow-400">
+        <Card className="border-l-4 border-l-yellow-400 p-5">
+          <CardHeader className="flex flex-row items-center gap-2 space-y-0 p-0 text-yellow-400">
             <Package className="h-4 w-4" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">Productos activos</p>
-          </div>
-          <p className="mt-3 text-3xl font-black text-white">{animatedActiveProducts}</p>
-          {metrics.zeroStock > 0 ? (
-            <p className="mt-2 flex items-center gap-1.5 text-sm text-amber-400">
-              <AlertTriangle className="h-4 w-4" />
-              {metrics.zeroStock} sin stock
-            </p>
-          ) : (
-            <p className="mt-2 text-sm text-zinc-500">Todos con stock disponible</p>
-          )}
-        </div>
+            <CardTitle className="text-[10px] font-bold uppercase tracking-widest">Productos activos</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <p className="mt-3 text-3xl font-black text-white">{animatedActiveProducts}</p>
+            {metrics.zeroStock > 0 ? (
+              <p className="mt-2 flex items-center gap-1.5 text-sm text-amber-400">
+                <AlertTriangle className="h-4 w-4" />
+                {metrics.zeroStock} sin stock
+              </p>
+            ) : (
+              <p className="mt-2 text-sm text-zinc-500">Todos con stock disponible</p>
+            )}
+          </CardContent>
+        </Card>
 
         {/* Leads nuevos */}
-        <div className="rounded-3xl border border-white/10 border-l-4 border-l-yellow-400 bg-gradient-to-br from-zinc-900 to-black p-5">
-          <div className="flex items-center gap-2 text-yellow-400">
+        <Card className="border-l-4 border-l-yellow-400 p-5">
+          <CardHeader className="flex flex-row items-center gap-2 space-y-0 p-0 text-yellow-400">
             <UserPlus className="h-4 w-4" />
-            <p className="text-[10px] font-bold uppercase tracking-widest">Leads nuevos</p>
-          </div>
-          <p className="mt-3 text-3xl font-black text-white">{animatedLeadsToday}</p>
-          <p className="mt-2 text-sm text-zinc-500">
-            {metrics.customersCount} clientes · {metrics.newCustomersThisMonth} nuevos mes
-          </p>
-        </div>
+            <CardTitle className="text-[10px] font-bold uppercase tracking-widest">Leads nuevos</CardTitle>
+          </CardHeader>
+          <CardContent className="p-0">
+            <p className="mt-3 text-3xl font-black text-white">{animatedLeadsToday}</p>
+            <p className="mt-2 text-sm text-zinc-500">
+              {metrics.customersCount} clientes · {metrics.newCustomersThisMonth} nuevos mes
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Ingresos por día (últimos 7 días) — recharts LineChart */}
@@ -750,15 +767,16 @@ export default function AdminPage() {
                     <p className="mt-1 text-base font-bold text-white">{order.customer_name}</p>
                   </div>
                   <div className="text-right">
-                    <span
-                      className="inline-flex rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-wider"
+                    <Badge
+                      variant="outline"
+                      className="border-transparent"
                       style={{
                         background: `${orderStatusColor(order.status)}22`,
                         color: orderStatusColor(order.status),
                       }}
                     >
                       {orderStatusLabel(order.status)}
-                    </span>
+                    </Badge>
                     <p className="mt-1 text-lg font-black text-yellow-400">{formatCLP(order.total)}</p>
                   </div>
                 </Link>

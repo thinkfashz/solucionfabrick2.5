@@ -3,6 +3,7 @@
 import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import ObservatoryHUD from './ObservatoryHUD';
+import MobileObservatory from './MobileObservatory';
 import { useObservatoryData } from './useObservatoryData';
 
 const ObservatoryScene = dynamic(() => import('./ObservatoryScene'), {
@@ -45,23 +46,19 @@ export default function ObservatoryPage() {
         />
       </div>
 
-      {/* Fallback móvil */}
-      <div className="md:hidden flex h-full items-center justify-center flex-col gap-4 p-8">
-        <p className="text-yellow-400 text-sm font-bold uppercase tracking-widest">
-          Vista 3D disponible en escritorio
-        </p>
-        <p className="text-zinc-500 text-xs text-center">
-          Abre el Observatory desde un monitor o laptop para ver la ciudad
-          interactiva.
-        </p>
+      {/* Fallback móvil: dashboard completo */}
+      <div className="md:hidden absolute inset-0">
+        <MobileObservatory data={data} logs={logs} />
       </div>
 
-      {/* HUD superpuesto en todos los dispositivos */}
-      <ObservatoryHUD
-        data={data}
-        logs={logs}
-        vehicleCount={vehicleCount}
-      />
+      {/* HUD superpuesto solo en escritorio (el móvil tiene su propio dashboard) */}
+      <div className="hidden md:block absolute inset-0 pointer-events-none">
+        <ObservatoryHUD
+          data={data}
+          logs={logs}
+          vehicleCount={vehicleCount}
+        />
+      </div>
     </div>
   );
 }

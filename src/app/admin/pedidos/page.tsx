@@ -193,12 +193,12 @@ export default function PedidosPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-white/5">
-                    <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-zinc-500">ID</th>
+                    <th className="hidden md:table-cell px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-zinc-500">ID</th>
                     <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-zinc-500">Cliente</th>
-                    <th className="px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-zinc-500">Fecha</th>
+                    <th className="hidden md:table-cell px-6 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-zinc-500">Fecha</th>
                     <th className="px-6 py-4 text-right text-[10px] font-bold uppercase tracking-widest text-zinc-500">Total CLP</th>
                     <th className="px-6 py-4 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-500">Estado</th>
-                    <th className="px-6 py-4 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-500">Acciones</th>
+                    <th className="hidden md:table-cell px-6 py-4 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-500">Acciones</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -207,12 +207,17 @@ export default function PedidosPage() {
                       key={order.id}
                       className={`border-b border-white/5 transition hover:bg-white/[0.03] ${i % 2 === 0 ? '' : 'bg-white/[0.01]'}`}
                     >
-                      <td className="px-6 py-4 font-mono text-xs text-zinc-400">{shortRecordId(order.id)}</td>
+                      <td className="hidden md:table-cell px-6 py-4 font-mono text-xs text-zinc-400">{shortRecordId(order.id)}</td>
                       <td className="px-6 py-4">
-                        <div className="font-semibold text-white">{order.customer_name}</div>
-                        <div className="text-xs text-zinc-500">{order.customer_email}</div>
+                        <Link
+                          href={`/admin/pedidos/${order.id}`}
+                          className="block hover:text-yellow-400 md:pointer-events-none"
+                        >
+                          <div className="font-semibold text-white">{order.customer_name}</div>
+                          <div className="text-xs text-zinc-500">{order.customer_email}</div>
+                        </Link>
                       </td>
-                      <td className="px-6 py-4 text-xs text-zinc-400">
+                      <td className="hidden md:table-cell px-6 py-4 text-xs text-zinc-400">
                         {new Date(order.created_at).toLocaleDateString('es-CL', {
                           day: '2-digit', month: 'short', year: 'numeric',
                         })}
@@ -231,7 +236,7 @@ export default function PedidosPage() {
                           {orderStatusLabel(order.status)}
                         </span>
                       </td>
-                      <td className="px-6 py-4 text-center">
+                      <td className="hidden md:table-cell px-6 py-4 text-center">
                         <Link
                           href={`/admin/pedidos/${order.id}`}
                           className="rounded-full border border-yellow-400/30 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-yellow-400 transition hover:bg-yellow-400/10"

@@ -1,164 +1,133 @@
--- ─────────────────────────────────────────────────────────────
--- Fabrick · Esquema InsForge · creación de tablas administrativas
---
--- Ejecutar en el dashboard SQL de InsForge
--- (Database → SQL Editor → New query) o vía:
---   POST /api/database/advance/rawsql
---
--- Equivalente al script `scripts/create-tables.ts`. Cada bloque es
--- idempotente (usa IF NOT EXISTS / ON CONFLICT) por lo que puede
--- re-ejecutarse sin efectos secundarios.
--- ─────────────────────────────────────────────────────────────
-
--- 1. projects
-CREATE TABLE IF NOT EXISTS projects (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  titulo VARCHAR(255) NOT NULL,
-  descripcion TEXT,
-  imagen_principal TEXT,
-  imagenes_adicionales JSONB DEFAULT '[]',
-  categoria VARCHAR(100),
-  ubicacion VARCHAR(255),
-  año INTEGER,
-  destacado BOOLEAN DEFAULT false,
-  activo BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
+-- TABLA: productos
+CREATE TABLE IF NOT EXISTS public.productos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre text NOT NULL,
+  descripcion text,
+  precio numeric(10,2) DEFAULT 0,
+  precio_oferta numeric(10,2),
+  stock integer DEFAULT 0,
+  imagen_url text,
+  categoria text,
+  activo boolean DEFAULT true,
+  en_oferta boolean DEFAULT false,
+  destacado boolean DEFAULT false,
+  vistas integer DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
 );
 
--- 2. notifications
-CREATE TABLE IF NOT EXISTS notifications (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  tipo VARCHAR(50) NOT NULL,
-  titulo VARCHAR(255) NOT NULL,
-  mensaje TEXT,
-  leida BOOLEAN DEFAULT false,
-  admin_id UUID,
-  metadata JSONB DEFAULT '{}',
-  created_at TIMESTAMPTZ DEFAULT now()
+-- TABLA: orders
+CREATE TABLE IF NOT EXISTS public.orders (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  cliente_nombre text,
+  cliente_email text,
+  cliente_telefono text,
+  items jsonb DEFAULT '[]',
+  total numeric(10,2) DEFAULT 0,
+  status text DEFAULT 'pendiente',
+  payment_id text,
+  direccion_envio text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
 );
 
--- 3. observatory_logs
-CREATE TABLE IF NOT EXISTS observatory_logs (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  tipo VARCHAR(50),
-  servicio VARCHAR(50),
-  mensaje TEXT,
-  latencia INTEGER,
-  status VARCHAR(20) DEFAULT 'ok',
-  created_at TIMESTAMPTZ DEFAULT now()
+-- TABLA: leads
+CREATE TABLE IF NOT EXISTS public.leads (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  nombre text NOT NULL,
+  email text,
+  telefono text,
+  tipo_proyecto text,
+  mensaje text,
+  atendido boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
 );
 
--- 4. posts_social
-CREATE TABLE IF NOT EXISTS posts_social (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  titulo VARCHAR(255),
-  descripcion TEXT,
-  hashtags TEXT,
-  tag VARCHAR(100),
-  fecha_publicacion TIMESTAMPTZ,
-  tema VARCHAR(20) DEFAULT 'light',
-  imagenes JSONB DEFAULT '[]',
-  plataformas JSONB DEFAULT '[]',
-  estado VARCHAR(50) DEFAULT 'borrador',
-  meta_post_id VARCHAR(255),
-  created_at TIMESTAMPTZ DEFAULT now()
+-- TABLA: posts (blog)
+CREATE TABLE IF NOT EXISTS public.posts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  titulo text NOT NULL,
+  slug text UNIQUE NOT NULL,
+  contenido text,
+  resumen text,
+  imagen_url text,
+  publicado boolean DEFAULT false,
+  autor text DEFAULT 'Fabrick',
+  categoria text DEFAULT 'Noticias',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
 );
 
--- 5. admin_invitations
-CREATE TABLE IF NOT EXISTS admin_invitations (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  email VARCHAR(255) NOT NULL,
-  codigo VARCHAR(6) NOT NULL,
-  rol VARCHAR(20) DEFAULT 'admin',
-  invitado_por UUID,
-  usado BOOLEAN DEFAULT false,
-  expira_at TIMESTAMPTZ DEFAULT now() + interval '24 hours',
-  created_at TIMESTAMPTZ DEFAULT now()
+-- TABLA: projects
+CREATE TABLE IF NOT EXISTS public.projects (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  titulo text NOT NULL,
+  descripcion text,
+  categoria text,
+  ubicacion text,
+  metros_cuadrados numeric(8,2),
+  imagen_url text,
+  imagenes jsonb DEFAULT '[]',
+  destacado boolean DEFAULT false,
+  anio integer DEFAULT EXTRACT(YEAR FROM now()),
+  cliente text,
+  created_at timestamptz DEFAULT now()
 );
 
--- 6. admin_webauthn_credentials
-CREATE TABLE IF NOT EXISTS admin_webauthn_credentials (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  admin_id UUID,
-  credential_id TEXT UNIQUE NOT NULL,
-  public_key TEXT NOT NULL,
-  device_name VARCHAR(100),
-  created_at TIMESTAMPTZ DEFAULT now(),
-  last_used TIMESTAMPTZ
+-- TABLA: cupones
+CREATE TABLE IF NOT EXISTS public.cupones (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  codigo text UNIQUE NOT NULL,
+  descuento numeric(5,4) DEFAULT 0.002,
+  usado boolean DEFAULT false,
+  usuario_email text,
+  created_at timestamptz DEFAULT now(),
+  used_at timestamptz
 );
 
--- 7. servicios
-CREATE TABLE IF NOT EXISTS servicios (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  nombre VARCHAR(255) NOT NULL,
-  descripcion TEXT,
-  imagen_url TEXT,
-  icono VARCHAR(50),
-  precio_desde INTEGER,
-  activo BOOLEAN DEFAULT true,
-  orden INTEGER DEFAULT 0,
-  created_at TIMESTAMPTZ DEFAULT now()
+-- TABLA: configuracion
+CREATE TABLE IF NOT EXISTS public.configuracion (
+  clave text PRIMARY KEY,
+  valor text,
+  updated_at timestamptz DEFAULT now()
 );
 
--- 8. banners
-CREATE TABLE IF NOT EXISTS banners (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  titulo VARCHAR(255),
-  subtitulo VARCHAR(255),
-  imagen_url TEXT,
-  color_fondo VARCHAR(20) DEFAULT '#f5c800',
-  url_destino TEXT,
-  activo BOOLEAN DEFAULT true,
-  orden INTEGER DEFAULT 0,
-  fecha_inicio TIMESTAMPTZ,
-  fecha_fin TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now()
+-- TABLA: admin_users
+CREATE TABLE IF NOT EXISTS public.admin_users (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  email text UNIQUE NOT NULL,
+  rol text DEFAULT 'admin',
+  aprobado boolean DEFAULT true,
+  nombre text,
+  created_at timestamptz DEFAULT now()
 );
 
--- 9. site_config
-CREATE TABLE IF NOT EXISTS site_config (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  clave VARCHAR(100) UNIQUE NOT NULL,
-  valor TEXT,
-  tipo VARCHAR(50) DEFAULT 'text',
-  updated_at TIMESTAMPTZ DEFAULT now()
+-- TABLA: banners
+CREATE TABLE IF NOT EXISTS public.banners (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  titulo text,
+  subtitulo text,
+  imagen_url text,
+  link text,
+  activo boolean DEFAULT true,
+  orden integer DEFAULT 0,
+  created_at timestamptz DEFAULT now()
 );
 
--- 10. testimonios
-CREATE TABLE IF NOT EXISTS testimonios (
-  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
-  nombre VARCHAR(255),
-  cargo VARCHAR(255),
-  texto TEXT,
-  calificacion INTEGER DEFAULT 5,
-  imagen_url TEXT,
-  activo BOOLEAN DEFAULT true,
-  created_at TIMESTAMPTZ DEFAULT now()
-);
-
--- 11. integrations
-CREATE TABLE IF NOT EXISTS integrations (
-  provider    TEXT        PRIMARY KEY,
-  credentials JSONB       NOT NULL DEFAULT '{}'::jsonb,
-  updated_at  TIMESTAMPTZ NOT NULL DEFAULT now()
-);
-
--- 12. admin_users (columnas adicionales rol + aprobado)
-ALTER TABLE admin_users
-  ADD COLUMN IF NOT EXISTS rol VARCHAR(20) DEFAULT 'admin';
-ALTER TABLE admin_users
-  ADD COLUMN IF NOT EXISTS aprobado BOOLEAN DEFAULT false;
-
--- 13. site_config (seed inicial)
-INSERT INTO site_config (clave, valor, tipo) VALUES
-  ('hero_titulo', 'Construimos tu Sueño en Realidad', 'text'),
-  ('hero_subtitulo', 'Tu hogar merece lo mejor', 'text'),
-  ('tagline', 'Tu Obra en Buenas Manos', 'text'),
-  ('whatsapp', '', 'text'),
-  ('email_contacto', '', 'text'),
-  ('direccion', 'Santiago, Chile', 'text'),
-  ('color_primario', '#f5c800', 'color'),
-  ('meta_titulo', 'Soluciones Fabrick', 'text'),
-  ('meta_descripcion', 'Construcción y remodelación residencial en Chile', 'text')
+-- SEED: configuracion inicial
+INSERT INTO public.configuracion (clave, valor) VALUES
+  ('logo_url', '/logo-soluciones-fabrick.svg'),
+  ('whatsapp', '56930121625'),
+  ('email_contacto', 'contacto@solucionesfabrick.com'),
+  ('direccion', 'Dentista Lidia Pincheira #1920, Doña Agustina, Linares'),
+  ('nombre_empresa', 'Soluciones Fabrick'),
+  ('slogan', 'Ingeniería Residencial de Precisión')
 ON CONFLICT (clave) DO NOTHING;
+
+-- SEED: proyecto demo para no mostrar vacío
+INSERT INTO public.projects (titulo, descripcion, categoria, ubicacion, metros_cuadrados, destacado, anio)
+VALUES
+  ('Casa Andes — Vivienda Metalcon 2 Pisos', 'Construcción industrializada con perfilería Metalcon, aislación lana mineral y revestimiento exterior PVC.', 'VIVIENDA NUEVA', 'Colina, Región Metropolitana', 142, true, 2024),
+  ('Ampliación Cocina Sur', 'Ampliación de cocina con estructura Metalcon, ventanales de aluminio y terminaciones en PVC mármol.', 'AMPLIACIÓN', 'Linares, Maule', 38, false, 2024),
+  ('Baño Completo Premium', 'Remodelación integral con revestimiento PVC mármol, gasfitería certificada SEC y domótica básica.', 'REMODELACIÓN', 'Talca, Maule', 12, true, 2023)
+ON CONFLICT DO NOTHING;

@@ -777,3 +777,16 @@ body { background-color: var(--bg); color: var(--fg); }
   --ring: 48 96% 53%;
   --radius: 1rem;
 }
+
+/* ── Observatory mobile: isometric mini city ── */
+@keyframes pulse-building {
+  from { box-shadow: 0 0 8px var(--c); opacity: 0.7; }
+  to   { box-shadow: 0 0 20px var(--c); opacity: 1; }
+}
+
+@keyframes travel {
+  0%   { transform: translate3d(var(--sx), var(--sy), 20px); opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { transform: translate3d(var(--ex), var(--ey), 20px); opacity: 0; }
+}

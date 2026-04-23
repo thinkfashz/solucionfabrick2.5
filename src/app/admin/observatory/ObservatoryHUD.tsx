@@ -139,8 +139,8 @@ export default function ObservatoryHUD({
       className="absolute inset-0 pointer-events-none"
       style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace' }}
     >
-      {/* ── HEADER / TOGGLE ───────────────────────────────────────────── */}
-      <div className="absolute top-4 left-1/2 -translate-x-1/2 pointer-events-auto">
+      {/* ── HEADER / TOGGLE (desktop only) ────────────────────────────── */}
+      <div className="hidden md:block absolute top-4 left-1/2 -translate-x-1/2 pointer-events-auto">
         <button
           type="button"
           onClick={() => setHudVisible((v) => !v)}
@@ -164,11 +164,13 @@ export default function ObservatoryHUD({
       </div>
 
       {/* ── PANEL IZQUIERDO ───────────────────────────────────────────── */}
+      {/* Oculto en <md porque el fallback móvil lo reemplaza. z-index separado del panel derecho. */}
       <div
-        className="absolute top-20 left-4 w-64 flex flex-col gap-3 pointer-events-auto"
+        className="hidden md:flex absolute top-20 left-4 w-64 flex-col gap-3 pointer-events-auto"
         style={{
           transform: hudVisible ? 'translateX(0)' : 'translateX(-110%)',
           transition: 'transform 0.35s ease',
+          zIndex: 10,
         }}
       >
         <div style={panelStyle}>
@@ -242,8 +244,9 @@ export default function ObservatoryHUD({
           <p style={panelTitleStyle}>Métricas en vivo</p>
           <div className="flex flex-col gap-3">
             {kpis.map((k) => (
-              <div key={k.label}>
+              <div key={k.label} className="min-w-0">
                 <p
+                  className="truncate"
                   style={{
                     color: '#6b7280',
                     fontSize: 9,
@@ -254,6 +257,7 @@ export default function ObservatoryHUD({
                   {k.label}
                 </p>
                 <p
+                  className="truncate"
                   style={{
                     color: k.color,
                     fontSize: 22,
@@ -271,11 +275,13 @@ export default function ObservatoryHUD({
       </div>
 
       {/* ── PANEL DERECHO ─────────────────────────────────────────────── */}
+      {/* Oculto en <md porque el fallback móvil lo reemplaza. z-index separado del panel izquierdo. */}
       <div
-        className="absolute top-20 right-4 w-72 flex flex-col gap-3 pointer-events-auto"
+        className="hidden md:flex absolute top-20 right-4 w-72 flex-col gap-3 pointer-events-auto"
         style={{
           transform: hudVisible ? 'translateX(0)' : 'translateX(110%)',
           transition: 'transform 0.35s ease',
+          zIndex: 20,
         }}
       >
         {/* Servicios */}
@@ -302,6 +308,7 @@ export default function ObservatoryHUD({
                       }}
                     />
                     <span
+                      className="truncate"
                       style={{
                         color: '#e5e7eb',
                         fontSize: 11,

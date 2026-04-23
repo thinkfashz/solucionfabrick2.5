@@ -102,6 +102,7 @@ export default function AdminProductosPage() {
   const { categories, categoryMap } = useCategories();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [search, setSearch] = useState('');
@@ -116,15 +117,31 @@ export default function AdminProductosPage() {
 
   /* ── Load products ── */
   const loadProducts = useCallback(async () => {
-    const { data, error } = await insforge.database
-      .from('products')
-      .select('id, name, description, price, stock, image_url, featured, activo, tagline, category_id, created_at')
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await insforge.database
+        .from('products')
+        .select('id, name, description, price, stock, image_url, featured, activo, tagline, category_id, created_at')
+        .order('created_at', { ascending: false });
 
-    if (!error && data && isMounted.current) {
-      setProducts(data as AdminProduct[]);
+      if (!isMounted.current) return;
+
+      if (error) {
+        const errAny = error as unknown as { message?: string; code?: string; status?: number };
+        const parts = [errAny.message || 'No se pudieron cargar los productos'];
+        if (errAny.code) parts.push(`(código ${errAny.code})`);
+        if (errAny.status) parts.push(`[HTTP ${errAny.status}]`);
+        setLoadError(parts.join(' '));
+      } else if (data) {
+        setProducts(data as AdminProduct[]);
+        setLoadError(null);
+      }
+    } catch (err) {
+      if (!isMounted.current) return;
+      const message = err instanceof Error ? err.message : String(err);
+      setLoadError(message || 'Error desconocido al cargar los productos');
+    } finally {
+      if (isMounted.current) setLoading(false);
     }
-    if (isMounted.current) setLoading(false);
   }, []);
 
   /* ── Realtime subscription ── */
@@ -216,9 +233,12 @@ export default function AdminProductosPage() {
           <p className="text-zinc-500 text-xs mt-0.5">Administra el catálogo de la tienda</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`flex items-center gap-1.5 text-xs ${connected ? 'text-emerald-400' : 'text-zinc-600'}`}>
+          <span
+            className={`flex items-center gap-1.5 text-xs ${connected ? 'text-emerald-400' : 'text-zinc-600'}`}
+            title={connected ? 'Canal de tiempo real conectado' : 'Sin canal de tiempo real (los datos siguen cargándose bajo demanda)'}
+          >
             {connected ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-            {connected ? 'En vivo' : 'Sin conexión'}
+            {connected ? 'En vivo' : 'Sin tiempo real'}
           </span>
           <button
             onClick={() => router.push('/admin/productos/nuevo')}
@@ -232,6 +252,18 @@ export default function AdminProductosPage() {
       </div>
 
       <div className="px-6 py-6 space-y-5">
+        {loadError && (
+          <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            <p className="font-semibold text-red-300">No se pudieron cargar los productos</p>
+            <p className="mt-1 text-red-200/80 break-words">{loadError}</p>
+            <button
+              onClick={() => { setLoading(true); setLoadError(null); loadProducts(); }}
+              className="mt-2 text-xs font-semibold text-red-100 underline underline-offset-2 hover:text-white"
+            >
+              Reintentar
+            </button>
+          </div>
+        )}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             { label: 'Catálogo total', value: productMetrics.total, tone: 'text-white' },

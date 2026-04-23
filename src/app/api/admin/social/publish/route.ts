@@ -1,8 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getMetaCredentials } from '@/lib/metaCredentials';
+import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+/**
+ * Meta page/business account IDs are numeric strings. We enforce this shape
+ * on any caller-provided override to prevent request-forgery via crafted path
+ * segments (e.g. `..`, `?`, `@host`) being injected into the Graph URL.
+ */
+function isValidMetaId(value: unknown): value is string {
+  return typeof value === 'string' && /^[0-9]{1,32}$/.test(value);
+}
 
 /**
  * POST /api/admin/social/publish
@@ -116,6 +126,14 @@ async function publishToInstagram(
 
 export async function POST(request: NextRequest) {
   try {
+    // Require an authenticated admin session. Also ensures only trusted callers
+    // can influence the Graph URL path segments below.
+    const cookie = request.cookies.get(ADMIN_COOKIE_NAME);
+    const session = cookie?.value ? await decodeSession(cookie.value) : null;
+    if (!session) {
+      return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
+    }
+
     const creds = await getMetaCredentials();
     const accessToken = creds?.accessToken;
     if (!accessToken) {
@@ -149,13 +167,22 @@ export async function POST(request: NextRequest) {
     const results: TargetResult[] = [];
 
     if (platforms.facebook) {
-      const pageId = body.facebookPageId || creds?.facebookPageId;
-      if (!pageId) {
+      const overridePage = body.facebookPageId;
+      // Only honor overrides that match the strict numeric-ID shape.
+      const pageId = (overridePage && isValidMetaId(overridePage) ? overridePage : undefined)
+        || creds?.facebookPageId;
+      if (overridePage && !isValidMetaId(overridePage)) {
+        results.push({
+          platform: 'facebook',
+          ok: false,
+          error: 'facebookPageId inválido: debe ser un ID numérico.',
+        });
+      } else if (!pageId || !isValidMetaId(pageId)) {
         results.push({
           platform: 'facebook',
           ok: false,
           error:
-            'Falta Facebook Page ID. Configura META_FACEBOOK_PAGE_ID o el campo "Page ID" en /admin/configuracion.',
+            'Falta Facebook Page ID válido. Configura META_FACEBOOK_PAGE_ID o el campo "Facebook Page ID" en /admin/configuracion.',
         });
       } else {
         // Facebook: publish the first image (covers both "photo post" and the
@@ -166,13 +193,21 @@ export async function POST(request: NextRequest) {
     }
 
     if (platforms.instagram) {
-      const igId = body.instagramBusinessId || creds?.instagramBusinessId;
-      if (!igId) {
+      const overrideIg = body.instagramBusinessId;
+      const igId = (overrideIg && isValidMetaId(overrideIg) ? overrideIg : undefined)
+        || creds?.instagramBusinessId;
+      if (overrideIg && !isValidMetaId(overrideIg)) {
+        results.push({
+          platform: 'instagram',
+          ok: false,
+          error: 'instagramBusinessId inválido: debe ser un ID numérico.',
+        });
+      } else if (!igId || !isValidMetaId(igId)) {
         results.push({
           platform: 'instagram',
           ok: false,
           error:
-            'Falta Instagram Business ID. Configura META_INSTAGRAM_BUSINESS_ID o el campo "Instagram business ID" en /admin/configuracion.',
+            'Falta Instagram Business ID válido. Configura META_INSTAGRAM_BUSINESS_ID o el campo "Instagram Business ID" en /admin/configuracion.',
         });
       } else {
         // Instagram single-image publishing. Carousel is out of scope for MVP.

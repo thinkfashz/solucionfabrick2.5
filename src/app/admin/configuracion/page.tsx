@@ -25,11 +25,12 @@ const PROVIDERS: ProviderDefinition[] = [
   {
     id: 'meta',
     label: 'Meta · Facebook / Instagram Ads',
-    description: 'Token de acceso y ID de la cuenta publicitaria para leer campañas de Meta en tiempo real.',
+    description: 'Token de acceso y IDs de página/cuenta publicitaria para publicar y leer datos de Meta (Facebook + Instagram) en tiempo real.',
     fields: [
       { key: 'access_token', label: 'Access token', type: 'password', placeholder: 'EAAG...' },
       { key: 'ad_account_id', label: 'Ad account ID', placeholder: '1234567890' },
-      { key: 'page_id', label: 'Page ID (opcional)', placeholder: '1000000000' },
+      { key: 'page_id', label: 'Facebook Page ID', placeholder: '1000000000' },
+      { key: 'instagram_business_id', label: 'Instagram Business ID', placeholder: '17841400000000000' },
     ],
   },
   {
@@ -181,6 +182,8 @@ export default function ConfiguracionPage() {
   const [savingIntegration, setSavingIntegration] = useState<string | null>(null);
   const [loadingIntegrations, setLoadingIntegrations] = useState(true);
   const [integrationsError, setIntegrationsError] = useState<string | null>(null);
+  const [testingIntegration, setTestingIntegration] = useState<string | null>(null);
+  const [integrationTest, setIntegrationTest] = useState<Record<string, { ok: boolean; error?: string; checks?: Array<{ name: string; ok: boolean; detail?: string }> } | null>>({});
 
   async function loadIntegrations() {
     setLoadingIntegrations(true);
@@ -231,6 +234,34 @@ export default function ConfiguracionPage() {
       setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: 'Error de red.', type: 'error' } }));
     } finally {
       setSavingIntegration(null);
+    }
+  }
+
+  async function handleTestIntegration(provider: ProviderKey) {
+    setTestingIntegration(provider);
+    setIntegrationTest((prev) => ({ ...prev, [provider]: null }));
+    try {
+      const res = await fetch(`/api/admin/integrations/test?provider=${encodeURIComponent(provider)}`, { cache: 'no-store' });
+      const json = (await res.json()) as {
+        ok?: boolean;
+        error?: string;
+        checks?: Array<{ name: string; ok: boolean; detail?: string }>;
+      };
+      setIntegrationTest((prev) => ({
+        ...prev,
+        [provider]: {
+          ok: !!json.ok,
+          error: json.error,
+          checks: json.checks,
+        },
+      }));
+    } catch (err) {
+      setIntegrationTest((prev) => ({
+        ...prev,
+        [provider]: { ok: false, error: err instanceof Error ? err.message : 'Error de red.' },
+      }));
+    } finally {
+      setTestingIntegration(null);
     }
   }
 
@@ -608,7 +639,47 @@ export default function ConfiguracionPage() {
 
                   {msg && <div className="mt-3"><Toast msg={msg.text} type={msg.type} /></div>}
 
-                  <div className="mt-4 flex justify-end">
+                  {integrationTest[prov.id] && (
+                    <div
+                      className={`mt-3 rounded-xl border px-3 py-2 text-[11px] ${
+                        integrationTest[prov.id]?.ok
+                          ? 'border-green-500/30 bg-green-500/10 text-green-300'
+                          : 'border-red-500/30 bg-red-500/10 text-red-300'
+                      }`}
+                    >
+                      <p className="font-bold uppercase tracking-widest text-[10px]">
+                        {integrationTest[prov.id]?.ok ? '✓ Conexión correcta' : '✕ Falla de conexión'}
+                      </p>
+                      {integrationTest[prov.id]?.error && (
+                        <p className="mt-1 leading-relaxed">{integrationTest[prov.id]?.error}</p>
+                      )}
+                      {integrationTest[prov.id]?.checks && integrationTest[prov.id]!.checks!.length > 0 && (
+                        <ul className="mt-2 space-y-1">
+                          {integrationTest[prov.id]!.checks!.map((check, idx) => (
+                            <li key={idx} className="flex gap-2">
+                              <span aria-hidden>{check.ok ? '✓' : '✕'}</span>
+                              <span>
+                                <span className="font-semibold">{check.name}</span>
+                                {check.detail && <span className="text-zinc-400"> — {check.detail}</span>}
+                              </span>
+                            </li>
+                          ))}
+                        </ul>
+                      )}
+                    </div>
+                  )}
+
+                  <div className="mt-4 flex flex-wrap justify-end gap-2">
+                    {prov.id === 'meta' && (
+                      <button
+                        type="button"
+                        onClick={() => void handleTestIntegration(prov.id)}
+                        disabled={testingIntegration === prov.id || savingIntegration === prov.id}
+                        className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-white/20 text-white text-[11px] font-bold uppercase tracking-widest hover:bg-white/5 transition-colors disabled:opacity-60"
+                      >
+                        {testingIntegration === prov.id ? 'Probando…' : 'Probar conexión'}
+                      </button>
+                    )}
                     <button
                       type="button"
                       onClick={() => void handleSaveIntegration(prov.id)}

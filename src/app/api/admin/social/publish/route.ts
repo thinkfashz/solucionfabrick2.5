@@ -1,4 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getMetaCredentials } from '@/lib/metaCredentials';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 /**
  * POST /api/admin/social/publish
@@ -111,70 +115,87 @@ async function publishToInstagram(
 }
 
 export async function POST(request: NextRequest) {
-  const accessToken = process.env.META_ACCESS_TOKEN;
-  if (!accessToken) {
-    return NextResponse.json(
-      { error: 'META_ACCESS_TOKEN no está configurado en el servidor.' },
-      { status: 503 },
-    );
-  }
-
-  let body: PublishBody;
   try {
-    body = (await request.json()) as PublishBody;
-  } catch {
-    return NextResponse.json({ error: 'JSON inválido.' }, { status: 400 });
-  }
+    const creds = await getMetaCredentials();
+    const accessToken = creds?.accessToken;
+    if (!accessToken) {
+      return NextResponse.json(
+        {
+          error:
+            'Falta el access token de Meta. Configura META_ACCESS_TOKEN en el servidor o guarda el token en /admin/configuracion (proveedor Meta).',
+          code: 'META_ACCESS_TOKEN_MISSING',
+        },
+        { status: 503 },
+      );
+    }
 
-  const imageUrls = (body.imageUrls ?? []).filter((u) => typeof u === 'string' && /^https?:\/\//i.test(u));
-  if (imageUrls.length === 0) {
+    let body: PublishBody;
+    try {
+      body = (await request.json()) as PublishBody;
+    } catch {
+      return NextResponse.json({ error: 'JSON inválido.' }, { status: 400 });
+    }
+
+    const imageUrls = (body.imageUrls ?? []).filter((u) => typeof u === 'string' && /^https?:\/\//i.test(u));
+    if (imageUrls.length === 0) {
+      return NextResponse.json(
+        { error: 'Se requiere al menos una imagen con URL pública.' },
+        { status: 400 },
+      );
+    }
+    const caption = (body.caption ?? '').toString().slice(0, 2200);
+    const platforms = body.platforms ?? {};
+
+    const results: TargetResult[] = [];
+
+    if (platforms.facebook) {
+      const pageId = body.facebookPageId || creds?.facebookPageId;
+      if (!pageId) {
+        results.push({
+          platform: 'facebook',
+          ok: false,
+          error:
+            'Falta Facebook Page ID. Configura META_FACEBOOK_PAGE_ID o el campo "Page ID" en /admin/configuracion.',
+        });
+      } else {
+        // Facebook: publish the first image (covers both "photo post" and the
+        // primary thumbnail in feed). Additional images are carried over as
+        // URLs in the caption for now.
+        results.push(await publishToFacebook(pageId, accessToken, imageUrls[0], caption));
+      }
+    }
+
+    if (platforms.instagram) {
+      const igId = body.instagramBusinessId || creds?.instagramBusinessId;
+      if (!igId) {
+        results.push({
+          platform: 'instagram',
+          ok: false,
+          error:
+            'Falta Instagram Business ID. Configura META_INSTAGRAM_BUSINESS_ID o el campo "Instagram business ID" en /admin/configuracion.',
+        });
+      } else {
+        // Instagram single-image publishing. Carousel is out of scope for MVP.
+        results.push(await publishToInstagram(igId, accessToken, imageUrls[0], caption));
+      }
+    }
+
+    if (results.length === 0) {
+      return NextResponse.json(
+        { error: 'No seleccionaste ninguna plataforma con API de publicación.' },
+        { status: 400 },
+      );
+    }
+
+    const anyOk = results.some((r) => r.ok);
+    return NextResponse.json({ ok: anyOk, results }, { status: anyOk ? 200 : 502 });
+  } catch (err) {
     return NextResponse.json(
-      { error: 'Se requiere al menos una imagen con URL pública.' },
-      { status: 400 },
+      {
+        error: err instanceof Error ? err.message : 'Error inesperado al publicar.',
+        code: 'PUBLISH_FAILED',
+      },
+      { status: 500 },
     );
   }
-  const caption = (body.caption ?? '').toString().slice(0, 2200);
-  const platforms = body.platforms ?? {};
-
-  const results: TargetResult[] = [];
-
-  if (platforms.facebook) {
-    const pageId = body.facebookPageId || process.env.META_FACEBOOK_PAGE_ID;
-    if (!pageId) {
-      results.push({
-        platform: 'facebook',
-        ok: false,
-        error: 'Falta META_FACEBOOK_PAGE_ID para publicar en Facebook.',
-      });
-    } else {
-      // Facebook: publish the first image (covers both "photo post" and the
-      // primary thumbnail in feed). Additional images are carried over as
-      // URLs in the caption for now.
-      results.push(await publishToFacebook(pageId, accessToken, imageUrls[0], caption));
-    }
-  }
-
-  if (platforms.instagram) {
-    const igId = body.instagramBusinessId || process.env.META_INSTAGRAM_BUSINESS_ID;
-    if (!igId) {
-      results.push({
-        platform: 'instagram',
-        ok: false,
-        error: 'Falta META_INSTAGRAM_BUSINESS_ID para publicar en Instagram.',
-      });
-    } else {
-      // Instagram single-image publishing. Carousel is out of scope for MVP.
-      results.push(await publishToInstagram(igId, accessToken, imageUrls[0], caption));
-    }
-  }
-
-  if (results.length === 0) {
-    return NextResponse.json(
-      { error: 'No seleccionaste ninguna plataforma con API de publicación.' },
-      { status: 400 },
-    );
-  }
-
-  const anyOk = results.some((r) => r.ok);
-  return NextResponse.json({ ok: anyOk, results }, { status: anyOk ? 200 : 502 });
 }

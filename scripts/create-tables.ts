@@ -1,18 +1,17 @@
 /**
  * scripts/create-tables.ts
  *
- * Crea todas las tablas faltantes en InsForge usando la API REST
- * (`POST /api/database/advance/rawsql`) directamente con `fetch`.
+ * Crea todas las tablas en InsForge usando la API REST
+ * (`POST /api/database/advance/rawsql/unrestricted`).
  *
  * Uso:
- *   NEXT_PUBLIC_INSFORGE_URL=...  INSFORGE_API_KEY=...  npx tsx scripts/create-tables.ts
+ *   NEXT_PUBLIC_INSFORGE_URL=... INSFORGE_API_KEY=... npx tsx scripts/create-tables.ts
+ *
+ * Alternativa sin API key: copiar scripts/create-tables.sql en el SQL Editor de InsForge.
  *
  * Variables de entorno requeridas:
- *   - NEXT_PUBLIC_INSFORGE_URL : URL base del proyecto InsForge (ej. https://xxxx.us-east.insforge.app)
- *   - INSFORGE_API_KEY         : API key de administrador del proyecto InsForge
- *
- * El script ejecuta 12 operaciones SQL en orden. Por cada una imprime
- * ✅ o ❌ con el error, y al final un resumen "X tablas creadas, X errores".
+ *   - NEXT_PUBLIC_INSFORGE_URL : URL base del proyecto InsForge
+ *   - INSFORGE_API_KEY         : API key de administrador (NO la anon key)
  */
 
 type SqlStep = {
@@ -159,8 +158,68 @@ const STEPS: SqlStep[] = [
 );`,
   },
   {
+    name: 'categories',
+    query: `CREATE TABLE IF NOT EXISTS categories (
+  id          UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
+  name        VARCHAR(255) NOT NULL,
+  description TEXT,
+  image_url   TEXT,
+  created_at  TIMESTAMPTZ  DEFAULT now()
+);`,
+  },
+  {
+    name: 'leads',
+    query: `CREATE TABLE IF NOT EXISTS leads (
+  id            UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  nombre        VARCHAR(255),
+  email         VARCHAR(255),
+  telefono      VARCHAR(20),
+  tipo_proyecto VARCHAR(100),
+  mensaje       TEXT,
+  estado        VARCHAR(50) DEFAULT 'nuevo',
+  created_at    TIMESTAMPTZ DEFAULT now()
+);`,
+  },
+  {
+    name: 'integrations',
+    query: `CREATE TABLE IF NOT EXISTS integrations (
+  id          UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  provider    VARCHAR(50) NOT NULL UNIQUE,
+  credentials JSONB       DEFAULT '{}'::jsonb,
+  activo      BOOLEAN     DEFAULT true,
+  updated_at  TIMESTAMPTZ DEFAULT now()
+);`,
+  },
+  {
+    name: 'push_subscriptions',
+    query: `CREATE TABLE IF NOT EXISTS push_subscriptions (
+  id         UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  endpoint   TEXT UNIQUE NOT NULL,
+  p256dh     TEXT NOT NULL,
+  auth       TEXT NOT NULL,
+  user_agent TEXT,
+  created_at TIMESTAMPTZ DEFAULT now()
+);`,
+  },
+  {
+    name: 'cupones',
+    query: `CREATE TABLE IF NOT EXISTS cupones (
+  id         UUID        DEFAULT gen_random_uuid() PRIMARY KEY,
+  codigo     VARCHAR(50) UNIQUE NOT NULL,
+  descuento  NUMERIC(5,2) NOT NULL,
+  tipo       VARCHAR(20) DEFAULT 'porcentaje',
+  usado      BOOLEAN     DEFAULT false,
+  origen     VARCHAR(50) DEFAULT 'juego',
+  puntos     INTEGER     DEFAULT 0,
+  expires_at TIMESTAMPTZ,
+  created_at TIMESTAMPTZ DEFAULT now()
+);`,
+  },
+  {
     name: 'admin_users (columnas rol + aprobado)',
     query: `ALTER TABLE admin_users
+  ADD COLUMN IF NOT EXISTS nombre TEXT;
+ALTER TABLE admin_users
   ADD COLUMN IF NOT EXISTS rol VARCHAR(20) DEFAULT 'admin';
 ALTER TABLE admin_users
   ADD COLUMN IF NOT EXISTS aprobado BOOLEAN DEFAULT false;`,
@@ -168,15 +227,15 @@ ALTER TABLE admin_users
   {
     name: 'site_config (seed inicial)',
     query: `INSERT INTO site_config (clave, valor, tipo) VALUES
-  ('hero_titulo', 'Construimos tu Sueño en Realidad', 'text'),
-  ('hero_subtitulo', 'Tu hogar merece lo mejor', 'text'),
-  ('tagline', 'Tu Obra en Buenas Manos', 'text'),
-  ('whatsapp', '', 'text'),
-  ('email_contacto', '', 'text'),
-  ('direccion', 'Santiago, Chile', 'text'),
-  ('color_primario', '#f5c800', 'color'),
-  ('meta_titulo', 'Soluciones Fabrick', 'text'),
-  ('meta_descripcion', 'Construcción y remodelación residencial en Chile', 'text')
+  ('hero_titulo',      'Construimos tu Sueño en Realidad',               'text'),
+  ('hero_subtitulo',   'Tu hogar merece lo mejor',                       'text'),
+  ('tagline',          'Tu Obra en Buenas Manos',                        'text'),
+  ('whatsapp',         '+56930121625',                                   'text'),
+  ('email_contacto',   'contacto@solucionesfabrick.com',                 'text'),
+  ('direccion',        'Linares, Maule, Chile',                          'text'),
+  ('color_primario',   '#f5c800',                                        'color'),
+  ('meta_titulo',      'Soluciones Fabrick',                             'text'),
+  ('meta_descripcion', 'Construcción y remodelación residencial en Chile','text')
 ON CONFLICT (clave) DO NOTHING;`,
   },
 ];
@@ -191,12 +250,11 @@ async function runRawSql(
   apiKey: string,
   query: string
 ): Promise<void> {
-  const url = `${baseUrl.replace(/\/+$/, '')}/api/database/advance/rawsql`;
+  const url = `${baseUrl.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`;
   const res = await fetch(url, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${apiKey}`,
       'x-api-key': apiKey,
     },
     body: JSON.stringify({ query }),

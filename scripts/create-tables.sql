@@ -16,6 +16,39 @@ CREATE TABLE IF NOT EXISTS public.productos (
   updated_at timestamptz DEFAULT now()
 );
 
+-- TABLA: products
+-- Schema en inglés usado por el panel de administración (`/admin/productos`),
+-- el catálogo público (`/tienda`) y los endpoints `/api/productos` y `/api/sync/*`.
+-- Mantiene coherencia con los campos que consumen los componentes React.
+CREATE TABLE IF NOT EXISTS public.products (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text,
+  tagline text,
+  price numeric(10,2) DEFAULT 0,
+  stock integer DEFAULT 0,
+  image_url text,
+  category_id text,
+  featured boolean DEFAULT false,
+  activo boolean DEFAULT true,
+  rating numeric(3,2),
+  delivery_days integer,
+  discount_percentage numeric(5,2),
+  specifications jsonb,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: integrations
+-- Almacena las credenciales (JSON libre) de cada proveedor externo configurado
+-- desde `/admin/configuracion`. Se usa también como fallback en
+-- `/api/admin/social/publish` y `/api/admin/integrations/test`.
+CREATE TABLE IF NOT EXISTS public.integrations (
+  provider text PRIMARY KEY,
+  credentials jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamptz DEFAULT now()
+);
+
 -- TABLA: orders
 CREATE TABLE IF NOT EXISTS public.orders (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

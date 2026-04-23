@@ -5,11 +5,12 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  ArrowUpRight, BarChart3, ChevronRight, ExternalLink, Hammer, Home, LogOut, Menu,
-  Megaphone, MoreHorizontal, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart,
+  ArrowUpRight, BarChart3, ChevronRight, ExternalLink, Hammer, LogOut, Menu,
+  Megaphone, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart,
   Truck, Users, X,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
+import { AdminBottomNav } from '@/components/AdminBottomNav';
 
 type NavLink = { href: string; label: string; description: string; icon: typeof Package; superadminOnly?: boolean };
 
@@ -266,15 +267,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return <>{children}</>;
   }
 
-  /* ── Bottom nav (móvil) — 4 prioritarios + Más ───────────────────────── */
-  const bottomItems: { href: string; label: string; icon: typeof Home }[] = [
-    { href: '/admin',             label: 'Home', icon: Home },
-    { href: '/admin/productos',   label: 'Prod', icon: Package },
-    { href: '/admin/pedidos',     label: 'Ped',  icon: ShoppingCart },
-    { href: '/admin/observatory', label: 'Obs',  icon: Radio },
-  ];
-  const isBottomActive = (href: string) => pathname === href;
-
   return (
     <div className="min-h-screen bg-black text-white">
       {/* Ambient background */}
@@ -413,41 +405,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       )}
 
       {/* Bottom navigation (móvil / tablet vertical) */}
-      <nav
-        aria-label="Navegación inferior"
-        className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/10 bg-black/95 backdrop-blur-xl lg:hidden"
-        style={{ paddingBottom: 'env(safe-area-inset-bottom)' }}
-      >
-        <div className="mx-auto flex max-w-[1600px] items-stretch justify-around">
-          {bottomItems.map((item) => {
-            const active = isBottomActive(item.href);
-            const Icon = item.icon;
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="group relative flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em]"
-                style={{ minHeight: 56 }}
-              >
-                <Icon className={`h-5 w-5 transition-colors ${active ? 'text-yellow-400' : 'text-zinc-500 group-hover:text-zinc-300'}`} />
-                <span className={active ? 'text-yellow-400' : 'text-zinc-500'}>{item.label}</span>
-                {active && <span className="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.7)]" />}
-              </Link>
-            );
-          })}
-          {/* Más → opens full drawer */}
-          <button
-            type="button"
-            onClick={() => setMobileOpen(true)}
-            className="group relative flex flex-1 flex-col items-center justify-center gap-1 py-2.5 text-[10px] font-bold uppercase tracking-[0.2em]"
-            style={{ minHeight: 56 }}
-            aria-label="Más opciones"
-          >
-            <MoreHorizontal className="h-5 w-5 text-zinc-500 group-hover:text-zinc-300 transition-colors" />
-            <span className="text-zinc-500">Más</span>
-          </button>
-        </div>
-      </nav>
+      <AdminBottomNav onOpenMore={() => setMobileOpen(true)} />
     </div>
   );
 }

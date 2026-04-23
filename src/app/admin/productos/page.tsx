@@ -102,6 +102,7 @@ export default function AdminProductosPage() {
   const { categories, categoryMap } = useCategories();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState<string | null>(null);
   const [connected, setConnected] = useState(false);
   const [activeCategory, setActiveCategory] = useState('Todos');
   const [search, setSearch] = useState('');
@@ -116,15 +117,24 @@ export default function AdminProductosPage() {
 
   /* ── Load products ── */
   const loadProducts = useCallback(async () => {
-    const { data, error } = await insforge.database
-      .from('products')
-      .select('id, name, description, price, stock, image_url, featured, activo, tagline, category_id, created_at')
-      .order('created_at', { ascending: false });
+    try {
+      const { data, error } = await insforge.database
+        .from('products')
+        .select('id, name, description, price, stock, image_url, featured, activo, tagline, category_id, created_at')
+        .order('created_at', { ascending: false });
 
-    if (!error && data && isMounted.current) {
-      setProducts(data as AdminProduct[]);
+      if (!isMounted.current) return;
+      if (error) {
+        setLoadError(error.message ?? JSON.stringify(error));
+      } else {
+        setLoadError(null);
+        setProducts((data ?? []) as AdminProduct[]);
+      }
+    } catch (e) {
+      if (isMounted.current) setLoadError((e as Error).message ?? 'Error desconocido');
+    } finally {
+      if (isMounted.current) setLoading(false);
     }
-    if (isMounted.current) setLoading(false);
   }, []);
 
   /* ── Realtime subscription ── */
@@ -230,6 +240,16 @@ export default function AdminProductosPage() {
           </button>
         </div>
       </div>
+
+      {loadError && (
+        <div className="mx-6 mt-4 p-4 rounded-xl bg-red-950/60 border border-red-500/30 text-red-300 text-sm">
+          <p className="font-semibold mb-1">Error al cargar productos</p>
+          <code className="text-xs break-all">{loadError}</code>
+          <p className="mt-2 text-xs text-red-400">
+            Visita <a href="/api/admin/diagnostico" target="_blank" className="underline">/api/admin/diagnostico</a> para ver el diagnóstico completo.
+          </p>
+        </div>
+      )}
 
       <div className="px-6 py-6 space-y-5">
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">

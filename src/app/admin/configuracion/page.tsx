@@ -29,6 +29,9 @@ const PROVIDERS: ProviderDefinition[] = [
     fields: [
       { key: 'access_token', label: 'Access token', type: 'password', placeholder: 'EAAG...' },
       { key: 'ad_account_id', label: 'Ad account ID', placeholder: '1234567890' },
+      // `page_id` kept as the stored key for backward compatibility with rows
+      // created by older versions of the admin. The server-side resolver in
+      // `src/lib/metaCredentials.ts` accepts both `facebook_page_id` and `page_id`.
       { key: 'page_id', label: 'Facebook Page ID', placeholder: '1000000000' },
       { key: 'instagram_business_id', label: 'Instagram Business ID', placeholder: '17841400000000000' },
     ],

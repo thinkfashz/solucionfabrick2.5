@@ -103,6 +103,14 @@ function CopyField({ label, value }: { label: string; value: string }) {
   );
 }
 
+// Pre-computed star field for the processing overlay (stable across renders).
+const STAR_FIELD = Array.from({ length: 24 }).map((_, i) => ({
+  top: (i * 37) % 100,
+  left: (i * 53) % 100,
+  size: (i % 3) + 1,
+  delay: (i % 7) * 0.35,
+}));
+
 const CheckoutApp = () => {
   const searchParams = useSearchParams();
   const [step, setStep] = useState(1); 
@@ -352,10 +360,26 @@ const CheckoutApp = () => {
     if (digits.length < 3) return digits;
     return `${digits.slice(0, 2)}/${digits.slice(2)}`;
   };
+  // Luhn checksum — used to validate "unknown" brand card numbers.
+  const luhnValid = (digits: string) => {
+    if (!/^\d+$/.test(digits)) return false;
+    let sum = 0;
+    let alt = false;
+    for (let i = digits.length - 1; i >= 0; i--) {
+      let n = Number(digits[i]);
+      if (alt) {
+        n *= 2;
+        if (n > 9) n -= 9;
+      }
+      sum += n;
+      alt = !alt;
+    }
+    return sum % 10 === 0;
+  };
   const isCardNumberValid =
-    (cardBrand === 'amex' && rawCardDigits.length === 15) ||
-    (cardBrand !== 'amex' && cardBrand !== 'unknown' && rawCardDigits.length === 16) ||
-    (cardBrand === 'unknown' && rawCardDigits.length >= 13 && rawCardDigits.length <= 19);
+    (cardBrand === 'amex' && rawCardDigits.length === 15 && luhnValid(rawCardDigits)) ||
+    (cardBrand !== 'amex' && cardBrand !== 'unknown' && rawCardDigits.length === 16 && luhnValid(rawCardDigits)) ||
+    (cardBrand === 'unknown' && rawCardDigits.length >= 13 && rawCardDigits.length <= 19 && luhnValid(rawCardDigits));
   const isExpiryValid = /^(0[1-9]|1[0-2])\/\d{2}$/.test(cardExpiry);
   const isCvcValid = cardBrand === 'amex' ? /^\d{4}$/.test(cardCVC) : /^\d{3}$/.test(cardCVC);
   const isHolderValid = cardName.trim().length >= 3;
@@ -765,25 +789,19 @@ const CheckoutApp = () => {
 
                  {/* Stars background */}
                  <div className="absolute inset-0 overflow-hidden rounded-full">
-                   {Array.from({ length: 24 }).map((_, i) => {
-                     const top = (i * 37) % 100;
-                     const left = (i * 53) % 100;
-                     const size = (i % 3) + 1;
-                     const delay = (i % 7) * 0.35;
-                     return (
-                       <span
-                         key={i}
-                         className="absolute rounded-full bg-white/60"
-                         style={{
-                           top: `${top}%`,
-                           left: `${left}%`,
-                           width: `${size}px`,
-                           height: `${size}px`,
-                           animation: `twinkle 2.4s ease-in-out ${delay}s infinite`,
-                         }}
-                       />
-                     );
-                   })}
+                   {STAR_FIELD.map((s, i) => (
+                     <span
+                       key={i}
+                       className="absolute rounded-full bg-white/60"
+                       style={{
+                         top: `${s.top}%`,
+                         left: `${s.left}%`,
+                         width: `${s.size}px`,
+                         height: `${s.size}px`,
+                         animation: `twinkle 2.4s ease-in-out ${s.delay}s infinite`,
+                       }}
+                     />
+                   ))}
                  </div>
 
                  {/* Central planet (Fabrick hub) */}
@@ -1416,6 +1434,7 @@ const CheckoutApp = () => {
                             type="text"
                             inputMode="numeric"
                             autoComplete="cc-number"
+                            aria-label="Número de tarjeta"
                             value={cardNumber}
                             onFocus={() => setCardFlipped(false)}
                             onChange={(e) => setCardNumber(formatCardInput(e.target.value))}
@@ -1446,6 +1465,7 @@ const CheckoutApp = () => {
                           <input
                             type="text"
                             autoComplete="cc-name"
+                            aria-label="Titular de la tarjeta"
                             value={cardName}
                             onFocus={() => setCardFlipped(false)}
                             onChange={(e) => setCardName(e.target.value.toUpperCase())}
@@ -1460,6 +1480,7 @@ const CheckoutApp = () => {
                               type="text"
                               inputMode="numeric"
                               autoComplete="cc-exp"
+                              aria-label="Fecha de expiración"
                               value={cardExpiry}
                               onFocus={() => setCardFlipped(false)}
                               onChange={(e) => setCardExpiry(formatExpiryInput(e.target.value))}
@@ -1475,6 +1496,7 @@ const CheckoutApp = () => {
                               type="text"
                               inputMode="numeric"
                               autoComplete="cc-csc"
+                              aria-label={cardBrand === 'amex' ? 'Código de seguridad CID' : 'Código de seguridad CVC'}
                               value={cardCVC}
                               onFocus={() => setCardFlipped(true)}
                               onBlur={() => setCardFlipped(false)}

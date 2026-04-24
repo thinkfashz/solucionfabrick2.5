@@ -297,7 +297,7 @@ export default function ProductoTiendaPage() {
             <div className="space-y-3 pt-4">
               {purchaseMode === 'product' ? (
                 <Link
-                  href={`/checkout?productId=${encodeURIComponent(product.id)}&name=${encodeURIComponent(product.name)}&price=${product.price}${product.image_url ? `&img=${encodeURIComponent(product.image_url)}` : ''}`}
+                  href={`/checkout?productId=${encodeURIComponent(product.id)}&name=${encodeURIComponent(product.name)}&price=${encodeURIComponent(String(product.price))}${product.image_url ? `&img=${encodeURIComponent(product.image_url)}` : ''}`}
                   className="flex w-full items-center justify-center gap-3 rounded-2xl bg-yellow-400 px-6 py-4 text-[12px] font-black uppercase tracking-[0.25em] text-black transition hover:bg-yellow-300"
                 >
                   Comprar producto · {formatCLP(product.price)}

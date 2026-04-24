@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { insforge } from '@/lib/insforge';
+import { buildProductMetaDescription } from '@/lib/utils';
 import ProductoClient from './ProductoClient';
 
 type Props = { params: Promise<{ id: string }> };
@@ -29,8 +30,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
   const title = product.name;
   const description =
-    product.description ||
-    `Descubre ${product.name} en Soluciones Fabrick. Materiales premium para construcción y remodelación en la Región del Maule, Chile.`;
+    product.description ?? buildProductMetaDescription(product.name, 'Descubre');
 
   const images = product.image_url ? [{ url: product.image_url }] : [];
 

@@ -638,7 +638,7 @@ const CheckoutApp = () => {
               amount: cartTotal,
               description: cartItems.length === 1
                 ? product.name
-                : `Pedido Fabrick (${cartItemCount} ítems)`,
+                : `Pedido Fabrick (${cartItemCount} productos)`,
               email: shippingEmail,
               installments: 1,
               payment_method_id: detectedMethod,

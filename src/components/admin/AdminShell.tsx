@@ -44,6 +44,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Sistema',
     links: [
       { href: '/admin/observatory', label: 'Observatory', description: 'Red en tiempo real', icon: Radio },
+      { href: '/admin/envios', label: 'Tarifas de Envío', description: 'Costos por región y transportista', icon: Truck },
       { href: '/admin/sql', label: 'Terminal SQL', description: 'Ejecutar SQL en InsForge', icon: Database },
       { href: '/admin/setup', label: 'Setup', description: 'Verificar tablas InsForge', icon: Database, superadminOnly: true },
       { href: '/admin/equipo', label: 'Equipo', description: 'Roles, invitaciones y aprobaciones', icon: ShieldCheck, superadminOnly: true },
@@ -66,6 +67,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/publicar': 'Publicar',
   '/admin/configuracion': 'Configuración',
   '/admin/observatory': 'Observatory',
+  '/admin/envios': 'Tarifas de Envío',
   '/admin/sql': 'Terminal SQL',
   '/admin/setup': 'Setup',
   '/admin/equipo': 'Equipo',

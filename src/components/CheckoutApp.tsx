@@ -110,6 +110,20 @@ const STAR_FIELD = Array.from({ length: 24 }).map((_, i) => ({
   delay: (i % 7) * 0.35,
 }));
 
+const CART_SESSION_KEY = 'fabrick.cart.session.v2';
+
+interface StoredCartItem {
+  product: {
+    id: string;
+    name: string;
+    price: number;
+    image_url?: string;
+    category_id?: string;
+    discount_percentage?: number;
+  };
+  quantity: number;
+}
+
 const CheckoutApp = () => {
   const searchParams = useSearchParams();
   const [step, setStep] = useState(1); 
@@ -150,14 +164,58 @@ const CheckoutApp = () => {
   const [checkoutError, setCheckoutError] = useState('');
   const [orderId, setOrderId] = useState('');
 
-  const product = {
-    id: searchParams.get('productId') || 'FBK-01',
-    name: searchParams.get('name') || 'Cerradura Biométrica Titanio V2',
-    category: searchParams.get('category') || 'Seguridad Smart Home',
-    price: Number(searchParams.get('price') || 189900),
-    shipping: 0,
-    image: searchParams.get('img') || 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=2070&auto=format&fit=crop',
-  };
+  // ── Cart: prefer sessionStorage cart (multi-product), fallback to URL params ──
+  const [cartItems, setCartItems] = useState<StoredCartItem[]>([]);
+  useEffect(() => {
+    try {
+      const raw = sessionStorage.getItem(CART_SESSION_KEY);
+      if (raw) {
+        const parsed = JSON.parse(raw) as StoredCartItem[];
+        if (Array.isArray(parsed) && parsed.length > 0) {
+          setCartItems(parsed);
+          return;
+        }
+      }
+    } catch { /* Ignore */ }
+    // Fall back to URL params (single product)
+    const urlProduct: StoredCartItem = {
+      product: {
+        id: searchParams.get('productId') || 'FBK-01',
+        name: searchParams.get('name') || 'Cerradura Biométrica Titanio V2',
+        price: Number(searchParams.get('price') || 189900),
+        image_url: searchParams.get('img') || 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=2070&auto=format&fit=crop',
+        category_id: searchParams.get('category') || '',
+      },
+      quantity: 1,
+    };
+    setCartItems([urlProduct]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Derived: first product (for legacy single-product display) and cart totals
+  const product = cartItems[0]
+    ? {
+        id: cartItems[0].product.id,
+        name: cartItems[0].product.name,
+        category: cartItems[0].product.category_id || 'Producto',
+        price: cartItems[0].product.price,
+        shipping: 0,
+        image: cartItems[0].product.image_url || 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=2070&auto=format&fit=crop',
+      }
+    : {
+        id: 'FBK-01',
+        name: 'Cerradura Biométrica Titanio V2',
+        category: 'Seguridad Smart Home',
+        price: 189900,
+        shipping: 0,
+        image: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=2070&auto=format&fit=crop',
+      };
+
+  const cartTotal = cartItems.reduce((s, i) => {
+    const discount = i.product.discount_percentage || 0;
+    return s + i.product.price * (1 - discount / 100) * i.quantity;
+  }, 0);
+  const cartItemCount = cartItems.reduce((s, i) => s + i.quantity, 0);
 
   const formatCardDisplay = (n: string) => {
     const clean = n.replace(/\D/g, '').padEnd(16, '•');
@@ -503,14 +561,12 @@ const CheckoutApp = () => {
     // --- end tokenization ---
 
     const payload = {
-      items: [
-        {
-          productoId: product.id,
-          cantidad: 1,
-          precioUnitario: product.price,
-          nombre: product.name,
-        },
-      ],
+      items: cartItems.map((i) => ({
+        productoId: i.product.id,
+        cantidad: i.quantity,
+        precioUnitario: i.product.price * (1 - (i.product.discount_percentage || 0) / 100),
+        nombre: i.product.name,
+      })),
       region: shippingRegion,
       shippingAddress,
       shippingHouseNumber,
@@ -579,8 +635,10 @@ const CheckoutApp = () => {
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               token: mpToken,
-              amount: product.price,
-              description: product.name,
+              amount: cartTotal,
+              description: cartItems.length === 1
+                ? product.name
+                : `Pedido Fabrick (${cartItemCount} productos)`,
               email: shippingEmail,
               installments: 1,
               payment_method_id: detectedMethod,
@@ -608,7 +666,7 @@ const CheckoutApp = () => {
           orderId: createdOrderId,
           paymentId: `SIM-${Date.now()}`,
           status: 'succeeded',
-          amount: checkoutBody.data?.resumen?.total ?? product.price,
+          amount: checkoutBody.data?.resumen?.total ?? cartTotal,
           currency: 'CLP',
         }),
       });
@@ -647,14 +705,12 @@ const CheckoutApp = () => {
     setTransferOrderCreating(true);
 
     const payload = {
-      items: [
-        {
-          productoId: product.id,
-          cantidad: 1,
-          precioUnitario: product.price,
-          nombre: product.name,
-        },
-      ],
+      items: cartItems.map((i) => ({
+        productoId: i.product.id,
+        cantidad: i.quantity,
+        precioUnitario: i.product.price * (1 - (i.product.discount_percentage || 0) / 100),
+        nombre: i.product.name,
+      })),
       region: shippingRegion,
       shippingAddress,
       shippingHouseNumber,
@@ -678,7 +734,7 @@ const CheckoutApp = () => {
         throw new Error(body?.error ?? 'No se pudo crear la orden de transferencia.');
       }
       setTransferOrderId(body.data.id as string);
-      setTransferOrderTotal(body.data.resumen?.total ?? product.price);
+      setTransferOrderTotal(body.data.resumen?.total ?? cartTotal);
       setTransferOrderStatus('pendiente_transferencia');
       setTransferOrderReady(true);
     } catch (e) {
@@ -947,7 +1003,7 @@ const CheckoutApp = () => {
                    </div>
                    <div className="text-right">
                      <div className="text-[8px] uppercase tracking-widest text-zinc-500 mb-2">Inversión Total</div>
-                     <div className="font-black text-lg md:text-xl text-yellow-400">{formatCLP(product.price)}</div>
+                     <div className="font-black text-lg md:text-xl text-yellow-400">{formatCLP(cartTotal)}</div>
                    </div>
                  </div>
                  
@@ -990,17 +1046,63 @@ const CheckoutApp = () => {
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-yellow-400/10 blur-[60px] rounded-full pointer-events-none group-hover:bg-yellow-400/20 transition-all duration-700" />
               
               <div className="product-float relative z-10 mb-8">
-                <div className="w-full h-64 rounded-[2rem] overflow-hidden border border-white/10 relative shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
-                  <img src={product.image} alt={product.name} className="w-full h-full object-cover grayscale-[0.1] group-hover:grayscale-0 transition-all duration-700 group-hover:scale-105" />
-                  <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md p-3 rounded-full border border-yellow-400/30 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
-                    <Fingerprint className="w-5 h-5 text-yellow-400" />
+                {cartItems.length > 1 ? (
+                  /* Multi-item: stack thumbnails */
+                  <div className="grid grid-cols-2 gap-3">
+                    {cartItems.slice(0, 4).map((item) => (
+                      <div key={item.product.id} className="relative aspect-square rounded-2xl overflow-hidden border border-white/10 bg-zinc-900">
+                        {item.product.image_url ? (
+                          <img src={item.product.image_url} alt={item.product.name} className="w-full h-full object-cover" />
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-white/20 text-xs font-bold">
+                            {item.product.name[0]}
+                          </div>
+                        )}
+                        {item.quantity > 1 && (
+                          <span className="absolute bottom-1 right-1 bg-yellow-400 text-black text-[9px] font-black rounded-full px-1.5 py-0.5">
+                            ×{item.quantity}
+                          </span>
+                        )}
+                      </div>
+                    ))}
+                    {cartItems.length > 4 && (
+                      <div className="relative aspect-square rounded-2xl overflow-hidden border border-white/10 bg-zinc-900 flex items-center justify-center">
+                        <span className="text-white/40 text-sm font-bold">+{cartItems.length - 4}</span>
+                      </div>
+                    )}
                   </div>
-                </div>
+                ) : (
+                  /* Single item: full-width hero image */
+                  <div className="w-full h-64 rounded-[2rem] overflow-hidden border border-white/10 relative shadow-[0_10px_30px_rgba(0,0,0,0.5)]">
+                    <img src={product.image} alt={product.name} className="w-full h-full object-cover grayscale-[0.1] group-hover:grayscale-0 transition-all duration-700 group-hover:scale-105" />
+                    <div className="absolute top-4 right-4 bg-black/80 backdrop-blur-md p-3 rounded-full border border-yellow-400/30 shadow-[0_0_15px_rgba(250,204,21,0.2)]">
+                      <Fingerprint className="w-5 h-5 text-yellow-400" />
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="space-y-4 relative z-10">
-                <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase bg-yellow-400/10 px-3 py-1 rounded-full border border-yellow-400/20">{product.category}</span>
-                <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter leading-none mt-2">{product.name}</h2>
+                <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase bg-yellow-400/10 px-3 py-1 rounded-full border border-yellow-400/20">
+                  {cartItems.length > 1 ? `${cartItemCount} productos` : product.category}
+                </span>
+                {cartItems.length > 1 ? (
+                  <div className="space-y-2 max-h-40 overflow-y-auto scrollbar-hide">
+                    {cartItems.map((item) => (
+                      <div key={item.product.id} className="flex justify-between items-center text-sm">
+                        <span className="text-white/70 truncate max-w-[60%]">
+                          {item.product.name}
+                          {item.quantity > 1 && <span className="text-white/40 ml-1">×{item.quantity}</span>}
+                        </span>
+                        <span className="font-mono text-zinc-300 text-xs shrink-0">
+                          {formatCLP(item.product.price * (1 - (item.product.discount_percentage || 0) / 100) * item.quantity)}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter leading-none mt-2">{product.name}</h2>
+                )}
                 
                 <div className="py-4 space-y-3 border-b border-white/5">
                   <div className="flex items-center gap-3 text-zinc-400 text-xs font-light">
@@ -1020,7 +1122,7 @@ const CheckoutApp = () => {
                 <div className="pt-2 space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Subtotal</span>
-                    <span className="font-mono text-zinc-300">{formatCLP(product.price)}</span>
+                    <span className="font-mono text-zinc-300">{formatCLP(cartTotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Logística Fabrick</span>
@@ -1028,7 +1130,7 @@ const CheckoutApp = () => {
                   </div>
                   <div className="flex justify-between items-center pt-4 mt-2 border-t border-white/5">
                     <span className="text-white font-black uppercase tracking-widest text-xs">Total Inversión</span>
-                    <span className="font-black text-3xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{formatCLP(product.price)}</span>
+                    <span className="font-black text-3xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{formatCLP(cartTotal)}</span>
                   </div>
                 </div>
               </div>
@@ -1477,7 +1579,7 @@ const CheckoutApp = () => {
                     {/* Amount summary */}
                     <div className="flex items-center justify-between rounded-2xl border border-yellow-400/15 bg-yellow-400/5 px-5 py-4">
                       <span className="text-zinc-400 text-sm uppercase tracking-widest">Total a pagar</span>
-                      <span className="text-yellow-400 font-black text-xl">{formatCLP(product.price)}</span>
+                      <span className="text-yellow-400 font-black text-xl">{formatCLP(cartTotal)}</span>
                     </div>
 
                     {/* Sub-step indicator */}
@@ -1608,7 +1710,7 @@ const CheckoutApp = () => {
                           </div>
                           <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-4">
                             <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Monto total</div>
-                            <div className="text-yellow-400 font-bold text-base">{formatCLP(product.price)}</div>
+                            <div className="text-yellow-400 font-bold text-base">{formatCLP(cartTotal)}</div>
                           </div>
                           <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
                             <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Tarjeta</div>
@@ -1662,7 +1764,7 @@ const CheckoutApp = () => {
                             { label: 'Banco', value: BANK_INFO.bank },
                             { label: 'Titular', value: BANK_INFO.holder },
                             { label: 'Tipo de Cuenta', value: BANK_INFO.type },
-                            { label: 'Monto', value: formatCLP(product.price) },
+                            { label: 'Monto', value: formatCLP(transferOrderTotal || cartTotal) },
                           ].map((row) => (
                             <div key={row.label} className="flex justify-between text-sm">
                               <span className="text-zinc-500">{row.label}</span>
@@ -1700,7 +1802,7 @@ const CheckoutApp = () => {
                           </div>
                           <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-5">
                             <p className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Monto a Transferir</p>
-                            <p className="text-yellow-400 font-black text-xl">{formatCLP(transferOrderTotal || product.price)}</p>
+                            <p className="text-yellow-400 font-black text-xl">{formatCLP(transferOrderTotal || cartTotal)}</p>
                           </div>
                         </div>
 
@@ -1715,7 +1817,7 @@ const CheckoutApp = () => {
                           <CopyField label="Tipo de Cuenta" value={BANK_INFO.type} />
                           <CopyField label="N° de Cuenta" value={BANK_INFO.number} />
                           <CopyField label="Email para Comprobante" value={BANK_INFO.email} />
-                          <CopyField label="Monto exacto" value={formatCLP(transferOrderTotal || product.price)} />
+                          <CopyField label="Monto exacto" value={formatCLP(transferOrderTotal || cartTotal)} />
                           <CopyField label="Referencia / Glosa" value={transferOrderId} />
                         </div>
 
@@ -1747,7 +1849,7 @@ const CheckoutApp = () => {
                       type="button"
                       className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all flex justify-center items-center gap-3 shadow-[0_15px_40px_rgba(250,204,21,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Lock className="w-4 h-4" /> Pagar {formatCLP(product.price)}
+                      <Lock className="w-4 h-4" /> Pagar {formatCLP(cartTotal)}
                     </button>
                   )}
                   {paymentMethod === 'transfer' && !transferOrderReady && (

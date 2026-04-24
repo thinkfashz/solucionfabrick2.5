@@ -5,6 +5,7 @@ import SmoothScrollProvider from '@/components/SmoothScrollProvider';
 import PromoBanner from '@/components/PromoBanner';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
+import { CartProvider } from '@/context/CartContext';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 import Analytics from '@/components/Analytics';
@@ -89,13 +90,15 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       <body className="bg-black text-white antialiased app-shell">
         <ThemeProvider>
           <AuthProvider>
-            <SmoothScrollProvider />
-            {children}
-            <ServiceWorkerRegister />
-            <InstallAppPrompt />
-            <PromoBanner />
-            <WhatsAppButton />
-            <Analytics />
+            <CartProvider>
+              <SmoothScrollProvider />
+              {children}
+              <ServiceWorkerRegister />
+              <InstallAppPrompt />
+              <PromoBanner />
+              <WhatsAppButton />
+              <Analytics />
+            </CartProvider>
           </AuthProvider>
         </ThemeProvider>
       </body>

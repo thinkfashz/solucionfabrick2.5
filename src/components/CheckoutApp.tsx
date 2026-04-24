@@ -30,7 +30,6 @@ import {
   Wifi, Battery, Wrench, Check, Building2, Copy, ExternalLink,
   CreditCard, RefreshCw
 } from 'lucide-react';
-import FabrickLogo from './FabrickLogo';
 
 // ── Bank account data (configurable via env vars) ──────────────────────────
 const BANK_INFO = {
@@ -138,6 +137,7 @@ const CheckoutApp = () => {
   const [cardName, setCardName] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCVC, setCardCVC] = useState('');
+  const [cardFlipped, setCardFlipped] = useState(false);
   const [checkoutError, setCheckoutError] = useState('');
   const [orderId, setOrderId] = useState('');
 
@@ -148,6 +148,31 @@ const CheckoutApp = () => {
     price: Number(searchParams.get('price') || 189900),
     shipping: 0,
     image: searchParams.get('img') || 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=2070&auto=format&fit=crop',
+  };
+
+  const formatCardDisplay = (n: string) => {
+    const clean = n.replace(/\D/g, '').padEnd(16, '•');
+    return [clean.slice(0,4), clean.slice(4,8), clean.slice(8,12), clean.slice(12,16)].join(' ');
+  };
+
+  const detectCardBrand = (n: string): { name: string; gradient: string } => {
+    const d = n.replace(/\D/g, '');
+    if (/^4/.test(d)) return { name: 'VISA', gradient: 'from-[#1a237e] via-[#283593] to-[#1565c0]' };
+    if (/^5[1-5]/.test(d) || /^2[2-7]/.test(d)) return { name: 'MC', gradient: 'from-[#1a1a1a] via-[#2d2d2d] to-[#1a1a1a]' };
+    if (/^3[47]/.test(d)) return { name: 'AMEX', gradient: 'from-[#006fcf] via-[#0077b6] to-[#0096c7]' };
+    return { name: '', gradient: 'from-zinc-900 via-zinc-800 to-zinc-900' };
+  };
+
+  const handleCardNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 16);
+    const formatted = raw.match(/.{1,4}/g)?.join(' ') ?? raw;
+    setCardNumber(formatted);
+  };
+
+  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const raw = e.target.value.replace(/\D/g, '').slice(0, 4);
+    if (raw.length > 2) setCardExpiry(raw.slice(0, 2) + '/' + raw.slice(2));
+    else setCardExpiry(raw);
   };
 
   const returnedPaymentStatus =
@@ -665,6 +690,23 @@ const CheckoutApp = () => {
             from { background-position: 0 0; }
             to { background-position: 16px 0; }
           }
+
+          .card-3d-wrap { perspective: 1200px; }
+          .card-3d-inner { transition: transform 0.7s cubic-bezier(.4,0,.2,1); transform-style: preserve-3d; position: relative; }
+          .card-3d-inner.is-flipped { transform: rotateY(180deg); }
+          .card-face { backface-visibility: hidden; -webkit-backface-visibility: hidden; }
+          .card-back-face { transform: rotateY(180deg); }
+
+          @keyframes card-shine {
+            0% { transform: translateX(-100%) rotate(25deg); }
+            60%, 100% { transform: translateX(200%) rotate(25deg); }
+          }
+          .card-shine { animation: card-shine 3s ease-in-out infinite; }
+
+          @keyframes chip-pulse {
+            0%, 100% { box-shadow: 0 0 0 0 rgba(250,204,21,0); }
+            50% { box-shadow: 0 0 0 4px rgba(250,204,21,0.2); }
+          }
         `}
       </style>
 
@@ -674,10 +716,12 @@ const CheckoutApp = () => {
           
           {!isSuccess ? (
             <div className="w-full max-w-xs flex flex-col items-center text-center animate-fade-up">
-               <div className="mb-10 animate-pulse">
-                 <FabrickLogo />
+               <div className="mb-10">
+                 <div className="w-16 h-16 rounded-full border border-yellow-400/30 bg-yellow-400/10 flex items-center justify-center animate-pulse">
+                   <Lock className="w-6 h-6 text-yellow-400" />
+                 </div>
                </div>
-               
+
                <div className="w-full space-y-4">
                  <h2 className="text-[10px] font-bold uppercase tracking-[0.4em] text-white">Asegurando Inversión</h2>
                  
@@ -745,12 +789,18 @@ const CheckoutApp = () => {
       )}
 
       {/* NAVBAR MINIMALISTA */}
-      <nav className="fixed top-0 left-0 w-full z-50 bg-black/90 backdrop-blur-xl border-b border-white/5 py-4 px-6 md:px-12 flex justify-between items-center">
-        <FabrickLogo />
-        <button className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:text-yellow-400 transition-colors group">
-          <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
-          Volver
-        </button>
+      <nav className="fixed top-0 left-0 w-full z-50 bg-black/90 backdrop-blur-xl border-b border-white/5 py-4 px-6 md:px-12 flex items-center justify-between">
+        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-400">Soluciones Fabrick</span>
+        <div className="flex items-center gap-4">
+          <div className="flex items-center gap-1.5">
+            <Lock className="w-3 h-3 text-emerald-500" />
+            <span className="text-[9px] text-zinc-500 uppercase tracking-widest hidden sm:block">Pago seguro</span>
+          </div>
+          <button className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:text-yellow-400 transition-colors group">
+            <ArrowLeft className="w-4 h-4 group-hover:-translate-x-1 transition-transform" />
+            Volver
+          </button>
+        </div>
       </nav>
 
       {/* CONTENEDOR PRINCIPAL */}
@@ -1060,30 +1110,146 @@ const CheckoutApp = () => {
                   </button>
                 </div>
 
-                {/* MERCADO PAGO PANEL */}
+                {/* MERCADO PAGO PANEL — 3D CARD */}
                 {paymentMethod === 'mercadopago' && (
-                  <div className="bg-gradient-to-br from-zinc-900 to-black border border-white/10 rounded-[2rem] p-8 space-y-5">
-                    <div className="flex items-center justify-between gap-4">
-                      <div>
-                        <p className="text-[9px] uppercase tracking-[0.35em] text-yellow-400 font-bold">Mercado Pago</p>
-                        <h4 className="text-2xl font-black uppercase tracking-tighter mt-2">Finalización externa segura</h4>
+                  <div className="space-y-6">
+                    {/* MP badge */}
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-[#009ee3]/20 border border-[#009ee3]/30 flex items-center justify-center">
+                          <CreditCard className="w-4 h-4 text-[#009ee3]" />
+                        </div>
+                        <div>
+                          <p className="text-[9px] text-zinc-500 uppercase tracking-widest">Powered by</p>
+                          <p className="text-sm font-black text-white">Mercado<span className="text-[#009ee3]">Pago</span></p>
+                        </div>
                       </div>
-                      <div className="w-12 h-12 rounded-full border border-yellow-400/30 bg-yellow-400/10 flex items-center justify-center">
-                        <Lock className="w-5 h-5 text-yellow-400" />
+                      <div className="flex items-center gap-1.5 text-emerald-400 text-[10px] font-bold uppercase tracking-wider">
+                        <ShieldCheck className="w-3.5 h-3.5" /> SSL 256-bit
                       </div>
                     </div>
-                    <p className="text-sm text-zinc-300 leading-relaxed">
-                      Al continuar serás redirigido a Mercado Pago para completar el pago con flujo oficial seguro. Acepta tarjeta, débito y más métodos.
-                    </p>
-                    <div className="grid sm:grid-cols-2 gap-4 text-xs uppercase tracking-widest">
-                      <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
-                        <div className="text-zinc-500 mb-2">Proveedor</div>
-                        <div className="text-white font-bold">Mercado Pago</div>
+
+                    {/* 3D Card */}
+                    <div className="card-3d-wrap w-full flex justify-center">
+                      <div className={`card-3d-inner w-full max-w-sm ${cardFlipped ? 'is-flipped' : ''}`} style={{ height: '195px' }}>
+                        {/* Front */}
+                        <div className={`card-face absolute inset-0 rounded-3xl overflow-hidden bg-gradient-to-br ${detectCardBrand(cardNumber).gradient || 'from-zinc-900 via-zinc-800 to-zinc-900'} shadow-2xl`}>
+                          <div className="absolute inset-0 opacity-20">
+                            <div className="absolute top-0 right-0 w-64 h-64 rounded-full bg-white/10 blur-3xl -translate-y-1/2 translate-x-1/2" />
+                            <div className="absolute bottom-0 left-0 w-48 h-48 rounded-full bg-yellow-400/10 blur-2xl translate-y-1/2 -translate-x-1/2" />
+                          </div>
+                          <div className="card-shine absolute top-0 left-0 w-24 h-full bg-gradient-to-r from-transparent via-white/15 to-transparent skew-x-[-20deg] pointer-events-none" />
+                          <div className="relative z-10 p-6 flex flex-col h-full">
+                            {/* Top row */}
+                            <div className="flex justify-between items-start mb-4">
+                              <div className="w-10 h-7 rounded-md bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 flex items-center justify-center shadow-inner" style={{ animation: 'chip-pulse 3s infinite' }}>
+                                <div className="w-6 h-5 border border-yellow-600/40 rounded-sm grid grid-cols-3 grid-rows-3 gap-px p-0.5">
+                                  {Array.from({length:9}).map((_,i) => <div key={i} className="bg-yellow-600/30 rounded-[1px]" />)}
+                                </div>
+                              </div>
+                              <div className="text-right">
+                                {detectCardBrand(cardNumber).name ? (
+                                  <span className="text-white font-black text-lg tracking-wider drop-shadow">{detectCardBrand(cardNumber).name}</span>
+                                ) : (
+                                  <div className="w-8 h-8 rounded-full border-2 border-white/20" />
+                                )}
+                              </div>
+                            </div>
+                            {/* Number */}
+                            <div className="flex-1 flex items-center">
+                              <p className="font-mono text-xl text-white tracking-[0.2em] drop-shadow">{formatCardDisplay(cardNumber)}</p>
+                            </div>
+                            {/* Bottom */}
+                            <div className="flex justify-between items-end">
+                              <div>
+                                <p className="text-[8px] text-white/50 uppercase tracking-widest mb-0.5">Titular</p>
+                                <p className="text-sm text-white font-bold uppercase tracking-wider truncate max-w-[160px]">
+                                  {cardName || 'NOMBRE APELLIDO'}
+                                </p>
+                              </div>
+                              <div className="text-right">
+                                <p className="text-[8px] text-white/50 uppercase tracking-widest mb-0.5">Vence</p>
+                                <p className="text-sm text-white font-bold font-mono">
+                                  {cardExpiry || 'MM/AA'}
+                                </p>
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Back */}
+                        <div className="card-face card-back-face absolute inset-0 rounded-3xl overflow-hidden bg-gradient-to-br from-zinc-800 via-zinc-900 to-black shadow-2xl">
+                          <div className="mt-8 w-full h-11 bg-zinc-950" />
+                          <div className="px-6 mt-5">
+                            <div className="w-full h-10 rounded-lg bg-white flex items-center justify-end px-4">
+                              <p className="font-mono text-zinc-800 font-black tracking-widest text-sm">
+                                {cardCVC ? cardCVC.replace(/./g, '•') : '•••'}
+                              </p>
+                            </div>
+                            <p className="text-[8px] text-zinc-600 uppercase tracking-widest mt-2 text-right">CVV / CVC</p>
+                          </div>
+                          <div className="absolute bottom-5 left-6 right-6 flex justify-between items-center">
+                            <p className="text-[9px] text-zinc-600">Soluciones Fabrick</p>
+                            <p className="text-[9px] text-zinc-600 font-mono">●●● ●●●●</p>
+                          </div>
+                        </div>
                       </div>
-                      <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-4">
-                        <div className="text-zinc-500 mb-2">Monto total</div>
-                        <div className="text-yellow-400 font-bold text-base">{formatCLP(product.price)}</div>
+                    </div>
+
+                    {/* Card inputs */}
+                    <div className="space-y-3">
+                      <div>
+                        <label className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1.5 block">Número de tarjeta</label>
+                        <input
+                          value={cardNumber}
+                          onChange={handleCardNumberChange}
+                          inputMode="numeric"
+                          placeholder="1234 5678 9012 3456"
+                          maxLength={19}
+                          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-5 py-3.5 text-white font-mono tracking-widest text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
+                        />
                       </div>
+                      <div>
+                        <label className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1.5 block">Nombre en la tarjeta</label>
+                        <input
+                          value={cardName}
+                          onChange={(e) => setCardName(e.target.value.toUpperCase())}
+                          placeholder="NOMBRE APELLIDO"
+                          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-5 py-3.5 text-white uppercase tracking-wider text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
+                        />
+                      </div>
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1.5 block">Vencimiento</label>
+                          <input
+                            value={cardExpiry}
+                            onChange={handleExpiryChange}
+                            inputMode="numeric"
+                            placeholder="MM/AA"
+                            maxLength={5}
+                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-5 py-3.5 text-white font-mono text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
+                          />
+                        </div>
+                        <div>
+                          <label className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1.5 block">CVC / CVV</label>
+                          <input
+                            value={cardCVC}
+                            onChange={(e) => setCardCVC(e.target.value.replace(/\D/g, '').slice(0, 4))}
+                            onFocus={() => setCardFlipped(true)}
+                            onBlur={() => setCardFlipped(false)}
+                            inputMode="numeric"
+                            placeholder="•••"
+                            maxLength={4}
+                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-5 py-3.5 text-white font-mono text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
+                          />
+                        </div>
+                      </div>
+                    </div>
+
+                    {/* Amount summary */}
+                    <div className="flex items-center justify-between rounded-2xl border border-yellow-400/15 bg-yellow-400/5 px-5 py-4">
+                      <span className="text-zinc-400 text-sm uppercase tracking-widest">Total a pagar</span>
+                      <span className="text-yellow-400 font-black text-xl">{formatCLP(product.price)}</span>
                     </div>
                   </div>
                 )}

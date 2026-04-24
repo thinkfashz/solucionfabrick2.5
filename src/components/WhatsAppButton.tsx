@@ -38,7 +38,7 @@ export interface WhatsAppButtonProps {
 }
 
 export default function WhatsAppButton({
-  hideOn = ['/admin', '/auth'],
+  hideOn = ['/admin', '/auth', '/checkout'],
   message = DEFAULT_MESSAGE,
 }: WhatsAppButtonProps) {
   const pathname = usePathname();

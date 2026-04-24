@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChevronRight, Hammer, MapPin, Package, Phone, ShieldCheck, Wrench, Zap } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Hammer, MapPin, Package, Phone, Ruler, ShieldCheck, Check } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { useRealtimeProducts } from '@/hooks/useRealtimeProducts';
 
@@ -40,6 +40,7 @@ export default function ProductoTiendaPage() {
   const id = params?.id ?? '';
   const product = useMemo(() => products.find((p) => p.id === id), [products, id]);
   const [activeImg, setActiveImg] = useState(0);
+  const [purchaseMode, setPurchaseMode] = useState<'product' | 'product_labor' | 'turnkey_m2'>('product');
 
   useEffect(() => {
     setActiveImg(0);
@@ -221,66 +222,96 @@ export default function ProductoTiendaPage() {
               ) : null}
             </div>
 
-            {/* Purchase options */}
+            {/* Purchase mode selector — customer chooses what to buy */}
+            <div className="space-y-3 pt-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-yellow-400">¿Qué quieres comprar?</p>
+              <div className="grid gap-2">
+                {[
+                  {
+                    id: 'product' as const,
+                    icon: Package,
+                    title: 'Solo producto',
+                    desc: 'Solo el material. Tú gestionas la instalación por tu cuenta.',
+                    price: formatCLP(product.price),
+                  },
+                  {
+                    id: 'product_labor' as const,
+                    icon: Hammer,
+                    title: 'Producto + mano de obra',
+                    desc: 'Material + instalación por nuestro equipo certificado.',
+                    price: 'Cotizar',
+                  },
+                  {
+                    id: 'turnkey_m2' as const,
+                    icon: Ruler,
+                    title: 'Completo por m²',
+                    desc: 'Proyecto llave en mano cobrado por metro cuadrado.',
+                    price: 'Cotizar',
+                  },
+                ].map((opt) => {
+                  const Icon = opt.icon;
+                  const active = purchaseMode === opt.id;
+                  return (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => setPurchaseMode(opt.id)}
+                      className={`flex items-start gap-3 rounded-2xl border p-4 text-left transition ${
+                        active
+                          ? 'border-yellow-400/60 bg-yellow-400/[0.07]'
+                          : 'border-white/10 bg-white/[0.02] hover:border-white/25'
+                      }`}
+                    >
+                      <div
+                        className={`flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl ${
+                          active ? 'bg-yellow-400/15 text-yellow-400' : 'bg-white/5 text-zinc-400'
+                        }`}
+                      >
+                        <Icon size={16} />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center justify-between gap-2">
+                          <span className={`text-[13px] font-bold ${active ? 'text-yellow-400' : 'text-white'}`}>
+                            {opt.title}
+                          </span>
+                          <span className={`text-[11px] font-bold ${active ? 'text-yellow-400' : 'text-zinc-400'}`}>
+                            {opt.price}
+                          </span>
+                        </div>
+                        <p className="mt-1 text-[11px] leading-relaxed text-zinc-500">{opt.desc}</p>
+                      </div>
+                      <div
+                        className={`mt-1 flex h-4 w-4 flex-shrink-0 items-center justify-center rounded-full border-2 ${
+                          active ? 'border-yellow-400 bg-yellow-400' : 'border-zinc-600'
+                        }`}
+                      >
+                        {active && <Check size={10} className="text-black" strokeWidth={3} />}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {/* CTAs */}
             <div className="space-y-3 pt-4">
-              <p className="text-[9px] uppercase tracking-[0.3em] text-zinc-500">¿Cómo quieres tu pedido?</p>
-
-              {/* Option 1: product only */}
-              <Link
-                href={`/checkout?productId=${encodeURIComponent(product.id)}&name=${encodeURIComponent(product.name)}&price=${product.price}&category=${encodeURIComponent(product.category_id ?? 'Material')}`}
-                className="flex w-full items-start gap-4 rounded-2xl border border-yellow-400/30 bg-yellow-400/5 px-5 py-4 text-left transition hover:bg-yellow-400/10 hover:border-yellow-400/50 group"
-              >
-                <div className="mt-0.5 w-9 h-9 rounded-xl bg-yellow-400/15 flex items-center justify-center flex-shrink-0">
-                  <Package size={16} className="text-yellow-400" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-yellow-400">Solo el material</p>
-                  <p className="text-[10px] text-zinc-400 mt-0.5">Compra el producto y retíralo o solicita despacho a domicilio.</p>
-                </div>
-                <div className="flex-shrink-0 text-right">
-                  <p className="text-sm font-black text-white">{formatCLP(product.price)}</p>
-                  <ChevronRight size={13} className="text-yellow-400 mt-1 ml-auto group-hover:translate-x-1 transition-transform" />
-                </div>
-              </Link>
-
-              {/* Option 2: product + installation */}
-              <a
-                href={`https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(`Hola Soluciones Fabrick, me interesa el producto "${product.name}" con instalación incluida. ¿Cuál es el costo total con mano de obra?`)}`}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="flex w-full items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-4 text-left transition hover:bg-white/5 hover:border-white/20 group"
-              >
-                <div className="mt-0.5 w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
-                  <Wrench size={16} className="text-zinc-300" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Material + Instalación</p>
-                  <p className="text-[10px] text-zinc-400 mt-0.5">Incluimos la mano de obra de nuestro equipo técnico.</p>
-                </div>
-                <div className="flex-shrink-0 text-right">
-                  <p className="text-[9px] text-zinc-500 uppercase tracking-wider">Cotizar</p>
-                  <ChevronRight size={13} className="text-zinc-400 mt-1 ml-auto group-hover:translate-x-1 transition-transform" />
-                </div>
-              </a>
-
-              {/* Option 3: complete project by m² */}
-              <Link
-                href={`/contacto?producto=${encodeURIComponent(product.name)}&tipo=proyecto-completo`}
-                className="flex w-full items-start gap-4 rounded-2xl border border-white/10 bg-white/[0.02] px-5 py-4 text-left transition hover:bg-white/5 hover:border-white/20 group"
-              >
-                <div className="mt-0.5 w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0">
-                  <Zap size={16} className="text-zinc-300" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-[11px] font-black uppercase tracking-[0.2em] text-white">Proyecto completo / m²</p>
-                  <p className="text-[10px] text-zinc-400 mt-0.5">Evaluación, material e instalación calculados por metro cuadrado.</p>
-                </div>
-                <div className="flex-shrink-0 text-right">
-                  <p className="text-[9px] text-zinc-500 uppercase tracking-wider">Gratis</p>
-                  <ChevronRight size={13} className="text-zinc-400 mt-1 ml-auto group-hover:translate-x-1 transition-transform" />
-                </div>
-              </Link>
-
+              {purchaseMode === 'product' ? (
+                <Link
+                  href={`/checkout?productId=${encodeURIComponent(product.id)}&name=${encodeURIComponent(product.name)}&price=${encodeURIComponent(String(product.price))}${product.image_url ? `&img=${encodeURIComponent(product.image_url)}` : ''}`}
+                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-yellow-400 px-6 py-4 text-[12px] font-black uppercase tracking-[0.25em] text-black transition hover:bg-yellow-300"
+                >
+                  Comprar producto · {formatCLP(product.price)}
+                  <ChevronRight size={14} />
+                </Link>
+              ) : (
+                <Link
+                  href={`/contacto?producto=${encodeURIComponent(product.name)}&modalidad=${purchaseMode}`}
+                  className="flex w-full items-center justify-center gap-3 rounded-2xl bg-yellow-400 px-6 py-4 text-[12px] font-black uppercase tracking-[0.25em] text-black transition hover:bg-yellow-300"
+                >
+                  {purchaseMode === 'product_labor' ? 'Cotizar producto + mano de obra' : 'Cotizar proyecto por m²'}
+                  <ChevronRight size={14} />
+                </Link>
+              )}
               <a
                 href={whatsappHref}
                 target="_blank"
@@ -313,23 +344,34 @@ export default function ProductoTiendaPage() {
         <section className="mt-20 rounded-[2rem] border border-yellow-400/15 bg-[linear-gradient(135deg,rgba(250,204,21,0.07),rgba(250,204,21,0.015))] p-8 md:p-12">
           <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-yellow-400">¿Por qué Fabrick?</p>
           <h2 className="mt-3 text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
-            Elige cómo trabajar con nosotros
+            Tú eliges cómo comprarlo
           </h2>
+          <p className="mt-4 max-w-3xl text-sm leading-relaxed text-zinc-300 md:text-base">
+            Ofrecemos tres modalidades para que adquieras este material como te acomode: llévate solo el producto, súmale
+            mano de obra de nuestro equipo certificado, o contrata el proyecto completo cobrado por m². Puedes empezar por
+            el producto y más adelante sumar la instalación — siempre con respaldo Fabrick.
+          </p>
           <div className="mt-6 grid gap-4 sm:grid-cols-3">
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <Package size={20} className="text-yellow-400 mb-3" />
-              <p className="text-xs font-bold uppercase tracking-wider text-white mb-1">Solo material</p>
-              <p className="text-xs text-zinc-400 leading-relaxed">Compra el producto y úsalo como necesites. Despacho a todo Chile.</p>
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+              <Package size={18} className="text-yellow-400" />
+              <p className="mt-3 text-[11px] font-black uppercase tracking-[0.2em] text-white">Solo producto</p>
+              <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+                Solo el material. Tú decides quién lo instala.
+              </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <Hammer size={20} className="text-yellow-400 mb-3" />
-              <p className="text-xs font-bold uppercase tracking-wider text-white mb-1">Con instalación</p>
-              <p className="text-xs text-zinc-400 leading-relaxed">Nuestro equipo técnico instala el material directamente en tu obra.</p>
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+              <Hammer size={18} className="text-yellow-400" />
+              <p className="mt-3 text-[11px] font-black uppercase tracking-[0.2em] text-white">Producto + mano de obra</p>
+              <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+                Compra el material y agrega la instalación por nuestro equipo.
+              </p>
             </div>
-            <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
-              <Zap size={20} className="text-yellow-400 mb-3" />
-              <p className="text-xs font-bold uppercase tracking-wider text-white mb-1">Proyecto por m²</p>
-              <p className="text-xs text-zinc-400 leading-relaxed">Evaluación gratuita, materiales e instalación calculados por metro cuadrado.</p>
+            <div className="rounded-2xl border border-white/10 bg-black/30 p-5">
+              <Ruler size={18} className="text-yellow-400" />
+              <p className="mt-3 text-[11px] font-black uppercase tracking-[0.2em] text-white">Completo por m²</p>
+              <p className="mt-2 text-xs leading-relaxed text-zinc-400">
+                Proyecto llave en mano cobrado por metro cuadrado.
+              </p>
             </div>
           </div>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">

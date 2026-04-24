@@ -3,26 +3,24 @@ import type { NextRequest } from 'next/server';
 import { promises as fs } from 'node:fs';
 import path from 'node:path';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import { insforge } from '@/lib/insforge';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-/**
- * Tablas que el panel admin de Fabrick necesita en InsForge para
- * funcionar correctamente. Coincide con `EXPECTED_TABLES` en
- * `src/app/api/admin/setup-tables/route.ts` y con los bloques
- * `-- TABLA:` de `scripts/create-tables.sql`.
- */
+// Tablas que el panel admin necesita — nombres reales usados en el código
 const REQUIRED_TABLES = [
-  'productos',
+  'products',
   'orders',
   'leads',
-  'posts',
+  'posts_social',
   'projects',
   'cupones',
-  'configuracion',
+  'site_config',
   'admin_users',
   'banners',
+  'categories',
+  'integrations',
 ] as const;
 
 type TableStatus = {
@@ -35,84 +33,29 @@ async function readSetupSql(): Promise<string | null> {
   try {
     const sqlPath = path.join(process.cwd(), 'scripts', 'create-tables.sql');
     return await fs.readFile(sqlPath, 'utf8');
-  } catch (err) {
-    console.error('Failed to read scripts/create-tables.sql', err);
+  } catch {
     return null;
   }
 }
 
-const ALLOWED_TABLES = new Set<string>(REQUIRED_TABLES);
-
-async function checkTable(
-  baseUrl: string,
-  apiKey: string,
-  table: string,
-  signal: AbortSignal,
-): Promise<TableStatus> {
-  // Defense in depth: even though `table` is sourced from REQUIRED_TABLES (a
-  // compile-time constant), reject anything that is not on the allowlist
-  // before interpolating into the SQL string.
-  if (!ALLOWED_TABLES.has(table) || !/^[a-z_][a-z0-9_]*$/i.test(table)) {
-    return { name: table, exists: false, error: 'invalid table name' };
-  }
-
-  // `to_regclass` returns NULL when the relation doesn't exist instead of
-  // raising an error, so a single round-trip cleanly distinguishes
-  // "table missing" from "everything else".
-  const query = `SELECT to_regclass('public.${table}') IS NOT NULL AS exists;`;
-
+// Usa el SDK con la anon key — no requiere INSFORGE_API_KEY
+async function checkTable(table: string): Promise<TableStatus> {
   try {
-    const res = await fetch(`${baseUrl.replace(/\/+$/, '')}/api/database/advance/rawsql`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        // Send only `x-api-key`. Adding `Authorization: Bearer <apikey>` makes
-        // InsForge try to validate the value as a user JWT first, which fails
-        // with AUTH_INVALID_API_KEY.
-        'x-api-key': apiKey,
-      },
-      body: JSON.stringify({ query }),
-      cache: 'no-store',
-      signal,
-    });
+    const { error } = await insforge.database
+      .from(table)
+      .select('*')
+      .limit(1);
 
-    if (!res.ok) {
-      return { name: table, exists: false, error: `HTTP ${res.status}` };
+    if (error) {
+      const msg = (error as { message?: string }).message ?? JSON.stringify(error);
+      const missing = /does not exist|not found|relation/i.test(msg);
+      return { name: table, exists: !missing, error: missing ? undefined : msg };
     }
-
-    const payload: unknown = await res.json().catch(() => null);
-    const exists = extractExistsFlag(payload);
-    return { name: table, exists };
+    return { name: table, exists: true };
   } catch (err) {
     const message = err instanceof Error ? err.message : 'unknown error';
     return { name: table, exists: false, error: message };
   }
-}
-
-function extractExistsFlag(payload: unknown): boolean {
-  if (!payload || typeof payload !== 'object') return false;
-
-  // InsForge raw SQL responses commonly look like
-  //   { data: { rows: [{ exists: true }] } }
-  // or { rows: [{ exists: true }] }. Walk the most likely shapes.
-  const candidates: unknown[] = [];
-  const root = payload as Record<string, unknown>;
-  if (Array.isArray(root.rows)) candidates.push(...root.rows);
-  if (root.data && typeof root.data === 'object') {
-    const data = root.data as Record<string, unknown>;
-    if (Array.isArray(data.rows)) candidates.push(...data.rows);
-    if (Array.isArray(data)) candidates.push(...(data as unknown[]));
-  }
-  if (Array.isArray(root.result)) candidates.push(...root.result);
-
-  for (const row of candidates) {
-    if (row && typeof row === 'object') {
-      const value = (row as Record<string, unknown>).exists;
-      if (typeof value === 'boolean') return value;
-      if (typeof value === 'string') return value === 't' || value === 'true';
-    }
-  }
-  return false;
 }
 
 export async function GET(request: NextRequest) {
@@ -126,32 +69,11 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
 
-    const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
-    const apiKey = process.env.INSFORGE_API_KEY;
     const sql = await readSetupSql();
+    const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
 
-    if (!baseUrl || !apiKey) {
-      return NextResponse.json(
-        {
-          connected: false,
-          missingEnv: [
-            ...(!baseUrl ? ['NEXT_PUBLIC_INSFORGE_URL'] : []),
-            ...(!apiKey ? ['INSFORGE_API_KEY'] : []),
-          ],
-          tables: REQUIRED_TABLES.map((name) => ({ name, exists: false })),
-          sql,
-          dashboardUrl: baseUrl ? `${baseUrl.replace(/\/+$/, '')}/dashboard` : null,
-        },
-        { status: 200 },
-      );
-    }
-
-    const controller = AbortSignal.timeout(10_000);
-    const tables = await Promise.all(
-      REQUIRED_TABLES.map((table) => checkTable(baseUrl, apiKey, table, controller)),
-    );
-
-    const reachable = tables.some((t) => t.exists) || tables.every((t) => !t.error);
+    const tables = await Promise.all(REQUIRED_TABLES.map(checkTable));
+    const reachable = tables.some((t) => t.exists);
 
     return NextResponse.json({
       connected: reachable,

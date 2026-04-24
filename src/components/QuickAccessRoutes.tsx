@@ -40,10 +40,6 @@ export default function QuickAccessRoutes() {
       <div className="max-w-7xl mx-auto">
         <div className="mb-8 md:mb-10 text-center">
           <p className="text-yellow-400/70 text-[10px] tracking-[0.35em] uppercase">Accesos Directos</p>
-          <h2 className="text-white text-2xl md:text-3xl font-playfair mt-2">Conectados a tus proyectos</h2>
-          <p className="text-zinc-400 text-sm mt-3 max-w-xl mx-auto leading-relaxed">
-            Cada enlace lleva directo a una etapa real del ecosistema Fabrick. Un solo equipo, un solo estándar, visible de principio a fin.
-          </p>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">

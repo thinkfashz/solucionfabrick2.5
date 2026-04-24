@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import SectionPageShell from '@/components/SectionPageShell';
 import Link from 'next/link';
-import { ArrowRight, Layers, Home, Package, Sparkles, Truck, Hammer } from 'lucide-react';
+import { ArrowRight, Layers, Home, Package, Sparkles, Truck, Hammer, type LucideIcon } from 'lucide-react';
 
 export const metadata: Metadata = {
   title: 'Servicios de Construcción y Remodelación',
@@ -19,7 +19,7 @@ interface SolutionItem {
 
 interface SolutionGroup {
   id: string;
-  icon: React.ElementType;
+  icon: LucideIcon;
   eyebrow: string;
   title: string;
   intro: string;

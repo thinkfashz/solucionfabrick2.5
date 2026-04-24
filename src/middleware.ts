@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { buildCsp, generateNonce } from '@/lib/csp'
 
 function normalizeBase64Url(value: string): string {
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/')
@@ -46,7 +47,44 @@ async function isValidSession(value: string): Promise<boolean> {
   }
 }
 
+/**
+ * Attach a strict Content-Security-Policy with a per-request nonce to every
+ * HTML navigation response. The nonce is also propagated via the `x-nonce`
+ * request header so that server components rendering inline <script> blocks
+ * (JSON-LD) can opt-in via `headers().get('x-nonce')`.
+ */
+function withSecurityHeaders(
+  response: NextResponse,
+  nonce: string,
+  csp: string,
+): NextResponse {
+  // Make the nonce available to downstream route handlers / server components.
+  response.headers.set('x-nonce', nonce)
+  response.headers.set('Content-Security-Policy', csp)
+  return response
+}
+
+function isHtmlRequest(request: NextRequest): boolean {
+  // Skip assets, API endpoints, and Next.js internals. They don't benefit from
+  // a nonce'd CSP (scripts aren't embedded in their responses) and carrying
+  // the CSP on, e.g., JSON responses would block nothing useful.
+  const { pathname } = request.nextUrl
+  if (pathname.startsWith('/_next/')) return false
+  if (pathname.startsWith('/api/')) return false
+  if (pathname.startsWith('/sw.js')) return false
+  if (/\.(?:png|jpe?g|gif|svg|webp|ico|css|js|map|txt|xml|webmanifest|woff2?|ttf|eot|mp4|webm|pdf)$/i.test(pathname)) {
+    return false
+  }
+  return true
+}
+
 export async function middleware(request: NextRequest) {
+  const nonce = generateNonce()
+  const isHtml = isHtmlRequest(request)
+  const isDev = process.env.NODE_ENV !== 'production'
+  const csp = buildCsp({ nonce, isDev })
+
+  // Admin gate (unchanged, but now also emits the CSP nonce on its responses).
   const isAdmin = request.nextUrl.pathname.startsWith('/admin')
   const isLogin = request.nextUrl.pathname === '/admin/login'
   const isJoin = request.nextUrl.pathname === '/admin/unirse'
@@ -54,7 +92,8 @@ export async function middleware(request: NextRequest) {
   if (isAdmin && !isLogin && !isJoin) {
     const sessionCookie = request.cookies.get('admin_session')
     if (!sessionCookie?.value || !(await isValidSession(sessionCookie.value))) {
-      return NextResponse.redirect(new URL('/admin/login', request.url))
+      const redirect = NextResponse.redirect(new URL('/admin/login', request.url))
+      return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
     }
 
     // Check role restriction for /admin/equipo
@@ -67,18 +106,39 @@ export async function middleware(request: NextRequest) {
           const payloadStr = atob(payloadBase64)
           const payload = JSON.parse(payloadStr) as { rol?: string }
           if (payload.rol !== 'superadmin') {
-            return NextResponse.redirect(new URL('/admin?forbidden=team', request.url))
+            const redirect = NextResponse.redirect(new URL('/admin?forbidden=team', request.url))
+            return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
           }
         }
       } catch {
-        return NextResponse.redirect(new URL('/admin/login', request.url))
+        const redirect = NextResponse.redirect(new URL('/admin/login', request.url))
+        return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
       }
     }
   }
 
-  return NextResponse.next()
+  if (!isHtml) return NextResponse.next()
+
+  // Forward the nonce on the REQUEST so server components can read it via `headers()`.
+  // Next.js also reads the `Content-Security-Policy` request header to discover
+  // the nonce and automatically tag the framework's own <script> tags with it
+  // when rendering dynamically. Statically prerendered routes don't get that
+  // per-request tagging, which is why we no longer rely on `'strict-dynamic'`:
+  // same-origin Next.js chunks load under `'self'` regardless of render mode.
+  const requestHeaders = new Headers(request.headers)
+  requestHeaders.set('x-nonce', nonce)
+  requestHeaders.set('Content-Security-Policy', csp)
+
+  const response = NextResponse.next({ request: { headers: requestHeaders } })
+  return withSecurityHeaders(response, nonce, csp)
 }
 
 export const config = {
-  matcher: ['/admin/:path*'],
+  /*
+   * Match every path except Next.js internals and static assets, so the CSP is
+   * attached to all HTML navigations — not just /admin.
+   */
+  matcher: [
+    '/((?!_next/static|_next/image|favicon\\.ico|icon-.*\\.png|apple-touch-icon\\.png|.*\\.svg|sw\\.js|robots\\.txt|sitemap\\.xml|manifest\\.webmanifest).*)',
+  ],
 }

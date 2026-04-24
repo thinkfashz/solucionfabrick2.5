@@ -1,16 +1,16 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { X, Menu, Home, Wrench, TrendingUp, Lightbulb, ShoppingBag, Building2, Phone, Gamepad2, ShieldCheck } from 'lucide-react';
+import { useRouter } from 'next/navigation';
+import { X, Menu, Home, Wrench, TrendingUp, Lightbulb, ShoppingBag, Building2, Phone, Gamepad2, ShieldCheck, BookOpen, Layers } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
-import ThemeToggle from './ThemeToggle';
 import { navigateWithTransition } from '@/lib/routeTransition';
 
 type NavLink = { label: string; href: string };
 
 const NAV_LINKS: NavLink[] = [
   { label: 'Servicios', href: '/servicios' },
-  { label: 'Evolucion', href: '/evolucion' },
+  { label: 'Evolución', href: '/evolucion' },
   { label: 'Soluciones', href: '/soluciones' },
   { label: 'Tienda', href: '/tienda' },
   { label: 'Proyectos', href: '/proyectos' },
@@ -24,12 +24,15 @@ const MENU_ITEMS = [
   { label: 'Soluciones', href: '/soluciones', Icon: Lightbulb },
   { label: 'Tienda',     href: '/tienda',     Icon: ShoppingBag },
   { label: 'Proyectos',  href: '/proyectos',  Icon: Building2 },
+  { label: 'Casos',      href: '/casos',      Icon: Layers },
+  { label: 'Blog',       href: '/blog',       Icon: BookOpen },
   { label: 'Contacto',   href: '/contacto',   Icon: Phone },
   { label: 'Garantías',  href: '/garantias',  Icon: ShieldCheck },
   { label: 'Juego',      href: '/juego',      Icon: Gamepad2 },
 ];
 
 export default function Navbar() {
+  const router = useRouter();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
@@ -56,7 +59,7 @@ export default function Navbar() {
 
   const handleNav = (href: string) => {
     setOpen(false);
-    navigateWithTransition(href);
+    navigateWithTransition(href, router);
   };
 
   return (
@@ -92,8 +95,6 @@ export default function Navbar() {
             </button>
           ))}
           <div className="w-px h-4 bg-white/20" />
-          <ThemeToggle />
-          <div className="w-px h-4 bg-white/20" />
           <button
             onClick={() => handleNav('/mi-cuenta')}
             className="text-[10px] font-bold uppercase tracking-widest text-white/60 hover:text-yellow-400 transition-colors"
@@ -104,7 +105,7 @@ export default function Navbar() {
             onClick={() => handleNav('/auth')}
             className="px-5 py-2 rounded-full border border-yellow-400/40 text-yellow-400 text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-400/10 hover:border-yellow-400 transition-all"
           >
-            Iniciar Sesion
+            Iniciar Sesión
           </button>
         </div>
 
@@ -115,10 +116,6 @@ export default function Navbar() {
         >
           {open ? <X size={26} /> : <Menu size={26} />}
         </button>
-        {/* Mobile theme toggle — always visible in header */}
-        <div className="lg:hidden">
-          <ThemeToggle />
-        </div>
       </nav>
 
       {/* Full-screen glamorous mobile menu */}

@@ -16,52 +16,32 @@ interface TiendaSectionProps {
   description?: string;
   primaryCtaHref?: string;
   primaryCtaLabel?: string;
-  secondaryCtaHref?: string;
-  secondaryCtaLabel?: string;
 }
 
 export default function TiendaSection({
   limit = 6,
-  title = 'Materiales que instalamos en tu obra',
+  title = 'Catálogo de Soluciones Fabrick',
   description = 'Cada material de este catálogo es seleccionado e instalado por nuestro equipo certificado directamente en tu proyecto. Pulsa cualquier producto para ver su ficha técnica.',
   primaryCtaHref = '/tienda',
   primaryCtaLabel = 'Ver catálogo completo',
-  secondaryCtaHref = '/contacto',
-  secondaryCtaLabel = 'Hablar con un asesor',
 }: TiendaSectionProps) {
   const router = useRouter();
-  const { products, loading, hasLiveData } = useCatalogProducts();
+  const { products } = useCatalogProducts();
 
   const visibleProducts = limit > 0 ? products.slice(0, limit) : products;
 
   return (
     <section className="py-10">
       <div className="text-center mb-14">
-        <p className="text-yellow-400/80 text-xs tracking-[0.4em] uppercase font-semibold mb-4">Catálogo Fabrick</p>
-        <h2 className="font-playfair text-4xl md:text-6xl font-bold text-white">
+        <p className="text-yellow-400/80 text-xs tracking-[0.4em] uppercase font-semibold mb-4 hero-text-fade" style={{ animationDelay: '0s', animationFillMode: 'both' }}>Catálogo de Soluciones</p>
+        <h2 className="font-playfair text-4xl md:text-6xl font-bold text-white hero-text-fade" style={{ animationDelay: '0.15s', animationFillMode: 'both' }}>
           {title.split(' ').slice(0, -2).join(' ')} <span className="shimmer-gold">{title.split(' ').slice(-2).join(' ')}</span>
         </h2>
-        <p className="text-white/45 mt-4 max-w-2xl mx-auto text-sm leading-relaxed">{description}</p>
-
-        {!hasLiveData && !loading ? (
-          <div className="inline-flex flex-wrap items-center justify-center gap-2 mt-6 rounded-full border border-yellow-400/15 bg-black/40 px-4 py-2 text-xs">
-            <span className="h-2 w-2 rounded-full bg-yellow-400" />
-            <span className="text-zinc-300">
-              Estamos cargando nuestro catálogo. Vuelve pronto.
-            </span>
-          </div>
-        ) : null}
+        <p className="text-white/45 mt-4 max-w-2xl mx-auto text-sm leading-relaxed hero-text-fade" style={{ animationDelay: '0.3s', animationFillMode: 'both' }}>{description}</p>
       </div>
 
-      {loading ? (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {[...Array(6)].map((_, i) => (
-            <div key={i} className="rounded-4xl bg-white/5 h-72 animate-pulse" />
-          ))}
-        </div>
-      ) : (
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-          {visibleProducts.map((prod) => {
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+          {visibleProducts.map((prod, i) => {
             const hasDiscount = (prod.discountPercentage ?? 0) > 0;
             const finalPrice = hasDiscount
               ? Math.round(prod.price * (1 - (prod.discountPercentage ?? 0) / 100))
@@ -69,7 +49,8 @@ export default function TiendaSection({
             return (
             <article
               key={prod.id}
-              className="card-3d glass-card rounded-4xl overflow-hidden group relative cursor-pointer focus-within:ring-2 focus-within:ring-yellow-400/60"
+              className="card-3d glass-card rounded-4xl overflow-hidden group relative cursor-pointer focus-within:ring-2 focus-within:ring-yellow-400/60 slide-up"
+              style={{ animationDelay: `${i * 0.08}s`, animationFillMode: 'both' }}
               onClick={() => router.push(`/tienda/${prod.id}`)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
@@ -149,7 +130,6 @@ export default function TiendaSection({
             );
           })}
         </div>
-      )}
 
       <div className="mt-12 flex flex-wrap items-center justify-center gap-4">
         <Link
@@ -158,12 +138,6 @@ export default function TiendaSection({
         >
           {primaryCtaLabel}
           <ArrowRight className="h-4 w-4" />
-        </Link>
-        <Link
-          href={secondaryCtaHref}
-          className="inline-flex items-center gap-3 rounded-full border border-yellow-400/30 px-8 py-4 text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-400 transition hover:bg-yellow-400/10"
-        >
-          {secondaryCtaLabel}
         </Link>
       </div>
     </section>

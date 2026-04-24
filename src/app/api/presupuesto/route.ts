@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
+import { verifyTurnstile } from '@/lib/turnstile';
 
 interface FormFields {
   nombre: string;
@@ -7,6 +8,7 @@ interface FormFields {
   telefono?: string;
   tipo_proyecto?: string;
   descripcion?: string;
+  'cf-turnstile-response'?: string;
 }
 
 async function parseBody(request: Request): Promise<FormFields> {
@@ -23,6 +25,7 @@ async function parseBody(request: Request): Promise<FormFields> {
     telefono: params.get('telefono') ?? undefined,
     tipo_proyecto: params.get('tipo_proyecto') ?? undefined,
     descripcion: params.get('descripcion') ?? undefined,
+    'cf-turnstile-response': params.get('cf-turnstile-response') ?? undefined,
   };
 }
 
@@ -65,6 +68,18 @@ export async function POST(request: Request) {
 
   try {
     const fields = await parseBody(request);
+
+    // Bot protection (no-op when TURNSTILE_SECRET_KEY is not configured)
+    const captchaOk = await verifyTurnstile(
+      fields['cf-turnstile-response'],
+      request.headers.get('x-forwarded-for') ?? undefined,
+    );
+    if (!captchaOk) {
+      if (isHtmlForm) {
+        return NextResponse.redirect(new URL('/contacto?error=captcha', request.url), 303);
+      }
+      return NextResponse.json({ error: 'Captcha inválido. Por favor vuelve a intentarlo.' }, { status: 400 });
+    }
 
     if (!fields.nombre || !fields.email) {
       if (isHtmlForm) {

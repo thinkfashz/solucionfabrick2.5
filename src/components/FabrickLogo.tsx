@@ -1,5 +1,7 @@
 'use client';
 
+import { useId } from 'react';
+
 interface Props {
   className?: string;
   animate?: boolean;
@@ -7,11 +9,29 @@ interface Props {
 }
 
 export default function FabrickLogo({ className = '', animate = false, onClick }: Props) {
+  const isInteractive = typeof onClick === 'function';
+  const uid = useId().replace(/:/g, '');
+  const ids = {
+    roofMob:      `roofMob-${uid}`,
+    roofSideMob:  `roofSideMob-${uid}`,
+    roofDesk:     `roofDesk-${uid}`,
+    roofSideDesk: `roofSideDesk-${uid}`,
+    accentLine:   `accentLine-${uid}`,
+  };
+
   return (
     <div
-      className={`select-none cursor-pointer group transition-all duration-300 hover:scale-[1.02] ${className}`}
+      className={`select-none transition-all duration-300 hover:scale-[1.02] group ${isInteractive ? 'cursor-pointer' : ''} ${className}`}
       onClick={onClick}
+      role={isInteractive ? 'button' : 'img'}
       aria-label="Soluciones Fabrick"
+      tabIndex={isInteractive ? 0 : undefined}
+      onKeyDown={isInteractive ? (e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      } : undefined}
     >
       {/* Mobile: compact inline SVG */}
       <svg
@@ -20,19 +40,19 @@ export default function FabrickLogo({ className = '', animate = false, onClick }
         aria-hidden="true"
       >
         <defs>
-          <linearGradient id="roofMob" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={ids.roofMob} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#FFE17A" />
             <stop offset="60%" stopColor="#FFC700" />
             <stop offset="100%" stopColor="#C8A000" />
           </linearGradient>
-          <linearGradient id="roofSideMob" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={ids.roofSideMob} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#C8A000" />
             <stop offset="100%" stopColor="#8B6F00" />
           </linearGradient>
         </defs>
         {/* Roof peak */}
-        <path d="M14 26 L38 10 L62 26 L57 26 L38 13 L19 26 Z" fill="url(#roofMob)" />
-        <path d="M19 26 L38 13 L38 18 L22 28 L19 28 Z" fill="url(#roofSideMob)" />
+        <path d="M14 26 L38 10 L62 26 L57 26 L38 13 L19 26 Z" fill={`url(#${ids.roofMob})`} />
+        <path d="M19 26 L38 13 L38 18 L22 28 L19 28 Z" fill={`url(#${ids.roofSideMob})`} />
         <path d="M57 26 L38 13 L38 18 L54 28 L57 28 Z" fill="#A07800" />
         {/* Chimney */}
         <rect x="49" y="14" width="7" height="10" rx="1" fill="#FFC700" />
@@ -55,16 +75,16 @@ export default function FabrickLogo({ className = '', animate = false, onClick }
         aria-hidden="true"
       >
         <defs>
-          <linearGradient id="roofDesk" x1="0" y1="0" x2="1" y2="1">
+          <linearGradient id={ids.roofDesk} x1="0" y1="0" x2="1" y2="1">
             <stop offset="0%" stopColor="#FFE17A" />
             <stop offset="65%" stopColor="#FFC700" />
             <stop offset="100%" stopColor="#C8A000" />
           </linearGradient>
-          <linearGradient id="roofSideDesk" x1="0" y1="0" x2="0" y2="1">
+          <linearGradient id={ids.roofSideDesk} x1="0" y1="0" x2="0" y2="1">
             <stop offset="0%" stopColor="#C8A000" />
             <stop offset="100%" stopColor="#8B6F00" />
           </linearGradient>
-          <linearGradient id="accentLine" x1="0" y1="0" x2="1" y2="0">
+          <linearGradient id={ids.accentLine} x1="0" y1="0" x2="1" y2="0">
             <stop offset="0%" stopColor="transparent" />
             <stop offset="50%" stopColor="#FFC700" />
             <stop offset="100%" stopColor="transparent" />
@@ -72,8 +92,8 @@ export default function FabrickLogo({ className = '', animate = false, onClick }
         </defs>
 
         {/* House icon */}
-        <path d="M10 38 L42 10 L74 38 L67 38 L42 15 L17 38 Z" fill="url(#roofDesk)" />
-        <path d="M17 38 L42 15 L42 22 L21 40 L17 40 Z" fill="url(#roofSideDesk)" />
+        <path d="M10 38 L42 10 L74 38 L67 38 L42 15 L17 38 Z" fill={`url(#${ids.roofDesk})`} />
+        <path d="M17 38 L42 15 L42 22 L21 40 L17 40 Z" fill={`url(#${ids.roofSideDesk})`} />
         <path d="M67 38 L42 15 L42 22 L63 40 L67 40 Z" fill="#8B6F00" />
         {/* Chimney */}
         <rect x="55" y="19" width="9" height="16" rx="1.5" fill="#FFC700" />
@@ -90,7 +110,7 @@ export default function FabrickLogo({ className = '', animate = false, onClick }
           FABRICK
         </text>
         {/* Accent underline */}
-        <rect x="110" y="53" width="84" height="1.5" rx="1" fill="url(#accentLine)" />
+        <rect x="110" y="53" width="84" height="1.5" rx="1" fill={`url(#${ids.accentLine})`} />
       </svg>
     </div>
   );

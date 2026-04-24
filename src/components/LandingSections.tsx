@@ -206,8 +206,8 @@ export default function LandingSections() {
             targets: obj,
             val: 8,
             round: 1,
-            duration: 2200,
-            easing: 'easeOutExpo',
+            duration: 4200,
+            easing: 'easeOutQuart',
             update() { counterEl.textContent = `${obj.val}`; },
           });
         });
@@ -330,28 +330,31 @@ export default function LandingSections() {
             </p>
           </ScrollReveal>
 
-          <ScrollReveal delay={0.1} className="relative flex flex-row items-stretch gap-6 md:gap-16 pt-4">
-            {/* Barra de progreso */}
-            <div className="w-1.5 md:w-2 flex-shrink-0 bg-zinc-900 border border-white/5 rounded-full relative overflow-hidden ml-2 md:ml-0">
+          <ScrollReveal delay={0.1} className="relative pt-4 max-w-3xl mx-auto">
+            {/* Línea central del timeline (rail) */}
+            <div className="pointer-events-none absolute left-5 md:left-1/2 top-2 bottom-2 w-[2px] md:-translate-x-1/2 bg-gradient-to-b from-white/5 via-white/10 to-white/5 rounded-full" />
+
+            {/* Barra de progreso rellenando el rail */}
+            <div className="pointer-events-none absolute left-5 md:left-1/2 top-2 w-[2px] md:-translate-x-1/2 rounded-full overflow-hidden" style={{ bottom: '0.5rem' }}>
               <div
                 ref={progressBarRef}
-                className="absolute top-0 left-0 w-full rounded-full z-0"
+                className="w-full rounded-full"
                 style={{
                   height: '0%',
                   background: 'linear-gradient(to bottom, #facc15, #f97316)',
-                  boxShadow: '0 0 20px rgba(250,204,21,0.9), 0 0 50px rgba(250,204,21,0.5)',
+                  boxShadow: '0 0 16px rgba(250,204,21,0.7), 0 0 40px rgba(250,204,21,0.35)',
                 }}
               />
             </div>
 
             {/* Fases */}
-            <div className="flex-1 flex flex-col justify-between gap-8 md:gap-14 py-2">
+            <div className="relative flex flex-col gap-10 md:gap-16">
               {TRAJECTORY.map((step, i) => {
                 const isLast = i === TRAJECTORY.length - 1;
 
                 if (isLast) {
                   return (
-                    <div key={i} className="traj-step flex flex-col items-start md:items-center text-left md:text-center mt-4">
+                    <div key={i} className="traj-step relative flex flex-col items-center text-center pt-6">
                       <div className="relative mb-5">
                         <div className="absolute inset-0 bg-yellow-400 blur-[40px] opacity-25 rounded-full" />
                         <div className="w-20 h-20 md:w-28 md:h-28 bg-black border border-yellow-400/50 rounded-full flex items-center justify-center relative z-10 shadow-[0_0_30px_rgba(250,204,21,0.3)]">
@@ -371,20 +374,38 @@ export default function LandingSections() {
                   );
                 }
 
+                // Alternar lados en desktop; en móvil siempre a la derecha del rail
+                const isRight = i % 2 === 1;
+
                 return (
                   <div
                     key={i}
-                    className="traj-step flex flex-col border-l-2 border-yellow-400/30 pl-4 hover:border-yellow-400 transition-colors duration-300"
+                    className="traj-step relative md:grid md:grid-cols-2 md:gap-10 items-center"
                   >
-                    <span className="text-[9px] font-bold uppercase tracking-widest mb-1 text-yellow-400/70">
-                      Fase 0{i + 1}
-                    </span>
-                    <h3 className="font-medium uppercase text-lg md:text-2xl mb-1 text-white">
-                      {step.role}
-                    </h3>
-                    <p className="text-[9px] md:text-xs font-light leading-relaxed max-w-xl text-zinc-400">
-                      {step.desc}
-                    </p>
+                    {/* Dot del timeline */}
+                    <span
+                      aria-hidden="true"
+                      className="absolute left-5 md:left-1/2 top-2 w-3 h-3 -translate-x-1/2 rounded-full bg-black border-2 border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)] z-10"
+                    />
+
+                    {/* Contenido de la fase */}
+                    <div
+                      className={`pl-12 md:pl-0 ${
+                        isRight
+                          ? 'md:col-start-2 md:pl-12 md:text-left'
+                          : 'md:col-start-1 md:pr-12 md:text-right'
+                      }`}
+                    >
+                      <span className="text-[9px] font-bold uppercase tracking-widest text-yellow-400/70 block mb-1">
+                        Fase 0{i + 1}
+                      </span>
+                      <h3 className="font-medium uppercase text-lg md:text-2xl mb-1 text-white">
+                        {step.role}
+                      </h3>
+                      <p className="text-[10px] md:text-xs font-light leading-relaxed text-zinc-400">
+                        {step.desc}
+                      </p>
+                    </div>
                   </div>
                 );
               })}
@@ -418,7 +439,7 @@ export default function LandingSections() {
               { t: 'Cuentas Claras, Confianza Plena', d: 'Sin sorpresas a mitad de camino. Comunicación humana y transparente para que sepa qué sucede en todo momento.' },
             ].map(({ t, d }) => (
               <ScrollRevealItem key={t}>
-                <div className="bg-zinc-950/80 backdrop-blur-md p-8 md:p-10 rounded-[2rem] border border-white/5 hover:border-yellow-400/20 transition-colors">
+                <div className="bg-zinc-950/80 backdrop-blur-md p-8 md:p-10 rounded-[2rem] border border-white/5 hover:border-yellow-400/20 transition-colors text-center md:text-left">
                   <h3 className="text-white font-medium uppercase tracking-widest text-xs md:text-sm mb-3">{t}</h3>
                   <p className="text-zinc-400 font-light text-xs md:text-sm leading-relaxed">{d}</p>
                 </div>
@@ -428,20 +449,20 @@ export default function LandingSections() {
 
           <ScrollRevealGroup className="grid grid-cols-1 md:grid-cols-3 gap-4 md:gap-5" stagger={0.1}>
             <ScrollRevealItem>
-              <div className="bg-zinc-950/80 backdrop-blur-md p-6 md:p-8 rounded-[2rem] border border-white/5">
+              <div className="bg-zinc-950/80 backdrop-blur-md p-6 md:p-8 rounded-[2rem] border border-white/5 text-center md:text-left">
                 <h3 className="text-white font-medium uppercase tracking-wider text-xs mb-2">Cariño por el Detalle</h3>
                 <p className="text-zinc-500 font-light text-[10px] md:text-xs leading-relaxed">Pequeños rincones bien terminados son los que transforman una casa en un verdadero hogar.</p>
               </div>
             </ScrollRevealItem>
             <ScrollRevealItem>
-              <div className="bg-zinc-950/80 backdrop-blur-md p-6 md:p-8 rounded-[2rem] border border-white/5">
+              <div className="bg-zinc-950/80 backdrop-blur-md p-6 md:p-8 rounded-[2rem] border border-white/5 text-center md:text-left">
                 <h3 className="text-white font-medium uppercase tracking-wider text-xs mb-2">Su Esencia</h3>
                 <p className="text-zinc-500 font-light text-[10px] md:text-xs leading-relaxed">Adaptamos cada espacio para que refleje fielmente la personalidad y estilo de su familia.</p>
               </div>
             </ScrollRevealItem>
             <ScrollRevealItem>
-              <div className="bg-yellow-400 p-6 md:p-8 rounded-[2rem] text-black">
-                <div className="flex items-center gap-3 mb-3">
+              <div className="bg-yellow-400 p-6 md:p-8 rounded-[2rem] text-black text-center md:text-left">
+                <div className="flex items-center justify-center md:justify-start gap-3 mb-3">
                   <ShieldCheck className="w-5 h-5 md:w-6 md:h-6 flex-shrink-0" />
                   <h3 className="font-bold uppercase tracking-wider text-[10px] md:text-sm">Protegiendo lo Importante</h3>
                 </div>
@@ -488,17 +509,6 @@ export default function LandingSections() {
           {/* Productos reales desde InsForge */}
           <ScrollReveal>
             <TiendaSection />
-          </ScrollReveal>
-          <ScrollReveal delay={0.1} className="text-center mt-10">
-            <div className="flex items-center justify-center gap-4 flex-wrap">
-              <Link
-                href="/tienda"
-                className="btn-shimmer px-12 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.2em] rounded-full hover:bg-white transition-all hover:scale-105 shadow-[0_10px_30px_rgba(250,204,21,0.2)] inline-flex items-center gap-4 group"
-              >
-                Explorar Catálogo Completo
-                <ArrowRight className="w-5 h-5 group-hover:translate-x-2 transition-transform" />
-              </Link>
-            </div>
           </ScrollReveal>
         </div>
       </section>

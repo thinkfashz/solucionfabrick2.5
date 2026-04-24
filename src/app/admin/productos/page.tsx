@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { insforge } from '@/lib/insforge';
 import { buildProductTagline, resolveCategoryName } from '@/lib/commerce';
 import { useCategories } from '@/hooks/useCategories';
-import { Pencil, Trash2, Plus, Search, Wifi, WifiOff } from 'lucide-react';
+import { Pencil, Trash2, Plus, Search, Wifi, WifiOff, Database } from 'lucide-react';
 
 /* ── Types ── */
 interface AdminProduct {
@@ -108,6 +108,13 @@ export default function AdminProductosPage() {
   const [search, setSearch] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<AdminProduct | null>(null);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [setupRunning, setSetupRunning] = useState(false);
+  const [setupResult, setSetupResult] = useState<{
+    ok?: boolean;
+    error?: string;
+    summary?: { total: number; ok: number; failed: number };
+    results?: Record<string, { ok: boolean; error?: string }>;
+  } | null>(null);
   const isMounted = useRef(true);
 
   const showToast = (message: string, type: 'success' | 'error' = 'success') => {
@@ -124,14 +131,21 @@ export default function AdminProductosPage() {
         .order('created_at', { ascending: false });
 
       if (!isMounted.current) return;
+
       if (error) {
-        setLoadError(error.message ?? JSON.stringify(error));
-      } else {
+        const errAny = error as unknown as { message?: string; code?: string; status?: number };
+        const parts = [errAny.message || 'No se pudieron cargar los productos'];
+        if (errAny.code) parts.push(`(código ${errAny.code})`);
+        if (errAny.status) parts.push(`[HTTP ${errAny.status}]`);
+        setLoadError(parts.join(' '));
+      } else if (data) {
+        setProducts(data as AdminProduct[]);
         setLoadError(null);
-        setProducts((data ?? []) as AdminProduct[]);
       }
-    } catch (e) {
-      if (isMounted.current) setLoadError((e as Error).message ?? 'Error desconocido');
+    } catch (err) {
+      if (!isMounted.current) return;
+      const message = err instanceof Error ? err.message : String(err);
+      setLoadError(message || 'Error desconocido al cargar los productos');
     } finally {
       if (isMounted.current) setLoading(false);
     }
@@ -193,6 +207,34 @@ export default function AdminProductosPage() {
     }
   }
 
+  /* ── Setup / repair tables ── */
+  async function handleSetupTables() {
+    setSetupRunning(true);
+    setSetupResult(null);
+    try {
+      const res = await fetch('/api/admin/setup-tables', { method: 'POST', cache: 'no-store' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setSetupResult({ ok: false, error: json.error ?? `HTTP ${res.status}`, results: json.results, summary: json.summary });
+        showToast(json.error ?? 'No se pudieron crear las tablas.', 'error');
+      } else {
+        setSetupResult(json);
+        showToast(json.ok ? 'Tablas creadas/actualizadas correctamente' : 'Algunas tablas fallaron — revisa el detalle', json.ok ? 'success' : 'error');
+        if (json.ok) {
+          setLoading(true);
+          setLoadError(null);
+          await loadProducts();
+        }
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Error de red.';
+      setSetupResult({ ok: false, error: msg });
+      showToast(msg, 'error');
+    } finally {
+      setSetupRunning(false);
+    }
+  }
+
   const filterOptions = useMemo(() => {
     return ['Todos', 'Destacados', 'Activos', 'Bajo stock', ...categories.map((category) => category.name)];
   }, [categories]);
@@ -226,10 +268,22 @@ export default function AdminProductosPage() {
           <p className="text-zinc-500 text-xs mt-0.5">Administra el catálogo de la tienda</p>
         </div>
         <div className="flex items-center gap-3">
-          <span className={`flex items-center gap-1.5 text-xs ${connected ? 'text-emerald-400' : 'text-zinc-600'}`}>
+          <span
+            className={`flex items-center gap-1.5 text-xs ${connected ? 'text-emerald-400' : 'text-zinc-600'}`}
+            title={connected ? 'Canal de tiempo real conectado' : 'Sin canal de tiempo real (los datos siguen cargándose bajo demanda)'}
+          >
             {connected ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
-            {connected ? 'En vivo' : 'Sin conexión'}
+            {connected ? 'En vivo' : 'Sin tiempo real'}
           </span>
+          <button
+            onClick={handleSetupTables}
+            disabled={setupRunning}
+            title="Ejecuta scripts/create-tables.sql en InsForge para crear/reparar las tablas del panel"
+            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 border border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 disabled:opacity-60"
+          >
+            <Database className="w-4 h-4" />
+            {setupRunning ? 'Configurando…' : 'Configurar tablas'}
+          </button>
           <button
             onClick={() => router.push('/admin/productos/nuevo')}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
@@ -241,17 +295,70 @@ export default function AdminProductosPage() {
         </div>
       </div>
 
-      {loadError && (
-        <div className="mx-6 mt-4 p-4 rounded-xl bg-red-950/60 border border-red-500/30 text-red-300 text-sm">
-          <p className="font-semibold mb-1">Error al cargar productos</p>
-          <code className="text-xs break-all">{loadError}</code>
-          <p className="mt-2 text-xs text-red-400">
-            Visita <a href="/api/admin/diagnostico" target="_blank" className="underline">/api/admin/diagnostico</a> para ver el diagnóstico completo.
-          </p>
-        </div>
-      )}
-
       <div className="px-6 py-6 space-y-5">
+        {loadError && (
+          <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
+            <p className="font-semibold text-red-300">No se pudieron cargar los productos</p>
+            <p className="mt-1 text-red-200/80 break-words">{loadError}</p>
+            <p className="mt-2 text-xs text-red-200/70">
+              Si es la primera vez que usas el panel, puede que la tabla <code className="px-1 rounded bg-black/30">products</code> aún no exista en InsForge. Usa el botón <strong>Configurar tablas</strong> arriba para crearla.
+            </p>
+            <div className="mt-2 flex flex-wrap gap-3">
+              <button
+                onClick={() => { setLoading(true); setLoadError(null); loadProducts(); }}
+                className="text-xs font-semibold text-red-100 underline underline-offset-2 hover:text-white"
+              >
+                Reintentar
+              </button>
+              <button
+                onClick={handleSetupTables}
+                disabled={setupRunning}
+                className="text-xs font-semibold text-red-100 underline underline-offset-2 hover:text-white disabled:opacity-60"
+              >
+                {setupRunning ? 'Configurando…' : 'Crear/Reparar tablas'}
+              </button>
+            </div>
+          </div>
+        )}
+        {setupResult && (
+          <div
+            className={`rounded-2xl border px-4 py-3 text-sm ${
+              setupResult.ok
+                ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-200'
+                : 'border-amber-500/40 bg-amber-500/10 text-amber-200'
+            }`}
+          >
+            <div className="flex items-center justify-between gap-2">
+              <p className="font-semibold">
+                {setupResult.ok ? '✓ Tablas creadas/actualizadas' : 'Resultado de la configuración de tablas'}
+              </p>
+              <button
+                onClick={() => setSetupResult(null)}
+                className="text-xs opacity-70 hover:opacity-100"
+                aria-label="Cerrar"
+              >
+                ✕
+              </button>
+            </div>
+            {setupResult.error && <p className="mt-1 text-xs opacity-90">{setupResult.error}</p>}
+            {setupResult.summary && (
+              <p className="mt-1 text-xs opacity-80">
+                {setupResult.summary.ok} de {setupResult.summary.total} bloques aplicados · {setupResult.summary.failed} fallos
+              </p>
+            )}
+            {setupResult.results && (
+              <ul className="mt-2 space-y-1 text-xs">
+                {Object.entries(setupResult.results).map(([name, r]) => (
+                  <li key={name} className="flex gap-2">
+                    <span aria-hidden>{r.ok ? '✓' : '✕'}</span>
+                    <span className="font-mono">{name}</span>
+                    {r.error && <span className="opacity-80">— {r.error}</span>}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+        )}
         <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           {[
             { label: 'Catálogo total', value: productMetrics.total, tone: 'text-white' },

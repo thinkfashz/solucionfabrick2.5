@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import SectionPageShell from '@/components/SectionPageShell';
-import { CheckCircle2, Hammer, Wrench, Building2, Users, Network } from 'lucide-react';
+import { CheckCircle2, Hammer, Wrench, Building2, Users, Network, type LucideIcon } from 'lucide-react';
 
 interface Stage {
   roman: string;
@@ -12,7 +12,7 @@ interface Stage {
   summary: string;
   body: string[];
   lessons: string[];
-  icon: React.ElementType;
+  icon: LucideIcon;
 }
 
 const STAGES: Stage[] = [

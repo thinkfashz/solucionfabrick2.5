@@ -12,7 +12,10 @@ jobs:
 
     strategy:
       matrix:
-        node-version: [18.x, 20.x, 22.x]
+        # Node 18 omitted: globalThis.crypto was added in Node 19, but Next.js 15
+        # and our own csp.ts depend on it. Vercel runs Node 20, so 20.x + 22.x
+        # is what we actually ship against.
+        node-version: [20.x, 22.x]
 
     steps:
     - uses: actions/checkout@v4
@@ -26,3 +29,6 @@ jobs:
       run: |
         npm install
         npm run build
+
+    - name: Test
+      run: npm test

@@ -197,9 +197,18 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
       /* Upload succeeded — store the persistent URL in form, clear the blob preview */
       setForm((f) => ({ ...f, image_url: publicUrl }));
       setPreviewUrl('');
-    } catch {
+    } catch (err) {
       /* Storage failed — keep the blob preview visible but do NOT save blob URL to form/DB */
-      showToast('Storage no disponible. Ingresa una URL de imagen manual.', 'error');
+      const raw = (err instanceof Error ? err.message : String(err)).toLowerCase();
+      let msg = 'Storage no disponible. Ingresa una URL de imagen manual.';
+      if (/bucket.*(not.*found|does not exist)|404|no such bucket/.test(raw)) {
+        msg = 'Bucket "product-images" no existe. Créalo en InsForge (Storage → New bucket) y reintenta.';
+      } else if (/permission|unauthorized|401|403/.test(raw)) {
+        msg = 'Sin permisos para subir al bucket "product-images". Revisa las policies en InsForge.';
+      } else if (/payload too large|413|file size|too large/.test(raw)) {
+        msg = 'La imagen supera el tamaño máximo permitido. Comprímela e inténtalo de nuevo.';
+      }
+      showToast(msg, 'error');
     } finally {
       setUploading(false);
     }
@@ -242,7 +251,20 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
 
     setSaving(false);
     if (error) {
-      showToast('Error al guardar el producto. Por favor, inténtalo de nuevo.', 'error');
+      const errAny = error as unknown as { message?: string; code?: string; status?: number };
+      const raw = (errAny.message ?? '').toLowerCase();
+      let hint = '';
+      if (/relation .* does not exist|table .* not found|42p01/.test(raw) || /products/.test(raw) && /not.*exist/.test(raw)) {
+        hint = ' La tabla "products" no existe en InsForge. Ve a /admin/productos y usa el botón "Configurar tablas".';
+      } else if (/permission denied|42501|not authorized|unauthorized/.test(raw)) {
+        hint = ' Revisa los permisos de la tabla "products" en InsForge (policy / RLS).';
+      } else if (/duplicate key|23505/.test(raw)) {
+        hint = ' Ya existe un producto con esos valores únicos.';
+      } else if (/violates not-null|null value in column/.test(raw)) {
+        hint = ' Falta completar un campo obligatorio en la tabla.';
+      }
+      const base = errAny.message || 'Error al guardar el producto';
+      showToast(`${base}.${hint} Por favor, inténtalo de nuevo.`, 'error');
     } else {
       showToast(mode === 'create' ? '✓ Producto creado exitosamente' : '✓ Producto actualizado correctamente');
       setTimeout(() => router.push('/admin/productos'), 1200);

@@ -42,15 +42,30 @@ export default function PromoBanner() {
     async function loadPromo() {
       try {
         const { data } = await insforge.database
-          .from('productos')
-          .select('id,name,price,precio_original,image_url,descuento_pct')
-          .eq('en_oferta', true)
-          .eq('activo', true)
-          .order('descuento_pct', { ascending: false })
+          .from('products')
+          .select('id,name,price,image_url,discount_percentage')
+          .gt('discount_percentage', 0)
+          .neq('activo', false)
+          .order('discount_percentage', { ascending: false })
           .limit(1);
 
         if (data && data.length > 0) {
-          setPromo(data[0] as PromoProduct);
+          const p = data[0] as {
+            id: string;
+            name: string;
+            price: number;
+            image_url?: string;
+            discount_percentage?: number;
+          };
+          const pct = p.discount_percentage ?? 0;
+          setPromo({
+            id: p.id,
+            name: p.name,
+            price: pct > 0 ? Math.round(p.price * (1 - pct / 100)) : p.price,
+            precio_original: pct > 0 ? p.price : undefined,
+            image_url: p.image_url,
+            descuento_pct: pct > 0 ? pct : undefined,
+          });
         } else {
           setPromo(FALLBACK_PROMO);
         }

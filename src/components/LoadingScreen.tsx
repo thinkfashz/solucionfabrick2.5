@@ -2,37 +2,84 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { usePathname } from 'next/navigation';
+
+const SESSION_FLAG = 'fabrick.loadingScreen.seen.v1';
 
 export default function LoadingScreen() {
-  const [visible, setVisible] = useState(true);
+  const pathname = usePathname();
+  // The admin panel must never be covered by the splash. Skip rendering it
+  // entirely on `/admin/*` so a stuck splash can never block the control room.
+  const isAdmin = pathname?.startsWith('/admin') ?? false;
+
+  // Only show the splash on the very first visit of a browser session.
+  // Subsequent client-side navigations and refreshes skip it so the app
+  // never feels "stuck" on the SF animation.
+  const [visible, setVisible] = useState(() => {
+    if (typeof window === 'undefined') return true;
+    try {
+      return sessionStorage.getItem(SESSION_FLAG) !== '1';
+    } catch {
+      return true;
+    }
+  });
   const [progress, setProgress] = useState(0);
+  // Hard kill switch. If something prevents `AnimatePresence` from running
+  // the exit animation (stale framer-motion, provider unmount, etc.) we
+  // still want the splash gone — this skips rendering entirely.
+  const [hardHidden, setHardHidden] = useState(false);
 
   useEffect(() => {
+    if (!visible) return;
+
+    try {
+      sessionStorage.setItem(SESSION_FLAG, '1');
+    } catch {
+      // Ignore storage errors (private mode, quota, etc.)
+    }
+
     // Animate progress bar from 0 → 100
     const startTime = Date.now();
-    const duration = 1400;
+    const duration = 600;
+    let rafId: number | null = null;
 
     const frame = () => {
       const elapsed = Date.now() - startTime;
       const p = Math.min((elapsed / duration) * 100, 100);
       setProgress(p);
       if (p < 100) {
-        requestAnimationFrame(frame);
+        rafId = requestAnimationFrame(frame);
       } else {
         // Hold briefly then fade out
-        setTimeout(() => setVisible(false), 200);
+        window.setTimeout(() => setVisible(false), 100);
       }
     };
 
-    requestAnimationFrame(frame);
-  }, []);
+    rafId = requestAnimationFrame(frame);
+
+    // Safety net: no matter what (tab throttling, RAF failure, broken
+    // animation lib), hide the splash after 800ms so the app never stays stuck.
+    // We also force `hardHidden` which bypasses `AnimatePresence`'s exit
+    // animation — if framer-motion fails to run the exit for any reason,
+    // the splash still disappears from the DOM.
+    const safety = window.setTimeout(() => {
+      setProgress(100);
+      setVisible(false);
+      setHardHidden(true);
+    }, 800);
+
+    return () => {
+      if (rafId !== null) cancelAnimationFrame(rafId);
+      window.clearTimeout(safety);
+    };
+  }, [visible]);
 
   return (
     <AnimatePresence>
-      {visible && (
+      {visible && !hardHidden && !isAdmin && (
         <motion.div
           key="loading"
-          className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center"
+          className="fixed inset-0 z-[9999] bg-black flex flex-col items-center justify-center loading-screen-failsafe"
           initial={{ opacity: 1 }}
           exit={{ opacity: 0, transition: { duration: 0.5, ease: 'easeInOut' } }}
         >

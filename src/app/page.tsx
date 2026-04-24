@@ -1,9 +1,10 @@
+import { headers } from 'next/headers';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
-import QuickAccessRoutes from '@/components/QuickAccessRoutes';
 import LandingSections from '@/components/LandingSections';
 
-export default function Home() {
+export default async function Home() {
+  const nonce = (await headers()).get('x-nonce') ?? undefined;
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
@@ -34,12 +35,12 @@ export default function Home() {
     <>
       <script
         type="application/ld+json"
+        nonce={nonce}
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       <div className="bg-gradient-to-b from-black via-zinc-950 to-black min-h-screen overflow-x-hidden">
         <Navbar />
         <Hero />
-        <QuickAccessRoutes />
         <LandingSections />
       </div>
     </>

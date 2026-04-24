@@ -189,8 +189,8 @@ export default function PedidoDetallePage() {
             <div className="space-y-2">
               {order.items.map((item, i: number) => (
                 <div key={i} className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-300">{(item as Record<string,unknown>).name as string ?? 'Producto'} × {(item as Record<string,unknown>).qty as number ?? 1}</span>
-                  <span className="text-white font-medium">{formatCLP(Number((item as Record<string,unknown>).price ?? 0) * Number((item as Record<string,unknown>).qty ?? 1))}</span>
+                  <span className="text-zinc-300">{item.name || 'Producto'} × {item.quantity ?? 1}</span>
+                  <span className="text-white font-medium">{formatCLP(item.subtotal ?? Number(item.unitPrice ?? 0) * Number(item.quantity ?? 1))}</span>
                 </div>
               ))}
               <div className="border-t border-white/5 pt-2 flex justify-between text-sm font-bold">

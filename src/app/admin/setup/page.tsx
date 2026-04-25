@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
+import Link from 'next/link';
 import {
   CheckCircle2,
   XCircle,
@@ -12,6 +13,8 @@ import {
   Database,
   X,
   AlertTriangle,
+  Terminal,
+  Sparkles,
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -42,6 +45,17 @@ type SetupResponse = {
   dashboardUrl: string | null;
 };
 
+type StepResult = { ok: boolean; error?: string };
+
+type SetupTablesResponse = {
+  ok: boolean;
+  summary?: { total: number; ok: number; failed: number };
+  results?: Record<string, StepResult>;
+  error?: string;
+  code?: string;
+  missing?: string[];
+};
+
 type ConnectionState = 'unknown' | 'ok' | 'unauthenticated' | 'error';
 
 /* ──────────────────────────────────────────────────────────
@@ -56,6 +70,11 @@ export default function AdminSetupPage() {
   const [loading, setLoading] = useState(false);
   const [showSqlModal, setShowSqlModal] = useState(false);
   const [copied, setCopied] = useState(false);
+
+  // ── State for one-click table creation ───────────────────────────────
+  const [creating, setCreating] = useState(false);
+  const [createReport, setCreateReport] = useState<SetupTablesResponse | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   const checkConnection = useCallback(async () => {
     try {
@@ -118,6 +137,35 @@ export default function AdminSetupPage() {
       setCopied(false);
     }
   }, [setup?.sql]);
+
+  const handleCreateTables = useCallback(async () => {
+    if (creating) return;
+    setCreating(true);
+    setCreateError(null);
+    setCreateReport(null);
+    try {
+      const res = await fetch('/api/admin/setup-tables', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      const body = (await res.json().catch(() => ({}))) as SetupTablesResponse;
+      if (!res.ok) {
+        const missing = Array.isArray(body?.missing) && body.missing.length > 0
+          ? ` Faltan: ${body.missing.join(', ')}.`
+          : '';
+        setCreateError(`${body?.error ?? `Error HTTP ${res.status}`}${missing}`);
+      } else {
+        setCreateReport(body);
+      }
+    } catch (err) {
+      setCreateError(err instanceof Error ? err.message : 'Error de red');
+    } finally {
+      setCreating(false);
+      // Always re-verify table presence after attempting creation, even if some
+      // blocks failed — partial success is still progress for the user.
+      void checkTables();
+    }
+  }, [creating, checkTables]);
 
   const tables = setup?.tables ?? [];
   const total = tables.length;
@@ -257,22 +305,40 @@ export default function AdminSetupPage() {
           </CardContent>
         </Card>
 
-        {/* 3-4. Acciones */}
+        {/* 3. Crear las tablas — automático */}
         <Card className="backdrop-blur-sm">
           <CardHeader className="border-b border-white/5">
             <CardTitle>3. Crear las tablas</CardTitle>
             <CardDescription>
-              Copia el SQL y ejecútalo en el editor SQL del dashboard de InsForge.
+              Ejecuta automáticamente <code className="text-yellow-400">scripts/create-tables.sql</code>{' '}
+              contra InsForge desde aquí. No necesitas salir del panel.
             </CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="space-y-4">
             <div className="flex flex-wrap gap-3">
+              <Button
+                onClick={handleCreateTables}
+                disabled={creating}
+                variant="default"
+              >
+                {creating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    Creando tablas…
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="w-4 h-4" />
+                    Crear tablas ahora
+                  </>
+                )}
+              </Button>
               <Button
                 onClick={() => setShowSqlModal(true)}
                 disabled={!setup?.sql}
-                variant="default"
+                variant="outline"
               >
-                Ver instrucciones SQL
+                Ver SQL
               </Button>
               <Button
                 variant="outline"
@@ -282,14 +348,92 @@ export default function AdminSetupPage() {
                 }}
               >
                 <ExternalLink className="w-4 h-4" />
-                Abrir dashboard InsForge
+                Dashboard InsForge
               </Button>
             </div>
+
             {!setup?.sql && (
-              <p className="mt-3 text-xs text-zinc-500">
+              <p className="text-xs text-zinc-500">
                 No se pudo cargar <code>scripts/create-tables.sql</code>.
               </p>
             )}
+
+            {createError && (
+              <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-red-200 text-sm">
+                <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
+                <span className="break-words">{createError}</span>
+              </div>
+            )}
+
+            {createReport && (
+              <div
+                className={`rounded-lg border p-3 ${
+                  createReport.ok
+                    ? 'border-emerald-500/30 bg-emerald-500/10'
+                    : 'border-amber-500/30 bg-amber-500/10'
+                }`}
+              >
+                <div className="flex items-center gap-2 text-sm font-semibold mb-2">
+                  {createReport.ok ? (
+                    <CheckCircle2 className="w-4 h-4 text-emerald-300" />
+                  ) : (
+                    <AlertTriangle className="w-4 h-4 text-amber-300" />
+                  )}
+                  <span className={createReport.ok ? 'text-emerald-200' : 'text-amber-200'}>
+                    {createReport.summary
+                      ? `${createReport.summary.ok} de ${createReport.summary.total} bloques aplicados`
+                      : createReport.ok
+                        ? 'Tablas creadas'
+                        : 'Algunos bloques fallaron'}
+                  </span>
+                </div>
+                {createReport.results && (
+                  <ul className="divide-y divide-white/5 text-xs">
+                    {Object.entries(createReport.results).map(([name, r]) => (
+                      <li key={name} className="flex items-start justify-between gap-3 py-1.5">
+                        <code className="font-mono text-zinc-200 break-all">{name}</code>
+                        {r.ok ? (
+                          <span className="flex items-center gap-1 text-emerald-300 shrink-0">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            OK
+                          </span>
+                        ) : (
+                          <span className="flex items-start gap-1 text-red-300 max-w-[60%] text-right break-words">
+                            <XCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
+                            <span>{r.error ?? 'Falló'}</span>
+                          </span>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* 4. Terminal SQL embebido en el admin */}
+        <Card className="backdrop-blur-sm">
+          <CardHeader className="border-b border-white/5">
+            <CardTitle>4. Terminal SQL</CardTitle>
+            <CardDescription>
+              ¿Necesitas crear, modificar o consultar tablas extra? Abre la
+              terminal SQL conectada a InsForge — sin salir del admin.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex flex-wrap gap-3">
+              <Link href="/admin/sql" prefetch={false} className="inline-flex">
+                <Button variant="default">
+                  <Terminal className="w-4 h-4" />
+                  Abrir Terminal SQL
+                </Button>
+              </Link>
+            </div>
+            <p className="mt-3 text-xs text-zinc-500">
+              La terminal usa la sesión <code>admin_session</code>. Toda la SQL
+              se ejecuta contra el endpoint <code>/api/admin/sql</code>.
+            </p>
           </CardContent>
         </Card>
       </div>

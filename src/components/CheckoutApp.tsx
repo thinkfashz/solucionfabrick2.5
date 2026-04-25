@@ -236,12 +236,6 @@ const CheckoutApp = () => {
     setCardNumber(formatted);
   };
 
-  const handleExpiryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const raw = e.target.value.replace(/\D/g, '').slice(0, 4);
-    if (raw.length > 2) setCardExpiry(raw.slice(0, 2) + '/' + raw.slice(2));
-    else setCardExpiry(raw);
-  };
-
   const returnedPaymentStatus =
     searchParams.get('payment_status') ||
     searchParams.get('status') ||
@@ -1539,41 +1533,6 @@ const CheckoutApp = () => {
                           </div>
                         </div>
                       </div>
-                      <div>
-                        <label className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1.5 block">Nombre en la tarjeta</label>
-                        <input
-                          value={cardName}
-                          onChange={(e) => setCardName(e.target.value.toUpperCase())}
-                          placeholder="NOMBRE APELLIDO"
-                          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-5 py-3.5 text-white uppercase tracking-wider text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1.5 block">Vencimiento</label>
-                          <input
-                            value={cardExpiry}
-                            onChange={handleExpiryChange}
-                            inputMode="numeric"
-                            placeholder="MM/AA"
-                            maxLength={5}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-5 py-3.5 text-white font-mono text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1.5 block">CVC / CVV</label>
-                          <input
-                            value={cardCVC}
-                            onChange={(e) => setCardCVC(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                            onFocus={() => setCardFlipped(true)}
-                            onBlur={() => setCardFlipped(false)}
-                            inputMode="numeric"
-                            placeholder="•••"
-                            maxLength={4}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-5 py-3.5 text-white font-mono text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
-                          />
-                        </div>
-                      </div>
                     </div>
 
                     {/* Amount summary */}
@@ -1598,146 +1557,162 @@ const CheckoutApp = () => {
                       ))}
                     </div>
 
-                    {/* Paginated form */}
-                    {mpSubStep === 1 && (
-                      <div className="space-y-4 animate-in fade-in duration-300">
-                        <label className="block">
-                          <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">Número de tarjeta</span>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            autoComplete="cc-number"
-                            aria-label="Número de tarjeta"
-                            value={cardNumber}
-                            onFocus={() => setCardFlipped(false)}
-                            onChange={(e) => setCardNumber(formatCardInput(e.target.value))}
-                            placeholder="1234 5678 9012 3456"
-                            className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white font-mono tracking-widest focus:border-yellow-400 focus:outline-none transition-colors"
-                          />
-                          <span className="block text-[9px] text-zinc-500 mt-2 uppercase tracking-widest">
-                            {cardBrand !== 'unknown' ? `Detectado: ${cardBrand}` : 'Aceptamos Visa, Mastercard, Amex'}
-                          </span>
-                        </label>
-                        <div className="flex gap-3 pt-2">
-                          <button
-                            type="button"
-                            disabled={!isCardNumberValid}
-                            onClick={() => setMpSubStep(2)}
-                            className="flex-1 py-4 bg-yellow-400 text-black font-black uppercase text-[11px] tracking-[0.25em] rounded-full hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            Continuar
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {mpSubStep === 2 && (
-                      <div className="space-y-4 animate-in fade-in duration-300">
-                        <label className="block">
-                          <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">Titular (como aparece en la tarjeta)</span>
-                          <input
-                            type="text"
-                            autoComplete="cc-name"
-                            aria-label="Titular de la tarjeta"
-                            value={cardName}
-                            onFocus={() => setCardFlipped(false)}
-                            onChange={(e) => setCardName(e.target.value.toUpperCase())}
-                            placeholder="NOMBRE APELLIDO"
-                            className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white uppercase tracking-wider focus:border-yellow-400 focus:outline-none transition-colors"
-                          />
-                        </label>
-                        <div className="grid grid-cols-2 gap-3">
-                          <label className="block">
-                            <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">Vence (MM/AA)</span>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              autoComplete="cc-exp"
-                              aria-label="Fecha de expiración"
-                              value={cardExpiry}
-                              onFocus={() => setCardFlipped(false)}
-                              onChange={(e) => setCardExpiry(formatExpiryInput(e.target.value))}
-                              placeholder="MM/AA"
-                              className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white font-mono focus:border-yellow-400 focus:outline-none transition-colors"
-                            />
-                          </label>
-                          <label className="block">
-                            <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">
-                              {cardBrand === 'amex' ? 'CID (4 dígitos)' : 'CVC (3 dígitos)'}
-                            </span>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              autoComplete="cc-csc"
-                              aria-label={cardBrand === 'amex' ? 'Código de seguridad CID' : 'Código de seguridad CVC'}
-                              value={cardCVC}
-                              onFocus={() => setCardFlipped(true)}
-                              onBlur={() => setCardFlipped(false)}
-                              onChange={(e) =>
-                                setCardCVC(e.target.value.replace(/\D/g, '').slice(0, cardBrand === 'amex' ? 4 : 3))
-                              }
-                              placeholder={cardBrand === 'amex' ? '••••' : '•••'}
-                              className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white font-mono focus:border-yellow-400 focus:outline-none transition-colors"
-                            />
-                          </label>
-                        </div>
-                        <div className="flex gap-3 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => setMpSubStep(1)}
-                            className="px-6 py-4 border border-white/15 rounded-full text-white text-[11px] font-bold uppercase tracking-widest hover:border-yellow-400 transition-colors"
-                          >
-                            <ArrowLeft className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={!isHolderValid || !isExpiryValid || !isCvcValid}
-                            onClick={() => { setCardFlipped(false); setMpSubStep(3); }}
-                            className="flex-1 py-4 bg-yellow-400 text-black font-black uppercase text-[11px] tracking-[0.25em] rounded-full hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            Revisar y pagar
-                          </button>
-                        </div>
-                      </div>
-                    )}
-
-                    {mpSubStep === 3 && (
-                      <div className="space-y-4 animate-in fade-in duration-300">
-                        <div className="grid sm:grid-cols-2 gap-3 text-xs">
-                          <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
-                            <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Proveedor</div>
-                            <div className="text-white font-bold">Mercado Pago</div>
-                          </div>
-                          <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-4">
-                            <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Monto total</div>
-                            <div className="text-yellow-400 font-bold text-base">{formatCLP(cartTotal)}</div>
-                          </div>
-                          <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
-                            <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Tarjeta</div>
-                            <div className="text-white font-mono text-[13px]">
-                              •••• {rawCardDigits.slice(-4) || '••••'}
+                    {/* Paginated form — horizontal sweep between sub-steps */}
+                    <div className="overflow-hidden -mx-1">
+                      <div
+                        className="flex transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
+                        style={{ transform: `translateX(-${(mpSubStep - 1) * 100}%)` }}
+                      >
+                        <div
+                          className={`w-full flex-shrink-0 px-1 ${mpSubStep === 1 ? '' : 'pointer-events-none'}`}
+                          aria-hidden={mpSubStep !== 1}
+                        >
+                          <div className="space-y-4">
+                            <label className="block">
+                              <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">Número de tarjeta</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="cc-number"
+                                aria-label="Número de tarjeta"
+                                value={cardNumber}
+                                onFocus={() => setCardFlipped(false)}
+                                onChange={(e) => setCardNumber(formatCardInput(e.target.value))}
+                                placeholder="1234 5678 9012 3456"
+                                className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white font-mono tracking-widest focus:border-yellow-400 focus:outline-none transition-colors"
+                              />
+                              <span className="block text-[9px] text-zinc-500 mt-2 uppercase tracking-widest">
+                                {cardBrand !== 'unknown' ? `Detectado: ${cardBrand}` : 'Aceptamos Visa, Mastercard, Amex'}
+                              </span>
+                            </label>
+                            <div className="flex gap-3 pt-2">
+                              <button
+                                type="button"
+                                disabled={!isCardNumberValid}
+                                onClick={() => setMpSubStep(2)}
+                                className="flex-1 py-4 bg-yellow-400 text-black font-black uppercase text-[11px] tracking-[0.25em] rounded-full hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                Continuar
+                              </button>
                             </div>
                           </div>
-                          <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
-                            <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Titular</div>
-                            <div className="text-white text-[11px] uppercase truncate">{cardName || '—'}</div>
+                        </div>
+
+                        <div
+                          className={`w-full flex-shrink-0 px-1 ${mpSubStep === 2 ? '' : 'pointer-events-none'}`}
+                          aria-hidden={mpSubStep !== 2}
+                        >
+                          <div className="space-y-4">
+                            <label className="block">
+                              <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">Titular (como aparece en la tarjeta)</span>
+                              <input
+                                type="text"
+                                autoComplete="cc-name"
+                                aria-label="Titular de la tarjeta"
+                                value={cardName}
+                                onFocus={() => setCardFlipped(false)}
+                                onChange={(e) => setCardName(e.target.value.toUpperCase())}
+                                placeholder="NOMBRE APELLIDO"
+                                className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white uppercase tracking-wider focus:border-yellow-400 focus:outline-none transition-colors"
+                              />
+                            </label>
+                            <div className="grid grid-cols-2 gap-3">
+                              <label className="block">
+                                <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">Vence (MM/AA)</span>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  autoComplete="cc-exp"
+                                  aria-label="Fecha de expiración"
+                                  value={cardExpiry}
+                                  onFocus={() => setCardFlipped(false)}
+                                  onChange={(e) => setCardExpiry(formatExpiryInput(e.target.value))}
+                                  placeholder="MM/AA"
+                                  className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white font-mono focus:border-yellow-400 focus:outline-none transition-colors"
+                                />
+                              </label>
+                              <label className="block">
+                                <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">
+                                  {cardBrand === 'amex' ? 'CID (4 dígitos)' : 'CVC (3 dígitos)'}
+                                </span>
+                                <input
+                                  type="text"
+                                  inputMode="numeric"
+                                  autoComplete="cc-csc"
+                                  aria-label={cardBrand === 'amex' ? 'Código de seguridad CID' : 'Código de seguridad CVC'}
+                                  value={cardCVC}
+                                  onFocus={() => setCardFlipped(true)}
+                                  onBlur={() => setCardFlipped(false)}
+                                  onChange={(e) =>
+                                    setCardCVC(e.target.value.replace(/\D/g, '').slice(0, cardBrand === 'amex' ? 4 : 3))
+                                  }
+                                  placeholder={cardBrand === 'amex' ? '••••' : '•••'}
+                                  className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white font-mono focus:border-yellow-400 focus:outline-none transition-colors"
+                                />
+                              </label>
+                            </div>
+                            <div className="flex gap-3 pt-2">
+                              <button
+                                type="button"
+                                onClick={() => setMpSubStep(1)}
+                                className="px-6 py-4 border border-white/15 rounded-full text-white text-[11px] font-bold uppercase tracking-widest hover:border-yellow-400 transition-colors"
+                              >
+                                <ArrowLeft className="w-4 h-4" />
+                              </button>
+                              <button
+                                type="button"
+                                disabled={!isHolderValid || !isExpiryValid || !isCvcValid}
+                                onClick={() => { setCardFlipped(false); setMpSubStep(3); }}
+                                className="flex-1 py-4 bg-yellow-400 text-black font-black uppercase text-[11px] tracking-[0.25em] rounded-full hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                              >
+                                Revisar y pagar
+                              </button>
+                            </div>
                           </div>
                         </div>
-                        <p className="text-[10px] text-zinc-500 leading-relaxed flex items-start gap-2">
-                          <Lock className="w-3 h-3 mt-0.5 flex-shrink-0 text-yellow-400" />
-                          Tus datos se envían cifrados directamente a Mercado Pago. Fabrick no almacena el número de tu tarjeta.
-                        </p>
-                        <div className="flex gap-3 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => setMpSubStep(2)}
-                            className="px-6 py-4 border border-white/15 rounded-full text-white text-[11px] font-bold uppercase tracking-widest hover:border-yellow-400 transition-colors"
-                          >
-                            <ArrowLeft className="w-4 h-4" />
-                          </button>
+
+                        <div
+                          className={`w-full flex-shrink-0 px-1 ${mpSubStep === 3 ? '' : 'pointer-events-none'}`}
+                          aria-hidden={mpSubStep !== 3}
+                        >
+                          <div className="space-y-4">
+                            <div className="grid sm:grid-cols-2 gap-3 text-xs">
+                              <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
+                                <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Proveedor</div>
+                                <div className="text-white font-bold">Mercado Pago</div>
+                              </div>
+                              <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-4">
+                                <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Monto total</div>
+                                <div className="text-yellow-400 font-bold text-base">{formatCLP(cartTotal)}</div>
+                              </div>
+                              <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
+                                <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Tarjeta</div>
+                                <div className="text-white font-mono text-[13px]">
+                                  •••• {rawCardDigits.slice(-4) || '••••'}
+                                </div>
+                              </div>
+                              <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
+                                <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Titular</div>
+                                <div className="text-white text-[11px] uppercase truncate">{cardName || '—'}</div>
+                              </div>
+                            </div>
+                            <p className="text-[10px] text-zinc-500 leading-relaxed flex items-start gap-2">
+                              <Lock className="w-3 h-3 mt-0.5 flex-shrink-0 text-yellow-400" />
+                              Tus datos se envían cifrados directamente a Mercado Pago. Fabrick no almacena el número de tu tarjeta.
+                            </p>
+                            <div className="flex gap-3 pt-2">
+                              <button
+                                type="button"
+                                onClick={() => setMpSubStep(2)}
+                                className="px-6 py-4 border border-white/15 rounded-full text-white text-[11px] font-bold uppercase tracking-widest hover:border-yellow-400 transition-colors"
+                              >
+                                <ArrowLeft className="w-4 h-4" />
+                              </button>
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    )}
+                    </div>
                   </div>
                 )}
 

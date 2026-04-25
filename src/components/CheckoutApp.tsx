@@ -24,12 +24,13 @@ declare global {
   }
 }
 import { useSearchParams } from 'next/navigation';
-import { 
-  ArrowLeft, ShieldCheck, Lock, Truck, 
+import {
+  ArrowLeft, ShieldCheck, Lock, Truck,
   CheckCircle2, ChevronRight, Fingerprint,
   Wifi, Battery, Wrench, Check, Building2, Copy, ExternalLink,
   CreditCard, RefreshCw
 } from 'lucide-react';
+import { useCartContext } from '@/context/CartContext';
 
 // ── Bank account data (configurable via env vars) ──────────────────────────
 const BANK_INFO = {
@@ -150,6 +151,9 @@ const CheckoutApp = () => {
   const [checkoutError, setCheckoutError] = useState('');
   const [orderId, setOrderId] = useState('');
 
+  const { items: cartItems, totalPrice: cartTotalPrice, clearCart } = useCartContext();
+  const isCartMode = searchParams.get('cart') === '1';
+
   const product = {
     id: searchParams.get('productId') || 'FBK-01',
     name: searchParams.get('name') || 'Cerradura Biométrica Titanio V2',
@@ -158,6 +162,20 @@ const CheckoutApp = () => {
     shipping: 0,
     image: searchParams.get('img') || 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=2070&auto=format&fit=crop',
   };
+
+  // Items and total amount for the current checkout session
+  const orderItems = isCartMode
+    ? cartItems.map((ci) => ({
+        productoId: ci.product.id,
+        cantidad: ci.quantity,
+        precioUnitario: Math.round(
+          ci.product.price * (1 - (ci.product.discount_percentage || 0) / 100),
+        ),
+        nombre: ci.product.name,
+      }))
+    : [{ productoId: product.id, cantidad: 1, precioUnitario: product.price, nombre: product.name }];
+
+  const totalAmount = isCartMode ? Math.round(cartTotalPrice) : product.price;
 
   const formatCardDisplay = (n: string) => {
     const clean = n.replace(/\D/g, '').padEnd(16, '•');
@@ -418,99 +436,16 @@ const CheckoutApp = () => {
       return;
     }
 
-    if (!cardNumber || !cardName || !cardExpiry || !cardCVC) {
-      setCheckoutError('Completa todos los datos de la tarjeta.');
+    if (isCartMode && cartItems.length === 0) {
+      setCheckoutError('El carrito está vacío.');
       return;
     }
 
     setIsProcessing(true);
-    setProcessProgress(0);
-
-    // --- MercadoPago tokenization ---
-    let mpToken: string | null = null;
-    const mpPublicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY;
-    const isTestMode = !mpPublicKey || mpPublicKey === 'TEST-PUBLIC-KEY';
-
-    try {
-      const resolvedKey = mpPublicKey || 'TEST-PUBLIC-KEY';
-
-      // Load MercadoPago SDK if not already present
-      await new Promise<void>((resolve, reject) => {
-        const handleReady = () => {
-          if (window.MercadoPago) {
-            resolve();
-          } else {
-            reject(new Error('El SDK de MercadoPago no estuvo disponible después de cargar el script.'));
-          }
-        };
-        const handleError = () => reject(new Error('No se pudo cargar el SDK de MercadoPago.'));
-
-        if (window.MercadoPago) { resolve(); return; }
-
-        const existing = document.getElementById('mp-sdk-script');
-        if (existing instanceof HTMLScriptElement) {
-          existing.addEventListener('load', handleReady, { once: true });
-          existing.addEventListener('error', handleError, { once: true });
-          return;
-        }
-
-        const script = document.createElement('script');
-        script.id = 'mp-sdk-script';
-        script.src = 'https://sdk.mercadopago.com/js/v2';
-        script.addEventListener('load', handleReady, { once: true });
-        script.addEventListener('error', handleError, { once: true });
-        document.head.appendChild(script);
-      });
-
-      if (!window.MercadoPago) {
-        throw new Error('El SDK de MercadoPago no está disponible.');
-      }
-
-      // Validate card expiry format (MM/AA or MM/AAAA)
-      const expiryParts = cardExpiry.split('/');
-      if (expiryParts.length !== 2 || !expiryParts[0] || !expiryParts[1]) {
-        throw new Error('Formato de fecha de expiración inválido. Usa MM/AA.');
-      }
-      const expMonth = expiryParts[0].trim();
-      const expYearRaw = expiryParts[1].trim();
-      const expYear = expYearRaw.length === 2 ? `20${expYearRaw}` : expYearRaw;
-
-      const mp = new window.MercadoPago(resolvedKey);
-      const rawCardNumber = cardNumber.replace(/\s/g, '');
-
-      const tokenResult = await mp.createCardToken({
-        cardNumber: rawCardNumber,
-        cardholderName: cardName,
-        cardExpirationMonth: expMonth,
-        cardExpirationYear: expYear,
-        securityCode: cardCVC,
-        identificationType: 'RUT',
-        identificationNumber: '0',
-      });
-
-      mpToken = tokenResult.id;
-    } catch (tokenErr) {
-      if (!isTestMode) {
-        // In production with a real key, tokenization failure should block checkout
-        setCheckoutError('No se pudo procesar la tarjeta. Verifica los datos e intenta nuevamente.');
-        setIsProcessing(false);
-        setProcessProgress(0);
-        return;
-      }
-      // In test/sandbox mode, skip tokenization and proceed
-      console.warn('MP tokenization skipped (test mode):', tokenErr instanceof Error ? tokenErr.message : tokenErr);
-    }
-    // --- end tokenization ---
+    setProcessProgress(10);
 
     const payload = {
-      items: [
-        {
-          productoId: product.id,
-          cantidad: 1,
-          precioUnitario: product.price,
-          nombre: product.name,
-        },
-      ],
+      items: orderItems,
       region: shippingRegion,
       shippingAddress,
       shippingHouseNumber,
@@ -520,9 +455,6 @@ const CheckoutApp = () => {
         telefono: shippingPhone,
       },
     };
-
-    let prog = 10;
-    setProcessProgress(prog);
 
     try {
       const validateRes = await fetch('/api/orders/check/validate', {
@@ -537,8 +469,7 @@ const CheckoutApp = () => {
         throw new Error(firstError);
       }
 
-      prog = 45;
-      setProcessProgress(prog);
+      setProcessProgress(45);
 
       const checkoutRes = await fetch('/api/checkout', {
         method: 'POST',
@@ -555,83 +486,23 @@ const CheckoutApp = () => {
       const checkoutUrl = checkoutBody?.payment?.checkoutUrl as string | null;
       setOrderId(createdOrderId);
 
-      if (!checkoutUrl) {
-        throw new Error('No se pudo iniciar Mercado Pago para esta orden.');
-      }
-
-      prog = 100;
-      setProcessProgress(prog);
-
-      // --- MercadoPago payment ---
-      if (mpToken) {
-        const rawNum = cardNumber.replace(/\s/g, '');
-        const detectedMethod = rawNum.startsWith('4')
-          ? 'visa'
-          : /^5[1-5]/.test(rawNum)
-          ? 'master'
-          : /^3[47]/.test(rawNum)
-          ? 'amex'
-          : 'visa';
-
-        try {
-          const mpRes = await fetch('/api/payments/mercadopago', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              token: mpToken,
-              amount: product.price,
-              description: product.name,
-              email: shippingEmail,
-              installments: 1,
-              payment_method_id: detectedMethod,
-            }),
-          });
-          const mpBody = await mpRes.json();
-          if (!mpRes.ok && mpRes.status === 422) {
-            throw new Error(mpBody?.error || 'Pago rechazado por MercadoPago.');
-          }
-        } catch (mpErr) {
-          // Log but don't block—order was already created
-          console.warn('MP payment note:', mpErr instanceof Error ? mpErr.message : mpErr);
-        }
-      }
-      // --- end MP payment ---
-
-      await fetch('/api/payments/webhook', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-idempotency-key': `sim-${createdOrderId}`,
-        },
-        body: JSON.stringify({
-          eventType: 'payment.succeeded',
-          orderId: createdOrderId,
-          paymentId: `SIM-${Date.now()}`,
-          status: 'succeeded',
-          amount: checkoutBody.data?.resumen?.total ?? product.price,
-          currency: 'CLP',
-        }),
-      });
-
       setProcessProgress(100);
-      setTimeout(() => {
-        setIsSuccess(true);
-      }, 600);
+
+      if (checkoutUrl) {
+        // Checkout Pro: redirect to MercadoPago hosted payment page
+        if (isCartMode) clearCart();
+        setTimeout(() => {
+          window.location.href = checkoutUrl;
+        }, 800);
+      } else {
+        // Fallback: show success directly (e.g. free order)
+        setTimeout(() => setIsSuccess(true), 600);
+      }
     } catch (e) {
       setCheckoutError(e instanceof Error ? e.message : 'Error procesando checkout.');
       setIsProcessing(false);
       setProcessProgress(0);
-      return;
     }
-
-    let cleanupProg = 100;
-    const interval = setInterval(() => {
-      cleanupProg += 0;
-      if (cleanupProg >= 100) {
-        setProcessProgress(100);
-        clearInterval(interval);
-      }
-    }, 300);
   };
 
   // ── Bank Transfer: create order then show bank details ───────────────────
@@ -647,14 +518,7 @@ const CheckoutApp = () => {
     setTransferOrderCreating(true);
 
     const payload = {
-      items: [
-        {
-          productoId: product.id,
-          cantidad: 1,
-          precioUnitario: product.price,
-          nombre: product.name,
-        },
-      ],
+      items: orderItems,
       region: shippingRegion,
       shippingAddress,
       shippingHouseNumber,
@@ -999,28 +863,53 @@ const CheckoutApp = () => {
               </div>
 
               <div className="space-y-4 relative z-10">
-                <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase bg-yellow-400/10 px-3 py-1 rounded-full border border-yellow-400/20">{product.category}</span>
-                <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter leading-none mt-2">{product.name}</h2>
-                
-                <div className="py-4 space-y-3 border-b border-white/5">
-                  <div className="flex items-center gap-3 text-zinc-400 text-xs font-light">
-                    <Fingerprint size={14} className="text-yellow-400" /> Sensor Biométrico 3D (0.3s)
-                  </div>
-                  <div className="flex items-center gap-3 text-zinc-400 text-xs font-light">
-                    <Wrench size={14} className="text-yellow-400" /> Aleación de Titanio Antivandalismo
-                  </div>
-                  <div className="flex items-center gap-3 text-zinc-400 text-xs font-light">
-                    <Wifi size={14} className="text-yellow-400" /> Conexión WiFi & App Fabrick
-                  </div>
-                  <div className="flex items-center gap-3 text-zinc-400 text-xs font-light">
-                    <Battery size={14} className="text-yellow-400" /> Batería Extendida de 12 Meses
-                  </div>
-                </div>
-                
+                {isCartMode ? (
+                  <>
+                    <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase bg-yellow-400/10 px-3 py-1 rounded-full border border-yellow-400/20">
+                      {cartItems.length} {cartItems.length === 1 ? 'producto' : 'productos'}
+                    </span>
+                    <div className="space-y-3 py-4 border-b border-white/5">
+                      {cartItems.map((ci) => (
+                        <div key={ci.product.id} className="flex items-center gap-3">
+                          {ci.product.image_url && (
+                            <img src={ci.product.image_url} alt={ci.product.name} className="w-10 h-10 rounded-lg object-cover flex-shrink-0 border border-white/10" />
+                          )}
+                          <div className="flex-1 min-w-0">
+                            <p className="text-white text-xs font-semibold truncate">{ci.product.name}</p>
+                            <p className="text-zinc-500 text-[10px]">x{ci.quantity}</p>
+                          </div>
+                          <span className="text-zinc-300 font-mono text-xs flex-shrink-0">
+                            {formatCLP(ci.product.price * (1 - (ci.product.discount_percentage || 0) / 100) * ci.quantity)}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase bg-yellow-400/10 px-3 py-1 rounded-full border border-yellow-400/20">{product.category}</span>
+                    <h2 className="text-2xl md:text-3xl font-black uppercase tracking-tighter leading-none mt-2">{product.name}</h2>
+                    <div className="py-4 space-y-3 border-b border-white/5">
+                      <div className="flex items-center gap-3 text-zinc-400 text-xs font-light">
+                        <Fingerprint size={14} className="text-yellow-400" /> Sensor Biométrico 3D (0.3s)
+                      </div>
+                      <div className="flex items-center gap-3 text-zinc-400 text-xs font-light">
+                        <Wrench size={14} className="text-yellow-400" /> Aleación de Titanio Antivandalismo
+                      </div>
+                      <div className="flex items-center gap-3 text-zinc-400 text-xs font-light">
+                        <Wifi size={14} className="text-yellow-400" /> Conexión WiFi & App Fabrick
+                      </div>
+                      <div className="flex items-center gap-3 text-zinc-400 text-xs font-light">
+                        <Battery size={14} className="text-yellow-400" /> Batería Extendida de 12 Meses
+                      </div>
+                    </div>
+                  </>
+                )}
+
                 <div className="pt-2 space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Subtotal</span>
-                    <span className="font-mono text-zinc-300">{formatCLP(product.price)}</span>
+                    <span className="font-mono text-zinc-300">{formatCLP(totalAmount)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Logística Fabrick</span>
@@ -1028,7 +917,7 @@ const CheckoutApp = () => {
                   </div>
                   <div className="flex justify-between items-center pt-4 mt-2 border-t border-white/5">
                     <span className="text-white font-black uppercase tracking-widest text-xs">Total Inversión</span>
-                    <span className="font-black text-3xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{formatCLP(product.price)}</span>
+                    <span className="font-black text-3xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{formatCLP(totalAmount)}</span>
                   </div>
                 </div>
               </div>
@@ -1477,7 +1366,7 @@ const CheckoutApp = () => {
                     {/* Amount summary */}
                     <div className="flex items-center justify-between rounded-2xl border border-yellow-400/15 bg-yellow-400/5 px-5 py-4">
                       <span className="text-zinc-400 text-sm uppercase tracking-widest">Total a pagar</span>
-                      <span className="text-yellow-400 font-black text-xl">{formatCLP(product.price)}</span>
+                      <span className="text-yellow-400 font-black text-xl">{formatCLP(totalAmount)}</span>
                     </div>
 
                     {/* Sub-step indicator */}
@@ -1608,7 +1497,7 @@ const CheckoutApp = () => {
                           </div>
                           <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-4">
                             <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Monto total</div>
-                            <div className="text-yellow-400 font-bold text-base">{formatCLP(product.price)}</div>
+                            <div className="text-yellow-400 font-bold text-base">{formatCLP(totalAmount)}</div>
                           </div>
                           <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
                             <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Tarjeta</div>
@@ -1662,7 +1551,7 @@ const CheckoutApp = () => {
                             { label: 'Banco', value: BANK_INFO.bank },
                             { label: 'Titular', value: BANK_INFO.holder },
                             { label: 'Tipo de Cuenta', value: BANK_INFO.type },
-                            { label: 'Monto', value: formatCLP(product.price) },
+                            { label: 'Monto', value: formatCLP(totalAmount) },
                           ].map((row) => (
                             <div key={row.label} className="flex justify-between text-sm">
                               <span className="text-zinc-500">{row.label}</span>
@@ -1742,12 +1631,12 @@ const CheckoutApp = () => {
                   </button>
                   {paymentMethod === 'mercadopago' && (
                     <button
-                      disabled={isProcessing || mpSubStep !== 3 || !isCardNumberValid || !isHolderValid || !isExpiryValid || !isCvcValid}
+                      disabled={isProcessing}
                       onClick={handleConfirmInvestment}
                       type="button"
                       className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all flex justify-center items-center gap-3 shadow-[0_15px_40px_rgba(250,204,21,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Lock className="w-4 h-4" /> Pagar {formatCLP(product.price)}
+                      <Lock className="w-4 h-4" /> Pagar con Mercado Pago · {formatCLP(totalAmount)}
                     </button>
                   )}
                   {paymentMethod === 'transfer' && !transferOrderReady && (

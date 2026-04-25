@@ -2,9 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Menu, Home, Wrench, TrendingUp, Lightbulb, ShoppingBag, Building2, Phone, Gamepad2, ShieldCheck, BookOpen, Layers } from 'lucide-react';
+import { X, Menu, Home, Wrench, TrendingUp, Lightbulb, ShoppingBag, Building2, Phone, Gamepad2, ShieldCheck, BookOpen, Layers, ShoppingCart } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
 import { navigateWithTransition } from '@/lib/routeTransition';
+import { useCartContext } from '@/context/CartContext';
+import CartDrawer from './store/CartDrawer';
 
 type NavLink = { label: string; href: string };
 
@@ -36,6 +38,7 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const { totalItems, items, isOpen: cartOpen, openCart, closeCart, removeFromCart, updateQuantity } = useCartContext();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -107,16 +110,49 @@ export default function Navbar() {
           >
             Iniciar Sesión
           </button>
+          {/* Cart icon desktop */}
+          <button onClick={openCart} className="relative p-2 text-zinc-400 hover:text-yellow-400 transition-colors" aria-label="Carrito">
+            <ShoppingCart size={20} />
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-yellow-400 text-black text-[9px] font-black flex items-center justify-center">
+                {totalItems > 9 ? '9+' : totalItems}
+              </span>
+            )}
+          </button>
         </div>
 
-        <button
-          className="lg:hidden text-white hover:text-yellow-400 transition-colors p-2"
-          onClick={() => setOpen(!open)}
-          aria-label="Menu"
-        >
-          {open ? <X size={26} /> : <Menu size={26} />}
-        </button>
+        <div className="lg:hidden flex items-center gap-2">
+          {/* Cart icon mobile */}
+          <button onClick={openCart} className="relative p-2 text-zinc-400 hover:text-yellow-400 transition-colors" aria-label="Carrito">
+            <ShoppingCart size={20} />
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-yellow-400 text-black text-[8px] font-black flex items-center justify-center">
+                {totalItems > 9 ? '9+' : totalItems}
+              </span>
+            )}
+          </button>
+          <button
+            className="text-white hover:text-yellow-400 transition-colors p-2"
+            onClick={() => setOpen(!open)}
+            aria-label="Menu"
+          >
+            {open ? <X size={26} /> : <Menu size={26} />}
+          </button>
+        </div>
       </nav>
+
+      {/* Cart Drawer */}
+      <CartDrawer
+        open={cartOpen}
+        items={items}
+        onClose={closeCart}
+        onUpdateQuantity={updateQuantity}
+        onRemoveItem={removeFromCart}
+        onCheckout={() => {
+          closeCart();
+          navigateWithTransition('/checkout?cart=1', router);
+        }}
+      />
 
       {/* Full-screen glamorous mobile menu */}
       <div

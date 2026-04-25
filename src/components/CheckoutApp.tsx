@@ -1218,313 +1218,287 @@ const CheckoutApp = () => {
 
                 {/* MERCADO PAGO PANEL — Inline paginated card form + 3D flip preview */}
                 {paymentMethod === 'mercadopago' && (
-                  <div className="bg-gradient-to-br from-zinc-900 to-black border border-white/10 rounded-[2rem] p-6 md:p-8 space-y-6">
-                    {/* Header with MP logo */}
-                    <div className="flex items-center justify-between gap-4">
+                  <div className="rounded-[2rem] border border-white/10 bg-gradient-to-b from-zinc-900 to-black overflow-hidden">
+
+                    {/* ── Header ── */}
+                    <div className="flex items-center justify-between gap-3 px-6 pt-6 pb-4 border-b border-white/5">
                       <div className="flex items-center gap-3">
-                        {/* Mercado Pago logo (inline SVG) */}
-                        <div className="flex items-center gap-2 rounded-xl bg-[#009EE3] px-3 py-2 shadow-[0_4px_14px_rgba(0,158,227,0.35)]">
-                          <svg viewBox="0 0 48 32" className="h-5 w-auto" aria-label="Mercado Pago">
+                        <div className="flex items-center gap-2 rounded-xl bg-[#009EE3] px-3 py-1.5 shadow-[0_4px_14px_rgba(0,158,227,0.4)]">
+                          <svg viewBox="0 0 48 32" className="h-4 w-auto" aria-label="Mercado Pago">
                             <ellipse cx="24" cy="16" rx="22" ry="11" fill="#FFF" />
                             <ellipse cx="24" cy="16" rx="15" ry="7" fill="#FFE600" />
-                            <path
-                              d="M14 16 Q20 11 24 14 T34 16"
-                              stroke="#009EE3"
-                              strokeWidth="1.8"
-                              fill="none"
-                              strokeLinecap="round"
-                            />
+                            <path d="M14 16 Q20 11 24 14 T34 16" stroke="#009EE3" strokeWidth="1.8" fill="none" strokeLinecap="round" />
                             <circle cx="24" cy="16" r="1.8" fill="#009EE3" />
                           </svg>
-                          <span className="text-[10px] font-black uppercase tracking-widest text-white">Mercado Pago</span>
+                          <span className="text-[9px] font-black uppercase tracking-widest text-white">Mercado Pago</span>
                         </div>
                         <div>
-                          <p className="text-[9px] uppercase tracking-[0.35em] text-yellow-400 font-bold">Pago seguro</p>
-                          <h4 className="text-base md:text-lg font-black uppercase tracking-tighter">Datos de tu tarjeta</h4>
+                          <p className="text-[8px] uppercase tracking-[0.3em] text-yellow-400 font-bold">Pago seguro</p>
+                          <p className="text-sm font-black uppercase tracking-tight text-white">Datos de tu tarjeta</p>
                         </div>
                       </div>
-                      <div className="hidden sm:flex w-10 h-10 rounded-full border border-yellow-400/30 bg-yellow-400/10 items-center justify-center flex-shrink-0">
-                        <Lock className="w-4 h-4 text-yellow-400" />
+                      <div className="w-8 h-8 rounded-full border border-yellow-400/30 bg-yellow-400/10 flex items-center justify-center flex-shrink-0">
+                        <Lock className="w-3.5 h-3.5 text-yellow-400" />
                       </div>
                     </div>
 
-                    {/* 3D flip card preview */}
-                    <div className="perspective-1000 flex justify-center">
-                      <div
-                        className="relative w-full max-w-[360px] aspect-[1.586/1] transform-style-3d transition-transform duration-700"
-                        style={{ transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
-                      >
-                        {/* FRONT */}
-                        <div className="absolute inset-0 backface-hidden rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 bg-[linear-gradient(135deg,#1f2937_0%,#0f172a_50%,#0a0a0a_100%)]">
-                          <div className="absolute inset-0 opacity-40 mix-blend-overlay"
-                            style={{ backgroundImage: 'radial-gradient(circle at 20% 10%, rgba(250,204,21,0.35), transparent 60%)' }} />
-                          <div className="absolute top-0 left-[-30%] w-1/3 h-full bg-white/10 pointer-events-none"
-                            style={{ animation: 'card-shine 4s ease-in-out infinite' }} />
-                          <div className="relative p-5 h-full flex flex-col justify-between">
-                            <div className="flex items-start justify-between">
-                              <div className="flex flex-col">
-                                <span className="text-[9px] uppercase tracking-[0.3em] text-white/50">Soluciones Fabrick</span>
-                                <span className="text-[8px] text-white/30 font-mono mt-1">via Mercado Pago</span>
-                              </div>
-                              {/* Brand logo */}
-                              <div className="h-7 flex items-center">
-                                {cardBrand === 'visa' && (
-                                  <span className="text-white font-black italic text-xl tracking-tight drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">VISA</span>
-                                )}
-                                {cardBrand === 'mastercard' && (
-                                  <div className="relative w-10 h-7">
-                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[#EB001B]" />
-                                    <span className="absolute right-0 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-[#F79E1B] mix-blend-screen" />
-                                  </div>
-                                )}
-                                {cardBrand === 'amex' && (
-                                  <span className="bg-[#2E77BB] px-1.5 py-0.5 text-[10px] font-black italic text-white rounded-sm">AMEX</span>
-                                )}
-                                {cardBrand === 'diners' && (
-                                  <span className="text-white text-[10px] font-black italic">DINERS</span>
-                                )}
-                                {cardBrand === 'unknown' && (
-                                  <CreditCard className="w-6 h-6 text-white/40" />
-                                )}
-                              </div>
-                            </div>
-
-                            {/* Chip */}
-                            <div className="w-11 h-8 rounded-md bg-[linear-gradient(135deg,#d4af37,#8b6914)] border border-yellow-200/30 shadow-inner" />
-
-                            {/* Number */}
-                            <div className="font-mono text-white text-lg sm:text-xl tracking-[0.18em] drop-shadow-[0_2px_4px_rgba(0,0,0,0.5)]">
-                              {maskCardNumber(rawCardDigits)}
-                            </div>
-
-                            {/* Holder + expiry */}
-                            <div className="flex items-end justify-between gap-4">
-                              <div className="min-w-0">
-                                <p className="text-[8px] uppercase tracking-widest text-white/40 mb-1">Titular</p>
-                                <p className="text-white text-[11px] font-semibold uppercase tracking-wider truncate">
-                                  {cardName || 'NOMBRE APELLIDO'}
-                                </p>
-                              </div>
-                              <div className="flex-shrink-0 text-right">
-                                <p className="text-[8px] uppercase tracking-widest text-white/40 mb-1">Vence</p>
-                                <p className="text-white text-[11px] font-mono">{cardExpiry || 'MM/AA'}</p>
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-
-                        {/* BACK */}
+                    {/* ── 3D Card — centrada, full-width, proporción fija ── */}
+                    <div className="px-6 pt-6 pb-4">
+                      <div className="perspective-1000 w-full">
                         <div
-                          className="absolute inset-0 rotate-y-180 backface-hidden rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 bg-[linear-gradient(135deg,#1f2937_0%,#0f172a_50%,#0a0a0a_100%)]"
+                          className="relative w-full transform-style-3d transition-transform duration-700"
+                          style={{
+                            aspectRatio: '1.586 / 1',
+                            transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                          }}
                         >
-                          <div className="mt-5 h-9 w-full bg-black/70" />
-                          <div className="px-5 mt-5">
-                            <div className="h-8 rounded bg-white/10 border border-white/10 flex items-center justify-end pr-3">
-                              <span className="text-white font-mono tracking-widest">{cardCVC || '•••'}</span>
+                          {/* ── FRONT ── */}
+                          <div className="absolute inset-0 backface-hidden rounded-2xl overflow-hidden border border-white/15 shadow-[0_24px_60px_rgba(0,0,0,0.7)] bg-[linear-gradient(135deg,#18181b_0%,#09090b_60%,#0a0a0a_100%)]">
+                            {/* gold glow top-left */}
+                            <div className="absolute inset-0 pointer-events-none"
+                              style={{ backgroundImage: 'radial-gradient(circle at 15% 15%, rgba(250,204,21,0.22), transparent 55%)' }} />
+                            {/* shimmer sweep */}
+                            <div className="absolute top-0 left-[-40%] w-[35%] h-full bg-white/[0.07] skew-x-[-18deg] pointer-events-none"
+                              style={{ animation: 'card-shine 5s ease-in-out infinite' }} />
+                            {/* subtle grid texture */}
+                            <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
+                              style={{ backgroundImage: 'repeating-linear-gradient(0deg,#fff 0px,transparent 1px,transparent 28px,#fff 28px),repeating-linear-gradient(90deg,#fff 0px,transparent 1px,transparent 28px,#fff 28px)' }} />
+
+                            <div className="relative p-5 h-full flex flex-col justify-between">
+                              {/* top row */}
+                              <div className="flex items-start justify-between">
+                                <div>
+                                  <p className="text-[8px] uppercase tracking-[0.35em] text-white/40 leading-none">Soluciones Fabrick</p>
+                                  <p className="text-[7px] text-white/20 font-mono mt-0.5">via Mercado Pago</p>
+                                </div>
+                                <div className="h-6 flex items-center">
+                                  {cardBrand === 'visa' && (
+                                    <span className="text-white font-black italic text-lg tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">VISA</span>
+                                  )}
+                                  {cardBrand === 'mastercard' && (
+                                    <div className="relative w-9 h-6">
+                                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[18px] h-[18px] rounded-full bg-[#EB001B]" />
+                                      <span className="absolute right-0 top-1/2 -translate-y-1/2 w-[18px] h-[18px] rounded-full bg-[#F79E1B] mix-blend-screen" />
+                                    </div>
+                                  )}
+                                  {cardBrand === 'amex' && (
+                                    <span className="bg-[#2E77BB] px-1.5 py-0.5 text-[9px] font-black italic text-white rounded">AMEX</span>
+                                  )}
+                                  {cardBrand === 'diners' && (
+                                    <span className="text-white/60 text-[9px] font-black italic">DINERS</span>
+                                  )}
+                                  {cardBrand === 'unknown' && (
+                                    <CreditCard className="w-5 h-5 text-white/20" />
+                                  )}
+                                </div>
+                              </div>
+
+                              {/* chip */}
+                              <div className="w-10 h-7 rounded-md bg-[linear-gradient(135deg,#d4af37,#8b6914)] border border-yellow-200/30 shadow-inner" />
+
+                              {/* number */}
+                              <p className="font-mono text-white tracking-[0.2em] text-base drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
+                                {maskCardNumber(rawCardDigits)}
+                              </p>
+
+                              {/* holder + expiry */}
+                              <div className="flex items-end justify-between gap-2">
+                                <div className="min-w-0 flex-1">
+                                  <p className="text-[7px] uppercase tracking-widest text-white/30 mb-0.5">Titular</p>
+                                  <p className="text-white text-[10px] font-semibold uppercase tracking-wider truncate">
+                                    {cardName || 'NOMBRE APELLIDO'}
+                                  </p>
+                                </div>
+                                <div className="flex-shrink-0 text-right">
+                                  <p className="text-[7px] uppercase tracking-widest text-white/30 mb-0.5">Vence</p>
+                                  <p className="text-white text-[10px] font-mono">{cardExpiry || 'MM/AA'}</p>
+                                </div>
+                              </div>
                             </div>
-                            <p className="mt-2 text-[9px] uppercase tracking-widest text-white/40 text-right">CVC / CVV</p>
+                          </div>
+
+                          {/* ── BACK ── */}
+                          <div className="absolute inset-0 rotate-y-180 backface-hidden rounded-2xl overflow-hidden border border-white/15 shadow-[0_24px_60px_rgba(0,0,0,0.7)] bg-[linear-gradient(135deg,#18181b_0%,#09090b_60%,#0a0a0a_100%)]">
+                            <div className="absolute inset-0 pointer-events-none"
+                              style={{ backgroundImage: 'radial-gradient(circle at 85% 15%, rgba(250,204,21,0.12), transparent 55%)' }} />
+                            {/* magnetic stripe */}
+                            <div className="mt-7 h-9 w-full bg-black/80" />
+                            {/* CVC strip */}
+                            <div className="px-5 mt-4">
+                              <div className="h-9 rounded-lg bg-white/[0.06] border border-white/10 flex items-center justify-end px-4 gap-3">
+                                <div className="flex gap-0.5">
+                                  {Array.from({ length: 3 }).map((_, i) => (
+                                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/20" />
+                                  ))}
+                                </div>
+                                <span className="text-white font-mono tracking-[0.3em] text-sm">{cardCVC || '•••'}</span>
+                              </div>
+                              <p className="mt-1.5 text-[8px] uppercase tracking-widest text-white/30 text-right">CVC / CVV</p>
+                            </div>
                           </div>
                         </div>
                       </div>
-                      <div>
-                        <label className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1.5 block">Nombre en la tarjeta</label>
-                        <input
-                          value={cardName}
-                          onChange={(e) => setCardName(e.target.value.toUpperCase())}
-                          placeholder="NOMBRE APELLIDO"
-                          className="w-full bg-zinc-900 border border-white/10 rounded-xl px-5 py-3.5 text-white uppercase tracking-wider text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
-                        />
-                      </div>
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1.5 block">Vencimiento</label>
-                          <input
-                            value={cardExpiry}
-                            onChange={handleExpiryChange}
-                            inputMode="numeric"
-                            placeholder="MM/AA"
-                            maxLength={5}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-5 py-3.5 text-white font-mono text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
-                          />
-                        </div>
-                        <div>
-                          <label className="text-[9px] uppercase tracking-widest text-zinc-500 mb-1.5 block">CVC / CVV</label>
-                          <input
-                            value={cardCVC}
-                            onChange={(e) => setCardCVC(e.target.value.replace(/\D/g, '').slice(0, 4))}
-                            onFocus={() => setCardFlipped(true)}
-                            onBlur={() => setCardFlipped(false)}
-                            inputMode="numeric"
-                            placeholder="•••"
-                            maxLength={4}
-                            className="w-full bg-zinc-900 border border-white/10 rounded-xl px-5 py-3.5 text-white font-mono text-sm focus:outline-none focus:border-yellow-400/50 transition-colors"
-                          />
-                        </div>
-                      </div>
                     </div>
 
-                    {/* Amount summary */}
-                    <div className="flex items-center justify-between rounded-2xl border border-yellow-400/15 bg-yellow-400/5 px-5 py-4">
-                      <span className="text-zinc-400 text-sm uppercase tracking-widest">Total a pagar</span>
-                      <span className="text-yellow-400 font-black text-xl">{formatCLP(totalAmount)}</span>
+                    {/* ── Total pill ── */}
+                    <div className="mx-6 mb-4 flex items-center justify-between rounded-xl border border-yellow-400/20 bg-yellow-400/[0.06] px-4 py-3">
+                      <span className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">Total a pagar</span>
+                      <span className="text-yellow-400 font-black text-lg">{formatCLP(totalAmount)}</span>
                     </div>
 
-                    {/* Sub-step indicator */}
-                    <div className="flex items-center justify-center gap-2">
+                    {/* ── Step dots ── */}
+                    <div className="flex items-center justify-center gap-2 pb-4">
                       {[1, 2, 3].map((s) => (
-                        <div
-                          key={s}
-                          className={`h-1 rounded-full transition-all ${
-                            mpSubStep === s
-                              ? 'w-8 bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.6)]'
-                              : mpSubStep > s
-                              ? 'w-4 bg-yellow-400/60'
-                              : 'w-4 bg-white/10'
-                          }`}
-                        />
+                        <div key={s} className={`h-1 rounded-full transition-all duration-300 ${
+                          mpSubStep === s
+                            ? 'w-8 bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.7)]'
+                            : mpSubStep > s ? 'w-4 bg-yellow-400/50' : 'w-4 bg-white/10'
+                        }`} />
                       ))}
                     </div>
 
-                    {/* Paginated form */}
-                    {mpSubStep === 1 && (
-                      <div className="space-y-4 animate-in fade-in duration-300">
-                        <label className="block">
-                          <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">Número de tarjeta</span>
-                          <input
-                            type="text"
-                            inputMode="numeric"
-                            autoComplete="cc-number"
-                            aria-label="Número de tarjeta"
-                            value={cardNumber}
-                            onFocus={() => setCardFlipped(false)}
-                            onChange={(e) => setCardNumber(formatCardInput(e.target.value))}
-                            placeholder="1234 5678 9012 3456"
-                            className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white font-mono tracking-widest focus:border-yellow-400 focus:outline-none transition-colors"
-                          />
-                          <span className="block text-[9px] text-zinc-500 mt-2 uppercase tracking-widest">
-                            {cardBrand !== 'unknown' ? `Detectado: ${cardBrand}` : 'Aceptamos Visa, Mastercard, Amex'}
-                          </span>
-                        </label>
-                        <div className="flex gap-3 pt-2">
-                          <button
-                            type="button"
-                            disabled={!isCardNumberValid}
-                            onClick={() => setMpSubStep(2)}
-                            className="flex-1 py-4 bg-yellow-400 text-black font-black uppercase text-[11px] tracking-[0.25em] rounded-full hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            Continuar
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                    {/* ── Paginated form ── */}
+                    <div className="px-6 pb-6">
 
-                    {mpSubStep === 2 && (
-                      <div className="space-y-4 animate-in fade-in duration-300">
-                        <label className="block">
-                          <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">Titular (como aparece en la tarjeta)</span>
-                          <input
-                            type="text"
-                            autoComplete="cc-name"
-                            aria-label="Titular de la tarjeta"
-                            value={cardName}
-                            onFocus={() => setCardFlipped(false)}
-                            onChange={(e) => setCardName(e.target.value.toUpperCase())}
-                            placeholder="NOMBRE APELLIDO"
-                            className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white uppercase tracking-wider focus:border-yellow-400 focus:outline-none transition-colors"
-                          />
-                        </label>
-                        <div className="grid grid-cols-2 gap-3">
-                          <label className="block">
-                            <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">Vence (MM/AA)</span>
-                            <input
-                              type="text"
-                              inputMode="numeric"
-                              autoComplete="cc-exp"
-                              aria-label="Fecha de expiración"
-                              value={cardExpiry}
-                              onFocus={() => setCardFlipped(false)}
-                              onChange={(e) => setCardExpiry(formatExpiryInput(e.target.value))}
-                              placeholder="MM/AA"
-                              className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white font-mono focus:border-yellow-400 focus:outline-none transition-colors"
-                            />
-                          </label>
+                      {/* Step 1 — Card number */}
+                      {mpSubStep === 1 && (
+                        <div className="space-y-4 animate-in fade-in duration-300">
                           <label className="block">
                             <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">
-                              {cardBrand === 'amex' ? 'CID (4 dígitos)' : 'CVC (3 dígitos)'}
+                              Número de tarjeta
                             </span>
                             <input
                               type="text"
                               inputMode="numeric"
-                              autoComplete="cc-csc"
-                              aria-label={cardBrand === 'amex' ? 'Código de seguridad CID' : 'Código de seguridad CVC'}
-                              value={cardCVC}
-                              onFocus={() => setCardFlipped(true)}
-                              onBlur={() => setCardFlipped(false)}
-                              onChange={(e) =>
-                                setCardCVC(e.target.value.replace(/\D/g, '').slice(0, cardBrand === 'amex' ? 4 : 3))
-                              }
-                              placeholder={cardBrand === 'amex' ? '••••' : '•••'}
-                              className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white font-mono focus:border-yellow-400 focus:outline-none transition-colors"
+                              autoComplete="cc-number"
+                              aria-label="Número de tarjeta"
+                              value={cardNumber}
+                              onFocus={() => setCardFlipped(false)}
+                              onChange={(e) => setCardNumber(formatCardInput(e.target.value))}
+                              placeholder="1234 5678 9012 3456"
+                              className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white font-mono tracking-widest focus:border-yellow-400 focus:outline-none transition-colors placeholder:text-white/20"
+                            />
+                            <span className="block text-[9px] text-zinc-600 mt-2 uppercase tracking-widest">
+                              {cardBrand !== 'unknown' ? `✓ Detectado: ${cardBrand.toUpperCase()}` : 'Aceptamos Visa, Mastercard, Amex'}
+                            </span>
+                          </label>
+                          <button
+                            type="button"
+                            disabled={!isCardNumberValid}
+                            onClick={() => setMpSubStep(2)}
+                            className="w-full py-4 bg-yellow-400 text-black font-black uppercase text-[11px] tracking-[0.3em] rounded-2xl hover:bg-yellow-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed shadow-[0_8px_24px_rgba(250,204,21,0.25)]"
+                          >
+                            Continuar
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Step 2 — Holder + expiry + CVC */}
+                      {mpSubStep === 2 && (
+                        <div className="space-y-4 animate-in fade-in duration-300">
+                          <label className="block">
+                            <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">
+                              Titular (como aparece en la tarjeta)
+                            </span>
+                            <input
+                              type="text"
+                              autoComplete="cc-name"
+                              aria-label="Titular de la tarjeta"
+                              value={cardName}
+                              onFocus={() => setCardFlipped(false)}
+                              onChange={(e) => setCardName(e.target.value.toUpperCase())}
+                              placeholder="NOMBRE APELLIDO"
+                              className="w-full bg-black/60 border border-white/10 rounded-2xl px-5 py-4 text-sm text-white uppercase tracking-wider focus:border-yellow-400 focus:outline-none transition-colors placeholder:text-white/20"
                             />
                           </label>
+                          <div className="grid grid-cols-2 gap-3">
+                            <label className="block">
+                              <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">Vence</span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="cc-exp"
+                                aria-label="Fecha de expiración"
+                                value={cardExpiry}
+                                onFocus={() => setCardFlipped(false)}
+                                onChange={(e) => setCardExpiry(formatExpiryInput(e.target.value))}
+                                placeholder="MM/AA"
+                                className="w-full bg-black/60 border border-white/10 rounded-2xl px-4 py-4 text-sm text-white font-mono focus:border-yellow-400 focus:outline-none transition-colors placeholder:text-white/20"
+                              />
+                            </label>
+                            <label className="block">
+                              <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">
+                                {cardBrand === 'amex' ? 'CID (4 dígitos)' : 'CVC / CVV'}
+                              </span>
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="cc-csc"
+                                aria-label="Código de seguridad"
+                                value={cardCVC}
+                                onFocus={() => setCardFlipped(true)}
+                                onBlur={() => setCardFlipped(false)}
+                                onChange={(e) => setCardCVC(e.target.value.replace(/\D/g, '').slice(0, cardBrand === 'amex' ? 4 : 3))}
+                                placeholder={cardBrand === 'amex' ? '••••' : '•••'}
+                                className="w-full bg-black/60 border border-white/10 rounded-2xl px-4 py-4 text-sm text-white font-mono focus:border-yellow-400 focus:outline-none transition-colors placeholder:text-white/20"
+                              />
+                            </label>
+                          </div>
+                          <div className="flex gap-3 pt-1">
+                            <button
+                              type="button"
+                              onClick={() => setMpSubStep(1)}
+                              className="w-12 h-12 flex items-center justify-center rounded-2xl border border-white/10 text-white hover:border-yellow-400 transition-colors"
+                            >
+                              <ArrowLeft className="w-4 h-4" />
+                            </button>
+                            <button
+                              type="button"
+                              disabled={!isHolderValid || !isExpiryValid || !isCvcValid}
+                              onClick={() => { setCardFlipped(false); setMpSubStep(3); }}
+                              className="flex-1 py-3 bg-yellow-400 text-black font-black uppercase text-[11px] tracking-[0.25em] rounded-2xl hover:bg-yellow-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed"
+                            >
+                              Revisar y pagar
+                            </button>
+                          </div>
                         </div>
-                        <div className="flex gap-3 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => setMpSubStep(1)}
-                            className="px-6 py-4 border border-white/15 rounded-full text-white text-[11px] font-bold uppercase tracking-widest hover:border-yellow-400 transition-colors"
-                          >
-                            <ArrowLeft className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            disabled={!isHolderValid || !isExpiryValid || !isCvcValid}
-                            onClick={() => { setCardFlipped(false); setMpSubStep(3); }}
-                            className="flex-1 py-4 bg-yellow-400 text-black font-black uppercase text-[11px] tracking-[0.25em] rounded-full hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
-                          >
-                            Revisar y pagar
-                          </button>
-                        </div>
-                      </div>
-                    )}
+                      )}
 
-                    {mpSubStep === 3 && (
-                      <div className="space-y-4 animate-in fade-in duration-300">
-                        <div className="grid sm:grid-cols-2 gap-3 text-xs">
-                          <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
-                            <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Proveedor</div>
-                            <div className="text-white font-bold">Mercado Pago</div>
-                          </div>
-                          <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-4">
-                            <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Monto total</div>
-                            <div className="text-yellow-400 font-bold text-base">{formatCLP(totalAmount)}</div>
-                          </div>
-                          <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
-                            <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Tarjeta</div>
-                            <div className="text-white font-mono text-[13px]">
-                              •••• {rawCardDigits.slice(-4) || '••••'}
+                      {/* Step 3 — Review */}
+                      {mpSubStep === 3 && (
+                        <div className="space-y-4 animate-in fade-in duration-300">
+                          <div className="grid grid-cols-2 gap-3 text-xs">
+                            <div className="rounded-2xl border border-white/8 bg-black/40 p-4">
+                              <p className="text-[8px] uppercase tracking-widest text-zinc-600 mb-1.5">Proveedor</p>
+                              <p className="text-white font-bold">Mercado Pago</p>
+                            </div>
+                            <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-4">
+                              <p className="text-[8px] uppercase tracking-widest text-zinc-600 mb-1.5">Monto</p>
+                              <p className="text-yellow-400 font-black text-sm">{formatCLP(totalAmount)}</p>
+                            </div>
+                            <div className="rounded-2xl border border-white/8 bg-black/40 p-4">
+                              <p className="text-[8px] uppercase tracking-widest text-zinc-600 mb-1.5">Tarjeta</p>
+                              <p className="text-white font-mono text-[12px]">•••• {rawCardDigits.slice(-4) || '••••'}</p>
+                            </div>
+                            <div className="rounded-2xl border border-white/8 bg-black/40 p-4">
+                              <p className="text-[8px] uppercase tracking-widest text-zinc-600 mb-1.5">Titular</p>
+                              <p className="text-white text-[10px] uppercase truncate">{cardName || '—'}</p>
                             </div>
                           </div>
-                          <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
-                            <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Titular</div>
-                            <div className="text-white text-[11px] uppercase truncate">{cardName || '—'}</div>
-                          </div>
-                        </div>
-                        <p className="text-[10px] text-zinc-500 leading-relaxed flex items-start gap-2">
-                          <Lock className="w-3 h-3 mt-0.5 flex-shrink-0 text-yellow-400" />
-                          Tus datos se envían cifrados directamente a Mercado Pago. Fabrick no almacena el número de tu tarjeta.
-                        </p>
-                        <div className="flex gap-3 pt-2">
+                          <p className="text-[9px] text-zinc-600 leading-relaxed flex items-start gap-2">
+                            <Lock className="w-3 h-3 mt-0.5 flex-shrink-0 text-yellow-400/60" />
+                            Serás redirigido a Mercado Pago para completar el pago de forma segura. Fabrick no almacena datos de tu tarjeta.
+                          </p>
                           <button
                             type="button"
                             onClick={() => setMpSubStep(2)}
-                            className="px-6 py-4 border border-white/15 rounded-full text-white text-[11px] font-bold uppercase tracking-widest hover:border-yellow-400 transition-colors"
+                            className="flex items-center gap-2 text-zinc-500 text-[10px] uppercase tracking-widest hover:text-white transition-colors"
                           >
-                            <ArrowLeft className="w-4 h-4" />
+                            <ArrowLeft className="w-3.5 h-3.5" /> Editar datos
                           </button>
                         </div>
-                      </div>
-                    )}
+                      )}
+                    </div>
                   </div>
                 )}
 

@@ -1560,11 +1560,11 @@ const CheckoutApp = () => {
                     {/* Paginated form — horizontal sweep between sub-steps */}
                     <div className="overflow-hidden -mx-1">
                       <div
-                        className="flex transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] will-change-transform"
+                        className="flex transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
                         style={{ transform: `translateX(-${(mpSubStep - 1) * 100}%)` }}
                       >
                         <div
-                          className={`w-full flex-shrink-0 px-1 transition-opacity duration-300 ${mpSubStep === 1 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                          className={`w-full flex-shrink-0 px-1 ${mpSubStep === 1 ? '' : 'pointer-events-none'}`}
                           aria-hidden={mpSubStep !== 1}
                         >
                           <div className="space-y-4">
@@ -1599,7 +1599,7 @@ const CheckoutApp = () => {
                         </div>
 
                         <div
-                          className={`w-full flex-shrink-0 px-1 transition-opacity duration-300 ${mpSubStep === 2 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                          className={`w-full flex-shrink-0 px-1 ${mpSubStep === 2 ? '' : 'pointer-events-none'}`}
                           aria-hidden={mpSubStep !== 2}
                         >
                           <div className="space-y-4">
@@ -1672,7 +1672,7 @@ const CheckoutApp = () => {
                         </div>
 
                         <div
-                          className={`w-full flex-shrink-0 px-1 transition-opacity duration-300 ${mpSubStep === 3 ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}
+                          className={`w-full flex-shrink-0 px-1 ${mpSubStep === 3 ? '' : 'pointer-events-none'}`}
                           aria-hidden={mpSubStep !== 3}
                         >
                           <div className="space-y-4">

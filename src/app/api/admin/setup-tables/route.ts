@@ -64,15 +64,34 @@ async function runRawSql(
   });
   if (!res.ok) {
     let detail = '';
+    let upstreamCode = '';
     try {
       const text = await res.text();
       detail = text ? ` — ${text}` : '';
+      try {
+        const parsed = JSON.parse(text) as { error?: unknown };
+        if (typeof parsed?.error === 'string') upstreamCode = parsed.error;
+      } catch {
+        /* keep raw text */
+      }
     } catch {
       /* ignore */
     }
-    throw new Error(`HTTP ${res.status} ${res.statusText}${detail}`);
+    const err = new Error(`HTTP ${res.status} ${res.statusText}${detail}`) as Error & {
+      upstreamCode?: string;
+      status?: number;
+    };
+    err.upstreamCode = upstreamCode;
+    err.status = res.status;
+    throw err;
   }
 }
+
+const ADMIN_KEY_HINT =
+  'InsForge rechazó la API key. El endpoint /rawsql/unrestricted requiere la ' +
+  'clave de servicio (admin). Configura la variable de entorno INSFORGE_API_KEY ' +
+  'en Vercel con la admin key del proyecto (la anon key no funciona para SQL crudo) ' +
+  'y vuelve a desplegar.';
 
 export async function POST(request: NextRequest) {
   try {
@@ -89,9 +108,11 @@ export async function POST(request: NextRequest) {
     const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
     // Mirror the fallback chain used by `/api/admin/sql` so the button works
     // for projects that only have the public anon key configured.
+    const hasAdminKey = Boolean(process.env.INSFORGE_API_KEY);
     const apiKey =
       process.env.INSFORGE_API_KEY ||
       process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
+    const keySource: 'admin' | 'anon' = hasAdminKey ? 'admin' : 'anon';
 
     if (!baseUrl || !apiKey) {
       const missing: string[] = [];
@@ -129,6 +150,7 @@ export async function POST(request: NextRequest) {
     const results: Record<string, StepResult> = {};
     let ok = 0;
     let failed = 0;
+    let sawAuthInvalid = false;
 
     for (const block of blocks) {
       try {
@@ -137,6 +159,11 @@ export async function POST(request: NextRequest) {
         ok += 1;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
+        const code =
+          err && typeof err === 'object' && 'upstreamCode' in err
+            ? String((err as { upstreamCode?: unknown }).upstreamCode || '')
+            : '';
+        if (code === 'AUTH_INVALID_API_KEY') sawAuthInvalid = true;
         results[block.name] = { ok: false, error: msg };
         failed += 1;
       }
@@ -155,6 +182,10 @@ export async function POST(request: NextRequest) {
       ok: failed === 0,
       summary: { total: blocks.length, ok, failed },
       results,
+      keySource,
+      ...(sawAuthInvalid
+        ? { hint: `${ADMIN_KEY_HINT} (clave usada: ${keySource})`, code: 'INSFORGE_AUTH_INVALID' }
+        : {}),
     });
   } catch (err) {
     return NextResponse.json(

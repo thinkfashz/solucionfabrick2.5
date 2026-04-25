@@ -54,6 +54,8 @@ type SetupTablesResponse = {
   error?: string;
   code?: string;
   missing?: string[];
+  hint?: string;
+  keySource?: 'admin' | 'anon';
 };
 
 type ConnectionState = 'unknown' | 'ok' | 'unauthenticated' | 'error';
@@ -387,6 +389,12 @@ export default function AdminSetupPage() {
                         : 'Algunos bloques fallaron'}
                   </span>
                 </div>
+                {createReport.hint && (
+                  <div className="mb-2 rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-200">
+                    <div className="font-semibold mb-1">Acción requerida</div>
+                    <p className="break-words leading-relaxed">{createReport.hint}</p>
+                  </div>
+                )}
                 {createReport.results && (
                   <ul className="divide-y divide-white/5 text-xs">
                     {Object.entries(createReport.results).map(([name, r]) => (

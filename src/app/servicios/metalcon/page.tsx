@@ -2,6 +2,12 @@ import type { Metadata } from 'next';
 import { Home } from 'lucide-react';
 import ServicePage, { type ServicePageContent } from '@/components/ServicePage';
 
+// `ServicePage` emits inline JSON-LD <script> tags carrying a per-request CSP
+// nonce. Force dynamic rendering so the runtime nonce from `middleware.ts`
+// matches the rendered nonce; otherwise CSP blocks the inline scripts and
+// breaks hydration on first navigation (black screen until reload).
+export const dynamic = 'force-dynamic';
+
 const content: ServicePageContent = {
   slug: 'metalcon',
   eyebrow: 'Metalcon',

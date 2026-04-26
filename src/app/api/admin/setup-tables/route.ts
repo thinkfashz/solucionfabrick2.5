@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { readFileSync } from 'fs';
 import { join } from 'path';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import { parseSqlBlocks } from '@/lib/sqlBlocks';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -17,8 +18,12 @@ export const runtime = 'nodejs';
  * continuar aunque uno falle.
  *
  * Seguridad: requiere sesión de administrador (cookie `admin_session`).
- * Requiere las variables de entorno `NEXT_PUBLIC_INSFORGE_URL` y
- * `INSFORGE_API_KEY` en el servidor.
+ *
+ * Configuración: usa `NEXT_PUBLIC_INSFORGE_URL` y, en orden de preferencia,
+ * `INSFORGE_API_KEY` (admin) → `NEXT_PUBLIC_INSFORGE_ANON_KEY` (anon). InsForge
+ * acepta la anon key contra el endpoint `/unrestricted` y la usamos como
+ * fallback para que el botón "Crear tablas" funcione sin requerir una clave
+ * admin extra (mismo comportamiento que `/api/admin/sql`).
  */
 
 type StepResult = { ok: boolean; error?: string };
@@ -36,40 +41,6 @@ const EXPECTED_TABLES = [
   'admin_users',
   'banners',
 ] as const;
-
-function parseSqlBlocks(sql: string): Array<{ name: string; query: string }> {
-  const blocks: Array<{ name: string; query: string }> = [];
-  const lines = sql.split(/\r?\n/);
-  let current: { name: string; buf: string[] } | null = null;
-
-  const flush = () => {
-    if (current) {
-      const query = current.buf.join('\n').trim();
-      if (query.length > 0) {
-        blocks.push({ name: current.name, query });
-      }
-    }
-  };
-
-  for (const line of lines) {
-    const headerMatch = line.match(/^--\s*(TABLA|SEED):\s*(.+?)\s*$/i);
-    if (headerMatch) {
-      flush();
-      const kind = headerMatch[1].toLowerCase();
-      const label = headerMatch[2].trim();
-      // Normalise the block name: for "TABLA: posts (blog)" -> "posts".
-      const name =
-        kind === 'tabla'
-          ? label.replace(/\s*\(.*\)\s*$/, '').trim()
-          : `seed:${label.replace(/\s*\(.*\)\s*$/, '').trim()}`;
-      current = { name, buf: [] };
-      continue;
-    }
-    if (current) current.buf.push(line);
-  }
-  flush();
-  return blocks;
-}
 
 async function runRawSql(
   baseUrl: string,
@@ -93,15 +64,34 @@ async function runRawSql(
   });
   if (!res.ok) {
     let detail = '';
+    let upstreamCode = '';
     try {
       const text = await res.text();
       detail = text ? ` — ${text}` : '';
+      try {
+        const parsed = JSON.parse(text) as { error?: unknown };
+        if (typeof parsed?.error === 'string') upstreamCode = parsed.error;
+      } catch {
+        /* keep raw text */
+      }
     } catch {
       /* ignore */
     }
-    throw new Error(`HTTP ${res.status} ${res.statusText}${detail}`);
+    const err = new Error(`HTTP ${res.status} ${res.statusText}${detail}`) as Error & {
+      upstreamCode?: string;
+      status?: number;
+    };
+    err.upstreamCode = upstreamCode;
+    err.status = res.status;
+    throw err;
   }
 }
+
+const ADMIN_KEY_HINT =
+  'InsForge rechazó la API key. El endpoint /rawsql/unrestricted requiere la ' +
+  'clave de servicio (admin). Configura la variable de entorno INSFORGE_API_KEY ' +
+  'en Vercel con la admin key del proyecto (la anon key no funciona para SQL crudo) ' +
+  'y vuelve a desplegar.';
 
 export async function POST(request: NextRequest) {
   try {
@@ -116,11 +106,18 @@ export async function POST(request: NextRequest) {
     }
 
     const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
-    const apiKey = process.env.INSFORGE_API_KEY;
+    // Mirror the fallback chain used by `/api/admin/sql` so the button works
+    // for projects that only have the public anon key configured.
+    const hasAdminKey = Boolean(process.env.INSFORGE_API_KEY);
+    const apiKey =
+      process.env.INSFORGE_API_KEY ||
+      process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
+    const keySource: 'admin' | 'anon' = hasAdminKey ? 'admin' : 'anon';
+
     if (!baseUrl || !apiKey) {
       const missing: string[] = [];
       if (!baseUrl) missing.push('NEXT_PUBLIC_INSFORGE_URL');
-      if (!apiKey) missing.push('INSFORGE_API_KEY');
+      if (!apiKey) missing.push('INSFORGE_API_KEY o NEXT_PUBLIC_INSFORGE_ANON_KEY');
       return NextResponse.json(
         {
           error: 'Configuración de InsForge incompleta.',
@@ -153,6 +150,7 @@ export async function POST(request: NextRequest) {
     const results: Record<string, StepResult> = {};
     let ok = 0;
     let failed = 0;
+    let sawAuthInvalid = false;
 
     for (const block of blocks) {
       try {
@@ -161,6 +159,11 @@ export async function POST(request: NextRequest) {
         ok += 1;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
+        const code =
+          err && typeof err === 'object' && 'upstreamCode' in err
+            ? String((err as { upstreamCode?: unknown }).upstreamCode || '')
+            : '';
+        if (code === 'AUTH_INVALID_API_KEY') sawAuthInvalid = true;
         results[block.name] = { ok: false, error: msg };
         failed += 1;
       }
@@ -179,6 +182,10 @@ export async function POST(request: NextRequest) {
       ok: failed === 0,
       summary: { total: blocks.length, ok, failed },
       results,
+      keySource,
+      ...(sawAuthInvalid
+        ? { hint: `${ADMIN_KEY_HINT} (clave usada: ${keySource})`, code: 'INSFORGE_AUTH_INVALID' }
+        : {}),
     });
   } catch (err) {
     return NextResponse.json(

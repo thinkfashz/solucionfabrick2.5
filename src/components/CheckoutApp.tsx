@@ -145,6 +145,14 @@ const CheckoutApp = () => {
   const [isProcessing, setIsProcessing] = useState(false);
   const [processProgress, setProcessProgress] = useState(0);
   const [isSuccess, setIsSuccess] = useState(false);
+  // Real outcome from Mercado Pago (only set after the server-side charge call):
+  //   'idle'      → no payment attempt yet (initial state)
+  //   'pending'   → MP returned pending/in_process/authorized
+  //   'rejected'  → MP rejected the charge or our server failed
+  // Success is represented by `isSuccess` to keep backwards compatibility with
+  // existing UI; rejection/pending are shown as overlay variants.
+  const [paymentOutcome, setPaymentOutcome] = useState<'idle' | 'pending' | 'rejected'>('idle');
+  const [paymentRejectionMessage, setPaymentRejectionMessage] = useState('');
 
   const [shippingName, setShippingName] = useState('');
   const [shippingEmail, setShippingEmail] = useState('');
@@ -319,11 +327,17 @@ const CheckoutApp = () => {
     }
 
     const normalized = returnedPaymentStatus.toLowerCase();
-    setIsProcessing(false);
+    // The processing overlay (`{isProcessing && ...}`) is what hosts the
+    // success / pending / rejection panels, so we keep it open here. Note this
+    // also fixes a latent pre-existing bug where the success screen returned
+    // from MP back-redirects was never visible because the overlay was closed
+    // first.
+    setIsProcessing(true);
 
     if (['success', 'approved'].includes(normalized)) {
       setCheckoutError('');
       setProcessProgress(100);
+      setPaymentOutcome('idle');
       setIsSuccess(true);
       return;
     }
@@ -332,12 +346,18 @@ const CheckoutApp = () => {
     setProcessProgress(0);
     setStep(3);
 
-    if (['pending', 'in_process', 'in_mediation'].includes(normalized)) {
-      setCheckoutError('Mercado Pago indicó que el pago quedó pendiente. Te avisaremos cuando sea confirmado.');
+    if (['pending', 'in_process', 'in_mediation', 'authorized'].includes(normalized)) {
+      setPaymentOutcome('pending');
+      setPaymentRejectionMessage(
+        'Mercado Pago indicó que el pago quedó pendiente. Te avisaremos por email cuando se acredite.',
+      );
       return;
     }
 
-    setCheckoutError('Mercado Pago no aprobó el pago. Puedes intentarlo nuevamente.');
+    setPaymentOutcome('rejected');
+    setPaymentRejectionMessage(
+      'Mercado Pago no aprobó el pago. Puedes intentarlo nuevamente con otra tarjeta o usar transferencia bancaria.',
+    );
   }, [returnedOrderId, returnedPaymentStatus]);
 
   useEffect(() => {
@@ -464,6 +484,8 @@ const CheckoutApp = () => {
     if (isProcessing) return;
 
     setCheckoutError('');
+    setPaymentOutcome('idle');
+    setPaymentRejectionMessage('');
 
     if (!shippingName || !shippingEmail || !shippingAddress || !shippingRegion) {
       setCheckoutError('Completa los datos de despacho y contacto antes de confirmar.');
@@ -475,17 +497,20 @@ const CheckoutApp = () => {
       return;
     }
 
+    const mpPublicKey = (process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || '').trim();
+    if (!mpPublicKey || mpPublicKey === 'TEST-PUBLIC-KEY') {
+      setCheckoutError(
+        'La pasarela de pago con tarjeta no está configurada en este sitio. Por favor usa transferencia bancaria.',
+      );
+      return;
+    }
+
     setIsProcessing(true);
     setProcessProgress(0);
 
     // --- MercadoPago tokenization ---
     let mpToken: string | null = null;
-    const mpPublicKey = process.env.NEXT_PUBLIC_MP_PUBLIC_KEY;
-    const isTestMode = !mpPublicKey || mpPublicKey === 'TEST-PUBLIC-KEY';
-
     try {
-      const resolvedKey = mpPublicKey || 'TEST-PUBLIC-KEY';
-
       // Load MercadoPago SDK if not already present
       await new Promise<void>((resolve, reject) => {
         const handleReady = () => {
@@ -527,7 +552,7 @@ const CheckoutApp = () => {
       const expYearRaw = expiryParts[1].trim();
       const expYear = expYearRaw.length === 2 ? `20${expYearRaw}` : expYearRaw;
 
-      const mp = new window.MercadoPago(resolvedKey);
+      const mp = new window.MercadoPago(mpPublicKey);
       const rawCardNumber = cardNumber.replace(/\s/g, '');
 
       const tokenResult = await mp.createCardToken({
@@ -542,15 +567,19 @@ const CheckoutApp = () => {
 
       mpToken = tokenResult.id;
     } catch (tokenErr) {
-      if (!isTestMode) {
-        // In production with a real key, tokenization failure should block checkout
-        setCheckoutError('No se pudo procesar la tarjeta. Verifica los datos e intenta nuevamente.');
-        setIsProcessing(false);
-        setProcessProgress(0);
-        return;
-      }
-      // In test/sandbox mode, skip tokenization and proceed
-      console.warn('MP tokenization skipped (test mode):', tokenErr instanceof Error ? tokenErr.message : tokenErr);
+      // Tokenization failure is the FIRST signal that the card data is bad —
+      // surface it as a rejection so the user can retry. We never silently
+      // proceed without a token: that's how fake "successes" used to happen.
+      setIsProcessing(true);
+      setIsSuccess(false);
+      setPaymentOutcome('rejected');
+      setPaymentRejectionMessage(
+        tokenErr instanceof Error
+          ? `No pudimos validar la tarjeta: ${tokenErr.message}. Revisa los datos e intenta nuevamente.`
+          : 'No pudimos validar la tarjeta. Revisa los datos e intenta nuevamente.',
+      );
+      setProcessProgress(0);
+      return;
     }
     // --- end tokenization ---
 
@@ -587,7 +616,7 @@ const CheckoutApp = () => {
         throw new Error(firstError);
       }
 
-      prog = 45;
+      prog = 35;
       setProcessProgress(prog);
 
       const checkoutRes = await fetch('/api/checkout', {
@@ -602,88 +631,79 @@ const CheckoutApp = () => {
       }
 
       const createdOrderId = checkoutBody.data.id as string;
-      const checkoutUrl = checkoutBody?.payment?.checkoutUrl as string | null;
       setOrderId(createdOrderId);
 
-      if (!checkoutUrl) {
-        throw new Error('No se pudo iniciar Mercado Pago para esta orden.');
-      }
+      prog = 70;
+      setProcessProgress(prog);
+
+      // --- MercadoPago charge: this is the AUTHORITATIVE step ---------------
+      const rawNum = cardNumber.replace(/\s/g, '');
+      const detectedMethod = rawNum.startsWith('4')
+        ? 'visa'
+        : /^5[1-5]/.test(rawNum)
+          ? 'master'
+          : /^3[47]/.test(rawNum)
+            ? 'amex'
+            : 'visa';
+
+      const mpRes = await fetch('/api/payments/mercadopago', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          token: mpToken,
+          amount: cartTotal,
+          description: cartItems.length === 1
+            ? product.name
+            : `Pedido Fabrick (${cartItemCount} productos)`,
+          email: shippingEmail,
+          installments: 1,
+          payment_method_id: detectedMethod,
+          externalReference: createdOrderId,
+        }),
+      });
+
+      const mpBody = await mpRes.json().catch(() => ({} as Record<string, unknown>));
+      const mpStatus = (mpBody as { status?: string })?.status;
+      const mpMessage =
+        (mpBody as { message?: string })?.message ??
+        (mpBody as { error?: string })?.error ??
+        '';
 
       prog = 100;
       setProcessProgress(prog);
 
-      // --- MercadoPago payment ---
-      if (mpToken) {
-        const rawNum = cardNumber.replace(/\s/g, '');
-        const detectedMethod = rawNum.startsWith('4')
-          ? 'visa'
-          : /^5[1-5]/.test(rawNum)
-          ? 'master'
-          : /^3[47]/.test(rawNum)
-          ? 'amex'
-          : 'visa';
-
-        try {
-          const mpRes = await fetch('/api/payments/mercadopago', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              token: mpToken,
-              amount: cartTotal,
-              description: cartItems.length === 1
-                ? product.name
-                : `Pedido Fabrick (${cartItemCount} productos)`,
-              email: shippingEmail,
-              installments: 1,
-              payment_method_id: detectedMethod,
-            }),
-          });
-          const mpBody = await mpRes.json();
-          if (!mpRes.ok && mpRes.status === 422) {
-            throw new Error(mpBody?.error || 'Pago rechazado por MercadoPago.');
-          }
-        } catch (mpErr) {
-          // Log but don't block—order was already created
-          console.warn('MP payment note:', mpErr instanceof Error ? mpErr.message : mpErr);
-        }
+      if (mpRes.ok && mpStatus === 'approved') {
+        setTimeout(() => setIsSuccess(true), 600);
+        return;
       }
-      // --- end MP payment ---
 
-      await fetch('/api/payments/webhook', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-idempotency-key': `sim-${createdOrderId}`,
-        },
-        body: JSON.stringify({
-          eventType: 'payment.succeeded',
-          orderId: createdOrderId,
-          paymentId: `SIM-${Date.now()}`,
-          status: 'succeeded',
-          amount: checkoutBody.data?.resumen?.total ?? cartTotal,
-          currency: 'CLP',
-        }),
-      });
+      if (mpRes.status === 202 || mpStatus === 'pending' || mpStatus === 'in_process' || mpStatus === 'authorized') {
+        setIsSuccess(false);
+        setPaymentOutcome('pending');
+        setPaymentRejectionMessage(
+          mpMessage || 'Mercado Pago dejó tu pago en revisión. Te avisaremos por email cuando se acredite.',
+        );
+        return;
+      }
 
-      setProcessProgress(100);
-      setTimeout(() => {
-        setIsSuccess(true);
-      }, 600);
+      // Anything else → real rejection.
+      setIsSuccess(false);
+      setPaymentOutcome('rejected');
+      setPaymentRejectionMessage(
+        mpMessage ||
+          'Mercado Pago no aprobó el pago. Puedes intentar con otra tarjeta o usar transferencia bancaria.',
+      );
+      return;
+      // --- end MP charge ---------------------------------------------------
     } catch (e) {
-      setCheckoutError(e instanceof Error ? e.message : 'Error procesando checkout.');
-      setIsProcessing(false);
+      setIsSuccess(false);
+      setPaymentOutcome('rejected');
+      setPaymentRejectionMessage(
+        e instanceof Error ? e.message : 'Error procesando checkout.',
+      );
       setProcessProgress(0);
       return;
     }
-
-    let cleanupProg = 100;
-    const interval = setInterval(() => {
-      cleanupProg += 0;
-      if (cleanupProg >= 100) {
-        setProcessProgress(100);
-        clearInterval(interval);
-      }
-    }, 300);
   };
 
   // ── Bank Transfer: create order then show bank details ───────────────────
@@ -848,11 +868,105 @@ const CheckoutApp = () => {
         `}
       </style>
 
-      {/* OVERLAY DE PROCESAMIENTO / ÉXITO */}
+      {/* OVERLAY DE PROCESAMIENTO / ÉXITO / RECHAZO / PENDIENTE */}
       {isProcessing && (
-        <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-6 animate-in fade-in duration-500">
+        <div className="fixed inset-0 z-[200] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-6 animate-in fade-in duration-500 overflow-y-auto">
           
-          {!isSuccess ? (
+          {paymentOutcome === 'rejected' ? (
+            /* ── REJECTION PANEL ───────────────────────────────────────── */
+            <div className="w-full max-w-md flex flex-col items-center text-center animate-fade-up py-8">
+              <div className="relative mb-8 mt-4">
+                <div className="absolute inset-0 rounded-full border border-red-500/40 animate-[pulse-ring_2s_cubic-bezier(0.2,0,0.2,1)_infinite]" />
+                <div className="w-16 h-16 bg-red-500/10 border border-red-500/50 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.25)]">
+                  <svg viewBox="0 0 24 24" className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                    <line x1="18" y1="6" x2="6" y2="18" />
+                    <line x1="6" y1="6" x2="18" y2="18" />
+                  </svg>
+                </div>
+              </div>
+
+              <span className="text-red-400 font-bold tracking-[0.5em] text-[9px] uppercase">Pago Rechazado</span>
+              <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter leading-none mt-3 mb-4">
+                Tarjeta <span className="text-red-400">no aprobada</span>
+              </h2>
+
+              <p className="text-zinc-300 text-sm leading-relaxed max-w-sm mx-auto mb-2 px-2">
+                {paymentRejectionMessage || 'Mercado Pago no aprobó el pago. No se realizó ningún cobro a tu tarjeta.'}
+              </p>
+              {orderId && (
+                <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 mb-6">
+                  Orden: <span className="text-zinc-300 font-mono">{orderId}</span> · sin cobro
+                </p>
+              )}
+
+              <div className="flex flex-col sm:flex-row gap-3 w-full mt-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProcessing(false);
+                    setPaymentOutcome('idle');
+                    setPaymentRejectionMessage('');
+                    setProcessProgress(0);
+                    setMpSubStep(1);
+                    setCardNumber('');
+                    setCardCVC('');
+                    setStep(3);
+                  }}
+                  className="flex-1 py-4 bg-yellow-400 text-black font-black uppercase text-[10px] tracking-[0.3em] rounded-full hover:bg-white transition-all shadow-[0_10px_30px_rgba(250,204,21,0.25)]"
+                >
+                  Intentar otra tarjeta
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsProcessing(false);
+                    setPaymentOutcome('idle');
+                    setPaymentRejectionMessage('');
+                    setProcessProgress(0);
+                    setPaymentMethod('transfer');
+                    setTransferOrderReady(false);
+                    setTransferOrderId('');
+                    setStep(3);
+                  }}
+                  className="flex-1 py-4 border border-white/20 rounded-full text-white font-bold uppercase text-[10px] tracking-[0.3em] hover:border-yellow-400 hover:text-yellow-400 transition-colors"
+                >
+                  Pagar por transferencia
+                </button>
+              </div>
+            </div>
+          ) : paymentOutcome === 'pending' ? (
+            /* ── PENDING PANEL ─────────────────────────────────────────── */
+            <div className="w-full max-w-md flex flex-col items-center text-center animate-fade-up py-8">
+              <div className="relative mb-8 mt-4">
+                <div className="absolute inset-0 rounded-full border border-yellow-400/40 animate-[pulse-ring_2s_cubic-bezier(0.2,0,0.2,1)_infinite]" />
+                <div className="w-16 h-16 bg-yellow-400/10 border border-yellow-400/50 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(250,204,21,0.25)]">
+                  <RefreshCw className="w-7 h-7 text-yellow-400" strokeWidth={2.2} />
+                </div>
+              </div>
+
+              <span className="text-yellow-400 font-bold tracking-[0.5em] text-[9px] uppercase">Pago en revisión</span>
+              <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter leading-none mt-3 mb-4">
+                Pago <span className="text-yellow-400">pendiente</span>
+              </h2>
+
+              <p className="text-zinc-300 text-sm leading-relaxed max-w-sm mx-auto mb-2 px-2">
+                {paymentRejectionMessage || 'Mercado Pago dejó tu pago en revisión. Te avisaremos por email cuando se acredite.'}
+              </p>
+              {orderId && (
+                <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 mb-6">
+                  Orden: <span className="text-zinc-300 font-mono">{orderId}</span>
+                </p>
+              )}
+
+              <button
+                type="button"
+                onClick={() => window.location.assign('/')}
+                className="mt-4 px-10 py-4 bg-white text-black font-black uppercase text-[10px] tracking-[0.3em] rounded-full hover:bg-yellow-400 transition-all"
+              >
+                Volver al inicio
+              </button>
+            </div>
+          ) : !isSuccess ? (
             <div className="w-full max-w-md flex flex-col items-center text-center animate-fade-up">
                {/* Orbital / planet visualization */}
                <div className="relative w-[280px] h-[280px] sm:w-[340px] sm:h-[340px] mb-10">
@@ -1030,13 +1144,13 @@ const CheckoutApp = () => {
       </nav>
 
       {/* CONTENEDOR PRINCIPAL */}
-      <div className="pt-32 px-6 md:px-12 max-w-7xl mx-auto grid lg:grid-cols-12 gap-12 lg:gap-20">
+      <div className="pt-28 sm:pt-32 px-4 sm:px-6 md:px-12 max-w-7xl mx-auto grid lg:grid-cols-12 gap-8 sm:gap-12 lg:gap-20">
         
         {/* COLUMNA IZQUIERDA: RESUMEN DEL PRODUCTO */}
         <div className="lg:col-span-5 animate-fade-up relative">
           <div className="sticky top-32 space-y-8">
             
-            <div className="bg-zinc-950 p-8 rounded-[3rem] border border-white/5 shadow-2xl relative overflow-hidden group">
+            <div className="bg-zinc-950 p-5 sm:p-8 rounded-[2rem] sm:rounded-[3rem] border border-white/5 shadow-2xl relative overflow-hidden group">
               <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 bg-yellow-400/10 blur-[60px] rounded-full pointer-events-none group-hover:bg-yellow-400/20 transition-all duration-700" />
               
               <div className="product-float relative z-10 mb-8">
@@ -1137,7 +1251,7 @@ const CheckoutApp = () => {
         <div className="lg:col-span-7 animate-fade-up">
           
           {/* Barra de Progreso Superior */}
-          <div className="flex items-center justify-between mb-12 relative">
+          <div className="flex items-center justify-between mb-8 sm:mb-12 relative px-2 sm:px-0">
             <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-[2px] bg-zinc-900 rounded-full -z-10" />
             
             <div className="flex flex-col items-center gap-2">
@@ -1162,7 +1276,7 @@ const CheckoutApp = () => {
             </div>
           </div>
 
-          <div ref={stepContentRef} className="bg-zinc-950 p-8 md:p-12 rounded-[3rem] border border-white/5 shadow-2xl">
+          <div ref={stepContentRef} className="bg-zinc-950 p-5 sm:p-8 md:p-12 rounded-[2rem] sm:rounded-[3rem] border border-white/5 shadow-2xl">
             
             {step === 1 && (
               <div className="space-y-8">
@@ -1425,7 +1539,7 @@ const CheckoutApp = () => {
 
                 {/* MERCADO PAGO PANEL — Inline paginated card form + 3D flip preview */}
                 {paymentMethod === 'mercadopago' && (
-                  <div className="bg-gradient-to-br from-zinc-900 to-black border border-white/10 rounded-[2rem] p-6 md:p-8 space-y-6">
+                  <div className="bg-gradient-to-br from-zinc-900 to-black border border-white/10 rounded-[1.75rem] sm:rounded-[2rem] p-4 sm:p-6 md:p-8 space-y-5 sm:space-y-6">
                     {/* Header with MP logo */}
                     <div className="flex items-center justify-between gap-4">
                       <div className="flex items-center gap-3">

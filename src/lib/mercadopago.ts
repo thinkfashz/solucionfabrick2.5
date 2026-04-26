@@ -42,6 +42,148 @@ export function getMercadoPagoAccessToken() {
   ).trim();
 }
 
+/**
+ * Resolve the Mercado Pago **public** key. The client-side card tokenizer
+ * (`new window.MercadoPago(publicKey).createCardToken(...)`) needs this value;
+ * it's safe to expose to the browser (that's why MP calls it "public"). To
+ * avoid the very common foot-gun of naming the env var slightly wrong on
+ * Vercel, we accept the most common spellings — both the `NEXT_PUBLIC_*`
+ * variants (inlined into the JS bundle at build time) and the server-only
+ * variants (read at request time and surfaced to the browser via
+ * `/api/payments/mp-status`).
+ */
+export function getMercadoPagoPublicKey() {
+  return (
+    process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ||
+    process.env.NEXT_PUBLIC_MERCADO_PAGO_PUBLIC_KEY ||
+    process.env.NEXT_PUBLIC_MERCADOPAGO_PUBLIC_KEY ||
+    process.env.MP_PUBLIC_KEY ||
+    process.env.MERCADO_PAGO_PUBLIC_KEY ||
+    process.env.MERCADOPAGO_PUBLIC_KEY ||
+    ''
+  ).trim();
+}
+
+export type MercadoPagoConnectionStatus =
+  | 'ok'
+  | 'unconfigured'
+  | 'unreachable'
+  | 'invalid_token';
+
+export interface MercadoPagoStatusResult {
+  status: MercadoPagoConnectionStatus;
+  publicKey: string;
+  hasAccessToken: boolean;
+  reachable: boolean;
+  latencyMs: number | null;
+  message: string;
+}
+
+/**
+ * Probe the Mercado Pago gateway and return a sanitized status object suitable
+ * for the public `/api/payments/mp-status` endpoint.
+ *
+ * The probe issues a lightweight authenticated GET against a stable endpoint
+ * (`/v1/payment_methods?site_id=MLC`) — it requires a valid access token, is
+ * idempotent, costs nothing, and is the documented health-check path used in
+ * the official examples. We deliberately do not call `/users/me` because that
+ * leaks merchant identity into application logs.
+ */
+export async function probeMercadoPago(
+  options: { timeoutMs?: number; fetchImpl?: typeof fetch } = {},
+): Promise<MercadoPagoStatusResult> {
+  const publicKey = getMercadoPagoPublicKey();
+  const accessToken = getMercadoPagoAccessToken();
+  const hasAccessToken = accessToken.length > 0;
+
+  if (!publicKey && !hasAccessToken) {
+    return {
+      status: 'unconfigured',
+      publicKey: '',
+      hasAccessToken: false,
+      reachable: false,
+      latencyMs: null,
+      message:
+        'Pasarela no configurada: define MERCADO_PAGO_ACCESS_TOKEN y MP_PUBLIC_KEY (o sus variantes NEXT_PUBLIC_*) en el entorno.',
+    };
+  }
+
+  if (!hasAccessToken) {
+    return {
+      status: 'unconfigured',
+      publicKey,
+      hasAccessToken: false,
+      reachable: false,
+      latencyMs: null,
+      message:
+        'Falta MERCADO_PAGO_ACCESS_TOKEN: la tokenización funcionará pero no se puede cobrar desde el servidor.',
+    };
+  }
+
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const timeoutMs = options.timeoutMs ?? 6000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  const startedAt = Date.now();
+
+  try {
+    const response = await fetchImpl(`${API_BASE}/v1/payment_methods?site_id=MLC`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${accessToken}` },
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+    const latencyMs = Date.now() - startedAt;
+
+    if (response.status === 401 || response.status === 403) {
+      return {
+        status: 'invalid_token',
+        publicKey,
+        hasAccessToken: true,
+        reachable: true,
+        latencyMs,
+        message:
+          'Mercado Pago rechazó el access token. Genera uno nuevo en el panel de Mercado Pago y actualízalo en Vercel.',
+      };
+    }
+
+    if (!response.ok) {
+      return {
+        status: 'unreachable',
+        publicKey,
+        hasAccessToken: true,
+        reachable: false,
+        latencyMs,
+        message: `Mercado Pago respondió con estado ${response.status}.`,
+      };
+    }
+
+    return {
+      status: 'ok',
+      publicKey,
+      hasAccessToken: true,
+      reachable: true,
+      latencyMs,
+      message: 'Conexión activa con Mercado Pago.',
+    };
+  } catch (err) {
+    const latencyMs = Date.now() - startedAt;
+    const aborted = err instanceof Error && err.name === 'AbortError';
+    return {
+      status: 'unreachable',
+      publicKey,
+      hasAccessToken: true,
+      reachable: false,
+      latencyMs,
+      message: aborted
+        ? `Mercado Pago no respondió en ${timeoutMs} ms.`
+        : 'No se pudo contactar con api.mercadopago.com.',
+    };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export function getMercadoPagoWebhookSecret() {
   return (
     process.env.MERCADO_PAGO_WEBHOOK_SECRET ||

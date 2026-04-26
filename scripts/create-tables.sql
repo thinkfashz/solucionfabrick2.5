@@ -107,6 +107,24 @@ CREATE TABLE IF NOT EXISTS public.projects (
   created_at timestamptz DEFAULT now()
 );
 
+-- TABLA: projects-migrate
+-- Idempotent column backfill for environments where `projects` already
+-- existed with an older schema (pre `metros_cuadrados`, `imagenes`,
+-- `cliente`, ...). `CREATE TABLE IF NOT EXISTS` is a no-op on existing
+-- tables, so without these `ALTER`s the seed `INSERT` below fails with
+-- `column "metros_cuadrados" of relation "projects" does not exist`.
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS titulo text;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS descripcion text;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS categoria text;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS ubicacion text;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS metros_cuadrados numeric(8,2);
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS imagen_url text;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS imagenes jsonb DEFAULT '[]';
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS destacado boolean DEFAULT false;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS anio integer DEFAULT EXTRACT(YEAR FROM now());
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS cliente text;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
 -- TABLA: cupones
 CREATE TABLE IF NOT EXISTS public.cupones (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

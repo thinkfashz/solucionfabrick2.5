@@ -1,5 +1,24 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+
+// Force per-request rendering for every route in the app.
+//
+// Why: `src/middleware.ts` emits a strict, nonce-based Content-Security-Policy
+// on every HTML response (see `src/lib/csp.ts`). Next.js 15 injects inline
+// `<script>self.__next_f.push(...)</script>` tags into every server-rendered
+// page to stream the React Server Component payload. Those inline scripts must
+// carry the same nonce as the CSP header — otherwise the browser blocks them,
+// React never hydrates, and users see a black screen until they happen to land
+// on a fresh dynamic render.
+//
+// On a *statically prerendered* route, the nonce is baked into the HTML at
+// build time and can never match the per-request nonce that middleware emits.
+// Setting `dynamic = 'force-dynamic'` at the root layout cascades to every
+// nested segment, ensuring Next.js renders each request server-side and stamps
+// the inline scripts with the runtime nonce. This is the canonical Next.js
+// pattern paired with strict nonce CSP. See the README of @next/csp examples
+// and the middleware source in this repo for the full rationale.
+export const dynamic = 'force-dynamic';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
 import SmoothScrollProvider from '@/components/SmoothScrollProvider';
 import PromoBanner from '@/components/PromoBanner';

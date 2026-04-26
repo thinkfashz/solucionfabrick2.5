@@ -1,5 +1,14 @@
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import InstallAppPrompt from '@/components/InstallAppPrompt';
+import SmoothScrollProvider from '@/components/SmoothScrollProvider';
+import PromoBanner from '@/components/PromoBanner';
+import { ThemeProvider } from '@/context/ThemeContext';
+import { AuthProvider } from '@/context/AuthContext';
+import { CartProvider } from '@/context/CartContext';
+import WhatsAppButton from '@/components/WhatsAppButton';
+import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
+import Analytics from '@/components/Analytics';
 
 // Force per-request rendering for every route in the app.
 //
@@ -19,15 +28,6 @@ import './globals.css';
 // pattern paired with strict nonce CSP. See the README of @next/csp examples
 // and the middleware source in this repo for the full rationale.
 export const dynamic = 'force-dynamic';
-import InstallAppPrompt from '@/components/InstallAppPrompt';
-import SmoothScrollProvider from '@/components/SmoothScrollProvider';
-import PromoBanner from '@/components/PromoBanner';
-import { ThemeProvider } from '@/context/ThemeContext';
-import { AuthProvider } from '@/context/AuthContext';
-import { CartProvider } from '@/context/CartContext';
-import WhatsAppButton from '@/components/WhatsAppButton';
-import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
-import Analytics from '@/components/Analytics';
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.solucionesfabrick.com'),

@@ -2,6 +2,11 @@ import type { Metadata } from 'next';
 import { Zap } from 'lucide-react';
 import ServicePage, { type ServicePageContent } from '@/components/ServicePage';
 
+// See src/app/servicios/metalcon/page.tsx for the full rationale: ServicePage
+// renders inline nonce'd <script> tags so this route must be dynamic for the
+// CSP nonce from middleware.ts to match at runtime.
+export const dynamic = 'force-dynamic';
+
 const content: ServicePageContent = {
   slug: 'electricidad',
   eyebrow: 'Electricidad',

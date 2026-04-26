@@ -1218,10 +1218,10 @@ const CheckoutApp = () => {
 
                 {/* MERCADO PAGO PANEL — Inline paginated card form + 3D flip preview */}
                 {paymentMethod === 'mercadopago' && (
-                  <div className="rounded-[2rem] border border-white/10 bg-gradient-to-b from-zinc-900 to-black overflow-hidden">
+                  <div className="rounded-[2rem] border border-white/10 bg-zinc-900/80 space-y-0">
 
                     {/* ── Header ── */}
-                    <div className="flex items-center justify-between gap-3 px-6 pt-6 pb-4 border-b border-white/5">
+                    <div className="flex items-center justify-between gap-3 px-6 pt-6 pb-5 border-b border-white/5">
                       <div className="flex items-center gap-3">
                         <div className="flex items-center gap-2 rounded-xl bg-[#009EE3] px-3 py-1.5 shadow-[0_4px_14px_rgba(0,158,227,0.4)]">
                           <svg viewBox="0 0 48 32" className="h-4 w-auto" aria-label="Mercado Pago">
@@ -1242,112 +1242,115 @@ const CheckoutApp = () => {
                       </div>
                     </div>
 
-                    {/* ── 3D Card — centrada, full-width, proporción fija ── */}
-                    <div className="px-6 pt-6 pb-4">
-                      <div className="perspective-1000 w-full">
+                    {/* ── 3D Card preview ──
+                        El contenedor NO tiene overflow-hidden para que preserve-3d funcione.
+                        Padding lateral para que la tarjeta no toque los bordes del panel.
+                    ── */}
+                    <div className="px-6 pt-6 pb-5" style={{ perspective: '1000px' }}>
+                      <div
+                        className="relative w-full transition-transform duration-700"
+                        style={{
+                          aspectRatio: '1.586 / 1',
+                          transformStyle: 'preserve-3d',
+                          transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                        }}
+                      >
+                        {/* ── FRONT ── */}
                         <div
-                          className="relative w-full transform-style-3d transition-transform duration-700"
+                          className="absolute inset-0 rounded-2xl border border-yellow-400/20"
                           style={{
-                            aspectRatio: '1.586 / 1',
-                            transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                            backfaceVisibility: 'hidden',
+                            WebkitBackfaceVisibility: 'hidden',
+                            background: 'linear-gradient(135deg, #1e1e2e 0%, #12122a 45%, #0a0a18 100%)',
+                            boxShadow: '0 0 0 1px rgba(250,204,21,0.12), 0 24px 64px rgba(0,0,0,0.85)',
                           }}
                         >
-                          {/* ── FRONT ── */}
-                          <div className="absolute inset-0 backface-hidden rounded-2xl overflow-hidden border border-white/15 shadow-[0_24px_60px_rgba(0,0,0,0.7)] bg-[linear-gradient(135deg,#18181b_0%,#09090b_60%,#0a0a0a_100%)]">
-                            {/* gold glow top-left */}
-                            <div className="absolute inset-0 pointer-events-none"
-                              style={{ backgroundImage: 'radial-gradient(circle at 15% 15%, rgba(250,204,21,0.22), transparent 55%)' }} />
-                            {/* shimmer sweep */}
-                            <div className="absolute top-0 left-[-40%] w-[35%] h-full bg-white/[0.07] skew-x-[-18deg] pointer-events-none"
-                              style={{ animation: 'card-shine 5s ease-in-out infinite' }} />
-                            {/* subtle grid texture */}
-                            <div className="absolute inset-0 opacity-[0.04] pointer-events-none"
-                              style={{ backgroundImage: 'repeating-linear-gradient(0deg,#fff 0px,transparent 1px,transparent 28px,#fff 28px),repeating-linear-gradient(90deg,#fff 0px,transparent 1px,transparent 28px,#fff 28px)' }} />
+                          {/* gold top-left glow */}
+                          <div className="absolute inset-0 rounded-2xl" style={{ background: 'radial-gradient(circle at 18% 18%, rgba(250,204,21,0.28) 0%, transparent 55%)' }} />
+                          {/* shimmer */}
+                          <div className="absolute inset-0 rounded-2xl overflow-hidden pointer-events-none">
+                            <div className="absolute top-0 h-full w-[30%] bg-white/[0.06]"
+                              style={{ left: '-40%', transform: 'skewX(-18deg)', animation: 'card-shine 5s ease-in-out infinite' }} />
+                          </div>
 
-                            <div className="relative p-5 h-full flex flex-col justify-between">
-                              {/* top row */}
-                              <div className="flex items-start justify-between">
-                                <div>
-                                  <p className="text-[8px] uppercase tracking-[0.35em] text-white/40 leading-none">Soluciones Fabrick</p>
-                                  <p className="text-[7px] text-white/20 font-mono mt-0.5">via Mercado Pago</p>
-                                </div>
-                                <div className="h-6 flex items-center">
-                                  {cardBrand === 'visa' && (
-                                    <span className="text-white font-black italic text-lg tracking-tight drop-shadow-[0_2px_8px_rgba(0,0,0,0.8)]">VISA</span>
-                                  )}
-                                  {cardBrand === 'mastercard' && (
-                                    <div className="relative w-9 h-6">
-                                      <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[18px] h-[18px] rounded-full bg-[#EB001B]" />
-                                      <span className="absolute right-0 top-1/2 -translate-y-1/2 w-[18px] h-[18px] rounded-full bg-[#F79E1B] mix-blend-screen" />
-                                    </div>
-                                  )}
-                                  {cardBrand === 'amex' && (
-                                    <span className="bg-[#2E77BB] px-1.5 py-0.5 text-[9px] font-black italic text-white rounded">AMEX</span>
-                                  )}
-                                  {cardBrand === 'diners' && (
-                                    <span className="text-white/60 text-[9px] font-black italic">DINERS</span>
-                                  )}
-                                  {cardBrand === 'unknown' && (
-                                    <CreditCard className="w-5 h-5 text-white/20" />
-                                  )}
-                                </div>
+                          <div className="relative h-full p-5 flex flex-col justify-between">
+                            {/* top row */}
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <p className="text-[8px] uppercase tracking-[0.35em] text-white/50">Soluciones Fabrick</p>
+                                <p className="text-[7px] text-white/25 font-mono mt-0.5">via Mercado Pago</p>
                               </div>
+                              <div className="h-6 flex items-center">
+                                {cardBrand === 'visa' && <span className="text-white font-black italic text-xl">VISA</span>}
+                                {cardBrand === 'mastercard' && (
+                                  <div className="relative w-9 h-6">
+                                    <span className="absolute left-0 top-1/2 -translate-y-1/2 w-[18px] h-[18px] rounded-full bg-[#EB001B]" />
+                                    <span className="absolute right-0 top-1/2 -translate-y-1/2 w-[18px] h-[18px] rounded-full bg-[#F79E1B] mix-blend-screen" />
+                                  </div>
+                                )}
+                                {cardBrand === 'amex' && <span className="bg-[#2E77BB] px-1.5 py-0.5 text-[9px] font-black italic text-white rounded">AMEX</span>}
+                                {cardBrand === 'diners' && <span className="text-white/60 text-[9px] font-black italic">DINERS</span>}
+                                {cardBrand === 'unknown' && <CreditCard className="w-5 h-5 text-white/30" />}
+                              </div>
+                            </div>
 
-                              {/* chip */}
-                              <div className="w-10 h-7 rounded-md bg-[linear-gradient(135deg,#d4af37,#8b6914)] border border-yellow-200/30 shadow-inner" />
+                            {/* chip */}
+                            <div className="w-10 h-7 rounded-md border border-yellow-200/30" style={{ background: 'linear-gradient(135deg,#d4af37,#8b6914)' }} />
 
-                              {/* number */}
-                              <p className="font-mono text-white tracking-[0.2em] text-base drop-shadow-[0_2px_6px_rgba(0,0,0,0.6)]">
-                                {maskCardNumber(rawCardDigits)}
-                              </p>
+                            {/* number */}
+                            <p className="font-mono text-white/90 tracking-[0.22em] text-base">
+                              {maskCardNumber(rawCardDigits)}
+                            </p>
 
-                              {/* holder + expiry */}
-                              <div className="flex items-end justify-between gap-2">
-                                <div className="min-w-0 flex-1">
-                                  <p className="text-[7px] uppercase tracking-widest text-white/30 mb-0.5">Titular</p>
-                                  <p className="text-white text-[10px] font-semibold uppercase tracking-wider truncate">
-                                    {cardName || 'NOMBRE APELLIDO'}
-                                  </p>
-                                </div>
-                                <div className="flex-shrink-0 text-right">
-                                  <p className="text-[7px] uppercase tracking-widest text-white/30 mb-0.5">Vence</p>
-                                  <p className="text-white text-[10px] font-mono">{cardExpiry || 'MM/AA'}</p>
-                                </div>
+                            {/* holder + expiry */}
+                            <div className="flex items-end justify-between gap-2">
+                              <div className="min-w-0 flex-1">
+                                <p className="text-[7px] uppercase tracking-widest text-white/30 mb-0.5">Titular</p>
+                                <p className="text-white/80 text-[10px] font-semibold uppercase tracking-wider truncate">
+                                  {cardName || 'NOMBRE APELLIDO'}
+                                </p>
+                              </div>
+                              <div className="flex-shrink-0 text-right">
+                                <p className="text-[7px] uppercase tracking-widest text-white/30 mb-0.5">Vence</p>
+                                <p className="text-white/80 text-[10px] font-mono">{cardExpiry || 'MM/AA'}</p>
                               </div>
                             </div>
                           </div>
+                        </div>
 
-                          {/* ── BACK ── */}
-                          <div className="absolute inset-0 rotate-y-180 backface-hidden rounded-2xl overflow-hidden border border-white/15 shadow-[0_24px_60px_rgba(0,0,0,0.7)] bg-[linear-gradient(135deg,#18181b_0%,#09090b_60%,#0a0a0a_100%)]">
-                            <div className="absolute inset-0 pointer-events-none"
-                              style={{ backgroundImage: 'radial-gradient(circle at 85% 15%, rgba(250,204,21,0.12), transparent 55%)' }} />
-                            {/* magnetic stripe */}
-                            <div className="mt-7 h-9 w-full bg-black/80" />
-                            {/* CVC strip */}
-                            <div className="px-5 mt-4">
-                              <div className="h-9 rounded-lg bg-white/[0.06] border border-white/10 flex items-center justify-end px-4 gap-3">
-                                <div className="flex gap-0.5">
-                                  {Array.from({ length: 3 }).map((_, i) => (
-                                    <div key={i} className="w-1.5 h-1.5 rounded-full bg-white/20" />
-                                  ))}
-                                </div>
-                                <span className="text-white font-mono tracking-[0.3em] text-sm">{cardCVC || '•••'}</span>
-                              </div>
-                              <p className="mt-1.5 text-[8px] uppercase tracking-widest text-white/30 text-right">CVC / CVV</p>
+                        {/* ── BACK ── */}
+                        <div
+                          className="absolute inset-0 rounded-2xl border border-yellow-400/10"
+                          style={{
+                            backfaceVisibility: 'hidden',
+                            WebkitBackfaceVisibility: 'hidden',
+                            transform: 'rotateY(180deg)',
+                            background: 'linear-gradient(135deg, #1e1e2e 0%, #12122a 45%, #0a0a18 100%)',
+                            boxShadow: '0 0 0 1px rgba(250,204,21,0.08), 0 24px 64px rgba(0,0,0,0.85)',
+                          }}
+                        >
+                          <div className="absolute inset-0 rounded-2xl" style={{ background: 'radial-gradient(circle at 80% 20%, rgba(250,204,21,0.1) 0%, transparent 50%)' }} />
+                          {/* magnetic stripe */}
+                          <div className="mt-8 h-9 w-full bg-black/70" />
+                          {/* CVC strip */}
+                          <div className="px-5 mt-5">
+                            <div className="h-9 rounded-lg bg-white/5 border border-white/10 flex items-center justify-end px-4">
+                              <span className="text-white/80 font-mono tracking-[0.35em] text-sm">{cardCVC || '•••'}</span>
                             </div>
+                            <p className="mt-1.5 text-[8px] uppercase tracking-widest text-white/25 text-right">CVC / CVV</p>
                           </div>
                         </div>
                       </div>
                     </div>
 
                     {/* ── Total pill ── */}
-                    <div className="mx-6 mb-4 flex items-center justify-between rounded-xl border border-yellow-400/20 bg-yellow-400/[0.06] px-4 py-3">
+                    <div className="mx-6 mb-5 flex items-center justify-between rounded-xl border border-yellow-400/20 bg-yellow-400/[0.07] px-4 py-3">
                       <span className="text-[10px] uppercase tracking-[0.25em] text-zinc-400 font-bold">Total a pagar</span>
                       <span className="text-yellow-400 font-black text-lg">{formatCLP(totalAmount)}</span>
                     </div>
 
                     {/* ── Step dots ── */}
-                    <div className="flex items-center justify-center gap-2 pb-4">
+                    <div className="flex items-center justify-center gap-2 pb-5">
                       {[1, 2, 3].map((s) => (
                         <div key={s} className={`h-1 rounded-full transition-all duration-300 ${
                           mpSubStep === s
@@ -1358,7 +1361,7 @@ const CheckoutApp = () => {
                     </div>
 
                     {/* ── Paginated form ── */}
-                    <div className="px-6 pb-6">
+                    <div className="px-6 pb-6 border-t border-white/5 pt-5">
 
                       {/* Step 1 — Card number */}
                       {mpSubStep === 1 && (
@@ -1448,7 +1451,7 @@ const CheckoutApp = () => {
                             <button
                               type="button"
                               onClick={() => setMpSubStep(1)}
-                              className="w-12 h-12 flex items-center justify-center rounded-2xl border border-white/10 text-white hover:border-yellow-400 transition-colors"
+                              className="w-12 h-12 flex items-center justify-center rounded-2xl border border-white/10 text-white hover:border-yellow-400/50 transition-colors"
                             >
                               <ArrowLeft className="w-4 h-4" />
                             </button>
@@ -1487,7 +1490,7 @@ const CheckoutApp = () => {
                           </div>
                           <p className="text-[9px] text-zinc-600 leading-relaxed flex items-start gap-2">
                             <Lock className="w-3 h-3 mt-0.5 flex-shrink-0 text-yellow-400/60" />
-                            Serás redirigido a Mercado Pago para completar el pago de forma segura. Fabrick no almacena datos de tu tarjeta.
+                            Serás redirigido a Mercado Pago para completar el pago de forma segura.
                           </p>
                           <button
                             type="button"

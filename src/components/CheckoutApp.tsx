@@ -141,6 +141,30 @@ const CheckoutApp = () => {
   const [transferOrderTotal, setTransferOrderTotal] = useState(0);
   const [secureConnectionProgress, setSecureConnectionProgress] = useState(0);
 
+  // Real-time Mercado Pago gateway status — driven by /api/payments/mp-status.
+  // Replaces the previous "fake" setInterval that animated 0→100% regardless
+  // of upstream availability. The connection bar now mirrors what the server
+  // actually observes when reaching api.mercadopago.com on every poll.
+  type MpStatus = 'idle' | 'checking' | 'ok' | 'unconfigured' | 'unreachable' | 'invalid_token';
+  interface MpStatusInfo {
+    status: MpStatus;
+    publicKey: string;
+    hasAccessToken: boolean;
+    reachable: boolean;
+    latencyMs: number | null;
+    message: string;
+    checkedAt: number;
+  }
+  const [mpStatus, setMpStatus] = useState<MpStatusInfo>({
+    status: 'idle',
+    publicKey: '',
+    hasAccessToken: false,
+    reachable: false,
+    latencyMs: null,
+    message: '',
+    checkedAt: 0,
+  });
+
   // Estados del Procesamiento Final de Compra
   const [isProcessing, setIsProcessing] = useState(false);
   const [processProgress, setProcessProgress] = useState(0);
@@ -396,21 +420,108 @@ const CheckoutApp = () => {
     });
   };
 
+  // ── Real-time secure-connection probe ──────────────────────────────────────
+  //
+  // While the payment step is visible, poll `/api/payments/mp-status` so the
+  // bar (Fabrick → Mercado Pago → Banco) animates with the actual reachability
+  // of the gateway, not a fake clock. Progress is derived from the live
+  // result:
+  //   - idle/checking      → smoothly animate from current to 25% (Fabrick OK)
+  //   - reachable          → 60% (Mercado Pago reached)
+  //   - reachable + token  → 100% (we can authorize through MP, all green)
+  //   - unreachable        → drop progress and let the bar show the failure
+  //                          colour state controlled below.
+  // The probe self-aborts on unmount and re-polls every 8 s to give a true
+  // "real-time" feel without hammering MP.
   useEffect(() => {
-    if (step === 3) {
-      setSecureConnectionProgress(0);
-      let progress = 0;
-      const interval = setInterval(() => {
-        progress += Math.floor(Math.random() * 15) + 5;
-        if (progress >= 100) {
-          setSecureConnectionProgress(100);
-          clearInterval(interval);
-        } else {
-          setSecureConnectionProgress(progress);
+    if (step !== 3) return;
+
+    let cancelled = false;
+    let pollTimer: ReturnType<typeof setInterval> | null = null;
+    // `progressTimer` is shared by every call to `animateTo` in this effect's
+    // lifetime. Hoisting it here (rather than redeclaring inside `animateTo`)
+    // makes the lifecycle obvious: a new animation always cancels the previous
+    // one, and the effect-cleanup function always clears whatever is current.
+    let progressTimer: ReturnType<typeof setInterval> | null = null;
+
+    const stopProgress = () => {
+      if (progressTimer) {
+        clearInterval(progressTimer);
+        progressTimer = null;
+      }
+    };
+
+    const animateTo = (target: number) => {
+      stopProgress();
+      progressTimer = setInterval(() => {
+        if (cancelled) {
+          stopProgress();
+          return;
         }
-      }, 120); 
-      return () => clearInterval(interval);
-    }
+        setSecureConnectionProgress((prev) => {
+          if (prev === target) {
+            stopProgress();
+            return prev;
+          }
+          const delta = target - prev;
+          const stepSize = Math.max(1, Math.ceil(Math.abs(delta) / 6));
+          return delta > 0 ? Math.min(target, prev + stepSize) : Math.max(target, prev - stepSize);
+        });
+      }, 80);
+    };
+
+    const probe = async () => {
+      if (cancelled) return;
+      setMpStatus((prev) => ({ ...prev, status: prev.status === 'idle' ? 'checking' : prev.status }));
+      // Stage 1: Fabrick → our server is, by definition, reachable.
+      animateTo(25);
+      try {
+        const res = await fetch('/api/payments/mp-status', { cache: 'no-store' });
+        if (cancelled) return;
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const data = (await res.json()) as Omit<MpStatusInfo, 'checkedAt'>;
+        if (cancelled) return;
+        setMpStatus({ ...data, checkedAt: Date.now() });
+
+        if (data.status === 'ok') {
+          animateTo(100);
+        } else if (data.reachable) {
+          // We touched MP but the token is invalid → MP node is up but the
+          // bank handshake will not complete. Show MP-green, bank-red.
+          animateTo(60);
+        } else if (data.status === 'unconfigured') {
+          // Don't pretend MP is reachable when keys aren't configured.
+          animateTo(15);
+        } else {
+          animateTo(20);
+        }
+      } catch (err) {
+        if (cancelled) return;
+        setMpStatus({
+          status: 'unreachable',
+          publicKey: '',
+          hasAccessToken: false,
+          reachable: false,
+          latencyMs: null,
+          message:
+            err instanceof Error
+              ? `No se pudo consultar la pasarela: ${err.message}`
+              : 'No se pudo consultar la pasarela.',
+          checkedAt: Date.now(),
+        });
+        animateTo(15);
+      }
+    };
+
+    setSecureConnectionProgress(0);
+    void probe();
+    pollTimer = setInterval(() => void probe(), 8000);
+
+    return () => {
+      cancelled = true;
+      if (pollTimer) clearInterval(pollTimer);
+      stopProgress();
+    };
   }, [step]);
 
   const formatCLP = (value: number) => {
@@ -497,11 +608,25 @@ const CheckoutApp = () => {
       return;
     }
 
-    const mpPublicKey = (process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || '').trim();
+    // Prefer the live-resolved public key from /api/payments/mp-status — that
+    // way MP works whether the user named their env var `NEXT_PUBLIC_MP_PUBLIC_KEY`
+    // (inlined into the JS bundle) or any of the server-side aliases (read at
+    // request time, surfaced via the status endpoint). Fall back to the
+    // build-time inlined value so we keep working even if the status endpoint
+    // is briefly unreachable.
+    const buildTimeMpKey = (process.env.NEXT_PUBLIC_MP_PUBLIC_KEY || '').trim();
+    const mpPublicKey = (mpStatus.publicKey || buildTimeMpKey).trim();
     if (!mpPublicKey || mpPublicKey === 'TEST-PUBLIC-KEY') {
-      setCheckoutError(
-        'La pasarela de pago con tarjeta no está configurada en este sitio. Por favor usa transferencia bancaria.',
-      );
+      const reason =
+        mpStatus.status === 'unconfigured'
+          ? mpStatus.message ||
+            'La pasarela de pago con tarjeta no está configurada. Por favor usa transferencia bancaria.'
+          : mpStatus.status === 'invalid_token'
+            ? 'El token de Mercado Pago configurado no es válido. Por favor usa transferencia bancaria mientras se actualiza.'
+            : mpStatus.status === 'unreachable'
+              ? 'No podemos contactar con Mercado Pago en este momento. Por favor reintenta en unos segundos o usa transferencia bancaria.'
+              : 'La pasarela de pago con tarjeta no está configurada en este sitio. Por favor usa transferencia bancaria.';
+      setCheckoutError(reason);
       return;
     }
 
@@ -1420,77 +1545,143 @@ const CheckoutApp = () => {
             {step === 3 && (
               <div className="space-y-8 animate-fade-up">
                 
-                {/* SECURE CONNECTION — Fabrick ↔ Mercado Pago ↔ Banco */}
-                <div className="bg-black/60 border border-white/5 rounded-[2rem] p-5 relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-full bg-emerald-500/[0.04]" />
-
-                  {/* Three nodes with connection lines */}
-                  <div className="relative z-10 grid grid-cols-[auto_1fr_auto_1fr_auto] items-center gap-2">
-                    {/* Fabrick node */}
-                    <div className="flex flex-col items-center gap-1">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center border ${secureConnectionProgress > 10 ? 'border-yellow-400/60 bg-yellow-400/10 shadow-[0_0_12px_rgba(250,204,21,0.35)]' : 'border-white/10 bg-white/5'}`}>
-                        <ShieldCheck className={`w-4 h-4 ${secureConnectionProgress > 10 ? 'text-yellow-400' : 'text-zinc-500'}`} />
-                      </div>
-                      <span className="text-[8px] uppercase tracking-widest font-bold text-yellow-400">Fabrick</span>
-                    </div>
-
-                    {/* Line 1 */}
-                    <div className="relative h-[2px] bg-zinc-900 rounded-full overflow-hidden">
+                {/* SECURE CONNECTION — Fabrick ↔ Mercado Pago ↔ Banco
+                    Driven by /api/payments/mp-status: every node colour and
+                    the line-fill levels reflect the most recent live probe of
+                    api.mercadopago.com, not a fake clock. */}
+                {(() => {
+                  const mpReachable = mpStatus.reachable;
+                  const mpOk = mpStatus.status === 'ok';
+                  const mpFailed =
+                    mpStatus.status === 'unreachable' ||
+                    mpStatus.status === 'unconfigured' ||
+                    mpStatus.status === 'invalid_token';
+                  const fabrickActive = secureConnectionProgress > 5;
+                  const mpActive = mpReachable;
+                  const bankActive = mpOk;
+                  const headerColour = mpOk
+                    ? 'text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]'
+                    : mpFailed
+                      ? 'text-red-400 animate-pulse'
+                      : 'text-yellow-400 animate-pulse';
+                  const headerLabel = mpOk
+                    ? `✓ Conexión activa con Mercado Pago${mpStatus.latencyMs != null ? ` · ${mpStatus.latencyMs} ms` : ''}`
+                    : mpStatus.status === 'invalid_token'
+                      ? '⚠ Token de Mercado Pago inválido — revisa la configuración'
+                      : mpStatus.status === 'unreachable'
+                        ? '⚠ Mercado Pago no responde — reintentando…'
+                        : mpStatus.status === 'unconfigured'
+                          ? '⚠ Pasarela no configurada — paga por transferencia'
+                          : `Conectando con la red bancaria · ${secureConnectionProgress}%`;
+                  // Live colours for the line-fills.
+                  const line1Colour = mpFailed && !mpReachable ? 'bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.7)]' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]';
+                  const line2Colour = mpOk ? 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]' : mpFailed ? 'bg-red-500/60' : 'bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.7)]';
+                  return (
+                    <div
+                      className="bg-black/60 border border-white/5 rounded-[2rem] p-5 relative overflow-hidden"
+                      role="status"
+                      aria-live="polite"
+                      aria-label={mpStatus.message || 'Estado de la pasarela de pago'}
+                    >
                       <div
-                        className="absolute top-0 left-0 h-full bg-emerald-500 transition-all duration-[150ms] ease-out shadow-[0_0_8px_rgba(16,185,129,0.7)]"
-                        style={{ width: `${Math.min(100, (secureConnectionProgress / 50) * 100)}%` }}
+                        className={`absolute top-0 left-0 w-full h-full transition-colors duration-500 ${mpOk ? 'bg-emerald-500/[0.04]' : mpFailed ? 'bg-red-500/[0.05]' : 'bg-emerald-500/[0.04]'}`}
                       />
-                      {secureConnectionProgress > 15 && secureConnectionProgress < 100 && (
-                        <span
-                          className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400"
-                          style={{
-                            boxShadow: '0 0 10px #34d399',
-                            animation: 'bb-progress 1.2s linear infinite',
-                            left: '0%',
-                            transform: 'translate(0, -50%)',
-                            backgroundImage: 'none',
-                          }}
-                        />
+
+                      {/* Three nodes with connection lines */}
+                      <div className="relative z-10 grid grid-cols-[auto_1fr_auto_1fr_auto] items-center gap-2">
+                        {/* Fabrick node — always green once the probe started */}
+                        <div className="flex flex-col items-center gap-1">
+                          <div className={`w-9 h-9 rounded-full flex items-center justify-center border transition-colors duration-300 ${fabrickActive ? 'border-yellow-400/60 bg-yellow-400/10 shadow-[0_0_12px_rgba(250,204,21,0.35)]' : 'border-white/10 bg-white/5'}`}>
+                            <ShieldCheck className={`w-4 h-4 ${fabrickActive ? 'text-yellow-400' : 'text-zinc-500'}`} />
+                          </div>
+                          <span className="text-[8px] uppercase tracking-widest font-bold text-yellow-400">Fabrick</span>
+                        </div>
+
+                        {/* Line 1: Fabrick → MP */}
+                        <div className="relative h-[2px] bg-zinc-900 rounded-full overflow-hidden">
+                          <div
+                            className={`absolute top-0 left-0 h-full transition-all duration-[150ms] ease-out ${line1Colour}`}
+                            style={{ width: `${Math.min(100, (secureConnectionProgress / 50) * 100)}%` }}
+                          />
+                          {!mpFailed && secureConnectionProgress > 5 && secureConnectionProgress < 100 && (
+                            <span
+                              className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400"
+                              style={{
+                                boxShadow: '0 0 10px #34d399',
+                                animation: 'bb-progress 1.2s linear infinite',
+                                left: '0%',
+                                transform: 'translate(0, -50%)',
+                                backgroundImage: 'none',
+                              }}
+                            />
+                          )}
+                        </div>
+
+                        {/* MP node — green when reachable, red when probe failed */}
+                        <div className="flex flex-col items-center gap-1">
+                          <div
+                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-colors duration-300 ${
+                              mpActive
+                                ? 'border-[#009EE3]/60 bg-[#009EE3]/10 shadow-[0_0_12px_rgba(0,158,227,0.35)]'
+                                : mpFailed
+                                  ? 'border-red-500/60 bg-red-500/10 shadow-[0_0_12px_rgba(239,68,68,0.35)] animate-pulse'
+                                  : 'border-white/10 bg-white/5'
+                            }`}
+                          >
+                            <svg viewBox="0 0 32 32" className="w-4 h-4" aria-hidden>
+                              <circle cx="16" cy="16" r="13" fill={mpActive ? '#009EE3' : mpFailed ? '#ef4444' : 'rgba(255,255,255,0.1)'} />
+                              <path d="M10 17 Q14 13 16 15 T22 17" stroke="#FFE600" strokeWidth="1.5" fill="none" strokeLinecap="round" />
+                            </svg>
+                          </div>
+                          <span
+                            className={`text-[8px] uppercase tracking-widest font-bold ${
+                              mpActive ? 'text-[#38bdf8]' : mpFailed ? 'text-red-400' : 'text-zinc-500'
+                            }`}
+                          >
+                            Mercado Pago
+                          </span>
+                        </div>
+
+                        {/* Line 2: MP → Banco */}
+                        <div className="relative h-[2px] bg-zinc-900 rounded-full overflow-hidden">
+                          <div
+                            className={`absolute top-0 left-0 h-full transition-all duration-[150ms] ease-out ${line2Colour}`}
+                            style={{ width: `${Math.max(0, ((secureConnectionProgress - 50) / 50) * 100)}%` }}
+                          />
+                        </div>
+
+                        {/* Bank node — green only when MP token is fully validated */}
+                        <div className="flex flex-col items-center gap-1">
+                          <div
+                            className={`w-9 h-9 rounded-full flex items-center justify-center border transition-colors duration-300 ${
+                              bankActive
+                                ? 'border-emerald-500/60 bg-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,0.35)]'
+                                : mpStatus.status === 'invalid_token'
+                                  ? 'border-red-500/60 bg-red-500/10 shadow-[0_0_12px_rgba(239,68,68,0.35)] animate-pulse'
+                                  : 'border-white/10 bg-white/5'
+                            }`}
+                          >
+                            <Building2 className={`w-4 h-4 ${bankActive ? 'text-emerald-400' : mpStatus.status === 'invalid_token' ? 'text-red-400' : 'text-zinc-500'}`} />
+                          </div>
+                          <span className={`text-[8px] uppercase tracking-widest font-bold ${bankActive ? 'text-emerald-400' : mpStatus.status === 'invalid_token' ? 'text-red-400' : 'text-zinc-500'}`}>Banco</span>
+                        </div>
+                      </div>
+
+                      <div className="mt-4 flex items-center justify-center gap-2 relative z-10">
+                        <Lock className={`w-3 h-3 ${mpOk ? 'text-emerald-400' : mpFailed ? 'text-red-400' : 'text-yellow-400'}`} />
+                        <span className={`text-[9px] font-mono tracking-[0.2em] uppercase transition-colors duration-300 ${headerColour}`}>
+                          {headerLabel}
+                        </span>
+                      </div>
+
+                      {mpFailed && mpStatus.message && (
+                        <p className="mt-2 text-[10px] text-red-300/80 text-center relative z-10 px-4 leading-relaxed">
+                          {mpStatus.message}
+                        </p>
                       )}
                     </div>
-
-                    {/* MP node */}
-                    <div className="flex flex-col items-center gap-1">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center border ${secureConnectionProgress > 50 ? 'border-[#009EE3]/60 bg-[#009EE3]/10 shadow-[0_0_12px_rgba(0,158,227,0.35)]' : 'border-white/10 bg-white/5'}`}>
-                        <svg viewBox="0 0 32 32" className="w-4 h-4" aria-hidden>
-                          <circle cx="16" cy="16" r="13" fill={secureConnectionProgress > 50 ? '#009EE3' : 'rgba(255,255,255,0.1)'} />
-                          <path d="M10 17 Q14 13 16 15 T22 17" stroke="#FFE600" strokeWidth="1.5" fill="none" strokeLinecap="round" />
-                        </svg>
-                      </div>
-                      <span className={`text-[8px] uppercase tracking-widest font-bold ${secureConnectionProgress > 50 ? 'text-[#38bdf8]' : 'text-zinc-500'}`}>Mercado Pago</span>
-                    </div>
-
-                    {/* Line 2 */}
-                    <div className="relative h-[2px] bg-zinc-900 rounded-full overflow-hidden">
-                      <div
-                        className="absolute top-0 left-0 h-full bg-emerald-500 transition-all duration-[150ms] ease-out shadow-[0_0_8px_rgba(16,185,129,0.7)]"
-                        style={{ width: `${Math.max(0, ((secureConnectionProgress - 50) / 50) * 100)}%` }}
-                      />
-                    </div>
-
-                    {/* Bank node */}
-                    <div className="flex flex-col items-center gap-1">
-                      <div className={`w-9 h-9 rounded-full flex items-center justify-center border ${secureConnectionProgress === 100 ? 'border-emerald-500/60 bg-emerald-500/10 shadow-[0_0_12px_rgba(16,185,129,0.35)]' : 'border-white/10 bg-white/5'}`}>
-                        <Building2 className={`w-4 h-4 ${secureConnectionProgress === 100 ? 'text-emerald-400' : 'text-zinc-500'}`} />
-                      </div>
-                      <span className={`text-[8px] uppercase tracking-widest font-bold ${secureConnectionProgress === 100 ? 'text-emerald-400' : 'text-zinc-500'}`}>Banco</span>
-                    </div>
-                  </div>
-
-                  <div className="mt-4 flex items-center justify-center gap-2 relative z-10">
-                    <Lock className={`w-3 h-3 ${secureConnectionProgress === 100 ? 'text-emerald-400' : 'text-yellow-400'}`} />
-                    <span className={`text-[9px] font-mono tracking-[0.2em] uppercase transition-colors duration-300 ${secureConnectionProgress === 100 ? 'text-emerald-400 drop-shadow-[0_0_5px_rgba(16,185,129,0.5)]' : 'text-yellow-400 animate-pulse'}`}>
-                      {secureConnectionProgress === 100
-                        ? '✓ Túnel cifrado de extremo a extremo activo · ' + secureConnectionProgress + '%'
-                        : `Estableciendo conexión segura con la red bancaria · ${secureConnectionProgress}%`}
-                    </span>
-                  </div>
-                </div>
+                  );
+                })()}
 
                 <div>
                   <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase">Paso Final</span>

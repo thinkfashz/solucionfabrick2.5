@@ -133,7 +133,9 @@ export default function Navbar() {
             </button>
           ))}
           <div className="w-px h-4 bg-white/20" />
-          {/* Quick access icons with counters */}
+          {/* Quick access — solo "Diseñar mi casa". El carrito y la cotización
+              quedan disponibles desde el menú hamburguesa para no saturar
+              el navbar con íconos. */}
           <button
             type="button"
             onClick={() => handleNav('/juego')}
@@ -142,26 +144,6 @@ export default function Navbar() {
             className="relative w-9 h-9 rounded-full bg-white/5 hover:bg-yellow-400/15 border border-white/10 hover:border-yellow-400/40 text-zinc-300 hover:text-yellow-400 flex items-center justify-center transition-all"
           >
             <Gamepad2 className="w-4 h-4" />
-          </button>
-          <button
-            type="button"
-            onClick={() => handleNav('/cotizaciones')}
-            aria-label="Mi cotización"
-            title="Mi cotización"
-            className="relative w-9 h-9 rounded-full bg-white/5 hover:bg-yellow-400/15 border border-white/10 hover:border-yellow-400/40 text-zinc-300 hover:text-yellow-400 flex items-center justify-center transition-all"
-          >
-            <FileText className="w-4 h-4" />
-            {renderBadge(quoteCount)}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleNav('/checkout')}
-            aria-label="Carrito de tienda"
-            title="Carrito de tienda"
-            className="relative w-9 h-9 rounded-full bg-white/5 hover:bg-yellow-400/15 border border-white/10 hover:border-yellow-400/40 text-zinc-300 hover:text-yellow-400 flex items-center justify-center transition-all"
-          >
-            <ShoppingCart className="w-4 h-4" />
-            {renderBadge(cartCount)}
           </button>
           <div className="w-px h-4 bg-white/20" />
           <ThemeToggle />
@@ -180,26 +162,8 @@ export default function Navbar() {
           </button>
         </div>
 
-        {/* Mobile right cluster: quick icons + theme + hamburger */}
+        {/* Mobile right cluster: theme + hamburger (sin íconos de carrito/cotización) */}
         <div className="lg:hidden flex items-center gap-2">
-          <button
-            type="button"
-            onClick={() => handleNav('/cotizaciones')}
-            aria-label="Mi cotización"
-            className="relative w-9 h-9 rounded-full bg-white/5 border border-white/10 text-zinc-300 hover:text-yellow-400 flex items-center justify-center transition-colors"
-          >
-            <FileText className="w-4 h-4" />
-            {renderBadge(quoteCount)}
-          </button>
-          <button
-            type="button"
-            onClick={() => handleNav('/checkout')}
-            aria-label="Carrito de tienda"
-            className="relative w-9 h-9 rounded-full bg-white/5 border border-white/10 text-zinc-300 hover:text-yellow-400 flex items-center justify-center transition-colors"
-          >
-            <ShoppingCart className="w-4 h-4" />
-            {renderBadge(cartCount)}
-          </button>
           <ThemeToggle />
           <button
             className="text-white hover:text-yellow-400 transition-colors p-2"

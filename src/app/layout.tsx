@@ -2,7 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
 import SmoothScrollProvider from '@/components/SmoothScrollProvider';
-import PromoBanner from '@/components/PromoBanner';
+
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
@@ -117,7 +117,6 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
                 {children}
                 <ServiceWorkerRegister />
                 <InstallAppPrompt />
-                <PromoBanner />
                 <WhatsAppButton />
                 <Analytics />
                 <CmsRealtimeListener />

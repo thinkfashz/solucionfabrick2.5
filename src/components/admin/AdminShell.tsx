@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  ArrowUpRight, BarChart3, ChevronRight, Database, ExternalLink, Hammer, Image as ImageIcon, LayoutGrid, LogOut, Menu,
+  ArrowUpRight, BarChart3, ChevronRight, Database, ExternalLink, Hammer, Image as ImageIcon, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart, Stethoscope,
   Truck, Users, X,
 } from 'lucide-react';
@@ -25,6 +25,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Operación',
     links: [
       { href: '/admin/productos', label: 'Productos', description: 'Catálogo y stock', icon: Package },
+      { href: '/admin/productos/importar', label: 'Importar de Mercado Libre', description: 'Vista previa desde URL de ML Chile', icon: Link2 },
       { href: '/admin/proyectos', label: 'Proyectos', description: 'Obras terminadas visibles al cliente', icon: Hammer },
       { href: '/admin/pedidos', label: 'Pedidos', description: 'Cobros y estados', icon: ShoppingCart },
       { href: '/admin/entregas', label: 'Entregas', description: 'Seguimiento logístico', icon: Truck },
@@ -66,6 +67,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin': 'Centro de control',
   '/admin/productos': 'Productos',
   '/admin/productos/nuevo': 'Nuevo producto',
+  '/admin/productos/importar': 'Importar de Mercado Libre',
   '/admin/proyectos': 'Proyectos',
   '/admin/pedidos': 'Pedidos',
   '/admin/entregas': 'Entregas',

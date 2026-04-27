@@ -6,6 +6,7 @@ import PromoBanner from '@/components/PromoBanner';
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
+import { QuoteCartProvider } from '@/context/QuoteCartContext';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 import Analytics from '@/components/Analytics';
@@ -111,14 +112,16 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <ThemeProvider>
           <AuthProvider>
             <CartProvider>
-              <SmoothScrollProvider />
-              {children}
-              <ServiceWorkerRegister />
-              <InstallAppPrompt />
-              <PromoBanner />
-              <WhatsAppButton />
-              <Analytics />
-              <CmsRealtimeListener />
+              <QuoteCartProvider>
+                <SmoothScrollProvider />
+                {children}
+                <ServiceWorkerRegister />
+                <InstallAppPrompt />
+                <PromoBanner />
+                <WhatsAppButton />
+                <Analytics />
+                <CmsRealtimeListener />
+              </QuoteCartProvider>
             </CartProvider>
           </AuthProvider>
         </ThemeProvider>

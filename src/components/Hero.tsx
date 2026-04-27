@@ -2,6 +2,7 @@
 
 import { useRef, useEffect } from 'react';
 import { useScroll, useTransform, motion } from 'framer-motion';
+import HeroHouse3D from './HeroHouse3D';
 
 /* Canvas API – elegant golden floating particles */
 function initCanvasParticles(canvas: HTMLCanvasElement): () => void {
@@ -84,9 +85,9 @@ export default function Hero() {
       ctx = gsap.context(() => {
         const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
 
-        tl.from('.hero-ring', {
-          scale: 0, opacity: 0, rotation: -45,
-          duration: 1.4, stagger: 0.25, ease: 'elastic.out(1,0.6)',
+        tl.from('.hero-house-3d', {
+          scale: 0.5, opacity: 0, rotation: -45,
+          duration: 1.4, ease: 'elastic.out(1,0.6)',
         })
           .from('.hero-badge',      { y: -40, opacity: 0, duration: 0.7 }, '-=0.8')
           .fromTo(
@@ -104,7 +105,7 @@ export default function Hero() {
           .from('.hero-divider',   { scaleX: 0, duration: 0.7, ease: 'power2.inOut' }, '-=0.5')
           .from('.hero-cta-item',  { y: 24, opacity: 0, duration: 0.6, stagger: 0.14 }, '-=0.4');
 
-        /* Subtle ring pulse */
+        /* Subtle ring pulse (legacy ring elements removed; keep selector safe) */
         gsap.to('.hero-ring', {
           scale: '+=0.04', opacity: '-=0.08',
           duration: 3, repeat: -1, yoyo: true, ease: 'sine.inOut', stagger: 0.6,
@@ -170,10 +171,10 @@ export default function Hero() {
         <div className="hero-glow absolute bottom-20 right-10 w-96 h-96 rounded-full bg-yellow-400/6 blur-3xl" />
       </motion.div>
 
-      {/* Decorative rings */}
-      <div className="hero-ring absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[700px] h-[700px] border border-yellow-400/8 rounded-full pointer-events-none" />
-      <div className="hero-ring absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] border border-yellow-400/12 rounded-full pointer-events-none" />
-      <div className="hero-ring absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[340px] h-[340px] border border-yellow-400/6 rounded-full pointer-events-none" />
+      {/* 3D House centerpiece (replaces decorative rings) */}
+      <div className="hero-house-3d">
+        <HeroHouse3D />
+      </div>
 
       {/* Content */}
       <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
@@ -228,6 +229,17 @@ export default function Hero() {
             Ir a Tienda
           </a>
         </div>
+
+        {/* Interactive copyright signature */}
+        <a
+          href="/juego"
+          className="hero-cta-item group inline-flex items-center gap-2 mt-10 text-[10px] font-bold uppercase tracking-[0.35em] text-zinc-500 hover:text-yellow-400 transition-colors"
+          aria-label="Diseñar mi casa - Soluciones Fabrick"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-yellow-400/60 group-hover:bg-yellow-400 group-hover:shadow-[0_0_10px_rgba(250,204,21,0.8)] transition-all" />
+          © Fabrick — Construimos tu visión
+          <span className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">→</span>
+        </a>
       </div>
 
       <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent" />

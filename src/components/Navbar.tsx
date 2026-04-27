@@ -2,10 +2,28 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Menu, Home, Wrench, TrendingUp, Lightbulb, ShoppingBag, Building2, Phone, Gamepad2, ShieldCheck, BookOpen, Layers } from 'lucide-react';
+import {
+  X,
+  Menu,
+  Home,
+  Wrench,
+  TrendingUp,
+  Lightbulb,
+  ShoppingBag,
+  Building2,
+  Phone,
+  Gamepad2,
+  ShieldCheck,
+  BookOpen,
+  Layers,
+  ShoppingCart,
+  FileText,
+} from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
 import ThemeToggle from './ThemeToggle';
 import { navigateWithTransition } from '@/lib/routeTransition';
+import { useCartContextSafe } from '@/context/CartContext';
+import { useQuoteCartSafe } from '@/context/QuoteCartContext';
 
 type NavLink = { label: string; href: string };
 
@@ -18,18 +36,24 @@ const NAV_LINKS: NavLink[] = [
   { label: 'Contacto', href: '/contacto' },
 ];
 
-const MENU_ITEMS = [
+const PRIMARY_MENU_ITEMS = [
   { label: 'Inicio',     href: '/',           Icon: Home },
   { label: 'Servicios',  href: '/servicios',  Icon: Wrench },
+  { label: 'Diseñar mi casa', href: '/juego', Icon: Gamepad2 },
+  { label: 'Cotización', href: '/cotizaciones', Icon: FileText, quoteCount: true },
+  { label: 'Carrito tienda', href: '/checkout', Icon: ShoppingCart, cartCount: true },
+  { label: 'Tienda',     href: '/tienda',     Icon: ShoppingBag },
+];
+
+const MENU_ITEMS = [
+  ...PRIMARY_MENU_ITEMS,
   { label: 'Evolución',  href: '/evolucion',  Icon: TrendingUp },
   { label: 'Soluciones', href: '/soluciones', Icon: Lightbulb },
-  { label: 'Tienda',     href: '/tienda',     Icon: ShoppingBag },
   { label: 'Proyectos',  href: '/proyectos',  Icon: Building2 },
   { label: 'Casos',      href: '/casos',      Icon: Layers },
   { label: 'Blog',       href: '/blog',       Icon: BookOpen },
   { label: 'Contacto',   href: '/contacto',   Icon: Phone },
   { label: 'Garantías',  href: '/garantias',  Icon: ShieldCheck },
-  { label: 'Juego',      href: '/juego',      Icon: Gamepad2 },
 ];
 
 export default function Navbar() {
@@ -37,6 +61,12 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
+
+  // Cart counters — graceful when providers are missing (e.g. admin shell)
+  const cartCtx = useCartContextSafe();
+  const cartCount = cartCtx?.totalItems ?? 0;
+  const quoteCart = useQuoteCartSafe();
+  const quoteCount = quoteCart?.totalItems ?? 0;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -63,6 +93,13 @@ export default function Navbar() {
     navigateWithTransition(href, router);
   };
 
+  const renderBadge = (count: number) =>
+    count > 0 ? (
+      <span className="absolute -top-1 -right-1 min-w-[16px] h-4 px-1 rounded-full bg-yellow-400 text-black text-[9px] font-black flex items-center justify-center shadow-[0_0_8px_rgba(250,204,21,0.5)]">
+        {count > 99 ? '99+' : count}
+      </span>
+    ) : null;
+
   return (
     <>
       <style>{`
@@ -85,7 +122,7 @@ export default function Navbar() {
       >
         <FabrickLogo onClick={() => handleNav('/')} />
 
-        <div className="hidden lg:flex gap-8 items-center">
+        <div className="hidden lg:flex gap-6 items-center">
           {NAV_LINKS.map(({ label, href }) => (
             <button
               key={href}
@@ -95,6 +132,37 @@ export default function Navbar() {
               {label}
             </button>
           ))}
+          <div className="w-px h-4 bg-white/20" />
+          {/* Quick access icons with counters */}
+          <button
+            type="button"
+            onClick={() => handleNav('/juego')}
+            aria-label="Diseñar mi casa"
+            title="Diseñar mi casa"
+            className="relative w-9 h-9 rounded-full bg-white/5 hover:bg-yellow-400/15 border border-white/10 hover:border-yellow-400/40 text-zinc-300 hover:text-yellow-400 flex items-center justify-center transition-all"
+          >
+            <Gamepad2 className="w-4 h-4" />
+          </button>
+          <button
+            type="button"
+            onClick={() => handleNav('/cotizaciones')}
+            aria-label="Mi cotización"
+            title="Mi cotización"
+            className="relative w-9 h-9 rounded-full bg-white/5 hover:bg-yellow-400/15 border border-white/10 hover:border-yellow-400/40 text-zinc-300 hover:text-yellow-400 flex items-center justify-center transition-all"
+          >
+            <FileText className="w-4 h-4" />
+            {renderBadge(quoteCount)}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleNav('/checkout')}
+            aria-label="Carrito de tienda"
+            title="Carrito de tienda"
+            className="relative w-9 h-9 rounded-full bg-white/5 hover:bg-yellow-400/15 border border-white/10 hover:border-yellow-400/40 text-zinc-300 hover:text-yellow-400 flex items-center justify-center transition-all"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            {renderBadge(cartCount)}
+          </button>
           <div className="w-px h-4 bg-white/20" />
           <ThemeToggle />
           <div className="w-px h-4 bg-white/20" />
@@ -112,16 +180,34 @@ export default function Navbar() {
           </button>
         </div>
 
-        <button
-          className="lg:hidden text-white hover:text-yellow-400 transition-colors p-2"
-          onClick={() => setOpen(!open)}
-          aria-label="Menu"
-        >
-          {open ? <X size={26} /> : <Menu size={26} />}
-        </button>
-        {/* Mobile theme toggle — always visible in header */}
-        <div className="lg:hidden">
+        {/* Mobile right cluster: quick icons + theme + hamburger */}
+        <div className="lg:hidden flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => handleNav('/cotizaciones')}
+            aria-label="Mi cotización"
+            className="relative w-9 h-9 rounded-full bg-white/5 border border-white/10 text-zinc-300 hover:text-yellow-400 flex items-center justify-center transition-colors"
+          >
+            <FileText className="w-4 h-4" />
+            {renderBadge(quoteCount)}
+          </button>
+          <button
+            type="button"
+            onClick={() => handleNav('/checkout')}
+            aria-label="Carrito de tienda"
+            className="relative w-9 h-9 rounded-full bg-white/5 border border-white/10 text-zinc-300 hover:text-yellow-400 flex items-center justify-center transition-colors"
+          >
+            <ShoppingCart className="w-4 h-4" />
+            {renderBadge(cartCount)}
+          </button>
           <ThemeToggle />
+          <button
+            className="text-white hover:text-yellow-400 transition-colors p-2"
+            onClick={() => setOpen(!open)}
+            aria-label="Menu"
+          >
+            {open ? <X size={26} /> : <Menu size={26} />}
+          </button>
         </div>
       </nav>
 
@@ -134,7 +220,6 @@ export default function Navbar() {
         {/* Background layers */}
         <div className="absolute inset-0 bg-black" />
         <div className="absolute inset-0 bg-gradient-to-b from-zinc-950 via-black to-zinc-950" />
-        {/* Golden orb blur decoration */}
         <div className="absolute top-1/3 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 rounded-full bg-yellow-400/5 blur-[100px] pointer-events-none" />
         <div className="absolute bottom-1/4 right-0 w-64 h-64 rounded-full bg-yellow-400/3 blur-[80px] pointer-events-none" />
 
@@ -144,32 +229,47 @@ export default function Navbar() {
             <FabrickLogo onClick={() => handleNav('/')} />
           </div>
 
-          {/* Gradient divider */}
           <div className="w-full h-px bg-gradient-to-r from-transparent via-yellow-400/40 to-transparent mb-8" />
 
-          {/* Menu items with stagger animation */}
+          {/* Menu items */}
           <nav className="flex flex-col gap-1 flex-1">
-            {MENU_ITEMS.map(({ label, href, Icon }, i) => (
-              <button
-                key={href}
-                onClick={() => handleNav(href)}
-                className={`menu-item-anim flex items-center gap-4 w-full py-4 px-3 rounded-2xl text-left group hover:bg-white/5 active:bg-white/10 transition-colors`}
-                style={{ animationDelay: mounted ? `${i * 55}ms` : '0ms' }}
-              >
-                <span className="flex items-center justify-center w-10 h-10 rounded-xl bg-zinc-900 border border-white/8 group-hover:border-yellow-400/30 group-hover:bg-yellow-400/10 transition-all">
-                  <Icon size={18} className="text-zinc-400 group-hover:text-yellow-400 transition-colors" />
-                </span>
-                <span className="text-base font-semibold uppercase tracking-[0.15em] text-white/80 group-hover:text-yellow-400 transition-colors">
-                  {label}
-                </span>
-              </button>
-            ))}
+            {MENU_ITEMS.map(({ label, href, Icon, ...flags }, i) => {
+              const showQuoteCount = 'quoteCount' in flags && quoteCount > 0;
+              const showCartCount = 'cartCount' in flags && cartCount > 0;
+              return (
+                <button
+                  key={href}
+                  onClick={() => handleNav(href)}
+                  className="menu-item-anim flex items-center gap-4 w-full py-4 px-3 rounded-2xl text-left group hover:bg-white/5 active:bg-white/10 transition-colors"
+                  style={{ animationDelay: mounted ? `${i * 45}ms` : '0ms' }}
+                >
+                  <span className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-zinc-900 border border-white/8 group-hover:border-yellow-400/30 group-hover:bg-yellow-400/10 transition-all">
+                    <Icon size={18} className="text-zinc-400 group-hover:text-yellow-400 transition-colors" />
+                    {showQuoteCount && renderBadge(quoteCount)}
+                    {showCartCount && renderBadge(cartCount)}
+                  </span>
+                  <span className="flex-1 text-base font-semibold uppercase tracking-[0.15em] text-white/80 group-hover:text-yellow-400 transition-colors">
+                    {label}
+                  </span>
+                  {(showQuoteCount || showCartCount) && (
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-400">
+                      {showQuoteCount ? quoteCount : cartCount} ítem{(showQuoteCount ? quoteCount : cartCount) === 1 ? '' : 's'}
+                    </span>
+                  )}
+                </button>
+              );
+            })}
           </nav>
 
-          {/* Gradient divider */}
           <div className="w-full h-px bg-gradient-to-r from-transparent via-yellow-400/20 to-transparent my-6" />
 
-          {/* Auth button */}
+          {/* Auth + Mi cuenta */}
+          <button
+            onClick={() => handleNav('/mi-cuenta')}
+            className="w-full py-3 mb-2 text-zinc-300 hover:text-yellow-400 text-xs font-bold uppercase tracking-widest transition-colors"
+          >
+            Mi Cuenta
+          </button>
           <button
             onClick={() => handleNav('/auth')}
             className="w-full py-4 bg-yellow-400 text-black font-black uppercase text-sm tracking-widest rounded-full hover:bg-yellow-300 transition-all shadow-[0_0_30px_rgba(250,204,21,0.2)] mb-4"
@@ -205,4 +305,3 @@ export default function Navbar() {
     </>
   );
 }
-

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  ArrowUpRight, BarChart3, ChevronRight, Database, ExternalLink, Hammer, Image as ImageIcon, LayoutGrid, Link2, LogOut, Menu,
+  ArrowUpRight, BarChart3, ChevronRight, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart, Stethoscope,
   Truck, Users, X,
 } from 'lucide-react';
@@ -29,6 +29,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/materiales', label: 'Materiales (Cotizador)', description: 'Alimenta el cotizador en vivo', icon: Package },
       { href: '/admin/proyectos', label: 'Proyectos', description: 'Obras terminadas visibles al cliente', icon: Hammer },
       { href: '/admin/pedidos', label: 'Pedidos', description: 'Cobros y estados', icon: ShoppingCart },
+      { href: '/admin/cotizaciones', label: 'Cotizaciones', description: 'Solicitudes de servicios y diseños 3D', icon: FileText },
       { href: '/admin/entregas', label: 'Entregas', description: 'Seguimiento logístico', icon: Truck },
       { href: '/admin/clientes', label: 'Clientes', description: 'Historial y recurrencia', icon: Users },
       { href: '/admin/reportes', label: 'Reportes', description: 'Ventas y métricas', icon: BarChart3 },
@@ -72,6 +73,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/materiales': 'Materiales (Cotizador)',
   '/admin/proyectos': 'Proyectos',
   '/admin/pedidos': 'Pedidos',
+  '/admin/cotizaciones': 'Cotizaciones',
   '/admin/entregas': 'Entregas',
   '/admin/clientes': 'Clientes',
   '/admin/reportes': 'Reportes',

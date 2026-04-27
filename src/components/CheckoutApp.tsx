@@ -1273,23 +1273,25 @@ const CheckoutApp = () => {
         Layout responsivo del checkout:
         - Steps 1 y 2 (Verificación + Despacho): grid de 12 columnas con resumen
           sticky a la izquierda (col-span-5) y el formulario a la derecha (col-span-7).
-        - Step 3 (Pago): el resumen se oculta en lg+ y el formulario se centra
-          dentro de un contenedor más angosto (max-w-3xl) para que la tarjeta
-          y cada campo queden alineados al centro de la pantalla, sin espacios
-          enormes a los lados al pagar. En móvil/tablet la columna del resumen
-          se sigue mostrando apilada arriba (el grid colapsa por debajo de lg).
+        - Step 3 (Pago): se renderiza como una página independiente en una sola
+          columna centrada (max-w-3xl, sin grid). El resumen no se monta para
+          que cada paso se sienta como su propia "app" y el formulario ocupe
+          todo el ancho disponible — desde pantallas muy estrechas hasta
+          desktop — sin espacios muertos a los lados ni la tarjeta pegada
+          a la derecha.
       */}
       <div
-        className={`pt-28 sm:pt-32 px-4 sm:px-6 md:px-12 mx-auto grid lg:grid-cols-12 gap-8 sm:gap-12 lg:gap-20 ${
-          step === 3 ? 'max-w-3xl' : 'max-w-7xl'
+        className={`pt-28 sm:pt-32 px-4 sm:px-6 md:px-12 mx-auto ${
+          step === 3
+            ? 'max-w-3xl flex flex-col gap-8'
+            : 'max-w-7xl grid lg:grid-cols-12 gap-8 sm:gap-12 lg:gap-20'
         }`}
       >
         
-        {/* COLUMNA IZQUIERDA: RESUMEN DEL PRODUCTO */}
+        {/* COLUMNA IZQUIERDA: RESUMEN DEL PRODUCTO (sólo en steps 1 y 2) */}
+        {step !== 3 && (
         <div
-          className={`lg:col-span-5 animate-fade-up relative ${
-            step === 3 ? 'lg:hidden' : ''
-          }`}
+          className="lg:col-span-5 animate-fade-up relative"
         >
           <div className="sticky top-32 space-y-8">
             
@@ -1389,11 +1391,12 @@ const CheckoutApp = () => {
 
           </div>
         </div>
+        )}
 
         {/* COLUMNA DERECHA: FLUJO DE COMPRA */}
         <div
           className={`animate-fade-up ${
-            step === 3 ? 'lg:col-span-12' : 'lg:col-span-7'
+            step === 3 ? 'w-full' : 'lg:col-span-7'
           }`}
         >
           

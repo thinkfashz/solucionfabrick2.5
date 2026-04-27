@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Store, Wrench, User, Briefcase, CreditCard, ArrowRight } from 'lucide-react';
+import { Store, Wrench, User, Briefcase, CreditCard, Calculator, ArrowRight } from 'lucide-react';
 
 const ROUTES = [
   {
@@ -7,6 +7,12 @@ const ROUTES = [
     description: 'Materiales y productos seleccionados, listos para tu proyecto.',
     href: '/tienda',
     Icon: Store,
+  },
+  {
+    title: 'Presupuesto',
+    description: 'Calculadora en vivo: arma tu cotización con materiales y servicios.',
+    href: '/presupuesto',
+    Icon: Calculator,
   },
   {
     title: 'Soluciones',
@@ -42,7 +48,7 @@ export default function QuickAccessRoutes() {
           <p className="text-yellow-400/70 text-[10px] tracking-[0.35em] uppercase">Accesos Directos</p>
         </div>
 
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6 gap-4">
           {ROUTES.map(({ title, description, href, Icon }) => (
             <Link
               key={href}

@@ -111,48 +111,110 @@ function uid(): string {
   }
   return `mat_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
 }
+// Suppress "unused" lint while keeping the helper available for offline/optimistic flows.
+void uid;
 
 /* -------------------------------------------------------------------------- */
-/*  DB stubs — wire these to your backend (InsForge / REST / Server Actions)  */
+/*  DB layer — talks to /api/admin/materials                                  */
 /* -------------------------------------------------------------------------- */
 
-// async function dbList(): Promise<Material[]> {
-//   // TODO: GET /api/admin/materials → return rows
-//   //   const res = await fetch('/api/admin/materials', { cache: 'no-store' });
-//   //   if (!res.ok) throw new Error('No se pudieron cargar los materiales');
-//   //   return (await res.json()) as Material[];
-//   return [];
-// }
+interface ApiMaterial {
+  id: string;
+  name: string;
+  description: string | null;
+  category: string;
+  unit: string;
+  price: number;
+  image_url: string | null;
+  active: boolean;
+  stock: number | null;
+  position: number | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
 
-// async function dbCreate(input: Omit<Material, 'id'>): Promise<Material> {
-//   // TODO: POST /api/admin/materials with `input` → return persisted row
-//   //   const res = await fetch('/api/admin/materials', {
-//   //     method: 'POST',
-//   //     headers: { 'Content-Type': 'application/json' },
-//   //     body: JSON.stringify(input),
-//   //   });
-//   //   if (!res.ok) throw new Error('Error al crear material');
-//   //   return (await res.json()) as Material;
-//   return { ...input, id: uid() };
-// }
+function rowToMaterial(r: ApiMaterial): Material {
+  return {
+    id: r.id,
+    name: r.name,
+    category: (r.category as MaterialCategory) ?? 'obra-gruesa',
+    unit: (r.unit as MaterialUnit) ?? 'unidad',
+    price: Number(r.price) || 0,
+    imageUrl: r.image_url ?? '',
+    active: Boolean(r.active),
+    createdAt: r.created_at ?? undefined,
+    updatedAt: r.updated_at ?? undefined,
+  };
+}
 
-// async function dbUpdate(id: string, input: Partial<Material>): Promise<Material> {
-//   // TODO: PATCH /api/admin/materials/:id with `input`
-//   //   const res = await fetch(`/api/admin/materials/${id}`, {
-//   //     method: 'PATCH',
-//   //     headers: { 'Content-Type': 'application/json' },
-//   //     body: JSON.stringify(input),
-//   //   });
-//   //   if (!res.ok) throw new Error('Error al actualizar material');
-//   //   return (await res.json()) as Material;
-//   throw new Error('not implemented');
-// }
+function formToPayload(form: typeof EMPTY_FORM) {
+  return {
+    name: form.name.trim(),
+    category: form.category,
+    unit: form.unit,
+    price: Math.round(Number(form.price) || 0),
+    image_url: form.imageUrl?.trim() || null,
+    active: Boolean(form.active),
+  };
+}
 
-// async function dbDelete(id: string): Promise<void> {
-//   // TODO: DELETE /api/admin/materials/:id
-//   //   const res = await fetch(`/api/admin/materials/${id}`, { method: 'DELETE' });
-//   //   if (!res.ok) throw new Error('Error al eliminar material');
-// }
+async function readError(res: Response): Promise<string> {
+  try {
+    const json = (await res.json()) as { error?: string };
+    return json.error || `HTTP ${res.status}`;
+  } catch {
+    return `HTTP ${res.status}`;
+  }
+}
+
+async function dbList(): Promise<Material[]> {
+  const res = await fetch('/api/admin/materials', { cache: 'no-store' });
+  if (!res.ok) throw new Error(await readError(res));
+  const json = (await res.json()) as { materials?: ApiMaterial[] };
+  return Array.isArray(json.materials) ? json.materials.map(rowToMaterial) : [];
+}
+
+async function dbCreate(form: typeof EMPTY_FORM): Promise<Material> {
+  const res = await fetch('/api/admin/materials', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(formToPayload(form)),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  const json = (await res.json()) as { material: ApiMaterial };
+  return rowToMaterial(json.material);
+}
+
+async function dbUpdate(
+  id: string,
+  patch: Partial<typeof EMPTY_FORM> | { active: boolean },
+): Promise<Material> {
+  const body: Record<string, unknown> = {};
+  if ('name' in patch && patch.name !== undefined) body.name = String(patch.name).trim();
+  if ('category' in patch && patch.category !== undefined) body.category = patch.category;
+  if ('unit' in patch && patch.unit !== undefined) body.unit = patch.unit;
+  if ('price' in patch && patch.price !== undefined) body.price = Math.round(Number(patch.price) || 0);
+  if ('imageUrl' in patch && patch.imageUrl !== undefined) {
+    body.image_url = (patch.imageUrl as string)?.trim() || null;
+  }
+  if ('active' in patch && patch.active !== undefined) body.active = Boolean(patch.active);
+
+  const res = await fetch(`/api/admin/materials/${encodeURIComponent(id)}`, {
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(body),
+  });
+  if (!res.ok) throw new Error(await readError(res));
+  const json = (await res.json()) as { material: ApiMaterial };
+  return rowToMaterial(json.material);
+}
+
+async function dbDelete(id: string): Promise<void> {
+  const res = await fetch(`/api/admin/materials/${encodeURIComponent(id)}`, {
+    method: 'DELETE',
+  });
+  if (!res.ok) throw new Error(await readError(res));
+}
 
 /* -------------------------------------------------------------------------- */
 /*  Component                                                                 */
@@ -178,11 +240,23 @@ export default function MaterialManager({ initialMaterials = [] }: MaterialManag
 
   /* --------------------------- data load ----------------------------- */
   useEffect(() => {
-    // TODO: replace with `dbList()` once the API is ready.
-    // (async () => {
-    //   try { setMaterials(await dbList()); }
-    //   catch (e) { console.error(e); }
-    // })();
+    let cancelled = false;
+    (async () => {
+      try {
+        const list = await dbList();
+        if (!cancelled) setMaterials(list);
+      } catch (err) {
+        if (!cancelled) {
+          setFeedback({
+            kind: 'err',
+            msg: err instanceof Error ? err.message : 'No se pudieron cargar los materiales.',
+          });
+        }
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   /* ------------------------- derived values -------------------------- */
@@ -244,21 +318,11 @@ export default function MaterialManager({ initialMaterials = [] }: MaterialManag
     setSubmitting(true);
     try {
       if (editingId) {
-        // TODO: replace with `await dbUpdate(editingId, form)`.
-        const updated: Material = {
-          id: editingId,
-          ...form,
-          updatedAt: new Date().toISOString(),
-        };
+        const updated = await dbUpdate(editingId, form);
         setMaterials((list) => list.map((m) => (m.id === editingId ? updated : m)));
         setFeedback({ kind: 'ok', msg: 'Material actualizado.' });
       } else {
-        // TODO: replace with `await dbCreate(form)`.
-        const created: Material = {
-          id: uid(),
-          ...form,
-          createdAt: new Date().toISOString(),
-        };
+        const created = await dbCreate(form);
         setMaterials((list) => [created, ...list]);
         setFeedback({ kind: 'ok', msg: 'Material añadido al cotizador.' });
       }
@@ -279,7 +343,7 @@ export default function MaterialManager({ initialMaterials = [] }: MaterialManag
     if (!confirm(`¿Eliminar "${target.name}" del cotizador?`)) return;
 
     try {
-      // TODO: replace with `await dbDelete(id)`.
+      await dbDelete(id);
       setMaterials((list) => list.filter((m) => m.id !== id));
       if (editingId === id) resetForm();
       setFeedback({ kind: 'ok', msg: 'Material eliminado.' });
@@ -292,10 +356,26 @@ export default function MaterialManager({ initialMaterials = [] }: MaterialManag
   };
 
   const toggleActive = async (id: string) => {
+    const target = materials.find((m) => m.id === id);
+    if (!target) return;
+    const nextActive = !target.active;
+    // Optimistic flip.
     setMaterials((list) =>
-      list.map((m) => (m.id === id ? { ...m, active: !m.active } : m)),
+      list.map((m) => (m.id === id ? { ...m, active: nextActive } : m)),
     );
-    // TODO: persist via `dbUpdate(id, { active: !current.active })`.
+    try {
+      const updated = await dbUpdate(id, { active: nextActive });
+      setMaterials((list) => list.map((m) => (m.id === id ? updated : m)));
+    } catch (err) {
+      // Rollback.
+      setMaterials((list) =>
+        list.map((m) => (m.id === id ? { ...m, active: target.active } : m)),
+      );
+      setFeedback({
+        kind: 'err',
+        msg: err instanceof Error ? err.message : 'No se pudo actualizar el estado.',
+      });
+    }
   };
 
   const handleImagePick = (file: File | null) => {

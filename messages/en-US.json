@@ -1,0 +1,48 @@
+{
+  "common": {
+    "currency": "Currency",
+    "language": "Language",
+    "loading": "Loading…",
+    "error": "Something went wrong",
+    "retry": "Retry",
+    "save": "Save",
+    "cancel": "Cancel",
+    "close": "Close"
+  },
+  "checkout": {
+    "title": "Checkout",
+    "subtotal": "Subtotal",
+    "shipping": "Shipping",
+    "tax": "VAT",
+    "total": "Total",
+    "discount": "Discount",
+    "coupon_placeholder": "Enter your discount code",
+    "coupon_apply": "Apply",
+    "coupon_invalid": "Invalid coupon",
+    "coupon_applied": "Coupon applied",
+    "pay": "Pay"
+  },
+  "shipping": {
+    "title": "Shipping",
+    "address": "Shipping address",
+    "region": "Region",
+    "comuna": "City",
+    "carrier": "Carrier",
+    "eta_days": "Arrives in {min}-{max} days",
+    "select_quote": "Select"
+  },
+  "loyalty": {
+    "title": "Rewards",
+    "balance": "Your points",
+    "tier_bronze": "Bronze",
+    "tier_silver": "Silver",
+    "tier_gold": "Gold",
+    "redeem": "Redeem points",
+    "referrals": "Referrals"
+  },
+  "pwa": {
+    "install_title": "Install the app",
+    "install_body": "Faster access, offline support and shipping alerts.",
+    "install_cta": "Install"
+  }
+}

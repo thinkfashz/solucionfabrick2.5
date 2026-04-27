@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import ContentListPage from '@/components/ContentListPage';
-import { listContent } from '@/lib/content';
+import { listAllBlog } from '@/lib/content';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Blog de Construcción y Remodelación',
@@ -18,8 +20,8 @@ export const metadata: Metadata = {
   },
 };
 
-export default function BlogIndexPage() {
-  const items = listContent('blog');
+export default async function BlogIndexPage() {
+  const items = await listAllBlog();
   return (
     <ContentListPage
       type="blog"

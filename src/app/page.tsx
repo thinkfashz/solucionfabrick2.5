@@ -2,6 +2,8 @@ import { headers } from 'next/headers';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
 import LandingSections from '@/components/LandingSections';
+import HomeDynamicSections from '@/components/HomeDynamicSections';
+import { getCmsSettings, getPublicHomeSections, renderCopyright } from '@/lib/cms';
 
 // Render dynamically so the per-request CSP nonce emitted by `middleware.ts`
 // reaches the inline JSON-LD <script> below (and the framework's own RSC
@@ -13,6 +15,13 @@ export const dynamic = 'force-dynamic';
 
 export default async function Home() {
   const nonce = (await headers()).get('x-nonce') ?? undefined;
+  const [settings, sections] = await Promise.all([getCmsSettings(), getPublicHomeSections()]);
+  const copyrightText = renderCopyright(settings.copyright_text);
+  const socialLinks = {
+    facebook: settings.social_facebook,
+    instagram: settings.social_instagram,
+    tiktok: settings.social_tiktok,
+  };
   const jsonLd = {
     '@context': 'https://schema.org',
     '@type': 'LocalBusiness',
@@ -49,7 +58,8 @@ export default async function Home() {
       <div className="bg-gradient-to-b from-black via-zinc-950 to-black min-h-screen overflow-x-hidden">
         <Navbar />
         <Hero />
-        <LandingSections />
+        <HomeDynamicSections sections={sections} />
+        <LandingSections copyrightText={copyrightText} socialLinks={socialLinks} />
       </div>
     </>
   );

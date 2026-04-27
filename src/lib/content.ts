@@ -132,3 +132,58 @@ export function getContent(type: ContentType, slug: string): ContentPost | null 
     raw: content,
   };
 }
+
+/**
+ * Hybrid loader for the blog (DB-first, .md fallback).
+ *
+ * The DB takes priority by slug — entries created from /admin/blog override
+ * any matching .md file. Markdown files keep working until they're imported
+ * to the DB so the site never goes blank during the migration.
+ */
+export async function listAllBlog(): Promise<ContentMeta[]> {
+  const md = listContent('blog');
+  // Lazy-import server-only DB module so this file stays usable in any
+  // server context without forcing the InsForge SDK to load eagerly.
+  const { listDbBlogPosts } = await import('./cms');
+  const db = await listDbBlogPosts();
+
+  const merged = new Map<string, ContentMeta>();
+  for (const item of md) merged.set(item.slug, item);
+  for (const post of db) {
+    merged.set(post.slug, {
+      slug: post.slug,
+      type: 'blog',
+      title: post.title,
+      description: post.description ?? '',
+      date: post.published_at ?? post.created_at,
+      author: post.author ?? undefined,
+      cover: post.cover_url ?? undefined,
+      tags: post.tags,
+      readingMinutes: post.reading_minutes ?? estimateReadingMinutes(post.body_md ?? ''),
+    });
+  }
+  const items = Array.from(merged.values());
+  return items.sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/** Hybrid loader for a single post (DB-first, .md fallback). */
+export async function getBlogPost(slug: string): Promise<ContentPost | null> {
+  const { getDbBlogPost } = await import('./cms');
+  const dbPost = await getDbBlogPost(slug);
+  if (dbPost) {
+    return {
+      slug: dbPost.slug,
+      type: 'blog',
+      title: dbPost.title,
+      description: dbPost.description ?? '',
+      date: dbPost.published_at ?? dbPost.created_at,
+      author: dbPost.author ?? undefined,
+      cover: dbPost.cover_url ?? undefined,
+      tags: dbPost.tags,
+      readingMinutes: dbPost.reading_minutes ?? estimateReadingMinutes(dbPost.body_md ?? ''),
+      html: dbPost.body_html ?? '',
+      raw: dbPost.body_md ?? '',
+    };
+  }
+  return getContent('blog', slug);
+}

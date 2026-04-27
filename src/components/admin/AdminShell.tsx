@@ -5,8 +5,8 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  ArrowUpRight, BarChart3, ChevronRight, Database, ExternalLink, Hammer, LogOut, Menu,
-  Megaphone, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart,
+  ArrowUpRight, BarChart3, ChevronRight, Database, ExternalLink, Hammer, Image as ImageIcon, LayoutGrid, LogOut, Menu,
+  Megaphone, Newspaper, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart,
   Truck, Users, X,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
@@ -30,6 +30,14 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/entregas', label: 'Entregas', description: 'Seguimiento logístico', icon: Truck },
       { href: '/admin/clientes', label: 'Clientes', description: 'Historial y recurrencia', icon: Users },
       { href: '/admin/reportes', label: 'Reportes', description: 'Ventas y métricas', icon: BarChart3 },
+    ],
+  },
+  {
+    title: 'Contenido',
+    links: [
+      { href: '/admin/blog', label: 'Blog', description: 'Entradas, portadas y publicación', icon: Newspaper },
+      { href: '/admin/home', label: 'Pantalla principal', description: 'Banners, secciones y orden', icon: LayoutGrid },
+      { href: '/admin/medios', label: 'Medios', description: 'Imágenes y biblioteca', icon: ImageIcon },
     ],
   },
   {
@@ -71,6 +79,10 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/sql': 'Terminal SQL',
   '/admin/setup': 'Setup',
   '/admin/equipo': 'Equipo',
+  '/admin/blog': 'Blog',
+  '/admin/blog/nuevo': 'Nueva entrada',
+  '/admin/home': 'Pantalla principal',
+  '/admin/medios': 'Medios',
 };
 
 function NavItem({ href, label, description, icon: Icon, active, onNavigate }: {

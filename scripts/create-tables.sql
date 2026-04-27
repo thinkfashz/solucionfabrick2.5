@@ -182,3 +182,120 @@ VALUES
   ('Ampliación Cocina Sur', 'Ampliación de cocina con estructura Metalcon, ventanales de aluminio y terminaciones en PVC mármol.', 'AMPLIACIÓN', 'Linares, Maule', 38, false, 2024),
   ('Baño Completo Premium', 'Remodelación integral con revestimiento PVC mármol, gasfitería certificada SEC y domótica básica.', 'REMODELACIÓN', 'Talca, Maule', 12, true, 2023)
 ON CONFLICT DO NOTHING;
+
+-- TABLA: blog_posts
+-- Contenido editable del blog desde /admin/blog. Sustituye/complementa los
+-- ficheros .md en src/content/blog. Los .md siguen siendo el fallback hasta
+-- migrar (botón "Importar .md" en /admin/setup).
+CREATE TABLE IF NOT EXISTS public.blog_posts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug text UNIQUE NOT NULL,
+  title text NOT NULL,
+  description text,
+  cover_url text,
+  body_md text DEFAULT '',
+  body_html text DEFAULT '',
+  tags jsonb DEFAULT '[]'::jsonb,
+  author text,
+  published boolean DEFAULT false,
+  published_at timestamptz,
+  reading_minutes integer DEFAULT 1,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: blog_posts-migrate
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS slug text;
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS title text;
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS description text;
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS cover_url text;
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS body_md text DEFAULT '';
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS body_html text DEFAULT '';
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS tags jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS author text;
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS published boolean DEFAULT false;
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS published_at timestamptz;
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS reading_minutes integer DEFAULT 1;
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.blog_posts ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: home_sections
+-- Modela los bloques editables de la pantalla principal. El campo `data jsonb`
+-- guarda el contenido específico por tipo (lista de servicios, banners, ítems
+-- de producto, etc.) sin requerir migraciones por cada cambio. La integración
+-- pública prioriza estos registros sobre el contenido hardcodeado y cae al
+-- fallback estático cuando la tabla está vacía.
+CREATE TABLE IF NOT EXISTS public.home_sections (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  kind text NOT NULL,
+  title text,
+  subtitle text,
+  body text,
+  image_url text,
+  link_url text,
+  link_label text,
+  position integer DEFAULT 0,
+  visible boolean DEFAULT true,
+  data jsonb DEFAULT '{}'::jsonb,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: home_sections-migrate
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS kind text;
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS title text;
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS subtitle text;
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS body text;
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS image_url text;
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS link_url text;
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS link_label text;
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS position integer DEFAULT 0;
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS visible boolean DEFAULT true;
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS data jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: media_assets
+-- Inventario unificado de imágenes/archivos subidos por el panel. La subida
+-- real va a InsForge Storage (bucket configurable, default `media`).
+-- `folder` permite organizar (blog/, home/, banners/, general/...).
+CREATE TABLE IF NOT EXISTS public.media_assets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  bucket text NOT NULL DEFAULT 'media',
+  path text NOT NULL,
+  url text NOT NULL,
+  alt text,
+  folder text DEFAULT 'general',
+  mime_type text,
+  size_bytes integer,
+  width integer,
+  height integer,
+  tags jsonb DEFAULT '[]'::jsonb,
+  uploaded_by text,
+  created_at timestamptz DEFAULT now()
+);
+
+-- TABLA: media_assets-migrate
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS bucket text NOT NULL DEFAULT 'media';
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS path text;
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS url text;
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS alt text;
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS folder text DEFAULT 'general';
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS mime_type text;
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS size_bytes integer;
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS width integer;
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS height integer;
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS tags jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS uploaded_by text;
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- SEED: configuracion CMS (claves usadas por el frontend público)
+INSERT INTO public.configuracion (clave, valor) VALUES
+  ('copyright_text', '© {year} Soluciones Fabrick · Todos los derechos reservados'),
+  ('hero_title', 'SOLUCIONES FABRICK'),
+  ('hero_subtitle', 'Ingeniería residencial de precisión'),
+  ('hero_cover_url', ''),
+  ('social_facebook', ''),
+  ('social_instagram', ''),
+  ('social_tiktok', '')
+ON CONFLICT (clave) DO NOTHING;

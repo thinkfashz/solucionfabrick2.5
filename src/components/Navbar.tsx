@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Menu, Home, Wrench, TrendingUp, Lightbulb, ShoppingBag, Building2, Phone, Gamepad2, ShieldCheck, BookOpen, Layers } from 'lucide-react';
+import { X, Menu, Home, Wrench, TrendingUp, Lightbulb, ShoppingBag, Building2, Phone, Gamepad2, ShieldCheck, BookOpen, Layers, Calculator } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
 import ThemeToggle from './ThemeToggle';
 import { navigateWithTransition } from '@/lib/routeTransition';
@@ -14,22 +14,24 @@ const NAV_LINKS: NavLink[] = [
   { label: 'Evolución', href: '/evolucion' },
   { label: 'Soluciones', href: '/soluciones' },
   { label: 'Tienda', href: '/tienda' },
+  { label: 'Presupuesto', href: '/presupuesto' },
   { label: 'Proyectos', href: '/proyectos' },
   { label: 'Contacto', href: '/contacto' },
 ];
 
 const MENU_ITEMS = [
-  { label: 'Inicio',     href: '/',           Icon: Home },
-  { label: 'Servicios',  href: '/servicios',  Icon: Wrench },
-  { label: 'Evolución',  href: '/evolucion',  Icon: TrendingUp },
-  { label: 'Soluciones', href: '/soluciones', Icon: Lightbulb },
-  { label: 'Tienda',     href: '/tienda',     Icon: ShoppingBag },
-  { label: 'Proyectos',  href: '/proyectos',  Icon: Building2 },
-  { label: 'Casos',      href: '/casos',      Icon: Layers },
-  { label: 'Blog',       href: '/blog',       Icon: BookOpen },
-  { label: 'Contacto',   href: '/contacto',   Icon: Phone },
-  { label: 'Garantías',  href: '/garantias',  Icon: ShieldCheck },
-  { label: 'Juego',      href: '/juego',      Icon: Gamepad2 },
+  { label: 'Inicio',       href: '/',            Icon: Home },
+  { label: 'Servicios',    href: '/servicios',   Icon: Wrench },
+  { label: 'Evolución',    href: '/evolucion',   Icon: TrendingUp },
+  { label: 'Soluciones',   href: '/soluciones',  Icon: Lightbulb },
+  { label: 'Tienda',       href: '/tienda',      Icon: ShoppingBag },
+  { label: 'Presupuesto',  href: '/presupuesto', Icon: Calculator },
+  { label: 'Proyectos',    href: '/proyectos',   Icon: Building2 },
+  { label: 'Casos',        href: '/casos',       Icon: Layers },
+  { label: 'Blog',         href: '/blog',        Icon: BookOpen },
+  { label: 'Contacto',     href: '/contacto',    Icon: Phone },
+  { label: 'Garantías',    href: '/garantias',   Icon: ShieldCheck },
+  { label: 'Juego',        href: '/juego',       Icon: Gamepad2 },
 ];
 
 export default function Navbar() {

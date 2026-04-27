@@ -60,6 +60,9 @@ export default function CmsRealtimeListener() {
           // Media changes only matter if the page actually displays the asset.
           // Cheap heuristic: refresh blog and home where covers are common.
           return p === '/' || p === '/blog' || p.startsWith('/blog/');
+        case 'materials':
+          // Cotizador catalog — refresh the public budget builder live.
+          return p === '/presupuesto' || p.startsWith('/presupuesto/');
         default:
           return false;
       }

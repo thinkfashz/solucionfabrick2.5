@@ -758,3 +758,77 @@ ALTER TABLE public.exchange_rates ADD COLUMN IF NOT EXISTS quote text;
 ALTER TABLE public.exchange_rates ADD COLUMN IF NOT EXISTS rate numeric(20,8);
 ALTER TABLE public.exchange_rates ADD COLUMN IF NOT EXISTS source text;
 ALTER TABLE public.exchange_rates ADD COLUMN IF NOT EXISTS fetched_at timestamptz DEFAULT now();
+
+-- TABLA: materials
+-- Catálogo del Cotizador Fabrick. Alimenta /presupuesto y /admin/materiales.
+-- `unit` ∈ {m2, ml, unidad, kit, global, instalacion, equipo, proyecto}.
+-- `category` ∈ {obra-gruesa, terminaciones, especialidades, servicios,
+--   electricidad, gasfiteria, climatizacion, conectividad, seguridad}.
+CREATE TABLE IF NOT EXISTS public.materials (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  description text,
+  category text NOT NULL DEFAULT 'obra-gruesa',
+  unit text NOT NULL DEFAULT 'unidad',
+  price numeric(12,2) NOT NULL DEFAULT 0,
+  image_url text,
+  active boolean NOT NULL DEFAULT true,
+  stock integer,
+  position integer DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: materials-migrate
+ALTER TABLE public.materials ADD COLUMN IF NOT EXISTS name text;
+ALTER TABLE public.materials ADD COLUMN IF NOT EXISTS description text;
+ALTER TABLE public.materials ADD COLUMN IF NOT EXISTS category text DEFAULT 'obra-gruesa';
+ALTER TABLE public.materials ADD COLUMN IF NOT EXISTS unit text DEFAULT 'unidad';
+ALTER TABLE public.materials ADD COLUMN IF NOT EXISTS price numeric(12,2) DEFAULT 0;
+ALTER TABLE public.materials ADD COLUMN IF NOT EXISTS image_url text;
+ALTER TABLE public.materials ADD COLUMN IF NOT EXISTS active boolean DEFAULT true;
+ALTER TABLE public.materials ADD COLUMN IF NOT EXISTS stock integer;
+ALTER TABLE public.materials ADD COLUMN IF NOT EXISTS position integer DEFAULT 0;
+ALTER TABLE public.materials ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.materials ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: quotes
+-- Presupuesto guardado por un cliente desde el Cotizador. `lines` es la
+-- snapshot de los materiales/servicios elegidos al momento de finalizar
+-- la cotización (precios congelados para evitar drift). `totals` guarda
+-- subtotal, IVA, envío/instalación y total final calculado server-side.
+CREATE TABLE IF NOT EXISTS public.quotes (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid,
+  customer_name text,
+  customer_email text,
+  customer_phone text,
+  region text,
+  notes text,
+  lines jsonb NOT NULL DEFAULT '[]'::jsonb,
+  totals jsonb NOT NULL DEFAULT '{}'::jsonb,
+  status text NOT NULL DEFAULT 'draft',
+  shipping_cost numeric(12,2) DEFAULT 0,
+  installation_cost numeric(12,2) DEFAULT 0,
+  iva_rate numeric(5,4) DEFAULT 0.19,
+  total numeric(14,2) DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: quotes-migrate
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS user_id uuid;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS customer_name text;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS customer_email text;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS customer_phone text;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS region text;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS notes text;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS lines jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS totals jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS status text DEFAULT 'draft';
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS shipping_cost numeric(12,2) DEFAULT 0;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS installation_cost numeric(12,2) DEFAULT 0;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS iva_rate numeric(5,4) DEFAULT 0.19;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS total numeric(14,2) DEFAULT 0;
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();

@@ -7,6 +7,10 @@ const INSFORGE_URL =
 const INSFORGE_ANON_KEY =
   process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY || 'ik_7e23032539c2dc64d5d27ca29d07b928';
 
+/** Public so server-only helpers can build request URLs against the same backend. */
+export const INSFORGE_BASE_URL = INSFORGE_URL;
+export const INSFORGE_PUBLIC_ANON_KEY = INSFORGE_ANON_KEY;
+
 export function getMissingAdminEnvVars(): string[] {
   const missing: string[] = [];
   if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_SESSION_SECRET) {

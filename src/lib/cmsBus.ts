@@ -18,7 +18,7 @@ import { EventEmitter } from 'node:events';
  * pub/sub or InsForge realtime channel without changing any callers.
  */
 
-export type CmsTopic = 'blog' | 'home' | 'settings' | 'media';
+export type CmsTopic = 'blog' | 'home' | 'settings' | 'media' | 'materials';
 
 export interface CmsEvent {
   topic: CmsTopic;

@@ -26,6 +26,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     links: [
       { href: '/admin/productos', label: 'Productos', description: 'Catálogo y stock', icon: Package },
       { href: '/admin/productos/importar', label: 'Importar de Mercado Libre', description: 'Vista previa desde URL de ML Chile', icon: Link2 },
+      { href: '/admin/materiales', label: 'Materiales (Cotizador)', description: 'Alimenta el cotizador en vivo', icon: Package },
       { href: '/admin/proyectos', label: 'Proyectos', description: 'Obras terminadas visibles al cliente', icon: Hammer },
       { href: '/admin/pedidos', label: 'Pedidos', description: 'Cobros y estados', icon: ShoppingCart },
       { href: '/admin/entregas', label: 'Entregas', description: 'Seguimiento logístico', icon: Truck },
@@ -68,6 +69,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/productos': 'Productos',
   '/admin/productos/nuevo': 'Nuevo producto',
   '/admin/productos/importar': 'Importar de Mercado Libre',
+  '/admin/materiales': 'Materiales (Cotizador)',
   '/admin/proyectos': 'Proyectos',
   '/admin/pedidos': 'Pedidos',
   '/admin/entregas': 'Entregas',

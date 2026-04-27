@@ -13,6 +13,20 @@ declare global {
 const DISMISS_KEY = 'fabrick.install.dismissed.v1';
 const AUTO_DISMISS_MS = 60_000; // 60 seconds
 
+function trackPwa(event: string, extra?: Record<string, unknown>) {
+  if (typeof window === 'undefined') return;
+  try {
+    void fetch('/api/pwa/track', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ event, ...(extra ?? {}) }),
+      keepalive: true,
+    });
+  } catch {
+    /* analytics is best-effort */
+  }
+}
+
 function isStandaloneDisplay() {
   if (typeof window === 'undefined') return false;
   return window.matchMedia('(display-mode: standalone)').matches || (window.navigator as Navigator & { standalone?: boolean }).standalone === true;
@@ -41,10 +55,20 @@ export default function InstallAppPrompt() {
       event.preventDefault();
       setPromptEvent(event as BeforeInstallPromptEvent);
       setDismissed(hidden || isStandaloneDisplay());
+      trackPwa('install_prompt_available');
+    };
+
+    const handleInstalled = () => {
+      trackPwa('installed');
+      setDismissed(true);
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
-    return () => window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+    window.addEventListener('appinstalled', handleInstalled);
+    return () => {
+      window.removeEventListener('beforeinstallprompt', handleBeforeInstall);
+      window.removeEventListener('appinstalled', handleInstalled);
+    };
   }, []);
 
   const close = useCallback(() => {
@@ -53,6 +77,7 @@ export default function InstallAppPrompt() {
     if (typeof window !== 'undefined') {
       window.localStorage.setItem(DISMISS_KEY, '1');
     }
+    trackPwa('install_banner_dismissed');
   }, []);
 
   // Auto-dismiss after 60 seconds
@@ -64,8 +89,12 @@ export default function InstallAppPrompt() {
 
   const install = async () => {
     if (!promptEvent) return;
+    trackPwa('install_prompt_shown');
     await promptEvent.prompt();
     const choice = await promptEvent.userChoice;
+    trackPwa(choice.outcome === 'accepted' ? 'install_accepted' : 'install_dismissed', {
+      platform: choice.platform,
+    });
     if (choice.outcome === 'accepted') {
       close();
     }

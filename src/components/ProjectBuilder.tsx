@@ -14,6 +14,7 @@ import {
   Zap,
   Wrench,
   PackageOpen,
+  type LucideIcon,
 } from 'lucide-react';
 
 /* -------------------------------------------------------------------------- */
@@ -40,7 +41,7 @@ export interface CartLine {
 interface Category {
   id: CategoryId;
   label: string;
-  Icon: React.ComponentType<{ className?: string; 'aria-hidden'?: boolean }>;
+  Icon: LucideIcon;
 }
 
 /* -------------------------------------------------------------------------- */

@@ -24,10 +24,31 @@ jobs:
       - name: Install dependencies
         run: npm install --no-audit --no-fund
 
+      - name: Probe preview deployment
+        id: probe
+        env:
+          TARGET_URL: ${{ github.event.deployment_status.target_url }}
+        run: |
+          if [ -z "$TARGET_URL" ]; then
+            echo "No target_url provided; skipping E2E."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          status=$(curl -s -o /dev/null -w "%{http_code}" --max-time 30 -L "$TARGET_URL/" || echo "000")
+          echo "Probe status: $status"
+          if [ "$status" = "401" ] || [ "$status" = "403" ]; then
+            echo "Preview is auth-gated (HTTP $status); skipping E2E run."
+            echo "skip=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          echo "skip=false" >> "$GITHUB_OUTPUT"
+
       - name: Install Playwright browsers
+        if: steps.probe.outputs.skip != 'true'
         run: npx playwright install --with-deps chromium webkit
 
       - name: Run Playwright against preview
+        if: steps.probe.outputs.skip != 'true'
         env:
           PLAYWRIGHT_BASE_URL: ${{ github.event.deployment_status.target_url }}
         run: npm run test:e2e

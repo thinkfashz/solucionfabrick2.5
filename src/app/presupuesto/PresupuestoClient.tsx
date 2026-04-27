@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
   ArrowRight,
@@ -246,13 +247,13 @@ export default function PresupuestoClient({ initialMaterials }: PresupuestoClien
       {/* History link for logged-in customers. */}
       {user && (
         <div className="relative z-10 mx-auto -mt-8 mb-12 max-w-7xl px-4 sm:px-6">
-          <a
+          <Link
             href="/presupuesto/historial"
             className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-4 py-2 text-xs font-semibold uppercase tracking-wider text-zinc-300 transition-colors hover:border-yellow-400/40 hover:text-yellow-300"
           >
             <History className="h-3.5 w-3.5" aria-hidden />
             Ver mis presupuestos guardados
-          </a>
+          </Link>
         </div>
       )}
 

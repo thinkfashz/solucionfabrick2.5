@@ -105,15 +105,6 @@ function formatCLP(value: number): string {
   }).format(Math.round(value || 0));
 }
 
-function uid(): string {
-  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) {
-    return crypto.randomUUID();
-  }
-  return `mat_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
-}
-// Suppress "unused" lint while keeping the helper available for offline/optimistic flows.
-void uid;
-
 /* -------------------------------------------------------------------------- */
 /*  DB layer — talks to /api/admin/materials                                  */
 /* -------------------------------------------------------------------------- */

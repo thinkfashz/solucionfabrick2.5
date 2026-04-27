@@ -242,17 +242,19 @@ function makeDocNumber(id: string | undefined, issuedAt: Date): string {
 
 function randomTail(length: number): string {
   const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
-  // Prefer crypto.getRandomValues when available (browsers + modern Node).
-  const g = (typeof globalThis !== 'undefined' ? (globalThis as unknown as { crypto?: { getRandomValues?: (a: Uint8Array) => Uint8Array } }) : undefined);
-  const cryptoObj = g?.crypto;
-  if (cryptoObj?.getRandomValues) {
+  // Prefer a CSPRNG when available; fall back to Math.random for very old
+  // runtimes (the document number is non-secret).
+  const cryptoObj: Crypto | undefined =
+    typeof globalThis !== 'undefined' && 'crypto' in globalThis
+      ? (globalThis.crypto as Crypto | undefined)
+      : undefined;
+  if (cryptoObj && typeof cryptoObj.getRandomValues === 'function') {
     const buf = new Uint8Array(length);
     cryptoObj.getRandomValues(buf);
     let out = '';
     for (let i = 0; i < length; i++) out += alphabet[buf[i] % alphabet.length];
     return out;
   }
-  // Last-resort fallback for very old runtimes; document number is non-secret.
   let out = '';
   for (let i = 0; i < length; i++) {
     out += alphabet[Math.floor(Math.random() * alphabet.length)];

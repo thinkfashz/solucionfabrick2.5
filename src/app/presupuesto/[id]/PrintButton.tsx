@@ -2,6 +2,7 @@
 
 import { Download, Loader2, Printer, Share2 } from 'lucide-react';
 import { useCallback, useState } from 'react';
+import type jsPDFType from 'jspdf';
 import type { Proposal } from '@/lib/budgetMath';
 import { formatCLP } from '@/lib/budgetMath';
 
@@ -289,8 +290,7 @@ export default function QuoteToolbar({
  * legal mention, doc number on the right.
  */
 function drawFooter(
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  pdf: any,
+  pdf: jsPDFType,
   pageW: number,
   pageH: number,
   footerH: number,
@@ -319,10 +319,8 @@ function drawFooter(
   pdf.setFontSize(7);
   pdf.setTextColor(160, 160, 160);
   pdf.text(`Documento: ${docNumber}`, pageW - 12, top + 7, { align: 'right' });
-  pdf.text(
-    `Página ${pdf.internal.getCurrentPageInfo().pageNumber}`,
-    pageW - 12,
-    top + 12,
-    { align: 'right' },
-  );
+  const pageNumber =
+    (pdf.internal as unknown as { getCurrentPageInfo?: () => { pageNumber: number } })
+      .getCurrentPageInfo?.().pageNumber ?? 1;
+  pdf.text(`Página ${pageNumber}`, pageW - 12, top + 12, { align: 'right' });
 }

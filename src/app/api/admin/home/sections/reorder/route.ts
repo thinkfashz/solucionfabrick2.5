@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { publishCmsEvent } from '@/lib/cmsBus';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -45,6 +46,7 @@ export async function PATCH(request: NextRequest) {
     } catch {
       /* best effort */
     }
+    publishCmsEvent({ topic: 'home', action: 'reorder', paths: ['/'] });
     if (errors.length > 0) {
       return NextResponse.json({ ok: false, errors, code: 'PARTIAL' }, { status: 207 });
     }

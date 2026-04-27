@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
 import { insforge } from '@/lib/insforge';
+import { publishCmsEvent } from '@/lib/cmsBus';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -116,6 +117,7 @@ export async function POST(request: NextRequest) {
         { status: 200 },
       );
     }
+    publishCmsEvent({ topic: 'media', action: 'upload' });
     return NextResponse.json({ asset: Array.isArray(inserted) ? inserted[0] : inserted, url, path });
   } catch (err) {
     return adminError(err, 'MEDIA_UPLOAD_FAILED');

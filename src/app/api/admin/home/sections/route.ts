@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
 import { SECTION_KINDS, type SectionKind } from '@/lib/homeSectionKinds';
+import { publishCmsEvent } from '@/lib/cmsBus';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -91,6 +92,7 @@ export async function POST(request: NextRequest) {
     } catch {
       /* best effort */
     }
+    publishCmsEvent({ topic: 'home', action: 'create', paths: ['/'] });
     return NextResponse.json({ section: Array.isArray(data) ? data[0] : data });
   } catch (err) {
     return adminError(err, 'HOME_CREATE_FAILED');

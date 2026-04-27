@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   ArrowUpRight, BarChart3, ChevronRight, Database, ExternalLink, Hammer, Image as ImageIcon, LayoutGrid, LogOut, Menu,
-  Megaphone, Newspaper, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart,
+  Megaphone, Newspaper, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart, Stethoscope,
   Truck, Users, X,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
@@ -51,6 +51,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
   {
     title: 'Sistema',
     links: [
+      { href: '/admin/estado', label: 'Estado del sistema', description: 'Diagnóstico CMS, BD, env e integraciones', icon: Stethoscope },
       { href: '/admin/observatory', label: 'Observatory', description: 'Red en tiempo real', icon: Radio },
       { href: '/admin/envios', label: 'Tarifas de Envío', description: 'Costos por región y transportista', icon: Truck },
       { href: '/admin/sql', label: 'Terminal SQL', description: 'Ejecutar SQL en InsForge', icon: Database },
@@ -83,6 +84,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/blog/nuevo': 'Nueva entrada',
   '/admin/home': 'Pantalla principal',
   '/admin/medios': 'Medios',
+  '/admin/estado': 'Estado del sistema',
 };
 
 function NavItem({ href, label, description, icon: Icon, active, onNavigate }: {

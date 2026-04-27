@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { publishCmsEvent } from '@/lib/cmsBus';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -81,6 +82,7 @@ export async function PUT(request: NextRequest) {
     } catch {
       /* best effort */
     }
+    publishCmsEvent({ topic: 'settings', action: 'update', paths: ['/', '/tienda'] });
     return NextResponse.json({ ok: true, updated: updates.length });
   } catch (err) {
     return adminError(err, 'SETTINGS_PUT_FAILED');

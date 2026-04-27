@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
 import { estimateReadingMinutes, renderMarkdown, slugify } from '@/lib/markdown';
+import { publishCmsEvent } from '@/lib/cmsBus';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -124,6 +125,7 @@ export async function PUT(request: NextRequest, ctx: RouteCtx) {
     } catch {
       /* best effort */
     }
+    publishCmsEvent({ topic: 'blog', action: 'update', id: slug, paths: ['/blog', `/blog/${slug}`] });
     return NextResponse.json({ post: Array.isArray(data) ? data[0] : data });
   } catch (err) {
     return adminError(err, 'BLOG_UPDATE_FAILED');
@@ -147,6 +149,7 @@ export async function DELETE(request: NextRequest, ctx: RouteCtx) {
     } catch {
       /* best effort */
     }
+    publishCmsEvent({ topic: 'blog', action: 'delete', id: (existing as { slug?: string }).slug, paths: ['/blog'] });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return adminError(err, 'BLOG_DELETE_FAILED');

@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
 import { estimateReadingMinutes, renderMarkdown, slugify } from '@/lib/markdown';
+import { publishCmsEvent } from '@/lib/cmsBus';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -96,6 +97,7 @@ export async function POST(request: NextRequest) {
     } catch {
       /* best effort */
     }
+    publishCmsEvent({ topic: 'blog', action: 'create', id: slug, paths: ['/blog', `/blog/${slug}`] });
     return NextResponse.json({ post: Array.isArray(data) ? data[0] : data });
   } catch (err) {
     return adminError(err, 'BLOG_CREATE_FAILED');

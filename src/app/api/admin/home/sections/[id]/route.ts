@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { revalidatePath } from 'next/cache';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
 import { SECTION_KINDS } from '@/lib/homeSectionKinds';
+import { publishCmsEvent } from '@/lib/cmsBus';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -47,6 +48,7 @@ export async function PUT(request: NextRequest, ctx: RouteCtx) {
     } catch {
       /* best effort */
     }
+    publishCmsEvent({ topic: 'home', action: 'update', id, paths: ['/'] });
     return NextResponse.json({ section: Array.isArray(data) ? data[0] : data });
   } catch (err) {
     return adminError(err, 'HOME_UPDATE_FAILED');
@@ -66,6 +68,7 @@ export async function DELETE(request: NextRequest, ctx: RouteCtx) {
     } catch {
       /* best effort */
     }
+    publishCmsEvent({ topic: 'home', action: 'delete', id, paths: ['/'] });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return adminError(err, 'HOME_DELETE_FAILED');

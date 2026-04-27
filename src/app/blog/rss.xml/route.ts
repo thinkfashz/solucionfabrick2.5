@@ -1,4 +1,4 @@
-import { listContent } from '@/lib/content';
+import { listAllBlog } from '@/lib/content';
 
 const BASE_URL = 'https://www.solucionesfabrick.com';
 
@@ -11,10 +11,10 @@ function xmlEscape(value: string): string {
     .replace(/'/g, '&apos;');
 }
 
-export const dynamic = 'force-static';
+export const dynamic = 'force-dynamic';
 
-export function GET() {
-  const posts = listContent('blog');
+export async function GET() {
+  const posts = await listAllBlog();
   const now = new Date().toUTCString();
 
   const items = posts

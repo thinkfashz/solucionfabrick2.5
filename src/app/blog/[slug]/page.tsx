@@ -1,7 +1,7 @@
 import type { Metadata } from 'next';
 import { notFound } from 'next/navigation';
 import ArticlePage from '@/components/ArticlePage';
-import { getContent, listContent } from '@/lib/content';
+import { getBlogPost, listAllBlog, listContent } from '@/lib/content';
 
 const BASE_URL = 'https://www.solucionesfabrick.com';
 
@@ -10,6 +10,7 @@ const BASE_URL = 'https://www.solucionesfabrick.com';
 export const dynamic = 'force-dynamic';
 
 export function generateStaticParams() {
+  // Statically generate only file-system slugs; DB-only posts render dynamically.
   return listContent('blog').map((item) => ({ slug: item.slug }));
 }
 
@@ -19,7 +20,7 @@ interface RouteParams {
 
 export async function generateMetadata({ params }: RouteParams): Promise<Metadata> {
   const { slug } = await params;
-  const post = getContent('blog', slug);
+  const post = await getBlogPost(slug);
   if (!post) return {};
   return {
     title: post.title,
@@ -39,12 +40,11 @@ export async function generateMetadata({ params }: RouteParams): Promise<Metadat
 
 export default async function BlogPostPage({ params }: RouteParams) {
   const { slug } = await params;
-  const post = getContent('blog', slug);
+  const post = await getBlogPost(slug);
   if (!post) return notFound();
 
-  const related = listContent('blog')
-    .filter((i) => i.slug !== post.slug)
-    .slice(0, 3);
+  const all = await listAllBlog();
+  const related = all.filter((i) => i.slug !== post.slug).slice(0, 3);
 
   return <ArticlePage post={post} related={related} />;
 }

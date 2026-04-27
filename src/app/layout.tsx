@@ -9,6 +9,7 @@ import { CartProvider } from '@/context/CartContext';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 import Analytics from '@/components/Analytics';
+import CmsRealtimeListener from '@/components/CmsRealtimeListener';
 
 // Force per-request rendering for every route in the app.
 //
@@ -117,6 +118,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <PromoBanner />
               <WhatsAppButton />
               <Analytics />
+              <CmsRealtimeListener />
             </CartProvider>
           </AuthProvider>
         </ThemeProvider>

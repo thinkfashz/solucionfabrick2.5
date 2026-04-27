@@ -1269,10 +1269,28 @@ const CheckoutApp = () => {
       </nav>
 
       {/* CONTENEDOR PRINCIPAL */}
-      <div className="pt-28 sm:pt-32 px-4 sm:px-6 md:px-12 max-w-7xl mx-auto grid lg:grid-cols-12 gap-8 sm:gap-12 lg:gap-20">
+      {/*
+        Layout responsivo del checkout:
+        - Steps 1 y 2 (Verificación + Despacho): grid de 12 columnas con resumen
+          sticky a la izquierda (col-span-5) y el formulario a la derecha (col-span-7).
+        - Step 3 (Pago): el resumen se oculta en lg+ y el formulario se centra
+          dentro de un contenedor más angosto (max-w-3xl) para que la tarjeta
+          y cada campo queden alineados al centro de la pantalla, sin espacios
+          enormes a los lados al pagar. En móvil/tablet la columna del resumen
+          se sigue mostrando apilada arriba (el grid colapsa por debajo de lg).
+      */}
+      <div
+        className={`pt-28 sm:pt-32 px-4 sm:px-6 md:px-12 mx-auto grid lg:grid-cols-12 gap-8 sm:gap-12 lg:gap-20 ${
+          step === 3 ? 'max-w-3xl' : 'max-w-7xl'
+        }`}
+      >
         
         {/* COLUMNA IZQUIERDA: RESUMEN DEL PRODUCTO */}
-        <div className="lg:col-span-5 animate-fade-up relative">
+        <div
+          className={`lg:col-span-5 animate-fade-up relative ${
+            step === 3 ? 'lg:hidden' : ''
+          }`}
+        >
           <div className="sticky top-32 space-y-8">
             
             <div className="bg-zinc-950 p-5 sm:p-8 rounded-[2rem] sm:rounded-[3rem] border border-white/5 shadow-2xl relative overflow-hidden group">
@@ -1373,7 +1391,11 @@ const CheckoutApp = () => {
         </div>
 
         {/* COLUMNA DERECHA: FLUJO DE COMPRA */}
-        <div className="lg:col-span-7 animate-fade-up">
+        <div
+          className={`animate-fade-up ${
+            step === 3 ? 'lg:col-span-12' : 'lg:col-span-7'
+          }`}
+        >
           
           {/* Barra de Progreso Superior */}
           <div className="flex items-center justify-between mb-8 sm:mb-12 relative px-2 sm:px-0">

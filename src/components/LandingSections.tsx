@@ -84,8 +84,17 @@ const NAV_CARDS = [
 /* ════════════════════════════════════════════════════════════
    COMPONENTE
 ════════════════════════════════════════════════════════════ */
-export default function LandingSections() {
+export default function LandingSections({
+  copyrightText,
+  socialLinks,
+}: { copyrightText?: string; socialLinks?: { facebook?: string; instagram?: string; tiktok?: string } } = {}) {
   const progressBarRef = useRef<HTMLDivElement>(null);
+  const copyrightHtml = (copyrightText && copyrightText.trim())
+    ? copyrightText.replaceAll('{year}', String(new Date().getFullYear()))
+    : `© ${new Date().getFullYear()} Soluciones Fabrick · Todos los derechos reservados`;
+  const fbHref = socialLinks?.facebook?.trim() || '#';
+  const igHref = socialLinks?.instagram?.trim() || '#';
+  const ttHref = socialLinks?.tiktok?.trim() || '#';
 
   /* ── GSAP + anime.js scroll animations ── */
   useEffect(() => {
@@ -673,9 +682,9 @@ export default function LandingSections() {
             {/* Social icons */}
             <div className="flex gap-4 items-center">
               {[
-                { Icon: MetaIcon,      href: '#' },
-                { Icon: TikTokIcon,    href: '#' },
-                { Icon: InstagramIcon, href: '#' },
+                { Icon: MetaIcon,      href: fbHref },
+                { Icon: TikTokIcon,    href: ttHref },
+                { Icon: InstagramIcon, href: igHref },
               ].map(({ Icon, href }, i) => (
                 <a
                   key={i} href={href}
@@ -693,7 +702,7 @@ export default function LandingSections() {
 
           {/* Copyright */}
           <p className="text-center text-zinc-700 text-[9px] uppercase tracking-[0.35em] mt-10 font-light">
-            © {new Date().getFullYear()} Soluciones Fabrick · Todos los derechos reservados
+            {copyrightHtml}
           </p>
         </div>
 
@@ -714,9 +723,9 @@ export default function LandingSections() {
             {/* Redes sociales */}
             <div className="flex gap-4 items-center">
               {[
-                { Icon: MetaIcon,      href: '#', label: 'Facebook' },
-                { Icon: TikTokIcon,    href: '#', label: 'TikTok' },
-                { Icon: InstagramIcon, href: '#', label: 'Instagram' },
+                { Icon: MetaIcon,      href: fbHref, label: 'Facebook' },
+                { Icon: TikTokIcon,    href: ttHref, label: 'TikTok' },
+                { Icon: InstagramIcon, href: igHref, label: 'Instagram' },
               ].map(({ Icon, href, label }, i) => (
                 <a
                   key={i} href={href} aria-label={label}
@@ -736,7 +745,7 @@ export default function LandingSections() {
                 Soluciones Integrales para el Hogar Moderno.
               </p>
               <p className="text-zinc-700 text-[9px] uppercase tracking-widest">
-                © {new Date().getFullYear()} Soluciones Fabrick · Todos los derechos reservados
+                {copyrightHtml}
               </p>
             </div>
           </div>

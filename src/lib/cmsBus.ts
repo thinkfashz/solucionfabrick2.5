@@ -35,7 +35,7 @@ export interface CmsEvent {
 type Listener = (event: CmsEvent) => void;
 
 // Reuse the emitter across HMR reloads in dev so subscribers don't get orphaned.
-const GLOBAL_KEY = '__sfk_cms_bus__';
+const GLOBAL_KEY = '__insforge_cms_bus__';
 type GlobalWithBus = typeof globalThis & { [GLOBAL_KEY]?: EventEmitter };
 
 function getEmitter(): EventEmitter {

@@ -364,11 +364,26 @@ export async function GET(request: NextRequest) {
     }
 
     // ---- INTEGRATIONS (light HEAD probes) -------------------------------
+    // Diagnostics intentionally avoid the project-wide hardcoded fallback URL:
+    // when NEXT_PUBLIC_INSFORGE_URL is missing we want the report to surface
+    // that misconfiguration explicitly instead of silently probing a default
+    // host that may be wrong for this deployment.
+    const insforgeUrl = process.env.NEXT_PUBLIC_INSFORGE_URL ?? '';
     const externals: Array<{ id: string; url: string; label: string }> = [
-      { id: 'int.insforge', url: process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app', label: 'InsForge' },
+      ...(insforgeUrl ? [{ id: 'int.insforge', url: insforgeUrl, label: 'InsForge' }] : []),
       { id: 'int.mercadopago', url: 'https://api.mercadopago.com', label: 'MercadoPago' },
       { id: 'int.cloudflare', url: 'https://challenges.cloudflare.com', label: 'Cloudflare Turnstile' },
     ];
+    if (!insforgeUrl) {
+      checks.push({
+        id: 'int.insforge',
+        label: 'InsForge',
+        group: 'integrations',
+        severity: 'error',
+        detail: 'NEXT_PUBLIC_INSFORGE_URL no está configurada — no se puede probar conectividad.',
+        suggestion: 'Define NEXT_PUBLIC_INSFORGE_URL en Vercel y redeploya.',
+      });
+    }
     await Promise.all(
       externals.map(async (e) => {
         const start = Date.now();

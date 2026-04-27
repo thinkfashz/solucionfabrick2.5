@@ -1,0 +1,48 @@
+{
+  "common": {
+    "currency": "Moneda",
+    "language": "Idioma",
+    "loading": "Cargando…",
+    "error": "Ocurrió un error",
+    "retry": "Reintentar",
+    "save": "Guardar",
+    "cancel": "Cancelar",
+    "close": "Cerrar"
+  },
+  "checkout": {
+    "title": "Finalizar compra",
+    "subtotal": "Subtotal",
+    "shipping": "Despacho",
+    "tax": "IVA",
+    "total": "Total",
+    "discount": "Descuento",
+    "coupon_placeholder": "Ingresá tu código de descuento",
+    "coupon_apply": "Aplicar",
+    "coupon_invalid": "Cupón no válido",
+    "coupon_applied": "Cupón aplicado",
+    "pay": "Pagar"
+  },
+  "shipping": {
+    "title": "Envío",
+    "address": "Dirección de despacho",
+    "region": "Región",
+    "comuna": "Comuna",
+    "carrier": "Empresa de envío",
+    "eta_days": "Llega en {min}-{max} días",
+    "select_quote": "Seleccionar"
+  },
+  "loyalty": {
+    "title": "Recompensas",
+    "balance": "Tus puntos",
+    "tier_bronze": "Bronce",
+    "tier_silver": "Plata",
+    "tier_gold": "Oro",
+    "redeem": "Canjear puntos",
+    "referrals": "Referidos"
+  },
+  "pwa": {
+    "install_title": "Instalá la app",
+    "install_body": "Acceso rápido, funciona offline y te avisamos cuando tu pedido salga a despacho.",
+    "install_cta": "Instalar"
+  }
+}

@@ -303,3 +303,458 @@ INSERT INTO public.configuracion (clave, valor) VALUES
   ('social_instagram', ''),
   ('social_tiktok', '')
 ON CONFLICT (clave) DO NOTHING;
+
+-- ─────────────────────────────────────────────────────────────────
+-- EPIC 4 — PWA adoption analytics
+-- ─────────────────────────────────────────────────────────────────
+
+-- TABLA: pwa_events
+-- Registra eventos anónimos (install_prompt_shown, installed, push_granted...)
+-- emitidos por `POST /api/pwa/track`. Sin PII obligatorio: `user_id` y `meta`
+-- son opcionales. Usado por `/admin/analytics/pwa` (épica 4).
+CREATE TABLE IF NOT EXISTS public.pwa_events (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  event text NOT NULL,
+  user_id text,
+  ua text,
+  platform text,
+  meta jsonb DEFAULT '{}'::jsonb,
+  created_at timestamptz DEFAULT now()
+);
+
+-- TABLA: pwa_events-migrate
+ALTER TABLE public.pwa_events ADD COLUMN IF NOT EXISTS event text;
+ALTER TABLE public.pwa_events ADD COLUMN IF NOT EXISTS user_id text;
+ALTER TABLE public.pwa_events ADD COLUMN IF NOT EXISTS ua text;
+ALTER TABLE public.pwa_events ADD COLUMN IF NOT EXISTS platform text;
+ALTER TABLE public.pwa_events ADD COLUMN IF NOT EXISTS meta jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.pwa_events ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- ─────────────────────────────────────────────────────────────────
+-- EPIC 3 — Multi-bodega + stock + variantes con barcode/QR
+-- ─────────────────────────────────────────────────────────────────
+
+-- TABLA: warehouses
+-- Bodegas físicas. Una sola bodega por defecto si nunca se configuran otras.
+CREATE TABLE IF NOT EXISTS public.warehouses (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code text UNIQUE NOT NULL,
+  name text NOT NULL,
+  address text,
+  comuna text,
+  region text,
+  is_active boolean DEFAULT true,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: warehouses-migrate
+ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS code text;
+ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS name text;
+ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS address text;
+ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS comuna text;
+ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS region text;
+ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS is_active boolean DEFAULT true;
+ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.warehouses ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- SEED: bodega principal
+INSERT INTO public.warehouses (code, name, address, comuna, region) VALUES
+  ('main', 'Bodega Principal', 'Dentista Lidia Pincheira #1920', 'Linares', 'Maule')
+ON CONFLICT (code) DO NOTHING;
+
+-- TABLA: product_variants
+-- Variantes de producto con SKU + EAN13. Si un producto no tiene variantes,
+-- el código de la app crea automáticamente una variante "base" por producto.
+CREATE TABLE IF NOT EXISTS public.product_variants (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  product_id uuid NOT NULL,
+  sku text UNIQUE NOT NULL,
+  barcode_ean13 text UNIQUE,
+  name text,
+  weight_g integer,
+  length_cm numeric(8,2),
+  width_cm numeric(8,2),
+  height_cm numeric(8,2),
+  attributes jsonb DEFAULT '{}'::jsonb,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: product_variants-migrate
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS product_id uuid;
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS sku text;
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS barcode_ean13 text;
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS name text;
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS weight_g integer;
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS length_cm numeric(8,2);
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS width_cm numeric(8,2);
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS height_cm numeric(8,2);
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS attributes jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.product_variants ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: inventory
+-- Stock por variante × bodega. `qty_available = qty_on_hand - qty_reserved`.
+CREATE TABLE IF NOT EXISTS public.inventory (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  variant_id uuid NOT NULL,
+  warehouse_id uuid NOT NULL,
+  qty_on_hand integer DEFAULT 0,
+  qty_reserved integer DEFAULT 0,
+  qty_safety integer DEFAULT 0,
+  reorder_point integer DEFAULT 0,
+  updated_at timestamptz DEFAULT now(),
+  UNIQUE (variant_id, warehouse_id)
+);
+
+-- TABLA: inventory-migrate
+ALTER TABLE public.inventory ADD COLUMN IF NOT EXISTS variant_id uuid;
+ALTER TABLE public.inventory ADD COLUMN IF NOT EXISTS warehouse_id uuid;
+ALTER TABLE public.inventory ADD COLUMN IF NOT EXISTS qty_on_hand integer DEFAULT 0;
+ALTER TABLE public.inventory ADD COLUMN IF NOT EXISTS qty_reserved integer DEFAULT 0;
+ALTER TABLE public.inventory ADD COLUMN IF NOT EXISTS qty_safety integer DEFAULT 0;
+ALTER TABLE public.inventory ADD COLUMN IF NOT EXISTS reorder_point integer DEFAULT 0;
+ALTER TABLE public.inventory ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: inventory_movements
+-- Auditoría de movimientos: in/out/transfer/adjustment/reservation/release.
+CREATE TABLE IF NOT EXISTS public.inventory_movements (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  variant_id uuid NOT NULL,
+  warehouse_id uuid NOT NULL,
+  type text NOT NULL,
+  qty integer NOT NULL,
+  ref_order_id uuid,
+  ref_user text,
+  note text,
+  created_at timestamptz DEFAULT now()
+);
+
+-- TABLA: inventory_movements-migrate
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS variant_id uuid;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS warehouse_id uuid;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS type text;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS qty integer;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS ref_order_id uuid;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS ref_user text;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS note text;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- ─────────────────────────────────────────────────────────────────
+-- EPIC 2 — Logística + direcciones de envío + tracking
+-- ─────────────────────────────────────────────────────────────────
+
+-- TABLA: shipping_addresses
+-- Direcciones del cliente; un usuario puede tener varias y marcar una default.
+CREATE TABLE IF NOT EXISTS public.shipping_addresses (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_email text,
+  user_id text,
+  recipient_name text NOT NULL,
+  phone text,
+  region text NOT NULL,
+  comuna text NOT NULL,
+  calle text NOT NULL,
+  numero text,
+  dpto text,
+  referencia text,
+  lat numeric(10,7),
+  lng numeric(10,7),
+  is_default boolean DEFAULT false,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: shipping_addresses-migrate
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS user_email text;
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS user_id text;
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS recipient_name text;
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS phone text;
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS region text;
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS comuna text;
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS calle text;
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS numero text;
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS dpto text;
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS referencia text;
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS lat numeric(10,7);
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS lng numeric(10,7);
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS is_default boolean DEFAULT false;
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.shipping_addresses ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: shipments
+-- Un shipment por orden (al menos). `carrier` es el código (chilexpress,
+-- starken, correoschile, mock). `payload_json` guarda el cuerpo crudo del
+-- proveedor por si necesitamos depurar más tarde sin volver a llamar la API.
+CREATE TABLE IF NOT EXISTS public.shipments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id uuid NOT NULL,
+  carrier text NOT NULL,
+  service_code text,
+  tracking_code text,
+  label_url text,
+  cost numeric(10,2) DEFAULT 0,
+  eta_days integer,
+  status text DEFAULT 'pending',
+  origin_warehouse_id uuid,
+  address_id uuid,
+  payload_json jsonb DEFAULT '{}'::jsonb,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: shipments-migrate
+ALTER TABLE public.shipments ADD COLUMN IF NOT EXISTS order_id uuid;
+ALTER TABLE public.shipments ADD COLUMN IF NOT EXISTS carrier text;
+ALTER TABLE public.shipments ADD COLUMN IF NOT EXISTS service_code text;
+ALTER TABLE public.shipments ADD COLUMN IF NOT EXISTS tracking_code text;
+ALTER TABLE public.shipments ADD COLUMN IF NOT EXISTS label_url text;
+ALTER TABLE public.shipments ADD COLUMN IF NOT EXISTS cost numeric(10,2) DEFAULT 0;
+ALTER TABLE public.shipments ADD COLUMN IF NOT EXISTS eta_days integer;
+ALTER TABLE public.shipments ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending';
+ALTER TABLE public.shipments ADD COLUMN IF NOT EXISTS origin_warehouse_id uuid;
+ALTER TABLE public.shipments ADD COLUMN IF NOT EXISTS address_id uuid;
+ALTER TABLE public.shipments ADD COLUMN IF NOT EXISTS payload_json jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.shipments ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.shipments ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- ─────────────────────────────────────────────────────────────────
+-- EPIC 1 — Facturación electrónica (SII)
+-- ─────────────────────────────────────────────────────────────────
+
+-- TABLA: invoices
+-- DTE emitido por el proveedor (Haulmer/OpenFactura/LibreDTE/SimpleAPI…).
+-- `dte_type` sigue los códigos del SII: 33 factura electrónica, 39 boleta,
+-- 41 boleta exenta, 61 nota crédito, 56 nota débito.
+CREATE TABLE IF NOT EXISTS public.invoices (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  order_id uuid,
+  dte_type integer NOT NULL,
+  folio text,
+  rut_emisor text,
+  rut_receptor text,
+  razon_social_receptor text,
+  giro_receptor text,
+  direccion_receptor text,
+  comuna_receptor text,
+  neto numeric(12,2) DEFAULT 0,
+  iva numeric(12,2) DEFAULT 0,
+  exento numeric(12,2) DEFAULT 0,
+  total numeric(12,2) DEFAULT 0,
+  xml_url text,
+  pdf_url text,
+  pdf_token text,
+  sii_track_id text,
+  sii_status text DEFAULT 'pending',
+  provider text,
+  provider_payload jsonb DEFAULT '{}'::jsonb,
+  voided boolean DEFAULT false,
+  voided_at timestamptz,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: invoices-migrate
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS order_id uuid;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS dte_type integer;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS folio text;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS rut_emisor text;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS rut_receptor text;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS razon_social_receptor text;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS giro_receptor text;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS direccion_receptor text;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS comuna_receptor text;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS neto numeric(12,2) DEFAULT 0;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS iva numeric(12,2) DEFAULT 0;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS exento numeric(12,2) DEFAULT 0;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS total numeric(12,2) DEFAULT 0;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS xml_url text;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS pdf_url text;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS pdf_token text;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS sii_track_id text;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS sii_status text DEFAULT 'pending';
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS provider text;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS provider_payload jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS voided boolean DEFAULT false;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS voided_at timestamptz;
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.invoices ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- ─────────────────────────────────────────────────────────────────
+-- EPIC 5 — Loyalty + cupones + referidos
+-- ─────────────────────────────────────────────────────────────────
+
+-- TABLA: loyalty_accounts
+-- Una cuenta por usuario. `tier` se recalcula del `lifetime_spend` al cerrar
+-- una orden. `points_balance` se actualiza vía `loyalty_transactions`.
+CREATE TABLE IF NOT EXISTS public.loyalty_accounts (
+  user_email text PRIMARY KEY,
+  points_balance integer DEFAULT 0,
+  tier text DEFAULT 'bronze',
+  lifetime_spend numeric(12,2) DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: loyalty_accounts-migrate
+ALTER TABLE public.loyalty_accounts ADD COLUMN IF NOT EXISTS points_balance integer DEFAULT 0;
+ALTER TABLE public.loyalty_accounts ADD COLUMN IF NOT EXISTS tier text DEFAULT 'bronze';
+ALTER TABLE public.loyalty_accounts ADD COLUMN IF NOT EXISTS lifetime_spend numeric(12,2) DEFAULT 0;
+ALTER TABLE public.loyalty_accounts ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.loyalty_accounts ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: loyalty_transactions
+-- Histórico de movimientos de puntos (earn / redeem / expire / adjust).
+CREATE TABLE IF NOT EXISTS public.loyalty_transactions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_email text NOT NULL,
+  points integer NOT NULL,
+  reason text NOT NULL,
+  ref_order_id uuid,
+  expires_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
+
+-- TABLA: loyalty_transactions-migrate
+ALTER TABLE public.loyalty_transactions ADD COLUMN IF NOT EXISTS user_email text;
+ALTER TABLE public.loyalty_transactions ADD COLUMN IF NOT EXISTS points integer;
+ALTER TABLE public.loyalty_transactions ADD COLUMN IF NOT EXISTS reason text;
+ALTER TABLE public.loyalty_transactions ADD COLUMN IF NOT EXISTS ref_order_id uuid;
+ALTER TABLE public.loyalty_transactions ADD COLUMN IF NOT EXISTS expires_at timestamptz;
+ALTER TABLE public.loyalty_transactions ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- TABLA: coupons
+-- Código de cupón válido para una o varias compras. `kind`:
+--   percent   → `value` es % (0–100), tope 30% del subtotal por defecto.
+--   amount    → `value` es CLP descontado del total.
+--   free_shipping → ignora `value`, anula el costo de despacho.
+CREATE TABLE IF NOT EXISTS public.coupons (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code text UNIQUE NOT NULL,
+  kind text NOT NULL DEFAULT 'percent',
+  value numeric(10,2) DEFAULT 0,
+  min_amount numeric(12,2) DEFAULT 0,
+  starts_at timestamptz,
+  ends_at timestamptz,
+  max_uses integer,
+  max_uses_per_user integer,
+  uses_count integer DEFAULT 0,
+  applies_to jsonb DEFAULT '{}'::jsonb,
+  active boolean DEFAULT true,
+  description text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: coupons-migrate
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS code text;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS kind text DEFAULT 'percent';
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS value numeric(10,2) DEFAULT 0;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS min_amount numeric(12,2) DEFAULT 0;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS starts_at timestamptz;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS ends_at timestamptz;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS max_uses integer;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS max_uses_per_user integer;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS uses_count integer DEFAULT 0;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS applies_to jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS active boolean DEFAULT true;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS description text;
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.coupons ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: coupon_redemptions
+-- Una redención por (cupón, usuario, orden). Permite enforcement de
+-- `max_uses_per_user` sin consultar `orders.items`.
+CREATE TABLE IF NOT EXISTS public.coupon_redemptions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  coupon_id uuid NOT NULL,
+  user_email text,
+  order_id uuid,
+  amount_discounted numeric(12,2) DEFAULT 0,
+  redeemed_at timestamptz DEFAULT now()
+);
+
+-- TABLA: coupon_redemptions-migrate
+ALTER TABLE public.coupon_redemptions ADD COLUMN IF NOT EXISTS coupon_id uuid;
+ALTER TABLE public.coupon_redemptions ADD COLUMN IF NOT EXISTS user_email text;
+ALTER TABLE public.coupon_redemptions ADD COLUMN IF NOT EXISTS order_id uuid;
+ALTER TABLE public.coupon_redemptions ADD COLUMN IF NOT EXISTS amount_discounted numeric(12,2) DEFAULT 0;
+ALTER TABLE public.coupon_redemptions ADD COLUMN IF NOT EXISTS redeemed_at timestamptz DEFAULT now();
+
+-- TABLA: referrals
+-- Programa de referidos. El referente gana puntos cuando el referido completa
+-- su primera orden con monto >= a un umbral configurable (en `configuracion`).
+CREATE TABLE IF NOT EXISTS public.referrals (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  code text UNIQUE NOT NULL,
+  referrer_email text NOT NULL,
+  referee_email text,
+  status text DEFAULT 'pending',
+  reward_points integer DEFAULT 0,
+  completed_order_id uuid,
+  completed_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
+
+-- TABLA: referrals-migrate
+ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS code text;
+ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS referrer_email text;
+ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS referee_email text;
+ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending';
+ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS reward_points integer DEFAULT 0;
+ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS completed_order_id uuid;
+ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS completed_at timestamptz;
+ALTER TABLE public.referrals ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- SEED: configuracion loyalty (claves consumidas por src/lib/loyalty.ts)
+INSERT INTO public.configuracion (clave, valor) VALUES
+  ('loyalty_points_per_clp', '0.001'),
+  ('loyalty_redeem_clp_per_point', '10'),
+  ('loyalty_redeem_max_pct', '0.30'),
+  ('loyalty_referral_min_amount', '20000'),
+  ('loyalty_referral_reward_points', '500'),
+  ('loyalty_points_expiry_months', '12')
+ON CONFLICT (clave) DO NOTHING;
+
+-- ─────────────────────────────────────────────────────────────────
+-- EPIC 6 — Multi-moneda (i18n se resuelve en el cliente)
+-- ─────────────────────────────────────────────────────────────────
+
+-- TABLA: currencies
+-- Catálogo de monedas soportadas. `decimals` controla redondeo (CLP=0, USD=2).
+CREATE TABLE IF NOT EXISTS public.currencies (
+  code text PRIMARY KEY,
+  symbol text NOT NULL,
+  name text,
+  decimals integer DEFAULT 2,
+  active boolean DEFAULT true
+);
+
+-- SEED: monedas iniciales
+INSERT INTO public.currencies (code, symbol, name, decimals, active) VALUES
+  ('CLP', '$', 'Peso chileno', 0, true),
+  ('USD', 'US$', 'Dólar estadounidense', 2, true),
+  ('EUR', '€', 'Euro', 2, false),
+  ('UF', 'UF', 'Unidad de Fomento', 2, false)
+ON CONFLICT (code) DO NOTHING;
+
+-- TABLA: exchange_rates
+-- Tipo de cambio CLP → cualquier otra moneda (base = CLP). Refrescada por
+-- `/api/cron/refresh-rates` (cron Vercel) desde mindicador.cl.
+CREATE TABLE IF NOT EXISTS public.exchange_rates (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  base text NOT NULL DEFAULT 'CLP',
+  quote text NOT NULL,
+  rate numeric(20,8) NOT NULL,
+  source text,
+  fetched_at timestamptz DEFAULT now(),
+  UNIQUE (base, quote, fetched_at)
+);
+
+-- TABLA: exchange_rates-migrate
+ALTER TABLE public.exchange_rates ADD COLUMN IF NOT EXISTS base text DEFAULT 'CLP';
+ALTER TABLE public.exchange_rates ADD COLUMN IF NOT EXISTS quote text;
+ALTER TABLE public.exchange_rates ADD COLUMN IF NOT EXISTS rate numeric(20,8);
+ALTER TABLE public.exchange_rates ADD COLUMN IF NOT EXISTS source text;
+ALTER TABLE public.exchange_rates ADD COLUMN IF NOT EXISTS fetched_at timestamptz DEFAULT now();

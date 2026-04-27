@@ -59,7 +59,7 @@ describe('verifyTurnstile', () => {
     const fetchMock = vi.fn(async () => new Response(JSON.stringify({ success: true }), { status: 200 }));
     globalThis.fetch = fetchMock as typeof fetch;
     await verifyTurnstile('tkn', '8.8.8.8');
-    const call = fetchMock.mock.calls[0];
+    const call = fetchMock.mock.calls[0] as unknown as [string, RequestInit | undefined] | undefined;
     const body = (call?.[1]?.body as URLSearchParams | undefined)?.toString() ?? '';
     expect(body).toContain('remoteip=8.8.8.8');
     expect(body).toContain('response=tkn');

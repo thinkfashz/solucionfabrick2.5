@@ -54,7 +54,9 @@ export async function POST(request: NextRequest) {
     // Map QuoteCart items → QuoteLine[] expected by saveBudget.
     const lines = items.map((it) => {
       const kind = String(it.kind ?? 'service');
-      const meta = (it.meta && typeof it.meta === 'object') ? it.meta : {};
+      const meta = it.meta && typeof it.meta === 'object' && !Array.isArray(it.meta)
+        ? (it.meta as Record<string, unknown>)
+        : {};
       const noteParts: string[] = [];
       if (it.notes) noteParts.push(String(it.notes));
       if (Object.keys(meta).length > 0) {

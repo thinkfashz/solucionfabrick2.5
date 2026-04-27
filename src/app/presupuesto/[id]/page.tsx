@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { ArrowLeft, Calendar, FileText, Mail, MapPin, Phone, ShieldCheck, Sparkles, User, type LucideIcon } from 'lucide-react';
 import { getQuoteById } from '@/lib/budget';
 import { buildProposal, formatCLP } from '@/lib/budgetMath';
-import PrintButton from './PrintButton';
+import QuoteToolbar from './PrintButton';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -70,11 +70,34 @@ export default async function QuoteSummaryPage({ params }: PageProps) {
             <ArrowLeft className="h-4 w-4" aria-hidden />
             Volver al cotizador
           </Link>
-          <PrintButton />
+          <QuoteToolbar proposal={proposal} captureSelector="#quote-capture" />
         </div>
 
+        {/* Brand banner — also captured into the PDF. */}
+        <div className="mb-6 rounded-2xl border border-yellow-400/30 bg-gradient-to-br from-zinc-950 via-black to-zinc-950 p-6 text-center shadow-[0_8px_40px_-12px_rgba(255,215,0,0.35)] sm:p-8">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.45em] text-yellow-300/90">
+            Soluciones Fabrick
+          </p>
+          <h1
+            className="font-playfair mt-2 text-4xl font-extrabold uppercase leading-tight tracking-[0.18em] text-white sm:text-5xl md:text-6xl"
+            style={{ textShadow: '0 0 24px rgba(255,215,0,0.18)' }}
+          >
+            SOLUCIONES FABRICK
+          </h1>
+          <p className="font-playfair mt-3 text-base italic tracking-wide text-yellow-400 sm:text-lg">
+            Constructor de Historias
+          </p>
+          <div className="mx-auto mt-4 h-px w-32 bg-gradient-to-r from-transparent via-yellow-400/70 to-transparent" />
+          <p className="mt-3 text-[11px] uppercase tracking-[0.3em] text-zinc-400">
+            Propuesta Técnica Comercial
+          </p>
+        </div>
+
+        {/* Capture region — everything inside is what html2canvas snapshots. */}
+        <div id="quote-capture" className="space-y-6 bg-black">
+
         {/* Header card */}
-        <header className="mb-8 overflow-hidden rounded-2xl border border-yellow-400/20 bg-zinc-950/60 p-6 shadow-[0_8px_40px_-12px_rgba(250,204,21,0.25)] backdrop-blur sm:p-8">
+        <header className="overflow-hidden rounded-2xl border border-yellow-400/20 bg-zinc-950/60 p-6 shadow-[0_8px_40px_-12px_rgba(250,204,21,0.25)] backdrop-blur sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-yellow-400/25 bg-yellow-400/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-yellow-300">
@@ -211,11 +234,16 @@ export default async function QuoteSummaryPage({ params }: PageProps) {
             fecha de emisión. Los precios son referenciales y la evaluación técnica final puede
             ajustarlos según terreno, ubicación y especificaciones definitivas.
           </p>
+          <p className="mt-3 text-[11px] italic leading-relaxed text-zinc-400">
+            Soluciones Fabrick — Pisar fuerte desde el primer día. Documento generado por el
+            sistema oficial de presupuestos de Faubricio Micolta.
+          </p>
           <p className="mt-2">
             Soluciones Fabrick · Construcción y especialidades · Documento{' '}
             <span className="font-mono text-zinc-300">{proposal.docNumber}</span>
           </p>
         </footer>
+        </div>
       </div>
     </main>
   );

@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { ArrowRight, FileText, History, Loader2, Lock } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
+import { insforge } from '@/lib/insforge';
 import type { QuoteRow } from '@/lib/budget';
 import { formatCLP } from '@/lib/budgetMath';
 
@@ -18,8 +19,23 @@ export default function HistorialPage() {
     let cancelled = false;
     setFetching(true);
     setError(null);
-    fetch(`/api/quotes/mine?userId=${encodeURIComponent(user.id)}`, { cache: 'no-store' })
-      .then(async (res) => {
+    (async () => {
+      try {
+        // Get a fresh access token from the SDK (uses the httpOnly refresh
+        // cookie set by InsForge at sign-in). We forward it as a Bearer token
+        // and the API validates it server-side — never trust a client-provided
+        // user id, even when AuthContext already exposes one.
+        const { data: refreshed, error: refreshErr } = await insforge.auth.refreshSession();
+        const token = refreshed?.accessToken;
+        if (refreshErr || !token) {
+          throw new Error(
+            refreshErr?.message || 'Tu sesión expiró. Vuelve a iniciar sesión.',
+          );
+        }
+        const res = await fetch('/api/quotes/mine', {
+          cache: 'no-store',
+          headers: { Authorization: `Bearer ${token}` },
+        });
         const json = (await res.json().catch(() => ({}))) as {
           quotes?: QuoteRow[];
           error?: string;
@@ -27,13 +43,12 @@ export default function HistorialPage() {
         if (cancelled) return;
         if (!res.ok) throw new Error(json.error || 'No se pudieron cargar tus presupuestos.');
         setQuotes(Array.isArray(json.quotes) ? json.quotes : []);
-      })
-      .catch((err) => {
+      } catch (err) {
         if (!cancelled) setError(err instanceof Error ? err.message : 'Error inesperado.');
-      })
-      .finally(() => {
+      } finally {
         if (!cancelled) setFetching(false);
-      });
+      }
+    })();
     return () => {
       cancelled = true;
     };

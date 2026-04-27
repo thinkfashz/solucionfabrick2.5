@@ -20,6 +20,7 @@ import ProjectBuilder, {
   type Product,
 } from '@/components/ProjectBuilder';
 import { useAuth } from '@/context/AuthContext';
+import { insforge } from '@/lib/insforge';
 import type { MaterialRow } from '@/lib/budget';
 import type { QuoteLine } from '@/lib/budgetMath';
 
@@ -186,9 +187,26 @@ export default function PresupuestoClient({ initialMaterials }: PresupuestoClien
           imageUrl: l.product.image,
         }));
 
+        // If the user is logged in, forward a freshly-refreshed InsForge
+        // access token so the server can attribute the quote to the right
+        // account (it ignores any client-supplied user id for security).
+        const headers: Record<string, string> = {
+          'Content-Type': 'application/json',
+        };
+        if (user) {
+          try {
+            const { data: refreshed } = await insforge.auth.refreshSession();
+            if (refreshed?.accessToken) {
+              headers.Authorization = `Bearer ${refreshed.accessToken}`;
+            }
+          } catch {
+            /* fall back to anonymous attribution */
+          }
+        }
+
         const res = await fetch('/api/quotes', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
+          headers,
           body: JSON.stringify({
             lines,
             customer: {
@@ -200,7 +218,6 @@ export default function PresupuestoClient({ initialMaterials }: PresupuestoClien
             },
             shippingCost: form.shippingCost,
             installationCost: form.installationCost,
-            userId: user?.id ?? null,
           }),
         });
         const json = (await res.json().catch(() => ({}))) as {
@@ -216,7 +233,7 @@ export default function PresupuestoClient({ initialMaterials }: PresupuestoClien
         setSubmitting(false);
       }
     },
-    [pendingCart, router, user?.id],
+    [pendingCart, router, user],
   );
 
   /* ----- UI ----- */

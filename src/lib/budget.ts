@@ -374,7 +374,11 @@ function stringOrNull(v: unknown): string | null {
 }
 
 function isUuidLike(s: unknown): s is string {
-  return typeof s === 'string' && /^[0-9a-f-]{8,}$/i.test(s);
+  // RFC4122 UUID shape: 8-4-4-4-12 hex chars.
+  return (
+    typeof s === 'string' &&
+    /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(s)
+  );
 }
 
 /* -------------------------------------------------------------------------- */

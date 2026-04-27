@@ -229,10 +229,35 @@ function titleCase(s: string): string {
 
 function makeDocNumber(id: string | undefined, issuedAt: Date): string {
   const year = issuedAt.getFullYear();
-  // Use the last 6 chars of the UUID (or a short timestamp fallback) so the
-  // doc number is human-friendly without leaking the full DB id.
-  const tail = (id ?? Math.random().toString(36).slice(2)).replace(/-/g, '').slice(-6).toUpperCase();
+  // Use the last 6 chars of the UUID (or a crypto-secure random fallback) so
+  // the doc number is human-friendly without leaking the full DB id.
+  let tail: string;
+  if (id) {
+    tail = id.replace(/-/g, '').slice(-6).toUpperCase();
+  } else {
+    tail = randomTail(6);
+  }
   return `FAB-${year}-${tail}`;
+}
+
+function randomTail(length: number): string {
+  const alphabet = '0123456789ABCDEFGHJKMNPQRSTVWXYZ';
+  // Prefer crypto.getRandomValues when available (browsers + modern Node).
+  const g = (typeof globalThis !== 'undefined' ? (globalThis as unknown as { crypto?: { getRandomValues?: (a: Uint8Array) => Uint8Array } }) : undefined);
+  const cryptoObj = g?.crypto;
+  if (cryptoObj?.getRandomValues) {
+    const buf = new Uint8Array(length);
+    cryptoObj.getRandomValues(buf);
+    let out = '';
+    for (let i = 0; i < length; i++) out += alphabet[buf[i] % alphabet.length];
+    return out;
+  }
+  // Last-resort fallback for very old runtimes; document number is non-secret.
+  let out = '';
+  for (let i = 0; i < length; i++) {
+    out += alphabet[Math.floor(Math.random() * alphabet.length)];
+  }
+  return out;
 }
 
 function buildSummary(lines: QuoteLine[], totals: Totals): string {

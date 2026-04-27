@@ -31,7 +31,8 @@ function slugify(s: string): string {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 96);
 }
 
 // Lightweight client-side preview (server still re-renders + sanitizes on save).

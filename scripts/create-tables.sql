@@ -276,7 +276,11 @@ CREATE TABLE IF NOT EXISTS public.media_assets (
 );
 
 -- TABLA: media_assets-migrate
-ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS bucket text NOT NULL DEFAULT 'media';
+-- NOTE: `bucket` is intentionally added as nullable here so the migration is
+-- safe on tables with pre-existing rows from older schema versions. New rows
+-- inserted by the API always include `bucket`; the column gets a default at
+-- table-creation time above.
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS bucket text DEFAULT 'media';
 ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS path text;
 ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS url text;
 ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS alt text;

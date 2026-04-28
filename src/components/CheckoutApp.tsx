@@ -1924,13 +1924,25 @@ const CheckoutApp = () => {
                     </div>
 
                     {/* 3D flip card preview */}
-                    <div className="perspective-1000 flex justify-center">
+                    <div className="flex justify-center" style={{ perspective: '1000px' }}>
                       <div
-                        className="relative w-full max-w-[360px] aspect-[1.586/1] transform-style-3d transition-transform duration-700"
-                        style={{ transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+                        className="relative w-full max-w-[360px] transition-transform duration-700"
+                        style={{
+                          aspectRatio: '1.586 / 1',
+                          transformStyle: 'preserve-3d',
+                          transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                        }}
                       >
                         {/* FRONT */}
-                        <div className="absolute inset-0 backface-hidden rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 bg-[linear-gradient(135deg,#1f2937_0%,#0f172a_50%,#0a0a0a_100%)]">
+                        <div
+                          className="absolute inset-0 rounded-2xl border border-yellow-400/20"
+                          style={{
+                            backfaceVisibility: 'hidden',
+                            WebkitBackfaceVisibility: 'hidden',
+                            background: 'linear-gradient(135deg, #1e1e2e 0%, #12122a 45%, #0a0a18 100%)',
+                            boxShadow: '0 0 0 1px rgba(250,204,21,0.12), 0 24px 64px rgba(0,0,0,0.85)',
+                          }}
+                        >
                           <div className="absolute inset-0 opacity-40 mix-blend-overlay"
                             style={{ backgroundImage: 'radial-gradient(circle at 20% 10%, rgba(250,204,21,0.35), transparent 60%)' }} />
                           <div className="absolute top-0 left-[-30%] w-1/3 h-full bg-white/10 pointer-events-none"
@@ -1990,7 +2002,14 @@ const CheckoutApp = () => {
 
                         {/* BACK */}
                         <div
-                          className="absolute inset-0 rotate-y-180 backface-hidden rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 bg-[linear-gradient(135deg,#1f2937_0%,#0f172a_50%,#0a0a0a_100%)]"
+                          className="absolute inset-0 rounded-2xl border border-yellow-400/10"
+                          style={{
+                            backfaceVisibility: 'hidden',
+                            WebkitBackfaceVisibility: 'hidden',
+                            transform: 'rotateY(180deg)',
+                            background: 'linear-gradient(135deg, #1e1e2e 0%, #12122a 45%, #0a0a18 100%)',
+                            boxShadow: '0 0 0 1px rgba(250,204,21,0.08), 0 24px 64px rgba(0,0,0,0.85)',
+                          }}
                         >
                           <div className="mt-5 h-9 w-full bg-black/70" />
                           <div className="px-5 mt-5">

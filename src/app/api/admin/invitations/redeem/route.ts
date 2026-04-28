@@ -1,7 +1,13 @@
 import { NextResponse } from 'next/server';
-import { insforge } from '@/lib/insforge';
+import { createClient } from '@insforge/sdk';
 
 export const dynamic = 'force-dynamic';
+
+async function getInsforgeClient() {
+  const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
+  const anonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY || 'ik_7e23032539c2dc64d5d27ca29d07b928';
+  return createClient({ baseUrl, anonKey });
+}
 
 export async function POST(request: Request) {
   let email: string;
@@ -22,6 +28,8 @@ export async function POST(request: Request) {
   if (!email || !codigo || !password) {
     return NextResponse.json({ error: 'Email, código y contraseña son requeridos.' }, { status: 400 });
   }
+
+  const insforge = await getInsforgeClient();
 
   try {
     // Find matching invitation

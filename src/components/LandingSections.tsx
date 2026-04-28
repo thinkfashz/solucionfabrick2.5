@@ -307,7 +307,20 @@ export default function LandingSections({
 
                   <div className="absolute inset-0 z-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={img} alt={title} className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-1000" />
+                    <img
+                      src={img}
+                      alt={title}
+                      className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-1000"
+                      loading="lazy"
+                      onError={(e) => {
+                        const el = e.currentTarget;
+                        if (el.dataset.fallback === '1') return;
+                        el.dataset.fallback = '1';
+                        el.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(
+                          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a1410"/><stop offset="1" stop-color="#000"/></linearGradient></defs><rect width="800" height="600" fill="url(#g)"/><g fill="none" stroke="#c9a96e" stroke-width="2" opacity="0.35"><path d="M 100,500 L 100,300 L 250,200 L 400,300 L 400,500 Z"/><path d="M 400,500 L 400,250 L 600,150 L 800,250 L 800,500"/></g></svg>`
+                        );
+                      }}
+                    />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/75 to-black/25 group-hover:via-black/60 transition-all duration-500" />
                   </div>
                   <div className="relative z-10 p-6 md:p-8 w-full">

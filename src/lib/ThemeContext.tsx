@@ -5,7 +5,7 @@ import { createContext, useContext, useEffect, ReactNode } from 'react';
 // The app is locked to a single theme: yellow accent on black with white text.
 // The legacy `light` and `gold` variants have been removed — there is now no
 // way for the user to switch themes.
-export type Theme = 'dark';
+export type Theme = 'dark' | 'light' | 'gold';
 
 const THEME_VARS: Record<string, string> = {
   '--bg': '#000',

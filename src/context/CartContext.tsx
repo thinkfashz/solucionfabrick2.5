@@ -19,7 +19,7 @@ export interface CartItem {
 }
 
 const CART_STORAGE_KEY = 'fabrick.cart.v2';
-const CART_SESSION_KEY = 'fabrick.cart.session.v2';
+export const CART_SESSION_KEY = 'fabrick.cart.session.v2';
 const CART_TTL_MS = 24 * 60 * 60 * 1000; // 24 hours
 
 interface CartContextValue {
@@ -80,6 +80,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       }
       return [...prev, { product, quantity: qty }];
     });
+    setCartOpen(true);
   }, []);
 
   const removeFromCart = useCallback((productId: string) => {
@@ -106,7 +107,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       // Ignore
     }
     setCartOpen(false);
-    router.push('/checkout');
+    router.push('/checkout?cart=1');
   }, [items, router]);
 
   const totalItems = useMemo(() => items.reduce((s, i) => s + i.quantity, 0), [items]);
@@ -157,5 +158,3 @@ export function useCartContext(): CartContextValue {
   return ctx;
 }
 
-/** Key used to pass cart items to CheckoutApp via sessionStorage */
-export const CART_SESSION_KEY_EXPORT = CART_SESSION_KEY;

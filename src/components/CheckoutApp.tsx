@@ -36,6 +36,7 @@ declare global {
   }
 }
 import { useSearchParams } from 'next/navigation';
+import { CART_SESSION_KEY } from '@/context/CartContext';
 import { 
   ArrowLeft, ShieldCheck, Lock, Truck, 
   CheckCircle2, ChevronRight, Fingerprint,
@@ -121,8 +122,6 @@ const STAR_FIELD = Array.from({ length: 24 }).map((_, i) => ({
   size: (i % 3) + 1,
   delay: (i % 7) * 0.35,
 }));
-
-const CART_SESSION_KEY = 'fabrick.cart.session.v2';
 
 interface StoredCartItem {
   product: {
@@ -2368,12 +2367,15 @@ const CheckoutApp = () => {
                   </button>
                   {paymentMethod === 'mercadopago' && (
                     <button
-                      disabled={isProcessing || mpSubStep !== 3 || !isCardNumberValid || !isHolderValid || !isExpiryValid || !isCvcValid || !isRutValid}
-                      onClick={handleConfirmInvestment}
+                      disabled={hostedRedirecting || isProcessing}
+                      onClick={() => void handlePayWithCheckoutPro()}
                       type="button"
                       className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all flex justify-center items-center gap-3 shadow-[0_15px_40px_rgba(250,204,21,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Lock className="w-4 h-4" /> Pagar {formatCLP(cartTotal)}
+                      {hostedRedirecting
+                        ? <><RefreshCw className="w-4 h-4 animate-spin" /> Redirigiendo…</>
+                        : <><Lock className="w-4 h-4" /> Pagar {formatCLP(cartTotal)}</>
+                      }
                     </button>
                   )}
                   {paymentMethod === 'transfer' && !transferOrderReady && (

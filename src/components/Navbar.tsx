@@ -2,10 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { X, Menu, Home, Wrench, TrendingUp, Lightbulb, ShoppingBag, Building2, Phone, Gamepad2, ShieldCheck, BookOpen, Layers, Calculator } from 'lucide-react';
+import { X, Menu, Home, Wrench, TrendingUp, Lightbulb, ShoppingBag, Building2, Phone, Gamepad2, ShieldCheck, BookOpen, Layers, Calculator, ShoppingCart } from 'lucide-react';
 import FabrickLogo from './FabrickLogo';
 import ThemeToggle from './ThemeToggle';
 import { navigateWithTransition } from '@/lib/routeTransition';
+import { useCartContext } from '@/context/CartContext';
 
 type NavLink = { label: string; href: string };
 
@@ -39,6 +40,7 @@ export default function Navbar() {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [mounted, setMounted] = useState(false);
+  const { totalItems, openCart } = useCartContext();
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -106,6 +108,19 @@ export default function Navbar() {
           >
             Mi Cuenta
           </button>
+          {/* Cart icon — desktop */}
+          <button
+            onClick={openCart}
+            className="relative p-2 text-zinc-400 hover:text-yellow-400 transition-colors"
+            aria-label="Carrito"
+          >
+            <ShoppingCart size={20} />
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 w-5 h-5 rounded-full bg-yellow-400 text-black text-[9px] font-black flex items-center justify-center">
+                {totalItems > 9 ? '9+' : totalItems}
+              </span>
+            )}
+          </button>
           <button
             onClick={() => handleNav('/auth')}
             className="px-5 py-2 rounded-full border border-yellow-400/40 text-yellow-400 text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-400/10 hover:border-yellow-400 transition-all"
@@ -114,16 +129,28 @@ export default function Navbar() {
           </button>
         </div>
 
-        <button
-          className="lg:hidden text-white hover:text-yellow-400 transition-colors p-2"
-          onClick={() => setOpen(!open)}
-          aria-label="Menu"
-        >
-          {open ? <X size={26} /> : <Menu size={26} />}
-        </button>
-        {/* Mobile theme toggle — always visible in header */}
-        <div className="lg:hidden">
+        {/* Mobile: cart + hamburger */}
+        <div className="lg:hidden flex items-center gap-1">
+          <button
+            onClick={openCart}
+            className="relative p-2 text-zinc-400 hover:text-yellow-400 transition-colors"
+            aria-label="Carrito"
+          >
+            <ShoppingCart size={20} />
+            {totalItems > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-yellow-400 text-black text-[8px] font-black flex items-center justify-center">
+                {totalItems > 9 ? '9+' : totalItems}
+              </span>
+            )}
+          </button>
           <ThemeToggle />
+          <button
+            className="text-white hover:text-yellow-400 transition-colors p-2"
+            onClick={() => setOpen(!open)}
+            aria-label="Menu"
+          >
+            {open ? <X size={26} /> : <Menu size={26} />}
+          </button>
         </div>
       </nav>
 

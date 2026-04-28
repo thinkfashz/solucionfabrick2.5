@@ -4,7 +4,7 @@
 
 import React from 'react';
 import { X, Plus, Minus, Trash2 } from 'lucide-react';
-import type { CartItem } from '@/hooks/useCart';
+import type { CartItem } from '@/context/CartContext';
 import { formatCLP } from '@/hooks/useCart';
 import SilverGoldButton from './SilverGoldButton';
 

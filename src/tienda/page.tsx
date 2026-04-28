@@ -286,7 +286,7 @@ export default function TiendaClientPage() {
 		// Navigate to the full detail page so the user sees all information
 		// (image, specs, stock, description, price breakdown) instead of the
 		// in-page overlay which was confusing.
-		router.push(`/producto/${product.id}`);
+		router.push(`/tienda/${product.id}`);
 	};
 
 	useEffect(() => {

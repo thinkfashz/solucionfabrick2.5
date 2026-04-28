@@ -31,6 +31,10 @@ const RELATED_TITLES: Record<string, string> = {
   gasfiteria: 'Gasfitería certificada',
   electricidad: 'Instalaciones eléctricas',
   ampliaciones: 'Ampliaciones residenciales',
+  cimientos: 'Cimientos y Fundaciones',
+  revestimiento: 'Revestimiento y Aislación',
+  pintura: 'Pintura Profesional',
+  seguridad: 'Seguridad Residencial',
 };
 
 export default async function ServicePage({ content }: { content: ServicePageContent }) {

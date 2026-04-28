@@ -102,12 +102,12 @@ export default function Hero() {
 
         {/* Título */}
         <h1 className="font-playfair text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.1] mb-6 overflow-hidden">
-          <span className="hero-title-line block">Construimos tu</span>
+          <span className="hero-title-line block">Tu Visión,</span>
           <span
             className="hero-title-line block shimmer-gold"
             style={{ textShadow: '0 0 40px rgba(250,204,21,0.35), 0 0 80px rgba(250,204,21,0.15)' }}
           >
-            Sueño
+            Nuestra Obra
           </span>
         </h1>
 

@@ -45,13 +45,13 @@ const TRAJECTORY = [
 ];
 
 const SERVICIOS = [
-  { Icon: Hammer,     title: 'Cimientos',     desc: 'Bases sólidas y nivelación precisa para la integridad estructural.', img: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=800&auto=format&fit=crop' },
-  { Icon: Home,       title: 'Estructuras',   desc: 'Armado seguro y milimétrico en acero y Metalcon D90/D60.', img: 'https://images.unsplash.com/photo-1536895058696-a69b1c7ba34d?q=80&w=800&auto=format&fit=crop' },
-  { Icon: Droplet,    title: 'Gasfitería',    desc: 'Termofusión PPR y redes de cobre seguras certificadas NSF.', img: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop' },
-  { Icon: Layers,     title: 'Revestimiento', desc: 'Aislación térmica, acústica y preparación de superficies.', img: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?q=80&w=800&auto=format&fit=crop' },
-  { Icon: PaintRoller,title: 'Pintura',       desc: 'Terminaciones finas, sellado y paletas de alta durabilidad.', img: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=800&auto=format&fit=crop' },
-  { Icon: ShieldCheck,title: 'Seguridad',     desc: 'CCTV, domótica y controles de acceso inteligentes.', img: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=800&auto=format&fit=crop' },
-  { Icon: Package,    title: 'Materiales Seleccionados', desc: 'Cada material usado en tu obra es elegido por nuestros especialistas e instalado por nuestro equipo. Sin intermediarios.', img: 'https://images.unsplash.com/photo-1504307651254-35680f356f12?q=80&w=800&auto=format&fit=crop', wide: true },
+  { Icon: Hammer,     title: 'Cimientos',     href: '/servicios/cimientos',     desc: 'Bases sólidas y nivelación precisa para la integridad estructural.', img: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=800&auto=format&fit=crop' },
+  { Icon: Home,       title: 'Estructuras',   href: '/servicios/metalcon',      desc: 'Armado seguro y milimétrico en acero y Metalcon D90/D60.', img: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=800&auto=format&fit=crop' },
+  { Icon: Droplet,    title: 'Gasfitería',    href: '/servicios/gasfiteria',    desc: 'Termofusión PPR y redes de cobre seguras certificadas NSF.', img: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop' },
+  { Icon: Layers,     title: 'Revestimiento', href: '/servicios/revestimiento', desc: 'Aislación térmica, acústica y preparación de superficies.', img: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?q=80&w=800&auto=format&fit=crop' },
+  { Icon: PaintRoller,title: 'Pintura',       href: '/servicios/pintura',       desc: 'Terminaciones finas, sellado y paletas de alta durabilidad.', img: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=800&auto=format&fit=crop' },
+  { Icon: ShieldCheck,title: 'Seguridad',     href: '/servicios/seguridad',     desc: 'CCTV, domótica y controles de acceso inteligentes.', img: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=800&auto=format&fit=crop' },
+  { Icon: Package,    title: 'Materiales Seleccionados', href: '/tienda', desc: 'Cada material usado en tu obra es elegido por nuestros especialistas e instalado por nuestro equipo. Sin intermediarios.', img: 'https://images.unsplash.com/photo-1504307651254-35680f356f12?q=80&w=800&auto=format&fit=crop', wide: true },
 ];
 
 const PRODUCTOS = [
@@ -286,10 +286,11 @@ export default function LandingSections({
           </ScrollReveal>
 
           <ScrollRevealGroup className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5" stagger={0.09}>
-            {SERVICIOS.map(({ Icon, title, desc, img, wide }, i) => (
+            {SERVICIOS.map(({ Icon, title, desc, img, wide, href }, i) => (
               <ScrollRevealItem key={i} className={wide ? 'sm:col-span-2 xl:col-span-2' : ''}>
+                <Link href={href} className="block h-full">
                 <div
-                  className="service-card service-card-premium service-card-hover group relative rounded-[1.5rem] md:rounded-[2rem] overflow-hidden flex flex-col items-start justify-end min-h-[280px]"
+                  className="service-card service-card-premium service-card-hover group relative rounded-[1.5rem] md:rounded-[2rem] overflow-hidden flex flex-col items-start justify-end min-h-[280px] cursor-pointer"
                 >
                   {/* Semi-transparent phase number background */}
                   <span
@@ -315,8 +316,12 @@ export default function LandingSections({
                     </div>
                     <h3 className="font-bold uppercase text-sm mb-1.5 tracking-wide text-white">{title}</h3>
                     <p className="text-[10px] md:text-xs text-zinc-300 font-light leading-relaxed">{desc}</p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-[9px] uppercase tracking-widest text-yellow-400/60 group-hover:text-yellow-400 transition-colors duration-300">
+                      Ver más <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
                   </div>
                 </div>
+                </Link>
               </ScrollRevealItem>
             ))}
           </ScrollRevealGroup>
@@ -364,14 +369,20 @@ export default function LandingSections({
                 if (isLast) {
                   return (
                     <div key={i} className="traj-step relative flex flex-col items-center text-center pt-6">
-                      <div className="relative mb-5">
+                      <div className="relative mb-4">
                         <div className="absolute inset-0 bg-yellow-400 blur-[40px] opacity-25 rounded-full" />
                         <div className="w-20 h-20 md:w-28 md:h-28 bg-black border border-yellow-400/50 rounded-full flex items-center justify-center relative z-10 shadow-[0_0_30px_rgba(250,204,21,0.3)]">
-                          <ShieldCheck className="w-9 h-9 md:w-12 md:h-12 text-yellow-400" />
+                          <span
+                            className="font-playfair font-black text-yellow-400 leading-none select-none"
+                            style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', letterSpacing: '-0.04em' }}
+                            aria-label="Fabrick Certificación"
+                          >
+                            F
+                          </span>
                         </div>
-                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-black font-bold uppercase text-[9px] tracking-widest px-4 py-1 rounded-full whitespace-nowrap">
-                          Calidad Total
-                        </div>
+                      </div>
+                      <div className="mb-8 bg-yellow-400 text-black font-bold uppercase text-[9px] tracking-widest px-4 py-1 rounded-full whitespace-nowrap inline-block">
+                        Calidad Total
                       </div>
                       <h3 className="font-bold uppercase text-xl md:text-3xl text-white mb-2 tracking-tight">
                         Empresa Sólida y Confiable

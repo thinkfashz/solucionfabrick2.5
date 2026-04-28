@@ -19,6 +19,21 @@ async function loadProjects(): Promise<FabrickProject[]> {
   return getSeedProjects();
 }
 
+async function loadProducts(): Promise<{ id: string; updated_at?: string }[]> {
+  try {
+    const { data } = await insforge.database
+      .from('products')
+      .select('id, updated_at')
+      .neq('activo', false);
+    if (Array.isArray(data) && data.length > 0) {
+      return data as { id: string; updated_at?: string }[];
+    }
+  } catch {
+    /* ignore */
+  }
+  return [];
+}
+
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
 
@@ -40,12 +55,20 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/auth`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
   ];
 
-  const projects = await loadProjects();
+  const [projects, products] = await Promise.all([loadProjects(), loadProducts()]);
+
   const projectRoutes: MetadataRoute.Sitemap = projects.map((p) => ({
     url: `${BASE_URL}/proyectos/${p.id}`,
     lastModified: p.updated_at ? new Date(p.updated_at) : now,
     changeFrequency: 'monthly',
     priority: 0.7,
+  }));
+
+  const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
+    url: `${BASE_URL}/tienda/${p.id}`,
+    lastModified: p.updated_at ? new Date(p.updated_at) : now,
+    changeFrequency: 'weekly',
+    priority: 0.8,
   }));
 
   const blogRoutes: MetadataRoute.Sitemap = listContent('blog').map((p) => ({
@@ -62,5 +85,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...projectRoutes, ...blogRoutes, ...casosRoutes];
+  return [...staticRoutes, ...projectRoutes, ...productRoutes, ...blogRoutes, ...casosRoutes];
 }

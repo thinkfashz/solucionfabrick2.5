@@ -32,6 +32,7 @@ import {
 	Phone,
 } from 'lucide-react';
 import BannerCarousel from '@/components/BannerCarousel';
+import { useCartContext } from '@/context/CartContext';
 
 const CART_CACHE_KEY = 'fabrick.tienda.cart.v1';
 
@@ -210,6 +211,7 @@ export default function TiendaClientPage() {
 	}, [gsapReady, selectedProduct]);
 
 	const cartTotal = useMemo(() => cart.reduce((acc, item) => acc + item.price, 0), [cart]);
+	const { addToCart: addToGlobalCart } = useCartContext();
 
 	const goToCheckout = (product?: Product) => {
 		const target = product ?? cart[0];
@@ -246,6 +248,13 @@ export default function TiendaClientPage() {
 
 	const handleAddToCart = (e: React.MouseEvent<HTMLButtonElement>, product: Product) => {
 		setCart((prev) => [...prev, product]);
+		// Sync to global CartContext so Navbar badge updates
+		addToGlobalCart({
+			id: product.id,
+			name: product.name,
+			price: product.price,
+			image_url: product.img,
+		} as Parameters<typeof addToGlobalCart>[0]);
 		if (!cartIconRef.current || !gsapRef.current) return;
 
 		const rect = e.currentTarget.getBoundingClientRect();

@@ -1,12 +1,9 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
 import { useRef, useEffect } from 'react';
 import { useScroll, useTransform, motion } from 'framer-motion';
-
-const HERO_IMAGE =
-  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=90&w=2400&auto=format&fit=crop';
+import { FlipText } from '@/components/ui/flip-text';
+import { PerspectiveGrid } from '@/components/ui/perspective-grid';
 
 export default function Hero() {
   const heroRef  = useRef<HTMLDivElement>(null);
@@ -50,17 +47,16 @@ export default function Hero() {
       ref={heroRef}
       className="relative min-h-screen flex items-center justify-center overflow-hidden bg-black"
     >
-      {/* ── Background image with parallax ── */}
+      {/* ── Background: perspective grid (Vengeance UI) con parallax ── */}
       <motion.div
         className="absolute inset-0 z-0"
         style={{ y: bgY, scale: 1.12 }}
+        aria-hidden
       >
-        <img
-          src={HERO_IMAGE}
-          alt="Casa moderna metalcon — Soluciones Fabrick, construcción y remodelación en la Región del Maule"
-          className="w-full h-full object-cover object-center"
-          loading="eager"
-          fetchPriority="high"
+        <PerspectiveGrid
+          className="!bg-black [&_.tile]:!border-yellow-400/10"
+          gridSize={32}
+          fadeRadius={70}
         />
       </motion.div>
 
@@ -107,7 +103,7 @@ export default function Hero() {
             className="hero-title-line block shimmer-gold"
             style={{ textShadow: '0 0 40px rgba(250,204,21,0.35), 0 0 80px rgba(250,204,21,0.15)' }}
           >
-            Nuestra Obra
+            <FlipText duration={3.6} delay={0.2}>Nuestra Obra</FlipText>
           </span>
         </h1>
 

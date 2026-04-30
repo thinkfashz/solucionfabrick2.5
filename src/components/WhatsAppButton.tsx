@@ -5,14 +5,14 @@
  *
  * - Non-intrusive: 48-56 px, discreet position, hides the tooltip by default.
  * - Works on mobile (bottom-right, safe-area aware) and desktop (larger, with copy).
- * - Number is read from NEXT_PUBLIC_WHATSAPP_NUMBER (digits only, no +) with a safe fallback.
+ * - Number is read from `@/lib/whatsapp` (env-aware, with 56930121625 fallback).
  * - Can be disabled on specific pages via the `hideOn` prop or by setting `data-hide-whatsapp="true"` on <html>.
  */
 
 import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
+import { buildWhatsAppLink } from '@/lib/whatsapp';
 
-const DEFAULT_NUMBER = '56912345678'; // Chile fallback; override via NEXT_PUBLIC_WHATSAPP_NUMBER
 const DEFAULT_MESSAGE = 'Hola Soluciones Fabrick, me interesa cotizar un proyecto de construcción o remodelación. ¿Pueden asesorarme?';
 
 function WhatsAppIcon({ size = 22 }: { size?: number }) {
@@ -53,9 +53,7 @@ export default function WhatsAppButton({
     return null;
   }
 
-  const rawNumber = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || DEFAULT_NUMBER;
-  const number = rawNumber.replace(/[^\d]/g, '');
-  const href = `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+  const href = buildWhatsAppLink(message);
 
   return (
     <a

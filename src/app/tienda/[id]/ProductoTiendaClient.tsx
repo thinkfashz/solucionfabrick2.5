@@ -10,8 +10,7 @@ import { ArrowLeft, ChevronRight, Hammer, MapPin, Package, Phone, Ruler, ShieldC
 import Navbar from '@/components/Navbar';
 import { useRealtimeProducts } from '@/hooks/useRealtimeProducts';
 import { useCartContext } from '@/context/CartContext';
-
-const WHATSAPP_NUMBER = (process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '56912345678').replace(/[^\d]/g, '');
+import { buildWhatsAppLink } from '@/lib/whatsapp';
 
 function formatCLP(value: number) {
   return new Intl.NumberFormat('es-CL', {
@@ -62,10 +61,9 @@ export default function ProductoTiendaClient() {
 
   const outOfStock = product?.stock !== undefined && product.stock <= 0;
 
-  const whatsappMessage = encodeURIComponent(
-    `Hola Soluciones Fabrick, me interesa el producto ${product?.name ?? ''} para mi proyecto. ¿Podemos agendar una evaluación?`,
+  const whatsappHref = buildWhatsAppLink(
+    `Hola Soluciones Fabrick, me interesa el producto ${product?.name ?? ''} para mi proyecto. ¿Podemos agendar una visita en Linares para evaluarlo?`,
   );
-  const whatsappHref = `https://wa.me/${WHATSAPP_NUMBER}?text=${whatsappMessage}`;
 
   if (loading && !product) {
     return (

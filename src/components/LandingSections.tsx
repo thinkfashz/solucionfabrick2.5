@@ -8,11 +8,13 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import TiendaSection from './TiendaSection';
 import FabrickLogo from './FabrickLogo';
+import ContactMap from './ContactMap';
 import ScrollReveal, { ScrollRevealGroup, ScrollRevealItem } from './ScrollReveal';
+import { buildWhatsAppLink } from '@/lib/whatsapp';
 import {
   Hammer, Home, Droplet, Layers, PaintRoller, ShieldCheck, Package,
   Droplets, Lightbulb, Cpu, Warehouse, Armchair, Fingerprint, ArrowRight,
-  Star, MapPin, ShoppingBag, Sparkles, Award, TrendingUp, MessageSquare, Gamepad2,
+  Star, ShoppingBag, Sparkles, Award, TrendingUp, MessageSquare, Gamepad2,
 } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -456,11 +458,14 @@ export default function LandingSections({
         </div>
         <div className="max-w-7xl mx-auto relative z-10">
           <ScrollReveal className="text-center mb-16 md:mb-24">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-light uppercase tracking-tighter leading-none">
+            <span className="text-yellow-400 font-bold tracking-[0.5em] text-[10px] uppercase">
+              Soluciones Fabrick · Linares, Maule
+            </span>
+            <h2 className="mt-3 text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tighter leading-[0.95]">
               Construimos su tranquilidad,
-              <br /><span className="font-bold text-yellow-400">ladrillo a ladrillo.</span>
+              <br /><span className="text-yellow-400">ladrillo a ladrillo.</span>
             </h2>
-            <p className="mt-6 text-zinc-400 max-w-3xl mx-auto text-sm md:text-lg leading-relaxed font-light">
+            <p className="mt-6 text-zinc-300 max-w-3xl mx-auto text-sm md:text-lg leading-relaxed font-light">
               En Soluciones Fabrick eliminamos la incertidumbre. Gestionamos todo el proceso
               para que usted solo disfrute del resultado.
             </p>
@@ -505,6 +510,44 @@ export default function LandingSections({
               </div>
             </ScrollRevealItem>
           </ScrollRevealGroup>
+
+          {/* ── CTA: agendar visita en terreno (Linares / Maule) ── */}
+          <ScrollReveal delay={0.15} className="mt-10 md:mt-14">
+            <div className="rounded-[2rem] border border-yellow-400/30 bg-gradient-to-br from-yellow-400/10 via-yellow-400/5 to-transparent p-8 md:p-12 backdrop-blur-md">
+              <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
+                <div className="text-center md:text-left">
+                  <span className="text-yellow-400 font-bold tracking-[0.4em] text-[10px] uppercase">
+                    Visita gratuita en terreno
+                  </span>
+                  <h3 className="mt-3 text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">
+                    Vamos a su propiedad,<br className="hidden md:inline" /> medimos y armamos su presupuesto.
+                  </h3>
+                  <p className="mt-3 text-zinc-300 text-sm md:text-base leading-relaxed max-w-2xl">
+                    Atendemos en Linares y toda la Región del Maule. Sin oficinas físicas y sin costo
+                    por la visita: nuestros técnicos llegan, toman las medidas y conversan con usted
+                    en su espacio para que el presupuesto sea fiel a la realidad.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 md:min-w-[16rem]">
+                  <a
+                    href={buildWhatsAppLink('Hola Soluciones Fabrick, quiero agendar una visita en Linares (Región del Maule) para que pasen a evaluar mi proyecto y armar el presupuesto.')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-3 rounded-full bg-yellow-400 px-7 py-4 text-[11px] font-black uppercase tracking-[0.22em] text-black shadow-yellow-md transition hover:bg-yellow-300"
+                  >
+                    Agendar por WhatsApp
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
+                  <Link
+                    href="/contacto"
+                    className="flex items-center justify-center gap-2 rounded-full border border-white/15 px-7 py-4 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-200 transition hover:border-yellow-400/40 hover:text-yellow-400"
+                  >
+                    Formulario de contacto
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -599,18 +642,12 @@ export default function LandingSections({
                 una solución definitiva.
               </p>
             </div>
-            {/* Mapa */}
-            <div className="img-zoom w-full h-52 md:h-72 bg-zinc-900 rounded-[2rem] border border-white/5 flex flex-col items-center justify-center relative overflow-hidden group">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=1000&auto=format&fit=crop" alt="Mapa Santiago" className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale" />
-              <div className="absolute inset-0 bg-black/40" />
-              <div className="w-14 h-14 bg-yellow-400 rounded-full flex items-center justify-center relative z-10 mb-3 shadow-[0_0_20px_rgba(250,204,21,0.4)] animate-pulse">
-                <MapPin className="w-7 h-7 text-black" />
-              </div>
-              <span className="relative z-10 font-bold text-xs tracking-[0.25em] uppercase text-white">
-                Oficina Central · Santiago
-              </span>
-            </div>
+            {/* Mapa interactivo · Linares (OpenStreetMap) */}
+            <ContactMap
+              className="w-full h-52 md:h-72"
+              title="Linares · Región del Maule"
+              subtitle="Atendemos en terreno en toda la región"
+            />
           </ScrollReveal>
 
           <ScrollReveal delay={0.15} className="bg-zinc-950 p-7 md:p-12 rounded-[2rem] border border-white/5">

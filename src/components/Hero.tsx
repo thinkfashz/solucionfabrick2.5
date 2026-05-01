@@ -4,7 +4,7 @@ import { useRef, useEffect } from 'react';
 import { useScroll, useTransform, motion } from 'framer-motion';
 import { FlipText } from '@/components/ui/flip-text';
 
-export default function Hero() {
+export default function Hero({ coverUrl }: { coverUrl?: string }) {
   const heroRef  = useRef<HTMLDivElement>(null);
 
   /* Parallax on scroll */
@@ -54,7 +54,7 @@ export default function Hero() {
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src="https://images.unsplash.com/photo-1504307651254-35680f356f12?q=85&w=1920&auto=format&fit=crop"
+          src={coverUrl || "https://images.unsplash.com/photo-1504307651254-35680f356f12?q=85&w=1920&auto=format&fit=crop"}
           alt="Obra de construcción y arquitectura"
           className="w-full h-full object-cover"
           fetchPriority="high"

@@ -55,7 +55,7 @@ export default function Hero() {
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
           src="https://images.unsplash.com/photo-1504307651254-35680f356f12?q=85&w=1920&auto=format&fit=crop"
-          alt=""
+          alt="Obra de construcción y arquitectura"
           className="w-full h-full object-cover"
           fetchPriority="high"
         />

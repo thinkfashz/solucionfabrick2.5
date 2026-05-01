@@ -578,7 +578,7 @@ export default function LandingSections({
                   </div>
                   <h4 className="font-black text-xs uppercase tracking-wider mb-1.5 text-white group-hover:text-yellow-400 transition-colors text-center">{t}</h4>
                   <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest leading-relaxed text-center mb-4">{d}</p>
-                  <span className="mt-auto inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-yellow-400/30 text-yellow-400 text-[9px] uppercase tracking-widest font-bold group-hover:bg-yellow-400 group-hover:text-black group-hover:border-yellow-400 transition-all duration-300">
+                  <span aria-label={`Acceder a ${t}`} className="mt-auto inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-yellow-400/30 text-yellow-400 text-[9px] uppercase tracking-widest font-bold group-hover:bg-yellow-400 group-hover:text-black group-hover:border-yellow-400 transition-all duration-300">
                     Acceder <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
                   </span>
                 </Link>

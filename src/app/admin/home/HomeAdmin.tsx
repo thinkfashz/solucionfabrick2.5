@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useState, useCallback } from 'react';
-import { Loader2, Plus, Save, Trash2, ChevronUp, ChevronDown, Eye, EyeOff, ImagePlus, Settings } from 'lucide-react';
+import { Loader2, Save, Trash2, ChevronUp, ChevronDown, Eye, EyeOff, ImagePlus, Settings, Map, Monitor, ExternalLink } from 'lucide-react';
 import { MediaPicker } from '@/components/admin/cms/MediaPicker';
 
 const KINDS = [
@@ -51,6 +51,7 @@ export function HomeAdmin() {
   const [savingSettings, setSavingSettings] = useState(false);
   const [settingsMessage, setSettingsMessage] = useState<string | null>(null);
   const [pickerFor, setPickerFor] = useState<null | { kind: 'section'; id: string } | { kind: 'hero' }>(null);
+  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'estructura'>('editor');
 
   const loadSections = useCallback(async () => {
     setLoading(true);
@@ -180,8 +181,32 @@ export function HomeAdmin() {
         </p>
       </header>
 
+      {/* Tab navigation */}
+      <div className="flex gap-1 rounded-2xl border border-white/10 bg-black/60 p-1.5">
+        <button
+          onClick={() => setActiveTab('editor')}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold uppercase tracking-[0.18em] transition-all ${activeTab === 'editor' ? 'bg-yellow-400 text-black shadow' : 'text-zinc-400 hover:text-white'}`}
+        >
+          <Settings className="h-3.5 w-3.5" /> Editor
+        </button>
+        <button
+          onClick={() => setActiveTab('preview')}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold uppercase tracking-[0.18em] transition-all ${activeTab === 'preview' ? 'bg-yellow-400 text-black shadow' : 'text-zinc-400 hover:text-white'}`}
+        >
+          <Monitor className="h-3.5 w-3.5" /> Vista previa
+        </button>
+        <button
+          onClick={() => setActiveTab('estructura')}
+          className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2.5 text-xs font-bold uppercase tracking-[0.18em] transition-all ${activeTab === 'estructura' ? 'bg-yellow-400 text-black shadow' : 'text-zinc-400 hover:text-white'}`}
+        >
+          <Map className="h-3.5 w-3.5" /> Estructura
+        </button>
+      </div>
+
       {error && <div className="rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>}
 
+      {/* ── EDITOR TAB ── */}
+      {activeTab === 'editor' && <>
       {/* HERO + COPYRIGHT (settings) */}
       <section className="space-y-3 rounded-2xl border border-white/10 bg-black/60 p-4">
         <header className="flex items-center justify-between">
@@ -354,6 +379,224 @@ export function HomeAdmin() {
           setPickerFor(null);
         }}
       />
+      </>}
+
+      {/* ── PREVIEW TAB ── */}
+      {activeTab === 'preview' && (
+        <section className="space-y-4">
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-zinc-500">
+              Vista previa en vivo basada en la configuración guardada. Los cambios sin guardar no se reflejan aquí hasta que pulses <strong className="text-yellow-400">Guardar</strong>.
+            </p>
+            <a
+              href="/"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center gap-2 rounded-full border border-white/10 bg-black px-4 py-2 text-xs text-zinc-300 hover:border-yellow-400/40 hover:text-yellow-400"
+            >
+              <ExternalLink className="h-3.5 w-3.5" /> Ver sitio real
+            </a>
+          </div>
+
+          {/* Hero preview card */}
+          <div className="relative overflow-hidden rounded-2xl border border-white/10 bg-black" style={{ minHeight: 320 }}>
+            {settings.hero_cover_url ? (
+              <img
+                src={settings.hero_cover_url}
+                alt="Portada hero"
+                className="absolute inset-0 h-full w-full object-cover opacity-60"
+              />
+            ) : (
+              <div className="absolute inset-0 bg-gradient-to-br from-zinc-800 to-zinc-950" />
+            )}
+            <div className="absolute inset-0 bg-black/40" />
+            <div className="relative z-10 flex min-h-[320px] flex-col items-center justify-center px-8 py-12 text-center">
+              <span className="mb-3 inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-black/40 px-4 py-1.5 text-[10px] uppercase tracking-[0.25em] text-yellow-400/90 backdrop-blur-md">
+                <span className="h-1.5 w-1.5 rounded-full bg-yellow-400" />
+                Un equipo · un estándar · una obra completa
+              </span>
+              <h1 className="font-playfair text-4xl font-black text-white drop-shadow-lg">
+                {settings.hero_title || 'Tu Visión,'}
+              </h1>
+              <p className="mt-1 font-playfair text-4xl font-black text-yellow-400 drop-shadow-lg">
+                Nuestra Obra
+              </p>
+              {settings.hero_subtitle && (
+                <p className="mt-4 max-w-lg text-sm text-zinc-300">{settings.hero_subtitle}</p>
+              )}
+              <div className="mt-6 flex gap-3">
+                <span className="rounded-full bg-yellow-400 px-6 py-2 text-xs font-bold uppercase tracking-wider text-black">Explorar Servicios</span>
+                <span className="rounded-full border border-yellow-400/40 px-6 py-2 text-xs font-bold uppercase tracking-wider text-yellow-400">Ir a Tienda</span>
+              </div>
+            </div>
+            <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-black to-transparent" />
+          </div>
+
+          {/* Dynamic sections preview */}
+          {sections.length > 0 && (
+            <div className="space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">Secciones dinámicas ({sections.filter((s) => s.visible).length} visibles)</p>
+              {sections.filter((s) => s.visible).map((s) => (
+                <div key={s.id} className="flex items-center gap-3 rounded-xl border border-white/10 bg-zinc-950 p-3">
+                  {s.image_url && (
+                    <img src={s.image_url} alt="" className="h-12 w-16 flex-shrink-0 rounded-lg border border-white/10 object-cover" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <span className="rounded-full bg-yellow-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.18em] text-yellow-400">{s.kind}</span>
+                    {s.title && <p className="mt-1 truncate text-xs font-bold text-white">{s.title}</p>}
+                    {s.subtitle && <p className="truncate text-[10px] text-zinc-400">{s.subtitle}</p>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </section>
+      )}
+
+      {/* ── ESTRUCTURA TAB ── */}
+      {activeTab === 'estructura' && (
+        <section className="space-y-4">
+          <p className="text-xs text-zinc-500">
+            Mapa de componentes de la pantalla principal. Cada entrada muestra el archivo fuente y su función en la página.
+          </p>
+
+          <div className="space-y-3">
+            {/* page.tsx */}
+            <StructureNode
+              label="page.tsx"
+              path="src/app/page.tsx"
+              description="Página raíz de la home. Carga datos del CMS (settings + secciones) y compone el layout."
+              tag="Server Component"
+              tagColor="blue"
+              items={[
+                {
+                  label: '<Navbar />',
+                  path: 'src/components/Navbar.tsx',
+                  description: 'Barra de navegación global con logo, menú y botón de WhatsApp.',
+                  tag: 'Client',
+                },
+                {
+                  label: '<Hero coverUrl={settings.hero_cover_url} />',
+                  path: 'src/components/Hero.tsx',
+                  description: 'Sección hero de pantalla completa con imagen de portada editable desde el admin, overlay de texto y animaciones Framer Motion. La imagen se controla con el campo "Imagen de portada" de este editor.',
+                  tag: 'Client',
+                  highlight: true,
+                },
+                {
+                  label: '<HomeDynamicSections sections={sections} />',
+                  path: 'src/components/HomeDynamicSections.tsx',
+                  description: 'Renderiza las secciones dinámicas definidas en la pestaña "Editor" de arriba. Soporta tipos: banner, cta, hero, custom y más.',
+                  tag: 'Server',
+                },
+                {
+                  label: '<LandingSections />',
+                  path: 'src/components/LandingSections.tsx',
+                  description: 'Secciones estáticas de la landing: servicios, galería de proyectos, beneficios, formulario de contacto y footer.',
+                  tag: 'Client',
+                },
+              ]}
+            />
+
+            {/* CMS layer */}
+            <StructureNode
+              label="src/lib/cms.ts"
+              path="src/lib/cms.ts"
+              description="Capa de datos del CMS. getCmsSettings() lee la tabla `configuracion` (InsForge). getPublicHomeSections() lee la tabla `home_sections`. Ambas se usan en page.tsx."
+              tag="Server-only"
+              tagColor="zinc"
+            />
+
+            {/* Admin editor */}
+            <StructureNode
+              label="Admin: /admin/home"
+              path="src/app/admin/home/HomeAdmin.tsx"
+              description="Panel de edición de esta misma página. Guarda en la tabla `configuracion` y `home_sections` de InsForge. Los cambios se reflejan en el sitio en cada petición."
+              tag="Admin"
+              tagColor="yellow"
+              items={[
+                {
+                  label: '<MediaPicker />',
+                  path: 'src/components/admin/cms/MediaPicker.tsx',
+                  description: 'Selector de imágenes del bucket InsForge. Permite buscar y subir imágenes para asignarlas al hero o a secciones.',
+                  tag: 'Client',
+                },
+              ]}
+            />
+
+            {/* Medios / Cloudinary */}
+            <StructureNode
+              label="Admin: /admin/medios"
+              path="src/app/admin/medios/MediaAdmin.tsx"
+              description="Biblioteca de medios con dos tabs: InsForge (bucket media) y Cloudinary. Desde aquí se suben y copian URLs para usar en la portada o secciones."
+              tag="Admin"
+              tagColor="yellow"
+            />
+          </div>
+
+          <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-4 text-xs text-zinc-400">
+            <p className="font-bold text-yellow-400 mb-2">Cómo editar la foto de portada</p>
+            <ol className="list-decimal list-inside space-y-1">
+              <li>Ve a <strong className="text-white">Medios</strong> → sube tu imagen a InsForge (carpeta <em>home</em>) o a Cloudinary.</li>
+              <li>Copia la URL de la imagen.</li>
+              <li>Regresa aquí → pestaña <strong className="text-white">Editor</strong> → sección "Hero, footer y redes".</li>
+              <li>Pega la URL en el campo <em>Imagen de portada (hero)</em> o usa el botón <em>Elegir</em>.</li>
+              <li>Haz clic en <strong className="text-yellow-400">Guardar</strong>. La portada cambia al instante.</li>
+            </ol>
+          </div>
+        </section>
+      )}
+    </div>
+  );
+}
+
+interface StructureNodeProps {
+  label: string;
+  path: string;
+  description: string;
+  tag?: string;
+  tagColor?: 'blue' | 'yellow' | 'zinc' | 'green';
+  highlight?: boolean;
+  items?: Array<{ label: string; path: string; description: string; tag?: string; highlight?: boolean }>;
+}
+
+function StructureNode({ label, path, description, tag, tagColor = 'zinc', highlight = false, items }: StructureNodeProps) {
+  const tagClass = {
+    blue: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
+    yellow: 'border-yellow-400/30 bg-yellow-400/10 text-yellow-400',
+    zinc: 'border-zinc-700 bg-zinc-900 text-zinc-400',
+    green: 'border-green-500/30 bg-green-500/10 text-green-400',
+  }[tagColor];
+
+  return (
+    <div className={`rounded-2xl border p-4 ${highlight ? 'border-yellow-400/30 bg-yellow-400/5' : 'border-white/10 bg-zinc-950'}`}>
+      <div className="flex flex-wrap items-start gap-2">
+        <div className="flex-1 min-w-0">
+          <div className="flex flex-wrap items-center gap-2 mb-1">
+            <code className={`text-sm font-bold ${highlight ? 'text-yellow-400' : 'text-white'}`}>{label}</code>
+            {tag && (
+              <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest ${tagClass}`}>{tag}</span>
+            )}
+          </div>
+          <p className="text-[11px] leading-relaxed text-zinc-400">{description}</p>
+          <code className="mt-1 block text-[10px] text-zinc-600">{path}</code>
+        </div>
+      </div>
+      {items && items.length > 0 && (
+        <ul className="mt-3 space-y-2 border-l-2 border-white/10 pl-4">
+          {items.map((child, idx) => (
+            <li key={idx} className={`rounded-xl border p-3 ${child.highlight ? 'border-yellow-400/20 bg-yellow-400/5' : 'border-white/5 bg-black/40'}`}>
+              <div className="flex flex-wrap items-center gap-2 mb-0.5">
+                <code className={`text-xs font-bold ${child.highlight ? 'text-yellow-400' : 'text-white'}`}>{child.label}</code>
+                {child.tag && (
+                  <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-zinc-400">{child.tag}</span>
+                )}
+              </div>
+              <p className="text-[10px] leading-relaxed text-zinc-500">{child.description}</p>
+              <code className="text-[9px] text-zinc-700">{child.path}</code>
+            </li>
+          ))}
+        </ul>
+      )}
     </div>
   );
 }

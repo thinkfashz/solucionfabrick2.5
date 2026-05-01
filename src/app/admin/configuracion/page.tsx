@@ -5,7 +5,7 @@ import { insforge } from '@/lib/insforge';
 import { Save, Eye, EyeOff, Check, Info, UserCog, KeyRound, Trash2, CheckCircle2 } from 'lucide-react';
 
 /* ── Integraciones de APIs externas ── */
-type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok';
+type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary';
 
 interface ProviderField {
   key: string;
@@ -63,6 +63,16 @@ const PROVIDERS: ProviderDefinition[] = [
     fields: [
       { key: 'access_token', label: 'Access token', type: 'password' },
       { key: 'advertiser_id', label: 'Advertiser ID', placeholder: '7123456789012345678' },
+    ],
+  },
+  {
+    id: 'cloudinary',
+    label: 'Cloudinary · Gestión de imágenes',
+    description: 'Conecta tu cuenta de Cloudinary para subir, editar y gestionar imágenes directamente desde el panel admin. Obtén las claves en cloudinary.com > Settings > API Keys.',
+    fields: [
+      { key: 'cloud_name', label: 'Cloud name', placeholder: 'mi-cloud-name' },
+      { key: 'api_key', label: 'API Key', placeholder: '123456789012345' },
+      { key: 'api_secret', label: 'API Secret', type: 'password' as const, placeholder: 'aBcDeFgH...' },
     ],
   },
 ];

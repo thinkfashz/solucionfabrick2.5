@@ -569,15 +569,19 @@ export default function LandingSections({
           <ScrollRevealGroup className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 mb-12" stagger={0.08}>
             {PRODUCTOS.map(({ Icon, t, d }, i) => (
               <ScrollRevealItem key={i}>
-                <div
-                  className="relative p-5 md:p-7 rounded-[1.5rem] bg-zinc-950/80 border border-white/5 hover:border-yellow-400/40 hover:bg-zinc-900 transition-all duration-500 group"
+                <Link
+                  href="/tienda"
+                  className="relative flex flex-col items-center p-5 md:p-7 rounded-[1.5rem] bg-zinc-950/80 border border-white/5 hover:border-yellow-400/40 hover:bg-zinc-900 transition-all duration-500 group h-full"
                 >
                   <div className="store-icon-wrapper w-14 h-14 md:w-16 md:h-16 mx-auto bg-black rounded-full flex items-center justify-center border border-white/10 mb-4 group-hover:border-yellow-400 transition-colors group-hover:shadow-[0_0_20px_rgba(250,204,21,0.2)]">
                     <Icon className="w-7 h-7 md:w-8 md:h-8 text-zinc-400 group-hover:text-yellow-400 transition-colors duration-500" />
                   </div>
                   <h4 className="font-black text-xs uppercase tracking-wider mb-1.5 text-white group-hover:text-yellow-400 transition-colors text-center">{t}</h4>
-                  <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest leading-relaxed text-center">{d}</p>
-                </div>
+                  <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest leading-relaxed text-center mb-4">{d}</p>
+                  <span className="mt-auto inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-yellow-400/30 text-yellow-400 text-[9px] uppercase tracking-widest font-bold group-hover:bg-yellow-400 group-hover:text-black group-hover:border-yellow-400 transition-all duration-300">
+                    Acceder <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </Link>
               </ScrollRevealItem>
             ))}
           </ScrollRevealGroup>

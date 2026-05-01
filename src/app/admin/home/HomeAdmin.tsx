@@ -468,7 +468,7 @@ export function HomeAdmin() {
               description="Página raíz de la home. Carga datos del CMS (settings + secciones) y compone el layout."
               tag="Server Component"
               tagColor="blue"
-              children={[
+              items={[
                 {
                   label: '<Navbar />',
                   path: 'src/components/Navbar.tsx',
@@ -478,7 +478,7 @@ export function HomeAdmin() {
                 {
                   label: '<Hero coverUrl={settings.hero_cover_url} />',
                   path: 'src/components/Hero.tsx',
-                  description: 'Sección hero de pantalla completa con imagen de portada editable desde el admin, overlay de texto y animaciones GSAP/Framer Motion. La imagen se controla con el campo "Imagen de portada" de este editor.',
+                  description: 'Sección hero de pantalla completa con imagen de portada editable desde el admin, overlay de texto y animaciones Framer Motion. La imagen se controla con el campo "Imagen de portada" de este editor.',
                   tag: 'Client',
                   highlight: true,
                 },
@@ -513,7 +513,7 @@ export function HomeAdmin() {
               description="Panel de edición de esta misma página. Guarda en la tabla `configuracion` y `home_sections` de InsForge. Los cambios se reflejan en el sitio en cada petición."
               tag="Admin"
               tagColor="yellow"
-              children={[
+              items={[
                 {
                   label: '<MediaPicker />',
                   path: 'src/components/admin/cms/MediaPicker.tsx',
@@ -556,10 +556,10 @@ interface StructureNodeProps {
   tag?: string;
   tagColor?: 'blue' | 'yellow' | 'zinc' | 'green';
   highlight?: boolean;
-  children?: Array<{ label: string; path: string; description: string; tag?: string; highlight?: boolean }>;
+  items?: Array<{ label: string; path: string; description: string; tag?: string; highlight?: boolean }>;
 }
 
-function StructureNode({ label, path, description, tag, tagColor = 'zinc', highlight = false, children }: StructureNodeProps) {
+function StructureNode({ label, path, description, tag, tagColor = 'zinc', highlight = false, items }: StructureNodeProps) {
   const tagClass = {
     blue: 'border-blue-500/30 bg-blue-500/10 text-blue-400',
     yellow: 'border-yellow-400/30 bg-yellow-400/10 text-yellow-400',
@@ -581,9 +581,9 @@ function StructureNode({ label, path, description, tag, tagColor = 'zinc', highl
           <code className="mt-1 block text-[10px] text-zinc-600">{path}</code>
         </div>
       </div>
-      {children && children.length > 0 && (
+      {items && items.length > 0 && (
         <ul className="mt-3 space-y-2 border-l-2 border-white/10 pl-4">
-          {children.map((child, idx) => (
+          {items.map((child, idx) => (
             <li key={idx} className={`rounded-xl border p-3 ${child.highlight ? 'border-yellow-400/20 bg-yellow-400/5' : 'border-white/5 bg-black/40'}`}>
               <div className="flex flex-wrap items-center gap-2 mb-0.5">
                 <code className={`text-xs font-bold ${child.highlight ? 'text-yellow-400' : 'text-white'}`}>{child.label}</code>

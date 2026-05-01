@@ -8,11 +8,13 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import TiendaSection from './TiendaSection';
 import FabrickLogo from './FabrickLogo';
+import ContactMap from './ContactMap';
 import ScrollReveal, { ScrollRevealGroup, ScrollRevealItem } from './ScrollReveal';
+import { buildWhatsAppLink } from '@/lib/whatsapp';
 import {
   Hammer, Home, Droplet, Layers, PaintRoller, ShieldCheck, Package,
   Droplets, Lightbulb, Cpu, Warehouse, Armchair, Fingerprint, ArrowRight,
-  Star, MapPin, ShoppingBag, Sparkles, Award, TrendingUp, MessageSquare, Gamepad2,
+  Star, ShoppingBag, Sparkles, Award, TrendingUp, MessageSquare, Gamepad2,
 } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -45,13 +47,13 @@ const TRAJECTORY = [
 ];
 
 const SERVICIOS = [
-  { Icon: Hammer,     title: 'Cimientos',     desc: 'Bases sólidas y nivelación precisa para la integridad estructural.', img: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=800&auto=format&fit=crop' },
-  { Icon: Home,       title: 'Estructuras',   desc: 'Armado seguro y milimétrico en acero y Metalcon D90/D60.', img: 'https://images.unsplash.com/photo-1503594384566-461fe158e797?q=80&w=800&auto=format&fit=crop' },
-  { Icon: Droplet,    title: 'Gasfitería',    desc: 'Termofusión PPR y redes de cobre seguras certificadas NSF.', img: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop' },
-  { Icon: Layers,     title: 'Revestimiento', desc: 'Aislación térmica, acústica y preparación de superficies.', img: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?q=80&w=800&auto=format&fit=crop' },
-  { Icon: PaintRoller,title: 'Pintura',       desc: 'Terminaciones finas, sellado y paletas de alta durabilidad.', img: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=800&auto=format&fit=crop' },
-  { Icon: ShieldCheck,title: 'Seguridad',     desc: 'CCTV, domótica y controles de acceso inteligentes.', img: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=800&auto=format&fit=crop' },
-  { Icon: Package,    title: 'Materiales Seleccionados', desc: 'Cada material usado en tu obra es elegido por nuestros especialistas e instalado por nuestro equipo. Sin intermediarios.', img: 'https://images.unsplash.com/photo-1504307651254-35680f356f12?q=80&w=800&auto=format&fit=crop', wide: true },
+  { Icon: Hammer,     title: 'Cimientos',     href: '/servicios/cimientos',     desc: 'Bases sólidas y nivelación precisa para la integridad estructural.', img: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=800&auto=format&fit=crop' },
+  { Icon: Home,       title: 'Estructuras',   href: '/servicios/metalcon',      desc: 'Armado seguro y milimétrico en acero y Metalcon D90/D60.', img: 'https://images.unsplash.com/photo-1503594384566-461fe158e797?q=80&w=800&auto=format&fit=crop' },
+  { Icon: Droplet,    title: 'Gasfitería',    href: '/servicios/gasfiteria',    desc: 'Termofusión PPR y redes de cobre seguras certificadas NSF.', img: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop' },
+  { Icon: Layers,     title: 'Revestimiento', href: '/servicios/revestimiento', desc: 'Aislación térmica, acústica y preparación de superficies.', img: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?q=80&w=800&auto=format&fit=crop' },
+  { Icon: PaintRoller,title: 'Pintura',       href: '/servicios/pintura',       desc: 'Terminaciones finas, sellado y paletas de alta durabilidad.', img: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=800&auto=format&fit=crop' },
+  { Icon: ShieldCheck,title: 'Seguridad',     href: '/servicios/seguridad',     desc: 'CCTV, domótica y controles de acceso inteligentes.', img: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=800&auto=format&fit=crop' },
+  { Icon: Package,    title: 'Materiales Seleccionados', href: '/tienda', desc: 'Cada material usado en tu obra es elegido por nuestros especialistas e instalado por nuestro equipo. Sin intermediarios.', img: 'https://images.unsplash.com/photo-1504307651254-35680f356f12?q=80&w=800&auto=format&fit=crop', wide: true },
 ];
 
 const PRODUCTOS = [
@@ -286,10 +288,11 @@ export default function LandingSections({
           </ScrollReveal>
 
           <ScrollRevealGroup className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4 md:gap-5" stagger={0.09}>
-            {SERVICIOS.map(({ Icon, title, desc, img, wide }, i) => (
+            {SERVICIOS.map(({ Icon, title, desc, img, wide, href }, i) => (
               <ScrollRevealItem key={i} className={wide ? 'sm:col-span-2 xl:col-span-2' : ''}>
+                <Link href={href} className="block h-full">
                 <div
-                  className="service-card service-card-premium service-card-hover group relative rounded-[1.5rem] md:rounded-[2rem] overflow-hidden flex flex-col items-start justify-end min-h-[280px]"
+                  className="service-card service-card-premium service-card-hover group relative rounded-[1.5rem] md:rounded-[2rem] overflow-hidden flex flex-col items-start justify-end min-h-[280px] cursor-pointer"
                 >
                   {/* Semi-transparent phase number background */}
                   <span
@@ -346,8 +349,12 @@ export default function LandingSections({
                     </div>
                     <h3 className="font-bold uppercase text-sm mb-1.5 tracking-wide text-white">{title}</h3>
                     <p className="text-[10px] md:text-xs text-zinc-300 font-light leading-relaxed">{desc}</p>
+                    <span className="mt-3 inline-flex items-center gap-1 text-[9px] uppercase tracking-widest text-yellow-400/60 group-hover:text-yellow-400 transition-colors duration-300">
+                      Ver más <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                    </span>
                   </div>
                 </div>
+                </Link>
               </ScrollRevealItem>
             ))}
           </ScrollRevealGroup>
@@ -395,14 +402,20 @@ export default function LandingSections({
                 if (isLast) {
                   return (
                     <div key={i} className="traj-step relative flex flex-col items-center text-center pt-6">
-                      <div className="relative mb-5">
+                      <div className="relative mb-4">
                         <div className="absolute inset-0 bg-yellow-400 blur-[40px] opacity-25 rounded-full" />
                         <div className="w-20 h-20 md:w-28 md:h-28 bg-black border border-yellow-400/50 rounded-full flex items-center justify-center relative z-10 shadow-[0_0_30px_rgba(250,204,21,0.3)]">
-                          <ShieldCheck className="w-9 h-9 md:w-12 md:h-12 text-yellow-400" />
+                          <span
+                            className="font-playfair font-black text-yellow-400 leading-none select-none"
+                            style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', letterSpacing: '-0.04em' }}
+                            aria-label="Fabrick Certificación"
+                          >
+                            F
+                          </span>
                         </div>
-                        <div className="absolute -bottom-3 left-1/2 -translate-x-1/2 bg-yellow-400 text-black font-bold uppercase text-[9px] tracking-widest px-4 py-1 rounded-full whitespace-nowrap">
-                          Calidad Total
-                        </div>
+                      </div>
+                      <div className="mb-8 bg-yellow-400 text-black font-bold uppercase text-[9px] tracking-widest px-4 py-1 rounded-full whitespace-nowrap inline-block">
+                        Calidad Total
                       </div>
                       <h3 className="font-bold uppercase text-xl md:text-3xl text-white mb-2 tracking-tight">
                         Empresa Sólida y Confiable
@@ -463,11 +476,14 @@ export default function LandingSections({
         </div>
         <div className="max-w-7xl mx-auto relative z-10">
           <ScrollReveal className="text-center mb-16 md:mb-24">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-light uppercase tracking-tighter leading-none">
+            <span className="text-yellow-400 font-bold tracking-[0.5em] text-[10px] uppercase">
+              Soluciones Fabrick · Linares, Maule
+            </span>
+            <h2 className="mt-3 text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tighter leading-[0.95]">
               Construimos su tranquilidad,
-              <br /><span className="font-bold text-yellow-400">ladrillo a ladrillo.</span>
+              <br /><span className="text-yellow-400">ladrillo a ladrillo.</span>
             </h2>
-            <p className="mt-6 text-zinc-400 max-w-3xl mx-auto text-sm md:text-lg leading-relaxed font-light">
+            <p className="mt-6 text-zinc-300 max-w-3xl mx-auto text-sm md:text-lg leading-relaxed font-light">
               En Soluciones Fabrick eliminamos la incertidumbre. Gestionamos todo el proceso
               para que usted solo disfrute del resultado.
             </p>
@@ -512,6 +528,44 @@ export default function LandingSections({
               </div>
             </ScrollRevealItem>
           </ScrollRevealGroup>
+
+          {/* ── CTA: agendar visita en terreno (Linares / Maule) ── */}
+          <ScrollReveal delay={0.15} className="mt-10 md:mt-14">
+            <div className="rounded-[2rem] border border-yellow-400/30 bg-gradient-to-br from-yellow-400/10 via-yellow-400/5 to-transparent p-8 md:p-12 backdrop-blur-md">
+              <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
+                <div className="text-center md:text-left">
+                  <span className="text-yellow-400 font-bold tracking-[0.4em] text-[10px] uppercase">
+                    Visita gratuita en terreno
+                  </span>
+                  <h3 className="mt-3 text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">
+                    Vamos a su propiedad,<br className="hidden md:inline" /> medimos y armamos su presupuesto.
+                  </h3>
+                  <p className="mt-3 text-zinc-300 text-sm md:text-base leading-relaxed max-w-2xl">
+                    Atendemos en Linares y toda la Región del Maule. Sin oficinas físicas y sin costo
+                    por la visita: nuestros técnicos llegan, toman las medidas y conversan con usted
+                    en su espacio para que el presupuesto sea fiel a la realidad.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 md:min-w-[16rem]">
+                  <a
+                    href={buildWhatsAppLink('Hola Soluciones Fabrick, quiero agendar una visita en Linares (Región del Maule) para que pasen a evaluar mi proyecto y armar el presupuesto.')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-3 rounded-full bg-yellow-400 px-7 py-4 text-[11px] font-black uppercase tracking-[0.22em] text-black shadow-yellow-md transition hover:bg-yellow-300"
+                  >
+                    Agendar por WhatsApp
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
+                  <Link
+                    href="/contacto"
+                    className="flex items-center justify-center gap-2 rounded-full border border-white/15 px-7 py-4 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-200 transition hover:border-yellow-400/40 hover:text-yellow-400"
+                  >
+                    Formulario de contacto
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -533,15 +587,19 @@ export default function LandingSections({
           <ScrollRevealGroup className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 mb-12" stagger={0.08}>
             {PRODUCTOS.map(({ Icon, t, d }, i) => (
               <ScrollRevealItem key={i}>
-                <div
-                  className="relative p-5 md:p-7 rounded-[1.5rem] bg-zinc-950/80 border border-white/5 hover:border-yellow-400/40 hover:bg-zinc-900 transition-all duration-500 group"
+                <Link
+                  href="/tienda"
+                  className="relative flex flex-col items-center p-5 md:p-7 rounded-[1.5rem] bg-zinc-950/80 border border-white/5 hover:border-yellow-400/40 hover:bg-zinc-900 transition-all duration-500 group h-full"
                 >
                   <div className="store-icon-wrapper w-14 h-14 md:w-16 md:h-16 mx-auto bg-black rounded-full flex items-center justify-center border border-white/10 mb-4 group-hover:border-yellow-400 transition-colors group-hover:shadow-[0_0_20px_rgba(250,204,21,0.2)]">
                     <Icon className="w-7 h-7 md:w-8 md:h-8 text-zinc-400 group-hover:text-yellow-400 transition-colors duration-500" />
                   </div>
                   <h4 className="font-black text-xs uppercase tracking-wider mb-1.5 text-white group-hover:text-yellow-400 transition-colors text-center">{t}</h4>
-                  <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest leading-relaxed text-center">{d}</p>
-                </div>
+                  <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest leading-relaxed text-center mb-4">{d}</p>
+                  <span aria-label={`Acceder a ${t}`} className="mt-auto inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-yellow-400/30 text-yellow-400 text-[9px] uppercase tracking-widest font-bold group-hover:bg-yellow-400 group-hover:text-black group-hover:border-yellow-400 transition-all duration-300">
+                    Acceder <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </Link>
               </ScrollRevealItem>
             ))}
           </ScrollRevealGroup>
@@ -606,18 +664,12 @@ export default function LandingSections({
                 una solución definitiva.
               </p>
             </div>
-            {/* Mapa */}
-            <div className="img-zoom w-full h-52 md:h-72 bg-zinc-900 rounded-[2rem] border border-white/5 flex flex-col items-center justify-center relative overflow-hidden group">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=1000&auto=format&fit=crop" alt="Mapa Santiago" className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale" />
-              <div className="absolute inset-0 bg-black/40" />
-              <div className="w-14 h-14 bg-yellow-400 rounded-full flex items-center justify-center relative z-10 mb-3 shadow-[0_0_20px_rgba(250,204,21,0.4)] animate-pulse">
-                <MapPin className="w-7 h-7 text-black" />
-              </div>
-              <span className="relative z-10 font-bold text-xs tracking-[0.25em] uppercase text-white">
-                Oficina Central · Santiago
-              </span>
-            </div>
+            {/* Mapa interactivo · Linares (OpenStreetMap) */}
+            <ContactMap
+              className="w-full h-52 md:h-72"
+              title="Linares · Región del Maule"
+              subtitle="Atendemos en terreno en toda la región"
+            />
           </ScrollReveal>
 
           <ScrollReveal delay={0.15} className="bg-zinc-950 p-7 md:p-12 rounded-[2rem] border border-white/5">

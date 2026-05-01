@@ -6,13 +6,14 @@ import { MapPin, Phone, Mail, Clock, MessageCircle, CheckCircle, XCircle, Loader
 import ContactMap from '@/components/ContactMap';
 import SectionPageShell from '@/components/SectionPageShell';
 import TurnstileWidget from '@/components/TurnstileWidget';
+import { buildWhatsAppLink, WHATSAPP_DISPLAY } from '@/lib/whatsapp';
 
 const CONTACT_INFO = [
   {
     icon: Phone,
-    label: 'Teléfono',
-    value: '+56 9 1234 5678',
-    sub: 'Lunes a viernes, 9:00 – 18:00',
+    label: 'WhatsApp directo',
+    value: WHATSAPP_DISPLAY,
+    sub: 'Coordinamos su visita en terreno por aquí',
   },
   {
     icon: Mail,
@@ -22,9 +23,9 @@ const CONTACT_INFO = [
   },
   {
     icon: MapPin,
-    label: 'Oficina central',
-    value: 'Av. Providencia 1234, Of. 502',
-    sub: 'Providencia, Santiago, Chile',
+    label: 'Visitas en terreno',
+    value: 'Linares, Región del Maule',
+    sub: 'Vamos a su propiedad sin costo y armamos el presupuesto in-situ',
   },
   {
     icon: Clock,
@@ -115,13 +116,13 @@ function ContactoForm() {
           <ContactMap className="min-h-[26rem]" />
           {/* WhatsApp CTA */}
           <a
-            href="https://wa.me/56912345678?text=Hola%20Fabrick%2C%20quiero%20información%20sobre%20un%20proyecto"
+            href={buildWhatsAppLink('Hola Soluciones Fabrick, quiero agendar una visita en Linares (Región del Maule) para que pasen a evaluar mi proyecto.')}
             target="_blank"
             rel="noopener noreferrer"
             className="flex items-center justify-center gap-3 rounded-2xl bg-green-500 px-6 py-5 text-[11px] font-black uppercase tracking-[0.2em] text-white transition hover:bg-green-400"
           >
             <MessageCircle className="h-5 w-5" />
-            Escribir por WhatsApp
+            Agendar visita por WhatsApp
           </a>
         </div>
 

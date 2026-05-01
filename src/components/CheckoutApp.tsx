@@ -16,6 +16,18 @@ declare global {
         identificationType: string;
         identificationNumber: string;
       }) => Promise<{ id: string }>;
+      // Resolves the real `payment_method_id` from the card BIN (first 6
+      // digits). Lets us accept ANY card brand the merchant has enabled in
+      // Mercado Pago (Visa & Visa Débito, Mastercard & Mastercard Débito,
+      // Amex, Diners, Magna, Maestro, RedCompra, etc.) instead of relying
+      // on a 3-prefix heuristic that misclassifies debit cards as `visa`.
+      getPaymentMethods: (data: { bin: string }) => Promise<{
+        results?: Array<{
+          id: string;
+          payment_type_id?: string;
+          name?: string;
+        }>;
+      }>;
     };
     gsap: {
       fromTo: (el: HTMLElement | null, from: object, to: object) => void;
@@ -24,6 +36,7 @@ declare global {
   }
 }
 import { useSearchParams } from 'next/navigation';
+import { CART_SESSION_KEY } from '@/context/CartContext';
 import { 
   ArrowLeft, ShieldCheck, Lock, Truck, 
   CheckCircle2, ChevronRight, Fingerprint,
@@ -110,8 +123,6 @@ const STAR_FIELD = Array.from({ length: 24 }).map((_, i) => ({
   delay: (i % 7) * 0.35,
 }));
 
-const CART_SESSION_KEY = 'fabrick.cart.session.v2';
-
 interface StoredCartItem {
   product: {
     id: string;
@@ -191,7 +202,14 @@ const CheckoutApp = () => {
   const [cardName, setCardName] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCVC, setCardCVC] = useState('');
+  // Cardholder's identification (RUT in Chile). Mercado Pago requires a
+  // real value here when tokenizing — sending '0' makes MP reject the
+  // token for most issuers, so we ask the user for it.
+  const [cardRut, setCardRut] = useState('');
   const [cardFlipped, setCardFlipped] = useState(false);
+  // Hosted Checkout Pro fallback — guarantees every card brand and method
+  // MP supports works, even when the inline form is too strict.
+  const [hostedRedirecting, setHostedRedirecting] = useState(false);
   const [mpSubStep, setMpSubStep] = useState(1); // 1: card number, 2: holder + expiry + CVC, 3: review
   const [checkoutError, setCheckoutError] = useState('');
   const [orderId, setOrderId] = useState('');
@@ -591,6 +609,37 @@ const CheckoutApp = () => {
   const isCvcValid = cardBrand === 'amex' ? /^\d{4}$/.test(cardCVC) : /^\d{3}$/.test(cardCVC);
   const isHolderValid = cardName.trim().length >= 3;
 
+  // ── RUT helpers (Chilean cardholder identification) ─────────────────────
+  // We accept input in any of the common forms (`12345678-9`, `12.345.678-9`
+  // or just digits + DV) and normalise to the canonical `12345678-9` shape
+  // that Mercado Pago expects in `identificationNumber`.
+  const normaliseRut = (value: string) => {
+    const cleaned = value.replace(/[^\dkK]/g, '').toUpperCase().slice(0, 9);
+    if (cleaned.length <= 1) return cleaned;
+    return `${cleaned.slice(0, -1)}-${cleaned.slice(-1)}`;
+  };
+  const formatRutInput = normaliseRut;
+  const computeRutDV = (body: string) => {
+    let sum = 0;
+    let mul = 2;
+    for (let i = body.length - 1; i >= 0; i--) {
+      sum += Number(body[i]) * mul;
+      mul = mul === 7 ? 2 : mul + 1;
+    }
+    const rest = 11 - (sum % 11);
+    if (rest === 11) return '0';
+    if (rest === 10) return 'K';
+    return String(rest);
+  };
+  const isRutValid = (() => {
+    const cleaned = cardRut.replace(/[^\dkK]/g, '').toUpperCase();
+    if (cleaned.length < 7 || cleaned.length > 9) return false;
+    const body = cleaned.slice(0, -1);
+    const dv = cleaned.slice(-1);
+    if (!/^\d+$/.test(body)) return false;
+    return computeRutDV(body) === dv;
+  })();
+
   const handleConfirmInvestment = async () => {
     if (isProcessing) return;
 
@@ -635,6 +684,9 @@ const CheckoutApp = () => {
 
     // --- MercadoPago tokenization ---
     let mpToken: string | null = null;
+    // Resolved by `mp.getPaymentMethods({ bin })` below; if the SDK call
+    // fails (e.g. unrecognised BIN), we fall back to the prefix heuristic.
+    let detectedPaymentMethodId: string | null = null;
     try {
       // Load MercadoPago SDK if not already present
       await new Promise<void>((resolve, reject) => {
@@ -679,6 +731,7 @@ const CheckoutApp = () => {
 
       const mp = new window.MercadoPago(mpPublicKey);
       const rawCardNumber = cardNumber.replace(/\s/g, '');
+      const normalisedRut = normaliseRut(cardRut);
 
       const tokenResult = await mp.createCardToken({
         cardNumber: rawCardNumber,
@@ -687,10 +740,26 @@ const CheckoutApp = () => {
         cardExpirationYear: expYear,
         securityCode: cardCVC,
         identificationType: 'RUT',
-        identificationNumber: '0',
+        identificationNumber: normalisedRut,
       });
 
       mpToken = tokenResult.id;
+
+      // Resolve the REAL `payment_method_id` from the BIN (first 6 digits)
+      // so debit cards (`debvisa`/`debmaster`), Diners, Magna, Maestro,
+      // RedCompra, etc. are routed correctly. The previous prefix-based
+      // heuristic forced everything into `visa`/`master`/`amex`, which is
+      // why MP was rejecting many valid debit/credit cards.
+      try {
+        const bin = rawCardNumber.slice(0, 6);
+        if (bin.length === 6) {
+          const pmRes = await mp.getPaymentMethods({ bin });
+          const first = pmRes?.results?.[0];
+          if (first?.id) detectedPaymentMethodId = first.id;
+        }
+      } catch {
+        /* fall back to prefix heuristic below */
+      }
     } catch (tokenErr) {
       // Tokenization failure is the FIRST signal that the card data is bad —
       // surface it as a rejection so the user can retry. We never silently
@@ -763,13 +832,20 @@ const CheckoutApp = () => {
 
       // --- MercadoPago charge: this is the AUTHORITATIVE step ---------------
       const rawNum = cardNumber.replace(/\s/g, '');
-      const detectedMethod = rawNum.startsWith('4')
+      // Prefer the `payment_method_id` Mercado Pago itself returned for the
+      // BIN; only fall back to a coarse prefix heuristic if MP couldn't
+      // classify the card. This is what unblocks debit cards, Diners,
+      // Maestro, RedCompra and any other brand the merchant has enabled.
+      const fallbackMethod = rawNum.startsWith('4')
         ? 'visa'
         : /^5[1-5]/.test(rawNum)
           ? 'master'
           : /^3[47]/.test(rawNum)
             ? 'amex'
-            : 'visa';
+            : /^3(0[0-5]|[689])/.test(rawNum)
+              ? 'diners'
+              : 'visa';
+      const paymentMethodId = detectedPaymentMethodId || fallbackMethod;
 
       const mpRes = await fetch('/api/payments/mercadopago', {
         method: 'POST',
@@ -782,7 +858,7 @@ const CheckoutApp = () => {
             : `Pedido Fabrick (${cartItemCount} productos)`,
           email: shippingEmail,
           installments: 1,
-          payment_method_id: detectedMethod,
+          payment_method_id: paymentMethodId,
           externalReference: createdOrderId,
         }),
       });
@@ -828,6 +904,67 @@ const CheckoutApp = () => {
       );
       setProcessProgress(0);
       return;
+    }
+  };
+
+  // ── Mercado Pago Checkout Pro fallback ───────────────────────────────────
+  // Creates the order via /api/checkout (which already creates an MP
+  // preference server-side) and redirects the buyer to MP's hosted
+  // checkout. Hosted Checkout Pro accepts EVERY card brand and payment
+  // method enabled in the merchant's MP account (Visa & Visa Débito,
+  // Mastercard & Mastercard Débito, Amex, Diners, Magna, Maestro,
+  // RedCompra, Webpay, transferencia, etc.) — guaranteed escape hatch when
+  // the inline form rejects a specific card.
+  const handlePayWithCheckoutPro = async () => {
+    if (hostedRedirecting) return;
+    setCheckoutError('');
+
+    if (!shippingName || !shippingEmail || !shippingAddress || !shippingRegion) {
+      setCheckoutError('Completa los datos de despacho y contacto antes de continuar.');
+      return;
+    }
+
+    setHostedRedirecting(true);
+
+    const payload = {
+      items: cartItems.map((i) => ({
+        productoId: i.product.id,
+        cantidad: i.quantity,
+        precioUnitario: i.product.price * (1 - (i.product.discount_percentage || 0) / 100),
+        nombre: i.product.name,
+      })),
+      region: shippingRegion,
+      shippingAddress,
+      shippingHouseNumber,
+      cliente: {
+        nombre: shippingName,
+        email: shippingEmail,
+        telefono: shippingPhone,
+      },
+    };
+
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json().catch(() => ({} as Record<string, unknown>));
+      const checkoutUrl = (body as { payment?: { checkoutUrl?: string } })?.payment?.checkoutUrl;
+      if (!res.ok || !checkoutUrl) {
+        const message =
+          (body as { error?: string })?.error ||
+          'No se pudo iniciar el pago en Mercado Pago. Intenta nuevamente o usa transferencia bancaria.';
+        throw new Error(message);
+      }
+      // Redirect to MP's hosted checkout. The user can pay with ANY card or
+      // method MP supports there, then is sent back to /checkout?payment_status=...
+      window.location.assign(checkoutUrl);
+    } catch (e) {
+      setHostedRedirecting(false);
+      setCheckoutError(
+        e instanceof Error ? e.message : 'No se pudo iniciar el pago en Mercado Pago.',
+      );
     }
   };
 
@@ -1273,23 +1410,25 @@ const CheckoutApp = () => {
         Layout responsivo del checkout:
         - Steps 1 y 2 (Verificación + Despacho): grid de 12 columnas con resumen
           sticky a la izquierda (col-span-5) y el formulario a la derecha (col-span-7).
-        - Step 3 (Pago): el resumen se oculta en lg+ y el formulario se centra
-          dentro de un contenedor más angosto (max-w-3xl) para que la tarjeta
-          y cada campo queden alineados al centro de la pantalla, sin espacios
-          enormes a los lados al pagar. En móvil/tablet la columna del resumen
-          se sigue mostrando apilada arriba (el grid colapsa por debajo de lg).
+        - Step 3 (Pago): se renderiza como una página independiente en una sola
+          columna centrada (max-w-3xl, sin grid). El resumen no se monta para
+          que cada paso se sienta como su propia "app" y el formulario ocupe
+          todo el ancho disponible — desde pantallas muy estrechas hasta
+          desktop — sin espacios muertos a los lados ni la tarjeta pegada
+          a la derecha.
       */}
       <div
-        className={`pt-28 sm:pt-32 px-4 sm:px-6 md:px-12 mx-auto grid lg:grid-cols-12 gap-8 sm:gap-12 lg:gap-20 ${
-          step === 3 ? 'max-w-3xl' : 'max-w-7xl'
+        className={`pt-28 sm:pt-32 px-4 sm:px-6 md:px-12 mx-auto ${
+          step === 3
+            ? 'max-w-3xl flex flex-col gap-8'
+            : 'max-w-7xl grid lg:grid-cols-12 gap-8 sm:gap-12 lg:gap-20'
         }`}
       >
         
-        {/* COLUMNA IZQUIERDA: RESUMEN DEL PRODUCTO */}
+        {/* COLUMNA IZQUIERDA: RESUMEN DEL PRODUCTO (sólo en steps 1 y 2) */}
+        {step !== 3 && (
         <div
-          className={`lg:col-span-5 animate-fade-up relative ${
-            step === 3 ? 'lg:hidden' : ''
-          }`}
+          className="lg:col-span-5 animate-fade-up relative"
         >
           <div className="sticky top-32 space-y-8">
             
@@ -1389,11 +1528,12 @@ const CheckoutApp = () => {
 
           </div>
         </div>
+        )}
 
         {/* COLUMNA DERECHA: FLUJO DE COMPRA */}
         <div
           className={`animate-fade-up ${
-            step === 3 ? 'lg:col-span-12' : 'lg:col-span-7'
+            step === 3 ? 'w-full' : 'lg:col-span-7'
           }`}
         >
           
@@ -1783,13 +1923,25 @@ const CheckoutApp = () => {
                     </div>
 
                     {/* 3D flip card preview */}
-                    <div className="perspective-1000 flex justify-center">
+                    <div className="flex justify-center" style={{ perspective: '1000px' }}>
                       <div
-                        className="relative w-full max-w-[360px] aspect-[1.586/1] transform-style-3d transition-transform duration-700"
-                        style={{ transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
+                        className="relative w-full max-w-[360px] transition-transform duration-700"
+                        style={{
+                          aspectRatio: '1.586 / 1',
+                          transformStyle: 'preserve-3d',
+                          transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
+                        }}
                       >
                         {/* FRONT */}
-                        <div className="absolute inset-0 backface-hidden rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 bg-[linear-gradient(135deg,#1f2937_0%,#0f172a_50%,#0a0a0a_100%)]">
+                        <div
+                          className="absolute inset-0 rounded-2xl border border-yellow-400/20"
+                          style={{
+                            backfaceVisibility: 'hidden',
+                            WebkitBackfaceVisibility: 'hidden',
+                            background: 'linear-gradient(135deg, #1e1e2e 0%, #12122a 45%, #0a0a18 100%)',
+                            boxShadow: '0 0 0 1px rgba(250,204,21,0.12), 0 24px 64px rgba(0,0,0,0.85)',
+                          }}
+                        >
                           <div className="absolute inset-0 opacity-40 mix-blend-overlay"
                             style={{ backgroundImage: 'radial-gradient(circle at 20% 10%, rgba(250,204,21,0.35), transparent 60%)' }} />
                           <div className="absolute top-0 left-[-30%] w-1/3 h-full bg-white/10 pointer-events-none"
@@ -1849,7 +2001,14 @@ const CheckoutApp = () => {
 
                         {/* BACK */}
                         <div
-                          className="absolute inset-0 rotate-y-180 backface-hidden rounded-2xl overflow-hidden shadow-[0_20px_60px_rgba(0,0,0,0.6)] border border-white/10 bg-[linear-gradient(135deg,#1f2937_0%,#0f172a_50%,#0a0a0a_100%)]"
+                          className="absolute inset-0 rounded-2xl border border-yellow-400/10"
+                          style={{
+                            backfaceVisibility: 'hidden',
+                            WebkitBackfaceVisibility: 'hidden',
+                            transform: 'rotateY(180deg)',
+                            background: 'linear-gradient(135deg, #1e1e2e 0%, #12122a 45%, #0a0a18 100%)',
+                            boxShadow: '0 0 0 1px rgba(250,204,21,0.08), 0 24px 64px rgba(0,0,0,0.85)',
+                          }}
                         >
                           <div className="mt-5 h-9 w-full bg-black/70" />
                           <div className="px-5 mt-5">
@@ -1909,7 +2068,7 @@ const CheckoutApp = () => {
                                 className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white font-mono tracking-widest focus:border-yellow-400 focus:outline-none transition-colors"
                               />
                               <span className="block text-[9px] text-zinc-500 mt-2 uppercase tracking-widest">
-                                {cardBrand !== 'unknown' ? `Detectado: ${cardBrand}` : 'Aceptamos Visa, Mastercard, Amex'}
+                                {cardBrand !== 'unknown' ? `Detectado: ${cardBrand}` : 'Aceptamos cualquier tarjeta de crédito o débito (Visa, Mastercard, Amex, Diners, Maestro…)'}
                               </span>
                             </label>
                             <div className="flex gap-3 pt-2">
@@ -1978,6 +2137,26 @@ const CheckoutApp = () => {
                                 />
                               </label>
                             </div>
+                            <label className="block">
+                              <span className="block text-[10px] uppercase tracking-widest text-zinc-500 font-bold mb-2">
+                                RUT del titular
+                              </span>
+                              <input
+                                type="text"
+                                inputMode="text"
+                                autoComplete="off"
+                                aria-label="RUT del titular de la tarjeta"
+                                value={cardRut}
+                                onChange={(e) => setCardRut(formatRutInput(e.target.value))}
+                                placeholder="12345678-9"
+                                className="w-full bg-black border border-white/10 rounded-2xl px-5 py-4 text-sm text-white font-mono tracking-wider focus:border-yellow-400 focus:outline-none transition-colors"
+                              />
+                              <span className="block text-[9px] text-zinc-500 mt-2 uppercase tracking-widest">
+                                {cardRut && !isRutValid
+                                  ? 'RUT inválido — revisa el dígito verificador'
+                                  : 'Requerido por Mercado Pago para validar la tarjeta'}
+                              </span>
+                            </label>
                             <div className="flex gap-3 pt-2">
                               <button
                                 type="button"
@@ -1988,7 +2167,7 @@ const CheckoutApp = () => {
                               </button>
                               <button
                                 type="button"
-                                disabled={!isHolderValid || !isExpiryValid || !isCvcValid}
+                                disabled={!isHolderValid || !isExpiryValid || !isCvcValid || !isRutValid}
                                 onClick={() => { setCardFlipped(false); setMpSubStep(3); }}
                                 className="flex-1 py-4 bg-yellow-400 text-black font-black uppercase text-[11px] tracking-[0.25em] rounded-full hover:bg-white transition-all disabled:opacity-40 disabled:cursor-not-allowed"
                               >
@@ -2043,7 +2222,49 @@ const CheckoutApp = () => {
                   </div>
                 )}
 
-                {/* BANK TRANSFER PANEL */}
+                {/* MERCADO PAGO CHECKOUT PRO — universal fallback that
+                    accepts every brand & method MP supports (credit + debit
+                    Visa/Mastercard, Amex, Diners, Magna, Maestro, RedCompra,
+                    Webpay, transferencia…). Redirects to MP's hosted page,
+                    then comes back to /checkout?payment_status=… */}
+                {paymentMethod === 'mercadopago' && (
+                  <div className="rounded-[1.75rem] sm:rounded-[2rem] border border-yellow-400/15 bg-yellow-400/[0.04] p-5 sm:p-6 space-y-3">
+                    <div className="flex items-start gap-3">
+                      <div className="w-9 h-9 rounded-xl bg-yellow-400/15 flex items-center justify-center flex-shrink-0">
+                        <ExternalLink className="w-4 h-4 text-yellow-400" />
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className="text-[9px] uppercase tracking-[0.35em] text-yellow-400 font-bold">
+                          ¿Tu tarjeta no fue aceptada?
+                        </p>
+                        <h4 className="text-sm sm:text-base font-black uppercase tracking-tight mt-1">
+                          Paga directo en Mercado Pago
+                        </h4>
+                        <p className="text-zinc-400 text-[11px] mt-1 leading-relaxed">
+                          Acepta cualquier tarjeta de crédito o débito (Visa, Mastercard, Amex,
+                          Diners, Maestro, RedCompra), Webpay y transferencia. Te redirigimos a
+                          la página segura de Mercado Pago.
+                        </p>
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => void handlePayWithCheckoutPro()}
+                      disabled={hostedRedirecting}
+                      className="w-full py-4 rounded-full border border-yellow-400/40 text-yellow-300 font-bold text-[11px] uppercase tracking-[0.25em] hover:bg-yellow-400/10 transition-colors flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                      {hostedRedirecting ? (
+                        <>
+                          <RefreshCw className="w-4 h-4 animate-spin" /> Redirigiendo…
+                        </>
+                      ) : (
+                        <>
+                          <ExternalLink className="w-4 h-4" /> Pagar en Mercado Pago — todas las tarjetas
+                        </>
+                      )}
+                    </button>
+                  </div>
+                )}
                 {paymentMethod === 'transfer' && (
                   <div className="space-y-5">
                     {!transferOrderReady ? (
@@ -2146,12 +2367,15 @@ const CheckoutApp = () => {
                   </button>
                   {paymentMethod === 'mercadopago' && (
                     <button
-                      disabled={isProcessing || mpSubStep !== 3 || !isCardNumberValid || !isHolderValid || !isExpiryValid || !isCvcValid}
-                      onClick={handleConfirmInvestment}
+                      disabled={hostedRedirecting || isProcessing}
+                      onClick={() => void handlePayWithCheckoutPro()}
                       type="button"
                       className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all flex justify-center items-center gap-3 shadow-[0_15px_40px_rgba(250,204,21,0.3)] disabled:opacity-50 disabled:cursor-not-allowed"
                     >
-                      <Lock className="w-4 h-4" /> Pagar {formatCLP(cartTotal)}
+                      {hostedRedirecting
+                        ? <><RefreshCw className="w-4 h-4 animate-spin" /> Redirigiendo…</>
+                        : <><Lock className="w-4 h-4" /> Pagar {formatCLP(cartTotal)}</>
+                      }
                     </button>
                   )}
                   {paymentMethod === 'transfer' && !transferOrderReady && (

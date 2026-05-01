@@ -3,10 +3,10 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useMemo, useState } from 'react';
-import { useParams, useRouter } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChevronRight, Hammer, MapPin, Package, Phone, Ruler, ShieldCheck, Check, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, Check, CheckCircle2, ChevronRight, Hammer, MapPin, Package, Phone, Ruler, ShieldCheck, ShoppingCart } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { useRealtimeProducts } from '@/hooks/useRealtimeProducts';
 import { useCartContext } from '@/context/CartContext';
@@ -32,25 +32,14 @@ function buildGallery(product: { image_url?: string; specifications?: Record<str
   return gallery;
 }
 
-export default function ProductoTiendaClient() {
-  const params = useParams<{ id: string }>();
+export default function ProductoClient({ id }: { id: string }) {
   const router = useRouter();
   const { products, loading } = useRealtimeProducts();
-  const { addToCart, totalItems, openCart } = useCartContext();
-
-  const id = params?.id ?? '';
   const product = useMemo(() => products.find((p) => p.id === id), [products, id]);
   const [activeImg, setActiveImg] = useState(0);
   const [purchaseMode, setPurchaseMode] = useState<'product' | 'product_labor' | 'turnkey_m2'>('product');
   const [addedToCart, setAddedToCart] = useState(false);
-
-  function handleAddToCart() {
-    if (!product) return;
-    addToCart(product);
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2000);
-    openCart();
-  }
+  const { addToCart } = useCartContext();
 
   useEffect(() => {
     setActiveImg(0);
@@ -305,27 +294,30 @@ export default function ProductoTiendaClient() {
             {/* CTAs */}
             <div className="space-y-3 pt-4">
               {purchaseMode === 'product' ? (
-                <>
+                <div className="grid grid-cols-2 gap-3">
                   <button
-                    type="button"
-                    onClick={handleAddToCart}
-                    disabled={outOfStock}
-                    className="flex w-full items-center justify-center gap-3 rounded-2xl bg-yellow-400 px-6 py-4 text-[12px] font-black uppercase tracking-[0.25em] text-black transition hover:bg-yellow-300 disabled:opacity-50 disabled:cursor-not-allowed"
+                    onClick={() => {
+                      addToCart(product);
+                      setAddedToCart(true);
+                      setTimeout(() => setAddedToCart(false), 2500);
+                    }}
+                    className={`flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-4 text-[11px] font-black uppercase tracking-[0.2em] transition ${
+                      addedToCart
+                        ? 'border-emerald-500/40 bg-emerald-500/10 text-emerald-400'
+                        : 'border-yellow-400/30 bg-yellow-400/5 text-yellow-400 hover:bg-yellow-400/10'
+                    }`}
                   >
-                    {addedToCart ? (
-                      <><Check size={14} /> ¡Añadido al carrito!</>
-                    ) : (
-                      <><ShoppingCart size={14} /> Añadir al carrito{totalItems > 0 ? ` (${totalItems})` : ''}</>
-                    )}
+                    {addedToCart ? <CheckCircle2 size={14} /> : <ShoppingCart size={14} />}
+                    {addedToCart ? '¡Agregado!' : 'Al carrito'}
                   </button>
                   <Link
                     href={`/checkout?productId=${encodeURIComponent(product.id)}&name=${encodeURIComponent(product.name)}&price=${encodeURIComponent(String(product.price))}${product.image_url ? `&img=${encodeURIComponent(product.image_url)}` : ''}`}
-                    className="flex w-full items-center justify-center gap-3 rounded-2xl border border-yellow-400/30 bg-yellow-400/5 px-6 py-3 text-[11px] font-black uppercase tracking-[0.25em] text-yellow-400 transition hover:bg-yellow-400/10"
+                    className="flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-4 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-black transition hover:bg-yellow-300"
                   >
-                    Comprar solo este · {formatCLP(product.price)}
-                    <ChevronRight size={14} />
+                    Comprar ahora
+                    <ChevronRight size={13} />
                   </Link>
-                </>
+                </div>
               ) : (
                 <Link
                   href={`/contacto?producto=${encodeURIComponent(product.name)}&modalidad=${purchaseMode}`}

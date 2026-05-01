@@ -1,11 +1,18 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { insforge } from '@/lib/insforge';
+import { createClient } from '@insforge/sdk';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
+async function getInsforgeClient() {
+  const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
+  const anonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY || 'ik_7e23032539c2dc64d5d27ca29d07b928';
+  return createClient({ baseUrl, anonKey });
+}
+
 async function checkSuperadmin(sessionEmail: string): Promise<boolean> {
+  const insforge = await getInsforgeClient();
   const { data, error } = await insforge.database
     .from('admin_users')
     .select('rol')
@@ -26,6 +33,8 @@ export async function GET(request: NextRequest) {
   if (!payload) {
     return NextResponse.json({ error: 'Sesión inválida.' }, { status: 401 });
   }
+
+  const insforge = await getInsforgeClient();
 
   try {
     const { data, error } = await insforge.database
@@ -93,6 +102,8 @@ export async function POST(request: NextRequest) {
   // Generate 6-digit code
   const codigo = Math.floor(100000 + Math.random() * 900000).toString();
   const expira_at = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString();
+
+  const insforge = await getInsforgeClient();
 
   try {
     const { error: insertError } = await insforge.database
@@ -182,6 +193,8 @@ export async function DELETE(request: NextRequest) {
   if (!id) {
     return NextResponse.json({ error: 'ID de invitación requerido.' }, { status: 400 });
   }
+
+  const insforge = await getInsforgeClient();
 
   try {
     const { error } = await insforge.database

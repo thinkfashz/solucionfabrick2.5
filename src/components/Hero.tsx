@@ -3,83 +3,19 @@
 import { useRef, useEffect } from 'react';
 import { useScroll, useTransform, motion } from 'framer-motion';
 import HeroHouse3D from './HeroHouse3D';
+import { FlipText } from '@/components/ui/flip-text';
 
-/* Canvas API – elegant golden floating particles */
-function initCanvasParticles(canvas: HTMLCanvasElement): () => void {
-  const ctx = canvas.getContext('2d');
-  if (!ctx) return () => {};
+export default function Hero({ coverUrl }: { coverUrl?: string }) {
+  const heroRef  = useRef<HTMLDivElement>(null);
 
-  let animId: number;
-
-  const resize = () => {
-    canvas.width  = canvas.offsetWidth;
-    canvas.height = canvas.offsetHeight;
-  };
-  resize();
-  const ro = new ResizeObserver(resize);
-  ro.observe(canvas);
-
-  type Particle = {
-    x: number; y: number;
-    size: number;
-    speedX: number; speedY: number;
-    opacity: number; opacityDir: number;
-    baseR: number; baseG: number; baseB: number;
-  };
-
-  const make = (): Particle => ({
-    x:          Math.random() * canvas.width,
-    y:          Math.random() * canvas.height,
-    size:       Math.random() * 2.2 + 0.8,
-    speedX:     (Math.random() - 0.5) * 0.35,
-    speedY:     -(Math.random() * 0.45 + 0.15),
-    opacity:    Math.random() * 0.45 + 0.1,
-    opacityDir: Math.random() > 0.5 ? 1 : -1,
-    baseR:      201, baseG: 169, baseB: 110,
-  });
-
-  const particles: Particle[] = Array.from({ length: 24 }, make);
-
-  const tick = () => {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
-    for (const p of particles) {
-      p.x       += p.speedX;
-      p.y       += p.speedY;
-      p.opacity += p.opacityDir * 0.004;
-      if (p.opacity > 0.6 || p.opacity < 0.05) p.opacityDir *= -1;
-      if (p.y < -8) {
-        p.y = canvas.height + 8;
-        p.x = Math.random() * canvas.width;
-      }
-      const op    = p.opacity;
-      const glow  = op * 0.5;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.fillStyle   = `rgba(${p.baseR},${p.baseG},${p.baseB},${op.toFixed(3)})`;
-      ctx.shadowBlur  = p.size * 4;
-      ctx.shadowColor = `rgba(250,204,21,${glow.toFixed(3)})`;
-      ctx.fill();
-      ctx.shadowBlur  = 0;
-    }
-    animId = requestAnimationFrame(tick);
-  };
-  tick();
-
-  return () => { cancelAnimationFrame(animId); ro.disconnect(); };
-}
-
-export default function Hero() {
-  const heroRef   = useRef<HTMLDivElement>(null);
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-
-  /* framer-motion parallax on scroll */
+  /* Parallax on scroll */
   const { scrollY } = useScroll();
-  const bgY = useTransform(scrollY, [0, 600], [0, -120]);
-  const glowY = useTransform(scrollY, [0, 600], [0, -60]);
+  const bgY = useTransform(scrollY, [0, 700], [0, 140]);
+  const glowY = useTransform(scrollY, [0, 700], [0, 80]);
 
-  /* GSAP timeline – main entrance */
+  /* GSAP text entrance */
   useEffect(() => {
-    let ctx: any;
+    let ctx: ReturnType<typeof import('gsap')['default']['context']> | undefined;
     const init = async () => {
       const gsap = (await import('gsap')).default;
       ctx = gsap.context(() => {
@@ -122,47 +58,41 @@ export default function Hero() {
     return () => ctx?.revert();
   }, []);
 
-  /* Canvas golden particles */
-  useEffect(() => {
-    if (!canvasRef.current) return;
-    return initCanvasParticles(canvasRef.current);
-  }, []);
-
   return (
     <section
       id="inicio"
       ref={heroRef}
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black"
+      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-black"
     >
-      {/* Parallax background layer */}
+      {/* ── Background: imagen arquitectónica con parallax ── */}
       <motion.div
-        className="absolute inset-0 pointer-events-none z-0"
-        style={{ y: bgY }}
+        className="absolute inset-0 z-0"
+        style={{ y: bgY, scale: 1.12 }}
+        aria-hidden
       >
-        {/* Radial golden background gradient */}
-        <div
-          className="absolute inset-0"
-          style={{
-            background:
-              'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(201,169,110,0.08) 0%, rgba(250,204,21,0.03) 40%, transparent 70%)',
-          }}
-        />
-
-        {/* Background grid */}
-        <div
-          className="absolute inset-0 opacity-[0.03]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(250,204,21,0.3) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,0.3) 1px, transparent 1px)',
-            backgroundSize: '60px 60px',
-          }}
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img
+          src={coverUrl || "https://images.unsplash.com/photo-1504307651254-35680f356f12?q=85&w=1920&auto=format&fit=crop"}
+          alt="Obra de construcción y arquitectura"
+          className="w-full h-full object-cover"
+          fetchPriority="high"
         />
       </motion.div>
 
-      {/* Canvas golden particles */}
-      <canvas
-        ref={canvasRef}
-        className="absolute inset-0 w-full h-full pointer-events-none z-0"
+      {/* ── Overlays: oscurecer para legibilidad ── */}
+      {/* Capa base oscura */}
+      <div className="absolute inset-0 z-[1] bg-black/52" />
+      {/* Gradiente inferior negro total */}
+      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black via-black/40 to-transparent" />
+      {/* Gradiente lateral suave */}
+      <div className="absolute inset-0 z-[1] bg-gradient-to-r from-black/30 via-transparent to-black/25" />
+      {/* Viñeta superior para que el Navbar se integre */}
+      <div className="absolute top-0 left-0 right-0 h-40 z-[1] bg-gradient-to-b from-black/70 to-transparent" />
+
+      {/* ── Acento dorado atmosférico ── */}
+      <div
+        className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[180px] pointer-events-none z-[1]"
+        style={{ background: 'radial-gradient(ellipse, rgba(250,204,21,0.08) 0%, transparent 70%)', filter: 'blur(40px)' }}
       />
 
       {/* Background glows – parallax */}
@@ -176,18 +106,19 @@ export default function Hero() {
         <HeroHouse3D />
       </div>
 
-      {/* Content */}
+      {/* ── Contenido ── */}
       <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
-        {/* Badge with pulse animation */}
-        <div className="hero-badge inline-flex items-center gap-2 px-4 py-2 mb-5 border rounded-full bg-yellow-400/8 backdrop-blur-sm hero-badge-pulse">
+
+        {/* Badge */}
+        <div className="hero-badge inline-flex items-center gap-2 px-4 py-2 mb-5 border border-yellow-400/30 rounded-full bg-black/40 backdrop-blur-md">
           <span className="w-2 h-2 rounded-full bg-yellow-400 ping-gold" />
           <span className="text-xs uppercase tracking-[0.25em] text-yellow-400/90 font-medium">
             Un equipo · un estándar · una obra completa
           </span>
         </div>
 
-        {/* Urgency / trust bar */}
-        <div className="mx-auto mb-8 flex max-w-xl flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border border-yellow-400/15 bg-black/60 px-4 py-2 text-[10px] font-medium uppercase tracking-[0.18em] text-yellow-400/90 md:text-[11px]">
+        {/* Trust bar */}
+        <div className="mx-auto mb-8 flex max-w-xl flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border border-yellow-400/15 bg-black/50 backdrop-blur-sm px-4 py-2 text-[10px] font-medium uppercase tracking-[0.18em] text-yellow-400/90 md:text-[11px]">
           <span className="inline-flex items-center gap-1.5">✓ Evaluación gratuita</span>
           <span className="text-yellow-400/30">·</span>
           <span className="inline-flex items-center gap-1.5">✓ Presupuesto en 24h</span>
@@ -195,25 +126,26 @@ export default function Hero() {
           <span className="inline-flex items-center gap-1.5">✓ Sin compromiso</span>
         </div>
 
-        {/* Title */}
+        {/* Título */}
         <h1 className="font-playfair text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.1] mb-6 overflow-hidden">
-          <span className="hero-title-line block">Construimos tu</span>
+          <span className="hero-title-line block">Tu Visión,</span>
           <span
             className="hero-title-line block shimmer-gold"
             style={{ textShadow: '0 0 40px rgba(250,204,21,0.35), 0 0 80px rgba(250,204,21,0.15)' }}
           >
-            Sueño
+            <FlipText duration={3.6} delay={0.2}>Nuestra Obra</FlipText>
           </span>
         </h1>
 
         <div className="hero-divider w-24 h-[2px] bg-gradient-to-r from-transparent via-yellow-400 to-transparent mx-auto mb-8 origin-center" />
 
-        <p className="hero-subtitle text-lg sm:text-xl md:text-2xl text-zinc-400 max-w-2xl mx-auto leading-relaxed font-light">
+        <p className="hero-subtitle text-lg sm:text-xl md:text-2xl text-zinc-300 max-w-2xl mx-auto leading-relaxed font-light">
           Desde el inicio hasta el final.{' '}
           <span className="text-white font-normal">Un solo equipo.</span>{' '}
           <span className="text-yellow-400/90">Un solo estándar.</span>
         </p>
 
+        {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
           <a
             href="/#servicios"
@@ -224,7 +156,7 @@ export default function Hero() {
           </a>
           <a
             href="/tienda"
-            className="hero-cta-item flex items-center justify-center min-h-[44px] px-8 py-4 border border-yellow-400/30 text-yellow-400 font-semibold rounded-full transition-all duration-300 hover:bg-yellow-400/10 hover:border-yellow-400/60 hover:shadow-[0_0_20px_rgba(250,204,21,0.2)] uppercase tracking-wider text-sm"
+            className="hero-cta-item flex items-center justify-center min-h-[44px] px-8 py-4 border border-yellow-400/40 text-yellow-400 font-semibold rounded-full backdrop-blur-sm bg-black/20 transition-all duration-300 hover:bg-yellow-400/10 hover:border-yellow-400/70 hover:shadow-[0_0_20px_rgba(250,204,21,0.2)] uppercase tracking-wider text-sm"
           >
             Ir a Tienda
           </a>
@@ -242,7 +174,14 @@ export default function Hero() {
         </a>
       </div>
 
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-black to-transparent" />
+      {/* Fade inferior hacia el resto de la página */}
+      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black to-transparent z-[2]" />
+
+      {/* Scroll indicator */}
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 opacity-50">
+        <span className="text-[9px] uppercase tracking-[0.3em] text-white/60">Scroll</span>
+        <div className="w-px h-10 bg-gradient-to-b from-yellow-400/60 to-transparent animate-pulse" />
+      </div>
     </section>
   );
 }

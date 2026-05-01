@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { Check, ArrowRight } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import SectionPageShell from '@/components/SectionPageShell';
+import { getWhatsAppNumber } from '@/lib/whatsapp';
 
 export interface ServicePageContent {
   slug: string;
@@ -24,13 +25,17 @@ export interface ServicePageContent {
 }
 
 const BASE_URL = 'https://www.solucionesfabrick.com';
-const PROVIDER_PHONE = `+${process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '56912345678'}`;
+const PROVIDER_PHONE = `+${getWhatsAppNumber()}`;
 
 const RELATED_TITLES: Record<string, string> = {
   metalcon: 'Estructuras Metalcon',
   gasfiteria: 'Gasfitería certificada',
   electricidad: 'Instalaciones eléctricas',
   ampliaciones: 'Ampliaciones residenciales',
+  cimientos: 'Cimientos y Fundaciones',
+  revestimiento: 'Revestimiento y Aislación',
+  pintura: 'Pintura Profesional',
+  seguridad: 'Seguridad Residencial',
 };
 
 export default async function ServicePage({ content }: { content: ServicePageContent }) {

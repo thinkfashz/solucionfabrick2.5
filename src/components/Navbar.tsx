@@ -16,6 +16,7 @@ import {
   ShieldCheck,
   BookOpen,
   Layers,
+  Calculator,
   ShoppingCart,
   FileText,
 } from 'lucide-react';
@@ -32,6 +33,7 @@ const NAV_LINKS: NavLink[] = [
   { label: 'Evolución', href: '/evolucion' },
   { label: 'Soluciones', href: '/soluciones' },
   { label: 'Tienda', href: '/tienda' },
+  { label: 'Presupuesto', href: '/presupuesto' },
   { label: 'Proyectos', href: '/proyectos' },
   { label: 'Contacto', href: '/contacto' },
 ];
@@ -47,13 +49,14 @@ const PRIMARY_MENU_ITEMS = [
 
 const MENU_ITEMS = [
   ...PRIMARY_MENU_ITEMS,
-  { label: 'Evolución',  href: '/evolucion',  Icon: TrendingUp },
-  { label: 'Soluciones', href: '/soluciones', Icon: Lightbulb },
-  { label: 'Proyectos',  href: '/proyectos',  Icon: Building2 },
-  { label: 'Casos',      href: '/casos',      Icon: Layers },
-  { label: 'Blog',       href: '/blog',       Icon: BookOpen },
-  { label: 'Contacto',   href: '/contacto',   Icon: Phone },
-  { label: 'Garantías',  href: '/garantias',  Icon: ShieldCheck },
+  { label: 'Evolución',    href: '/evolucion',   Icon: TrendingUp },
+  { label: 'Soluciones',   href: '/soluciones',  Icon: Lightbulb },
+  { label: 'Presupuesto',  href: '/presupuesto', Icon: Calculator },
+  { label: 'Proyectos',    href: '/proyectos',   Icon: Building2 },
+  { label: 'Casos',        href: '/casos',       Icon: Layers },
+  { label: 'Blog',         href: '/blog',        Icon: BookOpen },
+  { label: 'Contacto',     href: '/contacto',    Icon: Phone },
+  { label: 'Garantías',    href: '/garantias',   Icon: ShieldCheck },
 ];
 
 export default function Navbar() {

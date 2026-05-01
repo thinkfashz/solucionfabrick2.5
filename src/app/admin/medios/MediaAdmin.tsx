@@ -184,7 +184,7 @@ function InsForgePanel() {
                       className="flex-1 rounded-md border border-white/10 bg-zinc-950 px-2 py-1 text-[10px] text-white"
                     />
                     {altDirty && (
-                      <button onClick={() => saveAlt(asset.id, altDraft!)} className="flex h-6 w-6 items-center justify-center rounded-md bg-yellow-400 text-black" aria-label="Guardar alt">
+                      <button onClick={() => saveAlt(asset.id, altDraft ?? '')} className="flex h-6 w-6 items-center justify-center rounded-md bg-yellow-400 text-black" aria-label="Guardar alt">
                         <Save className="h-3 w-3" />
                       </button>
                     )}

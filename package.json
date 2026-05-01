@@ -45,6 +45,9 @@
     "three": "^0.171.0",
     "web-push": "^3.6.7"
   },
+  "overrides": {
+    "jsdom": "27.3.0"
+  },
   "devDependencies": {
     "@playwright/test": "^1.48.2",
     "@tailwindcss/typography": "^0.5.15",

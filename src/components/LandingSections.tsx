@@ -48,7 +48,7 @@ const TRAJECTORY = [
 
 const SERVICIOS = [
   { Icon: Hammer,     title: 'Cimientos',     href: '/servicios/cimientos',     desc: 'Bases sólidas y nivelación precisa para la integridad estructural.', img: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=800&auto=format&fit=crop' },
-  { Icon: Home,       title: 'Estructuras',   href: '/servicios/metalcon',      desc: 'Armado seguro y milimétrico en acero y Metalcon D90/D60.', img: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=800&auto=format&fit=crop' },
+  { Icon: Home,       title: 'Estructuras',   href: '/servicios/metalcon',      desc: 'Armado seguro y milimétrico en acero y Metalcon D90/D60.', img: 'https://images.unsplash.com/photo-1503594384566-461fe158e797?q=80&w=800&auto=format&fit=crop' },
   { Icon: Droplet,    title: 'Gasfitería',    href: '/servicios/gasfiteria',    desc: 'Termofusión PPR y redes de cobre seguras certificadas NSF.', img: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop' },
   { Icon: Layers,     title: 'Revestimiento', href: '/servicios/revestimiento', desc: 'Aislación térmica, acústica y preparación de superficies.', img: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?q=80&w=800&auto=format&fit=crop' },
   { Icon: PaintRoller,title: 'Pintura',       href: '/servicios/pintura',       desc: 'Terminaciones finas, sellado y paletas de alta durabilidad.', img: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=800&auto=format&fit=crop' },
@@ -315,12 +315,30 @@ export default function LandingSections({
                       className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-1000"
                       loading="lazy"
                       onError={(e) => {
+                        // Fallback gracioso si una URL externa de la imagen
+                        // queda 404. Usa un degradado oscuro para que la
+                        // tarjeta no se vea totalmente negra y se preserve
+                        // la composición.
                         const el = e.currentTarget;
                         if (el.dataset.fallback === '1') return;
                         el.dataset.fallback = '1';
-                        el.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(
-                          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a1410"/><stop offset="1" stop-color="#000"/></linearGradient></defs><rect width="800" height="600" fill="url(#g)"/><g fill="none" stroke="#c9a96e" stroke-width="2" opacity="0.35"><path d="M 100,500 L 100,300 L 250,200 L 400,300 L 400,500 Z"/><path d="M 400,500 L 400,250 L 600,150 L 800,250 L 800,500"/></g></svg>`
-                        );
+                        el.src =
+                          'data:image/svg+xml;utf8,' +
+                          encodeURIComponent(
+                            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+                              <defs>
+                                <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                                  <stop offset="0" stop-color="#1a1410"/>
+                                  <stop offset="1" stop-color="#000"/>
+                                </linearGradient>
+                              </defs>
+                              <rect width="800" height="600" fill="url(#g)"/>
+                              <g fill="none" stroke="#c9a96e" stroke-width="2" opacity="0.35">
+                                <path d="M 100,500 L 100,300 L 250,200 L 400,300 L 400,500 Z"/>
+                                <path d="M 400,500 L 400,250 L 600,150 L 800,250 L 800,500"/>
+                              </g>
+                            </svg>`,
+                          );
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/75 to-black/25 group-hover:via-black/60 transition-all duration-500" />

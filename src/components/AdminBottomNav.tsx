@@ -18,10 +18,10 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
+  FileText,
   Home,
   MoreHorizontal,
   Package,
-  Radio,
   ShoppingCart,
   type LucideIcon,
 } from 'lucide-react';
@@ -29,10 +29,10 @@ import {
 type BottomItem = { href: string; label: string; icon: LucideIcon };
 
 const ITEMS: BottomItem[] = [
-  { href: '/admin',             label: 'Home', icon: Home },
-  { href: '/admin/productos',   label: 'Prod', icon: Package },
-  { href: '/admin/pedidos',     label: 'Ped',  icon: ShoppingCart },
-  { href: '/admin/observatory', label: 'Obs',  icon: Radio },
+  { href: '/admin',              label: 'Home', icon: Home },
+  { href: '/admin/productos',    label: 'Prod', icon: Package },
+  { href: '/admin/pedidos',      label: 'Ped',  icon: ShoppingCart },
+  { href: '/admin/cotizaciones', label: 'Cot',  icon: FileText },
 ];
 
 export function AdminBottomNav({ onOpenMore }: { onOpenMore?: () => void }) {

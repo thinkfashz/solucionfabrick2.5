@@ -741,7 +741,7 @@ function SolutionItemCard({
     >
       {/* Card header — always visible */}
       <button
-        className="flex w-full items-start justify-between gap-3 p-5 text-left"
+        className="group flex w-full items-start justify-between gap-3 p-5 text-left"
         onClick={() => onToggle(itemKey)}
         aria-expanded={isOpen}
       >

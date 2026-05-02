@@ -85,6 +85,93 @@ export function normalizeProductUrl(raw: string): URL {
 }
 
 /**
+ * Returns true when `hostname` resolves to a loopback / link-local /
+ * RFC-1918 / unique-local address — i.e. somewhere inside our own
+ * infrastructure that an admin URL has no business reaching.
+ *
+ * Used as an SSRF guard before issuing any outbound fetch on behalf of
+ * an admin: stops `http://169.254.169.254/` (cloud IMDS),
+ * `http://127.0.0.1:port/`, and any private IPv4/IPv6 range from being
+ * dereferenced server-side.
+ *
+ * This is a defence-in-depth check against literal IPs and obvious
+ * names; it does not perform DNS resolution, so a hostname that
+ * deliberately resolves to a private address ("DNS rebinding") is not
+ * caught here. That's a known limitation — the upstream firewall must
+ * also block egress to RFC-1918 ranges.
+ */
+
+// IPv4 private / loopback / link-local / unspecified ranges. Hoisted to
+// module scope so the patterns are compiled once.
+const PRIVATE_IPV4_PATTERNS: RegExp[] = [
+  /^127\./,                       // loopback
+  /^169\.254\./,                  // link-local (incl. cloud IMDS)
+  /^10\./,                        // RFC-1918
+  /^172\.(1[6-9]|2\d|3[01])\./,   // RFC-1918
+  /^192\.168\./,                  // RFC-1918
+  /^0\./,                         // 0.0.0.0/8
+];
+
+const PRIVATE_IPV6_PATTERNS: RegExp[] = [
+  /^::1$/,                        // IPv6 loopback
+  /^::$/,                         // IPv6 unspecified
+  /^fc[0-9a-f]{2}:/i,             // IPv6 unique-local fc00::/7
+  /^fd[0-9a-f]{2}:/i,             // IPv6 unique-local fd00::/8
+  /^fe80:/i,                      // IPv6 link-local
+];
+
+// IPv6 forms that embed an IPv4 address in the low 32 bits and which
+// Node's `fetch` will resolve to that underlying IPv4 — bypassing a
+// naive textual SSRF check unless we explicitly normalise them.
+//   - IPv4-mapped:    ::ffff:a.b.c.d        (RFC 4291 §2.5.5.2)
+//   - IPv4-compat.:   ::a.b.c.d             (RFC 4291 §2.5.5.1, deprecated)
+//   - SIIT / 64:ff9b: 64:ff9b::a.b.c.d      (RFC 6052)
+// Capture the dotted-quad tail so we can re-check it against
+// PRIVATE_IPV4_PATTERNS.
+const IPV6_EMBEDDED_IPV4_PATTERN =
+  /^(?:::ffff:|::ffff:0{1,4}:|64:ff9b::|::)((?:\d{1,3}\.){3}\d{1,3})$/i;
+
+// Hex form of IPv4-mapped IPv6 (rare but valid). 32 bits encoded as two
+// 16-bit groups: ::ffff:HHHH:HHHH. Capture the two hex groups.
+const IPV6_MAPPED_HEX_PATTERN = /^(?:::ffff:|::ffff:0{1,4}:)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i;
+
+export function isPrivateHost(hostname: string): boolean {
+  const h = (hostname ?? '').trim().toLowerCase();
+  if (!h) return true;
+  if (h === 'localhost' || h.endsWith('.localhost')) return true;
+  // Strip IPv6 brackets if present (e.g. "[::1]").
+  const stripped = h.startsWith('[') && h.endsWith(']') ? h.slice(1, -1) : h;
+
+  // IPv4-in-IPv6 normalisation: `::ffff:169.254.169.254` and friends
+  // resolve to the literal IPv4 address by Node's resolver, so test the
+  // embedded IPv4 against the IPv4 private-range patterns.
+  const embeddedV4 = stripped.match(IPV6_EMBEDDED_IPV4_PATTERN);
+  if (embeddedV4) {
+    const v4 = embeddedV4[1];
+    // Reject malformed dotted-quads (e.g. `999.999.999.999`) up front so
+    // we don't re-test garbage against the private-range regexes.
+    const octets = v4.split('.');
+    const valid =
+      octets.length === 4 &&
+      octets.every((o) => /^\d{1,3}$/.test(o) && Number(o) <= 255);
+    if (valid && PRIVATE_IPV4_PATTERNS.some((r) => r.test(v4))) return true;
+  }
+  const embeddedHex = stripped.match(IPV6_MAPPED_HEX_PATTERN);
+  if (embeddedHex) {
+    const hi = parseInt(embeddedHex[1], 16);
+    const lo = parseInt(embeddedHex[2], 16);
+    if (Number.isFinite(hi) && Number.isFinite(lo)) {
+      const v4 = `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+      if (PRIVATE_IPV4_PATTERNS.some((r) => r.test(v4))) return true;
+    }
+  }
+
+  if (PRIVATE_IPV4_PATTERNS.some((r) => r.test(stripped))) return true;
+  if (PRIVATE_IPV6_PATTERNS.some((r) => r.test(stripped))) return true;
+  return false;
+}
+
+/**
  * Returns true when `url` belongs to one of the Mercado Libre hostnames
  * we know how to resolve to an MLC item id.
  */
@@ -122,6 +209,13 @@ function withTimeout(ms: number): { signal: AbortSignal; cancel: () => void } {
  * memory.
  */
 async function fetchResolved(url: URL, timeoutMs = 10_000): Promise<{ finalUrl: URL; html: string }> {
+  // SSRF guard: refuse to fetch URLs whose hostname points at our own
+  // infrastructure (loopback, link-local, RFC-1918, IPv6 ULA, …). An
+  // admin (or anyone with a stolen admin session) must not be able to
+  // pivot the importer into a metadata-service / internal-network probe.
+  if (isPrivateHost(url.hostname)) {
+    throw new TypeError(`Host no permitido: ${url.hostname}.`);
+  }
   const t = withTimeout(timeoutMs);
   try {
     const res = await fetch(url.toString(), {
@@ -133,10 +227,17 @@ async function fetchResolved(url: URL, timeoutMs = 10_000): Promise<{ finalUrl: 
     if (!res.ok) {
       throw new Error(`La URL respondió HTTP ${res.status} ${res.statusText}.`);
     }
+    // Re-check the final (post-redirect) URL: a public short link could
+    // 30x to a private address. `fetch` follows up to 20 redirects, so
+    // the only signal we have is `res.url` after the chain settles.
+    const finalUrl = new URL(res.url);
+    if (isPrivateHost(finalUrl.hostname)) {
+      throw new TypeError(`Host no permitido tras redirección: ${finalUrl.hostname}.`);
+    }
     const reader = res.body?.getReader();
     if (!reader) {
       const text = await res.text();
-      return { finalUrl: new URL(res.url), html: text.slice(0, 1_000_000) };
+      return { finalUrl, html: text.slice(0, 1_000_000) };
     }
     const chunks: Uint8Array[] = [];
     let total = 0;
@@ -153,7 +254,7 @@ async function fetchResolved(url: URL, timeoutMs = 10_000): Promise<{ finalUrl: 
     let offset = 0;
     for (const c of chunks) { merged.set(c, offset); offset += c.length; }
     const html = new TextDecoder('utf-8', { fatal: false }).decode(merged);
-    return { finalUrl: new URL(res.url), html };
+    return { finalUrl, html };
   } finally {
     t.cancel();
   }

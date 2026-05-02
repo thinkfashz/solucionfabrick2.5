@@ -5,14 +5,14 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  ArrowUpRight, BarChart3, ChevronRight, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, LayoutGrid, Link2, LogOut, Menu,
+  ArrowUpRight, BarChart3, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart, Stethoscope,
   Truck, Users, X,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
 
-type NavLink = { href: string; label: string; description: string; icon: typeof Package; superadminOnly?: boolean };
+type NavLink = { href: string; label: string; description: string; icon: typeof Package; superadminOnly?: boolean; highlight?: boolean };
 
 const navSections: { title: string; links: NavLink[] }[] = [
   {
@@ -41,6 +41,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/blog', label: 'Blog', description: 'Entradas, portadas y publicación', icon: Newspaper },
       { href: '/admin/home', label: 'Pantalla principal', description: 'Banners, secciones y orden', icon: LayoutGrid },
       { href: '/admin/medios', label: 'Medios', description: 'Imágenes y biblioteca', icon: ImageIcon },
+      { href: '/admin/medios?tab=cloudinary', label: 'Cloudinary', description: 'Subir, eliminar y estado en la nube', icon: Cloud, highlight: true },
     ],
   },
   {
@@ -93,8 +94,8 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/estado': 'Estado del sistema',
 };
 
-function NavItem({ href, label, description, icon: Icon, active, onNavigate }: {
-  href: string; label: string; description: string; icon: typeof Package; active: boolean; onNavigate?: () => void;
+function NavItem({ href, label, description, icon: Icon, active, onNavigate, highlight = false }: {
+  href: string; label: string; description: string; icon: typeof Package; active: boolean; onNavigate?: () => void; highlight?: boolean;
 }) {
   return (
     <Link
@@ -103,18 +104,25 @@ function NavItem({ href, label, description, icon: Icon, active, onNavigate }: {
       className={`group relative flex items-center gap-3 rounded-2xl px-3.5 py-3 transition-all duration-200 ${
         active
           ? 'bg-yellow-400/15 border border-yellow-400/40 shadow-[inset_0_1px_0_rgba(250,204,21,0.25)]'
+          : highlight
+          ? 'border border-yellow-400/35 bg-yellow-400/5 hover:border-yellow-400/60 hover:bg-yellow-400/10 shadow-[0_0_0_1px_rgba(250,204,21,0.08)]'
           : 'border border-transparent hover:border-white/10 hover:bg-white/[0.04]'
       }`}
     >
       <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl transition-colors ${
-        active ? 'bg-yellow-400 text-black shadow-[0_2px_10px_rgba(250,204,21,0.55)]' : 'bg-white/5 text-yellow-400'
+        active || highlight ? 'bg-yellow-400 text-black shadow-[0_2px_10px_rgba(250,204,21,0.55)]' : 'bg-white/5 text-yellow-400'
       }`}>
         <Icon className="h-3.5 w-3.5" />
       </span>
 
       <span className="flex-1 min-w-0">
-        <span className={`block text-[13px] font-semibold leading-tight ${active ? 'text-yellow-400' : 'text-zinc-200 group-hover:text-white'} transition-colors`}>
+        <span className={`block text-[13px] font-semibold leading-tight ${active || highlight ? 'text-yellow-400' : 'text-zinc-200 group-hover:text-white'} transition-colors`}>
           {label}
+          {highlight && !active && (
+            <span className="ml-2 inline-flex items-center rounded-full border border-yellow-400/40 bg-yellow-400/15 px-1.5 py-px text-[8.5px] font-black uppercase tracking-[0.18em] text-yellow-300 align-middle">
+              Nuevo
+            </span>
+          )}
         </span>
         <span className="block text-[10.5px] text-zinc-500 leading-tight mt-0.5">{description}</span>
       </span>
@@ -169,17 +177,21 @@ function SidebarContent({ pathname, onNavigate, onLogout, role }: {
               {section.title}
             </p>
             <div className="space-y-1">
-              {section.links.map((link) => (
-                <NavItem
-                  key={link.href}
-                  href={link.href}
-                  label={link.label}
-                  description={link.description}
-                  icon={link.icon}
-                  active={pathname === link.href}
-                  onNavigate={onNavigate}
-                />
-              ))}
+              {section.links.map((link) => {
+                const hrefPath = link.href.split('?')[0];
+                return (
+                  <NavItem
+                    key={link.href}
+                    href={link.href}
+                    label={link.label}
+                    description={link.description}
+                    icon={link.icon}
+                    active={pathname === hrefPath && !link.highlight}
+                    highlight={link.highlight}
+                    onNavigate={onNavigate}
+                  />
+                );
+              })}
             </div>
           </div>
         ))}

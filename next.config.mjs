@@ -14,6 +14,9 @@ const securityHeaders = [
 
 const nextConfig = {
   ...(process.platform === 'win32' ? {} : { output: 'standalone' }),
+  // The pascal-editor packages ship modern ESM that imports `three` and other
+  // ESM-only deps. Transpile them through Next so SSR / RSC builds don't choke.
+  transpilePackages: ['@pascal-app/core', '@pascal-app/viewer', 'three'],
   async headers() {
     return [
       {

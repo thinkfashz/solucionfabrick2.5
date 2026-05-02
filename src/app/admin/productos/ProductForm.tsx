@@ -81,6 +81,7 @@ export interface ProductFormData {
   price: string;
   category_id: string;
   stock: string;
+  delivery_days: string;
   tagline: string;
   image_url: string;
   activo: boolean;
@@ -114,6 +115,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
     price: initialData?.price ?? '',
     category_id: initialData?.category_id ?? '',
     stock: initialData?.stock ?? '',
+    delivery_days: initialData?.delivery_days ?? '',
     tagline: initialData?.tagline ?? '',
     image_url: initialData?.image_url ?? '',
     activo: initialData?.activo ?? true,
@@ -282,6 +284,11 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
       price: parseInt(form.price, 10),
       category_id: form.category_id,
       stock: form.stock ? parseInt(form.stock, 10) : null,
+      delivery_days: (() => {
+        if (!form.delivery_days) return null;
+        const n = parseInt(form.delivery_days, 10);
+        return Number.isFinite(n) && n >= 0 ? n : null;
+      })(),
       tagline: form.tagline.trim() || null,
       image_url: form.image_url || null,
       activo: form.activo,
@@ -379,8 +386,8 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
           />
         </Field>
 
-        {/* Precio y Stock */}
-        <div className="grid grid-cols-2 gap-4">
+        {/* Precio, Stock y Días de envío */}
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
           <Field label="Precio CLP" required>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-zinc-500 text-sm">$</span>
@@ -403,6 +410,18 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
               value={form.stock}
               onChange={(e) => setForm((f) => ({ ...f, stock: e.target.value }))}
               placeholder="0"
+              className={inputClass}
+            />
+          </Field>
+
+          <Field label="Días de envío">
+            <input
+              type="number"
+              min="0"
+              step="1"
+              value={form.delivery_days}
+              onChange={(e) => setForm((f) => ({ ...f, delivery_days: e.target.value }))}
+              placeholder="3"
               className={inputClass}
             />
           </Field>

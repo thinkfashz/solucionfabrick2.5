@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+  BROWSER_FETCH_HEADERS,
   extractMlcId,
+  findMlcInChain,
   isMercadoLibreUrl,
   isPrivateHost,
   normalizeProductUrl,
@@ -255,6 +257,49 @@ describe('productImport.parseGenericProductHtml — Open Graph', () => {
     const html = `<html><head><meta property="og:image" content="/static/img.jpg"></head></html>`;
     const out = parseGenericProductHtml(html, new URL('https://www.shop.cl/p/123'));
     expect(out.imageUrl).toBe('https://www.shop.cl/static/img.jpg');
+    expect(out.images).toEqual(['https://www.shop.cl/static/img.jpg']);
+  });
+
+  it('collects every og:image / twitter:image / og:image:secure_url tag into images[]', () => {
+    const html = `
+      <html><head>
+        <meta property="og:image" content="https://cdn.test/a.jpg">
+        <meta property="og:image" content="https://cdn.test/b.jpg">
+        <meta property="og:image:secure_url" content="https://cdn.test/c.jpg">
+        <meta name="twitter:image" content="https://cdn.test/a.jpg">
+      </head></html>
+    `;
+    const out = parseGenericProductHtml(html, new URL('https://www.shop.cl/p/1'));
+    // De-duplicates and preserves document order.
+    expect(out.images).toEqual([
+      'https://cdn.test/a.jpg',
+      'https://cdn.test/b.jpg',
+      'https://cdn.test/c.jpg',
+    ]);
+    // imageUrl is the cover (first entry) so single-image consumers keep working.
+    expect(out.imageUrl).toBe(out.images[0]);
+  });
+
+  it('extracts the JSON-LD Product.image gallery (string, array, ImageObject)', () => {
+    const html = `
+      <html><head>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "image": [
+            "https://cdn.test/p1.jpg",
+            { "@type": "ImageObject", "url": "https://cdn.test/p2.jpg" }
+          ],
+          "offers": { "@type": "Offer", "price": "9990", "priceCurrency": "CLP" }
+        }
+        </script>
+      </head></html>
+    `;
+    const out = parseGenericProductHtml(html, new URL('https://www.shop.cl/p/2'));
+    expect(out.images).toEqual(['https://cdn.test/p1.jpg', 'https://cdn.test/p2.jpg']);
+    expect(out.imageUrl).toBe('https://cdn.test/p1.jpg');
+    expect(out.price).toBe(9990);
   });
 
   it('returns 0 price when no price markup is present', () => {
@@ -262,5 +307,60 @@ describe('productImport.parseGenericProductHtml — Open Graph', () => {
     const out = parseGenericProductHtml(html, new URL('https://www.test.cl/x'));
     expect(out.price).toBe(0);
     expect(out.currency).toBe('CLP'); // default
+    expect(out.images).toEqual([]);
+  });
+});
+
+describe('productImport.BROWSER_FETCH_HEADERS', () => {
+  it('uses a realistic desktop-Chrome User-Agent (not a bot identifier)', () => {
+    const ua = BROWSER_FETCH_HEADERS['User-Agent'];
+    expect(ua).toMatch(/^Mozilla\/5\.0/);
+    expect(ua).toMatch(/Chrome\/\d+/);
+    expect(ua).toMatch(/Safari\/\d+/);
+    // No "bot"-shaped identifiers — those are exactly what ML's WAF
+    // blocks with HTTP 403.
+    expect(ua).not.toMatch(/bot|crawler|spider|FabrickProductImporter/i);
+  });
+
+  it('sends Accept and Accept-Language headers a browser would send', () => {
+    expect(BROWSER_FETCH_HEADERS.Accept).toMatch(/text\/html/);
+    expect(BROWSER_FETCH_HEADERS['Accept-Language']).toMatch(/es/);
+  });
+
+  it('includes Sec-Fetch-* fetch-metadata headers (WAF bot heuristic)', () => {
+    expect(BROWSER_FETCH_HEADERS['Sec-Fetch-Mode']).toBe('navigate');
+    expect(BROWSER_FETCH_HEADERS['Sec-Fetch-Dest']).toBe('document');
+    expect(BROWSER_FETCH_HEADERS['Upgrade-Insecure-Requests']).toBe('1');
+  });
+});
+
+describe('productImport.findMlcInChain', () => {
+  it('returns the MLC id from the first hop that exposes one', () => {
+    const chain = [
+      new URL('https://meli.la/29kck3o'),
+      new URL('https://click1.mercadolibre.com/sec/abc123'),
+      new URL('https://articulo.mercadolibre.cl/MLC-1234567890-zapatilla-deportiva-_JM'),
+    ];
+    expect(findMlcInChain(chain)).toBe('MLC1234567890');
+  });
+
+  it('finds an MLC id encoded in a query parameter', () => {
+    const chain = [
+      new URL('https://meli.la/29kck3o'),
+      new URL('https://www.mercadolibre.cl/sec?item=MLC9876543210&utm=foo'),
+    ];
+    expect(findMlcInChain(chain)).toBe('MLC9876543210');
+  });
+
+  it('returns null when no hop contains an MLC id', () => {
+    const chain = [
+      new URL('https://meli.la/29kck3o'),
+      new URL('https://www.mercadolibre.cl/categorias'),
+    ];
+    expect(findMlcInChain(chain)).toBeNull();
+  });
+
+  it('returns null for an empty chain', () => {
+    expect(findMlcInChain([])).toBeNull();
   });
 });

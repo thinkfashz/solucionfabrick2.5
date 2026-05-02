@@ -29,10 +29,118 @@ export const runtime = 'nodejs';
  * branded sites, etc.).
  */
 
+interface OverridePayload {
+  title?: unknown;
+  description?: unknown;
+  price?: unknown;
+  currency?: unknown;
+  imageUrl?: unknown;
+  images?: unknown;
+  delivery_days?: unknown;
+  stock?: unknown;
+}
+
 interface RequestBody {
   url?: unknown;
   persist?: unknown;
   category_id?: unknown;
+  overrides?: unknown;
+}
+
+/**
+ * Coerces and validates a free-form overrides object coming from the
+ * admin preview into the strict subset we actually persist. Unknown
+ * shapes silently fall back to the scraped values.
+ */
+function sanitizeOverrides(raw: unknown): {
+  title?: string;
+  description?: string | null;
+  price?: number;
+  currency?: string;
+  imageUrl?: string | null;
+  images?: string[];
+  delivery_days?: number | null;
+  stock?: number | null;
+} {
+  if (!raw || typeof raw !== 'object') return {};
+  const o = raw as OverridePayload;
+  const out: ReturnType<typeof sanitizeOverrides> = {};
+
+  if (typeof o.title === 'string') {
+    const t = o.title.trim();
+    if (t) out.title = t.slice(0, 280);
+  }
+  if (typeof o.description === 'string') {
+    const d = o.description.trim();
+    out.description = d ? d : null;
+  } else if (o.description === null) {
+    out.description = null;
+  }
+  if (typeof o.price === 'number' && Number.isFinite(o.price) && o.price >= 0) {
+    out.price = o.price;
+  } else if (typeof o.price === 'string') {
+    // Locale-aware: handles "1.234,56" (EU), "1,234.56" (US), "49.990"
+    // (CLP thousands), "49.99" (US decimal), "49,99" (EU decimal).
+    let s = o.price.replace(/[^\d.,-]/g, '');
+    const lastDot = s.lastIndexOf('.');
+    const lastComma = s.lastIndexOf(',');
+    if (lastDot === -1 && lastComma === -1) {
+      // plain integer
+    } else if (lastDot >= 0 && lastComma === -1) {
+      const tail = s.slice(lastDot + 1);
+      if (tail.length === 3) s = s.replace(/\./g, '');
+    } else if (lastComma >= 0 && lastDot === -1) {
+      const tail = s.slice(lastComma + 1);
+      if (tail.length === 3) s = s.replace(/,/g, '');
+      else s = s.replace(/,/g, '.');
+    } else if (lastDot > lastComma) {
+      s = s.replace(/,/g, '');
+    } else {
+      s = s.replace(/\./g, '').replace(',', '.');
+    }
+    const n = Number.parseFloat(s);
+    if (Number.isFinite(n) && n >= 0) out.price = n;
+  }
+  if (typeof o.currency === 'string') {
+    const c = o.currency.trim().toUpperCase();
+    if (c) out.currency = c.slice(0, 8);
+  }
+  if (typeof o.imageUrl === 'string') {
+    const u = o.imageUrl.trim();
+    out.imageUrl = u ? u : null;
+  } else if (o.imageUrl === null) {
+    out.imageUrl = null;
+  }
+  if (Array.isArray(o.images)) {
+    const seen = new Set<string>();
+    const list: string[] = [];
+    for (const entry of o.images) {
+      if (typeof entry !== 'string') continue;
+      const t = entry.trim();
+      if (!t || seen.has(t)) continue;
+      seen.add(t);
+      list.push(t);
+      if (list.length >= 32) break; // hard cap
+    }
+    out.images = list;
+  }
+  if (typeof o.delivery_days === 'number' && Number.isFinite(o.delivery_days) && o.delivery_days >= 0) {
+    out.delivery_days = Math.round(o.delivery_days);
+  } else if (typeof o.delivery_days === 'string' && o.delivery_days.trim()) {
+    const n = Number.parseInt(o.delivery_days, 10);
+    if (Number.isFinite(n) && n >= 0) out.delivery_days = n;
+  } else if (o.delivery_days === null || o.delivery_days === '') {
+    out.delivery_days = null;
+  }
+  if (typeof o.stock === 'number' && Number.isFinite(o.stock) && o.stock >= 0) {
+    out.stock = Math.round(o.stock);
+  } else if (typeof o.stock === 'string' && o.stock.trim()) {
+    const n = Number.parseInt(o.stock, 10);
+    if (Number.isFinite(n) && n >= 0) out.stock = n;
+  } else if (o.stock === null || o.stock === '') {
+    out.stock = null;
+  }
+  return out;
 }
 
 export async function POST(request: NextRequest) {
@@ -44,6 +152,7 @@ export async function POST(request: NextRequest) {
     const url = typeof body.url === 'string' ? body.url : '';
     const persist = body.persist === true;
     const categoryId = typeof body.category_id === 'string' ? body.category_id.trim() : '';
+    const overrides = sanitizeOverrides(body.overrides);
 
     if (!url.trim()) {
       return NextResponse.json({ error: 'Falta el campo "url".' }, { status: 400 });
@@ -61,25 +170,40 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ ok: true, preview });
     }
 
+    // Merge the admin-supplied overrides on top of the scraped preview.
+    const merged: ImportedProduct = {
+      ...preview,
+      title: overrides.title ?? preview.title,
+      description: overrides.description !== undefined ? overrides.description : preview.description,
+      price: overrides.price !== undefined ? overrides.price : preview.price,
+      currency: overrides.currency ?? preview.currency,
+      imageUrl: overrides.imageUrl !== undefined ? overrides.imageUrl : preview.imageUrl,
+      images: overrides.images ?? preview.images,
+      stock: overrides.stock !== undefined ? overrides.stock : preview.stock,
+    };
+    const deliveryDays =
+      overrides.delivery_days !== undefined ? overrides.delivery_days : null;
+
     // Persist into public.products with origin fields. Round price to
     // an integer when currency is CLP (Chilean peso has no decimals).
     const client = getAdminInsforge();
-    const isClp = preview.currency.toUpperCase() === 'CLP';
-    const priceForCatalog = isClp ? Math.round(preview.price) : preview.price;
+    const isClp = merged.currency.toUpperCase() === 'CLP';
+    const priceForCatalog = isClp ? Math.round(merged.price) : merged.price;
 
     const insertPayload: Record<string, unknown> = {
-      name: preview.title.slice(0, 280),
-      description: preview.description ?? null,
+      name: merged.title.slice(0, 280),
+      description: merged.description ?? null,
       price: priceForCatalog,
-      stock: preview.stock ?? 0,
-      image_url: preview.imageUrl ?? null,
+      stock: merged.stock ?? 0,
+      image_url: merged.imageUrl ?? null,
       activo: true,
       featured: false,
+      delivery_days: deliveryDays,
       // Origin fields — added via the products-migrate block.
-      source: preview.source,
-      source_url: preview.sourceUrl,
-      source_id: preview.sourceId,
-      supplier_price: preview.price,
+      source: merged.source,
+      source_url: merged.sourceUrl,
+      source_id: merged.sourceId,
+      supplier_price: preview.price, // record the *scraped* price as supplier price
       supplier_currency: preview.currency,
     };
     if (categoryId) insertPayload.category_id = categoryId;

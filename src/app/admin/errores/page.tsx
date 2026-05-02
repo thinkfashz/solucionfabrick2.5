@@ -47,6 +47,7 @@ export default function AdminErroresPage() {
   const [error, setError] = useState<string | null>(null);
   const [hint, setHint] = useState<string | null>(null);
   const [busyId, setBusyId] = useState<string | null>(null);
+  const [clearing, setClearing] = useState(false);
 
   const fetchLogs = useCallback(async () => {
     setLoading(true);
@@ -117,16 +118,22 @@ export default function AdminErroresPage() {
   };
 
   const clearResolved = async () => {
+    if (clearing) return;
     if (!confirm('¿Borrar TODOS los errores marcados como resueltos?')) return;
-    const res = await fetch('/api/admin/error-logs?scope=resolved', {
-      method: 'DELETE',
-    });
-    if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
-      alert(data?.error || `Error ${res.status}`);
-      return;
+    setClearing(true);
+    try {
+      const res = await fetch('/api/admin/error-logs?scope=resolved', {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        alert(data?.error || `Error ${res.status}`);
+        return;
+      }
+      await fetchLogs();
+    } finally {
+      setClearing(false);
     }
-    await fetchLogs();
   };
 
   const counts = useMemo(() => {
@@ -196,10 +203,15 @@ export default function AdminErroresPage() {
               variant="outline"
               size="sm"
               onClick={clearResolved}
+              disabled={clearing}
               className="border-red-900 text-red-300 hover:bg-red-950"
             >
-              <Trash2 className="w-3.5 h-3.5 mr-1.5" />
-              Limpiar resueltos
+              {clearing ? (
+                <Loader2 className="w-3.5 h-3.5 mr-1.5 animate-spin" />
+              ) : (
+                <Trash2 className="w-3.5 h-3.5 mr-1.5" />
+              )}
+              {clearing ? 'Limpiando…' : 'Limpiar resueltos'}
             </Button>
           )}
         </div>

@@ -17,6 +17,24 @@ const nextConfig = {
   // The pascal-editor packages ship modern ESM that imports `three` and other
   // ESM-only deps. Transpile them through Next so SSR / RSC builds don't choke.
   transpilePackages: ['@pascal-app/core', '@pascal-app/viewer', 'three'],
+  // jsdom (pulled in by isomorphic-dompurify, used to sanitise rendered Markdown
+  // in admin/blog routes) transitively depends on @asamuzakjp/css-color, which
+  // is published as CommonJS but `require()`s the ESM-only @csstools/css-calc
+  // build. When Next bundles this for the serverless target on Vercel, the
+  // resulting `require()` of an .mjs file throws ERR_REQUIRE_ESM at runtime
+  // (turning /api/admin/blog into an HTML 500). Marking these as external
+  // server packages tells Next to leave them as runtime imports so Node's
+  // native loader resolves the ESM↔CJS boundary correctly.
+  serverExternalPackages: [
+    'isomorphic-dompurify',
+    'jsdom',
+    '@asamuzakjp/css-color',
+    '@csstools/css-calc',
+    '@csstools/css-color-parser',
+    '@csstools/css-parser-algorithms',
+    '@csstools/css-tokenizer',
+    '@csstools/color-helpers',
+  ],
   async headers() {
     return [
       {

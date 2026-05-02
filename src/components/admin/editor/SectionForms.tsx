@@ -63,7 +63,7 @@ function NavMenuForm({ value, onChange }: Props<'nav-menu'>) {
         <input
           className={inputCls}
           value={v.brand?.label ?? ''}
-          onChange={e => onChange({ ...v, brand: { ...v.brand, label: e.target.value } })}
+          onChange={e => onChange({ ...v, brand: { ...(v.brand ?? { label: '' }), label: e.target.value } })}
         />
       </div>
       <div>
@@ -71,7 +71,7 @@ function NavMenuForm({ value, onChange }: Props<'nav-menu'>) {
         <input
           className={inputCls}
           value={v.brand?.logoUrl ?? ''}
-          onChange={e => onChange({ ...v, brand: { ...v.brand, logoUrl: e.target.value } })}
+          onChange={e => onChange({ ...v, brand: { ...(v.brand ?? { label: '' }), logoUrl: e.target.value } })}
         />
       </div>
       <div className="rounded-2xl border border-yellow-400/10 p-4 space-y-3">
@@ -105,13 +105,13 @@ function NavMenuForm({ value, onChange }: Props<'nav-menu'>) {
           className={inputCls}
           placeholder="Etiqueta"
           value={v.cta?.label ?? ''}
-          onChange={e => onChange({ ...v, cta: { ...v.cta, label: e.target.value } })}
+          onChange={e => onChange({ ...v, cta: { ...(v.cta ?? { label: '', href: '/' }), label: e.target.value } })}
         />
         <input
           className={inputCls}
           placeholder="/ruta"
           value={v.cta?.href ?? ''}
-          onChange={e => onChange({ ...v, cta: { ...v.cta, href: e.target.value } })}
+          onChange={e => onChange({ ...v, cta: { ...(v.cta ?? { label: '', href: '/' }), href: e.target.value } })}
         />
       </div>
     </div>

@@ -4,6 +4,7 @@
 
 import { useRef, useEffect } from 'react';
 import { useScroll, useTransform, motion } from 'framer-motion';
+import AnimatedButton from '@/components/ui/animated-button';
 
 const HERO_IMAGE =
   'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=90&w=2400&auto=format&fit=crop';
@@ -121,19 +122,21 @@ export default function Hero() {
 
         {/* CTAs */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
-          <a
+          <AnimatedButton
+            as="a"
             href="/#servicios"
             className="hero-cta-item btn-shimmer group relative px-8 py-4 min-h-[44px] bg-yellow-400 text-black font-semibold rounded-full overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_rgba(250,204,21,0.55),0_0_80px_rgba(250,204,21,0.2)] btn-sweep"
           >
             <span className="relative z-10 uppercase tracking-wider text-sm">Explorar Servicios</span>
             <div className="absolute inset-0 bg-yellow-300 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-          </a>
-          <a
+          </AnimatedButton>
+          <AnimatedButton
+            as="a"
             href="/tienda"
             className="hero-cta-item flex items-center justify-center min-h-[44px] px-8 py-4 border border-yellow-400/40 text-yellow-400 font-semibold rounded-full backdrop-blur-sm bg-black/20 transition-all duration-300 hover:bg-yellow-400/10 hover:border-yellow-400/70 hover:shadow-[0_0_20px_rgba(250,204,21,0.2)] uppercase tracking-wider text-sm"
           >
             Ir a Tienda
-          </a>
+          </AnimatedButton>
         </div>
       </div>
 

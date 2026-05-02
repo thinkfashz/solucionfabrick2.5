@@ -107,9 +107,10 @@ export function withErrorLogging<Ctx = unknown>(
       );
 
       const payload = await safeReadBody(request);
+      const url = new URL(request.url);
       // Best-effort persistence; never let it block the response.
       await persistErrorLog({
-        endpoint: new URL(request.url).pathname + new URL(request.url).search,
+        endpoint: url.pathname + url.search,
         method: request.method ?? 'UNKNOWN',
         payload,
         error_message: message,

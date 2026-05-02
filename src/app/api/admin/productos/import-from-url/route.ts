@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
 import { resolveProductFromUrl, type ImportedProduct } from '@/lib/productImport';
+import { isMissingOriginColumnError } from './errors';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -90,10 +91,18 @@ export async function POST(request: NextRequest) {
         .select('id')
         .limit(1);
       if (error) {
-        // The most common failure here is "column source does not exist"
-        // when the products-migrate block hasn't been applied yet.
-        const raw = (error.message ?? '').toLowerCase();
-        if (/column .*"?source(_url|_id)?"? does not exist|42703/i.test(raw)) {
+        // The most common failure here is the products table missing
+        // the origin columns (`source`, `source_url`, `source_id`,
+        // `supplier_price`, `supplier_currency`) because the
+        // `products-migrate` block in `scripts/create-tables.sql`
+        // hasn't been applied yet on the production database.
+        //
+        // The error surfaces in two flavours depending on whether the
+        // request hit PostgreSQL directly or went through PostgREST:
+        //   - PostgreSQL: `column "source" does not exist` (SQLSTATE 42703)
+        //   - PostgREST:  `Could not find the 'source' column of 'products' in the schema cache` (code PGRST204)
+        // We surface the same actionable hint for both.
+        if (isMissingOriginColumnError(error.message)) {
           return NextResponse.json(
             {
               error: error.message,

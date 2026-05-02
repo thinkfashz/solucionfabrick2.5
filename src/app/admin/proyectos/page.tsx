@@ -4,8 +4,9 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Plus, Pencil, Trash2, Search, AlertCircle, Save, ArrowLeft } from 'lucide-react';
+import { Plus, Pencil, Trash2, Search, AlertCircle, Save, ArrowLeft, ImagePlus } from 'lucide-react';
 import type { FabrickProject } from '@/lib/projects';
+import { MediaPicker } from '@/components/admin/cms/MediaPicker';
 
 type SourceFlag = 'db' | 'seed' | 'unknown';
 
@@ -270,6 +271,7 @@ function ProjectForm({
 }) {
   const [form, setForm] = useState<FabrickProject>(initial);
   const [saving, setSaving] = useState(false);
+  const [pickerTarget, setPickerTarget] = useState<null | 'hero' | 'gallery'>(null);
 
   function set<K extends keyof FabrickProject>(key: K, value: FabrickProject[K]) {
     setForm((f) => ({ ...f, [key]: value }));
@@ -428,13 +430,24 @@ function ProjectForm({
 
         <div className="space-y-5">
           <Field label="Imagen principal (URL)" required>
-            <input
-              value={form.hero_image}
-              onChange={(e) => set('hero_image', e.target.value)}
-              required
-              placeholder="https://..."
-              className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
-            />
+            <div className="flex gap-2">
+              <input
+                value={form.hero_image}
+                onChange={(e) => set('hero_image', e.target.value)}
+                required
+                placeholder="https://..."
+                className="flex-1 rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
+              />
+              <button
+                type="button"
+                onClick={() => setPickerTarget('hero')}
+                className="flex items-center gap-2 rounded-xl border border-yellow-400/40 bg-yellow-400/10 px-4 text-xs font-bold uppercase tracking-[0.18em] text-yellow-400 hover:bg-yellow-400/20"
+                title="Elegir o subir desde InsForge / Cloudinary"
+              >
+                <ImagePlus className="h-4 w-4" />
+                Elegir
+              </button>
+            </div>
           </Field>
           {form.hero_image ? (
             <img
@@ -452,6 +465,14 @@ function ProjectForm({
               placeholder="https://..."
               className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white outline-none focus:border-[#facc15]/60"
             />
+            <button
+              type="button"
+              onClick={() => setPickerTarget('gallery')}
+              className="mt-2 inline-flex items-center gap-2 rounded-lg border border-yellow-400/40 bg-yellow-400/10 px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-400 hover:bg-yellow-400/20"
+            >
+              <ImagePlus className="h-3.5 w-3.5" />
+              Añadir desde medios (InsForge / Cloudinary)
+            </button>
           </Field>
 
           <div className="flex flex-col gap-3 pt-4">
@@ -472,6 +493,21 @@ function ProjectForm({
           </div>
         </div>
       </div>
+
+      <MediaPicker
+        open={pickerTarget !== null}
+        defaultFolder="general"
+        onClose={() => setPickerTarget(null)}
+        onSelect={(asset) => {
+          if (pickerTarget === 'hero') {
+            set('hero_image', asset.url);
+          } else if (pickerTarget === 'gallery') {
+            const current = form.gallery || [];
+            if (!current.includes(asset.url)) set('gallery', [...current, asset.url]);
+          }
+          setPickerTarget(null);
+        }}
+      />
     </form>
   );
 }

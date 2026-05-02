@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import { Cloud, Image as ImageIcon, Loader2, Trash2, Upload, Copy, Check, Save } from 'lucide-react';
 
 /* ── Types ── */
@@ -404,7 +405,16 @@ function CloudinaryPanel() {
 
 /* ── Main MediaAdmin component ── */
 export function MediaAdmin() {
-  const [activeTab, setActiveTab] = useState<ActiveTab>('insforge');
+  const searchParams = useSearchParams();
+  const initialTab: ActiveTab = searchParams.get('tab') === 'cloudinary' ? 'cloudinary' : 'insforge';
+  const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
+
+  // React to URL changes (e.g. when clicking the sidebar Cloudinary link from the Medios page)
+  useEffect(() => {
+    const tab = searchParams.get('tab');
+    if (tab === 'cloudinary') setActiveTab('cloudinary');
+    else if (tab === 'insforge') setActiveTab('insforge');
+  }, [searchParams]);
 
   return (
     <div className="space-y-5">

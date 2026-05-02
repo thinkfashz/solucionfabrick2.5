@@ -207,6 +207,178 @@ export async function POST(request: NextRequest) {
     }
   }
 
+  // Live-validate Meta credentials by hitting Graph `/me` and, if an
+  // ad_account_id is provided, `/act_<id>`. Only run when an access_token
+  // is present in the merged payload — otherwise the form is being used
+  // to set non-secret metadata (e.g. just the ad_account_id).
+  if (provider === 'meta' && nextCredentials.access_token) {
+    const accessToken = nextCredentials.access_token;
+    const adAccountIdRaw = (nextCredentials.ad_account_id ?? '').trim();
+    try {
+      const meUrl = `https://graph.facebook.com/v20.0/me?fields=id,name&access_token=${encodeURIComponent(accessToken)}`;
+      const meRes = await fetch(meUrl, { cache: 'no-store' });
+      const meJson = (await meRes.json().catch(() => ({}))) as {
+        error?: { message?: string; code?: number };
+      };
+      if (!meRes.ok || meJson.error) {
+        const upstream = meJson.error?.message ?? `HTTP ${meRes.status}`;
+        return NextResponse.json(
+          {
+            error: `Meta rechazó el access_token: ${upstream}. Genera un token de larga duración desde Graph API Explorer (developers.facebook.com/tools/explorer) con permisos pages_manage_posts, ads_management, business_management.`,
+          },
+          { status: 400 },
+        );
+      }
+      if (adAccountIdRaw) {
+        const adId = adAccountIdRaw.startsWith('act_') ? adAccountIdRaw : `act_${adAccountIdRaw}`;
+        if (!/^act_\d+$/.test(adId)) {
+          return NextResponse.json(
+            {
+              error:
+                'ad_account_id inválido: debe ser el ID numérico de la cuenta publicitaria (formato "act_1234567890"). Lo encuentras en Business Manager → Ad Accounts.',
+            },
+            { status: 400 },
+          );
+        }
+        const actUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(adId)}?fields=id,name&access_token=${encodeURIComponent(accessToken)}`;
+        const actRes = await fetch(actUrl, { cache: 'no-store' });
+        const actJson = (await actRes.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
+        if (!actRes.ok || actJson.error) {
+          const upstream = actJson.error?.message ?? `HTTP ${actRes.status}`;
+          return NextResponse.json(
+            {
+              error: `Meta rechazó el ad_account_id "${adId}": ${upstream}. Verifica que el token tenga permisos sobre esa cuenta y que el ID sea correcto.`,
+            },
+            { status: 400 },
+          );
+        }
+        // Persist the canonical "act_<digits>" form so downstream code can rely on it.
+        nextCredentials.ad_account_id = adId;
+      }
+    } catch (err) {
+      return NextResponse.json(
+        {
+          error: `No se pudo contactar Meta para validar las credenciales: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        },
+        { status: 502 },
+      );
+    }
+  }
+
+  // Live-validate Google Ads credentials by refreshing the OAuth token
+  // and then pinging the Google Ads API for the configured customer_id.
+  // Requires the full set of secrets: developer_token, client_id,
+  // client_secret, refresh_token, customer_id.
+  if (provider === 'google_ads') {
+    const developerToken = nextCredentials.developer_token;
+    const clientId = nextCredentials.client_id;
+    const clientSecret = nextCredentials.client_secret;
+    const refreshToken = nextCredentials.refresh_token;
+    const customerIdRaw = (nextCredentials.customer_id ?? '').replace(/-/g, '').trim();
+    const loginCustomerIdRaw = (nextCredentials.login_customer_id ?? '').replace(/-/g, '').trim();
+
+    // Only run live validation when *all* required fields are present.
+    // This lets the admin update one field at a time without re-entering everything.
+    const haveAll = Boolean(developerToken && clientId && clientSecret && refreshToken && customerIdRaw);
+    if (haveAll) {
+      if (!/^\d+$/.test(customerIdRaw)) {
+        return NextResponse.json(
+          {
+            error:
+              'customer_id inválido: debe ser el número de cliente de Google Ads sin guiones (10 dígitos). Encuéntralo arriba a la derecha del panel ads.google.com.',
+          },
+          { status: 400 },
+        );
+      }
+      // Persist the canonical (digits-only) form so downstream code is consistent.
+      nextCredentials.customer_id = customerIdRaw;
+      if (loginCustomerIdRaw) {
+        if (!/^\d+$/.test(loginCustomerIdRaw)) {
+          return NextResponse.json(
+            { error: 'login_customer_id inválido: debe ser el ID de la cuenta MCC sin guiones.' },
+            { status: 400 },
+          );
+        }
+        nextCredentials.login_customer_id = loginCustomerIdRaw;
+      }
+
+      try {
+        // 1) Refresh access token.
+        const tokenBody = new URLSearchParams({
+          client_id: clientId,
+          client_secret: clientSecret,
+          refresh_token: refreshToken,
+          grant_type: 'refresh_token',
+        });
+        const tokenRes = await fetch('https://oauth2.googleapis.com/token', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+          body: tokenBody.toString(),
+          cache: 'no-store',
+        });
+        const tokenJson = (await tokenRes.json().catch(() => ({}))) as {
+          access_token?: string;
+          error?: string;
+          error_description?: string;
+        };
+        if (!tokenRes.ok || !tokenJson.access_token) {
+          const upstream =
+            tokenJson.error_description ?? tokenJson.error ?? `HTTP ${tokenRes.status}`;
+          return NextResponse.json(
+            {
+              error: `Google rechazó el refresh_token: ${upstream}. Re-autoriza la app desde el OAuth Playground o tu flujo OAuth y guarda el nuevo refresh_token.`,
+            },
+            { status: 400 },
+          );
+        }
+
+        // 2) Ping the Google Ads API for the customer resource.
+        const adsUrl = `https://googleads.googleapis.com/v17/customers/${customerIdRaw}`;
+        const adsHeaders: Record<string, string> = {
+          Authorization: `Bearer ${tokenJson.access_token}`,
+          'developer-token': developerToken,
+        };
+        if (loginCustomerIdRaw) adsHeaders['login-customer-id'] = loginCustomerIdRaw;
+        const adsRes = await fetch(adsUrl, { headers: adsHeaders, cache: 'no-store' });
+        if (!adsRes.ok) {
+          const bodyText = await adsRes.text().catch(() => '');
+          let upstream = '';
+          try {
+            const parsed = JSON.parse(bodyText) as { error?: { message?: string; status?: string } };
+            upstream = parsed.error?.message ?? parsed.error?.status ?? '';
+          } catch {
+            upstream = bodyText.slice(0, 300);
+          }
+          const hint =
+            adsRes.status === 401 && /developer.token/i.test(upstream)
+              ? ' Verifica que developer_token corresponda a una cuenta aprobada en ads.google.com → Tools → API Center.'
+              : adsRes.status === 403 && /login.customer/i.test(upstream)
+                ? ' La cuenta requiere un login_customer_id (ID de la cuenta MCC que administra customer_id).'
+                : '';
+          return NextResponse.json(
+            {
+              error: `Google Ads rechazó las credenciales (HTTP ${adsRes.status}): ${upstream || 'sin detalle'}.${hint}`,
+            },
+            { status: 400 },
+          );
+        }
+      } catch (err) {
+        return NextResponse.json(
+          {
+            error: `No se pudo contactar Google Ads para validar las credenciales: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          },
+          { status: 502 },
+        );
+      }
+    }
+  }
+
   try {
     const { error } = await client.database.from('integrations').upsert([
       {

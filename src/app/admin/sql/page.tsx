@@ -5,6 +5,7 @@ import { Play, RotateCcw, Copy, ChevronDown, ChevronUp, Database } from 'lucide-
 
 const QUICK_QUERIES = [
   { label: 'Ver tablas', sql: `SELECT table_name, pg_size_pretty(pg_total_relation_size(quote_ident(table_name))) AS size\nFROM information_schema.tables\nWHERE table_schema = 'public'\nORDER BY table_name;` },
+  { label: 'Crear tabla (template)', sql: `-- Reemplaza "mi_tabla" y los campos.\n-- IF NOT EXISTS evita el error 42P07 si la tabla ya existe.\nCREATE TABLE IF NOT EXISTS public.mi_tabla (\n  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),\n  created_at timestamptz DEFAULT now()\n);` },
   { label: 'Ver productos', sql: `SELECT id, name, price, stock, activo, featured\nFROM public.products\nORDER BY created_at DESC\nLIMIT 20;` },
   { label: 'Ver órdenes', sql: `SELECT id, customer_name, customer_email, total, status, created_at\nFROM public.orders\nORDER BY created_at DESC\nLIMIT 20;` },
   { label: 'Ver leads', sql: `SELECT id, nombre, email, telefono, estado, created_at\nFROM public.leads\nORDER BY created_at DESC\nLIMIT 20;` },
@@ -23,6 +24,47 @@ interface QueryResult {
   rowCount?: number;
   raw?: unknown;
   durationMs?: number;
+  /** True when the upstream error is a benign / recoverable Postgres
+   * condition (object already exists, missing object, etc.) so the UI
+   * can render it as an amber warning instead of a red error. */
+  warning?: boolean;
+  /** Human-readable hint shown alongside the upstream error when
+   * `warning` is true. */
+  hint?: string;
+}
+
+/**
+ * Inspects an upstream Postgres error string and returns a benign
+ * classification + hint when it matches a well-known recoverable
+ * condition. Returns `null` for genuine errors that should still be
+ * rendered in red.
+ *
+ * The Terminal SQL is a thin pass-through to InsForge's
+ * `/rawsql/unrestricted`, so DDL like `CREATE TABLE public.foo (...)`
+ * without `IF NOT EXISTS` will surface as 42P07 ("relation already
+ * exists") with HTTP 500. That's not an app bug — the table is just
+ * already there. We surface it as a warning with an actionable tip.
+ */
+function classifyPgError(message: string | undefined): { warning: boolean; hint: string } | null {
+  if (!message) return null;
+  const m = message.toLowerCase();
+  // 42P07 — duplicate_table / object already exists
+  if (/already exists/.test(m) || /\b42p07\b/.test(m)) {
+    return {
+      warning: true,
+      hint:
+        'El objeto ya existe en la base. Usa CREATE TABLE IF NOT EXISTS … (o ALTER TABLE … ADD COLUMN IF NOT EXISTS …) para que el bloque sea idempotente. Si solo querías crear las tablas que faltan, usa /admin/setup → "Crear tablas ahora": ejecuta el script bloque por bloque y reporta cada tabla.',
+    };
+  }
+  // 42P01 — undefined_table / 42703 — undefined_column
+  if (/does not exist/.test(m) || /\b42p01\b/.test(m) || /\b42703\b/.test(m)) {
+    return {
+      warning: true,
+      hint:
+        'El objeto referenciado no existe (tabla/columna). Verifica el nombre o ejecuta /admin/setup → "Crear tablas ahora" para crear el esquema base antes de consultar.',
+    };
+  }
+  return null;
 }
 
 function extractRows(data: unknown): Row[] {
@@ -58,14 +100,18 @@ export default function SqlTerminalPage() {
       });
       const json = await res.json();
       const rows = extractRows(json.data);
+      const rawError = json.ok ? undefined : (json.error ?? JSON.stringify(json.data));
+      const classified = json.ok ? null : classifyPgError(rawError);
       setResult({
         ok: json.ok,
         status: json.status,
-        error: json.ok ? undefined : (json.error ?? JSON.stringify(json.data)),
+        error: rawError,
         rows,
         rowCount: rows.length,
         raw: json.data,
         durationMs: Date.now() - t0,
+        warning: classified?.warning ?? false,
+        hint: classified?.hint,
       });
     } catch (e) {
       setResult({ ok: false, error: (e as Error).message, durationMs: Date.now() - t0 });
@@ -162,13 +208,31 @@ export default function SqlTerminalPage() {
       {/* Result */}
       {result && (
         <div className="flex-1 px-4 pb-4 overflow-auto">
-          <div className={`rounded-xl border overflow-hidden ${result.ok ? 'border-emerald-500/20' : 'border-red-500/20'}`}>
+          <div
+            className={`rounded-xl border overflow-hidden ${
+              result.ok
+                ? 'border-emerald-500/20'
+                : result.warning
+                  ? 'border-amber-500/30'
+                  : 'border-red-500/20'
+            }`}
+          >
             {/* Result header */}
-            <div className={`px-4 py-2 flex items-center justify-between text-xs ${result.ok ? 'bg-emerald-950/40 text-emerald-400' : 'bg-red-950/40 text-red-400'}`}>
+            <div
+              className={`px-4 py-2 flex items-center justify-between text-xs ${
+                result.ok
+                  ? 'bg-emerald-950/40 text-emerald-400'
+                  : result.warning
+                    ? 'bg-amber-950/40 text-amber-300'
+                    : 'bg-red-950/40 text-red-400'
+              }`}
+            >
               <span>
                 {result.ok
                   ? `${result.rowCount ?? 0} fila${result.rowCount !== 1 ? 's' : ''} · ${result.durationMs}ms`
-                  : `Error · ${result.durationMs}ms`}
+                  : result.warning
+                    ? `Aviso · ${result.durationMs}ms`
+                    : `Error · ${result.durationMs}ms`}
               </span>
               {result.ok && result.rows && result.rows.length > 0 && (
                 <button onClick={copyResult} className="flex items-center gap-1 hover:text-white transition-colors">
@@ -178,10 +242,17 @@ export default function SqlTerminalPage() {
               )}
             </div>
 
-            {/* Error */}
+            {/* Error / Warning */}
             {!result.ok && (
-              <div className="p-4 bg-red-950/20">
-                <code className="text-red-300 text-xs break-all">{result.error}</code>
+              <div className={result.warning ? 'p-4 bg-amber-950/20 space-y-2' : 'p-4 bg-red-950/20'}>
+                <code
+                  className={`${result.warning ? 'text-amber-200' : 'text-red-300'} text-xs break-all block`}
+                >
+                  {result.error}
+                </code>
+                {result.warning && result.hint && (
+                  <p className="text-xs text-amber-100/80 leading-relaxed">{result.hint}</p>
+                )}
               </div>
             )}
 

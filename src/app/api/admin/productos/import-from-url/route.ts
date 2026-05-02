@@ -93,7 +93,7 @@ export async function POST(request: NextRequest) {
         // The most common failure here is "column source does not exist"
         // when the products-migrate block hasn't been applied yet.
         const raw = (error.message ?? '').toLowerCase();
-        if (/source.*does not exist|column .* does not exist|42703/.test(raw)) {
+        if (/column .*"?source(_url|_id)?"? does not exist|42703/i.test(raw)) {
           return NextResponse.json(
             {
               error: error.message,

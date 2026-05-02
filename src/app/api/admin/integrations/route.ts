@@ -214,9 +214,15 @@ export async function POST(request: NextRequest) {
   if (provider === 'meta' && nextCredentials.access_token) {
     const accessToken = nextCredentials.access_token;
     const adAccountIdRaw = (nextCredentials.ad_account_id ?? '').trim();
+    // Pass the token in an Authorization header rather than as a query
+    // parameter so it never appears in upstream/CDN/proxy access logs
+    // or browser history.
+    const authHeaders: HeadersInit = { Authorization: `Bearer ${accessToken}` };
     try {
-      const meUrl = `https://graph.facebook.com/v20.0/me?fields=id,name&access_token=${encodeURIComponent(accessToken)}`;
-      const meRes = await fetch(meUrl, { cache: 'no-store' });
+      const meRes = await fetch('https://graph.facebook.com/v20.0/me?fields=id,name', {
+        headers: authHeaders,
+        cache: 'no-store',
+      });
       const meJson = (await meRes.json().catch(() => ({}))) as {
         error?: { message?: string; code?: number };
       };
@@ -240,8 +246,8 @@ export async function POST(request: NextRequest) {
             { status: 400 },
           );
         }
-        const actUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(adId)}?fields=id,name&access_token=${encodeURIComponent(accessToken)}`;
-        const actRes = await fetch(actUrl, { cache: 'no-store' });
+        const actUrl = `https://graph.facebook.com/v20.0/${encodeURIComponent(adId)}?fields=id,name`;
+        const actRes = await fetch(actUrl, { headers: authHeaders, cache: 'no-store' });
         const actJson = (await actRes.json().catch(() => ({}))) as {
           error?: { message?: string };
         };

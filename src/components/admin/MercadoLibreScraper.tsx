@@ -541,7 +541,11 @@ function EditablePreviewCard({ preview, onImport, importing, importedId }: Edita
                 Sin imágenes detectadas. Pega una URL en el formulario después de importar.
               </div>
             ) : (
-              <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+              <div
+                role="region"
+                aria-label="Galería de imágenes del producto"
+                className="grid grid-cols-2 gap-2 sm:grid-cols-3"
+              >
                 {galleryImages.map((imgUrl) => {
                   const kept = keptImages.includes(imgUrl);
                   const isCover = coverUrl === imgUrl;

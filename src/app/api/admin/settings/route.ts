@@ -26,6 +26,13 @@ const SETTING_KEYS = [
   'nombre_empresa',
   'slogan',
   'logo_url',
+  // Tienda (catálogo)
+  'tienda_titulo',
+  'tienda_subtitulo',
+  'tienda_cover_url',
+  'tienda_destacados_titulo',
+  'tienda_cta_label',
+  'tienda_cta_url',
 ] as const;
 type SettingKey = (typeof SETTING_KEYS)[number];
 

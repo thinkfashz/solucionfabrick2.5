@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   extractMlcId,
   isMercadoLibreUrl,
+  isPrivateHost,
   normalizeProductUrl,
   parseGenericProductHtml,
 } from '@/lib/productImport';
@@ -57,6 +58,42 @@ describe('productImport.isMercadoLibreUrl', () => {
   it('rejects non-ML hosts', () => {
     expect(isMercadoLibreUrl(new URL('https://www.falabella.com/p/123'))).toBe(false);
     expect(isMercadoLibreUrl(new URL('https://www.amazon.com/dp/X'))).toBe(false);
+  });
+});
+
+describe('productImport.isPrivateHost (SSRF guard)', () => {
+  it.each([
+    'localhost',
+    'foo.localhost',
+    '127.0.0.1',
+    '127.0.0.53',
+    '169.254.169.254', // AWS / GCP IMDS
+    '10.0.0.1',
+    '10.255.255.255',
+    '172.16.0.1',
+    '172.31.255.255',
+    '192.168.1.1',
+    '0.0.0.0',
+    '::1',
+    'fc00::1',
+    'fd12:3456:789a::1',
+    'fe80::1',
+  ])('flags %s as private', (host) => {
+    expect(isPrivateHost(host)).toBe(true);
+  });
+
+  it.each([
+    'meli.la',
+    'www.mercadolibre.cl',
+    'www.falabella.com',
+    'graph.facebook.com',
+    '8.8.8.8',
+    '172.15.0.1', // just outside RFC-1918
+    '172.32.0.1', // just outside RFC-1918
+    '169.255.0.1', // just outside link-local
+    '2001:db8::1', // documentation prefix, not private
+  ])('does not flag %s as private', (host) => {
+    expect(isPrivateHost(host)).toBe(false);
   });
 });
 
@@ -139,6 +176,56 @@ describe('productImport.parseGenericProductHtml — Open Graph', () => {
     `;
     const out = parseGenericProductHtml(html, new URL('https://store.test/p'));
     expect(out.price).toBe(49990);
+  });
+
+  it('parses US-formatted prices ("$1,234.56" — comma thousands, dot decimal)', () => {
+    const html = `
+      <html><head>
+        <title>X</title>
+        <meta itemprop="price" content="$1,234.56">
+        <meta itemprop="priceCurrency" content="USD">
+      </head></html>
+    `;
+    const out = parseGenericProductHtml(html, new URL('https://store.test/p'));
+    expect(out.price).toBeCloseTo(1234.56);
+    expect(out.currency).toBe('USD');
+  });
+
+  it('parses EU-formatted prices ("1.234,56 €" — dot thousands, comma decimal)', () => {
+    const html = `
+      <html><head>
+        <title>X</title>
+        <meta itemprop="price" content="1.234,56 €">
+        <meta itemprop="priceCurrency" content="EUR">
+      </head></html>
+    `;
+    const out = parseGenericProductHtml(html, new URL('https://store.test/p'));
+    expect(out.price).toBeCloseTo(1234.56);
+    expect(out.currency).toBe('EUR');
+  });
+
+  it('parses US decimal-only prices ("$49.99" — dot is decimal, not thousands)', () => {
+    const html = `
+      <html><head>
+        <title>X</title>
+        <meta itemprop="price" content="$49.99">
+        <meta itemprop="priceCurrency" content="USD">
+      </head></html>
+    `;
+    const out = parseGenericProductHtml(html, new URL('https://store.test/p'));
+    expect(out.price).toBeCloseTo(49.99);
+  });
+
+  it('parses EU decimal-only prices ("49,99 €" — comma is decimal, not thousands)', () => {
+    const html = `
+      <html><head>
+        <title>X</title>
+        <meta itemprop="price" content="49,99 €">
+        <meta itemprop="priceCurrency" content="EUR">
+      </head></html>
+    `;
+    const out = parseGenericProductHtml(html, new URL('https://store.test/p'));
+    expect(out.price).toBeCloseTo(49.99);
   });
 
   it('resolves relative og:image against the final URL', () => {

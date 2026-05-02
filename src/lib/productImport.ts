@@ -85,6 +85,44 @@ export function normalizeProductUrl(raw: string): URL {
 }
 
 /**
+ * Returns true when `hostname` resolves to a loopback / link-local /
+ * RFC-1918 / unique-local address — i.e. somewhere inside our own
+ * infrastructure that an admin URL has no business reaching.
+ *
+ * Used as an SSRF guard before issuing any outbound fetch on behalf of
+ * an admin: stops `http://169.254.169.254/` (cloud IMDS),
+ * `http://127.0.0.1:port/`, and any private IPv4/IPv6 range from being
+ * dereferenced server-side.
+ *
+ * This is a defence-in-depth check against literal IPs and obvious
+ * names; it does not perform DNS resolution, so a hostname that
+ * deliberately resolves to a private address ("DNS rebinding") is not
+ * caught here. That's a known limitation — the upstream firewall must
+ * also block egress to RFC-1918 ranges.
+ */
+export function isPrivateHost(hostname: string): boolean {
+  const h = (hostname ?? '').trim().toLowerCase();
+  if (!h) return true;
+  if (h === 'localhost' || h.endsWith('.localhost')) return true;
+  // Strip IPv6 brackets if present (e.g. "[::1]").
+  const stripped = h.startsWith('[') && h.endsWith(']') ? h.slice(1, -1) : h;
+  const PRIVATE_PATTERNS: RegExp[] = [
+    /^127\./,                       // loopback
+    /^169\.254\./,                  // link-local (incl. cloud IMDS)
+    /^10\./,                        // RFC-1918
+    /^172\.(1[6-9]|2\d|3[01])\./,   // RFC-1918
+    /^192\.168\./,                  // RFC-1918
+    /^0\./,                         // 0.0.0.0/8
+    /^::1$/,                        // IPv6 loopback
+    /^::$/,                         // IPv6 unspecified
+    /^fc[0-9a-f]{2}:/i,             // IPv6 unique-local fc00::/7
+    /^fd[0-9a-f]{2}:/i,             // IPv6 unique-local fd00::/8
+    /^fe80:/i,                      // IPv6 link-local
+  ];
+  return PRIVATE_PATTERNS.some((r) => r.test(stripped));
+}
+
+/**
  * Returns true when `url` belongs to one of the Mercado Libre hostnames
  * we know how to resolve to an MLC item id.
  */
@@ -122,6 +160,13 @@ function withTimeout(ms: number): { signal: AbortSignal; cancel: () => void } {
  * memory.
  */
 async function fetchResolved(url: URL, timeoutMs = 10_000): Promise<{ finalUrl: URL; html: string }> {
+  // SSRF guard: refuse to fetch URLs whose hostname points at our own
+  // infrastructure (loopback, link-local, RFC-1918, IPv6 ULA, …). An
+  // admin (or anyone with a stolen admin session) must not be able to
+  // pivot the importer into a metadata-service / internal-network probe.
+  if (isPrivateHost(url.hostname)) {
+    throw new TypeError(`Host no permitido: ${url.hostname}.`);
+  }
   const t = withTimeout(timeoutMs);
   try {
     const res = await fetch(url.toString(), {
@@ -133,10 +178,17 @@ async function fetchResolved(url: URL, timeoutMs = 10_000): Promise<{ finalUrl: 
     if (!res.ok) {
       throw new Error(`La URL respondió HTTP ${res.status} ${res.statusText}.`);
     }
+    // Re-check the final (post-redirect) URL: a public short link could
+    // 30x to a private address. `fetch` follows up to 20 redirects, so
+    // the only signal we have is `res.url` after the chain settles.
+    const finalUrl = new URL(res.url);
+    if (isPrivateHost(finalUrl.hostname)) {
+      throw new TypeError(`Host no permitido tras redirección: ${finalUrl.hostname}.`);
+    }
     const reader = res.body?.getReader();
     if (!reader) {
       const text = await res.text();
-      return { finalUrl: new URL(res.url), html: text.slice(0, 1_000_000) };
+      return { finalUrl, html: text.slice(0, 1_000_000) };
     }
     const chunks: Uint8Array[] = [];
     let total = 0;
@@ -153,7 +205,7 @@ async function fetchResolved(url: URL, timeoutMs = 10_000): Promise<{ finalUrl: 
     let offset = 0;
     for (const c of chunks) { merged.set(c, offset); offset += c.length; }
     const html = new TextDecoder('utf-8', { fatal: false }).decode(merged);
-    return { finalUrl: new URL(res.url), html };
+    return { finalUrl, html };
   } finally {
     t.cancel();
   }

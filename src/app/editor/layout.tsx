@@ -29,7 +29,7 @@ export const viewport: Viewport = {
 export const metadata: Metadata = {
   title: 'Editor 3D · Soluciones Fabrick',
   description:
-    'Editor arquitectónico 3D de Soluciones Fabrick — diseña casas, fachadas y proyectos directamente en el navegador con WebGPU.',
+    'Editor arquitectónico 3D de Soluciones Fabrick — diseña casas, fachadas y proyectos directamente en el navegador (WebGPU con respaldo a WebGL2).',
   openGraph: {
     title: 'Editor 3D · Soluciones Fabrick',
     description:

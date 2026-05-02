@@ -6,7 +6,6 @@ module.exports = {
     './src/components/**/*.{js,ts,jsx,tsx,mdx}',
     './src/app/**/*.{js,ts,jsx,tsx,mdx}',
     './src/tienda/**/*.{js,ts,jsx,tsx,mdx}',
-    './src/components/editor/**/*.{js,ts,jsx,tsx,mdx}',
   ],
   theme: {
     extend: {

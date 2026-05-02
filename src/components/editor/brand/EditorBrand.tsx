@@ -29,10 +29,10 @@ interface EditorBrandProps {
 }
 
 const ASSETS: Record<EditorBrandVariant, { src: string; alt: string }> = {
-  full:        { src: '/logo-soluciones-fabrick.svg',                 alt: 'Soluciones Fabrick' },
-  icon:        { src: '/app-icon.svg',                                alt: 'Soluciones Fabrick' },
-  'mono-light':{ src: '/logo-soluciones-fabrick-monocromo-claro.svg', alt: 'Soluciones Fabrick' },
-  'mono-dark': { src: '/logo-soluciones-fabrick-monocromo-oscuro.svg',alt: 'Soluciones Fabrick' },
+  full:         { src: '/logo-soluciones-fabrick.svg',                  alt: 'Soluciones Fabrick' },
+  icon:         { src: '/app-icon.svg',                                 alt: 'Soluciones Fabrick' },
+  'mono-light': { src: '/logo-soluciones-fabrick-monocromo-claro.svg',  alt: 'Soluciones Fabrick' },
+  'mono-dark':  { src: '/logo-soluciones-fabrick-monocromo-oscuro.svg', alt: 'Soluciones Fabrick' },
 };
 
 export default function EditorBrand({

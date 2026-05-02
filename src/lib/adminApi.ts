@@ -19,8 +19,57 @@ export function adminUnauthorized(): NextResponse {
   return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
 }
 
-export function adminError(err: unknown, code = 'INTERNAL_ERROR', status = 500): NextResponse {
+/**
+ * Persist an error log to `admin_error_logs` (best-effort; never throws).
+ * Lazy-imported to avoid a circular import (apiHandler.ts also imports from here).
+ */
+async function logAdminError(params: {
+  endpoint?: string;
+  method?: string;
+  message: string;
+  code: string;
+  status: number;
+}): Promise<void> {
+  try {
+    const client = getAdminInsforge();
+    await client.database.from('admin_error_logs').insert([
+      {
+        endpoint: params.endpoint ?? null,
+        method: params.method ?? null,
+        payload: { code: params.code },
+        error_message: params.message,
+        status_code: params.status,
+      },
+    ]);
+  } catch (err) {
+    // Best-effort: the table may not exist yet, or the DB may be down.
+    console.error('[adminError] failed to persist log', err);
+  }
+}
+
+export function adminError(
+  err: unknown,
+  code = 'INTERNAL_ERROR',
+  status = 500,
+  request?: NextRequest,
+): NextResponse {
   const message = err instanceof Error ? err.message : 'Error inesperado.';
+  // Only log server-side failures (5xx). Client-error 4xx are not "real" errors.
+  if (status >= 500) {
+    let endpoint: string | undefined;
+    let method: string | undefined;
+    if (request) {
+      try {
+        const u = new URL(request.url);
+        endpoint = u.pathname + u.search;
+        method = request.method;
+      } catch {
+        /* ignore */
+      }
+    }
+    // Fire-and-forget; don't await so the response isn't delayed.
+    void logAdminError({ endpoint, method, message, code, status });
+  }
   return NextResponse.json({ error: message, code }, { status });
 }
 

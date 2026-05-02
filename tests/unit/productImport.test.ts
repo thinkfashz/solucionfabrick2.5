@@ -91,8 +91,16 @@ describe('productImport.isPrivateHost (SSRF guard)', () => {
     '64:ff9b::169.254.169.254', // RFC 6052 well-known prefix
     '::ffff:a9fe:a9fe',         // hex form of 169.254.169.254
     '::ffff:7f00:0001',         // hex form of 127.0.0.1
+    '::ffff:0:a9fe:a9fe',       // alternate `::ffff:0:V4` hex spelling
   ])('flags %s as private', (host) => {
     expect(isPrivateHost(host)).toBe(true);
+  });
+
+  it.each([
+    '::ffff:999.999.999.999',   // malformed dotted-quad — must not crash and must not be private
+    '::ffff:8.8.8.8.8',         // too many octets
+  ])('does not flag malformed IPv4-in-IPv6 %s as private', (host) => {
+    expect(isPrivateHost(host)).toBe(false);
   });
 
   it.each([

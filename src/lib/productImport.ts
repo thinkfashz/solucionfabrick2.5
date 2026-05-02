@@ -148,7 +148,13 @@ export function isPrivateHost(hostname: string): boolean {
   const embeddedV4 = stripped.match(IPV6_EMBEDDED_IPV4_PATTERN);
   if (embeddedV4) {
     const v4 = embeddedV4[1];
-    if (PRIVATE_IPV4_PATTERNS.some((r) => r.test(v4))) return true;
+    // Reject malformed dotted-quads (e.g. `999.999.999.999`) up front so
+    // we don't re-test garbage against the private-range regexes.
+    const octets = v4.split('.');
+    const valid =
+      octets.length === 4 &&
+      octets.every((o) => /^\d{1,3}$/.test(o) && Number(o) <= 255);
+    if (valid && PRIVATE_IPV4_PATTERNS.some((r) => r.test(v4))) return true;
   }
   const embeddedHex = stripped.match(IPV6_MAPPED_HEX_PATTERN);
   if (embeddedHex) {

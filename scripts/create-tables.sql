@@ -39,6 +39,17 @@ CREATE TABLE IF NOT EXISTS public.products (
   updated_at timestamptz DEFAULT now()
 );
 
+-- TABLA: products-migrate
+-- Columnas de "origen del producto" usadas por el flujo de importación
+-- desde URL (`/admin/productos/importar`) y por el botón "Comprar y enviar
+-- al cliente" en el detalle de pedido (`/admin/pedidos/[id]`). Se aplican
+-- como migración separada para no romper instalaciones previas.
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS source text;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS source_url text;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS source_id text;
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS supplier_price numeric(12,2);
+ALTER TABLE public.products ADD COLUMN IF NOT EXISTS supplier_currency text;
+
 -- TABLA: integrations
 -- Almacena las credenciales (JSON libre) de cada proveedor externo configurado
 -- desde `/admin/configuracion`. Se usa también como fallback en

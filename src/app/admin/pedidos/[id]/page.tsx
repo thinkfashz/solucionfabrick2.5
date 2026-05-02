@@ -14,7 +14,7 @@ import {
 } from '@/lib/commerce';
 import {
   ArrowLeft, MessageCircle, Truck, Package,
-  CheckCircle, Clock, XCircle, Send, ExternalLink
+  CheckCircle, Clock, XCircle, Send, ExternalLink, ShoppingCart, Copy,
 } from 'lucide-react';
 
 type Order = ReturnType<typeof normalizeOrderRecord>;
@@ -38,6 +38,16 @@ interface WaResult {
   phone: string;
 }
 
+/**
+ * Per-line-item procurement metadata fetched from `products.source_url`
+ * so the admin can fulfill dropshipping orders by clicking through to
+ * the supplier directly from the order detail.
+ */
+interface ItemSourceInfo {
+  sourceUrl: string | null;
+  source: string | null;
+}
+
 export default function PedidoDetallePage() {
   const params  = useParams();
   const orderId = params?.id as string;
@@ -52,6 +62,9 @@ export default function PedidoDetallePage() {
   const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const [waResult, setWaResult]       = useState<WaResult | null>(null);
+  /* Per-product procurement info (source_url) keyed by productId. */
+  const [itemSources, setItemSources] = useState<Record<string, ItemSourceInfo>>({});
+  const [copyState, setCopyState]     = useState<'idle' | 'copied' | 'error'>('idle');
 
   const fetchOrder = useCallback(async () => {
     if (!orderId) return;
@@ -65,11 +78,83 @@ export default function PedidoDetallePage() {
       setTracking(String(raw.tracking_number ?? ''));
       setCarrier(String(raw.carrier ?? 'Chilexpress'));
       setShippingFee(Number(raw.shipping_fee ?? 0));
+
+      // Best-effort lookup of supplier URLs for each line item. Failures
+      // are silent: the page still renders, just without "Comprar y
+      // enviar" buttons. This handles the common case where some
+      // products are dropshipped (have source_url) and others are not.
+      const productIds = Array.from(
+        new Set(
+          o.items
+            .map((it) => it.productId)
+            .filter((id): id is string => typeof id === 'string' && id !== '' && id !== 'sin-id'),
+        ),
+      );
+      if (productIds.length > 0) {
+        try {
+          const { data: prods, error: prodsErr } = await insforge.database
+            .from('products')
+            .select('id, source, source_url')
+            .in('id', productIds);
+          if (!prodsErr && Array.isArray(prods)) {
+            const map: Record<string, ItemSourceInfo> = {};
+            for (const row of prods as Array<{ id?: string; source?: string | null; source_url?: string | null }>) {
+              if (row.id) {
+                map[row.id] = {
+                  sourceUrl: row.source_url ?? null,
+                  source: row.source ?? null,
+                };
+              }
+            }
+            setItemSources(map);
+          }
+        } catch { /* ignore — column may not exist before products-migrate */ }
+      }
     }
     setLoading(false);
   }, [orderId]);
 
   useEffect(() => { fetchOrder(); }, [fetchOrder]);
+
+  /**
+   * Builds a single-line shipping address suitable for pasting into the
+   * supplier's checkout form. Mirrors the format admins typically copy
+   * by hand today.
+   */
+  const buildShippingClipboard = useCallback((o: Order): string => {
+    const lines = [
+      o.customer_name || '',
+      o.shipping_address || '',
+      o.region ? `Región: ${o.region}` : '',
+      o.customer_phone ? `Tel: ${o.customer_phone}` : '',
+      o.customer_email ? `Email: ${o.customer_email}` : '',
+    ].filter(Boolean);
+    return lines.join('\n');
+  }, []);
+
+  /**
+   * Handler for the "Comprar y enviar al cliente" button on each line
+   * item. Copies the customer's shipping data to the clipboard *before*
+   * opening the supplier URL so the admin can paste it into the
+   * supplier's checkout in the new tab.
+   */
+  const handleProcure = useCallback(async (sourceUrl: string) => {
+    if (!order) return;
+    setCopyState('idle');
+    const text = buildShippingClipboard(order);
+    try {
+      if (navigator.clipboard?.writeText) {
+        await navigator.clipboard.writeText(text);
+        setCopyState('copied');
+      }
+    } catch {
+      setCopyState('error');
+    }
+    // Open in a new tab with `noopener,noreferrer` to avoid leaking the
+    // admin session via window.opener.
+    window.open(sourceUrl, '_blank', 'noopener,noreferrer');
+    setTimeout(() => setCopyState('idle'), 4000);
+  }, [order, buildShippingClipboard]);
 
   const handleUpdate = async () => {
     if (!order) return;
@@ -186,13 +271,42 @@ export default function PedidoDetallePage() {
         {order.items && order.items.length > 0 && (
           <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-5">
             <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Productos</h2>
-            <div className="space-y-2">
-              {order.items.map((item, i: number) => (
-                <div key={i} className="flex items-center justify-between text-sm">
-                  <span className="text-zinc-300">{item.name || 'Producto'} × {item.quantity ?? 1}</span>
-                  <span className="text-white font-medium">{formatCLP(item.subtotal ?? Number(item.unitPrice ?? 0) * Number(item.quantity ?? 1))}</span>
-                </div>
-              ))}
+            {copyState === 'copied' && (
+              <div className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300 flex items-center gap-2">
+                <Copy className="w-3.5 h-3.5" />
+                Dirección del cliente copiada al portapapeles. Pégala en el checkout del proveedor.
+              </div>
+            )}
+            {copyState === 'error' && (
+              <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                No se pudo copiar al portapapeles automáticamente. Copia la dirección manualmente desde la sección "Cliente".
+              </div>
+            )}
+            <div className="space-y-3">
+              {order.items.map((item, i: number) => {
+                const src = itemSources[item.productId];
+                const sourceUrl = src?.sourceUrl ?? null;
+                return (
+                  <div key={i} className="space-y-1.5">
+                    <div className="flex items-center justify-between text-sm">
+                      <span className="text-zinc-300">{item.name || 'Producto'} × {item.quantity ?? 1}</span>
+                      <span className="text-white font-medium">{formatCLP(item.subtotal ?? Number(item.unitPrice ?? 0) * Number(item.quantity ?? 1))}</span>
+                    </div>
+                    {sourceUrl && (
+                      <button
+                        type="button"
+                        onClick={() => handleProcure(sourceUrl)}
+                        className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs font-semibold text-yellow-200 hover:bg-yellow-500/20 transition-colors"
+                        title={`Abrir ${sourceUrl} y copiar la dirección del cliente al portapapeles`}
+                      >
+                        <ShoppingCart className="w-3.5 h-3.5" />
+                        Comprar y enviar al cliente
+                        <ExternalLink className="w-3 h-3" />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
               <div className="border-t border-white/5 pt-2 flex justify-between text-sm font-bold">
                 <span className="text-zinc-400">Total</span>
                 <span className="text-[#facc15]">{formatCLP(order.total)}</span>

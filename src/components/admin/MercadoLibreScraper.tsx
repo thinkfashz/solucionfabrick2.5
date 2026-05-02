@@ -1,95 +1,56 @@
 'use client';
 
 /**
- * MercadoLibreScraper
+ * MercadoLibreScraper (a.k.a. ProductUrlImporter)
  * ------------------------------------------------------------------
- * Admin tool that takes a Mercado Libre Chile product URL, extracts
- * the MLC item id and queries the public ML API to render a premium,
- * dark-themed preview card before importing the product into the
- * store database.
+ * Admin tool that resolves *any* product URL — Mercado Libre short
+ * links (`https://meli.la/…`), full ML article URLs, or third-party
+ * stores (Falabella, Ripley, AliExpress, Amazon, branded sites…) —
+ * to a uniform preview, then persists it as a row in `products` so
+ * the admin can later click "Comprar y enviar al cliente" from
+ * `/admin/pedidos/[id]` to fulfill the order.
  *
- *   - Endpoint item:      https://api.mercadolibre.com/items/{ID}
- *   - Endpoint questions: https://api.mercadolibre.com/questions/search?item={ID}
+ * All resolution and persistence happens on the server via
+ * `POST /api/admin/productos/import-from-url`. The browser only
+ * orchestrates the UX.
  *
- * The "Importar a mi Tienda" button currently only logs the payload
- * to the console; wiring it to the real import flow is left to the
- * caller / a follow-up task.
+ * The legacy `extractMlcId` helper is kept as a re-export so any
+ * caller relying on it continues to work; the canonical implementation
+ * now lives in `@/lib/productImport`.
  */
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Link2,
   Search,
   Loader2,
   AlertTriangle,
   Package,
-  MessageSquare,
   CheckCircle2,
-  PauseCircle,
   Download,
+  ExternalLink,
 } from 'lucide-react';
+import { extractMlcId as canonicalExtractMlcId } from '@/lib/productImportShared';
+
+/** Re-exported for backwards-compatibility with existing callers. */
+export const extractMlcId = canonicalExtractMlcId;
 
 // ---------------------------------------------------------------------------
-// Types — Mercado Libre public API
+// Types — match @/lib/productImport ImportedProduct shape
 // ---------------------------------------------------------------------------
 
-interface MLPicture {
-  id: string;
-  url: string;
-  secure_url: string;
-  size?: string;
-  max_size?: string;
-  quality?: string;
-}
-
-interface MLAttribute {
-  id: string;
-  name: string;
-  value_name: string | null;
-}
-
-export interface MLItem {
-  id: string;
-  site_id: string;
+interface ImportedProductPreview {
+  source: 'mercadolibre' | 'generic';
+  sourceId: string | null;
+  sourceUrl: string;
   title: string;
+  description: string | null;
   price: number;
-  base_price?: number;
-  original_price?: number | null;
-  currency_id: string;
-  available_quantity: number;
-  sold_quantity?: number;
-  condition?: string;
-  permalink: string;
-  thumbnail: string;
-  pictures: MLPicture[];
-  status: 'active' | 'paused' | 'closed' | 'under_review' | string;
-  category_id?: string;
-  attributes?: MLAttribute[];
-  warranty?: string | null;
-}
-
-interface MLQuestionsResponse {
-  total: number;
-  questions: Array<{ id: number; text: string; status: string }>;
-}
-
-interface ScrapedData {
-  item: MLItem;
-  questionsTotal: number;
-}
-
-// ---------------------------------------------------------------------------
-// Helpers
-// ---------------------------------------------------------------------------
-
-const MLC_ID_REGEX = /MLC[-\s]?(\d+)/i;
-
-/** Extracts a normalized MLC item id (e.g. "MLC123456") from a ML Chile URL. */
-export function extractMlcId(url: string): string | null {
-  if (!url) return null;
-  const match = url.match(MLC_ID_REGEX);
-  if (!match) return null;
-  return `MLC${match[1]}`;
+  currency: string;
+  imageUrl: string | null;
+  available: boolean | null;
+  stock: number | null;
 }
 
 const CLP_FORMATTER = new Intl.NumberFormat('es-CL', {
@@ -98,9 +59,18 @@ const CLP_FORMATTER = new Intl.NumberFormat('es-CL', {
   maximumFractionDigits: 0,
 });
 
-function formatCLP(value: number): string {
-  if (!Number.isFinite(value)) return '—';
-  return CLP_FORMATTER.format(value);
+function formatPrice(value: number, currency: string): string {
+  if (!Number.isFinite(value) || value <= 0) return '—';
+  if (currency === 'CLP') return CLP_FORMATTER.format(value);
+  try {
+    return new Intl.NumberFormat('es-CL', {
+      style: 'currency',
+      currency,
+      maximumFractionDigits: 2,
+    }).format(value);
+  } catch {
+    return `${currency} ${value.toLocaleString('es-CL')}`;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -108,68 +78,77 @@ function formatCLP(value: number): string {
 // ---------------------------------------------------------------------------
 
 export default function MercadoLibreScraper() {
+  const router = useRouter();
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
+  const [importing, setImporting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [data, setData] = useState<ScrapedData | null>(null);
+  const [preview, setPreview] = useState<ImportedProductPreview | null>(null);
+  const [importedId, setImportedId] = useState<string | null>(null);
 
   async function handleExtract(e?: React.FormEvent) {
     e?.preventDefault();
     setError(null);
-    setData(null);
+    setPreview(null);
+    setImportedId(null);
 
-    const id = extractMlcId(url.trim());
-    if (!id) {
-      setError(
-        'No pudimos detectar un ID de Mercado Libre Chile en la URL. Asegúrate de que contenga el patrón "MLC" seguido de números.'
-      );
+    if (!url.trim()) {
+      setError('Pega una URL de producto.');
       return;
     }
 
     setLoading(true);
     try {
-      const [itemRes, questionsRes] = await Promise.all([
-        fetch(`https://api.mercadolibre.com/items/${id}`),
-        fetch(`https://api.mercadolibre.com/questions/search?item=${id}`),
-      ]);
-
-      if (!itemRes.ok) {
-        throw new Error(
-          `No pudimos obtener el producto (HTTP ${itemRes.status}). Verifica que la publicación exista y sea pública.`
-        );
+      const res = await fetch('/api/admin/productos/import-from-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: url.trim() }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        preview?: ImportedProductPreview;
+        error?: string;
+      };
+      if (!res.ok || !json.ok || !json.preview) {
+        throw new Error(json.error ?? `HTTP ${res.status}`);
       }
-
-      const item = (await itemRes.json()) as MLItem;
-
-      // Questions endpoint may return 401/403 for private items; degrade gracefully.
-      let questionsTotal = 0;
-      if (questionsRes.ok) {
-        const questions = (await questionsRes.json()) as MLQuestionsResponse;
-        questionsTotal =
-          typeof questions?.total === 'number'
-            ? questions.total
-            : Array.isArray(questions?.questions)
-              ? questions.questions.length
-              : 0;
-      }
-
-      setData({ item, questionsTotal });
+      setPreview(json.preview);
     } catch (err) {
-      const message =
-        err instanceof Error
-          ? err.message
-          : 'Ocurrió un error inesperado al consultar Mercado Libre.';
-      setError(message);
+      setError(err instanceof Error ? err.message : 'Error al resolver la URL.');
     } finally {
       setLoading(false);
     }
   }
 
-  function handleImport() {
-    if (!data) return;
-    // TODO: wire this up to the real product-import endpoint.
-    // eslint-disable-next-line no-console
-    console.log('[MercadoLibreScraper] Importar a mi Tienda →', data);
+  async function handleImport() {
+    if (!preview || importing) return;
+    setImporting(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/productos/import-from-url', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ url: preview.sourceUrl || url.trim(), persist: true }),
+      });
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        id?: string | null;
+        error?: string;
+        hint?: string;
+        code?: string;
+      };
+      if (!res.ok || !json.ok) {
+        const hint = json.hint ? ` ${json.hint}` : '';
+        throw new Error(`${json.error ?? `HTTP ${res.status}`}${hint}`);
+      }
+      setImportedId(json.id ?? null);
+      // Refresh server components that list products.
+      router.refresh();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al importar el producto.');
+    } finally {
+      setImporting(false);
+    }
   }
 
   return (
@@ -182,21 +161,20 @@ export default function MercadoLibreScraper() {
           </span>
           <div>
             <h2 className="text-lg font-semibold tracking-tight text-white">
-              Importar desde Mercado Libre
+              Importar producto desde URL
             </h2>
             <p className="text-sm text-zinc-400">
-              Pega la URL de un producto de Mercado Libre Chile y obtén una
-              vista previa antes de guardarlo en tu tienda.
+              Pega un link de Mercado Libre (incluye los nuevos{' '}
+              <code className="rounded bg-zinc-900 px-1 py-0.5 text-yellow-300">meli.la/…</code>),
+              Falabella, Ripley, AliExpress, Amazon, o cualquier tienda con metadatos Open Graph
+              y crea el producto automáticamente en tu catálogo.
             </p>
           </div>
         </div>
       </header>
 
       {/* Form */}
-      <form
-        onSubmit={handleExtract}
-        className="flex flex-col gap-3 sm:flex-row"
-      >
+      <form onSubmit={handleExtract} className="flex flex-col gap-3 sm:flex-row">
         <div className="relative flex-1">
           <Link2 className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
           <input
@@ -204,27 +182,27 @@ export default function MercadoLibreScraper() {
             inputMode="url"
             autoComplete="off"
             spellCheck={false}
-            placeholder="https://articulo.mercadolibre.cl/MLC-123456-..."
+            placeholder="https://meli.la/2pWqo  ·  https://articulo.mercadolibre.cl/MLC-123456-…  ·  https://www.falabella.com/…"
             value={url}
             onChange={(event) => setUrl(event.target.value)}
-            disabled={loading}
+            disabled={loading || importing}
             className="w-full rounded-xl border border-zinc-800 bg-zinc-900/80 py-3 pl-10 pr-3 text-sm text-white placeholder-zinc-500 outline-none transition focus:border-yellow-400/60 focus:ring-2 focus:ring-yellow-400/30 disabled:cursor-not-allowed disabled:opacity-60"
           />
         </div>
         <button
           type="submit"
-          disabled={loading || !url.trim()}
+          disabled={loading || importing || !url.trim()}
           className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-5 py-3 text-sm font-semibold text-black shadow-[0_8px_24px_-8px_rgba(250,204,21,0.6)] transition hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 focus:ring-offset-2 focus:ring-offset-zinc-950 disabled:cursor-not-allowed disabled:opacity-60"
         >
           {loading ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin" />
-              Extrayendo…
+              Resolviendo…
             </>
           ) : (
             <>
               <Search className="h-4 w-4" />
-              Extraer
+              Buscar
             </>
           )}
         </button>
@@ -237,12 +215,12 @@ export default function MercadoLibreScraper() {
           className="mt-5 flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"
         >
           <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-400" />
-          <span>{error}</span>
+          <span className="break-words">{error}</span>
         </div>
       )}
 
       {/* Loading skeleton */}
-      {loading && !data && (
+      {loading && !preview && (
         <div className="mt-6 animate-pulse rounded-2xl border border-zinc-800 bg-zinc-900/60 p-5">
           <div className="flex flex-col gap-5 sm:flex-row">
             <div className="h-40 w-full flex-shrink-0 rounded-xl bg-zinc-800/80 sm:h-40 sm:w-40" />
@@ -250,18 +228,20 @@ export default function MercadoLibreScraper() {
               <div className="h-4 w-3/4 rounded bg-zinc-800" />
               <div className="h-4 w-1/2 rounded bg-zinc-800" />
               <div className="h-8 w-1/3 rounded bg-zinc-800" />
-              <div className="flex gap-2">
-                <div className="h-6 w-20 rounded-full bg-zinc-800" />
-                <div className="h-6 w-24 rounded-full bg-zinc-800" />
-                <div className="h-6 w-24 rounded-full bg-zinc-800" />
-              </div>
             </div>
           </div>
         </div>
       )}
 
       {/* Result card */}
-      {data && <PreviewCard data={data} onImport={handleImport} />}
+      {preview && (
+        <PreviewCard
+          preview={preview}
+          onImport={handleImport}
+          importing={importing}
+          importedId={importedId}
+        />
+      )}
     </section>
   );
 }
@@ -271,30 +251,23 @@ export default function MercadoLibreScraper() {
 // ---------------------------------------------------------------------------
 
 interface PreviewCardProps {
-  data: ScrapedData;
+  preview: ImportedProductPreview;
   onImport: () => void;
+  importing: boolean;
+  importedId: string | null;
 }
 
-function PreviewCard({ data, onImport }: PreviewCardProps) {
-  const { item, questionsTotal } = data;
-  const cover =
-    item.pictures?.[0]?.secure_url ||
-    item.pictures?.[0]?.url ||
-    item.thumbnail;
-
-  const isOnline = item.status === 'active';
-  const isPaused = item.status === 'paused';
-
+function PreviewCard({ preview, onImport, importing, importedId }: PreviewCardProps) {
   return (
     <article className="mt-6 overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/90 to-zinc-950 shadow-xl">
       <div className="flex flex-col gap-5 p-5 sm:flex-row">
         {/* Image */}
         <div className="relative h-48 w-full flex-shrink-0 overflow-hidden rounded-xl bg-zinc-800 sm:h-48 sm:w-48">
-          {cover ? (
+          {preview.imageUrl ? (
             // eslint-disable-next-line @next/next/no-img-element
             <img
-              src={cover}
-              alt={item.title}
+              src={preview.imageUrl}
+              alt={preview.title}
               loading="lazy"
               className="h-full w-full object-cover"
             />
@@ -304,84 +277,93 @@ function PreviewCard({ data, onImport }: PreviewCardProps) {
             </div>
           )}
           <span className="absolute left-2 top-2 rounded-md bg-black/70 px-2 py-1 text-[10px] font-medium uppercase tracking-wider text-yellow-400 ring-1 ring-yellow-400/30 backdrop-blur">
-            {item.id}
+            {preview.source === 'mercadolibre' ? preview.sourceId ?? 'ML' : 'URL'}
           </span>
         </div>
 
         {/* Info */}
         <div className="flex flex-1 flex-col">
           <h3 className="text-base font-semibold leading-snug text-white sm:text-lg">
-            {item.title}
+            {preview.title}
           </h3>
 
           <div className="mt-2 flex items-baseline gap-3">
             <span className="text-2xl font-bold text-yellow-400 sm:text-3xl">
-              {formatCLP(item.price)}
+              {formatPrice(preview.price, preview.currency)}
             </span>
-            {item.original_price && item.original_price > item.price && (
-              <span className="text-sm text-zinc-500 line-through">
-                {formatCLP(item.original_price)}
-              </span>
-            )}
+            <span className="text-xs uppercase tracking-wider text-zinc-500">
+              {preview.currency}
+            </span>
           </div>
+
+          {/* Description */}
+          {preview.description && (
+            <p className="mt-3 line-clamp-3 text-xs leading-relaxed text-zinc-400">
+              {preview.description}
+            </p>
+          )}
 
           {/* Pills */}
           <div className="mt-4 flex flex-wrap gap-2">
-            <StatusPill online={isOnline} paused={isPaused} raw={item.status} />
-            <Pill
-              icon={<Package className="h-3.5 w-3.5" />}
-              label="Stock"
-              value={`${item.available_quantity}`}
-            />
-            <Pill
-              icon={<MessageSquare className="h-3.5 w-3.5" />}
-              label="Preguntas"
-              value={`${questionsTotal}`}
-            />
+            <SourcePill source={preview.source} />
+            {preview.available !== null && (
+              <Pill
+                icon={
+                  preview.available ? (
+                    <CheckCircle2 className="h-3.5 w-3.5" />
+                  ) : (
+                    <AlertTriangle className="h-3.5 w-3.5" />
+                  )
+                }
+                label="Estado"
+                value={preview.available ? 'Disponible' : 'Sin stock'}
+              />
+            )}
+            {preview.stock !== null && (
+              <Pill
+                icon={<Package className="h-3.5 w-3.5" />}
+                label="Stock"
+                value={`${preview.stock}`}
+              />
+            )}
           </div>
-
-          {/* Meta */}
-          <dl className="mt-4 grid grid-cols-2 gap-x-4 gap-y-1 text-xs text-zinc-400 sm:grid-cols-3">
-            {item.condition && (
-              <div className="flex justify-between gap-2 sm:block">
-                <dt className="text-zinc-500">Condición</dt>
-                <dd className="text-zinc-200">
-                  {item.condition === 'new' ? 'Nuevo' : 'Usado'}
-                </dd>
-              </div>
-            )}
-            {typeof item.sold_quantity === 'number' && (
-              <div className="flex justify-between gap-2 sm:block">
-                <dt className="text-zinc-500">Vendidos</dt>
-                <dd className="text-zinc-200">{item.sold_quantity}</dd>
-              </div>
-            )}
-            {item.category_id && (
-              <div className="flex justify-between gap-2 sm:block">
-                <dt className="text-zinc-500">Categoría</dt>
-                <dd className="text-zinc-200">{item.category_id}</dd>
-              </div>
-            )}
-          </dl>
 
           {/* Actions */}
           <div className="mt-5 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
             <a
-              href={item.permalink}
+              href={preview.sourceUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="text-xs font-medium text-zinc-400 underline-offset-4 transition hover:text-yellow-400 hover:underline"
+              className="inline-flex items-center gap-1 text-xs font-medium text-zinc-400 underline-offset-4 transition hover:text-yellow-400 hover:underline"
             >
-              Ver publicación original ↗
+              Ver publicación original
+              <ExternalLink className="h-3 w-3" />
             </a>
-            <button
-              type="button"
-              onClick={onImport}
-              className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-semibold text-black shadow-[0_8px_24px_-8px_rgba(250,204,21,0.6)] transition hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 focus:ring-offset-2 focus:ring-offset-zinc-950"
-            >
-              <Download className="h-4 w-4" />
-              Importar a mi Tienda
-            </button>
+            {importedId ? (
+              <span className="inline-flex items-center gap-2 rounded-xl bg-emerald-500/10 px-5 py-2.5 text-sm font-semibold text-emerald-300 ring-1 ring-emerald-500/30">
+                <CheckCircle2 className="h-4 w-4" />
+                Importado · ID {importedId.slice(0, 8)}…
+              </span>
+            ) : (
+              <button
+                type="button"
+                onClick={onImport}
+                disabled={importing}
+                className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-semibold text-black shadow-[0_8px_24px_-8px_rgba(250,204,21,0.6)] transition hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 focus:ring-offset-2 focus:ring-offset-zinc-950 disabled:cursor-not-allowed disabled:opacity-60"
+              >
+                {importing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    Importando…
+                  </>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Importar a mi Tienda
+                  </>
+                )}
+              </button>
+            )}
           </div>
         </div>
       </div>
@@ -409,38 +391,19 @@ function Pill({ icon, label, value }: PillProps) {
   );
 }
 
-interface StatusPillProps {
-  online: boolean;
-  paused: boolean;
-  raw: string;
-}
-
-function StatusPill({ online, paused, raw }: StatusPillProps) {
-  if (online) {
+function SourcePill({ source }: { source: 'mercadolibre' | 'generic' }) {
+  if (source === 'mercadolibre') {
     return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-medium text-emerald-300">
-        <CheckCircle2 className="h-3.5 w-3.5" />
-        <span className="relative flex h-2 w-2">
-          <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-          <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-400" />
-        </span>
-        Online
-      </span>
-    );
-  }
-  if (paused) {
-    return (
-      <span className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 bg-red-500/10 px-3 py-1 text-xs font-medium text-red-300">
-        <PauseCircle className="h-3.5 w-3.5" />
-        <span className="h-2 w-2 rounded-full bg-red-400" />
-        Pausado
+      <span className="inline-flex items-center gap-1.5 rounded-full border border-yellow-500/30 bg-yellow-500/10 px-3 py-1 text-xs font-medium text-yellow-200">
+        <Link2 className="h-3.5 w-3.5" />
+        Mercado Libre
       </span>
     );
   }
   return (
-    <span className="inline-flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-900 px-3 py-1 text-xs font-medium text-zinc-300">
-      <span className="h-2 w-2 rounded-full bg-zinc-500" />
-      {raw || 'Desconocido'}
+    <span className="inline-flex items-center gap-1.5 rounded-full border border-blue-500/30 bg-blue-500/10 px-3 py-1 text-xs font-medium text-blue-200">
+      <Link2 className="h-3.5 w-3.5" />
+      Tienda externa
     </span>
   );
 }

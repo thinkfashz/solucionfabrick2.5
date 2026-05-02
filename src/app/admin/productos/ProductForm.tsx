@@ -85,6 +85,12 @@ export interface ProductFormData {
   image_url: string;
   activo: boolean;
   featured: boolean;
+  /* Origen del producto (importado de Mercado Libre / Falabella / etc.) */
+  source: string;
+  source_url: string;
+  source_id: string;
+  supplier_price: string;
+  supplier_currency: string;
 }
 
 interface ProductFormProps {
@@ -112,6 +118,11 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
     image_url: initialData?.image_url ?? '',
     activo: initialData?.activo ?? true,
     featured: initialData?.featured ?? false,
+    source: initialData?.source ?? '',
+    source_url: initialData?.source_url ?? '',
+    source_id: initialData?.source_id ?? '',
+    supplier_price: initialData?.supplier_price ?? '',
+    supplier_currency: initialData?.supplier_currency ?? '',
   });
 
   const [priceDisplay, setPriceDisplay] = useState(
@@ -275,6 +286,11 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
       image_url: form.image_url || null,
       activo: form.activo,
       featured: form.featured,
+      source: form.source.trim() || null,
+      source_url: form.source_url.trim() || null,
+      source_id: form.source_id.trim() || null,
+      supplier_price: form.supplier_price ? Number(form.supplier_price) : null,
+      supplier_currency: form.supplier_currency.trim() || null,
     };
 
     let error;
@@ -494,6 +510,76 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
             onChange={(v) => setForm((f) => ({ ...f, featured: v }))}
             label="Destacado — aparece en el inicio"
           />
+        </div>
+
+        {/* Origen del producto — para dropshipping / reventa.
+            Cuando source_url está seteado, el detalle de pedido muestra un
+            botón "Comprar y enviar al cliente" que abre el link en una
+            pestaña nueva. */}
+        <div className="border-t border-white/5 pt-6 space-y-4">
+          <div>
+            <h3 className="text-sm font-semibold text-white">Origen del producto</h3>
+            <p className="text-xs text-zinc-500 mt-0.5">
+              Si revendes este producto desde otro proveedor (Mercado Libre,
+              Falabella, AliExpress…), guarda el link y el precio de origen
+              para poder comprarlo y enviarlo al cliente desde el detalle del
+              pedido.
+            </p>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Origen">
+              <select
+                value={form.source}
+                onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))}
+                className={inputClass}
+              >
+                <option value="">Manual / propio</option>
+                <option value="mercadolibre">Mercado Libre</option>
+                <option value="generic">Otra tienda</option>
+              </select>
+            </Field>
+            <Field label="ID externo">
+              <input
+                type="text"
+                value={form.source_id}
+                onChange={(e) => setForm((f) => ({ ...f, source_id: e.target.value }))}
+                placeholder="MLC123456789, SKU…"
+                className={inputClass}
+              />
+            </Field>
+          </div>
+          <Field label="URL del proveedor">
+            <input
+              type="url"
+              value={form.source_url}
+              onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))}
+              placeholder="https://articulo.mercadolibre.cl/MLC-…"
+              className={inputClass}
+            />
+          </Field>
+          <div className="grid grid-cols-2 gap-4">
+            <Field label="Precio del proveedor">
+              <input
+                type="number"
+                step="0.01"
+                min="0"
+                value={form.supplier_price}
+                onChange={(e) => setForm((f) => ({ ...f, supplier_price: e.target.value }))}
+                placeholder="0"
+                className={inputClass}
+              />
+            </Field>
+            <Field label="Moneda proveedor">
+              <input
+                type="text"
+                value={form.supplier_currency}
+                onChange={(e) => setForm((f) => ({ ...f, supplier_currency: e.target.value.toUpperCase() }))}
+                placeholder="CLP, USD…"
+                maxLength={5}
+                className={inputClass}
+              />
+            </Field>
+          </div>
         </div>
 
         {/* Submit */}

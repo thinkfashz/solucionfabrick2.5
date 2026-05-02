@@ -237,6 +237,7 @@ CREATE TABLE IF NOT EXISTS public.home_sections (
   position integer DEFAULT 0,
   visible boolean DEFAULT true,
   data jsonb DEFAULT '{}'::jsonb,
+  page text DEFAULT 'home',
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
@@ -254,6 +255,12 @@ ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS visible boolean DEFAUL
 ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS data jsonb DEFAULT '{}'::jsonb;
 ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+-- `page` discrimina la página dueña de la sección. Valores actuales:
+-- 'home' (landing) y 'tienda' (catálogo). Editores admin filtran por este
+-- campo para reusar la misma tabla y mismo flujo. Default 'home' para no
+-- romper registros antiguos.
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS page text DEFAULT 'home';
+UPDATE public.home_sections SET page = 'home' WHERE page IS NULL;
 
 -- TABLA: media_assets
 -- Inventario unificado de imágenes/archivos subidos por el panel. La subida

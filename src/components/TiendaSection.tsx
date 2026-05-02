@@ -6,6 +6,7 @@ import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Sparkles } from 'lucide-react';
 import { useCatalogProducts } from '@/hooks/useCatalogProducts';
+import AnimatedButton from '@/components/ui/animated-button';
 
 const CLP = (n: number) =>
   new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(n);
@@ -114,7 +115,7 @@ export default function TiendaSection({
                     )}
                     <p className="text-white/30 text-xs mt-0.5">{prod.category}</p>
                   </div>
-                  <button
+                  <AnimatedButton
                     onClick={(e) => {
                       e.stopPropagation();
                       router.push(`/tienda/${prod.id}`);
@@ -123,7 +124,7 @@ export default function TiendaSection({
                   >
                     Ver producto
                     <Sparkles className="h-3.5 w-3.5" />
-                  </button>
+                  </AnimatedButton>
                 </div>
               </div>
             </article>

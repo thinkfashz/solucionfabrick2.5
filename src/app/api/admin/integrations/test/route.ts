@@ -169,6 +169,116 @@ async function testMeta(): Promise<NextResponse> {
   });
 }
 
+async function testCloudinary(): Promise<NextResponse> {
+  // Read credentials directly from the integrations table so we test what's
+  // actually persisted (not the form state).
+  const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
+  const anonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
+  if (!baseUrl || !anonKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'cloudinary',
+      error: 'InsForge no configurado en el servidor.',
+      checks: [{ name: 'InsForge', ok: false, detail: 'NEXT_PUBLIC_INSFORGE_URL/ANON_KEY ausentes.' }],
+    });
+  }
+
+  let cloudName = '';
+  let apiKey = '';
+  let apiSecret = '';
+  try {
+    const { createClient } = await import('@insforge/sdk');
+    const client = createClient({ baseUrl, anonKey });
+    const { data } = await client.database
+      .from('integrations')
+      .select('credentials')
+      .eq('provider', 'cloudinary')
+      .limit(1);
+    if (Array.isArray(data) && data.length > 0) {
+      const creds = (data[0] as { credentials?: Record<string, string> }).credentials ?? {};
+      cloudName = creds.cloud_name ?? '';
+      apiKey = creds.api_key ?? '';
+      apiSecret = creds.api_secret ?? '';
+    }
+  } catch (err) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'cloudinary',
+      error: `Error leyendo integrations: ${err instanceof Error ? err.message : String(err)}`,
+      checks: [{ name: 'Lectura integrations', ok: false }],
+    });
+  }
+
+  const checks: DiagnosticCheck[] = [];
+  if (!cloudName || !apiKey || !apiSecret) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'cloudinary',
+      error: 'Cloudinary no configurado. Guarda cloud_name, api_key y api_secret en /admin/configuracion.',
+      checks: [
+        { name: 'cloud_name', ok: !!cloudName },
+        { name: 'api_key', ok: !!apiKey },
+        { name: 'api_secret', ok: !!apiSecret },
+      ],
+    });
+  }
+
+  if (cloudName.toLowerCase() === 'root') {
+    checks.push({
+      name: 'cloud_name',
+      ok: false,
+      detail: '"Root" es el Product Environment, no el cloud name. Búscalo en Settings → API Keys.',
+    });
+    return NextResponse.json({ ok: false, provider: 'cloudinary', error: '"Root" no es un cloud name válido.', checks });
+  }
+
+  // Ping the Admin API /usage endpoint, which requires both cloud_name and
+  // valid api_key:api_secret Basic auth.
+  try {
+    const pingUrl = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/usage`;
+    const basicAuth = btoa(`${apiKey}:${apiSecret}`);
+    const res = await fetch(pingUrl, {
+      headers: { Authorization: `Basic ${basicAuth}` },
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      const bodyText = await res.text().catch(() => '');
+      let upstreamMessage = '';
+      try {
+        const parsed = JSON.parse(bodyText) as { error?: { message?: string } };
+        upstreamMessage = parsed.error?.message ?? '';
+      } catch {
+        upstreamMessage = bodyText.slice(0, 200);
+      }
+      checks.push({
+        name: 'Cloudinary /usage',
+        ok: false,
+        detail: `HTTP ${res.status}: ${upstreamMessage || 'sin detalle'}`,
+      });
+      return NextResponse.json({
+        ok: false,
+        provider: 'cloudinary',
+        error: `Cloudinary rechazó las credenciales: ${upstreamMessage || `HTTP ${res.status}`}.`,
+        checks,
+      });
+    }
+    checks.push({ name: 'Cloudinary /usage', ok: true, detail: `Conectado a cloud "${cloudName}".` });
+    return NextResponse.json({ ok: true, provider: 'cloudinary', checks });
+  } catch (err) {
+    checks.push({
+      name: 'Cloudinary /usage',
+      ok: false,
+      detail: err instanceof Error ? err.message : 'Error de red.',
+    });
+    return NextResponse.json({
+      ok: false,
+      provider: 'cloudinary',
+      error: `Error de red al contactar Cloudinary: ${err instanceof Error ? err.message : String(err)}`,
+      checks,
+    });
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAdmin(request);
@@ -177,6 +287,9 @@ export async function GET(request: NextRequest) {
     const provider = new URL(request.url).searchParams.get('provider') ?? '';
     if (provider === 'meta') {
       return await testMeta();
+    }
+    if (provider === 'cloudinary') {
+      return await testCloudinary();
     }
     return NextResponse.json(
       { error: `Proveedor no soportado para test: ${provider || '(vacío)'}.` },

@@ -19,16 +19,35 @@ interface SectionInput {
   visible?: boolean;
   data?: Record<string, unknown>;
   position?: number;
+  page?: string;
 }
 
 function isSectionKind(v: unknown): v is SectionKind {
   return typeof v === 'string' && (SECTION_KINDS as readonly string[]).includes(v);
 }
 
+type PageScope = 'home' | 'tienda';
+
+function readPageScope(request: NextRequest): PageScope {
+  const url = new URL(request.url);
+  const p = url.searchParams.get('page');
+  return p === 'tienda' ? 'tienda' : 'home';
+}
+
+/** Best-effort extraction of `page` from a request body. */
+function readBodyPage(input: { page?: string }): PageScope | null {
+  return input.page === 'tienda' ? 'tienda' : input.page === 'home' ? 'home' : null;
+}
+
+function pathsForPage(p: PageScope): string[] {
+  return p === 'tienda' ? ['/tienda'] : ['/'];
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await getAdminSession(request);
     if (!session) return adminUnauthorized();
+    const page = readPageScope(request);
     const client = getAdminInsforge();
     const { data, error } = await client.database
       .from('home_sections')
@@ -40,7 +59,12 @@ export async function GET(request: NextRequest) {
         { status: 500 },
       );
     }
-    return NextResponse.json({ sections: data ?? [] });
+    // Filter in JS so legacy rows without a `page` column default to 'home'.
+    const filtered = (Array.isArray(data) ? data : []).filter((row) => {
+      const rowPage = (row && typeof row === 'object' && 'page' in row ? (row as { page?: string | null }).page : null) || 'home';
+      return rowPage === page;
+    });
+    return NextResponse.json({ sections: filtered, page });
   } catch (err) {
     return adminError(err, 'HOME_LIST_FAILED');
   }
@@ -58,15 +82,19 @@ export async function POST(request: NextRequest) {
       );
     }
     const client = getAdminInsforge();
-    // Determine next position (append at end).
+    const page: PageScope = readBodyPage(body) ?? readPageScope(request);
+    // Determine next position (append at end) within the same page scope.
     const { data: existing } = await client.database
       .from('home_sections')
-      .select('position')
-      .order('position', { ascending: false })
-      .limit(1);
+      .select('position, page')
+      .order('position', { ascending: false });
+    const samePage = (Array.isArray(existing) ? existing : []).filter((r) => {
+      const p = (r && typeof r === 'object' && 'page' in r ? (r as { page?: string | null }).page : null) || 'home';
+      return p === page;
+    });
     const nextPos =
-      Array.isArray(existing) && existing.length > 0
-        ? Number((existing[0] as { position?: number }).position ?? 0) + 1
+      samePage.length > 0
+        ? Number((samePage[0] as { position?: number }).position ?? 0) + 1
         : 0;
     const now = new Date().toISOString();
     const row = {
@@ -80,6 +108,7 @@ export async function POST(request: NextRequest) {
       position: typeof body.position === 'number' ? body.position : nextPos,
       visible: body.visible !== false,
       data: body.data && typeof body.data === 'object' ? body.data : {},
+      page,
       created_at: now,
       updated_at: now,
     };
@@ -87,12 +116,13 @@ export async function POST(request: NextRequest) {
     if (error) {
       return NextResponse.json({ error: error.message, code: 'DB_ERROR' }, { status: 500 });
     }
+    const paths = pathsForPage(page);
     try {
-      revalidatePath('/');
+      for (const p of paths) revalidatePath(p);
     } catch {
       /* best effort */
     }
-    publishCmsEvent({ topic: 'home', action: 'create', paths: ['/'] });
+    publishCmsEvent({ topic: 'home', action: 'create', paths });
     return NextResponse.json({ section: Array.isArray(data) ? data[0] : data });
   } catch (err) {
     return adminError(err, 'HOME_CREATE_FAILED');

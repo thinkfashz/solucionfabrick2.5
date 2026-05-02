@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import AnimatedButton from '@/components/ui/animated-button';
 
 const PROJECT_TYPES = [
   'Ampliación de vivienda',
@@ -73,13 +74,13 @@ export default function ContactForm() {
         <p className="mt-2 text-sm leading-relaxed text-zinc-300">
           Te contactamos en menos de 24 horas.
         </p>
-        <button
+        <AnimatedButton
           type="button"
           onClick={() => setDone(null)}
           className="mt-6 rounded-full border border-emerald-400/30 px-6 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-300 hover:bg-emerald-500/10"
         >
           Enviar otra solicitud
-        </button>
+        </AnimatedButton>
       </div>
     );
   }
@@ -142,13 +143,13 @@ export default function ContactForm() {
           {errorMsg}
         </p>
       ) : null}
-      <button
+      <AnimatedButton
         type="submit"
         disabled={sending}
         className="w-full rounded-2xl bg-yellow-400 px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-black transition hover:bg-white disabled:opacity-60"
       >
         {sending ? 'Enviando…' : 'Enviar solicitud'}
-      </button>
+      </AnimatedButton>
       <p className="text-center text-[10px] uppercase tracking-[0.25em] text-zinc-500">
         ✓ Evaluación gratuita · ✓ Respuesta en 24h · ✓ Sin compromiso
       </p>

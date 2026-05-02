@@ -35,8 +35,23 @@ export async function PUT(request: NextRequest, ctx: RouteCtx) {
     if (typeof body.position === 'number') update.position = body.position;
     if (typeof body.visible === 'boolean') update.visible = body.visible;
     if (body.data && typeof body.data === 'object') update.data = body.data;
+    if (body.page === 'home' || body.page === 'tienda') update.page = body.page;
 
     const client = getAdminInsforge();
+    // Look up the row to determine which page to revalidate.
+    const { data: existing } = await client.database
+      .from('home_sections')
+      .select('page')
+      .eq('id', id)
+      .limit(1);
+    const existingPage =
+      Array.isArray(existing) && existing.length > 0
+        ? ((existing[0] as { page?: string | null }).page || 'home')
+        : 'home';
+    const targetPage =
+      typeof update.page === 'string' ? (update.page as string) : existingPage;
+    const paths = targetPage === 'tienda' ? ['/tienda'] : ['/'];
+
     const { data, error } = await client.database
       .from('home_sections')
       .update(update)
@@ -44,11 +59,11 @@ export async function PUT(request: NextRequest, ctx: RouteCtx) {
       .select();
     if (error) return NextResponse.json({ error: error.message, code: 'DB_ERROR' }, { status: 500 });
     try {
-      revalidatePath('/');
+      for (const p of paths) revalidatePath(p);
     } catch {
       /* best effort */
     }
-    publishCmsEvent({ topic: 'home', action: 'update', id, paths: ['/'] });
+    publishCmsEvent({ topic: 'home', action: 'update', id, paths });
     return NextResponse.json({ section: Array.isArray(data) ? data[0] : data });
   } catch (err) {
     return adminError(err, 'HOME_UPDATE_FAILED');
@@ -61,14 +76,24 @@ export async function DELETE(request: NextRequest, ctx: RouteCtx) {
     if (!session) return adminUnauthorized();
     const { id } = await ctx.params;
     const client = getAdminInsforge();
+    const { data: existing } = await client.database
+      .from('home_sections')
+      .select('page')
+      .eq('id', id)
+      .limit(1);
+    const existingPage =
+      Array.isArray(existing) && existing.length > 0
+        ? ((existing[0] as { page?: string | null }).page || 'home')
+        : 'home';
+    const paths = existingPage === 'tienda' ? ['/tienda'] : ['/'];
     const { error } = await client.database.from('home_sections').delete().eq('id', id);
     if (error) return NextResponse.json({ error: error.message, code: 'DB_ERROR' }, { status: 500 });
     try {
-      revalidatePath('/');
+      for (const p of paths) revalidatePath(p);
     } catch {
       /* best effort */
     }
-    publishCmsEvent({ topic: 'home', action: 'delete', id, paths: ['/'] });
+    publishCmsEvent({ topic: 'home', action: 'delete', id, paths });
     return NextResponse.json({ ok: true });
   } catch (err) {
     return adminError(err, 'HOME_DELETE_FAILED');

@@ -1,5 +1,11 @@
 import type { Metadata } from 'next';
 import TiendaClientPage from '@/tienda/page';
+import HomeDynamicSections from '@/components/HomeDynamicSections';
+import { getPublicTiendaSections } from '@/lib/cms';
+
+// Match root layout: per-request render so admin-edited sections show up
+// immediately after a save (revalidatePath('/tienda') triggers re-render).
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
   title: 'Catálogo de Materiales',
@@ -8,6 +14,12 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://www.solucionesfabrick.com/tienda' },
 };
 
-export default function TiendaPage() {
-  return <TiendaClientPage />;
+export default async function TiendaPage() {
+  const sections = await getPublicTiendaSections();
+  return (
+    <>
+      {sections.length > 0 && <HomeDynamicSections sections={sections} />}
+      <TiendaClientPage />
+    </>
+  );
 }

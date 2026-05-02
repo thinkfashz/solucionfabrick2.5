@@ -23,6 +23,13 @@ export interface CmsSettings {
   nombre_empresa: string;
   slogan: string;
   logo_url: string;
+  // Tienda (catálogo) — editables desde /admin/tienda
+  tienda_titulo: string;
+  tienda_subtitulo: string;
+  tienda_cover_url: string;
+  tienda_destacados_titulo: string;
+  tienda_cta_label: string;
+  tienda_cta_url: string;
 }
 
 const DEFAULT_SETTINGS: CmsSettings = {
@@ -39,6 +46,12 @@ const DEFAULT_SETTINGS: CmsSettings = {
   nombre_empresa: 'Soluciones Fabrick',
   slogan: '',
   logo_url: '',
+  tienda_titulo: '',
+  tienda_subtitulo: '',
+  tienda_cover_url: '',
+  tienda_destacados_titulo: '',
+  tienda_cta_label: '',
+  tienda_cta_url: '',
 };
 
 /** Returns the merged settings map, falling back to defaults on any failure. */
@@ -80,30 +93,52 @@ export interface PublicHomeSection {
   data: Record<string, unknown>;
 }
 
-/** Lists visible home sections in display order. Returns [] on failure. */
-export async function getPublicHomeSections(): Promise<PublicHomeSection[]> {
+/**
+ * Lists visible sections for a given page in display order. Returns [] on
+ * failure. Defaults to page='home' for backwards compat when older rows have
+ * no `page` column populated. The DB query coalesces NULL → 'home' via two
+ * passes (one for the requested page, one for legacy NULLs when page='home').
+ */
+export async function getPublicSectionsForPage(
+  page: 'home' | 'tienda',
+): Promise<PublicHomeSection[]> {
   try {
     const { data, error } = await insforge.database
       .from('home_sections')
-      .select('id, kind, title, subtitle, body, image_url, link_url, link_label, position, visible, data')
+      .select('id, kind, title, subtitle, body, image_url, link_url, link_label, position, visible, data, page')
       .eq('visible', true)
       .order('position', { ascending: true });
     if (error || !Array.isArray(data)) return [];
-    return (data as Array<PublicHomeSection & { visible?: boolean }>).map((s) => ({
-      id: s.id,
-      kind: s.kind,
-      title: s.title ?? null,
-      subtitle: s.subtitle ?? null,
-      body: s.body ?? null,
-      image_url: s.image_url ?? null,
-      link_url: s.link_url ?? null,
-      link_label: s.link_label ?? null,
-      position: Number(s.position ?? 0),
-      data: (s.data && typeof s.data === 'object' ? s.data : {}) as Record<string, unknown>,
-    }));
+    return (data as Array<PublicHomeSection & { visible?: boolean; page?: string | null }>)
+      .filter((s) => {
+        const p = (s.page ?? 'home') || 'home';
+        return p === page;
+      })
+      .map((s) => ({
+        id: s.id,
+        kind: s.kind,
+        title: s.title ?? null,
+        subtitle: s.subtitle ?? null,
+        body: s.body ?? null,
+        image_url: s.image_url ?? null,
+        link_url: s.link_url ?? null,
+        link_label: s.link_label ?? null,
+        position: Number(s.position ?? 0),
+        data: (s.data && typeof s.data === 'object' ? s.data : {}) as Record<string, unknown>,
+      }));
   } catch {
     return [];
   }
+}
+
+/** Lists visible home sections in display order. Returns [] on failure. */
+export async function getPublicHomeSections(): Promise<PublicHomeSection[]> {
+  return getPublicSectionsForPage('home');
+}
+
+/** Lists visible tienda (catálogo) sections in display order. */
+export async function getPublicTiendaSections(): Promise<PublicHomeSection[]> {
+  return getPublicSectionsForPage('tienda');
 }
 
 export interface DbBlogPost {

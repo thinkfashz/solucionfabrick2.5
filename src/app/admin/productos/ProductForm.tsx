@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { insforge } from '@/lib/insforge';
 import { useCategories } from '@/hooks/useCategories';
-import { Upload, ArrowLeft } from 'lucide-react';
+import { Upload, ArrowLeft, Cloud } from 'lucide-react';
 
 /* ── Helpers ── */
 function formatDisplayPrice(raw: string) {
@@ -100,6 +100,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
   const router = useRouter();
   const { categories } = useCategories();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const cloudFileInputRef = useRef<HTMLInputElement>(null);
 
   const [form, setForm] = useState<ProductFormData>({
     name: initialData?.name ?? '',
@@ -117,6 +118,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
     initialData?.price ? formatDisplayPrice(initialData.price) : ''
   );
   const [uploading, setUploading] = useState(false);
+  const [uploadingCloud, setUploadingCloud] = useState(false);
   const [saving, setSaving] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -211,6 +213,39 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
       showToast(msg, 'error');
     } finally {
       setUploading(false);
+    }
+  }
+
+  /* ── Image upload to Cloudinary ── */
+  async function handleCloudinaryUpload(file: File) {
+    setUploadingCloud(true);
+    try {
+      const localBlob = URL.createObjectURL(file);
+      setPreviewUrl(localBlob);
+    } catch { /* ignore */ }
+
+    try {
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('folder', 'fabrick/productos');
+      const res = await fetch('/api/admin/cloudinary', { method: 'POST', body: fd });
+      const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string; code?: string; asset?: { url?: string } };
+      if (!res.ok) {
+        if (json.code === 'NOT_CONFIGURED') {
+          showToast('Cloudinary no configurado. Ve a Configuración → Integraciones.', 'error');
+          return;
+        }
+        throw new Error(json.error || `HTTP ${res.status}`);
+      }
+      const url = json.url || json.asset?.url || '';
+      if (!url) throw new Error('Cloudinary no devolvió una URL.');
+      setForm((f) => ({ ...f, image_url: url }));
+      setPreviewUrl('');
+      showToast('Imagen subida a Cloudinary.', 'success');
+    } catch (err) {
+      showToast(err instanceof Error ? err.message : 'Error al subir a Cloudinary.', 'error');
+    } finally {
+      setUploadingCloud(false);
     }
   }
 
@@ -391,16 +426,28 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
               </div>
             )}
 
-            {/* Upload button */}
-            <button
-              type="button"
-              onClick={() => fileInputRef.current?.click()}
-              disabled={uploading}
-              className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-white/20 text-zinc-400 hover:text-white hover:border-white/40 transition-colors text-sm disabled:opacity-50"
-            >
-              <Upload className="w-4 h-4" />
-              {uploading ? 'Subiendo imagen…' : 'Subir imagen'}
-            </button>
+            {/* Upload buttons: InsForge + Cloudinary */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={uploading || uploadingCloud}
+                className="flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-white/20 text-zinc-400 hover:text-white hover:border-white/40 transition-colors text-sm disabled:opacity-50"
+              >
+                <Upload className="w-4 h-4" />
+                {uploading ? 'Subiendo…' : 'Subir a InsForge'}
+              </button>
+              <button
+                type="button"
+                onClick={() => cloudFileInputRef.current?.click()}
+                disabled={uploading || uploadingCloud}
+                className="flex items-center justify-center gap-2 py-3 rounded-xl border border-yellow-400/40 bg-yellow-400/5 text-yellow-400 hover:bg-yellow-400/10 hover:border-yellow-400/70 transition-colors text-sm disabled:opacity-50"
+                title="Sube esta foto a tu cuenta de Cloudinary (carpeta fabrick/productos)"
+              >
+                <Cloud className="w-4 h-4" />
+                {uploadingCloud ? 'Subiendo a Cloudinary…' : 'Subir a Cloudinary'}
+              </button>
+            </div>
             <input
               ref={fileInputRef}
               type="file"
@@ -409,6 +456,18 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
               onChange={(e) => {
                 const file = e.target.files?.[0];
                 if (file) handleImageUpload(file);
+                e.target.value = '';
+              }}
+            />
+            <input
+              ref={cloudFileInputRef}
+              type="file"
+              accept="image/*"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) handleCloudinaryUpload(file);
+                e.target.value = '';
               }}
             />
 
@@ -441,7 +500,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
         <div className="pt-4">
           <button
             type="submit"
-            disabled={saving || uploading}
+            disabled={saving || uploading || uploadingCloud}
             className="w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
             style={{ background: '#facc15', color: '#000' }}
           >

@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useRef, useState, useCallback } from 'react';
-import { Image as ImageIcon, Loader2, Upload, X, Check, Trash2 } from 'lucide-react';
+import { Cloud, Image as ImageIcon, Loader2, Upload, X, Check, Trash2 } from 'lucide-react';
 
 export interface MediaAsset {
   id: string;
@@ -14,14 +14,29 @@ export interface MediaAsset {
   mime_type?: string | null;
   size_bytes?: number | null;
   created_at?: string;
+  /** Where this asset is hosted. Defaults to 'insforge' for legacy assets. */
+  source?: 'insforge' | 'cloudinary';
 }
 
 const FOLDERS = ['general', 'blog', 'home', 'banners', 'servicios', 'productos'] as const;
 type Folder = (typeof FOLDERS)[number];
 
+type Source = 'insforge' | 'cloudinary';
+
 interface ApiList {
   assets: MediaAsset[];
   bucket?: string;
+}
+
+interface CloudinaryApiAsset {
+  id: string;
+  public_id: string;
+  url: string;
+  format: string;
+  size_bytes: number;
+  created_at: string;
+  width: number;
+  height: number;
 }
 
 interface PickerProps {
@@ -31,31 +46,61 @@ interface PickerProps {
   defaultFolder?: Folder;
   /** Allow deletes from inside the picker. Off by default. */
   allowDelete?: boolean;
+  /** Initial source tab. Defaults to 'insforge'. */
+  defaultSource?: Source;
 }
 
-export function MediaPicker({ open, onClose, onSelect, defaultFolder = 'general', allowDelete = false }: PickerProps) {
+export function MediaPicker({ open, onClose, onSelect, defaultFolder = 'general', allowDelete = false, defaultSource = 'insforge' }: PickerProps) {
+  const [source, setSource] = useState<Source>(defaultSource);
   const [folder, setFolder] = useState<Folder>(defaultFolder);
+  const [cloudFolder, setCloudFolder] = useState<string>(`fabrick/${defaultFolder}`);
   const [assets, setAssets] = useState<MediaAsset[]>([]);
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [notConfigured, setNotConfigured] = useState(false);
   const [search, setSearch] = useState('');
   const fileInputRef = useRef<HTMLInputElement | null>(null);
 
   const fetchAssets = useCallback(async () => {
     setLoading(true);
     setError(null);
+    setNotConfigured(false);
     try {
-      const res = await fetch(`/api/admin/media?folder=${encodeURIComponent(folder)}&limit=200`, { cache: 'no-store' });
-      const json = (await res.json()) as Partial<ApiList> & { error?: string };
-      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
-      setAssets(json.assets ?? []);
+      if (source === 'insforge') {
+        const res = await fetch(`/api/admin/media?folder=${encodeURIComponent(folder)}&limit=200`, { cache: 'no-store' });
+        const json = (await res.json()) as Partial<ApiList> & { error?: string };
+        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        setAssets((json.assets ?? []).map((a) => ({ ...a, source: 'insforge' as const })));
+      } else {
+        const res = await fetch(`/api/admin/cloudinary?max_results=100`, { cache: 'no-store' });
+        const json = (await res.json()) as { assets?: CloudinaryApiAsset[]; error?: string; code?: string };
+        if (!res.ok) {
+          if (json.code === 'NOT_CONFIGURED') {
+            setNotConfigured(true);
+            setAssets([]);
+            return;
+          }
+          throw new Error(json.error || `HTTP ${res.status}`);
+        }
+        setAssets((json.assets ?? []).map((a) => ({
+          id: a.id,
+          url: a.url,
+          path: a.public_id,
+          alt: null,
+          folder: null,
+          mime_type: a.format ? `image/${a.format}` : null,
+          size_bytes: a.size_bytes,
+          created_at: a.created_at,
+          source: 'cloudinary' as const,
+        })));
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Error al cargar la galería.');
     } finally {
       setLoading(false);
     }
-  }, [folder]);
+  }, [folder, source]);
 
   useEffect(() => {
     if (!open) return;
@@ -70,10 +115,24 @@ export function MediaPicker({ open, onClose, onSelect, defaultFolder = 'general'
       for (const file of Array.from(files)) {
         const fd = new FormData();
         fd.append('file', file);
-        fd.append('folder', folder);
-        const res = await fetch('/api/admin/media', { method: 'POST', body: fd });
-        const json = (await res.json()) as { error?: string; asset?: MediaAsset };
-        if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        if (source === 'insforge') {
+          fd.append('folder', folder);
+          const res = await fetch('/api/admin/media', { method: 'POST', body: fd });
+          const json = (await res.json()) as { error?: string; asset?: MediaAsset };
+          if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+        } else {
+          const cleanFolder = cloudFolder.replace(/[^a-zA-Z0-9_/-]/g, '').slice(0, 80) || 'fabrick';
+          fd.append('folder', cleanFolder);
+          const res = await fetch('/api/admin/cloudinary', { method: 'POST', body: fd });
+          const json = (await res.json().catch(() => ({}))) as { error?: string; code?: string };
+          if (!res.ok) {
+            if (json.code === 'NOT_CONFIGURED') {
+              setNotConfigured(true);
+              return;
+            }
+            throw new Error(json.error || `HTTP ${res.status}`);
+          }
+        }
       }
       await fetchAssets();
     } catch (e) {
@@ -87,7 +146,12 @@ export function MediaPicker({ open, onClose, onSelect, defaultFolder = 'general'
   async function handleDelete(asset: MediaAsset) {
     if (!confirm('¿Eliminar esta imagen? Esta acción no se puede deshacer.')) return;
     try {
-      const res = await fetch(`/api/admin/media/${encodeURIComponent(asset.id)}`, { method: 'DELETE' });
+      let res: Response;
+      if (asset.source === 'cloudinary') {
+        res = await fetch(`/api/admin/cloudinary?public_id=${encodeURIComponent(asset.path)}`, { method: 'DELETE' });
+      } else {
+        res = await fetch(`/api/admin/media/${encodeURIComponent(asset.id)}`, { method: 'DELETE' });
+      }
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(json.error || `HTTP ${res.status}`);
@@ -114,16 +178,50 @@ export function MediaPicker({ open, onClose, onSelect, defaultFolder = 'general'
           </button>
         </header>
 
-        <div className="flex flex-wrap items-center gap-2 border-b border-white/10 p-3">
-          <select
-            value={folder}
-            onChange={(e) => setFolder(e.target.value as Folder)}
-            className="rounded-lg border border-white/10 bg-black px-3 py-2 text-xs text-white"
+        {/* Source tabs */}
+        <div className="flex gap-1 border-b border-white/10 bg-black/40 p-2">
+          <button
+            type="button"
+            onClick={() => setSource('insforge')}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[11px] font-bold uppercase tracking-[0.18em] transition-all ${
+              source === 'insforge' ? 'bg-yellow-400 text-black shadow' : 'text-zinc-400 hover:text-white'
+            }`}
           >
-            {FOLDERS.map((f) => (
-              <option key={f} value={f}>{f}</option>
-            ))}
-          </select>
+            <ImageIcon className="h-3.5 w-3.5" />
+            InsForge
+          </button>
+          <button
+            type="button"
+            onClick={() => setSource('cloudinary')}
+            className={`flex flex-1 items-center justify-center gap-2 rounded-xl py-2 text-[11px] font-bold uppercase tracking-[0.18em] transition-all ${
+              source === 'cloudinary' ? 'bg-yellow-400 text-black shadow' : 'text-zinc-400 hover:text-white'
+            }`}
+          >
+            <Cloud className="h-3.5 w-3.5" />
+            Cloudinary
+          </button>
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2 border-b border-white/10 p-3">
+          {source === 'insforge' ? (
+            <select
+              value={folder}
+              onChange={(e) => setFolder(e.target.value as Folder)}
+              className="rounded-lg border border-white/10 bg-black px-3 py-2 text-xs text-white"
+            >
+              {FOLDERS.map((f) => (
+                <option key={f} value={f}>{f}</option>
+              ))}
+            </select>
+          ) : (
+            <input
+              type="text"
+              value={cloudFolder}
+              onChange={(e) => setCloudFolder(e.target.value)}
+              placeholder="Carpeta Cloudinary (ej: fabrick/blog)"
+              className="rounded-lg border border-white/10 bg-black px-3 py-2 text-xs text-yellow-400 w-52"
+            />
+          )}
           <input
             type="search"
             placeholder="Buscar por nombre o alt…"
@@ -133,7 +231,7 @@ export function MediaPicker({ open, onClose, onSelect, defaultFolder = 'general'
           />
           <label className="flex cursor-pointer items-center gap-2 rounded-lg bg-yellow-400 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-black transition hover:bg-yellow-300">
             {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
-            Subir
+            {source === 'cloudinary' ? 'Subir a Cloudinary' : 'Subir'}
             <input
               ref={fileInputRef}
               type="file"
@@ -150,17 +248,31 @@ export function MediaPicker({ open, onClose, onSelect, defaultFolder = 'general'
         )}
 
         <div className="flex-1 overflow-y-auto p-3">
-          {loading ? (
+          {notConfigured ? (
+            <div className="flex h-full flex-col items-center justify-center gap-3 text-center px-6 text-zinc-400">
+              <Cloud className="h-10 w-10 text-yellow-400/60" />
+              <p className="text-sm font-bold text-yellow-400">Cloudinary no configurado</p>
+              <p className="text-xs">
+                Ve a <strong className="text-white">Configuración → Integraciones</strong> y añade tu Cloud name, API Key y API Secret.
+              </p>
+              <a
+                href="/admin/configuracion"
+                className="mt-2 rounded-full bg-yellow-400 px-5 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-black hover:bg-yellow-300"
+              >
+                Ir a Configuración
+              </a>
+            </div>
+          ) : loading ? (
             <div className="flex h-full items-center justify-center text-xs text-zinc-500"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Cargando…</div>
           ) : filtered.length === 0 ? (
             <div className="flex h-full flex-col items-center justify-center gap-3 text-zinc-500">
-              <ImageIcon className="h-8 w-8" />
-              <p className="text-xs">Sin imágenes en esta carpeta. Sube la primera.</p>
+              {source === 'cloudinary' ? <Cloud className="h-8 w-8" /> : <ImageIcon className="h-8 w-8" />}
+              <p className="text-xs">Sin imágenes en {source === 'cloudinary' ? 'Cloudinary' : 'esta carpeta'}. Sube la primera.</p>
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5">
               {filtered.map((asset) => (
-                <div key={asset.id} className="group relative overflow-hidden rounded-xl border border-white/10 bg-black">
+                <div key={`${asset.source ?? 'insforge'}-${asset.id}`} className="group relative overflow-hidden rounded-xl border border-white/10 bg-black">
                   <button
                     type="button"
                     onClick={() => onSelect(asset)}
@@ -168,7 +280,7 @@ export function MediaPicker({ open, onClose, onSelect, defaultFolder = 'general'
                     title={asset.alt ?? asset.path}
                   >
                     <div className="aspect-square w-full overflow-hidden">
-                      {/* Public InsForge URLs are served from external domains; use plain img so we don't need to add allowed remotePatterns. */}
+                      {/* Public InsForge & Cloudinary URLs are external; use plain img to avoid remotePatterns config. */}
                       <img
                         src={asset.url}
                         alt={asset.alt ?? ''}
@@ -180,6 +292,11 @@ export function MediaPicker({ open, onClose, onSelect, defaultFolder = 'general'
                       <span className="rounded-full bg-yellow-400 p-2 text-black"><Check className="h-4 w-4" /></span>
                     </div>
                   </button>
+                  {asset.source === 'cloudinary' && (
+                    <span className="pointer-events-none absolute top-2 left-2 inline-flex items-center gap-1 rounded-full border border-yellow-400/40 bg-black/70 px-2 py-0.5 text-[8.5px] font-black uppercase tracking-[0.14em] text-yellow-400">
+                      <Cloud className="h-2.5 w-2.5" /> Cloud
+                    </span>
+                  )}
                   {allowDelete && (
                     <button
                       type="button"

@@ -15,6 +15,7 @@ const ALLOWED_PROVIDERS = new Set([
   'google',       // Google OAuth / general Google APIs
   'google_ads',   // Google Ads API
   'tiktok',       // TikTok for Business / TikTok Ads
+  'cloudinary',   // Cloudinary media storage
 ]);
 
 function getClient() {

@@ -55,9 +55,9 @@ export default async function Home() {
         nonce={nonce}
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
-      <div className="bg-gradient-to-b from-black via-zinc-950 to-black min-h-screen overflow-x-hidden">
+      <div className="bg-gradient-to-b from-zinc-950 via-black to-zinc-950 min-h-screen overflow-x-hidden">
         <Navbar />
-        <Hero />
+        <Hero coverUrl={settings.hero_cover_url || undefined} />
         <HomeDynamicSections sections={sections} />
         <LandingSections copyrightText={copyrightText} socialLinks={socialLinks} />
       </div>

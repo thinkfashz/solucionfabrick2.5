@@ -8,11 +8,13 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import TiendaSection from './TiendaSection';
 import FabrickLogo from './FabrickLogo';
+import ContactMap from './ContactMap';
 import ScrollReveal, { ScrollRevealGroup, ScrollRevealItem } from './ScrollReveal';
+import { buildWhatsAppLink } from '@/lib/whatsapp';
 import {
   Hammer, Home, Droplet, Layers, PaintRoller, ShieldCheck, Package,
   Droplets, Lightbulb, Cpu, Warehouse, Armchair, Fingerprint, ArrowRight,
-  Star, MapPin, ShoppingBag, Sparkles, Award, TrendingUp, MessageSquare, Gamepad2,
+  Star, ShoppingBag, Sparkles, Award, TrendingUp, MessageSquare, Gamepad2,
 } from 'lucide-react';
 
 gsap.registerPlugin(ScrollTrigger);
@@ -46,7 +48,7 @@ const TRAJECTORY = [
 
 const SERVICIOS = [
   { Icon: Hammer,     title: 'Cimientos',     href: '/servicios/cimientos',     desc: 'Bases sólidas y nivelación precisa para la integridad estructural.', img: 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=80&w=800&auto=format&fit=crop' },
-  { Icon: Home,       title: 'Estructuras',   href: '/servicios/metalcon',      desc: 'Armado seguro y milimétrico en acero y Metalcon D90/D60.', img: 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=80&w=800&auto=format&fit=crop' },
+  { Icon: Home,       title: 'Estructuras',   href: '/servicios/metalcon',      desc: 'Armado seguro y milimétrico en acero y Metalcon D90/D60.', img: 'https://images.unsplash.com/photo-1503594384566-461fe158e797?q=80&w=800&auto=format&fit=crop' },
   { Icon: Droplet,    title: 'Gasfitería',    href: '/servicios/gasfiteria',    desc: 'Termofusión PPR y redes de cobre seguras certificadas NSF.', img: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop' },
   { Icon: Layers,     title: 'Revestimiento', href: '/servicios/revestimiento', desc: 'Aislación térmica, acústica y preparación de superficies.', img: 'https://images.unsplash.com/photo-1505691938895-1758d7feb511?q=80&w=800&auto=format&fit=crop' },
   { Icon: PaintRoller,title: 'Pintura',       href: '/servicios/pintura',       desc: 'Terminaciones finas, sellado y paletas de alta durabilidad.', img: 'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?q=80&w=800&auto=format&fit=crop' },
@@ -313,12 +315,30 @@ export default function LandingSections({
                       className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-1000"
                       loading="lazy"
                       onError={(e) => {
+                        // Fallback gracioso si una URL externa de la imagen
+                        // queda 404. Usa un degradado oscuro para que la
+                        // tarjeta no se vea totalmente negra y se preserve
+                        // la composición.
                         const el = e.currentTarget;
                         if (el.dataset.fallback === '1') return;
                         el.dataset.fallback = '1';
-                        el.src = 'data:image/svg+xml;utf8,' + encodeURIComponent(
-                          `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600"><defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#1a1410"/><stop offset="1" stop-color="#000"/></linearGradient></defs><rect width="800" height="600" fill="url(#g)"/><g fill="none" stroke="#c9a96e" stroke-width="2" opacity="0.35"><path d="M 100,500 L 100,300 L 250,200 L 400,300 L 400,500 Z"/><path d="M 400,500 L 400,250 L 600,150 L 800,250 L 800,500"/></g></svg>`
-                        );
+                        el.src =
+                          'data:image/svg+xml;utf8,' +
+                          encodeURIComponent(
+                            `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 600">
+                              <defs>
+                                <linearGradient id="g" x1="0" y1="0" x2="1" y2="1">
+                                  <stop offset="0" stop-color="#1a1410"/>
+                                  <stop offset="1" stop-color="#000"/>
+                                </linearGradient>
+                              </defs>
+                              <rect width="800" height="600" fill="url(#g)"/>
+                              <g fill="none" stroke="#c9a96e" stroke-width="2" opacity="0.35">
+                                <path d="M 100,500 L 100,300 L 250,200 L 400,300 L 400,500 Z"/>
+                                <path d="M 400,500 L 400,250 L 600,150 L 800,250 L 800,500"/>
+                              </g>
+                            </svg>`,
+                          );
                       }}
                     />
                     <div className="absolute inset-0 bg-gradient-to-t from-black via-black/75 to-black/25 group-hover:via-black/60 transition-all duration-500" />
@@ -456,11 +476,14 @@ export default function LandingSections({
         </div>
         <div className="max-w-7xl mx-auto relative z-10">
           <ScrollReveal className="text-center mb-16 md:mb-24">
-            <h2 className="text-3xl sm:text-4xl md:text-5xl font-light uppercase tracking-tighter leading-none">
+            <span className="text-yellow-400 font-bold tracking-[0.5em] text-[10px] uppercase">
+              Soluciones Fabrick · Linares, Maule
+            </span>
+            <h2 className="mt-3 text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tighter leading-[0.95]">
               Construimos su tranquilidad,
-              <br /><span className="font-bold text-yellow-400">ladrillo a ladrillo.</span>
+              <br /><span className="text-yellow-400">ladrillo a ladrillo.</span>
             </h2>
-            <p className="mt-6 text-zinc-400 max-w-3xl mx-auto text-sm md:text-lg leading-relaxed font-light">
+            <p className="mt-6 text-zinc-300 max-w-3xl mx-auto text-sm md:text-lg leading-relaxed font-light">
               En Soluciones Fabrick eliminamos la incertidumbre. Gestionamos todo el proceso
               para que usted solo disfrute del resultado.
             </p>
@@ -505,6 +528,44 @@ export default function LandingSections({
               </div>
             </ScrollRevealItem>
           </ScrollRevealGroup>
+
+          {/* ── CTA: agendar visita en terreno (Linares / Maule) ── */}
+          <ScrollReveal delay={0.15} className="mt-10 md:mt-14">
+            <div className="rounded-[2rem] border border-yellow-400/30 bg-gradient-to-br from-yellow-400/10 via-yellow-400/5 to-transparent p-8 md:p-12 backdrop-blur-md">
+              <div className="grid gap-6 md:grid-cols-[1fr_auto] md:items-center">
+                <div className="text-center md:text-left">
+                  <span className="text-yellow-400 font-bold tracking-[0.4em] text-[10px] uppercase">
+                    Visita gratuita en terreno
+                  </span>
+                  <h3 className="mt-3 text-2xl md:text-3xl font-black text-white uppercase tracking-tight leading-tight">
+                    Vamos a su propiedad,<br className="hidden md:inline" /> medimos y armamos su presupuesto.
+                  </h3>
+                  <p className="mt-3 text-zinc-300 text-sm md:text-base leading-relaxed max-w-2xl">
+                    Atendemos en Linares y toda la Región del Maule. Sin oficinas físicas y sin costo
+                    por la visita: nuestros técnicos llegan, toman las medidas y conversan con usted
+                    en su espacio para que el presupuesto sea fiel a la realidad.
+                  </p>
+                </div>
+                <div className="flex flex-col gap-3 md:min-w-[16rem]">
+                  <a
+                    href={buildWhatsAppLink('Hola Soluciones Fabrick, quiero agendar una visita en Linares (Región del Maule) para que pasen a evaluar mi proyecto y armar el presupuesto.')}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-3 rounded-full bg-yellow-400 px-7 py-4 text-[11px] font-black uppercase tracking-[0.22em] text-black shadow-yellow-md transition hover:bg-yellow-300"
+                  >
+                    Agendar por WhatsApp
+                    <ArrowRight className="w-4 h-4" />
+                  </a>
+                  <Link
+                    href="/contacto"
+                    className="flex items-center justify-center gap-2 rounded-full border border-white/15 px-7 py-4 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-200 transition hover:border-yellow-400/40 hover:text-yellow-400"
+                  >
+                    Formulario de contacto
+                  </Link>
+                </div>
+              </div>
+            </div>
+          </ScrollReveal>
         </div>
       </section>
 
@@ -526,15 +587,19 @@ export default function LandingSections({
           <ScrollRevealGroup className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-4 md:gap-5 mb-12" stagger={0.08}>
             {PRODUCTOS.map(({ Icon, t, d }, i) => (
               <ScrollRevealItem key={i}>
-                <div
-                  className="relative p-5 md:p-7 rounded-[1.5rem] bg-zinc-950/80 border border-white/5 hover:border-yellow-400/40 hover:bg-zinc-900 transition-all duration-500 group"
+                <Link
+                  href="/tienda"
+                  className="relative flex flex-col items-center p-5 md:p-7 rounded-[1.5rem] bg-zinc-950/80 border border-white/5 hover:border-yellow-400/40 hover:bg-zinc-900 transition-all duration-500 group h-full"
                 >
                   <div className="store-icon-wrapper w-14 h-14 md:w-16 md:h-16 mx-auto bg-black rounded-full flex items-center justify-center border border-white/10 mb-4 group-hover:border-yellow-400 transition-colors group-hover:shadow-[0_0_20px_rgba(250,204,21,0.2)]">
                     <Icon className="w-7 h-7 md:w-8 md:h-8 text-zinc-400 group-hover:text-yellow-400 transition-colors duration-500" />
                   </div>
                   <h4 className="font-black text-xs uppercase tracking-wider mb-1.5 text-white group-hover:text-yellow-400 transition-colors text-center">{t}</h4>
-                  <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest leading-relaxed text-center">{d}</p>
-                </div>
+                  <p className="text-[9px] md:text-[10px] text-zinc-500 uppercase tracking-widest leading-relaxed text-center mb-4">{d}</p>
+                  <span aria-label={`Acceder a ${t}`} className="mt-auto inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full border border-yellow-400/30 text-yellow-400 text-[9px] uppercase tracking-widest font-bold group-hover:bg-yellow-400 group-hover:text-black group-hover:border-yellow-400 transition-all duration-300">
+                    Acceder <ArrowRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
+                  </span>
+                </Link>
               </ScrollRevealItem>
             ))}
           </ScrollRevealGroup>
@@ -599,18 +664,12 @@ export default function LandingSections({
                 una solución definitiva.
               </p>
             </div>
-            {/* Mapa */}
-            <div className="img-zoom w-full h-52 md:h-72 bg-zinc-900 rounded-[2rem] border border-white/5 flex flex-col items-center justify-center relative overflow-hidden group">
-              {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src="https://images.unsplash.com/photo-1524661135-423995f22d0b?q=80&w=1000&auto=format&fit=crop" alt="Mapa Santiago" className="absolute inset-0 w-full h-full object-cover opacity-20 grayscale" />
-              <div className="absolute inset-0 bg-black/40" />
-              <div className="w-14 h-14 bg-yellow-400 rounded-full flex items-center justify-center relative z-10 mb-3 shadow-[0_0_20px_rgba(250,204,21,0.4)] animate-pulse">
-                <MapPin className="w-7 h-7 text-black" />
-              </div>
-              <span className="relative z-10 font-bold text-xs tracking-[0.25em] uppercase text-white">
-                Oficina Central · Santiago
-              </span>
-            </div>
+            {/* Mapa interactivo · Linares (OpenStreetMap) */}
+            <ContactMap
+              className="w-full h-52 md:h-72"
+              title="Linares · Región del Maule"
+              subtitle="Atendemos en terreno en toda la región"
+            />
           </ScrollReveal>
 
           <ScrollReveal delay={0.15} className="bg-zinc-950 p-7 md:p-12 rounded-[2rem] border border-white/5">

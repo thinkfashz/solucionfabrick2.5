@@ -1,20 +1,18 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
 import { useRef, useEffect } from 'react';
 import { useScroll, useTransform, motion } from 'framer-motion';
 import AnimatedButton from '@/components/ui/animated-button';
+import HeroHouse3D from './HeroHouse3D';
+import { FlipText } from '@/components/ui/flip-text';
 
-const HERO_IMAGE =
-  'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=90&w=2400&auto=format&fit=crop';
-
-export default function Hero() {
+export default function Hero({ coverUrl }: { coverUrl?: string }) {
   const heroRef  = useRef<HTMLDivElement>(null);
 
   /* Parallax on scroll */
   const { scrollY } = useScroll();
   const bgY = useTransform(scrollY, [0, 700], [0, 140]);
+  const glowY = useTransform(scrollY, [0, 700], [0, 80]);
 
   /* GSAP text entrance */
   useEffect(() => {
@@ -24,7 +22,11 @@ export default function Hero() {
       ctx = gsap.context(() => {
         const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
 
-        tl.from('.hero-badge',    { y: -40, opacity: 0, duration: 0.7 })
+        tl.from('.hero-house-3d', {
+          scale: 0.5, opacity: 0, rotation: -45,
+          duration: 1.4, ease: 'elastic.out(1,0.6)',
+        })
+          .from('.hero-badge',      { y: -40, opacity: 0, duration: 0.7 }, '-=0.8')
           .fromTo(
             '.hero-title-line',
             { clipPath: 'inset(0 100% 0 0)', opacity: 0, x: -20 },
@@ -37,8 +39,20 @@ export default function Hero() {
             { opacity: 1, filter: 'blur(0px)', y:  0, duration: 0.9 },
             '-=0.4',
           )
-          .from('.hero-divider',  { scaleX: 0, duration: 0.7, ease: 'power2.inOut' }, '-=0.5')
-          .from('.hero-cta-item', { y: 24, opacity: 0, duration: 0.6, stagger: 0.14 }, '-=0.4');
+          .from('.hero-divider',   { scaleX: 0, duration: 0.7, ease: 'power2.inOut' }, '-=0.5')
+          .from('.hero-cta-item',  { y: 24, opacity: 0, duration: 0.6, stagger: 0.14 }, '-=0.4');
+
+        /* Subtle ring pulse (legacy ring elements removed; keep selector safe) */
+        gsap.to('.hero-ring', {
+          scale: '+=0.04', opacity: '-=0.08',
+          duration: 3, repeat: -1, yoyo: true, ease: 'sine.inOut', stagger: 0.6,
+        });
+
+        /* Background glows parallax */
+        gsap.to('.hero-glow', {
+          y: -30, x: 20,
+          duration: 6, repeat: -1, yoyo: true, ease: 'sine.inOut', stagger: 1.5,
+        });
       }, heroRef);
     };
     init();
@@ -51,16 +65,17 @@ export default function Hero() {
       ref={heroRef}
       className="relative min-h-screen flex items-center justify-center overflow-hidden bg-black"
     >
-      {/* ── Background image with parallax ── */}
+      {/* ── Background: imagen arquitectónica con parallax ── */}
       <motion.div
         className="absolute inset-0 z-0"
         style={{ y: bgY, scale: 1.12 }}
+        aria-hidden
       >
+        {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={HERO_IMAGE}
-          alt="Casa moderna metalcon — Soluciones Fabrick, construcción y remodelación en la Región del Maule"
-          className="w-full h-full object-cover object-center"
-          loading="eager"
+          src={coverUrl || "https://images.unsplash.com/photo-1504307651254-35680f356f12?q=85&w=1920&auto=format&fit=crop"}
+          alt="Obra de construcción y arquitectura"
+          className="w-full h-full object-cover"
           fetchPriority="high"
         />
       </motion.div>
@@ -80,6 +95,17 @@ export default function Hero() {
         className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[180px] pointer-events-none z-[1]"
         style={{ background: 'radial-gradient(ellipse, rgba(250,204,21,0.08) 0%, transparent 70%)', filter: 'blur(40px)' }}
       />
+
+      {/* Background glows – parallax */}
+      <motion.div style={{ y: glowY }} className="absolute inset-0 pointer-events-none z-0">
+        <div className="hero-glow absolute top-20 left-10 w-72 h-72 rounded-full bg-yellow-400/5 blur-3xl" />
+        <div className="hero-glow absolute bottom-20 right-10 w-96 h-96 rounded-full bg-yellow-400/6 blur-3xl" />
+      </motion.div>
+
+      {/* 3D House centerpiece (replaces decorative rings) */}
+      <div className="hero-house-3d">
+        <HeroHouse3D />
+      </div>
 
       {/* ── Contenido ── */}
       <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
@@ -108,7 +134,7 @@ export default function Hero() {
             className="hero-title-line block shimmer-gold"
             style={{ textShadow: '0 0 40px rgba(250,204,21,0.35), 0 0 80px rgba(250,204,21,0.15)' }}
           >
-            Nuestra Obra
+            <FlipText duration={3.6} delay={0.2}>Nuestra Obra</FlipText>
           </span>
         </h1>
 
@@ -138,6 +164,17 @@ export default function Hero() {
             Ir a Tienda
           </AnimatedButton>
         </div>
+
+        {/* Interactive copyright signature */}
+        <a
+          href="/juego"
+          className="hero-cta-item group inline-flex items-center gap-2 mt-10 text-[10px] font-bold uppercase tracking-[0.35em] text-zinc-500 hover:text-yellow-400 transition-colors"
+          aria-label="Diseñar mi casa - Soluciones Fabrick"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-yellow-400/60 group-hover:bg-yellow-400 group-hover:shadow-[0_0_10px_rgba(250,204,21,0.8)] transition-all" />
+          © Fabrick — Construimos tu visión
+          <span className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">→</span>
+        </a>
       </div>
 
       {/* Fade inferior hacia el resto de la página */}

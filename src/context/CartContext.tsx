@@ -158,3 +158,10 @@ export function useCartContext(): CartContextValue {
   return ctx;
 }
 
+/** Safe variant: returns null if used outside CartProvider (e.g. admin shell). */
+export function useCartContextSafe(): CartContextValue | null {
+  return useContext(CartContext);
+}
+
+/** Key used to pass cart items to CheckoutApp via sessionStorage */
+export const CART_SESSION_KEY_EXPORT = CART_SESSION_KEY;

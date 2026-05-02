@@ -790,3 +790,68 @@ body { background-color: var(--bg); color: var(--fg); }
   90%  { opacity: 1; }
   100% { transform: translate3d(var(--ex), var(--ey), 20px); opacity: 0; }
 }
+
+/* ── FlipText (Vengeance UI): CSS no incluido en el registro ── */
+.flip-char {
+  color: inherit;
+  -webkit-text-fill-color: transparent;
+  height: 1.2em;
+  line-height: 1.2em;
+  vertical-align: middle;
+  animation: flip-text-flip var(--flip-duration, 2.2s) var(--flip-delay, 0s) var(--flip-iteration, infinite) ease;
+}
+
+.flip-char::before,
+.flip-char::after {
+  color: inherit;
+  -webkit-text-fill-color: currentColor;
+  content: attr(data-char);
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  height: 100%;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  backface-visibility: hidden;
+  animation: flip-text-fade var(--flip-duration, 2.2s) var(--flip-delay, 0s) var(--flip-iteration, infinite) ease;
+}
+
+/* Cara frontal */
+.flip-char::after {
+  transform: translate(-50%, -50%) translateZ(0.6em);
+}
+
+/* Cara inferior (entra rotando) */
+.flip-char::before {
+  transform: translate(-50%, -50%) rotateX(-90deg) translateZ(0.6em);
+  opacity: 0;
+}
+
+@keyframes flip-text-flip {
+  0%, 35%   { transform: rotateX(0deg); }
+  50%, 85%  { transform: rotateX(-90deg); }
+  100%      { transform: rotateX(-180deg); }
+}
+
+@keyframes flip-text-fade {
+  0%, 35%   { opacity: 1; }
+  50%, 85%  { opacity: 0; }
+  100%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .flip-char,
+  .flip-char::before,
+  .flip-char::after {
+    animation: none;
+  }
+  .flip-char {
+    -webkit-text-fill-color: currentColor;
+  }
+  .flip-char::before,
+  .flip-char::after {
+    display: none;
+  }
+}

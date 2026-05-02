@@ -1,13 +1,12 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import { buildWhatsAppLink } from '@/lib/whatsapp';
 
 export const metadata: Metadata = {
   title: 'Sin conexión',
   description: 'Parece que estás sin conexión. Podemos seguir ayudándote por WhatsApp.',
   robots: { index: false, follow: false },
 };
-
-const WHATSAPP_NUMBER = process.env.NEXT_PUBLIC_WHATSAPP_NUMBER || '56912345678';
 
 export default function OfflinePage() {
   return (
@@ -34,7 +33,7 @@ export default function OfflinePage() {
             Reintentar
           </Link>
           <a
-            href={`https://wa.me/${WHATSAPP_NUMBER}`}
+            href={buildWhatsAppLink('Hola Soluciones Fabrick, estoy sin conexión y quiero retomar la conversación cuando me llegue señal.')}
             target="_blank"
             rel="noopener noreferrer"
             className="rounded-full border border-white/15 py-3 px-6 text-xs font-semibold uppercase tracking-[0.2em] text-zinc-300 hover:text-white hover:border-white/30 transition-colors"

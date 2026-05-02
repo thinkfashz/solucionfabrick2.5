@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   ArrowRight,
@@ -15,9 +15,18 @@ import {
   Calculator,
   X,
   CheckCircle2,
+  Droplet,
+  PaintRoller,
+  ShieldCheck,
+  Zap,
+  Wrench,
+  Trees,
+  Building2,
+  ScanLine,
   type LucideIcon,
 } from 'lucide-react';
 import SectionPageShell from '@/components/SectionPageShell';
+import AddServiceQuoteButton from '@/components/AddServiceQuoteButton';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -545,10 +554,312 @@ const GROUPS: SolutionGroup[] = [
   },
 ];
 
+// ─── Services catalog (unified with /servicios) ──────────────────────────────
+
+interface ServiceItem {
+  title: string;
+  description: string;
+  features: string[];
+  refPrice?: number;
+  unit: string;
+  icon: LucideIcon;
+  href: string | null;
+}
+
+const SERVICES: ServiceItem[] = [
+  {
+    title: 'Cimientos y bases',
+    description:
+      'Ejecución precisa para dar estabilidad real desde el primer día de obra. Trabajamos con topografía verificada y hormigón certificado.',
+    features: ['Estudio de suelo previo', 'Hormigón H-30 certificado', 'Supervisión estructural continua'],
+    refPrice: 850000,
+    unit: 'obra',
+    icon: Hammer,
+    href: null,
+  },
+  {
+    title: 'Estructuras Metalcon',
+    description:
+      'Montaje técnico y controlado para proyectos residenciales modernos y seguros. Ideal para ampliaciones y obras nuevas de baja altura.',
+    features: ['Perfiles galvanizados de 1ª calidad', 'Plano estructural incluido', 'Garantía de 5 años en estructura'],
+    refPrice: 1200000,
+    unit: 'obra',
+    icon: Home,
+    href: '/servicios/metalcon',
+  },
+  {
+    title: 'Gasfitería certificada',
+    description:
+      'Instalaciones limpias, confiables y pensadas para durar. Certificación ESSBIO y SEC según normativa vigente.',
+    features: ['Certificación SEC incluida', 'Materiales de primera marca', 'Prueba de presión post-instalación'],
+    refPrice: 320000,
+    unit: 'obra',
+    icon: Droplet,
+    href: '/servicios/gasfiteria',
+  },
+  {
+    title: 'Revestimientos y aislación',
+    description:
+      'Confort térmico y acústico con terminaciones cuidadas. Reducimos el ruido exterior y optimizamos la temperatura interior.',
+    features: ['Aislación lana de vidrio o roca', 'Placa Volcanita certificada', 'Reducción sonora de hasta 42 dB'],
+    refPrice: 480000,
+    unit: 'obra',
+    icon: Layers,
+    href: null,
+  },
+  {
+    title: 'Pintura y acabados',
+    description:
+      'Terminaciones finas para espacios elegantes y funcionales. Trabajamos con pinturas premium de larga durabilidad.',
+    features: ['Preparación de superficie incluida', 'Pinturas Sipa o Sherwin-Williams', 'Mínimo 2 manos de aplicación'],
+    refPrice: 180000,
+    unit: 'obra',
+    icon: PaintRoller,
+    href: null,
+  },
+  {
+    title: 'Seguridad y domótica',
+    description:
+      'Control de accesos, automatización y protección para el hogar moderno. Tu casa inteligente y segura desde el día uno.',
+    features: ['Cámaras IP 4K con almacenamiento', 'Cerradura digital con huella', 'App de control remoto incluida'],
+    refPrice: 650000,
+    unit: 'obra',
+    icon: ShieldCheck,
+    href: null,
+  },
+  {
+    title: 'Instalaciones eléctricas',
+    description:
+      'Circuitos dimensionados correctamente, tablero termomagnético y certificación SEC. Seguridad eléctrica sin compromiso.',
+    features: ['Plano eléctrico actualizado', 'Certificación SEC obligatoria', 'Tablero modular con diferencial'],
+    refPrice: 290000,
+    unit: 'obra',
+    icon: Zap,
+    href: '/servicios/electricidad',
+  },
+  {
+    title: 'Mantención y reparaciones',
+    description:
+      'Servicio de mantención preventiva y correctiva para proteger tu inversión. Evita problemas mayores con revisiones periódicas.',
+    features: ['Visita de diagnóstico incluida', 'Informe técnico escrito', 'Plan de mantención anual'],
+    refPrice: 95000,
+    unit: 'visita',
+    icon: Wrench,
+    href: null,
+  },
+  {
+    title: 'Paisajismo y exteriores',
+    description:
+      'Diseño y ejecución de espacios exteriores que complementan la arquitectura. Terrazas, jardines y áreas de descanso premium.',
+    features: ['Diseño de terraza o jardín', 'Iluminación exterior LED', 'Materiales resistentes a la intemperie'],
+    refPrice: 420000,
+    unit: 'obra',
+    icon: Trees,
+    href: null,
+  },
+  {
+    title: 'Ampliaciones y remodelación integral',
+    description:
+      'Transformamos espacios completos coordinando todos los oficios. Un solo contrato, un solo equipo, cero dolores de cabeza.',
+    features: ['Coordinación total del proyecto', 'Cronograma con hitos semanales', 'Garantía de entrega a tiempo'],
+    refPrice: undefined,
+    unit: 'obra',
+    icon: Building2,
+    href: '/servicios/ampliaciones',
+  },
+  {
+    title: 'Inspección técnica',
+    description:
+      'Evaluación profesional de obra nueva o usada antes de comprar o remodelar. Detectamos fallas ocultas antes de que sean problemas.',
+    features: ['Informe fotográfico completo', 'Estimación de costos de reparación', 'Entrega en 48 horas'],
+    refPrice: 150000,
+    unit: 'inspección',
+    icon: ScanLine,
+    href: null,
+  },
+  {
+    title: 'Diseño de interiores',
+    description:
+      'Propuestas de diseño que integran estética, funcionalidad y el presupuesto real del cliente. Del concepto al resultado final.',
+    features: ['Renders 3D del espacio', 'Selección de materiales premium', 'Coordinación con obra incluida'],
+    refPrice: 380000,
+    unit: 'proyecto',
+    icon: Sparkles,
+    href: null,
+  },
+];
+
+const STATS = [
+  { value: '500+', label: 'Proyectos completados' },
+  { value: '8', label: 'Años de experiencia' },
+  { value: '100%', label: 'Clientes satisfechos' },
+  { value: '15', label: 'Especialistas certificados' },
+];
+
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
 function formatCLP(n: number): string {
   return n.toLocaleString('es-CL');
+}
+
+// ─── Service Calculator Modal ─────────────────────────────────────────────────
+
+function ServiceCalculatorModal({
+  service,
+  onClose,
+}: {
+  service: ServiceItem;
+  onClose: () => void;
+}) {
+  const [qty, setQty] = useState('1');
+  const [area, setArea] = useState('');
+
+  const isAreaUnit = service.unit === 'm²';
+  const q = parseFloat(qty);
+  const a = parseFloat(area);
+
+  const validQty = !isNaN(q) && q > 0;
+  const validArea = !isNaN(a) && a > 0;
+
+  // Estimate range: ±15 % around the reference price.
+  const baseTotal = useMemo(() => {
+    if (!service.refPrice) return null;
+    if (isAreaUnit) return validArea ? service.refPrice * a : null;
+    return validQty ? service.refPrice * q : null;
+  }, [service.refPrice, isAreaUnit, validArea, validQty, a, q]);
+
+  const estMin = baseTotal != null ? Math.round(baseTotal * 0.85) : null;
+  const estMax = baseTotal != null ? Math.round(baseTotal * 1.15) : null;
+
+  return (
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      onClick={onClose}
+      role="dialog"
+      aria-modal="true"
+    >
+      <div className="absolute inset-0 bg-black/70 backdrop-blur-sm" />
+      <div
+        className="relative w-full max-w-lg rounded-[2rem] border border-yellow-400/20 bg-zinc-950 p-8 shadow-2xl"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <button
+          onClick={onClose}
+          aria-label="Cerrar calculadora"
+          className="absolute right-6 top-6 rounded-full p-1 text-zinc-500 transition hover:bg-white/5 hover:text-white"
+        >
+          <X size={18} />
+        </button>
+
+        <div className="mb-6 flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl border border-yellow-400/30 bg-yellow-400/10 text-yellow-400">
+            <Calculator size={18} />
+          </span>
+          <div>
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-yellow-400">
+              Calculadora de servicio
+            </p>
+            <h3 className="text-lg font-black uppercase text-white">
+              {service.title}
+            </h3>
+          </div>
+        </div>
+
+        <p className="mb-5 text-xs leading-relaxed text-zinc-400">
+          {service.description}
+        </p>
+
+        {service.refPrice ? (
+          <>
+            {isAreaUnit ? (
+              <div className="mb-5">
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
+                  Superficie a intervenir (m²)
+                </label>
+                <input
+                  type="number"
+                  min="0"
+                  step="0.5"
+                  value={area}
+                  onChange={(e) => setArea(e.target.value)}
+                  placeholder="Ej: 25"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:border-yellow-400/50 focus:outline-none"
+                />
+              </div>
+            ) : (
+              <div className="mb-5">
+                <label className="mb-2 block text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
+                  Cantidad ({service.unit})
+                </label>
+                <input
+                  type="number"
+                  min="1"
+                  step="1"
+                  value={qty}
+                  onChange={(e) => setQty(e.target.value)}
+                  placeholder="1"
+                  className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:border-yellow-400/50 focus:outline-none"
+                />
+              </div>
+            )}
+
+            {estMin != null && estMax != null ? (
+              <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/[0.04] p-5">
+                <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-500">
+                  Estimación referencial
+                </p>
+                <div className="flex flex-wrap items-baseline gap-x-2 gap-y-1">
+                  <span className="text-xl font-black text-white">
+                    ${formatCLP(estMin)}
+                  </span>
+                  <span className="text-zinc-500">–</span>
+                  <span className="text-xl font-black text-white">
+                    ${formatCLP(estMax)}
+                  </span>
+                  <span className="text-xs text-zinc-500">CLP</span>
+                </div>
+                <p className="mt-2 text-[10px] leading-relaxed text-zinc-500">
+                  Rango ±15 % sobre precio base de referencia (${formatCLP(service.refPrice)} / {service.unit}).
+                  No constituye oferta formal.
+                </p>
+              </div>
+            ) : (
+              <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5 text-center text-xs text-zinc-500">
+                Ingresa {isAreaUnit ? 'la superficie' : 'una cantidad'} para ver el cálculo
+              </div>
+            )}
+          </>
+        ) : (
+          <div className="rounded-2xl border border-white/5 bg-white/[0.02] p-5 text-center text-xs text-zinc-400">
+            Este servicio se cotiza siempre a medida. Solicita una visita para
+            recibir un presupuesto exacto.
+          </div>
+        )}
+
+        <p className="mt-4 text-[10px] leading-relaxed text-zinc-600">
+          * Precios referenciales de mercado en la Región del Maule, Chile (2025).
+          El presupuesto definitivo se entrega tras visita técnica.
+        </p>
+
+        <div className="mt-5 flex flex-col gap-2 sm:flex-row">
+          <Link
+            href="/cotizaciones"
+            onClick={onClose}
+            className="flex-1 rounded-full border border-yellow-400/35 px-5 py-3 text-center text-[10px] font-black uppercase tracking-[0.25em] text-yellow-400 transition hover:bg-yellow-400/10"
+          >
+            Ver mi cotización
+          </Link>
+          <Link
+            href="/contacto"
+            onClick={onClose}
+            className="flex-1 rounded-full bg-yellow-400 px-5 py-3 text-center text-[10px] font-black uppercase tracking-[0.25em] text-black transition hover:bg-yellow-300"
+          >
+            Solicitar visita
+          </Link>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 // ─── Calculator Modal ─────────────────────────────────────────────────────────
@@ -818,9 +1129,27 @@ function SolutionItemCard({
 
 // ─── Main export ──────────────────────────────────────────────────────────────
 
-export default function SolucionesContent() {
+type TabId = 'servicios' | 'soluciones';
+
+interface UnifiedProps {
+  /** Which tab to highlight initially (defaults to 'servicios'). */
+  initialTab?: TabId;
+  /** Hero copy override per route. */
+  hero?: {
+    eyebrow?: string;
+    title?: string;
+    description?: string;
+  };
+}
+
+export default function SolucionesContent({
+  initialTab = 'servicios',
+  hero,
+}: UnifiedProps = {}) {
+  const [tab, setTab] = useState<TabId>(initialTab);
   const [openItems, setOpenItems] = useState<Set<string>>(new Set());
   const [calcGroup, setCalcGroup] = useState<SolutionGroup | null>(null);
+  const [calcService, setCalcService] = useState<ServiceItem | null>(null);
 
   function toggleItem(key: string) {
     setOpenItems((prev) => {
@@ -837,114 +1166,256 @@ export default function SolucionesContent() {
   return (
     <>
       <SectionPageShell
-        eyebrow="Catálogo de soluciones"
-        title="Cinco bloques para armar tu obra completa"
-        description="Cada bloque se puede comprar por separado o combinar en un paquete llave en mano. Haz clic en cualquier solución para ver materiales, rendimiento y precios referenciales."
-        primaryAction={{ href: '/tienda', label: 'Ver productos en tienda' }}
-        secondaryAction={{ href: '/contacto', label: 'Hablar con un asesor' }}
+        eyebrow={hero?.eyebrow ?? 'Servicios y soluciones'}
+        title={hero?.title ?? 'Un solo equipo para toda tu obra'}
+        description={
+          hero?.description ??
+          'Servicios profesionales y bloques técnicos por m² en una sola plataforma. Calcula tu obra, agrega lo que necesitas a la cotización y recibe respuesta en menos de 24 horas — sin precios sorpresa.'
+        }
+        primaryAction={{ href: '/cotizaciones', label: 'Ver mi cotización' }}
+        secondaryAction={{ href: '/juego', label: 'Diseñar mi casa' }}
       >
-        {/* Quick jump nav */}
-        <nav className="mb-10 flex flex-wrap gap-2">
-          {GROUPS.map((g) => (
-            <a
-              key={g.id}
-              href={`#${g.id}`}
-              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-300 transition hover:border-yellow-400/40 hover:text-yellow-400"
+        {/* Stats strip */}
+        <div className="mb-8 grid grid-cols-2 gap-3 md:mb-10 md:grid-cols-4 md:gap-4">
+          {STATS.map(({ value, label }) => (
+            <div
+              key={label}
+              className="rounded-[1.5rem] border border-yellow-400/20 bg-black/60 p-5 text-center md:p-6"
             >
-              <g.icon size={12} /> {g.eyebrow}
-            </a>
-          ))}
-        </nav>
-
-        <div className="space-y-10">
-          {GROUPS.map((group) => (
-            <section
-              key={group.id}
-              id={group.id}
-              className="scroll-mt-28 overflow-hidden rounded-[2rem] border border-white/5 bg-zinc-950/80 p-8 md:p-10"
-            >
-              {/* Section header */}
-              <header className="flex flex-col gap-5 border-b border-white/5 pb-6 md:flex-row md:items-end md:justify-between">
-                <div className="flex items-start gap-4">
-                  <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-yellow-400/30 bg-yellow-400/10 text-yellow-400">
-                    <group.icon size={20} />
-                  </span>
-                  <div>
-                    <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-yellow-400">
-                      {group.eyebrow}
-                    </p>
-                    <h2 className="mt-1 text-2xl font-black uppercase leading-tight tracking-tight text-white md:text-3xl">
-                      {group.title}
-                    </h2>
-                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
-                      {group.intro}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-shrink-0 flex-col gap-3 sm:flex-row">
-                  <button
-                    onClick={() => setCalcGroup(group)}
-                    className="inline-flex items-center justify-center gap-2 rounded-full border border-yellow-400/35 px-5 py-3 text-[10px] font-black uppercase tracking-[0.25em] text-yellow-400 transition hover:bg-yellow-400/10"
-                  >
-                    <Calculator size={12} /> Calcular m²
-                  </button>
-                  <Link
-                    href={group.ctaHref}
-                    className="inline-flex items-center justify-center gap-2 rounded-full bg-yellow-400 px-5 py-3 text-[10px] font-black uppercase tracking-[0.25em] text-black transition hover:bg-yellow-300"
-                  >
-                    {group.ctaLabel} <ArrowRight size={12} />
-                  </Link>
-                </div>
-              </header>
-
-              {/* Hint */}
-              <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-500">
-                Toca cualquier solución para ver materiales, rendimiento y precios
+              <p className="text-2xl font-black text-yellow-400 md:text-4xl">{value}</p>
+              <p className="mt-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-400">
+                {label}
               </p>
-
-              {/* Items grid */}
-              <div className="mt-3 grid gap-3 md:grid-cols-2">
-                {group.items.map((item, idx) => {
-                  const key = `${group.id}-${idx}`;
-                  return (
-                    <SolutionItemCard
-                      key={key}
-                      item={item}
-                      itemKey={key}
-                      isOpen={openItems.has(key)}
-                      onToggle={toggleItem}
-                    />
-                  );
-                })}
-              </div>
-            </section>
+            </div>
           ))}
         </div>
 
-        {/* Final CTA */}
-        <div className="mt-12 rounded-[2rem] border border-yellow-400/20 bg-[linear-gradient(135deg,rgba(250,204,21,0.08),rgba(250,204,21,0.02))] p-10 text-center">
+        {/* Tab switcher */}
+        <div
+          role="tablist"
+          aria-label="Servicios y soluciones"
+          className="mb-8 inline-flex w-full max-w-xl rounded-full border border-white/10 bg-white/[0.03] p-1 text-[10px] font-black uppercase tracking-[0.22em] md:mb-10"
+        >
+          <button
+            role="tab"
+            aria-selected={tab === 'servicios'}
+            onClick={() => setTab('servicios')}
+            className={`flex-1 rounded-full px-4 py-3 transition ${
+              tab === 'servicios'
+                ? 'bg-yellow-400 text-black'
+                : 'text-zinc-400 hover:text-yellow-400'
+            }`}
+          >
+            Servicios profesionales
+          </button>
+          <button
+            role="tab"
+            aria-selected={tab === 'soluciones'}
+            onClick={() => setTab('soluciones')}
+            className={`flex-1 rounded-full px-4 py-3 transition ${
+              tab === 'soluciones'
+                ? 'bg-yellow-400 text-black'
+                : 'text-zinc-400 hover:text-yellow-400'
+            }`}
+          >
+            Soluciones técnicas por m²
+          </button>
+        </div>
+
+        {/* ─── TAB: Servicios ─────────────────────────────────────────── */}
+        {tab === 'servicios' && (
+          <div role="tabpanel">
+            <p className="mb-6 max-w-3xl text-sm leading-relaxed text-zinc-400">
+              Servicios completos ejecutados por nuestro equipo: cimientos, estructura
+              Metalcon, instalaciones certificadas, terminaciones y mantención. Toca
+              <span className="mx-1 inline-flex items-center gap-1 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-2 py-0.5 text-[9px] font-bold text-yellow-400">
+                <Calculator size={10} /> Calcular
+              </span>
+              en cualquier tarjeta para estimar el costo de tu obra.
+            </p>
+
+            <div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+              {SERVICES.map((service) => {
+                const { title, description, features, refPrice, unit, icon: Icon, href } = service;
+                return (
+                  <article
+                    key={title}
+                    className="group flex flex-col rounded-[2rem] border border-white/5 bg-zinc-950/85 p-7 transition hover:border-yellow-400/30"
+                  >
+                    <div className="mb-5 flex h-14 w-14 items-center justify-center rounded-2xl border border-yellow-400/20 bg-black transition group-hover:border-yellow-400/50 group-hover:bg-yellow-400/5">
+                      <Icon className="h-6 w-6 text-yellow-400" />
+                    </div>
+                    <h2 className="text-lg font-bold uppercase tracking-[0.15em] text-white">
+                      {title}
+                    </h2>
+                    <p className="mt-3 text-sm leading-relaxed text-zinc-400">
+                      {description}
+                    </p>
+                    <ul className="mt-5 space-y-2">
+                      {features.map((f) => (
+                        <li key={f} className="flex items-start gap-2 text-xs text-zinc-400">
+                          <span className="mt-0.5 h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-400" />
+                          {f}
+                        </li>
+                      ))}
+                    </ul>
+
+                    <div className="mt-auto flex flex-col gap-3 border-t border-white/5 pt-5">
+                      <div className="flex items-center justify-between gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500">
+                          {refPrice
+                            ? `Desde $${formatCLP(refPrice)} / ${unit}`
+                            : 'Cotización a medida'}
+                        </span>
+                        <AddServiceQuoteButton
+                          serviceTitle={title}
+                          description={description}
+                          refPrice={refPrice}
+                          unit={unit}
+                        />
+                      </div>
+
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <button
+                          type="button"
+                          onClick={() => setCalcService(service)}
+                          className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/35 px-4 py-2 text-[10px] font-black uppercase tracking-[0.2em] text-yellow-400 transition hover:bg-yellow-400/10"
+                        >
+                          <Calculator className="h-3 w-3" /> Calcular
+                        </button>
+
+                        {href ? (
+                          <Link
+                            href={href}
+                            className="text-[10px] font-bold uppercase tracking-[0.2em] text-yellow-400/80 transition-colors hover:text-yellow-400"
+                          >
+                            Ver detalle →
+                          </Link>
+                        ) : null}
+                      </div>
+                    </div>
+                  </article>
+                );
+              })}
+            </div>
+          </div>
+        )}
+
+        {/* ─── TAB: Soluciones ────────────────────────────────────────── */}
+        {tab === 'soluciones' && (
+          <div role="tabpanel">
+            <p className="mb-6 max-w-3xl text-sm leading-relaxed text-zinc-400">
+              Bloques técnicos cotizados por m², m lineal o punto. Cada uno se
+              puede comprar por separado o combinarse en un paquete llave en mano.
+              Toca cualquier solución para ver materiales, rendimiento y precios.
+            </p>
+
+            {/* Quick jump nav */}
+            <nav className="mb-8 flex flex-wrap gap-2">
+              {GROUPS.map((g) => (
+                <a
+                  key={g.id}
+                  href={`#${g.id}`}
+                  className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.02] px-4 py-2 text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-300 transition hover:border-yellow-400/40 hover:text-yellow-400"
+                >
+                  <g.icon size={12} /> {g.eyebrow}
+                </a>
+              ))}
+            </nav>
+
+            <div className="space-y-10">
+              {GROUPS.map((group) => (
+                <section
+                  key={group.id}
+                  id={group.id}
+                  className="scroll-mt-28 overflow-hidden rounded-[2rem] border border-white/5 bg-zinc-950/80 p-6 md:p-10"
+                >
+                  <header className="flex flex-col gap-5 border-b border-white/5 pb-6 md:flex-row md:items-end md:justify-between">
+                    <div className="flex items-start gap-4">
+                      <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl border border-yellow-400/30 bg-yellow-400/10 text-yellow-400">
+                        <group.icon size={20} />
+                      </span>
+                      <div>
+                        <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-yellow-400">
+                          {group.eyebrow}
+                        </p>
+                        <h2 className="mt-1 text-2xl font-black uppercase leading-tight tracking-tight text-white md:text-3xl">
+                          {group.title}
+                        </h2>
+                        <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
+                          {group.intro}
+                        </p>
+                      </div>
+                    </div>
+
+                    <div className="flex flex-shrink-0 flex-col gap-3 sm:flex-row">
+                      <button
+                        onClick={() => setCalcGroup(group)}
+                        className="inline-flex items-center justify-center gap-2 rounded-full border border-yellow-400/35 px-5 py-3 text-[10px] font-black uppercase tracking-[0.25em] text-yellow-400 transition hover:bg-yellow-400/10"
+                      >
+                        <Calculator size={12} /> Calcular m²
+                      </button>
+                      <Link
+                        href={group.ctaHref}
+                        className="inline-flex items-center justify-center gap-2 rounded-full bg-yellow-400 px-5 py-3 text-[10px] font-black uppercase tracking-[0.25em] text-black transition hover:bg-yellow-300"
+                      >
+                        {group.ctaLabel} <ArrowRight size={12} />
+                      </Link>
+                    </div>
+                  </header>
+
+                  <p className="mt-5 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-500">
+                    Toca cualquier solución para ver materiales, rendimiento y precios
+                  </p>
+
+                  <div className="mt-3 grid gap-3 md:grid-cols-2">
+                    {group.items.map((item, idx) => {
+                      const key = `${group.id}-${idx}`;
+                      return (
+                        <SolutionItemCard
+                          key={key}
+                          item={item}
+                          itemKey={key}
+                          isOpen={openItems.has(key)}
+                          onToggle={toggleItem}
+                        />
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Final CTA — shared between both tabs */}
+        <div className="mt-12 rounded-[2rem] border border-yellow-400/20 bg-[linear-gradient(135deg,rgba(250,204,21,0.08),rgba(250,204,21,0.02))] p-8 text-center md:p-14">
           <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-yellow-400">
             Paquete integral
           </p>
-          <h3 className="mt-3 text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
-            ¿Necesitas varios bloques a la vez?
+          <h3 className="mt-3 text-2xl font-black uppercase tracking-tight text-white md:text-4xl">
+            Arma tu casa con la lista completa
           </h3>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-zinc-400">
             Coordinamos todo en un solo cronograma: diseño, materiales, estructura,
             instalaciones y terminaciones. Un solo equipo, un solo estándar.
           </p>
-          <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
+          <div className="mt-6 flex flex-col items-center justify-center gap-3 sm:flex-row">
+            <Link
+              href="/cotizaciones"
+              className="rounded-full bg-yellow-400 px-8 py-4 text-[11px] font-black uppercase tracking-[0.25em] text-black transition hover:bg-white"
+            >
+              Ver mi cotización
+            </Link>
             <Link
               href="/contacto?asunto=integral"
-              className="rounded-full bg-yellow-400 px-8 py-4 text-[10px] font-black uppercase tracking-[0.3em] text-black transition hover:bg-yellow-300"
+              className="rounded-full border border-yellow-400/35 px-8 py-4 text-[11px] font-bold uppercase tracking-[0.25em] text-yellow-400 transition hover:bg-yellow-400/10"
             >
               Solicitar presupuesto integral
             </Link>
             <Link
               href="/proyectos"
-              className="rounded-full border border-white/10 px-8 py-4 text-[10px] font-bold uppercase tracking-[0.3em] text-zinc-300 transition hover:border-yellow-400/40 hover:text-yellow-400"
+              className="rounded-full border border-white/10 px-8 py-4 text-[11px] font-bold uppercase tracking-[0.25em] text-zinc-300 transition hover:border-yellow-400/40 hover:text-yellow-400"
             >
               Ver proyectos ejecutados
             </Link>
@@ -952,9 +1423,15 @@ export default function SolucionesContent() {
         </div>
       </SectionPageShell>
 
-      {/* Calculator modal (portal-free, rendered above everything via fixed position) */}
+      {/* Calculator modals */}
       {calcGroup && (
         <CalculatorModal group={calcGroup} onClose={() => setCalcGroup(null)} />
+      )}
+      {calcService && (
+        <ServiceCalculatorModal
+          service={calcService}
+          onClose={() => setCalcService(null)}
+        />
       )}
     </>
   );

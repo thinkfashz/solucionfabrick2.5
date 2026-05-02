@@ -100,26 +100,69 @@ export function normalizeProductUrl(raw: string): URL {
  * caught here. That's a known limitation — the upstream firewall must
  * also block egress to RFC-1918 ranges.
  */
+
+// IPv4 private / loopback / link-local / unspecified ranges. Hoisted to
+// module scope so the patterns are compiled once.
+const PRIVATE_IPV4_PATTERNS: RegExp[] = [
+  /^127\./,                       // loopback
+  /^169\.254\./,                  // link-local (incl. cloud IMDS)
+  /^10\./,                        // RFC-1918
+  /^172\.(1[6-9]|2\d|3[01])\./,   // RFC-1918
+  /^192\.168\./,                  // RFC-1918
+  /^0\./,                         // 0.0.0.0/8
+];
+
+const PRIVATE_IPV6_PATTERNS: RegExp[] = [
+  /^::1$/,                        // IPv6 loopback
+  /^::$/,                         // IPv6 unspecified
+  /^fc[0-9a-f]{2}:/i,             // IPv6 unique-local fc00::/7
+  /^fd[0-9a-f]{2}:/i,             // IPv6 unique-local fd00::/8
+  /^fe80:/i,                      // IPv6 link-local
+];
+
+// IPv6 forms that embed an IPv4 address in the low 32 bits and which
+// Node's `fetch` will resolve to that underlying IPv4 — bypassing a
+// naive textual SSRF check unless we explicitly normalise them.
+//   - IPv4-mapped:    ::ffff:a.b.c.d        (RFC 4291 §2.5.5.2)
+//   - IPv4-compat.:   ::a.b.c.d             (RFC 4291 §2.5.5.1, deprecated)
+//   - SIIT / 64:ff9b: 64:ff9b::a.b.c.d      (RFC 6052)
+// Capture the dotted-quad tail so we can re-check it against
+// PRIVATE_IPV4_PATTERNS.
+const IPV6_EMBEDDED_IPV4_PATTERN =
+  /^(?:::ffff:|::ffff:0{1,4}:|64:ff9b::|::)((?:\d{1,3}\.){3}\d{1,3})$/i;
+
+// Hex form of IPv4-mapped IPv6 (rare but valid). 32 bits encoded as two
+// 16-bit groups: ::ffff:HHHH:HHHH. Capture the two hex groups.
+const IPV6_MAPPED_HEX_PATTERN = /^(?:::ffff:|::ffff:0{1,4}:)([0-9a-f]{1,4}):([0-9a-f]{1,4})$/i;
+
 export function isPrivateHost(hostname: string): boolean {
   const h = (hostname ?? '').trim().toLowerCase();
   if (!h) return true;
   if (h === 'localhost' || h.endsWith('.localhost')) return true;
   // Strip IPv6 brackets if present (e.g. "[::1]").
   const stripped = h.startsWith('[') && h.endsWith(']') ? h.slice(1, -1) : h;
-  const PRIVATE_PATTERNS: RegExp[] = [
-    /^127\./,                       // loopback
-    /^169\.254\./,                  // link-local (incl. cloud IMDS)
-    /^10\./,                        // RFC-1918
-    /^172\.(1[6-9]|2\d|3[01])\./,   // RFC-1918
-    /^192\.168\./,                  // RFC-1918
-    /^0\./,                         // 0.0.0.0/8
-    /^::1$/,                        // IPv6 loopback
-    /^::$/,                         // IPv6 unspecified
-    /^fc[0-9a-f]{2}:/i,             // IPv6 unique-local fc00::/7
-    /^fd[0-9a-f]{2}:/i,             // IPv6 unique-local fd00::/8
-    /^fe80:/i,                      // IPv6 link-local
-  ];
-  return PRIVATE_PATTERNS.some((r) => r.test(stripped));
+
+  // IPv4-in-IPv6 normalisation: `::ffff:169.254.169.254` and friends
+  // resolve to the literal IPv4 address by Node's resolver, so test the
+  // embedded IPv4 against the IPv4 private-range patterns.
+  const embeddedV4 = stripped.match(IPV6_EMBEDDED_IPV4_PATTERN);
+  if (embeddedV4) {
+    const v4 = embeddedV4[1];
+    if (PRIVATE_IPV4_PATTERNS.some((r) => r.test(v4))) return true;
+  }
+  const embeddedHex = stripped.match(IPV6_MAPPED_HEX_PATTERN);
+  if (embeddedHex) {
+    const hi = parseInt(embeddedHex[1], 16);
+    const lo = parseInt(embeddedHex[2], 16);
+    if (Number.isFinite(hi) && Number.isFinite(lo)) {
+      const v4 = `${(hi >> 8) & 0xff}.${hi & 0xff}.${(lo >> 8) & 0xff}.${lo & 0xff}`;
+      if (PRIVATE_IPV4_PATTERNS.some((r) => r.test(v4))) return true;
+    }
+  }
+
+  if (PRIVATE_IPV4_PATTERNS.some((r) => r.test(stripped))) return true;
+  if (PRIVATE_IPV6_PATTERNS.some((r) => r.test(stripped))) return true;
+  return false;
 }
 
 /**

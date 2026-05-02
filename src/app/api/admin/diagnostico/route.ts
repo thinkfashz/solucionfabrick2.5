@@ -79,7 +79,7 @@ export async function GET(request: NextRequest) {
       {
         ok: allTablesOk,
         env,
-        insforge: { configured: true },
+        insforge: { configured: true, baseUrl },
         tables,
       },
       { headers: { 'Cache-Control': 'no-store' } },

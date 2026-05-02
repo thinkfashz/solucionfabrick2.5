@@ -78,6 +78,19 @@ describe('productImport.isPrivateHost (SSRF guard)', () => {
     'fc00::1',
     'fd12:3456:789a::1',
     'fe80::1',
+    // IPv4-in-IPv6 forms — Node fetch resolves these to the embedded
+    // IPv4, so the textual SSRF check must normalise them.
+    '::ffff:127.0.0.1',
+    '::ffff:169.254.169.254',
+    '::ffff:10.0.0.1',
+    '::ffff:192.168.1.1',
+    '[::ffff:169.254.169.254]', // bracketed (URL.hostname form)
+    '::FFFF:169.254.169.254',   // case-insensitive
+    '::ffff:0:127.0.0.1',       // alternate ::ffff:0:V4 spelling
+    '::127.0.0.1',              // IPv4-compatible (deprecated)
+    '64:ff9b::169.254.169.254', // RFC 6052 well-known prefix
+    '::ffff:a9fe:a9fe',         // hex form of 169.254.169.254
+    '::ffff:7f00:0001',         // hex form of 127.0.0.1
   ])('flags %s as private', (host) => {
     expect(isPrivateHost(host)).toBe(true);
   });
@@ -92,6 +105,8 @@ describe('productImport.isPrivateHost (SSRF guard)', () => {
     '172.32.0.1', // just outside RFC-1918
     '169.255.0.1', // just outside link-local
     '2001:db8::1', // documentation prefix, not private
+    '::ffff:8.8.8.8', // IPv4-mapped public address must NOT be flagged
+    '::ffff:0808:0808', // hex form of 8.8.8.8
   ])('does not flag %s as private', (host) => {
     expect(isPrivateHost(host)).toBe(false);
   });

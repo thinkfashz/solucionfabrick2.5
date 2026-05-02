@@ -284,7 +284,11 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
       price: parseInt(form.price, 10),
       category_id: form.category_id,
       stock: form.stock ? parseInt(form.stock, 10) : null,
-      delivery_days: form.delivery_days ? parseInt(form.delivery_days, 10) : null,
+      delivery_days: (() => {
+        if (!form.delivery_days) return null;
+        const n = parseInt(form.delivery_days, 10);
+        return Number.isFinite(n) && n >= 0 ? n : null;
+      })(),
       tagline: form.tagline.trim() || null,
       image_url: form.image_url || null,
       activo: form.activo,

@@ -79,7 +79,26 @@ function sanitizeOverrides(raw: unknown): {
   if (typeof o.price === 'number' && Number.isFinite(o.price) && o.price >= 0) {
     out.price = o.price;
   } else if (typeof o.price === 'string') {
-    const n = Number.parseFloat(o.price.replace(/[^\d.,-]/g, '').replace(',', '.'));
+    // Locale-aware: handles "1.234,56" (EU), "1,234.56" (US), "49.990"
+    // (CLP thousands), "49.99" (US decimal), "49,99" (EU decimal).
+    let s = o.price.replace(/[^\d.,-]/g, '');
+    const lastDot = s.lastIndexOf('.');
+    const lastComma = s.lastIndexOf(',');
+    if (lastDot === -1 && lastComma === -1) {
+      // plain integer
+    } else if (lastDot >= 0 && lastComma === -1) {
+      const tail = s.slice(lastDot + 1);
+      if (tail.length === 3) s = s.replace(/\./g, '');
+    } else if (lastComma >= 0 && lastDot === -1) {
+      const tail = s.slice(lastComma + 1);
+      if (tail.length === 3) s = s.replace(/,/g, '');
+      else s = s.replace(/,/g, '.');
+    } else if (lastDot > lastComma) {
+      s = s.replace(/,/g, '');
+    } else {
+      s = s.replace(/\./g, '').replace(',', '.');
+    }
+    const n = Number.parseFloat(s);
     if (Number.isFinite(n) && n >= 0) out.price = n;
   }
   if (typeof o.currency === 'string') {

@@ -390,6 +390,11 @@ function EditablePreviewCard({ preview, onImport, importing, importedId }: Edita
     setKeptImages(Array.from(new Set(list)));
   }
 
+  const galleryImages = useMemo(() => {
+    if (preview.images.length > 0) return preview.images;
+    return coverUrl ? [coverUrl] : [];
+  }, [preview.images, coverUrl]);
+
   function handleSubmit() {
     if (!title.trim() || priceNumber <= 0) return;
     const finalCurrency = (currency || 'CLP').toUpperCase();
@@ -537,7 +542,7 @@ function EditablePreviewCard({ preview, onImport, importing, importedId }: Edita
               </div>
             ) : (
               <div className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-                {(preview.images.length > 0 ? preview.images : coverUrl ? [coverUrl] : []).map((imgUrl) => {
+                {galleryImages.map((imgUrl) => {
                   const kept = keptImages.includes(imgUrl);
                   const isCover = coverUrl === imgUrl;
                   return (
@@ -573,6 +578,7 @@ function EditablePreviewCard({ preview, onImport, importing, importedId }: Edita
                           }}
                           disabled={!!importedId || isCover}
                           title="Usar como portada"
+                          aria-label={isCover ? 'Esta es la portada actual' : 'Usar esta imagen como portada'}
                           className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-black/60 text-yellow-300 ring-1 ring-yellow-400/40 transition hover:bg-yellow-400 hover:text-black disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <Star className="h-3.5 w-3.5" />
@@ -581,6 +587,7 @@ function EditablePreviewCard({ preview, onImport, importing, importedId }: Edita
                           type="button"
                           onClick={() => copyToClipboard(imgUrl)}
                           title="Copiar URL"
+                          aria-label="Copiar URL de la imagen al portapapeles"
                           className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-black/60 text-zinc-200 ring-1 ring-white/10 transition hover:bg-white/20"
                         >
                           {copiedUrl === imgUrl ? (
@@ -594,6 +601,7 @@ function EditablePreviewCard({ preview, onImport, importing, importedId }: Edita
                           onClick={() => toggleImage(imgUrl)}
                           disabled={!!importedId}
                           title={kept ? 'Quitar de la lista' : 'Volver a incluir'}
+                          aria-label={kept ? 'Quitar imagen de la galería' : 'Volver a incluir imagen en la galería'}
                           className="inline-flex h-7 w-7 items-center justify-center rounded-md bg-black/60 text-zinc-200 ring-1 ring-white/10 transition hover:bg-red-500/30 hover:text-red-200 disabled:cursor-not-allowed disabled:opacity-50"
                         >
                           <X className="h-3.5 w-3.5" />

@@ -53,6 +53,14 @@ export interface ImportedProduct {
   price: number;
   currency: string;
   imageUrl: string | null;
+  /**
+   * Full list of image URLs scraped from the source. The cover
+   * (`imageUrl`) is always equal to `images[0]` when available, so
+   * existing callers that only read `imageUrl` keep working. The admin
+   * preview UI uses the rest to let the user pick a different cover or
+   * copy individual links to use elsewhere on the site.
+   */
+  images: string[];
   /** Optional extra detail surfaced by the UI preview. */
   available: boolean | null;
   stock: number | null;
@@ -436,11 +444,18 @@ async function fetchMercadoLibreItem(itemId: string): Promise<ImportedProduct> {
     }
   } catch { /* ignore */ }
 
-  const cover =
-    item.pictures?.[0]?.secure_url ||
-    item.pictures?.[0]?.url ||
-    item.thumbnail ||
-    null;
+  const pictures = Array.isArray(item.pictures) ? item.pictures : [];
+  const images: string[] = [];
+  for (const pic of pictures) {
+    const u = pic?.secure_url || pic?.url;
+    if (typeof u === 'string' && u.trim() && !images.includes(u)) {
+      images.push(u);
+    }
+  }
+  if (images.length === 0 && typeof item.thumbnail === 'string' && item.thumbnail.trim()) {
+    images.push(item.thumbnail);
+  }
+  const cover = images[0] ?? null;
 
   return {
     source: 'mercadolibre',
@@ -451,6 +466,7 @@ async function fetchMercadoLibreItem(itemId: string): Promise<ImportedProduct> {
     price: typeof item.price === 'number' ? item.price : 0,
     currency: item.currency_id || 'CLP',
     imageUrl: cover,
+    images,
     available: item.status === 'active',
     stock: typeof item.available_quantity === 'number' ? item.available_quantity : null,
   };
@@ -482,6 +498,24 @@ export function parseGenericProductHtml(html: string, finalUrl: URL): ImportedPr
     meta('meta[name="description"]') ||
     null;
 
+  // Collect every plausible image URL: og:image (and its variants),
+  // twitter:image, and JSON-LD Product.image (string | array |
+  // ImageObject). The first entry becomes the cover; the rest are
+  // surfaced by the admin preview so the user can pick or copy them.
+  const images: string[] = [];
+  const pushImage = (raw: unknown) => {
+    if (typeof raw !== 'string') return;
+    const trimmed = raw.trim();
+    if (!trimmed) return;
+    let abs = trimmed;
+    try { abs = new URL(trimmed, finalUrl).toString(); } catch { /* keep raw */ }
+    if (!images.includes(abs)) images.push(abs);
+  };
+
+  $('meta[property="og:image:secure_url"], meta[property="og:image"], meta[property="og:image:url"], meta[name="twitter:image"], meta[name="twitter:image:src"]').each((_, el) => {
+    pushImage($(el).attr('content'));
+  });
+
   let imageUrl =
     meta('meta[property="og:image:secure_url"]') ||
     meta('meta[property="og:image"]') ||
@@ -508,42 +542,54 @@ export function parseGenericProductHtml(html: string, finalUrl: URL): ImportedPr
     null;
 
   // JSON-LD `Product` / `Offer` is the most reliable source when present.
-  if (!priceStr || !currency) {
-    $('script[type="application/ld+json"]').each((_, el) => {
-      const raw = $(el).contents().text();
-      if (!raw) return;
-      let parsed: unknown;
-      try { parsed = JSON.parse(raw); } catch { return; }
-      // JSON-LD docs can be a single object, an array, or have a @graph array.
-      const candidates: unknown[] = [];
-      const stack: unknown[] = [parsed];
-      while (stack.length) {
-        const node = stack.pop();
-        if (!node || typeof node !== 'object') continue;
-        if (Array.isArray(node)) { stack.push(...node); continue; }
-        const obj = node as Record<string, unknown>;
-        candidates.push(obj);
-        if (Array.isArray(obj['@graph'])) stack.push(...(obj['@graph'] as unknown[]));
-      }
-      for (const c of candidates) {
-        const obj = c as Record<string, unknown>;
-        const type = obj['@type'];
-        const isProduct = type === 'Product' || (Array.isArray(type) && type.includes('Product'));
-        if (!isProduct) continue;
-        const offers = obj.offers;
-        const offer = Array.isArray(offers) ? offers[0] : offers;
-        if (offer && typeof offer === 'object') {
-          const o = offer as Record<string, unknown>;
-          if (!priceStr) {
-            const p = o.price ?? o.lowPrice;
-            if (typeof p === 'number' || typeof p === 'string') priceStr = String(p);
-          }
-          if (!currency && typeof o.priceCurrency === 'string') currency = o.priceCurrency;
-          if (!availability && typeof o.availability === 'string') availability = o.availability;
+  // We always walk JSON-LD (even when og price tags are present) so we
+  // can collect Product.image entries that the OG metadata may miss.
+  $('script[type="application/ld+json"]').each((_, el) => {
+    const raw = $(el).contents().text();
+    if (!raw) return;
+    let parsed: unknown;
+    try { parsed = JSON.parse(raw); } catch { return; }
+    // JSON-LD docs can be a single object, an array, or have a @graph array.
+    const candidates: unknown[] = [];
+    const stack: unknown[] = [parsed];
+    while (stack.length) {
+      const node = stack.pop();
+      if (!node || typeof node !== 'object') continue;
+      if (Array.isArray(node)) { stack.push(...node); continue; }
+      const obj = node as Record<string, unknown>;
+      candidates.push(obj);
+      if (Array.isArray(obj['@graph'])) stack.push(...(obj['@graph'] as unknown[]));
+    }
+    for (const c of candidates) {
+      const obj = c as Record<string, unknown>;
+      const type = obj['@type'];
+      const isProduct = type === 'Product' || (Array.isArray(type) && type.includes('Product'));
+      if (!isProduct) continue;
+      // Product.image: string | string[] | ImageObject | ImageObject[]
+      const img = obj.image;
+      const imgList = Array.isArray(img) ? img : [img];
+      for (const entry of imgList) {
+        if (typeof entry === 'string') {
+          pushImage(entry);
+        } else if (entry && typeof entry === 'object') {
+          const e = entry as Record<string, unknown>;
+          if (typeof e.url === 'string') pushImage(e.url);
+          else if (typeof e.contentUrl === 'string') pushImage(e.contentUrl);
         }
       }
-    });
-  }
+      const offers = obj.offers;
+      const offer = Array.isArray(offers) ? offers[0] : offers;
+      if (offer && typeof offer === 'object') {
+        const o = offer as Record<string, unknown>;
+        if (!priceStr) {
+          const p = o.price ?? o.lowPrice;
+          if (typeof p === 'number' || typeof p === 'string') priceStr = String(p);
+        }
+        if (!currency && typeof o.priceCurrency === 'string') currency = o.priceCurrency;
+        if (!availability && typeof o.availability === 'string') availability = o.availability;
+      }
+    }
+  });
 
   const price = (() => {
     if (!priceStr) return 0;
@@ -590,7 +636,10 @@ export function parseGenericProductHtml(html: string, finalUrl: URL): ImportedPr
     description,
     price,
     currency: (currency || 'CLP').toUpperCase(),
-    imageUrl,
+    // Keep `imageUrl` aligned with the first entry of `images` so callers
+    // that consume one or the other agree on the cover.
+    imageUrl: images[0] ?? imageUrl ?? null,
+    images,
     available,
     stock: null,
   };

@@ -257,6 +257,49 @@ describe('productImport.parseGenericProductHtml — Open Graph', () => {
     const html = `<html><head><meta property="og:image" content="/static/img.jpg"></head></html>`;
     const out = parseGenericProductHtml(html, new URL('https://www.shop.cl/p/123'));
     expect(out.imageUrl).toBe('https://www.shop.cl/static/img.jpg');
+    expect(out.images).toEqual(['https://www.shop.cl/static/img.jpg']);
+  });
+
+  it('collects every og:image / twitter:image / og:image:secure_url tag into images[]', () => {
+    const html = `
+      <html><head>
+        <meta property="og:image" content="https://cdn.test/a.jpg">
+        <meta property="og:image" content="https://cdn.test/b.jpg">
+        <meta property="og:image:secure_url" content="https://cdn.test/c.jpg">
+        <meta name="twitter:image" content="https://cdn.test/a.jpg">
+      </head></html>
+    `;
+    const out = parseGenericProductHtml(html, new URL('https://www.shop.cl/p/1'));
+    // De-duplicates and preserves document order.
+    expect(out.images).toEqual([
+      'https://cdn.test/a.jpg',
+      'https://cdn.test/b.jpg',
+      'https://cdn.test/c.jpg',
+    ]);
+    // imageUrl is the cover (first entry) so single-image consumers keep working.
+    expect(out.imageUrl).toBe(out.images[0]);
+  });
+
+  it('extracts the JSON-LD Product.image gallery (string, array, ImageObject)', () => {
+    const html = `
+      <html><head>
+        <script type="application/ld+json">
+        {
+          "@context": "https://schema.org",
+          "@type": "Product",
+          "image": [
+            "https://cdn.test/p1.jpg",
+            { "@type": "ImageObject", "url": "https://cdn.test/p2.jpg" }
+          ],
+          "offers": { "@type": "Offer", "price": "9990", "priceCurrency": "CLP" }
+        }
+        </script>
+      </head></html>
+    `;
+    const out = parseGenericProductHtml(html, new URL('https://www.shop.cl/p/2'));
+    expect(out.images).toEqual(['https://cdn.test/p1.jpg', 'https://cdn.test/p2.jpg']);
+    expect(out.imageUrl).toBe('https://cdn.test/p1.jpg');
+    expect(out.price).toBe(9990);
   });
 
   it('returns 0 price when no price markup is present', () => {
@@ -264,6 +307,7 @@ describe('productImport.parseGenericProductHtml — Open Graph', () => {
     const out = parseGenericProductHtml(html, new URL('https://www.test.cl/x'));
     expect(out.price).toBe(0);
     expect(out.currency).toBe('CLP'); // default
+    expect(out.images).toEqual([]);
   });
 });
 

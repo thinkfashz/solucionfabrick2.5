@@ -32,7 +32,7 @@ const defaultTransition = {
 const AnimatedButton = React.forwardRef<HTMLElement, AnimatedButtonProps>(
   (
     {
-      children = 'Browse Components',
+      children,
       className = '',
       as = 'button',
       whileTap = { scale: 0.97 },

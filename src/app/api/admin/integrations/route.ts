@@ -110,6 +110,32 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Credenciales inválidas.' }, { status: 400 });
   }
 
+  // Cloudinary cloud names are lowercase alphanumerics with optional dashes /
+  // underscores. Reject obvious mistakes (e.g. spaces or the literal "Root",
+  // which is the default *Product Environment* label in Cloudinary's dashboard
+  // — users frequently copy that instead of the actual cloud name).
+  if (provider === 'cloudinary' && typeof credentials.cloud_name === 'string' && credentials.cloud_name.length > 0) {
+    const candidate = credentials.cloud_name.trim();
+    if (!/^[a-zA-Z0-9_-]+$/.test(candidate)) {
+      return NextResponse.json(
+        {
+          error:
+            'Cloud name inválido: sólo se permiten letras, números, guiones y guión bajo. No incluyas espacios ni la URL completa.',
+        },
+        { status: 400 },
+      );
+    }
+    if (candidate.toLowerCase() === 'root') {
+      return NextResponse.json(
+        {
+          error:
+            '"Root" es el nombre del *Product Environment* de Cloudinary, no tu cloud name. Encuéntralo en cloudinary.com → Settings → API Keys (campo "Cloud Name") o en la URL del dashboard (cloudinary://...@TU_CLOUD_NAME).',
+        },
+        { status: 400 },
+      );
+    }
+  }
+
   // Merge with existing credentials so the admin can update individual fields
   // (e.g. rotate only the access token) without having to re-enter everything.
   let existing: Record<string, string> = {};
@@ -132,6 +158,53 @@ export async function POST(request: NextRequest) {
     if (typeof value !== 'string') continue;
     if (value === '') continue; // empty string means "leave as-is"
     nextCredentials[key] = value.trim();
+  }
+
+  // Live-validate Cloudinary credentials against their Admin API before
+  // persisting, so bad values never end up in the integrations table.
+  if (provider === 'cloudinary') {
+    const cloudName = nextCredentials.cloud_name;
+    const apiKey = nextCredentials.api_key;
+    const apiSecret = nextCredentials.api_secret;
+    if (cloudName && apiKey && apiSecret) {
+      try {
+        const pingUrl = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cloudName)}/usage`;
+        const basicAuth = btoa(`${apiKey}:${apiSecret}`);
+        const pingRes = await fetch(pingUrl, {
+          headers: { Authorization: `Basic ${basicAuth}` },
+          cache: 'no-store',
+        });
+        if (!pingRes.ok) {
+          const bodyText = await pingRes.text().catch(() => '');
+          let upstreamMessage = '';
+          try {
+            const parsed = JSON.parse(bodyText) as { error?: { message?: string } };
+            upstreamMessage = parsed.error?.message ?? '';
+          } catch {
+            upstreamMessage = bodyText.slice(0, 200);
+          }
+          const hint =
+            pingRes.status === 401 && /cloud_name/i.test(upstreamMessage)
+              ? ' Asegúrate de usar el cloud_name (cloudinary.com → Settings → API Keys → "Cloud Name"), no el nombre del Product Environment ("Root" por defecto).'
+              : '';
+          return NextResponse.json(
+            {
+              error: `Cloudinary rechazó las credenciales (HTTP ${pingRes.status}): ${upstreamMessage || 'sin detalle'}.${hint}`,
+            },
+            { status: 400 },
+          );
+        }
+      } catch (err) {
+        return NextResponse.json(
+          {
+            error: `No se pudo contactar Cloudinary para validar las credenciales: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          },
+          { status: 502 },
+        );
+      }
+    }
   }
 
   try {

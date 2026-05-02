@@ -12,6 +12,7 @@ interface ProviderField {
   label: string;
   placeholder?: string;
   type?: 'text' | 'password';
+  hint?: string;
 }
 
 interface ProviderDefinition {
@@ -70,7 +71,12 @@ const PROVIDERS: ProviderDefinition[] = [
     label: 'Cloudinary · Gestión de imágenes',
     description: 'Conecta tu cuenta de Cloudinary para subir, editar y gestionar imágenes directamente desde el panel admin. Obtén las claves en cloudinary.com > Settings > API Keys.',
     fields: [
-      { key: 'cloud_name', label: 'Cloud name', placeholder: 'mi-cloud-name' },
+      {
+        key: 'cloud_name',
+        label: 'Cloud name',
+        placeholder: 'mi-cloud-name',
+        hint: 'NO uses "Root" (eso es el nombre del Product Environment). El cloud name aparece en Cloudinary → Settings → API Keys, o en la URL del dashboard (cloudinary://...@TU_CLOUD_NAME).',
+      },
       { key: 'api_key', label: 'API Key', placeholder: '123456789012345' },
       { key: 'api_secret', label: 'API Secret', type: 'password' as const, placeholder: 'aBcDeFgH...' },
     ],
@@ -643,7 +649,7 @@ export default function ConfiguracionPage() {
                             }))
                           }
                           placeholder={existing?.set ? existing.preview : (field.placeholder ?? '')}
-                          hint={existing?.set ? 'Valor actual oculto. Deja vacío para mantenerlo.' : undefined}
+                          hint={existing?.set ? 'Valor actual oculto. Deja vacío para mantenerlo.' : field.hint}
                           disabled={loadingIntegrations || savingIntegration === prov.id}
                         />
                       );

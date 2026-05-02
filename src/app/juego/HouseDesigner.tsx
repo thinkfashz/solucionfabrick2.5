@@ -98,6 +98,48 @@ const PANEL_TYPES: PanelType[] = [
     refPrice: 95000,
     description: 'Hormigón armado para estructuras portantes.',
   },
+  {
+    id: 'column',
+    name: 'Columna estructural',
+    color: '#e11d48',
+    refPrice: 110000,
+    description: 'Columna de hormigón armado para apoyo de losas y vigas.',
+  },
+  {
+    id: 'osb',
+    name: 'Tabique OSB',
+    color: '#d97706',
+    refPrice: 28000,
+    description: 'Tabique con placas OSB sobre estructura de pino, exteriores ventilados.',
+  },
+  {
+    id: 'curtain',
+    name: 'Muro cortina vidriado',
+    color: '#22d3ee',
+    refPrice: 120000,
+    description: 'Fachada acristalada con perfilería de aluminio termopanel.',
+  },
+  {
+    id: 'steel',
+    name: 'Pilar metálico',
+    color: '#64748b',
+    refPrice: 88000,
+    description: 'Pilar de acero estructural HEB para grandes luces.',
+  },
+  {
+    id: 'block',
+    name: 'Bloque hormigón',
+    color: '#a8a29e',
+    refPrice: 42000,
+    description: 'Albañilería de bloque de hormigón rellenable.',
+  },
+  {
+    id: 'glulam',
+    name: 'Madera laminada',
+    color: '#b45309',
+    refPrice: 72000,
+    description: 'Pieza de madera laminada encolada (CLT/Glulam) de alto rendimiento.',
+  },
 ];
 
 const PANEL_BY_ID = Object.fromEntries(PANEL_TYPES.map((p) => [p.id, p])) as Record<string, PanelType>;

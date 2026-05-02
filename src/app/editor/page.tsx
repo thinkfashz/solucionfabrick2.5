@@ -3,15 +3,21 @@
 import nextDynamic from 'next/dynamic';
 
 /**
- * `/editor` — integrated 3D architectural editor (port of `pascalorg/editor`).
+ * `/editor` — Diseñador 3D interactivo de Soluciones Fabrick.
  *
- * Page is a Client Component because Next 15 only allows `next/dynamic` with
- * `ssr: false` from the client. The route-level `dynamic = 'force-dynamic'`
- * directive (so the per-request CSP nonce reaches RSC bootstrap scripts) and
- * the metadata / viewport exports live in `layout.tsx`, which is a Server
- * Component.
+ * Reemplaza al scaffolding previo basado en `@pascal-app/*` (que sólo montaba
+ * el viewer sin handlers de herramientas ni catálogo, dejando al usuario sin
+ * elementos que colocar). Ahora monta el mismo `HouseDesigner` que `/juego`,
+ * un editor R3F + drei propio con catálogo de módulos y objetos de
+ * construcción listos para usar.
+ *
+ * Página marcada como Client Component porque Next 15 sólo permite usar
+ * `next/dynamic({ ssr: false })` desde cliente. La directiva
+ * `dynamic = 'force-dynamic'` (necesaria para que el nonce CSP por petición
+ * alcance los bootstrap scripts RSC) y los exports `metadata` / `viewport`
+ * viven en `layout.tsx`, que sí es Server Component.
  */
-const EditorRoot = nextDynamic(() => import('@/components/editor/EditorRoot'), {
+const HouseDesigner = nextDynamic(() => import('@/app/juego/HouseDesigner'), {
   ssr: false,
   loading: () => (
     <div className="fixed inset-0 grid place-items-center bg-neutral-950 text-neutral-300">
@@ -21,5 +27,5 @@ const EditorRoot = nextDynamic(() => import('@/components/editor/EditorRoot'), {
 });
 
 export default function EditorPage() {
-  return <EditorRoot />;
+  return <HouseDesigner />;
 }

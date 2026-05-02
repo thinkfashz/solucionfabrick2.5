@@ -884,3 +884,23 @@ ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS iva_rate numeric(5,4) DEFAULT
 ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS total numeric(14,2) DEFAULT 0;
 ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 ALTER TABLE public.quotes ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: site_structure
+-- Universal CMS: una fila por sección editable del sitio (nav-menu, footer,
+-- checkout, producto, error-404, global-styles, custom-injection).
+-- `content jsonb` contiene el blob con la forma definida en
+-- src/lib/siteStructureTypes.ts. La capa pública usa `mergeWithDefault` por lo
+-- que filas faltantes o malformadas degradan al contenido por defecto.
+CREATE TABLE IF NOT EXISTS public.site_structure (
+  section_key text PRIMARY KEY,
+  content jsonb NOT NULL DEFAULT '{}'::jsonb,
+  version integer DEFAULT 1,
+  updated_at timestamptz DEFAULT now(),
+  updated_by text
+);
+
+-- TABLA: site_structure-migrate
+ALTER TABLE public.site_structure ADD COLUMN IF NOT EXISTS content jsonb NOT NULL DEFAULT '{}'::jsonb;
+ALTER TABLE public.site_structure ADD COLUMN IF NOT EXISTS version integer DEFAULT 1;
+ALTER TABLE public.site_structure ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+ALTER TABLE public.site_structure ADD COLUMN IF NOT EXISTS updated_by text;

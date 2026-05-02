@@ -25,10 +25,11 @@ import ThemeToggle from './ThemeToggle';
 import { navigateWithTransition } from '@/lib/routeTransition';
 import { useCartContextSafe } from '@/context/CartContext';
 import { useQuoteCartSafe } from '@/context/QuoteCartContext';
+import { useSiteContent } from '@/hooks/useSiteContent';
 
 type NavLink = { label: string; href: string };
 
-const NAV_LINKS: NavLink[] = [
+const FALLBACK_NAV_LINKS: NavLink[] = [
   { label: 'Servicios', href: '/servicios' },
   { label: 'Evolución', href: '/evolucion' },
   { label: 'Soluciones', href: '/soluciones' },
@@ -70,6 +71,12 @@ export default function Navbar() {
   const cartCount = cartCtx?.totalItems ?? 0;
   const quoteCart = useQuoteCartSafe();
   const quoteCount = quoteCart?.totalItems ?? 0;
+
+  // CMS-driven nav menu (falls back to hardcoded list if the section is empty
+  // or the SiteConfigProvider is absent — e.g. inside admin shell that
+  // doesn't mount the public layout).
+  const navMenu = useSiteContent('nav-menu');
+  const navLinks: NavLink[] = navMenu.links?.length ? navMenu.links : FALLBACK_NAV_LINKS;
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -126,7 +133,7 @@ export default function Navbar() {
         <FabrickLogo onClick={() => handleNav('/')} />
 
         <div className="hidden lg:flex gap-6 items-center">
-          {NAV_LINKS.map(({ label, href }) => (
+          {navLinks.map(({ label, href }) => (
             <button
               key={href}
               onClick={() => handleNav(href)}

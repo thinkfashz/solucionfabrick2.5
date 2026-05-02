@@ -7,10 +7,14 @@ import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
 import { QuoteCartProvider } from '@/context/QuoteCartContext';
+import { SiteConfigProvider } from '@/context/SiteConfigContext';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 import Analytics from '@/components/Analytics';
 import CmsRealtimeListener from '@/components/CmsRealtimeListener';
+import CustomInjectionRoot from '@/components/CustomInjectionRoot';
+import GlobalStylesRoot from '@/components/GlobalStylesRoot';
+import { getSiteSection } from '@/lib/siteStructure';
 
 // Force per-request rendering for every route in the app.
 //
@@ -100,30 +104,42 @@ export const viewport: Viewport = {
   themeColor: '#facc15',
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Pre-fetch the sections that are needed on every page so the SiteConfig
+  // provider hydrates flicker-free. Other sections lazy-load via
+  // `useSiteContent` when their consumers mount.
+  const [navMenu, globalStyles] = await Promise.all([
+    getSiteSection('nav-menu'),
+    getSiteSection('global-styles'),
+  ]);
   return (
     <html lang="es" className="scroll-smooth">
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
         <meta name="mobile-web-app-capable" content="yes" />
+        <GlobalStylesRoot />
+        <CustomInjectionRoot slot="head" />
       </head>
       <body className="bg-black text-white antialiased app-shell">
-        <ThemeProvider>
-          <AuthProvider>
-            <CartProvider>
-              <QuoteCartProvider>
-                <SmoothScrollProvider />
-                {children}
-                <ServiceWorkerRegister />
-                <InstallAppPrompt />
-                <WhatsAppButton />
-                <Analytics />
-                <CmsRealtimeListener />
-              </QuoteCartProvider>
-            </CartProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <SiteConfigProvider initial={{ 'nav-menu': navMenu, 'global-styles': globalStyles }}>
+          <ThemeProvider>
+            <AuthProvider>
+              <CartProvider>
+                <QuoteCartProvider>
+                  <SmoothScrollProvider />
+                  {children}
+                  <ServiceWorkerRegister />
+                  <InstallAppPrompt />
+                  <WhatsAppButton />
+                  <Analytics />
+                  <CmsRealtimeListener />
+                </QuoteCartProvider>
+              </CartProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </SiteConfigProvider>
+        <CustomInjectionRoot slot="bodyEnd" />
       </body>
     </html>
   );

@@ -40,6 +40,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     links: [
       { href: '/admin/blog', label: 'Blog', description: 'Entradas, portadas y publicación', icon: Newspaper },
       { href: '/admin/home', label: 'Pantalla principal', description: 'Banners, secciones y orden', icon: LayoutGrid },
+      { href: '/admin/editor', label: 'Editor universal', description: 'Navbar, footer, checkout, 404 e inyección de código', icon: LayoutGrid, highlight: true },
       { href: '/admin/tienda', label: 'Tienda · Edición', description: 'Portada, banners y secciones del catálogo', icon: ShoppingCart },
       { href: '/admin/medios', label: 'Medios', description: 'Imágenes y biblioteca', icon: ImageIcon },
       { href: '/admin/medios?tab=cloudinary', label: 'Cloudinary', description: 'Subir, eliminar y estado en la nube', icon: Cloud, highlight: true },
@@ -93,6 +94,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/blog': 'Blog',
   '/admin/blog/nuevo': 'Nueva entrada',
   '/admin/home': 'Pantalla principal',
+  '/admin/editor': 'Editor universal',
   '/admin/tienda': 'Tienda · Edición',
   '/admin/medios': 'Medios',
   '/admin/estado': 'Estado del sistema',

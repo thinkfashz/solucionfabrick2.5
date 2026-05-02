@@ -37,6 +37,7 @@ declare global {
 }
 import { useSearchParams } from 'next/navigation';
 import { CART_SESSION_KEY } from '@/context/CartContext';
+import { useSiteContent } from '@/hooks/useSiteContent';
 import { 
   ArrowLeft, ShieldCheck, Lock, Truck, 
   CheckCircle2, ChevronRight, Fingerprint,
@@ -137,6 +138,10 @@ interface StoredCartItem {
 
 const CheckoutApp = () => {
   const searchParams = useSearchParams();
+  // CMS-driven copy for steps, success/pending/rejected messages, and legal note.
+  // Defaults mirror the previous hardcoded literals, so empty rows render
+  // the same UI as before.
+  const checkoutCms = useSiteContent('checkout');
   const [step, setStep] = useState(1); 
   const [gsapLoaded, setGsapLoaded] = useState(false);
   const stepContentRef = useRef<HTMLDivElement>(null);
@@ -882,7 +887,7 @@ const CheckoutApp = () => {
         setIsSuccess(false);
         setPaymentOutcome('pending');
         setPaymentRejectionMessage(
-          mpMessage || 'Mercado Pago dejó tu pago en revisión. Te avisaremos por email cuando se acredite.',
+          mpMessage || checkoutCms.successMessages.pending,
         );
         return;
       }
@@ -891,8 +896,7 @@ const CheckoutApp = () => {
       setIsSuccess(false);
       setPaymentOutcome('rejected');
       setPaymentRejectionMessage(
-        mpMessage ||
-          'Mercado Pago no aprobó el pago. Puedes intentar con otra tarjeta o usar transferencia bancaria.',
+        mpMessage || checkoutCms.successMessages.rejected,
       );
       return;
       // --- end MP charge ---------------------------------------------------
@@ -1212,7 +1216,7 @@ const CheckoutApp = () => {
               </h2>
 
               <p className="text-zinc-300 text-sm leading-relaxed max-w-sm mx-auto mb-2 px-2">
-                {paymentRejectionMessage || 'Mercado Pago dejó tu pago en revisión. Te avisaremos por email cuando se acredite.'}
+                {paymentRejectionMessage || checkoutCms.successMessages.pending}
               </p>
               {orderId && (
                 <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 mb-6">
@@ -1852,6 +1856,22 @@ const CheckoutApp = () => {
                   </h3>
                   <p className="text-zinc-400 text-sm">Elige cómo deseas completar tu compra.</p>
                 </div>
+
+                {checkoutCms.warrantyPolicies?.length > 0 && (
+                  <div className="grid sm:grid-cols-3 gap-3" data-cms="checkout-warranties">
+                    {checkoutCms.warrantyPolicies.map((policy, i) => (
+                      <div
+                        key={`${policy.title}-${i}`}
+                        className="rounded-2xl border border-yellow-400/15 bg-yellow-400/[0.04] p-4"
+                      >
+                        <p className="text-[9px] uppercase tracking-[0.3em] text-yellow-400 font-bold mb-1">
+                          {policy.title}
+                        </p>
+                        <p className="text-zinc-300 text-xs leading-relaxed">{policy.body}</p>
+                      </div>
+                    ))}
+                  </div>
+                )}
 
                 {/* PAYMENT METHOD SELECTOR */}
                 <div className="grid sm:grid-cols-2 gap-4">

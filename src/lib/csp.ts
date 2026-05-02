@@ -102,7 +102,11 @@ export function buildCsp({ nonce, isDev = false }: CspBuildOptions): string {
     'font-src': fontSrc,
     'connect-src': connectSrc,
     'frame-src': frameSrc,
-    'frame-ancestors': ["'none'"],
+    // `'self'` (not `'none'`) so the universal CMS editor at /admin/editor
+    // can embed public pages in its live-preview iframe. Same-origin
+    // framing remains the only path; third-party clickjacking is still
+    // blocked.
+    'frame-ancestors': ["'self'"],
     'form-action': ["'self'"],
     'base-uri': ["'self'"],
     'object-src': ["'none'"],

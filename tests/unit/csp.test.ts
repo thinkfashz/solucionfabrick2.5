@@ -48,7 +48,10 @@ describe('buildCsp', () => {
 
   it('emits hardening directives', () => {
     const csp = buildCsp({ nonce: 'n' });
-    expect(csp).toContain("frame-ancestors 'none'");
+    // `frame-ancestors 'self'` allows the admin /admin/editor live-preview
+    // iframe to embed public pages from the same origin, while still
+    // disallowing third-party sites from clickjacking.
+    expect(csp).toContain("frame-ancestors 'self'");
     expect(csp).toContain("object-src 'none'");
     expect(csp).toContain("base-uri 'self'");
     expect(csp).toContain('upgrade-insecure-requests');

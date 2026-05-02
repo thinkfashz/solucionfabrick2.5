@@ -20,6 +20,23 @@ const ORIGIN_COLUMNS = [
   'supplier_currency',
 ] as const;
 
+// Precompiled patterns. Built once at module load so the hot path of
+// `isMissingOriginColumnError` only runs `RegExp.prototype.test`.
+const COLUMN_GROUP = ORIGIN_COLUMNS.join('|');
+const PG_42703_PATTERN = /42703/;
+const PG_COLUMN_DOES_NOT_EXIST_PATTERN = new RegExp(
+  `column\\s+["'\`]?(?:${COLUMN_GROUP})["'\`]?\\s+does\\s+not\\s+exist`,
+  'i',
+);
+const POSTGREST_COULD_NOT_FIND_PATTERN = /could not find/;
+const POSTGREST_SCHEMA_CACHE_PATTERN = /schema cache/;
+const POSTGREST_QUOTED_COLUMN_PATTERN = new RegExp(
+  `["'\`]?(?:${COLUMN_GROUP})["'\`]?`,
+  'i',
+);
+const POSTGREST_PGRST204_PATTERN = /pgrst204/;
+const POSTGREST_BARE_COLUMN_PATTERN = new RegExp(`(?:${COLUMN_GROUP})`, 'i');
+
 /**
  * Returns true when `message` looks like a database error caused by the
  * `products` table missing one of the origin columns. Handles both:
@@ -35,19 +52,19 @@ export function isMissingOriginColumnError(message: string | null | undefined): 
   if (!message) return false;
   const raw = message.toLowerCase();
   // PostgreSQL flavour. SQLSTATE 42703 is "undefined_column".
-  if (/42703/.test(raw)) return true;
-  const colPattern = ORIGIN_COLUMNS.join('|');
-  // PostgreSQL: `column "source_url" does not exist`
-  if (new RegExp(`column\\s+["'\`]?(?:${colPattern})["'\`]?\\s+does\\s+not\\s+exist`, 'i').test(raw)) {
-    return true;
-  }
+  if (PG_42703_PATTERN.test(raw)) return true;
+  if (PG_COLUMN_DOES_NOT_EXIST_PATTERN.test(raw)) return true;
   // PostgREST schema-cache flavour. Quotes vary by client (single,
   // double, backtick, none), so we accept any of them.
-  if (/could not find/.test(raw) && /schema cache/.test(raw)) {
-    if (new RegExp(`["'\`]?(?:${colPattern})["'\`]?`, 'i').test(raw)) return true;
+  if (
+    POSTGREST_COULD_NOT_FIND_PATTERN.test(raw) &&
+    POSTGREST_SCHEMA_CACHE_PATTERN.test(raw) &&
+    POSTGREST_QUOTED_COLUMN_PATTERN.test(raw)
+  ) {
+    return true;
   }
   // PostgREST sometimes emits the bare error code.
-  if (/pgrst204/.test(raw) && new RegExp(`(?:${colPattern})`, 'i').test(raw)) {
+  if (POSTGREST_PGRST204_PATTERN.test(raw) && POSTGREST_BARE_COLUMN_PATTERN.test(raw)) {
     return true;
   }
   return false;

@@ -11,6 +11,7 @@ import FabrickLogo from './FabrickLogo';
 import ContactMap from './ContactMap';
 import ScrollReveal, { ScrollRevealGroup, ScrollRevealItem } from './ScrollReveal';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
+import { useSiteContent } from '@/hooks/useSiteContent';
 import {
   Hammer, Home, Droplet, Layers, PaintRoller, ShieldCheck, Package,
   Droplets, Lightbulb, Cpu, Warehouse, Armchair, Fingerprint, ArrowRight,
@@ -91,9 +92,13 @@ export default function LandingSections({
   socialLinks,
 }: { copyrightText?: string; socialLinks?: { facebook?: string; instagram?: string; tiktok?: string } } = {}) {
   const progressBarRef = useRef<HTMLDivElement>(null);
+  // CMS-driven footer content (legal/tagline). Falls back to defaults that
+  // mirror the previous hardcoded literals.
+  const footer = useSiteContent('footer');
   const copyrightHtml = (copyrightText && copyrightText.trim())
     ? copyrightText.replaceAll('{year}', String(new Date().getFullYear()))
-    : `© ${new Date().getFullYear()} Soluciones Fabrick · Todos los derechos reservados`;
+    : (footer.legal || `© ${new Date().getFullYear()} Soluciones Fabrick · Todos los derechos reservados`).replaceAll('{year}', String(new Date().getFullYear()));
+  const taglineText = footer.tagline || 'Soluciones Integrales para el Hogar Moderno.';
   const fbHref = socialLinks?.facebook?.trim() || '#';
   const igHref = socialLinks?.instagram?.trim() || '#';
   const ttHref = socialLinks?.tiktok?.trim() || '#';
@@ -825,7 +830,7 @@ export default function LandingSections({
 
             <div className="text-center space-y-1">
               <p className="text-zinc-600 text-[10px] font-bold uppercase tracking-widest">
-                Soluciones Integrales para el Hogar Moderno.
+                {taglineText}
               </p>
               <p className="text-zinc-700 text-[9px] uppercase tracking-widest">
                 {copyrightHtml}

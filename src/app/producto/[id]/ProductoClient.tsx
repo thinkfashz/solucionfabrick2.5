@@ -9,6 +9,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRealtimeProducts } from '@/hooks/useRealtimeProducts';
 import { useCartContext } from '@/context/CartContext';
 import { formatCLP } from '@/hooks/useCart';
+import { useSiteContent } from '@/hooks/useSiteContent';
 import { Star, Check, Truck, ArrowLeft, ShoppingCart, ChevronRight } from 'lucide-react';
 
 /* ─── Animation variants (motion.dev / framer-motion) ───────── */
@@ -92,6 +93,7 @@ export default function ProductoClient() {
   const router  = useRouter();
   const { products, loading } = useRealtimeProducts();
   const { addToCart, openCart } = useCartContext();
+  const productoCms = useSiteContent('producto');
   const [added, setAdded] = useState(false);
 
   const id = params?.id ?? '';
@@ -255,7 +257,7 @@ export default function ProductoClient() {
                   </div>
                 ) : (
                   <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/[0.07] border border-red-500/[0.18] text-red-400/70 text-xs">
-                    <span>Sin stock</span>
+                    <span>{productoCms.outOfStockLabel}</span>
                   </div>
                 )
               ) : null}
@@ -309,7 +311,7 @@ export default function ProductoClient() {
                         translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 pointer-events-none"
                     />
                     <ShoppingCart size={15} className="text-yellow-400 relative z-10" />
-                    <span className="relative z-10">Añadir al Carrito</span>
+                    <span className="relative z-10">{productoCms.addToCartLabel}</span>
                   </motion.button>
                 )}
               </AnimatePresence>

@@ -5,7 +5,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  ArrowUpRight, BarChart3, BookOpen, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, LayoutGrid, Link2, LogOut, Menu,
+  ArrowUpRight, AlertTriangle, BarChart3, BookOpen, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart, Stethoscope,
   Truck, Users, X,
 } from 'lucide-react';
@@ -57,6 +57,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Sistema',
     links: [
       { href: '/admin/estado', label: 'Estado del sistema', description: 'Diagnóstico CMS, BD, env e integraciones', icon: Stethoscope },
+      { href: '/admin/errores', label: 'Monitor de Errores', description: 'Fallos capturados de las rutas API', icon: AlertTriangle },
       { href: '/admin/manual', label: 'Manual', description: 'Guía técnica de la app', icon: BookOpen, highlight: true },
       { href: '/admin/observatory', label: 'Observatory', description: 'Red en tiempo real', icon: Radio },
       { href: '/admin/envios', label: 'Tarifas de Envío', description: 'Costos por región y transportista', icon: Truck },
@@ -96,6 +97,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/medios': 'Medios',
   '/admin/estado': 'Estado del sistema',
   '/admin/manual': 'Manual',
+  '/admin/errores': 'Monitor de Errores',
 };
 
 function NavItem({ href, label, description, icon: Icon, active, onNavigate, highlight = false }: {

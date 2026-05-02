@@ -43,6 +43,7 @@ const EXPECTED_TABLES = [
   'blog_posts',
   'home_sections',
   'media_assets',
+  'admin_error_logs',
 ] as const;
 
 async function runRawSql(

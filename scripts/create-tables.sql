@@ -338,6 +338,40 @@ ALTER TABLE public.pwa_events ADD COLUMN IF NOT EXISTS meta jsonb DEFAULT '{}'::
 ALTER TABLE public.pwa_events ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 
 -- ─────────────────────────────────────────────────────────────────
+-- Monitor de Errores (admin)
+-- ─────────────────────────────────────────────────────────────────
+
+-- TABLA: admin_error_logs
+-- Capturas automáticas de fallos en rutas /api/* envueltas con
+-- `withErrorLogging` (src/lib/apiHandler.ts). Sirven al panel
+-- `/admin/errores` (Monitor de Sistema) para ver, marcar como resueltos
+-- y diagnosticar errores sin tener que abrir la consola de Vercel.
+CREATE TABLE IF NOT EXISTS public.admin_error_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  endpoint text,
+  method text,
+  payload jsonb,
+  error_message text,
+  status_code integer,
+  resolved boolean DEFAULT false,
+  created_at timestamptz DEFAULT now()
+);
+
+-- TABLA: admin_error_logs-migrate
+ALTER TABLE public.admin_error_logs ADD COLUMN IF NOT EXISTS endpoint text;
+ALTER TABLE public.admin_error_logs ADD COLUMN IF NOT EXISTS method text;
+ALTER TABLE public.admin_error_logs ADD COLUMN IF NOT EXISTS payload jsonb;
+ALTER TABLE public.admin_error_logs ADD COLUMN IF NOT EXISTS error_message text;
+ALTER TABLE public.admin_error_logs ADD COLUMN IF NOT EXISTS status_code integer;
+ALTER TABLE public.admin_error_logs ADD COLUMN IF NOT EXISTS resolved boolean DEFAULT false;
+ALTER TABLE public.admin_error_logs ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+CREATE INDEX IF NOT EXISTS idx_admin_error_logs_created_at
+  ON public.admin_error_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_admin_error_logs_resolved
+  ON public.admin_error_logs (resolved);
+
+-- ─────────────────────────────────────────────────────────────────
 -- EPIC 3 — Multi-bodega + stock + variantes con barcode/QR
 -- ─────────────────────────────────────────────────────────────────
 

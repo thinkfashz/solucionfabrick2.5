@@ -946,6 +946,13 @@ ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS created_at timestamptz DEF
 DELETE FROM public.favorites WHERE user_id IS NULL OR product_id IS NULL;
 ALTER TABLE public.favorites ALTER COLUMN user_id SET NOT NULL;
 ALTER TABLE public.favorites ALTER COLUMN product_id SET NOT NULL;
+-- Garantiza idempotentemente que la restricción única exista también en
+-- despliegues heredados cuya tabla `favorites` se creó antes de añadir
+-- `CONSTRAINT favorites_user_product_unique`. Sin este índice, el UPSERT
+-- con `onConflict: 'user_id,product_id'` en `toggleFavorite()` no tiene
+-- ancla y la condición de carrera 23505 que la PR corrige reaparece.
+CREATE UNIQUE INDEX IF NOT EXISTS favorites_user_product_unique
+  ON public.favorites(user_id, product_id);
 CREATE INDEX IF NOT EXISTS favorites_user_id_idx ON public.favorites(user_id);
 CREATE INDEX IF NOT EXISTS favorites_product_id_idx ON public.favorites(product_id);
 

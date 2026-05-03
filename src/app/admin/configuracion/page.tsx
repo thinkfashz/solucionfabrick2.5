@@ -3,9 +3,22 @@
 import { useEffect, useState } from 'react';
 import { insforge } from '@/lib/insforge';
 import { Save, Eye, EyeOff, Check, Info, UserCog, KeyRound, Trash2, CheckCircle2 } from 'lucide-react';
+import AdminActionGuard, { type AdminActionResult } from '@/components/admin/AdminActionGuard';
+
+/**
+ * SQL used by AdminActionGuard's "Crear tabla faltante ahora" button when the
+ * `integrations` table is missing on InsForge. Mirrors the canonical block in
+ * `scripts/create-tables.sql` so running it from the inline repair flow yields
+ * the exact same schema as the bulk `/admin/setup` runner.
+ */
+const INTEGRATIONS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS public.integrations (
+  provider text PRIMARY KEY,
+  credentials jsonb NOT NULL DEFAULT '{}'::jsonb,
+  updated_at timestamptz DEFAULT now()
+);`;
 
 /* ── Integraciones de APIs externas ── */
-type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary';
+type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary' | 'vercel';
 
 interface ProviderField {
   key: string;
@@ -79,6 +92,33 @@ const PROVIDERS: ProviderDefinition[] = [
       },
       { key: 'api_key', label: 'API Key', placeholder: '123456789012345' },
       { key: 'api_secret', label: 'API Secret', type: 'password' as const, placeholder: 'aBcDeFgH...' },
+    ],
+  },
+  {
+    id: 'vercel',
+    label: 'Vercel · Deployments y logs',
+    description:
+      'Personal/Team Access Token de Vercel para listar deployments y leer los logs de errores en tiempo real desde /admin/vercel-logs.',
+    fields: [
+      {
+        key: 'api_token',
+        label: 'API Token',
+        type: 'password',
+        placeholder: 'vercel_xxx',
+        hint: 'Crea un token en vercel.com → Account Settings → Tokens. Scope: el equipo/proyecto a inspeccionar.',
+      },
+      {
+        key: 'project_id',
+        label: 'Project ID',
+        placeholder: 'prj_xxxxxxxxxxxxxxxxxx',
+        hint: 'Vercel → Project → Settings → General → "Project ID".',
+      },
+      {
+        key: 'team_id',
+        label: 'Team ID (opcional)',
+        placeholder: 'team_xxxxxxxxxxxxxxxxxx',
+        hint: 'Sólo necesario si el proyecto pertenece a un equipo (no a tu cuenta personal).',
+      },
     ],
   },
 ];
@@ -226,12 +266,13 @@ export default function ConfiguracionPage() {
     void loadIntegrations();
   }, []);
 
-  async function handleSaveIntegration(provider: ProviderKey) {
+  async function handleSaveIntegration(provider: ProviderKey): Promise<AdminActionResult> {
     const credentials = integrationInputs[provider] ?? {};
     const hasInput = Object.values(credentials).some((v) => v && v.trim().length > 0);
     if (!hasInput) {
-      setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: 'Ingresa al menos un campo para guardar.', type: 'error' } }));
-      return;
+      const msg = 'Ingresa al menos un campo para guardar.';
+      setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: msg, type: 'error' } }));
+      return { ok: false, error: msg };
     }
     setSavingIntegration(provider);
     setIntegrationMsg((prev) => ({ ...prev, [provider]: null }));
@@ -241,16 +282,34 @@ export default function ConfiguracionPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ provider, credentials }),
       });
-      const json = await res.json();
+      const json = (await res.json().catch(() => ({}))) as {
+        ok?: boolean;
+        error?: string;
+        code?: string;
+        details?: string;
+        hint?: string;
+        statusCode?: number;
+      };
       if (!res.ok) {
-        setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: json.hint ?? json.error ?? 'Error al guardar.', type: 'error' } }));
-        return;
+        const text = json.error ?? json.hint ?? 'Error al guardar.';
+        setIntegrationMsg((prev) => ({ ...prev, [provider]: { text, type: 'error' } }));
+        return {
+          ok: false,
+          error: json.error ?? text,
+          code: json.code,
+          details: json.details,
+          hint: json.hint,
+          statusCode: json.statusCode ?? res.status,
+        };
       }
       setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: 'Credenciales guardadas en InsForge.', type: 'success' } }));
       setIntegrationInputs((prev) => ({ ...prev, [provider]: {} }));
       await loadIntegrations();
-    } catch {
-      setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: 'Error de red.', type: 'error' } }));
+      return { ok: true };
+    } catch (err) {
+      const text = err instanceof Error ? err.message : 'Error de red.';
+      setIntegrationMsg((prev) => ({ ...prev, [provider]: { text, type: 'error' } }));
+      return { ok: false, error: text };
     } finally {
       setSavingIntegration(null);
     }
@@ -596,8 +655,23 @@ export default function ConfiguracionPage() {
               const inputs = integrationInputs[prov.id] ?? {};
               const msg = integrationMsg[prov.id];
               const isConfigured = status && Object.values(status.credentials).some((c) => c.set);
+              // Only the non-empty fields are sent to the API (server merges
+              // with existing values). Mirror that here so "Ver envío de datos"
+              // shows exactly what travels over the wire.
+              const submittedCredentials = Object.fromEntries(
+                Object.entries(inputs).filter(([, v]) => typeof v === 'string' && v.trim().length > 0),
+              );
+              const guardPayload = { provider: prov.id, credentials: submittedCredentials };
+              const hasInput = Object.keys(submittedCredentials).length > 0;
               return (
-                <div key={prov.id} className="rounded-2xl border border-white/10 bg-black/40 p-4 sm:p-5">
+                <AdminActionGuard
+                  key={prov.id}
+                  actionName="Guardar credenciales"
+                  payload={guardPayload}
+                  onExecute={() => handleSaveIntegration(prov.id)}
+                  missingTableSql={INTEGRATIONS_TABLE_SQL}
+                  disabled={!hasInput || loadingIntegrations || savingIntegration === prov.id}
+                >
                   <div className="mb-3 flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
                     <div className="min-w-0">
                       <div className="flex items-center gap-2">
@@ -620,17 +694,27 @@ export default function ConfiguracionPage() {
                         </p>
                       )}
                     </div>
-                    {isConfigured && (
+                    <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <button
                         type="button"
-                        onClick={() => void handleDeleteIntegration(prov.id)}
-                        disabled={savingIntegration === prov.id}
-                        className="flex items-center gap-1.5 rounded-full border border-red-500/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400 transition hover:border-red-500/50 hover:bg-red-500/10 disabled:opacity-50 shrink-0"
+                        onClick={() => void handleTestIntegration(prov.id)}
+                        disabled={testingIntegration === prov.id || savingIntegration === prov.id}
+                        className="flex items-center gap-2 rounded-full border border-white/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/5 disabled:opacity-60"
                       >
-                        <Trash2 className="h-3 w-3" />
-                        Eliminar
+                        {testingIntegration === prov.id ? 'Probando…' : 'Probar conexión'}
                       </button>
-                    )}
+                      {isConfigured && (
+                        <button
+                          type="button"
+                          onClick={() => void handleDeleteIntegration(prov.id)}
+                          disabled={savingIntegration === prov.id}
+                          className="flex items-center gap-1.5 rounded-full border border-red-500/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-red-400 transition hover:border-red-500/50 hover:bg-red-500/10 disabled:opacity-50"
+                        >
+                          <Trash2 className="h-3 w-3" />
+                          Eliminar
+                        </button>
+                      )}
+                    </div>
                   </div>
 
                   <div className="grid gap-3 sm:grid-cols-2">
@@ -656,7 +740,9 @@ export default function ConfiguracionPage() {
                     })}
                   </div>
 
-                  {msg && <div className="mt-3"><Toast msg={msg.text} type={msg.type} /></div>}
+                  {msg && msg.type === 'success' && (
+                    <div className="mt-3"><Toast msg={msg.text} type={msg.type} /></div>
+                  )}
 
                   {integrationTest[prov.id] && (
                     <div
@@ -687,41 +773,7 @@ export default function ConfiguracionPage() {
                       )}
                     </div>
                   )}
-
-                  <div className="mt-4 flex flex-wrap justify-end gap-2">
-                    {prov.id === 'meta' && (
-                      <button
-                        type="button"
-                        onClick={() => void handleTestIntegration(prov.id)}
-                        disabled={testingIntegration === prov.id || savingIntegration === prov.id}
-                        className="flex items-center gap-2 px-4 py-2.5 rounded-full border border-white/20 text-white text-[11px] font-bold uppercase tracking-widest hover:bg-white/5 transition-colors disabled:opacity-60"
-                      >
-                        {testingIntegration === prov.id ? 'Probando…' : 'Probar conexión'}
-                      </button>
-                    )}
-                    <button
-                      type="button"
-                      onClick={() => void handleSaveIntegration(prov.id)}
-                      disabled={savingIntegration === prov.id || loadingIntegrations}
-                      className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-yellow-400 text-black text-[11px] font-bold uppercase tracking-widest hover:bg-yellow-300 transition-colors disabled:opacity-60"
-                    >
-                      {savingIntegration === prov.id ? (
-                        <>
-                          <svg className="w-3.5 h-3.5 animate-spin" viewBox="0 0 24 24" fill="none">
-                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-                          </svg>
-                          Guardando…
-                        </>
-                      ) : (
-                        <>
-                          <Save className="w-3.5 h-3.5" />
-                          Guardar
-                        </>
-                      )}
-                    </button>
-                  </div>
-                </div>
+                </AdminActionGuard>
               );
             })}
           </div>

@@ -136,19 +136,11 @@ export function PropertyInspector() {
           onChange={(v) => updDim(1, v)}
         />
         <NumField
-          label="Largo"
-          value={l}
-          min={0.05}
-          max={10}
-          step={0.05}
-          onChange={(v) => updDim(2, v)}
-        />
-        <NumField
-          label="Profundidad (perfil)"
+          label="Largo / Profundidad"
           value={l}
           min={0.04}
-          max={0.4}
-          step={0.01}
+          max={10}
+          step={0.05}
           onChange={(v) => updDim(2, v)}
         />
 

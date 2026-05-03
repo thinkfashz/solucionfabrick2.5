@@ -127,7 +127,7 @@ export const CATALOG: CatalogPiece[] = [
     catalogId: 'muro-hormigon',
     tipo: 'muro',
     categoria: 'Muros',
-    subcategoria: 'Metalcom',
+    subcategoria: 'Hormigón',
     nombre: 'Muro de hormigón',
     descripcion: 'Hormigón armado 20 cm — estructura portante.',
     dimensiones: [3, 2.4, 0.2],

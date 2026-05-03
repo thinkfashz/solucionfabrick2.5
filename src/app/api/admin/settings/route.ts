@@ -82,7 +82,9 @@ export async function PUT(request: NextRequest) {
       return NextResponse.json({ error: 'No hay cambios válidos.', code: 'VALIDATION' }, { status: 400 });
     }
     const client = getAdminInsforge();
-    const { error } = await client.database.from('configuracion').upsert(updates);
+    const { error } = await client.database
+      .from('configuracion')
+      .upsert(updates, { onConflict: 'clave' });
     if (error) return NextResponse.json({ error: error.message, code: 'DB_ERROR' }, { status: 500 });
     try {
       revalidatePath('/');

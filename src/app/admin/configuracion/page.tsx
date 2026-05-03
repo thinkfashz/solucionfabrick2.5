@@ -431,19 +431,22 @@ export default function ConfiguracionPage() {
 
     const { error } = await insforge.database
       .from('business_config')
-      .upsert([
-        {
-          id: 'main',
-          nombre: negocio.nombre,
-          rut: negocio.rut,
-          direccion: negocio.direccion,
-          ciudad: negocio.ciudad,
-          whatsapp: negocio.whatsapp,
-          email_contacto: negocio.emailContacto,
-          sitio_web: negocio.sitioWeb,
-          updated_at: new Date().toISOString(),
-        },
-      ]);
+      .upsert(
+        [
+          {
+            id: 'main',
+            nombre: negocio.nombre,
+            rut: negocio.rut,
+            direccion: negocio.direccion,
+            ciudad: negocio.ciudad,
+            whatsapp: negocio.whatsapp,
+            email_contacto: negocio.emailContacto,
+            sitio_web: negocio.sitioWeb,
+            updated_at: new Date().toISOString(),
+          },
+        ],
+        { onConflict: 'id' },
+      );
 
     setSavingNegocio(false);
     if (error) {

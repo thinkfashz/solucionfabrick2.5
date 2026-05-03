@@ -63,10 +63,13 @@ export default function EnviosPage() {
   const saveConfig = async () => {
     setSaving(true);
     try {
-      await insforge.database.from('site_config').upsert([
-        { clave: 'shipping_rates',          valor: JSON.stringify(rates),    tipo: 'json' },
-        { clave: 'shipping_free_threshold', valor: String(freeThreshold),   tipo: 'number' },
-      ]);
+      await insforge.database.from('site_config').upsert(
+        [
+          { clave: 'shipping_rates',          valor: JSON.stringify(rates),    tipo: 'json' },
+          { clave: 'shipping_free_threshold', valor: String(freeThreshold),   tipo: 'number' },
+        ],
+        { onConflict: 'clave' },
+      );
       setSaved(true);
       setTimeout(() => setSaved(false), 3000);
     } catch { /* ignore */ } finally {

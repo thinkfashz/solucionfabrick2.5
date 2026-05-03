@@ -48,7 +48,16 @@ function makeQuery() {
     return { data: rows, error: null };
   };
 
-  const builder: Record<string, (...args: unknown[]) => unknown> & PromiseLike<unknown> = {
+  interface Builder extends PromiseLike<unknown> {
+    select: (cols?: string) => Builder;
+    insert: (rows: Array<{ user_id: string; product_id: string }>) => Builder;
+    delete: () => Builder;
+    eq: (col: string, val: string) => Builder;
+    order: (col: string, opts?: unknown) => Builder;
+    limit: (n: number) => Builder;
+  }
+
+  const builder: Builder = {
     select(_cols?: string) {
       // After insert/delete, .select() does NOT reset the action — it just
       // asks PostgREST to return the affected rows. Only treat select as a
@@ -56,7 +65,7 @@ function makeQuery() {
       if (action === 'select') action = 'select';
       return builder;
     },
-    insert(rows: Array<{ user_id: string; product_id: string }>) {
+    insert(rows) {
       action = 'insert';
       pendingInsert = rows;
       return builder;
@@ -65,18 +74,18 @@ function makeQuery() {
       action = 'delete';
       return builder;
     },
-    eq(col: string, val: string) {
+    eq(col, val) {
       filters[col] = val;
       return builder;
     },
-    order(_col: string, _opts?: unknown) {
+    order(_col, _opts?) {
       return builder;
     },
-    limit(n: number) {
+    limit(n) {
       limitN = n;
       return builder;
     },
-    then(resolve: (v: unknown) => void, reject?: (e: unknown) => void) {
+    then(resolve, reject) {
       return exec().then(resolve, reject);
     },
   };

@@ -13,6 +13,8 @@ import { insforge } from '@/lib/insforge';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+const SEVEN_DAYS_MS = 7 * 24 * 60 * 60 * 1000;
+
 interface OrderRow {
   id: string;
   total: number | string | null;
@@ -74,7 +76,7 @@ export async function GET(request: NextRequest) {
 
     // KPIs from orders in the last 7 days. Wrap in safe try/catch so MP
     // status still renders if the DB is unreachable.
-    const sinceIso = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
+    const sinceIso = new Date(Date.now() - SEVEN_DAYS_MS).toISOString();
     const kpis = { approved: 0, pending: 0, rejected: 0, volume: 0, sinceIso, currency: 'CLP' as const };
     let recentOrders: OrderRow[] = [];
     try {

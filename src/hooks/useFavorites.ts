@@ -144,8 +144,15 @@ export function useFavorites(): UseFavoritesReturn {
         });
         return json.state;
       } catch (err) {
-        if ((err as Error).name === 'AbortError') return wasFav ? 'removed' : 'added';
-        // Revert optimistic update on failure.
+        if ((err as Error).name === 'AbortError') {
+          // A subsequent toggle() superseded this one — its own optimistic
+          // update is already applied and will reconcile with the server.
+          // Re-throw so callers know the request didn't complete; the local
+          // state must not be revert-mutated here (would clobber the newer
+          // request's optimistic state).
+          throw err;
+        }
+        // Revert optimistic update on real failure.
         setFavorites((prev) => {
           const next = new Set(prev);
           if (wasFav) next.add(productId);

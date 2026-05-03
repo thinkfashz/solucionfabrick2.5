@@ -58,6 +58,7 @@ interface AdminMpStatus {
 const MP_DEV_PANEL = 'https://www.mercadopago.cl/developers/panel/app';
 const MP_ACTIVITIES = 'https://www.mercadopago.cl/activities';
 const MAX_LATENCY_HISTORY = 20;
+const AUTO_REFRESH_INTERVAL_MS = 10_000;
 
 function formatCLP(n: number) {
   return new Intl.NumberFormat('es-CL', {
@@ -146,7 +147,7 @@ export default function MercadoPagoPanelClient() {
       intervalRef.current = null;
       return;
     }
-    intervalRef.current = setInterval(() => void fetchOnce(), 10_000);
+    intervalRef.current = setInterval(() => void fetchOnce(), AUTO_REFRESH_INTERVAL_MS);
     return () => {
       if (intervalRef.current) clearInterval(intervalRef.current);
     };

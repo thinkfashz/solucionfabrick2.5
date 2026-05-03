@@ -237,6 +237,11 @@ describe('probeMercadoPago — mode and tokenPrefix', () => {
 });
 
 describe('fetchMercadoPagoAccount', () => {
+  // Deterministic counter so each test gets a fresh token (bypassing the
+  // 60s in-memory cache) without relying on Math.random() collisions.
+  let tokenSeq = 0;
+  const nextToken = (label: string) => `TEST-${label}-${++tokenSeq}`;
+
   it('returns null when no access token is provided', async () => {
     const fetchImpl = vi.fn();
     const result = await fetchMercadoPagoAccount('', { fetchImpl: fetchImpl as unknown as typeof fetch });
@@ -254,7 +259,7 @@ describe('fetchMercadoPagoAccount', () => {
     });
     const fetchImpl = vi.fn().mockResolvedValue(new Response(body, { status: 200 }));
     // Use a fresh, unique token to bypass the in-memory 60s cache.
-    const token = `TEST-account-${Math.random().toString(36).slice(2)}`;
+    const token = nextToken('account');
     const result = await fetchMercadoPagoAccount(token, {
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });
@@ -269,7 +274,7 @@ describe('fetchMercadoPagoAccount', () => {
 
   it('returns null when /users/me responds with non-2xx', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response('forbidden', { status: 403 }));
-    const token = `TEST-403-${Math.random().toString(36).slice(2)}`;
+    const token = nextToken('403');
     const result = await fetchMercadoPagoAccount(token, {
       fetchImpl: fetchImpl as unknown as typeof fetch,
     });

@@ -34,9 +34,14 @@ export async function listFavoritesForUser(userId: string): Promise<FavoriteRow[
  * Add a favorite if missing, or remove it if it already exists. Returns the
  * resulting state ('added' | 'removed').
  *
- * The unique constraint `(user_id, product_id)` guarantees idempotency at the
- * DB level — we use it as the source of truth instead of racing on a select
- * before insert.
+ * Implemented as an atomic UPSERT (`INSERT ... ON CONFLICT ON CONSTRAINT
+ * favorites_user_product_unique DO NOTHING`) followed — only when the upsert
+ * was a no-op — by a `DELETE` keyed on the same unique pair. This avoids the
+ * classic TOCTOU race of `SELECT`-then-`INSERT`, where two concurrent
+ * requests can both see "no row" and one then crashes with a 23505
+ * unique-constraint violation (HTTP 500). With `ignoreDuplicates`, the DB
+ * itself enforces atomicity — at worst a concurrent toggle becomes a no-op
+ * for one of the two requests, never an error.
  */
 export async function toggleFavorite(
   userId: string,
@@ -49,35 +54,44 @@ export async function toggleFavorite(
     throw new Error('productId inválido.');
   }
 
-  // Check existing first.
-  const existing = await insforge.database
+  // Step 1 — atomic insert-or-noop. PostgREST translates this into
+  // `INSERT ... ON CONFLICT (user_id, product_id) DO NOTHING RETURNING ...`,
+  // so the unique constraint is the single source of truth and concurrent
+  // requests can never produce a 23505. When a row was actually inserted the
+  // returned `data` will contain it; when the row pre-existed (the conflict
+  // path), `data` is an empty array.
+  const upsertRes = await insforge.database
     .from('favorites')
-    .select('id')
+    .upsert([{ user_id: userId, product_id: productId }], {
+      onConflict: 'user_id,product_id',
+      ignoreDuplicates: true,
+    })
+    .select('id');
+
+  if (upsertRes.error) {
+    throw new Error(
+      upsertRes.error.message || 'No se pudo guardar el favorito.',
+    );
+  }
+
+  const inserted =
+    Array.isArray(upsertRes.data) && upsertRes.data.length > 0
+      ? (upsertRes.data[0] as { id: string })
+      : null;
+
+  if (inserted) {
+    // The DB just persisted a brand-new row → toggle is "added".
+    return { state: 'added', favoriteId: inserted.id };
+  }
+
+  // Step 2 — the upsert was a no-op (row already existed), so the toggle is
+  // "removed". Delete keyed on the unique pair; idempotent under concurrency.
+  await insforge.database
+    .from('favorites')
+    .delete()
     .eq('user_id', userId)
-    .eq('product_id', productId)
-    .limit(1);
-
-  if (
-    !existing.error &&
-    Array.isArray(existing.data) &&
-    existing.data.length > 0
-  ) {
-    const id = (existing.data[0] as { id: string }).id;
-    await insforge.database.from('favorites').delete().eq('id', id);
-    return { state: 'removed', favoriteId: null };
-  }
-
-  const { data, error } = await insforge.database
-    .from('favorites')
-    .insert([{ user_id: userId, product_id: productId }])
-    .select('id')
-    .limit(1);
-  if (error) {
-    throw new Error(error.message || 'No se pudo guardar el favorito.');
-  }
-  const favoriteId =
-    Array.isArray(data) && data[0] ? (data[0] as { id: string }).id : null;
-  return { state: 'added', favoriteId };
+    .eq('product_id', productId);
+  return { state: 'removed', favoriteId: null };
 }
 
 /** Remove a specific favorite by (user_id, product_id). Idempotent. */

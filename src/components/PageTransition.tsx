@@ -151,78 +151,204 @@ export default function PageTransition() {
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '2rem',
+        gap: '1.5rem',
         pointerEvents: 'none',
         opacity: 0,
         transition: 'opacity 0.3s cubic-bezier(0.16,1,0.3,1)',
       }}
       aria-hidden="true"
     >
-      {/* SF logo — breathing pulse */}
-      <svg
-        viewBox="0 0 160 80"
-        className="motion-safe:animate-[pt-breathe_1.8s_ease-in-out_infinite]"
-        style={{ height: '5rem', width: 'auto', filter: 'drop-shadow(0 0 24px rgba(250,204,21,0.55))' }}
-      >
-        <defs>
-          <linearGradient id="ptGold" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#FFE17A" />
-            <stop offset="60%" stopColor="#FFC700" />
-            <stop offset="100%" stopColor="#E2AE00" />
-          </linearGradient>
-        </defs>
-        <text
-          x="12"
-          y="62"
-          fontFamily="Montserrat, Arial, sans-serif"
-          fontSize="72"
-          fontWeight="900"
-          fill="url(#ptGold)"
-          letterSpacing="-2"
-        >
-          SF
-        </text>
-      </svg>
-
-      {/* Wordmark */}
+      {/* ── BlackBerry 2.0 connection bar ─────────────────────────────────
+          Tienda  ──[ packets travelling both ways through SF logo ]──  Mercado Pago
+          The center hub is the animated SF wordmark; gold packets sweep
+          across the rail in opposite directions so the user instantly
+          reads it as a live store ⇄ bank handshake — not a generic
+          spinner. The whole composition is GPU-only (transform / opacity)
+          so the overlay launches "at the speed of light". */}
       <div
         style={{
-          fontFamily: 'Montserrat, Arial, sans-serif',
-          fontSize: '10px',
-          letterSpacing: '0.5em',
-          color: 'rgba(250,204,21,0.75)',
-          textTransform: 'uppercase',
-          fontWeight: 700,
-        }}
-      >
-        Soluciones · Fabrick
-      </div>
-
-      {/* Progress bar — animates while overlay is on */}
-      <div
-        style={{
-          width: '180px',
-          height: '2px',
-          borderRadius: '999px',
-          background: 'rgba(255,255,255,0.08)',
-          overflow: 'hidden',
           position: 'relative',
+          width: 'min(520px, 78vw)',
+          height: '90px',
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'space-between',
         }}
       >
-        <span
-          className="motion-safe:animate-[pt-indeterminate_1.2s_linear_infinite]"
+        {/* Left endpoint: TIENDA */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '0.4rem',
+            zIndex: 2,
+          }}
+        >
+          <span
+            className="motion-safe:animate-[pt-endpoint-pulse_1.6s_ease-in-out_infinite]"
+            style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '999px',
+              background: '#FFC700',
+              boxShadow: '0 0 12px rgba(255,199,0,0.85)',
+            }}
+          />
+          <span
+            style={{
+              fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+              fontSize: '8px',
+              letterSpacing: '0.35em',
+              color: 'rgba(255,255,255,0.55)',
+              textTransform: 'uppercase',
+            }}
+          >
+            Tienda
+          </span>
+        </div>
+
+        {/* Connection rail with packets */}
+        <div
           style={{
             position: 'absolute',
-            top: 0,
-            left: 0,
-            height: '100%',
-            width: '45%',
-            borderRadius: '999px',
+            top: '50%',
+            left: '14%',
+            right: '14%',
+            height: '2px',
+            transform: 'translateY(-50%)',
             background:
-              'linear-gradient(90deg, transparent 0%, #FFE17A 40%, #FFC700 60%, transparent 100%)',
-            boxShadow: '0 0 14px rgba(250,204,21,0.65)',
+              'linear-gradient(90deg, rgba(255,199,0,0.08) 0%, rgba(255,199,0,0.18) 50%, rgba(255,199,0,0.08) 100%)',
+            borderRadius: '999px',
+            overflow: 'hidden',
+            zIndex: 0,
           }}
-        />
+        >
+          <span
+            className="motion-safe:animate-[pt-connect-forward_1.4s_linear_infinite]"
+            style={{
+              position: 'absolute',
+              top: '-1px',
+              height: '4px',
+              width: '32%',
+              borderRadius: '999px',
+              background:
+                'linear-gradient(90deg, transparent 0%, #FFE17A 45%, #FFC700 60%, transparent 100%)',
+              boxShadow: '0 0 12px rgba(250,204,21,0.7)',
+            }}
+          />
+          <span
+            className="motion-safe:animate-[pt-connect-back_1.7s_linear_infinite]"
+            style={{
+              position: 'absolute',
+              top: '-1px',
+              height: '4px',
+              width: '24%',
+              borderRadius: '999px',
+              background:
+                'linear-gradient(270deg, transparent 0%, #FFE17A 45%, #FFC700 60%, transparent 100%)',
+              boxShadow: '0 0 10px rgba(250,204,21,0.55)',
+              animationDelay: '0.6s',
+            }}
+          />
+        </div>
+
+        {/* Center hub: animated SF logo embedded in the connection bar */}
+        <div
+          style={{
+            position: 'absolute',
+            left: '50%',
+            top: '50%',
+            transform: 'translate(-50%, -50%)',
+            zIndex: 3,
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '0.35rem',
+            padding: '0.45rem 0.9rem',
+            borderRadius: '999px',
+            background: 'rgba(0,0,0,0.85)',
+            border: '1px solid rgba(255,199,0,0.35)',
+            boxShadow:
+              '0 0 24px rgba(250,204,21,0.45), inset 0 0 12px rgba(250,204,21,0.15)',
+          }}
+        >
+          <svg
+            viewBox="0 0 160 80"
+            className="motion-safe:animate-[pt-breathe_1.8s_ease-in-out_infinite]"
+            style={{
+              height: '2.4rem',
+              width: 'auto',
+              filter: 'drop-shadow(0 0 16px rgba(250,204,21,0.6))',
+            }}
+          >
+            <defs>
+              <linearGradient id="ptGold" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FFE17A" />
+                <stop offset="60%" stopColor="#FFC700" />
+                <stop offset="100%" stopColor="#E2AE00" />
+              </linearGradient>
+            </defs>
+            <text
+              x="12"
+              y="62"
+              fontFamily="Montserrat, Arial, sans-serif"
+              fontSize="72"
+              fontWeight="900"
+              fill="url(#ptGold)"
+              letterSpacing="-2"
+            >
+              SF
+            </text>
+          </svg>
+          <span
+            style={{
+              fontFamily: 'Montserrat, Arial, sans-serif',
+              fontSize: '7px',
+              letterSpacing: '0.45em',
+              color: 'rgba(250,204,21,0.85)',
+              textTransform: 'uppercase',
+              fontWeight: 700,
+            }}
+          >
+            Soluciones · Fabrick · SpA
+          </span>
+        </div>
+
+        {/* Right endpoint: MERCADO PAGO */}
+        <div
+          style={{
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            gap: '0.4rem',
+            zIndex: 2,
+          }}
+        >
+          <span
+            className="motion-safe:animate-[pt-endpoint-pulse_1.6s_ease-in-out_infinite]"
+            style={{
+              width: '10px',
+              height: '10px',
+              borderRadius: '999px',
+              background: '#00B1EA',
+              boxShadow: '0 0 12px rgba(0,177,234,0.85)',
+              animationDelay: '0.8s',
+            }}
+          />
+          <span
+            style={{
+              fontFamily: 'ui-monospace, SFMono-Regular, monospace',
+              fontSize: '8px',
+              letterSpacing: '0.35em',
+              color: 'rgba(255,255,255,0.55)',
+              textTransform: 'uppercase',
+              whiteSpace: 'nowrap',
+            }}
+          >
+            Mercado&nbsp;Pago
+          </span>
+        </div>
       </div>
 
       {/* Tiny status text (intentionally empty — overlay auto-hides within

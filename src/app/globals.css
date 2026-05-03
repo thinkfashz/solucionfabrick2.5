@@ -670,6 +670,55 @@ html.theme-light {
   50%      { transform: scale(1.04); opacity: 0.85; }
 }
 
+/* BlackBerry 2.0 — connection bar that simulates a Tienda ⇄ Mercado Pago
+   handshake. Two semi-transparent gold packets sweep in opposite directions
+   so the user reads it as bidirectional traffic, not a generic spinner. */
+@keyframes pt-connect-forward {
+  0%   { left: -35%; opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { left: 100%; opacity: 0; }
+}
+@keyframes pt-connect-back {
+  0%   { right: -35%; opacity: 0; }
+  10%  { opacity: 1; }
+  90%  { opacity: 1; }
+  100% { right: 100%; opacity: 0; }
+}
+@keyframes pt-endpoint-pulse {
+  0%, 100% { opacity: 0.55; transform: scale(1); }
+  50%      { opacity: 1;    transform: scale(1.18); }
+}
+/* Continuous, sub-perceptual breathing for the FabrickLogo SVG. The logo
+   stays still in layout (no scale → no reflow against neighbouring text)
+   but its drop-shadow halo gently brightens, signalling that the brand
+   mark is "alive". */
+@keyframes fabrick-logo-glow {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(255,199,0,0.25)); }
+  50%      { filter: drop-shadow(0 0 14px rgba(255,199,0,0.65)); }
+}
+.fabrick-logo-animated {
+  animation: fabrick-logo-glow 3.4s ease-in-out infinite;
+  will-change: filter;
+}
+@media (prefers-reduced-motion: reduce) {
+  .fabrick-logo-animated {
+    animation: none;
+    filter: drop-shadow(0 0 6px rgba(255,199,0,0.4));
+  }
+}
+
+/* Bank-approval full-screen overlay — smooth 10%→100% fill while the
+   transaction is being authorised, then a celebratory glow when complete. */
+@keyframes pt-bank-pulse {
+  0%, 100% { box-shadow: 0 0 32px rgba(250,204,21,0.45); }
+  50%      { box-shadow: 0 0 80px rgba(250,204,21,0.75); }
+}
+@keyframes pt-bank-shine {
+  0%   { transform: translateX(-120%); }
+  100% { transform: translateX(120%); }
+}
+
 /* Tienda hamburger: staggered reveal for each item */
 @keyframes tienda-menu-reveal {
   from { opacity: 0; transform: translateX(14px); }

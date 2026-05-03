@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import { revalidateTag } from 'next/cache';
 import { insforge } from '@/lib/insforge';
-import { getSeedProjects, type FabrickProject } from '@/lib/projects';
+import { type FabrickProject, PROJECTS_CACHE_TAG } from '@/lib/projects';
+import { getPublicProjects } from '@/lib/projectsServer';
 
 /**
  * GET   /api/proyectos            — list projects (DB ⇢ fallback seed)
@@ -14,24 +16,9 @@ import { getSeedProjects, type FabrickProject } from '@/lib/projects';
  * the admin creates the table via InsForge console.
  */
 
-const FIELDS =
-  'id, title, location, year, area_m2, category, hero_image, gallery, summary, description, materials, highlights, scope, featured, created_at, updated_at';
-
 export async function GET() {
-  try {
-    const { data, error } = await insforge.database
-      .from('projects')
-      .select(FIELDS)
-      .order('featured', { ascending: false })
-      .order('year', { ascending: false });
-
-    if (error || !data || data.length === 0) {
-      return NextResponse.json({ data: getSeedProjects(), source: 'seed' });
-    }
-    return NextResponse.json({ data, source: 'db' });
-  } catch {
-    return NextResponse.json({ data: getSeedProjects(), source: 'seed' });
-  }
+  const { data, source } = await getPublicProjects();
+  return NextResponse.json({ data, source });
 }
 
 export async function POST(request: Request) {
@@ -44,6 +31,7 @@ export async function POST(request: Request) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    revalidateTag(PROJECTS_CACHE_TAG);
     return NextResponse.json({ data }, { status: 201 });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
@@ -66,6 +54,7 @@ export async function PATCH(request: Request) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    revalidateTag(PROJECTS_CACHE_TAG);
     return NextResponse.json({ data });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });
@@ -87,6 +76,7 @@ export async function DELETE(request: Request) {
     if (error) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
+    revalidateTag(PROJECTS_CACHE_TAG);
     return NextResponse.json({ ok: true });
   } catch (e) {
     return NextResponse.json({ error: (e as Error).message }, { status: 500 });

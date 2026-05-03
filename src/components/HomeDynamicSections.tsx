@@ -1,6 +1,7 @@
 import Link from 'next/link';
 /* eslint-disable @next/next/no-img-element */
 import type { PublicHomeSection } from '@/lib/cms';
+import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 
 interface Props {
   sections: PublicHomeSection[];
@@ -88,9 +89,11 @@ function SectionRenderer({ section }: { section: PublicHomeSection }) {
               img && img.url ? (
                 <img
                   key={idx}
-                  src={img.url}
+                  src={cloudinaryUrl(img.url, { width: 600, quality: 70 })}
                   alt={img.alt ?? ''}
                   className="aspect-square w-full rounded-2xl border border-white/10 object-cover"
+                  loading="lazy"
+                  decoding="async"
                 />
               ) : null,
             )}
@@ -124,7 +127,7 @@ function SectionRenderer({ section }: { section: PublicHomeSection }) {
         className="relative w-full overflow-hidden py-12 md:py-20"
         style={{ background: bg || 'black' }}
       >
-        <img src={section.image_url} alt={section.title ?? ''} className="absolute inset-0 h-full w-full object-cover opacity-50" />
+        <img src={cloudinaryUrl(section.image_url, { width: 1600, quality: 65 })} alt={section.title ?? ''} className="absolute inset-0 h-full w-full object-cover opacity-50" loading="lazy" decoding="async" />
         <div className="relative z-10 mx-auto max-w-5xl px-6 text-center text-white">
           {section.title && <h2 className="font-playfair text-3xl font-black tracking-tight md:text-5xl">{section.title}</h2>}
           {section.subtitle && <p className="mt-3 text-sm uppercase tracking-[0.3em] text-yellow-400">{section.subtitle}</p>}
@@ -166,7 +169,7 @@ function SectionRenderer({ section }: { section: PublicHomeSection }) {
             {cta}
           </div>
           {section.image_url && (
-            <img src={section.image_url} alt={section.title ?? ''} className="rounded-2xl border border-white/10 object-cover" />
+            <img src={cloudinaryUrl(section.image_url, { width: 800, quality: 70 })} alt={section.title ?? ''} className="rounded-2xl border border-white/10 object-cover" loading="lazy" decoding="async" />
           )}
         </div>
       </div>

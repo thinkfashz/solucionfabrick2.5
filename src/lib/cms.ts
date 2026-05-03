@@ -1,5 +1,18 @@
 import 'server-only';
+import { unstable_cache } from 'next/cache';
 import { insforge } from './insforge';
+
+/** Cache tags used by `unstable_cache`. Admin handlers should call
+ *  `revalidateTag(...)` on these whenever underlying data changes so the
+ *  cached reads are dropped immediately instead of waiting for the 1h TTL. */
+export const CMS_CACHE_TAGS = {
+  settings: 'cms:settings',
+  homeSections: 'cms:home-sections',
+  blogList: 'cms:blog-list',
+  blogPost: 'cms:blog-post',
+} as const;
+
+const ONE_HOUR = 3600;
 
 /**
  * Server-side reader for the public CMS (settings, dynamic home sections, blog).
@@ -55,24 +68,28 @@ const DEFAULT_SETTINGS: CmsSettings = {
 };
 
 /** Returns the merged settings map, falling back to defaults on any failure. */
-export async function getCmsSettings(): Promise<CmsSettings> {
-  try {
-    const { data, error } = await insforge.database
-      .from('configuracion')
-      .select('clave, valor');
-    if (error || !Array.isArray(data)) return { ...DEFAULT_SETTINGS };
-    const out: Record<string, string> = { ...DEFAULT_SETTINGS };
-    for (const row of data as Array<{ clave?: string; valor?: string }>) {
-      if (!row.clave) continue;
-      if (row.clave in DEFAULT_SETTINGS) {
-        out[row.clave] = row.valor ?? '';
+export const getCmsSettings = unstable_cache(
+  async function getCmsSettingsImpl(): Promise<CmsSettings> {
+    try {
+      const { data, error } = await insforge.database
+        .from('configuracion')
+        .select('clave, valor');
+      if (error || !Array.isArray(data)) return { ...DEFAULT_SETTINGS };
+      const out: Record<string, string> = { ...DEFAULT_SETTINGS };
+      for (const row of data as Array<{ clave?: string; valor?: string }>) {
+        if (!row.clave) continue;
+        if (row.clave in DEFAULT_SETTINGS) {
+          out[row.clave] = row.valor ?? '';
+        }
       }
+      return out as unknown as CmsSettings;
+    } catch {
+      return { ...DEFAULT_SETTINGS };
     }
-    return out as unknown as CmsSettings;
-  } catch {
-    return { ...DEFAULT_SETTINGS };
-  }
-}
+  },
+  ['cms:settings'],
+  { revalidate: ONE_HOUR, tags: [CMS_CACHE_TAGS.settings] },
+);
 
 /** Substitutes `{year}` in the copyright string. */
 export function renderCopyright(template: string): string {
@@ -102,6 +119,13 @@ export interface PublicHomeSection {
 export async function getPublicSectionsForPage(
   page: 'home' | 'tienda',
 ): Promise<PublicHomeSection[]> {
+  return getPublicSectionsForPageCached(page);
+}
+
+const getPublicSectionsForPageCached = unstable_cache(
+  async function getPublicSectionsForPageImpl(
+    page: 'home' | 'tienda',
+  ): Promise<PublicHomeSection[]> {
   try {
     const { data, error } = await insforge.database
       .from('home_sections')
@@ -129,7 +153,10 @@ export async function getPublicSectionsForPage(
   } catch {
     return [];
   }
-}
+  },
+  ['cms:home-sections'],
+  { revalidate: ONE_HOUR, tags: [CMS_CACHE_TAGS.homeSections] },
+);
 
 /** Lists visible home sections in display order. Returns [] on failure. */
 export async function getPublicHomeSections(): Promise<PublicHomeSection[]> {
@@ -159,36 +186,44 @@ export interface DbBlogPost {
 }
 
 /** Lists published blog posts from the DB. Returns [] on failure. */
-export async function listDbBlogPosts(): Promise<DbBlogPost[]> {
-  try {
-    const { data, error } = await insforge.database
-      .from('blog_posts')
-      .select('*')
-      .eq('published', true)
-      .order('published_at', { ascending: false });
-    if (error || !Array.isArray(data)) return [];
-    return (data as DbBlogPost[]).map((p) => ({
-      ...p,
-      tags: Array.isArray(p.tags) ? p.tags : [],
-    }));
-  } catch {
-    return [];
-  }
-}
+export const listDbBlogPosts = unstable_cache(
+  async function listDbBlogPostsImpl(): Promise<DbBlogPost[]> {
+    try {
+      const { data, error } = await insforge.database
+        .from('blog_posts')
+        .select('*')
+        .eq('published', true)
+        .order('published_at', { ascending: false });
+      if (error || !Array.isArray(data)) return [];
+      return (data as DbBlogPost[]).map((p) => ({
+        ...p,
+        tags: Array.isArray(p.tags) ? p.tags : [],
+      }));
+    } catch {
+      return [];
+    }
+  },
+  ['cms:blog-list'],
+  { revalidate: ONE_HOUR, tags: [CMS_CACHE_TAGS.blogList] },
+);
 
 /** Fetches a single published post by slug. Returns null if not found. */
-export async function getDbBlogPost(slug: string): Promise<DbBlogPost | null> {
-  try {
-    const { data, error } = await insforge.database
-      .from('blog_posts')
-      .select('*')
-      .eq('slug', slug)
-      .eq('published', true)
-      .limit(1);
-    if (error || !Array.isArray(data) || data.length === 0) return null;
-    const p = data[0] as DbBlogPost;
-    return { ...p, tags: Array.isArray(p.tags) ? p.tags : [] };
-  } catch {
-    return null;
-  }
-}
+export const getDbBlogPost = unstable_cache(
+  async function getDbBlogPostImpl(slug: string): Promise<DbBlogPost | null> {
+    try {
+      const { data, error } = await insforge.database
+        .from('blog_posts')
+        .select('*')
+        .eq('slug', slug)
+        .eq('published', true)
+        .limit(1);
+      if (error || !Array.isArray(data) || data.length === 0) return null;
+      const p = data[0] as DbBlogPost;
+      return { ...p, tags: Array.isArray(p.tags) ? p.tags : [] };
+    } catch {
+      return null;
+    }
+  },
+  ['cms:blog-post'],
+  { revalidate: ONE_HOUR, tags: [CMS_CACHE_TAGS.blogPost] },
+);

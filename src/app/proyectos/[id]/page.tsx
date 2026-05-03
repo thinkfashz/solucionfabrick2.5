@@ -7,6 +7,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import SectionPageShell from '@/components/SectionPageShell';
 import { getSeedProjects, type FabrickProject } from '@/lib/projects';
+import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 import { ArrowLeft, Calendar, CheckCircle2, Hammer, MapPin, Ruler } from 'lucide-react';
 
 export default function ProyectoDetailPage() {
@@ -96,10 +97,11 @@ export default function ProyectoDetailPage() {
           <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] border border-white/5 bg-white/[0.02]">
             {mainImg ? (
               <img
-                src={mainImg}
+                src={cloudinaryUrl(mainImg, { width: 1200, quality: 75 })}
                 alt={`${project.title} — obra ejecutada por Soluciones Fabrick en ${project.location}`}
                 className="h-full w-full object-cover"
                 loading="lazy"
+                decoding="async"
               />
             ) : (
               <div className="flex h-full w-full items-center justify-center text-6xl text-white/10">
@@ -122,10 +124,11 @@ export default function ProyectoDetailPage() {
                   aria-label={`Ver imagen ${i + 1} de ${project.title}`}
                 >
                   <img
-                    src={src}
+                    src={cloudinaryUrl(src, { width: 320, quality: 70 })}
                     alt={`${project.title} — vista ${i + 1}`}
                     className="h-full w-full object-cover"
                     loading="lazy"
+                    decoding="async"
                   />
                 </button>
               ))}

@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
 import { SECTION_KINDS, type SectionKind } from '@/lib/homeSectionKinds';
 import { publishCmsEvent } from '@/lib/cmsBus';
+import { CMS_CACHE_TAGS } from '@/lib/cms';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -119,6 +120,7 @@ export async function POST(request: NextRequest) {
     const paths = pathsForPage(page);
     try {
       for (const p of paths) revalidatePath(p);
+      revalidateTag(CMS_CACHE_TAGS.homeSections);
     } catch {
       /* best effort */
     }

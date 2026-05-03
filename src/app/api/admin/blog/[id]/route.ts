@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
 import { estimateReadingMinutes, renderMarkdown, slugify } from '@/lib/markdown';
 import { publishCmsEvent } from '@/lib/cmsBus';
+import { CMS_CACHE_TAGS } from '@/lib/cms';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -122,6 +123,8 @@ export async function PUT(request: NextRequest, ctx: RouteCtx) {
       revalidatePath(`/blog/${slug}`);
       const oldSlug = (existing as { slug?: string }).slug;
       if (oldSlug && oldSlug !== slug) revalidatePath(`/blog/${oldSlug}`);
+      revalidateTag(CMS_CACHE_TAGS.blogList);
+      revalidateTag(CMS_CACHE_TAGS.blogPost);
     } catch {
       /* best effort */
     }
@@ -146,6 +149,8 @@ export async function DELETE(request: NextRequest, ctx: RouteCtx) {
       revalidatePath('/blog');
       const slug = (existing as { slug?: string }).slug;
       if (slug) revalidatePath(`/blog/${slug}`);
+      revalidateTag(CMS_CACHE_TAGS.blogList);
+      revalidateTag(CMS_CACHE_TAGS.blogPost);
     } catch {
       /* best effort */
     }

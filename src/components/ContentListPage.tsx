@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { Calendar, Clock, ArrowRight } from 'lucide-react';
 import SectionPageShell from '@/components/SectionPageShell';
 import type { ContentMeta } from '@/lib/content';
+import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 
 const TYPE_LABELS = { blog: 'Blog', casos: 'Casos de estudio' } as const;
 
@@ -36,11 +37,12 @@ export default function ContentListPage({ type, title, description, items }: Con
               {item.cover ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img
-                  src={item.cover}
+                  src={cloudinaryUrl(item.cover, { width: 600, quality: 70 })}
                   alt=""
                   className="h-44 w-full object-cover"
                   loading="lazy"
                   decoding="async"
+                  sizes="(max-width: 768px) 100vw, (max-width: 1280px) 50vw, 33vw"
                 />
               ) : (
                 <div className="h-44 w-full bg-gradient-to-br from-yellow-400/10 via-black to-zinc-950" />

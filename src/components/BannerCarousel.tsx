@@ -6,6 +6,7 @@ import { useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { insforge } from '@/lib/insforge';
+import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 
 type Banner = {
   id: string;
@@ -176,9 +177,12 @@ function BannerSlide({ banner }: { banner: Banner }) {
   return (
     <div className="relative w-full h-full">
       <img
-        src={banner.image_url}
+        src={cloudinaryUrl(banner.image_url, { width: 1600, quality: 70 })}
         alt={banner.title ?? 'Oferta Fabrick'}
         className="w-full h-full object-cover"
+        loading="lazy"
+        decoding="async"
+        sizes="100vw"
       />
       {(banner.title || banner.subtitle) && (
         <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent flex flex-col justify-center px-6">

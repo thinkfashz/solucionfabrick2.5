@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import HouseDesigner from './HouseDesigner';
+import HouseDesignerLazy from './HouseDesignerLazy';
 
 export const dynamic = 'force-dynamic';
 
@@ -11,5 +11,5 @@ export const metadata: Metadata = {
 };
 
 export default function JuegoPage() {
-  return <HouseDesigner />;
+  return <HouseDesignerLazy />;
 }

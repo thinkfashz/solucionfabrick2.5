@@ -11,6 +11,7 @@ import FabrickLogo from './FabrickLogo';
 import ContactMap from './ContactMap';
 import ScrollReveal, { ScrollRevealGroup, ScrollRevealItem } from './ScrollReveal';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
+import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import {
   Hammer, Home, Droplet, Layers, PaintRoller, ShieldCheck, Package,
@@ -315,10 +316,11 @@ export default function LandingSections({
                   <div className="absolute inset-0 z-0">
                     {/* eslint-disable-next-line @next/next/no-img-element */}
                     <img
-                      src={img}
+                      src={cloudinaryUrl(img, { width: 800, quality: 70 })}
                       alt={title}
                       className="w-full h-full object-cover opacity-40 group-hover:scale-110 transition-transform duration-1000"
                       loading="lazy"
+                      decoding="async"
                       onError={(e) => {
                         // Fallback gracioso si una URL externa de la imagen
                         // queda 404. Usa un degradado oscuro para que la
@@ -476,7 +478,7 @@ export default function LandingSections({
       <section id="soluciones" className="py-24 md:py-36 px-4 md:px-12 bg-black relative border-b border-white/5 overflow-hidden">
         <div className="absolute inset-0 z-0 pointer-events-none">
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src="https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop" alt="" className="w-full h-full object-cover opacity-8" />
+          <img src={cloudinaryUrl("https://images.unsplash.com/photo-1600607686527-6fb886090705?q=80&w=2000&auto=format&fit=crop", { width: 1600, quality: 60 })} alt="" className="w-full h-full object-cover opacity-8" loading="lazy" decoding="async" />
           <div className="absolute inset-0 bg-gradient-to-t from-black via-black/85 to-black" />
         </div>
         <div className="max-w-7xl mx-auto relative z-10">
@@ -716,9 +718,11 @@ export default function LandingSections({
         <div className="relative h-[55vh] md:h-[65vh] overflow-hidden">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
-            src="https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2075&auto=format&fit=crop"
+            src={cloudinaryUrl("https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?q=80&w=2075&auto=format&fit=crop", { width: 1600, quality: 70 })}
             alt="Casa de ensueño Fabrick"
             className="w-full h-full object-cover scale-105"
+            loading="lazy"
+            decoding="async"
           />
           <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/40 to-black" />
           <div className="absolute inset-0 flex flex-col items-center justify-end pb-12 md:pb-20 px-6 text-center">

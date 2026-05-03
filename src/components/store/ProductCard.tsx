@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import type { Product } from '@/hooks/useRealtimeProducts';
+import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 import SilverGoldButton from './SilverGoldButton';
 
 interface ProductCardProps {
@@ -29,10 +30,12 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
       <div className="relative aspect-square bg-zinc-900 overflow-hidden">
         {product.image_url ? (
           <img
-            src={product.image_url}
+            src={cloudinaryUrl(product.image_url, { width: 480, quality: 70 })}
             alt={product.name}
             className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
             loading="lazy"
+            decoding="async"
+            sizes="(max-width: 768px) 100vw, 33vw"
           />
         ) : (
           <div className="w-full h-full flex items-center justify-center">

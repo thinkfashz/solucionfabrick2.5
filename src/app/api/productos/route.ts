@@ -1,6 +1,10 @@
 import { NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
 
+// Edge runtime is feasible here because the InsForge SDK only uses
+// fetch + web-standard primitives (no Node-only APIs). See docs/perf-runtime.md.
+export const runtime = 'edge';
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const categoria = searchParams.get('categoria');

@@ -46,7 +46,7 @@ export function StepChart({
   className,
   yRange,
 }: StepChartProps) {
-  const gradId = useId().replace(/[:#]/g, '');
+  const gradId = useId().replace(/[:#]/g, ''); // SVG `url(#…)` refs forbid `:` and `#`
 
   const { d, areaPath, lastX, lastY, viewBox } = useMemo(() => {
     if (data.length === 0) {

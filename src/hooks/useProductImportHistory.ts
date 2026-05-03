@@ -32,7 +32,8 @@ export interface ProductImportHistoryEntry {
   source: string;
   /** Unix-ms when the entry was last updated. */
   ts: number;
-  /** How many times this URL has been re-imported (cache-hit counter). */
+  /** How many times this URL has been imported (cache-hit counter; the first
+   *  successful import sets this to 1, subsequent re-imports increment it). */
   hitCount: number;
 }
 

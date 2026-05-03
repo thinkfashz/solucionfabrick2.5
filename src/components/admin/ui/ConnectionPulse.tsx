@@ -81,8 +81,12 @@ export function ConnectionPulse({
       if (inflight.current || document.visibilityState === 'hidden') return;
       inflight.current = true;
       const t0 = Date.now();
+      // Abort the ping after 10 s so a hung integration endpoint doesn't
+      // pile up requests when the interval re-fires.
+      const ac = new AbortController();
+      const timeoutId = setTimeout(() => ac.abort(), 10_000);
       try {
-        const res = await fetch(pingUrl, { cache: 'no-store' });
+        const res = await fetch(pingUrl, { cache: 'no-store', signal: ac.signal });
         const json = (await res.json().catch(() => ({}))) as PingResponse;
         const dt = Date.now() - t0;
         if (cancelled) return;
@@ -99,8 +103,15 @@ export function ConnectionPulse({
         if (cancelled) return;
         setStatus('error');
         setLatency(null);
-        setMessage(e instanceof Error ? e.message : 'Error de red');
+        setMessage(
+          e instanceof Error
+            ? e.name === 'AbortError'
+              ? 'Timeout (10s)'
+              : e.message
+            : 'Error de red',
+        );
       } finally {
+        clearTimeout(timeoutId);
         inflight.current = false;
         if (!cancelled) setLastPingAt(Date.now());
       }

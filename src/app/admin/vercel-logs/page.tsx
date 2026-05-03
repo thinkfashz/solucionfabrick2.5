@@ -536,17 +536,22 @@ export default function VercelLogsPage() {
                         </button>
                         {isOpen && (
                           <div className="border-t border-white/5 bg-black/40 p-3 text-[11px]">
-                            {hasMeta && (
+                            {hasMeta && (() => {
+                              // Use null-safe checks because durationMs/statusCode
+                              // may legitimately be 0.
+                              const showStatus = log.statusCode != null;
+                              const showDuration = log.durationMs != null;
+                              return (
                               <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
                                 {log.requestId && (
                                   <Meta k="requestId" v={log.requestId} mono />
                                 )}
                                 {log.host && <Meta k="host" v={log.host} />}
                                 {log.region && <Meta k="region" v={log.region} />}
-                                {typeof log.statusCode === 'number' && (
+                                {showStatus && (
                                   <Meta k="status" v={String(log.statusCode)} />
                                 )}
-                                {typeof log.durationMs === 'number' && (
+                                {showDuration && (
                                   <Meta k="duration" v={`${log.durationMs}ms`} />
                                 )}
                                 {log.function && <Meta k="function" v={log.function} />}
@@ -557,7 +562,8 @@ export default function VercelLogsPage() {
                                 )}
                                 {log.referer && <Meta k="referer" v={log.referer} truncate />}
                               </dl>
-                            )}
+                              );
+                            })()}
                             {log.rawJson && (
                               <details className="mt-3">
                                 <summary className="cursor-pointer select-none text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:text-yellow-300">

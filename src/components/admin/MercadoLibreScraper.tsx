@@ -36,6 +36,7 @@ import {
   X,
 } from 'lucide-react';
 import { extractMlcId as canonicalExtractMlcId } from '@/lib/productImportShared';
+import { useProductImportHistory } from '@/hooks/useProductImportHistory';
 
 /** Re-exported for backwards-compatibility with existing callers. */
 export const extractMlcId = canonicalExtractMlcId;
@@ -100,6 +101,10 @@ export default function MercadoLibreScraper() {
   const [error, setError] = useState<string | null>(null);
   const [preview, setPreview] = useState<ImportedProductPreview | null>(null);
   const [importedId, setImportedId] = useState<string | null>(null);
+  // Plan §5 — historial reciente de imports (localStorage; el back-end con
+  // tabla `product_import_history` queda como follow-up con migración).
+  const { entries: historyEntries, record: recordHistory, remove: removeHistory } =
+    useProductImportHistory();
 
   async function handleExtract(e?: React.FormEvent) {
     e?.preventDefault();
@@ -138,6 +143,15 @@ export default function MercadoLibreScraper() {
               : [],
       };
       setPreview(previewWithImages);
+      // Record into local history so the admin can quickly re-import later.
+      recordHistory({
+        url: url.trim(),
+        title: previewWithImages.title,
+        imageUrl: previewWithImages.imageUrl,
+        price: previewWithImages.price,
+        currency: previewWithImages.currency,
+        source: previewWithImages.source,
+      });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error al resolver la URL.');
     } finally {
@@ -270,6 +284,71 @@ export default function MercadoLibreScraper() {
           importing={importing}
           importedId={importedId}
         />
+      )}
+
+      {/* Plan §5 — historial reciente. Guardado en localStorage; click rellena
+          el form, X borra una entrada. Cap a 20 entradas. */}
+      {historyEntries.length > 0 && (
+        <div className="mt-6 rounded-2xl border border-zinc-800 bg-zinc-950/60 p-4">
+          <div className="mb-3 flex items-center justify-between">
+            <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-400">
+              Importaciones recientes
+            </p>
+            <span className="text-[10px] text-zinc-600">{historyEntries.length} guardadas</span>
+          </div>
+          <ul className="space-y-1.5">
+            {historyEntries.slice(0, 8).map((entry) => (
+              <li
+                key={entry.normalizedUrl}
+                className="group flex items-center gap-3 rounded-lg border border-transparent bg-zinc-900/40 p-2 transition hover:border-yellow-400/30 hover:bg-zinc-900/80"
+              >
+                <button
+                  type="button"
+                  onClick={() => {
+                    setUrl(entry.url);
+                    setError(null);
+                  }}
+                  className="flex flex-1 items-center gap-3 text-left"
+                  title="Rellenar el formulario con esta URL"
+                >
+                  {entry.imageUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element
+                    <img
+                      src={entry.imageUrl}
+                      alt=""
+                      className="h-9 w-9 flex-shrink-0 rounded-md border border-zinc-800 object-cover"
+                    />
+                  ) : (
+                    <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-md border border-zinc-800 bg-black">
+                      <Package className="h-3.5 w-3.5 text-zinc-600" />
+                    </span>
+                  )}
+                  <span className="min-w-0 flex-1">
+                    <span className="block truncate text-xs font-medium text-zinc-100">
+                      {entry.title || entry.url}
+                    </span>
+                    <span className="block truncate text-[10px] text-zinc-500">
+                      {entry.source} · {new Intl.NumberFormat('es-CL', {
+                        style: 'currency',
+                        currency: entry.currency || 'CLP',
+                        maximumFractionDigits: 0,
+                      }).format(entry.price)}
+                      {entry.hitCount > 1 && ` · ×${entry.hitCount}`}
+                    </span>
+                  </span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => removeHistory(entry.normalizedUrl)}
+                  aria-label="Eliminar del historial"
+                  className="rounded p-1 text-zinc-600 opacity-0 transition hover:bg-zinc-800 hover:text-red-400 group-hover:opacity-100"
+                >
+                  <X className="h-3.5 w-3.5" />
+                </button>
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
     </section>
   );

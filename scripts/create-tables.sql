@@ -978,3 +978,269 @@ CREATE INDEX IF NOT EXISTS favorites_product_id_idx ON public.favorites(product_
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_status text;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_id text;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- ─────────────────────────────────────────────────────────────────
+-- EPIC — Mejoras del panel admin (importer cache, social inbox,
+-- marketplace de extensiones, observabilidad, auditoría)
+-- ─────────────────────────────────────────────────────────────────
+
+-- TABLA: product_import_history
+-- Caché + historial de importaciones de productos desde URLs externas
+-- (Mercado Libre, Shopify, sitios genéricos). El endpoint
+-- /api/admin/productos/import-from-url puede consultar esta tabla
+-- por `normalized_url` con un TTL corto para devolver previews
+-- instantáneos sin re-scrapear, y la sidebar de
+-- /admin/productos/importar muestra las últimas N entradas como
+-- chips clicables.
+CREATE TABLE IF NOT EXISTS public.product_import_history (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  url text NOT NULL,
+  normalized_url text NOT NULL,
+  source text,
+  title text,
+  price_clp numeric,
+  currency text,
+  image_url text,
+  raw jsonb,
+  user_id uuid,
+  hit_count integer DEFAULT 1,
+  fetched_at timestamptz DEFAULT now()
+);
+
+-- TABLA: product_import_history-migrate
+ALTER TABLE public.product_import_history ADD COLUMN IF NOT EXISTS url text;
+ALTER TABLE public.product_import_history ADD COLUMN IF NOT EXISTS normalized_url text;
+-- `normalized_url` debe quedar NOT NULL en deployments antiguos para que el
+-- índice único de abajo y el lookup por caché funcionen sin sorpresas.
+-- Eliminamos primero filas residuales sin valor (no pueden formar parte de
+-- un caché útil) antes de fijar el NOT NULL — paralelo al patrón usado en
+-- la migración de `favorites`.
+DELETE FROM public.product_import_history WHERE normalized_url IS NULL OR url IS NULL;
+ALTER TABLE public.product_import_history ALTER COLUMN url SET NOT NULL;
+ALTER TABLE public.product_import_history ALTER COLUMN normalized_url SET NOT NULL;
+ALTER TABLE public.product_import_history ADD COLUMN IF NOT EXISTS source text;
+ALTER TABLE public.product_import_history ADD COLUMN IF NOT EXISTS title text;
+ALTER TABLE public.product_import_history ADD COLUMN IF NOT EXISTS price_clp numeric;
+ALTER TABLE public.product_import_history ADD COLUMN IF NOT EXISTS currency text;
+ALTER TABLE public.product_import_history ADD COLUMN IF NOT EXISTS image_url text;
+ALTER TABLE public.product_import_history ADD COLUMN IF NOT EXISTS raw jsonb;
+ALTER TABLE public.product_import_history ADD COLUMN IF NOT EXISTS user_id uuid;
+ALTER TABLE public.product_import_history ADD COLUMN IF NOT EXISTS hit_count integer DEFAULT 1;
+ALTER TABLE public.product_import_history ADD COLUMN IF NOT EXISTS fetched_at timestamptz DEFAULT now();
+CREATE UNIQUE INDEX IF NOT EXISTS product_import_history_normalized_url_idx
+  ON public.product_import_history(normalized_url);
+CREATE INDEX IF NOT EXISTS product_import_history_fetched_at_idx
+  ON public.product_import_history (fetched_at DESC);
+
+-- TABLA: system_health_samples
+-- Muestreo periódico (≥ 1/min) del estado de cada provider/servicio
+-- que aparece en /admin/estado. Alimenta tanto el "ecualizador" en
+-- vivo (VerticalBar) como gráficas históricas. `provider` es el
+-- mismo slug que se usa en la tabla `integrations`
+-- (mercadopago, cloudinary, vercel, openai, …) más los pseudo-
+-- providers `web` (HEAD a la propia app) y `db` (ping a InsForge).
+CREATE TABLE IF NOT EXISTS public.system_health_samples (
+  id bigserial PRIMARY KEY,
+  provider text NOT NULL,
+  ts timestamptz DEFAULT now(),
+  latency_ms integer,
+  ok boolean,
+  error text
+);
+
+-- TABLA: system_health_samples-migrate
+ALTER TABLE public.system_health_samples ADD COLUMN IF NOT EXISTS provider text;
+ALTER TABLE public.system_health_samples ADD COLUMN IF NOT EXISTS ts timestamptz DEFAULT now();
+ALTER TABLE public.system_health_samples ADD COLUMN IF NOT EXISTS latency_ms integer;
+ALTER TABLE public.system_health_samples ADD COLUMN IF NOT EXISTS ok boolean;
+ALTER TABLE public.system_health_samples ADD COLUMN IF NOT EXISTS error text;
+CREATE INDEX IF NOT EXISTS system_health_samples_provider_ts_idx
+  ON public.system_health_samples (provider, ts DESC);
+
+-- TABLA: integration_audit
+-- Auditoría de cambios sobre credenciales en `integrations` (provider,
+-- action='create'|'update'|'rotate'|'reveal'|'delete', actor=email
+-- del admin, ip, user_agent, ts). Lo lee /admin/configuracion para
+-- mostrar "últimos 5 eventos" por provider.
+CREATE TABLE IF NOT EXISTS public.integration_audit (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider text NOT NULL,
+  action text NOT NULL,
+  actor text,
+  ip text,
+  user_agent text,
+  details jsonb,
+  ts timestamptz DEFAULT now()
+);
+
+-- TABLA: integration_audit-migrate
+ALTER TABLE public.integration_audit ADD COLUMN IF NOT EXISTS provider text;
+ALTER TABLE public.integration_audit ADD COLUMN IF NOT EXISTS action text;
+ALTER TABLE public.integration_audit ADD COLUMN IF NOT EXISTS actor text;
+ALTER TABLE public.integration_audit ADD COLUMN IF NOT EXISTS ip text;
+ALTER TABLE public.integration_audit ADD COLUMN IF NOT EXISTS user_agent text;
+ALTER TABLE public.integration_audit ADD COLUMN IF NOT EXISTS details jsonb;
+ALTER TABLE public.integration_audit ADD COLUMN IF NOT EXISTS ts timestamptz DEFAULT now();
+CREATE INDEX IF NOT EXISTS integration_audit_provider_ts_idx
+  ON public.integration_audit (provider, ts DESC);
+
+-- TABLA: ads_agent_runs
+-- Cada ejecución del coach IA de /admin/publicidad/coach: la acción
+-- ('analyze'|'suggest'|'create'|'optimize'), el prompt y la respuesta
+-- estructurada (JSON). El admin puede revisar el historial y
+-- aplicar una sugerencia con un clic.
+CREATE TABLE IF NOT EXISTS public.ads_agent_runs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  channel text,
+  campaign_id text,
+  action text NOT NULL,
+  prompt text,
+  response jsonb,
+  applied boolean DEFAULT false,
+  applied_at timestamptz,
+  applied_result jsonb,
+  created_at timestamptz DEFAULT now()
+);
+
+-- TABLA: ads_agent_runs-migrate
+ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS channel text;
+ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS campaign_id text;
+ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS action text;
+ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS prompt text;
+ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS response jsonb;
+ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS applied boolean DEFAULT false;
+ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS applied_at timestamptz;
+ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS applied_result jsonb;
+ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+CREATE INDEX IF NOT EXISTS ads_agent_runs_created_at_idx
+  ON public.ads_agent_runs (created_at DESC);
+
+-- TABLA: social_scheduled_posts
+-- Posts programados (Instagram/Facebook/TikTok). El cron en
+-- /api/cron/social-scheduler revisa entradas con scheduled_at <=
+-- now() y status='pending', publica vía /api/admin/social/publish y
+-- actualiza el status a 'published'|'failed'.
+CREATE TABLE IF NOT EXISTS public.social_scheduled_posts (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider text NOT NULL,
+  caption text,
+  media jsonb,
+  scheduled_at timestamptz,
+  status text DEFAULT 'pending',
+  result jsonb,
+  created_at timestamptz DEFAULT now()
+);
+
+-- TABLA: social_scheduled_posts-migrate
+ALTER TABLE public.social_scheduled_posts ADD COLUMN IF NOT EXISTS provider text;
+ALTER TABLE public.social_scheduled_posts ADD COLUMN IF NOT EXISTS caption text;
+ALTER TABLE public.social_scheduled_posts ADD COLUMN IF NOT EXISTS media jsonb;
+ALTER TABLE public.social_scheduled_posts ADD COLUMN IF NOT EXISTS scheduled_at timestamptz;
+ALTER TABLE public.social_scheduled_posts ADD COLUMN IF NOT EXISTS status text DEFAULT 'pending';
+ALTER TABLE public.social_scheduled_posts ADD COLUMN IF NOT EXISTS result jsonb;
+ALTER TABLE public.social_scheduled_posts ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+CREATE INDEX IF NOT EXISTS social_scheduled_posts_due_idx
+  ON public.social_scheduled_posts (status, scheduled_at);
+
+-- TABLA: social_messages
+-- Inbox unificado de mensajes recibidos por las redes conectadas
+-- (Instagram DM, Facebook Messenger, WhatsApp Business, TikTok,
+-- Mercado Libre Q&A). Lo alimentan los webhooks de cada provider o
+-- un cron que sondea sus APIs. La UI vive en /admin/social/inbox.
+CREATE TABLE IF NOT EXISTS public.social_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider text NOT NULL,
+  thread_id text,
+  external_id text,
+  sender text,
+  sender_name text,
+  text text,
+  attachments jsonb,
+  received_at timestamptz DEFAULT now(),
+  read_at timestamptz,
+  replied_at timestamptz,
+  customer_match jsonb
+);
+
+-- TABLA: social_messages-migrate
+ALTER TABLE public.social_messages ADD COLUMN IF NOT EXISTS provider text;
+ALTER TABLE public.social_messages ADD COLUMN IF NOT EXISTS thread_id text;
+ALTER TABLE public.social_messages ADD COLUMN IF NOT EXISTS external_id text;
+ALTER TABLE public.social_messages ADD COLUMN IF NOT EXISTS sender text;
+ALTER TABLE public.social_messages ADD COLUMN IF NOT EXISTS sender_name text;
+ALTER TABLE public.social_messages ADD COLUMN IF NOT EXISTS text text;
+ALTER TABLE public.social_messages ADD COLUMN IF NOT EXISTS attachments jsonb;
+ALTER TABLE public.social_messages ADD COLUMN IF NOT EXISTS received_at timestamptz DEFAULT now();
+ALTER TABLE public.social_messages ADD COLUMN IF NOT EXISTS read_at timestamptz;
+ALTER TABLE public.social_messages ADD COLUMN IF NOT EXISTS replied_at timestamptz;
+ALTER TABLE public.social_messages ADD COLUMN IF NOT EXISTS customer_match jsonb;
+CREATE INDEX IF NOT EXISTS social_messages_provider_received_idx
+  ON public.social_messages (provider, received_at DESC);
+CREATE UNIQUE INDEX IF NOT EXISTS social_messages_provider_external_idx
+  ON public.social_messages (provider, external_id);
+
+-- TABLA: app_extensions
+-- Catálogo + estado de extensiones tipo "app store". Cada fila es un
+-- paquete instalado o disponible. Manifest JSON validado contra zod
+-- antes de insertar. status='available' = aparece en marketplace
+-- pero no instalada; status='installed' = activa y sus hooks corren
+-- en runtime.
+CREATE TABLE IF NOT EXISTS public.app_extensions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug text NOT NULL,
+  name text NOT NULL,
+  description text,
+  icon_url text,
+  author text,
+  version text,
+  status text DEFAULT 'available',
+  config jsonb,
+  manifest jsonb,
+  installed_at timestamptz,
+  created_at timestamptz DEFAULT now()
+);
+
+-- TABLA: app_extensions-migrate
+ALTER TABLE public.app_extensions ADD COLUMN IF NOT EXISTS slug text;
+ALTER TABLE public.app_extensions ADD COLUMN IF NOT EXISTS name text;
+ALTER TABLE public.app_extensions ADD COLUMN IF NOT EXISTS description text;
+ALTER TABLE public.app_extensions ADD COLUMN IF NOT EXISTS icon_url text;
+ALTER TABLE public.app_extensions ADD COLUMN IF NOT EXISTS author text;
+ALTER TABLE public.app_extensions ADD COLUMN IF NOT EXISTS version text;
+ALTER TABLE public.app_extensions ADD COLUMN IF NOT EXISTS status text DEFAULT 'available';
+ALTER TABLE public.app_extensions ADD COLUMN IF NOT EXISTS config jsonb;
+ALTER TABLE public.app_extensions ADD COLUMN IF NOT EXISTS manifest jsonb;
+ALTER TABLE public.app_extensions ADD COLUMN IF NOT EXISTS installed_at timestamptz;
+ALTER TABLE public.app_extensions ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+CREATE UNIQUE INDEX IF NOT EXISTS app_extensions_slug_idx
+  ON public.app_extensions (slug);
+
+-- TABLA: extension_hooks
+-- Hooks suscritos por una extensión a eventos del sistema
+-- (`order.created`, `product.after_create`, `checkout.before_pay`,
+-- …). El bus despacha el evento a cada hook activo en orden.
+-- `handler` puede ser una URL (webhook saliente firmado HMAC) o un
+-- nombre de función registrada server-side por la extensión.
+CREATE TABLE IF NOT EXISTS public.extension_hooks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  extension_id uuid NOT NULL,
+  hook text NOT NULL,
+  handler text NOT NULL,
+  enabled boolean DEFAULT true,
+  priority integer DEFAULT 100,
+  config jsonb,
+  created_at timestamptz DEFAULT now()
+);
+
+-- TABLA: extension_hooks-migrate
+ALTER TABLE public.extension_hooks ADD COLUMN IF NOT EXISTS extension_id uuid;
+ALTER TABLE public.extension_hooks ADD COLUMN IF NOT EXISTS hook text;
+ALTER TABLE public.extension_hooks ADD COLUMN IF NOT EXISTS handler text;
+ALTER TABLE public.extension_hooks ADD COLUMN IF NOT EXISTS enabled boolean DEFAULT true;
+ALTER TABLE public.extension_hooks ADD COLUMN IF NOT EXISTS priority integer DEFAULT 100;
+ALTER TABLE public.extension_hooks ADD COLUMN IF NOT EXISTS config jsonb;
+ALTER TABLE public.extension_hooks ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+CREATE INDEX IF NOT EXISTS extension_hooks_hook_enabled_idx
+  ON public.extension_hooks (hook, enabled);
+CREATE INDEX IF NOT EXISTS extension_hooks_extension_id_idx
+  ON public.extension_hooks (extension_id);

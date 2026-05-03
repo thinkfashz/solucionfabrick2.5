@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@insforge/sdk';
 import { META_GRAPH_URL, normalizeAdAccountId } from '@/lib/meta';
+import { decryptCredentials } from '@/lib/integrationsCrypto';
 
 /**
  * Resolves Meta credentials from env vars first, then from the InsForge
@@ -27,10 +28,11 @@ async function resolveMetaCredentials(): Promise<{ accessToken?: string; adAccou
       .eq('provider', 'meta')
       .limit(1);
     if (Array.isArray(data) && data.length > 0) {
-      const row = data[0] as { credentials?: Record<string, string> };
+      const row = data[0] as { credentials?: Record<string, unknown> };
+      const creds = decryptCredentials(row.credentials ?? {}) as Record<string, string>;
       return {
-        accessToken: envToken ?? row.credentials?.access_token,
-        adAccountId: envAccount ?? normalizeAdAccountId(row.credentials?.ad_account_id),
+        accessToken: envToken ?? creds.access_token,
+        adAccountId: envAccount ?? normalizeAdAccountId(creds.ad_account_id),
       };
     }
   } catch {

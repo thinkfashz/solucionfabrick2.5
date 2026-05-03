@@ -35,6 +35,7 @@ import SyncStatusButton from '@/components/admin/SyncStatusButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { StepChart, VerticalBar, LiveDot, type BarStatus } from '@/components/admin/ui';
 import {
   formatCLP,
   normalizeOrderRecord,
@@ -584,6 +585,104 @@ export default function AdminPage() {
           {error}
         </div>
       )}
+
+      {/* Trading-style hero — Plan §4 (centro de control profesional, gráfica
+          escalonada con punto rojo pulsante + barras verticales de "pulso del
+          negocio"). The step chart renders ventas-por-día (CLP confirmadas)
+          for an at-a-glance view; the vertical bars on the right show
+          real-time pulse for orders, pending, leads and errors. */}
+      <section className="grid gap-4 lg:grid-cols-[1fr_auto] rounded-3xl border border-white/10 bg-[linear-gradient(180deg,#0a0a0a,#000)] p-5 md:p-6">
+        <div className="min-w-0">
+          <div className="flex flex-wrap items-end justify-between gap-3">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-yellow-400">
+                Pulso del negocio · 7 días
+              </p>
+              <h2 className="mt-1 font-playfair text-2xl font-black text-white md:text-3xl">
+                {formatCLP(metrics.thisMonthRevenue)}
+              </h2>
+              <p className="mt-1 flex items-center gap-2 text-xs">
+                <span
+                  className={
+                    metrics.revenueChange >= 0 ? 'text-emerald-400' : 'text-rose-400'
+                  }
+                >
+                  {metrics.revenueChange >= 0 ? '▲' : '▼'}{' '}
+                  {Math.abs(Math.round(metrics.revenueChange))}% mes vs anterior
+                </span>
+                <LiveDot
+                  status={connected ? 'ok' : 'warn'}
+                  label={connected ? 'Live' : 'Offline'}
+                />
+              </p>
+            </div>
+            <span className="text-[10px] font-mono text-zinc-600">
+              último: {formatCLP(ventasPorDia[ventasPorDia.length - 1]?.total ?? 0)}
+            </span>
+          </div>
+          <div className="mt-3">
+            <StepChart
+              data={ventasPorDia.map((d, i) => ({ x: i, y: d.total }))}
+              color="#facc15"
+              height={isMobile ? 140 : 180}
+              livePulse
+            />
+            <div className="mt-1 flex justify-between text-[9px] font-mono text-zinc-600">
+              {ventasPorDia.map((d, i) => (
+                <span key={i}>{d.fecha}</span>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        <div className="flex gap-2 overflow-x-auto pb-1 lg:flex-col lg:overflow-visible">
+          {([
+            {
+              key: 'ord',
+              label: 'PEDIDOS',
+              value: Math.min(100, (metrics.ordersTodayCount / 10) * 100),
+              status: metrics.ordersTodayCount > 0 ? ('ok' as BarStatus) : ('idle' as BarStatus),
+              sub: `${metrics.ordersTodayCount} hoy`,
+            },
+            {
+              key: 'pend',
+              label: 'PEND.',
+              value: Math.min(100, (metrics.pendingOrdersCount / 10) * 100),
+              status: (metrics.oldPending > 0
+                ? 'error'
+                : metrics.pendingOrdersCount > 0
+                ? 'warn'
+                : 'ok') as BarStatus,
+              sub: `${metrics.pendingOrdersCount}${metrics.oldPending > 0 ? ` (${metrics.oldPending}+24h)` : ''}`,
+            },
+            {
+              key: 'leads',
+              label: 'LEADS',
+              value: Math.min(100, (leadsToday / 10) * 100),
+              status: (leadsToday > 0 ? 'ok' : 'idle') as BarStatus,
+              sub: `${leadsToday}`,
+            },
+            {
+              key: 'stock',
+              label: 'STOCK',
+              value: metrics.zeroStock > 0
+                ? Math.max(15, 100 - (metrics.zeroStock / Math.max(1, metrics.activeProductsCount)) * 100)
+                : 100,
+              status: (metrics.zeroStock > 0 ? 'warn' : 'ok') as BarStatus,
+              sub: `${metrics.zeroStock} sin`,
+            },
+          ] as const).map((b) => (
+            <VerticalBar
+              key={b.key}
+              value={b.value}
+              status={b.status}
+              label={b.label}
+              sublabel={b.sub}
+              height={isMobile ? 110 : 160}
+            />
+          ))}
+        </div>
+      </section>
 
       {/* Four metric cards — Task 9 KPIs (pedidos hoy · ingresos semana · productos activos · leads nuevos) */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">

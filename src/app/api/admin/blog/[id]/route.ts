@@ -5,6 +5,7 @@ import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from
 import { estimateReadingMinutes, renderMarkdown, slugify } from '@/lib/markdown';
 import { publishCmsEvent } from '@/lib/cmsBus';
 import { CMS_CACHE_TAGS } from '@/lib/cms';
+import { detectSchemaError, schemaErrorHint } from '@/lib/schemaErrors';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -110,6 +111,16 @@ export async function PUT(request: NextRequest, ctx: RouteCtx) {
       .select();
     if (error) {
       const isDup = /duplicate|unique/i.test(error.message);
+      if (!isDup) {
+        const schema = detectSchemaError(error.message);
+        if (schema) {
+          const { code, hint } = schemaErrorHint(schema);
+          return NextResponse.json(
+            { error: error.message, code, hint, schema },
+            { status: 503 },
+          );
+        }
+      }
       return NextResponse.json(
         {
           error: isDup ? 'Ya existe otra entrada con ese slug.' : error.message,

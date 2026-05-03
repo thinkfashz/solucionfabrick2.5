@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
 import { calculateCheckoutSummary, validateCheckoutPayload, type CheckoutPayload } from '@/lib/checkout';
 import { createMercadoPagoPreference } from '@/lib/mercadopago';
+import { dispatchHookAsync } from '@/lib/extensionsBus';
 
 export async function POST(request: Request) {
   try {
@@ -56,6 +57,15 @@ export async function POST(request: Request) {
       persistenceWarning = `No se pudo persistir en DB (orders): ${insertError.message}`;
     } else {
       persisted = true;
+      // Notify marketplace extensions subscribed to order.created. Fire-and-forget.
+      dispatchHookAsync('order.created', {
+        id: orden.id,
+        customer: { name: cliente.nombre, email: cliente.email, phone: cliente.telefono ?? null },
+        region,
+        items,
+        summary: resumen,
+        status: orden.estado,
+      });
     }
 
     const preference = await createMercadoPagoPreference({

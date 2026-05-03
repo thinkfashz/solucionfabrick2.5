@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
 import { resolveProductFromUrl, type ImportedProduct } from '@/lib/productImport';
+import { readImportCache, writeImportCache } from '@/lib/productImportCache';
+import { dispatchHookAsync } from '@/lib/extensionsBus';
 import { isMissingOriginColumnError } from './errors';
 
 export const dynamic = 'force-dynamic';
@@ -159,15 +161,43 @@ export async function POST(request: NextRequest) {
     }
 
     let preview: ImportedProduct;
-    try {
-      preview = await resolveProductFromUrl(url);
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'No se pudo resolver la URL.';
-      return NextResponse.json({ error: msg, code: 'IMPORT_RESOLVE_FAILED' }, { status: 400 });
+    let cacheHit = false;
+    let cachedAt: string | undefined;
+    let cachedHitCount: number | undefined;
+
+    // For *preview* requests (persist=false) we serve cached resolutions
+    // up to 24h old so repeated paste-test cycles in the admin UI don't
+    // re-hit the upstream store. The persist branch always re-resolves
+    // so the merchant sees the *current* upstream price/stock.
+    if (!persist) {
+      const cached = await readImportCache(url);
+      if (cached) {
+        preview = cached.preview;
+        cacheHit = true;
+        cachedAt = cached.fetchedAt;
+        cachedHitCount = cached.hitCount;
+      } else {
+        try {
+          preview = await resolveProductFromUrl(url);
+        } catch (err) {
+          const msg = err instanceof Error ? err.message : 'No se pudo resolver la URL.';
+          return NextResponse.json({ error: msg, code: 'IMPORT_RESOLVE_FAILED' }, { status: 400 });
+        }
+        // Fire-and-forget cache write so we don't slow down the response.
+        void writeImportCache(url, preview);
+      }
+    } else {
+      try {
+        preview = await resolveProductFromUrl(url);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'No se pudo resolver la URL.';
+        return NextResponse.json({ error: msg, code: 'IMPORT_RESOLVE_FAILED' }, { status: 400 });
+      }
+      void writeImportCache(url, preview);
     }
 
     if (!persist) {
-      return NextResponse.json({ ok: true, preview });
+      return NextResponse.json({ ok: true, preview, cached: cacheHit, cachedAt, hitCount: cachedHitCount });
     }
 
     // Merge the admin-supplied overrides on top of the scraped preview.
@@ -244,6 +274,10 @@ export async function POST(request: NextRequest) {
         Array.isArray(data) && data.length > 0
           ? (data[0] as { id?: string }).id ?? null
           : null;
+      // Notify marketplace extensions subscribed to product.after_create.
+      if (newId) {
+        dispatchHookAsync('product.after_create', { id: newId, product: insertPayload });
+      }
       return NextResponse.json({ ok: true, preview, id: newId });
     } catch (err) {
       return NextResponse.json(

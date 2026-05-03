@@ -2,7 +2,18 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { AlertTriangle, CheckCircle2, ExternalLink, Filter, RefreshCw, Server, Terminal } from 'lucide-react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ChevronDown,
+  ChevronRight,
+  ExternalLink,
+  Filter,
+  RefreshCw,
+  Search,
+  Server,
+  Terminal,
+} from 'lucide-react';
 
 /**
  * /admin/vercel-logs
@@ -36,6 +47,17 @@ interface LogRow {
   message: string;
   path?: string;
   deploymentId: string;
+  method?: string;
+  requestId?: string;
+  host?: string;
+  region?: string;
+  statusCode?: number;
+  durationMs?: number;
+  function?: string;
+  runtime?: string;
+  userAgent?: string;
+  referer?: string;
+  rawJson?: string;
 }
 
 type LevelFilter = 'error' | 'warning' | 'all';
@@ -87,6 +109,32 @@ const SOURCE_LABELS: Record<LogRow['source'], string> = {
   system: 'SYS',
 };
 
+function Meta({
+  k,
+  v,
+  mono,
+  truncate,
+}: {
+  k: string;
+  v: string;
+  mono?: boolean;
+  truncate?: boolean;
+}) {
+  return (
+    <div className="min-w-0">
+      <dt className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">{k}</dt>
+      <dd
+        className={`text-zinc-200 ${mono ? 'font-mono text-[10px]' : 'text-[11px]'} ${
+          truncate ? 'truncate' : 'break-all'
+        }`}
+        title={truncate ? v : undefined}
+      >
+        {v}
+      </dd>
+    </div>
+  );
+}
+
 export default function VercelLogsPage() {
   const [deployments, setDeployments] = useState<DeploymentRow[]>([]);
   const [selectedDeployment, setSelectedDeployment] = useState<string>('');
@@ -96,6 +144,17 @@ export default function VercelLogsPage() {
   const [loadingDeployments, setLoadingDeployments] = useState(false);
   const [loadingLogs, setLoadingLogs] = useState(false);
   const [error, setError] = useState<ApiError | null>(null);
+  const [search, setSearch] = useState('');
+  const [expanded, setExpanded] = useState<Set<string>>(() => new Set());
+
+  const toggleExpanded = useCallback((id: string) => {
+    setExpanded((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
 
   const loadDeployments = useCallback(async () => {
     setLoadingDeployments(true);
@@ -168,6 +227,29 @@ export default function VercelLogsPage() {
     () => deployments.find((d) => d.id === selectedDeployment),
     [deployments, selectedDeployment],
   );
+
+  // Free-text filter: matches against message, path, requestId, status code,
+  // host, region or function name. Empty string returns the original list.
+  const visibleLogs = useMemo(() => {
+    const q = search.trim().toLowerCase();
+    if (!q) return logs;
+    return logs.filter((l) => {
+      const hay = [
+        l.message,
+        l.path,
+        l.requestId,
+        String(l.statusCode ?? ''),
+        l.host,
+        l.region,
+        l.function,
+        l.method,
+      ]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase();
+      return hay.includes(q);
+    });
+  }, [logs, search]);
 
   const isMissingCreds = error?.code === 'VERCEL_NOT_CONFIGURED';
 
@@ -348,9 +430,9 @@ export default function VercelLogsPage() {
                 </div>
               </div>
 
-              {/* Counts strip */}
+              {/* Counts strip + search */}
               {counts && (
-                <div className="flex flex-wrap gap-3 border-b border-white/5 px-4 py-2 text-[10px] uppercase tracking-widest text-zinc-400">
+                <div className="flex flex-wrap items-center gap-3 border-b border-white/5 px-4 py-2 text-[10px] uppercase tracking-widest text-zinc-400">
                   <span>
                     <span className="text-red-400">{counts.error}</span> errores
                   </span>
@@ -360,6 +442,16 @@ export default function VercelLogsPage() {
                   <span>
                     <span className="text-zinc-300">{counts.info}</span> info
                   </span>
+                  <div className="ml-auto flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-2 py-1">
+                    <Search className="h-3 w-3 text-zinc-500" />
+                    <input
+                      type="search"
+                      placeholder="Buscar mensaje, ruta, requestId, status…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="w-56 bg-transparent text-[11px] text-white outline-none placeholder:text-zinc-600"
+                    />
+                  </div>
                 </div>
               )}
 
@@ -368,35 +460,125 @@ export default function VercelLogsPage() {
                 {loadingLogs && logs.length === 0 && (
                   <p className="px-2 py-6 text-center text-[11px] text-zinc-500">Cargando eventos…</p>
                 )}
-                {!loadingLogs && logs.length === 0 && !error && (
+                {!loadingLogs && visibleLogs.length === 0 && !error && (
                   <p className="px-2 py-10 text-center text-[12px] text-zinc-500">
                     <CheckCircle2 className="mx-auto mb-2 h-5 w-5 text-green-400" />
-                    Sin eventos para el filtro seleccionado.
+                    {search.trim()
+                      ? `Sin coincidencias para "${search}".`
+                      : 'Sin eventos para el filtro seleccionado.'}
                   </p>
                 )}
                 <ul className="space-y-1.5">
-                  {logs.map((log) => (
-                    <li
-                      key={log.id}
-                      className={`rounded-lg border p-3 ${LEVEL_COLORS[log.level]}`}
-                    >
-                      <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-zinc-400">
-                        <span>{formatTimestamp(log.ts)}</span>
-                        <span className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold tracking-widest">
-                          {SOURCE_LABELS[log.source]}
-                        </span>
-                        <span className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest">
-                          {log.level}
-                        </span>
-                        {log.path && (
-                          <span className="truncate text-zinc-300">{log.path}</span>
+                  {visibleLogs.map((log) => {
+                    const isOpen = expanded.has(log.id);
+                    const hasMeta =
+                      log.requestId || log.host || log.region || log.statusCode || log.durationMs ||
+                      log.function || log.runtime || log.userAgent || log.referer || log.method;
+                    return (
+                      <li
+                        key={log.id}
+                        className={`rounded-lg border ${LEVEL_COLORS[log.level]}`}
+                      >
+                        <button
+                          type="button"
+                          onClick={() => toggleExpanded(log.id)}
+                          className="flex w-full items-start gap-2 p-3 text-left"
+                          aria-expanded={isOpen}
+                        >
+                          <span className="mt-0.5 text-zinc-500">
+                            {isOpen ? (
+                              <ChevronDown className="h-3.5 w-3.5" />
+                            ) : (
+                              <ChevronRight className="h-3.5 w-3.5" />
+                            )}
+                          </span>
+                          <div className="min-w-0 flex-1">
+                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-zinc-400">
+                              <span>{formatTimestamp(log.ts)}</span>
+                              <span className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold tracking-widest">
+                                {SOURCE_LABELS[log.source]}
+                              </span>
+                              <span className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest">
+                                {log.level}
+                              </span>
+                              {log.method && (
+                                <span className="rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-bold tracking-widest text-blue-300">
+                                  {log.method}
+                                </span>
+                              )}
+                              {typeof log.statusCode === 'number' && (
+                                <span
+                                  className={`rounded border px-1.5 py-0.5 text-[9px] font-bold tracking-widest ${
+                                    log.statusCode >= 500
+                                      ? 'border-red-500/40 bg-red-500/10 text-red-300'
+                                      : log.statusCode >= 400
+                                      ? 'border-yellow-400/40 bg-yellow-400/10 text-yellow-200'
+                                      : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+                                  }`}
+                                >
+                                  {log.statusCode}
+                                </span>
+                              )}
+                              {typeof log.durationMs === 'number' && (
+                                <span className="text-zinc-500">{log.durationMs}ms</span>
+                              )}
+                              {log.region && (
+                                <span className="text-zinc-500">{log.region}</span>
+                              )}
+                              {log.path && (
+                                <span className="truncate text-zinc-300">{log.path}</span>
+                              )}
+                            </div>
+                            <pre className="mt-2 whitespace-pre-wrap break-words text-[11px] leading-relaxed text-zinc-100">
+                              {log.message}
+                            </pre>
+                          </div>
+                        </button>
+                        {isOpen && (
+                          <div className="border-t border-white/5 bg-black/40 p-3 text-[11px]">
+                            {hasMeta && (() => {
+                              // Use null-safe checks because durationMs/statusCode
+                              // may legitimately be 0.
+                              const showStatus = log.statusCode != null;
+                              const showDuration = log.durationMs != null;
+                              return (
+                              <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+                                {log.requestId && (
+                                  <Meta k="requestId" v={log.requestId} mono />
+                                )}
+                                {log.host && <Meta k="host" v={log.host} />}
+                                {log.region && <Meta k="region" v={log.region} />}
+                                {showStatus && (
+                                  <Meta k="status" v={String(log.statusCode)} />
+                                )}
+                                {showDuration && (
+                                  <Meta k="duration" v={`${log.durationMs}ms`} />
+                                )}
+                                {log.function && <Meta k="function" v={log.function} />}
+                                {log.runtime && <Meta k="runtime" v={log.runtime} />}
+                                {log.method && <Meta k="method" v={log.method} />}
+                                {log.userAgent && (
+                                  <Meta k="userAgent" v={log.userAgent} truncate />
+                                )}
+                                {log.referer && <Meta k="referer" v={log.referer} truncate />}
+                              </dl>
+                              );
+                            })()}
+                            {log.rawJson && (
+                              <details className="mt-3">
+                                <summary className="cursor-pointer select-none text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:text-yellow-300">
+                                  Ver JSON crudo
+                                </summary>
+                                <pre className="mt-2 max-h-72 overflow-auto rounded border border-white/5 bg-black/60 p-2 font-mono text-[10px] leading-relaxed text-zinc-300">
+                                  {log.rawJson}
+                                </pre>
+                              </details>
+                            )}
+                          </div>
                         )}
-                      </div>
-                      <pre className="mt-2 whitespace-pre-wrap break-words text-[11px] leading-relaxed text-zinc-100">
-                        {log.message}
-                      </pre>
-                    </li>
-                  ))}
+                      </li>
+                    );
+                  })}
                 </ul>
               </div>
             </section>

@@ -1,5 +1,6 @@
 import 'server-only';
 import { createClient } from '@insforge/sdk';
+import { decryptCredentials } from './integrationsCrypto';
 
 /**
  * Resolves Meta (Facebook/Instagram Graph API) credentials.
@@ -70,7 +71,7 @@ export async function getMetaCredentials(): Promise<MetaCredentials | null> {
     if (error || !Array.isArray(data) || data.length === 0) return creds;
 
     const row = data[0] as { credentials?: Record<string, unknown> };
-    const dbCreds = row.credentials ?? {};
+    const dbCreds = decryptCredentials(row.credentials ?? {});
     const dbToken = normalize(dbCreds.access_token);
     // Accept both `facebook_page_id` and the legacy `page_id` used by the UI.
     const dbPage = normalize(dbCreds.facebook_page_id) ?? normalize(dbCreds.page_id);

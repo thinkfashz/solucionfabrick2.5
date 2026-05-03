@@ -1,5 +1,6 @@
 import 'server-only';
 import { createClient } from '@insforge/sdk';
+import { decryptCredentials } from './integrationsCrypto';
 
 /**
  * Vercel API client (server-only).
@@ -77,7 +78,7 @@ export async function getVercelCredentials(): Promise<VercelCredentials> {
     if (error || !Array.isArray(data) || data.length === 0) return creds;
 
     const row = data[0] as { credentials?: Record<string, unknown> };
-    const dbCreds = row.credentials ?? {};
+    const dbCreds = decryptCredentials(row.credentials ?? {});
     const dbToken = normalize(dbCreds.api_token);
     const dbProject = normalize(dbCreds.project_id);
     const dbTeam = normalize(dbCreds.team_id);
@@ -190,6 +191,11 @@ export async function vercelFetch<T = unknown>(
  *
  * Source = `build` for build-step events, `runtime` for serverless function
  * logs, `edge` for edge-middleware logs, and `static` for static-asset events.
+ *
+ * Extended (Plan §1) with the diagnostic fields the admin wanted exposed in
+ * full: `requestId`, `host`, `region`, `statusCode`, `durationMs`, `function`
+ * (lambda/edge name), `runtime`, `userAgent`, `referer`, and the original
+ * `rawJson` for a "ver JSON crudo" expandable row.
  */
 export interface VercelLogEntry {
   id: string;
@@ -201,6 +207,28 @@ export interface VercelLogEntry {
   /** Path/route that produced the log when known (e.g. `/api/admin/integrations`). */
   path?: string;
   deploymentId: string;
+  /** HTTP method when known (`GET`, `POST`, …). */
+  method?: string;
+  /** Vercel request id used to correlate with `admin_error_logs`. */
+  requestId?: string;
+  /** Hostname that served the request (e.g. `app.fabrick.cl`). */
+  host?: string;
+  /** Vercel region code (`iad1`, `sfo1`, `gru1`, …). */
+  region?: string;
+  /** HTTP status code returned to the client. */
+  statusCode?: number;
+  /** Total duration in milliseconds when reported. */
+  durationMs?: number;
+  /** Lambda / edge function name (e.g. `pages-api-orders`). */
+  function?: string;
+  /** Runtime label (`nodejs20.x`, `edge`). */
+  runtime?: string;
+  /** User-Agent of the client that triggered the log. */
+  userAgent?: string;
+  /** Referer of the client that triggered the log. */
+  referer?: string;
+  /** Original raw event payload, JSON-stringified for the "raw" toggle. */
+  rawJson: string;
 }
 
 interface RawVercelEvent {
@@ -211,15 +239,30 @@ interface RawVercelEvent {
   payload?: {
     text?: string;
     deploymentId?: string;
-    info?: { type?: string; name?: string; entrypoint?: string };
-    proxy?: { path?: string; method?: string; statusCode?: number };
+    info?: { type?: string; name?: string; entrypoint?: string; runtime?: string };
+    proxy?: {
+      path?: string;
+      method?: string;
+      statusCode?: number;
+      host?: string;
+      region?: string;
+      userAgent?: string;
+      referer?: string;
+      duration?: number;
+    };
     requestId?: string;
     statusCode?: number;
     level?: string;
+    region?: string;
+    host?: string;
+    duration?: number;
+    durationMs?: number;
+    runtime?: string;
   };
   text?: string;
   level?: string;
   serverless?: boolean;
+  region?: string;
 }
 
 /**
@@ -283,7 +326,29 @@ export function mapVercelEvent(event: RawVercelEvent, fallbackDeploymentId: stri
     message: text.length > 0 ? text : `(${event.type ?? 'evento sin texto'})`,
     path: event.payload?.proxy?.path,
     deploymentId: event.payload?.deploymentId ?? fallbackDeploymentId,
+    method: event.payload?.proxy?.method,
+    requestId: event.payload?.requestId,
+    host: event.payload?.proxy?.host ?? event.payload?.host,
+    region: event.payload?.proxy?.region ?? event.payload?.region ?? event.region,
+    statusCode: event.payload?.proxy?.statusCode ?? event.payload?.statusCode,
+    durationMs:
+      event.payload?.proxy?.duration ??
+      event.payload?.durationMs ??
+      event.payload?.duration,
+    function: event.payload?.info?.name ?? event.payload?.info?.entrypoint,
+    runtime: event.payload?.info?.runtime ?? event.payload?.runtime,
+    userAgent: event.payload?.proxy?.userAgent,
+    referer: event.payload?.proxy?.referer,
+    rawJson: safeStringify(event),
   };
+}
+
+function safeStringify(value: unknown): string {
+  try {
+    return JSON.stringify(value, null, 2);
+  } catch {
+    return String(value);
+  }
 }
 
 /**

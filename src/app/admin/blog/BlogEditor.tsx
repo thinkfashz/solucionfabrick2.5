@@ -103,6 +103,21 @@ export function BlogEditor({ initial, isNew }: Props) {
   const previewHtml = useMemo(() => previewMd(body), [body]);
 
   async function handleSave() {
+    // Pre-submit validation so we don't even hit the server with an obviously
+    // bad payload — reduces "ciegos" 500s when the user expected a friendly error.
+    if (!title.trim()) {
+      setError('El título es requerido.');
+      return;
+    }
+    if (!slug.trim() || !/^[a-z0-9-]+$/.test(slug.trim())) {
+      setError('El slug debe contener solo letras minúsculas, números y guiones.');
+      return;
+    }
+    if (!body.trim()) {
+      setError('El contenido (body) no puede estar vacío.');
+      return;
+    }
+
     setSaving(true);
     setError(null);
     setMessage(null);
@@ -115,8 +130,18 @@ export function BlogEditor({ initial, isNew }: Props) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      const json = (await res.json()) as { post?: { id: string }; error?: string };
-      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
+      const json = (await res.json().catch(() => ({}))) as {
+        post?: { id: string };
+        error?: string;
+        code?: string;
+        hint?: string;
+      };
+      if (!res.ok) {
+        // Surface schema errors with a clickable Setup CTA — the API marks
+        // these with code TABLE_MISSING / COLUMN_MISSING and a hint.
+        const hint = json.hint ? ` — ${json.hint}` : '';
+        throw new Error((json.error || `HTTP ${res.status}`) + hint);
+      }
       setMessage('Guardado correctamente.');
       if (isNew && json.post?.id) {
         router.replace(`/admin/blog/${json.post.id}`);

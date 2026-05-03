@@ -5,12 +5,13 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  ArrowUpRight, AlertTriangle, BarChart3, BookOpen, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, LayoutGrid, Link2, LogOut, Menu,
-  Megaphone, Newspaper, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart, Stethoscope, Terminal,
+  ArrowUpRight, AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
+  Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Stethoscope, Terminal,
   Truck, Users, Wallet, X,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
+import { AdminCommandPalette, type CommandItem } from '@/components/admin/AdminCommandPalette';
 
 type NavLink = { href: string; label: string; description: string; icon: typeof Package; superadminOnly?: boolean; highlight?: boolean };
 
@@ -51,7 +52,10 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Expansión',
     links: [
       { href: '/admin/publicidad', label: 'Publicidad', description: 'Meta Ads', icon: Megaphone },
+      { href: '/admin/publicidad/coach', label: 'Coach de campañas', description: 'Agente IA: analizar, sugerir, optimizar', icon: Sparkles, highlight: true },
       { href: '/admin/publicar', label: 'Publicar', description: 'Posts para redes sociales', icon: Send },
+      { href: '/admin/social/inbox', label: 'Inbox social', description: 'Mensajes de Instagram, FB, WhatsApp y ML', icon: Inbox, highlight: true },
+      { href: '/admin/integraciones/marketplace', label: 'Marketplace de extensiones', description: 'Apps, snippets, webhooks y OAuth', icon: Boxes, highlight: true },
       { href: '/admin/configuracion', label: 'Configuración', description: 'Parámetros e integraciones', icon: Settings },
     ],
   },
@@ -87,7 +91,10 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/reportes': 'Reportes',
   '/admin/publicidad': 'Publicidad',
   '/admin/publicidad/nuevo': 'Nueva campaña',
+  '/admin/publicidad/coach': 'Coach de campañas',
   '/admin/publicar': 'Publicar',
+  '/admin/social/inbox': 'Inbox social',
+  '/admin/integraciones/marketplace': 'Marketplace de extensiones',
   '/admin/configuracion': 'Configuración',
   '/admin/observatory': 'Observatory',
   '/admin/envios': 'Tarifas de Envío',
@@ -237,6 +244,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [paletteOpen, setPaletteOpen] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
 
@@ -294,6 +302,22 @@ export function AdminShell({ children }: { children: ReactNode }) {
     }
     return 'Panel';
   }, [pathname]);
+
+  // Flatten navSections into a single CommandItem[] used by Cmd+K.
+  // Filtered by superadmin scope, deduped by href.
+  const commandItems = useMemo<CommandItem[]>(() => {
+    const seen = new Set<string>();
+    const items: CommandItem[] = [];
+    for (const section of navSections) {
+      for (const link of section.links) {
+        if (link.superadminOnly && role !== 'superadmin') continue;
+        if (seen.has(link.href)) continue;
+        seen.add(link.href);
+        items.push({ href: link.href, label: link.label, description: link.description });
+      }
+    }
+    return items;
+  }, [role]);
 
   async function handleLogout() {
     try {
@@ -383,6 +407,17 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
           {/* Right actions */}
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setPaletteOpen(true)}
+              className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400 hover:border-yellow-400/40 hover:text-yellow-400 transition-all"
+              title="Buscar página (Cmd/Ctrl + K)"
+              aria-label="Abrir buscador de páginas"
+            >
+              <Search className="h-3.5 w-3.5" />
+              <span className="hidden md:inline">Buscar</span>
+              <kbd className="hidden md:inline-block rounded border border-white/10 bg-white/5 px-1 py-0 text-[9px] font-mono text-zinc-500">⌘K</kbd>
+            </button>
             <Link
               href="/tienda"
               className="hidden sm:flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-300 hover:border-yellow-400/40 hover:text-yellow-400 transition-all"
@@ -456,6 +491,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
       {/* Bottom navigation (móvil / tablet vertical) */}
       <AdminBottomNav onOpenMore={() => setMobileOpen(true)} />
+
+      {/* Cmd+K command palette: searches navSections by label/description */}
+      <AdminCommandPalette
+        items={commandItems}
+        open={paletteOpen}
+        onOpenChange={setPaletteOpen}
+      />
     </div>
   );
 }

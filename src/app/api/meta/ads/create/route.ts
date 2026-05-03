@@ -1,7 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-
-const META_API_VERSION = 'v20.0';
-const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
+import { META_GRAPH_URL, normalizeAdAccountId } from '@/lib/meta';
 
 // CLP to USD approximate conversion (Meta requires USD in cents for daily budget when
 // the ad account currency is USD). Update this rate periodically to reflect current FX.
@@ -48,15 +46,17 @@ async function metaPost(path: string, body: Record<string, unknown>, accessToken
 
 export async function POST(request: NextRequest) {
   const accessToken = process.env.META_ACCESS_TOKEN;
-  const adAccountId = process.env.META_AD_ACCOUNT_ID;
+  const rawAdAccountId = process.env.META_AD_ACCOUNT_ID;
   const pageId = process.env.META_PAGE_ID;
 
-  if (!accessToken || !adAccountId) {
+  if (!accessToken || !rawAdAccountId) {
     return NextResponse.json(
       { error: 'Variables META_ACCESS_TOKEN o META_AD_ACCOUNT_ID no configuradas.' },
       { status: 503 }
     );
   }
+
+  const adAccountId = normalizeAdAccountId(rawAdAccountId);
 
   let payload: CreateAdPayload;
   try {

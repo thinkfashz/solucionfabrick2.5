@@ -934,9 +934,18 @@ CREATE TABLE IF NOT EXISTS public.favorites (
 -- lógica con `auth.users.id` y `products.id` y permite que la restricción
 -- única `favorites_user_product_unique` actúe como ancla del UPSERT atómico
 -- usado por `toggleFavorite()` (src/lib/favorites.ts).
-ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS user_id uuid NOT NULL;
-ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS product_id uuid NOT NULL;
+--
+-- La migración es en dos pasos para ser segura tanto en tablas vacías
+-- recién creadas como en bases de datos previas con filas residuales: (1)
+-- añadimos las columnas como nullable si todavía no existen, (2)
+-- eliminamos cualquier fila huérfana con NULL (no puede ser un favorito
+-- válido sin user_id/product_id), (3) bloqueamos el NOT NULL.
+ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS user_id uuid;
+ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS product_id uuid;
 ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+DELETE FROM public.favorites WHERE user_id IS NULL OR product_id IS NULL;
+ALTER TABLE public.favorites ALTER COLUMN user_id SET NOT NULL;
+ALTER TABLE public.favorites ALTER COLUMN product_id SET NOT NULL;
 CREATE INDEX IF NOT EXISTS favorites_user_id_idx ON public.favorites(user_id);
 CREATE INDEX IF NOT EXISTS favorites_product_id_idx ON public.favorites(product_id);
 

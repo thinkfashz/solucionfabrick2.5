@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 
 declare global {
   interface Window {
@@ -383,6 +383,71 @@ const CheckoutApp = () => {
     window.scrollTo(0, 0);
   }, []);
 
+  /**
+   * Bank-approval handshake — full-screen overlay that fills 10%→100% with
+   * a smooth, continuous gradient and lands on "Transacción Aprobada". Only
+   * called when MP/the issuing bank actually returns `approved`. Side
+   * effect: clears the cart (sessionStorage payload + global CartContext)
+   * because that's the contract from the spec — cart must persist on
+   * pending/rejected/error and only vanish when the funds are committed.
+   *
+   * Wrapped in `useCallback` so the back-redirect effect can list it as a
+   * dependency without re-firing on every render.
+   */
+  const triggerBankApproval = useCallback(() => {
+    setBankApprovalDone(false);
+    setBankApprovalProgress(10);
+    setBankApprovalActive(true);
+
+    // Clear the cart now that the bank has confirmed the charge. Both the
+    // sessionStorage payload (used for /checkout reloads) and the global
+    // CartContext (the source of truth shared with the navbar/drawer)
+    // must be drained so the user lands on a clean slate after the
+    // success panel.
+    try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(CART_SESSION_KEY);
+      }
+    } catch {
+      // sessionStorage may be unavailable (private mode, quota) — ignore.
+    }
+    if (cartCtx) {
+      try {
+        cartCtx.clearCart();
+      } catch {
+        // Defensive: never let a UI error block the success screen.
+      }
+    }
+  }, [cartCtx]);
+
+  // Drive the 10%→100% bank-approval bar. Updates every ~80ms with a
+  // bezier-shaped step so the perceived motion is fluid (fast at first,
+  // slowing as it approaches 100% — mimics real authorisation latency).
+  // When it lands at 100% we flip `bankApprovalDone`, which the UI uses
+  // to swap from "Transacción Aprobada" copy to the celebratory state.
+  useEffect(() => {
+    if (!bankApprovalActive) return;
+    if (bankApprovalProgress >= 100) {
+      // Hold the "100%" frame for a beat before handing off to the
+      // success panel — gives the eye time to register completion.
+      const t = setTimeout(() => {
+        setBankApprovalDone(true);
+        setIsSuccess(true);
+      }, 600);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => {
+      setBankApprovalProgress((p) => {
+        if (p >= 100) return 100;
+        // Ease-out: bigger jumps when far from 100%, smaller as we approach.
+        const remaining = 100 - p;
+        const step = Math.max(1.5, remaining * 0.08);
+        return Math.min(100, p + step);
+      });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [bankApprovalActive, bankApprovalProgress]);
+
   useEffect(() => {
     if (returnedOrderId) {
       setOrderId(returnedOrderId);
@@ -428,12 +493,7 @@ const CheckoutApp = () => {
     setPaymentRejectionMessage(
       'Mercado Pago no aprobó el pago. Puedes intentarlo nuevamente con otra tarjeta o usar transferencia bancaria.',
     );
-    // `triggerBankApproval` is intentionally omitted from the dep array: it
-    // closes over `cartCtx`, which is stable for the lifetime of the page,
-    // and re-running this effect on identity churn would re-fire the
-    // approval animation every render.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [returnedOrderId, returnedPaymentStatus]);
+  }, [returnedOrderId, returnedPaymentStatus, triggerBankApproval]);
 
   useEffect(() => {
     if (!gsapLoaded || !window.gsap) return;
@@ -673,68 +733,6 @@ const CheckoutApp = () => {
     if (!/^\d+$/.test(body)) return false;
     return computeRutDV(body) === dv;
   })();
-
-  /**
-   * Bank-approval handshake — full-screen overlay that fills 10%→100% with
-   * a smooth, continuous gradient and lands on "Transacción Aprobada". Only
-   * called when MP/the issuing bank actually returns `approved`. Side
-   * effect: clears the cart (sessionStorage payload + global CartContext)
-   * because that's the contract from the spec — cart must persist on
-   * pending/rejected/error and only vanish when the funds are committed.
-   */
-  const triggerBankApproval = () => {
-    setBankApprovalDone(false);
-    setBankApprovalProgress(10);
-    setBankApprovalActive(true);
-
-    // Clear the cart now that the bank has confirmed the charge. Both the
-    // sessionStorage payload (used for /checkout reloads) and the global
-    // CartContext (the source of truth shared with the navbar/drawer)
-    // must be drained so the user lands on a clean slate after the
-    // success panel.
-    try {
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem(CART_SESSION_KEY);
-      }
-    } catch {
-      // sessionStorage may be unavailable (private mode, quota) — ignore.
-    }
-    if (cartCtx) {
-      try {
-        cartCtx.clearCart();
-      } catch {
-        // Defensive: never let a UI error block the success screen.
-      }
-    }
-  };
-
-  // Drive the 10%→100% bank-approval bar. Updates every ~80ms with a
-  // bezier-shaped step so the perceived motion is fluid (fast at first,
-  // slowing as it approaches 100% — mimics real authorisation latency).
-  // When it lands at 100% we flip `bankApprovalDone`, which the UI uses
-  // to swap from "Transacción Aprobada" copy to the celebratory state.
-  useEffect(() => {
-    if (!bankApprovalActive) return;
-    if (bankApprovalProgress >= 100) {
-      // Hold the "100%" frame for a beat before handing off to the
-      // success panel — gives the eye time to register completion.
-      const t = setTimeout(() => {
-        setBankApprovalDone(true);
-        setIsSuccess(true);
-      }, 600);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(() => {
-      setBankApprovalProgress((p) => {
-        if (p >= 100) return 100;
-        // Ease-out: bigger jumps when far from 100%, smaller as we approach.
-        const remaining = 100 - p;
-        const step = Math.max(1.5, remaining * 0.08);
-        return Math.min(100, p + step);
-      });
-    }, 80);
-    return () => clearTimeout(t);
-  }, [bankApprovalActive, bankApprovalProgress]);
 
   const handleConfirmInvestment = async () => {
     if (isProcessing) return;

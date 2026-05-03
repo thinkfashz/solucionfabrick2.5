@@ -1,194 +1,248 @@
 'use client';
 
-import { useRef, useEffect } from 'react';
-import { useScroll, useTransform, motion } from 'framer-motion';
+/**
+ * Hero — Rediseño minimalista, mobile-first, con embudo de cualificación.
+ *
+ * Objetivos del diseño:
+ *  - Fondo limpio: negro profundo con un halo dorado radial sutil y grano fino
+ *    (sin foto a pantalla completa, sin la casa 3D dominando, sin múltiples
+ *    overlays apilados que en móvil saturaban la composición).
+ *  - Animaciones suaves con Framer Motion (fade + rise + stagger) en lugar de
+ *    GSAP + parallax pesado. Respetan `prefers-reduced-motion`.
+ *  - Tipografía y jerarquía simplificadas: eyebrow corto, titular grande con
+ *    un acento dorado, subtítulo breve.
+ *  - "Filtración de personas" / embudo: tres tarjetas que cualifican al
+ *    visitante (Construir / Remodelar / Cotizar materiales). Cada una abre
+ *    WhatsApp con un mensaje pre-rellenado distinto, lo que segmenta al lead
+ *    desde el primer clic.
+ *
+ * Mantiene la firma `Hero({ coverUrl })` para no romper `src/app/page.tsx`,
+ * aunque el nuevo diseño no usa la imagen de portada.
+ */
+
+import { useMemo } from 'react';
+import { motion, useReducedMotion, type Variants } from 'framer-motion';
+import { Hammer, Wrench, ShoppingBag, ArrowRight } from 'lucide-react';
 import AnimatedButton from '@/components/ui/animated-button';
-import HeroHouse3D from './HeroHouse3D';
-import { FlipText } from '@/components/ui/flip-text';
-import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
+import { buildWhatsAppLink } from '@/lib/whatsapp';
 
-export default function Hero({ coverUrl }: { coverUrl?: string }) {
-  const heroRef  = useRef<HTMLDivElement>(null);
+type FunnelOption = {
+  id: 'construir' | 'remodelar' | 'cotizar';
+  Icon: typeof Hammer;
+  title: string;
+  desc: string;
+  message: string;
+};
 
-  /* Parallax on scroll */
-  const { scrollY } = useScroll();
-  const bgY = useTransform(scrollY, [0, 700], [0, 140]);
-  const glowY = useTransform(scrollY, [0, 700], [0, 80]);
+const FUNNEL_OPTIONS: FunnelOption[] = [
+  {
+    id: 'construir',
+    Icon: Hammer,
+    title: 'Construir desde cero',
+    desc: 'Casa nueva, ampliación o segunda planta.',
+    message:
+      'Hola Soluciones Fabrick, quiero construir desde cero (casa o ampliación) y necesito una evaluación gratuita en Linares / Región del Maule.',
+  },
+  {
+    id: 'remodelar',
+    Icon: Wrench,
+    title: 'Remodelar mi espacio',
+    desc: 'Cocina, baños, fachada o interiores.',
+    message:
+      'Hola Soluciones Fabrick, quiero remodelar mi espacio (cocina, baños, fachada o interiores) y agendar una visita para presupuesto.',
+  },
+  {
+    id: 'cotizar',
+    Icon: ShoppingBag,
+    title: 'Cotizar materiales',
+    desc: 'Solo necesito precios y disponibilidad.',
+    message:
+      'Hola Soluciones Fabrick, quiero cotizar materiales de construcción. ¿Me pueden enviar precios y disponibilidad?',
+  },
+];
 
-  /* GSAP text entrance */
-  useEffect(() => {
-    let ctx: ReturnType<typeof import('gsap')['default']['context']> | undefined;
-    const init = async () => {
-      const gsap = (await import('gsap')).default;
-      ctx = gsap.context(() => {
-        const tl = gsap.timeline({ defaults: { ease: 'power4.out' } });
+// `coverUrl` se acepta por compatibilidad con `src/app/page.tsx` pero el nuevo
+// diseño no usa una imagen de portada.
+export default function Hero(_props: { coverUrl?: string } = {}) {
+  const prefersReduced = useReducedMotion();
 
-        tl.from('.hero-house-3d', {
-          scale: 0.5, opacity: 0, rotation: -45,
-          duration: 1.4, ease: 'elastic.out(1,0.6)',
-        })
-          .from('.hero-badge',      { y: -40, opacity: 0, duration: 0.7 }, '-=0.8')
-          .fromTo(
-            '.hero-title-line',
-            { clipPath: 'inset(0 100% 0 0)', opacity: 0, x: -20 },
-            { clipPath: 'inset(0 0% 0 0)',   opacity: 1, x:  0, duration: 0.9, stagger: 0.18 },
-            '-=0.3',
-          )
-          .fromTo(
-            '.hero-subtitle',
-            { opacity: 0, filter: 'blur(8px)', y: 20 },
-            { opacity: 1, filter: 'blur(0px)', y:  0, duration: 0.9 },
-            '-=0.4',
-          )
-          .from('.hero-divider',   { scaleX: 0, duration: 0.7, ease: 'power2.inOut' }, '-=0.5')
-          .from('.hero-cta-item',  { y: 24, opacity: 0, duration: 0.6, stagger: 0.14 }, '-=0.4');
+  const containerVariants = useMemo<Variants>(
+    () => ({
+      hidden: {},
+      show: {
+        transition: {
+          staggerChildren: prefersReduced ? 0 : 0.09,
+          delayChildren: prefersReduced ? 0 : 0.1,
+        },
+      },
+    }),
+    [prefersReduced],
+  );
 
-        /* Subtle ring pulse (legacy ring elements removed; keep selector safe) */
-        gsap.to('.hero-ring', {
-          scale: '+=0.04', opacity: '-=0.08',
-          duration: 3, repeat: -1, yoyo: true, ease: 'sine.inOut', stagger: 0.6,
-        });
-
-        /* Background glows parallax */
-        gsap.to('.hero-glow', {
-          y: -30, x: 20,
-          duration: 6, repeat: -1, yoyo: true, ease: 'sine.inOut', stagger: 1.5,
-        });
-      }, heroRef);
-    };
-    init();
-    return () => ctx?.revert();
-  }, []);
+  const itemVariants = useMemo<Variants>(
+    () => ({
+      hidden: prefersReduced ? { opacity: 0 } : { opacity: 0, y: 18 },
+      show: {
+        opacity: 1,
+        y: 0,
+        transition: { duration: prefersReduced ? 0.2 : 0.7, ease: [0.22, 1, 0.36, 1] },
+      },
+    }),
+    [prefersReduced],
+  );
 
   return (
     <section
       id="inicio"
-      ref={heroRef}
-      className="relative min-h-screen flex items-center justify-center overflow-hidden bg-black"
+      className="relative isolate flex min-h-[100svh] items-center justify-center overflow-hidden bg-black"
     >
-      {/* ── Background: imagen arquitectónica con parallax ── */}
-      <motion.div
-        className="absolute inset-0 z-0"
-        style={{ y: bgY, scale: 1.12 }}
-        aria-hidden
-      >
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img
-          src={cloudinaryUrl(
-            coverUrl || 'https://images.unsplash.com/photo-1504307651254-35680f356f12?q=85&w=1920&auto=format&fit=crop',
-            { width: 1920, quality: 75 },
-          )}
-          alt="Obra de construcción y arquitectura"
-          className="w-full h-full object-cover"
-          fetchPriority="high"
-          decoding="async"
-        />
-      </motion.div>
-
-      {/* ── Overlays: oscurecer para legibilidad ── */}
-      {/* Capa base oscura */}
-      <div className="absolute inset-0 z-[1] bg-black/52" />
-      {/* Gradiente inferior negro total */}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-t from-black via-black/40 to-transparent" />
-      {/* Gradiente lateral suave */}
-      <div className="absolute inset-0 z-[1] bg-gradient-to-r from-black/30 via-transparent to-black/25" />
-      {/* Viñeta superior para que el Navbar se integre */}
-      <div className="absolute top-0 left-0 right-0 h-40 z-[1] bg-gradient-to-b from-black/70 to-transparent" />
-
-      {/* ── Acento dorado atmosférico ── */}
+      {/* ── Fondo: negro + halo dorado radial + grano sutil ────────────── */}
       <div
-        className="absolute bottom-1/4 left-1/2 -translate-x-1/2 w-[700px] h-[180px] pointer-events-none z-[1]"
-        style={{ background: 'radial-gradient(ellipse, rgba(250,204,21,0.08) 0%, transparent 70%)', filter: 'blur(40px)' }}
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10"
+        style={{
+          background:
+            'radial-gradient(ellipse 80% 60% at 50% 30%, rgba(250,204,21,0.10) 0%, rgba(250,204,21,0.04) 35%, transparent 70%), #000',
+        }}
+      />
+      {/* Línea dorada superior y viñeta inferior para integrar la siguiente sección */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 top-0 -z-10 h-px bg-gradient-to-r from-transparent via-yellow-400/40 to-transparent"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-0 -z-10 h-32 bg-gradient-to-t from-black to-transparent"
+      />
+      {/* Grano sutil con SVG inline (no requiere assets) */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 -z-10 opacity-[0.05] mix-blend-overlay"
+        style={{
+          backgroundImage:
+            "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 1 0 0 0 0 1 0 0 0 0 1 0 0 0 0.6 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>\")",
+        }}
       />
 
-      {/* Background glows – parallax */}
-      <motion.div style={{ y: glowY }} className="absolute inset-0 pointer-events-none z-0">
-        <div className="hero-glow absolute top-20 left-10 w-72 h-72 rounded-full bg-yellow-400/5 blur-3xl" />
-        <div className="hero-glow absolute bottom-20 right-10 w-96 h-96 rounded-full bg-yellow-400/6 blur-3xl" />
-      </motion.div>
-
-      {/* 3D House centerpiece (replaces decorative rings) */}
-      <div className="hero-house-3d">
-        <HeroHouse3D />
-      </div>
-
-      {/* ── Contenido ── */}
-      <div className="relative z-10 text-center px-6 max-w-5xl mx-auto">
-
-        {/* Badge */}
-        <div className="hero-badge inline-flex items-center gap-2 px-4 py-2 mb-5 border border-yellow-400/30 rounded-full bg-black/40 backdrop-blur-md">
-          <span className="w-2 h-2 rounded-full bg-yellow-400 ping-gold" />
-          <span className="text-xs uppercase tracking-[0.25em] text-yellow-400/90 font-medium">
-            Un equipo · un estándar · una obra completa
+      {/* ── Contenido ──────────────────────────────────────────────────── */}
+      <motion.div
+        variants={containerVariants}
+        initial="hidden"
+        animate="show"
+        className="relative z-10 mx-auto w-full max-w-3xl px-5 pb-16 pt-28 text-center sm:pt-32 md:pt-36"
+      >
+        {/* Eyebrow */}
+        <motion.div variants={itemVariants} className="mb-6 flex justify-center">
+          <span className="inline-flex items-center gap-2 rounded-full border border-yellow-400/25 bg-white/[0.03] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] text-yellow-400/90 backdrop-blur-sm sm:text-[11px]">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400/60" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-yellow-400" />
+            </span>
+            Construcción · Linares · Región del Maule
           </span>
-        </div>
+        </motion.div>
+
+        {/* Titular */}
+        <motion.h1
+          variants={itemVariants}
+          className="font-playfair text-[clamp(2.5rem,9vw,5.25rem)] font-semibold leading-[1.05] tracking-tight text-white"
+        >
+          Tu obra,
+          <br />
+          <span className="bg-gradient-to-r from-yellow-200 via-yellow-400 to-yellow-200 bg-clip-text text-transparent">
+            sin intermediarios.
+          </span>
+        </motion.h1>
+
+        {/* Subtítulo */}
+        <motion.p
+          variants={itemVariants}
+          className="mx-auto mt-5 max-w-md text-base leading-relaxed text-zinc-400 sm:text-lg"
+        >
+          Un solo equipo desde el plano a la entrega. Evaluación gratuita y
+          presupuesto en menos de 24 horas.
+        </motion.p>
+
+        {/* ── Embudo de cualificación ──────────────────────────────── */}
+        <motion.div variants={itemVariants} className="mt-10 sm:mt-12">
+          <p className="mb-4 text-[10px] font-semibold uppercase tracking-[0.3em] text-zinc-500 sm:text-[11px]">
+            ¿Qué necesitas hoy?
+          </p>
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-3 sm:gap-3.5">
+            {FUNNEL_OPTIONS.map(({ id, Icon, title, desc, message }) => (
+              <AnimatedButton
+                key={id}
+                as="a"
+                href={buildWhatsAppLink(message)}
+                target="_blank"
+                rel="noopener noreferrer"
+                whileHover={prefersReduced ? undefined : { y: -3 }}
+                className="group relative flex min-h-[88px] flex-col items-start justify-between gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-left backdrop-blur-sm transition-colors duration-300 hover:border-yellow-400/50 hover:bg-yellow-400/[0.04] sm:p-5"
+                aria-label={`${title} — abrir WhatsApp`}
+              >
+                <span className="flex h-9 w-9 items-center justify-center rounded-full border border-yellow-400/30 bg-yellow-400/5 text-yellow-400 transition-colors duration-300 group-hover:border-yellow-400/60 group-hover:bg-yellow-400/10">
+                  <Icon size={16} strokeWidth={1.75} aria-hidden />
+                </span>
+                <span className="block">
+                  <span className="block text-sm font-semibold text-white sm:text-[15px]">
+                    {title}
+                  </span>
+                  <span className="mt-0.5 block text-xs leading-snug text-zinc-400 sm:text-[13px]">
+                    {desc}
+                  </span>
+                </span>
+                <span className="inline-flex items-center gap-1 text-[10px] font-medium uppercase tracking-[0.18em] text-yellow-400/80 transition-colors group-hover:text-yellow-400">
+                  Hablar ahora
+                  <ArrowRight
+                    size={12}
+                    className="transition-transform duration-300 group-hover:translate-x-0.5"
+                    aria-hidden
+                  />
+                </span>
+              </AnimatedButton>
+            ))}
+          </div>
+        </motion.div>
+
+        {/* CTA secundaria — para los que aún no se deciden */}
+        <motion.div variants={itemVariants} className="mt-8">
+          <a
+            href="/#servicios"
+            className="group inline-flex items-center gap-1.5 text-xs font-medium text-zinc-400 transition-colors hover:text-yellow-400 sm:text-sm"
+          >
+            <span className="underline decoration-yellow-400/30 decoration-1 underline-offset-4 transition-colors group-hover:decoration-yellow-400">
+              Prefiero ver primero los servicios
+            </span>
+            <ArrowRight size={13} aria-hidden />
+          </a>
+        </motion.div>
 
         {/* Trust bar */}
-        <div className="mx-auto mb-8 flex max-w-xl flex-wrap items-center justify-center gap-x-4 gap-y-2 rounded-full border border-yellow-400/15 bg-black/50 backdrop-blur-sm px-4 py-2 text-[10px] font-medium uppercase tracking-[0.18em] text-yellow-400/90 md:text-[11px]">
-          <span className="inline-flex items-center gap-1.5">✓ Evaluación gratuita</span>
-          <span className="text-yellow-400/30">·</span>
-          <span className="inline-flex items-center gap-1.5">✓ Presupuesto en 24h</span>
-          <span className="text-yellow-400/30">·</span>
-          <span className="inline-flex items-center gap-1.5">✓ Sin compromiso</span>
-        </div>
-
-        {/* Título */}
-        <h1 className="font-playfair text-5xl sm:text-6xl md:text-7xl lg:text-8xl font-bold text-white leading-[1.1] mb-6 overflow-hidden">
-          <span className="hero-title-line block">Tu Visión,</span>
-          <span
-            className="hero-title-line block shimmer-gold"
-            style={{ textShadow: '0 0 40px rgba(250,204,21,0.35), 0 0 80px rgba(250,204,21,0.15)' }}
-          >
-            <FlipText duration={3.6} delay={0.2}>Nuestra Obra</FlipText>
-          </span>
-        </h1>
-
-        <div className="hero-divider w-24 h-[2px] bg-gradient-to-r from-transparent via-yellow-400 to-transparent mx-auto mb-8 origin-center" />
-
-        <p className="hero-subtitle text-lg sm:text-xl md:text-2xl text-zinc-300 max-w-2xl mx-auto leading-relaxed font-light">
-          Desde el inicio hasta el final.{' '}
-          <span className="text-white font-normal">Un solo equipo.</span>{' '}
-          <span className="text-yellow-400/90">Un solo estándar.</span>
-        </p>
-
-        {/* CTAs */}
-        <div className="flex flex-col sm:flex-row gap-4 justify-center mt-12">
-          <AnimatedButton
-            as="a"
-            href="/#servicios"
-            className="hero-cta-item btn-shimmer group relative px-8 py-4 min-h-[44px] bg-yellow-400 text-black font-semibold rounded-full overflow-hidden transition-all duration-300 hover:shadow-[0_0_40px_rgba(250,204,21,0.55),0_0_80px_rgba(250,204,21,0.2)] btn-sweep"
-          >
-            <span className="relative z-10 uppercase tracking-wider text-sm">Explorar Servicios</span>
-            <div className="absolute inset-0 bg-yellow-300 translate-y-full group-hover:translate-y-0 transition-transform duration-300" />
-          </AnimatedButton>
-          <AnimatedButton
-            as="a"
-            href="/tienda"
-            className="hero-cta-item flex items-center justify-center min-h-[44px] px-8 py-4 border border-yellow-400/40 text-yellow-400 font-semibold rounded-full backdrop-blur-sm bg-black/20 transition-all duration-300 hover:bg-yellow-400/10 hover:border-yellow-400/70 hover:shadow-[0_0_20px_rgba(250,204,21,0.2)] uppercase tracking-wider text-sm"
-          >
-            Ir a Tienda
-          </AnimatedButton>
-        </div>
-
-        {/* Interactive copyright signature */}
-        <a
-          href="/juego"
-          className="hero-cta-item group inline-flex items-center gap-2 mt-10 text-[10px] font-bold uppercase tracking-[0.35em] text-zinc-500 hover:text-yellow-400 transition-colors"
-          aria-label="Diseñar mi casa - Soluciones Fabrick"
+        <motion.ul
+          variants={itemVariants}
+          className="mx-auto mt-10 flex max-w-md flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[10px] font-medium uppercase tracking-[0.18em] text-zinc-500 sm:text-[11px]"
         >
-          <span className="w-1.5 h-1.5 rounded-full bg-yellow-400/60 group-hover:bg-yellow-400 group-hover:shadow-[0_0_10px_rgba(250,204,21,0.8)] transition-all" />
-          © Fabrick — Construimos tu visión
-          <span className="opacity-0 group-hover:opacity-100 group-hover:translate-x-1 transition-all">→</span>
-        </a>
-      </div>
+          <li className="inline-flex items-center gap-1.5">
+            <span className="h-1 w-1 rounded-full bg-yellow-400/70" aria-hidden />
+            Evaluación gratuita
+          </li>
+          <li className="inline-flex items-center gap-1.5">
+            <span className="h-1 w-1 rounded-full bg-yellow-400/70" aria-hidden />
+            Presupuesto en 24h
+          </li>
+          <li className="inline-flex items-center gap-1.5">
+            <span className="h-1 w-1 rounded-full bg-yellow-400/70" aria-hidden />
+            Sin compromiso
+          </li>
+        </motion.ul>
+      </motion.div>
 
-      {/* Fade inferior hacia el resto de la página */}
-      <div className="absolute bottom-0 left-0 right-0 h-40 bg-gradient-to-t from-black to-transparent z-[2]" />
-
-      {/* Scroll indicator */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-10 flex flex-col items-center gap-2 opacity-50">
-        <span className="text-[9px] uppercase tracking-[0.3em] text-white/60">Scroll</span>
-        <div className="w-px h-10 bg-gradient-to-b from-yellow-400/60 to-transparent animate-pulse" />
+      {/* Indicador de scroll discreto */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-x-0 bottom-5 z-10 flex justify-center"
+      >
+        <div className="h-8 w-px bg-gradient-to-b from-yellow-400/50 to-transparent" />
       </div>
     </section>
   );

@@ -9,6 +9,7 @@ import {
 import { getMetaCredentials } from '@/lib/metaCredentials';
 import { decryptCredentials } from '@/lib/integrationsCrypto';
 import { normalizeAdAccountId } from '@/lib/meta';
+import { isLlmConfigured, llmJson } from '@/lib/llm';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -212,6 +213,145 @@ function buildOptimizations(insights: MetaInsight | null): string[] {
   return out;
 }
 
+/* ------------------------------- LLM layer ------------------------------- */
+//
+// Cuando OPENAI_API_KEY o ANTHROPIC_API_KEY están presentes, las funciones
+// llm* devuelven respuestas generadas por el modelo en el mismo schema que
+// las versiones deterministas (`build*`). Si la llamada falla por timeout,
+// rate-limit, JSON inválido, etc. devolvemos `null` y el caller cae al
+// builder determinista. Así nunca rompemos la UI por una caída del LLM.
+
+const SYSTEM_PROMPT_BASE =
+  'Eres un experto en publicidad digital para ecommerce chileno (Fabrick — diseño, decoración y mejora del hogar). ' +
+  'Tu tono es directo, sin exageraciones de marketing barato. Responde siempre en español de Chile.';
+
+interface SuggestionsShape {
+  copyA: string;
+  copyB: string;
+  ctas: string[];
+  hashtags: string[];
+}
+
+async function llmSuggestions(prompt: string, channel: AgentChannel): Promise<SuggestionsShape | null> {
+  if (!isLlmConfigured()) return null;
+  try {
+    const result = await llmJson<SuggestionsShape>({
+      system: SYSTEM_PROMPT_BASE,
+      user: [
+        `Genera variantes de copy publicitario para el canal ${channel.toUpperCase()}.`,
+        prompt ? `Contexto del producto: "${prompt}".` : 'Producto genérico de hogar.',
+        'Devuelve un JSON con esta forma exacta:',
+        '{ "copyA": string (≤140 chars), "copyB": string (≤140 chars), "ctas": string[4], "hashtags": string[4] }',
+        'copyA debe ser orientado a conversión, copyB a awareness. Hashtags sin espacios y con #.',
+      ].join('\n'),
+    });
+    if (
+      typeof result?.copyA === 'string' &&
+      typeof result?.copyB === 'string' &&
+      Array.isArray(result?.ctas) &&
+      Array.isArray(result?.hashtags)
+    ) {
+      return {
+        copyA: result.copyA.slice(0, 280),
+        copyB: result.copyB.slice(0, 280),
+        ctas: result.ctas.filter((x): x is string => typeof x === 'string').slice(0, 6),
+        hashtags: result.hashtags.filter((x): x is string => typeof x === 'string').slice(0, 8),
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+interface CampaignDraftShape {
+  objective: string;
+  audience: { age_min: number; age_max: number; geo: string; interests: string[] };
+  budget: { daily_clp: number; duration_days: number };
+  creatives: { copyA: string; copyB: string };
+}
+
+async function llmCampaignDraft(
+  prompt: string,
+  channel: AgentChannel,
+  context: Record<string, unknown>,
+): Promise<CampaignDraftShape | null> {
+  if (!isLlmConfigured()) return null;
+  try {
+    const result = await llmJson<CampaignDraftShape>({
+      system: SYSTEM_PROMPT_BASE,
+      user: [
+        `Genera un draft de campaña para ${channel.toUpperCase()} listo para publicar.`,
+        prompt ? `Producto/objetivo: "${prompt}".` : 'Producto genérico de hogar.',
+        `Contexto del operador (puede estar vacío): ${JSON.stringify(context).slice(0, 1000)}`,
+        'Devuelve un JSON con esta forma exacta:',
+        '{ "objective": "TRAFFIC"|"CONVERSIONS"|"REACH"|"ENGAGEMENT", "audience": { "age_min": number, "age_max": number, "geo": "CL"|otro código ISO, "interests": string[3..6] }, "budget": { "daily_clp": number ≥2000, "duration_days": number ≥3 }, "creatives": { "copyA": string, "copyB": string } }',
+        'Presupuesto razonable para PYME chilena: 5000–20000 CLP/día. Geo por defecto CL.',
+      ].join('\n'),
+    });
+    if (
+      typeof result?.objective === 'string' &&
+      result?.audience &&
+      typeof result.audience.age_min === 'number' &&
+      typeof result.audience.age_max === 'number' &&
+      Array.isArray(result.audience.interests) &&
+      result?.budget &&
+      typeof result.budget.daily_clp === 'number' &&
+      typeof result.budget.duration_days === 'number' &&
+      result?.creatives &&
+      typeof result.creatives.copyA === 'string' &&
+      typeof result.creatives.copyB === 'string'
+    ) {
+      return {
+        objective: result.objective,
+        audience: {
+          age_min: Math.max(13, Math.min(65, Math.round(result.audience.age_min))),
+          age_max: Math.max(13, Math.min(65, Math.round(result.audience.age_max))),
+          geo: typeof result.audience.geo === 'string' ? result.audience.geo : 'CL',
+          interests: result.audience.interests
+            .filter((x): x is string => typeof x === 'string')
+            .slice(0, 6),
+        },
+        budget: {
+          daily_clp: Math.max(2000, Math.round(result.budget.daily_clp)),
+          duration_days: Math.max(3, Math.round(result.budget.duration_days)),
+        },
+        creatives: { copyA: result.creatives.copyA, copyB: result.creatives.copyB },
+      };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
+async function llmOptimizations(
+  insights: MetaInsight | null,
+  channel: AgentChannel,
+): Promise<string[] | null> {
+  if (!isLlmConfigured()) return null;
+  try {
+    const result = await llmJson<{ optimizations?: string[] }>({
+      system: SYSTEM_PROMPT_BASE,
+      user: [
+        `Genera recomendaciones de optimización para ${channel.toUpperCase()}.`,
+        `KPIs últimos 7 días: ${JSON.stringify(insights ?? {})}`,
+        'Devuelve un JSON con esta forma exacta:',
+        '{ "optimizations": string[3..6] }',
+        'Cada item es una acción concreta, en imperativo, ≤160 chars.',
+      ].join('\n'),
+    });
+    if (Array.isArray(result?.optimizations)) {
+      return result.optimizations
+        .filter((x): x is string => typeof x === 'string')
+        .slice(0, 8);
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 async function persistRun(
   channel: AgentChannel,
   campaignId: string | null,
@@ -283,12 +423,16 @@ export async function POST(request: NextRequest) {
       };
       response = { kind: 'analysis', ...result };
     } else if (action === 'suggest') {
-      response = { kind: 'suggestions', channel, ...buildSuggestions(prompt) };
+      const sug = await llmSuggestions(prompt, channel) ?? buildSuggestions(prompt);
+      response = { kind: 'suggestions', channel, ...sug };
     } else if (action === 'create') {
-      response = { kind: 'campaign_draft', channel, ...buildCampaignDraft(prompt, context) };
+      const draft =
+        (await llmCampaignDraft(prompt, channel, context)) ?? buildCampaignDraft(prompt, context);
+      response = { kind: 'campaign_draft', channel, ...draft };
     } else {
       const insights = channel === 'meta' ? await fetchMetaInsights() : null;
-      response = { kind: 'optimizations', channel, optimizations: buildOptimizations(insights) };
+      const opts = (await llmOptimizations(insights, channel)) ?? buildOptimizations(insights);
+      response = { kind: 'optimizations', channel, optimizations: opts };
     }
 
     const runId = await persistRun(channel, campaignId, action, prompt || null, response);

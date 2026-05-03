@@ -1,56 +1,19 @@
 'use client';
 
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Boxes, Code2, Webhook, KeyRound, Cpu, ExternalLink, Plus, ShieldCheck } from 'lucide-react';
+import { Boxes, Code2, Webhook, KeyRound, Cpu, ExternalLink, Plus, ShieldCheck, Loader2, Trash2, CheckCircle2 } from 'lucide-react';
 
-/**
- * Catálogo demo de extensiones. En producción esto se cargará desde
- * `public.app_extensions` con `status='available'`. Cada entrada
- * referencia un manifest remoto (`extension.json`) con hooks,
- * permisos y páginas de UI.
- */
-const CATALOG: Array<{
+interface ExtensionDef {
   slug: string;
   name: string;
   description: string;
-  type: 'snippet' | 'webhook' | 'oauth' | 'function';
+  type: string;
   author: string;
   version: string;
-}> = [
-  {
-    slug: 'klaviyo',
-    name: 'Klaviyo',
-    description: 'Sincroniza clientes y pedidos para email marketing avanzado.',
-    type: 'oauth',
-    author: 'Comunidad',
-    version: '0.1.0',
-  },
-  {
-    slug: 'discount-bar',
-    name: 'Barra de descuentos',
-    description: 'Inyecta una barra superior con cuentas regresivas y cupones.',
-    type: 'snippet',
-    author: 'Fabrick',
-    version: '1.0.0',
-  },
-  {
-    slug: 'shipday-webhook',
-    name: 'Shipday · Webhook',
-    description: 'Envía pedidos confirmados a Shipday para asignación de driver.',
-    type: 'webhook',
-    author: 'Comunidad',
-    version: '0.2.0',
-  },
-  {
-    slug: 'tax-engine',
-    name: 'Motor de impuestos',
-    description: 'Calcula impuestos en checkout vía función sandboxed.',
-    type: 'function',
-    author: 'Fabrick Labs',
-    version: '0.0.1-alpha',
-  },
-];
+  status: 'available' | 'installed';
+  installed_at?: string | null;
+}
 
 const TYPE_META: Record<string, { label: string; icon: React.ComponentType<{ className?: string }> }> = {
   snippet: { label: 'Snippet de código', icon: Code2 },
@@ -61,6 +24,80 @@ const TYPE_META: Record<string, { label: string; icon: React.ComponentType<{ cla
 
 export default function MarketplaceClient() {
   const [tab, setTab] = useState<'marketplace' | 'instaladas' | 'como-funciona'>('marketplace');
+  const [extensions, setExtensions] = useState<ExtensionDef[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [busy, setBusy] = useState<string | null>(null); // slug currently installing/uninstalling
+
+  async function loadExtensions() {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/extensions', { cache: 'no-store' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(json.error || `Error ${res.status}`);
+        return;
+      }
+      setExtensions(Array.isArray(json.extensions) ? json.extensions : []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error inesperado.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  useEffect(() => {
+    void loadExtensions();
+  }, []);
+
+  async function install(slug: string) {
+    setBusy(slug);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/extensions/install', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(json.error || `Error ${res.status}`);
+        return;
+      }
+      await loadExtensions();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error inesperado.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  async function uninstall(slug: string) {
+    if (!confirm(`¿Desinstalar la extensión "${slug}"? Sus hooks dejarán de ejecutarse.`)) return;
+    setBusy(slug);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/extensions/uninstall', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ slug }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(json.error || `Error ${res.status}`);
+        return;
+      }
+      await loadExtensions();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error inesperado.');
+    } finally {
+      setBusy(null);
+    }
+  }
+
+  const installed = extensions.filter((e) => e.status === 'installed');
+  const available = extensions; // catalog includes installed entries; UI tags them visually
 
   return (
     <div className="space-y-6">
@@ -79,7 +116,7 @@ export default function MarketplaceClient() {
       <nav className="flex flex-wrap gap-2 rounded-full border border-white/10 bg-black/40 p-1 w-fit">
         {[
           { id: 'marketplace', label: 'Catálogo' },
-          { id: 'instaladas', label: 'Mis extensiones' },
+          { id: 'instaladas', label: `Mis extensiones${installed.length > 0 ? ` (${installed.length})` : ''}` },
           { id: 'como-funciona', label: '¿Cómo funciona?' },
         ].map((t) => (
           <button
@@ -95,11 +132,22 @@ export default function MarketplaceClient() {
         ))}
       </nav>
 
+      {error && (
+        <div className="rounded-xl border border-red-500/30 bg-red-500/5 p-3 text-[12px] text-red-300">{error}</div>
+      )}
+      {loading && (
+        <div className="flex items-center gap-2 text-[11px] text-zinc-500">
+          <Loader2 className="h-3.5 w-3.5 animate-spin" /> Cargando…
+        </div>
+      )}
+
       {tab === 'marketplace' && (
         <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {CATALOG.map((ext, i) => {
-            const meta = TYPE_META[ext.type];
+          {available.map((ext, i) => {
+            const meta = TYPE_META[ext.type] || TYPE_META.webhook;
             const Icon = meta.icon;
+            const isInstalled = ext.status === 'installed';
+            const isBusy = busy === ext.slug;
             return (
               <motion.article
                 key={ext.slug}
@@ -121,13 +169,27 @@ export default function MarketplaceClient() {
                 <p className="mt-3 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
                   {ext.author} · v{ext.version}
                 </p>
-                <button
-                  type="button"
-                  onClick={() => alert(`Instalación de "${ext.name}" llegará con el endpoint POST /api/admin/extensions/install.`)}
-                  className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-yellow-400 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-black hover:bg-yellow-300 transition"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Instalar
-                </button>
+                {isInstalled ? (
+                  <button
+                    type="button"
+                    onClick={() => uninstall(ext.slug)}
+                    disabled={isBusy}
+                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full border border-emerald-500/40 bg-emerald-500/10 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-emerald-300 hover:bg-emerald-500/20 transition disabled:opacity-60"
+                  >
+                    {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                    {isBusy ? 'Procesando…' : 'Instalada — Desinstalar'}
+                  </button>
+                ) : (
+                  <button
+                    type="button"
+                    onClick={() => install(ext.slug)}
+                    disabled={isBusy}
+                    className="mt-3 flex w-full items-center justify-center gap-1.5 rounded-full bg-yellow-400 px-3 py-1.5 text-[11px] font-bold uppercase tracking-[0.2em] text-black hover:bg-yellow-300 transition disabled:opacity-60"
+                  >
+                    {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Plus className="h-3.5 w-3.5" />}
+                    {isBusy ? 'Instalando…' : 'Instalar'}
+                  </button>
+                )}
               </motion.article>
             );
           })}
@@ -135,12 +197,52 @@ export default function MarketplaceClient() {
       )}
 
       {tab === 'instaladas' && (
-        <section className="rounded-2xl border border-white/10 bg-black/40 p-6 text-center">
-          <ShieldCheck className="mx-auto h-8 w-8 text-yellow-400" />
-          <p className="mt-3 text-sm font-semibold text-zinc-200">Aún no instalaste extensiones.</p>
-          <p className="mt-1 text-[12px] text-zinc-500">
-            Las extensiones instaladas aparecerán aquí con toggles, configuración y logs.
-          </p>
+        <section>
+          {installed.length === 0 ? (
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-6 text-center">
+              <ShieldCheck className="mx-auto h-8 w-8 text-yellow-400" />
+              <p className="mt-3 text-sm font-semibold text-zinc-200">Aún no instalaste extensiones.</p>
+              <p className="mt-1 text-[12px] text-zinc-500">
+                Cuando instales una, aparecerá aquí con detalle, hooks activos y opción de desinstalar.
+              </p>
+            </div>
+          ) : (
+            <ul className="space-y-2">
+              {installed.map((ext) => {
+                const meta = TYPE_META[ext.type] || TYPE_META.webhook;
+                const Icon = meta.icon;
+                const isBusy = busy === ext.slug;
+                return (
+                  <li
+                    key={ext.slug}
+                    className="rounded-2xl border border-white/10 bg-zinc-950/70 p-4 flex flex-wrap items-center gap-4"
+                  >
+                    <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-white/5 text-yellow-400">
+                      <Icon className="h-4 w-4" />
+                    </span>
+                    <div className="flex-1 min-w-[200px]">
+                      <p className="text-[13px] font-bold text-white">{ext.name}</p>
+                      <p className="text-[11px] text-zinc-500">
+                        {ext.author} · v{ext.version}
+                        {ext.installed_at
+                          ? ` · instalada ${new Date(ext.installed_at).toLocaleDateString('es-CL')}`
+                          : ''}
+                      </p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => uninstall(ext.slug)}
+                      disabled={isBusy}
+                      className="inline-flex items-center gap-1.5 rounded-full border border-red-500/30 px-3 py-1.5 text-[10px] font-bold uppercase tracking-[0.2em] text-red-300 hover:bg-red-500/10 transition disabled:opacity-60"
+                    >
+                      {isBusy ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                      Desinstalar
+                    </button>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </section>
       )}
 
@@ -155,15 +257,18 @@ export default function MarketplaceClient() {
           </p>
           <p>
             Cuando el sistema dispara un evento (<code className="rounded bg-white/5 px-1">order.created</code>,{' '}
-            <code className="rounded bg-white/5 px-1">checkout.before_pay</code>,{' '}
-            <code className="rounded bg-white/5 px-1">product.after_create</code>…), un bus interno revisa los hooks
-            activos y los ejecuta en orden de prioridad: webhooks salientes firmados HMAC, funciones registradas
-            o snippets cargados en runtime.
+            <code className="rounded bg-white/5 px-1">order.paid</code>,{' '}
+            <code className="rounded bg-white/5 px-1">product.after_create</code>,{' '}
+            <code className="rounded bg-white/5 px-1">checkout.before_pay</code>…), el bus en{' '}
+            <code className="rounded bg-white/5 px-1">src/lib/extensionsBus.ts</code> lee los hooks activos y los
+            ejecuta en orden de prioridad: webhooks salientes firmados HMAC con{' '}
+            <code className="rounded bg-white/5 px-1">x-fabrick-signature</code>, o handlers internos registrados
+            con <code className="rounded bg-white/5 px-1">internal:&lt;name&gt;</code>.
           </p>
           <p>
-            Permisos por scope (<code className="rounded bg-white/5 px-1">read:orders</code>,{' '}
-            <code className="rounded bg-white/5 px-1">write:products</code>) se validan en cada llamada del SDK que
-            la extensión use. Al desinstalar se borran sus hooks y opcionalmente sus datos.
+            Al desinstalar se borran sus hooks de inmediato y la fila pasa a{' '}
+            <code className="rounded bg-white/5 px-1">status=available</code> (con{' '}
+            <code className="rounded bg-white/5 px-1">purge:true</code> también se elimina la fila).
           </p>
           <a
             href="https://shopify.dev/docs/apps/build/app-extensions"

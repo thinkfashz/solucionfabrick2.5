@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
 import { resolveProductFromUrl, type ImportedProduct } from '@/lib/productImport';
 import { readImportCache, writeImportCache } from '@/lib/productImportCache';
+import { dispatchHookAsync } from '@/lib/extensionsBus';
 import { isMissingOriginColumnError } from './errors';
 
 export const dynamic = 'force-dynamic';
@@ -273,6 +274,10 @@ export async function POST(request: NextRequest) {
         Array.isArray(data) && data.length > 0
           ? (data[0] as { id?: string }).id ?? null
           : null;
+      // Notify marketplace extensions subscribed to product.after_create.
+      if (newId) {
+        dispatchHookAsync('product.after_create', { id: newId, product: insertPayload });
+      }
       return NextResponse.json({ ok: true, preview, id: newId });
     } catch (err) {
       return NextResponse.json(

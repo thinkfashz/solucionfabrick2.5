@@ -1097,6 +1097,8 @@ CREATE TABLE IF NOT EXISTS public.ads_agent_runs (
   prompt text,
   response jsonb,
   applied boolean DEFAULT false,
+  applied_at timestamptz,
+  applied_result jsonb,
   created_at timestamptz DEFAULT now()
 );
 
@@ -1107,6 +1109,8 @@ ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS action text;
 ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS prompt text;
 ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS response jsonb;
 ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS applied boolean DEFAULT false;
+ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS applied_at timestamptz;
+ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS applied_result jsonb;
 ALTER TABLE public.ads_agent_runs ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 CREATE INDEX IF NOT EXISTS ads_agent_runs_created_at_idx
   ON public.ads_agent_runs (created_at DESC);

@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
   ArrowUpRight, AlertTriangle, BarChart3, BookOpen, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, LayoutGrid, Link2, LogOut, Menu,
-  Megaphone, Newspaper, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart, Stethoscope,
+  Megaphone, Newspaper, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart, Stethoscope, Terminal,
   Truck, Users, X,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
@@ -59,6 +59,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     links: [
       { href: '/admin/estado', label: 'Estado del sistema', description: 'Diagnóstico CMS, BD, env e integraciones', icon: Stethoscope },
       { href: '/admin/errores', label: 'Monitor de Errores', description: 'Fallos capturados de las rutas API', icon: AlertTriangle },
+      { href: '/admin/vercel-logs', label: 'Logs de Vercel', description: 'Build + runtime logs del deployment', icon: Terminal },
       { href: '/admin/manual', label: 'Manual', description: 'Guía técnica de la app', icon: BookOpen, highlight: true },
       { href: '/admin/observatory', label: 'Observatory', description: 'Red en tiempo real', icon: Radio },
       { href: '/admin/envios', label: 'Tarifas de Envío', description: 'Costos por región y transportista', icon: Truck },
@@ -100,6 +101,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/estado': 'Estado del sistema',
   '/admin/manual': 'Manual',
   '/admin/errores': 'Monitor de Errores',
+  '/admin/vercel-logs': 'Logs de Vercel',
 };
 
 function NavItem({ href, label, description, icon: Icon, active, onNavigate, highlight = false }: {

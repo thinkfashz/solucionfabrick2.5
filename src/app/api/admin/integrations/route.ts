@@ -17,6 +17,7 @@ const ALLOWED_PROVIDERS = new Set([
   'google_ads',   // Google Ads API
   'tiktok',       // TikTok for Business / TikTok Ads
   'cloudinary',   // Cloudinary media storage
+  'vercel',       // Vercel REST API (deployments + logs)
 ]);
 
 function getClient() {
@@ -385,6 +386,114 @@ export async function POST(request: NextRequest) {
           { status: 502 },
         );
       }
+    }
+  }
+
+  // Live-validate Vercel credentials by hitting `/v2/user` (cheap, requires
+  // no project access) and, if a project_id is present, `/v9/projects/<id>`.
+  if (provider === 'vercel' && nextCredentials.api_token) {
+    const token = nextCredentials.api_token;
+    const projectId = (nextCredentials.project_id ?? '').trim();
+    const teamId = (nextCredentials.team_id ?? '').trim();
+    try {
+      const userRes = await fetch('https://api.vercel.com/v2/user', {
+        headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+        cache: 'no-store',
+      });
+      if (!userRes.ok) {
+        const upstream = (await userRes.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
+        return NextResponse.json(
+          {
+            error: `Vercel rechazó el token (HTTP ${userRes.status}): ${
+              upstream.error?.message ?? 'token inválido o expirado'
+            }. Genera uno nuevo en vercel.com → Account Settings → Tokens.`,
+          },
+          { status: 400 },
+        );
+      }
+      if (projectId) {
+        const projUrl = new URL(`https://api.vercel.com/v9/projects/${encodeURIComponent(projectId)}`);
+        if (teamId) projUrl.searchParams.set('teamId', teamId);
+        const projRes = await fetch(projUrl.toString(), {
+          headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+          cache: 'no-store',
+        });
+        if (!projRes.ok) {
+          const upstream = (await projRes.json().catch(() => ({}))) as {
+            error?: { message?: string };
+          };
+          return NextResponse.json(
+            {
+              error: `Vercel no encontró el project_id "${projectId}" (HTTP ${projRes.status}): ${
+                upstream.error?.message ?? 'sin detalle'
+              }. Verifica el ID (vercel.com → Project → Settings → "Project ID") y, si pertenece a un equipo, define team_id.`,
+            },
+            { status: 400 },
+          );
+        }
+      }
+    } catch (err) {
+      return NextResponse.json(
+        {
+          error: `No se pudo contactar Vercel para validar las credenciales: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        },
+        { status: 502 },
+      );
+    }
+  }
+
+  // Live-validate TikTok for Business credentials by hitting
+  // /open_api/v1.3/advertiser/info/ with the access token. The endpoint
+  // returns `{code: 0}` on success and a non-zero code on failure.
+  if (provider === 'tiktok' && nextCredentials.access_token) {
+    const token = nextCredentials.access_token;
+    const advertiserIdRaw = (nextCredentials.advertiser_id ?? '').trim();
+    if (advertiserIdRaw && !/^\d+$/.test(advertiserIdRaw)) {
+      return NextResponse.json(
+        {
+          error:
+            'advertiser_id inválido: debe ser el ID numérico del anunciante (Business Center → Configuración → ID).',
+        },
+        { status: 400 },
+      );
+    }
+    try {
+      const tkUrl = new URL('https://business-api.tiktok.com/open_api/v1.3/advertiser/info/');
+      if (advertiserIdRaw) {
+        tkUrl.searchParams.set('advertiser_ids', JSON.stringify([advertiserIdRaw]));
+        tkUrl.searchParams.set('fields', JSON.stringify(['name', 'status']));
+      }
+      const tkRes = await fetch(tkUrl.toString(), {
+        headers: { 'Access-Token': token, Accept: 'application/json' },
+        cache: 'no-store',
+      });
+      const tkJson = (await tkRes.json().catch(() => ({}))) as {
+        code?: number;
+        message?: string;
+      };
+      if (!tkRes.ok || (typeof tkJson.code === 'number' && tkJson.code !== 0)) {
+        return NextResponse.json(
+          {
+            error: `TikTok rechazó el token: ${
+              tkJson.message ?? `HTTP ${tkRes.status}`
+            }. Genera uno nuevo en business.tiktok.com → Apps → Tu app → Generate Long-Term Token.`,
+          },
+          { status: 400 },
+        );
+      }
+    } catch (err) {
+      return NextResponse.json(
+        {
+          error: `No se pudo contactar TikTok para validar las credenciales: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        },
+        { status: 502 },
+      );
     }
   }
 

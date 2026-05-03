@@ -18,7 +18,7 @@ const INTEGRATIONS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS public.integrations (
 );`;
 
 /* ── Integraciones de APIs externas ── */
-type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary';
+type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary' | 'vercel';
 
 interface ProviderField {
   key: string;
@@ -92,6 +92,33 @@ const PROVIDERS: ProviderDefinition[] = [
       },
       { key: 'api_key', label: 'API Key', placeholder: '123456789012345' },
       { key: 'api_secret', label: 'API Secret', type: 'password' as const, placeholder: 'aBcDeFgH...' },
+    ],
+  },
+  {
+    id: 'vercel',
+    label: 'Vercel · Deployments y logs',
+    description:
+      'Personal/Team Access Token de Vercel para listar deployments y leer los logs de errores en tiempo real desde /admin/vercel-logs.',
+    fields: [
+      {
+        key: 'api_token',
+        label: 'API Token',
+        type: 'password',
+        placeholder: 'vercel_xxx',
+        hint: 'Crea un token en vercel.com → Account Settings → Tokens. Scope: el equipo/proyecto a inspeccionar.',
+      },
+      {
+        key: 'project_id',
+        label: 'Project ID',
+        placeholder: 'prj_xxxxxxxxxxxxxxxxxx',
+        hint: 'Vercel → Project → Settings → General → "Project ID".',
+      },
+      {
+        key: 'team_id',
+        label: 'Team ID (opcional)',
+        placeholder: 'team_xxxxxxxxxxxxxxxxxx',
+        hint: 'Sólo necesario si el proyecto pertenece a un equipo (no a tu cuenta personal).',
+      },
     ],
   },
 ];
@@ -668,16 +695,14 @@ export default function ConfiguracionPage() {
                       )}
                     </div>
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
-                      {prov.id === 'meta' && (
-                        <button
-                          type="button"
-                          onClick={() => void handleTestIntegration(prov.id)}
-                          disabled={testingIntegration === prov.id || savingIntegration === prov.id}
-                          className="flex items-center gap-2 rounded-full border border-white/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/5 disabled:opacity-60"
-                        >
-                          {testingIntegration === prov.id ? 'Probando…' : 'Probar conexión'}
-                        </button>
-                      )}
+                      <button
+                        type="button"
+                        onClick={() => void handleTestIntegration(prov.id)}
+                        disabled={testingIntegration === prov.id || savingIntegration === prov.id}
+                        className="flex items-center gap-2 rounded-full border border-white/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-white transition-colors hover:bg-white/5 disabled:opacity-60"
+                      >
+                        {testingIntegration === prov.id ? 'Probando…' : 'Probar conexión'}
+                      </button>
                       {isConfigured && (
                         <button
                           type="button"

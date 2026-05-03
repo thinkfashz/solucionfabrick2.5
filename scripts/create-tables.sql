@@ -136,6 +136,16 @@ ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS anio integer DEFAULT EXTRAC
 ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS cliente text;
 ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 
+-- TABLA: projects-migrate-designer
+-- Columnas adicionales utilizadas por el Ecosistema de Diseño Bimodal
+-- (`/editor`). `design_json` guarda el array completo de elementos del
+-- store (`useDesignStore`) en formato JSON; `thumbnail_url` contiene la
+-- URL pública (subida al bucket `project-thumbnails`) de la captura de
+-- pantalla del Canvas en el momento del guardado.
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS design_json jsonb;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS thumbnail_url text;
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
 -- TABLA: cupones
 CREATE TABLE IF NOT EXISTS public.cupones (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

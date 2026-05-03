@@ -6,6 +6,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import SectionPageShell from '@/components/SectionPageShell';
 import { getSeedProjects, type FabrickProject } from '@/lib/projects';
+import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 import { MapPin, Ruler, Calendar, CheckCircle2, ArrowRight, Hammer } from 'lucide-react';
 
 export default function ProyectosClient() {
@@ -74,9 +75,12 @@ export default function ProyectosClient() {
             >
               <div className="relative h-64 overflow-hidden">
                 <img
-                  src={project.hero_image}
+                  src={cloudinaryUrl(project.hero_image, { width: 800, quality: 70 })}
                   alt={project.title}
                   className="h-full w-full object-cover transition duration-700 group-hover:scale-105"
+                  loading="lazy"
+                  decoding="async"
+                  sizes="(max-width: 768px) 100vw, 50vw"
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/20 to-transparent" />
                 <div className="absolute left-5 top-5 flex gap-2">
@@ -169,7 +173,7 @@ export default function ProyectosClient() {
               ×
             </button>
             <div className="relative h-64 w-full overflow-hidden md:h-80">
-              <img src={selected.hero_image} alt={selected.title} className="h-full w-full object-cover" />
+              <img src={cloudinaryUrl(selected.hero_image, { width: 1200, quality: 75 })} alt={selected.title} className="h-full w-full object-cover" loading="lazy" decoding="async" />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/40 to-transparent" />
               <div className="absolute bottom-5 left-6 right-6">
                 <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-yellow-400">
@@ -215,9 +219,11 @@ export default function ProyectosClient() {
                   {selected.gallery.map((g) => (
                     <img
                       key={g}
-                      src={g}
+                      src={cloudinaryUrl(g, { width: 600, quality: 70 })}
                       alt={selected.title}
                       className="aspect-[4/3] w-full rounded-2xl border border-white/5 object-cover"
+                      loading="lazy"
+                      decoding="async"
                     />
                   ))}
                 </div>

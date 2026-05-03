@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { revalidatePath } from 'next/cache';
+import { revalidatePath, revalidateTag } from 'next/cache';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
 import { listContent, getContent } from '@/lib/content';
 import { renderMarkdown, estimateReadingMinutes } from '@/lib/markdown';
+import { CMS_CACHE_TAGS } from '@/lib/cms';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -76,6 +77,8 @@ export async function POST(request: NextRequest) {
 
     try {
       revalidatePath('/blog');
+      revalidateTag(CMS_CACHE_TAGS.blogList);
+      revalidateTag(CMS_CACHE_TAGS.blogPost);
     } catch {
       /* best effort */
     }

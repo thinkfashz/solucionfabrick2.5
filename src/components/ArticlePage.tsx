@@ -3,6 +3,7 @@ import { headers } from 'next/headers';
 import { Calendar, Clock, User, ArrowLeft, MapPin, Briefcase, Timer, Target } from 'lucide-react';
 import SectionPageShell from '@/components/SectionPageShell';
 import type { ContentPost, ContentMeta } from '@/lib/content';
+import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 
 const BASE_URL = 'https://www.solucionesfabrick.com';
 
@@ -88,11 +89,12 @@ export default async function ArticlePage({ post, related }: ArticlePageProps) {
       {cover ? (
         // eslint-disable-next-line @next/next/no-img-element
         <img
-          src={cover}
+          src={cloudinaryUrl(cover, { width: 1200, quality: 75 })}
           alt={title}
           className="mb-10 w-full rounded-[1.5rem] border border-white/5 object-cover"
           loading="eager"
           decoding="async"
+          fetchPriority="high"
         />
       ) : null}
 

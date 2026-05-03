@@ -15,6 +15,7 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { X, Tag, Sparkles } from 'lucide-react';
 import { insforge } from '@/lib/insforge';
+import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 
 const SESSION_KEY = 'fabrick.promobanner.closed.v3';
 
@@ -210,9 +211,10 @@ export default function PromoBanner() {
                 >
                   {p.image_url ? (
                     <img
-                      src={p.image_url}
+                      src={cloudinaryUrl(p.image_url, { width: 96, quality: 70 })}
                       alt={p.name}
                       loading="lazy"
+                      decoding="async"
                       className="flex-shrink-0 w-12 h-12 rounded-lg object-cover border border-white/10"
                     />
                   ) : (

@@ -5,6 +5,7 @@ import { useScroll, useTransform, motion } from 'framer-motion';
 import AnimatedButton from '@/components/ui/animated-button';
 import HeroHouse3D from './HeroHouse3D';
 import { FlipText } from '@/components/ui/flip-text';
+import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 
 export default function Hero({ coverUrl }: { coverUrl?: string }) {
   const heroRef  = useRef<HTMLDivElement>(null);
@@ -73,10 +74,14 @@ export default function Hero({ coverUrl }: { coverUrl?: string }) {
       >
         {/* eslint-disable-next-line @next/next/no-img-element */}
         <img
-          src={coverUrl || "https://images.unsplash.com/photo-1504307651254-35680f356f12?q=85&w=1920&auto=format&fit=crop"}
+          src={cloudinaryUrl(
+            coverUrl || 'https://images.unsplash.com/photo-1504307651254-35680f356f12?q=85&w=1920&auto=format&fit=crop',
+            { width: 1920, quality: 75 },
+          )}
           alt="Obra de construcción y arquitectura"
           className="w-full h-full object-cover"
           fetchPriority="high"
+          decoding="async"
         />
       </motion.div>
 

@@ -15,6 +15,7 @@
  */
 
 import { useEffect, useRef, useState } from 'react';
+import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 
 const PRIMARY_PHOTO =
   'https://images.unsplash.com/photo-1564013799919-ab600027ffc6?q=80&w=1600&auto=format&fit=crop';
@@ -62,7 +63,7 @@ export default function HeroHouse3D() {
         {!imgFailed ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img
-            src={PRIMARY_PHOTO}
+            src={cloudinaryUrl(PRIMARY_PHOTO, { width: 1280, quality: 75 })}
             alt="Casa moderna construida en Metalcon"
             className="absolute inset-0 w-full h-full object-cover"
             loading="eager"
@@ -73,7 +74,7 @@ export default function HeroHouse3D() {
                 return;
               }
               triedFallback.current = true;
-              e.currentTarget.src = FALLBACK_PHOTO;
+              e.currentTarget.src = cloudinaryUrl(FALLBACK_PHOTO, { width: 1280, quality: 75 });
             }}
           />
         ) : (

@@ -223,3 +223,7 @@ export const SEED_PROJECTS: FabrickProject[] = [
 export function getSeedProjects(): FabrickProject[] {
   return SEED_PROJECTS.map((p) => ({ ...p }));
 }
+
+/** Cache tag for the public projects list. Admin POST/PATCH/DELETE handlers
+ *  must call `revalidateTag(PROJECTS_CACHE_TAG)` to invalidate immediately. */
+export const PROJECTS_CACHE_TAG = 'projects:public';

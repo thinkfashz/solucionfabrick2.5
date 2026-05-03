@@ -5,6 +5,7 @@
 import type { Product } from '@/hooks/useRealtimeProducts';
 import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 import SilverGoldButton from './SilverGoldButton';
+import FavoriteButton from './FavoriteButton';
 
 interface ProductCardProps {
   product: Product;
@@ -57,6 +58,11 @@ export default function ProductCard({ product, onAddToCart }: ProductCardProps) 
               Destacado
             </span>
           ) : null}
+        </div>
+
+        {/* Favorite (wishlist) — top-right corner */}
+        <div className="absolute top-3 right-3 z-10">
+          <FavoriteButton productId={product.id} variant="icon" />
         </div>
 
         {isOutOfStock && (

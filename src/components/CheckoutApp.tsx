@@ -162,6 +162,7 @@ const CheckoutApp = () => {
   // of upstream availability. The connection bar now mirrors what the server
   // actually observes when reaching api.mercadopago.com on every poll.
   type MpStatus = 'idle' | 'checking' | 'ok' | 'unconfigured' | 'unreachable' | 'invalid_token';
+  type MpMode = 'production' | 'sandbox' | 'unknown';
   interface MpStatusInfo {
     status: MpStatus;
     publicKey: string;
@@ -170,6 +171,7 @@ const CheckoutApp = () => {
     latencyMs: number | null;
     message: string;
     checkedAt: number;
+    mode: MpMode;
   }
   const [mpStatus, setMpStatus] = useState<MpStatusInfo>({
     status: 'idle',
@@ -179,6 +181,7 @@ const CheckoutApp = () => {
     latencyMs: null,
     message: '',
     checkedAt: 0,
+    mode: 'unknown',
   });
 
   // Estados del Procesamiento Final de Compra
@@ -218,6 +221,7 @@ const CheckoutApp = () => {
   const [mpSubStep, setMpSubStep] = useState(1); // 1: card number, 2: holder + expiry + CVC, 3: review
   const [checkoutError, setCheckoutError] = useState('');
   const [orderId, setOrderId] = useState('');
+  const [mpPaymentId, setMpPaymentId] = useState<string | null>(null);
 
   // ── Cart: prefer sessionStorage cart (multi-product), fallback to URL params ──
   const [cartItems, setCartItems] = useState<StoredCartItem[]>([]);
@@ -502,9 +506,9 @@ const CheckoutApp = () => {
         const res = await fetch('/api/payments/mp-status', { cache: 'no-store' });
         if (cancelled) return;
         if (!res.ok) throw new Error(`HTTP ${res.status}`);
-        const data = (await res.json()) as Omit<MpStatusInfo, 'checkedAt'>;
+        const data = (await res.json()) as Omit<MpStatusInfo, 'checkedAt'> & { mode?: MpMode };
         if (cancelled) return;
-        setMpStatus({ ...data, checkedAt: Date.now() });
+        setMpStatus({ ...data, mode: data.mode ?? 'unknown', checkedAt: Date.now() });
 
         if (data.status === 'ok') {
           animateTo(100);
@@ -531,6 +535,7 @@ const CheckoutApp = () => {
               ? `No se pudo consultar la pasarela: ${err.message}`
               : 'No se pudo consultar la pasarela.',
           checkedAt: Date.now(),
+          mode: 'unknown',
         });
         animateTo(15);
       }
@@ -874,6 +879,10 @@ const CheckoutApp = () => {
         (mpBody as { message?: string })?.message ??
         (mpBody as { error?: string })?.error ??
         '';
+      const respPaymentId = (mpBody as { paymentId?: string | number | null })?.paymentId;
+      if (respPaymentId != null && respPaymentId !== '') {
+        setMpPaymentId(String(respPaymentId));
+      }
 
       prog = 100;
       setProcessProgress(prog);
@@ -1231,6 +1240,17 @@ const CheckoutApp = () => {
               >
                 Volver al inicio
               </button>
+
+              {mpPaymentId && (
+                <a
+                  href={`https://www.mercadopago.cl/activities/?searchQuery=${encodeURIComponent(mpPaymentId)}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="mt-3 inline-flex items-center gap-2 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-5 py-2.5 text-[10px] font-bold uppercase tracking-[0.25em] text-yellow-300 transition hover:border-yellow-400 hover:bg-yellow-400/20"
+                >
+                  Ver estado / cancelar en Mercado Pago ↗
+                </a>
+              )}
             </div>
           ) : !isSuccess ? (
             <div className="w-full max-w-md flex flex-col items-center text-center animate-fade-up">
@@ -1389,6 +1409,17 @@ const CheckoutApp = () => {
                <button onClick={() => window.location.reload()} className="mt-10 px-12 py-5 bg-white text-black font-black uppercase text-[10px] tracking-[0.3em] rounded-full hover:bg-yellow-400 transition-all transform hover:scale-105 relative z-10 shadow-[0_10px_30px_rgba(255,255,255,0.1)]">
                  Volver al Inicio
                </button>
+
+               {mpPaymentId && (
+                 <a
+                   href={`https://www.mercadopago.cl/activities/?searchQuery=${encodeURIComponent(mpPaymentId)}`}
+                   target="_blank"
+                   rel="noopener noreferrer"
+                   className="mt-4 inline-flex items-center gap-2 rounded-full border border-emerald-400/40 bg-emerald-400/10 px-5 py-2.5 text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-300 transition hover:border-emerald-400 hover:bg-emerald-400/20 relative z-10"
+                 >
+                   Ver / cancelar en Mercado Pago ↗
+                 </a>
+               )}
             </div>
           )}
         </div>
@@ -1838,6 +1869,11 @@ const CheckoutApp = () => {
                         <span className={`text-[9px] font-mono tracking-[0.2em] uppercase transition-colors duration-300 ${headerColour}`}>
                           {headerLabel}
                         </span>
+                        {mpStatus.mode === 'sandbox' && (
+                          <span className="rounded-full bg-amber-400/20 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-amber-300 ring-1 ring-amber-400/50">
+                            Demo
+                          </span>
+                        )}
                       </div>
 
                       {mpFailed && mpStatus.message && (

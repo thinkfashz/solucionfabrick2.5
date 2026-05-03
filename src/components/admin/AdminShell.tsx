@@ -7,7 +7,7 @@ import { usePathname, useRouter } from 'next/navigation';
 import {
   ArrowUpRight, AlertTriangle, BarChart3, BookOpen, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Send, Settings, ShieldCheck, ShoppingCart, Stethoscope, Terminal,
-  Truck, Users, X,
+  Truck, Users, Wallet, X,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
@@ -29,6 +29,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/materiales', label: 'Materiales (Cotizador)', description: 'Alimenta el cotizador en vivo', icon: Package },
       { href: '/admin/proyectos', label: 'Proyectos', description: 'Obras terminadas visibles al cliente', icon: Hammer },
       { href: '/admin/pedidos', label: 'Pedidos', description: 'Cobros y estados', icon: ShoppingCart },
+      { href: '/admin/pagos', label: 'Pagos · MercadoPago', description: 'Modo, latencia y KPIs de la pasarela', icon: Wallet, highlight: true },
       { href: '/admin/cotizaciones', label: 'Cotizaciones', description: 'Solicitudes de servicios y diseños 3D', icon: FileText },
       { href: '/admin/entregas', label: 'Entregas', description: 'Seguimiento logístico', icon: Truck },
       { href: '/admin/clientes', label: 'Clientes', description: 'Historial y recurrencia', icon: Users },
@@ -79,6 +80,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/materiales': 'Materiales (Cotizador)',
   '/admin/proyectos': 'Proyectos',
   '/admin/pedidos': 'Pedidos',
+  '/admin/pagos': 'Pagos · MercadoPago',
   '/admin/cotizaciones': 'Cotizaciones',
   '/admin/entregas': 'Entregas',
   '/admin/clientes': 'Clientes',

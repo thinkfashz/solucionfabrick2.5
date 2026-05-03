@@ -70,6 +70,8 @@ export type MercadoPagoConnectionStatus =
   | 'unreachable'
   | 'invalid_token';
 
+export type MercadoPagoMode = 'production' | 'sandbox' | 'unknown';
+
 export interface MercadoPagoStatusResult {
   status: MercadoPagoConnectionStatus;
   publicKey: string;
@@ -77,6 +79,109 @@ export interface MercadoPagoStatusResult {
   reachable: boolean;
   latencyMs: number | null;
   message: string;
+  mode: MercadoPagoMode;
+  /** First few characters of the access token (e.g. `APP_USR` / `TEST`). */
+  tokenPrefix: string;
+}
+
+/**
+ * Heuristic: Mercado Pago issues access tokens prefixed with `APP_USR-` for
+ * production credentials and `TEST-` for sandbox/test users. This tells the
+ * mode without an extra HTTP round-trip.
+ */
+export function detectMpMode(accessToken: string): MercadoPagoMode {
+  const t = accessToken.trim();
+  if (!t) return 'unknown';
+  if (t.startsWith('APP_USR-')) return 'production';
+  if (t.startsWith('TEST-')) return 'sandbox';
+  return 'unknown';
+}
+
+export function getMpTokenPrefix(accessToken: string): string {
+  const t = accessToken.trim();
+  if (!t) return '';
+  // Return the alphanumeric prefix before the first '-' (e.g. APP_USR, TEST).
+  const dash = t.indexOf('-');
+  return dash > 0 ? t.slice(0, dash) : t.slice(0, Math.min(8, t.length));
+}
+
+export interface MercadoPagoAccountInfo {
+  id: string | number | null;
+  email: string | null;
+  nickname: string | null;
+  siteId: string | null;
+  isTestUser: boolean;
+}
+
+interface AccountCacheEntry {
+  fetchedAt: number;
+  account: MercadoPagoAccountInfo | null;
+}
+
+const ACCOUNT_CACHE_TTL_MS = 60_000;
+const accountCache = new Map<string, AccountCacheEntry>();
+
+/**
+ * Fetch the merchant identity from Mercado Pago's `/users/me` endpoint.
+ * Cached per-token for 60s to keep admin polling lightweight. Never call
+ * this from the public probe (`probeMercadoPago`) — leaks merchant identity.
+ */
+export async function fetchMercadoPagoAccount(
+  accessToken: string,
+  options: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
+): Promise<MercadoPagoAccountInfo | null> {
+  const token = accessToken.trim();
+  if (!token) return null;
+
+  const cached = accountCache.get(token);
+  if (cached && Date.now() - cached.fetchedAt < ACCOUNT_CACHE_TTL_MS) {
+    return cached.account;
+  }
+
+  const fetchImpl = options.fetchImpl ?? fetch;
+  const timeoutMs = options.timeoutMs ?? 6000;
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    const res = await fetchImpl(`${API_BASE}/users/me`, {
+      method: 'GET',
+      headers: { Authorization: `Bearer ${token}` },
+      signal: controller.signal,
+      cache: 'no-store',
+    });
+    if (!res.ok) {
+      accountCache.set(token, { fetchedAt: Date.now(), account: null });
+      return null;
+    }
+    const data = (await res.json().catch(() => null)) as
+      | {
+          id?: number | string;
+          email?: string;
+          nickname?: string;
+          site_id?: string;
+          tags?: string[];
+        }
+      | null;
+    if (!data) {
+      accountCache.set(token, { fetchedAt: Date.now(), account: null });
+      return null;
+    }
+    const account: MercadoPagoAccountInfo = {
+      id: data.id ?? null,
+      email: typeof data.email === 'string' ? data.email : null,
+      nickname: typeof data.nickname === 'string' ? data.nickname : null,
+      siteId: typeof data.site_id === 'string' ? data.site_id : null,
+      isTestUser: Array.isArray(data.tags) ? data.tags.includes('test_user') : false,
+    };
+    accountCache.set(token, { fetchedAt: Date.now(), account });
+    return account;
+  } catch {
+    accountCache.set(token, { fetchedAt: Date.now(), account: null });
+    return null;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 /**
@@ -95,6 +200,8 @@ export async function probeMercadoPago(
   const publicKey = getMercadoPagoPublicKey();
   const accessToken = getMercadoPagoAccessToken();
   const hasAccessToken = accessToken.length > 0;
+  const mode = detectMpMode(accessToken);
+  const tokenPrefix = getMpTokenPrefix(accessToken);
 
   if (!publicKey && !hasAccessToken) {
     return {
@@ -103,6 +210,8 @@ export async function probeMercadoPago(
       hasAccessToken: false,
       reachable: false,
       latencyMs: null,
+      mode,
+      tokenPrefix,
       message:
         'Pasarela no configurada: define MERCADO_PAGO_ACCESS_TOKEN y MP_PUBLIC_KEY (o sus variantes NEXT_PUBLIC_*) en el entorno.',
     };
@@ -115,6 +224,8 @@ export async function probeMercadoPago(
       hasAccessToken: false,
       reachable: false,
       latencyMs: null,
+      mode,
+      tokenPrefix,
       message:
         'Falta MERCADO_PAGO_ACCESS_TOKEN: la tokenización funcionará pero no se puede cobrar desde el servidor.',
     };
@@ -142,6 +253,8 @@ export async function probeMercadoPago(
         hasAccessToken: true,
         reachable: true,
         latencyMs,
+        mode,
+        tokenPrefix,
         message:
           'Mercado Pago rechazó el access token. Genera uno nuevo en el panel de Mercado Pago y actualízalo en Vercel.',
       };
@@ -154,6 +267,8 @@ export async function probeMercadoPago(
         hasAccessToken: true,
         reachable: false,
         latencyMs,
+        mode,
+        tokenPrefix,
         message: `Mercado Pago respondió con estado ${response.status}.`,
       };
     }
@@ -164,7 +279,12 @@ export async function probeMercadoPago(
       hasAccessToken: true,
       reachable: true,
       latencyMs,
-      message: 'Conexión activa con Mercado Pago.',
+      mode,
+      tokenPrefix,
+      message:
+        mode === 'sandbox'
+          ? 'Conexión activa con Mercado Pago en modo demo (TEST).'
+          : 'Conexión activa con Mercado Pago.',
     };
   } catch (err) {
     const latencyMs = Date.now() - startedAt;
@@ -175,6 +295,8 @@ export async function probeMercadoPago(
       hasAccessToken: true,
       reachable: false,
       latencyMs,
+      mode,
+      tokenPrefix,
       message: aborted
         ? `Mercado Pago no respondió en ${timeoutMs} ms.`
         : 'No se pudo contactar con api.mercadopago.com.',

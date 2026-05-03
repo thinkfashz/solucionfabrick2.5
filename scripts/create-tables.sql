@@ -914,3 +914,29 @@ ALTER TABLE public.site_structure ADD COLUMN IF NOT EXISTS content jsonb NOT NUL
 ALTER TABLE public.site_structure ADD COLUMN IF NOT EXISTS version integer DEFAULT 1;
 ALTER TABLE public.site_structure ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 ALTER TABLE public.site_structure ADD COLUMN IF NOT EXISTS updated_by text;
+
+-- TABLA: favorites
+-- Wishlist por cliente registrado. Una fila por (user_id, product_id).
+-- user_id corresponde al `id` del usuario InsForge (validado server-side).
+CREATE TABLE IF NOT EXISTS public.favorites (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id uuid NOT NULL,
+  product_id uuid NOT NULL,
+  created_at timestamptz DEFAULT now(),
+  CONSTRAINT favorites_user_product_unique UNIQUE (user_id, product_id)
+);
+
+-- TABLA: favorites-migrate
+ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS user_id uuid;
+ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS product_id uuid;
+ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+CREATE INDEX IF NOT EXISTS favorites_user_id_idx ON public.favorites(user_id);
+CREATE INDEX IF NOT EXISTS favorites_product_id_idx ON public.favorites(product_id);
+
+-- TABLA: orders-migrate
+-- Asegura columnas modernas de pago en deployments antiguos donde la tabla
+-- `orders` se creó con un esquema previo. La columna `payment_status` la
+-- escribe `/api/payments/mercadopago` y la lee `/admin/pagos`.
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_status text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_id text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();

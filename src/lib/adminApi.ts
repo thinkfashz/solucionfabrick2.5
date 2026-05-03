@@ -47,6 +47,51 @@ async function logAdminError(params: {
   }
 }
 
+/**
+ * Normalises errors thrown or returned by the InsForge SDK so admin endpoints
+ * can forward the *real* failure to the client. The shapes we care about:
+ *   - `InsForgeError` (auth/storage/etc): { message, statusCode, error, nextActions }
+ *   - `PostgrestError`-style (database queries): { message, code, details, hint }
+ *
+ * Returning all of these lets the frontend `AdminActionGuard` show actionable
+ * diagnostics — e.g. detect PostgreSQL `42P01` ("relation does not exist") and
+ * offer one-click table repair.
+ */
+export interface SerializedSdkError {
+  message: string;
+  code?: string;
+  details?: string;
+  hint?: string;
+  statusCode?: number;
+}
+
+export function serializeSdkError(err: unknown): SerializedSdkError {
+  if (err == null) return { message: 'Error desconocido.' };
+  if (typeof err !== 'object') return { message: String(err) };
+  const e = err as Record<string, unknown>;
+  const message =
+    typeof e.message === 'string' && e.message.length > 0
+      ? e.message
+      : err instanceof Error
+        ? err.message
+        : 'Error desconocido.';
+  const code =
+    typeof e.code === 'string' && e.code.length > 0
+      ? e.code
+      : typeof e.error === 'string' && e.error.length > 0
+        ? e.error
+        : undefined;
+  const details = typeof e.details === 'string' && e.details.length > 0 ? e.details : undefined;
+  const hint =
+    typeof e.hint === 'string' && e.hint.length > 0
+      ? e.hint
+      : typeof e.nextActions === 'string' && e.nextActions.length > 0
+        ? e.nextActions
+        : undefined;
+  const statusCode = typeof e.statusCode === 'number' ? e.statusCode : undefined;
+  return { message, code, details, hint, statusCode };
+}
+
 export function adminError(
   err: unknown,
   code = 'INTERNAL_ERROR',

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { createClient } from '@insforge/sdk';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import { serializeSdkError } from '@/lib/adminApi';
 
 export const dynamic = 'force-dynamic';
 
@@ -59,10 +60,14 @@ export async function GET(request: NextRequest) {
       .select('provider, credentials, updated_at');
 
     if (error) {
+      const sdk = serializeSdkError(error);
       return NextResponse.json(
         {
-          error: error.message,
-          hint: 'Crea la tabla `integrations` en InsForge (provider text PK, credentials jsonb, updated_at timestamptz).',
+          ...sdk,
+          error: sdk.message,
+          hint:
+            sdk.hint ??
+            'Crea la tabla `integrations` en InsForge (provider text PK, credentials jsonb, updated_at timestamptz).',
         },
         { status: 500 },
       );
@@ -79,10 +84,8 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({ providers });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Error al consultar integrations.' },
-      { status: 500 },
-    );
+    const sdk = serializeSdkError(err);
+    return NextResponse.json({ ...sdk, error: sdk.message }, { status: 500 });
   }
 }
 
@@ -394,20 +397,22 @@ export async function POST(request: NextRequest) {
       },
     ]);
     if (error) {
+      const sdk = serializeSdkError(error);
       return NextResponse.json(
         {
-          error: error.message,
-          hint: 'Crea la tabla `integrations` en InsForge (provider text PK, credentials jsonb, updated_at timestamptz).',
+          ...sdk,
+          error: sdk.message,
+          hint:
+            sdk.hint ??
+            'Crea la tabla `integrations` en InsForge (provider text PK, credentials jsonb, updated_at timestamptz).',
         },
         { status: 500 },
       );
     }
     return NextResponse.json({ ok: true, credentials: maskCredentials(nextCredentials) });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Error al guardar integration.' },
-      { status: 500 },
-    );
+    const sdk = serializeSdkError(err);
+    return NextResponse.json({ ...sdk, error: sdk.message }, { status: 500 });
   }
 }
 
@@ -426,12 +431,13 @@ export async function DELETE(request: NextRequest) {
 
   try {
     const { error } = await client.database.from('integrations').delete().eq('provider', provider);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      const sdk = serializeSdkError(error);
+      return NextResponse.json({ ...sdk, error: sdk.message }, { status: 500 });
+    }
     return NextResponse.json({ ok: true });
   } catch (err) {
-    return NextResponse.json(
-      { error: err instanceof Error ? err.message : 'Error al eliminar integration.' },
-      { status: 500 },
-    );
+    const sdk = serializeSdkError(err);
+    return NextResponse.json({ ...sdk, error: sdk.message }, { status: 500 });
   }
 }

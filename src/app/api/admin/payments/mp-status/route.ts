@@ -76,6 +76,12 @@ export async function GET(request: NextRequest) {
 
     // KPIs from orders in the last 7 days. Wrap in safe try/catch so MP
     // status still renders if the DB is unreachable.
+    //
+    // We deliberately do NOT cap the result set here: a small `.limit(N)`
+    // would silently underreport approved/pending/rejected counters as soon
+    // as 7-day volume crosses N, making the admin dashboard lie about real
+    // payment activity. The list is also bounded by the 7-day `since`
+    // filter, which is the only cap we want.
     const sinceIso = new Date(Date.now() - SEVEN_DAYS_MS).toISOString();
     const kpis = { approved: 0, pending: 0, rejected: 0, volume: 0, sinceIso, currency: 'CLP' as const };
     let recentOrders: OrderRow[] = [];
@@ -84,8 +90,7 @@ export async function GET(request: NextRequest) {
         .from('orders')
         .select('id,total,status,payment_status,payment_id,cliente_email,created_at')
         .gte('created_at', sinceIso)
-        .order('created_at', { ascending: false })
-        .limit(200)) as { data: OrderRow[] | null };
+        .order('created_at', { ascending: false })) as { data: OrderRow[] | null };
       const all = Array.isArray(rows) ? rows : [];
       for (const o of all) {
         const ps = (o.payment_status ?? '').toLowerCase();

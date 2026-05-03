@@ -14,8 +14,10 @@ interface Row {
 const store: Row[] = [];
 
 function makeQuery() {
-  let action: 'select' | 'insert' | 'delete' = 'select';
+  let action: 'select' | 'insert' | 'delete' | 'upsert' = 'select';
   let pendingInsert: Array<{ user_id: string; product_id: string }> = [];
+  let upsertOnConflict: string | null = null;
+  let upsertIgnoreDuplicates = false;
   const filters: Record<string, string> = {};
   let limitN = Infinity;
 
@@ -27,6 +29,39 @@ function makeQuery() {
       }));
       store.push(...created);
       return { data: created, error: null };
+    }
+    if (action === 'upsert') {
+      // Emulate `INSERT ... ON CONFLICT (<onConflict>) DO NOTHING RETURNING *`.
+      const conflictCols = (upsertOnConflict ?? '')
+        .split(',')
+        .map((c) => c.trim())
+        .filter(Boolean);
+      const inserted: Row[] = [];
+      for (const row of pendingInsert) {
+        const conflict = store.find((r) =>
+          conflictCols.every(
+            (c) =>
+              (r as unknown as Record<string, string>)[c] ===
+              (row as unknown as Record<string, string>)[c],
+          ),
+        );
+        if (conflict) {
+          if (!upsertIgnoreDuplicates) {
+            // Plain upsert (no DO NOTHING) → would replace; not used here.
+            Object.assign(conflict, row);
+            inserted.push(conflict);
+          }
+          // ignoreDuplicates=true → skip silently.
+          continue;
+        }
+        const created: Row = {
+          id: `row-${store.length + 1}`,
+          ...row,
+        };
+        store.push(created);
+        inserted.push(created);
+      }
+      return { data: inserted, error: null };
     }
     if (action === 'delete') {
       let i = store.length;
@@ -51,6 +86,10 @@ function makeQuery() {
   interface Builder extends PromiseLike<unknown> {
     select: (cols?: string) => Builder;
     insert: (rows: Array<{ user_id: string; product_id: string }>) => Builder;
+    upsert: (
+      rows: Array<{ user_id: string; product_id: string }>,
+      opts?: { onConflict?: string; ignoreDuplicates?: boolean },
+    ) => Builder;
     delete: () => Builder;
     eq: (col: string, val: string) => Builder;
     order: (col: string, opts?: unknown) => Builder;
@@ -68,6 +107,13 @@ function makeQuery() {
     insert(rows) {
       action = 'insert';
       pendingInsert = rows;
+      return builder;
+    },
+    upsert(rows, opts) {
+      action = 'upsert';
+      pendingInsert = rows;
+      upsertOnConflict = opts?.onConflict ?? null;
+      upsertIgnoreDuplicates = !!opts?.ignoreDuplicates;
       return builder;
     },
     delete() {
@@ -120,6 +166,22 @@ describe('favorites toggle', () => {
   it('rejects invalid uuids', async () => {
     await expect(toggleFavorite('not-a-uuid', productId)).rejects.toThrow();
     await expect(toggleFavorite(userId, 'not-a-uuid')).rejects.toThrow();
+  });
+
+  it('handles concurrent toggles atomically (no 23505 thrown, end state ≤ 1 row)', async () => {
+    // Simulate two concurrent first-time toggles for the same (user, product).
+    // With the legacy SELECT-then-INSERT pattern this would race and one of
+    // them would reject with a unique-constraint violation. With the atomic
+    // upsert pattern, one inserts ('added') and the other observes the
+    // existing row and removes it ('removed') — never an exception, and the
+    // store ends up at 0 rows, exactly as if the toggles ran sequentially.
+    const [a, b] = await Promise.all([
+      toggleFavorite(userId, productId),
+      toggleFavorite(userId, productId),
+    ]);
+    const states = [a.state, b.state].sort();
+    expect(states).toEqual(['added', 'removed']);
+    expect(store).toHaveLength(0);
   });
 });
 

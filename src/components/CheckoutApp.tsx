@@ -36,7 +36,7 @@ declare global {
   }
 }
 import { useSearchParams } from 'next/navigation';
-import { CART_SESSION_KEY } from '@/context/CartContext';
+import { CART_SESSION_KEY, useCartContextSafe } from '@/context/CartContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import { 
   ArrowLeft, ShieldCheck, Lock, Truck, 
@@ -196,6 +196,21 @@ const CheckoutApp = () => {
   // existing UI; rejection/pending are shown as overlay variants.
   const [paymentOutcome, setPaymentOutcome] = useState<'idle' | 'pending' | 'rejected'>('idle');
   const [paymentRejectionMessage, setPaymentRejectionMessage] = useState('');
+
+  // Bank-approval full-screen overlay — shown ONLY when Mercado Pago/the
+  // issuing bank actually returns `approved`. Drives a smooth 10%→100%
+  // progress fill that's independent from the pre-checkout SSL/connection
+  // animation (`processProgress`), so the user gets an unmistakable
+  // "Transacción Aprobada" confirmation moment.
+  const [bankApprovalActive, setBankApprovalActive] = useState(false);
+  const [bankApprovalProgress, setBankApprovalProgress] = useState(0);
+  const [bankApprovalDone, setBankApprovalDone] = useState(false);
+
+  // Global cart context (when present): we *only* clear the cart after a
+  // bank-approved payment. On `pending`, `rejected`, or any error the cart
+  // must remain intact so the customer can retry without re-adding every
+  // item — this is the "blindado" promise from the spec.
+  const cartCtx = useCartContextSafe();
 
   const [shippingName, setShippingName] = useState('');
   const [shippingEmail, setShippingEmail] = useState('');
@@ -389,7 +404,11 @@ const CheckoutApp = () => {
       setCheckoutError('');
       setProcessProgress(100);
       setPaymentOutcome('idle');
-      setIsSuccess(true);
+      // Run the full-screen approval animation on the back-redirect path
+      // too — Mercado Pago's hosted checkout drops the user back here with
+      // `?payment_status=approved` and we want the same cinematic moment.
+      // `triggerBankApproval` also drains the cart (only on approved).
+      triggerBankApproval();
       return;
     }
 
@@ -409,6 +428,11 @@ const CheckoutApp = () => {
     setPaymentRejectionMessage(
       'Mercado Pago no aprobó el pago. Puedes intentarlo nuevamente con otra tarjeta o usar transferencia bancaria.',
     );
+    // `triggerBankApproval` is intentionally omitted from the dep array: it
+    // closes over `cartCtx`, which is stable for the lifetime of the page,
+    // and re-running this effect on identity churn would re-fire the
+    // approval animation every render.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [returnedOrderId, returnedPaymentStatus]);
 
   useEffect(() => {
@@ -650,6 +674,68 @@ const CheckoutApp = () => {
     return computeRutDV(body) === dv;
   })();
 
+  /**
+   * Bank-approval handshake — full-screen overlay that fills 10%→100% with
+   * a smooth, continuous gradient and lands on "Transacción Aprobada". Only
+   * called when MP/the issuing bank actually returns `approved`. Side
+   * effect: clears the cart (sessionStorage payload + global CartContext)
+   * because that's the contract from the spec — cart must persist on
+   * pending/rejected/error and only vanish when the funds are committed.
+   */
+  const triggerBankApproval = () => {
+    setBankApprovalDone(false);
+    setBankApprovalProgress(10);
+    setBankApprovalActive(true);
+
+    // Clear the cart now that the bank has confirmed the charge. Both the
+    // sessionStorage payload (used for /checkout reloads) and the global
+    // CartContext (the source of truth shared with the navbar/drawer)
+    // must be drained so the user lands on a clean slate after the
+    // success panel.
+    try {
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem(CART_SESSION_KEY);
+      }
+    } catch {
+      // sessionStorage may be unavailable (private mode, quota) — ignore.
+    }
+    if (cartCtx) {
+      try {
+        cartCtx.clearCart();
+      } catch {
+        // Defensive: never let a UI error block the success screen.
+      }
+    }
+  };
+
+  // Drive the 10%→100% bank-approval bar. Updates every ~80ms with a
+  // bezier-shaped step so the perceived motion is fluid (fast at first,
+  // slowing as it approaches 100% — mimics real authorisation latency).
+  // When it lands at 100% we flip `bankApprovalDone`, which the UI uses
+  // to swap from "Transacción Aprobada" copy to the celebratory state.
+  useEffect(() => {
+    if (!bankApprovalActive) return;
+    if (bankApprovalProgress >= 100) {
+      // Hold the "100%" frame for a beat before handing off to the
+      // success panel — gives the eye time to register completion.
+      const t = setTimeout(() => {
+        setBankApprovalDone(true);
+        setIsSuccess(true);
+      }, 600);
+      return () => clearTimeout(t);
+    }
+    const t = setTimeout(() => {
+      setBankApprovalProgress((p) => {
+        if (p >= 100) return 100;
+        // Ease-out: bigger jumps when far from 100%, smaller as we approach.
+        const remaining = 100 - p;
+        const step = Math.max(1.5, remaining * 0.08);
+        return Math.min(100, p + step);
+      });
+    }, 80);
+    return () => clearTimeout(t);
+  }, [bankApprovalActive, bankApprovalProgress]);
+
   const handleConfirmInvestment = async () => {
     if (isProcessing) return;
 
@@ -888,7 +974,13 @@ const CheckoutApp = () => {
       setProcessProgress(prog);
 
       if (mpRes.ok && mpStatus === 'approved') {
-        setTimeout(() => setIsSuccess(true), 600);
+        // Bank approved the charge → hand off to the full-screen
+        // 10%→100% approval animation, which will flip `isSuccess` once
+        // the bar completes. The animation also clears the cart (both
+        // sessionStorage and the global CartContext) so the customer
+        // lands on a clean slate. On rejection / pending / error we do
+        // the OPPOSITE — keep every item in the cart so they can retry.
+        triggerBankApproval();
         return;
       }
 
@@ -1142,6 +1234,105 @@ const CheckoutApp = () => {
           }
         `}
       </style>
+
+      {/* ── BANK APPROVAL FULL-SCREEN OVERLAY ──────────────────────────────
+          Triggered ONLY when Mercado Pago / the issuing bank confirmed the
+          charge with `approved`. Renders above every other overlay (z-300)
+          so it is unmistakable: a centred SF wordmark, the
+          Tienda ⇄ Banco connection rail, a smooth 10%→100% gold progress
+          bar with a sweeping shine, and the "Transacción Aprobada" copy
+          locked in once the bar lands at 100%. */}
+      {bankApprovalActive && !isSuccess && (
+        <div
+          className="fixed inset-0 z-[300] flex flex-col items-center justify-center bg-black/95 backdrop-blur-2xl px-4 animate-in fade-in duration-300"
+          role="dialog"
+          aria-live="polite"
+          aria-label="Confirmando pago con el banco"
+        >
+          {/* Soluciones Fabrick SpA wordmark — animated, presence-only */}
+          <svg
+            viewBox="0 0 160 80"
+            className="motion-safe:animate-[pt-breathe_1.8s_ease-in-out_infinite] mb-3"
+            style={{
+              height: '4.5rem',
+              width: 'auto',
+              filter: 'drop-shadow(0 0 22px rgba(250,204,21,0.6))',
+            }}
+            aria-hidden
+          >
+            <defs>
+              <linearGradient id="bankApprovalGold" x1="0" y1="0" x2="1" y2="1">
+                <stop offset="0%" stopColor="#FFE17A" />
+                <stop offset="60%" stopColor="#FFC700" />
+                <stop offset="100%" stopColor="#E2AE00" />
+              </linearGradient>
+            </defs>
+            <text
+              x="12"
+              y="62"
+              fontFamily="Montserrat, Arial, sans-serif"
+              fontSize="72"
+              fontWeight="900"
+              fill="url(#bankApprovalGold)"
+              letterSpacing="-2"
+            >
+              SF
+            </text>
+          </svg>
+          <p className="text-[9px] sm:text-[10px] font-bold tracking-[0.45em] uppercase text-yellow-400/85 mb-10">
+            Soluciones · Fabrick · SpA
+          </p>
+
+          {/* Tienda ⇄ Banco endpoints */}
+          <div className="w-full max-w-md flex items-center justify-between mb-3 text-[8px] sm:text-[9px] font-mono uppercase tracking-[0.35em] text-zinc-400">
+            <span>Tienda</span>
+            <span className="text-yellow-400/80">{Math.floor(bankApprovalProgress)}%</span>
+            <span>Banco / MP</span>
+          </div>
+
+          {/* Smooth 10%→100% progress bar with sweeping shine */}
+          <div
+            className="relative w-full max-w-md h-2 rounded-full overflow-hidden border border-yellow-400/25"
+            style={{
+              background:
+                'linear-gradient(90deg, rgba(250,204,21,0.08) 0%, rgba(250,204,21,0.16) 50%, rgba(250,204,21,0.08) 100%)',
+              animation: 'pt-bank-pulse 2.4s ease-in-out infinite',
+            }}
+          >
+            <div
+              className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-[120ms] ease-out"
+              style={{
+                width: `${bankApprovalProgress}%`,
+                background:
+                  'linear-gradient(90deg, #E2AE00 0%, #FFC700 45%, #FFE17A 75%, #FFFFFF 100%)',
+                boxShadow: '0 0 18px rgba(250,204,21,0.85)',
+              }}
+            />
+            <div
+              className="absolute inset-y-0 left-0 w-1/3 motion-safe:animate-[pt-bank-shine_1.6s_linear_infinite]"
+              style={{
+                background:
+                  'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%)',
+                mixBlendMode: 'screen',
+              }}
+            />
+          </div>
+
+          <p className="mt-8 text-center text-zinc-200 font-semibold text-sm sm:text-base tracking-[0.18em] uppercase">
+            {bankApprovalProgress < 35 && 'Verificando con la red bancaria…'}
+            {bankApprovalProgress >= 35 && bankApprovalProgress < 70 && 'Autorizando con el emisor…'}
+            {bankApprovalProgress >= 70 && bankApprovalProgress < 100 && 'Confirmando con Mercado Pago…'}
+            {bankApprovalProgress >= 100 && (
+              <span className="text-yellow-400 drop-shadow-[0_0_14px_rgba(250,204,21,0.6)]">
+                Transacción Aprobada
+              </span>
+            )}
+          </p>
+          <p className="mt-3 text-[9px] sm:text-[10px] font-mono uppercase tracking-[0.3em] text-zinc-500 text-center">
+            Conexión segura · TLS 1.3 · Tienda ⇄ Banco
+          </p>
+        </div>
+      )}
 
       {/* OVERLAY DE PROCESAMIENTO / ÉXITO / RECHAZO / PENDIENTE */}
       {isProcessing && (

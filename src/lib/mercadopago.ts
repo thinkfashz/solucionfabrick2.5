@@ -1,4 +1,4 @@
-import { createHmac, timingSafeEqual } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type { CheckoutPayload, CheckoutSummary, LineItem } from '@/lib/checkout';
 
 const DEFAULT_SITE_URL = 'https://fabrick.cl';
@@ -122,6 +122,18 @@ const ACCOUNT_CACHE_TTL_MS = 60_000;
 const accountCache = new Map<string, AccountCacheEntry>();
 
 /**
+ * Derive a stable, non-reversible cache key from a Mercado Pago access
+ * token. We never want the raw secret to live in an in-process Map (it ends
+ * up in heap dumps, debugger inspections and log snapshots), so we hash it
+ * with SHA-256 and keep the first 16 hex chars (64 bits of entropy — far
+ * more than enough to deduplicate concurrent callers without ever exposing
+ * the token itself).
+ */
+function tokenCacheKey(token: string): string {
+  return createHash('sha256').update(token).digest('hex').slice(0, 16);
+}
+
+/**
  * Fetch the merchant identity from Mercado Pago's `/users/me` endpoint.
  * Cached per-token for 60s to keep admin polling lightweight. Never call
  * this from the public probe (`probeMercadoPago`) — leaks merchant identity.
@@ -133,7 +145,8 @@ export async function fetchMercadoPagoAccount(
   const token = accessToken.trim();
   if (!token) return null;
 
-  const cached = accountCache.get(token);
+  const cacheKey = tokenCacheKey(token);
+  const cached = accountCache.get(cacheKey);
   if (cached && Date.now() - cached.fetchedAt < ACCOUNT_CACHE_TTL_MS) {
     return cached.account;
   }
@@ -151,7 +164,7 @@ export async function fetchMercadoPagoAccount(
       cache: 'no-store',
     });
     if (!res.ok) {
-      accountCache.set(token, { fetchedAt: Date.now(), account: null });
+      accountCache.set(cacheKey, { fetchedAt: Date.now(), account: null });
       return null;
     }
     const data = (await res.json().catch(() => null)) as
@@ -164,7 +177,7 @@ export async function fetchMercadoPagoAccount(
         }
       | null;
     if (!data) {
-      accountCache.set(token, { fetchedAt: Date.now(), account: null });
+      accountCache.set(cacheKey, { fetchedAt: Date.now(), account: null });
       return null;
     }
     const account: MercadoPagoAccountInfo = {
@@ -174,10 +187,10 @@ export async function fetchMercadoPagoAccount(
       siteId: typeof data.site_id === 'string' ? data.site_id : null,
       isTestUser: Array.isArray(data.tags) ? data.tags.includes('test_user') : false,
     };
-    accountCache.set(token, { fetchedAt: Date.now(), account });
+    accountCache.set(cacheKey, { fetchedAt: Date.now(), account });
     return account;
   } catch {
-    accountCache.set(token, { fetchedAt: Date.now(), account: null });
+    accountCache.set(cacheKey, { fetchedAt: Date.now(), account: null });
     return null;
   } finally {
     clearTimeout(timer);

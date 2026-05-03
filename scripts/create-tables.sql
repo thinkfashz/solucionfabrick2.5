@@ -927,8 +927,15 @@ CREATE TABLE IF NOT EXISTS public.favorites (
 );
 
 -- TABLA: favorites-migrate
-ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS user_id uuid;
-ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS product_id uuid;
+-- En despliegues antiguos donde la tabla `favorites` se creó sin las
+-- restricciones modernas, garantizamos que las columnas existan **y** tengan
+-- la misma forma exacta que la definición CREATE TABLE de arriba: ambas
+-- columnas son `uuid NOT NULL`, lo que mantiene la integridad de la FK
+-- lógica con `auth.users.id` y `products.id` y permite que la restricción
+-- única `favorites_user_product_unique` actúe como ancla del UPSERT atómico
+-- usado por `toggleFavorite()` (src/lib/favorites.ts).
+ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS user_id uuid NOT NULL;
+ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS product_id uuid NOT NULL;
 ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 CREATE INDEX IF NOT EXISTS favorites_user_id_idx ON public.favorites(user_id);
 CREATE INDEX IF NOT EXISTS favorites_product_id_idx ON public.favorites(product_id);

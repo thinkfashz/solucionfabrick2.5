@@ -161,7 +161,14 @@ export function useFavorites(): UseFavoritesReturn {
         });
         throw err;
       } finally {
-        inFlight.current.delete(productId);
+        // Only clear the in-flight slot if it still holds **our** controller.
+        // A subsequent toggle for the same product replaces the entry with a
+        // fresh AbortController; deleting unconditionally here would also
+        // remove that newer controller, leaving a future toggle with no way
+        // to abort an even later double-click.
+        if (inFlight.current.get(productId) === ctrl) {
+          inFlight.current.delete(productId);
+        }
       }
     },
     [favorites, isAuthed],

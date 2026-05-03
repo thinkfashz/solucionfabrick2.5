@@ -4,11 +4,17 @@ import { useId } from 'react';
 
 interface Props {
   className?: string;
+  /**
+   * When true (default) the logo runs a continuous, sub-perceptual gold
+   * glow pulse driven by CSS keyframes (`fabrick-logo-animated`). The
+   * animation only mutates `filter`, so it never reflows neighbouring
+   * layout, and it auto-disables under `prefers-reduced-motion`.
+   */
   animate?: boolean;
   onClick?: () => void;
 }
 
-export default function FabrickLogo({ className = '', animate = false, onClick }: Props) {
+export default function FabrickLogo({ className = '', animate = true, onClick }: Props) {
   const isInteractive = typeof onClick === 'function';
   const uid = useId().replace(/:/g, '');
   const ids = {
@@ -36,7 +42,7 @@ export default function FabrickLogo({ className = '', animate = false, onClick }
       {/* Mobile: compact inline SVG */}
       <svg
         viewBox="0 0 180 60"
-        className={`block md:hidden h-10 w-auto ${animate ? 'drop-shadow-[0_0_8px_rgba(255,199,0,0.45)]' : ''}`}
+        className={`block md:hidden h-10 w-auto ${animate ? 'fabrick-logo-animated' : ''}`}
         aria-hidden="true"
       >
         <defs>
@@ -71,7 +77,7 @@ export default function FabrickLogo({ className = '', animate = false, onClick }
       {/* Desktop: full inline SVG */}
       <svg
         viewBox="0 0 300 68"
-        className={`hidden md:block h-14 w-auto ${animate ? 'drop-shadow-[0_0_10px_rgba(255,199,0,0.4)]' : ''}`}
+        className={`hidden md:block h-14 w-auto ${animate ? 'fabrick-logo-animated' : ''}`}
         aria-hidden="true"
       >
         <defs>

@@ -1,19 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
-
-const META_API_VERSION = 'v20.0';
-const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
+import { META_GRAPH_URL, normalizeAdAccountId } from '@/lib/meta';
 
 export async function POST(request: NextRequest) {
   const accessToken = process.env.META_ACCESS_TOKEN;
-  const adAccountId = process.env.META_AD_ACCOUNT_ID;
+  const rawAdAccountId = process.env.META_AD_ACCOUNT_ID;
 
-  if (!accessToken || !adAccountId) {
+  if (!accessToken || !rawAdAccountId) {
     return NextResponse.json(
       { error: 'Variables de entorno META_ACCESS_TOKEN o META_AD_ACCOUNT_ID no configuradas.' },
       { status: 503 }
     );
   }
+
+  const adAccountId = normalizeAdAccountId(rawAdAccountId);
 
   try {
     const formData = await request.formData();

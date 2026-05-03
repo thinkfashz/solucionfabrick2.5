@@ -1,8 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@insforge/sdk';
-
-const META_API_VERSION = 'v20.0';
-const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
+import { META_GRAPH_URL, normalizeAdAccountId } from '@/lib/meta';
 
 /**
  * Resolves Meta credentials from env vars first, then from the InsForge
@@ -11,7 +9,7 @@ const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
  */
 async function resolveMetaCredentials(): Promise<{ accessToken?: string; adAccountId?: string }> {
   const envToken = process.env.META_ACCESS_TOKEN;
-  const envAccount = process.env.META_AD_ACCOUNT_ID;
+  const envAccount = normalizeAdAccountId(process.env.META_AD_ACCOUNT_ID);
   if (envToken && envAccount) {
     return { accessToken: envToken, adAccountId: envAccount };
   }
@@ -32,7 +30,7 @@ async function resolveMetaCredentials(): Promise<{ accessToken?: string; adAccou
       const row = data[0] as { credentials?: Record<string, string> };
       return {
         accessToken: envToken ?? row.credentials?.access_token,
-        adAccountId: envAccount ?? row.credentials?.ad_account_id,
+        adAccountId: envAccount ?? normalizeAdAccountId(row.credentials?.ad_account_id),
       };
     }
   } catch {

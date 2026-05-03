@@ -15,7 +15,7 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@insforge/sdk": "^1.2.6",
+    "@insforge/sdk": "^1.2.5",
     "@monaco-editor/react": "^4.7.0",
     "@pascal-app/core": "^0.6.0",
     "@pascal-app/viewer": "^0.6.0",

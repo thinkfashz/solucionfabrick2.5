@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@insforge/sdk';
+import { decryptCredentials } from '@/lib/integrationsCrypto';
 
 type ServiceStatus = 'online' | 'slow' | 'offline' | 'unconfigured';
 
@@ -88,9 +89,10 @@ async function loadIntegrationCredentials(): Promise<Record<string, Record<strin
     const client = createClient({ baseUrl, anonKey });
     const { data } = await client.database.from('integrations').select('provider, credentials');
     if (Array.isArray(data)) {
-      for (const row of data as Array<{ provider?: string; credentials?: Record<string, string> }>) {
+      for (const row of data as Array<{ provider?: string; credentials?: Record<string, unknown> }>) {
         if (row.provider && row.credentials && typeof row.credentials === 'object') {
-          out[row.provider] = { ...out[row.provider], ...row.credentials };
+          const plain = decryptCredentials(row.credentials) as Record<string, string>;
+          out[row.provider] = { ...out[row.provider], ...plain };
         }
       }
     }

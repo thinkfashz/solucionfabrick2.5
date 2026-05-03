@@ -3,8 +3,46 @@ import type { NextRequest } from 'next/server';
 import { createClient } from '@insforge/sdk';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 import { serializeSdkError } from '@/lib/adminApi';
+import {
+  decryptCredentials,
+  encryptCredentials,
+  isEncryptionConfigured,
+} from '@/lib/integrationsCrypto';
 
 export const dynamic = 'force-dynamic';
+
+/**
+ * Best-effort write to `integration_audit` (created in scripts/create-tables.sql).
+ * Never throws — if the table doesn't exist yet, we just swallow the error.
+ */
+async function writeIntegrationAudit(
+  client: ReturnType<typeof createClient>,
+  request: NextRequest,
+  session: { sub?: string; email?: string } | null,
+  provider: string,
+  action: 'create' | 'update' | 'delete',
+  details: Record<string, unknown> = {},
+): Promise<void> {
+  try {
+    const ip =
+      request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ??
+      request.headers.get('x-real-ip') ??
+      null;
+    const ua = request.headers.get('user-agent') ?? null;
+    await client.database.from('integration_audit').insert([
+      {
+        provider,
+        action,
+        actor: session?.email ?? session?.sub ?? null,
+        ip,
+        user_agent: ua,
+        details,
+      },
+    ]);
+  } catch {
+    /* swallow — table may not exist yet */
+  }
+}
 
 /**
  * Providers recognised by the admin integrations UI. Each provider stores a
@@ -74,16 +112,19 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const providers: Record<string, { credentials: Record<string, { set: boolean; preview: string }>; updated_at?: string }> = {};
+    const providers: Record<string, { credentials: Record<string, { set: boolean; preview: string }>; updated_at?: string; encrypted?: boolean }> = {};
     for (const row of (data ?? []) as Array<{ provider?: string; credentials?: Record<string, unknown>; updated_at?: string }>) {
       if (!row.provider || !ALLOWED_PROVIDERS.has(row.provider)) continue;
+      // Decrypt at-rest values before masking; if the row is plaintext
+      // (legacy), `decryptCredentials` is a no-op on each field.
+      const plain = decryptCredentials(row.credentials);
       providers[row.provider] = {
-        credentials: maskCredentials(row.credentials),
+        credentials: maskCredentials(plain as Record<string, unknown>),
         updated_at: row.updated_at,
       };
     }
 
-    return NextResponse.json({ providers });
+    return NextResponse.json({ providers, encrypted: isEncryptionConfigured() });
   } catch (err) {
     const sdk = serializeSdkError(err);
     return NextResponse.json({ ...sdk, error: sdk.message }, { status: 500 });
@@ -150,12 +191,16 @@ export async function POST(request: NextRequest) {
       .eq('provider', provider)
       .limit(1);
     if (Array.isArray(data) && data.length > 0) {
-      const row = data[0] as { credentials?: Record<string, string> };
-      existing = row.credentials ?? {};
+      const row = data[0] as { credentials?: Record<string, unknown> };
+      // Decrypt before merging so live-validation calls below see plaintext
+      // and the resulting persisted row contains the freshly re-encrypted
+      // values.
+      existing = decryptCredentials(row.credentials) as Record<string, string>;
     }
   } catch {
     // ignore — upsert below will recreate the row.
   }
+  const isUpdate = Object.keys(existing).length > 0;
 
   const nextCredentials: Record<string, string> = { ...existing };
   for (const [key, value] of Object.entries(credentials)) {
@@ -498,11 +543,12 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const encryptedToPersist = encryptCredentials(nextCredentials);
     const { error } = await client.database.from('integrations').upsert(
       [
         {
           provider,
-          credentials: nextCredentials,
+          credentials: encryptedToPersist,
           updated_at: new Date().toISOString(),
         },
       ],
@@ -521,7 +567,20 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
-    return NextResponse.json({ ok: true, credentials: maskCredentials(nextCredentials) });
+    // Best-effort audit. Detail records *which* credential keys changed,
+    // never the values themselves.
+    const changedKeys = Object.entries(credentials)
+      .filter(([, v]) => typeof v === 'string' && v.trim().length > 0)
+      .map(([k]) => k);
+    void writeIntegrationAudit(client, request, session, provider, isUpdate ? 'update' : 'create', {
+      keys: changedKeys,
+      encrypted: isEncryptionConfigured(),
+    });
+    return NextResponse.json({
+      ok: true,
+      credentials: maskCredentials(nextCredentials),
+      encrypted: isEncryptionConfigured(),
+    });
   } catch (err) {
     const sdk = serializeSdkError(err);
     return NextResponse.json({ ...sdk, error: sdk.message }, { status: 500 });
@@ -547,6 +606,7 @@ export async function DELETE(request: NextRequest) {
       const sdk = serializeSdkError(error);
       return NextResponse.json({ ...sdk, error: sdk.message }, { status: 500 });
     }
+    void writeIntegrationAudit(client, request, session, provider, 'delete', {});
     return NextResponse.json({ ok: true });
   } catch (err) {
     const sdk = serializeSdkError(err);

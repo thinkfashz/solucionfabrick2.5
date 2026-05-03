@@ -1,5 +1,6 @@
 import 'server-only';
 import { createClient } from '@insforge/sdk';
+import { decryptCredentials } from './integrationsCrypto';
 
 /**
  * Vercel API client (server-only).
@@ -77,7 +78,7 @@ export async function getVercelCredentials(): Promise<VercelCredentials> {
     if (error || !Array.isArray(data) || data.length === 0) return creds;
 
     const row = data[0] as { credentials?: Record<string, unknown> };
-    const dbCreds = row.credentials ?? {};
+    const dbCreds = decryptCredentials(row.credentials ?? {});
     const dbToken = normalize(dbCreds.api_token);
     const dbProject = normalize(dbCreds.project_id);
     const dbTeam = normalize(dbCreds.team_id);

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 import { getMetaCredentials } from '@/lib/metaCredentials';
+import { decryptCredentials } from '@/lib/integrationsCrypto';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -195,7 +196,8 @@ async function testCloudinary(): Promise<NextResponse> {
       .eq('provider', 'cloudinary')
       .limit(1);
     if (Array.isArray(data) && data.length > 0) {
-      const creds = (data[0] as { credentials?: Record<string, string> }).credentials ?? {};
+      const raw = (data[0] as { credentials?: Record<string, unknown> }).credentials ?? {};
+      const creds = decryptCredentials(raw) as Record<string, string>;
       cloudName = creds.cloud_name ?? '';
       apiKey = creds.api_key ?? '';
       apiSecret = creds.api_secret ?? '';
@@ -297,8 +299,8 @@ async function readIntegrationCredentials(provider: string): Promise<Record<stri
       .eq('provider', provider)
       .limit(1);
     if (Array.isArray(data) && data.length > 0) {
-      const row = data[0] as { credentials?: Record<string, string> };
-      return row.credentials ?? {};
+      const row = data[0] as { credentials?: Record<string, unknown> };
+      return decryptCredentials(row.credentials ?? {}) as Record<string, string>;
     }
   } catch {
     /* fall through */

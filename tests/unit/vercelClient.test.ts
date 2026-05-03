@@ -83,9 +83,9 @@ describe('mapVercelEvent', () => {
 
 describe('filterLogsByLevel', () => {
   const logs: VercelLogEntry[] = [
-    { id: '1', ts: 1, level: 'info', source: 'runtime', message: 'a', deploymentId: 'd' },
-    { id: '2', ts: 2, level: 'warning', source: 'runtime', message: 'b', deploymentId: 'd' },
-    { id: '3', ts: 3, level: 'error', source: 'runtime', message: 'c', deploymentId: 'd' },
+    { id: '1', ts: 1, level: 'info', source: 'runtime', message: 'a', deploymentId: 'd', rawJson: '{}' },
+    { id: '2', ts: 2, level: 'warning', source: 'runtime', message: 'b', deploymentId: 'd', rawJson: '{}' },
+    { id: '3', ts: 3, level: 'error', source: 'runtime', message: 'c', deploymentId: 'd', rawJson: '{}' },
   ];
 
   it('returns everything for level=all', () => {

@@ -15,6 +15,8 @@ import {
   Wallet,
   XCircle,
 } from 'lucide-react';
+import { motion } from 'framer-motion';
+import { VerticalBar, type BarStatus } from '@/components/admin/ui';
 
 type Severity = 'ok' | 'warn' | 'error' | 'info';
 type Group = 'db' | 'schema' | 'storage' | 'content' | 'env' | 'integrations' | 'payments';
@@ -154,6 +156,63 @@ export default function EstadoClient() {
             {counts.ok} OK · {counts.warn} avisos · {counts.error} errores · {counts.info} info
             {data?.timestamp && ` · actualizado ${new Date(data.timestamp).toLocaleTimeString()}`}
           </div>
+        </div>
+      </section>
+
+      {/* Animated vertical bars dashboard — one bar per group, height ↔
+          health (worst severity) and pulse colour by status. Mobile: scroll
+          horizontally with snap; desktop: grid auto-fit. Plan §2 (monitor de
+          sistema con barras verticales animadas + diseño móvil). */}
+      <section className="rounded-2xl border border-white/10 bg-[linear-gradient(180deg,rgba(24,24,27,0.6),rgba(0,0,0,0.4))] p-4">
+        <header className="mb-3 flex items-center justify-between">
+          <h2 className="text-[11px] font-bold uppercase tracking-[0.32em] text-zinc-400">
+            Pulso de servicios
+          </h2>
+          <span className="text-[10px] text-zinc-600">
+            Altura ↔ salud · Color ↔ estado · Pulso ↔ último ping
+          </span>
+        </header>
+        <div className="flex gap-3 overflow-x-auto pb-2 snap-x sm:grid sm:grid-cols-[repeat(auto-fit,minmax(72px,1fr))] sm:overflow-visible">
+          {(Object.keys(GROUP_LABELS) as Group[]).map((g, idx) => {
+            const items = grouped[g];
+            const ok = items.filter((c) => c.severity === 'ok').length;
+            const warn = items.filter((c) => c.severity === 'warn').length;
+            const err = items.filter((c) => c.severity === 'error').length;
+            const total = items.length || 1;
+            const value = Math.round(((ok + warn * 0.5) / total) * 100);
+            const status: BarStatus = items.length === 0
+              ? 'idle'
+              : err > 0
+              ? 'error'
+              : warn > 0
+              ? 'warn'
+              : 'ok';
+            const lats = items.filter((c) => typeof c.latencyMs === 'number');
+            const avgLatency = lats.length > 0
+              ? Math.round(lats.reduce((acc, c) => acc + (c.latencyMs ?? 0), 0) / lats.length)
+              : null;
+            return (
+              <motion.div
+                key={g}
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ delay: idx * 0.05, duration: 0.4 }}
+                className="snap-start flex-shrink-0"
+              >
+                <VerticalBar
+                  value={value}
+                  status={status}
+                  label={g.toUpperCase()}
+                  sublabel={
+                    <span title={GROUP_LABELS[g].label}>
+                      {avgLatency !== null ? `${avgLatency} ms` : `${ok}/${items.length}`}
+                    </span>
+                  }
+                  height={140}
+                />
+              </motion.div>
+            );
+          })}
         </div>
       </section>
 

@@ -5,6 +5,7 @@ import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from
 import { estimateReadingMinutes, renderMarkdown, slugify } from '@/lib/markdown';
 import { publishCmsEvent } from '@/lib/cmsBus';
 import { CMS_CACHE_TAGS } from '@/lib/cms';
+import { detectSchemaError, schemaErrorHint } from '@/lib/schemaErrors';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -33,6 +34,14 @@ export async function GET(request: NextRequest) {
       )
       .order('updated_at', { ascending: false });
     if (error) {
+      const schema = detectSchemaError(error.message);
+      if (schema) {
+        const { code, hint } = schemaErrorHint(schema);
+        return NextResponse.json(
+          { error: error.message, code, hint, schema },
+          { status: 503 },
+        );
+      }
       return NextResponse.json(
         { error: error.message, code: 'DB_ERROR', hint: 'Crea la tabla blog_posts en /admin/setup.' },
         { status: 500 },
@@ -84,6 +93,16 @@ export async function POST(request: NextRequest) {
     const { data, error } = await client.database.from('blog_posts').insert([row]).select();
     if (error) {
       const isDup = /duplicate|unique/i.test(error.message);
+      if (!isDup) {
+        const schema = detectSchemaError(error.message);
+        if (schema) {
+          const { code, hint } = schemaErrorHint(schema);
+          return NextResponse.json(
+            { error: error.message, code, hint, schema },
+            { status: 503 },
+          );
+        }
+      }
       return NextResponse.json(
         {
           error: isDup ? 'Ya existe una entrada con ese slug.' : error.message,

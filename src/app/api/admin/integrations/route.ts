@@ -498,13 +498,16 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { error } = await client.database.from('integrations').upsert([
-      {
-        provider,
-        credentials: nextCredentials,
-        updated_at: new Date().toISOString(),
-      },
-    ]);
+    const { error } = await client.database.from('integrations').upsert(
+      [
+        {
+          provider,
+          credentials: nextCredentials,
+          updated_at: new Date().toISOString(),
+        },
+      ],
+      { onConflict: 'provider' },
+    );
     if (error) {
       const sdk = serializeSdkError(error);
       return NextResponse.json(

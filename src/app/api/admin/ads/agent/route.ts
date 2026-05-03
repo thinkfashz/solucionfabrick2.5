@@ -7,6 +7,7 @@ import {
   getAdminSession,
 } from '@/lib/adminApi';
 import { getMetaCredentials } from '@/lib/metaCredentials';
+import { decryptCredentials } from '@/lib/integrationsCrypto';
 import { normalizeAdAccountId } from '@/lib/meta';
 
 export const dynamic = 'force-dynamic';
@@ -80,7 +81,28 @@ interface MetaInsight {
 async function fetchMetaInsights(): Promise<MetaInsight | null> {
   const creds = await getMetaCredentials();
   if (!creds?.accessToken) return null;
-  const adAccountIdRaw = normalizeAdAccountId(process.env.META_AD_ACCOUNT_ID) ?? null;
+  // Resolve ad_account_id from env first (highest precedence) and then fall
+  // back to the integrations table. This mirrors the lookup done in
+  // /api/meta/ads so a single source-of-truth governs both the dashboard
+  // and the coach.
+  let adAccountIdRaw: string | null = normalizeAdAccountId(process.env.META_AD_ACCOUNT_ID) ?? null;
+  if (!adAccountIdRaw) {
+    try {
+      const client = getAdminInsforge();
+      const { data } = await client.database
+        .from('integrations')
+        .select('credentials')
+        .eq('provider', 'meta')
+        .limit(1);
+      if (Array.isArray(data) && data.length > 0) {
+        const raw = (data[0] as { credentials?: Record<string, unknown> }).credentials ?? {};
+        const dbCreds = decryptCredentials(raw) as Record<string, string>;
+        adAccountIdRaw = normalizeAdAccountId(dbCreds.ad_account_id) ?? null;
+      }
+    } catch {
+      /* ignore — surface "no ad account" */
+    }
+  }
   if (!adAccountIdRaw) return null;
   try {
     const url = new URL(`https://graph.facebook.com/v20.0/${adAccountIdRaw}/insights`);

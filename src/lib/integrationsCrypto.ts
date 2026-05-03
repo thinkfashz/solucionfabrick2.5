@@ -85,15 +85,14 @@ export function encryptString(plaintext: string): string {
 
 /**
  * Decrypts an `enc:v1:…` value. Returns the input unchanged when:
- *   - it's not a string,
  *   - it doesn't carry the `enc:v1:` prefix (legacy plaintext), or
  *   - the env key is missing (encryption disabled).
  *
  * Throws only when the value *is* an encrypted blob and decryption fails
  * (wrong key / tampered tag); callers that want to be safe wrap in try/catch.
  */
-export function decryptString(value: unknown): string {
-  if (typeof value !== 'string') return value as unknown as string;
+export function decryptString(value: string): string {
+  if (typeof value !== 'string') return '';
   if (!value.startsWith(PREFIX)) return value;
   const key = getKey();
   if (!key) return value; // can't decrypt — surface the ciphertext as-is.

@@ -567,8 +567,11 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
-    // Best-effort audit. Detail records *which* credential keys changed,
-    // never the values themselves.
+    // Best-effort audit. Detail records *which* credential keys were
+    // submitted in this POST (only string fields with non-empty trimmed
+    // content, which is what the form actually edits). Boolean/number
+    // fields aren't user-editable today; if that changes, widen the
+    // filter so we capture every changed key, never the values.
     const changedKeys = Object.entries(credentials)
       .filter(([, v]) => typeof v === 'string' && v.trim().length > 0)
       .map(([k]) => k);

@@ -1,17 +1,18 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
+import { LayoutGrid, Table2 } from 'lucide-react';
 import { insforge } from '@/lib/insforge';
 import {
   ORDER_STATUS_LABELS,
   formatCLP,
   normalizeOrderRecord,
   orderStatusColor,
-  orderStatusLabel,
   shortRecordId,
   type OrderStatus,
 } from '@/lib/commerce';
+import { StepChart, StatusBadge } from '@/components/admin/ui';
 
 type Order = ReturnType<typeof normalizeOrderRecord>;
 
@@ -24,8 +25,21 @@ export default function PedidosPage() {
   const [loading, setLoading]       = useState(true);
   const [connected, setConnected]   = useState(false);
   const [filter, setFilter]         = useState<OrderStatus | 'todos'>('todos');
+  // Plan §3 — vista alterna en planilla densa (persistida en localStorage).
+  const [view, setView] = useState<'cards' | 'table'>('table');
   const isMounted                   = useRef(true);
   const pollTimer                   = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // Restore the user's preferred view across navigations.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const stored = window.localStorage.getItem('admin:pedidos:view');
+    if (stored === 'cards' || stored === 'table') setView(stored);
+  }, []);
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    window.localStorage.setItem('admin:pedidos:view', view);
+  }, [view]);
 
   const fetchOrders = useCallback(async () => {
     const { data, error } = await insforge.database
@@ -113,6 +127,25 @@ export default function PedidosPage() {
 
   const filtered = filter === 'todos' ? orders : orders.filter((o) => o.status === filter);
 
+  // Step chart series — pedidos por día (últimos 14 días).
+  const dailyOrdersSeries = useMemo(() => {
+    const now = new Date();
+    const buckets: { x: number; y: number }[] = [];
+    for (let i = 13; i >= 0; i--) {
+      const d = new Date(now);
+      d.setDate(now.getDate() - i);
+      d.setHours(0, 0, 0, 0);
+      const start = d.getTime();
+      const end = start + 24 * 60 * 60 * 1000;
+      const count = orders.filter((o) => {
+        const t = new Date(o.created_at).getTime();
+        return t >= start && t < end;
+      }).length;
+      buckets.push({ x: i, y: count });
+    }
+    return buckets;
+  }, [orders]);
+
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-zinc-950 to-black text-white">
       {/* Header */}
@@ -147,6 +180,43 @@ export default function PedidosPage() {
       </div>
 
       <div className="mx-auto max-w-7xl px-6 py-8 md:px-12">
+        {/* Plan §3 — gráfica step animada de pedidos por día. */}
+        <section className="mb-6 rounded-[1.5rem] border border-white/5 bg-white/[0.02] p-5">
+          <div className="mb-2 flex items-center justify-between">
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-[0.32em] text-zinc-500">
+                Pedidos por día · 14 días
+              </p>
+              <p className="text-sm text-zinc-300">
+                {orders.length} en total · {dailyOrdersSeries[dailyOrdersSeries.length - 1]?.y ?? 0} hoy
+              </p>
+            </div>
+            <div className="flex rounded-full border border-white/10 bg-black/40 p-1">
+              <button
+                type="button"
+                onClick={() => setView('table')}
+                aria-pressed={view === 'table'}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition ${
+                  view === 'table' ? 'bg-yellow-400 text-black' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <Table2 className="h-3 w-3" /> Planilla
+              </button>
+              <button
+                type="button"
+                onClick={() => setView('cards')}
+                aria-pressed={view === 'cards'}
+                className={`flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest transition ${
+                  view === 'cards' ? 'bg-yellow-400 text-black' : 'text-zinc-400 hover:text-white'
+                }`}
+              >
+                <LayoutGrid className="h-3 w-3" /> Cards
+              </button>
+            </div>
+          </div>
+          <StepChart data={dailyOrdersSeries} color="#facc15" height={120} livePulse />
+        </section>
+
         {/* Filtros */}
         <div className="mb-6 flex flex-wrap gap-2">
           <button
@@ -188,6 +258,41 @@ export default function PedidosPage() {
             <div className="flex items-center justify-center py-24 text-zinc-500 text-sm">
               No hay pedidos{filter !== 'todos' ? ` con estado "${ORDER_STATUS_LABELS[filter as OrderStatus]}"` : ''}.
             </div>
+          ) : view === 'cards' ? (
+            // Plan §3 — vista alternativa en grid de cards (densa pero legible).
+            <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
+              {filtered.map((order) => (
+                <Link
+                  key={order.id}
+                  href={`/admin/pedidos/${order.id}`}
+                  className="block rounded-2xl border border-white/5 bg-black/40 p-4 transition hover:border-yellow-400/40 hover:bg-white/[0.02]"
+                  style={{ borderLeft: `3px solid ${orderStatusColor(order.status)}` }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <div className="font-semibold text-white truncate">
+                        {order.customer_name}
+                      </div>
+                      <div className="text-xs text-zinc-500 truncate">
+                        {order.customer_email}
+                      </div>
+                    </div>
+                    <StatusBadge status={order.status} />
+                  </div>
+                  <div className="mt-3 flex items-center justify-between text-xs">
+                    <span className="font-mono text-zinc-500">{shortRecordId(order.id)}</span>
+                    <span className="font-semibold text-white">{formatCLP(order.total)}</span>
+                  </div>
+                  <div className="mt-1 text-[10px] text-zinc-600">
+                    {new Date(order.created_at).toLocaleDateString('es-CL', {
+                      day: '2-digit',
+                      month: 'short',
+                      year: 'numeric',
+                    })}
+                  </div>
+                </Link>
+              ))}
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
@@ -226,15 +331,7 @@ export default function PedidosPage() {
                         {formatCLP(order.total)}
                       </td>
                       <td className="px-6 py-4 text-center">
-                        <span
-                          className="inline-flex items-center rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest"
-                          style={{
-                            background: `${orderStatusColor(order.status)}22`,
-                            color: orderStatusColor(order.status),
-                          }}
-                        >
-                          {orderStatusLabel(order.status)}
-                        </span>
+                        <StatusBadge status={order.status} />
                       </td>
                       <td className="hidden md:table-cell px-6 py-4 text-center">
                         <Link

@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { insforge } from '@/lib/insforge';
 import { Save, Eye, EyeOff, Check, Info, UserCog, KeyRound, Trash2, CheckCircle2 } from 'lucide-react';
 import AdminActionGuard, { type AdminActionResult } from '@/components/admin/AdminActionGuard';
+import { ConnectionPulse } from '@/components/admin/ui';
 
 /**
  * SQL used by AdminActionGuard's "Crear tabla faltante ahora" button when the
@@ -696,6 +697,19 @@ export default function ConfiguracionPage() {
                           Actualizado: {new Date(status.updated_at).toLocaleString('es-CL')}
                         </p>
                       )}
+                      {/* Plan §8 — Live ConnectionPulse for each integration.
+                          Pings /api/admin/integrations/test?provider=… every
+                          30s while the tab is visible and renders a breathing
+                          horizontal bar with latency. Disabled when the
+                          provider has no credentials saved yet. */}
+                      <div className="mt-3 max-w-md">
+                        <ConnectionPulse
+                          name={prov.label}
+                          pingUrl={`/api/admin/integrations/test?provider=${prov.id}`}
+                          disabled={!isConfigured}
+                          initialStatus={isConfigured ? 'reconnecting' : 'unconfigured'}
+                        />
+                      </div>
                     </div>
                     <div className="flex flex-wrap items-center gap-2 shrink-0">
                       <button

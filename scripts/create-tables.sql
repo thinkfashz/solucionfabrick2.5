@@ -946,6 +946,28 @@ ALTER TABLE public.favorites ADD COLUMN IF NOT EXISTS created_at timestamptz DEF
 DELETE FROM public.favorites WHERE user_id IS NULL OR product_id IS NULL;
 ALTER TABLE public.favorites ALTER COLUMN user_id SET NOT NULL;
 ALTER TABLE public.favorites ALTER COLUMN product_id SET NOT NULL;
+-- Antes de crear el índice único, deduplicamos cualquier par
+-- (user_id, product_id) repetido que pueda haber quedado por la condición
+-- de carrera 23505 previa a esta PR (cuando `toggleFavorite()` aún hacía
+-- SELECT-then-INSERT sin ancla de UPSERT). Sin este paso, el
+-- `CREATE UNIQUE INDEX` siguiente fallaría con violación de unicidad y
+-- la migración quedaría aplicada a medias (NOT NULL fijado pero sin el
+-- ancla del UPSERT). `ctid` es el identificador físico de fila de
+-- PostgreSQL: conservamos la fila más antigua de cada par y eliminamos
+-- el resto. Es un no-op en bases sin duplicados.
+DELETE FROM public.favorites
+WHERE ctid NOT IN (
+  SELECT min(ctid)
+  FROM public.favorites
+  GROUP BY user_id, product_id
+);
+-- Garantiza idempotentemente que la restricción única exista también en
+-- despliegues heredados cuya tabla `favorites` se creó antes de añadir
+-- `CONSTRAINT favorites_user_product_unique`. Sin este índice, el UPSERT
+-- con `onConflict: 'user_id,product_id'` en `toggleFavorite()` no tiene
+-- ancla y la condición de carrera 23505 que la PR corrige reaparece.
+CREATE UNIQUE INDEX IF NOT EXISTS favorites_user_product_unique
+  ON public.favorites(user_id, product_id);
 CREATE INDEX IF NOT EXISTS favorites_user_id_idx ON public.favorites(user_id);
 CREATE INDEX IF NOT EXISTS favorites_product_id_idx ON public.favorites(product_id);
 

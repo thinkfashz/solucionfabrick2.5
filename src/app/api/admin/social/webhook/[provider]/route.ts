@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import crypto from 'node:crypto';
 import { getAdminInsforge } from '@/lib/adminApi';
 import {
   parseMetaMessages,
@@ -100,7 +101,7 @@ export async function POST(
     // TikTok payloads vary — store raw envelope so we can iterate later.
     const envelope = payload as { event?: string; client_key?: string; data?: unknown };
     if (envelope?.data) {
-      const externalId = `tiktok_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+      const externalId = `tiktok_${Date.now()}_${crypto.randomBytes(6).toString('hex')}`;
       messages = [
         {
           provider: 'tiktok',

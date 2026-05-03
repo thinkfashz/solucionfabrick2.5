@@ -73,9 +73,9 @@ export function isMissingTableError(result: Pick<AdminActionResult, 'error' | 'c
   const haystack = `${result.error ?? ''} ${result.details ?? ''} ${result.hint ?? ''}`.toLowerCase();
   if (!haystack.trim()) return false;
   return (
-    haystack.includes('relation') && haystack.includes('does not exist') ||
-    haystack.includes('table') && haystack.includes('does not exist') ||
-    haystack.includes("could not find the table") ||
+    (haystack.includes('relation') && haystack.includes('does not exist')) ||
+    (haystack.includes('table') && haystack.includes('does not exist')) ||
+    haystack.includes('could not find the table') ||
     haystack.includes('undefined_table')
   );
 }

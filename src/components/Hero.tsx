@@ -4,20 +4,18 @@
  * Hero — Rediseño minimalista, mobile-first, con embudo de cualificación.
  *
  * Objetivos del diseño:
- *  - Fondo limpio: negro profundo con un halo dorado radial sutil y grano fino
- *    (sin foto a pantalla completa, sin la casa 3D dominando, sin múltiples
- *    overlays apilados que en móvil saturaban la composición).
- *  - Animaciones suaves con Framer Motion (fade + rise + stagger) en lugar de
- *    GSAP + parallax pesado. Respetan `prefers-reduced-motion`.
+ *  - Imagen arquitectónica a pantalla completa (casa metalcon mostrando
+ *    perspectiva y alero de la construcción) servida vía Cloudinary, con
+ *    overlays calibrados para que el contenido se lea bien tanto en móvil
+ *    como en escritorio.
+ *  - Animaciones suaves con Framer Motion (fade + rise + stagger) y un
+ *    Ken-Burns muy sutil sobre la imagen. Respetan `prefers-reduced-motion`.
  *  - Tipografía y jerarquía simplificadas: eyebrow corto, titular grande con
  *    un acento dorado, subtítulo breve.
  *  - "Filtración de personas" / embudo: tres tarjetas que cualifican al
  *    visitante (Construir / Remodelar / Cotizar materiales). Cada una abre
  *    WhatsApp con un mensaje pre-rellenado distinto, lo que segmenta al lead
  *    desde el primer clic.
- *
- * Mantiene la firma `Hero({ coverUrl })` para no romper `src/app/page.tsx`,
- * aunque el nuevo diseño no usa la imagen de portada.
  */
 
 import { useMemo } from 'react';
@@ -25,6 +23,16 @@ import { motion, useReducedMotion, type Variants } from 'framer-motion';
 import { Hammer, Wrench, ShoppingBag, ArrowRight } from 'lucide-react';
 import AnimatedButton from '@/components/ui/animated-button';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
+import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
+
+/**
+ * Fallback de imagen del Hero: vivienda en estructura metálica (metalcon)
+ * con alero visible, mostrando la perspectiva de la construcción. Es la
+ * misma URL que se usa por defecto si el admin no configura `hero_cover_url`
+ * desde el CMS.
+ */
+const DEFAULT_HERO_IMAGE =
+  'https://images.unsplash.com/photo-1416331108676-a22ccb276e35?q=85&w=1920&auto=format&fit=crop';
 
 type FunnelOption = {
   id: 'construir' | 'remodelar' | 'cotizar';
@@ -61,10 +69,14 @@ const FUNNEL_OPTIONS: FunnelOption[] = [
   },
 ];
 
-// `coverUrl` se acepta por compatibilidad con `src/app/page.tsx` pero el nuevo
-// diseño no usa una imagen de portada.
-export default function Hero(_props: { coverUrl?: string } = {}) {
+// `coverUrl` permite al CMS sobreescribir la imagen del Hero. Si no se
+// proporciona, se usa la imagen de metalcon por defecto.
+export default function Hero({ coverUrl }: { coverUrl?: string } = {}) {
   const prefersReduced = useReducedMotion();
+  const heroImage = cloudinaryUrl(coverUrl || DEFAULT_HERO_IMAGE, {
+    width: 1920,
+    quality: 75,
+  });
 
   const containerVariants = useMemo<Variants>(
     () => ({
@@ -96,15 +108,39 @@ export default function Hero(_props: { coverUrl?: string } = {}) {
       id="inicio"
       className="relative isolate flex min-h-[100svh] items-center justify-center overflow-hidden bg-black"
     >
-      {/* ── Fondo: negro + halo dorado radial + grano sutil ────────────── */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 -z-10"
-        style={{
-          background:
-            'radial-gradient(ellipse 80% 60% at 50% 30%, rgba(250,204,21,0.10) 0%, rgba(250,204,21,0.04) 35%, transparent 70%), #000',
-        }}
-      />
+      {/* ── Fondo: foto a pantalla completa con Ken-Burns sutil + overlays ── */}
+      <div aria-hidden className="pointer-events-none absolute inset-0 -z-10 overflow-hidden bg-black">
+        <motion.div
+          initial={prefersReduced ? false : { scale: 1.08 }}
+          animate={prefersReduced ? undefined : { scale: 1.0 }}
+          transition={{ duration: 14, ease: 'linear' }}
+          className="absolute inset-0"
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={heroImage}
+            alt="Casa en construcción con estructura metalcon mostrando alero y perspectiva de obra"
+            className="h-full w-full object-cover object-center"
+            fetchPriority="high"
+            decoding="async"
+          />
+        </motion.div>
+
+        {/* Overlay base oscuro para legibilidad (más fuerte en móvil) */}
+        <div className="absolute inset-0 bg-black/65 sm:bg-black/55" />
+        {/* Gradiente vertical: oscurece arriba (navbar) y abajo (siguiente sección) */}
+        <div className="absolute inset-0 bg-gradient-to-b from-black/80 via-black/35 to-black" />
+        {/* Gradiente lateral suave para integrar bordes */}
+        <div className="absolute inset-0 bg-gradient-to-r from-black/40 via-transparent to-black/40" />
+        {/* Halo dorado radial atmosférico (mantiene la identidad de marca) */}
+        <div
+          className="absolute inset-0"
+          style={{
+            background:
+              'radial-gradient(ellipse 70% 55% at 50% 35%, rgba(250,204,21,0.10) 0%, rgba(250,204,21,0.03) 40%, transparent 70%)',
+          }}
+        />
+      </div>
       {/* Línea dorada superior y viñeta inferior para integrar la siguiente sección */}
       <div
         aria-hidden
@@ -133,7 +169,7 @@ export default function Hero(_props: { coverUrl?: string } = {}) {
       >
         {/* Eyebrow */}
         <motion.div variants={itemVariants} className="mb-6 flex justify-center">
-          <span className="inline-flex items-center gap-2 rounded-full border border-yellow-400/25 bg-white/[0.03] px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] text-yellow-400/90 backdrop-blur-sm sm:text-[11px]">
+          <span className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-black/55 px-3 py-1 text-[10px] font-medium uppercase tracking-[0.22em] text-yellow-400/95 backdrop-blur-md sm:text-[11px]">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400/60" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-yellow-400" />
@@ -157,7 +193,7 @@ export default function Hero(_props: { coverUrl?: string } = {}) {
         {/* Subtítulo */}
         <motion.p
           variants={itemVariants}
-          className="mx-auto mt-5 max-w-md text-base leading-relaxed text-zinc-400 sm:text-lg"
+          className="mx-auto mt-5 max-w-md text-base leading-relaxed text-zinc-300 sm:text-lg"
         >
           Un solo equipo desde el plano a la entrega. Evaluación gratuita y
           presupuesto en menos de 24 horas.
@@ -177,7 +213,7 @@ export default function Hero(_props: { coverUrl?: string } = {}) {
                 target="_blank"
                 rel="noopener noreferrer"
                 whileHover={prefersReduced ? undefined : { y: -3 }}
-                className="group relative flex min-h-[88px] flex-col items-start justify-between gap-3 overflow-hidden rounded-2xl border border-white/10 bg-white/[0.025] p-4 text-left backdrop-blur-sm transition-colors duration-300 hover:border-yellow-400/50 hover:bg-yellow-400/[0.04] sm:p-5"
+                className="group relative flex min-h-[88px] flex-col items-start justify-between gap-3 overflow-hidden rounded-2xl border border-white/15 bg-black/50 p-4 text-left backdrop-blur-md transition-colors duration-300 hover:border-yellow-400/60 hover:bg-black/65 sm:p-5"
                 aria-label={`${title} — abrir WhatsApp`}
               >
                 <span className="flex h-9 w-9 items-center justify-center rounded-full border border-yellow-400/30 bg-yellow-400/5 text-yellow-400 transition-colors duration-300 group-hover:border-yellow-400/60 group-hover:bg-yellow-400/10">

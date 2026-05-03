@@ -36,6 +36,8 @@ export async function GET() {
         hasAccessToken: false,
         reachable: false,
         latencyMs: null,
+        mode: 'unknown',
+        tokenPrefix: '',
         message,
       },
       { status: 200, headers: { 'Cache-Control': 'no-store, max-age=0' } },

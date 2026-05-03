@@ -10,7 +10,8 @@ import { useRealtimeProducts } from '@/hooks/useRealtimeProducts';
 import { useCartContext } from '@/context/CartContext';
 import { formatCLP } from '@/hooks/useCart';
 import { useSiteContent } from '@/hooks/useSiteContent';
-import { Star, Check, Truck, ArrowLeft, ShoppingCart, ChevronRight } from 'lucide-react';
+import { Star, Check, Truck, ArrowLeft, ShoppingCart, ChevronRight, Zap } from 'lucide-react';
+import FavoriteButton from '@/components/store/FavoriteButton';
 
 /* ─── Animation variants (motion.dev / framer-motion) ───────── */
 const containerVariants = {
@@ -95,6 +96,7 @@ export default function ProductoClient() {
   const { addToCart, openCart } = useCartContext();
   const productoCms = useSiteContent('producto');
   const [added, setAdded] = useState(false);
+  const [quantity, setQuantity] = useState(1);
 
   const id = params?.id ?? '';
 
@@ -116,10 +118,29 @@ export default function ProductoClient() {
 
   function handleAddToCart() {
     if (!product) return;
-    addToCart(product);
-    setAdded(true);
-    setTimeout(() => setAdded(false), 2200);
-    openCart();
+    if (typeof product.stock === 'number' && product.stock < 1) return;
+    const qty = Math.max(1, Math.min(99, quantity || 1));
+    try {
+      addToCart(product, qty);
+      setAdded(true);
+      setTimeout(() => setAdded(false), 2200);
+      openCart();
+    } catch {
+      // Defensive: if the store throws, don't lock the UI in "added" state.
+      setAdded(false);
+    }
+  }
+
+  function handleBuyNow() {
+    if (!product) return;
+    if (typeof product.stock === 'number' && product.stock < 1) return;
+    const qty = Math.max(1, Math.min(99, quantity || 1));
+    try {
+      addToCart(product, qty);
+      router.push('/checkout');
+    } catch {
+      // ignore
+    }
   }
 
   /* States */
@@ -275,6 +296,50 @@ export default function ProductoClient() {
 
             {/* CTA */}
             <motion.div variants={itemVariants} className="space-y-3 pt-1">
+              {/* Quantity selector */}
+              {(product!.stock === undefined || product!.stock > 0) && (
+                <div className="flex items-center gap-3">
+                  <span className="text-white/40 text-[11px] uppercase tracking-widest">
+                    Cantidad
+                  </span>
+                  <div className="inline-flex items-center rounded-full border border-white/[0.1] bg-white/[0.03]">
+                    <button
+                      type="button"
+                      onClick={() => setQuantity((q) => Math.max(1, q - 1))}
+                      aria-label="Disminuir cantidad"
+                      className="px-3 py-1.5 text-white/60 hover:text-yellow-400 transition-colors disabled:opacity-30"
+                      disabled={quantity <= 1}
+                    >
+                      −
+                    </button>
+                    <span
+                      className="min-w-[2.25rem] text-center text-sm text-white tabular-nums"
+                      aria-live="polite"
+                    >
+                      {quantity}
+                    </span>
+                    <button
+                      type="button"
+                      onClick={() =>
+                        setQuantity((q) =>
+                          Math.min(
+                            typeof product!.stock === 'number' ? product!.stock : 99,
+                            q + 1,
+                          ),
+                        )
+                      }
+                      aria-label="Aumentar cantidad"
+                      className="px-3 py-1.5 text-white/60 hover:text-yellow-400 transition-colors disabled:opacity-30"
+                      disabled={
+                        typeof product!.stock === 'number' && quantity >= product!.stock
+                      }
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
+              )}
+
               <AnimatePresence mode="wait">
                 {added ? (
                   <motion.div
@@ -315,6 +380,20 @@ export default function ProductoClient() {
                   </motion.button>
                 )}
               </AnimatePresence>
+
+              {/* Secondary actions: Buy Now + Favorite (registered customers) */}
+              <div className="flex gap-2 pt-1" aria-live="polite">
+                <button
+                  type="button"
+                  onClick={handleBuyNow}
+                  disabled={typeof product!.stock === 'number' && product!.stock < 1}
+                  className="flex-1 inline-flex items-center justify-center gap-2 rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-300 px-5 py-3 text-xs font-bold uppercase tracking-widest transition hover:border-yellow-400 hover:bg-yellow-400/20 disabled:opacity-40 disabled:cursor-not-allowed"
+                >
+                  <Zap size={13} />
+                  Comprar ahora
+                </button>
+                <FavoriteButton productId={product!.id} variant="pill" />
+              </div>
 
               <button
                 onClick={() => router.back()}

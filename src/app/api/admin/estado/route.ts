@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { probeMercadoPago } from '@/lib/mercadopago';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -26,7 +27,7 @@ type Severity = 'ok' | 'warn' | 'error' | 'info';
 interface Check {
   id: string;
   label: string;
-  group: 'db' | 'schema' | 'storage' | 'content' | 'env' | 'integrations';
+  group: 'db' | 'schema' | 'storage' | 'content' | 'env' | 'integrations' | 'payments';
   severity: Severity;
   detail?: string;
   suggestion?: string;
@@ -371,7 +372,6 @@ export async function GET(request: NextRequest) {
     const insforgeUrl = process.env.NEXT_PUBLIC_INSFORGE_URL ?? '';
     const externals: Array<{ id: string; url: string; label: string }> = [
       ...(insforgeUrl ? [{ id: 'int.insforge', url: insforgeUrl, label: 'InsForge' }] : []),
-      { id: 'int.mercadopago', url: 'https://api.mercadopago.com', label: 'MercadoPago' },
       { id: 'int.cloudflare', url: 'https://challenges.cloudflare.com', label: 'Cloudflare Turnstile' },
     ];
     if (!insforgeUrl) {
@@ -409,6 +409,72 @@ export async function GET(request: NextRequest) {
         });
       }),
     );
+
+    // ---- PAYMENTS (Mercado Pago dedicated) ------------------------------
+    // Replaces the generic HEAD probe with the authenticated probe in
+    // src/lib/mercadopago.ts so we can distinguish "API alive but token
+    // wrong" from "API unreachable" — the HEAD probe couldn't tell.
+    await safeRun(async () => {
+      const probe = await probeMercadoPago({ timeoutMs: 6000 });
+      const latencyMs = probe.latencyMs ?? undefined;
+
+      // Latency check
+      let latSeverity: Severity = 'info';
+      if (probe.status === 'ok') {
+        if (probe.latencyMs == null) latSeverity = 'info';
+        else if (probe.latencyMs < 500) latSeverity = 'ok';
+        else if (probe.latencyMs < 1500) latSeverity = 'warn';
+        else latSeverity = 'error';
+      } else if (probe.status === 'unreachable') {
+        latSeverity = 'error';
+      } else if (probe.status === 'invalid_token') {
+        latSeverity = 'error';
+      } else if (probe.status === 'unconfigured') {
+        latSeverity = 'warn';
+      }
+      checks.push({
+        id: 'pay.mp.latency',
+        label: 'Latencia API MercadoPago',
+        group: 'payments',
+        severity: latSeverity,
+        detail: probe.message,
+        suggestion:
+          latSeverity === 'error'
+            ? 'Revisa estado en /admin/pagos. Si persiste, contactar soporte de MP.'
+            : latSeverity === 'warn'
+              ? 'Latencia elevada. Considera reintentar más tarde o revisar /admin/pagos.'
+              : undefined,
+        latencyMs,
+      });
+
+      // Mode check (production / sandbox / unknown)
+      const modeSeverity: Severity =
+        probe.mode === 'production' ? 'ok' : probe.mode === 'sandbox' ? 'warn' : 'info';
+      const modeLabel =
+        probe.mode === 'production'
+          ? 'Producción'
+          : probe.mode === 'sandbox'
+            ? 'Demo / Sandbox'
+            : 'Desconocido';
+      checks.push({
+        id: 'pay.mp.mode',
+        label: `Modo MercadoPago: ${modeLabel}`,
+        group: 'payments',
+        severity: modeSeverity,
+        detail:
+          probe.mode === 'sandbox'
+            ? 'Token con prefijo TEST-: ningún cobro será real.'
+            : probe.mode === 'production'
+              ? 'Token APP_USR-: cobros reales.'
+              : 'Sin token o prefijo no reconocido.',
+        suggestion:
+          probe.mode === 'sandbox'
+            ? 'Cuando estés listo para cobrar de verdad, reemplaza por un token APP_USR- en Vercel.'
+            : probe.mode === 'unknown' && !probe.hasAccessToken
+              ? 'Define MERCADO_PAGO_ACCESS_TOKEN en Vercel para habilitar cobros.'
+              : undefined,
+      });
+    }, undefined);
 
     // ---- SUMMARY --------------------------------------------------------
     const counts = checks.reduce(

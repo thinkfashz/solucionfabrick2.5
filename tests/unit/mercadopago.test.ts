@@ -1,5 +1,12 @@
 import { describe, it, expect, beforeEach, afterEach, vi } from 'vitest';
-import { probeMercadoPago, getMercadoPagoPublicKey, getMercadoPagoAccessToken } from '@/lib/mercadopago';
+import {
+  probeMercadoPago,
+  getMercadoPagoPublicKey,
+  getMercadoPagoAccessToken,
+  detectMpMode,
+  getMpTokenPrefix,
+  fetchMercadoPagoAccount,
+} from '@/lib/mercadopago';
 
 const ENV_KEYS = [
   'MERCADO_PAGO_ACCESS_TOKEN',
@@ -156,5 +163,116 @@ describe('probeMercadoPago', () => {
     const fetchImpl = vi.fn().mockResolvedValue(new Response('[]', { status: 200 }));
     const result = await probeMercadoPago({ fetchImpl: fetchImpl as unknown as typeof fetch });
     expect(JSON.stringify(result)).not.toContain('super-secret-token');
+  });
+});
+
+describe('detectMpMode', () => {
+  it('returns "production" for APP_USR- tokens', () => {
+    expect(detectMpMode('APP_USR-1234-abcd')).toBe('production');
+  });
+  it('returns "sandbox" for TEST- tokens', () => {
+    expect(detectMpMode('TEST-1234-abcd')).toBe('sandbox');
+  });
+  it('returns "unknown" for empty input', () => {
+    expect(detectMpMode('')).toBe('unknown');
+    expect(detectMpMode('   ')).toBe('unknown');
+  });
+  it('returns "unknown" for unrecognised prefixes', () => {
+    expect(detectMpMode('PROD_999')).toBe('unknown');
+    expect(detectMpMode('app_usr-1234')).toBe('unknown'); // case-sensitive
+  });
+});
+
+describe('getMpTokenPrefix', () => {
+  it('extracts the alphanumeric prefix before the first dash', () => {
+    expect(getMpTokenPrefix('APP_USR-1234-abcd')).toBe('APP_USR');
+    expect(getMpTokenPrefix('TEST-1234-abcd')).toBe('TEST');
+  });
+  it('returns empty string for empty input', () => {
+    expect(getMpTokenPrefix('')).toBe('');
+  });
+  it('returns the first 8 chars when no dash is present', () => {
+    expect(getMpTokenPrefix('NODASHTOKEN')).toBe('NODASHTO');
+  });
+});
+
+describe('probeMercadoPago — mode and tokenPrefix', () => {
+  it('reports mode=production for APP_USR- tokens', async () => {
+    process.env.MERCADO_PAGO_ACCESS_TOKEN = 'APP_USR-prod-token';
+    process.env.MP_PUBLIC_KEY = 'APP_USR-pub';
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('[]', { status: 200 }));
+    const result = await probeMercadoPago({ fetchImpl: fetchImpl as unknown as typeof fetch });
+    expect(result.status).toBe('ok');
+    expect(result.mode).toBe('production');
+    expect(result.tokenPrefix).toBe('APP_USR');
+  });
+
+  it('reports mode=sandbox for TEST- tokens', async () => {
+    process.env.MERCADO_PAGO_ACCESS_TOKEN = 'TEST-sandbox-token';
+    process.env.MP_PUBLIC_KEY = 'TEST-pub';
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('[]', { status: 200 }));
+    const result = await probeMercadoPago({ fetchImpl: fetchImpl as unknown as typeof fetch });
+    expect(result.status).toBe('ok');
+    expect(result.mode).toBe('sandbox');
+    expect(result.tokenPrefix).toBe('TEST');
+    expect(result.message).toMatch(/demo/i);
+  });
+
+  it('returns mode=unknown when nothing is configured', async () => {
+    const result = await probeMercadoPago();
+    expect(result.status).toBe('unconfigured');
+    expect(result.mode).toBe('unknown');
+    expect(result.tokenPrefix).toBe('');
+  });
+
+  it('still includes mode/tokenPrefix on invalid_token responses', async () => {
+    process.env.MERCADO_PAGO_ACCESS_TOKEN = 'TEST-bad';
+    process.env.MP_PUBLIC_KEY = 'pk';
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('forbidden', { status: 401 }));
+    const result = await probeMercadoPago({ fetchImpl: fetchImpl as unknown as typeof fetch });
+    expect(result.status).toBe('invalid_token');
+    expect(result.mode).toBe('sandbox');
+    expect(result.tokenPrefix).toBe('TEST');
+  });
+});
+
+describe('fetchMercadoPagoAccount', () => {
+  it('returns null when no access token is provided', async () => {
+    const fetchImpl = vi.fn();
+    const result = await fetchMercadoPagoAccount('', { fetchImpl: fetchImpl as unknown as typeof fetch });
+    expect(result).toBeNull();
+    expect(fetchImpl).not.toHaveBeenCalled();
+  });
+
+  it('parses the merchant identity from /users/me', async () => {
+    const body = JSON.stringify({
+      id: 12345,
+      email: 'merchant@example.com',
+      nickname: 'TESTUSER123',
+      site_id: 'MLC',
+      tags: ['test_user', 'normal'],
+    });
+    const fetchImpl = vi.fn().mockResolvedValue(new Response(body, { status: 200 }));
+    // Use a fresh, unique token to bypass the in-memory 60s cache.
+    const token = `TEST-account-${Math.random().toString(36).slice(2)}`;
+    const result = await fetchMercadoPagoAccount(token, {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(result).toEqual({
+      id: 12345,
+      email: 'merchant@example.com',
+      nickname: 'TESTUSER123',
+      siteId: 'MLC',
+      isTestUser: true,
+    });
+  });
+
+  it('returns null when /users/me responds with non-2xx', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(new Response('forbidden', { status: 403 }));
+    const token = `TEST-403-${Math.random().toString(36).slice(2)}`;
+    const result = await fetchMercadoPagoAccount(token, {
+      fetchImpl: fetchImpl as unknown as typeof fetch,
+    });
+    expect(result).toBeNull();
   });
 });

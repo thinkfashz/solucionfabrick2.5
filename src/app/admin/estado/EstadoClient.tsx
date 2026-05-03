@@ -12,11 +12,12 @@ import {
   Plug,
   RefreshCw,
   ShieldAlert,
+  Wallet,
   XCircle,
 } from 'lucide-react';
 
 type Severity = 'ok' | 'warn' | 'error' | 'info';
-type Group = 'db' | 'schema' | 'storage' | 'content' | 'env' | 'integrations';
+type Group = 'db' | 'schema' | 'storage' | 'content' | 'env' | 'integrations' | 'payments';
 
 interface Check {
   id: string;
@@ -35,13 +36,14 @@ interface EstadoResponse {
   timestamp: string;
 }
 
-const GROUP_LABELS: Record<Group, { label: string; icon: typeof Database }> = {
+const GROUP_LABELS: Record<Group, { label: string; icon: typeof Database; href?: string }> = {
   db: { label: 'Base de datos', icon: Database },
   schema: { label: 'Esquema / migraciones', icon: ShieldAlert },
   storage: { label: 'Almacenamiento (imágenes)', icon: ImageIcon },
   content: { label: 'Calidad de contenido', icon: HardDrive },
   env: { label: 'Variables de entorno', icon: ShieldAlert },
   integrations: { label: 'Integraciones externas', icon: Plug },
+  payments: { label: 'Pagos · MercadoPago', icon: Wallet, href: '/admin/pagos' },
 };
 
 const SEV_STYLES: Record<
@@ -91,7 +93,7 @@ export default function EstadoClient() {
 
   const grouped = useMemo(() => {
     const by: Record<Group, Check[]> = {
-      db: [], schema: [], storage: [], content: [], env: [], integrations: [],
+      db: [], schema: [], storage: [], content: [], env: [], integrations: [], payments: [],
     };
     for (const c of data?.checks ?? []) by[c.group].push(c);
     return by;
@@ -159,7 +161,7 @@ export default function EstadoClient() {
         {(Object.keys(GROUP_LABELS) as Group[]).map((g) => {
           const items = grouped[g];
           if (!items || items.length === 0) return null;
-          const { label, icon: Icon } = GROUP_LABELS[g];
+          const { label, icon: Icon, href } = GROUP_LABELS[g];
           const worst = items.reduce<Severity>((acc, c) => {
             if (c.severity === 'error') return 'error';
             if (c.severity === 'warn' && acc !== 'error') return 'warn';
@@ -176,6 +178,14 @@ export default function EstadoClient() {
                 <div className="flex items-center gap-2">
                   <Icon className="h-4 w-4 text-yellow-400" />
                   <h2 className="text-sm font-semibold text-zinc-100">{label}</h2>
+                  {href && (
+                    <a
+                      href={href}
+                      className="ml-1 rounded-md border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-widest text-yellow-300 transition hover:border-yellow-400/50"
+                    >
+                      Ver detalle →
+                    </a>
+                  )}
                 </div>
                 <span
                   className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ${sty.color} ${sty.bg}`}

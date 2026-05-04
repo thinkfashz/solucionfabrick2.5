@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
-import { META_GRAPH_URL, normalizeAdAccountId } from '@/lib/meta';
+import { META_GRAPH_URL, getMetaAdAccountId, normalizeAdAccountId } from '@/lib/meta';
 
 export async function POST(request: NextRequest) {
   const accessToken = process.env.META_ACCESS_TOKEN;
-  const rawAdAccountId = process.env.META_AD_ACCOUNT_ID;
+  const rawAdAccountId = getMetaAdAccountId();
 
   if (!accessToken || !rawAdAccountId) {
     return NextResponse.json(
-      { error: 'Variables de entorno META_ACCESS_TOKEN o META_AD_ACCOUNT_ID no configuradas.' },
+      { error: 'Variables de entorno META_ACCESS_TOKEN y META_AD_ACCOUNT_ID o META_ACCOUNT_ID no configuradas.' },
       { status: 503 }
     );
   }

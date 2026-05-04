@@ -1,11 +1,16 @@
 'use client';
 
-import { useState } from 'react';
-import Image from 'next/image';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
 
+type VisualTheme = 'scifi' | 'corporate';
+
+const FUTURISTIC_CITY_VIDEO =
+  'https://videos.pexels.com/video-files/3129957/3129957-hd_1920_1080_30fps.mp4';
+
 export default function UnirsePage() {
+  const [theme, setTheme] = useState<VisualTheme>('scifi');
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [email, setEmail] = useState('');
   const [codigo, setCodigo] = useState('');
@@ -18,6 +23,22 @@ export default function UnirsePage() {
   function resetMessages() {
     setError('');
   }
+
+  function applyTheme(nextTheme: VisualTheme) {
+    setTheme(nextTheme);
+    if (typeof window === 'undefined') return;
+    const url = new URL(window.location.href);
+    url.searchParams.set('theme', nextTheme);
+    window.history.replaceState({}, '', url.toString());
+  }
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const rawTheme = new URLSearchParams(window.location.search).get('theme');
+    if (rawTheme === 'corporate' || rawTheme === 'scifi') {
+      setTheme(rawTheme);
+    }
+  }, []);
 
   async function handleStep1() {
     resetMessages();
@@ -75,33 +96,81 @@ export default function UnirsePage() {
     }
   }
 
-  const inputClass = "bg-zinc-900 border border-white/10 rounded-2xl px-5 py-3.5 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-yellow-400/50 transition-all disabled:opacity-40";
-  const buttonClass = "bg-yellow-400 text-black font-bold uppercase tracking-widest rounded-full px-6 py-3 text-sm hover:bg-yellow-300 transition-all disabled:opacity-40 disabled:cursor-not-allowed";
+  const isCorporate = theme === 'corporate';
+
+  const inputClass = isCorporate
+    ? 'bg-black/25 border border-white/20 rounded-2xl px-5 py-3.5 text-white text-sm placeholder:text-white/35 focus:outline-none focus:border-white/45 focus:bg-black/35 transition-all disabled:opacity-40'
+    : 'bg-black/40 border border-white/15 rounded-2xl px-5 py-3.5 text-white text-sm placeholder:text-white/35 focus:outline-none focus:border-yellow-300/70 focus:bg-black/55 transition-all disabled:opacity-40';
+  const buttonClass = isCorporate
+    ? 'bg-white text-black font-bold uppercase tracking-widest rounded-full px-6 py-3 text-sm shadow-[0_10px_24px_rgba(255,255,255,0.18)] hover:brightness-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed'
+    : 'bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-200 text-black font-bold uppercase tracking-widest rounded-full px-6 py-3 text-sm shadow-[0_10px_24px_rgba(250,204,21,0.35)] hover:brightness-105 transition-all disabled:opacity-40 disabled:cursor-not-allowed';
 
   return (
-    <div className="min-h-screen bg-black flex flex-col items-center justify-center px-4">
-      {/* Background orb */}
-      <div className="fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] rounded-full bg-yellow-400/5 blur-[80px] pointer-events-none" />
+    <div className="relative min-h-screen overflow-hidden bg-black px-4 py-12">
+      {!isCorporate && (
+        <video
+          autoPlay
+          muted
+          loop
+          playsInline
+          preload="metadata"
+          className="absolute inset-0 h-full w-full object-cover opacity-30"
+          src={FUTURISTIC_CITY_VIDEO}
+        />
+      )}
+      <div className={isCorporate
+        ? 'absolute inset-0 bg-[radial-gradient(circle_at_22%_12%,rgba(255,255,255,0.09),rgba(0,0,0,0)_38%),radial-gradient(circle_at_78%_85%,rgba(255,255,255,0.07),rgba(0,0,0,0)_42%),linear-gradient(180deg,rgba(0,0,0,0.22),rgba(0,0,0,0.92))]'
+        : 'absolute inset-0 bg-[radial-gradient(circle_at_20%_12%,rgba(56,189,248,0.2),rgba(0,0,0,0)_38%),radial-gradient(circle_at_80%_85%,rgba(250,204,21,0.16),rgba(0,0,0,0)_42%),linear-gradient(180deg,rgba(0,0,0,0.26),rgba(0,0,0,0.9))]'} />
+      <div className={isCorporate
+        ? 'pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[length:100%_10px] opacity-15'
+        : 'pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[length:100%_9px] opacity-20'} />
+      <div className={isCorporate
+        ? 'pointer-events-none absolute -left-24 top-12 h-64 w-64 rounded-full bg-white/10 blur-[90px]'
+        : 'pointer-events-none absolute -left-24 top-12 h-64 w-64 rounded-full bg-sky-400/20 blur-[90px]'} />
+      <div className={isCorporate
+        ? 'pointer-events-none absolute -right-24 bottom-10 h-64 w-64 rounded-full bg-zinc-200/10 blur-[90px]'
+        : 'pointer-events-none absolute -right-24 bottom-10 h-64 w-64 rounded-full bg-yellow-300/20 blur-[90px]'} />
 
-      {/* Logo */}
-      <div className="relative z-10 mb-8 flex flex-col items-center gap-3 select-none">
-        <span className="flex h-16 w-16 items-center justify-center rounded-2xl bg-yellow-400 p-2 shadow-[0_6px_24px_rgba(250,204,21,0.35)]">
-          <Image
-            src="/logo-soluciones-fabrick-monocromo-claro.svg"
-            alt="Soluciones Fabrick"
-            width={128}
-            height={32}
-            className="h-auto w-full"
-            priority
-          />
-        </span>
-        <span className="font-playfair text-2xl font-black tracking-[0.35em] text-yellow-400">
-          FABRICK
-        </span>
-      </div>
+      <div className="relative z-10 mx-auto flex min-h-[calc(100vh-6rem)] w-full max-w-md flex-col items-center justify-center">
+        <div className="mb-4 inline-flex items-center rounded-full border border-white/20 bg-black/35 p-1 text-[10px] uppercase tracking-[0.2em] backdrop-blur-sm">
+          <button
+            type="button"
+            onClick={() => applyTheme('corporate')}
+            className={`rounded-full px-3 py-1 font-semibold transition ${isCorporate ? 'bg-white text-black' : 'text-zinc-300 hover:text-white'}`}
+          >
+            Sobrio
+          </button>
+          <button
+            type="button"
+            onClick={() => applyTheme('scifi')}
+            className={`rounded-full px-3 py-1 font-semibold transition ${!isCorporate ? 'bg-yellow-400 text-black' : 'text-zinc-300 hover:text-white'}`}
+          >
+            Sci-Fi
+          </button>
+        </div>
 
-      {/* Card */}
-      <div className="relative z-10 w-full max-w-sm rounded-[2rem] border border-white/10 bg-zinc-950/90 p-8 shadow-2xl">
+        {/* Logo */}
+        <div className="mb-7 flex flex-col items-center gap-3 select-none">
+          <span className={isCorporate
+            ? 'relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-white/40 bg-white shadow-[0_10px_34px_rgba(255,255,255,0.22)]'
+            : 'relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/40 bg-yellow-400 shadow-[0_10px_34px_rgba(250,204,21,0.45)]'}>
+            <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.45),rgba(255,255,255,0)_56%)]" />
+            <span className="relative text-sm font-black uppercase tracking-[0.28em] text-black">SF</span>
+          </span>
+          <span className={isCorporate
+            ? 'font-playfair text-xl font-black tracking-[0.24em] text-white'
+            : 'font-playfair text-xl font-black tracking-[0.24em] text-yellow-300'}>
+            SOLUCIONES FABRICK
+          </span>
+          <span className={isCorporate
+            ? 'text-[10px] uppercase tracking-[0.34em] text-white/55'
+            : 'text-[10px] uppercase tracking-[0.34em] text-white/45'}>Evolution access panel</span>
+        </div>
+
+        {/* Card */}
+        <div className={isCorporate
+          ? 'w-full rounded-[2rem] border border-white/25 bg-zinc-900/65 p-8 shadow-[0_20px_90px_rgba(0,0,0,0.55)] backdrop-blur-2xl cinematic-panel-enter'
+          : 'w-full rounded-[2rem] border border-white/20 bg-black/55 p-8 shadow-[0_20px_90px_rgba(0,0,0,0.55)] backdrop-blur-2xl cinematic-panel-enter'}>
         {step === 3 ? (
           <>
             <div className="w-14 h-14 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto mb-6">
@@ -238,9 +307,10 @@ export default function UnirsePage() {
             )}
           </>
         )}
+        </div>
       </div>
 
-      <p className="mt-6 text-xs text-zinc-600 tracking-wider">
+      <p className="relative z-10 mt-6 text-xs text-zinc-500 tracking-wider">
         © 2025 Soluciones Fabrick
       </p>
     </div>

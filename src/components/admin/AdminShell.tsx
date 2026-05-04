@@ -1,17 +1,18 @@
 'use client';
 
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
+import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUpRight, AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Stethoscope, Terminal,
-  Truck, Users, Wallet, X,
+  Truck, Users, Wallet, X, Zap, Plus, MessageCircle,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
 import { AdminCommandPalette, type CommandItem } from '@/components/admin/AdminCommandPalette';
+import { BrandMark } from '@/components/admin/ui';
 
 type NavLink = { href: string; label: string; description: string; icon: typeof Package; superadminOnly?: boolean; highlight?: boolean };
 
@@ -120,43 +121,92 @@ function NavItem({ href, label, description, icon: Icon, active, onNavigate, hig
     <Link
       href={href}
       onClick={onNavigate}
-      className={`group relative flex items-center gap-3 rounded-2xl px-3.5 py-3 transition-all duration-200 ${
+      className={`group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 transition-all duration-200 ${
         active
-          ? 'bg-yellow-400/15 border border-yellow-400/40 shadow-[inset_0_1px_0_rgba(250,204,21,0.25)]'
+          ? 'bg-gradient-to-r from-yellow-400/20 via-yellow-300/10 to-transparent border border-yellow-300/40 shadow-[inset_0_1px_0_rgba(250,204,21,0.25)]'
           : highlight
-          ? 'border border-yellow-400/35 bg-yellow-400/5 hover:border-yellow-400/60 hover:bg-yellow-400/10 shadow-[0_0_0_1px_rgba(250,204,21,0.08)]'
+          ? 'border border-yellow-300/30 bg-yellow-300/5 hover:border-yellow-300/60 hover:bg-yellow-300/10'
           : 'border border-transparent hover:border-white/10 hover:bg-white/[0.04]'
       }`}
     >
-      <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl transition-colors ${
-        active || highlight ? 'bg-yellow-400 text-black shadow-[0_2px_10px_rgba(250,204,21,0.55)]' : 'bg-white/5 text-yellow-400'
+      {/* Gold accent rail (only when active) */}
+      {active ? (
+        <span className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-gradient-to-b from-yellow-300 to-amber-500 shadow-[0_0_10px_rgba(250,204,21,0.6)]" />
+      ) : null}
+
+      <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-all ${
+        active
+          ? 'bg-yellow-300 text-black shadow-[0_4px_14px_rgba(250,204,21,0.55)]'
+          : highlight
+          ? 'bg-yellow-300/15 text-yellow-300 ring-1 ring-yellow-300/30'
+          : 'bg-white/5 text-zinc-300 group-hover:bg-white/10 group-hover:text-yellow-300'
       }`}>
-        <Icon className="h-3.5 w-3.5" />
+        <Icon className="h-3.5 w-3.5" strokeWidth={2} />
       </span>
 
       <span className="flex-1 min-w-0">
-        <span className={`block text-[13px] font-semibold leading-tight ${active || highlight ? 'text-yellow-400' : 'text-zinc-200 group-hover:text-white'} transition-colors`}>
-          {label}
+        <span className={`flex items-center gap-2 text-[12.5px] font-semibold leading-tight ${active ? 'text-yellow-200' : highlight ? 'text-yellow-300' : 'text-zinc-200 group-hover:text-white'} transition-colors`}>
+          <span className="truncate">{label}</span>
           {highlight && !active && (
-            <span className="ml-2 inline-flex items-center rounded-full border border-yellow-400/40 bg-yellow-400/15 px-1.5 py-px text-[8.5px] font-black uppercase tracking-[0.18em] text-yellow-300 align-middle">
+            <span className="inline-flex items-center rounded-full border border-yellow-300/40 bg-yellow-300/15 px-1.5 py-px text-[8.5px] font-black uppercase tracking-[0.18em] text-yellow-200">
               Nuevo
             </span>
           )}
         </span>
-        <span className="block text-[10.5px] text-zinc-500 leading-tight mt-0.5">{description}</span>
+        <span className="block truncate text-[10.5px] leading-tight mt-0.5 text-zinc-500">{description}</span>
       </span>
 
-      {active && <ArrowUpRight className="h-3.5 w-3.5 flex-shrink-0 text-yellow-400" />}
-      {!active && <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-zinc-700 opacity-0 group-hover:opacity-100 transition-opacity" />}
+      <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 transition-all ${active ? 'text-yellow-300 translate-x-0.5' : 'text-zinc-700 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:text-yellow-300'}`} />
     </Link>
   );
 }
 
-function SidebarContent({ pathname, onNavigate, onLogout, role }: {
+const QUICK_ACTIONS: { href: string; label: string; icon: typeof Package; tone: 'primary' | 'cyan' | 'emerald' }[] = [
+  { href: '/admin/productos/nuevo', label: 'Nuevo producto', icon: Plus, tone: 'primary' },
+  { href: '/admin/cotizaciones', label: 'Cotizaciones', icon: FileText, tone: 'cyan' },
+  { href: '/admin/social/inbox', label: 'Inbox social', icon: MessageCircle, tone: 'emerald' },
+];
+
+function QuickAction({ href, label, icon: Icon, tone, onNavigate }: {
+  href: string; label: string; icon: typeof Package; tone: 'primary' | 'cyan' | 'emerald'; onNavigate?: () => void;
+}) {
+  const styles = {
+    primary: 'border-yellow-300/40 bg-yellow-300/10 text-yellow-200 hover:bg-yellow-300/20 hover:border-yellow-300/70',
+    cyan: 'border-sky-400/30 bg-sky-400/10 text-sky-200 hover:bg-sky-400/20 hover:border-sky-400/60',
+    emerald: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200 hover:bg-emerald-400/20 hover:border-emerald-400/60',
+  } as const;
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      className={`group flex flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition ${styles[tone]}`}
+    >
+      <Icon className="h-4 w-4 transition-transform group-hover:scale-110" />
+      <span className="text-center leading-tight">{label}</span>
+    </Link>
+  );
+}
+
+function SectionHeader({ title, count }: { title: string; count: number }) {
+  return (
+    <div className="mb-2 flex items-center justify-between px-1">
+      <p className="flex items-center gap-2 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
+        <span className="h-px w-3 bg-gradient-to-r from-yellow-300/60 to-transparent" />
+        {title}
+      </p>
+      <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">
+        {count}
+      </span>
+    </div>
+  );
+}
+
+function SidebarContent({ pathname, onNavigate, onLogout, role, now }: {
   pathname: string;
   onNavigate?: () => void;
   onLogout: () => void;
   role: string | null;
+  now?: Date | null;
 }) {
   const sections = navSections.map((section) => ({
     ...section,
@@ -164,78 +214,100 @@ function SidebarContent({ pathname, onNavigate, onLogout, role }: {
   })).filter((s) => s.links.length > 0);
 
   return (
-    <div className="space-y-4">
-      {/* Brand block with logo inside the panel */}
-      <div className="rounded-3xl border border-yellow-400/20 bg-[linear-gradient(180deg,rgba(24,24,27,0.95),rgba(0,0,0,0.9))] p-4 shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
-        <Link href="/admin" onClick={onNavigate} className="flex items-center gap-3">
-          <span className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl bg-yellow-400 p-1.5 shadow-[0_4px_12px_rgba(250,204,21,0.35)]">
-            <Image
-              src="/logo-soluciones-fabrick-monocromo-claro.svg"
-              alt="Soluciones Fabrick"
-              width={96}
-              height={24}
-              className="h-auto w-full"
-              priority
-            />
-          </span>
-          <div className="min-w-0">
-            <p className="font-playfair text-lg font-black tracking-[0.18em] text-yellow-400 leading-none">FABRICK</p>
-            <div className="mt-1 flex items-center gap-1.5">
-              <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-              <p className="text-[9px] uppercase tracking-[0.28em] text-zinc-500">Admin control</p>
+    <div className="space-y-3">
+      {/* ── Hero card: brand + role + clock ── */}
+      <motion.div
+        initial={{ opacity: 0, y: -8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
+        className="relative overflow-hidden rounded-[1.5rem] border border-yellow-300/25 bg-black/55 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
+      >
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_18%,rgba(250,204,21,0.10),rgba(0,0,0,0)_60%)]" />
+        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-yellow-300/40 to-transparent" />
+
+        <Link href="/admin" onClick={onNavigate} className="relative flex items-center gap-3">
+          <BrandMark size="lg" />
+          <div className="min-w-0 flex-1">
+            <p className="font-playfair text-[11px] font-black tracking-[0.28em] text-yellow-300 leading-none">SOLUCIONES FABRICK</p>
+            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.22em] text-emerald-300">
+                <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
+                {role === 'superadmin' ? 'Superadmin' : 'Admin'}
+              </span>
+              {now ? (
+                <span className="font-mono text-[9.5px] tabular-nums text-white/50">
+                  {now.toLocaleTimeString('es-CL', { hour12: false })}
+                </span>
+              ) : null}
             </div>
           </div>
         </Link>
-      </div>
+      </motion.div>
 
-      {/* Navigation card */}
-      <nav className="rounded-3xl border border-white/10 bg-[linear-gradient(180deg,#0e0e10,#0a0a0b)] p-4 shadow-[0_4px_24px_rgba(0,0,0,0.4)]">
-        {sections.map((section) => (
-          <div key={section.title} className="mb-4 last:mb-0">
-            <p className="mb-2.5 ml-1 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
-              {section.title}
-            </p>
-            <div className="space-y-1">
-              {section.links.map((link) => {
-                const hrefPath = link.href.split('?')[0];
-                return (
-                  <NavItem
-                    key={link.href}
-                    href={link.href}
-                    label={link.label}
-                    description={link.description}
-                    icon={link.icon}
-                    active={pathname === hrefPath && !link.highlight}
-                    highlight={link.highlight}
-                    onNavigate={onNavigate}
-                  />
-                );
-              })}
-            </div>
-          </div>
+      {/* ── Quick actions strip ── */}
+      <motion.div
+        initial={{ opacity: 0, y: 8 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.4, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
+        className="grid grid-cols-3 gap-2"
+      >
+        {QUICK_ACTIONS.map((qa) => (
+          <QuickAction key={qa.href} {...qa} onNavigate={onNavigate} />
         ))}
-      </nav>
+      </motion.div>
 
-      {/* Logout + status */}
-      <div className="rounded-3xl border border-white/10 bg-[#0a0a0b]/80 p-4 space-y-3">
+      {/* ── Navigation sections (each in its own card) ── */}
+      {sections.map((section, idx) => (
+        <motion.nav
+          key={section.title}
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.4, delay: 0.08 + idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
+          className="relative overflow-hidden rounded-[1.5rem] border border-white/12 bg-black/45 p-3 shadow-[0_14px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl"
+        >
+          <SectionHeader title={section.title} count={section.links.length} />
+          <div className="space-y-1">
+            {section.links.map((link) => {
+              const hrefPath = link.href.split('?')[0];
+              return (
+                <NavItem
+                  key={link.href}
+                  href={link.href}
+                  label={link.label}
+                  description={link.description}
+                  icon={link.icon}
+                  active={pathname === hrefPath && !link.highlight}
+                  highlight={link.highlight}
+                  onNavigate={onNavigate}
+                />
+              );
+            })}
+          </div>
+        </motion.nav>
+      ))}
+
+      {/* ── Footer / logout ── */}
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.4, delay: 0.25 }}
+        className="relative overflow-hidden rounded-[1.5rem] border border-white/12 bg-black/45 p-3 backdrop-blur-xl"
+      >
         <button
           onClick={onLogout}
-          className="flex w-full items-center justify-center gap-2 rounded-full border border-white/15 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-zinc-300 transition hover:border-red-500/50 hover:text-red-400"
+          className="group flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-300 transition hover:border-rose-500/60 hover:bg-rose-500/10 hover:text-rose-300"
         >
-          <LogOut className="h-3.5 w-3.5" />
+          <LogOut className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
           Cerrar sesión
         </button>
-        <div className="flex items-center gap-2">
-          <div className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-          <p className="text-[9.5px] uppercase tracking-[0.28em] text-zinc-500 font-semibold">Sistema activo</p>
+        <div className="mt-3 flex items-center justify-between gap-2 px-1 text-[9.5px] uppercase tracking-[0.28em] text-white/45">
+          <span className="flex items-center gap-1.5">
+            <Zap className="h-3 w-3 text-yellow-300" />
+            Sistema activo
+          </span>
+          <span className="font-mono text-white/30">© {new Date().getFullYear()}</span>
         </div>
-        <p className="text-[11px] leading-relaxed text-zinc-500">
-          Datos en tiempo real. InsForge sincronizado. Cierre de sesión automático tras 10 min de inactividad.
-        </p>
-        <p className="text-[10px] text-zinc-600">
-          © {new Date().getFullYear()} Fabrick · Admin
-        </p>
-      </div>
+      </motion.div>
     </div>
   );
 }
@@ -247,6 +319,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
+  const [routePulse, setRoutePulse] = useState(0);
 
   // Ten-minute inactivity auto-logout.
   useAdminIdleLogout(10 * 60 * 1000);
@@ -289,6 +362,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
+
+  useEffect(() => {
+    setRoutePulse((prev) => prev + 1);
+  }, [pathname]);
 
   // Breadcrumb derived from pathname. Falls back to the last segment, prettified.
   const breadcrumb = useMemo(() => {
@@ -342,41 +419,44 @@ export function AdminShell({ children }: { children: ReactNode }) {
   }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Ambient background */}
+    <div className="relative min-h-screen overflow-hidden bg-black text-white">
+      {/* ── Ambient cinematic background (matches /admin/login) ── */}
       <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute top-0 left-0 h-[500px] w-[500px] rounded-full bg-yellow-400/[0.06] blur-[120px]" />
-        <div className="absolute bottom-0 right-0 h-[400px] w-[400px] rounded-full bg-yellow-300/[0.04] blur-[100px]" />
+        {/* Radial duo-gradient base */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_12%,rgba(56,189,248,0.14),rgba(0,0,0,0)_38%),radial-gradient(circle_at_78%_85%,rgba(250,204,21,0.12),rgba(0,0,0,0)_42%),linear-gradient(180deg,rgba(0,0,0,0.22),rgba(0,0,0,0.92))]" />
+        {/* Scanlines */}
+        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:100%_9px] opacity-15" />
+        {/* Corner glow blobs */}
+        <div className="absolute -left-24 top-12 h-[420px] w-[420px] rounded-full bg-sky-400/15 blur-[100px]" />
+        <div className="absolute -right-24 bottom-10 h-[420px] w-[420px] rounded-full bg-yellow-300/15 blur-[100px]" />
       </div>
 
       {/* Top header */}
-      <header className="sticky top-0 z-40 border-b border-white/[0.08]">
-        <div className="absolute inset-0 bg-black/90 backdrop-blur-2xl" />
+      <header className="sticky top-0 z-40 border-b border-white/15">
+        <div className="absolute inset-0 bg-black/55 backdrop-blur-2xl" />
+        <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-yellow-400/40 to-transparent" />
         <div className="relative mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 py-3 md:px-6">
           {/* Brand + mobile menu toggle */}
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
               onClick={() => setMobileOpen(true)}
-              className="flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-yellow-400 transition hover:border-yellow-400/40 hover:bg-white/5 lg:hidden"
+              className="group relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/30 bg-black/50 text-yellow-300 transition-all hover:border-yellow-300/60 hover:bg-black/70 hover:shadow-[0_6px_20px_rgba(250,204,21,0.25)] active:scale-95 lg:hidden"
               aria-label="Abrir menú"
             >
-              <Menu className="h-5 w-5" />
+              <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.18),rgba(255,255,255,0)_60%)] opacity-0 transition-opacity group-hover:opacity-100" />
+              {/* Custom 3-line hamburger with stagger */}
+              <span className="relative flex h-4 w-5 flex-col justify-between">
+                <span className="h-[2px] w-full rounded-full bg-current transition-transform duration-300 group-hover:translate-x-0.5" />
+                <span className="h-[2px] w-3/4 rounded-full bg-current transition-all duration-300 group-hover:w-full" />
+                <span className="h-[2px] w-1/2 rounded-full bg-current transition-all duration-300 group-hover:w-full group-hover:translate-x-0.5" />
+              </span>
             </button>
 
             <Link href="/admin" className="flex items-center gap-2.5 min-w-0">
-              <span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl bg-yellow-400 p-1.5 shadow-[0_4px_12px_rgba(250,204,21,0.35)]">
-                <Image
-                  src="/logo-soluciones-fabrick-monocromo-claro.svg"
-                  alt="Soluciones Fabrick"
-                  width={80}
-                  height={20}
-                  className="h-auto w-full"
-                  priority
-                />
-              </span>
+              <BrandMark size="md" />
               <span className="hidden flex-col leading-none sm:flex">
-                <span className="font-playfair text-lg font-black tracking-[0.2em] text-yellow-400">FABRICK</span>
+                <span className="font-playfair text-[13px] font-black tracking-[0.22em] text-yellow-300">SOLUCIONES FABRICK</span>
                 <span className="mt-0.5 text-[9px] uppercase tracking-[0.3em] text-zinc-500">Admin · Control room</span>
               </span>
             </Link>
@@ -391,7 +471,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </div>
 
           {/* Center: live clock (md+) */}
-          <div className="hidden flex-1 items-center justify-center md:flex" aria-hidden={!now}>
+          <div className="hidden flex-1 items-center justify-center md:flex" aria-hidden="true">
             {now && (
               <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-3 py-1.5">
                 <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 animate-pulse" />
@@ -454,40 +534,102 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
         {/* Desktop sidebar */}
         <aside className="hidden lg:block lg:sticky lg:top-[80px] lg:h-[calc(100vh-96px)] lg:overflow-y-auto scrollbar-hide">
-          <SidebarContent pathname={pathname} onLogout={handleLogout} role={role} />
+          <SidebarContent pathname={pathname} onLogout={handleLogout} role={role} now={now} />
         </aside>
 
         {/* Main content */}
-        <main className="min-w-0">{children}</main>
+        <main className="relative min-w-0 overflow-hidden">
+          <AnimatePresence mode="wait" initial={false}>
+            <motion.div
+              key={pathname}
+              initial={{ opacity: 0, y: 18, scale: 0.992, filter: 'blur(8px)' }}
+              animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
+              exit={{ opacity: 0, y: -10, scale: 1.01, filter: 'blur(6px)' }}
+              transition={{ duration: 0.44, ease: [0.16, 1, 0.3, 1] }}
+            >
+              {children}
+            </motion.div>
+          </AnimatePresence>
+
+          <AnimatePresence initial={false}>
+            <motion.div
+              key={`admin-route-pulse-${routePulse}`}
+              initial={{ opacity: 0.25, scale: 0.98 }}
+              animate={{ opacity: 0, scale: 1.03 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.45, ease: [0.2, 0.9, 0.2, 1] }}
+              className="pointer-events-none absolute inset-0 rounded-[1.75rem] bg-[radial-gradient(circle_at_30%_16%,rgba(250,204,21,0.16),rgba(0,0,0,0)_42%),radial-gradient(circle_at_76%_82%,rgba(56,189,248,0.14),rgba(0,0,0,0)_48%)]"
+            />
+          </AnimatePresence>
+        </main>
       </div>
 
-      {/* Mobile drawer */}
-      {mobileOpen && (
-        <div className="fixed inset-0 z-50 lg:hidden" role="dialog" aria-modal="true">
-          <div
-            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
-            onClick={() => setMobileOpen(false)}
-          />
-          <div className="relative ml-auto h-full w-[85%] max-w-[320px] overflow-y-auto border-l border-white/10 bg-black p-4 shadow-2xl animate-in slide-in-from-right">
-            <div className="mb-3 flex items-center justify-end">
-              <button
-                type="button"
-                onClick={() => setMobileOpen(false)}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-white/10 text-zinc-300 hover:text-white hover:border-yellow-400/40"
-                aria-label="Cerrar menú"
-              >
-                <X className="h-4 w-4" />
-              </button>
-            </div>
-            <SidebarContent
-              pathname={pathname}
-              onNavigate={() => setMobileOpen(false)}
-              onLogout={handleLogout}
-              role={role}
+      {/* Mobile drawer — login-coherent cinematic style */}
+      <AnimatePresence>
+        {mobileOpen && (
+          <motion.div
+            key="admin-mobile-drawer"
+            className="fixed inset-0 z-50 lg:hidden"
+            role="dialog"
+            aria-modal="true"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.25 }}
+          >
+            {/* Backdrop with cinematic gradient (matches login) */}
+            <motion.div
+              className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(56,189,248,0.18),rgba(0,0,0,0.92)_55%),linear-gradient(180deg,rgba(0,0,0,0.55),rgba(0,0,0,0.95))] backdrop-blur-md"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setMobileOpen(false)}
             />
-          </div>
-        </div>
-      )}
+            {/* Scanlines + corner glow on backdrop */}
+            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[length:100%_9px] opacity-20" />
+            <div className="pointer-events-none absolute -left-24 top-12 h-64 w-64 rounded-full bg-sky-400/20 blur-[90px]" />
+            <div className="pointer-events-none absolute -right-24 bottom-10 h-64 w-64 rounded-full bg-yellow-300/20 blur-[90px]" />
+
+            {/* Drawer panel */}
+            <motion.div
+              initial={{ x: '100%', opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              exit={{ x: '100%', opacity: 0 }}
+              transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
+              className="relative ml-auto flex h-full w-[88%] max-w-[340px] flex-col overflow-y-auto border-l border-white/15 bg-black/55 p-5 shadow-[0_20px_90px_rgba(0,0,0,0.55)] backdrop-blur-2xl"
+            >
+              {/* Top: SF brand mark + close (mirrors login icon) */}
+              <div className="mb-5 flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <BrandMark size="lg" />
+                  <div className="flex flex-col leading-none">
+                    <span className="font-playfair text-[12px] font-black tracking-[0.24em] text-yellow-300">SOLUCIONES FABRICK</span>
+                    <span className="mt-1 text-[9px] uppercase tracking-[0.32em] text-white/45">Control room access</span>
+                  </div>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => setMobileOpen(false)}
+                  className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/40 text-zinc-300 transition hover:border-yellow-300/50 hover:text-yellow-300 active:scale-95"
+                  aria-label="Cerrar menú"
+                >
+                  <X className="h-4 w-4" />
+                </button>
+              </div>
+
+              <div className="cinematic-panel-enter">
+                <SidebarContent
+                  pathname={pathname}
+                  onNavigate={() => setMobileOpen(false)}
+                  onLogout={handleLogout}
+                  role={role}
+                  now={now}
+                />
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Bottom navigation (móvil / tablet vertical) */}
       <AdminBottomNav onOpenMore={() => setMobileOpen(true)} />

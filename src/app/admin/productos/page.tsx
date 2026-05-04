@@ -7,7 +7,8 @@ import { useRouter } from 'next/navigation';
 import { insforge } from '@/lib/insforge';
 import { buildProductTagline, resolveCategoryName } from '@/lib/commerce';
 import { useCategories } from '@/hooks/useCategories';
-import { Pencil, Trash2, Plus, Search, Wifi, WifiOff, Database } from 'lucide-react';
+import { Pencil, Trash2, Plus, Search, Wifi, WifiOff, Database, Package } from 'lucide-react';
+import { AdminPage, AdminPageHeader } from '@/components/admin/ui';
 
 /* ── Types ── */
 interface AdminProduct {
@@ -260,42 +261,44 @@ export default function AdminProductosPage() {
   });
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      {/* ── Header ── */}
-      <div className="border-b border-white/5 bg-zinc-950/80 backdrop-blur-sm px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="font-bold text-xl tracking-tight">Gestión de Productos</h1>
-          <p className="text-zinc-500 text-xs mt-0.5">Administra el catálogo de la tienda</p>
-        </div>
-        <div className="flex items-center gap-3">
+    <AdminPage className="px-1 md:px-2">
+      <AdminPageHeader
+        eyebrow="Catálogo"
+        icon={Package}
+        title={<>Gestión de <span className="text-yellow-300">Productos</span></>}
+        description="Administra el catálogo de la tienda en tiempo real con InsForge."
+        meta={
           <span
-            className={`flex items-center gap-1.5 text-xs ${connected ? 'text-emerald-400' : 'text-zinc-600'}`}
+            className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] ${connected ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' : 'border-white/10 bg-white/5 text-zinc-500'}`}
             title={connected ? 'Canal de tiempo real conectado' : 'Sin canal de tiempo real (los datos siguen cargándose bajo demanda)'}
           >
-            {connected ? <Wifi className="w-3.5 h-3.5" /> : <WifiOff className="w-3.5 h-3.5" />}
+            {connected ? <Wifi className="h-3 w-3" /> : <WifiOff className="h-3 w-3" />}
             {connected ? 'En vivo' : 'Sin tiempo real'}
           </span>
-          <button
-            onClick={handleSetupTables}
-            disabled={setupRunning}
-            title="Ejecuta scripts/create-tables.sql en InsForge para crear/reparar las tablas del panel"
-            className="flex items-center gap-2 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all duration-200 border border-white/10 bg-zinc-900 text-zinc-200 hover:bg-zinc-800 disabled:opacity-60"
-          >
-            <Database className="w-4 h-4" />
-            {setupRunning ? 'Configurando…' : 'Configurar tablas'}
-          </button>
-          <button
-            onClick={() => router.push('/admin/productos/nuevo')}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-sm font-semibold transition-all duration-200 hover:opacity-90 active:scale-95"
-            style={{ background: '#facc15', color: '#000' }}
-          >
-            <Plus className="w-4 h-4" />
-            Nuevo Producto
-          </button>
-        </div>
-      </div>
+        }
+        actions={
+          <>
+            <button
+              onClick={handleSetupTables}
+              disabled={setupRunning}
+              title="Ejecuta scripts/create-tables.sql en InsForge para crear/reparar las tablas del panel"
+              className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10 disabled:opacity-60"
+            >
+              <Database className="h-3.5 w-3.5" />
+              {setupRunning ? 'Configurando…' : 'Configurar tablas'}
+            </button>
+            <button
+              onClick={() => router.push('/admin/productos/nuevo')}
+              className="inline-flex items-center gap-2 rounded-full bg-yellow-300 px-4 py-2 text-xs font-bold uppercase tracking-[0.18em] text-black shadow-[0_8px_24px_rgba(250,204,21,0.35)] transition hover:bg-yellow-200 active:scale-95"
+            >
+              <Plus className="h-3.5 w-3.5" />
+              Nuevo Producto
+            </button>
+          </>
+        }
+      />
 
-      <div className="px-6 py-6 space-y-5">
+      <div className="space-y-5">
         {loadError && (
           <div className="rounded-2xl border border-red-500/40 bg-red-500/10 px-4 py-3 text-sm text-red-200">
             <p className="font-semibold text-red-300">No se pudieron cargar los productos</p>
@@ -526,6 +529,6 @@ export default function AdminProductosPage() {
 
       {/* ── Toast ── */}
       {toast && <Toast message={toast.message} type={toast.type} />}
-    </div>
+    </AdminPage>
   );
 }

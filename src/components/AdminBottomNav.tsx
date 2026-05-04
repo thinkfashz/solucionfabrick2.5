@@ -42,13 +42,19 @@ export function AdminBottomNav({ onOpenMore }: { onOpenMore?: () => void }) {
   return (
     <nav
       aria-label="Navegación inferior admin"
-      className="fixed bottom-0 left-0 right-0 z-40 border-t border-white/5 bg-zinc-950 lg:hidden"
+      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden"
       style={{
-        height: 60,
         paddingBottom: 'env(safe-area-inset-bottom)',
       }}
     >
-      <div className="mx-auto flex h-[60px] max-w-[1600px] items-stretch justify-around">
+      {/* Cinematic glassy backdrop (login-coherent) */}
+      <div className="absolute inset-0 border-t border-white/15 bg-black/55 backdrop-blur-2xl" />
+      {/* Top accent line */}
+      <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-yellow-400/45 to-transparent" />
+      {/* Subtle radial glow centered */}
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(250,204,21,0.18),rgba(0,0,0,0)_60%)]" />
+
+      <div className="relative mx-auto flex h-[60px] max-w-[1600px] items-stretch justify-around">
         {ITEMS.map(({ href, label, icon: Icon }) => {
           const active = isActive(href);
           return (
@@ -58,14 +64,18 @@ export function AdminBottomNav({ onOpenMore }: { onOpenMore?: () => void }) {
               className="group relative flex flex-1 flex-col items-center justify-center gap-1"
               aria-current={active ? 'page' : undefined}
             >
-              <Icon
-                className={`h-5 w-5 transition-colors ${
-                  active ? 'text-yellow-400' : 'text-zinc-400 group-hover:text-zinc-200'
-                }`}
-              />
               <span
-                className={`truncate text-[9px] font-bold uppercase tracking-[0.2em] ${
-                  active ? 'text-yellow-400' : 'text-zinc-400'
+                className={`relative flex h-7 w-7 items-center justify-center rounded-xl transition-all ${
+                  active
+                    ? 'bg-yellow-400/15 text-yellow-300 shadow-[0_0_18px_rgba(250,204,21,0.45)]'
+                    : 'text-zinc-400 group-hover:text-zinc-100'
+                }`}
+              >
+                <Icon className="h-[18px] w-[18px]" />
+              </span>
+              <span
+                className={`truncate text-[9px] font-bold uppercase tracking-[0.2em] transition-colors ${
+                  active ? 'text-yellow-300' : 'text-zinc-400'
                 }`}
               >
                 {label}
@@ -73,7 +83,7 @@ export function AdminBottomNav({ onOpenMore }: { onOpenMore?: () => void }) {
               {active && (
                 <span
                   aria-hidden="true"
-                  className="absolute bottom-0 left-1/2 h-0.5 w-8 -translate-x-1/2 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.7)]"
+                  className="absolute top-0 left-1/2 h-0.5 w-10 -translate-x-1/2 rounded-full bg-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.8)]"
                 />
               )}
             </Link>
@@ -86,8 +96,10 @@ export function AdminBottomNav({ onOpenMore }: { onOpenMore?: () => void }) {
           className="group relative flex flex-1 flex-col items-center justify-center gap-1"
           aria-label="Más opciones"
         >
-          <MoreHorizontal className="h-5 w-5 text-zinc-400 transition-colors group-hover:text-zinc-200" />
-          <span className="truncate text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400">
+          <span className="relative flex h-7 w-7 items-center justify-center rounded-xl text-zinc-400 transition-all group-hover:bg-white/10 group-hover:text-zinc-100">
+            <MoreHorizontal className="h-[18px] w-[18px]" />
+          </span>
+          <span className="truncate text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 transition-colors group-hover:text-zinc-200">
             Más
           </span>
         </button>

@@ -35,7 +35,7 @@ import SyncStatusButton from '@/components/admin/SyncStatusButton';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { StepChart, VerticalBar, LiveDot, type BarStatus } from '@/components/admin/ui';
+import { StepChart, VerticalBar, LiveDot, AdminPage as AdminPageShell, AdminPageHeader, type BarStatus } from '@/components/admin/ui';
 import {
   formatCLP,
   normalizeOrderRecord,
@@ -555,30 +555,27 @@ export default function AdminPage() {
   }) + ' · ' + currentTime.toLocaleTimeString('es-CL', { hour12: false });
 
   return (
-    <div className="space-y-6 pb-24 lg:pb-6">
-      {/* Header */}
-      <section className="rounded-3xl border border-white/10 bg-gradient-to-br from-zinc-900 to-black p-6 md:p-8">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-          <div className="flex-1">
-            <h1 className="font-playfair text-3xl font-black text-white md:text-4xl">
-              Bienvenido, {adminEmail}
-            </h1>
-            <p className="mt-2 text-sm text-zinc-400 capitalize">{formattedTime}</p>
-          </div>
-
-          <div className="flex flex-wrap items-center gap-3">
+    <AdminPageShell>
+      {/* Header cinematográfico */}
+      <AdminPageHeader
+        eyebrow="Centro de control"
+        icon={BarChart3}
+        title={<>Bienvenido, <span className="text-yellow-300">{adminEmail}</span></>}
+        description={formattedTime}
+        actions={
+          <>
             <SyncStatusButton />
             <Button
               onClick={() => void loadDashboard(true)}
               variant="outline"
-              className="rounded-full px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-300"
+              className="rounded-full border-yellow-300/30 bg-yellow-300/5 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-yellow-200 transition hover:border-yellow-300/60 hover:bg-yellow-300/15 hover:text-white"
             >
-              <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+              <RefreshCw className={`mr-2 h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
               Refrescar
             </Button>
-          </div>
-        </div>
-      </section>
+          </>
+        }
+      />
 
       {error && (
         <div className="rounded-3xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-300">
@@ -1020,6 +1017,6 @@ export default function AdminPage() {
           <ActionCard href="/admin/productos/nuevo" title="Alta rápida" description="Crea nuevos productos sin rodeos cuando necesites publicar catálogo o stock." icon={Package} />
         </div>
       </div>
-    </div>
+    </AdminPageShell>
   );
 }

@@ -1,0 +1,224 @@
+
+> fabrick-store@0.1.0 build
+> next build
+
+   ▲ Next.js 15.5.15
+   - Environments: .env
+   - Experiments (use with caution):
+     · clientTraceMetadata
+
+   Creating an optimized production build ...
+[@sentry/nextjs] DEPRECATION WARNING: It is recommended renaming your `sentry.client.config.ts` file, or moving its content to `instrumentation-client.ts`. When using Turbopack `sentry.client.config.ts` will no longer work. Read more about the `instrumentation-client.ts` file: https://nextjs.org/docs/app/api-reference/file-conventions/instrumentation-client
+ ✓ Compiled successfully in 74s
+   Linting and checking validity of types ...
+
+./src/app/admin/equipo/page.tsx
+40:6  Warning: React Hook useEffect has a missing dependency: 'checkAccess'. Either include it or remove the dependency array.  react-hooks/exhaustive-deps
+
+info  - Need to disable some ESLint rules? Learn more here: https://nextjs.org/docs/app/api-reference/config/eslint#disabling-rules
+   Collecting page data ...
+ ⚠ Using edge runtime on a page currently disables static generation for that page
+   Generating static pages (0/37) ...
+   Generating static pages (9/37) 
+   Generating static pages (18/37) 
+   Generating static pages (27/37) 
+ ✓ Generating static pages (37/37)
+   Finalizing page optimization ...
+   Collecting build traces ...
+
+Route (app)                                         Size  First Load JS
+┌ ƒ /                                            64.8 kB         356 kB
+├ ƒ /_not-found                                    581 B         184 kB
+├ ƒ /404-preview                                 2.91 kB         188 kB
+├ ƒ /admin                                       18.5 kB         402 kB
+├ ƒ /admin/blog                                  3.42 kB         188 kB
+├ ƒ /admin/blog/[id]                               314 B         193 kB
+├ ƒ /admin/blog/nuevo                              314 B         193 kB
+├ ƒ /admin/clientes                               4.9 kB         234 kB
+├ ƒ /admin/configuracion                         9.97 kB         284 kB
+├ ƒ /admin/cotizaciones                           3.3 kB         234 kB
+├ ƒ /admin/editor                                6.68 kB         190 kB
+├ ƒ /admin/entregas                              3.26 kB         234 kB
+├ ƒ /admin/envios                                3.58 kB         233 kB
+├ ƒ /admin/equipo                                4.36 kB         187 kB
+├ ƒ /admin/errores                               5.23 kB         195 kB
+├ ƒ /admin/estado                                4.15 kB         232 kB
+├ ƒ /admin/facturas                              3.02 kB         188 kB
+├ ƒ /admin/home                                  1.12 kB         196 kB
+├ ƒ /admin/integraciones/marketplace              4.3 kB         227 kB
+├ ƒ /admin/inventario/scan                       3.14 kB         188 kB
+├ ƒ /admin/login                                  5.4 kB         234 kB
+├ ƒ /admin/manual                                18.3 kB         244 kB
+├ ƒ /admin/materiales                            10.1 kB         193 kB
+├ ƒ /admin/medios                                5.11 kB         188 kB
+├ ƒ /admin/observatory                           6.39 kB         235 kB
+├ ƒ /admin/pagos                                 6.13 kB         189 kB
+├ ƒ /admin/pedidos                               3.35 kB         279 kB
+├ ƒ /admin/pedidos/[id]                          6.83 kB         238 kB
+├ ƒ /admin/productos                             7.83 kB         237 kB
+├ ƒ /admin/productos/[id]/editar                 1.13 kB         238 kB
+├ ƒ /admin/productos/importar                    7.72 kB         191 kB
+├ ƒ /admin/productos/nuevo                         345 B         237 kB
+├ ƒ /admin/proyectos                             5.75 kB         194 kB
+├ ƒ /admin/publicar                              10.3 kB         193 kB
+├ ƒ /admin/publicidad                            3.54 kB         188 kB
+├ ƒ /admin/publicidad/coach                      2.78 kB         226 kB
+├ ƒ /admin/publicidad/nuevo                      4.64 kB         189 kB
+├ ƒ /admin/reportes                              5.27 kB         335 kB
+├ ƒ /admin/setup                                 7.72 kB         199 kB
+├ ƒ /admin/social/inbox                          3.54 kB         227 kB
+├ ƒ /admin/sql                                   4.52 kB         187 kB
+├ ƒ /admin/tienda                                  979 B         196 kB
+├ ƒ /admin/unirse                                3.75 kB         189 kB
+├ ƒ /admin/vercel-logs                            5.5 kB         190 kB
+├ ƒ /ajustes                                     2.85 kB         196 kB
+├ ƒ /api/admin/ads/agent                           582 B         184 kB
+├ ƒ /api/admin/ads/agent/[id]/apply                580 B         184 kB
+├ ƒ /api/admin/blog                                582 B         184 kB
+├ ƒ /api/admin/blog/[id]                           581 B         184 kB
+├ ƒ /api/admin/blog/import-md                      580 B         184 kB
+├ ƒ /api/admin/cloudinary                          581 B         184 kB
+├ ƒ /api/admin/diagnostico                         584 B         184 kB
+├ ƒ /api/admin/error-logs                          582 B         184 kB
+├ ƒ /api/admin/error-logs/[id]                     582 B         184 kB
+├ ƒ /api/admin/estado                              581 B         184 kB
+├ ƒ /api/admin/extensions                          582 B         184 kB
+├ ƒ /api/admin/extensions/install                  581 B         184 kB
+├ ƒ /api/admin/extensions/uninstall                584 B         184 kB
+├ ƒ /api/admin/health                              582 B         184 kB
+├ ƒ /api/admin/home/sections                       582 B         184 kB
+├ ƒ /api/admin/home/sections/[id]                  583 B         184 kB
+├ ƒ /api/admin/home/sections/reorder               582 B         184 kB
+├ ƒ /api/admin/init-account                        581 B         184 kB
+├ ƒ /api/admin/integrations                        582 B         184 kB
+├ ƒ /api/admin/integrations/test                   582 B         184 kB
+├ ƒ /api/admin/invitations                         583 B         184 kB
+├ ƒ /api/admin/invitations/redeem                  581 B         184 kB
+├ ƒ /api/admin/login                               581 B         184 kB
+├ ƒ /api/admin/logout                              581 B         184 kB
+├ ƒ /api/admin/materials                           581 B         184 kB
+├ ƒ /api/admin/materials/[id]                      582 B         184 kB
+├ ƒ /api/admin/me                                  582 B         184 kB
+├ ƒ /api/admin/media                               581 B         184 kB
+├ ƒ /api/admin/media/[id]                          582 B         184 kB
+├ ƒ /api/admin/orders/[id]                         581 B         184 kB
+├ ƒ /api/admin/payments/mp-status                  581 B         184 kB
+├ ƒ /api/admin/productos/import-from-url           582 B         184 kB
+├ ƒ /api/admin/settings                            581 B         184 kB
+├ ƒ /api/admin/setup                               582 B         184 kB
+├ ƒ /api/admin/setup-tables                        579 B         184 kB
+├ ƒ /api/admin/site-structure/[key]                581 B         184 kB
+├ ƒ /api/admin/social/inbox                        582 B         184 kB
+├ ƒ /api/admin/social/oauth/[provider]/callback    582 B         184 kB
+├ ƒ /api/admin/social/oauth/[provider]/start       581 B         184 kB
+├ ƒ /api/admin/social/posts                        581 B         184 kB
+├ ƒ /api/admin/social/publish                      581 B         184 kB
+├ ƒ /api/admin/social/upload                       581 B         184 kB
+├ ƒ /api/admin/social/webhook/[provider]           580 B         184 kB
+├ ƒ /api/admin/sql                                 583 B         184 kB
+├ ƒ /api/admin/team                                581 B         184 kB
+├ ƒ /api/admin/test-sentry                         582 B         184 kB
+├ ƒ /api/admin/unlock                              580 B         184 kB
+├ ƒ /api/admin/vercel/deployments                  583 B         184 kB
+├ ƒ /api/admin/vercel/logs                         581 B         184 kB
+├ ƒ /api/billing/status                            582 B         184 kB
+├ ƒ /api/checkout                                  582 B         184 kB
+├ ƒ /api/checkout/transfer                         582 B         184 kB
+├ ƒ /api/checkout/validate                         582 B         184 kB
+├ ƒ /api/cms/events                                583 B         184 kB
+├ ƒ /api/cotizaciones                              583 B         184 kB
+├ ƒ /api/coupons/validate                          581 B         184 kB
+├ ƒ /api/cron/refresh-rates                        581 B         184 kB
+├ ƒ /api/cron/system-health                        582 B         184 kB
+├ ƒ /api/currency/status                           582 B         184 kB
+├ ƒ /api/favorites                                 581 B         184 kB
+├ ƒ /api/favorites/[productId]                     581 B         184 kB
+├ ƒ /api/health                                    581 B         184 kB
+├ ƒ /api/inventory/release                         583 B         184 kB
+├ ƒ /api/inventory/reserve                         582 B         184 kB
+├ ƒ /api/invoices/[id]/pdf                         580 B         184 kB
+├ ƒ /api/leads                                     582 B         184 kB
+├ ƒ /api/location/reverse                          582 B         184 kB
+├ ƒ /api/materials                                 582 B         184 kB
+├ ƒ /api/meta/ads                                  580 B         184 kB
+├ ƒ /api/meta/ads/create                           581 B         184 kB
+├ ƒ /api/meta/upload                               583 B         184 kB
+├ ƒ /api/orders/check/validate                     582 B         184 kB
+├ ƒ /api/payments/mercadopago                      583 B         184 kB
+├ ƒ /api/payments/mp-status                        581 B         184 kB
+├ ƒ /api/payments/webhook                          581 B         184 kB
+├ ƒ /api/presupuesto                               583 B         184 kB
+├ ƒ /api/productos                                 583 B         184 kB
+├ ƒ /api/proyectos                                 581 B         184 kB
+├ ƒ /api/push/public-key                           583 B         184 kB
+├ ƒ /api/push/send                                 582 B         184 kB
+├ ƒ /api/push/subscribe                            580 B         184 kB
+├ ƒ /api/push/unsubscribe                          581 B         184 kB
+├ ƒ /api/pwa/track                                 581 B         184 kB
+├ ƒ /api/quotes                                    582 B         184 kB
+├ ƒ /api/quotes/[id]                               583 B         184 kB
+├ ƒ /api/quotes/mine                               584 B         184 kB
+├ ƒ /api/setup-db                                  582 B         184 kB
+├ ƒ /api/shipping/quote                            581 B         184 kB
+├ ƒ /api/shipping/tracking/[code]                  581 B         184 kB
+├ ƒ /api/site-structure/[key]                      581 B         184 kB
+├ ƒ /api/sync                                      580 B         184 kB
+├ ƒ /api/sync/images                               582 B         184 kB
+├ ƒ /api/sync/prices                               583 B         184 kB
+├ ƒ /api/sync/test                                 581 B         184 kB
+├ ƒ /auth                                        5.13 kB         234 kB
+├ ƒ /blog                                        2.89 kB         196 kB
+├ ● /blog/[slug]                                 2.89 kB         196 kB
+├   ├ /blog/metalcon-guia-maule-2026
+├   └ /blog/costos-ampliacion-casa-2026
+├ ƒ /blog/rss.xml                                  581 B         184 kB
+├ ƒ /casos                                       2.88 kB         196 kB
+├ ● /casos/[slug]                                2.89 kB         196 kB
+├   └ /casos/ampliacion-linares-38m2
+├ ƒ /checkout                                    23.4 kB         206 kB
+├ ƒ /contacto                                    7.27 kB         201 kB
+├ ƒ /cotizaciones                                5.16 kB         190 kB
+├ ƒ /cotizaciones/enviar                         4.11 kB         189 kB
+├ ƒ /cotizaciones/resumen                        4.21 kB         189 kB
+├ ƒ /editor                                      1.59 kB         185 kB
+├ ƒ /evolucion                                   10.4 kB         204 kB
+├ ƒ /favoritos                                    4.5 kB         240 kB
+├ ƒ /garantias                                   2.85 kB         196 kB
+├ ƒ /juego                                       1.69 kB         185 kB
+├ ○ /manifest.webmanifest                          581 B         184 kB
+├ ƒ /mi-cuenta                                   10.3 kB         250 kB
+├ ƒ /offline                                       347 B         185 kB
+├ ƒ /presupuesto                                 18.6 kB         292 kB
+├ ƒ /presupuesto/[id]                            3.69 kB         188 kB
+├ ƒ /presupuesto/historial                       3.75 kB         235 kB
+├ ƒ /producto/[id]                               9.06 kB         285 kB
+├ ƒ /proyectos                                   6.85 kB         204 kB
+├ ƒ /proyectos/[id]                               6.5 kB         203 kB
+├ ○ /robots.txt                                    582 B         184 kB
+├ ƒ /seguimiento/[code]                          1.49 kB         186 kB
+├ ƒ /servicios                                     315 B         213 kB
+├ ƒ /servicios/ampliaciones                      2.89 kB         196 kB
+├ ƒ /servicios/cimientos                         2.89 kB         196 kB
+├ ƒ /servicios/electricidad                      2.89 kB         196 kB
+├ ƒ /servicios/gasfiteria                        2.88 kB         196 kB
+├ ƒ /servicios/metalcon                          2.89 kB         196 kB
+├ ƒ /servicios/pintura                           2.89 kB         196 kB
+├ ƒ /servicios/revestimiento                     2.89 kB         196 kB
+├ ƒ /servicios/seguridad                         2.89 kB         196 kB
+├ ○ /sitemap.xml                                   583 B         184 kB
+├ ƒ /soluciones                                    316 B         213 kB
+├ ƒ /sync                                          582 B         184 kB
+├ ƒ /tienda                                      17.3 kB         293 kB
+└ ƒ /tienda/[id]                                 8.21 kB         288 kB
++ First Load JS shared by all                     183 kB
+  ├ chunks/2565-b6935216c77df760.js               125 kB
+  ├ chunks/4bd1b696-1c0dadd5c83eb15b.js          54.4 kB
+  └ other shared chunks (total)                  3.84 kB
+
+
+ƒ Middleware                                     43.6 kB
+
+○  (Static)   prerendered as static content
+●  (SSG)      prerendered as static HTML (uses generateStaticParams)
+ƒ  (Dynamic)  server-rendered on demand
+

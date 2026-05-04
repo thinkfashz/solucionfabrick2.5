@@ -57,7 +57,11 @@ export default async function Home() {
       />
       <div className="bg-gradient-to-b from-zinc-950 via-black to-zinc-950 min-h-screen overflow-x-hidden">
         <Navbar />
-        <Hero coverUrl={settings.hero_cover_url || undefined} />
+        <Hero
+          coverUrl={settings.hero_cover_url || undefined}
+          heroTitle={settings.hero_title || undefined}
+          heroSubtitle={settings.hero_subtitle || undefined}
+        />
         <HomeDynamicSections sections={sections} />
         <LandingSections copyrightText={copyrightText} socialLinks={socialLinks} />
       </div>

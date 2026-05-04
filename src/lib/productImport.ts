@@ -236,12 +236,35 @@ export const BROWSER_FETCH_HEADERS: Record<string, string> = {
  * Header set for the public Mercado Libre JSON API. The API is
  * permissive but still rejects empty UAs. Use the same realistic UA
  * we send on HTML requests.
+ *
+ * Mercado Libre has been progressively tightening the public
+ * `/items/{id}` endpoint: requests from datacentre IPs (Vercel, AWS,
+ * etc.) frequently get HTTP 403 unless the call carries a valid OAuth
+ * token. We therefore:
+ *
+ *   1. Always send browser-shaped UA + `Referer: mercadolibre.cl`,
+ *      which is enough for many regions.
+ *   2. If `MERCADOLIBRE_ACCESS_TOKEN` is set in the environment, attach
+ *      it as `Authorization: Bearer …`. The token can be a short-lived
+ *      app token from https://developers.mercadolibre.com/.
+ *   3. Fall back to the `/items?ids=…` multiget endpoint, which is
+ *      consistently looser than the per-id endpoint.
+ *   4. Last resort: scrape the public article HTML.
  */
-const ML_API_HEADERS: Record<string, string> = {
-  Accept: 'application/json',
-  'Accept-Language': 'es-CL,es;q=0.9,en;q=0.8',
-  'User-Agent': DEFAULT_USER_AGENT,
-};
+function buildMlApiHeaders(): Record<string, string> {
+  const headers: Record<string, string> = {
+    Accept: 'application/json',
+    'Accept-Language': 'es-CL,es;q=0.9,en;q=0.8',
+    'User-Agent': DEFAULT_USER_AGENT,
+    Referer: 'https://www.mercadolibre.cl/',
+    Origin: 'https://www.mercadolibre.cl',
+  };
+  const token = process.env.MERCADOLIBRE_ACCESS_TOKEN?.trim();
+  if (token) headers.Authorization = `Bearer ${token}`;
+  return headers;
+}
+
+const ML_API_HEADERS: Record<string, string> = buildMlApiHeaders();
 
 /**
  * Aborts a fetch after `ms` milliseconds. Keeps the import flow snappy
@@ -268,10 +291,18 @@ async function fetchResolved(url: URL, timeoutMs = 10_000): Promise<{ finalUrl: 
     throw new TypeError(`Host no permitido: ${url.hostname}.`);
   }
   const t = withTimeout(timeoutMs);
+  // Many CDNs (Cloudflare, Akamai) flag fetch-without-Referer as bot
+  // traffic. We send a Referer that matches the target origin so the
+  // request looks like a same-site navigation.
+  const headers: Record<string, string> = {
+    ...BROWSER_FETCH_HEADERS,
+    Referer: `${url.protocol}//${url.host}/`,
+    'Sec-Fetch-Site': 'same-origin',
+  };
   try {
     const res = await fetch(url.toString(), {
       redirect: 'follow',
-      headers: BROWSER_FETCH_HEADERS,
+      headers,
       cache: 'no-store',
       signal: t.signal,
     });
@@ -402,24 +433,124 @@ interface MLApiDescription {
 }
 
 /**
+ * Tries to fetch a Mercado Libre item, transparently falling back from
+ * the per-id endpoint (`/items/{id}`) to the multiget endpoint
+ * (`/items?ids=…`) when the first one returns 401/403/429. Mercado
+ * Libre's WAF has been rejecting unauthenticated per-id requests from
+ * datacentre IPs since late 2024 — the multiget endpoint is on a
+ * looser allow-list and consistently works as a fallback.
+ *
+ * Throws with a humane Spanish message if both attempts fail.
+ */
+async function fetchMlItemRaw(itemId: string): Promise<MLApiItem> {
+  // 1) Per-id endpoint — fastest, most complete payload.
+  {
+    const t = withTimeout(8_000);
+    let res: Response;
+    try {
+      res = await fetch(`https://api.mercadolibre.com/items/${encodeURIComponent(itemId)}`, {
+        headers: ML_API_HEADERS,
+        cache: 'no-store',
+        signal: t.signal,
+      });
+    } finally {
+      t.cancel();
+    }
+    if (res.ok) {
+      return (await res.json()) as MLApiItem;
+    }
+
+    // Only 401/403/429 are worth retrying via multiget. Any other
+    // status (404, 5xx) means the item really isn't reachable.
+    if (![401, 403, 429].includes(res.status)) {
+      const detail = await readShortBody(res);
+      throw new Error(
+        `Mercado Libre respondió HTTP ${res.status} para el ID ${itemId}. ` +
+          (res.status === 404
+            ? 'La publicación no existe o fue eliminada.'
+            : `Verifica que la publicación exista y sea pública.${detail ? ` (${detail})` : ''}`),
+      );
+    }
+  }
+
+  // 2) Multiget fallback. Returns `[{ code, body }]` instead of the
+  //    raw item, but the body shape matches `MLApiItem`.
+  {
+    const t = withTimeout(8_000);
+    let res: Response;
+    try {
+      res = await fetch(
+        `https://api.mercadolibre.com/items?ids=${encodeURIComponent(itemId)}`,
+        { headers: ML_API_HEADERS, cache: 'no-store', signal: t.signal },
+      );
+    } finally {
+      t.cancel();
+    }
+    if (res.ok) {
+      const arr = (await res.json()) as Array<{ code?: number; body?: MLApiItem }>;
+      const entry = Array.isArray(arr) ? arr[0] : null;
+      if (entry?.code === 200 && entry.body && typeof entry.body === 'object') {
+        return entry.body;
+      }
+      // Multiget returned an envelope but the inner code is the real error.
+      const innerCode = entry?.code ?? 'desconocido';
+      throw new Error(
+        `Mercado Libre respondió HTTP ${innerCode} para el ID ${itemId}. ` +
+          'Verifica que la publicación exista y sea pública.',
+      );
+    }
+
+    const detail = await readShortBody(res);
+    const hasToken = !!process.env.MERCADOLIBRE_ACCESS_TOKEN?.trim();
+    throw new Error(
+      `Mercado Libre respondió HTTP ${res.status} para el ID ${itemId}. ` +
+        (hasToken
+          ? 'El token configurado en MERCADOLIBRE_ACCESS_TOKEN puede haber expirado.'
+          : 'La API pública está bloqueando este servidor. Configura MERCADOLIBRE_ACCESS_TOKEN ' +
+            'con un token de https://developers.mercadolibre.com/ para autenticar las peticiones.') +
+        (detail ? ` (${detail})` : ''),
+    );
+  }
+}
+
+/** Reads up to 200 chars of an error response so we can surface a clue. */
+async function readShortBody(res: Response): Promise<string> {
+  try {
+    const txt = await res.text();
+    return txt.replace(/\s+/g, ' ').trim().slice(0, 200);
+  } catch {
+    return '';
+  }
+}
+
+/**
  * Calls the public Mercado Libre API for a given MLC item id and maps
  * the response into our common `ImportedProduct` shape.
  */
 async function fetchMercadoLibreItem(itemId: string): Promise<ImportedProduct> {
-  const t = withTimeout(8_000);
   let item: MLApiItem;
   try {
-    const res = await fetch(`https://api.mercadolibre.com/items/${encodeURIComponent(itemId)}`, {
-      headers: ML_API_HEADERS,
-      cache: 'no-store',
-      signal: t.signal,
-    });
-    if (!res.ok) {
-      throw new Error(`Mercado Libre respondió HTTP ${res.status}. Verifica que la publicación exista y sea pública.`);
+    item = await fetchMlItemRaw(itemId);
+  } catch (primaryErr) {
+    // Last-resort fallback: when Mercado Libre blocks JSON API access
+    // from this server/IP, try to scrape the public article page.
+    // This keeps admin imports usable even without an OAuth token.
+    try {
+      const fallbackUrl = new URL(`https://articulo.mercadolibre.cl/${encodeURIComponent(itemId)}`);
+      const { finalUrl, html } = await fetchResolved(fallbackUrl);
+      const generic = parseGenericProductHtml(html, finalUrl);
+      return {
+        ...generic,
+        source: 'mercadolibre',
+        sourceId: itemId,
+        sourceUrl: generic.sourceUrl || fallbackUrl.toString(),
+        // Keep the canonical currency for ML Chile unless the page
+        // explicitly surfaced another one.
+        currency: (generic.currency || 'CLP').toUpperCase(),
+      };
+    } catch {
+      throw primaryErr;
     }
-    item = (await res.json()) as MLApiItem;
-  } finally {
-    t.cancel();
   }
 
   // Best-effort fetch of the long-form description. Failures here are
@@ -486,9 +617,24 @@ export function parseGenericProductHtml(html: string, finalUrl: URL): ImportedPr
     return v && v.trim() ? v.trim() : null;
   };
 
+  // Microdata helper: reads `content` attribute first, falls back to text.
+  // Used for elements with `itemprop="price|priceCurrency|availability|name"`
+  // that are common on stores without Open Graph (Shopify legacy themes,
+  // small WooCommerce shops, custom carts, etc.).
+  const itemprop = (name: string): string | null => {
+    const el = $(`[itemprop="${name}"]`).first();
+    if (!el.length) return null;
+    const c = el.attr('content');
+    if (c && c.trim()) return c.trim();
+    const t = el.text().trim();
+    return t || null;
+  };
+
   const title =
     meta('meta[property="og:title"]') ||
     meta('meta[name="twitter:title"]') ||
+    itemprop('name') ||
+    $('h1').first().text().trim() ||
     $('title').first().text().trim() ||
     finalUrl.hostname;
 
@@ -525,20 +671,23 @@ export function parseGenericProductHtml(html: string, finalUrl: URL): ImportedPr
     try { imageUrl = new URL(imageUrl, finalUrl).toString(); } catch { /* keep raw */ }
   }
 
-  // Open Graph product price (Facebook spec).
+  // Open Graph product price (Facebook spec) + microdata fallback.
   let priceStr =
     meta('meta[property="product:price:amount"]') ||
     meta('meta[property="og:price:amount"]') ||
     meta('meta[itemprop="price"]') ||
+    itemprop('price') ||
     null;
   let currency =
     meta('meta[property="product:price:currency"]') ||
     meta('meta[property="og:price:currency"]') ||
     meta('meta[itemprop="priceCurrency"]') ||
+    itemprop('priceCurrency') ||
     null;
   let availability: string | null =
     meta('meta[property="product:availability"]') ||
     meta('meta[property="og:availability"]') ||
+    itemprop('availability') ||
     null;
 
   // JSON-LD `Product` / `Offer` is the most reliable source when present.
@@ -590,6 +739,42 @@ export function parseGenericProductHtml(html: string, finalUrl: URL): ImportedPr
       }
     }
   });
+
+  // Last-resort price: scan the rendered text of the page for the first
+  // monetary expression (e.g. "$49.990", "CLP 49.990", "$49.99 USD",
+  // "USD 1,299.00"). Only used when no structured price was found.
+  if (!priceStr) {
+    const bodyText = $('body').text();
+    const moneyRe = /(?:CLP|USD|EUR|ARS|PEN|MXN|BRL|COP|\$)\s*([\d.,]+)|([\d.,]+)\s*(?:CLP|USD|EUR|ARS|PEN|MXN|BRL|COP)/i;
+    const m = bodyText.match(moneyRe);
+    if (m) {
+      priceStr = m[1] ?? m[2] ?? null;
+      if (!currency) {
+        const cm = m[0].match(/CLP|USD|EUR|ARS|PEN|MXN|BRL|COP/i);
+        if (cm) currency = cm[0].toUpperCase();
+      }
+    }
+  }
+
+  // Last-resort cover image: largest <img> by declared width when no
+  // og:image / JSON-LD image was found.
+  if (images.length === 0) {
+    let bestSrc: string | null = null;
+    let bestSize = 0;
+    $('img').each((_, el) => {
+      const $el = $(el);
+      const src = $el.attr('src') || $el.attr('data-src') || $el.attr('data-lazy-src');
+      if (!src) return;
+      const w = Number.parseInt($el.attr('width') ?? '0', 10) || 0;
+      const h = Number.parseInt($el.attr('height') ?? '0', 10) || 0;
+      const size = (w || 200) * (h || 200);
+      if (size > bestSize && !/sprite|logo|icon|avatar/i.test(src)) {
+        bestSize = size;
+        bestSrc = src;
+      }
+    });
+    if (bestSrc) pushImage(bestSrc);
+  }
 
   const price = (() => {
     if (!priceStr) return 0;
@@ -695,19 +880,45 @@ export async function resolveProductFromUrl(rawUrl: string): Promise<ImportedPro
   }
 
   // Non-ML stores: resolve redirects (with body) and run the OG /
-  // JSON-LD scraper.
-  const { finalUrl, html } = await fetchResolved(url);
-  // The redirect may end up on Mercado Libre even if the input host
-  // wasn't one we recognised (e.g. an affiliate tracker on a third-
-  // party domain). Re-check after redirection.
-  if (isMercadoLibreUrl(finalUrl)) {
-    const mlc =
-      extractMlcId(finalUrl.pathname) ??
-      extractMlcId(finalUrl.search) ??
-      extractMlcId(html);
-    if (mlc) {
-      return fetchMercadoLibreItem(mlc);
+  // JSON-LD scraper. If the upstream store blocks our request (very
+  // common with Cloudflare/Akamai-fronted retailers from datacentre
+  // IPs), return a minimal editable preview so the admin can still
+  // create the product manually instead of seeing a hard error.
+  try {
+    const { finalUrl, html } = await fetchResolved(url);
+    // The redirect may end up on Mercado Libre even if the input host
+    // wasn't one we recognised (e.g. an affiliate tracker on a third-
+    // party domain). Re-check after redirection.
+    if (isMercadoLibreUrl(finalUrl)) {
+      const mlc =
+        extractMlcId(finalUrl.pathname) ??
+        extractMlcId(finalUrl.search) ??
+        extractMlcId(html);
+      if (mlc) {
+        return fetchMercadoLibreItem(mlc);
+      }
     }
+    return parseGenericProductHtml(html, finalUrl);
+  } catch (err) {
+    // SSRF/timeout/DNS errors must still bubble up.
+    if (err instanceof TypeError) throw err;
+    const message = err instanceof Error ? err.message : '';
+    const isBlocked = /HTTP\s+(403|401|429|503|451)/i.test(message);
+    if (!isBlocked) throw err;
+    // Manual-fill stub: empty preview keyed off the URL host. The
+    // admin completes title/price/image and persists.
+    return {
+      source: 'generic',
+      sourceId: null,
+      sourceUrl: url.toString(),
+      title: url.hostname.replace(/^www\./, ''),
+      description: `La tienda bloqueó la lectura automática (${message.trim() || 'acceso restringido'}). Completa los datos manualmente.`,
+      price: 0,
+      currency: 'CLP',
+      imageUrl: null,
+      images: [],
+      available: null,
+      stock: null,
+    };
   }
-  return parseGenericProductHtml(html, finalUrl);
 }

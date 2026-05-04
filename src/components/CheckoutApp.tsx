@@ -45,6 +45,12 @@ import {
   CreditCard, RefreshCw
 } from 'lucide-react';
 
+const FABRICK_HUB = {
+  name: 'Hub Fabrick Linares',
+  lat: -35.8507,
+  lon: -71.5962,
+};
+
 // ── Bank account data (configurable via env vars) ──────────────────────────
 const BANK_INFO = {
   bank:       process.env.NEXT_PUBLIC_BANK_NAME           ?? 'Banco de Chile',
@@ -56,19 +62,26 @@ const BANK_INFO = {
 };
 
 // --- COMPONENTE FUEGOS ARTIFICIALES PREMIUM ---
+// All values are deterministic (index-based) to avoid SSR/client hydration mismatch.
+const FIREWORK_PARTICLES = Array.from({ length: 90 }).map((_, i) => {
+  const angleJitter = ((i * 17) % 11) - 5; // deterministic -5..+5
+  const angle = (i * 360) / 90 + angleJitter;
+  const velocity = 50 + ((i * 73) % 300);
+  const tx = Math.cos((angle * Math.PI) / 180) * velocity;
+  const ty = Math.sin((angle * Math.PI) / 180) * velocity;
+  const colors = ['#FACC15', '#FDE047', '#FFFFFF', '#D97706'];
+  const color = colors[i % colors.length];
+  const size = (i % 3) + 1;
+  const delay = ((i * 7) % 10) * 0.03;
+  return { tx, ty, color, size, delay };
+});
+
 const PremiumFireworks = () => {
-  const particles = Array.from({ length: 90 }); 
   return (
     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-0 overflow-hidden">
-      {particles.map((_, i) => {
-        const angle = (i * 360) / particles.length + (Math.random() * 10 - 5);
-        const velocity = 50 + Math.random() * 300;
-        const tx = Math.cos((angle * Math.PI) / 180) * velocity;
-        const ty = Math.sin((angle * Math.PI) / 180) * velocity;
-        const colors = ['#FACC15', '#FDE047', '#FFFFFF', '#D97706'];
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        const size = Math.random() * 3 + 1;
-        const delay = Math.random() * 0.3;
+      {FIREWORK_PARTICLES.map((p, i) => {
+        const { tx, ty, color, size, delay } = p;
+        const angle = 0; // unused, kept for clarity
         
         return (
           <div 
@@ -221,6 +234,10 @@ const CheckoutApp = () => {
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState('');
   const [locationSuggestion, setLocationSuggestion] = useState<{ address: string; region: string } | null>(null);
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [mapTeleporting, setMapTeleporting] = useState(false);
+  const [satellitePhase, setSatellitePhase] = useState<'idle' | 'uplink' | 'processing' | 'downlink' | 'completed'>('idle');
+  const [satelliteProgress, setSatelliteProgress] = useState(0);
   const [cardNumber, setCardNumber] = useState('');
   const [cardName, setCardName] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
@@ -327,17 +344,29 @@ const CheckoutApp = () => {
     }
 
     setLocationError('');
+    setLocationSuggestion(null);
     setLocationLoading(true);
+    setSatellitePhase('uplink');
+    setSatelliteProgress(14);
+
+    const uplinkTimer = window.setTimeout(() => {
+      setSatellitePhase('processing');
+      setSatelliteProgress(52);
+    }, 650);
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
+          setLocationCoords({ lat: latitude, lon: longitude });
+          setMapTeleporting(true);
           const response = await fetch(`/api/location/reverse?lat=${latitude}&lon=${longitude}`);
           const payload = await response.json();
 
           if (!response.ok || !payload?.data) {
             setLocationError('No se pudo obtener tu dirección automáticamente.');
+            setSatellitePhase('idle');
+            setSatelliteProgress(0);
             return;
           }
 
@@ -358,19 +387,58 @@ const CheckoutApp = () => {
             address: suggestedAddress || d.displayName || '',
             region: d.region || '',
           });
+          setSatellitePhase('downlink');
+          setSatelliteProgress(86);
+          window.setTimeout(() => {
+            setSatellitePhase('completed');
+            setSatelliteProgress(100);
+            setMapTeleporting(false);
+          }, 360);
         } catch {
           setLocationError('Error al consultar el servicio de ubicación.');
+          setSatellitePhase('idle');
+          setSatelliteProgress(0);
+          setMapTeleporting(false);
         } finally {
+          window.clearTimeout(uplinkTimer);
           setLocationLoading(false);
         }
       },
       () => {
+        window.clearTimeout(uplinkTimer);
         setLocationLoading(false);
         setLocationError('No se obtuvo permiso de ubicación.');
+        setSatellitePhase('idle');
+        setSatelliteProgress(0);
+        setMapTeleporting(false);
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
     );
   };
+
+  useEffect(() => {
+    if (satellitePhase !== 'completed') return;
+    const timer = window.setTimeout(() => {
+      setSatellitePhase('idle');
+      setSatelliteProgress(0);
+    }, 2400);
+    return () => window.clearTimeout(timer);
+  }, [satellitePhase]);
+
+  const satelliteStatusText =
+    satellitePhase === 'uplink'
+      ? 'Enviando señal de geolocalización al satélite...'
+      : satellitePhase === 'processing'
+        ? 'Satélite procesando coordenadas y mapa base...'
+        : satellitePhase === 'downlink'
+          ? 'Recibiendo datos de retorno con dirección sugerida...'
+          : satellitePhase === 'completed'
+            ? 'Autorrelleno listo: información recibida y validada.'
+            : 'Listo para iniciar conexión satelital.';
+
+  const locationCoordsLabel = locationCoords
+    ? `${locationCoords.lat.toFixed(4)}, ${locationCoords.lon.toFixed(4)}`
+    : 'Pendiente de fijacion';
 
   useEffect(() => {
     const loadGSAP = async () => {
@@ -1198,6 +1266,86 @@ const CheckoutApp = () => {
             to { background-position: 16px 0; }
           }
 
+          @keyframes sat-pulse {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(1.7); opacity: 0; }
+          }
+          @keyframes sat-uplink-dot {
+            0% { transform: translate(0px, 0px); opacity: 0; }
+            8% { opacity: 1; }
+            100% { transform: translate(86px, -46px); opacity: 0; }
+          }
+          @keyframes sat-downlink-dot {
+            0% { transform: translate(0px, 0px); opacity: 0; }
+            8% { opacity: 1; }
+            100% { transform: translate(90px, 46px); opacity: 0; }
+          }
+
+          @keyframes locator-route-flow {
+            from { stroke-dashoffset: 24; }
+            to { stroke-dashoffset: 0; }
+          }
+          @keyframes locator-scanline {
+            0% { transform: translateX(-120%); }
+            100% { transform: translateX(120%); }
+          }
+          @keyframes locator-grid-layer {
+            0% { background-position: 0 0, 0 0; }
+            100% { background-position: 0 34px, 34px 0; }
+          }
+          @keyframes locator-ripple {
+            0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0.9; }
+            100% { transform: translate(-50%, -50%) scale(1.4); opacity: 0; }
+          }
+          @keyframes locator-core-pulse {
+            0%, 100% { transform: scale(0.92); opacity: 0.55; }
+            50% { transform: scale(1.08); opacity: 1; }
+          }
+          @keyframes locator-orbit-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          @keyframes locator-orbit-spin-rev {
+            from { transform: rotate(360deg); }
+            to { transform: rotate(0deg); }
+          }
+          @keyframes locator-route-pulse {
+            0% { opacity: 0; }
+            25% { opacity: 1; }
+            100% { opacity: 0; }
+          }
+          .locator-grid-layer {
+            background-image:
+              linear-gradient(to right, rgba(34,211,238,0.08) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(34,211,238,0.08) 1px, transparent 1px);
+            background-size: 34px 34px;
+            animation: locator-grid-layer 8s linear infinite;
+          }
+          .locator-scanline {
+            animation: locator-scanline 2.6s linear infinite;
+          }
+          .locator-route-flow {
+            animation: locator-route-flow 0.85s linear infinite;
+          }
+          .locator-route-pulse {
+            animation: locator-route-pulse 1.35s linear infinite;
+          }
+          .locator-ripple-warp {
+            animation: locator-ripple 1.1s ease-out infinite;
+          }
+          .locator-ripple-idle {
+            animation: locator-ripple 2.2s ease-out infinite;
+          }
+          .locator-core-pulse {
+            animation: locator-core-pulse 1.7s ease-in-out infinite;
+          }
+          .locator-orbit-spin {
+            animation: locator-orbit-spin 4.6s linear infinite;
+          }
+          .locator-orbit-spin-rev {
+            animation: locator-orbit-spin-rev 3.2s linear infinite;
+          }
+
           @keyframes orbit-spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
@@ -1824,51 +1972,156 @@ const CheckoutApp = () => {
                   </div>
                 </div>
 
-                <div className="bg-black/50 border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-300 font-bold">Conexión satelital libre</p>
-                    <p className="text-xs text-zinc-500 mt-1">Usamos GPS del dispositivo + OpenStreetMap para sugerir dirección.</p>
+                <div className="bg-black/50 border border-white/10 rounded-2xl p-4 overflow-hidden relative">
+                  <div className="absolute inset-0 pointer-events-none opacity-70">
+                    {Array.from({ length: 14 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="absolute w-1 h-1 rounded-full bg-yellow-300/80"
+                        style={{
+                          left: `${8 + (i * 7) % 90}%`,
+                          top: `${8 + (i * 13) % 84}%`,
+                          animation: `twinkle ${1.2 + (i % 4) * 0.4}s ease-in-out ${i * 0.06}s infinite`,
+                        }}
+                      />
+                    ))}
                   </div>
-                  <button
-                    type="button"
-                    onClick={requestSatelliteAutofill}
-                    disabled={locationLoading}
-                    className="px-5 py-3 rounded-full border border-yellow-400/40 text-yellow-400 text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-400/10 disabled:opacity-50"
-                  >
-                    {locationLoading ? 'Detectando...' : 'Autorrelleno satelital'}
-                  </button>
+
+                  <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-300 font-bold">Conexión satelital libre</p>
+                      <p className="text-xs text-zinc-500 mt-1">Emitimos señal GPS, consultamos OpenStreetMap y retornamos dirección para auto relleno.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={requestSatelliteAutofill}
+                      disabled={locationLoading}
+                      className="px-5 py-3 rounded-full border border-yellow-400/40 text-yellow-400 text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-400/10 disabled:opacity-50"
+                    >
+                      {locationLoading ? 'Sincronizando órbita...' : 'Autorrelleno satelital'}
+                    </button>
+                  </div>
+
+                  {(locationLoading || satellitePhase !== 'idle' || locationSuggestion) && (
+                    <div className="relative z-10 mt-4 rounded-xl border border-yellow-400/25 bg-zinc-950/80 p-3">
+                      <div className="relative h-24 rounded-lg border border-white/10 bg-black/65 overflow-hidden">
+                        <div className="absolute left-4 bottom-3 flex flex-col items-center gap-1">
+                          <div className="w-8 h-8 rounded-full border border-white/20 bg-zinc-900/90 flex items-center justify-center">
+                            <Wifi className="w-4 h-4 text-yellow-400" />
+                          </div>
+                          <span className="text-[8px] uppercase tracking-[0.2em] text-zinc-500">Dispositivo</span>
+                        </div>
+
+                        <div className="absolute left-1/2 top-7 -translate-x-1/2">
+                          <span className="absolute left-1/2 top-1/2 w-10 h-10 rounded-full border border-cyan-300/40" style={{ animation: 'sat-pulse 1.2s ease-out infinite' }} />
+                          <div className="relative w-9 h-9 rounded-full border border-cyan-300/60 bg-cyan-400/10 flex items-center justify-center">
+                            <RefreshCw className={`w-4 h-4 text-cyan-300 ${locationLoading ? 'animate-spin' : ''}`} />
+                          </div>
+                        </div>
+
+                        <div className="absolute right-4 bottom-3 flex flex-col items-center gap-1">
+                          <div className="w-8 h-8 rounded-full border border-white/20 bg-zinc-900/90 flex items-center justify-center">
+                            <Building2 className="w-4 h-4 text-emerald-300" />
+                          </div>
+                          <span className="text-[8px] uppercase tracking-[0.2em] text-zinc-500">Datos</span>
+                        </div>
+
+                        <div className="absolute left-[19%] top-[66%] w-[31%] h-[2px] bg-gradient-to-r from-yellow-400/40 to-cyan-300/40 rotate-[-28deg] origin-left" />
+                        <div className="absolute left-[50%] top-[39%] w-[31%] h-[2px] bg-gradient-to-r from-cyan-300/40 to-emerald-300/40 rotate-[28deg] origin-left" />
+
+                        {(satellitePhase === 'uplink' || satellitePhase === 'processing') && (
+                          <span
+                            className="absolute left-[19%] top-[66%] w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.9)]"
+                            style={{ animation: 'sat-uplink-dot 0.9s linear infinite' }}
+                          />
+                        )}
+                        {(satellitePhase === 'downlink' || satellitePhase === 'completed') && (
+                          <span
+                            className="absolute left-[50%] top-[39%] w-2 h-2 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.9)]"
+                            style={{ animation: 'sat-downlink-dot 0.9s linear infinite' }}
+                          />
+                        )}
+                      </div>
+
+                      <div className="mt-3 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-500"
+                          style={{
+                            width: `${satelliteProgress}%`,
+                            background: 'linear-gradient(90deg, #facc15 0%, #67e8f9 55%, #34d399 100%)',
+                          }}
+                        />
+                      </div>
+                      <p className="mt-2 text-[10px] uppercase tracking-[0.18em] font-bold text-zinc-300">{satelliteStatusText}</p>
+                    </div>
+                  )}
                 </div>
                 {locationError && <p className="text-xs text-red-400">{locationError}</p>}
 
-                {locationLoading && (
-                  <div className="mt-2 space-y-1">
-                    <div className="flex items-center gap-2 text-[10px] text-yellow-400 uppercase tracking-widest font-black">
-                      <div className="flex gap-0.5 items-end">
-                        {Array.from({ length: 8 }).map((_, i) => (
-                          <div
-                            key={i}
-                            className="w-1 bg-yellow-400 rounded-full"
-                            style={{
-                              height: `${8 + (i % 4) * 4}px`,
-                              animation: `bb-bar 0.8s ease-in-out ${i * 0.1}s infinite alternate`,
-                              opacity: 0.3 + (i % 4) * 0.2,
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <span>Localizando...</span>
+                <div className="rounded-2xl border border-cyan-300/25 bg-black/60 p-3 sm:p-4 overflow-hidden">
+                  <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-cyan-300">Locator 3D · Envío y ubicación</p>
+                      <p className="text-[11px] text-zinc-500">Motor holográfico de ruta logística con fijación satelital en tiempo real.</p>
                     </div>
-                    <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{
-                        width: '100%',
-                        background: 'repeating-linear-gradient(90deg, #facc15 0%, #facc15 80%, transparent 80%, transparent 100%)',
-                        backgroundSize: '16px 100%',
-                        animation: 'bb-progress 0.3s linear infinite',
-                      }} />
-                    </div>
-                    <p className="text-[9px] text-zinc-500">Obteniendo datos de ubicación desde satélite...</p>
+                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-[9px] uppercase tracking-[0.2em] font-bold border ${mapTeleporting ? 'border-cyan-300/45 bg-cyan-300/10 text-cyan-200' : 'border-white/15 bg-white/5 text-zinc-400'}`}>
+                      {mapTeleporting ? 'Warp de coordenadas activo' : 'Enlace orbital estable'}
+                    </span>
                   </div>
-                )}
+
+                  <div className="relative rounded-xl border border-white/10 overflow-hidden bg-[radial-gradient(circle_at_30%_10%,rgba(16,185,129,0.08),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(6,182,212,0.12),transparent_48%),linear-gradient(180deg,rgba(2,6,23,0.96),rgba(0,0,0,0.98))]">
+                    <div className="absolute inset-0 locator-grid-layer opacity-50" />
+                    <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent,rgba(125,211,252,0.11),transparent)] locator-scanline" />
+
+                    <div className="relative h-56 sm:h-64 perspective-[1200px]">
+                      <div className="absolute inset-0 transform-gpu [transform:rotateX(58deg)_translateY(32px)]">
+                        <div className="absolute left-[17%] top-[74%] w-4 h-4 rounded-full bg-yellow-300 shadow-[0_0_20px_rgba(250,204,21,0.75)]" />
+                        <div className="absolute left-[84%] top-[30%] w-4 h-4 rounded-full bg-cyan-300 shadow-[0_0_22px_rgba(34,211,238,0.85)]" />
+                        <div className={`absolute left-[84%] top-[30%] w-16 h-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/45 ${mapTeleporting ? 'locator-ripple-warp' : 'locator-ripple-idle'}`} />
+                        <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
+                          <path
+                            d="M17 74 C 38 54, 62 44, 84 30"
+                            fill="none"
+                            stroke="rgba(34,211,238,0.78)"
+                            strokeWidth="1.7"
+                            strokeDasharray="4 3"
+                            className="locator-route-flow"
+                          />
+                          <circle r="1.2" fill="rgba(250,204,21,0.95)" className="locator-route-pulse">
+                            <animateMotion dur="1.35s" repeatCount="indefinite" path="M17 74 C 38 54, 62 44, 84 30" />
+                          </circle>
+                        </svg>
+                      </div>
+
+                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                        <div className="relative w-28 h-28">
+                          <span className="absolute inset-0 rounded-full border border-cyan-300/40 locator-orbit-spin" />
+                          <span className="absolute inset-3 rounded-full border border-cyan-200/35 locator-orbit-spin-rev" />
+                          <span className="absolute inset-[26%] rounded-full bg-cyan-300/25 shadow-[0_0_30px_rgba(34,211,238,0.35)] locator-core-pulse" />
+                        </div>
+                      </div>
+
+                      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_38%,rgba(0,0,0,0.45)_100%)]" />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] uppercase tracking-[0.16em]">
+                    <div className="rounded-lg border border-white/10 bg-black/45 px-3 py-2">
+                      <span className="text-zinc-500">Origen</span>
+                      <p className="mt-1 text-yellow-300 font-bold">{FABRICK_HUB.name}</p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-black/45 px-3 py-2">
+                      <span className="text-zinc-500">Destino</span>
+                      <p className="mt-1 text-cyan-200 font-bold truncate">
+                        {locationSuggestion?.address || 'Esperando ubicación satelital'}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-black/45 px-3 py-2">
+                      <span className="text-zinc-500">Coordenadas</span>
+                      <p className="mt-1 text-emerald-300 font-bold truncate">{locationCoordsLabel}</p>
+                    </div>
+                  </div>
+                </div>
 
                 {locationSuggestion && (
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-yellow-400/10 border border-yellow-400/30 rounded-2xl px-5 py-4 text-sm">
@@ -2296,7 +2549,9 @@ const CheckoutApp = () => {
                       >
                         <div
                           className={`w-full flex-shrink-0 px-1 ${mpSubStep === 1 ? '' : 'pointer-events-none'}`}
-                          aria-hidden={mpSubStep !== 1}
+                          role="group"
+                          aria-label="Paso 1: Datos de tarjeta"
+                          tabIndex={-1}
                         >
                           <div className="space-y-4">
                             <label className="block">
@@ -2331,7 +2586,9 @@ const CheckoutApp = () => {
 
                         <div
                           className={`w-full flex-shrink-0 px-1 ${mpSubStep === 2 ? '' : 'pointer-events-none'}`}
-                          aria-hidden={mpSubStep !== 2}
+                          role="group"
+                          aria-label="Paso 2: Titular y vencimiento"
+                          tabIndex={-1}
                         >
                           <div className="space-y-4">
                             <label className="block">
@@ -2405,6 +2662,7 @@ const CheckoutApp = () => {
                             <div className="flex gap-3 pt-2">
                               <button
                                 type="button"
+                                aria-label="Volver"
                                 onClick={() => setMpSubStep(1)}
                                 className="px-6 py-4 border border-white/15 rounded-full text-white text-[11px] font-bold uppercase tracking-widest hover:border-yellow-400 transition-colors"
                               >
@@ -2424,7 +2682,9 @@ const CheckoutApp = () => {
 
                         <div
                           className={`w-full flex-shrink-0 px-1 ${mpSubStep === 3 ? '' : 'pointer-events-none'}`}
-                          aria-hidden={mpSubStep !== 3}
+                          role="group"
+                          aria-label="Paso 3: Revisión y pago"
+                          tabIndex={-1}
                         >
                           <div className="space-y-4">
                             <div className="grid sm:grid-cols-2 gap-3 text-xs">
@@ -2454,6 +2714,7 @@ const CheckoutApp = () => {
                             <div className="flex gap-3 pt-2">
                               <button
                                 type="button"
+                                aria-label="Volver"
                                 onClick={() => setMpSubStep(2)}
                                 className="px-6 py-4 border border-white/15 rounded-full text-white text-[11px] font-bold uppercase tracking-widest hover:border-yellow-400 transition-colors"
                               >
@@ -2607,7 +2868,7 @@ const CheckoutApp = () => {
                 )}
 
                 <div className="pt-6 flex gap-4">
-                  <button onClick={() => changeStep(2)} type="button" className="px-6 py-5 border border-white/20 rounded-full bg-black hover:border-yellow-400 transition-colors text-white">
+                  <button onClick={() => changeStep(2)} type="button" aria-label="Volver al paso anterior" className="px-6 py-5 border border-white/20 rounded-full bg-black hover:border-yellow-400 transition-colors text-white">
                     <ArrowLeft className="w-5 h-5" />
                   </button>
                   {paymentMethod === 'mercadopago' && (

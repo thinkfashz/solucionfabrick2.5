@@ -6,7 +6,7 @@ import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import {
   Loader2, Save, Trash2, ChevronUp, ChevronDown, Eye, EyeOff, ImagePlus,
   Settings, Map, Monitor, ExternalLink, RefreshCw, Smartphone, Tablet, Plus,
-  CheckCircle2, AlertCircle, Edit3,
+  CheckCircle2, AlertCircle, Edit3, BookOpen, Code,
 } from 'lucide-react';
 import { MediaPicker } from '@/components/admin/cms/MediaPicker';
 
@@ -59,6 +59,10 @@ export interface PageEditorStaticNode {
   /** Settings keys this static component reads from `configuracion`, used to
    *  jump from the structure tab to the relevant input in the editor tab. */
   settingKeys?: string[];
+  /** TSX / code snippet shown in the Guía tab. */
+  codePreview?: string;
+  /** Step-by-step instructions for admins. */
+  guideSteps?: string[];
 }
 
 export interface PageEditorProps {
@@ -93,7 +97,7 @@ export function PageEditor({ page, title, subtitle, previewPath, settingGroups, 
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [savingSettings, setSavingSettings] = useState(false);
   const [pickerFor, setPickerFor] = useState<null | { kind: 'section'; id: string } | { kind: 'setting'; key: string }>(null);
-  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'estructura'>('editor');
+  const [activeTab, setActiveTab] = useState<'editor' | 'preview' | 'estructura' | 'guia'>('editor');
   const [saveState, setSaveState] = useState<SaveState>({ kind: 'idle' });
   const [viewport, setViewport] = useState<'mobile' | 'tablet' | 'desktop'>('desktop');
   const [previewToken, setPreviewToken] = useState<number>(() => Date.now());
@@ -342,6 +346,7 @@ export function PageEditor({ page, title, subtitle, previewPath, settingGroups, 
         <TabButton active={activeTab === 'editor'} onClick={() => setActiveTab('editor')} icon={<Settings className="h-3.5 w-3.5" />}>Editor</TabButton>
         <TabButton active={activeTab === 'preview'} onClick={() => setActiveTab('preview')} icon={<Monitor className="h-3.5 w-3.5" />}>Vista previa</TabButton>
         <TabButton active={activeTab === 'estructura'} onClick={() => setActiveTab('estructura')} icon={<Map className="h-3.5 w-3.5" />}>Estructura</TabButton>
+        <TabButton active={activeTab === 'guia'} onClick={() => setActiveTab('guia')} icon={<BookOpen className="h-3.5 w-3.5" />}>Guía</TabButton>
       </div>
 
       {error && (
@@ -390,6 +395,8 @@ export function PageEditor({ page, title, subtitle, previewPath, settingGroups, 
                 <p className="text-[11px] text-zinc-500">Cada sección visible se renderiza en orden, antes del contenido base de la página.</p>
               </div>
               <select
+                aria-label="Agregar nueva sección"
+                title="Agregar nueva sección"
                 onChange={(e) => { if (e.target.value) { addSection(e.target.value); e.currentTarget.value = ''; } }}
                 defaultValue=""
                 disabled={adding}
@@ -475,7 +482,7 @@ export function PageEditor({ page, title, subtitle, previewPath, settingGroups, 
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 p-3">
-            <div className="mx-auto" style={{ width: '100%', maxWidth: viewportWidth }}>
+            <div className="mx-auto w-full" style={{ maxWidth: viewportWidth }}>
               <iframe
                 ref={iframeRef}
                 src={previewSrc}
@@ -528,6 +535,22 @@ export function PageEditor({ page, title, subtitle, previewPath, settingGroups, 
               ))
             )}
           </div>
+        </section>
+      )}
+
+      {/* ── GUÍA TAB ── */}
+      {activeTab === 'guia' && (
+        <section className="space-y-4">
+          <div className="rounded-xl border border-yellow-400/20 bg-yellow-400/5 px-4 py-3">
+            <p className="text-xs leading-relaxed text-zinc-300">
+              <span className="font-bold text-yellow-400">Guía rápida</span> — Cada tarjeta explica qué hace el componente,
+              cómo editarlo paso a paso y muestra el código de referencia. Haz clic en un chip{' '}
+              <code className="rounded bg-yellow-400/15 px-1 text-yellow-300">clave</code> para saltar al campo en la pestaña Editor.
+            </p>
+          </div>
+          {staticNodes.map((node, idx) => (
+            <GuideCard key={idx} node={node} onJump={jumpToSetting} />
+          ))}
         </section>
       )}
     </div>
@@ -760,6 +783,8 @@ function SectionEditor({ section, index, total, onUpdateText, onUpdateNow, onPic
             <label className="block">
               <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Estilo del botón</span>
               <select
+                aria-label="Estilo del botón CTA"
+                title="Estilo del botón CTA"
                 value={dataString('cta_style') || 'solid'}
                 onChange={(e) => setData({ cta_style: e.target.value })}
                 className="w-full rounded-lg border border-white/10 bg-black px-3 py-2 text-sm text-white"
@@ -832,6 +857,8 @@ function GalleryEditor({ images, columns, onChange }: {
         <label className="block max-w-xs">
           <span className="mb-1 block text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">Columnas</span>
           <select
+            aria-label="Columnas de la galería"
+            title="Columnas de la galería"
             value={String(columns)}
             onChange={(e) => onChange(images, Number(e.target.value))}
             className="w-full rounded-lg border border-white/10 bg-black px-3 py-2 text-sm text-white"
@@ -966,6 +993,94 @@ function StructureDynamicRow({ section, index, total, onMove, onToggle, onEdit }
           <Edit3 className="h-3 w-3" /> Editar
         </button>
       </div>
+    </div>
+  );
+}
+
+// ── GuideCard — shown in the "Guía" tab ──────────────────────────────────
+
+function GuideCard({
+  node,
+  onJump,
+}: {
+  node: PageEditorStaticNode;
+  onJump: (key: string) => void;
+}) {
+  const [codeOpen, setCodeOpen] = useState(false);
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-950">
+      {/* Header */}
+      <div className="border-b border-white/5 p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          <code className="text-sm font-bold text-yellow-400">{node.label}</code>
+          {node.tag && (
+            <span className="rounded-full border border-zinc-700 bg-zinc-900 px-2 py-0.5 text-[9px] font-bold uppercase tracking-widest text-zinc-400">
+              {node.tag}
+            </span>
+          )}
+        </div>
+        <p className="mt-2 text-[12px] leading-relaxed text-zinc-300">{node.description}</p>
+        <code className="mt-1 block text-[10px] text-zinc-600">{node.path}</code>
+      </div>
+
+      {/* Step-by-step guide */}
+      {node.guideSteps && node.guideSteps.length > 0 && (
+        <div className="border-b border-white/5 p-4">
+          <p className="mb-3 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.22em] text-yellow-400">
+            <BookOpen className="h-3 w-3" /> Cómo editar
+          </p>
+          <ol className="space-y-2.5">
+            {node.guideSteps.map((step, i) => (
+              <li key={i} className="flex gap-3">
+                <span className="mt-0.5 flex h-5 w-5 flex-shrink-0 items-center justify-center rounded-full bg-yellow-400/15 text-[9px] font-black text-yellow-400">
+                  {i + 1}
+                </span>
+                <span className="text-[12px] leading-relaxed text-zinc-300">{step}</span>
+              </li>
+            ))}
+          </ol>
+        </div>
+      )}
+
+      {/* Editable setting key chips */}
+      {node.settingKeys && node.settingKeys.length > 0 && (
+        <div className="border-b border-white/5 p-4">
+          <p className="mb-2.5 text-[10px] font-bold uppercase tracking-[0.22em] text-zinc-500">
+            Campos editables
+          </p>
+          <div className="flex flex-wrap gap-1.5">
+            {node.settingKeys.map((k) => (
+              <button
+                key={k}
+                onClick={() => onJump(k)}
+                title={`Ir al campo ${k} en el Editor`}
+                className="flex items-center gap-1.5 rounded-full border border-yellow-400/30 bg-yellow-400/5 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.15em] text-yellow-300 transition-colors hover:bg-yellow-400/12"
+              >
+                <Edit3 className="h-2.5 w-2.5" /> {k}
+              </button>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Collapsible code preview */}
+      {node.codePreview && (
+        <div className="p-4">
+          <button
+            onClick={() => setCodeOpen((v) => !v)}
+            className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-500 transition-colors hover:text-yellow-400"
+          >
+            <Code className="h-3 w-3" />
+            {codeOpen ? 'Ocultar código' : 'Ver código de referencia'}
+          </button>
+          {codeOpen && (
+            <pre className="mt-3 overflow-x-auto rounded-xl border border-white/10 bg-black/80 p-4 font-mono text-[11px] leading-relaxed text-zinc-300">
+              <code>{node.codePreview}</code>
+            </pre>
+          )}
+        </div>
+      )}
     </div>
   );
 }

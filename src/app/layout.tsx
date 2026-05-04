@@ -113,7 +113,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
     getSiteSection('global-styles'),
   ]);
   return (
-    <html lang="es" className="scroll-smooth">
+    <html lang="es" className="scroll-smooth" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />

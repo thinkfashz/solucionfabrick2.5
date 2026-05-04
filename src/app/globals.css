@@ -4,6 +4,39 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ───────────────────────────────────────────────────────────
+   THEME TOKENS — light (default :root) / dark (.dark class)
+   Drives every var(--bg|--text|--accent) consumer in the app.
+   ─────────────────────────────────────────────────────────── */
+:root {
+  color-scheme: light;
+  --bg: #f8f5f0;
+  --text: #1a1a1a;
+  --accent: #b8860b;
+  --accent2: #92660a;
+  /* Legacy aliases (kept so existing CSS continues to work) */
+  --bg2: #ede9e3;
+  --bg3: #e7e5e4;
+  --fg: #1a1a1a;
+  --fg2: #44403c;
+  --border: rgba(0, 0, 0, 0.10);
+  --glass: rgba(255, 255, 255, 0.70);
+}
+
+.dark {
+  color-scheme: dark;
+  --bg: #0a0a0a;
+  --text: #ffffff;
+  --accent: #c9a96e;
+  --accent2: #a98a52;
+  --bg2: #111111;
+  --bg3: #18181b;
+  --fg: #ffffff;
+  --fg2: #a1a1aa;
+  --border: rgba(255, 255, 255, 0.10);
+  --glass: rgba(0, 0, 0, 0.60);
+}
+
 html {
   scroll-padding-top: 80px;
 }
@@ -189,15 +222,15 @@ body {
 
 /* ── Glassmorphism ── */
 .glass {
-  backdrop-filter: blur(24px);
   -webkit-backdrop-filter: blur(24px);
+  backdrop-filter: blur(24px);
   background: rgba(0,0,0,0.55);
   border: 1px solid rgba(250,204,21,0.18);
 }
 
 .glass-card {
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   background: rgba(255,255,255,0.025);
   border: 1px solid rgba(250,204,21,0.12);
   transition: border-color 0.35s ease, box-shadow 0.35s ease, transform 0.35s ease;
@@ -287,6 +320,33 @@ body {
 }
 .loading-screen-failsafe {
   animation: loading-screen-failsafe 4s ease-in-out 1.5s forwards;
+}
+
+@keyframes loading-macbook-scan {
+  0% { transform: translateY(-100%); }
+  100% { transform: translateY(100%); }
+}
+
+.loading-macbook-scanlines::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background-image: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.08) 0,
+    rgba(255, 255, 255, 0.08) 1px,
+    transparent 1px,
+    transparent 8px
+  );
+  background-size: 100% 8px;
+}
+
+.loading-macbook-scanlines::after {
+  content: '';
+  position: absolute;
+  inset: -40% 0;
+  background: linear-gradient(to bottom, rgba(250, 204, 21, 0), rgba(250, 204, 21, 0.2), rgba(250, 204, 21, 0));
+  animation: loading-macbook-scan 2.1s linear infinite;
 }
 
 /* ── Hero fade-up ── */
@@ -403,22 +463,10 @@ body {
   animation: route-cinematic-out 0.34s cubic-bezier(0.55, 0, 1, 0.45) forwards;
 }
 
-:root {
-  color-scheme: light;
-}
-
-.dark {
-  color-scheme: dark;
-  --bg: #000;
-  --bg2: #0a0a0a;
-  --bg3: #18181b;
-  --fg: #fff;
-  --fg2: #a1a1aa;
-  --accent: #facc15;
-  --accent2: #d97706;
-  --border: rgba(255,255,255,0.08);
-  --glass: rgba(0,0,0,0.6);
-}
+/* Theme tokens are defined at the top of this file.
+   The legacy `:root` / `.dark` block that lived here has been removed so
+   the new palette (light = #f8f5f0/#1a1a1a/#b8860b · dark = #0a0a0a/#fff/#c9a96e)
+   is the single source of truth. */
 
 html, body {
   min-height: 100%;
@@ -522,31 +570,31 @@ input, textarea, button, select {
 }
 
 /* ═══════════════════════════════════════════════════════
-   THEME SYSTEM — dark (default) / light via .theme-light
+   THEME SYSTEM — paired with .dark / :root tokens defined
+   at the top of this file. We only declare *additional*
+   surface tokens (--bg-primary, --glass-bg, …) here.
    ═══════════════════════════════════════════════════════ */
 :root {
-  --bg-primary:   #000000;
-  --bg-secondary: #0a0a0a;
-  --text-primary: #ffffff;
-  --text-muted:   #a1a1aa;
-  --border-main:  rgba(255,255,255,0.08);
-  --border-gold:  rgba(250,204,21,0.4);
-  --accent:       #facc15;
-  --glass-bg:     rgba(255,255,255,0.04);
-  --glass-border: rgba(255,255,255,0.08);
-  --glass-shine:  rgba(255,255,255,0.06);
-}
-html.theme-light {
-  --bg-primary:   #f8f5f0;
-  --bg-secondary: #ede9e3;
-  --text-primary: #1a1a1a;
+  --bg-primary:   var(--bg);
+  --bg-secondary: var(--bg2);
+  --text-primary: var(--text);
   --text-muted:   #52525b;
-  --border-main:  rgba(0,0,0,0.10);
-  --border-gold:  rgba(180,130,0,0.4);
-  --accent:       #b8860b;
-  --glass-bg:     rgba(0,0,0,0.03);
-  --glass-border: rgba(0,0,0,0.10);
-  --glass-shine:  rgba(255,255,255,0.50);
+  --border-main:  var(--border);
+  --border-gold:  rgba(184, 134, 11, 0.40);
+  --glass-bg:     rgba(0, 0, 0, 0.03);
+  --glass-border: rgba(0, 0, 0, 0.10);
+  --glass-shine:  rgba(255, 255, 255, 0.50);
+}
+.dark {
+  --bg-primary:   var(--bg);
+  --bg-secondary: var(--bg2);
+  --text-primary: var(--text);
+  --text-muted:   #a1a1aa;
+  --border-main:  var(--border);
+  --border-gold:  rgba(201, 169, 110, 0.45);
+  --glass-bg:     rgba(255, 255, 255, 0.04);
+  --glass-border: rgba(255, 255, 255, 0.08);
+  --glass-shine:  rgba(255, 255, 255, 0.06);
 }
 
 /* ═══════════════════════════
@@ -555,8 +603,8 @@ html.theme-light {
 .liquid-glass {
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
+  backdrop-filter: blur(16px) saturate(180%);
   box-shadow: inset 0 1px 0 var(--glass-shine), 0 4px 24px rgba(0,0,0,0.18);
 }
 .liquid-btn {
@@ -564,8 +612,8 @@ html.theme-light {
   overflow: hidden;
   background: var(--glass-bg);
   border: 1px solid var(--glass-border);
-  backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
   transition: border-color 0.25s, box-shadow 0.25s, transform 0.15s;
 }
 .liquid-btn:hover {

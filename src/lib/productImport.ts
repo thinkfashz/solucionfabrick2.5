@@ -379,13 +379,16 @@ async function fetchViaReaderProxy(
   const t = withTimeout(timeoutMs);
   try {
     const target = `https://r.jina.ai/${url.toString()}`;
+    const headers: Record<string, string> = {
+      Accept: 'text/html,*/*;q=0.8',
+      'X-Return-Format': 'html',
+      'User-Agent': DEFAULT_USER_AGENT,
+    };
+    const jinaKey = process.env.JINA_API_KEY?.trim();
+    if (jinaKey) headers.Authorization = `Bearer ${jinaKey}`;
     const res = await fetch(target, {
       redirect: 'follow',
-      headers: {
-        Accept: 'text/html,*/*;q=0.8',
-        'X-Return-Format': 'html',
-        'User-Agent': DEFAULT_USER_AGENT,
-      },
+      headers,
       cache: 'no-store',
       signal: t.signal,
     });

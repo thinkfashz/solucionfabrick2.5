@@ -1162,8 +1162,7 @@ export default function HouseDesigner() {
 
         {/* ── Inspector / hint bar inferior ── */}
         <div
-          className="absolute left-0 right-0 bottom-0 px-3 pb-3 pt-2 bg-gradient-to-t from-black via-black/85 to-transparent z-10"
-          style={{ paddingBottom: 'calc(env(safe-area-inset-bottom, 0px) + 12px)' }}
+          className="absolute left-0 right-0 bottom-0 px-3 pb-[calc(env(safe-area-inset-bottom,0px)+12px)] pt-2 bg-gradient-to-t from-black via-black/85 to-transparent z-10"
         >
           {selectedPanel ? (
             <div className="rounded-2xl bg-zinc-950/95 border border-yellow-400/30 backdrop-blur-md p-3 md:p-4">

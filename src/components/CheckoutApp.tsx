@@ -2709,12 +2709,7 @@ const CheckoutApp = () => {
                     {/* 3D flip card preview */}
                     <div className="flex justify-center [perspective:1000px]">
                       <div
-                        className="relative w-full max-w-[360px] transition-transform duration-700"
-                        style={{
-                          aspectRatio: '1.586 / 1',
-                          transformStyle: 'preserve-3d',
-                          transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                        }}
+                        className={`relative w-full max-w-[360px] transition-transform duration-700 aspect-[1.586/1] [transform-style:preserve-3d] ${cardFlipped ? '[transform:rotateY(180deg)]' : '[transform:rotateY(0deg)]'}`}
                       >
                         {/* FRONT */}
                         <div
@@ -2815,8 +2810,11 @@ const CheckoutApp = () => {
                     {/* Paginated form — horizontal sweep between sub-steps */}
                     <div className="overflow-hidden -mx-1">
                       <div
-                        className="flex transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
-                        style={{ transform: `translateX(-${(mpSubStep - 1) * 100}%)` }}
+                        className={`flex transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                          mpSubStep === 1 ? 'translate-x-0' :
+                          mpSubStep === 2 ? '-translate-x-full' :
+                          '-translate-x-[200%]'
+                        }`}
                       >
                         <div
                           className={`w-full flex-shrink-0 px-1 ${mpSubStep === 1 ? '' : 'pointer-events-none'}`}

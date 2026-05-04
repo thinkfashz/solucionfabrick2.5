@@ -129,11 +129,11 @@ interface AdminStatProps {
   hint?: string;
 }
 
-const accentMap: Record<NonNullable<AdminStatProps['accent']>, { glow: string; text: string; ring: string }> = {
-  yellow: { glow: 'rgba(250,204,21,0.15)', text: 'text-yellow-300', ring: 'border-yellow-300/30' },
-  cyan: { glow: 'rgba(56,189,248,0.15)', text: 'text-cyan-300', ring: 'border-cyan-300/30' },
-  emerald: { glow: 'rgba(52,211,153,0.15)', text: 'text-emerald-300', ring: 'border-emerald-300/30' },
-  rose: { glow: 'rgba(244,114,182,0.15)', text: 'text-rose-300', ring: 'border-rose-300/30' },
+const accentMap: Record<NonNullable<AdminStatProps['accent']>, { glowClass: string; text: string; ring: string }> = {
+  yellow: { glowClass: 'stat-card-glow-yellow', text: 'text-yellow-300', ring: 'border-yellow-300/30' },
+  cyan:   { glowClass: 'stat-card-glow-cyan',   text: 'text-cyan-300',   ring: 'border-cyan-300/30'   },
+  emerald:{ glowClass: 'stat-card-glow-emerald',text: 'text-emerald-300',ring: 'border-emerald-300/30'},
+  rose:   { glowClass: 'stat-card-glow-rose',   text: 'text-rose-300',   ring: 'border-rose-300/30'   },
 };
 
 export function AdminStat({ label, value, delta, icon: Icon, accent = 'yellow', hint }: AdminStatProps) {
@@ -145,8 +145,7 @@ export function AdminStat({ label, value, delta, icon: Icon, accent = 'yellow', 
       className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-black/45 p-4 backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:${a.ring}`}
     >
       <span
-        className="pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100"
-        style={{ background: `radial-gradient(circle at 80% 0%, ${a.glow}, transparent 60%)` }}
+        className={`pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 ${a.glowClass}`}
       />
       <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0">

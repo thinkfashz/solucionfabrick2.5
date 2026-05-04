@@ -306,7 +306,7 @@ export function PageEditor({ page, title, subtitle, previewPath, settingGroups, 
   // ── Iframe preview ───────────────────────────────────────────────────────
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
   const previewSrc = `${previewPath}${previewPath.includes('?') ? '&' : '?'}preview=1&_=${previewToken}`;
-  const viewportWidth = viewport === 'mobile' ? 390 : viewport === 'tablet' ? 768 : 1280;
+  const viewportMaxClass = viewport === 'mobile' ? 'max-w-[390px]' : viewport === 'tablet' ? 'max-w-[768px]' : 'max-w-[1280px]';
 
   // Cleanup timers on unmount.
   useEffect(() => () => {
@@ -482,7 +482,7 @@ export function PageEditor({ page, title, subtitle, previewPath, settingGroups, 
           </div>
 
           <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 p-3">
-            <div className="mx-auto w-full" style={{ maxWidth: viewportWidth }}>
+            <div className={`mx-auto w-full ${viewportMaxClass}`}>
               <iframe
                 ref={iframeRef}
                 src={previewSrc}

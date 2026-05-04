@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ComponentType } from 'react';
 import Link from 'next/link';
 import {
 	ShoppingCart,
@@ -14,6 +14,7 @@ import {
 	Loader2,
 	ExternalLink,
 	RefreshCw,
+	type LucideProps,
 } from 'lucide-react';
 import { AdminPage, AdminPageHeader } from '@/components/admin/ui';
 
@@ -28,7 +29,7 @@ interface MLUser {
 
 interface StatusCard {
 	href: string;
-	icon: React.ElementType;
+	icon: ComponentType<LucideProps>;
 	label: string;
 	description: string;
 	color: string;
@@ -151,23 +152,26 @@ export default function MLDashboardPage() {
 
 			{/* Section cards */}
 			<div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-				{SECTIONS.map((s) => (
-					<Link
-						key={s.href}
-						href={s.href}
-						className="group flex items-start gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 transition hover:border-zinc-700 hover:bg-zinc-900"
-					>
-						<span className={`mt-0.5 ${s.color}`}>
-							<s.icon className="h-5 w-5" />
-						</span>
-						<div>
-							<p className="font-semibold text-white group-hover:text-yellow-300 transition">
-								{s.label}
-							</p>
-							<p className="mt-1 text-sm text-zinc-400">{s.description}</p>
-						</div>
-					</Link>
-				))}
+				{SECTIONS.map((s) => {
+					const Icon = s.icon;
+					return (
+						<Link
+							key={s.href}
+							href={s.href}
+							className="group flex items-start gap-4 rounded-2xl border border-zinc-800 bg-zinc-900/50 p-5 transition hover:border-zinc-700 hover:bg-zinc-900"
+						>
+							<span className={`mt-0.5 ${s.color}`}>
+								<Icon className="h-5 w-5" />
+							</span>
+							<div>
+								<p className="font-semibold text-white group-hover:text-yellow-300 transition">
+									{s.label}
+								</p>
+								<p className="mt-1 text-sm text-zinc-400">{s.description}</p>
+							</div>
+						</Link>
+					);
+				})}
 			</div>
 
 			{/* Quick tip */}

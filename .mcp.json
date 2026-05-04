@@ -18,10 +18,10 @@
         "mcp-remote",
         "https://mcp.mercadolibre.com/mcp",
         "--header",
-        "Authorization:${AUTH_HEADER}"
+        "Authorization:${env:AUTH_HEADER}"
       ],
       "env": {
-        "AUTH_HEADER": "Bearer ${MERCADOLIBRE_ACCESS_TOKEN}"
+        "AUTH_HEADER": "Bearer ${env:MERCADOLIBRE_ACCESS_TOKEN}"
       }
     }
   }

@@ -36,6 +36,22 @@ const STATUS_LABEL: Record<ConnectionStatus, string> = {
   unconfigured: 'Sin configurar',
 };
 
+/** Tailwind class for the status text (eliminates inline color style). */
+const STATUS_TEXT_CLASS: Record<ConnectionStatus, string> = {
+  connected: 'text-green-500',
+  reconnecting: 'text-amber-400',
+  error: 'text-red-500',
+  unconfigured: 'text-zinc-600',
+};
+
+/** Tailwind class for the animated bar (eliminates inline background + boxShadow style). */
+const STATUS_BAR_CLASS: Record<ConnectionStatus, string> = {
+  connected: 'bg-green-500 shadow-[0_0_6px_#22c55eaa]',
+  reconnecting: 'bg-amber-400 shadow-[0_0_6px_#f59e0baa]',
+  error: 'bg-red-500 shadow-[0_0_6px_#ef4444aa]',
+  unconfigured: 'bg-zinc-600',
+};
+
 export interface ConnectionPulseProps {
   /** Display name of the provider (e.g. "Cloudinary", "MercadoPago"). */
   name: string;
@@ -140,13 +156,13 @@ export function ConnectionPulse({
           <LiveDot status={dot} size={9} />
           <span className="truncate text-sm font-semibold text-white">{name}</span>
         </div>
-        <span className="text-[10px] font-bold uppercase tracking-[0.18em]" style={{ color }}>
+        <span className={`text-[10px] font-bold uppercase tracking-[0.18em] ${STATUS_TEXT_CLASS[status]}`}>
           {STATUS_LABEL[status]}
         </span>
       </div>
       <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/5">
         <motion.div
-          className="h-full"
+          className={`h-full ${STATUS_BAR_CLASS[status]}`}
           animate={{
             width:
               status === 'connected'
@@ -163,7 +179,6 @@ export function ConnectionPulse({
             repeat: Infinity,
             ease: 'easeInOut',
           }}
-          style={{ background: color, boxShadow: `0 0 6px ${color}aa` }}
         />
       </div>
       <div className="mt-1.5 flex items-center justify-between gap-2 text-[10px] text-zinc-500">

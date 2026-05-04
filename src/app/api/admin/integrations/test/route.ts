@@ -2,7 +2,10 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 import { getMetaCredentials } from '@/lib/metaCredentials';
+import { getMercadoLibreCredentials } from '@/lib/mercadoLibreCredentials';
+import { getMercadoPagoCredentials } from '@/lib/mercadoPagoCredentials';
 import { decryptCredentials } from '@/lib/integrationsCrypto';
+import { detectMpMode, getMpTokenPrefix } from '@/lib/mercadopago';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -602,6 +605,312 @@ async function testVercel(): Promise<NextResponse> {
   }
 }
 
+async function testMercadoLibre(): Promise<NextResponse> {
+  const creds = await getMercadoLibreCredentials();
+  const token = creds.accessToken?.trim() ?? '';
+  const checks: DiagnosticCheck[] = [];
+  if (!token) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'mercadolibre',
+      error: 'MercadoLibre no configurado. Guarda `access_token` en la pantalla de integraciones o define MERCADOLIBRE_ACCESS_TOKEN en el servidor.',
+      checks: [{ name: 'access_token', ok: false, detail: 'No configurado.' }],
+      sources: creds.sources,
+    });
+  }
+
+  try {
+    const meRes = await fetch('https://api.mercadolibre.com/users/me', {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    const meJson = (await meRes.json().catch(() => ({}))) as {
+      id?: number;
+      nickname?: string;
+      message?: string;
+      error?: string;
+    };
+    if (!meRes.ok || !meJson.id) {
+      const detail = meJson.message ?? meJson.error ?? `HTTP ${meRes.status}`;
+      checks.push({ name: 'Token /users/me', ok: false, detail });
+      return NextResponse.json({
+        ok: false,
+        provider: 'mercadolibre',
+        error: `MercadoLibre rechazó el token: ${detail}.`,
+        checks,
+        sources: creds.sources,
+      });
+    }
+
+    checks.push({
+      name: 'Token /users/me',
+      ok: true,
+      detail: `Conectado como ${meJson.nickname ?? meJson.id} (fuente: ${creds.sources.accessToken ?? 'desconocida'}).`,
+    });
+
+    const itemsRes = await fetch(`https://api.mercadolibre.com/users/${meJson.id}/items/search?limit=1`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    const itemsJson = (await itemsRes.json().catch(() => ({}))) as {
+      paging?: { total?: number };
+      message?: string;
+      error?: string;
+    };
+    if (!itemsRes.ok) {
+      checks.push({
+        name: 'Lectura de publicaciones',
+        ok: false,
+        detail: itemsJson.message ?? itemsJson.error ?? `HTTP ${itemsRes.status}`,
+      });
+      return NextResponse.json({
+        ok: false,
+        provider: 'mercadolibre',
+        error: `El token es válido, pero falló la lectura de publicaciones: ${itemsJson.message ?? itemsJson.error ?? `HTTP ${itemsRes.status}`}.`,
+        checks,
+        sources: creds.sources,
+      });
+    }
+
+    checks.push({
+      name: 'Lectura de publicaciones',
+      ok: true,
+      detail: `Acceso correcto al inventario del vendedor. Total detectado: ${itemsJson.paging?.total ?? 0}.`,
+    });
+
+    return NextResponse.json({ ok: true, provider: 'mercadolibre', checks, sources: creds.sources });
+  } catch (err) {
+    checks.push({ name: 'MercadoLibre', ok: false, detail: err instanceof Error ? err.message : 'Error de red.' });
+    return NextResponse.json({
+      ok: false,
+      provider: 'mercadolibre',
+      error: `Error de red al contactar MercadoLibre: ${err instanceof Error ? err.message : String(err)}`,
+      checks,
+      sources: creds.sources,
+    });
+  }
+}
+
+async function testMercadoPago(): Promise<NextResponse> {
+  const creds = await getMercadoPagoCredentials();
+  const accessToken = creds.accessToken?.trim() ?? '';
+  const publicKey = creds.publicKey?.trim() ?? '';
+  const checks: DiagnosticCheck[] = [];
+  if (!accessToken && !publicKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'mercadopago',
+      error: 'MercadoPago no configurado. Guarda access_token y public_key en el centro de integraciones.',
+      checks: [
+        { name: 'access_token', ok: false, detail: 'No configurado.' },
+        { name: 'public_key', ok: false, detail: 'No configurada.' },
+      ],
+      sources: creds.sources,
+    });
+  }
+
+  if (!publicKey) {
+    checks.push({ name: 'public_key', ok: false, detail: 'Falta la clave pública para tokenización en checkout.' });
+  } else {
+    checks.push({ name: 'public_key', ok: true, detail: `Clave pública presente (fuente: ${creds.sources.publicKey ?? 'desconocida'}).` });
+  }
+
+  if (!accessToken) {
+    checks.push({ name: 'access_token', ok: false, detail: 'Falta el token privado para cobros del servidor.' });
+    return NextResponse.json({
+      ok: false,
+      provider: 'mercadopago',
+      error: 'Falta access_token de MercadoPago.',
+      checks,
+      sources: creds.sources,
+    });
+  }
+
+  try {
+    const res = await fetch('https://api.mercadopago.com/v1/payment_methods?site_id=MLC', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+    });
+    const json = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
+    if (res.status === 401 || res.status === 403) {
+      checks.push({ name: 'Gateway probe', ok: false, detail: json.message ?? json.error ?? `HTTP ${res.status}` });
+      return NextResponse.json({
+        ok: false,
+        provider: 'mercadopago',
+        error: `MercadoPago rechazó el access_token: ${json.message ?? json.error ?? `HTTP ${res.status}`}.`,
+        checks,
+        sources: creds.sources,
+      });
+    }
+    if (!res.ok) {
+      checks.push({ name: 'Gateway probe', ok: false, detail: json.message ?? json.error ?? `HTTP ${res.status}` });
+      return NextResponse.json({
+        ok: false,
+        provider: 'mercadopago',
+        error: `MercadoPago respondió con error: ${json.message ?? json.error ?? `HTTP ${res.status}`}.`,
+        checks,
+        sources: creds.sources,
+      });
+    }
+
+    checks.push({
+      name: 'Gateway probe',
+      ok: true,
+      detail: `API reachable. Modo: ${detectMpMode(accessToken)}. Prefijo del token: ${getMpTokenPrefix(accessToken) || 'n/a'}.`,
+    });
+    return NextResponse.json({ ok: checks.every((check) => check.ok), provider: 'mercadopago', checks, sources: creds.sources });
+  } catch (err) {
+    checks.push({ name: 'Gateway probe', ok: false, detail: err instanceof Error ? err.message : 'Error de red.' });
+    return NextResponse.json({
+      ok: false,
+      provider: 'mercadopago',
+      error: `Error de red al contactar MercadoPago: ${err instanceof Error ? err.message : String(err)}`,
+      checks,
+      sources: creds.sources,
+    });
+  }
+}
+
+async function testStripe(): Promise<NextResponse> {
+  const creds = await readIntegrationCredentials('stripe');
+  const secretKey = (creds.secret_key ?? '').trim();
+  const publicKey = (creds.public_key ?? '').trim();
+  const checks: DiagnosticCheck[] = [];
+
+  if (!secretKey && !publicKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'stripe',
+      error: 'Stripe no configurado. Guarda al menos secret_key y public_key en el centro de integraciones.',
+      checks: [
+        { name: 'secret_key', ok: false, detail: 'No configurada.' },
+        { name: 'public_key', ok: false, detail: 'No configurada.' },
+      ],
+    });
+  }
+
+  if (!publicKey) {
+    checks.push({ name: 'public_key', ok: false, detail: 'Falta la clave pública para frontend.' });
+  } else if (!/^pk_(test|live)_/i.test(publicKey)) {
+    checks.push({ name: 'public_key', ok: false, detail: 'Formato inválido.' });
+  } else {
+    checks.push({ name: 'public_key', ok: true, detail: 'Clave pública presente.' });
+  }
+
+  if (!secretKey) {
+    checks.push({ name: 'secret_key', ok: false, detail: 'Falta la clave secreta para backend.' });
+    return NextResponse.json({ ok: false, provider: 'stripe', error: 'Falta secret_key de Stripe.', checks });
+  }
+
+  try {
+    const res = await fetch('https://api.stripe.com/v1/account', {
+      headers: { Authorization: `Bearer ${secretKey}`, Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      id?: string;
+      email?: string;
+      display_name?: string;
+      error?: { message?: string };
+    };
+    if (!res.ok) {
+      checks.push({ name: 'Stripe /v1/account', ok: false, detail: json.error?.message ?? `HTTP ${res.status}` });
+      return NextResponse.json({
+        ok: false,
+        provider: 'stripe',
+        error: `Stripe rechazó la secret_key: ${json.error?.message ?? `HTTP ${res.status}`}.`,
+        checks,
+      });
+    }
+    checks.push({
+      name: 'Stripe /v1/account',
+      ok: true,
+      detail: `Cuenta accesible: ${json.display_name ?? json.email ?? json.id ?? 'Stripe account'}.`,
+    });
+    return NextResponse.json({ ok: checks.every((check) => check.ok), provider: 'stripe', checks });
+  } catch (err) {
+    checks.push({ name: 'Stripe /v1/account', ok: false, detail: err instanceof Error ? err.message : 'Error de red.' });
+    return NextResponse.json({
+      ok: false,
+      provider: 'stripe',
+      error: `Error de red al contactar Stripe: ${err instanceof Error ? err.message : String(err)}`,
+      checks,
+    });
+  }
+}
+
+async function testWhatsApp(): Promise<NextResponse> {
+  const creds = await readIntegrationCredentials('whatsapp');
+  const accessToken = (creds.access_token ?? '').trim();
+  const phoneNumberId = (creds.phone_number_id ?? '').trim();
+  const businessAccountId = (creds.business_account_id ?? '').trim();
+  const checks: DiagnosticCheck[] = [];
+
+  if (!accessToken && !phoneNumberId && !businessAccountId) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'whatsapp',
+      error: 'WhatsApp Business no configurado. Guarda access_token y phone_number_id en el centro de integraciones.',
+      checks: [
+        { name: 'access_token', ok: false, detail: 'No configurado.' },
+        { name: 'phone_number_id', ok: false, detail: 'No configurado.' },
+      ],
+    });
+  }
+
+  if (!accessToken) {
+    checks.push({ name: 'access_token', ok: false, detail: 'Falta token de Cloud API.' });
+    return NextResponse.json({ ok: false, provider: 'whatsapp', error: 'Falta access_token de WhatsApp Business.', checks });
+    }
+
+  if (!phoneNumberId) {
+    checks.push({ name: 'phone_number_id', ok: false, detail: 'Falta el ID del número de teléfono.' });
+    return NextResponse.json({ ok: false, provider: 'whatsapp', error: 'Falta phone_number_id para validar WhatsApp Business.', checks });
+  }
+
+  try {
+    const res = await fetch(
+      `https://graph.facebook.com/v20.0/${encodeURIComponent(phoneNumberId)}?fields=display_phone_number,verified_name,quality_rating`,
+      {
+        headers: { Authorization: `Bearer ${accessToken}` },
+        cache: 'no-store',
+      },
+    );
+    const json = (await res.json().catch(() => ({}))) as {
+      display_phone_number?: string;
+      verified_name?: string;
+      quality_rating?: string;
+      error?: { message?: string };
+    };
+    if (!res.ok) {
+      checks.push({ name: 'WhatsApp phone number', ok: false, detail: json.error?.message ?? `HTTP ${res.status}` });
+      return NextResponse.json({
+        ok: false,
+        provider: 'whatsapp',
+        error: `WhatsApp Business rechazó las credenciales: ${json.error?.message ?? `HTTP ${res.status}`}.`,
+        checks,
+      });
+    }
+    checks.push({
+      name: 'WhatsApp phone number',
+      ok: true,
+      detail: `Número accesible: ${json.display_phone_number ?? phoneNumberId}${json.verified_name ? ` · ${json.verified_name}` : ''}${json.quality_rating ? ` · quality ${json.quality_rating}` : ''}.`,
+    });
+    if (businessAccountId) {
+      checks.push({ name: 'business_account_id', ok: true, detail: `WABA configurado: ${businessAccountId}.` });
+    }
+    return NextResponse.json({ ok: checks.every((check) => check.ok), provider: 'whatsapp', checks });
+  } catch (err) {
+    checks.push({ name: 'WhatsApp phone number', ok: false, detail: err instanceof Error ? err.message : 'Error de red.' });
+    return NextResponse.json({
+      ok: false,
+      provider: 'whatsapp',
+      error: `Error de red al contactar WhatsApp Business: ${err instanceof Error ? err.message : String(err)}`,
+      checks,
+    });
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAdmin(request);
@@ -614,6 +923,10 @@ export async function GET(request: NextRequest) {
     if (provider === 'google') return await testGoogle();
     if (provider === 'google_ads') return await testGoogleAds();
     if (provider === 'vercel') return await testVercel();
+    if (provider === 'mercadolibre') return await testMercadoLibre();
+    if (provider === 'mercadopago') return await testMercadoPago();
+    if (provider === 'stripe') return await testStripe();
+    if (provider === 'whatsapp') return await testWhatsApp();
     return NextResponse.json(
       { error: `Proveedor no soportado para test: ${provider || '(vacío)'}.` },
       { status: 400 },

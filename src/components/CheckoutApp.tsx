@@ -77,40 +77,59 @@ const BANK_INFO = {
 };
 
 // --- COMPONENTE FUEGOS ARTIFICIALES PREMIUM ---
-// All values are deterministic (index-based) to avoid SSR/client hydration mismatch.
-const FIREWORK_PARTICLES = Array.from({ length: 90 }).map((_, i) => {
-  const angleJitter = ((i * 17) % 11) - 5; // deterministic -5..+5
-  const angle = (i * 360) / 90 + angleJitter;
-  const velocity = 50 + ((i * 73) % 300);
-  const tx = Math.cos((angle * Math.PI) / 180) * velocity;
-  const ty = Math.sin((angle * Math.PI) / 180) * velocity;
-  const colors = ['#FACC15', '#FDE047', '#FFFFFF', '#D97706'];
-  const color = colors[i % colors.length];
-  const size = (i % 3) + 1;
-  const delay = ((i * 7) % 10) * 0.03;
-  return { tx, ty, color, size, delay };
-});
+const FIREWORK_PARTICLES = Array.from({ length: 90 }).map((_, i) => ({
+  sizeClass: `checkout-firework-size-${(i % 3) + 1}`,
+  colorClass: `checkout-firework-color-${i % 4}`,
+  pathClass: `checkout-firework-path-${i % 12}`,
+  delayClass: `checkout-firework-delay-${i % 10}`,
+}));
+
+const STAR_FIELD_CLASSES = [
+  'top-[0%] left-[0%]',
+  'top-[37%] left-[53%]',
+  'top-[74%] left-[6%]',
+  'top-[11%] left-[59%]',
+  'top-[48%] left-[12%]',
+  'top-[85%] left-[65%]',
+  'top-[22%] left-[18%]',
+  'top-[59%] left-[71%]',
+  'top-[96%] left-[24%]',
+  'top-[33%] left-[77%]',
+  'top-[70%] left-[30%]',
+  'top-[7%] left-[83%]',
+  'top-[44%] left-[36%]',
+  'top-[81%] left-[89%]',
+  'top-[18%] left-[42%]',
+  'top-[55%] left-[95%]',
+  'top-[92%] left-[48%]',
+  'top-[29%] left-[1%]',
+  'top-[66%] left-[54%]',
+  'top-[3%] left-[7%]',
+  'top-[40%] left-[60%]',
+  'top-[77%] left-[13%]',
+  'top-[14%] left-[66%]',
+  'top-[51%] left-[19%]',
+] as const;
+
+const STAR_SIZE_CLASSES = ['w-px h-px', 'w-0.5 h-0.5', 'w-1 h-1'] as const;
+const STAR_DELAY_CLASSES = [
+  '[animation-delay:0s]',
+  '[animation-delay:0.35s]',
+  '[animation-delay:0.7s]',
+  '[animation-delay:1.05s]',
+  '[animation-delay:1.4s]',
+  '[animation-delay:1.75s]',
+  '[animation-delay:2.1s]',
+] as const;
 
 const PremiumFireworks = () => {
   return (
     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-0 overflow-hidden">
       {FIREWORK_PARTICLES.map((p, i) => {
-        const { tx, ty, color, size, delay } = p;
-        const angle = 0; // unused, kept for clarity
-        
         return (
-          <div 
+          <div
             key={i}
-            className="absolute rounded-full opacity-0"
-            style={{
-              width: `${size}px`,
-              height: `${size}px`,
-              backgroundColor: color,
-              boxShadow: `0 0 ${size * 3}px ${color}`,
-              '--tx': `${tx}px`,
-              '--ty': `${ty}px`,
-              animation: `explode-premium 2.5s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s forwards`
-            } as React.CSSProperties}
+            className={`absolute rounded-full opacity-0 checkout-firework ${p.sizeClass} ${p.colorClass} ${p.pathClass} ${p.delayClass}`}
           />
         );
       })}
@@ -143,14 +162,6 @@ function CopyField({ label, value }: { label: string; value: string }) {
     </div>
   );
 }
-
-// Pre-computed star field for the processing overlay (stable across renders).
-const STAR_FIELD = Array.from({ length: 24 }).map((_, i) => ({
-  top: (i * 37) % 100,
-  left: (i * 53) % 100,
-  size: (i % 3) + 1,
-  delay: (i % 7) * 0.35,
-}));
 
 const RELATED_SUGGESTIONS = [
   {
@@ -1451,8 +1462,56 @@ const CheckoutApp = () => {
           @keyframes explode-premium {
             0% { transform: translate(0, 0) scale(1); opacity: 1; }
             50% { opacity: 0.9; }
-            100% { transform: translate(var(--tx), calc(var(--ty) + 60px)) scale(0); opacity: 0; }
+            100% { transform: translate(0px, 0px) scale(0); opacity: 0; }
           }
+
+          .checkout-firework {
+            animation-duration: 2.5s;
+            animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+            animation-fill-mode: forwards;
+          }
+          .checkout-firework-size-1 { width: 1px; height: 1px; }
+          .checkout-firework-size-2 { width: 2px; height: 2px; }
+          .checkout-firework-size-3 { width: 3px; height: 3px; }
+          .checkout-firework-color-0 { background-color: #facc15; box-shadow: 0 0 3px #facc15; }
+          .checkout-firework-color-1 { background-color: #fde047; box-shadow: 0 0 6px #fde047; }
+          .checkout-firework-color-2 { background-color: #ffffff; box-shadow: 0 0 8px #ffffff; }
+          .checkout-firework-color-3 { background-color: #d97706; box-shadow: 0 0 6px #d97706; }
+          .checkout-firework-path-0 { animation-name: explode-premium-p0; }
+          .checkout-firework-path-1 { animation-name: explode-premium-p1; }
+          .checkout-firework-path-2 { animation-name: explode-premium-p2; }
+          .checkout-firework-path-3 { animation-name: explode-premium-p3; }
+          .checkout-firework-path-4 { animation-name: explode-premium-p4; }
+          .checkout-firework-path-5 { animation-name: explode-premium-p5; }
+          .checkout-firework-path-6 { animation-name: explode-premium-p6; }
+          .checkout-firework-path-7 { animation-name: explode-premium-p7; }
+          .checkout-firework-path-8 { animation-name: explode-premium-p8; }
+          .checkout-firework-path-9 { animation-name: explode-premium-p9; }
+          .checkout-firework-path-10 { animation-name: explode-premium-p10; }
+          .checkout-firework-path-11 { animation-name: explode-premium-p11; }
+          .checkout-firework-delay-0 { animation-delay: 0s; }
+          .checkout-firework-delay-1 { animation-delay: 0.03s; }
+          .checkout-firework-delay-2 { animation-delay: 0.06s; }
+          .checkout-firework-delay-3 { animation-delay: 0.09s; }
+          .checkout-firework-delay-4 { animation-delay: 0.12s; }
+          .checkout-firework-delay-5 { animation-delay: 0.15s; }
+          .checkout-firework-delay-6 { animation-delay: 0.18s; }
+          .checkout-firework-delay-7 { animation-delay: 0.21s; }
+          .checkout-firework-delay-8 { animation-delay: 0.24s; }
+          .checkout-firework-delay-9 { animation-delay: 0.27s; }
+
+          @keyframes explode-premium-p0  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(180px, 40px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p1  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(120px, 170px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p2  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(0px, 220px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p3  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-120px, 170px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p4  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-180px, 40px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p5  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-160px, -80px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p6  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-90px, -170px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p7  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(0px, -200px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p8  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(90px, -170px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p9  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(160px, -80px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p10 { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(220px, 0px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p11 { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-220px, 0px) scale(0); opacity: 0; } }
           
           @keyframes pulse-ring {
             0% { transform: scale(0.9); opacity: 1; }
@@ -1560,20 +1619,100 @@ const CheckoutApp = () => {
             0%   { transform: translate(-50%, -50%) translate(0px, 0px) scale(0.6); opacity: 0; }
             15%  { opacity: 1; }
             85%  { opacity: 1; }
-            100% { transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) scale(1.1); opacity: 0; }
+            100% { transform: translate(-50%, -50%) translate(130px, 0px) scale(1.1); opacity: 0; }
           }
           @keyframes rocket-SSL {
             0%   { transform: translate(-50%, -50%) translate(0px, 0px) scale(0.6); opacity: 0; }
             15%  { opacity: 1; }
             85%  { opacity: 1; }
-            100% { transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) scale(1.1); opacity: 0; }
+            100% { transform: translate(-50%, -50%) translate(-65px, 112.6px) scale(1.1); opacity: 0; }
           }
           @keyframes rocket-Bank {
             0%   { transform: translate(-50%, -50%) translate(0px, 0px) scale(0.6); opacity: 0; }
             15%  { opacity: 1; }
             85%  { opacity: 1; }
-            100% { transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) scale(1.1); opacity: 0; }
+            100% { transform: translate(-50%, -50%) translate(-65px, -112.6px) scale(1.1); opacity: 0; }
           }
+
+          .bank-approval-progress,
+          .checkout-progress-yellow,
+          .checkout-progress-satellite,
+          .checkout-progress-bricks,
+          .checkout-progress-link {
+            appearance: none;
+            border: none;
+            background: transparent;
+          }
+          .bank-approval-progress::-webkit-progress-bar,
+          .checkout-progress-yellow::-webkit-progress-bar,
+          .checkout-progress-satellite::-webkit-progress-bar,
+          .checkout-progress-bricks::-webkit-progress-bar,
+          .checkout-progress-link::-webkit-progress-bar {
+            background: transparent;
+          }
+          .bank-approval-progress::-webkit-progress-value {
+            background: linear-gradient(90deg, #e2ae00 0%, #ffc700 45%, #ffe17a 75%, #ffffff 100%);
+            box-shadow: 0 0 18px rgba(250,204,21,0.85);
+            border-radius: 9999px;
+            transition: width 120ms ease-out;
+          }
+          .bank-approval-progress::-moz-progress-bar {
+            background: linear-gradient(90deg, #e2ae00 0%, #ffc700 45%, #ffe17a 75%, #ffffff 100%);
+            box-shadow: 0 0 18px rgba(250,204,21,0.85);
+            border-radius: 9999px;
+            transition: width 120ms ease-out;
+          }
+          .checkout-progress-yellow::-webkit-progress-value,
+          .checkout-progress-yellow::-moz-progress-bar {
+            background: #facc15;
+            box-shadow: 0 0 10px #facc15;
+            border-radius: 9999px;
+            transition: width 300ms ease-out;
+          }
+          .checkout-progress-satellite::-webkit-progress-value,
+          .checkout-progress-satellite::-moz-progress-bar {
+            background: linear-gradient(90deg, #facc15 0%, #67e8f9 55%, #34d399 100%);
+            border-radius: 9999px;
+            transition: width 500ms ease;
+          }
+          .checkout-progress-bricks::-webkit-progress-value,
+          .checkout-progress-bricks::-moz-progress-bar {
+            background: linear-gradient(90deg, #38bdf8 0%, #009ee3 48%, #22c55e 100%);
+            border-radius: 9999px;
+            transition: width 300ms ease;
+          }
+          .checkout-progress-link-ok::-webkit-progress-value,
+          .checkout-progress-link-ok::-moz-progress-bar {
+            background: #10b981;
+            box-shadow: 0 0 8px rgba(16,185,129,0.7);
+            transition: width 150ms ease-out;
+          }
+          .checkout-progress-link-danger::-webkit-progress-value,
+          .checkout-progress-link-danger::-moz-progress-bar {
+            background: #ef4444;
+            box-shadow: 0 0 8px rgba(239,68,68,0.7);
+            transition: width 150ms ease-out;
+          }
+
+          .checkout-sat-star {
+            animation-name: twinkle;
+            animation-iteration-count: infinite;
+            animation-timing-function: ease-in-out;
+          }
+          .checkout-sat-star:nth-child(1) { left: 8%; top: 8%; animation-duration: 1.2s; animation-delay: 0s; }
+          .checkout-sat-star:nth-child(2) { left: 15%; top: 21%; animation-duration: 1.6s; animation-delay: 0.06s; }
+          .checkout-sat-star:nth-child(3) { left: 22%; top: 34%; animation-duration: 2s; animation-delay: 0.12s; }
+          .checkout-sat-star:nth-child(4) { left: 29%; top: 47%; animation-duration: 2.4s; animation-delay: 0.18s; }
+          .checkout-sat-star:nth-child(5) { left: 36%; top: 60%; animation-duration: 1.2s; animation-delay: 0.24s; }
+          .checkout-sat-star:nth-child(6) { left: 43%; top: 73%; animation-duration: 1.6s; animation-delay: 0.3s; }
+          .checkout-sat-star:nth-child(7) { left: 50%; top: 10%; animation-duration: 2s; animation-delay: 0.36s; }
+          .checkout-sat-star:nth-child(8) { left: 57%; top: 23%; animation-duration: 2.4s; animation-delay: 0.42s; }
+          .checkout-sat-star:nth-child(9) { left: 64%; top: 36%; animation-duration: 1.2s; animation-delay: 0.48s; }
+          .checkout-sat-star:nth-child(10) { left: 71%; top: 49%; animation-duration: 1.6s; animation-delay: 0.54s; }
+          .checkout-sat-star:nth-child(11) { left: 78%; top: 62%; animation-duration: 2s; animation-delay: 0.6s; }
+          .checkout-sat-star:nth-child(12) { left: 85%; top: 75%; animation-duration: 2.4s; animation-delay: 0.66s; }
+          .checkout-sat-star:nth-child(13) { left: 92%; top: 18%; animation-duration: 1.2s; animation-delay: 0.72s; }
+          .checkout-sat-star:nth-child(14) { left: 12%; top: 82%; animation-duration: 1.6s; animation-delay: 0.78s; }
 
           /* 3D card preview */
           @keyframes card-shine {
@@ -1637,15 +1776,7 @@ const CheckoutApp = () => {
           <div
             className="relative w-full max-w-md h-2 rounded-full overflow-hidden border border-yellow-400/25 bg-[linear-gradient(90deg,rgba(250,204,21,0.08)_0%,rgba(250,204,21,0.16)_50%,rgba(250,204,21,0.08)_100%)] [animation:pt-bank-pulse_2.4s_ease-in-out_infinite]"
           >
-            <div
-              className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-[120ms] ease-out"
-              style={{
-                width: `${bankApprovalProgress}%`,
-                background:
-                  'linear-gradient(90deg, #E2AE00 0%, #FFC700 45%, #FFE17A 75%, #FFFFFF 100%)',
-                boxShadow: '0 0 18px rgba(250,204,21,0.85)',
-              }}
-            />
+            <progress className="bank-approval-progress absolute inset-0 h-full w-full" value={bankApprovalProgress} max={100} />
             <div
               className="absolute inset-y-0 left-0 w-1/3 motion-safe:animate-[pt-bank-shine_1.6s_linear_infinite] bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.55)_50%,transparent_100%)] mix-blend-screen"
             />
@@ -1787,17 +1918,10 @@ const CheckoutApp = () => {
 
                  {/* Stars background */}
                  <div className="absolute inset-0 overflow-hidden rounded-full">
-                   {STAR_FIELD.map((s, i) => (
+                   {STAR_FIELD_CLASSES.map((posClass, i) => (
                      <span
                        key={i}
-                       className="absolute rounded-full bg-white/60"
-                       style={{
-                         top: `${s.top}%`,
-                         left: `${s.left}%`,
-                         width: `${s.size}px`,
-                         height: `${s.size}px`,
-                         animation: `twinkle 2.4s ease-in-out ${s.delay}s infinite`,
-                       }}
+                       className={`absolute rounded-full bg-white/60 animate-[twinkle_2.4s_ease-in-out_infinite] ${posClass} ${STAR_SIZE_CLASSES[i % 3]} ${STAR_DELAY_CLASSES[i % 7]}`}
                      />
                    ))}
                  </div>
@@ -1809,71 +1933,55 @@ const CheckoutApp = () => {
                  </div>
 
                  {/* Satellite nodes (destinations) */}
-                 {[
-                   { label: 'MP', angle: 0, color: '#38bdf8' },
-                   { label: 'SSL', angle: 120, color: '#a78bfa' },
-                   { label: 'Bank', angle: 240, color: '#34d399' },
-                 ].map((n) => {
-                   const rad = (n.angle * Math.PI) / 180;
-                   const r = 130; // distance from center in px (inside 280/340)
-                   const x = Math.cos(rad) * r;
-                   const y = Math.sin(rad) * r;
-                   return (
-                     <div key={n.label}>
-                       {/* Connection line */}
-                       <svg
-                         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-visible"
-                         width="2"
-                         height="2"
-                         aria-hidden
-                       >
-                         <line
-                           x1={0}
-                           y1={0}
-                           x2={x}
-                           y2={y}
-                           stroke={n.color}
-                           strokeWidth="1"
-                           strokeDasharray="3 4"
-                           opacity="0.45"
-                         />
-                       </svg>
-                       {/* Rocket/data pulse travelling outwards */}
-                       <span
-                         className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full"
-                         style={{
-                           backgroundColor: n.color,
-                           boxShadow: `0 0 10px ${n.color}`,
-                           animation: `rocket-${n.label} 2.2s cubic-bezier(0.4,0,0.2,1) ${(n.angle / 360) * 1.2}s infinite`,
-                           '--tx': `${x}px`,
-                           '--ty': `${y}px`,
-                         } as React.CSSProperties}
-                       />
-                       {/* Planet node */}
-                       <div
-                         className="absolute top-1/2 left-1/2 w-10 h-10 -ml-5 -mt-5 rounded-full flex items-center justify-center text-[8px] font-black uppercase tracking-widest text-white/90 border"
-                         style={{
-                           transform: `translate(${x}px, ${y}px)`,
-                           backgroundColor: `${n.color}22`,
-                           borderColor: `${n.color}66`,
-                           boxShadow: `0 0 18px ${n.color}55`,
-                         }}
-                       >
-                         {n.label}
-                       </div>
-                     </div>
-                   );
-                 })}
+                 <div>
+                   <svg
+                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-visible"
+                     width="2"
+                     height="2"
+                     aria-hidden
+                   >
+                     <line x1={0} y1={0} x2={130} y2={0} stroke="#38bdf8" strokeWidth="1" strokeDasharray="3 4" opacity="0.45" />
+                   </svg>
+                   <span className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_10px_#38bdf8] animate-[rocket-MP_2.2s_cubic-bezier(0.4,0,0.2,1)_0s_infinite]" />
+                   <div className="absolute top-1/2 left-1/2 w-10 h-10 -ml-5 -mt-5 rounded-full flex items-center justify-center text-[8px] font-black uppercase tracking-widest text-white/90 border border-sky-400/40 bg-sky-400/15 shadow-[0_0_18px_rgba(56,189,248,0.35)] [transform:translate(130px,0px)]">
+                     MP
+                   </div>
+                 </div>
+                 <div>
+                   <svg
+                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-visible"
+                     width="2"
+                     height="2"
+                     aria-hidden
+                   >
+                     <line x1={0} y1={0} x2={-65} y2={112.6} stroke="#a78bfa" strokeWidth="1" strokeDasharray="3 4" opacity="0.45" />
+                   </svg>
+                   <span className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full bg-violet-400 shadow-[0_0_10px_#a78bfa] animate-[rocket-SSL_2.2s_cubic-bezier(0.4,0,0.2,1)_0.4s_infinite]" />
+                   <div className="absolute top-1/2 left-1/2 w-10 h-10 -ml-5 -mt-5 rounded-full flex items-center justify-center text-[8px] font-black uppercase tracking-widest text-white/90 border border-violet-400/40 bg-violet-400/15 shadow-[0_0_18px_rgba(167,139,250,0.35)] [transform:translate(-65px,112.6px)]">
+                     SSL
+                   </div>
+                 </div>
+                 <div>
+                   <svg
+                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-visible"
+                     width="2"
+                     height="2"
+                     aria-hidden
+                   >
+                     <line x1={0} y1={0} x2={-65} y2={-112.6} stroke="#34d399" strokeWidth="1" strokeDasharray="3 4" opacity="0.45" />
+                   </svg>
+                   <span className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399] animate-[rocket-Bank_2.2s_cubic-bezier(0.4,0,0.2,1)_0.8s_infinite]" />
+                   <div className="absolute top-1/2 left-1/2 w-10 h-10 -ml-5 -mt-5 rounded-full flex items-center justify-center text-[8px] font-black uppercase tracking-widest text-white/90 border border-emerald-400/40 bg-emerald-400/15 shadow-[0_0_18px_rgba(52,211,153,0.35)] [transform:translate(-65px,-112.6px)]">
+                     Bank
+                   </div>
+                 </div>
                </div>
 
                <div className="w-full space-y-4">
                  <h2 className="text-[10px] font-bold uppercase tracking-[0.4em] text-white">Asegurando Inversión</h2>
 
                  <div className="w-full h-[2px] bg-zinc-900 rounded-full overflow-hidden relative">
-                   <div
-                     className="absolute top-0 left-0 h-full bg-yellow-400 shadow-[0_0_10px_#FACC15] transition-all duration-[300ms] ease-out"
-                     style={{ width: `${processProgress}%` }}
-                   />
+                   <progress className="checkout-progress-yellow absolute inset-0 h-full w-full" value={processProgress} max={100} />
                  </div>
 
                  <p className="text-zinc-400 text-[10px] font-mono uppercase tracking-[0.25em]">
@@ -2194,12 +2302,7 @@ const CheckoutApp = () => {
                     {Array.from({ length: 14 }).map((_, i) => (
                       <span
                         key={i}
-                        className="absolute w-1 h-1 rounded-full bg-yellow-300/80"
-                        style={{
-                          left: `${8 + (i * 7) % 90}%`,
-                          top: `${8 + (i * 13) % 84}%`,
-                          animation: `twinkle ${1.2 + (i % 4) * 0.4}s ease-in-out ${i * 0.06}s infinite`,
-                        }}
+                        className="checkout-sat-star absolute w-1 h-1 rounded-full bg-yellow-300/80"
                       />
                     ))}
                   </div>
@@ -2259,13 +2362,7 @@ const CheckoutApp = () => {
                       </div>
 
                       <div className="mt-3 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-500"
-                          style={{
-                            width: `${satelliteProgress}%`,
-                            background: 'linear-gradient(90deg, #facc15 0%, #67e8f9 55%, #34d399 100%)',
-                          }}
-                        />
+                        <progress className="checkout-progress-satellite h-full w-full" value={satelliteProgress} max={100} />
                       </div>
                       <p className="mt-2 text-[10px] uppercase tracking-[0.18em] font-bold text-zinc-300">{satelliteStatusText}</p>
                     </div>
@@ -2453,9 +2550,12 @@ const CheckoutApp = () => {
 
                         {/* Line 1: Fabrick → MP */}
                         <div className="relative h-[2px] bg-zinc-900 rounded-full overflow-hidden">
-                          <div
-                            className={`absolute top-0 left-0 h-full transition-all duration-[150ms] ease-out ${line1Colour}`}
-                            style={{ width: `${Math.min(100, (secureConnectionProgress / 50) * 100)}%` }}
+                          <progress
+                            className={`checkout-progress-link absolute inset-0 h-full w-full ${
+                              line1Colour.includes('red') ? 'checkout-progress-link-danger' : 'checkout-progress-link-ok'
+                            }`}
+                            value={Math.min(100, (secureConnectionProgress / 50) * 100)}
+                            max={100}
                           />
                           {!mpFailed && secureConnectionProgress > 5 && secureConnectionProgress < 100 && (
                             <span
@@ -2491,9 +2591,12 @@ const CheckoutApp = () => {
 
                         {/* Line 2: MP → Banco */}
                         <div className="relative h-[2px] bg-zinc-900 rounded-full overflow-hidden">
-                          <div
-                            className={`absolute top-0 left-0 h-full transition-all duration-[150ms] ease-out ${line2Colour}`}
-                            style={{ width: `${Math.max(0, ((secureConnectionProgress - 50) / 50) * 100)}%` }}
+                          <progress
+                            className={`checkout-progress-link absolute inset-0 h-full w-full ${
+                              line2Colour.includes('red') ? 'checkout-progress-link-danger' : 'checkout-progress-link-ok'
+                            }`}
+                            value={Math.max(0, ((secureConnectionProgress - 50) / 50) * 100)}
+                            max={100}
                           />
                         </div>
 
@@ -2646,13 +2749,7 @@ const CheckoutApp = () => {
                         <span className="text-[#7dd3fc]">{bricksProgress}%</span>
                       </div>
                       <div className="mt-2 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
-                        <div
-                          className="h-full rounded-full transition-all duration-300"
-                          style={{
-                            width: `${bricksProgress}%`,
-                            background: 'linear-gradient(90deg, #38bdf8 0%, #009EE3 48%, #22c55e 100%)',
-                          }}
-                        />
+                        <progress className="checkout-progress-bricks h-full w-full" value={bricksProgress} max={100} />
                       </div>
                       <p className="mt-2 text-[10px] text-zinc-500">
                         {bricksReady

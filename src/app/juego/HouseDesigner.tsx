@@ -331,6 +331,32 @@ const DECOR_TYPES: DecorType[] = [
 
 const DECOR_BY_ID = Object.fromEntries(DECOR_TYPES.map((d) => [d.id, d])) as Record<string, DecorType>;
 
+const PANEL_COLOR_UI: Record<string, { labelText: string; labelBorder: string; dot: string; swatch: string }> = {
+  metalcon: { labelText: 'text-yellow-400', labelBorder: 'border-yellow-400/35', dot: 'bg-yellow-400 shadow-[0_0_8px_#facc15]', swatch: 'bg-yellow-400 shadow-[0_0_6px_#facc15]' },
+  sip: { labelText: 'text-emerald-400', labelBorder: 'border-emerald-400/35', dot: 'bg-emerald-500 shadow-[0_0_8px_#10b981]', swatch: 'bg-emerald-500 shadow-[0_0_6px_#10b981]' },
+  volcanita: { labelText: 'text-violet-400', labelBorder: 'border-violet-400/35', dot: 'bg-violet-400 shadow-[0_0_8px_#a78bfa]', swatch: 'bg-violet-400 shadow-[0_0_6px_#a78bfa]' },
+  window: { labelText: 'text-sky-400', labelBorder: 'border-sky-400/35', dot: 'bg-sky-400 shadow-[0_0_8px_#38bdf8]', swatch: 'bg-sky-400 shadow-[0_0_6px_#38bdf8]' },
+  door: { labelText: 'text-orange-400', labelBorder: 'border-orange-400/35', dot: 'bg-orange-500 shadow-[0_0_8px_#f97316]', swatch: 'bg-orange-500 shadow-[0_0_6px_#f97316]' },
+  concrete: { labelText: 'text-slate-300', labelBorder: 'border-slate-300/35', dot: 'bg-slate-400 shadow-[0_0_8px_#94a3b8]', swatch: 'bg-slate-400 shadow-[0_0_6px_#94a3b8]' },
+  column: { labelText: 'text-rose-400', labelBorder: 'border-rose-400/35', dot: 'bg-rose-600 shadow-[0_0_8px_#e11d48]', swatch: 'bg-rose-600 shadow-[0_0_6px_#e11d48]' },
+  osb: { labelText: 'text-amber-500', labelBorder: 'border-amber-500/35', dot: 'bg-amber-600 shadow-[0_0_8px_#d97706]', swatch: 'bg-amber-600 shadow-[0_0_6px_#d97706]' },
+  curtain: { labelText: 'text-cyan-300', labelBorder: 'border-cyan-300/35', dot: 'bg-cyan-400 shadow-[0_0_8px_#22d3ee]', swatch: 'bg-cyan-400 shadow-[0_0_6px_#22d3ee]' },
+  steel: { labelText: 'text-slate-500', labelBorder: 'border-slate-500/35', dot: 'bg-slate-500 shadow-[0_0_8px_#64748b]', swatch: 'bg-slate-500 shadow-[0_0_6px_#64748b]' },
+  block: { labelText: 'text-stone-400', labelBorder: 'border-stone-400/35', dot: 'bg-stone-400 shadow-[0_0_8px_#a8a29e]', swatch: 'bg-stone-400 shadow-[0_0_6px_#a8a29e]' },
+  glulam: { labelText: 'text-amber-700', labelBorder: 'border-amber-700/35', dot: 'bg-amber-700 shadow-[0_0_8px_#b45309]', swatch: 'bg-amber-700 shadow-[0_0_6px_#b45309]' },
+};
+
+const DECOR_COLOR_UI: Record<string, { chipBg: string; icon: string }> = {
+  sofa: { chipBg: 'bg-amber-500/15', icon: 'text-amber-400' },
+  bed: { chipBg: 'bg-blue-500/15', icon: 'text-blue-300' },
+  lamp: { chipBg: 'bg-yellow-400/15', icon: 'text-yellow-300' },
+  'mini-house': { chipBg: 'bg-emerald-500/15', icon: 'text-emerald-300' },
+  'door-prop': { chipBg: 'bg-orange-500/15', icon: 'text-orange-300' },
+  'window-prop': { chipBg: 'bg-cyan-400/15', icon: 'text-cyan-300' },
+  key: { chipBg: 'bg-rose-400/15', icon: 'text-rose-300' },
+  world: { chipBg: 'bg-sky-400/15', icon: 'text-sky-300' },
+};
+
 interface PersistedV3 { version: 3; panels: Panel[]; decor: DecorItem[] }
 interface PersistedV2 { version: 2; panels: Panel[] }
 
@@ -462,13 +488,13 @@ function Floor({ onCellClick, selectedTypeColor }: {
 function DimensionLabel({ width, height, depth, type }: {
   width: number; height: number; depth: number; type: PanelType;
 }) {
+  const ui = PANEL_COLOR_UI[type.id] ?? PANEL_COLOR_UI.metalcon;
   return (
     <Html position={[0, height / 2 + 0.35, 0]} center distanceFactor={9}>
       <div
-        className="pointer-events-none select-none rounded-lg px-2.5 py-1.5 text-white font-mono font-bold leading-snug whitespace-nowrap backdrop-blur-sm"
-        style={{ background: 'rgba(5,5,8,0.88)', border: `1px solid ${type.color}55`, boxShadow: '0 4px 16px rgba(0,0,0,0.6)' }}
+        className={`pointer-events-none select-none rounded-lg border px-2.5 py-1.5 text-white font-mono font-bold leading-snug whitespace-nowrap backdrop-blur-sm [background:rgba(5,5,8,0.88)] [box-shadow:0_4px_16px_rgba(0,0,0,0.6)] ${ui.labelBorder}`}
       >
-        <div className="text-[8px] uppercase tracking-wider mb-0.5" style={{ color: type.color }}>
+        <div className={`text-[8px] uppercase tracking-wider mb-0.5 ${ui.labelText}`}>
           {type.name}
         </div>
         <div className="text-[11px] text-slate-100">
@@ -1127,10 +1153,9 @@ export default function HouseDesigner() {
 
         {/* ── Badge top-left ── */}
         <div className="absolute top-3 left-3 z-10 flex items-center gap-2 px-3 py-1.5 rounded-full bg-zinc-950/90 border border-white/10 backdrop-blur-md text-[9px] font-black uppercase tracking-[0.22em]">
-          <span
-            className="w-2 h-2 rounded-full"
-            style={{ backgroundColor: activeType.color, boxShadow: `0 0 8px ${activeType.color}` }}
-          />
+          <span className={`w-2 h-2 rounded-full ${
+            (PANEL_COLOR_UI[activeType.id] ?? PANEL_COLOR_UI.metalcon).dot
+          }`} />
           <span className="text-white">{topView ? 'Plano' : '3D'}</span>
           <span className="text-zinc-500">·</span>
           <span className="text-zinc-300">{panels.length} paneles</span>
@@ -1355,13 +1380,9 @@ function PanelCatalog({ activeTypeId, onSelect, selectedPanelExists }: {
                 }`}
               >
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span
-                    className="w-3 h-3 rounded-sm flex-shrink-0"
-                    style={{
-                      backgroundColor: t.color,
-                      boxShadow: `0 0 6px ${t.color}`,
-                    }}
-                  />
+                  <span className={`w-3 h-3 rounded-sm flex-shrink-0 ${
+                    (PANEL_COLOR_UI[t.id] ?? PANEL_COLOR_UI.metalcon).swatch
+                  }`} />
                   <span className="text-white text-xs font-bold leading-tight">{t.name}</span>
                 </div>
                 <p className="text-[10px] text-zinc-400 leading-snug line-clamp-2 mb-1">{t.description}</p>
@@ -1402,8 +1423,10 @@ function DecorCatalog({ activeDecorId, onSelect, selectedDecorExists }: {
                 }`}
               >
                 <div className="flex items-center gap-2 mb-0.5">
-                  <span className="w-6 h-6 rounded-md flex items-center justify-center" style={{ backgroundColor: `${d.color}22` }}>
-                    <Icon className="w-3.5 h-3.5" style={{ color: d.color }} />
+                  <span className={`w-6 h-6 rounded-md flex items-center justify-center ${
+                    (DECOR_COLOR_UI[d.id] ?? DECOR_COLOR_UI.sofa).chipBg
+                  }`}>
+                    <Icon className={`w-3.5 h-3.5 ${(DECOR_COLOR_UI[d.id] ?? DECOR_COLOR_UI.sofa).icon}`} />
                   </span>
                   <span className="text-white text-xs font-bold leading-tight">{d.name}</span>
                 </div>

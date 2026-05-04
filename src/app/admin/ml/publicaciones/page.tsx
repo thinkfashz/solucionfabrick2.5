@@ -222,8 +222,8 @@ export default function MLPublicacionesPage() {
 											{isEditing ? (
 												<input
 													type="text"
-													value={editing.price}
-													onChange={(e) => setEditing((prev) => prev ? { ...prev, price: e.target.value } : null)}
+													value={editing.price}														aria-label="Precio"
+														placeholder="0"													onChange={(e) => setEditing((prev) => prev ? { ...prev, price: e.target.value } : null)}
 													className="w-24 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-right text-sm text-white outline-none focus:border-yellow-400/60"
 												/>
 											) : (
@@ -236,8 +236,8 @@ export default function MLPublicacionesPage() {
 											{isEditing ? (
 												<input
 													type="number"
-													min="0"
-													value={editing.stock}
+													min="0"														aria-label="Stock disponible"
+														placeholder="0"													value={editing.stock}
 													onChange={(e) => setEditing((prev) => prev ? { ...prev, stock: e.target.value } : null)}
 													className="w-20 rounded border border-zinc-700 bg-zinc-800 px-2 py-1 text-right text-sm text-white outline-none focus:border-yellow-400/60"
 												/>
@@ -266,6 +266,8 @@ export default function MLPublicacionesPage() {
 														</button>
 														<button
 															onClick={() => setEditing(null)}
+															aria-label="Cancelar edición"
+															title="Cancelar edición"
 															className="rounded-lg border border-zinc-700 p-1.5 text-zinc-400 hover:text-white"
 														>
 															<X className="h-3 w-3" />

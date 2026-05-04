@@ -41,12 +41,22 @@ import {
   normalizeOrderRecord,
   normalizeOrderStatus,
   ORDER_STATUS_COLORS,
-  orderStatusColor,
+  type OrderStatus,
   orderStatusLabel,
-  resolveCategoryName,
+  orderStatusColor,
   shortRecordId,
 } from '@/lib/commerce';
 import { useCategories } from '@/hooks/useCategories';
+
+/** Tailwind dot classes per order status – avoids inline `style` for dynamic colors. */
+const ORDER_STATUS_DOT_CLASS: Record<OrderStatus, string> = {
+  pendiente:       'bg-amber-400    shadow-[0_0_8px_#f59e0b]',
+  confirmado:      'bg-blue-500     shadow-[0_0_8px_#3b82f6]',
+  en_preparacion:  'bg-orange-500   shadow-[0_0_8px_#f97316]',
+  enviado:         'bg-violet-500   shadow-[0_0_8px_#8b5cf6]',
+  entregado:       'bg-green-500    shadow-[0_0_8px_#22c55e]',
+  cancelado:       'bg-red-500      shadow-[0_0_8px_#ef4444]',
+};
 
 interface DashboardProduct {
   id: string;
@@ -973,7 +983,6 @@ export default function AdminPage() {
           <ul className="mt-4 space-y-2">
             {activityFeed.map((event) => {
               const status = normalizeOrderStatus(event.status);
-              const color = ORDER_STATUS_COLORS[status];
               return (
                 <li
                   key={event.id}
@@ -981,8 +990,7 @@ export default function AdminPage() {
                 >
                   <div className="flex items-center gap-3 min-w-0">
                     <span
-                      className="h-2 w-2 flex-none rounded-full"
-                      style={{ background: color, boxShadow: `0 0 8px ${color}` }}
+                      className={`h-2 w-2 flex-none rounded-full ${ORDER_STATUS_DOT_CLASS[status]}`}
                     />
                     <div className="min-w-0">
                       <p className="truncate text-sm text-zinc-200">

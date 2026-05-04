@@ -56,6 +56,10 @@ const ALLOWED_PROVIDERS = new Set([
   'tiktok',       // TikTok for Business / TikTok Ads
   'cloudinary',   // Cloudinary media storage
   'vercel',       // Vercel REST API (deployments + logs)
+  'mercadolibre', // MercadoLibre listings, orders and questions
+  'mercadopago',  // MercadoPago checkout / webhooks / health
+  'stripe',       // Stripe payments / webhooks
+  'whatsapp',     // WhatsApp Business Cloud API
 ]);
 
 function getClient() {
@@ -539,6 +543,185 @@ export async function POST(request: NextRequest) {
         },
         { status: 502 },
       );
+    }
+  }
+
+  // Live-validate MercadoLibre credentials by pinging /users/me with the
+  // supplied access token. This is the same token consumed by src/lib/mlApi.ts.
+  if (provider === 'mercadolibre' && nextCredentials.access_token) {
+    const token = nextCredentials.access_token;
+    try {
+      const mlRes = await fetch('https://api.mercadolibre.com/users/me', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+        cache: 'no-store',
+      });
+      const mlJson = (await mlRes.json().catch(() => ({}))) as {
+        id?: number;
+        nickname?: string;
+        message?: string;
+        error?: string;
+      };
+      if (!mlRes.ok || !mlJson.id) {
+        return NextResponse.json(
+          {
+            error: `MercadoLibre rechazó el access_token: ${mlJson.message ?? mlJson.error ?? `HTTP ${mlRes.status}`}. Genera un token válido desde developers.mercadolibre.com.`,
+          },
+          { status: 400 },
+        );
+      }
+    } catch (err) {
+      return NextResponse.json(
+        {
+          error: `No se pudo contactar MercadoLibre para validar las credenciales: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        },
+        { status: 502 },
+      );
+    }
+  }
+
+  // Live-validate MercadoPago credentials using the same lightweight probe
+  // endpoint the checkout health indicator relies on.
+  if (provider === 'mercadopago') {
+    const accessToken = nextCredentials.access_token;
+    const publicKey = nextCredentials.public_key;
+    if (accessToken) {
+      try {
+        const mpRes = await fetch('https://api.mercadopago.com/v1/payment_methods?site_id=MLC', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: 'no-store',
+        });
+        const mpJson = (await mpRes.json().catch(() => ({}))) as {
+          message?: string;
+          error?: string;
+        };
+        if (mpRes.status === 401 || mpRes.status === 403) {
+          return NextResponse.json(
+            {
+              error: `MercadoPago rechazó el access_token: ${mpJson.message ?? mpJson.error ?? `HTTP ${mpRes.status}`}.`,
+            },
+            { status: 400 },
+          );
+        }
+        if (!mpRes.ok) {
+          return NextResponse.json(
+            {
+              error: `MercadoPago respondió con error al validar: ${mpJson.message ?? mpJson.error ?? `HTTP ${mpRes.status}`}.`,
+            },
+            { status: 400 },
+          );
+        }
+      } catch (err) {
+        return NextResponse.json(
+          {
+            error: `No se pudo contactar MercadoPago para validar las credenciales: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          },
+          { status: 502 },
+        );
+      }
+    }
+    if (publicKey && !/^APP_USR-|^TEST-|^APP_/i.test(publicKey) && !/^pk_/i.test(publicKey)) {
+      // Soft format guard only; MP public keys vary, but obvious garbage is common.
+      if (publicKey.length < 12) {
+        return NextResponse.json(
+          { error: 'public_key parece inválida: revisa que estés pegando la clave pública de MercadoPago y no otro valor.' },
+          { status: 400 },
+        );
+      }
+    }
+  }
+
+  // Live-validate Stripe by hitting /v1/account with the secret key.
+  if (provider === 'stripe') {
+    const secretKey = (nextCredentials.secret_key ?? '').trim();
+    const publicKey = (nextCredentials.public_key ?? '').trim();
+    if (secretKey && !/^sk_(test|live)_/i.test(secretKey)) {
+      return NextResponse.json(
+        { error: 'secret_key inválida: Stripe espera una clave que comience con sk_test_ o sk_live_.' },
+        { status: 400 },
+      );
+    }
+    if (publicKey && !/^pk_(test|live)_/i.test(publicKey)) {
+      return NextResponse.json(
+        { error: 'public_key inválida: Stripe espera una clave que comience con pk_test_ o pk_live_.' },
+        { status: 400 },
+      );
+    }
+    if (secretKey) {
+      try {
+        const stripeRes = await fetch('https://api.stripe.com/v1/account', {
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+            Accept: 'application/json',
+          },
+          cache: 'no-store',
+        });
+        const stripeJson = (await stripeRes.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
+        if (!stripeRes.ok) {
+          return NextResponse.json(
+            { error: `Stripe rechazó la secret_key: ${stripeJson.error?.message ?? `HTTP ${stripeRes.status}`}.` },
+            { status: 400 },
+          );
+        }
+      } catch (err) {
+        return NextResponse.json(
+          {
+            error: `No se pudo contactar Stripe para validar las credenciales: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          },
+          { status: 502 },
+        );
+      }
+    }
+  }
+
+  // Live-validate WhatsApp Business Cloud API by reading the configured phone number.
+  if (provider === 'whatsapp') {
+    const accessToken = (nextCredentials.access_token ?? '').trim();
+    const phoneNumberId = (nextCredentials.phone_number_id ?? '').trim();
+    if (phoneNumberId && !/^\d+$/.test(phoneNumberId)) {
+      return NextResponse.json(
+        { error: 'phone_number_id inválido: debe ser numérico.' },
+        { status: 400 },
+      );
+    }
+    if (accessToken && phoneNumberId) {
+      try {
+        const waRes = await fetch(
+          `https://graph.facebook.com/v20.0/${encodeURIComponent(phoneNumberId)}?fields=display_phone_number,verified_name,quality_rating`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            cache: 'no-store',
+          },
+        );
+        const waJson = (await waRes.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
+        if (!waRes.ok) {
+          return NextResponse.json(
+            { error: `WhatsApp Business rechazó las credenciales: ${waJson.error?.message ?? `HTTP ${waRes.status}`}.` },
+            { status: 400 },
+          );
+        }
+      } catch (err) {
+        return NextResponse.json(
+          {
+            error: `No se pudo contactar WhatsApp Business para validar las credenciales: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          },
+          { status: 502 },
+        );
+      }
     }
   }
 

@@ -1,5 +1,6 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type { CheckoutPayload, CheckoutSummary, LineItem } from '@/lib/checkout';
+import { getMercadoPagoCredentials } from '@/lib/mercadoPagoCredentials';
 
 const DEFAULT_SITE_URL = 'https://fabrick.cl';
 const API_BASE = 'https://api.mercadopago.com';
@@ -210,8 +211,9 @@ export async function fetchMercadoPagoAccount(
 export async function probeMercadoPago(
   options: { timeoutMs?: number; fetchImpl?: typeof fetch } = {},
 ): Promise<MercadoPagoStatusResult> {
-  const publicKey = getMercadoPagoPublicKey();
-  const accessToken = getMercadoPagoAccessToken();
+  const resolved = await getMercadoPagoCredentials();
+  const publicKey = resolved.publicKey ?? getMercadoPagoPublicKey();
+  const accessToken = resolved.accessToken ?? getMercadoPagoAccessToken();
   const hasAccessToken = accessToken.length > 0;
   const mode = detectMpMode(accessToken);
   const tokenPrefix = getMpTokenPrefix(accessToken);
@@ -361,7 +363,8 @@ function getPaymentItems(items: LineItem[], summary: CheckoutSummary) {
 }
 
 async function mercadoPagoFetch<T>(path: string, init: RequestInit) {
-  const accessToken = getMercadoPagoAccessToken();
+  const resolved = await getMercadoPagoCredentials();
+  const accessToken = resolved.accessToken ?? getMercadoPagoAccessToken();
   if (!accessToken) {
     throw new Error('Falta configurar MERCADO_PAGO_ACCESS_TOKEN.');
   }

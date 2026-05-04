@@ -712,12 +712,11 @@ function BootSecurityScreen() {
 
         {/* Barra de progreso estilo Apple */}
         <div className="relative w-[min(420px,82vw)]">
-          <div className="h-1 w-full overflow-hidden rounded-full bg-white/10">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-yellow-300 via-amber-200 to-white shadow-[0_0_14px_rgba(250,204,21,0.65)] transition-[width] duration-150 ease-out"
-              style={{ width: `${progress}%` }}
-            />
-          </div>
+          <progress
+            className="sf-boot-progress h-1 w-full overflow-hidden rounded-full"
+            value={Math.max(0, Math.min(100, progress))}
+            max={100}
+          />
           <div className="mt-2 flex items-center justify-between text-[9px] font-mono uppercase tracking-[0.32em] text-white/45 tabular-nums">
             <span>{Math.round(progress).toString().padStart(3, '0')}%</span>
             <span>step {stepIndex + 1}/{STEPS.length}</span>
@@ -748,6 +747,27 @@ function BootSecurityScreen() {
       </p>
 
       <style jsx>{`
+        .sf-boot-progress {
+          appearance: none;
+          border: none;
+          background: rgba(255, 255, 255, 0.1);
+        }
+        .sf-boot-progress::-webkit-progress-bar {
+          background: rgba(255, 255, 255, 0.1);
+          border-radius: 9999px;
+        }
+        .sf-boot-progress::-webkit-progress-value {
+          background: linear-gradient(to right, #fde047, #fde68a, #ffffff);
+          border-radius: 9999px;
+          box-shadow: 0 0 14px rgba(250, 204, 21, 0.65);
+          transition: width 150ms ease-out;
+        }
+        .sf-boot-progress::-moz-progress-bar {
+          background: linear-gradient(to right, #fde047, #fde68a, #ffffff);
+          border-radius: 9999px;
+          box-shadow: 0 0 14px rgba(250, 204, 21, 0.65);
+          transition: width 150ms ease-out;
+        }
         @keyframes sf-boot-sweep {
           0%   { transform: translateX(0%); }
           60%  { transform: translateX(420%); }

@@ -220,6 +220,22 @@ body {
   background-size: 64px 64px;
 }
 
+/* ── Fade + slide up (auth page entrance & message animations) ── */
+@keyframes fadeSlideUp {
+  from { opacity: 0; transform: translateY(18px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+.anim-enter-logo  { animation: fadeSlideUp 0.70s cubic-bezier(0.23,1,0.32,1) both; }
+.anim-enter-card  { animation: fadeSlideUp 0.75s cubic-bezier(0.23,1,0.32,1) 0.08s both; }
+.anim-enter-footer{ animation: fadeSlideUp 0.80s cubic-bezier(0.23,1,0.32,1) 0.20s both; }
+
+/* ── AdminPage stat card glow overlay (uses CSS custom prop --glow-clr) ── */
+/* ── AdminPage stat card glow overlays (one class per accent, no inline style needed) ── */
+.stat-card-glow-yellow  { background: radial-gradient(circle at 80% 0%, rgba(250,204,21,0.15), transparent 60%); }
+.stat-card-glow-cyan    { background: radial-gradient(circle at 80% 0%, rgba(56,189,248,0.15), transparent 60%);  }
+.stat-card-glow-emerald { background: radial-gradient(circle at 80% 0%, rgba(52,211,153,0.15), transparent 60%); }
+.stat-card-glow-rose    { background: radial-gradient(circle at 80% 0%, rgba(244,114,182,0.15),transparent 60%); }
+
 /* ── Glassmorphism ── */
 .glass {
   -webkit-backdrop-filter: blur(24px);

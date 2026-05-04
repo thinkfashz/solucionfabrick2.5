@@ -121,17 +121,17 @@ function Meta({
   truncate?: boolean;
 }) {
   return (
-    <div className="min-w-0">
+    <>
       <dt className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">{k}</dt>
       <dd
-        className={`text-zinc-200 ${mono ? 'font-mono text-[10px]' : 'text-[11px]'} ${
+        className={`min-w-0 text-zinc-200 ${mono ? 'font-mono text-[10px]' : 'text-[11px]'} ${
           truncate ? 'truncate' : 'break-all'
         }`}
         title={truncate ? v : undefined}
       >
         {v}
       </dd>
-    </div>
+    </>
   );
 }
 
@@ -483,7 +483,7 @@ export default function VercelLogsPage() {
                           type="button"
                           onClick={() => toggleExpanded(log.id)}
                           className="flex w-full items-start gap-2 p-3 text-left"
-                          aria-expanded={isOpen}
+                          aria-expanded={isOpen ? 'true' : 'false'}
                         >
                           <span className="mt-0.5 text-zinc-500">
                             {isOpen ? (

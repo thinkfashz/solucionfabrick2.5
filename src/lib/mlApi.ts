@@ -1,4 +1,5 @@
 import 'server-only';
+import { getMercadoLibreCredentials } from './mercadoLibreCredentials';
 
 /**
  * MercadoLibre REST API client (server-only)
@@ -111,15 +112,15 @@ export interface MLUser {
 
 // ─── Internal helpers ────────────────────────────────────────────────────────
 
-function getToken(): string {
-	const token = process.env.MERCADOLIBRE_ACCESS_TOKEN?.trim();
-	if (!token) throw new Error('MERCADOLIBRE_ACCESS_TOKEN no está configurado.');
-	return token;
+async function getToken(): Promise<string> {
+	const creds = await getMercadoLibreCredentials();
+	if (!creds.accessToken) throw new Error('MERCADOLIBRE_ACCESS_TOKEN no está configurado.');
+	return creds.accessToken;
 }
 
-function buildHeaders(): Record<string, string> {
+async function buildHeaders(): Promise<Record<string, string>> {
 	return {
-		Authorization: `Bearer ${getToken()}`,
+		Authorization: `Bearer ${await getToken()}`,
 		Accept: 'application/json',
 		'Content-Type': 'application/json',
 		'User-Agent': 'FabrickAdmin/1.0',
@@ -136,7 +137,7 @@ async function mlFetch<T>(
 		const res = await fetch(`${ML_API_BASE}${path}`, {
 			...options,
 			headers: {
-				...buildHeaders(),
+				...(await buildHeaders()),
 				...(options.headers as Record<string, string> | undefined ?? {}),
 			},
 			signal: ctrl.signal,

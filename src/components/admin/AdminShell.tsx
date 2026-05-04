@@ -6,8 +6,8 @@ import { usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUpRight, AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
-  Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Stethoscope, Terminal,
-  Truck, Users, Wallet, X, Zap, Plus, MessageCircle,
+  Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Stethoscope, Store, Terminal,
+  TrendingDown, Truck, Users, Wallet, X, Zap, Plus, MessageCircle,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
@@ -55,6 +55,12 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/publicidad', label: 'Publicidad', description: 'Meta Ads', icon: Megaphone },
       { href: '/admin/publicidad/coach', label: 'Coach de campañas', description: 'Agente IA: analizar, sugerir, optimizar', icon: Sparkles, highlight: true },
       { href: '/admin/publicar', label: 'Publicar', description: 'Posts para redes sociales', icon: Send },
+      { href: '/admin/ml', label: 'MercadoLibre', description: 'Publicaciones, pedidos, preguntas y precios', icon: Store, highlight: true },
+      { href: '/admin/ml/buscar', label: 'Buscador ML', description: 'Buscar en catálogo de ML Chile', icon: Search },
+      { href: '/admin/ml/publicaciones', label: 'Mis publicaciones ML', description: 'Gestión de listings propios', icon: Store },
+      { href: '/admin/ml/pedidos', label: 'Pedidos ML', description: 'Sincronizar ventas de ML', icon: ShoppingCart },
+      { href: '/admin/ml/preguntas', label: 'Preguntas ML', description: 'Responder preguntas de compradores', icon: MessageCircle },
+      { href: '/admin/ml/precios', label: 'Monitor de precios ML', description: 'Comparar precios vs. competencia', icon: TrendingDown },
       { href: '/admin/social/inbox', label: 'Inbox social', description: 'Mensajes de Instagram, FB, WhatsApp y ML', icon: Inbox, highlight: true },
       { href: '/admin/integraciones/marketplace', label: 'Marketplace de extensiones', description: 'Apps, snippets, webhooks y OAuth', icon: Boxes, highlight: true },
       { href: '/admin/configuracion', label: 'Configuración', description: 'Parámetros e integraciones', icon: Settings },
@@ -94,6 +100,12 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/publicidad/nuevo': 'Nueva campaña',
   '/admin/publicidad/coach': 'Coach de campañas',
   '/admin/publicar': 'Publicar',
+  '/admin/ml': 'MercadoLibre',
+  '/admin/ml/buscar': 'Buscador ML',
+  '/admin/ml/publicaciones': 'Mis publicaciones ML',
+  '/admin/ml/pedidos': 'Pedidos ML',
+  '/admin/ml/preguntas': 'Preguntas ML',
+  '/admin/ml/precios': 'Monitor de precios ML',
   '/admin/social/inbox': 'Inbox social',
   '/admin/integraciones/marketplace': 'Marketplace de extensiones',
   '/admin/configuracion': 'Configuración',

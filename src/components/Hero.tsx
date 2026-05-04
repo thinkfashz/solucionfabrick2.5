@@ -87,8 +87,7 @@ export default function Hero({
           <img
             src={heroImage}
             alt="ConstrucciÃ³n Soluciones Fabrick Linares"
-            className="h-full w-full object-cover object-center"
-            style={{ opacity: 0.18 }}
+            className="h-full w-full object-cover object-center opacity-[0.18]"
             fetchPriority="high"
             decoding="async"
           />
@@ -101,18 +100,11 @@ export default function Hero({
         {/* Blueprint micro-grid */}
         <div
           className="absolute inset-0 opacity-[0.032]"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(250,204,21,0.9) 1px, transparent 1px),' +
-              'linear-gradient(90deg,rgba(250,204,21,0.9) 1px,transparent 1px)',
-            backgroundSize: '64px 64px',
-          }}
         />
 
         {/* Gold atmospheric haze */}
         <div
-          className="absolute top-1/3 left-1/4 h-[700px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full"
-          style={{ background: 'radial-gradient(circle, rgba(250,204,21,0.06) 0%, transparent 65%)' }}
+          className="absolute top-1/3 left-1/4 h-[700px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full [background:radial-gradient(circle,rgba(250,204,21,0.06)_0%,transparent_65%)]"
         />
       </div>
 

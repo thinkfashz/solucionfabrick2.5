@@ -6,7 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
-import { ArrowLeft, ChevronRight, Hammer, MapPin, Package, Phone, Ruler, ShieldCheck, Check, ShoppingCart } from 'lucide-react';
+import { ArrowLeft, ChevronRight, Hammer, MapPin, Package, Phone, Ruler, ShieldCheck, Check, ShoppingCart, Sparkles, Satellite } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { useRealtimeProducts } from '@/hooks/useRealtimeProducts';
 import { useCartContext } from '@/context/CartContext';
@@ -58,6 +58,36 @@ export default function ProductoTiendaClient() {
 
   const gallery = product ? buildGallery(product) : [];
   const mainImg = gallery[activeImg] || gallery[0];
+
+  const relatedProducts = useMemo(() => {
+    if (!product) return [];
+    return products
+      .filter((p) => p.id !== product.id && (p.category_id === product.category_id || p.featured))
+      .slice(0, 4);
+  }, [products, product]);
+
+  const purchasePreview = useMemo(() => {
+    if (!product) return { title: '', summary: '', estimated: '' };
+    if (purchaseMode === 'product') {
+      return {
+        title: 'Compra directa inmediata',
+        summary: 'Pagas ahora y coordinamos despacho prioritario según tu zona.',
+        estimated: formatCLP(product.price),
+      };
+    }
+    if (purchaseMode === 'product_labor') {
+      return {
+        title: 'Producto + instalación certificada',
+        summary: 'Incluye visita técnica, mano de obra y supervisión de terminaciones.',
+        estimated: `Desde ${formatCLP(Math.round(product.price * 1.65))}`,
+      };
+    }
+    return {
+      title: 'Proyecto integral por m²',
+      summary: 'Modelo llave en mano con ingeniería, ejecución y control de obra.',
+      estimated: `Desde ${formatCLP(Math.round(product.price * 2.3))} / referencia`,
+    };
+  }, [product, purchaseMode]);
 
   const outOfStock = product?.stock !== undefined && product.stock <= 0;
 
@@ -132,12 +162,17 @@ export default function ProductoTiendaClient() {
             transition={{ duration: 0.5 }}
             className="space-y-4"
           >
-            <div className="relative aspect-square overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03]">
+            <motion.div
+              whileHover={{ rotateX: -3, rotateY: 4, scale: 1.01 }}
+              transition={{ type: 'spring', stiffness: 170, damping: 20 }}
+              style={{ transformPerspective: 1200 }}
+              className="relative aspect-square overflow-hidden rounded-3xl border border-white/10 bg-white/[0.03] shadow-[0_30px_80px_rgba(0,0,0,0.55)]"
+            >
               {mainImg ? (
                 <img
                   src={mainImg}
                   alt={`${product.name} — imagen principal del material instalado por Soluciones Fabrick`}
-                  className="h-full w-full object-cover"
+                  className="h-full w-full object-cover transition-transform duration-700 hover:scale-[1.03]"
                   loading="lazy"
                 />
               ) : (
@@ -145,12 +180,13 @@ export default function ProductoTiendaClient() {
                   {product.name[0]}
                 </div>
               )}
+              <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,0.25),transparent_45%)]" />
               {product.featured ? (
                 <span className="absolute top-4 left-4 rounded-full bg-yellow-400/95 px-3 py-1 text-[9px] font-black uppercase tracking-[0.25em] text-black">
                   Destacado
                 </span>
               ) : null}
-            </div>
+            </motion.div>
 
             {gallery.length > 1 ? (
               <div className="grid grid-cols-4 gap-3">
@@ -345,6 +381,21 @@ export default function ProductoTiendaClient() {
               </a>
             </div>
 
+            <div className="rounded-2xl border border-cyan-300/25 bg-cyan-400/[0.06] p-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-cyan-200">Preview de compra</p>
+                  <p className="mt-1 text-sm font-bold text-white">{purchasePreview.title}</p>
+                </div>
+                <Sparkles size={15} className="text-cyan-200" />
+              </div>
+              <p className="mt-2 text-xs leading-relaxed text-zinc-300">{purchasePreview.summary}</p>
+              <div className="mt-3 flex items-center justify-between rounded-xl border border-cyan-300/20 bg-black/35 px-3 py-2">
+                <span className="text-[10px] uppercase tracking-[0.2em] text-zinc-400">Estimación</span>
+                <span className="text-xs font-black text-cyan-200">{purchasePreview.estimated}</span>
+              </div>
+            </div>
+
             {/* Trust row */}
             <div className="grid grid-cols-3 gap-2 pt-2 text-center">
               <div className="rounded-xl border border-white/5 bg-white/[0.02] p-3">
@@ -367,7 +418,7 @@ export default function ProductoTiendaClient() {
         <section className="mt-20 rounded-[2rem] border border-yellow-400/15 bg-[linear-gradient(135deg,rgba(250,204,21,0.07),rgba(250,204,21,0.015))] p-8 md:p-12">
           <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-yellow-400">¿Por qué Fabrick?</p>
           <h2 className="mt-3 text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
-            Tú eliges cómo comprarlo
+            Experiencia de compra pensada para obra real
           </h2>
           <p className="mt-4 max-w-3xl text-sm leading-relaxed text-zinc-300 md:text-base">
             Ofrecemos tres modalidades para que adquieras este material como te acomode: llévate solo el producto, súmale
@@ -397,6 +448,20 @@ export default function ProductoTiendaClient() {
               </p>
             </div>
           </div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <div className="rounded-xl border border-white/10 bg-black/35 px-4 py-3 text-center">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Despacho</p>
+              <p className="mt-1 text-xs font-bold text-white">Logística directa</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/35 px-4 py-3 text-center">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Calidad</p>
+              <p className="mt-1 text-xs font-bold text-white">Selección premium</p>
+            </div>
+            <div className="rounded-xl border border-white/10 bg-black/35 px-4 py-3 text-center">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Soporte</p>
+              <p className="mt-1 text-xs font-bold text-white">Acompañamiento técnico</p>
+            </div>
+          </div>
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
             <Link
               href="/contacto"
@@ -412,6 +477,51 @@ export default function ProductoTiendaClient() {
             </Link>
           </div>
         </section>
+
+        {relatedProducts.length > 0 ? (
+          <section className="mt-10">
+            <div className="mb-4 flex items-center justify-between gap-4">
+              <div>
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-cyan-200">Combinan con este material</p>
+                <h3 className="mt-2 text-2xl font-black uppercase tracking-tight text-white">Productos relacionados</h3>
+              </div>
+              <Satellite size={18} className="text-cyan-200" />
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              {relatedProducts.map((rel, index) => (
+                <motion.div
+                  key={rel.id}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  viewport={{ once: true }}
+                  transition={{ duration: 0.38, delay: index * 0.06 }}
+                >
+                  <Link
+                    href={`/tienda/${encodeURIComponent(rel.id)}`}
+                    className="group block overflow-hidden rounded-2xl border border-white/10 bg-black/35 transition hover:border-cyan-300/35"
+                  >
+                    <div className="aspect-[4/3] overflow-hidden">
+                      {rel.image_url ? (
+                        <img
+                          src={rel.image_url}
+                          alt={rel.name}
+                          className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.05]"
+                          loading="lazy"
+                        />
+                      ) : (
+                        <div className="flex h-full items-center justify-center text-3xl text-white/10">{rel.name[0]}</div>
+                      )}
+                    </div>
+                    <div className="p-4">
+                      <p className="truncate text-sm font-bold text-white">{rel.name}</p>
+                      <p className="mt-2 text-xs font-black text-cyan-200">{formatCLP(rel.price)}</p>
+                    </div>
+                  </Link>
+                </motion.div>
+              ))}
+            </div>
+          </section>
+        ) : null}
 
         <div className="mt-10 flex items-center gap-4">
           <button

@@ -28,6 +28,14 @@ interface Props {
 
 export default function FabrickLogo({ onClick, animate = true, className = '' }: Props) {
   const isInteractive = typeof onClick === 'function';
+  const rootClass = [
+    'group inline-flex select-none items-center gap-2.5 sm:gap-3',
+    'transition-transform duration-300',
+    isInteractive ? 'cursor-pointer hover:-translate-y-[1px]' : '',
+    className,
+  ]
+    .filter(Boolean)
+    .join(' ');
 
   const handleKey = (event: KeyboardEvent<HTMLDivElement>) => {
     if (!onClick) return;
@@ -37,22 +45,8 @@ export default function FabrickLogo({ onClick, animate = true, className = '' }:
     }
   };
 
-  return (
-    <div
-      onClick={onClick}
-      onKeyDown={isInteractive ? handleKey : undefined}
-      role={isInteractive ? 'button' : 'img'}
-      tabIndex={isInteractive ? 0 : undefined}
-      aria-label="Soluciones Fabrick — inicio"
-      className={[
-        'group inline-flex select-none items-center gap-2.5 sm:gap-3',
-        'transition-transform duration-300',
-        isInteractive ? 'cursor-pointer hover:-translate-y-[1px]' : '',
-        className,
-      ]
-        .filter(Boolean)
-        .join(' ')}
-    >
+  const content = (
+    <>
       {/* SF badge */}
       <span
         className={[
@@ -82,6 +76,31 @@ export default function FabrickLogo({ onClick, animate = true, className = '' }:
           Fabrick
         </span>
       </span>
+    </>
+  );
+
+  if (isInteractive) {
+    return (
+      <div
+        onClick={onClick}
+        onKeyDown={handleKey}
+        role="button"
+        tabIndex={0}
+        aria-label="Soluciones Fabrick — inicio"
+        className={rootClass}
+      >
+        {content}
+      </div>
+    );
+  }
+
+  return (
+    <div
+      role="img"
+      aria-label="Soluciones Fabrick — inicio"
+      className={rootClass}
+    >
+      {content}
     </div>
   );
 }

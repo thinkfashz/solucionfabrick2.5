@@ -8,37 +8,26 @@ import {
   Menu,
   Home,
   Wrench,
+  Gamepad2,
+  FileText,
+  ShoppingCart,
+  ShoppingBag,
   TrendingUp,
   Lightbulb,
-  ShoppingBag,
-  Building2,
-  Phone,
-  Gamepad2,
-  ShieldCheck,
-  BookOpen,
-  Layers,
   Calculator,
-  ShoppingCart,
-  FileText,
+  Building2,
+  Layers,
+  BookOpen,
+  Phone,
+  ShieldCheck,
 } from 'lucide-react';
-import FabrickLogo from './FabrickLogo';
-import ThemeToggle from './ThemeToggle';
-import { navigateWithTransition } from '@/lib/routeTransition';
+import FabrickLogo from '@/components/FabrickLogo';
+import ThemeToggle from '@/components/ThemeToggle';
 import { useCartContextSafe } from '@/context/CartContext';
 import { useQuoteCartSafe } from '@/context/QuoteCartContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
-
-type NavLink = { label: string; href: string };
-
-const FALLBACK_NAV_LINKS: NavLink[] = [
-  { label: 'Servicios', href: '/servicios' },
-  { label: 'Evolución', href: '/evolucion' },
-  { label: 'Soluciones', href: '/soluciones' },
-  { label: 'Tienda', href: '/tienda' },
-  { label: 'Presupuesto', href: '/presupuesto' },
-  { label: 'Proyectos', href: '/proyectos' },
-  { label: 'Contacto', href: '/contacto' },
-];
+import { navigateWithTransition } from '@/lib/routeTransition';
+import type { NavLinkItem } from '@/lib/siteStructureTypes';
 
 const PRIMARY_MENU_ITEMS = [
   { label: 'Inicio',           href: '/',             Icon: Home },
@@ -95,7 +84,7 @@ export default function Navbar() {
   const quoteCount = quoteCart?.totalItems ?? 0;
 
   const navMenu = useSiteContent('nav-menu');
-  const navLinks: NavLink[] = navMenu.links?.length ? navMenu.links : FALLBACK_NAV_LINKS;
+  const navLinks: NavLinkItem[] = navMenu.links ?? [];
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 10);
@@ -186,15 +175,15 @@ export default function Navbar() {
         {/* Mobile cluster */}
         <div className="flex items-center gap-2 lg:hidden">
           <ThemeToggle />
-          <button
-            type="button"
-            onClick={() => setOpen((v) => !v)}
-            aria-label={open ? 'Cerrar menú' : 'Abrir menú'}
-            aria-expanded={open}
-            className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white transition-all hover:border-[var(--accent)]/50 hover:text-[var(--accent)] active:scale-95"
-          >
-            <AnimatePresence mode="wait" initial={false}>
-              {open ? (
+          {open ? (
+            <button
+              type="button"
+              onClick={() => setOpen(false)}
+              aria-label="Cerrar menú"
+              aria-expanded="true"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white transition-all hover:border-[var(--accent)]/50 hover:text-[var(--accent)] active:scale-95"
+            >
+              <AnimatePresence mode="wait" initial={false}>
                 <motion.span
                   key="x"
                   initial={{ rotate: -90, opacity: 0 }}
@@ -204,7 +193,17 @@ export default function Navbar() {
                 >
                   <X size={22} />
                 </motion.span>
-              ) : (
+              </AnimatePresence>
+            </button>
+          ) : (
+            <button
+              type="button"
+              onClick={() => setOpen(true)}
+              aria-label="Abrir menú"
+              aria-expanded="false"
+              className="flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-white/5 text-white transition-all hover:border-[var(--accent)]/50 hover:text-[var(--accent)] active:scale-95"
+            >
+              <AnimatePresence mode="wait" initial={false}>
                 <motion.span
                   key="menu"
                   initial={{ rotate: 90, opacity: 0 }}
@@ -214,9 +213,9 @@ export default function Navbar() {
                 >
                   <Menu size={22} />
                 </motion.span>
-              )}
-            </AnimatePresence>
-          </button>
+              </AnimatePresence>
+            </button>
+          )}
         </div>
       </nav>
 

@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 declare global {
   interface Window {
@@ -28,6 +28,20 @@ declare global {
           name?: string;
         }>;
       }>;
+      bricks: () => {
+        create: (
+          brickType: 'wallet',
+          containerId: string,
+          settings: {
+            initialization: { preferenceId: string };
+            customization?: Record<string, unknown>;
+            callbacks?: {
+              onReady?: () => void;
+              onError?: (error: unknown) => void;
+            };
+          },
+        ) => Promise<{ unmount?: () => void } | void>;
+      };
     };
     gsap: {
       fromTo: (el: HTMLElement | null, from: object, to: object) => void;
@@ -38,6 +52,7 @@ declare global {
 import { useSearchParams } from 'next/navigation';
 import { CART_SESSION_KEY, useCartContextSafe } from '@/context/CartContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
+import Checkout4DExperience from '@/components/checkout/Checkout4DExperience';
 import { 
   ArrowLeft, ShieldCheck, Lock, Truck, 
   CheckCircle2, ChevronRight, Fingerprint,
@@ -137,6 +152,41 @@ const STAR_FIELD = Array.from({ length: 24 }).map((_, i) => ({
   delay: (i % 7) * 0.35,
 }));
 
+const RELATED_SUGGESTIONS = [
+  {
+    id: 'rel-seguridad',
+    title: 'Kit Seguridad Smart',
+    category: 'Seguridad',
+    price: 129900,
+    image:
+      'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    id: 'rel-iluminacion',
+    title: 'Pack Iluminación Arquitectónica',
+    category: 'Iluminación',
+    price: 98900,
+    image:
+      'https://images.unsplash.com/photo-1565814329452-e1efa11c5e8a?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    id: 'rel-revestimiento',
+    title: 'Panel Decorativo 3D',
+    category: 'Revestimiento',
+    price: 74900,
+    image:
+      'https://images.unsplash.com/photo-1615873968403-89e068629265?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    id: 'rel-griferia',
+    title: 'Grifería Premium Onyx',
+    category: 'Grifería',
+    price: 145000,
+    image:
+      'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop',
+  },
+];
+
 interface StoredCartItem {
   product: {
     id: string;
@@ -159,8 +209,14 @@ const CheckoutApp = () => {
   const [gsapLoaded, setGsapLoaded] = useState(false);
   const stepContentRef = useRef<HTMLDivElement>(null);
   
-  // Payment method selection: 'mercadopago' | 'transfer'
-  const [paymentMethod, setPaymentMethod] = useState<'mercadopago' | 'transfer'>('mercadopago');
+  // Payment method selection: 'mercadopago' | 'bricks' | 'transfer'
+  const [paymentMethod, setPaymentMethod] = useState<'mercadopago' | 'bricks' | 'transfer'>('mercadopago');
+  const [bricksBooting, setBricksBooting] = useState(false);
+  const [bricksReady, setBricksReady] = useState(false);
+  const [bricksError, setBricksError] = useState('');
+  const [bricksProgress, setBricksProgress] = useState(0);
+  const [bricksPreferenceId, setBricksPreferenceId] = useState('');
+  const mpBrickControllerRef = useRef<{ unmount?: () => void } | null>(null);
   
   // Transfer order state
   const [transferOrderId, setTransferOrderId] = useState('');
@@ -307,6 +363,19 @@ const CheckoutApp = () => {
     return s + i.product.price * (1 - discount / 100) * i.quantity;
   }, 0);
   const cartItemCount = cartItems.reduce((s, i) => s + i.quantity, 0);
+  const relatedProducts = useMemo(() => {
+    const categories = new Set(
+      cartItems
+        .map((item) => (item.product.category_id || '').toLowerCase())
+        .filter(Boolean),
+    );
+
+    const prioritized = RELATED_SUGGESTIONS.filter((item) =>
+      Array.from(categories).some((c) => item.category.toLowerCase().includes(c)),
+    );
+    const fallback = RELATED_SUGGESTIONS.filter((item) => !prioritized.includes(item));
+    return [...prioritized, ...fallback].slice(0, 3);
+  }, [cartItems]);
 
   const formatCardDisplay = (n: string) => {
     const clean = n.replace(/\D/g, '').padEnd(16, '•');
@@ -1078,6 +1147,139 @@ const CheckoutApp = () => {
     }
   };
 
+  const ensureMercadoPagoSdk = async () => {
+    if (typeof window === 'undefined') return;
+    if (window.MercadoPago) return;
+
+    const existing = document.getElementById('mercado-pago-sdk-v2') as HTMLScriptElement | null;
+    if (existing) {
+      await new Promise<void>((resolve, reject) => {
+        if (window.MercadoPago) {
+          resolve();
+          return;
+        }
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener('error', () => reject(new Error('No se pudo cargar Mercado Pago SDK.')), { once: true });
+      });
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.id = 'mercado-pago-sdk-v2';
+      script.src = 'https://sdk.mercadopago.com/js/v2';
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('No se pudo cargar Mercado Pago SDK.'));
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleInitBricks = async () => {
+    if (bricksBooting) return;
+    setCheckoutError('');
+    setBricksError('');
+
+    if (!shippingName || !shippingEmail || !shippingAddress || !shippingRegion) {
+      setBricksError('Completa los datos de despacho y contacto antes de iniciar Mercado Pago Bricks.');
+      return;
+    }
+
+    if (!mpStatus.publicKey) {
+      setBricksError('Mercado Pago no está configurado en este ambiente. Usa transferencia o revisa credenciales.');
+      return;
+    }
+
+    setBricksBooting(true);
+    setBricksReady(false);
+    setBricksProgress(8);
+
+    const progressTicker = window.setInterval(() => {
+      setBricksProgress((prev) => (prev >= 88 ? prev : prev + 6));
+    }, 180);
+
+    const payload = {
+      items: cartItems.map((i) => ({
+        productoId: i.product.id,
+        cantidad: i.quantity,
+        precioUnitario: i.product.price * (1 - (i.product.discount_percentage || 0) / 100),
+        nombre: i.product.name,
+      })),
+      region: shippingRegion,
+      shippingAddress,
+      shippingHouseNumber,
+      cliente: {
+        nombre: shippingName,
+        email: shippingEmail,
+        telefono: shippingPhone,
+      },
+    };
+
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json().catch(() => ({} as Record<string, unknown>));
+      const preferenceId = (body as { payment?: { preferenceId?: string } })?.payment?.preferenceId;
+      if (!res.ok || !preferenceId) {
+        throw new Error((body as { error?: string })?.error || 'No se pudo crear la preferencia para Bricks.');
+      }
+
+      setBricksPreferenceId(preferenceId);
+      await ensureMercadoPagoSdk();
+
+      if (!window.MercadoPago) {
+        throw new Error('Mercado Pago SDK no disponible en el navegador.');
+      }
+
+      if (mpBrickControllerRef.current?.unmount) {
+        mpBrickControllerRef.current.unmount();
+      }
+
+      const mp = new window.MercadoPago(mpStatus.publicKey);
+      const bricksBuilder = mp.bricks();
+      const controller = await bricksBuilder.create('wallet', 'mp-wallet-brick', {
+        initialization: { preferenceId },
+        callbacks: {
+          onReady: () => {
+            setBricksReady(true);
+            setBricksProgress(100);
+          },
+          onError: (error) => {
+            const msg =
+              error instanceof Error
+                ? error.message
+                : 'No se pudo renderizar Mercado Pago Bricks. Intenta nuevamente.';
+            setBricksError(msg);
+          },
+        },
+      });
+
+      if (controller && typeof controller === 'object') {
+        mpBrickControllerRef.current = controller;
+      } else {
+        mpBrickControllerRef.current = null;
+      }
+    } catch (e) {
+      setBricksError(e instanceof Error ? e.message : 'No se pudo iniciar Mercado Pago Bricks.');
+      setBricksReady(false);
+      setBricksProgress(0);
+    } finally {
+      window.clearInterval(progressTicker);
+      setBricksBooting(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (mpBrickControllerRef.current?.unmount) {
+        mpBrickControllerRef.current.unmount();
+      }
+    };
+  }, []);
+
   // ── Mercado Pago Checkout Pro fallback ───────────────────────────────────
   // Creates the order via /api/checkout (which already creates an MP
   // preference server-side) and redirects the buyer to MP's hosted
@@ -1398,12 +1600,7 @@ const CheckoutApp = () => {
           {/* Soluciones Fabrick SpA wordmark — animated, presence-only */}
           <svg
             viewBox="0 0 160 80"
-            className="motion-safe:animate-[pt-breathe_1.8s_ease-in-out_infinite] mb-3"
-            style={{
-              height: '4.5rem',
-              width: 'auto',
-              filter: 'drop-shadow(0 0 22px rgba(250,204,21,0.6))',
-            }}
+            className="motion-safe:animate-[pt-breathe_1.8s_ease-in-out_infinite] mb-3 h-[4.5rem] w-auto [filter:drop-shadow(0_0_22px_rgba(250,204,21,0.6))]"
             aria-hidden
           >
             <defs>
@@ -1438,12 +1635,7 @@ const CheckoutApp = () => {
 
           {/* Smooth 10%→100% progress bar with sweeping shine */}
           <div
-            className="relative w-full max-w-md h-2 rounded-full overflow-hidden border border-yellow-400/25"
-            style={{
-              background:
-                'linear-gradient(90deg, rgba(250,204,21,0.08) 0%, rgba(250,204,21,0.16) 50%, rgba(250,204,21,0.08) 100%)',
-              animation: 'pt-bank-pulse 2.4s ease-in-out infinite',
-            }}
+            className="relative w-full max-w-md h-2 rounded-full overflow-hidden border border-yellow-400/25 bg-[linear-gradient(90deg,rgba(250,204,21,0.08)_0%,rgba(250,204,21,0.16)_50%,rgba(250,204,21,0.08)_100%)] [animation:pt-bank-pulse_2.4s_ease-in-out_infinite]"
           >
             <div
               className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-[120ms] ease-out"
@@ -1455,12 +1647,7 @@ const CheckoutApp = () => {
               }}
             />
             <div
-              className="absolute inset-y-0 left-0 w-1/3 motion-safe:animate-[pt-bank-shine_1.6s_linear_infinite]"
-              style={{
-                background:
-                  'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%)',
-                mixBlendMode: 'screen',
-              }}
+              className="absolute inset-y-0 left-0 w-1/3 motion-safe:animate-[pt-bank-shine_1.6s_linear_infinite] bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.55)_50%,transparent_100%)] mix-blend-screen"
             />
           </div>
 
@@ -1895,6 +2082,36 @@ const CheckoutApp = () => {
                     <span className="font-black text-3xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{formatCLP(cartTotal)}</span>
                   </div>
                 </div>
+
+                <div className="space-y-3 border-t border-white/5 pt-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                      Productos relacionados
+                    </p>
+                    <a
+                      href="/tienda"
+                      className="text-[10px] font-bold uppercase tracking-[0.14em] text-yellow-400 hover:text-yellow-300"
+                    >
+                      Ver catálogo
+                    </a>
+                  </div>
+                  <div className="grid gap-2">
+                    {relatedProducts.map((rel) => (
+                      <a
+                        key={rel.id}
+                        href={`/checkout?productId=${encodeURIComponent(rel.id)}&name=${encodeURIComponent(rel.title)}&price=${encodeURIComponent(String(rel.price))}&category=${encodeURIComponent(rel.category)}&img=${encodeURIComponent(rel.image)}`}
+                        className="group flex items-center gap-2 rounded-xl border border-white/10 bg-black/35 p-2 transition hover:border-yellow-400/30"
+                      >
+                        <img src={rel.image} alt={rel.title} className="h-12 w-12 rounded-lg object-cover" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-bold text-white">{rel.title}</p>
+                          <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">{rel.category}</p>
+                        </div>
+                        <p className="text-xs font-mono text-yellow-300">{formatCLP(rel.price)}</p>
+                      </a>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -2013,7 +2230,7 @@ const CheckoutApp = () => {
                         </div>
 
                         <div className="absolute left-1/2 top-7 -translate-x-1/2">
-                          <span className="absolute left-1/2 top-1/2 w-10 h-10 rounded-full border border-cyan-300/40" style={{ animation: 'sat-pulse 1.2s ease-out infinite' }} />
+                          <span className="absolute left-1/2 top-1/2 w-10 h-10 rounded-full border border-cyan-300/40 [animation:sat-pulse_1.2s_ease-out_infinite]" />
                           <div className="relative w-9 h-9 rounded-full border border-cyan-300/60 bg-cyan-400/10 flex items-center justify-center">
                             <RefreshCw className={`w-4 h-4 text-cyan-300 ${locationLoading ? 'animate-spin' : ''}`} />
                           </div>
@@ -2031,14 +2248,12 @@ const CheckoutApp = () => {
 
                         {(satellitePhase === 'uplink' || satellitePhase === 'processing') && (
                           <span
-                            className="absolute left-[19%] top-[66%] w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.9)]"
-                            style={{ animation: 'sat-uplink-dot 0.9s linear infinite' }}
+                            className="absolute left-[19%] top-[66%] w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.9)] [animation:sat-uplink-dot_0.9s_linear_infinite]"
                           />
                         )}
                         {(satellitePhase === 'downlink' || satellitePhase === 'completed') && (
                           <span
-                            className="absolute left-[50%] top-[39%] w-2 h-2 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.9)]"
-                            style={{ animation: 'sat-downlink-dot 0.9s linear infinite' }}
+                            className="absolute left-[50%] top-[39%] w-2 h-2 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.9)] [animation:sat-downlink-dot_0.9s_linear_infinite]"
                           />
                         )}
                       </div>
@@ -2061,8 +2276,8 @@ const CheckoutApp = () => {
                 <div className="rounded-2xl border border-cyan-300/25 bg-black/60 p-3 sm:p-4 overflow-hidden">
                   <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
                     <div>
-                      <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-cyan-300">Locator 3D · Envío y ubicación</p>
-                      <p className="text-[11px] text-zinc-500">Motor holográfico de ruta logística con fijación satelital en tiempo real.</p>
+                      <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-cyan-300">Conexión satelital libre</p>
+                      <p className="text-[11px] text-zinc-500">Ruteo holográfico de envío con fijación satelital en tiempo real.</p>
                     </div>
                     <span className={`inline-flex items-center rounded-full px-3 py-1 text-[9px] uppercase tracking-[0.2em] font-bold border ${mapTeleporting ? 'border-cyan-300/45 bg-cyan-300/10 text-cyan-200' : 'border-white/15 bg-white/5 text-zinc-400'}`}>
                       {mapTeleporting ? 'Warp de coordenadas activo' : 'Enlace orbital estable'}
@@ -2244,14 +2459,7 @@ const CheckoutApp = () => {
                           />
                           {!mpFailed && secureConnectionProgress > 5 && secureConnectionProgress < 100 && (
                             <span
-                              className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400"
-                              style={{
-                                boxShadow: '0 0 10px #34d399',
-                                animation: 'bb-progress 1.2s linear infinite',
-                                left: '0%',
-                                transform: 'translate(0, -50%)',
-                                backgroundImage: 'none',
-                              }}
+                              className="absolute top-1/2 -translate-y-1/2 left-0 w-1.5 h-1.5 rounded-full bg-emerald-400 bg-none shadow-[0_0_10px_#34d399] [animation:bb-progress_1.2s_linear_infinite]"
                             />
                           )}
                         </div>
@@ -2327,6 +2535,15 @@ const CheckoutApp = () => {
                   );
                 })()}
 
+                <Checkout4DExperience
+                  mode={paymentMethod}
+                  secureProgress={secureConnectionProgress}
+                  paymentProgress={paymentMethod === 'bricks' ? bricksProgress : processProgress}
+                  outcome={paymentOutcome}
+                  isProcessing={isProcessing || bricksBooting || bankApprovalActive}
+                  isSuccess={isSuccess || bankApprovalActive}
+                />
+
                 <div>
                   <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase">Paso Final</span>
                   <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-2 mt-1">
@@ -2352,7 +2569,7 @@ const CheckoutApp = () => {
                 )}
 
                 {/* PAYMENT METHOD SELECTOR */}
-                <div className="grid sm:grid-cols-2 gap-4">
+                <div className="grid sm:grid-cols-3 gap-4">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('mercadopago')}
@@ -2367,7 +2584,24 @@ const CheckoutApp = () => {
                       </div>
                     </div>
                     <p className={`font-bold text-sm ${paymentMethod === 'mercadopago' ? 'text-yellow-400' : 'text-white'}`}>Mercado Pago</p>
-                    <p className="text-zinc-500 text-[10px] mt-1">Tarjeta, débito, transferencia. Flujo seguro externo.</p>
+                    <p className="text-zinc-500 text-[10px] mt-1">Tarjeta inline en esta página con tokenización segura.</p>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => { setPaymentMethod('bricks'); setBricksError(''); }}
+                    className={`rounded-2xl border p-5 text-left transition-all ${paymentMethod === 'bricks' ? 'border-yellow-400/50 bg-yellow-400/8' : 'border-white/8 bg-black/30 hover:border-white/15'}`}
+                  >
+                    <div className="flex items-center gap-3 mb-3">
+                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${paymentMethod === 'bricks' ? 'bg-yellow-400/20' : 'bg-white/5'}`}>
+                        <Lock className={`w-4 h-4 ${paymentMethod === 'bricks' ? 'text-yellow-400' : 'text-zinc-400'}`} />
+                      </div>
+                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-auto ${paymentMethod === 'bricks' ? 'border-yellow-400 bg-yellow-400' : 'border-zinc-600'}`}>
+                        {paymentMethod === 'bricks' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
+                      </div>
+                    </div>
+                    <p className={`font-bold text-sm ${paymentMethod === 'bricks' ? 'text-yellow-400' : 'text-white'}`}>Mercado Pago Bricks</p>
+                    <p className="text-zinc-500 text-[10px] mt-1">Checkout oficial embebido de Mercado Pago.</p>
                   </button>
 
                   <button
@@ -2387,6 +2621,58 @@ const CheckoutApp = () => {
                     <p className="text-zinc-500 text-[10px] mt-1">Deposita directamente en nuestra cuenta. Sin comisiones.</p>
                   </button>
                 </div>
+
+                {paymentMethod === 'bricks' && (
+                  <div className="bg-gradient-to-br from-zinc-900 to-black border border-[#009EE3]/30 rounded-[1.75rem] sm:rounded-[2rem] p-5 sm:p-6 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[9px] uppercase tracking-[0.32em] text-[#38bdf8] font-bold">Mercado Pago Bricks completa</p>
+                        <h4 className="text-base sm:text-lg font-black uppercase tracking-tight mt-1">Pasarela oficial embebida</h4>
+                        <p className="text-zinc-400 text-xs mt-1">Creamos la preferencia, sincronizamos datos y activamos el botón oficial de pago.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleInitBricks()}
+                        disabled={bricksBooting}
+                        className="px-5 py-3 rounded-full border border-[#009EE3]/50 text-[#7dd3fc] text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-[#009EE3]/15 transition-colors disabled:opacity-50"
+                      >
+                        {bricksBooting ? 'Sincronizando datos...' : bricksReady ? 'Reiniciar Bricks' : 'Activar Bricks'}
+                      </button>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/45 p-4">
+                      <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.18em] font-bold">
+                        <span className="text-zinc-400">Envío seguro de datos</span>
+                        <span className="text-[#7dd3fc]">{bricksProgress}%</span>
+                      </div>
+                      <div className="mt-2 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-300"
+                          style={{
+                            width: `${bricksProgress}%`,
+                            background: 'linear-gradient(90deg, #38bdf8 0%, #009EE3 48%, #22c55e 100%)',
+                          }}
+                        />
+                      </div>
+                      <p className="mt-2 text-[10px] text-zinc-500">
+                        {bricksReady
+                          ? 'Bricks listo. Mercado Pago abrirá el flujo de cobro con resultado aprobado o rechazado al finalizar.'
+                          : bricksBooting
+                            ? 'Preparando preferencia y montando componente seguro...'
+                            : 'Aún no inicializado.'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 min-h-[84px]">
+                      <div id="mp-wallet-brick" className="min-h-[48px]" />
+                    </div>
+
+                    {bricksPreferenceId && (
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-[0.14em]">Preferencia activa: {bricksPreferenceId}</p>
+                    )}
+                    {bricksError && <p className="text-xs text-red-400">{bricksError}</p>}
+                  </div>
+                )}
 
                 {/* MERCADO PAGO PANEL — Inline paginated card form + 3D flip preview */}
                 {paymentMethod === 'mercadopago' && (
@@ -2421,7 +2707,7 @@ const CheckoutApp = () => {
                     </div>
 
                     {/* 3D flip card preview */}
-                    <div className="flex justify-center" style={{ perspective: '1000px' }}>
+                    <div className="flex justify-center [perspective:1000px]">
                       <div
                         className="relative w-full max-w-[360px] transition-transform duration-700"
                         style={{
@@ -2432,18 +2718,10 @@ const CheckoutApp = () => {
                       >
                         {/* FRONT */}
                         <div
-                          className="absolute inset-0 rounded-2xl border border-yellow-400/20"
-                          style={{
-                            backfaceVisibility: 'hidden',
-                            WebkitBackfaceVisibility: 'hidden',
-                            background: 'linear-gradient(135deg, #1e1e2e 0%, #12122a 45%, #0a0a18 100%)',
-                            boxShadow: '0 0 0 1px rgba(250,204,21,0.12), 0 24px 64px rgba(0,0,0,0.85)',
-                          }}
+                          className="absolute inset-0 rounded-2xl border border-yellow-400/20 [backface-visibility:hidden] bg-[linear-gradient(135deg,#1e1e2e_0%,#12122a_45%,#0a0a18_100%)] [box-shadow:0_0_0_1px_rgba(250,204,21,0.12),0_24px_64px_rgba(0,0,0,0.85)]"
                         >
-                          <div className="absolute inset-0 opacity-40 mix-blend-overlay"
-                            style={{ backgroundImage: 'radial-gradient(circle at 20% 10%, rgba(250,204,21,0.35), transparent 60%)' }} />
-                          <div className="absolute top-0 left-[-30%] w-1/3 h-full bg-white/10 pointer-events-none"
-                            style={{ animation: 'card-shine 4s ease-in-out infinite' }} />
+                          <div className="absolute inset-0 opacity-40 mix-blend-overlay bg-[radial-gradient(circle_at_20%_10%,rgba(250,204,21,0.35),transparent_60%)]" />
+                          <div className="absolute top-0 left-[-30%] w-1/3 h-full bg-white/10 pointer-events-none [animation:card-shine_4s_ease-in-out_infinite]" />
                           <div className="relative p-5 h-full flex flex-col justify-between">
                             <div className="flex items-start justify-between">
                               <div className="flex flex-col">
@@ -2499,14 +2777,7 @@ const CheckoutApp = () => {
 
                         {/* BACK */}
                         <div
-                          className="absolute inset-0 rounded-2xl border border-yellow-400/10"
-                          style={{
-                            backfaceVisibility: 'hidden',
-                            WebkitBackfaceVisibility: 'hidden',
-                            transform: 'rotateY(180deg)',
-                            background: 'linear-gradient(135deg, #1e1e2e 0%, #12122a 45%, #0a0a18 100%)',
-                            boxShadow: '0 0 0 1px rgba(250,204,21,0.08), 0 24px 64px rgba(0,0,0,0.85)',
-                          }}
+                          className="absolute inset-0 rounded-2xl border border-yellow-400/10 [backface-visibility:hidden] [transform:rotateY(180deg)] bg-[linear-gradient(135deg,#1e1e2e_0%,#12122a_45%,#0a0a18_100%)] [box-shadow:0_0_0_1px_rgba(250,204,21,0.08),0_24px_64px_rgba(0,0,0,0.85)]"
                         >
                           <div className="mt-5 h-9 w-full bg-black/70" />
                           <div className="px-5 mt-5">
@@ -2884,13 +3155,27 @@ const CheckoutApp = () => {
                       }
                     </button>
                   )}
+                  {paymentMethod === 'bricks' && (
+                    <button
+                      disabled={bricksBooting}
+                      onClick={() => void handleInitBricks()}
+                      type="button"
+                      className="flex-1 py-5 bg-[#009EE3] text-white font-black uppercase text-xs tracking-[0.25em] rounded-full hover:bg-[#22b7f3] transition-all flex justify-center items-center gap-3 disabled:opacity-60"
+                    >
+                      {bricksBooting ? (
+                        <><RefreshCw className="w-4 h-4 animate-spin" /> Enviando datos…</>
+                      ) : (
+                        <><Lock className="w-4 h-4" /> {bricksReady ? 'Actualizar Bricks' : 'Iniciar Bricks'}</>
+                      )}
+                    </button>
+                  )}
                   {paymentMethod === 'transfer' && !transferOrderReady && (
                     <button disabled={transferOrderCreating} onClick={() => void handleTransferOrder()} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all flex justify-center items-center gap-3 disabled:opacity-60">
                       {transferOrderCreating ? <><RefreshCw className="w-4 h-4 animate-spin" /> Procesando...</> : <><Building2 className="w-4 h-4" /> Generar Orden de Transferencia</>}
                     </button>
                   )}
                 </div>
-                {checkoutError && paymentMethod === 'mercadopago' && <p className="text-xs text-red-400 pt-2">{checkoutError}</p>}
+                {checkoutError && (paymentMethod === 'mercadopago' || paymentMethod === 'bricks') && <p className="text-xs text-red-400 pt-2">{checkoutError}</p>}
               </div>
             )}
 

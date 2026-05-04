@@ -29,12 +29,7 @@ export function BrandMark({ size = 'md', animated = true, withBricks = true, cla
       {/* Brick texture (construction metaphor) */}
       {withBricks ? (
         <span
-          className="absolute inset-0 opacity-25 mix-blend-overlay"
-          style={{
-            backgroundImage:
-              'linear-gradient(0deg, rgba(0,0,0,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.4) 1px, transparent 1px)',
-            backgroundSize: '8px 6px',
-          }}
+          className="absolute inset-0 opacity-25 mix-blend-overlay [background-image:linear-gradient(0deg,rgba(0,0,0,0.4)_1px,transparent_1px),linear-gradient(90deg,rgba(0,0,0,0.4)_1px,transparent_1px)] [background-size:8px_6px]"
         />
       ) : null}
 
@@ -44,8 +39,7 @@ export function BrandMark({ size = 'md', animated = true, withBricks = true, cla
       {/* Animated sweep */}
       {animated ? (
         <span
-          className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/55 to-transparent"
-          style={{ animation: 'brand-sweep 3.8s ease-in-out infinite' }}
+          className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/55 to-transparent [animation:brand-sweep_3.8s_ease-in-out_infinite]"
         />
       ) : null}
 

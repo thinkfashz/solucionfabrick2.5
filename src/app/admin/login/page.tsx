@@ -700,8 +700,7 @@ function BootSecurityScreen() {
           <span className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-[1.7rem] border border-yellow-300/40 bg-yellow-400 shadow-[0_18px_60px_rgba(250,204,21,0.45)]">
             <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.55),rgba(255,255,255,0)_58%)]" />
             <span
-              className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/45 to-transparent"
-              style={{ animation: 'sf-boot-sweep 2.4s ease-in-out infinite' }}
+              className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/45 to-transparent [animation:sf-boot-sweep_2.4s_ease-in-out_infinite]"
             />
             <span className="relative font-playfair text-2xl font-black uppercase tracking-[0.28em] text-black">SF</span>
           </span>
@@ -729,8 +728,7 @@ function BootSecurityScreen() {
         <p className="mt-6 min-h-[1.25rem] text-[11px] font-mono tracking-[0.18em] text-white/65">
           <span className="text-yellow-300">{'>'}</span> {STEPS[stepIndex]}
           <span
-            className="ml-1 inline-block h-3 w-1.5 -translate-y-px bg-yellow-300/80 align-middle"
-            style={{ animation: 'sf-boot-cursor 1s steps(2) infinite' }}
+            className="ml-1 inline-block h-3 w-1.5 -translate-y-px bg-yellow-300/80 align-middle [animation:sf-boot-cursor_1s_steps(2)_infinite]"
           />
         </p>
 

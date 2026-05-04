@@ -32,22 +32,31 @@ function formatCLP(n: number) {
 
 /* ── Toggle switch ── */
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label?: string }) {
+  if (checked) {
+    return (
+      <button
+        type="button"
+        role="switch"
+        aria-checked="true"
+        aria-label={label}
+        onClick={() => onChange(false)}
+        className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-[#facc15] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#facc15]/50 focus:ring-offset-2 focus:ring-offset-black"
+      >
+        <span className="pointer-events-none inline-block h-5 w-5 translate-x-5 transform rounded-full bg-white shadow ring-0 transition duration-200" />
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
       role="switch"
-      aria-checked={checked}
+      aria-checked="false"
       aria-label={label}
-      onClick={() => onChange(!checked)}
-      className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#facc15]/50 focus:ring-offset-2 focus:ring-offset-black ${
-        checked ? 'bg-[#facc15]' : 'bg-zinc-700'
-      }`}
+      onClick={() => onChange(true)}
+      className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-zinc-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#facc15]/50 focus:ring-offset-2 focus:ring-offset-black"
     >
-      <span
-        className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
-          checked ? 'translate-x-5' : 'translate-x-0'
-        }`}
-      />
+      <span className="pointer-events-none inline-block h-5 w-5 translate-x-0 transform rounded-full bg-white shadow ring-0 transition duration-200" />
     </button>
   );
 }
@@ -396,12 +405,8 @@ export default function AdminProductosPage() {
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${
-                  activeCategory === cat
-                    ? 'text-black'
-                    : 'bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:border-white/20'
-                }`}
-                style={activeCategory === cat ? { background: '#facc15' } : {}}
+                className={`px-3 py-1.5 rounded-lg text-xs font-medium transition-colors ${activeCategory === cat ? 'bg-[#facc15] text-black' : 'bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white hover:border-white/20'}`}
+                
               >
                 {cat}
               </button>

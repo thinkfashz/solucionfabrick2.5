@@ -275,6 +275,7 @@ export default function NuevoAnuncioPage() {
             ref={fileInputRef}
             type="file"
             accept="image/*"
+            aria-label="Seleccionar imagen para el anuncio"
             className="hidden"
             onChange={(e) => {
               const file = e.target.files?.[0];
@@ -354,6 +355,7 @@ export default function NuevoAnuncioPage() {
                 type="number"
                 required
                 min={5000}
+              aria-label="Presupuesto diario en pesos chilenos"
                 step={1000}
                 value={form.presupuestoCLP}
                 onChange={(e) => handleField('presupuestoCLP', e.target.value)}
@@ -372,6 +374,7 @@ export default function NuevoAnuncioPage() {
                 type="date"
                 required
                 min={today}
+              aria-label="Fecha de inicio del anuncio"
                 value={form.fechaInicio}
                 onChange={(e) => handleField('fechaInicio', e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white focus:border-yellow-400/40 focus:outline-none focus:ring-0 transition-colors"
@@ -385,6 +388,7 @@ export default function NuevoAnuncioPage() {
                 type="date"
                 required
                 min={form.fechaInicio}
+              aria-label="Fecha de fin del anuncio"
                 value={form.fechaFin}
                 onChange={(e) => handleField('fechaFin', e.target.value)}
                 className="w-full rounded-xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-white focus:border-yellow-400/40 focus:outline-none focus:ring-0 transition-colors"
@@ -405,6 +409,7 @@ export default function NuevoAnuncioPage() {
             </label>
             <select
               required
+              aria-label="Ubicación objetivo"
               value={form.ubicacion}
               onChange={(e) => handleField('ubicacion', e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white focus:border-yellow-400/40 focus:outline-none focus:ring-0 transition-colors"
@@ -423,6 +428,7 @@ export default function NuevoAnuncioPage() {
             </label>
             <select
               required
+              aria-label="Rango de edad"
               value={form.rangoEdad}
               onChange={(e) => handleField('rangoEdad', e.target.value)}
               className="w-full rounded-xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm text-white focus:border-yellow-400/40 focus:outline-none focus:ring-0 transition-colors"

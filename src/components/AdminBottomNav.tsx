@@ -42,10 +42,7 @@ export function AdminBottomNav({ onOpenMore }: { onOpenMore?: () => void }) {
   return (
     <nav
       aria-label="Navegación inferior admin"
-      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden"
-      style={{
-        paddingBottom: 'env(safe-area-inset-bottom)',
-      }}
+      className="fixed bottom-0 left-0 right-0 z-40 lg:hidden pb-[env(safe-area-inset-bottom)]"
     >
       {/* Cinematic glassy backdrop (login-coherent) */}
       <div className="absolute inset-0 border-t border-white/15 bg-black/55 backdrop-blur-2xl" />

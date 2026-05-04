@@ -205,6 +205,7 @@ export function MediaPicker({ open, onClose, onSelect, defaultFolder = 'general'
         <div className="flex flex-wrap items-center gap-2 border-b border-white/10 p-3">
           {source === 'insforge' ? (
             <select
+              aria-label="Carpeta de imágenes"
               value={folder}
               onChange={(e) => setFolder(e.target.value as Folder)}
               className="rounded-lg border border-white/10 bg-black px-3 py-2 text-xs text-white"

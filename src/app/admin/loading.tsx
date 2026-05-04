@@ -22,24 +22,12 @@ export default function AdminLoading() {
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_28%,rgba(56,189,248,0.10),transparent_55%),radial-gradient(circle_at_50%_82%,rgba(250,204,21,0.10),transparent_55%)]" />
         <div
-          className="absolute inset-0 opacity-15"
-          style={{
-            backgroundImage:
-              'linear-gradient(rgba(250,204,21,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,0.18) 1px, transparent 1px)',
-            backgroundSize: '36px 36px',
-          }}
+          className="absolute inset-0 opacity-15 [background-image:linear-gradient(rgba(250,204,21,0.18)_1px,transparent_1px),linear-gradient(90deg,rgba(250,204,21,0.18)_1px,transparent_1px)] [background-size:36px_36px]"
         />
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:100%_4px] opacity-30" />
         <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[420px] w-[420px] rounded-full">
           <div
-            className="absolute inset-0 rounded-full"
-            style={{
-              background:
-                'conic-gradient(from 0deg, rgba(250,204,21,0) 0deg, rgba(250,204,21,0.18) 30deg, rgba(250,204,21,0) 70deg, rgba(250,204,21,0) 360deg)',
-              animation: 'admin-radar-spin 2.6s linear infinite',
-              maskImage: 'radial-gradient(circle, transparent 38%, black 38%, black 100%)',
-              WebkitMaskImage: 'radial-gradient(circle, transparent 38%, black 38%, black 100%)',
-            }}
+            className="absolute inset-0 rounded-full [background:conic-gradient(from_0deg,rgba(250,204,21,0)_0deg,rgba(250,204,21,0.18)_30deg,rgba(250,204,21,0)_70deg,rgba(250,204,21,0)_360deg)] [animation:admin-radar-spin_2.6s_linear_infinite] [mask-image:radial-gradient(circle,transparent_38%,black_38%,black_100%)] [-webkit-mask-image:radial-gradient(circle,transparent_38%,black_38%,black_100%)]"
           />
           <div className="absolute inset-[8%] rounded-full border border-yellow-300/15" />
           <div className="absolute inset-[22%] rounded-full border border-yellow-300/10" />
@@ -49,14 +37,14 @@ export default function AdminLoading() {
       <div className="relative flex flex-col items-center gap-6 px-6 py-12">
         <div className="relative flex flex-col items-center">
           <div className="flex flex-col gap-1">
-            {[0, 1, 2].map((i) => (
+            {([
+              { cls: 'w-14', delay: '' },
+              { cls: 'w-[70px]', delay: '[animation-delay:0.18s]' },
+              { cls: 'w-[84px]', delay: '[animation-delay:0.36s]' },
+            ] as const).map(({ cls, delay }, i) => (
               <div
                 key={i}
-                className="h-1.5 rounded-sm bg-gradient-to-r from-yellow-400/0 via-yellow-300/80 to-yellow-400/0 shadow-[0_0_10px_rgba(250,204,21,0.45)] opacity-0"
-                style={{
-                  width: `${56 + i * 14}px`,
-                  animation: `admin-block-rise 2s ease-out ${i * 0.18}s infinite`,
-                }}
+                className={`h-1.5 rounded-sm bg-gradient-to-r from-yellow-400/0 via-yellow-300/80 to-yellow-400/0 shadow-[0_0_10px_rgba(250,204,21,0.45)] opacity-0 [animation:admin-block-rise_2s_ease-out_infinite] ${cls} ${delay}`}
               />
             ))}
           </div>
@@ -81,8 +69,7 @@ export default function AdminLoading() {
         <div className="w-[min(360px,82vw)]">
           <div className="relative h-1 w-full overflow-hidden rounded-full bg-white/10">
             <div
-              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-transparent via-yellow-300 to-white shadow-[0_0_14px_rgba(250,204,21,0.65)]"
-              style={{ animation: 'admin-bar-progress 1.6s ease-in-out infinite' }}
+              className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-transparent via-yellow-300 to-white shadow-[0_0_14px_rgba(250,204,21,0.65)] [animation:admin-bar-progress_1.6s_ease-in-out_infinite]"
             />
           </div>
           <div className="mt-2 flex items-center justify-between text-[9px] font-mono uppercase tracking-[0.3em] text-white/45 tabular-nums">
@@ -96,8 +83,7 @@ export default function AdminLoading() {
 
         <div className="relative h-4 w-[min(360px,82vw)] overflow-hidden text-center">
           <div
-            className="absolute inset-x-0 flex flex-col gap-0"
-            style={{ animation: 'admin-ticker 4.8s steps(3) infinite' }}
+            className="absolute inset-x-0 flex flex-col gap-0 [animation:admin-ticker_4.8s_steps(3)_infinite]"
           >
             {[...TICKER_LINES, TICKER_LINES[0]].map((line, i) => (
               <span

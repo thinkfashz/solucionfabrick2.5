@@ -26,6 +26,39 @@ export function TiendaAdmin() {
             { key: 'tienda_cta_url', label: 'URL del botón principal' },
           ],
         },
+        {
+          title: 'Módulos móviles y navegación',
+          fields: [
+            { key: 'tienda_mobile_badge', label: 'Badge superior mobile' },
+            { key: 'tienda_mobile_intro', label: 'Intro compacta mobile', multiline: true },
+            { key: 'tienda_mobile_cta_label', label: 'Botón sticky mobile (texto)' },
+            { key: 'tienda_mobile_cta_url', label: 'Botón sticky mobile (URL)' },
+            { key: 'tienda_filtros_titulo', label: 'Título de filtros rápidos' },
+            { key: 'tienda_filtros_tags', label: 'Filtros rápidos (separados por coma)' },
+          ],
+        },
+        {
+          title: 'Dropshipping y colecciones',
+          fields: [
+            { key: 'tienda_dropship_badge', label: 'Badge dropshipping' },
+            { key: 'tienda_dropship_copy', label: 'Copy dropshipping', multiline: true },
+            { key: 'tienda_colecciones_titulo', label: 'Título de colecciones' },
+            { key: 'tienda_colecciones_subtitulo', label: 'Subtítulo de colecciones' },
+            { key: 'tienda_banner_secundario_url', label: 'Imagen banner secundario', image: true },
+            { key: 'tienda_banner_secundario_cta', label: 'CTA banner secundario' },
+          ],
+        },
+        {
+          title: 'Checkout y recomendaciones',
+          fields: [
+            { key: 'checkout_banner_titulo', label: 'Título banner checkout' },
+            { key: 'checkout_banner_subtitulo', label: 'Subtítulo banner checkout', multiline: true },
+            { key: 'checkout_relacionados_titulo', label: 'Título productos relacionados' },
+            { key: 'checkout_relacionados_subtitulo', label: 'Subtítulo productos relacionados', multiline: true },
+            { key: 'checkout_relacionados_tags', label: 'Etiquetas relacionadas (coma)' },
+            { key: 'checkout_categorias_destacadas', label: 'Categorías destacadas (coma)' },
+          ],
+        },
       ]}
       staticNodes={[
         {
@@ -46,6 +79,13 @@ export function TiendaAdmin() {
           path: 'src/tienda/page.tsx',
           description: 'Catálogo cliente con búsqueda, filtros, carrito y banner. Lee productos de la tabla `productos` (editar en /admin/productos).',
           tag: 'Client',
+        },
+        {
+          label: '<CheckoutApp />',
+          path: 'src/components/CheckoutApp.tsx',
+          description: 'Checkout principal: pasos de compra, diseño final y bloque de productos relacionados por categoría.',
+          tag: 'Client',
+          settingKeys: ['checkout_banner_titulo', 'checkout_relacionados_titulo', 'checkout_relacionados_tags'],
         },
       ]}
     />

@@ -343,6 +343,124 @@ async function fetchResolved(url: URL, timeoutMs = 10_000): Promise<{ finalUrl: 
 }
 
 /**
+ * Mobile-Chrome User-Agent + headers, used as a second-attempt
+ * fingerprint when the desktop UA gets blocked. Many WAFs are tuned
+ * primarily against desktop scrapers, so a mobile shape often slips
+ * through where the desktop one fails.
+ */
+const MOBILE_FETCH_HEADERS: Record<string, string> = {
+  'User-Agent':
+    'Mozilla/5.0 (Linux; Android 13; SM-S918B) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Mobile Safari/537.36',
+  Accept:
+    'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+  'Accept-Language': 'es-CL,es;q=0.9,en;q=0.8',
+  'Accept-Encoding': 'gzip, deflate, br',
+  'Upgrade-Insecure-Requests': '1',
+  'Sec-Fetch-Dest': 'document',
+  'Sec-Fetch-Mode': 'navigate',
+  'Sec-Fetch-Site': 'none',
+  'Sec-Fetch-User': '?1',
+  'sec-ch-ua': '"Chromium";v="124", "Google Chrome";v="124", "Not.A/Brand";v="99"',
+  'sec-ch-ua-mobile': '?1',
+  'sec-ch-ua-platform': '"Android"',
+};
+
+/**
+ * Last-ditch fetch via the public r.jina.ai reader proxy, which
+ * renders the page in a real headless browser and returns the
+ * post-JS HTML. Bypasses most Cloudflare/Akamai bot challenges that
+ * blocked the direct fetch. Free tier: ~20 RPM without API key
+ * (https://jina.ai/reader).
+ */
+async function fetchViaReaderProxy(
+  url: URL,
+  timeoutMs = 15_000,
+): Promise<{ finalUrl: URL; html: string }> {
+  const t = withTimeout(timeoutMs);
+  try {
+    const target = `https://r.jina.ai/${url.toString()}`;
+    const res = await fetch(target, {
+      redirect: 'follow',
+      headers: {
+        Accept: 'text/html,*/*;q=0.8',
+        'X-Return-Format': 'html',
+        'User-Agent': DEFAULT_USER_AGENT,
+      },
+      cache: 'no-store',
+      signal: t.signal,
+    });
+    if (!res.ok) {
+      throw new Error(`Reader proxy respondió HTTP ${res.status}.`);
+    }
+    const html = (await res.text()).slice(0, 1_000_000);
+    return { finalUrl: url, html };
+  } finally {
+    t.cancel();
+  }
+}
+
+/**
+ * Tries the regular browser-shape fetch first; if the upstream blocks
+ * us (403/401/429/503/451), retries once with a mobile UA, and finally
+ * falls back to the headless-browser reader proxy. Throws the *first*
+ * error if every strategy fails so the caller can surface a useful
+ * message.
+ */
+async function fetchResolvedWithFallback(
+  url: URL,
+): Promise<{ finalUrl: URL; html: string; via: 'direct' | 'mobile' | 'proxy' }> {
+  let firstError: unknown;
+  // 1) Desktop browser-shape fetch.
+  try {
+    const r = await fetchResolved(url);
+    return { ...r, via: 'direct' };
+  } catch (err) {
+    firstError = err;
+    if (err instanceof TypeError) throw err; // SSRF: do not retry.
+  }
+
+  const message = firstError instanceof Error ? firstError.message : '';
+  const isBlocked = /HTTP\s+(403|401|429|503|451)/i.test(message);
+  if (!isBlocked) throw firstError;
+
+  // 2) Mobile UA fingerprint, in case the WAF only blocks desktop UAs.
+  try {
+    const t = withTimeout(10_000);
+    try {
+      const res = await fetch(url.toString(), {
+        redirect: 'follow',
+        headers: {
+          ...MOBILE_FETCH_HEADERS,
+          Referer: 'https://www.google.com/',
+        },
+        cache: 'no-store',
+        signal: t.signal,
+      });
+      if (res.ok) {
+        const finalUrl = new URL(res.url);
+        if (isPrivateHost(finalUrl.hostname)) {
+          throw new TypeError(`Host no permitido tras redirección: ${finalUrl.hostname}.`);
+        }
+        const html = (await res.text()).slice(0, 1_000_000);
+        return { finalUrl, html, via: 'mobile' };
+      }
+    } finally {
+      t.cancel();
+    }
+  } catch {
+    // fall through to proxy
+  }
+
+  // 3) Reader proxy (real headless browser).
+  try {
+    const r = await fetchViaReaderProxy(url);
+    return { ...r, via: 'proxy' };
+  } catch {
+    throw firstError;
+  }
+}
+
+/**
  * Walks an HTTP redirect chain manually, returning every URL visited
  * along the way (including the original input and the final
  * destination). Unlike `fetchResolved`, this never reads a response
@@ -882,10 +1000,11 @@ export async function resolveProductFromUrl(rawUrl: string): Promise<ImportedPro
   // Non-ML stores: resolve redirects (with body) and run the OG /
   // JSON-LD scraper. If the upstream store blocks our request (very
   // common with Cloudflare/Akamai-fronted retailers from datacentre
-  // IPs), return a minimal editable preview so the admin can still
-  // create the product manually instead of seeing a hard error.
+  // IPs), retry with a mobile UA and finally via the r.jina.ai reader
+  // proxy (real headless browser). Only after every strategy fails do
+  // we surface the manual-fill stub.
   try {
-    const { finalUrl, html } = await fetchResolved(url);
+    const { finalUrl, html } = await fetchResolvedWithFallback(url);
     // The redirect may end up on Mercado Libre even if the input host
     // wasn't one we recognised (e.g. an affiliate tracker on a third-
     // party domain). Re-check after redirection.

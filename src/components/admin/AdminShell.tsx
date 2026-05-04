@@ -171,8 +171,8 @@ const QUICK_ACTIONS: { href: string; label: string; icon: typeof Package; tone: 
   { href: '/admin/social/inbox', label: 'Inbox social', icon: MessageCircle, tone: 'emerald' },
 ];
 
-function QuickAction({ href, label, icon: Icon, tone, onNavigate }: {
-  href: string; label: string; icon: typeof Package; tone: 'primary' | 'cyan' | 'emerald'; onNavigate?: () => void;
+function QuickAction({ href, label, icon: Icon, tone, onNavigate, className = '' }: {
+  href: string; label: string; icon: typeof Package; tone: 'primary' | 'cyan' | 'emerald'; onNavigate?: () => void; className?: string;
 }) {
   const styles = {
     primary: 'border-yellow-300/40 bg-yellow-300/10 text-yellow-200 hover:bg-yellow-300/20 hover:border-yellow-300/70',
@@ -183,7 +183,7 @@ function QuickAction({ href, label, icon: Icon, tone, onNavigate }: {
     <Link
       href={href}
       onClick={onNavigate}
-      className={`group flex flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition ${styles[tone]}`}
+      className={`group flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition ${styles[tone]} ${className}`}
     >
       <Icon className="h-4 w-4 transition-transform group-hover:scale-110" />
       <span className="text-center leading-tight">{label}</span>
@@ -266,11 +266,16 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, now, centered = 
       <motion.div
         initial={{ opacity: 0, y: 8 }}
         animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, delay: 0.05, ease: [0.16, 1, 0.3, 1] }}
-        className="grid grid-cols-3 gap-2"
+        transition={{ duration: 0.42, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
+        className="grid grid-cols-2 gap-2 sm:grid-cols-3"
       >
-        {QUICK_ACTIONS.map((qa) => (
-          <QuickAction key={qa.href} {...qa} onNavigate={onNavigate} />
+        {QUICK_ACTIONS.map((qa, idx) => (
+          <QuickAction
+            key={qa.href}
+            {...qa}
+            onNavigate={onNavigate}
+            className={idx === QUICK_ACTIONS.length - 1 ? 'col-span-2 sm:col-span-1' : ''}
+          />
         ))}
       </motion.div>
 
@@ -278,27 +283,33 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, now, centered = 
       {sections.map((section, idx) => (
         <motion.nav
           key={section.title}
-          initial={{ opacity: 0, y: 12 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: 0.08 + idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
+          initial={{ opacity: 0, y: 14, scale: 0.992 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.42, delay: 0.08 + idx * 0.035, ease: [0.22, 1, 0.36, 1] }}
           className="relative overflow-hidden rounded-[1.5rem] border border-white/12 bg-black/45 p-3 shadow-[0_14px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl"
         >
           <SectionHeader title={section.title} count={section.links.length} centered={centered} />
           <div className="space-y-1">
-            {section.links.map((link) => {
+            {section.links.map((link, linkIdx) => {
               const hrefPath = link.href.split('?')[0];
               return (
-                <NavItem
+                <motion.div
                   key={link.href}
-                  href={link.href}
-                  label={link.label}
-                  description={link.description}
-                  icon={link.icon}
-                  active={pathname === hrefPath && !link.highlight}
-                  highlight={link.highlight}
-                  centered={centered}
-                  onNavigate={onNavigate}
-                />
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.28, delay: 0.12 + idx * 0.03 + linkIdx * 0.015, ease: [0.22, 1, 0.36, 1] }}
+                >
+                  <NavItem
+                    href={link.href}
+                    label={link.label}
+                    description={link.description}
+                    icon={link.icon}
+                    active={pathname === hrefPath && !link.highlight}
+                    highlight={link.highlight}
+                    centered={centered}
+                    onNavigate={onNavigate}
+                  />
+                </motion.div>
               );
             })}
           </div>

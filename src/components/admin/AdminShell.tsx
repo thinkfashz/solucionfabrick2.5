@@ -114,14 +114,16 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/vercel-logs': 'Logs de Vercel',
 };
 
-function NavItem({ href, label, description, icon: Icon, active, onNavigate, highlight = false }: {
-  href: string; label: string; description: string; icon: typeof Package; active: boolean; onNavigate?: () => void; highlight?: boolean;
+function NavItem({ href, label, description, icon: Icon, active, onNavigate, highlight = false, centered = false }: {
+  href: string; label: string; description: string; icon: typeof Package; active: boolean; onNavigate?: () => void; highlight?: boolean; centered?: boolean;
 }) {
   return (
     <Link
       href={href}
       onClick={onNavigate}
-      className={`group relative flex items-center gap-3 overflow-hidden rounded-xl px-3 py-2.5 transition-all duration-200 ${
+      className={`group relative flex overflow-hidden rounded-xl transition-all duration-200 ${
+        centered ? 'flex-col items-center justify-center gap-2 px-3 py-3 text-center' : 'items-center gap-3 px-3 py-2.5'
+      } ${
         active
           ? 'bg-gradient-to-r from-yellow-400/20 via-yellow-300/10 to-transparent border border-yellow-300/40 shadow-[inset_0_1px_0_rgba(250,204,21,0.25)]'
           : highlight
@@ -130,7 +132,7 @@ function NavItem({ href, label, description, icon: Icon, active, onNavigate, hig
       }`}
     >
       {/* Gold accent rail (only when active) */}
-      {active ? (
+      {active && !centered ? (
         <span className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-gradient-to-b from-yellow-300 to-amber-500 shadow-[0_0_10px_rgba(250,204,21,0.6)]" />
       ) : null}
 
@@ -144,19 +146,21 @@ function NavItem({ href, label, description, icon: Icon, active, onNavigate, hig
         <Icon className="h-3.5 w-3.5" strokeWidth={2} />
       </span>
 
-      <span className="flex-1 min-w-0">
-        <span className={`flex items-center gap-2 text-[12.5px] font-semibold leading-tight ${active ? 'text-yellow-200' : highlight ? 'text-yellow-300' : 'text-zinc-200 group-hover:text-white'} transition-colors`}>
-          <span className="truncate">{label}</span>
+      <span className={centered ? 'w-full' : 'min-w-0 flex-1'}>
+        <span className={`flex items-center gap-2 text-[12.5px] font-semibold leading-tight ${centered ? 'justify-center text-center' : ''} ${active ? 'text-yellow-200' : highlight ? 'text-yellow-300' : 'text-zinc-200 group-hover:text-white'} transition-colors`}>
+          <span className={centered ? 'line-clamp-2 text-center' : 'truncate'}>{label}</span>
           {highlight && !active && (
             <span className="inline-flex items-center rounded-full border border-yellow-300/40 bg-yellow-300/15 px-1.5 py-px text-[8.5px] font-black uppercase tracking-[0.18em] text-yellow-200">
               Nuevo
             </span>
           )}
         </span>
-        <span className="block truncate text-[10.5px] leading-tight mt-0.5 text-zinc-500">{description}</span>
+        <span className={`mt-0.5 block text-[10.5px] leading-tight text-zinc-500 ${centered ? 'line-clamp-2 text-center' : 'truncate'}`}>{description}</span>
       </span>
 
-      <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 transition-all ${active ? 'text-yellow-300 translate-x-0.5' : 'text-zinc-700 opacity-0 group-hover:opacity-100 group-hover:translate-x-0.5 group-hover:text-yellow-300'}`} />
+      {!centered && (
+        <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 transition-all ${active ? 'translate-x-0.5 text-yellow-300' : 'text-zinc-700 opacity-0 group-hover:translate-x-0.5 group-hover:text-yellow-300 group-hover:opacity-100'}`} />
+      )}
     </Link>
   );
 }
@@ -187,26 +191,40 @@ function QuickAction({ href, label, icon: Icon, tone, onNavigate }: {
   );
 }
 
-function SectionHeader({ title, count }: { title: string; count: number }) {
+function SectionHeader({ title, count, centered = false }: { title: string; count: number; centered?: boolean }) {
   return (
-    <div className="mb-2 flex items-center justify-between px-1">
-      <p className="flex items-center gap-2 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
-        <span className="h-px w-3 bg-gradient-to-r from-yellow-300/60 to-transparent" />
-        {title}
-      </p>
-      <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">
-        {count}
-      </span>
-    </div>
+    centered ? (
+      <div className="mb-2 flex flex-col items-center justify-center gap-1 px-1 text-center">
+        <p className="flex items-center justify-center gap-2 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
+          <span className="h-px w-3 bg-gradient-to-r from-yellow-300/60 to-transparent" />
+          {title}
+          <span className="h-px w-3 bg-gradient-to-l from-yellow-300/60 to-transparent" />
+        </p>
+        <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">
+          {count}
+        </span>
+      </div>
+    ) : (
+      <div className="mb-2 flex items-center justify-between px-1">
+        <p className="flex items-center gap-2 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
+          <span className="h-px w-3 bg-gradient-to-r from-yellow-300/60 to-transparent" />
+          {title}
+        </p>
+        <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">
+          {count}
+        </span>
+      </div>
+    )
   );
 }
 
-function SidebarContent({ pathname, onNavigate, onLogout, role, now }: {
+function SidebarContent({ pathname, onNavigate, onLogout, role, now, centered = false }: {
   pathname: string;
   onNavigate?: () => void;
   onLogout: () => void;
   role: string | null;
   now?: Date | null;
+  centered?: boolean;
 }) {
   const sections = navSections.map((section) => ({
     ...section,
@@ -225,11 +243,11 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, now }: {
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_18%,rgba(250,204,21,0.10),rgba(0,0,0,0)_60%)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-yellow-300/40 to-transparent" />
 
-        <Link href="/admin" onClick={onNavigate} className="relative flex items-center gap-3">
+        <Link href="/admin" onClick={onNavigate} className={`relative flex ${centered ? 'flex-col items-center gap-2 text-center' : 'items-center gap-3'}`}>
           <BrandMark size="lg" />
-          <div className="min-w-0 flex-1">
-            <p className="font-playfair text-[11px] font-black tracking-[0.28em] text-yellow-300 leading-none">SOLUCIONES FABRICK</p>
-            <div className="mt-1.5 flex flex-wrap items-center gap-1.5">
+          <div className={centered ? 'w-full' : 'min-w-0 flex-1'}>
+            <p className={`font-playfair text-[11px] font-black leading-none tracking-[0.28em] text-yellow-300 ${centered ? 'text-center' : ''}`}>SOLUCIONES FABRICK</p>
+            <div className={`mt-1.5 flex flex-wrap gap-1.5 ${centered ? 'justify-center' : 'items-center'}`}>
               <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.22em] text-emerald-300">
                 <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
                 {role === 'superadmin' ? 'Superadmin' : 'Admin'}
@@ -265,7 +283,7 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, now }: {
           transition={{ duration: 0.4, delay: 0.08 + idx * 0.05, ease: [0.16, 1, 0.3, 1] }}
           className="relative overflow-hidden rounded-[1.5rem] border border-white/12 bg-black/45 p-3 shadow-[0_14px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl"
         >
-          <SectionHeader title={section.title} count={section.links.length} />
+          <SectionHeader title={section.title} count={section.links.length} centered={centered} />
           <div className="space-y-1">
             {section.links.map((link) => {
               const hrefPath = link.href.split('?')[0];
@@ -278,6 +296,7 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, now }: {
                   icon={link.icon}
                   active={pathname === hrefPath && !link.highlight}
                   highlight={link.highlight}
+                  centered={centered}
                   onNavigate={onNavigate}
                 />
               );
@@ -300,7 +319,7 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, now }: {
           <LogOut className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
           Cerrar sesión
         </button>
-        <div className="mt-3 flex items-center justify-between gap-2 px-1 text-[9.5px] uppercase tracking-[0.28em] text-white/45">
+        <div className={`mt-3 flex gap-2 px-1 text-[9.5px] uppercase tracking-[0.28em] text-white/45 ${centered ? 'flex-col items-center justify-center text-center' : 'items-center justify-between'}`}>
           <span className="flex items-center gap-1.5">
             <Zap className="h-3 w-3 text-yellow-300" />
             Sistema activo
@@ -624,6 +643,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
                   onLogout={handleLogout}
                   role={role}
                   now={now}
+                  centered
                 />
               </div>
             </motion.div>

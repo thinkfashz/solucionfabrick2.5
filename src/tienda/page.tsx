@@ -115,7 +115,9 @@ const MENU_OPTIONS = [
 	{ icon: Settings, label: 'Ajustes', description: 'Configuración de tu cuenta', href: '/ajustes' },
 ];
 
-function FabrickLogo({ className = '', centered = false, active = false, onClick }: { className?: string; centered?: boolean; active?: boolean; onClick?: () => void }) {
+function FabrickLogo({ className = '', centered = false, active = false, tone = 'light', onClick }: { className?: string; centered?: boolean; active?: boolean; tone?: 'light' | 'dark'; onClick?: () => void }) {
+const solutionsFill = tone === 'dark' ? 'rgba(17,17,17,0.52)' : 'rgba(255,255,255,0.5)';
+const wordmarkFill = tone === 'dark' ? '#111111' : '#FFFFFF';
 return (
 <div onClick={onClick} className={`select-none cursor-pointer ${className}`}>
   <svg
@@ -138,8 +140,8 @@ return (
     <path d="M 9,46 L 21,13 L 21,19 L 14,46 Z" fill="url(#tfl-depth)" opacity="0.75" />
     <rect x="25" y="11" width="8" height="20" rx="1.5" fill="#FFC700" />
     <line x1="52" y1="9" x2="52" y2="44" stroke="rgba(255,255,255,0.13)" strokeWidth="1" />
-    <text x="61" y="26" fontFamily="Montserrat, Poppins, Arial, sans-serif" fontSize="9.5" fontWeight="500" letterSpacing="3" fill="rgba(255,255,255,0.5)">SOLUCIONES</text>
-    <text x="60" y="47" fontFamily="Montserrat, Poppins, Arial, sans-serif" fontSize="25" fontWeight="900" letterSpacing="1.5" fill="#FFFFFF">FABRICK</text>
+		<text x="61" y="26" fontFamily="Montserrat, Poppins, Arial, sans-serif" fontSize="9.5" fontWeight="500" letterSpacing="3" fill={solutionsFill}>SOLUCIONES</text>
+		<text x="60" y="47" fontFamily="Montserrat, Poppins, Arial, sans-serif" fontSize="25" fontWeight="900" letterSpacing="1.5" fill={wordmarkFill}>FABRICK</text>
   </svg>
 </div>
 );
@@ -458,21 +460,16 @@ export default function TiendaClientPage() {
 			`}</style>
 
 			{/* ── NAVBAR (NIKE-STYLE WHITE) ── */}
-			<nav className="fixed top-0 left-0 w-full z-[100] bg-white border-b border-neutral-200 py-0 px-0 transition-all duration-300">
+			<nav className="fixed top-0 left-0 w-full z-[100] bg-white/95 backdrop-blur-xl border-b border-neutral-200 py-0 px-0 transition-all duration-300">
 				<div className="max-w-[1400px] mx-auto px-4 md:px-8 h-[60px] flex items-center justify-between gap-4">
 					{/* Logo */}
-					<button onClick={() => router.push('/')} className="flex-shrink-0">
-						<svg viewBox="0 0 200 40" className="h-8 w-auto" role="img" aria-label="Soluciones Fabrick">
-							<defs>
-								<linearGradient id="nb-gold" x1="0" y1="0" x2="0" y2="1">
-									<stop offset="0%" stopColor="#FFE566" />
-									<stop offset="100%" stopColor="#FFC700" />
-								</linearGradient>
-							</defs>
-							<path d="M 1,35 L 16,3 L 31,35 L 25,35 L 16,10 L 7,35 Z" fill="url(#nb-gold)" />
-							<rect x="19" y="8" width="6" height="16" rx="1" fill="#FFC700" />
-							<text x="40" y="28" fontFamily="Helvetica Neue,Helvetica,Arial,sans-serif" fontSize="22" fontWeight="900" letterSpacing="1" fill="#111">FABRICK</text>
-						</svg>
+					<button onClick={() => router.push('/')} className="flex-shrink-0 rounded-full border border-neutral-200 bg-white px-3 py-2 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-all hover:border-yellow-300 hover:shadow-[0_14px_34px_rgba(250,204,21,0.18)]">
+						<div className="flex items-center gap-3">
+							<FabrickLogo tone="dark" className="pointer-events-none" />
+							<span className="hidden lg:inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.24em] text-neutral-500">
+								Store
+							</span>
+						</div>
 					</button>
 
 					{/* Center nav links - desktop */}
@@ -564,11 +561,20 @@ export default function TiendaClientPage() {
 								className="w-full h-full object-cover"
 							/>
 							<div className="absolute inset-0 nike-hero-grad" />
+							<div className="absolute left-4 top-4 md:left-8 md:top-8 max-w-[280px] rounded-[28px] border border-white/15 bg-black/30 px-4 py-4 backdrop-blur-xl shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+								<FabrickLogo active centered className="pointer-events-none" />
+								<p className="mt-3 text-[10px] uppercase tracking-[0.3em] text-white/65">Tienda curada por Soluciones Fabrick</p>
+							</div>
 							<div className="absolute inset-0 flex items-end md:items-center">
 								<div className="px-6 md:px-14 pb-10 md:pb-0 max-w-2xl text-white">
 									<p className="text-[11px] md:text-[12px] uppercase tracking-[0.18em] mb-3 opacity-90">Lo último de Fabrick</p>
 									<h1 className="nike-headline text-4xl md:text-7xl">Construye lo que sigue.</h1>
-									<p className="mt-4 text-sm md:text-base opacity-90 max-w-md">Materiales premium curados, instalados por expertos, con garantía real. Diseñados para tu próxima obra.</p>
+									<p className="mt-4 text-sm md:text-base opacity-90 max-w-xl">Materiales premium curados, instalados por expertos, con garantía real. Diseñados para tu próxima obra con una presencia de marca mas sólida y una vitrina de producto a la altura del servicio.</p>
+									<div className="mt-5 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.22em] text-white/80">
+										<span className="rounded-full border border-white/20 bg-white/10 px-3 py-2">Materiales premium</span>
+										<span className="rounded-full border border-white/20 bg-white/10 px-3 py-2">Instalación certificada</span>
+										<span className="rounded-full border border-white/20 bg-white/10 px-3 py-2">Asesoría técnica real</span>
+									</div>
 									<div className="mt-6 flex gap-3">
 										<button onClick={() => { const el = document.getElementById('nike-grid'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="bg-white text-black rounded-full px-6 py-3 text-sm font-medium hover:bg-neutral-200 transition-colors">Comprar</button>
 										<button onClick={() => router.push('/contacto')} className="border border-white/70 text-white rounded-full px-6 py-3 text-sm font-medium hover:bg-white/10 transition-colors">Asesoría</button>

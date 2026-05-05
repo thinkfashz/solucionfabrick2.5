@@ -23,6 +23,9 @@
       "env": {
         "AUTH_HEADER": "Bearer ${env:MERCADOLIBRE_ACCESS_TOKEN}"
       }
+    },
+    "mercadopago-mcp-server": {
+      "url": "https://mcp.mercadopago.com/mcp"
     }
   }
 }

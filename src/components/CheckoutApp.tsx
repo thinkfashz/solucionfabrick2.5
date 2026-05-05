@@ -198,6 +198,12 @@ const RELATED_SUGGESTIONS = [
   },
 ];
 
+const CHECKOUT_TRUST_POINTS = [
+  'Aprobacion asistida por Mercado Pago',
+  'Tokenizacion segura sin guardar tarjetas',
+  'Fallback oficial y transferencia inmediata',
+] as const;
+
 interface StoredCartItem {
   product: {
     id: string;
@@ -221,7 +227,7 @@ const CheckoutApp = () => {
   const stepContentRef = useRef<HTMLDivElement>(null);
   
   // Payment method selection: 'mercadopago' | 'bricks' | 'transfer'
-  const [paymentMethod, setPaymentMethod] = useState<'mercadopago' | 'bricks' | 'transfer'>('mercadopago');
+  const [paymentMethod, setPaymentMethod] = useState<'mercadopago' | 'bricks' | 'transfer'>('bricks');
   const [bricksBooting, setBricksBooting] = useState(false);
   const [bricksReady, setBricksReady] = useState(false);
   const [bricksError, setBricksError] = useState('');
@@ -787,6 +793,39 @@ const CheckoutApp = () => {
   const formatCLP = (value: number) => {
     return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(value);
   };
+
+  const paymentOptions = [
+    {
+      id: 'bricks' as const,
+      title: 'Mercado Pago Bricks',
+      eyebrow: 'Recomendado',
+      description: 'Checkout oficial embebido con flujo validado por Mercado Pago.',
+      detail: 'Mayor compatibilidad y aprobacion mas consistente.',
+      icon: Lock,
+      accent: 'cyan',
+    },
+    {
+      id: 'mercadopago' as const,
+      title: 'Tarjeta inline',
+      eyebrow: 'Express',
+      description: 'Formulario directo en esta pagina con tokenizacion segura.',
+      detail: 'Ideal si quieres cerrar la compra sin salir del checkout.',
+      icon: CreditCard,
+      accent: 'yellow',
+    },
+    {
+      id: 'transfer' as const,
+      title: 'Transferencia bancaria',
+      eyebrow: 'Respaldo',
+      description: 'Orden inmediata con referencia, monto exacto y datos listos para copiar.',
+      detail: 'Sin comisiones y con confirmacion posterior por comprobante.',
+      icon: Building2,
+      accent: 'stone',
+    },
+  ];
+
+  const activePaymentOption =
+    paymentOptions.find((option) => option.id === paymentMethod) ?? paymentOptions[0];
 
   // ── Card input helpers ───────────────────────────────────────────────────
   const rawCardDigits = cardNumber.replace(/\s+/g, '');
@@ -2647,12 +2686,54 @@ const CheckoutApp = () => {
                   isSuccess={isSuccess || bankApprovalActive}
                 />
 
+                <div className="rounded-[1.75rem] sm:rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.18),transparent_42%),linear-gradient(145deg,rgba(24,24,27,0.96),rgba(8,8,10,0.98))] p-5 sm:p-6 md:p-7 overflow-hidden relative">
+                  <div className="absolute inset-y-0 right-0 w-40 bg-[radial-gradient(circle_at_center,rgba(14,165,233,0.14),transparent_65%)] pointer-events-none" />
+                  <div className="relative grid gap-5 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
+                    <div>
+                      <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/25 bg-yellow-400/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.35em] text-yellow-300">
+                        <ShieldCheck className="h-3.5 w-3.5" /> Checkout Fabrick Blindado
+                      </div>
+                      <h3 className="mt-4 text-3xl md:text-4xl font-black uppercase tracking-tighter">
+                        Paga con una experiencia
+                        <span className="block text-yellow-400">mas clara, segura y premium</span>
+                      </h3>
+                      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-300">
+                        Mantuvimos el lenguaje visual de la tienda, reforzamos el foco en confianza y dejamos a Mercado Pago Bricks como ruta principal, con tarjeta inline y transferencia como respaldos inmediatos.
+                      </p>
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {CHECKOUT_TRUST_POINTS.map((point) => (
+                          <span
+                            key={point}
+                            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-200"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 text-yellow-400" />
+                            {point}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="rounded-[1.5rem] border border-white/10 bg-black/35 p-4 sm:p-5">
+                      <p className="text-[9px] uppercase tracking-[0.35em] text-zinc-500 font-bold">Ruta activa</p>
+                      <div className="mt-3 flex items-start gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
+                          <activePaymentOption.icon className={`h-5 w-5 ${paymentMethod === 'bricks' ? 'text-sky-300' : paymentMethod === 'mercadopago' ? 'text-yellow-400' : 'text-zinc-200'}`} />
+                        </div>
+                        <div>
+                          <p className="text-[9px] uppercase tracking-[0.28em] text-zinc-500 font-bold">{activePaymentOption.eyebrow}</p>
+                          <h4 className="mt-1 text-lg font-black uppercase tracking-tight text-white">{activePaymentOption.title}</h4>
+                          <p className="mt-1 text-xs leading-relaxed text-zinc-400">{activePaymentOption.detail}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase">Paso Final</span>
                   <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-2 mt-1">
                     Método de <span className="text-yellow-400">Pago</span>
                   </h3>
-                  <p className="text-zinc-400 text-sm">Elige cómo deseas completar tu compra.</p>
+                  <p className="text-zinc-400 text-sm">Elige cómo deseas completar tu compra. La opción oficial embebida queda destacada para mejorar la continuidad del pago.</p>
                 </div>
 
                 {checkoutCms.warrantyPolicies?.length > 0 && (
@@ -2673,56 +2754,86 @@ const CheckoutApp = () => {
 
                 {/* PAYMENT METHOD SELECTOR */}
                 <div className="grid sm:grid-cols-3 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('mercadopago')}
-                    className={`rounded-2xl border p-5 text-left transition-all ${paymentMethod === 'mercadopago' ? 'border-yellow-400/50 bg-yellow-400/8' : 'border-white/8 bg-black/30 hover:border-white/15'}`}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${paymentMethod === 'mercadopago' ? 'bg-yellow-400/20' : 'bg-white/5'}`}>
-                        <CreditCard className={`w-4 h-4 ${paymentMethod === 'mercadopago' ? 'text-yellow-400' : 'text-zinc-400'}`} />
-                      </div>
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-auto ${paymentMethod === 'mercadopago' ? 'border-yellow-400 bg-yellow-400' : 'border-zinc-600'}`}>
-                        {paymentMethod === 'mercadopago' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
-                      </div>
-                    </div>
-                    <p className={`font-bold text-sm ${paymentMethod === 'mercadopago' ? 'text-yellow-400' : 'text-white'}`}>Mercado Pago</p>
-                    <p className="text-zinc-500 text-[10px] mt-1">Tarjeta inline en esta página con tokenización segura.</p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => { setPaymentMethod('bricks'); setBricksError(''); }}
-                    className={`rounded-2xl border p-5 text-left transition-all ${paymentMethod === 'bricks' ? 'border-yellow-400/50 bg-yellow-400/8' : 'border-white/8 bg-black/30 hover:border-white/15'}`}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${paymentMethod === 'bricks' ? 'bg-yellow-400/20' : 'bg-white/5'}`}>
-                        <Lock className={`w-4 h-4 ${paymentMethod === 'bricks' ? 'text-yellow-400' : 'text-zinc-400'}`} />
-                      </div>
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-auto ${paymentMethod === 'bricks' ? 'border-yellow-400 bg-yellow-400' : 'border-zinc-600'}`}>
-                        {paymentMethod === 'bricks' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
-                      </div>
-                    </div>
-                    <p className={`font-bold text-sm ${paymentMethod === 'bricks' ? 'text-yellow-400' : 'text-white'}`}>Mercado Pago Bricks</p>
-                    <p className="text-zinc-500 text-[10px] mt-1">Checkout oficial embebido de Mercado Pago.</p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => { setPaymentMethod('transfer'); setTransferOrderReady(false); setTransferOrderId(''); }}
-                    className={`rounded-2xl border p-5 text-left transition-all ${paymentMethod === 'transfer' ? 'border-yellow-400/50 bg-yellow-400/8' : 'border-white/8 bg-black/30 hover:border-white/15'}`}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${paymentMethod === 'transfer' ? 'bg-yellow-400/20' : 'bg-white/5'}`}>
-                        <Building2 className={`w-4 h-4 ${paymentMethod === 'transfer' ? 'text-yellow-400' : 'text-zinc-400'}`} />
-                      </div>
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-auto ${paymentMethod === 'transfer' ? 'border-yellow-400 bg-yellow-400' : 'border-zinc-600'}`}>
-                        {paymentMethod === 'transfer' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
-                      </div>
-                    </div>
-                    <p className={`font-bold text-sm ${paymentMethod === 'transfer' ? 'text-yellow-400' : 'text-white'}`}>Transferencia Bancaria</p>
-                    <p className="text-zinc-500 text-[10px] mt-1">Deposita directamente en nuestra cuenta. Sin comisiones.</p>
-                  </button>
+                  {paymentOptions.map((option) => {
+                    const isActive = paymentMethod === option.id;
+                    const Icon = option.icon;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => {
+                          setPaymentMethod(option.id);
+                          if (option.id === 'bricks') setBricksError('');
+                          if (option.id === 'transfer') {
+                            setTransferOrderReady(false);
+                            setTransferOrderId('');
+                          }
+                        }}
+                        className={`group rounded-[1.6rem] border p-5 text-left transition-all duration-300 ${
+                          isActive
+                            ? option.id === 'bricks'
+                              ? 'border-sky-400/45 bg-sky-400/[0.08] shadow-[0_18px_55px_rgba(14,165,233,0.12)]'
+                              : option.id === 'mercadopago'
+                                ? 'border-yellow-400/45 bg-yellow-400/[0.08] shadow-[0_18px_55px_rgba(250,204,21,0.1)]'
+                                : 'border-white/25 bg-white/[0.06] shadow-[0_18px_55px_rgba(255,255,255,0.05)]'
+                            : 'border-white/8 bg-black/30 hover:border-white/15 hover:bg-white/[0.02]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <div
+                            className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${
+                              isActive
+                                ? option.id === 'bricks'
+                                  ? 'border-sky-300/30 bg-sky-400/15'
+                                  : option.id === 'mercadopago'
+                                    ? 'border-yellow-300/30 bg-yellow-400/15'
+                                    : 'border-white/20 bg-white/10'
+                                : 'border-white/10 bg-white/5'
+                            }`}
+                          >
+                            <Icon
+                              className={`h-4.5 w-4.5 ${
+                                isActive
+                                  ? option.id === 'bricks'
+                                    ? 'text-sky-300'
+                                    : option.id === 'mercadopago'
+                                      ? 'text-yellow-400'
+                                      : 'text-white'
+                                  : 'text-zinc-400'
+                              }`}
+                            />
+                          </div>
+                          <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.22em] ${
+                            isActive
+                              ? option.id === 'bricks'
+                                ? 'bg-sky-400/15 text-sky-200'
+                                : option.id === 'mercadopago'
+                                  ? 'bg-yellow-400/15 text-yellow-300'
+                                  : 'bg-white/10 text-zinc-100'
+                              : 'bg-white/5 text-zinc-500'
+                          }`}>
+                            {option.eyebrow}
+                          </span>
+                          <div className={`ml-auto flex h-4 w-4 items-center justify-center rounded-full border-2 ${isActive ? 'border-white bg-white' : 'border-zinc-600'}`}>
+                            {isActive && <div className="h-1.5 w-1.5 rounded-full bg-black" />}
+                          </div>
+                        </div>
+                        <p className={`font-black text-sm uppercase tracking-[0.08em] ${isActive ? 'text-white' : 'text-zinc-100'}`}>{option.title}</p>
+                        <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">{option.description}</p>
+                        <p className={`mt-4 text-[10px] font-semibold uppercase tracking-[0.16em] ${
+                          isActive
+                            ? option.id === 'bricks'
+                              ? 'text-sky-200'
+                              : option.id === 'mercadopago'
+                                ? 'text-yellow-300'
+                                : 'text-zinc-200'
+                            : 'text-zinc-500'
+                        }`}>
+                          {option.detail}
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
 
                 {paymentMethod === 'bricks' && (

@@ -1,6 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
+import styles from './LiveDot.module.css';
 
 /**
  * Pulsing live indicator. Used in headers ("● Live"), connection pulses, and
@@ -29,24 +30,24 @@ export function LiveDot({
   const c = COLOR[status];
   return (
     <span
-      className="inline-flex items-center gap-1.5 align-middle"
+      className={styles.liveDot}
       role="status"
       aria-label={label ?? `Estado: ${status}`}
     >
-      <span className="relative inline-flex" style={{ width: size, height: size }}>
+      <span className={styles.dotWrapper} style={{ width: size, height: size }}>
         <motion.span
           aria-hidden
-          className="absolute inset-0 rounded-full"
+          className={styles.dotPulse}
           animate={{ scale: [1, 2.2, 1], opacity: [0.6, 0, 0.6] }}
           transition={{ duration: 1.6, repeat: Infinity, ease: 'easeOut' }}
           style={{ background: c }}
         />
         <span
-          className="relative inline-block rounded-full"
+          className={styles.dot}
           style={{ width: size, height: size, background: c, boxShadow: `0 0 6px ${c}aa` }}
         />
       </span>
-      {label && <span className="text-[10px] font-bold uppercase tracking-[0.18em]">{label}</span>}
+      {label && <span className={styles.label}>{label}</span>}
     </span>
   );
 }

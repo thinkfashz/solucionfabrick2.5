@@ -1,0 +1,30 @@
+.liveDot {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  vertical-align: middle;
+}
+
+.dotWrapper {
+  position: relative;
+  display: inline-flex;
+}
+
+.dotPulse {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+}
+
+.dot {
+  position: relative;
+  display: inline-block;
+  border-radius: 9999px;
+}
+
+.label {
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}

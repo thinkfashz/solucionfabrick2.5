@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useReducer, useState } from 'react';
+import styles from './ProjectBuilder.module.css';
 import Image from 'next/image';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
@@ -337,13 +338,7 @@ export default function ProjectBuilder({ products = PRODUCTS, onSubmit }: Projec
       {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.03]"
-        // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(250,204,21,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,0.4) 1px, transparent 1px)',
-          backgroundSize: '60px 60px',
-        }}
+        className={`pointer-events-none absolute inset-0 opacity-[0.03] ${styles.subtleGrid}`}
       />
       <div
         aria-hidden
@@ -388,7 +383,7 @@ export default function ProjectBuilder({ products = PRODUCTS, onSubmit }: Projec
                     key={id}
                     role="tab"
                     type="button"
-                    aria-selected={active ? 'true' : 'false'}
+                    aria-selected={active}
                     aria-controls={`panel-${id}`}
                     id={`tab-${id}`}
                     onClick={() => setActiveTab(id)}

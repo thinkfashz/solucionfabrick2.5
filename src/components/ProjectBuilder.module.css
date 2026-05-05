@@ -1,0 +1,4 @@
+.subtleGrid {
+  background-image: linear-gradient(rgba(250,204,21,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,0.4) 1px, transparent 1px);
+  background-size: 60px 60px;
+}

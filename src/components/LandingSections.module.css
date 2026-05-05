@@ -1,0 +1,14 @@
+.phaseNumber {
+  font-size: clamp(4rem, 10vw, 7rem);
+  color: rgba(250,204,21,0.07);
+  line-height: 1;
+}
+
+.timelineProgressBar {
+  background: linear-gradient(to bottom, #facc15, #f97316);
+  box-shadow: 0 0 16px rgba(250,204,21,0.7), 0 0 40px rgba(250,204,21,0.35);
+}
+
+.timelineProgressContainer {
+  bottom: 0.5rem;
+}

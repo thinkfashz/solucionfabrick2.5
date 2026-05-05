@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useEffect, useRef, useState } from 'react';
+import styles from './LandingSections.module.css';
 import Link from 'next/link';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
@@ -304,13 +305,7 @@ export default function LandingSections({
                   {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
                   <span
                     aria-hidden="true"
-                    className="absolute top-4 right-5 font-playfair font-bold leading-none select-none pointer-events-none z-[1]"
-                    // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                    style={{
-                      fontSize: 'clamp(4rem, 10vw, 7rem)',
-                      color: 'rgba(250,204,21,0.07)',
-                      lineHeight: 1,
-                    }}
+                    className={`absolute top-4 right-5 font-playfair font-bold leading-none select-none pointer-events-none z-[1] ${styles.phaseNumber}`}
                   >
                     {String(i + 1).padStart(2, '0')}
                   </span>
@@ -392,19 +387,12 @@ export default function LandingSections({
 
             {/* Barra de progreso rellenando el rail */}
             {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
-            <div className="pointer-events-none absolute left-5 md:left-1/2 top-2 w-[2px] md:-translate-x-1/2 rounded-full overflow-hidden" 
-              // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-              style={{ bottom: '0.5rem' }}>
+            <div className={`pointer-events-none absolute left-5 md:left-1/2 top-2 w-[2px] md:-translate-x-1/2 rounded-full overflow-hidden ${styles.timelineProgressContainer}`}>
               {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
               <div
                 ref={progressBarRef}
-                className="w-full rounded-full"
-                // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                style={{
-                  height: '0%',
-                  background: 'linear-gradient(to bottom, #facc15, #f97316)',
-                  boxShadow: '0 0 16px rgba(250,204,21,0.7), 0 0 40px rgba(250,204,21,0.35)',
-                }}
+                className={`w-full rounded-full ${styles.timelineProgressBar}`}
+                style={{ height: '0%' }}
               />
             </div>
 

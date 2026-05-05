@@ -36,26 +36,26 @@ export default function ProyectosClient() {
 
   return (
     <SectionPageShell
-      eyebrow="Obras reales"
-      title="Proyectos que ya están habitados"
-      description="Cada obra aquí mostrada fue ejecutada íntegramente por el equipo Fabrick: estructura, instalaciones, revestimientos y terminaciones. Revisa superficie, materiales y ubicación real."
-      primaryAction={{ href: '/contacto', label: 'Quiero un proyecto así' }}
-      secondaryAction={{ href: '/soluciones', label: 'Ver soluciones' }}
+      eyebrow="Obras documentadas"
+      title="Proyectos completados por nuestro equipo"
+      description="Cada casa que ves aquÃ­ fue construida de principio a fin por Soluciones Fabrick: equipo propio, sin subcontratas, sin sorpresas. Mira los detalles reales: ubicaciÃ³n, superficie, materiales y acabados."
+      primaryAction={{ href: '/contacto', label: 'Quiero evaluar mi proyecto' }}
+      secondaryAction={{ href: '/soluciones', label: 'Nuestros servicios' }}
     >
       {/* Stats strip */}
-      <div className="mb-10 grid grid-cols-2 gap-3 md:grid-cols-4">
+      <div className="mb-6 sm:mb-8 md:mb-10 grid grid-cols-2 sm:grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3 md:gap-4">
         {[
-          { label: 'Proyectos entregados', value: `${projects.length}+` },
-          { label: 'm² intervenidos', value: `${projects.reduce((a, p) => a + (p.area_m2 || 0), 0)}` },
-          { label: 'Años de experiencia', value: '8' },
-          { label: 'Garantía estructural', value: '10 años' },
+          { label: 'Entrega a tiempo', value: '100%' },
+          { label: 'm² ejecutados', value: `${projects.reduce((a, p) => a + (p.area_m2 || 0), 0)}` },
+          { label: 'Experiencia', value: '12+ años' },
+          { label: 'Garantía', value: '10 años' },
         ].map((s) => (
           <div
             key={s.label}
-            className="rounded-2xl border border-white/5 bg-zinc-950/70 p-5 text-center"
+            className="rounded-lg sm:rounded-xl md:rounded-2xl border border-white/5 bg-zinc-950/70 p-3 sm:p-4 md:p-5 text-center"
           >
-            <p className="text-2xl font-black text-yellow-400">{s.value}</p>
-            <p className="mt-1 text-[10px] uppercase tracking-[0.25em] text-zinc-500">{s.label}</p>
+            <p className="text-base sm:text-lg md:text-2xl font-black text-yellow-400">{s.value}</p>
+            <p className="mt-1 text-[8px] sm:text-[9px] md:text-[10px] uppercase tracking-[0.2em] text-zinc-500">{s.label}</p>
           </div>
         ))}
       </div>

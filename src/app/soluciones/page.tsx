@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import SolucionesContent from '@/components/SolucionesContent';
+import { SolucionesPageContent } from '@/components/soluciones/SolucionesPageContent';
 
 export const metadata: Metadata = {
   title: 'Soluciones Técnicas y Servicios',
@@ -9,15 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function SolucionesPage() {
-  return (
-    <SolucionesContent
-      initialTab="soluciones"
-      hero={{
-        eyebrow: 'Soluciones y servicios',
-        title: 'Cinco bloques para armar tu obra completa',
-        description:
-          'Cada bloque se puede comprar por separado o combinar en un paquete llave en mano. Calcula los m² que necesitas, agrega servicios profesionales y arma la cotización integral.',
-      }}
-    />
-  );
+  return <SolucionesPageContent />;
 }

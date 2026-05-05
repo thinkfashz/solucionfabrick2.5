@@ -6,6 +6,7 @@ import {
 	CheckCircle2,
 	Cloud,
 	CreditCard,
+	Eye,
 	Globe,
 	Loader2,
 	MessageCircle,
@@ -14,10 +15,11 @@ import {
 	RefreshCw,
 	Server,
 	ShieldAlert,
-	Wallet,
 	Store,
 	Trash2,
+	Wallet,
 	Workflow,
+	X,
 	type LucideIcon,
 } from 'lucide-react';
 import AdminActionGuard, { type AdminActionResult } from '@/components/admin/AdminActionGuard';
@@ -59,6 +61,22 @@ interface TestResult {
 	ok: boolean;
 	error?: string;
 	checks?: Array<{ name: string; ok: boolean; detail?: string }>;
+}
+
+interface RevealResponse {
+	ok?: boolean;
+	error?: string;
+	hint?: string;
+	credentials?: Record<string, string>;
+	updatedAt?: string | null;
+	expiresInSeconds?: number;
+}
+
+interface RevealDialogState {
+	provider: ProviderKey;
+	credentials: Record<string, string> | null;
+	expiresAt: number | null;
+	updatedAt?: string | null;
 }
 
 const PROVIDERS: ProviderDefinition[] = [
@@ -238,6 +256,11 @@ export default function AdminIntegracionesPage() {
 	const [integrationsError, setIntegrationsError] = useState<string | null>(null);
 	const [savingIntegration, setSavingIntegration] = useState<string | null>(null);
 	const [testingIntegration, setTestingIntegration] = useState<string | null>(null);
+	const [revealDialog, setRevealDialog] = useState<RevealDialogState | null>(null);
+	const [revealPassword, setRevealPassword] = useState('');
+	const [revealError, setRevealError] = useState<string | null>(null);
+	const [revealingProvider, setRevealingProvider] = useState<ProviderKey | null>(null);
+	const [revealNow, setRevealNow] = useState(() => Date.now());
 
 	const connectedCount = useMemo(
 		() => PROVIDERS.filter((prov) => Object.values(integrations[prov.id]?.credentials ?? {}).some((c) => c.set)).length,
@@ -265,6 +288,89 @@ export default function AdminIntegracionesPage() {
 	useEffect(() => {
 		void loadIntegrations();
 	}, []);
+
+	useEffect(() => {
+		if (!revealDialog?.expiresAt) return;
+		const intervalId = window.setInterval(() => {
+			setRevealNow(Date.now());
+		}, 250);
+		const timeoutMs = Math.max(revealDialog.expiresAt - Date.now(), 0);
+		const timeoutId = window.setTimeout(() => {
+			setRevealDialog(null);
+			setRevealPassword('');
+			setRevealError(null);
+			setRevealingProvider(null);
+		}, timeoutMs);
+		return () => {
+			window.clearInterval(intervalId);
+			window.clearTimeout(timeoutId);
+		};
+	}, [revealDialog?.expiresAt]);
+
+	const activeRevealProvider = useMemo(
+		() => (revealDialog ? PROVIDERS.find((provider) => provider.id === revealDialog.provider) ?? null : null),
+		[revealDialog],
+	);
+
+	const revealCountdown = revealDialog?.expiresAt ? Math.max(0, Math.ceil((revealDialog.expiresAt - revealNow) / 1000)) : 0;
+
+	const revealedEntries = useMemo(() => {
+		if (!revealDialog?.credentials || !activeRevealProvider) return [] as Array<{ key: string; label: string; value: string }>;
+		const labels = new Map(activeRevealProvider.fields.map((field) => [field.key, field.label]));
+		const fieldOrder = new Map(activeRevealProvider.fields.map((field, index) => [field.key, index]));
+		return Object.entries(revealDialog.credentials)
+			.sort(([leftKey], [rightKey]) => (fieldOrder.get(leftKey) ?? Number.MAX_SAFE_INTEGER) - (fieldOrder.get(rightKey) ?? Number.MAX_SAFE_INTEGER))
+			.map(([key, value]) => ({ key, label: labels.get(key) ?? key, value }));
+	}, [activeRevealProvider, revealDialog]);
+
+	function closeRevealDialog() {
+		setRevealDialog(null);
+		setRevealPassword('');
+		setRevealError(null);
+		setRevealingProvider(null);
+	}
+
+	function openRevealDialog(provider: ProviderKey) {
+		setRevealDialog({ provider, credentials: null, expiresAt: null, updatedAt: null });
+		setRevealPassword('');
+		setRevealError(null);
+		setRevealingProvider(null);
+		setRevealNow(Date.now());
+	}
+
+	async function handleRevealIntegration() {
+		if (!revealDialog) return;
+		setRevealingProvider(revealDialog.provider);
+		setRevealError(null);
+		try {
+			const res = await fetch('/api/admin/integrations/reveal', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ provider: revealDialog.provider, password: revealPassword }),
+			});
+			const json = (await res.json().catch(() => ({}))) as RevealResponse;
+			if (!res.ok || !json.credentials) {
+				setRevealError(json.error ?? json.hint ?? 'No se pudieron revelar las credenciales.');
+				return;
+			}
+			const expiresInSeconds = typeof json.expiresInSeconds === 'number' && json.expiresInSeconds > 0 ? json.expiresInSeconds : 30;
+			setRevealNow(Date.now());
+			setRevealDialog((prev) =>
+				prev && prev.provider === revealDialog.provider
+					? {
+						...prev,
+						credentials: json.credentials ?? null,
+						expiresAt: Date.now() + expiresInSeconds * 1000,
+						updatedAt: json.updatedAt ?? null,
+					}
+					: prev,
+			);
+		} catch (err) {
+			setRevealError(err instanceof Error ? err.message : 'Error de red al revelar credenciales.');
+		} finally {
+			setRevealingProvider(null);
+		}
+	}
 
 	async function handleSaveIntegration(provider: ProviderKey): Promise<AdminActionResult> {
 		const credentials = integrationInputs[provider] ?? {};
@@ -415,6 +521,88 @@ export default function AdminIntegracionesPage() {
 				</AdminCard>
 			) : null}
 
+			{revealDialog && activeRevealProvider ? (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+					<button type="button" aria-label="Cerrar revelado" onClick={closeRevealDialog} className="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+					<div className="relative z-10 w-full max-w-2xl rounded-[2rem] border border-white/10 bg-zinc-950/95 p-6 shadow-2xl shadow-black/40">
+						<div className="flex items-start justify-between gap-4">
+							<div>
+								<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-300">Revelado temporal</p>
+								<h2 className="mt-2 text-2xl font-black text-white">{activeRevealProvider.label}</h2>
+								<p className="mt-2 max-w-xl text-sm leading-relaxed text-zinc-400">
+									Las credenciales se muestran solo en esta sesión del navegador y se eliminan automáticamente a los 30 segundos.
+								</p>
+							</div>
+							<button
+								type="button"
+								onClick={closeRevealDialog}
+								className="inline-flex h-10 w-10 items-center justify-center rounded-full border border-white/10 text-zinc-400 transition hover:bg-white/5 hover:text-white"
+							>
+								<X className="h-4 w-4" />
+							</button>
+						</div>
+
+						{revealDialog.credentials ? (
+							<div className="mt-6 space-y-4">
+								<div className="flex flex-wrap items-center gap-3 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-3 text-sm text-emerald-200">
+									<span className="rounded-full border border-emerald-400/20 px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-emerald-300">
+										{revealCountdown}s restantes
+									</span>
+									<span>La ventana se cerrará automáticamente cuando el contador llegue a cero.</span>
+								</div>
+								<div className="grid gap-3">
+									{revealedEntries.map((entry) => (
+										<div key={entry.key} className="rounded-2xl border border-white/10 bg-black/25 p-4">
+											<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">{entry.label}</p>
+											<p className="mt-2 break-all font-mono text-sm text-white">{entry.value}</p>
+										</div>
+									))}
+								</div>
+								{revealDialog.updatedAt ? <p className="text-xs text-zinc-500">Última actualización: {new Date(revealDialog.updatedAt).toLocaleString('es-CL')}</p> : null}
+							</div>
+						) : (
+							<div className="mt-6 space-y-4">
+								<div className="rounded-2xl border border-amber-500/20 bg-amber-500/10 p-4 text-sm text-amber-100">
+									<p className="font-semibold text-amber-200">Protección adicional</p>
+									<p className="mt-2 leading-relaxed">
+										Ingresa la contraseña definida en ADMIN_VIEW_PASSWORD para ver las credenciales cifradas de esta integración.
+									</p>
+								</div>
+								<Field
+									label="Contraseña de visualización"
+									type="password"
+									value={revealPassword}
+									onChange={setRevealPassword}
+									placeholder="Ingresa ADMIN_VIEW_PASSWORD"
+									disabled={revealingProvider === revealDialog.provider}
+								/>
+								{revealError ? (
+									<div className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-sm text-red-200">{revealError}</div>
+								) : null}
+								<div className="flex flex-wrap items-center gap-3">
+									<button
+										type="button"
+										onClick={() => void handleRevealIntegration()}
+										disabled={revealingProvider === revealDialog.provider || revealPassword.trim().length === 0}
+										className="inline-flex items-center gap-2 rounded-full border border-amber-400/25 bg-amber-400/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-amber-100 transition hover:bg-amber-400/15 disabled:opacity-50"
+									>
+										{revealingProvider === revealDialog.provider ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />}
+										Revelar por 30s
+									</button>
+									<button
+										type="button"
+										onClick={closeRevealDialog}
+										className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-300 transition hover:bg-white/5"
+									>
+										Cancelar
+									</button>
+								</div>
+							</div>
+						)}
+					</div>
+				</div>
+			) : null}
+
 			<div className="grid gap-5 xl:grid-cols-2">
 				{PROVIDERS.map((provider) => {
 					const Icon = provider.icon;
@@ -526,6 +714,17 @@ export default function AdminIntegracionesPage() {
 											{testingIntegration === provider.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Activity className="h-3.5 w-3.5" />}
 											Validar uso real
 										</button>
+										{isConfigured ? (
+											<button
+												type="button"
+												onClick={() => openRevealDialog(provider.id)}
+												disabled={savingIntegration === provider.id || testingIntegration === provider.id}
+												className="inline-flex items-center gap-2 rounded-full border border-amber-400/25 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-amber-200 transition hover:bg-amber-400/10 disabled:opacity-50"
+											>
+												<Eye className="h-3.5 w-3.5" />
+												Ver claves 30s
+											</button>
+										) : null}
 										{isConfigured ? (
 											<button
 												type="button"

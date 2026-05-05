@@ -1,0 +1,18 @@
+﻿{
+  "items": [
+    {
+      "productoId": "FBK-01",
+      "cantidad": 1,
+      "precioUnitario": 189900,
+      "nombre": "Cerradura Titanio V2"
+    }
+  ],
+  "region": "metropolitana",
+  "shippingAddress": "Av. Prueba 123",
+  "shippingHouseNumber": "123",
+  "cliente": {
+    "nombre": "QA Smoke",
+    "email": "qa-smoke@example.com",
+    "telefono": "+56911111111"
+  }
+}

@@ -334,9 +334,11 @@ export default function ProjectBuilder({ products = PRODUCTS, onSubmit }: Projec
       className="relative isolate overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black py-16 sm:py-24"
     >
       {/* Subtle grid background */}
+      {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
       <div
         aria-hidden
         className="pointer-events-none absolute inset-0 opacity-[0.03]"
+        // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
         style={{
           backgroundImage:
             'linear-gradient(rgba(250,204,21,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,0.4) 1px, transparent 1px)',
@@ -380,12 +382,13 @@ export default function ProjectBuilder({ products = PRODUCTS, onSubmit }: Projec
             >
               {CATEGORIES.map(({ id, label, Icon }) => {
                 const active = activeTab === id;
+                // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
                 return (
                   <button
                     key={id}
                     role="tab"
                     type="button"
-                    aria-selected={active}
+                    aria-selected={active ? 'true' : 'false'}
                     aria-controls={`panel-${id}`}
                     id={`tab-${id}`}
                     onClick={() => setActiveTab(id)}
@@ -523,16 +526,17 @@ export default function ProjectBuilder({ products = PRODUCTS, onSubmit }: Projec
                       Empieza por <span className="text-yellow-400/90">Obra Gruesa</span>.
                     </div>
                   ) : (
-                    <ul className="divide-y divide-white/5">
+                    <div className="divide-y divide-white/5">
                       <AnimatePresence initial={false}>
                         {cart.lines.map(({ product, quantity }) => (
-                          <motion.li
+                          <motion.div
                             key={product.id}
                             layout
                             initial={{ opacity: 0, x: 8 }}
                             animate={{ opacity: 1, x: 0 }}
                             exit={{ opacity: 0, x: 8, height: 0 }}
                             transition={{ duration: 0.2 }}
+                            role="option"
                             className="flex items-start gap-3 px-3 py-3"
                           >
                             <div className="flex-1 min-w-0">
@@ -589,10 +593,10 @@ export default function ProjectBuilder({ products = PRODUCTS, onSubmit }: Projec
                             <p className="whitespace-nowrap text-sm font-semibold text-yellow-400">
                               {formatCLP(product.price * quantity)}
                             </p>
-                          </motion.li>
+                          </motion.div>
                         ))}
                       </AnimatePresence>
-                    </ul>
+                    </div>
                   )}
                 </div>
 

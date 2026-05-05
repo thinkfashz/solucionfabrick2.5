@@ -29,6 +29,7 @@ export async function getMercadoPagoCredentials(): Promise<MercadoPagoCredential
 		normalize(process.env.MERCADOPAGO_PUBLIC_KEY);
 	const envWebhookSecret =
 		normalize(process.env.MERCADO_PAGO_WEBHOOK_SECRET) ??
+		normalize(process.env.MERCADOPAGO_WEBHOOK_SECRET) ??
 		normalize(process.env.MP_WEBHOOK_SECRET) ??
 		normalize(process.env.PAYMENTS_WEBHOOK_SECRET);
 
@@ -45,8 +46,12 @@ export async function getMercadoPagoCredentials(): Promise<MercadoPagoCredential
 
 	if (creds.accessToken && creds.publicKey && creds.webhookSecret) return creds;
 
-	const baseUrl = normalize(process.env.NEXT_PUBLIC_INSFORGE_URL);
-	const anonKey = normalize(process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY);
+	const baseUrl =
+		normalize(process.env.NEXT_PUBLIC_INSFORGE_URL) ??
+		normalize(process.env.INSFORGE_URL);
+	const anonKey =
+		normalize(process.env.INSFORGE_API_KEY) ??
+		normalize(process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY);
 	if (!baseUrl || !anonKey) return creds;
 
 	try {

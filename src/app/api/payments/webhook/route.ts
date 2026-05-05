@@ -80,11 +80,11 @@ async function handleMercadoPagoWebhook(request: Request) {
   const signatureHeader = request.headers.get('x-signature');
   const requestIdHeader = request.headers.get('x-request-id');
 
-  if (!verifyMercadoPagoSignature({
+  if (!(await verifyMercadoPagoSignature({
     signatureHeader,
     requestIdHeader,
     dataId,
-  })) {
+  }))) {
     return NextResponse.json({ error: 'Firma de Mercado Pago inválida.' }, { status: 401 });
   }
 

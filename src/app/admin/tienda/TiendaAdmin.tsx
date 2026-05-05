@@ -1,15 +1,21 @@
 'use client';
 
-import { PageEditor } from '@/components/admin/cms/PageEditor';
+import { EnhancedStoreEditor } from '@/components/admin/editor/EnhancedStoreEditor';
 
 /**
- * Editor del catálogo (`/tienda`). Reusa {@link PageEditor} con su propio
+ * Editor del catálogo (`/tienda`). Reusa {@link EnhancedStoreEditor} con su propio
  * conjunto de settings (`tienda_*`) y secciones dinámicas filtradas por
  * `page='tienda'`.
+ *
+ * Mejoras vs PageEditor:
+ * - Guardado automático en tiempo real (sin botón guardar)
+ * - Selector visual de componentes como tarjetas
+ * - UI/UX mejorada con animaciones suaves
+ * - Mejor responsivo en móvil
  */
 export function TiendaAdmin() {
   return (
-    <PageEditor
+    <EnhancedStoreEditor
       page="tienda"
       title="Tienda · Catálogo"
       subtitle="Edita la portada de la tienda, banners y bloques superiores del catálogo. Cambios visibles inmediatamente en /tienda."
@@ -58,34 +64,6 @@ export function TiendaAdmin() {
             { key: 'checkout_relacionados_tags', label: 'Etiquetas relacionadas (coma)' },
             { key: 'checkout_categorias_destacadas', label: 'Categorías destacadas (coma)' },
           ],
-        },
-      ]}
-      staticNodes={[
-        {
-          label: '<Navbar />',
-          path: 'src/components/Navbar.tsx',
-          description: 'Barra de navegación global, también visible en /tienda.',
-          tag: 'Client',
-          settingKeys: ['logo_url', 'whatsapp'],
-        },
-        {
-          label: '<HomeDynamicSections sections={tiendaSections} />',
-          path: 'src/components/HomeDynamicSections.tsx',
-          description: 'Renderiza las secciones dinámicas listadas debajo, encima del catálogo.',
-          tag: 'Server',
-        },
-        {
-          label: '<TiendaClientPage />',
-          path: 'src/tienda/page.tsx',
-          description: 'Catálogo cliente con búsqueda, filtros, carrito y banner. Lee productos de la tabla `productos` (editar en /admin/productos).',
-          tag: 'Client',
-        },
-        {
-          label: '<CheckoutApp />',
-          path: 'src/components/CheckoutApp.tsx',
-          description: 'Checkout principal: pasos de compra, diseño final y bloque de productos relacionados por categoría.',
-          tag: 'Client',
-          settingKeys: ['checkout_banner_titulo', 'checkout_relacionados_titulo', 'checkout_relacionados_tags'],
         },
       ]}
     />

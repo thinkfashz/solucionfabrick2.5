@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
 import SmoothScrollProvider from '@/components/SmoothScrollProvider';
+import SplashScreen from '@/components/SplashScreen';
 
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
@@ -122,6 +123,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <CustomInjectionRoot slot="head" />
       </head>
       <body className="bg-black text-white antialiased app-shell">
+        <SplashScreen />
         <SiteConfigProvider initial={{ 'nav-menu': navMenu, 'global-styles': globalStyles }}>
           <ThemeProvider>
             <AuthProvider>

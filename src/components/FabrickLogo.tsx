@@ -1,18 +1,12 @@
 ﻿'use client';
 
 /**
- * FabrickLogo
+ * FabrickLogo — Simplified Version
  * ----------------------------------------------------------------
- * Clean two-piece brand mark used everywhere in the public site.
+ * Clean minimal brand mark for all public site use.
  *
- *  ┌────┐  SOLUCIONES
- *  │ SF │  FABRICK
- *  └────┘
- *
- *  - "SF" badge in gold (#c9a96e dark / #b8860b light) with subtle shine.
- *  - "SOLUCIONES" thin uppercase, theme-aware text color.
- *  - "FABRICK" bold gold (matches accent token).
- *  - Single SVG-free DOM, no repetition, scales correctly on mobile.
+ *  Simple house/building geometric icon + FABRICK wordmark
+ *  Minimal, professional, scalable
  */
 
 import { type KeyboardEvent } from 'react';
@@ -29,9 +23,9 @@ interface Props {
 export default function FabrickLogo({ onClick, animate = true, className = '' }: Props) {
   const isInteractive = typeof onClick === 'function';
   const rootClass = [
-    'group inline-flex select-none items-center gap-2.5 sm:gap-3',
+    'group inline-flex select-none items-center gap-2 sm:gap-3',
     'transition-transform duration-300',
-    isInteractive ? 'cursor-pointer hover:-translate-y-[1px]' : '',
+    isInteractive ? 'cursor-pointer hover:-translate-y-0.5' : '',
     className,
   ]
     .filter(Boolean)
@@ -47,33 +41,45 @@ export default function FabrickLogo({ onClick, animate = true, className = '' }:
 
   const content = (
     <>
-      {/* SF badge */}
-      <span
-        className={[
-          'relative flex h-9 w-9 sm:h-10 sm:w-10 flex-shrink-0',
-          'items-center justify-center overflow-hidden rounded-xl',
-          'border border-[var(--accent)]/40',
-          'bg-gradient-to-br from-[var(--accent)] via-[var(--accent)] to-[var(--accent2,#b8860b)]',
-          'shadow-[0_4px_14px_rgba(201,169,110,0.30)]',
-          'transition-shadow duration-300 group-hover:shadow-[0_6px_22px_rgba(201,169,110,0.45)]',
-          animate ? 'logo-sf-shine' : '',
-        ].join(' ')}
-      >
-        {/* Top-left highlight */}
-        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_28%_22%,rgba(255,255,255,0.55),rgba(255,255,255,0)_55%)]" />
-        {/* Mono-letter mark */}
-        <span className="relative font-playfair text-[13px] sm:text-[14px] font-black tracking-[0.18em] text-black">
-          SF
-        </span>
-      </span>
+      {/* Simplified geometric icon */}
+      <div className="relative flex h-8 w-8 sm:h-9 sm:w-9 flex-shrink-0 items-center justify-center">
+        <svg
+          viewBox="0 0 64 64"
+          className="h-full w-full text-yellow-400"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        >
+          {/* Foundation line */}
+          <line x1="8" y1="48" x2="56" y2="48" />
+
+          {/* Left wall */}
+          <line x1="12" y1="48" x2="12" y2="28" />
+
+          {/* Right wall */}
+          <line x1="52" y1="48" x2="52" y2="28" />
+
+          {/* Roof left */}
+          <line x1="12" y1="28" x2="32" y2="12" />
+
+          {/* Roof right */}
+          <line x1="32" y1="12" x2="52" y2="28" />
+
+          {/* Door */}
+          <rect x="28" y="34" width="8" height="14" />
+          <circle cx="35" cy="41" r="1" fill="currentColor" />
+        </svg>
+      </div>
 
       {/* Wordmark */}
-      <span className="flex flex-col leading-none">
-        <span className="text-[10px] sm:text-[11px] font-medium uppercase tracking-[0.32em] text-[var(--text)] opacity-80">
-          Soluciones
-        </span>
-        <span className="font-playfair text-[15px] sm:text-[17px] font-black uppercase tracking-[0.16em] text-[var(--accent)]">
+      <span className="flex flex-col leading-tight">
+        <span className="text-xs sm:text-sm font-black uppercase tracking-widest text-white">
           Fabrick
+        </span>
+        <span className="text-[9px] sm:text-[10px] font-light uppercase tracking-widest text-zinc-500">
+          Soluciones
         </span>
       </span>
     </>

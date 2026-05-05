@@ -182,6 +182,7 @@ export default function AdminActionGuard({
 
         {/* "Ver Envío de Datos" toggle */}
         <div className="mt-4">
+          {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
           <button
             type="button"
             onClick={() => setShowPayload((v) => !v)}

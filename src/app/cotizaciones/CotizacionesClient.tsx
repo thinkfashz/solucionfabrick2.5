@@ -24,6 +24,7 @@ import {
   StickyNote,
 } from 'lucide-react';
 import { useQuoteCart, type QuoteItem } from '@/context/QuoteCartContext';
+import { PanelCotizacionMejorado } from '@/components/cotizaciones/PanelCotizacionMejorado';
 
 const PAGE_SIZE = 6;
 
@@ -85,6 +86,11 @@ export default function CotizacionesClient() {
   if (items.length === 0) {
     return (
       <main className="min-h-screen bg-black text-white pt-24 pb-32 px-4">
+        {/* Panel de Cotización Mejorado */}
+        <div className="max-w-5xl mx-auto mb-16">
+          <PanelCotizacionMejorado />
+        </div>
+
         <div className="max-w-2xl mx-auto text-center">
           <div className="w-20 h-20 mx-auto rounded-full bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center mb-6">
             <FileText className="w-9 h-9 text-yellow-400" />

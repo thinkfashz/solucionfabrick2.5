@@ -194,8 +194,7 @@ export default function SqlTerminalPage() {
               <button
                 onClick={runQuery}
                 disabled={running || !query.trim()}
-                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                style={{ background: '#facc15', color: '#000' }}
+                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 bg-yellow-400 text-black"
               >
                 <Play className="w-3 h-3" />
                 {running ? 'Ejecutando...' : 'Ejecutar'}

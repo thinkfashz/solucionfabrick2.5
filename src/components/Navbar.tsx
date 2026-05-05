@@ -34,7 +34,6 @@ const PRIMARY_MENU_ITEMS = [
   { label: 'Servicios',        href: '/servicios',    Icon: Wrench },
   { label: 'Diseñar mi casa',  href: '/juego',        Icon: Gamepad2 },
   { label: 'Cotización',       href: '/cotizaciones', Icon: FileText, quoteCount: true },
-  { label: 'Carrito tienda',   href: '/checkout',     Icon: ShoppingCart, cartCount: true },
   { label: 'Tienda',           href: '/tienda',       Icon: ShoppingBag },
 ];
 

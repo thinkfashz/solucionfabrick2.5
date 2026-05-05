@@ -1015,37 +1015,56 @@ export default function HouseDesigner() {
       {/* 3D canvas */}
       <div className="flex-1 relative">
         <Canvas
-          shadows="soft"
-          camera={{ position: [11, 9, 11], fov: 45 }}
+          shadows={window.innerWidth < 768 ? false : 'soft'}
+          camera={{ position: window.innerWidth < 768 ? [10, 8, 10] : [11, 9, 11], fov: window.innerWidth < 768 ? 55 : 45 }}
           gl={{
             antialias: true,
             powerPreference: 'high-performance',
             toneMapping: THREE.ACESFilmicToneMapping,
             toneMappingExposure: 1.1,
+            dpr: window.innerWidth < 768 ? 1 : Math.min(window.devicePixelRatio, 2),
           }}
           dpr={[1, 2]}
         >
           <color attach="background" args={['#060608']} />
-          <fog attach="fog" args={['#060608', 24, 55]} />
+          <fog attach="fog" args={['#060608', 20, 48]} />
 
-          {/* Iluminación realista */}
+          {/* Iluminación optimizada para mobile */}
           <hemisphereLight args={['#1a1a2e', '#0a0a0a', 0.55]} />
           <ambientLight intensity={0.25} />
-          <directionalLight
-            position={[12, 18, 10]}
-            intensity={1.3}
-            castShadow
-            shadow-mapSize={[2048, 2048]}
-            shadow-camera-near={0.5}
-            shadow-camera-far={55}
-            shadow-camera-left={-14}
-            shadow-camera-right={14}
-            shadow-camera-top={14}
-            shadow-camera-bottom={-14}
-            shadow-bias={-0.0004}
-          />
+          {window.innerWidth < 768 ? (
+            // Sombras simplificadas en mobile
+            <directionalLight
+              position={[12, 18, 10]}
+              intensity={1.2}
+              castShadow
+              shadow-mapSize={[1024, 1024]}
+              shadow-camera-near={0.5}
+              shadow-camera-far={50}
+              shadow-camera-left={-12}
+              shadow-camera-right={12}
+              shadow-camera-top={12}
+              shadow-camera-bottom={-12}
+              shadow-bias={-0.0003}
+            />
+          ) : (
+            // Sombras completas en desktop
+            <directionalLight
+              position={[12, 18, 10]}
+              intensity={1.3}
+              castShadow
+              shadow-mapSize={[2048, 2048]}
+              shadow-camera-near={0.5}
+              shadow-camera-far={55}
+              shadow-camera-left={-14}
+              shadow-camera-right={14}
+              shadow-camera-top={14}
+              shadow-camera-bottom={-14}
+              shadow-bias={-0.0004}
+            />
+          )}
           <directionalLight position={[-8, 6, -10]} intensity={0.28} color="#8888cc" />
-          <pointLight position={[0, 8, 0]} intensity={0.5} color="#facc15" distance={22} decay={2} />
+          <pointLight position={[0, 8, 0]} intensity={window.innerWidth < 768 ? 0.3 : 0.5} color="#facc15" distance={22} decay={2} />
 
           <CameraController topView={topView} />
 
@@ -1079,11 +1098,23 @@ export default function HouseDesigner() {
             enableRotate={!topView}
             enableZoom
             enableDamping
-            dampingFactor={0.07}
-            minDistance={3}
-            maxDistance={32}
+            dampingFactor={window.innerWidth < 768 ? 0.05 : 0.07}
+            autoRotate={false}
+            minDistance={window.innerWidth < 768 ? 2 : 3}
+            maxDistance={window.innerWidth < 768 ? 24 : 32}
             maxPolarAngle={topView ? 0 : Math.PI / 2.08}
-            touches={{ ONE: THREE.TOUCH.ROTATE, TWO: THREE.TOUCH.DOLLY_PAN }}
+            touches={window.innerWidth < 768 ? {
+              ONE: THREE.TOUCH.ROTATE,
+              TWO: THREE.TOUCH.DOLLY_PAN,
+            } : {
+              ONE: THREE.TOUCH.ROTATE,
+              TWO: THREE.TOUCH.DOLLY_PAN,
+            }}
+            mouseButtons={{
+              LEFT: THREE.MOUSE.ROTATE,
+              MIDDLE: THREE.MOUSE.DOLLY,
+              RIGHT: THREE.MOUSE.PAN,
+            }}
           />
         </Canvas>
 

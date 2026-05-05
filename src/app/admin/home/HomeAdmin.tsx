@@ -14,19 +14,19 @@ export function HomeAdmin() {
     <PageEditor
       page="home"
       title="Pantalla principal"
-      subtitle="Edita el hero, banners y secciones que ves en la landing. Reordena con ↑/↓. Cambios visibles inmediatamente en la home."
+      subtitle="Edita el hero, banners y secciones que ves en la landing. Los cambios se reflejan inmediatamente. Tips: usa títulos cortos y emocionales, copys que resuelvan problemas (no que vendan), palabras clave para SEO."
       previewPath="/"
       settingGroups={[
         {
           title: 'Hero, footer y redes',
           fields: [
-            { key: 'hero_title', label: 'Título del hero' },
-            { key: 'hero_subtitle', label: 'Subtítulo del hero' },
-            { key: 'hero_cover_url', label: 'Imagen de portada (hero)', image: true },
-            { key: 'copyright_text', label: 'Texto de copyright', hint: 'Usa {year} para insertar el año actual' },
-            { key: 'social_facebook', label: 'Facebook (URL)' },
-            { key: 'social_instagram', label: 'Instagram (URL)' },
-            { key: 'social_tiktok', label: 'TikTok (URL)' },
+            { key: 'hero_title', label: 'Título del hero (máx 3 líneas)', hint: 'Separa líneas con \\n. Ej: "Tu obra\\nen buenas manos\\nSin intermediarios"' },
+            { key: 'hero_subtitle', label: 'Subtítulo del hero', hint: 'Máx 150 caracteres. Empieza con un problema que resuelves, no con una venta.' },
+            { key: 'hero_cover_url', label: 'Imagen de portada (hero)', image: true, hint: 'Usa imágenes reales de obras (no renders). Mín 1920x1280px.' },
+            { key: 'copyright_text', label: 'Texto de copyright', hint: 'Usa {year} para el año. Ej: "© {year} Soluciones Fabrick SPA · Construcción Maule"' },
+            { key: 'social_facebook', label: 'Facebook (URL completa)' },
+            { key: 'social_instagram', label: 'Instagram (URL completa)' },
+            { key: 'social_tiktok', label: 'TikTok (URL completa)' },
           ],
         },
       ]}
@@ -72,10 +72,10 @@ const whatsapp  = settings.whatsapp;    // Ej: "56912345678"
 // Ejemplo de hero_title con salto de línea:
 // "Edificamos\\ntu proyecto\\ncon calidad."`,
           guideSteps: [
-            'En "Editor", edita "hero_title": escribe el titular principal. Usa \\n para separar líneas (ej: "Edificamos\\ntu proyecto").',
-            'Edita "hero_subtitle" con un texto breve que explique tu propuesta de valor.',
-            'Para cambiar la imagen de fondo, edita "hero_cover_url" con la URL o usa el selector de medios.',
-            'Presiona "Guardar cambios". Los cambios se reflejan en tiempo real en la Vista previa.',
+            '🎯 Título: Ataca un problema real que tu cliente enfrenta. Ejemplo: "Tu obra en buenas manos" (no "Construcción de calidad").',
+            '📝 Subtítulo: Explica la solución. Ejemplo: "Equipo propio, precios fijos, avances reales cada semana".',
+            '🖼️ Imagen: Usa fotos reales de tus obras (no renders ni stock photos). Humaniza el contenido.',
+            '✅ Guarda y recarga la Vista previa (F5) para ver los cambios en tiempo real.',
           ],
         },
         {

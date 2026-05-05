@@ -332,27 +332,29 @@ export function PageEditor({ page, title, subtitle, previewPath, settingGroups, 
   }
 
   return (
-    <div className="space-y-6">
-      <header className="flex flex-wrap items-start justify-between gap-3">
-        <div>
-          <h1 className="font-playfair text-2xl font-black tracking-wide text-yellow-400">{title}</h1>
-          <p className="text-xs text-zinc-500">{subtitle}</p>
+    <div className="space-y-4 sm:space-y-5 md:space-y-6 px-4 sm:px-6 md:px-0">
+      <header className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-3 sm:gap-4">
+        <div className="min-w-0">
+          <h1 className="font-playfair text-xl sm:text-2xl font-black tracking-wide text-yellow-400">{title}</h1>
+          <p className="text-xs sm:text-sm text-zinc-500 mt-1">{subtitle}</p>
         </div>
-        <SaveBadge state={saveState} />
+        <div className="flex-shrink-0">
+          <SaveBadge state={saveState} />
+        </div>
       </header>
 
       {/* Tab navigation */}
-      <div className="flex gap-1 rounded-2xl border border-white/10 bg-black/60 p-1.5">
-        <TabButton active={activeTab === 'editor'} onClick={() => setActiveTab('editor')} icon={<Settings className="h-3.5 w-3.5" />}>Editor</TabButton>
-        <TabButton active={activeTab === 'preview'} onClick={() => setActiveTab('preview')} icon={<Monitor className="h-3.5 w-3.5" />}>Vista previa</TabButton>
-        <TabButton active={activeTab === 'estructura'} onClick={() => setActiveTab('estructura')} icon={<Map className="h-3.5 w-3.5" />}>Estructura</TabButton>
-        <TabButton active={activeTab === 'guia'} onClick={() => setActiveTab('guia')} icon={<BookOpen className="h-3.5 w-3.5" />}>Guía</TabButton>
+      <div className="flex gap-1 rounded-xl sm:rounded-2xl border border-white/10 bg-black/60 p-1 sm:p-1.5 overflow-x-auto">
+        <TabButton active={activeTab === 'editor'} onClick={() => setActiveTab('editor')} icon={<Settings className="h-3 sm:h-3.5 w-3 sm:w-3.5" />}>Editor</TabButton>
+        <TabButton active={activeTab === 'preview'} onClick={() => setActiveTab('preview')} icon={<Monitor className="h-3 sm:h-3.5 w-3 sm:w-3.5" />}>Vista previa</TabButton>
+        <TabButton active={activeTab === 'estructura'} onClick={() => setActiveTab('estructura')} icon={<Map className="h-3 sm:h-3.5 w-3 sm:w-3.5" />}>Estructura</TabButton>
+        <TabButton active={activeTab === 'guia'} onClick={() => setActiveTab('guia')} icon={<BookOpen className="h-3 sm:h-3.5 w-3 sm:w-3.5" />}>Guía</TabButton>
       </div>
 
       {error && (
-        <div className="flex items-start justify-between gap-3 rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
-          <span>{error}</span>
-          <button onClick={() => setError(null)} className="text-red-400 hover:text-white" aria-label="Cerrar">×</button>
+        <div className="flex items-start justify-between gap-2 sm:gap-3 rounded-lg sm:rounded-xl border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">
+          <span className="flex-1">{error}</span>
+          <button onClick={() => setError(null)} className="text-red-400 hover:text-white flex-shrink-0" aria-label="Cerrar">×</button>
         </div>
       )}
 
@@ -360,20 +362,20 @@ export function PageEditor({ page, title, subtitle, previewPath, settingGroups, 
       {activeTab === 'editor' && (
         <>
           {settingGroups.map((group, gi) => (
-            <section key={gi} className="space-y-3 rounded-2xl border border-white/10 bg-black/60 p-4">
-              <header className="flex items-center justify-between">
-                <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-yellow-400 flex items-center gap-2">
-                  <Settings className="h-4 w-4" /> {group.title}
+            <section key={gi} className="space-y-2 sm:space-y-3 rounded-lg sm:rounded-2xl border border-white/10 bg-black/60 p-3 sm:p-4">
+              <header className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 sm:gap-3">
+                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-yellow-400 flex items-center gap-2">
+                  <Settings className="h-3.5 sm:h-4 w-3.5 sm:w-4 flex-shrink-0" /> {group.title}
                 </h2>
                 <button
                   onClick={saveSettings}
                   disabled={savingSettings}
-                  className="flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-2 text-[11px] font-black uppercase tracking-[0.18em] text-black hover:bg-yellow-300 disabled:opacity-50"
+                  className="w-full sm:w-auto flex items-center justify-center gap-2 rounded-full bg-yellow-400 px-3 sm:px-4 py-2 text-[10px] sm:text-[11px] font-black uppercase tracking-[0.18em] text-black hover:bg-yellow-300 disabled:opacity-50"
                 >
-                  {savingSettings ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Guardar
+                  {savingSettings ? <Loader2 className="h-3 sm:h-3.5 w-3 sm:w-3.5 animate-spin" /> : <Save className="h-3 sm:h-3.5 w-3 sm:w-3.5" />} Guardar
                 </button>
               </header>
-              <div className="grid gap-3 md:grid-cols-2">
+              <div className="grid gap-2 sm:gap-3 grid-cols-1 md:grid-cols-2">
                 {group.fields.map((field) => (
                   <SettingControl
                     key={field.key}
@@ -388,16 +390,12 @@ export function PageEditor({ page, title, subtitle, previewPath, settingGroups, 
           ))}
 
           {/* Sections */}
-          <section className="space-y-3 rounded-2xl border border-white/10 bg-black/60 p-4">
-            <header className="flex flex-wrap items-center justify-between gap-2">
+          <section className="space-y-2 sm:space-y-3 rounded-lg sm:rounded-2xl border border-white/10 bg-black/60 p-3 sm:p-4">
+            <header className="flex flex-col gap-2">
               <div>
-                <h2 className="text-sm font-bold uppercase tracking-[0.2em] text-yellow-400">Secciones dinámicas</h2>
-                <p className="text-[11px] text-zinc-500">Cada sección visible se renderiza en orden, antes del contenido base de la página.</p>
+                <h2 className="text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-yellow-400">Secciones</h2>
+                <p className="text-[10px] sm:text-[11px] text-zinc-500 mt-1">Cada sección visible se renderiza en orden.</p>
               </div>
-              <select
-                aria-label="Agregar nueva sección"
-                title="Agregar nueva sección"
-                onChange={(e) => { if (e.target.value) { addSection(e.target.value); e.currentTarget.value = ''; } }}
                 defaultValue=""
                 disabled={adding}
                 className="rounded-full border border-white/10 bg-black px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-400 hover:border-yellow-400/40"

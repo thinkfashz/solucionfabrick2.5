@@ -324,6 +324,7 @@ export async function probeMercadoPago(
 export function getMercadoPagoWebhookSecret() {
   return (
     process.env.MERCADO_PAGO_WEBHOOK_SECRET ||
+    process.env.MERCADOPAGO_WEBHOOK_SECRET ||
     process.env.MP_WEBHOOK_SECRET ||
     process.env.PAYMENTS_WEBHOOK_SECRET ||
     ''
@@ -462,12 +463,13 @@ function parseSignatureParts(signatureHeader: string | null) {
   };
 }
 
-export function verifyMercadoPagoSignature(args: {
+export async function verifyMercadoPagoSignature(args: {
   signatureHeader: string | null;
   requestIdHeader: string | null;
   dataId: string | null;
 }) {
-  const secret = getMercadoPagoWebhookSecret();
+  const resolved = await getMercadoPagoCredentials();
+  const secret = resolved.webhookSecret ?? getMercadoPagoWebhookSecret();
   if (!secret) return true;
 
   const parts = parseSignatureParts(args.signatureHeader);

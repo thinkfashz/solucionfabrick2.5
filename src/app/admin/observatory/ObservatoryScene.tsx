@@ -32,9 +32,16 @@ const PLANETS: PlanetData[] = [
 const HUB = PLANETS[0];
 const SPOKES = PLANETS.slice(1);
 
-// ── Star field ───────────────────────────────────────────────────────────────
+// ── Detect mobile for optimization ───────────────────────────────────────────
+function useIsMobile() {
+  const { viewport } = useThree();
+  return viewport.width < 768;
+}
+
+// ── Star field (adaptive for mobile) ─────────────────────────────────────────
 function StarField() {
-  const count = 3000;
+  const isMobile = useIsMobile();
+  const count = isMobile ? 1200 : 3000; // 60% fewer on mobile
   const ref = useRef<THREE.Points>(null);
   const positions = useMemo(() => {
     const arr = new Float32Array(count * 3);
@@ -47,7 +54,7 @@ function StarField() {
       arr[i * 3 + 2] = r * Math.cos(phi);
     }
     return arr;
-  }, []);
+  }, [count]);
   const colors = useMemo(() => {
     const arr = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
@@ -57,7 +64,7 @@ function StarField() {
       arr[i * 3 + 2] = 1.0;
     }
     return arr;
-  }, []);
+  }, [count]);
 
   useFrame(({ clock }) => {
     if (ref.current) {
@@ -71,15 +78,16 @@ function StarField() {
         <bufferAttribute attach="attributes-position" array={positions} count={count} itemSize={3} args={[positions, 3]} />
         <bufferAttribute attach="attributes-color" array={colors} count={count} itemSize={3} args={[colors, 3]} />
       </bufferGeometry>
-      <pointsMaterial size={1.5} vertexColors transparent opacity={0.9} sizeAttenuation />
+      <pointsMaterial size={isMobile ? 1 : 1.5} vertexColors transparent opacity={0.9} sizeAttenuation />
     </points>
   );
 }
 
-// ── Nebula cloud ─────────────────────────────────────────────────────────────
+// ── Nebula cloud (optimized for mobile) ──────────────────────────────────────
 function Nebula() {
+  const isMobile = useIsMobile();
   const ref = useRef<THREE.Points>(null);
-  const count = 500;
+  const count = isMobile ? 200 : 500; // 60% fewer on mobile
   const positions = useMemo(() => {
     const arr = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
@@ -88,7 +96,7 @@ function Nebula() {
       arr[i * 3 + 2] = (Math.random() - 0.5) * 600;
     }
     return arr;
-  }, []);
+  }, [count]);
 
   useFrame(({ clock }) => {
     if (ref.current) ref.current.rotation.y = clock.elapsedTime * 0.005;
@@ -99,7 +107,7 @@ function Nebula() {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" array={positions} count={count} itemSize={3} args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial color="#facc15" size={4} transparent opacity={0.04} sizeAttenuation />
+      <pointsMaterial color="#facc15" size={isMobile ? 2 : 4} transparent opacity={0.04} sizeAttenuation />
     </points>
   );
 }
@@ -146,6 +154,7 @@ function makeLabelTex(text: string, color: string): THREE.CanvasTexture {
 
 // ── Planet ────────────────────────────────────────────────────────────────────
 function Planet({ planet }: { planet: PlanetData }) {
+  const isMobile = useIsMobile();
   const groupRef   = useRef<THREE.Group>(null);
   const planetRef  = useRef<THREE.Mesh>(null);
   const labelRef   = useRef<THREE.Mesh>(null);
@@ -155,6 +164,7 @@ function Planet({ planet }: { planet: PlanetData }) {
   useEffect(() => () => labelTex.dispose(), [labelTex]);
 
   const isHub = planet.orbitRadius === 0;
+  const sphereSegments = isMobile ? 16 : 32; // Half segments on mobile
 
   useFrame(({ clock, camera }) => {
     if (!groupRef.current) return;
@@ -182,7 +192,7 @@ function Planet({ planet }: { planet: PlanetData }) {
     <group ref={groupRef}>
       {/* Planet body */}
       <mesh ref={planetRef}>
-        <sphereGeometry args={[planet.size, 64, 64]} />
+        <sphereGeometry args={[planet.size, sphereSegments, sphereSegments]} />
         <meshStandardMaterial
           color={planet.color}
           emissive={planet.color}
@@ -195,14 +205,14 @@ function Planet({ planet }: { planet: PlanetData }) {
       {/* Rings */}
       {planet.hasRings && (
         <mesh rotation={[Math.PI / 4, 0, 0]}>
-          <ringGeometry args={[planet.size * 1.5, planet.size * 2.2, 64]} />
+          <ringGeometry args={[planet.size * 1.5, planet.size * 2.2, isMobile ? 32 : 64]} />
           <meshBasicMaterial color={planet.ringColor} transparent opacity={0.35} side={THREE.DoubleSide} />
         </mesh>
       )}
 
       {/* Atmosphere glow */}
       <mesh>
-        <sphereGeometry args={[planet.size * 1.08, 32, 32]} />
+        <sphereGeometry args={[planet.size * 1.08, isMobile ? 16 : 32, isMobile ? 16 : 32]} />
         <meshBasicMaterial color={planet.color} transparent opacity={0.07} side={THREE.BackSide} />
       </mesh>
 
@@ -217,14 +227,14 @@ function Planet({ planet }: { planet: PlanetData }) {
 
       {/* Moons */}
       {Array.from({ length: planet.moons }).map((_, mi) => (
-        <Moon key={mi} parentSize={planet.size} index={mi} color={planet.color} />
+        <Moon key={mi} parentSize={planet.size} index={mi} color={planet.color} isMobile={isMobile} />
       ))}
     </group>
   );
 }
 
 // ── Moon ──────────────────────────────────────────────────────────────────────
-function Moon({ parentSize, index, color }: { parentSize: number; index: number; color: string }) {
+function Moon({ parentSize, index, color, isMobile }: { parentSize: number; index: number; color: string; isMobile: boolean }) {
   const ref = useRef<THREE.Mesh>(null);
   const offset = (index + 1) * 0.8;
   const speed  = 1.2 + index * 0.4;
@@ -238,7 +248,7 @@ function Moon({ parentSize, index, color }: { parentSize: number; index: number;
 
   return (
     <mesh ref={ref}>
-      <sphereGeometry args={[parentSize * 0.22, 16, 16]} />
+      <sphereGeometry args={[parentSize * 0.22, isMobile ? 8 : 16, isMobile ? 8 : 16]} />
       <meshStandardMaterial color={color} emissive={color} emissiveIntensity={0.3} roughness={0.8} />
     </mesh>
   );
@@ -353,6 +363,7 @@ function Rocket({
 
 // ── Sun (center star) ─────────────────────────────────────────────────────────
 function Sun() {
+  const isMobile = useIsMobile();
   const ref = useRef<THREE.Mesh>(null);
   useFrame(({ clock }) => {
     if (ref.current) ref.current.rotation.y = clock.elapsedTime * 0.2;
@@ -360,16 +371,23 @@ function Sun() {
   return (
     <group>
       <mesh ref={ref}>
-        <sphereGeometry args={[18, 64, 64]} />
+        <sphereGeometry args={[18, isMobile ? 32 : 64, isMobile ? 32 : 64]} />
         <meshStandardMaterial color="#facc15" emissive="#f59e0b" emissiveIntensity={1.5} roughness={1} metalness={0} />
       </mesh>
-      {/* Corona layers */}
-      {[24, 30, 38].map((r, i) => (
-        <mesh key={r}>
-          <sphereGeometry args={[r, 32, 32]} />
-          <meshBasicMaterial color="#facc15" transparent opacity={0.04 - i * 0.01} side={THREE.BackSide} />
+      {/* Corona layers - skip middle one on mobile */}
+      {isMobile ? (
+        <mesh>
+          <sphereGeometry args={[24, 16, 16]} />
+          <meshBasicMaterial color="#facc15" transparent opacity={0.04} side={THREE.BackSide} />
         </mesh>
-      ))}
+      ) : (
+        [24, 30, 38].map((r, i) => (
+          <mesh key={r}>
+            <sphereGeometry args={[r, 32, 32]} />
+            <meshBasicMaterial color="#facc15" transparent opacity={0.04 - i * 0.01} side={THREE.BackSide} />
+          </mesh>
+        ))
+      )}
       <pointLight color="#facc15" intensity={4} distance={600} />
     </group>
   );
@@ -462,10 +480,25 @@ export default function ObservatoryScene({
   onVehicleCount: (n: number) => void;
 }) {
   void _data;
+  
+  // Adaptive DPR for mobile/desktop performance
+  const getDPR = () => {
+    if (typeof window === 'undefined') return 1;
+    const isMobileView = window.innerWidth < 768;
+    if (isMobileView) return 1; // Force DPR=1 on mobile for 3x better perf
+    return Math.min(window.devicePixelRatio, 2);
+  };
+
   return (
     <Canvas
       camera={{ position: [450, 250, 450], fov: 50, near: 1, far: 3000 }}
-      gl={{ antialias: true, alpha: false }}
+      gl={{ 
+        antialias: true, 
+        alpha: false,
+        dpr: getDPR(),
+        powerPreference: 'high-performance',
+        precision: 'highp'
+      }}
       style={{ width: '100%', height: '100%', background: '#00000a' }}
     >
       <Scene onLog={onLog} onVehicleCount={onVehicleCount} />

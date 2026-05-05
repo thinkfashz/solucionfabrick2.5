@@ -17,15 +17,15 @@ const DEFAULT_HERO_IMAGE =
   'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=90&w=1920&auto=format&fit=crop&crop=center';
 
 const STATS = [
-  { n: '12+',  label: 'AÃ±os de exp.',    Icon: TrendingUp   },
-  { n: '300+', label: 'Obras hechas',    Icon: Users2       },
-  { n: '98%',  label: 'SatisfacciÃ³n',    Icon: CheckCircle2 },
-  { n: '24h',  label: 'Respuesta',       Icon: Clock        },
+  { n: '12+',  label: 'AÃ±os sin paros',      Icon: TrendingUp   },
+  { n: '98%',  label: 'Clientes recomiendan', Icon: CheckCircle2 },
+  { n: '100%', label: 'Equipo propio',       Icon: Users2       },
+  { n: '24h',  label: 'Respuesta garantizada', Icon: Clock        },
 ] as const;
 
-const DEFAULT_HEADLINE = 'Edificamos\ntu proyecto\ncon calidad.';
+const DEFAULT_HEADLINE = 'Tu obra\nen buenas manos.\nSin intermediarios.';
 const DEFAULT_SUBTITLE =
-  'Equipo propio, materiales premium, entrega puntual. Sin subcontratos, sin sorpresas.';
+  'â„ Trabajamos nosotros, no subcontratistas. â„ PreciosÂ fijos desde el primer dÃ­a. â„ Avances reales cada semana. â„ ConfiabÃ­as que nos conozcas.';
 const CTA_MSG =
   'Hola Soluciones Fabrick, quiero hablar con un experto y obtener un presupuesto gratuito para mi proyecto en Linares.';
 

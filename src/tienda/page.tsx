@@ -1443,31 +1443,6 @@ export default function TiendaClientPage() {
 								))}
 							</div>
 
-							{/* Divider */}
-							<div className="my-4 h-px bg-white/5 mx-2" />
-
-							{/* Cart shortcut */}
-							<button
-								onClick={() => { setIsMenuOpen(false); setIsCartOpen(true); }}
-								className="menu-item-hover w-full flex items-center gap-4 p-3.5 rounded-xl border border-transparent text-left group"
-							>
-								<div className="w-9 h-9 rounded-xl bg-white/5 flex items-center justify-center flex-shrink-0 relative group-hover:bg-yellow-400/12 transition-colors">
-									<ShoppingBag size={16} className="text-zinc-400 group-hover:text-yellow-400 transition-colors" />
-									{cart.length > 0 && (
-										<span className="absolute -top-1 -right-1 w-4 h-4 bg-yellow-400 rounded-full text-black text-[8px] font-black flex items-center justify-center">
-											{cart.length}
-										</span>
-									)}
-								</div>
-								<div className="flex-1 min-w-0">
-									<p className="text-white text-sm font-semibold leading-none mb-1">Mi Carrito</p>
-									<p className="text-zinc-500 text-[10px] leading-none">
-										{cart.length === 0 ? 'Carrito vacío' : `${cart.length} producto${cart.length !== 1 ? 's' : ''} — $${cartTotal.toLocaleString()}`}
-									</p>
-								</div>
-								<ChevronRight size={13} className="text-zinc-700 group-hover:text-yellow-400/60 transition-colors flex-shrink-0" />
-							</button>
-
 							{/* Sign out (if logged in) */}
 							{user && (
 								<>

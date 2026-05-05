@@ -46,7 +46,7 @@ export interface CmsSettings {
 }
 
 const DEFAULT_SETTINGS: CmsSettings = {
-  copyright_text: '© {year} Soluciones Fabrick · Todos los derechos reservados',
+  copyright_text: '© {year} Soluciones Fabrick SPA · Construcción y remodelación en la Región del Maule · Todos los derechos reservados',
   hero_title: '',
   hero_subtitle: '',
   hero_cover_url: '',

@@ -64,10 +64,17 @@ export const INTEGRATIONS_ENV_MAP: Record<string, Record<string, readonly string
 		refresh_token: ['GOOGLE_REFRESH_TOKEN', 'GOOGLE_OAUTH_REFRESH_TOKEN'],
 	},
 	google_ads: {
+		// Strictly scoped to GOOGLE_ADS_* env names. We intentionally do NOT
+		// fall back to the generic GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET /
+		// GOOGLE_REFRESH_TOKEN: those belong to the separate `google`
+		// provider and reusing them here would (a) make the env-conflict
+		// 409 guard reject any attempt to save Google-Ads-specific OAuth
+		// credentials from the admin whenever generic Google OAuth is also
+		// configured, and (b) silently couple two unrelated integrations.
 		developer_token: ['GOOGLE_ADS_DEVELOPER_TOKEN'],
-		client_id: ['GOOGLE_ADS_CLIENT_ID', 'GOOGLE_CLIENT_ID'],
-		client_secret: ['GOOGLE_ADS_CLIENT_SECRET', 'GOOGLE_CLIENT_SECRET'],
-		refresh_token: ['GOOGLE_ADS_REFRESH_TOKEN', 'GOOGLE_REFRESH_TOKEN'],
+		client_id: ['GOOGLE_ADS_CLIENT_ID'],
+		client_secret: ['GOOGLE_ADS_CLIENT_SECRET'],
+		refresh_token: ['GOOGLE_ADS_REFRESH_TOKEN'],
 		customer_id: ['GOOGLE_ADS_CUSTOMER_ID'],
 		login_customer_id: ['GOOGLE_ADS_LOGIN_CUSTOMER_ID'],
 	},

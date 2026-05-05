@@ -63,6 +63,22 @@ describe('integrationsEnvMap', () => {
 		expect(envFieldPreview('abcdef1234')).toBe('••• 1234');
 	});
 
+	it('does not let generic Google OAuth env vars leak into google_ads', () => {
+		// Reviewer scenario: an installation has generic Google OAuth env vars
+		// configured for the `google` provider. Those must NOT be detected
+		// as env-sourced for `google_ads`, otherwise the POST conflict guard
+		// would reject any admin attempt to save Google-Ads-specific OAuth.
+		setEnv('GOOGLE_CLIENT_ID', 'generic-client');
+		setEnv('GOOGLE_CLIENT_SECRET', 'generic-secret');
+		setEnv('GOOGLE_REFRESH_TOKEN', 'generic-refresh');
+		const ads = detectEnvProviderCredentials('google_ads');
+		expect(ads.client_id).toBeUndefined();
+		expect(ads.client_secret).toBeUndefined();
+		expect(ads.refresh_token).toBeUndefined();
+		const google = detectEnvProviderCredentials('google');
+		expect(google.client_id?.value).toBe('generic-client');
+	});
+
 	it('covers every provider declared by the admin UI', () => {
 		// Sanity check so that adding a provider to the form forces an entry here.
 		const providers = ['stripe', 'whatsapp', 'mercadopago', 'mercadolibre', 'meta', 'google', 'google_ads', 'tiktok', 'cloudinary', 'vercel'];

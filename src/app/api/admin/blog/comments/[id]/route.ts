@@ -17,7 +17,7 @@ export async function PATCH(
       );
     }
 
-    const { error } = await insforge
+    const { error } = await insforge.database
       .from('blog_comments')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id);

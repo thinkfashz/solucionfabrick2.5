@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { ObservatoryData, ServiceId } from './useObservatoryData';
+import styles from './MobileObservatory.module.css';
 
 const ACCENT = '#facc15';
 
@@ -125,20 +126,8 @@ function MiniCityMap() {
           border: '1px solid rgba(250,204,21,0.18)',
         }}
       >
-      <div
-        // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          width: 4 * CELL,
-          height: 4 * CELL,
-          marginLeft: -2 * CELL,
-          marginTop: -2 * CELL,
-          transform: 'rotateX(60deg) rotateZ(45deg)',
-          transformStyle: 'preserve-3d',
-        }}
-      >
+      <div className={styles.mainContainer}>
+      <div className={styles.gridTransform}>
         {/* Ground grid */}
         <div
           // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles

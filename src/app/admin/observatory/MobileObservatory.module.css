@@ -1,0 +1,22 @@
+.mainContainer {
+  position: relative;
+  height: 220px;
+  width: 100%;
+  perspective: 800px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at center, rgba(250,204,21,0.06) 0%, rgba(6,10,18,0.0) 70%), #05080f;
+  border: 1px solid rgba(250,204,21,0.18);
+}
+
+.gridTransform {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 160px; /* 4 * CELL (if CELL=40) */
+  height: 160px;
+  margin-left: -80px;
+  margin-top: -80px;
+  transform: rotateX(60deg) rotateZ(45deg);
+  transform-style: preserve-3d;
+}

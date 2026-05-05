@@ -200,21 +200,7 @@ function MiniCityMap() {
 }
 
 // ── Panels ───────────────────────────────────────────────────────────
-const panelStyle: React.CSSProperties = {
-  background: 'rgba(6,10,18,0.88)',
-  border: '1px solid rgba(250,204,21,0.22)',
-  borderRadius: 12,
-  padding: 14,
-};
 
-const panelTitleStyle: React.CSSProperties = {
-  color: ACCENT,
-  fontSize: 9,
-  letterSpacing: '0.3em',
-  textTransform: 'uppercase',
-  marginBottom: 10,
-  fontWeight: 700,
-};
 
 function timeAgo(iso: string) {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -245,32 +231,14 @@ export default function MobileObservatory({
       {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
       <div
         className="h-full w-full overflow-y-auto"
-        // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-        style={{
-          fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-          color: '#e5e7eb',
-        }}
+        style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: '#e5e7eb' }}
       >
       <div className="flex flex-col gap-3 p-3 pb-10">
         {/* Header */}
-        <div style={panelStyle}>
+        <div className={styles.panel}>
           <div className="flex items-center justify-between">
-            <div
-              className="animate-pulse"
-              // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-              style={{
-                color: '#22c55e',
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: '0.3em',
-                textTransform: 'uppercase',
-              }}
-            >
-              ● Observatory Live
-            </div>
-            <div 
-              // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-              style={{ color: ACCENT, fontSize: 12, fontWeight: 700 }}>
+            <div className="animate-pulse" style={{ color: '#22c55e', fontSize: 10, fontWeight: 700, letterSpacing: '0.3em', textTransform: 'uppercase' }}>● Observatory Live</div>
+            <div style={{ color: ACCENT, fontSize: 12, fontWeight: 700 }}>
               {now
                 ? now.toLocaleTimeString('es-CL', {
                     hour: '2-digit',
@@ -280,11 +248,7 @@ export default function MobileObservatory({
                 : '—'}
             </div>
           </div>
-          <div 
-            // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-            style={{ color: '#9ca3af', fontSize: 10, marginTop: 6 }}>
-            Soluciones Fabrick · Sistema en vivo
-          </div>
+          <div style={{ color: '#9ca3af', fontSize: 10, marginTop: 6 }}>Soluciones Fabrick · Sistema en vivo</div>
         </div>
 
         {/* KPI grid 2x2 */}
@@ -292,46 +256,21 @@ export default function MobileObservatory({
           {kpis.map((k) => (
             <div
               key={k.label}
-              // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-              style={{
-                ...panelStyle,
-                borderColor: `${k.color}55`,
-                boxShadow: `0 0 16px ${k.color}14`,
-                padding: 12,
-              }}
+              className={styles.kpiPanel}
+              style={{ borderColor: `${k.color}55`, boxShadow: `0 0 16px ${k.color}14` }}
             >
-              <div
-                // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                style={{
-                  color: k.color,
-                  fontSize: 22,
-                  fontWeight: 800,
-                  lineHeight: 1.1,
-                  letterSpacing: '-0.01em',
-                }}
-              >
+              <div className={styles.kpiValue} style={{ color: k.color }}>
                 {k.prefix ?? ''}
                 <AnimatedNumber value={k.value} />
               </div>
-              <div
-                // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                style={{
-                  color: '#9ca3af',
-                  fontSize: 9,
-                  marginTop: 4,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.18em',
-                }}
-              >
-                {k.label}
-              </div>
+              <div className={styles.kpiLabel}>{k.label}</div>
             </div>
           ))}
         </div>
 
         {/* Services list */}
-        <div style={panelStyle}>
-          <div style={panelTitleStyle}>Servicios</div>
+        <div className={styles.panel}>
+          <div className={styles.panelTitle}>Servicios</div>
           <div className="flex flex-col gap-2">
             {SERVICE_ORDER.map((id) => {
               const s = data.servicioStatus[id];
@@ -339,48 +278,19 @@ export default function MobileObservatory({
               return (
                 <div
                   key={id}
-                  className="flex items-center justify-between"
-                  // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                  style={{
-                    padding: '8px 10px',
-                    background: 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${color}33`,
-                    borderRadius: 8,
-                  }}
+                  className={`flex items-center justify-between ${styles.serviceRow}`}
+                  style={{ border: `1px solid ${color}33` }}
                 >
                   <div className="flex items-center gap-2">
                     <span
                       aria-hidden
-                      // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        background: s.online ? color : '#ef4444',
-                        boxShadow: `0 0 8px ${s.online ? color : '#ef4444'}`,
-                      }}
+                      style={{ width: 8, height: 8, borderRadius: '50%', background: s.online ? color : '#ef4444', boxShadow: `0 0 8px ${s.online ? color : '#ef4444'}` }}
                     />
-                    <span 
-                      // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                      style={{ color: '#e5e7eb', fontSize: 12, fontWeight: 600 }}>
-                      {SERVICE_LABELS[id]}
-                    </span>
+                    <span style={{ color: '#e5e7eb', fontSize: 12, fontWeight: 600 }}>{SERVICE_LABELS[id]}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span
-                      // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                      style={{
-                        color: s.online ? '#22c55e' : '#ef4444',
-                        fontSize: 9,
-                        letterSpacing: '0.2em',
-                        fontWeight: 700,
-                      }}
-                    >
-                      {s.online ? 'ONLINE' : 'OFFLINE'}
-                    </span>
-                    <span 
-                      // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                      style={{ color: '#9ca3af', fontSize: 10 }}>{s.latencyMs}ms</span>
+                    <span style={{ color: s.online ? '#22c55e' : '#ef4444', fontSize: 9, letterSpacing: '0.2em', fontWeight: 700 }}>{s.online ? 'ONLINE' : 'OFFLINE'}</span>
+                    <span style={{ color: '#9ca3af', fontSize: 10 }}>{s.latencyMs}ms</span>
                   </div>
                 </div>
               );
@@ -389,57 +299,25 @@ export default function MobileObservatory({
         </div>
 
         {/* Mini city */}
-        <div style={panelStyle}>
-          <div style={panelTitleStyle}>Ciudad 3D</div>
+        <div className={styles.panel}>
+          <div className={styles.panelTitle}>Ciudad 3D</div>
           <MiniCityMap />
         </div>
 
         {/* Latest orders */}
-        <div style={panelStyle}>
-          <div style={panelTitleStyle}>Últimas órdenes</div>
+        <div className={styles.panel}>
+          <div className={styles.panelTitle}>Últimas órdenes</div>
           {data.latestOrders.length === 0 ? (
-            <div 
-              // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-              style={{ color: '#6b7280', fontSize: 11 }}>
-              {data.loading ? 'Cargando…' : 'Sin órdenes recientes'}
-            </div>
+            <div style={{ color: '#6b7280', fontSize: 11 }}>{data.loading ? 'Cargando…' : 'Sin órdenes recientes'}</div>
           ) : (
             <div className="flex flex-col gap-2">
               {data.latestOrders.slice(0, 5).map((o) => (
-                <div
-                  key={o.id}
-                  className="flex items-center justify-between"
-                  // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                  style={{
-                    padding: '8px 10px',
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(250,204,21,0.12)',
-                    borderRadius: 8,
-                  }}
-                >
+                <div key={o.id} className={`flex items-center justify-between ${styles.orderRow}`}>
                   <div className="flex flex-col min-w-0">
-                    <span
-                      // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                      style={{
-                        color: '#e5e7eb',
-                        fontSize: 11,
-                        fontWeight: 700,
-                      }}
-                      className="truncate"
-                    >
-                      #{o.id.slice(0, 8)}
-                    </span>
-                    <span 
-                      // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                      style={{ color: '#9ca3af', fontSize: 9 }}>
-                      {timeAgo(o.created_at)} · {o.status}
-                    </span>
+                    <span className={`truncate ${styles.orderId}`}>#{o.id.slice(0, 8)}</span>
+                    <span className={styles.orderMeta}>{timeAgo(o.created_at)} · {o.status}</span>
                   </div>
-                  <span 
-                    // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                    style={{ color: ACCENT, fontSize: 12, fontWeight: 700 }}>
-                    ${formatCLP(o.total ?? 0)}
-                  </span>
+                  <span className={styles.orderTotal}>${formatCLP(o.total ?? 0)}</span>
                 </div>
               ))}
             </div>
@@ -447,46 +325,14 @@ export default function MobileObservatory({
         </div>
 
         {/* Terminal logs */}
-        <div
-          // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-          style={{
-            ...panelStyle,
-            background: '#000',
-            borderColor: 'rgba(34,197,94,0.35)',
-          }}
-        >
-          <div
-            // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-            style={{
-              ...panelTitleStyle,
-              color: '#22c55e',
-              marginBottom: 8,
-            }}
-          >
-            Terminal · Logs
-          </div>
-          <div
-            // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-            style={{
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-              color: '#22c55e',
-              fontSize: 10.5,
-              lineHeight: 1.55,
-              minHeight: 90,
-            }}
-          >
+        <div className={`${styles.panel} ${styles.logsPanel}`}>
+          <div className={styles.logsTitle}>Terminal · Logs</div>
+          <div className={styles.logsText}>
             {logs.length === 0 ? (
-              <div 
-                // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                style={{ opacity: 0.5 }}>&gt; Esperando eventos…</div>
+              <div className={styles.logsEmpty}>&gt; Esperando eventos…</div>
             ) : (
               logs.slice(0, 5).map((l, i) => (
-                <div 
-                  key={i} 
-                  // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-                  style={{ color: l.color || '#22c55e' }}>
-                  &gt; {l.msg}
-                </div>
+                <div key={i} style={{ color: l.color || '#22c55e' }}>&gt; {l.msg}</div>
               ))
             )}
           </div>

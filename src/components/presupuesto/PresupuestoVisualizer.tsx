@@ -23,6 +23,7 @@ import {
   type QuotesAnalysis,
 } from '@/lib/presupuestoEnhancements';
 import { formatCLP } from '@/lib/budgetMath';
+import styles from './PresupuestoVisualizer.module.css';
 
 interface PresupuestoVisualizerProps {
   lines: QuoteLine[];

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { useThree } from '@react-three/fiber';
+import { PerspectiveCamera } from 'three';
 
 type CameraConfig = {
   position: [number, number, number];
@@ -86,7 +87,9 @@ export function CameraController({
 
   useEffect(() => {
     camera.position.set(...config.position);
-    camera.fov = config.fov;
+    if (camera instanceof PerspectiveCamera) {
+      camera.fov = config.fov;
+    }
     camera.updateProjectionMatrix();
   }, [topView, deviceType, camera, config]);
 

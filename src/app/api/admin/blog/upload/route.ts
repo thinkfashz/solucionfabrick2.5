@@ -3,7 +3,7 @@ import { insforge } from '@/lib/insforge';
 
 export async function GET() {
   try {
-    const { data, error } = await insforge
+    const { data, error } = await insforge.database
       .from('blog_uploads')
       .select('*')
       .order('created_at', { ascending: false });
@@ -45,7 +45,7 @@ export async function POST(request: NextRequest) {
     // Por ahora, guardar metadatos en BD
     const fileUrl = `/uploads/${filename}`;
 
-    const { data, error } = await insforge
+    const { data, error } = await insforge.database
       .from('blog_uploads')
       .insert([
         {

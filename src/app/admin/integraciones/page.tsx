@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { useSearchParams } from 'next/navigation';
 import {
 	Activity,
 	CheckCircle2,
@@ -8,6 +9,7 @@ import {
 	CreditCard,
 	Eye,
 	Globe,
+	LinkIcon,
 	Loader2,
 	MessageCircle,
 	MessageSquareText,
@@ -122,12 +124,16 @@ const PROVIDERS: ProviderDefinition[] = [
 	{
 		id: 'mercadolibre',
 		label: 'MercadoLibre',
-		description: 'Activa publicaciones, pedidos, preguntas y monitoreo de precios con el mismo token usado por los módulos ML.',
+		description: 'Activa publicaciones, pedidos, preguntas y monitoreo de precios. Usa "Conectar con Mercado Libre" para iniciar el flujo OAuth + PKCE — los campos se completarán automáticamente al volver del consentimiento.',
 		icon: Store,
 		accent: 'from-yellow-400/20 to-amber-500/10',
 		uses: ['Publicaciones ML', 'Pedidos ML', 'Preguntas ML', 'Monitor de precios'],
 		fields: [
 			{ key: 'access_token', label: 'Access token', type: 'password', placeholder: 'APP_USR-...' },
+			{ key: 'refresh_token', label: 'Refresh token', type: 'password', placeholder: 'TG-...', hint: 'Se renueva automáticamente cada 6 h. Se rota en cada uso (ML invalida el anterior).' },
+			{ key: 'user_id', label: 'User ID (seller)', placeholder: '123456789', hint: 'Lo devuelve ML al canjear el code.' },
+			{ key: 'expires_at', label: 'Expira el', placeholder: 'YYYY-MM-DDTHH:mm:ss.sssZ', hint: 'Vencimiento del access_token. La app refresca solita antes de expirar.' },
+			{ key: 'scope', label: 'Scopes', placeholder: 'offline_access read write' },
 		],
 	},
 	{
@@ -261,6 +267,16 @@ export default function AdminIntegracionesPage() {
 	const [revealError, setRevealError] = useState<string | null>(null);
 	const [revealingProvider, setRevealingProvider] = useState<ProviderKey | null>(null);
 	const [revealNow, setRevealNow] = useState(() => Date.now());
+
+	// OAuth callback feedback. After /api/admin/ml/oauth/callback completes,
+	// the user lands here with `?connected=mercadolibre&seller=...&expires_at=...`
+	// or `?ml_error=<msg>`. We surface that as a banner; loadIntegrations()
+	// already runs on mount so the saved tokens appear pre-filled in the card.
+	const searchParams = useSearchParams();
+	const oauthConnected = searchParams?.get('connected') ?? null;
+	const oauthSeller = searchParams?.get('seller') ?? null;
+	const oauthExpiresAt = searchParams?.get('expires_at') ?? null;
+	const oauthError = searchParams?.get('ml_error') ?? null;
 
 	const connectedCount = useMemo(
 		() => PROVIDERS.filter((prov) => Object.values(integrations[prov.id]?.credentials ?? {}).some((c) => c.set)).length,
@@ -509,6 +525,35 @@ export default function AdminIntegracionesPage() {
 				}
 			/>
 
+			{oauthConnected === 'mercadolibre' ? (
+				<AdminCard className="border-emerald-500/30 bg-emerald-500/10">
+					<div className="flex items-start gap-3 text-sm text-emerald-100">
+						<CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
+						<div className="min-w-0 flex-1">
+							<p className="font-semibold text-emerald-200">
+								Cuenta de Mercado Libre vinculada{oauthSeller ? ` como ${oauthSeller}` : ''}.
+							</p>
+							<p className="mt-1 leading-relaxed text-emerald-200/80">
+								Los campos de la integración MercadoLibre se actualizaron con el access_token, refresh_token y user_id devueltos por ML.
+								{oauthExpiresAt ? ` El access_token expira el ${oauthExpiresAt} (la app lo renueva sola).` : ''}
+							</p>
+						</div>
+					</div>
+				</AdminCard>
+			) : null}
+
+			{oauthError ? (
+				<AdminCard className="border-red-500/30 bg-red-500/5">
+					<div className="flex items-start gap-3 text-sm text-red-200">
+						<ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
+						<div>
+							<p className="font-semibold text-red-300">No se pudo conectar Mercado Libre</p>
+							<p className="mt-1 font-mono text-xs leading-relaxed text-red-200/80">{oauthError}</p>
+						</div>
+					</div>
+				</AdminCard>
+			) : null}
+
 			{integrationsError ? (
 				<AdminCard className="border-red-500/30 bg-red-500/5">
 					<div className="flex items-start gap-3 text-sm text-red-200">
@@ -657,6 +702,36 @@ export default function AdminIntegracionesPage() {
 								</div>
 
 								<div className="space-y-4 p-5">
+									{provider.id === 'mercadolibre' ? (
+										<div className="rounded-2xl border border-yellow-400/30 bg-yellow-400/5 p-4">
+											<div className="flex flex-wrap items-start justify-between gap-3">
+												<div className="min-w-0 flex-1">
+													<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-300">
+														OAuth · Recomendado
+													</p>
+													<p className="mt-1 text-sm text-zinc-300">
+														Usa el botón de abajo para iniciar el flujo OAuth + PKCE con Mercado Libre.
+														Al volver del consentimiento, los campos de access_token, refresh_token, user_id y
+														expires_at se llenarán automáticamente y el access_token se renovará solo cada 6 h.
+													</p>
+													<p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+														Requiere <code className="font-mono text-yellow-200/80">ML_CLIENT_ID</code> y
+														{' '}<code className="font-mono text-yellow-200/80">ML_CLIENT_SECRET</code> en variables de
+														entorno, y que el redirect URI registrado en tu app de ML coincida con
+														<code className="ml-1 font-mono text-yellow-200/80">/api/admin/ml/oauth/callback</code>.
+													</p>
+												</div>
+												<a
+													href="/api/admin/ml/oauth/start"
+													className="inline-flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-950 transition hover:bg-yellow-300"
+												>
+													<LinkIcon className="h-3.5 w-3.5" />
+													{isConfigured ? 'Reconectar Mercado Libre' : 'Conectar con Mercado Libre'}
+												</a>
+											</div>
+										</div>
+									) : null}
+
 									<div className="grid gap-3 sm:grid-cols-2">
 										{provider.fields.map((field) => {
 											const existing = status?.credentials?.[field.key];

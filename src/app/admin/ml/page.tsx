@@ -2,6 +2,7 @@
 
 import { useEffect, useState, type ComponentType } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 import {
 	ShoppingCart,
 	MessageCircle,
@@ -14,6 +15,7 @@ import {
 	Loader2,
 	ExternalLink,
 	RefreshCw,
+	LinkIcon,
 	type LucideProps,
 } from 'lucide-react';
 import { AdminPage, AdminPageHeader } from '@/components/admin/ui';
@@ -77,6 +79,9 @@ export default function MLDashboardPage() {
 	const [user, setUser] = useState<MLUser | null>(null);
 	const [loading, setLoading] = useState(true);
 	const [error, setError] = useState<string | null>(null);
+	const searchParams = useSearchParams();
+	const oauthError = searchParams?.get('ml_error') ?? null;
+	const justConnected = searchParams?.get('connected') === '1';
 
 	const loadUser = async () => {
 		setLoading(true);
@@ -103,6 +108,23 @@ export default function MLDashboardPage() {
 				title="Centro ML"
 				description="Gestiona tus publicaciones, pedidos, preguntas y precios desde un solo lugar."
 			/>
+
+			{/* OAuth flow feedback (from /api/admin/ml/oauth/callback redirects) */}
+			{oauthError && (
+				<div className="mb-4 flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-300">
+					<AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
+					<div>
+						<p className="font-semibold">No se pudo completar la conexión con Mercado Libre.</p>
+						<p className="mt-1 font-mono text-xs text-red-200/80">{oauthError}</p>
+					</div>
+				</div>
+			)}
+			{justConnected && !error && (
+				<div className="mb-4 flex items-center gap-3 rounded-xl border border-green-500/30 bg-green-500/10 p-4 text-sm text-green-300">
+					<CheckCircle2 className="h-4 w-4" />
+					<span>Cuenta de Mercado Libre vinculada correctamente.</span>
+				</div>
+			)}
 
 			{/* Connection status */}
 			<div className="mb-8 flex items-center gap-3 rounded-xl border border-zinc-800 bg-zinc-900/60 p-4">
@@ -140,11 +162,25 @@ export default function MLDashboardPage() {
 						</span>
 					)}
 				</div>
+				{/* The "Conectar" button starts the OAuth flow. We show it always so
+				    the operator can re-link a different seller account, and prominently
+				    when there's no working token. */}
+				<a
+					href="/api/admin/ml/oauth/start"
+					className={`inline-flex items-center gap-1.5 rounded-lg px-3 py-1.5 text-xs font-semibold transition ${
+						error
+							? 'bg-yellow-400 text-zinc-950 hover:bg-yellow-300'
+							: 'border border-zinc-700 bg-zinc-900 text-zinc-300 hover:border-zinc-500 hover:text-white'
+					}`}
+				>
+					<LinkIcon className="h-3.5 w-3.5" />
+					{error ? 'Conectar con Mercado Libre' : 'Reconectar'}
+				</a>
 				<button
 					onClick={() => void loadUser()}
 					disabled={loading}
 					className="rounded-lg p-1.5 text-zinc-500 hover:text-zinc-300 disabled:opacity-40"
-					aria-label="Reconectar"
+					aria-label="Reverificar"
 				>
 					<RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
 				</button>

@@ -191,8 +191,9 @@ export function SolucionesPageContent() {
         </div>
       </section>
 
+      {/* Visualización 3D */}
+      <section className="py-20 px-4 border-t border-yellow-400/10">
         <div className="max-w-5xl mx-auto">
-              className={`w-full h-96 rounded-2xl bg-black ${styles.gradientBg}`}
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}
@@ -212,12 +213,9 @@ export function SolucionesPageContent() {
             transition={{ duration: 0.6 }}
             className="rounded-3xl border border-yellow-400/20 bg-gradient-to-b from-yellow-400/10 to-black/50 p-8 overflow-hidden"
           >
-            {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
             <div
               ref={containerRef}
-              className="w-full h-96 rounded-2xl bg-black"
-              // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-              style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a0a 100%)' }}
+              className={`w-full h-96 rounded-2xl bg-black ${styles.gradientBg}`}
             />
           </motion.div>
         </div>

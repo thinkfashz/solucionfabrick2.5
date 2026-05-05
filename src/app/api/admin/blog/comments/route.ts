@@ -3,7 +3,7 @@ import { insforge } from '@/lib/insforge';
 
 export async function GET() {
   try {
-    const { data, error } = await insforge
+    const { data, error } = await insforge.database
       .from('blog_comments')
       .select('*')
       .order('created_at', { ascending: false });

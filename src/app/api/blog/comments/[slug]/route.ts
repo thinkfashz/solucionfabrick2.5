@@ -18,7 +18,7 @@ export async function GET(
     const searchParams = request.nextUrl.searchParams;
     const approvedOnly = searchParams.get('approved') === 'true';
 
-    let query = insforge
+    let query = insforge.database
       .from('blog_comments')
       .select('*')
       .eq('post_slug', slug)
@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insertar comentario
-    const { data, error } = await insforge
+    const { data, error } = await insforge.database
       .from('blog_comments')
       .insert([
         {

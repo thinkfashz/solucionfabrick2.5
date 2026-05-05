@@ -32,7 +32,7 @@ export async function POST(request: NextRequest) {
     }
 
     // Insertar comentario
-    const { data, error } = await insforge
+    const { data, error } = await insforge.database
       .from('blog_comments')
       .insert([
         {

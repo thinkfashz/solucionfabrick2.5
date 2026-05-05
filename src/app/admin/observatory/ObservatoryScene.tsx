@@ -492,10 +492,10 @@ export default function ObservatoryScene({
   return (
     <Canvas
       camera={{ position: [450, 250, 450], fov: 50, near: 1, far: 3000 }}
+      dpr={getDPR()}
       gl={{ 
         antialias: true, 
         alpha: false,
-        dpr: getDPR(),
         powerPreference: 'high-performance',
         precision: 'highp'
       }}

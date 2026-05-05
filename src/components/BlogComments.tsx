@@ -124,7 +124,6 @@ export default function BlogComments({ postSlug, onlyApproved = true }: BlogComm
             onChange={(e) => setFormData({ ...formData, email: e.target.value })}
             className="rounded-lg border border-white/10 bg-white/5 px-4 py-2.5 text-sm text-white placeholder:text-zinc-500 focus:border-yellow-400/50 focus:outline-none focus:ring-1 focus:ring-yellow-400/30"
             required
-            type="email"
           />
         </div>
 

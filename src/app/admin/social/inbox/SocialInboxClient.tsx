@@ -19,18 +19,18 @@ import {
 } from 'lucide-react';
 
 /**
- * Inbox social ÔÇö VERSI+ôN MEJORADA
+ * Inbox social ï¿½ï¿½ï¿½ VERSI+ï¿½N MEJORADA
  *
  * Mejoras:
  * - Instrucciones integradas para cada red
- * - Mejor visualizaci+¦n de estado
+ * - Mejor visualizaci+ï¿½n de estado
  * - Quick actions mejoradas
  * - Indicadores visuales de actividad
  * - Panel de setup integrado
  *
  * - Lista mensajes desde GET /api/admin/social/inbox
- * - Bot+¦n "Conectar" inicia el flujo OAuth
- * - Estado de conexi+¦n desde tabla `integrations`
+ * - Bot+ï¿½n "Conectar" inicia el flujo OAuth
+ * - Estado de conexi+ï¿½n desde tabla `integrations`
  */
 
 type ProviderId = 'instagram' | 'facebook' | 'whatsapp' | 'mercadolibre';
@@ -54,11 +54,11 @@ const PROVIDERS: ProviderInfo[] = [
     oauth: true,
     webhookUrl: '/api/admin/social/webhook/instagram',
     setupSteps: [
-      'Ve a Meta App Dashboard ÔåÆ Tu App ÔåÆ Settings ÔåÆ Basic',
+      'Ve a Meta App Dashboard ï¿½ï¿½ï¿½ Tu App ï¿½ï¿½ï¿½ Settings ï¿½ï¿½ï¿½ Basic',
       'Copia el App ID y App Secret',
-      'A+¦ade la URL de webhook: tu-dominio/api/admin/social/webhook/instagram',
+      'A+ï¿½ade la URL de webhook: tu-dominio/api/admin/social/webhook/instagram',
       'En Meta, configura el campo Verify Token',
-      'Prueba la conexi+¦n desde el bot+¦n "Test"',
+      'Prueba la conexi+ï¿½n desde el bot+ï¿½n "Test"',
     ],
   },
   {
@@ -70,7 +70,7 @@ const PROVIDERS: ProviderInfo[] = [
     webhookUrl: '/api/admin/social/webhook/facebook',
     setupSteps: [
       'Ve a Meta Business Suite',
-      'Autoriza tu p+ígina de Facebook',
+      'Autoriza tu p+ï¿½gina de Facebook',
       'Configura el webhook en Settings',
       'Verifica tu dominio',
     ],
@@ -84,7 +84,7 @@ const PROVIDERS: ProviderInfo[] = [
     webhookUrl: '/api/admin/social/webhook/whatsapp',
     setupSteps: [
       'Crea una cuenta WhatsApp Business',
-      'Obt+®n tu Business Account ID',
+      'Obt+ï¿½n tu Business Account ID',
       'Genera un token de acceso',
       'Configura el webhook URL',
     ],
@@ -98,7 +98,7 @@ const PROVIDERS: ProviderInfo[] = [
     webhookUrl: '/api/admin/social/webhook/mercadolibre',
     setupSteps: [
       'Ve a Mercado Libre Developers',
-      'Obt+®n tu API Key',
+      'Obt+ï¿½n tu API Key',
       'Configura el webhook',
       'Sincroniza tus publicaciones',
     ],
@@ -117,22 +117,20 @@ interface SocialMessage {
   read_at: string | null;
 }
 
-function StatusBadge({ connected, expanded }: { connected: boolean; expanded: boolean }) {
+function StatusPill({ connected }: { connected: boolean }) {
   return (
-    <motion.button
-      whileHover={{ scale: 1.05 }}
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1.5 text-[9px] font-bold uppercase tracking-widest transition-all ${
+    <span
+      className={`inline-flex items-center gap-1.5 rounded-full px-2 py-1 text-[8px] font-bold uppercase tracking-widest ${
         connected
-          ? 'border border-emerald-500/40 bg-emerald-500/10 text-emerald-300 hover:bg-emerald-500/20'
-          : 'border border-yellow-400/30 bg-yellow-400/5 text-yellow-300 hover:bg-yellow-400/10'
+          ? 'bg-emerald-500/20 text-emerald-300'
+          : 'bg-yellow-400/10 text-yellow-300'
       }`}
     >
       <span
-        className={`h-2 w-2 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-yellow-400'}`}
+        className={`h-1.5 w-1.5 rounded-full ${connected ? 'bg-emerald-400 animate-pulse' : 'bg-yellow-400'}`}
       />
-      {connected ? 'Conectado' : 'Setup pendiente'}
-      <ChevronDown className={`w-3 h-3 transition-transform ${expanded ? 'rotate-180' : ''}`} />
-    </motion.button>
+      {connected ? 'Conectado' : 'Pendiente'}
+    </span>
   );
 }
 
@@ -196,7 +194,7 @@ export default function SocialInboxClient() {
  
    function startOAuth(provider: ProviderId) {
      if (provider === 'whatsapp' || provider === 'mercadolibre') {
-       alert(`OAuth para ${provider} llegar+í en una iteraci+¦n siguiente.`);
+       alert(`OAuth para ${provider} llegar+ï¿½ en una iteraci+ï¿½n siguiente.`);
        return;
      }
      window.location.href = `/api/admin/social/oauth/${provider}/start`;
@@ -278,7 +276,7 @@ export default function SocialInboxClient() {
            {threads.length === 0 ? (
              <div className="flex h-[260px] items-center justify-center rounded-xl border border-dashed border-white/10 text-center">
                <p className="px-4 text-[11px] text-zinc-500">
-                 A+¦n no hay mensajes. Conecta una red para empezar a recibir.
+                 A+ï¿½n no hay mensajes. Conecta una red para empezar a recibir.
                </p>
              </div>
            ) : (
@@ -297,7 +295,7 @@ export default function SocialInboxClient() {
                      >
                        <div className="flex items-center justify-between gap-2">
                          <p className="text-[11px] font-semibold text-zinc-200 truncate">
-                           {t.sender_name || t.sender || 'An+¦nimo'}
+                           {t.sender_name || t.sender || 'An+ï¿½nimo'}
                          </p>
                          <span className="text-[9px] uppercase tracking-[0.18em] text-zinc-500">{t.provider}</span>
                        </div>
@@ -312,7 +310,7 @@ export default function SocialInboxClient() {
            )}
          </div>
          <div className="rounded-2xl border border-white/10 bg-black/40 p-3 min-h-[320px]">
-           <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">Conversaci+¦n</p>
+           <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">Conversaci+ï¿½n</p>
            {activeThread.length === 0 ? (
              <div className="flex h-[260px] items-center justify-center rounded-xl border border-dashed border-white/10 text-center">
                <Sparkles className="mr-2 h-4 w-4 text-yellow-400" />
@@ -324,7 +322,7 @@ export default function SocialInboxClient() {
                  <li key={m.id} className="rounded-lg border border-white/5 bg-zinc-950/60 p-2.5">
                    <div className="flex items-center justify-between gap-2">
                      <p className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-400">
-                       {m.sender_name || m.sender || 'An+¦nimo'}
+                       {m.sender_name || m.sender || 'An+ï¿½nimo'}
                      </p>
                      <span className="text-[9px] text-zinc-500">
                        {m.received_at ? new Date(m.received_at).toLocaleString('es-CL') : ''}
@@ -339,14 +337,14 @@ export default function SocialInboxClient() {
          <div className="rounded-2xl border border-white/10 bg-black/40 p-3 min-h-[320px]">
            <p className="mb-2 text-[10px] font-bold uppercase tracking-[0.28em] text-zinc-500">Cliente</p>
            <div className="flex h-[260px] items-center justify-center rounded-xl border border-dashed border-white/10 text-center">
-             <p className="px-4 text-[11px] text-zinc-500">Cruzaremos remitente con la tabla `clientes` por email/tel+®fono/handle.</p>
+             <p className="px-4 text-[11px] text-zinc-500">Cruzaremos remitente con la tabla `clientes` por email/tel+ï¿½fono/handle.</p>
            </div>
          </div>
        </section>
  
        <p className="text-[10px] text-zinc-600">
-         Webhook URL para Meta: <code className="text-zinc-400">/api/admin/social/webhook/instagram</code> -À{' '}
-         <code className="text-zinc-400">/api/admin/social/webhook/facebook</code> -À firma v+¡a{' '}
+         Webhook URL para Meta: <code className="text-zinc-400">/api/admin/social/webhook/instagram</code> -ï¿½{' '}
+         <code className="text-zinc-400">/api/admin/social/webhook/facebook</code> -ï¿½ firma v+ï¿½a{' '}
          <code className="text-zinc-400">META_APP_SECRET</code>, verify token via{' '}
          <code className="text-zinc-400">META_WEBHOOK_VERIFY_TOKEN</code>.
        </p>

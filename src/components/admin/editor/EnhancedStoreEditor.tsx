@@ -254,12 +254,13 @@ export function EnhancedStoreEditor({
   );
 
   // Cleanup on unmount
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
+    const timers = debounceTimers.current;
     return () => {
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-      Object.values(debounceTimers.current).forEach(clearTimeout);
+      Object.values(timers).forEach(clearTimeout);
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   // ────────────────────────────────────────────────────────────────────────

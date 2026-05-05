@@ -35,6 +35,9 @@ export default function EquipoPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
+  useEffect(() => {
+    checkAccess();
+  }, []);
   // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
     checkAccess();

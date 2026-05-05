@@ -8,6 +8,11 @@ import {
   encryptCredentials,
   isEncryptionConfigured,
 } from '@/lib/integrationsCrypto';
+import {
+  detectAllEnvCredentials,
+  detectEnvProviderCredentials,
+  envFieldPreview,
+} from '@/lib/integrationsEnvMap';
 
 export const dynamic = 'force-dynamic';
 
@@ -76,8 +81,8 @@ async function requireAdmin(request: NextRequest) {
 }
 
 /** Masks every credential value so we never echo secrets back to the client. */
-function maskCredentials(credentials: Record<string, unknown> | null | undefined): Record<string, { set: boolean; preview: string }> {
-  const out: Record<string, { set: boolean; preview: string }> = {};
+function maskCredentials(credentials: Record<string, unknown> | null | undefined): Record<string, { set: boolean; preview: string; source?: 'db' | 'env'; envVar?: string }> {
+  const out: Record<string, { set: boolean; preview: string; source?: 'db' | 'env'; envVar?: string }> = {};
   if (!credentials) return out;
   for (const [key, value] of Object.entries(credentials)) {
     if (typeof value !== 'string' || value.length === 0) {
@@ -116,16 +121,51 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const providers: Record<string, { credentials: Record<string, { set: boolean; preview: string }>; updated_at?: string; encrypted?: boolean }> = {};
+    const envCreds = detectAllEnvCredentials();
+
+    type FieldStatus = { set: boolean; preview: string; source?: 'db' | 'env'; envVar?: string };
+    const providers: Record<string, { credentials: Record<string, FieldStatus>; updated_at?: string; encrypted?: boolean; envManaged?: boolean }> = {};
+
+    // Seed every known provider so env-only providers (no DB row yet) still
+    // appear in the response with their env-sourced fields.
+    for (const provider of ALLOWED_PROVIDERS) {
+      providers[provider] = { credentials: {} };
+    }
+
     for (const row of (data ?? []) as Array<{ provider?: string; credentials?: Record<string, unknown>; updated_at?: string }>) {
       if (!row.provider || !ALLOWED_PROVIDERS.has(row.provider)) continue;
       // Decrypt at-rest values before masking; if the row is plaintext
       // (legacy), `decryptCredentials` is a no-op on each field.
       const plain = decryptCredentials(row.credentials);
+      const masked = maskCredentials(plain as Record<string, unknown>);
+      for (const [field, info] of Object.entries(masked)) {
+        if (info.set) info.source = 'db';
+      }
       providers[row.provider] = {
-        credentials: maskCredentials(plain as Record<string, unknown>),
+        credentials: masked,
         updated_at: row.updated_at,
       };
+    }
+
+    // Merge env-resolved credentials *over* DB values: env wins (matches the
+    // resolution order used by `getMercadoPagoCredentials`, `getMetaCredentials`,
+    // `getVercelCredentials`, …) so the UI shows what the running server is
+    // actually using and the admin can't accidentally enter a DB value that
+    // would be ignored at runtime.
+    for (const [provider, fields] of Object.entries(envCreds)) {
+      if (!ALLOWED_PROVIDERS.has(provider)) continue;
+      const entry = providers[provider] ?? (providers[provider] = { credentials: {} });
+      for (const [field, detected] of Object.entries(fields)) {
+        entry.credentials[field] = {
+          set: true,
+          preview: envFieldPreview(detected.value),
+          source: 'env',
+          envVar: detected.envName,
+        };
+      }
+      const allEnv = Object.values(entry.credentials).every((v) => !v.set || v.source === 'env');
+      const anyEnv = Object.values(entry.credentials).some((v) => v.source === 'env');
+      entry.envManaged = anyEnv && allEnv;
     }
 
     return NextResponse.json({ providers, encrypted: isEncryptionConfigured() });
@@ -157,6 +197,29 @@ export async function POST(request: NextRequest) {
   }
   if (!credentials || typeof credentials !== 'object') {
     return NextResponse.json({ error: 'Credenciales inválidas.' }, { status: 400 });
+  }
+
+  // Refuse to overwrite fields that are already supplied by an environment
+  // variable on the deployment (typically Vercel → Project Settings → Env).
+  // The runtime helpers (`getVercelCredentials`, `getMercadoPagoCredentials`,
+  // …) prefer env over DB, so persisting a different value here would be
+  // silently ignored — that "conflict" is exactly what the admin asked us
+  // to prevent. We surface the env var name so the operator knows where to
+  // change the value.
+  const envForProvider = detectEnvProviderCredentials(provider);
+  const submittedConflicts = Object.entries(credentials)
+    .filter(([key, value]) => typeof value === 'string' && value.trim().length > 0 && envForProvider[key])
+    .map(([key]) => ({ field: key, envVar: envForProvider[key]!.envName }));
+  if (submittedConflicts.length > 0) {
+    const list = submittedConflicts.map((c) => `${c.field} (${c.envVar})`).join(', ');
+    return NextResponse.json(
+      {
+        error: `Estos campos ya están definidos en variables de entorno (Vercel) y mandan sobre la base de datos: ${list}. Bórralos del formulario o actualiza el valor en Vercel → Project Settings → Environment Variables.`,
+        code: 'ENV_VAR_PRESENT',
+        envConflicts: submittedConflicts,
+      },
+      { status: 409 },
+    );
   }
 
   // Cloudinary cloud names are lowercase alphanumerics with optional dashes /

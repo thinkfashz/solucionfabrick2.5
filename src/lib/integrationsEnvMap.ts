@@ -38,11 +38,17 @@ export const INTEGRATIONS_ENV_MAP: Record<string, Record<string, readonly string
 			'MERCADO_PAGO_PUBLIC_KEY',
 			'MERCADOPAGO_PUBLIC_KEY',
 		],
+		// Strictly scoped to MercadoPago-prefixed names. We intentionally do
+		// NOT fall back to the generic `PAYMENTS_WEBHOOK_SECRET`: that env
+		// var is owned by the legacy generic `/api/payments/webhook` route
+		// (which may verify Stripe / a custom processor / etc.), and reusing
+		// it here would make the env-conflict 409 guard reject any admin
+		// attempt to save a MercadoPago-specific webhook secret whenever a
+		// generic payments secret is also configured.
 		webhook_secret: [
 			'MERCADO_PAGO_WEBHOOK_SECRET',
 			'MERCADOPAGO_WEBHOOK_SECRET',
 			'MP_WEBHOOK_SECRET',
-			'PAYMENTS_WEBHOOK_SECRET',
 		],
 	},
 	mercadolibre: {

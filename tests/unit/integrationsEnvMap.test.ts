@@ -79,6 +79,17 @@ describe('integrationsEnvMap', () => {
 		expect(google.client_id?.value).toBe('generic-client');
 	});
 
+	it('does not let generic PAYMENTS_WEBHOOK_SECRET leak into mercadopago', () => {
+		// Reviewer scenario: PAYMENTS_WEBHOOK_SECRET is a generic name owned
+		// by the legacy /api/payments/webhook route (could verify Stripe or
+		// any other processor). It must NOT be detected as MercadoPago's
+		// webhook secret, otherwise the POST conflict guard would reject
+		// any admin attempt to save the real MP webhook secret.
+		setEnv('PAYMENTS_WEBHOOK_SECRET', 'generic-secret');
+		const mp = detectEnvProviderCredentials('mercadopago');
+		expect(mp.webhook_secret).toBeUndefined();
+	});
+
 	it('covers every provider declared by the admin UI', () => {
 		// Sanity check so that adding a provider to the form forces an entry here.
 		const providers = ['stripe', 'whatsapp', 'mercadopago', 'mercadolibre', 'meta', 'google', 'google_ads', 'tiktok', 'cloudinary', 'vercel'];

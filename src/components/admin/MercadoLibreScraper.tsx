@@ -95,6 +95,19 @@ interface ImportOverrides {
   delivery_days?: number | null;
 }
 
+function deriveErrorHint(message: string): string {
+  if (/403|forbidden/i.test(message)) {
+    return 'Mercado Libre rechazó la consulta directa. Probaremos leer los metadatos de la publicación (Open Graph). Si el problema persiste, copia el enlace expandido (sin meli.la/...) o pega la URL larga de articulo.mercadolibre.cl.';
+  }
+  if (/timeout|fetch|network|ENOTFOUND|ECONNRESET/i.test(message)) {
+    return 'No pudimos conectar con la tienda. Verifica que la URL sea pública y que tu servidor tenga salida a internet. Revisa también el panel de Estado del importador arriba.';
+  }
+  if (/private|loopback|SSRF/i.test(message)) {
+    return 'La URL apunta a una red privada y por seguridad fue bloqueada. Usa siempre URLs públicas.';
+  }
+  return 'Si el link es válido, intenta abrirlo en una pestaña incógnita y copia la URL final que muestra el navegador.';
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -298,15 +311,7 @@ export default function MercadoLibreScraper() {
                   ML occasionally returns 403/blocked from the public API; the
                   importer falls back to Open Graph scraping but the UI should
                   tell the admin what happened in plain language. */}
-              <p className="text-xs text-red-200/80">
-                {/403|forbidden/i.test(error)
-                  ? 'Mercado Libre rechazó la consulta directa. Probaremos leer los metadatos de la publicación (Open Graph). Si el problema persiste, copia el enlace expandido (sin meli.la/...) o pega la URL larga de articulo.mercadolibre.cl.'
-                  : /timeout|fetch|network|ENOTFOUND|ECONNRESET/i.test(error)
-                    ? 'No pudimos conectar con la tienda. Verifica que la URL sea pública y que tu servidor tenga salida a internet. Revisa también el panel de Estado del importador arriba.'
-                    : /private|loopback|SSRF/i.test(error)
-                      ? 'La URL apunta a una red privada y por seguridad fue bloqueada. Usa siempre URLs públicas.'
-                      : 'Si el link es válido, intenta abrirlo en una pestaña incógnita y copia la URL final que muestra el navegador.'}
-              </p>
+              <p className="text-xs text-red-200/80">{deriveErrorHint(error)}</p>
             </div>
           </div>
         </div>

@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import type { ObservatoryData, ServiceId } from './useObservatoryData';
 import styles from './MobileObservatory.module.css';
+import cityStyles from './MobileObservatoryCity.module.css';
 
 const ACCENT = '#facc15';
 
@@ -110,23 +111,7 @@ function MiniCityMap() {
   const byId = Object.fromEntries(BUILDINGS.map((b) => [b.id, b]));
 
   return (
-    <>
-      {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
-      <div
-        // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-        style={{
-          position: 'relative',
-          height: 220,
-          width: '100%',
-          perspective: 800,
-          overflow: 'hidden',
-          borderRadius: 12,
-          background:
-            'radial-gradient(ellipse at center, rgba(250,204,21,0.06) 0%, rgba(6,10,18,0.0) 70%), #05080f',
-          border: '1px solid rgba(250,204,21,0.18)',
-        }}
-      >
-      <div className={styles.mainContainer}>
+    <div className={styles.mainContainer}>
       <div className={styles.gridTransform}>
         {/* Ground grid */}
         <div
@@ -147,9 +132,8 @@ function MiniCityMap() {
           return (
             <div
               key={b.id}
-              // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
+              className={cityStyles.building}
               style={{
-                position: 'absolute',
                 left: pos.left + 6,
                 top: pos.top + 6,
                 width: CELL - 12,
@@ -157,34 +141,21 @@ function MiniCityMap() {
                 background: `${b.color}33`,
                 border: `1px solid ${b.color}`,
                 transform: `translateZ(${b.h / 2}px)`,
-                transformStyle: 'preserve-3d',
-                ['--c' as string]: b.color,
-                animation: 'pulse-building 2s ease-in-out infinite alternate',
                 animationDelay: `${(b.h % 7) * 0.15}s`,
-              }}
+                '--c': b.color,
+              } as React.CSSProperties}
             >
               {/* Top face glow */}
               <div
-                // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
+                className={cityStyles.buildingTop}
                 style={{
-                  position: 'absolute',
-                  inset: 0,
                   background: `linear-gradient(135deg, ${b.color}66, ${b.color}22)`,
                   transform: `translateZ(${b.h}px)`,
                 }}
               />
               <span
-                // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
+                className={cityStyles.buildingLabel}
                 style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontSize: 8,
-                  fontWeight: 700,
-                  letterSpacing: '0.1em',
                   transform: `translateZ(${b.h + 0.5}px) rotateZ(-45deg) rotateX(-60deg)`,
                 }}
               >
@@ -203,29 +174,28 @@ function MiniCityMap() {
           const startY = from.y * CELL + CELL / 2;
           const endX = to.x * CELL + CELL / 2;
           const endY = to.y * CELL + CELL / 2;
-          const styleVars = {
-            position: 'absolute',
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: r.color,
-            boxShadow: `0 0 8px ${r.color}`,
-            left: 0,
-            top: 0,
-            ['--sx']: `${startX}px`,
-            ['--sy']: `${startY}px`,
-            ['--ex']: `${endX}px`,
-            ['--ey']: `${endY}px`,
-            transform: `translate3d(${startX}px, ${startY}px, 20px)`,
-            animation: 'travel 3s linear infinite',
-            animationDelay: `${r.delay}s`,
-          } as React.CSSProperties;
-          // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-          return <div key={i} style={styleVars} />;
+          return (
+            <div
+              key={i}
+              className={cityStyles.packet}
+              style={{
+                background: r.color,
+                boxShadow: `0 0 8px ${r.color}`,
+                left: 0,
+                top: 0,
+                '--sx': `${startX}px`,
+                '--sy': `${startY}px`,
+                '--ex': `${endX}px`,
+                '--ey': `${endY}px`,
+                transform: `translate3d(${startX}px, ${startY}px, 20px)`,
+                animation: 'travel 3s linear infinite',
+                animationDelay: `${r.delay}s`,
+              } as React.CSSProperties}
+            />
+          );
         })}
       </div>
-      </div>
-    </>
+    </div>
   );
 }
 

@@ -163,6 +163,10 @@ export async function GET(request: NextRequest) {
           envVar: detected.envName,
         };
       }
+      // `envManaged` = "every configured field is supplied by env, and at
+      // least one is". Unset fields are intentionally ignored (they don't
+      // disqualify the badge — a provider can have only an `access_token`
+      // in env with no other fields configured anywhere).
       const allEnv = Object.values(entry.credentials).every((v) => !v.set || v.source === 'env');
       const anyEnv = Object.values(entry.credentials).some((v) => v.source === 'env');
       entry.envManaged = anyEnv && allEnv;

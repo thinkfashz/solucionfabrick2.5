@@ -259,7 +259,7 @@ function Field({
 			</span>
 			{strikePreview ? (
 				<div
-					aria-disabled
+					aria-readonly="true"
 					className="flex items-center justify-between gap-3 rounded-xl border border-emerald-400/20 bg-emerald-500/5 px-4 py-3 text-sm"
 					title={envBadge ? `Definida por ${envBadge}` : 'Definida en variables de entorno'}
 				>

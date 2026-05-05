@@ -141,6 +141,6 @@ export function detectAllEnvCredentials(): Record<string, Record<string, Detecte
  * "ya configurada, no la pongas de nuevo".
  */
 export function envFieldPreview(value: string): string {
-	if (typeof value !== 'string' || value.length === 0) return '';
+	if (value.length === 0) return '';
 	return value.length <= 4 ? '•••' : `••• ${value.slice(-4)}`;
 }

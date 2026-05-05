@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import * as THREE from 'three';
 import { Calculator, Plus, Minus, DollarSign } from 'lucide-react';
+import styles from './CalculadoraPreciosThree.module.css';
 import {
   calcularPrecioServicio,
   MERCADO_2026,
@@ -186,8 +187,7 @@ export function CalculadoraPreciosThree({ servicioId, onPrecioChange }: Calculad
       <div
         ref={containerRef}
         className="w-full h-64 md:h-80 rounded-2xl border border-yellow-400/30 bg-black/50 mb-8 overflow-hidden"
-        // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
-        style={{ background: 'linear-gradient(135deg, #0a0a0a 0%, #1a1a0a 100%)' }}
+        className={`w-full h-64 md:h-80 rounded-2xl border border-yellow-400/30 bg-black/50 mb-8 overflow-hidden ${styles.gradientBg}`}
       />
 
       {/* Controles */}

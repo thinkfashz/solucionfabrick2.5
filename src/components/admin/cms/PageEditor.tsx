@@ -396,6 +396,13 @@ export function PageEditor({ page, title, subtitle, previewPath, settingGroups, 
                 <h2 className="text-xs sm:text-sm font-bold uppercase tracking-[0.2em] text-yellow-400">Secciones</h2>
                 <p className="text-[10px] sm:text-[11px] text-zinc-500 mt-1">Cada sección visible se renderiza en orden.</p>
               </div>
+              <select
+                onChange={(e) => {
+                  if (e.target.value) {
+                    addSection(e.target.value as SectionKind);
+                    e.target.value = '';
+                  }
+                }}
                 defaultValue=""
                 disabled={adding}
                 className="rounded-full border border-white/10 bg-black px-3 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-400 hover:border-yellow-400/40"

@@ -52,6 +52,7 @@ export default function MercadoLibreSyncPanel() {
     }, 3600000); // Cada hora
 
     return () => clearInterval(interval);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoSync]);
 
   const loadStatus = async () => {

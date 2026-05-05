@@ -63,7 +63,7 @@ function CheckoutField({
       return { primary: '#a3a3a3', secondary: '#d4d4d8', accent: '#f4f4f5' };
     }
     return { primary: '#eab308', secondary: '#facc15', accent: '#fde047' };
-  }, [mode, outcome]);
+  }, [mode, outcome, isSuccess]);
 
   useFrame((state, delta) => {
     const spinBoost = isProcessing ? 0.9 : 0.45;

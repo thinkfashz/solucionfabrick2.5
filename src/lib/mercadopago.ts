@@ -326,7 +326,6 @@ export function getMercadoPagoWebhookSecret() {
     process.env.MERCADO_PAGO_WEBHOOK_SECRET ||
     process.env.MERCADOPAGO_WEBHOOK_SECRET ||
     process.env.MP_WEBHOOK_SECRET ||
-    process.env.PAYMENTS_WEBHOOK_SECRET ||
     ''
   ).trim();
 }

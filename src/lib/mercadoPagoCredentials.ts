@@ -30,8 +30,7 @@ export async function getMercadoPagoCredentials(): Promise<MercadoPagoCredential
 	const envWebhookSecret =
 		normalize(process.env.MERCADO_PAGO_WEBHOOK_SECRET) ??
 		normalize(process.env.MERCADOPAGO_WEBHOOK_SECRET) ??
-		normalize(process.env.MP_WEBHOOK_SECRET) ??
-		normalize(process.env.PAYMENTS_WEBHOOK_SECRET);
+		normalize(process.env.MP_WEBHOOK_SECRET);
 
 	const creds: MercadoPagoCredentials = {
 		accessToken: envAccessToken,

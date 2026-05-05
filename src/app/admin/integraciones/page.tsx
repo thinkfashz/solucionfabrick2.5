@@ -54,9 +54,10 @@ interface ProviderDefinition {
 }
 
 interface ProviderStatus {
-	credentials: Record<string, { set: boolean; preview: string }>;
+	credentials: Record<string, { set: boolean; preview: string; source?: 'db' | 'env'; envVar?: string }>;
 	updated_at?: string;
 	encrypted?: boolean;
+	envManaged?: boolean;
 }
 
 interface TestResult {
@@ -227,6 +228,8 @@ function Field({
 	placeholder,
 	hint,
 	disabled,
+	envBadge,
+	strikePreview,
 }: {
 	label: string;
 	type?: 'text' | 'password';
@@ -235,19 +238,49 @@ function Field({
 	placeholder?: string;
 	hint?: string;
 	disabled?: boolean;
+	/** Name of the env var supplying this field (renders a "Vercel" pill next to the label). */
+	envBadge?: string;
+	/** When set, overrides the input with a struck-through preview to convey "ya configurada en Vercel". */
+	strikePreview?: string;
 }) {
 	return (
 		<label className="flex flex-col gap-2">
-			<span className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">{label}</span>
-			<input
-				type={type}
-				value={value}
-				onChange={(e) => onChange(e.target.value)}
-				placeholder={placeholder}
-				disabled={disabled}
-				title={label}
-				className="w-full rounded-xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-yellow-300/50 disabled:opacity-50"
-			/>
+			<span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-500">
+				<span>{label}</span>
+				{envBadge ? (
+					<span
+						title={`Definida por la variable de entorno ${envBadge} (Vercel).`}
+						className="inline-flex items-center gap-1 rounded-full border border-emerald-400/40 bg-emerald-500/10 px-2 py-[2px] text-[9px] font-bold tracking-[0.16em] text-emerald-300"
+					>
+						<span className="h-1.5 w-1.5 animate-pulse rounded-full bg-emerald-400" />
+						Vercel
+					</span>
+				) : null}
+			</span>
+			{strikePreview ? (
+				<div
+					aria-readonly="true"
+					className="flex items-center justify-between gap-3 rounded-xl border border-emerald-400/20 bg-emerald-500/5 px-4 py-3 text-sm"
+					title={envBadge ? `Definida por ${envBadge}` : 'Definida en variables de entorno'}
+				>
+					<span className="truncate font-mono text-emerald-200/80 line-through decoration-emerald-300/60 decoration-2">
+						{strikePreview}
+					</span>
+					<span className="shrink-0 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-2 py-[2px] text-[9px] font-bold uppercase tracking-[0.18em] text-emerald-200">
+						Activa
+					</span>
+				</div>
+			) : (
+				<input
+					type={type}
+					value={value}
+					onChange={(e) => onChange(e.target.value)}
+					placeholder={placeholder}
+					disabled={disabled}
+					title={label}
+					className="w-full rounded-xl border border-white/10 bg-zinc-950/80 px-4 py-3 text-sm text-white outline-none transition focus:border-yellow-300/50 disabled:opacity-50"
+				/>
+			)}
 			{hint ? <span className="text-[11px] leading-relaxed text-zinc-600">{hint}</span> : null}
 		</label>
 	);
@@ -656,6 +689,8 @@ export default function AdminIntegracionesPage() {
 					const msg = integrationMsg[provider.id];
 					const test = integrationTest[provider.id];
 					const isConfigured = Object.values(status?.credentials ?? {}).some((credential) => credential.set);
+					const envManaged = !!status?.envManaged;
+					const hasAnyEnv = Object.values(status?.credentials ?? {}).some((c) => c.source === 'env');
 					const submittedCredentials = Object.fromEntries(
 						Object.entries(inputs).filter(([, value]) => typeof value === 'string' && value.trim().length > 0),
 					);
@@ -692,16 +727,38 @@ export default function AdminIntegracionesPage() {
 											</div>
 										</div>
 										<div className={`rounded-full border px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] ${
-											isConfigured
-												? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-												: 'border-zinc-700 bg-black/40 text-zinc-500'
+											envManaged
+												? 'border-emerald-400/40 bg-emerald-500/10 text-emerald-200'
+												: isConfigured
+													? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
+													: 'border-zinc-700 bg-black/40 text-zinc-500'
 										}`}>
-											{isConfigured ? 'Conectada' : 'Desactivada'}
+											{envManaged ? 'Vercel · Activa' : isConfigured ? 'Conectada' : 'Desactivada'}
 										</div>
 									</div>
 								</div>
 
 								<div className="space-y-4 p-5">
+									{hasAnyEnv ? (
+										<div className="rounded-2xl border border-emerald-400/30 bg-emerald-500/5 p-3 text-[12px] leading-relaxed text-emerald-100">
+											<div className="flex items-start gap-2">
+												<span className="mt-1 inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.7)]" />
+												<div className="min-w-0">
+													<p className="font-semibold text-emerald-200">
+														{envManaged
+															? 'Esta integración ya está conectada vía variables de entorno (Vercel).'
+															: 'Algunos campos están definidos en Vercel.'}
+													</p>
+													<p className="mt-1 text-emerald-100/80">
+														Los campos con el sello <span className="font-semibold">Vercel</span> aparecen tachados porque ya
+														están cargados en el deploy: el servidor los usa directamente sin pasar por la base de datos. No
+														los reingreses aquí; para cambiarlos, edítalos en Vercel → Project Settings → Environment Variables.
+													</p>
+												</div>
+											</div>
+										</div>
+									) : null}
+
 									{provider.id === 'mercadolibre' ? (
 										<div className="rounded-2xl border border-yellow-400/30 bg-yellow-400/5 p-4">
 											<div className="flex flex-wrap items-start justify-between gap-3">
@@ -735,6 +792,7 @@ export default function AdminIntegracionesPage() {
 									<div className="grid gap-3 sm:grid-cols-2">
 										{provider.fields.map((field) => {
 											const existing = status?.credentials?.[field.key];
+											const isEnv = existing?.source === 'env';
 											return (
 												<Field
 													key={field.key}
@@ -748,8 +806,16 @@ export default function AdminIntegracionesPage() {
 														}))
 													}
 													placeholder={existing?.set ? existing.preview : field.placeholder}
-													hint={existing?.set ? 'Valor actual oculto. Déjalo vacío para mantenerlo.' : field.hint}
-													disabled={loadingIntegrations || savingIntegration === provider.id}
+													hint={
+														isEnv
+															? `Configurada en Vercel (${existing?.envVar ?? 'env'}). Para cambiarla, actualiza la variable de entorno en el dashboard de Vercel.`
+															: existing?.set
+																? 'Valor actual oculto. Déjalo vacío para mantenerlo.'
+																: field.hint
+													}
+													disabled={loadingIntegrations || savingIntegration === provider.id || isEnv}
+													envBadge={isEnv ? existing?.envVar : undefined}
+													strikePreview={isEnv ? existing?.preview : undefined}
 												/>
 											);
 										})}
@@ -775,7 +841,7 @@ export default function AdminIntegracionesPage() {
 											name={provider.label}
 											pingUrl={`/api/admin/integrations/test?provider=${provider.id}`}
 											disabled={!isConfigured}
-											initialStatus={isConfigured ? 'reconnecting' : 'unconfigured'}
+											initialStatus={envManaged ? 'connected' : isConfigured ? 'reconnecting' : 'unconfigured'}
 										/>
 									</div>
 

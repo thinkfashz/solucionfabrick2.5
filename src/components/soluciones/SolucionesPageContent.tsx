@@ -19,6 +19,7 @@ import {
   Shield,
   Users,
 } from 'lucide-react';
+import styles from './SolucionesPageContent.module.css';
 
 const SOLUCIONES = [
   {
@@ -190,9 +191,8 @@ export function SolucionesPageContent() {
         </div>
       </section>
 
-      {/* Visualización 3D */}
-      <section className="py-20 px-4 bg-gradient-to-b from-transparent to-yellow-400/5">
         <div className="max-w-5xl mx-auto">
+              className={`w-full h-96 rounded-2xl bg-black ${styles.gradientBg}`}
           <motion.div
             initial={{ opacity: 0 }}
             whileInView={{ opacity: 1 }}

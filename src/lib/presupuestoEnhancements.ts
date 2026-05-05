@@ -5,6 +5,13 @@
 
 import type { QuoteLine, Totals } from './budgetMath';
 
+/** Computes the per-line subtotal (qty × unit price) since QuoteLine doesn't store it. */
+function lineTotal(line: QuoteLine): number {
+  const qty = Math.max(0, line.quantity || 0);
+  const price = Math.max(0, line.unitPrice || 0);
+  return qty * price;
+}
+
 /**
  * Desglose por categoría de presupuesto
  */
@@ -58,7 +65,7 @@ export function breakdownByCategory(
       map.set(key, entry);
     }
     entry.items.push(line);
-    entry.subtotal += line.lineTotal ?? 0;
+    entry.subtotal += lineTotal(line);
   }
 
   const CATEGORY_LABELS: Record<string, string> = {
@@ -94,7 +101,7 @@ export function analyzeQuote(lines: QuoteLine[], totals: Totals): QuotesAnalysis
   const costPerUnit = lines.length > 0 ? totals.itemsSubtotal / lines.length : 0;
 
   // Calcula varianza de costos
-  const costs = lines.map((l) => l.lineTotal ?? 0);
+  const costs = lines.map((l) => lineTotal(l));
   const mean = costs.reduce((a, b) => a + b, 0) / Math.max(1, costs.length);
   const variance =
     Math.sqrt(costs.reduce((acc, cost) => acc + Math.pow(cost - mean, 2), 0) / Math.max(1, costs.length - 1)) ||
@@ -147,7 +154,7 @@ export function calculatePotentialSavings(
  */
 function calculateOptimalDiscount(lines: QuoteLine[], totals: Totals): number {
   const itemCount = lines.length;
-  const highValueItems = lines.filter((l) => (l.lineTotal ?? 0) > totals.itemsSubtotal * 0.15).length;
+  const highValueItems = lines.filter((l) => (lineTotal(l)) > totals.itemsSubtotal * 0.15).length;
 
   // Descuento base según cantidad
   let discount = 0;
@@ -269,7 +276,7 @@ export function exportToCSV(
         item.unit ?? '—',
         item.quantity.toString(),
         `$${item.unitPrice.toLocaleString('es-CL')}`,
-        `$${(item.lineTotal ?? 0).toLocaleString('es-CL')}`,
+        `$${lineTotal(item).toLocaleString('es-CL')}`,
       ]);
     }
   }

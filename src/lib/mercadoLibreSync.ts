@@ -97,7 +97,7 @@ export async function syncProductPrice(
     };
 
     // Obtiene producto local
-    const { data: localProducts } = await insforge.from('products').select('*').eq('id', productId).limit(1);
+    const { data: localProducts } = await insforge.database.from('products').select('*').eq('id', productId).limit(1);
     const localProduct = localProducts?.[0];
 
     if (!localProduct) {
@@ -109,7 +109,7 @@ export async function syncProductPrice(
       localProduct.price !== mlItem.price || localProduct.stock !== mlItem.available_quantity;
 
     if (needsUpdate) {
-      await insforge
+      await insforge.database
         .from('products')
         .update({
           price: mlItem.price || localProduct.price,
@@ -211,7 +211,7 @@ export async function syncMercadoLibreOrders(): Promise<MLOrder[]> {
       };
 
       // Guarda en BD local
-      await insforge.from('ml_orders').upsert({
+      await insforge.database.from('ml_orders').upsert({
         id: order.id,
         ml_order_id: order.mlOrderId,
         ml_buyer_id: order.mlBuyerId,
@@ -240,29 +240,29 @@ export async function syncMercadoLibreOrders(): Promise<MLOrder[]> {
 export async function getSyncStatus(): Promise<SyncStatus> {
   try {
     // Obtiene productos con estado de sync
-    const { data: products } = await insforge
+    const { data: products } = await insforge.database
       .from('products')
       .select('id, ml_item_id, last_sync_at, sync_status')
       .not('ml_item_id', 'is', null);
 
     // Cuenta órdenes activas
-    const { data: orders } = await insforge
+    const { data: orders } = await insforge.database
       .from('ml_orders')
       .select('id')
       .in('status', ['unshipped', 'shipped']);
 
-    const { data: syncErrors } = await insforge
+    const { data: syncErrors } = await insforge.database
       .from('sync_logs')
       .select('id')
       .eq('sync_type', 'ml')
       .eq('success', false)
       .gt('created_at', new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString());
 
-    const syncedCount = products?.filter((p) => p.sync_status === 'synced').length || 0;
-    const pendingCount = products?.filter((p) => p.sync_status === 'pending').length || 0;
+    const syncedCount = products?.filter((p: { sync_status?: string }) => p.sync_status === 'synced').length || 0;
+    const pendingCount = products?.filter((p: { sync_status?: string }) => p.sync_status === 'pending').length || 0;
 
     // Obtiene último sync
-    const { data: lastLog } = await insforge
+    const { data: lastLog } = await insforge.database
       .from('sync_logs')
       .select('created_at')
       .eq('sync_type', 'ml')
@@ -306,7 +306,7 @@ export async function runFullSync(): Promise<{
 
   try {
     // Log inicio
-    await insforge.from('sync_logs').insert({
+    await insforge.database.from('sync_logs').insert({
       sync_type: 'ml',
       success: false,
       started_at: new Date().toISOString(),
@@ -322,7 +322,7 @@ export async function runFullSync(): Promise<{
     }
 
     // Sincroniza precios de productos
-    const { data: products } = await insforge
+    const { data: products } = await insforge.database
       .from('products')
       .select('id, ml_item_id')
       .not('ml_item_id', 'is', null);
@@ -339,7 +339,7 @@ export async function runFullSync(): Promise<{
     }
 
     // Log resultado
-    await insforge.from('sync_logs').insert({
+    await insforge.database.from('sync_logs').insert({
       sync_type: 'ml',
       success: errors.length === 0,
       started_at: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
@@ -373,7 +373,7 @@ export async function runFullSync(): Promise<{
  */
 export async function adjustStockFromML(productId: string, mlQuantity: number): Promise<boolean> {
   try {
-    const { data: product } = await insforge
+    const { data: product } = await insforge.database
       .from('products')
       .select('stock, price')
       .eq('id', productId)
@@ -383,10 +383,10 @@ export async function adjustStockFromML(productId: string, mlQuantity: number): 
 
     // Solo actualiza si hay diferencia significativa
     if (Math.abs((product[0].stock || 0) - mlQuantity) > 1) {
-      await insforge.from('products').update({ stock: mlQuantity }).eq('id', productId);
+      await insforge.database.from('products').update({ stock: mlQuantity }).eq('id', productId);
 
       // Log del cambio
-      await insforge.from('stock_history').insert({
+      await insforge.database.from('stock_history').insert({
         product_id: productId,
         old_quantity: product[0].stock || 0,
         new_quantity: mlQuantity,

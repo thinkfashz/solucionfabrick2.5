@@ -47,7 +47,7 @@ export async function DELETE(
   try {
     const { id } = await params;
 
-    const { error } = await insforge
+    const { error } = await insforge.database
       .from('blog_comments')
       .delete()
       .eq('id', id);

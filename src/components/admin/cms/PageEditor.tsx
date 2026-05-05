@@ -9,6 +9,7 @@ import {
   CheckCircle2, AlertCircle, Edit3, BookOpen, Code,
 } from 'lucide-react';
 import { MediaPicker } from '@/components/admin/cms/MediaPicker';
+import type { SectionKind } from '@/lib/homeSectionKinds';
 
 const KINDS = [
   { value: 'banner', label: 'Banner promocional' },

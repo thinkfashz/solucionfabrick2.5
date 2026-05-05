@@ -1022,9 +1022,8 @@ export default function HouseDesigner() {
             powerPreference: 'high-performance',
             toneMapping: THREE.ACESFilmicToneMapping,
             toneMappingExposure: 1.1,
-            dpr: window.innerWidth < 768 ? 1 : Math.min(window.devicePixelRatio, 2),
           }}
-          dpr={[1, 2]}
+          dpr={window.innerWidth < 768 ? 1 : [1, 2]}
         >
           <color attach="background" args={['#060608']} />
           <fog attach="fog" args={['#060608', 20, 48]} />

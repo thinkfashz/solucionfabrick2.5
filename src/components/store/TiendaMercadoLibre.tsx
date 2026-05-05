@@ -39,7 +39,9 @@ export default function TiendaMercadoLibre({
   const [cart, setCart] = useState<CartItem[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
 
-  const categories = Array.from(new Set(products.map((p) => p.category).filter(Boolean)));
+  const categories = Array.from(
+    new Set(products.map((p) => p.category).filter((c): c is string => Boolean(c))),
+  );
   const filtered = selectedCategory
     ? products.filter((p) => p.category === selectedCategory)
     : products;

@@ -183,10 +183,8 @@ export function CalculadoraPreciosThree({ servicioId, onPrecioChange }: Calculad
   return (
     <div className="w-full bg-zinc-950 rounded-3xl border border-yellow-400/20 p-6 md:p-8">
       {/* Three.js Canvas */}
-      {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
       <div
         ref={containerRef}
-        className="w-full h-64 md:h-80 rounded-2xl border border-yellow-400/30 bg-black/50 mb-8 overflow-hidden"
         className={`w-full h-64 md:h-80 rounded-2xl border border-yellow-400/30 bg-black/50 mb-8 overflow-hidden ${styles.gradientBg}`}
       />
 

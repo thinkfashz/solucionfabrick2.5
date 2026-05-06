@@ -926,7 +926,7 @@ async function testOpenRouter(): Promise<NextResponse> {
     });
   }
 
-  if (!/^sk-or-/i.test(creds.apiKey)) {
+  if (!/^sk-or-/.test(creds.apiKey)) {
     checks.push({
       name: 'api_key',
       ok: false,
@@ -967,8 +967,8 @@ async function testOpenRouter(): Promise<NextResponse> {
       });
     }
     const info = json.data ?? {};
-    const usage = typeof info.usage === 'number' ? info.usage.toFixed(4) : '0';
-    const limit = info.limit == null ? 'sin límite' : Number(info.limit).toFixed(2);
+    const usage = typeof info.usage === 'number' ? info.usage.toFixed(4) : '0.0000';
+    const limit = info.limit == null ? 'sin límite' : Number(info.limit).toFixed(4);
     const tier = info.is_free_tier ? ' · free tier' : '';
     checks.push({
       name: 'OpenRouter /auth/key',

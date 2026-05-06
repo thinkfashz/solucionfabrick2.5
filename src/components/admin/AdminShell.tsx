@@ -13,6 +13,7 @@ import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
 import { AdminCommandPalette, type CommandItem } from '@/components/admin/AdminCommandPalette';
 import { BrandMark } from '@/components/admin/ui';
+import WhatsNewBanner from '@/components/admin/WhatsNewBanner';
 
 type NavLink = { href: string; label: string; description: string; icon: typeof Package; superadminOnly?: boolean; highlight?: boolean };
 
@@ -599,6 +600,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
               exit={{ opacity: 0, y: -10, scale: 1.01, filter: 'blur(6px)' }}
               transition={{ duration: 0.44, ease: [0.16, 1, 0.3, 1] }}
             >
+              <WhatsNewBanner />
               {children}
             </motion.div>
           </AnimatePresence>

@@ -1,13 +1,22 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, Copy, CheckCircle } from 'lucide-react';
+import { ChevronDown, Copy, CheckCircle, Play, Loader2, AlertTriangle } from 'lucide-react';
 
 export default function SQLSetupGuide() {
   const [expanded, setExpanded] = useState(false);
   const [copiedOption, setCopiedOption] = useState<number | null>(null);
+  const [running, setRunning] = useState(false);
+  const [runMsg, setRunMsg] = useState<{ ok: boolean; text: string } | null>(null);
 
-  const sqlContent = `-- Blog Comments Table
+  // SQL **compatible con InsForge** (PostgREST): solo CREATE TABLE + índices.
+  //
+  // ⚠️ NO usar `auth.jwt()` ni `ENABLE ROW LEVEL SECURITY` aquí: esa sintaxis es
+  // específica de Supabase y al ejecutarla contra InsForge devuelve
+  // `INTERNAL_ERROR · function auth.jwt() does not exist` (HTTP 500). InsForge
+  // ya filtra el acceso a estas tablas a nivel de PostgREST + API key, así que
+  // las políticas RLS no son necesarias para que el blog funcione.
+  const sqlContent = `-- Tabla de comentarios del blog
 CREATE TABLE IF NOT EXISTS blog_comments (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   post_slug VARCHAR(255) NOT NULL,
@@ -17,11 +26,10 @@ CREATE TABLE IF NOT EXISTS blog_comments (
   content TEXT NOT NULL,
   status VARCHAR(20) DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected')),
   created_at TIMESTAMP DEFAULT NOW(),
-  updated_at TIMESTAMP DEFAULT NOW(),
-  FOREIGN KEY (post_slug) REFERENCES blog_posts(slug) ON DELETE CASCADE
+  updated_at TIMESTAMP DEFAULT NOW()
 );
 
--- Blog Uploads Table
+-- Tabla de uploads del blog (.md y portadas)
 CREATE TABLE IF NOT EXISTS blog_uploads (
   id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   filename VARCHAR(255) NOT NULL UNIQUE,
@@ -32,41 +40,43 @@ CREATE TABLE IF NOT EXISTS blog_uploads (
   created_at TIMESTAMP DEFAULT NOW()
 );
 
--- Indexes for Performance
+-- Índices de rendimiento
 CREATE INDEX IF NOT EXISTS idx_blog_comments_post_slug ON blog_comments(post_slug);
 CREATE INDEX IF NOT EXISTS idx_blog_comments_status ON blog_comments(status);
 CREATE INDEX IF NOT EXISTS idx_blog_comments_created_at ON blog_comments(created_at DESC);
-CREATE INDEX IF NOT EXISTS idx_blog_uploads_created_at ON blog_uploads(created_at DESC);
-
--- Enable RLS
-ALTER TABLE blog_comments ENABLE ROW LEVEL SECURITY;
-ALTER TABLE blog_uploads ENABLE ROW LEVEL SECURITY;
-
--- RLS Policies for blog_comments
-CREATE POLICY "select_approved_comments" ON blog_comments
-  FOR SELECT USING (status = 'approved');
-
-CREATE POLICY "insert_comments" ON blog_comments
-  FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "admin_manage_comments" ON blog_comments
-  FOR UPDATE USING (auth.jwt() ->> 'role' = 'admin');
-
--- RLS Policies for blog_uploads
-CREATE POLICY "select_uploads" ON blog_uploads
-  FOR SELECT USING (true);
-
-CREATE POLICY "insert_uploads" ON blog_uploads
-  FOR INSERT WITH CHECK (true);
-
-CREATE POLICY "admin_manage_uploads" ON blog_uploads
-  FOR UPDATE USING (auth.jwt() ->> 'role' = 'admin');`;
+CREATE INDEX IF NOT EXISTS idx_blog_uploads_created_at ON blog_uploads(created_at DESC);`;
 
   const copyToClipboard = (text: string, option: number) => {
     navigator.clipboard.writeText(text).then(() => {
       setCopiedOption(option);
       setTimeout(() => setCopiedOption(null), 2000);
     });
+  };
+
+  // Ejecuta el SQL directamente contra /api/admin/sql (mismo endpoint que
+  // /admin/sql) — evita el copy-paste manual a la consola de InsForge.
+  const runSqlNow = async () => {
+    if (running) return;
+    setRunning(true);
+    setRunMsg(null);
+    try {
+      const res = await fetch('/api/admin/sql', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: sqlContent }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (res.ok && json?.ok !== false) {
+        setRunMsg({ ok: true, text: 'Tablas blog_comments y blog_uploads creadas (o ya existían). Ya puedes subir .md.' });
+      } else {
+        const err = (json?.error as string) || 'Error desconocido al ejecutar el SQL.';
+        setRunMsg({ ok: false, text: err });
+      }
+    } catch (e) {
+      setRunMsg({ ok: false, text: (e as Error).message });
+    } finally {
+      setRunning(false);
+    }
   };
 
   return (
@@ -80,10 +90,10 @@ CREATE POLICY "admin_manage_uploads" ON blog_uploads
           <div className="text-xl sm:text-2xl flex-shrink-0">⚠️</div>
           <div className="text-left min-w-0">
             <h2 className="text-sm sm:text-base md:text-lg font-black uppercase tracking-wide text-orange-300">
-              EESTI: Config SQL
+              Setup SQL del blog
             </h2>
             <p className="text-xs sm:text-sm text-orange-200/70 truncate">
-              {expanded ? 'Ocultar' : 'Ver instrucciones'}
+              {expanded ? 'Ocultar' : 'Crear tablas blog_comments y blog_uploads'}
             </p>
           </div>
         </div>
@@ -106,10 +116,57 @@ CREATE POLICY "admin_manage_uploads" ON blog_uploads
             </p>
           </div>
 
+          {/* OPCIÓN 0: ejecutar desde la app (más rápido) */}
+          <div className="space-y-3 rounded-xl border border-emerald-400/30 bg-emerald-500/5 p-4">
+            <h3 className="text-base font-black uppercase tracking-wider text-emerald-300">
+              ⚡ OPCIÓN 0 · Ejecutar desde aquí (más rápido)
+            </h3>
+            <p className="text-sm text-zinc-300">
+              Crea las tablas <span className="font-mono text-emerald-300">blog_comments</span> y
+              <span className="font-mono text-emerald-300"> blog_uploads</span> directamente contra InsForge,
+              sin abrir la consola externa.
+            </p>
+            <button
+              onClick={runSqlNow}
+              disabled={running}
+              className="inline-flex items-center gap-2 px-4 py-2 rounded-lg bg-emerald-500/20 hover:bg-emerald-500/30 disabled:opacity-50 text-emerald-200 transition-all text-sm font-semibold"
+            >
+              {running ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin" /> Ejecutando…
+                </>
+              ) : (
+                <>
+                  <Play className="w-4 h-4" /> Ejecutar ahora
+                </>
+              )}
+            </button>
+            {runMsg && (
+              <div
+                className={`text-xs rounded-lg p-3 border flex items-start gap-2 ${
+                  runMsg.ok
+                    ? 'border-emerald-400/30 bg-emerald-500/10 text-emerald-200'
+                    : 'border-red-400/30 bg-red-500/10 text-red-200'
+                }`}
+              >
+                {runMsg.ok ? (
+                  <CheckCircle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                ) : (
+                  <AlertTriangle className="w-4 h-4 mt-0.5 flex-shrink-0" />
+                )}
+                <span className="leading-relaxed break-words">{runMsg.text}</span>
+              </div>
+            )}
+            <p className="text-[11px] text-zinc-500 leading-relaxed">
+              Compatible con InsForge — solo <span className="font-mono">CREATE TABLE IF NOT EXISTS</span> e
+              índices. <span className="font-mono">auth.jwt()</span> y RLS de Supabase no se aplican aquí.
+            </p>
+          </div>
+
           {/* OPCIÓN 1: InsForge Console */}
           <div className="space-y-3">
             <h3 className="text-lg font-black uppercase tracking-wider text-yellow-400">
-              ✅ OPCIÓN 1: InsForge Console (Recomendado)
+              ✅ OPCIÓN 1: InsForge Console
             </h3>
             <div className="space-y-2 text-sm text-zinc-300">
               <div>

@@ -60,6 +60,52 @@ CREATE TABLE IF NOT EXISTS public.integrations (
   updated_at timestamptz DEFAULT now()
 );
 
+-- TABLA: presupuestos
+-- Presupuestos enviados a clientes con autodestrucción a los 5 días.
+-- Se accede públicamente vía /p/[slug]; cuando `now() > expira_at` la
+-- página renderiza la pantalla "Presupuesto vencido".
+CREATE TABLE IF NOT EXISTS public.presupuestos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug text NOT NULL UNIQUE,
+  customer_name text NOT NULL,
+  customer_email text,
+  customer_phone text,
+  items jsonb NOT NULL DEFAULT '[]'::jsonb,
+  total numeric(12,2) NOT NULL DEFAULT 0,
+  notas text,
+  status text NOT NULL DEFAULT 'borrador',
+  sent_via jsonb NOT NULL DEFAULT '[]'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  expira_at timestamptz NOT NULL DEFAULT (now() + interval '5 days')
+);
+CREATE INDEX IF NOT EXISTS presupuestos_slug_idx ON public.presupuestos (slug);
+CREATE INDEX IF NOT EXISTS presupuestos_created_at_idx ON public.presupuestos (created_at DESC);
+
+-- TABLA: presupuestos-migrate
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS slug text;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS customer_name text;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS customer_email text;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS customer_phone text;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS items jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS total numeric(12,2) DEFAULT 0;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS notas text;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS status text DEFAULT 'borrador';
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS sent_via jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS expira_at timestamptz DEFAULT (now() + interval '5 days');
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'presupuestos_slug_key'
+  ) THEN
+    BEGIN
+      ALTER TABLE public.presupuestos ADD CONSTRAINT presupuestos_slug_key UNIQUE (slug);
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS presupuestos_slug_idx ON public.presupuestos (slug);
+CREATE INDEX IF NOT EXISTS presupuestos_created_at_idx ON public.presupuestos (created_at DESC);
+
 -- TABLA: orders
 CREATE TABLE IF NOT EXISTS public.orders (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

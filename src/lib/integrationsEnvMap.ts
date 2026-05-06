@@ -98,6 +98,10 @@ export const INTEGRATIONS_ENV_MAP: Record<string, Record<string, readonly string
 		project_id: ['VERCEL_PROJECT_ID'],
 		team_id: ['VERCEL_TEAM_ID'],
 	},
+	resend: {
+		api_key: ['RESEND_API_KEY', 'RESEND_KEY'],
+		from: ['RESEND_FROM', 'RESEND_FROM_EMAIL'],
+	},
 };
 
 export interface DetectedEnvField {

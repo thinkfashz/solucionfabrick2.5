@@ -65,6 +65,7 @@ const ALLOWED_PROVIDERS = new Set([
   'mercadopago',  // MercadoPago checkout / webhooks / health
   'stripe',       // Stripe payments / webhooks
   'whatsapp',     // WhatsApp Business Cloud API
+  'resend',       // Resend transactional email
 ]);
 
 function getClient() {

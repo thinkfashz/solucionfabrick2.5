@@ -6,6 +6,7 @@ import { getMercadoLibreCredentials } from '@/lib/mercadoLibreCredentials';
 import { getMercadoPagoCredentials } from '@/lib/mercadoPagoCredentials';
 import { decryptCredentials } from '@/lib/integrationsCrypto';
 import { detectMpMode, getMpTokenPrefix } from '@/lib/mercadopago';
+import { getOpenRouterCredentials } from '@/lib/openrouter';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -911,6 +912,89 @@ async function testWhatsApp(): Promise<NextResponse> {
   }
 }
 
+async function testOpenRouter(): Promise<NextResponse> {
+  const creds = await getOpenRouterCredentials();
+  const checks: DiagnosticCheck[] = [];
+
+  if (!creds?.apiKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'openrouter',
+      error:
+        'OpenRouter no está configurado. Guarda tu API key en el centro de integraciones (tarjeta OpenRouter) o define OPENROUTER_API_KEY como variable de entorno.',
+      checks: [{ name: 'api_key', ok: false, detail: 'No configurada.' }],
+    });
+  }
+
+  if (!/^sk-or-/i.test(creds.apiKey)) {
+    checks.push({
+      name: 'api_key',
+      ok: false,
+      detail: 'Las API keys de OpenRouter empiezan por "sk-or-". Verifica que copiaste la clave correcta.',
+    });
+  } else {
+    checks.push({ name: 'api_key', ok: true, detail: `Formato OK (origen: ${creds.source}).` });
+  }
+
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${creds.apiKey}`,
+    'X-Title': creds.appName,
+  };
+  if (creds.siteUrl) headers['HTTP-Referer'] = creds.siteUrl;
+
+  try {
+    const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
+      headers,
+      cache: 'no-store',
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      data?: {
+        label?: string;
+        usage?: number;
+        limit?: number | null;
+        is_free_tier?: boolean;
+      };
+      error?: { message?: string };
+    };
+    if (!res.ok) {
+      const msg = json.error?.message ?? `HTTP ${res.status}`;
+      checks.push({ name: 'OpenRouter /auth/key', ok: false, detail: msg });
+      return NextResponse.json({
+        ok: false,
+        provider: 'openrouter',
+        error: `OpenRouter rechazó la API key: ${msg}.`,
+        checks,
+      });
+    }
+    const info = json.data ?? {};
+    const usage = typeof info.usage === 'number' ? info.usage.toFixed(4) : '0';
+    const limit = info.limit == null ? 'sin límite' : Number(info.limit).toFixed(2);
+    const tier = info.is_free_tier ? ' · free tier' : '';
+    checks.push({
+      name: 'OpenRouter /auth/key',
+      ok: true,
+      detail: `Key válida (${info.label ?? 'sin etiqueta'}) · usado $${usage} / $${limit}${tier}.`,
+    });
+    return NextResponse.json({
+      ok: checks.every((check) => check.ok),
+      provider: 'openrouter',
+      checks,
+    });
+  } catch (err) {
+    checks.push({
+      name: 'OpenRouter /auth/key',
+      ok: false,
+      detail: err instanceof Error ? err.message : 'Error de red.',
+    });
+    return NextResponse.json({
+      ok: false,
+      provider: 'openrouter',
+      error: `Error de red al contactar OpenRouter: ${err instanceof Error ? err.message : String(err)}`,
+      checks,
+    });
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAdmin(request);
@@ -927,6 +1011,7 @@ export async function GET(request: NextRequest) {
     if (provider === 'mercadopago') return await testMercadoPago();
     if (provider === 'stripe') return await testStripe();
     if (provider === 'whatsapp') return await testWhatsApp();
+    if (provider === 'openrouter') return await testOpenRouter();
     return NextResponse.json(
       { error: `Proveedor no soportado para test: ${provider || '(vacío)'}.` },
       { status: 400 },

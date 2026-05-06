@@ -959,7 +959,10 @@ async function testResend(): Promise<NextResponse> {
 
   try {
     const res = await fetch('https://api.resend.com/domains', {
-      headers: { Authorization: `****** Accept: 'application/json' },
+      headers: {
+        Authorization: `Bearer ${creds.apiKey}`,
+        Accept: 'application/json',
+      },
       cache: 'no-store',
     });
     const json = (await res.json().catch(() => ({}))) as {

@@ -35,6 +35,13 @@ const BLOCKED_NAMES = new Set([
 const MAX_BYTES = 200 * 1024; // 200 KB por archivo
 const MAX_FILES_PER_REQUEST = 8;
 
+/**
+ * Lanzada por `normalizeRepoPath` y `readRepoFiles` cuando una ruta
+ * solicitada por el cliente intenta salir del whitelist (traversal,
+ * archivos secretos, extensiones binarias…). Las rutas API deben
+ * capturarla y devolver HTTP 400, nunca 500: es entrada inválida del
+ * usuario, no un fallo interno.
+ */
 export class UnsafePathError extends Error {
   constructor(reason: string) {
     super(`Ruta no permitida: ${reason}`);

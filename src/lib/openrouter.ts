@@ -92,8 +92,11 @@ export async function listModels(force = false): Promise<OpenRouterModel[]> {
     return modelsCache.models;
   }
   const creds = await getOpenRouterCredentials();
-  // Si no hay credenciales aún se puede consultar el endpoint público (no requiere auth para /models).
-  const headers: Record<string, string> = creds ? defaultHeaders(creds) : { 'Content-Type': 'application/json' };
+  // GET /models es un endpoint público (no requiere Authorization) y no
+  // necesita Content-Type porque es GET. Reusamos `defaultHeaders` para
+  // pasar Referer/X-Title (mejora ranking en OpenRouter), pero
+  // descartamos `Content-Type` que no aplica a un GET.
+  const headers: Record<string, string> = creds ? { ...defaultHeaders(creds) } : {};
   delete headers['Content-Type'];
 
   let res: Response;

@@ -12,6 +12,11 @@ import NewsletterEmail from '@/emails/NewsletterEmail';
 
 const DEFAULT_FROM = 'Soluciones Fabrick <onboarding@resend.dev>';
 
+/**
+ * Ejecuta una promesa (o un query-builder thenable de InsForge) y
+ * suprime cualquier error. Útil para escrituras best-effort donde un
+ * fallo no debe abortar el flujo principal (logs, métricas).
+ */
 const swallow = async (p: unknown): Promise<void> => {
   try { await (p as Promise<unknown>); } catch { /* ignore */ }
 };

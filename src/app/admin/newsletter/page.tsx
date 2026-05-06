@@ -449,8 +449,8 @@ export default function NewsletterPage() {
                 className="mt-1 w-full rounded-lg border border-neutral-800 bg-neutral-950 px-3 py-2"
               />
               <p className="mt-1 text-xs text-neutral-500">
-                Si dejas vacío se guarda como borrador. El cron `/api/cron/newsletter` corre cada 15 min y envía las
-                programadas que ya pasaron.
+                Si dejas vacío se guarda como borrador. El cron `/api/cron/newsletter` corre 1 vez al día (10:00 CL) y envía las
+                programadas que ya pasaron. Puedes forzar el envío manual desde el botón "Enviar ahora".
               </p>
             </div>
             <div className="flex items-center justify-between pt-2 border-t border-neutral-800">

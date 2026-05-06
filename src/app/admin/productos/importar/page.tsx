@@ -13,14 +13,14 @@ export default function ImportarMercadoLibrePage() {
           Productos · Importar
         </p>
         <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">
-          Importar producto desde URL
+          Buscador universal de productos
         </h1>
         <p className="mt-2 max-w-2xl text-sm text-zinc-400">
           Pega un link de cualquier tienda — Mercado Libre (incluye los nuevos{' '}
           <code className="rounded bg-zinc-900 px-1.5 py-0.5 text-yellow-400">meli.la/…</code>),
           Falabella, Ripley, AliExpress, Amazon o tu propio sitio — y crea el producto
-          automáticamente en tu catálogo. Cada producto importado guarda el link de origen
-          para que puedas comprar y enviar al cliente desde el detalle del pedido.
+          automáticamente en tu catálogo. La barra de estado superior te muestra en vivo
+          la conexión con la base de datos, las APIs de Google y la pasarela de pagos.
         </p>
       </header>
 

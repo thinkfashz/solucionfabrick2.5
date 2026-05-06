@@ -7,12 +7,13 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUpRight, AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Stethoscope, Store, Terminal,
-  TrendingDown, Truck, Users, Wallet, X, Zap, Plus, MessageCircle,
+  TrendingDown, Truck, Telescope, Users, Wallet, X, Zap, Plus, MessageCircle,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
 import { AdminCommandPalette, type CommandItem } from '@/components/admin/AdminCommandPalette';
 import { BrandMark } from '@/components/admin/ui';
+import WhatsNewBanner from '@/components/admin/WhatsNewBanner';
 
 type NavLink = { href: string; label: string; description: string; icon: typeof Package; superadminOnly?: boolean; highlight?: boolean };
 
@@ -33,6 +34,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/pedidos', label: 'Pedidos', description: 'Cobros y estados', icon: ShoppingCart },
       { href: '/admin/pagos', label: 'Pagos · MercadoPago', description: 'Modo, latencia y KPIs de la pasarela', icon: Wallet, highlight: true },
       { href: '/admin/cotizaciones', label: 'Cotizaciones', description: 'Solicitudes de servicios y diseños 3D', icon: FileText },
+      { href: '/admin/presupuestos', label: 'Presupuestos · 5 días', description: 'Generar link autodestruible y enviar al cliente', icon: FileText, highlight: true },
       { href: '/admin/entregas', label: 'Entregas', description: 'Seguimiento logístico', icon: Truck },
       { href: '/admin/clientes', label: 'Clientes', description: 'Historial y recurrencia', icon: Users },
       { href: '/admin/reportes', label: 'Reportes', description: 'Ventas y métricas', icon: BarChart3 },
@@ -55,12 +57,15 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/publicidad', label: 'Publicidad', description: 'Meta Ads', icon: Megaphone },
       { href: '/admin/publicidad/coach', label: 'Coach de campañas', description: 'Agente IA: analizar, sugerir, optimizar', icon: Sparkles, highlight: true },
       { href: '/admin/publicar', label: 'Publicar', description: 'Posts para redes sociales', icon: Send },
+      { href: '/admin/newsletter', label: 'Boletín', description: 'Suscriptores + campañas de construcción programables', icon: Newspaper, highlight: true },
+      { href: '/admin/asistente-ia', label: 'Asistente IA', description: 'Chat con OpenRouter (gratis y de pago) + análisis del código', icon: Sparkles, highlight: true },
       { href: '/admin/ml', label: 'MercadoLibre', description: 'Publicaciones, pedidos, preguntas y precios', icon: Store, highlight: true },
       { href: '/admin/ml/buscar', label: 'Buscador ML', description: 'Buscar en catálogo de ML Chile', icon: Search },
       { href: '/admin/ml/publicaciones', label: 'Mis publicaciones ML', description: 'Gestión de listings propios', icon: Store },
       { href: '/admin/ml/pedidos', label: 'Pedidos ML', description: 'Sincronizar ventas de ML', icon: ShoppingCart },
       { href: '/admin/ml/preguntas', label: 'Preguntas ML', description: 'Responder preguntas de compradores', icon: MessageCircle },
       { href: '/admin/ml/precios', label: 'Monitor de precios ML', description: 'Comparar precios vs. competencia', icon: TrendingDown },
+      { href: '/admin/inteligencia-mercado', label: 'Inteligencia de mercado', description: 'Buscar referentes (ML+Google), tendencias, productos ganadores y SEO con IA', icon: Telescope, highlight: true },
       { href: '/admin/social/inbox', label: 'Inbox social', description: 'Mensajes de Instagram, FB, WhatsApp y ML', icon: Inbox, highlight: true },
       { href: '/admin/integraciones', label: 'Centro de integraciones', description: 'Conectar, probar y desactivar APIs', icon: Link2, highlight: true },
       { href: '/admin/integraciones/marketplace', label: 'Marketplace de extensiones', description: 'Apps, snippets, webhooks y OAuth', icon: Boxes, highlight: true },
@@ -94,6 +99,9 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/pedidos': 'Pedidos',
   '/admin/pagos': 'Pagos · MercadoPago',
   '/admin/cotizaciones': 'Cotizaciones',
+  '/admin/presupuestos': 'Presupuestos',
+  '/admin/newsletter': 'Boletín',
+  '/admin/asistente-ia': 'Asistente IA',
   '/admin/entregas': 'Entregas',
   '/admin/clientes': 'Clientes',
   '/admin/reportes': 'Reportes',
@@ -107,6 +115,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/ml/pedidos': 'Pedidos ML',
   '/admin/ml/preguntas': 'Preguntas ML',
   '/admin/ml/precios': 'Monitor de precios ML',
+  '/admin/inteligencia-mercado': 'Inteligencia de mercado',
   '/admin/social/inbox': 'Inbox social',
   '/admin/integraciones': 'Centro de integraciones',
   '/admin/integraciones/marketplace': 'Marketplace de extensiones',
@@ -591,6 +600,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
               exit={{ opacity: 0, y: -10, scale: 1.01, filter: 'blur(6px)' }}
               transition={{ duration: 0.44, ease: [0.16, 1, 0.3, 1] }}
             >
+              <WhatsNewBanner />
               {children}
             </motion.div>
           </AnimatePresence>

@@ -280,6 +280,13 @@ export default function AuthPage() {
     });
     setLoading(false);
     if (err) { setError(err.message); return; }
+    // Disparar correo de bienvenida + suscripción al boletín. No
+    // bloqueante: si Resend falla, no rompemos el flujo de registro.
+    void fetch('/api/auth/welcome', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, name }),
+    }).catch(() => {});
     if (data?.requireEmailVerification) {
       setSuccess('Te enviamos un código de 6 dígitos a tu correo.');
       setScreen('verify');

@@ -40,6 +40,9 @@ import {
 } from 'lucide-react';
 import { extractMlcId as canonicalExtractMlcId } from '@/lib/productImportShared';
 import { useProductImportHistory } from '@/hooks/useProductImportHistory';
+import ImportConnectionStatus, {
+  type SearchPhase,
+} from '@/components/admin/ImportConnectionStatus';
 
 /** Re-exported for backwards-compatibility with existing callers. */
 export const extractMlcId = canonicalExtractMlcId;
@@ -90,6 +93,19 @@ interface ImportOverrides {
   imageUrl?: string | null;
   images?: string[];
   delivery_days?: number | null;
+}
+
+function deriveErrorHint(message: string): string {
+  if (/403|forbidden/i.test(message)) {
+    return 'Mercado Libre rechazó la consulta directa. Probaremos leer los metadatos de la publicación (Open Graph). Si el problema persiste, copia el enlace expandido (sin meli.la/...) o pega la URL larga de articulo.mercadolibre.cl.';
+  }
+  if (/timeout|fetch|network|ENOTFOUND|ECONNRESET/i.test(message)) {
+    return 'No pudimos conectar con la tienda. Verifica que la URL sea pública y que tu servidor tenga salida a internet. Revisa también el panel de Estado del importador arriba.';
+  }
+  if (/private|loopback|SSRF/i.test(message)) {
+    return 'La URL apunta a una red privada y por seguridad fue bloqueada. Usa siempre URLs públicas.';
+  }
+  return 'Si el link es válido, intenta abrirlo en una pestaña incógnita y copia la URL final que muestra el navegador.';
 }
 
 // ---------------------------------------------------------------------------
@@ -199,6 +215,17 @@ export default function MercadoLibreScraper() {
     }
   }
 
+  // Derive the high-level phase consumed by the BlackBerry status bar.
+  const searchPhase: SearchPhase = importing
+    ? 'searching'
+    : loading
+      ? 'searching'
+      : error
+        ? 'error'
+        : preview
+          ? 'success'
+          : 'idle';
+
   return (
     <section className="w-full rounded-2xl border border-zinc-800/80 bg-zinc-950 p-6 shadow-2xl shadow-black/40 sm:p-8">
       {/* Header */}
@@ -209,17 +236,31 @@ export default function MercadoLibreScraper() {
           </span>
           <div>
             <h2 className="text-lg font-semibold tracking-tight text-white">
-              Importar producto desde URL
+              Buscador universal de productos
             </h2>
             <p className="text-sm text-zinc-400">
-              Pega un link de Mercado Libre (incluye los nuevos{' '}
+              Pega cualquier link — Mercado Libre (incluye los nuevos{' '}
               <code className="rounded bg-zinc-900 px-1 py-0.5 text-yellow-300">meli.la/…</code>),
-              Falabella, Ripley, AliExpress, Amazon, o cualquier tienda con metadatos Open Graph
-              y crea el producto automáticamente en tu catálogo.
+              Falabella, Ripley, AliExpress, Amazon, tu propio sitio o cualquier tienda con
+              metadatos Open Graph — y crea el producto automáticamente en tu catálogo.
             </p>
           </div>
         </div>
       </header>
+
+      {/* BlackBerry-style live status panel: DB, Google APIs, MercadoPago/ML, buscador. */}
+      <div className="mb-5">
+        <ImportConnectionStatus
+          searchPhase={searchPhase}
+          searchNote={
+            error
+              ? error
+              : preview
+                ? `“${preview.title.slice(0, 40)}${preview.title.length > 40 ? '…' : ''}”`
+                : null
+          }
+        />
+      </div>
 
       {/* Form */}
       <form onSubmit={handleExtract} className="flex flex-col gap-3 sm:flex-row">
@@ -260,10 +301,19 @@ export default function MercadoLibreScraper() {
       {error && (
         <div
           role="alert"
-          className="mt-5 flex items-start gap-3 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"
+          className="mt-5 rounded-xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-200"
         >
-          <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-400" />
-          <span className="break-words">{error}</span>
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-red-400" />
+            <div className="min-w-0 flex-1 space-y-2">
+              <p className="break-words font-medium">{error}</p>
+              {/* Smart hint: surface a context-aware suggestion based on the error.
+                  ML occasionally returns 403/blocked from the public API; the
+                  importer falls back to Open Graph scraping but the UI should
+                  tell the admin what happened in plain language. */}
+              <p className="text-xs text-red-200/80">{deriveErrorHint(error)}</p>
+            </div>
+          </div>
         </div>
       )}
 

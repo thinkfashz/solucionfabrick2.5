@@ -11,14 +11,18 @@ import {
 	Globe,
 	LinkIcon,
 	Loader2,
+	Mail,
 	MessageCircle,
 	MessageSquareText,
 	PlayCircle,
 	RefreshCw,
+	Search,
 	Server,
 	ShieldAlert,
+	Sparkles,
 	Store,
 	Trash2,
+	TrendingUp,
 	Wallet,
 	Workflow,
 	X,
@@ -33,7 +37,7 @@ const INTEGRATIONS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS public.integrations (
   updated_at timestamptz DEFAULT now()
 );`;
 
-type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary' | 'vercel' | 'mercadolibre' | 'mercadopago' | 'stripe' | 'whatsapp';
+type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary' | 'vercel' | 'mercadolibre' | 'mercadopago' | 'stripe' | 'whatsapp' | 'resend' | 'openrouter' | 'serper' | 'serpapi';
 
 interface ProviderField {
 	key: string;
@@ -51,6 +55,12 @@ interface ProviderDefinition {
 	accent: string;
 	uses: string[];
 	fields: ProviderField[];
+	/** URL externa (botón "Obtener API Key") al portal del proveedor. */
+	apiKeyUrl?: string;
+	/** Texto corto del botón de la URL externa (default: "Obtener API Key"). */
+	apiKeyLabel?: string;
+	/** Instrucciones paso a paso renderizadas dentro de la tarjeta. */
+	instructions?: string[];
 }
 
 interface ProviderStatus {
@@ -216,6 +226,93 @@ const PROVIDERS: ProviderDefinition[] = [
 			{ key: 'api_token', label: 'API Token', type: 'password', placeholder: 'vercel_xxx' },
 			{ key: 'project_id', label: 'Project ID', placeholder: 'prj_xxxxxxxxxxxxxxxxxx' },
 			{ key: 'team_id', label: 'Team ID (opcional)', placeholder: 'team_xxxxxxxxxxxxxxxxxx' },
+		],
+	},
+	{
+		id: 'resend',
+		label: 'Resend',
+		description: 'Envío transaccional del presupuesto al cliente con plantilla React Email (logo Fabrick + botón ámbar).',
+		icon: Mail,
+		accent: 'from-amber-400/20 to-yellow-500/10',
+		uses: ['Email transaccional', 'React Email', 'Presupuestos', 'Notificaciones'],
+		apiKeyUrl: 'https://resend.com/api-keys',
+		apiKeyLabel: 'Obtener API Key',
+		instructions: [
+			'Entra a resend.com/api-keys (botón de la derecha) e inicia sesión.',
+			'Crea una API key con permiso "Sending access"; cópiala (empieza por re_…). Solo se muestra una vez.',
+			'Verifica el dominio remitente en Resend → Domains; usa una dirección de ese dominio en el campo "From" (p. ej. presupuestos@solucionesfabrick.cl).',
+			'Pega la API key abajo y guarda. También puedes definir RESEND_API_KEY y RESEND_FROM como variables de entorno en Vercel.',
+		],
+		fields: [
+			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 're_xxxxxxxxxxxxxxxxxxxxxxxx' },
+			{ key: 'from', label: 'From (remitente verificado)', placeholder: 'Soluciones Fabrick <presupuestos@solucionesfabrick.cl>' },
+		],
+	},
+	{
+		id: 'openrouter',
+		label: 'OpenRouter',
+		description: 'Gateway que da acceso unificado a +200 modelos de IA (Llama, Gemini, Claude, GPT, Mistral, Qwen…). Hay modelos gratis y de pago.',
+		icon: Sparkles,
+		accent: 'from-fuchsia-400/20 to-purple-500/10',
+		uses: ['Asistente IA del admin', 'Análisis de código', 'Soporte cliente automatizado', 'Modelos gratis y de pago'],
+		apiKeyUrl: 'https://openrouter.ai/keys',
+		apiKeyLabel: 'Obtener API Key',
+		instructions: [
+			'Crea una cuenta en openrouter.ai (o inicia sesión con Google/GitHub).',
+			'Ve a openrouter.ai/keys y haz clic en "Create Key". Cópiala (empieza por sk-or-…). Solo se muestra una vez.',
+			'Para usar modelos de pago, agrega crédito en openrouter.ai/credits. Los modelos gratuitos (sufijo :free) no requieren saldo.',
+			'Pega la API key abajo y guarda. Opcional: define OPENROUTER_API_KEY como variable de entorno en Vercel.',
+		],
+		fields: [
+			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 'sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxx' },
+			{ key: 'app_name', label: 'App Name (opcional)', placeholder: 'Soluciones Fabrick Admin' },
+			{ key: 'site_url', label: 'Site URL (opcional, para ranking)', placeholder: 'https://solucionesfabrick.cl' },
+		],
+	},
+	{
+		id: 'serper',
+		label: 'Serper.dev',
+		description: 'Google SERP API ultra-rápida con plan gratuito (≈2.500 búsquedas one-time). Alimenta el módulo Inteligencia de Mercado para descubrir precios, productos ganadores y competencia en Google.',
+		icon: Search,
+		accent: 'from-emerald-400/20 to-cyan-500/10',
+		uses: [
+			'Buscador agregado (ML + Google)',
+			'Detección de productos ganadores / trending',
+			'Histórico de subidas/bajadas de precio',
+			'SEO con IA: análisis de términos en motores de búsqueda',
+		],
+		apiKeyUrl: 'https://serper.dev/api-key',
+		apiKeyLabel: 'Obtener API Key gratis',
+		instructions: [
+			'Crea una cuenta gratis en serper.dev (puedes usar tu cuenta Google).',
+			'Entra a serper.dev/api-key, copia la API Key (formato hexadecimal de 64 caracteres).',
+			'Pégala abajo y guarda. El plan gratis incluye ≈2.500 búsquedas one-time, suficiente para empezar.',
+			'Opcional: define SERPER_API_KEY como variable de entorno en Vercel para que no quede en la base de datos.',
+		],
+		fields: [
+			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' },
+		],
+	},
+	{
+		id: 'serpapi',
+		label: 'SerpAPI (futuro · pago)',
+		description: 'Alternativa premium a Serper con cobertura mundial y 100 búsquedas gratis al mes. Configurable hoy para activar el upgrade cuando lo necesites.',
+		icon: TrendingUp,
+		accent: 'from-amber-400/20 to-rose-500/10',
+		uses: [
+			'Buscador agregado (cuando se prefiere SerpAPI sobre Serper)',
+			'Países y mercados regionales adicionales',
+			'Resultados orgánicos + shopping en una sola llamada',
+		],
+		apiKeyUrl: 'https://serpapi.com/manage-api-key',
+		apiKeyLabel: 'Obtener API Key',
+		instructions: [
+			'Crea cuenta en serpapi.com. El plan free entrega 100 búsquedas/mes (suficiente para pruebas).',
+			'En serpapi.com/manage-api-key copia tu Private API Key.',
+			'Pégala abajo. El módulo Inteligencia de Mercado priorizará Serper si ambas están configuradas; podrás cambiar la fuente desde el selector de la pantalla.',
+		],
+		fields: [
+			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' },
 		],
 	},
 ];
@@ -785,6 +882,36 @@ export default function AdminIntegracionesPage() {
 													<LinkIcon className="h-3.5 w-3.5" />
 													{isConfigured ? 'Reconectar Mercado Libre' : 'Conectar con Mercado Libre'}
 												</a>
+											</div>
+										</div>
+									) : null}
+
+									{provider.apiKeyUrl || (provider.instructions && provider.instructions.length > 0) ? (
+										<div className="rounded-2xl border border-amber-400/30 bg-amber-400/5 p-4">
+											<div className="flex flex-wrap items-start justify-between gap-3">
+												<div className="min-w-0 flex-1">
+													<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-amber-300">
+														Cómo obtener tus credenciales
+													</p>
+													{provider.instructions && provider.instructions.length > 0 ? (
+														<ol className="mt-2 list-decimal space-y-1 pl-4 text-sm leading-relaxed text-zinc-300">
+															{provider.instructions.map((step, i) => (
+																<li key={i}>{step}</li>
+															))}
+														</ol>
+													) : null}
+												</div>
+												{provider.apiKeyUrl ? (
+													<a
+														href={provider.apiKeyUrl}
+														target="_blank"
+														rel="noopener noreferrer"
+														className="inline-flex items-center gap-2 rounded-full bg-amber-400 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-950 transition hover:bg-amber-300"
+													>
+														<LinkIcon className="h-3.5 w-3.5" />
+														{provider.apiKeyLabel ?? 'Obtener API Key'}
+													</a>
+												) : null}
 											</div>
 										</div>
 									) : null}

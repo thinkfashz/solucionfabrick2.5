@@ -65,6 +65,10 @@ const ALLOWED_PROVIDERS = new Set([
   'mercadopago',  // MercadoPago checkout / webhooks / health
   'stripe',       // Stripe payments / webhooks
   'whatsapp',     // WhatsApp Business Cloud API
+  'resend',       // Resend transactional email
+  'openrouter',   // OpenRouter AI chat (gateway a múltiples LLMs)
+  'serper',       // Serper.dev (Google SERP API gratis, módulo Inteligencia de Mercado)
+  'serpapi',      // SerpAPI (Google SERP, plan pago futuro)
 ]);
 
 function getClient() {

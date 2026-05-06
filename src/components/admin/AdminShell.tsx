@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUpRight, AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Stethoscope, Store, Terminal,
-  TrendingDown, Truck, Users, Wallet, X, Zap, Plus, MessageCircle,
+  TrendingDown, Truck, Telescope, Users, Wallet, X, Zap, Plus, MessageCircle,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
@@ -64,6 +64,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/ml/pedidos', label: 'Pedidos ML', description: 'Sincronizar ventas de ML', icon: ShoppingCart },
       { href: '/admin/ml/preguntas', label: 'Preguntas ML', description: 'Responder preguntas de compradores', icon: MessageCircle },
       { href: '/admin/ml/precios', label: 'Monitor de precios ML', description: 'Comparar precios vs. competencia', icon: TrendingDown },
+      { href: '/admin/inteligencia-mercado', label: 'Inteligencia de mercado', description: 'Buscar referentes (ML+Google), tendencias, productos ganadores y SEO con IA', icon: Telescope, highlight: true },
       { href: '/admin/social/inbox', label: 'Inbox social', description: 'Mensajes de Instagram, FB, WhatsApp y ML', icon: Inbox, highlight: true },
       { href: '/admin/integraciones', label: 'Centro de integraciones', description: 'Conectar, probar y desactivar APIs', icon: Link2, highlight: true },
       { href: '/admin/integraciones/marketplace', label: 'Marketplace de extensiones', description: 'Apps, snippets, webhooks y OAuth', icon: Boxes, highlight: true },
@@ -113,6 +114,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/ml/pedidos': 'Pedidos ML',
   '/admin/ml/preguntas': 'Preguntas ML',
   '/admin/ml/precios': 'Monitor de precios ML',
+  '/admin/inteligencia-mercado': 'Inteligencia de mercado',
   '/admin/social/inbox': 'Inbox social',
   '/admin/integraciones': 'Centro de integraciones',
   '/admin/integraciones/marketplace': 'Marketplace de extensiones',

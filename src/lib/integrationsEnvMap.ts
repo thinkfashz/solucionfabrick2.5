@@ -107,6 +107,19 @@ export const INTEGRATIONS_ENV_MAP: Record<string, Record<string, readonly string
 		site_url: ['OPENROUTER_SITE_URL', 'NEXT_PUBLIC_SITE_URL'],
 		app_name: ['OPENROUTER_APP_NAME'],
 	},
+	serper: {
+		// Serper.dev — Google SERP API con tier free (≈2.500 búsquedas one-time).
+		// Lo consume el módulo /admin/inteligencia-mercado para enriquecer
+		// los snapshots con resultados de Google además de MercadoLibre.
+		api_key: ['SERPER_API_KEY', 'SERPER_KEY'],
+	},
+	serpapi: {
+		// SerpAPI — alternativa de pago con 100 búsquedas gratis al mes.
+		// Reservado para futuro: el helper marketIntel ya soporta este
+		// proveedor pero por defecto prioriza Serper para mantener el flujo
+		// 100% gratis.
+		api_key: ['SERPAPI_KEY', 'SERPAPI_API_KEY'],
+	},
 };
 
 export interface DetectedEnvField {

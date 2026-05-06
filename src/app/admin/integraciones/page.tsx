@@ -16,11 +16,13 @@ import {
 	MessageSquareText,
 	PlayCircle,
 	RefreshCw,
+	Search,
 	Server,
 	ShieldAlert,
 	Sparkles,
 	Store,
 	Trash2,
+	TrendingUp,
 	Wallet,
 	Workflow,
 	X,
@@ -35,7 +37,7 @@ const INTEGRATIONS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS public.integrations (
   updated_at timestamptz DEFAULT now()
 );`;
 
-type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary' | 'vercel' | 'mercadolibre' | 'mercadopago' | 'stripe' | 'whatsapp' | 'resend' | 'openrouter';
+type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary' | 'vercel' | 'mercadolibre' | 'mercadopago' | 'stripe' | 'whatsapp' | 'resend' | 'openrouter' | 'serper' | 'serpapi';
 
 interface ProviderField {
 	key: string;
@@ -265,6 +267,52 @@ const PROVIDERS: ProviderDefinition[] = [
 			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 'sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxx' },
 			{ key: 'app_name', label: 'App Name (opcional)', placeholder: 'Soluciones Fabrick Admin' },
 			{ key: 'site_url', label: 'Site URL (opcional, para ranking)', placeholder: 'https://solucionesfabrick.cl' },
+		],
+	},
+	{
+		id: 'serper',
+		label: 'Serper.dev',
+		description: 'Google SERP API ultra-rápida con plan gratuito (≈2.500 búsquedas one-time). Alimenta el módulo Inteligencia de Mercado para descubrir precios, productos ganadores y competencia en Google.',
+		icon: Search,
+		accent: 'from-emerald-400/20 to-cyan-500/10',
+		uses: [
+			'Buscador agregado (ML + Google)',
+			'Detección de productos ganadores / trending',
+			'Histórico de subidas/bajadas de precio',
+			'SEO con IA: análisis de términos en motores de búsqueda',
+		],
+		apiKeyUrl: 'https://serper.dev/api-key',
+		apiKeyLabel: 'Obtener API Key gratis',
+		instructions: [
+			'Crea una cuenta gratis en serper.dev (puedes usar tu cuenta Google).',
+			'Entra a serper.dev/api-key, copia la API Key (formato hexadecimal de 64 caracteres).',
+			'Pégala abajo y guarda. El plan gratis incluye ≈2.500 búsquedas one-time, suficiente para empezar.',
+			'Opcional: define SERPER_API_KEY como variable de entorno en Vercel para que no quede en la base de datos.',
+		],
+		fields: [
+			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' },
+		],
+	},
+	{
+		id: 'serpapi',
+		label: 'SerpAPI (futuro · pago)',
+		description: 'Alternativa premium a Serper con cobertura mundial y 100 búsquedas gratis al mes. Configurable hoy para activar el upgrade cuando lo necesites.',
+		icon: TrendingUp,
+		accent: 'from-amber-400/20 to-rose-500/10',
+		uses: [
+			'Buscador agregado (cuando se prefiere SerpAPI sobre Serper)',
+			'Países y mercados regionales adicionales',
+			'Resultados orgánicos + shopping en una sola llamada',
+		],
+		apiKeyUrl: 'https://serpapi.com/manage-api-key',
+		apiKeyLabel: 'Obtener API Key',
+		instructions: [
+			'Crea cuenta en serpapi.com. El plan free entrega 100 búsquedas/mes (suficiente para pruebas).',
+			'En serpapi.com/manage-api-key copia tu Private API Key.',
+			'Pégala abajo. El módulo Inteligencia de Mercado priorizará Serper si ambas están configuradas; podrás cambiar la fuente desde el selector de la pantalla.',
+		],
+		fields: [
+			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx' },
 		],
 	},
 ];

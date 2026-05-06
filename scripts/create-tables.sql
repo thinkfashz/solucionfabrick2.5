@@ -1457,3 +1457,122 @@ ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS tokens_in integer;
 ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS tokens_out integer;
 ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS attachments jsonb;
 ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Módulo Inteligencia de Mercado (/admin/inteligencia-mercado)
+-- Persiste snapshots de búsquedas agregadas (MercadoLibre + Google·Serper),
+-- referentes individuales, tendencias del marketplace y sugerencias SEO
+-- generadas por IA (OpenRouter). Diseñado para alimentar el dashboard de
+-- precios "subidas / bajadas" sin saturar las APIs gratuitas.
+
+-- TABLA: market_intel_snapshots
+CREATE TABLE IF NOT EXISTS public.market_intel_snapshots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  query text NOT NULL,
+  normalized_query text NOT NULL,
+  site text NOT NULL DEFAULT 'MLC',
+  sources_count integer NOT NULL DEFAULT 0,
+  refs_count integer NOT NULL DEFAULT 0,
+  stats jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS market_intel_snapshots_query_idx
+  ON public.market_intel_snapshots (normalized_query, created_at DESC);
+
+-- TABLA: market_intel_snapshots-migrate
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS query text;
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS normalized_query text;
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS site text DEFAULT 'MLC';
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS sources_count integer DEFAULT 0;
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS refs_count integer DEFAULT 0;
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS stats jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- TABLA: market_intel_refs
+CREATE TABLE IF NOT EXISTS public.market_intel_refs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  snapshot_id uuid NOT NULL,
+  source text NOT NULL,            -- mercadolibre | google | serper | serpapi
+  source_id text,
+  title text,
+  price numeric(12,2),
+  currency text,
+  url text,
+  image text,
+  position integer,
+  raw jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS market_intel_refs_snapshot_idx
+  ON public.market_intel_refs (snapshot_id);
+
+-- TABLA: market_intel_refs-migrate
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS snapshot_id uuid;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS source text;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS source_id text;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS title text;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS price numeric(12,2);
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS currency text;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS url text;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS image text;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS position integer;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS raw jsonb;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- TABLA: market_intel_trends
+CREATE TABLE IF NOT EXISTS public.market_intel_trends (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  site text NOT NULL DEFAULT 'MLC',
+  category_id text,
+  payload jsonb NOT NULL DEFAULT '[]'::jsonb,
+  captured_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS market_intel_trends_site_idx
+  ON public.market_intel_trends (site, captured_at DESC);
+
+-- TABLA: market_intel_trends-migrate
+ALTER TABLE public.market_intel_trends ADD COLUMN IF NOT EXISTS site text DEFAULT 'MLC';
+ALTER TABLE public.market_intel_trends ADD COLUMN IF NOT EXISTS category_id text;
+ALTER TABLE public.market_intel_trends ADD COLUMN IF NOT EXISTS payload jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE public.market_intel_trends ADD COLUMN IF NOT EXISTS captured_at timestamptz DEFAULT now();
+
+-- TABLA: seo_suggestions
+-- Sugerencias SEO generadas por OpenRouter para productos del catálogo o
+-- queries libres. Una sugerencia puede aplicarse manualmente desde el admin
+-- a un producto (escribe meta_title, meta_description, seo_keywords, jsonld).
+CREATE TABLE IF NOT EXISTS public.seo_suggestions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  producto_id uuid,
+  target_keyword text NOT NULL,
+  meta_title text,
+  meta_description text,
+  keywords text[],
+  jsonld jsonb,
+  raw text,
+  applied boolean DEFAULT false,
+  applied_at timestamptz,
+  model text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS seo_suggestions_producto_idx
+  ON public.seo_suggestions (producto_id, created_at DESC);
+
+-- TABLA: seo_suggestions-migrate
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS producto_id uuid;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS target_keyword text;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS meta_title text;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS meta_description text;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS keywords text[];
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS jsonld jsonb;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS raw text;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS applied boolean DEFAULT false;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS applied_at timestamptz;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS model text;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- TABLA: productos-seo-migrate
+-- Campos de SEO aplicables al catálogo (consumidos por /producto/[slug]).
+ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS meta_title text;
+ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS meta_description text;
+ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS seo_keywords text[];
+ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS jsonld jsonb;

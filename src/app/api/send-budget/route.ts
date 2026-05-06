@@ -26,6 +26,10 @@ interface SendBody {
   to?: unknown;
 }
 
+// IMPORTANTE: este es el dominio sandbox público de Resend, sólo válido para
+// pruebas. Configura `RESEND_FROM` (o el campo `from` en la tarjeta Resend de
+// /admin/integraciones) con una dirección de un dominio verificado en
+// producción para evitar ser marcado como spam.
 const DEFAULT_FROM = 'Soluciones Fabrick <onboarding@resend.dev>';
 
 function pickLogoUrl(requestUrl: string): string | undefined {

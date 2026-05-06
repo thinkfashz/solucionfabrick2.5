@@ -78,6 +78,7 @@ export default async function PresupuestoPublicPage({
   const expiraLabel = new Date(presupuesto.expira_at).toLocaleString('es-CL', {
     dateStyle: 'long',
     timeStyle: 'short',
+    timeZone: 'America/Santiago',
   });
 
   return (

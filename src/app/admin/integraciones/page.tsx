@@ -18,6 +18,7 @@ import {
 	RefreshCw,
 	Server,
 	ShieldAlert,
+	Sparkles,
 	Store,
 	Trash2,
 	Wallet,
@@ -34,7 +35,7 @@ const INTEGRATIONS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS public.integrations (
   updated_at timestamptz DEFAULT now()
 );`;
 
-type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary' | 'vercel' | 'mercadolibre' | 'mercadopago' | 'stripe' | 'whatsapp' | 'resend';
+type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary' | 'vercel' | 'mercadolibre' | 'mercadopago' | 'stripe' | 'whatsapp' | 'resend' | 'openrouter';
 
 interface ProviderField {
 	key: string;
@@ -243,6 +244,27 @@ const PROVIDERS: ProviderDefinition[] = [
 		fields: [
 			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 're_xxxxxxxxxxxxxxxxxxxxxxxx' },
 			{ key: 'from', label: 'From (remitente verificado)', placeholder: 'Soluciones Fabrick <presupuestos@solucionesfabrick.cl>' },
+		],
+	},
+	{
+		id: 'openrouter',
+		label: 'OpenRouter',
+		description: 'Gateway que da acceso unificado a +200 modelos de IA (Llama, Gemini, Claude, GPT, Mistral, Qwen…). Hay modelos gratis y de pago.',
+		icon: Sparkles,
+		accent: 'from-fuchsia-400/20 to-purple-500/10',
+		uses: ['Asistente IA del admin', 'Análisis de código', 'Soporte cliente automatizado', 'Modelos gratis y de pago'],
+		apiKeyUrl: 'https://openrouter.ai/keys',
+		apiKeyLabel: 'Obtener API Key',
+		instructions: [
+			'Crea una cuenta en openrouter.ai (o inicia sesión con Google/GitHub).',
+			'Ve a openrouter.ai/keys y haz clic en "Create Key". Cópiala (empieza por sk-or-…). Solo se muestra una vez.',
+			'Para usar modelos de pago, agrega crédito en openrouter.ai/credits. Los modelos gratuitos (sufijo :free) no requieren saldo.',
+			'Pega la API key abajo y guarda. Opcional: define OPENROUTER_API_KEY como variable de entorno en Vercel.',
+		],
+		fields: [
+			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 'sk-or-v1-xxxxxxxxxxxxxxxxxxxxxxxx' },
+			{ key: 'app_name', label: 'App Name (opcional)', placeholder: 'Soluciones Fabrick Admin' },
+			{ key: 'site_url', label: 'Site URL (opcional, para ranking)', placeholder: 'https://solucionesfabrick.cl' },
 		],
 	},
 ];

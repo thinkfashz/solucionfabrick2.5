@@ -1290,3 +1290,170 @@ CREATE INDEX IF NOT EXISTS extension_hooks_hook_enabled_idx
   ON public.extension_hooks (hook, enabled);
 CREATE INDEX IF NOT EXISTS extension_hooks_extension_id_idx
   ON public.extension_hooks (extension_id);
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- BOLETÍN / NEWSLETTER (bienvenida + campañas programables)
+-- ═══════════════════════════════════════════════════════════════════════
+
+-- TABLA: newsletter_subscribers
+-- Lista de suscriptores al boletín de Soluciones Fabrick. Se llena
+-- automáticamente desde /api/auth/welcome (al registrarse) y
+-- manualmente desde /admin/newsletter.
+CREATE TABLE IF NOT EXISTS public.newsletter_subscribers (
+  email text PRIMARY KEY,
+  name text,
+  status text NOT NULL DEFAULT 'confirmed',  -- confirmed | unsubscribed | bounced
+  source text DEFAULT 'signup',              -- signup | manual | import
+  unsubscribed_at timestamptz,
+  last_sent_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newsletter_subscribers_status_idx
+  ON public.newsletter_subscribers (status);
+
+-- TABLA: newsletter_subscribers-migrate
+ALTER TABLE public.newsletter_subscribers ADD COLUMN IF NOT EXISTS name text;
+ALTER TABLE public.newsletter_subscribers ADD COLUMN IF NOT EXISTS status text DEFAULT 'confirmed';
+ALTER TABLE public.newsletter_subscribers ADD COLUMN IF NOT EXISTS source text DEFAULT 'signup';
+ALTER TABLE public.newsletter_subscribers ADD COLUMN IF NOT EXISTS unsubscribed_at timestamptz;
+ALTER TABLE public.newsletter_subscribers ADD COLUMN IF NOT EXISTS last_sent_at timestamptz;
+ALTER TABLE public.newsletter_subscribers ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+CREATE INDEX IF NOT EXISTS newsletter_subscribers_status_idx
+  ON public.newsletter_subscribers (status);
+
+-- TABLA: newsletter_campaigns
+-- Borradores y campañas programadas del boletín. El cron
+-- /api/cron/newsletter levanta las que tengan scheduled_at <= now() y
+-- status='scheduled'.
+CREATE TABLE IF NOT EXISTS public.newsletter_campaigns (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  subject text NOT NULL,
+  body_md text NOT NULL,
+  preview_text text,
+  status text NOT NULL DEFAULT 'draft',  -- draft | scheduled | sending | sent | failed
+  scheduled_at timestamptz,
+  sent_at timestamptz,
+  sent_count integer NOT NULL DEFAULT 0,
+  failed_count integer NOT NULL DEFAULT 0,
+  total_recipients integer NOT NULL DEFAULT 0,
+  last_error text,
+  created_by text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newsletter_campaigns_status_sched_idx
+  ON public.newsletter_campaigns (status, scheduled_at);
+CREATE INDEX IF NOT EXISTS newsletter_campaigns_created_at_idx
+  ON public.newsletter_campaigns (created_at DESC);
+
+-- TABLA: newsletter_campaigns-migrate
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS subject text;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS body_md text;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS preview_text text;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS status text DEFAULT 'draft';
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS scheduled_at timestamptz;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS sent_at timestamptz;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS sent_count integer DEFAULT 0;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS failed_count integer DEFAULT 0;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS total_recipients integer DEFAULT 0;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS last_error text;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS created_by text;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: newsletter_sends
+-- Idempotencia por (campaign_id, subscriber_email). Permite reintentar
+-- el cron sin reenviar a los que ya recibieron.
+CREATE TABLE IF NOT EXISTS public.newsletter_sends (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id uuid NOT NULL,
+  subscriber_email text NOT NULL,
+  status text NOT NULL DEFAULT 'sent',  -- sent | failed
+  error text,
+  resend_id text,
+  sent_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (campaign_id, subscriber_email)
+);
+CREATE INDEX IF NOT EXISTS newsletter_sends_campaign_idx
+  ON public.newsletter_sends (campaign_id);
+
+-- TABLA: newsletter_sends-migrate
+ALTER TABLE public.newsletter_sends ADD COLUMN IF NOT EXISTS campaign_id uuid;
+ALTER TABLE public.newsletter_sends ADD COLUMN IF NOT EXISTS subscriber_email text;
+ALTER TABLE public.newsletter_sends ADD COLUMN IF NOT EXISTS status text DEFAULT 'sent';
+ALTER TABLE public.newsletter_sends ADD COLUMN IF NOT EXISTS error text;
+ALTER TABLE public.newsletter_sends ADD COLUMN IF NOT EXISTS resend_id text;
+ALTER TABLE public.newsletter_sends ADD COLUMN IF NOT EXISTS sent_at timestamptz DEFAULT now();
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'newsletter_sends_campaign_email_key') THEN
+    BEGIN
+      ALTER TABLE public.newsletter_sends ADD CONSTRAINT newsletter_sends_campaign_email_key UNIQUE (campaign_id, subscriber_email);
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+  END IF;
+END $$;
+
+-- TABLA: welcome_emails_log
+-- Idempotencia del email de bienvenida (evita reenvío si el cliente
+-- recarga /auth dos veces en menos de 24h).
+CREATE TABLE IF NOT EXISTS public.welcome_emails_log (
+  email text PRIMARY KEY,
+  sent_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- TABLA: welcome_emails_log-migrate
+ALTER TABLE public.welcome_emails_log ADD COLUMN IF NOT EXISTS sent_at timestamptz DEFAULT now();
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- ASISTENTE IA · OpenRouter
+-- ═══════════════════════════════════════════════════════════════════════
+
+-- TABLA: ai_chat_threads
+-- Conversaciones del asistente IA del admin. Cada hilo recuerda el
+-- modelo y el system prompt seleccionado.
+CREATE TABLE IF NOT EXISTS public.ai_chat_threads (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL DEFAULT 'Nueva conversación',
+  model text,
+  system_prompt text,
+  preset_key text,           -- soporte | construccion | codigo | custom
+  created_by text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ai_chat_threads_updated_idx
+  ON public.ai_chat_threads (updated_at DESC);
+
+-- TABLA: ai_chat_threads-migrate
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS title text DEFAULT 'Nueva conversación';
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS model text;
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS system_prompt text;
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS preset_key text;
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS created_by text;
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: ai_chat_messages
+CREATE TABLE IF NOT EXISTS public.ai_chat_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  thread_id uuid NOT NULL,
+  role text NOT NULL,        -- system | user | assistant
+  content text NOT NULL,
+  model text,
+  tokens_in integer,
+  tokens_out integer,
+  attachments jsonb,         -- [{path,bytes,truncated}]
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ai_chat_messages_thread_idx
+  ON public.ai_chat_messages (thread_id, created_at);
+
+-- TABLA: ai_chat_messages-migrate
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS thread_id uuid;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS role text;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS content text;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS model text;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS tokens_in integer;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS tokens_out integer;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS attachments jsonb;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();

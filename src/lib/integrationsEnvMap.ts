@@ -102,6 +102,11 @@ export const INTEGRATIONS_ENV_MAP: Record<string, Record<string, readonly string
 		api_key: ['RESEND_API_KEY', 'RESEND_KEY'],
 		from: ['RESEND_FROM', 'RESEND_FROM_EMAIL'],
 	},
+	openrouter: {
+		api_key: ['OPENROUTER_API_KEY', 'OPENROUTER_KEY'],
+		site_url: ['OPENROUTER_SITE_URL', 'NEXT_PUBLIC_SITE_URL'],
+		app_name: ['OPENROUTER_APP_NAME'],
+	},
 };
 
 export interface DetectedEnvField {

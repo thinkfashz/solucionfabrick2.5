@@ -66,6 +66,7 @@ const ALLOWED_PROVIDERS = new Set([
   'stripe',       // Stripe payments / webhooks
   'whatsapp',     // WhatsApp Business Cloud API
   'resend',       // Resend transactional email
+  'openrouter',   // OpenRouter AI chat (gateway a múltiples LLMs)
 ]);
 
 function getClient() {

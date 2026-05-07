@@ -1576,3 +1576,40 @@ ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS meta_title text;
 ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS meta_description text;
 ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS seo_keywords text[];
 ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS jsonld jsonb;
+
+-- TABLA: integration_health_log
+-- Histórico del cron diario /api/cron/integrations-healthcheck. Cada
+-- ejecución persiste una fila por proveedor con el resultado completo
+-- de los runners en `src/lib/integrationsTestRunners.ts`. Permite ver
+-- regresiones (p. ej. quality rating de WhatsApp pasando de GREEN a
+-- YELLOW) y disparar la alerta de email cuando ok=false.
+CREATE TABLE IF NOT EXISTS public.integration_health_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider text NOT NULL,
+  ok boolean NOT NULL,
+  checks jsonb NOT NULL DEFAULT '[]'::jsonb,
+  error text,
+  ran_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS integration_health_log_ran_at_idx
+  ON public.integration_health_log (ran_at DESC);
+CREATE INDEX IF NOT EXISTS integration_health_log_provider_ran_at_idx
+  ON public.integration_health_log (provider, ran_at DESC);
+
+-- TABLA: integration_quota_snapshots
+-- Última cuota conocida por proveedor (Serper créditos, SerpAPI
+-- búsquedas restantes, OpenRouter usage/limit en USD). La consume
+-- /api/admin/integrations/quota y el componente <QuotaBar /> que se
+-- renderiza en la cabecera de cada tarjeta de /admin/integraciones.
+-- `quota_limit` (no `limit`, palabra reservada en algunos motores) y
+-- `used` quedan en NULL cuando el upstream solo expone "remaining".
+CREATE TABLE IF NOT EXISTS public.integration_quota_snapshots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider text NOT NULL,
+  used numeric,
+  quota_limit numeric,
+  raw jsonb,
+  captured_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS integration_quota_snapshots_provider_captured_at_idx
+  ON public.integration_quota_snapshots (provider, captured_at DESC);

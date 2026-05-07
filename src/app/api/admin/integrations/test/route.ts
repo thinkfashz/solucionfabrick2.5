@@ -6,6 +6,15 @@ import { getMercadoLibreCredentials } from '@/lib/mercadoLibreCredentials';
 import { getMercadoPagoCredentials } from '@/lib/mercadoPagoCredentials';
 import { decryptCredentials } from '@/lib/integrationsCrypto';
 import { detectMpMode, getMpTokenPrefix } from '@/lib/mercadopago';
+import { getOpenRouterCredentials } from '@/lib/openrouter';
+import { getResendCredentials } from '@/lib/resendCredentials';
+import {
+  runOpenRouterChecks,
+  runResendChecks,
+  runSerpApiChecks,
+  runSerperChecks,
+  runWhatsAppChecks,
+} from '@/lib/integrationsTestRunners';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -844,7 +853,6 @@ async function testWhatsApp(): Promise<NextResponse> {
   const accessToken = (creds.access_token ?? '').trim();
   const phoneNumberId = (creds.phone_number_id ?? '').trim();
   const businessAccountId = (creds.business_account_id ?? '').trim();
-  const checks: DiagnosticCheck[] = [];
 
   if (!accessToken && !phoneNumberId && !businessAccountId) {
     return NextResponse.json({
@@ -859,56 +867,112 @@ async function testWhatsApp(): Promise<NextResponse> {
   }
 
   if (!accessToken) {
-    checks.push({ name: 'access_token', ok: false, detail: 'Falta token de Cloud API.' });
-    return NextResponse.json({ ok: false, provider: 'whatsapp', error: 'Falta access_token de WhatsApp Business.', checks });
-    }
-
-  if (!phoneNumberId) {
-    checks.push({ name: 'phone_number_id', ok: false, detail: 'Falta el ID del número de teléfono.' });
-    return NextResponse.json({ ok: false, provider: 'whatsapp', error: 'Falta phone_number_id para validar WhatsApp Business.', checks });
-  }
-
-  try {
-    const res = await fetch(
-      `https://graph.facebook.com/v20.0/${encodeURIComponent(phoneNumberId)}?fields=display_phone_number,verified_name,quality_rating`,
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: 'no-store',
-      },
-    );
-    const json = (await res.json().catch(() => ({}))) as {
-      display_phone_number?: string;
-      verified_name?: string;
-      quality_rating?: string;
-      error?: { message?: string };
-    };
-    if (!res.ok) {
-      checks.push({ name: 'WhatsApp phone number', ok: false, detail: json.error?.message ?? `HTTP ${res.status}` });
-      return NextResponse.json({
-        ok: false,
-        provider: 'whatsapp',
-        error: `WhatsApp Business rechazó las credenciales: ${json.error?.message ?? `HTTP ${res.status}`}.`,
-        checks,
-      });
-    }
-    checks.push({
-      name: 'WhatsApp phone number',
-      ok: true,
-      detail: `Número accesible: ${json.display_phone_number ?? phoneNumberId}${json.verified_name ? ` · ${json.verified_name}` : ''}${json.quality_rating ? ` · quality ${json.quality_rating}` : ''}.`,
-    });
-    if (businessAccountId) {
-      checks.push({ name: 'business_account_id', ok: true, detail: `WABA configurado: ${businessAccountId}.` });
-    }
-    return NextResponse.json({ ok: checks.every((check) => check.ok), provider: 'whatsapp', checks });
-  } catch (err) {
-    checks.push({ name: 'WhatsApp phone number', ok: false, detail: err instanceof Error ? err.message : 'Error de red.' });
     return NextResponse.json({
       ok: false,
       provider: 'whatsapp',
-      error: `Error de red al contactar WhatsApp Business: ${err instanceof Error ? err.message : String(err)}`,
-      checks,
+      error: 'Falta access_token de WhatsApp Business.',
+      checks: [{ name: 'access_token', ok: false, detail: 'Falta token de Cloud API.' }],
     });
   }
+
+  if (!phoneNumberId) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'whatsapp',
+      error: 'Falta phone_number_id para validar WhatsApp Business.',
+      checks: [{ name: 'phone_number_id', ok: false, detail: 'Falta el ID del número de teléfono.' }],
+    });
+  }
+
+  const result = await runWhatsAppChecks({
+    access_token: accessToken,
+    phone_number_id: phoneNumberId,
+    business_account_id: businessAccountId || undefined,
+  });
+  return NextResponse.json(result);
+}
+
+async function testResend(): Promise<NextResponse> {
+  const creds = await getResendCredentials();
+
+  if (!creds?.apiKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'resend',
+      error:
+        'Resend no está configurado. Guarda tu API key en el centro de integraciones (tarjeta Resend) o define RESEND_API_KEY como variable de entorno.',
+      checks: [{ name: 'api_key', ok: false, detail: 'No configurada.' }],
+    });
+  }
+
+  const result = await runResendChecks({
+    apiKey: creds.apiKey,
+    from: creds.from ?? undefined,
+    source: creds.source,
+  });
+  return NextResponse.json(result);
+}
+
+async function testSerper(): Promise<NextResponse> {
+  const creds = await readIntegrationCredentials('serper');
+  const envKey = (process.env.SERPER_API_KEY ?? process.env.SERPER_KEY ?? '').trim();
+  const apiKey = envKey || (creds.api_key ?? '').trim();
+  const source = envKey ? 'env' : creds.api_key ? 'db' : null;
+
+  if (!apiKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'serper',
+      error:
+        'Serper.dev no está configurado. Guarda tu API key en el centro de integraciones (tarjeta Serper.dev) o define SERPER_API_KEY como variable de entorno.',
+      checks: [{ name: 'api_key', ok: false, detail: 'No configurada.' }],
+    });
+  }
+
+  const result = await runSerperChecks({ apiKey, source: source ?? 'env' });
+  return NextResponse.json(result);
+}
+
+async function testSerpApi(): Promise<NextResponse> {
+  const creds = await readIntegrationCredentials('serpapi');
+  const envKey = (process.env.SERPAPI_KEY ?? process.env.SERPAPI_API_KEY ?? '').trim();
+  const apiKey = envKey || (creds.api_key ?? '').trim();
+  const source = envKey ? 'env' : creds.api_key ? 'db' : null;
+
+  if (!apiKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'serpapi',
+      error:
+        'SerpAPI no está configurado. Guarda tu API key en el centro de integraciones (tarjeta SerpAPI) o define SERPAPI_KEY como variable de entorno.',
+      checks: [{ name: 'api_key', ok: false, detail: 'No configurada.' }],
+    });
+  }
+
+  const result = await runSerpApiChecks({ apiKey, source: source ?? 'env' });
+  return NextResponse.json(result);
+}
+
+async function testOpenRouter(): Promise<NextResponse> {
+  const creds = await getOpenRouterCredentials();
+
+  if (!creds?.apiKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'openrouter',
+      error:
+        'OpenRouter no está configurado. Guarda tu API key en el centro de integraciones (tarjeta OpenRouter) o define OPENROUTER_API_KEY como variable de entorno.',
+      checks: [{ name: 'api_key', ok: false, detail: 'No configurada.' }],
+    });
+  }
+
+  const result = await runOpenRouterChecks({
+    apiKey: creds.apiKey,
+    source: creds.source,
+    appName: creds.appName,
+    siteUrl: creds.siteUrl ?? undefined,
+  });
+  return NextResponse.json(result);
 }
 
 export async function GET(request: NextRequest) {
@@ -927,6 +991,10 @@ export async function GET(request: NextRequest) {
     if (provider === 'mercadopago') return await testMercadoPago();
     if (provider === 'stripe') return await testStripe();
     if (provider === 'whatsapp') return await testWhatsApp();
+    if (provider === 'openrouter') return await testOpenRouter();
+    if (provider === 'resend') return await testResend();
+    if (provider === 'serper') return await testSerper();
+    if (provider === 'serpapi') return await testSerpApi();
     return NextResponse.json(
       { error: `Proveedor no soportado para test: ${provider || '(vacío)'}.` },
       { status: 400 },

@@ -30,6 +30,7 @@ import {
 } from 'lucide-react';
 import AdminActionGuard, { type AdminActionResult } from '@/components/admin/AdminActionGuard';
 import { AdminCard, AdminPage, AdminPageHeader, ConnectionPulse } from '@/components/admin/ui';
+import { QuotaBar, unitForProvider } from '@/components/admin/QuotaBar';
 
 const INTEGRATIONS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS public.integrations (
   provider text PRIMARY KEY,
@@ -397,6 +398,7 @@ export default function AdminIntegracionesPage() {
 	const [revealError, setRevealError] = useState<string | null>(null);
 	const [revealingProvider, setRevealingProvider] = useState<ProviderKey | null>(null);
 	const [revealNow, setRevealNow] = useState(() => Date.now());
+	const [quotaSnapshots, setQuotaSnapshots] = useState<Record<string, { used: number | null; limit: number | null; capturedAt: string }>>({});
 
 	// OAuth callback feedback. After /api/admin/ml/oauth/callback completes,
 	// the user lands here with `?connected=mercadolibre&seller=...&expires_at=...`
@@ -433,6 +435,23 @@ export default function AdminIntegracionesPage() {
 
 	useEffect(() => {
 		void loadIntegrations();
+		// Quota snapshots load is best-effort; the cron may not have run yet
+		// (or the table may be missing on older deployments). In either case
+		// the QuotaBar component just renders nothing.
+		(async () => {
+			try {
+				const res = await fetch('/api/admin/integrations/quota', { cache: 'no-store' });
+				if (!res.ok) return;
+				const json = (await res.json()) as { snapshots?: Array<{ provider: string; used: number | null; limit: number | null; captured_at: string }> };
+				const map: Record<string, { used: number | null; limit: number | null; capturedAt: string }> = {};
+				for (const s of json.snapshots ?? []) {
+					map[s.provider] = { used: s.used, limit: s.limit, capturedAt: s.captured_at };
+				}
+				setQuotaSnapshots(map);
+			} catch {
+				// ignore — UI degrades gracefully without quota bars.
+			}
+		})();
 	}, []);
 
 	useEffect(() => {
@@ -949,6 +968,17 @@ export default function AdminIntegracionesPage() {
 									</div>
 
 									<div className="rounded-2xl border border-white/10 bg-black/25 p-4">
+										{quotaSnapshots[provider.id] ? (
+											<div className="mb-3">
+												<QuotaBar
+													provider={provider.id}
+													used={quotaSnapshots[provider.id].used}
+													limit={quotaSnapshots[provider.id].limit}
+													capturedAt={quotaSnapshots[provider.id].capturedAt}
+													unit={unitForProvider(provider.id)}
+												/>
+											</div>
+										) : null}
 										<div className="mb-3 flex items-center justify-between gap-3">
 											<div>
 												<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-400">Conexión en vivo</p>

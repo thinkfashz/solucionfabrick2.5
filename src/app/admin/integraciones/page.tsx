@@ -827,7 +827,7 @@ export default function AdminIntegracionesPage() {
 								<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-300">Rotar API key</p>
 								<h2 className="mt-2 text-xl font-black text-white">¿Confirmar rotación?</h2>
 								<p className="mt-2 text-sm leading-relaxed text-zinc-400">
-									Esto creará una nueva key en Resend, validará que funciona con un GET a <code className="font-mono">/domains</code> y borrará la anterior. Si la validación falla, no se borra nada y la key actual sigue activa.
+									Esto creará una nueva key en Resend, validará que funciona consultando <code className="font-mono">/domains</code> y borrará la anterior. Si la validación falla, no se borra nada y la key actual sigue activa.
 								</p>
 							</div>
 						</div>
@@ -1100,7 +1100,7 @@ export default function AdminIntegracionesPage() {
 														Rotación automática · Resend
 													</p>
 													<p className="mt-1 text-sm text-zinc-300">
-														Crea una nueva API key en Resend, valida que funciona contra <code className="font-mono text-cyan-200/80">/domains</code>{' '}
+														Crea una nueva API key en Resend, valida que funciona consultando <code className="font-mono text-cyan-200/80">/domains</code>{' '}
 														y borra la anterior — todo desde acá. Si la validación falla, no se borra nada (la key actual sigue viva).
 													</p>
 													<p className="mt-2 text-[11px] leading-relaxed text-zinc-500">

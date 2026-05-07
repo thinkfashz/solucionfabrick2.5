@@ -1,6 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
-import { chatCompletion, type ChatMessage } from '@/lib/openrouter';
+import { chatCompletionWithFallback, type ChatMessage } from '@/lib/openrouter';
 import { formatSnippetsForPrompt, readRepoFiles, UnsafePathError } from '@/lib/repoCodeContext';
 
 export const dynamic = 'force-dynamic';
@@ -15,6 +15,8 @@ interface ChatBody {
   attachments?: unknown;
   temperature?: unknown;
   max_tokens?: unknown;
+  /** Si true, permite que el fallback considere modelos de pago baratos. */
+  allow_paid?: unknown;
 }
 
 const HARD_MAX_USER_CHARS = 12_000;
@@ -110,7 +112,13 @@ export async function POST(request: NextRequest) {
 
   let result;
   try {
-    result = await chatCompletion({ model, messages, temperature, maxTokens });
+    result = await chatCompletionWithFallback({
+      preferredModel: model,
+      messages,
+      temperature,
+      maxTokens,
+      allowPaid: body.allow_paid === true,
+    });
   } catch (err) {
     return NextResponse.json({ error: (err as Error).message }, { status: 502 });
   }
@@ -145,5 +153,7 @@ export async function POST(request: NextRequest) {
     model: result.model,
     usage: result.usage,
     attachments,
+    tried: result.tried,
+    latency_ms: result.latency_ms,
   });
 }

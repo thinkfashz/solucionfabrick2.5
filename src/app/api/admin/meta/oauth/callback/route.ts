@@ -76,13 +76,12 @@ export async function GET(request: NextRequest) {
 		const clientId = getMetaAppId();
 		const clientSecret = getMetaAppSecret();
 		if (!clientId || !clientSecret) {
-			return NextResponse.json(
-				{
-					error:
-						'Faltan META_APP_ID / META_APP_SECRET. Setéalas en Vercel para completar el intercambio del code.',
-				},
-				{ status: 503 },
+			const res = NextResponse.redirect(
+				`${siteUrl}/admin/integraciones?meta_error=${encodeURIComponent('missing_credentials')}`,
+				{ status: 302 },
 			);
+			clearOauthCookies(res);
+			return res;
 		}
 
 		// 1) short-lived user token

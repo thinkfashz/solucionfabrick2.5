@@ -68,13 +68,12 @@ export async function GET(request: NextRequest) {
 		const appId = getTikTokAppId();
 		const appSecret = getTikTokAppSecret();
 		if (!appId || !appSecret) {
-			return NextResponse.json(
-				{
-					error:
-						'Faltan TIKTOK_APP_ID / TIKTOK_APP_SECRET. Setéalas en Vercel para completar el intercambio del auth_code.',
-				},
-				{ status: 503 },
+			const res = NextResponse.redirect(
+				`${siteUrl}/admin/integraciones?tiktok_error=${encodeURIComponent('missing_credentials')}`,
+				{ status: 302 },
 			);
+			clearOauthCookies(res);
+			return res;
 		}
 
 		let tokenData;

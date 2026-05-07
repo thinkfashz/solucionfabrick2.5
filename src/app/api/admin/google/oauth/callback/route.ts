@@ -93,13 +93,12 @@ export async function GET(request: NextRequest) {
 		const clientId = getGoogleClientId();
 		const clientSecret = getGoogleClientSecret();
 		if (!clientId || !clientSecret) {
-			return NextResponse.json(
-				{
-					error:
-						'Faltan GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET. Setéalas en Vercel para completar el intercambio del code.',
-				},
-				{ status: 503 },
+			const res = NextResponse.redirect(
+				`${siteUrl}/admin/integraciones?google_error=${encodeURIComponent('missing_credentials')}`,
+				{ status: 302 },
 			);
+			clearOauthCookies(res);
+			return res;
 		}
 
 		let token;

@@ -1,6 +1,7 @@
 import 'server-only';
 import { createClient } from '@insforge/sdk';
 import { decryptCredentials, encryptCredentials } from './integrationsCrypto';
+import { INTEGRATIONS_ENV_MAP } from './integrationsEnvMap';
 import { getMlClientId, getMlClientSecret, refreshAccessToken } from './mlOAuth';
 
 export interface MercadoLibreCredentials {
@@ -12,6 +13,24 @@ function normalize(value: unknown): string | undefined {
 	if (typeof value !== 'string') return undefined;
 	const trimmed = value.trim();
 	return trimmed.length === 0 ? undefined : trimmed;
+}
+
+/**
+ * Pull the first non-empty value from the list of env-var names advertised
+ * by `INTEGRATIONS_ENV_MAP` for a given provider field. Keeping this in sync
+ * with the env map is critical: if the map says a name is env-managed (and
+ * therefore the admin POST refuses to write that field to the DB), the
+ * runtime helper MUST also be able to read that same name — otherwise the
+ * field is "locked" in the UI but invisible at runtime, producing the
+ * "MercadoLibre no configurado" dead-end we saw in production.
+ */
+function readEnvFromMap(provider: string, field: string): string | undefined {
+	const candidates = INTEGRATIONS_ENV_MAP[provider]?.[field] ?? [];
+	for (const name of candidates) {
+		const value = normalize(process.env[name]);
+		if (value) return value;
+	}
+	return undefined;
 }
 
 /**
@@ -43,7 +62,14 @@ function shouldRefresh(expiresAt: string | undefined): boolean {
 }
 
 export async function getMercadoLibreCredentials(): Promise<MercadoLibreCredentials> {
-	const envToken = normalize(process.env.MERCADOLIBRE_ACCESS_TOKEN);
+	// Read env using the same priority list advertised by INTEGRATIONS_ENV_MAP
+	// (currently `ML_ACCESS_TOKEN` first, then `MERCADOLIBRE_ACCESS_TOKEN`).
+	// Previously this only checked the longer alias, so an operator who set
+	// `ML_ACCESS_TOKEN` — the natural choice given `ML_CLIENT_ID` /
+	// `ML_CLIENT_SECRET` / `ML_REDIRECT_URI` use the same prefix — would see
+	// the field locked as env-managed in the admin UI but get "MercadoLibre
+	// no configurado" at runtime because this helper couldn't see the value.
+	const envToken = readEnvFromMap('mercadolibre', 'access_token');
 	const creds: MercadoLibreCredentials = {
 		accessToken: envToken,
 		sources: {

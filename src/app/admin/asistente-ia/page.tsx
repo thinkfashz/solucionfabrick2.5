@@ -53,6 +53,13 @@ interface FileAttachment {
 
 type MessageAttachment = ImageAttachment | FileAttachment;
 
+/** Convierte un MIME de imagen a extensión de archivo (ej. `image/svg+xml` → `svg`). */
+function mimeToExt(mime: string): string {
+  const sub = mime.split('/')[1] || 'png';
+  // Normaliza subtipos compuestos como `svg+xml`, `png+...` quedándonos con la primera parte.
+  return sub.split('+')[0];
+}
+
 interface Message {
   id: string;
   thread_id: string;
@@ -416,7 +423,7 @@ export default function AsistenteIaPage() {
       // Convert dataUrl → Blob → File
       const resBlob = await fetch(att.dataUrl);
       const blob = await resBlob.blob();
-      const ext = (att.mimeType.split('/')[1] || 'png').replace('+xml', '');
+      const ext = mimeToExt(att.mimeType);
       const file = new File([blob], `ai-chat-${Date.now()}.${ext}`, { type: att.mimeType });
       const fd = new FormData();
       fd.append('file', file);
@@ -498,7 +505,11 @@ export default function AsistenteIaPage() {
         // El último mensaje (assistant) tendrá las imágenes
         setTimeout(() => {
           setMessages((prev) => {
-            const last = [...prev].reverse().find((m) => m.role === 'assistant' && Array.isArray(m.attachments) && m.attachments.some((a) => (a as ImageAttachment).type === 'image'));
+            const isAssistantImageMsg = (m: Message): boolean => {
+              if (m.role !== 'assistant' || !Array.isArray(m.attachments)) return false;
+              return m.attachments.some((a) => (a as ImageAttachment).type === 'image');
+            };
+            const last = [...prev].reverse().find(isAssistantImageMsg);
             if (last && last.attachments) {
               last.attachments.forEach((att, i) => {
                 if ((att as ImageAttachment).type === 'image' && !(att as ImageAttachment).cloudinary_url) {
@@ -711,7 +722,7 @@ export default function AsistenteIaPage() {
                             <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 text-[11px]">
                               <a
                                 href={ia.dataUrl}
-                                download={`ai-image-${m.id}-${idx}.${(ia.mimeType.split('/')[1] || 'png').replace('+xml', '')}`}
+                                download={`ai-image-${m.id}-${idx}.${mimeToExt(ia.mimeType)}`}
                                 className="inline-flex items-center gap-1 text-neutral-300 hover:text-amber-400"
                               >
                                 <Download className="h-3 w-3" /> descargar

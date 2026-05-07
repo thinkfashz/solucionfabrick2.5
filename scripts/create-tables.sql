@@ -1458,6 +1458,28 @@ ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS tokens_out integer;
 ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS attachments jsonb;
 ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 
+-- TABLA: ai_model_metrics
+-- Telemetría de cada llamada al endpoint /chat/completions de OpenRouter.
+-- Alimenta el dashboard de rendimiento del asistente IA y el algoritmo de
+-- auto-fallback que evita modelos caídos o con baja tasa de éxito.
+CREATE TABLE IF NOT EXISTS public.ai_model_metrics (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  model text NOT NULL,
+  ts timestamptz NOT NULL DEFAULT now(),
+  latency_ms integer NOT NULL DEFAULT 0,
+  status text NOT NULL,        -- ok | timeout | error | rate_limit | empty
+  error_code text,
+  http_status integer,
+  tokens_in integer,
+  tokens_out integer,
+  is_free boolean NOT NULL DEFAULT false,
+  kind text NOT NULL DEFAULT 'chat'  -- chat | image
+);
+CREATE INDEX IF NOT EXISTS ai_model_metrics_model_ts_idx
+  ON public.ai_model_metrics (model, ts DESC);
+CREATE INDEX IF NOT EXISTS ai_model_metrics_ts_idx
+  ON public.ai_model_metrics (ts DESC);
+
 -- ─────────────────────────────────────────────────────────────────────────
 -- Módulo Inteligencia de Mercado (/admin/inteligencia-mercado)
 -- Persiste snapshots de búsquedas agregadas (MercadoLibre + Google·Serper),

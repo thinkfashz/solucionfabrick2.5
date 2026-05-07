@@ -943,9 +943,29 @@ input, textarea, button, select {
 .arena .bg-white\/10,
 .gold  .bg-white\/10           { background-color: color-mix(in srgb, var(--text) 6%, transparent) !important; }
 
-/* Backdrop neutral en menús/cards translucidas */
-.light .backdrop-blur-md,
-.arena .backdrop-blur-md      { background-color: color-mix(in srgb, var(--bg) 70%, transparent); }
+/* Backdrop blur en menús/cards translucidas: en temas claros el blur solo
+   no basta, conviene que las cards translucidas tengan también un fondo
+   claro de respaldo. Aplicamos el bg sólo cuando además llevan una clase
+   de fondo translúcida basada en bg-zinc-* (caso típico). */
+.light .backdrop-blur-md.bg-zinc-950\/80,
+.arena .backdrop-blur-md.bg-zinc-950\/80,
+.light .backdrop-blur-md.bg-zinc-900\/60,
+.arena .backdrop-blur-md.bg-zinc-900\/60 {
+  background-color: color-mix(in srgb, var(--bg2) 85%, transparent) !important;
+}
+
+/* Keyframes globales usados por la sección Evolución (sello F + check verde).
+   Viven aquí — no en `<style jsx>` — para que la sintaxis arbitraria de
+   Tailwind `animate-[seal-spin_22s_linear_infinite]` encuentre el nombre
+   en el scope global. */
+@keyframes seal-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+@keyframes seal-pulse-green {
+  0%, 100% { box-shadow: 0 0 14px rgba(16,185,129,0.45); transform: scale(1); }
+  50%      { box-shadow: 0 0 28px rgba(16,185,129,0.85); transform: scale(1.08); }
+}
 
 /* Acento amarillo Fabrick: en los temas claros lo bajamos a un dorado más
    profundo para que el texto sobre fondos claros se lea bien. */

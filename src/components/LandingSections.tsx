@@ -492,17 +492,6 @@ export default function LandingSections({
                       <p className="text-xs md:text-sm tracking-widest uppercase leading-relaxed max-w-2xl text-zinc-400 font-light">
                         {step.desc}
                       </p>
-
-                      <style jsx>{`
-                        @keyframes seal-spin {
-                          from { transform: rotate(0deg); }
-                          to   { transform: rotate(360deg); }
-                        }
-                        @keyframes seal-pulse-green {
-                          0%, 100% { box-shadow: 0 0 14px rgba(16,185,129,0.45); transform: scale(1); }
-                          50%      { box-shadow: 0 0 28px rgba(16,185,129,0.85); transform: scale(1.08); }
-                        }
-                      `}</style>
                     </div>
                   );
                 }

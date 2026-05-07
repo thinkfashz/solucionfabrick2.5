@@ -180,13 +180,18 @@ async function checkMercadoLibreExpiry(): Promise<HealthCheckResult> {
 	}
 }
 
-const PROVIDER_CHECKS: Array<() => Promise<HealthCheckResult>> = [
-	checkResend,
-	checkOpenRouter,
-	checkSerper,
-	checkSerpApi,
-	checkWhatsApp,
-	checkMercadoLibreExpiry,
+interface NamedCheck {
+	provider: string;
+	run: () => Promise<HealthCheckResult>;
+}
+
+const PROVIDER_CHECKS: NamedCheck[] = [
+	{ provider: 'resend', run: checkResend },
+	{ provider: 'openrouter', run: checkOpenRouter },
+	{ provider: 'serper', run: checkSerper },
+	{ provider: 'serpapi', run: checkSerpApi },
+	{ provider: 'whatsapp', run: checkWhatsApp },
+	{ provider: 'mercadolibre', run: checkMercadoLibreExpiry },
 ];
 
 export interface HealthCheckRunSummary {
@@ -260,7 +265,7 @@ export function normalizeQuota(r: HealthCheckResult): QuotaRow | null {
 		return {
 			provider: 'serper',
 			used: null,
-			quota_limit: Number.isFinite(remaining ?? NaN) ? remaining : null,
+			quota_limit: remaining != null && Number.isFinite(remaining) ? remaining : null,
 			raw: extras,
 		};
 	}
@@ -280,12 +285,16 @@ export function normalizeQuota(r: HealthCheckResult): QuotaRow | null {
 
 export async function runIntegrationsHealthcheck(): Promise<HealthCheckRunSummary> {
 	const ranAt = new Date().toISOString();
-	const results = await Promise.all(PROVIDER_CHECKS.map((fn) => fn().catch((err): HealthCheckResult => ({
-		ok: false,
-		provider: 'unknown',
-		checks: [{ name: 'runner', ok: false, detail: err instanceof Error ? err.message : String(err) }],
-		error: err instanceof Error ? err.message : String(err),
-	}))));
+	const results = await Promise.all(
+		PROVIDER_CHECKS.map(({ provider, run }) =>
+			run().catch((err): HealthCheckResult => ({
+				ok: false,
+				provider,
+				checks: [{ name: 'runner', ok: false, detail: err instanceof Error ? err.message : String(err) }],
+				error: err instanceof Error ? err.message : String(err),
+			})),
+		),
+	);
 	const persistRes = await persistResults(results);
 	const failures = results.filter((r) => !r.skipped && !r.ok).length;
 	return {

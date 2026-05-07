@@ -1,4 +1,4 @@
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 import {
 	runOpenRouterChecks,
 	runResendChecks,
@@ -307,6 +307,3 @@ describe('runOpenRouterChecks', () => {
 		expect(result.error).toMatch(/TLS/);
 	});
 });
-
-// Silence unused vi import warning if vitest does tree-shaking complaints.
-void vi;

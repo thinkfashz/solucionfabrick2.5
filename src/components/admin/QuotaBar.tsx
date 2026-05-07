@@ -39,11 +39,13 @@ function formatNumber(n: number, unit?: string): string {
 	return n.toFixed(2);
 }
 
+const MS_PER_HOUR = 3_600_000;
+
 function relativeTime(iso: string): string {
 	const t = Date.parse(iso);
 	if (Number.isNaN(t)) return iso;
 	const diffMs = Date.now() - t;
-	const hours = Math.round(diffMs / 3_600_000);
+	const hours = Math.round(diffMs / MS_PER_HOUR);
 	if (hours < 1) return 'hace <1h';
 	if (hours < 24) return `hace ${hours}h`;
 	const days = Math.round(hours / 24);

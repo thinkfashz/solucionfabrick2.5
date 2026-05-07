@@ -1,8 +1,8 @@
-﻿'use client';
+'use client';
 
 /**
- * Hero â€” RediseÃ±o editorial. Layout izquierdo + barra de stats.
- * TÃ­tulo y subtÃ­tulo editables desde /admin/home.
+ * Hero — Rediseño editorial. Layout izquierdo + barra de stats.
+ * Título y subtítulo editables desde /admin/home.
  */
 
 import { useMemo } from 'react';
@@ -13,21 +13,24 @@ import {
 import { buildWhatsAppLink } from '@/lib/whatsapp';
 import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 
+// Casa en Metalcon en construcción — estructura real, perfiles galvanizados
+// a la vista. Imagen panorámica que rinde bien en mobile (object-cover center)
+// y desktop sin recortar la silueta de la vivienda.
 const DEFAULT_HERO_IMAGE =
-  'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=90&w=1920&auto=format&fit=crop&crop=center';
+  'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=85&w=1920&auto=format&fit=crop&crop=center';
 
 const STATS = [
-  { n: '12+',  label: 'AÃ±os sin paros',      Icon: TrendingUp   },
-  { n: '98%',  label: 'Clientes recomiendan', Icon: CheckCircle2 },
-  { n: '100%', label: 'Equipo propio',       Icon: Users2       },
-  { n: '24h',  label: 'Respuesta garantizada', Icon: Clock        },
+  { n: '9',    label: 'Años de oficio',         Icon: TrendingUp   },
+  { n: '100%', label: 'Familias contentas',     Icon: CheckCircle2 },
+  { n: '0',    label: 'Subcontratistas',        Icon: Users2       },
+  { n: '24h',  label: 'Te respondemos',         Icon: Clock        },
 ] as const;
 
-const DEFAULT_HEADLINE = 'Tu obra\nen buenas manos.\nSin intermediarios.';
+const DEFAULT_HEADLINE = 'Tu casa\nla construimos\ncomo si fuera nuestra.';
 const DEFAULT_SUBTITLE =
-  'â„ Trabajamos nosotros, no subcontratistas. â„ PreciosÂ fijos desde el primer dÃ­a. â„ Avances reales cada semana. â„ ConfiabÃ­as que nos conozcas.';
+  'Somos una familia de Linares que lleva 9 años levantando hogares en Metalcon. Trabajamos nosotros mismos, te explicamos cada paso y nos quedamos hasta que tú te sientas en casa. Sin apuros, sin letra chica.';
 const CTA_MSG =
-  'Hola Soluciones Fabrick, quiero hablar con un experto y obtener un presupuesto gratuito para mi proyecto en Linares.';
+  'Hola Fabrick, me gustaría conversar con ustedes sobre mi proyecto. Cuéntenme cómo trabajan y cuándo podríamos juntarnos.';
 
 export default function Hero({
   coverUrl,
@@ -86,16 +89,16 @@ export default function Hero({
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img
             src={heroImage}
-            alt="ConstrucciÃ³n Soluciones Fabrick Linares"
-            className="h-full w-full object-cover object-center opacity-[0.18]"
+            alt="Casa en Metalcon en construcción · Soluciones Fabrick · Linares"
+            className="h-full w-full object-cover object-center opacity-[0.55] dark:opacity-[0.45]"
             fetchPriority="high"
             decoding="async"
           />
         </motion.div>
 
-        {/* Direction gradient: heavy left â†’ sparse right */}
-        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950 via-zinc-950/92 to-zinc-950/40" />
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-transparent to-zinc-950/75" />
+        {/* Direction gradient: heavy left → softer right so se lea el copy y se vea la casa */}
+        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/70 to-zinc-950/30" />
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/55 to-zinc-950/40" />
 
         {/* Blueprint micro-grid */}
         <div
@@ -132,11 +135,11 @@ export default function Hero({
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-yellow-400/60" />
               <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-yellow-400" />
             </span>
-            ConstrucciÃ³n Â· Linares Â· RegiÃ³n del Maule
+            Construcción · Linares · Región del Maule
           </span>
         </motion.div>
 
-        {/* Headline â€” last line always gold */}
+        {/* Headline — last line always gold */}
         <motion.h1
           variants={itemVars}
           className="font-playfair max-w-2xl text-[clamp(3rem,7.5vw,5.75rem)] font-black leading-[0.95] tracking-tight"
@@ -178,14 +181,14 @@ export default function Hero({
             className="group inline-flex items-center gap-2.5 rounded-full bg-yellow-400 px-7 py-3.5 text-[13px] font-black uppercase tracking-[0.18em] text-black transition-all duration-300 hover:bg-yellow-300 hover:shadow-[0_0_36px_rgba(250,204,21,0.45)]"
           >
             <MessageCircle size={15} aria-hidden />
-            Hablar con un experto
+            Conversemos por WhatsApp
             <ArrowRight size={13} className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
           </a>
           <a
             href="/proyectos"
             className="group inline-flex items-center gap-2 rounded-full border border-white/15 px-7 py-3.5 text-[13px] font-bold text-zinc-200 transition-all duration-300 hover:border-yellow-400/50 hover:text-yellow-400"
           >
-            Ver proyectos
+            Mira nuestras casas
             <ArrowRight size={13} className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
           </a>
         </motion.div>

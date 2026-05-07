@@ -18,9 +18,9 @@ import { ThemeProvider as NextThemesProvider, useTheme as useNextTheme } from 'n
 import type { ReactNode } from 'react';
 import { useCallback, useMemo } from 'react';
 
-export type Theme = 'dark' | 'light' | 'gold';
+export type Theme = 'dark' | 'light' | 'gold' | 'arena';
 
-const KNOWN_THEMES: readonly Theme[] = ['dark', 'light', 'gold'];
+const KNOWN_THEMES: readonly Theme[] = ['dark', 'light', 'gold', 'arena'];
 
 export function ThemeProvider({ children }: { children: ReactNode }) {
   return (
@@ -56,7 +56,10 @@ export function useTheme() {
   );
 
   const toggleTheme = useCallback(() => {
-    setTheme(current === 'dark' ? 'light' : 'dark');
+    const order: readonly Theme[] = KNOWN_THEMES;
+    const idx = order.indexOf(current);
+    const next = order[(idx + 1) % order.length] ?? 'dark';
+    setTheme(next);
   }, [current, setTheme]);
 
   return { theme: current, setTheme: setThemeSafe, toggleTheme };

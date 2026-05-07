@@ -1,106 +1,83 @@
 'use client';
 
-import * as Switch from '@radix-ui/react-switch';
-import { Moon, Sun } from 'lucide-react';
+import { Moon, Sun, Sparkles, Palette } from 'lucide-react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useEffect, useState } from 'react';
-import { useTheme } from '@/context/ThemeContext';
+import { useTheme, type Theme } from '@/context/ThemeContext';
 
 /**
- * ThemeToggle — Enhanced
+ * ThemeToggle — cíclico
  * ----------------------------------------------------------------
- * Improved Radix Switch with better animations and visual feedback.
- * Dark/Light theme toggle with smooth transitions.
+ * Cicla entre los temas disponibles (dark → light → arena → gold → dark).
+ * Cada tema tiene su icono y color de feedback. La página entera reacciona
+ * porque las utilidades Tailwind tipo `bg-black`, `text-white`, etc. se
+ * mapean en globals.css a las variables del tema activo.
  */
+
+const THEME_META: Record<Theme, { label: string; Icon: typeof Sun; tint: string }> = {
+  dark:  { label: 'Oscuro',  Icon: Moon,     tint: 'from-yellow-400 to-amber-500' },
+  light: { label: 'Claro',   Icon: Sun,      tint: 'from-amber-500 to-orange-500' },
+  arena: { label: 'Arena',   Icon: Palette,  tint: 'from-orange-300 to-rose-400' },
+  gold:  { label: 'Dorado',  Icon: Sparkles, tint: 'from-yellow-300 to-yellow-500' },
+};
+
 export default function ThemeToggle() {
-  const { theme, setTheme } = useTheme();
+  const { theme, toggleTheme } = useTheme();
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => setMounted(true), []);
 
-  const isDark = theme === 'dark' || theme === 'gold';
-
   if (!mounted) {
     return (
       <div
-        className="h-8 w-14 rounded-full border border-zinc-700 bg-zinc-900"
+        className="h-9 w-9 rounded-full border border-zinc-700 bg-zinc-900"
         aria-hidden
       />
     );
   }
 
+  const meta = THEME_META[theme] ?? THEME_META.dark;
+  const { Icon, label, tint } = meta;
+
   return (
-    <Switch.Root
-      checked={isDark}
-      onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
-      aria-label={isDark ? 'Cambiar a tema claro' : 'Cambiar a tema oscuro'}
+    <button
+      type="button"
+      onClick={toggleTheme}
+      aria-label={`Tema actual: ${label}. Cambiar al siguiente tema`}
+      title={`Tema: ${label} · Click para cambiar`}
       className={[
-        'group relative inline-flex h-8 w-14 shrink-0 items-center rounded-full',
-        'border border-zinc-700/50 bg-zinc-900/50 backdrop-blur-sm',
+        'group relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
+        'border border-[var(--border-main,rgba(255,255,255,0.12))] bg-[var(--glass-bg,rgba(255,255,255,0.04))] backdrop-blur-sm',
         'transition-all duration-300 ease-out',
-        'data-[state=checked]:border-yellow-400/30 data-[state=unchecked]:border-blue-400/30',
-        'hover:border-yellow-400/50 focus-visible:outline-none',
-        'focus-visible:ring-2 focus-visible:ring-yellow-400/50 focus-visible:ring-offset-2',
-        'focus-visible:ring-offset-black',
+        'hover:border-[var(--accent,#facc15)]/60',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent,#facc15)]/60',
       ].join(' ')}
     >
-      {/* Background shine effect */}
-      <div className="absolute inset-0 overflow-hidden rounded-full pointer-events-none">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-data-[state=checked]:opacity-100 transition-opacity duration-300" />
-      </div>
+      {/* Background tint */}
+      <span
+        aria-hidden
+        className={`absolute inset-0 rounded-full bg-gradient-to-br opacity-15 transition-opacity duration-300 group-hover:opacity-30 ${tint}`}
+      />
 
-      {/* Thumb with improved styling */}
-      <Switch.Thumb
-        className={[
-          'relative pointer-events-none flex h-7 w-7 items-center justify-center rounded-full',
-          'bg-gradient-to-b from-yellow-400 to-yellow-500',
-          'shadow-[0_2px_8px_rgba(250,204,21,0.3)]',
-          'transition-all duration-300 will-change-transform',
-          'translate-x-0.5 data-[state=checked]:translate-x-[26px]',
-          'data-[state=checked]:shadow-[0_4px_12px_rgba(250,204,21,0.4)]',
-        ].join(' ')}
-      >
-        {/* Icon container with rotation animation */}
-        <AnimatePresence mode="wait" initial={false}>
-          {isDark ? (
-            <motion.div
-              key="moon"
-              initial={{ rotate: -120, opacity: 0, scale: 0.4 }}
-              animate={{ rotate: 0, opacity: 1, scale: 1 }}
-              exit={{ rotate: 120, opacity: 0, scale: 0.4 }}
-              transition={{
-                duration: 0.3,
-                ease: 'easeOut',
-              }}
-              className="absolute flex items-center justify-center"
-            >
-              <Moon size={16} className="text-black" strokeWidth={2.5} />
-            </motion.div>
-          ) : (
-            <motion.div
-              key="sun"
-              initial={{ rotate: 120, opacity: 0, scale: 0.4 }}
-              animate={{ rotate: 0, opacity: 1, scale: 1 }}
-              exit={{ rotate: -120, opacity: 0, scale: 0.4 }}
-              transition={{
-                duration: 0.3,
-                ease: 'easeOut',
-              }}
-              className="absolute flex items-center justify-center"
-            >
-              <Sun size={16} className="text-black" strokeWidth={2.5} />
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </Switch.Thumb>
+      <AnimatePresence mode="wait" initial={false}>
+        <motion.span
+          key={theme}
+          initial={{ rotate: -90, opacity: 0, scale: 0.6 }}
+          animate={{ rotate: 0, opacity: 1, scale: 1 }}
+          exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
+          transition={{ duration: 0.28, ease: 'easeOut' }}
+          className="relative z-10 flex items-center justify-center text-[var(--accent,#facc15)]"
+        >
+          <Icon size={16} strokeWidth={2.4} />
+        </motion.span>
+      </AnimatePresence>
 
-      {/* Background label hints */}
-      <span className="absolute left-2 text-[8px] font-bold text-zinc-600 pointer-events-none opacity-40 transition-opacity duration-300 data-[state=unchecked]:opacity-70">
-        ☀️
-      </span>
-      <span className="absolute right-2 text-[8px] font-bold text-zinc-400 pointer-events-none opacity-40 transition-opacity duration-300 data-[state=checked]:opacity-70">
-        🌙
-      </span>
-    </Switch.Root>
+      {/* Pequeño dot indicador del tema */}
+      <span
+        aria-hidden
+        className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-0.5 w-3 rounded-full bg-[var(--accent,#facc15)] opacity-70"
+      />
+    </button>
   );
 }
+

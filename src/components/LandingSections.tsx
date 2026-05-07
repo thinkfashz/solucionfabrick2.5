@@ -404,20 +404,87 @@ export default function LandingSections({
                 if (isLast) {
                   return (
                     <div key={i} className="traj-step relative flex flex-col items-center text-center pt-6">
-                      <div className="relative mb-4">
-                        <div className="absolute inset-0 bg-yellow-400 blur-[40px] opacity-25 rounded-full" />
-                        <div className="w-20 h-20 md:w-28 md:h-28 bg-black border border-yellow-400/50 rounded-full flex items-center justify-center relative z-10 shadow-[0_0_30px_rgba(250,204,21,0.3)]">                          {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}                          <span
+                      {/* ─── Sello / Certificado de Excelencia ─────────────────
+                          Anillo dentado tipo medalla con la F dorada al centro
+                          y un sub-círculo verde con visto bueno (aprobación).
+                          ───────────────────────────────────────────────────── */}
+                      <div className="relative mb-5">
+                        {/* Halo dorado */}
+                        <div className="absolute inset-0 -m-6 rounded-full bg-yellow-400 blur-[60px] opacity-25 pointer-events-none" />
+
+                        {/* Anillo dentado externo (SVG) — borde estilo medalla */}
+                        <svg
+                          aria-hidden="true"
+                          viewBox="0 0 200 200"
+                          className="relative z-0 h-32 w-32 md:h-44 md:w-44 motion-safe:animate-[seal-spin_22s_linear_infinite]"
+                        >
+                          <defs>
+                            <linearGradient id="sealGold" x1="0" y1="0" x2="1" y2="1">
+                              <stop offset="0%"  stopColor="#fde68a" />
+                              <stop offset="50%" stopColor="#facc15" />
+                              <stop offset="100%" stopColor="#a16207" />
+                            </linearGradient>
+                          </defs>
+                          {/* 24 dientes alrededor */}
+                          {Array.from({ length: 24 }).map((_, k) => (
+                            <rect
+                              key={k}
+                              x="98"
+                              y="2"
+                              width="4"
+                              height="14"
+                              rx="1"
+                              fill="url(#sealGold)"
+                              transform={`rotate(${(360 / 24) * k} 100 100)`}
+                              opacity="0.85"
+                            />
+                          ))}
+                          {/* Aro principal */}
+                          <circle cx="100" cy="100" r="82" fill="none" stroke="url(#sealGold)" strokeWidth="2" />
+                          <circle cx="100" cy="100" r="76" fill="none" stroke="rgba(250,204,21,0.35)" strokeWidth="1" strokeDasharray="2 4" />
+                          {/* Texto curvo: "CERTIFICADO · DE · EXCELENCIA · FABRICK" */}
+                          <path id="sealCurve" d="M 100,100 m -68,0 a 68,68 0 1,1 136,0 a 68,68 0 1,1 -136,0" fill="none" />
+                          <text
+                            fill="#facc15"
+                            fontFamily="Inter, sans-serif"
+                            fontSize="9"
+                            fontWeight="700"
+                            letterSpacing="3"
+                          >
+                            <textPath href="#sealCurve" startOffset="0">
+                              CERTIFICADO · DE · EXCELENCIA · FABRICK · CERTIFICADO · DE · EXCELENCIA · FABRICK ·
+                            </textPath>
+                          </text>
+                        </svg>
+
+                        {/* Núcleo del sello con la F */}
+                        <div
+                          className="absolute inset-0 m-auto flex h-20 w-20 md:h-28 md:w-28 items-center justify-center rounded-full bg-black border border-yellow-400/60 shadow-[0_0_30px_rgba(250,204,21,0.35)]"
+                          aria-label="Sello Fabrick · Certificado de Excelencia"
+                        >
+                          <span
                             className="font-playfair font-black text-yellow-400 leading-none select-none"
-                            // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
                             style={{ fontSize: 'clamp(2rem, 5vw, 3rem)', letterSpacing: '-0.04em' }}
-                            aria-label="Fabrick Certificación"
                           >
                             F
                           </span>
                         </div>
+
+                        {/* Sub-círculo verde de aprobación con visto bueno */}
+                        <span
+                          aria-hidden="true"
+                          className="absolute -bottom-1 -right-1 md:-bottom-2 md:-right-2 z-10 flex h-9 w-9 md:h-11 md:w-11 items-center justify-center rounded-full bg-emerald-500 border-2 border-black shadow-[0_0_18px_rgba(16,185,129,0.55)] motion-safe:animate-[seal-pulse-green_2.6s_ease-in-out_infinite]"
+                        >
+                          <svg viewBox="0 0 24 24" className="h-5 w-5 md:h-6 md:w-6 text-white" fill="none" stroke="currentColor" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M5 12.5l4.5 4.5L19 7" />
+                          </svg>
+                        </span>
                       </div>
-                      <div className="mb-8 bg-yellow-400 text-black font-bold uppercase text-[9px] tracking-widest px-4 py-1 rounded-full whitespace-nowrap inline-block">
-                        Calidad Total
+
+                      {/* Cinta de "Calidad Total" */}
+                      <div className="mb-6 inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-yellow-500 via-yellow-400 to-yellow-500 text-black font-black uppercase text-[9px] tracking-widest px-4 py-1.5 shadow-[0_4px_18px_rgba(250,204,21,0.35)]">
+                        <span className="h-1.5 w-1.5 rounded-full bg-emerald-600" />
+                        Calidad Total · Aprobado en terreno
                       </div>
                       <h3 className="font-bold uppercase text-xl md:text-3xl text-white mb-2 tracking-tight">
                         Empresa Sólida y Confiable

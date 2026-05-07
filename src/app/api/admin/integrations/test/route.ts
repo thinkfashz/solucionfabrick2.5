@@ -622,7 +622,8 @@ async function testMercadoLibre(): Promise<NextResponse> {
     return NextResponse.json({
       ok: false,
       provider: 'mercadolibre',
-      error: 'MercadoLibre no configurado. Guarda `access_token` en la pantalla de integraciones o define MERCADOLIBRE_ACCESS_TOKEN en el servidor.',
+      error:
+        'MercadoLibre no configurado. Lo más fácil: en /admin/integraciones presiona "Conectar con Mercado Libre" para iniciar el flujo OAuth (requiere ML_CLIENT_ID y ML_CLIENT_SECRET en el deploy). Alternativamente, guarda manualmente el `access_token` en la pantalla, o defínelo como variable de entorno ML_ACCESS_TOKEN o MERCADOLIBRE_ACCESS_TOKEN.',
       checks: [{ name: 'access_token', ok: false, detail: 'No configurado.' }],
       sources: creds.sources,
     });

@@ -313,18 +313,20 @@ function useAnimatedNumber(target: number, durationMs = 600): number {
       const eased = 1 - Math.pow(1 - t, 3);
       const current = from + (to - from) * eased;
       setValue(current);
+      // Track the latest visual value so an interrupted animation can resume
+      // from where the user actually saw the number, not from the previous target.
+      fromRef.current = current;
       if (t < 1) {
         rafRef.current = requestAnimationFrame(tick);
-      } else {
-        fromRef.current = to;
       }
     };
     rafRef.current = requestAnimationFrame(tick);
     return () => {
       if (rafRef.current != null) cancelAnimationFrame(rafRef.current);
-      fromRef.current = value; // eslint-disable-line react-hooks/exhaustive-deps
+      // fromRef.current is already updated to `to` inside the tick when t === 1.
+      // If interrupted by a new target, the next effect run reads the latest
+      // ref value as the new starting point — no extra cleanup needed here.
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [target, durationMs]);
 
   return value;
@@ -838,7 +840,9 @@ function PlanPreview({ ancho, largo, segundoPiso }: PlanPreviewProps) {
   // Reescalar al cambiar dimensiones
   useEffect(() => {
     const { floor, walls, walls2 } = stateRef.current;
-    // Escala con cap visual para que no se salga del viewport, pero el cálculo real no tiene tope.
+    // Cap puramente visual (18 m) para que el modelo 3D no se salga del viewport
+    // ni colisione con la cámara. NO afecta al cálculo de precio: la calculadora
+    // sigue usando los valores `ancho` y `largo` reales sin ningún tope.
     const visualAncho = Math.max(1, Math.min(ancho, 18));
     const visualLargo = Math.max(1, Math.min(largo, 18));
     if (floor) {
@@ -880,7 +884,9 @@ function calcularPresupuesto(input: {
   const largo = Math.max(0, input.largo);
   let m2 = ancho * largo;
   if (input.extras.has('segundoPiso') || input.segundoPiso) {
-    // Duplicamos los m² estructurales pero con un coeficiente 0.85 (apoya en piso 1)
+    // Segundo piso: multiplica los m² base por 1.85 — agrega ~85% adicional
+    // sobre la huella original (no el doble, porque el primer piso ya aporta
+    // fundación, instalaciones troncales y trazados que se aprovechan).
     m2 = m2 * 1.85;
   }
   const base = m2 * input.solucion.precioM2;

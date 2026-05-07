@@ -399,16 +399,34 @@ export default function AdminIntegracionesPage() {
 	const [revealingProvider, setRevealingProvider] = useState<ProviderKey | null>(null);
 	const [revealNow, setRevealNow] = useState(() => Date.now());
 	const [quotaSnapshots, setQuotaSnapshots] = useState<Record<string, { used: number | null; limit: number | null; capturedAt: string }>>({});
+	const [rotateConfirmOpen, setRotateConfirmOpen] = useState<ProviderKey | null>(null);
+	const [rotatingProvider, setRotatingProvider] = useState<ProviderKey | null>(null);
 
-	// OAuth callback feedback. After /api/admin/ml/oauth/callback completes,
-	// the user lands here with `?connected=mercadolibre&seller=...&expires_at=...`
-	// or `?ml_error=<msg>`. We surface that as a banner; loadIntegrations()
+	// OAuth callback feedback. After /api/admin/{ml,google,meta,tiktok}/oauth/callback completes,
+	// the user lands here with `?connected=<provider>&account|seller=...&expires_at=...`
+	// or `?<provider>_error=<msg>`. We surface that as a banner; loadIntegrations()
 	// already runs on mount so the saved tokens appear pre-filled in the card.
 	const searchParams = useSearchParams();
 	const oauthConnected = searchParams?.get('connected') ?? null;
 	const oauthSeller = searchParams?.get('seller') ?? null;
+	const oauthAccount = searchParams?.get('account') ?? null;
 	const oauthExpiresAt = searchParams?.get('expires_at') ?? null;
-	const oauthError = searchParams?.get('ml_error') ?? null;
+	const oauthPendingReview = searchParams?.get('pending_review') ?? null;
+	const oauthError =
+		searchParams?.get('ml_error') ??
+		searchParams?.get('google_error') ??
+		searchParams?.get('meta_error') ??
+		searchParams?.get('tiktok_error') ??
+		null;
+	const oauthErrorProvider = searchParams?.get('google_error')
+		? 'google'
+		: searchParams?.get('meta_error')
+			? 'meta'
+			: searchParams?.get('tiktok_error')
+				? 'tiktok'
+				: searchParams?.get('ml_error')
+					? 'mercadolibre'
+					: null;
 
 	const connectedCount = useMemo(
 		() => PROVIDERS.filter((prov) => Object.values(integrations[prov.id]?.credentials ?? {}).some((c) => c.set)).length,
@@ -620,6 +638,51 @@ export default function AdminIntegracionesPage() {
 		}
 	}
 
+	async function handleRotateResend() {
+		setRotatingProvider('resend');
+		setIntegrationMsg((prev) => ({ ...prev, resend: null }));
+		try {
+			const res = await fetch('/api/admin/integrations/rotate', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ provider: 'resend' }),
+			});
+			const json = (await res.json().catch(() => ({}))) as {
+				ok?: boolean;
+				error?: string;
+				deleteWarning?: string | null;
+				newKeyId?: string | null;
+				oldKeyId?: string | null;
+			};
+			if (!res.ok || !json.ok) {
+				setIntegrationMsg((prev) => ({
+					...prev,
+					resend: { text: json.error ?? 'No se pudo rotar la API key.', type: 'error' },
+				}));
+				return;
+			}
+			const warning = json.deleteWarning
+				? ` Aviso: la key anterior no se pudo borrar (${json.deleteWarning}); revísalo en resend.com/api-keys.`
+				: '';
+			setIntegrationMsg((prev) => ({
+				...prev,
+				resend: {
+					text: `API key rotada con éxito. Nueva key id: ${json.newKeyId ?? 'desconocido'}.${warning}`,
+					type: 'success',
+				},
+			}));
+			await loadIntegrations();
+		} catch (err) {
+			setIntegrationMsg((prev) => ({
+				...prev,
+				resend: { text: err instanceof Error ? err.message : 'Error de red al rotar la key.', type: 'error' },
+			}));
+		} finally {
+			setRotatingProvider(null);
+			setRotateConfirmOpen(null);
+		}
+	}
+
 	async function handleTestIntegration(provider: ProviderKey) {
 		setTestingIntegration(provider);
 		setIntegrationTest((prev) => ({ ...prev, [provider]: null }));
@@ -691,12 +754,47 @@ export default function AdminIntegracionesPage() {
 				</AdminCard>
 			) : null}
 
+			{oauthConnected === 'google' || oauthConnected === 'meta' || oauthConnected === 'tiktok' ? (
+				<AdminCard className="border-emerald-500/30 bg-emerald-500/10">
+					<div className="flex items-start gap-3 text-sm text-emerald-100">
+						<CheckCircle2 className="mt-0.5 h-5 w-5 shrink-0 text-emerald-300" />
+						<div className="min-w-0 flex-1">
+							<p className="font-semibold text-emerald-200">
+								{oauthConnected === 'google' ? 'Google' : oauthConnected === 'meta' ? 'Meta (Facebook + Instagram)' : 'TikTok for Business'}
+								{' '}vinculado{oauthAccount ? ` como ${oauthAccount}` : ''}.
+							</p>
+							<p className="mt-1 leading-relaxed text-emerald-200/80">
+								Las credenciales se guardaron cifradas en la tabla integrations.
+								{oauthExpiresAt ? ` El token expira el ${oauthExpiresAt}.` : ''}
+								{oauthConnected === 'google' ? ' El access_token se renueva automáticamente cada hora con el refresh_token.' : null}
+								{oauthConnected === 'meta' ? ' El long-lived token dura ~60 días; el cron de salud avisa antes de expirar.' : null}
+								{oauthConnected === 'tiktok' ? ' El access_token de TikTok no expira; sólo se invalida si el merchant revoca permiso.' : null}
+							</p>
+							{oauthConnected === 'meta' && oauthPendingReview ? (
+								<p className="mt-2 rounded-md border border-amber-400/30 bg-amber-400/10 px-3 py-2 text-[12px] text-amber-100">
+									<strong>Pendiente de App Review:</strong> {oauthPendingReview}. Estos scopes se solicitaron pero Meta no los concedió;
+									las funciones que los requieran no operarán hasta que el merchant los apruebe en la consola de Meta.
+								</p>
+							) : null}
+						</div>
+					</div>
+				</AdminCard>
+			) : null}
+
 			{oauthError ? (
 				<AdminCard className="border-red-500/30 bg-red-500/5">
 					<div className="flex items-start gap-3 text-sm text-red-200">
 						<ShieldAlert className="mt-0.5 h-5 w-5 shrink-0 text-red-400" />
 						<div>
-							<p className="font-semibold text-red-300">No se pudo conectar Mercado Libre</p>
+							<p className="font-semibold text-red-300">
+								{oauthErrorProvider === 'google'
+									? 'No se pudo conectar Google'
+									: oauthErrorProvider === 'meta'
+										? 'No se pudo conectar Meta'
+										: oauthErrorProvider === 'tiktok'
+											? 'No se pudo conectar TikTok'
+											: 'No se pudo conectar Mercado Libre'}
+							</p>
 							<p className="mt-1 font-mono text-xs leading-relaxed text-red-200/80">{oauthError}</p>
 						</div>
 					</div>
@@ -713,6 +811,47 @@ export default function AdminIntegracionesPage() {
 						</div>
 					</div>
 				</AdminCard>
+			) : null}
+
+			{rotateConfirmOpen === 'resend' ? (
+				<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+					<button
+						type="button"
+						aria-label="Cerrar confirmación"
+						onClick={() => (rotatingProvider === 'resend' ? null : setRotateConfirmOpen(null))}
+						className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+					/>
+					<div className="relative z-10 w-full max-w-md rounded-[2rem] border border-white/10 bg-zinc-950/95 p-6 shadow-2xl shadow-black/40">
+						<div className="flex items-start justify-between gap-4">
+							<div>
+								<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-300">Rotar API key</p>
+								<h2 className="mt-2 text-xl font-black text-white">¿Confirmar rotación?</h2>
+								<p className="mt-2 text-sm leading-relaxed text-zinc-400">
+									Esto creará una nueva key en Resend, validará que funciona con un GET a <code className="font-mono">/domains</code> y borrará la anterior. Si la validación falla, no se borra nada y la key actual sigue activa.
+								</p>
+							</div>
+						</div>
+						<div className="mt-6 flex flex-wrap items-center gap-3">
+							<button
+								type="button"
+								onClick={() => void handleRotateResend()}
+								disabled={rotatingProvider === 'resend'}
+								className="inline-flex items-center gap-2 rounded-full bg-cyan-400 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-950 transition hover:bg-cyan-300 disabled:opacity-50"
+							>
+								{rotatingProvider === 'resend' ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+								Sí, rotar ahora
+							</button>
+							<button
+								type="button"
+								onClick={() => setRotateConfirmOpen(null)}
+								disabled={rotatingProvider === 'resend'}
+								className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-300 transition hover:bg-white/5 disabled:opacity-50"
+							>
+								Cancelar
+							</button>
+						</div>
+					</div>
+				</div>
 			) : null}
 
 			{revealDialog && activeRevealProvider ? (
@@ -901,6 +1040,100 @@ export default function AdminIntegracionesPage() {
 													<LinkIcon className="h-3.5 w-3.5" />
 													{isConfigured ? 'Reconectar Mercado Libre' : 'Conectar con Mercado Libre'}
 												</a>
+											</div>
+										</div>
+									) : null}
+
+									{provider.id === 'google' || provider.id === 'meta' || provider.id === 'tiktok' ? (
+										<div className="rounded-2xl border border-yellow-400/30 bg-yellow-400/5 p-4">
+											<div className="flex flex-wrap items-start justify-between gap-3">
+												<div className="min-w-0 flex-1">
+													<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-300">
+														OAuth · Recomendado
+													</p>
+													<p className="mt-1 text-sm text-zinc-300">
+														{provider.id === 'google'
+															? 'Inicia el flujo OAuth + PKCE con Google. Al volver del consentimiento, access_token, refresh_token y expires_at se guardarán cifrados, y el access_token se renueva solo cada hora.'
+															: provider.id === 'meta'
+																? 'Inicia el flujo OAuth con Meta para conectar Facebook Pages, Instagram Business, Ads y WhatsApp. El long-lived token (~60 d) se guarda cifrado y debe renovarse antes de expirar.'
+																: 'Inicia el flujo OAuth de TikTok for Business. El access_token resultante no expira; junto con él se guarda la lista de advertisers para que puedas elegir el activo.'}
+													</p>
+													<p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+														Requiere{' '}
+														{provider.id === 'google' ? (
+															<>
+																<code className="font-mono text-yellow-200/80">GOOGLE_CLIENT_ID</code> y{' '}
+																<code className="font-mono text-yellow-200/80">GOOGLE_CLIENT_SECRET</code>
+															</>
+														) : provider.id === 'meta' ? (
+															<>
+																<code className="font-mono text-yellow-200/80">META_APP_ID</code> y{' '}
+																<code className="font-mono text-yellow-200/80">META_APP_SECRET</code>
+															</>
+														) : (
+															<>
+																<code className="font-mono text-yellow-200/80">TIKTOK_APP_ID</code> y{' '}
+																<code className="font-mono text-yellow-200/80">TIKTOK_APP_SECRET</code>
+															</>
+														)}
+														{' '}en variables de entorno (Vercel).
+													</p>
+												</div>
+												<a
+													href={`/api/admin/${provider.id}/oauth/start`}
+													className="inline-flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-950 transition hover:bg-yellow-300"
+												>
+													<LinkIcon className="h-3.5 w-3.5" />
+													{isConfigured
+														? `Reconectar ${provider.id === 'google' ? 'Google' : provider.id === 'meta' ? 'Meta' : 'TikTok'}`
+														: `Conectar con ${provider.id === 'google' ? 'Google' : provider.id === 'meta' ? 'Meta' : 'TikTok'}`}
+												</a>
+											</div>
+										</div>
+									) : null}
+
+									{provider.id === 'resend' ? (
+										<div className="rounded-2xl border border-cyan-400/30 bg-cyan-400/5 p-4">
+											<div className="flex flex-wrap items-start justify-between gap-3">
+												<div className="min-w-0 flex-1">
+													<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-cyan-300">
+														Rotación automática · Resend
+													</p>
+													<p className="mt-1 text-sm text-zinc-300">
+														Crea una nueva API key en Resend, valida que funciona contra <code className="font-mono text-cyan-200/80">/domains</code>{' '}
+														y borra la anterior — todo desde acá. Si la validación falla, no se borra nada (la key actual sigue viva).
+													</p>
+													<p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
+														Sólo disponible cuando la key está guardada en la base de datos. Si proviene de una variable de entorno
+														(<code className="font-mono text-cyan-200/80">RESEND_API_KEY</code> / <code className="font-mono text-cyan-200/80">RESEND_KEY</code>),
+														bórrala primero de Vercel y guárdala desde este formulario.
+													</p>
+												</div>
+												<button
+													type="button"
+													onClick={() => setRotateConfirmOpen('resend')}
+													disabled={
+														envManaged ||
+														rotatingProvider === 'resend' ||
+														!isConfigured ||
+														loadingIntegrations
+													}
+													title={
+														envManaged
+															? 'Rotación deshabilitada: la key viene de una variable de entorno (Vercel).'
+															: !isConfigured
+																? 'Conecta la integración primero.'
+																: 'Crear una nueva key, validarla y borrar la anterior.'
+													}
+													className="inline-flex items-center gap-2 rounded-full bg-cyan-400 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-950 transition hover:bg-cyan-300 disabled:cursor-not-allowed disabled:bg-zinc-700 disabled:text-zinc-500"
+												>
+													{rotatingProvider === 'resend' ? (
+														<Loader2 className="h-3.5 w-3.5 animate-spin" />
+													) : (
+														<RefreshCw className="h-3.5 w-3.5" />
+													)}
+													🔄 Rotar API key
+												</button>
 											</div>
 										</div>
 									) : null}

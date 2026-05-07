@@ -126,37 +126,61 @@ async function checkWhatsApp(): Promise<HealthCheckResult> {
 	return runWhatsAppChecks({ access_token, phone_number_id, business_account_id: business_account_id || undefined });
 }
 
-async function checkMercadoLibreExpiry(): Promise<HealthCheckResult> {
+/**
+ * Generic token-expiry check shared by every OAuth-based provider
+ * (mercadolibre / google / meta). Returns a HealthCheckResult shaped just
+ * like a "real" runner so the cron/UI treat all providers identically.
+ *
+ * @param provider     Provider key as stored in `integrations.provider`.
+ * @param tokenLabel   Human-readable label for the token (e.g. "access_token", "long-lived token").
+ * @param reconnectHint UI hint shown when the token has fully expired.
+ */
+async function checkTokenExpiry(args: {
+	provider: string;
+	tokenLabel?: string;
+	reconnectHint: string;
+	envAccessTokenVars?: string[];
+	envExpiresAtVars?: string[];
+}): Promise<HealthCheckResult> {
+	const tokenLabel = args.tokenLabel ?? 'access_token';
 	try {
-		const creds = await readDbCredentials('mercadolibre');
-		const accessToken = creds.access_token || (process.env.ML_ACCESS_TOKEN ?? process.env.MERCADOLIBRE_ACCESS_TOKEN ?? '').trim();
+		const creds = await readDbCredentials(args.provider);
+		const envToken = (args.envAccessTokenVars ?? [])
+			.map((v) => process.env[v])
+			.find((v): v is string => typeof v === 'string' && v.trim().length > 0)
+			?.trim();
+		const accessToken = creds.access_token || envToken || '';
 		if (!accessToken) {
-			return { ok: false, provider: 'mercadolibre', checks: [], skipped: true, error: 'Sin credenciales.' };
+			return { ok: false, provider: args.provider, checks: [], skipped: true, error: 'Sin credenciales.' };
 		}
-		const checks = [];
-		const expiresAtStr = creds.expires_at || (process.env.ML_EXPIRES_AT ?? '').trim();
+		const envExpiresAt = (args.envExpiresAtVars ?? [])
+			.map((v) => process.env[v])
+			.find((v): v is string => typeof v === 'string' && v.trim().length > 0)
+			?.trim();
+		const expiresAtStr = creds.expires_at || envExpiresAt || '';
 		const expiresAt = expiresAtStr ? new Date(expiresAtStr) : null;
 		const expiresAtValid = expiresAt && !Number.isNaN(expiresAt.getTime()) ? expiresAt : null;
 		const remainingMs = expiresAtValid ? expiresAtValid.getTime() - Date.now() : null;
 		const expiringSoon = remainingMs != null && remainingMs <= TOKEN_EXPIRY_WARNING_MS && remainingMs > 0;
 		const expired = remainingMs != null && remainingMs <= 0;
 
+		const checks = [];
 		if (expired) {
 			checks.push({
-				name: 'access_token',
+				name: tokenLabel,
 				ok: false,
-				detail: `Token expirado el ${expiresAtValid?.toISOString()}. Reconecta MercadoLibre desde /admin/integraciones.`,
+				detail: `Token expirado el ${expiresAtValid?.toISOString()}. ${args.reconnectHint}`,
 			});
 		} else if (expiringSoon) {
 			const hoursLeft = Math.round((remainingMs ?? 0) / (60 * 60 * 1000));
 			checks.push({
-				name: 'access_token',
+				name: tokenLabel,
 				ok: false,
 				detail: `El token caduca en ~${hoursLeft}h (${expiresAtValid?.toISOString()}). El refresh automático debería renovarlo, pero conviene revisar.`,
 			});
 		} else {
 			checks.push({
-				name: 'access_token',
+				name: tokenLabel,
 				ok: true,
 				detail: expiresAtValid
 					? `Token válido. Expira el ${expiresAtValid.toISOString()}.`
@@ -165,7 +189,7 @@ async function checkMercadoLibreExpiry(): Promise<HealthCheckResult> {
 		}
 		return {
 			ok: !expired && !expiringSoon,
-			provider: 'mercadolibre',
+			provider: args.provider,
 			checks,
 			expiresAt: expiresAtValid?.toISOString() ?? null,
 			expiringSoon,
@@ -173,11 +197,36 @@ async function checkMercadoLibreExpiry(): Promise<HealthCheckResult> {
 	} catch (err) {
 		return {
 			ok: false,
-			provider: 'mercadolibre',
-			checks: [{ name: 'access_token', ok: false, detail: err instanceof Error ? err.message : String(err) }],
+			provider: args.provider,
+			checks: [{ name: tokenLabel, ok: false, detail: err instanceof Error ? err.message : String(err) }],
 			error: err instanceof Error ? err.message : String(err),
 		};
 	}
+}
+
+async function checkMercadoLibreExpiry(): Promise<HealthCheckResult> {
+	return checkTokenExpiry({
+		provider: 'mercadolibre',
+		reconnectHint: 'Reconecta MercadoLibre desde /admin/integraciones.',
+		envAccessTokenVars: ['ML_ACCESS_TOKEN', 'MERCADOLIBRE_ACCESS_TOKEN'],
+		envExpiresAtVars: ['ML_EXPIRES_AT'],
+	});
+}
+
+async function checkGoogleExpiry(): Promise<HealthCheckResult> {
+	return checkTokenExpiry({
+		provider: 'google',
+		reconnectHint: 'Reconecta Google desde /admin/integraciones.',
+	});
+}
+
+async function checkMetaExpiry(): Promise<HealthCheckResult> {
+	return checkTokenExpiry({
+		provider: 'meta',
+		tokenLabel: 'long_lived_token',
+		reconnectHint:
+			'Reconecta Meta desde /admin/integraciones (el token long-lived dura ~60d y debe renovarse antes de expirar).',
+	});
 }
 
 interface NamedCheck {
@@ -192,6 +241,8 @@ const PROVIDER_CHECKS: NamedCheck[] = [
 	{ provider: 'serpapi', run: checkSerpApi },
 	{ provider: 'whatsapp', run: checkWhatsApp },
 	{ provider: 'mercadolibre', run: checkMercadoLibreExpiry },
+	{ provider: 'google', run: checkGoogleExpiry },
+	{ provider: 'meta', run: checkMetaExpiry },
 ];
 
 export interface HealthCheckRunSummary {

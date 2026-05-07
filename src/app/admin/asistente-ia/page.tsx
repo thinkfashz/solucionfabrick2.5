@@ -3,10 +3,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Bot,
+  CheckCircle2,
   Code2,
   Copy,
+  Download,
   FileCode2,
   HelpCircle,
+  Image as ImageIcon,
   Loader2,
   MessageSquarePlus,
   Paperclip,
@@ -15,11 +18,14 @@ import {
   Settings2,
   Sparkles,
   Trash2,
+  UploadCloud,
   Wand2,
   X,
   Zap,
 } from 'lucide-react';
 import { AdminCard, AdminPage, AdminPageHeader } from '@/components/admin/ui';
+import { ModelPerformanceChart } from '@/components/admin/ModelPerformanceChart';
+import type { ModelHealth, ModelStats } from '@/lib/aiChatStats';
 
 interface Thread {
   id: string;
@@ -30,6 +36,23 @@ interface Thread {
   updated_at: string;
 }
 
+interface ImageAttachment {
+  type: 'image';
+  dataUrl: string;
+  mimeType: string;
+  cloudinary_url?: string;
+  uploading?: boolean;
+}
+
+interface FileAttachment {
+  type?: undefined;
+  path: string;
+  bytes: number;
+  truncated: boolean;
+}
+
+type MessageAttachment = ImageAttachment | FileAttachment;
+
 interface Message {
   id: string;
   thread_id: string;
@@ -38,8 +61,16 @@ interface Message {
   model: string | null;
   tokens_in: number | null;
   tokens_out: number | null;
-  attachments: Array<{ path: string; bytes: number; truncated: boolean }> | null;
+  attachments: MessageAttachment[] | null;
   created_at: string;
+}
+
+interface TriedModel {
+  model: string;
+  status: string;
+  latency_ms: number;
+  http_status: number | null;
+  error?: string;
 }
 
 interface ModelInfo {
@@ -123,11 +154,41 @@ export default function AsistenteIaPage() {
   const [sending, setSending] = useState(false);
   const [modelsLoading, setModelsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [showOnlyFree, setShowOnlyFree] = useState(true);
+  const [modelFilter, setModelFilter] = useState<'free' | 'free+cheap' | 'all'>('free');
   const [modelSearch, setModelSearch] = useState('');
   const [showModels, setShowModels] = useState(false);
+  // Modo imagen (genera imágenes via OpenRouter image-out)
+  const [imageMode, setImageMode] = useState(false);
+  const [autoSaveCloudinary, setAutoSaveCloudinary] = useState(false);
+  const [allowPaid, setAllowPaid] = useState(false);
+  // Stats por modelo (para ordenar selector + banner de salud)
+  const [modelStats, setModelStats] = useState<ModelStats[]>([]);
+  const [showStats, setShowStats] = useState(false);
+  // Banner: aviso de fallback del último envío
+  const [fallbackInfo, setFallbackInfo] = useState<{ from: string; to: string; reason: string } | null>(null);
 
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
+
+  // Persistencia de preferencias del selector
+  useEffect(() => {
+    try {
+      const f = localStorage.getItem('asistente-ia:modelFilter') as 'free' | 'free+cheap' | 'all' | null;
+      if (f === 'free' || f === 'free+cheap' || f === 'all') setModelFilter(f);
+      const ap = localStorage.getItem('asistente-ia:allowPaid');
+      if (ap === '1') setAllowPaid(true);
+      const auto = localStorage.getItem('asistente-ia:autoSaveCloudinary');
+      if (auto === '1') setAutoSaveCloudinary(true);
+    } catch { /* ignore */ }
+  }, []);
+  useEffect(() => {
+    try { localStorage.setItem('asistente-ia:modelFilter', modelFilter); } catch { /* */ }
+  }, [modelFilter]);
+  useEffect(() => {
+    try { localStorage.setItem('asistente-ia:allowPaid', allowPaid ? '1' : '0'); } catch { /* */ }
+  }, [allowPaid]);
+  useEffect(() => {
+    try { localStorage.setItem('asistente-ia:autoSaveCloudinary', autoSaveCloudinary ? '1' : '0'); } catch { /* */ }
+  }, [autoSaveCloudinary]);
 
   const activeThread = useMemo(() => threads.find((t) => t.id === activeThreadId) ?? null, [threads, activeThreadId]);
 
@@ -184,10 +245,20 @@ export default function AsistenteIaPage() {
     }
   }, []);
 
+  const loadStats = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/ai-chat/stats?hours=24');
+      if (!res.ok) return;
+      const json = await res.json();
+      if (Array.isArray(json?.stats)) setModelStats(json.stats as ModelStats[]);
+    } catch { /* silent */ }
+  }, []);
+
   useEffect(() => {
     void loadThreads();
     void loadModels(false);
-  }, [loadThreads, loadModels]);
+    void loadStats();
+  }, [loadThreads, loadModels, loadStats]);
 
   useEffect(() => {
     if (activeThreadId) void loadMessages(activeThreadId);
@@ -296,10 +367,30 @@ export default function AsistenteIaPage() {
           user_message: userText,
           system_prompt: systemPrompt,
           attachments,
+          allow_paid: allowPaid,
         }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json?.error ?? 'Error');
+      // Si hubo fallback, mostrar banner informativo
+      const tried = (json?.tried ?? []) as TriedModel[];
+      if (tried.length > 1) {
+        const failed = tried[0];
+        const succeeded = tried[tried.length - 1];
+        if (succeeded.status === 'ok') {
+          setFallbackInfo({
+            from: failed.model,
+            to: succeeded.model,
+            reason: failed.status === 'timeout'
+              ? `timeout (${Math.round(failed.latency_ms / 1000)}s)`
+              : failed.status === 'rate_limit'
+                ? 'rate limit (429)'
+                : failed.status === 'empty'
+                  ? 'respuesta vacía'
+                  : (failed.error?.slice(0, 60) ?? failed.status),
+          });
+        }
+      }
       // Limpiar adjuntos tras envío exitoso
       setAttachments([]);
       // Recargar mensajes desde servidor (versión persistida)
@@ -307,6 +398,120 @@ export default function AsistenteIaPage() {
     } catch (err) {
       setError((err as Error).message);
       // dejar el mensaje del user, no agregar respuesta
+    } finally {
+      setSending(false);
+    }
+  }
+
+  /** Sube una imagen base64 a Cloudinary vía /api/admin/cloudinary. */
+  async function uploadToCloudinary(att: ImageAttachment, messageId: string, idx: number) {
+    setMessages((prev) => prev.map((m) => {
+      if (m.id !== messageId || !m.attachments) return m;
+      const arr = m.attachments.slice() as MessageAttachment[];
+      const cur = arr[idx];
+      if (cur && cur.type === 'image') arr[idx] = { ...cur, uploading: true };
+      return { ...m, attachments: arr };
+    }));
+    try {
+      // Convert dataUrl → Blob → File
+      const resBlob = await fetch(att.dataUrl);
+      const blob = await resBlob.blob();
+      const ext = (att.mimeType.split('/')[1] || 'png').replace('+xml', '');
+      const file = new File([blob], `ai-chat-${Date.now()}.${ext}`, { type: att.mimeType });
+      const fd = new FormData();
+      fd.append('file', file);
+      fd.append('folder', 'ai-chat');
+      const up = await fetch('/api/admin/cloudinary', { method: 'POST', body: fd });
+      const json = await up.json();
+      if (!up.ok) throw new Error(json?.error ?? 'Cloudinary error');
+      const url: string = json.url || json.asset?.url;
+      setMessages((prev) => prev.map((m) => {
+        if (m.id !== messageId || !m.attachments) return m;
+        const arr = m.attachments.slice() as MessageAttachment[];
+        const cur = arr[idx];
+        if (cur && cur.type === 'image') arr[idx] = { ...cur, uploading: false, cloudinary_url: url };
+        return { ...m, attachments: arr };
+      }));
+    } catch (err) {
+      setError(`Cloudinary: ${(err as Error).message}`);
+      setMessages((prev) => prev.map((m) => {
+        if (m.id !== messageId || !m.attachments) return m;
+        const arr = m.attachments.slice() as MessageAttachment[];
+        const cur = arr[idx];
+        if (cur && cur.type === 'image') arr[idx] = { ...cur, uploading: false };
+        return { ...m, attachments: arr };
+      }));
+    }
+  }
+
+  /** Genera una imagen vía /api/admin/ai-chat/image */
+  async function handleGenerateImage(e?: React.FormEvent) {
+    e?.preventDefault();
+    if (!input.trim() || sending) return;
+    setError(null);
+
+    let threadId = activeThreadId;
+    if (!threadId) {
+      const preset = PRESETS.find((p) => p.key === presetKey) ?? PRESETS[0];
+      const res = await fetch('/api/admin/ai-chat/threads', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: `🖼️ ${input.trim().slice(0, 50)}`,
+          model: modelId,
+          system_prompt: systemPrompt,
+          preset_key: preset.key,
+        }),
+      });
+      const json = await res.json();
+      if (!res.ok) {
+        setError(json?.error ?? 'Error creando hilo');
+        return;
+      }
+      threadId = json.thread.id;
+      setActiveThreadId(threadId);
+      await loadThreads();
+    }
+
+    const prompt = input.trim();
+    setInput('');
+    setSending(true);
+    try {
+      const res = await fetch('/api/admin/ai-chat/image', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ thread_id: threadId, prompt, allow_paid: allowPaid }),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json?.error ?? 'Error');
+      const tried = (json?.tried ?? []) as TriedModel[];
+      if (tried.length > 1 && tried[tried.length - 1].status === 'ok') {
+        setFallbackInfo({
+          from: tried[0].model,
+          to: tried[tried.length - 1].model,
+          reason: tried[0].status === 'empty' ? 'sin imagen' : tried[0].status,
+        });
+      }
+      if (threadId) await loadMessages(threadId);
+      // Auto-guardar en Cloudinary después de cargar el mensaje
+      if (autoSaveCloudinary && threadId) {
+        // El último mensaje (assistant) tendrá las imágenes
+        setTimeout(() => {
+          setMessages((prev) => {
+            const last = [...prev].reverse().find((m) => m.role === 'assistant' && Array.isArray(m.attachments) && m.attachments.some((a) => (a as ImageAttachment).type === 'image'));
+            if (last && last.attachments) {
+              last.attachments.forEach((att, i) => {
+                if ((att as ImageAttachment).type === 'image' && !(att as ImageAttachment).cloudinary_url) {
+                  void uploadToCloudinary(att as ImageAttachment, last.id, i);
+                }
+              });
+            }
+            return prev;
+          });
+        }, 200);
+      }
+    } catch (err) {
+      setError((err as Error).message);
     } finally {
       setSending(false);
     }
@@ -328,16 +533,45 @@ export default function AsistenteIaPage() {
     setAttachmentDraft('');
   }
 
+  const statsByModel = useMemo(() => {
+    const m = new Map<string, ModelStats>();
+    for (const s of modelStats) m.set(s.model, s);
+    return m;
+  }, [modelStats]);
+
+  // Score numérico para ordenar (más alto = mejor)
+  const scoreFor = useCallback(
+    (id: string): number => {
+      const s = statsByModel.get(id);
+      if (!s) return 0; // sin datos => al final pero antes de "down"
+      const speed = Math.max(0, 1 - Math.min(s.avg_latency_ms, 10000) / 10000);
+      const base = s.success_rate * 0.7 + speed * 0.3;
+      // Penalización fuerte a los caídos
+      if (s.health === 'down') return base - 1;
+      return base;
+    },
+    [statsByModel],
+  );
+
   const filteredFree = useMemo(() => {
     if (!models) return [];
     const q = modelSearch.trim().toLowerCase();
-    return models.free.filter((m) => !q || m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q)).slice(0, 60);
-  }, [models, modelSearch]);
+    return [...models.free]
+      .filter((m) => !q || m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q))
+      .sort((a, b) => scoreFor(b.id) - scoreFor(a.id))
+      .slice(0, 60);
+  }, [models, modelSearch, scoreFor]);
+
   const filteredPaid = useMemo(() => {
     if (!models) return [];
     const q = modelSearch.trim().toLowerCase();
-    return models.paid.filter((m) => !q || m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q)).slice(0, 60);
-  }, [models, modelSearch]);
+    let list = models.paid.filter((m) => !q || m.id.toLowerCase().includes(q) || m.name.toLowerCase().includes(q));
+    if (modelFilter === 'free+cheap') {
+      // Solo modelos con precio máximo ≤ $0.5/1M tokens
+      list = list.filter((m) => Math.max(m.pricing.prompt, m.pricing.completion) <= 0.5e-6);
+    }
+    return list.sort((a, b) => scoreFor(b.id) - scoreFor(a.id)).slice(0, 60);
+  }, [models, modelSearch, modelFilter, scoreFor]);
 
   const currentModelInfo = useMemo(() => {
     if (!models || !modelId) return null;
@@ -403,6 +637,18 @@ export default function AsistenteIaPage() {
           {error && (
             <div className="mb-3 rounded-lg border border-red-500/40 bg-red-500/10 px-3 py-2 text-xs text-red-300">{error}</div>
           )}
+          {fallbackInfo && (
+            <button
+              type="button"
+              onClick={() => setFallbackInfo(null)}
+              className="mb-3 w-full text-left rounded-lg border border-amber-500/40 bg-amber-500/10 px-3 py-2 text-xs text-amber-200 hover:bg-amber-500/15"
+              title="Click para cerrar"
+            >
+              <span className="font-semibold">↻ Cambio automático:</span>{' '}
+              <code className="text-amber-300">{fallbackInfo.from}</code> falló ({fallbackInfo.reason}). Respondió{' '}
+              <code className="text-emerald-300">{fallbackInfo.to}</code>.
+            </button>
+          )}
 
           <div className="flex-1 overflow-y-auto space-y-4 pr-1" style={{ maxHeight: '60vh' }}>
             {!activeThread && messages.length === 0 && (
@@ -438,15 +684,70 @@ export default function AsistenteIaPage() {
                   }`}
                 >
                   {m.attachments && m.attachments.length > 0 && (
-                    <div className="mb-2 flex flex-wrap gap-1">
-                      {m.attachments.map((a) => (
-                        <span
-                          key={a.path}
-                          className="inline-flex items-center gap-1 rounded-full bg-neutral-900 border border-neutral-700 px-2 py-0.5 text-[10px] text-neutral-300"
-                        >
-                          <FileCode2 className="h-3 w-3" /> {a.path}
-                        </span>
-                      ))}
+                    <div className="mb-2 flex flex-wrap gap-1.5">
+                      {m.attachments.map((a, idx) => {
+                        // Adjunto de archivo del repo
+                        if ((a as ImageAttachment).type !== 'image') {
+                          const fa = a as FileAttachment;
+                          return (
+                            <span
+                              key={`f-${fa.path}-${idx}`}
+                              className="inline-flex items-center gap-1 rounded-full bg-neutral-900 border border-neutral-700 px-2 py-0.5 text-[10px] text-neutral-300"
+                            >
+                              <FileCode2 className="h-3 w-3" /> {fa.path}
+                            </span>
+                          );
+                        }
+                        // Adjunto de imagen
+                        const ia = a as ImageAttachment;
+                        const src = ia.cloudinary_url || ia.dataUrl;
+                        return (
+                          <div
+                            key={`img-${idx}`}
+                            className="w-full rounded-lg border border-neutral-800 bg-neutral-950 overflow-hidden"
+                          >
+                            {/* eslint-disable-next-line @next/next/no-img-element */}
+                            <img src={src} alt="generada" className="w-full max-h-[420px] object-contain bg-black/40" />
+                            <div className="flex flex-wrap items-center gap-2 px-2 py-1.5 text-[11px]">
+                              <a
+                                href={ia.dataUrl}
+                                download={`ai-image-${m.id}-${idx}.${(ia.mimeType.split('/')[1] || 'png').replace('+xml', '')}`}
+                                className="inline-flex items-center gap-1 text-neutral-300 hover:text-amber-400"
+                              >
+                                <Download className="h-3 w-3" /> descargar
+                              </a>
+                              {ia.cloudinary_url ? (
+                                <>
+                                  <span className="inline-flex items-center gap-1 text-emerald-400">
+                                    <CheckCircle2 className="h-3 w-3" /> en Cloudinary
+                                  </span>
+                                  <button
+                                    type="button"
+                                    onClick={() => { void navigator.clipboard.writeText(ia.cloudinary_url!); }}
+                                    className="inline-flex items-center gap-1 text-neutral-300 hover:text-amber-400"
+                                  >
+                                    <Copy className="h-3 w-3" /> copiar URL
+                                  </button>
+                                </>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={ia.uploading}
+                                  onClick={() => void uploadToCloudinary(ia, m.id, idx)}
+                                  className="inline-flex items-center gap-1 text-neutral-300 hover:text-amber-400 disabled:opacity-50"
+                                >
+                                  {ia.uploading ? (
+                                    <Loader2 className="h-3 w-3 animate-spin" />
+                                  ) : (
+                                    <UploadCloud className="h-3 w-3" />
+                                  )}
+                                  {ia.uploading ? 'subiendo…' : 'guardar en Cloudinary'}
+                                </button>
+                              )}
+                            </div>
+                          </div>
+                        );
+                      })}
                     </div>
                   )}
                   {m.content}
@@ -477,7 +778,30 @@ export default function AsistenteIaPage() {
           </div>
 
           {/* COMPOSER */}
-          <form onSubmit={handleSend} className="mt-3 border-t border-neutral-800 pt-3 space-y-2">
+          <form
+            onSubmit={(e) => {
+              e.preventDefault();
+              if (imageMode) void handleGenerateImage();
+              else void handleSend();
+            }}
+            className="mt-3 border-t border-neutral-800 pt-3 space-y-2"
+          >
+            {/* Mini barra de salud del modelo activo */}
+            {(() => {
+              const s = modelId ? statsByModel.get(modelId) : null;
+              if (!s) return null;
+              const tone = s.health === 'working' ? 'text-emerald-400' : s.health === 'flaky' ? 'text-amber-400' : s.health === 'down' ? 'text-red-400' : 'text-neutral-500';
+              const dot = s.health === 'working' ? '🟢' : s.health === 'flaky' ? '🟡' : s.health === 'down' ? '🔴' : '⚪';
+              return (
+                <div className="flex items-center justify-between text-[10px] text-neutral-500 px-1">
+                  <span>
+                    Modelo activo: <code className="text-neutral-400">{modelId}</code>{' '}
+                    <span className={tone}>· {dot} {(s.avg_latency_ms / 1000).toFixed(1)} s media · {Math.round(s.success_rate * 100)}% OK</span>
+                    <span className="text-neutral-600"> · {s.calls} calls</span>
+                  </span>
+                </div>
+              );
+            })()}
             {attachments.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {attachments.map((a) => (
@@ -498,39 +822,58 @@ export default function AsistenteIaPage() {
                 ))}
               </div>
             )}
-            <div className="flex items-center gap-2">
-              <input
-                value={attachmentDraft}
-                onChange={(e) => setAttachmentDraft(e.target.value)}
-                placeholder="Ruta del repo (ej. src/lib/openrouter.ts)"
-                className="flex-1 rounded-full border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-xs"
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addAttachment();
-                  }
-                }}
-              />
+            {!imageMode && (
+              <div className="flex items-center gap-2">
+                <input
+                  value={attachmentDraft}
+                  onChange={(e) => setAttachmentDraft(e.target.value)}
+                  placeholder="Ruta del repo (ej. src/lib/openrouter.ts)"
+                  className="flex-1 rounded-full border border-neutral-800 bg-neutral-950 px-3 py-1.5 text-xs"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') {
+                      e.preventDefault();
+                      addAttachment();
+                    }
+                  }}
+                />
+                <button
+                  type="button"
+                  onClick={addAttachment}
+                  className="inline-flex items-center gap-1 rounded-full border border-neutral-700 hover:border-amber-500/50 px-3 py-1.5 text-xs text-neutral-300"
+                  title="Adjuntar archivo del repo (whitelist: src/, scripts/, docs/, public/)"
+                >
+                  <Paperclip className="h-3 w-3" /> Adjuntar
+                </button>
+              </div>
+            )}
+            <div className="flex items-end gap-2">
               <button
                 type="button"
-                onClick={addAttachment}
-                className="inline-flex items-center gap-1 rounded-full border border-neutral-700 hover:border-amber-500/50 px-3 py-1.5 text-xs text-neutral-300"
-                title="Adjuntar archivo del repo (whitelist: src/, scripts/, docs/, public/)"
+                onClick={() => setImageMode((v) => !v)}
+                className={`inline-flex items-center justify-center rounded-full border px-3 py-2.5 text-xs ${
+                  imageMode
+                    ? 'border-fuchsia-500/50 bg-fuchsia-500/10 text-fuchsia-300'
+                    : 'border-neutral-700 hover:border-fuchsia-500/40 text-neutral-300'
+                }`}
+                title="Alternar modo imagen (genera imágenes en vez de texto)"
               >
-                <Paperclip className="h-3 w-3" /> Adjuntar
+                <ImageIcon className="h-4 w-4" />
               </button>
-            </div>
-            <div className="flex items-end gap-2">
               <textarea
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
-                placeholder="Escribe tu mensaje… (Shift+Enter = nueva línea)"
+                placeholder={
+                  imageMode
+                    ? '🖼️ Describe la imagen que quieres generar… (Shift+Enter = nueva línea)'
+                    : 'Escribe tu mensaje… (Shift+Enter = nueva línea)'
+                }
                 rows={2}
                 className="flex-1 rounded-2xl border border-neutral-800 bg-neutral-950 px-4 py-2.5 text-sm resize-none"
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' && !e.shiftKey) {
                     e.preventDefault();
-                    void handleSend();
+                    if (imageMode) void handleGenerateImage();
+                    else void handleSend();
                   }
                 }}
                 disabled={sending}
@@ -538,8 +881,12 @@ export default function AsistenteIaPage() {
               <button
                 type="submit"
                 disabled={sending || !input.trim()}
-                className="inline-flex items-center justify-center rounded-full bg-amber-500 hover:bg-amber-400 text-neutral-950 px-4 py-2.5 disabled:opacity-50"
-                title="Enviar (Enter)"
+                className={`inline-flex items-center justify-center rounded-full px-4 py-2.5 disabled:opacity-50 ${
+                  imageMode
+                    ? 'bg-fuchsia-500 hover:bg-fuchsia-400 text-neutral-950'
+                    : 'bg-amber-500 hover:bg-amber-400 text-neutral-950'
+                }`}
+                title={imageMode ? 'Generar imagen (Enter)' : 'Enviar (Enter)'}
               >
                 {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
               </button>
@@ -607,11 +954,28 @@ export default function AsistenteIaPage() {
                   placeholder="Buscar modelo…"
                   className="w-full rounded-lg border border-neutral-800 bg-neutral-900 px-2 py-1.5 text-xs"
                 />
-                <div className="flex items-center justify-between text-xs">
-                  <label className="inline-flex items-center gap-1.5">
-                    <input type="checkbox" checked={showOnlyFree} onChange={(e) => setShowOnlyFree(e.target.checked)} />
-                    Solo gratis
-                  </label>
+                <div className="flex items-center justify-between text-xs gap-2">
+                  <div className="inline-flex rounded-full border border-neutral-800 overflow-hidden">
+                    {(['free', 'free+cheap', 'all'] as const).map((opt) => (
+                      <button
+                        key={opt}
+                        type="button"
+                        onClick={() => setModelFilter(opt)}
+                        className={`px-2 py-1 text-[10px] ${
+                          modelFilter === opt ? 'bg-amber-500/15 text-amber-300' : 'text-neutral-400 hover:bg-neutral-900'
+                        }`}
+                        title={
+                          opt === 'free'
+                            ? 'Solo modelos gratuitos'
+                            : opt === 'free+cheap'
+                              ? 'Gratis + de pago barato (≤ $0.5/1M tokens)'
+                              : 'Todos los modelos'
+                        }
+                      >
+                        {opt === 'free' ? 'Gratis' : opt === 'free+cheap' ? '+Pago barato' : 'Todos'}
+                      </button>
+                    ))}
+                  </div>
                   <button
                     type="button"
                     onClick={() => void loadModels(true)}
@@ -631,11 +995,78 @@ export default function AsistenteIaPage() {
                 )}
 
                 {filteredFree.length > 0 && (
-                  <ModelGroup label="Gratuitos" items={filteredFree} active={modelId} onPick={(id) => { setModelId(id); setShowModels(false); }} />
+                  <ModelGroup
+                    label="Gratuitos"
+                    items={filteredFree}
+                    active={modelId}
+                    statsByModel={statsByModel}
+                    onPick={(id) => { setModelId(id); setShowModels(false); }}
+                  />
                 )}
-                {!showOnlyFree && filteredPaid.length > 0 && (
-                  <ModelGroup label="De pago" items={filteredPaid} active={modelId} onPick={(id) => { setModelId(id); setShowModels(false); }} />
+                {modelFilter !== 'free' && filteredPaid.length > 0 && (
+                  <ModelGroup
+                    label="De pago"
+                    items={filteredPaid}
+                    active={modelId}
+                    statsByModel={statsByModel}
+                    onPick={(id) => {
+                      const m = filteredPaid.find((x) => x.id === id);
+                      if (m) {
+                        const max = Math.max(m.pricing.prompt, m.pricing.completion);
+                        const pricePerMillion = (max * 1_000_000).toFixed(3);
+                        const ok = confirm(
+                          `Vas a usar un modelo de pago.\n\n` +
+                            `${m.name}\n` +
+                            `Costo aprox.: $${pricePerMillion} USD por 1M tokens\n\n` +
+                            `¿Confirmas que quieres seleccionarlo?`,
+                        );
+                        if (!ok) return;
+                      }
+                      setModelId(id);
+                      setShowModels(false);
+                    }}
+                  />
                 )}
+              </div>
+            )}
+          </div>
+
+          <div className="space-y-2">
+            <label className="flex items-center gap-2 text-xs text-neutral-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={allowPaid}
+                onChange={(e) => setAllowPaid(e.target.checked)}
+              />
+              <span>Permitir <strong>fallback de pago</strong></span>
+            </label>
+            <p className="text-[10px] text-neutral-500 -mt-1.5 pl-5 leading-snug">
+              Si todos los modelos gratis fallan, se intenta con modelos de pago baratos (≤ $0.5/1M tokens).
+            </p>
+            <label className="flex items-center gap-2 text-xs text-neutral-300 cursor-pointer">
+              <input
+                type="checkbox"
+                checked={autoSaveCloudinary}
+                onChange={(e) => setAutoSaveCloudinary(e.target.checked)}
+              />
+              <span>Subir imágenes a <strong>Cloudinary</strong> automáticamente</span>
+            </label>
+          </div>
+
+          <div>
+            <button
+              type="button"
+              onClick={() => setShowStats((v) => !v)}
+              className="w-full text-left text-xs font-semibold uppercase tracking-wider text-neutral-400 hover:text-amber-300 inline-flex items-center justify-between"
+            >
+              <span className="inline-flex items-center gap-1.5">
+                <Wand2 className="h-3.5 w-3.5 text-amber-400" /> Rendimiento de modelos
+              </span>
+              <span className="text-[10px] text-neutral-500">{showStats ? 'ocultar' : 'mostrar'}</span>
+            </button>
+            {showStats && (
+              <div className="mt-2 rounded-xl border border-neutral-800 bg-neutral-950 p-2">
+                <ModelPerformanceChart onStatsChange={setModelStats} />
               </div>
             )}
           </div>
@@ -660,33 +1091,54 @@ function ModelGroup({
   label,
   items,
   active,
+  statsByModel,
   onPick,
 }: {
   label: string;
   items: ModelInfo[];
   active: string;
+  statsByModel: Map<string, ModelStats>;
   onPick: (id: string) => void;
 }) {
+  const healthEmoji: Record<ModelHealth, string> = {
+    working: '✅',
+    flaky: '⚠️',
+    down: '🛑',
+    unknown: '·',
+  };
   return (
     <div>
       <p className="text-[10px] uppercase tracking-wide text-neutral-500 px-1 pt-1">{label}</p>
       <div className="space-y-0.5">
-        {items.map((m) => (
-          <button
-            key={m.id}
-            type="button"
-            onClick={() => onPick(m.id)}
-            className={`w-full text-left rounded-md px-2 py-1.5 text-[11px] border ${
-              active === m.id ? 'border-amber-500/40 bg-amber-500/5' : 'border-transparent hover:bg-neutral-900'
-            }`}
-          >
-            <p className="text-neutral-200 truncate flex items-center gap-1">
-              {m.isFree && <Zap className="h-2.5 w-2.5 text-emerald-400" />}
-              {m.name}
-            </p>
-            <p className="text-[10px] text-neutral-500 truncate">{m.id}</p>
-          </button>
-        ))}
+        {items.map((m) => {
+          const s = statsByModel.get(m.id);
+          const health: ModelHealth = s?.health ?? 'unknown';
+          return (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => onPick(m.id)}
+              className={`w-full text-left rounded-md px-2 py-1.5 text-[11px] border ${
+                active === m.id ? 'border-amber-500/40 bg-amber-500/5' : 'border-transparent hover:bg-neutral-900'
+              }`}
+              title={
+                s
+                  ? `${Math.round(s.success_rate * 100)}% éxito · ${s.avg_latency_ms} ms · ${s.calls} calls`
+                  : 'Sin datos de uso aún'
+              }
+            >
+              <p className="text-neutral-200 truncate flex items-center gap-1">
+                <span aria-hidden>{healthEmoji[health]}</span>
+                {m.isFree && <Zap className="h-2.5 w-2.5 text-emerald-400" />}
+                {m.name}
+                {s && s.calls > 0 && (
+                  <span className="ml-auto text-[9px] text-neutral-500">{s.avg_latency_ms} ms</span>
+                )}
+              </p>
+              <p className="text-[10px] text-neutral-500 truncate">{m.id}</p>
+            </button>
+          );
+        })}
       </div>
     </div>
   );

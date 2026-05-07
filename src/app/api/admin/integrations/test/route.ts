@@ -8,6 +8,13 @@ import { decryptCredentials } from '@/lib/integrationsCrypto';
 import { detectMpMode, getMpTokenPrefix } from '@/lib/mercadopago';
 import { getOpenRouterCredentials } from '@/lib/openrouter';
 import { getResendCredentials } from '@/lib/resendCredentials';
+import {
+  runOpenRouterChecks,
+  runResendChecks,
+  runSerpApiChecks,
+  runSerperChecks,
+  runWhatsAppChecks,
+} from '@/lib/integrationsTestRunners';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -846,7 +853,6 @@ async function testWhatsApp(): Promise<NextResponse> {
   const accessToken = (creds.access_token ?? '').trim();
   const phoneNumberId = (creds.phone_number_id ?? '').trim();
   const businessAccountId = (creds.business_account_id ?? '').trim();
-  const checks: DiagnosticCheck[] = [];
 
   if (!accessToken && !phoneNumberId && !businessAccountId) {
     return NextResponse.json({
@@ -861,61 +867,33 @@ async function testWhatsApp(): Promise<NextResponse> {
   }
 
   if (!accessToken) {
-    checks.push({ name: 'access_token', ok: false, detail: 'Falta token de Cloud API.' });
-    return NextResponse.json({ ok: false, provider: 'whatsapp', error: 'Falta access_token de WhatsApp Business.', checks });
-    }
-
-  if (!phoneNumberId) {
-    checks.push({ name: 'phone_number_id', ok: false, detail: 'Falta el ID del número de teléfono.' });
-    return NextResponse.json({ ok: false, provider: 'whatsapp', error: 'Falta phone_number_id para validar WhatsApp Business.', checks });
-  }
-
-  try {
-    const res = await fetch(
-      `https://graph.facebook.com/v20.0/${encodeURIComponent(phoneNumberId)}?fields=display_phone_number,verified_name,quality_rating`,
-      {
-        headers: { Authorization: `Bearer ${accessToken}` },
-        cache: 'no-store',
-      },
-    );
-    const json = (await res.json().catch(() => ({}))) as {
-      display_phone_number?: string;
-      verified_name?: string;
-      quality_rating?: string;
-      error?: { message?: string };
-    };
-    if (!res.ok) {
-      checks.push({ name: 'WhatsApp phone number', ok: false, detail: json.error?.message ?? `HTTP ${res.status}` });
-      return NextResponse.json({
-        ok: false,
-        provider: 'whatsapp',
-        error: `WhatsApp Business rechazó las credenciales: ${json.error?.message ?? `HTTP ${res.status}`}.`,
-        checks,
-      });
-    }
-    checks.push({
-      name: 'WhatsApp phone number',
-      ok: true,
-      detail: `Número accesible: ${json.display_phone_number ?? phoneNumberId}${json.verified_name ? ` · ${json.verified_name}` : ''}${json.quality_rating ? ` · quality ${json.quality_rating}` : ''}.`,
-    });
-    if (businessAccountId) {
-      checks.push({ name: 'business_account_id', ok: true, detail: `WABA configurado: ${businessAccountId}.` });
-    }
-    return NextResponse.json({ ok: checks.every((check) => check.ok), provider: 'whatsapp', checks });
-  } catch (err) {
-    checks.push({ name: 'WhatsApp phone number', ok: false, detail: err instanceof Error ? err.message : 'Error de red.' });
     return NextResponse.json({
       ok: false,
       provider: 'whatsapp',
-      error: `Error de red al contactar WhatsApp Business: ${err instanceof Error ? err.message : String(err)}`,
-      checks,
+      error: 'Falta access_token de WhatsApp Business.',
+      checks: [{ name: 'access_token', ok: false, detail: 'Falta token de Cloud API.' }],
     });
   }
+
+  if (!phoneNumberId) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'whatsapp',
+      error: 'Falta phone_number_id para validar WhatsApp Business.',
+      checks: [{ name: 'phone_number_id', ok: false, detail: 'Falta el ID del número de teléfono.' }],
+    });
+  }
+
+  const result = await runWhatsAppChecks({
+    access_token: accessToken,
+    phone_number_id: phoneNumberId,
+    business_account_id: businessAccountId || undefined,
+  });
+  return NextResponse.json(result);
 }
 
 async function testResend(): Promise<NextResponse> {
   const creds = await getResendCredentials();
-  const checks: DiagnosticCheck[] = [];
 
   if (!creds?.apiKey) {
     return NextResponse.json({
@@ -927,114 +905,12 @@ async function testResend(): Promise<NextResponse> {
     });
   }
 
-  if (!/^re_/.test(creds.apiKey)) {
-    checks.push({
-      name: 'api_key',
-      ok: false,
-      detail: 'Las API keys de Resend empiezan por "re_". Verifica que copiaste la clave correcta.',
-    });
-  } else {
-    checks.push({ name: 'api_key', ok: true, detail: `Formato OK (origen: ${creds.source}).` });
-  }
-
-  // Validar formato del campo "from" si está definido. Acepta "Nombre <dir@dominio>" o "dir@dominio".
-  if (creds.from) {
-    const fromAddrMatch = creds.from.match(/<([^>]+)>\s*$/);
-    const addr = (fromAddrMatch ? fromAddrMatch[1] : creds.from).trim();
-    const isEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(addr);
-    checks.push({
-      name: 'from',
-      ok: isEmail,
-      detail: isEmail
-        ? `Remitente: ${creds.from}.`
-        : `Formato de "from" inválido: "${creds.from}". Usa "Nombre <correo@dominio>" o "correo@dominio".`,
-    });
-  } else {
-    checks.push({
-      name: 'from',
-      ok: false,
-      detail: 'Falta el remitente. Define RESEND_FROM o el campo "from" en la integración.',
-    });
-  }
-
-  try {
-    const res = await fetch('https://api.resend.com/domains', {
-      headers: {
-        Authorization: `Bearer ${creds.apiKey}`,
-        Accept: 'application/json',
-      },
-      cache: 'no-store',
-    });
-    const json = (await res.json().catch(() => ({}))) as {
-      data?: Array<{ id?: string; name?: string; status?: string; region?: string }>;
-      message?: string;
-      name?: string;
-    };
-    if (!res.ok) {
-      const msg = json.message ?? json.name ?? `HTTP ${res.status}`;
-      checks.push({ name: 'Resend /domains', ok: false, detail: msg });
-      return NextResponse.json({
-        ok: false,
-        provider: 'resend',
-        error: `Resend rechazó la API key: ${msg}.`,
-        checks,
-      });
-    }
-    const domains = Array.isArray(json.data) ? json.data : [];
-    const verified = domains.filter((d) => d.status === 'verified');
-    const detail =
-      domains.length === 0
-        ? 'Key válida, pero no hay dominios. Verifica un dominio en resend.com/domains para enviar correo en producción.'
-        : `${domains.length} dominio(s) · ${verified.length} verificado(s) (${verified.map((d) => d.name).filter(Boolean).join(', ') || 'ninguno verificado aún'}).`;
-    checks.push({ name: 'Resend /domains', ok: true, detail });
-
-    // Si hay un "from" configurado, comprobar que el dominio del from esté verificado.
-    if (creds.from) {
-      const fromAddrMatch = creds.from.match(/<([^>]+)>\s*$/);
-      const addr = (fromAddrMatch ? fromAddrMatch[1] : creds.from).trim();
-      const fromDomain = addr.split('@')[1]?.toLowerCase().trim();
-      if (fromDomain) {
-        const matched = domains.find((d) => (d.name ?? '').toLowerCase() === fromDomain);
-        if (!matched) {
-          checks.push({
-            name: 'Dominio del from',
-            ok: false,
-            detail: `El dominio "${fromDomain}" no aparece en tu cuenta de Resend. Agrégalo en resend.com/domains o cambia el remitente.`,
-          });
-        } else if (matched.status !== 'verified') {
-          checks.push({
-            name: 'Dominio del from',
-            ok: false,
-            detail: `El dominio "${fromDomain}" existe pero su estado es "${matched.status ?? 'desconocido'}". Termina la verificación DNS para enviar correos.`,
-          });
-        } else {
-          checks.push({
-            name: 'Dominio del from',
-            ok: true,
-            detail: `Dominio "${fromDomain}" verificado${matched.region ? ` en ${matched.region}` : ''}.`,
-          });
-        }
-      }
-    }
-
-    return NextResponse.json({
-      ok: checks.every((check) => check.ok),
-      provider: 'resend',
-      checks,
-    });
-  } catch (err) {
-    checks.push({
-      name: 'Resend /domains',
-      ok: false,
-      detail: err instanceof Error ? err.message : 'Error de red.',
-    });
-    return NextResponse.json({
-      ok: false,
-      provider: 'resend',
-      error: `Error de red al contactar Resend: ${err instanceof Error ? err.message : String(err)}`,
-      checks,
-    });
-  }
+  const result = await runResendChecks({
+    apiKey: creds.apiKey,
+    from: creds.from ?? undefined,
+    source: creds.source,
+  });
+  return NextResponse.json(result);
 }
 
 async function testSerper(): Promise<NextResponse> {
@@ -1042,7 +918,6 @@ async function testSerper(): Promise<NextResponse> {
   const envKey = (process.env.SERPER_API_KEY ?? process.env.SERPER_KEY ?? '').trim();
   const apiKey = envKey || (creds.api_key ?? '').trim();
   const source = envKey ? 'env' : creds.api_key ? 'db' : null;
-  const checks: DiagnosticCheck[] = [];
 
   if (!apiKey) {
     return NextResponse.json({
@@ -1054,65 +929,8 @@ async function testSerper(): Promise<NextResponse> {
     });
   }
 
-  if (!/^[a-f0-9]{40,}$/i.test(apiKey)) {
-    checks.push({
-      name: 'api_key',
-      ok: false,
-      detail: 'La API key de Serper.dev es hexadecimal (≥40 caracteres). Verifica que copiaste la clave completa.',
-    });
-  } else {
-    checks.push({ name: 'api_key', ok: true, detail: `Formato OK (origen: ${source ?? 'env'}).` });
-  }
-
-  try {
-    const res = await fetch('https://google.serper.dev/search', {
-      method: 'POST',
-      headers: { 'X-API-KEY': apiKey, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ q: 'soluciones fabrick', num: 1, gl: 'cl', hl: 'es' }),
-      cache: 'no-store',
-    });
-    const json = (await res.json().catch(() => ({}))) as {
-      organic?: Array<unknown>;
-      message?: string;
-      statusCode?: number;
-      credits?: number;
-    };
-    if (!res.ok) {
-      const msg = json.message ?? `HTTP ${res.status}`;
-      checks.push({ name: 'Serper /search', ok: false, detail: msg });
-      return NextResponse.json({
-        ok: false,
-        provider: 'serper',
-        error: `Serper.dev rechazó la API key: ${msg}.`,
-        checks,
-      });
-    }
-    const organicCount = Array.isArray(json.organic) ? json.organic.length : 0;
-    const credits = res.headers.get('x-ratelimit-remaining') ?? (typeof json.credits === 'number' ? String(json.credits) : null);
-    const creditsTxt = credits ? ` · créditos restantes: ${credits}` : '';
-    checks.push({
-      name: 'Serper /search',
-      ok: true,
-      detail: `Búsqueda OK (${organicCount} resultado${organicCount === 1 ? '' : 's'} orgánico${organicCount === 1 ? '' : 's'})${creditsTxt}.`,
-    });
-    return NextResponse.json({
-      ok: checks.every((check) => check.ok),
-      provider: 'serper',
-      checks,
-    });
-  } catch (err) {
-    checks.push({
-      name: 'Serper /search',
-      ok: false,
-      detail: err instanceof Error ? err.message : 'Error de red.',
-    });
-    return NextResponse.json({
-      ok: false,
-      provider: 'serper',
-      error: `Error de red al contactar Serper.dev: ${err instanceof Error ? err.message : String(err)}`,
-      checks,
-    });
-  }
+  const result = await runSerperChecks({ apiKey, source: source ?? 'env' });
+  return NextResponse.json(result);
 }
 
 async function testSerpApi(): Promise<NextResponse> {
@@ -1120,7 +938,6 @@ async function testSerpApi(): Promise<NextResponse> {
   const envKey = (process.env.SERPAPI_KEY ?? process.env.SERPAPI_API_KEY ?? '').trim();
   const apiKey = envKey || (creds.api_key ?? '').trim();
   const source = envKey ? 'env' : creds.api_key ? 'db' : null;
-  const checks: DiagnosticCheck[] = [];
 
   if (!apiKey) {
     return NextResponse.json({
@@ -1132,70 +949,12 @@ async function testSerpApi(): Promise<NextResponse> {
     });
   }
 
-  checks.push({ name: 'api_key', ok: true, detail: `Presente (origen: ${source ?? 'env'}).` });
-
-  try {
-    // /account no consume búsqueda y devuelve plan_name, searches_left, etc.
-    const url = `https://serpapi.com/account?api_key=${encodeURIComponent(apiKey)}`;
-    const res = await fetch(url, { cache: 'no-store' });
-    const json = (await res.json().catch(() => ({}))) as {
-      account_email?: string;
-      plan_name?: string;
-      plan_id?: string;
-      searches_left?: number;
-      total_searches_left?: number;
-      this_month_usage?: number;
-      error?: string;
-    };
-    if (!res.ok || json.error) {
-      const msg = json.error ?? `HTTP ${res.status}`;
-      checks.push({ name: 'SerpAPI /account', ok: false, detail: msg });
-      return NextResponse.json({
-        ok: false,
-        provider: 'serpapi',
-        error: `SerpAPI rechazó la API key: ${msg}.`,
-        checks,
-      });
-    }
-    const left =
-      typeof json.total_searches_left === 'number'
-        ? json.total_searches_left
-        : typeof json.searches_left === 'number'
-          ? json.searches_left
-          : null;
-    const detailParts: string[] = [];
-    if (json.account_email) detailParts.push(json.account_email);
-    if (json.plan_name) detailParts.push(`plan ${json.plan_name}`);
-    if (left != null) detailParts.push(`${left} búsqueda(s) restantes`);
-    if (typeof json.this_month_usage === 'number') detailParts.push(`uso mes: ${json.this_month_usage}`);
-    checks.push({
-      name: 'SerpAPI /account',
-      ok: true,
-      detail: detailParts.length > 0 ? detailParts.join(' · ') : 'Cuenta accesible.',
-    });
-    return NextResponse.json({
-      ok: checks.every((check) => check.ok),
-      provider: 'serpapi',
-      checks,
-    });
-  } catch (err) {
-    checks.push({
-      name: 'SerpAPI /account',
-      ok: false,
-      detail: err instanceof Error ? err.message : 'Error de red.',
-    });
-    return NextResponse.json({
-      ok: false,
-      provider: 'serpapi',
-      error: `Error de red al contactar SerpAPI: ${err instanceof Error ? err.message : String(err)}`,
-      checks,
-    });
-  }
+  const result = await runSerpApiChecks({ apiKey, source: source ?? 'env' });
+  return NextResponse.json(result);
 }
 
 async function testOpenRouter(): Promise<NextResponse> {
   const creds = await getOpenRouterCredentials();
-  const checks: DiagnosticCheck[] = [];
 
   if (!creds?.apiKey) {
     return NextResponse.json({
@@ -1207,73 +966,13 @@ async function testOpenRouter(): Promise<NextResponse> {
     });
   }
 
-  if (!/^sk-or-/.test(creds.apiKey)) {
-    checks.push({
-      name: 'api_key',
-      ok: false,
-      detail: 'Las API keys de OpenRouter empiezan por "sk-or-". Verifica que copiaste la clave correcta.',
-    });
-  } else {
-    checks.push({ name: 'api_key', ok: true, detail: `Formato OK (origen: ${creds.source}).` });
-  }
-
-  const headers: Record<string, string> = {
-    Authorization: `Bearer ${creds.apiKey}`,
-    'X-Title': creds.appName,
-  };
-  if (creds.siteUrl) headers['HTTP-Referer'] = creds.siteUrl;
-
-  try {
-    const res = await fetch('https://openrouter.ai/api/v1/auth/key', {
-      headers,
-      cache: 'no-store',
-    });
-    const json = (await res.json().catch(() => ({}))) as {
-      data?: {
-        label?: string;
-        usage?: number;
-        limit?: number | null;
-        is_free_tier?: boolean;
-      };
-      error?: { message?: string };
-    };
-    if (!res.ok) {
-      const msg = json.error?.message ?? `HTTP ${res.status}`;
-      checks.push({ name: 'OpenRouter /auth/key', ok: false, detail: msg });
-      return NextResponse.json({
-        ok: false,
-        provider: 'openrouter',
-        error: `OpenRouter rechazó la API key: ${msg}.`,
-        checks,
-      });
-    }
-    const info = json.data ?? {};
-    const usage = typeof info.usage === 'number' ? info.usage.toFixed(4) : '0.0000';
-    const limit = info.limit == null ? 'sin límite' : Number(info.limit).toFixed(4);
-    const tier = info.is_free_tier ? ' · free tier' : '';
-    checks.push({
-      name: 'OpenRouter /auth/key',
-      ok: true,
-      detail: `Key válida (${info.label ?? 'sin etiqueta'}) · usado $${usage} / $${limit}${tier}.`,
-    });
-    return NextResponse.json({
-      ok: checks.every((check) => check.ok),
-      provider: 'openrouter',
-      checks,
-    });
-  } catch (err) {
-    checks.push({
-      name: 'OpenRouter /auth/key',
-      ok: false,
-      detail: err instanceof Error ? err.message : 'Error de red.',
-    });
-    return NextResponse.json({
-      ok: false,
-      provider: 'openrouter',
-      error: `Error de red al contactar OpenRouter: ${err instanceof Error ? err.message : String(err)}`,
-      checks,
-    });
-  }
+  const result = await runOpenRouterChecks({
+    apiKey: creds.apiKey,
+    source: creds.source,
+    appName: creds.appName,
+    siteUrl: creds.siteUrl ?? undefined,
+  });
+  return NextResponse.json(result);
 }
 
 export async function GET(request: NextRequest) {

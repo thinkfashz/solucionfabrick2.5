@@ -512,6 +512,30 @@ body {
   animation: route-cinematic-out 0.34s cubic-bezier(0.55, 0, 1, 0.45) forwards;
 }
 
+/* ─────────────────────────────────────────────────────────────────
+ * Defensive: stuck-overlay safety net.
+ *
+ * Si un overlay "fixed" alguna vez queda con `opacity: 0` inline pero
+ * sigue interactuando con punteros, el usuario percibe la pantalla
+ * como en blanco / bloqueada — pero al hacer scroll ve que el
+ * contenido real "se mueve detrás" porque es transparente. Esto era
+ * el síntoma reportado en /. PageTransition y SplashScreen ya hacen
+ * `pointer-events: none` cuando se ocultan, pero esta regla es la
+ * red de seguridad final: cualquier cosa con `position: fixed` y
+ * `opacity: 0` inline no podrá capturar input bajo ninguna
+ * circunstancia.
+ *
+ * Cubrimos también la clase Tailwind `.fixed` para overlays que
+ * llegan a `opacity: 0` vía animación de framer-motion (que escribe
+ * la opacidad en el `style` inline).
+ * ───────────────────────────────────────────────────────────────── */
+[style*="position: fixed"][style*="opacity: 0"],
+[style*="position:fixed"][style*="opacity:0"],
+.fixed[style*="opacity: 0"],
+.fixed[style*="opacity:0"] {
+  pointer-events: none !important;
+}
+
 /* Theme tokens are defined at the top of this file.
    The legacy `:root` / `.dark` block that lived here has been removed so
    the new palette (light = #f8f5f0/#1a1a1a/#b8860b · dark = #0a0a0a/#fff/#c9a96e)

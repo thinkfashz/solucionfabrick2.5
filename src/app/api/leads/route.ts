@@ -163,8 +163,15 @@ export async function POST(request: Request) {
   let dbStored = true;
   try {
     const { error } = await insforge.database.from('leads').insert([payload]);
-    if (error) dbStored = false; // table puede no existir aún — degradamos.
-  } catch {
+    if (error) {
+      // La tabla `leads` puede aún no existir — degradamos sin romper el form.
+      // Logueamos el error real para diagnosticar conexiones/permisos vs.
+      // simplemente "tabla inexistente".
+      console.error('[leads] Database insert failed:', error);
+      dbStored = false;
+    }
+  } catch (err) {
+    console.error('[leads] Database insert exception:', err);
     dbStored = false;
   }
 

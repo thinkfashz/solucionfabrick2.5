@@ -23,6 +23,7 @@ const FabrickLogo3DInner = nextDynamic(() => import('./FabrickLogo3D'), {
   loading: () => (
     <div
       role="status"
+      aria-live="polite"
       aria-label="Cargando logo 3D"
       style={{ width: '100%', height: '100%' }}
     />

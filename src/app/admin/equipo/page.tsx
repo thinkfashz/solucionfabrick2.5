@@ -37,10 +37,8 @@ export default function EquipoPage() {
 
   useEffect(() => {
     checkAccess();
-  }, []);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  useEffect(() => {
-    checkAccess();
+    // checkAccess is stable for the component's lifetime; intentionally empty deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   async function checkAccess() {

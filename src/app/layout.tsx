@@ -9,7 +9,7 @@ import { AuthProvider } from '@/context/AuthContext';
 import { CartProvider } from '@/context/CartContext';
 import { QuoteCartProvider } from '@/context/QuoteCartContext';
 import { SiteConfigProvider } from '@/context/SiteConfigContext';
-import WhatsAppButton from '@/components/WhatsAppButton';
+import AIAgentChat from '@/components/AIAgentChat';
 import ServiceWorkerRegister from '@/components/ServiceWorkerRegister';
 import Analytics from '@/components/Analytics';
 import CmsRealtimeListener from '@/components/CmsRealtimeListener';
@@ -133,7 +133,11 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   {children}
                   <ServiceWorkerRegister />
                   <InstallAppPrompt />
-                  <WhatsAppButton />
+                  {/* AIAgentChat reemplaza al botón flotante de WhatsApp en
+                      las páginas públicas. El visitante puede igualmente
+                      saltar a WhatsApp desde el botón "Hablar con humano"
+                      dentro del propio chat o desde los CTAs del Hero. */}
+                  <AIAgentChat />
                   <Analytics />
                   <CmsRealtimeListener />
                 </QuoteCartProvider>

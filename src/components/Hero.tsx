@@ -13,11 +13,13 @@ import {
 import { buildWhatsAppLink } from '@/lib/whatsapp';
 import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 
-// Casa en Metalcon en construcción — estructura real, perfiles galvanizados
-// a la vista. Imagen panorámica que rinde bien en mobile (object-cover center)
-// y desktop sin recortar la silueta de la vivienda.
+// Casa en Metalcon en construcción — estructura de acero galvanizado en obra
+// gruesa, perfectamente reconocible como steel-frame residencial. Imagen
+// panorámica que rinde bien en mobile (object-cover) y desktop sin recortar
+// la silueta. Mantenemos un overlay más liviano para que la estructura sea
+// claramente visible (pedido del cliente: "que se vea la casa en Metalcón").
 const DEFAULT_HERO_IMAGE =
-  'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?q=85&w=1920&auto=format&fit=crop&crop=center';
+  'https://images.unsplash.com/photo-1503387762-592deb58ef4e?q=85&w=1920&auto=format&fit=crop&crop=center';
 
 const STATS = [
   { n: '9',    label: 'Años de oficio',         Icon: TrendingUp   },
@@ -26,11 +28,11 @@ const STATS = [
   { n: '24h',  label: 'Te respondemos',         Icon: Clock        },
 ] as const;
 
-const DEFAULT_HEADLINE = 'Tu casa\nla construimos\ncomo si fuera nuestra.';
+const DEFAULT_HEADLINE = 'Tu obra,\nen buenas\nmanos.';
 const DEFAULT_SUBTITLE =
-  'Somos una familia de Linares que lleva 9 años levantando hogares en Metalcon. Trabajamos nosotros mismos, te explicamos cada paso y nos quedamos hasta que tú te sientas en casa. Sin apuros, sin letra chica.';
+  'Construimos tu casa en Metalcon — la inversión más segura que existe hoy. Estructura de acero galvanizado que no se pudre como la madera, no se triza como el hormigón y casi no requiere mantención. Levantamos hogares que duran generaciones, con anticipo claro y sin sorpresas.';
 const CTA_MSG =
-  'Hola Fabrick, me gustaría conversar con ustedes sobre mi proyecto. Cuéntenme cómo trabajan y cuándo podríamos juntarnos.';
+  'Hola Fabrick, vi su página y quiero conversar sobre mi proyecto. ¿Cuándo podríamos juntarnos para una consulta?';
 
 export default function Hero({
   coverUrl,
@@ -90,15 +92,16 @@ export default function Hero({
           <img
             src={heroImage}
             alt="Casa en Metalcon en construcción · Soluciones Fabrick · Linares"
-            className="h-full w-full object-cover object-center opacity-[0.55] dark:opacity-[0.45]"
+            className="h-full w-full object-cover object-center opacity-[0.78] dark:opacity-[0.7]"
             fetchPriority="high"
             decoding="async"
           />
         </motion.div>
 
-        {/* Direction gradient: heavy left → softer right so se lea el copy y se vea la casa */}
-        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/95 via-zinc-950/70 to-zinc-950/30" />
-        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/55 to-zinc-950/40" />
+        {/* Direction gradient: heavy left → soft right so the copy is readable
+            but the steel-frame on the right side stays clearly visible */}
+        <div className="absolute inset-0 bg-gradient-to-r from-zinc-950/90 via-zinc-950/45 to-zinc-950/10" />
+        <div className="absolute inset-0 bg-gradient-to-t from-zinc-950 via-zinc-950/30 to-zinc-950/10" />
 
         {/* Blueprint micro-grid */}
         <div
@@ -167,10 +170,31 @@ export default function Hero({
         {/* Subtitle */}
         <motion.p
           variants={itemVars}
-          className="mt-5 max-w-lg text-base leading-relaxed text-zinc-300 md:text-[1.1rem]"
+          className="mt-5 max-w-xl text-base leading-relaxed text-zinc-300 md:text-[1.1rem]"
         >
           {subtitle}
         </motion.p>
+
+        {/* Beneficios Metalcon — píldoras de venta rápida */}
+        <motion.ul
+          variants={itemVars}
+          className="mt-6 flex flex-wrap gap-2 max-w-xl"
+          aria-label="Beneficios de construir con Metalcon"
+        >
+          {[
+            'Inversión asegurada',
+            'Vida útil +60 años',
+            'Casi cero mantención',
+            'Antisísmica certificada',
+          ].map((b) => (
+            <li
+              key={b}
+              className="rounded-full border border-yellow-400/25 bg-yellow-400/[0.06] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-300/90"
+            >
+              {b}
+            </li>
+          ))}
+        </motion.ul>
 
         {/* CTA buttons */}
         <motion.div variants={itemVars} className="mt-9 flex flex-wrap items-center gap-3">
@@ -185,10 +209,17 @@ export default function Hero({
             <ArrowRight size={13} className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
           </a>
           <a
-            href="/proyectos"
-            className="group inline-flex items-center gap-2 rounded-full border border-white/15 px-7 py-3.5 text-[13px] font-bold text-zinc-200 transition-all duration-300 hover:border-yellow-400/50 hover:text-yellow-400"
+            href="/contacto"
+            className="group inline-flex items-center gap-2 rounded-full border border-yellow-400/40 bg-yellow-400/[0.04] px-7 py-3.5 text-[13px] font-bold uppercase tracking-[0.18em] text-yellow-200 transition-all duration-300 hover:border-yellow-400 hover:bg-yellow-400/[0.1] hover:text-yellow-300"
           >
-            Mira nuestras casas
+            Pedir consulta gratuita
+            <ArrowRight size={13} className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
+          </a>
+          <a
+            href="/proyectos"
+            className="group inline-flex items-center gap-2 rounded-full border border-white/15 px-7 py-3.5 text-[13px] font-bold text-zinc-200 transition-all duration-300 hover:border-white/40 hover:text-white"
+          >
+            Mira nuestros proyectos
             <ArrowRight size={13} className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
           </a>
         </motion.div>
@@ -214,21 +245,79 @@ export default function Hero({
         </motion.div>
       </motion.div>
 
-      {/* â”€â”€ Scroll hint â”€â”€ */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 2, duration: 0.6 }}
+      {/* ── Animated transition between hero and the next section ──
+          Reemplaza el viejo "Scroll": una onda dorada que respira,
+          un degradado vertical y partículas suaves para una entrada
+          cinematográfica a la siguiente sección. Desactivado bajo
+          prefers-reduced-motion (la onda queda estática). */}
+      <div
         aria-hidden
-        className="pointer-events-none absolute bottom-8 left-1/2 z-10 flex -translate-x-1/2 flex-col items-center gap-2"
+        className="pointer-events-none absolute inset-x-0 bottom-0 z-10 h-32 md:h-40"
       >
+        {/* Gradiente vertical que funde el hero con el negro de la sección que sigue */}
+        <div className="absolute inset-0 bg-gradient-to-b from-transparent via-black/60 to-black" />
+
+        {/* Onda dorada animada — respiración suave horizontal */}
+        <motion.svg
+          viewBox="0 0 1440 120"
+          preserveAspectRatio="none"
+          className="absolute bottom-0 left-0 h-20 w-full md:h-24"
+          initial={prefersReduced ? false : { x: 0 }}
+          animate={prefersReduced ? {} : { x: [0, -40, 0, 40, 0] }}
+          transition={{ duration: 14, repeat: Infinity, ease: 'easeInOut' }}
+        >
+          <defs>
+            <linearGradient id="hero-wave-gold" x1="0" y1="0" x2="1" y2="0">
+              <stop offset="0%"   stopColor="rgba(250,204,21,0)" />
+              <stop offset="35%"  stopColor="rgba(250,204,21,0.45)" />
+              <stop offset="65%"  stopColor="rgba(252,211,77,0.45)" />
+              <stop offset="100%" stopColor="rgba(250,204,21,0)" />
+            </linearGradient>
+          </defs>
+          <path
+            d="M0,60 C240,110 480,10 720,60 C960,110 1200,10 1440,60 L1440,120 L0,120 Z"
+            fill="url(#hero-wave-gold)"
+            opacity="0.5"
+          />
+          <path
+            d="M0,80 C240,30 480,130 720,80 C960,30 1200,130 1440,80 L1440,120 L0,120 Z"
+            fill="rgba(0,0,0,0.55)"
+          />
+        </motion.svg>
+
+        {/* Línea dorada hairline que cierra el hero */}
         <motion.div
-          animate={prefersReduced ? {} : { y: [0, 5, 0] }}
-          transition={{ duration: 2.2, repeat: Infinity, ease: 'easeInOut' }}
-          className="h-10 w-px bg-gradient-to-b from-yellow-400/50 to-transparent"
+          initial={prefersReduced ? { opacity: 0.4 } : { opacity: 0, scaleX: 0.6 }}
+          animate={{ opacity: prefersReduced ? 0.4 : [0.25, 0.6, 0.25], scaleX: 1 }}
+          transition={
+            prefersReduced
+              ? { duration: 0.4 }
+              : { opacity: { duration: 4, repeat: Infinity, ease: 'easeInOut' }, scaleX: { duration: 1.2 } }
+          }
+          className="absolute bottom-0 left-1/2 h-px w-[55%] -translate-x-1/2 bg-gradient-to-r from-transparent via-yellow-400/70 to-transparent"
         />
-        <span className="text-[9px] font-semibold uppercase tracking-[0.35em] text-zinc-600">Scroll</span>
-      </motion.div>
+
+        {/* Partículas suaves: 3 puntos dorados que parpadean a destiempo */}
+        {!prefersReduced && (
+          <>
+            <motion.span
+              className="absolute bottom-[42%] left-[28%] block h-1 w-1 rounded-full bg-yellow-300/80 shadow-[0_0_10px_rgba(250,204,21,0.7)]"
+              animate={{ opacity: [0, 0.9, 0], y: [0, -6, 0] }}
+              transition={{ duration: 3.6, repeat: Infinity, ease: 'easeInOut' }}
+            />
+            <motion.span
+              className="absolute bottom-[55%] left-[58%] block h-1 w-1 rounded-full bg-yellow-300/70 shadow-[0_0_10px_rgba(250,204,21,0.55)]"
+              animate={{ opacity: [0, 0.7, 0], y: [0, -8, 0] }}
+              transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 }}
+            />
+            <motion.span
+              className="absolute bottom-[48%] left-[78%] block h-1 w-1 rounded-full bg-amber-300/70 shadow-[0_0_10px_rgba(252,211,77,0.5)]"
+              animate={{ opacity: [0, 0.8, 0], y: [0, -5, 0] }}
+              transition={{ duration: 3.2, repeat: Infinity, ease: 'easeInOut', delay: 2.1 }}
+            />
+          </>
+        )}
+      </div>
     </section>
   );
 }

@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
+import { Resend } from 'resend';
 import { insforge } from '@/lib/insforge';
+import { getResendCredentials } from '@/lib/resendCredentials';
 
 /**
  * POST /api/leads  — Store contact/quote requests from the public contact form.
@@ -13,20 +15,13 @@ import { insforge } from '@/lib/insforge';
  *     mensaje?: string,
  *   }
  *
- * Writes to the `leads` table in InsForge. If the table does not exist yet,
- * the endpoint falls back to a graceful OK response so the public form never
- * fails for the end user. The admin team should create the table using:
+ * Writes to the `leads` table in InsForge **and** notifies the admin via
+ * Resend (best-effort; failures are logged but never break the public form).
  *
- *   CREATE TABLE IF NOT EXISTS leads (
- *     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
- *     nombre VARCHAR(255),
- *     email VARCHAR(255),
- *     telefono VARCHAR(20),
- *     tipo_proyecto VARCHAR(100),
- *     mensaje TEXT,
- *     estado VARCHAR(50) DEFAULT 'nuevo',
- *     created_at TIMESTAMPTZ DEFAULT now()
- *   );
+ * Required env / config:
+ *  - `RESEND_API_KEY` (or Resend integration in /admin/integraciones)
+ *  - `LEADS_NOTIFY_EMAIL` (or `ADMIN_ALERT_EMAIL` as fallback) — destinatario
+ *  - `RESEND_FROM` — opcional; default sandbox `onboarding@resend.dev`
  */
 
 interface LeadBody {
@@ -45,11 +40,83 @@ const MAX = {
   mensaje: 2000,
 };
 
+const DEFAULT_FROM = 'Soluciones Fabrick <onboarding@resend.dev>';
+
 function sanitize(value: unknown, max: number): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
   if (!trimmed) return undefined;
   return trimmed.slice(0, max);
+}
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+interface NotifyPayload {
+  nombre: string;
+  email: string;
+  telefono?: string;
+  tipo_proyecto?: string;
+  mensaje?: string;
+}
+
+/**
+ * Envía el correo de notificación al admin. Best-effort: cualquier error se
+ * registra en consola pero no rompe el flujo del formulario público.
+ */
+async function notifyAdminByEmail(lead: NotifyPayload): Promise<void> {
+  const to = (
+    process.env.LEADS_NOTIFY_EMAIL ||
+    process.env.ADMIN_ALERT_EMAIL ||
+    ''
+  ).trim();
+  if (!to) {
+    console.warn('[leads] LEADS_NOTIFY_EMAIL/ADMIN_ALERT_EMAIL no configurado — el lead se guardó, pero el admin no recibirá email.');
+    return;
+  }
+
+  const creds = await getResendCredentials();
+  if (!creds) {
+    console.warn('[leads] Resend no configurado — no se envía email.');
+    return;
+  }
+
+  const html = `
+    <div style="font-family:Inter,system-ui,sans-serif;background:#0a0a0a;color:#f4f4f5;padding:32px;border-radius:16px;max-width:560px;margin:0 auto">
+      <p style="color:#facc15;font-size:11px;letter-spacing:.3em;text-transform:uppercase;margin:0 0 8px">Nuevo lead · Soluciones Fabrick</p>
+      <h2 style="font-size:22px;margin:0 0 18px;color:#fff">Solicitud de contacto recibida</h2>
+      <table cellpadding="10" cellspacing="0" style="border-collapse:collapse;width:100%;font-size:14px">
+        <tr><td style="color:#a1a1aa;width:140px"><b>Nombre</b></td><td>${escapeHtml(lead.nombre)}</td></tr>
+        <tr><td style="color:#a1a1aa"><b>Email</b></td><td><a href="mailto:${escapeHtml(lead.email)}" style="color:#facc15">${escapeHtml(lead.email)}</a></td></tr>
+        <tr><td style="color:#a1a1aa"><b>Teléfono</b></td><td>${escapeHtml(lead.telefono ?? '—')}</td></tr>
+        <tr><td style="color:#a1a1aa"><b>Tipo</b></td><td>${escapeHtml(lead.tipo_proyecto ?? '—')}</td></tr>
+        <tr><td style="color:#a1a1aa;vertical-align:top"><b>Mensaje</b></td><td style="white-space:pre-wrap">${escapeHtml(lead.mensaje ?? '—')}</td></tr>
+      </table>
+      <p style="color:#71717a;font-size:11px;margin-top:24px">Responde directamente a este correo o llama al cliente cuanto antes — la promesa pública es 24 h.</p>
+    </div>
+  `;
+
+  const subject = `Nuevo lead Fabrick · ${lead.nombre}${lead.tipo_proyecto ? ' · ' + lead.tipo_proyecto : ''}`;
+
+  try {
+    const resend = new Resend(creds.apiKey);
+    const { error } = await resend.emails.send({
+      from: creds.from ?? DEFAULT_FROM,
+      to,
+      replyTo: lead.email,
+      subject,
+      html,
+    });
+    if (error) console.error('[leads] Resend error:', error);
+  } catch (err) {
+    console.error('[leads] Resend exception:', err);
+  }
 }
 
 export async function POST(request: Request) {
@@ -93,36 +160,32 @@ export async function POST(request: Request) {
     estado: 'nuevo',
   };
 
+  let dbStored = true;
   try {
     const { error } = await insforge.database.from('leads').insert([payload]);
     if (error) {
-      // Table might not exist yet — respond OK so the public form is not blocked.
-      return NextResponse.json(
-        {
-          ok: true,
-          queued: true,
-          mensaje:
-            'Recibimos tu solicitud. Te contactamos en menos de 24 horas.',
-        },
-        { status: 202 },
-      );
+      // La tabla `leads` puede aún no existir — degradamos sin romper el form.
+      // Logueamos el error real para diagnosticar conexiones/permisos vs.
+      // simplemente "tabla inexistente".
+      console.error('[leads] Database insert failed:', error);
+      dbStored = false;
     }
-  } catch {
-    return NextResponse.json(
-      {
-        ok: true,
-        queued: true,
-        mensaje: 'Recibimos tu solicitud. Te contactamos en menos de 24 horas.',
-      },
-      { status: 202 },
-    );
+  } catch (err) {
+    console.error('[leads] Database insert exception:', err);
+    dbStored = false;
   }
+
+  // Notificación por correo — corre en paralelo con la respuesta para que la
+  // UX siga siendo rápida, pero esperamos para que en serverless no se corte
+  // el container antes de enviar.
+  await notifyAdminByEmail({ nombre, email, telefono, tipo_proyecto, mensaje });
 
   return NextResponse.json(
     {
       ok: true,
+      queued: !dbStored,
       mensaje: 'Recibimos tu solicitud. Te contactamos en menos de 24 horas.',
     },
-    { status: 201 },
+    { status: dbStored ? 201 : 202 },
   );
 }

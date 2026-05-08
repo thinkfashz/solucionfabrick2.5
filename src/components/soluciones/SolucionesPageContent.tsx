@@ -293,10 +293,17 @@ function formatCLP(n: number): string {
   return clpFormatter.format(Math.round(n));
 }
 
-/** Hook: anima un número desde su valor anterior al nuevo objetivo. */
-function useAnimatedNumber(target: number, durationMs = 600): number {
-  const [value, setValue] = useState(target);
-  const fromRef = useRef(target);
+/**
+ * Hook: anima un número desde su valor anterior al nuevo objetivo.
+ *
+ * Por defecto, el valor inicial coincide con `target`, así que el primer
+ * render no anima (caso calculadora: se muestra el resultado directamente).
+ * Pasar `from` distinto de `target` (p. ej. `0`) fuerza la animación inicial
+ * — necesario para los `StatCounter` del hero, que deben contar desde cero.
+ */
+function useAnimatedNumber(target: number, durationMs = 600, from = target): number {
+  const [value, setValue] = useState(from);
+  const fromRef = useRef(from);
   const rafRef = useRef<number | null>(null);
 
   useEffect(() => {
@@ -774,18 +781,25 @@ function PlanPreview({ ancho, largo, segundoPiso }: PlanPreviewProps) {
     walls.add(edges);
 
     // Segundo piso (oculto por defecto)
+    // `walls.clone()` clona recursivamente, por lo que `walls2` ya recibe
+    // una copia del hijo `edges`. NO añadimos un segundo `LineSegments`
+    // encima — eso dibujaría los bordes duplicados sobre la misma cara.
     const walls2 = walls.clone();
-    walls2.material = wallMat.clone();
+    const walls2Mat = wallMat.clone();
+    walls2.material = walls2Mat;
     walls2.position.y = 3.4;
     walls2.visible = false;
-    const edges2 = new THREE.LineSegments(edgesGeom, edgesMat);
-    walls2.add(edges2);
     scene.add(walls2);
 
-    // Grid (suelo arquitectónico)
+    // Grid (suelo arquitectónico). `GridHelper` puede exponer `material` como
+    // `Material | Material[]`; aplicamos opacidad/transparencia a cada uno
+    // para que el efecto sea visible independientemente de la versión de three.
     const grid = new THREE.GridHelper(40, 40, 0x333333, 0x1a1a1a);
-    (grid.material as THREE.Material).opacity = 0.4;
-    (grid.material as THREE.Material).transparent = true;
+    const gridMaterials = Array.isArray(grid.material) ? grid.material : [grid.material];
+    for (const m of gridMaterials) {
+      m.opacity = 0.4;
+      m.transparent = true;
+    }
     scene.add(grid);
 
     stateRef.current.floor = floor;
@@ -825,7 +839,10 @@ function PlanPreview({ ancho, largo, segundoPiso }: PlanPreviewProps) {
       edgesGeom.dispose();
       floorMat.dispose();
       wallMat.dispose();
+      walls2Mat.dispose();
       edgesMat.dispose();
+      grid.geometry.dispose();
+      for (const m of gridMaterials) m.dispose();
       if (renderer.domElement.parentNode === container) {
         container.removeChild(renderer.domElement);
       }
@@ -1193,7 +1210,7 @@ function StatCounter({
   suffix?: string;
   label: string;
 }) {
-  const animated = useAnimatedNumber(value, 1400);
+  const animated = useAnimatedNumber(value, 1400, 0);
   const display = Math.round(animated).toLocaleString('es-CL');
   return (
     <div className="text-center">

@@ -77,7 +77,7 @@ async function notifyAdminByEmail(lead: NotifyPayload): Promise<void> {
     ''
   ).trim();
   if (!to) {
-    console.warn('[leads] LEADS_NOTIFY_EMAIL/ADMIN_ALERT_EMAIL no configurado — no se envía email.');
+    console.warn('[leads] LEADS_NOTIFY_EMAIL/ADMIN_ALERT_EMAIL no configurado — el lead se guardó, pero el admin no recibirá email.');
     return;
   }
 

@@ -28,7 +28,7 @@ const STATS = [
 
 const DEFAULT_HEADLINE = 'Tu obra,\nen buenas\nmanos.';
 const DEFAULT_SUBTITLE =
-  'Construimos tu casa en Metalcon — la inversión más segura que existe hoy. Estructura de acero galvanizado que no se pudre como la madera, no se trizá como el hormigón y casi no requiere mantención. Levantamos hogares que duran generaciones, con anticipo claro y sin sorpresas.';
+  'Construimos tu casa en Metalcon — la inversión más segura que existe hoy. Estructura de acero galvanizado que no se pudre como la madera, no se triza como el hormigón y casi no requiere mantención. Levantamos hogares que duran generaciones, con anticipo claro y sin sorpresas.';
 const CTA_MSG =
   'Hola Fabrick, vi su página y quiero conversar sobre mi proyecto. ¿Cuándo podríamos juntarnos para una consulta?';
 

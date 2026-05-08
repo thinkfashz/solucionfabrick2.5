@@ -380,7 +380,7 @@ export default function LandingSections({
                   {/* Foto temática de fondo */}
                   {/* eslint-disable-next-line @next/next/no-img-element */}
                   <img
-                    src={cloudinaryUrl(img, { width: 600, quality: 65 })}
+                    src={cloudinaryUrl(img, { width: 800, quality: 75 })}
                     alt=""
                     aria-hidden="true"
                     className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-60 group-hover:scale-110 transition-all duration-700"
@@ -885,7 +885,7 @@ export default function LandingSections({
                       <div className="relative h-44 md:h-52 overflow-hidden">
                         {/* eslint-disable-next-line @next/next/no-img-element */}
                         <img
-                          src={cloudinaryUrl(rev.img, { width: 600, quality: 70 })}
+                          src={cloudinaryUrl(rev.img, { width: 800, quality: 75 })}
                           alt={`Cliente Fabrick · ${rev.n}`}
                           className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105"
                           loading="lazy"

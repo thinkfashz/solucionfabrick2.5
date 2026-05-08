@@ -38,6 +38,13 @@ interface FabrickLogo3DProps {
   showHint?: boolean;
   /** Si true, el canvas tiene fondo transparente (toma el color del padre). Default: true. */
   transparent?: boolean;
+  /**
+   * Distancia fija de la cámara al origen (eje Z). Si se omite, el componente
+   * usa el comportamiento responsivo por defecto (35 en mobile, 22 en desktop).
+   * Útil cuando el logo vive en un contenedor pequeño (p. ej. la barra de
+   * navegación) y el default haría que el modelo se vea como un punto.
+   */
+  cameraZ?: number;
   /** Callback opcional disparado al hacer clic sobre el logo. */
   onLogoClick?: () => void;
 }
@@ -48,6 +55,7 @@ export default function FabrickLogo3D({
   interactive = true,
   showHint,
   transparent = true,
+  cameraZ,
   onLogoClick,
 }: FabrickLogo3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -211,7 +219,7 @@ export default function FabrickLogo3D({
       const w = Math.max(1, container.clientWidth);
       const h = Math.max(1, container.clientHeight);
       camera.aspect = w / h;
-      camera.position.z = w < 768 ? 35 : 22;
+      camera.position.z = cameraZ ?? (w < 768 ? 35 : 22);
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
@@ -334,7 +342,7 @@ export default function FabrickLogo3D({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [interactive, transparent]);
+  }, [interactive, transparent, cameraZ]);
 
   const showHintResolved = showHint ?? interactive;
 

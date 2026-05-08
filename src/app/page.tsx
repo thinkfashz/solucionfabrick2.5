@@ -1,7 +1,6 @@
 import { headers } from 'next/headers';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
-import FabrickLogo3DLazy from '@/components/FabrickLogo3DLazy';
 import LandingSections from '@/components/LandingSections';
 import HomeDynamicSections from '@/components/HomeDynamicSections';
 import { getCmsSettings, getPublicHomeSections, renderCopyright } from '@/lib/cms';
@@ -58,22 +57,6 @@ export default async function Home() {
       />
       <div className="bg-gradient-to-b from-zinc-950 via-black to-zinc-950 min-h-screen overflow-x-hidden">
         <Navbar />
-        {/* Banda de marca 3D — Three.js render, transparente, hereda el
-            degradado del contenedor. Va antes del Hero para que el primer
-            "frame" del sitio sea el logo dorado de la empresa. Sin
-            interactividad ni hint para que no compita con los CTAs del
-            Hero. Carga lazy en cliente (next/dynamic ssr:false) → Three no
-            entra al payload SSR ni al bundle de otras rutas. */}
-        <section
-          aria-label="Logo Soluciones Fabrick"
-          className="relative w-full pt-20 sm:pt-24"
-        >
-          <FabrickLogo3DLazy
-            height={320}
-            interactive={false}
-            showHint={false}
-          />
-        </section>
         <Hero
           coverUrl={settings.hero_cover_url || undefined}
           heroTitle={settings.hero_title || undefined}

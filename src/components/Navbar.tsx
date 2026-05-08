@@ -21,7 +21,7 @@ import {
   Phone,
   ShieldCheck,
 } from 'lucide-react';
-import FabrickLogo from '@/components/FabrickLogo';
+import FabrickLogo3DLazy from '@/components/FabrickLogo3DLazy';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useCartContextSafe } from '@/context/CartContext';
 import { useQuoteCartSafe } from '@/context/QuoteCartContext';
@@ -71,6 +71,42 @@ const itemVariants = {
     transition: { delay: 0.08 + i * 0.035, duration: 0.32, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
   }),
 };
+
+/**
+ * Botón-marca del Navbar: muestra el logo 3D (Three.js) con tamaño acotado y
+ * sin sus interacciones internas (expand/spin/hint), de modo que clic sobre
+ * cualquier parte del recuadro navegue a `/`. El bundle de Three se carga
+ * vía `next/dynamic({ ssr:false })` (FabrickLogo3DLazy), así no entra al
+ * payload SSR de cada página que renderiza el Navbar.
+ *
+ * `cameraZ={18}` acerca la cámara al logo: el default responsivo del
+ * componente (35 en mobile, 22 en desktop) lo dejaría como un punto en un
+ * canvas tan pequeño.
+ */
+function NavbarBrandLogo({ onClick }: { onClick: () => void }) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label="Soluciones Fabrick — inicio"
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className="group relative h-12 w-[200px] flex-shrink-0 cursor-pointer select-none rounded-lg outline-none transition-transform duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60 sm:h-14 sm:w-[240px]"
+    >
+      <FabrickLogo3DLazy
+        height="100%"
+        interactive={false}
+        showHint={false}
+        cameraZ={18}
+      />
+    </div>
+  );
+}
 
 export default function Navbar() {
   const router = useRouter();
@@ -124,7 +160,7 @@ export default function Navbar() {
             : 'border-transparent shadow-none',
         ].join(' ')}
       >
-        <FabrickLogo onClick={() => handleNav('/')} />
+        <NavbarBrandLogo onClick={() => handleNav('/')} />
 
         {/* Desktop links */}
         <div className="hidden items-center gap-6 lg:flex">
@@ -244,7 +280,7 @@ export default function Navbar() {
             >
               {/* Sticky header in drawer */}
               <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/5 bg-[var(--bg)]/95 px-5 py-3 backdrop-blur-md">
-                <FabrickLogo onClick={() => handleNav('/')} />
+                <NavbarBrandLogo onClick={() => handleNav('/')} />
                 <button
                   type="button"
                   onClick={() => setOpen(false)}

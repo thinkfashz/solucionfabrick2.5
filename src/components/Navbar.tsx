@@ -75,16 +75,19 @@ const itemVariants = {
 /**
  * Botón-marca del Navbar.
  *
- * Renderiza la cercha 3D animada de `FabrickLogo3D` en el lado izquierdo
- * del navbar, **sin** el wordmark de texto (`showText={false}`). Esto da el
- * efecto cinematográfico que pidió el usuario manteniendo nitidez en un
- * contenedor pequeño: la cercha es geometría 3D real, no se ve borrosa al
- * downscalear; el plano de texto rasterizado a `CanvasTexture` sí lo hacía.
+ * Layout: [cercha 3D animada] + [wordmark "SOLUCIONES FABRICK / Tu obra en
+ * buenas manos"]. La cercha sigue renderizándose con `FabrickLogo3DLazy`
+ * en modo `showText={false}` porque el texto rasterizado a `CanvasTexture`
+ * pierde nitidez al downscalear al tamaño del navbar; en cambio, el
+ * wordmark se renderiza como HTML real al lado, así queda crisp en todas
+ * las densidades de pantalla.
  *
- * - `interactive={false}` y `showHint={false}` → sin click-to-spin ni
- *   "¡Haz clic en el logo!", el clic siempre navega a `/`.
+ * - `interactive={false}` y `showHint={false}` → el clic siempre navega a `/`.
  * - `cameraZ={14}` → cámara cerrada para que la cercha llene el cuadro.
  * - El wrapper conserva `role="button"` + `onKeyDown` para accesibilidad.
+ * - El eslogan se oculta en pantallas estrechas (`hidden xs:block`) y el
+ *   wordmark completo se oculta sólo en mobile muy chico (`<sm`) para no
+ *   competir con el botón hamburguesa.
  */
 function NavbarBrandLogo({ onClick }: { onClick: () => void }) {
   return (
@@ -99,15 +102,25 @@ function NavbarBrandLogo({ onClick }: { onClick: () => void }) {
           onClick();
         }
       }}
-      className="group relative h-12 w-[120px] flex-shrink-0 cursor-pointer select-none rounded-lg outline-none transition-transform duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60 sm:h-14 sm:w-[150px]"
+      className="group flex flex-shrink-0 cursor-pointer select-none items-center gap-2 rounded-lg outline-none transition-transform duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60 sm:gap-3"
     >
-      <FabrickLogo3DLazy
-        height="100%"
-        interactive={false}
-        showHint={false}
-        showText={false}
-        cameraZ={14}
-      />
+      <div className="relative h-12 w-[60px] flex-shrink-0 sm:h-14 sm:w-[72px]">
+        <FabrickLogo3DLazy
+          height="100%"
+          interactive={false}
+          showHint={false}
+          showText={false}
+          cameraZ={14}
+        />
+      </div>
+      <div className="hidden flex-col leading-none sm:flex">
+        <span className="text-[13px] font-black uppercase tracking-[0.14em] text-white sm:text-[15px]">
+          SOLUCIONES <span className="text-[var(--accent)]">FABRICK</span>
+        </span>
+        <span className="mt-1 text-[9px] font-medium italic tracking-[0.08em] text-zinc-400 sm:text-[10px]">
+          Tu obra en buenas manos
+        </span>
+      </div>
     </div>
   );
 }

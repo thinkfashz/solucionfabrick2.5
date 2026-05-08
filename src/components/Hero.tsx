@@ -26,11 +26,11 @@ const STATS = [
   { n: '24h',  label: 'Te respondemos',         Icon: Clock        },
 ] as const;
 
-const DEFAULT_HEADLINE = 'Tu casa\nla construimos\ncomo si fuera nuestra.';
+const DEFAULT_HEADLINE = 'Tu obra,\nen buenas\nmanos.';
 const DEFAULT_SUBTITLE =
-  'Somos una familia de Linares que lleva 9 años levantando hogares en Metalcon. Trabajamos nosotros mismos, te explicamos cada paso y nos quedamos hasta que tú te sientas en casa. Sin apuros, sin letra chica.';
+  'Construimos tu casa en Metalcon — la inversión más segura que existe hoy. Estructura de acero galvanizado que no se pudre como la madera, no se trizá como el hormigón y casi no requiere mantención. Levantamos hogares que duran generaciones, con anticipo claro y sin sorpresas.';
 const CTA_MSG =
-  'Hola Fabrick, me gustaría conversar con ustedes sobre mi proyecto. Cuéntenme cómo trabajan y cuándo podríamos juntarnos.';
+  'Hola Fabrick, vi su página y quiero conversar sobre mi proyecto. ¿Cuándo podríamos juntarnos para una consulta?';
 
 export default function Hero({
   coverUrl,
@@ -167,10 +167,31 @@ export default function Hero({
         {/* Subtitle */}
         <motion.p
           variants={itemVars}
-          className="mt-5 max-w-lg text-base leading-relaxed text-zinc-300 md:text-[1.1rem]"
+          className="mt-5 max-w-xl text-base leading-relaxed text-zinc-300 md:text-[1.1rem]"
         >
           {subtitle}
         </motion.p>
+
+        {/* Beneficios Metalcon — píldoras de venta rápida */}
+        <motion.ul
+          variants={itemVars}
+          className="mt-6 flex flex-wrap gap-2 max-w-xl"
+          aria-label="Beneficios de construir con Metalcon"
+        >
+          {[
+            'Inversión asegurada',
+            'Vida útil +60 años',
+            'Casi cero mantención',
+            'Antisísmica certificada',
+          ].map((b) => (
+            <li
+              key={b}
+              className="rounded-full border border-yellow-400/25 bg-yellow-400/[0.06] px-3 py-1 text-[10px] font-bold uppercase tracking-[0.18em] text-yellow-300/90"
+            >
+              {b}
+            </li>
+          ))}
+        </motion.ul>
 
         {/* CTA buttons */}
         <motion.div variants={itemVars} className="mt-9 flex flex-wrap items-center gap-3">
@@ -185,8 +206,15 @@ export default function Hero({
             <ArrowRight size={13} className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
           </a>
           <a
+            href="/contacto"
+            className="group inline-flex items-center gap-2 rounded-full border border-yellow-400/40 bg-yellow-400/[0.04] px-7 py-3.5 text-[13px] font-bold uppercase tracking-[0.18em] text-yellow-200 transition-all duration-300 hover:border-yellow-400 hover:bg-yellow-400/[0.1] hover:text-yellow-300"
+          >
+            Pedir consulta gratuita
+            <ArrowRight size={13} className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
+          </a>
+          <a
             href="/proyectos"
-            className="group inline-flex items-center gap-2 rounded-full border border-white/15 px-7 py-3.5 text-[13px] font-bold text-zinc-200 transition-all duration-300 hover:border-yellow-400/50 hover:text-yellow-400"
+            className="group inline-flex items-center gap-2 rounded-full border border-white/15 px-7 py-3.5 text-[13px] font-bold text-zinc-200 transition-all duration-300 hover:border-white/40 hover:text-white"
           >
             Mira nuestras casas
             <ArrowRight size={13} className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden />

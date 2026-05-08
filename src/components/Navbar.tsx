@@ -85,9 +85,9 @@ const itemVariants = {
  * - `interactive={false}` y `showHint={false}` → el clic siempre navega a `/`.
  * - `cameraZ={14}` → cámara cerrada para que la cercha llene el cuadro.
  * - El wrapper conserva `role="button"` + `onKeyDown` para accesibilidad.
- * - El eslogan se oculta en pantallas estrechas (`hidden xs:block`) y el
- *   wordmark completo se oculta sólo en mobile muy chico (`<sm`) para no
- *   competir con el botón hamburguesa.
+ * - El wordmark se muestra en todas las anchuras (compacto en mobile,
+ *   completo desde `sm`). El eslogan se oculta en mobile muy estrecho
+ *   (`<sm`) para no chocar con el botón hamburguesa.
  */
 function NavbarBrandLogo({ onClick }: { onClick: () => void }) {
   return (
@@ -113,11 +113,11 @@ function NavbarBrandLogo({ onClick }: { onClick: () => void }) {
           cameraZ={14}
         />
       </div>
-      <div className="hidden flex-col leading-none sm:flex">
-        <span className="text-[13px] font-black uppercase tracking-[0.14em] text-white sm:text-[15px]">
+      <div className="flex flex-col leading-none">
+        <span className="text-[11px] font-black uppercase tracking-[0.12em] text-white sm:text-[15px] sm:tracking-[0.14em]">
           SOLUCIONES <span className="text-[var(--accent)]">FABRICK</span>
         </span>
-        <span className="mt-1 text-[9px] font-medium italic tracking-[0.08em] text-zinc-400 sm:text-[10px]">
+        <span className="mt-1 hidden text-[9px] font-medium italic tracking-[0.08em] text-zinc-400 sm:block sm:text-[10px]">
           Tu obra en buenas manos
         </span>
       </div>

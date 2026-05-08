@@ -52,6 +52,13 @@ export default function FabrickLogo3D({
 }: FabrickLogo3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
+  // onLogoClick se accede vía ref para que un cambio de identidad de la
+  // callback (p.ej. callback inline en el padre) no fuerce a destruir y
+  // recrear el contexto WebGL en cada render.
+  const onLogoClickRef = useRef<typeof onLogoClick>(onLogoClick);
+  useEffect(() => {
+    onLogoClickRef.current = onLogoClick;
+  }, [onLogoClick]);
 
   useEffect(() => {
     const container = containerRef.current;
@@ -267,7 +274,7 @@ export default function FabrickLogo3D({
         if (hintRef.current) hintRef.current.style.opacity = '1';
       }
 
-      onLogoClick?.();
+      onLogoClickRef.current?.();
     };
 
     renderer.domElement.addEventListener('mousemove', onPointerMove);
@@ -327,7 +334,7 @@ export default function FabrickLogo3D({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [interactive, transparent, onLogoClick]);
+  }, [interactive, transparent]);
 
   const showHintResolved = showHint ?? interactive;
 
@@ -349,6 +356,7 @@ export default function FabrickLogo3D({
       {showHintResolved && (
         <div
           ref={hintRef}
+          aria-hidden="true"
           style={{
             position: 'absolute',
             bottom: '24px',

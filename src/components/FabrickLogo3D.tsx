@@ -144,13 +144,13 @@ export default function FabrickLogo3D({
     // ----------------------------------------------------------------
     // Texto: SOLUCIONES FABRICK + eslogan
     // ----------------------------------------------------------------
-    const canvas = document.createElement('canvas');
-    canvas.width = 2048;
-    canvas.height = 1024;
-    const ctx = canvas.getContext('2d');
+    const textCanvas = document.createElement('canvas');
+    textCanvas.width = 2048;
+    textCanvas.height = 1024;
+    const ctx = textCanvas.getContext('2d');
 
     if (ctx) {
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, textCanvas.width, textCanvas.height);
       ctx.lineJoin = 'round';
       ctx.lineCap = 'round';
 
@@ -164,10 +164,10 @@ export default function FabrickLogo3D({
 
       ctx.lineWidth = 18;
       ctx.strokeStyle = '#111111';
-      ctx.strokeText(title, canvas.width / 2, titleY);
+      ctx.strokeText(title, textCanvas.width / 2, titleY);
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(title, canvas.width / 2, titleY);
+      ctx.fillText(title, textCanvas.width / 2, titleY);
 
       ctx.font = 'italic bold 75px "Nunito", "Segoe UI", Arial, sans-serif';
       const sloganY = 560;
@@ -175,13 +175,13 @@ export default function FabrickLogo3D({
 
       ctx.lineWidth = 12;
       ctx.strokeStyle = '#111111';
-      ctx.strokeText(slogan, canvas.width / 2, sloganY);
+      ctx.strokeText(slogan, textCanvas.width / 2, sloganY);
 
       ctx.fillStyle = '#FFFFFF';
-      ctx.fillText(slogan, canvas.width / 2, sloganY);
+      ctx.fillText(slogan, textCanvas.width / 2, sloganY);
     }
 
-    const texture = new THREE.CanvasTexture(canvas);
+    const texture = new THREE.CanvasTexture(textCanvas);
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
 
@@ -277,7 +277,7 @@ export default function FabrickLogo3D({
     // Bucle de animación
     // ----------------------------------------------------------------
     const clock = new THREE.Clock();
-    let rafId = 0;
+    let rafId: number | null = null;
     let disposed = false;
 
     const animate = () => {
@@ -306,7 +306,7 @@ export default function FabrickLogo3D({
     // ----------------------------------------------------------------
     return () => {
       disposed = true;
-      cancelAnimationFrame(rafId);
+      if (rafId !== null) cancelAnimationFrame(rafId);
 
       window.removeEventListener('resize', adjustCamera);
       resizeObserver?.disconnect();

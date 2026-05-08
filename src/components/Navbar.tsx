@@ -21,7 +21,6 @@ import {
   Phone,
   ShieldCheck,
 } from 'lucide-react';
-import FabrickLogo3DLazy from '@/components/FabrickLogo3DLazy';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useCartContextSafe } from '@/context/CartContext';
 import { useQuoteCartSafe } from '@/context/QuoteCartContext';
@@ -73,15 +72,18 @@ const itemVariants = {
 };
 
 /**
- * Botón-marca del Navbar: muestra el logo 3D (Three.js) con tamaño acotado y
- * sin sus interacciones internas (expand/spin/hint), de modo que clic sobre
- * cualquier parte del recuadro navegue a `/`. El bundle de Three se carga
- * vía `next/dynamic({ ssr:false })` (FabrickLogo3DLazy), así no entra al
- * payload SSR de cada página que renderiza el Navbar.
+ * Botón-marca del Navbar.
  *
- * `cameraZ={18}` acerca la cámara al logo: el default responsivo del
- * componente (35 en mobile, 22 en desktop) lo dejaría como un punto en un
- * canvas tan pequeño.
+ * Renderiza el SVG oficial de Soluciones Fabrick (`/logo-soluciones-fabrick.svg`)
+ * dentro de un wrapper `role="button"` que navega a `/`. Se eligió SVG sobre
+ * la versión 3D (Three.js) por tres razones que reportó el usuario:
+ *  1. El `CanvasTexture` con el wordmark se ve borroso/opaco al reducirse al
+ *     tamaño de un navbar (~200×56 px). El SVG es nítido a cualquier escala.
+ *  2. El canvas WebGL en una `nav` con `position: fixed` + `backdrop-blur`
+ *     producía artefactos visuales al hacer scroll en móvil (la nav alterna
+ *     `box-shadow` con el estado `scrolled`, lo que dispara un reflow del
+ *     contenedor → `ResizeObserver` reescala el canvas en cada frame).
+ *  3. SVG = sin JS adicional ni hidratación lazy: render instantáneo y SSR.
  */
 function NavbarBrandLogo({ onClick }: { onClick: () => void }) {
   return (
@@ -96,13 +98,16 @@ function NavbarBrandLogo({ onClick }: { onClick: () => void }) {
           onClick();
         }
       }}
-      className="group relative h-12 w-[200px] flex-shrink-0 cursor-pointer select-none rounded-lg outline-none transition-transform duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60 sm:h-14 sm:w-[240px]"
+      className="group relative flex h-10 flex-shrink-0 cursor-pointer select-none items-center rounded-lg outline-none transition-transform duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60 sm:h-12"
     >
-      <FabrickLogo3DLazy
-        height="100%"
-        interactive={false}
-        showHint={false}
-        cameraZ={18}
+      {/* eslint-disable-next-line @next/next/no-img-element */}
+      <img
+        src="/logo-soluciones-fabrick.svg"
+        alt="Soluciones Fabrick"
+        width={214}
+        height={52}
+        draggable={false}
+        className="h-full w-auto"
       />
     </div>
   );

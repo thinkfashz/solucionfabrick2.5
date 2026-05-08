@@ -15,6 +15,9 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 
 const SESSION_FLAG = 'fabrick.splash.seen.v2';
+/** Clave usada por la versión anterior del splash. La limpiamos al inicializar
+ *  para no dejar basura en sessionStorage. */
+const LEGACY_SESSION_FLAG = 'fabrick.loadingScreen.seen.v1';
 
 const BOOT_LINES = [
   { label: 'Verificando estructura',    pct: 22 },
@@ -47,6 +50,7 @@ export default function SplashScreen() {
     if (!visible) return;
 
     try { window.sessionStorage.setItem(SESSION_FLAG, '1'); } catch { /* private mode / quota */ }
+    try { window.sessionStorage.removeItem(LEGACY_SESSION_FLAG); } catch { /* ignore */ }
 
     const startTime = Date.now();
     const duration = prefersReduced ? 400 : 1200;

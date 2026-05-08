@@ -16,7 +16,12 @@ export const runtime = 'nodejs';
  * Restricciones:
  *  - Sin auth: pensado para visitantes anónimos del sitio público.
  *  - Rate limit en memoria por IP (máx. 20 mensajes / 5 minutos).
- *  - Ventana de contexto acotada: últimos 12 turnos del cliente.
+ *    NOTA: el store es in-memory y vive por instancia. En serverless (Vercel,
+ *    Lambda) cada cold-start o escalado horizontal tiene su propia ventana,
+ *    así que el límite efectivo a nivel global puede ser mayor. Suficiente
+ *    como anti-abuso de bajo costo; para protección dura migrar a Redis/KV.
+ *  - Ventana de contexto acotada: últimos 12 mensajes del cliente
+ *    (≈6 turnos completos user→assistant).
  *  - Mensajes máximo 2.000 caracteres.
  */
 
@@ -26,7 +31,8 @@ interface AgentBody {
 
 interface ClientMsg { role: 'user' | 'assistant'; content: string }
 
-const MAX_CONVERSATION_TURNS = 12;
+/** Máximo de MENSAJES (no turnos) que se reenvían al modelo. 12 ≈ 6 turnos. */
+const MAX_MESSAGES_TO_AI = 12;
 const MAX_USER_CHARS = 2_000;
 
 const SYSTEM_PROMPT = `Eres "Fabri", el asistente virtual de Soluciones Fabrick — empresa chilena de construcción y remodelación residencial con sede en Linares, Región del Maule. Llevas 9 años acompañando familias en sus proyectos.
@@ -112,9 +118,9 @@ function sanitizeMessages(raw: unknown): ClientMsg[] | null {
     if (!trimmed) continue;
     out.push({ role, content: trimmed.slice(0, MAX_USER_CHARS) });
   }
-  // Mantener sólo los últimos N turnos para no quemar tokens de gente que abre
-  // varias pestañas y reenvía un historial gigante.
-  return out.slice(-MAX_CONVERSATION_TURNS);
+  // Mantener sólo los últimos N mensajes para no quemar tokens si el cliente
+  // (p.ej. otra pestaña con un historial gigante) reenvía mucho contexto.
+  return out.slice(-MAX_MESSAGES_TO_AI);
 }
 
 export async function POST(request: NextRequest) {

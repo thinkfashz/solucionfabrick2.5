@@ -33,6 +33,10 @@ interface AIAgentChatProps {
 
 const STORAGE_POS = 'fabrick.agent.position.v1';
 const STORAGE_HISTORY = 'fabrick.agent.history.v1';
+/** Mensajes a guardar localmente. El cliente conserva un historial más largo
+ *  que el que envía al modelo: la API recorta a 12 antes de pasarlo al LLM
+ *  para no quemar tokens, pero acá guardamos 24 para que el usuario pueda
+ *  releer el contexto al reabrir el panel. */
 const MAX_HISTORY = 24;
 
 const SUGGESTIONS = [

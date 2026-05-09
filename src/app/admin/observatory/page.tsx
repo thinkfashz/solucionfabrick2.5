@@ -4,7 +4,7 @@ import { useCallback, useState } from 'react';
 import dynamic from 'next/dynamic';
 import ObservatoryHUD from './ObservatoryHUD';
 import MobileObservatory from './MobileObservatory';
-import { useObservatoryData } from './useObservatoryData';
+import { useObservatoryData, type ServiceId } from './useObservatoryData';
 
 const ObservatoryScene = dynamic(() => import('./ObservatoryScene'), {
   ssr: false,
@@ -28,11 +28,15 @@ const ObservatoryScene = dynamic(() => import('./ObservatoryScene'), {
 
 export default function ObservatoryPage() {
   const data = useObservatoryData();
-  const [logs, setLogs] = useState<Array<{ msg: string; color: string }>>([]);
+  const [logs, setLogs] = useState<Array<{ msg: string; color: string; service?: ServiceId }>>([]);
   const [vehicleCount, setVehicleCount] = useState(6);
+  const [paused, setPaused] = useState(false);
+  const [speed, setSpeed] = useState(1);
+  const [selectedService, setSelectedService] = useState<ServiceId | null>(null);
+  const [logFilter, setLogFilter] = useState<ServiceId | 'all'>('all');
 
-  const handleLog = useCallback((msg: string, color: string) => {
-    setLogs((prev) => [{ msg, color }, ...prev].slice(0, 30));
+  const handleLog = useCallback((msg: string, color: string, service?: ServiceId) => {
+    setLogs((prev) => [{ msg, color, service }, ...prev].slice(0, 60));
   }, []);
 
   return (
@@ -43,20 +47,32 @@ export default function ObservatoryPage() {
           data={data}
           onLog={handleLog}
           onVehicleCount={setVehicleCount}
+          paused={paused}
+          speed={speed}
+          selectedService={selectedService}
+          onSelectService={setSelectedService}
         />
       </div>
 
       {/* Fallback móvil: dashboard completo */}
       <div className="md:hidden absolute inset-0">
-        <MobileObservatory data={data} logs={logs} />
+        <MobileObservatory data={data} />
       </div>
 
-      {/* HUD superpuesto solo en escritorio (el móvil tiene su propio dashboard) */}
+      {/* HUD superpuesto solo en escritorio */}
       <div className="hidden md:block absolute inset-0 pointer-events-none">
         <ObservatoryHUD
           data={data}
           logs={logs}
           vehicleCount={vehicleCount}
+          paused={paused}
+          onPausedChange={setPaused}
+          speed={speed}
+          onSpeedChange={setSpeed}
+          selectedService={selectedService}
+          onSelectService={setSelectedService}
+          logFilter={logFilter}
+          onLogFilterChange={setLogFilter}
         />
       </div>
     </div>

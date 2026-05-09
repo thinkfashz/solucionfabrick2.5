@@ -13,10 +13,24 @@ El formato sigue [Keep a Changelog 1.1](https://keepachangelog.com/es-ES/1.1.0/)
 - `.github/CODEOWNERS` con owners por área (seguridad, integraciones, pagos, infra).
 - `docs/inventory.md` con auditoría de módulos en `main` vs. ramas paralelas.
 - `CHANGELOG.md` (este archivo).
+- **Cifrado AES-256-GCM en reposo para `integrations.credentials`** (`src/lib/integrationsCrypto.ts`):
+  - Helpers puros `encryptCredentials` / `decryptCredentials` por valor.
+  - Formato wire `enc:v1:iv:tag:ct` (Node `crypto`, sin nuevas dependencias).
+  - Opt-in vía `INTEGRATIONS_ENC_KEY` (hex 64, base64 32 bytes o utf-8 32 chars). Sin la env var, los helpers son identidad — retro-compatible.
+  - Filas en texto plano pre-existentes pasan a través de `decrypt` sin cambios; la primera escritura post-key re-cifra todos los campos.
+  - Tampering rechazado por GCM auth tag; campos corruptos se omiten silenciosamente con log de error (no rompen el panel).
+  - Tests: `tests/unit/integrationsCrypto.test.ts` (20 casos: round-trip, idempotencia, retro-compat, key rotation, malformed wire, null/undefined).
 
 ### Changed
 
 - `README.md`: corregida versión de React (de 18 a 19), añadidos scripts `npm`, listado de módulos del panel admin y documentación disponible.
+- `docs/inventory.md`: corregido — `/api/admin/integrations`, `metaCredentials.ts` y `vercelClient.ts` **sí están** en `main`. Lo que falta es la UI `/admin/integraciones`.
+- `src/app/api/admin/integrations/route.ts`: GET decrypta antes de mascarar; POST encrypta antes del upsert; el merge intermedio descifra valores existentes para que la live-validation (Cloudinary, Meta) vea texto plano.
+- Lectores de `integrations.credentials` ahora descifran transparentemente: `src/lib/metaCredentials.ts`, `src/lib/vercelClient.ts`, `src/app/api/admin/cloudinary/route.ts`, `src/app/api/admin/health/route.ts`, `src/app/api/meta/ads/route.ts`.
+
+### Security
+
+- Defensa en profundidad: un dump pasivo de la base de datos (backup, consola read-only) ya no expone tokens de Meta/Google/TikTok/Cloudinary/Vercel cuando `INTEGRATIONS_ENC_KEY` está configurada. **Importante**: rotar la key invalida todos los valores cifrados; re-introducir cada provider en `/admin/integraciones`.
 
 ### Removed
 

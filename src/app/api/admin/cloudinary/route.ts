@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
 import { publishCmsEvent } from '@/lib/cmsBus';
+import { decryptCredentials } from '@/lib/integrationsCrypto';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -23,7 +24,9 @@ async function getCloudinaryCredentials(): Promise<{
       .eq('provider', 'cloudinary')
       .limit(1);
     if (!Array.isArray(data) || data.length === 0) return null;
-    const creds = (data[0] as { credentials?: Record<string, string> }).credentials ?? {};
+    const creds = decryptCredentials(
+      (data[0] as { credentials?: Record<string, unknown> }).credentials,
+    ) as Record<string, string>;
     const { cloud_name, api_key, api_secret } = creds;
     if (!cloud_name || !api_key || !api_secret) return null;
     return { cloud_name, api_key, api_secret };

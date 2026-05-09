@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { createClient } from '@insforge/sdk';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 import { serializeSdkError } from '@/lib/adminApi';
+import { decryptCredentials, encryptCredentials } from '@/lib/integrationsCrypto';
 
 export const dynamic = 'force-dynamic';
 
@@ -78,7 +79,7 @@ export async function GET(request: NextRequest) {
     for (const row of (data ?? []) as Array<{ provider?: string; credentials?: Record<string, unknown>; updated_at?: string }>) {
       if (!row.provider || !ALLOWED_PROVIDERS.has(row.provider)) continue;
       providers[row.provider] = {
-        credentials: maskCredentials(row.credentials),
+        credentials: maskCredentials(decryptCredentials(row.credentials)),
         updated_at: row.updated_at,
       };
     }
@@ -142,6 +143,8 @@ export async function POST(request: NextRequest) {
 
   // Merge with existing credentials so the admin can update individual fields
   // (e.g. rotate only the access token) without having to re-enter everything.
+  // Existing rows may be encrypted at rest — decrypt before merging so the
+  // live-validation paths below see plaintext values.
   let existing: Record<string, string> = {};
   try {
     const { data } = await client.database
@@ -150,8 +153,8 @@ export async function POST(request: NextRequest) {
       .eq('provider', provider)
       .limit(1);
     if (Array.isArray(data) && data.length > 0) {
-      const row = data[0] as { credentials?: Record<string, string> };
-      existing = row.credentials ?? {};
+      const row = data[0] as { credentials?: Record<string, unknown> };
+      existing = decryptCredentials(row.credentials) as Record<string, string>;
     }
   } catch {
     // ignore — upsert below will recreate the row.
@@ -502,7 +505,7 @@ export async function POST(request: NextRequest) {
       [
         {
           provider,
-          credentials: nextCredentials,
+          credentials: encryptCredentials(nextCredentials),
           updated_at: new Date().toISOString(),
         },
       ],

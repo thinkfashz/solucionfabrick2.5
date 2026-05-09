@@ -18,7 +18,7 @@ Este documento es la fuente única de verdad para responder *"¿qué hay en `mai
 | Workflows de GitHub Actions              | **4**               |
 | Documentos en `docs/`                    | **6**               |
 
-Veredicto rápido: el núcleo público + panel admin base + endurecimiento de seguridad del login están **en `main`**. Los módulos avanzados (centro de integraciones, OAuth de marketplaces, presupuestos auto-destructibles, healthcheck cron, inteligencia de mercado) **NO están en `main`** y se rastrean abajo.
+Veredicto rápido: el núcleo público + panel admin base + endurecimiento de seguridad del login están **en `main`**. Adicionalmente, **un centro de integraciones de _backend_ ya existe** (`/api/admin/integrations` con CRUD para meta/google/google_ads/tiktok/cloudinary/vercel + helpers `metaCredentials` y `vercelClient`). Los módulos avanzados que **siguen faltando** son: UI `/admin/integraciones`, OAuth de marketplaces, presupuestos auto-destructibles, healthcheck cron, inteligencia de mercado, Resend, multi-tenant. Se rastrean abajo.
 
 ---
 
@@ -43,7 +43,7 @@ Estos módulos están descritos en notas internas y/o en sesiones previas, pero 
 
 | Módulo / feature                                  | Path esperado                                                       | Estado en `main` |
 |---------------------------------------------------|---------------------------------------------------------------------|------------------|
-| Centro de integraciones                           | `src/app/admin/integraciones/`                                      | ❌ Falta         |
+| UI Centro de integraciones                        | `src/app/admin/integraciones/`                                      | ❌ Falta (el _backend_ `/api/admin/integrations/route.ts` sí existe) |
 | Inteligencia de mercado                           | `src/app/admin/inteligencia-mercado/`                               | ❌ Falta         |
 | Presupuestos auto-destructibles                   | `src/app/admin/presupuestos/`, `src/app/p/[slug]/`                  | ❌ Falta         |
 | OAuth Mercado Libre                               | `src/app/api/admin/ml/oauth/{start,callback}/`                      | ❌ Falta         |
@@ -52,14 +52,16 @@ Estos módulos están descritos en notas internas y/o en sesiones previas, pero 
 | OAuth TikTok for Business                         | `src/app/api/admin/tiktok/oauth/{start,callback}/`                  | ❌ Falta         |
 | Cron diario healthcheck de integraciones          | `src/app/api/cron/integrations-healthcheck/`                        | ❌ Falta         |
 | Plantillas React Email                            | `src/emails/`                                                       | ❌ Falta         |
-| Helper de cifrado AES-GCM de credenciales         | `src/lib/integrationsCrypto.ts`                                     | ❌ Falta         |
-| Mapa de env vars de integraciones                 | `src/lib/integrationsEnvMap.ts`                                     | ❌ Falta         |
+| Helper de cifrado AES-GCM de credenciales         | `src/lib/integrationsCrypto.ts`                                     | ✅ Añadido en Fase 2A |
+| Mapa de env vars de integraciones                 | `src/lib/integrationsEnvMap.ts`                                     | ❌ Falta (Fase 2B) |
 | Helpers de market intel                           | `src/lib/marketIntel.ts`, `src/lib/seoSuggestions.ts`               | ❌ Falta         |
 | Helper de presupuestos                            | `src/lib/presupuestos.ts`                                           | ❌ Falta         |
-| Caché de importación de productos                 | `src/lib/productImportCache.ts`                                     | ❌ Falta         |
+| Caché de importación de productos                 | `src/lib/productImportCache.ts`                                     | ❌ Falta (sí existe `productImport.ts` para el _runtime_, no la caché 24h) |
 | Resend (email transaccional + rotación de keys)   | `src/lib/resendCredentials.ts`, `src/lib/resendKeyRotation.ts`      | ❌ Falta         |
 | Fachada de DB (anti-lock-in InsForge)             | `src/lib/db/index.ts`, `src/lib/db/postgres.ts`                     | ❌ Falta         |
 | Multi-tenant (tabla `tenants`, middleware)        | `src/lib/tenantContext.ts`                                          | ❌ Falta         |
+| Helper meta credentials                           | `src/lib/metaCredentials.ts`                                        | ✅ Sí está en `main` |
+| Cliente Vercel                                    | `src/lib/vercelClient.ts`                                           | ✅ Sí está en `main` |
 
 ---
 

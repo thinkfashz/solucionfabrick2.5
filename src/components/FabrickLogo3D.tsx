@@ -38,8 +38,24 @@ interface FabrickLogo3DProps {
   showHint?: boolean;
   /** Si true, el canvas tiene fondo transparente (toma el color del padre). Default: true. */
   transparent?: boolean;
+  /**
+   * Distancia fija de la cámara al origen (eje Z). Si se omite, el componente
+   * usa el comportamiento responsivo por defecto (35 en mobile, 22 en desktop).
+   * Útil cuando el logo vive en un contenedor pequeño (p. ej. la barra de
+   * navegación) y el default haría que el modelo se vea como un punto.
+   */
+  cameraZ?: number;
   /** Callback opcional disparado al hacer clic sobre el logo. */
   onLogoClick?: () => void;
+  /**
+   * Si `false`, el plano con el texto "SOLUCIONES FABRICK / Tu obra en buenas
+   * manos" no se dibuja: sólo se anima la cercha 3D (techo metálico dorado).
+   * Útil cuando el logo vive en contenedores pequeños como el navbar, donde
+   * el texto rasterizado a `CanvasTexture` se ve borroso al downscalear.
+   * Cuando es `false` también centramos el truss en `y=0` (en lugar del
+   * `y=2.5` original que deja espacio para el texto debajo). Default: true.
+   */
+  showText?: boolean;
 }
 
 export default function FabrickLogo3D({
@@ -48,7 +64,9 @@ export default function FabrickLogo3D({
   interactive = true,
   showHint,
   transparent = true,
+  cameraZ,
   onLogoClick,
+  showText = true,
 }: FabrickLogo3DProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const hintRef = useRef<HTMLDivElement>(null);
@@ -145,13 +163,22 @@ export default function FabrickLogo3D({
 
     const roofMesh = new THREE.Mesh(roofGeometry, goldMaterial);
     trussGroup.add(roofMesh);
-    trussGroup.position.set(0, 2.5, 0);
+    // Sin texto, el truss queda centrado verticalmente. Con texto, lo
+    // levantamos a y=2.5 para dejar espacio al plano del wordmark debajo.
+    const trussBaseY = showText ? 2.5 : 0;
+    trussGroup.position.set(0, trussBaseY, 0);
     logoGroup.add(trussGroup);
 
     // ----------------------------------------------------------------
-    // Texto: SOLUCIONES FABRICK + eslogan
+    // Texto: SOLUCIONES FABRICK + eslogan (sólo si showText=true)
     // ----------------------------------------------------------------
-    const textCanvas = document.createElement('canvas');
+    let textCanvas: HTMLCanvasElement | null = null;
+    let texture: THREE.CanvasTexture | null = null;
+    let planeGeo: THREE.PlaneGeometry | null = null;
+    let planeMat: THREE.MeshStandardMaterial | null = null;
+
+    if (showText) {
+    textCanvas = document.createElement('canvas');
     textCanvas.width = 2048;
     textCanvas.height = 1024;
     const ctx = textCanvas.getContext('2d');
@@ -188,12 +215,12 @@ export default function FabrickLogo3D({
       ctx.fillText(slogan, textCanvas.width / 2, sloganY);
     }
 
-    const texture = new THREE.CanvasTexture(textCanvas);
+    texture = new THREE.CanvasTexture(textCanvas);
     texture.minFilter = THREE.LinearFilter;
     texture.magFilter = THREE.LinearFilter;
 
-    const planeGeo = new THREE.PlaneGeometry(24, 12);
-    const planeMat = new THREE.MeshStandardMaterial({
+    planeGeo = new THREE.PlaneGeometry(24, 12);
+    planeMat = new THREE.MeshStandardMaterial({
       map: texture,
       transparent: true,
       side: THREE.DoubleSide,
@@ -203,6 +230,7 @@ export default function FabrickLogo3D({
     const textPlane = new THREE.Mesh(planeGeo, planeMat);
     textPlane.position.y = -4;
     logoGroup.add(textPlane);
+    } // end if (showText)
 
     // ----------------------------------------------------------------
     // Cámara + responsividad por contenedor
@@ -211,7 +239,7 @@ export default function FabrickLogo3D({
       const w = Math.max(1, container.clientWidth);
       const h = Math.max(1, container.clientHeight);
       camera.aspect = w / h;
-      camera.position.z = w < 768 ? 35 : 22;
+      camera.position.z = cameraZ ?? (w < 768 ? 35 : 22);
       camera.updateProjectionMatrix();
       renderer.setSize(w, h);
     };
@@ -298,7 +326,7 @@ export default function FabrickLogo3D({
 
       spinAngle = THREE.MathUtils.lerp(spinAngle, targetSpinAngle, 0.05);
       roofOffsetY = THREE.MathUtils.lerp(roofOffsetY, targetRoofOffsetY, 0.08);
-      trussGroup.position.y = 2.5 + roofOffsetY;
+      trussGroup.position.y = trussBaseY + roofOffsetY;
 
       logoGroup.position.y = Math.sin(elapsed * 1.0) * 0.2;
       logoGroup.rotation.y = Math.sin(elapsed * 0.5) * 0.15 + spinAngle;
@@ -323,9 +351,9 @@ export default function FabrickLogo3D({
 
       roofGeometry.dispose();
       goldMaterial.dispose();
-      planeGeo.dispose();
-      planeMat.dispose();
-      texture.dispose();
+      planeGeo?.dispose();
+      planeMat?.dispose();
+      texture?.dispose();
 
       scene.clear();
       renderer.dispose();
@@ -334,7 +362,7 @@ export default function FabrickLogo3D({
         container.removeChild(renderer.domElement);
       }
     };
-  }, [interactive, transparent]);
+  }, [interactive, transparent, cameraZ, showText]);
 
   const showHintResolved = showHint ?? interactive;
 

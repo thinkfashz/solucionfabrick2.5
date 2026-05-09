@@ -21,7 +21,7 @@ import {
   Phone,
   ShieldCheck,
 } from 'lucide-react';
-import FabrickLogo from '@/components/FabrickLogo';
+import FabrickLogo3DLazy from '@/components/FabrickLogo3DLazy';
 import ThemeToggle from '@/components/ThemeToggle';
 import { useCartContextSafe } from '@/context/CartContext';
 import { useQuoteCartSafe } from '@/context/QuoteCartContext';
@@ -71,6 +71,59 @@ const itemVariants = {
     transition: { delay: 0.08 + i * 0.035, duration: 0.32, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
   }),
 };
+
+/**
+ * Botón-marca del Navbar.
+ *
+ * Layout: [cercha 3D animada] + [wordmark "SOLUCIONES FABRICK / Tu obra en
+ * buenas manos"]. La cercha sigue renderizándose con `FabrickLogo3DLazy`
+ * en modo `showText={false}` porque el texto rasterizado a `CanvasTexture`
+ * pierde nitidez al downscalear al tamaño del navbar; en cambio, el
+ * wordmark se renderiza como HTML real al lado, así queda crisp en todas
+ * las densidades de pantalla.
+ *
+ * - `interactive={false}` y `showHint={false}` → el clic siempre navega a `/`.
+ * - `cameraZ={14}` → cámara cerrada para que la cercha llene el cuadro.
+ * - El wrapper conserva `role="button"` + `onKeyDown` para accesibilidad.
+ * - El wordmark se muestra en todas las anchuras (compacto en mobile,
+ *   completo desde `sm`). El eslogan se oculta en mobile muy estrecho
+ *   (`<sm`) para no chocar con el botón hamburguesa.
+ */
+function NavbarBrandLogo({ onClick }: { onClick: () => void }) {
+  return (
+    <div
+      role="button"
+      tabIndex={0}
+      aria-label="Soluciones Fabrick — inicio"
+      onClick={onClick}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onClick();
+        }
+      }}
+      className="group flex flex-shrink-0 cursor-pointer select-none items-center gap-2 rounded-lg outline-none transition-transform duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60 sm:gap-3"
+    >
+      <div className="relative h-12 w-[60px] flex-shrink-0 sm:h-14 sm:w-[72px]">
+        <FabrickLogo3DLazy
+          height="100%"
+          interactive={false}
+          showHint={false}
+          showText={false}
+          cameraZ={14}
+        />
+      </div>
+      <div className="flex flex-col leading-none">
+        <span className="text-[11px] font-black uppercase tracking-[0.12em] text-white sm:text-[15px] sm:tracking-[0.14em]">
+          SOLUCIONES <span className="text-[var(--accent)]">FABRICK</span>
+        </span>
+        <span className="mt-1 hidden text-[9px] font-medium italic tracking-[0.08em] text-zinc-400 sm:block sm:text-[10px]">
+          Tu obra en buenas manos
+        </span>
+      </div>
+    </div>
+  );
+}
 
 export default function Navbar() {
   const router = useRouter();
@@ -124,7 +177,7 @@ export default function Navbar() {
             : 'border-transparent shadow-none',
         ].join(' ')}
       >
-        <FabrickLogo onClick={() => handleNav('/')} />
+        <NavbarBrandLogo onClick={() => handleNav('/')} />
 
         {/* Desktop links */}
         <div className="hidden items-center gap-6 lg:flex">
@@ -244,7 +297,7 @@ export default function Navbar() {
             >
               {/* Sticky header in drawer */}
               <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/5 bg-[var(--bg)]/95 px-5 py-3 backdrop-blur-md">
-                <FabrickLogo onClick={() => handleNav('/')} />
+                <NavbarBrandLogo onClick={() => handleNav('/')} />
                 <button
                   type="button"
                   onClick={() => setOpen(false)}

@@ -15,7 +15,8 @@
     "typecheck": "tsc --noEmit",
     "admin:set-password": "tsx scripts/set-admin-password.ts",
     "admin:enable-totp": "tsx scripts/enable-admin-totp.ts",
-    "admin:disable-totp": "tsx scripts/disable-admin-totp.ts"
+    "admin:disable-totp": "tsx scripts/disable-admin-totp.ts",
+    "admin:generate-backup-codes": "tsx scripts/generate-admin-backup-codes.ts"
   },
   "dependencies": {
     "@insforge/sdk": "^1.2.5",

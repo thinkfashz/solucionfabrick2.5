@@ -7,6 +7,7 @@ import {
 } from '@/lib/adminPasswordHash';
 import { verifyTotp } from '@/lib/adminTotp';
 import { decryptTotpSecret, isEncryptedTotpSecret } from '@/lib/adminTotpCrypto';
+import { verifyAndConsumeBackupCode } from '@/lib/adminBackupCodes';
 
 const BOOTSTRAP_ADMIN_EMAIL = (
   process.env.ADMIN_EMAIL || 'f.eduardomicolta@gmail.com'
@@ -53,6 +54,10 @@ export async function POST(request: Request) {
   const audit = (outcome: LoginOutcome, email?: string | null, reason?: string | null) => {
     void recordLoginAttempt({ ip, email: email ?? null, outcome, reason: reason ?? null, userAgent });
   };
+
+  /** Recovery-path marker — set when the second factor was a backup code. */
+  let usedBackupCode = false;
+  let backupCodesRemaining: number | null = null;
 
   try {
     // Fail fast with a self-diagnostic message if the deployment is missing
@@ -127,6 +132,7 @@ export async function POST(request: Request) {
       aprobado?: boolean;
       password_hash?: string | null;
       totp_secret_enc?: string | null;
+      backup_codes?: string[] | null;
     };
 
     // ── Layered owner-password verification (Fase 1 del plan de privatización)
@@ -186,12 +192,50 @@ export async function POST(request: Request) {
       }
       const totpOk = verifyTotp(totp, totpSecret);
       if (!totpOk) {
-        await recordFailedAttempt(ip);
-        audit('totp_invalid', email);
-        return NextResponse.json(
-          { error: 'Código de verificación inválido.', code: 'TOTP_INVALID' },
-          { status: 401 }
+        // ── Backup-code fallback (Fase 1.3b) ──────────────────────────
+        // If the user typed something that looks like a backup code
+        // (10-char alphanumeric, possibly dashed) instead of a 6-digit
+        // TOTP, try it against the stored hashes. On a hit we consume
+        // the code (remove from the array), persist the trimmed array,
+        // and let the login proceed. On a miss we return the SAME
+        // generic TOTP_INVALID response so an attacker cannot tell
+        // whether they hit a backup-code branch.
+        const backupResult = await verifyAndConsumeBackupCode(
+          totp,
+          adminUser.backup_codes
         );
+        if (!backupResult.ok) {
+          await recordFailedAttempt(ip);
+          audit('totp_invalid', email);
+          return NextResponse.json(
+            { error: 'Código de verificación inválido.', code: 'TOTP_INVALID' },
+            { status: 401 }
+          );
+        }
+        // Consume: persist the trimmed hash array. Best-effort write —
+        // a transient DB error here would let the same code be reused
+        // on a retry, which is bad, so we DO surface the error rather
+        // than swallowing it. The login fails closed.
+        const { error: consumeErr } = await insforge.database
+          .from('admin_users')
+          .update({ backup_codes: backupResult.remainingHashes })
+          .eq('email', email);
+        if (consumeErr) {
+          console.error(
+            '[admin/login] failed to consume backup code:',
+            consumeErr.message ?? consumeErr
+          );
+          await recordFailedAttempt(ip);
+          audit('error', email, 'backup_code_consume_failed');
+          return NextResponse.json(
+            { error: 'No se pudo procesar el código. Intenta nuevamente.' },
+            { status: 500 }
+          );
+        }
+        // Tag this success so the audit trail distinguishes "real TOTP"
+        // from "recovery via backup code". Reason format is grep-able.
+        usedBackupCode = true;
+        backupCodesRemaining = backupResult.remainingCount;
       }
     }
 
@@ -235,7 +279,13 @@ export async function POST(request: Request) {
     const exp = Date.now() + SESSION_TTL_MS;
     const sessionValue = await encodeSession({ email, exp, rol });
 
-    audit('success', email, `rol=${rol}`);
+    audit(
+      'success',
+      email,
+      usedBackupCode
+        ? `rol=${rol}; via=backup_code; remaining=${backupCodesRemaining}`
+        : `rol=${rol}`
+    );
 
     const response = NextResponse.json({ ok: true });
     response.cookies.set(ADMIN_COOKIE_NAME, sessionValue, {

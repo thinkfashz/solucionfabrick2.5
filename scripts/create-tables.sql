@@ -195,6 +195,17 @@ ALTER TABLE public.admin_users
   ADD COLUMN IF NOT EXISTS totp_secret_enc text,
   ADD COLUMN IF NOT EXISTS totp_enabled_at timestamptz;
 
+-- ── admin_users: TOTP backup codes (Fase 1.3b) ──────────────────────────
+-- Anti-lockout recovery: if the authenticator device is lost, the admin
+-- can use one of these single-use codes to log in. Plaintext codes are
+-- NEVER stored — only scrypt+pepper hashes (same wire format as
+-- password_hash). Populated via `npm run admin:generate-backup-codes`,
+-- which prints the plaintext exactly once and persists the hashes here.
+-- Consumed codes are removed from the array on successful match.
+ALTER TABLE public.admin_users
+  ADD COLUMN IF NOT EXISTS backup_codes text[],
+  ADD COLUMN IF NOT EXISTS backup_codes_generated_at timestamptz;
+
 -- ── admin_login_attempts ────────────────────────────────────────────────
 -- Persistent brute-force / rate-limit store. The previous in-memory `Map`
 -- in src/lib/adminAuth.ts was reset on every serverless cold start, so an

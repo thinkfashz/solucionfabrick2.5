@@ -174,6 +174,16 @@ CREATE TABLE IF NOT EXISTS public.admin_users (
   created_at timestamptz DEFAULT now()
 );
 
+-- ── admin_users: layered owner password ────────────────────────────────
+-- Optional second-factor verification on top of InsForge auth. Populated
+-- via `npm run admin:set-password`. When the column is non-NULL for a
+-- given email, /api/admin/login verifies the plaintext password locally
+-- (scrypt + ADMIN_PASSWORD_PEPPER) AFTER the InsForge auth call — both
+-- must succeed. When NULL, login behaves as before (InsForge auth only).
+ALTER TABLE public.admin_users
+  ADD COLUMN IF NOT EXISTS password_hash text,
+  ADD COLUMN IF NOT EXISTS password_hash_updated_at timestamptz;
+
 -- TABLA: banners
 CREATE TABLE IF NOT EXISTS public.banners (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

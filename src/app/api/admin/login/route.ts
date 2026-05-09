@@ -1,5 +1,10 @@
 import { NextResponse } from 'next/server';
 import { insforge, getMissingAdminEnvVars } from '@/lib/insforge';
+import {
+  verifyAdminPassword,
+  isAdminPasswordHash,
+  assertPepperConfigured,
+} from '@/lib/adminPasswordHash';
 
 const BOOTSTRAP_ADMIN_EMAIL = (
   process.env.ADMIN_EMAIL || 'f.eduardomicolta@gmail.com'
@@ -84,7 +89,7 @@ export async function POST(request: Request) {
 
     const { data: adminRows, error: dbError } = await insforge.database
       .from('admin_users')
-      .select('email, rol, aprobado')
+      .select('email, rol, aprobado, password_hash')
       .eq('email', email)
       .limit(1);
 
@@ -96,7 +101,33 @@ export async function POST(request: Request) {
       );
     }
 
-    const adminUser = adminRows[0] as { email: string; rol?: string; aprobado?: boolean };
+    const adminUser = adminRows[0] as {
+      email: string;
+      rol?: string;
+      aprobado?: boolean;
+      password_hash?: string | null;
+    };
+
+    // ── Layered owner-password verification (Fase 1 del plan de privatización)
+    // If the row has a `password_hash`, verify the plaintext password against
+    // it locally with scrypt + ADMIN_PASSWORD_PEPPER. This runs on top of
+    // InsForge auth so a compromise of the InsForge user record alone is not
+    // enough to log in. When the column is NULL the layer is skipped (legacy
+    // accounts that haven't run `npm run admin:set-password` yet).
+    if (isAdminPasswordHash(adminUser.password_hash)) {
+      // Refuse to silently downgrade in production: a misconfigured pepper
+      // would make every verification fail with "wrong password" — a much
+      // worse UX than failing fast with a clear 500.
+      assertPepperConfigured();
+      const localOk = await verifyAdminPassword(password, adminUser.password_hash);
+      if (!localOk) {
+        recordFailedAttempt(ip);
+        return NextResponse.json(
+          { error: 'Credenciales incorrectas.' },
+          { status: 401 }
+        );
+      }
+    }
 
     // The bootstrap admin (ADMIN_EMAIL) is the owner of the installation and
     // must never be blocked by the "pending approval" gate — there is nobody
@@ -155,6 +186,10 @@ export async function POST(request: Request) {
     // produces the misleading "Error de red" banner on the login form).
     const message = err instanceof Error ? err.message : String(err);
     console.error('[admin/login] unhandled error:', message, err);
+    const isMissingPepper = /ADMIN_PASSWORD_PEPPER/i.test(message);
+    if (isMissingPepper) {
+      return misconfiguredResponse(['ADMIN_PASSWORD_PEPPER']);
+    }
     const isMissingConfig = /Missing required InsForge configuration|ADMIN_SESSION_SECRET/i.test(
       message
     );

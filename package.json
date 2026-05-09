@@ -12,7 +12,8 @@
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "admin:set-password": "tsx scripts/set-admin-password.ts"
   },
   "dependencies": {
     "@insforge/sdk": "^1.2.5",
@@ -74,6 +75,7 @@
     "eslint-config-next": "^15.5.15",
     "postcss": "^8",
     "tailwindcss": "3.4.17",
+    "tsx": "^4.19.2",
     "typescript": "^5",
     "vitest": "^2.1.9"
   }

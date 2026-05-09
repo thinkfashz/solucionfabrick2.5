@@ -2,6 +2,7 @@ import Link from 'next/link';
 import { headers } from 'next/headers';
 import { Calendar, Clock, User, ArrowLeft, MapPin, Briefcase, Timer, Target } from 'lucide-react';
 import SectionPageShell from '@/components/SectionPageShell';
+import BlogComments from '@/components/BlogComments';
 import type { ContentPost, ContentMeta } from '@/lib/content';
 import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 
@@ -178,6 +179,11 @@ export default async function ArticlePage({ post, related }: ArticlePageProps) {
           </div>
         </section>
       ) : null}
+
+      {/* Comments section */}
+      <div className="mx-auto max-w-3xl">
+        <BlogComments postSlug={slug} onlyApproved={true} />
+      </div>
 
       {/* Back link */}
       <div className="mt-16 flex justify-center">

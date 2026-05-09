@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 
 declare global {
   interface Window {
@@ -28,6 +28,20 @@ declare global {
           name?: string;
         }>;
       }>;
+      bricks: () => {
+        create: (
+          brickType: 'wallet',
+          containerId: string,
+          settings: {
+            initialization: { preferenceId: string };
+            customization?: Record<string, unknown>;
+            callbacks?: {
+              onReady?: () => void;
+              onError?: (error: unknown) => void;
+            };
+          },
+        ) => Promise<{ unmount?: () => void } | void>;
+      };
     };
     gsap: {
       fromTo: (el: HTMLElement | null, from: object, to: object) => void;
@@ -38,12 +52,19 @@ declare global {
 import { useSearchParams } from 'next/navigation';
 import { CART_SESSION_KEY, useCartContextSafe } from '@/context/CartContext';
 import { useSiteContent } from '@/hooks/useSiteContent';
+import Checkout4DExperience from '@/components/checkout/Checkout4DExperience';
 import { 
   ArrowLeft, ShieldCheck, Lock, Truck, 
   CheckCircle2, ChevronRight, Fingerprint,
   Wifi, Battery, Wrench, Check, Building2, Copy, ExternalLink,
   CreditCard, RefreshCw
 } from 'lucide-react';
+
+const FABRICK_HUB = {
+  name: 'Hub Fabrick Linares',
+  lat: -35.8507,
+  lon: -71.5962,
+};
 
 // ── Bank account data (configurable via env vars) ──────────────────────────
 const BANK_INFO = {
@@ -56,33 +77,59 @@ const BANK_INFO = {
 };
 
 // --- COMPONENTE FUEGOS ARTIFICIALES PREMIUM ---
+const FIREWORK_PARTICLES = Array.from({ length: 90 }).map((_, i) => ({
+  sizeClass: `checkout-firework-size-${(i % 3) + 1}`,
+  colorClass: `checkout-firework-color-${i % 4}`,
+  pathClass: `checkout-firework-path-${i % 12}`,
+  delayClass: `checkout-firework-delay-${i % 10}`,
+}));
+
+const STAR_FIELD_CLASSES = [
+  'top-[0%] left-[0%]',
+  'top-[37%] left-[53%]',
+  'top-[74%] left-[6%]',
+  'top-[11%] left-[59%]',
+  'top-[48%] left-[12%]',
+  'top-[85%] left-[65%]',
+  'top-[22%] left-[18%]',
+  'top-[59%] left-[71%]',
+  'top-[96%] left-[24%]',
+  'top-[33%] left-[77%]',
+  'top-[70%] left-[30%]',
+  'top-[7%] left-[83%]',
+  'top-[44%] left-[36%]',
+  'top-[81%] left-[89%]',
+  'top-[18%] left-[42%]',
+  'top-[55%] left-[95%]',
+  'top-[92%] left-[48%]',
+  'top-[29%] left-[1%]',
+  'top-[66%] left-[54%]',
+  'top-[3%] left-[7%]',
+  'top-[40%] left-[60%]',
+  'top-[77%] left-[13%]',
+  'top-[14%] left-[66%]',
+  'top-[51%] left-[19%]',
+] as const;
+
+const STAR_SIZE_CLASSES = ['w-px h-px', 'w-0.5 h-0.5', 'w-1 h-1'] as const;
+const STAR_DELAY_CLASSES = [
+  '[animation-delay:0s]',
+  '[animation-delay:0.35s]',
+  '[animation-delay:0.7s]',
+  '[animation-delay:1.05s]',
+  '[animation-delay:1.4s]',
+  '[animation-delay:1.75s]',
+  '[animation-delay:2.1s]',
+] as const;
+
 const PremiumFireworks = () => {
-  const particles = Array.from({ length: 90 }); 
   return (
     <div className="absolute inset-0 pointer-events-none flex items-center justify-center z-0 overflow-hidden">
-      {particles.map((_, i) => {
-        const angle = (i * 360) / particles.length + (Math.random() * 10 - 5);
-        const velocity = 50 + Math.random() * 300;
-        const tx = Math.cos((angle * Math.PI) / 180) * velocity;
-        const ty = Math.sin((angle * Math.PI) / 180) * velocity;
-        const colors = ['#FACC15', '#FDE047', '#FFFFFF', '#D97706'];
-        const color = colors[Math.floor(Math.random() * colors.length)];
-        const size = Math.random() * 3 + 1;
-        const delay = Math.random() * 0.3;
-        
+      {FIREWORK_PARTICLES.map((p, i) => {
         return (
-          <div 
+          <div
             key={i}
-            className="absolute rounded-full opacity-0"
-            style={{
-              width: `${size}px`,
-              height: `${size}px`,
-              backgroundColor: color,
-              boxShadow: `0 0 ${size * 3}px ${color}`,
-              '--tx': `${tx}px`,
-              '--ty': `${ty}px`,
-              animation: `explode-premium 2.5s cubic-bezier(0.16, 1, 0.3, 1) ${delay}s forwards`
-            } as React.CSSProperties}
+            className={`absolute rounded-full opacity-0 checkout-firework ${p.sizeClass} ${p.colorClass} ${p.pathClass} ${p.delayClass}`}
           />
         );
       })}
@@ -116,13 +163,46 @@ function CopyField({ label, value }: { label: string; value: string }) {
   );
 }
 
-// Pre-computed star field for the processing overlay (stable across renders).
-const STAR_FIELD = Array.from({ length: 24 }).map((_, i) => ({
-  top: (i * 37) % 100,
-  left: (i * 53) % 100,
-  size: (i % 3) + 1,
-  delay: (i % 7) * 0.35,
-}));
+const RELATED_SUGGESTIONS = [
+  {
+    id: 'rel-seguridad',
+    title: 'Kit Seguridad Smart',
+    category: 'Seguridad',
+    price: 129900,
+    image:
+      'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    id: 'rel-iluminacion',
+    title: 'Pack Iluminación Arquitectónica',
+    category: 'Iluminación',
+    price: 98900,
+    image:
+      'https://images.unsplash.com/photo-1565814329452-e1efa11c5e8a?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    id: 'rel-revestimiento',
+    title: 'Panel Decorativo 3D',
+    category: 'Revestimiento',
+    price: 74900,
+    image:
+      'https://images.unsplash.com/photo-1615873968403-89e068629265?q=80&w=800&auto=format&fit=crop',
+  },
+  {
+    id: 'rel-griferia',
+    title: 'Grifería Premium Onyx',
+    category: 'Grifería',
+    price: 145000,
+    image:
+      'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop',
+  },
+];
+
+const CHECKOUT_TRUST_POINTS = [
+  'Aprobacion asistida por Mercado Pago',
+  'Tokenizacion segura sin guardar tarjetas',
+  'Fallback oficial y transferencia inmediata',
+] as const;
 
 interface StoredCartItem {
   product: {
@@ -146,8 +226,14 @@ const CheckoutApp = () => {
   const [gsapLoaded, setGsapLoaded] = useState(false);
   const stepContentRef = useRef<HTMLDivElement>(null);
   
-  // Payment method selection: 'mercadopago' | 'transfer'
-  const [paymentMethod, setPaymentMethod] = useState<'mercadopago' | 'transfer'>('mercadopago');
+  // Payment method selection: 'mercadopago' | 'bricks' | 'transfer'
+  const [paymentMethod, setPaymentMethod] = useState<'mercadopago' | 'bricks' | 'transfer'>('bricks');
+  const [bricksBooting, setBricksBooting] = useState(false);
+  const [bricksReady, setBricksReady] = useState(false);
+  const [bricksError, setBricksError] = useState('');
+  const [bricksProgress, setBricksProgress] = useState(0);
+  const [bricksPreferenceId, setBricksPreferenceId] = useState('');
+  const mpBrickControllerRef = useRef<{ unmount?: () => void } | null>(null);
   
   // Transfer order state
   const [transferOrderId, setTransferOrderId] = useState('');
@@ -221,6 +307,10 @@ const CheckoutApp = () => {
   const [locationLoading, setLocationLoading] = useState(false);
   const [locationError, setLocationError] = useState('');
   const [locationSuggestion, setLocationSuggestion] = useState<{ address: string; region: string } | null>(null);
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
+  const [mapTeleporting, setMapTeleporting] = useState(false);
+  const [satellitePhase, setSatellitePhase] = useState<'idle' | 'uplink' | 'processing' | 'downlink' | 'completed'>('idle');
+  const [satelliteProgress, setSatelliteProgress] = useState(0);
   const [cardNumber, setCardNumber] = useState('');
   const [cardName, setCardName] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
@@ -290,6 +380,19 @@ const CheckoutApp = () => {
     return s + i.product.price * (1 - discount / 100) * i.quantity;
   }, 0);
   const cartItemCount = cartItems.reduce((s, i) => s + i.quantity, 0);
+  const relatedProducts = useMemo(() => {
+    const categories = new Set(
+      cartItems
+        .map((item) => (item.product.category_id || '').toLowerCase())
+        .filter(Boolean),
+    );
+
+    const prioritized = RELATED_SUGGESTIONS.filter((item) =>
+      Array.from(categories).some((c) => item.category.toLowerCase().includes(c)),
+    );
+    const fallback = RELATED_SUGGESTIONS.filter((item) => !prioritized.includes(item));
+    return [...prioritized, ...fallback].slice(0, 3);
+  }, [cartItems]);
 
   const formatCardDisplay = (n: string) => {
     const clean = n.replace(/\D/g, '').padEnd(16, '•');
@@ -327,17 +430,29 @@ const CheckoutApp = () => {
     }
 
     setLocationError('');
+    setLocationSuggestion(null);
     setLocationLoading(true);
+    setSatellitePhase('uplink');
+    setSatelliteProgress(14);
+
+    const uplinkTimer = window.setTimeout(() => {
+      setSatellitePhase('processing');
+      setSatelliteProgress(52);
+    }, 650);
 
     navigator.geolocation.getCurrentPosition(
       async (position) => {
         try {
           const { latitude, longitude } = position.coords;
+          setLocationCoords({ lat: latitude, lon: longitude });
+          setMapTeleporting(true);
           const response = await fetch(`/api/location/reverse?lat=${latitude}&lon=${longitude}`);
           const payload = await response.json();
 
           if (!response.ok || !payload?.data) {
             setLocationError('No se pudo obtener tu dirección automáticamente.');
+            setSatellitePhase('idle');
+            setSatelliteProgress(0);
             return;
           }
 
@@ -358,19 +473,58 @@ const CheckoutApp = () => {
             address: suggestedAddress || d.displayName || '',
             region: d.region || '',
           });
+          setSatellitePhase('downlink');
+          setSatelliteProgress(86);
+          window.setTimeout(() => {
+            setSatellitePhase('completed');
+            setSatelliteProgress(100);
+            setMapTeleporting(false);
+          }, 360);
         } catch {
           setLocationError('Error al consultar el servicio de ubicación.');
+          setSatellitePhase('idle');
+          setSatelliteProgress(0);
+          setMapTeleporting(false);
         } finally {
+          window.clearTimeout(uplinkTimer);
           setLocationLoading(false);
         }
       },
       () => {
+        window.clearTimeout(uplinkTimer);
         setLocationLoading(false);
         setLocationError('No se obtuvo permiso de ubicación.');
+        setSatellitePhase('idle');
+        setSatelliteProgress(0);
+        setMapTeleporting(false);
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
     );
   };
+
+  useEffect(() => {
+    if (satellitePhase !== 'completed') return;
+    const timer = window.setTimeout(() => {
+      setSatellitePhase('idle');
+      setSatelliteProgress(0);
+    }, 2400);
+    return () => window.clearTimeout(timer);
+  }, [satellitePhase]);
+
+  const satelliteStatusText =
+    satellitePhase === 'uplink'
+      ? 'Enviando señal de geolocalización al satélite...'
+      : satellitePhase === 'processing'
+        ? 'Satélite procesando coordenadas y mapa base...'
+        : satellitePhase === 'downlink'
+          ? 'Recibiendo datos de retorno con dirección sugerida...'
+          : satellitePhase === 'completed'
+            ? 'Autorrelleno listo: información recibida y validada.'
+            : 'Listo para iniciar conexión satelital.';
+
+  const locationCoordsLabel = locationCoords
+    ? `${locationCoords.lat.toFixed(4)}, ${locationCoords.lon.toFixed(4)}`
+    : 'Pendiente de fijacion';
 
   useEffect(() => {
     const loadGSAP = async () => {
@@ -639,6 +793,39 @@ const CheckoutApp = () => {
   const formatCLP = (value: number) => {
     return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(value);
   };
+
+  const paymentOptions = [
+    {
+      id: 'bricks' as const,
+      title: 'Mercado Pago Bricks',
+      eyebrow: 'Recomendado',
+      description: 'Checkout oficial embebido con flujo validado por Mercado Pago.',
+      detail: 'Mayor compatibilidad y aprobacion mas consistente.',
+      icon: Lock,
+      accent: 'cyan',
+    },
+    {
+      id: 'mercadopago' as const,
+      title: 'Tarjeta inline',
+      eyebrow: 'Express',
+      description: 'Formulario directo en esta pagina con tokenizacion segura.',
+      detail: 'Ideal si quieres cerrar la compra sin salir del checkout.',
+      icon: CreditCard,
+      accent: 'yellow',
+    },
+    {
+      id: 'transfer' as const,
+      title: 'Transferencia bancaria',
+      eyebrow: 'Respaldo',
+      description: 'Orden inmediata con referencia, monto exacto y datos listos para copiar.',
+      detail: 'Sin comisiones y con confirmacion posterior por comprobante.',
+      icon: Building2,
+      accent: 'stone',
+    },
+  ];
+
+  const activePaymentOption =
+    paymentOptions.find((option) => option.id === paymentMethod) ?? paymentOptions[0];
 
   // ── Card input helpers ───────────────────────────────────────────────────
   const rawCardDigits = cardNumber.replace(/\s+/g, '');
@@ -1010,6 +1197,139 @@ const CheckoutApp = () => {
     }
   };
 
+  const ensureMercadoPagoSdk = async () => {
+    if (typeof window === 'undefined') return;
+    if (window.MercadoPago) return;
+
+    const existing = document.getElementById('mercado-pago-sdk-v2') as HTMLScriptElement | null;
+    if (existing) {
+      await new Promise<void>((resolve, reject) => {
+        if (window.MercadoPago) {
+          resolve();
+          return;
+        }
+        existing.addEventListener('load', () => resolve(), { once: true });
+        existing.addEventListener('error', () => reject(new Error('No se pudo cargar Mercado Pago SDK.')), { once: true });
+      });
+      return;
+    }
+
+    await new Promise<void>((resolve, reject) => {
+      const script = document.createElement('script');
+      script.id = 'mercado-pago-sdk-v2';
+      script.src = 'https://sdk.mercadopago.com/js/v2';
+      script.async = true;
+      script.onload = () => resolve();
+      script.onerror = () => reject(new Error('No se pudo cargar Mercado Pago SDK.'));
+      document.body.appendChild(script);
+    });
+  };
+
+  const handleInitBricks = async () => {
+    if (bricksBooting) return;
+    setCheckoutError('');
+    setBricksError('');
+
+    if (!shippingName || !shippingEmail || !shippingAddress || !shippingRegion) {
+      setBricksError('Completa los datos de despacho y contacto antes de iniciar Mercado Pago Bricks.');
+      return;
+    }
+
+    if (!mpStatus.publicKey) {
+      setBricksError('Mercado Pago no está configurado en este ambiente. Usa transferencia o revisa credenciales.');
+      return;
+    }
+
+    setBricksBooting(true);
+    setBricksReady(false);
+    setBricksProgress(8);
+
+    const progressTicker = window.setInterval(() => {
+      setBricksProgress((prev) => (prev >= 88 ? prev : prev + 6));
+    }, 180);
+
+    const payload = {
+      items: cartItems.map((i) => ({
+        productoId: i.product.id,
+        cantidad: i.quantity,
+        precioUnitario: i.product.price * (1 - (i.product.discount_percentage || 0) / 100),
+        nombre: i.product.name,
+      })),
+      region: shippingRegion,
+      shippingAddress,
+      shippingHouseNumber,
+      cliente: {
+        nombre: shippingName,
+        email: shippingEmail,
+        telefono: shippingPhone,
+      },
+    };
+
+    try {
+      const res = await fetch('/api/checkout', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const body = await res.json().catch(() => ({} as Record<string, unknown>));
+      const preferenceId = (body as { payment?: { preferenceId?: string } })?.payment?.preferenceId;
+      if (!res.ok || !preferenceId) {
+        throw new Error((body as { error?: string })?.error || 'No se pudo crear la preferencia para Bricks.');
+      }
+
+      setBricksPreferenceId(preferenceId);
+      await ensureMercadoPagoSdk();
+
+      if (!window.MercadoPago) {
+        throw new Error('Mercado Pago SDK no disponible en el navegador.');
+      }
+
+      if (mpBrickControllerRef.current?.unmount) {
+        mpBrickControllerRef.current.unmount();
+      }
+
+      const mp = new window.MercadoPago(mpStatus.publicKey);
+      const bricksBuilder = mp.bricks();
+      const controller = await bricksBuilder.create('wallet', 'mp-wallet-brick', {
+        initialization: { preferenceId },
+        callbacks: {
+          onReady: () => {
+            setBricksReady(true);
+            setBricksProgress(100);
+          },
+          onError: (error) => {
+            const msg =
+              error instanceof Error
+                ? error.message
+                : 'No se pudo renderizar Mercado Pago Bricks. Intenta nuevamente.';
+            setBricksError(msg);
+          },
+        },
+      });
+
+      if (controller && typeof controller === 'object') {
+        mpBrickControllerRef.current = controller;
+      } else {
+        mpBrickControllerRef.current = null;
+      }
+    } catch (e) {
+      setBricksError(e instanceof Error ? e.message : 'No se pudo iniciar Mercado Pago Bricks.');
+      setBricksReady(false);
+      setBricksProgress(0);
+    } finally {
+      window.clearInterval(progressTicker);
+      setBricksBooting(false);
+    }
+  };
+
+  useEffect(() => {
+    return () => {
+      if (mpBrickControllerRef.current?.unmount) {
+        mpBrickControllerRef.current.unmount();
+      }
+    };
+  }, []);
+
   // ── Mercado Pago Checkout Pro fallback ───────────────────────────────────
   // Creates the order via /api/checkout (which already creates an MP
   // preference server-side) and redirects the buyer to MP's hosted
@@ -1181,8 +1501,56 @@ const CheckoutApp = () => {
           @keyframes explode-premium {
             0% { transform: translate(0, 0) scale(1); opacity: 1; }
             50% { opacity: 0.9; }
-            100% { transform: translate(var(--tx), calc(var(--ty) + 60px)) scale(0); opacity: 0; }
+            100% { transform: translate(0px, 0px) scale(0); opacity: 0; }
           }
+
+          .checkout-firework {
+            animation-duration: 2.5s;
+            animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
+            animation-fill-mode: forwards;
+          }
+          .checkout-firework-size-1 { width: 1px; height: 1px; }
+          .checkout-firework-size-2 { width: 2px; height: 2px; }
+          .checkout-firework-size-3 { width: 3px; height: 3px; }
+          .checkout-firework-color-0 { background-color: #facc15; box-shadow: 0 0 3px #facc15; }
+          .checkout-firework-color-1 { background-color: #fde047; box-shadow: 0 0 6px #fde047; }
+          .checkout-firework-color-2 { background-color: #ffffff; box-shadow: 0 0 8px #ffffff; }
+          .checkout-firework-color-3 { background-color: #d97706; box-shadow: 0 0 6px #d97706; }
+          .checkout-firework-path-0 { animation-name: explode-premium-p0; }
+          .checkout-firework-path-1 { animation-name: explode-premium-p1; }
+          .checkout-firework-path-2 { animation-name: explode-premium-p2; }
+          .checkout-firework-path-3 { animation-name: explode-premium-p3; }
+          .checkout-firework-path-4 { animation-name: explode-premium-p4; }
+          .checkout-firework-path-5 { animation-name: explode-premium-p5; }
+          .checkout-firework-path-6 { animation-name: explode-premium-p6; }
+          .checkout-firework-path-7 { animation-name: explode-premium-p7; }
+          .checkout-firework-path-8 { animation-name: explode-premium-p8; }
+          .checkout-firework-path-9 { animation-name: explode-premium-p9; }
+          .checkout-firework-path-10 { animation-name: explode-premium-p10; }
+          .checkout-firework-path-11 { animation-name: explode-premium-p11; }
+          .checkout-firework-delay-0 { animation-delay: 0s; }
+          .checkout-firework-delay-1 { animation-delay: 0.03s; }
+          .checkout-firework-delay-2 { animation-delay: 0.06s; }
+          .checkout-firework-delay-3 { animation-delay: 0.09s; }
+          .checkout-firework-delay-4 { animation-delay: 0.12s; }
+          .checkout-firework-delay-5 { animation-delay: 0.15s; }
+          .checkout-firework-delay-6 { animation-delay: 0.18s; }
+          .checkout-firework-delay-7 { animation-delay: 0.21s; }
+          .checkout-firework-delay-8 { animation-delay: 0.24s; }
+          .checkout-firework-delay-9 { animation-delay: 0.27s; }
+
+          @keyframes explode-premium-p0  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(180px, 40px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p1  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(120px, 170px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p2  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(0px, 220px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p3  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-120px, 170px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p4  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-180px, 40px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p5  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-160px, -80px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p6  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-90px, -170px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p7  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(0px, -200px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p8  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(90px, -170px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p9  { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(160px, -80px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p10 { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(220px, 0px) scale(0); opacity: 0; } }
+          @keyframes explode-premium-p11 { 0% { transform: translate(0,0) scale(1); opacity: 1; } 100% { transform: translate(-220px, 0px) scale(0); opacity: 0; } }
           
           @keyframes pulse-ring {
             0% { transform: scale(0.9); opacity: 1; }
@@ -1198,6 +1566,86 @@ const CheckoutApp = () => {
             to { background-position: 16px 0; }
           }
 
+          @keyframes sat-pulse {
+            0% { transform: translate(-50%, -50%) scale(0.8); opacity: 0.8; }
+            100% { transform: translate(-50%, -50%) scale(1.7); opacity: 0; }
+          }
+          @keyframes sat-uplink-dot {
+            0% { transform: translate(0px, 0px); opacity: 0; }
+            8% { opacity: 1; }
+            100% { transform: translate(86px, -46px); opacity: 0; }
+          }
+          @keyframes sat-downlink-dot {
+            0% { transform: translate(0px, 0px); opacity: 0; }
+            8% { opacity: 1; }
+            100% { transform: translate(90px, 46px); opacity: 0; }
+          }
+
+          @keyframes locator-route-flow {
+            from { stroke-dashoffset: 24; }
+            to { stroke-dashoffset: 0; }
+          }
+          @keyframes locator-scanline {
+            0% { transform: translateX(-120%); }
+            100% { transform: translateX(120%); }
+          }
+          @keyframes locator-grid-layer {
+            0% { background-position: 0 0, 0 0; }
+            100% { background-position: 0 34px, 34px 0; }
+          }
+          @keyframes locator-ripple {
+            0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0.9; }
+            100% { transform: translate(-50%, -50%) scale(1.4); opacity: 0; }
+          }
+          @keyframes locator-core-pulse {
+            0%, 100% { transform: scale(0.92); opacity: 0.55; }
+            50% { transform: scale(1.08); opacity: 1; }
+          }
+          @keyframes locator-orbit-spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+          }
+          @keyframes locator-orbit-spin-rev {
+            from { transform: rotate(360deg); }
+            to { transform: rotate(0deg); }
+          }
+          @keyframes locator-route-pulse {
+            0% { opacity: 0; }
+            25% { opacity: 1; }
+            100% { opacity: 0; }
+          }
+          .locator-grid-layer {
+            background-image:
+              linear-gradient(to right, rgba(34,211,238,0.08) 1px, transparent 1px),
+              linear-gradient(to bottom, rgba(34,211,238,0.08) 1px, transparent 1px);
+            background-size: 34px 34px;
+            animation: locator-grid-layer 8s linear infinite;
+          }
+          .locator-scanline {
+            animation: locator-scanline 2.6s linear infinite;
+          }
+          .locator-route-flow {
+            animation: locator-route-flow 0.85s linear infinite;
+          }
+          .locator-route-pulse {
+            animation: locator-route-pulse 1.35s linear infinite;
+          }
+          .locator-ripple-warp {
+            animation: locator-ripple 1.1s ease-out infinite;
+          }
+          .locator-ripple-idle {
+            animation: locator-ripple 2.2s ease-out infinite;
+          }
+          .locator-core-pulse {
+            animation: locator-core-pulse 1.7s ease-in-out infinite;
+          }
+          .locator-orbit-spin {
+            animation: locator-orbit-spin 4.6s linear infinite;
+          }
+          .locator-orbit-spin-rev {
+            animation: locator-orbit-spin-rev 3.2s linear infinite;
+          }
+
           @keyframes orbit-spin {
             from { transform: rotate(0deg); }
             to { transform: rotate(360deg); }
@@ -1210,20 +1658,100 @@ const CheckoutApp = () => {
             0%   { transform: translate(-50%, -50%) translate(0px, 0px) scale(0.6); opacity: 0; }
             15%  { opacity: 1; }
             85%  { opacity: 1; }
-            100% { transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) scale(1.1); opacity: 0; }
+            100% { transform: translate(-50%, -50%) translate(130px, 0px) scale(1.1); opacity: 0; }
           }
           @keyframes rocket-SSL {
             0%   { transform: translate(-50%, -50%) translate(0px, 0px) scale(0.6); opacity: 0; }
             15%  { opacity: 1; }
             85%  { opacity: 1; }
-            100% { transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) scale(1.1); opacity: 0; }
+            100% { transform: translate(-50%, -50%) translate(-65px, 112.6px) scale(1.1); opacity: 0; }
           }
           @keyframes rocket-Bank {
             0%   { transform: translate(-50%, -50%) translate(0px, 0px) scale(0.6); opacity: 0; }
             15%  { opacity: 1; }
             85%  { opacity: 1; }
-            100% { transform: translate(-50%, -50%) translate(var(--tx), var(--ty)) scale(1.1); opacity: 0; }
+            100% { transform: translate(-50%, -50%) translate(-65px, -112.6px) scale(1.1); opacity: 0; }
           }
+
+          .bank-approval-progress,
+          .checkout-progress-yellow,
+          .checkout-progress-satellite,
+          .checkout-progress-bricks,
+          .checkout-progress-link {
+            appearance: none;
+            border: none;
+            background: transparent;
+          }
+          .bank-approval-progress::-webkit-progress-bar,
+          .checkout-progress-yellow::-webkit-progress-bar,
+          .checkout-progress-satellite::-webkit-progress-bar,
+          .checkout-progress-bricks::-webkit-progress-bar,
+          .checkout-progress-link::-webkit-progress-bar {
+            background: transparent;
+          }
+          .bank-approval-progress::-webkit-progress-value {
+            background: linear-gradient(90deg, #e2ae00 0%, #ffc700 45%, #ffe17a 75%, #ffffff 100%);
+            box-shadow: 0 0 18px rgba(250,204,21,0.85);
+            border-radius: 9999px;
+            transition: width 120ms ease-out;
+          }
+          .bank-approval-progress::-moz-progress-bar {
+            background: linear-gradient(90deg, #e2ae00 0%, #ffc700 45%, #ffe17a 75%, #ffffff 100%);
+            box-shadow: 0 0 18px rgba(250,204,21,0.85);
+            border-radius: 9999px;
+            transition: width 120ms ease-out;
+          }
+          .checkout-progress-yellow::-webkit-progress-value,
+          .checkout-progress-yellow::-moz-progress-bar {
+            background: #facc15;
+            box-shadow: 0 0 10px #facc15;
+            border-radius: 9999px;
+            transition: width 300ms ease-out;
+          }
+          .checkout-progress-satellite::-webkit-progress-value,
+          .checkout-progress-satellite::-moz-progress-bar {
+            background: linear-gradient(90deg, #facc15 0%, #67e8f9 55%, #34d399 100%);
+            border-radius: 9999px;
+            transition: width 500ms ease;
+          }
+          .checkout-progress-bricks::-webkit-progress-value,
+          .checkout-progress-bricks::-moz-progress-bar {
+            background: linear-gradient(90deg, #38bdf8 0%, #009ee3 48%, #22c55e 100%);
+            border-radius: 9999px;
+            transition: width 300ms ease;
+          }
+          .checkout-progress-link-ok::-webkit-progress-value,
+          .checkout-progress-link-ok::-moz-progress-bar {
+            background: #10b981;
+            box-shadow: 0 0 8px rgba(16,185,129,0.7);
+            transition: width 150ms ease-out;
+          }
+          .checkout-progress-link-danger::-webkit-progress-value,
+          .checkout-progress-link-danger::-moz-progress-bar {
+            background: #ef4444;
+            box-shadow: 0 0 8px rgba(239,68,68,0.7);
+            transition: width 150ms ease-out;
+          }
+
+          .checkout-sat-star {
+            animation-name: twinkle;
+            animation-iteration-count: infinite;
+            animation-timing-function: ease-in-out;
+          }
+          .checkout-sat-star:nth-child(1) { left: 8%; top: 8%; animation-duration: 1.2s; animation-delay: 0s; }
+          .checkout-sat-star:nth-child(2) { left: 15%; top: 21%; animation-duration: 1.6s; animation-delay: 0.06s; }
+          .checkout-sat-star:nth-child(3) { left: 22%; top: 34%; animation-duration: 2s; animation-delay: 0.12s; }
+          .checkout-sat-star:nth-child(4) { left: 29%; top: 47%; animation-duration: 2.4s; animation-delay: 0.18s; }
+          .checkout-sat-star:nth-child(5) { left: 36%; top: 60%; animation-duration: 1.2s; animation-delay: 0.24s; }
+          .checkout-sat-star:nth-child(6) { left: 43%; top: 73%; animation-duration: 1.6s; animation-delay: 0.3s; }
+          .checkout-sat-star:nth-child(7) { left: 50%; top: 10%; animation-duration: 2s; animation-delay: 0.36s; }
+          .checkout-sat-star:nth-child(8) { left: 57%; top: 23%; animation-duration: 2.4s; animation-delay: 0.42s; }
+          .checkout-sat-star:nth-child(9) { left: 64%; top: 36%; animation-duration: 1.2s; animation-delay: 0.48s; }
+          .checkout-sat-star:nth-child(10) { left: 71%; top: 49%; animation-duration: 1.6s; animation-delay: 0.54s; }
+          .checkout-sat-star:nth-child(11) { left: 78%; top: 62%; animation-duration: 2s; animation-delay: 0.6s; }
+          .checkout-sat-star:nth-child(12) { left: 85%; top: 75%; animation-duration: 2.4s; animation-delay: 0.66s; }
+          .checkout-sat-star:nth-child(13) { left: 92%; top: 18%; animation-duration: 1.2s; animation-delay: 0.72s; }
+          .checkout-sat-star:nth-child(14) { left: 12%; top: 82%; animation-duration: 1.6s; animation-delay: 0.78s; }
 
           /* 3D card preview */
           @keyframes card-shine {
@@ -1250,12 +1778,7 @@ const CheckoutApp = () => {
           {/* Soluciones Fabrick SpA wordmark — animated, presence-only */}
           <svg
             viewBox="0 0 160 80"
-            className="motion-safe:animate-[pt-breathe_1.8s_ease-in-out_infinite] mb-3"
-            style={{
-              height: '4.5rem',
-              width: 'auto',
-              filter: 'drop-shadow(0 0 22px rgba(250,204,21,0.6))',
-            }}
+            className="motion-safe:animate-[pt-breathe_1.8s_ease-in-out_infinite] mb-3 h-[4.5rem] w-auto [filter:drop-shadow(0_0_22px_rgba(250,204,21,0.6))]"
             aria-hidden
           >
             <defs>
@@ -1290,29 +1813,11 @@ const CheckoutApp = () => {
 
           {/* Smooth 10%→100% progress bar with sweeping shine */}
           <div
-            className="relative w-full max-w-md h-2 rounded-full overflow-hidden border border-yellow-400/25"
-            style={{
-              background:
-                'linear-gradient(90deg, rgba(250,204,21,0.08) 0%, rgba(250,204,21,0.16) 50%, rgba(250,204,21,0.08) 100%)',
-              animation: 'pt-bank-pulse 2.4s ease-in-out infinite',
-            }}
+            className="relative w-full max-w-md h-2 rounded-full overflow-hidden border border-yellow-400/25 bg-[linear-gradient(90deg,rgba(250,204,21,0.08)_0%,rgba(250,204,21,0.16)_50%,rgba(250,204,21,0.08)_100%)] [animation:pt-bank-pulse_2.4s_ease-in-out_infinite]"
           >
+            <progress className="bank-approval-progress absolute inset-0 h-full w-full" value={bankApprovalProgress} max={100} />
             <div
-              className="absolute inset-y-0 left-0 rounded-full transition-[width] duration-[120ms] ease-out"
-              style={{
-                width: `${bankApprovalProgress}%`,
-                background:
-                  'linear-gradient(90deg, #E2AE00 0%, #FFC700 45%, #FFE17A 75%, #FFFFFF 100%)',
-                boxShadow: '0 0 18px rgba(250,204,21,0.85)',
-              }}
-            />
-            <div
-              className="absolute inset-y-0 left-0 w-1/3 motion-safe:animate-[pt-bank-shine_1.6s_linear_infinite]"
-              style={{
-                background:
-                  'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.55) 50%, transparent 100%)',
-                mixBlendMode: 'screen',
-              }}
+              className="absolute inset-y-0 left-0 w-1/3 motion-safe:animate-[pt-bank-shine_1.6s_linear_infinite] bg-[linear-gradient(90deg,transparent_0%,rgba(255,255,255,0.55)_50%,transparent_100%)] mix-blend-screen"
             />
           </div>
 
@@ -1452,17 +1957,10 @@ const CheckoutApp = () => {
 
                  {/* Stars background */}
                  <div className="absolute inset-0 overflow-hidden rounded-full">
-                   {STAR_FIELD.map((s, i) => (
+                   {STAR_FIELD_CLASSES.map((posClass, i) => (
                      <span
                        key={i}
-                       className="absolute rounded-full bg-white/60"
-                       style={{
-                         top: `${s.top}%`,
-                         left: `${s.left}%`,
-                         width: `${s.size}px`,
-                         height: `${s.size}px`,
-                         animation: `twinkle 2.4s ease-in-out ${s.delay}s infinite`,
-                       }}
+                       className={`absolute rounded-full bg-white/60 animate-[twinkle_2.4s_ease-in-out_infinite] ${posClass} ${STAR_SIZE_CLASSES[i % 3]} ${STAR_DELAY_CLASSES[i % 7]}`}
                      />
                    ))}
                  </div>
@@ -1474,71 +1972,55 @@ const CheckoutApp = () => {
                  </div>
 
                  {/* Satellite nodes (destinations) */}
-                 {[
-                   { label: 'MP', angle: 0, color: '#38bdf8' },
-                   { label: 'SSL', angle: 120, color: '#a78bfa' },
-                   { label: 'Bank', angle: 240, color: '#34d399' },
-                 ].map((n) => {
-                   const rad = (n.angle * Math.PI) / 180;
-                   const r = 130; // distance from center in px (inside 280/340)
-                   const x = Math.cos(rad) * r;
-                   const y = Math.sin(rad) * r;
-                   return (
-                     <div key={n.label}>
-                       {/* Connection line */}
-                       <svg
-                         className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-visible"
-                         width="2"
-                         height="2"
-                         aria-hidden
-                       >
-                         <line
-                           x1={0}
-                           y1={0}
-                           x2={x}
-                           y2={y}
-                           stroke={n.color}
-                           strokeWidth="1"
-                           strokeDasharray="3 4"
-                           opacity="0.45"
-                         />
-                       </svg>
-                       {/* Rocket/data pulse travelling outwards */}
-                       <span
-                         className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full"
-                         style={{
-                           backgroundColor: n.color,
-                           boxShadow: `0 0 10px ${n.color}`,
-                           animation: `rocket-${n.label} 2.2s cubic-bezier(0.4,0,0.2,1) ${(n.angle / 360) * 1.2}s infinite`,
-                           '--tx': `${x}px`,
-                           '--ty': `${y}px`,
-                         } as React.CSSProperties}
-                       />
-                       {/* Planet node */}
-                       <div
-                         className="absolute top-1/2 left-1/2 w-10 h-10 -ml-5 -mt-5 rounded-full flex items-center justify-center text-[8px] font-black uppercase tracking-widest text-white/90 border"
-                         style={{
-                           transform: `translate(${x}px, ${y}px)`,
-                           backgroundColor: `${n.color}22`,
-                           borderColor: `${n.color}66`,
-                           boxShadow: `0 0 18px ${n.color}55`,
-                         }}
-                       >
-                         {n.label}
-                       </div>
-                     </div>
-                   );
-                 })}
+                 <div>
+                   <svg
+                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-visible"
+                     width="2"
+                     height="2"
+                     aria-hidden
+                   >
+                     <line x1={0} y1={0} x2={130} y2={0} stroke="#38bdf8" strokeWidth="1" strokeDasharray="3 4" opacity="0.45" />
+                   </svg>
+                   <span className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full bg-sky-400 shadow-[0_0_10px_#38bdf8] animate-[rocket-MP_2.2s_cubic-bezier(0.4,0,0.2,1)_0s_infinite]" />
+                   <div className="absolute top-1/2 left-1/2 w-10 h-10 -ml-5 -mt-5 rounded-full flex items-center justify-center text-[8px] font-black uppercase tracking-widest text-white/90 border border-sky-400/40 bg-sky-400/15 shadow-[0_0_18px_rgba(56,189,248,0.35)] [transform:translate(130px,0px)]">
+                     MP
+                   </div>
+                 </div>
+                 <div>
+                   <svg
+                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-visible"
+                     width="2"
+                     height="2"
+                     aria-hidden
+                   >
+                     <line x1={0} y1={0} x2={-65} y2={112.6} stroke="#a78bfa" strokeWidth="1" strokeDasharray="3 4" opacity="0.45" />
+                   </svg>
+                   <span className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full bg-violet-400 shadow-[0_0_10px_#a78bfa] animate-[rocket-SSL_2.2s_cubic-bezier(0.4,0,0.2,1)_0.4s_infinite]" />
+                   <div className="absolute top-1/2 left-1/2 w-10 h-10 -ml-5 -mt-5 rounded-full flex items-center justify-center text-[8px] font-black uppercase tracking-widest text-white/90 border border-violet-400/40 bg-violet-400/15 shadow-[0_0_18px_rgba(167,139,250,0.35)] [transform:translate(-65px,112.6px)]">
+                     SSL
+                   </div>
+                 </div>
+                 <div>
+                   <svg
+                     className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 overflow-visible"
+                     width="2"
+                     height="2"
+                     aria-hidden
+                   >
+                     <line x1={0} y1={0} x2={-65} y2={-112.6} stroke="#34d399" strokeWidth="1" strokeDasharray="3 4" opacity="0.45" />
+                   </svg>
+                   <span className="absolute top-1/2 left-1/2 w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399] animate-[rocket-Bank_2.2s_cubic-bezier(0.4,0,0.2,1)_0.8s_infinite]" />
+                   <div className="absolute top-1/2 left-1/2 w-10 h-10 -ml-5 -mt-5 rounded-full flex items-center justify-center text-[8px] font-black uppercase tracking-widest text-white/90 border border-emerald-400/40 bg-emerald-400/15 shadow-[0_0_18px_rgba(52,211,153,0.35)] [transform:translate(-65px,-112.6px)]">
+                     Bank
+                   </div>
+                 </div>
                </div>
 
                <div className="w-full space-y-4">
                  <h2 className="text-[10px] font-bold uppercase tracking-[0.4em] text-white">Asegurando Inversión</h2>
 
                  <div className="w-full h-[2px] bg-zinc-900 rounded-full overflow-hidden relative">
-                   <div
-                     className="absolute top-0 left-0 h-full bg-yellow-400 shadow-[0_0_10px_#FACC15] transition-all duration-[300ms] ease-out"
-                     style={{ width: `${processProgress}%` }}
-                   />
+                   <progress className="checkout-progress-yellow absolute inset-0 h-full w-full" value={processProgress} max={100} />
                  </div>
 
                  <p className="text-zinc-400 text-[10px] font-mono uppercase tracking-[0.25em]">
@@ -1747,6 +2229,36 @@ const CheckoutApp = () => {
                     <span className="font-black text-3xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{formatCLP(cartTotal)}</span>
                   </div>
                 </div>
+
+                <div className="space-y-3 border-t border-white/5 pt-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                      Productos relacionados
+                    </p>
+                    <a
+                      href="/tienda"
+                      className="text-[10px] font-bold uppercase tracking-[0.14em] text-yellow-400 hover:text-yellow-300"
+                    >
+                      Ver catálogo
+                    </a>
+                  </div>
+                  <div className="grid gap-2">
+                    {relatedProducts.map((rel) => (
+                      <a
+                        key={rel.id}
+                        href={`/checkout?productId=${encodeURIComponent(rel.id)}&name=${encodeURIComponent(rel.title)}&price=${encodeURIComponent(String(rel.price))}&category=${encodeURIComponent(rel.category)}&img=${encodeURIComponent(rel.image)}`}
+                        className="group flex items-center gap-2 rounded-xl border border-white/10 bg-black/35 p-2 transition hover:border-yellow-400/30"
+                      >
+                        <img src={rel.image} alt={rel.title} className="h-12 w-12 rounded-lg object-cover" />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-xs font-bold text-white">{rel.title}</p>
+                          <p className="text-[10px] uppercase tracking-[0.14em] text-zinc-500">{rel.category}</p>
+                        </div>
+                        <p className="text-xs font-mono text-yellow-300">{formatCLP(rel.price)}</p>
+                      </a>
+                    ))}
+                  </div>
+                </div>
               </div>
             </div>
 
@@ -1824,51 +2336,143 @@ const CheckoutApp = () => {
                   </div>
                 </div>
 
-                <div className="bg-black/50 border border-white/10 rounded-2xl p-4 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                  <div>
-                    <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-300 font-bold">Conexión satelital libre</p>
-                    <p className="text-xs text-zinc-500 mt-1">Usamos GPS del dispositivo + OpenStreetMap para sugerir dirección.</p>
+                <div className="bg-black/50 border border-white/10 rounded-2xl p-4 overflow-hidden relative">
+                  <div className="absolute inset-0 pointer-events-none opacity-70">
+                    {Array.from({ length: 14 }).map((_, i) => (
+                      <span
+                        key={i}
+                        className="checkout-sat-star absolute w-1 h-1 rounded-full bg-yellow-300/80"
+                      />
+                    ))}
                   </div>
-                  <button
-                    type="button"
-                    onClick={requestSatelliteAutofill}
-                    disabled={locationLoading}
-                    className="px-5 py-3 rounded-full border border-yellow-400/40 text-yellow-400 text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-400/10 disabled:opacity-50"
-                  >
-                    {locationLoading ? 'Detectando...' : 'Autorrelleno satelital'}
-                  </button>
+
+                  <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-300 font-bold">Conexión satelital libre</p>
+                      <p className="text-xs text-zinc-500 mt-1">Emitimos señal GPS, consultamos OpenStreetMap y retornamos dirección para auto relleno.</p>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={requestSatelliteAutofill}
+                      disabled={locationLoading}
+                      className="px-5 py-3 rounded-full border border-yellow-400/40 text-yellow-400 text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-400/10 disabled:opacity-50"
+                    >
+                      {locationLoading ? 'Sincronizando órbita...' : 'Autorrelleno satelital'}
+                    </button>
+                  </div>
+
+                  {(locationLoading || satellitePhase !== 'idle' || locationSuggestion) && (
+                    <div className="relative z-10 mt-4 rounded-xl border border-yellow-400/25 bg-zinc-950/80 p-3">
+                      <div className="relative h-24 rounded-lg border border-white/10 bg-black/65 overflow-hidden">
+                        <div className="absolute left-4 bottom-3 flex flex-col items-center gap-1">
+                          <div className="w-8 h-8 rounded-full border border-white/20 bg-zinc-900/90 flex items-center justify-center">
+                            <Wifi className="w-4 h-4 text-yellow-400" />
+                          </div>
+                          <span className="text-[8px] uppercase tracking-[0.2em] text-zinc-500">Dispositivo</span>
+                        </div>
+
+                        <div className="absolute left-1/2 top-7 -translate-x-1/2">
+                          <span className="absolute left-1/2 top-1/2 w-10 h-10 rounded-full border border-cyan-300/40 [animation:sat-pulse_1.2s_ease-out_infinite]" />
+                          <div className="relative w-9 h-9 rounded-full border border-cyan-300/60 bg-cyan-400/10 flex items-center justify-center">
+                            <RefreshCw className={`w-4 h-4 text-cyan-300 ${locationLoading ? 'animate-spin' : ''}`} />
+                          </div>
+                        </div>
+
+                        <div className="absolute right-4 bottom-3 flex flex-col items-center gap-1">
+                          <div className="w-8 h-8 rounded-full border border-white/20 bg-zinc-900/90 flex items-center justify-center">
+                            <Building2 className="w-4 h-4 text-emerald-300" />
+                          </div>
+                          <span className="text-[8px] uppercase tracking-[0.2em] text-zinc-500">Datos</span>
+                        </div>
+
+                        <div className="absolute left-[19%] top-[66%] w-[31%] h-[2px] bg-gradient-to-r from-yellow-400/40 to-cyan-300/40 rotate-[-28deg] origin-left" />
+                        <div className="absolute left-[50%] top-[39%] w-[31%] h-[2px] bg-gradient-to-r from-cyan-300/40 to-emerald-300/40 rotate-[28deg] origin-left" />
+
+                        {(satellitePhase === 'uplink' || satellitePhase === 'processing') && (
+                          <span
+                            className="absolute left-[19%] top-[66%] w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.9)] [animation:sat-uplink-dot_0.9s_linear_infinite]"
+                          />
+                        )}
+                        {(satellitePhase === 'downlink' || satellitePhase === 'completed') && (
+                          <span
+                            className="absolute left-[50%] top-[39%] w-2 h-2 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(103,232,249,0.9)] [animation:sat-downlink-dot_0.9s_linear_infinite]"
+                          />
+                        )}
+                      </div>
+
+                      <div className="mt-3 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                        <progress className="checkout-progress-satellite h-full w-full" value={satelliteProgress} max={100} />
+                      </div>
+                      <p className="mt-2 text-[10px] uppercase tracking-[0.18em] font-bold text-zinc-300">{satelliteStatusText}</p>
+                    </div>
+                  )}
                 </div>
                 {locationError && <p className="text-xs text-red-400">{locationError}</p>}
 
-                {locationLoading && (
-                  <div className="mt-2 space-y-1">
-                    <div className="flex items-center gap-2 text-[10px] text-yellow-400 uppercase tracking-widest font-black">
-                      <div className="flex gap-0.5 items-end">
-                        {Array.from({ length: 8 }).map((_, i) => (
-                          <div
-                            key={i}
-                            className="w-1 bg-yellow-400 rounded-full"
-                            style={{
-                              height: `${8 + (i % 4) * 4}px`,
-                              animation: `bb-bar 0.8s ease-in-out ${i * 0.1}s infinite alternate`,
-                              opacity: 0.3 + (i % 4) * 0.2,
-                            }}
-                          />
-                        ))}
-                      </div>
-                      <span>Localizando...</span>
+                <div className="rounded-2xl border border-cyan-300/25 bg-black/60 p-3 sm:p-4 overflow-hidden">
+                  <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-cyan-300">Conexión satelital libre</p>
+                      <p className="text-[11px] text-zinc-500">Ruteo holográfico de envío con fijación satelital en tiempo real.</p>
                     </div>
-                    <div className="h-1 bg-zinc-800 rounded-full overflow-hidden">
-                      <div className="h-full rounded-full" style={{
-                        width: '100%',
-                        background: 'repeating-linear-gradient(90deg, #facc15 0%, #facc15 80%, transparent 80%, transparent 100%)',
-                        backgroundSize: '16px 100%',
-                        animation: 'bb-progress 0.3s linear infinite',
-                      }} />
-                    </div>
-                    <p className="text-[9px] text-zinc-500">Obteniendo datos de ubicación desde satélite...</p>
+                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-[9px] uppercase tracking-[0.2em] font-bold border ${mapTeleporting ? 'border-cyan-300/45 bg-cyan-300/10 text-cyan-200' : 'border-white/15 bg-white/5 text-zinc-400'}`}>
+                      {mapTeleporting ? 'Warp de coordenadas activo' : 'Enlace orbital estable'}
+                    </span>
                   </div>
-                )}
+
+                  <div className="relative rounded-xl border border-white/10 overflow-hidden bg-[radial-gradient(circle_at_30%_10%,rgba(16,185,129,0.08),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(6,182,212,0.12),transparent_48%),linear-gradient(180deg,rgba(2,6,23,0.96),rgba(0,0,0,0.98))]">
+                    <div className="absolute inset-0 locator-grid-layer opacity-50" />
+                    <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent,rgba(125,211,252,0.11),transparent)] locator-scanline" />
+
+                    <div className="relative h-56 sm:h-64 perspective-[1200px]">
+                      <div className="absolute inset-0 transform-gpu [transform:rotateX(58deg)_translateY(32px)]">
+                        <div className="absolute left-[17%] top-[74%] w-4 h-4 rounded-full bg-yellow-300 shadow-[0_0_20px_rgba(250,204,21,0.75)]" />
+                        <div className="absolute left-[84%] top-[30%] w-4 h-4 rounded-full bg-cyan-300 shadow-[0_0_22px_rgba(34,211,238,0.85)]" />
+                        <div className={`absolute left-[84%] top-[30%] w-16 h-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/45 ${mapTeleporting ? 'locator-ripple-warp' : 'locator-ripple-idle'}`} />
+                        <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
+                          <path
+                            d="M17 74 C 38 54, 62 44, 84 30"
+                            fill="none"
+                            stroke="rgba(34,211,238,0.78)"
+                            strokeWidth="1.7"
+                            strokeDasharray="4 3"
+                            className="locator-route-flow"
+                          />
+                          <circle r="1.2" fill="rgba(250,204,21,0.95)" className="locator-route-pulse">
+                            <animateMotion dur="1.35s" repeatCount="indefinite" path="M17 74 C 38 54, 62 44, 84 30" />
+                          </circle>
+                        </svg>
+                      </div>
+
+                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
+                        <div className="relative w-28 h-28">
+                          <span className="absolute inset-0 rounded-full border border-cyan-300/40 locator-orbit-spin" />
+                          <span className="absolute inset-3 rounded-full border border-cyan-200/35 locator-orbit-spin-rev" />
+                          <span className="absolute inset-[26%] rounded-full bg-cyan-300/25 shadow-[0_0_30px_rgba(34,211,238,0.35)] locator-core-pulse" />
+                        </div>
+                      </div>
+
+                      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_38%,rgba(0,0,0,0.45)_100%)]" />
+                    </div>
+                  </div>
+
+                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] uppercase tracking-[0.16em]">
+                    <div className="rounded-lg border border-white/10 bg-black/45 px-3 py-2">
+                      <span className="text-zinc-500">Origen</span>
+                      <p className="mt-1 text-yellow-300 font-bold">{FABRICK_HUB.name}</p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-black/45 px-3 py-2">
+                      <span className="text-zinc-500">Destino</span>
+                      <p className="mt-1 text-cyan-200 font-bold truncate">
+                        {locationSuggestion?.address || 'Esperando ubicación satelital'}
+                      </p>
+                    </div>
+                    <div className="rounded-lg border border-white/10 bg-black/45 px-3 py-2">
+                      <span className="text-zinc-500">Coordenadas</span>
+                      <p className="mt-1 text-emerald-300 font-bold truncate">{locationCoordsLabel}</p>
+                    </div>
+                  </div>
+                </div>
 
                 {locationSuggestion && (
                   <div className="flex flex-col sm:flex-row sm:items-center gap-3 bg-yellow-400/10 border border-yellow-400/30 rounded-2xl px-5 py-4 text-sm">
@@ -1985,20 +2589,16 @@ const CheckoutApp = () => {
 
                         {/* Line 1: Fabrick → MP */}
                         <div className="relative h-[2px] bg-zinc-900 rounded-full overflow-hidden">
-                          <div
-                            className={`absolute top-0 left-0 h-full transition-all duration-[150ms] ease-out ${line1Colour}`}
-                            style={{ width: `${Math.min(100, (secureConnectionProgress / 50) * 100)}%` }}
+                          <progress
+                            className={`checkout-progress-link absolute inset-0 h-full w-full ${
+                              line1Colour.includes('red') ? 'checkout-progress-link-danger' : 'checkout-progress-link-ok'
+                            }`}
+                            value={Math.min(100, (secureConnectionProgress / 50) * 100)}
+                            max={100}
                           />
                           {!mpFailed && secureConnectionProgress > 5 && secureConnectionProgress < 100 && (
                             <span
-                              className="absolute top-1/2 -translate-y-1/2 w-1.5 h-1.5 rounded-full bg-emerald-400"
-                              style={{
-                                boxShadow: '0 0 10px #34d399',
-                                animation: 'bb-progress 1.2s linear infinite',
-                                left: '0%',
-                                transform: 'translate(0, -50%)',
-                                backgroundImage: 'none',
-                              }}
+                              className="absolute top-1/2 -translate-y-1/2 left-0 w-1.5 h-1.5 rounded-full bg-emerald-400 bg-none shadow-[0_0_10px_#34d399] [animation:bb-progress_1.2s_linear_infinite]"
                             />
                           )}
                         </div>
@@ -2030,9 +2630,12 @@ const CheckoutApp = () => {
 
                         {/* Line 2: MP → Banco */}
                         <div className="relative h-[2px] bg-zinc-900 rounded-full overflow-hidden">
-                          <div
-                            className={`absolute top-0 left-0 h-full transition-all duration-[150ms] ease-out ${line2Colour}`}
-                            style={{ width: `${Math.max(0, ((secureConnectionProgress - 50) / 50) * 100)}%` }}
+                          <progress
+                            className={`checkout-progress-link absolute inset-0 h-full w-full ${
+                              line2Colour.includes('red') ? 'checkout-progress-link-danger' : 'checkout-progress-link-ok'
+                            }`}
+                            value={Math.max(0, ((secureConnectionProgress - 50) / 50) * 100)}
+                            max={100}
                           />
                         </div>
 
@@ -2074,12 +2677,63 @@ const CheckoutApp = () => {
                   );
                 })()}
 
+                <Checkout4DExperience
+                  mode={paymentMethod}
+                  secureProgress={secureConnectionProgress}
+                  paymentProgress={paymentMethod === 'bricks' ? bricksProgress : processProgress}
+                  outcome={paymentOutcome}
+                  isProcessing={isProcessing || bricksBooting || bankApprovalActive}
+                  isSuccess={isSuccess || bankApprovalActive}
+                />
+
+                <div className="rounded-[1.75rem] sm:rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.18),transparent_42%),linear-gradient(145deg,rgba(24,24,27,0.96),rgba(8,8,10,0.98))] p-5 sm:p-6 md:p-7 overflow-hidden relative">
+                  <div className="absolute inset-y-0 right-0 w-40 bg-[radial-gradient(circle_at_center,rgba(14,165,233,0.14),transparent_65%)] pointer-events-none" />
+                  <div className="relative grid gap-5 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
+                    <div>
+                      <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/25 bg-yellow-400/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.35em] text-yellow-300">
+                        <ShieldCheck className="h-3.5 w-3.5" /> Checkout Fabrick Blindado
+                      </div>
+                      <h3 className="mt-4 text-3xl md:text-4xl font-black uppercase tracking-tighter">
+                        Paga con una experiencia
+                        <span className="block text-yellow-400">mas clara, segura y premium</span>
+                      </h3>
+                      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-300">
+                        Mantuvimos el lenguaje visual de la tienda, reforzamos el foco en confianza y dejamos a Mercado Pago Bricks como ruta principal, con tarjeta inline y transferencia como respaldos inmediatos.
+                      </p>
+                      <div className="mt-5 flex flex-wrap gap-2">
+                        {CHECKOUT_TRUST_POINTS.map((point) => (
+                          <span
+                            key={point}
+                            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-200"
+                          >
+                            <CheckCircle2 className="h-3.5 w-3.5 text-yellow-400" />
+                            {point}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                    <div className="rounded-[1.5rem] border border-white/10 bg-black/35 p-4 sm:p-5">
+                      <p className="text-[9px] uppercase tracking-[0.35em] text-zinc-500 font-bold">Ruta activa</p>
+                      <div className="mt-3 flex items-start gap-3">
+                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
+                          <activePaymentOption.icon className={`h-5 w-5 ${paymentMethod === 'bricks' ? 'text-sky-300' : paymentMethod === 'mercadopago' ? 'text-yellow-400' : 'text-zinc-200'}`} />
+                        </div>
+                        <div>
+                          <p className="text-[9px] uppercase tracking-[0.28em] text-zinc-500 font-bold">{activePaymentOption.eyebrow}</p>
+                          <h4 className="mt-1 text-lg font-black uppercase tracking-tight text-white">{activePaymentOption.title}</h4>
+                          <p className="mt-1 text-xs leading-relaxed text-zinc-400">{activePaymentOption.detail}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
                 <div>
                   <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase">Paso Final</span>
                   <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-2 mt-1">
                     Método de <span className="text-yellow-400">Pago</span>
                   </h3>
-                  <p className="text-zinc-400 text-sm">Elige cómo deseas completar tu compra.</p>
+                  <p className="text-zinc-400 text-sm">Elige cómo deseas completar tu compra. La opción oficial embebida queda destacada para mejorar la continuidad del pago.</p>
                 </div>
 
                 {checkoutCms.warrantyPolicies?.length > 0 && (
@@ -2099,41 +2753,134 @@ const CheckoutApp = () => {
                 )}
 
                 {/* PAYMENT METHOD SELECTOR */}
-                <div className="grid sm:grid-cols-2 gap-4">
-                  <button
-                    type="button"
-                    onClick={() => setPaymentMethod('mercadopago')}
-                    className={`rounded-2xl border p-5 text-left transition-all ${paymentMethod === 'mercadopago' ? 'border-yellow-400/50 bg-yellow-400/8' : 'border-white/8 bg-black/30 hover:border-white/15'}`}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${paymentMethod === 'mercadopago' ? 'bg-yellow-400/20' : 'bg-white/5'}`}>
-                        <CreditCard className={`w-4 h-4 ${paymentMethod === 'mercadopago' ? 'text-yellow-400' : 'text-zinc-400'}`} />
-                      </div>
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-auto ${paymentMethod === 'mercadopago' ? 'border-yellow-400 bg-yellow-400' : 'border-zinc-600'}`}>
-                        {paymentMethod === 'mercadopago' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
-                      </div>
-                    </div>
-                    <p className={`font-bold text-sm ${paymentMethod === 'mercadopago' ? 'text-yellow-400' : 'text-white'}`}>Mercado Pago</p>
-                    <p className="text-zinc-500 text-[10px] mt-1">Tarjeta, débito, transferencia. Flujo seguro externo.</p>
-                  </button>
-
-                  <button
-                    type="button"
-                    onClick={() => { setPaymentMethod('transfer'); setTransferOrderReady(false); setTransferOrderId(''); }}
-                    className={`rounded-2xl border p-5 text-left transition-all ${paymentMethod === 'transfer' ? 'border-yellow-400/50 bg-yellow-400/8' : 'border-white/8 bg-black/30 hover:border-white/15'}`}
-                  >
-                    <div className="flex items-center gap-3 mb-3">
-                      <div className={`w-9 h-9 rounded-xl flex items-center justify-center ${paymentMethod === 'transfer' ? 'bg-yellow-400/20' : 'bg-white/5'}`}>
-                        <Building2 className={`w-4 h-4 ${paymentMethod === 'transfer' ? 'text-yellow-400' : 'text-zinc-400'}`} />
-                      </div>
-                      <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center flex-shrink-0 ml-auto ${paymentMethod === 'transfer' ? 'border-yellow-400 bg-yellow-400' : 'border-zinc-600'}`}>
-                        {paymentMethod === 'transfer' && <div className="w-1.5 h-1.5 rounded-full bg-black" />}
-                      </div>
-                    </div>
-                    <p className={`font-bold text-sm ${paymentMethod === 'transfer' ? 'text-yellow-400' : 'text-white'}`}>Transferencia Bancaria</p>
-                    <p className="text-zinc-500 text-[10px] mt-1">Deposita directamente en nuestra cuenta. Sin comisiones.</p>
-                  </button>
+                <div className="grid sm:grid-cols-3 gap-4">
+                  {paymentOptions.map((option) => {
+                    const isActive = paymentMethod === option.id;
+                    const Icon = option.icon;
+                    return (
+                      <button
+                        key={option.id}
+                        type="button"
+                        onClick={() => {
+                          setPaymentMethod(option.id);
+                          if (option.id === 'bricks') setBricksError('');
+                          if (option.id === 'transfer') {
+                            setTransferOrderReady(false);
+                            setTransferOrderId('');
+                          }
+                        }}
+                        className={`group rounded-[1.6rem] border p-5 text-left transition-all duration-300 ${
+                          isActive
+                            ? option.id === 'bricks'
+                              ? 'border-sky-400/45 bg-sky-400/[0.08] shadow-[0_18px_55px_rgba(14,165,233,0.12)]'
+                              : option.id === 'mercadopago'
+                                ? 'border-yellow-400/45 bg-yellow-400/[0.08] shadow-[0_18px_55px_rgba(250,204,21,0.1)]'
+                                : 'border-white/25 bg-white/[0.06] shadow-[0_18px_55px_rgba(255,255,255,0.05)]'
+                            : 'border-white/8 bg-black/30 hover:border-white/15 hover:bg-white/[0.02]'
+                        }`}
+                      >
+                        <div className="flex items-center gap-3 mb-4">
+                          <div
+                            className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${
+                              isActive
+                                ? option.id === 'bricks'
+                                  ? 'border-sky-300/30 bg-sky-400/15'
+                                  : option.id === 'mercadopago'
+                                    ? 'border-yellow-300/30 bg-yellow-400/15'
+                                    : 'border-white/20 bg-white/10'
+                                : 'border-white/10 bg-white/5'
+                            }`}
+                          >
+                            <Icon
+                              className={`h-4.5 w-4.5 ${
+                                isActive
+                                  ? option.id === 'bricks'
+                                    ? 'text-sky-300'
+                                    : option.id === 'mercadopago'
+                                      ? 'text-yellow-400'
+                                      : 'text-white'
+                                  : 'text-zinc-400'
+                              }`}
+                            />
+                          </div>
+                          <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.22em] ${
+                            isActive
+                              ? option.id === 'bricks'
+                                ? 'bg-sky-400/15 text-sky-200'
+                                : option.id === 'mercadopago'
+                                  ? 'bg-yellow-400/15 text-yellow-300'
+                                  : 'bg-white/10 text-zinc-100'
+                              : 'bg-white/5 text-zinc-500'
+                          }`}>
+                            {option.eyebrow}
+                          </span>
+                          <div className={`ml-auto flex h-4 w-4 items-center justify-center rounded-full border-2 ${isActive ? 'border-white bg-white' : 'border-zinc-600'}`}>
+                            {isActive && <div className="h-1.5 w-1.5 rounded-full bg-black" />}
+                          </div>
+                        </div>
+                        <p className={`font-black text-sm uppercase tracking-[0.08em] ${isActive ? 'text-white' : 'text-zinc-100'}`}>{option.title}</p>
+                        <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">{option.description}</p>
+                        <p className={`mt-4 text-[10px] font-semibold uppercase tracking-[0.16em] ${
+                          isActive
+                            ? option.id === 'bricks'
+                              ? 'text-sky-200'
+                              : option.id === 'mercadopago'
+                                ? 'text-yellow-300'
+                                : 'text-zinc-200'
+                            : 'text-zinc-500'
+                        }`}>
+                          {option.detail}
+                        </p>
+                      </button>
+                    );
+                  })}
                 </div>
+
+                {paymentMethod === 'bricks' && (
+                  <div className="bg-gradient-to-br from-zinc-900 to-black border border-[#009EE3]/30 rounded-[1.75rem] sm:rounded-[2rem] p-5 sm:p-6 space-y-4">
+                    <div className="flex flex-wrap items-center justify-between gap-3">
+                      <div>
+                        <p className="text-[9px] uppercase tracking-[0.32em] text-[#38bdf8] font-bold">Mercado Pago Bricks completa</p>
+                        <h4 className="text-base sm:text-lg font-black uppercase tracking-tight mt-1">Pasarela oficial embebida</h4>
+                        <p className="text-zinc-400 text-xs mt-1">Creamos la preferencia, sincronizamos datos y activamos el botón oficial de pago.</p>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => void handleInitBricks()}
+                        disabled={bricksBooting}
+                        className="px-5 py-3 rounded-full border border-[#009EE3]/50 text-[#7dd3fc] text-[10px] font-bold uppercase tracking-[0.2em] hover:bg-[#009EE3]/15 transition-colors disabled:opacity-50"
+                      >
+                        {bricksBooting ? 'Sincronizando datos...' : bricksReady ? 'Reiniciar Bricks' : 'Activar Bricks'}
+                      </button>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-black/45 p-4">
+                      <div className="flex items-center justify-between text-[10px] uppercase tracking-[0.18em] font-bold">
+                        <span className="text-zinc-400">Envío seguro de datos</span>
+                        <span className="text-[#7dd3fc]">{bricksProgress}%</span>
+                      </div>
+                      <div className="mt-2 h-1.5 rounded-full bg-zinc-800 overflow-hidden">
+                        <progress className="checkout-progress-bricks h-full w-full" value={bricksProgress} max={100} />
+                      </div>
+                      <p className="mt-2 text-[10px] text-zinc-500">
+                        {bricksReady
+                          ? 'Bricks listo. Mercado Pago abrirá el flujo de cobro con resultado aprobado o rechazado al finalizar.'
+                          : bricksBooting
+                            ? 'Preparando preferencia y montando componente seguro...'
+                            : 'Aún no inicializado.'}
+                      </p>
+                    </div>
+
+                    <div className="rounded-2xl border border-white/10 bg-white/[0.02] p-4 min-h-[84px]">
+                      <div id="mp-wallet-brick" className="min-h-[48px]" />
+                    </div>
+
+                    {bricksPreferenceId && (
+                      <p className="text-[10px] text-zinc-500 uppercase tracking-[0.14em]">Preferencia activa: {bricksPreferenceId}</p>
+                    )}
+                    {bricksError && <p className="text-xs text-red-400">{bricksError}</p>}
+                  </div>
+                )}
 
                 {/* MERCADO PAGO PANEL — Inline paginated card form + 3D flip preview */}
                 {paymentMethod === 'mercadopago' && (
@@ -2168,29 +2915,16 @@ const CheckoutApp = () => {
                     </div>
 
                     {/* 3D flip card preview */}
-                    <div className="flex justify-center" style={{ perspective: '1000px' }}>
+                    <div className="flex justify-center [perspective:1000px]">
                       <div
-                        className="relative w-full max-w-[360px] transition-transform duration-700"
-                        style={{
-                          aspectRatio: '1.586 / 1',
-                          transformStyle: 'preserve-3d',
-                          transform: cardFlipped ? 'rotateY(180deg)' : 'rotateY(0deg)',
-                        }}
+                        className={`relative w-full max-w-[360px] transition-transform duration-700 aspect-[1.586/1] [transform-style:preserve-3d] ${cardFlipped ? '[transform:rotateY(180deg)]' : '[transform:rotateY(0deg)]'}`}
                       >
                         {/* FRONT */}
                         <div
-                          className="absolute inset-0 rounded-2xl border border-yellow-400/20"
-                          style={{
-                            backfaceVisibility: 'hidden',
-                            WebkitBackfaceVisibility: 'hidden',
-                            background: 'linear-gradient(135deg, #1e1e2e 0%, #12122a 45%, #0a0a18 100%)',
-                            boxShadow: '0 0 0 1px rgba(250,204,21,0.12), 0 24px 64px rgba(0,0,0,0.85)',
-                          }}
+                          className="absolute inset-0 rounded-2xl border border-yellow-400/20 [backface-visibility:hidden] bg-[linear-gradient(135deg,#1e1e2e_0%,#12122a_45%,#0a0a18_100%)] [box-shadow:0_0_0_1px_rgba(250,204,21,0.12),0_24px_64px_rgba(0,0,0,0.85)]"
                         >
-                          <div className="absolute inset-0 opacity-40 mix-blend-overlay"
-                            style={{ backgroundImage: 'radial-gradient(circle at 20% 10%, rgba(250,204,21,0.35), transparent 60%)' }} />
-                          <div className="absolute top-0 left-[-30%] w-1/3 h-full bg-white/10 pointer-events-none"
-                            style={{ animation: 'card-shine 4s ease-in-out infinite' }} />
+                          <div className="absolute inset-0 opacity-40 mix-blend-overlay bg-[radial-gradient(circle_at_20%_10%,rgba(250,204,21,0.35),transparent_60%)]" />
+                          <div className="absolute top-0 left-[-30%] w-1/3 h-full bg-white/10 pointer-events-none [animation:card-shine_4s_ease-in-out_infinite]" />
                           <div className="relative p-5 h-full flex flex-col justify-between">
                             <div className="flex items-start justify-between">
                               <div className="flex flex-col">
@@ -2246,14 +2980,7 @@ const CheckoutApp = () => {
 
                         {/* BACK */}
                         <div
-                          className="absolute inset-0 rounded-2xl border border-yellow-400/10"
-                          style={{
-                            backfaceVisibility: 'hidden',
-                            WebkitBackfaceVisibility: 'hidden',
-                            transform: 'rotateY(180deg)',
-                            background: 'linear-gradient(135deg, #1e1e2e 0%, #12122a 45%, #0a0a18 100%)',
-                            boxShadow: '0 0 0 1px rgba(250,204,21,0.08), 0 24px 64px rgba(0,0,0,0.85)',
-                          }}
+                          className="absolute inset-0 rounded-2xl border border-yellow-400/10 [backface-visibility:hidden] [transform:rotateY(180deg)] bg-[linear-gradient(135deg,#1e1e2e_0%,#12122a_45%,#0a0a18_100%)] [box-shadow:0_0_0_1px_rgba(250,204,21,0.08),0_24px_64px_rgba(0,0,0,0.85)]"
                         >
                           <div className="mt-5 h-9 w-full bg-black/70" />
                           <div className="px-5 mt-5">
@@ -2291,12 +3018,17 @@ const CheckoutApp = () => {
                     {/* Paginated form — horizontal sweep between sub-steps */}
                     <div className="overflow-hidden -mx-1">
                       <div
-                        className="flex transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)]"
-                        style={{ transform: `translateX(-${(mpSubStep - 1) * 100}%)` }}
+                        className={`flex transition-transform duration-500 ease-[cubic-bezier(0.22,1,0.36,1)] ${
+                          mpSubStep === 1 ? 'translate-x-0' :
+                          mpSubStep === 2 ? '-translate-x-full' :
+                          '-translate-x-[200%]'
+                        }`}
                       >
                         <div
                           className={`w-full flex-shrink-0 px-1 ${mpSubStep === 1 ? '' : 'pointer-events-none'}`}
-                          aria-hidden={mpSubStep !== 1}
+                          role="group"
+                          aria-label="Paso 1: Datos de tarjeta"
+                          tabIndex={-1}
                         >
                           <div className="space-y-4">
                             <label className="block">
@@ -2331,7 +3063,9 @@ const CheckoutApp = () => {
 
                         <div
                           className={`w-full flex-shrink-0 px-1 ${mpSubStep === 2 ? '' : 'pointer-events-none'}`}
-                          aria-hidden={mpSubStep !== 2}
+                          role="group"
+                          aria-label="Paso 2: Titular y vencimiento"
+                          tabIndex={-1}
                         >
                           <div className="space-y-4">
                             <label className="block">
@@ -2405,6 +3139,7 @@ const CheckoutApp = () => {
                             <div className="flex gap-3 pt-2">
                               <button
                                 type="button"
+                                aria-label="Volver"
                                 onClick={() => setMpSubStep(1)}
                                 className="px-6 py-4 border border-white/15 rounded-full text-white text-[11px] font-bold uppercase tracking-widest hover:border-yellow-400 transition-colors"
                               >
@@ -2424,7 +3159,9 @@ const CheckoutApp = () => {
 
                         <div
                           className={`w-full flex-shrink-0 px-1 ${mpSubStep === 3 ? '' : 'pointer-events-none'}`}
-                          aria-hidden={mpSubStep !== 3}
+                          role="group"
+                          aria-label="Paso 3: Revisión y pago"
+                          tabIndex={-1}
                         >
                           <div className="space-y-4">
                             <div className="grid sm:grid-cols-2 gap-3 text-xs">
@@ -2454,6 +3191,7 @@ const CheckoutApp = () => {
                             <div className="flex gap-3 pt-2">
                               <button
                                 type="button"
+                                aria-label="Volver"
                                 onClick={() => setMpSubStep(2)}
                                 className="px-6 py-4 border border-white/15 rounded-full text-white text-[11px] font-bold uppercase tracking-widest hover:border-yellow-400 transition-colors"
                               >
@@ -2607,7 +3345,7 @@ const CheckoutApp = () => {
                 )}
 
                 <div className="pt-6 flex gap-4">
-                  <button onClick={() => changeStep(2)} type="button" className="px-6 py-5 border border-white/20 rounded-full bg-black hover:border-yellow-400 transition-colors text-white">
+                  <button onClick={() => changeStep(2)} type="button" aria-label="Volver al paso anterior" className="px-6 py-5 border border-white/20 rounded-full bg-black hover:border-yellow-400 transition-colors text-white">
                     <ArrowLeft className="w-5 h-5" />
                   </button>
                   {paymentMethod === 'mercadopago' && (
@@ -2623,13 +3361,27 @@ const CheckoutApp = () => {
                       }
                     </button>
                   )}
+                  {paymentMethod === 'bricks' && (
+                    <button
+                      disabled={bricksBooting}
+                      onClick={() => void handleInitBricks()}
+                      type="button"
+                      className="flex-1 py-5 bg-[#009EE3] text-white font-black uppercase text-xs tracking-[0.25em] rounded-full hover:bg-[#22b7f3] transition-all flex justify-center items-center gap-3 disabled:opacity-60"
+                    >
+                      {bricksBooting ? (
+                        <><RefreshCw className="w-4 h-4 animate-spin" /> Enviando datos…</>
+                      ) : (
+                        <><Lock className="w-4 h-4" /> {bricksReady ? 'Actualizar Bricks' : 'Iniciar Bricks'}</>
+                      )}
+                    </button>
+                  )}
                   {paymentMethod === 'transfer' && !transferOrderReady && (
                     <button disabled={transferOrderCreating} onClick={() => void handleTransferOrder()} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all flex justify-center items-center gap-3 disabled:opacity-60">
                       {transferOrderCreating ? <><RefreshCw className="w-4 h-4 animate-spin" /> Procesando...</> : <><Building2 className="w-4 h-4" /> Generar Orden de Transferencia</>}
                     </button>
                   )}
                 </div>
-                {checkoutError && paymentMethod === 'mercadopago' && <p className="text-xs text-red-400 pt-2">{checkoutError}</p>}
+                {checkoutError && (paymentMethod === 'mercadopago' || paymentMethod === 'bricks') && <p className="text-xs text-red-400 pt-2">{checkoutError}</p>}
               </div>
             )}
 

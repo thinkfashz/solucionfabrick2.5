@@ -1,7 +1,8 @@
 'use client';
 
 import { useCallback, useRef, useState } from 'react';
-import { Play, RotateCcw, Copy, ChevronDown, ChevronUp, Database } from 'lucide-react';
+import Link from 'next/link';
+import { Play, RotateCcw, Copy, ChevronDown, ChevronUp, Database, Wrench, Loader2 } from 'lucide-react';
 
 const QUICK_QUERIES = [
   { label: 'Ver tablas', sql: `SELECT table_name, pg_size_pretty(pg_total_relation_size(quote_ident(table_name))) AS size\nFROM information_schema.tables\nWHERE table_schema = 'public'\nORDER BY table_name;` },
@@ -48,6 +49,17 @@ interface QueryResult {
 function classifyPgError(message: string | undefined): { warning: boolean; hint: string } | null {
   if (!message) return null;
   const m = message.toLowerCase();
+  // 42883 — undefined_function: cubre el caso muy específico de copiar
+  // sintaxis Supabase (`auth.jwt()`, `auth.uid()`, etc.) que InsForge no
+  // expone. Es la primera causa de los 500 que ven los admins cuando pegan
+  // bloques de RLS desde guías genéricas de Supabase.
+  if (/auth\.jwt|auth\.uid|\bdoes not exist\b.*function|\b42883\b/.test(m)) {
+    return {
+      warning: true,
+      hint:
+        'Esa función no existe en InsForge. `auth.jwt()` y `auth.uid()` son helpers exclusivos de Supabase; aquí no aplican y no son necesarios. Elimina el bloque `CREATE POLICY ... auth.jwt()` y los `ALTER TABLE ... ENABLE ROW LEVEL SECURITY`: InsForge filtra el acceso vía PostgREST + API key. Si solo quieres crear las tablas, deja únicamente los `CREATE TABLE IF NOT EXISTS` y los índices.',
+    };
+  }
   // 42P07 — duplicate_table / object already exists
   if (/already exists/.test(m) || /\b42p07\b/.test(m)) {
     return {
@@ -144,13 +156,23 @@ export default function SqlTerminalPage() {
           <span className="font-bold text-sm">Terminal SQL</span>
           <span className="text-xs text-zinc-500">InsForge</span>
         </div>
-        <button
-          onClick={() => setShowQuick(!showQuick)}
-          className="flex items-center gap-1 text-xs text-zinc-400 hover:text-white transition-colors px-2 py-1 rounded-lg hover:bg-white/5"
-        >
-          Consultas rápidas
-          {showQuick ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/setup"
+            className="hidden sm:inline-flex items-center gap-1.5 text-xs text-emerald-300 hover:text-emerald-200 px-2.5 py-1 rounded-lg border border-emerald-400/30 bg-emerald-500/10 hover:bg-emerald-500/20 transition-colors"
+            title="Abrir el asistente que crea automáticamente todas las tablas requeridas"
+          >
+            <Wrench className="w-3 h-3" />
+            Crear tablas ahora
+          </Link>
+          <button
+            onClick={() => setShowQuick(!showQuick)}
+            className="flex items-center gap-1 text-xs text-zinc-400 hover:text-white transition-colors px-2 py-1 rounded-lg hover:bg-white/5"
+          >
+            Consultas rápidas
+            {showQuick ? <ChevronUp className="w-3 h-3" /> : <ChevronDown className="w-3 h-3" />}
+          </button>
+        </div>
       </div>
 
       {/* Quick queries panel */}
@@ -170,7 +192,7 @@ export default function SqlTerminalPage() {
 
       {/* Editor */}
       <div className="flex-none px-4 pt-4 pb-2">
-        <div className="relative rounded-xl overflow-hidden border border-white/10 bg-zinc-950">
+        <div className={`relative rounded-xl overflow-hidden border bg-zinc-950 transition-all ${running ? 'border-yellow-400/50 shadow-[0_0_20px_-4px_rgba(250,204,21,0.4)]' : 'border-white/10'}`}>
           <textarea
             ref={textareaRef}
             value={query}
@@ -194,10 +216,9 @@ export default function SqlTerminalPage() {
               <button
                 onClick={runQuery}
                 disabled={running || !query.trim()}
-                className="flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50"
-                style={{ background: '#facc15', color: '#000' }}
+                className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-semibold transition-all disabled:opacity-50 bg-yellow-400 text-black ${running ? 'animate-pulse' : 'hover:bg-yellow-300'}`}
               >
-                <Play className="w-3 h-3" />
+                {running ? <Loader2 className="w-3 h-3 animate-spin" /> : <Play className="w-3 h-3" />}
                 {running ? 'Ejecutando...' : 'Ejecutar'}
               </button>
             </div>
@@ -207,7 +228,13 @@ export default function SqlTerminalPage() {
 
       {/* Result */}
       {result && (
-        <div className="flex-1 px-4 pb-4 overflow-auto">
+        <div key={result.durationMs} className="flex-1 px-4 pb-4 overflow-auto animate-[fadeIn_180ms_ease-out]">
+          <style jsx>{`
+            @keyframes fadeIn {
+              from { opacity: 0; transform: translateY(4px); }
+              to { opacity: 1; transform: translateY(0); }
+            }
+          `}</style>
           <div
             className={`rounded-xl border overflow-hidden ${
               result.ok

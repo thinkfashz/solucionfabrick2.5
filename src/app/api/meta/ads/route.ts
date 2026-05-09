@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createClient } from '@insforge/sdk';
-import { META_GRAPH_URL, normalizeAdAccountId } from '@/lib/meta';
+import { META_GRAPH_URL, getMetaAdAccountId, normalizeAdAccountId } from '@/lib/meta';
 import { decryptCredentials } from '@/lib/integrationsCrypto';
 
 /**
@@ -10,7 +10,7 @@ import { decryptCredentials } from '@/lib/integrationsCrypto';
  */
 async function resolveMetaCredentials(): Promise<{ accessToken?: string; adAccountId?: string }> {
   const envToken = process.env.META_ACCESS_TOKEN;
-  const envAccount = normalizeAdAccountId(process.env.META_AD_ACCOUNT_ID);
+  const envAccount = getMetaAdAccountId();
   if (envToken && envAccount) {
     return { accessToken: envToken, adAccountId: envAccount };
   }

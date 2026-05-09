@@ -16,6 +16,11 @@ const securityHeaders = [
 
 const nextConfig = {
   ...(process.platform === 'win32' ? {} : { output: 'standalone' }),
+  // Tree-shake bigger ecosystems (lucide-react ships hundreds of icons,
+  // recharts pulls a heavy d3 graph) so admin bundles only ship what's used.
+  experimental: {
+    optimizePackageImports: ['lucide-react', 'recharts', 'framer-motion', 'date-fns'],
+  },
   // The pascal-editor packages ship modern ESM that imports `three` and other
   // ESM-only deps. Transpile them through Next so SSR / RSC builds don't choke.
   transpilePackages: ['@pascal-app/core', '@pascal-app/viewer', 'three'],

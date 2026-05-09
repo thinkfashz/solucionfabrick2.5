@@ -182,11 +182,12 @@ export default function AdminActionGuard({
 
         {/* "Ver Envío de Datos" toggle */}
         <div className="mt-4">
+          {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
           <button
             type="button"
             onClick={() => setShowPayload((v) => !v)}
             className="inline-flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 transition hover:border-yellow-400/40 hover:text-yellow-300"
-            aria-expanded={showPayload}
+            aria-expanded={showPayload ? 'true' : 'false'}
             aria-controls={`admin-action-payload-${actionName.replace(/\s+/g, '-')}`}
           >
             {showPayload ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}

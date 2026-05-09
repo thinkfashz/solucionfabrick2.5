@@ -1,0 +1,120 @@
+.gradientBg {
+  background: linear-gradient(135deg, #0a0a0a 0%, #1a1a0a 100%);
+}
+
+/* Perspective container for 3D tilt cards */
+.perspective {
+  perspective: 1400px;
+  transform-style: preserve-3d;
+}
+
+/* Card surface — gives the depth shadow + the "fabric" feel */
+.cardSurface {
+  transform-style: preserve-3d;
+  transition: box-shadow 0.4s ease, border-color 0.4s ease;
+  will-change: transform;
+}
+
+/* Layered glints that simulate light reflecting on stretched fabric */
+.fabricSheen {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background:
+    radial-gradient(
+      600px circle at var(--mx, 50%) var(--my, 50%),
+      rgba(251, 191, 36, 0.18),
+      transparent 40%
+    ),
+    radial-gradient(
+      400px circle at calc(100% - var(--mx, 50%)) calc(100% - var(--my, 50%)),
+      rgba(255, 255, 255, 0.06),
+      transparent 50%
+    );
+  mix-blend-mode: screen;
+  opacity: 0;
+  transition: opacity 0.4s ease;
+}
+
+.cardSurface:hover .fabricSheen,
+.cardSurface[data-active='true'] .fabricSheen {
+  opacity: 1;
+}
+
+/* Subtle fabric grain via repeating gradient — only visible on hover */
+.fabricGrain {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  pointer-events: none;
+  background-image:
+    repeating-linear-gradient(
+      45deg,
+      rgba(255, 255, 255, 0.03) 0px,
+      rgba(255, 255, 255, 0.03) 1px,
+      transparent 1px,
+      transparent 4px
+    );
+  opacity: 0.35;
+  mix-blend-mode: overlay;
+}
+
+/* Lift the inner content out of the card plane so it feels 3D */
+.cardLift {
+  transform: translateZ(40px);
+  transform-style: preserve-3d;
+}
+.cardLiftSmall {
+  transform: translateZ(20px);
+  transform-style: preserve-3d;
+}
+
+/* Number-input chrome stripped (calculator) */
+.calcInput::-webkit-outer-spin-button,
+.calcInput::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+.calcInput {
+  -moz-appearance: textfield;
+}
+
+/* Animated breakdown bars */
+@keyframes barFill {
+  from { transform: scaleX(0); }
+  to { transform: scaleX(1); }
+}
+.barFill {
+  transform-origin: left center;
+  animation: barFill 0.9s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+/* Subtle floating shimmer on hero counters */
+@keyframes shimmerSweep {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    rgba(251, 191, 36, 0.0) 0%,
+    rgba(251, 191, 36, 0.25) 50%,
+    rgba(251, 191, 36, 0.0) 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmerSweep 3.5s linear infinite;
+}
+
+/* Modal scrollbar polish */
+.modalScroll::-webkit-scrollbar {
+  width: 8px;
+}
+.modalScroll::-webkit-scrollbar-thumb {
+  background: rgba(251, 191, 36, 0.35);
+  border-radius: 999px;
+}
+.modalScroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+

@@ -1,0 +1,26 @@
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.375rem;
+  border-radius: 9999px;
+  font-weight: bold;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+.statusBadgeSm {
+  padding: 0.25rem 0.625rem;
+  font-size: 10px;
+}
+
+.statusBadgeMd {
+  padding: 0.375rem 1rem;
+  font-size: 11px;
+}
+
+.statusDot {
+  display: inline-block;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+}

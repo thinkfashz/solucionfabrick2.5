@@ -10,8 +10,22 @@ export default function ServiceWorkerRegister() {
   useEffect(() => {
     if (typeof window === 'undefined') return;
     if (!('serviceWorker' in navigator)) return;
-    // Skip dev server (localhost with Next HMR)
-    if (process.env.NODE_ENV !== 'production') return;
+
+    // In dev, aggressively unregister any old SW and clear its caches. This
+    // avoids stale localhost deployments pinning old chunk URLs like
+    // `localhost:3000/_next/static/...` after the app restarts on another port.
+    if (process.env.NODE_ENV !== 'production') {
+      navigator.serviceWorker.getRegistrations().then((registrations) => {
+        registrations.forEach((registration) => {
+          registration.unregister().catch(() => undefined);
+        });
+      }).catch(() => undefined);
+
+      if ('caches' in window) {
+        caches.keys().then((keys) => Promise.all(keys.map((key) => caches.delete(key)))).catch(() => undefined);
+      }
+      return;
+    }
 
     const onLoad = () => {
       navigator.serviceWorker

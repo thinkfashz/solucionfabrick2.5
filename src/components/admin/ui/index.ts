@@ -8,3 +8,5 @@ export { default as StatusBadge } from './StatusBadge';
 export type { StatusBadgeProps } from './StatusBadge';
 export { default as ConnectionPulse } from './ConnectionPulse';
 export type { ConnectionPulseProps, ConnectionStatus } from './ConnectionPulse';
+export { AdminPage, AdminPageHeader, AdminCard, AdminStat, AdminMotion } from './AdminPage';
+export { BrandMark, BrandWordmark } from './BrandMark';

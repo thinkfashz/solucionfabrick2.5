@@ -8,6 +8,11 @@ import {
   encryptCredentials,
   isEncryptionConfigured,
 } from '@/lib/integrationsCrypto';
+import {
+  detectAllEnvCredentials,
+  detectEnvProviderCredentials,
+  envFieldPreview,
+} from '@/lib/integrationsEnvMap';
 
 export const dynamic = 'force-dynamic';
 
@@ -56,11 +61,19 @@ const ALLOWED_PROVIDERS = new Set([
   'tiktok',       // TikTok for Business / TikTok Ads
   'cloudinary',   // Cloudinary media storage
   'vercel',       // Vercel REST API (deployments + logs)
+  'mercadolibre', // MercadoLibre listings, orders and questions
+  'mercadopago',  // MercadoPago checkout / webhooks / health
+  'stripe',       // Stripe payments / webhooks
+  'whatsapp',     // WhatsApp Business Cloud API
+  'resend',       // Resend transactional email
+  'openrouter',   // OpenRouter AI chat (gateway a múltiples LLMs)
+  'serper',       // Serper.dev (Google SERP API gratis, módulo Inteligencia de Mercado)
+  'serpapi',      // SerpAPI (Google SERP, plan pago futuro)
 ]);
 
 function getClient() {
-  const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
+  const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL ?? process.env.INSFORGE_URL;
+  const anonKey = process.env.INSFORGE_API_KEY ?? process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
   if (!baseUrl || !anonKey) return null;
   return createClient({ baseUrl, anonKey });
 }
@@ -72,8 +85,8 @@ async function requireAdmin(request: NextRequest) {
 }
 
 /** Masks every credential value so we never echo secrets back to the client. */
-function maskCredentials(credentials: Record<string, unknown> | null | undefined): Record<string, { set: boolean; preview: string }> {
-  const out: Record<string, { set: boolean; preview: string }> = {};
+function maskCredentials(credentials: Record<string, unknown> | null | undefined): Record<string, { set: boolean; preview: string; source?: 'db' | 'env'; envVar?: string }> {
+  const out: Record<string, { set: boolean; preview: string; source?: 'db' | 'env'; envVar?: string }> = {};
   if (!credentials) return out;
   for (const [key, value] of Object.entries(credentials)) {
     if (typeof value !== 'string' || value.length === 0) {
@@ -112,16 +125,55 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const providers: Record<string, { credentials: Record<string, { set: boolean; preview: string }>; updated_at?: string; encrypted?: boolean }> = {};
+    const envCreds = detectAllEnvCredentials();
+
+    type FieldStatus = { set: boolean; preview: string; source?: 'db' | 'env'; envVar?: string };
+    const providers: Record<string, { credentials: Record<string, FieldStatus>; updated_at?: string; encrypted?: boolean; envManaged?: boolean }> = {};
+
+    // Seed every known provider so env-only providers (no DB row yet) still
+    // appear in the response with their env-sourced fields.
+    for (const provider of ALLOWED_PROVIDERS) {
+      providers[provider] = { credentials: {} };
+    }
+
     for (const row of (data ?? []) as Array<{ provider?: string; credentials?: Record<string, unknown>; updated_at?: string }>) {
       if (!row.provider || !ALLOWED_PROVIDERS.has(row.provider)) continue;
       // Decrypt at-rest values before masking; if the row is plaintext
       // (legacy), `decryptCredentials` is a no-op on each field.
       const plain = decryptCredentials(row.credentials);
+      const masked = maskCredentials(plain as Record<string, unknown>);
+      for (const [field, info] of Object.entries(masked)) {
+        if (info.set) info.source = 'db';
+      }
       providers[row.provider] = {
-        credentials: maskCredentials(plain as Record<string, unknown>),
+        credentials: masked,
         updated_at: row.updated_at,
       };
+    }
+
+    // Merge env-resolved credentials *over* DB values: env wins (matches the
+    // resolution order used by `getMercadoPagoCredentials`, `getMetaCredentials`,
+    // `getVercelCredentials`, …) so the UI shows what the running server is
+    // actually using and the admin can't accidentally enter a DB value that
+    // would be ignored at runtime.
+    for (const [provider, fields] of Object.entries(envCreds)) {
+      if (!ALLOWED_PROVIDERS.has(provider)) continue;
+      const entry = providers[provider] ?? (providers[provider] = { credentials: {} });
+      for (const [field, detected] of Object.entries(fields)) {
+        entry.credentials[field] = {
+          set: true,
+          preview: envFieldPreview(detected.value),
+          source: 'env',
+          envVar: detected.envName,
+        };
+      }
+      // `envManaged` = "every configured field is supplied by env, and at
+      // least one is". Unset fields are intentionally ignored (they don't
+      // disqualify the badge — a provider can have only an `access_token`
+      // in env with no other fields configured anywhere).
+      const allEnv = Object.values(entry.credentials).every((v) => !v.set || v.source === 'env');
+      const anyEnv = Object.values(entry.credentials).some((v) => v.source === 'env');
+      entry.envManaged = anyEnv && allEnv;
     }
 
     return NextResponse.json({ providers, encrypted: isEncryptionConfigured() });
@@ -153,6 +205,29 @@ export async function POST(request: NextRequest) {
   }
   if (!credentials || typeof credentials !== 'object') {
     return NextResponse.json({ error: 'Credenciales inválidas.' }, { status: 400 });
+  }
+
+  // Refuse to overwrite fields that are already supplied by an environment
+  // variable on the deployment (typically Vercel → Project Settings → Env).
+  // The runtime helpers (`getVercelCredentials`, `getMercadoPagoCredentials`,
+  // …) prefer env over DB, so persisting a different value here would be
+  // silently ignored — that "conflict" is exactly what the admin asked us
+  // to prevent. We surface the env var name so the operator knows where to
+  // change the value.
+  const envForProvider = detectEnvProviderCredentials(provider);
+  const submittedConflicts = Object.entries(credentials)
+    .filter(([key, value]) => typeof value === 'string' && value.trim().length > 0 && envForProvider[key])
+    .map(([key]) => ({ field: key, envVar: envForProvider[key]!.envName }));
+  if (submittedConflicts.length > 0) {
+    const list = submittedConflicts.map((c) => `${c.field} (${c.envVar})`).join(', ');
+    return NextResponse.json(
+      {
+        error: `Estos campos ya están definidos en variables de entorno (Vercel) y mandan sobre la base de datos: ${list}. Bórralos del formulario o actualiza el valor en Vercel → Project Settings → Environment Variables.`,
+        code: 'ENV_VAR_PRESENT',
+        envConflicts: submittedConflicts,
+      },
+      { status: 409 },
+    );
   }
 
   // Cloudinary cloud names are lowercase alphanumerics with optional dashes /
@@ -539,6 +614,185 @@ export async function POST(request: NextRequest) {
         },
         { status: 502 },
       );
+    }
+  }
+
+  // Live-validate MercadoLibre credentials by pinging /users/me with the
+  // supplied access token. This is the same token consumed by src/lib/mlApi.ts.
+  if (provider === 'mercadolibre' && nextCredentials.access_token) {
+    const token = nextCredentials.access_token;
+    try {
+      const mlRes = await fetch('https://api.mercadolibre.com/users/me', {
+        headers: {
+          Authorization: `Bearer ${token}`,
+          Accept: 'application/json',
+        },
+        cache: 'no-store',
+      });
+      const mlJson = (await mlRes.json().catch(() => ({}))) as {
+        id?: number;
+        nickname?: string;
+        message?: string;
+        error?: string;
+      };
+      if (!mlRes.ok || !mlJson.id) {
+        return NextResponse.json(
+          {
+            error: `MercadoLibre rechazó el access_token: ${mlJson.message ?? mlJson.error ?? `HTTP ${mlRes.status}`}. Genera un token válido desde developers.mercadolibre.com.`,
+          },
+          { status: 400 },
+        );
+      }
+    } catch (err) {
+      return NextResponse.json(
+        {
+          error: `No se pudo contactar MercadoLibre para validar las credenciales: ${
+            err instanceof Error ? err.message : String(err)
+          }`,
+        },
+        { status: 502 },
+      );
+    }
+  }
+
+  // Live-validate MercadoPago credentials using the same lightweight probe
+  // endpoint the checkout health indicator relies on.
+  if (provider === 'mercadopago') {
+    const accessToken = nextCredentials.access_token;
+    const publicKey = nextCredentials.public_key;
+    if (accessToken) {
+      try {
+        const mpRes = await fetch('https://api.mercadopago.com/v1/payment_methods?site_id=MLC', {
+          headers: { Authorization: `Bearer ${accessToken}` },
+          cache: 'no-store',
+        });
+        const mpJson = (await mpRes.json().catch(() => ({}))) as {
+          message?: string;
+          error?: string;
+        };
+        if (mpRes.status === 401 || mpRes.status === 403) {
+          return NextResponse.json(
+            {
+              error: `MercadoPago rechazó el access_token: ${mpJson.message ?? mpJson.error ?? `HTTP ${mpRes.status}`}.`,
+            },
+            { status: 400 },
+          );
+        }
+        if (!mpRes.ok) {
+          return NextResponse.json(
+            {
+              error: `MercadoPago respondió con error al validar: ${mpJson.message ?? mpJson.error ?? `HTTP ${mpRes.status}`}.`,
+            },
+            { status: 400 },
+          );
+        }
+      } catch (err) {
+        return NextResponse.json(
+          {
+            error: `No se pudo contactar MercadoPago para validar las credenciales: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          },
+          { status: 502 },
+        );
+      }
+    }
+    if (publicKey && !/^APP_USR-|^TEST-|^APP_/i.test(publicKey) && !/^pk_/i.test(publicKey)) {
+      // Soft format guard only; MP public keys vary, but obvious garbage is common.
+      if (publicKey.length < 12) {
+        return NextResponse.json(
+          { error: 'public_key parece inválida: revisa que estés pegando la clave pública de MercadoPago y no otro valor.' },
+          { status: 400 },
+        );
+      }
+    }
+  }
+
+  // Live-validate Stripe by hitting /v1/account with the secret key.
+  if (provider === 'stripe') {
+    const secretKey = (nextCredentials.secret_key ?? '').trim();
+    const publicKey = (nextCredentials.public_key ?? '').trim();
+    if (secretKey && !/^sk_(test|live)_/i.test(secretKey)) {
+      return NextResponse.json(
+        { error: 'secret_key inválida: Stripe espera una clave que comience con sk_test_ o sk_live_.' },
+        { status: 400 },
+      );
+    }
+    if (publicKey && !/^pk_(test|live)_/i.test(publicKey)) {
+      return NextResponse.json(
+        { error: 'public_key inválida: Stripe espera una clave que comience con pk_test_ o pk_live_.' },
+        { status: 400 },
+      );
+    }
+    if (secretKey) {
+      try {
+        const stripeRes = await fetch('https://api.stripe.com/v1/account', {
+          headers: {
+            Authorization: `Bearer ${secretKey}`,
+            Accept: 'application/json',
+          },
+          cache: 'no-store',
+        });
+        const stripeJson = (await stripeRes.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
+        if (!stripeRes.ok) {
+          return NextResponse.json(
+            { error: `Stripe rechazó la secret_key: ${stripeJson.error?.message ?? `HTTP ${stripeRes.status}`}.` },
+            { status: 400 },
+          );
+        }
+      } catch (err) {
+        return NextResponse.json(
+          {
+            error: `No se pudo contactar Stripe para validar las credenciales: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          },
+          { status: 502 },
+        );
+      }
+    }
+  }
+
+  // Live-validate WhatsApp Business Cloud API by reading the configured phone number.
+  if (provider === 'whatsapp') {
+    const accessToken = (nextCredentials.access_token ?? '').trim();
+    const phoneNumberId = (nextCredentials.phone_number_id ?? '').trim();
+    if (phoneNumberId && !/^\d+$/.test(phoneNumberId)) {
+      return NextResponse.json(
+        { error: 'phone_number_id inválido: debe ser numérico.' },
+        { status: 400 },
+      );
+    }
+    if (accessToken && phoneNumberId) {
+      try {
+        const waRes = await fetch(
+          `https://graph.facebook.com/v20.0/${encodeURIComponent(phoneNumberId)}?fields=display_phone_number,verified_name,quality_rating`,
+          {
+            headers: { Authorization: `Bearer ${accessToken}` },
+            cache: 'no-store',
+          },
+        );
+        const waJson = (await waRes.json().catch(() => ({}))) as {
+          error?: { message?: string };
+        };
+        if (!waRes.ok) {
+          return NextResponse.json(
+            { error: `WhatsApp Business rechazó las credenciales: ${waJson.error?.message ?? `HTTP ${waRes.status}`}.` },
+            { status: 400 },
+          );
+        }
+      } catch (err) {
+        return NextResponse.json(
+          {
+            error: `No se pudo contactar WhatsApp Business para validar las credenciales: ${
+              err instanceof Error ? err.message : String(err)
+            }`,
+          },
+          { status: 502 },
+        );
+      }
     }
   }
 

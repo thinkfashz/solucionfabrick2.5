@@ -1,0 +1,66 @@
+.phaseNumber {
+  font-size: clamp(4rem, 10vw, 7rem);
+  color: rgba(250,204,21,0.07);
+  line-height: 1;
+}
+
+.timelineProgressBar {
+  /* Gradiente que cuenta la madurez: gris (aprendizaje) → bronce → cobre →
+     oro → esmeralda (Fabrick consolidada). Cada parada coincide con una de
+     las 6 fases del oficio. */
+  background: linear-gradient(
+    to bottom,
+    #71717a 0%,
+    #b08d57 22%,
+    #c97a3b 42%,
+    #facc15 65%,
+    #f59e0b 82%,
+    #10b981 100%
+  );
+  box-shadow: 0 0 16px rgba(250,204,21,0.7), 0 0 40px rgba(250,204,21,0.35);
+}
+
+.timelineProgressContainer {
+  bottom: 0.5rem;
+}
+
+/* ── Tarjeta 3D con tilt suave en hover ─────────────────────────────
+   Implementación CSS-only: perspective + rotación leve cuando se pasa
+   el mouse. No requiere JS ni libs de 3D, aprovecha las capacidades
+   del compositor del navegador y respeta `prefers-reduced-motion`. */
+.tiltCard {
+  perspective: 1100px;
+  transform-style: preserve-3d;
+}
+.tiltCardInner {
+  transform-style: preserve-3d;
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1),
+              box-shadow 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+  will-change: transform;
+}
+.tiltCard:hover .tiltCardInner,
+.tiltCard:focus-visible .tiltCardInner {
+  transform: rotateX(6deg) rotateY(-7deg) translateZ(14px);
+  box-shadow: 0 30px 60px -20px rgba(250, 204, 21, 0.18),
+              0 18px 40px -25px rgba(0, 0, 0, 0.6);
+}
+.tiltCard .tiltLift {
+  transform: translateZ(28px);
+  transition: transform 0.65s cubic-bezier(0.22, 1, 0.36, 1);
+}
+@media (prefers-reduced-motion: reduce) {
+  .tiltCard:hover .tiltCardInner,
+  .tiltCard:focus-visible .tiltCardInner {
+    transform: none;
+  }
+  .tiltCard .tiltLift {
+    transform: none;
+  }
+}
+
+/* ── Bullet temporal coloreado por fase ──────────────────────────── */
+.phaseDot {
+  background: var(--phase-color, #facc15);
+  border-color: var(--phase-color, #facc15);
+  box-shadow: 0 0 12px var(--phase-glow, rgba(250, 204, 21, 0.6));
+}

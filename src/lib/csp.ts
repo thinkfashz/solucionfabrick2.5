@@ -92,7 +92,15 @@ export function buildCsp({ nonce, isDev = false }: CspBuildOptions): string {
     ...(isDev ? ['ws:', 'wss:', 'http://localhost:*'] : []),
   ];
 
-  const frameSrc = ["'self'", ...CLOUDFLARE_HOSTS, ...MERCADOPAGO_HOSTS];
+  // Permitimos `https://www.openstreetmap.org` para que el iframe del mapa
+  // de la sección de contacto cargue (de lo contrario el navegador lo bloquea
+  // silenciosamente y se ve un recuadro en blanco).
+  const frameSrc = [
+    "'self'",
+    ...CLOUDFLARE_HOSTS,
+    ...MERCADOPAGO_HOSTS,
+    'https://www.openstreetmap.org',
+  ];
 
   const directives: Record<string, string[]> = {
     'default-src': ["'self'"],

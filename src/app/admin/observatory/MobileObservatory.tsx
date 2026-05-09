@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from 'react';
 import type { ObservatoryData, ServiceId } from './useObservatoryData';
+import styles from './MobileObservatory.module.css';
+import cityStyles from './MobileObservatoryCity.module.css';
 
 const ACCENT = '#facc15';
 
@@ -109,34 +111,11 @@ function MiniCityMap() {
   const byId = Object.fromEntries(BUILDINGS.map((b) => [b.id, b]));
 
   return (
-    <div
-      style={{
-        position: 'relative',
-        height: 220,
-        width: '100%',
-        perspective: 800,
-        overflow: 'hidden',
-        borderRadius: 12,
-        background:
-          'radial-gradient(ellipse at center, rgba(250,204,21,0.06) 0%, rgba(6,10,18,0.0) 70%), #05080f',
-        border: '1px solid rgba(250,204,21,0.18)',
-      }}
-    >
-      <div
-        style={{
-          position: 'absolute',
-          left: '50%',
-          top: '50%',
-          width: 4 * CELL,
-          height: 4 * CELL,
-          marginLeft: -2 * CELL,
-          marginTop: -2 * CELL,
-          transform: 'rotateX(60deg) rotateZ(45deg)',
-          transformStyle: 'preserve-3d',
-        }}
-      >
+    <div className={styles.mainContainer}>
+      <div className={styles.gridTransform}>
         {/* Ground grid */}
         <div
+          // eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles
           style={{
             position: 'absolute',
             inset: 0,
@@ -153,8 +132,8 @@ function MiniCityMap() {
           return (
             <div
               key={b.id}
+              className={cityStyles.building}
               style={{
-                position: 'absolute',
                 left: pos.left + 6,
                 top: pos.top + 6,
                 width: CELL - 12,
@@ -162,32 +141,21 @@ function MiniCityMap() {
                 background: `${b.color}33`,
                 border: `1px solid ${b.color}`,
                 transform: `translateZ(${b.h / 2}px)`,
-                transformStyle: 'preserve-3d',
-                ['--c' as string]: b.color,
-                animation: 'pulse-building 2s ease-in-out infinite alternate',
                 animationDelay: `${(b.h % 7) * 0.15}s`,
-              }}
+                '--c': b.color,
+              } as React.CSSProperties}
             >
               {/* Top face glow */}
               <div
+                className={cityStyles.buildingTop}
                 style={{
-                  position: 'absolute',
-                  inset: 0,
                   background: `linear-gradient(135deg, ${b.color}66, ${b.color}22)`,
                   transform: `translateZ(${b.h}px)`,
                 }}
               />
               <span
+                className={cityStyles.buildingLabel}
                 style={{
-                  position: 'absolute',
-                  inset: 0,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: '#fff',
-                  fontSize: 8,
-                  fontWeight: 700,
-                  letterSpacing: '0.1em',
                   transform: `translateZ(${b.h + 0.5}px) rotateZ(-45deg) rotateX(-60deg)`,
                 }}
               >
@@ -206,24 +174,25 @@ function MiniCityMap() {
           const startY = from.y * CELL + CELL / 2;
           const endX = to.x * CELL + CELL / 2;
           const endY = to.y * CELL + CELL / 2;
-          const styleVars = {
-            position: 'absolute',
-            width: 6,
-            height: 6,
-            borderRadius: '50%',
-            background: r.color,
-            boxShadow: `0 0 8px ${r.color}`,
-            left: 0,
-            top: 0,
-            ['--sx']: `${startX}px`,
-            ['--sy']: `${startY}px`,
-            ['--ex']: `${endX}px`,
-            ['--ey']: `${endY}px`,
-            transform: `translate3d(${startX}px, ${startY}px, 20px)`,
-            animation: 'travel 3s linear infinite',
-            animationDelay: `${r.delay}s`,
-          } as React.CSSProperties;
-          return <div key={i} style={styleVars} />;
+          return (
+            <div
+              key={i}
+              className={cityStyles.packet}
+              style={{
+                background: r.color,
+                boxShadow: `0 0 8px ${r.color}`,
+                left: 0,
+                top: 0,
+                '--sx': `${startX}px`,
+                '--sy': `${startY}px`,
+                '--ex': `${endX}px`,
+                '--ey': `${endY}px`,
+                transform: `translate3d(${startX}px, ${startY}px, 20px)`,
+                animation: 'travel 3s linear infinite',
+                animationDelay: `${r.delay}s`,
+              } as React.CSSProperties}
+            />
+          );
         })}
       </div>
     </div>
@@ -231,21 +200,7 @@ function MiniCityMap() {
 }
 
 // ── Panels ───────────────────────────────────────────────────────────
-const panelStyle: React.CSSProperties = {
-  background: 'rgba(6,10,18,0.88)',
-  border: '1px solid rgba(250,204,21,0.22)',
-  borderRadius: 12,
-  padding: 14,
-};
 
-const panelTitleStyle: React.CSSProperties = {
-  color: ACCENT,
-  fontSize: 9,
-  letterSpacing: '0.3em',
-  textTransform: 'uppercase',
-  marginBottom: 10,
-  fontWeight: 700,
-};
 
 function timeAgo(iso: string) {
   const diff = (Date.now() - new Date(iso).getTime()) / 1000;
@@ -272,29 +227,17 @@ export default function MobileObservatory({
   ];
 
   return (
-    <div
-      className="h-full w-full overflow-y-auto"
-      style={{
-        fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-        color: '#e5e7eb',
-      }}
-    >
+    <>
+      {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
+      <div
+        className="h-full w-full overflow-y-auto"
+        style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: '#e5e7eb' }}
+      >
       <div className="flex flex-col gap-3 p-3 pb-10">
         {/* Header */}
-        <div style={panelStyle}>
+        <div className={styles.panel}>
           <div className="flex items-center justify-between">
-            <div
-              className="animate-pulse"
-              style={{
-                color: '#22c55e',
-                fontSize: 10,
-                fontWeight: 700,
-                letterSpacing: '0.3em',
-                textTransform: 'uppercase',
-              }}
-            >
-              ● Observatory Live
-            </div>
+            <div className="animate-pulse" style={{ color: '#22c55e', fontSize: 10, fontWeight: 700, letterSpacing: '0.3em', textTransform: 'uppercase' }}>● Observatory Live</div>
             <div style={{ color: ACCENT, fontSize: 12, fontWeight: 700 }}>
               {now
                 ? now.toLocaleTimeString('es-CL', {
@@ -305,9 +248,7 @@ export default function MobileObservatory({
                 : '—'}
             </div>
           </div>
-          <div style={{ color: '#9ca3af', fontSize: 10, marginTop: 6 }}>
-            Soluciones Fabrick · Sistema en vivo
-          </div>
+          <div style={{ color: '#9ca3af', fontSize: 10, marginTop: 6 }}>Soluciones Fabrick · Sistema en vivo</div>
         </div>
 
         {/* KPI grid 2x2 */}
@@ -315,43 +256,21 @@ export default function MobileObservatory({
           {kpis.map((k) => (
             <div
               key={k.label}
-              style={{
-                ...panelStyle,
-                borderColor: `${k.color}55`,
-                boxShadow: `0 0 16px ${k.color}14`,
-                padding: 12,
-              }}
+              className={styles.kpiPanel}
+              style={{ borderColor: `${k.color}55`, boxShadow: `0 0 16px ${k.color}14` }}
             >
-              <div
-                style={{
-                  color: k.color,
-                  fontSize: 22,
-                  fontWeight: 800,
-                  lineHeight: 1.1,
-                  letterSpacing: '-0.01em',
-                }}
-              >
+              <div className={styles.kpiValue} style={{ color: k.color }}>
                 {k.prefix ?? ''}
                 <AnimatedNumber value={k.value} />
               </div>
-              <div
-                style={{
-                  color: '#9ca3af',
-                  fontSize: 9,
-                  marginTop: 4,
-                  textTransform: 'uppercase',
-                  letterSpacing: '0.18em',
-                }}
-              >
-                {k.label}
-              </div>
+              <div className={styles.kpiLabel}>{k.label}</div>
             </div>
           ))}
         </div>
 
         {/* Services list */}
-        <div style={panelStyle}>
-          <div style={panelTitleStyle}>Servicios</div>
+        <div className={styles.panel}>
+          <div className={styles.panelTitle}>Servicios</div>
           <div className="flex flex-col gap-2">
             {SERVICE_ORDER.map((id) => {
               const s = data.servicioStatus[id];
@@ -359,40 +278,18 @@ export default function MobileObservatory({
               return (
                 <div
                   key={id}
-                  className="flex items-center justify-between"
-                  style={{
-                    padding: '8px 10px',
-                    background: 'rgba(255,255,255,0.02)',
-                    border: `1px solid ${color}33`,
-                    borderRadius: 8,
-                  }}
+                  className={`flex items-center justify-between ${styles.serviceRow}`}
+                  style={{ border: `1px solid ${color}33` }}
                 >
                   <div className="flex items-center gap-2">
                     <span
                       aria-hidden
-                      style={{
-                        width: 8,
-                        height: 8,
-                        borderRadius: '50%',
-                        background: s.online ? color : '#ef4444',
-                        boxShadow: `0 0 8px ${s.online ? color : '#ef4444'}`,
-                      }}
+                      style={{ width: 8, height: 8, borderRadius: '50%', background: s.online ? color : '#ef4444', boxShadow: `0 0 8px ${s.online ? color : '#ef4444'}` }}
                     />
-                    <span style={{ color: '#e5e7eb', fontSize: 12, fontWeight: 600 }}>
-                      {SERVICE_LABELS[id]}
-                    </span>
+                    <span style={{ color: '#e5e7eb', fontSize: 12, fontWeight: 600 }}>{SERVICE_LABELS[id]}</span>
                   </div>
                   <div className="flex items-center gap-3">
-                    <span
-                      style={{
-                        color: s.online ? '#22c55e' : '#ef4444',
-                        fontSize: 9,
-                        letterSpacing: '0.2em',
-                        fontWeight: 700,
-                      }}
-                    >
-                      {s.online ? 'ONLINE' : 'OFFLINE'}
-                    </span>
+                    <span style={{ color: s.online ? '#22c55e' : '#ef4444', fontSize: 9, letterSpacing: '0.2em', fontWeight: 700 }}>{s.online ? 'ONLINE' : 'OFFLINE'}</span>
                     <span style={{ color: '#9ca3af', fontSize: 10 }}>{s.latencyMs}ms</span>
                   </div>
                 </div>
@@ -402,49 +299,25 @@ export default function MobileObservatory({
         </div>
 
         {/* Mini city */}
-        <div style={panelStyle}>
-          <div style={panelTitleStyle}>Ciudad 3D</div>
+        <div className={styles.panel}>
+          <div className={styles.panelTitle}>Ciudad 3D</div>
           <MiniCityMap />
         </div>
 
         {/* Latest orders */}
-        <div style={panelStyle}>
-          <div style={panelTitleStyle}>Últimas órdenes</div>
+        <div className={styles.panel}>
+          <div className={styles.panelTitle}>Últimas órdenes</div>
           {data.latestOrders.length === 0 ? (
-            <div style={{ color: '#6b7280', fontSize: 11 }}>
-              {data.loading ? 'Cargando…' : 'Sin órdenes recientes'}
-            </div>
+            <div style={{ color: '#6b7280', fontSize: 11 }}>{data.loading ? 'Cargando…' : 'Sin órdenes recientes'}</div>
           ) : (
             <div className="flex flex-col gap-2">
               {data.latestOrders.slice(0, 5).map((o) => (
-                <div
-                  key={o.id}
-                  className="flex items-center justify-between"
-                  style={{
-                    padding: '8px 10px',
-                    background: 'rgba(255,255,255,0.02)',
-                    border: '1px solid rgba(250,204,21,0.12)',
-                    borderRadius: 8,
-                  }}
-                >
+                <div key={o.id} className={`flex items-center justify-between ${styles.orderRow}`}>
                   <div className="flex flex-col min-w-0">
-                    <span
-                      style={{
-                        color: '#e5e7eb',
-                        fontSize: 11,
-                        fontWeight: 700,
-                      }}
-                      className="truncate"
-                    >
-                      #{o.id.slice(0, 8)}
-                    </span>
-                    <span style={{ color: '#9ca3af', fontSize: 9 }}>
-                      {timeAgo(o.created_at)} · {o.status}
-                    </span>
+                    <span className={`truncate ${styles.orderId}`}>#{o.id.slice(0, 8)}</span>
+                    <span className={styles.orderMeta}>{timeAgo(o.created_at)} · {o.status}</span>
                   </div>
-                  <span style={{ color: ACCENT, fontSize: 12, fontWeight: 700 }}>
-                    ${formatCLP(o.total ?? 0)}
-                  </span>
+                  <span className={styles.orderTotal}>${formatCLP(o.total ?? 0)}</span>
                 </div>
               ))}
             </div>
@@ -452,43 +325,20 @@ export default function MobileObservatory({
         </div>
 
         {/* Terminal logs */}
-        <div
-          style={{
-            ...panelStyle,
-            background: '#000',
-            borderColor: 'rgba(34,197,94,0.35)',
-          }}
-        >
-          <div
-            style={{
-              ...panelTitleStyle,
-              color: '#22c55e',
-              marginBottom: 8,
-            }}
-          >
-            Terminal · Logs
-          </div>
-          <div
-            style={{
-              fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace',
-              color: '#22c55e',
-              fontSize: 10.5,
-              lineHeight: 1.55,
-              minHeight: 90,
-            }}
-          >
+        <div className={`${styles.panel} ${styles.logsPanel}`}>
+          <div className={styles.logsTitle}>Terminal · Logs</div>
+          <div className={styles.logsText}>
             {logs.length === 0 ? (
-              <div style={{ opacity: 0.5 }}>&gt; Esperando eventos…</div>
+              <div className={styles.logsEmpty}>&gt; Esperando eventos…</div>
             ) : (
               logs.slice(0, 5).map((l, i) => (
-                <div key={i} style={{ color: l.color || '#22c55e' }}>
-                  &gt; {l.msg}
-                </div>
+                <div key={i} style={{ color: l.color || '#22c55e' }}>&gt; {l.msg}</div>
               ))
             )}
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 }

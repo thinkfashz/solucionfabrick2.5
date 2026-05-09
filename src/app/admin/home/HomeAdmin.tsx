@@ -14,19 +14,19 @@ export function HomeAdmin() {
     <PageEditor
       page="home"
       title="Pantalla principal"
-      subtitle="Edita el hero, banners y secciones que ves en la landing. Reordena con ↑/↓. Cambios visibles inmediatamente en la home."
+      subtitle="Edita el hero, banners y secciones que ves en la landing. Los cambios se reflejan inmediatamente. Tips: usa títulos cortos y emocionales, copys que resuelvan problemas (no que vendan), palabras clave para SEO."
       previewPath="/"
       settingGroups={[
         {
           title: 'Hero, footer y redes',
           fields: [
-            { key: 'hero_title', label: 'Título del hero' },
-            { key: 'hero_subtitle', label: 'Subtítulo del hero' },
-            { key: 'hero_cover_url', label: 'Imagen de portada (hero)', image: true },
-            { key: 'copyright_text', label: 'Texto de copyright', hint: 'Usa {year} para insertar el año actual' },
-            { key: 'social_facebook', label: 'Facebook (URL)' },
-            { key: 'social_instagram', label: 'Instagram (URL)' },
-            { key: 'social_tiktok', label: 'TikTok (URL)' },
+            { key: 'hero_title', label: 'Título del hero (máx 3 líneas)', hint: 'Separa líneas con \\n. Ej: "Tu obra\\nen buenas manos\\nSin intermediarios"' },
+            { key: 'hero_subtitle', label: 'Subtítulo del hero', hint: 'Máx 150 caracteres. Empieza con un problema que resuelves, no con una venta.' },
+            { key: 'hero_cover_url', label: 'Imagen de portada (hero)', image: true, hint: 'Usa imágenes reales de obras (no renders). Mín 1920x1280px.' },
+            { key: 'copyright_text', label: 'Texto de copyright', hint: 'Usa {year} para el año. Ej: "© {year} Soluciones Fabrick SPA · Construcción Maule"' },
+            { key: 'social_facebook', label: 'Facebook (URL completa)' },
+            { key: 'social_instagram', label: 'Instagram (URL completa)' },
+            { key: 'social_tiktok', label: 'TikTok (URL completa)' },
           ],
         },
       ]}
@@ -37,6 +37,21 @@ export function HomeAdmin() {
           description: 'Barra de navegación global con logo, menú y botón de WhatsApp.',
           tag: 'Client',
           settingKeys: ['logo_url', 'whatsapp'],
+          codePreview:
+`// src/components/Navbar.tsx (extracto)
+// El logo y el número de WhatsApp se leen de la tabla 'configuracion'.
+
+const logoUrl   = settings.logo_url;    // URL de imagen del logo
+const whatsapp  = settings.whatsapp;    // Ej: "56912345678"
+
+<FabrickLogo />
+<a href={\`https://wa.me/\${whatsapp}\`}>WhatsApp</a>`,
+          guideSteps: [
+            'Ve a la pestaña "Editor" y busca el campo "logo_url" para subir o pegar la URL del logo.',
+            'Actualiza el campo "whatsapp" con el número completo sin guiones ni espacios (ej: 56912345678).',
+            'Presiona "Guardar cambios" y recarga la Vista previa para confirmar los cambios.',
+            'Para gestionar imágenes del logo, usa el panel de Medios en /admin/media.',
+          ],
         },
         {
           label: '<Hero coverUrl={...} />',
@@ -44,12 +59,52 @@ export function HomeAdmin() {
           description: 'Sección hero de pantalla completa con imagen de portada editable.',
           tag: 'Client',
           settingKeys: ['hero_title', 'hero_subtitle', 'hero_cover_url'],
+          codePreview:
+`// src/app/page.tsx
+// El Hero recibe 3 props desde la tabla 'configuracion':
+
+<Hero
+  coverUrl={settings.hero_cover_url}   // URL de la imagen de fondo
+  heroTitle={settings.hero_title}       // Título principal (usa \\n para saltos de línea)
+  heroSubtitle={settings.hero_subtitle} // Subtítulo descriptivo
+/>
+
+// Ejemplo de hero_title con salto de línea:
+// "Edificamos\\ntu proyecto\\ncon calidad."`,
+          guideSteps: [
+            '🎯 Título: Ataca un problema real que tu cliente enfrenta. Ejemplo: "Tu obra en buenas manos" (no "Construcción de calidad").',
+            '📝 Subtítulo: Explica la solución. Ejemplo: "Equipo propio, precios fijos, avances reales cada semana".',
+            '🖼️ Imagen: Usa fotos reales de tus obras (no renders ni stock photos). Humaniza el contenido.',
+            '✅ Guarda y recarga la Vista previa (F5) para ver los cambios en tiempo real.',
+          ],
         },
         {
           label: '<HomeDynamicSections sections={sections} />',
           path: 'src/components/HomeDynamicSections.tsx',
           description: 'Renderiza las secciones dinámicas listadas debajo. Soporta hero, banner, cta, galería y custom.',
           tag: 'Server',
+          codePreview:
+`// src/components/HomeDynamicSections.tsx
+// Lee secciones de la tabla 'home_sections' en la base de datos.
+
+interface Section {
+  id: string;
+  kind: 'banner' | 'cta' | 'hero' | 'servicios' | 'galeria' | 'custom';
+  title?: string;
+  subtitle?: string;
+  body?: string;
+  image_url?: string;
+  visible: boolean;
+  sort_order: number;
+}
+
+// Las secciones se administran desde la pestaña "Editor" → bloque "Secciones dinámicas".`,
+          guideSteps: [
+            'Ve a la pestaña "Editor" y busca el bloque "Secciones dinámicas" para ver las secciones activas.',
+            'Usa el botón "+ Añadir sección" para crear una nueva, elige el tipo (banner, CTA, galería…).',
+            'Arrastra las tarjetas con las flechas ▲▼ para reordenar las secciones.',
+            'Activa o desactiva secciones con el ícono de ojo. Los cambios se guardan al presionar "Guardar".',
+          ],
         },
         {
           label: '<LandingSections />',
@@ -57,6 +112,20 @@ export function HomeAdmin() {
           description: 'Secciones estáticas: servicios, galería de proyectos, beneficios, formulario y footer.',
           tag: 'Client',
           settingKeys: ['copyright_text', 'social_facebook', 'social_instagram', 'social_tiktok'],
+          codePreview:
+`// src/components/LandingSections.tsx (extracto del footer)
+// Las redes sociales y el copyright se leen de 'configuracion'.
+
+const copyright = settings.copyright_text; // Ej: "© 2025 Soluciones Fabrick"
+const facebook  = settings.social_facebook; // URL completa de Facebook
+const instagram = settings.social_instagram;
+const tiktok    = settings.social_tiktok;`,
+          guideSteps: [
+            'En "Editor", busca el campo "copyright_text" y actualiza el texto del pie de página.',
+            'Copia y pega la URL completa de tu perfil en "social_facebook", "social_instagram" y "social_tiktok".',
+            'Si no tienes una red social, deja el campo vacío: el ícono se ocultará automáticamente.',
+            'Guarda los cambios y verifica en la Vista previa que los íconos apunten a los perfiles correctos.',
+          ],
         },
       ]}
     />

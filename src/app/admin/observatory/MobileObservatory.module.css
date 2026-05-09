@@ -1,0 +1,113 @@
+.panel {
+  background: rgba(6,10,18,0.88);
+  border: 1px solid rgba(250,204,21,0.22);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.panelTitle {
+  color: #facc15;
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+  font-weight: 700;
+}
+
+.kpiPanel {
+  border-radius: 12px;
+  padding: 12px;
+}
+
+.kpiValue {
+  font-size: 22px;
+  font-weight: 800;
+  line-height: 1.1;
+  letter-spacing: -0.01em;
+}
+
+.kpiLabel {
+  color: #9ca3af;
+  font-size: 9px;
+  margin-top: 4px;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+}
+
+.serviceRow {
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.02);
+  border-radius: 8px;
+}
+
+.orderRow {
+  padding: 8px 10px;
+  background: rgba(255,255,255,0.02);
+  border: 1px solid rgba(250,204,21,0.12);
+  border-radius: 8px;
+}
+
+.orderId {
+  color: #e5e7eb;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.orderMeta {
+  color: #9ca3af;
+  font-size: 9px;
+}
+
+.orderTotal {
+  color: #facc15;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.logsPanel {
+  background: #000;
+  border-color: rgba(34,197,94,0.35);
+}
+
+.logsTitle {
+  color: #22c55e;
+  margin-bottom: 8px;
+  font-size: 9px;
+  letter-spacing: 0.3em;
+  text-transform: uppercase;
+  font-weight: 700;
+}
+
+.logsText {
+  font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  color: #22c55e;
+  font-size: 10.5px;
+  line-height: 1.55;
+  min-height: 90px;
+}
+
+.logsEmpty {
+  opacity: 0.5;
+}
+.mainContainer {
+  position: relative;
+  height: 220px;
+  width: 100%;
+  perspective: 800px;
+  overflow: hidden;
+  border-radius: 12px;
+  background: radial-gradient(ellipse at center, rgba(250,204,21,0.06) 0%, rgba(6,10,18,0.0) 70%), #05080f;
+  border: 1px solid rgba(250,204,21,0.18);
+}
+
+.gridTransform {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: 160px; /* 4 * CELL (if CELL=40) */
+  height: 160px;
+  margin-left: -80px;
+  margin-top: -80px;
+  transform: rotateX(60deg) rotateZ(45deg);
+  transform-style: preserve-3d;
+}

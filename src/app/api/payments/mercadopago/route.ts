@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { MercadoPagoConfig, Payment } from 'mercadopago';
 import { getMercadoPagoAccessToken } from '@/lib/mercadopago';
+import { getMercadoPagoCredentials } from '@/lib/mercadoPagoCredentials';
 import { mapMercadoPagoStatusDetail } from '@/lib/mercadopagoStatus';
 import { insforge } from '@/lib/insforge';
 
@@ -16,7 +17,8 @@ import { insforge } from '@/lib/insforge';
  */
 export async function POST(request: Request) {
   try {
-    const accessToken = getMercadoPagoAccessToken();
+    const resolved = await getMercadoPagoCredentials();
+    const accessToken = resolved.accessToken ?? getMercadoPagoAccessToken();
     if (!accessToken) {
       return NextResponse.json(
         {

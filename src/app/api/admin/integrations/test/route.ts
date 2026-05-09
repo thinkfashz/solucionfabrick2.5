@@ -2,7 +2,19 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 import { getMetaCredentials } from '@/lib/metaCredentials';
+import { getMercadoLibreCredentials } from '@/lib/mercadoLibreCredentials';
+import { getMercadoPagoCredentials } from '@/lib/mercadoPagoCredentials';
 import { decryptCredentials } from '@/lib/integrationsCrypto';
+import { detectMpMode, getMpTokenPrefix } from '@/lib/mercadopago';
+import { getOpenRouterCredentials } from '@/lib/openrouter';
+import { getResendCredentials } from '@/lib/resendCredentials';
+import {
+  runOpenRouterChecks,
+  runResendChecks,
+  runSerpApiChecks,
+  runSerperChecks,
+  runWhatsAppChecks,
+} from '@/lib/integrationsTestRunners';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -602,6 +614,368 @@ async function testVercel(): Promise<NextResponse> {
   }
 }
 
+async function testMercadoLibre(): Promise<NextResponse> {
+  const creds = await getMercadoLibreCredentials();
+  const token = creds.accessToken?.trim() ?? '';
+  const checks: DiagnosticCheck[] = [];
+  if (!token) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'mercadolibre',
+      error:
+        'MercadoLibre no configurado. Lo más fácil: en /admin/integraciones presiona "Conectar con Mercado Libre" para iniciar el flujo OAuth (requiere ML_CLIENT_ID y ML_CLIENT_SECRET en el deploy). Alternativamente, guarda manualmente el `access_token` en la pantalla, o defínelo como variable de entorno ML_ACCESS_TOKEN o MERCADOLIBRE_ACCESS_TOKEN.',
+      checks: [{ name: 'access_token', ok: false, detail: 'No configurado.' }],
+      sources: creds.sources,
+    });
+  }
+
+  try {
+    const meRes = await fetch('https://api.mercadolibre.com/users/me', {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    const meJson = (await meRes.json().catch(() => ({}))) as {
+      id?: number;
+      nickname?: string;
+      message?: string;
+      error?: string;
+    };
+    if (!meRes.ok || !meJson.id) {
+      const detail = meJson.message ?? meJson.error ?? `HTTP ${meRes.status}`;
+      checks.push({ name: 'Token /users/me', ok: false, detail });
+      return NextResponse.json({
+        ok: false,
+        provider: 'mercadolibre',
+        error: `MercadoLibre rechazó el token: ${detail}.`,
+        checks,
+        sources: creds.sources,
+      });
+    }
+
+    checks.push({
+      name: 'Token /users/me',
+      ok: true,
+      detail: `Conectado como ${meJson.nickname ?? meJson.id} (fuente: ${creds.sources.accessToken ?? 'desconocida'}).`,
+    });
+
+    const itemsRes = await fetch(`https://api.mercadolibre.com/users/${meJson.id}/items/search?limit=1`, {
+      headers: { Authorization: `Bearer ${token}`, Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    const itemsJson = (await itemsRes.json().catch(() => ({}))) as {
+      paging?: { total?: number };
+      message?: string;
+      error?: string;
+    };
+    if (!itemsRes.ok) {
+      checks.push({
+        name: 'Lectura de publicaciones',
+        ok: false,
+        detail: itemsJson.message ?? itemsJson.error ?? `HTTP ${itemsRes.status}`,
+      });
+      return NextResponse.json({
+        ok: false,
+        provider: 'mercadolibre',
+        error: `El token es válido, pero falló la lectura de publicaciones: ${itemsJson.message ?? itemsJson.error ?? `HTTP ${itemsRes.status}`}.`,
+        checks,
+        sources: creds.sources,
+      });
+    }
+
+    checks.push({
+      name: 'Lectura de publicaciones',
+      ok: true,
+      detail: `Acceso correcto al inventario del vendedor. Total detectado: ${itemsJson.paging?.total ?? 0}.`,
+    });
+
+    return NextResponse.json({ ok: true, provider: 'mercadolibre', checks, sources: creds.sources });
+  } catch (err) {
+    checks.push({ name: 'MercadoLibre', ok: false, detail: err instanceof Error ? err.message : 'Error de red.' });
+    return NextResponse.json({
+      ok: false,
+      provider: 'mercadolibre',
+      error: `Error de red al contactar MercadoLibre: ${err instanceof Error ? err.message : String(err)}`,
+      checks,
+      sources: creds.sources,
+    });
+  }
+}
+
+async function testMercadoPago(): Promise<NextResponse> {
+  const creds = await getMercadoPagoCredentials();
+  const accessToken = creds.accessToken?.trim() ?? '';
+  const publicKey = creds.publicKey?.trim() ?? '';
+  const checks: DiagnosticCheck[] = [];
+  if (!accessToken && !publicKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'mercadopago',
+      error: 'MercadoPago no configurado. Guarda access_token y public_key en el centro de integraciones.',
+      checks: [
+        { name: 'access_token', ok: false, detail: 'No configurado.' },
+        { name: 'public_key', ok: false, detail: 'No configurada.' },
+      ],
+      sources: creds.sources,
+    });
+  }
+
+  if (!publicKey) {
+    checks.push({ name: 'public_key', ok: false, detail: 'Falta la clave pública para tokenización en checkout.' });
+  } else {
+    checks.push({ name: 'public_key', ok: true, detail: `Clave pública presente (fuente: ${creds.sources.publicKey ?? 'desconocida'}).` });
+  }
+
+  if (!accessToken) {
+    checks.push({ name: 'access_token', ok: false, detail: 'Falta el token privado para cobros del servidor.' });
+    return NextResponse.json({
+      ok: false,
+      provider: 'mercadopago',
+      error: 'Falta access_token de MercadoPago.',
+      checks,
+      sources: creds.sources,
+    });
+  }
+
+  try {
+    const res = await fetch('https://api.mercadopago.com/v1/payment_methods?site_id=MLC', {
+      headers: { Authorization: `Bearer ${accessToken}` },
+      cache: 'no-store',
+    });
+    const json = (await res.json().catch(() => ({}))) as { message?: string; error?: string };
+    if (res.status === 401 || res.status === 403) {
+      checks.push({ name: 'Gateway probe', ok: false, detail: json.message ?? json.error ?? `HTTP ${res.status}` });
+      return NextResponse.json({
+        ok: false,
+        provider: 'mercadopago',
+        error: `MercadoPago rechazó el access_token: ${json.message ?? json.error ?? `HTTP ${res.status}`}.`,
+        checks,
+        sources: creds.sources,
+      });
+    }
+    if (!res.ok) {
+      checks.push({ name: 'Gateway probe', ok: false, detail: json.message ?? json.error ?? `HTTP ${res.status}` });
+      return NextResponse.json({
+        ok: false,
+        provider: 'mercadopago',
+        error: `MercadoPago respondió con error: ${json.message ?? json.error ?? `HTTP ${res.status}`}.`,
+        checks,
+        sources: creds.sources,
+      });
+    }
+
+    checks.push({
+      name: 'Gateway probe',
+      ok: true,
+      detail: `API reachable. Modo: ${detectMpMode(accessToken)}. Prefijo del token: ${getMpTokenPrefix(accessToken) || 'n/a'}.`,
+    });
+    return NextResponse.json({ ok: checks.every((check) => check.ok), provider: 'mercadopago', checks, sources: creds.sources });
+  } catch (err) {
+    checks.push({ name: 'Gateway probe', ok: false, detail: err instanceof Error ? err.message : 'Error de red.' });
+    return NextResponse.json({
+      ok: false,
+      provider: 'mercadopago',
+      error: `Error de red al contactar MercadoPago: ${err instanceof Error ? err.message : String(err)}`,
+      checks,
+      sources: creds.sources,
+    });
+  }
+}
+
+async function testStripe(): Promise<NextResponse> {
+  const creds = await readIntegrationCredentials('stripe');
+  const secretKey = (creds.secret_key ?? '').trim();
+  const publicKey = (creds.public_key ?? '').trim();
+  const checks: DiagnosticCheck[] = [];
+
+  if (!secretKey && !publicKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'stripe',
+      error: 'Stripe no configurado. Guarda al menos secret_key y public_key en el centro de integraciones.',
+      checks: [
+        { name: 'secret_key', ok: false, detail: 'No configurada.' },
+        { name: 'public_key', ok: false, detail: 'No configurada.' },
+      ],
+    });
+  }
+
+  if (!publicKey) {
+    checks.push({ name: 'public_key', ok: false, detail: 'Falta la clave pública para frontend.' });
+  } else if (!/^pk_(test|live)_/i.test(publicKey)) {
+    checks.push({ name: 'public_key', ok: false, detail: 'Formato inválido.' });
+  } else {
+    checks.push({ name: 'public_key', ok: true, detail: 'Clave pública presente.' });
+  }
+
+  if (!secretKey) {
+    checks.push({ name: 'secret_key', ok: false, detail: 'Falta la clave secreta para backend.' });
+    return NextResponse.json({ ok: false, provider: 'stripe', error: 'Falta secret_key de Stripe.', checks });
+  }
+
+  try {
+    const res = await fetch('https://api.stripe.com/v1/account', {
+      headers: { Authorization: `Bearer ${secretKey}`, Accept: 'application/json' },
+      cache: 'no-store',
+    });
+    const json = (await res.json().catch(() => ({}))) as {
+      id?: string;
+      email?: string;
+      display_name?: string;
+      error?: { message?: string };
+    };
+    if (!res.ok) {
+      checks.push({ name: 'Stripe /v1/account', ok: false, detail: json.error?.message ?? `HTTP ${res.status}` });
+      return NextResponse.json({
+        ok: false,
+        provider: 'stripe',
+        error: `Stripe rechazó la secret_key: ${json.error?.message ?? `HTTP ${res.status}`}.`,
+        checks,
+      });
+    }
+    checks.push({
+      name: 'Stripe /v1/account',
+      ok: true,
+      detail: `Cuenta accesible: ${json.display_name ?? json.email ?? json.id ?? 'Stripe account'}.`,
+    });
+    return NextResponse.json({ ok: checks.every((check) => check.ok), provider: 'stripe', checks });
+  } catch (err) {
+    checks.push({ name: 'Stripe /v1/account', ok: false, detail: err instanceof Error ? err.message : 'Error de red.' });
+    return NextResponse.json({
+      ok: false,
+      provider: 'stripe',
+      error: `Error de red al contactar Stripe: ${err instanceof Error ? err.message : String(err)}`,
+      checks,
+    });
+  }
+}
+
+async function testWhatsApp(): Promise<NextResponse> {
+  const creds = await readIntegrationCredentials('whatsapp');
+  const accessToken = (creds.access_token ?? '').trim();
+  const phoneNumberId = (creds.phone_number_id ?? '').trim();
+  const businessAccountId = (creds.business_account_id ?? '').trim();
+
+  if (!accessToken && !phoneNumberId && !businessAccountId) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'whatsapp',
+      error: 'WhatsApp Business no configurado. Guarda access_token y phone_number_id en el centro de integraciones.',
+      checks: [
+        { name: 'access_token', ok: false, detail: 'No configurado.' },
+        { name: 'phone_number_id', ok: false, detail: 'No configurado.' },
+      ],
+    });
+  }
+
+  if (!accessToken) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'whatsapp',
+      error: 'Falta access_token de WhatsApp Business.',
+      checks: [{ name: 'access_token', ok: false, detail: 'Falta token de Cloud API.' }],
+    });
+  }
+
+  if (!phoneNumberId) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'whatsapp',
+      error: 'Falta phone_number_id para validar WhatsApp Business.',
+      checks: [{ name: 'phone_number_id', ok: false, detail: 'Falta el ID del número de teléfono.' }],
+    });
+  }
+
+  const result = await runWhatsAppChecks({
+    access_token: accessToken,
+    phone_number_id: phoneNumberId,
+    business_account_id: businessAccountId || undefined,
+  });
+  return NextResponse.json(result);
+}
+
+async function testResend(): Promise<NextResponse> {
+  const creds = await getResendCredentials();
+
+  if (!creds?.apiKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'resend',
+      error:
+        'Resend no está configurado. Guarda tu API key en el centro de integraciones (tarjeta Resend) o define RESEND_API_KEY como variable de entorno.',
+      checks: [{ name: 'api_key', ok: false, detail: 'No configurada.' }],
+    });
+  }
+
+  const result = await runResendChecks({
+    apiKey: creds.apiKey,
+    from: creds.from ?? undefined,
+    source: creds.source,
+  });
+  return NextResponse.json(result);
+}
+
+async function testSerper(): Promise<NextResponse> {
+  const creds = await readIntegrationCredentials('serper');
+  const envKey = (process.env.SERPER_API_KEY ?? process.env.SERPER_KEY ?? '').trim();
+  const apiKey = envKey || (creds.api_key ?? '').trim();
+  const source = envKey ? 'env' : creds.api_key ? 'db' : null;
+
+  if (!apiKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'serper',
+      error:
+        'Serper.dev no está configurado. Guarda tu API key en el centro de integraciones (tarjeta Serper.dev) o define SERPER_API_KEY como variable de entorno.',
+      checks: [{ name: 'api_key', ok: false, detail: 'No configurada.' }],
+    });
+  }
+
+  const result = await runSerperChecks({ apiKey, source: source ?? 'env' });
+  return NextResponse.json(result);
+}
+
+async function testSerpApi(): Promise<NextResponse> {
+  const creds = await readIntegrationCredentials('serpapi');
+  const envKey = (process.env.SERPAPI_KEY ?? process.env.SERPAPI_API_KEY ?? '').trim();
+  const apiKey = envKey || (creds.api_key ?? '').trim();
+  const source = envKey ? 'env' : creds.api_key ? 'db' : null;
+
+  if (!apiKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'serpapi',
+      error:
+        'SerpAPI no está configurado. Guarda tu API key en el centro de integraciones (tarjeta SerpAPI) o define SERPAPI_KEY como variable de entorno.',
+      checks: [{ name: 'api_key', ok: false, detail: 'No configurada.' }],
+    });
+  }
+
+  const result = await runSerpApiChecks({ apiKey, source: source ?? 'env' });
+  return NextResponse.json(result);
+}
+
+async function testOpenRouter(): Promise<NextResponse> {
+  const creds = await getOpenRouterCredentials();
+
+  if (!creds?.apiKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'openrouter',
+      error:
+        'OpenRouter no está configurado. Guarda tu API key en el centro de integraciones (tarjeta OpenRouter) o define OPENROUTER_API_KEY como variable de entorno.',
+      checks: [{ name: 'api_key', ok: false, detail: 'No configurada.' }],
+    });
+  }
+
+  const result = await runOpenRouterChecks({
+    apiKey: creds.apiKey,
+    source: creds.source,
+    appName: creds.appName,
+    siteUrl: creds.siteUrl ?? undefined,
+  });
+  return NextResponse.json(result);
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAdmin(request);
@@ -614,6 +988,14 @@ export async function GET(request: NextRequest) {
     if (provider === 'google') return await testGoogle();
     if (provider === 'google_ads') return await testGoogleAds();
     if (provider === 'vercel') return await testVercel();
+    if (provider === 'mercadolibre') return await testMercadoLibre();
+    if (provider === 'mercadopago') return await testMercadoPago();
+    if (provider === 'stripe') return await testStripe();
+    if (provider === 'whatsapp') return await testWhatsApp();
+    if (provider === 'openrouter') return await testOpenRouter();
+    if (provider === 'resend') return await testResend();
+    if (provider === 'serper') return await testSerper();
+    if (provider === 'serpapi') return await testSerpApi();
     return NextResponse.json(
       { error: `Proveedor no soportado para test: ${provider || '(vacío)'}.` },
       { status: 400 },

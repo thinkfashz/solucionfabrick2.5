@@ -1,0 +1,49 @@
+.building {
+  position: absolute;
+  /* left, top, width, height, background, border, transform, animation, etc. via style or CSS vars */
+  transform-style: preserve-3d;
+  animation: pulse-building 2s ease-in-out infinite alternate;
+}
+
+.buildingTop {
+  position: absolute;
+  inset: 0;
+  /* background, transform via style or CSS vars */
+}
+
+.buildingLabel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 8px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  /* transform via style or CSS vars */
+}
+
+.packet {
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  /* background, box-shadow, transform, animation via style or CSS vars */
+}
+
+@keyframes pulse-building {
+  0% { filter: brightness(1); }
+  100% { filter: brightness(1.15); }
+}
+
+@keyframes travel {
+  0% {
+    left: var(--sx);
+    top: var(--sy);
+  }
+  100% {
+    left: var(--ex);
+    top: var(--ey);
+  }
+}

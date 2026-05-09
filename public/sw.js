@@ -14,7 +14,7 @@
 // black-screen HTML cached before v2). Increasing the version causes the
 // `activate` handler to delete every cache whose key does not start with
 // VERSION, forcing a clean slate on users' devices.
-const VERSION = 'fabrick-sw-v2';
+const VERSION = 'fabrick-sw-v3';
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const IMAGE_CACHE = `${VERSION}-images`;
@@ -57,6 +57,10 @@ function isFontRequest(request) {
 
 function isStaticAsset(url) {
   return url.pathname.startsWith('/_next/static/');
+}
+
+function isNextChunkAsset(url) {
+  return url.pathname.startsWith('/_next/static/chunks/');
 }
 
 function isApiRequest(url) {
@@ -143,6 +147,14 @@ self.addEventListener('fetch', (event) => {
 
   if (isApiRequest(url)) {
     event.respondWith(networkFirst(request, RUNTIME_CACHE));
+    return;
+  }
+
+  // Next.js JS chunks should not use CacheFirst because a cached HTML shell or
+  // a port/origin change can keep pointing at an old chunk URL. NetworkFirst
+  // avoids the classic "Loading chunk ... failed" deployment regression.
+  if (isNextChunkAsset(url)) {
+    event.respondWith(networkFirst(request, STATIC_CACHE));
     return;
   }
 

@@ -8,6 +8,7 @@ import {
   type MercadoPagoAccountInfo,
   type MercadoPagoStatusResult,
 } from '@/lib/mercadopago';
+import { getMercadoPagoCredentials } from '@/lib/mercadoPagoCredentials';
 import { insforge } from '@/lib/insforge';
 
 export const dynamic = 'force-dynamic';
@@ -66,7 +67,8 @@ export async function GET(request: NextRequest) {
     }
 
     const probe = await probeMercadoPago();
-    const accessToken = getMercadoPagoAccessToken();
+    const resolved = await getMercadoPagoCredentials();
+    const accessToken = resolved.accessToken ?? getMercadoPagoAccessToken();
     const account = accessToken ? await fetchMercadoPagoAccount(accessToken) : null;
 
     // Cross-check mode: the token prefix is one signal, but MP also tags test

@@ -13,10 +13,21 @@ import {
   Search,
   Server,
   Terminal,
+  TrendingUp,
+  BarChart3,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { LogStatistics } from '@/components/admin/vercel/LogStatistics';
 
 /**
- * /admin/vercel-logs
+ * /admin/vercel-logs (ENHANCED)
+ *
+ * Mejoras:
+ * - Visualización de estadísticas en tiempo real
+ * - Gráficos profesionales de errores/warnings
+ * - Timeline de deployments
+ * - Análisis inteligente de patrones
+ * - Mejor coherencia visual
  *
  * Server-side bridge to the Vercel REST API. Lets the operator:
  *   1. Pick a recent deployment of the configured project.
@@ -121,17 +132,17 @@ function Meta({
   truncate?: boolean;
 }) {
   return (
-    <div className="min-w-0">
+    <>
       <dt className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">{k}</dt>
       <dd
-        className={`text-zinc-200 ${mono ? 'font-mono text-[10px]' : 'text-[11px]'} ${
+        className={`min-w-0 text-zinc-200 ${mono ? 'font-mono text-[10px]' : 'text-[11px]'} ${
           truncate ? 'truncate' : 'break-all'
         }`}
         title={truncate ? v : undefined}
       >
         {v}
       </dd>
-    </div>
+    </>
   );
 }
 
@@ -430,30 +441,24 @@ export default function VercelLogsPage() {
                 </div>
               </div>
 
-              {/* Counts strip + search */}
-              {counts && (
-                <div className="flex flex-wrap items-center gap-3 border-b border-white/5 px-4 py-2 text-[10px] uppercase tracking-widest text-zinc-400">
-                  <span>
-                    <span className="text-red-400">{counts.error}</span> errores
-                  </span>
-                  <span>
-                    <span className="text-yellow-300">{counts.warning}</span> warnings
-                  </span>
-                  <span>
-                    <span className="text-zinc-300">{counts.info}</span> info
-                  </span>
-                  <div className="ml-auto flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-2 py-1">
-                    <Search className="h-3 w-3 text-zinc-500" />
-                    <input
-                      type="search"
-                      placeholder="Buscar mensaje, ruta, requestId, status…"
-                      value={search}
-                      onChange={(e) => setSearch(e.target.value)}
-                      className="w-56 bg-transparent text-[11px] text-white outline-none placeholder:text-zinc-600"
-                    />
-                  </div>
-                </div>
-              )}
+          {/* Stats and Analysis */}
+          {counts && (
+            <div className="border-b border-white/5 p-4 space-y-4">
+              <LogStatistics counts={counts} deployments={deployments} />
+              
+              {/* Search Bar */}
+              <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-3 py-2">
+                <Search className="h-3.5 w-3.5 text-zinc-500" />
+                <input
+                  type="search"
+                  placeholder="Buscar mensaje, ruta, requestId, status…"
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="flex-1 bg-transparent text-[11px] text-white outline-none placeholder:text-zinc-600"
+                />
+              </div>
+            </div>
+          )}
 
               {/* Logs list */}
               <div className="max-h-[70vh] overflow-y-auto p-3">
@@ -479,11 +484,12 @@ export default function VercelLogsPage() {
                         key={log.id}
                         className={`rounded-lg border ${LEVEL_COLORS[log.level]}`}
                       >
+                        {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
                         <button
                           type="button"
                           onClick={() => toggleExpanded(log.id)}
                           className="flex w-full items-start gap-2 p-3 text-left"
-                          aria-expanded={isOpen}
+                          aria-expanded={isOpen ? 'true' : 'false'}
                         >
                           <span className="mt-0.5 text-zinc-500">
                             {isOpen ? (

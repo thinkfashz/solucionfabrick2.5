@@ -1,10 +1,8 @@
 {
   "mcpServers": {
     "insforge": {
-      "command": "cmd",
+      "command": "C:\\Program Files\\nodejs\\npx.cmd",
       "args": [
-        "/c",
-        "npx",
         "-y",
         "@insforge/mcp@latest"
       ],
@@ -12,6 +10,22 @@
         "API_KEY": "ik_7e23032539c2dc64d5d27ca29d07b928",
         "API_BASE_URL": "https://txv86efe.us-east.insforge.app"
       }
+    },
+    "mercadolibre-mcp-server": {
+      "command": "C:\\Program Files\\nodejs\\npx.cmd",
+      "args": [
+        "-y",
+        "mcp-remote",
+        "https://mcp.mercadolibre.com/mcp",
+        "--header",
+        "Authorization:${env:AUTH_HEADER}"
+      ],
+      "env": {
+        "AUTH_HEADER": "Bearer ${env:MERCADOLIBRE_ACCESS_TOKEN}"
+      }
+    },
+    "mercadopago-mcp-server": {
+      "url": "https://mcp.mercadopago.com/mcp"
     }
   }
 }

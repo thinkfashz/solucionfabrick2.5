@@ -24,20 +24,21 @@ import { createCipheriv, createDecipheriv, createHash, randomBytes } from 'node:
  */
 
 const PREFIX = 'enc:v1:';
-const KEY_ENV = 'INTEGRATIONS_ENC_KEY';
+const KEY_ENVS = ['ENCRYPTION_KEY', 'INTEGRATIONS_ENC_KEY'] as const;
 
 let cachedKey: Buffer | null | undefined;
 
 /**
- * Resolves the 32-byte AES key from `process.env.INTEGRATIONS_ENC_KEY`.
+ * Resolves the 32-byte AES key from `process.env.ENCRYPTION_KEY` first,
+ * falling back to `process.env.INTEGRATIONS_ENC_KEY` for backward compatibility.
  * The env value can be base64 (44 chars incl. padding), hex (64 chars) or
  * any UTF-8 string of length ≥ 32 (we hash via SHA-256 fallback). Returns
- * `null` when the env var is unset/blank — callers must treat that as
+ * `null` when both env vars are unset/blank — callers must treat that as
  * "encryption disabled".
  */
 function getKey(): Buffer | null {
   if (cachedKey !== undefined) return cachedKey;
-  const raw = process.env[KEY_ENV];
+  const raw = KEY_ENVS.map((name) => process.env[name]).find((value) => value && value.trim().length > 0);
   if (!raw || raw.trim().length === 0) {
     cachedKey = null;
     return null;

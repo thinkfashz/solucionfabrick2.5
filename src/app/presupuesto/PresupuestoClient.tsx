@@ -415,6 +415,8 @@ function FinalizeModal({
               value={form.name}
               onChange={(e) => update('name', e.target.value)}
               className="finput"
+              placeholder="Tu nombre completo"
+              aria-label="Nombre completo"
               autoFocus
               autoComplete="name"
             />
@@ -426,6 +428,8 @@ function FinalizeModal({
               value={form.email}
               onChange={(e) => update('email', e.target.value)}
               className="finput"
+              placeholder="tu@email.com"
+              aria-label="Correo electrónico"
               autoComplete="email"
             />
           </Field>
@@ -444,6 +448,7 @@ function FinalizeModal({
               value={form.region}
               onChange={(e) => update('region', e.target.value)}
               className="finput"
+              aria-label="Selecciona tu región"
             >
               {REGIONS.map((r) => (
                 <option key={r} value={r}>
@@ -460,6 +465,8 @@ function FinalizeModal({
               value={form.shippingCost}
               onChange={(e) => update('shippingCost', Math.max(0, Number(e.target.value) || 0))}
               className="finput"
+              placeholder="0"
+              aria-label="Costo de despacho estimado"
             />
           </Field>
           <Field label="Instalación (CLP)">
@@ -470,6 +477,8 @@ function FinalizeModal({
               value={form.installationCost}
               onChange={(e) => update('installationCost', Math.max(0, Number(e.target.value) || 0))}
               className="finput"
+              placeholder="0"
+              aria-label="Costo de instalación"
             />
           </Field>
           <Field label="Notas / requerimientos" className="sm:col-span-2">

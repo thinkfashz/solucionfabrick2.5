@@ -60,6 +60,52 @@ CREATE TABLE IF NOT EXISTS public.integrations (
   updated_at timestamptz DEFAULT now()
 );
 
+-- TABLA: presupuestos
+-- Presupuestos enviados a clientes con autodestrucción a los 5 días.
+-- Se accede públicamente vía /p/[slug]; cuando `now() > expira_at` la
+-- página renderiza la pantalla "Presupuesto vencido".
+CREATE TABLE IF NOT EXISTS public.presupuestos (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  slug text NOT NULL UNIQUE,
+  customer_name text NOT NULL,
+  customer_email text,
+  customer_phone text,
+  items jsonb NOT NULL DEFAULT '[]'::jsonb,
+  total numeric(12,2) NOT NULL DEFAULT 0,
+  notas text,
+  status text NOT NULL DEFAULT 'borrador',
+  sent_via jsonb NOT NULL DEFAULT '[]'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  expira_at timestamptz NOT NULL DEFAULT (now() + interval '5 days')
+);
+CREATE INDEX IF NOT EXISTS presupuestos_slug_idx ON public.presupuestos (slug);
+CREATE INDEX IF NOT EXISTS presupuestos_created_at_idx ON public.presupuestos (created_at DESC);
+
+-- TABLA: presupuestos-migrate
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS slug text;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS customer_name text;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS customer_email text;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS customer_phone text;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS items jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS total numeric(12,2) DEFAULT 0;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS notas text;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS status text DEFAULT 'borrador';
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS sent_via jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.presupuestos ADD COLUMN IF NOT EXISTS expira_at timestamptz DEFAULT (now() + interval '5 days');
+DO $$ BEGIN
+  IF NOT EXISTS (
+    SELECT 1 FROM pg_constraint WHERE conname = 'presupuestos_slug_key'
+  ) THEN
+    BEGIN
+      ALTER TABLE public.presupuestos ADD CONSTRAINT presupuestos_slug_key UNIQUE (slug);
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+  END IF;
+END $$;
+CREATE INDEX IF NOT EXISTS presupuestos_slug_idx ON public.presupuestos (slug);
+CREATE INDEX IF NOT EXISTS presupuestos_created_at_idx ON public.presupuestos (created_at DESC);
+
 -- TABLA: orders
 CREATE TABLE IF NOT EXISTS public.orders (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -1244,3 +1290,348 @@ CREATE INDEX IF NOT EXISTS extension_hooks_hook_enabled_idx
   ON public.extension_hooks (hook, enabled);
 CREATE INDEX IF NOT EXISTS extension_hooks_extension_id_idx
   ON public.extension_hooks (extension_id);
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- BOLETÍN / NEWSLETTER (bienvenida + campañas programables)
+-- ═══════════════════════════════════════════════════════════════════════
+
+-- TABLA: newsletter_subscribers
+-- Lista de suscriptores al boletín de Soluciones Fabrick. Se llena
+-- automáticamente desde /api/auth/welcome (al registrarse) y
+-- manualmente desde /admin/newsletter.
+CREATE TABLE IF NOT EXISTS public.newsletter_subscribers (
+  email text PRIMARY KEY,
+  name text,
+  status text NOT NULL DEFAULT 'confirmed',  -- confirmed | unsubscribed | bounced
+  source text DEFAULT 'signup',              -- signup | manual | import
+  unsubscribed_at timestamptz,
+  last_sent_at timestamptz,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newsletter_subscribers_status_idx
+  ON public.newsletter_subscribers (status);
+
+-- TABLA: newsletter_subscribers-migrate
+ALTER TABLE public.newsletter_subscribers ADD COLUMN IF NOT EXISTS name text;
+ALTER TABLE public.newsletter_subscribers ADD COLUMN IF NOT EXISTS status text DEFAULT 'confirmed';
+ALTER TABLE public.newsletter_subscribers ADD COLUMN IF NOT EXISTS source text DEFAULT 'signup';
+ALTER TABLE public.newsletter_subscribers ADD COLUMN IF NOT EXISTS unsubscribed_at timestamptz;
+ALTER TABLE public.newsletter_subscribers ADD COLUMN IF NOT EXISTS last_sent_at timestamptz;
+ALTER TABLE public.newsletter_subscribers ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+CREATE INDEX IF NOT EXISTS newsletter_subscribers_status_idx
+  ON public.newsletter_subscribers (status);
+
+-- TABLA: newsletter_campaigns
+-- Borradores y campañas programadas del boletín. El cron
+-- /api/cron/newsletter levanta las que tengan scheduled_at <= now() y
+-- status='scheduled'.
+CREATE TABLE IF NOT EXISTS public.newsletter_campaigns (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  subject text NOT NULL,
+  body_md text NOT NULL,
+  preview_text text,
+  status text NOT NULL DEFAULT 'draft',  -- draft | scheduled | sending | sent | failed
+  scheduled_at timestamptz,
+  sent_at timestamptz,
+  sent_count integer NOT NULL DEFAULT 0,
+  failed_count integer NOT NULL DEFAULT 0,
+  total_recipients integer NOT NULL DEFAULT 0,
+  last_error text,
+  created_by text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS newsletter_campaigns_status_sched_idx
+  ON public.newsletter_campaigns (status, scheduled_at);
+CREATE INDEX IF NOT EXISTS newsletter_campaigns_created_at_idx
+  ON public.newsletter_campaigns (created_at DESC);
+
+-- TABLA: newsletter_campaigns-migrate
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS subject text;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS body_md text;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS preview_text text;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS status text DEFAULT 'draft';
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS scheduled_at timestamptz;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS sent_at timestamptz;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS sent_count integer DEFAULT 0;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS failed_count integer DEFAULT 0;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS total_recipients integer DEFAULT 0;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS last_error text;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS created_by text;
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.newsletter_campaigns ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: newsletter_sends
+-- Idempotencia por (campaign_id, subscriber_email). Permite reintentar
+-- el cron sin reenviar a los que ya recibieron.
+CREATE TABLE IF NOT EXISTS public.newsletter_sends (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  campaign_id uuid NOT NULL,
+  subscriber_email text NOT NULL,
+  status text NOT NULL DEFAULT 'sent',  -- sent | failed
+  error text,
+  resend_id text,
+  sent_at timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (campaign_id, subscriber_email)
+);
+CREATE INDEX IF NOT EXISTS newsletter_sends_campaign_idx
+  ON public.newsletter_sends (campaign_id);
+
+-- TABLA: newsletter_sends-migrate
+ALTER TABLE public.newsletter_sends ADD COLUMN IF NOT EXISTS campaign_id uuid;
+ALTER TABLE public.newsletter_sends ADD COLUMN IF NOT EXISTS subscriber_email text;
+ALTER TABLE public.newsletter_sends ADD COLUMN IF NOT EXISTS status text DEFAULT 'sent';
+ALTER TABLE public.newsletter_sends ADD COLUMN IF NOT EXISTS error text;
+ALTER TABLE public.newsletter_sends ADD COLUMN IF NOT EXISTS resend_id text;
+ALTER TABLE public.newsletter_sends ADD COLUMN IF NOT EXISTS sent_at timestamptz DEFAULT now();
+DO $$ BEGIN
+  IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'newsletter_sends_campaign_email_key') THEN
+    BEGIN
+      ALTER TABLE public.newsletter_sends ADD CONSTRAINT newsletter_sends_campaign_email_key UNIQUE (campaign_id, subscriber_email);
+    EXCEPTION WHEN duplicate_object THEN NULL;
+    END;
+  END IF;
+END $$;
+
+-- TABLA: welcome_emails_log
+-- Idempotencia del email de bienvenida (evita reenvío si el cliente
+-- recarga /auth dos veces en menos de 24h).
+CREATE TABLE IF NOT EXISTS public.welcome_emails_log (
+  email text PRIMARY KEY,
+  sent_at timestamptz NOT NULL DEFAULT now()
+);
+
+-- TABLA: welcome_emails_log-migrate
+ALTER TABLE public.welcome_emails_log ADD COLUMN IF NOT EXISTS sent_at timestamptz DEFAULT now();
+
+-- ═══════════════════════════════════════════════════════════════════════
+-- ASISTENTE IA · OpenRouter
+-- ═══════════════════════════════════════════════════════════════════════
+
+-- TABLA: ai_chat_threads
+-- Conversaciones del asistente IA del admin. Cada hilo recuerda el
+-- modelo y el system prompt seleccionado.
+CREATE TABLE IF NOT EXISTS public.ai_chat_threads (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  title text NOT NULL DEFAULT 'Nueva conversación',
+  model text,
+  system_prompt text,
+  preset_key text,           -- soporte | construccion | codigo | custom
+  created_by text,
+  created_at timestamptz NOT NULL DEFAULT now(),
+  updated_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ai_chat_threads_updated_idx
+  ON public.ai_chat_threads (updated_at DESC);
+
+-- TABLA: ai_chat_threads-migrate
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS title text DEFAULT 'Nueva conversación';
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS model text;
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS system_prompt text;
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS preset_key text;
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS created_by text;
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.ai_chat_threads ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: ai_chat_messages
+CREATE TABLE IF NOT EXISTS public.ai_chat_messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  thread_id uuid NOT NULL,
+  role text NOT NULL,        -- system | user | assistant
+  content text NOT NULL,
+  model text,
+  tokens_in integer,
+  tokens_out integer,
+  attachments jsonb,         -- [{path,bytes,truncated}]
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS ai_chat_messages_thread_idx
+  ON public.ai_chat_messages (thread_id, created_at);
+
+-- TABLA: ai_chat_messages-migrate
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS thread_id uuid;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS role text;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS content text;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS model text;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS tokens_in integer;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS tokens_out integer;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS attachments jsonb;
+ALTER TABLE public.ai_chat_messages ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- TABLA: ai_model_metrics
+-- Telemetría de cada llamada al endpoint /chat/completions de OpenRouter.
+-- Alimenta el dashboard de rendimiento del asistente IA y el algoritmo de
+-- auto-fallback que evita modelos caídos o con baja tasa de éxito.
+CREATE TABLE IF NOT EXISTS public.ai_model_metrics (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  model text NOT NULL,
+  ts timestamptz NOT NULL DEFAULT now(),
+  latency_ms integer NOT NULL DEFAULT 0,
+  status text NOT NULL,        -- ok | timeout | error | rate_limit | empty
+  error_code text,
+  http_status integer,
+  tokens_in integer,
+  tokens_out integer,
+  is_free boolean NOT NULL DEFAULT false,
+  kind text NOT NULL DEFAULT 'chat'  -- chat | image
+);
+CREATE INDEX IF NOT EXISTS ai_model_metrics_model_ts_idx
+  ON public.ai_model_metrics (model, ts DESC);
+CREATE INDEX IF NOT EXISTS ai_model_metrics_ts_idx
+  ON public.ai_model_metrics (ts DESC);
+
+-- ─────────────────────────────────────────────────────────────────────────
+-- Módulo Inteligencia de Mercado (/admin/inteligencia-mercado)
+-- Persiste snapshots de búsquedas agregadas (MercadoLibre + Google·Serper),
+-- referentes individuales, tendencias del marketplace y sugerencias SEO
+-- generadas por IA (OpenRouter). Diseñado para alimentar el dashboard de
+-- precios "subidas / bajadas" sin saturar las APIs gratuitas.
+
+-- TABLA: market_intel_snapshots
+CREATE TABLE IF NOT EXISTS public.market_intel_snapshots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  query text NOT NULL,
+  normalized_query text NOT NULL,
+  site text NOT NULL DEFAULT 'MLC',
+  sources_count integer NOT NULL DEFAULT 0,
+  refs_count integer NOT NULL DEFAULT 0,
+  stats jsonb NOT NULL DEFAULT '{}'::jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS market_intel_snapshots_query_idx
+  ON public.market_intel_snapshots (normalized_query, created_at DESC);
+
+-- TABLA: market_intel_snapshots-migrate
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS query text;
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS normalized_query text;
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS site text DEFAULT 'MLC';
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS sources_count integer DEFAULT 0;
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS refs_count integer DEFAULT 0;
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS stats jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.market_intel_snapshots ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- TABLA: market_intel_refs
+CREATE TABLE IF NOT EXISTS public.market_intel_refs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  snapshot_id uuid NOT NULL,
+  source text NOT NULL,            -- mercadolibre | google | serper | serpapi
+  source_id text,
+  title text,
+  price numeric(12,2),
+  currency text,
+  url text,
+  image text,
+  position integer,
+  raw jsonb,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS market_intel_refs_snapshot_idx
+  ON public.market_intel_refs (snapshot_id);
+
+-- TABLA: market_intel_refs-migrate
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS snapshot_id uuid;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS source text;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS source_id text;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS title text;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS price numeric(12,2);
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS currency text;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS url text;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS image text;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS position integer;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS raw jsonb;
+ALTER TABLE public.market_intel_refs ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- TABLA: market_intel_trends
+CREATE TABLE IF NOT EXISTS public.market_intel_trends (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  site text NOT NULL DEFAULT 'MLC',
+  category_id text,
+  payload jsonb NOT NULL DEFAULT '[]'::jsonb,
+  captured_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS market_intel_trends_site_idx
+  ON public.market_intel_trends (site, captured_at DESC);
+
+-- TABLA: market_intel_trends-migrate
+ALTER TABLE public.market_intel_trends ADD COLUMN IF NOT EXISTS site text DEFAULT 'MLC';
+ALTER TABLE public.market_intel_trends ADD COLUMN IF NOT EXISTS category_id text;
+ALTER TABLE public.market_intel_trends ADD COLUMN IF NOT EXISTS payload jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE public.market_intel_trends ADD COLUMN IF NOT EXISTS captured_at timestamptz DEFAULT now();
+
+-- TABLA: seo_suggestions
+-- Sugerencias SEO generadas por OpenRouter para productos del catálogo o
+-- queries libres. Una sugerencia puede aplicarse manualmente desde el admin
+-- a un producto (escribe meta_title, meta_description, seo_keywords, jsonld).
+CREATE TABLE IF NOT EXISTS public.seo_suggestions (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  producto_id uuid,
+  target_keyword text NOT NULL,
+  meta_title text,
+  meta_description text,
+  keywords text[],
+  jsonld jsonb,
+  raw text,
+  applied boolean DEFAULT false,
+  applied_at timestamptz,
+  model text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS seo_suggestions_producto_idx
+  ON public.seo_suggestions (producto_id, created_at DESC);
+
+-- TABLA: seo_suggestions-migrate
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS producto_id uuid;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS target_keyword text;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS meta_title text;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS meta_description text;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS keywords text[];
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS jsonld jsonb;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS raw text;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS applied boolean DEFAULT false;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS applied_at timestamptz;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS model text;
+ALTER TABLE public.seo_suggestions ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+
+-- TABLA: productos-seo-migrate
+-- Campos de SEO aplicables al catálogo (consumidos por /producto/[slug]).
+ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS meta_title text;
+ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS meta_description text;
+ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS seo_keywords text[];
+ALTER TABLE public.productos ADD COLUMN IF NOT EXISTS jsonld jsonb;
+
+-- TABLA: integration_health_log
+-- Histórico del cron diario /api/cron/integrations-healthcheck. Cada
+-- ejecución persiste una fila por proveedor con el resultado completo
+-- de los runners en `src/lib/integrationsTestRunners.ts`. Permite ver
+-- regresiones (p. ej. quality rating de WhatsApp pasando de GREEN a
+-- YELLOW) y disparar la alerta de email cuando ok=false.
+CREATE TABLE IF NOT EXISTS public.integration_health_log (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider text NOT NULL,
+  ok boolean NOT NULL,
+  checks jsonb NOT NULL DEFAULT '[]'::jsonb,
+  error text,
+  ran_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS integration_health_log_ran_at_idx
+  ON public.integration_health_log (ran_at DESC);
+CREATE INDEX IF NOT EXISTS integration_health_log_provider_ran_at_idx
+  ON public.integration_health_log (provider, ran_at DESC);
+
+-- TABLA: integration_quota_snapshots
+-- Última cuota conocida por proveedor (Serper créditos, SerpAPI
+-- búsquedas restantes, OpenRouter usage/limit en USD). La consume
+-- /api/admin/integrations/quota y el componente <QuotaBar /> que se
+-- renderiza en la cabecera de cada tarjeta de /admin/integraciones.
+-- `quota_limit` (no `limit`, palabra reservada en algunos motores) y
+-- `used` quedan en NULL cuando el upstream solo expone "remaining".
+CREATE TABLE IF NOT EXISTS public.integration_quota_snapshots (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  provider text NOT NULL,
+  used numeric,
+  quota_limit numeric,
+  raw jsonb,
+  captured_at timestamptz NOT NULL DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS integration_quota_snapshots_provider_captured_at_idx
+  ON public.integration_quota_snapshots (provider, captured_at DESC);

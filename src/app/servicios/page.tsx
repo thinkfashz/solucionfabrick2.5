@@ -1,5 +1,5 @@
 import type { Metadata } from 'next';
-import SolucionesContent from '@/components/SolucionesContent';
+import { ServiciosPageContent } from '@/components/servicios/ServiciosPageContent';
 
 export const metadata: Metadata = {
   title: 'Servicios y Soluciones de Construcción',
@@ -9,15 +9,5 @@ export const metadata: Metadata = {
 };
 
 export default function ServiciosPage() {
-  return (
-    <SolucionesContent
-      initialTab="servicios"
-      hero={{
-        eyebrow: 'Servicios y soluciones',
-        title: 'Un equipo para todo el proyecto',
-        description:
-          'Servicios profesionales ejecutados por nuestro equipo y bloques técnicos cotizados por m². Calcula tu obra, agrega lo que necesitas a la cotización y recibe respuesta en menos de 24 horas — sin precios sorpresa.',
-      }}
-    />
-  );
+  return <ServiciosPageContent />;
 }

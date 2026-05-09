@@ -8,7 +8,7 @@
  * normalize before composition.
  */
 
-export const META_API_VERSION = 'v25.0';
+export const META_API_VERSION = process.env.META_API_VERSION?.trim() || 'v25.0';
 export const META_GRAPH_URL = `https://graph.facebook.com/${META_API_VERSION}`;
 
 /**
@@ -21,4 +21,8 @@ export function normalizeAdAccountId(id: string | undefined): string | undefined
 export function normalizeAdAccountId(id: string | undefined): string | undefined {
   if (!id) return id;
   return id.trim().replace(/^(?:act_)+/i, '');
+}
+
+export function getMetaAdAccountId(): string | undefined {
+  return normalizeAdAccountId(process.env.META_AD_ACCOUNT_ID || process.env.META_ACCOUNT_ID);
 }

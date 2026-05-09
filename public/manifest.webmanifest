@@ -5,10 +5,13 @@
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
+  "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
   "background_color": "#000000",
   "theme_color": "#facc15",
   "lang": "es-CL",
+  "dir": "ltr",
+  "categories": ["business", "lifestyle", "productivity"],
   "icons": [
     {
       "src": "/icon-192.png",

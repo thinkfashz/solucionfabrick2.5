@@ -835,6 +835,35 @@ export function MiComponente() {
 
 ## 16. Blog y Casos de Estudio
 
+### ⚠️ EESTI — Configuración SQL Requerida
+
+**IMPORTANTE:** Sin ejecutar el SQL en `scripts/create-blog-tables.sql`, los comentarios y uploads **NO funcionarán**.
+
+#### Opción 1: InsForge Console (Recomendado)
+```
+1. Ve a: https://console.insforge.app
+2. Database → SQL Editor
+3. Copia todo de: scripts/create-blog-tables.sql
+4. Pega en el editor
+5. Click "Execute"
+6. Verifica: SELECT table_name FROM information_schema.tables 
+             WHERE table_schema = 'public' 
+             AND table_name IN ('blog_comments', 'blog_uploads');
+```
+
+#### Opción 2: psql CLI
+```bash
+psql postgresql://user:pass@host:5432/db -f scripts/create-blog-tables.sql
+```
+
+**Tablas que se crean:**
+- `blog_comments` — comentarios con moderation (pending/approved/rejected)
+- `blog_uploads` — metadata de archivos .md subidos
+
+**Dónde configurarlo en admin:**
+- Ve a `/admin/blog` → verás "EESTI: Configuración SQL Requerida"
+- Todas las instrucciones y botón para copiar SQL están ahí
+
 ### Blog
 
 Dos fuentes combinadas:
@@ -856,6 +885,30 @@ draft: false
 
 Texto en **Markdown**.
 ```
+
+#### Upload de Artículos (.md)
+
+Desde `/admin/blog`:
+
+1. **Drag & drop** un archivo `.md` al panel
+2. Sistema valida:
+   - ✓ Solo .md (no otros formatos)
+   - ✓ Máximo 5MB
+3. Archivo se guarda en BD (tabla `blog_uploads`)
+4. Aparece en listado con botón delete
+
+#### Comentarios en Artículos
+
+En cada artículo:
+
+1. **Formulario** al final para escribir comentario
+2. **Validación** cliente:
+   - Nombre 3+ caracteres
+   - Email válido
+   - Contenido 10-5000 caracteres
+3. **Guarda** con status='pending'
+4. **Admin aprueba** en `/admin/blog/comments`
+5. **Usuario ve** comentario después de aprobado
 
 ### Casos (`/casos`)
 

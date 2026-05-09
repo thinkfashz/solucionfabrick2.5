@@ -5,6 +5,7 @@ import {
   normalizeOrderStatus,
   type OrderStatus,
 } from '@/lib/commerce';
+import styles from './StatusBadge.module.css';
 
 /**
  * Unified status pill used by all order-adjacent screens (`/admin/pedidos`,
@@ -26,11 +27,13 @@ export function StatusBadge({ status, label, size = 'sm', halo = false }: Status
   const norm = normalizeOrderStatus(typeof status === 'string' ? status : status ?? undefined);
   const color = ORDER_STATUS_COLORS[norm];
   const text = label ?? ORDER_STATUS_LABELS[norm];
-  const padding = size === 'md' ? 'px-3.5 py-1.5 text-[11px]' : 'px-2.5 py-1 text-[10px]';
-
+  const badgeClass = [
+    styles.statusBadge,
+    size === 'md' ? styles.statusBadgeMd : styles.statusBadgeSm,
+  ].join(' ');
   return (
     <span
-      className={`inline-flex items-center gap-1.5 rounded-full font-bold uppercase tracking-[0.18em] ${padding}`}
+      className={badgeClass}
       style={{
         background: `${color}1f`,
         color,
@@ -39,7 +42,7 @@ export function StatusBadge({ status, label, size = 'sm', halo = false }: Status
       }}
     >
       <span
-        className="inline-block h-1.5 w-1.5 rounded-full"
+        className={styles.statusDot}
         style={{ background: color, boxShadow: `0 0 6px ${color}` }}
       />
       {text}

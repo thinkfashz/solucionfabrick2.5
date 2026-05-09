@@ -1,0 +1,7 @@
+.colorDot {
+  /* backgroundColor will be set inline via style */
+}
+
+.progressBar {
+  transition: all 0.3s;
+}

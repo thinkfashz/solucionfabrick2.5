@@ -17,25 +17,35 @@ function formatDisplayPrice(raw: string) {
 
 /* ── Toggle switch ── */
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
+  if (checked) {
+    return (
+      <button
+        type="button"
+        role="switch"
+        aria-checked="true"
+        aria-label={label}
+        onClick={() => onChange(false)}
+        className="flex items-center gap-3 group"
+      >
+        <div className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-[#facc15] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#facc15]/50 focus:ring-offset-2 focus:ring-offset-black">
+          <span className="pointer-events-none inline-block h-5 w-5 translate-x-5 transform rounded-full bg-white shadow ring-0 transition duration-200" />
+        </div>
+        <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">{label}</span>
+      </button>
+    );
+  }
+
   return (
     <button
       type="button"
       role="switch"
-      aria-checked={checked}
+      aria-checked="false"
       aria-label={label}
-      onClick={() => onChange(!checked)}
+      onClick={() => onChange(true)}
       className="flex items-center gap-3 group"
     >
-      <div
-        className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#facc15]/50 focus:ring-offset-2 focus:ring-offset-black ${
-          checked ? 'bg-[#facc15]' : 'bg-zinc-700'
-        }`}
-      >
-        <span
-          className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${
-            checked ? 'translate-x-5' : 'translate-x-0'
-          }`}
-        />
+      <div className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-zinc-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#facc15]/50 focus:ring-offset-2 focus:ring-offset-black">
+        <span className="pointer-events-none inline-block h-5 w-5 translate-x-0 transform rounded-full bg-white shadow ring-0 transition duration-200" />
       </div>
       <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">{label}</span>
     </button>
@@ -329,12 +339,21 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
     }
   }
 
+  const priceNumber = parseInt(form.price || '0', 10) || 0;
+  const supplierPriceNumber = Number(form.supplier_price || 0);
+  const marginPct =
+    priceNumber > 0 && supplierPriceNumber > 0
+      ? Math.round(((priceNumber - supplierPriceNumber) / priceNumber) * 100)
+      : null;
+  const previewImage = previewUrl || form.image_url;
+
   return (
     <div className="min-h-screen bg-black text-white">
       {/* ── Header ── */}
       <div className="border-b border-white/5 bg-zinc-950/80 backdrop-blur-sm px-6 py-4 flex items-center gap-4">
         <button
           onClick={() => router.push('/admin/productos')}
+          aria-label="Volver a productos"
           className="p-2 rounded-lg bg-zinc-900 border border-white/10 text-zinc-400 hover:text-white transition-colors"
         >
           <ArrowLeft className="w-4 h-4" />
@@ -349,8 +368,9 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
         </div>
       </div>
 
-      {/* ── Form ── */}
-      <form onSubmit={handleSubmit} className="max-w-2xl mx-auto px-6 py-8 space-y-6">
+      {/* ── Form + Preview ── */}
+      <div className="mx-auto grid max-w-6xl gap-8 px-6 py-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <form onSubmit={handleSubmit} className="space-y-6">
 
         {/* Nombre */}
         <Field label="Nombre" required>
@@ -430,6 +450,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
         {/* Categoría */}
         <Field label="Categoría">
           <select
+            aria-label="Categoría del producto"
             value={form.category_id}
             onChange={(e) => setForm((f) => ({ ...f, category_id: e.target.value }))}
             className={inputClass}
@@ -454,6 +475,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
                 <button
                   type="button"
                   onClick={() => { setForm((f) => ({ ...f, image_url: '' })); setPreviewUrl(''); }}
+                  aria-label="Eliminar imagen"
                   className="absolute top-2 right-2 bg-black/60 rounded-full p-1.5 text-white/70 hover:text-white transition-colors"
                 >
                   ✕
@@ -487,6 +509,8 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
               ref={fileInputRef}
               type="file"
               accept="image/*"
+              aria-label="Seleccionar imagen para InsForge"
+              title="Seleccionar imagen para InsForge"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -498,6 +522,8 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
               ref={cloudFileInputRef}
               type="file"
               accept="image/*"
+              aria-label="Seleccionar imagen para Cloudinary"
+              title="Seleccionar imagen para Cloudinary"
               className="hidden"
               onChange={(e) => {
                 const file = e.target.files?.[0];
@@ -548,6 +574,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
           <div className="grid grid-cols-2 gap-4">
             <Field label="Origen">
               <select
+                aria-label="Origen del producto"
                 value={form.source}
                 onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))}
                 className={inputClass}
@@ -561,6 +588,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
               <input
                 type="text"
                 value={form.source_id}
+              aria-label="ID externo del proveedor"
                 onChange={(e) => setForm((f) => ({ ...f, source_id: e.target.value }))}
                 placeholder="MLC123456789, SKU…"
                 className={inputClass}
@@ -583,6 +611,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
                 step="0.01"
                 min="0"
                 value={form.supplier_price}
+              aria-label="Precio del proveedor"
                 onChange={(e) => setForm((f) => ({ ...f, supplier_price: e.target.value }))}
                 placeholder="0"
                 className={inputClass}
@@ -606,16 +635,94 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
           <button
             type="submit"
             disabled={saving || uploading || uploadingCloud}
-            className="w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50"
-            style={{ background: '#facc15', color: '#000' }}
+            className="w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 bg-[#facc15] text-black"
           >
             {saving ? 'Guardando…' : mode === 'create' ? 'Crear Producto' : 'Guardar Cambios'}
           </button>
         </div>
       </form>
 
+      <aside className="xl:sticky xl:top-28 xl:h-fit">
+        <div className="overflow-hidden rounded-3xl border border-white/10 bg-zinc-950/80 shadow-[0_20px_70px_rgba(0,0,0,0.45)]">
+          <div className="relative h-56 border-b border-white/10 bg-zinc-900">
+            {previewImage ? (
+              <img
+                src={previewImage}
+                alt={form.name || 'Preview producto'}
+                className="h-full w-full object-cover"
+              />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center px-6 text-center text-xs uppercase tracking-[0.2em] text-zinc-500">
+                Sin imagen de portada
+              </div>
+            )}
+            <div className="absolute left-3 top-3 flex gap-2">
+              <span
+                className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${
+                  form.activo
+                    ? 'border-emerald-400/30 bg-emerald-500/15 text-emerald-300'
+                    : 'border-zinc-500/30 bg-zinc-600/20 text-zinc-400'
+                }`}
+              >
+                {form.activo ? 'Activo' : 'Oculto'}
+              </span>
+              {form.featured && (
+                <span className="rounded-full border border-yellow-400/30 bg-yellow-400/15 px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] text-yellow-300">
+                  Destacado
+                </span>
+              )}
+            </div>
+          </div>
+
+          <div className="space-y-3 p-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Preview en vivo</p>
+            <h3 className="line-clamp-2 text-xl font-black leading-tight text-white">
+              {form.name || 'Nombre del producto'}
+            </h3>
+            <p className="line-clamp-2 text-sm text-zinc-400">
+              {form.tagline || 'Tagline comercial del producto'}
+            </p>
+            <p className="line-clamp-3 text-xs leading-relaxed text-zinc-500">
+              {form.description || 'Descripción técnica y comercial.'}
+            </p>
+
+            <div className="grid grid-cols-2 gap-2 pt-1">
+              <PreviewChip label="Categoría" value={form.category_id || 'Sin categoría'} />
+              <PreviewChip label="Stock" value={form.stock || '—'} />
+              <PreviewChip label="Entrega" value={form.delivery_days ? `${form.delivery_days} días` : 'Sin dato'} />
+              <PreviewChip label="Origen" value={form.source || 'Propio'} />
+            </div>
+
+            <div className="rounded-2xl border border-white/10 bg-black/40 p-3">
+              <p className="text-[10px] uppercase tracking-[0.2em] text-zinc-500">Precio público</p>
+              <p className="mt-1 text-2xl font-black text-yellow-300">
+                {priceNumber > 0 ? `$${priceNumber.toLocaleString('es-CL')}` : '$0'}
+              </p>
+              <div className="mt-2 space-y-1 text-xs text-zinc-500">
+                <p>
+                  Proveedor: {supplierPriceNumber > 0 ? `${supplierPriceNumber.toLocaleString('es-CL')} ${form.supplier_currency || ''}` : 'no definido'}
+                </p>
+                <p>
+                  Margen estimado: {marginPct === null ? '—' : `${marginPct}%`}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+      </aside>
+      </div>
+
       {/* ── Toast ── */}
       {toast && <Toast message={toast.message} type={toast.type} />}
+    </div>
+  );
+}
+
+function PreviewChip({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-xl border border-white/10 bg-black/30 p-2">
+      <p className="text-[9px] uppercase tracking-[0.14em] text-zinc-600">{label}</p>
+      <p className="truncate text-xs font-semibold text-zinc-300">{value}</p>
     </div>
   );
 }

@@ -213,6 +213,30 @@ CREATE TABLE IF NOT EXISTS public.admin_login_attempts (
 CREATE INDEX IF NOT EXISTS admin_login_attempts_blocked_until_idx
   ON public.admin_login_attempts (blocked_until);
 
+-- ── admin_login_audit ───────────────────────────────────────────────────
+-- Forensic trail of every terminal branch in /api/admin/login (success,
+-- rate_limited, invalid_password, totp_required, totp_invalid, etc.).
+-- Powers post-mortems after a brute-force attempt or a suspicious
+-- successful login. Insert path is best-effort: src/lib/adminLoginAudit.ts
+-- swallows every DB error so a logging failure NEVER blocks login.
+-- Missing-table errors are silently tolerated for fresh installs.
+CREATE TABLE IF NOT EXISTS public.admin_login_audit (
+  id         bigserial PRIMARY KEY,
+  ts         timestamptz NOT NULL DEFAULT now(),
+  ip         text NOT NULL,
+  email      text,
+  outcome    text NOT NULL,
+  reason     text,
+  user_agent text
+);
+
+CREATE INDEX IF NOT EXISTS admin_login_audit_ts_idx
+  ON public.admin_login_audit (ts DESC);
+CREATE INDEX IF NOT EXISTS admin_login_audit_ip_idx
+  ON public.admin_login_audit (ip);
+CREATE INDEX IF NOT EXISTS admin_login_audit_outcome_idx
+  ON public.admin_login_audit (outcome);
+
 -- TABLA: banners
 CREATE TABLE IF NOT EXISTS public.banners (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

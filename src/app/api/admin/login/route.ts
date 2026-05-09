@@ -40,9 +40,19 @@ import {
   ADMIN_COOKIE_NAME,
   SESSION_TTL_MS,
 } from '@/lib/adminAuth';
+import {
+  recordLoginAttempt,
+  userAgentFromRequest,
+  type LoginOutcome,
+} from '@/lib/adminLoginAudit';
 
 export async function POST(request: Request) {
   const ip = getClientIp(request);
+  const userAgent = userAgentFromRequest(request);
+  /** Fire-and-forget audit helper — never awaited so logging can never block login. */
+  const audit = (outcome: LoginOutcome, email?: string | null, reason?: string | null) => {
+    void recordLoginAttempt({ ip, email: email ?? null, outcome, reason: reason ?? null, userAgent });
+  };
 
   try {
     // Fail fast with a self-diagnostic message if the deployment is missing
@@ -51,11 +61,13 @@ export async function POST(request: Request) {
     // Only variable *names* are exposed — never values.
     const missing = getMissingAdminEnvVars();
     if (missing.length > 0) {
+      audit('misconfigured', null, `missing: ${missing.join(',')}`);
       return misconfiguredResponse(missing);
     }
 
     if (await isRateLimited(ip)) {
       const remaining = await blockedSecondsRemaining(ip);
+      audit('rate_limited', null, `${remaining}s remaining`);
       return NextResponse.json(
         { error: `Demasiados intentos fallidos. Intenta nuevamente en ${remaining} segundos.` },
         { status: 429 }
@@ -71,10 +83,12 @@ export async function POST(request: Request) {
       password = body.password ?? '';
       totp = typeof body.totp === 'string' ? body.totp.trim() : '';
     } catch {
+      audit('bad_request', null, 'json parse failed');
       return NextResponse.json({ error: 'Cuerpo de solicitud inválido.' }, { status: 400 });
     }
 
     if (!email || !password) {
+      audit('bad_request', email || null, 'missing email or password');
       return NextResponse.json({ error: 'Email y contraseña son requeridos.' }, { status: 400 });
     }
 
@@ -85,6 +99,7 @@ export async function POST(request: Request) {
 
     if (authError || !authData) {
       await recordFailedAttempt(ip);
+      audit('invalid_password', email, authError?.message ?? 'insforge auth rejected');
       return NextResponse.json(
         { error: 'Credenciales incorrectas.' },
         { status: 401 }
@@ -99,6 +114,7 @@ export async function POST(request: Request) {
 
     if (dbError || !adminRows || adminRows.length === 0) {
       await recordFailedAttempt(ip);
+      audit('unknown_user', email, dbError?.message ?? 'no admin_users row');
       return NextResponse.json(
         { error: 'Acceso denegado. Este usuario no tiene permisos de administrador.' },
         { status: 403 }
@@ -127,6 +143,7 @@ export async function POST(request: Request) {
       const localOk = await verifyAdminPassword(password, adminUser.password_hash);
       if (!localOk) {
         await recordFailedAttempt(ip);
+        audit('invalid_password', email, 'local scrypt mismatch');
         return NextResponse.json(
           { error: 'Credenciales incorrectas.' },
           { status: 401 }
@@ -143,6 +160,7 @@ export async function POST(request: Request) {
     if (isEncryptedTotpSecret(adminUser.totp_secret_enc)) {
       if (!totp) {
         await recordFailedAttempt(ip);
+        audit('totp_required', email);
         return NextResponse.json(
           { error: 'Código de verificación requerido.', code: 'TOTP_REQUIRED' },
           { status: 401 }
@@ -156,6 +174,7 @@ export async function POST(request: Request) {
         // is now garbage) or the row was tampered with. Refuse login with a
         // clear 500 — silently bypassing here would downgrade 2FA to "off".
         console.error('[admin/login] TOTP decrypt failed:', err);
+        audit('totp_decrypt_failed', email, (err as Error)?.message);
         return NextResponse.json(
           {
             error:
@@ -168,6 +187,7 @@ export async function POST(request: Request) {
       const totpOk = verifyTotp(totp, totpSecret);
       if (!totpOk) {
         await recordFailedAttempt(ip);
+        audit('totp_invalid', email);
         return NextResponse.json(
           { error: 'Código de verificación inválido.', code: 'TOTP_INVALID' },
           { status: 401 }
@@ -185,6 +205,7 @@ export async function POST(request: Request) {
 
     if (adminUser.aprobado === false && !isBootstrapAdmin) {
       await recordFailedAttempt(ip);
+      audit('not_approved', email);
       return NextResponse.json(
         { error: 'Tu cuenta está pendiente de aprobación.' },
         { status: 403 }
@@ -214,6 +235,8 @@ export async function POST(request: Request) {
     const exp = Date.now() + SESSION_TTL_MS;
     const sessionValue = await encodeSession({ email, exp, rol });
 
+    audit('success', email, `rol=${rol}`);
+
     const response = NextResponse.json({ ok: true });
     response.cookies.set(ADMIN_COOKIE_NAME, sessionValue, {
       httpOnly: true,
@@ -232,6 +255,7 @@ export async function POST(request: Request) {
     // produces the misleading "Error de red" banner on the login form).
     const message = err instanceof Error ? err.message : String(err);
     console.error('[admin/login] unhandled error:', message, err);
+    audit('error', null, message.slice(0, 500));
     const isMissingPepper = /ADMIN_PASSWORD_PEPPER/i.test(message);
     if (isMissingPepper) {
       return misconfiguredResponse(['ADMIN_PASSWORD_PEPPER']);

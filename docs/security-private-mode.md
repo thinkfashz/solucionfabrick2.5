@@ -230,3 +230,79 @@ y TOTP RFC 6238. Si el DB está caído, fail-closed denegaría servicio a
 los administradores legítimos sin agregar protección real (un atacante
 que haya pasado las dos capas anteriores ya tiene credenciales válidas).
 Esta decisión está documentada en el comentario de cabecera del helper.
+
+---
+
+## Auditoría de logins (Fase 1.5)
+
+Cada rama terminal de `/api/admin/login` deja una fila en
+`admin_login_audit` para que puedas reconstruir qué pasó tras un brute-
+force, una entrada inesperada o un usuario que dice "no fui yo".
+
+### Tabla y outcomes
+
+```
+admin_login_audit(
+  id         bigserial PK,
+  ts         timestamptz default now(),
+  ip         text NOT NULL,
+  email      text,                -- truncado a 320 chars (RFC 5321)
+  outcome    text NOT NULL,       -- enum cerrado, ver abajo
+  reason     text,                -- truncado a 500 chars
+  user_agent text                 -- truncado a 500 chars
+)
+```
+
+| `outcome` | Cuándo se emite |
+|---|---|
+| `success` | Login completo, cookie firmada emitida. `reason = "rol=<rol>"` |
+| `rate_limited` | IP bloqueada por la Fase 1.7. `reason = "<n>s remaining"` |
+| `unknown_user` | Pasó InsForge auth pero el email no está en `admin_users` |
+| `invalid_password` | Falló InsForge auth **o** la capa scrypt+pepper |
+| `totp_required` | Faltó el campo `totp` en el body para una cuenta con 2FA |
+| `totp_invalid` | Código TOTP de 6 dígitos no coincide |
+| `totp_decrypt_failed` | `ADMIN_SESSION_SECRET` rotó o la fila fue manipulada |
+| `not_approved` | `admin_users.aprobado = false` y no es la bootstrap admin |
+| `misconfigured` | Faltan env vars críticas (e.g. `ADMIN_SESSION_SECRET`) |
+| `bad_request` | JSON inválido o email/password vacíos |
+| `error` | Excepción no capturada — `reason` lleva el mensaje |
+
+### Cómo leer la tabla
+
+Desde `/admin/sql`:
+
+```sql
+-- Últimos 100 eventos
+SELECT ts, ip, email, outcome, reason
+  FROM admin_login_audit
+ ORDER BY ts DESC
+ LIMIT 100;
+
+-- Brute-force candidates en las últimas 24h
+SELECT ip, count(*) AS attempts
+  FROM admin_login_audit
+ WHERE ts > now() - interval '24 hours'
+   AND outcome IN ('invalid_password','totp_invalid','rate_limited','unknown_user')
+ GROUP BY ip
+ ORDER BY attempts DESC;
+
+-- ¿Quién entró exitosamente esta semana?
+SELECT ts, ip, email, user_agent
+  FROM admin_login_audit
+ WHERE ts > now() - interval '7 days'
+   AND outcome = 'success'
+ ORDER BY ts DESC;
+```
+
+### Garantías de seguridad y privacidad
+
+- **Best-effort**: si la tabla no existe o la BD está caída, el helper
+  hace no-op silencioso. **Una falla de auditoría jamás bloquea un
+  login legítimo.**
+- **Bounded payload**: email / reason / UA están truncados a tamaños
+  razonables para que un atacante no pueda inflar filas.
+- **No guarda passwords ni TOTP secrets**: nunca. `reason` es texto
+  curado por la ruta del login, no input arbitrario del cliente.
+- **`outcome` es un enum cerrado** (TypeScript `LoginOutcome`): añadir
+  uno nuevo es un cambio deliberado, no una cadena libre, así los
+  reportes son grep-ables.

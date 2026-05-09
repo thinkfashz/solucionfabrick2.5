@@ -1,6 +1,7 @@
 import 'server-only';
 import { createClient } from '@insforge/sdk';
 import { decryptCredentials } from '@/lib/integrationsCrypto';
+import { readEnvFromMap } from '@/lib/integrationsEnvMap';
 
 /**
  * Resolves Meta (Facebook/Instagram Graph API) credentials.
@@ -34,9 +35,12 @@ function normalize(value: unknown): string | undefined {
 }
 
 export async function getMetaCredentials(): Promise<MetaCredentials | null> {
-  const envToken = normalize(process.env.META_ACCESS_TOKEN);
-  const envPage = normalize(process.env.META_FACEBOOK_PAGE_ID);
-  const envIg = normalize(process.env.META_INSTAGRAM_BUSINESS_ID);
+  // Resolve env aliases through the central env map so this helper honours
+  // every alias declared there (e.g. META_PAGE_ID in addition to
+  // META_FACEBOOK_PAGE_ID). See `src/lib/integrationsEnvMap.ts`.
+  const envToken = readEnvFromMap('meta', 'access_token')?.value;
+  const envPage = readEnvFromMap('meta', 'page_id')?.value;
+  const envIg = readEnvFromMap('meta', 'instagram_business_id')?.value;
 
   const creds: MetaCredentials = {
     accessToken: envToken,

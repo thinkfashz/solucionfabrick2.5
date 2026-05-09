@@ -4,6 +4,7 @@ import { createClient } from '@insforge/sdk';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 import { serializeSdkError } from '@/lib/adminApi';
 import { decryptCredentials, encryptCredentials } from '@/lib/integrationsCrypto';
+import { envForProvider } from '@/lib/integrationsEnvMap';
 
 export const dynamic = 'force-dynamic';
 
@@ -34,17 +35,39 @@ async function requireAdmin(request: NextRequest) {
   return decodeSession(sessionCookie.value);
 }
 
-/** Masks every credential value so we never echo secrets back to the client. */
-function maskCredentials(credentials: Record<string, unknown> | null | undefined): Record<string, { set: boolean; preview: string }> {
-  const out: Record<string, { set: boolean; preview: string }> = {};
-  if (!credentials) return out;
-  for (const [key, value] of Object.entries(credentials)) {
-    if (typeof value !== 'string' || value.length === 0) {
-      out[key] = { set: false, preview: '' };
-      continue;
+/**
+ * Masks every credential value so we never echo secrets back to the client.
+ * When `envOverrides` is provided, fields whose env var is currently set are
+ * marked as `source: 'env'` with the resolving alias name; remaining set
+ * fields fall back to `source: 'db'`. The actual env *value* is never
+ * included in the response.
+ */
+function maskCredentials(
+  credentials: Record<string, unknown> | null | undefined,
+  envOverrides: Record<string, { envVar: string }> = {},
+): Record<string, { set: boolean; preview: string; source?: 'env' | 'db'; envVar?: string; envManaged?: boolean }> {
+  const out: Record<string, { set: boolean; preview: string; source?: 'env' | 'db'; envVar?: string; envManaged?: boolean }> = {};
+  // Start from the DB-provided keys.
+  if (credentials) {
+    for (const [key, value] of Object.entries(credentials)) {
+      if (typeof value !== 'string' || value.length === 0) {
+        out[key] = { set: false, preview: '' };
+        continue;
+      }
+      const preview = value.length <= 4 ? '•••' : `••• ${value.slice(-4)}`;
+      out[key] = { set: true, preview, source: 'db' };
     }
-    const preview = value.length <= 4 ? '•••' : `••• ${value.slice(-4)}`;
-    out[key] = { set: true, preview };
+  }
+  // Overlay env-managed fields. Env always wins so the UI can render an
+  // "env-managed" lock and the operator knows the DB value is shadowed.
+  for (const [key, { envVar }] of Object.entries(envOverrides)) {
+    out[key] = {
+      set: true,
+      preview: `env(${envVar})`,
+      source: 'env',
+      envVar,
+      envManaged: true,
+    };
   }
   return out;
 }
@@ -75,12 +98,23 @@ export async function GET(request: NextRequest) {
       );
     }
 
-    const providers: Record<string, { credentials: Record<string, { set: boolean; preview: string }>; updated_at?: string }> = {};
+    const providers: Record<string, { credentials: ReturnType<typeof maskCredentials>; updated_at?: string }> = {};
+    const dbRows = new Map<string, { credentials?: Record<string, unknown>; updated_at?: string }>();
     for (const row of (data ?? []) as Array<{ provider?: string; credentials?: Record<string, unknown>; updated_at?: string }>) {
       if (!row.provider || !ALLOWED_PROVIDERS.has(row.provider)) continue;
-      providers[row.provider] = {
-        credentials: maskCredentials(decryptCredentials(row.credentials)),
-        updated_at: row.updated_at,
+      dbRows.set(row.provider, row);
+    }
+    // Always include every allowed provider so env-only configurations (no
+    // DB row at all) still surface in the UI as "Conectado" via env vars.
+    for (const provider of ALLOWED_PROVIDERS) {
+      const row = dbRows.get(provider);
+      const overrides = envForProvider(provider);
+      const hasDbRow = Boolean(row);
+      const hasEnv = Object.keys(overrides).length > 0;
+      if (!hasDbRow && !hasEnv) continue;
+      providers[provider] = {
+        credentials: maskCredentials(decryptCredentials(row?.credentials ?? {}), overrides),
+        updated_at: row?.updated_at,
       };
     }
 
@@ -113,6 +147,30 @@ export async function POST(request: NextRequest) {
   }
   if (!credentials || typeof credentials !== 'object') {
     return NextResponse.json({ error: 'Credenciales inválidas.' }, { status: 400 });
+  }
+
+  // Refuse to overwrite fields whose env var is currently set. Env always
+  // wins at runtime (helpers prefer env over DB), so writing such a field
+  // would silently shadow the new value and confuse operators. The UI
+  // already locks these inputs; this is the server-side enforcement.
+  const envOverrides = envForProvider(provider);
+  const conflicts: Array<{ field: string; envVar: string }> = [];
+  for (const [key, value] of Object.entries(credentials)) {
+    if (typeof value !== 'string' || value.trim() === '') continue;
+    const envHit = envOverrides[key];
+    if (envHit) conflicts.push({ field: key, envVar: envHit.envVar });
+  }
+  if (conflicts.length > 0) {
+    return NextResponse.json(
+      {
+        error: `Estos campos están gestionados por variables de entorno y no se pueden sobrescribir desde el panel: ${conflicts
+          .map((c) => `${c.field} (${c.envVar})`)
+          .join(', ')}.`,
+        code: 'ENV_VAR_PRESENT',
+        conflicts,
+      },
+      { status: 409 },
+    );
   }
 
   // Cloudinary cloud names are lowercase alphanumerics with optional dashes /
@@ -524,7 +582,7 @@ export async function POST(request: NextRequest) {
         { status: 500 },
       );
     }
-    return NextResponse.json({ ok: true, credentials: maskCredentials(nextCredentials) });
+    return NextResponse.json({ ok: true, credentials: maskCredentials(nextCredentials, envOverrides) });
   } catch (err) {
     const sdk = serializeSdkError(err);
     return NextResponse.json({ ...sdk, error: sdk.message }, { status: 500 });

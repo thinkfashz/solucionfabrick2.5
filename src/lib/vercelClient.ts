@@ -1,6 +1,7 @@
 import 'server-only';
 import { createClient } from '@insforge/sdk';
 import { decryptCredentials } from '@/lib/integrationsCrypto';
+import { readEnvFromMap } from '@/lib/integrationsEnvMap';
 
 /**
  * Vercel API client (server-only).
@@ -44,9 +45,11 @@ function normalize(value: unknown): string | undefined {
 }
 
 export async function getVercelCredentials(): Promise<VercelCredentials> {
-  const envToken = normalize(process.env.VERCEL_API_TOKEN);
-  const envProject = normalize(process.env.VERCEL_PROJECT_ID);
-  const envTeam = normalize(process.env.VERCEL_TEAM_ID);
+  // Resolve env aliases through the central env map. See
+  // `src/lib/integrationsEnvMap.ts`.
+  const envToken = readEnvFromMap('vercel', 'api_token')?.value;
+  const envProject = readEnvFromMap('vercel', 'project_id')?.value;
+  const envTeam = readEnvFromMap('vercel', 'team_id')?.value;
 
   const creds: VercelCredentials = {
     apiToken: envToken,

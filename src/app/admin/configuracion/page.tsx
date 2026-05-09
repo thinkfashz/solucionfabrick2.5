@@ -124,7 +124,7 @@ const PROVIDERS: ProviderDefinition[] = [
 ];
 
 interface ProviderStatus {
-  credentials: Record<string, { set: boolean; preview: string }>;
+  credentials: Record<string, { set: boolean; preview: string; source?: 'env' | 'db'; envVar?: string; envManaged?: boolean }>;
   updated_at?: string;
 }
 
@@ -723,12 +723,17 @@ export default function ConfiguracionPage() {
                   <div className="grid gap-3 sm:grid-cols-2">
                     {prov.fields.map((field) => {
                       const existing = status?.credentials?.[field.key];
+                      const isEnvManaged = existing?.envManaged === true;
                       return (
                         <Field
                           key={field.key}
-                          label={field.label}
+                          label={
+                            isEnvManaged
+                              ? `${field.label} · gestionado por env (${existing?.envVar})`
+                              : field.label
+                          }
                           type={field.type ?? 'text'}
-                          value={inputs[field.key] ?? ''}
+                          value={isEnvManaged ? '' : (inputs[field.key] ?? '')}
                           onChange={(v) =>
                             setIntegrationInputs((prev) => ({
                               ...prev,
@@ -736,8 +741,14 @@ export default function ConfiguracionPage() {
                             }))
                           }
                           placeholder={existing?.set ? existing.preview : (field.placeholder ?? '')}
-                          hint={existing?.set ? 'Valor actual oculto. Deja vacío para mantenerlo.' : field.hint}
-                          disabled={loadingIntegrations || savingIntegration === prov.id}
+                          hint={
+                            isEnvManaged
+                              ? `Definido por la variable de entorno ${existing?.envVar}. Para cambiarlo, edita la env var (Vercel → Settings → Environment Variables) y vuelve a desplegar; el panel no puede sobrescribirla.`
+                              : existing?.set
+                                ? 'Valor actual oculto. Deja vacío para mantenerlo.'
+                                : field.hint
+                          }
+                          disabled={loadingIntegrations || savingIntegration === prov.id || isEnvManaged}
                         />
                       );
                     })}

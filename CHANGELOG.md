@@ -27,6 +27,14 @@ El formato sigue [Keep a Changelog 1.1](https://keepachangelog.com/es-ES/1.1.0/)
 - `docs/inventory.md`: corregido — `/api/admin/integrations`, `metaCredentials.ts` y `vercelClient.ts` **sí están** en `main`. Lo que falta es la UI `/admin/integraciones`.
 - `src/app/api/admin/integrations/route.ts`: GET decrypta antes de mascarar; POST encrypta antes del upsert; el merge intermedio descifra valores existentes para que la live-validation (Cloudinary, Meta) vea texto plano.
 - Lectores de `integrations.credentials` ahora descifran transparentemente: `src/lib/metaCredentials.ts`, `src/lib/vercelClient.ts`, `src/app/api/admin/cloudinary/route.ts`, `src/app/api/admin/health/route.ts`, `src/app/api/meta/ads/route.ts`.
+- **Env-map central para credenciales de integraciones** (`src/lib/integrationsEnvMap.ts`):
+  - `INTEGRATIONS_ENV_MAP` documenta, por provider/campo, los alias de variables de entorno aceptados (Meta `META_ACCESS_TOKEN` / `META_AD_ACCOUNT_ID` / `META_FACEBOOK_PAGE_ID`+`META_PAGE_ID` / `META_INSTAGRAM_BUSINESS_ID`; Vercel `VERCEL_API_TOKEN` / `VERCEL_PROJECT_ID` / `VERCEL_TEAM_ID`).
+  - Helpers puros `readEnvFromMap(provider, field)` y `envForProvider(provider)` (este último jamás expone el valor, solo el nombre del alias resuelto).
+  - `getMetaCredentials()` y `getVercelCredentials()` ahora resuelven sus aliases a través del map (single source of truth) — añadir un alias en el map basta para que el runtime lo lea.
+  - `GET /api/admin/integrations`: respuesta enriquecida con `source: 'env'|'db'`, `envVar`, `envManaged`. Providers solo-env (sin fila DB) también aparecen como "Conectado".
+  - `POST /api/admin/integrations`: nuevo `409 ENV_VAR_PRESENT` si el body intenta sobrescribir un campo cuyo env var está seteado (con lista de `conflicts: [{field, envVar}]`).
+  - UI `/admin/configuracion`: campos env-managed se muestran con etiqueta "gestionado por env (`VAR`)", input deshabilitado y hint explicativa con instrucción para cambiar la variable en Vercel.
+  - Tests: `tests/unit/integrationsEnvMap.test.ts` (15 casos: precedencia entre alias, whitespace = unset, providers desconocidos, no-eco de secretos, invariantes del map).
 
 ### Security
 

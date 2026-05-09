@@ -8,9 +8,17 @@ export default defineConfig({
     globals: false,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'lcov'],
       include: ['src/lib/**', 'src/app/api/**'],
       exclude: ['**/*.d.ts'],
+      // Ratchet baseline (medido 2026-05-09): bloquea regresiones, no aspira.
+      // El plan a futuro (Fase 4+) sube global a 60 y `src/lib/` a 80.
+      thresholds: {
+        lines: 18,
+        statements: 18,
+        functions: 40,
+        branches: 70,
+      },
     },
   },
   resolve: {

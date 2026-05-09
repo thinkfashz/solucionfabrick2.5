@@ -20,6 +20,11 @@ El formato sigue [Keep a Changelog 1.1](https://keepachangelog.com/es-ES/1.1.0/)
   - Filas en texto plano pre-existentes pasan a través de `decrypt` sin cambios; la primera escritura post-key re-cifra todos los campos.
   - Tampering rechazado por GCM auth tag; campos corruptos se omiten silenciosamente con log de error (no rompen el panel).
   - Tests: `tests/unit/integrationsCrypto.test.ts` (20 casos: round-trip, idempotencia, retro-compat, key rotation, malformed wire, null/undefined).
+- **Pipeline CI unificado** (`.github/workflows/ci.yml`, Fase 3):
+  - Una sola corrida por push/PR a `main`: install (`npm ci`) → lint → typecheck → test:coverage (con gate de umbrales) → build.
+  - Matriz Node 20.x / 22.x con `cache: npm`, `concurrency` que cancela corridas viejas del mismo branch.
+  - Sube `coverage/` como artifact (sólo desde Node 20.x para no duplicar) con retención 14 días.
+  - Reemplaza al antiguo `webpack.yml` (que usaba `npm install` sin lockfile y `continue-on-error: true` en lint).
 
 ### Changed
 
@@ -35,6 +40,10 @@ El formato sigue [Keep a Changelog 1.1](https://keepachangelog.com/es-ES/1.1.0/)
   - `POST /api/admin/integrations`: nuevo `409 ENV_VAR_PRESENT` si el body intenta sobrescribir un campo cuyo env var está seteado (con lista de `conflicts: [{field, envVar}]`).
   - UI `/admin/configuracion`: campos env-managed se muestran con etiqueta "gestionado por env (`VAR`)", input deshabilitado y hint explicativa con instrucción para cambiar la variable en Vercel.
   - Tests: `tests/unit/integrationsEnvMap.test.ts` (15 casos: precedencia entre alias, whitespace = unset, providers desconocidos, no-eco de secretos, invariantes del map).
+- **Umbrales de cobertura como gate de PR** (`vitest.config.ts`, Fase 3):
+  - `coverage.thresholds`: `lines: 18, statements: 18, functions: 40, branches: 70` calibrados al baseline medido el 2026-05-09 (ratchet anti-regresión, no aspiracional).
+  - Reporter `lcov` añadido para integraciones futuras (Codecov, SonarCloud, etc.).
+  - `coverage/` añadido a `.gitignore`.
 
 ### Security
 
@@ -43,6 +52,7 @@ El formato sigue [Keep a Changelog 1.1](https://keepachangelog.com/es-ES/1.1.0/)
 ### Removed
 
 - Archivo vacío `fkdk` (0 bytes) de la raíz.
+- Workflow legado `.github/workflows/webpack.yml` (reemplazado por `ci.yml` unificado en Fase 3).
 
 ---
 

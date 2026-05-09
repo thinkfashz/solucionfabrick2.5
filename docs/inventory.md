@@ -53,7 +53,7 @@ Estos módulos están descritos en notas internas y/o en sesiones previas, pero 
 | Cron diario healthcheck de integraciones          | `src/app/api/cron/integrations-healthcheck/`                        | ❌ Falta         |
 | Plantillas React Email                            | `src/emails/`                                                       | ❌ Falta         |
 | Helper de cifrado AES-GCM de credenciales         | `src/lib/integrationsCrypto.ts`                                     | ✅ Añadido en Fase 2A |
-| Mapa de env vars de integraciones                 | `src/lib/integrationsEnvMap.ts`                                     | ❌ Falta (Fase 2B) |
+| Mapa de env vars de integraciones                 | `src/lib/integrationsEnvMap.ts`                                     | ✅ Añadido en Fase 2B |
 | Helpers de market intel                           | `src/lib/marketIntel.ts`, `src/lib/seoSuggestions.ts`               | ❌ Falta         |
 | Helper de presupuestos                            | `src/lib/presupuestos.ts`                                           | ❌ Falta         |
 | Caché de importación de productos                 | `src/lib/productImportCache.ts`                                     | ❌ Falta (sí existe `productImport.ts` para el _runtime_, no la caché 24h) |
@@ -95,12 +95,12 @@ Estos sí están integrados (último commit en HEAD de la rama actual: `feat(sec
 
 Archivos en `.github/workflows/`:
 
-- `webpack.yml` — Build matrix Node 20.x / 22.x en push/PR a `main`.
+- `ci.yml` — **Pipeline unificado** (Fase 3): install → lint → typecheck → test:coverage (con gate de umbrales) → build, matriz Node 20.x / 22.x, sube `coverage/` como artifact.
 - `e2e.yml` — Playwright contra previews de Vercel cuando `deployment_status === success`.
 - `vercel.yml` — Deploy.
 - `docker-image.yml` — Imagen Docker.
 
-**Falta** un `ci.yml` único que en una sola corrida ejecute `lint + typecheck + test + build + coverage` y publique umbrales como gate de PR. Pendiente de la Fase 3 del plan.
+`webpack.yml` fue retirado en Fase 3 (reemplazado por `ci.yml`).
 
 ---
 
@@ -119,7 +119,7 @@ tests/
 ```
 
 - Total: **29 archivos** de test.
-- `vitest.config.ts` ya tiene `coverage: { ... }` pero **sin umbrales** declarados → la Fase 3 debe añadir `lines: 60, functions: 60, branches: 60, statements: 60` (global) y subir a `80` para `src/lib/`.
+- `vitest.config.ts` declara umbrales calibrados al baseline medido el 2026-05-09 (Fase 3, ratchet anti-regresión): `lines: 18, statements: 18, functions: 40, branches: 70` global. La aspiración del plan original (`60` global / `80` para `src/lib/`) se sube por etapas conforme se cubran helpers actualmente al 0 % (`apiHandler.ts`, `budget.ts`, `mercadoPagoCredentials.ts`, `projects.ts`, `social.ts`, `utils.ts`, `whatsapp.ts`, …).
 
 ---
 

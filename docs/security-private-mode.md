@@ -106,7 +106,7 @@ Esto **invalida todos los `password_hash` existentes**. Procedimiento:
 
 ## Próximas fases (no incluidas en este PR)
 
-- **Fase 1.3 — TOTP 2FA** obligatorio (RFC 6238, secret cifrado AES-GCM).
+- ~~**Fase 1.3 — TOTP 2FA** obligatorio (RFC 6238, secret cifrado AES-GCM).~~ ✅ Implementado, ver sección "TOTP 2FA" más abajo.
 - **Fase 1.4 — Middleware global** que bloquee toda la app, no solo `/admin`.
 - **Fase 1.6 — JWE** para la cookie de sesión en lugar de HMAC firmado.
 - **Fase 1.7 — Rate-limit persistente** (la versión in-memory actual se
@@ -115,3 +115,76 @@ Esto **invalida todos los `password_hash` existentes**. Procedimiento:
   desbloqueo separado para portar la BD entre hostings.
 
 Ver el plan completo en la conversación / PR que introdujo este documento.
+
+---
+
+## TOTP 2FA (Fase 1.3) — segundo factor sobre el login
+
+Una vez configurada la contraseña local, puedes activar **2FA con TOTP**
+(Google Authenticator, Authy, 1Password, Bitwarden, …). Es la tercera capa:
+sin el código de 6 dígitos generado en tu teléfono, ni siquiera tener tu
+contraseña + dump de BD + pepper sirve para entrar.
+
+### Cómo funciona
+
+- Algoritmo: HMAC-SHA1, 6 dígitos, ventana 30 s, tolerancia ±1 paso (60 s
+  de skew aceptado en cada lado). Compatible con cualquier app autenticadora.
+- Secret de 160 bits (RFC 4226 §4) generado con `crypto.randomBytes`,
+  codificado en base32 (RFC 4648), guardado **cifrado AES-256-GCM** en
+  `admin_users.totp_secret_enc`. La key AES se deriva con HKDF-SHA256 desde
+  `ADMIN_SESSION_SECRET`, así no necesitas otra env var.
+- En `/api/admin/login`: si el row tiene `totp_secret_enc`, el endpoint
+  exige `body.totp` y rechaza con `code: 'TOTP_REQUIRED'` o
+  `code: 'TOTP_INVALID'`. La UI revela el campo de 6 dígitos al ver
+  cualquiera de los dos. Verificación constant-time.
+- Si `totp_secret_enc` es NULL → la capa se omite. Backward compatible.
+
+Implementación pura: [`src/lib/adminTotp.ts`](../src/lib/adminTotp.ts) +
+[`src/lib/adminTotpCrypto.ts`](../src/lib/adminTotpCrypto.ts).
+
+### Habilitar TOTP
+
+```bash
+npm run admin:enable-totp
+```
+
+El comando:
+
+1. Pide el email del admin (default: `ADMIN_EMAIL`).
+2. Genera un secret nuevo y muestra:
+   - Una URL `otpauth://totp/...` (para pegar en un generador QR offline o
+     en la opción "Add manually" de la app).
+   - El secret en base32 agrupado de 4 en 4 caracteres para tipearlo a mano.
+   - El **código esperado AHORA** — antes de guardar nada — para que
+     verifiques que tu app está sincronizada.
+3. Te pide ingresar un código de 6 dígitos desde tu app autenticadora.
+4. Solo si el código coincide, encripta el secret y lo persiste. Si falla,
+   no se guarda nada y puedes reintentar con un nuevo `npm run`.
+
+A partir del próximo login, el formulario `/admin/login` exigirá tanto la
+contraseña como un código de 6 dígitos.
+
+### Deshabilitar TOTP (perdiste el dispositivo)
+
+Desde un host con acceso a la BD (env vars de InsForge configuradas):
+
+```bash
+npm run admin:disable-totp
+```
+
+Limpia las columnas `totp_secret_enc` y `totp_enabled_at`. El próximo login
+volverá a pedir solo email + contraseña. Después puedes volver a ejecutar
+`npm run admin:enable-totp` con un dispositivo nuevo.
+
+### Rotar `ADMIN_SESSION_SECRET` afecta a TOTP
+
+La AES key se deriva del `ADMIN_SESSION_SECRET`. Si lo rotas:
+
+1. **Todos los `totp_secret_enc` quedan inservibles** y el endpoint devuelve
+   `code: 'TOTP_DECRYPT_FAILED'` (HTTP 500) — login bloqueado por seguridad.
+2. Procedimiento: corre `npm run admin:disable-totp` para limpiar la fila
+   afectada (incluso aunque no puedas leer el cifrado anterior, la columna
+   queda en NULL), luego `npm run admin:enable-totp` para enrolar de nuevo.
+
+Por eso, igual que con el pepper de la contraseña, **rotar el session
+secret tiene un costo operativo claro** y es algo deliberado.

@@ -184,6 +184,17 @@ ALTER TABLE public.admin_users
   ADD COLUMN IF NOT EXISTS password_hash text,
   ADD COLUMN IF NOT EXISTS password_hash_updated_at timestamptz;
 
+-- ── admin_users: TOTP 2FA (RFC 6238) ────────────────────────────────────
+-- Optional third factor on top of InsForge auth + password layer.
+-- Populated via `npm run admin:enable-totp`. When `totp_secret_enc` is
+-- non-NULL, /api/admin/login REQUIRES a 6-digit `totp` field in the body
+-- and verifies it against the AES-256-GCM-encrypted secret (key derived
+-- from ADMIN_SESSION_SECRET via HKDF-SHA256). Disabling clears both
+-- columns via `npm run admin:disable-totp`.
+ALTER TABLE public.admin_users
+  ADD COLUMN IF NOT EXISTS totp_secret_enc text,
+  ADD COLUMN IF NOT EXISTS totp_enabled_at timestamptz;
+
 -- TABLA: banners
 CREATE TABLE IF NOT EXISTS public.banners (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

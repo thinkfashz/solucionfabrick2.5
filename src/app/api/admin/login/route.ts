@@ -5,6 +5,8 @@ import {
   isAdminPasswordHash,
   assertPepperConfigured,
 } from '@/lib/adminPasswordHash';
+import { verifyTotp } from '@/lib/adminTotp';
+import { decryptTotpSecret, isEncryptedTotpSecret } from '@/lib/adminTotpCrypto';
 
 const BOOTSTRAP_ADMIN_EMAIL = (
   process.env.ADMIN_EMAIL || 'f.eduardomicolta@gmail.com'
@@ -62,10 +64,12 @@ export async function POST(request: Request) {
 
     let email: string;
     let password: string;
+    let totp: string;
     try {
       const body = await request.json();
       email = (body.email ?? '').trim().toLowerCase();
       password = body.password ?? '';
+      totp = typeof body.totp === 'string' ? body.totp.trim() : '';
     } catch {
       return NextResponse.json({ error: 'Cuerpo de solicitud inválido.' }, { status: 400 });
     }
@@ -89,7 +93,7 @@ export async function POST(request: Request) {
 
     const { data: adminRows, error: dbError } = await insforge.database
       .from('admin_users')
-      .select('email, rol, aprobado, password_hash')
+      .select('email, rol, aprobado, password_hash, totp_secret_enc')
       .eq('email', email)
       .limit(1);
 
@@ -106,6 +110,7 @@ export async function POST(request: Request) {
       rol?: string;
       aprobado?: boolean;
       password_hash?: string | null;
+      totp_secret_enc?: string | null;
     };
 
     // ── Layered owner-password verification (Fase 1 del plan de privatización)
@@ -124,6 +129,47 @@ export async function POST(request: Request) {
         recordFailedAttempt(ip);
         return NextResponse.json(
           { error: 'Credenciales incorrectas.' },
+          { status: 401 }
+        );
+      }
+    }
+
+    // ── TOTP 2FA verification (Fase 1.3 del plan de privatización)
+    // If the row has an encrypted TOTP secret, REQUIRE a 6-digit `totp`
+    // field in the body and verify it before issuing the session. The
+    // 401 carries `code: 'TOTP_REQUIRED'` so the login form can show the
+    // 2FA input on the next attempt without leaking *whether* this email
+    // has TOTP enabled (the response is identical to a wrong-code reply).
+    if (isEncryptedTotpSecret(adminUser.totp_secret_enc)) {
+      if (!totp) {
+        recordFailedAttempt(ip);
+        return NextResponse.json(
+          { error: 'Código de verificación requerido.', code: 'TOTP_REQUIRED' },
+          { status: 401 }
+        );
+      }
+      let totpSecret: string;
+      try {
+        totpSecret = decryptTotpSecret(adminUser.totp_secret_enc);
+      } catch (err) {
+        // Either ADMIN_SESSION_SECRET was rotated (every stored TOTP secret
+        // is now garbage) or the row was tampered with. Refuse login with a
+        // clear 500 — silently bypassing here would downgrade 2FA to "off".
+        console.error('[admin/login] TOTP decrypt failed:', err);
+        return NextResponse.json(
+          {
+            error:
+              'No se pudo verificar el segundo factor. Pide al administrador que vuelva a enrolar TOTP.',
+            code: 'TOTP_DECRYPT_FAILED',
+          },
+          { status: 500 }
+        );
+      }
+      const totpOk = verifyTotp(totp, totpSecret);
+      if (!totpOk) {
+        recordFailedAttempt(ip);
+        return NextResponse.json(
+          { error: 'Código de verificación inválido.', code: 'TOTP_INVALID' },
           { status: 401 }
         );
       }

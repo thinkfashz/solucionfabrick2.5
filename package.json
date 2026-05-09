@@ -13,7 +13,9 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit",
-    "admin:set-password": "tsx scripts/set-admin-password.ts"
+    "admin:set-password": "tsx scripts/set-admin-password.ts",
+    "admin:enable-totp": "tsx scripts/enable-admin-totp.ts",
+    "admin:disable-totp": "tsx scripts/disable-admin-totp.ts"
   },
   "dependencies": {
     "@insforge/sdk": "^1.2.5",

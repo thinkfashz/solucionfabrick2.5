@@ -23,6 +23,8 @@ export default function AdminLoginPage() {
   const [password, setPassword] = useState('');
   const [setupEmail, setSetupEmail] = useState('f.eduardomicolta@gmail.com');
   const [otp, setOtp] = useState('');
+  const [totp, setTotp] = useState('');
+  const [totpRequired, setTotpRequired] = useState(false);
   const [newPassword, setNewPassword] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -79,7 +81,14 @@ export default function AdminLoginPage() {
       const res = await fetch('/api/admin/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          password,
+          // Only send when the server has previously asked for it. Sending an
+          // empty `totp` on the first attempt is harmless (server just asks
+          // for it) but we keep the body minimal.
+          ...(totp ? { totp: totp.trim() } : {}),
+        }),
       });
 
       // Parse body defensively: the server normally returns JSON, but if an
@@ -101,6 +110,12 @@ export default function AdminLoginPage() {
             : 'Error al iniciar sesión.';
         setError(json.error ?? fallback);
         if (res.status === 429) setIsBlocked(true);
+        // Reveal the 2FA input when the server tells us this account has TOTP
+        // enabled. We also keep it visible after a TOTP_INVALID so the user
+        // can retype the code without losing the password.
+        if (json.code === 'TOTP_REQUIRED' || json.code === 'TOTP_INVALID') {
+          setTotpRequired(true);
+        }
         return;
       }
 
@@ -324,6 +339,31 @@ export default function AdminLoginPage() {
                   className={inputClass}
                 />
               </div>
+
+              {totpRequired && (
+                <div className="flex flex-col gap-2">
+                  <label className="text-white/50 text-[10px] tracking-widest uppercase">
+                    Código de verificación (2FA)
+                  </label>
+                  <input
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete="one-time-code"
+                    pattern="[0-9]{6}"
+                    maxLength={6}
+                    value={totp}
+                    onChange={(e) => setTotp(e.target.value.replace(/\s+/g, ''))}
+                    placeholder="123 456"
+                    required
+                    disabled={loading}
+                    autoFocus
+                    className={inputClass}
+                  />
+                  <p className="text-white/40 text-[10px]">
+                    Ingresa el código de 6 dígitos de tu app autenticadora.
+                  </p>
+                </div>
+              )}
 
               {error && (
                 <div className="px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">

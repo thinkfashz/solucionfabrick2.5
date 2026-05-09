@@ -184,6 +184,11 @@ function Planet({
   const labelTex = useMemo(() => makeLabelTex(planet.label, planet.color), [planet.label, planet.color]);
   useEffect(() => () => labelTex.dispose(), [labelTex]);
 
+  // Reset cursor si el componente se desmonta mientras está en hover.
+  useEffect(() => () => {
+    if (typeof document !== 'undefined') document.body.style.cursor = '';
+  }, []);
+
   const isHub = planet.orbitRadius === 0;
   const sphereSegments = isMobile ? 16 : 32;
   const targetScale = useRef(1);
@@ -411,6 +416,10 @@ function Sun({ paused, speed, onSelect }: { paused: boolean; speed: number; onSe
   const isMobile = useIsMobile();
   const ref = useRef<THREE.Mesh>(null);
   const [hovered, setHovered] = useState(false);
+  // Reset cursor si se desmonta mientras está en hover.
+  useEffect(() => () => {
+    if (typeof document !== 'undefined') document.body.style.cursor = '';
+  }, []);
   useFrame(({ clock }) => {
     if (ref.current && !paused) ref.current.rotation.y = clock.elapsedTime * 0.2 * speed;
   });

@@ -306,3 +306,68 @@ SELECT ts, ip, email, user_agent
 - **`outcome` es un enum cerrado** (TypeScript `LoginOutcome`): añadir
   uno nuevo es un cambio deliberado, no una cadena libre, así los
   reportes son grep-ables.
+
+---
+
+## TOTP Backup Codes (Fase 1.3b)
+
+Si pierdes el authenticator (teléfono perdido / borrado / robado), los
+backup codes son la única forma de volver a entrar sin SSH al hosting.
+
+### Generar el set inicial
+
+Una vez que el admin tiene TOTP habilitado:
+
+```bash
+npm run admin:generate-backup-codes
+```
+
+El script:
+
+1. Te pide el email del admin (default = `ADMIN_EMAIL`).
+2. Verifica que TOTP esté habilitado (los backup codes solo son válidos
+   como recovery del segundo factor — no se generan para cuentas sin 2FA).
+3. Si ya hay codes, te pide confirmar el reemplazo.
+4. Genera **10 códigos** del tipo `XXXX-XXXX-XX` (alfabeto Crockford,
+   sin I/L/O/U para evitar confusión visual al transcribir).
+5. Persiste **solo los hashes** scrypt+pepper a `admin_users.backup_codes`.
+6. Imprime los plaintexts una única vez. Después de eso son irrecuperables.
+
+**Guárdalos en tu password manager o impresos en sobre cerrado.**
+
+### Cómo usarlos
+
+En `/admin/login`, en el campo TOTP escribe el código completo (con o
+sin guiones, mayúsculas o minúsculas) en lugar de los 6 dígitos del
+authenticator. La ruta:
+
+1. Intenta primero como TOTP de 6 dígitos.
+2. Si falla y el campo tiene forma de backup code (10 chars
+   alfanuméricos tras normalizar), prueba contra los hashes guardados.
+3. En match: elimina ese hash del array (single-use), persiste y emite
+   sesión.
+4. La fila de auditoría queda como `outcome=success` con
+   `reason='rol=admin; via=backup_code; remaining=N'` para distinguirla
+   de un login con TOTP normal.
+
+### Garantías
+
+- **Single-use**: tras consumir un código, su hash desaparece del array.
+  Reintentar el mismo código produce `TOTP_INVALID`.
+- **Pepper-protected**: los hashes usan `ADMIN_PASSWORD_PEPPER`. Un dump
+  de `admin_users` por sí solo no permite brute-force; el atacante
+  también necesita la pepper del entorno de aplicación.
+- **No se enumera la rama**: respuesta idéntica a `TOTP_INVALID` cuando
+  un atacante prueba combinaciones — no puede saber si alguna iteración
+  está pegándole al branch de backup codes.
+- **Rotación equivalente**: rotar `ADMIN_PASSWORD_PEPPER` invalida tanto
+  el password hash como todos los backup codes (consistente con el
+  modelo de password).
+
+### Cuándo regenerar
+
+- Cuando consumas la mitad o más (`reason='via=backup_code; remaining=4'`
+  en el audit log es buen disparador).
+- Si sospechas que el papel/manager fue comprometido — re-ejecutar el
+  script invalida automáticamente el set anterior.
+- Si rotas `ADMIN_PASSWORD_PEPPER`: los hashes viejos quedan inutilizables.

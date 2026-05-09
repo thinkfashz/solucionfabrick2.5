@@ -11,6 +11,6 @@ import { clearFailedAttempts, getClientIp } from '@/lib/adminAuth';
  */
 export async function POST(request: Request) {
   const ip = getClientIp(request);
-  clearFailedAttempts(ip);
+  await clearFailedAttempts(ip);
   return NextResponse.json({ ok: true });
 }

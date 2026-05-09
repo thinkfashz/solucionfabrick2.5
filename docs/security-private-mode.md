@@ -109,8 +109,7 @@ Esto **invalida todos los `password_hash` existentes**. Procedimiento:
 - ~~**Fase 1.3 — TOTP 2FA** obligatorio (RFC 6238, secret cifrado AES-GCM).~~ ✅ Implementado, ver sección "TOTP 2FA" más abajo.
 - **Fase 1.4 — Middleware global** que bloquee toda la app, no solo `/admin`.
 - **Fase 1.6 — JWE** para la cookie de sesión en lugar de HMAC firmado.
-- **Fase 1.7 — Rate-limit persistente** (la versión in-memory actual se
-  resetea con cada cold start serverless).
+- ~~**Fase 1.7 — Rate-limit persistente**~~ ✅ Implementado: tabla `admin_login_attempts` + caché en memoria, ver sección "Rate-limit persistente" más abajo.
 - **Fase 2 — Vault de secretos** dentro de la BD (`app_secrets`) y password de
   desbloqueo separado para portar la BD entre hostings.
 
@@ -188,3 +187,46 @@ La AES key se deriva del `ADMIN_SESSION_SECRET`. Si lo rotas:
 
 Por eso, igual que con el pepper de la contraseña, **rotar el session
 secret tiene un costo operativo claro** y es algo deliberado.
+
+---
+
+## Rate-limit persistente (Fase 1.7)
+
+El bloqueo por intentos fallidos (10 errores → 5 minutos de bloqueo)
+ahora se persiste en la tabla `admin_login_attempts`, ya no en una
+`Map` en memoria que se reseteaba con cada cold start de Vercel.
+
+### Cómo funciona
+
+- Tabla `admin_login_attempts(ip pk, count, blocked_until, updated_at)`
+  creada por `scripts/create-tables.sql`.
+- Helper puro [`src/lib/adminRateLimitStore.ts`](../src/lib/adminRateLimitStore.ts)
+  envuelve la tabla con dos capas:
+  1. **Caché en memoria** por lambda — atrapa ráfagas sin hammer al DB.
+  2. **DB** — fuente de verdad entre cold starts.
+- `adminAuth.ts` expone las mismas funciones (`isRateLimited`,
+  `recordFailedAttempt`, `clearFailedAttempts`, `blockedSecondsRemaining`)
+  pero ahora son `async` y delegan al store.
+
+### Comportamiento defensivo
+
+- **Tabla faltante** (`Could not find the table…`) → degradación silenciosa
+  a la capa en memoria. La instalación nueva no se brickea antes de la
+  migración.
+- **Error transitorio** (`ECONNRESET`, etc.) → fail-open con log a
+  `console.error`. Defense-in-depth: contraseña + TOTP siguen activos,
+  así que un hiccup de DB no bloquea logins legítimos.
+- **IP `'unknown'`** (sin `x-real-ip`/`x-forwarded-for`) → no se persiste
+  para evitar que un cliente mal configurado bloquee a todos los demás
+  detrás del mismo gateway. La capa en memoria sí aplica.
+- **Bloqueo expirado** se borra de forma diferida en el primer `read`
+  posterior, así la tabla no crece indefinidamente.
+
+### ¿Por qué fail-open en lugar de fail-closed?
+
+El rate-limit es **cortesía con el backend de auth**, no el control de
+seguridad primario. Las capas reales son la contraseña con scrypt+pepper
+y TOTP RFC 6238. Si el DB está caído, fail-closed denegaría servicio a
+los administradores legítimos sin agregar protección real (un atacante
+que haya pasado las dos capas anteriores ya tiene credenciales válidas).
+Esta decisión está documentada en el comentario de cabecera del helper.

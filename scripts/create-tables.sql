@@ -195,6 +195,24 @@ ALTER TABLE public.admin_users
   ADD COLUMN IF NOT EXISTS totp_secret_enc text,
   ADD COLUMN IF NOT EXISTS totp_enabled_at timestamptz;
 
+-- ── admin_login_attempts ────────────────────────────────────────────────
+-- Persistent brute-force / rate-limit store. The previous in-memory `Map`
+-- in src/lib/adminAuth.ts was reset on every serverless cold start, so an
+-- attacker who spaced requests across cold starts evaded the lockout for
+-- free. This table is the source of truth across lambdas; src/lib/
+-- adminRateLimitStore.ts wraps it with a per-lambda in-memory cache.
+-- Rows for unblocked-and-zeroed IPs are deleted by the application;
+-- expired blocks are deleted lazily on read.
+CREATE TABLE IF NOT EXISTS public.admin_login_attempts (
+  ip            text PRIMARY KEY,
+  count         integer NOT NULL DEFAULT 0,
+  blocked_until timestamptz,
+  updated_at    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS admin_login_attempts_blocked_until_idx
+  ON public.admin_login_attempts (blocked_until);
+
 -- TABLA: banners
 CREATE TABLE IF NOT EXISTS public.banners (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

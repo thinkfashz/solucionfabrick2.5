@@ -54,8 +54,8 @@ export async function POST(request: Request) {
       return misconfiguredResponse(missing);
     }
 
-    if (isRateLimited(ip)) {
-      const remaining = blockedSecondsRemaining(ip);
+    if (await isRateLimited(ip)) {
+      const remaining = await blockedSecondsRemaining(ip);
       return NextResponse.json(
         { error: `Demasiados intentos fallidos. Intenta nuevamente en ${remaining} segundos.` },
         { status: 429 }
@@ -84,7 +84,7 @@ export async function POST(request: Request) {
     });
 
     if (authError || !authData) {
-      recordFailedAttempt(ip);
+      await recordFailedAttempt(ip);
       return NextResponse.json(
         { error: 'Credenciales incorrectas.' },
         { status: 401 }
@@ -98,7 +98,7 @@ export async function POST(request: Request) {
       .limit(1);
 
     if (dbError || !adminRows || adminRows.length === 0) {
-      recordFailedAttempt(ip);
+      await recordFailedAttempt(ip);
       return NextResponse.json(
         { error: 'Acceso denegado. Este usuario no tiene permisos de administrador.' },
         { status: 403 }
@@ -126,7 +126,7 @@ export async function POST(request: Request) {
       assertPepperConfigured();
       const localOk = await verifyAdminPassword(password, adminUser.password_hash);
       if (!localOk) {
-        recordFailedAttempt(ip);
+        await recordFailedAttempt(ip);
         return NextResponse.json(
           { error: 'Credenciales incorrectas.' },
           { status: 401 }
@@ -142,7 +142,7 @@ export async function POST(request: Request) {
     // has TOTP enabled (the response is identical to a wrong-code reply).
     if (isEncryptedTotpSecret(adminUser.totp_secret_enc)) {
       if (!totp) {
-        recordFailedAttempt(ip);
+        await recordFailedAttempt(ip);
         return NextResponse.json(
           { error: 'Código de verificación requerido.', code: 'TOTP_REQUIRED' },
           { status: 401 }
@@ -167,7 +167,7 @@ export async function POST(request: Request) {
       }
       const totpOk = verifyTotp(totp, totpSecret);
       if (!totpOk) {
-        recordFailedAttempt(ip);
+        await recordFailedAttempt(ip);
         return NextResponse.json(
           { error: 'Código de verificación inválido.', code: 'TOTP_INVALID' },
           { status: 401 }
@@ -184,7 +184,7 @@ export async function POST(request: Request) {
     const isBootstrapAdmin = email === BOOTSTRAP_ADMIN_EMAIL;
 
     if (adminUser.aprobado === false && !isBootstrapAdmin) {
-      recordFailedAttempt(ip);
+      await recordFailedAttempt(ip);
       return NextResponse.json(
         { error: 'Tu cuenta está pendiente de aprobación.' },
         { status: 403 }
@@ -208,7 +208,7 @@ export async function POST(request: Request) {
         });
     }
 
-    clearFailedAttempts(ip);
+    await clearFailedAttempts(ip);
 
     const rol = (adminUser.rol ?? 'admin') as 'superadmin' | 'admin' | 'viewer';
     const exp = Date.now() + SESSION_TTL_MS;

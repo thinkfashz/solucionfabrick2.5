@@ -8,6 +8,15 @@ El formato sigue [Keep a Changelog 1.1](https://keepachangelog.com/es-ES/1.1.0/)
 
 ### Added
 
+- **Documentación de gobernanza** (Fase 4 — `docs/`):
+  - `docs/architecture.md` — stack, diagrama Mermaid de alto nivel, capas (frontend público, panel admin, API serverless, datos InsForge), flujos críticos (checkout, login con TOTP, centro de integraciones), workflows CI/CD.
+  - `docs/data-model.md` — 36 tablas en `scripts/create-tables.sql` agrupadas por dominio (auth/seguridad admin, commerce, contenido, integraciones, observability/PWA), ERD simplificado de commerce y convenciones de schema.
+  - `docs/api.md` — catálogo de los 85 `route.ts` (40 admin + 44 públicos + 1 cron) con verbos, propósito, códigos de error cerrados.
+  - `docs/deploy-runbook.md` — pre-deploy checklist, procedimiento Vercel, rollback de aplicación/schema/credenciales, lista canónica de variables de entorno por categoría, smoke tests post-deploy, incident playbook resumido.
+  - `docs/metrics-snapshot.md` — foto fija de tamaño (LOC, archivos, módulos, tablas), cobertura (umbrales actuales vs. aspiración), dependencias clave y deuda técnica conocida al 2026-05-09.
+  - `docs/migration-plan-postgres.md` — plan reversible en 5 fases de salida de InsForge (auditoría → fachada DB → setup destino → doble escritura → cutover → decommission), disparadores que justificarían ejecutarlo y decisión actual (seguir en InsForge).
+  - `docs/integrations/README.md` — índice por proveedor (qué hay en `main` vs. plan), cómo se persisten credenciales (env > DB cifrada > fallback), aliases del map vivo, plantilla para nuevos providers.
+  - `docs/admin-manual.md` — manual del operador del panel: bootstrap inicial, operaciones de seguridad (TOTP, backup codes, unlock, audit), inventario de los 30 módulos por área, tareas frecuentes y operaciones de emergencia.
 - `CONTRIBUTING.md` con flujo de ramas, Conventional Commits y checklist de PR.
 - `.github/PULL_REQUEST_TEMPLATE.md` y plantillas de issue (bug / feature / security).
 - `.github/CODEOWNERS` con owners por área (seguridad, integraciones, pagos, infra).

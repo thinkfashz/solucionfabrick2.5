@@ -16,7 +16,7 @@ Este documento es la fuente única de verdad para responder *"¿qué hay en `mai
 | Archivos de test                         | **29**              |
 | Módulos del panel `/admin`               | **30**              |
 | Workflows de GitHub Actions              | **4**               |
-| Documentos en `docs/`                    | **6**               |
+| Documentos en `docs/`                    | **14**              |
 
 Veredicto rápido: el núcleo público + panel admin base + endurecimiento de seguridad del login están **en `main`**. Adicionalmente, **un centro de integraciones de _backend_ ya existe** (`/api/admin/integrations` con CRUD para meta/google/google_ads/tiktok/cloudinary/vercel + helpers `metaCredentials` y `vercelClient`). Los módulos avanzados que **siguen faltando** son: UI `/admin/integraciones`, OAuth de marketplaces, presupuestos auto-destructibles, healthcheck cron, inteligencia de mercado, Resend, multi-tenant. Se rastrean abajo.
 
@@ -133,15 +133,23 @@ tests/
 - `perf-runtime.md`
 - `push-notifications.md`
 - `security-private-mode.md`
+- `architecture.md` *(Fase 4)*
+- `data-model.md` *(Fase 4)*
+- `api.md` *(Fase 4)*
+- `deploy-runbook.md` *(Fase 4)*
+- `metrics-snapshot.md` *(Fase 4)*
+- `migration-plan-postgres.md` *(Fase 4)*
+- `admin-manual.md` *(Fase 4)*
+- `integrations/README.md` *(Fase 4 — índice; falta un archivo por proveedor)*
 - `preview/` (capturas de Home y Tienda usadas por el README)
 
 **Pendiente** publicar (Fase 4 del plan):
 
-- `architecture.md` (diagrama Mermaid + flujos)
-- `deploy-runbook.md` (runbook de deploy + rollback)
-- `admin-manual.md` (manual del operador del panel)
-- `data-model.md` (ERD)
-- `api.md` (catálogo de los 84 endpoints)
-- `integrations/` (uno por proveedor)
-- `migration-plan-postgres.md` (plan de salida de InsForge)
-- `metrics-snapshot.md`
+- ~~`architecture.md` (diagrama Mermaid + flujos)~~ ✅ Añadido en Fase 4.
+- ~~`deploy-runbook.md` (runbook de deploy + rollback)~~ ✅ Añadido en Fase 4.
+- ~~`admin-manual.md` (manual del operador del panel)~~ ✅ Añadido en Fase 4.
+- ~~`data-model.md` (ERD)~~ ✅ Añadido en Fase 4.
+- ~~`api.md` (catálogo de los 84 endpoints)~~ ✅ Añadido en Fase 4 (catálogo actualizado a 85).
+- ~~`integrations/` (uno por proveedor)~~ 🟡 Índice `integrations/README.md` añadido; falta un archivo por proveedor (a crear cuando se fusione cada módulo del plan).
+- ~~`migration-plan-postgres.md` (plan de salida de InsForge)~~ ✅ Añadido en Fase 4.
+- ~~`metrics-snapshot.md`~~ ✅ Añadido en Fase 4.

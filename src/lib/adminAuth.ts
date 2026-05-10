@@ -8,6 +8,7 @@
  * the hot path fast.
  */
 
+import { timingSafeEqual } from 'node:crypto';
 import {
   readRateLimitEntry,
   writeRateLimitEntry,
@@ -17,6 +18,46 @@ import {
 
 const RATE_LIMIT_MAX_ATTEMPTS = 10;
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+
+/**
+ * Constant-time string comparison. Returns `false` on length mismatch (early
+ * return is OK there because secret-length is not itself a useful leak — an
+ * attacker who can probe length already knows the secret format) and on
+ * either side being empty/whitespace. Otherwise dispatches to
+ * `node:crypto.timingSafeEqual` so the comparison body does not leak
+ * positional match info through cache or branch timing.
+ *
+ * Used by `/api/admin/init-account` to validate the bootstrap header without
+ * an oracle. Kept in this file so the small set of admin-auth primitives
+ * lives in one place.
+ */
+export function timingSafeStringEqual(a: string, b: string): boolean {
+  if (typeof a !== 'string' || typeof b !== 'string') return false;
+  const at = a.trim();
+  const bt = b.trim();
+  if (at.length === 0 || bt.length === 0) return false;
+  const ab = Buffer.from(at, 'utf8');
+  const bb = Buffer.from(bt, 'utf8');
+  if (ab.length !== bb.length) return false;
+  return timingSafeEqual(ab, bb);
+}
+
+/**
+ * True iff the caller proved knowledge of `ADMIN_INIT_SECRET`. Centralised
+ * here so the same logic can be reused by other bootstrap endpoints in the
+ * future without re-implementing the constant-time compare.
+ *
+ * `expected` is the env-configured secret; `provided` is the value the
+ * client sent in the `x-admin-init-secret` header. Both are trimmed before
+ * comparison.
+ */
+export function validateInitSecret(
+  provided: string | null | undefined,
+  expected: string | null | undefined,
+): boolean {
+  if (!provided || !expected) return false;
+  return timingSafeStringEqual(provided, expected);
+}
 
 /** Resolve client IP from proxy headers (x-real-ip / x-forwarded-for). */
 export function getClientIp(request: Request): string {

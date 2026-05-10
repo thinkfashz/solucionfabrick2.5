@@ -28,6 +28,7 @@ export default function AdminLoginPage() {
   const [setupEmail, setSetupEmail] = useState('f.eduardomicolta@gmail.com');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [initSecret, setInitSecret] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [isBlocked, setIsBlocked] = useState(false);
@@ -209,13 +210,25 @@ export default function AdminLoginPage() {
     }
   }
 
-  /** Creates the admin InsForge account with the default password and syncs admin_users */
+  /**
+   * Creates the admin InsForge account using ADMIN_INITIAL_PASSWORD on the
+   * server. Requires the operator to paste the ADMIN_INIT_SECRET they set in
+   * their host env-vars panel; the secret travels in a header (never echoed
+   * to the response) and is constant-time-compared on the server.
+   */
   async function handleInitAccount() {
     resetMessages();
+    if (!initSecret.trim()) {
+      setError('Pegá el ADMIN_INIT_SECRET configurado en las variables de entorno.');
+      return;
+    }
     setLoading(true);
 
     try {
-      const res = await fetch('/api/admin/init-account', { method: 'POST' });
+      const res = await fetch('/api/admin/init-account', {
+        method: 'POST',
+        headers: { 'x-admin-init-secret': initSecret.trim() },
+      });
       const json = await res.json();
 
       if (!res.ok) {
@@ -223,10 +236,9 @@ export default function AdminLoginPage() {
         return;
       }
 
-      // /api/admin/init-account already cleared the IP rate-limit server-side
-      // for both the success and the alreadyExists branches — no client-side
-      // unlock call is needed (or even available; that endpoint was removed
-      // because it accepted no proof of control).
+      // /api/admin/init-account only clears the IP rate-limit on the
+      // new-account branch (after a successful signUp gated by the init
+      // secret) — no client-side unlock call is needed.
       if (json.alreadyExists) {
         setError(json.message ?? 'La cuenta ya existe. Usa la opciÃ³n de recuperaciÃ³n.');
         return;
@@ -234,6 +246,7 @@ export default function AdminLoginPage() {
 
       setSuccess(json.message ?? 'Â¡Cuenta creada! Ya puedes iniciar sesiÃ³n.');
       setEmail('f.eduardomicolta@gmail.com');
+      setInitSecret('');
       setScreen('login');
     } catch {
       setError('Error de red. IntÃ©ntalo de nuevo.');
@@ -448,8 +461,24 @@ export default function AdminLoginPage() {
             </div>
 
             <div className="px-4 py-3 rounded-2xl bg-yellow-400/5 border border-yellow-400/20 text-yellow-200/70 text-xs leading-relaxed">
-              Esto crearÃ¡ la cuenta de administrador en InsForge con la contraseÃ±a configurada y la sincronizarÃ¡ con la base de datos. Solo funciona si la cuenta aÃºn no existe.
+              Esto crearÃ¡ la cuenta de administrador en InsForge con la contraseÃ±a configurada (`ADMIN_INITIAL_PASSWORD`) y la sincronizarÃ¡ con la base de datos. Solo funciona si la cuenta aÃºn no existe.
             </div>
+
+            <input
+              type="password"
+              value={initSecret}
+              onChange={(e) => setInitSecret(e.target.value)}
+              placeholder="ADMIN_INIT_SECRET"
+              autoComplete="off"
+              spellCheck={false}
+              className={inputClass}
+              disabled={loading}
+            />
+            <p className="text-zinc-500 text-[11px] -mt-2 leading-relaxed">
+              Pegá aquí el valor de la variable de entorno{' '}
+              <code className="text-zinc-300">ADMIN_INIT_SECRET</code> que configuraste en
+              Vercel (o el panel de tu hosting). Sin ella el endpoint rechaza la inicialización.
+            </p>
 
             {error && (
               <div className="px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
@@ -464,7 +493,7 @@ export default function AdminLoginPage() {
 
             <button
               onClick={() => void handleInitAccount()}
-              disabled={loading}
+              disabled={loading || !initSecret.trim()}
               className={primaryButtonClass}
             >
               {loading ? (

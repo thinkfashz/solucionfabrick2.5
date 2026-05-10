@@ -128,33 +128,6 @@ export default function AdminLoginPage() {
     }
   }
 
-  /** Best-effort call to clear the caller's IP rate-limit block. */
-  async function requestUnlock(): Promise<void> {
-    try {
-      await fetch('/api/admin/unlock', { method: 'POST' });
-    } catch {
-      // Non-fatal: if unlock fails the user can still wait for the window to expire.
-    }
-  }
-
-  /** Clears the IP rate-limit block after the user has recovered their password. */
-  async function handleUnlock() {
-    resetMessages();
-    setLoading(true);
-    try {
-      const res = await fetch('/api/admin/unlock', { method: 'POST' });
-      if (!res.ok) {
-        setError('No se pudo desbloquear. Intenta nuevamente en unos segundos.');
-        return;
-      }
-      setSuccess('Bloqueo eliminado. Ya puedes intentar iniciar sesiÃ³n.');
-    } catch {
-      setError('Error de red. IntÃ©ntalo de nuevo.');
-    } finally {
-      setLoading(false);
-    }
-  }
-
   /** Requests a password-reset code using InsForge's native auth flow. */
   async function handleSetupSend() {
     resetMessages();
@@ -200,15 +173,30 @@ export default function AdminLoginPage() {
         return;
       }
 
-      const { error: resetErr } = await insforge.auth.resetPassword({ newPassword, otp: data.token });
-      if (resetErr) {
-        setError(resetErr.message);
+      // Finalise server-side. The endpoint calls insforge.auth.resetPassword
+      // and, on success, clears the IP rate-limit. Doing the reset and the
+      // unlock in a single privileged server step avoids exposing an
+      // unauthenticated /api/admin/unlock that an attacker could call to
+      // wipe their failed-attempt counter (Greptile review of PR #148).
+      const finalizeRes = await fetch('/api/admin/recover/finalize', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: setupEmail.trim().toLowerCase(),
+          otp_token: data.token,
+          newPassword,
+        }),
+      });
+      if (!finalizeRes.ok) {
+        let json: { error?: string } = {};
+        try {
+          json = await finalizeRes.json();
+        } catch {
+          /* leave json empty */
+        }
+        setError(json.error ?? 'No se pudo completar la recuperación.');
         return;
       }
-
-      // The user just proved control of the admin email, so clear any
-      // previous rate-limit block for this IP to let them log in immediately.
-      await requestUnlock();
 
       setSuccess('Â¡ContraseÃ±a configurada! Ya puedes iniciar sesiÃ³n.');
       setEmail(setupEmail.trim().toLowerCase());
@@ -235,15 +223,14 @@ export default function AdminLoginPage() {
         return;
       }
 
+      // /api/admin/init-account already cleared the IP rate-limit server-side
+      // for both the success and the alreadyExists branches — no client-side
+      // unlock call is needed (or even available; that endpoint was removed
+      // because it accepted no proof of control).
       if (json.alreadyExists) {
-        // Account already exists â€” still clear any IP lockout so the user
-        // can proceed directly to login / reset from here.
-        await requestUnlock();
         setError(json.message ?? 'La cuenta ya existe. Usa la opciÃ³n de recuperaciÃ³n.');
         return;
       }
-
-      await requestUnlock();
 
       setSuccess(json.message ?? 'Â¡Cuenta creada! Ya puedes iniciar sesiÃ³n.');
       setEmail('f.eduardomicolta@gmail.com');
@@ -389,14 +376,11 @@ export default function AdminLoginPage() {
                 <div className="px-4 py-3 rounded-2xl bg-red-500/10 border border-red-500/30 text-red-400 text-xs">
                   {error}
                   {isBlocked && (
-                    <button
-                      type="button"
-                      onClick={() => void handleUnlock()}
-                      disabled={loading}
-                      className="mt-3 w-full py-2 rounded-full border border-red-400/40 text-red-200 hover:bg-red-500/10 transition-colors text-[11px] tracking-widest uppercase disabled:opacity-60"
-                    >
-                      Desbloquear ahora
-                    </button>
+                    <p className="mt-2 text-red-300/80 text-[11px] leading-relaxed">
+                      Espera a que pase la ventana de bloqueo o usa la opción de recuperación
+                      por email para resetear tu contraseña — el reset libera el bloqueo
+                      automáticamente.
+                    </p>
                   )}
                 </div>
               )}

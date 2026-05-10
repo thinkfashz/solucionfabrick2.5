@@ -1,10 +1,11 @@
 import { NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
+import { clearFailedAttempts, getClientIp } from '@/lib/adminAuth';
 
 const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'f.eduardomicolta@gmail.com';
 const ADMIN_INITIAL_PASSWORD = process.env.ADMIN_INITIAL_PASSWORD || '8dediciembre';
 
-export async function POST() {
+export async function POST(request: Request) {
   // Attempt to create the admin account in InsForge
   const { data: signUpData, error: signUpError } = await insforge.auth.signUp({
     email: ADMIN_EMAIL,
@@ -66,6 +67,14 @@ export async function POST() {
       console.error('[AdminInit] failed to force-approve bootstrap admin:', approveError);
     }
   }
+
+  // The init flow itself proves control of the deployment (anyone hitting
+  // this endpoint already has access to the running server). Clear any IP
+  // rate-limit so the operator can attempt a normal login immediately
+  // afterwards. Done server-side so /api/admin/unlock does not need to
+  // exist as an unauthenticated client-callable endpoint (CVE-class
+  // bypass — see Greptile review of PR #148).
+  await clearFailedAttempts(getClientIp(request));
 
   if (userAlreadyExists) {
     return NextResponse.json({

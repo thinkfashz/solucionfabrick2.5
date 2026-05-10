@@ -8,6 +8,13 @@ El formato sigue [Keep a Changelog 1.1](https://keepachangelog.com/es-ES/1.1.0/)
 
 ### Added
 
+- **Cobertura de helpers puros al 0 %** (Fase 7 — tercer ratchet up):
+  - `tests/unit/checkout.test.ts` — `calculateCheckoutSummary()` (subtotal × cantidad, IVA 19% redondeado, despacho duplicado en regiones extremas XV/I/XI/XII, comparación case-insensitive, items vacíos) y `validateCheckoutPayload()` (items requeridos, productoId/cantidad/precio, región, nombre ≥3, regex email, teléfono opcional ≥8 dígitos, shippingAddress ≥6, tolerancia a `cliente: undefined`) — 19 tests.
+  - `tests/unit/meta.test.ts` — `META_API_VERSION` / `META_GRAPH_URL` y `normalizeAdAccountId()` (strip de `act_` único/duplicado/case-insensitive, trim, passthrough de undefined, no toca prefijos no-canónicos como `action_`, composición segura `act_${id}`) — 10 tests.
+  - `tests/unit/dbSchema.test.ts` — invariantes de `DB_SCHEMA_SQL`: tablas core con `CREATE TABLE IF NOT EXISTS`, `payment_webhooks.idempotency_key UNIQUE NOT NULL`, FKs `ON DELETE CASCADE`, función `set_updated_at()` con triggers idempotentes, ausencia de sintaxis Supabase no soportada por InsForge (`auth.jwt()`, `auth.uid()`, `ENABLE ROW LEVEL SECURITY`, `CREATE POLICY`) — 7 tests.
+  - `tests/unit/insforge.test.ts` — `getMissingAdminEnvVars()` (development/test no exigen `ADMIN_SESSION_SECRET`; production sí) y exports `INSFORGE_BASE_URL` / `INSFORGE_PUBLIC_ANON_KEY` con fallback hardcoded — 5 tests.
+  - +41 tests, +4 archivos. Cobertura global: lines/statements 23.40 → 23.96, functions 48.78 → 49.09, branches 78.10 → 78.68.
+  - Umbrales `vitest.config.ts` subidos a `lines: 23, statements: 23, functions: 48, branches: 78`.
 - **Cobertura de helpers puros al 0 %** (Fase 6 — segundo ratchet up):
   - `tests/unit/money.test.ts` — `CURRENCIES`, `isCurrencyCode()` (incluye guard contra `__proto__`/`toString`), `convertFromClp()` (errores en rate≤0/NaN/∞, redondeo a decimales del target), `formatMoney()` (es-CL para CLP, fallback `symbol+toFixed` ante locale inválido) y `readCurrencyCookie()` (default, valor válido, `decodeURIComponent`, whitelist).
   - `tests/unit/markdown.test.ts` — `renderMarkdown()` (sanitiza `<script>`/`<style>`/`onerror`/`onload`/`onclick`, tolera null/undefined), `estimateReadingMinutes()` (piso 1 min, ~220 wpm) y `slugify()` (NFD diacritic strip, colapso de separadores, cap 96, drop emoji).

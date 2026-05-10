@@ -14,10 +14,10 @@ export default defineConfig({
       // Ratchet baseline (medido 2026-05-10 tras Fase 6): bloquea regresiones,
       // no aspira. El plan a futuro sube global a 60 y `src/lib/` a 80.
       thresholds: {
-        lines: 22,
-        statements: 22,
-        functions: 47,
-        branches: 77,
+        lines: 23,
+        statements: 23,
+        functions: 48,
+        branches: 78,
       },
     },
   },

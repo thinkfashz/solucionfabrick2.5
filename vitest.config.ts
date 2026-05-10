@@ -8,7 +8,7 @@ export default defineConfig({
     globals: false,
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'html'],
+      reporter: ['text', 'html', 'lcov'],
       include: ['src/lib/**', 'src/app/api/**'],
       exclude: ['**/*.d.ts'],
     },

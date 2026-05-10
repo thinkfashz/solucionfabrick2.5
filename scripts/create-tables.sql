@@ -1635,3 +1635,77 @@ CREATE TABLE IF NOT EXISTS public.integration_quota_snapshots (
 );
 CREATE INDEX IF NOT EXISTS integration_quota_snapshots_provider_captured_at_idx
   ON public.integration_quota_snapshots (provider, captured_at DESC);
+
+-- ── admin_users: layered owner password ────────────────────────────────
+-- Optional second-factor verification on top of InsForge auth. Populated
+-- via `npm run admin:set-password`. When the column is non-NULL for a
+-- given email, /api/admin/login verifies the plaintext password locally
+-- (scrypt + ADMIN_PASSWORD_PEPPER) AFTER the InsForge auth call — both
+-- must succeed. When NULL, login behaves as before (InsForge auth only).
+ALTER TABLE public.admin_users
+  ADD COLUMN IF NOT EXISTS password_hash text,
+  ADD COLUMN IF NOT EXISTS password_hash_updated_at timestamptz;
+
+-- ── admin_users: TOTP 2FA (RFC 6238) ────────────────────────────────────
+-- Optional third factor on top of InsForge auth + password layer.
+-- Populated via `npm run admin:enable-totp`. When `totp_secret_enc` is
+-- non-NULL, /api/admin/login REQUIRES a 6-digit `totp` field in the body
+-- and verifies it against the AES-256-GCM-encrypted secret (key derived
+-- from ADMIN_SESSION_SECRET via HKDF-SHA256). Disabling clears both
+-- columns via `npm run admin:disable-totp`.
+ALTER TABLE public.admin_users
+  ADD COLUMN IF NOT EXISTS totp_secret_enc text,
+  ADD COLUMN IF NOT EXISTS totp_enabled_at timestamptz;
+
+-- ── admin_users: TOTP backup codes (Fase 1.3b) ──────────────────────────
+-- Anti-lockout recovery: if the authenticator device is lost, the admin
+-- can use one of these single-use codes to log in. Plaintext codes are
+-- NEVER stored — only scrypt+pepper hashes (same wire format as
+-- password_hash). Populated via `npm run admin:generate-backup-codes`,
+-- which prints the plaintext exactly once and persists the hashes here.
+-- Consumed codes are removed from the array on successful match.
+ALTER TABLE public.admin_users
+  ADD COLUMN IF NOT EXISTS backup_codes text[],
+  ADD COLUMN IF NOT EXISTS backup_codes_generated_at timestamptz;
+
+-- ── admin_login_attempts ────────────────────────────────────────────────
+-- Persistent brute-force / rate-limit store. The previous in-memory `Map`
+-- in src/lib/adminAuth.ts was reset on every serverless cold start, so an
+-- attacker who spaced requests across cold starts evaded the lockout for
+-- free. This table is the source of truth across lambdas; src/lib/
+-- adminRateLimitStore.ts wraps it with a per-lambda in-memory cache.
+-- Rows for unblocked-and-zeroed IPs are deleted by the application;
+-- expired blocks are deleted lazily on read.
+CREATE TABLE IF NOT EXISTS public.admin_login_attempts (
+  ip            text PRIMARY KEY,
+  count         integer NOT NULL DEFAULT 0,
+  blocked_until timestamptz,
+  updated_at    timestamptz NOT NULL DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS admin_login_attempts_blocked_until_idx
+  ON public.admin_login_attempts (blocked_until);
+
+-- ── admin_login_audit ───────────────────────────────────────────────────
+-- Forensic trail of every terminal branch in /api/admin/login (success,
+-- rate_limited, invalid_password, totp_required, totp_invalid, etc.).
+-- Powers post-mortems after a brute-force attempt or a suspicious
+-- successful login. Insert path is best-effort: src/lib/adminLoginAudit.ts
+-- swallows every DB error so a logging failure NEVER blocks login.
+-- Missing-table errors are silently tolerated for fresh installs.
+CREATE TABLE IF NOT EXISTS public.admin_login_audit (
+  id         bigserial PRIMARY KEY,
+  ts         timestamptz NOT NULL DEFAULT now(),
+  ip         text NOT NULL,
+  email      text,
+  outcome    text NOT NULL,
+  reason     text,
+  user_agent text
+);
+
+CREATE INDEX IF NOT EXISTS admin_login_audit_ts_idx
+  ON public.admin_login_audit (ts DESC);
+CREATE INDEX IF NOT EXISTS admin_login_audit_ip_idx
+  ON public.admin_login_audit (ip);
+CREATE INDEX IF NOT EXISTS admin_login_audit_outcome_idx
+  ON public.admin_login_audit (outcome);

@@ -1,0 +1,46 @@
+# CODEOWNERS — Soluciones Fabrick
+#
+# Estas reglas asignan reviewers automáticos a las PRs que tocan ciertos paths.
+# La sintaxis es la de GitHub: https://docs.github.com/articles/about-codeowners
+#
+# El owner principal del repo es @thinkfashz. Se irá ampliando a medida que se
+# incorporen más mantenedores por área.
+
+# Default — todo lo que no matchee otra regla
+*                                   @thinkfashz
+
+# Seguridad / autenticación admin (TOTP, backup codes, audit, rate limit)
+/src/lib/admin*.ts                  @thinkfashz
+/src/app/api/admin/login/**         @thinkfashz
+/src/app/api/admin/unlock/**        @thinkfashz
+/scripts/set-admin-password.ts      @thinkfashz
+/scripts/enable-admin-totp.ts       @thinkfashz
+/scripts/disable-admin-totp.ts      @thinkfashz
+/scripts/generate-admin-backup-codes.ts  @thinkfashz
+/docs/security-private-mode.md      @thinkfashz
+
+# Integraciones / OAuth / cifrado de credenciales
+/src/lib/integrations*.ts           @thinkfashz
+/src/lib/*OAuth.ts                  @thinkfashz
+/src/lib/*Credentials.ts            @thinkfashz
+/src/app/api/admin/integrations/**  @thinkfashz
+/src/app/api/admin/{ml,google,meta,tiktok}/**  @thinkfashz
+
+# Pagos / checkout
+/src/app/api/payments/**            @thinkfashz
+/src/app/checkout/**                @thinkfashz
+
+# Base de datos (esquema)
+/scripts/create-tables.sql          @thinkfashz
+
+# CI / deploy / infra
+/.github/workflows/                 @thinkfashz
+/vercel.json                        @thinkfashz
+/Dockerfile                         @thinkfashz
+/compose*.yaml                      @thinkfashz
+
+# Documentación pública
+/README.md                          @thinkfashz
+/CHANGELOG.md                       @thinkfashz
+/CONTRIBUTING.md                    @thinkfashz
+/docs/                              @thinkfashz

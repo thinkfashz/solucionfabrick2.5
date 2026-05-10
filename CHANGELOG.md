@@ -8,6 +8,12 @@ El formato sigue [Keep a Changelog 1.1](https://keepachangelog.com/es-ES/1.1.0/)
 
 ### Added
 
+- **Cobertura de helpers puros al 0 %** (Fase 5 — primer ratchet up):
+  - `tests/unit/utils.test.ts` — `cn()` (tailwind-merge conflicts, falsy values, clsx-style conditionals) y `buildProductMetaDescription()` (verb por defecto vs custom).
+  - `tests/unit/whatsapp.test.ts` — `getWhatsAppNumber()` (env var, fallback, strip de no-dígitos) y `buildWhatsAppLink()` (encoding del mensaje, default).
+  - `tests/unit/projects.test.ts` — invariantes de `SEED_PROJECTS` (≥5, ids únicos, campos de display) y aislamiento de `getSeedProjects()` (mutar el resultado no envenena el seed).
+  - `tests/unit/social.test.ts` — `MAX_SOCIAL_IMAGES` documentado.
+  - +21 tests, +4 archivos. Cobertura global: lines/statements 18 → 21.95, functions 40 → 47.18, branches 70 → 76.96.
 - **Documentación de gobernanza** (Fase 4 — `docs/`):
   - `docs/architecture.md` — stack, diagrama Mermaid de alto nivel, capas (frontend público, panel admin, API serverless, datos InsForge), flujos críticos (checkout, login con TOTP, centro de integraciones), workflows CI/CD.
   - `docs/data-model.md` — 36 tablas en `scripts/create-tables.sql` agrupadas por dominio (auth/seguridad admin, commerce, contenido, integraciones, observability/PWA), ERD simplificado de commerce y convenciones de schema.
@@ -50,7 +56,7 @@ El formato sigue [Keep a Changelog 1.1](https://keepachangelog.com/es-ES/1.1.0/)
   - UI `/admin/configuracion`: campos env-managed se muestran con etiqueta "gestionado por env (`VAR`)", input deshabilitado y hint explicativa con instrucción para cambiar la variable en Vercel.
   - Tests: `tests/unit/integrationsEnvMap.test.ts` (15 casos: precedencia entre alias, whitespace = unset, providers desconocidos, no-eco de secretos, invariantes del map).
 - **Umbrales de cobertura como gate de PR** (`vitest.config.ts`, Fase 3):
-  - `coverage.thresholds`: `lines: 18, statements: 18, functions: 40, branches: 70` calibrados al baseline medido el 2026-05-09 (ratchet anti-regresión, no aspiracional).
+  - `coverage.thresholds`: `lines: 18, statements: 18, functions: 40, branches: 70` calibrados al baseline medido el 2026-05-09 (ratchet anti-regresión, no aspiracional). **Subidos en Fase 5 a `lines: 20, statements: 20, functions: 45, branches: 75`** tras añadir tests de los helpers al 0 %.
   - Reporter `lcov` añadido para integraciones futuras (Codecov, SonarCloud, etc.).
   - `coverage/` añadido a `.gitignore`.
 

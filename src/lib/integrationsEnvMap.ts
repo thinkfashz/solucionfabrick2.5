@@ -179,3 +179,65 @@ export function envFieldPreview(value: string): string {
 	if (value.length === 0) return '';
 	return value.length <= 4 ? '•••' : `••• ${value.slice(-4)}`;
 }
+
+// ─────────────────────────────────────────────────────────────────────────
+// Phase 2B compatibility shims.
+//
+// The runtime credential helpers in `*Credentials.ts` consume the env map
+// through these three thin wrappers so a new helper only needs to know one
+// API. They sit on top of the existing `pick` / `INTEGRATIONS_ENV_MAP` —
+// there is no second source of truth.
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Provider keys declared in {@link INTEGRATIONS_ENV_MAP}. */
+export type IntegrationProvider = keyof typeof INTEGRATIONS_ENV_MAP;
+
+/**
+ * Returns a string value from the first env-var alias that holds a non-empty
+ * trimmed value, or `undefined`. Whitespace-only values are treated as unset.
+ *
+ * Returns `{ value, envVar }` rather than the raw string so callers can
+ * surface the resolving alias in errors / audit logs without re-walking the
+ * map themselves.
+ */
+export function readEnvFromMap(
+	provider: string,
+	field: string,
+): { value: string; envVar: string } | undefined {
+	const aliases = INTEGRATIONS_ENV_MAP[provider]?.[field];
+	if (!aliases || aliases.length === 0) return undefined;
+	const hit = pick(aliases);
+	if (!hit) return undefined;
+	return { value: hit.value, envVar: hit.envName };
+}
+
+/**
+ * Returns the subset of provider fields whose env var is currently set,
+ * with the alias name that resolved. Used by `POST /api/admin/integrations`
+ * to refuse env-managed fields with a `409 ENV_VAR_PRESENT`.
+ *
+ * Values are intentionally NOT included — the API never echoes secrets back
+ * to the client; only the alias name is exposed so the UI can render
+ * "Gestionado por env (`META_ACCESS_TOKEN`)".
+ */
+export function envForProvider(
+	provider: string,
+): Record<string, { envVar: string }> {
+	const fields = INTEGRATIONS_ENV_MAP[provider];
+	if (!fields) return {};
+	const out: Record<string, { envVar: string }> = {};
+	for (const field of Object.keys(fields)) {
+		const hit = readEnvFromMap(provider, field);
+		if (hit) out[field] = { envVar: hit.envVar };
+	}
+	return out;
+}
+
+/**
+ * Returns the list of providers known to the env map (regardless of whether
+ * any alias is currently set). Useful for UI rendering where a deterministic
+ * order matters.
+ */
+export function listIntegrationProviders(): readonly string[] {
+	return Object.keys(INTEGRATIONS_ENV_MAP);
+}

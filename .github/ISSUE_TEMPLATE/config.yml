@@ -1,0 +1,8 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 🔒 Vulnerabilidades explotables
+    url: https://github.com/thinkfashz/solucionfabrick2.5/security/advisories/new
+    about: Reporta vulnerabilidades EXPLOTABLES vía GitHub Security Advisory privado, NO en issues públicos.
+  - name: 💬 Preguntas generales
+    url: https://github.com/thinkfashz/solucionfabrick2.5/discussions
+    about: Para preguntas, ideas o discusión abierta, usa Discussions (si están habilitadas).

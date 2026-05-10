@@ -1,17 +1,22 @@
 /**
  * Admin authentication helpers: rate limiting + session management.
- * Rate limit store is in-memory — resets on server restart (suitable for Edge/Node runtime).
+ *
+ * Rate-limit functions are **async** since Phase 1.7 of the privatization
+ * plan: the counters are now persisted to the `admin_login_attempts` table
+ * via {@link adminRateLimitStore} so they survive serverless cold starts.
+ * A short-lived per-lambda in-memory cache lives in that store to keep
+ * the hot path fast.
  */
+
+import {
+  readRateLimitEntry,
+  writeRateLimitEntry,
+  deleteRateLimitEntry,
+  type RateLimitEntry,
+} from '@/lib/adminRateLimitStore';
 
 const RATE_LIMIT_MAX_ATTEMPTS = 10;
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
-
-interface RateLimitEntry {
-  count: number;
-  blockedUntil: number | null;
-}
-
-const rateLimitStore = new Map<string, RateLimitEntry>();
 
 /** Resolve client IP from proxy headers (x-real-ip / x-forwarded-for). */
 export function getClientIp(request: Request): string {
@@ -26,35 +31,38 @@ export function getClientIp(request: Request): string {
 }
 
 /** Returns true if the IP is currently blocked. */
-export function isRateLimited(ip: string): boolean {
-  const entry = rateLimitStore.get(ip);
+export async function isRateLimited(ip: string): Promise<boolean> {
+  const entry = await readRateLimitEntry(ip);
   if (!entry) return false;
   if (entry.blockedUntil && Date.now() < entry.blockedUntil) return true;
-  // Block expired — clean up
+  // Block expired — clean up so the next failed attempt starts fresh.
   if (entry.blockedUntil && Date.now() >= entry.blockedUntil) {
-    rateLimitStore.delete(ip);
+    await deleteRateLimitEntry(ip);
   }
   return false;
 }
 
 /** Records a failed login attempt for the IP. */
-export function recordFailedAttempt(ip: string): void {
-  const entry = rateLimitStore.get(ip) ?? { count: 0, blockedUntil: null };
-  entry.count += 1;
-  if (entry.count >= RATE_LIMIT_MAX_ATTEMPTS) {
-    entry.blockedUntil = Date.now() + RATE_LIMIT_WINDOW_MS;
+export async function recordFailedAttempt(ip: string): Promise<void> {
+  const current = (await readRateLimitEntry(ip)) ?? { count: 0, blockedUntil: null };
+  const next: RateLimitEntry = {
+    count: current.count + 1,
+    blockedUntil: current.blockedUntil,
+  };
+  if (next.count >= RATE_LIMIT_MAX_ATTEMPTS) {
+    next.blockedUntil = Date.now() + RATE_LIMIT_WINDOW_MS;
   }
-  rateLimitStore.set(ip, entry);
+  await writeRateLimitEntry(ip, next);
 }
 
 /** Clears failed attempts for the IP after a successful login. */
-export function clearFailedAttempts(ip: string): void {
-  rateLimitStore.delete(ip);
+export async function clearFailedAttempts(ip: string): Promise<void> {
+  await deleteRateLimitEntry(ip);
 }
 
 /** Returns remaining seconds until the IP is unblocked, or 0. */
-export function blockedSecondsRemaining(ip: string): number {
-  const entry = rateLimitStore.get(ip);
+export async function blockedSecondsRemaining(ip: string): Promise<number> {
+  const entry = await readRateLimitEntry(ip);
   if (!entry?.blockedUntil) return 0;
   const remaining = Math.ceil((entry.blockedUntil - Date.now()) / 1000);
   return remaining > 0 ? remaining : 0;

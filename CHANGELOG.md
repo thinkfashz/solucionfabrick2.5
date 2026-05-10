@@ -8,6 +8,13 @@ El formato sigue [Keep a Changelog 1.1](https://keepachangelog.com/es-ES/1.1.0/)
 
 ### Added
 
+- **Cobertura de helpers puros al 0 %** (Fase 6 — segundo ratchet up):
+  - `tests/unit/money.test.ts` — `CURRENCIES`, `isCurrencyCode()` (incluye guard contra `__proto__`/`toString`), `convertFromClp()` (errores en rate≤0/NaN/∞, redondeo a decimales del target), `formatMoney()` (es-CL para CLP, fallback `symbol+toFixed` ante locale inválido) y `readCurrencyCookie()` (default, valor válido, `decodeURIComponent`, whitelist).
+  - `tests/unit/markdown.test.ts` — `renderMarkdown()` (sanitiza `<script>`/`<style>`/`onerror`/`onload`/`onclick`, tolera null/undefined), `estimateReadingMinutes()` (piso 1 min, ~220 wpm) y `slugify()` (NFD diacritic strip, colapso de separadores, cap 96, drop emoji).
+  - `tests/unit/budgetMath.test.ts` — `IVA_RATE`, `computeTotals()` (clamp negativos, shipping/installation pre-IVA, override de `ivaRate`, redondeo CLP), `buildProposal()` (group-by-category, fallback `servicios`, title-case de categorías desconocidas, `docNumber` determinista vs aleatorio, `validityDays` default 15, summary singular/plural, reuso de totals provistos) y `formatCLP()` (no decimals, coerción de no-finitos a 0).
+  - `tests/unit/homeSectionKinds.test.ts` — `SECTION_KINDS` (contrato cerrado de 9 kinds, sin duplicados, slugs lowercase).
+  - +53 tests, +4 archivos. Cobertura global: lines/statements 21.95 → 23.40, functions 47.18 → 48.78, branches 76.96 → 78.10.
+  - Umbrales `vitest.config.ts` subidos a `lines: 22, statements: 22, functions: 47, branches: 77`.
 - **Cobertura de helpers puros al 0 %** (Fase 5 — primer ratchet up):
   - `tests/unit/utils.test.ts` — `cn()` (tailwind-merge conflicts, falsy values, clsx-style conditionals) y `buildProductMetaDescription()` (verb por defecto vs custom).
   - `tests/unit/whatsapp.test.ts` — `getWhatsAppNumber()` (env var, fallback, strip de no-dígitos) y `buildWhatsAppLink()` (encoding del mensaje, default).

@@ -11,13 +11,13 @@ export default defineConfig({
       reporter: ['text', 'html', 'lcov'],
       include: ['src/lib/**', 'src/app/api/**'],
       exclude: ['**/*.d.ts'],
-      // Ratchet baseline (medido 2026-05-10 tras Fase 5): bloquea regresiones,
+      // Ratchet baseline (medido 2026-05-10 tras Fase 6): bloquea regresiones,
       // no aspira. El plan a futuro sube global a 60 y `src/lib/` a 80.
       thresholds: {
-        lines: 20,
-        statements: 20,
-        functions: 45,
-        branches: 75,
+        lines: 22,
+        statements: 22,
+        functions: 47,
+        branches: 77,
       },
     },
   },

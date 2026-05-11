@@ -51,8 +51,14 @@ export async function POST(request: Request) {
   });
 
   if (resetErr) {
+    // Log the SDK-side reason for debugging but DO NOT echo it to the
+    // client. Different InsForge messages ("invalid token", "expired
+    // token", "user not found", "weak password", …) would otherwise turn
+    // this endpoint into an enumeration oracle for OTP validity. Greptile
+    // P2 on PR #149 — fixed by always returning the same generic 401.
+    console.warn('[recover/finalize] resetPassword rejected:', resetErr.message);
     return NextResponse.json(
-      { error: resetErr.message ?? 'No se pudo completar la recuperación.' },
+      { error: 'No se pudo completar la recuperación.' },
       { status: 401 }
     );
   }

@@ -6,6 +6,12 @@ El formato sigue [Keep a Changelog 1.1](https://keepachangelog.com/es-ES/1.1.0/)
 
 ## [Unreleased]
 
+### Fixed
+
+- **Cierra dos bypass de rate-limit que sobrevivieron al PR #149** (post-mortem Greptile):
+  - `/api/admin/init-account`: la llamada a `clearFailedAttempts(getClientIp(request))` corría incondicional **antes** del check `userAlreadyExists`. Como el endpoint no exige auth, cualquier caller podía POSTear, recibir `alreadyExists: true` (estado normal en producción) y de paso limpiar su contador de intentos fallidos — el mismo bypass que PR #149 pretendía cerrar, reubicado a otro endpoint. Fix: `clearFailedAttempts` ahora corre **sólo** en la rama de cuenta nueva (post-signUp exitoso), que se ejecuta a lo sumo una vez por deployment lifetime.
+  - `/api/admin/recover/finalize`: el mensaje de error del SDK de InsForge (`resetErr.message`) se reenviaba verbatim al cliente, contradiciendo el comentario de doc que afirma "modos de fallo indistinguibles". Mensajes distintos (token inválido vs expirado vs usuario no encontrado vs contraseña débil) hacían del endpoint un oráculo de validez de OTP. Fix: el motivo del SDK se logguea via `console.warn` para debugging, pero al cliente siempre va el mismo string genérico `'No se pudo completar la recuperación.'` con status 401.
+
 ### Added
 
 - **Cobertura de helpers puros al 0 %** (Fase 7 — tercer ratchet up):

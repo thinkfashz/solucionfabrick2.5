@@ -68,15 +68,13 @@ export async function POST(request: Request) {
     }
   }
 
-  // The init flow itself proves control of the deployment (anyone hitting
-  // this endpoint already has access to the running server). Clear any IP
-  // rate-limit so the operator can attempt a normal login immediately
-  // afterwards. Done server-side so /api/admin/unlock does not need to
-  // exist as an unauthenticated client-callable endpoint (CVE-class
-  // bypass — see Greptile review of PR #148).
-  await clearFailedAttempts(getClientIp(request));
-
   if (userAlreadyExists) {
+    // Do NOT clear the rate-limit here. Once the admin account exists this
+    // endpoint becomes a permanent unauthenticated handler that anyone on
+    // the internet can POST to, and clearing the counter unconditionally
+    // would re-introduce the same bypass that PR #149 removed (Greptile
+    // P1 on PR #149: any caller could exhaust 9 attempts, hit init-account,
+    // and repeat).
     return NextResponse.json({
       ok: false,
       alreadyExists: true,
@@ -84,6 +82,14 @@ export async function POST(request: Request) {
         'La cuenta ya existe en InsForge. Si no recuerdas la contraseña, usa la opción de recuperación.',
     });
   }
+
+  // New-account branch only: a successful InsForge signUp with the
+  // configured ADMIN_EMAIL + ADMIN_INITIAL_PASSWORD proves control of the
+  // deployment env (those values are server-side env vars). This branch
+  // runs at most once per deployment lifetime — after the first success
+  // every subsequent call falls into `userAlreadyExists` above and returns
+  // without touching the rate-limit counter.
+  await clearFailedAttempts(getClientIp(request));
 
   void signUpData; // consumed above; included to keep linter happy
   return NextResponse.json({

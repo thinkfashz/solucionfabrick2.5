@@ -1,15 +1,62 @@
 import { NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
-import { clearFailedAttempts, getClientIp } from '@/lib/adminAuth';
+import {
+  clearFailedAttempts,
+  getClientIp,
+  validateInitSecret,
+} from '@/lib/adminAuth';
 
-const ADMIN_EMAIL = process.env.ADMIN_EMAIL || 'f.eduardomicolta@gmail.com';
-const ADMIN_INITIAL_PASSWORD = process.env.ADMIN_INITIAL_PASSWORD || '8dediciembre';
+const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'f.eduardomicolta@gmail.com')
+  .trim()
+  .toLowerCase();
 
 export async function POST(request: Request) {
+  // ── Hardening (Greptile post-mortem of PR #149) ──────────────────────
+  // The endpoint used to default `ADMIN_INITIAL_PASSWORD` to a hardcoded
+  // string and ran without auth. That meant anyone who cloned the public
+  // repo could deploy it, hit /api/admin/init-account, and create the
+  // admin account with a known password — a self-pwn waiting to happen.
+  //
+  // Hardening applied:
+  //  1. ADMIN_INITIAL_PASSWORD is now REQUIRED env var (no default). The
+  //     handler refuses to proceed if it's empty.
+  //  2. ADMIN_INIT_SECRET is also REQUIRED. The client must echo it back
+  //     in the `x-admin-init-secret` header. Operators set this in the
+  //     same Vercel/host env-vars panel where they set the password, and
+  //     paste it into the init UI when bootstrapping. Comparison is
+  //     constant-time so no timing oracle leaks.
+  // ─────────────────────────────────────────────────────────────────────
+  const initialPassword = (process.env.ADMIN_INITIAL_PASSWORD ?? '').trim();
+  const expectedSecret = (process.env.ADMIN_INIT_SECRET ?? '').trim();
+  if (!initialPassword || !expectedSecret) {
+    const missing: string[] = [];
+    if (!initialPassword) missing.push('ADMIN_INITIAL_PASSWORD');
+    if (!expectedSecret) missing.push('ADMIN_INIT_SECRET');
+    return NextResponse.json(
+      {
+        error:
+          `Init no configurado. Faltan variables de entorno: ${missing.join(', ')}. ` +
+          'Configúralas en Vercel → Settings → Environment Variables (marcadas para Production) y vuelve a desplegar.',
+        code: 'INIT_NOT_CONFIGURED',
+        missing,
+      },
+      { status: 500 }
+    );
+  }
+
+  const providedSecret = request.headers.get('x-admin-init-secret');
+  if (!validateInitSecret(providedSecret, expectedSecret)) {
+    // Generic 401 — never echo whether the header was missing vs wrong.
+    return NextResponse.json(
+      { error: 'No autorizado.' },
+      { status: 401 }
+    );
+  }
+
   // Attempt to create the admin account in InsForge
   const { data: signUpData, error: signUpError } = await insforge.auth.signUp({
     email: ADMIN_EMAIL,
-    password: ADMIN_INITIAL_PASSWORD,
+    password: initialPassword,
     name: 'Admin Fabrick',
   });
 
@@ -70,11 +117,11 @@ export async function POST(request: Request) {
 
   if (userAlreadyExists) {
     // Do NOT clear the rate-limit here. Once the admin account exists this
-    // endpoint becomes a permanent unauthenticated handler that anyone on
-    // the internet can POST to, and clearing the counter unconditionally
-    // would re-introduce the same bypass that PR #149 removed (Greptile
-    // P1 on PR #149: any caller could exhaust 9 attempts, hit init-account,
-    // and repeat).
+    // endpoint becomes a permanent gated handler that legitimate operators
+    // can still call (e.g. to re-approve the bootstrap admin), but a
+    // successful call no longer touches the IP counter — that would let
+    // an operator-with-the-secret bypass their own rate-limit, which is
+    // out of scope for this endpoint.
     return NextResponse.json({
       ok: false,
       alreadyExists: true,
@@ -83,12 +130,11 @@ export async function POST(request: Request) {
     });
   }
 
-  // New-account branch only: a successful InsForge signUp with the
-  // configured ADMIN_EMAIL + ADMIN_INITIAL_PASSWORD proves control of the
-  // deployment env (those values are server-side env vars). This branch
-  // runs at most once per deployment lifetime — after the first success
-  // every subsequent call falls into `userAlreadyExists` above and returns
-  // without touching the rate-limit counter.
+  // New-account branch only: the InsForge signUp succeeded for the very
+  // first time. Combined with the ADMIN_INIT_SECRET gate above, this is
+  // a solid proof of control of both the deployment env and the bootstrap
+  // intent — clear the IP rate-limit so the operator can sign in
+  // immediately afterwards.
   await clearFailedAttempts(getClientIp(request));
 
   void signUpData; // consumed above; included to keep linter happy

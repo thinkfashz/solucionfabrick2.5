@@ -6,6 +6,14 @@ El formato sigue [Keep a Changelog 1.1](https://keepachangelog.com/es-ES/1.1.0/)
 
 ## [Unreleased]
 
+### Changed (BREAKING)
+
+- **`/api/admin/init-account` ahora exige dos variables de entorno**. El endpoint dejó de tener un default hardcoded (`'8dediciembre'`) para `ADMIN_INITIAL_PASSWORD` y agregó un gate de header `x-admin-init-secret` validado constant-time contra `ADMIN_INIT_SECRET`. Cualquier deploy fresco que no las configure va a recibir `500 INIT_NOT_CONFIGURED` con la lista de variables faltantes (sin valores). **Migración**: generá `ADMIN_INIT_SECRET=$(openssl rand -base64 48)`, elegí una password fuerte para `ADMIN_INITIAL_PASSWORD`, agregá ambas en Vercel → Settings → Environment Variables (Production + Preview + Development) y re-deployá. Después del primer init exitoso ambas pueden borrarse para desactivar el flujo de bootstrap.
+
+### Added
+
+- **Helpers de comparación constant-time en `src/lib/adminAuth.ts`**: `timingSafeStringEqual(a, b)` (wrapper sobre `node:crypto.timingSafeEqual` con trim, validación de tipos y guard de longitud) y `validateInitSecret(provided, expected)` (atajo para verificar headers de bootstrap). Cobertura: `tests/unit/initSecretAuth.test.ts` con 13 casos (match, trim, length-mismatch, empty/whitespace, prefix-attack, multibyte UTF-8, non-string defensivo).
+
 ### Fixed
 
 - **Cierra dos bypass de rate-limit que sobrevivieron al PR #149** (post-mortem Greptile):

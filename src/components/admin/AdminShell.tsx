@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUpRight, AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Stethoscope, Store, Terminal,
-  TrendingDown, Truck, Telescope, Users, Wallet, X, Zap, Plus, MessageCircle,
+  TrendingDown, Truck, Telescope, Users, Wallet, X, Zap, Plus, MessageCircle, KeyRound, Shield, Activity, Scan, Receipt, FlaskConical, Plug,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
@@ -79,12 +79,23 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/estado', label: 'Estado del sistema', description: 'Diagnóstico CMS, BD, env e integraciones', icon: Stethoscope },
       { href: '/admin/errores', label: 'Monitor de Errores', description: 'Fallos capturados de las rutas API', icon: AlertTriangle },
       { href: '/admin/vercel-logs', label: 'Logs de Vercel', description: 'Build + runtime logs del deployment', icon: Terminal },
+      { href: '/admin/monitor', label: 'Monitor del sistema', description: 'CPU, RAM, latencia y health checks en tiempo real', icon: Activity, highlight: true },
       { href: '/admin/manual', label: 'Manual', description: 'Guía técnica de la app', icon: BookOpen, highlight: true },
-      { href: '/admin/observatory', label: 'Observatory', description: 'Red en tiempo real', icon: Radio },
+      { href: '/admin/observatory', label: 'Observatory', description: 'Red en tiempo real 3D', icon: Radio },
       { href: '/admin/envios', label: 'Tarifas de Envío', description: 'Costos por región y transportista', icon: Truck },
       { href: '/admin/sql', label: 'Terminal SQL', description: 'Ejecutar SQL en InsForge', icon: Database },
+      { href: '/admin/testing', label: 'Testing', description: 'Suite de pruebas y smoke tests', icon: FlaskConical },
       { href: '/admin/setup', label: 'Setup', description: 'Verificar tablas InsForge', icon: Database, superadminOnly: true },
       { href: '/admin/equipo', label: 'Equipo', description: 'Roles, invitaciones y aprobaciones', icon: ShieldCheck, superadminOnly: true },
+    ],
+  },
+  {
+    title: 'Seguridad & Claves',
+    links: [
+      { href: '/admin/center', label: 'Centro de integración', description: 'Credenciales, claves API y encriptación de proveedores', icon: KeyRound, highlight: true },
+      { href: '/admin/extensions', label: 'Extensiones y Webhooks', description: 'Snippets, webhooks, OAuth y signing keys', icon: Plug, highlight: true },
+      { href: '/admin/facturas', label: 'Facturas DTE', description: 'Documentos tributarios y SII', icon: Receipt },
+      { href: '/admin/inventario/scan', label: 'Escáner de inventario', description: 'Lectura de códigos de barras y QR', icon: Scan },
     ],
   },
 ];
@@ -136,6 +147,12 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/manual': 'Manual',
   '/admin/errores': 'Monitor de Errores',
   '/admin/vercel-logs': 'Logs de Vercel',
+  '/admin/monitor': 'Monitor del sistema',
+  '/admin/testing': 'Testing',
+  '/admin/center': 'Centro de integración',
+  '/admin/extensions': 'Extensiones y Webhooks',
+  '/admin/facturas': 'Facturas DTE',
+  '/admin/inventario/scan': 'Escáner de inventario',
 };
 
 function NavItem({ href, label, description, icon: Icon, active, onNavigate, highlight = false, centered = false }: {

@@ -33,24 +33,37 @@ export default function SplashScreen() {
   // El panel admin nunca debe quedar tapado por el splash.
   const isAdmin = pathname?.startsWith('/admin') ?? false;
 
-  const [visible, setVisible] = useState(() => {
-    if (typeof window === 'undefined') return true;
-    try {
-      return window.sessionStorage.getItem(SESSION_FLAG) !== '1';
-    } catch {
-      return true;
-    }
-  });
+  // Always start hidden so the server never emits black-screen HTML.
+  // The useEffect below reads sessionStorage (client-only, after hydration)
+  // and flips visible to true only when the splash should actually show.
+  // This eliminates the server/client mismatch that caused the black screen
+  // on reload: previously the server rendered visible=true (no window) while
+  // the client hydrated with visible=false (sessionStorage flag set), leaving
+  // the server-rendered black div on screen until React finished reconciling.
+  const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
   // Hard kill switch — si AnimatePresence o framer-motion fallan al hacer
   // el exit, este flag oculta el splash retirándolo del DOM.
   const [hardHidden, setHardHidden] = useState(false);
 
+  // Decide client-side visibility once after hydration.
+  // Also clears the legacy LoadingScreen flag regardless of whether we show.
+  useEffect(() => {
+    if (isAdmin) return;
+    try { window.sessionStorage.removeItem(LEGACY_SESSION_FLAG); } catch { /* ignore */ }
+    try {
+      if (window.sessionStorage.getItem(SESSION_FLAG) !== '1') {
+        setVisible(true);
+      }
+    } catch {
+      // sessionStorage unavailable (private mode, quota) — skip splash silently
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
   useEffect(() => {
     if (!visible) return;
 
     try { window.sessionStorage.setItem(SESSION_FLAG, '1'); } catch { /* private mode / quota */ }
-    try { window.sessionStorage.removeItem(LEGACY_SESSION_FLAG); } catch { /* ignore */ }
 
     const startTime = Date.now();
     const duration = prefersReduced ? 400 : 1200;

@@ -14,6 +14,7 @@ import { AdminBottomNav } from '@/components/AdminBottomNav';
 import { AdminCommandPalette, type CommandItem } from '@/components/admin/AdminCommandPalette';
 import { BrandMark } from '@/components/admin/ui';
 import WhatsNewBanner from '@/components/admin/WhatsNewBanner';
+import AdminContextMenu from '@/components/admin/AdminContextMenu';
 
 type NavLink = { href: string; label: string; description: string; icon: typeof Package; superadminOnly?: boolean; highlight?: boolean };
 
@@ -369,6 +370,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
@@ -493,7 +495,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           <div className="flex min-w-0 items-center gap-3">
             <button
               type="button"
-              onClick={() => setMobileOpen(true)}
+              onClick={() => setContextMenuOpen(true)}
               className="group relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/30 bg-black/50 text-yellow-300 transition-all hover:border-yellow-300/60 hover:bg-black/70 hover:shadow-[0_6px_20px_rgba(250,204,21,0.25)] active:scale-95 lg:hidden"
               aria-label="Abrir menú"
             >
@@ -687,13 +689,20 @@ export function AdminShell({ children }: { children: ReactNode }) {
       </AnimatePresence>
 
       {/* Bottom navigation (móvil / tablet vertical) */}
-      <AdminBottomNav onOpenMore={() => setMobileOpen(true)} />
+      <AdminBottomNav onOpenMore={() => setContextMenuOpen(true)} />
 
       {/* Cmd+K command palette: searches navSections by label/description */}
       <AdminCommandPalette
         items={commandItems}
         open={paletteOpen}
         onOpenChange={setPaletteOpen}
+      />
+
+      {/* Mobile quick-access context menu */}
+      <AdminContextMenu
+        open={contextMenuOpen}
+        onClose={() => setContextMenuOpen(false)}
+        onLogout={handleLogout}
       />
     </div>
   );

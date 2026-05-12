@@ -33,9 +33,12 @@ import {
 	SlidersHorizontal,
 	ArrowUpDown,
 	Tag,
+	Search,
 } from 'lucide-react';
 import BannerCarousel from '@/components/BannerCarousel';
 import { useCartContext } from '@/context/CartContext';
+import UiverseProductCard from '@/components/store/UiverseProductCard';
+import UiverseSearchModal from '@/components/UiverseSearchModal';
 
 const CART_CACHE_KEY = 'fabrick.tienda.cart.v1';
 
@@ -174,6 +177,8 @@ export default function TiendaClientPage() {
 	const [sortMode, setSortMode] = useState<'featured' | 'price-asc' | 'price-desc' | 'name-asc'>('featured');
 	const [onlyDiscounted, setOnlyDiscounted] = useState(false);
 	const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
+	const [searchQuery, setSearchQuery] = useState('');
+	const [searchOpen, setSearchOpen] = useState(false);
 
 	const cartIconRef = useRef<HTMLDivElement>(null);
 	const gsapRef = useRef<null | typeof import('gsap').default>(null);
@@ -196,7 +201,9 @@ export default function TiendaClientPage() {
 	}, [liveProducts]);
 
 	const filteredProducts = useMemo(() => {
+		const q = searchQuery.trim().toLowerCase();
 		const base = liveProducts.filter((product) => {
+			if (q && !product.name.toLowerCase().includes(q) && !product.category.toLowerCase().includes(q)) return false;
 			if (selectedCategory !== 'all' && product.category !== selectedCategory) return false;
 			const finalPrice = getFinalPrice(product);
 			if (priceFilter === 'low' && finalPrice > 80000) return false;
@@ -483,6 +490,13 @@ export default function TiendaClientPage() {
 					{/* Right actions */}
 					<div className="flex items-center gap-1">
 						<span title={realtimeConnected ? 'Catálogo en vivo' : 'Cargando'} className={`hidden sm:block w-1.5 h-1.5 rounded-full mr-2 ${realtimeConnected ? 'bg-emerald-500' : 'bg-neutral-400'}`} />
+						<button
+							onClick={() => setSearchOpen(true)}
+							className="p-2 text-neutral-700 hover:text-black transition-colors"
+							aria-label="Buscar productos"
+						>
+							<Search size={20} />
+						</button>
 						{user ? (
 							<button onClick={() => router.push('/mi-cuenta')} className="p-2 text-neutral-700 hover:text-black transition-colors" title="Mi Cuenta">
 								<div className="w-7 h-7 rounded-full bg-neutral-900 text-white flex items-center justify-center text-[10px] font-bold">{getInitials(user.name || user.email)}</div>
@@ -834,69 +848,32 @@ export default function TiendaClientPage() {
 								{fetchComplete && filteredProducts.length === 0 ? (
 									<div className="flex flex-col items-center justify-center py-32 text-center gap-4">
 										<Package size={48} className="text-neutral-300" />
-										<p className="text-neutral-700 text-lg font-medium">No encontramos productos con estos filtros</p>
-										<button onClick={() => { setSelectedCategory('all'); setPriceFilter('all'); setOnlyDiscounted(false); }} className="mt-2 rounded-full bg-black text-white px-6 py-2.5 text-sm font-medium hover:bg-neutral-800">Limpiar filtros</button>
+										<p className="text-neutral-700 text-lg font-medium">
+											{searchQuery.trim() ? `Sin resultados para "${searchQuery}"` : 'No encontramos productos con estos filtros'}
+										</p>
+										<button onClick={() => { setSelectedCategory('all'); setPriceFilter('all'); setOnlyDiscounted(false); setSearchQuery(''); }} className="mt-2 rounded-full bg-black text-white px-6 py-2.5 text-sm font-medium hover:bg-neutral-800">Limpiar filtros</button>
 									</div>
 								) : (
 									<div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
 										{filteredProducts.map((p) => {
 											const pct = (p as { discountPercentage?: number }).discountPercentage ?? 0;
-											const finalPrice = getFinalPrice(p);
 											const stockBadge = getStockBadge(p);
 											const deliveryBadge = getDeliveryBadge(p);
 											const rating = (p as { rating?: number }).rating;
 											return (
-												<article key={p.id} className="nike-card group">
-													<button onClick={() => handleSelectProduct(p)} className="block w-full text-left">
-														<div className="relative overflow-hidden bg-neutral-100 aspect-square">
-															<img src={p.img} alt={p.name} className="w-full h-full object-cover nike-card-img" />
-															{pct > 0 && (
-																<span className="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-bold px-2 py-1 uppercase tracking-wider">-{pct}%</span>
-															)}
-															{/* Quick add overlay */}
-															<div className="nike-card-quickadd absolute bottom-3 left-3 right-3 hidden md:flex">
-																<button
-																	onClick={(e) => { e.stopPropagation(); handleAddToCart(e, p); }}
-																	className="flex-1 bg-white text-black rounded-full py-2.5 text-xs font-medium hover:bg-black hover:text-white transition-colors inline-flex items-center justify-center gap-1.5"
-																>
-																	<ShoppingBag size={13} /> Añadir rápido
-																</button>
-															</div>
-														</div>
-														<div className="pt-3 pb-1">
-															{pct > 0 ? (
-																<p className="text-[11px] uppercase tracking-wider text-red-600 font-bold">Oferta destacada</p>
-															) : (
-																<p className="text-[11px] uppercase tracking-wider text-neutral-500 font-medium">{deliveryBadge.label}</p>
-															)}
-															<h3 className="text-sm md:text-base font-medium text-black mt-0.5 line-clamp-2 leading-tight">{p.name}</h3>
-															<p className="text-xs md:text-sm text-neutral-500 mt-0.5">{p.category}</p>
-															{rating ? (
-																<div className="flex items-center gap-1 mt-1">
-																	{[...Array(5)].map((_, si) => (
-																		<Star key={si} size={11} className={si < Math.round(rating) ? 'text-black fill-black' : 'text-neutral-300 fill-neutral-300'} />
-																	))}
-																	<span className="text-[10px] text-neutral-500 ml-0.5">{rating.toFixed(1)}</span>
-																</div>
-															) : null}
-															<div className="mt-2 flex items-baseline gap-2 flex-wrap">
-																<span className="text-sm md:text-base font-semibold text-black">${finalPrice.toLocaleString('es-CL')}</span>
-																{pct > 0 && <span className="text-xs text-neutral-400 line-through">${p.price.toLocaleString('es-CL')}</span>}
-															</div>
-															<p className={`text-[10px] mt-1 font-medium uppercase tracking-wider ${stockBadge.label.toLowerCase().includes('critico') || stockBadge.label.toLowerCase().includes('crítico') ? 'text-red-600' : stockBadge.label.toLowerCase().includes('bajo') ? 'text-amber-600' : 'text-neutral-500'}`}>
-																{stockBadge.label}
-															</p>
-														</div>
-													</button>
-													<div className="md:hidden pb-2">
-														<button
-															onClick={(e) => handleAddToCart(e, p)}
-															className="w-full bg-black text-white rounded-full py-2 text-xs font-medium hover:bg-neutral-800 transition-colors inline-flex items-center justify-center gap-1.5 mt-1"
-														>
-															<ShoppingBag size={12} /> Añadir
-														</button>
-													</div>
-												</article>
+												<UiverseProductCard
+													key={p.id}
+													name={p.name}
+													price={p.price}
+													category={p.category}
+													img={p.img}
+													discountPct={pct}
+													rating={rating}
+													stockLabel={stockBadge.label}
+													deliveryLabel={deliveryBadge.label}
+													onSelect={() => handleSelectProduct(p)}
+													onAddToCart={(e) => handleAddToCart(e as React.MouseEvent<HTMLButtonElement>, p)}
+												/>
 											);
 										})}
 									</div>
@@ -1606,6 +1583,16 @@ export default function TiendaClientPage() {
 					</div>
 				</div>
 			</footer>
+
+			{/* ── SEARCH MODAL ── */}
+			<UiverseSearchModal
+				open={searchOpen}
+				value={searchQuery}
+				onChange={(v) => setSearchQuery(v)}
+				onClose={() => setSearchOpen(false)}
+				onFilterClick={() => { setSearchOpen(false); setMobileFiltersOpen(true); }}
+				resultCount={searchQuery.trim() ? filteredProducts.length : undefined}
+			/>
 
 			{/* ── EXIT CONFIRM ── */}
 			{showExitConfirm && (

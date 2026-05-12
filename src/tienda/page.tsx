@@ -166,22 +166,6 @@ function SilverGoldButton({ children, onClick, className = '' }: { children: Rea
 	);
 }
 
-const CATEGORY_EMOJI: Record<string, string> = {
-	all: '🏠',
-	Seguridad: '🔐',
-	Iluminación: '💡',
-	Grifería: '🚿',
-	Revestimiento: '🪨',
-	'Smart Home': '📱',
-	Climatización: '❄️',
-	Herramientas: '🔧',
-	Pintura: '🎨',
-	Muebles: '🛋️',
-	Electrodomésticos: '🔌',
-	Baño: '🛁',
-	Cocina: '🍳',
-};
-
 export default function TiendaClientPage() {
 	const router = useRouter();
 	const { user, signOut } = useAuth();
@@ -245,7 +229,7 @@ export default function TiendaClientPage() {
 			return bScore - aScore;
 		});
 		return sorted;
-	}, [liveProducts, searchQuery, selectedCategory, priceFilter, onlyDiscounted, sortMode]);
+	}, [liveProducts, selectedCategory, priceFilter, onlyDiscounted, sortMode]);
 
 	const totalSavingsFiltered = useMemo(() => {
 		return filteredProducts.reduce((acc, product) => {
@@ -478,6 +462,11 @@ export default function TiendaClientPage() {
 				.theme-toggle-btn { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 				.theme-toggle-btn:hover { transform: scale(1.1) rotate(12deg); }
 				.theme-toggle-btn:active { transform: scale(0.9) rotate(-12deg); }
+				.hero-animate { animation: slideInUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) both; }
+				.hero-animate-delay-1 { animation: slideInUp 0.9s 0.15s cubic-bezier(0.16, 1, 0.3, 1) both; }
+				.hero-animate-delay-2 { animation: slideInUp 0.9s 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+				.hero-animate-delay-3 { animation: slideInUp 0.9s 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+				.hero-badge { animation: fadeInScale 0.6s 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 				.shimmer-text {
 					background: linear-gradient(90deg, #111 0%, #555 40%, #FFC700 50%, #555 60%, #111 100%);
 					background-size: 200% auto;
@@ -500,7 +489,7 @@ export default function TiendaClientPage() {
 				.brand-marquee:hover { animation-play-state: paused; }
 				/* Featured card glow */
 				.feat-card { transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s cubic-bezier(0.22,1,0.36,1); }
-				.feat-card:hover { transform: translateY(-6px) scale(1.015); box-shadow: 0 24px 60px rgba(5,150,105,0.12), 0 4px 16px rgba(0,0,0,0.18); }
+				.feat-card:hover { transform: translateY(-6px) scale(1.015); box-shadow: 0 24px 60px rgba(250,204,21,0.15), 0 4px 16px rgba(0,0,0,0.2); }
 				.depth-glass {
 					backdrop-filter: blur(10px);
 					background: linear-gradient(150deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.03) 100%);
@@ -604,8 +593,17 @@ export default function TiendaClientPage() {
 						.nike-scroll::-webkit-scrollbar { display: none; }
 						.nike-scroll { -ms-overflow-style: none; scrollbar-width: none; scroll-snap-type: x mandatory; }
 						.nike-snap { scroll-snap-align: start; }
+						.nike-hero-grad { background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.85) 100%); }
 						@keyframes nikeMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 						.nike-marquee { animation: nikeMarquee 32s linear infinite; }
+						/* Hero cinematic overlay */
+						.hero-overlay-dark { background: linear-gradient(135deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.2) 100%); }
+						.hero-overlay-light { background: linear-gradient(135deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.1) 100%); }
+						/* Animated orbs */
+						@keyframes orbFloat1 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(30px,-20px) scale(1.05); } 66% { transform: translate(-20px,15px) scale(0.97); } }
+						@keyframes orbFloat2 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-25px,20px) scale(1.08); } 66% { transform: translate(15px,-15px) scale(0.95); } }
+						.orb1 { animation: orbFloat1 12s ease-in-out infinite; }
+						.orb2 { animation: orbFloat2 16s ease-in-out infinite; }
 					`}</style>
 
 					{/* Top promo bar */}
@@ -629,61 +627,64 @@ export default function TiendaClientPage() {
 						</ol>
 					</nav>
 
-					{/* ── SEARCH BAR ── */}
-					<section className="max-w-[1400px] mx-auto px-4 md:px-8 mt-4">
-						<div className="flex items-center gap-3">
-							<button
-								onClick={() => setSearchOpen(true)}
-								className={`flex-1 flex items-center gap-3 rounded-2xl px-4 py-3.5 text-left transition-colors ${isDark ? 'bg-zinc-900 border border-zinc-800 hover:border-zinc-700' : 'bg-neutral-100 border border-transparent hover:bg-neutral-200/70'}`}
-								aria-label="Buscar productos"
-							>
-								<Search size={16} className={isDark ? 'text-zinc-500' : 'text-neutral-400'} />
-								<span className={`text-sm ${isDark ? 'text-zinc-500' : 'text-neutral-400'}`}>Buscar productos…</span>
-							</button>
-							<button
-								onClick={() => setMobileFiltersOpen((v) => !v)}
-								className={`flex-shrink-0 w-12 h-12 flex items-center justify-center rounded-2xl border transition-colors ${isDark ? 'border-zinc-800 bg-zinc-900 text-zinc-400 hover:bg-zinc-800' : 'border-neutral-200 bg-white text-neutral-600 hover:bg-neutral-100 shadow-sm'}`}
-								aria-label="Filtros"
-							>
-								<SlidersHorizontal size={18} />
-							</button>
-						</div>
-					</section>
+					{/* ── HERO SECTION (MODERNIZADO) ── */}
+					<section className="max-w-[1400px] mx-auto px-4 md:px-8 mt-2">
+						<div className="relative overflow-hidden rounded-2xl aspect-[16/8] md:aspect-[16/6] group">
+							{/* Imagen con parallax suave */}
+							<img
+								src="https://images.unsplash.com/photo-1581094288338-2314dddb7ece?q=80&w=1800&auto=format&fit=crop"
+								alt="Fabrick"
+								className="w-full h-full object-cover transition-transform duration-[8000ms] ease-linear group-hover:scale-105"
+							/>
+							{/* Overlay con gradiente mejorado */}
+							<div className="absolute inset-0 hero-overlay-light" />
+							{/* Orbs decorativos */}
+							<div className="orb1 absolute top-[-20%] right-[-10%] w-[50%] h-[80%] rounded-full opacity-20 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(250,204,21,0.5) 0%, transparent 70%)' }} />
+							<div className="orb2 absolute bottom-[-30%] left-[-5%] w-[40%] h-[70%] rounded-full opacity-15 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.5) 0%, transparent 70%)' }} />
 
-					{/* ── HERO CARD (REFERENCE STYLE) ── */}
-					<section className="max-w-[1400px] mx-auto px-4 md:px-8 mt-4">
-						<div className="relative overflow-hidden rounded-2xl" style={{ background: 'linear-gradient(135deg, #0f3628 0%, #1a5c3a 60%, #0d2e20 100%)', minHeight: '190px' }}>
-							{/* Decorative glow */}
-							<div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(ellipse at 75% 40%, rgba(52,211,153,0.18) 0%, transparent 65%)' }} />
-
-							{/* Left content */}
-							<div className="relative z-10 px-6 py-7 md:px-10 max-w-[58%] md:max-w-[50%]">
-								<span className="inline-flex items-center gap-1.5 rounded-full bg-yellow-400/20 border border-yellow-400/40 px-3 py-1 text-[11px] font-bold uppercase tracking-wider text-yellow-300">
-									✦ Destacados
-								</span>
-								<h1 className="mt-3 text-white text-2xl md:text-3xl font-black leading-tight tracking-tight">
-									Instala lo<br />mejor de<br className="md:hidden" /> tu hogar.
-								</h1>
-								<p className="mt-2 text-emerald-200/60 text-[13px] leading-relaxed hidden md:block">
-									Seguridad, iluminación y grifería premium con instalación certificada.
-								</p>
-								<button
-									onClick={() => { const el = document.getElementById('nike-grid'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
-									className="mt-5 inline-flex items-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-600 text-white text-sm font-semibold px-5 py-2.5 transition-colors shadow-lg shadow-emerald-900/40"
-								>
-									Ver catálogo
-									<ArrowRight size={14} />
-								</button>
+							{/* Logo badge */}
+							<div className="absolute left-4 top-4 md:left-8 md:top-8 max-w-[240px] rounded-2xl border border-white/20 bg-black/40 px-4 py-3 backdrop-blur-xl shadow-[0_16px_48px_rgba(0,0,0,0.3)] hero-badge">
+								<FabrickLogo active centered className="pointer-events-none" />
+								<p className="mt-2 text-[9px] uppercase tracking-[0.35em] text-white/55">Catálogo oficial</p>
 							</div>
 
-							{/* Right product image */}
-							<div className="absolute right-0 top-0 bottom-0 w-[45%] overflow-hidden">
-								<img
-									src="https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=600&auto=format&fit=crop"
-									alt="Producto Fabrick"
-									className="h-full w-full object-cover object-center"
-									style={{ maskImage: 'linear-gradient(to left, rgba(0,0,0,0.9) 20%, transparent 90%)', WebkitMaskImage: 'linear-gradient(to left, rgba(0,0,0,0.9) 20%, transparent 90%)' }}
-								/>
+							{/* CTA content */}
+							<div className="absolute inset-0 flex items-end md:items-center">
+								<div className="px-6 md:px-14 pb-10 md:pb-0 max-w-2xl text-white">
+									<p className="hero-animate text-[10px] md:text-[11px] uppercase tracking-[0.3em] mb-3 text-yellow-400 font-semibold">Lo último de Fabrick</p>
+									<h1 className="hero-animate-delay-1 nike-headline text-4xl md:text-7xl">
+										Construye<br />lo que sigue.
+									</h1>
+									<p className="hero-animate-delay-2 mt-4 text-sm md:text-base opacity-80 max-w-xl leading-relaxed">
+										Materiales premium curados, instalados por expertos, con garantía real.
+									</p>
+									<div className="hero-animate-delay-2 mt-5 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em]">
+										<span className="rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-300 px-3 py-1.5">Materiales premium</span>
+										<span className="rounded-full border border-white/20 bg-white/8 text-white/80 px-3 py-1.5">Instalación certificada</span>
+										<span className="rounded-full border border-white/20 bg-white/8 text-white/80 px-3 py-1.5">Asesoría real</span>
+									</div>
+									<div className="hero-animate-delay-3 mt-6 flex gap-3 flex-wrap">
+										<button
+											onClick={() => { const el = document.getElementById('nike-grid'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+											className="group/btn relative overflow-hidden bg-white text-black rounded-full px-7 py-3 text-sm font-semibold hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all duration-300 hover:scale-105"
+										>
+											<span className="relative z-10">Comprar ahora</span>
+											<div className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-0 bg-yellow-400 transition-transform duration-300 ease-out" />
+										</button>
+										<button
+											onClick={() => router.push('/contacto')}
+											className="border border-white/50 text-white rounded-full px-7 py-3 text-sm font-medium hover:bg-white/15 hover:border-white/80 transition-all duration-300"
+										>
+											Asesoría gratis
+										</button>
+									</div>
+								</div>
+							</div>
+
+							{/* Scroll indicator */}
+							<div className="absolute bottom-5 right-6 md:right-10 flex items-center gap-2 text-white/40 text-[10px] uppercase tracking-[0.3em]">
+								<span>Scroll</span>
+								<div className="w-8 h-px bg-white/30" />
 							</div>
 						</div>
 					</section>
@@ -733,48 +734,17 @@ export default function TiendaClientPage() {
 						</div>
 					</section>
 
-					{/* ── ICON CATEGORIES (REFERENCE STYLE) ── */}
-					<section className="max-w-[1400px] mx-auto px-4 md:px-8 pt-8">
-						<div className="flex items-center justify-between mb-4">
-							<p className={`text-xs font-bold uppercase tracking-[0.2em] ${isDark ? 'text-zinc-400' : 'text-neutral-500'}`}>Categorías</p>
-						</div>
-						<div className="flex gap-5 overflow-x-auto nike-scroll pb-1">
-							{categories.map((cat) => {
-								const emoji = CATEGORY_EMOJI[cat] ?? '📦';
-								const label = cat === 'all' ? 'Todos' : cat;
-								const active = selectedCategory === cat;
-								return (
-									<button
-										key={`icon-cat-${cat}`}
-										onClick={() => setSelectedCategory(cat)}
-										className="nike-snap shrink-0 flex flex-col items-center gap-2 feat-card"
-									>
-										<div className={`w-[60px] h-[60px] rounded-2xl flex items-center justify-center text-[26px] transition-all duration-200 ${active ? 'bg-emerald-700 shadow-[0_8px_24px_rgba(5,150,105,0.35)] scale-105' : isDark ? 'bg-zinc-800 hover:bg-zinc-700' : 'bg-neutral-100 hover:bg-neutral-200'}`}>
-											{emoji}
-										</div>
-										<span className={`text-[11px] font-semibold whitespace-nowrap ${active ? isDark ? 'text-emerald-400' : 'text-emerald-700' : isDark ? 'text-zinc-400' : 'text-neutral-600'}`}>{label}</span>
-									</button>
-								);
-							})}
-						</div>
-					</section>
-
 					{/* Featured horizontal carousel - "Lo último" */}
 					{filteredProducts.length > 0 && (
-						<section className="max-w-[1400px] mx-auto px-4 md:px-8 pt-10">
+						<section className="max-w-[1400px] mx-auto px-4 md:px-8 pt-12">
 							<div className="flex items-end justify-between mb-5">
 								<div>
-									<h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-neutral-900'}`}>Nuevos Productos</h2>
-									<p className={`text-sm mt-0.5 ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>Recién llegados al catálogo</p>
+									<p className={`text-[10px] uppercase tracking-[0.3em] mb-1 font-semibold ${isDark ? 'text-yellow-400/70' : 'text-yellow-600/80'}`}>Destacados</p>
+									<h2 className="nike-headline text-xl md:text-2xl">Lo último. Lo mejor.</h2>
 								</div>
 								<div className="flex items-center gap-3">
 									<span className={`w-1.5 h-1.5 rounded-full ${realtimeConnected ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]' : isDark ? 'bg-zinc-600' : 'bg-neutral-400'}`} />
-									<button
-										onClick={() => document.getElementById('nike-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-										className={`text-sm font-semibold underline underline-offset-4 hover:no-underline transition-colors ${isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-700 hover:text-emerald-800'}`}
-									>
-										Ver todos
-									</button>
+									<span className={`text-[11px] ${isDark ? 'text-zinc-500' : 'text-neutral-600'}`}>{realtimeConnected ? 'Catálogo en vivo' : 'Cargando…'}</span>
 								</div>
 							</div>
 							<div className="nike-scroll flex gap-4 overflow-x-auto -mx-4 md:-mx-8 px-4 md:px-8 pb-4">
@@ -815,18 +785,13 @@ export default function TiendaClientPage() {
 
 					{/* "Más vendidos" horizontal carousel */}
 					{liveProducts.length > 0 && (
-						<section className="max-w-[1400px] mx-auto px-4 md:px-8 pt-10 pb-2">
+						<section className="max-w-[1400px] mx-auto px-4 md:px-8 pt-12 pb-2">
 							<div className="flex items-end justify-between mb-5">
 								<div>
-									<h2 className={`text-xl font-bold tracking-tight ${isDark ? 'text-white' : 'text-neutral-900'}`}>Más Vendidos</h2>
-									<p className={`text-sm mt-0.5 ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>Los favoritos de nuestros clientes</p>
+									<p className={`text-[10px] uppercase tracking-[0.3em] mb-1 font-semibold ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>Favoritos del catálogo</p>
+									<h2 className="nike-headline text-xl md:text-2xl">Más vendidos.</h2>
 								</div>
-								<button
-									onClick={() => document.getElementById('nike-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}
-									className={`text-sm font-semibold underline underline-offset-4 hover:no-underline transition-colors ${isDark ? 'text-emerald-400 hover:text-emerald-300' : 'text-emerald-700 hover:text-emerald-800'}`}
-								>
-									Ver todos
-								</button>
+								<button onClick={() => document.getElementById('nike-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className={`text-sm font-medium underline underline-offset-4 hover:no-underline hidden md:block hover:text-yellow-500 transition-colors ${isDark ? 'text-zinc-400' : 'text-neutral-600'}`}>Ver todos →</button>
 							</div>
 							<div className="nike-scroll flex gap-4 overflow-x-auto -mx-4 md:-mx-8 px-4 md:px-8 pb-4">
 								{[...liveProducts].sort((a, b) => ((b as { rating?: number }).rating ?? 4.4) - ((a as { rating?: number }).rating ?? 4.4)).slice(0, 8).map((p) => {
@@ -866,11 +831,11 @@ export default function TiendaClientPage() {
 					)}
 
 					{/* Title + sticky filter bar */}
-					<section id="nike-grid" className="max-w-[1400px] mx-auto px-4 md:px-8 pt-12">
+					<section id="nike-grid" className="max-w-[1400px] mx-auto px-4 md:px-8 pt-14">
 						<div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-2">
 							<div>
 								<p className={`text-[11px] uppercase tracking-[0.18em] ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>Catálogo completo</p>
-								<h2 className={`text-3xl md:text-4xl font-black tracking-tight mt-1 ${isDark ? 'text-white' : 'text-neutral-900'}`}>Productos ({filteredProducts.length})</h2>
+								<h2 className="nike-headline text-3xl md:text-4xl mt-1">Productos ({filteredProducts.length})</h2>
 							</div>
 							<div className="flex items-center gap-3">
 								<button onClick={() => setMobileFiltersOpen((v) => !v)} className={`md:hidden inline-flex items-center gap-2 border rounded-full px-4 py-2 text-sm font-medium transition-colors ${isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-neutral-300 hover:bg-neutral-100'}`}>
@@ -901,7 +866,7 @@ export default function TiendaClientPage() {
 								<button
 									key={`chip-${category}`}
 									onClick={() => setSelectedCategory(category)}
-									className={`nike-pill shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-all ${selectedCategory === category ? 'bg-emerald-700 text-white border-emerald-700 shadow-sm' : (isDark ? 'bg-transparent text-zinc-400 border-zinc-700 hover:border-zinc-500 hover:text-white' : 'bg-white text-neutral-700 border-neutral-300 hover:border-emerald-600 hover:text-emerald-700')}`}
+									className={`nike-pill shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-all ${selectedCategory === category ? (isDark ? 'bg-yellow-400 text-black border-yellow-400' : 'bg-black text-white border-black') : (isDark ? 'bg-transparent text-zinc-400 border-zinc-700 hover:border-white hover:text-white' : 'bg-white text-black border-neutral-300 hover:border-black')}`}
 								>
 									{category === 'all' ? 'Todos' : category}
 								</button>
@@ -1016,7 +981,7 @@ export default function TiendaClientPage() {
 										<button onClick={() => { setSelectedCategory('all'); setPriceFilter('all'); setOnlyDiscounted(false); setSearchQuery(''); }} className="mt-2 rounded-full bg-black text-white px-6 py-2.5 text-sm font-medium hover:bg-neutral-800">Limpiar filtros</button>
 									</div>
 								) : (
-									<div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+									<div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
 										{filteredProducts.map((p) => {
 											const pct = (p as { discountPercentage?: number }).discountPercentage ?? 0;
 											const stockBadge = getStockBadge(p);
@@ -1033,7 +998,6 @@ export default function TiendaClientPage() {
 													rating={rating}
 													stockLabel={stockBadge.label}
 													deliveryLabel={deliveryBadge.label}
-													isDark={isDark}
 													onSelect={() => handleSelectProduct(p)}
 													onAddToCart={(e) => handleAddToCart(e as React.MouseEvent<HTMLButtonElement>, p)}
 												/>

@@ -146,18 +146,41 @@ export default function PageTransition() {
         inset: 0,
         zIndex: 10000,
         background:
-          'radial-gradient(ellipse at center, #0a0a0a 0%, #000 70%)',
+          'linear-gradient(135deg, #050505 0%, #0a0a0a 40%, #111108 70%, #0a0a0a 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
         justifyContent: 'center',
-        gap: '1.5rem',
+        gap: '2rem',
         pointerEvents: 'none',
         opacity: 0,
-        transition: 'opacity 0.3s cubic-bezier(0.16,1,0.3,1)',
+        transition: 'opacity 0.45s cubic-bezier(0.22,1,0.36,1)',
       }}
       aria-hidden="true"
     >
+      {/* Ambient glow orbs */}
+      <div style={{
+        position: 'absolute',
+        top: '20%',
+        left: '15%',
+        width: '35vw',
+        height: '35vw',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(250,204,21,0.06) 0%, transparent 70%)',
+        pointerEvents: 'none',
+        animation: 'pt-orb1 4s ease-in-out infinite alternate',
+      }} />
+      <div style={{
+        position: 'absolute',
+        bottom: '15%',
+        right: '10%',
+        width: '28vw',
+        height: '28vw',
+        borderRadius: '50%',
+        background: 'radial-gradient(circle, rgba(99,102,241,0.05) 0%, transparent 70%)',
+        pointerEvents: 'none',
+        animation: 'pt-orb2 5s ease-in-out infinite alternate',
+      }} />
       {/* ── BlackBerry 2.0 connection bar ─────────────────────────────────
           Tienda  ──[ packets travelling both ways through SF logo ]──  Mercado Pago
           The center hub is the animated SF wordmark; gold packets sweep

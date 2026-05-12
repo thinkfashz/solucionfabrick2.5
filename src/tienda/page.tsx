@@ -7,6 +7,7 @@ import { useRouter } from 'next/navigation';
 import { useCatalogProducts } from '@/hooks/useCatalogProducts';
 import { useAuth } from '@/context/AuthContext';
 import { getInitials } from '@/lib/initials';
+import { useTheme } from '@/context/ThemeContext';
 import {
 	ShoppingBag,
 	Menu,
@@ -34,6 +35,9 @@ import {
 	ArrowUpDown,
 	Tag,
 	Search,
+	Sun,
+	Moon,
+	Palette,
 } from 'lucide-react';
 import BannerCarousel from '@/components/BannerCarousel';
 import { useCartContext } from '@/context/CartContext';
@@ -165,6 +169,8 @@ function SilverGoldButton({ children, onClick, className = '' }: { children: Rea
 export default function TiendaClientPage() {
 	const router = useRouter();
 	const { user, signOut } = useAuth();
+	const { theme, toggleTheme, setTheme } = useTheme();
+	const isDark = theme === 'dark' || theme === 'gold';
 	const { products: catalogProducts, connected: realtimeConnected, fetchComplete } = useCatalogProducts();
 	const [selectedProduct, setSelectedProduct] = useState<Product | null>(null);
 	const [isMenuOpen, setIsMenuOpen] = useState(false);
@@ -398,7 +404,7 @@ export default function TiendaClientPage() {
 	}, [cart]);
 
 	return (
-		<div className="bg-white text-black min-h-[100dvh] font-sans overflow-x-hidden relative">
+		<div className={`min-h-[100dvh] font-sans overflow-x-hidden relative transition-colors duration-300 ${isDark ? 'bg-zinc-950 text-white' : 'bg-white text-black'}`}>
 			<style>{`
 				.scrollbar-hide::-webkit-scrollbar { display: none; }
 				.scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
@@ -446,6 +452,44 @@ export default function TiendaClientPage() {
 					transform: rotateX(4deg) rotateY(-6deg) translateY(-6px);
 					box-shadow: 0 38px 90px rgba(0,0,0,0.78), 0 0 0 1px rgba(250,204,21,0.2) inset;
 				}
+				/* Hero animations */
+				@keyframes heroFloat { 0%, 100% { transform: translateY(0px); } 50% { transform: translateY(-12px); } }
+				@keyframes heroGlow { 0%, 100% { opacity: 0.4; } 50% { opacity: 0.8; } }
+				@keyframes slideInUp { from { opacity: 0; transform: translateY(32px); } to { opacity: 1; transform: translateY(0); } }
+				@keyframes fadeInScale { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+				@keyframes shimmer { 0% { background-position: -200% center; } 100% { background-position: 200% center; } }
+				@keyframes themeToggleSpin { from { transform: rotate(0deg) scale(1); } 50% { transform: rotate(180deg) scale(0.8); } to { transform: rotate(360deg) scale(1); } }
+				.theme-toggle-btn { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
+				.theme-toggle-btn:hover { transform: scale(1.1) rotate(12deg); }
+				.theme-toggle-btn:active { transform: scale(0.9) rotate(-12deg); }
+				.hero-animate { animation: slideInUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) both; }
+				.hero-animate-delay-1 { animation: slideInUp 0.9s 0.15s cubic-bezier(0.16, 1, 0.3, 1) both; }
+				.hero-animate-delay-2 { animation: slideInUp 0.9s 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
+				.hero-animate-delay-3 { animation: slideInUp 0.9s 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
+				.hero-badge { animation: fadeInScale 0.6s 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
+				.shimmer-text {
+					background: linear-gradient(90deg, #111 0%, #555 40%, #FFC700 50%, #555 60%, #111 100%);
+					background-size: 200% auto;
+					-webkit-background-clip: text;
+					-webkit-text-fill-color: transparent;
+					background-clip: text;
+					animation: shimmer 3s linear infinite;
+				}
+				.shimmer-text-dark {
+					background: linear-gradient(90deg, #fff 0%, #aaa 40%, #FFC700 50%, #aaa 60%, #fff 100%);
+					background-size: 200% auto;
+					-webkit-background-clip: text;
+					-webkit-text-fill-color: transparent;
+					background-clip: text;
+					animation: shimmer 3s linear infinite;
+				}
+				/* Advertisers / brand logos */
+				@keyframes brandMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
+				.brand-marquee { animation: brandMarquee 28s linear infinite; }
+				.brand-marquee:hover { animation-play-state: paused; }
+				/* Featured card glow */
+				.feat-card { transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s cubic-bezier(0.22,1,0.36,1); }
+				.feat-card:hover { transform: translateY(-6px) scale(1.015); box-shadow: 0 24px 60px rgba(250,204,21,0.15), 0 4px 16px rgba(0,0,0,0.2); }
 				.depth-glass {
 					backdrop-filter: blur(10px);
 					background: linear-gradient(150deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.03) 100%);
@@ -466,14 +510,14 @@ export default function TiendaClientPage() {
 				}
 			`}</style>
 
-			{/* ── NAVBAR (NIKE-STYLE WHITE) ── */}
-			<nav className="fixed top-0 left-0 w-full z-[100] bg-white/95 backdrop-blur-xl border-b border-neutral-200 py-0 px-0 transition-all duration-300">
+			{/* ── NAVBAR THEME-AWARE ── */}
+			<nav className={`fixed top-0 left-0 w-full z-[100] backdrop-blur-xl border-b py-0 px-0 transition-all duration-300 ${isDark ? 'bg-zinc-950/95 border-white/10' : 'bg-white/95 border-neutral-200'}`}>
 				<div className="max-w-[1400px] mx-auto px-4 md:px-8 h-[60px] flex items-center justify-between gap-4">
 					{/* Logo */}
-					<button onClick={() => router.push('/')} className="flex-shrink-0 rounded-full border border-neutral-200 bg-white px-3 py-2 shadow-[0_10px_30px_rgba(15,23,42,0.06)] transition-all hover:border-yellow-300 hover:shadow-[0_14px_34px_rgba(250,204,21,0.18)]">
+					<button onClick={() => router.push('/')} className={`flex-shrink-0 rounded-full border px-3 py-2 transition-all hover:border-yellow-400/60 hover:shadow-[0_14px_34px_rgba(250,204,21,0.18)] ${isDark ? 'border-white/10 bg-zinc-900/80' : 'border-neutral-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)]'}`}>
 						<div className="flex items-center gap-3">
-							<FabrickLogo tone="dark" className="pointer-events-none" />
-							<span className="hidden lg:inline-flex rounded-full bg-neutral-100 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.24em] text-neutral-500">
+							<FabrickLogo tone={isDark ? 'light' : 'dark'} className="pointer-events-none" />
+							<span className={`hidden lg:inline-flex rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.24em] ${isDark ? 'bg-white/10 text-white/50' : 'bg-neutral-100 text-neutral-500'}`}>
 								Store
 							</span>
 						</div>
@@ -481,10 +525,10 @@ export default function TiendaClientPage() {
 
 					{/* Center nav links - desktop */}
 					<div className="hidden md:flex items-center gap-6">
-						<button onClick={() => document.getElementById('nike-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="text-sm font-medium text-neutral-700 hover:text-black transition-colors">Catálogo</button>
-						<button onClick={() => setSelectedCategory('Seguridad')} className="text-sm font-medium text-neutral-700 hover:text-black transition-colors">Seguridad</button>
-						<button onClick={() => setSelectedCategory('Iluminación')} className="text-sm font-medium text-neutral-700 hover:text-black transition-colors">Iluminación</button>
-						<button onClick={() => setOnlyDiscounted((v) => !v)} className={`text-sm font-medium transition-colors ${onlyDiscounted ? 'text-red-600' : 'text-neutral-700 hover:text-black'}`}>Ofertas</button>
+						<button onClick={() => document.getElementById('nike-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className={`text-sm font-medium transition-colors ${isDark ? 'text-white/70 hover:text-white' : 'text-neutral-700 hover:text-black'}`}>Catálogo</button>
+						<button onClick={() => setSelectedCategory('Seguridad')} className={`text-sm font-medium transition-colors ${isDark ? 'text-white/70 hover:text-white' : 'text-neutral-700 hover:text-black'}`}>Seguridad</button>
+						<button onClick={() => setSelectedCategory('Iluminación')} className={`text-sm font-medium transition-colors ${isDark ? 'text-white/70 hover:text-white' : 'text-neutral-700 hover:text-black'}`}>Iluminación</button>
+						<button onClick={() => setOnlyDiscounted((v) => !v)} className={`text-sm font-medium transition-colors ${onlyDiscounted ? 'text-red-500' : isDark ? 'text-white/70 hover:text-white' : 'text-neutral-700 hover:text-black'}`}>Ofertas</button>
 					</div>
 
 					{/* Right actions */}
@@ -492,27 +536,36 @@ export default function TiendaClientPage() {
 						<span title={realtimeConnected ? 'Catálogo en vivo' : 'Cargando'} className={`hidden sm:block w-1.5 h-1.5 rounded-full mr-2 ${realtimeConnected ? 'bg-emerald-500' : 'bg-neutral-400'}`} />
 						<button
 							onClick={() => setSearchOpen(true)}
-							className="p-2 text-neutral-700 hover:text-black transition-colors"
+							className={`p-2 transition-colors ${isDark ? 'text-white/60 hover:text-white' : 'text-neutral-700 hover:text-black'}`}
 							aria-label="Buscar productos"
 						>
 							<Search size={20} />
 						</button>
+						{/* Theme toggle */}
+						<button
+							onClick={toggleTheme}
+							className={`theme-toggle-btn p-2 rounded-full transition-all ${isDark ? 'text-yellow-400 hover:bg-yellow-400/10' : 'text-neutral-600 hover:bg-neutral-100'}`}
+							aria-label={isDark ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
+							title={isDark ? 'Modo claro' : 'Modo oscuro'}
+						>
+							{isDark ? <Sun size={18} /> : <Moon size={18} />}
+						</button>
 						{user ? (
-							<button onClick={() => router.push('/mi-cuenta')} className="p-2 text-neutral-700 hover:text-black transition-colors" title="Mi Cuenta">
-								<div className="w-7 h-7 rounded-full bg-neutral-900 text-white flex items-center justify-center text-[10px] font-bold">{getInitials(user.name || user.email)}</div>
+							<button onClick={() => router.push('/mi-cuenta')} className={`p-2 transition-colors ${isDark ? 'text-white/60 hover:text-white' : 'text-neutral-700 hover:text-black'}`} title="Mi Cuenta">
+								<div className={`w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-bold ${isDark ? 'bg-yellow-400 text-black' : 'bg-neutral-900 text-white'}`}>{getInitials(user.name || user.email)}</div>
 							</button>
 						) : (
-							<button onClick={() => router.push('/auth')} className="hidden sm:flex p-2 text-neutral-700 hover:text-black transition-colors" aria-label="Ingresar">
+							<button onClick={() => router.push('/auth')} className={`hidden sm:flex p-2 transition-colors ${isDark ? 'text-white/60 hover:text-white' : 'text-neutral-700 hover:text-black'}`} aria-label="Ingresar">
 								<User size={20} />
 							</button>
 						)}
-						<div ref={cartIconRef} className="relative cursor-pointer p-2 text-neutral-700 hover:text-black transition-colors" onClick={() => setIsCartOpen(true)}>
+						<div ref={cartIconRef} className={`relative cursor-pointer p-2 transition-colors ${isDark ? 'text-white/60 hover:text-white' : 'text-neutral-700 hover:text-black'}`} onClick={() => setIsCartOpen(true)}>
 							<ShoppingBag size={20} />
 							{cart.length > 0 && (
-								<span className="absolute -top-0.5 right-0 w-4 h-4 bg-black rounded-full flex items-center justify-center text-white text-[8px] font-bold">{cart.length}</span>
+								<span className={`absolute -top-0.5 right-0 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold ${isDark ? 'bg-yellow-400 text-black' : 'bg-black text-white'}`}>{cart.length}</span>
 							)}
 						</div>
-						<button onClick={() => setIsMenuOpen(true)} className="p-2 text-neutral-700 hover:text-black transition-colors md:hidden" aria-label="Menú">
+						<button onClick={() => setIsMenuOpen(true)} className={`p-2 transition-colors md:hidden ${isDark ? 'text-white/60 hover:text-white' : 'text-neutral-700 hover:text-black'}`} aria-label="Menú">
 							<Menu size={20} />
 						</button>
 					</div>
@@ -522,9 +575,9 @@ export default function TiendaClientPage() {
 			{/* spacer for fixed navbar */}
 			<div className="pt-[60px]" />
 
-			{/* ── CATALOGUE (NIKE-STYLE) ── */}
+			{/* ── CATALOGUE ── */}
 			{!selectedProduct && (
-				<div className="bg-white text-black nike-store">
+				<div className={`nike-store ${isDark ? 'bg-zinc-950 text-white' : 'bg-white text-black'}`}>
 					<style>{`
 						.nike-store { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; }
 						.nike-headline { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-weight: 900; letter-spacing: -0.02em; line-height: 0.95; text-transform: none; }
@@ -535,82 +588,149 @@ export default function TiendaClientPage() {
 						.nike-card:hover .nike-card-quickadd { opacity: 1; transform: translateY(0); }
 						.nike-pill { transition: background 180ms ease, color 180ms ease, border-color 180ms ease; }
 						.nike-link { position: relative; }
-						.nike-link::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; background: #111; transform: scaleX(0); transform-origin: left; transition: transform 240ms ease; }
+						.nike-link::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; transform: scaleX(0); transform-origin: left; transition: transform 240ms ease; }
 						.nike-link:hover::after { transform: scaleX(1); }
 						.nike-scroll::-webkit-scrollbar { display: none; }
 						.nike-scroll { -ms-overflow-style: none; scrollbar-width: none; scroll-snap-type: x mandatory; }
 						.nike-snap { scroll-snap-align: start; }
-						.nike-hero-grad { background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.7) 100%); }
+						.nike-hero-grad { background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.85) 100%); }
 						@keyframes nikeMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 						.nike-marquee { animation: nikeMarquee 32s linear infinite; }
+						/* Hero cinematic overlay */
+						.hero-overlay-dark { background: linear-gradient(135deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.2) 100%); }
+						.hero-overlay-light { background: linear-gradient(135deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.1) 100%); }
+						/* Animated orbs */
+						@keyframes orbFloat1 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(30px,-20px) scale(1.05); } 66% { transform: translate(-20px,15px) scale(0.97); } }
+						@keyframes orbFloat2 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-25px,20px) scale(1.08); } 66% { transform: translate(15px,-15px) scale(0.95); } }
+						.orb1 { animation: orbFloat1 12s ease-in-out infinite; }
+						.orb2 { animation: orbFloat2 16s ease-in-out infinite; }
 					`}</style>
 
 					{/* Top promo bar */}
-					<div className="bg-neutral-100 text-neutral-700 text-[11px] border-b border-neutral-200">
+					<div className={`text-[11px] border-b ${isDark ? 'bg-zinc-900 text-zinc-400 border-white/10' : 'bg-neutral-100 text-neutral-700 border-neutral-200'}`}>
 						<div className="max-w-[1400px] mx-auto px-4 md:px-8 py-2 flex items-center justify-between">
-							<span>Envío estándar gratis sobre $79.990</span>
+							<span>✦ Envío estándar gratis sobre $79.990</span>
 							<div className="hidden md:flex items-center gap-5">
-								<button onClick={() => router.push('/garantias')} className="hover:text-black">Ayuda</button>
-								<button onClick={() => router.push('/mi-cuenta')} className="hover:text-black">Mi cuenta</button>
-								<button onClick={() => router.push('/contacto')} className="hover:text-black">Contacto</button>
+								<button onClick={() => router.push('/garantias')} className={`hover:text-yellow-500 transition-colors`}>Ayuda</button>
+								<button onClick={() => router.push('/mi-cuenta')} className={`hover:text-yellow-500 transition-colors`}>Mi cuenta</button>
+								<button onClick={() => router.push('/contacto')} className={`hover:text-yellow-500 transition-colors`}>Contacto</button>
 							</div>
 						</div>
 					</div>
 
 					{/* Breadcrumb */}
-					<nav className="max-w-[1400px] mx-auto px-4 md:px-8 pt-5 pb-2 text-[12px] text-neutral-500">
+					<nav className={`max-w-[1400px] mx-auto px-4 md:px-8 pt-5 pb-2 text-[12px] ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>
 						<ol className="flex items-center gap-1.5">
-							<li><button onClick={() => router.push('/')} className="hover:text-black nike-link">Inicio</button></li>
+							<li><button onClick={() => router.push('/')} className={`nike-link hover:text-yellow-500 transition-colors ${isDark ? 'after:bg-yellow-400' : 'after:bg-black'}`}>Inicio</button></li>
 							<li>/</li>
-							<li className="text-black font-medium">Tienda</li>
+							<li className={`font-medium ${isDark ? 'text-white' : 'text-black'}`}>Tienda</li>
 						</ol>
 					</nav>
 
-					{/* Editorial hero */}
+					{/* ── HERO SECTION (MODERNIZADO) ── */}
 					<section className="max-w-[1400px] mx-auto px-4 md:px-8 mt-2">
-						<div className="relative overflow-hidden rounded-[2px] bg-neutral-100 aspect-[16/8] md:aspect-[16/6]">
+						<div className="relative overflow-hidden rounded-2xl aspect-[16/8] md:aspect-[16/6] group">
+							{/* Imagen con parallax suave */}
 							<img
 								src="https://images.unsplash.com/photo-1581094288338-2314dddb7ece?q=80&w=1800&auto=format&fit=crop"
 								alt="Fabrick"
-								className="w-full h-full object-cover"
+								className="w-full h-full object-cover transition-transform duration-[8000ms] ease-linear group-hover:scale-105"
 							/>
-							<div className="absolute inset-0 nike-hero-grad" />
-							<div className="absolute left-4 top-4 md:left-8 md:top-8 max-w-[280px] rounded-[28px] border border-white/15 bg-black/30 px-4 py-4 backdrop-blur-xl shadow-[0_24px_70px_rgba(0,0,0,0.28)]">
+							{/* Overlay con gradiente mejorado */}
+							<div className="absolute inset-0 hero-overlay-light" />
+							{/* Orbs decorativos */}
+							<div className="orb1 absolute top-[-20%] right-[-10%] w-[50%] h-[80%] rounded-full opacity-20 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(250,204,21,0.5) 0%, transparent 70%)' }} />
+							<div className="orb2 absolute bottom-[-30%] left-[-5%] w-[40%] h-[70%] rounded-full opacity-15 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.5) 0%, transparent 70%)' }} />
+
+							{/* Logo badge */}
+							<div className="absolute left-4 top-4 md:left-8 md:top-8 max-w-[240px] rounded-2xl border border-white/20 bg-black/40 px-4 py-3 backdrop-blur-xl shadow-[0_16px_48px_rgba(0,0,0,0.3)] hero-badge">
 								<FabrickLogo active centered className="pointer-events-none" />
-								<p className="mt-3 text-[10px] uppercase tracking-[0.3em] text-white/65">Tienda curada por Soluciones Fabrick</p>
+								<p className="mt-2 text-[9px] uppercase tracking-[0.35em] text-white/55">Catálogo oficial</p>
 							</div>
+
+							{/* CTA content */}
 							<div className="absolute inset-0 flex items-end md:items-center">
 								<div className="px-6 md:px-14 pb-10 md:pb-0 max-w-2xl text-white">
-									<p className="text-[11px] md:text-[12px] uppercase tracking-[0.18em] mb-3 opacity-90">Lo último de Fabrick</p>
-									<h1 className="nike-headline text-4xl md:text-7xl">Construye lo que sigue.</h1>
-									<p className="mt-4 text-sm md:text-base opacity-90 max-w-xl">Materiales premium curados, instalados por expertos, con garantía real. Diseñados para tu próxima obra con una presencia de marca mas sólida y una vitrina de producto a la altura del servicio.</p>
-									<div className="mt-5 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.22em] text-white/80">
-										<span className="rounded-full border border-white/20 bg-white/10 px-3 py-2">Materiales premium</span>
-										<span className="rounded-full border border-white/20 bg-white/10 px-3 py-2">Instalación certificada</span>
-										<span className="rounded-full border border-white/20 bg-white/10 px-3 py-2">Asesoría técnica real</span>
+									<p className="hero-animate text-[10px] md:text-[11px] uppercase tracking-[0.3em] mb-3 text-yellow-400 font-semibold">Lo último de Fabrick</p>
+									<h1 className="hero-animate-delay-1 nike-headline text-4xl md:text-7xl">
+										Construye<br />lo que sigue.
+									</h1>
+									<p className="hero-animate-delay-2 mt-4 text-sm md:text-base opacity-80 max-w-xl leading-relaxed">
+										Materiales premium curados, instalados por expertos, con garantía real.
+									</p>
+									<div className="hero-animate-delay-2 mt-5 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em]">
+										<span className="rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-300 px-3 py-1.5">Materiales premium</span>
+										<span className="rounded-full border border-white/20 bg-white/8 text-white/80 px-3 py-1.5">Instalación certificada</span>
+										<span className="rounded-full border border-white/20 bg-white/8 text-white/80 px-3 py-1.5">Asesoría real</span>
 									</div>
-									<div className="mt-6 flex gap-3">
-										<button onClick={() => { const el = document.getElementById('nike-grid'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }} className="bg-white text-black rounded-full px-6 py-3 text-sm font-medium hover:bg-neutral-200 transition-colors">Comprar</button>
-										<button onClick={() => router.push('/contacto')} className="border border-white/70 text-white rounded-full px-6 py-3 text-sm font-medium hover:bg-white/10 transition-colors">Asesoría</button>
+									<div className="hero-animate-delay-3 mt-6 flex gap-3 flex-wrap">
+										<button
+											onClick={() => { const el = document.getElementById('nike-grid'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+											className="group/btn relative overflow-hidden bg-white text-black rounded-full px-7 py-3 text-sm font-semibold hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all duration-300 hover:scale-105"
+										>
+											<span className="relative z-10">Comprar ahora</span>
+											<div className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-0 bg-yellow-400 transition-transform duration-300 ease-out" />
+										</button>
+										<button
+											onClick={() => router.push('/contacto')}
+											className="border border-white/50 text-white rounded-full px-7 py-3 text-sm font-medium hover:bg-white/15 hover:border-white/80 transition-all duration-300"
+										>
+											Asesoría gratis
+										</button>
 									</div>
 								</div>
+							</div>
+
+							{/* Scroll indicator */}
+							<div className="absolute bottom-5 right-6 md:right-10 flex items-center gap-2 text-white/40 text-[10px] uppercase tracking-[0.3em]">
+								<span>Scroll</span>
+								<div className="w-8 h-px bg-white/30" />
 							</div>
 						</div>
 					</section>
 
-					{/* Marquee strip */}
-					<section className="overflow-hidden border-y border-neutral-200 bg-white mt-10">
+					{/* Marquee strip - promo */}
+					<section className={`overflow-hidden border-y mt-10 ${isDark ? 'border-white/10 bg-zinc-900' : 'border-neutral-200 bg-white'}`}>
 						<div className="flex gap-12 py-3 nike-marquee whitespace-nowrap">
 							{Array.from({ length: 2 }).map((_, mi) => (
 								<div key={mi} className="flex gap-12 shrink-0">
-									<span className="text-[12px] uppercase tracking-[0.3em] text-neutral-700">★ Despacho a todo Chile</span>
-									<span className="text-[12px] uppercase tracking-[0.3em] text-neutral-700">★ Instalación certificada</span>
-									<span className="text-[12px] uppercase tracking-[0.3em] text-neutral-700">★ Garantía extendida</span>
-									<span className="text-[12px] uppercase tracking-[0.3em] text-neutral-700">★ Pago en cuotas</span>
-									<span className="text-[12px] uppercase tracking-[0.3em] text-neutral-700">★ Asesoría gratuita</span>
-									<span className="text-[12px] uppercase tracking-[0.3em] text-neutral-700">★ Catálogo en tiempo real</span>
+									{['★ Despacho a todo Chile','★ Instalación certificada','★ Garantía extendida','★ Pago en cuotas','★ Asesoría gratuita','★ Catálogo en tiempo real'].map((t) => (
+										<span key={t} className={`text-[12px] uppercase tracking-[0.3em] ${isDark ? 'text-zinc-400' : 'text-neutral-600'}`}>{t}</span>
+									))}
 								</div>
 							))}
+						</div>
+					</section>
+
+					{/* ── ANUNCIANTES / MARCAS PARTNER ── */}
+					<section className={`overflow-hidden border-b py-8 ${isDark ? 'bg-zinc-900/60 border-white/8' : 'bg-neutral-50 border-neutral-200'}`}>
+						<div className="max-w-[1400px] mx-auto px-4 md:px-8 mb-5">
+							<p className={`text-center text-[10px] uppercase tracking-[0.4em] ${isDark ? 'text-zinc-500' : 'text-neutral-400'}`}>Marcas y anunciantes que confían en nosotros</p>
+						</div>
+						<div className="overflow-hidden">
+							<div className="flex brand-marquee whitespace-nowrap gap-0">
+								{Array.from({ length: 2 }).map((_, bi) => (
+									<div key={bi} className="flex shrink-0 items-center gap-16 px-8">
+										{[
+											{ name: 'Bosch', icon: '⚡' },
+											{ name: 'Grohe', icon: '💧' },
+											{ name: 'Siemens', icon: '🔧' },
+											{ name: 'Philips', icon: '💡' },
+											{ name: 'Samsung', icon: '📱' },
+											{ name: 'Moen', icon: '🚿' },
+											{ name: 'Schneider', icon: '⚙️' },
+											{ name: 'Lutron', icon: '🎛️' },
+											{ name: 'Yale', icon: '🔐' },
+											{ name: 'LG', icon: '🏠' },
+										].map((brand) => (
+											<div key={`${bi}-${brand.name}`} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border transition-all duration-300 cursor-default select-none ${isDark ? 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-yellow-400/30' : 'border-neutral-200 bg-white hover:bg-yellow-50 hover:border-yellow-300 shadow-sm'}`}>
+												<span className="text-lg">{brand.icon}</span>
+												<span className={`text-sm font-semibold tracking-wide ${isDark ? 'text-zinc-300' : 'text-neutral-700'}`}>{brand.name}</span>
+											</div>
+										))}
+									</div>
+								))}
+							</div>
 						</div>
 					</section>
 
@@ -618,10 +738,13 @@ export default function TiendaClientPage() {
 					{filteredProducts.length > 0 && (
 						<section className="max-w-[1400px] mx-auto px-4 md:px-8 pt-12">
 							<div className="flex items-end justify-between mb-5">
-								<h2 className="nike-headline text-xl md:text-2xl">Lo último. Lo mejor.</h2>
+								<div>
+									<p className={`text-[10px] uppercase tracking-[0.3em] mb-1 font-semibold ${isDark ? 'text-yellow-400/70' : 'text-yellow-600/80'}`}>Destacados</p>
+									<h2 className="nike-headline text-xl md:text-2xl">Lo último. Lo mejor.</h2>
+								</div>
 								<div className="flex items-center gap-3">
-									<span className={`w-1.5 h-1.5 rounded-full ${realtimeConnected ? 'bg-emerald-500' : 'bg-neutral-400'}`} />
-									<span className="text-[11px] text-neutral-600">{realtimeConnected ? 'Catálogo en vivo' : 'Cargando…'}</span>
+									<span className={`w-1.5 h-1.5 rounded-full ${realtimeConnected ? 'bg-emerald-500 shadow-[0_0_6px_rgba(16,185,129,0.6)]' : isDark ? 'bg-zinc-600' : 'bg-neutral-400'}`} />
+									<span className={`text-[11px] ${isDark ? 'text-zinc-500' : 'text-neutral-600'}`}>{realtimeConnected ? 'Catálogo en vivo' : 'Cargando…'}</span>
 								</div>
 							</div>
 							<div className="nike-scroll flex gap-4 overflow-x-auto -mx-4 md:-mx-8 px-4 md:px-8 pb-4">
@@ -632,21 +755,25 @@ export default function TiendaClientPage() {
 										<button
 											key={`feat-${p.id}`}
 											onClick={() => handleSelectProduct(p)}
-											className="nike-snap shrink-0 w-[260px] md:w-[320px] text-left group"
+											className="nike-snap shrink-0 w-[240px] md:w-[300px] text-left group feat-card"
 										>
-											<div className="relative overflow-hidden bg-neutral-100 aspect-square">
-												<img src={p.img} alt={p.name} className="w-full h-full object-cover nike-card-img" />
+											<div className={`relative overflow-hidden rounded-xl aspect-square ${isDark ? 'bg-zinc-800' : 'bg-neutral-100'}`}>
+												<img src={p.img} alt={p.name} className="w-full h-full object-cover nike-card-img transition-transform duration-700 group-hover:scale-105" />
 												{pct > 0 && (
-													<span className="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-bold px-2 py-1 rounded-sm uppercase tracking-wider">-{pct}%</span>
+													<span className="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase tracking-wider shadow-lg">-{pct}%</span>
 												)}
+												{/* Quick-add overlay */}
+												<div className={`nike-card-quickadd absolute bottom-3 left-3 right-3 rounded-lg overflow-hidden`}>
+													<div className={`py-2.5 text-xs font-semibold text-center ${isDark ? 'bg-yellow-400 text-black' : 'bg-black text-white'}`}>Añadir al carrito</div>
+												</div>
 											</div>
 											<div className="mt-3">
-												<p className="text-[11px] uppercase tracking-wider text-red-600 font-bold">Just In</p>
-												<p className="text-sm font-medium text-black mt-0.5 line-clamp-1">{p.name}</p>
-												<p className="text-xs text-neutral-500 line-clamp-1">{p.category}</p>
+												<p className={`text-[10px] uppercase tracking-wider font-bold ${isDark ? 'text-yellow-400' : 'text-yellow-600'}`}>✦ Nuevo</p>
+												<p className={`text-sm font-medium mt-0.5 line-clamp-1 ${isDark ? 'text-white' : 'text-black'}`}>{p.name}</p>
+												<p className={`text-xs line-clamp-1 ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>{p.category}</p>
 												<div className="mt-2 flex items-baseline gap-2">
-													<span className="text-sm font-medium text-black">${finalPrice.toLocaleString('es-CL')}</span>
-													{pct > 0 && <span className="text-xs text-neutral-400 line-through">${p.price.toLocaleString('es-CL')}</span>}
+													<span className={`text-sm font-semibold ${isDark ? 'text-yellow-400' : 'text-black'}`}>${finalPrice.toLocaleString('es-CL')}</span>
+													{pct > 0 && <span className={`text-xs line-through ${isDark ? 'text-zinc-600' : 'text-neutral-400'}`}>${p.price.toLocaleString('es-CL')}</span>}
 												</div>
 											</div>
 										</button>
@@ -656,15 +783,15 @@ export default function TiendaClientPage() {
 						</section>
 					)}
 
-					{/* “Más vendidos” horizontal carousel */}
+					{/* "Más vendidos" horizontal carousel */}
 					{liveProducts.length > 0 && (
 						<section className="max-w-[1400px] mx-auto px-4 md:px-8 pt-12 pb-2">
 							<div className="flex items-end justify-between mb-5">
 								<div>
-									<p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500 mb-1">Favoritos</p>
+									<p className={`text-[10px] uppercase tracking-[0.3em] mb-1 font-semibold ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>Favoritos del catálogo</p>
 									<h2 className="nike-headline text-xl md:text-2xl">Más vendidos.</h2>
 								</div>
-								<button onClick={() => document.getElementById('nike-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className="text-sm font-medium underline underline-offset-4 hover:no-underline hidden md:block">Ver todos</button>
+								<button onClick={() => document.getElementById('nike-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className={`text-sm font-medium underline underline-offset-4 hover:no-underline hidden md:block hover:text-yellow-500 transition-colors ${isDark ? 'text-zinc-400' : 'text-neutral-600'}`}>Ver todos →</button>
 							</div>
 							<div className="nike-scroll flex gap-4 overflow-x-auto -mx-4 md:-mx-8 px-4 md:px-8 pb-4">
 								{[...liveProducts].sort((a, b) => ((b as { rating?: number }).rating ?? 4.4) - ((a as { rating?: number }).rating ?? 4.4)).slice(0, 8).map((p) => {
@@ -672,12 +799,12 @@ export default function TiendaClientPage() {
 									const finalPrice = getFinalPrice(p);
 									const rating = (p as { rating?: number }).rating;
 									return (
-										<button key={`best-${p.id}`} onClick={() => handleSelectProduct(p)} className="nike-snap shrink-0 w-[220px] md:w-[280px] text-left group">
-											<div className="relative overflow-hidden bg-neutral-100 aspect-[3/4]">
-												<img src={p.img} alt={p.name} className="w-full h-full object-cover nike-card-img" />
-												{pct > 0 && <span className="absolute top-3 left-3 bg-red-600 text-white text-[10px] font-bold px-2 py-1 uppercase">-{pct}%</span>}
+										<button key={`best-${p.id}`} onClick={() => handleSelectProduct(p)} className="nike-snap shrink-0 w-[200px] md:w-[260px] text-left group feat-card">
+											<div className={`relative overflow-hidden rounded-xl aspect-[3/4] ${isDark ? 'bg-zinc-800' : 'bg-neutral-100'}`}>
+												<img src={p.img} alt={p.name} className="w-full h-full object-cover nike-card-img transition-transform duration-700 group-hover:scale-105" />
+												{pct > 0 && <span className="absolute top-3 left-3 bg-red-500 text-white text-[10px] font-bold px-2 py-1 rounded-md uppercase shadow-lg">-{pct}%</span>}
 												<div className="nike-card-quickadd absolute bottom-3 left-3 right-3">
-													<button onClick={(e) => { e.stopPropagation(); handleAddToCart(e, p); }} className="w-full bg-white text-black rounded-full py-2 text-xs font-medium hover:bg-black hover:text-white transition-colors">
+													<button onClick={(e) => { e.stopPropagation(); handleAddToCart(e, p); }} className={`w-full rounded-full py-2.5 text-xs font-semibold transition-all duration-200 shadow-lg ${isDark ? 'bg-yellow-400 text-black hover:bg-yellow-300' : 'bg-white text-black hover:bg-black hover:text-white'}`}>
 														Añadir al carrito
 													</button>
 												</div>
@@ -685,15 +812,15 @@ export default function TiendaClientPage() {
 											<div className="mt-3">
 												{rating && (
 													<div className="flex items-center gap-1 mb-1">
-														{[...Array(5)].map((_, si) => <Star key={si} size={10} className={si < Math.round(rating) ? 'text-black fill-black' : 'text-neutral-300 fill-neutral-300'} />)}
-														<span className="text-[10px] text-neutral-500 ml-0.5">{rating.toFixed(1)}</span>
+														{[...Array(5)].map((_, si) => <Star key={si} size={10} className={si < Math.round(rating) ? (isDark ? 'text-yellow-400 fill-yellow-400' : 'text-black fill-black') : (isDark ? 'text-zinc-700 fill-zinc-700' : 'text-neutral-300 fill-neutral-300')} />)}
+														<span className={`text-[10px] ml-0.5 ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>{rating.toFixed(1)}</span>
 													</div>
 												)}
-												<p className="text-sm font-medium text-black line-clamp-1">{p.name}</p>
-												<p className="text-xs text-neutral-500">{p.category}</p>
+												<p className={`text-sm font-medium line-clamp-1 ${isDark ? 'text-white' : 'text-black'}`}>{p.name}</p>
+												<p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>{p.category}</p>
 												<div className="mt-1.5 flex items-baseline gap-2">
-													<span className="text-sm font-semibold text-black">${finalPrice.toLocaleString('es-CL')}</span>
-													{pct > 0 && <span className="text-xs text-neutral-400 line-through">${p.price.toLocaleString('es-CL')}</span>}
+													<span className={`text-sm font-semibold ${isDark ? 'text-yellow-400' : 'text-black'}`}>${finalPrice.toLocaleString('es-CL')}</span>
+													{pct > 0 && <span className={`text-xs line-through ${isDark ? 'text-zinc-600' : 'text-neutral-400'}`}>${p.price.toLocaleString('es-CL')}</span>}
 												</div>
 											</div>
 										</button>
@@ -707,20 +834,20 @@ export default function TiendaClientPage() {
 					<section id="nike-grid" className="max-w-[1400px] mx-auto px-4 md:px-8 pt-14">
 						<div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-2">
 							<div>
-								<p className="text-[11px] uppercase tracking-[0.18em] text-neutral-500">Catálogo</p>
+								<p className={`text-[11px] uppercase tracking-[0.18em] ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>Catálogo completo</p>
 								<h2 className="nike-headline text-3xl md:text-4xl mt-1">Productos ({filteredProducts.length})</h2>
 							</div>
 							<div className="flex items-center gap-3">
-								<button onClick={() => setMobileFiltersOpen((v) => !v)} className="md:hidden inline-flex items-center gap-2 border border-neutral-300 rounded-full px-4 py-2 text-sm font-medium hover:bg-neutral-100">
+								<button onClick={() => setMobileFiltersOpen((v) => !v)} className={`md:hidden inline-flex items-center gap-2 border rounded-full px-4 py-2 text-sm font-medium transition-colors ${isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-neutral-300 hover:bg-neutral-100'}`}>
 									<SlidersHorizontal size={14} /> Filtros
 								</button>
 								<div className="hidden md:flex items-center gap-2">
-									<ArrowUpDown size={14} className="text-neutral-500" />
+									<ArrowUpDown size={14} className={isDark ? 'text-zinc-500' : 'text-neutral-500'} />
 									<select
 										aria-label="Ordenar por"
 										value={sortMode}
 										onChange={(e) => setSortMode(e.target.value as 'featured' | 'price-asc' | 'price-desc' | 'name-asc')}
-										className="bg-transparent border-none text-sm font-medium text-black focus:outline-none cursor-pointer"
+										className={`border-none text-sm font-medium focus:outline-none cursor-pointer ${isDark ? 'bg-zinc-950 text-white' : 'bg-transparent text-black'}`}
 									>
 										<option value="featured">Destacados</option>
 										<option value="price-asc">Precio: menor a mayor</option>
@@ -733,13 +860,13 @@ export default function TiendaClientPage() {
 					</section>
 
 					{/* Category chip strip - sticky */}
-					<div className="sticky top-[64px] z-30 bg-white/95 backdrop-blur border-y border-neutral-200">
+					<div className={`sticky top-[60px] z-30 backdrop-blur-xl border-y transition-colors duration-300 ${isDark ? 'bg-zinc-950/95 border-white/10' : 'bg-white/95 border-neutral-200'}`}>
 						<div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 flex items-center gap-2 overflow-x-auto nike-scroll">
 							{categories.map((category) => (
 								<button
 									key={`chip-${category}`}
 									onClick={() => setSelectedCategory(category)}
-									className={`nike-pill shrink-0 rounded-full border px-4 py-2 text-sm font-medium ${selectedCategory === category ? 'bg-black text-white border-black' : 'bg-white text-black border-neutral-300 hover:border-black'}`}
+									className={`nike-pill shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-all ${selectedCategory === category ? (isDark ? 'bg-yellow-400 text-black border-yellow-400' : 'bg-black text-white border-black') : (isDark ? 'bg-transparent text-zinc-400 border-zinc-700 hover:border-white hover:text-white' : 'bg-white text-black border-neutral-300 hover:border-black')}`}
 								>
 									{category === 'all' ? 'Todos' : category}
 								</button>
@@ -747,7 +874,7 @@ export default function TiendaClientPage() {
 							<div className="ml-auto flex items-center gap-2 shrink-0">
 								<button
 									onClick={() => setOnlyDiscounted((v) => !v)}
-									className={`nike-pill rounded-full border px-4 py-2 text-sm font-medium inline-flex items-center gap-1.5 ${onlyDiscounted ? 'bg-red-600 text-white border-red-600' : 'bg-white text-black border-neutral-300 hover:border-black'}`}
+									className={`nike-pill rounded-full border px-4 py-2 text-sm font-medium inline-flex items-center gap-1.5 transition-all ${onlyDiscounted ? 'bg-red-500 text-white border-red-500' : (isDark ? 'bg-transparent text-zinc-400 border-zinc-700 hover:border-white hover:text-white' : 'bg-white text-black border-neutral-300 hover:border-black')}`}
 								>
 									<Tag size={13} /> Ofertas
 								</button>
@@ -755,7 +882,7 @@ export default function TiendaClientPage() {
 									aria-label="Filtrar por precio"
 									value={priceFilter}
 									onChange={(e) => setPriceFilter(e.target.value as 'all' | 'low' | 'mid' | 'high')}
-									className="rounded-full border border-neutral-300 bg-white text-black text-sm font-medium px-4 py-2 focus:outline-none focus:border-black"
+									className={`rounded-full border text-sm font-medium px-4 py-2 focus:outline-none transition-colors ${isDark ? 'border-zinc-700 bg-zinc-900 text-white focus:border-yellow-400' : 'border-neutral-300 bg-white text-black focus:border-black'}`}
 								>
 									<option value="all">Todo precio</option>
 									<option value="low">Hasta $80.000</option>
@@ -768,18 +895,18 @@ export default function TiendaClientPage() {
 
 					{/* Main grid layout */}
 					<main className="max-w-[1400px] mx-auto px-4 md:px-8 pt-6 pb-32">
-						<div className="md:grid md:grid-cols-[240px_minmax(0,1fr)] md:gap-8">
+						<div className="md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-8">
 							{/* Sidebar filters - desktop */}
 							<aside className="hidden md:block">
 								<div className="sticky top-[140px] space-y-7 pb-10">
 									<div>
-										<p className="text-sm font-bold uppercase tracking-wider mb-3">Categoría</p>
+										<p className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>Categoría</p>
 										<ul className="space-y-2">
 											{categories.map((category) => (
 												<li key={`side-${category}`}>
 													<button
 														onClick={() => setSelectedCategory(category)}
-														className={`text-left text-sm w-full ${selectedCategory === category ? 'text-black font-bold' : 'text-neutral-600 hover:text-black'}`}
+														className={`text-left text-sm w-full transition-colors ${selectedCategory === category ? (isDark ? 'text-yellow-400 font-bold' : 'text-black font-bold') : (isDark ? 'text-zinc-500 hover:text-white' : 'text-neutral-600 hover:text-black')}`}
 													>
 														{category === 'all' ? 'Todos los productos' : category}
 													</button>
@@ -787,29 +914,29 @@ export default function TiendaClientPage() {
 											))}
 										</ul>
 									</div>
-									<div className="border-t border-neutral-200 pt-6">
-										<p className="text-sm font-bold uppercase tracking-wider mb-3">Precio</p>
+									<div className={`border-t pt-6 ${isDark ? 'border-white/10' : 'border-neutral-200'}`}>
+										<p className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>Precio</p>
 										<ul className="space-y-2">
 											{(['all','low','mid','high'] as const).map((p) => (
 												<li key={p}>
-													<button onClick={() => setPriceFilter(p)} className={`text-left text-sm w-full ${priceFilter === p ? 'text-black font-bold' : 'text-neutral-600 hover:text-black'}`}>
+													<button onClick={() => setPriceFilter(p)} className={`text-left text-sm w-full transition-colors ${priceFilter === p ? (isDark ? 'text-yellow-400 font-bold' : 'text-black font-bold') : (isDark ? 'text-zinc-500 hover:text-white' : 'text-neutral-600 hover:text-black')}`}>
 														{p === 'all' ? 'Todos' : p === 'low' ? 'Hasta $80.000' : p === 'mid' ? '$80.001 – $150.000' : 'Sobre $150.000'}
 													</button>
 												</li>
 											))}
 										</ul>
 									</div>
-									<div className="border-t border-neutral-200 pt-6">
-										<p className="text-sm font-bold uppercase tracking-wider mb-3">Otros</p>
-										<label className="flex items-center gap-2 text-sm text-neutral-700 cursor-pointer">
-											<input type="checkbox" checked={onlyDiscounted} onChange={(e) => setOnlyDiscounted(e.target.checked)} className="w-4 h-4 accent-black" />
+									<div className={`border-t pt-6 ${isDark ? 'border-white/10' : 'border-neutral-200'}`}>
+										<p className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>Otros</p>
+										<label className={`flex items-center gap-2 text-sm cursor-pointer ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>
+											<input type="checkbox" checked={onlyDiscounted} onChange={(e) => setOnlyDiscounted(e.target.checked)} className={`w-4 h-4 ${isDark ? 'accent-yellow-400' : 'accent-black'}`} />
 											Solo en oferta
 										</label>
 									</div>
 									{totalSavingsFiltered > 0 && (
-										<div className="border-t border-neutral-200 pt-6">
-											<p className="text-xs text-neutral-500">Ahorro visible</p>
-											<p className="text-2xl font-black text-red-600">${totalSavingsFiltered.toLocaleString('es-CL')}</p>
+										<div className={`border-t pt-6 ${isDark ? 'border-white/10' : 'border-neutral-200'}`}>
+											<p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>Ahorro visible</p>
+											<p className="text-2xl font-black text-red-500">${totalSavingsFiltered.toLocaleString('es-CL')}</p>
 										</div>
 									)}
 								</div>
@@ -817,10 +944,10 @@ export default function TiendaClientPage() {
 
 							{/* Mobile filters drawer */}
 							{mobileFiltersOpen && (
-								<div className="md:hidden mb-6 border border-neutral-200 rounded-md p-4 space-y-4 bg-neutral-50">
+								<div className={`md:hidden mb-6 border rounded-xl p-4 space-y-4 ${isDark ? 'border-white/10 bg-zinc-900' : 'border-neutral-200 bg-neutral-50'}`}>
 									<div>
-										<p className="text-xs font-bold uppercase tracking-wider mb-2">Precio</p>
-										<select aria-label="Filtrar por precio" value={priceFilter} onChange={(e) => setPriceFilter(e.target.value as 'all' | 'low' | 'mid' | 'high')} className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm bg-white">
+										<p className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>Precio</p>
+										<select aria-label="Filtrar por precio" value={priceFilter} onChange={(e) => setPriceFilter(e.target.value as 'all' | 'low' | 'mid' | 'high')} className={`w-full rounded-lg border px-3 py-2 text-sm ${isDark ? 'border-white/10 bg-zinc-800 text-white' : 'border-neutral-300 bg-white'}`}>
 											<option value="all">Todo precio</option>
 											<option value="low">Hasta $80.000</option>
 											<option value="mid">$80.001 – $150.000</option>
@@ -828,16 +955,16 @@ export default function TiendaClientPage() {
 										</select>
 									</div>
 									<div>
-										<p className="text-xs font-bold uppercase tracking-wider mb-2">Ordenar</p>
-										<select aria-label="Ordenar por" value={sortMode} onChange={(e) => setSortMode(e.target.value as 'featured' | 'price-asc' | 'price-desc' | 'name-asc')} className="w-full rounded-md border border-neutral-300 px-3 py-2 text-sm bg-white">
+										<p className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>Ordenar</p>
+										<select aria-label="Ordenar por" value={sortMode} onChange={(e) => setSortMode(e.target.value as 'featured' | 'price-asc' | 'price-desc' | 'name-asc')} className={`w-full rounded-lg border px-3 py-2 text-sm ${isDark ? 'border-white/10 bg-zinc-800 text-white' : 'border-neutral-300 bg-white'}`}>
 											<option value="featured">Destacados</option>
 											<option value="price-asc">Precio: menor a mayor</option>
 											<option value="price-desc">Precio: mayor a menor</option>
 											<option value="name-asc">Nombre: A-Z</option>
 										</select>
 									</div>
-									<label className="flex items-center gap-2 text-sm">
-										<input type="checkbox" checked={onlyDiscounted} onChange={(e) => setOnlyDiscounted(e.target.checked)} className="w-4 h-4 accent-black" />
+									<label className={`flex items-center gap-2 text-sm ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>
+										<input type="checkbox" checked={onlyDiscounted} onChange={(e) => setOnlyDiscounted(e.target.checked)} className={`w-4 h-4 ${isDark ? 'accent-yellow-400' : 'accent-black'}`} />
 										Solo en oferta
 									</label>
 								</div>
@@ -882,33 +1009,43 @@ export default function TiendaClientPage() {
 								{/* Editorial banner mid-grid */}
 								{filteredProducts.length > 4 && (
 									<section className="my-14 grid grid-cols-1 md:grid-cols-2 gap-4">
-										<div className="relative overflow-hidden bg-neutral-100 aspect-[4/3] group cursor-pointer" onClick={() => setSelectedCategory('Iluminación')}>
+										<div className={`relative overflow-hidden rounded-2xl aspect-[4/3] group cursor-pointer ${isDark ? 'bg-zinc-800' : 'bg-neutral-100'}`} onClick={() => setSelectedCategory('Iluminación')}>
 											<img src="https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?q=80&w=1200&auto=format&fit=crop" alt="Iluminación" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
 											<div className="absolute inset-0 nike-hero-grad" />
 											<div className="absolute bottom-6 left-6 text-white">
-												<p className="text-[11px] uppercase tracking-[0.18em] mb-1 opacity-90">Ambientes</p>
+												<p className="text-[10px] uppercase tracking-[0.25em] mb-1 text-yellow-400 font-semibold">Ambientes</p>
 												<h3 className="nike-headline text-2xl md:text-3xl">Iluminación</h3>
-												<button className="mt-3 bg-white text-black rounded-full px-4 py-2 text-xs font-medium inline-flex items-center gap-1.5">Ver colección <ArrowRight size={12} /></button>
+												<button className="mt-3 bg-white text-black rounded-full px-5 py-2 text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-yellow-400 transition-colors">Ver colección <ArrowRight size={12} /></button>
 											</div>
 										</div>
-										<div className="relative overflow-hidden bg-neutral-100 aspect-[4/3] group cursor-pointer" onClick={() => setSelectedCategory('Seguridad')}>
+										<div className={`relative overflow-hidden rounded-2xl aspect-[4/3] group cursor-pointer ${isDark ? 'bg-zinc-800' : 'bg-neutral-100'}`} onClick={() => setSelectedCategory('Seguridad')}>
 											<img src="https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=1200&auto=format&fit=crop" alt="Seguridad" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
 											<div className="absolute inset-0 nike-hero-grad" />
 											<div className="absolute bottom-6 left-6 text-white">
-												<p className="text-[11px] uppercase tracking-[0.18em] mb-1 opacity-90">Tu hogar</p>
+												<p className="text-[10px] uppercase tracking-[0.25em] mb-1 text-yellow-400 font-semibold">Tu hogar</p>
 												<h3 className="nike-headline text-2xl md:text-3xl">Seguridad inteligente</h3>
-												<button className="mt-3 bg-white text-black rounded-full px-4 py-2 text-xs font-medium inline-flex items-center gap-1.5">Explorar <ArrowRight size={12} /></button>
+												<button className="mt-3 bg-white text-black rounded-full px-5 py-2 text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-yellow-400 transition-colors">Explorar <ArrowRight size={12} /></button>
 											</div>
 										</div>
 									</section>
 								)}
 
 								{/* Trust strip */}
-								<section className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 border-t border-neutral-200 pt-10">
-									<div className="flex items-start gap-3"><Award size={22} className="text-black mt-0.5" /><div><p className="text-sm font-bold">Garantía real</p><p className="text-xs text-neutral-500 mt-1">Cobertura extendida en todas las instalaciones.</p></div></div>
-									<div className="flex items-start gap-3"><Clock size={22} className="text-black mt-0.5" /><div><p className="text-sm font-bold">Despacho rápido</p><p className="text-xs text-neutral-500 mt-1">Entregas en 24-48h en stock disponible.</p></div></div>
-									<div className="flex items-start gap-3"><Sparkles size={22} className="text-black mt-0.5" /><div><p className="text-sm font-bold">Curatoría premium</p><p className="text-xs text-neutral-500 mt-1">Solo productos validados por nuestros expertos.</p></div></div>
-									<div className="flex items-start gap-3"><Phone size={22} className="text-black mt-0.5" /><div><p className="text-sm font-bold">Asesoría dedicada</p><p className="text-xs text-neutral-500 mt-1">Habla con un especialista antes de comprar.</p></div></div>
+								<section className={`mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 border-t pt-10 ${isDark ? 'border-white/10' : 'border-neutral-200'}`}>
+									{[
+										{ icon: Award, title: 'Garantía real', desc: 'Cobertura extendida en todas las instalaciones.' },
+										{ icon: Clock, title: 'Despacho rápido', desc: 'Entregas en 24-48h en stock disponible.' },
+										{ icon: Sparkles, title: 'Curatoría premium', desc: 'Solo productos validados por nuestros expertos.' },
+										{ icon: Phone, title: 'Asesoría dedicada', desc: 'Habla con un especialista antes de comprar.' },
+									].map(({ icon: Icon, title, desc }) => (
+										<div key={title} className={`flex items-start gap-3 p-4 rounded-xl transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-50'}`}>
+											<Icon size={20} className={`mt-0.5 flex-shrink-0 ${isDark ? 'text-yellow-400' : 'text-black'}`} />
+											<div>
+												<p className="text-sm font-bold">{title}</p>
+												<p className={`text-xs mt-1 ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>{desc}</p>
+											</div>
+										</div>
+									))}
 								</section>
 							</div>
 						</div>

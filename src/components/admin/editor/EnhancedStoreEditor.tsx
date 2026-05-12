@@ -1,37 +1,45 @@
 'use client';
 
-/**
- * Enhanced Store Editor - Mejoras sobre PageEditor:
- * - Guardado automático en tiempo real (sin botón guardar)
- * - Selector visual de componentes como tarjetas
- * - Indicadores visuales de qué se está editando
- * - UI/UX mejorada con animaciones
- * - Responsivo completo mobile-first
- */
-
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import {
+  DndContext,
+  DragOverlay,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+  type DragStartEvent,
+  type DragEndEvent,
+} from '@dnd-kit/core';
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  useSortable,
+  verticalListSortingStrategy,
+  arrayMove,
+} from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   AlertCircle,
   CheckCircle2,
   Loader2,
-  Plus,
-  Save,
   Trash2,
-  ChevronUp,
-  ChevronDown,
   Eye,
   EyeOff,
-  ImagePlus,
   RefreshCw,
   Smartphone,
   Tablet,
   Monitor,
-  Settings,
   Clock,
-  Zap,
   LayoutGrid,
   ListTodo,
+  GripVertical,
+  Plus,
+  Zap,
+  ChevronDown,
+  ChevronRight,
 } from 'lucide-react';
 
 interface Section {
@@ -72,18 +80,46 @@ type ViewMode = 'grid' | 'list';
 type DeviceMode = 'mobile' | 'tablet' | 'desktop';
 
 const KINDS = [
-  { value: 'banner', label: '🎨 Banner promocional' },
-  { value: 'cta', label: '🔗 Llamado a la acción' },
-  { value: 'hero', label: '⭐ Hero / Portada' },
-  { value: 'servicios', label: '🛠️ Servicios' },
-  { value: 'productos', label: '📦 Productos' },
+  { value: 'banner',      label: '🎨 Banner promocional' },
+  { value: 'cta',         label: '🔗 Llamado a la acción' },
+  { value: 'hero',        label: '⭐ Hero / Portada' },
+  { value: 'servicios',   label: '🛠️ Servicios' },
+  { value: 'productos',   label: '📦 Productos' },
   { value: 'trayectoria', label: '📈 Trayectoria' },
-  { value: 'tienda', label: '🛒 Tienda' },
-  { value: 'galeria', label: '🖼️ Galería' },
-  { value: 'custom', label: '⚙️ Personalizado' },
+  { value: 'tienda',      label: '🛒 Tienda' },
+  { value: 'galeria',     label: '🖼️ Galería' },
+  { value: 'custom',      label: '⚙️ Personalizado' },
 ] as const;
 
 const DEBOUNCE_MS = 500;
+
+// ── Utility: tiny CSS toggle (Uiverse-style, adapted for the gold/black theme)
+function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (v: boolean) => void; disabled?: boolean }) {
+  return (
+    <button
+      type="button"
+      role="switch"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => !disabled && onChange(!checked)}
+      className={[
+        'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60',
+        checked
+          ? 'border-yellow-400 bg-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.45)]'
+          : 'border-zinc-700 bg-zinc-800',
+        disabled ? 'opacity-40 cursor-not-allowed' : '',
+      ].join(' ')}
+    >
+      <span
+        className={[
+          'pointer-events-none inline-block h-3.5 w-3.5 rounded-full shadow-lg ring-0 transition-transform duration-200 mt-0.5',
+          checked ? 'translate-x-4 bg-black' : 'translate-x-0.5 bg-zinc-400',
+        ].join(' ')}
+      />
+    </button>
+  );
+}
 
 export function EnhancedStoreEditor({
   page,
@@ -92,7 +128,6 @@ export function EnhancedStoreEditor({
   previewPath,
   settingGroups,
 }: EnhancedStoreEditorProps) {
-  // ── State ────────────────────────────────────────────────────────────────
   const [sections, setSections] = useState<Section[]>([]);
   const [settings, setSettings] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(true);
@@ -102,22 +137,23 @@ export function EnhancedStoreEditor({
   const [device, setDevice] = useState<DeviceMode>('desktop');
   const [previewToken, setPreviewToken] = useState(Date.now());
   const [expandedSection, setExpandedSection] = useState<string | null>(null);
+  const [activeDragId, setActiveDragId] = useState<string | null>(null);
+  const [showAddPanel, setShowAddPanel] = useState(false);
 
-  // ── Refs ────────────────────────────────────────────────────────────────
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
-  const debounceTimers = useRef<Record<string, ReturnType<typeof setTimeout>>>({});
   const autoSaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Computed ────────────────────────────────────────────────────────────
+  // DnD sensors
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 6 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates }),
+  );
+
   const previewSrc = `${previewPath}${previewPath.includes('?') ? '&' : '?'}preview=1&_=${previewToken}`;
   const viewportClass =
-    device === 'mobile'
-      ? 'max-w-[390px]'
-      : device === 'tablet'
-        ? 'max-w-[768px]'
-        : 'max-w-full';
+    device === 'mobile' ? 'max-w-[390px]' : device === 'tablet' ? 'max-w-[768px]' : 'max-w-full';
 
-  // ── API Calls ──────────────────────────────────────────────────────────
+  // ── Data loading ────────────────────────────────────────────────────────────
   const loadData = useCallback(async () => {
     setLoading(true);
     try {
@@ -125,12 +161,10 @@ export function EnhancedStoreEditor({
         fetch(`/api/admin/home/sections?page=${encodeURIComponent(page)}`),
         fetch('/api/admin/settings'),
       ]);
-
       if (secRes.ok) {
         const data = (await secRes.json()) as { sections: Section[] };
         setSections(data.sections ?? []);
       }
-
       if (setRes.ok) {
         const data = (await setRes.json()) as { settings: Record<string, string> };
         setSettings(data.settings ?? {});
@@ -142,33 +176,28 @@ export function EnhancedStoreEditor({
     }
   }, [page]);
 
-  useEffect(() => {
-    loadData();
-  }, [loadData]);
+  useEffect(() => { loadData(); }, [loadData]);
 
-  // ── Auto-save with debounce ──────────────────────────────────────────────
+  // ── Auto-save ───────────────────────────────────────────────────────────────
   const autosaveData = useCallback(async (data: { sections?: Section[]; settings?: Record<string, string> }) => {
     try {
       setSaveState('saving');
-
       if (data.sections) {
-        const res = await fetch(`/api/admin/home/sections/batch`, {
+        const res = await fetch('/api/admin/home/sections/batch', {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ sections: data.sections, page }),
         });
-        if (!res.ok) throw new Error(`Failed to save sections`);
+        if (!res.ok) throw new Error('Failed to save sections');
       }
-
       if (data.settings) {
         const res = await fetch('/api/admin/settings', {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ settings: data.settings }),
         });
-        if (!res.ok) throw new Error(`Failed to save settings`);
+        if (!res.ok) throw new Error('Failed to save settings');
       }
-
       setSaveState('saved');
       setTimeout(() => setSaveState('idle'), 2000);
       setPreviewToken(Date.now());
@@ -179,267 +208,267 @@ export function EnhancedStoreEditor({
     }
   }, [page]);
 
-  // Schedule autosave
-  const scheduleAutosave = useCallback(() => {
-    if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-    autoSaveTimer.current = setTimeout(() => {
-      autosaveData({ sections, settings });
-    }, DEBOUNCE_MS);
-  }, [sections, settings, autosaveData]);
-
-  // ── Section Operations ───────────────────────────────────────────────────
-  const addSection = useCallback(
-    (kind: string) => {
-      const newSection: Section = {
-        id: `sec_${Date.now()}`,
-        kind,
-        title: 'Nueva sección',
-        subtitle: '',
-        body: '',
-        image_url: '',
-        link_url: '',
-        link_label: '',
-        position: sections.length,
-        visible: true,
-      };
-      setSections([...sections, newSection]);
-      setSelectedId(newSection.id);
-      setExpandedSection(newSection.id);
-      scheduleAutosave();
-    },
-    [sections, scheduleAutosave],
-  );
-
-  const updateSection = useCallback(
-    (id: string, patch: Partial<Section>) => {
-      setSections((prev) =>
-        prev.map((s) => (s.id === id ? { ...s, ...patch } : s)),
-      );
-      scheduleAutosave();
-    },
-    [scheduleAutosave],
-  );
-
-  const deleteSection = useCallback(
-    (id: string) => {
-      if (!confirm('¿Eliminar esta sección?')) return;
-      setSections((prev) => prev.filter((s) => s.id !== id));
-      setSelectedId(null);
-      setExpandedSection(null);
-      scheduleAutosave();
-    },
-    [scheduleAutosave],
-  );
-
-  const moveSection = useCallback(
-    (id: string, dir: -1 | 1) => {
-      const idx = sections.findIndex((s) => s.id === id);
-      if (idx < 0 || idx + dir < 0 || idx + dir >= sections.length) return;
-      const next = [...sections];
-      [next[idx], next[idx + dir]] = [next[idx + dir], next[idx]];
-      next.forEach((s, i) => (s.position = i));
-      setSections(next);
-      scheduleAutosave();
-    },
-    [sections, scheduleAutosave],
-  );
-
-  // ── Settings Operations ──────────────────────────────────────────────────
-  const updateSetting = useCallback(
-    (key: string, value: string) => {
-      setSettings((prev) => ({ ...prev, [key]: value }));
-      scheduleAutosave();
-    },
-    [scheduleAutosave],
-  );
-
-  // Cleanup on unmount
-  useEffect(() => {
-    const timers = debounceTimers.current;
-    return () => {
+  const scheduleAutosave = useCallback(
+    (nextSections: Section[], nextSettings: Record<string, string>) => {
       if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current);
-      Object.values(timers).forEach(clearTimeout);
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+      autoSaveTimer.current = setTimeout(
+        () => autosaveData({ sections: nextSections, settings: nextSettings }),
+        DEBOUNCE_MS,
+      );
+    },
+    [autosaveData],
+  );
 
-  // ────────────────────────────────────────────────────────────────────────
-  // RENDER
-  // ────────────────────────────────────────────────────────────────────────
+  useEffect(() => () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); }, []);
+
+  // ── Section operations ──────────────────────────────────────────────────────
+  const addSection = useCallback((kind: string) => {
+    const newSection: Section = {
+      id: `sec_${Date.now()}`,
+      kind, title: 'Nueva sección', subtitle: '', body: '',
+      image_url: '', link_url: '', link_label: '',
+      position: sections.length, visible: true,
+    };
+    const next = [...sections, newSection];
+    setSections(next);
+    setSelectedId(newSection.id);
+    setExpandedSection(newSection.id);
+    setShowAddPanel(false);
+    scheduleAutosave(next, settings);
+  }, [sections, settings, scheduleAutosave]);
+
+  const updateSection = useCallback((id: string, patch: Partial<Section>) => {
+    setSections((prev) => {
+      const next = prev.map((s) => (s.id === id ? { ...s, ...patch } : s));
+      scheduleAutosave(next, settings);
+      return next;
+    });
+  }, [settings, scheduleAutosave]);
+
+  const deleteSection = useCallback((id: string) => {
+    if (!confirm('¿Eliminar esta sección?')) return;
+    setSections((prev) => {
+      const next = prev.filter((s) => s.id !== id).map((s, i) => ({ ...s, position: i }));
+      scheduleAutosave(next, settings);
+      return next;
+    });
+    setSelectedId(null);
+    setExpandedSection(null);
+  }, [settings, scheduleAutosave]);
+
+  const updateSetting = useCallback((key: string, value: string) => {
+    setSettings((prev) => {
+      const next = { ...prev, [key]: value };
+      scheduleAutosave(sections, next);
+      return next;
+    });
+  }, [sections, scheduleAutosave]);
+
+  // ── Drag handlers ───────────────────────────────────────────────────────────
+  const handleDragStart = (event: DragStartEvent) => {
+    setActiveDragId(String(event.active.id));
+  };
+
+  const handleDragEnd = useCallback((event: DragEndEvent) => {
+    setActiveDragId(null);
+    const { active, over } = event;
+    if (!over || active.id === over.id) return;
+    setSections((prev) => {
+      const oldIdx = prev.findIndex((s) => s.id === active.id);
+      const newIdx = prev.findIndex((s) => s.id === over.id);
+      const next = arrayMove(prev, oldIdx, newIdx).map((s, i) => ({ ...s, position: i }));
+      scheduleAutosave(next, settings);
+      return next;
+    });
+  }, [settings, scheduleAutosave]);
+
+  const activeDragSection = activeDragId ? sections.find((s) => s.id === activeDragId) : null;
 
   return (
     <div className="flex h-[calc(100vh-4rem)] gap-3 p-3 bg-zinc-950">
-      {/* LEFT: Editor Panel */}
-      <aside className="w-full md:w-2/5 lg:w-[400px] flex flex-col gap-3 overflow-y-auto bg-zinc-950 rounded-2xl border border-yellow-400/10 p-4">
+      {/* ── LEFT: Editor Panel ─────────────────────────────────────────────── */}
+      <aside className="w-full md:w-2/5 lg:w-[420px] flex flex-col gap-3 overflow-y-auto bg-zinc-950 rounded-2xl border border-yellow-400/10 p-4">
+
         {/* Header */}
-        <div className="space-y-2">
-          <div className="flex items-start justify-between gap-3">
-            <div className="flex-1 min-w-0">
-              <h1 className="text-lg font-black tracking-tight text-yellow-400 truncate">{title}</h1>
-              <p className="text-xs text-zinc-500 mt-1">{subtitle}</p>
-            </div>
-            <SaveIndicator state={saveState} />
+        <div className="flex items-start justify-between gap-3">
+          <div className="flex-1 min-w-0">
+            <h1 className="text-lg font-black tracking-tight text-yellow-400 truncate">{title}</h1>
+            <p className="text-xs text-zinc-500 mt-0.5">{subtitle}</p>
           </div>
+          <SaveIndicator state={saveState} />
         </div>
 
-        {/* View Mode Toggle */}
-        <div className="flex gap-2 rounded-lg border border-yellow-400/10 bg-black/50 p-1">
+        {/* View mode toggle */}
+        <div className="flex gap-1 rounded-xl border border-yellow-400/10 bg-black/60 p-1">
+          {([['list', <ListTodo key="l" className="w-3.5 h-3.5" />, 'Lista'], ['grid', <LayoutGrid key="g" className="w-3.5 h-3.5" />, 'Grid']] as const).map(([m, icon, label]) => (
+            <button
+              key={m}
+              onClick={() => setViewMode(m)}
+              className={[
+                'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all',
+                viewMode === m
+                  ? 'bg-yellow-400 text-black shadow-[0_0_14px_rgba(250,204,21,0.35)]'
+                  : 'text-zinc-500 hover:text-zinc-200',
+              ].join(' ')}
+            >
+              {icon} {label}
+            </button>
+          ))}
+        </div>
+
+        {/* Add Section panel */}
+        <div>
           <button
-            onClick={() => setViewMode('list')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-bold transition-all ${
-              viewMode === 'list'
-                ? 'bg-yellow-400 text-black'
-                : 'text-zinc-400 hover:text-white'
-            }`}
+            onClick={() => setShowAddPanel((v) => !v)}
+            className="w-full flex items-center justify-between px-3 py-2.5 rounded-xl border border-yellow-400/20 bg-yellow-400/5 text-yellow-400 text-xs font-bold uppercase tracking-widest hover:bg-yellow-400/10 hover:border-yellow-400/40 transition-all group"
           >
-            <ListTodo className="w-4 h-4" /> Lista
+            <span className="flex items-center gap-2">
+              <Plus className="w-3.5 h-3.5" /> Nueva sección
+            </span>
+            <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAddPanel ? 'rotate-180' : ''}`} />
           </button>
-          <button
-            onClick={() => setViewMode('grid')}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2 rounded-md text-xs font-bold transition-all ${
-              viewMode === 'grid'
-                ? 'bg-yellow-400 text-black'
-                : 'text-zinc-400 hover:text-white'
-            }`}
-          >
-            <LayoutGrid className="w-4 h-4" /> Grid
-          </button>
+          <AnimatePresence>
+            {showAddPanel && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="overflow-hidden"
+              >
+                <div className="grid grid-cols-2 gap-1.5 pt-2">
+                  {KINDS.map((k) => (
+                    <button
+                      key={k.value}
+                      onClick={() => addSection(k.value)}
+                      className="text-left px-3 py-2 rounded-lg border border-yellow-400/10 bg-black/60 text-xs text-zinc-300 hover:border-yellow-400/40 hover:bg-yellow-400/5 hover:text-yellow-400 transition-all"
+                    >
+                      {k.label}
+                    </button>
+                  ))}
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
 
-        {/* Add Section */}
-        <div className="space-y-2">
-          <label className="block text-[10px] uppercase tracking-[0.3em] text-yellow-400/80 font-bold">
-            + Nueva sección
-          </label>
-          <select
-            defaultValue=""
-            onChange={(e) => {
-              if (e.target.value) addSection(e.target.value);
-              e.target.value = '';
-            }}
-            aria-label="Selecciona tipo de nueva sección"
-            className="w-full rounded-lg border border-yellow-400/15 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-yellow-400/50"
-          >
-            <option value="" disabled>
-              Selecciona tipo…
-            </option>
-            {KINDS.map((k) => (
-              <option key={k.value} value={k.value}>
-                {k.label}
-              </option>
-            ))}
-          </select>
-        </div>
-
-        {/* Sections */}
-        <div className="flex-1 space-y-2 overflow-y-auto">
-          <label className="block text-[10px] uppercase tracking-[0.3em] text-yellow-400/80 font-bold">
+        {/* Sections list (sortable) */}
+        <div className="flex-1 flex flex-col gap-2 overflow-y-auto min-h-0">
+          <p className="text-[10px] uppercase tracking-[0.3em] text-yellow-400/70 font-bold">
             Secciones ({sections.length})
-          </label>
+          </p>
 
           {loading ? (
-            <div className="flex items-center justify-center py-8 text-zinc-500">
-              <Loader2 className="w-5 h-5 animate-spin mr-2" /> Cargando…
-            </div>
+            <LoadingPulse />
           ) : sections.length === 0 ? (
-            <div className="rounded-lg border border-dashed border-yellow-400/20 p-6 text-center text-xs text-zinc-500">
-              Sin secciones. Añade la primera arriba.
-            </div>
+            <EmptyState />
           ) : (
-            <div
-              className={
-                viewMode === 'grid'
-                  ? 'grid gap-2 grid-cols-2'
-                  : 'space-y-2'
-              }
+            <DndContext
+              sensors={sensors}
+              collisionDetection={closestCenter}
+              onDragStart={handleDragStart}
+              onDragEnd={handleDragEnd}
             >
-              {sections.map((section) => (
-                <SectionCard
-                  key={section.id}
-                  section={section}
-                  isSelected={selectedId === section.id}
-                  isExpanded={expandedSection === section.id}
-                  onSelect={() => {
-                    setSelectedId(section.id);
-                    setExpandedSection(section.id);
-                  }}
-                  onUpdate={updateSection}
-                  onDelete={deleteSection}
-                  onMove={moveSection}
-                  settingGroups={settingGroups}
-                  onSettingChange={updateSetting}
-                />
-              ))}
-            </div>
+              <SortableContext items={sections.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+                <div className={viewMode === 'grid' ? 'grid gap-2 grid-cols-2' : 'flex flex-col gap-2'}>
+                  {sections.map((section) => (
+                    <SortableSectionCard
+                      key={section.id}
+                      section={section}
+                      isSelected={selectedId === section.id}
+                      isExpanded={expandedSection === section.id}
+                      isDragging={activeDragId === section.id}
+                      onSelect={() => {
+                        setSelectedId(section.id);
+                        setExpandedSection((p) => (p === section.id ? null : section.id));
+                      }}
+                      onUpdate={updateSection}
+                      onDelete={deleteSection}
+                    />
+                  ))}
+                </div>
+              </SortableContext>
+
+              <DragOverlay dropAnimation={{ duration: 180, easing: 'cubic-bezier(0.18,0.67,0.6,1.22)' }}>
+                {activeDragSection ? (
+                  <DragGhost section={activeDragSection} />
+                ) : null}
+              </DragOverlay>
+            </DndContext>
           )}
         </div>
 
         {/* Settings */}
-        <div className="border-t border-yellow-400/10 pt-4 space-y-3">
-          <label className="block text-[10px] uppercase tracking-[0.3em] text-yellow-400/80 font-bold">
-            ⚙️ Configuración
-          </label>
-          {settingGroups.map((group, gi) => (
-            <div key={gi} className="space-y-2">
-              <p className="text-xs font-bold text-zinc-400">{group.title}</p>
-              <div className="space-y-2">
+        {settingGroups.length > 0 && (
+          <div className="border-t border-yellow-400/10 pt-4 space-y-4">
+            <p className="text-[10px] uppercase tracking-[0.3em] text-yellow-400/70 font-bold">⚙️ Configuración</p>
+            {settingGroups.map((group, gi) => (
+              <div key={gi} className="space-y-2">
+                <p className="text-xs font-bold text-zinc-400">{group.title}</p>
                 {group.fields.map((field) => (
-                  <input
-                    key={field.key}
-                    placeholder={field.label}
-                    value={settings[field.key] ?? ''}
-                    onChange={(e) => updateSetting(field.key, e.target.value)}
-                    className="w-full rounded-lg border border-yellow-400/15 bg-black/50 px-3 py-2 text-xs text-white outline-none focus:border-yellow-400/50"
-                  />
+                  <div key={field.key}>
+                    {field.multiline ? (
+                      <textarea
+                        placeholder={field.label}
+                        value={settings[field.key] ?? ''}
+                        onChange={(e) => updateSetting(field.key, e.target.value)}
+                        className="w-full rounded-xl border border-yellow-400/15 bg-black/60 px-3 py-2 text-xs text-white outline-none focus:border-yellow-400/40 resize-y min-h-[72px] transition-colors"
+                      />
+                    ) : (
+                      <input
+                        placeholder={field.label}
+                        value={settings[field.key] ?? ''}
+                        onChange={(e) => updateSetting(field.key, e.target.value)}
+                        className="w-full rounded-xl border border-yellow-400/15 bg-black/60 px-3 py-2 text-xs text-white outline-none focus:border-yellow-400/40 transition-colors"
+                      />
+                    )}
+                    {field.hint && <p className="mt-1 text-[10px] text-zinc-600">{field.hint}</p>}
+                  </div>
                 ))}
               </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </aside>
 
-      {/* RIGHT: Preview Panel */}
+      {/* ── RIGHT: Preview ─────────────────────────────────────────────────── */}
       <section className="hidden md:flex md:flex-1 flex-col gap-3 rounded-2xl border border-yellow-400/10 bg-zinc-950 p-3 overflow-hidden">
-        {/* Toolbar */}
-        <div className="flex items-center justify-between gap-2 bg-black/50 rounded-lg p-3">
-          <span className="text-xs text-zinc-500">Vista previa en vivo</span>
+        <div className="flex items-center justify-between gap-2 bg-black/50 rounded-xl px-4 py-2.5">
+          <span className="text-xs text-zinc-500 font-medium">Vista previa en vivo</span>
           <div className="flex items-center gap-2">
             <div className="flex rounded-full border border-yellow-400/20 bg-black p-1">
               {(['mobile', 'tablet', 'desktop'] as const).map((d) => (
                 <button
                   key={d}
                   onClick={() => setDevice(d)}
-                  className={`px-3 py-1.5 text-xs font-bold rounded-full transition-all ${
-                    device === d
-                      ? 'bg-yellow-400 text-black'
-                      : 'text-zinc-400 hover:text-white'
-                  }`}
+                  title={d}
+                  className={[
+                    'p-1.5 rounded-full transition-all',
+                    device === d ? 'bg-yellow-400 text-black shadow-[0_0_10px_rgba(250,204,21,0.4)]' : 'text-zinc-500 hover:text-zinc-200',
+                  ].join(' ')}
                 >
-                  {d === 'mobile' && <Smartphone className="w-4 h-4" />}
-                  {d === 'tablet' && <Tablet className="w-4 h-4" />}
-                  {d === 'desktop' && <Monitor className="w-4 h-4" />}
+                  {d === 'mobile' && <Smartphone className="w-3.5 h-3.5" />}
+                  {d === 'tablet' && <Tablet className="w-3.5 h-3.5" />}
+                  {d === 'desktop' && <Monitor className="w-3.5 h-3.5" />}
                 </button>
               ))}
             </div>
             <button
               onClick={() => setPreviewToken(Date.now())}
-              className="p-2 hover:bg-yellow-400/10 rounded-lg transition-all"
+              className="p-2 rounded-lg text-zinc-500 hover:text-yellow-400 hover:bg-yellow-400/10 transition-all"
               title="Recargar vista previa"
-              aria-label="Recargar"
             >
-              <RefreshCw className="w-4 h-4 text-zinc-400" />
+              <RefreshCw className="w-3.5 h-3.5" />
             </button>
           </div>
         </div>
 
-        {/* Preview Container */}
-        <div className="flex-1 overflow-auto rounded-xl bg-black flex items-center justify-center p-3">
-          <div className={viewportClass}>
+        <div className="flex-1 overflow-auto rounded-xl bg-black/50 flex items-start justify-center p-3">
+          <div className={`${viewportClass} w-full transition-all duration-300`}>
             <iframe
               ref={iframeRef}
               src={previewSrc}
               title="Vista previa"
-              className="w-full h-[80vh] rounded-lg border border-yellow-400/10 bg-white"
+              className="w-full h-[80vh] rounded-xl border border-yellow-400/10 bg-white"
             />
           </div>
         </div>
@@ -448,145 +477,245 @@ export function EnhancedStoreEditor({
   );
 }
 
-// ── Components ─────────────────────────────────────────────────────────────
+// ── Sub-components ──────────────────────────────────────────────────────────
 
 function SaveIndicator({ state }: { state: SaveState }) {
-  const config = {
-    idle: { icon: <Clock className="w-3 h-3" />, text: 'Listo', color: 'text-zinc-500' },
-    saving: { icon: <Loader2 className="w-3 h-3 animate-spin" />, text: 'Guardando…', color: 'text-yellow-400' },
-    saved: { icon: <CheckCircle2 className="w-3 h-3" />, text: 'Guardado', color: 'text-green-400' },
-    error: { icon: <AlertCircle className="w-3 h-3" />, text: 'Error', color: 'text-red-400' },
+  const cfg = {
+    idle:   { icon: <Clock className="w-3 h-3" />,                         text: 'Listo',      cls: 'text-zinc-600' },
+    saving: { icon: <Loader2 className="w-3 h-3 animate-spin" />,           text: 'Guardando',  cls: 'text-yellow-400' },
+    saved:  { icon: <CheckCircle2 className="w-3 h-3" />,                   text: 'Guardado',   cls: 'text-emerald-400' },
+    error:  { icon: <AlertCircle className="w-3 h-3" />,                    text: 'Error',      cls: 'text-red-400' },
   }[state];
 
   return (
-    <div className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest ${config.color}`}>
-      {config.icon}
-      <span>{config.text}</span>
+    <motion.div
+      key={state}
+      initial={{ opacity: 0, scale: 0.85 }}
+      animate={{ opacity: 1, scale: 1 }}
+      className={`flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest shrink-0 ${cfg.cls}`}
+    >
+      {cfg.icon}
+      <span>{cfg.text}</span>
+      {state === 'saving' && (
+        <span className="flex gap-0.5">
+          {[0, 150, 300].map((d) => (
+            <motion.span
+              key={d}
+              className="inline-block w-1 h-1 rounded-full bg-yellow-400"
+              animate={{ opacity: [0.3, 1, 0.3] }}
+              transition={{ duration: 0.9, repeat: Infinity, delay: d / 1000 }}
+            />
+          ))}
+        </span>
+      )}
+    </motion.div>
+  );
+}
+
+function LoadingPulse() {
+  return (
+    <div className="space-y-2">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="h-14 rounded-xl border border-yellow-400/5 bg-zinc-900/60 overflow-hidden relative">
+          <motion.div
+            className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-400/5 to-transparent"
+            animate={{ x: ['-100%', '100%'] }}
+            transition={{ duration: 1.4, repeat: Infinity, delay: i * 0.15 }}
+          />
+        </div>
+      ))}
     </div>
   );
 }
 
-interface SectionCardProps {
+function EmptyState() {
+  return (
+    <div className="flex flex-col items-center justify-center rounded-2xl border border-dashed border-yellow-400/15 p-8 text-center gap-3">
+      <div className="w-10 h-10 rounded-xl bg-yellow-400/5 border border-yellow-400/15 flex items-center justify-center">
+        <Zap className="w-5 h-5 text-yellow-400/40" />
+      </div>
+      <p className="text-xs text-zinc-500">Sin secciones. Añade la primera arriba.</p>
+    </div>
+  );
+}
+
+// Visual ghost shown while dragging in the DragOverlay
+function DragGhost({ section }: { section: Section }) {
+  const kindLabel = KINDS.find((k) => k.value === section.kind)?.label || section.kind;
+  return (
+    <div className="rounded-xl border border-yellow-400/60 bg-zinc-900/95 px-3 py-2.5 shadow-[0_8px_32px_rgba(250,204,21,0.25)] backdrop-blur-sm flex items-center gap-2 cursor-grabbing w-full">
+      <GripVertical className="w-3.5 h-3.5 text-yellow-400/60 shrink-0" />
+      <div className="min-w-0">
+        <p className="text-xs font-bold text-yellow-400 truncate">{kindLabel}</p>
+        <p className="text-[10px] text-zinc-500 truncate">{section.title || '(sin título)'}</p>
+      </div>
+    </div>
+  );
+}
+
+// ── SortableSectionCard ──────────────────────────────────────────────────────
+
+interface SortableSectionCardProps {
   section: Section;
   isSelected: boolean;
   isExpanded: boolean;
+  isDragging: boolean;
   onSelect: () => void;
   onUpdate: (id: string, patch: Partial<Section>) => void;
   onDelete: (id: string) => void;
-  onMove: (id: string, dir: -1 | 1) => void;
-  settingGroups: any[];
-  onSettingChange: (key: string, value: string) => void;
+}
+
+function SortableSectionCard(props: SortableSectionCardProps) {
+  const { attributes, listeners, setNodeRef, transform, transition, isDragging: isSorting } = useSortable({
+    id: props.section.id,
+  });
+  const style: React.CSSProperties = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isSorting ? 0.35 : 1,
+    zIndex: isSorting ? 50 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style}>
+      <SectionCard {...props} dragHandleProps={{ ...attributes, ...listeners }} />
+    </div>
+  );
+}
+
+interface SectionCardProps extends SortableSectionCardProps {
+  dragHandleProps: React.HTMLAttributes<HTMLButtonElement>;
 }
 
 function SectionCard({
   section,
   isSelected,
   isExpanded,
+  isDragging,
   onSelect,
   onUpdate,
   onDelete,
-  onMove,
+  dragHandleProps,
 }: SectionCardProps) {
   const kindLabel = KINDS.find((k) => k.value === section.kind)?.label || section.kind;
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 10 }}
+      initial={{ opacity: 0, y: 8 }}
       animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, y: -10 }}
-      className={`rounded-lg border transition-all cursor-pointer ${
+      exit={{ opacity: 0, y: -8 }}
+      className={[
+        'rounded-xl border transition-all duration-150',
         isSelected
-          ? 'border-yellow-400/50 bg-yellow-400/10'
-          : 'border-yellow-400/10 bg-black/50 hover:border-yellow-400/30'
-      }`}
+          ? 'border-yellow-400/50 bg-yellow-400/[0.06] shadow-[0_0_20px_rgba(250,204,21,0.1),inset_0_1px_0_rgba(250,204,21,0.15)]'
+          : 'border-yellow-400/10 bg-zinc-900/70 hover:border-yellow-400/25 hover:bg-zinc-900/90',
+        isDragging ? 'shadow-[0_12px_40px_rgba(0,0,0,0.6)]' : '',
+      ].join(' ')}
     >
-      <div className="p-3 space-y-3">
-        {/* Header */}
-        <div className="flex items-start justify-between gap-2" onClick={onSelect}>
-          <div className="flex-1 min-w-0">
+      <div className="p-3 space-y-2.5">
+        {/* Card header */}
+        <div className="flex items-center gap-2">
+          {/* Drag handle */}
+          <button
+            {...dragHandleProps}
+            className="flex-shrink-0 cursor-grab active:cursor-grabbing p-1 rounded-lg hover:bg-yellow-400/10 text-zinc-600 hover:text-yellow-400/70 transition-colors touch-none"
+            aria-label="Arrastrar para reordenar"
+          >
+            <GripVertical className="w-3.5 h-3.5" />
+          </button>
+
+          {/* Title area — click to expand */}
+          <div className="flex-1 min-w-0 cursor-pointer" onClick={onSelect}>
             <p className="text-xs font-bold text-yellow-400 truncate">{kindLabel}</p>
-            <p className="text-xs text-zinc-400 truncate">{section.title || '(sin título)'}</p>
+            <p className="text-[10px] text-zinc-500 truncate">{section.title || '(sin título)'}</p>
           </div>
-          <div className="flex gap-1 flex-shrink-0">
+
+          {/* Controls */}
+          <div className="flex items-center gap-1 shrink-0">
+            <Toggle
+              checked={section.visible}
+              onChange={(v) => onUpdate(section.id, { visible: v })}
+            />
             <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onUpdate(section.id, { visible: !section.visible });
-              }}
-              className="p-1 hover:bg-yellow-400/10 rounded transition-all"
-              aria-label={section.visible ? 'Ocultar sección' : 'Mostrar sección'}
-            >
-              {section.visible ? (
-                <Eye className="w-3 h-3 text-zinc-400" />
-              ) : (
-                <EyeOff className="w-3 h-3 text-zinc-600" />
-              )}
-            </button>
-            <button
-              onClick={(e) => {
-                e.stopPropagation();
-                onDelete(section.id);
-              }}
-              className="p-1 hover:bg-red-500/10 rounded transition-all"
+              onClick={(e) => { e.stopPropagation(); onDelete(section.id); }}
+              className="p-1.5 rounded-lg text-red-400/50 hover:text-red-400 hover:bg-red-500/10 transition-all"
               aria-label="Eliminar sección"
             >
-              <Trash2 className="w-3 h-3 text-red-400/60" />
+              <Trash2 className="w-3 h-3" />
+            </button>
+            <button
+              onClick={onSelect}
+              className="p-1.5 rounded-lg text-zinc-600 hover:text-yellow-400 hover:bg-yellow-400/10 transition-all"
+              aria-label={isExpanded ? 'Contraer' : 'Expandir'}
+            >
+              <ChevronRight className={`w-3 h-3 transition-transform ${isExpanded ? 'rotate-90' : ''}`} />
             </button>
           </div>
         </div>
 
-        {/* Inline Fields (when expanded) */}
+        {/* Inline fields (expanded) */}
         <AnimatePresence>
           {isExpanded && (
             <motion.div
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
-              className="border-t border-yellow-400/10 pt-3 space-y-2"
+              className="overflow-hidden"
             >
-              {section.title !== undefined && (
-                <input
-                  value={section.title ?? ''}
-                  onChange={(e) => onUpdate(section.id, { title: e.target.value })}
-                  placeholder="Título"
-                  className="w-full text-xs rounded bg-black/50 border border-yellow-400/15 px-2 py-1.5 text-white outline-none focus:border-yellow-400/50"
-                />
-              )}
-              {section.subtitle !== undefined && (
-                <input
-                  value={section.subtitle ?? ''}
-                  onChange={(e) => onUpdate(section.id, { subtitle: e.target.value })}
-                  placeholder="Subtítulo"
-                  className="w-full text-xs rounded bg-black/50 border border-yellow-400/15 px-2 py-1.5 text-white outline-none focus:border-yellow-400/50"
-                />
-              )}
-              {section.image_url !== undefined && (
-                <input
-                  value={section.image_url ?? ''}
-                  onChange={(e) => onUpdate(section.id, { image_url: e.target.value })}
-                  placeholder="URL de imagen"
-                  className="w-full text-xs rounded bg-black/50 border border-yellow-400/15 px-2 py-1.5 text-white outline-none focus:border-yellow-400/50"
-                />
-              )}
+              <div className="border-t border-yellow-400/10 pt-2.5 space-y-2">
+                {section.title !== undefined && (
+                  <input
+                    value={section.title ?? ''}
+                    onChange={(e) => onUpdate(section.id, { title: e.target.value })}
+                    placeholder="Título"
+                    className="w-full text-xs rounded-lg bg-black/60 border border-yellow-400/15 px-2.5 py-1.5 text-white outline-none focus:border-yellow-400/40 transition-colors"
+                  />
+                )}
+                {section.subtitle !== undefined && (
+                  <input
+                    value={section.subtitle ?? ''}
+                    onChange={(e) => onUpdate(section.id, { subtitle: e.target.value })}
+                    placeholder="Subtítulo"
+                    className="w-full text-xs rounded-lg bg-black/60 border border-yellow-400/15 px-2.5 py-1.5 text-white outline-none focus:border-yellow-400/40 transition-colors"
+                  />
+                )}
+                {section.body !== undefined && (
+                  <textarea
+                    value={section.body ?? ''}
+                    onChange={(e) => onUpdate(section.id, { body: e.target.value })}
+                    placeholder="Contenido"
+                    rows={2}
+                    className="w-full text-xs rounded-lg bg-black/60 border border-yellow-400/15 px-2.5 py-1.5 text-white outline-none focus:border-yellow-400/40 transition-colors resize-none"
+                  />
+                )}
+                {section.image_url !== undefined && (
+                  <input
+                    value={section.image_url ?? ''}
+                    onChange={(e) => onUpdate(section.id, { image_url: e.target.value })}
+                    placeholder="URL de imagen"
+                    className="w-full text-xs rounded-lg bg-black/60 border border-yellow-400/15 px-2.5 py-1.5 text-white outline-none focus:border-yellow-400/40 transition-colors"
+                  />
+                )}
+                {section.link_url !== undefined && (
+                  <div className="grid grid-cols-2 gap-1.5">
+                    <input
+                      value={section.link_url ?? ''}
+                      onChange={(e) => onUpdate(section.id, { link_url: e.target.value })}
+                      placeholder="URL del enlace"
+                      className="w-full text-xs rounded-lg bg-black/60 border border-yellow-400/15 px-2.5 py-1.5 text-white outline-none focus:border-yellow-400/40 transition-colors"
+                    />
+                    <input
+                      value={section.link_label ?? ''}
+                      onChange={(e) => onUpdate(section.id, { link_label: e.target.value })}
+                      placeholder="Etiqueta"
+                      className="w-full text-xs rounded-lg bg-black/60 border border-yellow-400/15 px-2.5 py-1.5 text-white outline-none focus:border-yellow-400/40 transition-colors"
+                    />
+                  </div>
+                )}
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Move buttons */}
-        <div className="flex gap-1 text-[10px]">
-          <button
-            onClick={() => onMove(section.id, -1)}
-            className="flex-1 py-1 rounded bg-black/50 border border-yellow-400/15 text-zinc-400 hover:border-yellow-400/30 transition-all flex items-center justify-center gap-1"
-          >
-            <ChevronUp className="w-3 h-3" /> Arriba
-          </button>
-          <button
-            onClick={() => onMove(section.id, 1)}
-            className="flex-1 py-1 rounded bg-black/50 border border-yellow-400/15 text-zinc-400 hover:border-yellow-400/30 transition-all flex items-center justify-center gap-1"
-          >
-            <ChevronDown className="w-3 h-3" /> Abajo
-          </button>
-        </div>
       </div>
     </motion.div>
   );

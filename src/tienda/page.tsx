@@ -166,6 +166,22 @@ function SilverGoldButton({ children, onClick, className = '' }: { children: Rea
 	);
 }
 
+const CATEGORY_EMOJI: Record<string, string> = {
+	all: '🏠',
+	Seguridad: '🔐',
+	Iluminación: '💡',
+	Grifería: '🚿',
+	Revestimiento: '🪨',
+	'Smart Home': '📱',
+	Climatización: '❄️',
+	Herramientas: '🔧',
+	Pintura: '🎨',
+	Muebles: '🛋️',
+	Electrodomésticos: '🔌',
+	Baño: '🛁',
+	Cocina: '🍳',
+};
+
 export default function TiendaClientPage() {
 	const router = useRouter();
 	const { user, signOut } = useAuth();
@@ -484,7 +500,7 @@ export default function TiendaClientPage() {
 				.brand-marquee:hover { animation-play-state: paused; }
 				/* Featured card glow */
 				.feat-card { transition: transform 0.4s cubic-bezier(0.22,1,0.36,1), box-shadow 0.4s cubic-bezier(0.22,1,0.36,1); }
-				.feat-card:hover { transform: translateY(-6px) scale(1.015); box-shadow: 0 24px 60px rgba(250,204,21,0.15), 0 4px 16px rgba(0,0,0,0.2); }
+				.feat-card:hover { transform: translateY(-6px) scale(1.015); box-shadow: 0 24px 60px rgba(5,150,105,0.12), 0 4px 16px rgba(0,0,0,0.18); }
 				.depth-glass {
 					backdrop-filter: blur(10px);
 					background: linear-gradient(150deg, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0.03) 100%);
@@ -724,22 +740,7 @@ export default function TiendaClientPage() {
 						</div>
 						<div className="flex gap-5 overflow-x-auto nike-scroll pb-1">
 							{categories.map((cat) => {
-								const EMOJI_MAP: Record<string, string> = {
-									all: '🏠',
-									Seguridad: '🔐',
-									Iluminación: '💡',
-									Grifería: '🚿',
-									Revestimiento: '🪨',
-									'Smart Home': '📱',
-									Climatización: '❄️',
-									Herramientas: '🔧',
-									Pintura: '🎨',
-									Muebles: '🛋️',
-									Electrodomésticos: '🔌',
-									Baño: '🛁',
-									Cocina: '🍳',
-								};
-								const emoji = EMOJI_MAP[cat] ?? '📦';
+								const emoji = CATEGORY_EMOJI[cat] ?? '📦';
 								const label = cat === 'all' ? 'Todos' : cat;
 								const active = selectedCategory === cat;
 								return (

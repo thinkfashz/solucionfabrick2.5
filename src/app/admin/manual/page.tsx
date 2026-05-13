@@ -43,6 +43,7 @@ import {
   Truck,
   Package,
   History,
+  Settings,
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────────────────────
@@ -1671,6 +1672,175 @@ MICROLINK_API_KEY=tu_clave_microlink`}</CodeBlock>
         <Callout type="success">
           El proyecto está listo para producción. Los únicos pasos pendientes son configurar
           las credenciales de carriers en Vercel y las claves de MercadoPago de producción.
+        </Callout>
+      </>
+    ),
+  },
+  {
+    id: 'guia-configuracion',
+    num: 24,
+    title: 'Guía de Configuración Paso a Paso',
+    icon: Settings,
+    color: 'bg-yellow-400',
+    content: (
+      <>
+        <P>
+          Todo lo que necesitas para dejar la tienda funcionando en producción. Sigue cada
+          integración en orden: primero las obligatorias, luego las de envíos y finalmente la
+          facturación electrónica.
+        </P>
+
+        {/* ── MercadoPago ── */}
+        <H3>1. MercadoPago (Pagos) — OBLIGATORIO</H3>
+        <P>
+          Sin MercadoPago el checkout no funciona. Sigue estos pasos:
+        </P>
+        <UL>
+          <LI>Crea una cuenta en <strong className="text-white">mercadopago.cl</strong> y verifica tu negocio.</LI>
+          <LI>
+            Entra a <strong className="text-white">Tu negocio → Configuración → Credenciales</strong>{' '}
+            y copia las credenciales de <strong className="text-yellow-400">Producción</strong>{' '}
+            (no uses las de prueba en producción).
+          </LI>
+          <LI>
+            En el mismo panel, ve a <strong className="text-white">Notificaciones IPN/Webhooks</strong>{' '}
+            y agrega la URL:{' '}
+            <Code>https://tu-dominio.com/api/payments/webhook?source=mercadopago</Code>
+          </LI>
+          <LI>Copia el <strong className="text-white">Secret de validación</strong> que MP muestra en ese paso.</LI>
+        </UL>
+        <CodeBlock lang="bash">{`# .env.local o Vercel → Settings → Environment Variables
+MERCADO_PAGO_ACCESS_TOKEN=APP_USR-...    # Access Token (producción)
+NEXT_PUBLIC_MP_PUBLIC_KEY=APP_USR-...   # Public Key (producción)
+MERCADO_PAGO_WEBHOOK_SECRET=tu_secret   # Secret de validación IPN`}</CodeBlock>
+        <Callout type="warning">
+          Las credenciales de <strong>Sandbox/Prueba</strong> tienen el prefijo{' '}
+          <Code>TEST-</Code>. Nunca las uses en producción — los pagos no se acreditarán.
+        </Callout>
+
+        {/* ── Haulmer DTE ── */}
+        <H3>2. Haulmer / OpenFactura (DTE — Boletas y Facturas) — RECOMENDADO</H3>
+        <P>
+          La app emite <strong className="text-white">automáticamente una Boleta Electrónica (DTE 39)</strong>{' '}
+          por cada pedido pagado. Sin estas variables usa el driver mock (registros locales, sin SII).
+        </P>
+        <UL>
+          <LI>
+            Crea cuenta en{' '}
+            <strong className="text-white">openfactura.cl</strong>{' '}
+            (plan <em>Starter</em> es suficiente para comenzar).
+          </LI>
+          <LI>
+            En el portal de OpenFactura, ve a <strong className="text-white">Configuración → API</strong>{' '}
+            y genera una API Key. Esa es tu <Code>BILLING_API_KEY</Code>.
+          </LI>
+          <LI>
+            Necesitas también el <strong className="text-white">RUT de tu empresa</strong>{' '}
+            (sin puntos, con guión: <Code>12345678-9</Code>) y la Razón Social
+            exactamente como aparece en el SII.
+          </LI>
+          <LI>
+            Opcional: tu giro, dirección y comuna aparecerán en el encabezado de las boletas.
+          </LI>
+        </UL>
+        <CodeBlock lang="bash">{`BILLING_PROVIDER=haulmer
+BILLING_API_KEY=tu_api_key_de_openfactura
+BILLING_RUT_EMISOR=12345678-9          # RUT empresa sin puntos, con guión
+BILLING_RAZON_SOCIAL=Mi Empresa SpA    # Tal como en el SII
+BILLING_GIRO=Venta al por menor        # (opcional)
+BILLING_DIRECCION=Av. Principal 123    # (opcional)
+BILLING_COMUNA=Santiago                # (opcional)`}</CodeBlock>
+        <Callout type="success">
+          Con estas variables configuradas, cada vez que un cliente pague su pedido se emitirá
+          automáticamente una boleta electrónica y el PDF estará disponible en{' '}
+          <Code>/admin/facturas</Code>. También puedes emitir facturas manualmente desde esa página.
+        </Callout>
+        <H3>Flujo automático de emisión</H3>
+        <UL>
+          <LI>Cliente paga con MercadoPago → MP notifica a <Code>/api/payments/webhook</Code></LI>
+          <LI>El webhook actualiza el pedido a <Code>pagada</Code></LI>
+          <LI>Se llama <Code>emitBoletaForOrder(orderId)</Code> en background (fire-and-forget)</LI>
+          <LI>El driver de Haulmer construye el payload OpenFactura y lo envía al SII</LI>
+          <LI>El resultado se guarda en la tabla <Code>invoices</Code> con PDF y folio SII</LI>
+          <LI>Se dispara el hook <Code>order.paid</Code> para extensiones (Klaviyo, Shipday, etc.)</LI>
+        </UL>
+
+        {/* ── Chilexpress ── */}
+        <H3>3. Chilexpress (Envíos) — OPCIONAL</H3>
+        <UL>
+          <LI>
+            Ve a <strong className="text-white">developers.chilexpress.cl</strong> y crea una
+            cuenta de desarrollador.
+          </LI>
+          <LI>
+            Solicita acceso al producto <strong className="text-white">Cotizador de Envíos</strong>{' '}
+            (requiere cuenta comercial Chilexpress).
+          </LI>
+          <LI>
+            Una vez aprobado, recibirás la{' '}
+            <strong className="text-white">Ocp-Apim-Subscription-Key</strong> — esa es tu{' '}
+            <Code>CHILEXPRESS_API_KEY</Code>.
+          </LI>
+          <LI>
+            Tu número de cuenta Chilexpress va en <Code>CHILEXPRESS_ACCOUNT</Code>.
+          </LI>
+        </UL>
+        <CodeBlock lang="bash">{`CHILEXPRESS_API_KEY=tu_ocp_apim_subscription_key
+CHILEXPRESS_ACCOUNT=tu_numero_de_cuenta
+# CHILEXPRESS_BASE_URL=https://services.wschilexpress.com  (producción, por defecto)`}</CodeBlock>
+
+        {/* ── Starken ── */}
+        <H3>4. Starken (Envíos) — OPCIONAL</H3>
+        <UL>
+          <LI>
+            Contáctate con Starken Empresas en <strong className="text-white">starken.cl/empresas</strong>{' '}
+            y solicita acceso a su API B2B.
+          </LI>
+          <LI>Recibirás usuario, contraseña y tu RUT como emisor registrado.</LI>
+          <LI>El RUT emisor va en <Code>STARKEN_RUT_EMISOR</Code> (sin puntos, con guión).</LI>
+        </UL>
+        <CodeBlock lang="bash">{`STARKEN_USER=tu_usuario_api
+STARKEN_PASS=tu_contraseña_api
+STARKEN_RUT_EMISOR=12345678-9
+# STARKEN_BASE_URL=https://api.starken.cl  (por defecto)`}</CodeBlock>
+
+        {/* ── Correos de Chile ── */}
+        <H3>5. Correos de Chile (Envíos) — OPCIONAL</H3>
+        <UL>
+          <LI>
+            Ve a <strong className="text-white">correoschile.cl/empresas</strong> y solicita
+            una cuenta empresarial.
+          </LI>
+          <LI>
+            Firma el contrato de servicio para obtener usuario, contraseña y número de contrato.
+          </LI>
+        </UL>
+        <CodeBlock lang="bash">{`CORREOSCHILE_USER=tu_usuario
+CORREOSCHILE_PASS=tu_contraseña
+CORREOSCHILE_CONTRATO=tu_numero_contrato
+# CORREOSCHILE_BASE_URL=https://api.correoschile.cl  (por defecto)`}</CodeBlock>
+
+        <Callout type="info">
+          <strong>Sin carriers configurados:</strong> el checkout muestra precios estimados desde
+          la tabla manual de <Code>/admin/envios</Code>. Con un carrier configurado, los precios
+          se consultan en tiempo real a la API del carrier.
+        </Callout>
+
+        {/* ── Orden recomendado ── */}
+        <H3>Orden recomendado para producción</H3>
+        <DataTable
+          headers={['Paso', 'Integración', 'Tiempo estimado', 'Impacto']}
+          rows={[
+            ['1', 'MercadoPago (pagos)', '15 min', 'Sin esto no hay checkout'],
+            ['2', 'Haulmer DTE (boletas)', '20 min', 'Obligatorio legalmente para vender'],
+            ['3', 'Un carrier de envíos', '1-3 días (solicitud)', 'Cotizaciones en tiempo real'],
+            ['4', 'Carriers adicionales', 'Opcional', 'Más opciones para el cliente'],
+          ]}
+        />
+        <Callout type="success">
+          <strong>Verificación:</strong> después de configurar, ve a <Code>/admin/facturas</Code>{' '}
+          (debe mostrar banner verde), <Code>/admin/envios</Code> (banner verde de carriers) y{' '}
+          <Code>/admin/integraciones</Code> para verificar el estado de MercadoPago.
         </Callout>
       </>
     ),

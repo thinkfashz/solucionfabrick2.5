@@ -4,6 +4,8 @@ import { getMercadoPagoAccessToken } from '@/lib/mercadopago';
 import { getMercadoPagoCredentials } from '@/lib/mercadoPagoCredentials';
 import { mapMercadoPagoStatusDetail } from '@/lib/mercadopagoStatus';
 import { insforge } from '@/lib/insforge';
+import { emitBoletaForOrder } from '@/lib/billing/autoEmit';
+import { dispatchHookAsync } from '@/lib/extensionsBus';
 
 /**
  * Server-side direct card payment via Mercado Pago using a card token created
@@ -111,6 +113,20 @@ export async function POST(request: Request) {
     }
 
     if (mpStatus === 'approved') {
+      // Auto-emit boleta and dispatch order.paid. Fire-and-forget so the payment
+      // response is returned immediately to the buyer.
+      if (externalReference) {
+        const orderId = String(externalReference);
+        emitBoletaForOrder(orderId).catch((err) =>
+          console.warn('[dte] auto-emit failed for order', orderId, err),
+        );
+        dispatchHookAsync('order.paid', {
+          orderId,
+          paymentId: mpPaymentId,
+          paymentStatus: mpStatus,
+          provider: 'mercadopago',
+        });
+      }
       return NextResponse.json({
         status: mpStatus,
         statusDetail: mpStatusDetail,

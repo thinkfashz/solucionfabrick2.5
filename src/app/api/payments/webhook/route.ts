@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server';
 import { createHmac } from 'node:crypto';
 import { insforge } from '@/lib/insforge';
 import { getMercadoPagoPayment, mapMercadoPagoStatus, verifyMercadoPagoSignature } from '@/lib/mercadopago';
+import { emitBoletaForOrder } from '@/lib/billing/autoEmit';
+import { dispatchHookAsync } from '@/lib/extensionsBus';
 
 type GenericPaymentWebhookBody = {
   eventType: string;
@@ -113,6 +115,21 @@ async function handleMercadoPagoWebhook(request: Request) {
   }
 
   const updated = await updateOrderStatus(orderId, paymentId, paymentStatus);
+
+  // Auto-emit boleta and dispatch order.paid when payment is approved.
+  // Both are fire-and-forget — the webhook must respond quickly to MercadoPago.
+  if (updated.orderStatus === 'pagada') {
+    emitBoletaForOrder(orderId).catch((err) =>
+      console.warn('[dte] auto-emit failed for order', orderId, err),
+    );
+    dispatchHookAsync('order.paid', {
+      orderId,
+      paymentId,
+      paymentStatus,
+      provider: 'mercadopago',
+    });
+  }
+
   return NextResponse.json({
     ok: updated.ok,
     provider: 'mercado_pago',

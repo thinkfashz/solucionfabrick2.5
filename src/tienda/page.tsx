@@ -981,7 +981,7 @@ export default function TiendaClientPage() {
 										<button onClick={() => { setSelectedCategory('all'); setPriceFilter('all'); setOnlyDiscounted(false); setSearchQuery(''); }} className="mt-2 rounded-full bg-black text-white px-6 py-2.5 text-sm font-medium hover:bg-neutral-800">Limpiar filtros</button>
 									</div>
 								) : (
-									<div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-5">
+									<div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
 										{filteredProducts.map((p) => {
 											const pct = (p as { discountPercentage?: number }).discountPercentage ?? 0;
 											const stockBadge = getStockBadge(p);
@@ -998,6 +998,7 @@ export default function TiendaClientPage() {
 													rating={rating}
 													stockLabel={stockBadge.label}
 													deliveryLabel={deliveryBadge.label}
+													isDark={isDark}
 													onSelect={() => handleSelectProduct(p)}
 													onAddToCart={(e) => handleAddToCart(e as React.MouseEvent<HTMLButtonElement>, p)}
 												/>

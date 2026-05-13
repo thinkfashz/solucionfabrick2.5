@@ -97,10 +97,10 @@ interface ImportOverrides {
 
 function deriveErrorHint(message: string): string {
   if (/403|forbidden/i.test(message)) {
-    return 'Mercado Libre rechazó la consulta directa. Probaremos leer los metadatos de la publicación (Open Graph). Si el problema persiste, copia el enlace expandido (sin meli.la/...) o pega la URL larga de articulo.mercadolibre.cl.';
+    return 'El importer intentó 4 estrategias (navegador de escritorio, móvil, Jina.ai y Microlink.io) sin éxito. Prueba pegando la URL larga y definitiva del producto (sin acortadores) o agrega el producto manualmente desde /admin/productos/nuevo.';
   }
   if (/timeout|fetch|network|ENOTFOUND|ECONNRESET/i.test(message)) {
-    return 'No pudimos conectar con la tienda. Verifica que la URL sea pública y que tu servidor tenga salida a internet. Revisa también el panel de Estado del importador arriba.';
+    return 'No pudimos conectar con la tienda. Verifica que la URL sea pública y que el servidor tenga salida a internet. Revisa también el panel de estado arriba.';
   }
   if (/private|loopback|SSRF/i.test(message)) {
     return 'La URL apunta a una red privada y por seguridad fue bloqueada. Usa siempre URLs públicas.';
@@ -558,6 +558,7 @@ function EditablePreviewCard({ preview, onImport, importing, importedId, onPickS
   }
 
   const canSubmit = title.trim().length > 0 && priceNumber > 0;
+  const needsPriceEntry = priceNumber <= 0;
 
   return (
     <article className="mt-6 overflow-hidden rounded-2xl border border-zinc-800 bg-gradient-to-b from-zinc-900/90 to-zinc-950 shadow-xl">
@@ -596,6 +597,19 @@ function EditablePreviewCard({ preview, onImport, importing, importedId, onPickS
           </div>
         </div>
 
+        {/* Price notice — shown when the scraper couldn't extract a price (Microlink fallback or protected stores) */}
+        {needsPriceEntry && !importedId && (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-400/30 bg-amber-400/8 px-4 py-3 text-sm">
+            <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0 text-amber-400" />
+            <div>
+              <p className="font-semibold text-amber-300">Ingresa el precio antes de importar</p>
+              <p className="mt-0.5 text-xs text-amber-200/70">
+                La tienda no expuso el precio en sus metadatos. Búscalo en la página original e ingrésalo en el campo &ldquo;Precio&rdquo; para activar el botón de importar.
+              </p>
+            </div>
+          </div>
+        )}
+
         {/* Editable fields */}
         <div className="grid grid-cols-1 gap-4 lg:grid-cols-[minmax(0,1fr)_minmax(0,1fr)]">
           {/* Left column: text fields */}
@@ -623,9 +637,9 @@ function EditablePreviewCard({ preview, onImport, importing, importedId, onPickS
             </FormField>
 
             <div className="grid grid-cols-2 gap-3">
-              <FormField label="Precio">
+              <FormField label="Precio" hint={needsPriceEntry && !importedId ? 'Requerido — búscalo en la tienda original' : undefined}>
                 <div className="relative">
-                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-zinc-500">
+                  <span className={`pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm ${needsPriceEntry && !importedId ? 'text-amber-400' : 'text-zinc-500'}`}>
                     $
                   </span>
                   <input
@@ -634,7 +648,7 @@ function EditablePreviewCard({ preview, onImport, importing, importedId, onPickS
                     value={priceDisplay}
                     onChange={(e) => handlePriceChange(e.target.value)}
                     disabled={!!importedId}
-                    className="w-full rounded-xl border border-zinc-800 bg-zinc-900 py-2.5 pl-7 pr-3 text-sm text-white outline-none transition focus:border-yellow-400/60 focus:ring-2 focus:ring-yellow-400/30 disabled:opacity-60"
+                    className={`w-full rounded-xl border bg-zinc-900 py-2.5 pl-7 pr-3 text-sm text-white outline-none transition disabled:opacity-60 ${needsPriceEntry && !importedId ? 'border-amber-400/50 focus:border-amber-400/70 focus:ring-2 focus:ring-amber-400/30' : 'border-zinc-800 focus:border-yellow-400/60 focus:ring-2 focus:ring-yellow-400/30'}`}
                     placeholder="0"
                   />
                 </div>
@@ -806,6 +820,7 @@ function EditablePreviewCard({ preview, onImport, importing, importedId, onPickS
               type="button"
               onClick={handleSubmit}
               disabled={importing || !canSubmit}
+              title={!canSubmit ? (needsPriceEntry ? 'Ingresa el precio para continuar' : 'Completa el título para continuar') : undefined}
               className="inline-flex items-center justify-center gap-2 rounded-xl bg-yellow-400 px-5 py-2.5 text-sm font-semibold text-black shadow-[0_8px_24px_-8px_rgba(250,204,21,0.6)] transition hover:bg-yellow-300 focus:outline-none focus:ring-2 focus:ring-yellow-400/60 focus:ring-offset-2 focus:ring-offset-zinc-950 disabled:cursor-not-allowed disabled:opacity-60"
             >
               {importing ? (

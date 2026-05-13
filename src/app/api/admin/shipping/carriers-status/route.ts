@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { verifyAdminSession } from '@/lib/adminAuth';
+import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 import type { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
@@ -11,8 +11,10 @@ export const runtime = 'nodejs';
  * Used by /admin/envios to show a warning banner when keys are missing.
  */
 export async function GET(req: NextRequest) {
-  const session = await verifyAdminSession(req);
-  if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+  const cookie = req.cookies.get(ADMIN_COOKIE_NAME);
+  if (!cookie?.value) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  const session = await decodeSession(cookie.value);
+  if (!session) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
 
   return NextResponse.json({
     chilexpress: {

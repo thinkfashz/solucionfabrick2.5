@@ -64,6 +64,13 @@ export interface VoidDteRequest {
   folio: string;
   dte_type: DteType;
   reason: string;
+  /** Original invoice amounts — used by Haulmer to build the credit note. */
+  neto_clp?: number;
+  iva_clp?: number;
+  exento_clp?: number;
+  total_clp?: number;
+  rut_receptor?: string;
+  razon_social_receptor?: string;
 }
 
 export interface BillingDriver {

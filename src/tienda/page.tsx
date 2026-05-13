@@ -462,11 +462,6 @@ export default function TiendaClientPage() {
 				.theme-toggle-btn { transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1); }
 				.theme-toggle-btn:hover { transform: scale(1.1) rotate(12deg); }
 				.theme-toggle-btn:active { transform: scale(0.9) rotate(-12deg); }
-				.hero-animate { animation: slideInUp 0.9s cubic-bezier(0.16, 1, 0.3, 1) both; }
-				.hero-animate-delay-1 { animation: slideInUp 0.9s 0.15s cubic-bezier(0.16, 1, 0.3, 1) both; }
-				.hero-animate-delay-2 { animation: slideInUp 0.9s 0.3s cubic-bezier(0.16, 1, 0.3, 1) both; }
-				.hero-animate-delay-3 { animation: slideInUp 0.9s 0.45s cubic-bezier(0.16, 1, 0.3, 1) both; }
-				.hero-badge { animation: fadeInScale 0.6s 0.6s cubic-bezier(0.34, 1.56, 0.64, 1) both; }
 				.shimmer-text {
 					background: linear-gradient(90deg, #111 0%, #555 40%, #FFC700 50%, #555 60%, #111 100%);
 					background-size: 200% auto;
@@ -593,17 +588,8 @@ export default function TiendaClientPage() {
 						.nike-scroll::-webkit-scrollbar { display: none; }
 						.nike-scroll { -ms-overflow-style: none; scrollbar-width: none; scroll-snap-type: x mandatory; }
 						.nike-snap { scroll-snap-align: start; }
-						.nike-hero-grad { background: linear-gradient(180deg, rgba(0,0,0,0) 0%, rgba(0,0,0,0.35) 60%, rgba(0,0,0,0.85) 100%); }
 						@keyframes nikeMarquee { from { transform: translateX(0); } to { transform: translateX(-50%); } }
 						.nike-marquee { animation: nikeMarquee 32s linear infinite; }
-						/* Hero cinematic overlay */
-						.hero-overlay-dark { background: linear-gradient(135deg, rgba(0,0,0,0.82) 0%, rgba(0,0,0,0.45) 50%, rgba(0,0,0,0.2) 100%); }
-						.hero-overlay-light { background: linear-gradient(135deg, rgba(0,0,0,0.78) 0%, rgba(0,0,0,0.4) 50%, rgba(0,0,0,0.1) 100%); }
-						/* Animated orbs */
-						@keyframes orbFloat1 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(30px,-20px) scale(1.05); } 66% { transform: translate(-20px,15px) scale(0.97); } }
-						@keyframes orbFloat2 { 0%,100% { transform: translate(0,0) scale(1); } 33% { transform: translate(-25px,20px) scale(1.08); } 66% { transform: translate(15px,-15px) scale(0.95); } }
-						.orb1 { animation: orbFloat1 12s ease-in-out infinite; }
-						.orb2 { animation: orbFloat2 16s ease-in-out infinite; }
 					`}</style>
 
 					{/* Top promo bar */}
@@ -737,20 +723,29 @@ export default function TiendaClientPage() {
 							<p className={`text-xs font-bold uppercase tracking-[0.2em] ${isDark ? 'text-zinc-400' : 'text-neutral-500'}`}>Categorías</p>
 						</div>
 						<div className="flex gap-5 overflow-x-auto nike-scroll pb-1">
-							{[
-								{ id: 'all',           label: 'Todos',        emoji: '🏠' },
-								{ id: 'Seguridad',     label: 'Seguridad',    emoji: '🔐' },
-								{ id: 'Iluminación',   label: 'Iluminación',  emoji: '💡' },
-								{ id: 'Grifería',      label: 'Grifería',     emoji: '🚿' },
-								{ id: 'Smart Home',    label: 'Smart Home',   emoji: '📱' },
-								{ id: 'Climatización', label: 'Clima',        emoji: '❄️' },
-								{ id: 'Herramientas',  label: 'Herramientas', emoji: '🔧' },
-							].map(({ id, label, emoji }) => {
-								const active = selectedCategory === id;
+							{categories.map((cat) => {
+								const EMOJI_MAP: Record<string, string> = {
+									all: '🏠',
+									Seguridad: '🔐',
+									Iluminación: '💡',
+									Grifería: '🚿',
+									Revestimiento: '🪨',
+									'Smart Home': '📱',
+									Climatización: '❄️',
+									Herramientas: '🔧',
+									Pintura: '🎨',
+									Muebles: '🛋️',
+									Electrodomésticos: '🔌',
+									Baño: '🛁',
+									Cocina: '🍳',
+								};
+								const emoji = EMOJI_MAP[cat] ?? '📦';
+								const label = cat === 'all' ? 'Todos' : cat;
+								const active = selectedCategory === cat;
 								return (
 									<button
-										key={`icon-cat-${id}`}
-										onClick={() => setSelectedCategory(id)}
+										key={`icon-cat-${cat}`}
+										onClick={() => setSelectedCategory(cat)}
 										className="nike-snap shrink-0 flex flex-col items-center gap-2 feat-card"
 									>
 										<div className={`w-[60px] h-[60px] rounded-2xl flex items-center justify-center text-[26px] transition-all duration-200 ${active ? 'bg-emerald-700 shadow-[0_8px_24px_rgba(5,150,105,0.35)] scale-105' : isDark ? 'bg-zinc-800 hover:bg-zinc-700' : 'bg-neutral-100 hover:bg-neutral-200'}`}>

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity, AlertTriangle, BarChart3, BookOpen, Boxes, Cloud, Database,
-  EyeOff, FileText, FlaskConical, Hammer, Image as ImageIcon, Inbox,
+  Eye, EyeOff, FileText, FlaskConical, Hammer, Image as ImageIcon, Inbox,
   KeyRound, LayoutGrid, Link2, LogOut, Megaphone, MessageCircle,
   Newspaper, Package, Plug, Radio, Receipt, Scan, Search, Send,
   Settings, ShieldCheck, ShoppingCart, Sparkles, Stethoscope, Store, Terminal,

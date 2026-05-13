@@ -5,9 +5,9 @@ import Link from 'next/link';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
   Activity, AlertTriangle, BarChart3, BookOpen, Boxes, Cloud, Database,
-  Eye, EyeOff, FileText, FlaskConical, Hammer, Image as ImageIcon, Inbox,
-  KeyRound, LayoutGrid, Link2, LogOut, Megaphone, MessageCircle, Monitor,
-  Newspaper, Package, Plug, Radio, Receipt, RefreshCw, Scan, Search, Send,
+  EyeOff, FileText, FlaskConical, Hammer, Image as ImageIcon, Inbox,
+  KeyRound, LayoutGrid, Link2, LogOut, Megaphone, MessageCircle,
+  Newspaper, Package, Plug, Radio, Receipt, Scan, Search, Send,
   Settings, ShieldCheck, ShoppingCart, Sparkles, Stethoscope, Store, Terminal,
   Telescope, TrendingDown, Truck, Users, Wallet, X, Zap,
 } from 'lucide-react';
@@ -41,7 +41,6 @@ const ALL_SECTIONS = [
       { href: '/admin/presupuestos', label: 'Presupuestos · 5 días', icon: FileText, description: 'Generar link autodestruible', highlight: true },
       { href: '/admin/entregas', label: 'Entregas', icon: Truck, description: 'Seguimiento logístico' },
       { href: '/admin/clientes', label: 'Clientes', icon: Users, description: 'Historial y recurrencia' },
-      { href: '/admin/facturas', label: 'Facturas DTE', icon: Receipt, description: 'Documentos tributarios y SII' },
       { href: '/admin/reportes', label: 'Reportes', icon: BarChart3, description: 'Ventas y métricas' },
     ],
   },
@@ -88,8 +87,17 @@ const ALL_SECTIONS = [
     items: [
       { href: '/admin/integraciones', label: 'Centro de integraciones', icon: Link2, description: 'Conectar, probar y desactivar APIs', highlight: true },
       { href: '/admin/integraciones/marketplace', label: 'Marketplace de extensiones', icon: Boxes, description: 'Apps, snippets, webhooks y OAuth', highlight: true },
-      { href: '/admin/extensions', label: 'Extensiones y Webhooks', icon: Plug, description: 'Snippets, webhooks y signing keys', highlight: true },
       { href: '/admin/configuracion', label: 'Configuración', icon: Settings, description: 'Parámetros e integraciones' },
+    ],
+  },
+  {
+    title: 'Seguridad & Claves',
+    color: 'amber',
+    items: [
+      { href: '/admin/center', label: 'Centro de integración', icon: KeyRound, description: 'Credenciales, claves API y encriptación de proveedores', highlight: true },
+      { href: '/admin/extensions', label: 'Extensiones y Webhooks', icon: Plug, description: 'Snippets, webhooks, OAuth y signing keys', highlight: true },
+      { href: '/admin/facturas', label: 'Facturas DTE', icon: Receipt, description: 'Documentos tributarios y SII' },
+      { href: '/admin/inventario/scan', label: 'Escáner de inventario', icon: Scan, description: 'Lectura de códigos de barras y QR' },
     ],
   },
   {
@@ -102,7 +110,6 @@ const ALL_SECTIONS = [
       { href: '/admin/vercel-logs', label: 'Logs de Vercel', icon: Terminal, description: 'Build + runtime logs del deployment' },
       { href: '/admin/observatory', label: 'Observatory', icon: Radio, description: 'Red en tiempo real 3D' },
       { href: '/admin/sql', label: 'Terminal SQL', icon: Database, description: 'Ejecutar SQL en InsForge' },
-      { href: '/admin/inventario/scan', label: 'Escáner de inventario', icon: Scan, description: 'Lectura de códigos de barras y QR' },
       { href: '/admin/testing', label: 'Testing', icon: FlaskConical, description: 'Suite de pruebas y smoke tests' },
       { href: '/admin/manual', label: 'Manual técnico', icon: BookOpen, description: 'Guía técnica de la app', highlight: true },
       { href: '/admin/envios', label: 'Tarifas de Envío', icon: Truck, description: 'Costos por región y transportista' },
@@ -121,6 +128,7 @@ const ALL_SECTIONS = [
 /* Color styles per section */
 const SECTION_COLORS: Record<string, { header: string; hover: string; icon: string; iconActive: string; badge: string }> = {
   sky:     { header: 'text-sky-400', hover: 'hover:bg-sky-400/10 hover:border-sky-400/20', icon: 'text-zinc-400 group-hover:bg-sky-400/15 group-hover:text-sky-300', iconActive: 'bg-sky-400/15 text-sky-300', badge: 'border-sky-400/40 bg-sky-400/10 text-sky-300' },
+  amber:   { header: 'text-amber-400', hover: 'hover:bg-amber-400/8 hover:border-amber-400/20', icon: 'text-zinc-400 group-hover:bg-amber-400/15 group-hover:text-amber-300', iconActive: 'bg-amber-400/15 text-amber-300', badge: 'border-amber-400/40 bg-amber-400/10 text-amber-300' },
   yellow:  { header: 'text-yellow-400', hover: 'hover:bg-yellow-300/8 hover:border-yellow-300/15', icon: 'text-zinc-400 group-hover:bg-yellow-300/15 group-hover:text-yellow-300', iconActive: 'bg-yellow-300/15 text-yellow-300', badge: 'border-yellow-300/40 bg-yellow-300/10 text-yellow-300' },
   purple:  { header: 'text-purple-400', hover: 'hover:bg-purple-400/8 hover:border-purple-400/15', icon: 'text-zinc-400 group-hover:bg-purple-400/15 group-hover:text-purple-300', iconActive: 'bg-purple-400/15 text-purple-300', badge: 'border-purple-400/40 bg-purple-400/10 text-purple-300' },
   pink:    { header: 'text-pink-400', hover: 'hover:bg-pink-400/8 hover:border-pink-400/15', icon: 'text-zinc-400 group-hover:bg-pink-400/15 group-hover:text-pink-300', iconActive: 'bg-pink-400/15 text-pink-300', badge: 'border-pink-400/40 bg-pink-400/10 text-pink-300' },
@@ -131,26 +139,17 @@ const SECTION_COLORS: Record<string, { header: string; hover: string; icon: stri
 };
 
 /* ── Encryption reveal widget ──────────────────────────────────────────────── */
-const MOCK_KEYS = [
-  { label: 'NEXT_PUBLIC_SUPABASE_URL', value: 'https://xxxx.supabase.co', masked: 'https://••••••••.supabase.co' },
-  { label: 'SUPABASE_SERVICE_ROLE_KEY', value: 'eyJhbGc...', masked: 'eyJ••••••••••••' },
-  { label: 'MERCADOPAGO_ACCESS_TOKEN', value: 'APP_USR-...', masked: 'APP_USR-••••••••••' },
-  { label: 'CLOUDINARY_API_SECRET', value: 'xK9m2p...', masked: '••••••••••••' },
-  { label: 'OPENROUTER_API_KEY', value: 'sk-or-...', masked: 'sk-or-••••••••••' },
+// These entries only show the variable name and masked format — actual secrets
+// live exclusively in the server environment and are never sent to the client.
+const ENV_KEY_LABELS = [
+  { label: 'NEXT_PUBLIC_SUPABASE_URL',    masked: 'https://••••••••.supabase.co' },
+  { label: 'SUPABASE_SERVICE_ROLE_KEY',   masked: 'eyJ••••••••••••••••••••••••' },
+  { label: 'MERCADOPAGO_ACCESS_TOKEN',    masked: 'APP_USR-••••••••••••••••••' },
+  { label: 'CLOUDINARY_API_SECRET',       masked: '••••••••••••••••••••••••••' },
+  { label: 'OPENROUTER_API_KEY',          masked: 'sk-or-••••••••••••••••••••' },
 ];
 
 function EncryptionWidget({ onClose }: { onClose: () => void }) {
-  const [revealed, setRevealed] = useState(false);
-  const [revealedKeys, setRevealedKeys] = useState<Set<number>>(new Set());
-
-  const toggleKey = (i: number) => {
-    setRevealedKeys((prev) => {
-      const next = new Set(prev);
-      if (next.has(i)) next.delete(i); else next.add(i);
-      return next;
-    });
-  };
-
   return (
     <motion.div
       initial={{ opacity: 0, height: 0 }}
@@ -161,60 +160,43 @@ function EncryptionWidget({ onClose }: { onClose: () => void }) {
     >
       <div className="mt-1 rounded-xl border border-yellow-300/20 bg-yellow-300/5 p-3">
         {/* Header row */}
-        <div className="flex items-center justify-between mb-2.5">
+        <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <KeyRound className="h-3.5 w-3.5 text-yellow-400" />
             <span className="text-[10px] font-bold uppercase tracking-[0.28em] text-yellow-300">Variables de entorno</span>
           </div>
-          <div className="flex items-center gap-1.5">
-            <button
-              onClick={() => { setRevealed((v) => !v); setRevealedKeys(new Set()); }}
-              className={`flex items-center gap-1 rounded-full border px-2 py-1 text-[9px] font-bold uppercase tracking-[0.2em] transition-all ${
-                revealed
-                  ? 'border-yellow-400/50 bg-yellow-400/15 text-yellow-300'
-                  : 'border-white/15 bg-white/5 text-zinc-400 hover:border-yellow-400/40 hover:text-yellow-300'
-              }`}
-              title={revealed ? 'Ocultar todo' : 'Mostrar todo'}
-            >
-              {revealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-              {revealed ? 'Ocultar' : 'Mostrar'}
-            </button>
-            <Link
-              href="/admin/center"
-              onClick={onClose}
-              className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 transition-all hover:border-yellow-400/40 hover:text-yellow-300"
-            >
-              Gestionar →
-            </Link>
-          </div>
+          <Link
+            href="/admin/center"
+            onClick={onClose}
+            className="rounded-full border border-white/10 bg-white/5 px-2 py-1 text-[9px] font-bold uppercase tracking-[0.2em] text-zinc-400 transition-all hover:border-yellow-400/40 hover:text-yellow-300"
+          >
+            Gestionar →
+          </Link>
         </div>
 
-        {/* Key rows */}
+        {/* Server-side notice */}
+        <div className="mb-2.5 flex items-start gap-1.5 rounded-lg border border-amber-400/20 bg-amber-400/8 px-2.5 py-2">
+          <EyeOff className="h-3 w-3 flex-shrink-0 text-amber-400 mt-px" />
+          <p className="text-[9px] text-amber-300/80 leading-relaxed">
+            Los valores reales son secretos de servidor y <strong>nunca se envían al cliente</strong>. Gestiona las credenciales desde el Centro de integración.
+          </p>
+        </div>
+
+        {/* Key rows — names + masked format only */}
         <div className="space-y-1.5">
-          {MOCK_KEYS.map((k, i) => {
-            const isRevealed = revealed || revealedKeys.has(i);
-            return (
-              <div key={k.label} className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-black/30 px-2.5 py-1.5">
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-500">{k.label}</p>
-                  <p className="mt-0.5 truncate font-mono text-[10px] text-zinc-300">
-                    {isRevealed ? k.value : k.masked}
-                  </p>
-                </div>
-                <button
-                  onClick={() => toggleKey(i)}
-                  className="flex-shrink-0 rounded-full p-1 text-zinc-600 transition-all hover:bg-white/10 hover:text-yellow-300"
-                  title={isRevealed ? 'Ocultar' : 'Mostrar'}
-                >
-                  {isRevealed ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
-                </button>
+          {ENV_KEY_LABELS.map((k) => (
+            <div key={k.label} className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-black/30 px-2.5 py-1.5">
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-[9px] font-bold uppercase tracking-[0.15em] text-zinc-500">{k.label}</p>
+                <p className="mt-0.5 truncate font-mono text-[10px] text-zinc-500 select-none">{k.masked}</p>
               </div>
-            );
-          })}
+              <EyeOff className="h-3 w-3 flex-shrink-0 text-zinc-700" />
+            </div>
+          ))}
         </div>
 
         <p className="mt-2 text-[8.5px] text-zinc-600 leading-relaxed">
-          Almacenadas cifradas en entorno seguro. Para editar credenciales de APIs externas ve a{' '}
+          Para añadir, rotar o revocar claves ve a{' '}
           <Link href="/admin/center" onClick={onClose} className="text-yellow-400 hover:underline">Centro de integración</Link>.
         </p>
       </div>

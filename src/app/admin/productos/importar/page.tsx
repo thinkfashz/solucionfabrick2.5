@@ -19,8 +19,9 @@ export default function ImportarMercadoLibrePage() {
           Pega un link de cualquier tienda — Mercado Libre (incluye los nuevos{' '}
           <code className="rounded bg-zinc-900 px-1.5 py-0.5 text-yellow-400">meli.la/…</code>),
           Falabella, Ripley, AliExpress, Amazon o tu propio sitio — y crea el producto
-          automáticamente en tu catálogo. La barra de estado superior te muestra en vivo
-          la conexión con la base de datos, las APIs de Google y la pasarela de pagos.
+          automáticamente. El importer intenta 4 estrategias para superar bloqueos: navegador
+          de escritorio, navegador móvil, Jina.ai y Microlink.io. Si aún así la tienda bloquea
+          el precio, podrás ingresarlo manualmente antes de guardar.
         </p>
       </header>
 
@@ -54,13 +55,20 @@ export default function ImportarMercadoLibrePage() {
             stock, descripción y fotos del producto.
           </li>
           <li>
-            Para otras tiendas se extraen los metadatos Open Graph y JSON-LD de la
-            página (título, precio, imagen, descripción). Si la tienda no expone esos
-            datos, podrás completarlos manualmente desde la ficha del producto.
+            Para otras tiendas el importer prueba 4 estrategias en cascada: fetch con
+            UA de Chrome escritorio, UA de Chrome móvil, proxy Jina.ai y finalmente
+            Microlink.io (Chrome en la nube). Cada una extrae Open Graph, JSON-LD y
+            microdata. Si ninguna consigue el precio, el campo queda vacío para que lo
+            ingreses manualmente.
           </li>
           <li>
             El precio en CLP se redondea a entero al guardar (los pesos chilenos no
             tienen decimales).
+          </li>
+          <li>
+            Puedes añadir{' '}
+            <code className="rounded bg-zinc-900 px-1 py-0.5 text-yellow-400">MICROLINK_API_KEY</code>{' '}
+            en tus variables de entorno para aumentar el límite de solicitudes a Microlink.io.
           </li>
         </ul>
       </section>

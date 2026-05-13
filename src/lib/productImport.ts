@@ -369,8 +369,7 @@ const MOBILE_FETCH_HEADERS: Record<string, string> = {
  * Last-ditch fetch via the public r.jina.ai reader proxy, which
  * renders the page in a real headless browser and returns the
  * post-JS HTML. Bypasses most Cloudflare/Akamai bot challenges that
- * blocked the direct fetch. Free tier: ~20 RPM without API key
- * (https://jina.ai/reader).
+ * blocked the direct fetch. Free tier: ~20 RPM without API key.
  */
 async function fetchViaReaderProxy(
   url: URL,
@@ -397,6 +396,61 @@ async function fetchViaReaderProxy(
     }
     const html = (await res.text()).slice(0, 1_000_000);
     return { finalUrl: url, html };
+  } finally {
+    t.cancel();
+  }
+}
+
+/**
+ * 4th-resort fallback: Microlink.io's hosted Chrome infrastructure.
+ * Unlike r.jina.ai (which returns HTML), Microlink returns structured
+ * JSON {title, description, image, url} so we parse it directly into
+ * an ImportedProduct. Price is always 0 (Microlink doesn't scrape
+ * e-commerce structured data) — the admin fills it in before persisting.
+ * Returns null if the API is unreachable or the page can't be scraped.
+ */
+async function fetchViaMicrolinkApi(
+  url: URL,
+  timeoutMs = 20_000,
+): Promise<ImportedProduct | null> {
+  const t = withTimeout(timeoutMs);
+  try {
+    const apiUrl = `https://api.microlink.io/?url=${encodeURIComponent(url.toString())}&screenshot=false`;
+    const headers: Record<string, string> = {
+      Accept: 'application/json',
+      'User-Agent': DEFAULT_USER_AGENT,
+    };
+    const microlinkKey = process.env.MICROLINK_API_KEY?.trim();
+    if (microlinkKey) headers['x-api-key'] = microlinkKey;
+    const res = await fetch(apiUrl, { headers, cache: 'no-store', signal: t.signal });
+    if (!res.ok) return null;
+    const json = (await res.json()) as {
+      status: string;
+      data?: {
+        title?: string | null;
+        description?: string | null;
+        image?: { url?: string | null } | null;
+        url?: string | null;
+      };
+    };
+    if (json.status !== 'success' || !json.data?.title) return null;
+    const { title, description, image, url: resolvedUrl } = json.data;
+    const imageUrl = image?.url ?? null;
+    return {
+      source: 'generic',
+      sourceId: null,
+      sourceUrl: resolvedUrl ?? url.toString(),
+      title: title.trim(),
+      description: description?.trim() ?? null,
+      price: 0,
+      currency: 'CLP',
+      imageUrl,
+      images: imageUrl ? [imageUrl] : [],
+      available: null,
+      stock: null,
+    };
+  } catch {
+    return null;
   } finally {
     t.cancel();
   }
@@ -1027,14 +1081,22 @@ export async function resolveProductFromUrl(rawUrl: string): Promise<ImportedPro
     const message = err instanceof Error ? err.message : '';
     const isBlocked = /HTTP\s+(403|401|429|503|451)/i.test(message);
     if (!isBlocked) throw err;
-    // Manual-fill stub: empty preview keyed off the URL host. The
-    // admin completes title/price/image and persists.
+
+    // 4th fallback: Microlink.io headless Chrome (their own infra bypasses
+    // most Cloudflare / Akamai bot walls that reject datacenter IPs).
+    // Returns title + description + image even when direct scraping fails.
+    // Price is always 0 from this path — the admin fills it in.
+    const microlinkResult = await fetchViaMicrolinkApi(url);
+    if (microlinkResult) return microlinkResult;
+
+    // All four strategies exhausted — return a manual-fill stub so the
+    // admin can still create the product by hand.
     return {
       source: 'generic',
       sourceId: null,
       sourceUrl: url.toString(),
       title: url.hostname.replace(/^www\./, ''),
-      description: `La tienda bloqueó la lectura automática (${message.trim() || 'acceso restringido'}). Completa los datos manualmente.`,
+      description: `La tienda bloqueó todas las estrategias de lectura automática. Completa el título, precio e imagen manualmente.`,
       price: 0,
       currency: 'CLP',
       imageUrl: null,

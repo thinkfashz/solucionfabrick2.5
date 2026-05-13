@@ -15,6 +15,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { createHmac } from 'node:crypto';
 import { insforge } from '@/lib/insforge';
 import { invalidateTenantCache } from '@/lib/tenant';
+import { provisionTenant } from '@/lib/tenantProvisioning';
 
 const MP_API = 'https://api.mercadopago.com';
 
@@ -125,23 +126,30 @@ export async function POST(request: NextRequest) {
     const slug = (tenantRows?.[0] as { slug?: string } | undefined)?.slug;
     invalidateTenantCache(tenantId, slug);
 
-    // Send welcome email on first activation (fire-and-forget)
+    // On first activation: provision admin user + send welcome email
     if (tenantStatus === 'active') {
-      const { data: tenantRow } = await insforge.database
-        .from('tenants')
-        .select('owner_email, name, slug')
-        .eq('id', tenantId)
-        .limit(1);
+      provisionTenant(tenantId)
+        .then((result) => {
+          if (!result.ok) {
+            console.warn('[platform-webhook] provisioning failed', result.error);
+            return;
+          }
 
-      if (tenantRow?.[0]) {
-        const t = tenantRow[0] as { owner_email: string; name: string; slug: string };
-        // POST welcome email via internal API — non-blocking
-        fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/platform/notify-activation`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ tenant_id: tenantId, email: t.owner_email, name: t.name, slug: t.slug }),
-        }).catch(() => {});
-      }
+          // Notify via internal route (non-blocking)
+          fetch(`${process.env.NEXT_PUBLIC_APP_URL ?? ''}/api/platform/notify-activation`, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'x-platform-secret': process.env.PLATFORM_ADMIN_SECRET ?? '',
+            },
+            body: JSON.stringify({
+              tenant_id: tenantId,
+              temp_password: result.temp_password,
+              already_existed: result.already_existed,
+            }),
+          }).catch(() => {});
+        })
+        .catch((err) => console.warn('[platform-webhook] provision error', err));
     }
   }
 

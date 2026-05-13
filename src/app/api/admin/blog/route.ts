@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
 import { estimateReadingMinutes, renderMarkdown, slugify } from '@/lib/markdown';
 import { publishCmsEvent } from '@/lib/cmsBus';
 import { CMS_CACHE_TAGS } from '@/lib/cms';
@@ -26,12 +26,14 @@ export async function GET(request: NextRequest) {
     const session = await getAdminSession(request);
     if (!session) return adminUnauthorized();
 
+    const tenantId = await getAdminTenantId(request);
     const client = getAdminInsforge();
     const { data, error } = await client.database
       .from('blog_posts')
       .select(
         'id, slug, title, description, cover_url, tags, author, published, published_at, reading_minutes, created_at, updated_at',
       )
+      .eq('tenant_id', tenantId)
       .order('updated_at', { ascending: false });
     if (error) {
       const schema = detectSchemaError(error.message);
@@ -58,6 +60,7 @@ export async function POST(request: NextRequest) {
     const session = await getAdminSession(request);
     if (!session) return adminUnauthorized();
 
+    const tenantId = await getAdminTenantId(request);
     const body = (await request.json().catch(() => ({}))) as BlogPostInput;
     const title = (body.title ?? '').trim();
     if (!title) {
@@ -87,6 +90,7 @@ export async function POST(request: NextRequest) {
       reading_minutes: estimateReadingMinutes(md),
       created_at: now,
       updated_at: now,
+      tenant_id: tenantId,
     };
 
     const client = getAdminInsforge();

@@ -20,6 +20,20 @@ export function adminUnauthorized(): NextResponse {
 }
 
 /**
+ * Returns the tenant_id for the current admin request. Falls back to the
+ * original Fabrick tenant so all pre-multi-tenancy data stays accessible.
+ */
+export async function getAdminTenantId(request: NextRequest): Promise<string> {
+  const DEFAULT = '00000000-0000-0000-0000-000000000001';
+  // Prefer the tenant resolved from the subdomain by middleware
+  const fromHeader = request.headers.get('x-tenant-id');
+  if (fromHeader) return fromHeader;
+  // Fall back to the session cookie
+  const session = await getAdminSession(request);
+  return session?.tenant_id ?? DEFAULT;
+}
+
+/**
  * Persist an error log to `admin_error_logs` (best-effort; never throws).
  * Lazy-imported to avoid a circular import (apiHandler.ts also imports from here).
  */

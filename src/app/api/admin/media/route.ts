@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
 import { insforge } from '@/lib/insforge';
 import { publishCmsEvent } from '@/lib/cmsBus';
 
@@ -22,13 +22,14 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getAdminSession(request);
     if (!session) return adminUnauthorized();
+    const tenantId = await getAdminTenantId(request);
     const url = new URL(request.url);
     const folder = url.searchParams.get('folder');
     const limitRaw = Number(url.searchParams.get('limit') ?? '100');
     const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(1, limitRaw), 200) : 100;
 
     const client = getAdminInsforge();
-    let q = client.database.from('media_assets').select('*');
+    let q = client.database.from('media_assets').select('*').eq('tenant_id', tenantId);
     if (folder) q = q.eq('folder', sanitizeFolder(folder));
     const { data, error } = await q.order('created_at', { ascending: false }).limit(limit);
     if (error) {
@@ -47,6 +48,7 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getAdminSession(request);
     if (!session) return adminUnauthorized();
+    const tenantId = await getAdminTenantId(request);
     const form = await request.formData();
     const file = form.get('file');
     const folder = sanitizeFolder(typeof form.get('folder') === 'string' ? (form.get('folder') as string) : 'general');
@@ -103,6 +105,7 @@ export async function POST(request: NextRequest) {
       mime_type: file.type,
       size_bytes: file.size,
       uploaded_by: session.email,
+      tenant_id: tenantId,
       created_at: new Date().toISOString(),
     };
     const { data: inserted, error: insertErr } = await client.database

@@ -97,22 +97,34 @@ export async function middleware(request: NextRequest) {
       return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
     }
 
-    // Check role restriction for /admin/equipo
+    // Decode session to get tenant_id + rol (edge-compatible — no Node crypto)
+    let sessionPayload: { rol?: string; tenant_id?: string } = {}
+    try {
+      const dotIdx = sessionCookie.value.lastIndexOf('.')
+      if (dotIdx !== -1) {
+        const data = sessionCookie.value.slice(0, dotIdx)
+        const payloadStr = atob(normalizeBase64Url(data))
+        sessionPayload = JSON.parse(payloadStr) as typeof sessionPayload
+      }
+    } catch { /* ignore */ }
+
+    // Tenant status gate: suspended/cancelled tenants go to /admin/plan-suspendido
+    // Skip for the default Fabrick tenant (platform owner)
+    const suspendedPath = '/admin/plan-suspendido'
+    const isSuspendedPage = request.nextUrl.pathname === suspendedPath
+    if (!isSuspendedPage && sessionPayload.tenant_id &&
+        sessionPayload.tenant_id !== DEFAULT_TENANT_ID) {
+      const tenantStatus = request.cookies.get('tenant_status')?.value
+      if (tenantStatus === 'suspended' || tenantStatus === 'cancelled') {
+        const redirect = NextResponse.redirect(new URL(suspendedPath, request.url))
+        return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
+      }
+    }
+
+    // Role gate for /admin/equipo
     if (request.nextUrl.pathname.startsWith('/admin/equipo')) {
-      try {
-        const dotIdx = sessionCookie.value.lastIndexOf('.')
-        if (dotIdx !== -1) {
-          const data = sessionCookie.value.slice(0, dotIdx)
-          const payloadBase64 = normalizeBase64Url(data)
-          const payloadStr = atob(payloadBase64)
-          const payload = JSON.parse(payloadStr) as { rol?: string }
-          if (payload.rol !== 'superadmin') {
-            const redirect = NextResponse.redirect(new URL('/admin?forbidden=team', request.url))
-            return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
-          }
-        }
-      } catch {
-        const redirect = NextResponse.redirect(new URL('/admin/login', request.url))
+      if (sessionPayload.rol !== 'superadmin') {
+        const redirect = NextResponse.redirect(new URL('/admin?forbidden=team', request.url))
         return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
       }
     }

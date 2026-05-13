@@ -20,6 +20,7 @@ export async function POST(req: NextRequest) {
   if (!cookie?.value) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   const session = await decodeSession(cookie.value);
   if (!session) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+  const tenantId = (session as { tenant_id?: string }).tenant_id ?? '00000000-0000-0000-0000-000000000001';
 
   let body: { invoice_id: string; reason: string };
   try {
@@ -35,11 +36,12 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  // Fetch original invoice from DB
+  // Fetch original invoice scoped to this tenant
   const { data: invoice, error: fetchErr } = await insforge.database
     .from('invoices')
     .select('*')
     .eq('id', body.invoice_id)
+    .eq('tenant_id', tenantId)
     .single();
 
   if (fetchErr || !invoice) {

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import { ADMIN_COOKIE_NAME, decodeSession, type AdminSessionPayload } from '@/lib/adminAuth';
 import { getBillingDriver } from '@/lib/billing/provider';
 import type { EmitDteRequest } from '@/lib/billing/provider';
 import { insforge } from '@/lib/insforge';
@@ -20,8 +20,9 @@ export const runtime = 'nodejs';
 export async function POST(req: NextRequest) {
   const cookie = req.cookies.get(ADMIN_COOKIE_NAME);
   if (!cookie?.value) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-  const session = await decodeSession(cookie.value);
+  const session = await decodeSession(cookie.value) as AdminSessionPayload | null;
   if (!session) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+  const tenantId = session.tenant_id ?? '00000000-0000-0000-0000-000000000001';
 
   let body: EmitDteRequest;
   try {
@@ -59,6 +60,7 @@ export async function POST(req: NextRequest) {
   // Persist to invoices table
   const pdfToken = randomBytes(24).toString('base64url');
   const row = {
+    tenant_id: tenantId,
     order_id: body.order_id,
     dte_type: body.dte_type,
     folio: result.folio ?? null,

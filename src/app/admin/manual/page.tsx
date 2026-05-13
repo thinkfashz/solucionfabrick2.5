@@ -40,6 +40,9 @@ import {
   Hash,
   Copy,
   Check,
+  Truck,
+  Package,
+  History,
 } from 'lucide-react';
 
 /* ──────────────────────────────────────────────────────────
@@ -1386,21 +1389,25 @@ export default function Testimonios() {
     color: 'bg-yellow-400',
     content: (
       <>
+        <Callout type="info">
+          El proyecto usa <Code>pnpm</Code> (v10+). Reemplaza cualquier referencia a{' '}
+          <Code>npm</Code> — el lockfile es <Code>pnpm-lock.yaml</Code>.
+        </Callout>
         <CodeBlock lang="bash">{`# Desarrollo local
-npm run dev
+pnpm dev
 
 # Producción
-npm run build
-npm run start
+pnpm build
+pnpm start
 
 # Calidad
-npm run lint
-npm run typecheck
+pnpm lint
+pnpm typecheck
 
 # Tests
-npm test                    # Vitest unitarios
-npm run test:coverage       # con cobertura
-npm run test:e2e            # Playwright`}</CodeBlock>
+pnpm test                   # Vitest unitarios
+pnpm test:coverage          # con cobertura
+pnpm test:e2e               # Playwright`}</CodeBlock>
         <H3>Despliegue</H3>
         <P>
           <strong className="text-yellow-400">Vercel</strong>: cada push a <Code>main</Code>{' '}
@@ -1429,8 +1436,242 @@ docker compose -f compose.debug.yaml up`}</CodeBlock>
             ['Nueva página pública', 'src/app/[ruta]/page.tsx'],
             ['Nueva página admin', 'src/app/admin/[seccion]/page.tsx'],
             ['Nuevo endpoint API', 'src/app/api/[endpoint]/route.ts'],
+            ['Carriers de envío', '.env.local → CHILEXPRESS_* / STARKEN_* / CORREOSCHILE_*'],
           ]}
         />
+      </>
+    ),
+  },
+  {
+    id: 'envio-carriers',
+    num: 21,
+    title: 'Envío — Carriers Reales',
+    icon: Truck,
+    color: 'bg-yellow-400',
+    content: (
+      <>
+        <P>
+          La app incluye drivers completos para <strong className="text-white">Chilexpress</strong>,{' '}
+          <strong className="text-white">Starken</strong> y{' '}
+          <strong className="text-white">Correos de Chile</strong>. Cada driver implementa la
+          interfaz <Code>CarrierDriver</Code> y soporta cotización, creación de envío y
+          seguimiento en tiempo real.
+        </P>
+
+        <H3>Arquitectura del módulo de envíos</H3>
+        <CodeBlock lang="tree">{`src/lib/shipping/
+├── carrier.ts                 ← Interfaz CarrierDriver + tipos
+└── drivers/
+    ├── chilexpress.ts         ← Driver Chilexpress REST API
+    ├── starken.ts             ← Driver Starken JWT
+    └── correoschile.ts        ← Driver Correos de Chile`}</CodeBlock>
+
+        <H3>Activar cada carrier</H3>
+        <P>
+          Sin credenciales, los drivers devuelven cotizaciones vacías y el checkout usa las
+          tarifas manuales de <Code>/admin/envios</Code>. Con credenciales, las tarifas son
+          en tiempo real. Agrega las variables en{' '}
+          <strong className="text-white">Vercel → Settings → Environment Variables</strong> o
+          en tu <Code>.env.local</Code>:
+        </P>
+
+        <DataTable
+          headers={['Carrier', 'Variables requeridas', 'Opcionales']}
+          rows={[
+            [
+              'Chilexpress',
+              <><Code>CHILEXPRESS_API_KEY</Code> <Code>CHILEXPRESS_ACCOUNT</Code></>,
+              <Code>CHILEXPRESS_BASE_URL</Code>,
+            ],
+            [
+              'Starken',
+              <><Code>STARKEN_USER</Code> <Code>STARKEN_PASS</Code> <Code>STARKEN_RUT_EMISOR</Code></>,
+              <Code>STARKEN_BASE_URL</Code>,
+            ],
+            [
+              'Correos de Chile',
+              <><Code>CORREOSCHILE_USER</Code> <Code>CORREOSCHILE_PASS</Code> <Code>CORREOSCHILE_CONTRATO</Code></>,
+              <Code>CORREOSCHILE_BASE_URL</Code>,
+            ],
+          ]}
+        />
+
+        <CodeBlock lang="bash">{`# Chilexpress (API key del Developer Portal)
+CHILEXPRESS_API_KEY=tu_ocp_apim_subscription_key
+CHILEXPRESS_ACCOUNT=tu_numero_de_cuenta
+
+# Starken (credenciales del portal B2B)
+STARKEN_USER=tu_usuario
+STARKEN_PASS=tu_contraseña
+STARKEN_RUT_EMISOR=12345678-9
+
+# Correos de Chile (portal empresas)
+CORREOSCHILE_USER=tu_usuario
+CORREOSCHILE_PASS=tu_contraseña
+CORREOSCHILE_CONTRATO=tu_numero_contrato`}</CodeBlock>
+
+        <H3>Cómo funciona cada driver</H3>
+        <UL>
+          <LI>
+            <strong className="text-white">Chilexpress:</strong> obtiene códigos de comunas
+            desde la API geodata (cacheados en memoria por región), luego consulta{' '}
+            <Code>/rating/api/v1.0/rates/courier</Code>.
+          </LI>
+          <LI>
+            <strong className="text-white">Starken:</strong> autentica con usuario/contraseña
+            para obtener JWT (caché 1 hora), luego consulta <Code>/v1/cotizacion</Code>. Si
+            falla, usa tabla estática 2024 con 5 zonas geográficas.
+          </LI>
+          <LI>
+            <strong className="text-white">Correos de Chile:</strong> autentica con Basic Auth
+            para obtener Bearer token, consulta <Code>/v1/cotizacion</Code>. Si falla, aplica
+            la tabla de tarifas publicada 2024 (9 tramos de peso × 3 zonas).
+          </LI>
+        </UL>
+
+        <H3>Fallback automático</H3>
+        <Callout type="success">
+          Nunca falla silenciosamente. Si el API del carrier no responde o las credenciales
+          son incorrectas, el driver devuelve cotizaciones basadas en la tabla de tarifas
+          estática publicada — el checkout siempre muestra un precio.
+        </Callout>
+
+        <H3>Verificar estado en el admin</H3>
+        <P>
+          Entra a <Code>/admin/envios</Code>: si falta alguna credencial, verás un banner
+          ámbar con exactamente qué variables debes configurar. Si todo está listo, verás
+          un banner verde de confirmación.
+        </P>
+      </>
+    ),
+  },
+  {
+    id: 'importador',
+    num: 22,
+    title: 'Importador de Productos',
+    icon: Package,
+    color: 'bg-yellow-400',
+    content: (
+      <>
+        <P>
+          El importador (<Code>/admin/importar</Code>) permite traer productos directamente
+          desde otras tiendas en línea, incluyendo las protegidas por Cloudflare, usando
+          cuatro estrategias de bypass en cascada.
+        </P>
+
+        <H3>Estrategias de scraping (en orden)</H3>
+        <DataTable
+          headers={['#', 'Estrategia', 'Cuándo se usa']}
+          rows={[
+            ['1', 'User-Agent desktop (Chrome)', 'Primera opción — directa sin proxy'],
+            ['2', 'User-Agent móvil (Android)', 'Fallback cuando el UA de escritorio es bloqueado'],
+            ['3', 'Jina.ai Reader (gratuito)', 'Cloudflare protegido — convierte a Markdown legible'],
+            ['4', 'Microlink.io API', 'Último recurso — metadata estructurada de cualquier URL'],
+          ]}
+        />
+
+        <H3>Variable opcional</H3>
+        <CodeBlock lang="bash">{`# Microlink Pro (más cuota, sin límite de velocidad)
+MICROLINK_API_KEY=tu_clave_microlink`}</CodeBlock>
+        <P>
+          Sin la clave funciona igualmente usando el tier gratuito de Microlink (50 req/día).
+        </P>
+
+        <H3>Flujo de importación</H3>
+        <UL>
+          <LI>Pega la URL del producto en el campo de importación.</LI>
+          <LI>El servidor prueba cada estrategia en secuencia hasta obtener HTML válido.</LI>
+          <LI>Extrae nombre, precio, imágenes y descripción con selectores especializados.</LI>
+          <LI>Muestra una vista previa editable antes de guardar el producto en la base de datos.</LI>
+        </UL>
+
+        <Callout type="warning">
+          <strong>Uso responsable:</strong> el importador es para uso personal y de referencia.
+          Respeta los términos de servicio de cada tienda.
+        </Callout>
+      </>
+    ),
+  },
+  {
+    id: 'historial',
+    num: 23,
+    title: 'Historial de Mejoras',
+    icon: History,
+    color: 'bg-yellow-400',
+    content: (
+      <>
+        <P>
+          Registro cronológico de las principales mejoras aplicadas al proyecto en las
+          últimas sesiones de desarrollo.
+        </P>
+
+        <H3>Mayo 2026 — Sesión actual</H3>
+        <DataTable
+          headers={['Mejora', 'Descripción']}
+          rows={[
+            [
+              'Carriers de envío reales',
+              'Implementación completa de Chilexpress, Starken y Correos de Chile con API real + fallback estático. 18 tests unitarios.',
+            ],
+            [
+              'Banner de estado de carriers',
+              'La página /admin/envios muestra un banner ámbar con las variables faltantes, o verde cuando todo está configurado.',
+            ],
+            [
+              'API /api/admin/shipping/carriers-status',
+              'Endpoint que verifica qué credenciales de carriers están configuradas y las expone al panel admin.',
+            ],
+            [
+              'Migración a pnpm',
+              'Cambio de npm a pnpm v10.33.0 con isolación estricta. CI (ci.yml, e2e.yml) y Vercel (vercel.yml) actualizados.',
+            ],
+            [
+              'Fix react-hooks/exhaustive-deps',
+              'searchQuery faltaba en el array de dependencias del useMemo de filteredProducts en src/tienda/page.tsx.',
+            ],
+          ]}
+        />
+
+        <H3>Sesión anterior — Tienda y panel admin</H3>
+        <DataTable
+          headers={['Mejora', 'Descripción']}
+          rows={[
+            [
+              'Rediseño de /tienda',
+              'Hero verde esmeralda, buscador en tiempo real, categorías con emoji, filtros de precio, modo descuentos y ordenamiento.',
+            ],
+            [
+              'Importador anti-Cloudflare',
+              '4 estrategias en cascada: UA desktop → UA móvil → Jina.ai → Microlink.io.',
+            ],
+            [
+              'Panel de configuración ampliado',
+              'Variables de entorno, logo, WhatsApp, SEO, redes sociales y colores desde el admin sin tocar código.',
+            ],
+            [
+              '36+ tablas en la base de datos',
+              'Esquema completo con productos, pedidos, sesiones, notificaciones, blog, portafolio y configuración.',
+            ],
+            [
+              '146 endpoints de API',
+              'Cobertura completa de CRUD, webhooks de pago, tracking de envíos y push notifications.',
+            ],
+          ]}
+        />
+
+        <H3>Estructura del proyecto al día de hoy</H3>
+        <UL>
+          <LI><strong className="text-white">105 000+ líneas de código</strong> TypeScript / TSX</LI>
+          <LI><strong className="text-white">45 módulos admin</strong> en el panel de administración</LI>
+          <LI><strong className="text-white">3 carriers de envío</strong> integrados con API real</LI>
+          <LI><strong className="text-white">18 tests unitarios</strong> para los drivers de envío</LI>
+          <LI><strong className="text-white">pnpm strict</strong> — sin dependencias implícitas</LI>
+        </UL>
+
+        <Callout type="success">
+          El proyecto está listo para producción. Los únicos pasos pendientes son configurar
+          las credenciales de carriers en Vercel y las claves de MercadoPago de producción.
+        </Callout>
       </>
     ),
   },

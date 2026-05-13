@@ -1,6 +1,6 @@
 # Manual del operador del panel admin
 
-> Última actualización: **2026-05-09** · Audiencia: operador owner / admin con acceso a `/admin`.
+> Última actualización: **2026-05-13** · Audiencia: operador owner / admin con acceso a `/admin`.
 
 Este documento describe **cómo opera el panel** desde el día a día. No es documentación de API ni de arquitectura — para eso, ver `docs/api.md` y `docs/architecture.md`.
 
@@ -203,4 +203,94 @@ Insertará un snapshot nuevo en `exchange_rates` y dejará la fecha visible en `
 - Catálogo de API: `docs/api.md`
 - Deploy + variables: `docs/deploy-runbook.md`
 - Seguridad del admin (detalle interno): `docs/security-private-mode.md`
+
+---
+
+## 8. Carriers de envío reales {#envio-carriers}
+
+La app incluye drivers completos para **Chilexpress**, **Starken** y **Correos de Chile**. Sin credenciales, el checkout usa las tarifas manuales de `/admin/envios`. Con credenciales, las tarifas son en tiempo real vía API.
+
+### Variables de entorno por carrier
+
+| Carrier | Variables requeridas | Opcional |
+|---------|---------------------|---------|
+| Chilexpress | `CHILEXPRESS_API_KEY` `CHILEXPRESS_ACCOUNT` | `CHILEXPRESS_BASE_URL` |
+| Starken | `STARKEN_USER` `STARKEN_PASS` `STARKEN_RUT_EMISOR` | `STARKEN_BASE_URL` |
+| Correos de Chile | `CORREOSCHILE_USER` `CORREOSCHILE_PASS` `CORREOSCHILE_CONTRATO` | `CORREOSCHILE_BASE_URL` |
+
+```bash
+# Chilexpress — Developer Portal (https://developers.chilexpress.cl/)
+CHILEXPRESS_API_KEY=tu_ocp_apim_subscription_key
+CHILEXPRESS_ACCOUNT=tu_numero_de_cuenta
+
+# Starken — portal B2B
+STARKEN_USER=tu_usuario
+STARKEN_PASS=tu_contraseña
+STARKEN_RUT_EMISOR=12345678-9
+
+# Correos de Chile — portal empresas
+CORREOSCHILE_USER=tu_usuario
+CORREOSCHILE_PASS=tu_contraseña
+CORREOSCHILE_CONTRATO=tu_numero_contrato
+```
+
+### Arquitectura del módulo
+
+```
+src/lib/shipping/
+├── carrier.ts              ← Interfaz CarrierDriver + tipos
+└── drivers/
+    ├── chilexpress.ts      ← REST API + caché de comunas por región
+    ├── starken.ts          ← JWT auth + tabla estática de fallback
+    └── correoschile.ts     ← Basic→Bearer auth + tarifa 2024 de fallback
+```
+
+### Fallback automático
+
+Si el API de un carrier no responde o las credenciales son incorrectas, el driver devuelve cotizaciones basadas en la tabla de tarifas estática publicada. El checkout nunca falla por un carrier caído.
+
+### Verificar estado
+
+Entra a `/admin/envios`: si falta alguna credencial, verás un banner ámbar listando exactamente qué variables configurar. Si todo está listo, verás un banner verde.
+
+---
+
+## 9. Importador de productos
+
+El importador (`/admin/importar`) usa 4 estrategias en cascada para traer productos desde cualquier tienda, incluyendo las protegidas por Cloudflare:
+
+| # | Estrategia | Cuándo se usa |
+|---|-----------|---------------|
+| 1 | User-Agent desktop (Chrome) | Primera opción — directa |
+| 2 | User-Agent móvil (Android) | Fallback cuando UA desktop es bloqueado |
+| 3 | Jina.ai Reader (gratuito) | Cloudflare — convierte a Markdown legible |
+| 4 | Microlink.io API | Último recurso — metadata estructurada |
+
+Variable opcional para mayor cuota en Microlink Pro:
+```bash
+MICROLINK_API_KEY=tu_clave_microlink
+```
+
+---
+
+## 10. Historial de mejoras
+
+### Mayo 2026 — sesión actual
+
+| Mejora | Descripción |
+|--------|-------------|
+| Carriers de envío reales | Chilexpress, Starken y Correos de Chile con API real + fallback estático. 18 tests. |
+| Banner de estado de carriers | `/admin/envios` muestra variables faltantes en tiempo real. |
+| Migración a pnpm | Cambio de npm a pnpm v10.33.0. CI y Vercel actualizados. |
+| Fix exhaustive-deps | `searchQuery` faltaba en el useMemo de `filteredProducts` en `/tienda`. |
+
+### Sesión anterior
+
+| Mejora | Descripción |
+|--------|-------------|
+| Rediseño de /tienda | Hero verde, buscador en tiempo real, categorías con emoji, filtros de precio. |
+| Importador anti-Cloudflare | 4 estrategias de bypass en cascada. |
+| Panel de configuración ampliado | Logo, WhatsApp, SEO, redes y colores desde el admin. |
+| 36+ tablas DB | Esquema completo con productos, pedidos, sesiones, notificaciones, blog y config. |
+| 146 endpoints de API | CRUD completo, webhooks de pago, tracking y push notifications. |
 - Integraciones: `docs/integrations/README.md`

@@ -1482,17 +1482,17 @@ docker compose -f compose.debug.yaml up`}</CodeBlock>
             [
               'Chilexpress',
               <><Code>CHILEXPRESS_API_KEY</Code> <Code>CHILEXPRESS_ACCOUNT</Code></>,
-              <Code>CHILEXPRESS_BASE_URL</Code>,
+              <Code key="chx-base">CHILEXPRESS_BASE_URL</Code>,
             ],
             [
               'Starken',
               <><Code>STARKEN_USER</Code> <Code>STARKEN_PASS</Code> <Code>STARKEN_RUT_EMISOR</Code></>,
-              <Code>STARKEN_BASE_URL</Code>,
+              <Code key="stk-base">STARKEN_BASE_URL</Code>,
             ],
             [
               'Correos de Chile',
               <><Code>CORREOSCHILE_USER</Code> <Code>CORREOSCHILE_PASS</Code> <Code>CORREOSCHILE_CONTRATO</Code></>,
-              <Code>CORREOSCHILE_BASE_URL</Code>,
+              <Code key="cc-base">CORREOSCHILE_BASE_URL</Code>,
             ],
           ]}
         />

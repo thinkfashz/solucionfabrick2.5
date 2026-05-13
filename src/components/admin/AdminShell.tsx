@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUpRight, AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Stethoscope, Store, Terminal,
-  TrendingDown, Truck, Telescope, Users, Wallet, X, Zap, Plus, MessageCircle, KeyRound, Shield, Activity, Scan, Receipt, FlaskConical, Plug,
+  TrendingDown, Truck, Telescope, Users, Wallet, X, Zap, Plus, MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';

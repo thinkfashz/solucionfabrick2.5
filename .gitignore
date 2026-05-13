@@ -51,3 +51,7 @@ Thumbs.db
 .trae
 .windsurf
 .vercel
+
+# pnpm
+.pnpm-store/
+.pnpm-debug.log

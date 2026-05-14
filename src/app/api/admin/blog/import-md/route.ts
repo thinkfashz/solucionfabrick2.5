@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
 import { listContent, getContent } from '@/lib/content';
 import { renderMarkdown, estimateReadingMinutes } from '@/lib/markdown';
 import { CMS_CACHE_TAGS } from '@/lib/cms';
@@ -20,11 +20,13 @@ export async function POST(request: NextRequest) {
   try {
     const session = await getAdminSession(request);
     if (!session) return adminUnauthorized();
+    const tenantId = await getAdminTenantId(request);
 
     const client = getAdminInsforge();
     const { data: existing, error: existingErr } = await client.database
       .from('blog_posts')
-      .select('slug');
+      .select('slug')
+      .eq('tenant_id', tenantId);
     if (existingErr) {
       return NextResponse.json(
         { error: existingErr.message, code: 'DB_ERROR', hint: 'Crea la tabla blog_posts primero.' },
@@ -65,6 +67,7 @@ export async function POST(request: NextRequest) {
         reading_minutes: estimateReadingMinutes(md),
         created_at: meta.date,
         updated_at: now,
+        tenant_id: tenantId,
       };
       const { error: insertErr } = await client.database.from('blog_posts').insert([row]);
       if (insertErr) {

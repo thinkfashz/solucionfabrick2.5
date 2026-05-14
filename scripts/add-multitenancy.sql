@@ -151,12 +151,32 @@ ALTER TABLE public.banners
     REFERENCES public.tenants(id);
 
 -- Índices de rendimiento para las consultas filtradas por tenant
-CREATE INDEX IF NOT EXISTS products_tenant_idx    ON public.products(tenant_id);
-CREATE INDEX IF NOT EXISTS orders_tenant_idx      ON public.orders(tenant_id);
-CREATE INDEX IF NOT EXISTS admin_users_tenant_idx ON public.admin_users(tenant_id);
-CREATE INDEX IF NOT EXISTS invoices_tenant_idx    ON public.invoices(tenant_id);
-CREATE INDEX IF NOT EXISTS quotes_tenant_idx      ON public.quotes(tenant_id);
-CREATE INDEX IF NOT EXISTS shipments_tenant_idx   ON public.shipments(tenant_id);
+CREATE INDEX IF NOT EXISTS products_tenant_idx      ON public.products(tenant_id);
+CREATE INDEX IF NOT EXISTS orders_tenant_idx        ON public.orders(tenant_id);
+CREATE INDEX IF NOT EXISTS admin_users_tenant_idx   ON public.admin_users(tenant_id);
+CREATE INDEX IF NOT EXISTS invoices_tenant_idx      ON public.invoices(tenant_id);
+CREATE INDEX IF NOT EXISTS quotes_tenant_idx        ON public.quotes(tenant_id);
+CREATE INDEX IF NOT EXISTS shipments_tenant_idx     ON public.shipments(tenant_id);
+CREATE INDEX IF NOT EXISTS blog_posts_tenant_idx    ON public.blog_posts(tenant_id);
+CREATE INDEX IF NOT EXISTS media_assets_tenant_idx  ON public.media_assets(tenant_id);
+CREATE INDEX IF NOT EXISTS banners_tenant_idx       ON public.banners(tenant_id);
+
+-- ── 5b. CONSTRAINT UNIQUE (clave, tenant_id) EN configuracion ────────────────
+-- El upsert de settings usa onConflict:'clave,tenant_id'. Sin este constraint
+-- el upsert falla en runtime con "there is no unique or exclusion constraint".
+ALTER TABLE public.configuracion
+  DROP CONSTRAINT IF EXISTS configuracion_clave_key;
+
+ALTER TABLE public.configuracion
+  ADD COLUMN IF NOT EXISTS tenant_id uuid
+    NOT NULL DEFAULT '00000000-0000-0000-0000-000000000001'
+    REFERENCES public.tenants(id);
+
+ALTER TABLE public.configuracion
+  ADD CONSTRAINT IF NOT EXISTS configuracion_clave_tenant_unique
+  UNIQUE (clave, tenant_id);
+
+CREATE INDEX IF NOT EXISTS configuracion_tenant_idx ON public.configuracion(tenant_id);
 
 -- ── 6. VISTA: MRR EN TIEMPO REAL ─────────────────────────────────────────────
 CREATE OR REPLACE VIEW public.platform_mrr AS

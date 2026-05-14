@@ -3,6 +3,19 @@ import type { NextRequest } from 'next/server'
 import { buildCsp, generateNonce } from '@/lib/csp'
 import { slugFromHostname, DEFAULT_TENANT_ID, DEFAULT_TENANT_SLUG } from '@/lib/tenant-edge'
 
+// Cookie name used to cache custom-domain → tenant resolution so we don't
+// hit the DB on every request.
+const CUSTOM_DOMAIN_CACHE_COOKIE = 'x-cd-tenant'
+const CUSTOM_DOMAIN_CACHE_TTL = 300 // seconds (5 min)
+
+/** True when the host belongs to the platform itself (not a client's domain). */
+function isPlatformHost(host: string): boolean {
+  const h = host.split(':')[0].toLowerCase()
+  return h === 'fabrick.cl' || h === 'www.fabrick.cl' ||
+    h.endsWith('.fabrick.cl') || h === 'localhost' || h.endsWith('.localhost') ||
+    /^\d{1,3}(\.\d{1,3}){3}$/.test(h)
+}
+
 function normalizeBase64Url(value: string): string {
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/')
   const padding = (4 - (base64.length % 4)) % 4
@@ -130,39 +143,71 @@ export async function middleware(request: NextRequest) {
     }
   }
 
-  // ── Tenant resolution from subdomain ──────────────────────────────────────
-  // Reads the subdomain from the Host header and forwards tenant context as
-  // x-tenant-slug / x-tenant-id request headers so that server components
-  // and API route handlers can access the tenant without a DB round-trip in
-  // the middleware (edge runtime cannot use the DB driver).
-  //
-  // Slug lookup against the DB is deferred to the first API/page handler that
-  // needs a full TenantContext (via getTenantBySlug). The middleware only
-  // propagates the slug so handlers can cache the full record themselves.
+  // ── Tenant resolution ────────────────────────────────────────────────────
   const hostname = request.headers.get('host') ?? ''
-  const tenantSlug = slugFromHostname(hostname) ?? DEFAULT_TENANT_SLUG
+  let tenantSlug = DEFAULT_TENANT_SLUG
+  let tenantId: string | null = DEFAULT_TENANT_ID
+  let tenantStatus: string | null = null
 
-  if (!isHtml) {
-    const reqHeaders = new Headers(request.headers)
-    reqHeaders.set('x-tenant-slug', tenantSlug)
-    // For the default tenant we can set the ID directly without a DB lookup.
-    if (tenantSlug === DEFAULT_TENANT_SLUG) {
-      reqHeaders.set('x-tenant-id', DEFAULT_TENANT_ID)
+  if (isPlatformHost(hostname)) {
+    // ── Platform host: resolve slug from subdomain ──────────────────────────
+    tenantSlug = slugFromHostname(hostname) ?? DEFAULT_TENANT_SLUG
+    if (tenantSlug === DEFAULT_TENANT_SLUG) tenantId = DEFAULT_TENANT_ID
+    else tenantId = null // will be resolved by the first handler that needs it
+  } else {
+    // ── Custom domain: tiendamarta.cl, etc. ────────────────────────────────
+    // Check cookie cache first to avoid a DB round-trip on every request.
+    const cached = request.cookies.get(CUSTOM_DOMAIN_CACHE_COOKIE)?.value
+    if (cached) {
+      try {
+        const { slug, id, status } = JSON.parse(cached) as { slug: string; id: string; status?: string }
+        tenantSlug = slug
+        tenantId = id
+        tenantStatus = status ?? null
+      } catch { /* stale/corrupt cookie — fall through to fresh lookup */ }
     }
-    return NextResponse.next({ request: { headers: reqHeaders } })
+
+    if (tenantSlug === DEFAULT_TENANT_SLUG) {
+      // Fresh lookup: call our own domain-resolve endpoint.
+      // This adds ~50ms on the first request; the cookie caches it for 5 min.
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL
+          ? (process.env.NEXT_PUBLIC_APP_URL.startsWith('http') ? process.env.NEXT_PUBLIC_APP_URL : `https://${process.env.NEXT_PUBLIC_APP_URL}`)
+          : `https://${request.headers.get('x-forwarded-host') ?? 'fabrick.cl'}`
+        const res = await fetch(
+          `${baseUrl}/api/tenant/domain-resolve?host=${encodeURIComponent(hostname)}`,
+          { cache: 'no-store', signal: AbortSignal.timeout(5_000) }
+        )
+        if (res.ok) {
+          const json = await res.json() as { slug: string; tenant_id: string; status: string }
+          tenantSlug = json.slug
+          tenantId = json.tenant_id
+          tenantStatus = json.status
+        }
+      } catch { /* lookup failed — serve default tenant as fallback */ }
+    }
   }
 
-  // Forward the nonce on the REQUEST so server components can read it via `headers()`.
+  // Build request headers with tenant context
   const requestHeaders = new Headers(request.headers)
-  requestHeaders.set('x-nonce', nonce)
-  requestHeaders.set('Content-Security-Policy', csp)
   requestHeaders.set('x-tenant-slug', tenantSlug)
-  if (tenantSlug === DEFAULT_TENANT_SLUG) {
-    requestHeaders.set('x-tenant-id', DEFAULT_TENANT_ID)
+  if (tenantId) requestHeaders.set('x-tenant-id', tenantId)
+  if (isHtml) {
+    requestHeaders.set('x-nonce', nonce)
+    requestHeaders.set('Content-Security-Policy', csp)
   }
 
   const response = NextResponse.next({ request: { headers: requestHeaders } })
-  return withSecurityHeaders(response, nonce, csp)
+
+  // Cache custom domain resolution in a cookie
+  if (!isPlatformHost(hostname) && tenantSlug !== DEFAULT_TENANT_SLUG && tenantId) {
+    response.cookies.set(CUSTOM_DOMAIN_CACHE_COOKIE,
+      JSON.stringify({ slug: tenantSlug, id: tenantId, status: tenantStatus }),
+      { httpOnly: true, sameSite: 'lax', maxAge: CUSTOM_DOMAIN_CACHE_TTL, path: '/' }
+    )
+  }
+
+  return isHtml ? withSecurityHeaders(response, nonce, csp) : response
 }
 
 export const config = {

@@ -2,7 +2,7 @@
 
 import { useCallback, useRef, useState } from 'react';
 import Link from 'next/link';
-import { Play, RotateCcw, Copy, ChevronDown, ChevronUp, Database, Wrench, Loader2 } from 'lucide-react';
+import { Play, RotateCcw, Copy, ChevronDown, ChevronUp, Database, Wrench, Loader2, Rocket, CheckCircle2, XCircle, AlertTriangle } from 'lucide-react';
 
 const QUICK_QUERIES = [
   { label: 'Ver tablas', sql: `SELECT table_name, pg_size_pretty(pg_total_relation_size(quote_ident(table_name))) AS size\nFROM information_schema.tables\nWHERE table_schema = 'public'\nORDER BY table_name;` },
@@ -93,12 +93,32 @@ function extractRows(data: unknown): Row[] {
   return [];
 }
 
+interface MigrationStepResult { sql: string; ok: boolean; error?: string; }
+interface MigrationResult { ok: boolean; total: number; passed: number; failed: number; results: MigrationStepResult[]; }
+
 export default function SqlTerminalPage() {
   const [query, setQuery] = useState('SELECT table_name FROM information_schema.tables WHERE table_schema = \'public\' ORDER BY table_name;');
   const [result, setResult] = useState<QueryResult | null>(null);
   const [running, setRunning] = useState(false);
   const [showQuick, setShowQuick] = useState(false);
+  const [showMigration, setShowMigration] = useState(false);
+  const [migrating, setMigrating] = useState(false);
+  const [migrationResult, setMigrationResult] = useState<MigrationResult | null>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  const runMigration = useCallback(async () => {
+    setMigrating(true);
+    setMigrationResult(null);
+    try {
+      const res = await fetch('/api/admin/sql/migration', { method: 'POST' });
+      const data = await res.json() as MigrationResult;
+      setMigrationResult(data);
+    } catch (e) {
+      setMigrationResult({ ok: false, total: 0, passed: 0, failed: 1, results: [{ sql: 'fetch', ok: false, error: (e as Error).message }] });
+    } finally {
+      setMigrating(false);
+    }
+  }, []);
 
   const runQuery = useCallback(async () => {
     if (!query.trim() || running) return;
@@ -166,7 +186,14 @@ export default function SqlTerminalPage() {
             Crear tablas ahora
           </Link>
           <button
-            onClick={() => setShowQuick(!showQuick)}
+            onClick={() => { setShowMigration(!showMigration); setShowQuick(false); }}
+            className="flex items-center gap-1.5 text-xs text-violet-300 hover:text-violet-200 px-2.5 py-1 rounded-lg border border-violet-400/30 bg-violet-500/10 hover:bg-violet-500/20 transition-colors"
+          >
+            <Rocket className="w-3 h-3" />
+            Migración SaaS
+          </button>
+          <button
+            onClick={() => { setShowQuick(!showQuick); setShowMigration(false); }}
             className="flex items-center gap-1 text-xs text-zinc-400 hover:text-white transition-colors px-2 py-1 rounded-lg hover:bg-white/5"
           >
             Consultas rápidas
@@ -174,6 +201,67 @@ export default function SqlTerminalPage() {
           </button>
         </div>
       </div>
+
+      {/* Migration panel */}
+      {showMigration && (
+        <div className="border-b border-violet-500/20 bg-violet-950/20 px-4 py-4 space-y-3">
+          <div className="flex items-start justify-between gap-4">
+            <div>
+              <h3 className="text-sm font-bold text-violet-300 flex items-center gap-2">
+                <Rocket className="w-4 h-4" />
+                Migración multi-tenant SaaS
+              </h3>
+              <p className="text-xs text-zinc-400 mt-1">
+                Ejecuta todas las sentencias SQL necesarias para activar el modo SaaS: tablas de planes, tenants, suscripciones, columnas <code className="text-violet-300">tenant_id</code> en tablas existentes, índices y vistas.
+                Es <strong className="text-white">idempotente</strong> — puedes correrla varias veces sin problema.
+              </p>
+            </div>
+            <button
+              onClick={runMigration}
+              disabled={migrating}
+              className="shrink-0 flex items-center gap-2 px-4 py-2 rounded-lg text-sm font-bold bg-violet-600 hover:bg-violet-500 disabled:opacity-50 text-white transition-colors"
+            >
+              {migrating ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
+              {migrating ? 'Ejecutando…' : 'Ejecutar ahora'}
+            </button>
+          </div>
+
+          {migrationResult && (
+            <div className={`rounded-xl border p-4 ${migrationResult.ok ? 'border-emerald-500/30 bg-emerald-950/20' : 'border-red-500/30 bg-red-950/20'}`}>
+              <div className="flex items-center gap-2 mb-3">
+                {migrationResult.ok
+                  ? <CheckCircle2 className="w-5 h-5 text-emerald-400" />
+                  : <AlertTriangle className="w-5 h-5 text-red-400" />
+                }
+                <span className={`font-bold text-sm ${migrationResult.ok ? 'text-emerald-300' : 'text-red-300'}`}>
+                  {migrationResult.ok
+                    ? `¡Listo! ${migrationResult.passed} de ${migrationResult.total} sentencias ejecutadas correctamente.`
+                    : `${migrationResult.failed} sentencia(s) fallaron de ${migrationResult.total}.`
+                  }
+                </span>
+              </div>
+              <div className="space-y-1 max-h-48 overflow-y-auto">
+                {migrationResult.results.map((r, i) => (
+                  <div key={i} className="flex items-start gap-2 text-xs">
+                    {r.ok
+                      ? <CheckCircle2 className="w-3 h-3 text-emerald-400 shrink-0 mt-0.5" />
+                      : <XCircle className="w-3 h-3 text-red-400 shrink-0 mt-0.5" />
+                    }
+                    <span className={`font-mono ${r.ok ? 'text-zinc-400' : 'text-red-300'}`}>
+                      {r.sql}{r.error ? ` — ${r.error}` : ''}
+                    </span>
+                  </div>
+                ))}
+              </div>
+              {migrationResult.ok && (
+                <p className="text-xs text-emerald-300/70 mt-3 border-t border-emerald-500/20 pt-3">
+                  Siguiente paso: configura el DNS wildcard <code>*.fabrick.cl → cname.vercel-dns.com</code> en tu registrador de dominios.
+                </p>
+              )}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Quick queries panel */}
       {showQuick && (

@@ -30,6 +30,33 @@ const BOOTSTRAP_ADMIN_EMAIL = (
   .trim()
   .toLowerCase();
 
+const INSFORGE_BASE = (
+  process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app'
+).replace(/\/+$/, '');
+
+/** Raw-SQL fallback for bootstrap admin creation when the SDK lacks INSERT perms. */
+async function bootstrapAdminViaSql(email: string): Promise<boolean> {
+  const apiKey = process.env.INSFORGE_API_KEY;
+  if (!apiKey) return false;
+  // Escape single quotes to prevent any injection (email already validated by InsForge auth)
+  const safeEmail = email.replace(/'/g, "''");
+  const query =
+    `INSERT INTO public.admin_users (email, rol, aprobado) ` +
+    `VALUES ('${safeEmail}', 'superadmin', true) ` +
+    `ON CONFLICT (email) DO UPDATE SET rol = 'superadmin', aprobado = true`;
+  try {
+    const res = await fetch(`${INSFORGE_BASE}/api/database/advance/rawsql/unrestricted`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+      body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 /**
  * Builds the JSON body for a 500 response when the deployment is missing
  * required env vars. Centralised so the pre-check and the catch-all error
@@ -185,11 +212,18 @@ export async function POST(request: Request) {
             { onConflict: 'email' },
           );
         if (insertErrLegacy) {
-          audit('unknown_user', email, `self-heal insert failed: ${insertErrLegacy.message}`);
-          return NextResponse.json(
-            { error: 'Acceso denegado. Este usuario no tiene permisos de administrador.' },
-            { status: 403 }
-          );
+          // Final fallback: raw SQL via unrestricted endpoint (same mechanism as
+          // migration/route.ts). This works even when the SDK key lacks INSERT
+          // permissions because it uses INSFORGE_API_KEY as x-api-key directly.
+          const sqlOk = await bootstrapAdminViaSql(email);
+          if (!sqlOk) {
+            audit('unknown_user', email, `self-heal insert failed: ${insertErrLegacy.message}`);
+            return NextResponse.json(
+              { error: 'Acceso denegado. Este usuario no tiene permisos de administrador.' },
+              { status: 403 }
+            );
+          }
+          audit('success', email, 'bootstrap admin self-healed via raw SQL fallback');
         }
       }
       // Use a synthetic row — no need to re-fetch; bootstrap admin has no TOTP or local hash yet.

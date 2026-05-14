@@ -24,6 +24,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     links: [
       { href: '/admin', label: 'Centro de control', description: 'KPIs y salud operativa', icon: BarChart3 },
       { href: '/admin/saas', label: 'Mi SaaS', description: 'Clientes, instalación y gestión de la plataforma', icon: Rocket, highlight: true },
+      { href: '/admin/activar', label: 'Activar plataforma', description: 'Variables de entorno, servicios y estado de conexiones', icon: ShieldCheck },
     ],
   },
   {
@@ -107,6 +108,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
 const PATH_LABELS: Record<string, string> = {
   '/admin': 'Centro de control',
   '/admin/saas': 'Mi SaaS',
+  '/admin/activar': 'Activar plataforma',
   '/admin/productos': 'Productos',
   '/admin/productos/nuevo': 'Nuevo producto',
   '/admin/productos/importar': 'Importar de Mercado Libre',

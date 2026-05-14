@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
 import { estimateReadingMinutes, renderMarkdown, slugify } from '@/lib/markdown';
 import { publishCmsEvent } from '@/lib/cmsBus';
 import { CMS_CACHE_TAGS } from '@/lib/cms';
@@ -14,12 +14,13 @@ interface RouteCtx {
   params: Promise<{ id: string }>;
 }
 
-async function fetchPost(id: string) {
+async function fetchPost(id: string, tenantId: string) {
   const client = getAdminInsforge();
   const { data, error } = await client.database
     .from('blog_posts')
     .select('*')
     .eq('id', id)
+    .eq('tenant_id', tenantId)
     .limit(1);
   if (error) throw new Error(error.message);
   const row = Array.isArray(data) ? data[0] : null;
@@ -31,7 +32,8 @@ export async function GET(request: NextRequest, ctx: RouteCtx) {
     const session = await getAdminSession(request);
     if (!session) return adminUnauthorized();
     const { id } = await ctx.params;
-    const post = await fetchPost(id);
+    const tenantId = await getAdminTenantId(request);
+    const post = await fetchPost(id, tenantId);
     if (!post) return NextResponse.json({ error: 'No encontrado.' }, { status: 404 });
     return NextResponse.json({ post });
   } catch (err) {
@@ -44,9 +46,10 @@ export async function PUT(request: NextRequest, ctx: RouteCtx) {
     const session = await getAdminSession(request);
     if (!session) return adminUnauthorized();
     const { id } = await ctx.params;
+    const tenantId = await getAdminTenantId(request);
 
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-    const existing = await fetchPost(id);
+    const existing = await fetchPost(id, tenantId);
     if (!existing) return NextResponse.json({ error: 'No encontrado.' }, { status: 404 });
 
     const title =
@@ -151,10 +154,11 @@ export async function DELETE(request: NextRequest, ctx: RouteCtx) {
     const session = await getAdminSession(request);
     if (!session) return adminUnauthorized();
     const { id } = await ctx.params;
-    const existing = await fetchPost(id);
+    const tenantId = await getAdminTenantId(request);
+    const existing = await fetchPost(id, tenantId);
     if (!existing) return NextResponse.json({ error: 'No encontrado.' }, { status: 404 });
     const client = getAdminInsforge();
-    const { error } = await client.database.from('blog_posts').delete().eq('id', id);
+    const { error } = await client.database.from('blog_posts').delete().eq('id', id).eq('tenant_id', tenantId);
     if (error) return NextResponse.json({ error: error.message, code: 'DB_ERROR' }, { status: 500 });
     try {
       revalidatePath('/blog');

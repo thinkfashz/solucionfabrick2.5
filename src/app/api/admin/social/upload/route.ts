@@ -1,17 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { insforge } from '@/lib/insforge';
-
-/**
- * POST /api/admin/social/upload
- *
- * Uploads a single image to the `social-posts` InsForge Storage bucket and
- * returns the public URL. The client calls this endpoint once per dropped
- * image (up to 10), so the response is intentionally minimal.
- */
+import { getAdminSession, adminUnauthorized, getAdminInsforge } from '@/lib/adminApi';
 
 const MAX_SIZE = 8 * 1024 * 1024; // 8 MB per image
 
 export async function POST(request: NextRequest) {
+  const session = await getAdminSession(request);
+  if (!session) return adminUnauthorized();
+
   try {
     const form = await request.formData();
     const file = form.get('file');
@@ -40,7 +35,8 @@ export async function POST(request: NextRequest) {
     const ext = rawExt && ALLOWED_EXT.has(rawExt) ? rawExt : 'jpg';
     const path = `social/${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
 
-    const { error: uploadError } = await insforge.storage
+    const client = getAdminInsforge();
+    const { error: uploadError } = await client.storage
       .from('social-posts')
       .upload(path, file);
 
@@ -51,7 +47,7 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const publicUrlResult = await insforge.storage
+    const publicUrlResult = await client.storage
       .from('social-posts')
       .getPublicUrl(path);
 

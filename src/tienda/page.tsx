@@ -229,7 +229,7 @@ export default function TiendaClientPage() {
 			return bScore - aScore;
 		});
 		return sorted;
-	}, [liveProducts, selectedCategory, priceFilter, onlyDiscounted, sortMode]);
+	}, [liveProducts, selectedCategory, priceFilter, onlyDiscounted, sortMode, searchQuery]);
 
 	const totalSavingsFiltered = useMemo(() => {
 		return filteredProducts.reduce((acc, product) => {

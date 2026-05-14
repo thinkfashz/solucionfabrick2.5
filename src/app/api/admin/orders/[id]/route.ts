@@ -45,11 +45,15 @@ export async function PATCH(
   if (!status) return NextResponse.json({ error: 'Falta status' }, { status: 400 });
   const newStatus = normalizeOrderStatus(status);
 
+  // Scope to tenant — session includes tenant_id if multi-tenant login
+  const tenantId = session.tenant_id ?? '00000000-0000-0000-0000-000000000001';
+
   // Fetch order to get customer info
   const { data: orderData, error: fetchErr } = await insforgeAdmin.database
     .from('orders')
     .select('id, customer_name, customer_email, customer_phone, shipping_address, status, total, items')
-    .eq('id', orderId);
+    .eq('id', orderId)
+    .eq('tenant_id', tenantId);
 
   if (fetchErr || !orderData?.length) {
     return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 });

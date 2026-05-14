@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
 import { publishCmsEvent } from '@/lib/cmsBus';
 import { CMS_CACHE_TAGS } from '@/lib/cms';
 
@@ -45,8 +45,10 @@ export async function GET(request: NextRequest) {
   try {
     const session = await getAdminSession(request);
     if (!session) return adminUnauthorized();
+    const tenantId = await getAdminTenantId(request);
     const client = getAdminInsforge();
-    const { data, error } = await client.database.from('configuracion').select('clave, valor');
+    const { data, error } = await client.database
+      .from('configuracion').select('clave, valor').eq('tenant_id', tenantId);
     if (error) {
       return NextResponse.json(
         { error: error.message, code: 'DB_ERROR', hint: 'Crea la tabla configuracion en /admin/setup.' },
@@ -69,14 +71,15 @@ export async function PUT(request: NextRequest) {
   try {
     const session = await getAdminSession(request);
     if (!session) return adminUnauthorized();
+    const tenantId = await getAdminTenantId(request);
     const body = (await request.json().catch(() => ({}))) as { settings?: Record<string, string> };
     const incoming = body.settings ?? {};
-    const updates: Array<{ clave: string; valor: string; updated_at: string }> = [];
+    const updates: Array<{ clave: string; valor: string; tenant_id: string; updated_at: string }> = [];
     const now = new Date().toISOString();
     for (const [key, value] of Object.entries(incoming)) {
       if (!isSettingKey(key)) continue;
       if (typeof value !== 'string') continue;
-      updates.push({ clave: key, valor: value, updated_at: now });
+      updates.push({ clave: key, valor: value, tenant_id: tenantId, updated_at: now });
     }
     if (updates.length === 0) {
       return NextResponse.json({ error: 'No hay cambios válidos.', code: 'VALIDATION' }, { status: 400 });
@@ -84,7 +87,7 @@ export async function PUT(request: NextRequest) {
     const client = getAdminInsforge();
     const { error } = await client.database
       .from('configuracion')
-      .upsert(updates, { onConflict: 'clave' });
+      .upsert(updates, { onConflict: 'clave,tenant_id' });
     if (error) return NextResponse.json({ error: error.message, code: 'DB_ERROR' }, { status: 500 });
     try {
       revalidatePath('/');

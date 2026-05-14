@@ -5,6 +5,7 @@
   "crons": [
     { "path": "/api/cron/system-health", "schedule": "0 0 * * *" },
     { "path": "/api/cron/newsletter", "schedule": "0 13 * * *" },
-    { "path": "/api/cron/integrations-healthcheck", "schedule": "0 9 * * *" }
+    { "path": "/api/cron/integrations-healthcheck", "schedule": "0 9 * * *" },
+    { "path": "/api/cron/expire-trials", "schedule": "0 8 * * *" }
   ]
 }

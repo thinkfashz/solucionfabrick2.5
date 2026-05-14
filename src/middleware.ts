@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { buildCsp, generateNonce } from '@/lib/csp'
+import { slugFromHostname, DEFAULT_TENANT_ID, DEFAULT_TENANT_SLUG } from '@/lib/tenant-edge'
 
 function normalizeBase64Url(value: string): string {
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/')
@@ -96,38 +97,69 @@ export async function middleware(request: NextRequest) {
       return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
     }
 
-    // Check role restriction for /admin/equipo
+    // Decode session to get tenant_id + rol (edge-compatible — no Node crypto)
+    let sessionPayload: { rol?: string; tenant_id?: string } = {}
+    try {
+      const dotIdx = sessionCookie.value.lastIndexOf('.')
+      if (dotIdx !== -1) {
+        const data = sessionCookie.value.slice(0, dotIdx)
+        const payloadStr = atob(normalizeBase64Url(data))
+        sessionPayload = JSON.parse(payloadStr) as typeof sessionPayload
+      }
+    } catch { /* ignore */ }
+
+    // Tenant status gate: suspended/cancelled tenants go to /admin/plan-suspendido
+    // Skip for the default Fabrick tenant (platform owner)
+    const suspendedPath = '/admin/plan-suspendido'
+    const isSuspendedPage = request.nextUrl.pathname === suspendedPath
+    if (!isSuspendedPage && sessionPayload.tenant_id &&
+        sessionPayload.tenant_id !== DEFAULT_TENANT_ID) {
+      const tenantStatus = request.cookies.get('tenant_status')?.value
+      if (tenantStatus === 'suspended' || tenantStatus === 'cancelled') {
+        const redirect = NextResponse.redirect(new URL(suspendedPath, request.url))
+        return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
+      }
+    }
+
+    // Role gate for /admin/equipo
     if (request.nextUrl.pathname.startsWith('/admin/equipo')) {
-      try {
-        const dotIdx = sessionCookie.value.lastIndexOf('.')
-        if (dotIdx !== -1) {
-          const data = sessionCookie.value.slice(0, dotIdx)
-          const payloadBase64 = normalizeBase64Url(data)
-          const payloadStr = atob(payloadBase64)
-          const payload = JSON.parse(payloadStr) as { rol?: string }
-          if (payload.rol !== 'superadmin') {
-            const redirect = NextResponse.redirect(new URL('/admin?forbidden=team', request.url))
-            return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
-          }
-        }
-      } catch {
-        const redirect = NextResponse.redirect(new URL('/admin/login', request.url))
+      if (sessionPayload.rol !== 'superadmin') {
+        const redirect = NextResponse.redirect(new URL('/admin?forbidden=team', request.url))
         return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
       }
     }
   }
 
-  if (!isHtml) return NextResponse.next()
+  // ── Tenant resolution from subdomain ──────────────────────────────────────
+  // Reads the subdomain from the Host header and forwards tenant context as
+  // x-tenant-slug / x-tenant-id request headers so that server components
+  // and API route handlers can access the tenant without a DB round-trip in
+  // the middleware (edge runtime cannot use the DB driver).
+  //
+  // Slug lookup against the DB is deferred to the first API/page handler that
+  // needs a full TenantContext (via getTenantBySlug). The middleware only
+  // propagates the slug so handlers can cache the full record themselves.
+  const hostname = request.headers.get('host') ?? ''
+  const tenantSlug = slugFromHostname(hostname) ?? DEFAULT_TENANT_SLUG
+
+  if (!isHtml) {
+    const reqHeaders = new Headers(request.headers)
+    reqHeaders.set('x-tenant-slug', tenantSlug)
+    // For the default tenant we can set the ID directly without a DB lookup.
+    if (tenantSlug === DEFAULT_TENANT_SLUG) {
+      reqHeaders.set('x-tenant-id', DEFAULT_TENANT_ID)
+    }
+    return NextResponse.next({ request: { headers: reqHeaders } })
+  }
 
   // Forward the nonce on the REQUEST so server components can read it via `headers()`.
-  // Next.js also reads the `Content-Security-Policy` request header to discover
-  // the nonce and automatically tag the framework's own <script> tags with it
-  // when rendering dynamically. Statically prerendered routes don't get that
-  // per-request tagging, which is why we no longer rely on `'strict-dynamic'`:
-  // same-origin Next.js chunks load under `'self'` regardless of render mode.
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-nonce', nonce)
   requestHeaders.set('Content-Security-Policy', csp)
+  requestHeaders.set('x-tenant-slug', tenantSlug)
+  if (tenantSlug === DEFAULT_TENANT_SLUG) {
+    requestHeaders.set('x-tenant-id', DEFAULT_TENANT_ID)
+  }
 
   const response = NextResponse.next({ request: { headers: requestHeaders } })
   return withSecurityHeaders(response, nonce, csp)

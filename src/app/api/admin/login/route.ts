@@ -111,10 +111,24 @@ export async function POST(request: Request) {
       );
     }
 
+    // Resolve tenant from subdomain so admins only log into their own tenant
+    const tenantSlug = (request as unknown as { headers: { get(n: string): string | null } })
+      .headers.get('x-tenant-slug') ?? 'fabrick';
+    const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
+    let tenantId = DEFAULT_TENANT_ID;
+    let tenantStatus = 'active';
+    if (tenantSlug !== 'fabrick') {
+      const { data: tenantRows } = await insforge.database
+        .from('tenants').select('id, status').eq('slug', tenantSlug).limit(1);
+      const t = tenantRows?.[0] as { id: string; status: string } | undefined;
+      if (t) { tenantId = t.id; tenantStatus = t.status; }
+    }
+
     const { data: adminRows, error: dbError } = await insforge.database
       .from('admin_users')
-      .select('email, rol, aprobado, password_hash, totp_secret_enc, backup_codes')
+      .select('email, rol, aprobado, password_hash, totp_secret_enc, backup_codes, tenant_id')
       .eq('email', email)
+      .eq('tenant_id', tenantId)
       .limit(1);
 
     if (dbError || !adminRows || adminRows.length === 0) {
@@ -277,7 +291,7 @@ export async function POST(request: Request) {
 
     const rol = (adminUser.rol ?? 'admin') as 'superadmin' | 'admin' | 'viewer';
     const exp = Date.now() + SESSION_TTL_MS;
-    const sessionValue = await encodeSession({ email, exp, rol });
+    const sessionValue = await encodeSession({ email, exp, rol, tenant_id: tenantId });
 
     audit(
       'success',
@@ -290,6 +304,15 @@ export async function POST(request: Request) {
     const response = NextResponse.json({ ok: true });
     response.cookies.set(ADMIN_COOKIE_NAME, sessionValue, {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: SESSION_TTL_MS / 1000,
+    });
+    // Not httpOnly: Edge middleware needs to read this cookie to redirect
+    // suspended/cancelled tenants before the request reaches route handlers.
+    response.cookies.set('tenant_status', tenantStatus, {
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',

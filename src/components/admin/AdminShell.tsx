@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUpRight, AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Stethoscope, Store, Terminal,
-  TrendingDown, Truck, Telescope, Users, Wallet, X, Zap, Plus, MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug,
+  TrendingDown, Truck, Telescope, Users, Wallet, X, Zap, Plus, MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
@@ -23,6 +23,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Visión general',
     links: [
       { href: '/admin', label: 'Centro de control', description: 'KPIs y salud operativa', icon: BarChart3 },
+      { href: '/admin/saas', label: 'Mi SaaS', description: 'Clientes, instalación y gestión de la plataforma', icon: Rocket, highlight: true },
     ],
   },
   {
@@ -37,6 +38,8 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/cotizaciones', label: 'Cotizaciones', description: 'Solicitudes de servicios y diseños 3D', icon: FileText },
       { href: '/admin/presupuestos', label: 'Presupuestos · 5 días', description: 'Generar link autodestruible y enviar al cliente', icon: FileText, highlight: true },
       { href: '/admin/entregas', label: 'Entregas', description: 'Seguimiento logístico', icon: Truck },
+      { href: '/admin/inventario', label: 'Inventario', description: 'Stock, escáner y movimientos de bodega', icon: Scan },
+      { href: '/admin/inventario/scan', label: 'Escáner de inventario', description: 'Lectura de códigos de barras y QR', icon: Scan },
       { href: '/admin/clientes', label: 'Clientes', description: 'Historial y recurrencia', icon: Users },
       { href: '/admin/reportes', label: 'Reportes', description: 'Ventas y métricas', icon: BarChart3 },
     ],
@@ -67,6 +70,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/ml/preguntas', label: 'Preguntas ML', description: 'Responder preguntas de compradores', icon: MessageCircle },
       { href: '/admin/ml/precios', label: 'Monitor de precios ML', description: 'Comparar precios vs. competencia', icon: TrendingDown },
       { href: '/admin/inteligencia-mercado', label: 'Inteligencia de mercado', description: 'Buscar referentes (ML+Google), tendencias, productos ganadores y SEO con IA', icon: Telescope, highlight: true },
+      { href: '/admin/social', label: 'Social', description: 'Hub de redes sociales y mensajería', icon: Inbox },
       { href: '/admin/social/inbox', label: 'Inbox social', description: 'Mensajes de Instagram, FB, WhatsApp y ML', icon: Inbox, highlight: true },
       { href: '/admin/integraciones', label: 'Centro de integraciones', description: 'Conectar, probar y desactivar APIs', icon: Link2, highlight: true },
       { href: '/admin/integraciones/marketplace', label: 'Marketplace de extensiones', description: 'Apps, snippets, webhooks y OAuth', icon: Boxes, highlight: true },
@@ -95,7 +99,6 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/center', label: 'Centro de integración', description: 'Credenciales, claves API y encriptación de proveedores', icon: KeyRound, highlight: true },
       { href: '/admin/extensions', label: 'Extensiones y Webhooks', description: 'Snippets, webhooks, OAuth y signing keys', icon: Plug, highlight: true },
       { href: '/admin/facturas', label: 'Facturas DTE', description: 'Documentos tributarios y SII', icon: Receipt },
-      { href: '/admin/inventario/scan', label: 'Escáner de inventario', description: 'Lectura de códigos de barras y QR', icon: Scan },
     ],
   },
 ];
@@ -103,6 +106,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
 /** Human labels for breadcrumb segments. Keep in sync with the nav links above. */
 const PATH_LABELS: Record<string, string> = {
   '/admin': 'Centro de control',
+  '/admin/saas': 'Mi SaaS',
   '/admin/productos': 'Productos',
   '/admin/productos/nuevo': 'Nuevo producto',
   '/admin/productos/importar': 'Importar de Mercado Libre',
@@ -128,7 +132,10 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/ml/preguntas': 'Preguntas ML',
   '/admin/ml/precios': 'Monitor de precios ML',
   '/admin/inteligencia-mercado': 'Inteligencia de mercado',
+  '/admin/social': 'Social',
   '/admin/social/inbox': 'Inbox social',
+  '/admin/inventario': 'Inventario',
+  '/admin/inventario/scan': 'Escáner de inventario',
   '/admin/integraciones': 'Centro de integraciones',
   '/admin/integraciones/marketplace': 'Marketplace de extensiones',
   '/admin/configuracion': 'Configuración',
@@ -152,7 +159,6 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/center': 'Centro de integración',
   '/admin/extensions': 'Extensiones y Webhooks',
   '/admin/facturas': 'Facturas DTE',
-  '/admin/inventario/scan': 'Escáner de inventario',
 };
 
 function NavItem({ href, label, description, icon: Icon, active, onNavigate, highlight = false, centered = false }: {

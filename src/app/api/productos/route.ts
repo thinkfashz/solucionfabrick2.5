@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
+import { DEFAULT_TENANT_ID } from '@/lib/tenant';
 
 // Edge runtime is feasible here because the InsForge SDK only uses
 // fetch + web-standard primitives (no Node-only APIs). See docs/perf-runtime.md.
@@ -11,9 +12,14 @@ export async function GET(request: Request) {
   const featured = searchParams.get('featured');
   const limit = parseInt(searchParams.get('limit') ?? '20');
 
+  // Tenant isolation: each subdomain only serves its own catalog
+  const tenantId = (request as { headers: { get(n: string): string | null } })
+    .headers.get('x-tenant-id') ?? DEFAULT_TENANT_ID;
+
   let query = insforge.database
     .from('products')
     .select('id, name, description, price, stock, image_url, specifications, featured, rating, delivery_days, discount_percentage, category_id')
+    .eq('tenant_id', tenantId)
     .order('featured', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(limit);

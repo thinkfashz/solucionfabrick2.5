@@ -119,6 +119,8 @@ export interface AdminSessionPayload {
   email: string;
   exp: number; // Unix ms
   rol?: 'superadmin' | 'admin' | 'viewer';
+  /** UUID of the tenant this admin belongs to. Defaults to the original Fabrick tenant. */
+  tenant_id?: string;
 }
 
 /**

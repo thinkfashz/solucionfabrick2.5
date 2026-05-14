@@ -1,27 +1,18 @@
-import { NextResponse } from 'next/server';
-import { insforge } from '@/lib/insforge';
+import { NextRequest, NextResponse } from 'next/server';
+import { getAdminSession, adminUnauthorized, adminError, getAdminInsforge } from '@/lib/adminApi';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { data, error } = await insforge.database
+    const session = await getAdminSession(request);
+    if (!session) return adminUnauthorized();
+    const client = getAdminInsforge();
+    const { data, error } = await client.database
       .from('blog_comments')
       .select('*')
       .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('DB Error:', error);
-      return NextResponse.json(
-        { error: 'Error fetching comments' },
-        { status: 500 }
-      );
-    }
-
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data || []);
   } catch (err) {
-    console.error('Error in comments GET:', err);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return adminError(err, 'BLOG_COMMENTS_GET_FAILED');
   }
 }

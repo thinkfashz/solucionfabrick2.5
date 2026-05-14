@@ -140,7 +140,7 @@ export async function POST(request: Request) {
         .eq('email', email)
         .limit(1);
       if (!fallback.error && fallback.data && fallback.data.length > 0) {
-        adminRows = fallback.data;
+        adminRows = fallback.data as typeof adminRows;
         dbError = null;
       }
     }

@@ -1,0 +1,1155 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Plan de Implementación SaaS Multi-Tenant — Fabrick Platform</title>
+<style>
+  /* ── Reset & Base ── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --emerald: #10b981;
+    --emerald-light: #d1fae5;
+    --emerald-dark: #065f46;
+    --orange: #f59e0b;
+    --orange-light: #fef3c7;
+    --red: #ef4444;
+    --red-light: #fee2e2;
+    --blue: #3b82f6;
+    --blue-light: #dbeafe;
+    --violet: #8b5cf6;
+    --violet-light: #ede9fe;
+    --zinc-900: #18181b;
+    --zinc-800: #27272a;
+    --zinc-700: #3f3f46;
+    --zinc-400: #a1a1aa;
+    --zinc-200: #e4e4e7;
+    --zinc-100: #f4f4f5;
+    --zinc-50: #fafafa;
+  }
+
+  body {
+    font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+    font-size: 11pt;
+    line-height: 1.6;
+    color: #1a1a1a;
+    background: #fff;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 48px;
+  }
+
+  /* ── Print ── */
+  @media print {
+    body { padding: 0; max-width: 100%; font-size: 10pt; }
+    .no-break { page-break-inside: avoid; }
+    .page-break { page-break-before: always; }
+    h2 { page-break-after: avoid; }
+  }
+
+  /* ── Cover ── */
+  .cover {
+    min-height: 260px;
+    background: linear-gradient(135deg, #0a0a0a 0%, #111827 60%, #064e3b 100%);
+    border-radius: 16px;
+    padding: 48px 40px;
+    color: #fff;
+    margin-bottom: 40px;
+    position: relative;
+    overflow: hidden;
+  }
+  .cover::after {
+    content: '';
+    position: absolute;
+    top: -60px; right: -60px;
+    width: 240px; height: 240px;
+    border-radius: 50%;
+    background: rgba(16,185,129,.12);
+  }
+  .cover-badge {
+    display: inline-block;
+    font-size: 8pt;
+    font-weight: 700;
+    letter-spacing: .12em;
+    text-transform: uppercase;
+    color: var(--emerald);
+    border: 1px solid rgba(16,185,129,.4);
+    border-radius: 20px;
+    padding: 3px 12px;
+    margin-bottom: 18px;
+  }
+  .cover h1 {
+    font-size: 26pt;
+    font-weight: 900;
+    line-height: 1.1;
+    letter-spacing: -.02em;
+    margin-bottom: 12px;
+  }
+  .cover h1 span { color: var(--emerald); }
+  .cover-sub {
+    font-size: 12pt;
+    color: rgba(255,255,255,.55);
+    max-width: 480px;
+    line-height: 1.5;
+  }
+  .cover-meta {
+    margin-top: 28px;
+    display: flex;
+    gap: 24px;
+    font-size: 8.5pt;
+    color: rgba(255,255,255,.35);
+  }
+  .cover-meta strong { color: rgba(255,255,255,.65); }
+
+  /* ── Section headers ── */
+  h2 {
+    font-size: 15pt;
+    font-weight: 800;
+    color: var(--zinc-900);
+    margin: 36px 0 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--zinc-200);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+  h2 .num {
+    width: 28px; height: 28px;
+    border-radius: 8px;
+    background: var(--zinc-900);
+    color: #fff;
+    font-size: 10pt;
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+
+  h3 {
+    font-size: 11pt;
+    font-weight: 700;
+    color: var(--zinc-900);
+    margin: 20px 0 8px;
+  }
+
+  p { margin-bottom: 10px; color: #333; }
+
+  /* ── Priority badges ── */
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 7.5pt;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    padding: 2px 8px;
+    border-radius: 20px;
+    white-space: nowrap;
+  }
+  .badge-red    { background: var(--red-light);    color: #b91c1c; }
+  .badge-orange { background: var(--orange-light); color: #92400e; }
+  .badge-blue   { background: var(--blue-light);   color: #1e40af; }
+  .badge-violet { background: var(--violet-light); color: #5b21b6; }
+  .badge-green  { background: var(--emerald-light);color: var(--emerald-dark); }
+
+  /* ── Task cards ── */
+  .task-card {
+    border: 1.5px solid var(--zinc-200);
+    border-radius: 12px;
+    padding: 18px 20px;
+    margin-bottom: 14px;
+    background: var(--zinc-50);
+    position: relative;
+  }
+  .task-card.critical { border-color: #fca5a5; background: #fff8f8; }
+  .task-card.important { border-color: #fcd34d; background: #fffdf0; }
+  .task-card.infra { border-color: #93c5fd; background: #f0f7ff; }
+  .task-card.ux { border-color: #c4b5fd; background: #faf5ff; }
+
+  .task-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 8px;
+  }
+  .task-title {
+    font-size: 11pt;
+    font-weight: 700;
+    color: var(--zinc-900);
+    display: flex;
+    align-items: center;
+    gap: 8px;
+  }
+  .task-num {
+    width: 22px; height: 22px;
+    border-radius: 6px;
+    background: var(--zinc-200);
+    color: var(--zinc-700);
+    font-size: 8pt;
+    font-weight: 900;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+  }
+  .task-desc { font-size: 10pt; color: #555; margin-bottom: 10px; }
+
+  /* ── File path ── */
+  .filepath {
+    display: inline-block;
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 8.5pt;
+    background: var(--zinc-200);
+    color: var(--zinc-800);
+    padding: 2px 7px;
+    border-radius: 5px;
+    margin: 2px 2px 2px 0;
+  }
+
+  /* ── Code blocks ── */
+  pre {
+    background: var(--zinc-900);
+    color: #e4e4e7;
+    font-family: 'Consolas', 'Menlo', monospace;
+    font-size: 8.5pt;
+    border-radius: 10px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    margin: 10px 0;
+    line-height: 1.55;
+  }
+  code { font-family: 'Consolas', 'Menlo', monospace; font-size: 8.5pt; }
+  .kw { color: #a78bfa; }
+  .fn { color: #60a5fa; }
+  .str { color: #86efac; }
+  .cm { color: #6b7280; }
+  .kn { color: #f472b6; }
+
+  /* ── Steps list ── */
+  .steps { list-style: none; padding: 0; margin: 0; }
+  .steps li {
+    display: flex;
+    gap: 12px;
+    padding: 8px 0;
+    border-bottom: 1px solid var(--zinc-200);
+    font-size: 10pt;
+    color: #444;
+  }
+  .steps li:last-child { border-bottom: none; }
+  .steps li::before {
+    content: attr(data-n);
+    width: 22px; height: 22px;
+    border-radius: 50%;
+    background: var(--emerald);
+    color: #fff;
+    font-size: 8pt;
+    font-weight: 800;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    margin-top: 1px;
+  }
+
+  /* ── Checklist ── */
+  .checklist { list-style: none; padding: 0; }
+  .checklist li {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    padding: 5px 0;
+    font-size: 10pt;
+    color: #444;
+  }
+  .checklist li::before {
+    content: '☐';
+    font-size: 12pt;
+    color: var(--zinc-400);
+    flex-shrink: 0;
+    line-height: 1.3;
+  }
+
+  /* ── Summary table ── */
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 9.5pt;
+    margin: 12px 0;
+  }
+  th {
+    background: var(--zinc-900);
+    color: #fff;
+    text-align: left;
+    padding: 9px 12px;
+    font-size: 8.5pt;
+    font-weight: 700;
+    letter-spacing: .04em;
+    text-transform: uppercase;
+  }
+  th:first-child { border-radius: 8px 0 0 0; }
+  th:last-child  { border-radius: 0 8px 0 0; }
+  td {
+    padding: 9px 12px;
+    border-bottom: 1px solid var(--zinc-200);
+    vertical-align: top;
+  }
+  tr:nth-child(even) td { background: var(--zinc-50); }
+
+  /* ── Env vars grid ── */
+  .env-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+    margin: 10px 0;
+  }
+  .env-item {
+    background: var(--zinc-900);
+    border-radius: 8px;
+    padding: 10px 12px;
+  }
+  .env-key {
+    font-family: monospace;
+    font-size: 8pt;
+    color: #86efac;
+    display: block;
+    margin-bottom: 3px;
+    font-weight: 700;
+  }
+  .env-desc {
+    font-size: 8pt;
+    color: var(--zinc-400);
+    line-height: 1.4;
+  }
+
+  /* ── Timeline ── */
+  .timeline { margin: 16px 0; }
+  .tl-item {
+    display: flex;
+    gap: 14px;
+    padding-bottom: 20px;
+    position: relative;
+  }
+  .tl-item::before {
+    content: '';
+    position: absolute;
+    left: 14px; top: 28px;
+    width: 2px;
+    bottom: 0;
+    background: var(--zinc-200);
+  }
+  .tl-item:last-child::before { display: none; }
+  .tl-dot {
+    width: 30px; height: 30px;
+    border-radius: 50%;
+    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 9pt;
+    font-weight: 900;
+    color: #fff;
+    position: relative;
+    z-index: 1;
+  }
+  .tl-dot.d1 { background: var(--red); }
+  .tl-dot.d2 { background: var(--orange); }
+  .tl-dot.d3 { background: var(--blue); }
+  .tl-dot.d4 { background: var(--violet); }
+  .tl-body { flex: 1; }
+  .tl-title { font-weight: 700; font-size: 10.5pt; margin-bottom: 3px; }
+  .tl-sub { font-size: 9pt; color: #666; }
+  .tl-tag {
+    display: inline-block;
+    font-size: 7.5pt;
+    padding: 1px 8px;
+    border-radius: 20px;
+    font-weight: 700;
+    margin-left: 6px;
+  }
+
+  /* ── Info boxes ── */
+  .info-box {
+    border-left: 4px solid var(--emerald);
+    background: var(--emerald-light);
+    border-radius: 0 10px 10px 0;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 10pt;
+    color: var(--emerald-dark);
+  }
+  .warn-box {
+    border-left: 4px solid var(--orange);
+    background: var(--orange-light);
+    border-radius: 0 10px 10px 0;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 10pt;
+    color: #92400e;
+  }
+  .danger-box {
+    border-left: 4px solid var(--red);
+    background: var(--red-light);
+    border-radius: 0 10px 10px 0;
+    padding: 12px 16px;
+    margin: 12px 0;
+    font-size: 10pt;
+    color: #b91c1c;
+  }
+
+  /* ── Footer ── */
+  .doc-footer {
+    margin-top: 48px;
+    padding-top: 20px;
+    border-top: 1.5px solid var(--zinc-200);
+    display: flex;
+    justify-content: space-between;
+    font-size: 8.5pt;
+    color: var(--zinc-400);
+  }
+
+  /* ── TOC ── */
+  .toc {
+    background: var(--zinc-50);
+    border: 1.5px solid var(--zinc-200);
+    border-radius: 12px;
+    padding: 20px 24px;
+    margin-bottom: 32px;
+  }
+  .toc h3 { margin: 0 0 12px; font-size: 10pt; text-transform: uppercase; letter-spacing: .08em; color: var(--zinc-400); }
+  .toc ol { padding-left: 18px; }
+  .toc li { padding: 4px 0; font-size: 10pt; }
+  .toc a { color: var(--zinc-900); text-decoration: none; font-weight: 500; }
+  .toc .toc-cat { font-size: 8.5pt; color: var(--zinc-400); margin-left: 6px; }
+</style>
+</head>
+<body>
+
+<!-- ══════════════════════════════════════ COVER ══════════════════════════════════════ -->
+<div class="cover">
+  <div class="cover-badge">Documento técnico · v1.0</div>
+  <h1>Plan de Implementación<br /><span>SaaS Multi-Tenant</span></h1>
+  <p class="cover-sub">
+    Hoja de ruta completa para llevar la plataforma Fabrick a producción como
+    SaaS multi-tenant: correcciones críticas, gaps de funcionalidad,
+    infraestructura y entregables UX.
+  </p>
+  <div class="cover-meta">
+    <div><strong>Proyecto</strong> Fabrick Platform</div>
+    <div><strong>Repositorio</strong> thinkfashz/solucionfabrick2.5</div>
+    <div><strong>Rama</strong> claude/improve-store-design-63YAf</div>
+    <div><strong>Fecha</strong> Mayo 2026</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ TOC ══════════════════════════════════════ -->
+<div class="toc">
+  <h3>Contenido</h3>
+  <ol>
+    <li><a href="#estado">Estado actual del sistema</a></li>
+    <li><a href="#critico">Correcciones críticas</a> <span class="toc-cat badge badge-red">3 tareas</span></li>
+    <li><a href="#importante">Funcionalidad incompleta</a> <span class="toc-cat badge badge-orange">3 tareas</span></li>
+    <li><a href="#infra">Infraestructura para go-live</a> <span class="toc-cat badge badge-blue">4 tareas</span></li>
+    <li><a href="#ux">Mejoras UX post-MVP</a> <span class="toc-cat badge badge-violet">4 tareas</span></li>
+    <li><a href="#envvars">Variables de entorno completas</a></li>
+    <li><a href="#timeline">Cronograma sugerido</a></li>
+    <li><a href="#checklist">Checklist de go-live</a></li>
+  </ol>
+</div>
+
+<!-- ══════════════════════════════════════ 0 · ESTADO ══════════════════════════════════════ -->
+<h2 id="estado"><span class="num">0</span>Estado actual del sistema</h2>
+
+<table>
+  <thead>
+    <tr>
+      <th>Área</th>
+      <th>Estado</th>
+      <th>Detalle</th>
+    </tr>
+  </thead>
+  <tbody>
+    <tr>
+      <td>TypeScript (tsc)</td>
+      <td><span class="badge badge-green">✓ PASS</span></td>
+      <td>0 errores, compilación limpia</td>
+    </tr>
+    <tr>
+      <td>ESLint / Next lint</td>
+      <td><span class="badge badge-green">✓ PASS</span></td>
+      <td>0 warnings, 0 errors</td>
+    </tr>
+    <tr>
+      <td>Test suite (Vitest)</td>
+      <td><span class="badge badge-green">✓ 63/63</span></td>
+      <td>Todos los tests pasan</td>
+    </tr>
+    <tr>
+      <td>Migración SQL multi-tenant</td>
+      <td><span class="badge badge-orange">Pendiente</span></td>
+      <td><span class="filepath">scripts/add-multitenancy.sql</span> escrito, no ejecutado en producción</td>
+    </tr>
+    <tr>
+      <td>Middleware tenant routing</td>
+      <td><span class="badge badge-green">✓ Implementado</span></td>
+      <td>Subdomain → headers, JWT con tenant_id</td>
+    </tr>
+    <tr>
+      <td>Subscripciones MercadoPago</td>
+      <td><span class="badge badge-green">✓ Implementado</span></td>
+      <td>Checkout + webhook + cron expire-trials</td>
+    </tr>
+    <tr>
+      <td>Provisioning de tenants</td>
+      <td><span class="badge badge-green">✓ Implementado</span></td>
+      <td>InsForge auth + admin_users + configuracion seed</td>
+    </tr>
+    <tr>
+      <td>tenant_status cookie</td>
+      <td><span class="badge badge-red">Bug crítico</span></td>
+      <td>Middleware la lee pero nadie la setea</td>
+    </tr>
+    <tr>
+      <td>notify-suspension API</td>
+      <td><span class="badge badge-red">Faltante</span></td>
+      <td>Ruta referenciada en cron pero no creada</td>
+    </tr>
+    <tr>
+      <td>Rutas admin tenant-scoped</td>
+      <td><span class="badge badge-orange">Parcial</span></td>
+      <td>Orders list y Products list sin filtro tenant_id</td>
+    </tr>
+  </tbody>
+</table>
+
+<!-- ══════════════════════════════════════ 1 · CRITICO ══════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2 id="critico"><span class="num">1</span>Correcciones críticas <span class="badge badge-red" style="font-size:9pt">Bloquean producción</span></h2>
+
+<!-- TAREA 1 -->
+<div class="task-card critical no-break">
+  <div class="task-header">
+    <div class="task-title">
+      <span class="task-num">1</span>
+      Setear cookie <code>tenant_status</code> en el login
+    </div>
+    <span class="badge badge-red">Crítico</span>
+  </div>
+  <p class="task-desc">
+    El middleware lee la cookie <code>tenant_status</code> para redirigir a <code>/admin/plan-suspendido</code>
+    si el tenant está suspendido o cancelado. Sin embargo, esta cookie <strong>nunca se escribe</strong>.
+    El resultado: un tenant suspendido puede entrar al panel sin restricciones.
+  </p>
+
+  <h3>Archivo a modificar</h3>
+  <span class="filepath">src/app/api/admin/login/route.ts</span>
+
+  <h3>Cambio a aplicar</h3>
+  <p>Después de construir la respuesta de login exitoso, agregar el header <code>Set-Cookie</code> para <code>tenant_status</code>:</p>
+<pre><span class="cm">// Después de crear la respuesta con el JWT de sesión...</span>
+<span class="kn">const</span> response = NextResponse.json({ ok: <span class="kw">true</span> });
+
+<span class="cm">// Setear cookie de sesión JWT (ya existente)</span>
+response.cookies.set(<span class="str">'admin_session'</span>, token, {
+  httpOnly: <span class="kw">true</span>,
+  secure: process.env.NODE_ENV === <span class="str">'production'</span>,
+  maxAge: 60 * 60 * 24 * 7,
+  path: <span class="str">'/'</span>,
+});
+
+<span class="cm">// ★ NUEVO: setear tenant_status (NO httpOnly para que Edge lo pueda leer)</span>
+response.cookies.set(<span class="str">'tenant_status'</span>, tenantStatus, {
+  httpOnly: <span class="kw">false</span>,   <span class="cm">// Edge runtime puede leer cookies no-httpOnly</span>
+  secure: process.env.NODE_ENV === <span class="str">'production'</span>,
+  maxAge: 60 * 60 * 24 * 7,
+  path: <span class="str">'/'</span>,
+  sameSite: <span class="str">'lax'</span>,
+});
+
+<span class="kn">return</span> response;</pre>
+
+  <p>Donde <code>tenantStatus</code> viene del query del tenant al hacer login. Consultar el tenant después de validar credenciales:</p>
+<pre><span class="cm">// Obtener status del tenant para la cookie</span>
+<span class="kn">const</span> { data: tenant } = <span class="kn">await</span> insforge.database
+  .from(<span class="str">'tenants'</span>)
+  .select(<span class="str">'status'</span>)
+  .eq(<span class="str">'id'</span>, tenantId)
+  .single();
+
+<span class="kn">const</span> tenantStatus = tenant?.status ?? <span class="str">'active'</span>;</pre>
+
+  <div class="warn-box">
+    <strong>Nota:</strong> La cookie debe ser <code>httpOnly: false</code> porque el Edge runtime (middleware)
+    lee cookies a través de <code>request.cookies.get()</code> y no puede acceder a cookies <code>httpOnly</code>
+    desde el cliente. Edge sí puede leer headers de cookies del request entrante.
+  </div>
+</div>
+
+<!-- TAREA 2 -->
+<div class="task-card critical no-break">
+  <div class="task-header">
+    <div class="task-title">
+      <span class="task-num">2</span>
+      Crear ruta <code>/api/platform/notify-suspension</code>
+    </div>
+    <span class="badge badge-red">Crítico</span>
+  </div>
+  <p class="task-desc">
+    El cron <code>expire-trials</code> llama a esta ruta con <code>fetch()</code> para notificar suspensiones,
+    pero la ruta no existe. Esto genera un error 404 silencioso en producción y el tenant
+    no recibe el email de aviso.
+  </p>
+
+  <h3>Archivo a crear</h3>
+  <span class="filepath">src/app/api/platform/notify-suspension/route.ts</span>
+
+  <h3>Implementación completa</h3>
+<pre><span class="kw">import</span> { NextRequest, NextResponse } <span class="kw">from</span> <span class="str">'next/server'</span>;
+<span class="kw">import</span> { insforge } <span class="kw">from</span> <span class="str">'@/lib/insforge'</span>;
+<span class="kw">import</span> { Resend } <span class="kw">from</span> <span class="str">'resend'</span>;
+
+<span class="kn">export const</span> dynamic = <span class="str">'force-dynamic'</span>;
+<span class="kn">export const</span> runtime = <span class="str">'nodejs'</span>;
+
+<span class="kn">export async function</span> <span class="fn">POST</span>(request: NextRequest) {
+  <span class="kn">const</span> secret = request.headers.get(<span class="str">'x-platform-secret'</span>);
+  <span class="kw">if</span> (secret !== process.env.PLATFORM_ADMIN_SECRET) {
+    <span class="kn">return</span> NextResponse.json({ error: <span class="str">'No autorizado.'</span> }, { status: 401 });
+  }
+
+  <span class="kn">const</span> { tenant_id } = <span class="kn">await</span> request.json();
+  <span class="kw">if</span> (!tenant_id) <span class="kn">return</span> NextResponse.json({ error: <span class="str">'tenant_id requerido'</span> }, { status: 400 });
+
+  <span class="kn">const</span> { data: tenant } = <span class="kn">await</span> insforge.database
+    .from(<span class="str">'tenants'</span>)
+    .select(<span class="str">'name, owner_email, slug'</span>)
+    .eq(<span class="str">'id'</span>, tenant_id)
+    .single();
+
+  <span class="kw">if</span> (!tenant) <span class="kn">return</span> NextResponse.json({ error: <span class="str">'Tenant no encontrado'</span> }, { status: 404 });
+
+  <span class="kn">const</span> resend = <span class="kn">new</span> Resend(process.env.RESEND_API_KEY);
+  <span class="kn">const</span> adminUrl = `https://${tenant.slug}.fabrick.cl/admin`;
+
+  <span class="kn">await</span> resend.emails.send({
+    from: process.env.EMAIL_FROM ?? <span class="str">'Fabrick &lt;noreply@fabrick.cl&gt;'</span>,
+    to: tenant.owner_email,
+    subject: <span class="str">'Tu cuenta Fabrick ha sido suspendida'</span>,
+    html: suspensionEmailHtml(tenant.name, adminUrl),
+  });
+
+  <span class="kn">return</span> NextResponse.json({ ok: <span class="kw">true</span> });
+}
+
+<span class="kn">function</span> <span class="fn">suspensionEmailHtml</span>(name: string, adminUrl: string): string {
+  <span class="kn">return</span> `&lt;!DOCTYPE html&gt;
+  &lt;html&gt;&lt;body style="font-family:sans-serif;background:#0a0a0a;color:#fff;padding:40px"&gt;
+    &lt;h2 style="color:#f59e0b"&gt;⚠ Cuenta suspendida — ${name}&lt;/h2&gt;
+    &lt;p style="color:#aaa"&gt;Tu período de prueba ha vencido y no registramos un pago activo.&lt;/p&gt;
+    &lt;p style="color:#aaa"&gt;Tus datos se conservan por 30 días.&lt;/p&gt;
+    &lt;a href="${adminUrl}" style="display:inline-block;background:#10b981;color:#000;
+       font-weight:700;padding:12px 24px;border-radius:8px;text-decoration:none;margin-top:16px"&gt;
+      Renovar suscripción
+    &lt;/a&gt;
+  &lt;/body&gt;&lt;/html&gt;`;
+}</pre>
+</div>
+
+<!-- TAREA 3 -->
+<div class="task-card critical no-break">
+  <div class="task-header">
+    <div class="task-title">
+      <span class="task-num">3</span>
+      Constraint UNIQUE <code>(clave, tenant_id)</code> en tabla <code>configuracion</code>
+    </div>
+    <span class="badge badge-red">Crítico</span>
+  </div>
+  <p class="task-desc">
+    El upsert de settings usa <code>onConflict: 'clave,tenant_id'</code>, pero la tabla
+    <code>configuracion</code> solo tiene <code>UNIQUE(clave)</code>. Si se ejecuta un upsert
+    multi-tenant, falla en producción con error de conflicto.
+  </p>
+
+  <h3>SQL a agregar en la migración</h3>
+<pre><span class="cm">-- Eliminar constraint antiguo (solo clave)</span>
+<span class="kw">ALTER TABLE</span> configuracion
+  <span class="kw">DROP CONSTRAINT IF EXISTS</span> configuracion_clave_key;
+
+<span class="cm">-- Crear constraint compuesto</span>
+<span class="kw">ALTER TABLE</span> configuracion
+  <span class="kw">ADD CONSTRAINT</span> configuracion_clave_tenant_unique
+  <span class="kw">UNIQUE</span> (clave, tenant_id);
+
+<span class="cm">-- Índice para búsquedas por tenant</span>
+<span class="kw">CREATE INDEX IF NOT EXISTS</span> idx_configuracion_tenant
+  <span class="kw">ON</span> configuracion (tenant_id);</pre>
+
+  <div class="danger-box">
+    <strong>¡Atención!</strong> Antes de ejecutar, verificar que no existan filas duplicadas
+    con la misma <code>clave</code> y diferente <code>tenant_id</code>. Si existen,
+    limpiar primero: <code>DELETE FROM configuracion WHERE tenant_id != '00000000-0000-0000-0000-000000000001' AND clave IN (SELECT clave FROM configuracion GROUP BY clave HAVING COUNT(*) > 1);</code>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ 2 · IMPORTANTE ══════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2 id="importante"><span class="num">2</span>Funcionalidad incompleta <span class="badge badge-orange" style="font-size:9pt">Antes del primer cliente</span></h2>
+
+<!-- TAREA 4 -->
+<div class="task-card important no-break">
+  <div class="task-header">
+    <div class="task-title"><span class="task-num">4</span>Tenant-scope en rutas de listado de admin</div>
+    <span class="badge badge-orange">Importante</span>
+  </div>
+  <p class="task-desc">
+    Las rutas de listado (<code>GET /api/admin/orders</code> y <code>GET /api/admin/productos</code>)
+    no filtran por <code>tenant_id</code>. Un admin de Tenant A podría ver los pedidos/productos
+    de Tenant B. Solo el endpoint <code>PATCH /api/admin/orders/[id]</code> fue tenant-scoped.
+  </p>
+
+  <h3>Archivos a modificar</h3>
+  <span class="filepath">src/app/api/admin/orders/route.ts</span>
+  <span class="filepath">src/app/api/admin/productos/route.ts</span>
+
+  <h3>Patrón a aplicar en ambas rutas</h3>
+<pre><span class="kw">import</span> { getAdminTenantId } <span class="kw">from</span> <span class="str">'@/lib/adminApi'</span>;
+
+<span class="kn">export async function</span> <span class="fn">GET</span>(request: NextRequest) {
+  <span class="kn">const</span> tenantId = <span class="kn">await</span> getAdminTenantId(request);
+
+  <span class="kn">const</span> { data, error } = <span class="kn">await</span> insforge.database
+    .from(<span class="str">'orders'</span>)   <span class="cm">// o 'products'</span>
+    .select(<span class="str">'*'</span>)
+    .eq(<span class="str">'tenant_id'</span>, tenantId)  <span class="cm">// ★ agregar esta línea</span>
+    .order(<span class="str">'created_at'</span>, { ascending: <span class="kw">false</span> });
+
+  <span class="kw">if</span> (error) <span class="kn">return</span> NextResponse.json({ error: error.message }, { status: 500 });
+  <span class="kn">return</span> NextResponse.json(data);
+}</pre>
+</div>
+
+<!-- TAREA 5 -->
+<div class="task-card important no-break">
+  <div class="task-header">
+    <div class="task-title"><span class="task-num">5</span>Branding del tenant en AdminShell</div>
+    <span class="badge badge-orange">Importante</span>
+  </div>
+  <p class="task-desc">
+    El componente <code>AdminShell</code> muestra siempre "Fabrick" en el sidebar.
+    Cada tenant debería ver su propio nombre y logo.
+  </p>
+
+  <h3>Archivo a modificar</h3>
+  <span class="filepath">src/components/admin/AdminShell.tsx</span>
+
+  <h3>Enfoque recomendado: endpoint <code>/api/admin/me</code></h3>
+<pre><span class="cm">// En AdminShell.tsx — leer tenant desde endpoint existente o nuevo</span>
+<span class="kn">const</span> [tenantName, setTenantName] = useState(<span class="str">'Fabrick'</span>);
+
+useEffect(() => {
+  fetch(<span class="str">'/api/admin/me'</span>)
+    .then(r => r.json())
+    .then(d => { <span class="kw">if</span> (d.tenant_name) setTenantName(d.tenant_name); })
+    .catch(() => {}); <span class="cm">// fallback silencioso</span>
+}, []);
+
+<span class="cm">// En el JSX del sidebar, reemplazar texto fijo:</span>
+&lt;span className=<span class="str">"font-black"</span>&gt;{tenantName}&lt;/span&gt;</pre>
+
+  <div class="info-box">
+    Si no existe <code>/api/admin/me</code>, crearlo como GET que lee el JWT de sesión y devuelve
+    <code>{ user_id, email, rol, tenant_id, tenant_name, tenant_slug }</code>.
+  </div>
+</div>
+
+<!-- TAREA 6 -->
+<div class="task-card important no-break">
+  <div class="task-header">
+    <div class="task-title"><span class="task-num">6</span>Flujo de cambio de contraseña temporal</div>
+    <span class="badge badge-orange">Importante</span>
+  </div>
+  <p class="task-desc">
+    El sistema de provisioning genera una contraseña temporal que se envía por email.
+    No hay ningún mecanismo que obligue al usuario a cambiarla en el primer acceso.
+  </p>
+
+  <h3>Cambios requeridos</h3>
+  <ol class="steps">
+    <li data-n="1">Agregar columna <code>must_change_password BOOLEAN DEFAULT false</code> a la tabla <code>admin_users</code></li>
+    <li data-n="2">En <span class="filepath">src/lib/tenantProvisioning.ts</span>, al crear el <code>admin_users</code> row, setear <code>must_change_password: true</code></li>
+    <li data-n="3">En el middleware, si el JWT decodificado tiene <code>must_change_password: true</code>, redirigir a <code>/admin/cambiar-password</code></li>
+    <li data-n="4">Crear página <span class="filepath">src/app/admin/cambiar-password/page.tsx</span> con form de nueva contraseña</li>
+    <li data-n="5">Crear endpoint <span class="filepath">src/app/api/admin/change-password/route.ts</span> que actualice InsForge auth y setee <code>must_change_password=false</code></li>
+  </ol>
+</div>
+
+<!-- ══════════════════════════════════════ 3 · INFRA ══════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2 id="infra"><span class="num">3</span>Infraestructura para go-live <span class="badge badge-blue" style="font-size:9pt">Antes de abrir al público</span></h2>
+
+<!-- TAREA 7 -->
+<div class="task-card infra no-break">
+  <div class="task-header">
+    <div class="task-title"><span class="task-num">7</span>DNS wildcard <code>*.fabrick.cl</code></div>
+    <span class="badge badge-blue">Infraestructura</span>
+  </div>
+  <p class="task-desc">
+    El routing por subdominios requiere que cualquier <code>*.fabrick.cl</code>
+    apunte a Vercel. Sin esto, los subdomains de tenants no resuelven.
+  </p>
+
+  <h3>Pasos en el panel DNS (Cloudflare u otro)</h3>
+  <ol class="steps">
+    <li data-n="1">Crear registro CNAME: <code>*</code> → <code>cname.vercel-dns.com</code> (Proxy OFF si usas Cloudflare)</li>
+    <li data-n="2">En Vercel Dashboard → Settings → Domains → Add domain: <code>*.fabrick.cl</code></li>
+    <li data-n="3">Vercel genera un challenge TXT; agregar en DNS panel</li>
+    <li data-n="4">Verificar con: <code>curl -I https://test.fabrick.cl</code> (debe devolver 200 o redirect de Next)</li>
+  </ol>
+
+  <div class="warn-box">
+    <strong>Cloudflare:</strong> Si usas Cloudflare como proxy, el wildcard CNAME debe tener el proxy
+    <strong>desactivado</strong> (nube gris). De lo contrario Vercel no puede renovar el certificado SSL wildcard.
+  </div>
+</div>
+
+<!-- TAREA 8 -->
+<div class="task-card infra no-break">
+  <div class="task-header">
+    <div class="task-title"><span class="task-num">8</span>Ejecutar migración SQL en producción</div>
+    <span class="badge badge-blue">Infraestructura</span>
+  </div>
+  <p class="task-desc">
+    El archivo <span class="filepath">scripts/add-multitenancy.sql</span> contiene todas las
+    tablas, columnas, índices y vistas nuevas. Sin ejecutarlo, el sistema falla en runtime.
+  </p>
+
+  <h3>Orden de ejecución</h3>
+  <ol class="steps">
+    <li data-n="1">Hacer backup completo de la DB (snapshot en InsForge u otro)</li>
+    <li data-n="2">Ejecutar en una DB de staging primero y verificar que las consultas existentes no se rompan</li>
+    <li data-n="3">Ejecutar en producción en ventana de mantenimiento (baja carga)</li>
+    <li data-n="4">Verificar con: <code>SELECT COUNT(*) FROM tenants;</code> — debe devolver al menos 1 (el tenant default)</li>
+    <li data-n="5">Ejecutar el SQL del constraint de configuracion (Tarea #3 de esta guía)</li>
+  </ol>
+
+  <h3>Verificación post-migración</h3>
+<pre><span class="cm">-- Verificar tablas creadas</span>
+<span class="kw">SELECT</span> tablename <span class="kw">FROM</span> pg_tables
+<span class="kw">WHERE</span> tablename <span class="kw">IN</span> (<span class="str">'tenants'</span>, <span class="str">'platform_plans'</span>, <span class="str">'platform_subscriptions'</span>, <span class="str">'platform_payment_log'</span>);
+
+<span class="cm">-- Verificar columnas tenant_id</span>
+<span class="kw">SELECT</span> table_name, column_name <span class="kw">FROM</span> information_schema.columns
+<span class="kw">WHERE</span> column_name = <span class="str">'tenant_id'</span>
+<span class="kw">ORDER BY</span> table_name;
+
+<span class="cm">-- Verificar vistas</span>
+<span class="kw">SELECT</span> viewname <span class="kw">FROM</span> pg_views
+<span class="kw">WHERE</span> viewname <span class="kw">IN</span> (<span class="str">'platform_mrr'</span>, <span class="str">'platform_tenant_summary'</span>);</pre>
+</div>
+
+<!-- TAREA 9 -->
+<div class="task-card infra no-break">
+  <div class="task-header">
+    <div class="task-title"><span class="task-num">9</span>Registrar webhook en MercadoPago</div>
+    <span class="badge badge-blue">Infraestructura</span>
+  </div>
+  <p class="task-desc">
+    Sin el webhook registrado, MercadoPago no puede notificar cuando un cliente paga.
+    La activación automática de cuentas no funcionará.
+  </p>
+
+  <h3>Configuración en el panel MP</h3>
+  <ol class="steps">
+    <li data-n="1">Ir a: <strong>MercadoPago Developers → Tu aplicación → Webhooks</strong></li>
+    <li data-n="2">URL del webhook: <code>https://fabrick.cl/api/platform/subscriptions/webhook</code></li>
+    <li data-n="3">Eventos a suscribir: <strong>subscription_preapproval</strong> y <strong>subscription_preapproval_plan</strong></li>
+    <li data-n="4">Copiar el <code>secret</code> generado por MP → pegar como <code>PLATFORM_MP_WEBHOOK_SECRET</code> en Vercel</li>
+    <li data-n="5">Hacer un pago de prueba y verificar que el endpoint devuelva 200 en los logs de MP</li>
+  </ol>
+</div>
+
+<!-- TAREA 10 -->
+<div class="task-card infra no-break">
+  <div class="task-header">
+    <div class="task-title"><span class="task-num">10</span>Variables de entorno en Vercel</div>
+    <span class="badge badge-blue">Infraestructura</span>
+  </div>
+  <p class="task-desc">
+    Sin las variables correctas, todas las rutas de plataforma fallan en runtime.
+    Ver sección detallada al final del documento.
+  </p>
+</div>
+
+<!-- ══════════════════════════════════════ 4 · UX ══════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2 id="ux"><span class="num">4</span>Mejoras UX post-MVP <span class="badge badge-violet" style="font-size:9pt">Segundo sprint</span></h2>
+
+<div class="task-card ux no-break">
+  <div class="task-header">
+    <div class="task-title"><span class="task-num">11</span>Wizard de onboarding post-registro</div>
+    <span class="badge badge-violet">UX</span>
+  </div>
+  <p class="task-desc">
+    Actualmente, cuando un tenant nuevo entra al panel por primera vez, ve el dashboard vacío.
+    Un wizard paso a paso aumenta la activación (logo → primer producto → publicar tienda).
+  </p>
+  <h3>Pantallas del wizard</h3>
+  <ol class="steps">
+    <li data-n="1"><strong>Bienvenida</strong> — nombre del negocio, logo (upload a Cloudinary)</li>
+    <li data-n="2"><strong>Primer producto</strong> — nombre, precio, foto</li>
+    <li data-n="3"><strong>Vista previa</strong> — screenshot de la tienda con el producto</li>
+    <li data-n="4"><strong>Compartir</strong> — link de la tienda con botón de copiar</li>
+  </ol>
+  <h3>Archivo a crear</h3>
+  <span class="filepath">src/app/admin/onboarding/page.tsx</span> — protegido por sesión, redirige al dashboard tras completar
+</div>
+
+<div class="task-card ux no-break">
+  <div class="task-header">
+    <div class="task-title"><span class="task-num">12</span>Indicador de estado del plan en AdminShell</div>
+    <span class="badge badge-violet">UX</span>
+  </div>
+  <p class="task-desc">
+    El tenant no sabe cuándo vence su trial. Un badge en el sidebar como
+    "Trial · vence en 3 días" reduce la tasa de suspensión por sorpresa.
+  </p>
+  <p>Agregar en el footer del sidebar de <span class="filepath">src/components/admin/AdminShell.tsx</span>:</p>
+<pre>&lt;TrialBadge trialEndsAt={session.trial_ends_at} status={session.status} /&gt;</pre>
+  <p>Lógica del componente: si <code>status === 'trial'</code>, calcular días restantes.
+  Si &lt;3 días → badge rojo. Si &lt;7 → naranja. Si &gt;7 → zinc.</p>
+</div>
+
+<div class="task-card ux no-break">
+  <div class="task-header">
+    <div class="task-title"><span class="task-num">13</span>Portal de billing del tenant</div>
+    <span class="badge badge-violet">UX</span>
+  </div>
+  <p class="task-desc">
+    Los tenants necesitan ver su plan actual, historial de pagos y poder cambiar de plan
+    sin contactar soporte.
+  </p>
+  <h3>Archivos a crear</h3>
+  <span class="filepath">src/app/admin/billing/plan/page.tsx</span>
+  <span class="filepath">src/app/api/admin/billing/plan/route.ts</span>
+  <p style="margin-top:8px">La página GET devuelve: plan actual, próxima fecha de cobro, historial de pagos (de <code>platform_payment_log</code>),
+  y botón para cambiar a Pro/Enterprise que redirige al checkout de MP.</p>
+</div>
+
+<div class="task-card ux no-break">
+  <div class="task-header">
+    <div class="task-title"><span class="task-num">14</span>Email 3 días antes de vencer el trial</div>
+    <span class="badge badge-violet">UX</span>
+  </div>
+  <p class="task-desc">
+    El cron diario <code>expire-trials</code> ya corre a las 08:00. Agregar un segundo
+    paso que detecte trials que vencen en 3 días y envíe un email de aviso.
+  </p>
+  <h3>Lógica a agregar en <span class="filepath">src/app/api/cron/expire-trials/route.ts</span></h3>
+<pre><span class="kn">const</span> threeDaysFromNow = <span class="kn">new</span> Date();
+threeDaysFromNow.setDate(threeDaysFromNow.getDate() + 3);
+
+<span class="kn">const</span> { data: expiringSoon } = <span class="kn">await</span> insforge.database
+  .from(<span class="str">'tenants'</span>)
+  .select(<span class="str">'id, slug, owner_email, name, trial_ends_at'</span>)
+  .eq(<span class="str">'status'</span>, <span class="str">'trial'</span>)
+  .gte(<span class="str">'trial_ends_at'</span>, now)
+  .lte(<span class="str">'trial_ends_at'</span>, threeDaysFromNow.toISOString());
+
+<span class="cm">// Enviar email de aviso por cada uno</span></pre>
+</div>
+
+<!-- ══════════════════════════════════════ ENV VARS ══════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2 id="envvars"><span class="num">5</span>Variables de entorno completas</h2>
+
+<p>Todas deben configurarse en <strong>Vercel → Settings → Environment Variables</strong> con scope <em>Production</em>.</p>
+
+<div class="env-grid">
+  <div class="env-item">
+    <span class="env-key">PLATFORM_ADMIN_SECRET</span>
+    <span class="env-desc">Secret aleatorio (64 chars). Protege /platform y /api/platform/*. Generar con: openssl rand -hex 32</span>
+  </div>
+  <div class="env-item">
+    <span class="env-key">PLATFORM_MP_WEBHOOK_SECRET</span>
+    <span class="env-desc">Secret que entrega MercadoPago al crear el webhook. Se usa para verificar firma HMAC-SHA256.</span>
+  </div>
+  <div class="env-item">
+    <span class="env-key">MP_CLIENT_ID</span>
+    <span class="env-desc">Client ID de la app MercadoPago (panel de developers.mercadopago.com)</span>
+  </div>
+  <div class="env-item">
+    <span class="env-key">MP_CLIENT_SECRET</span>
+    <span class="env-desc">Client Secret de la app MercadoPago. Nunca exponerlo en el cliente.</span>
+  </div>
+  <div class="env-item">
+    <span class="env-key">RESEND_API_KEY</span>
+    <span class="env-desc">API key de Resend.com para envío de emails transaccionales. Crear en resend.com/api-keys</span>
+  </div>
+  <div class="env-item">
+    <span class="env-key">EMAIL_FROM</span>
+    <span class="env-desc">Dirección de origen de emails. Ejemplo: "Fabrick &lt;noreply@fabrick.cl&gt;". Debe estar verificada en Resend.</span>
+  </div>
+  <div class="env-item">
+    <span class="env-key">CRON_SECRET</span>
+    <span class="env-desc">Bearer token que Vercel Cron envía en Authorization header. Generar con: openssl rand -hex 24</span>
+  </div>
+  <div class="env-item">
+    <span class="env-key">NEXT_PUBLIC_APP_URL</span>
+    <span class="env-desc">URL base pública de la plataforma. Ejemplo: https://fabrick.cl</span>
+  </div>
+  <div class="env-item">
+    <span class="env-key">INSFORGE_URL</span>
+    <span class="env-desc">URL del proyecto InsForge (BaaS). Ya configurada, verificar que sea producción.</span>
+  </div>
+  <div class="env-item">
+    <span class="env-key">INSFORGE_ANON_KEY</span>
+    <span class="env-desc">Clave anon pública de InsForge. Ya configurada.</span>
+  </div>
+  <div class="env-item">
+    <span class="env-key">INSFORGE_SERVICE_ROLE_KEY</span>
+    <span class="env-desc">Clave de servicio de InsForge (acceso sin restricciones). Solo en servidor, nunca en cliente.</span>
+  </div>
+  <div class="env-item">
+    <span class="env-key">ADMIN_SESSION_SECRET</span>
+    <span class="env-desc">Secret HMAC-SHA256 para firmar JWTs de sesión admin. Generar con: openssl rand -hex 32</span>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ TIMELINE ══════════════════════════════════════ -->
+<div class="page-break"></div>
+<h2 id="timeline"><span class="num">6</span>Cronograma sugerido</h2>
+
+<div class="timeline">
+  <div class="tl-item">
+    <div class="tl-dot d1">1</div>
+    <div class="tl-body">
+      <div class="tl-title">Día 1 — Correcciones críticas <span class="tl-tag badge badge-red">Bloquean todo</span></div>
+      <div class="tl-sub">
+        Tarea #1 (cookie tenant_status) · Tarea #2 (ruta notify-suspension) · Tarea #3 (constraint SQL)<br />
+        <em>Estimado: 3–4 horas de desarrollo + 1 hora de pruebas</em>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-item">
+    <div class="tl-dot d2">2</div>
+    <div class="tl-body">
+      <div class="tl-title">Día 2 — Infraestructura <span class="tl-tag badge badge-blue">Requiere accesos</span></div>
+      <div class="tl-sub">
+        Tarea #7 (DNS wildcard) · Tarea #8 (migración SQL en staging) · Tarea #10 (env vars en Vercel)<br />
+        <em>Estimado: 2 horas (puede bloquearse por propagación DNS de hasta 24 horas)</em>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-item">
+    <div class="tl-dot d2">3</div>
+    <div class="tl-body">
+      <div class="tl-title">Día 3 — Funcionalidad + Go-live <span class="tl-tag badge badge-orange">Antes del primer cliente</span></div>
+      <div class="tl-sub">
+        Tarea #4 (tenant-scope en listados) · Tarea #8 (migración en prod) · Tarea #9 (webhook MP)<br />
+        Deploy a producción · Prueba end-to-end: registro → pago → acceso al panel<br />
+        <em>Estimado: 4–5 horas</em>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-item">
+    <div class="tl-dot d3">4</div>
+    <div class="tl-body">
+      <div class="tl-title">Semana 2 — Funcionalidad restante <span class="tl-tag badge badge-orange">Post-launch</span></div>
+      <div class="tl-sub">
+        Tarea #5 (branding AdminShell) · Tarea #6 (cambio de contraseña) · Tarea #11 (wizard onboarding)<br />
+        <em>Estimado: 1–2 días de desarrollo</em>
+      </div>
+    </div>
+  </div>
+
+  <div class="tl-item">
+    <div class="tl-dot d4">5</div>
+    <div class="tl-body">
+      <div class="tl-title">Semana 3–4 — UX y retención <span class="tl-tag badge badge-violet">Segundo sprint</span></div>
+      <div class="tl-sub">
+        Tarea #12 (badge trial) · Tarea #13 (portal billing) · Tarea #14 (email 3 días antes)<br />
+        <em>Estimado: 2–3 días de desarrollo</em>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════ CHECKLIST ══════════════════════════════════════ -->
+<h2 id="checklist"><span class="num">7</span>Checklist de go-live</h2>
+
+<p>Imprimir o copiar esta lista. Marcar cada ítem antes del lanzamiento oficial:</p>
+
+<h3>Base de datos</h3>
+<ul class="checklist">
+  <li>Migración <code>scripts/add-multitenancy.sql</code> ejecutada en producción</li>
+  <li>Constraint <code>(clave, tenant_id)</code> creado en tabla <code>configuracion</code></li>
+  <li>Tenant default (<code>00000000-0000-0000-0000-000000000001</code>) existe en tabla <code>tenants</code></li>
+  <li>Vistas <code>platform_mrr</code> y <code>platform_tenant_summary</code> funcionan correctamente</li>
+</ul>
+
+<h3>Autenticación y sesiones</h3>
+<ul class="checklist">
+  <li>Cookie <code>tenant_status</code> se setea correctamente al hacer login</li>
+  <li>Tenant suspendido redirige a <code>/admin/plan-suspendido</code></li>
+  <li>Tenant de diferente subdominio no puede ver datos de otro tenant</li>
+  <li>JWT de sesión incluye <code>tenant_id</code> en payload</li>
+</ul>
+
+<h3>Subscripciones MercadoPago</h3>
+<ul class="checklist">
+  <li>Webhook registrado en panel MP con URL de producción</li>
+  <li><code>PLATFORM_MP_WEBHOOK_SECRET</code> configurado en Vercel</li>
+  <li>Prueba de pago completa: registro → MP checkout → webhook → activación</li>
+  <li>Email de bienvenida llega al correo del tenant</li>
+</ul>
+
+<h3>Emails</h3>
+<ul class="checklist">
+  <li><code>RESEND_API_KEY</code> configurado con dominio verificado</li>
+  <li>Email de bienvenida funciona (ruta <code>notify-activation</code>)</li>
+  <li>Email de suspensión funciona (ruta <code>notify-suspension</code>)</li>
+  <li>Dirección <code>EMAIL_FROM</code> verificada en Resend</li>
+</ul>
+
+<h3>Infraestructura</h3>
+<ul class="checklist">
+  <li>DNS <code>*.fabrick.cl</code> CNAME → <code>cname.vercel-dns.com</code> activo</li>
+  <li>Dominio wildcard verificado en Vercel Dashboard</li>
+  <li>SSL wildcard generado (Vercel lo gestiona automáticamente)</li>
+  <li>Cron <code>expire-trials</code> aparece en Vercel → Settings → Cron Jobs</li>
+</ul>
+
+<h3>Código</h3>
+<ul class="checklist">
+  <li><code>pnpm tsc --noEmit</code> → 0 errores</li>
+  <li><code>pnpm lint</code> → 0 warnings, 0 errors</li>
+  <li><code>pnpm test --run</code> → todos pasan</li>
+  <li>Rutas <code>/api/admin/orders</code> y <code>/api/admin/productos</code> filtran por <code>tenant_id</code></li>
+  <li>Ruta <code>/api/platform/notify-suspension</code> existe y devuelve 200</li>
+</ul>
+
+<h3>Prueba end-to-end (smoke test)</h3>
+<ul class="checklist">
+  <li>Ir a <code>fabrick.cl/registro</code> → registrar nuevo tenant con plan Starter</li>
+  <li>Completar pago en MercadoPago sandbox</li>
+  <li>Verificar que el webhook activa el tenant</li>
+  <li>Recibir email de bienvenida con contraseña temporal</li>
+  <li>Entrar a <code>{slug}.fabrick.cl/admin</code> con las credenciales</li>
+  <li>Crear un producto y verificar que aparece en <code>{slug}.fabrick.cl</code></li>
+  <li>Verificar que el producto NO aparece en el panel de otro tenant</li>
+</ul>
+
+<!-- ══════════════════════════════════════ FOOTER ══════════════════════════════════════ -->
+<div class="doc-footer">
+  <div>Fabrick Platform — Plan de implementación SaaS v1.0</div>
+  <div>Rama: <code>claude/improve-store-design-63YAf</code> · Mayo 2026</div>
+</div>
+
+</body>
+</html>

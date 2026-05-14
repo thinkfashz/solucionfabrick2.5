@@ -18,6 +18,7 @@ interface Tenant {
   owner_email: string | null;
   owner_name: string | null;
   owner_phone: string | null;
+  custom_domain: string | null;
   trial_ends_at: string | null;
   created_at: string;
 }
@@ -218,7 +219,7 @@ export default function AdminSaasPage() {
   const [statusFilter, setStatusFilter] = useState('all');
 
   // Add tenant form state
-  const [form, setForm] = useState({ name: '', owner_email: '', owner_name: '', owner_phone: '', plan_id: 'starter' });
+  const [form, setForm] = useState({ name: '', owner_email: '', owner_name: '', owner_phone: '', plan_id: 'starter', custom_domain: '' });
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState('');
   const [saveOk, setSaveOk] = useState(false);
@@ -271,7 +272,7 @@ export default function AdminSaasPage() {
         setSaveError(data.error || 'Error al crear el cliente.');
       } else {
         setSaveOk(true);
-        setForm({ name: '', owner_email: '', owner_name: '', owner_phone: '', plan_id: 'starter' });
+        setForm({ name: '', owner_email: '', owner_name: '', owner_phone: '', plan_id: 'starter', custom_domain: '' });
         loadTenants();
         setTimeout(() => { setSaveOk(false); setTab('clientes'); }, 2000);
       }
@@ -417,7 +418,12 @@ export default function AdminSaasPage() {
                       <div className="flex items-center gap-4 mt-1 flex-wrap">
                         <span className="text-xs text-zinc-500 flex items-center gap-1">
                           <Globe size={10} />
-                          {tenant.slug}.fabrick.cl
+                          {tenant.custom_domain ?? `${tenant.slug}.fabrick.cl`}
+                          {tenant.custom_domain && (
+                            <span className="text-[9px] bg-blue-500/20 text-blue-400 border border-blue-500/20 px-1 py-0.5 rounded">
+                              dominio propio
+                            </span>
+                          )}
                         </span>
                         {tenant.owner_email && (
                           <span className="text-xs text-zinc-500 flex items-center gap-1">
@@ -568,6 +574,28 @@ export default function AdminSaasPage() {
                     className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/20"
                   />
                 </div>
+              </div>
+
+              <div>
+                <label className="text-xs font-medium text-zinc-400 mb-1.5 block">
+                  Dominio propio <span className="text-zinc-600">(opcional)</span>
+                </label>
+                <div className="relative">
+                  <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
+                  <input
+                    type="text"
+                    placeholder="Ej: tiendamarta.cl (sin www)"
+                    value={form.custom_domain}
+                    onChange={(e) => setForm((f) => ({ ...f, custom_domain: e.target.value.trim().toLowerCase() }))}
+                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/20"
+                  />
+                </div>
+                {form.custom_domain && (
+                  <p className="text-[11px] text-zinc-500 mt-1">
+                    El cliente debe apuntar su dominio con un CNAME a{' '}
+                    <span className="text-blue-400 font-mono">cname.vercel-dns.com</span> y tú debes agregarlo en Vercel.
+                  </p>
+                )}
               </div>
 
               <div>

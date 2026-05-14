@@ -124,12 +124,26 @@ export async function POST(request: Request) {
       if (t) { tenantId = t.id; tenantStatus = t.status; }
     }
 
-    const { data: adminRows, error: dbError } = await insforge.database
+    let { data: adminRows, error: dbError } = await insforge.database
       .from('admin_users')
       .select('email, rol, aprobado, password_hash, totp_secret_enc, backup_codes, tenant_id')
       .eq('email', email)
       .eq('tenant_id', tenantId)
       .limit(1);
+
+    // If the tenant_id column doesn't exist yet (pre-migration schema), fall back
+    // to a simple email lookup so the bootstrap admin can always log in.
+    if ((dbError || !adminRows || adminRows.length === 0) && email === BOOTSTRAP_ADMIN_EMAIL) {
+      const fallback = await insforge.database
+        .from('admin_users')
+        .select('email, rol, aprobado, password_hash, totp_secret_enc, backup_codes')
+        .eq('email', email)
+        .limit(1);
+      if (!fallback.error && fallback.data && fallback.data.length > 0) {
+        adminRows = fallback.data;
+        dbError = null;
+      }
+    }
 
     type AdminUserRow = {
       email: string;
@@ -154,6 +168,9 @@ export async function POST(request: Request) {
           { status: 403 }
         );
       }
+      // Try with tenant_id first (post-migration schema). If it fails because
+      // the column doesn't exist yet (pre-migration deploy), fall back to the
+      // legacy schema without tenant_id so the bootstrap admin can always log in.
       const { error: insertErr } = await insforge.database
         .from('admin_users')
         .upsert(
@@ -161,11 +178,19 @@ export async function POST(request: Request) {
           { onConflict: 'email,tenant_id' },
         );
       if (insertErr) {
-        audit('unknown_user', email, `self-heal insert failed: ${insertErr.message}`);
-        return NextResponse.json(
-          { error: 'Acceso denegado. Este usuario no tiene permisos de administrador.' },
-          { status: 403 }
-        );
+        const { error: insertErrLegacy } = await insforge.database
+          .from('admin_users')
+          .upsert(
+            [{ email, rol: 'superadmin', aprobado: true }],
+            { onConflict: 'email' },
+          );
+        if (insertErrLegacy) {
+          audit('unknown_user', email, `self-heal insert failed: ${insertErrLegacy.message}`);
+          return NextResponse.json(
+            { error: 'Acceso denegado. Este usuario no tiene permisos de administrador.' },
+            { status: 403 }
+          );
+        }
       }
       // Use a synthetic row — no need to re-fetch; bootstrap admin has no TOTP or local hash yet.
       adminUser = { email, rol: 'superadmin', aprobado: true, password_hash: null, totp_secret_enc: null, backup_codes: null };

@@ -1,78 +1,46 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { insforge } from '@/lib/insforge';
+import { getAdminSession, adminUnauthorized, adminError, getAdminInsforge } from '@/lib/adminApi';
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   try {
-    const { data, error } = await insforge.database
+    const session = await getAdminSession(request);
+    if (!session) return adminUnauthorized();
+    const client = getAdminInsforge();
+    const { data, error } = await client.database
       .from('blog_uploads')
       .select('*')
       .order('created_at', { ascending: false });
-
-    if (error) {
-      return NextResponse.json(
-        { error: 'Error fetching uploads' },
-        { status: 500 }
-      );
-    }
-
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data || []);
   } catch (err) {
-    console.error('Error in uploads GET:', err);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return adminError(err, 'BLOG_UPLOADS_GET_FAILED');
   }
 }
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getAdminSession(request);
+    if (!session) return adminUnauthorized();
+    const client = getAdminInsforge();
     const formData = await request.formData();
     const file = formData.get('file') as File;
-
     if (!file || !file.name.endsWith('.md')) {
-      return NextResponse.json(
-        { error: 'Invalid file' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Invalid file' }, { status: 400 });
     }
-
-    const filename = file.name;
-    const fileSize = file.size;
-    const mimeType = file.type;
-
-    // TODO: Subir archivo a storage (Cloudinary, S3, etc.)
-    // Por ahora, guardar metadatos en BD
-    const fileUrl = `/uploads/${filename}`;
-
-    const { data, error } = await insforge.database
+    const { data, error } = await client.database
       .from('blog_uploads')
-      .insert([
-        {
-          filename,
-          file_url: fileUrl,
-          file_size: fileSize,
-          mime_type: mimeType,
-          uploaded_by: 'admin',
-        },
-      ])
+      .insert([{
+        filename: file.name,
+        file_url: `/uploads/${file.name}`,
+        file_size: file.size,
+        mime_type: file.type,
+        uploaded_by: session.email,
+      }])
       .select()
       .single();
-
-    if (error) {
-      console.error('DB error:', error);
-      return NextResponse.json(
-        { error: 'Error saving upload' },
-        { status: 500 }
-      );
-    }
-
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
     return NextResponse.json(data, { status: 201 });
   } catch (err) {
-    console.error('Error in uploads POST:', err);
-    return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
-    );
+    return adminError(err, 'BLOG_UPLOADS_POST_FAILED');
   }
 }

@@ -1,33 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { insforge } from '@/lib/insforge';
+import { getAdminSession, adminUnauthorized, getAdminInsforge } from '@/lib/adminApi';
 import { MAX_SOCIAL_IMAGES } from '@/lib/social';
-
-/**
- * Social media post persistence.
- *
- *  GET  /api/admin/social/posts       — list history (newest first)
- *  POST /api/admin/social/posts       — create draft / scheduled / published row
- *
- * Target table (created manually in InsForge):
- *
- *   CREATE TABLE posts_social (
- *     id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
- *     titulo VARCHAR(255),
- *     descripcion TEXT,
- *     hashtags TEXT,
- *     tag VARCHAR(100),
- *     fecha_publicacion TIMESTAMPTZ,
- *     tema VARCHAR(20),
- *     imagenes JSONB,
- *     plataformas JSONB,
- *     estado VARCHAR(50) DEFAULT 'borrador',
- *     meta_post_id VARCHAR(255),
- *     created_at TIMESTAMPTZ DEFAULT now()
- *   );
- *
- * If the table does not exist yet we respond 202 with a "queued" flag so the
- * UI can still proceed instead of breaking for the operator.
- */
 
 const MAX = {
   titulo: 255,
@@ -49,11 +22,15 @@ function trim(value: unknown, max: number): string | undefined {
 }
 
 export async function GET(request: NextRequest) {
+  const session = await getAdminSession(request);
+  if (!session) return adminUnauthorized();
+
   const { searchParams } = new URL(request.url);
   const limit = Math.min(parseInt(searchParams.get('limit') || '30', 10) || 30, 100);
 
   try {
-    const { data, error } = await insforge.database
+    const client = getAdminInsforge();
+    const { data, error } = await client.database
       .from('posts_social')
       .select(
         'id, titulo, descripcion, hashtags, tag, fecha_publicacion, tema, imagenes, plataformas, estado, meta_post_id, created_at',
@@ -74,6 +51,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  const session = await getAdminSession(request);
+  if (!session) return adminUnauthorized();
+
   let body: Record<string, unknown>;
   try {
     body = (await request.json()) as Record<string, unknown>;
@@ -116,7 +96,8 @@ export async function POST(request: NextRequest) {
   };
 
   try {
-    const { data, error } = await insforge.database
+    const client = getAdminInsforge();
+    const { data, error } = await client.database
       .from('posts_social')
       .insert([payload])
       .select('id, titulo, estado, created_at');

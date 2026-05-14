@@ -11,7 +11,9 @@ const FUTURISTIC_CITY_VIDEO =
 
 export default function UnirsePage() {
   const [theme, setTheme] = useState<VisualTheme>('scifi');
+  // step 1 = email+code, step 2 = password form, step 3 = success
   const [step, setStep] = useState<1 | 2 | 3>(1);
+  const [token, setToken] = useState('');
   const [email, setEmail] = useState('');
   const [codigo, setCodigo] = useState('');
   const [password, setPassword] = useState('');
@@ -34,9 +36,16 @@ export default function UnirsePage() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-    const rawTheme = new URLSearchParams(window.location.search).get('theme');
-    if (rawTheme === 'corporate' || rawTheme === 'scifi') {
-      setTheme(rawTheme);
+    const params = new URLSearchParams(window.location.search);
+
+    const rawTheme = params.get('theme');
+    if (rawTheme === 'corporate' || rawTheme === 'scifi') setTheme(rawTheme);
+
+    // If the invite link includes ?token=xxx, skip the email/code step entirely
+    const urlToken = params.get('token');
+    if (urlToken) {
+      setToken(urlToken);
+      setStep(2);
     }
   }, []);
 
@@ -61,12 +70,10 @@ export default function UnirsePage() {
       setError('Contraseña es requerida.');
       return;
     }
-
     if (password !== confirmPassword) {
       setError('Las contraseñas no coinciden.');
       return;
     }
-
     if (password.length < 8) {
       setError('La contraseña debe tener al menos 8 caracteres.');
       return;
@@ -75,10 +82,14 @@ export default function UnirsePage() {
     setLoading(true);
 
     try {
+      const body = token
+        ? { token, password, nombre }
+        : { email: email.trim().toLowerCase(), codigo, password, nombre };
+
       const res = await fetch('/api/admin/invitations/redeem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: email.trim().toLowerCase(), codigo, password, nombre }),
+        body: JSON.stringify(body),
       });
 
       const json = await res.json();
@@ -178,15 +189,15 @@ export default function UnirsePage() {
             </div>
 
             <div className="text-center mb-8">
-              <h1 className="text-white text-xl font-bold tracking-wide">¡Registro Completado!</h1>
-              <p className="text-zinc-500 text-xs mt-2 tracking-wider">TU ACCESO ESTÁ PENDIENTE DE APROBACIÓN</p>
+              <h1 className="text-white text-xl font-bold tracking-wide">¡Acceso Concedido!</h1>
+              <p className="text-zinc-500 text-xs mt-2 tracking-wider">TU CUENTA ESTÁ LISTA</p>
             </div>
 
-            <div className="mb-6 px-4 py-3 rounded-2xl bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs">
-              Un superadministrador debe aprobar tu cuenta antes de que puedas iniciar sesión.
+            <div className="mb-6 px-4 py-3 rounded-2xl bg-green-400/10 border border-green-400/30 text-green-400 text-xs">
+              Tu contraseña fue guardada. Ya puedes iniciar sesión con tu email y la contraseña que acabas de crear.
             </div>
 
-            <Link href="/admin/login" className={buttonClass + " block text-center w-full"}>
+            <Link href="/admin/login" className={buttonClass + ' block text-center w-full'}>
               Ir al Login
             </Link>
           </>
@@ -194,7 +205,9 @@ export default function UnirsePage() {
           <>
             <div className="text-center mb-8">
               <h1 className="text-white text-xl font-bold tracking-wide">Únete al Panel</h1>
-              <p className="text-zinc-500 text-xs mt-1 tracking-wider">CANJEA TU INVITACIÓN</p>
+              <p className="text-zinc-500 text-xs mt-1 tracking-wider">
+                {token ? 'CREA TU CONTRASEÑA' : 'CANJEA TU INVITACIÓN'}
+              </p>
             </div>
 
             {error && (
@@ -226,20 +239,20 @@ export default function UnirsePage() {
                     placeholder="123456"
                     maxLength={6}
                     required
-                    className={inputClass + " font-mono text-lg tracking-[0.5em] text-center"}
+                    className={inputClass + ' font-mono text-lg tracking-[0.5em] text-center'}
                   />
                 </div>
 
                 <button
                   type="button"
                   onClick={handleStep1}
-                  className={buttonClass + " w-full"}
+                  className={buttonClass + ' w-full'}
                 >
                   Continuar
                 </button>
 
-                <Link 
-                  href="/admin/login" 
+                <Link
+                  href="/admin/login"
                   className="text-center text-xs text-zinc-500 hover:text-yellow-400 transition-colors"
                 >
                   Ya tengo cuenta
@@ -290,19 +303,21 @@ export default function UnirsePage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className={buttonClass + " w-full"}
+                  className={buttonClass + ' w-full'}
                 >
-                  {loading ? 'Procesando...' : 'Completar Registro'}
+                  {loading ? 'Procesando...' : 'Crear mi contraseña'}
                 </button>
 
-                <button
-                  type="button"
-                  onClick={() => setStep(1)}
-                  disabled={loading}
-                  className="text-center text-xs text-zinc-500 hover:text-yellow-400 transition-colors"
-                >
-                  Volver
-                </button>
+                {!token && (
+                  <button
+                    type="button"
+                    onClick={() => setStep(1)}
+                    disabled={loading}
+                    className="text-center text-xs text-zinc-500 hover:text-yellow-400 transition-colors"
+                  >
+                    Volver
+                  </button>
+                )}
               </form>
             )}
           </>

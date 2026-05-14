@@ -220,67 +220,54 @@ ALTER TABLE public.invoices DROP CONSTRAINT IF EXISTS invoices_order_id_dte_type
 ALTER TABLE public.invoices ADD CONSTRAINT invoices_order_id_dte_type_key UNIQUE (order_id, dte_type);
 
 -- Row Level Security: enforce tenant isolation at the database level.
--- FORCE ROW LEVEL SECURITY ensures the table-owner role (used by the
--- InsForge service key) also obeys all policies — without FORCE the
--- owner silently bypasses every tenant_isolation policy.
--- Application must SET app.tenant_id = '<uuid>' before executing queries.
+-- ENABLE RLS only (no FORCE): the service key (table owner) bypasses RLS
+-- intentionally so admin queries work without setting app.tenant_id.
+-- The anon key is still subject to all tenant_isolation policies.
 ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.tenants FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON public.tenants
   USING (id = current_setting('app.tenant_id', TRUE)::uuid);
 
 ALTER TABLE public.platform_subscriptions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.platform_subscriptions FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON public.platform_subscriptions
   USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
 
 ALTER TABLE public.platform_payment_log ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.platform_payment_log FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON public.platform_payment_log
   USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
 
 ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.products FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON public.products
   USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
 
 ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.orders FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON public.orders
   USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
 
 ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.admin_users FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON public.admin_users
   USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
 
 ALTER TABLE public.integrations ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.integrations FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON public.integrations
   USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
 
 ALTER TABLE public.blog_posts ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.blog_posts FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON public.blog_posts
   USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
 
 ALTER TABLE public.media_assets ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.media_assets FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON public.media_assets
   USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
 
 ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.invoices FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON public.invoices
   USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
 
 ALTER TABLE public.banners ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.banners FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON public.banners
   USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
 
 ALTER TABLE public.configuracion ENABLE ROW LEVEL SECURITY;
-ALTER TABLE public.configuracion FORCE ROW LEVEL SECURITY;
 CREATE POLICY tenant_isolation ON public.configuracion
   USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
 `;

@@ -13,8 +13,9 @@ export const INSFORGE_PUBLIC_ANON_KEY = INSFORGE_ANON_KEY;
 
 export function getMissingAdminEnvVars(): string[] {
   const missing: string[] = [];
-  if (process.env.NODE_ENV === 'production' && !process.env.ADMIN_SESSION_SECRET) {
-    missing.push('ADMIN_SESSION_SECRET');
+  if (process.env.NODE_ENV === 'production') {
+    if (!process.env.ADMIN_SESSION_SECRET) missing.push('ADMIN_SESSION_SECRET');
+    if (!process.env.INSFORGE_API_KEY) missing.push('INSFORGE_API_KEY');
   }
   return missing;
 }

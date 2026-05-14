@@ -283,7 +283,8 @@ export async function POST(request: Request) {
         const { error: consumeErr } = await insforgeAdmin.database
           .from('admin_users')
           .update({ backup_codes: backupResult.remainingHashes })
-          .eq('email', email);
+          .eq('email', email)
+          .eq('tenant_id', tenantId);
         if (consumeErr) {
           console.error(
             '[admin/login] failed to consume backup code:',

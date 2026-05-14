@@ -8,20 +8,18 @@ export const runtime = 'nodejs';
 const INSFORGE_URL =
   process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
 
-function resolveApiKey() {
-  return (
-    process.env.INSFORGE_API_KEY ||
-    process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY ||
-    'ik_7e23032539c2dc64d5d27ca29d07b928'
-  );
+function resolveApiKey(): string {
+  const key = process.env.INSFORGE_API_KEY || process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
+  if (!key) throw new Error('INSFORGE_API_KEY env var is not configured');
+  return key;
 }
 
-async function runStatement(sql: string): Promise<{ ok: boolean; error?: string }> {
+async function runStatement(sql: string, apiKey: string): Promise<{ ok: boolean; error?: string }> {
   const url = `${INSFORGE_URL.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`;
   try {
     const res = await fetch(url, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json', 'x-api-key': resolveApiKey() },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
       body: JSON.stringify({ query: sql }),
       signal: AbortSignal.timeout(30_000),
     });
@@ -220,9 +218,66 @@ ORDER BY t.created_at DESC;
 ALTER TABLE public.invoices DROP CONSTRAINT IF EXISTS invoices_order_id_dte_type_key;
 
 ALTER TABLE public.invoices ADD CONSTRAINT invoices_order_id_dte_type_key UNIQUE (order_id, dte_type);
+
+-- Row Level Security: enforce tenant isolation at the database level.
+-- Application must SET app.tenant_id = '<uuid>' before executing queries.
+ALTER TABLE public.tenants ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON public.tenants
+  USING (id = current_setting('app.tenant_id', TRUE)::uuid);
+
+ALTER TABLE public.platform_subscriptions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON public.platform_subscriptions
+  USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
+
+ALTER TABLE public.platform_payment_log ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON public.platform_payment_log
+  USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
+
+ALTER TABLE public.products ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON public.products
+  USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
+
+ALTER TABLE public.orders ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON public.orders
+  USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
+
+ALTER TABLE public.admin_users ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON public.admin_users
+  USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
+
+ALTER TABLE public.integrations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON public.integrations
+  USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
+
+ALTER TABLE public.blog_posts ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON public.blog_posts
+  USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
+
+ALTER TABLE public.media_assets ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON public.media_assets
+  USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
+
+ALTER TABLE public.invoices ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON public.invoices
+  USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
+
+ALTER TABLE public.banners ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON public.banners
+  USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
+
+ALTER TABLE public.configuracion ENABLE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON public.configuracion
+  USING (tenant_id = current_setting('app.tenant_id', TRUE)::uuid);
 `;
 
 export async function POST(request: NextRequest) {
+  let apiKey: string;
+  try {
+    apiKey = resolveApiKey();
+  } catch (err) {
+    return NextResponse.json({ error: (err as Error).message }, { status: 500 });
+  }
+
   const sessionCookie = request.cookies.get(ADMIN_COOKIE_NAME);
   if (!sessionCookie?.value) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   const session = await decodeSession(sessionCookie.value);
@@ -233,7 +288,7 @@ export async function POST(request: NextRequest) {
   let failed = 0;
 
   for (const stmt of statements) {
-    const result = await runStatement(stmt);
+    const result = await runStatement(stmt, apiKey);
     // Treat "already exists" as success (idempotent migration)
     const isAlreadyExists =
       !result.ok &&

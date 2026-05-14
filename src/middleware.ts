@@ -188,6 +188,19 @@ export async function middleware(request: NextRequest) {
     }
   }
 
+  // Block suspended/cancelled tenants at the edge for custom domains
+  if (!isPlatformHost(hostname) &&
+      (tenantStatus === 'suspended' || tenantStatus === 'cancelled')) {
+    return new NextResponse(
+      '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Servicio suspendido</title></head>' +
+      '<body style="font-family:sans-serif;text-align:center;padding:60px">' +
+      '<h1>Tienda no disponible</h1>' +
+      '<p>Esta tienda está temporalmente suspendida. Contacta al administrador para más información.</p>' +
+      '</body></html>',
+      { status: 402, headers: { 'Content-Type': 'text/html; charset=utf-8' } },
+    )
+  }
+
   // Build request headers with tenant context
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-tenant-slug', tenantSlug)

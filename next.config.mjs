@@ -33,6 +33,7 @@ const nextConfig = {
   // server packages tells Next to leave them as runtime imports so Node's
   // native loader resolves the ESM↔CJS boundary correctly.
   serverExternalPackages: [
+    '@insforge/sdk',
     'isomorphic-dompurify',
     'jsdom',
     '@asamuzakjp/css-color',

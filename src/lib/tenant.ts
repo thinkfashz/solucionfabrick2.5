@@ -1,27 +1,29 @@
 /**
- * Tenant resolution for the Fabrick multi-tenant platform.
+ * Tenant resolution for the Fabrick multi-tenant platform (Node.js runtime).
+ *
+ * Edge-safe utilities (slugFromHostname, DEFAULT_TENANT_ID, etc.) live in
+ * tenant-edge.ts which has zero Node.js dependencies and is safe to import
+ * from middleware.ts.
  *
  * Resolution order (first match wins):
  *   1. `x-tenant-id` request header  — set by the edge middleware from subdomain
  *   2. `x-tenant-slug` request header — fallback set by middleware
  *   3. DEFAULT_TENANT_ID              — original Fabrick Linares installation
- *
- * The middleware writes these headers on every HTML + API request so that
- * server components and API route handlers can call `getTenantId(headers())`
- * without a DB round-trip.
  */
 
 import { insforge } from '@/lib/insforge';
 
-export const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
-export const DEFAULT_TENANT_SLUG = 'fabrick';
-
-/** Reserved slugs that cannot be registered by customers. */
-export const RESERVED_SLUGS = new Set([
-  'fabrick', 'www', 'app', 'api', 'admin', 'platform',
-  'registro', 'login', 'dashboard', 'status', 'mail', 'smtp',
-  'cdn', 'static', 'assets', 'media', 'blog',
-]);
+// Re-export Edge-safe utilities so callers can import from one place.
+export {
+  DEFAULT_TENANT_ID,
+  DEFAULT_TENANT_SLUG,
+  RESERVED_SLUGS,
+  slugFromHostname,
+  getTenantIdFromHeaders,
+  getTenantSlugFromHeaders,
+  toSlug,
+  isPlatformAdmin,
+} from '@/lib/tenant-edge';
 
 export interface TenantContext {
   id: string;
@@ -48,28 +50,6 @@ function fromCache(key: string): TenantContext | null {
 
 function toCache(key: string, ctx: TenantContext) {
   cache.set(key, { ctx, at: Date.now() });
-}
-
-/** Resolve tenant from a Next.js `headers()` ReadonlyHeaders object or a plain Headers object. */
-export function getTenantIdFromHeaders(headers: { get(name: string): string | null }): string {
-  return headers.get('x-tenant-id') ?? DEFAULT_TENANT_ID;
-}
-
-export function getTenantSlugFromHeaders(headers: { get(name: string): string | null }): string {
-  return headers.get('x-tenant-slug') ?? DEFAULT_TENANT_SLUG;
-}
-
-/** Resolve tenant from subdomain. Returns null for the apex / www domains. */
-export function slugFromHostname(hostname: string): string | null {
-  // Remove port if present
-  const host = hostname.split(':')[0];
-  // Expected pattern: {slug}.fabrick.cl or {slug}.vercel.app or localhost
-  const parts = host.split('.');
-  if (parts.length < 2) return null;
-  // Apex domain (fabrick.cl, www.fabrick.cl) → no tenant slug
-  if (parts.length === 2) return null;
-  if (parts[0] === 'www') return null;
-  return parts[0];
 }
 
 /** Fetch a full TenantContext by slug (with in-process cache). */
@@ -148,22 +128,4 @@ export async function getTenantById(id: string): Promise<TenantContext | null> {
 export function invalidateTenantCache(id: string, slug?: string) {
   cache.delete(`id:${id}`);
   if (slug) cache.delete(`slug:${slug}`);
-}
-
-/** Verify that the platform-owner secret is present and matches. */
-export function isPlatformAdmin(authHeader: string | null): boolean {
-  const secret = process.env.PLATFORM_ADMIN_SECRET;
-  if (!secret || !authHeader) return false;
-  return authHeader === `Bearer ${secret}`;
-}
-
-/** Slugify a business name into a valid subdomain slug. */
-export function toSlug(name: string): string {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[̀-ͯ]/g, '')   // strip accents
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 40);
 }

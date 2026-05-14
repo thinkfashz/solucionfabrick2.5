@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { buildCsp, generateNonce } from '@/lib/csp'
-import { slugFromHostname, DEFAULT_TENANT_ID, DEFAULT_TENANT_SLUG } from '@/lib/tenant'
+import { slugFromHostname, DEFAULT_TENANT_ID, DEFAULT_TENANT_SLUG } from '@/lib/tenant-edge'
 
 function normalizeBase64Url(value: string): string {
   const base64 = value.replace(/-/g, '+').replace(/_/g, '/')

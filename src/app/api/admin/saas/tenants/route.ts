@@ -40,13 +40,16 @@ export async function POST(request: NextRequest) {
   if (!ownerEmail || !ownerEmail.includes('@')) return NextResponse.json({ error: 'Correo electrónico inválido.' }, { status: 400 });
   if (!ownerName) return NextResponse.json({ error: 'El nombre del contacto es obligatorio.' }, { status: 400 });
 
+  const VALID_PLANS = new Set(['starter', 'pro', 'enterprise', 'free']);
+  const planId = typeof body.plan_id === 'string' && VALID_PLANS.has(body.plan_id) ? body.plan_id : 'starter';
+
   const baseSlug = toSlug(name);
   const client = getAdminInsforge();
 
-  // Find a unique slug
+  // Find a unique slug (cap at 20 attempts to prevent an infinite loop)
   let slug = baseSlug;
   let suffix = 0;
-  while (true) {
+  for (let attempt = 0; attempt < 20; attempt++) {
     const { data: existing } = await client.database
       .from('tenants')
       .select('id')
@@ -63,7 +66,7 @@ export async function POST(request: NextRequest) {
       .insert([{
         slug,
         name,
-        plan_id: (body.plan_id as string) || 'starter',
+        plan_id: planId,
         status: 'active',
         primary_color: '#10b981',
         owner_email: ownerEmail,

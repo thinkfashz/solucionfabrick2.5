@@ -146,7 +146,20 @@ export async function emitBoletaForOrder(orderId: string): Promise<AutoEmitResul
     .single();
 
   if (dbErr) {
-    // DTE was emitted but DB save failed — not critical, log the issue
+    // 23505 = unique_violation: a concurrent call already inserted this invoice.
+    // The extra DTE we just emitted is orphaned at the provider, but we return
+    // the first winner's record so the caller gets a consistent response.
+    if ((dbErr as { code?: string }).code === '23505') {
+      const { data: raceWinner } = await insforge.database
+        .from('invoices')
+        .select('id, folio, provider')
+        .eq('order_id', orderId)
+        .eq('dte_type', 39)
+        .limit(1);
+      const ex = (raceWinner as Array<{ id: string; folio: string | null; provider: string }>)[0];
+      return { ok: true, already_existed: true, invoice_id: ex?.id, folio: ex?.folio ?? undefined, provider: ex?.provider };
+    }
+    // DTE was emitted but DB save failed for another reason — log it
     return { ok: true, folio: result.folio, provider: driver.code, error: `DTE emitido (folio ${result.folio}) pero no persistido: ${dbErr.message}` };
   }
 

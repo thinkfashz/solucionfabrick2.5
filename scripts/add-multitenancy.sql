@@ -214,3 +214,14 @@ LEFT JOIN public.platform_plans pp ON pp.id = t.plan_id
 LEFT JOIN public.platform_subscriptions ps
   ON ps.tenant_id = t.id AND ps.status = 'authorized'
 ORDER BY t.created_at DESC;
+
+-- ── Billing: prevent duplicate DTE for the same order ────────────────────────
+-- Closes the non-atomic SELECT→emit→INSERT race between payments/mercadopago
+-- and payments/webhook firing fire-and-forget for the same order_id.
+-- Error code 23505 (unique_violation) is caught in autoEmit.ts and handled
+-- by returning the first winner's record instead of failing.
+ALTER TABLE public.invoices
+  DROP CONSTRAINT IF EXISTS invoices_order_id_dte_type_key;
+ALTER TABLE public.invoices
+  ADD CONSTRAINT invoices_order_id_dte_type_key
+  UNIQUE (order_id, dte_type);

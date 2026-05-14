@@ -38,6 +38,20 @@ export async function POST(req: NextRequest) {
     );
   }
 
+  // Idempotency: if this (order_id, dte_type) already exists for this tenant,
+  // return it without re-emitting (prevents duplicates on double-click / retry).
+  const { data: existingInvoice } = await insforge.database
+    .from('invoices')
+    .select('*')
+    .eq('order_id', body.order_id)
+    .eq('dte_type', body.dte_type)
+    .eq('tenant_id', tenantId)
+    .limit(1);
+
+  if (existingInvoice && existingInvoice.length > 0) {
+    return NextResponse.json({ ok: true, invoice: existingInvoice[0], reused: true });
+  }
+
   const driver = getBillingDriver();
 
   let result;
@@ -90,7 +104,16 @@ export async function POST(req: NextRequest) {
     .single();
 
   if (dbErr) {
-    // DTE was emitted but DB save failed — return result with a warning
+    // 23505 = unique_violation: concurrent request already persisted this DTE.
+    if ((dbErr as { code?: string }).code === '23505') {
+      const { data: raceWinner } = await insforge.database
+        .from('invoices').select('*').eq('order_id', body.order_id)
+        .eq('dte_type', body.dte_type).eq('tenant_id', tenantId).limit(1);
+      if (raceWinner && raceWinner.length > 0) {
+        return NextResponse.json({ ok: true, invoice: raceWinner[0], reused: true });
+      }
+    }
+    // DTE was emitted but DB save failed for another reason — surface it
     return NextResponse.json(
       { ok: true, result, warning: 'DTE emitido pero no guardado en BD', db_error: dbErr },
       { status: 207 },

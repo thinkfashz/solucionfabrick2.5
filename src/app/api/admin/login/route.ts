@@ -131,16 +131,7 @@ export async function POST(request: Request) {
       .eq('tenant_id', tenantId)
       .limit(1);
 
-    if (dbError || !adminRows || adminRows.length === 0) {
-      await recordFailedAttempt(ip);
-      audit('unknown_user', email, dbError?.message ?? 'no admin_users row');
-      return NextResponse.json(
-        { error: 'Acceso denegado. Este usuario no tiene permisos de administrador.' },
-        { status: 403 }
-      );
-    }
-
-    const adminUser = adminRows[0] as {
+    type AdminUserRow = {
       email: string;
       rol?: string;
       aprobado?: boolean;
@@ -148,6 +139,40 @@ export async function POST(request: Request) {
       totp_secret_enc?: string | null;
       backup_codes?: string[] | null;
     };
+
+    let adminUser: AdminUserRow;
+
+    if (dbError || !adminRows || adminRows.length === 0) {
+      // Self-heal: if InsForge auth succeeded and this is the bootstrap admin,
+      // the row is simply missing (common after the multitenancy migration that
+      // added tenant_id). Insert it now instead of permanently locking them out.
+      if (email !== BOOTSTRAP_ADMIN_EMAIL) {
+        await recordFailedAttempt(ip);
+        audit('unknown_user', email, dbError?.message ?? 'no admin_users row');
+        return NextResponse.json(
+          { error: 'Acceso denegado. Este usuario no tiene permisos de administrador.' },
+          { status: 403 }
+        );
+      }
+      const { error: insertErr } = await insforge.database
+        .from('admin_users')
+        .upsert(
+          [{ email, rol: 'superadmin', aprobado: true, tenant_id: tenantId }],
+          { onConflict: 'email,tenant_id' },
+        );
+      if (insertErr) {
+        audit('unknown_user', email, `self-heal insert failed: ${insertErr.message}`);
+        return NextResponse.json(
+          { error: 'Acceso denegado. Este usuario no tiene permisos de administrador.' },
+          { status: 403 }
+        );
+      }
+      // Use a synthetic row — no need to re-fetch; bootstrap admin has no TOTP or local hash yet.
+      adminUser = { email, rol: 'superadmin', aprobado: true, password_hash: null, totp_secret_enc: null, backup_codes: null };
+      audit('success', email, 'bootstrap admin self-healed into admin_users');
+    } else {
+      adminUser = adminRows[0] as AdminUserRow;
+    }
 
     // ── Layered owner-password verification (Fase 1 del plan de privatización)
     // If the row has a `password_hash`, verify the plaintext password against

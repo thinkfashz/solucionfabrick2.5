@@ -7,7 +7,7 @@ import { AnimatePresence, motion } from 'framer-motion';
 import {
   ArrowUpRight, AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Stethoscope, Store, Terminal,
-  TrendingDown, Truck, Telescope, Users, Wallet, X, Zap, Plus, MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug,
+  TrendingDown, Truck, Telescope, Users, Wallet, X, Zap, Plus, MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
@@ -23,6 +23,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Visión general',
     links: [
       { href: '/admin', label: 'Centro de control', description: 'KPIs y salud operativa', icon: BarChart3 },
+      { href: '/admin/saas', label: 'Mi SaaS', description: 'Clientes, instalación y gestión de la plataforma', icon: Rocket, highlight: true },
     ],
   },
   {
@@ -105,6 +106,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
 /** Human labels for breadcrumb segments. Keep in sync with the nav links above. */
 const PATH_LABELS: Record<string, string> = {
   '/admin': 'Centro de control',
+  '/admin/saas': 'Mi SaaS',
   '/admin/productos': 'Productos',
   '/admin/productos/nuevo': 'Nuevo producto',
   '/admin/productos/importar': 'Importar de Mercado Libre',

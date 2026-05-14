@@ -10,5 +10,12 @@ export async function POST() {
     path: '/',
     maxAge: 0,
   });
+  response.cookies.set('tenant_status', '', {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    path: '/',
+    maxAge: 0,
+  });
   return response;
 }

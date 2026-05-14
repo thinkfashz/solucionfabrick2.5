@@ -116,11 +116,12 @@ export async function POST(request: Request) {
       .headers.get('x-tenant-slug') ?? 'fabrick';
     const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
     let tenantId = DEFAULT_TENANT_ID;
+    let tenantStatus = 'active';
     if (tenantSlug !== 'fabrick') {
       const { data: tenantRows } = await insforge.database
-        .from('tenants').select('id').eq('slug', tenantSlug).limit(1);
-      const t = tenantRows?.[0] as { id: string } | undefined;
-      if (t) tenantId = t.id;
+        .from('tenants').select('id, status').eq('slug', tenantSlug).limit(1);
+      const t = tenantRows?.[0] as { id: string; status: string } | undefined;
+      if (t) { tenantId = t.id; tenantStatus = t.status; }
     }
 
     const { data: adminRows, error: dbError } = await insforge.database
@@ -303,6 +304,15 @@ export async function POST(request: Request) {
     const response = NextResponse.json({ ok: true });
     response.cookies.set(ADMIN_COOKIE_NAME, sessionValue, {
       httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: SESSION_TTL_MS / 1000,
+    });
+    // Not httpOnly: Edge middleware needs to read this cookie to redirect
+    // suspended/cancelled tenants before the request reaches route handlers.
+    response.cookies.set('tenant_status', tenantStatus, {
+      httpOnly: false,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'lax',
       path: '/',

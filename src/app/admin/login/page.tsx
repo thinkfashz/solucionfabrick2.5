@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -51,7 +51,7 @@ export default function AdminLoginPage() {
           }
         }
       } catch {
-        // Ignore â€” fall through to the login form.
+        // Ignore — fall through to the login form.
       }
       if (!cancelled) setCheckingSession(false);
     })();
@@ -65,7 +65,7 @@ export default function AdminLoginPage() {
     if (typeof window === 'undefined') return;
     const params = new URLSearchParams(window.location.search);
     if (params.get('idle') === '1') {
-      setSuccess('Tu sesiÃ³n se cerrÃ³ automÃ¡ticamente tras 10 minutos de inactividad.');
+      setSuccess('Tu sesión se cerró automáticamente tras 10 minutos de inactividad.');
     }
     const rawTheme = params.get('theme');
     if (rawTheme === 'corporate' || rawTheme === 'scifi') {
@@ -101,7 +101,7 @@ export default function AdminLoginPage() {
 
       // Parse body defensively: the server normally returns JSON, but if an
       // unhandled error escapes the route handler Next.js returns an HTML error
-      // page, and `res.json()` would throw â€” masking the real HTTP status as a
+      // page, and `res.json()` would throw — masking the real HTTP status as a
       // generic "network error".
       let json: { error?: string; code?: string } = {};
       try {
@@ -115,7 +115,7 @@ export default function AdminLoginPage() {
         const fallback =
           res.status >= 500
             ? 'Error del servidor. Intenta nuevamente en unos segundos.'
-            : 'Error al iniciar sesiÃ³n.';
+            : 'Error al iniciar sesión.';
         setError(json.error ?? fallback);
         if (res.status === 429) setIsBlocked(true);
         return;
@@ -123,7 +123,7 @@ export default function AdminLoginPage() {
 
       router.replace('/admin');
     } catch {
-      setError('Error de red. IntÃ©ntalo de nuevo.');
+      setError('Error de red. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -143,7 +143,7 @@ export default function AdminLoginPage() {
         setError(sendErr.message);
         return;
       }
-      setSuccess('CÃ³digo enviado. Revisa tu bandeja de entrada (y carpeta de spam).');
+      setSuccess('Código enviado. Revisa tu bandeja de entrada (y carpeta de spam).');
       setOtp('');
       setScreen('setup-password');
     } catch (err) {
@@ -152,7 +152,7 @@ export default function AdminLoginPage() {
       // NEXT_PUBLIC_INSFORGE_* env vars (which make the SDK throw on first
       // use), or unexpected SDK errors.
       const message = err instanceof Error ? err.message : String(err);
-      setError(`No se pudo enviar el cÃ³digo: ${message}`);
+      setError(`No se pudo enviar el código: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -170,7 +170,7 @@ export default function AdminLoginPage() {
         code: otp,
       });
       if (exchangeErr || !data?.token) {
-        setError(exchangeErr?.message ?? 'CÃ³digo invÃ¡lido o expirado.');
+        setError(exchangeErr?.message ?? 'Código inválido o expirado.');
         return;
       }
 
@@ -199,12 +199,12 @@ export default function AdminLoginPage() {
         return;
       }
 
-      setSuccess('Â¡ContraseÃ±a configurada! Ya puedes iniciar sesiÃ³n.');
+      setSuccess('¡Contraseña configurada! Ya puedes iniciar sesión.');
       setEmail(setupEmail.trim().toLowerCase());
       setScreen('login');
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      setError(`No se pudo completar la recuperaciÃ³n: ${message}`);
+      setError(`No se pudo completar la recuperación: ${message}`);
     } finally {
       setLoading(false);
     }
@@ -240,16 +240,16 @@ export default function AdminLoginPage() {
       // new-account branch (after a successful signUp gated by the init
       // secret) — no client-side unlock call is needed.
       if (json.alreadyExists) {
-        setError(json.message ?? 'La cuenta ya existe. Usa la opciÃ³n de recuperaciÃ³n.');
+        setError(json.message ?? 'La cuenta ya existe. Usa la opción de recuperación.');
         return;
       }
 
-      setSuccess(json.message ?? 'Â¡Cuenta creada! Ya puedes iniciar sesiÃ³n.');
+      setSuccess(json.message ?? '¡Cuenta creada! Ya puedes iniciar sesión.');
       setEmail('f.eduardomicolta@gmail.com');
       setInitSecret('');
       setScreen('login');
     } catch {
-      setError('Error de red. IntÃ©ntalo de nuevo.');
+      setError('Error de red. Inténtalo de nuevo.');
     } finally {
       setLoading(false);
     }
@@ -344,7 +344,7 @@ export default function AdminLoginPage() {
           <LockIcon />
         </div>
 
-        {/* â”€â”€ LOGIN â”€â”€ */}
+        {/* ── LOGIN ── */}
         {screen === 'login' && (
           <>
             <div className="text-center mb-8">
@@ -373,12 +373,12 @@ export default function AdminLoginPage() {
               </div>
 
               <div className="flex flex-col gap-2">
-                <label className="text-white/50 text-[10px] tracking-widest uppercase">ContraseÃ±a</label>
+                <label className="text-white/50 text-[10px] tracking-widest uppercase">Contraseña</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="â€¢â€¢â€¢â€¢â€¢â€¢â€¢â€¢"
+                  placeholder="••••••••"
                   required
                   disabled={loading}
                   className={inputClass}
@@ -422,7 +422,7 @@ export default function AdminLoginPage() {
                     setError('Tu navegador no soporta huella digital.');
                     return;
                   }
-                  setSuccess('Registra tu huella desde /admin/equipo (prÃ³ximamente).');
+                  setSuccess('Registra tu huella desde /admin/equipo (próximamente).');
                 }}
                 disabled={loading}
                 className={biometricButtonClass}
@@ -440,28 +440,28 @@ export default function AdminLoginPage() {
                 onClick={() => { resetMessages(); setScreen('setup-send'); }}
                 className="w-full text-center text-yellow-400/60 hover:text-yellow-400 text-xs transition-colors duration-300"
               >
-                Â¿ContraseÃ±a olvidada? Recuperar â†’
+                ¿Contraseña olvidada? Recuperar →
               </button>
               <button
                 onClick={() => { resetMessages(); setScreen('init-account'); }}
                 className="w-full text-center text-zinc-500 hover:text-zinc-300 text-xs transition-colors duration-300"
               >
-                Primera vez Â· Crear cuenta â†’
+                Primera vez · Crear cuenta →
               </button>
             </div>
           </>
         )}
 
-        {/* â”€â”€ INIT ACCOUNT (primera vez) â”€â”€ */}
+        {/* ── INIT ACCOUNT (primera vez) ── */}
         {screen === 'init-account' && (
           <div className="flex flex-col gap-5">
             <div className="text-center">
               <h1 className="text-white text-xl font-bold tracking-wide">Crear Cuenta Admin</h1>
-              <p className="text-zinc-500 text-xs mt-1 tracking-wider">PRIMERA CONFIGURACIÃ“N</p>
+              <p className="text-zinc-500 text-xs mt-1 tracking-wider">PRIMERA CONFIGURACIÓN</p>
             </div>
 
             <div className="px-4 py-3 rounded-2xl bg-yellow-400/5 border border-yellow-400/20 text-yellow-200/70 text-xs leading-relaxed">
-              Esto crearÃ¡ la cuenta de administrador en InsForge con la contraseÃ±a configurada (`ADMIN_INITIAL_PASSWORD`) y la sincronizarÃ¡ con la base de datos. Solo funciona si la cuenta aÃºn no existe.
+              Esto creará la cuenta de administrador en InsForge con la contraseña configurada (`ADMIN_INITIAL_PASSWORD`) y la sincronizará con la base de datos. Solo funciona si la cuenta aún no existe.
             </div>
 
             <input
@@ -511,17 +511,17 @@ export default function AdminLoginPage() {
               onClick={() => { resetMessages(); setScreen('login'); }}
               className="text-zinc-500 hover:text-white text-xs text-center transition-colors"
             >
-              â† Volver al inicio de sesiÃ³n
+              ← Volver al inicio de sesión
             </button>
           </div>
         )}
 
-        {/* â”€â”€ SETUP: ENVIAR CÃ“DIGO â”€â”€ */}
+        {/* ── SETUP: ENVIAR CÓDIGO ── */}
         {screen === 'setup-send' && (
           <div className="flex flex-col gap-5">
             <div className="text-center">
-              <h1 className="text-white text-xl font-bold tracking-wide">Recuperar ContraseÃ±a</h1>
-              <p className="text-zinc-500 text-xs mt-1 tracking-wider">VERIFICACIÃ“N POR EMAIL</p>
+              <h1 className="text-white text-xl font-bold tracking-wide">Recuperar Contraseña</h1>
+              <p className="text-zinc-500 text-xs mt-1 tracking-wider">VERIFICACIÓN POR EMAIL</p>
             </div>
 
             <div className="flex flex-col gap-2">
@@ -538,7 +538,7 @@ export default function AdminLoginPage() {
             </div>
 
             <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-zinc-400 text-xs leading-relaxed">
-              Se enviarÃ¡ un cÃ³digo de verificaciÃ³n de 6 dÃ­gitos a tu correo para que puedas establecer una nueva contraseÃ±a.
+              Se enviará un código de verificación de 6 dígitos a tu correo para que puedas establecer una nueva contraseña.
             </div>
 
             {error && (
@@ -557,32 +557,32 @@ export default function AdminLoginPage() {
               disabled={loading}
               className={primaryButtonClass}
             >
-              {loading ? 'Enviando...' : 'Enviar cÃ³digo de verificaciÃ³n'}
+              {loading ? 'Enviando...' : 'Enviar código de verificación'}
             </button>
 
             <button
               onClick={() => { resetMessages(); setScreen('login'); }}
               className="text-zinc-500 hover:text-white text-xs text-center transition-colors"
             >
-              â† Volver al inicio de sesiÃ³n
+              ← Volver al inicio de sesión
             </button>
           </div>
         )}
 
-        {/* â”€â”€ SETUP: NUEVA CONTRASEÃ‘A (cÃ³digo recibido por email + nueva contraseÃ±a) â”€â”€ */}
+        {/* ── SETUP: NUEVA CONTRASEÑA (código recibido por email + nueva contraseña) ── */}
         {screen === 'setup-password' && (
           <div className="flex flex-col gap-5">
             <div className="text-center">
-              <h1 className="text-white text-xl font-bold tracking-wide">Nueva ContraseÃ±a</h1>
-              <p className="text-zinc-500 text-xs mt-1 tracking-wider">ADMINISTRADOR Â· FABRICK</p>
+              <h1 className="text-white text-xl font-bold tracking-wide">Nueva Contraseña</h1>
+              <p className="text-zinc-500 text-xs mt-1 tracking-wider">ADMINISTRADOR · FABRICK</p>
             </div>
 
             <div className="px-4 py-3 rounded-2xl bg-white/5 border border-white/10 text-zinc-400 text-xs leading-relaxed">
-              Ingresa el cÃ³digo de 6 dÃ­gitos enviado a <span className="text-yellow-400/80">{setupEmail}</span> y tu nueva contraseÃ±a.
+              Ingresa el código de 6 dígitos enviado a <span className="text-yellow-400/80">{setupEmail}</span> y tu nueva contraseña.
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-white/50 text-[10px] tracking-widest uppercase">CÃ³digo de verificaciÃ³n</label>
+              <label className="text-white/50 text-[10px] tracking-widest uppercase">Código de verificación</label>
               <input
                 type="text"
                 inputMode="numeric"
@@ -596,12 +596,12 @@ export default function AdminLoginPage() {
             </div>
 
             <div className="flex flex-col gap-2">
-              <label className="text-white/50 text-[10px] tracking-widest uppercase">Nueva contraseÃ±a</label>
+              <label className="text-white/50 text-[10px] tracking-widest uppercase">Nueva contraseña</label>
               <input
                 type="password"
                 value={newPassword}
                 onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="MÃ­nimo 6 caracteres"
+                placeholder="Mínimo 6 caracteres"
                 disabled={loading}
                 className={inputClass}
               />
@@ -618,14 +618,14 @@ export default function AdminLoginPage() {
               disabled={loading || otp.length !== 6 || newPassword.length < 6}
               className={primaryButtonClass}
             >
-              {loading ? 'Guardando...' : 'Establecer contraseÃ±a'}
+              {loading ? 'Guardando...' : 'Establecer contraseña'}
             </button>
 
             <button
               onClick={() => { resetMessages(); setScreen('setup-send'); }}
               className="text-zinc-500 hover:text-white text-xs text-center transition-colors"
             >
-              â† Solicitar otro cÃ³digo
+              ← Solicitar otro código
             </button>
           </div>
         )}
@@ -633,27 +633,27 @@ export default function AdminLoginPage() {
       </div>
 
       <p className="relative z-10 mt-8 text-white/15 text-[10px] text-center tracking-widest uppercase">
-        Acceso exclusivo Â· Soluciones Fabrick
+        Acceso exclusivo · Soluciones Fabrick
       </p>
     </div>
   );
 }
 
-/* â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
+/* ─────────────────────────────────────────────────────────────────────────
  * BootSecurityScreen
- * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
- * Pantalla de verificaciÃ³n de sesiÃ³n / arranque seguro inspirada en el
+ * ──────────────────────────────────────────────────────────────────────────
+ * Pantalla de verificación de sesión / arranque seguro inspirada en el
  * boot de MacBook / BlackBerry: logotipo central, barra de progreso fina
- * tipo Apple, lÃ­neas de estado secuenciadas (kernel Â· auth Â· vault), reloj
- * y ID de mÃ¡quina. Sustituye al spinner genÃ©rico anterior.
- * â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€ */
+ * tipo Apple, líneas de estado secuenciadas (kernel · auth · vault), reloj
+ * y ID de máquina. Sustituye al spinner genérico anterior.
+ * ──────────────────────────────────────────────────────────────────────── */
 function BootSecurityScreen() {
   const STEPS = [
-    'Boot ROM Â· verificando firma criptogrÃ¡fica',
-    'Kernel Â· cargando mÃ³dulos seguros',
-    'TLS 1.3 Â· estableciendo canal cifrado',
-    'InsForge Â· sincronizando bÃ³veda',
-    'Identidad Â· validando sesiÃ³n administrativa',
+    'Boot ROM · verificando firma criptográfica',
+    'Kernel · cargando módulos seguros',
+    'TLS 1.3 · estableciendo canal cifrado',
+    'InsForge · sincronizando bóveda',
+    'Identidad · validando sesión administrativa',
   ];
   const [progress, setProgress] = useState(0);
   const [stepIndex, setStepIndex] = useState(0);
@@ -689,24 +689,24 @@ function BootSecurityScreen() {
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black text-white">
-      {/* â”€â”€ Fondo cinematogrÃ¡fico â”€â”€ */}
+      {/* ── Fondo cinematográfico ── */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(56,189,248,0.18),rgba(0,0,0,0.9)_46%),radial-gradient(circle_at_50%_92%,rgba(250,204,21,0.10),rgba(0,0,0,0)_45%),linear-gradient(180deg,rgba(0,0,0,0.6),rgba(0,0,0,0.96))]" />
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[length:100%_3px] opacity-20 mix-blend-overlay" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(0,0,0,0)_55%,rgba(0,0,0,0.65)_100%)]" />
       </div>
 
-      {/* â”€â”€ Status bar superior (BlackBerry vibe) â”€â”€ */}
+      {/* ── Status bar superior (BlackBerry vibe) ── */}
       <div className="relative z-10 flex items-center justify-between px-5 pt-4 text-[9px] font-mono uppercase tracking-[0.28em] text-white/40">
         <span className="flex items-center gap-2">
           <span className="h-1.5 w-1.5 rounded-full bg-green-400 animate-pulse" />
-          Secure boot Â· v3.2.1
+          Secure boot · v3.2.1
         </span>
         <span className="hidden sm:inline">{machineId}</span>
         <span className="tabular-nums">{clock || '--:--:--'}</span>
       </div>
 
-      {/* â”€â”€ Contenido central â”€â”€ */}
+      {/* ── Contenido central ── */}
       <div className="relative z-10 flex min-h-[calc(100vh-3rem)] flex-col items-center justify-center px-6">
         {/* Logo SF estilo Apple boot */}
         <div className="relative mb-10 flex flex-col items-center gap-4">
@@ -719,7 +719,7 @@ function BootSecurityScreen() {
           </span>
           <div className="flex flex-col items-center gap-1">
             <p className="font-playfair text-sm font-black tracking-[0.36em] text-yellow-300">SOLUCIONES FABRICK</p>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.42em] text-white/40">Secure Admin Â· macOS-style boot</p>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.42em] text-white/40">Secure Admin · macOS-style boot</p>
           </div>
         </div>
 
@@ -736,7 +736,7 @@ function BootSecurityScreen() {
           </div>
         </div>
 
-        {/* LÃ­nea de estado activa */}
+        {/* Línea de estado activa */}
         <p className="mt-6 min-h-[1.25rem] text-[11px] font-mono tracking-[0.18em] text-white/65">
           <span className="text-yellow-300">{'>'}</span> {STEPS[stepIndex]}
           <span
@@ -748,7 +748,7 @@ function BootSecurityScreen() {
         <div className="mt-8 flex w-[min(420px,82vw)] flex-col gap-1.5 text-[10px] font-mono tracking-[0.14em] text-white/45">
           {STEPS.slice(0, stepIndex).map((s, i) => (
             <div key={i} className="flex items-center gap-2">
-              <span className="text-green-400">âœ“</span>
+              <span className="text-green-400">✓</span>
               <span className="truncate">{s}</span>
             </div>
           ))}
@@ -756,7 +756,7 @@ function BootSecurityScreen() {
       </div>
 
       <p className="relative z-10 pb-5 text-center text-[9px] font-mono uppercase tracking-[0.42em] text-white/25">
-        Â© Soluciones Fabrick Â· Encrypted control room
+        © Soluciones Fabrick · Encrypted control room
       </p>
 
       <style jsx>{`

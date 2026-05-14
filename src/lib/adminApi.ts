@@ -25,12 +25,14 @@ export function adminUnauthorized(): NextResponse {
  */
 export async function getAdminTenantId(request: NextRequest): Promise<string> {
   const DEFAULT = '00000000-0000-0000-0000-000000000001';
-  // Prefer the tenant resolved from the subdomain by middleware
-  const fromHeader = request.headers.get('x-tenant-id');
-  if (fromHeader) return fromHeader;
-  // Fall back to the session cookie
+  // Always prefer the signed JWT — it cannot be forged by the client.
+  // Trusting x-tenant-id first would allow any authenticated admin to inject
+  // a different tenant's UUID in the header and access cross-tenant data.
   const session = await getAdminSession(request);
-  return session?.tenant_id ?? DEFAULT;
+  if (session?.tenant_id) return session.tenant_id;
+  // x-tenant-id is set server-side by the Edge middleware from the subdomain.
+  // Only use it as a fallback for unauthenticated/pre-session contexts.
+  return request.headers.get('x-tenant-id') ?? DEFAULT;
 }
 
 /**

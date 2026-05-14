@@ -21,7 +21,9 @@ const MP_API = 'https://api.mercadopago.com';
 
 function verifySignature(rawBody: string, header: string | null): boolean {
   const secret = process.env.PLATFORM_MP_WEBHOOK_SECRET;
-  if (!secret) return true; // skip in dev if not set
+  // Fail closed: if the secret is not configured, reject ALL requests.
+  // An absent env var is a misconfiguration, not a dev shortcut.
+  if (!secret) return false;
   if (!header) return false;
   const expected = createHmac('sha256', secret).update(rawBody).digest('hex');
   return expected === header;

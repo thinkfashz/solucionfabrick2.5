@@ -85,8 +85,9 @@ function buildSuspensionEmail(params: {
   slug: string;
   ownerEmail: string;
   trialEndsAt: string | null;
+  planId: string;
 }): { html: string; text: string } {
-  const renewUrl = `https://fabrick.cl/registro?plan=starter&slug=${params.slug}`;
+  const renewUrl = `https://fabrick.cl/registro?plan=${encodeURIComponent(params.planId)}&slug=${encodeURIComponent(params.slug)}`;
   const adminUrl = `https://${params.slug}.fabrick.cl/admin`;
   const greeting = params.ownerName ? `Hola ${params.ownerName}` : 'Hola';
   const trialDate = params.trialEndsAt
@@ -183,7 +184,7 @@ export async function POST(request: NextRequest) {
 
     const { data: tenantRows } = await insforge.database
       .from('tenants')
-      .select('slug, name, owner_email, owner_name, trial_ends_at')
+      .select('slug, name, owner_email, owner_name, trial_ends_at, plan_id')
       .eq('id', tenant_id)
       .limit(1);
 
@@ -192,7 +193,7 @@ export async function POST(request: NextRequest) {
     }
 
     const tenant = tenantRows[0] as {
-      slug: string; name: string;
+      slug: string; name: string; plan_id: string;
       owner_email: string; owner_name: string | null; trial_ends_at: string | null;
     };
 
@@ -202,6 +203,7 @@ export async function POST(request: NextRequest) {
       slug: tenant.slug,
       ownerEmail: tenant.owner_email,
       trialEndsAt: tenant.trial_ends_at,
+      planId: tenant.plan_id,
     });
 
     await sendEmail({

@@ -105,6 +105,7 @@ export async function POST(req: NextRequest) {
   const { data: creditNote } = await insforge.database
     .from('invoices')
     .insert({
+      tenant_id: tenantId,
       order_id: body.invoice_id,   // reference to original invoice
       dte_type: 61,
       folio: result.folio ?? null,

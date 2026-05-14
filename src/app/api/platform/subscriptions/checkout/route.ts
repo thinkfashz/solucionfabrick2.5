@@ -168,6 +168,42 @@ export async function POST(request: NextRequest) {
       tenantId = (inserted[0] as { id: string }).id;
     }
 
+    // Idempotency: return the existing pending preapproval if one exists,
+    // to avoid creating orphaned MP preapprovals on repeated POST calls.
+    const { data: existingSub } = await insforge.database
+      .from('platform_subscriptions')
+      .select('id, mp_preapproval_id, status')
+      .eq('tenant_id', tenantId)
+      .limit(1);
+
+    const existingRow = existingSub?.[0] as
+      | { id: string; mp_preapproval_id: string | null; status: string }
+      | undefined;
+
+    if (existingRow?.mp_preapproval_id && existingRow.status === 'pending') {
+      // Try to recover the init_point from MP instead of creating a new preapproval.
+      try {
+        const existing = await mpFetch<{ id: string; init_point?: string; status: string }>(
+          `/preapproval/${existingRow.mp_preapproval_id}`,
+          { method: 'GET' },
+        );
+        if (existing.status === 'pending' && existing.init_point) {
+          return NextResponse.json({
+            ok: true,
+            tenant_id: tenantId,
+            slug: rawSlug,
+            plan: plan.name,
+            amount_clp: plan.price_clp,
+            mp_preapproval_id: existing.id,
+            init_point: existing.init_point,
+            reused: true,
+          });
+        }
+      } catch {
+        // If fetch fails, fall through and create a new preapproval.
+      }
+    }
+
     // Ensure MP subscription plan exists
     const mpPlanId = await ensureMpPlan(plan.id, plan.name, plan.price_clp);
 
@@ -194,13 +230,7 @@ export async function POST(request: NextRequest) {
     );
 
     // Upsert subscription row
-    const { data: existingSub } = await insforge.database
-      .from('platform_subscriptions')
-      .select('id')
-      .eq('tenant_id', tenantId)
-      .limit(1);
-
-    if (existingSub && existingSub.length > 0) {
+    if (existingRow) {
       await insforge.database
         .from('platform_subscriptions')
         .update({

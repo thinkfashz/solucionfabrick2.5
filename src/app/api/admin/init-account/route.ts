@@ -10,6 +10,31 @@ const ADMIN_EMAIL = (process.env.ADMIN_EMAIL || 'f.eduardomicolta@gmail.com')
   .trim()
   .toLowerCase();
 
+const INSFORGE_BASE = (
+  process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app'
+).replace(/\/+$/, '');
+
+async function ensureAdminRowViaSql(email: string): Promise<boolean> {
+  const apiKey = process.env.INSFORGE_API_KEY;
+  if (!apiKey) return false;
+  const safeEmail = email.replace(/'/g, "''");
+  const query =
+    `INSERT INTO public.admin_users (email, nombre, rol, aprobado) ` +
+    `VALUES ('${safeEmail}', 'Admin Fabrick', 'superadmin', true) ` +
+    `ON CONFLICT (email) DO UPDATE SET rol = 'superadmin', aprobado = true`;
+  try {
+    const res = await fetch(`${INSFORGE_BASE}/api/database/advance/rawsql/unrestricted`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
+      body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    return res.ok;
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: Request) {
   // ── Hardening (Greptile post-mortem of PR #149) ──────────────────────
   // The endpoint used to default `ADMIN_INITIAL_PASSWORD` to a hardcoded
@@ -113,6 +138,10 @@ export async function POST(request: Request) {
     if (approveError) {
       console.error('[AdminInit] failed to force-approve bootstrap admin:', approveError);
     }
+
+    // Final fallback: raw SQL via unrestricted endpoint (works even when SDK
+    // key lacks INSERT/UPDATE permissions on admin_users).
+    void ensureAdminRowViaSql(ADMIN_EMAIL);
   }
 
   if (userAlreadyExists) {

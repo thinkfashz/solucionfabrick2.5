@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { insforge, getMissingAdminEnvVars } from '@/lib/insforge';
+import { insforge, insforgeAdmin, getMissingAdminEnvVars } from '@/lib/insforge';
 import {
   verifyAdminPassword,
   isAdminPasswordHash,
@@ -118,13 +118,13 @@ export async function POST(request: Request) {
     let tenantId = DEFAULT_TENANT_ID;
     let tenantStatus = 'active';
     if (tenantSlug !== 'fabrick') {
-      const { data: tenantRows } = await insforge.database
+      const { data: tenantRows } = await insforgeAdmin.database
         .from('tenants').select('id, status').eq('slug', tenantSlug).limit(1);
       const t = tenantRows?.[0] as { id: string; status: string } | undefined;
       if (t) { tenantId = t.id; tenantStatus = t.status; }
     }
 
-    let { data: adminRows, error: dbError } = await insforge.database
+    let { data: adminRows, error: dbError } = await insforgeAdmin.database
       .from('admin_users')
       .select('email, rol, aprobado, password_hash, totp_secret_enc, backup_codes, tenant_id')
       .eq('email', email)
@@ -134,7 +134,7 @@ export async function POST(request: Request) {
     // If the tenant_id column doesn't exist yet (pre-migration schema), fall back
     // to a simple email lookup so the bootstrap admin can always log in.
     if ((dbError || !adminRows || adminRows.length === 0) && email === BOOTSTRAP_ADMIN_EMAIL) {
-      const fallback = await insforge.database
+      const fallback = await insforgeAdmin.database
         .from('admin_users')
         .select('email, rol, aprobado, password_hash, totp_secret_enc, backup_codes')
         .eq('email', email)
@@ -171,14 +171,14 @@ export async function POST(request: Request) {
       // Try with tenant_id first (post-migration schema). If it fails because
       // the column doesn't exist yet (pre-migration deploy), fall back to the
       // legacy schema without tenant_id so the bootstrap admin can always log in.
-      const { error: insertErr } = await insforge.database
+      const { error: insertErr } = await insforgeAdmin.database
         .from('admin_users')
         .upsert(
           [{ email, rol: 'superadmin', aprobado: true, tenant_id: tenantId }],
           { onConflict: 'email,tenant_id' },
         );
       if (insertErr) {
-        const { error: insertErrLegacy } = await insforge.database
+        const { error: insertErrLegacy } = await insforgeAdmin.database
           .from('admin_users')
           .upsert(
             [{ email, rol: 'superadmin', aprobado: true }],
@@ -280,7 +280,7 @@ export async function POST(request: Request) {
         // a transient DB error here would let the same code be reused
         // on a retry, which is bad, so we DO surface the error rather
         // than swallowing it. The login fails closed.
-        const { error: consumeErr } = await insforge.database
+        const { error: consumeErr } = await insforgeAdmin.database
           .from('admin_users')
           .update({ backup_codes: backupResult.remainingHashes })
           .eq('email', email);
@@ -323,7 +323,7 @@ export async function POST(request: Request) {
     if (isBootstrapAdmin && adminUser.aprobado === false) {
       // Fire-and-forget: never block login on this maintenance update, but
       // do log any DB error so the operator can diagnose persistent issues.
-      void insforge.database
+      void insforgeAdmin.database
         .from('admin_users')
         .update({ aprobado: true, rol: adminUser.rol ?? 'superadmin' })
         .eq('email', email)

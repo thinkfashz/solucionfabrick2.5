@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { insforge } from '@/lib/insforge';
+import { insforge, insforgeAdmin } from '@/lib/insforge';
 import {
   clearFailedAttempts,
   getClientIp,
@@ -86,14 +86,14 @@ export async function POST(request: Request) {
     aprobado: true,
   };
 
-  const { error: dbError } = await insforge.database
+  const { error: dbError } = await insforgeAdmin.database
     .from('admin_users')
     .upsert([bootstrapRow], { onConflict: 'email' });
 
   if (dbError) {
     // Try a plain insert as fallback, then a best-effort update in case the
     // row already exists with aprobado=false from a previous run.
-    const { error: insertError } = await insforge.database
+    const { error: insertError } = await insforgeAdmin.database
       .from('admin_users')
       .insert([bootstrapRow]);
 
@@ -106,7 +106,7 @@ export async function POST(request: Request) {
     }
 
     // Row likely exists — force-approve the bootstrap admin.
-    const { error: approveError } = await insforge.database
+    const { error: approveError } = await insforgeAdmin.database
       .from('admin_users')
       .update({ aprobado: true, rol: 'superadmin' })
       .eq('email', ADMIN_EMAIL);

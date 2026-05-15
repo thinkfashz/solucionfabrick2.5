@@ -136,9 +136,11 @@ async function getSigningKey(): Promise<CryptoKey> {
     // Development-only fallback — MUST be replaced with a real secret in production
     console.warn('[AdminAuth] ADMIN_SESSION_SECRET is not set. Using insecure dev default.');
   }
+  // In production we have already thrown above; in dev the fallback is intentional.
+  const effectiveSecret = secret ?? 'fabrick-admin-dev-only-secret';
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(secret ?? 'fabrick-admin-dev-only-secret'),
+    new TextEncoder().encode(effectiveSecret),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign', 'verify']

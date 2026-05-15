@@ -30,10 +30,23 @@ async function isValidSession(value: string): Promise<boolean> {
     const data = value.slice(0, dotIdx)
     const sigB64 = value.slice(dotIdx + 1)
 
-    const secret = process.env.ADMIN_SESSION_SECRET ?? 'fabrick-admin-dev-only-secret'
+    const secret = process.env.ADMIN_SESSION_SECRET
+    if (!secret) {
+      if (process.env.NODE_ENV === 'production') {
+        // No secret configured → no session can be valid. Deny access.
+        // assertEnv() in instrumentation.ts should have aborted startup before
+        // reaching this point, but fail-closed defensively just in case.
+        return false
+      }
+      console.warn(
+        '[middleware] ADMIN_SESSION_SECRET is not set. ' +
+        'Using insecure dev-only fallback — never deploy without this variable.',
+      )
+    }
+    const effectiveSecret = secret ?? 'fabrick-admin-dev-only-secret'
     const key = await crypto.subtle.importKey(
       'raw',
-      new TextEncoder().encode(secret),
+      new TextEncoder().encode(effectiveSecret),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['verify']

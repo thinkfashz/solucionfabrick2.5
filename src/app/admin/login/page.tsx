@@ -87,6 +87,59 @@ export default function AdminLoginPage() {
     setIsBlocked(false);
   }
 
+  async function handlePasskeyLogin() {
+    resetMessages();
+    if (typeof window === 'undefined') return;
+    if (!window.PublicKeyCredential || !navigator.credentials) {
+      setError('Tu dispositivo no soporta autenticación biométrica.');
+      return;
+    }
+    setLoading(true);
+    try {
+      const optRes = await fetch('/api/admin/passkeys/auth/options', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email.trim().toLowerCase() || undefined }),
+      });
+      const optData = await optRes.json().catch(() => ({})) as { error?: string };
+      if (!optRes.ok) {
+        setError(optData.error ?? 'No se pudo iniciar la autenticación biométrica.');
+        return;
+      }
+
+      const { startAuthentication } = await import('@simplewebauthn/browser');
+      let assertion;
+      try {
+        assertion = await startAuthentication({ optionsJSON: optData as Parameters<typeof startAuthentication>[0]['optionsJSON'] });
+      } catch (err) {
+        const e = err as Error;
+        if (e.name === 'NotAllowedError') {
+          setError('Operación cancelada.');
+        } else {
+          setError('No se pudo completar la autenticación biométrica.');
+        }
+        return;
+      }
+
+      const verRes = await fetch('/api/admin/passkeys/auth/verify', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(assertion),
+      });
+      const verData = await verRes.json().catch(() => ({})) as { ok?: boolean; error?: string };
+      if (!verRes.ok) {
+        setError(verData.error ?? 'Autenticación biométrica fallida.');
+        if (verRes.status === 429) setIsBlocked(true);
+        return;
+      }
+      router.replace('/admin');
+    } catch {
+      setError('Error de red. Inténtalo de nuevo.');
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     resetMessages();
@@ -416,22 +469,15 @@ export default function AdminLoginPage() {
 
               <button
                 type="button"
-                onClick={() => {
-                  if (typeof window === 'undefined') return;
-                  if (!window.PublicKeyCredential || !navigator.credentials) {
-                    setError('Tu navegador no soporta huella digital.');
-                    return;
-                  }
-                  setSuccess('Registra tu huella desde /admin/equipo (próximamente).');
-                }}
+                onClick={() => void handlePasskeyLogin()}
                 disabled={loading}
                 className={biometricButtonClass}
               >
                 <svg className="w-4 h-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 11c0 1.1.9 2 2 2s2-.9 2-2-.9-2-2-2-2 .9-2 2zM12 15c-2.7 0-5.8 1.3-6 2h12c-.2-.7-3.3-2-6-2z" />
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 2C9.2 2 7 4.2 7 7v3H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V12c0-1.1-.9-2-2-2h-1V7c0-2.8-2.2-5-5-5z" />
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5}
+                    d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4" />
                 </svg>
-                Huella Digital
+                Huella / Face ID
               </button>
             </form>
 

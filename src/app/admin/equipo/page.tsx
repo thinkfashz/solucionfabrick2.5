@@ -1,8 +1,18 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Mail, UserPlus, ShieldCheck, Trash2, Check, X, Copy, Link2, Eye, Clock } from 'lucide-react';
+import { Users, Mail, UserPlus, ShieldCheck, Trash2, Check, X, Copy, Link2, Eye, Clock, Activity } from 'lucide-react';
+
+interface DemoEvent {
+  id: string;
+  session_id: string;
+  page: string;
+  entered_at: string;
+  left_at: string | null;
+  duration_ms: number | null;
+  created_at: string;
+}
 
 interface Invitation {
   id: string;
@@ -40,6 +50,7 @@ export default function EquipoPage() {
   const [demoLabel, setDemoLabel] = useState('');
   const [demoLoading, setDemoLoading] = useState(false);
   const [createdDemoLink, setCreatedDemoLink] = useState<string | null>(null);
+  const [demoEvents, setDemoEvents] = useState<DemoEvent[]>([]);
 
   useEffect(() => {
     checkAccess();
@@ -62,10 +73,11 @@ export default function EquipoPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [invRes, teamRes, demoRes] = await Promise.all([
+      const [invRes, teamRes, demoRes, eventsRes] = await Promise.all([
         fetch('/api/admin/invitations', { cache: 'no-store' }),
         fetch('/api/admin/team', { cache: 'no-store' }),
         fetch('/api/admin/demo/tokens', { cache: 'no-store' }),
+        fetch('/api/admin/demo/events', { cache: 'no-store' }),
       ]);
       if (invRes.ok) {
         const d = await invRes.json();
@@ -79,6 +91,10 @@ export default function EquipoPage() {
       if (demoRes.ok) {
         const d = await demoRes.json();
         setDemoTokens(d.tokens || []);
+      }
+      if (eventsRes.ok) {
+        const d = await eventsRes.json();
+        setDemoEvents(d.events || []);
       }
     } catch {
       showToast('Error al cargar datos.', 'error');
@@ -199,6 +215,14 @@ export default function EquipoPage() {
     loadData();
   }
 
+  function formatDuration(ms: number): string {
+    if (ms < 1000) return `${ms}ms`;
+    if (ms < 60000) return `${Math.round(ms / 1000)}s`;
+    const mins = Math.floor(ms / 60000);
+    const secs = Math.round((ms % 60000) / 1000);
+    return `${mins}m ${secs}s`;
+  }
+
   function formatDate(iso?: string) {
     if (!iso) return '—';
     const d = new Date(iso);
@@ -210,6 +234,20 @@ export default function EquipoPage() {
     const d = new Date(iso);
     return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
   }
+
+  const groupedSessions = useMemo(() => {
+    type Session = { session_id: string; pages: DemoEvent[]; totalMs: number; lastActivity: string };
+    const map: Record<string, Session> = {};
+    for (const ev of demoEvents) {
+      if (!map[ev.session_id]) {
+        map[ev.session_id] = { session_id: ev.session_id, pages: [], totalMs: 0, lastActivity: ev.entered_at };
+      }
+      map[ev.session_id].pages.push(ev);
+      if (ev.duration_ms) map[ev.session_id].totalMs += ev.duration_ms;
+      if (ev.entered_at > map[ev.session_id].lastActivity) map[ev.session_id].lastActivity = ev.entered_at;
+    }
+    return Object.values(map).sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
+  }, [demoEvents]);
 
   if (loading) {
     return (
@@ -357,6 +395,61 @@ export default function EquipoPage() {
           </div>
         )}
       </div>
+
+      {/* Actividad Demo */}
+      {groupedSessions.length > 0 && (
+        <div className="rounded-2xl border border-white/10 bg-zinc-950/50 p-6">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-sky-400/10 border border-sky-400/30 flex items-center justify-center">
+                <Activity className="w-5 h-5 text-sky-400" />
+              </div>
+              <div>
+                <h2 className="text-white font-bold text-lg">Actividad Demo</h2>
+                <p className="text-zinc-500 text-xs mt-0.5">Páginas visitadas por accesos demo · invisible para el visitante</p>
+              </div>
+            </div>
+            <span className="text-zinc-600 text-xs font-mono">{groupedSessions.length} sesión{groupedSessions.length !== 1 ? 'es' : ''}</span>
+          </div>
+
+          <div className="space-y-3">
+            {groupedSessions.map((session) => {
+              const maxMs = Math.max(1, ...session.pages.map((e) => e.duration_ms ?? 0));
+              return (
+                <div key={session.session_id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-sky-300 text-xs font-mono">{session.session_id.slice(0, 8)}…</p>
+                      <p className="text-zinc-500 text-[10px] mt-0.5">
+                        {session.pages.length} página{session.pages.length !== 1 ? 's' : ''} · {formatDuration(session.totalMs)} total
+                      </p>
+                    </div>
+                    <p className="text-zinc-600 text-[10px]">{formatDateTime(session.lastActivity)}</p>
+                  </div>
+                  <div className="space-y-2">
+                    {session.pages.map((ev) => (
+                      <div key={ev.id} className="flex items-center gap-2">
+                        <div className="flex-1 min-w-0">
+                          <p className="text-zinc-300 text-[11px] font-mono truncate">{ev.page}</p>
+                          <div className="mt-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
+                            <div
+                              className="h-full bg-sky-400/60 rounded-full"
+                              style={{ width: `${Math.min(100, ((ev.duration_ms ?? 0) / maxMs) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                        <span className="text-zinc-600 text-[10px] shrink-0 w-12 text-right">
+                          {ev.duration_ms ? formatDuration(ev.duration_ms) : <span className="text-amber-400/70">activo</span>}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      )}
 
       {/* Invitaciones Pendientes */}
       {invitations.length > 0 && (

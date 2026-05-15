@@ -15,6 +15,7 @@ import { AdminCommandPalette, type CommandItem } from '@/components/admin/AdminC
 import { BrandMark } from '@/components/admin/ui';
 import WhatsNewBanner from '@/components/admin/WhatsNewBanner';
 import AdminContextMenu from '@/components/admin/AdminContextMenu';
+import DemoSessionTracker from '@/components/admin/DemoSessionTracker';
 
 type NavLink = { href: string; label: string; description: string; icon: typeof Package; superadminOnly?: boolean; highlight?: boolean };
 
@@ -630,6 +631,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
         {/* Main content */}
         <main className="relative min-w-0 overflow-hidden">
+          {role === 'viewer' && <DemoSessionTracker />}
           {role === 'viewer' && (
             <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/[0.08] px-5 py-3.5">
               <Eye className="h-4 w-4 shrink-0 text-amber-400" />

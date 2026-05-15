@@ -17,6 +17,7 @@ import {
   getClientIp,
   ADMIN_COOKIE_NAME,
   SESSION_TTL_MS,
+  SESSION_COOKIE_OPTIONS,
 } from '@/lib/adminAuth';
 import {
   recordLoginAttempt,
@@ -387,22 +388,10 @@ export async function POST(request: Request) {
     );
 
     const response = NextResponse.json({ ok: true });
-    response.cookies.set(ADMIN_COOKIE_NAME, sessionValue, {
-      httpOnly: true,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: SESSION_TTL_MS / 1000,
-    });
-    // Not httpOnly: Edge middleware needs to read this cookie to redirect
-    // suspended/cancelled tenants before the request reaches route handlers.
-    response.cookies.set('tenant_status', tenantStatus, {
-      httpOnly: false,
-      secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
-      path: '/',
-      maxAge: SESSION_TTL_MS / 1000,
-    });
+    response.cookies.set(ADMIN_COOKIE_NAME, sessionValue, SESSION_COOKIE_OPTIONS);
+    // Edge middleware reads tenant_status via request.cookies (server-side);
+    // httpOnly is correct — JavaScript in the browser never needs this value.
+    response.cookies.set('tenant_status', tenantStatus, SESSION_COOKIE_OPTIONS);
 
     return response;
   } catch (err) {

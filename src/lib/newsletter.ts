@@ -50,11 +50,20 @@ export function isValidEmail(raw: string): boolean {
 }
 
 function getSecret(): string {
-  return (
-    process.env.NEWSLETTER_SECRET ??
-    process.env.ADMIN_SESSION_SECRET ??
-    'fabrick-newsletter-fallback-change-me'
-  );
+  const secret = process.env.NEWSLETTER_SECRET ?? process.env.ADMIN_SESSION_SECRET;
+  if (!secret) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'NEWSLETTER_SECRET (or ADMIN_SESSION_SECRET) is required in production to sign unsubscribe tokens.',
+      );
+    }
+    console.warn(
+      '[newsletter] No secret configured — using insecure dev fallback. ' +
+      'Set NEWSLETTER_SECRET in .env.local.',
+    );
+    return 'fabrick-newsletter-fallback-change-me';
+  }
+  return secret;
 }
 
 /** Genera token determinista basado en email (HMAC-SHA256, hex 32). */

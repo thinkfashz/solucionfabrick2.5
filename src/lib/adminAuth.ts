@@ -115,6 +115,30 @@ export const ADMIN_COOKIE_NAME = 'admin_session';
 /** Session TTL: 8 hours */
 export const SESSION_TTL_MS = 8 * 60 * 60 * 1000;
 
+const isProd = process.env.NODE_ENV === 'production';
+
+/** Canonical options for every cookie written by the admin auth system. */
+export const SESSION_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: isProd,
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: SESSION_TTL_MS / 1000,
+};
+
+/**
+ * Options to clear an admin-auth cookie.
+ * Both maxAge=0 and a past `expires` are set for maximum browser compatibility.
+ */
+export const CLEAR_COOKIE_OPTIONS = {
+  httpOnly: true,
+  secure: isProd,
+  sameSite: 'lax' as const,
+  path: '/',
+  maxAge: 0,
+  expires: new Date(0),
+};
+
 export interface AdminSessionPayload {
   email: string;
   exp: number; // Unix ms
@@ -136,9 +160,11 @@ async function getSigningKey(): Promise<CryptoKey> {
     // Development-only fallback — MUST be replaced with a real secret in production
     console.warn('[AdminAuth] ADMIN_SESSION_SECRET is not set. Using insecure dev default.');
   }
+  // In production we have already thrown above; in dev the fallback is intentional.
+  const effectiveSecret = secret ?? 'fabrick-admin-dev-only-secret';
   const keyMaterial = await crypto.subtle.importKey(
     'raw',
-    new TextEncoder().encode(secret ?? 'fabrick-admin-dev-only-secret'),
+    new TextEncoder().encode(effectiveSecret),
     { name: 'HMAC', hash: 'SHA-256' },
     false,
     ['sign', 'verify']

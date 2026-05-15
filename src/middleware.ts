@@ -30,10 +30,18 @@ async function isValidSession(value: string): Promise<boolean> {
     const data = value.slice(0, dotIdx)
     const sigB64 = value.slice(dotIdx + 1)
 
-    const secret = process.env.ADMIN_SESSION_SECRET ?? 'fabrick-admin-dev-only-secret'
+    const secret = process.env.ADMIN_SESSION_SECRET
+    if (!secret) {
+      if (process.env.NODE_ENV === 'production') {
+        // No secret in production → safest behaviour is to reject every session.
+        // Fix: set ADMIN_SESSION_SECRET in your deployment environment.
+        return false
+      }
+    }
+    const signingSecret = secret ?? 'fabrick-admin-dev-only-secret'
     const key = await crypto.subtle.importKey(
       'raw',
-      new TextEncoder().encode(secret),
+      new TextEncoder().encode(signingSecret),
       { name: 'HMAC', hash: 'SHA-256' },
       false,
       ['verify']

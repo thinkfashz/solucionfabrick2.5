@@ -178,6 +178,27 @@ export async function decodeSession(value: string): Promise<AdminSessionPayload 
 }
 
 /**
+ * Returns the raw ADMIN_SESSION_SECRET string.
+ * Throws in production if the variable is missing.
+ * Returns an insecure dev-only fallback in development (with a console warning).
+ *
+ * Use this in API route handlers that need the raw secret string (OAuth state signing).
+ * Do NOT use this in Edge middleware — keep that logic self-contained.
+ */
+export function getAdminSecretString(): string {
+  const secret = process.env.ADMIN_SESSION_SECRET;
+  if (secret) return secret;
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[AdminAuth] ADMIN_SESSION_SECRET is not set in production. ' +
+      'Add it to your deployment environment variables and redeploy.',
+    );
+  }
+  console.warn('[AdminAuth] ADMIN_SESSION_SECRET not set. Using dev-only fallback. DO NOT deploy this way.');
+  return 'dev-only-not-secret';
+}
+
+/**
  * Returns true if the current request carries a valid HMAC-signed admin_session cookie.
  * Used in server components / layouts to gate admin access.
  */

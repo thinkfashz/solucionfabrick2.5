@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { insforgeAdmin } from '@/lib/insforge';
-import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import { ADMIN_COOKIE_NAME, decodeSession, getClientIp } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
@@ -25,9 +25,18 @@ export async function POST(request: NextRequest) {
 
   if (action === 'enter') {
     const page = typeof body.page === 'string' ? body.page.slice(0, 500) : '/';
+    const clientIp = getClientIp(request);
+    const userAgent = (request.headers.get('user-agent') ?? 'unknown').slice(0, 500);
+
     const { data, error } = await insforgeAdmin.database
       .from('demo_session_events')
-      .insert([{ session_id, page, entered_at: new Date().toISOString() }])
+      .insert([{
+        session_id,
+        page,
+        entered_at: new Date().toISOString(),
+        client_ip: clientIp,
+        user_agent: userAgent,
+      }])
       .select('id')
       .single();
 
@@ -67,7 +76,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await insforgeAdmin.database
     .from('demo_session_events')
-    .select('id, session_id, page, entered_at, left_at, duration_ms, created_at')
+    .select('id, session_id, page, entered_at, left_at, duration_ms, client_ip, user_agent, created_at')
     .order('entered_at', { ascending: false })
     .limit(500);
 

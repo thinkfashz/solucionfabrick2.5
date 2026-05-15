@@ -11,6 +11,8 @@ interface DemoEvent {
   entered_at: string;
   left_at: string | null;
   duration_ms: number | null;
+  client_ip: string | null;
+  user_agent: string | null;
   created_at: string;
 }
 
@@ -46,7 +48,18 @@ export default function EquipoPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [createdLink, setCreatedLink] = useState<string | null>(null);
-  const [demoTokens, setDemoTokens] = useState<{ id: string; label?: string; link: string; expira_at: string; accesos: number; ultimo_acceso?: string }[]>([]);
+  const [demoTokens, setDemoTokens] = useState<{
+    id: string;
+    label?: string;
+    link: string;
+    expira_at: string;
+    accesos: number;
+    ultimo_acceso?: string;
+    locked_ip?: string | null;
+    locked_at?: string | null;
+    ultimo_ip?: string | null;
+    ultimo_user_agent?: string | null;
+  }[]>([]);
   const [demoLabel, setDemoLabel] = useState('');
   const [demoLoading, setDemoLoading] = useState(false);
   const [createdDemoLink, setCreatedDemoLink] = useState<string | null>(null);
@@ -125,10 +138,14 @@ export default function EquipoPage() {
 
   async function handleRevokeDemo(id: string) {
     if (!confirm('¿Revocar este acceso demo?')) return;
-    const res = await fetch(`/api/admin/demo/tokens?id=${id}`, { method: 'DELETE' });
-    if (!res.ok) { showToast('Error al revocar.', 'error'); return; }
-    showToast('Acceso demo revocado.', 'success');
-    loadData();
+    try {
+      const res = await fetch(`/api/admin/demo/tokens?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) { showToast('Error al revocar.', 'error'); return; }
+      showToast('Acceso demo revocado.', 'success');
+      loadData();
+    } catch {
+      showToast('Error de red al revocar.', 'error');
+    }
   }
 
   function showToast(message: string, type: 'success' | 'error') {
@@ -175,44 +192,60 @@ export default function EquipoPage() {
 
   async function handleDeleteInvitation(id: string) {
     if (!confirm('¿Eliminar esta invitación?')) return;
-    const res = await fetch(`/api/admin/invitations?id=${id}`, { method: 'DELETE' });
-    if (!res.ok) { showToast('Error al eliminar invitación.', 'error'); return; }
-    showToast('Invitación eliminada.', 'success');
-    loadData();
+    try {
+      const res = await fetch(`/api/admin/invitations?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) { showToast('Error al eliminar invitación.', 'error'); return; }
+      showToast('Invitación eliminada.', 'success');
+      loadData();
+    } catch {
+      showToast('Error de red al eliminar invitación.', 'error');
+    }
   }
 
   async function handleApprove(email: string) {
-    const res = await fetch('/api/admin/team', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, action: 'approve' }),
-    });
-    if (!res.ok) { showToast('Error al aprobar.', 'error'); return; }
-    showToast('Usuario aprobado.', 'success');
-    loadData();
+    try {
+      const res = await fetch('/api/admin/team', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, action: 'approve' }),
+      });
+      if (!res.ok) { showToast('Error al aprobar.', 'error'); return; }
+      showToast('Usuario aprobado.', 'success');
+      loadData();
+    } catch {
+      showToast('Error de red al aprobar.', 'error');
+    }
   }
 
   async function handleReject(email: string) {
     if (!confirm(`¿Rechazar y eliminar a ${email}?`)) return;
-    const res = await fetch('/api/admin/team', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, action: 'reject' }),
-    });
-    if (!res.ok) { showToast('Error al rechazar.', 'error'); return; }
-    showToast('Usuario rechazado.', 'success');
-    loadData();
+    try {
+      const res = await fetch('/api/admin/team', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, action: 'reject' }),
+      });
+      if (!res.ok) { showToast('Error al rechazar.', 'error'); return; }
+      showToast('Usuario rechazado.', 'success');
+      loadData();
+    } catch {
+      showToast('Error de red al rechazar.', 'error');
+    }
   }
 
   async function handleSetRole(email: string, rol: string) {
-    const res = await fetch('/api/admin/team', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, action: 'set_role', rol }),
-    });
-    if (!res.ok) { showToast('Error al cambiar rol.', 'error'); return; }
-    showToast('Rol actualizado.', 'success');
-    loadData();
+    try {
+      const res = await fetch('/api/admin/team', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, action: 'set_role', rol }),
+      });
+      if (!res.ok) { showToast('Error al cambiar rol.', 'error'); return; }
+      showToast('Rol actualizado.', 'success');
+      loadData();
+    } catch {
+      showToast('Error de red al cambiar rol.', 'error');
+    }
   }
 
   function formatDuration(ms: number): string {
@@ -221,6 +254,27 @@ export default function EquipoPage() {
     const mins = Math.floor(ms / 60000);
     const secs = Math.round((ms % 60000) / 1000);
     return `${mins}m ${secs}s`;
+  }
+
+  function parseDevice(ua: string | null): { device: string; browser: string; os: string; icon: string } {
+    if (!ua || ua === 'unknown') return { device: 'Desconocido', browser: '—', os: '—', icon: '?' };
+    const isMobile = /iPhone|Android.*Mobile|Mobile.*Android/i.test(ua);
+    const isTablet = /iPad|Android(?!.*Mobile)/i.test(ua);
+    const device = isMobile ? 'Móvil' : isTablet ? 'Tablet' : 'Escritorio';
+    const icon = isMobile ? '📱' : isTablet ? '⬜' : '💻';
+    const browser = /Edg\//.test(ua) ? 'Edge'
+      : /OPR\/|Opera/.test(ua) ? 'Opera'
+      : /Chrome\//.test(ua) ? 'Chrome'
+      : /Firefox\//.test(ua) ? 'Firefox'
+      : /Safari\//.test(ua) && !/Chrome/.test(ua) ? 'Safari'
+      : 'Otro';
+    const os = /Windows NT/.test(ua) ? 'Windows'
+      : /iPhone|iPad/.test(ua) ? 'iOS'
+      : /Android/.test(ua) ? 'Android'
+      : /Mac OS X/.test(ua) ? 'macOS'
+      : /Linux/.test(ua) ? 'Linux'
+      : 'Otro';
+    return { device, browser, os, icon };
   }
 
   function formatDate(iso?: string) {
@@ -236,15 +290,34 @@ export default function EquipoPage() {
   }
 
   const groupedSessions = useMemo(() => {
-    type Session = { session_id: string; pages: DemoEvent[]; totalMs: number; lastActivity: string };
+    type Session = {
+      session_id: string;
+      pages: DemoEvent[];
+      totalMs: number;
+      firstActivity: string;
+      lastActivity: string;
+      client_ip: string | null;
+      user_agent: string | null;
+    };
     const map: Record<string, Session> = {};
     for (const ev of demoEvents) {
       if (!map[ev.session_id]) {
-        map[ev.session_id] = { session_id: ev.session_id, pages: [], totalMs: 0, lastActivity: ev.entered_at };
+        map[ev.session_id] = {
+          session_id: ev.session_id,
+          pages: [],
+          totalMs: 0,
+          firstActivity: ev.entered_at,
+          lastActivity: ev.entered_at,
+          client_ip: ev.client_ip ?? null,
+          user_agent: ev.user_agent ?? null,
+        };
       }
       map[ev.session_id].pages.push(ev);
       if (ev.duration_ms) map[ev.session_id].totalMs += ev.duration_ms;
+      if (ev.entered_at < map[ev.session_id].firstActivity) map[ev.session_id].firstActivity = ev.entered_at;
       if (ev.entered_at > map[ev.session_id].lastActivity) map[ev.session_id].lastActivity = ev.entered_at;
+      if (!map[ev.session_id].client_ip && ev.client_ip) map[ev.session_id].client_ip = ev.client_ip;
+      if (!map[ev.session_id].user_agent && ev.user_agent) map[ev.session_id].user_agent = ev.user_agent;
     }
     return Object.values(map).sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
   }, [demoEvents]);
@@ -363,31 +436,51 @@ export default function EquipoPage() {
               const expiresIn = Math.max(0, Math.floor((new Date(dt.expira_at).getTime() - Date.now()) / 1000 / 60));
               const hours = Math.floor(expiresIn / 60);
               const mins = expiresIn % 60;
+              const lastDevice = dt.ultimo_user_agent ? parseDevice(dt.ultimo_user_agent) : null;
               return (
-                <div key={dt.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                  <Clock className="w-4 h-4 text-zinc-600 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    {dt.label && <p className="text-white text-xs font-medium truncate">{dt.label}</p>}
-                    <p className="text-zinc-500 text-[11px] truncate font-mono">{dt.link}</p>
-                    <p className="text-zinc-600 text-[10px] mt-0.5">
-                      Expira en {hours}h {mins}m · {dt.accesos} acceso{dt.accesos !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                  <div className="flex gap-1.5 shrink-0">
-                    <button
-                      onClick={() => copyToClipboard(dt.link, 'Link demo')}
-                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all"
-                      title="Copiar link"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleRevokeDemo(dt.id)}
-                      className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
-                      title="Revocar acceso"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+                <div key={dt.id} className="p-3 rounded-xl bg-white/[0.03] border border-white/[0.06] space-y-2">
+                  <div className="flex items-start gap-3">
+                    <Clock className="w-4 h-4 text-zinc-600 shrink-0 mt-0.5" />
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {dt.label && <p className="text-white text-xs font-medium">{dt.label}</p>}
+                        {dt.locked_ip ? (
+                          <span className="inline-flex items-center gap-1 bg-green-500/10 border border-green-500/30 text-green-400 rounded-full px-2 py-0.5 text-[10px] font-mono">
+                            🔒 {dt.locked_ip}
+                          </span>
+                        ) : (
+                          <span className="inline-flex items-center gap-1 bg-zinc-500/10 border border-zinc-500/30 text-zinc-500 rounded-full px-2 py-0.5 text-[10px]">
+                            Sin acceder aún
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-zinc-500 text-[11px] truncate font-mono mt-0.5">{dt.link}</p>
+                      <p className="text-zinc-600 text-[10px] mt-0.5">
+                        Expira en {hours}h {mins}m · {dt.accesos} acceso{dt.accesos !== 1 ? 's' : ''}
+                        {dt.ultimo_acceso && ` · último: ${formatDateTime(dt.ultimo_acceso)}`}
+                      </p>
+                      {lastDevice && (
+                        <p className="text-zinc-700 text-[10px] mt-0.5">
+                          {lastDevice.icon} {lastDevice.device} · {lastDevice.browser} · {lastDevice.os}
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex gap-1.5 shrink-0">
+                      <button
+                        onClick={() => copyToClipboard(dt.link, 'Link demo')}
+                        className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all"
+                        title="Copiar link"
+                      >
+                        <Copy className="w-3.5 h-3.5" />
+                      </button>
+                      <button
+                        onClick={() => handleRevokeDemo(dt.id)}
+                        className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
+                        title="Revocar acceso"
+                      >
+                        <Trash2 className="w-3.5 h-3.5" />
+                      </button>
+                    </div>
                   </div>
                 </div>
               );
@@ -399,48 +492,84 @@ export default function EquipoPage() {
       {/* Actividad Demo */}
       {groupedSessions.length > 0 && (
         <div className="rounded-2xl border border-white/10 bg-zinc-950/50 p-6">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center justify-between mb-5">
             <div className="flex items-center gap-3">
               <div className="w-10 h-10 rounded-xl bg-sky-400/10 border border-sky-400/30 flex items-center justify-center">
                 <Activity className="w-5 h-5 text-sky-400" />
               </div>
               <div>
                 <h2 className="text-white font-bold text-lg">Actividad Demo</h2>
-                <p className="text-zinc-500 text-xs mt-0.5">Páginas visitadas por accesos demo · invisible para el visitante</p>
+                <p className="text-zinc-500 text-xs mt-0.5">Visitas en tiempo real · invisible para el visitante</p>
               </div>
             </div>
-            <span className="text-zinc-600 text-xs font-mono">{groupedSessions.length} sesión{groupedSessions.length !== 1 ? 'es' : ''}</span>
+            <span className="text-zinc-600 text-xs font-mono bg-zinc-900 border border-white/10 rounded-full px-3 py-1">
+              {groupedSessions.length} sesión{groupedSessions.length !== 1 ? 'es' : ''}
+            </span>
           </div>
 
-          <div className="space-y-3">
+          <div className="space-y-4">
             {groupedSessions.map((session) => {
               const maxMs = Math.max(1, ...session.pages.map((e) => e.duration_ms ?? 0));
+              const dev = parseDevice(session.user_agent);
               return (
-                <div key={session.session_id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-sky-300 text-xs font-mono">{session.session_id.slice(0, 8)}…</p>
-                      <p className="text-zinc-500 text-[10px] mt-0.5">
-                        {session.pages.length} página{session.pages.length !== 1 ? 's' : ''} · {formatDuration(session.totalMs)} total
-                      </p>
+                <div key={session.session_id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] overflow-hidden">
+                  {/* Session header */}
+                  <div className="px-4 py-3 border-b border-white/[0.06] bg-white/[0.02]">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <p className="text-sky-300 text-xs font-mono">{session.session_id.slice(0, 8)}…</p>
+                          {session.client_ip && (
+                            <span className="inline-flex items-center gap-1 bg-sky-500/10 border border-sky-500/30 text-sky-400 rounded-full px-2 py-0.5 text-[10px] font-mono">
+                              🌐 {session.client_ip}
+                            </span>
+                          )}
+                          <span className="inline-flex items-center gap-1 bg-white/5 border border-white/10 text-zinc-400 rounded-full px-2 py-0.5 text-[10px]">
+                            {dev.icon} {dev.device}
+                          </span>
+                          <span className="inline-flex items-center bg-white/5 border border-white/10 text-zinc-500 rounded-full px-2 py-0.5 text-[10px]">
+                            {dev.browser} · {dev.os}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3 mt-1.5">
+                          <p className="text-zinc-600 text-[10px]">
+                            Ingresó: <span className="text-zinc-500">{formatDateTime(session.firstActivity)}</span>
+                          </p>
+                          <p className="text-zinc-600 text-[10px]">
+                            Última actividad: <span className="text-zinc-500">{formatDateTime(session.lastActivity)}</span>
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right shrink-0">
+                        <p className="text-white text-sm font-bold">{formatDuration(session.totalMs)}</p>
+                        <p className="text-zinc-600 text-[10px]">{session.pages.length} página{session.pages.length !== 1 ? 's' : ''}</p>
+                      </div>
                     </div>
-                    <p className="text-zinc-600 text-[10px]">{formatDateTime(session.lastActivity)}</p>
                   </div>
-                  <div className="space-y-2">
+
+                  {/* Pages breakdown */}
+                  <div className="px-4 py-3 space-y-2">
                     {session.pages.map((ev) => (
-                      <div key={ev.id} className="flex items-center gap-2">
+                      <div key={ev.id} className="flex items-center gap-3">
                         <div className="flex-1 min-w-0">
-                          <p className="text-zinc-300 text-[11px] font-mono truncate">{ev.page}</p>
-                          <div className="mt-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-sky-400/60 rounded-full"
-                              style={{ width: `${Math.min(100, ((ev.duration_ms ?? 0) / maxMs) * 100)}%` }}
-                            />
+                          <div className="flex items-center justify-between gap-2 mb-1">
+                            <p className="text-zinc-300 text-[11px] font-mono truncate">{ev.page}</p>
+                            <span className="text-zinc-600 text-[10px] shrink-0">
+                              {formatDateTime(ev.entered_at)}
+                            </span>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            <div className="flex-1 h-1.5 bg-zinc-800 rounded-full overflow-hidden">
+                              <div
+                                className="h-full bg-sky-400/60 rounded-full transition-all"
+                                style={{ width: `${Math.min(100, ((ev.duration_ms ?? 0) / maxMs) * 100)}%` }}
+                              />
+                            </div>
+                            <span className="text-zinc-600 text-[10px] shrink-0 w-14 text-right font-mono">
+                              {ev.duration_ms ? formatDuration(ev.duration_ms) : <span className="text-amber-400/70">● activo</span>}
+                            </span>
                           </div>
                         </div>
-                        <span className="text-zinc-600 text-[10px] shrink-0 w-12 text-right">
-                          {ev.duration_ms ? formatDuration(ev.duration_ms) : <span className="text-amber-400/70">activo</span>}
-                        </span>
                       </div>
                     ))}
                   </div>

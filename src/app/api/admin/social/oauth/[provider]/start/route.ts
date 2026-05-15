@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminUnauthorized, getAdminSession } from '@/lib/adminApi';
+import { getAdminSecretString } from '@/lib/adminAuth';
 import crypto from 'node:crypto';
 
 export const dynamic = 'force-dynamic';
@@ -50,7 +51,7 @@ export async function GET(
   // signed state cookie. We sign with ADMIN_SESSION_SECRET so nobody
   // can forge a state value that survives the round-trip.
   const nonce = crypto.randomBytes(16).toString('hex');
-  const secret = process.env.ADMIN_SESSION_SECRET || 'dev-only-not-secret';
+  const secret = getAdminSecretString();
   const sig = crypto.createHmac('sha256', secret).update(nonce).digest('hex').slice(0, 32);
   const state = `${nonce}.${sig}`;
 

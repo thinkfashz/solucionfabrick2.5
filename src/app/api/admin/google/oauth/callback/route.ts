@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { getAdminSecretString } from '@/lib/adminAuth';
 import { encryptCredentials } from '@/lib/integrationsCrypto';
 import {
 	exchangeCodeForToken,
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
 		// Validate the signed state both matches the cookie AND verifies
 		// against ADMIN_SESSION_SECRET.
 		const cookieState = request.cookies.get(STATE_COOKIE)?.value ?? null;
-		const secret = process.env.ADMIN_SESSION_SECRET || 'dev-only-not-secret';
+		const secret = getAdminSecretString();
 		if (!state || !cookieState || cookieState !== state || !verifyState(secret, state)) {
 			const res = NextResponse.redirect(
 				`${siteUrl}/admin/integraciones?google_error=${encodeURIComponent('invalid_state')}`,

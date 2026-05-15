@@ -18,7 +18,7 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await insforgeAdmin.database
     .from('demo_tokens')
-    .select('id, token, label, created_by, expira_at, accesos, ultimo_acceso, created_at')
+    .select('id, token, label, created_by, expira_at, accesos, ultimo_acceso, locked_ip, locked_at, ultimo_ip, ultimo_user_agent, created_at')
     .gt('expira_at', new Date().toISOString())
     .order('created_at', { ascending: false });
 

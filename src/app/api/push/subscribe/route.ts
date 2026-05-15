@@ -1,24 +1,26 @@
 import { NextResponse } from 'next/server';
 import { insforgeAdmin } from '@/lib/insforge';
 import { isPushEnabled, isValidSubscription } from '@/lib/push';
+import { v, parse, validationError } from '@/lib/validate';
 
 export const runtime = 'nodejs';
+
+const schema = {
+  subscription: v.object({ required: true }),
+};
 
 export async function POST(request: Request) {
   if (!isPushEnabled()) {
     return NextResponse.json({ error: 'Push notifications not configured' }, { status: 503 });
   }
 
-  let body: unknown;
-  try {
-    body = await request.json();
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 });
-  }
+  const body = await request.json().catch(() => ({}));
+  const result = parse(schema, body);
+  if (!result.ok) return validationError(result.errors);
 
-  const { subscription } = (body ?? {}) as { subscription?: unknown };
+  const { subscription } = result.data as { subscription?: unknown };
   if (!isValidSubscription(subscription)) {
-    return NextResponse.json({ error: 'Invalid subscription' }, { status: 400 });
+    return NextResponse.json({ error: 'Suscripción push inválida.' }, { status: 422 });
   }
 
   const record = {

@@ -4,6 +4,12 @@
  * Publica eventos al canal real-time 'sync' de InsForge.
  */
 import { NextResponse } from 'next/server';
+import { v, parse } from '@/lib/validate';
+
+const syncSchema = {
+  productIds: v.array({ of: v.string({ max: 255 }), maxItems: 1000 }),
+  updatePrice: v.boolean(),
+};
 
 const BASE = process.env.NEXT_PUBLIC_INSFORGE_URL
   ? `${process.env.NEXTAUTH_URL ?? 'http://localhost:3001'}`
@@ -27,8 +33,9 @@ async function runAgent(path: string, body: object, label: string) {
 
 export async function POST(request: Request) {
   const body = await request.json().catch(() => ({}));
-  const productIds: string[] = body.productIds ?? [];
-  const updatePrice: boolean = body.updatePrice ?? false;
+  const parsed = parse(syncSchema, body);
+  const productIds: string[] = parsed.ok ? (parsed.data.productIds as string[] | undefined) ?? [] : [];
+  const updatePrice: boolean = parsed.ok ? (parsed.data.updatePrice as boolean | undefined) ?? false : false;
 
   const syncStart = Date.now();
 

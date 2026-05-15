@@ -3,9 +3,20 @@ import type { NextRequest } from 'next/server';
 import { adminError, adminUnauthorized, getAdminSession } from '@/lib/adminApi';
 import { deleteMaterial, updateMaterial, BudgetError, type MaterialInput } from '@/lib/budget';
 import { publishCmsEvent } from '@/lib/cmsBus';
+import { v, parse, validationError } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
+
+const materialPatchSchema = {
+  name:     v.string({ min: 1, max: 200 }),
+  category: v.string({ max: 100 }),
+  unit:     v.string({ max: 50 }),
+  price:    v.number({ min: 0 }),
+  active:   v.boolean(),
+  stock:    v.number({ min: 0 }),
+  position: v.number({ min: 0 }),
+};
 
 /** PATCH /api/admin/materials/[id] — partial update (price, stock, active, …). */
 export async function PATCH(
@@ -18,16 +29,13 @@ export async function PATCH(
     const { id } = await ctx.params;
 
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
-    const patch: Partial<MaterialInput> = {};
-    if ('name' in body) patch.name = String(body.name ?? '');
+    const parsed = parse(materialPatchSchema, body);
+    if (!parsed.ok) return validationError(parsed.errors);
+
+    const patch: Partial<MaterialInput> = { ...parsed.data } as Partial<MaterialInput>;
+    // description and image_url can be explicitly null to clear the field.
     if ('description' in body) patch.description = body.description as string | null;
-    if ('category' in body) patch.category = String(body.category ?? '');
-    if ('unit' in body) patch.unit = String(body.unit ?? '');
-    if ('price' in body) patch.price = Number(body.price);
     if ('image_url' in body) patch.image_url = body.image_url as string | null;
-    if ('active' in body) patch.active = Boolean(body.active);
-    if ('stock' in body) patch.stock = body.stock === null ? null : Number(body.stock);
-    if ('position' in body) patch.position = Number(body.position);
 
     const updated = await updateMaterial(id, patch);
 

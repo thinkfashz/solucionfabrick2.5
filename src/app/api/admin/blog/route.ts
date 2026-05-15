@@ -6,20 +6,21 @@ import { estimateReadingMinutes, renderMarkdown, slugify } from '@/lib/markdown'
 import { publishCmsEvent } from '@/lib/cmsBus';
 import { CMS_CACHE_TAGS } from '@/lib/cms';
 import { detectSchemaError, schemaErrorHint } from '@/lib/schemaErrors';
+import { v, parse, validationError } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-interface BlogPostInput {
-  slug?: string;
-  title?: string;
-  description?: string;
-  cover_url?: string;
-  body_md?: string;
-  tags?: string[];
-  author?: string;
-  published?: boolean;
-}
+const blogPostSchema = {
+  title:       v.string({ required: true, min: 1, max: 300 }),
+  slug:        v.string({ max: 300 }),
+  description: v.string({ max: 500 }),
+  cover_url:   v.string({ max: 1000 }),
+  body_md:     v.string({ max: 200000 }),
+  tags:        v.array({ of: v.string({ max: 100 }), maxItems: 50 }),
+  author:      v.string({ max: 200 }),
+  published:   v.boolean(),
+};
 
 export async function GET(request: NextRequest) {
   try {
@@ -61,30 +62,34 @@ export async function POST(request: NextRequest) {
     if (!session) return adminUnauthorized();
 
     const tenantId = await getAdminTenantId(request);
-    const body = (await request.json().catch(() => ({}))) as BlogPostInput;
-    const title = (body.title ?? '').trim();
-    if (!title) {
-      return NextResponse.json({ error: 'Título requerido.', code: 'VALIDATION' }, { status: 400 });
-    }
-    const slug = (body.slug ? slugify(body.slug) : slugify(title)).trim();
+    const raw = await request.json().catch(() => ({}));
+    const result = parse(blogPostSchema, raw);
+    if (!result.ok) return validationError(result.errors);
+    const d = result.data as {
+      title: string; slug?: string; description?: string; cover_url?: string;
+      body_md?: string; tags?: string[]; author?: string; published?: boolean;
+    };
+
+    const title = d.title;
+    const slug = (d.slug ? slugify(d.slug) : slugify(title)).trim();
     if (!slug) {
       return NextResponse.json({ error: 'Slug inválido.', code: 'VALIDATION' }, { status: 400 });
     }
 
-    const md = body.body_md ?? '';
+    const md = d.body_md ?? '';
     const html = renderMarkdown(md);
     const now = new Date().toISOString();
-    const published = Boolean(body.published);
+    const published = d.published ?? false;
 
     const row = {
       slug,
       title,
-      description: (body.description ?? '').trim(),
-      cover_url: (body.cover_url ?? '').trim() || null,
+      description: d.description ?? '',
+      cover_url: d.cover_url || null,
       body_md: md,
       body_html: html,
-      tags: Array.isArray(body.tags) ? body.tags.map((t) => String(t)).filter(Boolean) : [],
-      author: (body.author ?? session.email).trim() || null,
+      tags: d.tags ?? [],
+      author: (d.author ?? session.email).trim() || null,
       published,
       published_at: published ? now : null,
       reading_minutes: estimateReadingMinutes(md),

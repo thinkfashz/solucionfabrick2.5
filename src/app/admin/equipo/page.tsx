@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Mail, UserPlus, ShieldCheck, Trash2, Check, X, Copy, Link2 } from 'lucide-react';
+import { Users, Mail, UserPlus, ShieldCheck, Trash2, Check, X, Copy, Link2, Eye, Clock } from 'lucide-react';
 
 interface Invitation {
   id: string;
@@ -36,6 +36,10 @@ export default function EquipoPage() {
   const [inviteLoading, setInviteLoading] = useState(false);
   const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
   const [createdLink, setCreatedLink] = useState<string | null>(null);
+  const [demoTokens, setDemoTokens] = useState<{ id: string; label?: string; link: string; expira_at: string; accesos: number; ultimo_acceso?: string }[]>([]);
+  const [demoLabel, setDemoLabel] = useState('');
+  const [demoLoading, setDemoLoading] = useState(false);
+  const [createdDemoLink, setCreatedDemoLink] = useState<string | null>(null);
 
   useEffect(() => {
     checkAccess();
@@ -58,9 +62,10 @@ export default function EquipoPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [invRes, teamRes] = await Promise.all([
+      const [invRes, teamRes, demoRes] = await Promise.all([
         fetch('/api/admin/invitations', { cache: 'no-store' }),
         fetch('/api/admin/team', { cache: 'no-store' }),
+        fetch('/api/admin/demo/tokens', { cache: 'no-store' }),
       ]);
       if (invRes.ok) {
         const d = await invRes.json();
@@ -71,11 +76,43 @@ export default function EquipoPage() {
         setMembers(d.members || []);
         setPending(d.pending || []);
       }
+      if (demoRes.ok) {
+        const d = await demoRes.json();
+        setDemoTokens(d.tokens || []);
+      }
     } catch {
       showToast('Error al cargar datos.', 'error');
     } finally {
       setLoading(false);
     }
+  }
+
+  async function handleGenerateDemo() {
+    setDemoLoading(true);
+    try {
+      const res = await fetch('/api/admin/demo/tokens', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ label: demoLabel }),
+      });
+      const json = await res.json();
+      if (!res.ok) { showToast(json.error || 'Error al generar link demo.', 'error'); return; }
+      setCreatedDemoLink(json.link);
+      setDemoLabel('');
+      loadData();
+    } catch {
+      showToast('Error de red.', 'error');
+    } finally {
+      setDemoLoading(false);
+    }
+  }
+
+  async function handleRevokeDemo(id: string) {
+    if (!confirm('¿Revocar este acceso demo?')) return;
+    const res = await fetch(`/api/admin/demo/tokens?id=${id}`, { method: 'DELETE' });
+    if (!res.ok) { showToast('Error al revocar.', 'error'); return; }
+    showToast('Acceso demo revocado.', 'success');
+    loadData();
   }
 
   function showToast(message: string, type: 'success' | 'error') {
@@ -223,6 +260,102 @@ export default function EquipoPage() {
         >
           Crear Invitación
         </button>
+      </div>
+
+      {/* Acceso Demo */}
+      <div className="rounded-2xl border border-white/10 bg-zinc-950/50 p-6">
+        <div className="flex items-center gap-3 mb-4">
+          <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center">
+            <Eye className="w-5 h-5 text-amber-400" />
+          </div>
+          <div>
+            <h2 className="text-white font-bold text-lg">Acceso Demo</h2>
+            <p className="text-zinc-500 text-xs mt-0.5">Link temporal de 24 h · solo lectura · sin cuenta real</p>
+          </div>
+        </div>
+        <p className="text-zinc-500 text-sm mb-4">
+          Genera un link único para que cualquier persona explore el panel sin modificar datos. Ideal para mostrar el producto a clientes o inversores.
+        </p>
+
+        {/* Generate form */}
+        {createdDemoLink ? (
+          <div className="rounded-xl bg-amber-400/10 border border-amber-400/30 p-4 mb-4">
+            <p className="text-amber-300 text-xs font-bold uppercase tracking-wide mb-2">Link de demo generado — válido 24 horas</p>
+            <p className="text-white/80 text-xs font-mono break-all mb-3">{createdDemoLink}</p>
+            <div className="flex gap-2">
+              <button
+                onClick={() => copyToClipboard(createdDemoLink, 'Link demo')}
+                className="flex items-center gap-1.5 bg-amber-400 text-black font-bold uppercase tracking-widest rounded-full px-4 py-2 text-xs hover:bg-amber-300 transition-all"
+              >
+                <Copy className="w-3 h-3" />Copiar link
+              </button>
+              <button
+                onClick={() => setCreatedDemoLink(null)}
+                className="flex items-center gap-1.5 bg-white/5 text-zinc-300 border border-white/10 font-bold uppercase tracking-widest rounded-full px-4 py-2 text-xs hover:bg-white/10 transition-all"
+              >
+                Generar otro
+              </button>
+            </div>
+          </div>
+        ) : (
+          <div className="flex gap-3 mb-4">
+            <input
+              type="text"
+              value={demoLabel}
+              onChange={(e) => setDemoLabel(e.target.value)}
+              placeholder="Etiqueta opcional (ej. &quot;Cliente Juan&quot;)"
+              disabled={demoLoading}
+              className="flex-1 bg-zinc-900 border border-white/10 rounded-2xl px-4 py-2.5 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-amber-400/50 disabled:opacity-40"
+            />
+            <button
+              onClick={handleGenerateDemo}
+              disabled={demoLoading}
+              className="bg-amber-400 text-black font-bold uppercase tracking-widest rounded-full px-5 py-2.5 text-xs hover:bg-amber-300 transition-all disabled:opacity-40 whitespace-nowrap"
+            >
+              {demoLoading ? 'Generando…' : 'Generar Link Demo'}
+            </button>
+          </div>
+        )}
+
+        {/* Active demo tokens list */}
+        {demoTokens.length > 0 && (
+          <div className="space-y-2">
+            <p className="text-zinc-600 text-xs uppercase tracking-wider font-bold mb-3">Links activos</p>
+            {demoTokens.map((dt) => {
+              const expiresIn = Math.max(0, Math.floor((new Date(dt.expira_at).getTime() - Date.now()) / 1000 / 60));
+              const hours = Math.floor(expiresIn / 60);
+              const mins = expiresIn % 60;
+              return (
+                <div key={dt.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
+                  <Clock className="w-4 h-4 text-zinc-600 shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    {dt.label && <p className="text-white text-xs font-medium truncate">{dt.label}</p>}
+                    <p className="text-zinc-500 text-[11px] truncate font-mono">{dt.link}</p>
+                    <p className="text-zinc-600 text-[10px] mt-0.5">
+                      Expira en {hours}h {mins}m · {dt.accesos} acceso{dt.accesos !== 1 ? 's' : ''}
+                    </p>
+                  </div>
+                  <div className="flex gap-1.5 shrink-0">
+                    <button
+                      onClick={() => copyToClipboard(dt.link, 'Link demo')}
+                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all"
+                      title="Copiar link"
+                    >
+                      <Copy className="w-3.5 h-3.5" />
+                    </button>
+                    <button
+                      onClick={() => handleRevokeDemo(dt.id)}
+                      className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
+                      title="Revocar acceso"
+                    >
+                      <Trash2 className="w-3.5 h-3.5" />
+                    </button>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
 
       {/* Invitaciones Pendientes */}

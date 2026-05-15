@@ -102,8 +102,9 @@ export async function middleware(request: NextRequest) {
   const isAdmin = request.nextUrl.pathname.startsWith('/admin')
   const isLogin = request.nextUrl.pathname === '/admin/login'
   const isJoin = request.nextUrl.pathname === '/admin/unirse'
+  const isDemo = request.nextUrl.pathname === '/admin/acceso-demo'
 
-  if (isAdmin && !isLogin && !isJoin) {
+  if (isAdmin && !isLogin && !isJoin && !isDemo) {
     const sessionCookie = request.cookies.get('admin_session')
     if (!sessionCookie?.value || !(await isValidSession(sessionCookie.value))) {
       const redirect = NextResponse.redirect(new URL('/admin/login', request.url))

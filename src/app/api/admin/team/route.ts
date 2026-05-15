@@ -32,6 +32,7 @@ async function requireSuperadmin(request: NextRequest) {
   if (!sessionCookie?.value) return { error: NextResponse.json({ error: 'No autenticado.' }, { status: 401 }) };
   const payload = await decodeSession(sessionCookie.value);
   if (!payload) return { error: NextResponse.json({ error: 'Sesión inválida.' }, { status: 401 }) };
+  if (payload.rol === 'viewer') return { error: NextResponse.json({ error: 'Modo demo: solo lectura.' }, { status: 403 }) };
   if (payload.rol !== 'superadmin') return { error: NextResponse.json({ error: 'Solo superadmin puede modificar el equipo.' }, { status: 403 }) };
   return { payload };
 }
@@ -78,6 +79,12 @@ export async function GET(request: NextRequest) {
   if (!sessionCookie?.value) return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
   const payload = await decodeSession(sessionCookie.value);
   if (!payload) return NextResponse.json({ error: 'Sesión inválida.' }, { status: 401 });
+  if (payload.rol === 'viewer') {
+    return NextResponse.json({ error: 'Modo demo: equipo y usuarios es una zona crítica.' }, { status: 403 });
+  }
+  if (payload.rol !== 'superadmin') {
+    return NextResponse.json({ error: 'Solo superadmin puede ver el equipo.' }, { status: 403 });
+  }
 
   const { data, error } = await insforgeAdmin.database
     .from('admin_users')

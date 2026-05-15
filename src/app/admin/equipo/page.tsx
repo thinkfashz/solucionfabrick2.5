@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
   Check,
@@ -11,7 +12,6 @@ import {
   Mail,
   Plus,
   ShieldCheck,
-  Sparkles,
   Trash2,
   UserPlus,
   Users,
@@ -53,10 +53,16 @@ type AuditRow = {
   user_agent?: string | null;
 };
 
-const ROLES: { value: Role; label: string; description: string }[] = [
-  { value: 'superadmin', label: 'Superadmin', description: 'Acceso total, usuarios, seguridad y sistema.' },
-  { value: 'admin', label: 'Admin', description: 'Gestión operativa de productos, pedidos y contenido.' },
-  { value: 'viewer', label: 'Viewer', description: 'Solo lectura para revisión, demo o auditoría.' },
+type StatCard = {
+  label: string;
+  value: number;
+  icon: LucideIcon;
+};
+
+const ROLES: { value: Role; label: string }[] = [
+  { value: 'superadmin', label: 'Superadmin' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'viewer', label: 'Viewer' },
 ];
 
 function tempPassword() {
@@ -109,6 +115,14 @@ export default function EquipoPage() {
     viewers: members.filter((m) => m.rol === 'viewer').length,
     pending: pending.length,
   }), [members, pending]);
+
+  const statCards = useMemo<StatCard[]>(() => [
+    { label: 'Total', value: stats.total, icon: Users },
+    { label: 'Superadmin', value: stats.superadmins, icon: ShieldCheck },
+    { label: 'Admin', value: stats.admins, icon: KeyRound },
+    { label: 'Viewer', value: stats.viewers, icon: Fingerprint },
+    { label: 'Pendientes', value: stats.pending, icon: Activity },
+  ], [stats]);
 
   useEffect(() => {
     void checkAccess();
@@ -284,19 +298,13 @@ export default function EquipoPage() {
       />
 
       <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {[
-          ['Total', stats.total, Users],
-          ['Superadmin', stats.superadmins, ShieldCheck],
-          ['Admin', stats.admins, KeyRound],
-          ['Viewer', stats.viewers, Fingerprint],
-          ['Pendientes', stats.pending, Activity],
-        ].map(([label, value, Icon]) => (
-          <div key={String(label)} className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+        {statCards.map(({ label, value, icon: Icon }) => (
+          <div key={label} className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
             <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">{String(label)}</span>
+              <span className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">{label}</span>
               <Icon className="h-5 w-5 text-yellow-300" />
             </div>
-            <p className="mt-4 text-3xl font-black text-white">{String(value)}</p>
+            <p className="mt-4 text-3xl font-black text-white">{value}</p>
           </div>
         ))}
       </section>

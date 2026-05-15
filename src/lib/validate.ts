@@ -158,9 +158,9 @@ function validateField(
 }
 
 function validateString(key: string, value: unknown, def: StringField) {
-  let str = typeof value === 'number' ? String(value) : value;
-  if (typeof str !== 'string') return { error: `"${key}" debe ser texto.` };
-  if (def.trim !== false) str = str.trim();
+  const raw = typeof value === 'number' ? String(value) : value;
+  if (typeof raw !== 'string') return { error: `"${key}" debe ser texto.` };
+  const str = def.trim === false ? raw : raw.trim();
   if (def.min !== undefined && str.length < def.min)
     return { error: `"${key}" debe tener al menos ${def.min} caracteres.` };
   if (def.max !== undefined && str.length > def.max)

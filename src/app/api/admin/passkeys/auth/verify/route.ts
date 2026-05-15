@@ -1,12 +1,3 @@
-/**
- * POST /api/admin/passkeys/auth/verify
- *
- * Verifies the WebAuthn assertion (authentication) from the browser.
- * On success: creates an admin session (same cookie as password login).
- *
- * No session required — this IS the login endpoint.
- * Requires a valid `pk_challenge` cookie set by auth/options.
- */
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyAuthenticationResponse } from '@simplewebauthn/server';
@@ -37,21 +28,19 @@ export const runtime = 'nodejs';
 
 const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
 
+type AdminRow = { rol?: string; aprobado?: boolean };
+
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
 
-  // Reuse the same IP-based rate limiter as password login.
   if (await isRateLimited(ip)) {
     const remaining = await blockedSecondsRemaining(ip);
-    return NextResponse.json(
-      { error: `Demasiados intentos. Intenta en ${remaining} segundos.` },
-      { status: 429 },
-    );
+    return NextResponse.json({ error: `Demasiados intentos. Intenta en ${remaining} segundos.` }, { status: 429 });
   }
 
-  const fail = async (msg: string, status = 401) => {
+  const fail = async (message: string, status = 401) => {
     await recordFailedAttempt(ip);
-    return NextResponse.json({ error: msg }, { status });
+    return NextResponse.json({ error: message }, { status });
   };
 
   try {
@@ -59,24 +48,21 @@ export async function POST(request: NextRequest) {
     if (!challengeCookie) return fail('Sesión expirada. Intenta nuevamente.', 400);
 
     const challenge = await verifyChallengeCookie(challengeCookie);
-    if (!challenge || challenge.type !== 'authenticate') {
-      return fail('Challenge inválido o expirado.', 400);
-    }
+    if (!challenge || challenge.type !== 'authenticate') return fail('Challenge inválido o expirado.', 400);
 
     const body = (await request.json()) as AuthenticationResponseJSON;
-    const credentialId = body.id;
-
-    const stored = await getPasskeyById(credentialId);
+    const stored = await getPasskeyById(body.id);
     if (!stored) return fail('Passkey no reconocida.');
 
-    const rpID = getRpId(request);
-    const origin = getOrigin(request);
+    if (challenge.email && challenge.email.toLowerCase() !== stored.user_email.toLowerCase()) {
+      return fail('La passkey no corresponde al usuario solicitado.', 403);
+    }
 
     const verification = await verifyAuthenticationResponse({
       response: body,
       expectedChallenge: challenge.ch,
-      expectedOrigin: origin,
-      expectedRPID: [rpID],
+      expectedOrigin: getOrigin(request),
+      expectedRPID: [getRpId(request)],
       credential: {
         id: stored.id,
         publicKey: new Uint8Array(Buffer.from(stored.public_key, 'base64url')),
@@ -88,30 +74,23 @@ export async function POST(request: NextRequest) {
 
     if (!verification.verified) return fail('Autenticación biométrica fallida.');
 
-    // Persist the updated counter (replay-attack protection).
-    await updatePasskeyCounter(credentialId, verification.authenticationInfo.newCounter);
+    await updatePasskeyCounter(stored.id, verification.authenticationInfo.newCounter);
 
-    // Resolve the admin's role and tenant from admin_users.
-    const email = stored.user_email;
     const tenantId = stored.tenant_id ?? DEFAULT_TENANT_ID;
-
-    type AdminRow = { rol?: string; aprobado?: boolean };
-    const { data: rows } = await insforgeAdmin.database
+    const { data: rows, error } = await insforgeAdmin.database
       .from('admin_users')
       .select('rol, aprobado')
-      .eq('email', email)
+      .eq('email', stored.user_email)
       .eq('tenant_id', tenantId)
       .limit(1);
 
-    const adminRow = (rows?.[0] as AdminRow | undefined);
-    if (!adminRow) return fail('Usuario no autorizado.', 403);
-    if (adminRow.aprobado === false) {
-      return fail('Tu cuenta está pendiente de aprobación.', 403);
-    }
+    if (error) return fail('No se pudo validar el usuario administrador.', 500);
+    const admin = rows?.[0] as AdminRow | undefined;
+    if (!admin) return fail('Usuario no autorizado.', 403);
+    if (admin.aprobado === false) return fail('Tu cuenta está pendiente de aprobación.', 403);
 
-    const rol = (adminRow.rol ?? 'admin') as 'superadmin' | 'admin' | 'viewer';
-    const sessionValue = await createPasskeySession(email, rol, tenantId);
-
+    const rol = (admin.rol ?? 'admin') as 'superadmin' | 'admin' | 'viewer';
+    const sessionValue = await createPasskeySession(stored.user_email, rol, tenantId);
     await clearFailedAttempts(ip);
 
     const response = NextResponse.json({ ok: true });

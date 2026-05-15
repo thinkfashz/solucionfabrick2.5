@@ -5,20 +5,14 @@
  *  1. RP ID / origin resolution (honours WEBAUTHN_RP_ID env override)
  *  2. Short-lived challenge cookie (HMAC-signed, 2-minute TTL)
  *  3. InsForge CRUD for the admin_passkeys table
- *
- * The challenge is stored in a signed httpOnly cookie (`pk_challenge`) so
- * no extra DB table is needed for ephemeral state. The HMAC key comes from
- * ADMIN_SESSION_SECRET — the same secret used by the session cookie.
  */
 import 'server-only';
 import { insforgeAdmin } from '@/lib/insforge';
 import { ADMIN_COOKIE_NAME, SESSION_COOKIE_OPTIONS, SESSION_TTL_MS, encodeSession } from '@/lib/adminAuth';
 
 export const RP_NAME = 'Soluciones Fabrick Admin';
-const CHALLENGE_TTL_MS = 2 * 60 * 1000; // 2 minutes
+const CHALLENGE_TTL_MS = 2 * 60 * 1000;
 export const CHALLENGE_COOKIE_NAME = 'pk_challenge';
-
-// ── RP / origin resolution ───────────────────────────────────────────────────
 
 export function getRpId(request: Request): string {
   const explicit = (process.env.WEBAUTHN_RP_ID ?? process.env.NEXT_PUBLIC_DOMAIN ?? '').trim();
@@ -35,13 +29,11 @@ export function getOrigin(request: Request): string {
   } catch { return 'http://localhost:3001'; }
 }
 
-// ── Challenge cookie (HMAC-signed) ───────────────────────────────────────────
-
 export interface ChallengePayload {
-  ch: string;    // base64url challenge value (from simplewebauthn)
+  ch: string;
   type: 'register' | 'authenticate';
   email?: string;
-  exp: number;   // unix ms
+  exp: number;
 }
 
 async function getChallengeKey(): Promise<CryptoKey> {
@@ -95,13 +87,11 @@ export const CLEAR_CHALLENGE_OPTIONS = {
   expires: new Date(0),
 };
 
-// ── Stored passkey shape ─────────────────────────────────────────────────────
-
 export interface StoredPasskey {
-  id: string;           // base64url credential ID
+  id: string;
   user_email: string;
   tenant_id: string;
-  public_key: string;   // COSE key, base64url-encoded
+  public_key: string;
   counter: number;
   device_type: string;
   backed_up: boolean;
@@ -111,8 +101,6 @@ export interface StoredPasskey {
   created_at: string;
   last_used_at: string | null;
 }
-
-// ── DB helpers ───────────────────────────────────────────────────────────────
 
 export async function getPasskeysForUser(email: string, tenantId: string): Promise<StoredPasskey[]> {
   try {
@@ -147,10 +135,11 @@ export async function savePasskey(passkey: Omit<StoredPasskey, 'last_used_at'>):
 }
 
 export async function updatePasskeyCounter(credentialId: string, newCounter: number): Promise<void> {
-  await insforgeAdmin.database
+  const { error } = await insforgeAdmin.database
     .from('admin_passkeys')
     .update({ counter: newCounter, last_used_at: new Date().toISOString() })
     .eq('id', credentialId);
+  if (error) throw new Error(`Failed to update passkey counter: ${error.message}`);
 }
 
 export async function deletePasskey(credentialId: string, email: string, tenantId: string): Promise<boolean> {
@@ -175,12 +164,6 @@ export async function renamePasskey(credentialId: string, email: string, tenantI
   return true;
 }
 
-// ── Session creation (passkey-verified login) ────────────────────────────────
-
-/**
- * Creates a signed admin session for the given email after a verified passkey assertion.
- * Returns the cookie value string; the caller must set the cookie in the response.
- */
 export async function createPasskeySession(
   email: string,
   rol: 'superadmin' | 'admin' | 'viewer',

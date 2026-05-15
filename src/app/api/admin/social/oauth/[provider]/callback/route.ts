@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import crypto from 'node:crypto';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { getAdminSecretString } from '@/lib/adminAuth';
 import { encryptCredentials } from '@/lib/integrationsCrypto';
 
 export const dynamic = 'force-dynamic';
@@ -33,7 +34,7 @@ function verifyState(provider: string, request: NextRequest, state: string | nul
   if (cookie.value !== state) return false;
   const [nonce, sig] = state.split('.');
   if (!nonce || !sig) return false;
-  const secret = process.env.ADMIN_SESSION_SECRET || 'dev-only-not-secret';
+  const secret = getAdminSecretString();
   const expected = crypto.createHmac('sha256', secret).update(nonce).digest('hex').slice(0, 32);
   return crypto.timingSafeEqual(Buffer.from(sig, 'hex'), Buffer.from(expected, 'hex'));
 }

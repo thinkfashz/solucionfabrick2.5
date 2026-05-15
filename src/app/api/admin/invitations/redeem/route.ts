@@ -93,11 +93,13 @@ export async function POST(request: Request) {
     if (apiKey) {
       const safeEmail = inviteeEmail.replace(/'/g, "''");
       const safeNombre = (nombre || inviteeEmail.split('@')[0]).replace(/'/g, "''");
+      const allowedRoles = ['admin', 'viewer', 'superadmin'];
+      const safeRol = allowedRoles.includes(invitation.rol) ? invitation.rol : 'admin';
       await fetch(`${baseUrl}/api/database/advance/rawsql/unrestricted`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
         body: JSON.stringify({
-          query: `INSERT INTO public.admin_users (email, nombre, rol, aprobado) VALUES ('${safeEmail}', '${safeNombre}', '${invitation.rol}', true) ON CONFLICT (email) DO UPDATE SET rol = '${invitation.rol}', aprobado = true`,
+          query: `INSERT INTO public.admin_users (email, nombre, rol, aprobado) VALUES ('${safeEmail}', '${safeNombre}', '${safeRol}', true) ON CONFLICT (email) DO UPDATE SET rol = '${safeRol}', aprobado = true`,
         }),
         signal: AbortSignal.timeout(10_000),
       }).catch(() => null);

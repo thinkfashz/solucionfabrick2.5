@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import crypto from 'node:crypto';
 import { adminUnauthorized, getAdminSession } from '@/lib/adminApi';
+import { getAdminSecretString } from '@/lib/adminAuth';
 import {
   buildAuthorizeUrl,
   generatePkcePair,
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
   // step, an attacker who somehow forced a value into the cookie could
   // pass the equality check.
   const nonce = crypto.randomBytes(16).toString('hex');
-  const secret = process.env.ADMIN_SESSION_SECRET || 'dev-only-not-secret';
+  const secret = getAdminSecretString();
   const sig = crypto.createHmac('sha256', secret).update(nonce).digest('hex').slice(0, 32);
   const state = `${nonce}.${sig}`;
 

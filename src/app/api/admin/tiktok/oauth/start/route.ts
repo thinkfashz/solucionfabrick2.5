@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminUnauthorized, getAdminSession } from '@/lib/adminApi';
+import { getAdminSecretString } from '@/lib/adminAuth';
 import { buildAuthorizeUrl, getTikTokAppId, signState } from '@/lib/tiktokOAuth';
 
 export const dynamic = 'force-dynamic';
@@ -45,7 +46,7 @@ export async function GET(request: NextRequest) {
 		);
 	}
 
-	const secret = process.env.ADMIN_SESSION_SECRET || 'dev-only-not-secret';
+	const secret = getAdminSecretString();
 	const state = signState(secret);
 	const authorizeUrl = buildAuthorizeUrl({
 		appId,

@@ -100,6 +100,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
   {
     title: 'Seguridad & Claves',
     links: [
+      { href: '/admin/seguridad', label: 'Seguridad · Passkeys', description: 'Acceso con huella digital o Face ID', icon: ShieldCheck, highlight: true },
       { href: '/admin/center', label: 'Centro de integración', description: 'Credenciales, claves API y encriptación de proveedores', icon: KeyRound, highlight: true },
       { href: '/admin/extensions', label: 'Extensiones y Webhooks', description: 'Snippets, webhooks, OAuth y signing keys', icon: Plug, highlight: true },
       { href: '/admin/facturas', label: 'Facturas DTE', description: 'Documentos tributarios y SII', icon: Receipt },
@@ -163,6 +164,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/vercel-logs': 'Logs de Vercel',
   '/admin/monitor': 'Monitor del sistema',
   '/admin/testing': 'Testing',
+  '/admin/seguridad': 'Seguridad · Passkeys',
   '/admin/center': 'Centro de integración',
   '/admin/extensions': 'Extensiones y Webhooks',
   '/admin/facturas': 'Facturas DTE',

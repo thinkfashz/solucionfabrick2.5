@@ -230,7 +230,7 @@ export async function middleware(request: NextRequest) {
   if (!isPlatformHost(hostname) && tenantSlug !== DEFAULT_TENANT_SLUG && tenantId) {
     response.cookies.set(CUSTOM_DOMAIN_CACHE_COOKIE,
       JSON.stringify({ slug: tenantSlug, id: tenantId, status: tenantStatus }),
-      { httpOnly: true, sameSite: 'lax', maxAge: CUSTOM_DOMAIN_CACHE_TTL, path: '/' }
+      { httpOnly: true, secure: process.env.NODE_ENV === 'production', sameSite: 'lax', maxAge: CUSTOM_DOMAIN_CACHE_TTL, path: '/' }
     )
   }
 

@@ -5,8 +5,8 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowUpRight, AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
-  Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Stethoscope, Store, Terminal,
+  ArrowUpRight, AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, Eye, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
+  Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Star, Stethoscope, Store, Tag, Terminal,
   TrendingDown, Truck, Telescope, Users, Wallet, X, Zap, Plus, MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
@@ -42,6 +42,8 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/inventario', label: 'Inventario', description: 'Stock, escáner y movimientos de bodega', icon: Scan },
       { href: '/admin/inventario/scan', label: 'Escáner de inventario', description: 'Lectura de códigos de barras y QR', icon: Scan },
       { href: '/admin/clientes', label: 'Clientes', description: 'Historial y recurrencia', icon: Users },
+      { href: '/admin/cupones', label: 'Cupones y Descuentos', description: 'Códigos de descuento y promociones', icon: Tag, highlight: true },
+      { href: '/admin/reviews', label: 'Reseñas', description: 'Opiniones y valoraciones de clientes', icon: Star, highlight: true },
       { href: '/admin/reportes', label: 'Reportes', description: 'Ventas y métricas', icon: BarChart3 },
     ],
   },
@@ -122,6 +124,8 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/asistente-ia': 'Asistente IA',
   '/admin/entregas': 'Entregas',
   '/admin/clientes': 'Clientes',
+  '/admin/cupones': 'Cupones y Descuentos',
+  '/admin/reviews': 'Reseñas de Clientes',
   '/admin/reportes': 'Reportes',
   '/admin/publicidad': 'Publicidad',
   '/admin/publicidad/nuevo': 'Nueva campaña',
@@ -297,10 +301,17 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, now, centered = 
           <div className={centered ? 'w-full' : 'min-w-0 flex-1'}>
             <p className={`font-playfair text-[11px] font-black leading-none tracking-[0.28em] text-yellow-300 ${centered ? 'text-center' : ''}`}>SOLUCIONES FABRICK</p>
             <div className={`mt-1.5 flex flex-wrap gap-1.5 ${centered ? 'justify-center' : 'items-center'}`}>
-              <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.22em] text-emerald-300">
-                <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
-                {role === 'superadmin' ? 'Superadmin' : 'Admin'}
-              </span>
+              {role === 'viewer' ? (
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.22em] text-amber-300">
+                  <Eye className="h-2.5 w-2.5" />
+                  Modo Demo
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.22em] text-emerald-300">
+                  <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
+                  {role === 'superadmin' ? 'Superadmin' : 'Admin'}
+                </span>
+              )}
               {now ? (
                 <span className="font-mono text-[9.5px] tabular-nums text-white/50">
                   {now.toLocaleTimeString('es-CL', { hour12: false })}
@@ -619,6 +630,13 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
         {/* Main content */}
         <main className="relative min-w-0 overflow-hidden">
+          {role === 'viewer' && (
+            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/[0.08] px-5 py-3.5">
+              <Eye className="h-4 w-4 shrink-0 text-amber-400" />
+              <span className="text-[12px] font-bold uppercase tracking-[0.18em] text-amber-300">Modo Demo · Solo lectura</span>
+              <span className="text-xs text-amber-300/55">Los cambios que intentes no se guardan en la base de datos · Expira en 24 h</span>
+            </div>
+          )}
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={pathname}

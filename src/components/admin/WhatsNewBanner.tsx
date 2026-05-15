@@ -10,11 +10,23 @@ import { Sparkles, X, ArrowRight } from 'lucide-react';
  * banner volverá a aparecer aunque el usuario lo haya descartado en versiones
  * previas.
  */
-const WHATS_NEW_VERSION = '2026-05-06';
+const WHATS_NEW_VERSION = '2026-05-15';
 
-type Item = { href?: string; title: string; description: string };
+type Item = { href?: string; title: string; description: string; badge?: string };
 
 const ITEMS: Item[] = [
+  {
+    href: '/admin/equipo',
+    title: 'Acceso Demo · 24 h',
+    description: 'Genera un link temporal (sin cuenta real) para mostrar el panel a clientes o inversores. Solo lectura, expira solo.',
+    badge: 'Nuevo',
+  },
+  {
+    href: '/admin/equipo',
+    title: 'Invitaciones por link',
+    description: 'Invita personas al equipo con un link directo. Crean su propia contraseña y quedan aprobadas automáticamente.',
+    badge: 'Nuevo',
+  },
   {
     href: '/admin/inteligencia-mercado',
     title: 'Inteligencia de mercado',
@@ -24,16 +36,6 @@ const ITEMS: Item[] = [
     href: '/admin/asistente-ia',
     title: 'Asistente IA (OpenRouter)',
     description: 'Chat con modelos gratis y de pago, capaz de leer el código del repo.',
-  },
-  {
-    href: '/admin/newsletter',
-    title: 'Boletín programable',
-    description: 'Suscriptores, campañas y envío diario automático vía Resend.',
-  },
-  {
-    href: '/admin/presupuestos',
-    title: 'Presupuestos · 5 días',
-    description: 'Genera links autodestruibles y envíalos al cliente por email.',
   },
 ];
 
@@ -92,7 +94,14 @@ export default function WhatsNewBanner() {
             {ITEMS.map((it) => {
               const inner = (
                 <>
-                  <span className="font-semibold text-white">{it.title}</span>
+                  <span className="flex items-center gap-2">
+                    <span className="font-semibold text-white">{it.title}</span>
+                    {it.badge && (
+                      <span className="inline-flex items-center rounded-full border border-yellow-300/40 bg-yellow-300/15 px-1.5 py-px text-[8px] font-black uppercase tracking-[0.18em] text-yellow-200">
+                        {it.badge}
+                      </span>
+                    )}
+                  </span>
                   <span className="block text-[11px] text-zinc-400 mt-0.5">{it.description}</span>
                 </>
               );

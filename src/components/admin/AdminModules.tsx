@@ -1,23 +1,17 @@
-/**
- * Admin Module Cards - Animated module buttons for admin dashboard
- * Each module has hover animations, icons, and proper responsive design
- */
-
 'use client';
 
 import Link from 'next/link';
 import { motion, type Variants } from 'framer-motion';
 import {
-  Telescope,
+  Activity,
   BarChart3,
-  Settings,
-  FileText,
-  ShoppingCart,
-  MessageSquare,
-  Zap,
-  Package,
-  Users,
-  TrendingUp,
+  Database,
+  FileCheck2,
+  KeyRound,
+  LockKeyhole,
+  ShieldCheck,
+  Smartphone,
+  Terminal,
 } from 'lucide-react';
 
 interface AdminModule {
@@ -27,189 +21,150 @@ interface AdminModule {
   href: string;
   icon: React.ReactNode;
   color: string;
-  badge?: string;
-  status?: 'active' | 'new' | 'beta';
+  badge: string;
+  status: 'listo' | 'validar' | 'continuo';
 }
 
 const ADMIN_MODULES: AdminModule[] = [
   {
-    id: 'observatory',
-    title: 'Observatory',
-    description: 'Dashboard 3D en tiempo real de todos los servicios',
-    href: '/admin/observatory',
-    icon: <Telescope className="w-6 h-6" />,
-    color: 'from-yellow-400 to-orange-500',
-    badge: 'LIVE',
-    status: 'active',
+    id: 'modulo-1-env',
+    title: 'Módulo 1 · Entorno seguro',
+    description: 'Variables críticas, credenciales InsForge, dominio y estado de conexión antes de producción.',
+    href: '/admin/activar',
+    icon: <KeyRound className="w-6 h-6" />,
+    color: 'from-yellow-400 to-amber-600',
+    badge: 'SEGURIDAD',
+    status: 'validar',
   },
   {
-    id: 'dashboard',
-    title: 'Dashboard',
-    description: 'Métricas, gráficos y análisis en tiempo real',
+    id: 'modulo-2-sesion',
+    title: 'Módulo 2 · Sesión admin',
+    description: 'Login, cookies httpOnly, secreto de sesión, roles y protección de acceso al panel.',
+    href: '/admin/equipo',
+    icon: <LockKeyhole className="w-6 h-6" />,
+    color: 'from-rose-400 to-red-600',
+    badge: 'ACCESO',
+    status: 'continuo',
+  },
+  {
+    id: 'modulo-3-rate-limit',
+    title: 'Módulo 3 · Rate limit',
+    description: 'Control de intentos, bloqueo temporal, errores admin y protección contra fuerza bruta.',
+    href: '/admin/errores',
+    icon: <Activity className="w-6 h-6" />,
+    color: 'from-orange-400 to-red-500',
+    badge: 'DEFENSA',
+    status: 'continuo',
+  },
+  {
+    id: 'modulo-4-validacion',
+    title: 'Módulo 4 · Validación API',
+    description: 'Validadores de payload, pruebas de endpoints y protección de datos antes de guardar.',
+    href: '/admin/testing',
+    icon: <FileCheck2 className="w-6 h-6" />,
+    color: 'from-sky-400 to-blue-600',
+    badge: 'API',
+    status: 'continuo',
+  },
+  {
+    id: 'modulo-5-passkeys',
+    title: 'Módulo 5 · Huella / Face ID',
+    description: 'Registro de dispositivos, passkeys WebAuthn y login biométrico real desde /admin/login.',
+    href: '/admin/seguridad',
+    icon: <Smartphone className="w-6 h-6" />,
+    color: 'from-emerald-400 to-green-600',
+    badge: 'MÓDULO 7',
+    status: 'listo',
+  },
+  {
+    id: 'modulo-6-base-datos',
+    title: 'Módulo 6 · Base de datos',
+    description: 'Tablas InsForge, migración admin_passkeys y terminal SQL para reparar estructura.',
+    href: '/admin/sql',
+    icon: <Database className="w-6 h-6" />,
+    color: 'from-purple-400 to-indigo-600',
+    badge: 'INSFORGE',
+    status: 'validar',
+  },
+  {
+    id: 'modulo-7-deploy',
+    title: 'Módulo 7 · Deploy estable',
+    description: 'Logs de Vercel, build, TypeScript, PR y cierre controlado antes de pasar a main.',
+    href: '/admin/vercel-logs',
+    icon: <Terminal className="w-6 h-6" />,
+    color: 'from-zinc-300 to-zinc-600',
+    badge: 'VERCEL',
+    status: 'validar',
+  },
+  {
+    id: 'control-general',
+    title: 'Centro de control',
+    description: 'Dashboard general con KPIs, ventas, pedidos, inventario y salud operativa.',
     href: '/admin',
     icon: <BarChart3 className="w-6 h-6" />,
-    color: 'from-blue-400 to-cyan-500',
-  },
-  {
-    id: 'blog',
-    title: 'Blog',
-    description: 'Subir, editar y moderar artículos Markdown',
-    href: '/admin/blog',
-    icon: <FileText className="w-6 h-6" />,
-    color: 'from-green-400 to-emerald-500',
-  },
-  {
-    id: 'cms',
-    title: 'CMS Editor',
-    description: 'Editar contenido dinámico de todas las páginas',
-    href: '/admin/home',
-    icon: <Settings className="w-6 h-6" />,
-    color: 'from-purple-400 to-pink-500',
-  },
-  {
-    id: 'products',
-    title: 'Catálogo',
-    description: 'Gestionar productos, precios y stock',
-    href: '/admin/products',
-    icon: <Package className="w-6 h-6" />,
-    color: 'from-red-400 to-rose-500',
-    status: 'new',
-  },
-  {
-    id: 'orders',
-    title: 'Pedidos',
-    description: 'Ver y gestionar órdenes de tienda',
-    href: '/admin/orders',
-    icon: <ShoppingCart className="w-6 h-6" />,
-    color: 'from-indigo-400 to-blue-500',
-  },
-  {
-    id: 'comments',
-    title: 'Comentarios',
-    description: 'Moderar comentarios del blog',
-    href: '/admin/blog/comments',
-    icon: <MessageSquare className="w-6 h-6" />,
-    color: 'from-teal-400 to-green-500',
-  },
-  {
-    id: 'analytics',
-    title: 'Analytics',
-    description: 'Datos, conversiones y comportamiento de usuarios',
-    href: '/admin/analytics',
-    icon: <TrendingUp className="w-6 h-6" />,
-    color: 'from-amber-400 to-yellow-500',
+    color: 'from-blue-400 to-cyan-600',
+    badge: 'DASHBOARD',
+    status: 'continuo',
   },
 ];
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
-  visible: {
-    opacity: 1,
-    transition: {
-      staggerChildren: 0.05,
-      delayChildren: 0.1,
-    },
-  },
+  visible: { opacity: 1, transition: { staggerChildren: 0.05, delayChildren: 0.08 } },
 };
 
 const itemVariants: Variants = {
-  hidden: { opacity: 0, y: 20 },
-  visible: {
-    opacity: 1,
-    y: 0,
-    transition: {
-      duration: 0.4,
-      ease: 'easeOut',
-    },
-  },
+  hidden: { opacity: 0, y: 18 },
+  visible: { opacity: 1, y: 0, transition: { duration: 0.35, ease: 'easeOut' } },
 };
 
-const hoverVariants: Variants = {
-  rest: { scale: 1, y: 0 },
-  hover: {
-    scale: 1.03,
-    y: -4,
-    transition: { duration: 0.2, ease: 'easeOut' },
-  },
-};
+const statusClass = {
+  listo: 'border-emerald-400/40 bg-emerald-400/10 text-emerald-200',
+  validar: 'border-yellow-400/40 bg-yellow-400/10 text-yellow-200',
+  continuo: 'border-sky-400/40 bg-sky-400/10 text-sky-200',
+} as const;
 
 export function AdminModules() {
   return (
     <motion.div
-      className="grid gap-3 sm:gap-4 md:gap-5 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 auto-rows-max"
+      className="grid gap-4 grid-cols-1 sm:grid-cols-2 xl:grid-cols-4"
       variants={containerVariants}
       initial="hidden"
       animate="visible"
     >
       {ADMIN_MODULES.map((module) => (
         <motion.div key={module.id} variants={itemVariants}>
-          <Link href={module.href}>
+          <Link href={module.href} className="block h-full">
             <motion.div
-              className={`relative h-full rounded-xl sm:rounded-2xl border border-white/10 
-                bg-gradient-to-br ${module.color} p-4 sm:p-5 md:p-6 
-                backdrop-blur-sm overflow-hidden group transition-all duration-300 
-                hover:border-white/20 hover:shadow-lg
-                ${
-                  module.status === 'active'
-                    ? 'ring-2 ring-green-400/30'
-                    : module.status === 'new'
-                      ? 'ring-2 ring-blue-400/30'
-                      : ''
-                }`}
-              variants={hoverVariants}
-              initial="rest"
-              whileHover="hover"
+              className={`relative h-full min-h-[230px] overflow-hidden rounded-3xl border border-white/10 bg-gradient-to-br ${module.color} p-5 shadow-lg transition hover:border-white/25 hover:shadow-[0_24px_70px_rgba(0,0,0,0.35)]`}
+              whileHover={{ scale: 1.025, y: -4 }}
+              transition={{ duration: 0.18 }}
             >
-              {/* Background glow */}
-              <div className="absolute inset-0 opacity-0 group-hover:opacity-10 bg-white transition-opacity duration-300" />
-
-              {/* Status badge */}
-              {module.badge && (
-                <motion.div
-                  className="absolute top-2 sm:top-3 right-2 sm:right-3"
-                  animate={{ y: [0, -3, 0] }}
-                  transition={{ duration: 2, repeat: Infinity }}
-                >
-                  <span className="inline-block px-2.5 sm:px-3 py-1 text-xs font-black uppercase 
-                    tracking-wider text-black bg-yellow-400 rounded-full">
-                    {module.badge}
-                  </span>
-                </motion.div>
-              )}
-
-              {/* Icon container */}
-              <div className="mb-3 sm:mb-4 flex h-10 sm:h-12 w-10 sm:w-12 items-center justify-center 
-                rounded-lg bg-white/10 group-hover:bg-white/20 transition-colors duration-300">
-                <div className="text-white drop-shadow-lg">{module.icon}</div>
-              </div>
-
-              {/* Title */}
-              <h3 className="font-black text-sm sm:text-base md:text-lg text-white mb-1 sm:mb-2 
-                line-clamp-2 group-hover:text-yellow-100 transition-colors duration-300">
-                {module.title}
-              </h3>
-
-              {/* Description */}
-              <p className="text-xs sm:text-sm text-white/70 line-clamp-2 sm:line-clamp-3 
-                group-hover:text-white/85 transition-colors duration-300">
-                {module.description}
-              </p>
-
-              {/* Bottom indicator */}
-              <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-white/0 via-white/40 to-white/0 
-                opacity-0 group-hover:opacity-100 transition-opacity duration-300" />
-
-              {/* Arrow on hover */}
-              <motion.div
-                className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100"
-                initial={{ x: -4, opacity: 0 }}
-                whileHover={{ x: 0, opacity: 1 }}
-                transition={{ duration: 0.2 }}
-              >
-                <div className="w-6 h-6 sm:w-7 sm:h-7 rounded-full bg-white/20 flex items-center justify-center">
-                  <span className="text-xs font-bold text-white">→</span>
+              <div className="absolute inset-0 bg-black/30" />
+              <div className="absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-white/60 to-transparent" />
+              <div className="relative z-10 flex h-full flex-col">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-white/15 text-white ring-1 ring-white/20">
+                    {module.icon}
+                  </div>
+                  <div className="flex flex-col items-end gap-2">
+                    <span className="rounded-full border border-white/25 bg-black/25 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-white">
+                      {module.badge}
+                    </span>
+                    <span className={`rounded-full border px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.16em] ${statusClass[module.status]}`}>
+                      {module.status}
+                    </span>
+                  </div>
                 </div>
-              </motion.div>
+                <div className="mt-6 flex-1">
+                  <h3 className="text-lg font-black leading-tight text-white sm:text-xl">{module.title}</h3>
+                  <p className="mt-3 text-sm leading-relaxed text-white/78">{module.description}</p>
+                </div>
+                <div className="mt-5 flex items-center justify-between border-t border-white/15 pt-4">
+                  <span className="text-[10px] font-black uppercase tracking-[0.22em] text-white/70">Abrir módulo</span>
+                  <span className="flex h-8 w-8 items-center justify-center rounded-full bg-white/15 text-white">→</span>
+                </div>
+              </div>
             </motion.div>
           </Link>
         </motion.div>
@@ -217,3 +172,5 @@ export function AdminModules() {
     </motion.div>
   );
 }
+
+export default AdminModules;

@@ -3,6 +3,7 @@ import type { NextRequest } from 'next/server';
 import { adminError, adminUnauthorized, getAdminSession } from '@/lib/adminApi';
 import { createMaterial, getMaterials, BudgetError } from '@/lib/budget';
 import { publishCmsEvent } from '@/lib/cmsBus';
+import { v, parse, validationError } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,23 +20,42 @@ export async function GET(request: NextRequest) {
   }
 }
 
+const materialSchema = {
+  name:        v.string({ required: true, min: 1, max: 200 }),
+  description: v.string({ max: 1000 }),
+  category:    v.string({ max: 100 }),
+  unit:        v.string({ max: 50 }),
+  price:       v.number({ min: 0 }),
+  image_url:   v.string({ max: 500 }),
+  active:      v.boolean(),
+  stock:       v.number({ min: 0 }),
+  position:    v.number({ min: 0 }),
+};
+
 /** POST /api/admin/materials — create a new material. */
 export async function POST(request: NextRequest) {
   try {
     const session = await getAdminSession(request);
     if (!session) return adminUnauthorized();
 
-    const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
+    const raw = await request.json().catch(() => ({}));
+    const parsed = parse(materialSchema, raw);
+    if (!parsed.ok) return validationError(parsed.errors);
+    const d = parsed.data as {
+      name: string; description?: string; category?: string; unit?: string;
+      price?: number; image_url?: string; active?: boolean; stock?: number; position?: number;
+    };
+
     const created = await createMaterial({
-      name: String(body.name ?? ''),
-      description: typeof body.description === 'string' ? body.description : null,
-      category: String(body.category ?? 'obra-gruesa'),
-      unit: String(body.unit ?? 'unidad'),
-      price: Number(body.price ?? 0),
-      image_url: typeof body.image_url === 'string' ? body.image_url : null,
-      active: body.active === undefined ? true : Boolean(body.active),
-      stock: body.stock === undefined || body.stock === null ? null : Number(body.stock),
-      position: body.position === undefined ? 0 : Number(body.position),
+      name:        d.name,
+      description: d.description ?? null,
+      category:    d.category ?? 'obra-gruesa',
+      unit:        d.unit ?? 'unidad',
+      price:       d.price ?? 0,
+      image_url:   d.image_url ?? null,
+      active:      d.active ?? true,
+      stock:       d.stock ?? null,
+      position:    d.position ?? 0,
     });
 
     publishCmsEvent({

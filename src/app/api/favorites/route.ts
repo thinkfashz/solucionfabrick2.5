@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getInsforgeUserFromRequest } from '@/lib/insforgeAuth';
 import { listFavoritesForUser, toggleFavorite } from '@/lib/favorites';
+import { v, parse, validationError } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -52,14 +53,10 @@ export async function POST(request: NextRequest) {
         { status: 401, headers: NO_STORE },
       );
     }
-    const body = (await request.json().catch(() => ({}))) as { productId?: unknown };
-    const productId = typeof body.productId === 'string' ? body.productId.trim() : '';
-    if (!productId) {
-      return NextResponse.json(
-        { error: 'productId requerido.', code: 'BAD_REQUEST' },
-        { status: 400, headers: NO_STORE },
-      );
-    }
+    const raw = await request.json().catch(() => ({}));
+    const parsed = parse({ productId: v.string({ required: true, min: 1, max: 255 }) }, raw);
+    if (!parsed.ok) return validationError(parsed.errors);
+    const productId = parsed.data.productId as string;
     const result = await toggleFavorite(user.id, productId);
     return NextResponse.json(result, { headers: NO_STORE });
   } catch (err) {

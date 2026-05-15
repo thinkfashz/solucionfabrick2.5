@@ -1,9 +1,10 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { Resend } from 'resend';
-import { addSubscriber, buildUnsubscribeLink, isValidEmail, normalizeEmail } from '@/lib/newsletter';
+import { addSubscriber, buildUnsubscribeLink, normalizeEmail } from '@/lib/newsletter';
 import { getResendCredentials } from '@/lib/resendCredentials';
 import { insforgeAdmin } from '@/lib/insforge';
 import WelcomeEmail from '@/emails/WelcomeEmail';
+import { v, parse, validationError } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -75,20 +76,18 @@ async function recordSent(email: string): Promise<void> {
  * la idempotencia evita abuso: cada email recibe a lo sumo un correo
  * de bienvenida cada 24h.
  */
-export async function POST(request: NextRequest) {
-  let body: WelcomeBody;
-  try {
-    body = (await request.json()) as WelcomeBody;
-  } catch {
-    return NextResponse.json({ error: 'Cuerpo inválido (JSON requerido).' }, { status: 400 });
-  }
+const welcomeSchema = {
+  email: v.email({ required: true, max: 255 }),
+  name:  v.string({ max: 200 }),
+};
 
-  const rawEmail = typeof body.email === 'string' ? body.email : '';
-  const email = normalizeEmail(rawEmail);
-  if (!isValidEmail(email)) {
-    return NextResponse.json({ error: 'Email inválido.' }, { status: 400 });
-  }
-  const name = typeof body.name === 'string' ? body.name.trim().slice(0, 200) || null : null;
+export async function POST(request: NextRequest) {
+  const raw = await request.json().catch(() => ({}));
+  const result = parse(welcomeSchema, raw);
+  if (!result.ok) return validationError(result.errors);
+
+  const email = normalizeEmail(result.data.email as string);
+  const name  = (result.data.name as string | undefined) ?? null;
 
   const subscription = await addSubscriber({ email, name, source: 'signup' });
 

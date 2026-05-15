@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { insforge } from '@/lib/insforge';
 import { getResendCredentials } from '@/lib/resendCredentials';
+import { v, parse, validationError } from '@/lib/validate';
 
 /**
  * POST /api/leads  — Store contact/quote requests from the public contact form.
@@ -24,30 +25,15 @@ import { getResendCredentials } from '@/lib/resendCredentials';
  *  - `RESEND_FROM` — opcional; default sandbox `onboarding@resend.dev`
  */
 
-interface LeadBody {
-  nombre?: string;
-  email?: string;
-  telefono?: string;
-  tipo_proyecto?: string;
-  mensaje?: string;
-}
-
-const MAX = {
-  nombre: 255,
-  email: 255,
-  telefono: 20,
-  tipo_proyecto: 100,
-  mensaje: 2000,
-};
-
 const DEFAULT_FROM = 'Soluciones Fabrick <onboarding@resend.dev>';
 
-function sanitize(value: unknown, max: number): string | undefined {
-  if (typeof value !== 'string') return undefined;
-  const trimmed = value.trim();
-  if (!trimmed) return undefined;
-  return trimmed.slice(0, max);
-}
+const leadsSchema = {
+  nombre:        v.string({ required: true, min: 1, max: 255 }),
+  email:         v.email({ required: true, max: 255 }),
+  telefono:      v.string({ max: 20 }),
+  tipo_proyecto: v.string({ max: 100 }),
+  mensaje:       v.string({ max: 2000 }),
+};
 
 function escapeHtml(s: string): string {
   return s
@@ -120,36 +106,29 @@ async function notifyAdminByEmail(lead: NotifyPayload): Promise<void> {
 }
 
 export async function POST(request: Request) {
-  let body: LeadBody = {};
+  let raw: Record<string, unknown> = {};
   try {
     const contentType = request.headers.get('content-type') || '';
     if (contentType.includes('application/json')) {
-      body = (await request.json()) as LeadBody;
+      raw = (await request.json()) as Record<string, unknown>;
     } else if (contentType.includes('form')) {
       const form = await request.formData();
-      body = Object.fromEntries(form.entries()) as unknown as LeadBody;
+      raw = Object.fromEntries(form.entries()) as Record<string, unknown>;
     }
   } catch {
     return NextResponse.json({ error: 'Formato de solicitud inválido.' }, { status: 400 });
   }
 
-  const nombre = sanitize(body.nombre, MAX.nombre);
-  const email = sanitize(body.email, MAX.email);
-  const telefono = sanitize(body.telefono, MAX.telefono);
-  const tipo_proyecto = sanitize(body.tipo_proyecto, MAX.tipo_proyecto);
-  const mensaje = sanitize(body.mensaje, MAX.mensaje);
+  const result = parse(leadsSchema, raw);
+  if (!result.ok) return validationError(result.errors);
 
-  if (!nombre || !email) {
-    return NextResponse.json(
-      { error: 'Nombre y correo son obligatorios.' },
-      { status: 400 },
-    );
-  }
-
-  // Very light e-mail shape check (no regex runaway).
-  if (!/^\S+@\S+\.\S+$/.test(email)) {
-    return NextResponse.json({ error: 'El correo no parece válido.' }, { status: 400 });
-  }
+  const { nombre, email, telefono, tipo_proyecto, mensaje } = result.data as {
+    nombre: string;
+    email: string;
+    telefono?: string;
+    tipo_proyecto?: string;
+    mensaje?: string;
+  };
 
   const payload = {
     nombre,

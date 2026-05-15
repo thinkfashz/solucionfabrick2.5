@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { saveBudget, BudgetError } from '@/lib/budget';
 import { getInsforgeUserFromRequest } from '@/lib/insforgeAuth';
+import { v, parse, validationError } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -30,19 +31,26 @@ interface IncomingItem {
   meta?: Record<string, unknown>;
 }
 
+const cotizacionSchema = {
+  items: v.array({ required: true, maxItems: 200 }),
+  customer: v.object({
+    shape: {
+      name:   v.string({ max: 200 }),
+      email:  v.email({ max: 255 }),
+      phone:  v.string({ max: 30 }),
+      region: v.string({ max: 100 }),
+      notes:  v.string({ max: 1000 }),
+    },
+  }),
+};
+
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json().catch(() => ({}))) as {
-      items?: IncomingItem[];
-      customer?: {
-        name?: string;
-        email?: string;
-        phone?: string;
-        region?: string;
-        notes?: string;
-      };
-    };
+    const raw = await request.json().catch(() => ({}));
+    const result = parse(cotizacionSchema, raw);
+    if (!result.ok) return validationError(result.errors);
 
+    const body = result.data as { items: IncomingItem[]; customer?: Record<string, string> };
     const items = Array.isArray(body.items) ? body.items : [];
     if (items.length === 0) {
       return NextResponse.json(

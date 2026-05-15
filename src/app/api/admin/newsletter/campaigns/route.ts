@@ -1,17 +1,17 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
 import type { NewsletterCampaignRow } from '@/lib/newsletter';
+import { v, parse, validationError } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-interface CreateBody {
-  subject?: unknown;
-  body_md?: unknown;
-  preview_text?: unknown;
-  /** ISO timestamp; si se omite el campaign queda como draft. */
-  scheduled_at?: unknown;
-}
+const campaignSchema = {
+  subject:      v.string({ required: true, min: 1, max: 200 }),
+  body_md:      v.string({ required: true, min: 1, max: 50000 }),
+  preview_text: v.string({ max: 200 }),
+  scheduled_at: v.string({ max: 50 }),
+};
 
 /** Lista campañas (más recientes primero). */
 export async function GET(request: NextRequest) {
@@ -39,27 +39,21 @@ export async function POST(request: NextRequest) {
   const session = await getAdminSession(request);
   if (!session) return adminUnauthorized();
 
-  let body: CreateBody;
-  try {
-    body = (await request.json()) as CreateBody;
-  } catch {
-    return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
-  }
+  const raw = await request.json().catch(() => ({}));
+  const result = parse(campaignSchema, raw);
+  if (!result.ok) return validationError(result.errors);
+  const d = result.data as {
+    subject: string; body_md: string; preview_text?: string; scheduled_at?: string;
+  };
 
-  const subject = typeof body.subject === 'string' ? body.subject.trim().slice(0, 200) : '';
-  const bodyMd = typeof body.body_md === 'string' ? body.body_md.trim() : '';
-  if (!subject) return NextResponse.json({ error: 'subject requerido' }, { status: 400 });
-  if (!bodyMd) return NextResponse.json({ error: 'body_md requerido' }, { status: 400 });
-  if (bodyMd.length > 50_000) {
-    return NextResponse.json({ error: 'body_md excede el máximo permitido (50000 chars)' }, { status: 400 });
-  }
-  const preview =
-    typeof body.preview_text === 'string' ? body.preview_text.trim().slice(0, 200) || null : null;
+  const subject = d.subject;
+  const bodyMd = d.body_md;
+  const preview = d.preview_text || null;
 
   let scheduledAt: string | null = null;
   let status: 'draft' | 'scheduled' = 'draft';
-  if (typeof body.scheduled_at === 'string' && body.scheduled_at.trim()) {
-    const dt = new Date(body.scheduled_at);
+  if (d.scheduled_at) {
+    const dt = new Date(d.scheduled_at);
     if (Number.isNaN(dt.getTime())) {
       return NextResponse.json({ error: 'scheduled_at no es una fecha válida' }, { status: 400 });
     }

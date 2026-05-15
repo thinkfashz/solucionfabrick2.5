@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { saveBudget, BudgetError } from '@/lib/budget';
 import { getInsforgeUserFromRequest } from '@/lib/insforgeAuth';
+import { v, parse, validationError } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -18,17 +19,31 @@ export const runtime = 'nodejs';
  *
  * Totals are recomputed server-side from the line items.
  */
+const quotesSchema = {
+  lines:            v.array({ required: true, maxItems: 200 }),
+  shippingCost:     v.number({ min: 0 }),
+  installationCost: v.number({ min: 0 }),
+  ivaRate:          v.number({ min: 0, max: 1 }),
+  customer: v.object({
+    shape: {
+      name:   v.string({ max: 200 }),
+      email:  v.email({ max: 255 }),
+      phone:  v.string({ max: 30 }),
+      region: v.string({ max: 100 }),
+      notes:  v.string({ max: 1000 }),
+    },
+  }),
+};
+
 export async function POST(request: NextRequest) {
   try {
-    const body = (await request.json().catch(() => ({}))) as {
-      lines?: unknown;
-      customer?: {
-        name?: string;
-        email?: string;
-        phone?: string;
-        region?: string;
-        notes?: string;
-      };
+    const raw = await request.json().catch(() => ({}));
+    const result = parse(quotesSchema, raw);
+    if (!result.ok) return validationError(result.errors);
+
+    const body = result.data as {
+      lines: unknown[];
+      customer?: Record<string, string>;
       shippingCost?: number;
       installationCost?: number;
       ivaRate?: number;

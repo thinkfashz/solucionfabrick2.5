@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { saveBudget, BudgetError } from '@/lib/budget';
 import { getInsforgeUserFromRequest } from '@/lib/insforgeAuth';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -19,6 +20,9 @@ export const runtime = 'nodejs';
  * Totals are recomputed server-side from the line items.
  */
 export async function POST(request: NextRequest) {
+  const rl = await checkRateLimit(request, RATE_LIMITS.quotes);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSecs);
+
   try {
     const body = (await request.json().catch(() => ({}))) as {
       lines?: unknown;

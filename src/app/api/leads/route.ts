@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { Resend } from 'resend';
 import { insforge } from '@/lib/insforge';
 import { getResendCredentials } from '@/lib/resendCredentials';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rateLimit';
 
 /**
  * POST /api/leads  — Store contact/quote requests from the public contact form.
@@ -120,6 +121,9 @@ async function notifyAdminByEmail(lead: NotifyPayload): Promise<void> {
 }
 
 export async function POST(request: Request) {
+  const rl = await checkRateLimit(request, RATE_LIMITS.leads);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSecs);
+
   let body: LeadBody = {};
   try {
     const contentType = request.headers.get('content-type') || '';

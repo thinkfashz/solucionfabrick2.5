@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
 import { clearFailedAttempts, getClientIp } from '@/lib/adminAuth';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rateLimit';
 
 /**
  * Finalises the password-recovery flow server-side.
@@ -27,6 +28,9 @@ import { clearFailedAttempts, getClientIp } from '@/lib/adminAuth';
  * be used as an oracle to enumerate valid OTP tokens or admin emails.
  */
 export async function POST(request: Request) {
+  const rl = await checkRateLimit(request, RATE_LIMITS.pwRecover);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSecs);
+
   let body: { email?: unknown; otp_token?: unknown; newPassword?: unknown };
   try {
     body = await request.json();

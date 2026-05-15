@@ -3,8 +3,12 @@ import { insforge } from '@/lib/insforge';
 import { calculateCheckoutSummary, validateCheckoutPayload, type CheckoutPayload } from '@/lib/checkout';
 import { createMercadoPagoPreference } from '@/lib/mercadopago';
 import { dispatchHookAsync } from '@/lib/extensionsBus';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rateLimit';
 
 export async function POST(request: Request) {
+  const rl = await checkRateLimit(request, RATE_LIMITS.checkout);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSecs);
+
   try {
     const body: CheckoutPayload = await request.json();
     const { items, region, cliente, shippingAddress } = body;

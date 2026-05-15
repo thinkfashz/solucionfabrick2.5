@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
 import { evaluateCoupon, type CouponRow } from '@/lib/loyalty';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rateLimit';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -20,6 +21,9 @@ export const runtime = 'nodejs';
  * once the order is paid. That keeps the validation idempotent.
  */
 export async function POST(request: Request) {
+  const rl = await checkRateLimit(request, RATE_LIMITS.coupons);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSecs);
+
   try {
     const body = (await request.json().catch(() => ({}))) as {
       code?: string;

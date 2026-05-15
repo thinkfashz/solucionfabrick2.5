@@ -1,10 +1,14 @@
 import { NextResponse } from 'next/server';
 import { insforgeAdmin } from '@/lib/insforge';
 import { isPushEnabled, isValidSubscription } from '@/lib/push';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rateLimit';
 
 export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
+  const rl = await checkRateLimit(request, RATE_LIMITS.pushSubscribe);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSecs);
+
   if (!isPushEnabled()) {
     return NextResponse.json({ error: 'Push notifications not configured' }, { status: 503 });
   }

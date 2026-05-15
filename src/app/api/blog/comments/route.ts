@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
+import { checkRateLimit, rateLimitResponse, RATE_LIMITS } from '@/lib/rateLimit';
 
 interface CommentPayload {
   post_slug: string;
@@ -10,6 +11,9 @@ interface CommentPayload {
 }
 
 export async function POST(request: NextRequest) {
+  const rl = await checkRateLimit(request, RATE_LIMITS.comments);
+  if (!rl.ok) return rateLimitResponse(rl.retryAfterSecs);
+
   try {
     const body = (await request.json()) as CommentPayload;
 

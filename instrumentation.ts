@@ -6,6 +6,10 @@
 
 export async function register() {
   if (process.env.NEXT_RUNTIME === 'nodejs') {
+    // Validate required env vars before anything else loads on the Node runtime.
+    const { assertEnv } = await import('./src/lib/env');
+    assertEnv();
+
     await import('./sentry.server.config');
   }
   if (process.env.NEXT_RUNTIME === 'edge') {

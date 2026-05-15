@@ -45,10 +45,7 @@ export async function POST(request: Request) {
   const { data: invitations, error: invError } = await invQuery;
 
   if (invError) {
-    if (invError.message?.includes('does not exist') || invError.message?.includes('relation')) {
-      return NextResponse.json({ error: 'Tabla admin_invitations no encontrada.' }, { status: 500 });
-    }
-    return NextResponse.json({ error: invError.message }, { status: 500 });
+    return NextResponse.json({ error: 'Error en la base de datos: ' + invError.message }, { status: 500 });
   }
 
   if (!invitations || invitations.length === 0) {
@@ -65,7 +62,7 @@ export async function POST(request: Request) {
     name: nombre || inviteeEmail.split('@')[0],
   });
 
-  // Verificar que la contraseña funciona (cierra el hueco de idempotencia en signUp)
+  // Verificar que la contraseña funciona
   const { error: signInError } = await insforge.auth.signInWithPassword({
     email: inviteeEmail,
     password,
@@ -76,7 +73,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'No se pudo verificar la cuenta: ' + msg }, { status: 400 });
   }
 
-  // Insertar en admin_users — aprobado: true porque el admin ya decidió al invitar
+  // Insertar en admin_users — ¡Ahora el SDK tiene permisos gracias a tu PR #170!
   const { error: upsertError } = await insforgeAdmin.database
     .from('admin_users')
     .upsert([{
@@ -86,29 +83,21 @@ export async function POST(request: Request) {
       aprobado: true,
     }], { onConflict: 'email' });
 
+  // BLOQUEO DE SEGURIDAD (Corrige el bug de Greptile): 
+  // Si el upsert falla, cortamos el proceso para no "quemar" la invitación.
   if (upsertError) {
-    // Fallback: raw SQL si el SDK no tiene permisos de INSERT
-    const apiKey = process.env.INSFORGE_API_KEY;
-    const baseUrl = (process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app').replace(/\/$/, '');
-    if (apiKey) {
-      const safeEmail = inviteeEmail.replace(/'/g, "''");
-      const safeNombre = (nombre || inviteeEmail.split('@')[0]).replace(/'/g, "''");
-      await fetch(`${baseUrl}/api/database/advance/rawsql/unrestricted`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
-        body: JSON.stringify({
-          query: `INSERT INTO public.admin_users (email, nombre, rol, aprobado) VALUES ('${safeEmail}', '${safeNombre}', '${invitation.rol}', true) ON CONFLICT (email) DO UPDATE SET rol = '${invitation.rol}', aprobado = true`,
-        }),
-        signal: AbortSignal.timeout(10_000),
-      }).catch(() => null);
-    }
+    return NextResponse.json({ error: 'No se pudo crear el perfil de administrador: ' + upsertError.message }, { status: 500 });
   }
 
-  // Marcar invitación como usada
-  await insforgeAdmin.database
+  // Marcar invitación como usada SOLAMENTE si todo lo de arriba fue exitoso
+  const { error: updateError } = await insforgeAdmin.database
     .from('admin_invitations')
     .update({ usado: true })
     .eq('id', invitation.id);
+
+  if (updateError) {
+    return NextResponse.json({ error: 'Perfil creado, pero error al invalidar token.' }, { status: 500 });
+  }
 
   return NextResponse.json({ ok: true });
 }

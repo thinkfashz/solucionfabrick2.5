@@ -65,13 +65,7 @@ export default function WhatsNewBanner() {
   if (dismissed) return null;
 
   return (
-    <div className="relative mb-4 sm:mb-6 rounded-2xl border border-yellow-400/30 bg-gradient-to-br from-yellow-500/10 via-amber-500/5 to-transparent p-4 sm:p-5 shadow-[0_0_24px_-8px_rgba(250,204,21,0.4)] animate-[fadeIn_220ms_ease-out]">
-      <style jsx>{`
-        @keyframes fadeIn {
-          from { opacity: 0; transform: translateY(-4px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
-      `}</style>
+    <div className="relative mb-4 sm:mb-6 rounded-2xl border border-yellow-400/30 bg-gradient-to-br from-yellow-500/10 via-amber-500/5 to-transparent p-4 sm:p-5 shadow-[0_0_24px_-8px_rgba(250,204,21,0.4)] animate-fade-in">
       <button
         onClick={dismiss}
         aria-label="Descartar novedades"

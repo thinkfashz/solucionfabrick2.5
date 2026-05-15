@@ -3,12 +3,22 @@ import type { NextRequest } from 'next/server'
 import { buildCsp, generateNonce } from '@/lib/csp'
 import { slugFromHostname, DEFAULT_TENANT_ID, DEFAULT_TENANT_SLUG } from '@/lib/tenant-edge'
 
-// Cookie name used to cache custom-domain → tenant resolution so we don't
-// hit the DB on every request.
 const CUSTOM_DOMAIN_CACHE_COOKIE = 'x-cd-tenant'
-const CUSTOM_DOMAIN_CACHE_TTL = 300 // seconds (5 min)
+const CUSTOM_DOMAIN_CACHE_TTL = 300
 
-/** True when the host belongs to the platform itself (not a client's domain). */
+const VIEWER_BLOCKED_ADMIN_PATHS = [
+  '/admin/equipo',
+  '/admin/sql',
+  '/admin/setup',
+  '/admin/center',
+  '/admin/extensions',
+  '/admin/seguridad',
+  '/admin/activar',
+  '/admin/vercel-logs',
+]
+
+const VIEWER_WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+
 function isPlatformHost(host: string): boolean {
   const h = host.split(':')[0].toLowerCase()
   return h === 'fabrick.cl' || h === 'www.fabrick.cl' ||
@@ -22,7 +32,20 @@ function normalizeBase64Url(value: string): string {
   return base64 + '='.repeat(padding)
 }
 
-/** Edge-compatible session validation (no Buffer dependency). */
+type EdgeSessionPayload = { exp?: number; rol?: string; tenant_id?: string }
+
+function decodeSessionPayloadUnsafe(value: string): EdgeSessionPayload {
+  try {
+    const dotIdx = value.lastIndexOf('.')
+    if (dotIdx === -1) return {}
+    const data = value.slice(0, dotIdx)
+    const payloadStr = atob(normalizeBase64Url(data))
+    return JSON.parse(payloadStr) as EdgeSessionPayload
+  } catch {
+    return {}
+  }
+}
+
 async function isValidSession(value: string): Promise<boolean> {
   try {
     const dotIdx = value.lastIndexOf('.')
@@ -32,16 +55,8 @@ async function isValidSession(value: string): Promise<boolean> {
 
     const secret = process.env.ADMIN_SESSION_SECRET
     if (!secret) {
-      if (process.env.NODE_ENV === 'production') {
-        // No secret configured → no session can be valid. Deny access.
-        // assertEnv() in instrumentation.ts should have aborted startup before
-        // reaching this point, but fail-closed defensively just in case.
-        return false
-      }
-      console.warn(
-        '[middleware] ADMIN_SESSION_SECRET is not set. ' +
-        'Using insecure dev-only fallback — never deploy without this variable.',
-      )
+      if (process.env.NODE_ENV === 'production') return false
+      console.warn('[middleware] ADMIN_SESSION_SECRET is not set. Using insecure dev fallback.')
     }
     const effectiveSecret = secret ?? 'fabrick-admin-dev-only-secret'
     const key = await crypto.subtle.importKey(
@@ -52,7 +67,6 @@ async function isValidSession(value: string): Promise<boolean> {
       ['verify']
     )
 
-    // Convert base64url to Uint8Array
     const base64 = normalizeBase64Url(sigB64)
     const binaryStr = atob(base64)
     const sigBytes = new Uint8Array(binaryStr.length)
@@ -61,48 +75,36 @@ async function isValidSession(value: string): Promise<boolean> {
     const valid = await crypto.subtle.verify('HMAC', key, sigBytes, new TextEncoder().encode(data))
     if (!valid) return false
 
-    // Decode and validate payload expiry
-    const payloadBase64 = normalizeBase64Url(data)
-    const payloadStr = atob(payloadBase64)
-    const payload = JSON.parse(payloadStr) as { exp?: number }
+    const payload = decodeSessionPayloadUnsafe(value)
     if (typeof payload.exp !== 'number') return false
     if (Date.now() > payload.exp) return false
-
     return true
   } catch {
     return false
   }
 }
 
-/**
- * Attach a strict Content-Security-Policy with a per-request nonce to every
- * HTML navigation response. The nonce is also propagated via the `x-nonce`
- * request header so that server components rendering inline <script> blocks
- * (JSON-LD) can opt-in via `headers().get('x-nonce')`.
- */
-function withSecurityHeaders(
-  response: NextResponse,
-  nonce: string,
-  csp: string,
-): NextResponse {
-  // Make the nonce available to downstream route handlers / server components.
+function withSecurityHeaders(response: NextResponse, nonce: string, csp: string): NextResponse {
   response.headers.set('x-nonce', nonce)
   response.headers.set('Content-Security-Policy', csp)
   return response
 }
 
 function isHtmlRequest(request: NextRequest): boolean {
-  // Skip assets, API endpoints, and Next.js internals. They don't benefit from
-  // a nonce'd CSP (scripts aren't embedded in their responses) and carrying
-  // the CSP on, e.g., JSON responses would block nothing useful.
   const { pathname } = request.nextUrl
   if (pathname.startsWith('/_next/')) return false
   if (pathname.startsWith('/api/')) return false
   if (pathname.startsWith('/sw.js')) return false
-  if (/\.(?:png|jpe?g|gif|svg|webp|ico|css|js|map|txt|xml|webmanifest|woff2?|ttf|eot|mp4|webm|pdf)$/i.test(pathname)) {
-    return false
-  }
+  if (/\.(?:png|jpe?g|gif|svg|webp|ico|css|js|map|txt|xml|webmanifest|woff2?|ttf|eot|mp4|webm|pdf)$/i.test(pathname)) return false
   return true
+}
+
+function isViewerBlockedPage(pathname: string): boolean {
+  return VIEWER_BLOCKED_ADMIN_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+}
+
+function isAllowedViewerApiWrite(pathname: string): boolean {
+  return pathname === '/api/admin/demo/events' || pathname === '/api/admin/logout'
 }
 
 export async function middleware(request: NextRequest) {
@@ -110,37 +112,37 @@ export async function middleware(request: NextRequest) {
   const isHtml = isHtmlRequest(request)
   const isDev = process.env.NODE_ENV !== 'production'
   const csp = buildCsp({ nonce, isDev })
+  const pathname = request.nextUrl.pathname
 
-  // Admin gate (unchanged, but now also emits the CSP nonce on its responses).
-  const isAdmin = request.nextUrl.pathname.startsWith('/admin')
-  const isLogin = request.nextUrl.pathname === '/admin/login'
-  const isJoin = request.nextUrl.pathname === '/admin/unirse'
-  const isDemo = request.nextUrl.pathname === '/admin/acceso-demo'
+  const sessionCookie = request.cookies.get('admin_session')
+  let sessionPayload: EdgeSessionPayload = {}
+  let validAdminSession = false
+
+  if (sessionCookie?.value) {
+    validAdminSession = await isValidSession(sessionCookie.value)
+    if (validAdminSession) sessionPayload = decodeSessionPayloadUnsafe(sessionCookie.value)
+  }
+
+  if (pathname.startsWith('/api/admin') && VIEWER_WRITE_METHODS.has(request.method.toUpperCase())) {
+    if (validAdminSession && sessionPayload.rol === 'viewer' && !isAllowedViewerApiWrite(pathname)) {
+      return NextResponse.json({ error: 'Modo demo: solo lectura. Acción bloqueada.' }, { status: 403 })
+    }
+  }
+
+  const isAdmin = pathname.startsWith('/admin')
+  const isLogin = pathname === '/admin/login'
+  const isJoin = pathname === '/admin/unirse'
+  const isDemo = pathname === '/admin/acceso-demo'
 
   if (isAdmin && !isLogin && !isJoin && !isDemo) {
-    const sessionCookie = request.cookies.get('admin_session')
-    if (!sessionCookie?.value || !(await isValidSession(sessionCookie.value))) {
+    if (!sessionCookie?.value || !validAdminSession) {
       const redirect = NextResponse.redirect(new URL('/admin/login', request.url))
       return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
     }
 
-    // Decode session to get tenant_id + rol (edge-compatible — no Node crypto)
-    let sessionPayload: { rol?: string; tenant_id?: string } = {}
-    try {
-      const dotIdx = sessionCookie.value.lastIndexOf('.')
-      if (dotIdx !== -1) {
-        const data = sessionCookie.value.slice(0, dotIdx)
-        const payloadStr = atob(normalizeBase64Url(data))
-        sessionPayload = JSON.parse(payloadStr) as typeof sessionPayload
-      }
-    } catch { /* ignore */ }
-
-    // Tenant status gate: suspended/cancelled tenants go to /admin/plan-suspendido
-    // Skip for the default Fabrick tenant (platform owner)
     const suspendedPath = '/admin/plan-suspendido'
-    const isSuspendedPage = request.nextUrl.pathname === suspendedPath
-    if (!isSuspendedPage && sessionPayload.tenant_id &&
-        sessionPayload.tenant_id !== DEFAULT_TENANT_ID) {
+    const isSuspendedPage = pathname === suspendedPath
+    if (!isSuspendedPage && sessionPayload.tenant_id && sessionPayload.tenant_id !== DEFAULT_TENANT_ID) {
       const tenantStatus = request.cookies.get('tenant_status')?.value
       if (tenantStatus === 'suspended' || tenantStatus === 'cancelled') {
         const redirect = NextResponse.redirect(new URL(suspendedPath, request.url))
@@ -148,29 +150,27 @@ export async function middleware(request: NextRequest) {
       }
     }
 
-    // Role gate for /admin/equipo
-    if (request.nextUrl.pathname.startsWith('/admin/equipo')) {
-      if (sessionPayload.rol !== 'superadmin') {
-        const redirect = NextResponse.redirect(new URL('/admin?forbidden=team', request.url))
-        return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
-      }
+    if (sessionPayload.rol === 'viewer' && isViewerBlockedPage(pathname)) {
+      const redirect = NextResponse.redirect(new URL('/admin?demo=blocked', request.url))
+      return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
+    }
+
+    if (pathname.startsWith('/admin/equipo') && sessionPayload.rol !== 'superadmin') {
+      const redirect = NextResponse.redirect(new URL('/admin?forbidden=team', request.url))
+      return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
     }
   }
 
-  // ── Tenant resolution ────────────────────────────────────────────────────
   const hostname = request.headers.get('host') ?? ''
   let tenantSlug = DEFAULT_TENANT_SLUG
   let tenantId: string | null = DEFAULT_TENANT_ID
   let tenantStatus: string | null = null
 
   if (isPlatformHost(hostname)) {
-    // ── Platform host: resolve slug from subdomain ──────────────────────────
     tenantSlug = slugFromHostname(hostname) ?? DEFAULT_TENANT_SLUG
     if (tenantSlug === DEFAULT_TENANT_SLUG) tenantId = DEFAULT_TENANT_ID
-    else tenantId = null // will be resolved by the first handler that needs it
+    else tenantId = null
   } else {
-    // ── Custom domain: tiendamarta.cl, etc. ────────────────────────────────
-    // Check cookie cache first to avoid a DB round-trip on every request.
     const cached = request.cookies.get(CUSTOM_DOMAIN_CACHE_COOKIE)?.value
     if (cached) {
       try {
@@ -178,12 +178,10 @@ export async function middleware(request: NextRequest) {
         tenantSlug = slug
         tenantId = id
         tenantStatus = status ?? null
-      } catch { /* stale/corrupt cookie — fall through to fresh lookup */ }
+      } catch {}
     }
 
     if (tenantSlug === DEFAULT_TENANT_SLUG) {
-      // Fresh lookup: call our own domain-resolve endpoint.
-      // This adds ~50ms on the first request; the cookie caches it for 5 min.
       try {
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL
           ? (process.env.NEXT_PUBLIC_APP_URL.startsWith('http') ? process.env.NEXT_PUBLIC_APP_URL : `https://${process.env.NEXT_PUBLIC_APP_URL}`)
@@ -198,13 +196,11 @@ export async function middleware(request: NextRequest) {
           tenantId = json.tenant_id
           tenantStatus = json.status
         }
-      } catch { /* lookup failed — serve default tenant as fallback */ }
+      } catch {}
     }
   }
 
-  // Block suspended/cancelled tenants at the edge for custom domains
-  if (!isPlatformHost(hostname) &&
-      (tenantStatus === 'suspended' || tenantStatus === 'cancelled')) {
+  if (!isPlatformHost(hostname) && (tenantStatus === 'suspended' || tenantStatus === 'cancelled')) {
     return new NextResponse(
       '<!DOCTYPE html><html><head><meta charset="utf-8"><title>Servicio suspendido</title></head>' +
       '<body style="font-family:sans-serif;text-align:center;padding:60px">' +
@@ -215,7 +211,6 @@ export async function middleware(request: NextRequest) {
     )
   }
 
-  // Build request headers with tenant context
   const requestHeaders = new Headers(request.headers)
   requestHeaders.set('x-tenant-slug', tenantSlug)
   if (tenantId) requestHeaders.set('x-tenant-id', tenantId)
@@ -226,7 +221,6 @@ export async function middleware(request: NextRequest) {
 
   const response = NextResponse.next({ request: { headers: requestHeaders } })
 
-  // Cache custom domain resolution in a cookie
   if (!isPlatformHost(hostname) && tenantSlug !== DEFAULT_TENANT_SLUG && tenantId) {
     response.cookies.set(CUSTOM_DOMAIN_CACHE_COOKIE,
       JSON.stringify({ slug: tenantSlug, id: tenantId, status: tenantStatus }),
@@ -238,10 +232,6 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  /*
-   * Match every path except Next.js internals and static assets, so the CSP is
-   * attached to all HTML navigations — not just /admin.
-   */
   matcher: [
     '/((?!_next/static|_next/image|favicon\\.ico|icon-.*\\.png|apple-touch-icon\\.png|.*\\.svg|sw\\.js|robots\\.txt|sitemap\\.xml|manifest\\.webmanifest).*)',
   ],

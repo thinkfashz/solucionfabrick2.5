@@ -2,69 +2,146 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Users, Mail, UserPlus, ShieldCheck, Trash2, Check, X, Copy, Link2, Eye, Clock, Activity } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
+import {
+  Activity,
+  Check,
+  Copy,
+  Fingerprint,
+  KeyRound,
+  Mail,
+  Plus,
+  ShieldCheck,
+  Trash2,
+  UserPlus,
+  Users,
+  Wifi,
+  X,
+} from 'lucide-react';
+import { AdminPage, AdminPageHeader } from '@/components/admin/ui';
 
-interface DemoEvent {
-  id: string;
-  session_id: string;
-  page: string;
-  entered_at: string;
-  left_at: string | null;
-  duration_ms: number | null;
-  created_at: string;
-}
+type Role = 'superadmin' | 'admin' | 'viewer';
 
-interface Invitation {
+type Member = {
+  email: string;
+  nombre?: string | null;
+  rol: Role;
+  aprobado: boolean;
+  created_at?: string;
+  updated_at?: string;
+  last_ip?: string | null;
+  last_outcome?: string | null;
+  last_seen_at?: string | null;
+  last_user_agent?: string | null;
+};
+
+type Invitation = {
   id: string;
   email: string;
-  rol: string;
+  rol: Role;
   codigo: string;
   link: string;
   expira_at: string;
   created_at: string;
+};
+
+type AuditRow = {
+  email?: string | null;
+  ip?: string | null;
+  outcome?: string | null;
+  ts?: string | null;
+  user_agent?: string | null;
+};
+
+type StatCard = {
+  label: string;
+  value: number;
+  icon: LucideIcon;
+};
+
+const ROLES: { value: Role; label: string }[] = [
+  { value: 'superadmin', label: 'Superadmin' },
+  { value: 'admin', label: 'Admin' },
+  { value: 'viewer', label: 'Viewer' },
+];
+
+function tempPassword() {
+  const raw = crypto.randomUUID().replace(/-/g, '');
+  return `Sf-${raw.slice(0, 6)}-${raw.slice(6, 12)}-${raw.slice(12, 18)}!9`;
 }
 
-interface Member {
-  email: string;
-  nombre?: string;
-  rol: string;
-  aprobado: boolean;
-  created_at?: string;
-  updated_at?: string;
+function formatDateTime(value?: string | null) {
+  if (!value) return 'Sin registro';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return 'Sin registro';
+  return date.toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function roleClass(role: Role) {
+  if (role === 'superadmin') return 'border-rose-400/40 bg-rose-400/10 text-rose-200';
+  if (role === 'admin') return 'border-yellow-300/40 bg-yellow-300/10 text-yellow-200';
+  return 'border-sky-400/40 bg-sky-400/10 text-sky-200';
 }
 
 export default function EquipoPage() {
   const router = useRouter();
   const [loading, setLoading] = useState(true);
   const [sessionEmail, setSessionEmail] = useState('');
-  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [requestIp, setRequestIp] = useState<string | null>(null);
   const [members, setMembers] = useState<Member[]>([]);
   const [pending, setPending] = useState<Member[]>([]);
-  const [showInviteModal, setShowInviteModal] = useState(false);
+  const [audit, setAudit] = useState<AuditRow[]>([]);
+  const [invitations, setInvitations] = useState<Invitation[]>([]);
+  const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
+
+  const [createOpen, setCreateOpen] = useState(false);
+  const [inviteOpen, setInviteOpen] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  const [newName, setNewName] = useState('');
+  const [newEmail, setNewEmail] = useState('');
+  const [newRole, setNewRole] = useState<Role>('admin');
+  const [newPassword, setNewPassword] = useState(tempPassword);
+  const [createdPassword, setCreatedPassword] = useState<string | null>(null);
+
   const [inviteEmail, setInviteEmail] = useState('');
-  const [inviteRol, setInviteRol] = useState<'admin' | 'viewer' | 'superadmin'>('admin');
-  const [inviteLoading, setInviteLoading] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
+  const [inviteRole, setInviteRole] = useState<Role>('admin');
   const [createdLink, setCreatedLink] = useState<string | null>(null);
-  const [demoTokens, setDemoTokens] = useState<{ id: string; label?: string; link: string; expira_at: string; accesos: number; ultimo_acceso?: string }[]>([]);
-  const [demoLabel, setDemoLabel] = useState('');
-  const [demoLoading, setDemoLoading] = useState(false);
-  const [createdDemoLink, setCreatedDemoLink] = useState<string | null>(null);
-  const [demoEvents, setDemoEvents] = useState<DemoEvent[]>([]);
+
+  const stats = useMemo(() => ({
+    total: members.length,
+    superadmins: members.filter((m) => m.rol === 'superadmin').length,
+    admins: members.filter((m) => m.rol === 'admin').length,
+    viewers: members.filter((m) => m.rol === 'viewer').length,
+    pending: pending.length,
+  }), [members, pending]);
+
+  const statCards = useMemo<StatCard[]>(() => [
+    { label: 'Total', value: stats.total, icon: Users },
+    { label: 'Superadmin', value: stats.superadmins, icon: ShieldCheck },
+    { label: 'Admin', value: stats.admins, icon: KeyRound },
+    { label: 'Viewer', value: stats.viewers, icon: Fingerprint },
+    { label: 'Pendientes', value: stats.pending, icon: Activity },
+  ], [stats]);
 
   useEffect(() => {
-    checkAccess();
+    void checkAccess();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  function showToast(message: string, type: 'success' | 'error' = 'success') {
+    setToast({ message, type });
+    setTimeout(() => setToast(null), 4200);
+  }
 
   async function checkAccess() {
     try {
       const res = await fetch('/api/admin/me', { cache: 'no-store' });
-      if (!res.ok) { router.replace('/admin/login'); return; }
+      if (!res.ok) return router.replace('/admin/login');
       const data = await res.json();
-      if (data.rol !== 'superadmin') { router.replace('/admin'); return; }
-      setSessionEmail(data.email);
-      loadData();
+      if (data.rol !== 'superadmin') return router.replace('/admin');
+      setSessionEmail(data.email ?? '');
+      await loadData();
     } catch {
       router.replace('/admin/login');
     }
@@ -73,587 +150,334 @@ export default function EquipoPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [invRes, teamRes, demoRes, eventsRes] = await Promise.all([
-        fetch('/api/admin/invitations', { cache: 'no-store' }),
+      const [teamRes, invRes] = await Promise.all([
         fetch('/api/admin/team', { cache: 'no-store' }),
-        fetch('/api/admin/demo/tokens', { cache: 'no-store' }),
-        fetch('/api/admin/demo/events', { cache: 'no-store' }),
+        fetch('/api/admin/invitations', { cache: 'no-store' }),
       ]);
-      if (invRes.ok) {
-        const d = await invRes.json();
-        setInvitations(d.invitations || []);
-      }
       if (teamRes.ok) {
-        const d = await teamRes.json();
-        setMembers(d.members || []);
-        setPending(d.pending || []);
+        const json = await teamRes.json();
+        setMembers(json.members ?? []);
+        setPending(json.pending ?? []);
+        setAudit(json.audit ?? []);
+        setRequestIp(json.requestIp ?? null);
       }
-      if (demoRes.ok) {
-        const d = await demoRes.json();
-        setDemoTokens(d.tokens || []);
-      }
-      if (eventsRes.ok) {
-        const d = await eventsRes.json();
-        setDemoEvents(d.events || []);
+      if (invRes.ok) {
+        const json = await invRes.json();
+        setInvitations(json.invitations ?? []);
       }
     } catch {
-      showToast('Error al cargar datos.', 'error');
+      showToast('No se pudo cargar el equipo.', 'error');
     } finally {
       setLoading(false);
     }
   }
 
-  async function handleGenerateDemo() {
-    setDemoLoading(true);
+  async function copy(value: string, label = 'Dato') {
     try {
-      const res = await fetch('/api/admin/demo/tokens', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ label: demoLabel }),
-      });
-      const json = await res.json();
-      if (!res.ok) { showToast(json.error || 'Error al generar link demo.', 'error'); return; }
-      setCreatedDemoLink(json.link);
-      setDemoLabel('');
-      loadData();
-    } catch {
-      showToast('Error de red.', 'error');
-    } finally {
-      setDemoLoading(false);
-    }
-  }
-
-  async function handleRevokeDemo(id: string) {
-    if (!confirm('¿Revocar este acceso demo?')) return;
-    const res = await fetch(`/api/admin/demo/tokens?id=${id}`, { method: 'DELETE' });
-    if (!res.ok) { showToast('Error al revocar.', 'error'); return; }
-    showToast('Acceso demo revocado.', 'success');
-    loadData();
-  }
-
-  function showToast(message: string, type: 'success' | 'error') {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 5000);
-  }
-
-  async function copyToClipboard(text: string, label = 'Link') {
-    try {
-      await navigator.clipboard.writeText(text);
-      showToast(`${label} copiado al portapapeles.`, 'success');
+      await navigator.clipboard.writeText(value);
+      showToast(`${label} copiado.`);
     } catch {
       showToast('No se pudo copiar automáticamente.', 'error');
     }
   }
 
-  async function handleInvite() {
-    if (!inviteEmail) { showToast('Email es requerido.', 'error'); return; }
-    setInviteLoading(true);
+  async function createUser() {
+    if (!newEmail.trim()) return showToast('Email requerido.', 'error');
+    if (newPassword.length < 12) return showToast('La contraseña debe tener al menos 12 caracteres.', 'error');
+    setSaving(true);
+    try {
+      const res = await fetch('/api/admin/team', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: newEmail, nombre: newName, rol: newRole, password: newPassword }),
+      });
+      const json = await res.json();
+      if (!res.ok) return showToast(json.error ?? 'No se pudo crear el usuario.', 'error');
+      setCreatedPassword(json.temporaryPassword ?? newPassword);
+      setNewName('');
+      setNewEmail('');
+      setNewRole('admin');
+      setNewPassword(tempPassword());
+      await loadData();
+      showToast('Usuario creado y verificado correctamente.');
+    } catch {
+      showToast('Error de red al crear usuario.', 'error');
+    } finally {
+      setSaving(false);
+    }
+  }
+
+  async function createInvite() {
+    if (!inviteEmail.trim()) return showToast('Email requerido.', 'error');
+    setSaving(true);
     try {
       const res = await fetch('/api/admin/invitations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email: inviteEmail, rol: inviteRol }),
+        body: JSON.stringify({ email: inviteEmail, rol: inviteRole }),
       });
       const json = await res.json();
-      if (!res.ok) { showToast(json.error || 'Error al crear invitación.', 'error'); return; }
-
-      if (json.emailSent) {
-        showToast(`Email enviado a ${inviteEmail}.`, 'success');
-      } else {
-        showToast('Invitación creada. Copia el link y envíalo manualmente.', 'success');
-      }
-      setCreatedLink(json.link || null);
+      if (!res.ok) return showToast(json.error ?? 'No se pudo crear invitación.', 'error');
+      setCreatedLink(json.link ?? null);
       setInviteEmail('');
-      setInviteRol('admin');
-      loadData();
+      setInviteRole('admin');
+      await loadData();
+      showToast(json.emailSent ? 'Invitación creada y enviada.' : 'Invitación creada. Copia el link.');
     } catch {
-      showToast('Error de red.', 'error');
+      showToast('Error de red al invitar.', 'error');
     } finally {
-      setInviteLoading(false);
+      setSaving(false);
     }
   }
 
-  async function handleDeleteInvitation(id: string) {
-    if (!confirm('¿Eliminar esta invitación?')) return;
-    const res = await fetch(`/api/admin/invitations?id=${id}`, { method: 'DELETE' });
-    if (!res.ok) { showToast('Error al eliminar invitación.', 'error'); return; }
-    showToast('Invitación eliminada.', 'success');
-    loadData();
-  }
-
-  async function handleApprove(email: string) {
-    const res = await fetch('/api/admin/team', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, action: 'approve' }),
-    });
-    if (!res.ok) { showToast('Error al aprobar.', 'error'); return; }
-    showToast('Usuario aprobado.', 'success');
-    loadData();
-  }
-
-  async function handleReject(email: string) {
-    if (!confirm(`¿Rechazar y eliminar a ${email}?`)) return;
-    const res = await fetch('/api/admin/team', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, action: 'reject' }),
-    });
-    if (!res.ok) { showToast('Error al rechazar.', 'error'); return; }
-    showToast('Usuario rechazado.', 'success');
-    loadData();
-  }
-
-  async function handleSetRole(email: string, rol: string) {
+  async function updateRole(email: string, rol: Role) {
     const res = await fetch('/api/admin/team', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, action: 'set_role', rol }),
     });
-    if (!res.ok) { showToast('Error al cambiar rol.', 'error'); return; }
-    showToast('Rol actualizado.', 'success');
-    loadData();
+    if (!res.ok) return showToast('No se pudo actualizar el rol.', 'error');
+    showToast('Rol actualizado.');
+    await loadData();
   }
 
-  function formatDuration(ms: number): string {
-    if (ms < 1000) return `${ms}ms`;
-    if (ms < 60000) return `${Math.round(ms / 1000)}s`;
-    const mins = Math.floor(ms / 60000);
-    const secs = Math.round((ms % 60000) / 1000);
-    return `${mins}m ${secs}s`;
+  async function approve(email: string) {
+    const res = await fetch('/api/admin/team', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, action: 'approve' }),
+    });
+    if (!res.ok) return showToast('No se pudo aprobar.', 'error');
+    showToast('Usuario aprobado.');
+    await loadData();
   }
 
-  function formatDate(iso?: string) {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()}`;
+  async function reject(email: string) {
+    if (!confirm(`¿Eliminar a ${email}?`)) return;
+    const res = await fetch('/api/admin/team', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, action: 'reject' }),
+    });
+    if (!res.ok) return showToast('No se pudo eliminar.', 'error');
+    showToast('Usuario eliminado.');
+    await loadData();
   }
 
-  function formatDateTime(iso?: string) {
-    if (!iso) return '—';
-    const d = new Date(iso);
-    return `${String(d.getDate()).padStart(2,'0')}/${String(d.getMonth()+1).padStart(2,'0')}/${d.getFullYear()} ${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+  async function deleteInvite(id: string) {
+    if (!confirm('¿Cancelar esta invitación?')) return;
+    const res = await fetch(`/api/admin/invitations?id=${id}`, { method: 'DELETE' });
+    if (!res.ok) return showToast('No se pudo cancelar.', 'error');
+    showToast('Invitación cancelada.');
+    await loadData();
   }
-
-  const groupedSessions = useMemo(() => {
-    type Session = { session_id: string; pages: DemoEvent[]; totalMs: number; lastActivity: string };
-    const map: Record<string, Session> = {};
-    for (const ev of demoEvents) {
-      if (!map[ev.session_id]) {
-        map[ev.session_id] = { session_id: ev.session_id, pages: [], totalMs: 0, lastActivity: ev.entered_at };
-      }
-      map[ev.session_id].pages.push(ev);
-      if (ev.duration_ms) map[ev.session_id].totalMs += ev.duration_ms;
-      if (ev.entered_at > map[ev.session_id].lastActivity) map[ev.session_id].lastActivity = ev.entered_at;
-    }
-    return Object.values(map).sort((a, b) => new Date(b.lastActivity).getTime() - new Date(a.lastActivity).getTime());
-  }, [demoEvents]);
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[60vh]">
-        <div className="flex h-12 w-12 animate-spin items-center justify-center">
-          <svg className="h-10 w-10" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="#facc15" strokeWidth="4" />
-            <path className="opacity-90" fill="#facc15" d="M4 12a8 8 0 018-8v8H4z" />
-          </svg>
+      <AdminPage>
+        <div className="flex min-h-[50vh] items-center justify-center">
+          <div className="h-12 w-12 animate-spin rounded-full border-4 border-yellow-300/20 border-t-yellow-300" />
         </div>
-      </div>
+      </AdminPage>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <AdminPage>
       {toast && (
-        <div className="fixed top-4 right-4 z-50 animate-in slide-in-from-top">
-          <div className={`px-6 py-4 rounded-2xl border ${
-            toast.type === 'success'
-              ? 'bg-green-500/10 border-green-500/30 text-green-400'
-              : 'bg-red-500/10 border-red-500/30 text-red-400'
-          } text-sm shadow-2xl`}>
+        <div className="fixed right-4 top-4 z-50">
+          <div className={`rounded-2xl border px-5 py-3 text-sm shadow-2xl ${toast.type === 'success' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-red-400/30 bg-red-400/10 text-red-200'}`}>
             {toast.message}
           </div>
         </div>
       )}
 
-      <div className="space-y-2">
-        <h1 className="font-playfair text-4xl font-black text-white tracking-wide">Equipo Fabrick</h1>
-        <p className="text-zinc-500 text-sm">Invita y administra a las personas con acceso al panel.</p>
-      </div>
+      <AdminPageHeader
+        title="Equipo y accesos"
+        description="Crea usuarios reales, genera invitaciones, controla roles, revisa IPs y últimos accesos del panel."
+      />
 
-      {/* Crear Invitación */}
-      <div className="rounded-2xl border border-white/10 bg-zinc-950/50 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center">
-            <UserPlus className="w-5 h-5 text-yellow-400" />
-          </div>
-          <h2 className="text-white font-bold text-lg">Invitar Persona</h2>
-        </div>
-        <p className="text-zinc-500 text-sm mb-4">
-          Se genera un link único. Si tienes Resend configurado se envía automáticamente, si no lo copias y lo mandas tú.
-        </p>
-        <button
-          onClick={() => { setCreatedLink(null); setShowInviteModal(true); }}
-          className="bg-yellow-400 text-black font-bold uppercase tracking-widest rounded-full px-6 py-3 text-sm hover:bg-yellow-300 transition-all"
-        >
-          Crear Invitación
-        </button>
-      </div>
-
-      {/* Acceso Demo */}
-      <div className="rounded-2xl border border-white/10 bg-zinc-950/50 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-amber-400/10 border border-amber-400/30 flex items-center justify-center">
-            <Eye className="w-5 h-5 text-amber-400" />
-          </div>
-          <div>
-            <h2 className="text-white font-bold text-lg">Acceso Demo</h2>
-            <p className="text-zinc-500 text-xs mt-0.5">Link temporal de 24 h · solo lectura · sin cuenta real</p>
-          </div>
-        </div>
-        <p className="text-zinc-500 text-sm mb-4">
-          Genera un link único para que cualquier persona explore el panel sin modificar datos. Ideal para mostrar el producto a clientes o inversores.
-        </p>
-
-        {/* Generate form */}
-        {createdDemoLink ? (
-          <div className="rounded-xl bg-amber-400/10 border border-amber-400/30 p-4 mb-4">
-            <p className="text-amber-300 text-xs font-bold uppercase tracking-wide mb-2">Link de demo generado — válido 24 horas</p>
-            <p className="text-white/80 text-xs font-mono break-all mb-3">{createdDemoLink}</p>
-            <div className="flex gap-2">
-              <button
-                onClick={() => copyToClipboard(createdDemoLink, 'Link demo')}
-                className="flex items-center gap-1.5 bg-amber-400 text-black font-bold uppercase tracking-widest rounded-full px-4 py-2 text-xs hover:bg-amber-300 transition-all"
-              >
-                <Copy className="w-3 h-3" />Copiar link
-              </button>
-              <button
-                onClick={() => setCreatedDemoLink(null)}
-                className="flex items-center gap-1.5 bg-white/5 text-zinc-300 border border-white/10 font-bold uppercase tracking-widest rounded-full px-4 py-2 text-xs hover:bg-white/10 transition-all"
-              >
-                Generar otro
-              </button>
+      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+        {statCards.map(({ label, value, icon: Icon }) => (
+          <div key={label} className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+            <div className="flex items-center justify-between">
+              <span className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">{label}</span>
+              <Icon className="h-5 w-5 text-yellow-300" />
             </div>
+            <p className="mt-4 text-3xl font-black text-white">{value}</p>
           </div>
-        ) : (
-          <div className="flex gap-3 mb-4">
-            <input
-              type="text"
-              value={demoLabel}
-              onChange={(e) => setDemoLabel(e.target.value)}
-              placeholder="Etiqueta opcional (ej. &quot;Cliente Juan&quot;)"
-              disabled={demoLoading}
-              className="flex-1 bg-zinc-900 border border-white/10 rounded-2xl px-4 py-2.5 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-amber-400/50 disabled:opacity-40"
-            />
-            <button
-              onClick={handleGenerateDemo}
-              disabled={demoLoading}
-              className="bg-amber-400 text-black font-bold uppercase tracking-widest rounded-full px-5 py-2.5 text-xs hover:bg-amber-300 transition-all disabled:opacity-40 whitespace-nowrap"
-            >
-              {demoLoading ? 'Generando…' : 'Generar Link Demo'}
+        ))}
+      </section>
+
+      <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
+        <div className="rounded-3xl border border-yellow-300/20 bg-yellow-300/[0.04] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black text-white">Crear usuario directo</h2>
+              <p className="mt-1 text-sm text-zinc-500">Genera una cuenta con nombre, rol y contraseña temporal verificable.</p>
+            </div>
+            <button onClick={() => setCreateOpen((v) => !v)} className="rounded-full bg-yellow-300 px-5 py-2 text-xs font-black uppercase tracking-[0.18em] text-black">
+              <Plus className="mr-1 inline h-4 w-4" /> Usuario
             </button>
           </div>
-        )}
 
-        {/* Active demo tokens list */}
-        {demoTokens.length > 0 && (
-          <div className="space-y-2">
-            <p className="text-zinc-600 text-xs uppercase tracking-wider font-bold mb-3">Links activos</p>
-            {demoTokens.map((dt) => {
-              const expiresIn = Math.max(0, Math.floor((new Date(dt.expira_at).getTime() - Date.now()) / 1000 / 60));
-              const hours = Math.floor(expiresIn / 60);
-              const mins = expiresIn % 60;
-              return (
-                <div key={dt.id} className="flex items-center gap-3 p-3 rounded-xl bg-white/[0.03] border border-white/[0.06]">
-                  <Clock className="w-4 h-4 text-zinc-600 shrink-0" />
-                  <div className="flex-1 min-w-0">
-                    {dt.label && <p className="text-white text-xs font-medium truncate">{dt.label}</p>}
-                    <p className="text-zinc-500 text-[11px] truncate font-mono">{dt.link}</p>
-                    <p className="text-zinc-600 text-[10px] mt-0.5">
-                      Expira en {hours}h {mins}m · {dt.accesos} acceso{dt.accesos !== 1 ? 's' : ''}
-                    </p>
-                  </div>
-                  <div className="flex gap-1.5 shrink-0">
-                    <button
-                      onClick={() => copyToClipboard(dt.link, 'Link demo')}
-                      className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-zinc-400 hover:text-white transition-all"
-                      title="Copiar link"
-                    >
-                      <Copy className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => handleRevokeDemo(dt.id)}
-                      className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all"
-                      title="Revocar acceso"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
+          {createOpen && (
+            <div className="mt-5 grid gap-3 md:grid-cols-2">
+              <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre completo" className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-yellow-300/50" />
+              <input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="correo@dominio.com" type="email" className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-yellow-300/50" />
+              <select value={newRole} onChange={(e) => setNewRole(e.target.value as Role)} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-yellow-300/50">
+                {ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
+              </select>
+              <div className="flex gap-2">
+                <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 font-mono text-xs text-white outline-none focus:border-yellow-300/50" />
+                <button onClick={() => setNewPassword(tempPassword())} className="rounded-2xl border border-white/10 px-3 text-xs font-bold text-zinc-300 hover:text-yellow-200">Generar</button>
+              </div>
+              <button disabled={saving} onClick={createUser} className="md:col-span-2 rounded-2xl bg-yellow-300 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-black disabled:opacity-50">
+                {saving ? 'Creando…' : 'Crear usuario y contraseña'}
+              </button>
+              {createdPassword && (
+                <div className="md:col-span-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-4">
+                  <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Contraseña temporal generada</p>
+                  <div className="mt-2 flex items-center gap-2">
+                    <code className="min-w-0 flex-1 rounded-xl bg-black/40 px-3 py-2 text-xs text-white">{createdPassword}</code>
+                    <button onClick={() => copy(createdPassword, 'Contraseña')} className="rounded-xl border border-emerald-400/30 px-3 py-2 text-xs text-emerald-200"><Copy className="h-4 w-4" /></button>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* Actividad Demo */}
-      {groupedSessions.length > 0 && (
-        <div className="rounded-2xl border border-white/10 bg-zinc-950/50 p-6">
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-sky-400/10 border border-sky-400/30 flex items-center justify-center">
-                <Activity className="w-5 h-5 text-sky-400" />
-              </div>
-              <div>
-                <h2 className="text-white font-bold text-lg">Actividad Demo</h2>
-                <p className="text-zinc-500 text-xs mt-0.5">Páginas visitadas por accesos demo · invisible para el visitante</p>
-              </div>
+              )}
             </div>
-            <span className="text-zinc-600 text-xs font-mono">{groupedSessions.length} sesión{groupedSessions.length !== 1 ? 'es' : ''}</span>
+          )}
+        </div>
+
+        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div>
+              <h2 className="text-xl font-black text-white">Invitar persona</h2>
+              <p className="mt-1 text-sm text-zinc-500">Envía o copia un link para que cree su contraseña.</p>
+            </div>
+            <button onClick={() => setInviteOpen((v) => !v)} className="rounded-full border border-white/10 px-5 py-2 text-xs font-black uppercase tracking-[0.18em] text-zinc-200">
+              <UserPlus className="mr-1 inline h-4 w-4" /> Invitar
+            </button>
           </div>
 
-          <div className="space-y-3">
-            {groupedSessions.map((session) => {
-              const maxMs = Math.max(1, ...session.pages.map((e) => e.duration_ms ?? 0));
-              return (
-                <div key={session.session_id} className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-4">
-                  <div className="flex items-center justify-between mb-3">
-                    <div>
-                      <p className="text-sky-300 text-xs font-mono">{session.session_id.slice(0, 8)}…</p>
-                      <p className="text-zinc-500 text-[10px] mt-0.5">
-                        {session.pages.length} página{session.pages.length !== 1 ? 's' : ''} · {formatDuration(session.totalMs)} total
-                      </p>
-                    </div>
-                    <p className="text-zinc-600 text-[10px]">{formatDateTime(session.lastActivity)}</p>
+          {inviteOpen && (
+            <div className="mt-5 space-y-3">
+              <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="correo@dominio.com" type="email" className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-yellow-300/50" />
+              <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as Role)} className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-yellow-300/50">
+                {ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
+              </select>
+              <button disabled={saving} onClick={createInvite} className="w-full rounded-2xl bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-black disabled:opacity-50">
+                Crear invitación
+              </button>
+              {createdLink && (
+                <div className="rounded-2xl border border-yellow-300/30 bg-yellow-300/10 p-4">
+                  <p className="break-all font-mono text-xs text-yellow-100">{createdLink}</p>
+                  <button onClick={() => copy(createdLink, 'Link')} className="mt-3 rounded-full bg-yellow-300 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-black">Copiar link</button>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </section>
+
+      <section className="rounded-3xl border border-white/10 bg-zinc-950/60 p-5">
+        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="text-xl font-black text-white">Miembros activos</h2>
+            <p className="mt-1 text-sm text-zinc-500">Tu IP actual: <span className="font-mono text-zinc-300">{requestIp ?? 'no disponible'}</span></p>
+          </div>
+          <button onClick={() => loadData()} className="rounded-full border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-zinc-300">Actualizar</button>
+        </div>
+
+        <div className="grid gap-3">
+          {members.map((member) => (
+            <article key={member.email} className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
+              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <h3 className="truncate text-base font-black text-white">{member.nombre || member.email}</h3>
+                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] ${roleClass(member.rol)}`}>{member.rol}</span>
+                    {member.email === sessionEmail && <span className="rounded-full border border-yellow-300/40 bg-yellow-300/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-yellow-200">Tú</span>}
                   </div>
-                  <div className="space-y-2">
-                    {session.pages.map((ev) => (
-                      <div key={ev.id} className="flex items-center gap-2">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-zinc-300 text-[11px] font-mono truncate">{ev.page}</p>
-                          <div className="mt-1 h-1 bg-zinc-800 rounded-full overflow-hidden">
-                            <div
-                              className="h-full bg-sky-400/60 rounded-full"
-                              style={{ width: `${Math.min(100, ((ev.duration_ms ?? 0) / maxMs) * 100)}%` }}
-                            />
-                          </div>
-                        </div>
-                        <span className="text-zinc-600 text-[10px] shrink-0 w-12 text-right">
-                          {ev.duration_ms ? formatDuration(ev.duration_ms) : <span className="text-amber-400/70">activo</span>}
-                        </span>
-                      </div>
-                    ))}
+                  <p className="mt-1 truncate text-sm text-zinc-500">{member.email}</p>
+                  <div className="mt-3 grid gap-2 text-xs text-zinc-500 sm:grid-cols-3">
+                    <span className="flex items-center gap-2"><Wifi className="h-3.5 w-3.5 text-yellow-300" /> IP: <span className="font-mono text-zinc-300">{member.last_ip ?? '—'}</span></span>
+                    <span>Último acceso: <span className="text-zinc-300">{formatDateTime(member.last_seen_at)}</span></span>
+                    <span className="truncate">Resultado: <span className="text-zinc-300">{member.last_outcome ?? '—'}</span></span>
                   </div>
                 </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {/* Invitaciones Pendientes */}
-      {invitations.length > 0 && (
-        <div className="rounded-2xl border border-white/10 bg-zinc-950/50 p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center">
-              <Mail className="w-5 h-5 text-yellow-400" />
-            </div>
-            <h2 className="text-white font-bold text-lg">Invitaciones Pendientes</h2>
-          </div>
-          <div className="space-y-3">
-            {invitations.map((inv) => (
-              <div key={inv.id} className="p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white font-medium">{inv.email}</p>
-                    <p className="text-zinc-500 text-xs mt-1">
-                      Rol: <span className="text-yellow-400 uppercase">{inv.rol}</span> · Expira: {formatDateTime(inv.expira_at)}
-                    </p>
-                    {inv.link && (
-                      <div className="mt-2 flex items-center gap-2">
-                        <span className="text-zinc-600 text-xs font-mono truncate max-w-[200px]">{inv.link}</span>
-                        <button
-                          onClick={() => copyToClipboard(inv.link, 'Link')}
-                          className="flex items-center gap-1 bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 hover:bg-yellow-400/20 rounded-lg px-2 py-1 text-xs font-bold transition-all shrink-0"
-                        >
-                          <Copy className="w-3 h-3" />
-                          Copiar link
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={() => handleDeleteInvitation(inv.id)}
-                    className="text-red-400 hover:text-red-300 transition-colors p-2 shrink-0"
-                    title="Cancelar invitación"
-                  >
-                    <Trash2 className="w-5 h-5" />
-                  </button>
+                <div className="flex flex-wrap gap-2">
+                  <select disabled={member.email === sessionEmail} value={member.rol} onChange={(e) => updateRole(member.email, e.target.value as Role)} className="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white disabled:opacity-40">
+                    {ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
+                  </select>
+                  <button disabled={member.email === sessionEmail} onClick={() => reject(member.email)} className="rounded-2xl border border-red-400/30 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-red-300 disabled:opacity-40"><Trash2 className="h-4 w-4" /></button>
                 </div>
               </div>
-            ))}
-          </div>
+            </article>
+          ))}
         </div>
-      )}
+      </section>
 
-      {/* Solicitudes Pendientes de Aprobación */}
       {pending.length > 0 && (
-        <div className="rounded-2xl border border-white/10 bg-zinc-950/50 p-6">
-          <div className="flex items-center gap-3 mb-4">
-            <div className="w-10 h-10 rounded-xl bg-orange-400/10 border border-orange-400/30 flex items-center justify-center">
-              <ShieldCheck className="w-5 h-5 text-orange-400" />
-            </div>
-            <h2 className="text-white font-bold text-lg">Solicitudes Pendientes</h2>
-          </div>
-          <div className="space-y-3">
+        <section className="rounded-3xl border border-orange-400/20 bg-orange-400/[0.04] p-5">
+          <h2 className="text-xl font-black text-white">Solicitudes pendientes</h2>
+          <div className="mt-4 grid gap-3">
             {pending.map((member) => (
-              <div key={member.email} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex-1">
-                  <p className="text-white font-medium">{member.nombre || member.email}</p>
-                  <p className="text-zinc-500 text-xs mt-1">
-                    {member.email} · Rol: <span className="text-yellow-400 uppercase">{member.rol}</span>
-                  </p>
+              <div key={member.email} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 p-4">
+                <div>
+                  <p className="font-bold text-white">{member.nombre || member.email}</p>
+                  <p className="text-sm text-zinc-500">{member.email} · {member.rol}</p>
                 </div>
                 <div className="flex gap-2">
-                  <button onClick={() => handleApprove(member.email)}
-                    className="bg-green-500/20 text-green-400 hover:bg-green-500/30 border border-green-500/30 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide transition-all">
-                    <Check className="w-4 h-4 inline mr-1" />Aprobar
-                  </button>
-                  <button onClick={() => handleReject(member.email)}
-                    className="bg-red-500/20 text-red-400 hover:bg-red-500/30 border border-red-500/30 rounded-full px-4 py-2 text-xs font-bold uppercase tracking-wide transition-all">
-                    <X className="w-4 h-4 inline mr-1" />Rechazar
-                  </button>
+                  <button onClick={() => approve(member.email)} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-black"><Check className="mr-1 inline h-4 w-4" />Aprobar</button>
+                  <button onClick={() => reject(member.email)} className="rounded-full border border-red-400/30 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-red-300"><X className="mr-1 inline h-4 w-4" />Rechazar</button>
                 </div>
               </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* Miembros Activos */}
-      <div className="rounded-2xl border border-white/10 bg-zinc-950/50 p-6">
-        <div className="flex items-center gap-3 mb-4">
-          <div className="w-10 h-10 rounded-xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center">
-            <Users className="w-5 h-5 text-yellow-400" />
-          </div>
-          <h2 className="text-white font-bold text-lg">Miembros Activos</h2>
-        </div>
-        {members.length === 0 ? (
-          <p className="text-zinc-500 text-sm">No hay miembros activos.</p>
-        ) : (
-          <div className="space-y-3">
-            {members.map((member) => (
-              <div key={member.email} className="flex items-center justify-between p-4 rounded-xl bg-white/5 border border-white/10">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <p className="text-white font-medium">{member.nombre || member.email}</p>
-                    {member.email === sessionEmail && (
-                      <span className="bg-yellow-400/20 text-yellow-400 border border-yellow-400/30 rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wide">
-                        Tú
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-zinc-500 text-xs mt-1">
-                    {member.email} · Actualizado: {formatDate(member.updated_at)}
-                  </p>
+      {invitations.length > 0 && (
+        <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+          <h2 className="text-xl font-black text-white">Invitaciones pendientes</h2>
+          <div className="mt-4 grid gap-3">
+            {invitations.map((inv) => (
+              <div key={inv.id} className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 lg:flex-row lg:items-center lg:justify-between">
+                <div className="min-w-0">
+                  <p className="font-bold text-white">{inv.email}</p>
+                  <p className="text-sm text-zinc-500">{inv.rol} · expira {formatDateTime(inv.expira_at)}</p>
+                  <p className="mt-1 truncate font-mono text-xs text-zinc-600">{inv.link}</p>
                 </div>
-                <select
-                  value={member.rol}
-                  onChange={(e) => handleSetRole(member.email, e.target.value)}
-                  disabled={member.email === sessionEmail}
-                  className="bg-zinc-900 border border-white/10 rounded-xl px-3 py-2 text-white text-xs font-bold uppercase tracking-wide focus:outline-none focus:border-yellow-400/50 disabled:opacity-40 disabled:cursor-not-allowed"
-                >
-                  <option value="superadmin">Superadmin</option>
-                  <option value="admin">Admin</option>
-                  <option value="viewer">Viewer</option>
-                </select>
+                <div className="flex gap-2">
+                  <button onClick={() => copy(inv.link, 'Link')} className="rounded-full border border-yellow-300/30 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-yellow-200"><Copy className="mr-1 inline h-4 w-4" />Copiar</button>
+                  <button onClick={() => deleteInvite(inv.id)} className="rounded-full border border-red-400/30 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-red-300"><Trash2 className="mr-1 inline h-4 w-4" />Cancelar</button>
+                </div>
+              </div>
+            ))}
+          </div>
+        </section>
+      )}
+
+      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
+        <div className="mb-4 flex items-center gap-3">
+          <Mail className="h-5 w-5 text-yellow-300" />
+          <h2 className="text-xl font-black text-white">Últimos accesos auditados</h2>
+        </div>
+        {audit.length === 0 ? (
+          <p className="text-sm text-zinc-500">Sin auditoría disponible. Si la tabla admin_login_audit no existe, el login sigue funcionando pero no habrá historial.</p>
+        ) : (
+          <div className="grid gap-2">
+            {audit.slice(0, 10).map((row, index) => (
+              <div key={`${row.ts}-${index}`} className="grid gap-2 rounded-2xl border border-white/10 bg-black/30 p-3 text-xs text-zinc-400 md:grid-cols-[1.2fr_0.8fr_0.8fr_1fr]">
+                <span className="truncate text-zinc-200">{row.email ?? 'sin email'}</span>
+                <span className="font-mono">{row.ip ?? '—'}</span>
+                <span>{row.outcome ?? '—'}</span>
+                <span>{formatDateTime(row.ts)}</span>
               </div>
             ))}
           </div>
         )}
-      </div>
-
-      {/* Modal de Invitación */}
-      {showInviteModal && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-          onClick={(e) => e.target === e.currentTarget && !inviteLoading && setShowInviteModal(false)}
-        >
-          <div className="bg-zinc-950 border border-white/10 rounded-2xl p-6 max-w-md w-full">
-            {createdLink ? (
-              <>
-                <div className="w-12 h-12 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center mx-auto mb-4">
-                  <Link2 className="w-6 h-6 text-green-400" />
-                </div>
-                <h3 className="text-white font-bold text-lg mb-2 text-center">¡Invitación Creada!</h3>
-                <p className="text-zinc-500 text-sm mb-4 text-center">Copia este link y envíaselo a la persona invitada:</p>
-                <div className="bg-zinc-900 rounded-xl p-3 mb-4 border border-white/10">
-                  <p className="text-zinc-300 text-xs font-mono break-all">{createdLink}</p>
-                </div>
-                <button
-                  onClick={() => copyToClipboard(createdLink, 'Link de invitación')}
-                  className="w-full bg-yellow-400 text-black font-bold uppercase tracking-widest rounded-full px-6 py-3 text-sm hover:bg-yellow-300 transition-all mb-3 flex items-center justify-center gap-2"
-                >
-                  <Copy className="w-4 h-4" />
-                  Copiar Link
-                </button>
-                <button
-                  onClick={() => { setCreatedLink(null); setShowInviteModal(false); }}
-                  className="w-full bg-white/5 text-white border border-white/10 font-bold uppercase tracking-widest rounded-full px-6 py-3 text-sm hover:bg-white/10 transition-all"
-                >
-                  Cerrar
-                </button>
-              </>
-            ) : (
-              <>
-                <h3 className="text-white font-bold text-lg mb-4">Nueva Invitación</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="text-white/50 text-xs tracking-widest uppercase mb-2 block">Email</label>
-                    <input
-                      type="email"
-                      value={inviteEmail}
-                      onChange={(e) => setInviteEmail(e.target.value)}
-                      placeholder="usuario@ejemplo.com"
-                      disabled={inviteLoading}
-                      className="bg-zinc-900 border border-white/10 rounded-2xl px-5 py-3.5 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-yellow-400/50 w-full disabled:opacity-40"
-                    />
-                  </div>
-                  <div>
-                    <label className="text-white/50 text-xs tracking-widest uppercase mb-2 block">Rol</label>
-                    <select
-                      value={inviteRol}
-                      onChange={(e) => setInviteRol(e.target.value as 'admin' | 'viewer' | 'superadmin')}
-                      disabled={inviteLoading}
-                      className="bg-zinc-900 border border-white/10 rounded-2xl px-5 py-3.5 text-white text-sm focus:outline-none focus:border-yellow-400/50 w-full disabled:opacity-40"
-                    >
-                      <option value="superadmin">Superadmin — acceso total</option>
-                      <option value="admin">Admin — gestión general</option>
-                      <option value="viewer">Viewer — solo lectura</option>
-                    </select>
-                  </div>
-                  <div className="flex gap-3">
-                    <button
-                      onClick={handleInvite}
-                      disabled={inviteLoading}
-                      className="flex-1 bg-yellow-400 text-black font-bold uppercase tracking-widest rounded-full px-6 py-3 text-sm hover:bg-yellow-300 transition-all disabled:opacity-40"
-                    >
-                      {inviteLoading ? 'Creando...' : 'Crear y obtener link'}
-                    </button>
-                    <button
-                      onClick={() => setShowInviteModal(false)}
-                      disabled={inviteLoading}
-                      className="bg-white/5 text-white border border-white/10 font-bold uppercase tracking-widest rounded-full px-6 py-3 text-sm hover:bg-white/10 transition-all disabled:opacity-40"
-                    >
-                      Cancelar
-                    </button>
-                  </div>
-                </div>
-              </>
-            )}
-          </div>
-        </div>
-      )}
-    </div>
+      </section>
+    </AdminPage>
   );
 }

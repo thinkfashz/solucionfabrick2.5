@@ -18,8 +18,21 @@ interface AdminContextMenuProps {
   onLogout: () => void;
 }
 
-/* ── ALL nav sections (mirrors AdminShell navSections fully) ─────────────── */
 const ALL_SECTIONS = [
+  {
+    title: 'Módulos 1–7',
+    color: 'amber',
+    items: [
+      { href: '/admin/modulos', label: 'Centro de módulos', icon: LayoutGrid, description: 'Vista organizada de módulos', highlight: true },
+      { href: '/admin/activar', label: 'Módulo 1 · Entorno', icon: KeyRound, description: 'Variables y servicios' },
+      { href: '/admin/equipo', label: 'Módulo 2 · Acceso', icon: ShieldCheck, description: 'Roles y usuarios' },
+      { href: '/admin/errores', label: 'Módulo 3 · Bloqueos', icon: AlertTriangle, description: 'Intentos y errores' },
+      { href: '/admin/testing', label: 'Módulo 4 · Pruebas', icon: FlaskConical, description: 'Validaciones y tests' },
+      { href: '/admin/seguridad', label: 'Módulo 5 · Huella', icon: ShieldCheck, description: 'Passkeys y dispositivos', highlight: true },
+      { href: '/admin/sql', label: 'Módulo 6 · Base de datos', icon: Database, description: 'SQL y migraciones' },
+      { href: '/admin/vercel-logs', label: 'Módulo 7 · Deploy', icon: Terminal, description: 'Logs y build' },
+    ],
+  },
   {
     title: 'Visión general',
     color: 'sky',
@@ -94,7 +107,8 @@ const ALL_SECTIONS = [
     title: 'Seguridad & Claves',
     color: 'amber',
     items: [
-      { href: '/admin/center', label: 'Centro de integración', icon: KeyRound, description: 'Credenciales, claves API y encriptación de proveedores', highlight: true },
+      { href: '/admin/seguridad', label: 'Seguridad · Passkeys', icon: ShieldCheck, description: 'Huella digital o Face ID', highlight: true },
+      { href: '/admin/center', label: 'Centro de integración', icon: KeyRound, description: 'Credenciales y proveedores', highlight: true },
       { href: '/admin/extensions', label: 'Extensiones y Webhooks', icon: Plug, description: 'Snippets, webhooks, OAuth y signing keys', highlight: true },
       { href: '/admin/facturas', label: 'Facturas DTE', icon: Receipt, description: 'Documentos tributarios y SII' },
       { href: '/admin/inventario/scan', label: 'Escáner de inventario', icon: Scan, description: 'Lectura de códigos de barras y QR' },
@@ -125,7 +139,6 @@ const ALL_SECTIONS = [
   },
 ] as const;
 
-/* Color styles per section */
 const SECTION_COLORS: Record<string, { header: string; hover: string; icon: string; iconActive: string; badge: string }> = {
   sky:     { header: 'text-sky-400', hover: 'hover:bg-sky-400/10 hover:border-sky-400/20', icon: 'text-zinc-400 group-hover:bg-sky-400/15 group-hover:text-sky-300', iconActive: 'bg-sky-400/15 text-sky-300', badge: 'border-sky-400/40 bg-sky-400/10 text-sky-300' },
   amber:   { header: 'text-amber-400', hover: 'hover:bg-amber-400/8 hover:border-amber-400/20', icon: 'text-zinc-400 group-hover:bg-amber-400/15 group-hover:text-amber-300', iconActive: 'bg-amber-400/15 text-amber-300', badge: 'border-amber-400/40 bg-amber-400/10 text-amber-300' },
@@ -138,9 +151,6 @@ const SECTION_COLORS: Record<string, { header: string; hover: string; icon: stri
   red:     { header: 'text-rose-400', hover: 'hover:bg-rose-400/8 hover:border-rose-400/15', icon: 'text-zinc-400 group-hover:bg-rose-400/15 group-hover:text-rose-300', iconActive: 'bg-rose-400/15 text-rose-300', badge: 'border-rose-400/40 bg-rose-400/10 text-rose-300' },
 };
 
-/* ── Encryption reveal widget ──────────────────────────────────────────────── */
-// These entries only show the variable name and masked format — actual secrets
-// live exclusively in the server environment and are never sent to the client.
 const ENV_KEY_LABELS = [
   { label: 'NEXT_PUBLIC_SUPABASE_URL',    masked: 'https://••••••••.supabase.co' },
   { label: 'SUPABASE_SERVICE_ROLE_KEY',   masked: 'eyJ••••••••••••••••••••••••' },
@@ -159,7 +169,6 @@ function EncryptionWidget({ onClose }: { onClose: () => void }) {
       className="overflow-hidden"
     >
       <div className="mt-1 rounded-xl border border-yellow-300/20 bg-yellow-300/5 p-3">
-        {/* Header row */}
         <div className="flex items-center justify-between mb-2">
           <div className="flex items-center gap-2">
             <KeyRound className="h-3.5 w-3.5 text-yellow-400" />
@@ -174,7 +183,6 @@ function EncryptionWidget({ onClose }: { onClose: () => void }) {
           </Link>
         </div>
 
-        {/* Server-side notice */}
         <div className="mb-2.5 flex items-start gap-1.5 rounded-lg border border-amber-400/20 bg-amber-400/8 px-2.5 py-2">
           <EyeOff className="h-3 w-3 flex-shrink-0 text-amber-400 mt-px" />
           <p className="text-[9px] text-amber-300/80 leading-relaxed">
@@ -182,7 +190,6 @@ function EncryptionWidget({ onClose }: { onClose: () => void }) {
           </p>
         </div>
 
-        {/* Key rows — names + masked format only */}
         <div className="space-y-1.5">
           {ENV_KEY_LABELS.map((k) => (
             <div key={k.label} className="flex items-center gap-2 rounded-lg border border-white/[0.06] bg-black/30 px-2.5 py-1.5">
@@ -207,9 +214,8 @@ function EncryptionWidget({ onClose }: { onClose: () => void }) {
 export default function AdminContextMenu({ open, onClose, onLogout }: AdminContextMenuProps) {
   const [query, setQuery] = useState('');
   const [showEncryption, setShowEncryption] = useState(false);
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['Visión general', 'Operación', 'Contenido']));
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(['Módulos 1–7', 'Visión general', 'Operación', 'Contenido']));
 
-  /* Close on Escape */
   useEffect(() => {
     if (!open) return;
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -217,12 +223,10 @@ export default function AdminContextMenu({ open, onClose, onLogout }: AdminConte
     return () => window.removeEventListener('keydown', handler);
   }, [open, onClose]);
 
-  /* Reset state on close */
   useEffect(() => {
     if (!open) { setQuery(''); setShowEncryption(false); }
   }, [open]);
 
-  /* Filtered sections based on search query */
   const filteredSections = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return ALL_SECTIONS;
@@ -255,13 +259,10 @@ export default function AdminContextMenu({ open, onClose, onLogout }: AdminConte
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
         >
-          {/* Backdrop */}
           <div className="absolute inset-0 bg-black/80 backdrop-blur-md" onClick={onClose} />
-          {/* Glow orbs */}
           <div className="pointer-events-none absolute left-0 top-0 h-64 w-64 rounded-full bg-sky-400/15 blur-[80px]" />
           <div className="pointer-events-none absolute bottom-0 right-0 h-64 w-64 rounded-full bg-yellow-300/12 blur-[80px]" />
 
-          {/* Menu card */}
           <motion.div
             initial={{ scale: 0.92, opacity: 0, y: 20 }}
             animate={{ scale: 1, opacity: 1, y: 0 }}
@@ -270,10 +271,8 @@ export default function AdminContextMenu({ open, onClose, onLogout }: AdminConte
             className="relative z-10 flex w-full max-w-md flex-col overflow-hidden rounded-2xl border border-white/12 bg-zinc-950/97 shadow-[0_40px_120px_rgba(0,0,0,0.9)] backdrop-blur-2xl"
             style={{ maxHeight: '92vh' }}
           >
-            {/* Ambient top glow */}
             <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-yellow-400/60 to-transparent" />
 
-            {/* ── HEADER ── */}
             <div className="flex flex-shrink-0 items-center justify-between border-b border-white/[0.08] px-4 py-3">
               <div className="flex items-center gap-2.5">
                 <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-300 to-amber-500 shadow-[0_4px_16px_rgba(250,204,21,0.5)]">
@@ -293,7 +292,6 @@ export default function AdminContextMenu({ open, onClose, onLogout }: AdminConte
               </button>
             </div>
 
-            {/* ── SEARCH ── */}
             <div className="flex-shrink-0 border-b border-white/[0.06] px-3 py-2.5">
               <div className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2">
                 <Search className="h-3.5 w-3.5 flex-shrink-0 text-zinc-500" />
@@ -313,7 +311,6 @@ export default function AdminContextMenu({ open, onClose, onLogout }: AdminConte
               </div>
             </div>
 
-            {/* ── ENCRYPTION SECTION (pinned below search) ── */}
             <div className="flex-shrink-0 border-b border-white/[0.06] px-3 py-2">
               <button
                 onClick={() => setShowEncryption((v) => !v)}
@@ -340,10 +337,7 @@ export default function AdminContextMenu({ open, onClose, onLogout }: AdminConte
               </AnimatePresence>
             </div>
 
-            {/* ── SCROLLABLE NAV SECTIONS ── */}
             <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain px-2.5 py-2">
-
-              {/* No results */}
               {filteredSections.length === 0 && (
                 <div className="flex flex-col items-center justify-center py-10 gap-2 text-center">
                   <Search className="h-6 w-6 text-zinc-700" />
@@ -359,7 +353,6 @@ export default function AdminContextMenu({ open, onClose, onLogout }: AdminConte
 
                 return (
                   <div key={section.title} className="mb-1.5">
-                    {/* Section header */}
                     <button
                       className={`flex w-full items-center justify-between px-2 py-1.5 rounded-lg transition-colors ${isExpandable ? 'hover:bg-white/5 cursor-pointer' : 'cursor-default'}`}
                       onClick={() => isExpandable && toggleSection(section.title)}
@@ -379,7 +372,6 @@ export default function AdminContextMenu({ open, onClose, onLogout }: AdminConte
                       </div>
                     </button>
 
-                    {/* Section items */}
                     <AnimatePresence initial={false}>
                       {isExpanded && (
                         <motion.div
@@ -425,7 +417,6 @@ export default function AdminContextMenu({ open, onClose, onLogout }: AdminConte
               })}
             </div>
 
-            {/* ── FOOTER: logout + version ── */}
             <div className="flex-shrink-0 border-t border-white/[0.08] px-3 py-2.5">
               <div className="flex items-center gap-2">
                 <button

@@ -1,28 +1,13 @@
 'use client';
 
-/**
- * AdminBottomNav — barra inferior fija para la consola admin en móvil/tablet.
- *
- * 5 tabs: HOME, PROD, PED, OBS, MÁS (dropdown → drawer lateral).
- * Estilo según Bloque 6:
- *   - fixed bottom-0
- *   - bg-zinc-950, border-t border-white/5
- *   - altura 60px
- *   - iconos lucide + label text-[9px]
- *   - tab activo en amarillo
- *
- * `onOpenMore` se invoca al pulsar "MÁS" para abrir el cajón de navegación
- * completo (los items que no caben en los 4 primeros slots).
- */
-
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
   FileText,
   Home,
+  LayoutGrid,
   MoreHorizontal,
   Package,
-  ShoppingCart,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -30,25 +15,22 @@ type BottomItem = { href: string; label: string; icon: LucideIcon };
 
 const ITEMS: BottomItem[] = [
   { href: '/admin',              label: 'Home', icon: Home },
+  { href: '/admin/modulos',      label: 'Mód',  icon: LayoutGrid },
   { href: '/admin/productos',    label: 'Prod', icon: Package },
-  { href: '/admin/pedidos',      label: 'Ped',  icon: ShoppingCart },
   { href: '/admin/cotizaciones', label: 'Cot',  icon: FileText },
 ];
 
 export function AdminBottomNav({ onOpenMore }: { onOpenMore?: () => void }) {
   const pathname = usePathname() ?? '';
-  const isActive = (href: string) => pathname === href;
+  const isActive = (href: string) => pathname === href || (href !== '/admin' && pathname.startsWith(`${href}/`));
 
   return (
     <nav
       aria-label="Navegación inferior admin"
       className="fixed bottom-0 left-0 right-0 z-40 lg:hidden pb-[env(safe-area-inset-bottom)]"
     >
-      {/* Cinematic glassy backdrop (login-coherent) */}
       <div className="absolute inset-0 border-t border-white/15 bg-black/55 backdrop-blur-2xl" />
-      {/* Top accent line */}
       <div className="pointer-events-none absolute inset-x-0 top-0 h-px bg-gradient-to-r from-transparent via-yellow-400/45 to-transparent" />
-      {/* Subtle radial glow centered */}
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_120%,rgba(250,204,21,0.18),rgba(0,0,0,0)_60%)]" />
 
       <div className="relative mx-auto flex h-[60px] max-w-[1600px] items-stretch justify-around">

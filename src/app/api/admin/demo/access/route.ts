@@ -4,7 +4,7 @@ import { ADMIN_COOKIE_NAME, encodeSession } from '@/lib/adminAuth';
 
 export const dynamic = 'force-dynamic';
 
-const DEMO_SESSION_TTL_MS = 24 * 60 * 60 * 1000; // 24h
+const DEMO_SESSION_TTL_MS = 24 * 60 * 60 * 1000;
 
 export async function POST(request: Request) {
   let token: string;
@@ -30,15 +30,16 @@ export async function POST(request: Request) {
     }
     return NextResponse.json({ error: 'Error al validar token.' }, { status: 500 });
   }
+
   if (!rows || rows.length === 0) {
     return NextResponse.json({ error: 'Link de demo inválido o expirado.' }, { status: 400 });
   }
 
   const row = rows[0] as { id: string; token: string; expira_at: string; accesos: number };
-
-  // Session expires at the earlier of: now + 24h  OR  token's own expiry
   const tokenExpMs = new Date(row.expira_at).getTime();
   const sessionExpMs = Math.min(Date.now() + DEMO_SESSION_TTL_MS, tokenExpMs);
+  const maxAge = Math.max(60, Math.floor((sessionExpMs - Date.now()) / 1000));
+  const sessionId = crypto.randomUUID();
 
   const sessionToken = await encodeSession({
     email: 'demo@preview',
@@ -46,18 +47,39 @@ export async function POST(request: Request) {
     exp: sessionExpMs,
   });
 
-  // Track access count (best effort)
   await insforgeAdmin.database
     .from('demo_tokens')
     .update({ accesos: (row.accesos ?? 0) + 1, ultimo_acceso: new Date().toISOString() })
     .eq('id', row.id);
 
-  const response = NextResponse.json({ ok: true });
+  const response = NextResponse.json({
+    ok: true,
+    mode: 'viewer',
+    sessionId,
+    expiresAt: new Date(sessionExpMs).toISOString(),
+  });
+
   response.cookies.set(ADMIN_COOKIE_NAME, sessionToken, {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
     sameSite: 'lax',
-    maxAge: Math.floor((sessionExpMs - Date.now()) / 1000),
+    maxAge,
+    path: '/',
+  });
+
+  response.cookies.set('sf_demo_mode', '1', {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge,
+    path: '/',
+  });
+
+  response.cookies.set('sf_demo_sid', sessionId, {
+    httpOnly: false,
+    secure: process.env.NODE_ENV === 'production',
+    sameSite: 'lax',
+    maxAge,
     path: '/',
   });
 

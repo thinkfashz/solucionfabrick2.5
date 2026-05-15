@@ -125,10 +125,14 @@ export default function EquipoPage() {
 
   async function handleRevokeDemo(id: string) {
     if (!confirm('¿Revocar este acceso demo?')) return;
-    const res = await fetch(`/api/admin/demo/tokens?id=${id}`, { method: 'DELETE' });
-    if (!res.ok) { showToast('Error al revocar.', 'error'); return; }
-    showToast('Acceso demo revocado.', 'success');
-    loadData();
+    try {
+      const res = await fetch(`/api/admin/demo/tokens?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) { showToast('Error al revocar.', 'error'); return; }
+      showToast('Acceso demo revocado.', 'success');
+      loadData();
+    } catch {
+      showToast('Error de red al revocar.', 'error');
+    }
   }
 
   function showToast(message: string, type: 'success' | 'error') {
@@ -175,44 +179,60 @@ export default function EquipoPage() {
 
   async function handleDeleteInvitation(id: string) {
     if (!confirm('¿Eliminar esta invitación?')) return;
-    const res = await fetch(`/api/admin/invitations?id=${id}`, { method: 'DELETE' });
-    if (!res.ok) { showToast('Error al eliminar invitación.', 'error'); return; }
-    showToast('Invitación eliminada.', 'success');
-    loadData();
+    try {
+      const res = await fetch(`/api/admin/invitations?id=${id}`, { method: 'DELETE' });
+      if (!res.ok) { showToast('Error al eliminar invitación.', 'error'); return; }
+      showToast('Invitación eliminada.', 'success');
+      loadData();
+    } catch {
+      showToast('Error de red al eliminar invitación.', 'error');
+    }
   }
 
   async function handleApprove(email: string) {
-    const res = await fetch('/api/admin/team', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, action: 'approve' }),
-    });
-    if (!res.ok) { showToast('Error al aprobar.', 'error'); return; }
-    showToast('Usuario aprobado.', 'success');
-    loadData();
+    try {
+      const res = await fetch('/api/admin/team', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, action: 'approve' }),
+      });
+      if (!res.ok) { showToast('Error al aprobar.', 'error'); return; }
+      showToast('Usuario aprobado.', 'success');
+      loadData();
+    } catch {
+      showToast('Error de red al aprobar.', 'error');
+    }
   }
 
   async function handleReject(email: string) {
     if (!confirm(`¿Rechazar y eliminar a ${email}?`)) return;
-    const res = await fetch('/api/admin/team', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, action: 'reject' }),
-    });
-    if (!res.ok) { showToast('Error al rechazar.', 'error'); return; }
-    showToast('Usuario rechazado.', 'success');
-    loadData();
+    try {
+      const res = await fetch('/api/admin/team', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, action: 'reject' }),
+      });
+      if (!res.ok) { showToast('Error al rechazar.', 'error'); return; }
+      showToast('Usuario rechazado.', 'success');
+      loadData();
+    } catch {
+      showToast('Error de red al rechazar.', 'error');
+    }
   }
 
   async function handleSetRole(email: string, rol: string) {
-    const res = await fetch('/api/admin/team', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, action: 'set_role', rol }),
-    });
-    if (!res.ok) { showToast('Error al cambiar rol.', 'error'); return; }
-    showToast('Rol actualizado.', 'success');
-    loadData();
+    try {
+      const res = await fetch('/api/admin/team', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, action: 'set_role', rol }),
+      });
+      if (!res.ok) { showToast('Error al cambiar rol.', 'error'); return; }
+      showToast('Rol actualizado.', 'success');
+      loadData();
+    } catch {
+      showToast('Error de red al cambiar rol.', 'error');
+    }
   }
 
   function formatDuration(ms: number): string {

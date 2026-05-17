@@ -13,6 +13,15 @@ type AuditRow = {
   user_agent?: string | null;
 };
 
+type NormalizedRow = {
+  email: string;
+  ip: string;
+  outcome: string;
+  ts: string | null;
+  user_agent: string;
+  device: ReturnType<typeof parseDevice>;
+};
+
 function isMissingTable(error: unknown): boolean {
   const message = (error as { message?: string } | null)?.message ?? String(error ?? '');
   return /does not exist|relation|schema cache|could not find/i.test(message);
@@ -58,6 +67,25 @@ async function requireAdmin(request: NextRequest) {
   return { payload };
 }
 
+function isSuccess(outcome: string) {
+  return /success|ok|login/i.test(outcome);
+}
+
+function buildSummary(rows: NormalizedRow[]) {
+  const ips = Array.from(new Set(rows.map((row) => row.ip).filter(Boolean)));
+  const devices = Array.from(new Set(rows.map((row) => row.device.label).filter(Boolean)));
+  return {
+    total: rows.length,
+    success: rows.filter((row) => isSuccess(row.outcome)).length,
+    failed: rows.filter((row) => /fail|error|invalid|blocked|limited/i.test(row.outcome)).length,
+    uniqueIps: ips.length,
+    uniqueDevices: devices.length,
+    lastLogin: rows.find((row) => isSuccess(row.outcome))?.ts ?? rows[0]?.ts ?? null,
+    lastIp: rows.find((row) => isSuccess(row.outcome))?.ip ?? rows[0]?.ip ?? null,
+    lastDevice: rows.find((row) => isSuccess(row.outcome))?.device.label ?? rows[0]?.device.label ?? null,
+  };
+}
+
 export async function GET(request: NextRequest) {
   const auth = await requireAdmin(request);
   if (auth.error) return auth.error;
@@ -65,7 +93,8 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const emailFilter = url.searchParams.get('email')?.trim().toLowerCase() ?? '';
   const selfOnly = auth.payload?.rol !== 'superadmin';
-  const targetEmail = selfOnly ? auth.payload?.email?.toLowerCase() : emailFilter;
+  const currentEmail = auth.payload?.email?.toLowerCase() ?? '';
+  const targetEmail = selfOnly ? currentEmail : emailFilter;
 
   let query = insforgeAdmin.database
     .from('admin_login_audit')
@@ -82,6 +111,7 @@ export async function GET(request: NextRequest) {
         ok: false,
         error: 'La tabla admin_login_audit no existe o no tiene las columnas necesarias.',
         summary: { total: 0, success: 0, failed: 0, uniqueIps: 0, uniqueDevices: 0 },
+        superadminSummary: { email: currentEmail, total: 0, success: 0, failed: 0, uniqueIps: 0, uniqueDevices: 0, lastLogin: null, lastIp: null, lastDevice: null },
         currentIp: getClientIp(request),
         emails: [],
         ips: [],
@@ -92,7 +122,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message ?? 'No se pudo leer la auditoría.' }, { status: 500 });
   }
 
-  const rows = ((data ?? []) as AuditRow[]).map((row) => ({
+  const rows: NormalizedRow[] = ((data ?? []) as AuditRow[]).map((row) => ({
     email: row.email ?? 'sin email',
     ip: row.ip ?? 'sin IP',
     outcome: row.outcome ?? 'unknown',
@@ -115,18 +145,20 @@ export async function GET(request: NextRequest) {
     else deviceMap.set(key, { ...row.device, total: 1, lastSeen: row.ts });
   }
 
+  const currentUserRows = currentEmail ? rows.filter((row) => row.email.toLowerCase() === currentEmail) : [];
+
   return NextResponse.json({
     ok: true,
     currentIp: getClientIp(request),
     role: auth.payload?.rol ?? 'admin',
     activeFilter: targetEmail || null,
     emails,
-    summary: {
-      total: rows.length,
-      success: rows.filter((row) => /success|ok|login/i.test(row.outcome)).length,
-      failed: rows.filter((row) => /fail|error|invalid|blocked/i.test(row.outcome)).length,
-      uniqueIps: ips.length,
-      uniqueDevices: deviceMap.size,
+    summary: buildSummary(rows),
+    superadminSummary: {
+      email: currentEmail,
+      ...buildSummary(currentUserRows.length > 0 ? currentUserRows : rows),
+      ips: Array.from(new Set((currentUserRows.length > 0 ? currentUserRows : rows).map((row) => row.ip))).slice(0, 12),
+      devices: Array.from(new Set((currentUserRows.length > 0 ? currentUserRows : rows).map((row) => row.device.label))).slice(0, 12),
     },
     ips,
     devices: Array.from(deviceMap.values()),

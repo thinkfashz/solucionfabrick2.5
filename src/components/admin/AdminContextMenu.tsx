@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import Link from 'next/link';
+import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
   AlertTriangle,
@@ -24,7 +25,9 @@ import {
   Newspaper,
   Package,
   Plug,
+  Radio,
   Receipt,
+  Rocket,
   Scan,
   Search,
   Send,
@@ -32,16 +35,19 @@ import {
   ShieldCheck,
   ShoppingCart,
   Sparkles,
+  Star,
   Stethoscope,
   Store,
+  Tag,
+  Telescope,
   Terminal,
+  TrendingDown,
   Truck,
   Users,
   Wallet,
   X,
   Zap,
 } from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
 
 interface AdminContextMenuProps {
   open: boolean;
@@ -70,15 +76,24 @@ const SECTIONS: MenuSection[] = [
     items: [
       { href: '/admin/modulos', label: 'Centro de módulos', icon: LayoutGrid, description: 'Vista organizada de módulos', highlight: true },
       { href: '/admin/activar', label: 'Módulo 1 · Entorno', icon: KeyRound, description: 'Variables y servicios' },
-      { href: '/admin/equipo', label: 'Módulo 2 · Acceso', icon: ShieldCheck, description: 'Roles y usuarios' },
-      { href: '/admin/sesiones', label: 'Sesiones y dispositivos', icon: Fingerprint, description: 'IPs, móviles, navegadores y auditoría de acceso', highlight: true },
-      { href: '/admin/equipo/demo', label: 'Demo 24h guiado', icon: Eye, description: 'Crear links temporales de lectura', highlight: true },
-      { href: '/admin/diagnostico', label: 'Diagnóstico APIs', icon: Stethoscope, description: 'Detectar claves y tablas faltantes', highlight: true },
-      { href: '/admin/errores', label: 'Módulo 3 · Bloqueos', icon: AlertTriangle, description: 'Intentos y errores' },
-      { href: '/admin/testing', label: 'Módulo 4 · Pruebas', icon: FlaskConical, description: 'Validaciones y tests' },
-      { href: '/admin/seguridad', label: 'Módulo 5 · Huella', icon: ShieldCheck, description: 'Passkeys y dispositivos' },
+      { href: '/admin/equipo', label: 'Módulo 2 · Acceso', icon: ShieldCheck, description: 'Roles, usuarios e invitaciones' },
+      { href: '/admin/errores', label: 'Módulo 3 · Bloqueos', icon: AlertTriangle, description: 'Intentos, fallos y errores' },
+      { href: '/admin/testing', label: 'Módulo 4 · Pruebas', icon: FlaskConical, description: 'Validaciones y smoke tests' },
+      { href: '/admin/seguridad', label: 'Módulo 5 · Huella', icon: Fingerprint, description: 'Passkeys, Face ID y dispositivos' },
       { href: '/admin/sql', label: 'Módulo 6 · Base de datos', icon: Database, description: 'SQL y migraciones' },
-      { href: '/admin/vercel-logs', label: 'Módulo 7 · Deploy', icon: Terminal, description: 'Logs y build' },
+      { href: '/admin/vercel-logs', label: 'Módulo 7 · Deploy', icon: Terminal, description: 'Builds y runtime logs' },
+    ],
+  },
+  {
+    title: 'Seguridad & acceso',
+    tone: 'red',
+    items: [
+      { href: '/admin/sesiones', label: 'Sesiones y dispositivos', icon: Fingerprint, description: 'IPs, móviles, navegadores y auditoría', highlight: true },
+      { href: '/admin/equipo', label: 'Equipo', icon: ShieldCheck, description: 'Roles, invitaciones y aprobaciones' },
+      { href: '/admin/equipo/demo', label: 'Links demo 24h', icon: Eye, description: 'Accesos guiados de solo lectura', highlight: true },
+      { href: '/admin/diagnostico', label: 'Diagnóstico APIs', icon: Stethoscope, description: 'Variables, tablas y servicios', highlight: true },
+      { href: '/admin/center', label: 'Credenciales', icon: KeyRound, description: 'Claves, proveedores e integración' },
+      { href: '/admin/extensions', label: 'Extensiones', icon: Plug, description: 'Webhooks, OAuth y signing keys' },
     ],
   },
   {
@@ -86,6 +101,7 @@ const SECTIONS: MenuSection[] = [
     tone: 'sky',
     items: [
       { href: '/admin', label: 'Centro de control', icon: Home, description: 'KPIs y salud operativa' },
+      { href: '/admin/saas', label: 'Mi SaaS', icon: Rocket, description: 'Clientes, instalación y plataforma', highlight: true },
       { href: '/admin/estado', label: 'Estado del sistema', icon: Activity, description: 'Diagnóstico general' },
       { href: '/admin/monitor', label: 'Monitor en tiempo real', icon: BarChart3, description: 'CPU, RAM, latencia y health checks' },
       { href: '/admin/manual', label: 'Manual técnico', icon: BookOpen, description: 'Guía técnica de la app' },
@@ -104,7 +120,11 @@ const SECTIONS: MenuSection[] = [
       { href: '/admin/cotizaciones', label: 'Cotizaciones', icon: FileText, description: 'Solicitudes y diseños 3D' },
       { href: '/admin/presupuestos', label: 'Presupuestos', icon: FileText, description: 'Links temporales de presupuesto' },
       { href: '/admin/entregas', label: 'Entregas', icon: Truck, description: 'Seguimiento logístico' },
+      { href: '/admin/inventario', label: 'Inventario', icon: Scan, description: 'Stock, bodega y movimientos', highlight: true },
+      { href: '/admin/inventario/scan', label: 'Escáner inventario', icon: Scan, description: 'Códigos de barra y QR' },
       { href: '/admin/clientes', label: 'Clientes', icon: Users, description: 'Historial y recurrencia' },
+      { href: '/admin/cupones', label: 'Cupones', icon: Tag, description: 'Descuentos y promociones', highlight: true },
+      { href: '/admin/reviews', label: 'Reseñas', icon: Star, description: 'Opiniones y valoraciones', highlight: true },
       { href: '/admin/reportes', label: 'Reportes', icon: BarChart3, description: 'Ventas y métricas' },
     ],
   },
@@ -117,6 +137,7 @@ const SECTIONS: MenuSection[] = [
       { href: '/admin/tienda', label: 'Tienda', icon: Store, description: 'Portada y catálogo' },
       { href: '/admin/blog', label: 'Blog', icon: Newspaper, description: 'Artículos y publicación' },
       { href: '/admin/medios', label: 'Medios', icon: ImageIcon, description: 'Biblioteca de imágenes' },
+      { href: '/admin/medios?tab=cloudinary', label: 'Cloudinary', icon: ImageIcon, description: 'Subida y estado de nube', highlight: true },
     ],
   },
   {
@@ -128,6 +149,8 @@ const SECTIONS: MenuSection[] = [
       { href: '/admin/publicar', label: 'Publicar', icon: Send, description: 'Posts para redes' },
       { href: '/admin/newsletter', label: 'Boletín', icon: Newspaper, description: 'Suscriptores y campañas' },
       { href: '/admin/publicidad', label: 'Publicidad', icon: Megaphone, description: 'Meta Ads' },
+      { href: '/admin/inteligencia-mercado', label: 'Inteligencia de mercado', icon: Telescope, description: 'Tendencias, SEO y productos ganadores', highlight: true },
+      { href: '/admin/social', label: 'Hub social', icon: MessageCircle, description: 'Centro de redes sociales', highlight: true },
       { href: '/admin/social/inbox', label: 'Inbox social', icon: MessageCircle, description: 'Mensajes y canales' },
     ],
   },
@@ -135,11 +158,9 @@ const SECTIONS: MenuSection[] = [
     title: 'Integraciones',
     tone: 'emerald',
     items: [
-      { href: '/admin/integraciones', label: 'Centro de integraciones', icon: Link2, description: 'Conectar, probar y desactivar APIs' },
+      { href: '/admin/integraciones', label: 'Centro de integraciones', icon: Link2, description: 'Conectar, probar y desactivar APIs', highlight: true },
       { href: '/admin/integraciones/marketplace', label: 'Marketplace', icon: Boxes, description: 'Apps, snippets, webhooks y OAuth' },
       { href: '/admin/configuracion', label: 'Configuración', icon: Settings, description: 'Parámetros de sistema' },
-      { href: '/admin/center', label: 'Credenciales', icon: KeyRound, description: 'Claves y proveedores' },
-      { href: '/admin/extensions', label: 'Extensiones', icon: Plug, description: 'Webhooks y OAuth' },
     ],
   },
   {
@@ -151,30 +172,17 @@ const SECTIONS: MenuSection[] = [
       { href: '/admin/ml/publicaciones', label: 'Publicaciones ML', icon: Store, description: 'Gestión de listings' },
       { href: '/admin/ml/pedidos', label: 'Pedidos ML', icon: ShoppingCart, description: 'Sincronizar ventas' },
       { href: '/admin/ml/preguntas', label: 'Preguntas ML', icon: MessageCircle, description: 'Responder compradores' },
+      { href: '/admin/ml/precios', label: 'Monitor precios ML', icon: TrendingDown, description: 'Comparar precios vs competencia', highlight: true },
     ],
   },
   {
-    title: 'Seguridad & sistema',
+    title: 'Sistema',
     tone: 'orange',
     items: [
-      { href: '/admin/seguridad', label: 'Seguridad · Passkeys', icon: ShieldCheck, description: 'Huella digital o Face ID' },
-      { href: '/admin/sesiones', label: 'Sesiones y dispositivos', icon: Fingerprint, description: 'Historial de login, IPs y dispositivos', highlight: true },
-      { href: '/admin/diagnostico', label: 'Diagnóstico APIs', icon: Stethoscope, description: 'Variables, tablas y servicios', highlight: true },
-      { href: '/admin/errores', label: 'Monitor de errores', icon: AlertTriangle, description: 'Fallos capturados' },
-      { href: '/admin/vercel-logs', label: 'Logs de Vercel', icon: Terminal, description: 'Build y runtime logs' },
-      { href: '/admin/sql', label: 'Terminal SQL', icon: Database, description: 'SQL en InsForge' },
-      { href: '/admin/setup', label: 'Setup', icon: Database, description: 'Verificar y crear tablas' },
       { href: '/admin/facturas', label: 'Facturas DTE', icon: Receipt, description: 'Documentos tributarios' },
-      { href: '/admin/inventario/scan', label: 'Escáner inventario', icon: Scan, description: 'Códigos de barra y QR' },
-    ],
-  },
-  {
-    title: 'Equipo & acceso',
-    tone: 'red',
-    items: [
-      { href: '/admin/equipo', label: 'Equipo', icon: ShieldCheck, description: 'Roles, invitaciones y aprobaciones' },
-      { href: '/admin/sesiones', label: 'Sesiones y dispositivos', icon: Fingerprint, description: 'Usuarios, IPs, móviles y navegadores', highlight: true },
-      { href: '/admin/equipo/demo', label: 'Links demo 24h', icon: Eye, description: 'Accesos guiados de lectura', highlight: true },
+      { href: '/admin/setup', label: 'Setup', icon: Database, description: 'Verificar y crear tablas' },
+      { href: '/admin/observatory', label: 'Observatory', icon: Radio, description: 'Red en tiempo real 3D', highlight: true },
+      { href: '/admin/envios', label: 'Tarifas de envío', icon: Truck, description: 'Costos por región y transportista', highlight: true },
     ],
   },
 ];
@@ -193,16 +201,14 @@ const toneClass: Record<MenuSection['tone'], string> = {
 
 export default function AdminContextMenu({ open, onClose, onLogout }: AdminContextMenuProps) {
   const [query, setQuery] = useState('');
-  const [expanded, setExpanded] = useState<Set<string>>(new Set(['Módulos 1–7', 'Equipo & acceso', 'Operación', 'Seguridad & sistema']));
+  const [expanded, setExpanded] = useState<Set<string>>(new Set(['Módulos 1–7', 'Seguridad & acceso', 'Operación', 'Integraciones']));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
     if (!q) return SECTIONS;
     return SECTIONS.map((section) => ({
       ...section,
-      items: section.items.filter((item) =>
-        item.label.toLowerCase().includes(q) || item.description.toLowerCase().includes(q),
-      ),
+      items: section.items.filter((item) => item.label.toLowerCase().includes(q) || item.description.toLowerCase().includes(q)),
     })).filter((section) => section.items.length > 0);
   }, [query]);
 
@@ -224,28 +230,19 @@ export default function AdminContextMenu({ open, onClose, onLogout }: AdminConte
       <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-white/12 bg-zinc-950/98 shadow-[0_40px_120px_rgba(0,0,0,0.9)]">
         <header className="flex items-center justify-between border-b border-white/10 px-4 py-4">
           <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-yellow-300 text-black shadow-[0_0_24px_rgba(250,204,21,0.35)]">
-              <Zap className="h-4 w-4" />
-            </span>
+            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-yellow-300 text-black shadow-[0_0_24px_rgba(250,204,21,0.35)]"><Zap className="h-4 w-4" /></span>
             <div>
               <p className="text-xs font-black uppercase tracking-[0.24em] text-yellow-300">Control room</p>
               <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-zinc-500">{totalItems} opciones disponibles</p>
             </div>
           </div>
-          <button onClick={onClose} className="rounded-full border border-white/10 p-2 text-zinc-300" aria-label="Cerrar menú">
-            <X className="h-4 w-4" />
-          </button>
+          <button onClick={onClose} className="rounded-full border border-white/10 p-2 text-zinc-300" aria-label="Cerrar menú"><X className="h-4 w-4" /></button>
         </header>
 
         <div className="border-b border-white/10 p-3">
           <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-3 py-2">
             <Search className="h-4 w-4 text-zinc-500" />
-            <input
-              value={query}
-              onChange={(event) => setQuery(event.target.value)}
-              placeholder="Buscar módulo u opción…"
-              className="min-w-0 flex-1 bg-transparent text-sm text-zinc-100 outline-none placeholder:text-zinc-600"
-            />
+            <input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar módulo u opción…" className="min-w-0 flex-1 bg-transparent text-sm text-zinc-100 outline-none placeholder:text-zinc-600" />
             {query && <button onClick={() => setQuery('')} className="text-zinc-500"><X className="h-3 w-3" /></button>}
           </div>
         </div>
@@ -266,15 +263,8 @@ export default function AdminContextMenu({ open, onClose, onLogout }: AdminConte
                     {section.items.map((item) => {
                       const Icon = item.icon;
                       return (
-                        <Link
-                          key={`${section.title}-${item.href}-${item.label}`}
-                          href={item.href}
-                          onClick={onClose}
-                          className={`group flex items-center gap-3 rounded-2xl border bg-white/[0.03] px-3 py-3 transition ${toneClass[section.tone]}`}
-                        >
-                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/8">
-                            <Icon className="h-4 w-4" />
-                          </span>
+                        <Link key={`${section.title}-${item.href}-${item.label}`} href={item.href} onClick={onClose} className={`group flex items-center gap-3 rounded-2xl border bg-white/[0.03] px-3 py-3 transition ${toneClass[section.tone]}`}>
+                          <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-white/8"><Icon className="h-4 w-4" /></span>
                           <span className="min-w-0 flex-1">
                             <span className="flex items-center gap-2 text-sm font-bold text-zinc-100">
                               <span className="truncate">{item.label}</span>
@@ -293,12 +283,8 @@ export default function AdminContextMenu({ open, onClose, onLogout }: AdminConte
         </div>
 
         <footer className="border-t border-white/10 p-3">
-          <button
-            onClick={() => { onClose(); onLogout(); }}
-            className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-black uppercase tracking-[0.2em] text-zinc-400 hover:border-red-400/50 hover:text-red-300"
-          >
-            <LogOut className="h-4 w-4" />
-            Cerrar sesión
+          <button onClick={() => { onClose(); onLogout(); }} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-black uppercase tracking-[0.2em] text-zinc-400 hover:border-red-400/50 hover:text-red-300">
+            <LogOut className="h-4 w-4" /> Cerrar sesión
           </button>
         </footer>
       </div>

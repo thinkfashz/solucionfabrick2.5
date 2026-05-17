@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Bot, BrainCircuit, CheckCircle2, Code2, GitBranch, LockKeyhole, Loader2, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
 import { AdminPage } from '@/components/admin/ui';
 import FabrickAIProviderCards from '@/components/admin/FabrickAIProviderCards';
+import FabrickAICredentialsPanel from '@/components/admin/FabrickAICredentialsPanel';
 
 type Provider = 'auto' | 'openai' | 'openrouter' | 'claude';
 type Mode = 'lectura' | 'propuesta' | 'pr';
@@ -132,6 +133,7 @@ export default function FabrickAiDeveloperPage() {
               </motion.div>
 
               <FabrickAIProviderCards />
+              <FabrickAICredentialsPanel />
 
               <div className="space-y-4">
                 {messages.map((message, index) => (

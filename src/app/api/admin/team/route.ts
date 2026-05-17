@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { insforge, insforgeAdmin } from '@/lib/insforge';
-import { ADMIN_COOKIE_NAME, decodeSession, getClientIp } from '@/lib/adminAuth';
+import { getClientIp } from '@/lib/adminAuth';
 import { assertPepperConfigured, hashAdminPassword } from '@/lib/adminPasswordHash';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 
 export const dynamic = 'force-dynamic';
 
@@ -26,16 +27,6 @@ type AuditRow = {
   ts?: string | null;
   user_agent?: string | null;
 };
-
-async function requireSuperadmin(request: NextRequest) {
-  const sessionCookie = request.cookies.get(ADMIN_COOKIE_NAME);
-  if (!sessionCookie?.value) return { error: NextResponse.json({ error: 'No autenticado.' }, { status: 401 }) };
-  const payload = await decodeSession(sessionCookie.value);
-  if (!payload) return { error: NextResponse.json({ error: 'Sesión inválida.' }, { status: 401 }) };
-  if (payload.rol === 'viewer') return { error: NextResponse.json({ error: 'Modo demo: solo lectura.' }, { status: 403 }) };
-  if (payload.rol !== 'superadmin') return { error: NextResponse.json({ error: 'Solo superadmin puede modificar el equipo.' }, { status: 403 }) };
-  return { payload };
-}
 
 function isMissingTable(error: unknown): boolean {
   const message = (error as { message?: string } | null)?.message ?? String(error ?? '');
@@ -75,16 +66,8 @@ function enrichWithAudit(rows: AdminRow[], audit: AuditRow[]) {
 }
 
 export async function GET(request: NextRequest) {
-  const sessionCookie = request.cookies.get(ADMIN_COOKIE_NAME);
-  if (!sessionCookie?.value) return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
-  const payload = await decodeSession(sessionCookie.value);
-  if (!payload) return NextResponse.json({ error: 'Sesión inválida.' }, { status: 401 });
-  if (payload.rol === 'viewer') {
-    return NextResponse.json({ error: 'Modo demo: equipo y usuarios es una zona crítica.' }, { status: 403 });
-  }
-  if (payload.rol !== 'superadmin') {
-    return NextResponse.json({ error: 'Solo superadmin puede ver el equipo.' }, { status: 403 });
-  }
+  const auth = await requireAdminPermission(request, { resource: 'team', action: 'read' });
+  if (!auth.ok) return auth.response;
 
   const { data, error } = await insforgeAdmin.database
     .from('admin_users')
@@ -114,9 +97,9 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireSuperadmin(request);
-  if (auth.error) return auth.error;
-  const payload = auth.payload;
+  const auth = await requireAdminPermission(request, { resource: 'team', action: 'create' });
+  if (!auth.ok) return auth.response;
+  const payload = auth.session;
 
   let email = '';
   let nombre = '';
@@ -182,9 +165,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await requireSuperadmin(request);
-  if (auth.error) return auth.error;
-  const payload = auth.payload;
+  const auth = await requireAdminPermission(request, { resource: 'team', action: 'update' });
+  if (!auth.ok) return auth.response;
+  const payload = auth.session;
 
   let email: string;
   let action: string;

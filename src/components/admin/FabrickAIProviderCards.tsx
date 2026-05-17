@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Bot, BrainCircuit, CheckCircle2, ChevronDown, Gauge, KeyRound, LockKeyhole, Play, Sparkles, Zap } from 'lucide-react';
+import { Bot, BrainCircuit, CheckCircle2, ChevronDown, Gauge, KeyRound, LockKeyhole, Play, Sparkles, XCircle, Zap } from 'lucide-react';
 
 type ProviderId = 'openai' | 'openrouter' | 'claude';
 
@@ -13,6 +13,12 @@ type Provider = {
   fields: Array<{ key: string; label: string; placeholder: string; type?: 'text' | 'password' }>;
   docsUrl: string;
   accent: string;
+};
+
+type TestState = {
+  status: 'idle' | 'ok' | 'error';
+  message?: string;
+  meta?: string;
 };
 
 const PROVIDERS: Provider[] = [
@@ -59,23 +65,54 @@ export default function FabrickAIProviderCards() {
   const [open, setOpen] = useState<ProviderId>('openrouter');
   const [testing, setTesting] = useState<ProviderId | null>(null);
   const [progress, setProgress] = useState<Record<ProviderId, number>>({ openai: 0, openrouter: 0, claude: 0 });
-  const [state, setState] = useState<Record<ProviderId, 'idle' | 'ok' | 'error'>>({ openai: 'idle', openrouter: 'idle', claude: 'idle' });
+  const [state, setState] = useState<Record<ProviderId, TestState>>({
+    openai: { status: 'idle' },
+    openrouter: { status: 'idle' },
+    claude: { status: 'idle' },
+  });
 
-  function runTest(id: ProviderId) {
+  async function runTest(id: ProviderId) {
     setTesting(id);
-    setState((prev) => ({ ...prev, [id]: 'idle' }));
-    setProgress((prev) => ({ ...prev, [id]: 0 }));
-    let next = 0;
+    setState((prev) => ({ ...prev, [id]: { status: 'idle', message: 'Conectando con proveedor real…' } }));
+    setProgress((prev) => ({ ...prev, [id]: 8 }));
+
+    let alive = true;
     const timer = window.setInterval(() => {
-      next += Math.floor(Math.random() * 18) + 8;
-      if (next >= 100) {
-        next = 100;
-        window.clearInterval(timer);
-        setTesting(null);
-        setState((prev) => ({ ...prev, [id]: 'ok' }));
-      }
-      setProgress((prev) => ({ ...prev, [id]: next }));
+      setProgress((prev) => ({ ...prev, [id]: Math.min((prev[id] ?? 0) + 12, 88) }));
     }, 180);
+
+    try {
+      const res = await fetch('/api/admin/ai-developer/test-provider', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider: id }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo testear el proveedor.');
+      alive = false;
+      window.clearInterval(timer);
+      setProgress((prev) => ({ ...prev, [id]: 100 }));
+      setTesting(null);
+      setState((prev) => ({
+        ...prev,
+        [id]: {
+          status: 'ok',
+          message: `Conexión real OK · ${json.latencyMs ?? '?'} ms`,
+          meta: `${json.model ?? 'modelo'} · fuente ${json.source ?? 'desconocida'}`,
+        },
+      }));
+    } catch (err) {
+      if (alive) window.clearInterval(timer);
+      setProgress((prev) => ({ ...prev, [id]: 100 }));
+      setTesting(null);
+      setState((prev) => ({
+        ...prev,
+        [id]: {
+          status: 'error',
+          message: err instanceof Error ? err.message : 'Error inesperado al testear el proveedor.',
+        },
+      }));
+    }
   }
 
   return (
@@ -84,7 +121,7 @@ export default function FabrickAIProviderCards() {
         <div>
           <p className="text-[11px] font-black uppercase tracking-[0.24em] text-yellow-300">Credenciales IA</p>
           <h2 className="mt-1 text-xl font-black text-white">Proveedores para Fabrick AI Developer</h2>
-          <p className="mt-2 text-sm text-zinc-400">Primera capa visual 3D para configurar y probar proveedores IA. El guardado real se conecta al Centro de Integraciones oficial.</p>
+          <p className="mt-2 text-sm text-zinc-400">Tarjetas 3D para probar proveedores reales con credenciales DB-first y Vercel fallback.</p>
         </div>
         <span className="hidden rounded-full border border-yellow-300/20 bg-yellow-300/10 px-3 py-1 text-xs font-bold text-yellow-100 sm:inline-flex">DB primero · Vercel respaldo</span>
       </div>
@@ -92,11 +129,13 @@ export default function FabrickAIProviderCards() {
       <div className="grid gap-4 lg:grid-cols-3">
         {PROVIDERS.map((provider) => {
           const expanded = open === provider.id;
-          const status = state[provider.id];
+          const result = state[provider.id];
           const value = progress[provider.id] ?? 0;
+          const isOk = result.status === 'ok';
+          const isError = result.status === 'error';
           return (
             <div key={provider.id} className="group [perspective:1200px]">
-              <div className={`relative overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/90 p-4 shadow-[0_25px_90px_rgba(0,0,0,0.35)] transition duration-300 [transform-style:preserve-3d] hover:-translate-y-1 hover:rotate-x-2 hover:rotate-y-2 hover:border-yellow-300/30`}>
+              <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/90 p-4 shadow-[0_25px_90px_rgba(0,0,0,0.35)] transition duration-300 [transform-style:preserve-3d] hover:-translate-y-1 hover:rotate-x-2 hover:rotate-y-2 hover:border-yellow-300/30">
                 <div className={`absolute inset-0 bg-gradient-to-br ${provider.accent}`} />
                 <div className="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-yellow-300/10 blur-3xl" />
                 <div className="relative z-10">
@@ -118,15 +157,17 @@ export default function FabrickAIProviderCards() {
                   <div className="mt-4 rounded-2xl border border-white/10 bg-black/35 p-3">
                     <div className="flex items-center justify-between text-[11px] font-bold uppercase tracking-[0.16em] text-zinc-500">
                       <span className="flex items-center gap-2"><Gauge className="h-4 w-4" /> Test de conexión</span>
-                      <span>{testing === provider.id ? `${value}%` : status === 'ok' ? 'OK' : 'Idle'}</span>
+                      <span>{testing === provider.id ? `${value}%` : isOk ? 'OK' : isError ? 'ERROR' : 'Idle'}</span>
                     </div>
                     <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10">
-                      <div className={`h-full rounded-full transition-all duration-200 ${status === 'ok' ? 'bg-emerald-300' : 'bg-yellow-300'}`} style={{ width: `${value}%` }} />
+                      <div className={`h-full rounded-full transition-all duration-200 ${isOk ? 'bg-emerald-300' : isError ? 'bg-red-400' : 'bg-yellow-300'}`} style={{ width: `${value}%` }} />
                     </div>
                     {testing === provider.id ? (
-                      <div className="mt-3 flex items-center gap-2 text-xs text-yellow-100"><Zap className="h-4 w-4 animate-pulse" /> Enviando paquetes de prueba… latencia simulada en vivo.</div>
-                    ) : status === 'ok' ? (
-                      <div className="mt-3 flex items-center gap-2 text-xs text-emerald-200"><CheckCircle2 className="h-4 w-4" /> Proveedor listo para conectar al backend real.</div>
+                      <div className="mt-3 flex items-center gap-2 text-xs text-yellow-100"><Zap className="h-4 w-4 animate-pulse" /> Enviando prueba real al proveedor…</div>
+                    ) : isOk ? (
+                      <div className="mt-3 flex items-start gap-2 text-xs text-emerald-200"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0" /><span>{result.message}<br /><span className="text-emerald-200/60">{result.meta}</span></span></div>
+                    ) : isError ? (
+                      <div className="mt-3 flex items-start gap-2 text-xs text-red-200"><XCircle className="mt-0.5 h-4 w-4 shrink-0" /><span>{result.message}</span></div>
                     ) : null}
                   </div>
 
@@ -140,14 +181,14 @@ export default function FabrickAIProviderCards() {
                       ))}
                       <div className="flex flex-wrap gap-2 pt-2">
                         <button type="button" onClick={() => runTest(provider.id)} disabled={testing === provider.id} className="inline-flex items-center gap-2 rounded-full bg-yellow-300 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-black disabled:opacity-60">
-                          <Play className="h-4 w-4" /> Test
+                          <Play className="h-4 w-4" /> Test real
                         </button>
                         <a href={provider.docsUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-zinc-300 hover:border-yellow-300/40 hover:text-yellow-200">
                           <KeyRound className="h-4 w-4" /> Obtener key
                         </a>
                       </div>
                       <p className="flex items-start gap-2 text-[11px] leading-relaxed text-zinc-500">
-                        <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" /> En la siguiente etapa estos campos se guardan cifrados en el Centro de Integraciones oficial y el backend los lee con prioridad DB-first.
+                        <LockKeyhole className="mt-0.5 h-4 w-4 shrink-0" /> El test real usa credenciales guardadas en Integraciones o variables Vercel. Estos inputs son guía visual; el guardado oficial sigue en /admin/integraciones.
                       </p>
                     </div>
                   ) : null}

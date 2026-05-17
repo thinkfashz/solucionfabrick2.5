@@ -10,7 +10,9 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { verifyRegistrationResponse } from '@simplewebauthn/server';
 import type { RegistrationResponseJSON } from '@simplewebauthn/browser';
-import { adminUnauthorized, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
+import { getAdminTenantId } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
+import { recordAdminAudit, recordAdminFailure } from '@/lib/adminAudit';
 import {
   getRpId,
   getOrigin,
@@ -24,16 +26,19 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
-  try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+  const auth = await requireAdminPermission(request, { resource: 'passkeys', action: 'create' });
+  if (!auth.ok) return auth.response;
+  const session = auth.session;
 
+  try {
     const challengeCookie = request.cookies.get(CHALLENGE_COOKIE_NAME)?.value;
     if (!challengeCookie) {
+      await recordAdminFailure({ session, request, action: 'create', resource: 'passkeys', metadata: { reason: 'missing_challenge_cookie' } });
       return NextResponse.json({ error: 'Sesión de registro expirada. Intenta nuevamente.' }, { status: 400 });
     }
     const challenge = await verifyChallengeCookie(challengeCookie);
     if (!challenge || challenge.type !== 'register' || challenge.email !== session.email) {
+      await recordAdminFailure({ session, request, action: 'create', resource: 'passkeys', metadata: { reason: 'invalid_challenge' } });
       return NextResponse.json({ error: 'Challenge inválido o expirado.' }, { status: 400 });
     }
 
@@ -52,11 +57,11 @@ export async function POST(request: NextRequest) {
     });
 
     if (!verification.verified || !verification.registrationInfo) {
+      await recordAdminFailure({ session, request, action: 'create', resource: 'passkeys', metadata: { reason: 'webauthn_not_verified', rpID, origin } });
       return NextResponse.json({ error: 'Verificación de passkey fallida.' }, { status: 400 });
     }
 
     const { credential, aaguid, credentialDeviceType, credentialBackedUp } = verification.registrationInfo;
-
     const autoName = generateDeviceName(aaguid);
 
     await savePasskey({
@@ -73,6 +78,22 @@ export async function POST(request: NextRequest) {
       created_at: new Date().toISOString(),
     });
 
+    await recordAdminAudit({
+      session,
+      request,
+      action: 'create',
+      resource: 'passkeys',
+      resourceId: credential.id,
+      metadata: {
+        name: autoName,
+        tenantId,
+        deviceType: credentialDeviceType,
+        backedUp: credentialBackedUp,
+        transports: credential.transports ?? [],
+        aaguid: aaguid ?? null,
+      },
+    });
+
     const response = NextResponse.json({
       ok: true,
       passkey: {
@@ -85,6 +106,7 @@ export async function POST(request: NextRequest) {
     return response;
   } catch (err) {
     console.error('[passkeys/register/verify]', err);
+    await recordAdminFailure({ session, request, action: 'create', resource: 'passkeys', metadata: { reason: 'unexpected_error', error: err instanceof Error ? err.message : String(err) } });
     return NextResponse.json({ error: 'Error al guardar la passkey.' }, { status: 500 });
   }
 }

@@ -18,6 +18,7 @@ const VIEWER_BLOCKED_ADMIN_PATHS = [
 ]
 
 const VIEWER_WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
+const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
 function isPlatformHost(host: string): boolean {
   const h = host.split(':')[0].toLowerCase()
@@ -107,12 +108,21 @@ function isAllowedViewerApiWrite(pathname: string): boolean {
   return pathname === '/api/admin/demo/events' || pathname === '/api/admin/logout'
 }
 
+function isIntegrationsApi(pathname: string): boolean {
+  return pathname === '/api/admin/integrations' || pathname.startsWith('/api/admin/integrations/')
+}
+
+function isMainIntegrationsApi(pathname: string): boolean {
+  return pathname === '/api/admin/integrations'
+}
+
 export async function middleware(request: NextRequest) {
   const nonce = generateNonce()
   const isHtml = isHtmlRequest(request)
   const isDev = process.env.NODE_ENV !== 'production'
   const csp = buildCsp({ nonce, isDev })
   const pathname = request.nextUrl.pathname
+  const method = request.method.toUpperCase()
 
   const sessionCookie = request.cookies.get('admin_session')
   let sessionPayload: EdgeSessionPayload = {}
@@ -123,9 +133,21 @@ export async function middleware(request: NextRequest) {
     if (validAdminSession) sessionPayload = decodeSessionPayloadUnsafe(sessionCookie.value)
   }
 
-  if (pathname.startsWith('/api/admin') && VIEWER_WRITE_METHODS.has(request.method.toUpperCase())) {
+  if (pathname.startsWith('/api/admin') && VIEWER_WRITE_METHODS.has(method)) {
     if (validAdminSession && sessionPayload.rol === 'viewer' && !isAllowedViewerApiWrite(pathname)) {
       return NextResponse.json({ error: 'Modo demo: solo lectura. Acción bloqueada.' }, { status: 403 })
+    }
+  }
+
+  if (isIntegrationsApi(pathname)) {
+    if (!validAdminSession) {
+      return NextResponse.json({ error: 'No autenticado.' }, { status: 401 })
+    }
+    if (sessionPayload.rol === 'viewer') {
+      return NextResponse.json({ error: 'Modo demo: integraciones es una zona crítica.' }, { status: 403 })
+    }
+    if (isMainIntegrationsApi(pathname) && WRITE_METHODS.has(method) && sessionPayload.rol !== 'superadmin') {
+      return NextResponse.json({ error: 'Solo superadmin puede modificar credenciales de integraciones.' }, { status: 403 })
     }
   }
 

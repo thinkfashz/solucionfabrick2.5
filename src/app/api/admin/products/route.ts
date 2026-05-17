@@ -1,35 +1,18 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { insforgeAdmin } from '@/lib/insforge';
-import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import { requireAdminPermission } from '@/lib/adminPermissions';
+import { recordAdminAudit, recordAdminFailure } from '@/lib/adminAudit';
 
 export const dynamic = 'force-dynamic';
-
-type Role = 'superadmin' | 'admin' | 'viewer';
-
-async function readSession(request: NextRequest) {
-  const sessionCookie = request.cookies.get(ADMIN_COOKIE_NAME);
-  if (!sessionCookie?.value) {
-    return { error: NextResponse.json({ error: 'No autenticado.' }, { status: 401 }) };
-  }
-  const payload = await decodeSession(sessionCookie.value);
-  if (!payload) {
-    return { error: NextResponse.json({ error: 'Sesión inválida.' }, { status: 401 }) };
-  }
-  return { payload };
-}
-
-function canWrite(role?: Role) {
-  return role === 'superadmin' || role === 'admin';
-}
 
 function parseProductId(request: NextRequest) {
   return new URL(request.url).searchParams.get('id')?.trim() ?? '';
 }
 
 export async function GET(request: NextRequest) {
-  const auth = await readSession(request);
-  if (auth.error) return auth.error;
+  const auth = await requireAdminPermission(request, { resource: 'products', action: 'read' });
+  if (!auth.ok) return auth.response;
 
   const { data, error } = await insforgeAdmin.database
     .from('products')
@@ -37,6 +20,7 @@ export async function GET(request: NextRequest) {
     .order('created_at', { ascending: false });
 
   if (error) {
+    await recordAdminFailure({ session: auth.session, request, action: 'read', resource: 'products', metadata: { error: error.message } });
     return NextResponse.json({ error: error.message ?? 'No se pudieron cargar los productos.' }, { status: 500 });
   }
 
@@ -44,11 +28,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const auth = await readSession(request);
-  if (auth.error) return auth.error;
-  if (!canWrite(auth.payload?.rol as Role | undefined)) {
-    return NextResponse.json({ error: 'No tienes permisos para modificar productos.' }, { status: 403 });
-  }
+  const auth = await requireAdminPermission(request, { resource: 'products', action: 'update' });
+  if (!auth.ok) return auth.response;
 
   const id = parseProductId(request);
   if (!id) return NextResponse.json({ error: 'ID requerido.' }, { status: 400 });
@@ -69,21 +50,26 @@ export async function PATCH(request: NextRequest) {
   }
 
   const { error } = await insforgeAdmin.database.from('products').update(patch).eq('id', id);
-  if (error) return NextResponse.json({ error: error.message ?? 'No se pudo actualizar el producto.' }, { status: 500 });
+  if (error) {
+    await recordAdminFailure({ session: auth.session, request, action: 'update', resource: 'products', resourceId: id, metadata: { patch, error: error.message } });
+    return NextResponse.json({ error: error.message ?? 'No se pudo actualizar el producto.' }, { status: 500 });
+  }
+  await recordAdminAudit({ session: auth.session, request, action: 'update', resource: 'products', resourceId: id, metadata: { patch } });
   return NextResponse.json({ ok: true });
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await readSession(request);
-  if (auth.error) return auth.error;
-  if (!canWrite(auth.payload?.rol as Role | undefined)) {
-    return NextResponse.json({ error: 'No tienes permisos para eliminar productos.' }, { status: 403 });
-  }
+  const auth = await requireAdminPermission(request, { resource: 'products', action: 'delete' });
+  if (!auth.ok) return auth.response;
 
   const id = parseProductId(request);
   if (!id) return NextResponse.json({ error: 'ID requerido.' }, { status: 400 });
 
   const { error } = await insforgeAdmin.database.from('products').delete().eq('id', id);
-  if (error) return NextResponse.json({ error: error.message ?? 'No se pudo eliminar el producto.' }, { status: 500 });
+  if (error) {
+    await recordAdminFailure({ session: auth.session, request, action: 'delete', resource: 'products', resourceId: id, metadata: { error: error.message } });
+    return NextResponse.json({ error: error.message ?? 'No se pudo eliminar el producto.' }, { status: 500 });
+  }
+  await recordAdminAudit({ session: auth.session, request, action: 'delete', resource: 'products', resourceId: id });
   return NextResponse.json({ ok: true });
 }

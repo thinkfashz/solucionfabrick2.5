@@ -11,7 +11,8 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { generateRegistrationOptions } from '@simplewebauthn/server';
 import type { AuthenticatorTransportFuture } from '@simplewebauthn/server';
-import { adminUnauthorized, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
+import { getAdminTenantId } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import {
   getRpId,
   getOrigin,
@@ -27,16 +28,14 @@ export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+    const auth = await requireAdminPermission(request, { resource: 'passkeys', action: 'create' });
+    if (!auth.ok) return auth.response;
     const tenantId = await getAdminTenantId(request);
-    const { email } = session;
+    const { email } = auth.session;
 
     const rpID = getRpId(request);
     getOrigin(request); // validate origin is resolvable
 
-    // Exclude credentials the user already registered so the same
-    // device cannot produce duplicate registrations.
     const existing = await getPasskeysForUser(email, tenantId);
     const excludeCredentials = existing.map((c) => ({
       id: c.id,
@@ -51,7 +50,7 @@ export async function POST(request: NextRequest) {
       userID: Buffer.from(email, 'utf-8'),
       attestationType: 'none',
       authenticatorSelection: {
-        authenticatorAttachment: 'platform', // biometrics only (no USB keys)
+        authenticatorAttachment: 'platform',
         residentKey: 'preferred',
         userVerification: 'required',
       },

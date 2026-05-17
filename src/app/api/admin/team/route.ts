@@ -4,6 +4,7 @@ import { insforge, insforgeAdmin } from '@/lib/insforge';
 import { getClientIp } from '@/lib/adminAuth';
 import { assertPepperConfigured, hashAdminPassword } from '@/lib/adminPasswordHash';
 import { requireAdminPermission } from '@/lib/adminPermissions';
+import { recordAdminAudit, recordAdminFailure } from '@/lib/adminAudit';
 
 export const dynamic = 'force-dynamic';
 
@@ -75,6 +76,7 @@ export async function GET(request: NextRequest) {
     .order('created_at', { ascending: true });
 
   if (error) {
+    await recordAdminFailure({ session: auth.session, request, action: 'read', resource: 'team', metadata: { error: error.message } });
     if (isMissingTable(error)) return NextResponse.json({ members: [], pending: [], audit: [] });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -125,11 +127,13 @@ export async function POST(request: NextRequest) {
 
   const signUp = await insforge.auth.signUp({ email, password, name: nombre });
   if (signUp.error) {
+    await recordAdminFailure({ session: payload, request, action: 'create', resource: 'team', resourceId: email, metadata: { phase: 'auth_signup', error: signUp.error.message, rol } });
     return NextResponse.json({ error: `No se pudo crear la cuenta de autenticación: ${signUp.error.message}` }, { status: 400 });
   }
 
   const signIn = await insforge.auth.signInWithPassword({ email, password });
   if (signIn.error) {
+    await recordAdminFailure({ session: payload, request, action: 'create', resource: 'team', resourceId: email, metadata: { phase: 'auth_verify', error: signIn.error.message, rol } });
     return NextResponse.json({ error: `La cuenta se creó pero no pudo verificarse: ${signIn.error.message}` }, { status: 400 });
   }
 
@@ -149,6 +153,7 @@ export async function POST(request: NextRequest) {
     .upsert([row], { onConflict: 'email,tenant_id' });
 
   if (upsert.error && isMissingTable(upsert.error)) {
+    await recordAdminFailure({ session: payload, request, action: 'create', resource: 'team', resourceId: email, metadata: { phase: 'admin_users_upsert', error: upsert.error.message, rol } });
     return NextResponse.json({ error: 'La tabla admin_users no existe o falta la columna tenant_id.' }, { status: 500 });
   }
 
@@ -159,8 +164,12 @@ export async function POST(request: NextRequest) {
       .upsert([legacyRow], { onConflict: 'email' });
   }
 
-  if (upsert.error) return NextResponse.json({ error: upsert.error.message }, { status: 500 });
+  if (upsert.error) {
+    await recordAdminFailure({ session: payload, request, action: 'create', resource: 'team', resourceId: email, metadata: { phase: 'admin_users_legacy_upsert', error: upsert.error.message, rol } });
+    return NextResponse.json({ error: upsert.error.message }, { status: 500 });
+  }
 
+  await recordAdminAudit({ session: payload, request, action: 'create', resource: 'team', resourceId: email, metadata: { rol, nombre, tenantId } });
   return NextResponse.json({ ok: true, user: { email, nombre, rol }, temporaryPassword: password });
 }
 
@@ -192,14 +201,22 @@ export async function PATCH(request: NextRequest) {
   if (action === 'approve') {
     const { error } = await insforgeAdmin.database
       .from('admin_users').update({ aprobado: true }).eq('email', email);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      await recordAdminFailure({ session: payload, request, action: 'update', resource: 'team', resourceId: email, metadata: { teamAction: action, error: error.message } });
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    await recordAdminAudit({ session: payload, request, action: 'update', resource: 'team', resourceId: email, metadata: { teamAction: action } });
     return NextResponse.json({ ok: true });
   }
 
   if (action === 'reject') {
     const { error } = await insforgeAdmin.database
       .from('admin_users').delete().eq('email', email);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      await recordAdminFailure({ session: payload, request, action: 'delete', resource: 'team', resourceId: email, metadata: { teamAction: action, error: error.message } });
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    await recordAdminAudit({ session: payload, request, action: 'delete', resource: 'team', resourceId: email, metadata: { teamAction: action } });
     return NextResponse.json({ ok: true });
   }
 
@@ -207,7 +224,11 @@ export async function PATCH(request: NextRequest) {
     if (!rol || !isRole(rol)) return NextResponse.json({ error: 'Rol válido requerido.' }, { status: 400 });
     const { error } = await insforgeAdmin.database
       .from('admin_users').update({ rol }).eq('email', email);
-    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    if (error) {
+      await recordAdminFailure({ session: payload, request, action: 'update', resource: 'team', resourceId: email, metadata: { teamAction: action, rol, error: error.message } });
+      return NextResponse.json({ error: error.message }, { status: 500 });
+    }
+    await recordAdminAudit({ session: payload, request, action: 'update', resource: 'team', resourceId: email, metadata: { teamAction: action, rol } });
     return NextResponse.json({ ok: true });
   }
 

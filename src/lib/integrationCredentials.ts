@@ -37,7 +37,7 @@ async function readStoredValues(provider: string): Promise<Record<string, string
   return out;
 }
 
-export async function resolveIntegrationCredentials(provider: string, fields: string[], preferDb = false): Promise<ResolvedIntegrationCredentials> {
+export async function resolveIntegrationCredentials(provider: string, fields: string[], preferDb = true): Promise<ResolvedIntegrationCredentials> {
   const envDetected = detectEnvProviderCredentials(provider);
   const envValues: Record<string, string> = {};
   for (const [field, detected] of Object.entries(envDetected)) envValues[field] = detected.value;
@@ -50,7 +50,7 @@ export async function resolveIntegrationCredentials(provider: string, fields: st
 
   return {
     provider,
-    source: hasEnv && !preferDb ? 'env' : hasDb ? 'db' : hasEnv ? 'env' : 'missing',
+    source: hasDb && preferDb ? 'db' : hasEnv ? 'env' : hasDb ? 'db' : 'missing',
     encryptedAtRest: isEncryptionConfigured(),
     values,
     missing,

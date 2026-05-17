@@ -1,22 +1,35 @@
 import { AdminModules } from '@/components/admin/AdminModules';
-import { AdminPage, AdminPageHeader } from '@/components/admin/ui';
+import { AdminBaseBadge, AdminBaseButton, AdminBaseCard, AdminBaseHeader, AdminBasePage } from '@/components/admin/AdminBaseUI';
 
 export default function AdminModulosPage() {
   return (
-    <AdminPage>
-      <AdminPageHeader
-        title="Módulos de seguridad y operación"
-        description="Centro organizado para continuar la construcción por módulos sin perder el foco técnico."
+    <AdminBasePage className="p-4 sm:p-6">
+      <AdminBaseHeader
+        eyebrow="Admin OS"
+        title="Módulos de seguridad, operación e IA"
+        description="Centro organizado para continuar la construcción del admin por módulos, con diseño oscuro moderno, datos reales y rutas existentes."
+        action={<AdminBaseButton href="/admin/ai-developer">Abrir Fabrick AI</AdminBaseButton>}
       />
 
-      <div className="mb-6 rounded-3xl border border-yellow-300/20 bg-yellow-300/5 p-5">
-        <p className="text-sm leading-relaxed text-zinc-300">
-          Esta vista reúne los módulos 1–7 que estamos cerrando para llevar la app a producción con seguridad real:
-          entorno, sesión, rate limit, validación, passkeys, base de datos y deploy estable.
-        </p>
-      </div>
+      <AdminBaseCard className="mb-6">
+        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+          <div>
+            <div className="flex flex-wrap gap-2">
+              <AdminBaseBadge tone="success">Producción seria</AdminBaseBadge>
+              <AdminBaseBadge tone="warning">DB primero</AdminBaseBadge>
+              <AdminBaseBadge tone="info">Modular</AdminBaseBadge>
+            </div>
+            <p className="mt-4 max-w-4xl text-sm leading-relaxed text-zinc-300">
+              Esta vista reúne los módulos activos del admin: entorno, acceso, bloqueos, pruebas, passkeys, base de datos, deploy y Fabrick AI Developer. La migración visual usa una base tipo shadcn/baseui, pero conserva tus rutas, permisos y datos reales.
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs text-zinc-400">
+            Sin datos fake · sin demo externa · rutas reales del admin
+          </div>
+        </div>
+      </AdminBaseCard>
 
       <AdminModules />
-    </AdminPage>
+    </AdminBasePage>
   );
 }

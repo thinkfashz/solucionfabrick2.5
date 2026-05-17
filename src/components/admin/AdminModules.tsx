@@ -5,6 +5,7 @@ import { motion, type Variants } from 'framer-motion';
 import {
   Activity,
   BarChart3,
+  Bot,
   Database,
   FileCheck2,
   KeyRound,
@@ -73,7 +74,7 @@ const ADMIN_MODULES: AdminModule[] = [
     href: '/admin/seguridad',
     icon: <Smartphone className="w-6 h-6" />,
     color: 'from-emerald-400 to-green-600',
-    badge: 'MÓDULO 7',
+    badge: 'PASSKEYS',
     status: 'listo',
   },
   {
@@ -95,6 +96,16 @@ const ADMIN_MODULES: AdminModule[] = [
     color: 'from-zinc-300 to-zinc-600',
     badge: 'VERCEL',
     status: 'validar',
+  },
+  {
+    id: 'modulo-8-ai-developer',
+    title: 'Módulo 8 · Fabrick AI Developer',
+    description: 'Chat interno para analizar, diseñar y preparar mejoras de la app con IA y flujo seguro de PR.',
+    href: '/admin/ai-developer',
+    icon: <Bot className="w-6 h-6" />,
+    color: 'from-yellow-300 to-orange-600',
+    badge: 'AI BUILDER',
+    status: 'continuo',
   },
   {
     id: 'control-general',

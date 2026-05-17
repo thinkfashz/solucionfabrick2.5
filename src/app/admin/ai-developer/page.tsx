@@ -2,13 +2,13 @@
 
 import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
-import { Bot, BrainCircuit, CheckCircle2, Code2, GitBranch, LockKeyhole, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
+import { Bot, BrainCircuit, CheckCircle2, Code2, GitBranch, LockKeyhole, Loader2, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
 import { AdminPage } from '@/components/admin/ui';
 import FabrickAIProviderCards from '@/components/admin/FabrickAIProviderCards';
 
 type Provider = 'auto' | 'openai' | 'openrouter' | 'claude';
 type Mode = 'lectura' | 'propuesta' | 'pr';
-type ChatMessage = { role: 'assistant' | 'user'; text: string };
+type ChatMessage = { role: 'assistant' | 'user'; text: string; meta?: string };
 
 const providerLabels: Record<Provider, string> = {
   auto: 'Auto seguro',
@@ -34,6 +34,7 @@ export default function FabrickAiDeveloperPage() {
   const [provider, setProvider] = useState<Provider>('auto');
   const [mode, setMode] = useState<Mode>('lectura');
   const [input, setInput] = useState('');
+  const [isSending, setIsSending] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     { role: 'assistant', text: 'Soy Fabrick AI Developer. Puedo ayudarte a analizar, planificar y preparar mejoras para la plataforma sin tocar producción directo.' },
   ]);
@@ -44,15 +45,47 @@ export default function FabrickAiDeveloperPage() {
     return 'Prepara una rama y un PR para revisión manual.';
   }, [mode]);
 
-  function submit(text = input) {
+  async function submit(text = input) {
     const value = text.trim();
-    if (!value) return;
-    setMessages((prev) => [
-      ...prev,
-      { role: 'user', text: value },
-      { role: 'assistant', text: `Recibido. Modo: ${modeLabels[mode]}. Proveedor: ${providerLabels[provider]}. Esta primera versión deja listo el panel visual y el flujo seguro; la conexión real del proveedor se añade en la siguiente etapa.` },
-    ]);
+    if (!value || isSending) return;
+
+    const nextMessages: ChatMessage[] = [...messages, { role: 'user', text: value }];
+    setMessages(nextMessages);
     setInput('');
+    setIsSending(true);
+
+    try {
+      const res = await fetch('/api/admin/ai-developer/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          provider,
+          mode,
+          messages: nextMessages.map((message) => ({ role: message.role, content: message.text })),
+        }),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? 'No se pudo consultar Fabrick AI Developer.');
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: typeof json.message === 'string' ? json.message : 'El proveedor respondió sin contenido legible.',
+          meta: `${json.provider ?? provider} · ${json.model ?? 'modelo'} · fuente ${json.source ?? 'desconocida'}`,
+        },
+      ]);
+    } catch (err) {
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: err instanceof Error ? err.message : 'Error inesperado al consultar el proveedor IA.',
+          meta: 'error',
+        },
+      ]);
+    } finally {
+      setIsSending(false);
+    }
   }
 
   return (
@@ -93,7 +126,7 @@ export default function FabrickAiDeveloperPage() {
                   <Sparkles className="mt-1 h-5 w-5 shrink-0 text-yellow-300" />
                   <div>
                     <h1 className="text-xl font-black text-white sm:text-3xl">Mejora tu app con IA, paso a paso y sin riesgo.</h1>
-                    <p className="mt-3 max-w-3xl text-sm leading-relaxed text-zinc-300">Este panel está pensado para trabajar como un chat de desarrollo: analiza, propone, documenta y prepara cambios revisables antes de producción.</p>
+                    <p className="mt-3 max-w-3xl text-sm leading-relaxed text-zinc-300">Este panel ya consulta un proveedor IA real si tienes credenciales configuradas en Integraciones o Vercel.</p>
                   </div>
                 </div>
               </motion.div>
@@ -103,23 +136,33 @@ export default function FabrickAiDeveloperPage() {
               <div className="space-y-4">
                 {messages.map((message, index) => (
                   <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[88%] rounded-[1.5rem] px-4 py-3 text-sm leading-relaxed shadow-lg sm:max-w-[72%] ${message.role === 'user' ? 'bg-yellow-300 text-black' : 'border border-white/10 bg-white/[0.05] text-zinc-200'}`}>
-                      {message.text}
+                    <div className={`max-w-[88%] rounded-[1.5rem] px-4 py-3 text-sm leading-relaxed shadow-lg sm:max-w-[72%] ${message.role === 'user' ? 'bg-yellow-300 text-black' : message.meta === 'error' ? 'border border-red-400/30 bg-red-500/10 text-red-100' : 'border border-white/10 bg-white/[0.05] text-zinc-200'}`}>
+                      <div className="whitespace-pre-wrap">{message.text}</div>
+                      {message.meta ? <div className="mt-3 border-t border-white/10 pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">{message.meta}</div> : null}
                     </div>
                   </div>
                 ))}
+                {isSending ? (
+                  <div className="flex justify-start">
+                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-zinc-300">
+                      <Loader2 className="h-4 w-4 animate-spin text-yellow-300" /> Fabrick AI Developer pensando…
+                    </div>
+                  </div>
+                ) : null}
               </div>
             </div>
 
             <div className="border-t border-white/10 bg-zinc-950/95 p-3 sm:p-4">
               <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
                 {quickPrompts.map((prompt) => (
-                  <button key={prompt} onClick={() => submit(prompt)} className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-300 hover:border-yellow-300/40 hover:text-yellow-200">{prompt}</button>
+                  <button key={prompt} disabled={isSending} onClick={() => submit(prompt)} className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-300 hover:border-yellow-300/40 hover:text-yellow-200 disabled:opacity-50">{prompt}</button>
                 ))}
               </div>
               <div className="flex items-end gap-2 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-2">
-                <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }} placeholder="Escribe qué quieres mejorar, reparar o crear…" rows={1} className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3 py-3 text-sm text-white outline-none placeholder:text-zinc-600" />
-                <button onClick={() => submit()} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-yellow-300 text-black hover:bg-yellow-200" aria-label="Enviar"><Send className="h-4 w-4" /></button>
+                <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }} placeholder="Escribe qué quieres mejorar, reparar o crear…" rows={1} disabled={isSending} className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3 py-3 text-sm text-white outline-none placeholder:text-zinc-600 disabled:opacity-60" />
+                <button onClick={() => submit()} disabled={isSending || !input.trim()} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-yellow-300 text-black hover:bg-yellow-200 disabled:opacity-50" aria-label="Enviar">
+                  {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </button>
               </div>
             </div>
           </main>
@@ -129,7 +172,7 @@ export default function FabrickAiDeveloperPage() {
               <Panel title="Capacidades" icon={<Wand2 className="h-4 w-4" />} items={['Analizar módulos', 'Proponer diseño', 'Preparar cambios', 'Documentar avances']} />
               <Panel title="Flujo seguro" icon={<GitBranch className="h-4 w-4" />} items={['Lectura primero', 'Plan antes de código', 'PR revisable', 'Producción manual']} />
               <Panel title="Bloqueos" icon={<LockKeyhole className="h-4 w-4" />} items={['No modifica main directo', 'No despliega solo', 'No muestra secretos', 'No borra datos']} />
-              <Panel title="Próxima etapa" icon={<Code2 className="h-4 w-4" />} items={['Conectar proveedor IA', 'Guardar conversaciones', 'Crear historial', 'Auditar acciones']} />
+              <Panel title="Estado actual" icon={<Code2 className="h-4 w-4" />} items={['Chat real conectado', 'Credenciales DB/env', 'Auditoría backend', 'Git tools bloqueadas']} />
             </div>
           </aside>
         </div>

@@ -11,6 +11,7 @@ import {
   Database,
   Eye,
   FileText,
+  Fingerprint,
   FlaskConical,
   Home,
   Image as ImageIcon,
@@ -70,6 +71,7 @@ const SECTIONS: MenuSection[] = [
       { href: '/admin/modulos', label: 'Centro de módulos', icon: LayoutGrid, description: 'Vista organizada de módulos', highlight: true },
       { href: '/admin/activar', label: 'Módulo 1 · Entorno', icon: KeyRound, description: 'Variables y servicios' },
       { href: '/admin/equipo', label: 'Módulo 2 · Acceso', icon: ShieldCheck, description: 'Roles y usuarios' },
+      { href: '/admin/sesiones', label: 'Sesiones y dispositivos', icon: Fingerprint, description: 'IPs, móviles, navegadores y auditoría de acceso', highlight: true },
       { href: '/admin/equipo/demo', label: 'Demo 24h guiado', icon: Eye, description: 'Crear links temporales de lectura', highlight: true },
       { href: '/admin/diagnostico', label: 'Diagnóstico APIs', icon: Stethoscope, description: 'Detectar claves y tablas faltantes', highlight: true },
       { href: '/admin/errores', label: 'Módulo 3 · Bloqueos', icon: AlertTriangle, description: 'Intentos y errores' },
@@ -156,6 +158,7 @@ const SECTIONS: MenuSection[] = [
     tone: 'orange',
     items: [
       { href: '/admin/seguridad', label: 'Seguridad · Passkeys', icon: ShieldCheck, description: 'Huella digital o Face ID' },
+      { href: '/admin/sesiones', label: 'Sesiones y dispositivos', icon: Fingerprint, description: 'Historial de login, IPs y dispositivos', highlight: true },
       { href: '/admin/diagnostico', label: 'Diagnóstico APIs', icon: Stethoscope, description: 'Variables, tablas y servicios', highlight: true },
       { href: '/admin/errores', label: 'Monitor de errores', icon: AlertTriangle, description: 'Fallos capturados' },
       { href: '/admin/vercel-logs', label: 'Logs de Vercel', icon: Terminal, description: 'Build y runtime logs' },
@@ -170,6 +173,7 @@ const SECTIONS: MenuSection[] = [
     tone: 'red',
     items: [
       { href: '/admin/equipo', label: 'Equipo', icon: ShieldCheck, description: 'Roles, invitaciones y aprobaciones' },
+      { href: '/admin/sesiones', label: 'Sesiones y dispositivos', icon: Fingerprint, description: 'Usuarios, IPs, móviles y navegadores', highlight: true },
       { href: '/admin/equipo/demo', label: 'Links demo 24h', icon: Eye, description: 'Accesos guiados de lectura', highlight: true },
     ],
   },
@@ -189,7 +193,7 @@ const toneClass: Record<MenuSection['tone'], string> = {
 
 export default function AdminContextMenu({ open, onClose, onLogout }: AdminContextMenuProps) {
   const [query, setQuery] = useState('');
-  const [expanded, setExpanded] = useState<Set<string>>(new Set(['Módulos 1–7', 'Equipo & acceso', 'Operación']));
+  const [expanded, setExpanded] = useState<Set<string>>(new Set(['Módulos 1–7', 'Equipo & acceso', 'Operación', 'Seguridad & sistema']));
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();

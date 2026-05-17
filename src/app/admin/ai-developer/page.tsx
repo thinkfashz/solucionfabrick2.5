@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { motion } from 'framer-motion';
 import { Bot, BrainCircuit, CheckCircle2, Code2, GitBranch, LockKeyhole, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
 import { AdminPage } from '@/components/admin/ui';
+import FabrickAIProviderCards from '@/components/admin/FabrickAIProviderCards';
 
 type Provider = 'auto' | 'openai' | 'openrouter' | 'claude';
 type Mode = 'lectura' | 'propuesta' | 'pr';
@@ -96,6 +97,8 @@ export default function FabrickAiDeveloperPage() {
                   </div>
                 </div>
               </motion.div>
+
+              <FabrickAIProviderCards />
 
               <div className="space-y-4">
                 {messages.map((message, index) => (

@@ -42,6 +42,15 @@ function isValidUrl(raw: string): boolean {
   }
 }
 
+function isValidHttpsUrl(raw: string): boolean {
+  try {
+    const u = new URL(raw);
+    return u.protocol === 'https:' && u.hostname.length > 0;
+  } catch {
+    return false;
+  }
+}
+
 /** Picks the first non-empty value from a list of env-var names. */
 function pick(...keys: string[]): string {
   for (const k of keys) {
@@ -92,15 +101,17 @@ export function validateEnv(): EnvValidationResult {
     32,
   );
   requireInProd(
-    'ENCRYPTION_KEY',
-    'Required to encrypt integration credentials at rest. Generate with: openssl rand -base64 32',
+    'ADMIN_INIT_SECRET',
+    'Required to protect the first-admin initialization endpoint. Generate with: openssl rand -base64 48',
     32,
   );
-  requireInProd(
-    'INTEGRATIONS_ENC_KEY',
-    'Required for integration secrets encryption. Generate with: openssl rand -base64 32',
-    32,
-  );
+
+  const integrationEncryptionKey = pick('INTEGRATIONS_ENC_KEY', 'ENCRYPTION_KEY');
+  if (isProd && integrationEncryptionKey.length < 32) {
+    errors.push(
+      'INTEGRATIONS_ENC_KEY or ENCRYPTION_KEY: required to encrypt integration credentials at rest (minLength: 32).',
+    );
+  }
 
   // -------------------------------------------------------------------------
   // 2. Database / InsForge
@@ -120,7 +131,7 @@ export function validateEnv(): EnvValidationResult {
   if (errInsforgeUrl) errors.push(errInsforgeUrl);
 
   // -------------------------------------------------------------------------
-  // 3. Public URLs
+  // 3. Public URLs / WebAuthn
   // -------------------------------------------------------------------------
   for (const key of ['NEXT_PUBLIC_APP_URL', 'NEXT_PUBLIC_SITE_URL', 'NEXTAUTH_URL']) {
     const err = ifPresent(key, isValidUrl, 'must be a valid absolute URL');
@@ -133,15 +144,29 @@ export function validateEnv(): EnvValidationResult {
     );
   }
 
+  const errWebAuthnOrigin = ifPresent(
+    'WEBAUTHN_ORIGIN',
+    isProd ? isValidHttpsUrl : isValidUrl,
+    isProd ? 'must be a valid HTTPS origin (e.g. https://solucionesfabrick.com)' : 'must be a valid origin',
+  );
+  if (errWebAuthnOrigin) errors.push(errWebAuthnOrigin);
+
+  if (isProd && !defined('WEBAUTHN_RP_ID')) {
+    warnings.push('WEBAUTHN_RP_ID: not set; passkeys will infer the request hostname. Prefer solucionesfabrick.com in production.');
+  }
+  if (isProd && !defined('WEBAUTHN_ORIGIN')) {
+    warnings.push('WEBAUTHN_ORIGIN: not set; passkeys will infer request origin. Prefer https://solucionesfabrick.com in production.');
+  }
+
   // -------------------------------------------------------------------------
-  // 4. Email (at least one provider required in production)
+  // 4. Email (Resend/SMTP env fallback; DB integrations can also be used)
   // -------------------------------------------------------------------------
   const hasResend = defined('RESEND_API_KEY');
   const hasSmtp = defined('SMTP_HOST') && defined('SMTP_USER') && defined('SMTP_PASS');
 
   if (isProd && !hasResend && !hasSmtp) {
-    errors.push(
-      'Email provider not configured. Set RESEND_API_KEY, or set SMTP_HOST + SMTP_USER + SMTP_PASS.',
+    warnings.push(
+      'Email provider env fallback not configured. This is allowed if Resend credentials are stored encrypted in integrations DB.',
     );
   }
 
@@ -174,13 +199,13 @@ export function validateEnv(): EnvValidationResult {
     defined('MERCADOPAGO_PUBLIC_KEY');
 
   if (isProd && !hasAccessToken) {
-    errors.push(
-      'MercadoPago access token not configured. Set MERCADO_PAGO_ACCESS_TOKEN (or MP_ACCESS_TOKEN / MERCADOPAGO_ACCESS_TOKEN).',
+    warnings.push(
+      'MercadoPago access token not configured. Set MERCADO_PAGO_ACCESS_TOKEN (or MP_ACCESS_TOKEN / MERCADOPAGO_ACCESS_TOKEN) before enabling real payments.',
     );
   }
   if (isProd && !hasPublicKey) {
-    errors.push(
-      'MercadoPago public key not configured. Set NEXT_PUBLIC_MP_PUBLIC_KEY (or one of the accepted aliases).',
+    warnings.push(
+      'MercadoPago public key not configured. Set NEXT_PUBLIC_MP_PUBLIC_KEY before enabling real checkout.',
     );
   }
 
@@ -275,11 +300,29 @@ export const ADMIN_SESSION_SECRET: string = get('ADMIN_SESSION_SECRET');
 /** Pepper applied to every local admin password hash (scrypt). */
 export const ADMIN_PASSWORD_PEPPER: string = get('ADMIN_PASSWORD_PEPPER');
 
+/** Secret used to protect first-admin bootstrap. */
+export const ADMIN_INIT_SECRET: string = get('ADMIN_INIT_SECRET');
+
 /** AES-GCM key for encrypting integration credentials in the database. */
-export const ENCRYPTION_KEY: string = get('ENCRYPTION_KEY');
+export const ENCRYPTION_KEY: string = pick('INTEGRATIONS_ENC_KEY', 'ENCRYPTION_KEY');
+
+/** Explicit alias for integration credentials encryption. */
+export const INTEGRATIONS_ENC_KEY: string = ENCRYPTION_KEY;
 
 /** InsForge server-side service-role key. */
 export const INSFORGE_API_KEY: string = get('INSFORGE_API_KEY');
+
+/** InsForge public URL used by server helpers and public SDK fallback. */
+export const NEXT_PUBLIC_INSFORGE_URL: string = get('NEXT_PUBLIC_INSFORGE_URL');
+
+/** InsForge anon key used only where public client access is intentional. */
+export const NEXT_PUBLIC_INSFORGE_ANON_KEY: string = get('NEXT_PUBLIC_INSFORGE_ANON_KEY');
+
+/** WebAuthn relying-party ID, normally solucionesfabrick.com in production. */
+export const WEBAUTHN_RP_ID: string = get('WEBAUTHN_RP_ID');
+
+/** WebAuthn origin, normally https://solucionesfabrick.com in production. */
+export const WEBAUTHN_ORIGIN: string = get('WEBAUTHN_ORIGIN');
 
 /** Canonical public URL of the site (e.g. https://fabrick.cl). */
 export const APP_URL: string =

@@ -92,8 +92,6 @@ const SECTIONS: MenuSection[] = [
       { href: '/admin/equipo', label: 'Equipo', icon: ShieldCheck, description: 'Roles, invitaciones y aprobaciones' },
       { href: '/admin/equipo/demo', label: 'Links demo 24h', icon: Eye, description: 'Accesos guiados de solo lectura', highlight: true },
       { href: '/admin/diagnostico', label: 'Diagnóstico APIs', icon: Stethoscope, description: 'Variables, tablas y servicios', highlight: true },
-      { href: '/admin/center', label: 'Credenciales', icon: KeyRound, description: 'Claves, proveedores e integración' },
-      { href: '/admin/extensions', label: 'Extensiones', icon: Plug, description: 'Webhooks, OAuth y signing keys' },
     ],
   },
   {
@@ -160,7 +158,6 @@ const SECTIONS: MenuSection[] = [
     items: [
       { href: '/admin/integraciones', label: 'Centro de integraciones', icon: Link2, description: 'Conectar, probar y desactivar APIs', highlight: true },
       { href: '/admin/integraciones/marketplace', label: 'Marketplace', icon: Boxes, description: 'Apps, snippets, webhooks y OAuth' },
-      { href: '/admin/configuracion', label: 'Configuración', icon: Settings, description: 'Parámetros de sistema' },
     ],
   },
   {
@@ -179,6 +176,8 @@ const SECTIONS: MenuSection[] = [
     title: 'Sistema',
     tone: 'orange',
     items: [
+      { href: '/admin/configuracion', label: 'Configuración del negocio', icon: Settings, description: 'Datos del negocio y acceso admin' },
+      { href: '/admin/extensions', label: 'Extensiones y webhooks', icon: Plug, description: 'Webhooks, OAuth y signing keys' },
       { href: '/admin/facturas', label: 'Facturas DTE', icon: Receipt, description: 'Documentos tributarios' },
       { href: '/admin/setup', label: 'Setup', icon: Database, description: 'Verificar y crear tablas' },
       { href: '/admin/observatory', label: 'Observatory', icon: Radio, description: 'Red en tiempo real 3D', highlight: true },

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { insforgeAdmin } from '@/lib/insforge';
 import { requireAdminPermission } from '@/lib/adminPermissions';
+import { recordAdminAudit, recordAdminFailure } from '@/lib/adminAudit';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,7 @@ export async function GET(request: NextRequest) {
     .order('created_at', { ascending: false });
 
   if (error) {
+    await recordAdminFailure({ session: auth.session, request, action: 'read', resource: 'products', metadata: { error: error.message } });
     return NextResponse.json({ error: error.message ?? 'No se pudieron cargar los productos.' }, { status: 500 });
   }
 
@@ -48,7 +50,11 @@ export async function PATCH(request: NextRequest) {
   }
 
   const { error } = await insforgeAdmin.database.from('products').update(patch).eq('id', id);
-  if (error) return NextResponse.json({ error: error.message ?? 'No se pudo actualizar el producto.' }, { status: 500 });
+  if (error) {
+    await recordAdminFailure({ session: auth.session, request, action: 'update', resource: 'products', resourceId: id, metadata: { patch, error: error.message } });
+    return NextResponse.json({ error: error.message ?? 'No se pudo actualizar el producto.' }, { status: 500 });
+  }
+  await recordAdminAudit({ session: auth.session, request, action: 'update', resource: 'products', resourceId: id, metadata: { patch } });
   return NextResponse.json({ ok: true });
 }
 
@@ -60,6 +66,10 @@ export async function DELETE(request: NextRequest) {
   if (!id) return NextResponse.json({ error: 'ID requerido.' }, { status: 400 });
 
   const { error } = await insforgeAdmin.database.from('products').delete().eq('id', id);
-  if (error) return NextResponse.json({ error: error.message ?? 'No se pudo eliminar el producto.' }, { status: 500 });
+  if (error) {
+    await recordAdminFailure({ session: auth.session, request, action: 'delete', resource: 'products', resourceId: id, metadata: { error: error.message } });
+    return NextResponse.json({ error: error.message ?? 'No se pudo eliminar el producto.' }, { status: 500 });
+  }
+  await recordAdminAudit({ session: auth.session, request, action: 'delete', resource: 'products', resourceId: id });
   return NextResponse.json({ ok: true });
 }

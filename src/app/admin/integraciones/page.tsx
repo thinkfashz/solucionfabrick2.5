@@ -11,6 +11,7 @@ import {
 	Globe,
 	LinkIcon,
 	Loader2,
+	LogOut,
 	Mail,
 	MessageCircle,
 	MessageSquareText,
@@ -39,6 +40,9 @@ const INTEGRATIONS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS public.integrations (
 );`;
 
 type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary' | 'vercel' | 'mercadolibre' | 'mercadopago' | 'stripe' | 'whatsapp' | 'resend' | 'openrouter' | 'serper' | 'serpapi';
+
+/** Providers that use OAuth and have a dedicated Conectar/Desconectar flow. */
+const OAUTH_PROVIDERS = new Set<ProviderKey>(['mercadolibre', 'google', 'meta', 'tiktok']);
 
 interface ProviderField {
 	key: string;
@@ -401,6 +405,8 @@ export default function AdminIntegracionesPage() {
 	const [quotaSnapshots, setQuotaSnapshots] = useState<Record<string, { used: number | null; limit: number | null; capturedAt: string }>>({});
 	const [rotateConfirmOpen, setRotateConfirmOpen] = useState<ProviderKey | null>(null);
 	const [rotatingProvider, setRotatingProvider] = useState<ProviderKey | null>(null);
+	const [revokingOAuth, setRevokingOAuth] = useState<ProviderKey | null>(null);
+	const [revokeConfirmOpen, setRevokeConfirmOpen] = useState<ProviderKey | null>(null);
 
 	// OAuth callback feedback. After /api/admin/{ml,google,meta,tiktok}/oauth/callback completes,
 	// the user lands here with `?connected=<provider>&account|seller=...&expires_at=...`
@@ -638,6 +644,45 @@ export default function AdminIntegracionesPage() {
 		}
 	}
 
+	async function handleRevokeOAuth(provider: ProviderKey) {
+		setRevokingOAuth(provider);
+		setRevokeConfirmOpen(null);
+		setIntegrationMsg((prev) => ({ ...prev, [provider]: null }));
+		try {
+			const res = await fetch('/api/admin/integrations/oauth/revoke', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify({ provider }),
+			});
+			const json = (await res.json().catch(() => ({}))) as {
+				ok?: boolean;
+				error?: string;
+				revokedAtProvider?: boolean;
+				providerDetail?: string;
+			};
+			if (!res.ok || !json.ok) {
+				setIntegrationMsg((prev) => ({
+					...prev,
+					[provider]: { text: json.error ?? 'No se pudo desconectar.', type: 'error' },
+				}));
+				return;
+			}
+			const detail = json.revokedAtProvider
+				? 'Token revocado en el proveedor y credenciales eliminadas.'
+				: `Credenciales eliminadas. ${json.providerDetail ?? ''}`.trim();
+			setIntegrationMsg((prev) => ({ ...prev, [provider]: { text: detail, type: 'success' } }));
+			setIntegrationTest((prev) => ({ ...prev, [provider]: null }));
+			await loadIntegrations();
+		} catch (err) {
+			setIntegrationMsg((prev) => ({
+				...prev,
+				[provider]: { text: err instanceof Error ? err.message : 'Error de red.', type: 'error' },
+			}));
+		} finally {
+			setRevokingOAuth(null);
+		}
+	}
+
 	async function handleRotateResend() {
 		setRotatingProvider('resend');
 		setIntegrationMsg((prev) => ({ ...prev, resend: null }));
@@ -812,6 +857,51 @@ export default function AdminIntegracionesPage() {
 					</div>
 				</AdminCard>
 			) : null}
+
+			{revokeConfirmOpen ? (() => {
+				const prov = PROVIDERS.find((p) => p.id === revokeConfirmOpen);
+				const provLabel = prov?.label ?? revokeConfirmOpen;
+				return (
+					<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+						<button
+							type="button"
+							aria-label="Cerrar confirmación"
+							onClick={() => (revokingOAuth ? null : setRevokeConfirmOpen(null))}
+							className="absolute inset-0 bg-black/80 backdrop-blur-sm"
+						/>
+						<div className="relative z-10 w-full max-w-md rounded-[2rem] border border-white/10 bg-zinc-950/95 p-6 shadow-2xl shadow-black/40">
+							<div className="flex items-start justify-between gap-4">
+								<div>
+									<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-red-400">Desconectar OAuth</p>
+									<h2 className="mt-2 text-xl font-black text-white">¿Desconectar {provLabel}?</h2>
+									<p className="mt-2 text-sm leading-relaxed text-zinc-400">
+										Se intentará revocar el token en {provLabel} y se borrarán las credenciales guardadas. Tendrás que volver a pasar por el flujo OAuth para reconectar.
+									</p>
+								</div>
+							</div>
+							<div className="mt-6 flex flex-wrap items-center gap-3">
+								<button
+									type="button"
+									onClick={() => void handleRevokeOAuth(revokeConfirmOpen)}
+									disabled={revokingOAuth === revokeConfirmOpen}
+									className="inline-flex items-center gap-2 rounded-full bg-red-500 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-white transition hover:bg-red-400 disabled:opacity-50"
+								>
+									{revokingOAuth === revokeConfirmOpen ? <Loader2 className="h-4 w-4 animate-spin" /> : <LogOut className="h-4 w-4" />}
+									Sí, desconectar
+								</button>
+								<button
+									type="button"
+									onClick={() => setRevokeConfirmOpen(null)}
+									disabled={revokingOAuth === revokeConfirmOpen}
+									className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[11px] font-bold uppercase tracking-[0.18em] text-zinc-300 transition hover:bg-white/5 disabled:opacity-50"
+								>
+									Cancelar
+								</button>
+							</div>
+						</div>
+					</div>
+				);
+			})() : null}
 
 			{rotateConfirmOpen === 'resend' ? (
 				<div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -1014,83 +1104,129 @@ export default function AdminIntegracionesPage() {
 										</div>
 									) : null}
 
-									{provider.id === 'mercadolibre' ? (
-										<div className="rounded-2xl border border-yellow-400/30 bg-yellow-400/5 p-4">
-											<div className="flex flex-wrap items-start justify-between gap-3">
-												<div className="min-w-0 flex-1">
-													<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-300">
-														OAuth · Recomendado
+									{provider.id === 'mercadolibre' ? (() => {
+										const connectedAt = status?.credentials?.['connected_at'];
+										const expiresAt = status?.credentials?.['expires_at'];
+										const userId = status?.credentials?.['user_id'];
+										return (
+											<div className={`rounded-2xl border p-4 ${isConfigured ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-yellow-400/30 bg-yellow-400/5'}`}>
+												{isConfigured ? (
+													<div className="mb-3 flex items-center gap-2">
+														<span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+														<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-300">Vinculado con OAuth</p>
+													</div>
+												) : (
+													<p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-300">OAuth · Recomendado</p>
+												)}
+												{isConfigured && (userId?.set || connectedAt?.set) ? (
+													<div className="mb-3 grid gap-1 text-[12px] text-zinc-400">
+														{userId?.set ? <span>Usuario ML: <span className="font-mono text-zinc-200">{userId.preview}</span></span> : null}
+														{expiresAt?.set ? <span>Token expira: <span className="font-mono text-zinc-200">{expiresAt.preview}</span></span> : null}
+														{connectedAt?.set ? <span>Conectado: <span className="font-mono text-zinc-300">{connectedAt.preview}</span></span> : null}
+													</div>
+												) : null}
+												{!isConfigured ? (
+													<p className="mb-3 text-sm text-zinc-300">
+														Usa el botón para iniciar el flujo OAuth + PKCE con Mercado Libre.
+														Los campos se llenarán automáticamente y el access_token se renovará cada 6 h.
 													</p>
-													<p className="mt-1 text-sm text-zinc-300">
-														Usa el botón de abajo para iniciar el flujo OAuth + PKCE con Mercado Libre.
-														Al volver del consentimiento, los campos de access_token, refresh_token, user_id y
-														expires_at se llenarán automáticamente y el access_token se renovará solo cada 6 h.
-													</p>
-													<p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
-														Requiere <code className="font-mono text-yellow-200/80">ML_CLIENT_ID</code> y
-														{' '}<code className="font-mono text-yellow-200/80">ML_CLIENT_SECRET</code> en variables de
-														entorno, y que el redirect URI registrado en tu app de ML coincida con
-														<code className="ml-1 font-mono text-yellow-200/80">/api/admin/ml/oauth/callback</code>.
-													</p>
+												) : null}
+												<p className="mb-3 text-[11px] leading-relaxed text-zinc-500">
+													Requiere <code className="font-mono text-yellow-200/80">ML_CLIENT_ID</code> y{' '}
+													<code className="font-mono text-yellow-200/80">ML_CLIENT_SECRET</code> en Vercel.
+													Redirect URI: <code className="font-mono text-yellow-200/80">/api/admin/ml/oauth/callback</code>.
+												</p>
+												<div className="flex flex-wrap gap-2">
+													<a
+														href="/api/admin/ml/oauth/start"
+														className="inline-flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-950 transition hover:bg-yellow-300"
+													>
+														<LinkIcon className="h-3.5 w-3.5" />
+														{isConfigured ? 'Reconectar Mercado Libre' : 'Conectar con Mercado Libre'}
+													</a>
+													{isConfigured ? (
+														<button
+															type="button"
+															onClick={() => setRevokeConfirmOpen('mercadolibre')}
+															disabled={revokingOAuth === 'mercadolibre'}
+															className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
+														>
+															{revokingOAuth === 'mercadolibre' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+															Desconectar ML
+														</button>
+													) : null}
 												</div>
-												<a
-													href="/api/admin/ml/oauth/start"
-													className="inline-flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-950 transition hover:bg-yellow-300"
-												>
-													<LinkIcon className="h-3.5 w-3.5" />
-													{isConfigured ? 'Reconectar Mercado Libre' : 'Conectar con Mercado Libre'}
-												</a>
 											</div>
-										</div>
-									) : null}
+										);
+									})() : null}
 
-									{provider.id === 'google' || provider.id === 'meta' || provider.id === 'tiktok' ? (
-										<div className="rounded-2xl border border-yellow-400/30 bg-yellow-400/5 p-4">
-											<div className="flex flex-wrap items-start justify-between gap-3">
-												<div className="min-w-0 flex-1">
-													<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-300">
-														OAuth · Recomendado
-													</p>
-													<p className="mt-1 text-sm text-zinc-300">
+									{provider.id === 'google' || provider.id === 'meta' || provider.id === 'tiktok' ? (() => {
+										const providerName = provider.id === 'google' ? 'Google' : provider.id === 'meta' ? 'Meta' : 'TikTok';
+										const startHref = `/api/admin/${provider.id}/oauth/start`;
+										const connectedAt = status?.credentials?.['connected_at'];
+										const expiresAt = status?.credentials?.['expires_at'];
+										const grantedScopes = status?.credentials?.['granted_scopes'];
+										return (
+											<div className={`rounded-2xl border p-4 ${isConfigured ? 'border-emerald-500/30 bg-emerald-500/5' : 'border-yellow-400/30 bg-yellow-400/5'}`}>
+												{isConfigured ? (
+													<div className="mb-3 flex items-center gap-2">
+														<span className="inline-flex h-2 w-2 animate-pulse rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(16,185,129,0.6)]" />
+														<p className="text-[11px] font-bold uppercase tracking-[0.18em] text-emerald-300">Vinculado con OAuth</p>
+													</div>
+												) : (
+													<p className="mb-3 text-[11px] font-bold uppercase tracking-[0.18em] text-yellow-300">OAuth · Recomendado</p>
+												)}
+												{isConfigured && (connectedAt?.set || expiresAt?.set) ? (
+													<div className="mb-3 grid gap-1 text-[12px] text-zinc-400">
+														{expiresAt?.set ? <span>Token expira: <span className="font-mono text-zinc-200">{expiresAt.preview}</span></span> : null}
+														{provider.id === 'meta' && grantedScopes?.set ? (
+															<span>Scopes: <span className="font-mono text-zinc-300 text-[11px]">{grantedScopes.preview}</span></span>
+														) : null}
+														{connectedAt?.set ? <span>Conectado: <span className="font-mono text-zinc-300">{connectedAt.preview}</span></span> : null}
+													</div>
+												) : null}
+												{!isConfigured ? (
+													<p className="mb-3 text-sm text-zinc-300">
 														{provider.id === 'google'
-															? 'Inicia el flujo OAuth + PKCE con Google. Al volver del consentimiento, access_token, refresh_token y expires_at se guardarán cifrados, y el access_token se renueva solo cada hora.'
+															? 'OAuth + PKCE con Google. access_token, refresh_token y expires_at se guardarán cifrados; el token se renueva solo cada hora.'
 															: provider.id === 'meta'
-																? 'Inicia el flujo OAuth con Meta para conectar Facebook Pages, Instagram Business, Ads y WhatsApp. El long-lived token (~60 d) se guarda cifrado y debe renovarse antes de expirar.'
-																: 'Inicia el flujo OAuth de TikTok for Business. El access_token resultante no expira; junto con él se guarda la lista de advertisers para que puedas elegir el activo.'}
+																? 'OAuth con Meta para Facebook Pages, Instagram Business, Ads y WhatsApp. Long-lived token (~60 d) guardado cifrado.'
+																: 'OAuth de TikTok for Business. access_token no expira; se guarda la lista de advertisers.'}
 													</p>
-													<p className="mt-2 text-[11px] leading-relaxed text-zinc-500">
-														Requiere{' '}
-														{provider.id === 'google' ? (
-															<>
-																<code className="font-mono text-yellow-200/80">GOOGLE_CLIENT_ID</code> y{' '}
-																<code className="font-mono text-yellow-200/80">GOOGLE_CLIENT_SECRET</code>
-															</>
-														) : provider.id === 'meta' ? (
-															<>
-																<code className="font-mono text-yellow-200/80">META_APP_ID</code> y{' '}
-																<code className="font-mono text-yellow-200/80">META_APP_SECRET</code>
-															</>
-														) : (
-															<>
-																<code className="font-mono text-yellow-200/80">TIKTOK_APP_ID</code> y{' '}
-																<code className="font-mono text-yellow-200/80">TIKTOK_APP_SECRET</code>
-															</>
-														)}
-														{' '}en variables de entorno (Vercel).
-													</p>
+												) : null}
+												<p className="mb-3 text-[11px] leading-relaxed text-zinc-500">
+													Requiere{' '}
+													{provider.id === 'google' ? (
+														<><code className="font-mono text-yellow-200/80">GOOGLE_CLIENT_ID</code> y <code className="font-mono text-yellow-200/80">GOOGLE_CLIENT_SECRET</code></>
+													) : provider.id === 'meta' ? (
+														<><code className="font-mono text-yellow-200/80">META_APP_ID</code> y <code className="font-mono text-yellow-200/80">META_APP_SECRET</code></>
+													) : (
+														<><code className="font-mono text-yellow-200/80">TIKTOK_APP_ID</code> y <code className="font-mono text-yellow-200/80">TIKTOK_APP_SECRET</code></>
+													)}{' '}en Vercel.
+												</p>
+												<div className="flex flex-wrap gap-2">
+													<a
+														href={startHref}
+														className="inline-flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-950 transition hover:bg-yellow-300"
+													>
+														<LinkIcon className="h-3.5 w-3.5" />
+														{isConfigured ? `Reconectar ${providerName}` : `Conectar con ${providerName}`}
+													</a>
+													{isConfigured ? (
+														<button
+															type="button"
+															onClick={() => setRevokeConfirmOpen(provider.id as ProviderKey)}
+															disabled={revokingOAuth === provider.id}
+															className="inline-flex items-center gap-2 rounded-full border border-red-500/30 bg-red-500/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-red-300 transition hover:bg-red-500/20 disabled:opacity-50"
+														>
+															{revokingOAuth === provider.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogOut className="h-3.5 w-3.5" />}
+															Desconectar {providerName}
+														</button>
+													) : null}
 												</div>
-												<a
-													href={`/api/admin/${provider.id}/oauth/start`}
-													className="inline-flex items-center gap-2 rounded-full bg-yellow-400 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-950 transition hover:bg-yellow-300"
-												>
-													<LinkIcon className="h-3.5 w-3.5" />
-													{isConfigured
-														? `Reconectar ${provider.id === 'google' ? 'Google' : provider.id === 'meta' ? 'Meta' : 'TikTok'}`
-														: `Conectar con ${provider.id === 'google' ? 'Google' : provider.id === 'meta' ? 'Meta' : 'TikTok'}`}
-												</a>
 											</div>
-										</div>
-									) : null}
+										);
+									})() : null}
 
 									{provider.id === 'resend' ? (
 										<div className="rounded-2xl border border-cyan-400/30 bg-cyan-400/5 p-4">
@@ -1256,7 +1392,9 @@ export default function AdminIntegracionesPage() {
 												Ver claves 30s
 											</button>
 										) : null}
-										{isConfigured ? (
+										{/* OAuth providers use the Desconectar button in their OAuth section above;
+										    non-OAuth providers get the generic Desactivar here. */}
+										{isConfigured && !OAUTH_PROVIDERS.has(provider.id) ? (
 											<button
 												type="button"
 												onClick={() => void handleDeleteIntegration(provider.id)}

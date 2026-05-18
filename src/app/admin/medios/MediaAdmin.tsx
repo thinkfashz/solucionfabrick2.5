@@ -304,15 +304,15 @@ function CloudinaryPanel() {
         <div>
           <p className="text-sm font-bold text-yellow-400">Cloudinary no configurado</p>
           <p className="mt-1 text-xs text-zinc-400">
-            Ve a <strong className="text-white">Configuración → Integraciones</strong> y añade tu{' '}
+            Ve al <strong className="text-white">Centro de Integraciones</strong> y añade tu{' '}
             <em>Cloud name</em>, <em>API Key</em> y <em>API Secret</em> de Cloudinary.
           </p>
         </div>
         <a
-          href="/admin/configuracion"
+          href="/admin/integraciones"
           className="rounded-full bg-yellow-400 px-6 py-2 text-xs font-black uppercase tracking-[0.18em] text-black hover:bg-yellow-300"
         >
-          Ir a Configuración
+          Ir a Integraciones
         </a>
       </div>
     );
@@ -409,7 +409,6 @@ export function MediaAdmin() {
   const initialTab: ActiveTab = searchParams.get('tab') === 'cloudinary' ? 'cloudinary' : 'insforge';
   const [activeTab, setActiveTab] = useState<ActiveTab>(initialTab);
 
-  // React to URL changes (e.g. when clicking the sidebar Cloudinary link from the Medios page)
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab === 'cloudinary') setActiveTab('cloudinary');
@@ -426,7 +425,6 @@ export function MediaAdmin() {
         </p>
       </header>
 
-      {/* Tab switcher */}
       <div className="flex gap-1 rounded-2xl border border-white/10 bg-black/60 p-1.5">
         <button
           onClick={() => setActiveTab('insforge')}

@@ -36,12 +36,10 @@ export async function GET(request: NextRequest) {
 
 	const clientId = getMetaAppId();
 	if (!clientId) {
-		return NextResponse.json(
-			{
-				error:
-					'Falta META_APP_ID. Setéalo en Vercel (es el App ID de developers.facebook.com → My Apps → Settings).',
-			},
-			{ status: 503 },
+		const siteUrl = getSiteUrl(request);
+		return NextResponse.redirect(
+			`${siteUrl}/admin/integraciones?meta_error=${encodeURIComponent('Falta META_APP_ID en variables de entorno (Vercel). Configúralo con el App ID de developers.facebook.com → My Apps → Settings.')}`,
+			{ status: 302 },
 		);
 	}
 

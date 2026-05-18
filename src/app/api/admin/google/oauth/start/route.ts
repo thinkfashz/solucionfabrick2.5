@@ -56,12 +56,10 @@ export async function GET(request: NextRequest) {
 
 	const clientId = getGoogleClientId();
 	if (!clientId) {
-		return NextResponse.json(
-			{
-				error:
-					'Falta GOOGLE_CLIENT_ID. Setéalo en Vercel (es el OAuth 2.0 Client ID de Google Cloud Console) para habilitar el flujo.',
-			},
-			{ status: 503 },
+		const siteUrl = getSiteUrl(request);
+		return NextResponse.redirect(
+			`${siteUrl}/admin/integraciones?google_error=${encodeURIComponent('Falta GOOGLE_CLIENT_ID en variables de entorno (Vercel). Configúralo con el OAuth 2.0 Client ID de Google Cloud Console.')}`,
+			{ status: 302 },
 		);
 	}
 

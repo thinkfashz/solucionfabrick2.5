@@ -36,12 +36,10 @@ export async function GET(request: NextRequest) {
 
 	const appId = getTikTokAppId();
 	if (!appId) {
-		return NextResponse.json(
-			{
-				error:
-					'Falta TIKTOK_APP_ID. Setéalo en Vercel (es el App ID de TikTok for Business → Developer center).',
-			},
-			{ status: 503 },
+		const siteUrl = getSiteUrl(request);
+		return NextResponse.redirect(
+			`${siteUrl}/admin/integraciones?tiktok_error=${encodeURIComponent('Falta TIKTOK_APP_ID en variables de entorno (Vercel). Configúralo con el App ID de TikTok for Business Developer Center.')}`,
+			{ status: 302 },
 		);
 	}
 

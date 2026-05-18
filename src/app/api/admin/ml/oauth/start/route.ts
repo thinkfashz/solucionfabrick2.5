@@ -56,12 +56,10 @@ export async function GET(request: NextRequest) {
 
   const clientId = getMlClientId();
   if (!clientId) {
-    return NextResponse.json(
-      {
-        error:
-          'Falta ML_CLIENT_ID. Setéalo en Vercel (es el App ID público de tu app de Mercado Libre) para habilitar el OAuth.',
-      },
-      { status: 503 },
+    const siteUrl = getSiteUrl(request);
+    return NextResponse.redirect(
+      `${siteUrl}/admin/integraciones?ml_error=${encodeURIComponent('Falta ML_CLIENT_ID en variables de entorno (Vercel). Configúralo con el App ID de tu app de Mercado Libre.')}`,
+      { status: 302 },
     );
   }
 

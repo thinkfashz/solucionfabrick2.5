@@ -1,7 +1,13 @@
 import 'server-only';
 import { createClient } from '@insforge/sdk';
-import { decryptCredentials } from '@/lib/integrationsCrypto';
+import { decryptCredentials, encryptCredentials } from '@/lib/integrationsCrypto';
 import { readEnvFromMap } from '@/lib/integrationsEnvMap';
+import {
+  debugToken,
+  exchangeForLongLivedToken,
+  getMetaAppId,
+  getMetaAppSecret,
+} from '@/lib/metaOAuth';
 
 /**
  * Resolves Meta (Facebook/Instagram Graph API) credentials.
@@ -36,6 +42,16 @@ function normalize(value: unknown): string | undefined {
   if (typeof value !== 'string') return undefined;
   const trimmed = value.trim();
   return trimmed.length === 0 ? undefined : trimmed;
+}
+
+/** Renew Meta long-lived token when fewer than 7 days remain. */
+const META_REFRESH_GRACE_DAYS = 7;
+
+function shouldRefreshMeta(expiresAt: string | undefined): boolean {
+  if (!expiresAt) return false;
+  const ts = Date.parse(expiresAt);
+  if (Number.isNaN(ts)) return false;
+  return ts - META_REFRESH_GRACE_DAYS * 86_400_000 <= Date.now();
 }
 
 export async function getMetaCredentials(): Promise<MetaCredentials | null> {
@@ -88,11 +104,58 @@ export async function getMetaCredentials(): Promise<MetaCredentials | null> {
 
     const row = data[0] as { credentials?: Record<string, unknown> };
     const dbCreds = decryptCredentials(row.credentials ?? {});
-    const dbToken = normalize(dbCreds.access_token);
+    let dbToken = normalize(dbCreds.access_token);
     const dbAdAccount = normalize(dbCreds.ad_account_id);
     // Accept both `facebook_page_id` and the legacy `page_id` used by the UI.
     const dbPage = normalize(dbCreds.facebook_page_id) ?? normalize(dbCreds.page_id);
     const dbIg = normalize(dbCreds.instagram_business_id);
+    const dbExpiresAt = normalize(dbCreds.expires_at as string | undefined);
+
+    // Auto-renew the long-lived token when fewer than 7 days remain.
+    // Meta accepts the current long-lived token in `fb_exchange_token` and
+    // returns a fresh 60-day token as long as it hasn't expired yet.
+    if (dbToken && shouldRefreshMeta(dbExpiresAt)) {
+      const appId = getMetaAppId();
+      const appSecret = getMetaAppSecret();
+      if (appId && appSecret) {
+        try {
+          const renewed = await exchangeForLongLivedToken({
+            shortLivedToken: dbToken,
+            clientId: appId,
+            clientSecret: appSecret,
+          });
+          // Re-read debug_token to get authoritative expires_at.
+          let newExpiresAt: string | undefined;
+          try {
+            const appAccessToken = `${appId}|${appSecret}`;
+            const debug = await debugToken({
+              inputToken: renewed.access_token,
+              appAccessToken,
+            });
+            if (typeof debug.expires_at === 'number' && debug.expires_at > 0) {
+              newExpiresAt = new Date(debug.expires_at * 1000).toISOString();
+            }
+          } catch {
+            // fallback: estimate 60 days from now
+            newExpiresAt = renewed.expires_in
+              ? new Date(Date.now() + renewed.expires_in * 1000).toISOString()
+              : new Date(Date.now() + 60 * 86_400_000).toISOString();
+          }
+          const updated = encryptCredentials({
+            ...dbCreds,
+            access_token: renewed.access_token,
+            expires_at: newExpiresAt ?? dbExpiresAt ?? '',
+            connected_at: new Date().toISOString(),
+          });
+          await client.database
+            .from('integrations')
+            .upsert([{ provider: 'meta', credentials: updated }], { onConflict: 'provider' });
+          dbToken = renewed.access_token;
+        } catch (err) {
+          console.error('[meta-credentials] auto-refresh failed', err);
+        }
+      }
+    }
 
     if (!creds.accessToken && dbToken) {
       creds.accessToken = dbToken;

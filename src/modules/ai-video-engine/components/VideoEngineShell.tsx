@@ -2,9 +2,9 @@
 
 import { useState } from 'react';
 import { ChevronLeft, ChevronRight, Film, FileText, Sliders } from 'lucide-react';
+import { CanvasVideoPreview } from './CanvasVideoPreview';
 import { ExportPanel } from './ExportPanel';
 import { GeneratedScriptPanel } from './GeneratedScriptPanel';
-import { HtmlVideoPreview } from './HtmlVideoPreview';
 import { SceneEditorPanel } from './SceneEditorPanel';
 import { TokenUsagePanel } from './TokenUsagePanel';
 import { VideoPromptForm } from './VideoPromptForm';
@@ -225,7 +225,7 @@ export function VideoEngineShell() {
               </span>
             </div>
 
-            <HtmlVideoPreview
+            <CanvasVideoPreview
               plan={engine.plan}
               activeSceneIndex={engine.activeSceneIndex}
               format={engine.input.format}

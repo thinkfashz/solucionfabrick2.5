@@ -1,0 +1,227 @@
+{
+  "$schema": "https://solucionesfabrick.com/brand/logo-schema/v1",
+  "brand": {
+    "name": "Soluciones Fabrick",
+    "shortName": "Fabrick",
+    "tagline": "Tu Obra en Buenas Manos",
+    "website": "https://www.solucionesfabrick.com",
+    "location": "Linares, Región del Maule, Chile",
+    "foundedYear": 2018,
+    "yearsOfExperience": 8,
+    "language": "es-CL"
+  },
+
+  "logo": {
+    "fullName": "Logotipo Completo Soluciones Fabrick",
+    "format": "SVG",
+    "viewBox": "0 0 214 52",
+    "dimensions": { "width": 214, "height": 52, "unit": "px" },
+    "ariaLabel": "Soluciones Fabrick",
+
+    "structure": {
+      "icon": {
+        "description": "Pico arquitectónico en gradiente dorado con elemento rectangular de profundidad",
+        "elements": [
+          {
+            "id": "peak-main",
+            "type": "path",
+            "description": "Silueta principal del pico triangular arquitectónico",
+            "d": "M 2,46 L 21,4 L 40,46 L 33,46 L 21,13 L 9,46 Z",
+            "fill": "gradient:sf-gold",
+            "role": "primary-shape"
+          },
+          {
+            "id": "peak-depth",
+            "type": "path",
+            "description": "Sombra interna del pico para efecto tridimensional",
+            "d": "M 9,46 L 21,13 L 21,19 L 14,46 Z",
+            "fill": "gradient:sf-depth",
+            "opacity": 0.75,
+            "role": "depth-shadow"
+          },
+          {
+            "id": "structure-bar",
+            "type": "rect",
+            "description": "Barra rectangular que representa la estructura/edificación",
+            "x": 25,
+            "y": 11,
+            "width": 8,
+            "height": 20,
+            "rx": 1.5,
+            "fill": "#FFC700",
+            "role": "structural-element"
+          }
+        ]
+      },
+
+      "separator": {
+        "id": "vertical-line",
+        "type": "line",
+        "x1": 52, "y1": 9, "x2": 52, "y2": 44,
+        "stroke": "rgba(255,255,255,0.13)",
+        "strokeWidth": 1,
+        "role": "visual-divider"
+      },
+
+      "wordmark": {
+        "description": "Marca tipográfica en dos líneas: SOLUCIONES y FABRICK",
+        "fontFamily": ["Montserrat", "Poppins", "Arial", "sans-serif"],
+        "elements": [
+          {
+            "id": "text-soluciones",
+            "type": "text",
+            "content": "SOLUCIONES",
+            "x": 61,
+            "y": 26,
+            "fontSize": 9.5,
+            "fontWeight": 500,
+            "letterSpacing": 3,
+            "fill": "rgba(255,255,255,0.50)",
+            "role": "company-descriptor"
+          },
+          {
+            "id": "text-fabrick",
+            "type": "text",
+            "content": "FABRICK",
+            "x": 60,
+            "y": 47,
+            "fontSize": 25,
+            "fontWeight": 900,
+            "letterSpacing": 1.5,
+            "fill": "#FFFFFF",
+            "role": "brand-name"
+          }
+        ]
+      }
+    },
+
+    "gradients": {
+      "sf-gold": {
+        "id": "sf-gold",
+        "type": "linearGradient",
+        "direction": "vertical",
+        "x1": 0, "y1": 0, "x2": 0, "y2": 1,
+        "stops": [
+          { "offset": "0%", "color": "#FFE566" },
+          { "offset": "100%", "color": "#FFC700" }
+        ],
+        "usage": "Relleno principal del ícono arquitectónico"
+      },
+      "sf-depth": {
+        "id": "sf-depth",
+        "type": "linearGradient",
+        "direction": "horizontal",
+        "x1": 0, "y1": 0, "x2": 1, "y2": 0,
+        "stops": [
+          { "offset": "0%", "color": "#B37E00" },
+          { "offset": "100%", "color": "#D9A100" }
+        ],
+        "usage": "Sombra de profundidad del ícono"
+      }
+    },
+
+    "variants": {
+      "color-dark": {
+        "name": "Color (fondo oscuro)",
+        "file": "/public/logo-soluciones-fabrick.svg",
+        "background": "#0A0A0A",
+        "iconFill": "gradient:sf-gold",
+        "wordmarkPrimary": "#FFFFFF",
+        "wordmarkSecondary": "rgba(255,255,255,0.50)",
+        "usage": "Variante principal para fondos oscuros"
+      },
+      "monochrome-light": {
+        "name": "Monocromo claro (fondo claro)",
+        "file": "/public/logo-soluciones-fabrick-monocromo-claro.svg",
+        "background": "#F5F1EA",
+        "iconFill": "#111111",
+        "wordmarkPrimary": "#14110D",
+        "wordmarkSecondary": "rgba(20,17,13,0.50)",
+        "usage": "Para impresión y fondos claros"
+      },
+      "monochrome-dark": {
+        "name": "Monocromo oscuro (fondo oscuro)",
+        "file": "/public/logo-soluciones-fabrick-monocromo-oscuro.svg",
+        "background": "#0A0A0A",
+        "iconFill": "#FFFFFF",
+        "wordmarkPrimary": "#FFFFFF",
+        "wordmarkSecondary": "rgba(255,255,255,0.50)",
+        "usage": "Versión blanca para fondos muy oscuros o negros"
+      }
+    },
+
+    "iconOnly": {
+      "favicon": { "file": "/public/favicon.svg", "size": 256, "background": "transparent" },
+      "appIcon": { "file": "/public/app-icon.svg", "size": 512, "background": "#0A0A0A" },
+      "appIconMaskable": { "file": "/public/app-icon-maskable.svg", "size": 512, "safeZone": "80%", "background": "#0A0A0A" },
+      "icon192": { "file": "/public/icon-192.png", "size": 192, "format": "PNG" },
+      "icon512": { "file": "/public/icon-512.png", "size": 512, "format": "PNG" }
+    },
+
+    "clearSpace": {
+      "rule": "Mínimo el equivalente a la altura del ícono en todos los lados",
+      "minimumSize": { "width": 120, "unit": "px", "note": "No reducir FABRICK por debajo de 14px" }
+    }
+  },
+
+  "colorPalette": {
+    "primary": {
+      "gold": { "hex": "#FACC15", "name": "Amarillo Dorado", "tailwind": "yellow-400", "usage": "Color principal de marca, PWA theme color" },
+      "goldLight": { "hex": "#FFE566", "name": "Dorado Claro", "usage": "Degradado superior del ícono, brillos" },
+      "goldDeep": { "hex": "#FFC700", "name": "Dorado Profundo", "usage": "Degradado inferior del ícono, acentos" },
+      "goldVibrant": { "hex": "#FFD700", "name": "Dorado Vibrante", "usage": "Tema Gold, máxima saturación" }
+    },
+    "secondary": {
+      "warmTan": { "hex": "#C9A96E", "name": "Tan Cálido", "usage": "Acento secundario modo oscuro" },
+      "warmBrown": { "hex": "#A36A00", "name": "Marrón Cálido", "usage": "Acento modo claro" },
+      "rustOrange": { "hex": "#B15A1F", "name": "Naranja Teja", "usage": "Acento tema Arena" }
+    },
+    "neutrals": {
+      "black": { "hex": "#0A0A0A", "name": "Negro Marca", "usage": "Fondo modo oscuro" },
+      "cream": { "hex": "#F5F1EA", "name": "Crema", "usage": "Fondo modo claro" },
+      "sand": { "hex": "#EFE6D4", "name": "Arena", "usage": "Fondo tema Arena" },
+      "darkBrown": { "hex": "#14110D", "name": "Marrón Oscuro", "usage": "Texto modo claro" },
+      "white": { "hex": "#FFFFFF", "name": "Blanco", "usage": "Texto modo oscuro, wordmark Fabrick" }
+    },
+    "shadows": {
+      "sm": "0 0 15px rgba(250,204,21,0.25)",
+      "md": "0 0 30px rgba(250,204,21,0.35)",
+      "lg": "0 0 60px rgba(250,204,21,0.40)",
+      "xl": "0 0 100px rgba(250,204,21,0.45)"
+    },
+    "themes": {
+      "dark":  { "bg": "#0A0A0A", "text": "#FFFFFF", "accent": "#C9A96E", "accent2": "#A98A52", "glass": "rgba(0,0,0,0.60)" },
+      "light": { "bg": "#F5F1EA", "text": "#14110D", "accent": "#A36A00", "accent2": "#6F4500", "glass": "rgba(255,252,246,0.78)" },
+      "arena": { "bg": "#EFE6D4", "text": "#2A1F12", "accent": "#B15A1F", "accent2": "#7A3A0E", "glass": "rgba(255,248,232,0.72)" },
+      "gold":  { "bg": "#0A0700", "text": "#FFFBE6", "accent": "#FFD700", "accent2": "#FACC15", "glass": "rgba(10,7,0,0.72)" }
+    }
+  },
+
+  "typography": {
+    "primary": {
+      "family": "Inter",
+      "type": "sans-serif",
+      "weights": [300, 400, 500, 600, 700],
+      "usage": "Cuerpo de texto, interfaz, navegación"
+    },
+    "display": {
+      "family": "Playfair Display",
+      "type": "serif",
+      "weights": [400, 600, 700, 900],
+      "styles": ["regular", "italic"],
+      "usage": "Títulos principales, encabezados premium"
+    },
+    "accent": {
+      "family": "Cormorant Garamond",
+      "type": "serif",
+      "weights": [300, 400, 600],
+      "styles": ["regular", "italic"],
+      "usage": "Acentos decorativos, subtítulos elegantes"
+    },
+    "logoWordmark": {
+      "family": ["Montserrat", "Poppins", "Arial"],
+      "soluciones": { "size": 9.5, "weight": 500, "letterSpacing": 3, "opacity": 0.50 },
+      "fabrick": { "size": 25, "weight": 900, "letterSpacing": 1.5 }
+    }
+  }
+}

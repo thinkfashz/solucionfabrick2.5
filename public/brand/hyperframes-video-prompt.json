@@ -1,0 +1,543 @@
+{
+  "$schema": "https://hyperframes.ai/schema/video-prompt/v2",
+  "meta": {
+    "title": "Soluciones Fabrick — Brand Video 20s",
+    "description": "Video de presentación de marca para Soluciones Fabrick, mostrando tradición, servicios y construcción residencial",
+    "version": "1.0",
+    "brand": "Soluciones Fabrick",
+    "tagline": "Tu Obra en Buenas Manos",
+    "created": "2026-05-18"
+  },
+
+  "global": {
+    "duration": 20,
+    "fps": 30,
+    "aspectRatio": "16:9",
+    "resolution": "1920x1080",
+    "totalScenes": 10,
+    "sceneDuration": 2,
+    "audioTrack": {
+      "style": "orchestral-cinematic",
+      "mood": "premium-confident-warm",
+      "bpm": 80,
+      "description": "Música orquestal cinematográfica, tonos dorados cálidos, percusión sutil que evoca construcción y tradición, crescendo final"
+    }
+  },
+
+  "colorGrading": {
+    "palette": {
+      "primary": "#FACC15",
+      "goldLight": "#FFE566",
+      "goldDeep": "#FFC700",
+      "darkBase": "#0A0A0A",
+      "warmCream": "#F5F1EA",
+      "warmTan": "#C9A96E"
+    },
+    "lut": "warm-cinematic-gold",
+    "highlights": "#FFE566",
+    "shadows": "#0A0700",
+    "contrast": 1.15,
+    "saturation": 1.10,
+    "warmth": "+15K",
+    "vignetteStrength": 0.30,
+    "bloomOnGold": true
+  },
+
+  "typography": {
+    "titleFont": "Playfair Display",
+    "bodyFont": "Inter",
+    "accentFont": "Cormorant Garamond",
+    "logoFont": "Montserrat",
+    "defaultColor": "#FFFFFF",
+    "accentColor": "#FACC15",
+    "shadowOnText": "0 2px 20px rgba(0,0,0,0.8)"
+  },
+
+  "transitions": {
+    "defaultType": "cross-dissolve",
+    "defaultDuration": 0.25,
+    "goldFlareOnCut": true,
+    "logoScenes": "fade-with-glow"
+  },
+
+  "scenes": [
+    {
+      "id": 1,
+      "name": "logo-reveal",
+      "timeIn": 0.0,
+      "timeOut": 2.0,
+      "duration": 2.0,
+      "transition": { "in": "fade-from-black", "out": "cross-dissolve" },
+      "background": {
+        "type": "solid",
+        "color": "#0A0A0A"
+      },
+      "visual": {
+        "subject": "Logotipo completo de Soluciones Fabrick sobre fondo negro absoluto",
+        "description": "El ícono arquitectónico dorado (pico triangular + barra rectangular) aparece desde el centro con un halo de luz dorada. Las palabras SOLUCIONES en gris claro y FABRICK en blanco negrita emergen de derecha a izquierda con velocidad de fade-in suave. El logo está centrado en pantalla, grande, ocupando el 50% del ancho.",
+        "cameraMotion": "static-with-subtle-zoom-in",
+        "zoomFactor": 1.04,
+        "glowEffect": {
+          "color": "#FACC15",
+          "radius": 60,
+          "opacity": 0.45,
+          "animation": "pulse-breathing",
+          "animationDuration": 3.4
+        },
+        "particles": {
+          "type": "gold-dust",
+          "count": 30,
+          "size": "small",
+          "direction": "upward",
+          "opacity": 0.35
+        }
+      },
+      "overlays": [],
+      "prompt": "Cinematic logo reveal on pure black background. A golden triangular architectural peak icon glows from center with warm golden light halo (#FACC15). The wordmark 'SOLUCIONES FABRICK' fades in alongside the icon. Luxury construction brand. Ultra sharp, 4K, cinematic lighting, gold bloom effect, black void background, warm shadows."
+    },
+
+    {
+      "id": 2,
+      "name": "tagline-tradition",
+      "timeIn": 2.0,
+      "timeOut": 4.0,
+      "duration": 2.0,
+      "transition": { "in": "cross-dissolve", "out": "cross-dissolve" },
+      "background": {
+        "type": "gradient",
+        "direction": "diagonal",
+        "stops": [
+          { "position": "0%", "color": "#0A0A0A" },
+          { "position": "100%", "color": "#1A1200" }
+        ]
+      },
+      "visual": {
+        "subject": "Tagline de la marca sobre fondo oscuro con textura de concreto sutil",
+        "description": "Texto en tipografía serif elegante centrado. 'Tu Obra en' aparece primero en blanco translúcido, luego 'Buenas Manos' aparece en dorado brillante (#FACC15). Debajo, en letra pequeña: '8 años de tradición y excelencia · Linares, Chile'. Fondo con textura suave de concreto o piedra gris oscuro, apenas visible.",
+        "cameraMotion": "static",
+        "backgroundTexture": "subtle-concrete-dark",
+        "backgroundTextureOpacity": 0.15
+      },
+      "overlays": [
+        {
+          "type": "text",
+          "content": "Tu Obra en",
+          "font": "Playfair Display",
+          "size": 52,
+          "weight": 400,
+          "color": "rgba(255,255,255,0.85)",
+          "style": "italic",
+          "position": { "x": "50%", "y": "42%" },
+          "animation": { "type": "fade-up", "delay": 0.1, "duration": 0.5 }
+        },
+        {
+          "type": "text",
+          "content": "Buenas Manos",
+          "font": "Playfair Display",
+          "size": 64,
+          "weight": 700,
+          "color": "#FACC15",
+          "style": "italic",
+          "position": { "x": "50%", "y": "55%" },
+          "animation": { "type": "fade-up", "delay": 0.3, "duration": 0.5 },
+          "textShadow": "0 0 40px rgba(250,204,21,0.5)"
+        },
+        {
+          "type": "text",
+          "content": "8 años de tradición y excelencia  ·  Linares, Chile",
+          "font": "Inter",
+          "size": 14,
+          "weight": 300,
+          "color": "rgba(201,169,110,0.80)",
+          "letterSpacing": 3,
+          "position": { "x": "50%", "y": "70%" },
+          "animation": { "type": "fade-in", "delay": 0.6, "duration": 0.5 }
+        }
+      ],
+      "prompt": "Elegant dark background with barely visible concrete texture. Centered serif text 'Tu Obra en Buenas Manos' — 'Buenas Manos' glowing in warm gold (#FACC15). Below in small caps: '8 años de tradición y excelencia · Linares, Chile'. Cinematic, luxury brand feel, warm golden tones, dramatic typography, dark atmospheric."
+    },
+
+    {
+      "id": 3,
+      "name": "aerial-construction-site",
+      "timeIn": 4.0,
+      "timeOut": 6.0,
+      "duration": 2.0,
+      "transition": { "in": "cross-dissolve", "out": "cross-dissolve" },
+      "visual": {
+        "subject": "Vista aérea cinematográfica de obra residencial en construcción en Chile",
+        "description": "Toma de dron descendiendo suavemente sobre una obra en construcción. Se ve la losa, paredes de bloques de cemento, trabajadores con cascos blancos y amarillos. Ambiente de mañana con luz cálida dorada sobre la Región del Maule, vegetación de fondo, entorno rural/urbano chileno. Paleta dorada del atardecer.",
+        "cameraMotion": "drone-descend-slow",
+        "cameraAngle": "top-down-tilting-to-45deg",
+        "timeOfDay": "golden-hour-morning",
+        "location": "residential-construction-site-chile-maule-region",
+        "workers": { "count": 3, "helmets": "white-and-yellow", "visible": true }
+      },
+      "overlays": [
+        {
+          "type": "label",
+          "content": "Construcción Residencial",
+          "font": "Inter",
+          "size": 13,
+          "weight": 600,
+          "color": "#FACC15",
+          "letterSpacing": 2,
+          "position": { "x": "8%", "y": "88%" },
+          "animation": { "type": "slide-in-left", "delay": 0.4, "duration": 0.4 },
+          "prefix": "— "
+        }
+      ],
+      "colorGradeOverride": { "warmth": "+20K", "saturation": 1.15, "highlights": "#FFE566" },
+      "prompt": "Aerial drone shot slowly descending over a residential construction site in Maule region, Chile. Concrete slabs, block walls, workers in white and yellow helmets. Warm golden morning light, lush green vegetation in background, rural Chilean landscape. Cinematic 4K, warm gold color grade, construction progress visible. Premium quality."
+    },
+
+    {
+      "id": 4,
+      "name": "metalcon-structure",
+      "timeIn": 6.0,
+      "timeOut": 8.0,
+      "duration": 2.0,
+      "transition": { "in": "cross-dissolve", "out": "cross-dissolve" },
+      "visual": {
+        "subject": "Estructura Metalcon galvanizada siendo montada por trabajadores especializados",
+        "description": "Primer plano cinematográfico de perfiles de acero galvanizado Metalcon siendo instalados. Los reflejos metálicos capturan la luz del sol. Dos trabajadores con guantes y herramientas profesionales ensamblan la estructura. Ángulo bajo mirando hacia arriba. El metal brilla con la luz del sol, creando destellos dorados. Sensación de precisión y modernidad.",
+        "cameraMotion": "slow-pan-left-to-right",
+        "cameraAngle": "low-angle-looking-up",
+        "lightingEffect": "sun-flare-on-metal",
+        "material": "galvanized-metalcon-steel-C60x38-D90"
+      },
+      "overlays": [
+        {
+          "type": "label",
+          "content": "Estructura Metalcon",
+          "font": "Inter",
+          "size": 13,
+          "weight": 600,
+          "color": "#FACC15",
+          "letterSpacing": 2,
+          "position": { "x": "8%", "y": "88%" },
+          "animation": { "type": "slide-in-left", "delay": 0.3, "duration": 0.4 },
+          "prefix": "— "
+        },
+        {
+          "type": "text",
+          "content": "Acero galvanizado · Alta durabilidad",
+          "font": "Inter",
+          "size": 11,
+          "weight": 300,
+          "color": "rgba(255,255,255,0.60)",
+          "letterSpacing": 1.5,
+          "position": { "x": "8%", "y": "93%" },
+          "animation": { "type": "fade-in", "delay": 0.5, "duration": 0.4 }
+        }
+      ],
+      "prompt": "Close-up cinematic shot of galvanized Metalcon steel frame structure being assembled by skilled workers. Shiny metal profiles catching sunlight with golden lens flares. Low angle looking up at the steel frame. Workers with gloves and professional tools. Precision engineering, modern construction, metallic gleam, warm sunlight, 4K ultra sharp."
+    },
+
+    {
+      "id": 5,
+      "name": "foundation-concrete",
+      "timeIn": 8.0,
+      "timeOut": 10.0,
+      "duration": 2.0,
+      "transition": { "in": "cross-dissolve", "out": "cross-dissolve" },
+      "visual": {
+        "subject": "Vaciado de hormigón y trabajo de fundación de casa residencial",
+        "description": "Trabajador vierte hormigón desde una mezcladora o camión. La mezcla fluye y otro trabajador la esparcen con una paleta. Toma media, cámara al nivel del suelo. Polvo de cemento levitando en el aire backlit por la luz del sol, creando un efecto atmosférico dorado. Sensación de trabajo duro, artesanía y solidez.",
+        "cameraMotion": "slow-dolly-in",
+        "cameraAngle": "eye-level-ground",
+        "atmosphericEffect": "cement-dust-backlit-golden",
+        "timeOfDay": "midday-warm"
+      },
+      "overlays": [
+        {
+          "type": "label",
+          "content": "Construcción desde los cimientos",
+          "font": "Inter",
+          "size": 13,
+          "weight": 600,
+          "color": "#FACC15",
+          "letterSpacing": 2,
+          "position": { "x": "8%", "y": "88%" },
+          "animation": { "type": "slide-in-left", "delay": 0.3, "duration": 0.4 },
+          "prefix": "— "
+        }
+      ],
+      "prompt": "Worker pouring concrete on a residential foundation. Ground-level cinematic shot, warm backlit cement dust floating in golden sunlight creating atmospheric haze. Another worker spreading the mix. Hard craftsmanship, solid construction, dust particles lit from behind, warm golden tones, Chile residential site, 4K cinematic."
+    },
+
+    {
+      "id": 6,
+      "name": "electrical-installation",
+      "timeIn": 10.0,
+      "timeOut": 12.0,
+      "duration": 2.0,
+      "transition": { "in": "cross-dissolve", "out": "cross-dissolve" },
+      "visual": {
+        "subject": "Instalación eléctrica residencial de precisión, manos de electricista especializado",
+        "description": "Primer plano extremo de manos de un electricista experto conectando cables en un tablero eléctrico o caja de distribución. Cables de colores (rojo, negro, verde) perfectamente organizados. Luz focal cálida ilumina las manos trabajando. El fondo de la habitación en construcción es ligeramente desenfocado. Seriedad técnica y profesionalismo.",
+        "cameraMotion": "slow-macro-pull-back",
+        "cameraAngle": "macro-close-up",
+        "focus": "hands-and-wires-sharp",
+        "depthOfField": "shallow-bokeh-background",
+        "lighting": "focused-warm-work-light"
+      },
+      "overlays": [
+        {
+          "type": "label",
+          "content": "Instalación Eléctrica",
+          "font": "Inter",
+          "size": 13,
+          "weight": 600,
+          "color": "#FACC15",
+          "letterSpacing": 2,
+          "position": { "x": "8%", "y": "88%" },
+          "animation": { "type": "slide-in-left", "delay": 0.3, "duration": 0.4 },
+          "prefix": "— "
+        },
+        {
+          "type": "text",
+          "content": "Certificado · Seguro · Normado",
+          "font": "Inter",
+          "size": 11,
+          "weight": 300,
+          "color": "rgba(255,255,255,0.60)",
+          "letterSpacing": 1.5,
+          "position": { "x": "8%", "y": "93%" },
+          "animation": { "type": "fade-in", "delay": 0.5, "duration": 0.4 }
+        }
+      ],
+      "prompt": "Extreme close-up of skilled electrician's hands connecting colored wires in a residential electrical panel. Sharp focus on hands and cables, blurred construction room background. Warm focused work light, red, black and green wires neatly organized. Professional precision, technical mastery, shallow depth of field, 4K macro cinematic."
+    },
+
+    {
+      "id": 7,
+      "name": "plumbing-gasfiteria",
+      "timeIn": 12.0,
+      "timeOut": 14.0,
+      "duration": 2.0,
+      "transition": { "in": "cross-dissolve", "out": "cross-dissolve" },
+      "visual": {
+        "subject": "Gasfitería con tuberías PPR termofusión siendo instaladas en pared residencial",
+        "description": "Plomero instala tuberías de polipropileno verde/blanco (PPR) usando una soldadora de termofusión. Luz azul/naranja de la herramienta crea un destello cálido sobre la escena. Primer plano de la unión siendo soldada con calor, humo suave del proceso. Toma dinámica con leve movimiento de cámara circular hacia el punto de trabajo.",
+        "cameraMotion": "slow-arc-around-subject",
+        "cameraAngle": "medium-close-up",
+        "lightingEffect": "thermofusion-tool-warm-glow",
+        "material": "PPR-thermofusion-pipes-copper"
+      },
+      "overlays": [
+        {
+          "type": "label",
+          "content": "Gasfitería Especializada",
+          "font": "Inter",
+          "size": 13,
+          "weight": 600,
+          "color": "#FACC15",
+          "letterSpacing": 2,
+          "position": { "x": "8%", "y": "88%" },
+          "animation": { "type": "slide-in-left", "delay": 0.3, "duration": 0.4 },
+          "prefix": "— "
+        },
+        {
+          "type": "text",
+          "content": "Tubería PPR · Cobre NSF · Presión garantizada",
+          "font": "Inter",
+          "size": 11,
+          "weight": 300,
+          "color": "rgba(255,255,255,0.60)",
+          "letterSpacing": 1.5,
+          "position": { "x": "8%", "y": "93%" },
+          "animation": { "type": "fade-in", "delay": 0.5, "duration": 0.4 }
+        }
+      ],
+      "prompt": "Close-up of plumber installing PPR thermofusion pipes in a residential wall. Thermofusion tool emitting warm orange glow as pipes are welded. Slight smoke from the heat process. Arc camera movement around the work point. Professional plumbing, modern residential construction Chile, warm tool light, 4K cinematic."
+    },
+
+    {
+      "id": 8,
+      "name": "remodeling-transformation",
+      "timeIn": 14.0,
+      "timeOut": 16.0,
+      "duration": 2.0,
+      "transition": { "in": "cross-dissolve", "out": "cross-dissolve" },
+      "visual": {
+        "subject": "Transformación de remodelación: paso de espacio antiguo a moderno y renovado",
+        "description": "Travelling cinematográfico hacia adelante por un corredor o habitación. La primera mitad muestra el espacio con paredes antiguas, pintura descascarada, piso dañado. En la mitad exacta de la toma, el efecto 'wipe vertical' transiciona al mismo espacio completamente renovado: paredes blancas perfectas, piso laminado moderno, luz natural entrando. Efecto de 'antes y después' en movimiento.",
+        "cameraMotion": "forward-dolly-tracking",
+        "visualEffect": "live-wipe-before-after-vertical",
+        "wipePosition": "center-frame",
+        "beforeLook": "aged-cracked-walls-damaged-floor",
+        "afterLook": "modern-white-walls-laminate-floor-natural-light"
+      },
+      "overlays": [
+        {
+          "type": "split-label",
+          "left": { "content": "ANTES", "color": "rgba(255,255,255,0.45)", "font": "Inter", "size": 11, "weight": 600, "letterSpacing": 3 },
+          "right": { "content": "DESPUÉS", "color": "#FACC15", "font": "Inter", "size": 11, "weight": 600, "letterSpacing": 3 },
+          "position": { "x": "50%", "y": "15%" },
+          "animation": { "type": "fade-in", "delay": 0.2, "duration": 0.4 }
+        },
+        {
+          "type": "label",
+          "content": "Remodelación & Ampliación",
+          "font": "Inter",
+          "size": 13,
+          "weight": 600,
+          "color": "#FACC15",
+          "letterSpacing": 2,
+          "position": { "x": "8%", "y": "88%" },
+          "animation": { "type": "slide-in-left", "delay": 0.4, "duration": 0.4 },
+          "prefix": "— "
+        }
+      ],
+      "prompt": "Cinematic forward dolly shot through a corridor. Vertical wipe effect in the center of frame: left side shows aged cracked walls and damaged flooring; right side reveals same space completely renovated — pristine white walls, modern laminate flooring, natural light flooding in. 'ANTES / DESPUÉS' labels. Transformation reveal, 4K cinematic, warm tones."
+    },
+
+    {
+      "id": 9,
+      "name": "finished-home-reveal",
+      "timeIn": 16.0,
+      "timeOut": 18.0,
+      "duration": 2.0,
+      "transition": { "in": "cross-dissolve", "out": "cross-dissolve" },
+      "visual": {
+        "subject": "Casa residencial terminada y entregada, luz dorada de atardecer en Chile",
+        "description": "Toma exterior de una hermosa casa residencial recién terminada. Planta baja o dos pisos, estilo moderno-chileno. Ventanas grandes, jardín bien cuidado, entrada principal con luz cálida. La cámara hace un dolly lateral elegante revelando la fachada completa. Hora dorada: el sol tiñe todo de dorado y naranja cálido. Orgullo de obra terminada.",
+        "cameraMotion": "lateral-dolly-elegant",
+        "cameraAngle": "slight-low-angle",
+        "timeOfDay": "golden-hour-sunset",
+        "architecture": "modern-chilean-residential-2-story",
+        "landscaping": "manicured-garden-paved-driveway"
+      },
+      "overlays": [
+        {
+          "type": "text",
+          "content": "Tu proyecto, terminado con orgullo",
+          "font": "Playfair Display",
+          "size": 22,
+          "weight": 400,
+          "color": "rgba(255,255,255,0.90)",
+          "style": "italic",
+          "position": { "x": "50%", "y": "82%" },
+          "animation": { "type": "fade-up", "delay": 0.3, "duration": 0.6 },
+          "textShadow": "0 2px 20px rgba(0,0,0,0.9)"
+        }
+      ],
+      "colorGradeOverride": { "warmth": "+25K", "highlights": "#FFE566", "saturation": 1.20, "bloom": true },
+      "prompt": "Beautiful modern Chilean residential house, freshly completed. Two-story contemporary architecture, large windows, manicured garden, paved entrance with warm golden light. Elegant lateral dolly camera movement revealing the full facade. Golden hour sunset, warm orange and gold tones, cinematic lens flare, pride of completion. Premium residential construction Chile, 4K."
+    },
+
+    {
+      "id": 10,
+      "name": "brand-outro",
+      "timeIn": 18.0,
+      "timeOut": 20.0,
+      "duration": 2.0,
+      "transition": { "in": "cross-dissolve", "out": "fade-to-black" },
+      "background": {
+        "type": "gradient",
+        "direction": "radial-from-center",
+        "stops": [
+          { "position": "0%", "color": "#1A1200" },
+          { "position": "100%", "color": "#0A0A0A" }
+        ]
+      },
+      "visual": {
+        "subject": "Cierre de marca con logo, datos de contacto y llamada a la acción",
+        "description": "Logo completo de Soluciones Fabrick centrado con halo dorado pulsante. Debajo el tagline en serif dorado. Luego en líneas separadas: website, ubicación. Partículas doradas suaves flotan en el fondo. La música llega a su punto más alto con un golpe orquestal final. Todo culmina en un fade a negro elegante.",
+        "cameraMotion": "static",
+        "glowEffect": {
+          "color": "#FACC15",
+          "radius": 80,
+          "opacity": 0.40,
+          "animation": "pulse-slow"
+        },
+        "particles": {
+          "type": "gold-sparkles",
+          "count": 50,
+          "size": "tiny",
+          "opacity": 0.30,
+          "direction": "drift-upward"
+        }
+      },
+      "overlays": [
+        {
+          "type": "logo",
+          "asset": "/public/logo-soluciones-fabrick.svg",
+          "width": "45%",
+          "position": { "x": "50%", "y": "38%" },
+          "animation": { "type": "fade-in-scale", "from": 0.85, "to": 1.0, "delay": 0.0, "duration": 0.6 },
+          "glowOnLogo": { "color": "#FACC15", "blur": 40, "opacity": 0.45 }
+        },
+        {
+          "type": "divider",
+          "width": "30%",
+          "height": 1,
+          "color": "rgba(250,204,21,0.35)",
+          "position": { "x": "50%", "y": "58%" },
+          "animation": { "type": "expand-from-center", "delay": 0.4, "duration": 0.5 }
+        },
+        {
+          "type": "text",
+          "content": "Tu Obra en Buenas Manos",
+          "font": "Playfair Display",
+          "size": 18,
+          "weight": 400,
+          "color": "#C9A96E",
+          "style": "italic",
+          "position": { "x": "50%", "y": "65%" },
+          "animation": { "type": "fade-up", "delay": 0.5, "duration": 0.5 }
+        },
+        {
+          "type": "text",
+          "content": "www.solucionesfabrick.com",
+          "font": "Inter",
+          "size": 14,
+          "weight": 400,
+          "color": "rgba(255,255,255,0.75)",
+          "letterSpacing": 1,
+          "position": { "x": "50%", "y": "76%" },
+          "animation": { "type": "fade-in", "delay": 0.7, "duration": 0.5 }
+        },
+        {
+          "type": "text",
+          "content": "Linares · Región del Maule · Chile",
+          "font": "Inter",
+          "size": 11,
+          "weight": 300,
+          "color": "rgba(201,169,110,0.65)",
+          "letterSpacing": 2,
+          "position": { "x": "50%", "y": "83%" },
+          "animation": { "type": "fade-in", "delay": 0.9, "duration": 0.5 }
+        }
+      ],
+      "prompt": "Elegant brand outro on near-black background. Soluciones Fabrick full logo centered with soft pulsing golden glow halo (#FACC15). Below: tagline 'Tu Obra en Buenas Manos' in warm gold italic serif. Then 'www.solucionesfabrick.com' in white. Subtle gold sparkle particles drifting upward. Cinematic fade to black. Premium luxury construction brand Chile."
+    }
+  ],
+
+  "storyboard": {
+    "summary": [
+      { "scene": 1, "time": "0-2s",   "name": "Logo Reveal",             "mood": "majestic",    "icon": "◆" },
+      { "scene": 2, "time": "2-4s",   "name": "Tagline & Tradición",     "mood": "elegant",     "icon": "✦" },
+      { "scene": 3, "time": "4-6s",   "name": "Vista Aérea Obra",        "mood": "epic",        "icon": "▲" },
+      { "scene": 4, "time": "6-8s",   "name": "Estructura Metalcon",     "mood": "technical",   "icon": "⬡" },
+      { "scene": 5, "time": "8-10s",  "name": "Cimientos y Hormigón",    "mood": "powerful",    "icon": "▪" },
+      { "scene": 6, "time": "10-12s", "name": "Instalación Eléctrica",   "mood": "precise",     "icon": "⚡" },
+      { "scene": 7, "time": "12-14s", "name": "Gasfitería PPR",          "mood": "expert",      "icon": "◉" },
+      { "scene": 8, "time": "14-16s", "name": "Remodelación Antes/Después","mood": "transformative","icon": "↔" },
+      { "scene": 9, "time": "16-18s", "name": "Casa Terminada",          "mood": "proud-warm",  "icon": "⌂" },
+      { "scene": 10,"time": "18-20s", "name": "Brand Outro + CTA",       "mood": "confident",   "icon": "◆" }
+    ]
+  },
+
+  "exportSettings": {
+    "formats": ["MP4-H264", "WebM-VP9", "GIF-preview"],
+    "quality": "master-4K",
+    "socialVariants": [
+      { "name": "instagram-reel",   "ratio": "9:16",  "resolution": "1080x1920" },
+      { "name": "instagram-square", "ratio": "1:1",   "resolution": "1080x1080" },
+      { "name": "youtube",          "ratio": "16:9",  "resolution": "1920x1080" },
+      { "name": "linkedin",         "ratio": "16:9",  "resolution": "1920x1080" }
+    ]
+  }
+}

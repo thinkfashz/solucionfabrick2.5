@@ -202,6 +202,8 @@ export function VideoEngineShell() {
               plan={engine.plan}
               activeSceneIndex={engine.activeSceneIndex}
               format={engine.input.format}
+              isPlaying={engine.isPlaying}
+              onTogglePlay={engine.togglePlay}
             />
           </div>
 

@@ -5,10 +5,12 @@ import { useSearchParams } from 'next/navigation';
 import {
 	Activity,
 	CheckCircle2,
+	ChevronDown,
 	Cloud,
 	CreditCard,
 	Eye,
 	Globe,
+	HelpCircle,
 	LinkIcon,
 	Loader2,
 	LogOut,
@@ -385,6 +387,108 @@ function Field({
 			)}
 			{hint ? <span className="text-[11px] leading-relaxed text-zinc-600">{hint}</span> : null}
 		</label>
+	);
+}
+
+const DIAGNOSTIC_TIPS: Partial<Record<ProviderKey, string[]>> = {
+	stripe: [
+		'Para producción usa sk_live_; para pruebas sk_test_. Nunca expongas el secret_key en el frontend.',
+		'El webhook_secret se obtiene en Stripe → Developers → Webhooks al registrar el endpoint.',
+	],
+	whatsapp: [
+		'Necesitas una cuenta Meta for Developers con WhatsApp Cloud API habilitada.',
+		'El phone_number_id está en Meta Business → WhatsApp → Configuración.',
+		'El access_token caduca. Para producción genera un token de larga duración desde tu app de Meta.',
+	],
+	mercadopago: [
+		'El access_token de producción empieza con APP_USR-; el de sandbox con TEST-.',
+		'Para webhooks define también PLATFORM_MP_WEBHOOK_SECRET en Vercel.',
+		'Si el test falla con "Invalid token", verifica que sea de la cuenta correcta (vendedor vs. comprador).',
+	],
+	mercadolibre: [
+		'ML_CLIENT_ID y ML_CLIENT_SECRET deben estar en Vercel — el flujo OAuth los necesita para canjear el code.',
+		'El redirect URI en tu app de ML debe ser exactamente: [tu-dominio]/api/admin/ml/oauth/callback',
+		'El access_token expira cada 6 h — la app lo renueva automáticamente con el refresh_token guardado.',
+	],
+	meta: [
+		'META_APP_ID y META_APP_SECRET deben estar en Vercel para iniciar el flujo OAuth.',
+		'El long-lived token dura ~60 días. Usa "Reconectar Meta" para renovarlo antes de que expire.',
+		'Algunos permisos (Ads API, Mensajes) requieren App Review en Meta — los scopes básicos funcionan de inmediato.',
+	],
+	google: [
+		'GOOGLE_CLIENT_ID y GOOGLE_CLIENT_SECRET deben estar en Vercel; el refresh_token se obtiene al completar el flujo OAuth.',
+		'Habilita las APIs necesarias en Google Cloud Console (Analytics, Search Console, etc.).',
+		'El access_token se renueva automáticamente cada hora usando el refresh_token guardado.',
+	],
+	google_ads: [
+		'El developer_token de Google Ads es diferente al client_id de OAuth — se obtiene en Google Ads → Herramientas → API Center.',
+		'Necesitas completar también el flujo OAuth de Google (integración Google) para tener el refresh_token.',
+		'El customer_id no lleva guiones en la API (usa 1234567890, no 123-456-7890).',
+	],
+	tiktok: [
+		'TIKTOK_APP_ID y TIKTOK_APP_SECRET deben estar en Vercel para el flujo OAuth.',
+		'Asegúrate de que tu app de TikTok for Business esté en modo producción (no sandbox).',
+	],
+	cloudinary: [
+		'Necesitas cloud_name, api_key y api_secret del panel de Cloudinary → Dashboard.',
+		'Para subidas sin firma desde el cliente, crea un Upload Preset "unsigned" en Settings → Upload.',
+	],
+	vercel: [
+		'El API token necesita scope "Full Account" para leer deployments y logs.',
+		'El project_id está en Vercel → tu proyecto → Settings → General → Project ID.',
+	],
+	resend: [
+		'La API key empieza con re_ y debe tener permiso "Sending access".',
+		'El remitente (From) debe ser un dominio verificado en Resend → Domains (no gmail.com ni similares).',
+		'Si la key viene de Vercel (RESEND_API_KEY), la rotación automática desde aquí no está disponible — edítala allí.',
+	],
+	openrouter: [
+		'La API key empieza con sk-or-v1-. Créala en openrouter.ai/keys.',
+		'Los modelos gratis (sufijo :free) no requieren saldo pero sí una key válida.',
+		'Si el test falla, verifica que el modelo seleccionado en el Asistente IA esté actualmente disponible.',
+	],
+	serper: [
+		'La API key es una cadena hexadecimal de 64 caracteres (sin prefijos).',
+		'El plan gratuito incluye ~2.500 búsquedas one-time; cuando se agotan necesitas recargar o cambiar a SerpAPI.',
+	],
+	serpapi: [
+		'La Private API Key está en serpapi.com/manage-api-key.',
+		'Si tienes Serper también configurado, el módulo Inteligencia de Mercado priorizará Serper por defecto.',
+	],
+};
+
+function DiagnosticTip({ provider }: { provider: ProviderKey }) {
+	const [open, setOpen] = useState(false);
+	const tips = DIAGNOSTIC_TIPS[provider];
+	if (!tips || tips.length === 0) return null;
+	return (
+		<div className="overflow-hidden rounded-xl border border-amber-400/20 bg-amber-400/5 transition-all">
+			<button
+				type="button"
+				onClick={() => setOpen((v) => !v)}
+				className="flex w-full items-center justify-between gap-2 px-3 py-2.5 text-left transition-colors hover:bg-amber-400/5"
+			>
+				<span className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.16em] text-amber-300/70">
+					<HelpCircle className="h-3.5 w-3.5 flex-shrink-0" />
+					¿Por qué podría no funcionar?
+				</span>
+				<ChevronDown
+					className={`h-3.5 w-3.5 flex-shrink-0 text-amber-300/50 transition-transform duration-200 ${open ? 'rotate-180' : ''}`}
+				/>
+			</button>
+			{open && (
+				<div className="border-t border-amber-400/10 px-3 pb-3 pt-2">
+					<ul className="space-y-1.5">
+						{tips.map((tip, i) => (
+							<li key={i} className="flex gap-2 text-[12px] leading-relaxed text-zinc-400">
+								<span className="mt-0.5 flex-shrink-0 text-amber-300/50">›</span>
+								<span>{tip}</span>
+							</li>
+						))}
+					</ul>
+				</div>
+			)}
+		</div>
 	);
 }
 
@@ -1026,7 +1130,7 @@ export default function AdminIntegracionesPage() {
 				</div>
 			) : null}
 
-			<div className="grid gap-5 xl:grid-cols-2">
+			<div className="grid gap-5 md:grid-cols-2">
 				{PROVIDERS.map((provider) => {
 					const Icon = provider.icon;
 					const status = integrations[provider.id];
@@ -1437,6 +1541,8 @@ export default function AdminIntegracionesPage() {
 											) : null}
 										</div>
 									) : null}
+
+									<DiagnosticTip provider={provider.id} />
 								</div>
 							</AdminActionGuard>
 						</AdminCard>

@@ -599,47 +599,75 @@ export default function AsistenteIaPage() {
 
       <div className="grid gap-4 lg:grid-cols-[260px_minmax(0,1fr)_300px]">
         {/* SIDEBAR HILOS */}
-        <AdminCard className="space-y-3 lg:sticky lg:top-4 self-start">
-          <button
-            type="button"
-            onClick={() => void handleNewThread()}
-            className="w-full inline-flex items-center justify-center gap-2 rounded-full bg-amber-500 hover:bg-amber-400 text-neutral-950 px-4 py-2.5 text-sm font-semibold"
-          >
-            <MessageSquarePlus className="h-4 w-4" /> Nueva conversación
-          </button>
-          <div className="space-y-1 max-h-[55vh] overflow-y-auto pr-1">
-            {threads.length === 0 && <p className="text-xs text-neutral-500 px-1 py-3">Aún no hay conversaciones.</p>}
-            {threads.map((t) => (
-              <button
-                key={t.id}
-                type="button"
-                onClick={() => setActiveThreadId(t.id)}
-                className={`group w-full text-left rounded-lg px-2.5 py-2 border transition-colors flex items-start gap-2 ${
-                  activeThreadId === t.id
-                    ? 'border-amber-500/50 bg-amber-500/5'
-                    : 'border-transparent hover:border-neutral-800 hover:bg-neutral-950/60'
-                }`}
-              >
-                <Bot className="h-3.5 w-3.5 text-amber-400 mt-0.5 flex-shrink-0" />
-                <span className="flex-1 min-w-0">
-                  <span className="block text-xs font-medium text-neutral-200 truncate">{t.title}</span>
-                  <span className="block text-[10px] text-neutral-500 truncate">
-                    {t.model ?? '—'} · {new Date(t.updated_at).toLocaleDateString('es-CL')}
-                  </span>
+        <AdminCard className="overflow-hidden p-0 lg:sticky lg:top-4 self-start">
+          <div className="border-b border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 px-4 py-3">
+            <div className="flex items-center justify-between gap-2">
+              <div className="flex items-center gap-2">
+                <div className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-500/20">
+                  <Bot className="h-3.5 w-3.5 text-amber-400" />
+                </div>
+                <span className="text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">Conversaciones</span>
+              </div>
+              {threads.length > 0 && (
+                <span className="rounded-full border border-neutral-700 bg-neutral-900 px-2 py-0.5 text-[10px] font-bold text-neutral-500">
+                  {threads.length}
                 </span>
+              )}
+            </div>
+          </div>
+          <div className="p-3 space-y-2">
+            <button
+              type="button"
+              onClick={() => void handleNewThread()}
+              className="w-full inline-flex items-center justify-center gap-2 rounded-xl bg-amber-500 hover:bg-amber-400 active:scale-95 text-neutral-950 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.14em] transition-all shadow-lg shadow-amber-500/20"
+            >
+              <MessageSquarePlus className="h-3.5 w-3.5" /> Nueva conversación
+            </button>
+            <div className="space-y-0.5 max-h-[52vh] overflow-y-auto pr-0.5">
+              {threads.length === 0 && (
+                <div className="flex flex-col items-center gap-2 px-2 py-6 text-center">
+                  <div className="h-8 w-8 rounded-full bg-neutral-900 flex items-center justify-center">
+                    <MessageSquarePlus className="h-4 w-4 text-neutral-600" />
+                  </div>
+                  <p className="text-xs text-neutral-600">Aún no hay conversaciones.</p>
+                </div>
+              )}
+              {threads.map((t) => (
                 <button
+                  key={t.id}
                   type="button"
-                  onClick={(e) => {
-                    e.stopPropagation();
-                    void handleDeleteThread(t.id);
-                  }}
-                  className="opacity-0 group-hover:opacity-100 text-neutral-500 hover:text-red-400"
-                  title="Borrar conversación"
+                  onClick={() => setActiveThreadId(t.id)}
+                  className={`group w-full text-left rounded-lg px-2.5 py-2 border transition-all flex items-start gap-2 ${
+                    activeThreadId === t.id
+                      ? 'border-amber-500/40 bg-amber-500/8 shadow-inner'
+                      : 'border-transparent hover:border-neutral-800 hover:bg-neutral-950/60'
+                  }`}
                 >
-                  <Trash2 className="h-3 w-3" />
+                  <div className={`mt-0.5 flex-shrink-0 h-4 w-4 rounded-full flex items-center justify-center ${
+                    activeThreadId === t.id ? 'bg-amber-500/20' : 'bg-neutral-800'
+                  }`}>
+                    <Bot className={`h-2.5 w-2.5 ${activeThreadId === t.id ? 'text-amber-400' : 'text-neutral-500'}`} />
+                  </div>
+                  <span className="flex-1 min-w-0">
+                    <span className={`block text-xs font-medium truncate ${activeThreadId === t.id ? 'text-neutral-100' : 'text-neutral-300'}`}>{t.title}</span>
+                    <span className="block text-[10px] text-neutral-600 truncate mt-0.5">
+                      {new Date(t.updated_at).toLocaleDateString('es-CL')}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      void handleDeleteThread(t.id);
+                    }}
+                    className="opacity-0 group-hover:opacity-100 mt-0.5 text-neutral-600 hover:text-red-400 transition-all"
+                    title="Borrar conversación"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
                 </button>
-              </button>
-            ))}
+              ))}
+            </div>
           </div>
         </AdminCard>
 
@@ -663,18 +691,24 @@ export default function AsistenteIaPage() {
 
           <div className="flex-1 overflow-y-auto space-y-4 pr-1" style={{ maxHeight: '60vh' }}>
             {!activeThread && messages.length === 0 && (
-              <div className="text-center text-neutral-500 py-12">
-                <Sparkles className="h-8 w-8 mx-auto text-amber-400/60" />
-                <p className="mt-3 text-sm">Escribe abajo para iniciar una conversación.</p>
-                <div className="mt-6 grid gap-2 max-w-md mx-auto text-left">
+              <div className="flex flex-col items-center py-10 text-center">
+                <div className="relative mb-4">
+                  <div className="h-16 w-16 rounded-full bg-gradient-to-br from-amber-500/20 to-orange-500/10 border border-amber-500/20 flex items-center justify-center">
+                    <Sparkles className="h-7 w-7 text-amber-400" />
+                  </div>
+                  <span className="absolute -bottom-0.5 -right-0.5 h-4 w-4 rounded-full bg-emerald-500 border-2 border-neutral-950 shadow-lg shadow-emerald-500/50" />
+                </div>
+                <p className="text-base font-semibold text-neutral-200">¿En qué te puedo ayudar?</p>
+                <p className="mt-1 text-xs text-neutral-600">Elige una sugerencia o escribe tu mensaje:</p>
+                <div className="mt-5 grid gap-2 max-w-sm mx-auto text-left w-full">
                   {(PRESETS.find((p) => p.key === presetKey)?.defaultSuggestions ?? []).map((sug) => (
                     <button
                       key={sug}
                       type="button"
                       onClick={() => setInput(sug)}
-                      className="rounded-xl border border-neutral-800 hover:border-amber-500/40 px-3 py-2 text-xs text-neutral-300"
+                      className="rounded-xl border border-neutral-800 hover:border-amber-500/40 hover:bg-amber-500/5 px-4 py-2.5 text-xs text-neutral-300 text-left transition-all"
                     >
-                      {sug}
+                      <span className="text-amber-400/70 mr-1.5">›</span>{sug}
                     </button>
                   ))}
                 </div>
@@ -686,12 +720,17 @@ export default function AsistenteIaPage() {
               </div>
             )}
             {messages.map((m) => (
-              <div key={m.id} className={`flex gap-3 ${m.role === 'user' ? 'justify-end' : ''}`}>
+              <div key={m.id} className={`flex items-end gap-2 ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                {m.role === 'assistant' && (
+                  <div className="mb-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-500 shadow-md shadow-amber-500/20">
+                    <Bot className="h-3.5 w-3.5 text-neutral-950" />
+                  </div>
+                )}
                 <div
-                  className={`max-w-[85%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words border ${
+                  className={`max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed whitespace-pre-wrap break-words border ${
                     m.role === 'user'
-                      ? 'bg-amber-500/10 border-amber-500/30 text-neutral-100'
-                      : 'bg-neutral-950/70 border-neutral-800 text-neutral-200'
+                      ? 'rounded-br-sm bg-gradient-to-br from-amber-500/15 to-amber-600/5 border-amber-500/25 text-neutral-100'
+                      : 'rounded-bl-sm bg-neutral-900/80 border-neutral-800/80 text-neutral-200'
                   }`}
                 >
                   {m.attachments && m.attachments.length > 0 && (
@@ -779,9 +818,16 @@ export default function AsistenteIaPage() {
               </div>
             ))}
             {sending && (
-              <div className="flex gap-3">
-                <div className="max-w-[85%] rounded-2xl px-4 py-3 bg-neutral-950/70 border border-neutral-800 text-sm text-neutral-400">
-                  <Loader2 className="h-3.5 w-3.5 inline animate-spin" /> Pensando…
+              <div className="flex items-end gap-2 justify-start">
+                <div className="mb-1 flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-amber-500 to-orange-500 shadow-md shadow-amber-500/20">
+                  <Bot className="h-3.5 w-3.5 text-neutral-950" />
+                </div>
+                <div className="rounded-2xl rounded-bl-sm px-5 py-3.5 bg-neutral-900/80 border border-neutral-800/80">
+                  <span className="flex items-center gap-1">
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '0ms' }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '160ms' }} />
+                    <span className="h-1.5 w-1.5 rounded-full bg-amber-400 animate-bounce" style={{ animationDelay: '320ms' }} />
+                  </span>
                 </div>
               </div>
             )}
@@ -906,10 +952,16 @@ export default function AsistenteIaPage() {
         </AdminCard>
 
         {/* PANEL DERECHO: PRESETS + MODELO */}
-        <AdminCard className="space-y-4 lg:sticky lg:top-4 self-start">
+        <AdminCard className="overflow-hidden p-0 lg:sticky lg:top-4 self-start">
+          <div className="border-b border-neutral-800 bg-gradient-to-b from-neutral-900 to-neutral-950 px-4 py-3">
+            <h3 className="flex items-center gap-2 text-[11px] font-bold uppercase tracking-[0.18em] text-neutral-400">
+              <Sparkles className="h-3.5 w-3.5 text-amber-400" /> Configuración
+            </h3>
+          </div>
+          <div className="space-y-4 p-4">
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5 mb-2">
-              <Sparkles className="h-3.5 w-3.5 text-amber-400" /> Modo
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-500 flex items-center gap-1.5 mb-2.5">
+              <Wand2 className="h-3 w-3 text-amber-400/70" /> Modo
             </h3>
             <div className="grid gap-1.5">
               {PRESETS.map((p) => {
@@ -919,16 +971,17 @@ export default function AsistenteIaPage() {
                     key={p.key}
                     type="button"
                     onClick={() => applyPreset(p.key)}
-                    className={`text-left rounded-xl border px-3 py-2.5 transition-colors ${
+                    className={`text-left rounded-xl border px-3 py-2.5 transition-all ${
                       presetKey === p.key
-                        ? 'border-amber-500/40 bg-amber-500/5'
-                        : 'border-neutral-800 hover:border-neutral-600'
+                        ? 'border-amber-500/40 bg-gradient-to-r from-amber-500/10 to-amber-600/5 shadow-inner'
+                        : 'border-neutral-800 hover:border-neutral-700 hover:bg-neutral-900/50'
                     }`}
                   >
-                    <p className="text-sm font-medium text-neutral-200 inline-flex items-center gap-1.5">
-                      <Icon className="h-3.5 w-3.5" /> {p.label}
+                    <p className={`text-xs font-semibold inline-flex items-center gap-1.5 ${presetKey === p.key ? 'text-amber-200' : 'text-neutral-300'}`}>
+                      <Icon className={`h-3 w-3 ${presetKey === p.key ? 'text-amber-400' : 'text-neutral-500'}`} /> {p.label}
+                      {presetKey === p.key && <span className="ml-auto text-[8px] rounded-full bg-amber-500/20 border border-amber-500/30 px-1.5 py-0.5 text-amber-300 font-bold uppercase tracking-wider">activo</span>}
                     </p>
-                    <p className="text-[11px] text-neutral-500 mt-0.5 leading-snug">{p.description}</p>
+                    <p className="text-[11px] text-neutral-600 mt-0.5 leading-snug">{p.description}</p>
                   </button>
                 );
               })}
@@ -936,13 +989,13 @@ export default function AsistenteIaPage() {
           </div>
 
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 flex items-center gap-1.5 mb-2">
-              <Settings2 className="h-3.5 w-3.5 text-amber-400" /> Modelo
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-500 flex items-center gap-1.5 mb-2.5">
+              <Settings2 className="h-3 w-3 text-amber-400/70" /> Modelo activo
             </h3>
             <button
               type="button"
               onClick={() => setShowModels((v) => !v)}
-              className="w-full rounded-lg border border-neutral-800 hover:border-neutral-600 px-3 py-2 text-left"
+              className="w-full rounded-xl border border-neutral-800 hover:border-neutral-700 hover:bg-neutral-900/50 px-3 py-2.5 text-left transition-all"
             >
               <p className="text-xs font-medium text-neutral-200 truncate flex items-center gap-1.5">
                 {currentModelInfo?.isFree && (
@@ -1068,12 +1121,12 @@ export default function AsistenteIaPage() {
             <button
               type="button"
               onClick={() => setShowStats((v) => !v)}
-              className="w-full text-left text-xs font-semibold uppercase tracking-wider text-neutral-400 hover:text-amber-300 inline-flex items-center justify-between"
+              className="w-full text-left text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-500 hover:text-amber-300 inline-flex items-center justify-between transition-colors"
             >
               <span className="inline-flex items-center gap-1.5">
-                <Wand2 className="h-3.5 w-3.5 text-amber-400" /> Rendimiento de modelos
+                <Zap className="h-3 w-3 text-amber-400/70" /> Rendimiento 24h
               </span>
-              <span className="text-[10px] text-neutral-500">{showStats ? 'ocultar' : 'mostrar'}</span>
+              <span className="text-[10px] text-neutral-600">{showStats ? '▲' : '▼'}</span>
             </button>
             {showStats && (
               <div className="mt-2 rounded-xl border border-neutral-800 bg-neutral-950 p-2">
@@ -1083,7 +1136,9 @@ export default function AsistenteIaPage() {
           </div>
 
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wider text-neutral-400 mb-2">System prompt</h3>
+            <h3 className="text-[11px] font-bold uppercase tracking-[0.14em] text-neutral-500 mb-2.5 flex items-center gap-1.5">
+              <Code2 className="h-3 w-3 text-amber-400/70" /> System prompt
+            </h3>
             <textarea
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.target.value)}
@@ -1091,6 +1146,7 @@ export default function AsistenteIaPage() {
               className="w-full rounded-lg border border-neutral-800 bg-neutral-950 px-2.5 py-2 text-[11px] font-mono"
             />
             <p className="text-[10px] text-neutral-500 mt-1">Se envía como contexto al inicio de cada nueva conversación.</p>
+          </div>
           </div>
         </AdminCard>
       </div>

@@ -24,6 +24,59 @@ import {
   userAgentFromRequest,
   type LoginOutcome,
 } from '@/lib/adminLoginAudit';
+import { sendLoginAlertEmail } from '@/lib/emailDriver';
+
+function parseUserAgent(ua: string | null): string {
+  if (!ua) return 'Dispositivo desconocido';
+  let os = 'Desconocido';
+  if (/Windows NT 10/.test(ua)) os = 'Windows 10/11';
+  else if (/Windows NT 6\.3/.test(ua)) os = 'Windows 8.1';
+  else if (/Windows NT 6\.1/.test(ua)) os = 'Windows 7';
+  else if (/Mac OS X/.test(ua)) {
+    const m = ua.match(/Mac OS X ([\d_]+)/);
+    os = m ? `macOS ${m[1].replace(/_/g, '.')}` : 'macOS';
+  } else if (/Android/.test(ua)) {
+    const m = ua.match(/Android ([\d.]+)/);
+    os = m ? `Android ${m[1]}` : 'Android';
+  } else if (/iPhone|iPad/.test(ua)) os = 'iOS';
+  else if (/Linux/.test(ua)) os = 'Linux';
+
+  let browser = 'Desconocido';
+  if (/Edg\//.test(ua)) {
+    const m = ua.match(/Edg\/([\d.]+)/);
+    browser = m ? `Edge ${m[1].split('.')[0]}` : 'Edge';
+  } else if (/OPR\//.test(ua)) {
+    const m = ua.match(/OPR\/([\d.]+)/);
+    browser = m ? `Opera ${m[1].split('.')[0]}` : 'Opera';
+  } else if (/Chrome\/([\d.]+)/.test(ua)) {
+    const m = ua.match(/Chrome\/([\d.]+)/);
+    browser = m ? `Chrome ${m[1].split('.')[0]}` : 'Chrome';
+  } else if (/Firefox\/([\d.]+)/.test(ua)) {
+    const m = ua.match(/Firefox\/([\d.]+)/);
+    browser = m ? `Firefox ${m[1].split('.')[0]}` : 'Firefox';
+  } else if (/Safari\//.test(ua)) {
+    browser = 'Safari';
+  }
+  return `${browser} / ${os}`;
+}
+
+async function geolocateIp(ip: string): Promise<string> {
+  if (/^(127\.|10\.|172\.(1[6-9]|2\d|3[01])\.|192\.168\.|::1$|localhost$)/.test(ip)) {
+    return 'Red local';
+  }
+  try {
+    const res = await fetch(`https://ipwho.is/${encodeURIComponent(ip)}`, {
+      signal: AbortSignal.timeout(3000),
+      cache: 'no-store',
+    });
+    if (!res.ok) return 'Desconocida';
+    const data = (await res.json()) as { success?: boolean; city?: string; country?: string };
+    if (!data.success) return 'Desconocida';
+    return [data.city, data.country].filter(Boolean).join(', ') || 'Desconocida';
+  } catch {
+    return 'Desconocida';
+  }
+}
 
 const BOOTSTRAP_ADMIN_EMAIL = (
   process.env.ADMIN_EMAIL || 'f.eduardomicolta@gmail.com'
@@ -386,6 +439,28 @@ export async function POST(request: Request) {
         ? `rol=${rol}; via=backup_code; remaining=${backupCodesRemaining}`
         : `rol=${rol}`
     );
+
+    // Fire-and-forget security notification — never blocks login.
+    void (async () => {
+      try {
+        const [location, device] = await Promise.all([
+          geolocateIp(ip),
+          Promise.resolve(parseUserAgent(userAgent)),
+        ]);
+        await sendLoginAlertEmail({
+          to: email,
+          adminEmail: email,
+          role: rol,
+          ip,
+          device,
+          location,
+          loginAt: new Date().toISOString(),
+          usedBackupCode,
+        });
+      } catch {
+        /* best-effort — never block login */
+      }
+    })();
 
     const response = NextResponse.json({ ok: true });
     response.cookies.set(ADMIN_COOKIE_NAME, sessionValue, SESSION_COOKIE_OPTIONS);

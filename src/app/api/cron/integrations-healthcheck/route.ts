@@ -1,9 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { Resend } from 'resend';
 import { getAdminSession } from '@/lib/adminApi';
-import { getResendCredentials } from '@/lib/resendCredentials';
 import { runIntegrationsHealthcheck } from '@/lib/integrationsHealthcheck';
-import IntegrationHealthEmail from '@/emails/IntegrationHealthEmail';
+import { sendAlertEmail } from '@/lib/emailDriver';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -59,36 +57,25 @@ export async function GET(request: NextRequest) {
 			emailError = 'ADMIN_ALERT_EMAIL no configurado: no se envió alerta.';
 		} else {
 			try {
-				const creds = await getResendCredentials();
-				if (!creds?.apiKey) {
-					emailError = 'Resend no configurado: no se envió alerta.';
+				const failures = summary.results
+					.filter((r) => !r.skipped && !r.ok)
+					.map((r) => ({
+						provider: r.provider,
+						error: r.error,
+						checks: r.checks as Array<{ name: string; ok: boolean; detail?: string }> | undefined,
+						expiringSoon: r.expiringSoon,
+						expiresAt: r.expiresAt ?? null,
+					}));
+				const result = await sendAlertEmail({
+					to: alertTo,
+					ranAt: summary.ranAt,
+					failures,
+					dashboardUrl: pickDashboardUrl(),
+				});
+				if (!result.ok) {
+					emailError = result.error ?? 'Error desconocido enviando alerta.';
 				} else {
-					const resend = new Resend(creds.apiKey);
-					const from = creds.from ?? 'Soluciones Fabrick <onboarding@resend.dev>';
-					const failures = summary.results
-						.filter((r) => !r.skipped && !r.ok)
-						.map((r) => ({
-							provider: r.provider,
-							error: r.error,
-							checks: r.checks,
-							expiringSoon: r.expiringSoon,
-							expiresAt: r.expiresAt ?? null,
-						}));
-					const { error } = await resend.emails.send({
-						from,
-						to: alertTo,
-						subject: `[Fabrick] ${failures.length} integración(es) con problemas`,
-						react: IntegrationHealthEmail({
-							ranAt: summary.ranAt,
-							failures,
-							dashboardUrl: pickDashboardUrl(),
-						}),
-					});
-					if (error) {
-						emailError = error.message ?? String(error);
-					} else {
-						emailSent = true;
-					}
+					emailSent = !result.simulated;
 				}
 			} catch (err) {
 				emailError = err instanceof Error ? err.message : String(err);

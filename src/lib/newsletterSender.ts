@@ -1,5 +1,4 @@
 import 'server-only';
-import { Resend } from 'resend';
 import { marked } from 'marked';
 import { insforgeAdmin } from '@/lib/insforge';
 import {
@@ -8,9 +7,7 @@ import {
   type NewsletterCampaignRow,
 } from '@/lib/newsletter';
 import { getResendCredentials } from '@/lib/resendCredentials';
-import NewsletterEmail from '@/emails/NewsletterEmail';
-
-const DEFAULT_FROM = 'Soluciones Fabrick <onboarding@resend.dev>';
+import { sendPromoEmail } from '@/lib/emailDriver';
 
 /**
  * Ejecuta una promesa (o un query-builder thenable de InsForge) y
@@ -80,16 +77,16 @@ export async function sendCampaign(campaignId: string): Promise<SendResult> {
   }
 
   const creds = await getResendCredentials();
-  if (!creds) {
+  if (!creds.ready && process.env.EMAIL_DRIVER !== 'resend') {
     await insforgeAdmin.database
       .from('newsletter_campaigns')
       .update({
         status: 'failed',
-        last_error: 'Resend no está configurado',
+        last_error: 'Resend no está configurado. Configura EMAIL_DRIVER=resend y RESEND_API_KEY.',
         updated_at: new Date().toISOString(),
       })
       .eq('id', campaignId);
-    throw new Error('Resend no está configurado. Agrega la API Key en /admin/integraciones.');
+    throw new Error('Resend no está configurado. Configura EMAIL_DRIVER=resend y RESEND_API_KEY en /admin/integraciones.');
   }
 
   await insforgeAdmin.database
@@ -101,8 +98,7 @@ export async function sendCampaign(campaignId: string): Promise<SendResult> {
   const skipSet = await alreadySent(campaignId);
   const targets = subscribers.filter((s) => !skipSet.has(s.email));
 
-  const resend = new Resend(creds.apiKey);
-  const from = creds.from ?? DEFAULT_FROM;
+  const from = creds.from ?? 'Soluciones Fabrick <onboarding@resend.dev>';
   const logoUrl = pickLogoUrl();
 
   const bodyHtml = marked.parse(campaign.body_md, { async: false }) as string;
@@ -115,25 +111,22 @@ export async function sendCampaign(campaignId: string): Promise<SendResult> {
   for (const sub of targets) {
     const unsubscribeUrl = buildUnsubscribeLink(sub.email);
     try {
-      const { data, error } = await resend.emails.send({
-        from,
+      const result = await sendPromoEmail({
         to: sub.email,
         subject: campaign.subject,
-        react: NewsletterEmail({
-          subject: campaign.subject,
-          previewText: campaign.preview_text ?? null,
-          bodyHtml,
-          unsubscribeUrl,
-          logoUrl,
-        }),
+        previewText: campaign.preview_text ?? null,
+        bodyHtml,
+        unsubscribeUrl,
+        logoUrl,
+        from,
       });
-      if (error) {
+      if (!result.ok) {
         failed += 1;
-        errors.push(`${sub.email}: ${error.message ?? 'error'}`);
+        errors.push(`${sub.email}: ${result.error ?? 'error'}`);
         await swallow(
           insforgeAdmin.database
             .from('newsletter_sends')
-            .insert([{ campaign_id: campaignId, subscriber_email: sub.email, status: 'failed', error: error.message ?? '' }]),
+            .insert([{ campaign_id: campaignId, subscriber_email: sub.email, status: 'failed', error: result.error ?? '' }]),
         );
       } else {
         sent += 1;
@@ -144,8 +137,8 @@ export async function sendCampaign(campaignId: string): Promise<SendResult> {
               {
                 campaign_id: campaignId,
                 subscriber_email: sub.email,
-                status: 'sent',
-                resend_id: data?.id ?? null,
+                status: result.simulated ? 'simulated' : 'sent',
+                resend_id: result.id ?? null,
               },
             ]),
         );

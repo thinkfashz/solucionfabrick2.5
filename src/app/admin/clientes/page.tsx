@@ -1,20 +1,21 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback } from 'react';
 import { insforge } from '@/lib/insforge';
 import { formatCLP, normalizeOrderRecord, orderStatusColor, orderStatusLabel } from '@/lib/commerce';
-import { Search, X, ExternalLink } from 'lucide-react';
+import { Search, X, ExternalLink, Users, ShoppingBag, WalletCards, CalendarDays } from 'lucide-react';
+import { AdminBaseGrid, AdminBaseMetric, AdminBasePage } from '@/components/admin/baseui-kit';
 
 function formatDate(iso: string) {
   if (!iso) return '—';
   const d = new Date(iso);
+  if (Number.isNaN(d.getTime())) return '—';
   const dd = String(d.getDate()).padStart(2, '0');
   const mm = String(d.getMonth() + 1).padStart(2, '0');
   const yyyy = d.getFullYear();
   return `${dd}/${mm}/${yyyy}`;
 }
 
-/* ── Tipos ── */
 type Order = ReturnType<typeof normalizeOrderRecord>;
 
 interface Client {
@@ -26,80 +27,63 @@ interface Client {
   orders: Order[];
 }
 
-/* ── Badge de estado ── */
 function StatusBadge({ status }: { status: string }) {
   return (
     <span
       className="inline-block rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide"
-      style={{
-        borderColor: `${orderStatusColor(status)}33`,
-        background: `${orderStatusColor(status)}14`,
-        color: orderStatusColor(status),
-      }}
+      style={{ borderColor: `${orderStatusColor(status)}33`, background: `${orderStatusColor(status)}14`, color: orderStatusColor(status) }}
     >
       {orderStatusLabel(status)}
     </span>
   );
 }
 
-/* ── Modal historial ── */
 function OrderHistoryModal({ client, onClose }: { client: Client; onClose: () => void }) {
+  const total = client.orders.reduce((s, o) => s + (o.total ?? 0), 0);
   return (
-    <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm"
-      onClick={(e) => e.target === e.currentTarget && onClose()}
-    >
-      <div className="w-full max-w-2xl rounded-[2rem] border border-white/10 bg-zinc-950 p-8 max-h-[90vh] overflow-y-auto">
-        {/* Header */}
-        <div className="flex items-start justify-between mb-6">
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4 backdrop-blur-sm" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="max-h-[90vh] w-full max-w-2xl overflow-y-auto rounded-[2rem] border border-white/10 bg-zinc-950 p-6 shadow-[0_30px_120px_rgba(0,0,0,0.6)] sm:p-8">
+        <div className="mb-6 flex items-start justify-between gap-4">
           <div>
-            <h2 className="font-playfair text-2xl font-bold text-white">{client.name}</h2>
-            <p className="text-zinc-400 text-sm mt-1">{client.email}</p>
-            {client.phone && <p className="text-zinc-500 text-xs mt-0.5">{client.phone}</p>}
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-yellow-300">Historial real</p>
+            <h2 className="mt-1 text-2xl font-black text-white">{client.name || 'Cliente sin nombre'}</h2>
+            <p className="mt-1 text-sm text-zinc-400">{client.email || 'sin email'}</p>
+            {client.phone && <p className="mt-0.5 text-xs text-zinc-500">{client.phone}</p>}
           </div>
-          <button
-            onClick={onClose}
-            className="p-2 rounded-xl hover:bg-white/10 transition-colors text-zinc-400 hover:text-white"
-          >
-            <X className="w-5 h-5" />
+          <button onClick={onClose} className="rounded-xl p-2 text-zinc-400 transition-colors hover:bg-white/10 hover:text-white" aria-label="Cerrar historial">
+            <X className="h-5 w-5" />
           </button>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-2 gap-4 mb-6">
-          <div className="rounded-2xl border border-white/5 bg-zinc-900/60 p-4">
-            <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1">Total pedidos</p>
-            <p className="text-2xl font-bold text-white">{client.totalOrders}</p>
+        <div className="mb-6 grid grid-cols-2 gap-4">
+          <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
+            <p className="mb-1 text-xs uppercase tracking-wide text-zinc-500">Total pedidos</p>
+            <p className="text-2xl font-black text-white">{client.totalOrders}</p>
           </div>
-          <div className="rounded-2xl border border-white/5 bg-zinc-900/60 p-4">
-            <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1">Total gastado</p>
-            <p className="text-2xl font-bold text-yellow-400">
-              {formatCLP(client.orders.reduce((s, o) => s + (o.total ?? 0), 0))}
-            </p>
+          <div className="rounded-2xl border border-white/10 bg-black/35 p-4">
+            <p className="mb-1 text-xs uppercase tracking-wide text-zinc-500">Total gastado</p>
+            <p className="text-2xl font-black text-yellow-300">{formatCLP(total)}</p>
           </div>
         </div>
 
-        {/* Orders list */}
         {client.orders.length === 0 ? (
-          <p className="text-zinc-500 text-sm text-center py-8">Sin pedidos registrados.</p>
+          <p className="py-8 text-center text-sm text-zinc-500">Sin pedidos registrados.</p>
         ) : (
           <div className="flex flex-col gap-4">
             {client.orders.map((order) => (
-              <div key={order.id} className="rounded-2xl border border-white/5 bg-zinc-900/40 p-5">
-                <div className="flex items-center justify-between mb-3">
+              <div key={order.id} className="rounded-2xl border border-white/10 bg-white/[0.03] p-5">
+                <div className="mb-3 flex items-center justify-between gap-3">
                   <span className="text-xs font-mono text-zinc-400">{order.id}</span>
                   <StatusBadge status={order.status} />
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between gap-3">
                   <span className="text-sm text-zinc-300">{formatDate(order.created_at)}</span>
-                  <span className="text-sm font-bold text-yellow-400">{formatCLP(order.total)}</span>
+                  <span className="text-sm font-black text-yellow-300">{formatCLP(order.total)}</span>
                 </div>
                 {Array.isArray(order.items) && order.items.length > 0 && (
                   <ul className="mt-3 space-y-1">
                     {order.items.map((item, i) => (
-                      <li key={i} className="text-xs text-zinc-500">
-                        {item.quantity}× {item.name} — {formatCLP(item.subtotal)}
-                      </li>
+                      <li key={i} className="text-xs text-zinc-500">{item.quantity}× {item.name} — {formatCLP(item.subtotal)}</li>
                     ))}
                   </ul>
                 )}
@@ -112,9 +96,6 @@ function OrderHistoryModal({ client, onClose }: { client: Client; onClose: () =>
   );
 }
 
-/* ════════════════════════════════════════════════
-   PÁGINA PRINCIPAL
-════════════════════════════════════════════════ */
 export default function ClientesPage() {
   const [clients, setClients] = useState<Client[]>([]);
   const [filtered, setFiltered] = useState<Client[]>([]);
@@ -123,10 +104,10 @@ export default function ClientesPage() {
   const [error, setError] = useState('');
   const [selectedClient, setSelectedClient] = useState<Client | null>(null);
 
-  /* ── Cargar pedidos y agrupar por cliente ── */
   useEffect(() => {
     async function load() {
       setLoading(true);
+      setError('');
       const { data, error: err } = await insforge.database
         .from('orders')
         .select('id,customer_name,customer_email,customer_phone,total,status,created_at,region,items')
@@ -136,28 +117,16 @@ export default function ClientesPage() {
       if (err) { setError(err.message); setLoading(false); return; }
 
       const orders: Order[] = ((data ?? []) as Record<string, unknown>[]).map((order) => normalizeOrderRecord(order));
-
-      // Agrupar por email
       const map = new Map<string, Client>();
       for (const o of orders) {
-        const key = o.customer_email?.toLowerCase() ?? 'sin-email';
+        const key = o.customer_email?.toLowerCase() || `sin-email-${o.customer_phone || o.customer_name || o.id}`;
         if (!map.has(key)) {
-          map.set(key, {
-            email: o.customer_email,
-            name: o.customer_name,
-            phone: o.customer_phone,
-            totalOrders: 0,
-            registeredAt: o.created_at,
-            orders: [],
-          });
+          map.set(key, { email: o.customer_email, name: o.customer_name, phone: o.customer_phone, totalOrders: 0, registeredAt: o.created_at, orders: [] });
         }
         const c = map.get(key)!;
         c.totalOrders += 1;
         c.orders.push(o);
-        // registeredAt = primer pedido cronológicamente
-        if (new Date(o.created_at) < new Date(c.registeredAt)) {
-          c.registeredAt = o.created_at;
-        }
+        if (new Date(o.created_at) < new Date(c.registeredAt)) c.registeredAt = o.created_at;
       }
 
       const list = Array.from(map.values());
@@ -165,131 +134,87 @@ export default function ClientesPage() {
       setFiltered(list);
       setLoading(false);
     }
-    load();
+    void load();
   }, []);
 
-  /* ── Filtrar ── */
-  const handleSearch = useCallback(
-    (q: string) => {
-      setSearch(q);
-      const lq = q.toLowerCase();
-      setFiltered(
-        clients.filter(
-          (c) =>
-            c.name?.toLowerCase().includes(lq) || c.email?.toLowerCase().includes(lq)
-        )
-      );
-    },
-    [clients]
-  );
+  const handleSearch = useCallback((q: string) => {
+    setSearch(q);
+    const lq = q.toLowerCase();
+    setFiltered(clients.filter((c) => c.name?.toLowerCase().includes(lq) || c.email?.toLowerCase().includes(lq) || c.phone?.toLowerCase().includes(lq)));
+  }, [clients]);
+
+  const metrics = useMemo(() => {
+    const totalOrders = clients.reduce((sum, client) => sum + client.totalOrders, 0);
+    const revenue = clients.reduce((sum, client) => sum + client.orders.reduce((s, order) => s + (order.total ?? 0), 0), 0);
+    const best = clients.reduce<Client | null>((winner, client) => {
+      if (!winner) return client;
+      const a = client.orders.reduce((s, order) => s + (order.total ?? 0), 0);
+      const b = winner.orders.reduce((s, order) => s + (order.total ?? 0), 0);
+      return a > b ? client : winner;
+    }, null);
+    return { totalOrders, revenue, bestName: best?.name || '—', avg: clients.length ? Math.round(revenue / clients.length) : 0 };
+  }, [clients]);
 
   return (
-    <div>
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
-        <div>
-          <h1 className="font-playfair text-4xl font-bold text-white">Clientes</h1>
-          <p className="text-zinc-400 text-sm mt-1">{clients.length} clientes registrados</p>
-        </div>
-
-        {/* Buscador */}
-        <div className="relative w-full sm:w-72">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+    <AdminBasePage
+      eyebrow="Operación"
+      title="Clientes"
+      description="Clientes reales agrupados desde pedidos. Sin datos demo: esta vista se construye desde la tabla orders."
+      actions={
+        <div className="relative w-full sm:w-80">
+          <Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
           <input
             type="text"
             value={search}
             onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Buscar por nombre o email…"
-            className="w-full bg-zinc-900 border border-white/10 rounded-2xl pl-10 pr-4 py-3 text-sm text-white placeholder:text-zinc-600 focus:outline-none focus:border-yellow-400/50 transition-colors"
+            placeholder="Buscar nombre, email o teléfono…"
+            className="w-full rounded-2xl border border-white/10 bg-black/35 py-3 pl-10 pr-10 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-yellow-300/50"
           />
-          {search && (
-            <button
-              onClick={() => handleSearch('')}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          )}
+          {search && <button onClick={() => handleSearch('')} className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-white"><X className="h-4 w-4" /></button>}
         </div>
-      </div>
+      }
+    >
+      <AdminBaseGrid cols="4">
+        <AdminBaseMetric label="Clientes" value={clients.length} hint="agrupados por contacto" />
+        <AdminBaseMetric label="Pedidos" value={metrics.totalOrders} hint="últimos 500 pedidos" />
+        <AdminBaseMetric label="Ingresos" value={formatCLP(metrics.revenue)} hint={`promedio ${formatCLP(metrics.avg)}`} />
+        <AdminBaseMetric label="Mayor cliente" value={metrics.bestName} hint="por total gastado" />
+      </AdminBaseGrid>
 
-      {/* Error */}
-      {error && (
-        <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-400">
-          {error}
-        </div>
-      )}
+      {error && <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-300">{error}</div>}
 
-      {/* Tabla */}
       {loading ? (
-        <div className="flex justify-center py-24">
-          <svg className="w-8 h-8 animate-spin text-yellow-400" viewBox="0 0 24 24" fill="none">
-            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
-            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" />
-          </svg>
+        <div className="flex justify-center rounded-[2rem] border border-white/10 bg-black/30 py-24">
+          <svg className="h-8 w-8 animate-spin text-yellow-300" viewBox="0 0 24 24" fill="none"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" /><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8v8H4z" /></svg>
         </div>
       ) : (
-        <div className="rounded-[2rem] border border-white/10 bg-zinc-950/80 overflow-hidden">
+        <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/80 shadow-[0_20px_90px_rgba(0,0,0,0.35)]">
+          <div className="flex items-center justify-between border-b border-white/10 px-5 py-4">
+            <div className="flex items-center gap-3"><Users className="h-5 w-5 text-yellow-300" /><div><p className="text-sm font-black text-white">Base de clientes</p><p className="text-xs text-zinc-500">{filtered.length} visibles de {clients.length}</p></div></div>
+          </div>
           <div className="overflow-x-auto">
-            <table className="w-full">
-              <thead>
-                <tr className="border-b border-white/5">
-                  {['Nombre completo', 'Email', 'Teléfono', 'Total pedidos', 'Fecha de registro', ''].map(
-                    (h) => (
-                      <th
-                        key={h}
-                        className="text-left px-6 py-4 text-xs font-semibold uppercase tracking-widest text-zinc-500"
-                      >
-                        {h}
-                      </th>
-                    )
-                  )}
-                </tr>
-              </thead>
+            <table className="w-full min-w-[820px]">
+              <thead><tr className="border-b border-white/5 bg-white/[0.02]">{['Cliente', 'Email', 'Teléfono', 'Pedidos', 'Registro', 'Acción'].map((h) => <th key={h} className="px-6 py-4 text-left text-xs font-semibold uppercase tracking-widest text-zinc-500">{h}</th>)}</tr></thead>
               <tbody>
                 {filtered.length === 0 ? (
-                  <tr>
-                    <td colSpan={6} className="text-center py-16 text-zinc-500 text-sm">
-                      {search ? 'Sin resultados para tu búsqueda.' : 'Aún no hay clientes registrados.'}
-                    </td>
+                  <tr><td colSpan={6} className="py-16 text-center text-sm text-zinc-500">{search ? 'Sin resultados para tu búsqueda.' : 'Aún no hay clientes registrados.'}</td></tr>
+                ) : filtered.map((client) => (
+                  <tr key={`${client.email}-${client.phone}-${client.name}`} onClick={() => setSelectedClient(client)} className="cursor-pointer border-b border-white/5 transition-colors hover:bg-white/[0.04]">
+                    <td className="px-6 py-4"><div className="font-bold text-white">{client.name || '—'}</div><div className="mt-1 text-xs text-zinc-600">{client.orders.length ? formatCLP(client.orders.reduce((s, o) => s + (o.total ?? 0), 0)) : 'Sin compras'}</div></td>
+                    <td className="px-6 py-4 text-sm text-zinc-400">{client.email || '—'}</td>
+                    <td className="px-6 py-4 text-sm text-zinc-400">{client.phone || '—'}</td>
+                    <td className="px-6 py-4 text-sm text-zinc-300"><span className="inline-flex h-8 min-w-8 items-center justify-center rounded-full bg-yellow-300/10 px-2 font-black text-yellow-300">{client.totalOrders}</span></td>
+                    <td className="px-6 py-4 text-sm text-zinc-400">{formatDate(client.registeredAt)}</td>
+                    <td className="px-6 py-4"><button className="inline-flex items-center gap-1.5 rounded-full border border-yellow-300/20 px-3 py-1.5 text-xs font-bold text-yellow-200 hover:border-yellow-300/50" onClick={(e) => { e.stopPropagation(); setSelectedClient(client); }}><ExternalLink className="h-3.5 w-3.5" /> Ver historial</button></td>
                   </tr>
-                ) : (
-                  filtered.map((client) => (
-                    <tr
-                      key={client.email}
-                      className="border-b border-white/5 hover:bg-white/5 transition-colors cursor-pointer"
-                      onClick={() => setSelectedClient(client)}
-                    >
-                      <td className="px-6 py-4 text-sm font-medium text-white">{client.name || '—'}</td>
-                      <td className="px-6 py-4 text-sm text-zinc-400">{client.email}</td>
-                      <td className="px-6 py-4 text-sm text-zinc-400">{client.phone || '—'}</td>
-                      <td className="px-6 py-4 text-sm text-zinc-300">
-                        <span className="inline-flex items-center justify-center w-8 h-8 rounded-full bg-yellow-400/10 text-yellow-400 font-bold text-xs">
-                          {client.totalOrders}
-                        </span>
-                      </td>
-                      <td className="px-6 py-4 text-sm text-zinc-400">{formatDate(client.registeredAt)}</td>
-                      <td className="px-6 py-4">
-                        <button
-                          className="flex items-center gap-1.5 text-xs font-medium text-yellow-400 hover:text-yellow-300 transition-colors"
-                          onClick={(e) => { e.stopPropagation(); setSelectedClient(client); }}
-                        >
-                          <ExternalLink className="w-3.5 h-3.5" />
-                          Ver historial
-                        </button>
-                      </td>
-                    </tr>
-                  ))
-                )}
+                ))}
               </tbody>
             </table>
           </div>
         </div>
       )}
 
-      {/* Modal */}
-      {selectedClient && (
-        <OrderHistoryModal client={selectedClient} onClose={() => setSelectedClient(null)} />
-      )}
-    </div>
+      {selectedClient && <OrderHistoryModal client={selectedClient} onClose={() => setSelectedClient(null)} />}
+    </AdminBasePage>
   );
 }

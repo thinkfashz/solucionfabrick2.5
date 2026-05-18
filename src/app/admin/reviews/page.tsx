@@ -1,39 +1,46 @@
 'use client';
 
-import { Star, ThumbsUp, MessageSquare, TrendingUp } from 'lucide-react';
+import { MessageSquare, ShieldAlert, Star, ThumbsUp, TrendingUp } from 'lucide-react';
+import { AdminBaseCard, AdminBaseGrid, AdminBaseMetric, AdminBasePage } from '@/components/admin/baseui-kit';
 
 export default function ReviewsPage() {
   return (
-    <div className="space-y-8">
-      <div className="space-y-2">
-        <h1 className="font-playfair text-4xl font-black text-white tracking-wide">Reseñas de Clientes</h1>
-        <p className="text-zinc-500 text-sm">Gestiona las opiniones y valoraciones de tus clientes.</p>
+    <AdminBasePage
+      eyebrow="Operación"
+      title="Reseñas de clientes"
+      description="Módulo preparado visualmente, sin reseñas demo. Falta conectar tabla/API real para aprobar, responder y destacar opiniones."
+    >
+      <AdminBaseGrid cols="4">
+        <AdminBaseMetric label="Estado" value="Pendiente" hint="sin tabla real" />
+        <AdminBaseMetric label="Reseñas demo" value="0" hint="no se muestran seeds" />
+        <AdminBaseMetric label="Moderación" value="No activa" hint="requiere API" />
+        <AdminBaseMetric label="Producción" value="Bloqueado" hint="hasta validar flujo" />
+      </AdminBaseGrid>
+
+      <div className="rounded-[2rem] border border-yellow-300/20 bg-yellow-300/[0.05] p-6 text-center shadow-[0_20px_90px_rgba(0,0,0,0.35)]">
+        <div className="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl border border-yellow-300/30 bg-yellow-300/10">
+          <Star className="h-8 w-8 text-yellow-300" />
+        </div>
+        <h2 className="text-xl font-black text-white">Módulo pendiente de implementación real</h2>
+        <p className="mx-auto mt-2 max-w-2xl text-sm leading-relaxed text-zinc-400">
+          Para activar reseñas hace falta crear tabla real, endpoints de moderación, protección anti-spam, auditoría y reglas para publicar en páginas públicas.
+        </p>
       </div>
 
-      {/* Coming soon notice */}
-      <div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/[0.06] p-8 text-center">
-        <div className="w-16 h-16 rounded-2xl bg-yellow-400/10 border border-yellow-400/30 flex items-center justify-center mx-auto mb-4">
-          <Star className="w-8 h-8 text-yellow-400" />
-        </div>
-        <h2 className="text-white font-bold text-xl mb-2">Módulo en desarrollo</h2>
-        <p className="text-zinc-500 text-sm max-w-md mx-auto mb-6">
-          El sistema de reseñas estará disponible próximamente. Podrás ver, responder, aprobar y destacar las opiniones de tus clientes para generar más confianza.
-        </p>
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 max-w-2xl mx-auto">
-          {[
-            { icon: Star, label: 'Valoraciones', desc: 'Sistema de 1 a 5 estrellas' },
-            { icon: MessageSquare, label: 'Respuestas', desc: 'Contesta a los clientes' },
-            { icon: ThumbsUp, label: 'Moderación', desc: 'Aprueba o rechaza' },
-            { icon: TrendingUp, label: 'Análisis', desc: 'Tendencias y NPS' },
-          ].map((f) => (
-            <div key={f.label} className="rounded-xl border border-white/10 bg-white/[0.03] p-3 text-center">
-              <f.icon className="w-5 h-5 text-zinc-500 mx-auto mb-1.5" />
-              <p className="text-white text-xs font-semibold">{f.label}</p>
-              <p className="text-zinc-600 text-[10px] mt-0.5">{f.desc}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+      <AdminBaseGrid cols="4">
+        <AdminBaseCard title="Valoraciones" description="Sistema real de 1 a 5 estrellas con validación backend." icon={Star} tone="gold" badge="futuro" />
+        <AdminBaseCard title="Respuestas" description="Responder a clientes desde admin con auditoría." icon={MessageSquare} tone="emerald" badge="futuro" />
+        <AdminBaseCard title="Moderación" description="Aprobar, rechazar o destacar reseñas reales." icon={ThumbsUp} tone="blue" badge="futuro" />
+        <AdminBaseCard title="Análisis" description="Tendencias, reputación y NPS cuando haya datos reales." icon={TrendingUp} tone="purple" badge="futuro" />
+      </AdminBaseGrid>
+
+      <AdminBaseCard
+        title="Pendiente técnico"
+        description="No se debe mostrar reseñas inventadas en admin. Primero se necesita modelo de datos, endpoints y permisos."
+        icon={ShieldAlert}
+        tone="rose"
+        badge="seguridad"
+      />
+    </AdminBasePage>
   );
 }

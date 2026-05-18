@@ -1,8 +1,9 @@
 'use client';
 
+import Link from 'next/link';
 import { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Sparkles, BarChart3, Wand2, Plus, Loader2, CheckCircle2, XCircle } from 'lucide-react';
+import { Sparkles, BarChart3, Wand2, Plus, Loader2, CheckCircle2, XCircle, Video } from 'lucide-react';
 
 const ACTIONS: Array<{ id: 'analyze' | 'suggest' | 'create' | 'optimize'; label: string; description: string; icon: React.ComponentType<{ className?: string }> }> = [
   { id: 'analyze', label: 'Analizar', description: 'Audita CTR, CPM, CPC y ROAS de la campaña seleccionada.', icon: BarChart3 },
@@ -96,6 +97,19 @@ export default function AdsCoachClient() {
           <p className="text-xs text-zinc-500">Agente IA multi-canal (Meta, Google Ads, TikTok). Persistido en ads_agent_runs.</p>
         </div>
       </header>
+
+      <Link href="/admin/video-engine" className="group flex items-center justify-between gap-4 rounded-2xl border border-yellow-400/30 bg-yellow-400/10 p-4 text-left transition hover:border-yellow-300/70 hover:bg-yellow-400/15">
+        <span className="flex items-center gap-3">
+          <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-yellow-400 text-black">
+            <Video className="h-5 w-5" />
+          </span>
+          <span>
+            <span className="block text-sm font-black text-white">Generar video con Fabrick Studio IA</span>
+            <span className="block text-xs text-zinc-400">Usa las mismas credenciales de OpenRouter, Cloudinary e InsForge ya configuradas.</span>
+          </span>
+        </span>
+        <span className="text-xs font-bold uppercase tracking-[0.2em] text-yellow-300 group-hover:text-yellow-200">Abrir</span>
+      </Link>
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {ACTIONS.map((a, i) => {

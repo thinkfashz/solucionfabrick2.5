@@ -16,6 +16,7 @@ import { BrandMark } from '@/components/admin/ui';
 import WhatsNewBanner from '@/components/admin/WhatsNewBanner';
 import AdminContextMenu from '@/components/admin/AdminContextMenu';
 import DemoSessionTracker from '@/components/admin/DemoSessionTracker';
+import { AdminThemeToggle } from '@/components/admin/AdminThemeToggle';
 
 type NavLink = { href: string; label: string; description: string; icon: typeof Package; superadminOnly?: boolean; highlight?: boolean };
 
@@ -422,15 +423,15 @@ export function AdminShell({ children }: { children: ReactNode }) {
   if (isObservatory || isLogin) return <>{children}</>;
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-black text-white">
-      <div className="pointer-events-none fixed inset-0 z-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_12%,rgba(56,189,248,0.14),rgba(0,0,0,0)_38%),radial-gradient(circle_at_78%_85%,rgba(250,204,21,0.12),rgba(0,0,0,0)_42%),linear-gradient(180deg,rgba(0,0,0,0.22),rgba(0,0,0,0.92))]" />
-        <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:100%_9px] opacity-15" />
-        <div className="absolute -left-24 top-12 h-[420px] w-[420px] rounded-full bg-sky-400/15 blur-[100px]" />
-        <div className="absolute -right-24 bottom-10 h-[420px] w-[420px] rounded-full bg-yellow-300/15 blur-[100px]" />
+    <div data-admin-root="" className="relative min-h-screen overflow-hidden bg-black text-white">
+      <div data-admin-fixed-bg="" className="pointer-events-none fixed inset-0 z-0">
+        <div data-admin-glow="" className="absolute inset-0 bg-[radial-gradient(circle_at_22%_12%,rgba(56,189,248,0.14),rgba(0,0,0,0)_38%),radial-gradient(circle_at_78%_85%,rgba(250,204,21,0.12),rgba(0,0,0,0)_42%),linear-gradient(180deg,rgba(0,0,0,0.22),rgba(0,0,0,0.92))]" />
+        <div data-admin-glow="" className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:100%_9px] opacity-15" />
+        <div data-admin-glow="" className="absolute -left-24 top-12 h-[420px] w-[420px] rounded-full bg-sky-400/15 blur-[100px]" />
+        <div data-admin-glow="" className="absolute -right-24 bottom-10 h-[420px] w-[420px] rounded-full bg-yellow-300/15 blur-[100px]" />
       </div>
 
-      <header className="sticky top-0 z-40 border-b border-white/15">
+      <header data-admin-header="" className="sticky top-0 z-40 border-b border-white/15">
         <div className="absolute inset-0 bg-black/55 backdrop-blur-2xl" />
         <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-yellow-400/40 to-transparent" />
         <div className="relative mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 py-3 md:px-6">
@@ -454,6 +455,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
           <div className="flex items-center gap-2">
             <button type="button" onClick={() => setPaletteOpen(true)} className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400 hover:border-yellow-400/40 hover:text-yellow-400 transition-all" title="Buscar página (Cmd/Ctrl + K)" aria-label="Abrir buscador de páginas"><Search className="h-3.5 w-3.5" /><span className="hidden md:inline">Buscar</span><kbd className="hidden md:inline-block rounded border border-white/10 bg-white/5 px-1 py-0 text-[9px] font-mono text-zinc-500">⌘K</kbd></button>
+            <AdminThemeToggle />
             <Link href="/tienda" className="hidden sm:flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-300 hover:border-yellow-400/40 hover:text-yellow-400 transition-all">Ver tienda <ExternalLink className="h-3 w-3" /></Link>
             <button onClick={handleLogout} className="flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-300 transition hover:border-red-500/50 hover:text-red-400" title="Cerrar sesión"><LogOut className="h-3.5 w-3.5" /><span className="hidden sm:inline">Salir</span></button>
           </div>
@@ -463,8 +465,8 @@ export function AdminShell({ children }: { children: ReactNode }) {
       </header>
 
       <div className="relative z-10 mx-auto grid max-w-[1600px] gap-5 px-3 pb-24 sm:px-4 md:px-6 py-4 md:py-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:pb-6">
-        <aside className="hidden lg:block lg:sticky lg:top-[80px] lg:h-[calc(100vh-96px)] lg:overflow-y-auto scrollbar-hide"><SidebarContent pathname={pathname} onLogout={handleLogout} role={role} now={now} /></aside>
-        <main className="relative min-w-0 overflow-hidden">
+        <aside data-admin-sidebar="" className="hidden lg:block lg:sticky lg:top-[80px] lg:h-[calc(100vh-96px)] lg:overflow-y-auto scrollbar-hide"><SidebarContent pathname={pathname} onLogout={handleLogout} role={role} now={now} /></aside>
+        <main data-admin-main="" className="relative min-w-0 overflow-hidden">
           {role === 'viewer' && <DemoSessionTracker />}
           {role === 'viewer' && <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/[0.08] px-5 py-3.5"><Eye className="h-4 w-4 shrink-0 text-amber-400" /><span className="text-[12px] font-bold uppercase tracking-[0.18em] text-amber-300">Modo Demo · Solo lectura</span><span className="text-xs text-amber-300/55">Los cambios que intentes no se guardan en la base de datos · Expira en 24 h</span></div>}
           <AnimatePresence mode="wait" initial={false}>

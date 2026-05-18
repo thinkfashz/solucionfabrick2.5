@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AdminShell } from '@/components/admin/AdminShell';
 import AdminBaseThemeFrame from '@/components/admin/AdminBaseThemeFrame';
+import './studio-theme.css';
 
 export const metadata: Metadata = {
   title: 'Admin | Fabrick',

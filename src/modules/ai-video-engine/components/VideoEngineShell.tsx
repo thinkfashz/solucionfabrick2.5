@@ -5,6 +5,7 @@ import { ChevronLeft, ChevronRight, Film, FileText, Sliders } from 'lucide-react
 import { ExportPanel } from './ExportPanel';
 import { GeneratedScriptPanel } from './GeneratedScriptPanel';
 import { HtmlVideoPreview } from './HtmlVideoPreview';
+import { SceneEditorPanel } from './SceneEditorPanel';
 import { TokenUsagePanel } from './TokenUsagePanel';
 import { VideoPromptForm } from './VideoPromptForm';
 import { useVideoEngine } from '../hooks/use-video-engine';
@@ -249,6 +250,11 @@ export function VideoEngineShell() {
         {/* RIGHT: Script + Export */}
         <div className={`h-full overflow-y-auto border-l border-white/8 bg-[#0c0c0c] scrollbar-hide ${mobileTab === 'script' ? 'block' : 'hidden lg:block'}`}>
           <div className="space-y-3 p-4">
+            <SceneEditorPanel
+              plan={engine.plan}
+              activeSceneIndex={engine.activeSceneIndex}
+              onUpdateScene={engine.updateScene}
+            />
             <GeneratedScriptPanel plan={engine.plan} />
             {engine.tokenUsage && (
               <TokenUsagePanel usage={engine.tokenUsage} />

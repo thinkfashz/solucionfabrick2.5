@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { Activity, AlertTriangle, Clock, Database, Fingerprint, Laptop, MapPin, RefreshCw, Search, ShieldCheck, Smartphone, UserRound } from 'lucide-react';
 import { AdminPage, AdminPageHeader } from '@/components/admin/ui';
 
@@ -55,7 +55,9 @@ export default function SesionesPage() {
   const [email, setEmail] = useState('');
   const [search, setSearch] = useState('');
 
-  async function load(selectedEmail = email) {
+  // Stable fetch — callers always pass the email explicitly so this
+  // function doesn't close over the `email` state variable.
+  const load = useCallback(async (selectedEmail?: string) => {
     setLoading(true);
     setError('');
     try {
@@ -72,9 +74,9 @@ export default function SesionesPage() {
     } finally {
       setLoading(false);
     }
-  }
+  }, []);
 
-  useEffect(() => { void load(''); }, []);
+  useEffect(() => { void load(); }, [load]);
 
   const filteredSessions = useMemo(() => {
     const q = search.trim().toLowerCase();
@@ -104,7 +106,7 @@ export default function SesionesPage() {
           </span>
         }
         actions={
-          <button onClick={() => load()} disabled={loading} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10 disabled:opacity-60">
+          <button onClick={() => load(email || undefined)} disabled={loading} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10 disabled:opacity-60">
             <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Actualizar
           </button>
         }

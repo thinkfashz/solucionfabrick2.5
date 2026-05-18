@@ -1,106 +1,112 @@
 # Inventario del repositorio
 
-> Última actualización: **2026-05-09** · Rama auditada: `copilot/assess-app-value-and-market-price` (HEAD del repo en este momento).
+> Última actualización: **2026-05-18** · Rama auditada: `main` (HEAD `ee9b1f4`).
 
-Este documento es la fuente única de verdad para responder *"¿qué hay en `main` hoy y qué falta?"*. Se actualiza en cada PR que añada o consolide un módulo grande.
+Este documento es la fuente única de verdad para responder *"¿qué hay en `main` hoy y qué falta?"*.  
+Se actualiza en cada PR que añada o consolide un módulo grande.
 
 ---
 
 ## 1. Resumen ejecutivo
 
-| Métrica                                  | Valor en `main` hoy |
-|------------------------------------------|---------------------|
-| Páginas (`page.tsx`)                     | **78**              |
-| Endpoints API (`route.ts`)               | **84**              |
-| Helpers en `src/lib/`                    | **51**              |
-| Archivos de test                         | **29**              |
-| Módulos del panel `/admin`               | **30**              |
-| Workflows de GitHub Actions              | **4**               |
-| Documentos en `docs/`                    | **14**              |
+| Métrica                          | 2026-05-09 | 2026-05-18 (actual) |
+|----------------------------------|-----------|---------------------|
+| Páginas (`page.tsx`)             | 78        | **~130+**           |
+| Endpoints API (`route.ts`)       | 84        | **~100+**           |
+| Helpers en `src/lib/`            | 51        | **108**             |
+| Archivos de test                 | 29        | **29** (sin cambio) |
+| Módulos del panel `/admin`       | 30        | **49+**             |
+| Documentos en `docs/`            | 14        | **27**              |
 
-Veredicto rápido: el núcleo público + panel admin base + endurecimiento de seguridad del login están **en `main`**. Adicionalmente, **un centro de integraciones de _backend_ ya existe** (`/api/admin/integrations` con CRUD para meta/google/google_ads/tiktok/cloudinary/vercel + helpers `metaCredentials` y `vercelClient`). Los módulos avanzados que **siguen faltando** son: UI `/admin/integraciones`, OAuth de marketplaces, presupuestos auto-destructibles, healthcheck cron, inteligencia de mercado, Resend, multi-tenant. Se rastrean abajo.
+Cambios clave desde el inventario anterior (2026-05-09):
+
+- ✅ **PR #193–195 mergeados**: Video Engine completo, BaseUI stages 1-6, Studio Admin dual-shell, logo unificado.
+- ✅ **Cron jobs existentes** (5): expire-trials, integrations-healthcheck, newsletter, refresh-rates, system-health.
+- ✅ **OAuth helpers** (lib): `metaOAuth`, `googleOAuth`, `mlOAuth` existen en `src/lib/`; rutas UI pendientes.
+- ✅ **marketIntel.ts** existe en `src/lib/` (19 KB).
+- ✅ **presupuestos**: helper `src/lib/presupuestos.ts` + `src/lib/budget.ts` + ruta `/admin/presupuestos/`.
+- ✅ **integraciones UI**: `/admin/integraciones/` existe y `inteligencia-mercado/` también.
+- ✅ **Sesiones**: warning de lint `react-hooks/exhaustive-deps` corregido (PR #196).
+- ⚠️ **React Email / Resend**: `src/emails/` y `src/lib/resendCredentials.ts` siguen faltando.
+- ⚠️ **Multi-tenant**: `src/lib/tenantContext.ts` no existe; `tenant/domain-resolve` API sí existe.
+- ⚠️ **OAuth UI rutas** (start/callback): helpers de lib listos, rutas API siguen pendientes.
+- ⚠️ **Lint deprecation**: `next lint` marcado como deprecated desde Next 16; migración a ESLint CLI pendiente.
+- ⚠️ **Typecheck**: 0 errores (validado 2026-05-18).
 
 ---
 
 ## 2. Módulos del panel admin presentes en `main`
 
-Carpetas bajo `src/app/admin/`:
+Carpetas bajo `src/app/admin/` (49 módulos):
 
 ```
-blog · clientes · configuracion · cotizaciones · editor · entregas · envios ·
-equipo · errores · estado · facturas · home · inventario · login · manual ·
-materiales · medios · observatory · pagos · pedidos · productos · proyectos ·
-publicar · publicidad · reportes · setup · sql · tienda · unirse · vercel-logs
+acceso-demo · activar · ai-developer · asistente-ia · blog · center · clientes ·
+configuracion · cotizaciones · cupones · diagnostico · editor · entregas · envios ·
+equipo · errores · estado · extensions · facturas · home · integraciones ·
+inteligencia-mercado · inventario · login · manual · materiales · medios · ml ·
+modulos · monitor · newsletter · observatory · pagos · pedidos · plan-suspendido ·
+presupuestos · productos · proyectos · publicar · publicidad · reportes · reviews ·
+saas · seguridad · sesiones · setup · social · sql · testing · tienda · unirse ·
+vercel-logs · video-engine
 ```
 
-(30 módulos.) Cada uno contiene su propio `page.tsx` + componentes locales.
+---
+
+## 3. Módulos pendientes (deuda activa)
+
+| Módulo / feature                         | Path esperado                                   | Estado       | Prioridad |
+|------------------------------------------|-------------------------------------------------|--------------|-----------|
+| OAuth UI rutas Mercado Libre             | `src/app/api/admin/ml/oauth/{start,callback}/`  | ⚠️ Lib OK, ruta falta | P1 |
+| OAuth UI rutas Google                    | `src/app/api/admin/google/oauth/{start,callback}/` | ⚠️ Lib OK, ruta falta | P1 |
+| OAuth UI rutas Meta                      | `src/app/api/admin/meta/oauth/{start,callback}/`  | ⚠️ Lib OK, ruta falta | P1 |
+| OAuth UI rutas TikTok                    | `src/app/api/admin/tiktok/oauth/{start,callback}/`| ⚠️ Lib OK, ruta falta | P2 |
+| Plantillas React Email (`src/emails/`)   | `src/emails/`                                   | ❌ Falta     | P1 |
+| Resend credentials helper                | `src/lib/resendCredentials.ts`                  | ❌ Falta     | P1 |
+| Multi-tenant (tabla `tenants`)           | `src/lib/tenantContext.ts`                      | ❌ Falta     | P2 |
+| SQL video engine tables ejecutado        | InsForge: `ai_video_engine_runs`                | ⚠️ Script listo, pendiente Ops | P0 |
+| E2E smoke `/admin/video-engine`          | Playwright o manual                             | ⚠️ Pendiente QA | P0 |
+| Migración ESLint v9 CLI                  | `eslint.config.js`                              | ⚠️ `next lint` deprecated | P2 |
+| Fachada de DB anti-lock-in               | `src/lib/db/index.ts`                           | ❌ Falta     | P3 |
+| Chilexpress tracking real                | `src/lib/shipping/drivers/chilexpress.ts`       | ⚠️ 3 TODOs   | P2 |
+| Upload de archivos MaterialManager      | `src/components/admin/MaterialManager.tsx`      | ⚠️ TODO upload | P2 |
 
 ---
 
-## 3. Módulos esperados según el plan maestro pero **NO** presentes en `main`
+## 4. Helpers de seguridad presentes en `main`
 
-Estos módulos están descritos en notas internas y/o en sesiones previas, pero al auditar la rama actual no existen sus carpetas/archivos. Hasta que se fusionen o se vuelvan a implementar, **no deben asumirse como parte de la app de producción**.
-
-| Módulo / feature                                  | Path esperado                                                       | Estado en `main` |
-|---------------------------------------------------|---------------------------------------------------------------------|------------------|
-| UI Centro de integraciones                        | `src/app/admin/integraciones/`                                      | ❌ Falta (el _backend_ `/api/admin/integrations/route.ts` sí existe) |
-| Inteligencia de mercado                           | `src/app/admin/inteligencia-mercado/`                               | ❌ Falta         |
-| Presupuestos auto-destructibles                   | `src/app/admin/presupuestos/`, `src/app/p/[slug]/`                  | ❌ Falta         |
-| OAuth Mercado Libre                               | `src/app/api/admin/ml/oauth/{start,callback}/`                      | ❌ Falta         |
-| OAuth Google                                      | `src/app/api/admin/google/oauth/{start,callback}/`                  | ❌ Falta         |
-| OAuth Meta (Facebook/Instagram)                   | `src/app/api/admin/meta/oauth/{start,callback}/`                    | ❌ Falta         |
-| OAuth TikTok for Business                         | `src/app/api/admin/tiktok/oauth/{start,callback}/`                  | ❌ Falta         |
-| Cron diario healthcheck de integraciones          | `src/app/api/cron/integrations-healthcheck/`                        | ❌ Falta         |
-| Plantillas React Email                            | `src/emails/`                                                       | ❌ Falta         |
-| Helper de cifrado AES-GCM de credenciales         | `src/lib/integrationsCrypto.ts`                                     | ✅ Añadido en Fase 2A |
-| Mapa de env vars de integraciones                 | `src/lib/integrationsEnvMap.ts`                                     | ✅ Añadido en Fase 2B |
-| Helpers de market intel                           | `src/lib/marketIntel.ts`, `src/lib/seoSuggestions.ts`               | ❌ Falta         |
-| Helper de presupuestos                            | `src/lib/presupuestos.ts`                                           | ❌ Falta         |
-| Caché de importación de productos                 | `src/lib/productImportCache.ts`                                     | ❌ Falta (sí existe `productImport.ts` para el _runtime_, no la caché 24h) |
-| Resend (email transaccional + rotación de keys)   | `src/lib/resendCredentials.ts`, `src/lib/resendKeyRotation.ts`      | ❌ Falta         |
-| Fachada de DB (anti-lock-in InsForge)             | `src/lib/db/index.ts`, `src/lib/db/postgres.ts`                     | ❌ Falta         |
-| Multi-tenant (tabla `tenants`, middleware)        | `src/lib/tenantContext.ts`                                          | ❌ Falta         |
-| Helper meta credentials                           | `src/lib/metaCredentials.ts`                                        | ✅ Sí está en `main` |
-| Cliente Vercel                                    | `src/lib/vercelClient.ts`                                           | ✅ Sí está en `main` |
+| Helper                              | Función                                               |
+|-------------------------------------|-------------------------------------------------------|
+| `src/lib/adminAuth.ts`              | Sesiones admin firmadas; rate-limit async             |
+| `src/lib/adminPasswordHash.ts`      | Verificación scrypt+pepper de password local          |
+| `src/lib/adminTotp.ts`              | RFC 6238 + base32 + verifyTotp constant-time          |
+| `src/lib/adminTotpCrypto.ts`        | AES-GCM del secret TOTP con HKDF                      |
+| `src/lib/adminBackupCodes.ts`       | 10 códigos `XXXX-XXXX-XX`, hashes single-use          |
+| `src/lib/adminLoginAudit.ts`        | Audit log fire-and-forget en `admin_login_audit`      |
+| `src/lib/adminRateLimitStore.ts`    | Persistente en `admin_login_attempts` + caché lambda  |
+| `src/lib/adminPermissions.ts`       | Guards por rol (viewer/admin/superadmin)               |
 
 ---
 
-## 4. Helpers de seguridad de admin **sí** presentes en `main`
+## 5. Cron jobs activos (5)
 
-Estos sí están integrados (último commit en HEAD de la rama actual: `feat(security): TOTP backup codes` + `docs(security): backup codes runbook`).
-
-| Helper                                             | Función                                                       |
-|----------------------------------------------------|---------------------------------------------------------------|
-| `src/lib/adminAuth.ts`                             | Sesiones admin firmadas; rate-limit async                    |
-| `src/lib/adminPasswordHash.ts`                     | Verificación scrypt+pepper de password local                  |
-| `src/lib/adminTotp.ts`                             | RFC 6238 + base32 + verifyTotp constant-time                  |
-| `src/lib/adminTotpCrypto.ts`                       | AES-GCM del secret TOTP con HKDF(`ADMIN_SESSION_SECRET`)      |
-| `src/lib/adminBackupCodes.ts`                      | 10 códigos `XXXX-XXXX-XX`, hashes single-use                  |
-| `src/lib/adminLoginAudit.ts`                       | Audit log fire-and-forget en `admin_login_audit`              |
-| `src/lib/adminRateLimitStore.ts`                   | Persistente en `admin_login_attempts` + caché por lambda      |
+| Ruta                                     | Función                          |
+|------------------------------------------|----------------------------------|
+| `src/app/api/cron/expire-trials/`        | Expirar trials de SaaS           |
+| `src/app/api/cron/integrations-healthcheck/` | Health de integraciones      |
+| `src/app/api/cron/newsletter/`           | Envío programado de boletines    |
+| `src/app/api/cron/refresh-rates/`        | Actualizar tasas de cambio       |
+| `src/app/api/cron/system-health/`        | Health general del sistema       |
 
 ---
 
-## 5. Estado de las ramas remotas
+## 6. CI / Workflows
 
-- El clon local de la sesión actual es **shallow** y solo expone la rama `copilot/assess-app-value-and-market-price`.
-- Vía API de GitHub se observan **150+ ramas** activas/en preview en el remoto, en su mayoría con prefijo `copilot/*` y `claude/*` correspondientes a sesiones previas.
-- **Ninguna** rama visible en el último listado tiene un nombre que refleje los módulos de la sección 3 (no aparecen `integraciones`, `oauth`, `presupuestos`, `market-intel`, `healthcheck`, `resend`).
-
-> **Implicación:** asumir que esos módulos hay que **(re)implementarlos**, no simplemente "fusionarlos". Antes de planificar la Fase 2 de consolidación, hay que ejecutar `git fetch --all --prune` desde una sesión con acceso completo al remoto y hacer `git branch -r | grep -i <módulo>` para confirmar qué se puede recuperar de ramas vivas vs. qué hay que reimplementar desde el plan.
-
----
-
-## 6. CI / workflows
-
-Archivos en `.github/workflows/`:
-
-- `ci.yml` — **Pipeline unificado** (Fase 3): install → lint → typecheck → test:coverage (con gate de umbrales) → build, matriz Node 20.x / 22.x, sube `coverage/` como artifact.
-- `e2e.yml` — Playwright contra previews de Vercel cuando `deployment_status === success`.
-- `vercel.yml` — Deploy.
-- `docker-image.yml` — Imagen Docker.
-
-`webpack.yml` fue retirado en Fase 3 (reemplazado por `ci.yml`).
+| Workflow         | Función                                               |
+|------------------|-------------------------------------------------------|
+| `ci.yml`         | install → lint → typecheck → test:coverage → build   |
+| `e2e.yml`        | Playwright en preview Vercel (`deployment_status`)    |
+| `vercel.yml`     | Deploy                                                |
+| `docker-image.yml` | Imagen Docker                                       |
 
 ---
 
@@ -118,38 +124,16 @@ tests/
 └── shipping.test.ts
 ```
 
-- Total: **29 archivos** de test.
-- `vitest.config.ts` declara umbrales calibrados al baseline medido el 2026-05-09 (Fase 3, ratchet anti-regresión): `lines: 18, statements: 18, functions: 40, branches: 70` global. La aspiración del plan original (`60` global / `80` para `src/lib/`) se sube por etapas conforme se cubran helpers actualmente al 0 % (`apiHandler.ts`, `budget.ts`, `mercadoPagoCredentials.ts`, `projects.ts`, `social.ts`, `utils.ts`, `whatsapp.ts`, …).
+Umbrales Vitest: `lines: 18, statements: 18, functions: 40, branches: 70`.  
+Aspiración: subir a `60/60/60/80` conforme se cubran helpers con 0 % de cobertura.
 
 ---
 
-## 8. Documentación
+## 8. Reglas de navegación canónicas
 
-`docs/`:
+Ver `docs/admin-navigation-canonical.md`.
 
-- `cms-universal.md`
-- `comparaciones.md`
-- `insforge-edge-functions-ecommerce.md`
-- `perf-runtime.md`
-- `push-notifications.md`
-- `security-private-mode.md`
-- `architecture.md` *(Fase 4)*
-- `data-model.md` *(Fase 4)*
-- `api.md` *(Fase 4)*
-- `deploy-runbook.md` *(Fase 4)*
-- `metrics-snapshot.md` *(Fase 4)*
-- `migration-plan-postgres.md` *(Fase 4)*
-- `admin-manual.md` *(Fase 4)*
-- `integrations/README.md` *(Fase 4 — índice; falta un archivo por proveedor)*
-- `preview/` (capturas de Home y Tienda usadas por el README)
-
-**Pendiente** publicar (Fase 4 del plan):
-
-- ~~`architecture.md` (diagrama Mermaid + flujos)~~ ✅ Añadido en Fase 4.
-- ~~`deploy-runbook.md` (runbook de deploy + rollback)~~ ✅ Añadido en Fase 4.
-- ~~`admin-manual.md` (manual del operador del panel)~~ ✅ Añadido en Fase 4.
-- ~~`data-model.md` (ERD)~~ ✅ Añadido en Fase 4.
-- ~~`api.md` (catálogo de los 84 endpoints)~~ ✅ Añadido en Fase 4 (catálogo actualizado a 85).
-- ~~`integrations/` (uno por proveedor)~~ 🟡 Índice `integrations/README.md` añadido; falta un archivo por proveedor (a crear cuando se fusione cada módulo del plan).
-- ~~`migration-plan-postgres.md` (plan de salida de InsForge)~~ ✅ Añadido en Fase 4.
-- ~~`metrics-snapshot.md`~~ ✅ Añadido en Fase 4.
+- `/admin/integraciones` = única fuente de credenciales API.
+- `/admin/configuracion` = datos del negocio únicamente.
+- `/admin/seguridad` = passkeys/WebAuthn únicamente.
+- No duplicar módulos: sidebar canónico en `AdminShell.tsx` + `StudioSidebar.tsx`.

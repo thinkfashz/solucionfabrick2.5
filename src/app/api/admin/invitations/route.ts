@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { insforgeAdmin } from '@/lib/insforge';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import { sendAdminInviteEmail } from '@/lib/emailDriver';
 
 export const dynamic = 'force-dynamic';
 
@@ -82,24 +83,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: insertError.message }, { status: 500 });
   }
 
-  let emailSent = false;
-  const resendApiKey = process.env.RESEND_API_KEY;
-  if (resendApiKey) {
-    try {
-      const resendFrom = process.env.RESEND_FROM || 'Fabrick Admin <onboarding@resend.dev>';
-      const res = await fetch('https://api.resend.com/emails', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${resendApiKey}`, 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          from: resendFrom,
-          to: email,
-          subject: 'Te invitaron al Panel de Administración',
-          html: `<p>Has sido invitado como <strong>${rol}</strong>.</p><p><a href="${link}">Crear contraseña</a></p><p>${link}</p>`,
-        }),
-      });
-      if (res.ok) emailSent = true;
-    } catch {}
-  }
+  const emailResult = await sendAdminInviteEmail({
+    to: email,
+    role: rol,
+    inviteLink: link,
+    codigo,
+    invitedBy: payload?.email,
+  });
+  const emailSent = emailResult.ok && !emailResult.simulated;
 
   return NextResponse.json({ ok: true, emailSent, link, codigo });
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { getResendCredentials } from '@/lib/resendCredentials';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -169,15 +170,21 @@ export async function POST(request: NextRequest) {
   }
 
   if (service === 'email') {
-    const key = process.env.RESEND_API_KEY;
-    if (!key) return NextResponse.json({ ok: false, message: 'No hay RESEND_API_KEY configurada' });
+    const creds = await getResendCredentials();
+    if (!creds.ready) {
+      return NextResponse.json({
+        ok: false,
+        message: `Resend no configurado — falta ${creds.missing.join(', ')} (configúralo en /admin/integraciones o como variable de entorno en Vercel)`,
+      });
+    }
     try {
       const res = await fetch('https://api.resend.com/domains', {
-        headers: { Authorization: `Bearer ${key}` },
+        headers: { Authorization: `Bearer ${creds.apiKey}` },
         signal: AbortSignal.timeout(8_000),
       });
       if (!res.ok) return NextResponse.json({ ok: false, message: `HTTP ${res.status} desde Resend` });
-      return NextResponse.json({ ok: true, message: 'Resend conectado correctamente' });
+      const src = creds.source === 'db' ? 'base de datos' : 'variables de entorno';
+      return NextResponse.json({ ok: true, message: `Resend conectado correctamente (credenciales desde ${src})` });
     } catch (err) {
       return NextResponse.json({ ok: false, message: (err as Error).message });
     }

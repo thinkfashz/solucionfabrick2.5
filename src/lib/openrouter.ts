@@ -32,12 +32,11 @@ export interface OpenRouterCredentials {
 }
 
 export async function getOpenRouterCredentials(): Promise<OpenRouterCredentials | null> {
-  const envKey = pickEnv(ENV_API_KEYS);
   const envSite = pickEnv(ENV_SITE_URL);
   const envApp = pickEnv(ENV_APP_NAME) ?? DEFAULT_APP_NAME;
-  if (envKey) {
-    return { apiKey: envKey, siteUrl: envSite, appName: envApp, source: 'env' };
-  }
+
+  // DB first — consistent with the hybrid pattern used by Resend.
+  // Env vars serve as fallback when the DB row is absent or has no api_key.
   try {
     const { data, error } = await insforgeAdmin.database
       .from('integrations')
@@ -45,21 +44,31 @@ export async function getOpenRouterCredentials(): Promise<OpenRouterCredentials 
       .eq('provider', 'openrouter')
       .limit(1)
       .maybeSingle();
-    if (error || !data) return null;
-    const creds = decryptCredentials(
-      (data as { credentials?: Record<string, unknown> }).credentials ?? {},
-    ) as Record<string, string | undefined>;
-    const apiKey = typeof creds.api_key === 'string' ? creds.api_key.trim() : '';
-    if (!apiKey) return null;
-    return {
-      apiKey,
-      siteUrl: typeof creds.site_url === 'string' && creds.site_url.trim().length > 0 ? creds.site_url.trim() : envSite,
-      appName: typeof creds.app_name === 'string' && creds.app_name.trim().length > 0 ? creds.app_name.trim() : DEFAULT_APP_NAME,
-      source: 'db',
-    };
+    if (!error && data) {
+      const creds = decryptCredentials(
+        (data as { credentials?: Record<string, unknown> }).credentials ?? {},
+      ) as Record<string, string | undefined>;
+      const apiKey = typeof creds.api_key === 'string' ? creds.api_key.trim() : '';
+      if (apiKey) {
+        return {
+          apiKey,
+          siteUrl: typeof creds.site_url === 'string' && creds.site_url.trim().length > 0 ? creds.site_url.trim() : envSite,
+          appName: typeof creds.app_name === 'string' && creds.app_name.trim().length > 0 ? creds.app_name.trim() : DEFAULT_APP_NAME,
+          source: 'db',
+        };
+      }
+    }
   } catch {
-    return null;
+    // DB unavailable — fall through to env vars
   }
+
+  // Env var fallback
+  const envKey = pickEnv(ENV_API_KEYS);
+  if (envKey) {
+    return { apiKey: envKey, siteUrl: envSite, appName: envApp, source: 'env' };
+  }
+
+  return null;
 }
 
 const OR_BASE = 'https://openrouter.ai/api/v1';

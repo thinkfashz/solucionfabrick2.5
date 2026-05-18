@@ -1,17 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { Resend } from 'resend';
 import { addSubscriber, buildUnsubscribeLink, normalizeEmail } from '@/lib/newsletter';
 import { getResendCredentials } from '@/lib/resendCredentials';
 import { insforgeAdmin } from '@/lib/insforge';
-import WelcomeEmail from '@/emails/WelcomeEmail';
+import { sendWelcomeEmail } from '@/lib/emailDriver';
 import { v, parse, validationError } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Sandbox de Resend — sólo válido para pruebas. Configura RESEND_FROM en
-// producción con un dominio verificado.
-const DEFAULT_FROM = 'Soluciones Fabrick <onboarding@resend.dev>';
 const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000;
 
 interface WelcomeBody {
@@ -96,14 +92,13 @@ export async function POST(request: NextRequest) {
   }
 
   const creds = await getResendCredentials();
-  if (!creds) {
+  if (!creds.ready) {
     return NextResponse.json(
       {
         ok: true,
         subscribed: subscription.ok,
         emailed: false,
-        warning:
-          'Resend no está configurado. Agrega la API Key en /admin/integraciones para activar correos de bienvenida.',
+        warning: 'Resend no está configurado. Agrega la API Key en /admin/integraciones.',
       },
       { status: 200 },
     );
@@ -113,33 +108,20 @@ export async function POST(request: NextRequest) {
   const logoUrl = pickLogoUrl(request.url);
   const unsubscribeUrl = buildUnsubscribeLink(email, shopUrl || undefined);
 
-  const resend = new Resend(creds.apiKey);
-  const from = creds.from ?? DEFAULT_FROM;
+  const emailResult = await sendWelcomeEmail({
+    to: email,
+    name,
+    shopUrl: shopUrl || 'https://solucionesfabrick.cl',
+    unsubscribeUrl,
+    logoUrl,
+  });
 
-  try {
-    const { data, error } = await resend.emails.send({
-      from,
-      to: email,
-      subject: '¡Bienvenido a Soluciones Fabrick!',
-      react: WelcomeEmail({
-        customerName: name,
-        shopUrl: shopUrl || 'https://solucionesfabrick.cl',
-        unsubscribeUrl,
-        logoUrl,
-      }),
-    });
-    if (error) {
-      return NextResponse.json(
-        { ok: false, subscribed: subscription.ok, emailed: false, error: error.message },
-        { status: 502 },
-      );
-    }
-    await recordSent(email);
-    return NextResponse.json({ ok: true, subscribed: subscription.ok, emailed: true, id: data?.id ?? null });
-  } catch (err) {
+  if (!emailResult.ok && !emailResult.simulated) {
     return NextResponse.json(
-      { ok: false, subscribed: subscription.ok, emailed: false, error: (err as Error).message },
-      { status: 500 },
+      { ok: false, subscribed: subscription.ok, emailed: false, error: emailResult.error },
+      { status: 502 },
     );
   }
+  if (!emailResult.simulated) await recordSent(email);
+  return NextResponse.json({ ok: true, subscribed: subscription.ok, emailed: !emailResult.simulated, id: emailResult.id ?? null });
 }

@@ -11,6 +11,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
+import { getResendCredentials } from '@/lib/resendCredentials';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -25,14 +26,15 @@ async function sendEmail(params: {
   html: string;
   text: string;
 }): Promise<void> {
-  const resendKey = process.env.RESEND_API_KEY;
+  // Hybrid: credentials resolved from DB first, then Vercel env vars.
+  const creds = await getResendCredentials();
 
-  if (resendKey) {
-    const fromAddress = process.env.EMAIL_FROM ?? 'Fabrick Platform <noreply@fabrick.cl>';
+  if (creds.ready) {
+    const fromAddress = creds.from ?? 'Fabrick Platform <noreply@fabrick.cl>';
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
-        Authorization: `Bearer ${resendKey}`,
+        Authorization: `Bearer ${creds.apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
@@ -51,14 +53,14 @@ async function sendEmail(params: {
     return;
   }
 
-  // Nodemailer fallback (SMTP)
+  // Nodemailer fallback (SMTP) when Resend is not configured
   const smtpHost = process.env.SMTP_HOST;
   const smtpUser = process.env.SMTP_USER;
   const smtpPass = process.env.SMTP_PASS;
   const smtpPort = parseInt(process.env.SMTP_PORT ?? '587', 10);
 
   if (!smtpHost || !smtpUser) {
-    console.warn('[notify-suspension] No email provider configured — skipping suspension email.');
+    console.warn('[notify-suspension] No email provider configured (Resend not in DB/env, no SMTP) — skipping suspension email.');
     return;
   }
 

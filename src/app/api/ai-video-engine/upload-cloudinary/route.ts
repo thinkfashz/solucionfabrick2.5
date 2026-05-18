@@ -1,11 +1,14 @@
 import { NextResponse } from 'next/server';
 
 import { uploadSceneToCloudinary } from '@/modules/ai-video-engine/services/cloudinary.service';
+import { saveSceneAsset } from '@/modules/ai-video-engine/services/video-storage.service';
 import type { CloudinarySceneUploadInput } from '@/modules/ai-video-engine/types/video-engine.types';
 
-function isValidUploadInput(value: unknown): value is CloudinarySceneUploadInput {
+type UploadBody = CloudinarySceneUploadInput & { runId?: string | null };
+
+function isValidUploadInput(value: unknown): value is UploadBody {
   if (!value || typeof value !== 'object') return false;
-  const input = value as Partial<CloudinarySceneUploadInput>;
+  const input = value as Partial<UploadBody>;
   return (
     typeof input.videoTitle === 'string' &&
     typeof input.sceneId === 'number' &&
@@ -26,6 +29,7 @@ export async function POST(request: Request) {
     }
 
     const result = await uploadSceneToCloudinary(body);
+    await saveSceneAsset(body.runId ?? null, body.sceneId, result.url, result.publicId);
     return NextResponse.json(result);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo subir la escena.';

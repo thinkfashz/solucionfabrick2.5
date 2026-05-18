@@ -9,6 +9,7 @@ import { SceneEditorPanel } from './SceneEditorPanel';
 import { TokenUsagePanel } from './TokenUsagePanel';
 import { VideoPromptForm } from './VideoPromptForm';
 import { useVideoEngine } from '../hooks/use-video-engine';
+import { ModelStatusBadge } from '@/components/admin/ModelStatusBadge';
 
 type MobileTab = 'brief' | 'preview' | 'script';
 
@@ -95,7 +96,10 @@ export function VideoEngineShell() {
           </div>
           <div className="min-w-0">
             <p className="truncate text-[13px] font-black tracking-tight text-white">Fabrick Studio IA</p>
-            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-600">HyperFrame Editor</p>
+            <div className="flex items-center gap-2">
+              <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-600">HyperFrame Editor</p>
+              <ModelStatusBadge className="hidden sm:inline-flex" />
+            </div>
           </div>
         </div>
 
@@ -176,7 +180,28 @@ export function VideoEngineShell() {
         {/* CENTER: Preview + HyperFrame strip */}
         <div className={`flex h-full flex-col overflow-hidden ${mobileTab === 'preview' ? 'flex' : 'hidden lg:flex'}`}>
           {/* Preview area */}
-          <div className="min-h-0 flex-1 overflow-y-auto p-4">
+          <div className="relative min-h-0 flex-1 overflow-y-auto p-4">
+            {/* Loading overlay */}
+            {engine.isGenerating && (
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-[#0a0a0a]/92 backdrop-blur-sm">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-yellow-400/15 to-amber-600/5 shadow-[0_0_30px_rgba(250,204,21,0.12)]">
+                  <Film className="h-8 w-8 animate-pulse text-yellow-400" />
+                </div>
+                <div className="text-center">
+                  <p className="text-sm font-bold text-zinc-200">Generando plan de video…</p>
+                  <p className="mt-1 text-xs text-zinc-600">Conectando con OpenRouter · modelos gratuitos</p>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  {[0, 160, 320].map((delay) => (
+                    <span
+                      key={delay}
+                      className="h-1.5 w-1.5 animate-bounce rounded-full bg-yellow-400"
+                      style={{ animationDelay: `${delay}ms` }}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
             {/* Format toggle on mobile */}
             <div className="mb-4 flex items-center justify-between sm:hidden">
               <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1">
@@ -231,6 +256,21 @@ export function VideoEngineShell() {
               >
                 <ChevronRight className="h-4 w-4" />
               </button>
+            </div>
+          )}
+
+          {/* Generation result banner */}
+          {engine.tokenUsage && !engine.isGenerating && (
+            <div className="flex shrink-0 items-center gap-2 border-t border-white/8 bg-emerald-500/[0.04] px-4 py-1.5 text-[10px]">
+              <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
+              <span className="text-zinc-500">
+                {engine.tokenUsage.isFree ? '⚡ Gratis' : '💳 Pago'}{' · '}
+                <span className="font-mono text-zinc-400">
+                  {engine.tokenUsage.model.split('/')[1]?.replace(':free', '') ?? engine.tokenUsage.model}
+                </span>{' · '}
+                {engine.tokenUsage.totalTokens.toLocaleString('es-CL')} tokens{' · '}
+                {(engine.tokenUsage.latencyMs / 1000).toFixed(1)}s
+              </span>
             </div>
           )}
 

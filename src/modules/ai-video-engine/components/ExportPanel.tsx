@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { captureElementAsPng } from '../utils/capture-scene';
 import type { GeneratedVideoPlan } from '../types/video-engine.types';
 
-export function ExportPanel({ plan, activeSceneIndex }: { plan: GeneratedVideoPlan; activeSceneIndex: number }) {
+export function ExportPanel({ plan, activeSceneIndex, runId }: { plan: GeneratedVideoPlan; activeSceneIndex: number; runId: string | null }) {
   const [status, setStatus] = useState<string>('Listo para capturar la escena activa.');
 
   async function uploadActiveScene() {
@@ -21,7 +21,7 @@ export function ExportPanel({ plan, activeSceneIndex }: { plan: GeneratedVideoPl
       const response = await fetch('/api/ai-video-engine/upload-cloudinary', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ videoTitle: plan.title, sceneId: scene.id, dataUrl }),
+        body: JSON.stringify({ runId, videoTitle: plan.title, sceneId: scene.id, dataUrl }),
       });
 
       const data = (await response.json()) as { url?: string; error?: string };

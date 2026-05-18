@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fallbackVideoPlan } from '../templates/social-reel';
-import type { GeneratedVideoPlan, VideoEngineInput } from '../types/video-engine.types';
+import type { GeneratedVideoPlan, VideoEngineInput, VideoTokenUsage } from '../types/video-engine.types';
 
 export function useVideoEngine() {
   const [input, setInput] = useState<VideoEngineInput>({
@@ -13,12 +13,15 @@ export function useVideoEngine() {
     audience: 'Dueños de casa que quieren ampliar o remodelar',
     visualStyle: 'dark_editorial',
     cta: 'Cotiza tu proyecto con Soluciones Fabrick',
+    allowPaid: false,
+    preferredModel: 'auto',
   });
   const [plan, setPlan] = useState<GeneratedVideoPlan>(fallbackVideoPlan);
   const [runId, setRunId] = useState<string | null>(null);
   const [activeSceneIndex, setActiveSceneIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [tokenUsage, setTokenUsage] = useState<VideoTokenUsage | null>(null);
 
   // ── Autoplay ──
   const [isPlaying, setIsPlaying] = useState(false);
@@ -31,7 +34,6 @@ export function useVideoEngine() {
     }
   }, []);
 
-  // Advance to next scene after its duration, then stop at the last
   useEffect(() => {
     if (!isPlaying || plan.scenes.length === 0) return;
 
@@ -66,6 +68,7 @@ export function useVideoEngine() {
   async function generate() {
     setIsGenerating(true);
     setError(null);
+    setTokenUsage(null);
     clearPlayTimer();
     setIsPlaying(false);
 
@@ -79,6 +82,14 @@ export function useVideoEngine() {
       const data = (await response.json()) as {
         plan?: GeneratedVideoPlan;
         runId?: string | null;
+        usage?: {
+          promptTokens: number;
+          completionTokens: number;
+          totalTokens: number;
+          model: string;
+          latencyMs: number;
+          isFree: boolean;
+        };
         error?: string;
       };
 
@@ -89,6 +100,13 @@ export function useVideoEngine() {
       setPlan(data.plan);
       setRunId(data.runId ?? null);
       setActiveSceneIndex(0);
+
+      if (data.usage) {
+        setTokenUsage({
+          ...data.usage,
+          duration: data.plan.duration,
+        });
+      }
     } catch (currentError) {
       setError(
         currentError instanceof Error ? currentError.message : 'Error inesperado.',
@@ -111,5 +129,6 @@ export function useVideoEngine() {
     togglePlay,
     error,
     generate,
+    tokenUsage,
   };
 }

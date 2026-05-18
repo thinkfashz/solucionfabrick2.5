@@ -21,10 +21,10 @@ export async function POST(request: Request) {
       );
     }
 
-    const plan = await generateVideoPlanWithOpenRouter(body);
+    const { plan, usage } = await generateVideoPlanWithOpenRouter(body);
     const runId = await saveVideoPlanRun(body, plan);
 
-    return NextResponse.json({ plan, runId });
+    return NextResponse.json({ plan, runId, usage });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'No se pudo generar el video.';
     return NextResponse.json({ error: message }, { status: 500 });

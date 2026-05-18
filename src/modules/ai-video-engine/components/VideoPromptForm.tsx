@@ -1,8 +1,9 @@
 'use client';
 
 import type { Dispatch, SetStateAction } from 'react';
-import { Link as LinkIcon, Sparkles } from 'lucide-react';
+import { Link as LinkIcon, Sparkles, Zap } from 'lucide-react';
 import type { VideoEngineInput } from '../types/video-engine.types';
+import { FREE_MODELS, PAID_MODELS } from '../data/models';
 
 const inputCls =
   'w-full rounded-xl border border-white/10 bg-white/[0.05] px-3 py-2.5 text-sm text-white outline-none transition focus:border-yellow-400/40 focus:bg-white/[0.07] placeholder:text-zinc-700';
@@ -29,6 +30,9 @@ export function VideoPromptForm({
   onGenerate: () => void;
   isGenerating: boolean;
 }) {
+  const isPaid = input.allowPaid ?? false;
+  const modelOptions = isPaid ? PAID_MODELS : FREE_MODELS;
+
   return (
     <div className="space-y-4 p-4">
       <div>
@@ -36,7 +40,66 @@ export function VideoPromptForm({
         <p className="mt-0.5 text-[13px] font-bold text-zinc-300">Configura tu video</p>
       </div>
 
-      {/* URL de referencia */}
+      {/* ── Model tier toggle ── */}
+      <div className="space-y-2 rounded-2xl border border-white/8 bg-white/[0.025] p-3">
+        <p className={labelCls}>Tipo de IA</p>
+        <div className="flex gap-2">
+          <button
+            type="button"
+            onClick={() => setInput((p) => ({ ...p, allowPaid: false, preferredModel: 'auto' }))}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-[11px] font-bold transition-all ${
+              !isPaid
+                ? 'border border-emerald-400/40 bg-emerald-400/10 text-emerald-300'
+                : 'border border-white/10 text-zinc-600 hover:text-zinc-400'
+            }`}
+          >
+            <Zap className="h-3 w-3" />
+            Gratis
+          </button>
+          <button
+            type="button"
+            onClick={() => setInput((p) => ({ ...p, allowPaid: true, preferredModel: PAID_MODELS[0].id }))}
+            className={`flex flex-1 items-center justify-center gap-1.5 rounded-xl py-2 text-[11px] font-bold transition-all ${
+              isPaid
+                ? 'border border-yellow-400/40 bg-yellow-400/10 text-yellow-300'
+                : 'border border-white/10 text-zinc-600 hover:text-zinc-400'
+            }`}
+          >
+            <Sparkles className="h-3 w-3" />
+            De pago
+          </button>
+        </div>
+
+        {/* Model selector */}
+        <Field label="Modelo">
+          <select
+            className={inputCls}
+            value={input.preferredModel ?? 'auto'}
+            onChange={(e) => setInput((p) => ({ ...p, preferredModel: e.target.value }))}
+          >
+            {modelOptions.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.label} · {m.provider}
+                {!m.free && m.promptCostPer1K > 0
+                  ? ` · $${m.promptCostPer1K}/1K`
+                  : ''}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        {/* Model note */}
+        {(() => {
+          const selected = modelOptions.find(
+            (m) => m.id === (input.preferredModel ?? 'auto'),
+          );
+          return selected?.note ? (
+            <p className="text-[10px] leading-relaxed text-zinc-700">{selected.note}</p>
+          ) : null;
+        })()}
+      </div>
+
+      {/* ── URL de referencia ── */}
       <Field label="URL de la página (opcional)">
         <div className="relative">
           <LinkIcon className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-zinc-600" />
@@ -50,7 +113,7 @@ export function VideoPromptForm({
         </div>
       </Field>
 
-      {/* Tema */}
+      {/* ── Tema ── */}
       <Field label="Tema del video">
         <textarea
           className={inputCls}
@@ -61,14 +124,10 @@ export function VideoPromptForm({
         />
       </Field>
 
-      {/* Tipo + Formato */}
+      {/* ── Tipo + Formato ── */}
       <div className="grid grid-cols-2 gap-3">
         <Field label="Tipo">
-          <select
-            className={inputCls}
-            value={input.kind}
-            onChange={(e) => setInput((p) => ({ ...p, kind: e.target.value as VideoEngineInput['kind'] }))}
-          >
+          <select className={inputCls} value={input.kind} onChange={(e) => setInput((p) => ({ ...p, kind: e.target.value as VideoEngineInput['kind'] }))}>
             <option value="promotional">Promocional</option>
             <option value="educational">Educativo</option>
             <option value="before_after">Antes/después</option>
@@ -78,11 +137,7 @@ export function VideoPromptForm({
           </select>
         </Field>
         <Field label="Formato">
-          <select
-            className={inputCls}
-            value={input.format}
-            onChange={(e) => setInput((p) => ({ ...p, format: e.target.value as VideoEngineInput['format'] }))}
-          >
+          <select className={inputCls} value={input.format} onChange={(e) => setInput((p) => ({ ...p, format: e.target.value as VideoEngineInput['format'] }))}>
             <option value="9:16">9:16 · Reels</option>
             <option value="1:1">1:1 · Cuadrado</option>
             <option value="16:9">16:9 · Panorámico</option>
@@ -90,14 +145,10 @@ export function VideoPromptForm({
         </Field>
       </div>
 
-      {/* Duración + Estilo */}
+      {/* ── Duración + Estilo ── */}
       <div className="grid grid-cols-2 gap-3">
         <Field label="Duración">
-          <select
-            className={inputCls}
-            value={input.duration}
-            onChange={(e) => setInput((p) => ({ ...p, duration: Number(e.target.value) as VideoEngineInput['duration'] }))}
-          >
+          <select className={inputCls} value={input.duration} onChange={(e) => setInput((p) => ({ ...p, duration: Number(e.target.value) as VideoEngineInput['duration'] }))}>
             <option value={15}>15 seg</option>
             <option value={30}>30 seg</option>
             <option value={45}>45 seg</option>
@@ -105,11 +156,7 @@ export function VideoPromptForm({
           </select>
         </Field>
         <Field label="Estilo visual">
-          <select
-            className={inputCls}
-            value={input.visualStyle}
-            onChange={(e) => setInput((p) => ({ ...p, visualStyle: e.target.value as VideoEngineInput['visualStyle'] }))}
-          >
+          <select className={inputCls} value={input.visualStyle} onChange={(e) => setInput((p) => ({ ...p, visualStyle: e.target.value as VideoEngineInput['visualStyle'] }))}>
             <option value="dark_editorial">Editorial oscuro</option>
             <option value="premium">Premium</option>
             <option value="technical">Técnico</option>
@@ -120,29 +167,17 @@ export function VideoPromptForm({
         </Field>
       </div>
 
-      {/* Público */}
+      {/* ── Público ── */}
       <Field label="Público objetivo">
-        <input
-          type="text"
-          className={inputCls}
-          placeholder="Dueños de casa, empresas constructoras…"
-          value={input.audience}
-          onChange={(e) => setInput((p) => ({ ...p, audience: e.target.value }))}
-        />
+        <input type="text" className={inputCls} placeholder="Dueños de casa, empresas constructoras…" value={input.audience} onChange={(e) => setInput((p) => ({ ...p, audience: e.target.value }))} />
       </Field>
 
-      {/* CTA */}
+      {/* ── CTA ── */}
       <Field label="Llamado a la acción">
-        <input
-          type="text"
-          className={inputCls}
-          placeholder="Cotiza con Soluciones Fabrick"
-          value={input.cta}
-          onChange={(e) => setInput((p) => ({ ...p, cta: e.target.value }))}
-        />
+        <input type="text" className={inputCls} placeholder="Cotiza con Soluciones Fabrick" value={input.cta} onChange={(e) => setInput((p) => ({ ...p, cta: e.target.value }))} />
       </Field>
 
-      {/* Generate button */}
+      {/* ── Generate ── */}
       <button
         type="button"
         onClick={onGenerate}

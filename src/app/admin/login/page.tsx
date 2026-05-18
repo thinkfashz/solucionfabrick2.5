@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { insforge } from '@/lib/insforge';
+import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 
 function LockIcon() {
   return (
@@ -384,9 +385,11 @@ export default function AdminLoginPage() {
         >
           <span className={isCorporate
             ? 'relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-white/40 bg-white shadow-[0_10px_34px_rgba(255,255,255,0.22)]'
-            : 'relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/40 bg-yellow-400 shadow-[0_10px_34px_rgba(250,204,21,0.45)]'}>
+            : 'relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/40 bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 shadow-[0_10px_34px_rgba(250,204,21,0.45)]'}>
             <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.45),rgba(255,255,255,0)_56%)]" />
-            <span className="relative text-sm font-black uppercase tracking-[0.28em] text-black">SF</span>
+            <span className="relative">
+              <FabrickPeakIcon size={30} />
+            </span>
           </span>
           <span className={isCorporate
             ? 'font-playfair text-xl font-black tracking-[0.24em] text-white'
@@ -775,12 +778,14 @@ function BootSecurityScreen() {
       <div className="relative z-10 flex min-h-[calc(100vh-3rem)] flex-col items-center justify-center px-6">
         {/* Logo SF estilo Apple boot */}
         <div className="relative mb-10 flex flex-col items-center gap-4">
-          <span className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-[1.7rem] border border-yellow-300/40 bg-yellow-400 shadow-[0_18px_60px_rgba(250,204,21,0.45)]">
+          <span className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-[1.7rem] border border-yellow-300/40 bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 shadow-[0_18px_60px_rgba(250,204,21,0.45)]">
             <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.55),rgba(255,255,255,0)_58%)]" />
             <span
               className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/45 to-transparent [animation:sf-boot-sweep_2.4s_ease-in-out_infinite]"
             />
-            <span className="relative font-playfair text-2xl font-black uppercase tracking-[0.28em] text-black">SF</span>
+            <span className="relative drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
+              <FabrickPeakIcon size={44} />
+            </span>
           </span>
           <div className="flex flex-col items-center gap-1">
             <p className="font-playfair text-sm font-black tracking-[0.36em] text-yellow-300">SOLUCIONES FABRICK</p>

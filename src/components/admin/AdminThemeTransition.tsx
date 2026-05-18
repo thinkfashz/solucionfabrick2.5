@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 
 interface Props {
   isActive: boolean;
@@ -108,12 +109,14 @@ export function AdminThemeTransition({ isActive, targetTheme, onComplete }: Prop
               <div
                 className="flex h-20 w-20 items-center justify-center overflow-hidden rounded-[1.5rem] border"
                 style={{
-                  background: accent,
+                  background: `linear-gradient(135deg, #FFE566, ${accent})`,
                   borderColor: `${accent}66`,
                   boxShadow: `0 16px 56px ${accentGlow}`,
                 }}
               >
-                <span className="relative z-10 font-playfair text-2xl font-black tracking-[0.28em] text-black">SF</span>
+                <span className="relative z-10 drop-shadow-[0_2px_4px_rgba(0,0,0,0.25)]">
+                  <FabrickPeakIcon size={38} />
+                </span>
               </div>
 
               <div className="flex flex-col items-center gap-0.5">

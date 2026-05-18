@@ -7,10 +7,11 @@ import {
   FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut,
   Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck,
   ShoppingCart, Sparkles, Star, Stethoscope, Store, Tag, Terminal,
-  TrendingDown, Truck, Telescope, Users, Video, Wallet, X, Zap, Plus,
+  TrendingDown, Truck, Telescope, Users, Video, Wallet, X, Plus,
   MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
   ChevronRight,
 } from 'lucide-react';
+import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 
 /* ── Nav data ─────────────────────────────────────────────────── */
 type NavLink = {
@@ -205,15 +206,15 @@ export function StudioSidebarContent({
           collapsed ? 'justify-center' : 'gap-2.5',
         ].join(' ')}
       >
-        <div className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-md bg-orange-500 text-white">
-          <Zap className="h-4 w-4" />
+        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-yellow-300/40 bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 shadow-[0_4px_14px_rgba(250,204,21,0.35)]">
+          <FabrickPeakIcon size={18} />
         </div>
         {!collapsed && (
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[12px] font-bold tracking-tight text-zinc-100">
-              Fabrick
+            <p className="truncate text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300">
+              SOLUCIONES FABRICK
             </p>
-            <p className="truncate text-[10px] text-zinc-500">Studio Admin</p>
+            <p className="truncate text-[9px] uppercase tracking-[0.2em] text-zinc-500">Studio Admin</p>
           </div>
         )}
       </div>

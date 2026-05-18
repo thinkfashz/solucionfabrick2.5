@@ -2,7 +2,9 @@
 
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion, AnimatePresence } from 'framer-motion';
 import { insforge } from '@/lib/insforge';
+import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 
 function LockIcon() {
   return (
@@ -25,7 +27,7 @@ export default function AdminLoginPage() {
   const [theme, setTheme] = useState<VisualTheme>('scifi');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [setupEmail, setSetupEmail] = useState('f.eduardomicolta@gmail.com');
+  const [setupEmail, setSetupEmail] = useState('');
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [initSecret, setInitSecret] = useState('');
@@ -298,7 +300,6 @@ export default function AdminLoginPage() {
       }
 
       setSuccess(json.message ?? '¡Cuenta creada! Ya puedes iniciar sesión.');
-      setEmail('f.eduardomicolta@gmail.com');
       setInitSecret('');
       setScreen('login');
     } catch {
@@ -353,7 +354,12 @@ export default function AdminLoginPage() {
         : 'pointer-events-none absolute -right-24 bottom-10 h-64 w-64 rounded-full bg-yellow-300/20 blur-[90px]'} />
 
       <div className="relative z-10 mx-auto flex min-h-[calc(100vh-6rem)] w-full max-w-md flex-col items-center justify-center">
-        <div className="mb-4 inline-flex items-center rounded-full border border-white/20 bg-black/35 p-1 text-[10px] uppercase tracking-[0.2em] backdrop-blur-sm">
+        <motion.div
+          initial={{ opacity: 0, y: -16 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-4 inline-flex items-center rounded-full border border-white/20 bg-black/35 p-1 text-[10px] uppercase tracking-[0.2em] backdrop-blur-sm"
+        >
           <button
             type="button"
             onClick={() => applyTheme('corporate')}
@@ -368,15 +374,22 @@ export default function AdminLoginPage() {
           >
             Sci-Fi
           </button>
-        </div>
+        </motion.div>
 
         {/* Logo */}
-        <div className="mb-7 flex flex-col items-center gap-3 select-none">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.88, y: 12 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          transition={{ duration: 0.6, delay: 0.1, ease: [0.16, 1, 0.3, 1] }}
+          className="mb-7 flex flex-col items-center gap-3 select-none"
+        >
           <span className={isCorporate
             ? 'relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-white/40 bg-white shadow-[0_10px_34px_rgba(255,255,255,0.22)]'
-            : 'relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/40 bg-yellow-400 shadow-[0_10px_34px_rgba(250,204,21,0.45)]'}>
+            : 'relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/40 bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 shadow-[0_10px_34px_rgba(250,204,21,0.45)]'}>
             <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.45),rgba(255,255,255,0)_56%)]" />
-            <span className="relative text-sm font-black uppercase tracking-[0.28em] text-black">SF</span>
+            <span className="relative">
+              <FabrickPeakIcon size={30} />
+            </span>
           </span>
           <span className={isCorporate
             ? 'font-playfair text-xl font-black tracking-[0.24em] text-white'
@@ -385,11 +398,15 @@ export default function AdminLoginPage() {
           </span>
           <span className={isCorporate
             ? 'text-[10px] uppercase tracking-[0.34em] text-white/55'
-            : 'text-[10px] uppercase tracking-[0.34em] text-white/45'}>Control room access</span>
-        </div>
+            : 'text-[10px] uppercase tracking-[0.34em] text-white/45'}>Tu obra en buenas manos</span>
+        </motion.div>
 
         {/* Card */}
-        <div className={isCorporate
+        <motion.div
+          initial={{ opacity: 0, y: 28, scale: 0.97 }}
+          animate={{ opacity: 1, y: 0, scale: 1 }}
+          transition={{ duration: 0.65, delay: 0.2, ease: [0.16, 1, 0.3, 1] }}
+          className={isCorporate
           ? 'w-full rounded-[2rem] border border-white/25 bg-zinc-900/65 p-8 shadow-[0_20px_90px_rgba(0,0,0,0.55)] backdrop-blur-2xl cinematic-panel-enter'
           : 'w-full rounded-[2rem] border border-white/20 bg-black/55 p-8 shadow-[0_20px_90px_rgba(0,0,0,0.55)] backdrop-blur-2xl cinematic-panel-enter'}>
         {/* Icon */}
@@ -418,7 +435,7 @@ export default function AdminLoginPage() {
                   type="email"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  placeholder="f.eduardomicolta@gmail.com"
+                  placeholder="admin@tudominio.com"
                   required
                   disabled={loading}
                   className={inputClass}
@@ -675,12 +692,17 @@ export default function AdminLoginPage() {
             </button>
           </div>
         )}
-      </div>
+      </motion.div>
       </div>
 
-      <p className="relative z-10 mt-8 text-white/15 text-[10px] text-center tracking-widest uppercase">
+      <motion.p
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ duration: 0.8, delay: 0.5 }}
+        className="relative z-10 mt-8 text-white/15 text-[10px] text-center tracking-widest uppercase"
+      >
         Acceso exclusivo · Soluciones Fabrick
-      </p>
+      </motion.p>
     </div>
   );
 }
@@ -756,12 +778,14 @@ function BootSecurityScreen() {
       <div className="relative z-10 flex min-h-[calc(100vh-3rem)] flex-col items-center justify-center px-6">
         {/* Logo SF estilo Apple boot */}
         <div className="relative mb-10 flex flex-col items-center gap-4">
-          <span className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-[1.7rem] border border-yellow-300/40 bg-yellow-400 shadow-[0_18px_60px_rgba(250,204,21,0.45)]">
+          <span className="relative flex h-24 w-24 items-center justify-center overflow-hidden rounded-[1.7rem] border border-yellow-300/40 bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 shadow-[0_18px_60px_rgba(250,204,21,0.45)]">
             <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.55),rgba(255,255,255,0)_58%)]" />
             <span
               className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/45 to-transparent [animation:sf-boot-sweep_2.4s_ease-in-out_infinite]"
             />
-            <span className="relative font-playfair text-2xl font-black uppercase tracking-[0.28em] text-black">SF</span>
+            <span className="relative drop-shadow-[0_2px_4px_rgba(0,0,0,0.3)]">
+              <FabrickPeakIcon size={44} />
+            </span>
           </span>
           <div className="flex flex-col items-center gap-1">
             <p className="font-playfair text-sm font-black tracking-[0.36em] text-yellow-300">SOLUCIONES FABRICK</p>

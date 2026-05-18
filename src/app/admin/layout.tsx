@@ -1,6 +1,8 @@
 import type { Metadata } from 'next';
 import { AdminShell } from '@/components/admin/AdminShell';
 import AdminBaseThemeFrame from '@/components/admin/AdminBaseThemeFrame';
+import { StudioShell } from '@/components/admin-studio';
+import './studio-theme.css';
 
 export const metadata: Metadata = {
   title: 'Admin | Fabrick',
@@ -27,8 +29,16 @@ export const dynamic = 'force-dynamic';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AdminBaseThemeFrame>
-      <AdminShell>{children}</AdminShell>
-    </AdminBaseThemeFrame>
+    <>
+      <div id="shell-fabrick" className="fabrick-shell">
+        <AdminBaseThemeFrame>
+          <AdminShell>{children}</AdminShell>
+        </AdminBaseThemeFrame>
+      </div>
+
+      <div id="shell-studio" className="studio-shell" style={{ display: 'none' }}>
+        <StudioShell>{children}</StudioShell>
+      </div>
+    </>
   );
 }

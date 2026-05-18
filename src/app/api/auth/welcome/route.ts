@@ -92,14 +92,13 @@ export async function POST(request: NextRequest) {
   }
 
   const creds = await getResendCredentials();
-  if (!creds.ready && process.env.EMAIL_DRIVER !== 'resend') {
+  if (!creds.ready) {
     return NextResponse.json(
       {
         ok: true,
         subscribed: subscription.ok,
         emailed: false,
-        warning:
-          'Resend no está configurado. Configura EMAIL_DRIVER=resend y RESEND_API_KEY para activar correos de bienvenida.',
+        warning: 'Resend no está configurado. Agrega la API Key en /admin/integraciones.',
       },
       { status: 200 },
     );

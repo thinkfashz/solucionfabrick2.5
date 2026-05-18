@@ -26,24 +26,26 @@ export interface EmailResult {
 }
 
 /**
- * Core send primitive. Opt-in: only delivers when EMAIL_DRIVER=resend.
- * Any other value logs to console and returns { ok: true, simulated: true }.
+ * Core send primitive.
+ *
+ * Credentials are resolved hybrid-ly: DB first, then Vercel env vars
+ * (via getResendCredentials → resolveIntegrationCredentials).
+ * Set EMAIL_DRIVER=disabled to suppress all sending (useful in staging).
+ * When credentials are not found anywhere, the call is a no-op (simulated).
  */
 export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
-  if (process.env.EMAIL_DRIVER !== 'resend') {
-    console.log(
-      '[emailDriver] simulated (EMAIL_DRIVER≠resend):',
-      payload.subject,
-      '→',
-      Array.isArray(payload.to) ? payload.to.join(', ') : payload.to,
-    );
+  if (process.env.EMAIL_DRIVER === 'disabled') {
+    console.log('[emailDriver] disabled (EMAIL_DRIVER=disabled):', payload.subject);
     return { ok: true, simulated: true };
   }
 
   const creds = await getResendCredentials();
   if (!creds.ready) {
-    console.warn('[emailDriver] Resend credentials not ready:', creds.missing);
-    return { ok: false, error: `Resend not configured: missing ${creds.missing.join(', ')}` };
+    console.warn(
+      '[emailDriver] Resend not configured (no api_key found in DB or env). Skipping:',
+      payload.subject,
+    );
+    return { ok: true, simulated: true };
   }
 
   let html = payload.html;

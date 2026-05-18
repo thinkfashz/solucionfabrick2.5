@@ -77,16 +77,16 @@ export async function sendCampaign(campaignId: string): Promise<SendResult> {
   }
 
   const creds = await getResendCredentials();
-  if (!creds.ready && process.env.EMAIL_DRIVER !== 'resend') {
+  if (!creds.ready) {
     await insforgeAdmin.database
       .from('newsletter_campaigns')
       .update({
         status: 'failed',
-        last_error: 'Resend no está configurado. Configura EMAIL_DRIVER=resend y RESEND_API_KEY.',
+        last_error: 'Resend no está configurado. Agrega la API Key en /admin/integraciones.',
         updated_at: new Date().toISOString(),
       })
       .eq('id', campaignId);
-    throw new Error('Resend no está configurado. Configura EMAIL_DRIVER=resend y RESEND_API_KEY en /admin/integraciones.');
+    throw new Error('Resend no está configurado. Agrega la API Key en /admin/integraciones.');
   }
 
   await insforgeAdmin.database

@@ -27,6 +27,7 @@ export function buildVideoPrompt(input: VideoEngineInput) {
     'La marca trabaja construccion, metalcon, ampliaciones, remodelaciones y estructuras.',
     `Crea un ${kindLabels[input.kind]} para redes sociales.`,
     `Tema: ${input.topic}`,
+    ...(input.pageUrl ? [`Referencia de pagina web: ${input.pageUrl}`] : []),
     `Formato: ${input.format}`,
     `Duracion total: ${input.duration} segundos`,
     `Publico objetivo: ${audience}`,

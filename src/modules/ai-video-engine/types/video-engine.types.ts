@@ -5,6 +5,7 @@ export type VisualStyle = 'premium' | 'technical' | 'realistic' | 'minimal' | 'c
 
 export interface VideoEngineInput {
   topic: string;
+  pageUrl?: string;
   kind: VideoKind;
   format: VideoFormat;
   duration: VideoDuration;

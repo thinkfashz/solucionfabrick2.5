@@ -1,7 +1,7 @@
 'use client';
 
 import { motion } from 'framer-motion';
-import type { GeneratedVideoPlan, VideoScene } from '../types/video-engine.types';
+import type { GeneratedVideoPlan, VideoFormat, VideoScene } from '../types/video-engine.types';
 
 function sceneGradient(style: string) {
   if (style.includes('blueprint')) return 'from-sky-950 via-zinc-950 to-black';
@@ -11,56 +11,78 @@ function sceneGradient(style: string) {
   return 'from-zinc-950 via-black to-zinc-900';
 }
 
-function SceneCard({ scene, active }: { scene: VideoScene; active: boolean }) {
+const ASPECT: Record<VideoFormat, string> = {
+  '9:16': 'aspect-[9/16] max-w-[220px]',
+  '1:1': 'aspect-square max-w-[320px]',
+  '16:9': 'aspect-[16/9] max-w-[480px]',
+};
+
+function SceneCard({ scene }: { scene: VideoScene }) {
   return (
-    <motion.div
-      initial={{ opacity: 0, y: 32 }}
-      animate={{ opacity: active ? 1 : 0.42, y: active ? 0 : 14, scale: active ? 1 : 0.96 }}
-      transition={{ duration: 0.45 }}
-      className={`relative aspect-[9/16] w-full overflow-hidden rounded-[2rem] border border-white/10 bg-gradient-to-br ${sceneGradient(scene.background_style)} shadow-2xl`}
-    >
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.22),transparent_34%),linear-gradient(rgba(255,255,255,0.045)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.045)_1px,transparent_1px)] bg-[size:100%_100%,34px_34px,34px_34px]" />
-      <div className="absolute inset-x-6 top-6 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.26em] text-yellow-300/80">
-        <span>Fabrick Studio IA</span>
-        <span>{scene.start}s-{scene.end}s</span>
+    <div className={`relative w-full overflow-hidden rounded-[1.75rem] border border-white/10 bg-gradient-to-br ${sceneGradient(scene.background_style)} shadow-[0_24px_60px_rgba(0,0,0,0.7)]`}>
+      {/* Grid overlay */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:32px_32px]" />
+      {/* Radial glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(250,204,21,0.18),transparent_50%)]" />
+
+      {/* Topbar */}
+      <div className="absolute inset-x-5 top-4 flex items-center justify-between">
+        <span className="text-[9px] font-black uppercase tracking-[0.3em] text-yellow-300/70">Fabrick Studio</span>
+        <span className="rounded-full border border-white/10 bg-black/40 px-2 py-0.5 text-[9px] font-semibold tabular-nums text-zinc-400 backdrop-blur">
+          {scene.start}s–{scene.end}s
+        </span>
       </div>
-      <div className="absolute inset-0 flex flex-col justify-end p-7">
+
+      {/* Content */}
+      <div className="absolute inset-0 flex flex-col justify-end p-5">
         <motion.div
-          initial={{ opacity: 0, y: 50 }}
+          key={scene.id}
+          initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6, delay: 0.1 }}
-          className="space-y-4"
+          transition={{ duration: 0.5, ease: [0.16, 1, 0.3, 1] }}
+          className="space-y-3"
         >
-          <div className="h-1 w-16 rounded-full bg-yellow-400" />
-          <h3 className="text-4xl font-black leading-[0.95] tracking-[-0.06em] text-white drop-shadow-xl">
+          <div className="h-[3px] w-12 rounded-full bg-yellow-400" />
+          <h3 className="text-2xl font-black leading-[1.0] tracking-[-0.04em] text-white drop-shadow-lg sm:text-3xl">
             {scene.screen_text}
           </h3>
-          <p className="max-w-[15rem] text-sm leading-relaxed text-zinc-300">{scene.voiceover}</p>
-          <div className="rounded-2xl border border-white/10 bg-white/[0.06] p-3 text-[11px] leading-relaxed text-zinc-400 backdrop-blur">
+          <p className="text-xs leading-relaxed text-zinc-300/80">{scene.voiceover}</p>
+          <div className="mt-1 rounded-xl border border-white/8 bg-black/30 p-2.5 text-[10px] leading-relaxed text-zinc-500 backdrop-blur">
             {scene.visual_prompt}
           </div>
         </motion.div>
       </div>
-    </motion.div>
+
+      {/* Bottom scene indicator */}
+      <div className="absolute bottom-3 right-5 flex h-6 w-6 items-center justify-center rounded-full bg-yellow-400 text-[9px] font-black text-black shadow-lg">
+        {scene.id}
+      </div>
+    </div>
   );
 }
 
-export function HtmlVideoPreview({ plan, activeSceneIndex }: { plan: GeneratedVideoPlan; activeSceneIndex: number }) {
+export function HtmlVideoPreview({
+  plan,
+  activeSceneIndex,
+  format = '9:16',
+}: {
+  plan: GeneratedVideoPlan;
+  activeSceneIndex: number;
+  format?: VideoFormat;
+}) {
   const scene = plan.scenes[activeSceneIndex] ?? plan.scenes[0];
+  if (!scene) return null;
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-end justify-between gap-3">
-        <div>
-          <p className="text-xs font-bold uppercase tracking-[0.24em] text-yellow-400">Preview HTML</p>
-          <h2 className="text-xl font-black tracking-[-0.04em] text-white">{plan.title}</h2>
+    <div className="flex flex-col items-center gap-3">
+      {plan.title && (
+        <div className="w-full">
+          <p className="text-[10px] font-black uppercase tracking-[0.26em] text-zinc-600">Preview</p>
+          <p className="mt-0.5 truncate text-[13px] font-bold text-zinc-300">{plan.title}</p>
         </div>
-        <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-semibold text-zinc-300">
-          {plan.format} · {plan.duration}s
-        </span>
-      </div>
-      <div id="fabrick-video-preview-capture" className="mx-auto max-w-[320px]">
-        <SceneCard scene={scene} active />
+      )}
+      <div id="fabrick-video-preview-capture" className={`w-full ${ASPECT[format]}`}>
+        <SceneCard scene={scene} />
       </div>
     </div>
   );

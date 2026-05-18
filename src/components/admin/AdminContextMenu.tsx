@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import type { LucideIcon } from 'lucide-react';
 import {
@@ -33,6 +33,7 @@ import {
   Send,
   Settings,
   ShieldCheck,
+  Camera,
   ShoppingCart,
   Sparkles,
   Star,
@@ -43,6 +44,7 @@ import {
   Terminal,
   TrendingDown,
   Truck,
+  User,
   Users,
   Wallet,
   X,
@@ -53,6 +55,8 @@ interface AdminContextMenuProps {
   open: boolean;
   onClose: () => void;
   onLogout: () => void;
+  profilePhoto?: string | null;
+  onPhotoUpload?: (file: File) => void;
 }
 
 type MenuItem = {
@@ -198,9 +202,10 @@ const toneClass: Record<MenuSection['tone'], string> = {
   red: 'text-rose-300 border-rose-300/25 hover:border-rose-300/40 hover:bg-rose-300/10',
 };
 
-export default function AdminContextMenu({ open, onClose, onLogout }: AdminContextMenuProps) {
+export default function AdminContextMenu({ open, onClose, onLogout, profilePhoto, onPhotoUpload }: AdminContextMenuProps) {
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['Módulos 1–7', 'Seguridad & acceso', 'Operación', 'Integraciones']));
+  const fileRef = useRef<HTMLInputElement | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -227,15 +232,46 @@ export default function AdminContextMenu({ open, onClose, onLogout }: AdminConte
   return (
     <div className="fixed inset-0 z-[300] flex items-start justify-center bg-black/80 p-3 pt-[4vh] backdrop-blur-md lg:hidden">
       <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-white/12 bg-zinc-950/98 shadow-[0_40px_120px_rgba(0,0,0,0.9)]">
-        <header className="flex items-center justify-between border-b border-white/10 px-4 py-4">
-          <div className="flex items-center gap-3">
-            <span className="flex h-9 w-9 items-center justify-center rounded-2xl bg-yellow-300 text-black shadow-[0_0_24px_rgba(250,204,21,0.35)]"><Zap className="h-4 w-4" /></span>
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.24em] text-yellow-300">Control room</p>
-              <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-zinc-500">{totalItems} opciones disponibles</p>
+        <header className="border-b border-white/10 px-4 py-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              {/* Profile photo */}
+              <button
+                type="button"
+                title="Cambiar foto de perfil"
+                onClick={() => fileRef.current?.click()}
+                className="group relative h-11 w-11 overflow-hidden rounded-full border-2 border-yellow-300/40 bg-black/60 shadow-md transition-all hover:border-yellow-300/80"
+              >
+                {profilePhoto ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={profilePhoto} alt="Foto de perfil" className="h-full w-full object-cover" />
+                ) : (
+                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-700 to-zinc-900">
+                    <User className="h-5 w-5 text-zinc-400" />
+                  </div>
+                )}
+                <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                  <Camera className="h-3.5 w-3.5 text-yellow-300" />
+                </div>
+              </button>
+              <input
+                ref={fileRef}
+                type="file"
+                accept="image/jpeg,image/png,image/webp,image/gif"
+                className="sr-only"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file && onPhotoUpload) onPhotoUpload(file);
+                  e.target.value = '';
+                }}
+              />
+              <div>
+                <p className="text-xs font-black uppercase tracking-[0.24em] text-yellow-300">Control room</p>
+                <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-zinc-500">{totalItems} opciones disponibles</p>
+              </div>
             </div>
+            <button onClick={onClose} className="rounded-full border border-white/10 p-2 text-zinc-300" aria-label="Cerrar menú"><X className="h-4 w-4" /></button>
           </div>
-          <button onClick={onClose} className="rounded-full border border-white/10 p-2 text-zinc-300" aria-label="Cerrar menú"><X className="h-4 w-4" /></button>
         </header>
 
         <div className="border-b border-white/10 p-3">

@@ -1,9 +1,11 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { motion } from 'framer-motion';
-import { Bot, BrainCircuit, CheckCircle2, Code2, GitBranch, LockKeyhole, Loader2, Send, ShieldCheck, Sparkles, Wand2 } from 'lucide-react';
-import { AdminPage } from '@/components/admin/ui';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import {
+  BrainCircuit, CheckCircle2, ChevronRight, Code2, GitBranch, LockKeyhole,
+  Loader2, Send, ShieldCheck, Sparkles, Wand2, X,
+} from 'lucide-react';
 import FabrickAIProviderCards from '@/components/admin/FabrickAIProviderCards';
 import FabrickAICredentialsPanel from '@/components/admin/FabrickAICredentialsPanel';
 
@@ -11,40 +13,73 @@ type Provider = 'auto' | 'openai' | 'openrouter' | 'claude';
 type Mode = 'lectura' | 'propuesta' | 'pr';
 type ChatMessage = { role: 'assistant' | 'user'; text: string; meta?: string };
 
-const providerLabels: Record<Provider, string> = {
-  auto: 'Auto seguro',
-  openai: 'ChatGPT',
-  openrouter: 'OpenRouter',
-  claude: 'Claude',
-};
+const PROVIDERS: { id: Provider; label: string }[] = [
+  { id: 'auto', label: 'Auto' },
+  { id: 'openrouter', label: 'OpenRouter' },
+  { id: 'openai', label: 'ChatGPT' },
+  { id: 'claude', label: 'Claude' },
+];
 
-const modeLabels: Record<Mode, string> = {
-  lectura: 'Solo lectura',
-  propuesta: 'Propuesta',
-  pr: 'Preparar PR',
-};
+const MODES: { id: Mode; label: string; desc: string }[] = [
+  { id: 'lectura', label: 'Lectura', desc: 'Analiza sin modificar archivos' },
+  { id: 'propuesta', label: 'Propuesta', desc: 'Genera plan técnico detallado' },
+  { id: 'pr', label: 'Preparar PR', desc: 'Crea rama y PR para revisión' },
+];
 
-const quickPrompts = [
+const QUICK_PROMPTS = [
   'Revisa el admin y dime qué módulo conviene mejorar primero.',
   'Propón una mejora visual sin romper funcionalidad.',
   'Prepara un plan para reparar errores de build.',
   'Organiza una mejora por etapas y documenta el avance.',
 ];
 
+const CAPABILITIES = [
+  { icon: <Wand2 className="h-3.5 w-3.5" />, text: 'Analizar módulos' },
+  { icon: <Sparkles className="h-3.5 w-3.5" />, text: 'Proponer diseño' },
+  { icon: <GitBranch className="h-3.5 w-3.5" />, text: 'Preparar PR' },
+  { icon: <Code2 className="h-3.5 w-3.5" />, text: 'Chat IA real' },
+];
+
+const BLOCKS = [
+  { icon: <LockKeyhole className="h-3.5 w-3.5" />, text: 'No modifica main' },
+  { icon: <ShieldCheck className="h-3.5 w-3.5" />, text: 'No despliega solo' },
+  { icon: <X className="h-3.5 w-3.5" />, text: 'No borra datos' },
+];
+
+function TypingDots() {
+  return (
+    <div className="flex items-center gap-1 px-1 py-1">
+      {[0, 1, 2].map((i) => (
+        <span
+          key={i}
+          className="h-1.5 w-1.5 rounded-full bg-zinc-500 animate-bounce"
+          style={{ animationDelay: `${i * 150}ms` }}
+        />
+      ))}
+    </div>
+  );
+}
+
 export default function FabrickAiDeveloperPage() {
   const [provider, setProvider] = useState<Provider>('auto');
   const [mode, setMode] = useState<Mode>('lectura');
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [showInfo, setShowInfo] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
-    { role: 'assistant', text: 'Soy Fabrick AI Developer. Puedo ayudarte a analizar, planificar y preparar mejoras para la plataforma sin tocar producción directo.' },
+    {
+      role: 'assistant',
+      text: 'Hola. Soy Fabrick AI Developer. Puedo ayudarte a analizar, planificar y preparar mejoras para la plataforma sin tocar producción directamente. ¿En qué trabajamos hoy?',
+    },
   ]);
+  const bottomRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const modeDescription = useMemo(() => {
-    if (mode === 'lectura') return 'Analiza estructura, módulos y errores sin modificar archivos.';
-    if (mode === 'propuesta') return 'Genera plan técnico, pasos y propuesta de cambio.';
-    return 'Prepara una rama y un PR para revisión manual.';
-  }, [mode]);
+  useEffect(() => {
+    bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages, isSending]);
+
+  const modeDesc = useMemo(() => MODES.find((m) => m.id === mode)?.desc ?? '', [mode]);
 
   async function submit(text = input) {
     const value = text.trim();
@@ -62,7 +97,7 @@ export default function FabrickAiDeveloperPage() {
         body: JSON.stringify({
           provider,
           mode,
-          messages: nextMessages.map((message) => ({ role: message.role, content: message.text })),
+          messages: nextMessages.map((m) => ({ role: m.role, content: m.text })),
         }),
       });
       const json = await res.json().catch(() => ({}));
@@ -72,7 +107,7 @@ export default function FabrickAiDeveloperPage() {
         {
           role: 'assistant',
           text: typeof json.message === 'string' ? json.message : 'El proveedor respondió sin contenido legible.',
-          meta: `${json.provider ?? provider} · ${json.model ?? 'modelo'} · fuente ${json.source ?? 'desconocida'}`,
+          meta: `${json.provider ?? provider} · ${json.model ?? 'modelo'} · ${json.source ?? '?'}`,
         },
       ]);
     } catch (err) {
@@ -89,111 +124,274 @@ export default function FabrickAiDeveloperPage() {
     }
   }
 
+  function handleKey(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if (e.key === 'Enter' && !e.shiftKey) {
+      e.preventDefault();
+      void submit();
+    }
+  }
+
   return (
-    <AdminPage className="px-0 py-0 sm:px-6 sm:py-6">
-      <div className="flex min-h-[calc(100vh-86px)] flex-col overflow-hidden rounded-none border-white/10 bg-zinc-950 text-zinc-100 shadow-2xl sm:rounded-[2rem] sm:border">
-        <header className="sticky top-0 z-20 border-b border-white/10 bg-zinc-950/95 px-4 py-4 backdrop-blur-xl sm:px-6">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex min-w-0 items-center gap-3">
-              <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-yellow-300 to-amber-600 text-black shadow-[0_0_40px_rgba(250,204,21,0.28)]">
-                <BrainCircuit className="h-5 w-5" />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-base font-black tracking-tight text-white sm:text-2xl">Fabrick AI Developer</p>
-                <p className="truncate text-[11px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Módulo 8 · Constructor IA seguro</p>
-              </div>
-            </div>
-            <div className="hidden items-center gap-2 rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-2 text-xs font-bold text-emerald-200 sm:flex">
-              <ShieldCheck className="h-4 w-4" /> Revisión manual
-            </div>
+    <div className="flex h-[calc(100vh-80px)] flex-col overflow-hidden bg-[#0a0a0a] text-white">
+
+      {/* ── Header ── */}
+      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/8 bg-black/60 px-4 py-3 backdrop-blur-xl sm:px-5">
+        <div className="flex min-w-0 items-center gap-2.5">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-300 to-amber-600 text-black shadow-[0_0_20px_rgba(250,204,21,0.3)]">
+            <BrainCircuit className="h-4 w-4" />
           </div>
-        </header>
-
-        <div className="grid min-h-0 flex-1 grid-cols-1 lg:grid-cols-[1fr_340px]">
-          <main className="flex min-h-0 flex-col border-white/10 lg:border-r">
-            <div className="grid gap-3 border-b border-white/10 p-4 sm:grid-cols-3 sm:p-5">
-              <select value={provider} onChange={(e) => setProvider(e.target.value as Provider)} className="rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm font-bold text-white outline-none">
-                {Object.entries(providerLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-              <select value={mode} onChange={(e) => setMode(e.target.value as Mode)} className="rounded-2xl border border-white/10 bg-zinc-900 px-4 py-3 text-sm font-bold text-white outline-none">
-                {Object.entries(modeLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
-              </select>
-              <div className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-xs text-zinc-400">{modeDescription}</div>
-            </div>
-
-            <div className="flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-6">
-              <motion.div initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} className="rounded-[2rem] border border-yellow-300/15 bg-gradient-to-br from-yellow-300/12 via-white/[0.04] to-transparent p-5">
-                <div className="flex items-start gap-3">
-                  <Sparkles className="mt-1 h-5 w-5 shrink-0 text-yellow-300" />
-                  <div>
-                    <h1 className="text-xl font-black text-white sm:text-3xl">Mejora tu app con IA, paso a paso y sin riesgo.</h1>
-                    <p className="mt-3 max-w-3xl text-sm leading-relaxed text-zinc-300">Este panel ya consulta un proveedor IA real si tienes credenciales configuradas en Integraciones o Vercel.</p>
-                  </div>
-                </div>
-              </motion.div>
-
-              <FabrickAIProviderCards />
-              <FabrickAICredentialsPanel />
-
-              <div className="space-y-4">
-                {messages.map((message, index) => (
-                  <div key={`${message.role}-${index}`} className={`flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[88%] rounded-[1.5rem] px-4 py-3 text-sm leading-relaxed shadow-lg sm:max-w-[72%] ${message.role === 'user' ? 'bg-yellow-300 text-black' : message.meta === 'error' ? 'border border-red-400/30 bg-red-500/10 text-red-100' : 'border border-white/10 bg-white/[0.05] text-zinc-200'}`}>
-                      <div className="whitespace-pre-wrap">{message.text}</div>
-                      {message.meta ? <div className="mt-3 border-t border-white/10 pt-2 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500">{message.meta}</div> : null}
-                    </div>
-                  </div>
-                ))}
-                {isSending ? (
-                  <div className="flex justify-start">
-                    <div className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.05] px-4 py-3 text-sm text-zinc-300">
-                      <Loader2 className="h-4 w-4 animate-spin text-yellow-300" /> Fabrick AI Developer pensando…
-                    </div>
-                  </div>
-                ) : null}
-              </div>
-            </div>
-
-            <div className="border-t border-white/10 bg-zinc-950/95 p-3 sm:p-4">
-              <div className="mb-3 flex gap-2 overflow-x-auto pb-1">
-                {quickPrompts.map((prompt) => (
-                  <button key={prompt} disabled={isSending} onClick={() => submit(prompt)} className="shrink-0 rounded-full border border-white/10 bg-white/[0.04] px-3 py-2 text-xs font-semibold text-zinc-300 hover:border-yellow-300/40 hover:text-yellow-200 disabled:opacity-50">{prompt}</button>
-                ))}
-              </div>
-              <div className="flex items-end gap-2 rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-2">
-                <textarea value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); submit(); } }} placeholder="Escribe qué quieres mejorar, reparar o crear…" rows={1} disabled={isSending} className="max-h-32 min-h-11 flex-1 resize-none bg-transparent px-3 py-3 text-sm text-white outline-none placeholder:text-zinc-600 disabled:opacity-60" />
-                <button onClick={() => submit()} disabled={isSending || !input.trim()} className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-yellow-300 text-black hover:bg-yellow-200 disabled:opacity-50" aria-label="Enviar">
-                  {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </button>
-              </div>
-            </div>
-          </main>
-
-          <aside className="hidden min-h-0 overflow-y-auto bg-black/30 p-5 lg:block">
-            <div className="space-y-4">
-              <Panel title="Capacidades" icon={<Wand2 className="h-4 w-4" />} items={['Analizar módulos', 'Proponer diseño', 'Preparar cambios', 'Documentar avances']} />
-              <Panel title="Flujo seguro" icon={<GitBranch className="h-4 w-4" />} items={['Lectura primero', 'Plan antes de código', 'PR revisable', 'Producción manual']} />
-              <Panel title="Bloqueos" icon={<LockKeyhole className="h-4 w-4" />} items={['No modifica main directo', 'No despliega solo', 'No muestra secretos', 'No borra datos']} />
-              <Panel title="Estado actual" icon={<Code2 className="h-4 w-4" />} items={['Chat real conectado', 'Credenciales DB/env', 'Auditoría backend', 'Git tools bloqueadas']} />
-            </div>
-          </aside>
+          <div className="min-w-0">
+            <p className="truncate text-[13px] font-black tracking-tight text-white">Fabrick AI Developer</p>
+            <p className="text-[9px] font-semibold uppercase tracking-[0.2em] text-zinc-600">Módulo 8 · Constructor IA</p>
+          </div>
         </div>
-      </div>
-    </AdminPage>
-  );
-}
 
-function Panel({ title, icon, items }: { title: string; icon: React.ReactNode; items: string[] }) {
-  return (
-    <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4">
-      <div className="flex items-center gap-2 text-sm font-black text-white">{icon} {title}</div>
-      <div className="mt-3 space-y-2">
-        {items.map((item) => (
-          <div key={item} className="flex items-center gap-2 text-sm text-zinc-300">
-            <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-300" />
-            <span>{item}</span>
+        {/* Mode pills */}
+        <div className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1 sm:flex">
+          {MODES.map((m) => (
+            <button
+              key={m.id}
+              type="button"
+              onClick={() => setMode(m.id)}
+              className={`rounded-full px-3 py-1 text-[10px] font-black tracking-[0.08em] transition-all ${
+                mode === m.id ? 'bg-yellow-400 text-black shadow-md' : 'text-zinc-500 hover:text-white'
+              }`}
+            >
+              {m.label}
+            </button>
+          ))}
+        </div>
+
+        <div className="flex items-center gap-2">
+          <div className="hidden items-center gap-1.5 rounded-full border border-emerald-400/20 bg-emerald-400/8 px-2.5 py-1.5 text-[9px] font-bold text-emerald-400 sm:flex">
+            <ShieldCheck className="h-3 w-3" /> Revisión manual
           </div>
-        ))}
+          <button
+            type="button"
+            onClick={() => setShowInfo((v) => !v)}
+            className="flex h-8 w-8 items-center justify-center rounded-xl border border-white/10 text-zinc-500 transition hover:border-white/20 hover:text-white lg:hidden"
+            title="Info"
+          >
+            <ChevronRight className={`h-4 w-4 transition-transform ${showInfo ? 'rotate-90' : ''}`} />
+          </button>
+        </div>
+      </header>
+
+      {/* ── Main layout ── */}
+      <div className="min-h-0 flex-1 overflow-hidden lg:grid lg:grid-cols-[1fr_280px]">
+
+        {/* ── Chat column ── */}
+        <div className="flex h-full min-h-0 flex-col">
+
+          {/* Provider + mode on mobile */}
+          <div className="flex shrink-0 items-center gap-2 overflow-x-auto border-b border-white/8 px-4 py-2.5 scrollbar-hide lg:hidden">
+            <span className="text-[9px] font-black uppercase tracking-[0.2em] text-zinc-700">Proveedor:</span>
+            {PROVIDERS.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setProvider(p.id)}
+                className={`shrink-0 rounded-full px-3 py-1 text-[10px] font-bold transition-all ${
+                  provider === p.id
+                    ? 'bg-yellow-400 text-black'
+                    : 'border border-white/10 text-zinc-500 hover:text-white'
+                }`}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Message list */}
+          <div className="min-h-0 flex-1 space-y-5 overflow-y-auto px-4 py-5 sm:px-6">
+
+            {/* Welcome / provider cards — shown before first user message */}
+            {messages.length <= 1 && (
+              <motion.div
+                initial={{ opacity: 0, y: 12 }}
+                animate={{ opacity: 1, y: 0 }}
+                className="space-y-4"
+              >
+                <FabrickAIProviderCards />
+                <FabrickAICredentialsPanel />
+              </motion.div>
+            )}
+
+            {messages.map((msg, idx) => (
+              <AnimatePresence key={`${msg.role}-${idx}`}>
+                <motion.div
+                  initial={{ opacity: 0, y: 8 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ duration: 0.25 }}
+                  className={`flex gap-3 ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                >
+                  {msg.role === 'assistant' && (
+                    <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 text-black shadow-md">
+                      <BrainCircuit className="h-3.5 w-3.5" />
+                    </div>
+                  )}
+                  <div className={`max-w-[85%] space-y-1.5 sm:max-w-[70%] ${msg.role === 'user' ? 'items-end' : 'items-start'} flex flex-col`}>
+                    <div
+                      className={`rounded-2xl px-4 py-3 text-sm leading-relaxed ${
+                        msg.role === 'user'
+                          ? 'rounded-br-sm bg-yellow-400 text-black'
+                          : msg.meta === 'error'
+                          ? 'rounded-bl-sm border border-red-400/20 bg-red-500/8 text-red-200'
+                          : 'rounded-bl-sm border border-white/8 bg-white/[0.05] text-zinc-200'
+                      }`}
+                    >
+                      <p className="whitespace-pre-wrap">{msg.text}</p>
+                    </div>
+                    {msg.meta && msg.meta !== 'error' && (
+                      <p className="px-1 text-[9px] font-bold uppercase tracking-[0.18em] text-zinc-700">
+                        {msg.meta}
+                      </p>
+                    )}
+                  </div>
+                </motion.div>
+              </AnimatePresence>
+            ))}
+
+            {isSending && (
+              <div className="flex items-start gap-3">
+                <div className="mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-600 text-black shadow-md">
+                  <BrainCircuit className="h-3.5 w-3.5" />
+                </div>
+                <div className="rounded-2xl rounded-bl-sm border border-white/8 bg-white/[0.05] px-4 py-3">
+                  <TypingDots />
+                </div>
+              </div>
+            )}
+
+            <div ref={bottomRef} />
+          </div>
+
+          {/* ── Input bar ── */}
+          <div className="shrink-0 border-t border-white/8 bg-[#0c0c0c] p-3 sm:p-4">
+            {/* Quick prompts */}
+            <div className="mb-2.5 flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
+              {QUICK_PROMPTS.map((prompt) => (
+                <button
+                  key={prompt}
+                  disabled={isSending}
+                  onClick={() => void submit(prompt)}
+                  className="shrink-0 rounded-full border border-white/8 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold text-zinc-500 transition hover:border-yellow-300/30 hover:text-yellow-200 disabled:opacity-40"
+                >
+                  {prompt.length > 42 ? prompt.slice(0, 42) + '…' : prompt}
+                </button>
+              ))}
+            </div>
+
+            {/* Textarea + send */}
+            <div className="flex items-end gap-2 rounded-2xl border border-white/10 bg-white/[0.04] p-2 focus-within:border-white/20">
+              <textarea
+                ref={textareaRef}
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyDown={handleKey}
+                placeholder="Describe qué quieres mejorar, reparar o crear…"
+                rows={1}
+                disabled={isSending}
+                className="max-h-32 min-h-10 flex-1 resize-none bg-transparent px-3 py-2.5 text-sm text-white outline-none placeholder:text-zinc-700 disabled:opacity-60"
+              />
+              <button
+                type="button"
+                onClick={() => void submit()}
+                disabled={isSending || !input.trim()}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-yellow-400 text-black transition hover:bg-yellow-300 disabled:opacity-40"
+                aria-label="Enviar"
+              >
+                {isSending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <Send className="h-4 w-4" />
+                )}
+              </button>
+            </div>
+
+            {/* Mode description */}
+            <p className="mt-2 px-1 text-[10px] text-zinc-700">{modeDesc}</p>
+          </div>
+        </div>
+
+        {/* ── Right sidebar ── */}
+        <aside className={`border-l border-white/8 bg-[#0c0c0c] ${showInfo ? 'block' : 'hidden lg:block'}`}>
+          <div className="overflow-y-auto p-4" style={{ height: 'calc(100vh - 80px)' }}>
+            <div className="space-y-5">
+
+              {/* Provider selector */}
+              <div>
+                <p className="mb-2 text-[9px] font-black uppercase tracking-[0.28em] text-zinc-700">Proveedor</p>
+                <div className="space-y-1">
+                  {PROVIDERS.map((p) => (
+                    <button
+                      key={p.id}
+                      type="button"
+                      onClick={() => setProvider(p.id)}
+                      className={`flex w-full items-center justify-between rounded-xl px-3 py-2 text-left text-[11px] font-bold transition-all ${
+                        provider === p.id
+                          ? 'bg-yellow-400/10 text-yellow-200'
+                          : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300'
+                      }`}
+                    >
+                      {p.label}
+                      {provider === p.id && <CheckCircle2 className="h-3.5 w-3.5 text-yellow-400" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Mode selector */}
+              <div>
+                <p className="mb-2 text-[9px] font-black uppercase tracking-[0.28em] text-zinc-700">Modo</p>
+                <div className="space-y-1">
+                  {MODES.map((m) => (
+                    <button
+                      key={m.id}
+                      type="button"
+                      onClick={() => setMode(m.id)}
+                      className={`flex w-full flex-col rounded-xl px-3 py-2 text-left transition-all ${
+                        mode === m.id
+                          ? 'bg-yellow-400/8 text-yellow-200'
+                          : 'text-zinc-500 hover:bg-white/[0.04] hover:text-zinc-300'
+                      }`}
+                    >
+                      <span className="text-[11px] font-bold">{m.label}</span>
+                      <span className="mt-0.5 text-[10px] text-zinc-700">{m.desc}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Capabilities */}
+              <div>
+                <p className="mb-2 text-[9px] font-black uppercase tracking-[0.28em] text-zinc-700">Capacidades</p>
+                <div className="space-y-1.5">
+                  {CAPABILITIES.map((c) => (
+                    <div key={c.text} className="flex items-center gap-2 text-[11px] text-zinc-500">
+                      <span className="text-emerald-500">{c.icon}</span>
+                      {c.text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+              {/* Blocks */}
+              <div>
+                <p className="mb-2 text-[9px] font-black uppercase tracking-[0.28em] text-zinc-700">Restricciones</p>
+                <div className="space-y-1.5">
+                  {BLOCKS.map((b) => (
+                    <div key={b.text} className="flex items-center gap-2 text-[11px] text-zinc-500">
+                      <span className="text-red-500/60">{b.icon}</span>
+                      {b.text}
+                    </div>
+                  ))}
+                </div>
+              </div>
+
+            </div>
+          </div>
+        </aside>
       </div>
     </div>
   );

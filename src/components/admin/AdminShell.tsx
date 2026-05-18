@@ -1,13 +1,13 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, Eye, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
+  AlertTriangle, BarChart3, BookOpen, Boxes, Camera, ChevronRight, Cloud, Database, ExternalLink, Eye, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Star, Stethoscope, Store, Tag, Terminal,
-  TrendingDown, Truck, Telescope, Users, Video, Wallet, X, Zap, Plus, MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
+  TrendingDown, Truck, Telescope, User, Users, Video, Wallet, X, Zap, Plus, MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
@@ -276,24 +276,62 @@ function SectionHeader({ title, count, centered = false }: { title: string; coun
   );
 }
 
-function SidebarContent({ pathname, onNavigate, onLogout, role, now, centered = false }: {
+function SidebarContent({ pathname, onNavigate, onLogout, role, now, centered = false, profilePhoto, onPhotoUpload }: {
   pathname: string;
   onNavigate?: () => void;
   onLogout: () => void;
   role: string | null;
   now?: Date | null;
   centered?: boolean;
+  profilePhoto?: string | null;
+  onPhotoUpload?: (file: File) => void;
 }) {
   const sections = navSections.map((section) => ({
     ...section,
     links: section.links.filter((l) => !l.superadminOnly || role === 'superadmin'),
   })).filter((s) => s.links.length > 0);
 
+  const sidebarFileRef = useRef<HTMLInputElement | null>(null);
+
   return (
     <div className="space-y-3">
       <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="relative overflow-hidden rounded-[1.5rem] border border-yellow-300/25 bg-black/55 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_18%,rgba(250,204,21,0.10),rgba(0,0,0,0)_60%)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-yellow-300/40 to-transparent" />
+
+        {/* Profile photo avatar */}
+        <div className={`relative mb-3 flex ${centered ? 'justify-center' : 'justify-start'}`}>
+          <button
+            type="button"
+            title="Cambiar foto de perfil"
+            onClick={() => sidebarFileRef.current?.click()}
+            className="group relative h-14 w-14 overflow-hidden rounded-full border-2 border-yellow-300/40 bg-black/60 shadow-lg transition-all hover:border-yellow-300/80 hover:shadow-yellow-300/20"
+          >
+            {profilePhoto ? (
+              // eslint-disable-next-line @next/next/no-img-element
+              <img src={profilePhoto} alt="Foto de perfil" className="h-full w-full object-cover" />
+            ) : (
+              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-yellow-400/20 to-amber-600/10">
+                <User className="h-6 w-6 text-yellow-300/60" />
+              </div>
+            )}
+            <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+              <Camera className="h-4 w-4 text-yellow-300" />
+            </div>
+          </button>
+          <input
+            ref={sidebarFileRef}
+            type="file"
+            accept="image/jpeg,image/png,image/webp,image/gif"
+            className="sr-only"
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file && onPhotoUpload) onPhotoUpload(file);
+              e.target.value = '';
+            }}
+          />
+        </div>
+
         <Link href="/admin" onClick={onNavigate} className={`relative flex ${centered ? 'flex-col items-center gap-2 text-center' : 'items-center gap-3'}`}>
           <BrandMark size="lg" />
           <div className={centered ? 'w-full' : 'min-w-0 flex-1'}>
@@ -352,6 +390,9 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   const [routePulse, setRoutePulse] = useState(0);
+  const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [photoUploading, setPhotoUploading] = useState(false);
+  const headerFileRef = useRef<HTMLInputElement | null>(null);
 
   useAdminIdleLogout(10 * 60 * 1000);
 
@@ -378,6 +419,35 @@ export function AdminShell({ children }: { children: ReactNode }) {
     })();
     return () => { cancelled = true; };
   }, []);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/profile/photo', { cache: 'no-store' });
+        if (!res.ok || cancelled) return;
+        const json = (await res.json()) as { photo?: string | null };
+        if (!cancelled) setProfilePhoto(json.photo ?? null);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, []);
+
+  async function handlePhotoUpload(file: File) {
+    if (photoUploading) return;
+    setPhotoUploading(true);
+    try {
+      const form = new FormData();
+      form.append('photo', file);
+      const res = await fetch('/api/admin/profile/photo', { method: 'POST', body: form });
+      const json = (await res.json()) as { ok?: boolean; photo?: string; error?: string };
+      if (json.ok && json.photo) setProfilePhoto(json.photo);
+    } catch {
+      // silently fail — non-blocking
+    } finally {
+      setPhotoUploading(false);
+    }
+  }
 
   useEffect(() => {
     setNow(new Date());
@@ -457,6 +527,38 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <button type="button" onClick={() => setPaletteOpen(true)} className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400 hover:border-yellow-400/40 hover:text-yellow-400 transition-all" title="Buscar página (Cmd/Ctrl + K)" aria-label="Abrir buscador de páginas"><Search className="h-3.5 w-3.5" /><span className="hidden md:inline">Buscar</span><kbd className="hidden md:inline-block rounded border border-white/10 bg-white/5 px-1 py-0 text-[9px] font-mono text-zinc-500">⌘K</kbd></button>
             <AdminThemeToggle />
             <Link href="/tienda" className="hidden sm:flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-300 hover:border-yellow-400/40 hover:text-yellow-400 transition-all">Ver tienda <ExternalLink className="h-3 w-3" /></Link>
+
+            {/* Profile avatar — click to change photo */}
+            <button
+              type="button"
+              title="Cambiar foto de perfil"
+              onClick={() => headerFileRef.current?.click()}
+              className={`group relative h-8 w-8 overflow-hidden rounded-full border-2 transition-all ${photoUploading ? 'animate-pulse border-yellow-300/60' : 'border-white/20 hover:border-yellow-300/70'}`}
+            >
+              {profilePhoto ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profilePhoto} alt="Foto de perfil" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-700 to-zinc-900">
+                  <User className="h-3.5 w-3.5 text-zinc-400" />
+                </div>
+              )}
+              <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
+                <Camera className="h-2.5 w-2.5 text-yellow-300" />
+              </div>
+            </button>
+            <input
+              ref={headerFileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file) void handlePhotoUpload(file);
+                e.target.value = '';
+              }}
+            />
+
             <button onClick={handleLogout} className="flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-300 transition hover:border-red-500/50 hover:text-red-400" title="Cerrar sesión"><LogOut className="h-3.5 w-3.5" /><span className="hidden sm:inline">Salir</span></button>
           </div>
         </div>
@@ -465,7 +567,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
       </header>
 
       <div className="relative z-10 mx-auto grid max-w-[1600px] gap-5 px-3 pb-24 sm:px-4 md:px-6 py-4 md:py-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:pb-6">
-        <aside data-admin-sidebar="" className="hidden lg:block lg:sticky lg:top-[80px] lg:h-[calc(100vh-96px)] lg:overflow-y-auto scrollbar-hide"><SidebarContent pathname={pathname} onLogout={handleLogout} role={role} now={now} /></aside>
+        <aside data-admin-sidebar="" className="hidden lg:block lg:sticky lg:top-[80px] lg:h-[calc(100vh-96px)] lg:overflow-y-auto scrollbar-hide"><SidebarContent pathname={pathname} onLogout={handleLogout} role={role} now={now} profilePhoto={profilePhoto} onPhotoUpload={handlePhotoUpload} /></aside>
         <main data-admin-main="" className="relative min-w-0 overflow-hidden">
           {role === 'viewer' && <DemoSessionTracker />}
           {role === 'viewer' && <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/[0.08] px-5 py-3.5"><Eye className="h-4 w-4 shrink-0 text-amber-400" /><span className="text-[12px] font-bold uppercase tracking-[0.18em] text-amber-300">Modo Demo · Solo lectura</span><span className="text-xs text-amber-300/55">Los cambios que intentes no se guardan en la base de datos · Expira en 24 h</span></div>}
@@ -478,7 +580,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
       <AdminBottomNav onOpenMore={() => setContextMenuOpen(true)} />
       <AdminCommandPalette items={commandItems} open={paletteOpen} onOpenChange={setPaletteOpen} />
-      <AdminContextMenu open={contextMenuOpen} onClose={() => setContextMenuOpen(false)} onLogout={handleLogout} />
+      <AdminContextMenu open={contextMenuOpen} onClose={() => setContextMenuOpen(false)} onLogout={handleLogout} profilePhoto={profilePhoto} onPhotoUpload={handlePhotoUpload} />
     </div>
   );
 }

@@ -5,12 +5,27 @@ export type VisualStyle = 'premium' | 'technical' | 'realistic' | 'minimal' | 'c
 
 export interface VideoEngineInput {
   topic: string;
+  pageUrl?: string;
   kind: VideoKind;
   format: VideoFormat;
   duration: VideoDuration;
   audience: string;
   visualStyle: VisualStyle;
   cta: string;
+  /** Use paid models (allowPaid: true) or free-only */
+  allowPaid?: boolean;
+  /** Specific model ID to prefer, or 'auto' */
+  preferredModel?: string;
+}
+
+export interface VideoTokenUsage {
+  promptTokens: number;
+  completionTokens: number;
+  totalTokens: number;
+  model: string;
+  latencyMs: number;
+  isFree: boolean;
+  duration: number;
 }
 
 export interface VideoScene {

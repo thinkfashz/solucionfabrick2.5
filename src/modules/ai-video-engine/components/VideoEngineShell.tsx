@@ -22,7 +22,7 @@ export function VideoEngineShell() {
         <div className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)_320px]">
           <VideoPromptForm input={engine.input} setInput={engine.setInput} onGenerate={engine.generate} isGenerating={engine.isGenerating} />
           <div className="space-y-6"><HtmlVideoPreview plan={engine.plan} activeSceneIndex={engine.activeSceneIndex} /><GeneratedScriptPanel plan={engine.plan} /></div>
-          <aside className="space-y-6"><SceneTimeline plan={engine.plan} activeSceneIndex={engine.activeSceneIndex} setActiveSceneIndex={engine.setActiveSceneIndex} /><ExportPanel plan={engine.plan} activeSceneIndex={engine.activeSceneIndex} /></aside>
+          <aside className="space-y-6"><SceneTimeline plan={engine.plan} activeSceneIndex={engine.activeSceneIndex} setActiveSceneIndex={engine.setActiveSceneIndex} /><ExportPanel plan={engine.plan} activeSceneIndex={engine.activeSceneIndex} runId={engine.runId} /></aside>
         </div>
       </div>
     </main>

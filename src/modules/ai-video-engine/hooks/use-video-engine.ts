@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { fallbackVideoPlan } from '../templates/social-reel';
-import type { GeneratedVideoPlan, VideoEngineInput, VideoTokenUsage } from '../types/video-engine.types';
+import type { GeneratedVideoPlan, VideoEngineInput, VideoScene, VideoTokenUsage } from '../types/video-engine.types';
 
 export function useVideoEngine() {
   const [input, setInput] = useState<VideoEngineInput>({
@@ -116,6 +116,13 @@ export function useVideoEngine() {
     }
   }
 
+  function updateScene(index: number, patch: Partial<VideoScene>) {
+    setPlan((p) => ({
+      ...p,
+      scenes: p.scenes.map((s, i) => (i === index ? { ...s, ...patch } : s)),
+    }));
+  }
+
   return {
     input,
     setInput,
@@ -130,5 +137,6 @@ export function useVideoEngine() {
     error,
     generate,
     tokenUsage,
+    updateScene,
   };
 }

@@ -24,6 +24,13 @@ const ASPECT: Record<VideoFormat, string> = {
 function SceneCard({ scene }: { scene: VideoScene }) {
   return (
     <div className={`relative w-full overflow-hidden rounded-[1.75rem] border border-white/10 bg-gradient-to-br ${sceneGradient(scene.background_style)} shadow-[0_24px_60px_rgba(0,0,0,0.7)]`}>
+      {/* Background image overlay (optional) */}
+      {scene.imageUrl && (
+        <div
+          className="absolute inset-0 bg-cover bg-center opacity-[0.28]"
+          style={{ backgroundImage: `url(${scene.imageUrl})` }}
+        />
+      )}
       {/* Grid */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:32px_32px]" />
       {/* Glow */}

@@ -37,6 +37,8 @@ export interface VideoScene {
   voiceover: string;
   transition: string;
   background_style: string;
+  /** Optional background image URL (Cloudinary, Unsplash, etc.) */
+  imageUrl?: string;
 }
 
 export interface GeneratedVideoPlan {

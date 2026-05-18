@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import { AdminShell } from '@/components/admin/AdminShell';
+import AdminBaseThemeFrame from '@/components/admin/AdminBaseThemeFrame';
 
 export const metadata: Metadata = {
   title: 'Admin | Fabrick',
@@ -25,5 +26,9 @@ export const metadata: Metadata = {
 export const dynamic = 'force-dynamic';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
-  return <AdminShell>{children}</AdminShell>;
+  return (
+    <AdminBaseThemeFrame>
+      <AdminShell>{children}</AdminShell>
+    </AdminBaseThemeFrame>
+  );
 }

@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AdminShell } from '@/components/admin/AdminShell';
 import AdminBaseThemeFrame from '@/components/admin/AdminBaseThemeFrame';
+import { StudioShell } from '@/components/admin-studio';
 import './studio-theme.css';
 
 export const metadata: Metadata = {
@@ -28,8 +29,24 @@ export const dynamic = 'force-dynamic';
 
 export default function AdminLayout({ children }: { children: React.ReactNode }) {
   return (
-    <AdminBaseThemeFrame>
-      <AdminShell>{children}</AdminShell>
-    </AdminBaseThemeFrame>
+    <>
+      {/* ── Fabrick (default) shell ─────────────────────────────
+          Visible when body does NOT have data-admin-theme="studio".
+          The CSS in studio-theme.css hides this div when Studio is active.
+      ──────────────────────────────────────────────────────────── */}
+      <div id="shell-fabrick" className="fabrick-shell">
+        <AdminBaseThemeFrame>
+          <AdminShell>{children}</AdminShell>
+        </AdminBaseThemeFrame>
+      </div>
+
+      {/* ── Studio Admin shell ──────────────────────────────────
+          Hidden by default; shown when body[data-admin-theme="studio"].
+          The CSS in studio-theme.css toggles visibility.
+      ──────────────────────────────────────────────────────────── */}
+      <div id="shell-studio" className="studio-shell" style={{ display: 'none' }}>
+        <StudioShell>{children}</StudioShell>
+      </div>
+    </>
   );
 }

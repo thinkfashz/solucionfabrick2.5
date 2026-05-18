@@ -299,3 +299,18 @@ body[data-admin-theme="studio"] .admin-theme-toggle {
 body[data-admin-theme="studio"] .admin-theme-toggle:hover {
   background: rgba(249,115,22,0.12);
 }
+
+/* ── Shell visibility toggling ───────────────────────────────── */
+/* By default, only the Fabrick shell is visible (inline style on
+   .studio-shell already sets display:none, but we also enforce it here). */
+.studio-shell {
+  display: none !important;
+}
+
+/* When Studio theme is active: hide Fabrick, show Studio */
+body[data-admin-theme="studio"] .fabrick-shell {
+  display: none !important;
+}
+body[data-admin-theme="studio"] .studio-shell {
+  display: block !important;
+}

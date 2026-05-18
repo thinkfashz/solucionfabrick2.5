@@ -16,6 +16,7 @@ export function useVideoEngine() {
     cta: 'Cotiza tu proyecto con Soluciones Fabrick',
   });
   const [plan, setPlan] = useState<GeneratedVideoPlan>(fallbackVideoPlan);
+  const [runId, setRunId] = useState<string | null>(null);
   const [activeSceneIndex, setActiveSceneIndex] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -31,13 +32,14 @@ export function useVideoEngine() {
         body: JSON.stringify(input),
       });
 
-      const data = (await response.json()) as { plan?: GeneratedVideoPlan; error?: string };
+      const data = (await response.json()) as { plan?: GeneratedVideoPlan; runId?: string | null; error?: string };
 
       if (!response.ok || !data.plan) {
         throw new Error(data.error || 'No se pudo generar el plan de video.');
       }
 
       setPlan(data.plan);
+      setRunId(data.runId ?? null);
       setActiveSceneIndex(0);
     } catch (currentError) {
       const message = currentError instanceof Error ? currentError.message : 'Error inesperado.';
@@ -52,6 +54,7 @@ export function useVideoEngine() {
     setInput,
     plan,
     setPlan,
+    runId,
     activeSceneIndex,
     setActiveSceneIndex,
     isGenerating,

@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import { AnimatePresence, motion } from 'framer-motion';
 import {
-  ArrowUpRight, AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, Eye, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
+  AlertTriangle, BarChart3, BookOpen, Boxes, ChevronRight, Cloud, Database, ExternalLink, Eye, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
   Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Star, Stethoscope, Store, Tag, Terminal,
   TrendingDown, Truck, Telescope, Users, Wallet, X, Zap, Plus, MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
 } from 'lucide-react';
@@ -24,6 +24,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Visión general',
     links: [
       { href: '/admin', label: 'Centro de control', description: 'KPIs y salud operativa', icon: BarChart3 },
+      { href: '/admin/modulos', label: 'Centro de módulos', description: 'Mapa modular completo del admin', icon: LayoutGrid, highlight: true },
       { href: '/admin/saas', label: 'Mi SaaS', description: 'Clientes, instalación y gestión de la plataforma', icon: Rocket, highlight: true },
       { href: '/admin/activar', label: 'Activar plataforma', description: 'Variables de entorno, servicios y estado de conexiones', icon: ShieldCheck },
     ],
@@ -62,6 +63,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
   {
     title: 'Expansión',
     links: [
+      { href: '/admin/ai-developer', label: 'Fabrick AI Developer', description: 'Chat real, proveedores IA y herramientas Git seguras', icon: Sparkles, highlight: true },
       { href: '/admin/publicidad', label: 'Publicidad', description: 'Meta Ads', icon: Megaphone },
       { href: '/admin/publicidad/coach', label: 'Coach de campañas', description: 'Agente IA: analizar, sugerir, optimizar', icon: Sparkles, highlight: true },
       { href: '/admin/publicar', label: 'Publicar', description: 'Posts para redes sociales', icon: Send },
@@ -78,13 +80,14 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/social/inbox', label: 'Inbox social', description: 'Mensajes de Instagram, FB, WhatsApp y ML', icon: Inbox, highlight: true },
       { href: '/admin/integraciones', label: 'Centro de integraciones', description: 'Conectar, probar y desactivar APIs', icon: Link2, highlight: true },
       { href: '/admin/integraciones/marketplace', label: 'Marketplace de extensiones', description: 'Apps, snippets, webhooks y OAuth', icon: Boxes, highlight: true },
-      { href: '/admin/configuracion', label: 'Configuración', description: 'Parámetros e integraciones', icon: Settings },
+      { href: '/admin/configuracion', label: 'Configuración', description: 'Datos del negocio y acceso admin', icon: Settings },
     ],
   },
   {
     title: 'Sistema',
     links: [
       { href: '/admin/estado', label: 'Estado del sistema', description: 'Diagnóstico CMS, BD, env e integraciones', icon: Stethoscope },
+      { href: '/admin/diagnostico', label: 'Diagnóstico de APIs', description: 'Variables, tablas y servicios críticos', icon: Stethoscope, highlight: true },
       { href: '/admin/errores', label: 'Monitor de Errores', description: 'Fallos capturados de las rutas API', icon: AlertTriangle },
       { href: '/admin/vercel-logs', label: 'Logs de Vercel', description: 'Build + runtime logs del deployment', icon: Terminal },
       { href: '/admin/monitor', label: 'Monitor del sistema', description: 'CPU, RAM, latencia y health checks en tiempo real', icon: Activity, highlight: true },
@@ -101,7 +104,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Seguridad & Claves',
     links: [
       { href: '/admin/seguridad', label: 'Seguridad · Passkeys', description: 'Acceso con huella digital o Face ID', icon: ShieldCheck, highlight: true },
-      { href: '/admin/center', label: 'Centro de integración', description: 'Credenciales, claves API y encriptación de proveedores', icon: KeyRound, highlight: true },
+      { href: '/admin/integraciones', label: 'Credenciales oficiales', description: 'API keys, proveedores y pruebas de conexión', icon: KeyRound, highlight: true },
       { href: '/admin/extensions', label: 'Extensiones y Webhooks', description: 'Snippets, webhooks, OAuth y signing keys', icon: Plug, highlight: true },
       { href: '/admin/facturas', label: 'Facturas DTE', description: 'Documentos tributarios y SII', icon: Receipt },
     ],
@@ -111,6 +114,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
 /** Human labels for breadcrumb segments. Keep in sync with the nav links above. */
 const PATH_LABELS: Record<string, string> = {
   '/admin': 'Centro de control',
+  '/admin/modulos': 'Centro de módulos',
   '/admin/saas': 'Mi SaaS',
   '/admin/activar': 'Activar plataforma',
   '/admin/productos': 'Productos',
@@ -124,6 +128,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/presupuestos': 'Presupuestos',
   '/admin/newsletter': 'Boletín',
   '/admin/asistente-ia': 'Asistente IA',
+  '/admin/ai-developer': 'Fabrick AI Developer',
   '/admin/entregas': 'Entregas',
   '/admin/clientes': 'Clientes',
   '/admin/cupones': 'Cupones y Descuentos',
@@ -159,6 +164,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/tienda': 'Tienda · Edición',
   '/admin/medios': 'Medios',
   '/admin/estado': 'Estado del sistema',
+  '/admin/diagnostico': 'Diagnóstico de APIs',
   '/admin/manual': 'Manual',
   '/admin/errores': 'Monitor de Errores',
   '/admin/vercel-logs': 'Logs de Vercel',
@@ -187,7 +193,6 @@ function NavItem({ href, label, description, icon: Icon, active, onNavigate, hig
           : 'border border-transparent hover:border-white/10 hover:bg-white/[0.04]'
       }`}
     >
-      {/* Gold accent rail (only when active) */}
       {active && !centered ? (
         <span className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-gradient-to-b from-yellow-300 to-amber-500 shadow-[0_0_10px_rgba(250,204,21,0.6)]" />
       ) : null}
@@ -248,29 +253,23 @@ function QuickAction({ href, label, icon: Icon, tone, onNavigate, className = ''
 }
 
 function SectionHeader({ title, count, centered = false }: { title: string; count: number; centered?: boolean }) {
-  return (
-    centered ? (
-      <div className="mb-2 flex flex-col items-center justify-center gap-1 px-1 text-center">
-        <p className="flex items-center justify-center gap-2 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
-          <span className="h-px w-3 bg-gradient-to-r from-yellow-300/60 to-transparent" />
-          {title}
-          <span className="h-px w-3 bg-gradient-to-l from-yellow-300/60 to-transparent" />
-        </p>
-        <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">
-          {count}
-        </span>
-      </div>
-    ) : (
-      <div className="mb-2 flex items-center justify-between px-1">
-        <p className="flex items-center gap-2 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
-          <span className="h-px w-3 bg-gradient-to-r from-yellow-300/60 to-transparent" />
-          {title}
-        </p>
-        <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">
-          {count}
-        </span>
-      </div>
-    )
+  return centered ? (
+    <div className="mb-2 flex flex-col items-center justify-center gap-1 px-1 text-center">
+      <p className="flex items-center justify-center gap-2 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
+        <span className="h-px w-3 bg-gradient-to-r from-yellow-300/60 to-transparent" />
+        {title}
+        <span className="h-px w-3 bg-gradient-to-l from-yellow-300/60 to-transparent" />
+      </p>
+      <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">{count}</span>
+    </div>
+  ) : (
+    <div className="mb-2 flex items-center justify-between px-1">
+      <p className="flex items-center gap-2 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
+        <span className="h-px w-3 bg-gradient-to-r from-yellow-300/60 to-transparent" />
+        {title}
+      </p>
+      <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">{count}</span>
+    </div>
   );
 }
 
@@ -289,89 +288,38 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, now, centered = 
 
   return (
     <div className="space-y-3">
-      {/* ── Hero card: brand + role + clock ── */}
-      <motion.div
-        initial={{ opacity: 0, y: -8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }}
-        className="relative overflow-hidden rounded-[1.5rem] border border-yellow-300/25 bg-black/55 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl"
-      >
+      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="relative overflow-hidden rounded-[1.5rem] border border-yellow-300/25 bg-black/55 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_18%,rgba(250,204,21,0.10),rgba(0,0,0,0)_60%)]" />
         <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-yellow-300/40 to-transparent" />
-
         <Link href="/admin" onClick={onNavigate} className={`relative flex ${centered ? 'flex-col items-center gap-2 text-center' : 'items-center gap-3'}`}>
           <BrandMark size="lg" />
           <div className={centered ? 'w-full' : 'min-w-0 flex-1'}>
             <p className={`font-playfair text-[11px] font-black leading-none tracking-[0.28em] text-yellow-300 ${centered ? 'text-center' : ''}`}>SOLUCIONES FABRICK</p>
             <div className={`mt-1.5 flex flex-wrap gap-1.5 ${centered ? 'justify-center' : 'items-center'}`}>
               {role === 'viewer' ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.22em] text-amber-300">
-                  <Eye className="h-2.5 w-2.5" />
-                  Modo Demo
-                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.22em] text-amber-300"><Eye className="h-2.5 w-2.5" />Modo Demo</span>
               ) : (
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.22em] text-emerald-300">
-                  <span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />
-                  {role === 'superadmin' ? 'Superadmin' : 'Admin'}
-                </span>
+                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.22em] text-emerald-300"><span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />{role === 'superadmin' ? 'Superadmin' : 'Admin'}</span>
               )}
-              {now ? (
-                <span className="font-mono text-[9.5px] tabular-nums text-white/50">
-                  {now.toLocaleTimeString('es-CL', { hour12: false })}
-                </span>
-              ) : null}
+              {now ? <span className="font-mono text-[9.5px] tabular-nums text-white/50">{now.toLocaleTimeString('es-CL', { hour12: false })}</span> : null}
             </div>
           </div>
         </Link>
       </motion.div>
 
-      {/* ── Quick actions strip ── */}
-      <motion.div
-        initial={{ opacity: 0, y: 8 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.42, delay: 0.05, ease: [0.22, 1, 0.36, 1] }}
-        className="grid grid-cols-2 gap-2 sm:grid-cols-3"
-      >
-        {QUICK_ACTIONS.map((qa, idx) => (
-          <QuickAction
-            key={qa.href}
-            {...qa}
-            onNavigate={onNavigate}
-            className={idx === QUICK_ACTIONS.length - 1 ? 'col-span-2 sm:col-span-1' : ''}
-          />
-        ))}
+      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42, delay: 0.05, ease: [0.22, 1, 0.36, 1] }} className="grid grid-cols-2 gap-2 sm:grid-cols-3">
+        {QUICK_ACTIONS.map((qa, idx) => <QuickAction key={qa.href} {...qa} onNavigate={onNavigate} className={idx === QUICK_ACTIONS.length - 1 ? 'col-span-2 sm:col-span-1' : ''} />)}
       </motion.div>
 
-      {/* ── Navigation sections (each in its own card) ── */}
       {sections.map((section, idx) => (
-        <motion.nav
-          key={section.title}
-          initial={{ opacity: 0, y: 14, scale: 0.992 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          transition={{ duration: 0.42, delay: 0.08 + idx * 0.035, ease: [0.22, 1, 0.36, 1] }}
-          className="relative overflow-hidden rounded-[1.5rem] border border-white/12 bg-black/45 p-3 shadow-[0_14px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl"
-        >
+        <motion.nav key={section.title} initial={{ opacity: 0, y: 14, scale: 0.992 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.42, delay: 0.08 + idx * 0.035, ease: [0.22, 1, 0.36, 1] }} className="relative overflow-hidden rounded-[1.5rem] border border-white/12 bg-black/45 p-3 shadow-[0_14px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl">
           <SectionHeader title={section.title} count={section.links.length} centered={centered} />
           <div className="space-y-1">
             {section.links.map((link, linkIdx) => {
               const hrefPath = link.href.split('?')[0];
               return (
-                <motion.div
-                  key={link.href}
-                  initial={{ opacity: 0, y: 8 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ duration: 0.28, delay: 0.12 + idx * 0.03 + linkIdx * 0.015, ease: [0.22, 1, 0.36, 1] }}
-                >
-                  <NavItem
-                    href={link.href}
-                    label={link.label}
-                    description={link.description}
-                    icon={link.icon}
-                    active={pathname === hrefPath && !link.highlight}
-                    highlight={link.highlight}
-                    centered={centered}
-                    onNavigate={onNavigate}
-                  />
+                <motion.div key={link.href} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, delay: 0.12 + idx * 0.03 + linkIdx * 0.015, ease: [0.22, 1, 0.36, 1] }}>
+                  <NavItem href={link.href} label={link.label} description={link.description} icon={link.icon} active={pathname === hrefPath && !link.highlight} highlight={link.highlight} centered={centered} onNavigate={onNavigate} />
                 </motion.div>
               );
             })}
@@ -379,25 +327,12 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, now, centered = 
         </motion.nav>
       ))}
 
-      {/* ── Footer / logout ── */}
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ duration: 0.4, delay: 0.25 }}
-        className="relative overflow-hidden rounded-[1.5rem] border border-white/12 bg-black/45 p-3 backdrop-blur-xl"
-      >
-        <button
-          onClick={onLogout}
-          className="group flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-300 transition hover:border-rose-500/60 hover:bg-rose-500/10 hover:text-rose-300"
-        >
-          <LogOut className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" />
-          Cerrar sesión
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.25 }} className="relative overflow-hidden rounded-[1.5rem] border border-white/12 bg-black/45 p-3 backdrop-blur-xl">
+        <button onClick={onLogout} className="group flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-300 transition hover:border-rose-500/60 hover:bg-rose-500/10 hover:text-rose-300">
+          <LogOut className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" /> Cerrar sesión
         </button>
         <div className={`mt-3 flex gap-2 px-1 text-[9.5px] uppercase tracking-[0.28em] text-white/45 ${centered ? 'flex-col items-center justify-center text-center' : 'items-center justify-between'}`}>
-          <span className="flex items-center gap-1.5">
-            <Zap className="h-3 w-3 text-yellow-300" />
-            Sistema activo
-          </span>
+          <span className="flex items-center gap-1.5"><Zap className="h-3 w-3 text-yellow-300" />Sistema activo</span>
           <span className="font-mono text-white/30">© {new Date().getFullYear()}</span>
         </div>
       </motion.div>
@@ -415,15 +350,10 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [now, setNow] = useState<Date | null>(null);
   const [routePulse, setRoutePulse] = useState(0);
 
-  // Ten-minute inactivity auto-logout.
   useAdminIdleLogout(10 * 60 * 1000);
 
-  // Close drawer on navigation.
-  useEffect(() => {
-    setMobileOpen(false);
-  }, [pathname]);
+  useEffect(() => { setMobileOpen(false); }, [pathname]);
 
-  // Prevent background scroll while mobile drawer is open.
   useEffect(() => {
     if (typeof document === 'undefined') return;
     if (mobileOpen) {
@@ -433,7 +363,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
     }
   }, [mobileOpen]);
 
-  // Fetch current admin role once so we can toggle superadmin-only links.
   useEffect(() => {
     let cancelled = false;
     (async () => {
@@ -442,30 +371,22 @@ export function AdminShell({ children }: { children: ReactNode }) {
         if (!res.ok || cancelled) return;
         const json = (await res.json()) as { rol?: string };
         if (!cancelled) setRole(json.rol ?? null);
-      } catch {
-        // best-effort: leave role null → superadmin links hidden.
-      }
+      } catch {}
     })();
     return () => { cancelled = true; };
   }, []);
 
-  // Live clock (updates every second). We hydrate with null + set on mount to
-  // avoid SSR/CSR text mismatches around the seconds field.
   useEffect(() => {
     setNow(new Date());
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
 
-  useEffect(() => {
-    setRoutePulse((prev) => prev + 1);
-  }, [pathname]);
+  useEffect(() => { setRoutePulse((prev) => prev + 1); }, [pathname]);
 
-  // Breadcrumb derived from pathname. Falls back to the last segment, prettified.
   const breadcrumb = useMemo(() => {
     if (!pathname) return 'Panel';
     if (PATH_LABELS[pathname]) return PATH_LABELS[pathname];
-    // Match deepest known prefix, e.g. /admin/pedidos/abc123 → "Pedidos".
     const segs = pathname.split('/').filter(Boolean);
     for (let i = segs.length; i > 0; i--) {
       const candidate = '/' + segs.slice(0, i).join('/');
@@ -474,8 +395,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return 'Panel';
   }, [pathname]);
 
-  // Flatten navSections into a single CommandItem[] used by Cmd+K.
-  // Filtered by superadmin scope, deduped by href.
   const commandItems = useMemo<CommandItem[]>(() => {
     const seen = new Set<string>();
     const items: CommandItem[] = [];
@@ -491,266 +410,71 @@ export function AdminShell({ children }: { children: ReactNode }) {
   }, [role]);
 
   async function handleLogout() {
-    try {
-      await fetch('/api/admin/logout', { method: 'POST' });
-    } catch {
-      // ignore
-    }
+    try { await fetch('/api/admin/logout', { method: 'POST' }); } catch {}
     router.replace('/admin/login');
   }
 
-  // Observatory renders full-screen; skip the shell chrome while on it.
   const isObservatory = pathname?.startsWith('/admin/observatory');
-
-  // The login page must not show the admin chrome (header, sidebar, bottom
-  // nav). Otherwise an unauthenticated visitor to /admin/login sees the admin
-  // navigation rendered on top of the login form — in particular the fixed
-  // bottom bar appears as an overlay/banner stuck to the bottom of the page.
   const isLogin = pathname === '/admin/login';
 
-  if (isObservatory || isLogin) {
-    return <>{children}</>;
-  }
+  if (isObservatory || isLogin) return <>{children}</>;
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black text-white">
-      {/* ── Ambient cinematic background (matches /admin/login) ── */}
       <div className="pointer-events-none fixed inset-0 z-0">
-        {/* Radial duo-gradient base */}
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_12%,rgba(56,189,248,0.14),rgba(0,0,0,0)_38%),radial-gradient(circle_at_78%_85%,rgba(250,204,21,0.12),rgba(0,0,0,0)_42%),linear-gradient(180deg,rgba(0,0,0,0.22),rgba(0,0,0,0.92))]" />
-        {/* Scanlines */}
         <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:100%_9px] opacity-15" />
-        {/* Corner glow blobs */}
         <div className="absolute -left-24 top-12 h-[420px] w-[420px] rounded-full bg-sky-400/15 blur-[100px]" />
         <div className="absolute -right-24 bottom-10 h-[420px] w-[420px] rounded-full bg-yellow-300/15 blur-[100px]" />
       </div>
 
-      {/* Top header */}
       <header className="sticky top-0 z-40 border-b border-white/15">
         <div className="absolute inset-0 bg-black/55 backdrop-blur-2xl" />
         <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-yellow-400/40 to-transparent" />
         <div className="relative mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 py-3 md:px-6">
-          {/* Brand + mobile menu toggle */}
           <div className="flex min-w-0 items-center gap-3">
-            <button
-              type="button"
-              onClick={() => setContextMenuOpen(true)}
-              className="group relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/30 bg-black/50 text-yellow-300 transition-all hover:border-yellow-300/60 hover:bg-black/70 hover:shadow-[0_6px_20px_rgba(250,204,21,0.25)] active:scale-95 lg:hidden"
-              aria-label="Abrir menú"
-            >
+            <button type="button" onClick={() => setContextMenuOpen(true)} className="group relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/30 bg-black/50 text-yellow-300 transition-all hover:border-yellow-300/60 hover:bg-black/70 hover:shadow-[0_6px_20px_rgba(250,204,21,0.25)] active:scale-95 lg:hidden" aria-label="Abrir menú">
               <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.18),rgba(255,255,255,0)_60%)] opacity-0 transition-opacity group-hover:opacity-100" />
-              {/* Custom 3-line hamburger with stagger */}
-              <span className="relative flex h-4 w-5 flex-col justify-between">
-                <span className="h-[2px] w-full rounded-full bg-current transition-transform duration-300 group-hover:translate-x-0.5" />
-                <span className="h-[2px] w-3/4 rounded-full bg-current transition-all duration-300 group-hover:w-full" />
-                <span className="h-[2px] w-1/2 rounded-full bg-current transition-all duration-300 group-hover:w-full group-hover:translate-x-0.5" />
-              </span>
+              <span className="relative flex h-4 w-5 flex-col justify-between"><span className="h-[2px] w-full rounded-full bg-current transition-transform duration-300 group-hover:translate-x-0.5" /><span className="h-[2px] w-3/4 rounded-full bg-current transition-all duration-300 group-hover:w-full" /><span className="h-[2px] w-1/2 rounded-full bg-current transition-all duration-300 group-hover:w-full group-hover:translate-x-0.5" /></span>
             </button>
 
             <Link href="/admin" className="flex items-center gap-2.5 min-w-0">
               <BrandMark size="md" />
-              <span className="hidden flex-col leading-none sm:flex">
-                <span className="font-playfair text-[13px] font-black tracking-[0.22em] text-yellow-300">SOLUCIONES FABRICK</span>
-                <span className="mt-0.5 text-[9px] uppercase tracking-[0.3em] text-zinc-500">Admin · Control room</span>
-              </span>
+              <span className="hidden flex-col leading-none sm:flex"><span className="font-playfair text-[13px] font-black tracking-[0.22em] text-yellow-300">SOLUCIONES FABRICK</span><span className="mt-0.5 text-[9px] uppercase tracking-[0.3em] text-zinc-500">Admin · Control room</span></span>
             </Link>
 
-            {/* Breadcrumb (hidden on small screens) */}
-            <div className="hidden min-w-0 items-center gap-2 border-l border-white/10 pl-3 md:flex">
-              <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-zinc-600" />
-              <span className="truncate text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-400">
-                {breadcrumb}
-              </span>
-            </div>
+            <div className="hidden min-w-0 items-center gap-2 border-l border-white/10 pl-3 md:flex"><ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-zinc-600" /><span className="truncate text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-400">{breadcrumb}</span></div>
           </div>
 
-          {/* Center: live clock (md+) */}
           <div className="hidden flex-1 items-center justify-center md:flex" aria-hidden="true">
-            {now && (
-              <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-3 py-1.5">
-                <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 animate-pulse" />
-                <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
-                  {now.toLocaleDateString('es-CL', { weekday: 'short', day: '2-digit', month: 'short' })}
-                </span>
-                <span className="text-[11px] font-bold tabular-nums text-white">
-                  {now.toLocaleTimeString('es-CL', { hour12: false })}
-                </span>
-              </div>
-            )}
+            {now && <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-3 py-1.5"><span className="h-1.5 w-1.5 rounded-full bg-yellow-400 animate-pulse" /><span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{now.toLocaleDateString('es-CL', { weekday: 'short', day: '2-digit', month: 'short' })}</span><span className="text-[11px] font-bold tabular-nums text-white">{now.toLocaleTimeString('es-CL', { hour12: false })}</span></div>}
           </div>
 
-          {/* Right actions */}
           <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => setPaletteOpen(true)}
-              className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400 hover:border-yellow-400/40 hover:text-yellow-400 transition-all"
-              title="Buscar página (Cmd/Ctrl + K)"
-              aria-label="Abrir buscador de páginas"
-            >
-              <Search className="h-3.5 w-3.5" />
-              <span className="hidden md:inline">Buscar</span>
-              <kbd className="hidden md:inline-block rounded border border-white/10 bg-white/5 px-1 py-0 text-[9px] font-mono text-zinc-500">⌘K</kbd>
-            </button>
-            <Link
-              href="/tienda"
-              className="hidden sm:flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-300 hover:border-yellow-400/40 hover:text-yellow-400 transition-all"
-            >
-              Ver tienda <ExternalLink className="h-3 w-3" />
-            </Link>
-            <button
-              onClick={handleLogout}
-              className="flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-300 transition hover:border-red-500/50 hover:text-red-400"
-              title="Cerrar sesión"
-            >
-              <LogOut className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Salir</span>
-            </button>
+            <button type="button" onClick={() => setPaletteOpen(true)} className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400 hover:border-yellow-400/40 hover:text-yellow-400 transition-all" title="Buscar página (Cmd/Ctrl + K)" aria-label="Abrir buscador de páginas"><Search className="h-3.5 w-3.5" /><span className="hidden md:inline">Buscar</span><kbd className="hidden md:inline-block rounded border border-white/10 bg-white/5 px-1 py-0 text-[9px] font-mono text-zinc-500">⌘K</kbd></button>
+            <Link href="/tienda" className="hidden sm:flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-300 hover:border-yellow-400/40 hover:text-yellow-400 transition-all">Ver tienda <ExternalLink className="h-3 w-3" /></Link>
+            <button onClick={handleLogout} className="flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-300 transition hover:border-red-500/50 hover:text-red-400" title="Cerrar sesión"><LogOut className="h-3.5 w-3.5" /><span className="hidden sm:inline">Salir</span></button>
           </div>
         </div>
 
-        {/* Mobile breadcrumb row (only <md) */}
-        <div className="relative mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 pb-2 md:hidden">
-          <span className="truncate text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-400">
-            {breadcrumb}
-          </span>
-          {now && (
-            <span className="flex items-center gap-1.5 text-[10px] font-semibold tabular-nums text-zinc-400">
-              <span className="h-1 w-1 rounded-full bg-yellow-400 animate-pulse" />
-              {now.toLocaleTimeString('es-CL', { hour12: false })}
-            </span>
-          )}
-        </div>
+        <div className="relative mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 pb-2 md:hidden"><span className="truncate text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-400">{breadcrumb}</span>{now && <span className="flex items-center gap-1.5 text-[10px] font-semibold tabular-nums text-zinc-400"><span className="h-1 w-1 rounded-full bg-yellow-400 animate-pulse" />{now.toLocaleTimeString('es-CL', { hour12: false })}</span>}</div>
       </header>
 
-      {/* Layout */}
       <div className="relative z-10 mx-auto grid max-w-[1600px] gap-5 px-3 pb-24 sm:px-4 md:px-6 py-4 md:py-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:pb-6">
-
-        {/* Desktop sidebar */}
-        <aside className="hidden lg:block lg:sticky lg:top-[80px] lg:h-[calc(100vh-96px)] lg:overflow-y-auto scrollbar-hide">
-          <SidebarContent pathname={pathname} onLogout={handleLogout} role={role} now={now} />
-        </aside>
-
-        {/* Main content */}
+        <aside className="hidden lg:block lg:sticky lg:top-[80px] lg:h-[calc(100vh-96px)] lg:overflow-y-auto scrollbar-hide"><SidebarContent pathname={pathname} onLogout={handleLogout} role={role} now={now} /></aside>
         <main className="relative min-w-0 overflow-hidden">
           {role === 'viewer' && <DemoSessionTracker />}
-          {role === 'viewer' && (
-            <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/[0.08] px-5 py-3.5">
-              <Eye className="h-4 w-4 shrink-0 text-amber-400" />
-              <span className="text-[12px] font-bold uppercase tracking-[0.18em] text-amber-300">Modo Demo · Solo lectura</span>
-              <span className="text-xs text-amber-300/55">Los cambios que intentes no se guardan en la base de datos · Expira en 24 h</span>
-            </div>
-          )}
+          {role === 'viewer' && <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/[0.08] px-5 py-3.5"><Eye className="h-4 w-4 shrink-0 text-amber-400" /><span className="text-[12px] font-bold uppercase tracking-[0.18em] text-amber-300">Modo Demo · Solo lectura</span><span className="text-xs text-amber-300/55">Los cambios que intentes no se guardan en la base de datos · Expira en 24 h</span></div>}
           <AnimatePresence mode="wait" initial={false}>
-            <motion.div
-              key={pathname}
-              initial={{ opacity: 0, y: 18, scale: 0.992, filter: 'blur(8px)' }}
-              animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }}
-              exit={{ opacity: 0, y: -10, scale: 1.01, filter: 'blur(6px)' }}
-              transition={{ duration: 0.44, ease: [0.16, 1, 0.3, 1] }}
-            >
-              <WhatsNewBanner />
-              {children}
-            </motion.div>
+            <motion.div key={pathname} initial={{ opacity: 0, y: 18, scale: 0.992, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -10, scale: 1.01, filter: 'blur(6px)' }} transition={{ duration: 0.44, ease: [0.16, 1, 0.3, 1] }}><WhatsNewBanner />{children}</motion.div>
           </AnimatePresence>
-
-          <AnimatePresence initial={false}>
-            <motion.div
-              key={`admin-route-pulse-${routePulse}`}
-              initial={{ opacity: 0.25, scale: 0.98 }}
-              animate={{ opacity: 0, scale: 1.03 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.45, ease: [0.2, 0.9, 0.2, 1] }}
-              className="pointer-events-none absolute inset-0 rounded-[1.75rem] bg-[radial-gradient(circle_at_30%_16%,rgba(250,204,21,0.16),rgba(0,0,0,0)_42%),radial-gradient(circle_at_76%_82%,rgba(56,189,248,0.14),rgba(0,0,0,0)_48%)]"
-            />
-          </AnimatePresence>
+          <AnimatePresence initial={false}><motion.div key={`admin-route-pulse-${routePulse}`} initial={{ opacity: 0.25, scale: 0.98 }} animate={{ opacity: 0, scale: 1.03 }} exit={{ opacity: 0 }} transition={{ duration: 0.45, ease: [0.2, 0.9, 0.2, 1] }} className="pointer-events-none absolute inset-0 rounded-[1.75rem] bg-[radial-gradient(circle_at_30%_16%,rgba(250,204,21,0.16),rgba(0,0,0,0)_42%),radial-gradient(circle_at_76%_82%,rgba(56,189,248,0.14),rgba(0,0,0,0)_48%)]" /></AnimatePresence>
         </main>
       </div>
 
-      {/* Mobile drawer — login-coherent cinematic style */}
-      <AnimatePresence>
-        {mobileOpen && (
-          <motion.div
-            key="admin-mobile-drawer"
-            className="fixed inset-0 z-50 lg:hidden"
-            role="dialog"
-            aria-modal="true"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.25 }}
-          >
-            {/* Backdrop with cinematic gradient (matches login) */}
-            <motion.div
-              className="absolute inset-0 bg-[radial-gradient(circle_at_50%_18%,rgba(56,189,248,0.18),rgba(0,0,0,0.92)_55%),linear-gradient(180deg,rgba(0,0,0,0.55),rgba(0,0,0,0.95))] backdrop-blur-md"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              onClick={() => setMobileOpen(false)}
-            />
-            {/* Scanlines + corner glow on backdrop */}
-            <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[length:100%_9px] opacity-20" />
-            <div className="pointer-events-none absolute -left-24 top-12 h-64 w-64 rounded-full bg-sky-400/20 blur-[90px]" />
-            <div className="pointer-events-none absolute -right-24 bottom-10 h-64 w-64 rounded-full bg-yellow-300/20 blur-[90px]" />
-
-            {/* Drawer panel */}
-            <motion.div
-              initial={{ x: '100%', opacity: 0 }}
-              animate={{ x: 0, opacity: 1 }}
-              exit={{ x: '100%', opacity: 0 }}
-              transition={{ duration: 0.42, ease: [0.16, 1, 0.3, 1] }}
-              className="relative ml-auto flex h-full w-[88%] max-w-[340px] flex-col overflow-y-auto border-l border-white/15 bg-black/55 p-5 shadow-[0_20px_90px_rgba(0,0,0,0.55)] backdrop-blur-2xl"
-            >
-              {/* Top: SF brand mark + close (mirrors login icon) */}
-              <div className="mb-5 flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <BrandMark size="lg" />
-                  <div className="flex flex-col leading-none">
-                    <span className="font-playfair text-[12px] font-black tracking-[0.24em] text-yellow-300">SOLUCIONES FABRICK</span>
-                    <span className="mt-1 text-[9px] uppercase tracking-[0.32em] text-white/45">Control room access</span>
-                  </div>
-                </div>
-                <button
-                  type="button"
-                  onClick={() => setMobileOpen(false)}
-                  className="flex h-9 w-9 items-center justify-center rounded-full border border-white/15 bg-black/40 text-zinc-300 transition hover:border-yellow-300/50 hover:text-yellow-300 active:scale-95"
-                  aria-label="Cerrar menú"
-                >
-                  <X className="h-4 w-4" />
-                </button>
-              </div>
-
-              <div className="cinematic-panel-enter">
-                <SidebarContent
-                  pathname={pathname}
-                  onNavigate={() => setMobileOpen(false)}
-                  onLogout={handleLogout}
-                  role={role}
-                  now={now}
-                  centered
-                />
-              </div>
-            </motion.div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* Bottom navigation (móvil / tablet vertical) */}
       <AdminBottomNav onOpenMore={() => setContextMenuOpen(true)} />
-
-      {/* Cmd+K command palette: searches navSections by label/description */}
-      <AdminCommandPalette
-        items={commandItems}
-        open={paletteOpen}
-        onOpenChange={setPaletteOpen}
-      />
-
-      {/* Mobile quick-access context menu */}
-      <AdminContextMenu
-        open={contextMenuOpen}
-        onClose={() => setContextMenuOpen(false)}
-        onLogout={handleLogout}
-      />
+      <AdminCommandPalette items={commandItems} open={paletteOpen} onOpenChange={setPaletteOpen} />
+      <AdminContextMenu open={contextMenuOpen} onClose={() => setContextMenuOpen(false)} onLogout={handleLogout} />
     </div>
   );
 }

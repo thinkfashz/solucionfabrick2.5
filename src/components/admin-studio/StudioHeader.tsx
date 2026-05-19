@@ -1,5 +1,6 @@
 'use client';
 
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import {
   ChevronRight,
@@ -51,6 +52,24 @@ export function StudioHeader({
   onLogout,
   profilePhoto,
 }: StudioHeaderProps) {
+  const [loadedPhoto, setLoadedPhoto] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (profilePhoto) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch('/api/admin/profile/photo', { cache: 'no-store' });
+        if (!res.ok || cancelled) return;
+        const json = (await res.json()) as { photo?: string | null };
+        if (!cancelled) setLoadedPhoto(json.photo ?? null);
+      } catch {}
+    })();
+    return () => { cancelled = true; };
+  }, [profilePhoto]);
+
+  const avatarPhoto = profilePhoto ?? loadedPhoto;
+
   return (
     <header
       data-studio-header=""
@@ -127,7 +146,7 @@ export function StudioHeader({
         </Link>
 
         <Link href="/admin/perfil" title="Ver perfil" aria-label="Ver perfil" className="rounded-full p-0.5 transition hover:bg-white/10">
-          <HeaderAvatar photo={profilePhoto} />
+          <HeaderAvatar photo={avatarPhoto} />
         </Link>
 
         <button

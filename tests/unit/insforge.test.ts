@@ -27,15 +27,18 @@ describe('getMissingAdminEnvVars', () => {
     expect(getMissingAdminEnvVars()).toEqual([]);
   });
 
-  it('en producción reporta ADMIN_SESSION_SECRET ausente', async () => {
+  it('en producción reporta vars ausentes', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     const { getMissingAdminEnvVars } = await import('@/lib/insforge');
-    expect(getMissingAdminEnvVars()).toEqual(['ADMIN_SESSION_SECRET']);
+    const missing = getMissingAdminEnvVars();
+    expect(missing).toContain('ADMIN_SESSION_SECRET');
+    expect(missing).toContain('INSFORGE_API_KEY');
   });
 
   it('en producción con la var seteada, lista vacía', async () => {
     vi.stubEnv('NODE_ENV', 'production');
     vi.stubEnv('ADMIN_SESSION_SECRET', 'a'.repeat(32));
+    vi.stubEnv('INSFORGE_API_KEY', 'test-api-key');
     const { getMissingAdminEnvVars } = await import('@/lib/insforge');
     expect(getMissingAdminEnvVars()).toEqual([]);
   });

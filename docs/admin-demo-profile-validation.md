@@ -21,11 +21,12 @@ Checklist de validacion para el flujo demo 24h y el perfil administrativo.
 - Abrir /admin/perfil.
 - Editar nombre, telefono, bio y redes.
 - Guardar cambios.
-- Subir avatar.
+- Subir avatar desde /admin/perfil.
 - Confirmar card visual de perfil.
 - Confirmar acceso a Perfil desde menu hamburguesa.
-- Confirmar acceso a Links demo 24h desde menu hamburguesa.
+- Confirmar acceso a Perfil desde navbar y sidebar.
+- Confirmar acceso a Links demo 24h desde menu hamburguesa y sidebar.
 
 ## Estado PR 205
 
-Preview final pendiente de validar en Vercel.
+Preview final de navegacion y perfil pendiente de validar en Vercel.

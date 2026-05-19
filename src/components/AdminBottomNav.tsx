@@ -8,6 +8,7 @@ import {
   LayoutGrid,
   MoreHorizontal,
   Package,
+  User,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -17,7 +18,7 @@ const ITEMS: BottomItem[] = [
   { href: '/admin',              label: 'Home', icon: Home },
   { href: '/admin/modulos',      label: 'Mód',  icon: LayoutGrid },
   { href: '/admin/productos',    label: 'Prod', icon: Package },
-  { href: '/admin/cotizaciones', label: 'Cot',  icon: FileText },
+  { href: '/admin/perfil',       label: 'Perfil', icon: User },
 ];
 
 export function AdminBottomNav({ onOpenMore }: { onOpenMore?: () => void }) {

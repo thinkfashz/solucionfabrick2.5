@@ -30,7 +30,7 @@ export async function generateVideoPlanWithOpenRouter(input: VideoEngineInput) {
       messages: [
         {
           role: 'system',
-          content: 'Eres un generador de planes audiovisuales para Soluciones Fabrick. Responde solo JSON valido.',
+          content: 'Eres un generador de planes de video para redes sociales. Devuelve SOLO JSON válido, sin markdown, sin explicaciones.',
         },
         {
           role: 'user',

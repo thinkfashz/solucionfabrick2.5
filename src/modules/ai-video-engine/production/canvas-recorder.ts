@@ -31,6 +31,25 @@ function waitFrame(fps = 30): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, Math.floor(1000 / fps)));
 }
 
+/** Pre-loads background images for all scenes. Images that fail CORS or 404 are silently skipped. */
+async function preloadImages(plan: GeneratedVideoPlan): Promise<Map<string, HTMLImageElement>> {
+  const urls = [...new Set(plan.scenes.map((s) => s.imageUrl).filter((u): u is string => !!u))];
+  const map = new Map<string, HTMLImageElement>();
+  await Promise.allSettled(
+    urls.map(
+      (url) =>
+        new Promise<void>((resolve) => {
+          const img = new Image();
+          img.crossOrigin = 'anonymous';
+          img.onload = () => { map.set(url, img); resolve(); };
+          img.onerror = () => resolve();
+          img.src = url;
+        }),
+    ),
+  );
+  return map;
+}
+
 /**
  * Records all scenes of a video plan as a WebM blob using the browser's
  * Canvas API + MediaRecorder. No external deps required.
@@ -44,6 +63,9 @@ export async function recordPlanAsWebM(
   const fmt = (plan.format ?? '9:16') as VideoFormat;
   const { w, h } = FORMAT_DIMENSIONS[fmt] ?? FORMAT_DIMENSIONS['9:16'];
   const fps = 30;
+
+  // Pre-load all background images before recording starts
+  const imageMap = await preloadImages(plan);
 
   const canvas = document.createElement('canvas');
   canvas.width = w;
@@ -75,10 +97,11 @@ export async function recordPlanAsWebM(
     const scene = plan.scenes[i];
     const sceneDurationSec = scene.end - scene.start;
     const frameCount = Math.ceil(sceneDurationSec * fps);
+    const bgImage = scene.imageUrl ? (imageMap.get(scene.imageUrl) ?? null) : null;
 
     for (let f = 0; f < frameCount; f++) {
       const progress = frameCount > 1 ? f / (frameCount - 1) : 1;
-      renderSceneFrame(ctx, w, h, scene, progress);
+      renderSceneFrame(ctx, w, h, scene, progress, bgImage);
       framesDone++;
 
       onProgress?.({

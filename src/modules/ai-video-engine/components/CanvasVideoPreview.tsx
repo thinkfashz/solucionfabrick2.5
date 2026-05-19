@@ -32,34 +32,63 @@ export function CanvasVideoPreview({
   onTogglePlay?: () => void;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  // Stores loaded images; null = loading/failed (don't retry)
+  const imgCache = useRef<Map<string, HTMLImageElement | null>>(new Map());
+  const isPlayingRef = useRef(isPlaying);
+  useEffect(() => { isPlayingRef.current = isPlaying; }, [isPlaying]);
 
   const scene = plan.scenes[activeSceneIndex] ?? plan.scenes[0];
-  const dims = PREVIEW_DIMS[format] ?? PREVIEW_DIMS['9:16'];
-  const { w, h } = dims;
+  const { w, h } = PREVIEW_DIMS[format] ?? PREVIEW_DIMS['9:16'];
 
-  // Render frames via requestAnimationFrame when playing, or one static frame when paused
+  // Pre-load background images for current and adjacent scenes
+  useEffect(() => {
+    const urls = plan.scenes
+      .slice(Math.max(0, activeSceneIndex - 1), activeSceneIndex + 3)
+      .map((s) => s.imageUrl)
+      .filter((u): u is string => !!u);
+
+    for (const url of urls) {
+      if (imgCache.current.has(url)) continue;
+      imgCache.current.set(url, null); // mark as loading
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+      img.onload = () => {
+        imgCache.current.set(url, img);
+        // Redraw static frame when image arrives and we're not playing
+        if (!isPlayingRef.current && scene?.imageUrl === url) {
+          const canvas = canvasRef.current;
+          const ctx = canvas?.getContext('2d');
+          if (canvas && ctx) renderSceneFrame(ctx, w, h, scene, 0, img);
+        }
+      };
+      img.src = url;
+    }
+  }, [plan, activeSceneIndex, scene, w, h]);
+
+  // Animate frames via rAF when playing, or render single static frame when paused
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas || !scene) return;
     const ctx = canvas.getContext('2d');
     if (!ctx) return;
 
+    const getBg = () =>
+      scene.imageUrl ? (imgCache.current.get(scene.imageUrl) ?? null) : null;
+
     if (!isPlaying) {
-      renderSceneFrame(ctx, w, h, scene, 0);
+      renderSceneFrame(ctx, w, h, scene, 0, getBg());
       return;
     }
 
     let raf: number;
     let startTime: number | null = null;
-    const sceneDurationMs = Math.max(1, scene.end - scene.start) * 1000;
+    const durationMs = Math.max(500, (scene.end - scene.start) * 1000);
 
     function tick(timestamp: number) {
       if (startTime === null) startTime = timestamp;
-      const progress = Math.min(1, (timestamp - startTime) / sceneDurationMs);
-      renderSceneFrame(ctx!, w, h, scene!, progress);
-      if (progress < 1) {
-        raf = requestAnimationFrame(tick);
-      }
+      const progress = Math.min(1, (timestamp - startTime) / durationMs);
+      renderSceneFrame(ctx!, w, h, scene!, progress, getBg());
+      if (progress < 1) raf = requestAnimationFrame(tick);
     }
 
     raf = requestAnimationFrame(tick);
@@ -93,7 +122,7 @@ export function CanvasVideoPreview({
         </div>
       )}
 
-      {/* Canvas element — same rendering pipeline as WebM export */}
+      {/* Canvas — same rendering pipeline as WebM export, id used by Cloudinary capture */}
       <div id="fabrick-video-preview-capture" className={`w-full ${ASPECT_CLASS[format]}`}>
         <canvas
           ref={canvasRef}
@@ -103,7 +132,6 @@ export function CanvasVideoPreview({
         />
       </div>
 
-      {/* Progress bar — only visible while playing */}
       {isPlaying && (
         <div className="flex w-full items-center gap-2">
           <div className="h-1 flex-1 overflow-hidden rounded-full bg-white/10">

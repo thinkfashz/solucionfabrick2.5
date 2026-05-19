@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronLeft, ChevronRight, Film, FileText, Sliders } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Film, FileText, Minus, Plus, Sliders } from 'lucide-react';
 import { CanvasVideoPreview } from './CanvasVideoPreview';
 import { ExportPanel } from './ExportPanel';
 import { GeneratedScriptPanel } from './GeneratedScriptPanel';
@@ -26,9 +26,12 @@ function HyperFrameStrip({
 
   const gradients: Record<string, string> = {
     blueprint: 'from-sky-950 to-zinc-950',
-    metal: 'from-zinc-800 to-zinc-950',
-    premium: 'from-yellow-950 to-zinc-950',
-    concrete: 'from-stone-800 to-zinc-950',
+    metal:     'from-zinc-800 to-zinc-950',
+    premium:   'from-yellow-950 to-zinc-950',
+    concrete:  'from-stone-800 to-zinc-950',
+    cinematic: 'from-amber-950 to-zinc-950',
+    minimal:   'from-zinc-900 to-black',
+    technical: 'from-sky-950 to-zinc-950',
   };
 
   function bg(style: string) {
@@ -44,7 +47,7 @@ function HyperFrameStrip({
         const active = idx === activeSceneIndex;
         return (
           <button
-            key={scene.id}
+            key={`${scene.id}-${idx}`}
             type="button"
             onClick={() => setActiveSceneIndex(idx)}
             className={`group relative h-20 w-14 shrink-0 overflow-hidden rounded-xl border-2 transition-all duration-200 ${
@@ -53,18 +56,25 @@ function HyperFrameStrip({
                 : 'border-white/10 opacity-60 hover:border-white/30 hover:opacity-90'
             }`}
           >
-            <div className={`h-full w-full bg-gradient-to-b ${bg(scene.background_style)}`} />
+            {scene.imageUrl ? (
+              <img
+                src={scene.imageUrl}
+                alt=""
+                className="h-full w-full object-cover opacity-60"
+                onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }}
+              />
+            ) : (
+              <div className={`h-full w-full bg-gradient-to-b ${bg(scene.background_style)}`} />
+            )}
             <div className="absolute inset-0 flex flex-col justify-between p-1">
               <span className={`text-[8px] font-black tabular-nums leading-none ${active ? 'text-yellow-300' : 'text-zinc-500'}`}>
-                {String(scene.id).padStart(2, '0')}
+                {String(idx + 1).padStart(2, '0')}
               </span>
               <span className="line-clamp-2 text-[7px] leading-tight text-white/70">
                 {scene.screen_text}
               </span>
             </div>
-            {active && (
-              <div className="absolute inset-x-0 bottom-0 h-[3px] bg-yellow-400" />
-            )}
+            {active && <div className="absolute inset-x-0 bottom-0 h-[3px] bg-yellow-400" />}
           </button>
         );
       })}
@@ -77,9 +87,9 @@ export function VideoEngineShell() {
   const [mobileTab, setMobileTab] = useState<MobileTab>('brief');
 
   const tabs: { id: MobileTab; label: string; icon: React.ReactNode }[] = [
-    { id: 'brief', label: 'Brief', icon: <Sliders className="h-3.5 w-3.5" /> },
-    { id: 'preview', label: 'Preview', icon: <Film className="h-3.5 w-3.5" /> },
-    { id: 'script', label: 'Script', icon: <FileText className="h-3.5 w-3.5" /> },
+    { id: 'brief',   label: 'Brief',   icon: <Sliders  className="h-3.5 w-3.5" /> },
+    { id: 'preview', label: 'Preview', icon: <Film     className="h-3.5 w-3.5" /> },
+    { id: 'script',  label: 'Script',  icon: <FileText className="h-3.5 w-3.5" /> },
   ];
 
   const canPrev = engine.activeSceneIndex > 0;
@@ -103,7 +113,6 @@ export function VideoEngineShell() {
           </div>
         </div>
 
-        {/* Format toggle */}
         <div className="hidden items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1 sm:flex">
           {(['9:16', '1:1', '16:9'] as const).map((f) => (
             <button
@@ -138,7 +147,6 @@ export function VideoEngineShell() {
         </button>
       </header>
 
-      {/* ── Error banner ── */}
       {engine.error && (
         <div className="mx-4 mt-3 shrink-0 rounded-2xl border border-red-400/30 bg-red-500/10 px-4 py-3 text-xs text-red-200">
           {engine.error}
@@ -164,7 +172,7 @@ export function VideoEngineShell() {
         ))}
       </div>
 
-      {/* ── 3-column desktop / tab-content mobile ── */}
+      {/* ── 3-column layout ── */}
       <div className="min-h-0 flex-1 overflow-hidden lg:grid lg:grid-cols-[280px_1fr_300px]">
 
         {/* LEFT: Brief form */}
@@ -174,23 +182,20 @@ export function VideoEngineShell() {
             setInput={engine.setInput}
             onGenerate={engine.generate}
             isGenerating={engine.isGenerating}
+            onImportPlan={engine.importPlan}
           />
         </div>
 
-        {/* CENTER: Preview + HyperFrame strip */}
+        {/* CENTER: Preview + navigation */}
         <div className={`flex h-full flex-col overflow-hidden ${mobileTab === 'preview' ? 'flex' : 'hidden lg:flex'}`}>
-          {/* Preview area */}
           <div className="relative min-h-0 flex-1 overflow-y-auto p-4">
-            {/* Loading overlay */}
+            {/* Generating overlay */}
             {engine.isGenerating && (
               <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-[#0a0a0a]/92 backdrop-blur-sm">
                 <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-yellow-400/15 to-amber-600/5 shadow-[0_0_30px_rgba(250,204,21,0.12)]">
                   <Film className="h-8 w-8 animate-pulse text-yellow-400" />
                 </div>
-                <div className="text-center">
-                  <p className="text-sm font-bold text-zinc-200">Generando plan de video…</p>
-                  <p className="mt-1 text-xs text-zinc-600">Conectando con OpenRouter · modelos gratuitos</p>
-                </div>
+                <p className="text-sm font-bold text-zinc-200">Generando plan de video…</p>
                 <div className="flex items-center gap-1.5">
                   {[0, 160, 320].map((delay) => (
                     <span
@@ -202,7 +207,8 @@ export function VideoEngineShell() {
                 </div>
               </div>
             )}
-            {/* Format toggle on mobile */}
+
+            {/* Mobile format toggle */}
             <div className="mb-4 flex items-center justify-between sm:hidden">
               <div className="flex items-center gap-1 rounded-full border border-white/10 bg-white/[0.04] p-1">
                 {(['9:16', '1:1', '16:9'] as const).map((f) => (
@@ -234,7 +240,7 @@ export function VideoEngineShell() {
             />
           </div>
 
-          {/* Scene navigation arrows + counter */}
+          {/* Scene navigation + add/remove */}
           {engine.plan.scenes.length > 0 && (
             <div className="flex shrink-0 items-center justify-between border-t border-white/8 px-4 py-2">
               <button
@@ -245,9 +251,30 @@ export function VideoEngineShell() {
               >
                 <ChevronLeft className="h-4 w-4" />
               </button>
-              <span className="text-[11px] font-bold tabular-nums text-zinc-500">
-                {engine.activeSceneIndex + 1} / {engine.plan.scenes.length}
-              </span>
+
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  title="Eliminar escena actual"
+                  disabled={engine.plan.scenes.length <= 1}
+                  onClick={() => engine.removeScene(engine.activeSceneIndex)}
+                  className="flex h-6 w-6 items-center justify-center rounded-lg border border-white/10 text-zinc-600 transition hover:border-red-400/30 hover:text-red-400 disabled:opacity-20"
+                >
+                  <Minus className="h-3 w-3" />
+                </button>
+                <span className="min-w-[48px] text-center text-[11px] font-bold tabular-nums text-zinc-500">
+                  {engine.activeSceneIndex + 1} / {engine.plan.scenes.length}
+                </span>
+                <button
+                  type="button"
+                  title="Añadir escena después"
+                  onClick={() => engine.addScene(engine.activeSceneIndex)}
+                  className="flex h-6 w-6 items-center justify-center rounded-lg border border-white/10 text-zinc-600 transition hover:border-yellow-400/30 hover:text-yellow-300"
+                >
+                  <Plus className="h-3 w-3" />
+                </button>
+              </div>
+
               <button
                 type="button"
                 disabled={!canNext}
@@ -264,7 +291,7 @@ export function VideoEngineShell() {
             <div className="flex shrink-0 items-center gap-2 border-t border-white/8 bg-emerald-500/[0.04] px-4 py-1.5 text-[10px]">
               <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-emerald-400" />
               <span className="text-zinc-500">
-                {engine.tokenUsage.isFree ? '⚡ Gratis' : '💳 Pago'}{' · '}
+                {engine.tokenUsage.isFree ? '⚡' : '💳'}{' '}
                 <span className="font-mono text-zinc-400">
                   {engine.tokenUsage.model.split('/')[1]?.replace(':free', '') ?? engine.tokenUsage.model}
                 </span>{' · '}
@@ -296,9 +323,7 @@ export function VideoEngineShell() {
               onUpdateScene={engine.updateScene}
             />
             <GeneratedScriptPanel plan={engine.plan} />
-            {engine.tokenUsage && (
-              <TokenUsagePanel usage={engine.tokenUsage} />
-            )}
+            {engine.tokenUsage && <TokenUsagePanel usage={engine.tokenUsage} />}
             <ExportPanel
               plan={engine.plan}
               activeSceneIndex={engine.activeSceneIndex}

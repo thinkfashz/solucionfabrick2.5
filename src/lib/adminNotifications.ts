@@ -12,11 +12,11 @@ export async function sendAdminEmail(params: {
   if (recipients.length === 0) return { sent: false, skipped: true, error: 'NO_RECIPIENTS' };
 
   const creds = await getResendCredentials({ preferDb: true });
-  if (!creds.ready) {
+  if (!creds.apiKey) {
     return { sent: false, skipped: true, error: `RESEND_NOT_CONFIGURED:${creds.missing.join(',')}` };
   }
 
-  const from = creds.from ?? 'Soluciones Fabrick <notificaciones@solucionesfabrick.com>';
+  const from = creds.from || process.env.EMAIL_FROM || 'Soluciones Fabrick <notificaciones@solucionesfabrick.com>';
   const res = await fetch('https://api.resend.com/emails', {
     method: 'POST',
     headers: {

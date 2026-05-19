@@ -12,53 +12,27 @@ export async function sendAdminEmail(params: {
   if (recipients.length === 0) return { sent: false, skipped: true, error: 'NO_RECIPIENTS' };
 
   const creds = await getResendCredentials({ preferDb: true });
-  if (creds.ready) {
-    const from = creds.from ?? 'Soluciones Fabrick <notificaciones@solucionesfabrick.com>';
-    const res = await fetch('https://api.resend.com/emails', {
-      method: 'POST',
-      headers: {
-        Authorization: `Bearer ${creds.apiKey}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({ from, to: recipients, subject: params.subject, html: params.html, text: params.text }),
-      cache: 'no-store',
-    });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      return { sent: false, error: `RESEND_${res.status}: ${body.slice(0, 240)}` };
-    }
-    return { sent: true };
+  if (!creds.ready) {
+    return { sent: false, skipped: true, error: `RESEND_NOT_CONFIGURED:${creds.missing.join(',')}` };
   }
 
-  const smtpHost = process.env.SMTP_HOST;
-  const smtpUser = process.env.SMTP_USER;
-  const smtpPass = process.env.SMTP_PASS;
-  const smtpPort = Number(process.env.SMTP_PORT ?? '587');
+  const from = creds.from ?? 'Soluciones Fabrick <notificaciones@solucionesfabrick.com>';
+  const res = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: {
+      Authorization: `Bearer ${creds.apiKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({ from, to: recipients, subject: params.subject, html: params.html, text: params.text }),
+    cache: 'no-store',
+  });
 
-  if (!smtpHost || !smtpUser || !smtpPass) {
-    return { sent: false, skipped: true, error: `NO_EMAIL_PROVIDER:${creds.missing.join(',')}` };
+  if (!res.ok) {
+    const body = await res.text().catch(() => '');
+    return { sent: false, error: `RESEND_${res.status}: ${body.slice(0, 240)}` };
   }
 
-  try {
-    const nodemailer = await import('nodemailer');
-    const transporter = nodemailer.default.createTransport({
-      host: smtpHost,
-      port: Number.isFinite(smtpPort) ? smtpPort : 587,
-      secure: smtpPort === 465,
-      auth: { user: smtpUser, pass: smtpPass },
-    });
-
-    await transporter.sendMail({
-      from: process.env.EMAIL_FROM ?? smtpUser,
-      to: recipients.join(','),
-      subject: params.subject,
-      html: params.html,
-      text: params.text,
-    });
-    return { sent: true };
-  } catch (error) {
-    return { sent: false, error: error instanceof Error ? error.message : 'SMTP_ERROR' };
-  }
+  return { sent: true };
 }
 
 export function detectDevice(userAgent: string): string {

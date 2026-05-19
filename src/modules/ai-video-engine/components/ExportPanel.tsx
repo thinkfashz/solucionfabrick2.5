@@ -23,6 +23,7 @@ export function ExportPanel({
   const [cloudStatus, setCloudStatus] = useState<CloudinaryStatus>('idle');
   const [cloudUrl, setCloudUrl] = useState<string | null>(null);
   const [cloudError, setCloudError] = useState<string | null>(null);
+  const [cloudCustomName, setCloudCustomName] = useState('');
 
   // ── WebM video recording ──
   const [recordStatus, setRecordStatus] = useState<RecordStatus>('idle');
@@ -67,7 +68,7 @@ export function ExportPanel({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           runId,
-          videoTitle: plan.title,
+          videoTitle: cloudCustomName.trim() || plan.title,
           sceneId: scene.id,
           dataUrl,
         }),
@@ -254,14 +255,29 @@ export function ExportPanel({
           {scene ? `Escena ${scene.id} · ${scene.start}s–${scene.end}s` : 'Selecciona una escena'}
         </p>
 
+        {/* Custom filename */}
+        <input
+          type="text"
+          placeholder={`Nombre personalizado (por defecto: ${plan.title || 'escena'})`}
+          className="w-full rounded-xl border border-white/10 bg-white/[0.04] px-3 py-2 text-[11px] text-white outline-none transition focus:border-sky-400/40 placeholder:text-zinc-700"
+          value={cloudCustomName}
+          onChange={(e) => setCloudCustomName(e.target.value)}
+        />
+
         {cloudStatus === 'done' && cloudUrl && (
-          <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/5 p-2 text-[10px]">
+          <div className="space-y-2 rounded-xl border border-emerald-400/15 bg-emerald-400/5 p-2 text-[10px]">
             <p className="font-bold text-emerald-400">Subida exitosa</p>
+            <img
+              src={cloudUrl}
+              alt="Escena subida"
+              className="w-full rounded-lg border border-white/10 object-cover"
+              style={{ maxHeight: '160px' }}
+            />
             <a
               href={cloudUrl}
               target="_blank"
               rel="noopener noreferrer"
-              className="mt-0.5 block truncate text-emerald-300/60 underline"
+              className="block truncate text-emerald-300/60 underline hover:text-emerald-300"
             >
               {cloudUrl}
             </a>

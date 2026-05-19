@@ -12,10 +12,12 @@ export interface VideoEngineInput {
   audience: string;
   visualStyle: VisualStyle;
   cta: string;
-  /** Use paid models (allowPaid: true) or free-only */
   allowPaid?: boolean;
-  /** Specific model ID to prefer, or 'auto' */
   preferredModel?: string;
+  /** Number of scenes to generate (2–12). AI distributes duration across exactly this many. */
+  sceneCount?: number;
+  /** Free-form prompt — when set, replaces all structured fields in the AI prompt */
+  freePrompt?: string;
 }
 
 export interface VideoTokenUsage {

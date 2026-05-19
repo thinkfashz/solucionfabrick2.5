@@ -50,6 +50,7 @@ function wrapText(
 /**
  * Renders one frame of a scene onto a 2D canvas context.
  * @param progress  0 → 1 (position within this scene's duration)
+ * @param bgImage   Optional pre-loaded image drawn over the gradient at 32% opacity (cover-fit)
  */
 export function renderSceneFrame(
   ctx: CanvasRenderingContext2D,
@@ -57,6 +58,7 @@ export function renderSceneFrame(
   h: number,
   scene: VideoScene,
   progress: number,
+  bgImage?: HTMLImageElement | null,
 ): void {
   ctx.clearRect(0, 0, w, h);
 
@@ -67,6 +69,23 @@ export function renderSceneFrame(
   bg.addColorStop(1, bottomColor);
   ctx.fillStyle = bg;
   ctx.fillRect(0, 0, w, h);
+
+  // ── Background image (cover-fit, 32% opacity) ──
+  if (bgImage && bgImage.naturalWidth > 0) {
+    const imgAspect = bgImage.naturalWidth / bgImage.naturalHeight;
+    const canvasAspect = w / h;
+    let sx = 0, sy = 0, sw = bgImage.naturalWidth, sh = bgImage.naturalHeight;
+    if (imgAspect > canvasAspect) {
+      sw = bgImage.naturalHeight * canvasAspect;
+      sx = (bgImage.naturalWidth - sw) / 2;
+    } else {
+      sh = bgImage.naturalWidth / canvasAspect;
+      sy = (bgImage.naturalHeight - sh) / 2;
+    }
+    ctx.globalAlpha = 0.32;
+    ctx.drawImage(bgImage, sx, sy, sw, sh, 0, 0, w, h);
+    ctx.globalAlpha = 1;
+  }
 
   // ── Yellow radial glow top-left ──
   const glow = ctx.createRadialGradient(w * 0.28, h * 0.14, 0, w * 0.28, h * 0.14, w * 0.65);

@@ -7,24 +7,37 @@ import { CATALOG_BLOCKS, type CatalogBlock } from '../data/catalog-blocks';
 
 const FREE_STOCK_SOURCES = [
   { label: 'Unsplash', url: 'https://unsplash.com/s/photos/' },
-  { label: 'Pexels', url: 'https://www.pexels.com/search/' },
-  { label: 'Pixabay', url: 'https://pixabay.com/images/search/' },
+  { label: 'Pexels',   url: 'https://www.pexels.com/search/' },
+  { label: 'Pixabay',  url: 'https://pixabay.com/images/search/' },
+];
+
+const TRANSITIONS = [
+  { id: 'fade-up',    label: 'Fade ↑' },
+  { id: 'fade-down',  label: 'Fade ↓' },
+  { id: 'slide-left', label: '← Slide' },
+  { id: 'slide-right',label: 'Slide →' },
+  { id: 'zoom-in',    label: 'Zoom +' },
+  { id: 'zoom-out',   label: 'Zoom −' },
+  { id: 'cut',        label: 'Corte' },
+  { id: 'dissolve',   label: 'Dissolve' },
 ];
 
 function BlockChip({
   block,
   active,
+  idx,
   onClick,
 }: {
   block: CatalogBlock;
   active: boolean;
+  idx: number;
   onClick: () => void;
 }) {
   return (
     <button
       type="button"
       onClick={onClick}
-      title={block.name}
+      title={`${block.name} — ${block.description}`}
       className={`group relative h-14 w-10 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-150 ${
         active
           ? 'border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.3)]'
@@ -32,6 +45,15 @@ function BlockChip({
       }`}
     >
       <div className={`h-full w-full bg-gradient-to-b ${block.gradientClasses}`} />
+      {/* Animated motion bar — each block gets a different delay to look unique */}
+      <div
+        className="absolute left-1 right-1 h-[1.5px] rounded-full bg-white/30"
+        style={{
+          top: '35%',
+          animation: `bounce 1.6s ease-in-out infinite`,
+          animationDelay: `${idx * 180}ms`,
+        }}
+      />
       <div className="absolute inset-x-0 bottom-0 bg-black/70 px-0.5 py-0.5 text-center">
         <span className="block truncate text-[6px] font-bold leading-none text-white/80">{block.name}</span>
       </div>
@@ -62,6 +84,7 @@ export function SceneEditorPanel({
   const [imageUrl, setImageUrl] = useState(scene?.imageUrl ?? '');
   const [screenText, setScreenText] = useState(scene?.screen_text ?? '');
   const [voiceover, setVoiceover] = useState(scene?.voiceover ?? '');
+  const [transition, setTransition] = useState(scene?.transition ?? 'fade-up');
   const [imgError, setImgError] = useState(false);
 
   // Sync fields when active scene changes
@@ -71,6 +94,7 @@ export function SceneEditorPanel({
     setImageUrl(scene.imageUrl ?? '');
     setScreenText(scene.screen_text);
     setVoiceover(scene.voiceover);
+    setTransition(scene.transition ?? 'fade-up');
     setImgError(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [activeSceneIndex, scene?.background_style]);
@@ -85,6 +109,7 @@ export function SceneEditorPanel({
       screen_text: screenText.trim() || scene.screen_text,
       voiceover: voiceover.trim() || scene.voiceover,
       visual_prompt: selectedBlock.sample_visual_prompt,
+      transition,
     };
     if (imageUrl.trim()) {
       patch.imageUrl = imageUrl.trim();
@@ -128,36 +153,41 @@ export function SceneEditorPanel({
               Tipo de escena
             </p>
             <div className="flex gap-1.5 overflow-x-auto pb-1 scrollbar-hide">
-              {CATALOG_BLOCKS.map((block) => (
+              {CATALOG_BLOCKS.map((block, idx) => (
                 <BlockChip
                   key={block.id}
                   block={block}
                   active={selectedBlockId === block.id}
+                  idx={idx}
                   onClick={() => setSelectedBlockId(block.id)}
                 />
               ))}
             </div>
 
-            {/* Selected block info */}
-            <div className="rounded-xl border border-white/8 bg-white/[0.015] p-2.5 text-[10px]">
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <p className="font-bold text-zinc-200">{selectedBlock.name}</p>
-                  <p className="mt-0.5 text-zinc-600">{selectedBlock.description}</p>
-                </div>
-                <button
-                  type="button"
-                  onClick={applySuggestion}
-                  title="Cargar texto sugerido para este estilo"
-                  className="flex shrink-0 items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[9px] font-bold text-zinc-500 transition hover:border-yellow-400/20 hover:text-yellow-300"
-                >
-                  <Wand2 className="h-2.5 w-2.5" />
-                  Sugerir texto
-                </button>
+            {/* Animated block preview */}
+            <div className={`relative h-20 w-full overflow-hidden rounded-xl bg-gradient-to-b ${selectedBlock.gradientClasses}`}>
+              <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:18px_18px]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(250,204,21,0.15),transparent_55%)]" />
+              <div className="absolute bottom-3 left-3 right-3 space-y-1">
+                <div className="h-[2px] w-8 animate-pulse rounded-full bg-yellow-400" />
+                <p className="text-[10px] font-black text-white drop-shadow">{selectedBlock.sample_screen_text}</p>
               </div>
-              <p className="mt-1.5 text-[9px] leading-relaxed text-zinc-700">
-                {selectedBlock.sample_visual_prompt}
-              </p>
+              <div className="absolute right-2 top-2 rounded-full bg-black/40 px-1.5 py-0.5 text-[8px] font-bold text-zinc-400 backdrop-blur">
+                {selectedBlock.name}
+              </div>
+            </div>
+
+            {/* Info + suggest button */}
+            <div className="flex items-center justify-between gap-2 text-[10px]">
+              <p className="text-zinc-600">{selectedBlock.description}</p>
+              <button
+                type="button"
+                onClick={applySuggestion}
+                className="flex shrink-0 items-center gap-1 rounded-lg border border-white/10 px-2 py-1 text-[9px] font-bold text-zinc-500 transition hover:border-yellow-400/20 hover:text-yellow-300"
+              >
+                <Wand2 className="h-2.5 w-2.5" />
+                Texto sugerido
+              </button>
             </div>
           </div>
 
@@ -179,17 +209,21 @@ export function SceneEditorPanel({
 
             {/* Image preview */}
             {imageUrl && !imgError && (
-              <div className="h-16 w-full overflow-hidden rounded-lg border border-white/8">
+              <div className="h-20 w-full overflow-hidden rounded-lg border border-white/8">
                 <img
                   src={imageUrl}
                   alt="preview"
+                  crossOrigin="anonymous"
                   className="h-full w-full object-cover"
                   onError={() => setImgError(true)}
+                  onLoad={() => setImgError(false)}
                 />
               </div>
             )}
             {imageUrl && imgError && (
-              <p className="text-[9px] text-red-400">No se pudo cargar la imagen. Verifica la URL.</p>
+              <p className="text-[9px] text-amber-400">
+                La imagen no pudo cargarse en el preview (puede ser restricción CORS del servidor). Prueba con una URL de Cloudinary, Unsplash o Pexels.
+              </p>
             )}
 
             {/* Free stock hints */}
@@ -234,6 +268,29 @@ export function SceneEditorPanel({
               value={voiceover}
               onChange={(e) => setVoiceover(e.target.value)}
             />
+          </div>
+
+          {/* ── Transition ── */}
+          <div className="space-y-1.5">
+            <p className="text-[9px] font-black uppercase tracking-[0.22em] text-zinc-600">
+              Transición de entrada
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {TRANSITIONS.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  onClick={() => setTransition(t.id)}
+                  className={`rounded-lg border px-2 py-1 text-[9px] font-bold transition-all ${
+                    transition === t.id
+                      ? 'border-yellow-400/40 bg-yellow-400/10 text-yellow-300'
+                      : 'border-white/10 text-zinc-600 hover:border-white/20 hover:text-zinc-400'
+                  }`}
+                >
+                  {t.label}
+                </button>
+              ))}
+            </div>
           </div>
 
           {/* ── Apply button ── */}

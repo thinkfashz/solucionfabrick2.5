@@ -1,0 +1,37 @@
+name: Update QR lockfile
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: feat/admin-interface-switcher-studio-sync
+
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.0
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - run: pnpm add qrcode@^1.5.4
+
+      - run: pnpm add -D @types/qrcode@^1.5.6
+
+      - run: |
+          git config user.name "github-actions"
+          git config user.email "actions@github.com"
+          git add package.json pnpm-lock.yaml
+          git commit -m "chore(profile): update QR dependency lockfile" || echo "No changes"
+          git push

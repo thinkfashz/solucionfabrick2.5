@@ -28,7 +28,16 @@ export function ExportPanel({
   const [recordStatus, setRecordStatus] = useState<RecordStatus>('idle');
   const [recordProgress, setRecordProgress] = useState<RecordProgress | null>(null);
   const [recordError, setRecordError] = useState<string | null>(null);
+  const [recordBlobRef, setRecordBlobRef] = useState<Blob | null>(null);
+  const [recordBlobUrl, setRecordBlobUrl] = useState<string | null>(null);
   const abortRef = useRef(false);
+
+  // Revoke object URL on unmount or when a new recording replaces it
+  useEffect(() => {
+    return () => {
+      if (recordBlobUrl) URL.revokeObjectURL(recordBlobUrl);
+    };
+  }, [recordBlobUrl]);
 
   // ── Web Speech voiceover ──
   const [isSpeaking, setIsSpeaking] = useState(false);
@@ -93,8 +102,15 @@ export function ExportPanel({
         .toLowerCase()
         .replace(/[^a-z0-9]+/g, '-')
         .replace(/^-|-$/g, '') || 'video';
+      const filename = `${safeTitle}-${plan.format.replace(':', 'x')}.webm`;
 
-      downloadBlob(blob, `${safeTitle}-${plan.format.replace(':', 'x')}.webm`);
+      // Store blob + URL for inline playback
+      if (recordBlobUrl) URL.revokeObjectURL(recordBlobUrl);
+      const url = URL.createObjectURL(blob);
+      setRecordBlobRef(blob);
+      setRecordBlobUrl(url);
+
+      downloadBlob(blob, filename);
       setRecordStatus('done');
     } catch (err) {
       setRecordError(err instanceof Error ? err.message : 'Error grabando el video.');
@@ -106,6 +122,9 @@ export function ExportPanel({
     abortRef.current = true;
     setRecordStatus('idle');
     setRecordProgress(null);
+    if (recordBlobUrl) URL.revokeObjectURL(recordBlobUrl);
+    setRecordBlobUrl(null);
+    setRecordBlobRef(null);
   }
 
   // ── Voiceover preview ──
@@ -170,10 +189,31 @@ export function ExportPanel({
           </div>
         )}
 
-        {recordStatus === 'done' && (
-          <div className="flex items-center gap-1.5 text-[10px] text-emerald-400">
-            <Download className="h-3 w-3" />
-            Descarga iniciada automáticamente
+        {recordStatus === 'done' && recordBlobUrl && (
+          <div className="space-y-2">
+            <video
+              src={recordBlobUrl}
+              controls
+              playsInline
+              className="w-full rounded-xl border border-emerald-400/20 shadow-lg"
+              style={{ maxHeight: '240px' }}
+            />
+            <button
+              type="button"
+              onClick={() => {
+                if (recordBlobRef) {
+                  const safeTitle = plan.title
+                    .toLowerCase()
+                    .replace(/[^a-z0-9]+/g, '-')
+                    .replace(/^-|-$/g, '') || 'video';
+                  downloadBlob(recordBlobRef, `${safeTitle}-${plan.format.replace(':', 'x')}.webm`);
+                }
+              }}
+              className="flex w-full items-center justify-center gap-1.5 rounded-xl border border-emerald-400/20 bg-emerald-400/5 px-3 py-2 text-[10px] font-bold text-emerald-300 transition hover:bg-emerald-400/10"
+            >
+              <Download className="h-3.5 w-3.5" />
+              Descargar .webm
+            </button>
           </div>
         )}
 

@@ -7,6 +7,7 @@ export const dynamic = 'force-dynamic';
 
 const SETTING_KEY = 'admin_profile_photo';
 const MAX_SIZE = 3 * 1024 * 1024;
+const AVATAR_FOLDER = 'media/admin-profiles';
 const ALLOWED_MIME = new Set(['image/jpeg', 'image/png', 'image/webp', 'image/gif']);
 
 async function getProfilePhoto(email: string) {
@@ -66,15 +67,15 @@ export async function POST(request: NextRequest) {
     const bytes = await file.arrayBuffer();
     const base64 = Buffer.from(bytes).toString('base64');
     const dataUrl = `data:${file.type};base64,${base64}`;
-    const publicId = `media/admin-profiles/${safePublicId(session.email)}-avatar`;
+    const publicId = `${safePublicId(session.email)}-avatar`;
     const uploaded = await uploadDataUrlToCloudinary({
       dataUrl,
-      folder: 'media/admin-profiles',
+      folder: AVATAR_FOLDER,
       publicId,
     });
 
     const avatarUrl = uploaded.ready ? uploaded.url : dataUrl;
-    const avatarPublicId = uploaded.ready ? uploaded.publicId ?? publicId : null;
+    const avatarPublicId = uploaded.ready ? uploaded.publicId ?? `${AVATAR_FOLDER}/${publicId}` : null;
     const client = getAdminInsforge();
 
     const { error } = await client.database

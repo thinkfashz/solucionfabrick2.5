@@ -92,6 +92,7 @@ const SECTIONS: MenuSection[] = [
     title: 'Seguridad & acceso',
     tone: 'red',
     items: [
+      { href: '/admin/perfil', label: 'Perfil administrador', icon: User, description: 'Foto, contacto, redes y presentación', highlight: true },
       { href: '/admin/sesiones', label: 'Sesiones y dispositivos', icon: Fingerprint, description: 'IPs, móviles, navegadores y auditoría', highlight: true },
       { href: '/admin/equipo', label: 'Equipo', icon: ShieldCheck, description: 'Roles, invitaciones y aprobaciones' },
       { href: '/admin/equipo/demo', label: 'Links demo 24h', icon: Eye, description: 'Accesos guiados de solo lectura', highlight: true },
@@ -235,7 +236,6 @@ export default function AdminContextMenu({ open, onClose, onLogout, profilePhoto
         <header className="border-b border-white/10 px-4 py-4">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              {/* Profile photo */}
               <button
                 type="button"
                 title="Cambiar foto de perfil"
@@ -267,7 +267,7 @@ export default function AdminContextMenu({ open, onClose, onLogout, profilePhoto
               />
               <div>
                 <p className="text-xs font-black uppercase tracking-[0.24em] text-yellow-300">Control room</p>
-                <p className="mt-1 text-[10px] uppercase tracking-[0.18em] text-zinc-500">{totalItems} opciones disponibles</p>
+                <Link href="/admin/perfil" onClick={onClose} className="mt-1 block text-[10px] uppercase tracking-[0.18em] text-zinc-500 hover:text-yellow-300">Ver perfil · {totalItems} opciones</Link>
               </div>
             </div>
             <button onClick={onClose} className="rounded-full border border-white/10 p-2 text-zinc-300" aria-label="Cerrar menú"><X className="h-4 w-4" /></button>

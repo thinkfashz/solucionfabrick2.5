@@ -1,13 +1,57 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
-import { AnimatePresence, motion } from 'framer-motion';
 import {
-  AlertTriangle, BarChart3, BookOpen, Boxes, Camera, ChevronRight, Cloud, Database, ExternalLink, Eye, FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Menu,
-  Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Star, Stethoscope, Store, Tag, Terminal,
-  TrendingDown, Truck, Telescope, User, Users, Video, Wallet, X, Zap, Plus, MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
+  Activity,
+  AlertTriangle,
+  BarChart3,
+  BookOpen,
+  Boxes,
+  ChevronRight,
+  Cloud,
+  Database,
+  ExternalLink,
+  Eye,
+  FileText,
+  FlaskConical,
+  Globe2,
+  Hammer,
+  Image as ImageIcon,
+  Inbox,
+  KeyRound,
+  LayoutGrid,
+  Link2,
+  LogOut,
+  Menu,
+  MessageCircle,
+  Newspaper,
+  Package,
+  Plug,
+  Radio,
+  Receipt,
+  Rocket,
+  Scan,
+  Search,
+  Send,
+  Settings,
+  ShieldCheck,
+  ShoppingCart,
+  Sparkles,
+  Star,
+  Stethoscope,
+  Store,
+  Tag,
+  Telescope,
+  Terminal,
+  TrendingDown,
+  Truck,
+  User,
+  Users,
+  Video,
+  Wallet,
+  X,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
 import { AdminBottomNav } from '@/components/AdminBottomNav';
@@ -18,16 +62,29 @@ import AdminContextMenu from '@/components/admin/AdminContextMenu';
 import DemoSessionTracker from '@/components/admin/DemoSessionTracker';
 import { AdminThemeToggle } from '@/components/admin/AdminThemeToggle';
 
-type NavLink = { href: string; label: string; description: string; icon: typeof Package; superadminOnly?: boolean; highlight?: boolean };
+type NavIcon = typeof Package;
+type NavLink = { href: string; label: string; description: string; icon: NavIcon; superadminOnly?: boolean; highlight?: boolean };
 
-const navSections: { title: string; links: NavLink[] }[] = [
+type NavSection = { title: string; links: NavLink[] };
+
+const navSections: NavSection[] = [
+  {
+    title: 'Perfil & acceso',
+    links: [
+      { href: '/admin/perfil', label: 'Perfil administrador', description: 'Foto, bio, contacto, redes y presentación', icon: User, highlight: true },
+      { href: '/admin/equipo', label: 'Equipo', description: 'Roles, invitaciones y aprobaciones', icon: ShieldCheck, superadminOnly: true },
+      { href: '/admin/equipo/demo', label: 'Links demo 24h', description: 'Accesos guiados de solo lectura', icon: Eye, highlight: true },
+      { href: '/admin/sesiones', label: 'Sesiones y dispositivos', description: 'IPs, dispositivos y auditoría', icon: Activity, highlight: true },
+      { href: '/admin/seguridad', label: 'Seguridad · Passkeys', description: 'Huella, Face ID y claves de acceso', icon: KeyRound, highlight: true },
+    ],
+  },
   {
     title: 'Visión general',
     links: [
       { href: '/admin', label: 'Centro de control', description: 'KPIs y salud operativa', icon: BarChart3 },
       { href: '/admin/modulos', label: 'Centro de módulos', description: 'Mapa modular completo del admin', icon: LayoutGrid, highlight: true },
-      { href: '/admin/saas', label: 'Mi SaaS', description: 'Clientes, instalación y gestión de la plataforma', icon: Rocket, highlight: true },
-      { href: '/admin/activar', label: 'Activar plataforma', description: 'Variables de entorno, servicios y estado de conexiones', icon: ShieldCheck },
+      { href: '/admin/saas', label: 'Mi SaaS', description: 'Clientes, instalación y plataforma', icon: Rocket, highlight: true },
+      { href: '/admin/activar', label: 'Activar plataforma', description: 'Variables, servicios y conexiones', icon: ShieldCheck },
     ],
   },
   {
@@ -35,348 +92,168 @@ const navSections: { title: string; links: NavLink[] }[] = [
     links: [
       { href: '/admin/productos', label: 'Productos', description: 'Catálogo y stock', icon: Package },
       { href: '/admin/productos/importar', label: 'Importar de Mercado Libre', description: 'Vista previa desde URL de ML Chile', icon: Link2 },
-      { href: '/admin/materiales', label: 'Materiales (Cotizador)', description: 'Alimenta el cotizador en vivo', icon: Package },
-      { href: '/admin/proyectos', label: 'Proyectos', description: 'Obras terminadas visibles al cliente', icon: Hammer },
-      { href: '/admin/pedidos', label: 'Pedidos', description: 'Cobros y estados', icon: ShoppingCart },
-      { href: '/admin/pagos', label: 'Pagos · MercadoPago', description: 'Modo, latencia y KPIs de la pasarela', icon: Wallet, highlight: true },
-      { href: '/admin/cotizaciones', label: 'Cotizaciones', description: 'Solicitudes de servicios y diseños 3D', icon: FileText },
-      { href: '/admin/presupuestos', label: 'Presupuestos · 5 días', description: 'Generar link autodestruible y enviar al cliente', icon: FileText, highlight: true },
+      { href: '/admin/materiales', label: 'Materiales', description: 'Cotizador en vivo', icon: Package },
+      { href: '/admin/proyectos', label: 'Proyectos', description: 'Obras terminadas', icon: Hammer },
+      { href: '/admin/pedidos', label: 'Pedidos', description: 'Órdenes y estados', icon: ShoppingCart },
+      { href: '/admin/pagos', label: 'Pagos · MercadoPago', description: 'Pasarela y métricas', icon: Wallet, highlight: true },
+      { href: '/admin/cotizaciones', label: 'Cotizaciones', description: 'Solicitudes y diseños 3D', icon: FileText },
+      { href: '/admin/presupuestos', label: 'Presupuestos', description: 'Links autodestruibles de presupuesto', icon: FileText, highlight: true },
       { href: '/admin/entregas', label: 'Entregas', description: 'Seguimiento logístico', icon: Truck },
-      { href: '/admin/inventario', label: 'Inventario', description: 'Stock, escáner y movimientos de bodega', icon: Scan },
-      { href: '/admin/inventario/scan', label: 'Escáner de inventario', description: 'Lectura de códigos de barras y QR', icon: Scan },
+      { href: '/admin/inventario', label: 'Inventario', description: 'Stock y movimientos', icon: Scan },
+      { href: '/admin/inventario/scan', label: 'Escáner inventario', description: 'Códigos de barra y QR', icon: Scan },
       { href: '/admin/clientes', label: 'Clientes', description: 'Historial y recurrencia', icon: Users },
-      { href: '/admin/cupones', label: 'Cupones y Descuentos', description: 'Códigos de descuento y promociones', icon: Tag, highlight: true },
-      { href: '/admin/reviews', label: 'Reseñas', description: 'Opiniones y valoraciones de clientes', icon: Star, highlight: true },
+      { href: '/admin/cupones', label: 'Cupones', description: 'Promociones y descuentos', icon: Tag, highlight: true },
+      { href: '/admin/reviews', label: 'Reseñas', description: 'Opiniones de clientes', icon: Star, highlight: true },
       { href: '/admin/reportes', label: 'Reportes', description: 'Ventas y métricas', icon: BarChart3 },
     ],
   },
   {
     title: 'Contenido',
     links: [
-      { href: '/admin/blog', label: 'Blog', description: 'Entradas, portadas y publicación', icon: Newspaper },
-      { href: '/admin/home', label: 'Pantalla principal', description: 'Banners, secciones y orden', icon: LayoutGrid },
-      { href: '/admin/editor', label: 'Editor universal', description: 'Navbar, footer, checkout, 404 e inyección de código', icon: LayoutGrid, highlight: true },
-      { href: '/admin/tienda', label: 'Tienda · Edición', description: 'Portada, banners y secciones del catálogo', icon: ShoppingCart },
-      { href: '/admin/medios', label: 'Medios', description: 'Imágenes y biblioteca', icon: ImageIcon },
-      { href: '/admin/medios?tab=cloudinary', label: 'Cloudinary', description: 'Subir, eliminar y estado en la nube', icon: Cloud, highlight: true },
+      { href: '/admin/blog', label: 'Blog', description: 'Entradas y publicación', icon: Newspaper },
+      { href: '/admin/home', label: 'Pantalla principal', description: 'Banners y secciones', icon: LayoutGrid },
+      { href: '/admin/editor', label: 'Editor universal', description: 'Navbar, footer, checkout y más', icon: LayoutGrid, highlight: true },
+      { href: '/admin/tienda', label: 'Tienda', description: 'Portada y catálogo', icon: ShoppingCart },
+      { href: '/admin/medios', label: 'Medios', description: 'Biblioteca de imágenes', icon: ImageIcon },
+      { href: '/admin/medios?tab=cloudinary', label: 'Cloudinary', description: 'Nube de medios', icon: Cloud, highlight: true },
     ],
   },
   {
-    title: 'Expansión',
+    title: 'Marketing & IA',
     links: [
-      { href: '/admin/ai-developer', label: 'Fabrick AI Developer', description: 'Chat real, proveedores IA y herramientas Git seguras', icon: Sparkles, highlight: true },
-      { href: '/admin/publicidad', label: 'Publicidad', description: 'Meta Ads', icon: Megaphone },
-      { href: '/admin/publicidad/coach', label: 'Coach de campañas', description: 'Agente IA: analizar, sugerir, optimizar', icon: Sparkles, highlight: true },
-      { href: '/admin/video-engine', label: 'Fabrick Studio IA', description: 'Genera guiones, escenas y previews HTML con IA', icon: Video, highlight: true },
-      { href: '/admin/publicar', label: 'Publicar', description: 'Posts para redes sociales', icon: Send },
-      { href: '/admin/newsletter', label: 'Boletín', description: 'Suscriptores + campañas de construcción programables', icon: Newspaper, highlight: true },
-      { href: '/admin/asistente-ia', label: 'Asistente IA', description: 'Chat con OpenRouter (gratis y de pago) + análisis del código', icon: Sparkles, highlight: true },
-      { href: '/admin/ml', label: 'MercadoLibre', description: 'Publicaciones, pedidos, preguntas y precios', icon: Store, highlight: true },
-      { href: '/admin/ml/buscar', label: 'Buscador ML', description: 'Buscar en catálogo de ML Chile', icon: Search },
-      { href: '/admin/ml/publicaciones', label: 'Mis publicaciones ML', description: 'Gestión de listings propios', icon: Store },
-      { href: '/admin/ml/pedidos', label: 'Pedidos ML', description: 'Sincronizar ventas de ML', icon: ShoppingCart },
-      { href: '/admin/ml/preguntas', label: 'Preguntas ML', description: 'Responder preguntas de compradores', icon: MessageCircle },
-      { href: '/admin/ml/precios', label: 'Monitor de precios ML', description: 'Comparar precios vs. competencia', icon: TrendingDown },
-      { href: '/admin/inteligencia-mercado', label: 'Inteligencia de mercado', description: 'Buscar referentes (ML+Google), tendencias, productos ganadores y SEO con IA', icon: Telescope, highlight: true },
-      { href: '/admin/social', label: 'Social', description: 'Hub de redes sociales y mensajería', icon: Inbox },
-      { href: '/admin/social/inbox', label: 'Inbox social', description: 'Mensajes de Instagram, FB, WhatsApp y ML', icon: Inbox, highlight: true },
-      { href: '/admin/integraciones', label: 'Centro de integraciones', description: 'Conectar, probar y desactivar APIs', icon: Link2, highlight: true },
-      { href: '/admin/integraciones/marketplace', label: 'Marketplace de extensiones', description: 'Apps, snippets, webhooks y OAuth', icon: Boxes, highlight: true },
-      { href: '/admin/configuracion', label: 'Configuración', description: 'Datos del negocio y acceso admin', icon: Settings },
+      { href: '/admin/ai-developer', label: 'Fabrick AI Developer', description: 'Chat real y herramientas Git', icon: Sparkles, highlight: true },
+      { href: '/admin/asistente-ia', label: 'Asistente IA', description: 'OpenRouter y análisis', icon: Sparkles, highlight: true },
+      { href: '/admin/video-engine', label: 'Fabrick Studio IA', description: 'Guiones, escenas y previews HTML', icon: Video, highlight: true },
+      { href: '/admin/publicidad', label: 'Publicidad', description: 'Meta Ads', icon: Globe2 },
+      { href: '/admin/publicidad/coach', label: 'Coach campañas', description: 'Optimización con IA', icon: Sparkles, highlight: true },
+      { href: '/admin/publicar', label: 'Publicar', description: 'Posts para redes', icon: Send },
+      { href: '/admin/newsletter', label: 'Boletín', description: 'Suscriptores y campañas', icon: Newspaper, highlight: true },
+      { href: '/admin/inteligencia-mercado', label: 'Inteligencia mercado', description: 'Tendencias y SEO con IA', icon: Telescope, highlight: true },
+      { href: '/admin/social', label: 'Social', description: 'Hub social', icon: Inbox },
+      { href: '/admin/social/inbox', label: 'Inbox social', description: 'Mensajes y canales', icon: MessageCircle, highlight: true },
+    ],
+  },
+  {
+    title: 'MercadoLibre',
+    links: [
+      { href: '/admin/ml', label: 'Centro ML', description: 'Publicaciones, pedidos y preguntas', icon: Store, highlight: true },
+      { href: '/admin/ml/buscar', label: 'Buscador ML', description: 'Buscar catálogo ML Chile', icon: Search },
+      { href: '/admin/ml/publicaciones', label: 'Publicaciones ML', description: 'Gestión de listings', icon: Store },
+      { href: '/admin/ml/pedidos', label: 'Pedidos ML', description: 'Sincronizar ventas', icon: ShoppingCart },
+      { href: '/admin/ml/preguntas', label: 'Preguntas ML', description: 'Responder compradores', icon: MessageCircle },
+      { href: '/admin/ml/precios', label: 'Monitor precios ML', description: 'Competencia y precios', icon: TrendingDown },
     ],
   },
   {
     title: 'Sistema',
     links: [
-      { href: '/admin/estado', label: 'Estado del sistema', description: 'Diagnóstico CMS, BD, env e integraciones', icon: Stethoscope },
-      { href: '/admin/diagnostico', label: 'Diagnóstico de APIs', description: 'Variables, tablas y servicios críticos', icon: Stethoscope, highlight: true },
-      { href: '/admin/errores', label: 'Monitor de Errores', description: 'Fallos capturados de las rutas API', icon: AlertTriangle },
-      { href: '/admin/vercel-logs', label: 'Logs de Vercel', description: 'Build + runtime logs del deployment', icon: Terminal },
-      { href: '/admin/monitor', label: 'Monitor del sistema', description: 'CPU, RAM, latencia y health checks en tiempo real', icon: Activity, highlight: true },
-      { href: '/admin/manual', label: 'Manual', description: 'Guía técnica de la app', icon: BookOpen, highlight: true },
-      { href: '/admin/observatory', label: 'Observatory', description: 'Red en tiempo real 3D', icon: Radio },
-      { href: '/admin/envios', label: 'Tarifas de Envío', description: 'Costos por región y transportista', icon: Truck },
-      { href: '/admin/sql', label: 'Terminal SQL', description: 'Ejecutar SQL en InsForge', icon: Database },
-      { href: '/admin/testing', label: 'Testing', description: 'Suite de pruebas y smoke tests', icon: FlaskConical },
-      { href: '/admin/setup', label: 'Setup', description: 'Verificar tablas InsForge', icon: Database, superadminOnly: true },
-      { href: '/admin/equipo', label: 'Equipo', description: 'Roles, invitaciones y aprobaciones', icon: ShieldCheck, superadminOnly: true },
-    ],
-  },
-  {
-    title: 'Seguridad & Claves',
-    links: [
-      { href: '/admin/seguridad', label: 'Seguridad · Passkeys', description: 'Acceso con huella digital o Face ID', icon: ShieldCheck, highlight: true },
-      { href: '/admin/integraciones', label: 'Credenciales oficiales', description: 'API keys, proveedores y pruebas de conexión', icon: KeyRound, highlight: true },
-      { href: '/admin/extensions', label: 'Extensiones y Webhooks', description: 'Snippets, webhooks, OAuth y signing keys', icon: Plug, highlight: true },
-      { href: '/admin/facturas', label: 'Facturas DTE', description: 'Documentos tributarios y SII', icon: Receipt },
+      { href: '/admin/integraciones', label: 'Integraciones', description: 'Conectar y probar APIs', icon: Link2, highlight: true },
+      { href: '/admin/integraciones/marketplace', label: 'Marketplace extensiones', description: 'Apps, snippets y OAuth', icon: Boxes, highlight: true },
+      { href: '/admin/configuracion', label: 'Configuración', description: 'Negocio y acceso admin', icon: Settings },
+      { href: '/admin/estado', label: 'Estado del sistema', description: 'Diagnóstico CMS y BD', icon: Stethoscope },
+      { href: '/admin/diagnostico', label: 'Diagnóstico APIs', description: 'Variables y servicios críticos', icon: Stethoscope, highlight: true },
+      { href: '/admin/errores', label: 'Errores', description: 'Fallos capturados', icon: AlertTriangle },
+      { href: '/admin/vercel-logs', label: 'Logs Vercel', description: 'Build y runtime logs', icon: Terminal },
+      { href: '/admin/monitor', label: 'Monitor', description: 'CPU, RAM y latencia', icon: Activity, highlight: true },
+      { href: '/admin/manual', label: 'Manual', description: 'Guía técnica', icon: BookOpen, highlight: true },
+      { href: '/admin/observatory', label: 'Observatory', description: 'Red 3D en tiempo real', icon: Radio },
+      { href: '/admin/envios', label: 'Tarifas envío', description: 'Región y transportista', icon: Truck },
+      { href: '/admin/sql', label: 'Terminal SQL', description: 'SQL en InsForge', icon: Database },
+      { href: '/admin/testing', label: 'Testing', description: 'Smoke tests', icon: FlaskConical },
+      { href: '/admin/setup', label: 'Setup', description: 'Verificar tablas', icon: Database, superadminOnly: true },
+      { href: '/admin/extensions', label: 'Extensiones', description: 'Webhooks y signing keys', icon: Plug, highlight: true },
+      { href: '/admin/facturas', label: 'Facturas DTE', description: 'Documentos tributarios', icon: Receipt },
     ],
   },
 ];
 
-/** Human labels for breadcrumb segments. Keep in sync with the nav links above. */
-const PATH_LABELS: Record<string, string> = {
-  '/admin': 'Centro de control',
-  '/admin/modulos': 'Centro de módulos',
-  '/admin/saas': 'Mi SaaS',
-  '/admin/activar': 'Activar plataforma',
-  '/admin/productos': 'Productos',
-  '/admin/productos/nuevo': 'Nuevo producto',
-  '/admin/productos/importar': 'Importar de Mercado Libre',
-  '/admin/materiales': 'Materiales (Cotizador)',
-  '/admin/proyectos': 'Proyectos',
-  '/admin/pedidos': 'Pedidos',
-  '/admin/pagos': 'Pagos · MercadoPago',
-  '/admin/cotizaciones': 'Cotizaciones',
-  '/admin/presupuestos': 'Presupuestos',
-  '/admin/newsletter': 'Boletín',
-  '/admin/asistente-ia': 'Asistente IA',
-  '/admin/ai-developer': 'Fabrick AI Developer',
-  '/admin/entregas': 'Entregas',
-  '/admin/clientes': 'Clientes',
-  '/admin/cupones': 'Cupones y Descuentos',
-  '/admin/reviews': 'Reseñas de Clientes',
-  '/admin/reportes': 'Reportes',
-  '/admin/publicidad': 'Publicidad',
-  '/admin/publicidad/nuevo': 'Nueva campaña',
-  '/admin/publicidad/coach': 'Coach de campañas',
-  '/admin/video-engine': 'Fabrick Studio IA',
-  '/admin/publicar': 'Publicar',
-  '/admin/ml': 'MercadoLibre',
-  '/admin/ml/buscar': 'Buscador ML',
-  '/admin/ml/publicaciones': 'Mis publicaciones ML',
-  '/admin/ml/pedidos': 'Pedidos ML',
-  '/admin/ml/preguntas': 'Preguntas ML',
-  '/admin/ml/precios': 'Monitor de precios ML',
-  '/admin/inteligencia-mercado': 'Inteligencia de mercado',
-  '/admin/social': 'Social',
-  '/admin/social/inbox': 'Inbox social',
-  '/admin/inventario': 'Inventario',
-  '/admin/inventario/scan': 'Escáner de inventario',
-  '/admin/integraciones': 'Centro de integraciones',
-  '/admin/integraciones/marketplace': 'Marketplace de extensiones',
-  '/admin/configuracion': 'Configuración',
-  '/admin/observatory': 'Observatory',
-  '/admin/envios': 'Tarifas de Envío',
-  '/admin/sql': 'Terminal SQL',
-  '/admin/setup': 'Setup',
-  '/admin/equipo': 'Equipo',
-  '/admin/blog': 'Blog',
-  '/admin/blog/nuevo': 'Nueva entrada',
-  '/admin/home': 'Pantalla principal',
-  '/admin/editor': 'Editor universal',
-  '/admin/tienda': 'Tienda · Edición',
-  '/admin/medios': 'Medios',
-  '/admin/estado': 'Estado del sistema',
-  '/admin/diagnostico': 'Diagnóstico de APIs',
-  '/admin/manual': 'Manual',
-  '/admin/errores': 'Monitor de Errores',
-  '/admin/vercel-logs': 'Logs de Vercel',
-  '/admin/monitor': 'Monitor del sistema',
-  '/admin/testing': 'Testing',
-  '/admin/seguridad': 'Seguridad · Passkeys',
-  '/admin/center': 'Centro de integración',
-  '/admin/extensions': 'Extensiones y Webhooks',
-  '/admin/facturas': 'Facturas DTE',
-};
+const PATH_LABELS: Record<string, string> = Object.fromEntries(
+  navSections.flatMap((section) => section.links.map((link) => [link.href.split('?')[0], link.label])),
+);
 
-function NavItem({ href, label, description, icon: Icon, active, onNavigate, highlight = false, centered = false }: {
-  href: string; label: string; description: string; icon: typeof Package; active: boolean; onNavigate?: () => void; highlight?: boolean; centered?: boolean;
-}) {
+function AvatarCircle({ photo, size = 'md' }: { photo?: string | null; size?: 'sm' | 'md' | 'lg' }) {
+  const sizeClass = size === 'lg' ? 'h-14 w-14' : size === 'sm' ? 'h-8 w-8' : 'h-10 w-10';
   return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-      className={`group relative flex overflow-hidden rounded-xl transition-all duration-200 ${
-        centered ? 'flex-col items-center justify-center gap-2 px-3 py-3 text-center' : 'items-center gap-3 px-3 py-2.5'
-      } ${
-        active
-          ? 'bg-gradient-to-r from-yellow-400/20 via-yellow-300/10 to-transparent border border-yellow-300/40 shadow-[inset_0_1px_0_rgba(250,204,21,0.25)]'
-          : highlight
-          ? 'border border-yellow-300/30 bg-yellow-300/5 hover:border-yellow-300/60 hover:bg-yellow-300/10'
-          : 'border border-transparent hover:border-white/10 hover:bg-white/[0.04]'
-      }`}
-    >
-      {active && !centered ? (
-        <span className="absolute inset-y-2 left-0 w-[3px] rounded-r-full bg-gradient-to-b from-yellow-300 to-amber-500 shadow-[0_0_10px_rgba(250,204,21,0.6)]" />
-      ) : null}
-
-      <span className={`flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg transition-all ${
-        active
-          ? 'bg-yellow-300 text-black shadow-[0_4px_14px_rgba(250,204,21,0.55)]'
-          : highlight
-          ? 'bg-yellow-300/15 text-yellow-300 ring-1 ring-yellow-300/30'
-          : 'bg-white/5 text-zinc-300 group-hover:bg-white/10 group-hover:text-yellow-300'
-      }`}>
-        <Icon className="h-3.5 w-3.5" strokeWidth={2} />
-      </span>
-
-      <span className={centered ? 'w-full' : 'min-w-0 flex-1'}>
-        <span className={`flex items-center gap-2 text-[12.5px] font-semibold leading-tight ${centered ? 'justify-center text-center' : ''} ${active ? 'text-yellow-200' : highlight ? 'text-yellow-300' : 'text-zinc-200 group-hover:text-white'} transition-colors`}>
-          <span className={centered ? 'line-clamp-2 text-center' : 'truncate'}>{label}</span>
-          {highlight && !active && (
-            <span className="inline-flex items-center rounded-full border border-yellow-300/40 bg-yellow-300/15 px-1.5 py-px text-[8.5px] font-black uppercase tracking-[0.18em] text-yellow-200">
-              Nuevo
-            </span>
-          )}
+    <span className={`relative flex ${sizeClass} shrink-0 overflow-hidden rounded-full border-2 border-yellow-300/40 bg-black/60 shadow-lg transition-all group-hover:border-yellow-300/80`}>
+      {photo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photo} alt="Foto de perfil" className="h-full w-full object-cover" />
+      ) : (
+        <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-yellow-400/20 to-amber-600/10">
+          <User className={size === 'sm' ? 'h-3.5 w-3.5 text-yellow-300/70' : 'h-6 w-6 text-yellow-300/70'} />
         </span>
-        <span className={`mt-0.5 block text-[10.5px] leading-tight text-zinc-500 ${centered ? 'line-clamp-2 text-center' : 'truncate'}`}>{description}</span>
-      </span>
-
-      {!centered && (
-        <ChevronRight className={`h-3.5 w-3.5 flex-shrink-0 transition-all ${active ? 'translate-x-0.5 text-yellow-300' : 'text-zinc-700 opacity-0 group-hover:translate-x-0.5 group-hover:text-yellow-300 group-hover:opacity-100'}`} />
       )}
-    </Link>
+    </span>
   );
 }
 
-const QUICK_ACTIONS: { href: string; label: string; icon: typeof Package; tone: 'primary' | 'cyan' | 'emerald' }[] = [
-  { href: '/admin/productos/nuevo', label: 'Nuevo producto', icon: Plus, tone: 'primary' },
-  { href: '/admin/cotizaciones', label: 'Cotizaciones', icon: FileText, tone: 'cyan' },
-  { href: '/admin/social/inbox', label: 'Inbox social', icon: MessageCircle, tone: 'emerald' },
-];
-
-function QuickAction({ href, label, icon: Icon, tone, onNavigate, className = '' }: {
-  href: string; label: string; icon: typeof Package; tone: 'primary' | 'cyan' | 'emerald'; onNavigate?: () => void; className?: string;
-}) {
-  const styles = {
-    primary: 'border-yellow-300/40 bg-yellow-300/10 text-yellow-200 hover:bg-yellow-300/20 hover:border-yellow-300/70',
-    cyan: 'border-sky-400/30 bg-sky-400/10 text-sky-200 hover:bg-sky-400/20 hover:border-sky-400/60',
-    emerald: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200 hover:bg-emerald-400/20 hover:border-emerald-400/60',
-  } as const;
+function NavItem({ href, label, description, icon: Icon, active, onNavigate, highlight = false }: NavLink & { active: boolean; onNavigate?: () => void }) {
   return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-      className={`group flex min-h-[92px] flex-col items-center justify-center gap-1.5 rounded-xl border px-2 py-3 text-[10px] font-bold uppercase tracking-[0.16em] transition ${styles[tone]} ${className}`}
-    >
-      <Icon className="h-4 w-4 transition-transform group-hover:scale-110" />
-      <span className="text-center leading-tight">{label}</span>
+    <Link href={href} onClick={onNavigate} className={`group relative flex items-center gap-3 overflow-hidden rounded-xl border px-3 py-2.5 transition ${active ? 'border-yellow-300/40 bg-yellow-300/15' : highlight ? 'border-yellow-300/25 bg-yellow-300/5 hover:border-yellow-300/50' : 'border-transparent hover:border-white/10 hover:bg-white/[0.04]'}`}>
+      <span className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-lg ${active ? 'bg-yellow-300 text-black' : highlight ? 'bg-yellow-300/15 text-yellow-300' : 'bg-white/5 text-zinc-300 group-hover:text-yellow-300'}`}>
+        <Icon className="h-3.5 w-3.5" />
+      </span>
+      <span className="min-w-0 flex-1">
+        <span className={`flex items-center gap-2 text-[12.5px] font-semibold leading-tight ${active || highlight ? 'text-yellow-200' : 'text-zinc-200 group-hover:text-white'}`}>
+          <span className="truncate">{label}</span>
+          {highlight && <span className="rounded-full border border-yellow-300/40 bg-yellow-300/15 px-1.5 py-px text-[8.5px] font-black uppercase tracking-[0.18em] text-yellow-200">Nuevo</span>}
+        </span>
+        <span className="mt-0.5 block truncate text-[10.5px] leading-tight text-zinc-500">{description}</span>
+      </span>
+      <ChevronRight className={`h-3.5 w-3.5 shrink-0 ${active ? 'text-yellow-300' : 'text-zinc-700 opacity-0 group-hover:opacity-100'}`} />
     </Link>
   );
 }
 
-function SectionHeader({ title, count, centered = false }: { title: string; count: number; centered?: boolean }) {
-  return centered ? (
-    <div className="mb-2 flex flex-col items-center justify-center gap-1 px-1 text-center">
-      <p className="flex items-center justify-center gap-2 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
-        <span className="h-px w-3 bg-gradient-to-r from-yellow-300/60 to-transparent" />
-        {title}
-        <span className="h-px w-3 bg-gradient-to-l from-yellow-300/60 to-transparent" />
-      </p>
-      <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">{count}</span>
-    </div>
-  ) : (
-    <div className="mb-2 flex items-center justify-between px-1">
-      <p className="flex items-center gap-2 text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
-        <span className="h-px w-3 bg-gradient-to-r from-yellow-300/60 to-transparent" />
-        {title}
-      </p>
-      <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">{count}</span>
-    </div>
-  );
-}
-
-function SidebarContent({ pathname, onNavigate, onLogout, role, now, centered = false, profilePhoto, onPhotoUpload }: {
+function SidebarContent({ pathname, onNavigate, onLogout, role, now, profilePhoto }: {
   pathname: string;
   onNavigate?: () => void;
   onLogout: () => void;
   role: string | null;
   now?: Date | null;
-  centered?: boolean;
   profilePhoto?: string | null;
-  onPhotoUpload?: (file: File) => void;
 }) {
-  const sections = navSections.map((section) => ({
-    ...section,
-    links: section.links.filter((l) => !l.superadminOnly || role === 'superadmin'),
-  })).filter((s) => s.links.length > 0);
-
-  const sidebarFileRef = useRef<HTMLInputElement | null>(null);
+  const sections = navSections
+    .map((section) => ({ ...section, links: section.links.filter((link) => !link.superadminOnly || role === 'superadmin') }))
+    .filter((section) => section.links.length > 0);
 
   return (
     <div className="space-y-3">
-      <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4, ease: [0.16, 1, 0.3, 1] }} className="relative overflow-hidden rounded-[1.5rem] border border-yellow-300/25 bg-black/55 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+      <div className="relative overflow-hidden rounded-[1.5rem] border border-yellow-300/25 bg-black/55 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_18%,rgba(250,204,21,0.10),rgba(0,0,0,0)_60%)]" />
-        <div className="pointer-events-none absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-yellow-300/40 to-transparent" />
-
-        {/* Profile photo avatar */}
-        <div className={`relative mb-3 flex ${centered ? 'justify-center' : 'justify-start'}`}>
-          <button
-            type="button"
-            title="Cambiar foto de perfil"
-            onClick={() => sidebarFileRef.current?.click()}
-            className="group relative h-14 w-14 overflow-hidden rounded-full border-2 border-yellow-300/40 bg-black/60 shadow-lg transition-all hover:border-yellow-300/80 hover:shadow-yellow-300/20"
-          >
-            {profilePhoto ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={profilePhoto} alt="Foto de perfil" className="h-full w-full object-cover" />
-            ) : (
-              <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-yellow-400/20 to-amber-600/10">
-                <User className="h-6 w-6 text-yellow-300/60" />
-              </div>
-            )}
-            <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-              <Camera className="h-4 w-4 text-yellow-300" />
-            </div>
-          </button>
-          <input
-            ref={sidebarFileRef}
-            type="file"
-            accept="image/jpeg,image/png,image/webp,image/gif"
-            className="sr-only"
-            onChange={(e) => {
-              const file = e.target.files?.[0];
-              if (file && onPhotoUpload) onPhotoUpload(file);
-              e.target.value = '';
-            }}
-          />
-        </div>
-
-        <Link href="/admin" onClick={onNavigate} className={`relative flex ${centered ? 'flex-col items-center gap-2 text-center' : 'items-center gap-3'}`}>
-          <BrandMark size="lg" />
-          <div className={centered ? 'w-full' : 'min-w-0 flex-1'}>
-            <p className={`font-playfair text-[11px] font-black leading-none tracking-[0.28em] text-yellow-300 ${centered ? 'text-center' : ''}`}>SOLUCIONES FABRICK</p>
-            <div className={`mt-1.5 flex flex-wrap gap-1.5 ${centered ? 'justify-center' : 'items-center'}`}>
-              {role === 'viewer' ? (
-                <span className="inline-flex items-center gap-1 rounded-full border border-amber-400/30 bg-amber-400/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.22em] text-amber-300"><Eye className="h-2.5 w-2.5" />Modo Demo</span>
-              ) : (
-                <span className="inline-flex items-center gap-1 rounded-full border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.22em] text-emerald-300"><span className="h-1 w-1 rounded-full bg-emerald-400 animate-pulse" />{role === 'superadmin' ? 'Superadmin' : 'Admin'}</span>
-              )}
+        <Link href="/admin/perfil" onClick={onNavigate} className="group relative flex items-center gap-3">
+          <AvatarCircle photo={profilePhoto} size="lg" />
+          <span className="min-w-0 flex-1">
+            <span className="block font-playfair text-[11px] font-black leading-none tracking-[0.28em] text-yellow-300">SOLUCIONES FABRICK</span>
+            <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+              <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.22em] text-emerald-300">{role === 'superadmin' ? 'Superadmin' : role === 'viewer' ? 'Demo' : 'Admin'}</span>
               {now ? <span className="font-mono text-[9.5px] tabular-nums text-white/50">{now.toLocaleTimeString('es-CL', { hour12: false })}</span> : null}
-            </div>
-          </div>
+            </span>
+            <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500 group-hover:text-yellow-300">Ver perfil</span>
+          </span>
         </Link>
-      </motion.div>
+      </div>
 
-      <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.42, delay: 0.05, ease: [0.22, 1, 0.36, 1] }} className="grid grid-cols-2 gap-2 sm:grid-cols-3">
-        {QUICK_ACTIONS.map((qa, idx) => <QuickAction key={qa.href} {...qa} onNavigate={onNavigate} className={idx === QUICK_ACTIONS.length - 1 ? 'col-span-2 sm:col-span-1' : ''} />)}
-      </motion.div>
-
-      {sections.map((section, idx) => (
-        <motion.nav key={section.title} initial={{ opacity: 0, y: 14, scale: 0.992 }} animate={{ opacity: 1, y: 0, scale: 1 }} transition={{ duration: 0.42, delay: 0.08 + idx * 0.035, ease: [0.22, 1, 0.36, 1] }} className="relative overflow-hidden rounded-[1.5rem] border border-white/12 bg-black/45 p-3 shadow-[0_14px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl">
-          <SectionHeader title={section.title} count={section.links.length} centered={centered} />
+      {sections.map((section) => (
+        <nav key={section.title} className="rounded-[1.5rem] border border-white/12 bg-black/45 p-3 shadow-[0_14px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+          <div className="mb-2 flex items-center justify-between px-1">
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">{section.title}</p>
+            <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">{section.links.length}</span>
+          </div>
           <div className="space-y-1">
-            {section.links.map((link, linkIdx) => {
+            {section.links.map((link) => {
               const hrefPath = link.href.split('?')[0];
-              return (
-                <motion.div key={link.href} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.28, delay: 0.12 + idx * 0.03 + linkIdx * 0.015, ease: [0.22, 1, 0.36, 1] }}>
-                  <NavItem href={link.href} label={link.label} description={link.description} icon={link.icon} active={pathname === hrefPath && !link.highlight} highlight={link.highlight} centered={centered} onNavigate={onNavigate} />
-                </motion.div>
-              );
+              return <NavItem key={`${section.title}-${link.href}`} {...link} active={pathname === hrefPath} onNavigate={onNavigate} />;
             })}
           </div>
-        </motion.nav>
+        </nav>
       ))}
 
-      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ duration: 0.4, delay: 0.25 }} className="relative overflow-hidden rounded-[1.5rem] border border-white/12 bg-black/45 p-3 backdrop-blur-xl">
+      <div className="rounded-[1.5rem] border border-white/12 bg-black/45 p-3 backdrop-blur-xl">
         <button onClick={onLogout} className="group flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-300 transition hover:border-rose-500/60 hover:bg-rose-500/10 hover:text-rose-300">
-          <LogOut className="h-3.5 w-3.5 transition-transform group-hover:-translate-x-0.5" /> Cerrar sesión
+          <LogOut className="h-3.5 w-3.5" /> Cerrar sesión
         </button>
-        <div className={`mt-3 flex gap-2 px-1 text-[9.5px] uppercase tracking-[0.28em] text-white/45 ${centered ? 'flex-col items-center justify-center text-center' : 'items-center justify-between'}`}>
-          <span className="flex items-center gap-1.5"><Zap className="h-3 w-3 text-yellow-300" />Sistema activo</span>
-          <span className="font-mono text-white/30">© {new Date().getFullYear()}</span>
-        </div>
-      </motion.div>
+      </div>
     </div>
   );
 }
@@ -384,28 +261,13 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, now, centered = 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname();
   const router = useRouter();
-  const [mobileOpen, setMobileOpen] = useState(false);
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [role, setRole] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
-  const [routePulse, setRoutePulse] = useState(0);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
-  const [photoUploading, setPhotoUploading] = useState(false);
-  const headerFileRef = useRef<HTMLInputElement | null>(null);
 
   useAdminIdleLogout(10 * 60 * 1000);
-
-  useEffect(() => { setMobileOpen(false); }, [pathname]);
-
-  useEffect(() => {
-    if (typeof document === 'undefined') return;
-    if (mobileOpen) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => { document.body.style.overflow = prev; };
-    }
-  }, [mobileOpen]);
 
   useEffect(() => {
     let cancelled = false;
@@ -433,29 +295,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
     return () => { cancelled = true; };
   }, []);
 
-  async function handlePhotoUpload(file: File) {
-    if (photoUploading) return;
-    setPhotoUploading(true);
-    try {
-      const form = new FormData();
-      form.append('photo', file);
-      const res = await fetch('/api/admin/profile/photo', { method: 'POST', body: form });
-      const json = (await res.json()) as { ok?: boolean; photo?: string; error?: string };
-      if (json.ok && json.photo) setProfilePhoto(json.photo);
-    } catch {
-      // silently fail — non-blocking
-    } finally {
-      setPhotoUploading(false);
-    }
-  }
-
   useEffect(() => {
     setNow(new Date());
     const id = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(id);
   }, []);
-
-  useEffect(() => { setRoutePulse((prev) => prev + 1); }, [pathname]);
 
   const breadcrumb = useMemo(() => {
     if (!pathname) return 'Panel';
@@ -489,34 +333,34 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   const isObservatory = pathname?.startsWith('/admin/observatory');
   const isLogin = pathname === '/admin/login';
-
   if (isObservatory || isLogin) return <>{children}</>;
 
   return (
     <div data-admin-root="" className="relative min-h-screen overflow-hidden bg-black text-white">
       <div data-admin-fixed-bg="" className="pointer-events-none fixed inset-0 z-0">
-        <div data-admin-glow="" className="absolute inset-0 bg-[radial-gradient(circle_at_22%_12%,rgba(56,189,248,0.14),rgba(0,0,0,0)_38%),radial-gradient(circle_at_78%_85%,rgba(250,204,21,0.12),rgba(0,0,0,0)_42%),linear-gradient(180deg,rgba(0,0,0,0.22),rgba(0,0,0,0.92))]" />
-        <div data-admin-glow="" className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:100%_9px] opacity-15" />
-        <div data-admin-glow="" className="absolute -left-24 top-12 h-[420px] w-[420px] rounded-full bg-sky-400/15 blur-[100px]" />
-        <div data-admin-glow="" className="absolute -right-24 bottom-10 h-[420px] w-[420px] rounded-full bg-yellow-300/15 blur-[100px]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_12%,rgba(56,189,248,0.14),rgba(0,0,0,0)_38%),radial-gradient(circle_at_78%_85%,rgba(250,204,21,0.12),rgba(0,0,0,0)_42%),linear-gradient(180deg,rgba(0,0,0,0.22),rgba(0,0,0,0.92))]" />
+        <div className="absolute -left-24 top-12 h-[420px] w-[420px] rounded-full bg-sky-400/15 blur-[100px]" />
+        <div className="absolute -right-24 bottom-10 h-[420px] w-[420px] rounded-full bg-yellow-300/15 blur-[100px]" />
       </div>
 
       <header data-admin-header="" className="sticky top-0 z-40 border-b border-white/15">
         <div className="absolute inset-0 bg-black/55 backdrop-blur-2xl" />
-        <div className="pointer-events-none absolute inset-x-0 -bottom-px h-px bg-gradient-to-r from-transparent via-yellow-400/40 to-transparent" />
         <div className="relative mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 py-3 md:px-6">
           <div className="flex min-w-0 items-center gap-3">
-            <button type="button" onClick={() => setContextMenuOpen(true)} className="group relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/30 bg-black/50 text-yellow-300 transition-all hover:border-yellow-300/60 hover:bg-black/70 hover:shadow-[0_6px_20px_rgba(250,204,21,0.25)] active:scale-95 lg:hidden" aria-label="Abrir menú">
-              <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.18),rgba(255,255,255,0)_60%)] opacity-0 transition-opacity group-hover:opacity-100" />
-              <span className="relative flex h-4 w-5 flex-col justify-between"><span className="h-[2px] w-full rounded-full bg-current transition-transform duration-300 group-hover:translate-x-0.5" /><span className="h-[2px] w-3/4 rounded-full bg-current transition-all duration-300 group-hover:w-full" /><span className="h-[2px] w-1/2 rounded-full bg-current transition-all duration-300 group-hover:w-full group-hover:translate-x-0.5" /></span>
+            <button type="button" onClick={() => setContextMenuOpen(true)} className="group relative flex h-10 w-10 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/30 bg-black/50 text-yellow-300 transition-all hover:border-yellow-300/60 hover:bg-black/70 lg:hidden" aria-label="Abrir menú">
+              <Menu className="h-5 w-5" />
             </button>
-
-            <Link href="/admin" className="flex items-center gap-2.5 min-w-0">
+            <Link href="/admin" className="flex min-w-0 items-center gap-2.5">
               <BrandMark size="md" />
-              <span className="hidden flex-col leading-none sm:flex"><span className="font-playfair text-[13px] font-black tracking-[0.22em] text-yellow-300">SOLUCIONES FABRICK</span><span className="mt-0.5 text-[9px] uppercase tracking-[0.3em] text-zinc-500">Admin · Control room</span></span>
+              <span className="hidden flex-col leading-none sm:flex">
+                <span className="font-playfair text-[13px] font-black tracking-[0.22em] text-yellow-300">SOLUCIONES FABRICK</span>
+                <span className="mt-0.5 text-[9px] uppercase tracking-[0.3em] text-zinc-500">Admin · Control room</span>
+              </span>
             </Link>
-
-            <div className="hidden min-w-0 items-center gap-2 border-l border-white/10 pl-3 md:flex"><ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-zinc-600" /><span className="truncate text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-400">{breadcrumb}</span></div>
+            <div className="hidden min-w-0 items-center gap-2 border-l border-white/10 pl-3 md:flex">
+              <ChevronRight className="h-3.5 w-3.5 text-zinc-600" />
+              <span className="truncate text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-400">{breadcrumb}</span>
+            </div>
           </div>
 
           <div className="hidden flex-1 items-center justify-center md:flex" aria-hidden="true">
@@ -524,63 +368,29 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="flex items-center gap-2">
-            <button type="button" onClick={() => setPaletteOpen(true)} className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400 hover:border-yellow-400/40 hover:text-yellow-400 transition-all" title="Buscar página (Cmd/Ctrl + K)" aria-label="Abrir buscador de páginas"><Search className="h-3.5 w-3.5" /><span className="hidden md:inline">Buscar</span><kbd className="hidden md:inline-block rounded border border-white/10 bg-white/5 px-1 py-0 text-[9px] font-mono text-zinc-500">⌘K</kbd></button>
+            <button type="button" onClick={() => setPaletteOpen(true)} className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400 transition-all hover:border-yellow-400/40 hover:text-yellow-400" title="Buscar página" aria-label="Abrir buscador de páginas"><Search className="h-3.5 w-3.5" /><span className="hidden md:inline">Buscar</span></button>
             <AdminThemeToggle />
-            <Link href="/tienda" className="hidden sm:flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-300 hover:border-yellow-400/40 hover:text-yellow-400 transition-all">Ver tienda <ExternalLink className="h-3 w-3" /></Link>
-
-            {/* Profile avatar — click to change photo */}
-            <button
-              type="button"
-              title="Cambiar foto de perfil"
-              onClick={() => headerFileRef.current?.click()}
-              className={`group relative h-8 w-8 overflow-hidden rounded-full border-2 transition-all ${photoUploading ? 'animate-pulse border-yellow-300/60' : 'border-white/20 hover:border-yellow-300/70'}`}
-            >
-              {profilePhoto ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={profilePhoto} alt="Foto de perfil" className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-700 to-zinc-900">
-                  <User className="h-3.5 w-3.5 text-zinc-400" />
-                </div>
-              )}
-              <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-                <Camera className="h-2.5 w-2.5 text-yellow-300" />
-              </div>
-            </button>
-            <input
-              ref={headerFileRef}
-              type="file"
-              accept="image/jpeg,image/png,image/webp,image/gif"
-              className="sr-only"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) void handlePhotoUpload(file);
-                e.target.value = '';
-              }}
-            />
-
+            <Link href="/tienda" className="hidden items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-300 transition-all hover:border-yellow-400/40 hover:text-yellow-400 sm:flex">Ver tienda <ExternalLink className="h-3 w-3" /></Link>
+            <Link href="/admin/perfil" title="Ver perfil" className="group relative"><AvatarCircle photo={profilePhoto} size="sm" /></Link>
             <button onClick={handleLogout} className="flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-300 transition hover:border-red-500/50 hover:text-red-400" title="Cerrar sesión"><LogOut className="h-3.5 w-3.5" /><span className="hidden sm:inline">Salir</span></button>
           </div>
         </div>
-
         <div className="relative mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 pb-2 md:hidden"><span className="truncate text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-400">{breadcrumb}</span>{now && <span className="flex items-center gap-1.5 text-[10px] font-semibold tabular-nums text-zinc-400"><span className="h-1 w-1 rounded-full bg-yellow-400 animate-pulse" />{now.toLocaleTimeString('es-CL', { hour12: false })}</span>}</div>
       </header>
 
-      <div className="relative z-10 mx-auto grid max-w-[1600px] gap-5 px-3 pb-24 sm:px-4 md:px-6 py-4 md:py-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:pb-6">
-        <aside data-admin-sidebar="" className="hidden lg:block lg:sticky lg:top-[80px] lg:h-[calc(100vh-96px)] lg:overflow-y-auto scrollbar-hide"><SidebarContent pathname={pathname} onLogout={handleLogout} role={role} now={now} profilePhoto={profilePhoto} onPhotoUpload={handlePhotoUpload} /></aside>
+      <div className="relative z-10 mx-auto grid max-w-[1600px] gap-5 px-3 pb-24 py-4 sm:px-4 md:px-6 md:py-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:pb-6">
+        <aside data-admin-sidebar="" className="hidden lg:sticky lg:top-[80px] lg:block lg:h-[calc(100vh-96px)] lg:overflow-y-auto scrollbar-hide"><SidebarContent pathname={pathname} onLogout={handleLogout} role={role} now={now} profilePhoto={profilePhoto} /></aside>
         <main data-admin-main="" className="relative min-w-0 overflow-hidden">
           {role === 'viewer' && <DemoSessionTracker />}
-          {role === 'viewer' && <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/[0.08] px-5 py-3.5"><Eye className="h-4 w-4 shrink-0 text-amber-400" /><span className="text-[12px] font-bold uppercase tracking-[0.18em] text-amber-300">Modo Demo · Solo lectura</span><span className="text-xs text-amber-300/55">Los cambios que intentes no se guardan en la base de datos · Expira en 24 h</span></div>}
-          <AnimatePresence mode="wait" initial={false}>
-            <motion.div key={pathname} initial={{ opacity: 0, y: 18, scale: 0.992, filter: 'blur(8px)' }} animate={{ opacity: 1, y: 0, scale: 1, filter: 'blur(0px)' }} exit={{ opacity: 0, y: -10, scale: 1.01, filter: 'blur(6px)' }} transition={{ duration: 0.44, ease: [0.16, 1, 0.3, 1] }}><WhatsNewBanner />{children}</motion.div>
-          </AnimatePresence>
-          <AnimatePresence initial={false}><motion.div key={`admin-route-pulse-${routePulse}`} initial={{ opacity: 0.25, scale: 0.98 }} animate={{ opacity: 0, scale: 1.03 }} exit={{ opacity: 0 }} transition={{ duration: 0.45, ease: [0.2, 0.9, 0.2, 1] }} className="pointer-events-none absolute inset-0 rounded-[1.75rem] bg-[radial-gradient(circle_at_30%_16%,rgba(250,204,21,0.16),rgba(0,0,0,0)_42%),radial-gradient(circle_at_76%_82%,rgba(56,189,248,0.14),rgba(0,0,0,0)_48%)]" /></AnimatePresence>
+          {role === 'viewer' && <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/[0.08] px-5 py-3.5"><Eye className="h-4 w-4 shrink-0 text-amber-400" /><span className="text-[12px] font-bold uppercase tracking-[0.18em] text-amber-300">Modo Demo · Solo lectura</span><span className="text-xs text-amber-300/55">Los cambios que intentes no se guardan · Expira en 24 h</span></div>}
+          <WhatsNewBanner />
+          {children}
         </main>
       </div>
 
       <AdminBottomNav onOpenMore={() => setContextMenuOpen(true)} />
       <AdminCommandPalette items={commandItems} open={paletteOpen} onOpenChange={setPaletteOpen} />
-      <AdminContextMenu open={contextMenuOpen} onClose={() => setContextMenuOpen(false)} onLogout={handleLogout} profilePhoto={profilePhoto} onPhotoUpload={handlePhotoUpload} />
+      <AdminContextMenu open={contextMenuOpen} onClose={() => setContextMenuOpen(false)} onLogout={handleLogout} profilePhoto={profilePhoto} />
     </div>
   );
 }

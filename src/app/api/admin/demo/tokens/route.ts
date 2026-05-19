@@ -9,6 +9,11 @@ const APP_URL = (
   process.env.NEXT_PUBLIC_APP_URL || 'https://www.solucionesfabrick.com'
 ).replace(/\/$/, '');
 
+function isMissingTable(error: unknown): boolean {
+  const message = (error as { message?: string } | null)?.message ?? String(error ?? '');
+  return /does not exist|relation|schema cache|could not find/i.test(message);
+}
+
 export async function GET(request: NextRequest) {
   const sessionCookie = request.cookies.get(ADMIN_COOKIE_NAME);
   if (!sessionCookie?.value) return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
@@ -18,14 +23,12 @@ export async function GET(request: NextRequest) {
 
   const { data, error } = await insforgeAdmin.database
     .from('demo_tokens')
-    .select('id, token, label, created_by, expira_at, accesos, ultimo_acceso, created_at')
+    .select('id, token, label, created_by, expira_at, accesos, ultimo_acceso, locked_ip, locked_at, ultimo_ip, ultimo_user_agent, ultimo_dispositivo, created_at')
     .gt('expira_at', new Date().toISOString())
     .order('created_at', { ascending: false });
 
   if (error) {
-    if (error.message?.includes('does not exist') || error.message?.includes('relation')) {
-      return NextResponse.json({ tokens: [] });
-    }
+    if (isMissingTable(error)) return NextResponse.json({ tokens: [] });
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
@@ -61,7 +64,7 @@ export async function POST(request: NextRequest) {
     .insert([{ token, label, created_by: payload.email, expira_at, accesos: 0 }]);
 
   if (error) {
-    if (error.message?.includes('does not exist') || error.message?.includes('relation')) {
+    if (isMissingTable(error)) {
       return NextResponse.json({
         error: 'La tabla demo_tokens no existe. Córrela en el SQL Editor.',
       }, { status: 500 });

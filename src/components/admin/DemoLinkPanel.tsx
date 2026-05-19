@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { CheckCircle2, Copy, Eye, Lock, Plus, RefreshCw, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
+import { CheckCircle2, Copy, Eye, Lock, Plus, RefreshCw, ShieldCheck, Sparkles, Trash2, Wifi } from 'lucide-react';
 
 type DemoLink = {
   id: string;
@@ -10,6 +10,10 @@ type DemoLink = {
   expira_at: string;
   accesos?: number | null;
   ultimo_acceso?: string | null;
+  locked_ip?: string | null;
+  ultimo_ip?: string | null;
+  ultimo_dispositivo?: string | null;
+  ultimo_user_agent?: string | null;
 };
 
 function fmt(value?: string | null) {
@@ -46,7 +50,6 @@ export function DemoLinkPanel() {
     setBusy(true);
     setMsg('');
     try {
-      await new Promise((resolve) => setTimeout(resolve, 900));
       const res = await fetch('/api/admin/demo/tokens', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -57,7 +60,6 @@ export function DemoLinkPanel() {
         setMsg(json.error ?? 'No se pudo crear el link demo.');
         return;
       }
-      await new Promise((resolve) => setTimeout(resolve, 2600));
       setLastLink(json.link ?? '');
       setLabel('Demo 24 horas');
       await load();
@@ -95,15 +97,15 @@ export function DemoLinkPanel() {
             </div>
             <h2 className="text-2xl font-black text-white">Creando acceso demo seguro</h2>
             <p className="mt-3 text-sm leading-6 text-zinc-400">
-              Generando link temporal, aplicando modo lectura, bloqueando zonas críticas y preparando el recorrido guiado.
+              Generando link temporal, modo lectura y registro de auditoría real en base de datos.
             </p>
             <div className="mt-7 h-2 overflow-hidden rounded-full bg-white/10">
               <div className="h-full w-2/3 animate-[pulse_1s_ease-in-out_infinite] rounded-full bg-sky-300" />
             </div>
             <div className="mt-6 grid gap-2 text-left text-xs text-zinc-400 sm:grid-cols-3">
               <span className="rounded-2xl border border-white/10 bg-black/30 p-3">✓ 24 horas</span>
-              <span className="rounded-2xl border border-white/10 bg-black/30 p-3">✓ Solo lectura</span>
-              <span className="rounded-2xl border border-white/10 bg-black/30 p-3">✓ Admin protegido</span>
+              <span className="rounded-2xl border border-white/10 bg-black/30 p-3">✓ IP lock</span>
+              <span className="rounded-2xl border border-white/10 bg-black/30 p-3">✓ Auditoría</span>
             </div>
           </div>
         </div>
@@ -114,7 +116,7 @@ export function DemoLinkPanel() {
           <p className="text-xs font-black uppercase tracking-[0.22em] text-sky-300">Presentación para demo</p>
           <h2 className="mt-2 text-2xl font-black text-white">Acceso guiado al panel Soluciones Fabrick</h2>
           <p className="mt-3 text-sm leading-6 text-zinc-400">
-            Este link permite que una persona entre al admin por 24 horas en modo observación. Puede navegar, revisar módulos y entender el flujo del sistema, pero no puede crear usuarios, ejecutar SQL, modificar seguridad ni acceder a zonas críticas.
+            Este link permite que una persona entre al admin por 24 horas en modo observación. El primer acceso bloquea el link para esa IP, registra dispositivo, user-agent y eventos de navegación.
           </p>
           <div className="mt-5 grid gap-3 md:grid-cols-3">
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
@@ -129,8 +131,8 @@ export function DemoLinkPanel() {
             </div>
             <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
               <ShieldCheck className="mb-3 h-5 w-5 text-emerald-300" />
-              <p className="font-bold text-white">Protección</p>
-              <p className="mt-1 text-xs text-zinc-500">Viewer temporal, rutas críticas bloqueadas.</p>
+              <p className="font-bold text-white">Protección real</p>
+              <p className="mt-1 text-xs text-zinc-500">Viewer temporal, IP lock y auditoría.</p>
             </div>
           </div>
         </div>
@@ -138,7 +140,7 @@ export function DemoLinkPanel() {
         <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
           <div>
             <h2 className="text-xl font-black text-white">Links demo 24 horas</h2>
-            <p className="mt-1 text-sm text-zinc-500">Crea, copia y controla accesos temporales.</p>
+            <p className="mt-1 text-sm text-zinc-500">Crea, copia, audita y revoca accesos temporales.</p>
           </div>
           <button onClick={load} disabled={busy} className="rounded-full border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-zinc-300 disabled:opacity-50">
             <RefreshCw className={`mr-1 inline h-4 w-4 ${busy ? 'animate-spin' : ''}`} />Actualizar
@@ -164,7 +166,7 @@ export function DemoLinkPanel() {
               <code className="min-w-0 flex-1 break-all rounded-xl bg-black/40 px-3 py-2 text-xs text-white">{lastLink}</code>
               <button onClick={() => copy(lastLink)} className="rounded-xl border border-emerald-400/30 px-3 py-2 text-xs text-emerald-200"><Copy className="h-4 w-4" /></button>
             </div>
-            <p className="mt-3 text-xs text-zinc-400">Envíale este link a la persona. Al abrirlo verá la presentación y luego entrará al recorrido demo.</p>
+            <p className="mt-3 text-xs text-zinc-400">Al abrirlo, el usuario entra al recorrido demo y el primer acceso fija la IP permitida.</p>
           </div>
         )}
 
@@ -177,6 +179,10 @@ export function DemoLinkPanel() {
                 <div className="min-w-0 flex-1">
                   <p className="font-bold text-white">{item.label || 'Demo 24 horas'}</p>
                   <p className="mt-1 text-xs text-zinc-500">Expira: <span className="text-zinc-300">{fmt(item.expira_at)}</span> · Accesos: <span className="text-zinc-300">{item.accesos ?? 0}</span> · Último: <span className="text-zinc-300">{fmt(item.ultimo_acceso)}</span></p>
+                  <div className="mt-3 grid gap-2 text-xs text-zinc-500 sm:grid-cols-2">
+                    <span className="flex items-center gap-1.5"><Wifi className="h-3.5 w-3.5 text-sky-300" /> IP bloqueada: <span className="font-mono text-zinc-300">{item.locked_ip || item.ultimo_ip || '—'}</span></span>
+                    <span>Dispositivo: <span className="text-zinc-300">{item.ultimo_dispositivo || '—'}</span></span>
+                  </div>
                   <p className="mt-2 truncate font-mono text-xs text-zinc-600">{item.link}</p>
                 </div>
                 <div className="flex gap-2">

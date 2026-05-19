@@ -10,6 +10,7 @@ import {
   PanelLeft,
   Search,
   Sun,
+  User,
 } from 'lucide-react';
 
 interface StudioHeaderProps {
@@ -21,6 +22,22 @@ interface StudioHeaderProps {
   darkMode: boolean;
   onToggleDarkMode: () => void;
   onLogout: () => void;
+  profilePhoto?: string | null;
+}
+
+function HeaderAvatar({ photo }: { photo?: string | null }) {
+  return (
+    <span className="flex h-8 w-8 items-center justify-center overflow-hidden rounded-full border border-orange-400/40 bg-zinc-900 shadow-[0_0_18px_rgba(251,146,60,0.18)]">
+      {photo ? (
+        // eslint-disable-next-line @next/next/no-img-element
+        <img src={photo} alt="Perfil" className="h-full w-full object-cover" />
+      ) : (
+        <span className="flex h-full w-full items-center justify-center bg-gradient-to-br from-orange-400/20 to-zinc-950">
+          <User className="h-4 w-4 text-orange-300" />
+        </span>
+      )}
+    </span>
+  );
 }
 
 export function StudioHeader({
@@ -32,6 +49,7 @@ export function StudioHeader({
   darkMode,
   onToggleDarkMode,
   onLogout,
+  profilePhoto,
 }: StudioHeaderProps) {
   return (
     <header
@@ -40,15 +58,11 @@ export function StudioHeader({
         'fixed top-0 right-0 z-40 flex h-12 items-center border-b px-3',
         'border-white/[0.08] bg-[rgba(9,9,11,0.85)] backdrop-blur-md',
         'transition-[left] duration-200 ease-in-out',
-        /* shift right to clear the sidebar */
         collapsed ? 'left-14' : 'left-[272px]',
-        /* on mobile: always start from 0 */
         'max-lg:left-0',
       ].join(' ')}
     >
-      {/* Left group */}
       <div className="flex min-w-0 flex-1 items-center gap-2">
-        {/* Desktop collapse toggle */}
         <button
           type="button"
           onClick={onToggleCollapse}
@@ -58,7 +72,6 @@ export function StudioHeader({
           <PanelLeft className="h-4 w-4" />
         </button>
 
-        {/* Mobile hamburger */}
         <button
           type="button"
           onClick={onOpenMobile}
@@ -68,10 +81,8 @@ export function StudioHeader({
           <Menu className="h-4 w-4" />
         </button>
 
-        {/* Separator */}
         <span className="h-4 w-px bg-white/[0.08]" />
 
-        {/* Breadcrumb */}
         <div className="flex min-w-0 items-center gap-1.5">
           <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-zinc-600" />
           <span className="truncate text-[12px] font-medium text-zinc-300">
@@ -80,9 +91,7 @@ export function StudioHeader({
         </div>
       </div>
 
-      {/* Right group */}
       <div className="flex flex-shrink-0 items-center gap-1">
-        {/* Search / command palette */}
         <button
           type="button"
           onClick={onOpenPalette}
@@ -97,7 +106,6 @@ export function StudioHeader({
           </kbd>
         </button>
 
-        {/* Dark/Light toggle */}
         <button
           type="button"
           onClick={onToggleDarkMode}
@@ -108,10 +116,8 @@ export function StudioHeader({
           {darkMode ? <Sun className="h-3.5 w-3.5" /> : <Moon className="h-3.5 w-3.5" />}
         </button>
 
-        {/* Separator */}
         <span className="h-4 w-px bg-white/[0.08]" />
 
-        {/* Ver tienda */}
         <Link
           href="/tienda"
           className="hidden h-7 items-center gap-1 rounded-md px-2 text-[11px] text-zinc-400 transition-colors hover:bg-white/5 hover:text-zinc-200 sm:flex"
@@ -120,7 +126,10 @@ export function StudioHeader({
           <ExternalLink className="h-3 w-3" />
         </Link>
 
-        {/* Logout */}
+        <Link href="/admin/perfil" title="Ver perfil" aria-label="Ver perfil" className="rounded-full p-0.5 transition hover:bg-white/10">
+          <HeaderAvatar photo={profilePhoto} />
+        </Link>
+
         <button
           type="button"
           onClick={onLogout}

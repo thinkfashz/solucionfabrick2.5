@@ -7,17 +7,48 @@ const PROFILE_FIELDS = ['display_name', 'phone', 'bio', 'instagram', 'facebook',
 
 type ProfileField = (typeof PROFILE_FIELDS)[number];
 
+type ProfileMetadata = {
+  cover_url?: string | null;
+  id_card_url?: string | null;
+  gallery_images?: string[];
+  public_slug?: string | null;
+  nfc_enabled?: boolean;
+  public_profile_enabled?: boolean;
+  updated_from?: string;
+  updated_at?: string;
+};
+
 type ProfileRow = Partial<Record<ProfileField, string | null>> & {
   email: string;
   avatar_url?: string | null;
   avatar_public_id?: string | null;
-  metadata?: Record<string, unknown> | null;
+  metadata?: ProfileMetadata | null;
   created_at?: string;
   updated_at?: string;
 };
 
 function text(value: unknown, max = 500) {
   return typeof value === 'string' ? value.trim().slice(0, max) : null;
+}
+
+function bool(value: unknown) {
+  return value === true;
+}
+
+function stringArray(value: unknown, maxItems = 12) {
+  if (!Array.isArray(value)) return [];
+  return value.filter((item): item is string => typeof item === 'string' && item.trim().length > 0).map((item) => item.trim()).slice(0, maxItems);
+}
+
+function makeSlug(value: unknown, fallback: string) {
+  const raw = typeof value === 'string' && value.trim() ? value : fallback;
+  return raw
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '')
+    .slice(0, 80) || fallback;
 }
 
 function normalizeProfile(body: Record<string, unknown>) {
@@ -31,6 +62,22 @@ function normalizeProfile(body: Record<string, unknown>) {
     whatsapp: text(body.whatsapp, 80),
     website: text(body.website, 240),
   } satisfies Partial<Record<ProfileField, string | null>>;
+}
+
+function normalizeMetadata(body: Record<string, unknown>, email: string, previous?: ProfileMetadata | null): ProfileMetadata {
+  const incoming = body.metadata && typeof body.metadata === 'object' ? body.metadata as Record<string, unknown> : {};
+  const fallbackSlug = email.split('@')[0] || 'perfil';
+  return {
+    ...(previous ?? {}),
+    cover_url: text(incoming.cover_url, 1200) ?? previous?.cover_url ?? null,
+    id_card_url: text(incoming.id_card_url, 1200) ?? previous?.id_card_url ?? null,
+    gallery_images: stringArray(incoming.gallery_images).length ? stringArray(incoming.gallery_images) : previous?.gallery_images ?? [],
+    public_slug: makeSlug(incoming.public_slug, fallbackSlug),
+    nfc_enabled: bool(incoming.nfc_enabled),
+    public_profile_enabled: bool(incoming.public_profile_enabled),
+    updated_from: 'admin_profile_page',
+    updated_at: new Date().toISOString(),
+  };
 }
 
 async function getProfile(email: string) {
@@ -51,9 +98,17 @@ export async function GET(request: NextRequest) {
     if (!session) return adminUnauthorized();
 
     const profile = await getProfile(session.email);
+    const fallbackMetadata: ProfileMetadata = {
+      cover_url: null,
+      id_card_url: null,
+      gallery_images: [],
+      public_slug: makeSlug(session.email.split('@')[0], 'perfil'),
+      nfc_enabled: false,
+      public_profile_enabled: false,
+    };
 
     return NextResponse.json({
-      profile: profile ?? {
+      profile: profile ? { ...profile, metadata: { ...fallbackMetadata, ...(profile.metadata ?? {}) } } : {
         email: session.email,
         display_name: session.email.split('@')[0],
         phone: null,
@@ -64,7 +119,7 @@ export async function GET(request: NextRequest) {
         linkedin: null,
         whatsapp: null,
         website: null,
-        metadata: {},
+        metadata: fallbackMetadata,
       },
       session: {
         email: session.email,
@@ -83,14 +138,12 @@ export async function PATCH(request: NextRequest) {
     if (!session) return adminUnauthorized();
 
     const body = (await request.json()) as Record<string, unknown>;
+    const previous = await getProfile(session.email);
     const client = getAdminInsforge();
     const row = {
       email: session.email,
       ...normalizeProfile(body),
-      metadata: {
-        updated_from: 'admin_profile_page',
-        updated_at: new Date().toISOString(),
-      },
+      metadata: normalizeMetadata(body, session.email, previous?.metadata),
     };
 
     const { data, error } = await client.database

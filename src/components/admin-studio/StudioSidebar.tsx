@@ -1,19 +1,18 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
-  AlertTriangle, BarChart3, BookOpen, Boxes, Cloud, Database, ExternalLink, Eye,
+  AlertTriangle, BarChart3, BookOpen, Boxes, Cloud, Database, Eye,
   FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut,
   Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck,
   ShoppingCart, Sparkles, Star, Stethoscope, Store, Tag, Terminal,
-  TrendingDown, Truck, Telescope, Users, Video, Wallet, X, Plus,
+  TrendingDown, Truck, Telescope, Users, Video, Wallet,
   MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
-  ChevronRight,
+  User, MonitorCog,
 } from 'lucide-react';
 import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 
-/* ── Nav data ─────────────────────────────────────────────────── */
 type NavLink = {
   href: string;
   label: string;
@@ -25,6 +24,15 @@ type NavLink = {
 };
 
 const navSections: { title: string; links: NavLink[] }[] = [
+  {
+    title: 'Perfil & interfaz',
+    links: [
+      { href: '/admin/perfil', label: 'Perfil administrador', description: 'Avatar, bio, contacto, redes y presentación', icon: User, highlight: true },
+      { href: '/admin/interfaz', label: 'Selector de interfaz', description: 'Activar nueva Studio o antigua clásica', icon: MonitorCog, highlight: true },
+      { href: '/admin/equipo/demo', label: 'Links demo 24h', description: 'Accesos guiados de solo lectura con auditoría', icon: Eye, highlight: true },
+      { href: '/admin/equipo', label: 'Equipo', description: 'Roles, invitaciones y aprobaciones', icon: ShieldCheck, superadminOnly: true },
+    ],
+  },
   {
     title: 'Visión general',
     links: [
@@ -103,7 +111,6 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/sql', label: 'Terminal SQL', description: 'Ejecutar SQL en InsForge', icon: Database },
       { href: '/admin/testing', label: 'Testing', description: 'Suite de pruebas y smoke tests', icon: FlaskConical },
       { href: '/admin/setup', label: 'Setup', description: 'Verificar tablas InsForge', icon: Database, superadminOnly: true },
-      { href: '/admin/equipo', label: 'Equipo', description: 'Roles, invitaciones y aprobaciones', icon: ShieldCheck, superadminOnly: true },
     ],
   },
   {
@@ -117,153 +124,53 @@ const navSections: { title: string; links: NavLink[] }[] = [
   },
 ];
 
-/* ── NavItem ──────────────────────────────────────────────────── */
-function NavItem({
-  href,
-  label,
-  icon: Icon,
-  active,
-  highlight,
-  comingSoon,
-  collapsed,
-  onNavigate,
-}: {
-  href: string;
-  label: string;
-  icon: typeof Package;
-  active: boolean;
-  highlight?: boolean;
-  comingSoon?: boolean;
-  collapsed: boolean;
-  onNavigate?: () => void;
-}) {
+function NavItem({ href, label, icon: Icon, active, highlight, comingSoon, collapsed, onNavigate }: { href: string; label: string; icon: typeof Package; active: boolean; highlight?: boolean; comingSoon?: boolean; collapsed: boolean; onNavigate?: () => void }) {
   return (
-    <Link
-      href={href}
-      onClick={onNavigate}
-      title={collapsed ? label : undefined}
-      className={[
-        'group relative flex items-center gap-3 rounded-lg transition-all duration-150',
-        collapsed ? 'justify-center px-0 py-2' : 'px-3 py-2',
-        active
-          ? 'border-l-2 border-orange-500 bg-orange-500/10 text-orange-400'
-          : 'border-l-2 border-transparent text-zinc-400 hover:bg-white/5 hover:text-zinc-200',
-      ].join(' ')}
-    >
-      <Icon
-        className={[
-          'h-4 w-4 flex-shrink-0 transition-colors',
-          active ? 'text-orange-400' : 'text-zinc-400 group-hover:text-zinc-200',
-        ].join(' ')}
-      />
+    <Link href={href} onClick={onNavigate} title={collapsed ? label : undefined} className={['group relative flex items-center gap-3 rounded-lg transition-all duration-150', collapsed ? 'justify-center px-0 py-2' : 'px-3 py-2', active ? 'border-l-2 border-orange-500 bg-orange-500/10 text-orange-400' : 'border-l-2 border-transparent text-zinc-400 hover:bg-white/5 hover:text-zinc-200'].join(' ')}>
+      <Icon className={['h-4 w-4 flex-shrink-0 transition-colors', active ? 'text-orange-400' : 'text-zinc-400 group-hover:text-zinc-200'].join(' ')} />
       {!collapsed && (
         <>
           <span className="min-w-0 flex-1 truncate text-[13px] leading-none">{label}</span>
-          {comingSoon && (
-            <span className="flex-shrink-0 rounded-full bg-zinc-800 px-1.5 py-px text-[9px] text-zinc-500">
-              Próximamente
-            </span>
-          )}
-          {highlight && !comingSoon && (
-            <span className="flex-shrink-0 rounded-full bg-orange-500/15 px-1.5 py-px text-[9px] text-orange-400">
-              Nuevo
-            </span>
-          )}
+          {comingSoon && <span className="flex-shrink-0 rounded-full bg-zinc-800 px-1.5 py-px text-[9px] text-zinc-500">Próximamente</span>}
+          {highlight && !comingSoon && <span className="flex-shrink-0 rounded-full bg-orange-500/15 px-1.5 py-px text-[9px] text-orange-400">Nuevo</span>}
         </>
       )}
     </Link>
   );
 }
 
-/* ── SidebarContent (exported for reuse in mobile drawer) ─────── */
-export function StudioSidebarContent({
-  collapsed,
-  role,
-  onNavigate,
-  onLogout,
-}: {
-  collapsed: boolean;
-  role: string | null;
-  onNavigate?: () => void;
-  onLogout: () => void;
-}) {
+export function StudioSidebarContent({ collapsed, role, onNavigate, onLogout }: { collapsed: boolean; role: string | null; onNavigate?: () => void; onLogout: () => void }) {
   const pathname = usePathname();
-
-  const sections = navSections
-    .map((s) => ({
-      ...s,
-      links: s.links.filter((l) => !l.superadminOnly || role === 'superadmin'),
-    }))
-    .filter((s) => s.links.length > 0);
+  const sections = navSections.map((s) => ({ ...s, links: s.links.filter((l) => !l.superadminOnly || role === 'superadmin') })).filter((s) => s.links.length > 0);
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Brand */}
-      <div
-        className={[
-          'flex flex-shrink-0 items-center border-b px-3 py-3',
-          'border-white/[0.08] dark:border-white/[0.08]',
-          collapsed ? 'justify-center' : 'gap-2.5',
-        ].join(' ')}
-      >
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-yellow-300/40 bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 shadow-[0_4px_14px_rgba(250,204,21,0.35)]">
+      <div className={['flex flex-shrink-0 items-center border-b px-3 py-3', 'border-white/[0.08] dark:border-white/[0.08]', collapsed ? 'justify-center' : 'gap-2.5'].join(' ')}>
+        <Link href="/admin/perfil" onClick={onNavigate} className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-yellow-300/40 bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 shadow-[0_4px_14px_rgba(250,204,21,0.35)]">
           <FabrickPeakIcon size={18} />
-        </div>
+        </Link>
         {!collapsed && (
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300">
-              SOLUCIONES FABRICK
-            </p>
-            <p className="truncate text-[9px] uppercase tracking-[0.2em] text-zinc-500">Studio Admin</p>
+            <p className="truncate text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300">SOLUCIONES FABRICK</p>
+            <Link href="/admin/perfil" onClick={onNavigate} className="truncate text-[9px] uppercase tracking-[0.2em] text-zinc-500 hover:text-orange-300">Studio Admin · Ver perfil</Link>
           </div>
         )}
       </div>
 
-      {/* Nav sections */}
       <div className="min-h-0 flex-1 overflow-y-auto py-2 scrollbar-hide">
         {sections.map((section) => (
           <div key={section.title} className="mb-1">
-            {!collapsed && (
-              <p className="mb-1 px-3 pt-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-                {section.title}
-              </p>
-            )}
+            {!collapsed && <p className="mb-1 px-3 pt-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">{section.title}</p>}
             {collapsed && <div className="my-1.5 mx-2 h-px bg-white/[0.06]" />}
             <div className={collapsed ? 'space-y-0.5 px-1.5' : 'space-y-0.5 px-2'}>
-              {section.links.map((link) => {
-                const hrefPath = link.href.split('?')[0];
-                const isActive = pathname === hrefPath;
-                return (
-                  <NavItem
-                    key={link.href}
-                    href={link.href}
-                    label={link.label}
-                    icon={link.icon}
-                    active={isActive}
-                    highlight={link.highlight}
-                    comingSoon={link.comingSoon}
-                    collapsed={collapsed}
-                    onNavigate={onNavigate}
-                  />
-                );
-              })}
+              {section.links.map((link) => <NavItem key={link.href} href={link.href} label={link.label} icon={link.icon} active={pathname === link.href.split('?')[0]} highlight={link.highlight} comingSoon={link.comingSoon} collapsed={collapsed} onNavigate={onNavigate} />)}
             </div>
           </div>
         ))}
       </div>
 
-      {/* Logout */}
       <div className="flex-shrink-0 border-t border-white/[0.08] p-2">
-        <button
-          type="button"
-          onClick={onLogout}
-          title={collapsed ? 'Cerrar sesión' : undefined}
-          className={[
-            'group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-zinc-400',
-            'transition-colors hover:bg-red-500/10 hover:text-red-400',
-            collapsed ? 'justify-center' : '',
-          ].join(' ')}
-        >
+        <button type="button" onClick={onLogout} title={collapsed ? 'Cerrar sesión' : undefined} className={['group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-zinc-400', 'transition-colors hover:bg-red-500/10 hover:text-red-400', collapsed ? 'justify-center' : ''].join(' ')}>
           <LogOut className="h-4 w-4 flex-shrink-0" />
           {!collapsed && <span>Cerrar sesión</span>}
         </button>
@@ -272,26 +179,9 @@ export function StudioSidebarContent({
   );
 }
 
-/* ── Default export: the sidebar panel ───────────────────────── */
-export function StudioSidebar({
-  collapsed,
-  role,
-  onLogout,
-}: {
-  collapsed: boolean;
-  role: string | null;
-  onLogout: () => void;
-}) {
+export function StudioSidebar({ collapsed, role, onLogout }: { collapsed: boolean; role: string | null; onLogout: () => void }) {
   return (
-    <aside
-      data-studio-sidebar=""
-      className={[
-        'fixed left-0 top-0 z-30 hidden h-full flex-col',
-        'border-r border-white/[0.08] bg-[#18181b]',
-        'transition-[width] duration-200 ease-in-out lg:flex',
-        collapsed ? 'w-14' : 'w-[272px]',
-      ].join(' ')}
-    >
+    <aside data-studio-sidebar="" className={['fixed left-0 top-0 z-30 hidden h-full flex-col', 'border-r border-white/[0.08] bg-[#18181b]', 'transition-[width] duration-200 ease-in-out lg:flex', collapsed ? 'w-14' : 'w-[272px]'].join(' ')}>
       <StudioSidebarContent collapsed={collapsed} role={role} onLogout={onLogout} />
     </aside>
   );

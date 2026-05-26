@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button';
 
 type MediaAsset = { id?: string; url: string; path?: string; alt?: string | null; folder?: string | null; mime_type?: string | null; size_bytes?: number | null; created_at?: string | null };
 type UploadedAsset = { url: string; path: string; warning?: string; asset?: MediaAsset | null };
-type UploadAttempt = { id: string; name: string; size: number; status: 'success' | 'failed'; method: 'api' | 'cloudinary'; message: string; url?: string; created_at: string };
-
+type UploadAttempt = { id: string; name: string; size: number; status: 'success' | 'failed'; method: 'api' | 'cloudinary-auto' | 'cloudinary-raw' | 'manual'; message: string; url?: string; created_at: string };
 type CloudinaryUploadResponse = { secure_url?: string; url?: string; public_id?: string; resource_type?: string; bytes?: number; format?: string; error?: { message?: string } };
 
 const HISTORY_KEY = 'sf_presupuesto_modelos3d_upload_history_v1';
@@ -33,7 +32,7 @@ function readHistory(): UploadAttempt[] {
 }
 
 function writeHistory(items: UploadAttempt[]) {
-  if (typeof window !== 'undefined') window.localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 60)));
+  if (typeof window !== 'undefined') window.localStorage.setItem(HISTORY_KEY, JSON.stringify(items.slice(0, 80)));
 }
 
 function attemptId() {
@@ -44,11 +43,7 @@ function readCloudinarySettings() {
   if (typeof window === 'undefined') return { cloudName: '', uploadPreset: '', folder: 'presupuestos/modelos-3d' };
   try {
     const parsed = JSON.parse(window.localStorage.getItem(CLOUDINARY_SETTINGS_KEY) || '{}');
-    return {
-      cloudName: parsed.cloudName || '',
-      uploadPreset: parsed.uploadPreset || '',
-      folder: parsed.folder || 'presupuestos/modelos-3d',
-    };
+    return { cloudName: parsed.cloudName || '', uploadPreset: parsed.uploadPreset || '', folder: parsed.folder || 'presupuestos/modelos-3d' };
   } catch {
     return { cloudName: '', uploadPreset: '', folder: 'presupuestos/modelos-3d' };
   }
@@ -56,6 +51,10 @@ function readCloudinarySettings() {
 
 function saveCloudinarySettings(settings: { cloudName: string; uploadPreset: string; folder: string }) {
   if (typeof window !== 'undefined') window.localStorage.setItem(CLOUDINARY_SETTINGS_KEY, JSON.stringify(settings));
+}
+
+function filenameLabel(name?: string) {
+  return (name || 'Modelo 3D').replace(/\.[^.]+$/, '').replace(/[-_]/g, ' ');
 }
 
 export default function PresupuestoModelos3DPage() {
@@ -72,6 +71,8 @@ export default function PresupuestoModelos3DPage() {
   const [cloudName, setCloudName] = useState('');
   const [uploadPreset, setUploadPreset] = useState('');
   const [cloudFolder, setCloudFolder] = useState('presupuestos/modelos-3d');
+  const [manualUrl, setManualUrl] = useState('');
+  const [manualName, setManualName] = useState('Modelo 3D manual');
 
   useEffect(() => {
     setHistory(readHistory());
@@ -86,7 +87,7 @@ export default function PresupuestoModelos3DPage() {
   const successHistory = useMemo(() => history.filter((item) => item.status === 'success'), [history]);
 
   function addAttempt(attempt: UploadAttempt) {
-    const next = [attempt, ...readHistory()].slice(0, 60);
+    const next = [attempt, ...readHistory()].slice(0, 80);
     writeHistory(next);
     setHistory(next);
   }
@@ -108,7 +109,7 @@ export default function PresupuestoModelos3DPage() {
 
   function selectedFileOrWarn() {
     if (!file) {
-      setMessage('Selecciona primero un archivo .glb, .gltf, .zip, .dae o .pdf.');
+      setMessage('Selecciona primero un archivo .glb, .gltf, .zip, .dae, .pdf, .db o .sqlite.');
       return null;
     }
     return file;
@@ -117,23 +118,18 @@ export default function PresupuestoModelos3DPage() {
   async function uploadViaApi() {
     const selectedFile = selectedFileOrWarn();
     if (!selectedFile) return;
-    if (selectedFile.size > VERCEL_SOFT_LIMIT_MB * MB) {
-      setMessage(`Este archivo pesa ${fileSize(selectedFile.size)}. Por API interna puede fallar con 413 en Vercel. Usa el botón Cloudinary directo.`);
-    }
-
+    if (selectedFile.size > VERCEL_SOFT_LIMIT_MB * MB) setMessage(`Este archivo pesa ${fileSize(selectedFile.size)}. Por API interna puede fallar con 413 en Vercel. Usa Cloudinary directo.`);
     setUploading(true);
     setResult(null);
     try {
       const form = new FormData();
       form.append('file', selectedFile);
       form.append('folder', 'modelos-3d');
-      form.append('alt', selectedFile.name.replace(/\.[^.]+$/, '').replace(/[-_]/g, ' '));
+      form.append('alt', filenameLabel(selectedFile.name));
       const res = await fetch('/api/admin/media', { method: 'POST', body: form });
       const json = (await res.json().catch(() => ({}))) as UploadedAsset & { error?: string };
       if (!res.ok) {
-        const readable = res.status === 413
-          ? `Error 413: Vercel rechazó el archivo por tamaño (${fileSize(selectedFile.size)}). Usa Cloudinary directo.`
-          : (json.error || `Error ${res.status}`);
+        const readable = res.status === 413 ? `Error 413: Vercel rechazó el archivo por tamaño (${fileSize(selectedFile.size)}). Usa Cloudinary directo.` : (json.error || `Error ${res.status}`);
         throw new Error(readable);
       }
       setResult(json);
@@ -149,6 +145,20 @@ export default function PresupuestoModelos3DPage() {
     }
   }
 
+  async function sendCloudinaryUpload(resourceType: 'auto' | 'raw', selectedFile: File, cleanCloudName: string, cleanPreset: string, cleanFolder: string) {
+    const form = new FormData();
+    form.append('file', selectedFile);
+    form.append('upload_preset', cleanPreset);
+    form.append('folder', cleanFolder);
+    form.append('use_filename', 'true');
+    form.append('unique_filename', 'true');
+    const endpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cleanCloudName)}/${resourceType}/upload`;
+    const res = await fetch(endpoint, { method: 'POST', body: form });
+    const json = (await res.json().catch(() => ({}))) as CloudinaryUploadResponse;
+    if (!res.ok || !json.secure_url) throw new Error(json.error?.message || `Cloudinary ${resourceType} Error ${res.status}`);
+    return json;
+  }
+
   async function uploadDirectToCloudinary() {
     const selectedFile = selectedFileOrWarn();
     if (!selectedFile) return;
@@ -159,31 +169,46 @@ export default function PresupuestoModelos3DPage() {
       setMessage('Completa Cloud name y Upload preset unsigned para subir directo a Cloudinary.');
       return;
     }
-
     saveCloudinarySettings({ cloudName: cleanCloudName, uploadPreset: cleanPreset, folder: cleanFolder });
     setCloudUploading(true);
     setResult(null);
-    setMessage('Subiendo directo a Cloudinary, sin pasar por Vercel...');
+    setMessage('Subiendo directo a Cloudinary. Primero intento AUTO; si falla, intento RAW...');
+    let autoError = '';
     try {
-      const form = new FormData();
-      form.append('file', selectedFile);
-      form.append('upload_preset', cleanPreset);
-      form.append('folder', cleanFolder);
-      form.append('resource_type', 'raw');
-      const res = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(cleanCloudName)}/raw/upload`, { method: 'POST', body: form });
-      const json = (await res.json().catch(() => ({}))) as CloudinaryUploadResponse;
-      if (!res.ok || !json.secure_url) throw new Error(json.error?.message || `Cloudinary Error ${res.status}`);
-      const uploaded: UploadedAsset = { url: json.secure_url, path: json.public_id || selectedFile.name, asset: { url: json.secure_url, path: json.public_id, alt: selectedFile.name, folder: cleanFolder, mime_type: selectedFile.type || 'model/gltf-binary', size_bytes: json.bytes || selectedFile.size } };
+      let json: CloudinaryUploadResponse;
+      let method: UploadAttempt['method'] = 'cloudinary-auto';
+      try {
+        json = await sendCloudinaryUpload('auto', selectedFile, cleanCloudName, cleanPreset, cleanFolder);
+      } catch (err) {
+        autoError = (err as Error).message;
+        setMessage(`AUTO falló: ${autoError}. Intentando RAW...`);
+        json = await sendCloudinaryUpload('raw', selectedFile, cleanCloudName, cleanPreset, cleanFolder);
+        method = 'cloudinary-raw';
+      }
+      const uploaded: UploadedAsset = { url: json.secure_url || json.url || '', path: json.public_id || selectedFile.name, asset: { url: json.secure_url || json.url || '', path: json.public_id, alt: selectedFile.name, folder: cleanFolder, mime_type: selectedFile.type || 'model/gltf-binary', size_bytes: json.bytes || selectedFile.size } };
       setResult(uploaded);
-      addAttempt({ id: attemptId(), name: selectedFile.name, size: selectedFile.size, status: 'success', method: 'cloudinary', message: 'Subido directo a Cloudinary correctamente', url: json.secure_url, created_at: new Date().toISOString() });
-      setMessage('GLB subido directo a Cloudinary. Copia la URL o pruébala en el visor.');
+      addAttempt({ id: attemptId(), name: selectedFile.name, size: selectedFile.size, status: 'success', method, message: autoError ? `AUTO falló (${autoError}), RAW funcionó.` : 'Subido directo a Cloudinary correctamente.', url: uploaded.url, created_at: new Date().toISOString() });
+      setMessage(`Archivo subido a Cloudinary por ${method === 'cloudinary-raw' ? 'RAW' : 'AUTO'}. Copia la URL o pruébala en el visor.`);
     } catch (err) {
       const msg = (err as Error).message;
-      addAttempt({ id: attemptId(), name: selectedFile.name, size: selectedFile.size, status: 'failed', method: 'cloudinary', message: msg, created_at: new Date().toISOString() });
-      setMessage(`No se pudo subir a Cloudinary: ${msg}`);
+      const detail = autoError ? `AUTO: ${autoError} | RAW: ${msg}` : msg;
+      addAttempt({ id: attemptId(), name: selectedFile.name, size: selectedFile.size, status: 'failed', method: 'cloudinary-raw', message: detail, created_at: new Date().toISOString() });
+      setMessage(`No se pudo subir a Cloudinary. ${detail}`);
     } finally {
       setCloudUploading(false);
     }
+  }
+
+  function saveManualUrl() {
+    const clean = manualUrl.trim();
+    if (!clean) {
+      setMessage('Pega primero una URL pública de Cloudinary o de otro almacenamiento.');
+      return;
+    }
+    const uploaded: UploadedAsset = { url: clean, path: manualName || 'modelo-manual', asset: { url: clean, path: manualName || 'modelo-manual', alt: manualName || 'Modelo 3D manual', folder: 'manual', mime_type: 'model/gltf-binary', size_bytes: null } };
+    setResult(uploaded);
+    addAttempt({ id: attemptId(), name: manualName || 'Modelo 3D manual', size: 0, status: 'success', method: 'manual', message: 'URL manual guardada para prueba.', url: clean, created_at: new Date().toISOString() });
+    setMessage('URL manual guardada. Ahora puedes probarla o copiarla al botón flotante Visor 3D.');
   }
 
   async function copyText(text: string, key: string) {
@@ -198,14 +223,26 @@ export default function PresupuestoModelos3DPage() {
     setHistory(next);
   }
 
-  const resultPreviewLink = result?.url ? `/presupuestos/trima-mobiliario-modular-laboratorio-container?model=${encodeURIComponent(result.url)}&modelName=${encodeURIComponent(file?.name || 'Modelo 3D')}` : '';
+  function deleteAttempt(id: string) {
+    const next = readHistory().filter((item) => item.id !== id);
+    writeHistory(next);
+    setHistory(next);
+  }
+
+  function cloneAttempt(item: UploadAttempt) {
+    if (item.url) setManualUrl(item.url);
+    setManualName(`${item.name} copia`);
+    setMessage('Registro clonado al campo URL manual. Puedes editarlo y guardarlo.');
+  }
+
+  const resultPreviewLink = result?.url ? `/presupuestos/trima-mobiliario-modular-laboratorio-container?model=${encodeURIComponent(result.url)}&modelName=${encodeURIComponent(file?.name || result.path || 'Modelo 3D')}` : '';
 
   return (
     <AdminPage>
       <AdminPageHeader
         eyebrow="Presupuestos · archivos técnicos"
         title="Subir modelo 3D para propuesta"
-        description="Para GLB reales usa Cloudinary directo. La API interna queda solo para archivos pequeños porque Vercel puede responder 413."
+        description="Para GLB reales usa Cloudinary directo con fallback AUTO/RAW. También puedes pegar una URL manual si Cloudinary Console falla."
         icon={Box}
         actions={<Button asChild variant="outline" className="rounded-full"><Link href="/admin/presupuestos">Volver a presupuestos</Link></Button>}
       />
@@ -216,10 +253,10 @@ export default function PresupuestoModelos3DPage() {
               <div className="rounded-[1.75rem] border border-dashed border-yellow-400/30 bg-yellow-400/5 p-6 text-center">
                 <UploadCloud className="mx-auto h-12 w-12 text-yellow-300" />
                 <h2 className="mt-4 text-2xl font-black text-white">Selecciona tu archivo</h2>
-                <p className="mt-2 text-sm leading-7 text-zinc-400">Formatos permitidos: .glb, .gltf, .dae, .zip, .pdf e imágenes. Para visor 3D usa .glb.</p>
+                <p className="mt-2 text-sm leading-7 text-zinc-400">Formatos permitidos: .glb, .gltf, .dae, .zip, .pdf, .db, .sqlite e imágenes. Para visor 3D usa .glb.</p>
                 <input
                   type="file"
-                  accept=".glb,.gltf,.dae,.zip,.pdf,.jpg,.jpeg,.png,.webp"
+                  accept=".glb,.gltf,.dae,.zip,.pdf,.db,.sqlite,.sqlite3,.jpg,.jpeg,.png,.webp"
                   onChange={(e) => setFile(e.target.files?.[0] || null)}
                   className="mt-6 block w-full rounded-2xl border border-white/10 bg-black/50 p-3 text-sm text-zinc-300 file:mr-4 file:rounded-xl file:border-0 file:bg-yellow-400 file:px-4 file:py-2 file:text-sm file:font-black file:text-black"
                 />
@@ -232,7 +269,7 @@ export default function PresupuestoModelos3DPage() {
                 <div className="mt-5 grid gap-2 sm:grid-cols-2">
                   <Button onClick={() => void uploadDirectToCloudinary()} disabled={cloudUploading} className="rounded-full px-6 font-black">
                     {cloudUploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Cloud className="h-4 w-4" />}
-                    {cloudUploading ? 'Subiendo...' : 'Subir directo Cloudinary'}
+                    {cloudUploading ? 'Subiendo...' : 'Subir Cloudinary AUTO/RAW'}
                   </Button>
                   <Button onClick={() => void uploadViaApi()} disabled={uploading} variant="outline" className="rounded-full px-6 font-black">
                     {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <UploadCloud className="h-4 w-4" />}
@@ -246,11 +283,22 @@ export default function PresupuestoModelos3DPage() {
             <AdminCard glow className="p-5 sm:p-6">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">Cloudinary directo</p>
               <h2 className="mt-1 text-xl font-black text-white">Configuración para GLB</h2>
-              <p className="mt-2 text-sm leading-7 text-zinc-400">Crea un upload preset unsigned en Cloudinary. Estos datos quedan guardados solo en tu navegador.</p>
+              <p className="mt-2 text-sm leading-7 text-zinc-400">Usa tu preset unsigned. El sistema intenta primero AUTO y luego RAW para evitar fallos con GLB.</p>
               <div className="mt-4 grid gap-3">
-                <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Cloud name<input value={cloudName} onChange={(e) => setCloudName(e.target.value)} placeholder="tu_cloud_name" className="rounded-2xl border border-white/10 bg-black/50 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none focus:border-yellow-400/70" /></label>
+                <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Cloud name<input value={cloudName} onChange={(e) => setCloudName(e.target.value)} placeholder="disghf6xc" className="rounded-2xl border border-white/10 bg-black/50 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none focus:border-yellow-400/70" /></label>
                 <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Upload preset unsigned<input value={uploadPreset} onChange={(e) => setUploadPreset(e.target.value)} placeholder="presupuestos_3d" className="rounded-2xl border border-white/10 bg-black/50 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none focus:border-yellow-400/70" /></label>
                 <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">Carpeta<input value={cloudFolder} onChange={(e) => setCloudFolder(e.target.value)} placeholder="presupuestos/modelos-3d" className="rounded-2xl border border-white/10 bg-black/50 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none focus:border-yellow-400/70" /></label>
+              </div>
+            </AdminCard>
+
+            <AdminCard glow className="p-5 sm:p-6">
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">URL manual</p>
+              <h2 className="mt-1 text-xl font-black text-white">Pegar link de modelo</h2>
+              <p className="mt-2 text-sm leading-7 text-zinc-400">Si subes el archivo por otro método, pega aquí la URL pública .glb para probar el visor.</p>
+              <div className="mt-4 grid gap-3">
+                <input value={manualName} onChange={(e) => setManualName(e.target.value)} placeholder="Nombre del modelo" className="rounded-2xl border border-white/10 bg-black/50 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400/70" />
+                <textarea rows={3} value={manualUrl} onChange={(e) => setManualUrl(e.target.value)} placeholder="https://res.cloudinary.com/.../modelo.glb" className="rounded-2xl border border-white/10 bg-black/50 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400/70" />
+                <Button onClick={saveManualUrl} variant="outline" className="rounded-2xl"><Check className="h-4 w-4" /> Guardar URL manual</Button>
               </div>
             </AdminCard>
 
@@ -264,17 +312,17 @@ export default function PresupuestoModelos3DPage() {
           <div className="grid h-max gap-5">
             <AdminCard glow className="p-5 sm:p-6">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">Resultado actual</p>
-              {!result?.url ? <p className="mt-4 text-sm leading-7 text-zinc-400">Cuando subas el archivo aparecerá aquí la URL pública para previsualizarla en el presupuesto.</p> : <div className="mt-4 grid gap-3"><div className="rounded-2xl border border-white/10 bg-black/40 p-3 text-xs text-zinc-300 break-all">{result.url}</div><Button onClick={() => void copyText(result.url, 'result-url')} variant="outline" className="rounded-2xl"><Copy className="h-4 w-4" />{copied === 'result-url' ? 'Copiado' : 'Copiar URL'}</Button><Button asChild className="rounded-2xl"><Link href={resultPreviewLink} target="_blank"><ExternalLink className="h-4 w-4" />Probar en presupuesto TRIMA</Link></Button><div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-4 text-xs leading-6 text-yellow-100"><Check className="mr-2 inline h-4 w-4" />También puedes volver a /admin/presupuestos, abrir el botón flotante Visor 3D, pegar esta URL y activar/desactivar el visor.</div></div>}
+              {!result?.url ? <p className="mt-4 text-sm leading-7 text-zinc-400">Cuando subas el archivo o guardes una URL manual aparecerá aquí la URL pública para previsualizarla.</p> : <div className="mt-4 grid gap-3"><div className="rounded-2xl border border-white/10 bg-black/40 p-3 text-xs text-zinc-300 break-all">{result.url}</div><Button onClick={() => void copyText(result.url, 'result-url')} variant="outline" className="rounded-2xl"><Copy className="h-4 w-4" />{copied === 'result-url' ? 'Copiado' : 'Copiar URL'}</Button><Button asChild className="rounded-2xl"><Link href={resultPreviewLink} target="_blank"><ExternalLink className="h-4 w-4" />Probar en presupuesto TRIMA</Link></Button><div className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-4 text-xs leading-6 text-yellow-100"><Check className="mr-2 inline h-4 w-4" />También puedes volver a /admin/presupuestos, abrir el botón flotante Visor 3D, pegar esta URL y activar/desactivar el visor.</div></div>}
             </AdminCard>
 
             <AdminCard glow className="p-5 sm:p-6">
               <div className="flex items-center justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[0.3em] text-red-300">Historial</p><h2 className="mt-1 text-xl font-black text-white">Fallidos</h2></div>{failedHistory.length > 0 && <Button onClick={clearFailed} variant="outline" className="rounded-full text-xs">Limpiar</Button>}</div>
-              {!failedHistory.length ? <p className="mt-4 text-sm leading-7 text-zinc-400">No hay intentos fallidos guardados en este navegador.</p> : <div className="mt-4 grid gap-3">{failedHistory.map((item) => <div key={item.id} className="rounded-2xl border border-red-400/20 bg-red-400/10 p-3 text-sm"><XCircle className="mr-2 inline h-4 w-4 text-red-300" /><b className="text-red-100">{item.name}</b><p className="mt-1 text-xs text-red-100/80">{fileSize(item.size)} · {item.method} · {new Date(item.created_at).toLocaleString('es-CL')}</p><p className="mt-2 text-xs leading-5 text-red-100/90">{item.message}</p></div>)}</div>}
+              {!failedHistory.length ? <p className="mt-4 text-sm leading-7 text-zinc-400">No hay intentos fallidos guardados en este navegador.</p> : <div className="mt-4 grid gap-3">{failedHistory.map((item) => <div key={item.id} className="rounded-2xl border border-red-400/20 bg-red-400/10 p-3 text-sm"><XCircle className="mr-2 inline h-4 w-4 text-red-300" /><b className="text-red-100">{item.name}</b><p className="mt-1 text-xs text-red-100/80">{fileSize(item.size)} · {item.method} · {new Date(item.created_at).toLocaleString('es-CL')}</p><p className="mt-2 text-xs leading-5 text-red-100/90">{item.message}</p><div className="mt-3 flex flex-wrap gap-2"><button onClick={() => cloneAttempt(item)} className="rounded-xl border border-red-300/30 px-3 py-1.5 text-xs font-black text-red-100">Clonar</button><button onClick={() => deleteAttempt(item.id)} className="rounded-xl border border-red-300/30 px-3 py-1.5 text-xs font-black text-red-100">Eliminar</button></div></div>)}</div>}
             </AdminCard>
 
             <AdminCard glow className="p-5 sm:p-6">
               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-emerald-300">Historial</p><h2 className="mt-1 text-xl font-black text-white">Subidos recientemente</h2>
-              {!successHistory.length ? <p className="mt-4 text-sm leading-7 text-zinc-400">Todavía no hay subidas exitosas desde este navegador.</p> : <div className="mt-4 grid gap-3">{successHistory.slice(0, 10).map((item) => { const preview = item.url ? `/presupuestos/trima-mobiliario-modular-laboratorio-container?model=${encodeURIComponent(item.url)}&modelName=${encodeURIComponent(item.name)}` : ''; return <div key={item.id} className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm"><CheckCircle2 className="mr-2 inline h-4 w-4 text-emerald-300" /><b className="text-emerald-100">{item.name}</b><p className="mt-1 text-xs text-emerald-100/80">{fileSize(item.size)} · {item.method} · {new Date(item.created_at).toLocaleString('es-CL')}</p>{item.url && <div className="mt-2 grid grid-cols-2 gap-2"><button onClick={() => void copyText(item.url || '', item.id)} className="rounded-xl border border-emerald-400/30 px-3 py-1.5 text-xs font-black text-emerald-100">{copied === item.id ? 'Copiado' : 'Copiar URL'}</button><Link href={preview} target="_blank" className="rounded-xl border border-emerald-400/30 px-3 py-1.5 text-center text-xs font-black text-emerald-100">Probar</Link></div>}</div>; })}</div>}
+              {!successHistory.length ? <p className="mt-4 text-sm leading-7 text-zinc-400">Todavía no hay subidas exitosas desde este navegador.</p> : <div className="mt-4 grid gap-3">{successHistory.slice(0, 10).map((item) => { const preview = item.url ? `/presupuestos/trima-mobiliario-modular-laboratorio-container?model=${encodeURIComponent(item.url)}&modelName=${encodeURIComponent(item.name)}` : ''; return <div key={item.id} className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-3 text-sm"><CheckCircle2 className="mr-2 inline h-4 w-4 text-emerald-300" /><b className="text-emerald-100">{item.name}</b><p className="mt-1 text-xs text-emerald-100/80">{fileSize(item.size)} · {item.method} · {new Date(item.created_at).toLocaleString('es-CL')}</p>{item.url && <div className="mt-2 grid grid-cols-2 gap-2"><button onClick={() => void copyText(item.url || '', item.id)} className="rounded-xl border border-emerald-400/30 px-3 py-1.5 text-xs font-black text-emerald-100">{copied === item.id ? 'Copiado' : 'Copiar URL'}</button><Link href={preview} target="_blank" className="rounded-xl border border-emerald-400/30 px-3 py-1.5 text-center text-xs font-black text-emerald-100">Probar</Link><button onClick={() => cloneAttempt(item)} className="rounded-xl border border-emerald-400/30 px-3 py-1.5 text-xs font-black text-emerald-100">Clonar</button><button onClick={() => deleteAttempt(item.id)} className="rounded-xl border border-emerald-400/30 px-3 py-1.5 text-xs font-black text-emerald-100">Eliminar</button></div>}</div>; })}</div>}
             </AdminCard>
           </div>
         </div>

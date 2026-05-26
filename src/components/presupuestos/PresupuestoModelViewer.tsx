@@ -9,17 +9,14 @@ import type { PresupuestoArchivo } from '@/lib/presupuestosBuilder';
 
 type ViewerStatus = 'idle' | 'checking-url' | 'intro' | 'rendering' | 'loaded' | 'error';
 
-type ModelProps = { url: string; onLoaded: () => void; onError: (message: string) => void };
+type ModelProps = { url: string; onLoaded: () => void };
 
-function Model({ url, onLoaded, onError }: ModelProps) {
-  try {
-    const gltf = useGLTF(url);
-    useEffect(() => { onLoaded(); }, [onLoaded]);
-    return <primitive object={gltf.scene} />;
-  } catch (err) {
-    onError((err as Error).message || 'No se pudo interpretar el archivo GLB/GLTF.');
-    return null;
-  }
+function Model({ url, onLoaded }: ModelProps) {
+  const gltf = useGLTF(url);
+  useEffect(() => {
+    onLoaded();
+  }, [gltf, onLoaded]);
+  return <primitive object={gltf.scene} />;
 }
 
 function modelSupported(file: PresupuestoArchivo) {
@@ -106,13 +103,6 @@ export default function PresupuestoModelViewer({ archivos }: { archivos?: Presup
     setError('');
   }
 
-  function handleError(message: string) {
-    setStatus('error');
-    setError(message || 'Falló la carga del modelo en el visor.');
-    setLoadingIntro(false);
-    setShowCanvas(false);
-  }
-
   async function copyDiagnostics() {
     await navigator.clipboard.writeText(buildDiagnostics(selected, status, error));
     setCopied(true);
@@ -166,7 +156,7 @@ export default function PresupuestoModelViewer({ archivos }: { archivos?: Presup
                 <ambientLight intensity={0.7} />
                 <directionalLight position={[4, 6, 4]} intensity={2.2} />
                 <Suspense fallback={null}>
-                  <Center><Model url={selected.url} onLoaded={handleLoaded} onError={handleError} /></Center>
+                  <Center><Model url={selected.url} onLoaded={handleLoaded} /></Center>
                   <Environment preset="warehouse" />
                 </Suspense>
                 <OrbitControls makeDefault enablePan enableZoom enableRotate autoRotate autoRotateSpeed={0.35} />

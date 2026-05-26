@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { AdminShell } from '@/components/admin/AdminShell';
 import AdminBaseThemeFrame from '@/components/admin/AdminBaseThemeFrame';
 import { StudioShell } from '@/components/admin-studio';
+import Presupuesto3DAdminWidget from '@/components/presupuestos/Presupuesto3DAdminWidget';
 import './studio-theme.css';
 
 export const metadata: Metadata = {
@@ -39,6 +40,8 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <div id="shell-studio" className="studio-shell" style={{ display: 'none' }}>
         <StudioShell>{children}</StudioShell>
       </div>
+
+      <Presupuesto3DAdminWidget />
     </>
   );
 }

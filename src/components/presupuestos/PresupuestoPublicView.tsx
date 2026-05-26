@@ -1,5 +1,6 @@
 'use client';
 
+import DOMPurify from 'isomorphic-dompurify';
 import { Copy, MessageCircle, Printer } from 'lucide-react';
 import { formatBudgetMoney, sanitizeBudgetHtml, type PresupuestoPro } from '@/lib/presupuestosBuilder';
 
@@ -12,7 +13,7 @@ function List({ items }: { items: string[] }) {
 }
 
 export default function PresupuestoPublicView({ presupuesto, publicLink, adminPreview = false }: { presupuesto: PresupuestoPro; publicLink?: string; adminPreview?: boolean }) {
-  const safeHtml = sanitizeBudgetHtml(presupuesto.html_personalizado);
+  const safeHtml = DOMPurify.sanitize(sanitizeBudgetHtml(presupuesto.html_personalizado), { FORBID_TAGS: ['script', 'iframe', 'object', 'embed'], FORBID_ATTR: ['onerror', 'onclick', 'onload', 'onmouseover'] });
   const waPhone = presupuesto.telefono_whatsapp?.replace(/[^0-9]/g, '');
   const waText = encodeURIComponent(`Hola, revisé el presupuesto ${presupuesto.titulo}. Link: ${publicLink || ''}`);
 
@@ -43,7 +44,7 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
       <Section title="Descripción del proyecto"><p className="text-sm leading-7 text-zinc-300">{presupuesto.descripcion}</p></Section>
       <Section title="Alcance incluido"><List items={presupuesto.incluye} /></Section>
       <Section title="Materiales y terminaciones"><List items={presupuesto.materiales} /></Section>
-      {presupuesto.imagenes.length > 0 && <Section title="Galería de imágenes"><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{presupuesto.imagenes.sort((a,b)=>a.orden-b.orden).map((img) => <figure key={img.id} className="overflow-hidden rounded-3xl border border-white/10 bg-black"><img src={img.url} alt={img.titulo || 'Imagen presupuesto'} className="h-56 w-full object-cover" /><figcaption className="p-4"><b className="text-sm text-white">{img.titulo}</b><p className="mt-1 text-xs text-zinc-400">{img.descripcion}</p></figcaption></figure>)}</div></Section>}
+      {presupuesto.imagenes.length > 0 && <Section title="Galería de imágenes"><div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">{[...presupuesto.imagenes].sort((a,b)=>a.orden-b.orden).map((img) => <figure key={img.id} className="overflow-hidden rounded-3xl border border-white/10 bg-black"><img src={img.url} alt={img.titulo || 'Imagen presupuesto'} className="h-56 w-full object-cover" /><figcaption className="p-4"><b className="text-sm text-white">{img.titulo}</b><p className="mt-1 text-xs text-zinc-400">{img.descripcion}</p></figcaption></figure>)}</div></Section>}
       {presupuesto.items.length > 0 && <Section title="Partidas / productos"><div className="overflow-x-auto"><table className="w-full text-left text-sm"><thead className="text-xs uppercase tracking-widest text-yellow-300"><tr><th className="py-2">Item</th><th>Cant.</th><th>Unidad</th><th>Unitario</th><th>Total</th></tr></thead><tbody>{presupuesto.items.map((item) => <tr key={item.id} className="border-t border-white/10"><td className="py-3"><b>{item.nombre}</b><p className="text-xs text-zinc-400">{item.descripcion}</p></td><td>{item.cantidad}</td><td>{item.unidad}</td><td>{formatBudgetMoney(item.precio_unitario)}</td><td className="font-bold text-yellow-300">{formatBudgetMoney(item.total)}</td></tr>)}</tbody></table></div></Section>}
       <Section title="Forma de pago"><div className="grid gap-3 sm:grid-cols-5">{presupuesto.forma_pago.map((pago, i) => <div key={i} className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-4"><b className="text-2xl text-yellow-300">{pago.porcentaje}%</b><p className="mt-2 text-xs text-zinc-200">{pago.descripcion}</p></div>)}</div></Section>
       <Section title="No incluye"><List items={presupuesto.no_incluye} /></Section>

@@ -5,13 +5,13 @@ import Link from 'next/link';
 import PresupuestoPublicView from '@/components/presupuestos/PresupuestoPublicView';
 import { baseBudgetExample, loadBudgets, type PresupuestoPro } from '@/lib/presupuestosBuilder';
 
-export default function PresupuestoPublicPage({ params }: { params: Promise<{ slug: string }> | { slug: string } }) {
+export default function PresupuestoPublicPage({ params }: { params: Promise<{ slug: string }> }) {
   const [slug, setSlug] = useState('');
   const [budget, setBudget] = useState<PresupuestoPro | null>(null);
   const [ready, setReady] = useState(false);
 
   useEffect(() => {
-    Promise.resolve(params).then((p) => {
+    params.then((p) => {
       setSlug(p.slug);
       const found = loadBudgets().find((item) => item.slug === p.slug);
       setBudget(found || (p.slug === baseBudgetExample.slug ? baseBudgetExample : null));

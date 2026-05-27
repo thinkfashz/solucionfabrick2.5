@@ -6,22 +6,6 @@
  * fresh nonce per navigation request and propagates it via the `x-nonce`
  * request header so that inline server-rendered `<script>` tags (currently
  * only JSON-LD) can opt-in.
- *
- * Trusted third-party origins are allowlisted explicitly:
- *  - Cloudflare Turnstile (bot protection on /contacto)
- *  - MercadoPago (checkout widget)
- *  - Vercel Analytics + Insights
- *  - InsForge backend (connect-src only)
- *  - Google Fonts (stylesheet + woff/woff2)
- *
- * We intentionally do NOT use `'strict-dynamic'`: it forces every script to be
- * gated by a nonce that matches the per-request value, but Next.js bakes nonces
- * into the HTML of statically prerendered routes at build time. Those
- * build-time nonces never match what middleware emits at request time, so
- * under `'strict-dynamic'` every `/_next/static/chunks/*.js` on an SSG route
- * would be blocked and the page would never hydrate. Instead we rely on
- * `'self'` for same-origin Next.js chunks, the nonce for inline JSON-LD, and
- * the explicit host allowlist for trusted third parties.
  */
 
 export interface CspBuildOptions {
@@ -31,6 +15,11 @@ export interface CspBuildOptions {
 
 const INSFORGE_HOSTS = ['https://*.insforge.app'];
 const CLOUDFLARE_HOSTS = ['https://challenges.cloudflare.com'];
+const CLOUDINARY_HOSTS = [
+  'https://api.cloudinary.com',
+  'https://res.cloudinary.com',
+  'https://*.cloudinary.com',
+];
 const MERCADOPAGO_HOSTS = [
   'https://*.mercadopago.com',
   'https://*.mercadolibre.com',
@@ -52,20 +41,14 @@ export function buildCsp({ nonce, isDev = false }: CspBuildOptions): string {
   const scriptSrc = [
     "'self'",
     `'nonce-${nonce}'`,
-    // Trusted third-party script origins. Enforced directly (no `'strict-dynamic'`).
     ...CLOUDFLARE_HOSTS,
     ...MERCADOPAGO_HOSTS,
     ...VERCEL_HOSTS,
-    // Needed by Next.js bootstrap + HMR in development.
     ...(isDev ? ["'unsafe-eval'"] : []),
   ];
 
   const styleSrc = [
     "'self'",
-    // Tailwind-generated inline styles and any CSS-in-JS utility that relies on
-    // style attributes — browsers treat inline `style=""` attributes under
-    // style-src-attr. We allow inline styles defensively; this does NOT weaken
-    // script protection which is the primary XSS risk.
     "'unsafe-inline'",
     ...GOOGLE_FONT_HOSTS,
   ];
@@ -74,7 +57,7 @@ export function buildCsp({ nonce, isDev = false }: CspBuildOptions): string {
     "'self'",
     'data:',
     'blob:',
-    'https:', // images may come from product catalog CDNs managed by InsForge
+    'https:',
   ];
 
   const fontSrc = ["'self'", 'data:', ...GOOGLE_FONT_HOSTS];
@@ -82,19 +65,14 @@ export function buildCsp({ nonce, isDev = false }: CspBuildOptions): string {
   const connectSrc = [
     "'self'",
     ...INSFORGE_HOSTS,
+    ...CLOUDINARY_HOSTS,
     ...VERCEL_HOSTS,
     ...MERCADOPAGO_HOSTS,
     'https://api.mercadopago.com',
-    // Cloudflare Turnstile siteverify happens server-side, but the client SDK
-    // communicates with challenges.cloudflare.com over fetch.
     ...CLOUDFLARE_HOSTS,
-    // Dev-only WebSocket for Next.js HMR.
     ...(isDev ? ['ws:', 'wss:', 'http://localhost:*'] : []),
   ];
 
-  // Permitimos `https://www.openstreetmap.org` para que el iframe del mapa
-  // de la sección de contacto cargue (de lo contrario el navegador lo bloquea
-  // silenciosamente y se ve un recuadro en blanco).
   const frameSrc = [
     "'self'",
     ...CLOUDFLARE_HOSTS,
@@ -110,21 +88,16 @@ export function buildCsp({ nonce, isDev = false }: CspBuildOptions): string {
     'font-src': fontSrc,
     'connect-src': connectSrc,
     'frame-src': frameSrc,
-    // `'self'` (not `'none'`) so the universal CMS editor at /admin/editor
-    // can embed public pages in its live-preview iframe. Same-origin
-    // framing remains the only path; third-party clickjacking is still
-    // blocked.
     'frame-ancestors': ["'self'"],
     'form-action': ["'self'"],
     'base-uri': ["'self'"],
     'object-src': ["'none'"],
     'worker-src': ["'self'", 'blob:'],
     'manifest-src': ["'self'"],
-    'media-src': ["'self'", 'data:', 'blob:'],
+    'media-src': ["'self'", 'data:', 'blob:', ...CLOUDINARY_HOSTS],
   };
 
   const parts = Object.entries(directives).map(([key, values]) => `${key} ${values.join(' ')}`);
-  // upgrade-insecure-requests is a standalone directive without values.
   if (!isDev) parts.push('upgrade-insecure-requests');
   return parts.join('; ');
 }
@@ -134,9 +107,8 @@ export function buildCsp({ nonce, isDev = false }: CspBuildOptions): string {
  * Edge and Node runtimes in Next.js).
  */
 export function generateNonce(): string {
-  const bytes = new Uint8Array(16); // 128 bits
+  const bytes = new Uint8Array(16);
   crypto.getRandomValues(bytes);
-  // base64 encode without padding (Edge runtime lacks Buffer.from for some paths).
   let binary = '';
   for (let i = 0; i < bytes.length; i++) binary += String.fromCharCode(bytes[i]);
   return btoa(binary).replace(/=+$/, '');

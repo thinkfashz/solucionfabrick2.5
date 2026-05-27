@@ -1,10 +1,19 @@
 'use client';
 
+import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import PresupuestoPublicView from '@/components/presupuestos/PresupuestoPublicView';
-import PresupuestoModelViewer from '@/components/presupuestos/PresupuestoModelViewer';
 import { baseBudgetExample, loadBudgets, normalizeBudget, type PresupuestoPro } from '@/lib/presupuestosBuilder';
+
+const PresupuestoModelViewer = dynamic(() => import('@/components/presupuestos/PresupuestoModelViewer'), {
+  ssr: false,
+  loading: () => (
+    <section className="rounded-[1.75rem] border border-yellow-400/20 bg-zinc-950/90 p-6 text-center text-zinc-300">
+      Preparando visor 3D...
+    </section>
+  ),
+});
 
 export default function PresupuestoPublicPage({ params }: { params: Promise<{ slug: string }> }) {
   const [slug, setSlug] = useState('');
@@ -45,7 +54,7 @@ export default function PresupuestoPublicPage({ params }: { params: Promise<{ sl
         setBudget(current);
       }
       setReady(true);
-    });
+    }).catch(() => setReady(true));
   }, [params]);
 
   const publicLink = useMemo(() => (typeof window !== 'undefined' ? window.location.href : `/presupuestos/${slug}`), [slug]);

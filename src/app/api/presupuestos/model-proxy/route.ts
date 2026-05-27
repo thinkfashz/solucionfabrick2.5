@@ -2,10 +2,12 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 
 export const dynamic = 'force-dynamic';
-export const runtime = 'nodejs';
+// Edge runtime supports true streaming — avoids the 4.5 MB serverless body limit
+// that would kill large GLB files buffered with arrayBuffer().
+export const runtime = 'edge';
 
 const ALLOWED_HOSTS = ['insforge.app', 'cloudinary.com'];
-const MAX_BYTES = 90 * 1024 * 1024;
+const MAX_DECLARED_BYTES = 150 * 1024 * 1024; // reject only if Content-Length says > 150 MB
 
 function isAllowedModelUrl(rawUrl: string) {
   try {
@@ -18,7 +20,7 @@ function isAllowedModelUrl(rawUrl: string) {
 }
 
 function contentTypeFor(url: string, upstreamType: string | null) {
-  if (upstreamType && !upstreamType.includes('text/html')) return upstreamType;
+  if (upstreamType && !upstreamType.includes('text/html') && upstreamType !== 'application/octet-stream') return upstreamType;
   const path = url.split('?')[0].toLowerCase();
   if (path.endsWith('.glb')) return 'model/gltf-binary';
   if (path.endsWith('.gltf')) return 'model/gltf+json';
@@ -39,38 +41,45 @@ export async function GET(request: NextRequest) {
   try {
     const upstream = await fetch(target, {
       method: 'GET',
-      cache: 'no-store',
       headers: {
         Accept: 'model/gltf-binary,model/gltf+json,application/octet-stream,*/*',
       },
     });
 
     if (!upstream.ok) {
-      return NextResponse.json({ error: `El archivo remoto respondió HTTP ${upstream.status}.` }, { status: upstream.status });
+      return NextResponse.json(
+        { error: `El archivo remoto respondió HTTP ${upstream.status}.` },
+        { status: upstream.status },
+      );
     }
 
     const lengthHeader = upstream.headers.get('content-length');
-    const size = lengthHeader ? Number(lengthHeader) : 0;
-    if (size && size > MAX_BYTES) {
-      return NextResponse.json({ error: 'El modelo supera el tamaño máximo permitido por el proxy.' }, { status: 413 });
+    if (lengthHeader) {
+      const declared = Number(lengthHeader);
+      if (declared > MAX_DECLARED_BYTES) {
+        return NextResponse.json(
+          { error: 'El modelo supera el tamaño máximo permitido por el proxy (150 MB).' },
+          { status: 413 },
+        );
+      }
     }
 
-    const buffer = await upstream.arrayBuffer();
-    if (buffer.byteLength > MAX_BYTES) {
-      return NextResponse.json({ error: 'El modelo supera el tamaño máximo permitido por el proxy.' }, { status: 413 });
-    }
+    const contentType = contentTypeFor(target, upstream.headers.get('content-type'));
+    const responseHeaders: Record<string, string> = {
+      'Content-Type': contentType,
+      'Cache-Control': 'public, max-age=300, s-maxage=300',
+      'Access-Control-Allow-Origin': '*',
+      'X-Model-Proxy': 'soluciones-fabris',
+    };
+    if (lengthHeader) responseHeaders['Content-Length'] = lengthHeader;
 
-    return new NextResponse(buffer, {
-      status: 200,
-      headers: {
-        'Content-Type': contentTypeFor(target, upstream.headers.get('content-type')),
-        'Content-Length': String(buffer.byteLength),
-        'Cache-Control': 'public, max-age=300, s-maxage=300',
-        'Access-Control-Allow-Origin': '*',
-        'X-Model-Proxy': 'soluciones-fabris',
-      },
-    });
+    // Pass the ReadableStream directly — no arrayBuffer() buffering.
+    // The Edge runtime pipes bytes straight to the client, bypassing size limits.
+    return new NextResponse(upstream.body, { status: 200, headers: responseHeaders });
   } catch (error) {
-    return NextResponse.json({ error: `No se pudo descargar el modelo remoto: ${(error as Error).message}` }, { status: 502 });
+    return NextResponse.json(
+      { error: `No se pudo descargar el modelo remoto: ${(error as Error).message}` },
+      { status: 502 },
+    );
   }
 }

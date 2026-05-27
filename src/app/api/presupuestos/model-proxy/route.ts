@@ -20,10 +20,13 @@ function isAllowedModelUrl(rawUrl: string) {
 }
 
 function contentTypeFor(url: string, upstreamType: string | null) {
-  if (upstreamType && !upstreamType.includes('text/html') && upstreamType !== 'application/octet-stream') return upstreamType;
+  // Prefer extension-derived types; ignore generic/binary upstream types
+  const isGeneric = !upstreamType || upstreamType.includes('text/html') || upstreamType.includes('octet-stream');
+  if (!isGeneric) return upstreamType;
   const path = url.split('?')[0].toLowerCase();
   if (path.endsWith('.glb')) return 'model/gltf-binary';
   if (path.endsWith('.gltf')) return 'model/gltf+json';
+  if (path.endsWith('.dae')) return 'model/vnd.collada+xml';
   if (path.endsWith('.bin')) return 'application/octet-stream';
   return 'application/octet-stream';
 }

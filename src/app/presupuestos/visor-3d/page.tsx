@@ -62,7 +62,10 @@ export default function PresupuestoVisor3DPage() {
       }
       const type = res.headers.get('content-type') || '';
       const size = res.headers.get('content-length');
-      if (type.includes('text/html')) throw new Error('La URL devuelve HTML en lugar de un archivo GLB/GLTF. Verifica que la URL sea directa al modelo.');
+      // DAE files are XML but text/xml is valid — only reject actual HTML pages
+      if (type.includes('text/html') && !type.includes('xml')) {
+        throw new Error('La URL devuelve una página HTML en lugar de un archivo 3D. Verifica que la URL apunte directamente al modelo.');
+      }
       setDebug(size ? `${type} · ${(Number(size) / 1024 / 1024).toFixed(1)} MB` : type);
       setStatus('loading');
     } catch (err) {
@@ -91,7 +94,6 @@ export default function PresupuestoVisor3DPage() {
       try {
         container.innerHTML = '';
         const THREE = await import('three');
-        const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
         const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
         if (disposed) return;
 
@@ -148,12 +150,25 @@ export default function PresupuestoVisor3DPage() {
         controls.minDistance = 0.1;
         controls.maxDistance = 2000;
 
-        // ── Load GLB ─────────────────────────────────────────────────────
-        const loader = new GLTFLoader();
-        const gltf = await loader.loadAsync(proxyUrl(modelUrl));
-        if (disposed) return;
+        // ── Load model (format-aware) ────────────────────────────────────
+        const urlExt = modelUrl.split('?')[0].toLowerCase().split('.').pop() || '';
+        let model: InstanceType<typeof THREE.Group>;
 
-        const model = gltf.scene;
+        if (urlExt === 'dae') {
+          const { ColladaLoader } = await import('three/examples/jsm/loaders/ColladaLoader.js');
+          if (disposed) return;
+          const collada = await new ColladaLoader().loadAsync(proxyUrl(modelUrl));
+          model = collada.scene as unknown as InstanceType<typeof THREE.Group>;
+        } else if (urlExt === 'glb' || urlExt === 'gltf' || urlExt === '') {
+          const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
+          if (disposed) return;
+          const gltf = await new GLTFLoader().loadAsync(proxyUrl(modelUrl));
+          model = gltf.scene;
+        } else {
+          throw new Error(`Formato .${urlExt} no soportado por el visor. Usa .glb, .gltf o .dae.`);
+        }
+
+        if (disposed) return;
         let meshCount = 0;
         const fallbackMaterial = new THREE.MeshStandardMaterial({
           color: 0xe8e4dc,

@@ -1,62 +1,66 @@
 'use client';
 
-import dynamic from 'next/dynamic';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import PresupuestoPublicView from '@/components/presupuestos/PresupuestoPublicView';
 import PresupuestoMixedAlbum from '@/components/presupuestos/PresupuestoMixedAlbum';
 import { baseBudgetExample, loadBudgets, normalizeBudget, type PresupuestoPro } from '@/lib/presupuestosBuilder';
-
-const PresupuestoModelViewer = dynamic(() => import('@/components/presupuestos/PresupuestoModelViewer'), {
-  ssr: false,
-  loading: () => (
-    <section className="rounded-[1.75rem] border border-yellow-400/20 bg-zinc-950/90 p-6 text-center text-zinc-300">
-      Preparando visor 3D...
-    </section>
-  ),
-});
 
 export default function PresupuestoPublicPage({ params }: { params: Promise<{ slug: string }> }) {
   const [slug, setSlug] = useState('');
   const [budget, setBudget] = useState<PresupuestoPro | null>(null);
   const [ready, setReady] = useState(false);
 
+  const loadCurrentBudget = useCallback((nextSlug: string) => {
+    const found = loadBudgets().find((item) => item.slug === nextSlug);
+    const current = found || (nextSlug === baseBudgetExample.slug ? baseBudgetExample : null);
+
+    if (current && typeof window !== 'undefined') {
+      const url = new URL(window.location.href);
+      const modelUrl = url.searchParams.get('model');
+      const modelName = url.searchParams.get('modelName') || 'Modelo 3D del proyecto';
+      if (modelUrl) {
+        setBudget(normalizeBudget({
+          ...current,
+          archivos: [
+            ...(current.archivos || []),
+            {
+              id: 'query-model-preview',
+              nombre: modelName,
+              url: modelUrl,
+              descripcion: 'Modelo 3D cargado para previsualización del cliente.',
+              tipo: 'modelo_3d',
+              formato: modelUrl.split('?')[0].split('.').pop()?.toLowerCase() || 'glb',
+              mostrar_cliente: true,
+              orden: 1,
+            },
+          ],
+        }));
+        return;
+      }
+    }
+
+    setBudget(current);
+  }, []);
+
   useEffect(() => {
     params.then((p) => {
       setSlug(p.slug);
-      const found = loadBudgets().find((item) => item.slug === p.slug);
-      const current = found || (p.slug === baseBudgetExample.slug ? baseBudgetExample : null);
-
-      if (current && typeof window !== 'undefined') {
-        const url = new URL(window.location.href);
-        const modelUrl = url.searchParams.get('model');
-        const modelName = url.searchParams.get('modelName') || 'Modelo 3D del proyecto';
-        if (modelUrl) {
-          setBudget(normalizeBudget({
-            ...current,
-            archivos: [
-              ...(current.archivos || []),
-              {
-                id: 'query-model-preview',
-                nombre: modelName,
-                url: modelUrl,
-                descripcion: 'Modelo 3D cargado para previsualización del cliente.',
-                tipo: 'modelo_3d',
-                formato: modelUrl.split('?')[0].split('.').pop()?.toLowerCase() || 'glb',
-                mostrar_cliente: true,
-                orden: 1,
-              },
-            ],
-          }));
-        } else {
-          setBudget(current);
-        }
-      } else {
-        setBudget(current);
-      }
+      loadCurrentBudget(p.slug);
       setReady(true);
     }).catch(() => setReady(true));
-  }, [params]);
+  }, [params, loadCurrentBudget]);
+
+  useEffect(() => {
+    if (!slug || typeof window === 'undefined') return;
+    const sync = () => loadCurrentBudget(slug);
+    window.addEventListener('storage', sync);
+    window.addEventListener('presupuestos:updated', sync as EventListener);
+    return () => {
+      window.removeEventListener('storage', sync);
+      window.removeEventListener('presupuestos:updated', sync as EventListener);
+    };
+  }, [slug, loadCurrentBudget]);
 
   const publicLink = useMemo(() => (typeof window !== 'undefined' ? window.location.href : `/presupuestos/${slug}`), [slug]);
 
@@ -73,7 +77,6 @@ export default function PresupuestoPublicPage({ params }: { params: Promise<{ sl
       <div className="mx-auto grid max-w-7xl gap-6">
         <PresupuestoPublicView presupuesto={budget} publicLink={publicLink} />
         <PresupuestoMixedAlbum presupuesto={budget} />
-        <PresupuestoModelViewer archivos={budget.archivos} />
       </div>
     </main>
   );

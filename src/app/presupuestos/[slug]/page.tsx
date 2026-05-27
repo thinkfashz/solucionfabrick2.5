@@ -4,6 +4,7 @@ import dynamic from 'next/dynamic';
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import PresupuestoPublicView from '@/components/presupuestos/PresupuestoPublicView';
+import PresupuestoMixedAlbum from '@/components/presupuestos/PresupuestoMixedAlbum';
 import { baseBudgetExample, loadBudgets, normalizeBudget, type PresupuestoPro } from '@/lib/presupuestosBuilder';
 
 const PresupuestoModelViewer = dynamic(() => import('@/components/presupuestos/PresupuestoModelViewer'), {
@@ -71,6 +72,7 @@ export default function PresupuestoPublicPage({ params }: { params: Promise<{ sl
     <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.12),transparent_34%),#050505] px-3 py-6 sm:px-6 sm:py-10">
       <div className="mx-auto grid max-w-7xl gap-6">
         <PresupuestoPublicView presupuesto={budget} publicLink={publicLink} />
+        <PresupuestoMixedAlbum presupuesto={budget} />
         <PresupuestoModelViewer archivos={budget.archivos} />
       </div>
     </main>

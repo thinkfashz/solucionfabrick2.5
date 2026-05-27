@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Box, CheckCircle2, Copy, Eye, EyeOff, ExternalLink, Loader2, RefreshCw, UploadCloud, X } from 'lucide-react';
+import { Box, CheckCircle2, Copy, Database, Eye, EyeOff, ExternalLink, Loader2, RefreshCw, UploadCloud, X } from 'lucide-react';
 import { calculateBudget, createBudgetId, fileTypeFromUrl, loadBudgets, saveBudgets, type PresupuestoPro } from '@/lib/presupuestosBuilder';
 
 function modelFormat(url: string) {
@@ -27,6 +27,7 @@ export default function Presupuesto3DAdminWidget() {
   const [copied, setCopied] = useState(false);
   const [message, setMessage] = useState('');
   const [loading, setLoading] = useState(false);
+  const [migrating, setMigrating] = useState(false);
 
   useEffect(() => {
     if (!visibleInPath || typeof window === 'undefined') return;
@@ -110,6 +111,29 @@ export default function Presupuesto3DAdminWidget() {
     setLoading(false);
   }
 
+  async function migrateToDatabase() {
+    setMigrating(true);
+    setMessage('Migrando presupuestos a base de datos...');
+    try {
+      const current = loadBudgets();
+      if (!current.length) throw new Error('No hay presupuestos locales para migrar.');
+      const res = await fetch('/api/admin/presupuestos/migrate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ presupuestos: current }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { migrated?: number; error?: string; hint?: string };
+      if (!res.ok) throw new Error(`${json.error || `Error ${res.status}`}${json.hint ? ` · ${json.hint}` : ''}`);
+      setMessage(`Migración lista: ${json.migrated || current.length} presupuesto(s) guardado(s) en la base de datos.`);
+      dispatchBudgetSync();
+    } catch (err) {
+      setMessage(`No se pudo migrar: ${(err as Error).message}`);
+    } finally {
+      setMigrating(false);
+      window.setTimeout(() => setMessage(''), 6500);
+    }
+  }
+
   async function copyPublicLink() {
     if (!publicLink) return;
     await navigator.clipboard.writeText(publicLink);
@@ -134,7 +158,7 @@ export default function Presupuesto3DAdminWidget() {
             <div className="min-w-0">
               <p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">Presupuesto</p>
               <h3 className="mt-1 text-lg font-black">Control del visor 3D</h3>
-              <p className="mt-1 text-xs text-zinc-500">Activa o desactiva la card del visor en la página del cliente.</p>
+              <p className="mt-1 text-xs text-zinc-500">Activa, sincroniza o migra a base de datos.</p>
             </div>
             <button onClick={() => setOpen(false)} className="shrink-0 rounded-full border border-white/10 p-2 text-zinc-300 hover:border-yellow-400/40 hover:text-yellow-200"><X className="h-4 w-4" /></button>
           </div>
@@ -187,6 +211,11 @@ export default function Presupuesto3DAdminWidget() {
               </button>
             </div>
 
+            <button onClick={migrateToDatabase} disabled={migrating} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-sky-400/30 bg-sky-400/10 px-3 py-2.5 text-xs font-black text-sky-100 hover:bg-sky-400/20 disabled:opacity-60">
+              {migrating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Database className="h-4 w-4" />}
+              {migrating ? 'Migrando...' : 'Migrar a base de datos'}
+            </button>
+
             <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <Link href="/admin/presupuestos/modelos-3d" className="inline-flex items-center justify-center gap-2 rounded-2xl border border-yellow-400/30 bg-yellow-400/10 px-3 py-2.5 text-xs font-black text-yellow-200 hover:bg-yellow-400/20">
                 <UploadCloud className="h-4 w-4" /> Subir archivo
@@ -212,7 +241,7 @@ export default function Presupuesto3DAdminWidget() {
               </Link>
             )}
 
-            {message && <p className="rounded-2xl border border-white/10 bg-black/40 p-3 text-xs font-bold text-yellow-100">{message}</p>}
+            {message && <p className="max-h-36 overflow-auto rounded-2xl border border-white/10 bg-black/40 p-3 text-xs font-bold leading-5 text-yellow-100">{message}</p>}
           </div>
         </div>
       )}

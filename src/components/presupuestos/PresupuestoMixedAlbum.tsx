@@ -25,7 +25,7 @@ export default function PresupuestoMixedAlbum({ presupuesto }: { presupuesto: Pr
         <div>
           <p className="text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300">Álbum del proyecto</p>
           <h2 className="mt-2 text-2xl font-black sm:text-3xl">Imágenes y archivos técnicos</h2>
-          <p className="mt-2 max-w-2xl text-sm leading-7 text-zinc-400">Visualiza las referencias del proyecto y los archivos 3D asociados al presupuesto en cualquier dispositivo.</p>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-zinc-400">Visualiza las referencias del proyecto y abre los modelos 3D en una página separada para no afectar el presupuesto.</p>
         </div>
         <span className="rounded-full border border-white/10 px-3 py-1 text-xs font-bold text-zinc-300">{images.length} imágenes · {models.length} archivos</span>
       </div>
@@ -48,7 +48,7 @@ export default function PresupuestoMixedAlbum({ presupuesto }: { presupuesto: Pr
         {models.map((file, index) => {
           const ext = fileExt(file.url, file.formato).toUpperCase();
           const canPreview = ['GLB', 'GLTF'].includes(ext);
-          const previewLink = canPreview ? `/presupuestos/trima-mobiliario-modular-laboratorio-container?model=${encodeURIComponent(file.url)}&modelName=${encodeURIComponent(file.nombre || `Modelo ${index + 1}`)}` : file.url;
+          const viewerLink = canPreview ? `/presupuestos/visor-3d?model=${encodeURIComponent(file.url)}&name=${encodeURIComponent(file.nombre || `Modelo ${index + 1}`)}` : file.url;
           return (
             <article key={file.id || file.url} className="group flex min-h-[260px] flex-col justify-between overflow-hidden rounded-3xl border border-yellow-400/20 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.12),transparent_42%),#050505] p-5 transition hover:-translate-y-1 hover:border-yellow-400/60">
               <div>
@@ -58,7 +58,7 @@ export default function PresupuestoMixedAlbum({ presupuesto }: { presupuesto: Pr
                 <p className="mt-3 line-clamp-3 text-sm leading-7 text-zinc-400">{file.descripcion || 'Archivo técnico asociado al presupuesto. Puede abrirse o descargarse para revisión.'}</p>
               </div>
               <div className="mt-5 grid gap-2 sm:grid-cols-2">
-                <a href={previewLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-4 py-3 text-xs font-black text-black hover:bg-yellow-300"><ExternalLink className="h-4 w-4" />Abrir</a>
+                <a href={viewerLink} target="_blank" rel="noreferrer" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-4 py-3 text-xs font-black text-black hover:bg-yellow-300"><ExternalLink className="h-4 w-4" />{canPreview ? 'Abrir visor' : 'Abrir'}</a>
                 <a href={file.url} target="_blank" rel="noreferrer" download className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-xs font-bold text-white hover:border-yellow-400/40"><Download className="h-4 w-4" />Descargar</a>
               </div>
             </article>

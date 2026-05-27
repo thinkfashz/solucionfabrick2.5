@@ -150,8 +150,6 @@ export default function PresupuestoModelos3DPage() {
     form.append('file', selectedFile);
     form.append('upload_preset', cleanPreset);
     form.append('folder', cleanFolder);
-    form.append('use_filename', 'true');
-    form.append('unique_filename', 'true');
     const endpoint = `https://api.cloudinary.com/v1_1/${encodeURIComponent(cleanCloudName)}/${resourceType}/upload`;
     const res = await fetch(endpoint, { method: 'POST', body: form });
     const json = (await res.json().catch(() => ({}))) as CloudinaryUploadResponse;

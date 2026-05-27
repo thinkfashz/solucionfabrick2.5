@@ -24,22 +24,34 @@ function modelSupported(file: PresupuestoArchivo) {
   return ['glb', 'gltf'].includes(format);
 }
 
-function buildDiagnostics(selected: PresupuestoArchivo | undefined, status: ViewerStatus, error: string) {
+function proxiedModelUrl(url: string) {
+  if (!url) return '';
+  try {
+    const parsed = new URL(url);
+    if (parsed.origin === window.location.origin) return url;
+    return `/api/presupuestos/model-proxy?url=${encodeURIComponent(url)}`;
+  } catch {
+    return url;
+  }
+}
+
+function buildDiagnostics(selected: PresupuestoArchivo | undefined, status: ViewerStatus, error: string, resolvedUrl: string) {
   return JSON.stringify({
     modulo: 'PresupuestoModelViewer',
     status,
     error: error || null,
     modelo: selected ? {
       nombre: selected.nombre,
-      url: selected.url,
+      url_original: selected.url,
+      url_resuelta: resolvedUrl,
       formato: selected.formato,
       mostrar_cliente: selected.mostrar_cliente,
     } : null,
     ayuda: [
-      'Verifica que la URL sea pública y abra en una pestaña anónima.',
+      'La URL externa se carga mediante /api/presupuestos/model-proxy para evitar CORS.',
+      'Verifica que la URL original sea pública y abra en una pestaña anónima.',
       'Verifica que el archivo sea GLB o GLTF real, no DB/ZIP renombrado.',
-      'Si está en Cloudinary, usa resource_type raw o auto y secure_url https.',
-      'Si el navegador bloquea CORS, sube el archivo como raw asset público.',
+      'Si el proxy responde 502, el storage externo está bloqueando o no entregando el archivo.',
     ],
     fecha: new Date().toISOString(),
   }, null, 2);
@@ -55,6 +67,7 @@ export default function PresupuestoModelViewer({ archivos }: { archivos?: Presup
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const selected = models[selectedIndex];
+  const resolvedUrl = selected?.url ? proxiedModelUrl(selected.url) : '';
 
   useEffect(() => {
     setStarted(false);
@@ -70,10 +83,13 @@ export default function PresupuestoModelViewer({ archivos }: { archivos?: Presup
     setStatus('checking-url');
     setError('');
     try {
-      const res = await fetch(url, { method: 'GET', mode: 'cors', cache: 'no-store' });
-      if (!res.ok) throw new Error(`La URL respondió HTTP ${res.status}.`);
+      const res = await fetch(url, { method: 'GET', cache: 'no-store' });
+      if (!res.ok) {
+        const body = await res.text().catch(() => '');
+        throw new Error(`La URL respondió HTTP ${res.status}${body ? ` · ${body.slice(0, 160)}` : ''}`);
+      }
       const contentType = res.headers.get('content-type') || 'sin content-type';
-      if (contentType.includes('text/html')) throw new Error('La URL devuelve HTML, no un archivo GLB/GLTF. Revisa que sea secure_url directo del archivo.');
+      if (contentType.includes('text/html')) throw new Error('La URL devuelve HTML, no un archivo GLB/GLTF. Revisa que sea un link directo al archivo.');
       return true;
     } catch (err) {
       const message = (err as Error).message || 'No se pudo consultar la URL del modelo.';
@@ -84,10 +100,10 @@ export default function PresupuestoModelViewer({ archivos }: { archivos?: Presup
   }
 
   async function startViewer() {
-    if (!selected?.url) return;
+    if (!selected?.url || !resolvedUrl) return;
     setStarted(true);
     setShowCanvas(false);
-    const ok = await checkModelUrl(selected.url);
+    const ok = await checkModelUrl(resolvedUrl);
     if (!ok) return;
     setLoadingIntro(true);
     setStatus('intro');
@@ -104,7 +120,7 @@ export default function PresupuestoModelViewer({ archivos }: { archivos?: Presup
   }
 
   async function copyDiagnostics() {
-    await navigator.clipboard.writeText(buildDiagnostics(selected, status, error));
+    await navigator.clipboard.writeText(buildDiagnostics(selected, status, error, resolvedUrl));
     setCopied(true);
     window.setTimeout(() => setCopied(false), 1800);
   }
@@ -126,7 +142,7 @@ export default function PresupuestoModelViewer({ archivos }: { archivos?: Presup
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/95 p-6 text-center">
               <Wifi className="h-10 w-10 animate-pulse text-yellow-300" />
               <p className="mt-4 text-xs font-black uppercase tracking-[0.28em] text-yellow-300">Probando URL del modelo</p>
-              <p className="mt-2 max-w-md text-sm text-zinc-400">Verificando que el archivo sea público antes de iniciar el visor.</p>
+              <p className="mt-2 max-w-md text-sm text-zinc-400">Verificando el modelo mediante proxy seguro para evitar bloqueo CORS.</p>
             </div>
           )}
 
@@ -150,13 +166,13 @@ export default function PresupuestoModelViewer({ archivos }: { archivos?: Presup
             </div>
           )}
 
-          {showCanvas && selected && status !== 'error' && (
+          {showCanvas && selected && resolvedUrl && status !== 'error' && (
             <div className="h-[420px] w-full sm:h-[560px]">
               <Canvas camera={{ position: [3, 2, 5], fov: 45 }} dpr={[1, 1.5]} onCreated={() => setStatus('rendering')}>
                 <ambientLight intensity={0.7} />
                 <directionalLight position={[4, 6, 4]} intensity={2.2} />
                 <Suspense fallback={null}>
-                  <Center><Model url={selected.url} onLoaded={handleLoaded} /></Center>
+                  <Center><Model url={resolvedUrl} onLoaded={handleLoaded} /></Center>
                   <Environment preset="warehouse" />
                 </Suspense>
                 <OrbitControls makeDefault enablePan enableZoom enableRotate autoRotate autoRotateSpeed={0.35} />

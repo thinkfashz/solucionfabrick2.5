@@ -5,7 +5,6 @@ import type { Object3D } from 'three';
 import {
   AlertTriangle,
   ArrowLeft,
-  Box,
   CheckCircle2,
   Copy,
   Download,
@@ -16,15 +15,31 @@ import {
 } from 'lucide-react';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
-type ViewerStatus = 'idle' | 'checking' | 'loading' | 'loaded' | 'error';
+type ViewerStatus = 'idle' | 'loading' | 'loaded' | 'error';
 
 function proxyUrl(url: string) {
   return `/api/presupuestos/model-proxy?url=${encodeURIComponent(url)}`;
 }
 
+function friendlyError(raw: string): string {
+  if (!raw) return 'No se pudo renderizar el modelo 3D.';
+  if (raw.includes('404') || raw.toLowerCase().includes('not found'))
+    return 'Archivo no encontrado (404). Verifica que el modelo siga disponible.';
+  if (raw.includes('403') || raw.toLowerCase().includes('forbidden'))
+    return 'Acceso denegado (403). El archivo requiere autenticación.';
+  if (raw.includes('413'))
+    return 'El archivo supera el límite de tamaño del proxy (150 MB).';
+  if (raw.toLowerCase().includes('json') || raw.toLowerCase().includes('unexpected token'))
+    return 'Error al parsear el modelo. Verifica que sea un archivo .glb, .gltf o .dae válido y no esté corrupto.';
+  if (raw.toLowerCase().includes('networkerror') || raw.toLowerCase().includes('failed to fetch'))
+    return 'Error de red al descargar el modelo. Comprueba tu conexión e intenta de nuevo.';
+  return raw;
+}
+
 export default function PresupuestoVisor3DPage() {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const fitRef = useRef<(() => void) | null>(null);
+  const modelUrlRef = useRef('');
 
   const [modelUrl, setModelUrl] = useState('');
   const [modelName, setModelName] = useState('Modelo 3D del proyecto');
@@ -34,50 +49,26 @@ export default function PresupuestoVisor3DPage() {
   const [ready, setReady] = useState(false);
   const [debug, setDebug] = useState('');
 
-  // ── Read URL params and auto-start ───────────────────────────────────────
+  // ── Read URL params → go straight to loading (no pre-fetch validation)
+  // Validation via a GET to the proxy was causing the model to download
+  // TWICE (once to validate, once via Three.js), which could freeze the
+  // second request on low-bandwidth mobile connections.
   useEffect(() => {
     const params = new URL(window.location.href).searchParams;
     const model = params.get('model') || '';
     const name = params.get('name') || params.get('modelName') || 'Modelo 3D del proyecto';
+    modelUrlRef.current = model;
     setModelUrl(model);
     setModelName(name);
     setReady(true);
-
-    if (model) {
-      // Auto-validate and load without requiring a click
-      beginLoad(model);
-    }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
+    if (model) setStatus('loading');
   }, []);
 
-  // ── Validation + status transition ──────────────────────────────────────
-  async function beginLoad(url: string) {
-    setStatus('checking');
+  function retry() {
+    if (!modelUrlRef.current) return;
     setError('');
     setDebug('');
-    try {
-      const res = await fetch(proxyUrl(url), { cache: 'no-store' });
-      if (!res.ok) {
-        const body = await res.text().catch(() => '');
-        throw new Error(`El archivo respondió HTTP ${res.status}${body ? ` · ${body.slice(0, 200)}` : ''}`);
-      }
-      const type = res.headers.get('content-type') || '';
-      const size = res.headers.get('content-length');
-      // DAE files are XML but text/xml is valid — only reject actual HTML pages
-      if (type.includes('text/html') && !type.includes('xml')) {
-        throw new Error('La URL devuelve una página HTML en lugar de un archivo 3D. Verifica que la URL apunte directamente al modelo.');
-      }
-      setDebug(size ? `${type} · ${(Number(size) / 1024 / 1024).toFixed(1)} MB` : type);
-      setStatus('loading');
-    } catch (err) {
-      setStatus('error');
-      setError((err as Error).message || 'No se pudo validar el archivo.');
-    }
-  }
-
-  function retry() {
-    if (!modelUrl) return;
-    beginLoad(modelUrl);
+    setStatus('loading');
   }
 
   // ── Three.js scene ───────────────────────────────────────────────────────
@@ -90,53 +81,58 @@ export default function PresupuestoVisor3DPage() {
     let frameId = 0;
 
     async function mount() {
+      // Small delay so the container has been laid out and has real dimensions
+      await new Promise<void>((r) => requestAnimationFrame(() => r()));
       const container = containerRef.current;
-      if (!container) return;
+      if (!container || disposed) return;
+
       try {
         container.innerHTML = '';
+
+        // ── Lazy-import Three.js (keeps initial page bundle small) ────────
         const THREE = await import('three');
         const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
         if (disposed) return;
 
-        // ── Scene setup ──────────────────────────────────────────────────
+        // ── Scene ────────────────────────────────────────────────────────
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x111111);
+        scene.background = new THREE.Color(0x1a1a2e);
 
-        const width = Math.max(container.clientWidth || window.innerWidth || 800, 320);
-        const height = Math.max(container.clientHeight || 520, 320);
-        const camera = new THREE.PerspectiveCamera(45, width / height, 0.01, 20000);
-        camera.position.set(6, 4, 8);
+        const w0 = Math.max(container.clientWidth || window.innerWidth || 800, 320);
+        const h0 = Math.max(container.clientHeight || 520, 320);
+        const camera = new THREE.PerspectiveCamera(45, w0 / h0, 0.001, 50000);
 
         renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
         renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-        renderer.setSize(width, height, false);
-        renderer.domElement.style.cssText = 'width:100%;height:100%;display:block;';
+        renderer.setSize(w0, h0, false);
+        renderer.domElement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
         renderer.outputColorSpace = THREE.SRGBColorSpace;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.35;
+        renderer.toneMappingExposure = 1.4;
         renderer.shadowMap.enabled = true;
         renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         container.appendChild(renderer.domElement);
 
         // ── Lighting ─────────────────────────────────────────────────────
-        scene.add(new THREE.HemisphereLight(0xffffff, 0x444444, 1.8));
-        scene.add(new THREE.AmbientLight(0xffffff, 1.2));
-        const key = new THREE.DirectionalLight(0xffffff, 4.5);
-        key.position.set(8, 12, 8);
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x334455, 2.2));
+        scene.add(new THREE.AmbientLight(0xffffff, 1.0));
+        const key = new THREE.DirectionalLight(0xffffff, 4.0);
+        key.position.set(8, 14, 8);
         key.castShadow = true;
         key.shadow.mapSize.set(2048, 2048);
         key.shadow.camera.near = 0.1;
-        key.shadow.camera.far = 200;
+        key.shadow.camera.far = 500;
+        key.shadow.bias = -0.0005;
         scene.add(key);
-        const fill = new THREE.DirectionalLight(0xffffff, 1.8);
-        fill.position.set(-8, 5, -6);
+        const fill = new THREE.DirectionalLight(0xcce8ff, 2.0);
+        fill.position.set(-8, 6, -6);
         scene.add(fill);
-        const back = new THREE.DirectionalLight(0xffffff, 1.2);
-        back.position.set(0, -4, -10);
-        scene.add(back);
+        const rim = new THREE.DirectionalLight(0xfff4cc, 1.2);
+        rim.position.set(0, -5, -12);
+        scene.add(rim);
 
         // ── Grid ─────────────────────────────────────────────────────────
-        const grid = new THREE.GridHelper(20, 20, 0xfacc15, 0x333333);
+        const grid = new THREE.GridHelper(30, 30, 0xfacc15, 0x222244);
         scene.add(grid);
 
         // ── Controls ─────────────────────────────────────────────────────
@@ -147,11 +143,11 @@ export default function PresupuestoVisor3DPage() {
         controls.enableZoom = true;
         controls.zoomSpeed = 1.2;
         controls.autoRotate = true;
-        controls.autoRotateSpeed = 0.3;
-        controls.minDistance = 0.1;
-        controls.maxDistance = 2000;
+        controls.autoRotateSpeed = 0.4;
+        controls.minDistance = 0.05;
+        controls.maxDistance = 10000;
 
-        // ── Load model (format-aware) ────────────────────────────────────
+        // ── Format-aware loader ───────────────────────────────────────────
         const urlExt = modelUrl.split('?')[0].toLowerCase().split('.').pop() || '';
         let model: Object3D;
 
@@ -164,20 +160,21 @@ export default function PresupuestoVisor3DPage() {
         } else if (urlExt === 'glb' || urlExt === 'gltf' || urlExt === '') {
           const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
           if (disposed) return;
-          const gltf = await new GLTFLoader().loadAsync(proxyUrl(modelUrl));
-          model = gltf.scene;
+          const gltfData = await new GLTFLoader().loadAsync(proxyUrl(modelUrl));
+          model = gltfData.scene;
         } else {
-          throw new Error(`Formato .${urlExt} no soportado por el visor. Usa .glb, .gltf o .dae.`);
+          throw new Error(`Formato .${urlExt} no soportado. Usa .glb, .gltf o .dae.`);
         }
 
         if (disposed) return;
+
+        // ── Material cleanup ──────────────────────────────────────────────
+        // DAE/GLB models loaded through the proxy can have external texture
+        // references that resolve to broken URLs. Strip all texture maps so
+        // the base diffuse color is always used — the geometry is always
+        // visible even when textures can't be loaded from the proxy.
         let meshCount = 0;
-        const fallbackMaterial = new THREE.MeshStandardMaterial({
-          color: 0xe8e4dc,
-          roughness: 0.55,
-          metalness: 0.06,
-          side: THREE.DoubleSide,
-        });
+        const fallback = new THREE.MeshStandardMaterial({ color: 0xd4c5a9, roughness: 0.6, metalness: 0.05, side: THREE.DoubleSide });
 
         model.traverse((obj: any) => {
           if (!obj?.isMesh) return;
@@ -186,44 +183,55 @@ export default function PresupuestoVisor3DPage() {
           obj.frustumCulled = false;
           obj.receiveShadow = true;
           obj.castShadow = true;
-          const original = obj.material;
-          const mats: any[] = original ? (Array.isArray(original) ? original : [original]) : [];
-          const unusable =
-            !mats.length ||
-            mats.every((m: any) => {
-              const transparent = m.transparent === true && (m.opacity ?? 1) <= 0.05;
-              const black = m.color && m.color.r < 0.02 && m.color.g < 0.02 && m.color.b < 0.02;
-              return transparent || black;
-            });
-          if (unusable) {
-            obj.material = fallbackMaterial.clone();
-          } else {
-            mats.forEach((m: any) => {
-              m.side = THREE.DoubleSide;
-              if (m.color && m.color.r < 0.02 && m.color.g < 0.02 && m.color.b < 0.02) m.color.set(0xe8e4dc);
-              m.needsUpdate = true;
-            });
-          }
+
+          const mats: any[] = obj.material
+            ? Array.isArray(obj.material) ? obj.material : [obj.material]
+            : [];
+
+          if (!mats.length) { obj.material = fallback.clone(); return; }
+
+          mats.forEach((m: any) => {
+            // Strip all texture maps — they use relative paths that fail through proxy
+            m.map = null;
+            m.normalMap = null;
+            m.roughnessMap = null;
+            m.metalnessMap = null;
+            m.aoMap = null;
+            m.emissiveMap = null;
+            m.lightMap = null;
+            m.bumpMap = null;
+            m.displacementMap = null;
+            m.envMap = null;
+            m.alphaMap = null;
+            m.side = THREE.DoubleSide;
+            m.transparent = false;
+            m.opacity = 1;
+            // Ensure the base color is visible (not black)
+            if (!m.color || (m.color.r < 0.05 && m.color.g < 0.05 && m.color.b < 0.05)) {
+              m.color = new THREE.Color(0xd4c5a9);
+            }
+            m.needsUpdate = true;
+          });
         });
 
+        if (meshCount === 0) throw new Error('El modelo no contiene mallas visibles. El archivo puede estar vacío o dañado.');
+
+        // ── Center + scale model to fit ───────────────────────────────────
         const box = new THREE.Box3().setFromObject(model);
         const size = box.getSize(new THREE.Vector3());
         const center = box.getCenter(new THREE.Vector3());
         const maxAxis = Math.max(size.x, size.y, size.z);
-        if (!Number.isFinite(maxAxis) || maxAxis <= 0) {
-          throw new Error('El modelo cargó pero no tiene geometría visible. Verifica que el archivo GLB no esté vacío o dañado.');
-        }
+        if (!Number.isFinite(maxAxis) || maxAxis <= 0) throw new Error('No se pudo calcular el tamaño del modelo.');
 
-        // Center and scale model
         model.position.sub(center);
-        const targetSize = 4;
-        model.scale.setScalar(targetSize / maxAxis);
+        model.scale.setScalar(4 / maxAxis);
         scene.add(model);
 
         // Reposition grid under model
-        const scaledBox = new THREE.Box3().setFromObject(model);
-        const minY = scaledBox.min.y;
-        grid.position.y = minY - 0.001;
+        const scaled = new THREE.Box3().setFromObject(model);
+        grid.position.y = scaled.min.y - 0.001;
+
+        setDebug(`${urlExt.toUpperCase()} · ${meshCount} mallas · ${size.x.toFixed(1)}×${size.y.toFixed(1)}×${size.z.toFixed(1)}`);
 
         // ── Camera fit ───────────────────────────────────────────────────
         const fitCamera = () => {
@@ -231,10 +239,10 @@ export default function PresupuestoVisor3DPage() {
           const s = b.getSize(new THREE.Vector3());
           const c = b.getCenter(new THREE.Vector3());
           const radius = Math.max(s.x, s.y, s.z, 0.5);
-          const dist = (radius / (2 * Math.tan((camera.fov * Math.PI) / 360))) * 2.0;
-          camera.position.set(c.x + dist * 0.8, c.y + dist * 0.6, c.z + dist);
-          camera.near = Math.max(dist / 100, 0.001);
-          camera.far = dist * 200;
+          const dist = (radius / (2 * Math.tan((camera.fov * Math.PI) / 360))) * 2.2;
+          camera.position.set(c.x + dist * 0.9, c.y + dist * 0.65, c.z + dist);
+          camera.near = Math.max(dist / 200, 0.001);
+          camera.far = dist * 500;
           camera.lookAt(c);
           camera.updateProjectionMatrix();
           controls.target.copy(c);
@@ -243,16 +251,15 @@ export default function PresupuestoVisor3DPage() {
         fitRef.current = fitCamera;
         fitCamera();
 
-        setDebug((prev) => `${prev ? prev + ' · ' : ''}Mallas: ${meshCount} · ${size.x.toFixed(1)}×${size.y.toFixed(1)}×${size.z.toFixed(1)} m`);
-
         // ── Resize handler ───────────────────────────────────────────────
         const onResize = () => {
-          if (!container || !renderer) return;
+          if (!container || disposed) return;
           const w = Math.max(container.clientWidth || window.innerWidth || 800, 320);
           const h = Math.max(container.clientHeight || 520, 320);
           camera.aspect = w / h;
           camera.updateProjectionMatrix();
           renderer.setSize(w, h, false);
+          renderer.render(scene, camera);
         };
         resizeObserver = new ResizeObserver(onResize);
         resizeObserver.observe(container);
@@ -270,7 +277,7 @@ export default function PresupuestoVisor3DPage() {
       } catch (err) {
         if (!disposed) {
           setStatus('error');
-          setError((err as Error).message || 'No se pudo renderizar el modelo 3D.');
+          setError(friendlyError((err as Error).message || ''));
         }
       }
     }
@@ -298,10 +305,8 @@ export default function PresupuestoVisor3DPage() {
 
   if (!ready) return null;
 
-  const isWorking = status === 'checking' || status === 'loading';
-
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.12),transparent_34%),#050505] px-3 py-5 text-white sm:px-6 sm:py-8">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.10),transparent_34%),#050505] px-3 py-5 text-white sm:px-6 sm:py-8">
       <div className="mx-auto grid max-w-7xl gap-5">
 
         {/* ── Header ─────────────────────────────────────────────────────── */}
@@ -309,7 +314,7 @@ export default function PresupuestoVisor3DPage() {
           <div className="min-w-0">
             <FabrickFullLogo theme="light" tagline="visor 3D" />
             <h1 className="mt-4 break-words text-2xl font-black sm:text-4xl">{modelName}</h1>
-            <p className="mt-1 text-sm text-zinc-500">Visor aislado del presupuesto · rota, mueve y haz zoom sin afectar la página del cliente</p>
+            <p className="mt-1 text-sm text-zinc-500">Visor aislado · rota, mueve y haz zoom libremente</p>
             {debug && (
               <p className="mt-2 inline-block rounded-full border border-yellow-400/20 bg-yellow-400/10 px-3 py-1 text-xs font-bold text-yellow-100">
                 {debug}
@@ -344,43 +349,37 @@ export default function PresupuestoVisor3DPage() {
           </div>
         </header>
 
-        {/* ── Viewer canvas ───────────────────────────────────────────────── */}
-        <section className="overflow-hidden rounded-[1.5rem] border border-yellow-400/20 bg-zinc-950/90 shadow-2xl shadow-black/40">
-          <div className="relative h-[65vh] min-h-[440px] w-full bg-zinc-900 sm:h-[75vh]">
+        {/* ── Viewer ─────────────────────────────────────────────────────── */}
+        <section className="overflow-hidden rounded-[1.5rem] border border-yellow-400/20 bg-zinc-950 shadow-2xl shadow-black/40">
+          <div className="relative h-[65vh] min-h-[440px] w-full sm:h-[75vh]">
 
-            {/* Canvas container */}
+            {/* Canvas container — Three.js appends its canvas here */}
             <div ref={containerRef} className="absolute inset-0" />
 
-            {/* Loading overlay */}
-            {isWorking && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/75 p-6 text-center backdrop-blur-sm">
-                <Loader2 className="h-12 w-12 animate-spin text-yellow-300" />
-                <p className="mt-5 text-xs font-black uppercase tracking-[0.3em] text-yellow-300">
-                  {status === 'checking' ? 'Verificando archivo' : 'Cargando modelo 3D'}
+            {/* Loading */}
+            {status === 'loading' && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-zinc-950/90 p-6 text-center">
+                <Loader2 className="h-12 w-12 animate-spin text-yellow-400" />
+                <p className="mt-5 text-xs font-black uppercase tracking-[0.3em] text-yellow-400">
+                  Cargando modelo 3D
                 </p>
-                <p className="mt-2 text-xs text-zinc-400">
-                  {status === 'checking' ? 'Comprobando acceso al archivo...' : 'Preparando cámara, materiales y geometría...'}
-                </p>
+                <p className="mt-2 text-xs text-zinc-500">Descargando geometría y materiales…</p>
               </div>
             )}
 
-            {/* No URL state */}
-            {status === 'idle' && !modelUrl && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/80 p-6 text-center backdrop-blur-sm">
-                <Box className="h-16 w-16 text-yellow-300" />
-                <h2 className="mt-5 text-2xl font-black">Sin modelo</h2>
-                <p className="mt-3 max-w-sm text-sm leading-7 text-zinc-400">
-                  Navega a esta página desde la lista de presupuestos o el panel de modelos 3D del administrador.
-                </p>
+            {/* No URL */}
+            {status === 'idle' && (
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-zinc-950/90 p-6 text-center">
+                <p className="text-sm text-zinc-400">Sin modelo · navega desde el administrador para cargar uno.</p>
               </div>
             )}
 
-            {/* Error overlay */}
+            {/* Error */}
             {status === 'error' && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-black/85 p-6 text-center backdrop-blur-sm">
-                <AlertTriangle className="h-14 w-14 text-red-300" />
-                <h2 className="mt-4 text-2xl font-black">No se pudo abrir el visor</h2>
-                <p className="mt-3 max-w-xl rounded-2xl border border-red-400/25 bg-red-400/10 p-4 text-sm leading-7 text-red-100">
+              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-zinc-950/90 p-6 text-center">
+                <AlertTriangle className="h-12 w-12 text-red-400" />
+                <h2 className="mt-4 text-xl font-black">No se pudo abrir el visor</h2>
+                <p className="mt-3 max-w-lg rounded-2xl border border-red-400/25 bg-red-400/10 p-4 text-sm leading-7 text-red-200">
                   {error}
                 </p>
                 <div className="mt-5 flex flex-wrap justify-center gap-3">
@@ -403,26 +402,19 @@ export default function PresupuestoVisor3DPage() {
 
             {/* Loaded badge */}
             {status === 'loaded' && (
-              <div className="absolute left-4 top-4 z-10 rounded-full border border-emerald-400/30 bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-emerald-200 backdrop-blur-sm">
+              <div className="absolute left-4 top-4 z-10 rounded-full border border-emerald-400/30 bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-emerald-300 backdrop-blur-sm pointer-events-none">
                 <CheckCircle2 className="mr-1 inline h-3 w-3" /> Cargado
-              </div>
-            )}
-
-            {/* Auto-rotate badge */}
-            {status === 'loaded' && (
-              <div className="absolute right-4 bottom-4 z-10 rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[10px] font-bold text-zinc-400 backdrop-blur-sm">
-                rotación automática activa
               </div>
             )}
           </div>
         </section>
 
         {/* ── Controls tip ────────────────────────────────────────────────── */}
-        <div className="rounded-[1.5rem] border border-white/10 bg-black/40 p-4 text-sm leading-7 text-zinc-400">
+        <p className="rounded-[1.5rem] border border-white/10 bg-black/40 p-4 text-sm leading-7 text-zinc-400">
           <Rotate3D className="mr-2 inline h-4 w-4 text-yellow-300" />
-          <strong className="text-white">Controles:</strong> arrastra para rotar · pellizca o usa la rueda para zoom · arrastra con dos dedos para desplazar · pulsa{' '}
+          <strong className="text-white">Controles:</strong> arrastra para rotar · rueda / pellizca para zoom · dos dedos para desplazar ·{' '}
           <span className="rounded-md border border-white/15 bg-white/5 px-1.5 py-0.5 font-mono text-xs text-white">Centrar</span> si el modelo queda fuera de pantalla.
-        </div>
+        </p>
       </div>
     </main>
   );

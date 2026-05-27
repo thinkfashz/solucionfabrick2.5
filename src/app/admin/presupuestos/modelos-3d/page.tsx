@@ -13,8 +13,11 @@ import {
   Eye,
   FileArchive,
   Loader2,
+  Pencil,
   RefreshCw,
+  Trash2,
   UploadCloud,
+  X,
   XCircle,
 } from 'lucide-react';
 import { AdminCard, AdminMotion, AdminPage, AdminPageHeader } from '@/components/admin/ui';
@@ -117,6 +120,10 @@ export default function PresupuestoModelos3DPage() {
   const [cloudFolder, setCloudFolder] = useState('presupuestos/modelos-3d');
   const [manualUrl, setManualUrl] = useState('');
   const [manualName, setManualName] = useState('Modelo 3D manual');
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingName, setEditingName] = useState('');
+  const [savingEdit, setSavingEdit] = useState(false);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
     setHistory(readHistory());
@@ -314,6 +321,47 @@ export default function PresupuestoModelos3DPage() {
     setMessage('Registro clonado al campo URL manual. Puedes editarlo y guardarlo.');
   }
 
+  function startEdit(asset: MediaAsset) {
+    const label = asset.alt || asset.path?.split('/').pop() || '';
+    setEditingId(asset.id!);
+    setEditingName(filenameLabel(label));
+  }
+
+  async function saveEdit() {
+    if (!editingId || !editingName.trim()) return;
+    setSavingEdit(true);
+    try {
+      const res = await fetch(`/api/admin/media/${editingId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ alt: editingName.trim() }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(json.error || `Error ${res.status}`);
+      setEditingId(null);
+      await loadAssets();
+    } catch (err) {
+      setMessage(`No se pudo renombrar: ${(err as Error).message}`);
+    } finally {
+      setSavingEdit(false);
+    }
+  }
+
+  async function deleteAsset(id: string, label: string) {
+    if (!confirm(`¿Eliminar "${label}" de la base de datos?`)) return;
+    setDeletingId(id);
+    try {
+      const res = await fetch(`/api/admin/media/${id}`, { method: 'DELETE' });
+      const json = (await res.json().catch(() => ({}))) as { error?: string };
+      if (!res.ok) throw new Error(json.error || `Error ${res.status}`);
+      await loadAssets();
+    } catch (err) {
+      setMessage(`No se pudo eliminar: ${(err as Error).message}`);
+    } finally {
+      setDeletingId(null);
+    }
+  }
+
   const resultName = file?.name || result?.path || 'Modelo 3D';
   const resultVisorUrl = result?.url ? visor3dUrl(result.url, filenameLabel(resultName)) : '';
 
@@ -462,6 +510,7 @@ export default function PresupuestoModelos3DPage() {
                   {assets.map((asset, index) => {
                     const label = asset.alt || asset.path?.split('/').pop() || `Archivo ${index + 1}`;
                     const visorLink = visor3dUrl(asset.url, filenameLabel(label));
+                    const isEditing = editingId === asset.id;
                     return (
                       <div key={asset.id || asset.path || asset.url} className="rounded-2xl border border-white/10 bg-black/35 p-4">
                         <div className="flex items-start justify-between gap-3">
@@ -474,29 +523,73 @@ export default function PresupuestoModelos3DPage() {
                           <CheckCircle2 className="h-5 w-5 shrink-0 text-emerald-300" />
                         </div>
                         <p className="mt-2 break-all rounded-xl bg-black/50 p-2 text-[11px] text-zinc-400">{asset.url}</p>
-                        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
-                          <Button
-                            onClick={() => void copyText(asset.url, `asset-${index}`)}
-                            variant="outline"
-                            className="rounded-xl text-xs"
-                          >
-                            <Copy className="h-3.5 w-3.5" />
-                            {copied === `asset-${index}` ? 'Copiado' : 'Copiar URL'}
-                          </Button>
-                          <Button asChild className="rounded-xl text-xs col-span-2 sm:col-span-1">
-                            <Link href={visorLink} target="_blank">
-                              <Eye className="h-3.5 w-3.5" /> Abrir en Visor 3D
-                            </Link>
-                          </Button>
-                          <Button
-                            onClick={() => void copyText(visorLink, `vlink-${index}`)}
-                            variant="outline"
-                            className="rounded-xl text-xs col-span-2 sm:col-span-1"
-                          >
-                            <ExternalLink className="h-3.5 w-3.5" />
-                            {copied === `vlink-${index}` ? 'Copiado' : 'Copiar link visor'}
-                          </Button>
-                        </div>
+
+                        {isEditing ? (
+                          <div className="mt-3 grid gap-2">
+                            <input
+                              value={editingName}
+                              onChange={(e) => setEditingName(e.target.value)}
+                              onKeyDown={(e) => {
+                                if (e.key === 'Enter') void saveEdit();
+                                if (e.key === 'Escape') setEditingId(null);
+                              }}
+                              autoFocus
+                              className="rounded-xl border border-yellow-400/50 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-yellow-400"
+                            />
+                            <div className="grid grid-cols-2 gap-2">
+                              <Button onClick={() => void saveEdit()} disabled={savingEdit} className="rounded-xl text-xs">
+                                {savingEdit ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Check className="h-3.5 w-3.5" />}
+                                Guardar
+                              </Button>
+                              <Button onClick={() => setEditingId(null)} variant="outline" className="rounded-xl text-xs">
+                                <X className="h-3.5 w-3.5" /> Cancelar
+                              </Button>
+                            </div>
+                          </div>
+                        ) : (
+                          <div className="mt-3 grid grid-cols-2 gap-2">
+                            <Button
+                              onClick={() => void copyText(asset.url, `asset-${index}`)}
+                              variant="outline"
+                              className="rounded-xl text-xs"
+                            >
+                              <Copy className="h-3.5 w-3.5" />
+                              {copied === `asset-${index}` ? 'Copiado' : 'Copiar URL'}
+                            </Button>
+                            <Button asChild className="rounded-xl text-xs">
+                              <Link href={visorLink} target="_blank">
+                                <Eye className="h-3.5 w-3.5" /> Abrir visor 3D
+                              </Link>
+                            </Button>
+                            <Button
+                              onClick={() => void copyText(visorLink, `vlink-${index}`)}
+                              variant="outline"
+                              className="rounded-xl text-xs"
+                            >
+                              <ExternalLink className="h-3.5 w-3.5" />
+                              {copied === `vlink-${index}` ? 'Copiado' : 'Copiar link visor'}
+                            </Button>
+                            <Button
+                              onClick={() => startEdit(asset)}
+                              variant="outline"
+                              className="rounded-xl text-xs"
+                              disabled={!asset.id}
+                            >
+                              <Pencil className="h-3.5 w-3.5" /> Renombrar
+                            </Button>
+                            <Button
+                              onClick={() => void deleteAsset(asset.id!, label)}
+                              variant="outline"
+                              className="col-span-2 rounded-xl border-red-400/30 text-xs text-red-300 hover:bg-red-400/10"
+                              disabled={deletingId === asset.id || !asset.id}
+                            >
+                              {deletingId === asset.id
+                                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                : <Trash2 className="h-3.5 w-3.5" />}
+                              {deletingId === asset.id ? 'Eliminando...' : 'Eliminar de BD'}
+                            </Button>
+                          </div>
+                        )}
                       </div>
                     );
                   })}

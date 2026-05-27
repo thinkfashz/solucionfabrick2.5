@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
-import type { Object3D } from 'three';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -10,297 +9,103 @@ import {
   Download,
   Loader2,
   RefreshCw,
-  Rotate3D,
+  RotateCcw,
   ScanSearch,
 } from 'lucide-react';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
-type ViewerStatus = 'idle' | 'loading' | 'loaded' | 'error';
+// Declare the <model-viewer> custom element for TypeScript
+declare global {
+  namespace JSX {
+    interface IntrinsicElements {
+      'model-viewer': React.DetailedHTMLProps<
+        React.HTMLAttributes<HTMLElement> & {
+          src?: string;
+          alt?: string;
+          poster?: string;
+          'auto-rotate'?: boolean | '';
+          'camera-controls'?: boolean | '';
+          'shadow-intensity'?: string;
+          'shadow-softness'?: string;
+          'environment-image'?: string;
+          exposure?: string;
+          ar?: boolean | '';
+          'ar-modes'?: string;
+          loading?: string;
+          reveal?: string;
+          'interaction-prompt'?: string;
+          'rotation-per-second'?: string;
+          'field-of-view'?: string;
+        },
+        HTMLElement
+      >;
+    }
+  }
+}
 
 function proxyUrl(url: string) {
   return `/api/presupuestos/model-proxy?url=${encodeURIComponent(url)}`;
 }
 
-function friendlyError(raw: string): string {
-  if (!raw) return 'No se pudo renderizar el modelo 3D.';
-  if (raw.includes('404') || raw.toLowerCase().includes('not found'))
-    return 'Archivo no encontrado (404). Verifica que el modelo siga disponible.';
-  if (raw.includes('403') || raw.toLowerCase().includes('forbidden'))
-    return 'Acceso denegado (403). El archivo requiere autenticación.';
-  if (raw.includes('413'))
-    return 'El archivo supera el límite de tamaño del proxy (150 MB).';
-  if (raw.toLowerCase().includes('json') || raw.toLowerCase().includes('unexpected token'))
-    return 'Error al parsear el modelo. Verifica que sea un archivo .glb, .gltf o .dae válido y no esté corrupto.';
-  if (raw.toLowerCase().includes('networkerror') || raw.toLowerCase().includes('failed to fetch'))
-    return 'Error de red al descargar el modelo. Comprueba tu conexión e intenta de nuevo.';
-  return raw;
+function fileExt(url: string) {
+  return url.split('?')[0].toLowerCase().split('.').pop() || '';
 }
 
-export default function PresupuestoVisor3DPage() {
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const fitRef = useRef<(() => void) | null>(null);
-  const modelUrlRef = useRef('');
+type Status = 'idle' | 'loading' | 'loaded' | 'error';
 
+export default function PresupuestoVisor3DPage() {
   const [modelUrl, setModelUrl] = useState('');
-  const [modelName, setModelName] = useState('Modelo 3D del proyecto');
-  const [status, setStatus] = useState<ViewerStatus>('idle');
+  const [modelName, setModelName] = useState('Modelo 3D');
+  const [status, setStatus] = useState<Status>('idle');
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
   const [ready, setReady] = useState(false);
-  const [debug, setDebug] = useState('');
+  const viewerRef = useRef<HTMLElement | null>(null);
 
-  // ── Read URL params → go straight to loading (no pre-fetch validation)
-  // Validation via a GET to the proxy was causing the model to download
-  // TWICE (once to validate, once via Three.js), which could freeze the
-  // second request on low-bandwidth mobile connections.
+  // ── Bootstrap: read URL params, register model-viewer, start loading
   useEffect(() => {
     const params = new URL(window.location.href).searchParams;
     const model = params.get('model') || '';
-    const name = params.get('name') || params.get('modelName') || 'Modelo 3D del proyecto';
-    modelUrlRef.current = model;
+    const name = params.get('name') || params.get('modelName') || 'Modelo 3D';
     setModelUrl(model);
     setModelName(name);
     setReady(true);
-    if (model) setStatus('loading');
+    if (model) {
+      const ext = fileExt(model);
+      if (ext === 'dae') {
+        setStatus('error');
+        setError('El formato .dae (Collada) no es compatible con el visor. Convierte el archivo a .glb para visualizarlo. Puedes usar Blender (gratis) para exportarlo.');
+      } else {
+        // Dynamically import model-viewer to register the custom element
+        import('@google/model-viewer').then(() => setStatus('loading')).catch(() => setStatus('loading'));
+      }
+    }
   }, []);
 
   function retry() {
-    if (!modelUrlRef.current) return;
     setError('');
-    setDebug('');
-    setStatus('loading');
-  }
-
-  // ── Three.js scene ───────────────────────────────────────────────────────
-  useEffect(() => {
-    if (status !== 'loading' || !modelUrl || !containerRef.current) return;
-    let disposed = false;
-    let renderer: any;
-    let controls: any;
-    let resizeObserver: ResizeObserver | undefined;
-    let frameId = 0;
-
-    async function mount() {
-      // Small delay so the container has been laid out and has real dimensions
-      await new Promise<void>((r) => requestAnimationFrame(() => r()));
-      const container = containerRef.current;
-      if (!container || disposed) return;
-
-      try {
-        container.innerHTML = '';
-
-        // ── Lazy-import Three.js (keeps initial page bundle small) ────────
-        const THREE = await import('three');
-        const { OrbitControls } = await import('three/examples/jsm/controls/OrbitControls.js');
-        if (disposed) return;
-
-        // ── Scene ────────────────────────────────────────────────────────
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x1a1a2e);
-
-        const w0 = Math.max(container.clientWidth || window.innerWidth || 800, 320);
-        const h0 = Math.max(container.clientHeight || 520, 320);
-        const camera = new THREE.PerspectiveCamera(45, w0 / h0, 0.001, 50000);
-
-        renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false, powerPreference: 'high-performance' });
-        renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-        renderer.setSize(w0, h0, false);
-        renderer.domElement.style.cssText = 'position:absolute;inset:0;width:100%;height:100%;display:block;';
-        renderer.outputColorSpace = THREE.SRGBColorSpace;
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
-        renderer.toneMappingExposure = 1.4;
-        renderer.shadowMap.enabled = true;
-        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        container.appendChild(renderer.domElement);
-
-        // ── Lighting ─────────────────────────────────────────────────────
-        scene.add(new THREE.HemisphereLight(0xffffff, 0x334455, 2.2));
-        scene.add(new THREE.AmbientLight(0xffffff, 1.0));
-        const key = new THREE.DirectionalLight(0xffffff, 4.0);
-        key.position.set(8, 14, 8);
-        key.castShadow = true;
-        key.shadow.mapSize.set(2048, 2048);
-        key.shadow.camera.near = 0.1;
-        key.shadow.camera.far = 500;
-        key.shadow.bias = -0.0005;
-        scene.add(key);
-        const fill = new THREE.DirectionalLight(0xcce8ff, 2.0);
-        fill.position.set(-8, 6, -6);
-        scene.add(fill);
-        const rim = new THREE.DirectionalLight(0xfff4cc, 1.2);
-        rim.position.set(0, -5, -12);
-        scene.add(rim);
-
-        // ── Grid ─────────────────────────────────────────────────────────
-        const grid = new THREE.GridHelper(30, 30, 0xfacc15, 0x222244);
-        scene.add(grid);
-
-        // ── Controls ─────────────────────────────────────────────────────
-        controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true;
-        controls.dampingFactor = 0.07;
-        controls.enablePan = true;
-        controls.enableZoom = true;
-        controls.zoomSpeed = 1.2;
-        controls.autoRotate = true;
-        controls.autoRotateSpeed = 0.4;
-        controls.minDistance = 0.05;
-        controls.maxDistance = 10000;
-
-        // ── Format-aware loader ───────────────────────────────────────────
-        const urlExt = modelUrl.split('?')[0].toLowerCase().split('.').pop() || '';
-        let model: Object3D;
-
-        if (urlExt === 'dae') {
-          const { ColladaLoader } = await import('three/examples/jsm/loaders/ColladaLoader.js');
-          if (disposed) return;
-          const colladaData = await new ColladaLoader().loadAsync(proxyUrl(modelUrl));
-          if (!colladaData?.scene) throw new Error('El archivo DAE cargó pero no contiene geometría.');
-          model = colladaData.scene;
-        } else if (urlExt === 'glb' || urlExt === 'gltf' || urlExt === '') {
-          const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
-          if (disposed) return;
-          const gltfData = await new GLTFLoader().loadAsync(proxyUrl(modelUrl));
-          model = gltfData.scene;
-        } else {
-          throw new Error(`Formato .${urlExt} no soportado. Usa .glb, .gltf o .dae.`);
-        }
-
-        if (disposed) return;
-
-        // ── Material cleanup ──────────────────────────────────────────────
-        // DAE/GLB models loaded through the proxy can have external texture
-        // references that resolve to broken URLs. Strip all texture maps so
-        // the base diffuse color is always used — the geometry is always
-        // visible even when textures can't be loaded from the proxy.
-        let meshCount = 0;
-        const fallback = new THREE.MeshStandardMaterial({ color: 0xd4c5a9, roughness: 0.6, metalness: 0.05, side: THREE.DoubleSide });
-
-        model.traverse((obj: any) => {
-          if (!obj?.isMesh) return;
-          meshCount += 1;
-          obj.visible = true;
-          obj.frustumCulled = false;
-          obj.receiveShadow = true;
-          obj.castShadow = true;
-
-          const mats: any[] = obj.material
-            ? Array.isArray(obj.material) ? obj.material : [obj.material]
-            : [];
-
-          if (!mats.length) { obj.material = fallback.clone(); return; }
-
-          mats.forEach((m: any) => {
-            // Strip all texture maps — they use relative paths that fail through proxy
-            m.map = null;
-            m.normalMap = null;
-            m.roughnessMap = null;
-            m.metalnessMap = null;
-            m.aoMap = null;
-            m.emissiveMap = null;
-            m.lightMap = null;
-            m.bumpMap = null;
-            m.displacementMap = null;
-            m.envMap = null;
-            m.alphaMap = null;
-            m.side = THREE.DoubleSide;
-            m.transparent = false;
-            m.opacity = 1;
-            // Ensure the base color is visible (not black)
-            if (!m.color || (m.color.r < 0.05 && m.color.g < 0.05 && m.color.b < 0.05)) {
-              m.color = new THREE.Color(0xd4c5a9);
-            }
-            m.needsUpdate = true;
-          });
-        });
-
-        if (meshCount === 0) throw new Error('El modelo no contiene mallas visibles. El archivo puede estar vacío o dañado.');
-
-        // ── Center + scale model to fit ───────────────────────────────────
-        const box = new THREE.Box3().setFromObject(model);
-        const size = box.getSize(new THREE.Vector3());
-        const center = box.getCenter(new THREE.Vector3());
-        const maxAxis = Math.max(size.x, size.y, size.z);
-        if (!Number.isFinite(maxAxis) || maxAxis <= 0) throw new Error('No se pudo calcular el tamaño del modelo.');
-
-        model.position.sub(center);
-        model.scale.setScalar(4 / maxAxis);
-        scene.add(model);
-
-        // Reposition grid under model
-        const scaled = new THREE.Box3().setFromObject(model);
-        grid.position.y = scaled.min.y - 0.001;
-
-        setDebug(`${urlExt.toUpperCase()} · ${meshCount} mallas · ${size.x.toFixed(1)}×${size.y.toFixed(1)}×${size.z.toFixed(1)}`);
-
-        // ── Camera fit ───────────────────────────────────────────────────
-        const fitCamera = () => {
-          const b = new THREE.Box3().setFromObject(model);
-          const s = b.getSize(new THREE.Vector3());
-          const c = b.getCenter(new THREE.Vector3());
-          const radius = Math.max(s.x, s.y, s.z, 0.5);
-          const dist = (radius / (2 * Math.tan((camera.fov * Math.PI) / 360))) * 2.2;
-          camera.position.set(c.x + dist * 0.9, c.y + dist * 0.65, c.z + dist);
-          camera.near = Math.max(dist / 200, 0.001);
-          camera.far = dist * 500;
-          camera.lookAt(c);
-          camera.updateProjectionMatrix();
-          controls.target.copy(c);
-          controls.update();
-        };
-        fitRef.current = fitCamera;
-        fitCamera();
-
-        // ── Resize handler ───────────────────────────────────────────────
-        const onResize = () => {
-          if (!container || disposed) return;
-          const w = Math.max(container.clientWidth || window.innerWidth || 800, 320);
-          const h = Math.max(container.clientHeight || 520, 320);
-          camera.aspect = w / h;
-          camera.updateProjectionMatrix();
-          renderer.setSize(w, h, false);
-          renderer.render(scene, camera);
-        };
-        resizeObserver = new ResizeObserver(onResize);
-        resizeObserver.observe(container);
-        onResize();
-
-        // ── Render loop ──────────────────────────────────────────────────
-        const animate = () => {
-          if (disposed) return;
-          controls?.update();
-          renderer?.render(scene, camera);
-          frameId = window.requestAnimationFrame(animate);
-        };
-        animate();
-        setStatus('loaded');
-      } catch (err) {
-        if (!disposed) {
-          setStatus('error');
-          setError(friendlyError((err as Error).message || ''));
-        }
-      }
+    const ext = fileExt(modelUrl);
+    if (ext === 'dae') {
+      setStatus('error');
+      setError('El formato .dae no es compatible. Convierte a .glb con Blender.');
+      return;
     }
-
-    void mount();
-
-    return () => {
-      disposed = true;
-      fitRef.current = null;
-      if (frameId) window.cancelAnimationFrame(frameId);
-      resizeObserver?.disconnect();
-      controls?.dispose?.();
-      renderer?.dispose?.();
-      if (containerRef.current) containerRef.current.innerHTML = '';
-    };
-  }, [status, modelUrl]);
+    setStatus('idle');
+    setTimeout(() => setStatus('loading'), 50);
+  }
 
   async function copyDiagnostic() {
     await navigator.clipboard.writeText(
-      JSON.stringify({ modelUrl, modelName, status, error, debug, proxy: modelUrl ? proxyUrl(modelUrl) : null, fecha: new Date().toISOString() }, null, 2),
+      JSON.stringify({ modelUrl, modelName, status, error, proxy: proxyUrl(modelUrl), fecha: new Date().toISOString() }, null, 2),
     );
     setCopied(true);
     setTimeout(() => setCopied(false), 1500);
+  }
+
+  function resetCamera() {
+    const mv = viewerRef.current as any;
+    mv?.resetTurntableRotation?.();
+    mv?.jumpCameraToGoal?.();
   }
 
   if (!ready) return null;
@@ -314,12 +119,7 @@ export default function PresupuestoVisor3DPage() {
           <div className="min-w-0">
             <FabrickFullLogo theme="light" tagline="visor 3D" />
             <h1 className="mt-4 break-words text-2xl font-black sm:text-4xl">{modelName}</h1>
-            <p className="mt-1 text-sm text-zinc-500">Visor aislado · rota, mueve y haz zoom libremente</p>
-            {debug && (
-              <p className="mt-2 inline-block rounded-full border border-yellow-400/20 bg-yellow-400/10 px-3 py-1 text-xs font-bold text-yellow-100">
-                {debug}
-              </p>
-            )}
+            <p className="mt-1 text-sm text-zinc-500">Visor 3D · arrastra para rotar · pellizca para zoom</p>
           </div>
           <div className="flex flex-wrap gap-2 shrink-0">
             <button
@@ -329,7 +129,7 @@ export default function PresupuestoVisor3DPage() {
               <ArrowLeft className="h-4 w-4" /> Volver
             </button>
             <button
-              onClick={() => fitRef.current?.()}
+              onClick={resetCamera}
               disabled={status !== 'loaded'}
               className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-2 text-sm font-bold text-yellow-100 hover:bg-yellow-400/20 transition-colors disabled:opacity-40 disabled:cursor-not-allowed"
             >
@@ -353,33 +153,78 @@ export default function PresupuestoVisor3DPage() {
         <section className="overflow-hidden rounded-[1.5rem] border border-yellow-400/20 bg-zinc-950 shadow-2xl shadow-black/40">
           <div className="relative h-[65vh] min-h-[440px] w-full sm:h-[75vh]">
 
-            {/* Canvas container — Three.js appends its canvas here */}
-            <div ref={containerRef} className="absolute inset-0" />
+            {/* model-viewer — Google's official 3D web component.
+                Kept mounted across loading→loaded to prevent remount/re-download. */}
+            {(status === 'loading' || status === 'loaded') && (
+              <>
+                <model-viewer
+                  ref={viewerRef}
+                  src={proxyUrl(modelUrl)}
+                  alt={modelName}
+                  auto-rotate=""
+                  camera-controls=""
+                  shadow-intensity="1.2"
+                  shadow-softness="0.8"
+                  exposure="1.1"
+                  loading="eager"
+                  reveal="auto"
+                  rotation-per-second="20deg"
+                  interaction-prompt="none"
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    display: 'block',
+                    background: 'linear-gradient(180deg,#1a1a2e 0%,#0f0f1a 100%)',
+                    // @ts-expect-error – CSS custom properties for model-viewer
+                    '--poster-color': '#0f0f1a',
+                    '--progress-bar-color': '#facc15',
+                    '--progress-bar-height': '3px',
+                  }}
+                  onLoad={() => setStatus('loaded')}
+                  onError={() => {
+                    setStatus('error');
+                    setError('No se pudo cargar el modelo. Verifica que el archivo sea un .glb o .gltf válido y esté accesible.');
+                  }}
+                />
+                {status === 'loaded' && (
+                  <>
+                    <div className="pointer-events-none absolute left-4 top-4 z-10 flex gap-2">
+                      <span className="rounded-full border border-emerald-400/30 bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.22em] text-emerald-300 backdrop-blur-sm">
+                        <CheckCircle2 className="mr-1 inline h-3 w-3" /> Cargado
+                      </span>
+                    </div>
+                    <div className="pointer-events-none absolute bottom-4 right-4 z-10">
+                      <span className="rounded-full border border-white/10 bg-black/60 px-3 py-1 text-[10px] text-zinc-400 backdrop-blur-sm">
+                        Powered by Google model-viewer
+                      </span>
+                    </div>
+                  </>
+                )}
+              </>
+            )}
 
-            {/* Loading */}
-            {status === 'loading' && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-zinc-950/90 p-6 text-center">
-                <Loader2 className="h-12 w-12 animate-spin text-yellow-400" />
-                <p className="mt-5 text-xs font-black uppercase tracking-[0.3em] text-yellow-400">
-                  Cargando modelo 3D
-                </p>
-                <p className="mt-2 text-xs text-zinc-500">Descargando geometría y materiales…</p>
+            {/* Loading spinner */}
+            {status === 'idle' && modelUrl && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 text-center">
+                <Loader2 className="h-10 w-10 animate-spin text-yellow-400" />
+                <p className="mt-4 text-xs font-black uppercase tracking-[0.3em] text-yellow-400">Iniciando visor</p>
               </div>
             )}
 
             {/* No URL */}
-            {status === 'idle' && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-zinc-950/90 p-6 text-center">
-                <p className="text-sm text-zinc-400">Sin modelo · navega desde el administrador para cargar uno.</p>
+            {status === 'idle' && !modelUrl && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 p-6 text-center">
+                <RotateCcw className="h-12 w-12 text-zinc-600" />
+                <p className="mt-4 text-sm text-zinc-400">Abre esta página desde el panel de modelos 3D del administrador.</p>
               </div>
             )}
 
             {/* Error */}
             {status === 'error' && (
-              <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-zinc-950/90 p-6 text-center">
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-zinc-950 p-6 text-center">
                 <AlertTriangle className="h-12 w-12 text-red-400" />
                 <h2 className="mt-4 text-xl font-black">No se pudo abrir el visor</h2>
-                <p className="mt-3 max-w-lg rounded-2xl border border-red-400/25 bg-red-400/10 p-4 text-sm leading-7 text-red-200">
+                <p className="mt-3 max-w-lg rounded-2xl border border-red-400/20 bg-red-400/8 p-4 text-sm leading-7 text-red-200">
                   {error}
                 </p>
                 <div className="mt-5 flex flex-wrap justify-center gap-3">
@@ -391,7 +236,7 @@ export default function PresupuestoVisor3DPage() {
                   </button>
                   <button
                     onClick={() => void copyDiagnostic()}
-                    className="inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-sm font-bold hover:border-yellow-400/40 transition-colors"
+                    className="inline-flex items-center gap-2 rounded-full border border-white/10 px-5 py-2.5 text-sm font-bold transition-colors hover:border-yellow-400/40"
                   >
                     <Copy className="h-4 w-4" />
                     {copied ? 'Copiado' : 'Copiar diagnóstico'}
@@ -399,21 +244,14 @@ export default function PresupuestoVisor3DPage() {
                 </div>
               </div>
             )}
-
-            {/* Loaded badge */}
-            {status === 'loaded' && (
-              <div className="absolute left-4 top-4 z-10 rounded-full border border-emerald-400/30 bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-emerald-300 backdrop-blur-sm pointer-events-none">
-                <CheckCircle2 className="mr-1 inline h-3 w-3" /> Cargado
-              </div>
-            )}
           </div>
         </section>
 
         {/* ── Controls tip ────────────────────────────────────────────────── */}
         <p className="rounded-[1.5rem] border border-white/10 bg-black/40 p-4 text-sm leading-7 text-zinc-400">
-          <Rotate3D className="mr-2 inline h-4 w-4 text-yellow-300" />
-          <strong className="text-white">Controles:</strong> arrastra para rotar · rueda / pellizca para zoom · dos dedos para desplazar ·{' '}
-          <span className="rounded-md border border-white/15 bg-white/5 px-1.5 py-0.5 font-mono text-xs text-white">Centrar</span> si el modelo queda fuera de pantalla.
+          <RotateCcw className="mr-2 inline h-4 w-4 text-yellow-300" />
+          <strong className="text-white">Controles:</strong> arrastra para rotar · pellizca o rueda para zoom · dos dedos para desplazar ·
+          toca dos veces para centrar el modelo.
         </p>
       </div>
     </main>

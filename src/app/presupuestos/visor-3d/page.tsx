@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import type { Object3D } from 'three';
 import {
   AlertTriangle,
   ArrowLeft,
@@ -152,13 +153,14 @@ export default function PresupuestoVisor3DPage() {
 
         // ── Load model (format-aware) ────────────────────────────────────
         const urlExt = modelUrl.split('?')[0].toLowerCase().split('.').pop() || '';
-        let model: InstanceType<typeof THREE.Group>;
+        let model: Object3D;
 
         if (urlExt === 'dae') {
           const { ColladaLoader } = await import('three/examples/jsm/loaders/ColladaLoader.js');
           if (disposed) return;
-          const collada = await new ColladaLoader().loadAsync(proxyUrl(modelUrl));
-          model = collada.scene as unknown as InstanceType<typeof THREE.Group>;
+          const colladaData = await new ColladaLoader().loadAsync(proxyUrl(modelUrl));
+          if (!colladaData?.scene) throw new Error('El archivo DAE cargó pero no contiene geometría.');
+          model = colladaData.scene;
         } else if (urlExt === 'glb' || urlExt === 'gltf' || urlExt === '') {
           const { GLTFLoader } = await import('three/examples/jsm/loaders/GLTFLoader.js');
           if (disposed) return;

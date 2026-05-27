@@ -24,11 +24,11 @@ function modelSupported(file: PresupuestoArchivo) {
   return ['glb', 'gltf'].includes(format);
 }
 
-function proxiedModelUrl(url: string) {
+function proxiedModelUrl(url: string, origin: string) {
   if (!url) return '';
   try {
     const parsed = new URL(url);
-    if (parsed.origin === window.location.origin) return url;
+    if (origin && parsed.origin === origin) return url;
     return `/api/presupuestos/model-proxy?url=${encodeURIComponent(url)}`;
   } catch {
     return url;
@@ -66,8 +66,13 @@ export default function PresupuestoModelViewer({ archivos }: { archivos?: Presup
   const [status, setStatus] = useState<ViewerStatus>('idle');
   const [error, setError] = useState('');
   const [copied, setCopied] = useState(false);
+  const [origin, setOrigin] = useState('');
   const selected = models[selectedIndex];
-  const resolvedUrl = selected?.url ? proxiedModelUrl(selected.url) : '';
+  const resolvedUrl = selected?.url ? proxiedModelUrl(selected.url, origin) : '';
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   useEffect(() => {
     setStarted(false);

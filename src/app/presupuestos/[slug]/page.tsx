@@ -1,4 +1,5 @@
 import type { Metadata } from 'next';
+import { createClient } from '@insforge/sdk';
 import PresupuestoPublicClient from './PresupuestoPublicClient';
 
 const SITE_URL = 'https://www.solucionesfabrick.com';
@@ -15,12 +16,23 @@ type BudgetMeta = {
   imagenes?: Array<{ url?: string; titulo?: string }>;
 };
 
+function getPublicInsforge() {
+  const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
+  const anonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY || process.env.INSFORGE_API_KEY || 'ik_7e23032539c2dc64d5d27ca29d07b928';
+  return createClient({ baseUrl, anonKey });
+}
+
 async function getBudgetMeta(slug: string): Promise<BudgetMeta | null> {
   try {
-    const res = await fetch(`${SITE_URL}/api/presupuestos/${encodeURIComponent(slug)}`, { next: { revalidate: 300 } });
-    if (!res.ok) return null;
-    const json = (await res.json()) as { presupuesto?: BudgetMeta };
-    return json.presupuesto || null;
+    const db = getPublicInsforge();
+    const { data, error } = await db.database
+      .from('presupuestos')
+      .select('*')
+      .eq('slug', slug)
+      .limit(1);
+    if (error || !data) return null;
+    const row = Array.isArray(data) ? data[0] : data;
+    return (row as BudgetMeta) || null;
   } catch {
     return null;
   }
@@ -50,6 +62,7 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   const url = `${SITE_URL}/presupuestos/${slug}`;
 
   return {
+    metadataBase: new URL(SITE_URL),
     title,
     description,
     alternates: { canonical: url },

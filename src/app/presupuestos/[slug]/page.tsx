@@ -1,94 +1,88 @@
-'use client';
+import type { Metadata } from 'next';
+import PresupuestoPublicClient from './PresupuestoPublicClient';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import Link from 'next/link';
-import PresupuestoPublicView from '@/components/presupuestos/PresupuestoPublicView';
-import PresupuestoMixedAlbum from '@/components/presupuestos/PresupuestoMixedAlbum';
-import { baseBudgetExample, loadBudgets, normalizeBudget, type PresupuestoPro } from '@/lib/presupuestosBuilder';
+const SITE_URL = 'https://www.solucionesfabrick.com';
+const DEFAULT_IMAGE = `${SITE_URL}/icons/icon-512.png`;
 
-export default function PresupuestoPublicPage({ params }: { params: Promise<{ slug: string }> }) {
-  const [slug, setSlug] = useState('');
-  const [budget, setBudget] = useState<PresupuestoPro | null>(null);
-  const [ready, setReady] = useState(false);
+type PageProps = { params: Promise<{ slug: string }> };
 
-  const applyModelPreview = useCallback((current: PresupuestoPro | null) => {
-    if (!current || typeof window === 'undefined') return current;
-    const url = new URL(window.location.href);
-    const modelUrl = url.searchParams.get('model');
-    const modelName = url.searchParams.get('modelName') || url.searchParams.get('name') || 'Modelo 3D del proyecto';
-    if (!modelUrl) return current;
-    return normalizeBudget({
-      ...current,
-      archivos: [
-        ...(current.archivos || []),
+type BudgetMeta = {
+  titulo?: string;
+  descripcion?: string;
+  cliente?: string;
+  empresa_cliente?: string;
+  proveedor?: string;
+  imagenes?: Array<{ url?: string; titulo?: string }>;
+};
+
+async function getBudgetMeta(slug: string): Promise<BudgetMeta | null> {
+  try {
+    const res = await fetch(`${SITE_URL}/api/presupuestos/${encodeURIComponent(slug)}`, { next: { revalidate: 300 } });
+    if (!res.ok) return null;
+    const json = (await res.json()) as { presupuesto?: BudgetMeta };
+    return json.presupuesto || null;
+  } catch {
+    return null;
+  }
+}
+
+function absoluteImage(url?: string) {
+  if (!url) return DEFAULT_IMAGE;
+  if (url.startsWith('http://') || url.startsWith('https://')) return url;
+  return `${SITE_URL}${url.startsWith('/') ? url : `/${url}`}`;
+}
+
+function plainText(value?: string, fallback = '') {
+  return (value || fallback).replace(/<[^>]+>/g, ' ').replace(/\s+/g, ' ').trim();
+}
+
+export async function generateMetadata({ params }: PageProps): Promise<Metadata> {
+  const { slug } = await params;
+  const budget = await getBudgetMeta(slug);
+  const client = budget?.empresa_cliente || budget?.cliente || 'Cliente';
+  const provider = budget?.proveedor || 'Soluciones Fabris';
+  const title = budget?.titulo ? `${budget.titulo} · ${client}` : 'Propuesta comercial · Soluciones Fabris';
+  const description = plainText(
+    budget?.descripcion,
+    'Propuesta comercial de mobiliario técnico, fabricación modular e instalación profesional por Soluciones Fabris.',
+  ).slice(0, 220);
+  const image = absoluteImage(budget?.imagenes?.find((img) => img.url)?.url);
+  const url = `${SITE_URL}/presupuestos/${slug}`;
+
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: {
+      title,
+      description,
+      url,
+      siteName: provider,
+      type: 'article',
+      locale: 'es_CL',
+      images: [
         {
-          id: 'query-model-preview',
-          nombre: modelName,
-          url: modelUrl,
-          descripcion: 'Modelo 3D cargado para previsualización del cliente.',
-          tipo: 'modelo_3d',
-          formato: modelUrl.split('?')[0].split('.').pop()?.toLowerCase() || 'glb',
-          mostrar_cliente: true,
-          orden: 1,
+          url: image,
+          width: 1200,
+          height: 630,
+          alt: budget?.titulo || 'Propuesta comercial Soluciones Fabris',
         },
       ],
-    });
-  }, []);
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+      images: [image],
+    },
+    robots: {
+      index: false,
+      follow: false,
+    },
+  };
+}
 
-  const loadCurrentBudget = useCallback(async (nextSlug: string) => {
-    try {
-      const res = await fetch(`/api/presupuestos/${encodeURIComponent(nextSlug)}`, { cache: 'no-store' });
-      if (res.ok) {
-        const json = (await res.json()) as { presupuesto?: PresupuestoPro };
-        if (json.presupuesto) {
-          setBudget(applyModelPreview(normalizeBudget(json.presupuesto)));
-          return;
-        }
-      }
-    } catch {
-      // Local fallback below keeps the page usable before migration.
-    }
-
-    const found = loadBudgets().find((item) => item.slug === nextSlug);
-    const current = found || (nextSlug === baseBudgetExample.slug ? baseBudgetExample : null);
-    setBudget(applyModelPreview(current));
-  }, [applyModelPreview]);
-
-  useEffect(() => {
-    params.then(async (p) => {
-      setSlug(p.slug);
-      await loadCurrentBudget(p.slug);
-      setReady(true);
-    }).catch(() => setReady(true));
-  }, [params, loadCurrentBudget]);
-
-  useEffect(() => {
-    if (!slug || typeof window === 'undefined') return;
-    const sync = () => void loadCurrentBudget(slug);
-    window.addEventListener('storage', sync);
-    window.addEventListener('presupuestos:updated', sync as EventListener);
-    return () => {
-      window.removeEventListener('storage', sync);
-      window.removeEventListener('presupuestos:updated', sync as EventListener);
-    };
-  }, [slug, loadCurrentBudget]);
-
-  const publicLink = useMemo(() => (typeof window !== 'undefined' ? window.location.href : `/presupuestos/${slug}`), [slug]);
-
-  if (!ready) {
-    return <main className="min-h-screen bg-black px-4 py-10 text-white"><div className="mx-auto max-w-4xl rounded-3xl border border-yellow-400/20 bg-zinc-950 p-8 text-center">Cargando presupuesto...</div></main>;
-  }
-
-  if (!budget) {
-    return <main className="min-h-screen bg-black px-4 py-10 text-white"><div className="mx-auto max-w-3xl rounded-[2rem] border border-yellow-400/20 bg-zinc-950 p-8 text-center shadow-2xl"><p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-300">Presupuesto no encontrado</p><h1 className="mt-4 text-3xl font-black">No pudimos abrir este link</h1><p className="mt-3 text-zinc-400">Migra el presupuesto desde el admin o revisa que el slug exista en la base de datos.</p><Link href="/" className="mt-6 inline-flex rounded-full bg-yellow-400 px-5 py-2 text-sm font-black text-black">Volver al sitio</Link></div></main>;
-  }
-
-  return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.12),transparent_34%),#050505] px-3 py-6 sm:px-6 sm:py-10">
-      <div className="mx-auto grid max-w-7xl gap-6">
-        <PresupuestoPublicView presupuesto={budget} publicLink={publicLink} />
-        <PresupuestoMixedAlbum presupuesto={budget} />
-      </div>
-    </main>
-  );
+export default async function PresupuestoPublicPage({ params }: PageProps) {
+  const { slug } = await params;
+  return <PresupuestoPublicClient slug={slug} />;
 }

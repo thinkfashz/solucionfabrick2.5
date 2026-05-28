@@ -21,7 +21,6 @@ export async function GET(req: NextRequest) {
 
   try {
     const upstream = await fetch(target, {
-      cache: 'no-store',
       headers: {
         Accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8',
         'User-Agent': 'Mozilla/5.0 AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile Safari/605.1.15',
@@ -37,7 +36,9 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: 'La URL no devolvió una imagen válida' }, { status: 415 });
     }
 
-    return new NextResponse(await upstream.arrayBuffer(), {
+    // Stream directly instead of buffering — avoids the 6 MB response body
+    // limit and prevents timeouts on large photos from Insforge/Cloudinary.
+    return new NextResponse(upstream.body, {
       status: 200,
       headers: {
         'Content-Type': contentType,

@@ -148,7 +148,7 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
     FORBID_ATTR: ['onerror', 'onclick', 'onload', 'onmouseover'],
   });
 
-  const companyName = presupuesto.proveedor || 'Soluciones Fabris';
+  const companyName = presupuesto.proveedor || 'Soluciones Fabrick';
   const clientName = presupuesto.empresa_cliente || presupuesto.cliente || 'Cliente';
   const currentLink = publicLink || (typeof window !== 'undefined' ? window.location.href : '');
   const consultText = `Hola, revisé la propuesta comercial "${presupuesto.titulo}" para ${clientName}. Link: ${currentLink}`;
@@ -242,7 +242,7 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
             loading="eager"
             decoding="async"
             referrerPolicy="no-referrer"
-            crossOrigin="anonymous"
+            crossOrigin={heroMode === 'proxy' ? 'anonymous' : undefined}
             onError={() => setHeroMode((current) => (current === 'proxy' ? 'original' : 'failed'))}
           />
         )}

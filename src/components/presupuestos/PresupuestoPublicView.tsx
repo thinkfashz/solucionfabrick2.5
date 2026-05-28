@@ -141,6 +141,7 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
   const [accepted, setAccepted] = useState(false);
   const [acceptMessage, setAcceptMessage] = useState('');
   const [copied, setCopied] = useState(false);
+  const [heroMode, setHeroMode] = useState<'proxy' | 'original' | 'failed'>('proxy');
 
   const safeHtml = DOMPurify.sanitize(sanitizeBudgetHtml(presupuesto.html_personalizado), {
     FORBID_TAGS: ['script', 'iframe', 'object', 'embed'],
@@ -154,7 +155,8 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
   const consultUrl = buildWhatsAppUrl(presupuesto.telefono_whatsapp, consultText);
   const sortedImages = useMemo(() => [...(presupuesto.imagenes || [])].filter((img) => cleanUrl(img.url)).sort((a, b) => a.orden - b.orden), [presupuesto.imagenes]);
   const heroImage = sortedImages[0];
-  const heroSrc = imageProxyUrl(heroImage?.url);
+  const heroOriginalSrc = cleanUrl(heroImage?.url);
+  const heroSrc = heroMode === 'proxy' ? imageProxyUrl(heroOriginalSrc) : heroOriginalSrc;
 
   async function handleCopyLink() {
     try {
@@ -232,7 +234,18 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
         }
       `}</style>
       <header className="relative min-h-[78vh] overflow-hidden bg-[#111111] text-white print:min-h-0 print:overflow-visible print:bg-[#111111]">
-        {heroSrc && <img src={heroSrc} alt={heroImage?.titulo || presupuesto.titulo} className="absolute inset-0 h-full w-full object-cover opacity-45 print:static print:h-auto print:opacity-100" loading="eager" decoding="async" referrerPolicy="no-referrer" onError={(e) => { e.currentTarget.style.display = 'none'; }} />}
+        {heroSrc && heroMode !== 'failed' && (
+          <img
+            src={heroSrc}
+            alt={heroImage?.titulo || presupuesto.titulo}
+            className="absolute inset-0 h-full w-full object-cover opacity-45 print:static print:h-auto print:opacity-100"
+            loading="eager"
+            decoding="async"
+            referrerPolicy="no-referrer"
+            crossOrigin="anonymous"
+            onError={() => setHeroMode((current) => (current === 'proxy' ? 'original' : 'failed'))}
+          />
+        )}
         <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(17,17,17,0.98)_0%,rgba(17,17,17,0.86)_45%,rgba(17,17,17,0.50)_100%)] print:hidden" />
         <div className="absolute left-0 top-0 h-1.5 w-full bg-[#f4c400]" />
         <div className="relative z-10 flex min-h-[78vh] flex-col justify-between p-5 sm:p-8 lg:p-12 print:min-h-0">
@@ -259,7 +272,7 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
                 <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4"><CalendarDays className="mb-3 h-5 w-5 text-yellow-300" /><p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Fecha</p><b>{presupuesto.fecha}</b></div>
                 <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4"><AlertTriangle className="mb-3 h-5 w-5 text-yellow-300" /><p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Validez</p><b>{presupuesto.validez}</b></div>
               </div>
-              <div className="mt-3 rounded-3xl bg-[#f4c400] p-5 text-black"><p className="text-[10px] font-black uppercase tracking-[0.26em]">Valor proyecto</p><b className="mt-2 block text-3xl font-black tracking-tight">{formatBudgetMoney(presupuesto.valor_neto)}</b><span className="mt-1 block text-sm font-black">NETO + IVA</span></div>
+              <div className="mt-3 rounded-3xl bg-[#f4c400] p-5 text-black"><p className="text-[10px] font-black uppercase tracking-[0.26em]">Total proyecto</p><b className="mt-2 block text-3xl font-black tracking-tight">{formatBudgetMoney(presupuesto.total_con_iva)}</b><span className="mt-1 block text-sm font-black">IVA incluido · Neto {formatBudgetMoney(presupuesto.valor_neto)}</span></div>
             </aside>
           </div>
         </div>
@@ -276,12 +289,29 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
         <Section title="Forma de pago" eyebrow="06"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5 print:grid-cols-2">{presupuesto.forma_pago.map((pago, i) => <div key={i} className="rounded-2xl bg-[#111111] p-5 text-white"><b className="text-3xl text-[#f4c400]">{pago.porcentaje}%</b><p className="mt-3 text-sm leading-6 text-zinc-300">{pago.descripcion}</p></div>)}</div></Section>
         <Section title="No incluye" eyebrow="07" dark><List items={presupuesto.no_incluye} dark /></Section>
         <Section title="Observación técnica" eyebrow="08"><div className="rounded-2xl border-l-4 border-[#f4c400] bg-[#111111] p-5 text-white"><p className="text-sm leading-7 text-zinc-200">{presupuesto.observacion_tecnica || 'Sin observación técnica registrada.'}</p></div></Section>
-        <section className="presupuesto-print-section rounded-[2rem] bg-[#111111] p-6 text-white sm:p-8 lg:p-10"><p className="text-[10px] font-black uppercase tracking-[0.34em] text-yellow-300">Valor del proyecto</p><h2 className="mt-3 text-4xl font-black tracking-tight sm:text-6xl">{formatBudgetMoney(presupuesto.valor_neto)}</h2><p className="mt-2 text-xl font-black text-[#f4c400]">NETO + IVA</p><div className="mt-6 grid gap-3 sm:grid-cols-3"><div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4"><p className="text-xs text-zinc-400">IVA {presupuesto.iva_porcentaje}%</p><b className="mt-1 block text-2xl">{formatBudgetMoney(presupuesto.total_iva)}</b></div><div className="rounded-3xl border border-yellow-400/30 bg-yellow-400/10 p-4"><p className="text-xs text-yellow-200">Total con IVA</p><b className="mt-1 block text-2xl text-yellow-300">{formatBudgetMoney(presupuesto.total_con_iva)}</b></div><div className="rounded-3xl bg-[#f4c400] p-4 text-black"><p className="text-xs font-black uppercase">Plazo</p><b className="mt-1 block text-2xl">{presupuesto.plazo_entrega}</b></div></div></section>
+        <section className="presupuesto-print-section rounded-[2rem] bg-[#111111] p-6 text-white sm:p-8 lg:p-10"><p className="text-[10px] font-black uppercase tracking-[0.34em] text-yellow-300">Total del proyecto</p><h2 className="mt-3 text-4xl font-black tracking-tight sm:text-6xl">{formatBudgetMoney(presupuesto.total_con_iva)}</h2><p className="mt-2 text-xl font-black text-[#f4c400]">IVA incluido</p><div className="mt-6 grid gap-3 sm:grid-cols-3"><div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4"><p className="text-xs text-zinc-400">IVA {presupuesto.iva_porcentaje}%</p><b className="mt-1 block text-2xl">{formatBudgetMoney(presupuesto.total_iva)}</b></div><div className="rounded-3xl border border-yellow-400/30 bg-yellow-400/10 p-4"><p className="text-xs text-yellow-200">Total con IVA</p><b className="mt-1 block text-2xl text-yellow-300">{formatBudgetMoney(presupuesto.total_con_iva)}</b></div><div className="rounded-3xl bg-[#f4c400] p-4 text-black"><p className="text-xs font-black uppercase">Plazo</p><b className="mt-1 block text-2xl">{presupuesto.plazo_entrega}</b></div></div></section>
       </main>
 
       <footer className="bg-[#111111] p-6 text-white sm:p-8 lg:p-10"><div className="border-t border-white/10 pt-8"><div className="max-w-[260px]"><FabrickFullLogo theme="light" tagline="Diseño • Fabricación • Instalación" /></div><p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-400">Mobiliario técnico y soluciones modulares para espacios industriales, comerciales y operativos.</p><button type="button" onClick={() => openCompatibleUrl(consultUrl)} className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-[#f4c400] px-5 py-3 text-sm font-black text-black print:hidden"><MessageCircle className="h-4 w-4" /> Contactar por WhatsApp</button></div></footer>
 
       {activeImage && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3 backdrop-blur print:hidden" role="dialog" aria-modal="true"><button type="button" onClick={() => setActiveImage(null)} className="absolute right-4 top-4 rounded-full border border-white/20 bg-black/60 p-2 text-white hover:border-yellow-400"><X className="h-5 w-5" /></button><figure className="w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#111111] text-white"><div className="flex h-[72vh] w-full items-center justify-center bg-black"><img src={imageProxyUrl(activeImage.url)} alt={activeImage.titulo || 'Imagen del presupuesto'} className="max-h-full max-w-full object-contain" referrerPolicy="no-referrer" /></div><figcaption className="p-5"><b>{activeImage.titulo}</b>{activeImage.descripcion && <p className="mt-1 text-sm text-zinc-400">{activeImage.descripcion}</p>}</figcaption></figure></div>}
+
+      <div className="fixed bottom-3 left-3 right-3 z-50 rounded-2xl border border-yellow-300/40 bg-[#111111] p-3 text-white shadow-2xl shadow-black/30 sm:hidden print:hidden">
+        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-yellow-300">Total proyecto</p>
+        <div className="mt-1 flex items-center justify-between gap-3">
+          <b className="text-xl font-black text-yellow-300">{formatBudgetMoney(presupuesto.total_con_iva)}</b>
+          {!adminPreview && (
+            <button
+              type="button"
+              onClick={handleConfirmAcceptance}
+              disabled={accepting || accepted}
+              className="rounded-full bg-emerald-400 px-3 py-2 text-[11px] font-black text-black disabled:opacity-70"
+            >
+              {accepted ? 'Aceptado' : 'Confirmar'}
+            </button>
+          )}
+        </div>
+      </div>
     </article>
   );
 }

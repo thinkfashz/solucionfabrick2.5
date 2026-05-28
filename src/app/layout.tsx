@@ -137,7 +137,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                       las páginas públicas. El visitante puede igualmente
                       saltar a WhatsApp desde el botón "Hablar con humano"
                       dentro del propio chat o desde los CTAs del Hero. */}
-                  <AIAgentChat />
+                  <AIAgentChat hideOn={['/admin', '/auth', '/checkout', '/presupuestos', '/p/']} />
                   <Analytics />
                   <CmsRealtimeListener />
                 </QuoteCartProvider>

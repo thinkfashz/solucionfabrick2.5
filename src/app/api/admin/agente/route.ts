@@ -5,102 +5,8 @@ export const maxDuration = 90; // Vercel Pro / containers
 import { NextRequest } from 'next/server';
 import { executeTool, ensureAgentTables } from '@/lib/agent-executor';
 import { BrowserSession } from '@/lib/agent-browser';
-
-/* ─── InsForge DB helper ─────────────────────────────────────────────── */
-const INSFORGE_URL = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
-
-function insforgeKey() {
-  return (
-    process.env.INSFORGE_API_KEY ||
-    process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY ||
-    'ik_7e23032539c2dc64d5d27ca29d07b928'
-  );
-}
-
-async function rawsql(query: string): Promise<Record<string, unknown> | null> {
-  try {
-    const res = await fetch(
-      `${INSFORGE_URL.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': insforgeKey() },
-        body: JSON.stringify({ query }),
-        signal: AbortSignal.timeout(8_000),
-        cache: 'no-store',
-      },
-    );
-    if (!res.ok) return null;
-    return res.json() as Promise<Record<string, unknown>>;
-  } catch {
-    return null;
-  }
-}
-
-/* ─── Resolve AI config (Anthropic, Groq, or OpenRouter) from DB ────── */
-type Provider = 'anthropic' | 'groq' | 'openrouter';
-
-interface AiConfig { provider: Provider; apiKey: string; modelo: string; siteUrl?: string; appName?: string }
-
-type CredRow = { credentials?: Record<string, string> };
-type ConfigRow = { anthropic_api_key?: string; modelo_ia?: string; proveedor_ia?: string };
-
-function credRows(d: unknown) {
-  return (d as { data?: { rows?: CredRow[] } } | null)?.data?.rows ?? [];
-}
-
-async function resolveAiConfig(): Promise<AiConfig | null> {
-  try {
-    const configData = await rawsql(
-      `SELECT anthropic_api_key, modelo_ia, proveedor_ia FROM configuracion_ia WHERE id = 'singleton' LIMIT 1;`
-    );
-    const row = (configData as { data?: { rows?: ConfigRow[] } } | null)?.data?.rows?.[0];
-    const proveedor = (row?.proveedor_ia ?? 'anthropic') as Provider;
-    const prefModelo = row?.modelo_ia ?? '';
-
-    if (proveedor === 'openrouter') {
-      const d = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'openrouter' LIMIT 1;`);
-      const r = credRows(d)[0];
-      const k = r?.credentials?.api_key?.trim() ?? '';
-      if (k) return { provider: 'openrouter', apiKey: k, modelo: prefModelo || 'meta-llama/llama-3.3-70b-instruct:free', siteUrl: r?.credentials?.site_url, appName: r?.credentials?.app_name };
-    }
-
-    if (proveedor === 'groq') {
-      const d = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'groq' LIMIT 1;`);
-      const r = credRows(d)[0];
-      const k = r?.credentials?.api_key?.trim() ?? '';
-      if (k) return { provider: 'groq', apiKey: k, modelo: prefModelo || r?.credentials?.modelo || 'llama-3.3-70b-versatile' };
-    }
-
-    // Try anthropic from integrations
-    const anthData = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'anthropic' LIMIT 1;`);
-    const anthRow = credRows(anthData)[0];
-    const anthKey = anthRow?.credentials?.api_key?.trim() ?? '';
-    if (anthKey) return { provider: 'anthropic', apiKey: anthKey, modelo: prefModelo || anthRow?.credentials?.modelo || 'claude-haiku-4-5-20251001' };
-
-    // Fallback: try openrouter even if not primary (user has it configured)
-    const orData = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'openrouter' LIMIT 1;`);
-    const orRow = credRows(orData)[0];
-    const orKey = orRow?.credentials?.api_key?.trim() ?? '';
-    if (orKey) return { provider: 'openrouter', apiKey: orKey, modelo: prefModelo || 'meta-llama/llama-3.3-70b-instruct:free', siteUrl: orRow?.credentials?.site_url, appName: orRow?.credentials?.app_name };
-
-    // Legacy: key stored directly in configuracion_ia
-    if (row?.anthropic_api_key) return { provider: 'anthropic', apiKey: row.anthropic_api_key, modelo: prefModelo || 'claude-haiku-4-5-20251001' };
-  } catch { /* fall through */ }
-
-  const envKey = process.env.ANTHROPIC_API_KEY;
-  if (envKey) return { provider: 'anthropic', apiKey: envKey, modelo: 'claude-haiku-4-5-20251001' };
-  return null;
-}
-
-async function resolveSerperKey(): Promise<string | undefined> {
-  try {
-    const d = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'serper' LIMIT 1;`);
-    const r = (d as { data?: { rows?: Array<{ credentials?: Record<string, string> }> } } | null)?.data?.rows?.[0];
-    return r?.credentials?.api_key?.trim() || process.env.SERPER_API_KEY;
-  } catch {
-    return process.env.SERPER_API_KEY;
-  }
-}
+import { resolveAiConfig, resolveSerperKey } from '@/lib/resolveAiConfig';
+import type { AiConfig } from '@/lib/resolveAiConfig';
 
 /* ─── Tool definitions ───────────────────────────────────────────────── */
 const TOOLS_ANTHROPIC = [
@@ -433,25 +339,27 @@ async function runAnthropicLoop(
   }
 }
 
-/* ─── OpenRouter agent loop (OpenAI-compatible) ──────────────────────── */
-async function runOpenRouterLoop(
+/* ─── OpenAI-compat + Grok + OpenRouter agent loop ──────────────────── */
+async function runOpenAiCompatLoop(
   messages: GroqMsg[],
   config: AiConfig,
+  apiUrl: string,
   serperKey: string | undefined,
   emit: (data: Record<string, unknown>) => void,
   browser: BrowserSession,
 ): Promise<void> {
   const MAX_TURNS = 10;
-
-  for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const headers: Record<string, string> = {
-      Authorization: `Bearer ${config.apiKey}`,
-      'Content-Type': 'application/json',
-    };
+  const headers: Record<string, string> = {
+    Authorization: `Bearer ${config.apiKey}`,
+    'Content-Type': 'application/json',
+  };
+  if (config.provider === 'openrouter') {
     if (config.siteUrl) headers['HTTP-Referer'] = config.siteUrl;
     if (config.appName) headers['X-Title'] = config.appName;
+  }
 
-    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+  for (let turn = 0; turn < MAX_TURNS; turn++) {
+    const res = await fetch(apiUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -465,7 +373,7 @@ async function runOpenRouterLoop(
     });
 
     if (!res.ok) {
-      emit({ type: 'error', content: `Error API OpenRouter: ${await res.text()}` });
+      emit({ type: 'error', content: `Error API ${config.provider}: ${await res.text()}` });
       return;
     }
 
@@ -513,76 +421,85 @@ async function runOpenRouterLoop(
   }
 }
 
-/* ─── Groq agent loop ────────────────────────────────────────────────── */
-async function runGroqLoop(
-  messages: GroqMsg[],
+/* ─── Gemini agent loop (no streaming, function calling) ────────────── */
+async function runGeminiLoop(
+  userMessages: { role: string; content: string }[],
   config: AiConfig,
   serperKey: string | undefined,
   emit: (data: Record<string, unknown>) => void,
   browser: BrowserSession,
 ): Promise<void> {
-  const MAX_TURNS = 10;
+  const MAX_TURNS = 6;
+
+  const geminiTools = [{
+    functionDeclarations: TOOLS_ANTHROPIC.map((t) => ({
+      name: t.name,
+      description: t.description,
+      parameters: t.input_schema,
+    })),
+  }];
+
+  type GeminiContent = { role: string; parts: Array<{ text?: string; functionCall?: { name: string; args: Record<string, unknown> }; functionResponse?: { name: string; response: { content: string } } }> };
+  const history: GeminiContent[] = [
+    { role: 'user', parts: [{ text: SYSTEM_PROMPT }] },
+    { role: 'model', parts: [{ text: 'Entendido. Estoy listo para ayudarte.' }] },
+    ...userMessages.map((m) => ({
+      role: m.role === 'assistant' ? 'model' : 'user',
+      parts: [{ text: m.content }],
+    })),
+  ];
+
+  const baseUrl = `https://generativelanguage.googleapis.com/v1beta/models/${config.modelo}:generateContent?key=${config.apiKey}`;
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    const res = await fetch(baseUrl, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: config.modelo,
-        max_tokens: 4096,
-        messages,
-        tools: TOOLS_GROQ,
-        tool_choice: 'auto',
-      }),
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ contents: history, tools: geminiTools }),
       signal: AbortSignal.timeout(60_000),
     });
 
     if (!res.ok) {
-      emit({ type: 'error', content: `Error API Groq: ${await res.text()}` });
+      emit({ type: 'error', content: `Error API Gemini: ${await res.text()}` });
       return;
     }
 
     const data = await res.json() as {
-      choices: Array<{
-        finish_reason: string;
-        message: {
+      candidates?: Array<{
+        content?: {
           role: string;
-          content: string | null;
-          tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
+          parts?: Array<{ text?: string; functionCall?: { name: string; args: Record<string, unknown> } }>;
         };
+        finishReason?: string;
       }>;
     };
 
-    const choice = data.choices[0];
-    if (!choice) break;
+    const candidate = data.candidates?.[0];
+    if (!candidate?.content?.parts?.length) break;
 
-    if (choice.message.content) {
-      emit({ type: 'text', content: choice.message.content });
+    const parts = candidate.content.parts;
+    const textPart = parts.find((p) => p.text);
+    const fnCalls = parts.filter((p) => p.functionCall);
+
+    if (textPart?.text) {
+      emit({ type: 'text', content: textPart.text });
     }
 
-    if (choice.finish_reason !== 'tool_calls' || !choice.message.tool_calls?.length) break;
+    if (!fnCalls.length) break;
 
-    messages.push({ role: 'assistant', content: choice.message.content, tool_calls: choice.message.tool_calls });
+    history.push({ role: 'model', parts });
 
-    for (const tc of choice.message.tool_calls) {
-      let input: Record<string, unknown> = {};
-      try { input = JSON.parse(tc.function.arguments) as Record<string, unknown>; } catch { /* noop */ }
-
-      emit({ type: 'tool_call', name: tc.function.name, input });
-
-      const result = await executeTool(tc.function.name, input, serperKey, browser, emit);
-
-      emit({ type: 'tool_result', name: tc.function.name, content: result.content.slice(0, 800) });
-      if (result.screenshot) {
-        emit({ type: 'screenshot', url: String(input.url ?? ''), data: result.screenshot });
-      }
-
-      messages.push({
-        role: 'tool',
-        tool_call_id: tc.id,
-        content: result.content,
-      });
+    const responseParts: GeminiContent['parts'] = [];
+    for (const part of fnCalls) {
+      if (!part.functionCall) continue;
+      const { name, args } = part.functionCall;
+      emit({ type: 'tool_call', name, input: args });
+      const result = await executeTool(name, args, serperKey, browser, emit);
+      emit({ type: 'tool_result', name, content: result.content.slice(0, 800) });
+      responseParts.push({ functionResponse: { name, response: { content: result.content } } });
     }
+
+    history.push({ role: 'user', parts: responseParts });
   }
 }
 
@@ -616,23 +533,30 @@ export async function POST(req: NextRequest) {
         return;
       }
 
-      const providerLabel = config.provider === 'groq' ? 'Groq' : config.provider === 'openrouter' ? 'OpenRouter' : 'Anthropic';
+      const PROVIDER_LABELS: Record<string, string> = {
+        groq: 'Groq', openrouter: 'OpenRouter', openai: 'OpenAI', gemini: 'Gemini', grok: 'Grok',
+      };
+      const providerLabel = PROVIDER_LABELS[config.provider] ?? 'Anthropic';
       emit({ type: 'thinking', content: `Usando ${providerLabel} · ${config.modelo}` });
+
+      const OPENAI_COMPAT_URLS: Partial<Record<string, string>> = {
+        groq: 'https://api.groq.com/openai/v1/chat/completions',
+        openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+        openai: 'https://api.openai.com/v1/chat/completions',
+        grok: 'https://api.x.ai/v1/chat/completions',
+      };
 
       const browser = await BrowserSession.create();
       try {
-        if (config.provider === 'groq') {
-          const groqMsgs: GroqMsg[] = [
+        const openaiUrl = OPENAI_COMPAT_URLS[config.provider];
+        if (openaiUrl) {
+          const msgs: GroqMsg[] = [
             { role: 'system', content: SYSTEM_PROMPT },
             ...userMessages.map((m) => ({ role: m.role, content: m.content })),
           ];
-          await runGroqLoop(groqMsgs, config, serperKey, emit, browser);
-        } else if (config.provider === 'openrouter') {
-          const orMsgs: GroqMsg[] = [
-            { role: 'system', content: SYSTEM_PROMPT },
-            ...userMessages.map((m) => ({ role: m.role, content: m.content })),
-          ];
-          await runOpenRouterLoop(orMsgs, config, serperKey, emit, browser);
+          await runOpenAiCompatLoop(msgs, config, openaiUrl, serperKey, emit, browser);
+        } else if (config.provider === 'gemini') {
+          await runGeminiLoop(userMessages, config, serperKey, emit, browser);
         } else {
           const anthropicMsgs: AnthropicMsg[] = userMessages.map((m) => ({ role: m.role, content: m.content }));
           await runAnthropicLoop(anthropicMsgs, config, serperKey, emit, browser);

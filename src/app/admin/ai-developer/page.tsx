@@ -3,21 +3,23 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
-  BrainCircuit, CheckCircle2, ChevronRight, Code2, GitBranch, LockKeyhole,
-  Loader2, Send, ShieldCheck, Sparkles, Wand2, X,
+  BrainCircuit, Camera, CheckCircle2, ChevronRight, Code2, ExternalLink, GitBranch,
+  Globe, LockKeyhole, Loader2, Send, ShieldCheck, Sparkles, Terminal, Wand2, X,
 } from 'lucide-react';
 import FabrickAIProviderCards from '@/components/admin/FabrickAIProviderCards';
 import FabrickAICredentialsPanel from '@/components/admin/FabrickAICredentialsPanel';
 
-type Provider = 'auto' | 'openai' | 'openrouter' | 'claude';
+type Provider = 'auto' | 'openai' | 'openrouter' | 'claude' | 'gemini' | 'grok';
 type Mode = 'lectura' | 'propuesta' | 'pr';
 type ChatMessage = { role: 'assistant' | 'user'; text: string; meta?: string };
 
-const PROVIDERS: { id: Provider; label: string }[] = [
-  { id: 'auto', label: 'Auto' },
-  { id: 'openrouter', label: 'OpenRouter' },
-  { id: 'openai', label: 'ChatGPT' },
-  { id: 'claude', label: 'Claude' },
+const PROVIDERS: { id: Provider; label: string; color: string }[] = [
+  { id: 'auto', label: 'Auto', color: 'text-yellow-400' },
+  { id: 'openrouter', label: 'OpenRouter', color: 'text-purple-400' },
+  { id: 'openai', label: 'ChatGPT', color: 'text-green-400' },
+  { id: 'claude', label: 'Claude', color: 'text-amber-400' },
+  { id: 'gemini', label: 'Gemini', color: 'text-blue-400' },
+  { id: 'grok', label: 'Grok', color: 'text-violet-400' },
 ];
 
 const MODES: { id: Mode; label: string; desc: string }[] = [
@@ -66,6 +68,10 @@ export default function FabrickAiDeveloperPage() {
   const [input, setInput] = useState('');
   const [isSending, setIsSending] = useState(false);
   const [showInfo, setShowInfo] = useState(false);
+  const [navInput, setNavInput] = useState('');
+  const [showNavInput, setShowNavInput] = useState(false);
+  const [jsInput, setJsInput] = useState('');
+  const [showJsInput, setShowJsInput] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([
     {
       role: 'assistant',
@@ -80,6 +86,19 @@ export default function FabrickAiDeveloperPage() {
   }, [messages, isSending]);
 
   const modeDesc = useMemo(() => MODES.find((m) => m.id === mode)?.desc ?? '', [mode]);
+
+  const agentActive = useMemo(() => messages.some(
+    (m) => m.text.includes('navegar_url') || m.text.includes('capturar_pantalla') || m.text.includes('navega a') || m.text.includes('Navegando')
+  ), [messages]);
+
+  const lastScreenshot = useMemo(() => {
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const m = messages[i];
+      const match = m.text.match(/data:image\/[^;]+;base64,[^"'\s]+/);
+      if (match) return match[0];
+    }
+    return null;
+  }, [messages]);
 
   async function submit(text = input) {
     const value = text.trim();
@@ -387,6 +406,114 @@ export default function FabrickAiDeveloperPage() {
                     </div>
                   ))}
                 </div>
+              </div>
+
+              {/* ── Playwright Agent Control Panel ── */}
+              <div className="border-t border-white/8 pt-4">
+                <div className="mb-3 flex items-center justify-between gap-2">
+                  <p className="text-[9px] font-black uppercase tracking-[0.28em] text-zinc-600">Agente Playwright</p>
+                  <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[9px] font-bold ${agentActive ? 'bg-emerald-500/15 text-emerald-400' : 'bg-zinc-800 text-zinc-600'}`}>
+                    <span className={`h-1.5 w-1.5 rounded-full ${agentActive ? 'bg-emerald-400 animate-pulse' : 'bg-zinc-600'}`} />
+                    {agentActive ? 'Activo' : 'Reposo'}
+                  </span>
+                </div>
+
+                {/* Quick actions */}
+                <div className="grid grid-cols-2 gap-1.5 mb-3">
+                  <button
+                    type="button"
+                    onClick={() => void submit('Toma una captura de la pantalla actual del agente')}
+                    disabled={isSending}
+                    className="flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/[0.03] px-2.5 py-2 text-[10px] font-bold text-zinc-500 transition hover:border-yellow-300/20 hover:text-yellow-200 disabled:opacity-40"
+                  >
+                    <Camera className="h-3 w-3 shrink-0" />
+                    Captura
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void submit('Muéstrame el DOM simplificado de la página actual')}
+                    disabled={isSending}
+                    className="flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/[0.03] px-2.5 py-2 text-[10px] font-bold text-zinc-500 transition hover:border-yellow-300/20 hover:text-yellow-200 disabled:opacity-40"
+                  >
+                    <Code2 className="h-3 w-3 shrink-0" />
+                    Ver DOM
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowNavInput((v) => !v)}
+                    disabled={isSending}
+                    className="flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/[0.03] px-2.5 py-2 text-[10px] font-bold text-zinc-500 transition hover:border-yellow-300/20 hover:text-yellow-200 disabled:opacity-40"
+                  >
+                    <Globe className="h-3 w-3 shrink-0" />
+                    Navegar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setShowJsInput((v) => !v)}
+                    disabled={isSending}
+                    className="flex items-center gap-1.5 rounded-xl border border-white/8 bg-white/[0.03] px-2.5 py-2 text-[10px] font-bold text-zinc-500 transition hover:border-yellow-300/20 hover:text-yellow-200 disabled:opacity-40"
+                  >
+                    <Terminal className="h-3 w-3 shrink-0" />
+                    Exec JS
+                  </button>
+                </div>
+
+                {/* Nav input */}
+                {showNavInput && (
+                  <div className="mb-2 flex gap-1">
+                    <input
+                      type="url"
+                      value={navInput}
+                      onChange={(e) => setNavInput(e.target.value)}
+                      placeholder="https://..."
+                      className="min-w-0 flex-1 rounded-xl border border-white/10 bg-black/40 px-2.5 py-1.5 text-[11px] text-white outline-none focus:border-yellow-400/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { void submit(`Navega a esta URL: ${navInput}`); setNavInput(''); setShowNavInput(false); }}
+                      disabled={!navInput.trim() || isSending}
+                      className="shrink-0 rounded-xl bg-yellow-400 px-2.5 py-1.5 text-[10px] font-black text-black disabled:opacity-40"
+                    >
+                      <ExternalLink className="h-3 w-3" />
+                    </button>
+                  </div>
+                )}
+
+                {/* JS input */}
+                {showJsInput && (
+                  <div className="mb-2 flex flex-col gap-1">
+                    <textarea
+                      value={jsInput}
+                      onChange={(e) => setJsInput(e.target.value)}
+                      placeholder="document.title"
+                      rows={2}
+                      className="w-full rounded-xl border border-white/10 bg-black/40 px-2.5 py-1.5 font-mono text-[11px] text-white outline-none focus:border-yellow-400/40"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => { void submit(`Ejecuta este JavaScript en la página: ${jsInput}`); setJsInput(''); setShowJsInput(false); }}
+                      disabled={!jsInput.trim() || isSending}
+                      className="self-end rounded-xl bg-yellow-400 px-2.5 py-1 text-[10px] font-black text-black disabled:opacity-40"
+                    >
+                      Ejecutar
+                    </button>
+                  </div>
+                )}
+
+                {/* Last screenshot */}
+                {lastScreenshot && (
+                  <div className="overflow-hidden rounded-xl border border-white/10">
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={lastScreenshot} alt="Última captura del agente" className="w-full" />
+                    <p className="px-2 py-1 text-[9px] text-zinc-600">Última captura del agente</p>
+                  </div>
+                )}
+
+                {/* Link to integrations */}
+                <a href="/admin/integraciones" className="mt-3 flex items-center gap-1.5 text-[10px] text-zinc-700 hover:text-zinc-400 transition">
+                  <ExternalLink className="h-3 w-3" />
+                  Credenciales de IA
+                </a>
               </div>
 
             </div>

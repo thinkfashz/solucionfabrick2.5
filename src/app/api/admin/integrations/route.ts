@@ -69,6 +69,9 @@ const ALLOWED_PROVIDERS = new Set([
   'anthropic',    // Anthropic Claude API
   'groq',         // Groq LLaMA / Gemma (ultra-fast inference, plan gratuito)
   'openrouter',   // OpenRouter AI chat (gateway a múltiples LLMs)
+  'openai',       // OpenAI ChatGPT (GPT-4o, GPT-4o-mini, o3)
+  'gemini',       // Google Gemini (AI Studio — plan gratuito generoso)
+  'grok',         // xAI Grok (API compatible con OpenAI, $25 crédito gratis)
   'serper',       // Serper.dev (Google SERP API gratis, módulo Inteligencia de Mercado)
   'serpapi',      // SerpAPI (Google SERP, plan pago futuro)
 ]);

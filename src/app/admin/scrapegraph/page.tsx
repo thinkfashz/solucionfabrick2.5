@@ -208,7 +208,11 @@ function HistoryPanel({
                   {run.provider && (
                     <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
                       run.provider === 'openrouter' ? 'text-purple-400' :
-                      run.provider === 'groq' ? 'text-rose-400' : 'text-amber-400'
+                      run.provider === 'groq' ? 'text-rose-400' :
+                      run.provider === 'openai' ? 'text-green-400' :
+                      run.provider === 'gemini' ? 'text-blue-400' :
+                      run.provider === 'grok' ? 'text-violet-400' :
+                      'text-amber-400'
                     }`}>{run.provider}</span>
                   )}
                   {run.duration_ms && (
@@ -606,7 +610,7 @@ export default function ScrapeGraphPage() {
               </div>
 
               {/* Execute button */}
-              <div className="mt-5">
+              <div className="mt-5 space-y-2">
                 <button
                   type="button"
                   onClick={() => void execute()}
@@ -625,6 +629,12 @@ export default function ScrapeGraphPage() {
                     </>
                   )}
                 </button>
+                <p className="text-center text-[10px] text-zinc-700">
+                  Usando credenciales de{' '}
+                  <a href="/admin/integraciones" className="text-yellow-400/70 hover:text-yellow-400 underline-offset-2 hover:underline">Centro de Integraciones</a>
+                  {' '}·{' '}
+                  <a href="/admin/ia-config" className="text-yellow-400/70 hover:text-yellow-400 underline-offset-2 hover:underline">Cambiar proveedor →</a>
+                </p>
               </div>
             </AdminCard>
 
@@ -654,6 +664,9 @@ export default function ScrapeGraphPage() {
                     <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
                       result.provider === 'openrouter' ? 'bg-purple-500/20 text-purple-300' :
                       result.provider === 'groq' ? 'bg-rose-500/20 text-rose-300' :
+                      result.provider === 'openai' ? 'bg-green-500/20 text-green-300' :
+                      result.provider === 'gemini' ? 'bg-blue-500/20 text-blue-300' :
+                      result.provider === 'grok' ? 'bg-violet-500/20 text-violet-300' :
                       'bg-amber-500/20 text-amber-300'
                     }`}>{result.provider}</span>
                   )}

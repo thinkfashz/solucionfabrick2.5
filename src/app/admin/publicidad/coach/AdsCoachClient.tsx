@@ -308,12 +308,20 @@ export default function AdsCoachClient() {
             <ModelStatusBadge showDetail />
           </div>
         </div>
-        <Link
-          href="/admin/video-engine"
-          className="hidden items-center gap-1.5 rounded-full border border-yellow-400/25 bg-yellow-400/8 px-3 py-1.5 text-[10px] font-bold text-yellow-300 transition hover:bg-yellow-400/15 sm:flex"
-        >
-          <Video className="h-3 w-3" /> Video Studio
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link
+            href="/admin/integraciones"
+            className="hidden items-center gap-1.5 rounded-full border border-white/10 bg-white/5 px-3 py-1.5 text-[10px] font-bold text-zinc-400 transition hover:bg-white/10 sm:flex"
+          >
+            Credenciales IA
+          </Link>
+          <Link
+            href="/admin/video-engine"
+            className="hidden items-center gap-1.5 rounded-full border border-yellow-400/25 bg-yellow-400/8 px-3 py-1.5 text-[10px] font-bold text-yellow-300 transition hover:bg-yellow-400/15 sm:flex"
+          >
+            <Video className="h-3 w-3" /> Video Studio
+          </Link>
+        </div>
       </div>
 
       <div className="grid gap-0 lg:grid-cols-[1fr_360px] lg:divide-x lg:divide-white/8">

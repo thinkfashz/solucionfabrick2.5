@@ -65,6 +65,7 @@ import AdminContextMenu from '@/components/admin/AdminContextMenu';
 import DemoSessionTracker from '@/components/admin/DemoSessionTracker';
 import { AdminThemeToggle } from '@/components/admin/AdminThemeToggle';
 import { AdminRouteTransition } from '@/components/admin/AdminRouteTransition';
+import { AdminMatrixSplashOnce } from '@/components/admin/AdminMatrixSplash';
 
 type NavIcon = typeof Package;
 type NavLink = { href: string; label: string; description: string; icon: NavIcon; superadminOnly?: boolean; highlight?: boolean };
@@ -412,6 +413,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
+      <AdminMatrixSplashOnce />
       <AdminRouteTransition />
       <AdminBottomNav onOpenMore={() => setContextMenuOpen(true)} />
       <AdminCommandPalette items={commandItems} open={paletteOpen} onOpenChange={setPaletteOpen} />

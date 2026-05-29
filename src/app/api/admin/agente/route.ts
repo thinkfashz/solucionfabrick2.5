@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 export const maxDuration = 90; // Vercel Pro / containers
 
 import { NextRequest } from 'next/server';
-import type { BrowseResult, SearchResult } from '@/lib/playwright-agent';
+import { executeTool, ensureAgentTables } from '@/lib/agent-executor';
 
 /* ─── InsForge DB helper ─────────────────────────────────────────────── */
 const INSFORGE_URL = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
@@ -16,7 +16,7 @@ function insforgeKey() {
   );
 }
 
-async function rawsql(query: string) {
+async function rawsql(query: string): Promise<Record<string, unknown> | null> {
   try {
     const res = await fetch(
       `${INSFORGE_URL.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`,
@@ -29,7 +29,7 @@ async function rawsql(query: string) {
       },
     );
     if (!res.ok) return null;
-    return res.json();
+    return res.json() as Promise<Record<string, unknown>>;
   } catch {
     return null;
   }
@@ -45,18 +45,18 @@ async function resolveAiConfig(): Promise<AiConfig | null> {
     const configData = await rawsql(
       `SELECT anthropic_api_key, modelo_ia, proveedor_ia FROM configuracion_ia WHERE id = 'singleton' LIMIT 1;`
     );
-    const row = configData?.data?.rows?.[0] as { anthropic_api_key?: string; modelo_ia?: string; proveedor_ia?: string } | undefined;
+    const row = (configData as { data?: { rows?: Array<{ anthropic_api_key?: string; modelo_ia?: string; proveedor_ia?: string }> } } | null)?.data?.rows?.[0];
     const proveedor = (row?.proveedor_ia as Provider | undefined) ?? 'anthropic';
 
     if (proveedor === 'groq') {
       const d = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'groq' LIMIT 1;`);
-      const r = d?.data?.rows?.[0] as { credentials?: Record<string, string> } | undefined;
+      const r = (d as { data?: { rows?: Array<{ credentials?: Record<string, string> }> } } | null)?.data?.rows?.[0];
       const k = r?.credentials?.api_key?.trim() ?? '';
       if (k) return { provider: 'groq', apiKey: k, modelo: r?.credentials?.modelo ?? 'llama-3.3-70b-versatile' };
     }
 
     const anthData = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'anthropic' LIMIT 1;`);
-    const anthRow = anthData?.data?.rows?.[0] as { credentials?: Record<string, string> } | undefined;
+    const anthRow = (anthData as { data?: { rows?: Array<{ credentials?: Record<string, string> }> } } | null)?.data?.rows?.[0];
     const anthKey = anthRow?.credentials?.api_key?.trim() ?? '';
     if (anthKey) return { provider: 'anthropic', apiKey: anthKey, modelo: anthRow?.credentials?.modelo ?? row?.modelo_ia ?? 'claude-haiku-4-5-20251001' };
 
@@ -71,7 +71,7 @@ async function resolveAiConfig(): Promise<AiConfig | null> {
 async function resolveSerperKey(): Promise<string | undefined> {
   try {
     const d = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'serper' LIMIT 1;`);
-    const r = d?.data?.rows?.[0] as { credentials?: Record<string, string> } | undefined;
+    const r = (d as { data?: { rows?: Array<{ credentials?: Record<string, string> }> } } | null)?.data?.rows?.[0];
     return r?.credentials?.api_key?.trim() || process.env.SERPER_API_KEY;
   } catch {
     return process.env.SERPER_API_KEY;
@@ -114,6 +114,130 @@ const TOOLS_ANTHROPIC = [
       required: ['url'],
     },
   },
+  {
+    name: 'consultar_bd',
+    description: 'Ejecuta una consulta SELECT en la base de datos InsForge. Solo permite SELECT. Útil para listar presupuestos, clientes, productos, configuraciones.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Consulta SQL SELECT completa. Solo se permiten SELECT.' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'modificar_bd',
+    description: 'Ejecuta INSERT, UPDATE o DELETE en tablas permitidas: catalogo_productos, agente_memoria, presupuesto_registros.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        sql: { type: 'string', description: 'Sentencia SQL INSERT/UPDATE/DELETE.' },
+        tabla: { type: 'string', description: 'Nombre de la tabla a modificar.', enum: ['catalogo_productos', 'agente_memoria', 'presupuesto_registros'] },
+      },
+      required: ['sql', 'tabla'],
+    },
+  },
+  {
+    name: 'crear_producto',
+    description: 'Crea un nuevo producto en el catálogo de Soluciones Fabrick con nombre, descripción, categoría, precio base y unidad.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        nombre: { type: 'string', description: 'Nombre del producto o servicio' },
+        descripcion: { type: 'string', description: 'Descripción detallada del producto' },
+        categoria: { type: 'string', description: 'Categoría (ej: Muebles, Pisos, Instalaciones, Cocinas)' },
+        precio_base: { type: 'number', description: 'Precio base en CLP' },
+        unidad: { type: 'string', description: 'Unidad de medida (ej: m², unidad, ml, hr)' },
+        materiales: { type: 'string', description: 'Materiales principales utilizados' },
+        tiempo_instalacion: { type: 'string', description: 'Tiempo estimado de instalación (ej: 2-3 días)' },
+      },
+      required: ['nombre'],
+    },
+  },
+  {
+    name: 'listar_productos',
+    description: 'Lista los productos del catálogo. Puede filtrar por categoría o estado activo.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        categoria: { type: 'string', description: 'Filtrar por categoría (opcional)' },
+        activo: { type: 'string', description: 'Filtrar por estado: "true" o "false" (opcional)' },
+      },
+    },
+  },
+  {
+    name: 'guardar_hallazgo',
+    description: 'Guarda un hallazgo, precio, dato de mercado o sugerencia en la memoria persistente del agente.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        tipo: { type: 'string', description: 'Tipo de entrada', enum: ['hallazgo', 'sugerencia', 'precio', 'dato_mercado'] },
+        titulo: { type: 'string', description: 'Título breve del hallazgo' },
+        contenido: { type: 'string', description: 'Contenido detallado del hallazgo' },
+        fuente: { type: 'string', description: 'URL o fuente del dato (opcional)' },
+      },
+      required: ['tipo', 'titulo', 'contenido'],
+    },
+  },
+  {
+    name: 'leer_memoria',
+    description: 'Lee hallazgos y datos guardados en la memoria del agente.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        tipo: { type: 'string', description: 'Filtrar por tipo (opcional): hallazgo, sugerencia, precio, dato_mercado' },
+        limite: { type: 'string', description: 'Número máximo de entradas a retornar (default: 20, max: 50)' },
+      },
+    },
+  },
+  {
+    name: 'enviar_whatsapp',
+    description: 'Envía un mensaje de WhatsApp a un número telefónico usando la integración WhatsApp Business configurada.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        telefono: { type: 'string', description: 'Número de teléfono en formato internacional (ej: 56912345678)' },
+        mensaje: { type: 'string', description: 'Texto del mensaje a enviar' },
+      },
+      required: ['telefono', 'mensaje'],
+    },
+  },
+  {
+    name: 'enviar_email',
+    description: 'Envía un email transaccional usando Resend. Requiere la integración Resend configurada.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        para: { type: 'string', description: 'Email del destinatario' },
+        asunto: { type: 'string', description: 'Asunto del email' },
+        cuerpo_html: { type: 'string', description: 'Contenido HTML del email' },
+      },
+      required: ['para', 'asunto', 'cuerpo_html'],
+    },
+  },
+  {
+    name: 'buscar_ml',
+    description: 'Busca productos en MercadoLibre Chile (MLC). API pública, no requiere autenticación. Retorna títulos, precios y links.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        query: { type: 'string', description: 'Término de búsqueda en MercadoLibre' },
+        limite: { type: 'string', description: 'Número de resultados (default: 6, max: 10)' },
+      },
+      required: ['query'],
+    },
+  },
+  {
+    name: 'probar_integracion',
+    description: 'Prueba una integración configurada para verificar que está funcionando correctamente.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        provider: { type: 'string', description: 'Nombre del proveedor a probar (ej: whatsapp, resend, mercadolibre, mercadopago, stripe, serper)' },
+      },
+      required: ['provider'],
+    },
+  },
 ] as const;
 
 // OpenAI-compatible tool format for Groq
@@ -131,35 +255,30 @@ function sseEvent(data: Record<string, unknown>) {
   return `data: ${JSON.stringify(data)}\n\n`;
 }
 
-/* ─── Tool execution ─────────────────────────────────────────────────── */
-async function executeTool(
-  name: string,
-  input: Record<string, string>,
-  serperKey: string | undefined,
-): Promise<{ content: string; screenshot?: string }> {
-  const { browsePage, searchWeb } = await import('@/lib/playwright-agent');
+/* ─── Type helpers ───────────────────────────────────────────────────── */
+type AnthropicMsg = { role: string; content: unknown };
+type AnthropicToolResult = { type: 'tool_result'; tool_use_id: string; content: string };
+type GroqMsg = { role: string; content: string | null; tool_calls?: unknown; tool_call_id?: string };
 
-  if (name === 'buscar_web') {
-    const result: SearchResult = await searchWeb(input.query, serperKey, input.pais ?? 'cl');
-    if (!result.ok) return { content: `Error al buscar: ${result.error}` };
-    let out = result.answerBox ? `📌 Respuesta directa: ${result.answerBox}\n\n` : '';
-    out += result.results
-      .map((r, i) => `${i + 1}. **${r.title}**\n   ${r.url}\n   ${r.snippet}`)
-      .join('\n\n');
-    return { content: out || 'Sin resultados.' };
-  }
+const SYSTEM_PROMPT = `Eres un agente inteligente de Soluciones Fabrick con acceso completo a:
+1. Navegador web en tiempo real (buscar_web, navegar_url, capturar_pantalla)
+2. Base de datos InsForge (consultar_bd, modificar_bd)
+3. Catálogo de productos (crear_producto, listar_productos)
+4. Memoria persistente (guardar_hallazgo, leer_memoria)
+5. Plataformas conectadas: WhatsApp (enviar_whatsapp), Email Resend (enviar_email), MercadoLibre (buscar_ml), test de integraciones (probar_integracion)
 
-  if (name === 'navegar_url' || name === 'capturar_pantalla') {
-    const result: BrowseResult = await browsePage(input.url);
-    if (result.error) return { content: `Error al navegar a ${input.url}: ${result.error}` };
-    const content = name === 'capturar_pantalla'
-      ? `Captura tomada de: ${result.title} (${result.url})`
-      : `# ${result.title}\n\n${result.text}`;
-    return { content, screenshot: result.screenshot || undefined };
-  }
+Usa estas herramientas de forma proactiva. Cuando encuentres precios o datos útiles, guárdalos en memoria. Cuando el usuario pida crear un producto, créalo directamente en la BD. Cuando el usuario pida enviar un mensaje o email, hazlo de inmediato.
 
-  return { content: 'Herramienta desconocida.' };
-}
+Áreas de especialización:
+- Precios de materiales de construcción en Chile (MDF, madera, fierro, pintura, etc.)
+- Análisis de competencia y benchmark de precios
+- Búsqueda de proveedores y cotizaciones de materiales
+- Tendencias del sector construcción/mobiliario en Chile
+- Inteligencia de mercado para presupuestos competitivos
+- Gestión del catálogo de productos y servicios
+- Comunicaciones con clientes vía WhatsApp y email
+
+Responde siempre en español chileno. Sé conciso y accionable. Incluye precios en CLP cuando los encuentres.`;
 
 /* ─── Anthropic agent loop ───────────────────────────────────────────── */
 async function runAnthropicLoop(
@@ -168,7 +287,7 @@ async function runAnthropicLoop(
   serperKey: string | undefined,
   emit: (data: Record<string, unknown>) => void,
 ): Promise<void> {
-  const MAX_TURNS = 8;
+  const MAX_TURNS = 10;
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     const res = await fetch('https://api.anthropic.com/v1/messages', {
@@ -180,12 +299,12 @@ async function runAnthropicLoop(
       },
       body: JSON.stringify({
         model: config.modelo,
-        max_tokens: 2048,
+        max_tokens: 4096,
         system: SYSTEM_PROMPT,
         tools: TOOLS_ANTHROPIC,
         messages,
       }),
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(60_000),
     });
 
     if (!res.ok) {
@@ -195,7 +314,7 @@ async function runAnthropicLoop(
 
     const data = await res.json() as {
       stop_reason: string;
-      content: Array<{ type: string; text?: string; id?: string; name?: string; input?: Record<string, string> }>;
+      content: Array<{ type: string; text?: string; id?: string; name?: string; input?: Record<string, unknown> }>;
     };
 
     // Emit text blocks
@@ -218,7 +337,7 @@ async function runAnthropicLoop(
 
       emit({ type: 'tool_result', name: tool.name, content: result.content.slice(0, 800) });
       if (result.screenshot) {
-        emit({ type: 'screenshot', url: tool.input?.url ?? '', data: result.screenshot });
+        emit({ type: 'screenshot', url: String((tool.input ?? {}).url ?? ''), data: result.screenshot });
       }
 
       toolResults.push({
@@ -241,7 +360,7 @@ async function runGroqLoop(
   serperKey: string | undefined,
   emit: (data: Record<string, unknown>) => void,
 ): Promise<void> {
-  const MAX_TURNS = 8;
+  const MAX_TURNS = 10;
 
   for (let turn = 0; turn < MAX_TURNS; turn++) {
     const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -249,12 +368,12 @@ async function runGroqLoop(
       headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
       body: JSON.stringify({
         model: config.modelo,
-        max_tokens: 2048,
+        max_tokens: 4096,
         messages,
         tools: TOOLS_GROQ,
         tool_choice: 'auto',
       }),
-      signal: AbortSignal.timeout(45_000),
+      signal: AbortSignal.timeout(60_000),
     });
 
     if (!res.ok) {
@@ -285,8 +404,8 @@ async function runGroqLoop(
     messages.push({ role: 'assistant', content: choice.message.content, tool_calls: choice.message.tool_calls });
 
     for (const tc of choice.message.tool_calls) {
-      let input: Record<string, string> = {};
-      try { input = JSON.parse(tc.function.arguments) as Record<string, string>; } catch { /* noop */ }
+      let input: Record<string, unknown> = {};
+      try { input = JSON.parse(tc.function.arguments) as Record<string, unknown>; } catch { /* noop */ }
 
       emit({ type: 'tool_call', name: tc.function.name, input });
 
@@ -294,7 +413,7 @@ async function runGroqLoop(
 
       emit({ type: 'tool_result', name: tc.function.name, content: result.content.slice(0, 800) });
       if (result.screenshot) {
-        emit({ type: 'screenshot', url: input.url ?? '', data: result.screenshot });
+        emit({ type: 'screenshot', url: String(input.url ?? ''), data: result.screenshot });
       }
 
       messages.push({
@@ -306,25 +425,6 @@ async function runGroqLoop(
   }
 }
 
-/* ─── Type helpers ───────────────────────────────────────────────────── */
-type AnthropicMsg = { role: string; content: unknown };
-type AnthropicToolResult = { type: 'tool_result'; tool_use_id: string; content: string };
-type GroqMsg = { role: string; content: string | null; tool_calls?: unknown; tool_call_id?: string };
-
-const SYSTEM_PROMPT = `Eres un agente de investigación inteligente para Soluciones Fabrick, empresa chilena de construcción y mobiliario.
-
-Tienes acceso a herramientas para buscar en la web y navegar sitios en tiempo real. Úsalas proactivamente para dar respuestas basadas en datos reales y actualizados.
-
-Áreas de especialización:
-- Precios de materiales de construcción en Chile (MDF, madera, fierro, pintura, etc.)
-- Análisis de competencia y benchmark de precios
-- Búsqueda de proveedores y cotizaciones de materiales
-- Tendencias del sector construcción/mobiliario en Chile
-- Inteligencia de mercado para presupuestos competitivos
-- Información de clientes/empresas (RUT, razón social, giro)
-
-Siempre responde en español chileno. Sé conciso y accionable. Incluye precios en CLP cuando los encuentres.`;
-
 /* ─── POST handler ───────────────────────────────────────────────────── */
 export async function POST(req: NextRequest) {
   let body: { messages?: { role: string; content: string }[] };
@@ -333,6 +433,9 @@ export async function POST(req: NextRequest) {
 
   const userMessages = body.messages ?? [];
   if (!userMessages.length) return new Response('Sin mensajes', { status: 400 });
+
+  // Ensure agent tables exist (non-blocking best-effort)
+  void ensureAgentTables().catch(() => null);
 
   const config = await resolveAiConfig();
   const serperKey = await resolveSerperKey();

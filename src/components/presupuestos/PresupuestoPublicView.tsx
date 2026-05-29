@@ -155,6 +155,17 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
   const [galleryVisible, setGalleryVisible] = useState(true);
   const [useReferences, setUseReferences] = useState(false);
 
+  // Auto-print when ?print=1 is in the URL
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const params = new URLSearchParams(window.location.search);
+      if (params.get('print') === '1') {
+        const t = setTimeout(() => window.print(), 800);
+        return () => clearTimeout(t);
+      }
+    }
+  }, []);
+
   useEffect(() => {
     const vence = presupuesto.fecha_vencimiento;
     if (!vence) return;
@@ -254,9 +265,30 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
           }
           .presupuesto-public-page button,
           .presupuesto-public-page .print\\:hidden,
-          .presupuesto-public-page [role='dialog'] {
+          .presupuesto-public-page [role='dialog'],
+          .presupuesto-public-page [data-fixed] {
             display: none !important;
           }
+          .presupuesto-public-page header,
+          .presupuesto-public-page footer,
+          .presupuesto-public-page section {
+            background: #fff !important;
+            color: #111 !important;
+            border-color: #ddd !important;
+            box-shadow: none !important;
+          }
+          .presupuesto-public-page * {
+            background-color: transparent !important;
+            color: inherit !important;
+            box-shadow: none !important;
+            text-shadow: none !important;
+          }
+          .presupuesto-public-page b,
+          .presupuesto-public-page strong { color: #111 !important; }
+          .presupuesto-public-page [class*="text-yellow"],
+          .presupuesto-public-page [class*="text-zinc"],
+          .presupuesto-public-page [class*="text-emerald"] { color: #333 !important; }
+          .presupuesto-public-page thead th { background: #111 !important; color: #fff !important; }
         }
       `}</style>
       <header className="relative min-h-[78vh] overflow-hidden bg-[#111111] text-white print:min-h-0 print:overflow-visible print:bg-[#111111]">

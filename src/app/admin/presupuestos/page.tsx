@@ -6,8 +6,8 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle, ArrowDown, ArrowUp, Bot, Calendar, CheckCircle, ChevronDown, Clock,
-  Copy, Database, Eye, FileJson, FileText, ImagePlus, Play, Plus, Printer, Save,
-  Send, Star, Trash2, Zap,
+  Copy, Database, Download, Eye, FileJson, FileText, ImagePlus, Play, Plus, Printer,
+  Save, Send, Star, Trash2, Zap,
 } from 'lucide-react';
 import { AdminCard, AdminMotion, AdminPage, AdminPageHeader } from '@/components/admin/ui';
 import { MediaPicker, type MediaAsset } from '@/components/admin/cms/MediaPicker';
@@ -356,6 +356,21 @@ export default function PresupuestosBuilderPage() {
     setSelectedId((next[0] || baseBudgetExample).id);
   };
   const copyLink = async () => { await navigator.clipboard.writeText(publicLink); setMessage('Link público copiado.'); setTimeout(() => setMessage(''), 1800); };
+  async function downloadHtml() {
+    try {
+      const res = await fetch('/api/admin/presupuestos/export', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ presupuesto: selected }),
+      });
+      if (!res.ok) { setMessage('Error generando HTML'); return; }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = `presupuesto-${selected.slug || selected.id}.html`;
+      a.click(); URL.revokeObjectURL(url);
+    } catch { setMessage('Error descargando HTML'); }
+  }
   const importJson = () => {
     try { const parsed = JSON.parse(jsonText); const imported = normalizeBudget(parsed); persist([imported, ...budgets.filter(b => b.id !== imported.id)]); setSelectedId(imported.id); setJsonError(''); setMessage('JSON importado.'); }
     catch (e) { setJsonError(`JSON inválido: ${(e as Error).message}`); }
@@ -584,6 +599,12 @@ export default function PresupuestosBuilderPage() {
                 </button>
                 <button onClick={() => window.print()} className="rounded-2xl border border-white/10 px-4 py-2 text-sm font-bold text-white">
                   <Printer className="mr-1 inline h-4 w-4" />PDF
+                </button>
+                <button onClick={() => void downloadHtml()} className="rounded-2xl border border-white/10 px-4 py-2 text-sm font-bold text-white">
+                  <Download className="mr-1 inline h-4 w-4" />HTML
+                </button>
+                <button onClick={() => window.open(`/presupuestos/${selected.slug}?print=1`, '_blank')} className="rounded-2xl border border-white/10 px-4 py-2 text-sm font-bold text-white">
+                  <Download className="mr-1 inline h-4 w-4" />PDF cliente
                 </button>
                 <SaveStatusBadge status={saveStatus} />
                 {message && <span className="text-sm font-bold text-emerald-300">{message}</span>}

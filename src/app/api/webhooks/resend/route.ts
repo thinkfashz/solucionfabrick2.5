@@ -35,6 +35,7 @@ function sql(v: unknown) {
 type ResendEvent = {
   type:
     | 'email.sent'
+    | 'email.received'
     | 'email.delivered'
     | 'email.delivery_delayed'
     | 'email.complained'
@@ -48,9 +49,8 @@ type ResendEvent = {
     email_id?: string;
     id?: string;
     created_at?: string;
-    // Inbound email fields (email.* events for received emails)
     from?: string;
-    to?: string[];
+    to?: string | string[];
     subject?: string;
     text?: string;
     html?: string;
@@ -98,33 +98,26 @@ export async function POST(req: NextRequest) {
   const emailId = event.data?.email_id ?? event.data?.id ?? null;
 
   // ── Inbound / received email ─────────────────────────────────────────────
-  // Resend fires this event when an email arrives at your inbound address.
-  // The data shape differs from outbound events: from/to/subject/text/html are top-level.
-  if (
-    event.type === 'email.delivered' &&
-    event.data.from &&
-    event.data.to &&
-    event.data.subject
-  ) {
-    // This looks like an inbound email event (Resend inbound webhook payload)
+  // Resend fires 'email.received' when a message arrives at an inbound address.
+  if (event.type === 'email.received') {
+    if (!event.data.from) {
+      return NextResponse.json({ ok: true, note: 'email.received without from' });
+    }
     await ensureInboxTable();
     const fromAddr = String(event.data.from);
-    const toAddr = Array.isArray(event.data.to) ? String(event.data.to[0]) : String(event.data.to ?? '');
+    const toRaw = event.data.to;
+    const toAddr = Array.isArray(toRaw) ? String(toRaw[0] ?? '') : String(toRaw ?? '');
     const subject = String(event.data.subject ?? '');
     const text = String(event.data.text ?? '');
     const html = String(event.data.html ?? '');
+    // Use WHERE NOT EXISTS to deduplicate without requiring a UNIQUE constraint
     await rawsql(`
       INSERT INTO correos_recibidos (resend_id, de, para, asunto, cuerpo_texto, cuerpo_html, fecha_recibido)
-      VALUES (${sql(emailId)}, ${sql(fromAddr)}, ${sql(toAddr)}, ${sql(subject)}, ${sql(text)}, ${sql(html)}, ${sql(now)})
-      ON CONFLICT (resend_id) DO NOTHING;
+      SELECT ${sql(emailId)}, ${sql(fromAddr)}, ${sql(toAddr)}, ${sql(subject)}, ${sql(text)}, ${sql(html)}, ${sql(now)}
+      WHERE NOT EXISTS (
+        SELECT 1 FROM correos_recibidos WHERE resend_id = ${sql(emailId)} AND resend_id IS NOT NULL
+      );
     `);
-    // Also update outbound tracking if there's a matching resend_id
-    if (emailId) {
-      await rawsql(`
-        UPDATE presupuesto_correos SET estado = 'entregado', entregado_at = ${sql(now)}
-        WHERE resend_id = ${sql(emailId)} AND estado = 'enviado';
-      `);
-    }
     return NextResponse.json({ ok: true, type: 'inbound', emailId });
   }
 

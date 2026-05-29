@@ -32,6 +32,7 @@ interface EmailRow {
   destinatario: string;
   asunto: string;
   estado: string;
+  tipo: string;
   enviado_at: string;
 }
 
@@ -587,6 +588,7 @@ function TabBandeja({ emails }: { emails: EmailRow[] }) {
                   <th className="px-4 py-2.5 text-left font-semibold">Destinatario</th>
                   <th className="px-4 py-2.5 text-left font-semibold">Asunto</th>
                   <th className="px-4 py-2.5 text-left font-semibold">Estado</th>
+                  <th className="px-4 py-2.5 text-left font-semibold">Tipo</th>
                   <th className="px-4 py-2.5 text-left font-semibold">Fecha</th>
                   <th className="px-4 py-2.5 text-left font-semibold" />
                 </tr>
@@ -601,6 +603,11 @@ function TabBandeja({ emails }: { emails: EmailRow[] }) {
                       <td className="px-4 py-2.5 text-zinc-300 font-mono text-xs">{row.destinatario || '—'}</td>
                       <td className="px-4 py-2.5 text-zinc-400 max-w-[200px] truncate">{row.asunto || '—'}</td>
                       <td className="px-4 py-2.5">{estadoBadge(row.estado)}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${row.tipo === 'manual' ? 'border-amber-600/40 text-amber-400 bg-amber-900/20' : 'border-zinc-700 text-zinc-500'}`}>
+                          {row.tipo === 'manual' ? 'Manual' : 'Sistema'}
+                        </span>
+                      </td>
                       <td className="px-4 py-2.5 text-zinc-500 text-xs whitespace-nowrap">{fmtDate(row.enviado_at)}</td>
                       <td className="px-4 py-2.5 text-zinc-600">
                         {expandedId === row.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -608,7 +615,7 @@ function TabBandeja({ emails }: { emails: EmailRow[] }) {
                     </tr>
                     {expandedId === row.id && (
                       <tr className="bg-white/2 border-b border-white/4">
-                        <td colSpan={5} className="px-4 py-3">
+                        <td colSpan={6} className="px-4 py-3">
                           <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
                             <div>
                               <span className="text-zinc-600">ID interno</span>

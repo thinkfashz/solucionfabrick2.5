@@ -49,52 +49,52 @@ export async function GET(request: NextRequest) {
   const auth = await requireAdminPermission(request, { resource: 'integrations', action: 'read' });
   if (!auth.ok) return auth.response;
 
-  // Counts by estado
-  const countsData = await rawsql(
-    `SELECT estado, COUNT(*) AS cnt FROM presupuesto_correos GROUP BY estado;`
-  );
-  const countsRows = countsData?.data?.rows ?? [];
+  // Ensure tipo column exists for manual emails
+  await rawsql(`ALTER TABLE presupuesto_correos ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'presupuesto';`);
+
+  const [countsData, recentData, credsResult] = await Promise.all([
+    rawsql(`SELECT estado, COUNT(*) AS cnt FROM presupuesto_correos GROUP BY estado;`),
+    rawsql(`
+      SELECT
+        id,
+        resend_id,
+        CASE WHEN presupuesto_id = 'manual' THEN NULL ELSE presupuesto_id END AS presupuesto_id,
+        email_destinatario AS destinatario,
+        asunto,
+        estado,
+        tipo,
+        created_at AS enviado_at
+      FROM presupuesto_correos
+      ORDER BY created_at DESC NULLS LAST
+      LIMIT 100;
+    `),
+    getResendCredentials(),
+  ]);
+
   const totals = { enviado: 0, entregado: 0, abierto: 0, rebotado: 0, spam: 0 };
-  for (const row of countsRows) {
+  for (const row of countsData?.data?.rows ?? []) {
     const estado = toStr(row.estado);
     const cnt = toNum(row.cnt);
     if (estado in totals) totals[estado as keyof typeof totals] = cnt;
   }
 
-  // Recent emails
-  const recentData = await rawsql(
-    `SELECT id, resend_id, presupuesto_id, destinatario, asunto, estado, enviado_at
-     FROM presupuesto_correos
-     ORDER BY enviado_at DESC NULLS LAST
-     LIMIT 50;`
-  );
-  const recentRows = recentData?.data?.rows ?? [];
-  const recent = recentRows.map((r) => ({
+  const recent = (recentData?.data?.rows ?? []).map((r) => ({
     id: toStr(r.id),
     resend_id: r.resend_id != null ? toStr(r.resend_id) : null,
     presupuesto_id: r.presupuesto_id != null ? toStr(r.presupuesto_id) : null,
     destinatario: toStr(r.destinatario),
     asunto: toStr(r.asunto),
     estado: toStr(r.estado),
+    tipo: toStr(r.tipo) || 'presupuesto',
     enviado_at: toStr(r.enviado_at),
   }));
 
-  // Credential check — never return the key itself
-  const creds = await getResendCredentials();
-  const key_configured = creds.ready;
+  const key_configured = credsResult.ready;
 
   const totalSent = totals.enviado + totals.entregado + totals.abierto + totals.rebotado + totals.spam;
   const deliveryRate = pct(totals.entregado + totals.abierto, totalSent);
   const openRate = pct(totals.abierto, totals.entregado + totals.abierto);
   const bounceRate = pct(totals.rebotado, totalSent);
 
-  return NextResponse.json({
-    ok: true,
-    totals,
-    recent,
-    deliveryRate,
-    openRate,
-    bounceRate,
-    key_configured,
-  });
+  return NextResponse.json({ ok: true, totals, recent, deliveryRate, openRate, bounceRate, key_configured });
 }

@@ -43,7 +43,7 @@ const INTEGRATIONS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS public.integrations (
   updated_at timestamptz DEFAULT now()
 );`;
 
-type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary' | 'vercel' | 'mercadolibre' | 'mercadopago' | 'stripe' | 'whatsapp' | 'resend' | 'openrouter' | 'serper' | 'serpapi' | 'anthropic' | 'groq';
+type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary' | 'vercel' | 'mercadolibre' | 'mercadopago' | 'stripe' | 'whatsapp' | 'resend' | 'openrouter' | 'serper' | 'serpapi' | 'anthropic' | 'groq' | 'openai' | 'gemini' | 'grok';
 
 /** Providers that use OAuth and have a dedicated Conectar/Desconectar flow. */
 const OAUTH_PROVIDERS = new Set<ProviderKey>(['mercadolibre', 'google', 'meta', 'tiktok']);
@@ -320,6 +320,66 @@ const PROVIDERS: ProviderDefinition[] = [
 		],
 	},
 	{
+		id: 'openai',
+		label: 'OpenAI · ChatGPT',
+		description: 'API oficial de OpenAI para GPT-4o, GPT-4o-mini y o3. Accede al estándar de facto de la industria directamente desde el admin.',
+		icon: Sparkles,
+		accent: 'from-green-400/20 to-emerald-500/10',
+		uses: ['GPT-4o', 'Asistente IA', 'Análisis de texto', 'Chat completions'],
+		apiKeyUrl: 'https://platform.openai.com/api-keys',
+		apiKeyLabel: 'Obtener API Key',
+		instructions: [
+			'Ve a platform.openai.com/api-keys e inicia sesión.',
+			'Haz clic en "Create new secret key". Cópiala (empieza por sk-…). Solo se muestra una vez.',
+			'Asegúrate de tener saldo en platform.openai.com/account/billing (mínimo $5).',
+			'Pega la API key abajo y guarda. Selecciona el modelo deseado.',
+		],
+		fields: [
+			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 'sk-proj-xxxxxxxxxxxxxxxxxxxxxxxx' },
+			{ key: 'modelo', label: 'Modelo activo', placeholder: 'gpt-4o-mini', hint: 'Opciones: gpt-4o-mini · gpt-4o · o3-mini' },
+		],
+	},
+	{
+		id: 'gemini',
+		label: 'Google Gemini',
+		description: 'Modelos Gemini de Google (2.0 Flash, 1.5 Pro). Plan gratuito generoso para pruebas. Obtén la key en Google AI Studio.',
+		icon: Sparkles,
+		accent: 'from-blue-400/20 to-cyan-500/10',
+		uses: ['Gemini 2.0 Flash', 'Análisis multimodal', 'Asistente IA', 'Plan gratuito'],
+		apiKeyUrl: 'https://aistudio.google.com/app/apikey',
+		apiKeyLabel: 'Obtener API Key en AI Studio',
+		instructions: [
+			'Ve a aistudio.google.com/app/apikey e inicia sesión con tu cuenta Google.',
+			'Haz clic en "Create API key". Cópiala. El plan gratuito incluye 1.500 req/día en Gemini 1.5 Flash.',
+			'Selecciona el modelo deseado abajo (gemini-2.0-flash-exp es el más reciente y gratis).',
+			'Pega la API key y guarda.',
+		],
+		fields: [
+			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 'AIzaSy...' },
+			{ key: 'modelo', label: 'Modelo activo', placeholder: 'gemini-2.0-flash-exp', hint: 'Gratuitos: gemini-2.0-flash-exp · gemini-1.5-flash · gemini-1.5-pro' },
+		],
+	},
+	{
+		id: 'grok',
+		label: 'xAI · Grok',
+		description: 'Modelos Grok de xAI. API compatible con OpenAI. Acceso a Grok-2 y Grok Vision. $25 de crédito gratis para nuevos usuarios.',
+		icon: Zap,
+		accent: 'from-violet-400/20 to-purple-500/10',
+		uses: ['Grok-2', 'Chat completions', 'API compatible OpenAI', '$25 crédito gratis'],
+		apiKeyUrl: 'https://console.x.ai/',
+		apiKeyLabel: 'Obtener API Key',
+		instructions: [
+			'Ve a console.x.ai e inicia sesión con tu cuenta X (Twitter).',
+			'Crea una API key. Los nuevos usuarios reciben $25 de crédito gratis.',
+			'La API es compatible con el formato OpenAI (mismo SDK).',
+			'Pega la API key abajo y guarda.',
+		],
+		fields: [
+			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 'xai-xxxxxxxxxxxxxxxxxxxxxxxx' },
+			{ key: 'modelo', label: 'Modelo activo', placeholder: 'grok-2-1212', hint: 'Opciones: grok-2-1212 · grok-2-vision-1212 · grok-beta' },
+		],
+	},
+	{
 		id: 'serper',
 		label: 'Serper.dev',
 		description: 'Google SERP API ultra-rápida con plan gratuito (≈2.500 búsquedas one-time). Alimenta el módulo Inteligencia de Mercado para descubrir precios, productos ganadores y competencia en Google.',
@@ -509,6 +569,24 @@ const DIAGNOSTIC_TIPS: Partial<Record<ProviderKey, string[]>> = {
 	serpapi: [
 		'La Private API Key está en serpapi.com/manage-api-key.',
 		'Si tienes Serper también configurado, el módulo Inteligencia de Mercado priorizará Serper por defecto.',
+	],
+	openai: [
+		'La API key empieza con sk-proj- (proyectos) o sk- (legado). Créala en platform.openai.com/api-keys.',
+		'Necesitas saldo disponible en tu cuenta OpenAI para realizar llamadas a la API.',
+		'GPT-4o-mini es el más económico y rápido; GPT-4o tiene la mayor calidad pero mayor costo.',
+		'Si recibes error 429, has superado el rate limit o el crédito disponible está agotado.',
+	],
+	gemini: [
+		'La API key empieza con AIzaSy. Créala gratis en aistudio.google.com/app/apikey.',
+		'El plan gratuito incluye 1.500 req/día para Gemini 1.5 Flash y 50 req/día para Gemini 1.5 Pro.',
+		'gemini-2.0-flash-exp está disponible gratis con límites generosos.',
+		'Si recibes error 429, has alcanzado el límite diario del plan gratuito; espera a que se reinicie a medianoche.',
+	],
+	grok: [
+		'La API key la encuentras en console.x.ai después de iniciar sesión con tu cuenta X.',
+		'Los nuevos usuarios reciben $25 de crédito gratuito al crear su primera API key.',
+		'La API de Grok usa el mismo formato que OpenAI — endpoint: api.x.ai/v1.',
+		'Grok-2-1212 es el modelo más capaz; grok-beta es el modelo estable anterior.',
 	],
 };
 
@@ -1185,7 +1263,7 @@ export default function AdminIntegracionesPage() {
 				</div>
 			) : null}
 
-			<div className="grid gap-5 md:grid-cols-2">
+			<div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
 				{PROVIDERS.map((provider) => {
 					const Icon = provider.icon;
 					const status = integrations[provider.id];

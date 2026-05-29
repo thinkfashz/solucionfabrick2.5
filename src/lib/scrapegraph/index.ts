@@ -4,6 +4,10 @@
  * Uses Playwright (BrowserSession) + LLM to extract structured data from web pages.
  */
 
+export type { AiConfig } from '@/lib/resolveAiConfig';
+export { resolveAiConfig, resolveSerperKey } from '@/lib/resolveAiConfig';
+import type { AiConfig } from '@/lib/resolveAiConfig';
+
 const INSFORGE_URL =
   process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
 
@@ -34,9 +38,6 @@ async function rawsql(query: string): Promise<{ data?: { rows?: Record<string, u
   }
 }
 
-/* ─── Types ──────────────────────────────────────────────────────────────── */
-export type AiConfig = { provider: 'anthropic' | 'groq' | 'openrouter'; apiKey: string; modelo: string; siteUrl?: string; appName?: string };
-
 export interface SmartScrapeResult {
   data: unknown;
   rawText: string;
@@ -55,74 +56,18 @@ export interface SearchScrapeResult {
   duration_ms: number;
 }
 
-/* ─── AI config resolver ─────────────────────────────────────────────────── */
-type CredRow = { credentials?: Record<string, string> };
-type ConfigRow2 = { anthropic_api_key?: string; modelo_ia?: string; proveedor_ia?: string };
-
-function credRows2(d: unknown) {
-  return (d as { data?: { rows?: CredRow[] } } | null)?.data?.rows ?? [];
-}
-
-export async function resolveAiConfig(): Promise<AiConfig | null> {
-  try {
-    const configData = await rawsql(
-      `SELECT anthropic_api_key, modelo_ia, proveedor_ia FROM configuracion_ia WHERE id = 'singleton' LIMIT 1;`,
-    );
-    const row = (configData as { data?: { rows?: ConfigRow2[] } } | null)?.data?.rows?.[0];
-    const proveedor = (row?.proveedor_ia ?? 'anthropic') as AiConfig['provider'];
-    const prefModelo = row?.modelo_ia ?? '';
-
-    if (proveedor === 'openrouter') {
-      const d = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'openrouter' LIMIT 1;`);
-      const r = credRows2(d)[0];
-      const k = r?.credentials?.api_key?.trim() ?? '';
-      if (k) return { provider: 'openrouter', apiKey: k, modelo: prefModelo || 'meta-llama/llama-3.3-70b-instruct:free', siteUrl: r?.credentials?.site_url, appName: r?.credentials?.app_name };
-    }
-
-    if (proveedor === 'groq') {
-      const d = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'groq' LIMIT 1;`);
-      const r = credRows2(d)[0];
-      const k = r?.credentials?.api_key?.trim() ?? '';
-      if (k) return { provider: 'groq', apiKey: k, modelo: prefModelo || r?.credentials?.modelo || 'llama-3.3-70b-versatile' };
-    }
-
-    const anthData = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'anthropic' LIMIT 1;`);
-    const anthRow = credRows2(anthData)[0];
-    const anthKey = anthRow?.credentials?.api_key?.trim() ?? '';
-    if (anthKey) return { provider: 'anthropic', apiKey: anthKey, modelo: prefModelo || anthRow?.credentials?.modelo || 'claude-haiku-4-5-20251001' };
-
-    // Fallback: try openrouter if configured (even if not primary)
-    const orData = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'openrouter' LIMIT 1;`);
-    const orRow = credRows2(orData)[0];
-    const orKey = orRow?.credentials?.api_key?.trim() ?? '';
-    if (orKey) return { provider: 'openrouter', apiKey: orKey, modelo: prefModelo || 'meta-llama/llama-3.3-70b-instruct:free', siteUrl: orRow?.credentials?.site_url, appName: orRow?.credentials?.app_name };
-
-    if (row?.anthropic_api_key) return { provider: 'anthropic', apiKey: row.anthropic_api_key, modelo: prefModelo || 'claude-haiku-4-5-20251001' };
-  } catch { /* fall through */ }
-
-  const envKey = process.env.ANTHROPIC_API_KEY;
-  if (envKey) return { provider: 'anthropic', apiKey: envKey, modelo: 'claude-haiku-4-5-20251001' };
-  return null;
-}
-
-export async function resolveSerperKey(): Promise<string | undefined> {
-  try {
-    const d = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'serper' LIMIT 1;`);
-    const r = (d as { data?: { rows?: Array<{ credentials?: Record<string, string> }> } } | null)?.data?.rows?.[0];
-    return r?.credentials?.api_key?.trim() || process.env.SERPER_API_KEY;
-  } catch {
-    return process.env.SERPER_API_KEY;
-  }
-}
-
 /* ─── LLM caller ─────────────────────────────────────────────────────────── */
 async function callLLM(aiConfig: AiConfig, systemPrompt: string, userPrompt: string): Promise<string> {
-  // OpenAI-compatible providers: Groq and OpenRouter
-  if (aiConfig.provider === 'groq' || aiConfig.provider === 'openrouter') {
-    const url = aiConfig.provider === 'groq'
-      ? 'https://api.groq.com/openai/v1/chat/completions'
-      : 'https://openrouter.ai/api/v1/chat/completions';
+  // OpenAI-compatible providers: Groq, OpenRouter, OpenAI, Grok
+  const OPENAI_COMPAT_URLS: Partial<Record<string, string>> = {
+    groq: 'https://api.groq.com/openai/v1/chat/completions',
+    openrouter: 'https://openrouter.ai/api/v1/chat/completions',
+    openai: 'https://api.openai.com/v1/chat/completions',
+    grok: 'https://api.x.ai/v1/chat/completions',
+  };
 
+  const openaiUrl = OPENAI_COMPAT_URLS[aiConfig.provider];
+  if (openaiUrl) {
     const headers: Record<string, string> = {
       Authorization: `Bearer ${aiConfig.apiKey}`,
       'Content-Type': 'application/json',
@@ -132,7 +77,7 @@ async function callLLM(aiConfig: AiConfig, systemPrompt: string, userPrompt: str
       if (aiConfig.appName) headers['X-Title'] = aiConfig.appName;
     }
 
-    const res = await fetch(url, {
+    const res = await fetch(openaiUrl, {
       method: 'POST',
       headers,
       body: JSON.stringify({
@@ -148,6 +93,24 @@ async function callLLM(aiConfig: AiConfig, systemPrompt: string, userPrompt: str
     if (!res.ok) throw new Error(`${aiConfig.provider} error: ${await res.text()}`);
     const data = await res.json() as { choices: Array<{ message: { content: string } }> };
     return data.choices[0]?.message.content ?? '';
+  }
+
+  // Gemini — different REST format
+  if (aiConfig.provider === 'gemini') {
+    const url = `https://generativelanguage.googleapis.com/v1beta/models/${aiConfig.modelo}:generateContent?key=${aiConfig.apiKey}`;
+    const combined = `${systemPrompt}\n\n${userPrompt}`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        contents: [{ role: 'user', parts: [{ text: combined }] }],
+        generationConfig: { maxOutputTokens: 4096 },
+      }),
+      signal: AbortSignal.timeout(30_000),
+    });
+    if (!res.ok) throw new Error(`Gemini error: ${await res.text()}`);
+    const data = await res.json() as { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }> };
+    return data.candidates?.[0]?.content?.parts?.[0]?.text ?? '';
   }
 
   // Anthropic

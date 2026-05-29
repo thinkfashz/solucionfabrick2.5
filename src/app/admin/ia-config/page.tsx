@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { AdminCard, AdminMotion, AdminPage, AdminPageHeader } from '@/components/admin/ui';
 
-type ProviderType = 'anthropic' | 'groq' | 'openrouter';
+type ProviderType = 'anthropic' | 'groq' | 'openrouter' | 'openai' | 'gemini' | 'grok';
 
 const ANTHROPIC_MODELS = [
   { id: 'claude-opus-4-8', label: 'Opus 4.8', desc: 'Máxima calidad · más lento' },
@@ -28,7 +28,23 @@ const OPENROUTER_MODELS = [
   { id: 'anthropic/claude-haiku-4', label: 'Claude Haiku 4', desc: 'Pago · rápido · Claude vía OpenRouter' },
 ] as const;
 
-type _ModelIds = typeof ANTHROPIC_MODELS[number]['id'] | typeof GROQ_MODELS[number]['id'] | typeof OPENROUTER_MODELS[number]['id'];
+const OPENAI_MODELS = [
+  { id: 'gpt-4o-mini', label: 'GPT-4o mini', desc: 'Rápido y económico · recomendado', recommended: true },
+  { id: 'gpt-4o', label: 'GPT-4o', desc: 'Máxima calidad · multimodal' },
+  { id: 'o3-mini', label: 'o3 mini', desc: 'Razonamiento avanzado · bajo costo' },
+] as const;
+
+const GEMINI_MODELS = [
+  { id: 'gemini-2.0-flash-exp', label: 'Gemini 2.0 Flash', desc: 'Gratis · más reciente · recomendado', recommended: true },
+  { id: 'gemini-1.5-flash', label: 'Gemini 1.5 Flash', desc: 'Gratis · rápido · estable' },
+  { id: 'gemini-1.5-pro', label: 'Gemini 1.5 Pro', desc: 'Mejor calidad · límite menor en gratis' },
+] as const;
+
+const GROK_MODELS = [
+  { id: 'grok-2-1212', label: 'Grok 2', desc: 'Modelo más reciente de xAI', recommended: true },
+  { id: 'grok-2-vision-1212', label: 'Grok 2 Vision', desc: 'Multimodal · análisis de imágenes' },
+  { id: 'grok-beta', label: 'Grok Beta', desc: 'Modelo estable anterior' },
+] as const;
 
 interface ConfigState {
   key_configured: boolean;
@@ -137,7 +153,13 @@ export default function IaConfigPage() {
     setTimeout(() => setMsg(''), 3000);
   }
 
-  const currentModels = proveedor === 'groq' ? GROQ_MODELS : proveedor === 'openrouter' ? OPENROUTER_MODELS : ANTHROPIC_MODELS;
+  const currentModels =
+    proveedor === 'groq' ? GROQ_MODELS :
+    proveedor === 'openrouter' ? OPENROUTER_MODELS :
+    proveedor === 'openai' ? OPENAI_MODELS :
+    proveedor === 'gemini' ? GEMINI_MODELS :
+    proveedor === 'grok' ? GROK_MODELS :
+    ANTHROPIC_MODELS;
   const modeloChanged = modelo !== config.modelo_ia || proveedor !== config.proveedor_ia;
 
   const statusLabel: Record<TestStatus, string> = {
@@ -191,11 +213,14 @@ export default function IaConfigPage() {
               <div className="h-2 w-2 rounded-full bg-yellow-400" />
               <h2 className="font-black text-white">Proveedor de IA</h2>
             </div>
-            <div className="grid grid-cols-3 gap-3 mb-4">
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-4">
               {([
-                { id: 'anthropic' as ProviderType, label: 'Anthropic', sub: 'Claude Opus/Sonnet/Haiku', color: 'text-amber-400' },
-                { id: 'groq' as ProviderType, label: 'Groq', sub: 'LLaMA · Gemma · gratis', color: 'text-rose-400' },
-                { id: 'openrouter' as ProviderType, label: 'OpenRouter', sub: 'Multi-modelo · gratis disponible', color: 'text-purple-400' },
+                { id: 'anthropic' as ProviderType, label: 'Anthropic', sub: 'Claude Opus/Sonnet/Haiku', color: 'text-amber-400', defaultModel: 'claude-haiku-4-5-20251001' },
+                { id: 'groq' as ProviderType, label: 'Groq', sub: 'LLaMA · Gemma · gratis', color: 'text-rose-400', defaultModel: 'llama-3.3-70b-versatile' },
+                { id: 'openrouter' as ProviderType, label: 'OpenRouter', sub: 'Multi-modelo · gratis', color: 'text-purple-400', defaultModel: 'meta-llama/llama-3.3-70b-instruct:free' },
+                { id: 'openai' as ProviderType, label: 'OpenAI', sub: 'GPT-4o · ChatGPT', color: 'text-green-400', defaultModel: 'gpt-4o-mini' },
+                { id: 'gemini' as ProviderType, label: 'Gemini', sub: 'Google · gratis', color: 'text-blue-400', defaultModel: 'gemini-2.0-flash-exp' },
+                { id: 'grok' as ProviderType, label: 'Grok', sub: 'xAI · $25 gratis', color: 'text-violet-400', defaultModel: 'grok-2-1212' },
               ]).map(p => (
                 <label
                   key={p.id}
@@ -208,9 +233,7 @@ export default function IaConfigPage() {
                     checked={proveedor === p.id}
                     onChange={() => {
                       setProveedor(p.id);
-                      if (p.id === 'groq') setModelo('llama-3.3-70b-versatile');
-                      else if (p.id === 'openrouter') setModelo('meta-llama/llama-3.3-70b-instruct:free');
-                      else setModelo('claude-haiku-4-5-20251001');
+                      setModelo(p.defaultModel);
                     }}
                     className="accent-yellow-400 sr-only"
                   />
@@ -226,7 +249,12 @@ export default function IaConfigPage() {
                 Centro de Integraciones <ExternalLink className="h-3 w-3" />
               </a>
               {' '}— tarjeta{' '}
-              {proveedor === 'anthropic' ? 'Anthropic · Claude' : proveedor === 'groq' ? 'Groq · LLaMA / Gemma' : 'OpenRouter'}.
+              {proveedor === 'anthropic' ? 'Anthropic · Claude' :
+               proveedor === 'groq' ? 'Groq · LLaMA / Gemma' :
+               proveedor === 'openrouter' ? 'OpenRouter' :
+               proveedor === 'openai' ? 'OpenAI · ChatGPT' :
+               proveedor === 'gemini' ? 'Google Gemini' :
+               'xAI · Grok'}.
             </p>
           </AdminCard>
 
@@ -289,7 +317,14 @@ export default function IaConfigPage() {
           <AdminCard>
             <div className="mb-4 flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-yellow-400" />
-              <h2 className="font-black text-white">Modelo de {proveedor === 'anthropic' ? 'Claude' : proveedor === 'openrouter' ? 'OpenRouter' : 'Groq'}</h2>
+              <h2 className="font-black text-white">Modelo de {
+              proveedor === 'anthropic' ? 'Claude' :
+              proveedor === 'openrouter' ? 'OpenRouter' :
+              proveedor === 'openai' ? 'OpenAI' :
+              proveedor === 'gemini' ? 'Gemini' :
+              proveedor === 'grok' ? 'Grok' :
+              'Groq'
+            }</h2>
             </div>
             <div className="space-y-2 mb-4">
               {currentModels.map(m => (

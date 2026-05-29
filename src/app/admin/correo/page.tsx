@@ -1,31 +1,22 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  AlertCircle,
-  CheckCircle2,
-  ChevronDown,
-  ChevronUp,
-  ExternalLink,
-  Globe,
+  ArrowLeft,
+  CheckCheck,
+  ChevronRight,
   Inbox,
-  KeyRound,
   Loader2,
-  Mail,
   MailOpen,
-  MessageSquareReply,
+  MailPlus,
   RefreshCw,
-  RotateCcw,
+  Reply,
   Send,
-  Shield,
   Sparkles,
-  Zap,
+  X,
 } from 'lucide-react';
-import { AdminCard, AdminPage, AdminPageHeader } from '@/components/admin/ui';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
-
-type Tab = 'resumen' | 'bandeja' | 'recibidos' | 'envio' | 'config';
 
 interface RecibidoRow {
   id: string;
@@ -40,14 +31,7 @@ interface RecibidoRow {
   fecha_recibido: string;
 }
 
-interface InboxResponse {
-  ok: boolean;
-  emails: RecibidoRow[];
-  unread: number;
-  error?: string;
-}
-
-interface EmailRow {
+interface EnviadoRow {
   id: string;
   resend_id: string | null;
   presupuesto_id: string | null;
@@ -58,1340 +42,800 @@ interface EmailRow {
   enviado_at: string;
 }
 
-interface StatsResponse {
-  ok: boolean;
-  totals: { enviado: number; entregado: number; abierto: number; rebotado: number; spam: number };
-  recent: EmailRow[];
-  deliveryRate: number;
-  openRate: number;
-  bounceRate: number;
-  key_configured: boolean;
-  error?: string;
-}
+type EmailItem =
+  | ({ _kind: 'received' } & RecibidoRow)
+  | ({ _kind: 'sent' } & EnviadoRow);
 
-interface DaySeries {
-  dia: string;
-  enviado: number;
-  entregado: number;
-  abierto: number;
-  rebotado: number;
-}
-
-interface TopClient {
-  destinatario: string;
-  total: number;
-  entregados: number;
-  abiertos: number;
-  ultimo_correo: string;
-}
-
-interface ChartResponse {
-  ok: boolean;
-  dailySeries: DaySeries[];
-  topClients: TopClient[];
-  error?: string;
-}
-
-interface DomainRow {
-  id: string;
-  name: string;
-  status: string;
-  region: string;
-  created_at: string;
-}
-
-interface DomainsResponse {
-  ok: boolean;
-  domains: DomainRow[];
-  error?: string;
-}
-
-interface SendResponse {
-  ok: boolean;
-  id?: string | null;
-  error?: string;
-}
-
-interface AiStyleResponse {
-  ok: boolean;
-  html?: string;
-  provider?: string;
-  modelo?: string;
-  error?: string;
-}
-
-interface AiConfigResponse {
-  modelo_ia: string;
-  proveedor_ia: string;
-  key_configured: boolean;
-  activo: boolean;
-}
+type Folder = 'inbox' | 'sent' | 'all';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
+const AVATAR_PALETTE = [
+  'bg-rose-500', 'bg-orange-500', 'bg-amber-500', 'bg-emerald-500',
+  'bg-cyan-500', 'bg-blue-500', 'bg-violet-500', 'bg-pink-500',
+];
+
+function avatarColor(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) | 0;
+  return AVATAR_PALETTE[Math.abs(h) % 8];
+}
+
+function avatarInitial(name: string): string {
+  return (name.trim()[0] ?? '?').toUpperCase();
+}
+
+function relDate(iso: string): string {
+  if (!iso) return '';
+  const diff = Date.now() - new Date(iso).getTime();
+  if (isNaN(diff)) return '';
+  const m = Math.floor(diff / 60_000);
+  if (m < 1) return 'ahora';
+  if (m < 60) return `${m}m`;
+  const h = Math.floor(m / 60);
+  if (h < 24) return `${h}h`;
+  const d = Math.floor(h / 24);
+  if (d < 7) return `${d}d`;
+  return new Date(iso).toLocaleDateString('es-CL', { day: '2-digit', month: '2-digit' });
+}
+
+function fullDate(iso: string): string {
+  if (!iso) return '—';
+  try {
+    return new Date(iso).toLocaleString('es-CL', {
+      weekday: 'short', day: '2-digit', month: 'short',
+      year: 'numeric', hour: '2-digit', minute: '2-digit',
+    });
+  } catch { return iso; }
+}
+
 const ESTADO_STYLES: Record<string, string> = {
-  enviado: 'border-zinc-600 text-zinc-300 bg-zinc-900/60',
+  enviado:   'border-zinc-600   text-zinc-300   bg-zinc-900/60',
   entregado: 'border-emerald-600/50 text-emerald-300 bg-emerald-900/20',
-  abierto: 'border-blue-600/50 text-blue-300 bg-blue-900/20',
-  rebotado: 'border-red-600/50 text-red-300 bg-red-900/20',
-  spam: 'border-orange-600/50 text-orange-300 bg-orange-900/20',
+  abierto:   'border-blue-600/50   text-blue-300   bg-blue-900/20',
+  rebotado:  'border-red-600/50    text-red-300    bg-red-900/20',
+  spam:      'border-orange-600/50 text-orange-300 bg-orange-900/20',
 };
 
-function estadoBadge(estado: string) {
-  const cls = ESTADO_STYLES[estado] ?? 'border-zinc-700 text-zinc-400 bg-zinc-900/40';
+function EstadoBadge({ estado }: { estado: string }) {
+  const cls = ESTADO_STYLES[estado] ?? 'border-zinc-700 text-zinc-400';
   return (
-    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${cls}`}>
+    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${cls}`}>
       {estado}
     </span>
   );
 }
 
-function fmtDate(iso: string) {
-  if (!iso) return '—';
-  try {
-    return new Date(iso).toLocaleString('es-CL', {
-      day: '2-digit', month: '2-digit', year: '2-digit',
-      hour: '2-digit', minute: '2-digit',
-    });
-  } catch {
-    return iso;
-  }
-}
-
-function fmtDateShort(iso: string) {
-  if (!iso) return '';
-  try {
-    const d = new Date(iso);
-    return `${d.getDate()}/${d.getMonth() + 1}`;
-  } catch {
-    return iso;
-  }
-}
-
-function RateBar({ label, value, color }: { label: string; value: number; color: string }) {
+function Skeleton() {
   return (
-    <div className="space-y-1.5">
-      <div className="flex justify-between text-xs">
-        <span className="text-zinc-400">{label}</span>
-        <span className="font-semibold text-white">{value.toFixed(1)}%</span>
-      </div>
-      <div className="h-1.5 w-full rounded-full bg-white/5">
-        <div className={`h-1.5 rounded-full ${color} transition-all duration-700`} style={{ width: `${Math.min(value, 100)}%` }} />
-      </div>
-    </div>
-  );
-}
-
-// ─── SVG Bar Chart ────────────────────────────────────────────────────────────
-
-interface TooltipData {
-  x: number;
-  y: number;
-  dia: string;
-  enviado: number;
-  entregado: number;
-  abierto: number;
-  rebotado: number;
-}
-
-function BarChart({ series }: { series: DaySeries[] }) {
-  const [tooltip, setTooltip] = useState<TooltipData | null>(null);
-  const svgRef = useRef<SVGSVGElement>(null);
-
-  const W = 800, H = 220;
-  const padL = 44, padR = 12, padT = 16, padB = 44;
-  const chartW = W - padL - padR;
-  const chartH = H - padT - padB;
-
-  const maxVal = series.reduce((m, d) => Math.max(m, d.enviado + d.entregado + d.abierto + d.rebotado), 1);
-  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.ceil(maxVal * f));
-  const barW = Math.min(chartW / Math.max(series.length, 1) - 2, 28);
-
-  function barX(i: number) {
-    return padL + (i / Math.max(series.length, 1)) * chartW + (chartW / Math.max(series.length, 1) - barW) / 2;
-  }
-
-  function yPos(v: number) {
-    return padT + chartH - (v / maxVal) * chartH;
-  }
-
-  function yH(v: number) {
-    return (v / maxVal) * chartH;
-  }
-
-  // Show every Nth label to avoid crowding
-  const labelStep = series.length <= 10 ? 1 : series.length <= 20 ? 2 : 5;
-
-  return (
-    <div className="relative select-none">
-      <svg
-        ref={svgRef}
-        viewBox={`0 0 ${W} ${H}`}
-        className="w-full"
-        style={{ height: 200 }}
-        onMouseLeave={() => setTooltip(null)}
-      >
-        {/* Grid lines */}
-        {yTicks.map((tick) => {
-          const y = yPos(tick);
-          return (
-            <g key={tick}>
-              <line x1={padL} x2={W - padR} y1={y} y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
-              <text x={padL - 5} y={y + 4} textAnchor="end" fontSize={10} fill="#52525b">
-                {tick}
-              </text>
-            </g>
-          );
-        })}
-
-        {/* Bars */}
-        {series.map((d, i) => {
-          const x = barX(i);
-          const total = d.entregado + d.abierto + d.rebotado + d.enviado;
-          let cumY = padT + chartH;
-
-          const segments: { color: string; val: number; key: string }[] = [
-            { key: 'enviado', val: d.enviado, color: '#3f3f46' },
-            { key: 'rebotado', val: d.rebotado, color: '#ef4444' },
-            { key: 'entregado', val: d.entregado, color: '#10b981' },
-            { key: 'abierto', val: d.abierto, color: '#3b82f6' },
-          ];
-
-          return (
-            <g
-              key={d.dia}
-              onMouseEnter={(e) => {
-                const svgEl = svgRef.current;
-                if (!svgEl) return;
-                const rect = svgEl.getBoundingClientRect();
-                const svgX = ((e.clientX - rect.left) / rect.width) * W;
-                const svgY = ((e.clientY - rect.top) / rect.height) * H;
-                setTooltip({ x: svgX, y: svgY, dia: d.dia, enviado: d.enviado, entregado: d.entregado, abierto: d.abierto, rebotado: d.rebotado });
-              }}
-              onMouseLeave={() => setTooltip(null)}
-              style={{ cursor: 'default' }}
-            >
-              {total === 0 ? (
-                <rect x={x} y={padT + chartH - 2} width={barW} height={2} fill="#27272a" rx={1} />
-              ) : (
-                segments.map(({ key, val, color }) => {
-                  if (val === 0) return null;
-                  const h = yH(val);
-                  cumY -= h;
-                  return (
-                    <rect
-                      key={key}
-                      x={x}
-                      y={cumY}
-                      width={barW}
-                      height={h}
-                      fill={color}
-                      opacity={0.85}
-                    />
-                  );
-                })
-              )}
-              {/* X label */}
-              {i % labelStep === 0 && (
-                <text x={x + barW / 2} y={H - 6} textAnchor="middle" fontSize={9} fill="#52525b">
-                  {fmtDateShort(d.dia)}
-                </text>
-              )}
-            </g>
-          );
-        })}
-
-        {/* Tooltip */}
-        {tooltip && (() => {
-          const bw = 130, bh = 90;
-          const tx = tooltip.x + bw + 10 > W ? tooltip.x - bw - 4 : tooltip.x + 8;
-          const ty = Math.min(tooltip.y - 10, H - bh - 4);
-          return (
-            <g pointerEvents="none">
-              <rect x={tx} y={ty} width={bw} height={bh} rx={6} fill="#18181b" stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
-              <text x={tx + 8} y={ty + 16} fontSize={10} fill="#a1a1aa" fontWeight={600}>{fmtDate(tooltip.dia)}</text>
-              {[
-                { label: 'Abiertos', val: tooltip.abierto, color: '#3b82f6' },
-                { label: 'Entregados', val: tooltip.entregado, color: '#10b981' },
-                { label: 'Rebotados', val: tooltip.rebotado, color: '#ef4444' },
-                { label: 'Enviados', val: tooltip.enviado, color: '#52525b' },
-              ].map(({ label, val, color }, j) => (
-                <g key={label}>
-                  <rect x={tx + 8} y={ty + 24 + j * 16} width={6} height={6} rx={1} fill={color} />
-                  <text x={tx + 18} y={ty + 31 + j * 16} fontSize={10} fill="#d4d4d8">{label}: {val}</text>
-                </g>
-              ))}
-            </g>
-          );
-        })()}
-      </svg>
-
-      {/* Legend */}
-      <div className="mt-1 flex flex-wrap gap-3 justify-center">
-        {[
-          { label: 'Abiertos', color: 'bg-blue-500' },
-          { label: 'Entregados', color: 'bg-emerald-500' },
-          { label: 'Rebotados', color: 'bg-red-500' },
-          { label: 'Enviados', color: 'bg-zinc-600' },
-        ].map(({ label, color }) => (
-          <div key={label} className="flex items-center gap-1.5 text-xs text-zinc-500">
-            <span className={`inline-block h-2 w-2 rounded-sm ${color}`} />
-            {label}
+    <div className="space-y-3 p-3">
+      {[1, 2, 3].map((i) => (
+        <div key={i} className="flex gap-3 rounded-xl p-3 animate-pulse">
+          <div className="h-9 w-9 shrink-0 rounded-full bg-white/8" />
+          <div className="flex-1 space-y-2">
+            <div className="h-3 w-3/4 rounded bg-white/8" />
+            <div className="h-2 w-1/2 rounded bg-white/6" />
           </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ─── Frequent Clients Table ───────────────────────────────────────────────────
-
-function clientRowColor(abiertos: number, total: number): string {
-  if (total === 0) return '';
-  const rate = abiertos / total;
-  if (rate >= 0.5) return 'border-l-2 border-l-emerald-500/50 bg-emerald-950/20';
-  if (rate >= 0.2) return 'border-l-2 border-l-blue-500/40 bg-blue-950/10';
-  return '';
-}
-
-function FrequentClients({ clients }: { clients: TopClient[] }) {
-  if (clients.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-10 text-zinc-600">
-        <Mail className="h-7 w-7" />
-        <p className="text-sm">Sin datos de clientes aún</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="overflow-x-auto">
-      <table className="w-full min-w-[560px] text-sm">
-        <thead>
-          <tr className="border-b border-white/5 text-[10px] uppercase tracking-wider text-zinc-600">
-            <th className="px-4 py-2.5 text-left font-semibold">#</th>
-            <th className="px-4 py-2.5 text-left font-semibold">Destinatario</th>
-            <th className="px-4 py-2.5 text-right font-semibold">Enviados</th>
-            <th className="px-4 py-2.5 text-right font-semibold">Entregados</th>
-            <th className="px-4 py-2.5 text-right font-semibold">Abiertos</th>
-            <th className="px-4 py-2.5 text-right font-semibold">Tasa</th>
-            <th className="px-4 py-2.5 text-left font-semibold">Último</th>
-          </tr>
-        </thead>
-        <tbody>
-          {clients.slice(0, 10).map((c, i) => {
-            const rate = c.total > 0 ? Math.round((c.abiertos / c.total) * 100) : 0;
-            const rowCls = clientRowColor(c.abiertos, c.total);
-            return (
-              <tr key={c.destinatario} className={`border-b border-white/4 hover:bg-white/3 transition-colors ${rowCls}`}>
-                <td className="px-4 py-2.5 text-zinc-600 text-xs tabular-nums">{i + 1}</td>
-                <td className="px-4 py-2.5">
-                  <a
-                    href={`mailto:${c.destinatario}`}
-                    className="font-mono text-xs text-zinc-300 hover:text-amber-400 transition-colors"
-                  >
-                    {c.destinatario}
-                  </a>
-                </td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-zinc-400">{c.total}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-emerald-400">{c.entregados}</td>
-                <td className="px-4 py-2.5 text-right tabular-nums text-blue-400">{c.abiertos}</td>
-                <td className="px-4 py-2.5 text-right">
-                  <span className={`text-xs font-bold ${rate >= 50 ? 'text-emerald-400' : rate >= 20 ? 'text-blue-400' : 'text-zinc-500'}`}>
-                    {rate}%
-                  </span>
-                </td>
-                <td className="px-4 py-2.5 text-xs text-zinc-600 whitespace-nowrap">{fmtDate(c.ultimo_correo)}</td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
-}
-
-// ─── Tab: Resumen ─────────────────────────────────────────────────────────────
-
-function TabResumen({ stats }: { stats: StatsResponse }) {
-  const { totals } = stats;
-  const [chartData, setChartData] = useState<ChartResponse | null>(null);
-  const [loadingChart, setLoadingChart] = useState(true);
-
-  useEffect(() => {
-    fetch('/api/admin/correo/chart')
-      .then((r) => r.json() as Promise<ChartResponse>)
-      .then((d) => setChartData(d))
-      .catch(() => {/* silent */})
-      .finally(() => setLoadingChart(false));
-  }, []);
-
-  const statCards = [
-    { label: 'Enviados', value: totals.enviado + totals.entregado + totals.abierto + totals.rebotado + totals.spam, icon: Send, color: 'text-zinc-400' },
-    { label: 'Entregados', value: totals.entregado + totals.abierto, icon: CheckCircle2, color: 'text-emerald-400' },
-    { label: 'Abiertos', value: totals.abierto, icon: Mail, color: 'text-blue-400' },
-    { label: 'Rebotados', value: totals.rebotado, icon: AlertCircle, color: 'text-red-400' },
-  ];
-
-  return (
-    <div className="space-y-6">
-      {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-        {statCards.map(({ label, value, icon: Icon, color }) => (
-          <AdminCard key={label} className="p-4 text-center">
-            <Icon className={`mx-auto mb-2 h-5 w-5 ${color}`} />
-            <div className="text-2xl font-black tabular-nums text-white">{value.toLocaleString('es-CL')}</div>
-            <div className="mt-0.5 text-[11px] text-zinc-500">{label}</div>
-          </AdminCard>
-        ))}
-      </div>
-
-      {/* Rate bars */}
-      <AdminCard className="p-5 space-y-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mb-3">Tasas de rendimiento</p>
-        <RateBar label="Tasa de entrega" value={stats.deliveryRate} color="bg-emerald-500" />
-        <RateBar label="Tasa de apertura" value={stats.openRate} color="bg-blue-500" />
-        <RateBar label="Tasa de rebote" value={stats.bounceRate} color="bg-red-500" />
-      </AdminCard>
-
-      {/* 30-day chart */}
-      <AdminCard className="p-5">
-        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mb-4">Actividad 30 días</p>
-        {loadingChart ? (
-          <div className="flex items-center justify-center py-16 text-zinc-600">
-            <Loader2 className="h-5 w-5 animate-spin" />
-          </div>
-        ) : chartData?.ok && chartData.dailySeries.length > 0 ? (
-          <BarChart series={chartData.dailySeries} />
-        ) : (
-          <div className="flex flex-col items-center gap-2 py-10 text-zinc-700">
-            <span className="text-sm">Sin actividad en los últimos 30 días</span>
-          </div>
-        )}
-      </AdminCard>
-
-      {/* Frequent clients */}
-      <AdminCard className="p-0 overflow-hidden">
-        <div className="border-b border-white/8 px-4 py-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">Clientes frecuentes</p>
         </div>
-        {loadingChart ? (
-          <div className="flex items-center justify-center py-10 text-zinc-600">
-            <Loader2 className="h-4 w-4 animate-spin" />
-          </div>
-        ) : (
-          <FrequentClients clients={chartData?.topClients ?? []} />
-        )}
-      </AdminCard>
-
-      {/* Recent emails table */}
-      <AdminCard className="p-0 overflow-hidden">
-        <div className="border-b border-white/8 px-4 py-3">
-          <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">Últimos correos</p>
-        </div>
-        {stats.recent.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-12 text-zinc-600">
-            <Inbox className="h-8 w-8" />
-            <p className="text-sm">Sin correos registrados aún</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px] text-sm">
-              <thead>
-                <tr className="border-b border-white/5 text-[10px] uppercase tracking-wider text-zinc-600">
-                  <th className="px-4 py-2.5 text-left font-semibold">Destinatario</th>
-                  <th className="px-4 py-2.5 text-left font-semibold">Asunto</th>
-                  <th className="px-4 py-2.5 text-left font-semibold">Estado</th>
-                  <th className="px-4 py-2.5 text-left font-semibold">Fecha</th>
-                </tr>
-              </thead>
-              <tbody>
-                {stats.recent.slice(0, 20).map((row) => (
-                  <tr key={row.id} className="border-b border-white/4 hover:bg-white/3 transition-colors">
-                    <td className="px-4 py-2.5 text-zinc-300 font-mono text-xs">{row.destinatario || '—'}</td>
-                    <td className="px-4 py-2.5 text-zinc-400 max-w-[200px] truncate">{row.asunto || '—'}</td>
-                    <td className="px-4 py-2.5">{estadoBadge(row.estado)}</td>
-                    <td className="px-4 py-2.5 text-zinc-500 text-xs whitespace-nowrap">{fmtDate(row.enviado_at)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-      </AdminCard>
+      ))}
     </div>
   );
 }
 
-// ─── Tab: Bandeja ─────────────────────────────────────────────────────────────
+// ─── Compose Modal ────────────────────────────────────────────────────────────
 
-type DateRange = '7d' | '30d' | '90d' | 'all';
-
-function TabBandeja({ emails, onReply }: { emails: EmailRow[]; onReply: (to: string, subject: string) => void }) {
-  const [search, setSearch] = useState('');
-  const [estadoFilter, setEstadoFilter] = useState('todos');
-  const [dateRange, setDateRange] = useState<DateRange>('all');
-  const [page, setPage] = useState(0);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const PER_PAGE = 20;
-
-  const cutoff = (() => {
-    const now = Date.now();
-    if (dateRange === '7d') return now - 7 * 86_400_000;
-    if (dateRange === '30d') return now - 30 * 86_400_000;
-    if (dateRange === '90d') return now - 90 * 86_400_000;
-    return 0;
-  })();
-
-  const filtered = emails.filter((r) => {
-    if (estadoFilter !== 'todos' && r.estado !== estadoFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      if (!r.destinatario.toLowerCase().includes(q) && !r.asunto.toLowerCase().includes(q)) return false;
-    }
-    if (cutoff && r.enviado_at) {
-      if (new Date(r.enviado_at).getTime() < cutoff) return false;
-    }
-    return true;
-  });
-
-  const totalPages = Math.ceil(filtered.length / PER_PAGE);
-  const pageRows = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
-  const statusPills = ['todos', 'enviado', 'entregado', 'abierto', 'rebotado', 'spam'];
-
-  return (
-    <div className="space-y-4">
-      <AdminCard className="p-4 space-y-3">
-        <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-          <input
-            type="search"
-            value={search}
-            onChange={(e) => { setSearch(e.target.value); setPage(0); }}
-            placeholder="Buscar destinatario o asunto…"
-            className="flex-1 rounded-lg border border-white/8 bg-white/4 px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/20 focus:bg-white/6"
-          />
-          <select
-            value={dateRange}
-            onChange={(e) => { setDateRange(e.target.value as DateRange); setPage(0); }}
-            className="rounded-lg border border-white/8 bg-zinc-900 px-3 py-2 text-sm text-zinc-300 outline-none"
-          >
-            <option value="7d">Últimos 7 días</option>
-            <option value="30d">Últimos 30 días</option>
-            <option value="90d">Últimos 90 días</option>
-            <option value="all">Todo el historial</option>
-          </select>
-        </div>
-        <div className="flex flex-wrap gap-1.5">
-          {statusPills.map((s) => (
-            <button
-              key={s}
-              onClick={() => { setEstadoFilter(s); setPage(0); }}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize transition-colors ${
-                estadoFilter === s ? 'border-amber-500 bg-amber-500 text-black' : 'border-white/10 text-zinc-400 hover:border-white/20'
-              }`}
-            >
-              {s}
-            </button>
-          ))}
-        </div>
-      </AdminCard>
-
-      <AdminCard className="p-0 overflow-hidden">
-        {pageRows.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-12 text-zinc-600">
-            <Inbox className="h-8 w-8" />
-            <p className="text-sm">Sin resultados</p>
-          </div>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full min-w-[520px] text-sm">
-              <thead>
-                <tr className="border-b border-white/5 text-[10px] uppercase tracking-wider text-zinc-600">
-                  <th className="px-4 py-2.5 text-left font-semibold">Destinatario</th>
-                  <th className="px-4 py-2.5 text-left font-semibold">Asunto</th>
-                  <th className="px-4 py-2.5 text-left font-semibold">Estado</th>
-                  <th className="px-4 py-2.5 text-left font-semibold">Tipo</th>
-                  <th className="px-4 py-2.5 text-left font-semibold">Fecha</th>
-                  <th className="px-4 py-2.5 text-left font-semibold" />
-                </tr>
-              </thead>
-              <tbody>
-                {pageRows.map((row) => (
-                  <Fragment key={row.id}>
-                    <tr
-                      className="border-b border-white/4 hover:bg-white/3 transition-colors cursor-pointer"
-                      onClick={() => setExpandedId(expandedId === row.id ? null : row.id)}
-                    >
-                      <td className="px-4 py-2.5 text-zinc-300 font-mono text-xs">{row.destinatario || '—'}</td>
-                      <td className="px-4 py-2.5 text-zinc-400 max-w-[200px] truncate">{row.asunto || '—'}</td>
-                      <td className="px-4 py-2.5">{estadoBadge(row.estado)}</td>
-                      <td className="px-4 py-2.5">
-                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${row.tipo === 'manual' ? 'border-amber-600/40 text-amber-400 bg-amber-900/20' : 'border-zinc-700 text-zinc-500'}`}>
-                          {row.tipo === 'manual' ? 'Manual' : 'Sistema'}
-                        </span>
-                      </td>
-                      <td className="px-4 py-2.5 text-zinc-500 text-xs whitespace-nowrap">{fmtDate(row.enviado_at)}</td>
-                      <td className="px-4 py-2.5 text-zinc-600">
-                        {expandedId === row.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
-                      </td>
-                    </tr>
-                    {expandedId === row.id && (
-                      <tr className="bg-white/2 border-b border-white/4">
-                        <td colSpan={6} className="px-4 py-3">
-                          <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
-                            <div>
-                              <span className="text-zinc-600">ID interno</span>
-                              <p className="font-mono text-zinc-400 break-all">{row.id}</p>
-                            </div>
-                            {row.resend_id && (
-                              <div>
-                                <span className="text-zinc-600">Resend ID</span>
-                                <p className="font-mono text-zinc-400 break-all">{row.resend_id}</p>
-                              </div>
-                            )}
-                            {row.presupuesto_id && (
-                              <div>
-                                <span className="text-zinc-600">Presupuesto</span>
-                                <a
-                                  href={`/admin/presupuestos?id=${row.presupuesto_id}`}
-                                  className="font-mono text-amber-400 hover:underline"
-                                  onClick={(e) => e.stopPropagation()}
-                                >
-                                  {row.presupuesto_id} →
-                                </a>
-                              </div>
-                            )}
-                          </div>
-                          <button
-                            className="mt-3 flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors"
-                            onClick={(e) => { e.stopPropagation(); onReply(row.destinatario, `Re: ${row.asunto}`); }}
-                          >
-                            <MessageSquareReply className="h-3.5 w-3.5" />
-                            Responder
-                          </button>
-                        </td>
-                      </tr>
-                    )}
-                  </Fragment>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
-
-        {totalPages > 1 && (
-          <div className="flex items-center justify-between border-t border-white/8 px-4 py-3">
-            <span className="text-xs text-zinc-600">
-              {filtered.length} resultado{filtered.length !== 1 ? 's' : ''} · pág. {page + 1} de {totalPages}
-            </span>
-            <div className="flex gap-2">
-              <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="rounded border border-white/8 px-3 py-1 text-xs text-zinc-400 hover:border-white/20 disabled:opacity-30">
-                ← Anterior
-              </button>
-              <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} className="rounded border border-white/8 px-3 py-1 text-xs text-zinc-400 hover:border-white/20 disabled:opacity-30">
-                Siguiente →
-              </button>
-            </div>
-          </div>
-        )}
-      </AdminCard>
-    </div>
-  );
-}
-
-// ─── Tab: Envío rápido ────────────────────────────────────────────────────────
-
-const AI_PRESETS = [
-  { label: 'Oscuro', instruccion: 'Rediseña con fondo oscuro #1a1a1a, texto blanco, acentos en color amber #f59e0b. Mantén el contenido exacto.' },
-  { label: 'Profesional', instruccion: 'Estilo corporativo: fondo blanco, tipografía system-ui, colores neutros grises, botones redondeados en azul #2563eb.' },
-  { label: 'Minimalista', instruccion: 'Diseño ultra-limpio: solo texto, sin decoraciones excesivas, tipografía grande, mucho espacio en blanco.' },
-];
-
-interface TabEnvioProps {
-  keyConfigured: boolean;
+interface ComposeProps {
+  onClose: () => void;
+  onSent: () => void;
   initialTo?: string;
   initialSubject?: string;
 }
 
-function TabEnvio({ keyConfigured, initialTo = '', initialSubject = '' }: TabEnvioProps) {
+const AI_PRESETS = [
+  { label: 'Profesional', prompt: 'Convierte este correo a un estilo profesional y corporativo. Usa colores oscuros, tipografía limpia, sin emojis.' },
+  { label: 'Oscuro', prompt: 'Dale un estilo moderno dark con fondo negro/zinc, texto blanco, acentos en amarillo o dorado. Muy premium.' },
+  { label: 'Minimalista', prompt: 'Hazlo minimalista: fondo blanco, texto negro, sin imágenes, solo tipografía y espaciado.' },
+];
+
+function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: ComposeProps) {
   const [to, setTo] = useState(initialTo);
   const [subject, setSubject] = useState(initialSubject);
-  const [from, setFrom] = useState('');
-  const [htmlBody, setHtmlBody] = useState('');
-  const [originalHtml, setOriginalHtml] = useState('');
-  const [editorTab, setEditorTab] = useState<'html' | 'preview'>('html');
+  const [body, setBody] = useState('<p>Hola,</p><p><br/></p><p>Saludos,<br/>Soluciones Fabrick</p>');
+  const [preview, setPreview] = useState(false);
   const [sending, setSending] = useState(false);
-  const [result, setResult] = useState<{ ok: boolean; id?: string | null; error?: string } | null>(null);
-
-  // AI
-  const [instruccion, setInstruccion] = useState('');
   const [aiLoading, setAiLoading] = useState(false);
-  const [aiError, setAiError] = useState('');
-  const [aiConfig, setAiConfig] = useState<AiConfigResponse | null>(null);
+  const [notice, setNotice] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null);
+  const [instruccion, setInstruccion] = useState('');
+  const originalRef = useRef(body);
+
+  const handleSend = useCallback(async () => {
+    if (!to.includes('@')) { setNotice({ type: 'err', msg: 'Destinatario inválido' }); return; }
+    if (!subject.trim()) { setNotice({ type: 'err', msg: 'Asunto requerido' }); return; }
+    setSending(true);
+    setNotice(null);
+    try {
+      const r = await fetch('/api/admin/correo/send', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ to, subject, html: body }),
+      });
+      const data = await r.json() as { ok: boolean; error?: string };
+      if (!data.ok) { setNotice({ type: 'err', msg: data.error ?? 'Error al enviar' }); return; }
+      setNotice({ type: 'ok', msg: '¡Correo enviado correctamente!' });
+      setTimeout(() => { onSent(); onClose(); }, 1500);
+    } finally { setSending(false); }
+  }, [to, subject, body, onSent, onClose]);
+
+  const handleAi = useCallback(async (presetPrompt?: string) => {
+    const prompt = presetPrompt ?? instruccion;
+    if (!prompt.trim()) { setNotice({ type: 'err', msg: 'Escribe una instrucción' }); return; }
+    setAiLoading(true); setNotice(null);
+    try {
+      const r = await fetch('/api/admin/correo/ai-style', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, currentHtml: body }),
+      });
+      const data = await r.json() as { ok: boolean; html?: string; error?: string };
+      if (!data.ok || !data.html) { setNotice({ type: 'err', msg: data.error ?? 'Sin respuesta de IA' }); return; }
+      originalRef.current = body;
+      setBody(data.html);
+    } finally { setAiLoading(false); }
+  }, [instruccion, body]);
 
   useEffect(() => {
-    fetch('/api/admin/ia/config')
-      .then((r) => r.json() as Promise<AiConfigResponse>)
-      .then(setAiConfig)
-      .catch(() => {/* silent */});
-  }, []);
-
-  // Re-fill when a reply is triggered from another tab
-  useEffect(() => { if (initialTo) setTo(initialTo); }, [initialTo]);
-  useEffect(() => { if (initialSubject) setSubject(initialSubject); }, [initialSubject]);
-
-  async function handleSend(e: React.FormEvent) {
-    e.preventDefault();
-    setSending(true);
-    setResult(null);
-    try {
-      const res = await fetch('/api/admin/correo/send', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to, subject, html: htmlBody, from: from || undefined }),
-      });
-      const data = (await res.json()) as SendResponse;
-      setResult(data);
-    } catch (err) {
-      setResult({ ok: false, error: (err as Error).message });
-    } finally {
-      setSending(false);
-    }
-  }
-
-  async function handleAiStyle(preset?: string) {
-    if (!htmlBody.trim()) { setAiError('Añade contenido HTML antes de usar la IA.'); return; }
-    setAiLoading(true);
-    setAiError('');
-    const instr = preset ?? instruccion;
-    try {
-      const res = await fetch('/api/admin/correo/ai-style', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ html: htmlBody, instruccion: instr }),
-      });
-      const data = (await res.json()) as AiStyleResponse;
-      if (data.ok && data.html) {
-        if (!originalHtml) setOriginalHtml(htmlBody);
-        setHtmlBody(data.html);
-        setEditorTab('preview');
-      } else {
-        setAiError(data.error ?? 'Error desconocido');
-      }
-    } catch (err) {
-      setAiError((err as Error).message);
-    } finally {
-      setAiLoading(false);
-    }
-  }
-
-  function handleRestore() {
-    if (originalHtml) {
-      setHtmlBody(originalHtml);
-      setOriginalHtml('');
-    }
-  }
-
-  const inputCls = 'w-full rounded-lg border border-white/8 bg-white/4 px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/20 focus:bg-white/6 transition-colors';
+    const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
 
   return (
-    <div className="space-y-4">
-      {/* Credential banner */}
-      <div className={`flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm ${keyConfigured ? 'border-emerald-500/20 bg-emerald-900/10 text-emerald-300' : 'border-red-500/20 bg-red-900/10 text-red-300'}`}>
-        <span className={`h-2 w-2 rounded-full ${keyConfigured ? 'bg-emerald-400' : 'bg-red-400'}`} />
-        {keyConfigured ? (
-          'Resend configurado · listo para enviar'
-        ) : (
-          <>Sin credenciales — <a href="/admin/integraciones" className="underline hover:text-red-200">Configurar →</a></>
-        )}
-      </div>
-
-      <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
-        {/* Left: Email form + editor */}
-        <form onSubmit={handleSend} className="space-y-4">
-          <AdminCard className="p-5 space-y-4">
-            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">Destinatario & asunto</p>
-            <div className="grid gap-3 sm:grid-cols-2">
-              <div className="space-y-1.5">
-                <label className="text-[11px] uppercase tracking-wide text-zinc-500">Para *</label>
-                <input type="email" required value={to} onChange={(e) => setTo(e.target.value)} placeholder="cliente@empresa.com" className={inputCls} />
-              </div>
-              <div className="space-y-1.5">
-                <label className="text-[11px] uppercase tracking-wide text-zinc-500">De (opcional)</label>
-                <input type="text" value={from} onChange={(e) => setFrom(e.target.value)} placeholder="Nombre <email@dominio.com>" className={inputCls} />
-              </div>
-            </div>
-            <div className="space-y-1.5">
-              <label className="text-[11px] uppercase tracking-wide text-zinc-500">Asunto *</label>
-              <input type="text" required value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Asunto del correo…" className={inputCls} />
-            </div>
-          </AdminCard>
-
-          {/* HTML editor with sub-tabs */}
-          <AdminCard className="p-0 overflow-hidden">
-            <div className="flex items-center gap-0 border-b border-white/8">
-              {(['html', 'preview'] as const).map((t) => (
-                <button
-                  key={t}
-                  type="button"
-                  onClick={() => setEditorTab(t)}
-                  className={`px-4 py-2.5 text-xs font-semibold capitalize transition-colors ${editorTab === t ? 'bg-white/6 text-white border-b-2 border-amber-500' : 'text-zinc-500 hover:text-zinc-300'}`}
-                >
-                  {t === 'html' ? 'HTML' : 'Vista previa'}
-                </button>
-              ))}
-            </div>
-            {editorTab === 'html' ? (
-              <textarea
-                value={htmlBody}
-                onChange={(e) => setHtmlBody(e.target.value)}
-                rows={18}
-                placeholder={'<!DOCTYPE html>\n<html>\n<body>\n  <p>Escribe aquí tu email en HTML…</p>\n</body>\n</html>'}
-                className="w-full resize-none bg-transparent px-4 py-3 font-mono text-xs text-zinc-300 placeholder-zinc-700 outline-none"
-                spellCheck={false}
-              />
-            ) : (
-              <iframe
-                srcDoc={htmlBody || '<p style="font-family:sans-serif;color:#888;text-align:center;padding:60px 20px">Vista previa vacía — escribe HTML en la pestaña HTML</p>'}
-                sandbox=""
-                className="h-80 w-full bg-white"
-                title="Email preview"
-              />
-            )}
-          </AdminCard>
-
-          {result && (
-            <div className={`rounded-lg border px-4 py-3 text-sm ${result.ok ? 'border-emerald-500/30 bg-emerald-900/20 text-emerald-300' : 'border-red-500/30 bg-red-900/20 text-red-300'}`}>
-              {result.ok ? `✓ Enviado correctamente${result.id ? ` · ID: ${result.id}` : ''}` : `✗ ${result.error}`}
-            </div>
-          )}
-
-          <button
-            type="submit"
-            disabled={sending || !keyConfigured}
-            className="flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2.5 text-sm font-bold text-black hover:bg-amber-400 disabled:opacity-40 transition-colors"
-          >
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            {sending ? 'Enviando…' : 'Enviar correo'}
+    <div
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
+    >
+      <div className="flex w-full max-w-2xl flex-col rounded-t-2xl sm:rounded-2xl bg-zinc-900 border border-white/10 shadow-2xl max-h-[95dvh] overflow-hidden">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">
+          <h2 className="font-semibold text-white flex items-center gap-2">
+            <MailPlus className="h-4 w-4 text-amber-400" />
+            Nuevo correo
+          </h2>
+          <button onClick={onClose} className="rounded-lg p-1.5 text-zinc-400 hover:text-white hover:bg-white/8 transition-colors">
+            <X className="h-4 w-4" />
           </button>
-        </form>
+        </div>
 
-        {/* Right: AI assistant */}
-        <div className="space-y-4">
-          <AdminCard className="p-5 space-y-4">
-            <div className="flex items-center gap-2">
-              <Sparkles className="h-4 w-4 text-amber-400" />
-              <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400">Asistente de estilo IA</p>
+        <div className="overflow-y-auto flex-1 p-5 space-y-4">
+          {/* Fields */}
+          <div className="space-y-3">
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Para</label>
+              <input
+                type="email"
+                value={to}
+                onChange={(e) => setTo(e.target.value)}
+                placeholder="destinatario@email.com"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/20"
+              />
             </div>
-
-            {aiConfig && (
-              <div className="rounded-lg border border-white/6 bg-white/3 px-3 py-2 text-xs text-zinc-500">
-                Usando: <span className="text-zinc-300 font-medium">{aiConfig.proveedor_ia}</span>
-                {' · '}
-                <span className="font-mono text-zinc-400">{aiConfig.modelo_ia}</span>
-              </div>
-            )}
-
-            <div className="space-y-1.5">
-              <label className="text-[11px] uppercase tracking-wide text-zinc-500">Instrucción</label>
+            <div>
+              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Asunto</label>
               <input
                 type="text"
-                value={instruccion}
-                onChange={(e) => setInstruccion(e.target.value)}
-                placeholder="Hazlo más profesional, oscuro, moderno…"
-                className="w-full rounded-lg border border-white/8 bg-white/4 px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/20 focus:bg-white/6"
+                value={subject}
+                onChange={(e) => setSubject(e.target.value)}
+                placeholder="Asunto del correo"
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/20"
               />
             </div>
+          </div>
 
-            <button
-              type="button"
-              onClick={() => handleAiStyle()}
-              disabled={aiLoading || !htmlBody.trim()}
-              className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 py-2.5 text-sm font-semibold text-amber-300 hover:bg-amber-500/20 disabled:opacity-40 transition-colors"
-            >
-              {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
-              {aiLoading ? 'Mejorando…' : 'Mejorar con IA'}
-            </button>
-
-            {aiError && (
-              <div className="rounded-lg border border-red-500/20 bg-red-900/10 px-3 py-2 text-xs text-red-400">{aiError}</div>
-            )}
-
-            {/* Preset pills */}
-            <div className="space-y-2">
-              <p className="text-[10px] uppercase tracking-wide text-zinc-600">Estilos rápidos</p>
-              <div className="flex flex-col gap-1.5">
-                {AI_PRESETS.map(({ label, instruccion: instr }) => (
-                  <button
-                    key={label}
-                    type="button"
-                    disabled={aiLoading || !htmlBody.trim()}
-                    onClick={() => handleAiStyle(instr)}
-                    className="rounded-lg border border-white/8 px-3 py-2 text-xs text-zinc-400 text-left hover:border-amber-500/30 hover:text-zinc-200 disabled:opacity-40 transition-colors"
-                  >
-                    {label}
-                  </button>
-                ))}
-                {originalHtml && (
-                  <button
-                    type="button"
-                    onClick={handleRestore}
-                    className="flex items-center gap-1.5 rounded-lg border border-white/8 px-3 py-2 text-xs text-zinc-500 hover:border-white/20 hover:text-zinc-300 transition-colors"
-                  >
-                    <RotateCcw className="h-3 w-3" />
-                    Restaurar original
-                  </button>
-                )}
-              </div>
+          {/* AI toolbar */}
+          <div className="rounded-xl border border-white/8 bg-white/3 p-3 space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 flex items-center gap-1.5">
+              <Sparkles className="h-3 w-3 text-amber-500" />
+              Asistente IA
+            </p>
+            <div className="flex flex-wrap gap-1.5">
+              {AI_PRESETS.map((p) => (
+                <button
+                  key={p.label}
+                  onClick={() => void handleAi(p.prompt)}
+                  disabled={aiLoading}
+                  className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-xs text-zinc-300 hover:border-amber-500/40 hover:text-amber-300 transition-colors disabled:opacity-50"
+                >
+                  {p.label}
+                </button>
+              ))}
+              {body !== originalRef.current && (
+                <button
+                  onClick={() => setBody(originalRef.current)}
+                  className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-xs text-zinc-500 hover:text-white transition-colors"
+                >
+                  ↩ Restaurar
+                </button>
+              )}
             </div>
-          </AdminCard>
+            <div className="flex gap-2">
+              <input
+                value={instruccion}
+                onChange={(e) => setInstruccion(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') void handleAi(); }}
+                placeholder="Ej: hazlo más formal, agrega firma..."
+                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none"
+              />
+              <button
+                onClick={() => void handleAi()}
+                disabled={aiLoading || !instruccion.trim()}
+                className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-40 transition-colors"
+              >
+                {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Generar'}
+              </button>
+            </div>
+          </div>
 
-          <AdminCard className="p-4">
-            <p className="text-[10px] uppercase tracking-wide text-zinc-600 mb-2">Ayuda rápida</p>
-            <ul className="space-y-1.5 text-xs text-zinc-500">
-              <li>• Pega tu HTML en el editor y activa la Vista previa para ver cómo se verá</li>
-              <li>• Usa un estilo rápido o escribe tu propia instrucción para la IA</li>
-              <li>• El botón &quot;Restaurar original&quot; aparece después de usar la IA</li>
-              <li>• La IA usa el proveedor configurado en <a href="/admin/ia-config" className="text-amber-400 hover:underline">Configuración IA</a></li>
-            </ul>
-          </AdminCard>
+          {/* Body / Preview toggle */}
+          <div>
+            <div className="mb-2 flex items-center gap-2">
+              <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Cuerpo HTML</label>
+              <button
+                onClick={() => setPreview(!preview)}
+                className="ml-auto rounded-full border border-white/10 px-3 py-0.5 text-[10px] text-zinc-400 hover:text-white transition-colors"
+              >
+                {preview ? 'Editar' : 'Vista previa'}
+              </button>
+            </div>
+            {preview ? (
+              <div className="h-48 overflow-auto rounded-lg border border-white/10 bg-white">
+                <iframe
+                  srcDoc={body}
+                  sandbox=""
+                  className="h-full w-full"
+                  title="Preview"
+                />
+              </div>
+            ) : (
+              <textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                rows={8}
+                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-mono text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none resize-none"
+              />
+            )}
+          </div>
+
+          {notice && (
+            <div className={`rounded-lg px-4 py-2.5 text-sm ${notice.type === 'ok' ? 'bg-emerald-900/30 text-emerald-300 border border-emerald-600/30' : 'bg-red-900/30 text-red-300 border border-red-600/30'}`}>
+              {notice.msg}
+            </div>
+          )}
+        </div>
+
+        {/* Footer */}
+        <div className="flex items-center justify-between gap-3 border-t border-white/8 px-5 py-4">
+          <button onClick={onClose} className="text-sm text-zinc-500 hover:text-white transition-colors">
+            Cancelar
+          </button>
+          <button
+            onClick={handleSend}
+            disabled={sending}
+            className="flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-black hover:bg-amber-400 disabled:opacity-50 transition-colors"
+          >
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            Enviar
+          </button>
         </div>
       </div>
     </div>
   );
 }
 
-// ─── Tab: Config & Dominio ────────────────────────────────────────────────────
+// ─── Email List Row ────────────────────────────────────────────────────────────
 
-function TabConfig({ keyConfigured }: { keyConfigured: boolean }) {
-  const [domains, setDomains] = useState<DomainRow[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [testSending, setTestSending] = useState(false);
-  const [testResult, setTestResult] = useState('');
-
-  const loadDomains = useCallback(async () => {
-    setLoading(true);
-    setError('');
-    try {
-      const res = await fetch('/api/admin/correo/domains');
-      const data = (await res.json()) as DomainsResponse;
-      if (data.ok) setDomains(data.domains);
-      else setError(data.error ?? 'Error al cargar dominios');
-    } catch (err) {
-      setError((err as Error).message);
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { void loadDomains(); }, [loadDomains]);
-
-  async function handleTestSend() {
-    setTestSending(true);
-    setTestResult('');
-    try {
-      const res = await fetch('/api/admin/integrations/test-resend', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      const data = (await res.json()) as { ok: boolean; error?: string };
-      setTestResult(data.ok ? '✓ Email de prueba enviado a tu correo' : `✗ ${data.error ?? 'Error'}`);
-    } catch (err) {
-      setTestResult(`✗ ${(err as Error).message}`);
-    } finally {
-      setTestSending(false);
-    }
-  }
-
-  const domainStatusStyle: Record<string, string> = {
-    verified: 'border-emerald-600/50 text-emerald-300 bg-emerald-900/20',
-    pending: 'border-yellow-600/50 text-yellow-300 bg-yellow-900/20',
-    failed: 'border-red-600/50 text-red-300 bg-red-900/20',
-  };
+function EmailRow({
+  item,
+  selected,
+  onClick,
+}: {
+  item: EmailItem;
+  selected: boolean;
+  onClick: () => void;
+}) {
+  const isReceived = item._kind === 'received';
+  const sender = isReceived ? item.de : item.destinatario;
+  const date = isReceived ? item.fecha_recibido : item.enviado_at;
+  const isUnread = isReceived && !item.leido;
+  const snippet = isReceived
+    ? item.cuerpo_texto.slice(0, 80)
+    : '';
 
   return (
-    <div className="space-y-5">
-      <AdminCard className="p-5">
-        <p className="mb-4 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">Credenciales Resend</p>
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <div className="flex items-center gap-3">
-            {keyConfigured ? (
-              <Shield className="h-5 w-5 text-emerald-400" />
-            ) : (
-              <AlertCircle className="h-5 w-5 text-red-400" />
-            )}
-            <div>
-              <p className="text-sm font-semibold text-white">
-                {keyConfigured ? 'API Key configurada' : 'API Key no configurada'}
-              </p>
-              <p className="text-xs text-zinc-500">
-                {keyConfigured ? 'Las credenciales están activas en Integraciones' : 'Ve a Integraciones para añadir tu API Key de Resend'}
-              </p>
+    <button
+      onClick={onClick}
+      className={`w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all ${
+        selected
+          ? 'bg-amber-500/10 border border-amber-500/20'
+          : 'hover:bg-white/5 border border-transparent'
+      } ${isUnread ? 'font-semibold' : ''}`}
+    >
+      {/* Avatar */}
+      <div className={`h-9 w-9 shrink-0 rounded-full ${avatarColor(sender)} flex items-center justify-center text-white text-sm font-bold`}>
+        {avatarInitial(sender)}
+      </div>
+
+      <div className="flex-1 min-w-0">
+        {/* Top row */}
+        <div className="flex items-center justify-between gap-1">
+          <span className={`truncate text-sm ${isUnread ? 'text-white' : 'text-zinc-200'}`}>
+            {sender || '(sin remitente)'}
+          </span>
+          <span className="shrink-0 text-[10px] text-zinc-500">{relDate(date)}</span>
+        </div>
+        {/* Subject */}
+        <p className={`truncate text-xs mt-0.5 ${isUnread ? 'text-zinc-200' : 'text-zinc-400'}`}>
+          {item.asunto || '(sin asunto)'}
+        </p>
+        {/* Snippet / badge */}
+        <div className="flex items-center gap-2 mt-1">
+          {snippet && (
+            <p className="flex-1 truncate text-[11px] text-zinc-600 line-clamp-1">
+              {snippet}
+            </p>
+          )}
+          {isUnread && (
+            <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+          )}
+          {!isReceived && (
+            <EstadoBadge estado={item.estado} />
+          )}
+          {isReceived && item.respondido && (
+            <span className="shrink-0 text-[10px] text-zinc-600">↩</span>
+          )}
+        </div>
+      </div>
+      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-zinc-700 mt-1" />
+    </button>
+  );
+}
+
+// ─── Email Detail ──────────────────────────────────────────────────────────────
+
+function EmailDetail({
+  item,
+  onBack,
+  onReply,
+  onMarkRead,
+}: {
+  item: EmailItem;
+  onBack: () => void;
+  onReply: (to: string, subject: string) => void;
+  onMarkRead: (id: string) => void;
+}) {
+  const isReceived = item._kind === 'received';
+  const from = isReceived ? item.de : 'Tú';
+  const to = isReceived ? item.para : item.destinatario;
+  const date = isReceived ? item.fecha_recibido : item.enviado_at;
+  const hasHtml = isReceived && Boolean(item.cuerpo_html?.trim());
+  const hasText = isReceived && Boolean(item.cuerpo_texto?.trim());
+
+  return (
+    <div className="flex flex-col h-full">
+      {/* Header bar */}
+      <div className="flex items-center gap-3 border-b border-white/8 px-4 py-4 shrink-0">
+        <button onClick={onBack} className="lg:hidden rounded-lg p-1.5 text-zinc-400 hover:text-white hover:bg-white/8 transition-colors">
+          <ArrowLeft className="h-4 w-4" />
+        </button>
+        <div className={`h-10 w-10 shrink-0 rounded-full ${avatarColor(from)} flex items-center justify-center text-white font-bold`}>
+          {avatarInitial(from)}
+        </div>
+        <div className="flex-1 min-w-0">
+          <p className="truncate font-semibold text-white">{item.asunto || '(sin asunto)'}</p>
+          <p className="truncate text-xs text-zinc-400 mt-0.5">
+            {from} → {to}
+          </p>
+        </div>
+        <span className="shrink-0 text-xs text-zinc-500">{fullDate(date)}</span>
+      </div>
+
+      {/* Metadata for sent */}
+      {!isReceived && (
+        <div className="border-b border-white/8 px-5 py-3 flex flex-wrap gap-3 items-center shrink-0">
+          <EstadoBadge estado={item.estado} />
+          {item.tipo === 'manual' && (
+            <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-500">manual</span>
+          )}
+          {item.resend_id && (
+            <span className="text-[10px] text-zinc-600 font-mono truncate max-w-[180px]" title={item.resend_id}>
+              ID: {item.resend_id.slice(0, 16)}…
+            </span>
+          )}
+        </div>
+      )}
+
+      {/* Body */}
+      <div className="flex-1 overflow-hidden">
+        {isReceived ? (
+          hasHtml ? (
+            <iframe
+              srcDoc={item.cuerpo_html}
+              sandbox=""
+              className="h-full w-full bg-white"
+              title="Correo recibido"
+            />
+          ) : hasText ? (
+            <div className="h-full overflow-y-auto p-5">
+              <pre className="text-sm text-zinc-200 whitespace-pre-wrap font-sans">{item.cuerpo_texto}</pre>
             </div>
-          </div>
-          <div className="flex flex-wrap gap-2">
-            <a
-              href="/admin/integraciones"
-              className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300 hover:border-white/20 hover:text-white transition-colors"
-            >
-              <KeyRound className="h-3.5 w-3.5" />
-              Gestionar credenciales
-              <ExternalLink className="h-3 w-3" />
-            </a>
-            <button
-              onClick={handleTestSend}
-              disabled={testSending || !keyConfigured}
-              className="flex items-center gap-1.5 rounded-lg bg-amber-500/10 border border-amber-500/30 px-3 py-2 text-xs text-amber-300 hover:bg-amber-500/20 disabled:opacity-40 transition-colors"
-            >
-              {testSending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Zap className="h-3.5 w-3.5" />}
-              Enviar prueba
-            </button>
-          </div>
-        </div>
-        {testResult && (
-          <div className={`mt-3 rounded-lg border px-3 py-2 text-xs ${testResult.startsWith('✓') ? 'border-emerald-500/30 bg-emerald-900/20 text-emerald-300' : 'border-red-500/30 bg-red-900/20 text-red-300'}`}>
-            {testResult}
-          </div>
-        )}
-      </AdminCard>
-
-      <AdminCard className="p-5">
-        <div className="mb-4 flex items-center justify-between">
-          <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">Dominios verificados</p>
-          <button onClick={loadDomains} className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
-            <RefreshCw className="h-3 w-3" />
-            Actualizar
-          </button>
-        </div>
-
-        {loading ? (
-          <div className="flex items-center gap-2 py-6 text-zinc-600">
-            <Loader2 className="h-4 w-4 animate-spin" />
-            <span className="text-sm">Cargando dominios…</span>
-          </div>
-        ) : error ? (
-          <div className="rounded-lg border border-red-500/20 bg-red-900/10 px-4 py-3 text-sm text-red-400">{error}</div>
-        ) : domains.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-8 text-zinc-600">
-            <Globe className="h-7 w-7" />
-            <p className="text-sm">Sin dominios configurados</p>
-            <a href="https://resend.com/domains" target="_blank" rel="noreferrer" className="text-xs text-amber-400 hover:underline">
-              Añadir dominio en Resend →
-            </a>
-          </div>
+          ) : (
+            <div className="flex h-full items-center justify-center text-zinc-600 text-sm">
+              Sin contenido
+            </div>
+          )
         ) : (
-          <div className="space-y-2">
-            {domains.map((d) => (
-              <div key={d.id} className="flex items-center justify-between rounded-lg border border-white/6 bg-white/2 px-4 py-3">
-                <div>
-                  <p className="font-mono text-sm text-white">{d.name}</p>
-                  <p className="text-xs text-zinc-600">{d.region || 'us-east-1'} · {fmtDate(d.created_at)}</p>
-                </div>
-                <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${domainStatusStyle[d.status] ?? 'border-zinc-600 text-zinc-400'}`}>
-                  {d.status}
-                </span>
-              </div>
-            ))}
+          <div className="flex h-full flex-col items-center justify-center gap-3 text-zinc-600 p-6">
+            <Send className="h-8 w-8 opacity-30" />
+            <p className="text-sm text-center">El cuerpo de los correos enviados no se almacena en la base de datos.</p>
+            <p className="text-xs text-zinc-700 text-center">Puedes ver el estado de entrega en el badge de arriba.</p>
           </div>
         )}
-      </AdminCard>
+      </div>
+
+      {/* Actions */}
+      <div className="border-t border-white/8 px-4 py-3 flex items-center gap-2 shrink-0">
+        {isReceived && (
+          <>
+            <button
+              onClick={() => onReply(item.de, `Re: ${item.asunto}`)}
+              className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-black hover:bg-amber-400 transition-colors"
+            >
+              <Reply className="h-3.5 w-3.5" />
+              Responder
+            </button>
+            {!item.leido && (
+              <button
+                onClick={() => onMarkRead(item.id)}
+                className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-sm text-zinc-300 hover:text-white hover:bg-white/8 transition-colors"
+              >
+                <CheckCheck className="h-3.5 w-3.5" />
+                Marcar leído
+              </button>
+            )}
+          </>
+        )}
+      </div>
     </div>
   );
 }
 
-// ─── Tab: Recibidos ───────────────────────────────────────────────────────────
+// ─── Empty State ───────────────────────────────────────────────────────────────
 
-function TabRecibidos({ onReply }: { onReply: (to: string, subject: string) => void }) {
-  const [data, setData] = useState<InboxResponse | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [expandedId, setExpandedId] = useState<string | null>(null);
-  const [filter, setFilter] = useState<'todos' | 'noLeidos' | 'porResponder'>('todos');
+function EmptyState({ folder }: { folder: Folder }) {
+  return (
+    <div className="flex flex-col items-center justify-center h-full gap-4 text-zinc-600 p-8">
+      {folder === 'inbox' ? (
+        <Inbox className="h-12 w-12 opacity-30" />
+      ) : (
+        <Send className="h-12 w-12 opacity-30" />
+      )}
+      <div className="text-center">
+        <p className="text-sm font-medium text-zinc-500">
+          {folder === 'inbox' ? 'Bandeja vacía' : folder === 'sent' ? 'Sin correos enviados' : 'Sin correos'}
+        </p>
+        <p className="text-xs mt-1">
+          {folder === 'inbox'
+            ? 'Los correos recibidos en tu dominio Resend aparecerán aquí'
+            : 'Los correos enviados desde este panel aparecerán aquí'}
+        </p>
+      </div>
+    </div>
+  );
+}
 
-  const load = useCallback(async () => {
-    setLoading(true);
+// ─── Main Page ────────────────────────────────────────────────────────────────
+
+export default function CorreoPage() {
+  // Data state
+  const [recibidos, setRecibidos] = useState<RecibidoRow[]>([]);
+  const [enviados, setEnviados] = useState<EnviadoRow[]>([]);
+  const [unread, setUnread] = useState(0);
+  const [loadingInbox, setLoadingInbox] = useState(true);
+  const [loadingSent, setLoadingSent] = useState(true);
+
+  // UI state
+  const [folder, setFolder] = useState<Folder>('all');
+  const [search, setSearch] = useState('');
+  const [selected, setSelected] = useState<EmailItem | null>(null);
+  const [compose, setCompose] = useState<{ to?: string; subject?: string } | null>(null);
+  // mobile: 'list' shows list panel, 'detail' shows detail panel
+  const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+
+  // Fetch functions
+  const fetchInbox = useCallback(async (signal?: AbortSignal) => {
+    setLoadingInbox(true);
     try {
-      const qs = filter === 'noLeidos' ? '?noLeidos=1' : '';
-      const res = await fetch(`/api/admin/correo/inbox${qs}`);
-      const json = (await res.json()) as InboxResponse;
-      setData(json);
-    } catch {
-      setData({ ok: false, emails: [], unread: 0, error: 'Error de red' });
-    } finally {
-      setLoading(false);
+      const r = await fetch('/api/admin/correo/inbox', { signal, cache: 'no-store' });
+      if (!r.ok) return;
+      const data = await r.json() as { ok: boolean; emails: RecibidoRow[]; unread: number };
+      if (data.ok) {
+        setRecibidos(data.emails ?? []);
+        setUnread(data.unread ?? 0);
+      }
+    } catch { /* ignore abort */ }
+    finally { setLoadingInbox(false); }
+  }, []);
+
+  const fetchSent = useCallback(async (signal?: AbortSignal) => {
+    setLoadingSent(true);
+    try {
+      const r = await fetch('/api/admin/correo/stats', { signal, cache: 'no-store' });
+      if (!r.ok) return;
+      const data = await r.json() as { ok: boolean; recent: EnviadoRow[] };
+      if (data.ok) setEnviados(data.recent ?? []);
+    } catch { /* ignore abort */ }
+    finally { setLoadingSent(false); }
+  }, []);
+
+  const refresh = useCallback(() => {
+    const ctrl = new AbortController();
+    void fetchInbox(ctrl.signal);
+    void fetchSent(ctrl.signal);
+    return ctrl;
+  }, [fetchInbox, fetchSent]);
+
+  // Initial load + 30s auto-refresh
+  useEffect(() => {
+    const ctrl = refresh();
+    const interval = setInterval(() => { void refresh(); }, 30_000);
+    return () => { ctrl.abort(); clearInterval(interval); };
+  }, [refresh]);
+
+  // Combined + filtered list
+  const allItems = useMemo<EmailItem[]>(() => {
+    const received: EmailItem[] = recibidos.map((e) => ({ _kind: 'received' as const, ...e }));
+    const sent: EmailItem[] = enviados.map((e) => ({ _kind: 'sent' as const, ...e }));
+
+    let list: EmailItem[] =
+      folder === 'inbox' ? received :
+      folder === 'sent'  ? sent :
+      [...received, ...sent].sort((a, b) => {
+        const ta = a._kind === 'received' ? a.fecha_recibido : a.enviado_at;
+        const tb = b._kind === 'received' ? b.fecha_recibido : b.enviado_at;
+        return new Date(tb).getTime() - new Date(ta).getTime();
+      });
+
+    if (search.trim()) {
+      const q = search.toLowerCase();
+      list = list.filter((item) => {
+        const sender = item._kind === 'received' ? item.de : item.destinatario;
+        return item.asunto.toLowerCase().includes(q) || sender.toLowerCase().includes(q);
+      });
     }
-  }, [filter]);
 
-  useEffect(() => { void load(); }, [load]);
+    return list;
+  }, [recibidos, enviados, folder, search]);
 
-  async function markRead(id: string) {
+  const loading = loadingInbox || loadingSent;
+
+  const handleSelect = useCallback(async (item: EmailItem) => {
+    setSelected(item);
+    setMobileView('detail');
+    if (item._kind === 'received' && !item.leido) {
+      // Optimistic update
+      setRecibidos((prev) => prev.map((e) => e.id === item.id ? { ...e, leido: true } : e));
+      await fetch('/api/admin/correo/inbox', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: item.id, action: 'leido' }),
+      }).catch(() => {});
+    }
+  }, []);
+
+  const handleMarkRead = useCallback(async (id: string) => {
+    setRecibidos((prev) => prev.map((e) => e.id === id ? { ...e, leido: true } : e));
+    if (selected?._kind === 'received' && selected.id === id) {
+      setSelected({ ...selected, leido: true });
+    }
     await fetch('/api/admin/correo/inbox', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action: 'leido' }),
-    });
-    setData((prev) => prev ? {
-      ...prev,
-      emails: prev.emails.map((e) => e.id === id ? { ...e, leido: true } : e),
-      unread: Math.max(0, prev.unread - 1),
-    } : prev);
-  }
+    }).catch(() => {});
+  }, [selected]);
 
-  const emails = filter === 'porResponder'
-    ? (data?.emails ?? []).filter((e) => !e.respondido)
-    : (data?.emails ?? []);
-
-  return (
-    <div className="space-y-4">
-      {/* Filter bar */}
-      <AdminCard className="p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {([
-            { id: 'todos', label: 'Todos' },
-            { id: 'noLeidos', label: `No leídos${data?.unread ? ` (${data.unread})` : ''}` },
-            { id: 'porResponder', label: 'Por responder' },
-          ] as { id: typeof filter; label: string }[]).map(({ id, label }) => (
-            <button
-              key={id}
-              onClick={() => setFilter(id)}
-              className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${filter === id ? 'border-amber-500 bg-amber-500 text-black' : 'border-white/10 text-zinc-400 hover:border-white/20'}`}
-            >
-              {label}
-            </button>
-          ))}
-          <button onClick={load} className="ml-auto flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
-            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
-            Actualizar
-          </button>
-        </div>
-      </AdminCard>
-
-      {/* Inbox setup hint */}
-      <AdminCard className="p-4">
-        <div className="flex items-start gap-3">
-          <Mail className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
-          <div className="text-xs text-zinc-500 space-y-1">
-            <p className="font-semibold text-zinc-300">Configurar correo entrante</p>
-            <p>Para recibir emails aquí, activa el Inbound en tu dominio Resend y apunta el webhook a:</p>
-            <code className="block rounded bg-white/5 px-2 py-1 text-zinc-400 text-[11px] break-all">
-              {typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/resend
-            </code>
-            <a href="https://resend.com/inbound" target="_blank" rel="noreferrer" className="text-amber-400 hover:underline inline-flex items-center gap-1">
-              Documentación Resend Inbound <ExternalLink className="h-2.5 w-2.5" />
-            </a>
-          </div>
-        </div>
-      </AdminCard>
-
-      {/* Email list */}
-      <AdminCard className="p-0 overflow-hidden">
-        {loading ? (
-          <div className="flex items-center justify-center py-16 text-zinc-600">
-            <Loader2 className="h-5 w-5 animate-spin" />
-          </div>
-        ) : emails.length === 0 ? (
-          <div className="flex flex-col items-center gap-3 py-16 text-zinc-600">
-            <Inbox className="h-8 w-8" />
-            <p className="text-sm">
-              {filter === 'noLeidos' ? 'Ningún correo sin leer' : filter === 'porResponder' ? 'Ningún correo pendiente de respuesta' : 'Bandeja de entrada vacía'}
-            </p>
-          </div>
-        ) : (
-          <div>
-            {emails.map((email) => (
-              <Fragment key={email.id}>
-                <div
-                  className={`border-b border-white/4 px-4 py-3 hover:bg-white/3 transition-colors cursor-pointer ${!email.leido ? 'bg-amber-500/3 border-l-2 border-l-amber-500/40' : ''}`}
-                  onClick={() => {
-                    setExpandedId(expandedId === email.id ? null : email.id);
-                    if (!email.leido) void markRead(email.id);
-                  }}
-                >
-                  <div className="flex items-start justify-between gap-3">
-                    <div className="flex items-center gap-2 min-w-0">
-                      {email.leido ? (
-                        <MailOpen className="h-4 w-4 shrink-0 text-zinc-600" />
-                      ) : (
-                        <Mail className="h-4 w-4 shrink-0 text-amber-400" />
-                      )}
-                      <div className="min-w-0">
-                        <p className={`text-sm truncate ${email.leido ? 'text-zinc-400' : 'font-semibold text-white'}`}>
-                          {email.de || '(sin remitente)'}
-                        </p>
-                        <p className="text-xs text-zinc-500 truncate">{email.asunto || '(sin asunto)'}</p>
-                      </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {email.respondido && (
-                        <span className="rounded-full border border-emerald-600/40 bg-emerald-900/20 px-2 py-0.5 text-[10px] text-emerald-400">Respondido</span>
-                      )}
-                      <span className="text-[11px] text-zinc-600 whitespace-nowrap">{fmtDate(email.fecha_recibido)}</span>
-                      {expandedId === email.id ? <ChevronUp className="h-3.5 w-3.5 text-zinc-600" /> : <ChevronDown className="h-3.5 w-3.5 text-zinc-600" />}
-                    </div>
-                  </div>
-                </div>
-
-                {expandedId === email.id && (
-                  <div className="border-b border-white/4 bg-white/2 px-4 py-4 space-y-4">
-                    <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
-                      <div>
-                        <span className="text-zinc-600">De</span>
-                        <p className="font-mono text-zinc-300">{email.de}</p>
-                      </div>
-                      <div>
-                        <span className="text-zinc-600">Para</span>
-                        <p className="font-mono text-zinc-400">{email.para || '—'}</p>
-                      </div>
-                      <div>
-                        <span className="text-zinc-600">Fecha</span>
-                        <p className="text-zinc-400">{fmtDate(email.fecha_recibido)}</p>
-                      </div>
-                    </div>
-
-                    {/* Body preview */}
-                    {email.cuerpo_html ? (
-                      <iframe
-                        srcDoc={email.cuerpo_html}
-                        sandbox=""
-                        className="h-64 w-full rounded-lg border border-white/8 bg-white"
-                        title="Email body"
-                      />
-                    ) : email.cuerpo_texto ? (
-                      <div className="rounded-lg border border-white/8 bg-white/3 px-4 py-3 text-xs text-zinc-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
-                        {email.cuerpo_texto}
-                      </div>
-                    ) : null}
-
-                    <button
-                      className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors"
-                      onClick={() => onReply(email.de, `Re: ${email.asunto}`)}
-                    >
-                      <MessageSquareReply className="h-3.5 w-3.5" />
-                      Responder
-                    </button>
-                  </div>
-                )}
-              </Fragment>
-            ))}
-          </div>
-        )}
-      </AdminCard>
-    </div>
-  );
-}
-
-// ─── Main page ────────────────────────────────────────────────────────────────
-
-export default function CorreoPage() {
-  const [tab, setTab] = useState<Tab>('resumen');
-  const [stats, setStats] = useState<StatsResponse | null>(null);
-  const [loadingStats, setLoadingStats] = useState(true);
-  const [statsError, setStatsError] = useState('');
-  const [replyTo, setReplyTo] = useState('');
-  const [replySubject, setReplySubject] = useState('');
-  const [unread, setUnread] = useState(0);
-
-  // Load unread count for badge
-  useEffect(() => {
-    fetch('/api/admin/correo/inbox')
-      .then((r) => r.json() as Promise<InboxResponse>)
-      .then((d) => setUnread(d.unread ?? 0))
-      .catch(() => {/* silent */});
+  const handleReply = useCallback((to: string, subject: string) => {
+    setCompose({ to, subject });
   }, []);
 
-  function handleReply(to: string, subject: string) {
-    setReplyTo(to);
-    setReplySubject(subject);
-    setTab('envio');
-  }
+  const handleSent = useCallback(() => {
+    void fetchSent();
+  }, [fetchSent]);
 
-  const loadStats = useCallback(async () => {
-    setLoadingStats(true);
-    setStatsError('');
-    try {
-      const res = await fetch('/api/admin/correo/stats');
-      const data = (await res.json()) as StatsResponse;
-      if (data.ok) setStats(data);
-      else setStatsError(data.error ?? 'Error al cargar estadísticas');
-    } catch (err) {
-      setStatsError((err as Error).message);
-    } finally {
-      setLoadingStats(false);
-    }
-  }, []);
-
-  useEffect(() => { void loadStats(); }, [loadStats]);
-
-  const TABS: { id: Tab; label: string; badge?: number }[] = [
-    { id: 'resumen', label: 'Resumen' },
-    { id: 'bandeja', label: 'Bandeja' },
-    { id: 'recibidos', label: 'Recibidos', badge: unread },
-    { id: 'envio', label: 'Envío rápido' },
-    { id: 'config', label: 'Dominio & Config' },
-  ];
+  const isRefreshing = loading;
 
   return (
-    <AdminPage>
-      <AdminPageHeader
-        eyebrow="Comunicaciones"
-        title="Correo · Resend"
-        description="Bandeja de salida, estadísticas y configuración del proveedor Resend"
-        icon={Mail}
-        actions={
-          <button
-            onClick={loadStats}
-            className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-400 hover:border-white/20 hover:text-zinc-200 transition-colors"
-          >
-            <RefreshCw className={`h-3.5 w-3.5 ${loadingStats ? 'animate-spin' : ''}`} />
-            Actualizar
-          </button>
-        }
-      />
-
-      {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1">
-        {TABS.map(({ id, label, badge }) => (
-          <button
-            key={id}
-            onClick={() => setTab(id)}
-            className={`shrink-0 relative rounded-full border px-4 py-2 text-sm transition-colors ${
-              tab === id
-                ? 'border-amber-500 bg-amber-500 text-black font-semibold'
-                : 'border-white/10 text-zinc-300 hover:border-white/20'
-            }`}
-          >
-            {label}
-            {(badge ?? 0) > 0 && (
-              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
-                {badge}
-              </span>
-            )}
-          </button>
-        ))}
+    <>
+      {/* Header */}
+      <div className="border-b border-white/8 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-20 px-4 py-3 flex items-center gap-3">
+        <div className="flex-1 min-w-0">
+          <h1 className="text-base font-bold text-white flex items-center gap-2">
+            <MailOpen className="h-4 w-4 text-amber-400" />
+            Centro de Correo
+          </h1>
+          <p className="text-xs text-zinc-500 mt-0.5">
+            {unread > 0 ? (
+              <span className="text-blue-400">{unread} sin leer · </span>
+            ) : null}
+            {enviados.length} enviados · {recibidos.length} recibidos
+          </p>
+        </div>
+        <button
+          onClick={() => refresh()}
+          disabled={isRefreshing}
+          className="rounded-lg p-2 text-zinc-400 hover:text-white hover:bg-white/8 transition-colors"
+          title="Actualizar"
+        >
+          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+        </button>
+        <button
+          onClick={() => setCompose({})}
+          className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-black hover:bg-amber-400 transition-colors"
+        >
+          <MailPlus className="h-3.5 w-3.5" />
+          Redactar
+        </button>
       </div>
 
-      {/* Content */}
-      {loadingStats && tab !== 'envio' && tab !== 'config' ? (
-        <div className="flex items-center justify-center py-20 text-zinc-600">
-          <Loader2 className="h-6 w-6 animate-spin" />
-        </div>
-      ) : statsError && tab !== 'envio' && tab !== 'config' ? (
-        <AdminCard className="p-5">
-          <div className="flex items-center gap-3 text-red-400">
-            <AlertCircle className="h-5 w-5 shrink-0" />
-            <p className="text-sm">{statsError}</p>
+      {/* 3-panel layout */}
+      <div className="flex h-[calc(100dvh-7rem)] overflow-hidden">
+
+        {/* ── Sidebar ── */}
+        <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} lg:flex w-full lg:w-52 shrink-0 flex-col border-r border-white/8 bg-zinc-950/60 overflow-y-auto`}>
+          <nav className="p-3 space-y-1">
+            {([
+              { key: 'all',   label: 'Todos',      icon: MailOpen, count: enviados.length + recibidos.length, badge: 0 },
+              { key: 'inbox', label: 'Recibidos',  icon: Inbox,    count: recibidos.length, badge: unread },
+              { key: 'sent',  label: 'Enviados',   icon: Send,     count: enviados.length, badge: 0 },
+            ] as const).map(({ key, label, icon: Icon, count, badge }) => (
+              <button
+                key={key}
+                onClick={() => { setFolder(key); setSelected(null); }}
+                className={`w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-all ${
+                  folder === key
+                    ? 'bg-amber-500/10 text-amber-300 font-semibold border border-amber-500/20'
+                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
+                }`}
+              >
+                <Icon className="h-4 w-4 shrink-0" />
+                <span className="flex-1 text-left">{label}</span>
+                {badge !== undefined && badge > 0 ? (
+                  <span className="rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
+                    {badge}
+                  </span>
+                ) : (
+                  <span className="text-[10px] text-zinc-700">{count}</span>
+                )}
+              </button>
+            ))}
+          </nav>
+
+          {/* Compose shortcut in sidebar */}
+          <div className="mt-auto p-3 border-t border-white/8">
+            <button
+              onClick={() => setCompose({})}
+              className="w-full flex items-center gap-2 rounded-xl border border-dashed border-white/10 px-3 py-2.5 text-xs text-zinc-500 hover:text-white hover:border-white/20 transition-colors"
+            >
+              <MailPlus className="h-3.5 w-3.5" />
+              Nuevo correo
+            </button>
           </div>
-        </AdminCard>
-      ) : (
-        <>
-          {tab === 'resumen' && stats && <TabResumen stats={stats} />}
-          {tab === 'bandeja' && stats && <TabBandeja emails={stats.recent} onReply={handleReply} />}
-          {tab === 'recibidos' && <TabRecibidos onReply={handleReply} />}
-          {tab === 'envio' && <TabEnvio keyConfigured={stats?.key_configured ?? false} initialTo={replyTo} initialSubject={replySubject} />}
-          {tab === 'config' && <TabConfig keyConfigured={stats?.key_configured ?? false} />}
-        </>
+        </div>
+
+        {/* ── Email List ── */}
+        <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-80 shrink-0 border-r border-white/8 bg-zinc-950/30 overflow-hidden`}>
+          {/* Search */}
+          <div className="border-b border-white/8 p-3">
+            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
+              <svg className="h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+              </svg>
+              <input
+                type="search"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar por asunto o remitente…"
+                className="flex-1 bg-transparent text-xs text-white placeholder:text-zinc-600 focus:outline-none"
+              />
+              {search && (
+                <button onClick={() => setSearch('')} className="text-zinc-600 hover:text-white">
+                  <X className="h-3 w-3" />
+                </button>
+              )}
+            </div>
+          </div>
+
+          {/* Filter pills */}
+          <div className="flex gap-1.5 px-3 py-2 border-b border-white/8 overflow-x-auto">
+            {folder === 'inbox' && (
+              <>
+                {['Todos','No leídos','Respondidos'].map((f) => (
+                  <button key={f} className="shrink-0 rounded-full border border-white/10 bg-zinc-800/60 px-2.5 py-1 text-[11px] text-zinc-400 hover:text-white transition-colors">
+                    {f}
+                  </button>
+                ))}
+              </>
+            )}
+            {folder === 'sent' && (
+              <>
+                {['Todos','Entregado','Abierto','Rebotado'].map((f) => (
+                  <button key={f} className="shrink-0 rounded-full border border-white/10 bg-zinc-800/60 px-2.5 py-1 text-[11px] text-zinc-400 hover:text-white transition-colors">
+                    {f}
+                  </button>
+                ))}
+              </>
+            )}
+            {folder === 'all' && (
+              <>
+                {['Todos','Recibidos','Enviados'].map((f) => (
+                  <button key={f} className="shrink-0 rounded-full border border-white/10 bg-zinc-800/60 px-2.5 py-1 text-[11px] text-zinc-400 hover:text-white transition-colors">
+                    {f}
+                  </button>
+                ))}
+              </>
+            )}
+          </div>
+
+          {/* List */}
+          <div className="flex-1 overflow-y-auto">
+            {loading ? (
+              <Skeleton />
+            ) : allItems.length === 0 ? (
+              <EmptyState folder={folder} />
+            ) : (
+              <div className="p-2 space-y-0.5">
+                {allItems.map((item) => (
+                  <EmailRow
+                    key={`${item._kind}-${item.id}`}
+                    item={item}
+                    selected={selected?._kind === item._kind && selected?.id === item.id}
+                    onClick={() => void handleSelect(item)}
+                  />
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* ── Detail Panel ── */}
+        <div className={`${mobileView === 'detail' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col min-w-0 bg-zinc-950/10 overflow-hidden`}>
+          {selected ? (
+            <EmailDetail
+              item={selected}
+              onBack={() => setMobileView('list')}
+              onReply={handleReply}
+              onMarkRead={handleMarkRead}
+            />
+          ) : (
+            <div className="flex flex-col items-center justify-center h-full gap-4 text-zinc-700">
+              <MailOpen className="h-14 w-14 opacity-20" />
+              <div className="text-center">
+                <p className="text-sm font-medium">Selecciona un correo</p>
+                <p className="text-xs mt-1 text-zinc-800">para ver su contenido aquí</p>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* Compose Modal */}
+      {compose !== null && (
+        <ComposeModal
+          onClose={() => setCompose(null)}
+          onSent={handleSent}
+          initialTo={compose.to}
+          initialSubject={compose.subject}
+        />
       )}
-    </AdminPage>
+    </>
   );
 }

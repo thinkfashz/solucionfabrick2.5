@@ -30,9 +30,9 @@ async function rawsql(query: string) {
   return res.json() as Promise<DbResult>;
 }
 
-type Provider = 'anthropic' | 'groq';
+type Provider = 'anthropic' | 'groq' | 'openrouter';
 
-interface AiConfig { provider: Provider; apiKey: string; modelo: string }
+interface AiConfig { provider: Provider; apiKey: string; modelo: string; siteUrl?: string; appName?: string }
 
 async function getStoredConfig(): Promise<AiConfig | null> {
   try {
@@ -40,32 +40,40 @@ async function getStoredConfig(): Promise<AiConfig | null> {
       `SELECT anthropic_api_key, modelo_ia, proveedor_ia FROM configuracion_ia WHERE id = 'singleton' LIMIT 1;`
     );
     const row = (configData?.data?.rows as DbConfigRow[] | undefined)?.[0];
-    const proveedor = (row?.proveedor_ia as Provider | undefined) ?? 'anthropic';
+    const proveedor = (row?.proveedor_ia ?? 'anthropic') as Provider;
+    const prefModelo = row?.modelo_ia ?? '';
+
+    if (proveedor === 'openrouter') {
+      const d = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'openrouter' LIMIT 1;`);
+      const r = (d?.data?.rows as DbIntegrationRow[] | undefined)?.[0];
+      const k = (r?.credentials?.api_key ?? '').trim();
+      if (k) return { provider: 'openrouter', apiKey: k, modelo: prefModelo || 'meta-llama/llama-3.3-70b-instruct:free', siteUrl: r?.credentials?.site_url, appName: r?.credentials?.app_name };
+    }
 
     if (proveedor === 'groq') {
-      const groqData = await rawsql(
-        `SELECT credentials FROM integrations WHERE provider = 'groq' LIMIT 1;`
-      );
+      const groqData = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'groq' LIMIT 1;`);
       const groqRow = (groqData?.data?.rows as DbIntegrationRow[] | undefined)?.[0];
       const groqKey = (groqRow?.credentials?.api_key ?? '').trim();
-      const groqModelo = (groqRow?.credentials?.modelo ?? 'llama-3.3-70b-versatile').trim();
-      if (groqKey) return { provider: 'groq', apiKey: groqKey, modelo: groqModelo };
+      if (groqKey) return { provider: 'groq', apiKey: groqKey, modelo: prefModelo || groqRow?.credentials?.modelo || 'llama-3.3-70b-versatile' };
     }
 
     // Try anthropic from integrations table
-    const anthropicData = await rawsql(
-      `SELECT credentials FROM integrations WHERE provider = 'anthropic' LIMIT 1;`
-    );
+    const anthropicData = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'anthropic' LIMIT 1;`);
     const anthropicRow = (anthropicData?.data?.rows as DbIntegrationRow[] | undefined)?.[0];
     const anthropicKey = (anthropicRow?.credentials?.api_key ?? '').trim();
-    const anthropicModelo = (anthropicRow?.credentials?.modelo ?? '').trim();
     if (anthropicKey) {
-      return { provider: 'anthropic', apiKey: anthropicKey, modelo: anthropicModelo || row?.modelo_ia || 'claude-haiku-4-5-20251001' };
+      return { provider: 'anthropic', apiKey: anthropicKey, modelo: prefModelo || anthropicRow?.credentials?.modelo || 'claude-haiku-4-5-20251001' };
     }
 
-    // Fall back to configuracion_ia legacy key
+    // Fallback: try openrouter even if not primary
+    const orData = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'openrouter' LIMIT 1;`);
+    const orRow = (orData?.data?.rows as DbIntegrationRow[] | undefined)?.[0];
+    const orKey = (orRow?.credentials?.api_key ?? '').trim();
+    if (orKey) return { provider: 'openrouter', apiKey: orKey, modelo: prefModelo || 'meta-llama/llama-3.3-70b-instruct:free', siteUrl: orRow?.credentials?.site_url, appName: orRow?.credentials?.app_name };
+
+    // Legacy key in configuracion_ia
     if (row?.anthropic_api_key) {
-      return { provider: 'anthropic', apiKey: row.anthropic_api_key, modelo: row.modelo_ia || 'claude-haiku-4-5-20251001' };
+      return { provider: 'anthropic', apiKey: row.anthropic_api_key, modelo: prefModelo || 'claude-haiku-4-5-20251001' };
     }
   } catch { /* fall through */ }
 
@@ -83,10 +91,21 @@ export async function POST() {
   if (!config) return NextResponse.json({ ok: false, error: 'Sin API key configurada' }, { status: 400 });
 
   try {
-    if (config.provider === 'groq') {
-      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    if (config.provider === 'groq' || config.provider === 'openrouter') {
+      const url = config.provider === 'groq'
+        ? 'https://api.groq.com/openai/v1/chat/completions'
+        : 'https://openrouter.ai/api/v1/chat/completions';
+      const headers: Record<string, string> = {
+        Authorization: `Bearer ${config.apiKey}`,
+        'Content-Type': 'application/json',
+      };
+      if (config.provider === 'openrouter') {
+        if (config.siteUrl) headers['HTTP-Referer'] = config.siteUrl;
+        if (config.appName) headers['X-Title'] = config.appName;
+      }
+      const res = await fetch(url, {
         method: 'POST',
-        headers: { Authorization: `Bearer ${config.apiKey}`, 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           model: config.modelo,
           max_tokens: 16,
@@ -97,7 +116,7 @@ export async function POST() {
       const latency_ms = Date.now() - t0;
       if (!res.ok) return NextResponse.json({ ok: false, error: await res.text(), latency_ms });
       const data = await res.json() as GroqMsg;
-      return NextResponse.json({ ok: true, model: config.modelo, provider: 'groq', latency_ms, reply: data.choices?.[0]?.message?.content || 'OK' });
+      return NextResponse.json({ ok: true, model: config.modelo, provider: config.provider, latency_ms, reply: data.choices?.[0]?.message?.content || 'OK' });
     }
 
     // Anthropic

@@ -66,6 +66,8 @@ const ALLOWED_PROVIDERS = new Set([
   'stripe',       // Stripe payments / webhooks
   'whatsapp',     // WhatsApp Business Cloud API
   'resend',       // Resend transactional email
+  'anthropic',    // Anthropic Claude API
+  'groq',         // Groq LLaMA / Gemma (ultra-fast inference, plan gratuito)
   'openrouter',   // OpenRouter AI chat (gateway a múltiples LLMs)
   'serper',       // Serper.dev (Google SERP API gratis, módulo Inteligencia de Mercado)
   'serpapi',      // SerpAPI (Google SERP, plan pago futuro)

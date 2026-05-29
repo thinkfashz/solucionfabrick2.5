@@ -34,6 +34,7 @@ interface RunEntry {
   input: { url?: string; query?: string; urls?: string[]; prompt?: string };
   result: unknown;
   model: string | null;
+  provider: string | null;
   duration_ms: number | null;
   error: string | null;
   created_at: string;
@@ -204,6 +205,12 @@ function HistoryPanel({
               <div className="min-w-0 flex-1">
                 <p className="truncate text-[11px] text-zinc-300">{label(run)}</p>
                 <div className="flex items-center gap-2 mt-0.5">
+                  {run.provider && (
+                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
+                      run.provider === 'openrouter' ? 'text-purple-400' :
+                      run.provider === 'groq' ? 'text-rose-400' : 'text-amber-400'
+                    }`}>{run.provider}</span>
+                  )}
                   {run.duration_ms && (
                     <span className="flex items-center gap-0.5 text-[10px] text-zinc-600">
                       <Clock className="h-2.5 w-2.5" />{(run.duration_ms / 1000).toFixed(1)}s
@@ -397,7 +404,7 @@ export default function ScrapeGraphPage() {
         mode: run.mode,
         result: run.result,
         model: run.model ?? '',
-        provider: '',
+        provider: run.provider ?? '',
         duration_ms: run.duration_ms ?? 0,
       });
     }
@@ -643,6 +650,13 @@ export default function ScrapeGraphPage() {
                     <span className="font-black text-white">Resultado</span>
                   </div>
                   <span className="rounded-full bg-yellow-400/15 px-2 py-0.5 text-[10px] font-bold text-yellow-400">{result.mode}</span>
+                  {result.provider && (
+                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
+                      result.provider === 'openrouter' ? 'bg-purple-500/20 text-purple-300' :
+                      result.provider === 'groq' ? 'bg-rose-500/20 text-rose-300' :
+                      'bg-amber-500/20 text-amber-300'
+                    }`}>{result.provider}</span>
+                  )}
                   {result.model && (
                     <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-400">{result.model}</span>
                   )}

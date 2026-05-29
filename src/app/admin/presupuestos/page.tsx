@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle, ArrowDown, ArrowUp, Bot, Calendar, CheckCircle, ChevronDown, Clock,
-  Copy, Database, Download, Eye, FileJson, FileText, ImagePlus, Play, Plus, Printer,
+  Copy, Database, Download, Eye, FileJson, FileText, ImagePlus, Mail, MessageSquare, Play, Plus, Printer,
   Save, Send, Star, Trash2, Zap,
 } from 'lucide-react';
 import { AdminCard, AdminMotion, AdminPage, AdminPageHeader } from '@/components/admin/ui';
@@ -21,7 +21,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'datos' | 'items' | 'secciones' | 'imagenes' | 'video' | 'json' | 'html' | 'preview' | 'registros' | 'calendario' | 'radier' | 'ia';
+type Tab = 'datos' | 'items' | 'secciones' | 'imagenes' | 'video' | 'json' | 'html' | 'preview' | 'registros' | 'calendario' | 'radier' | 'ia' | 'email';
 type SaveStatus = 'idle' | 'local' | 'syncing' | 'saved' | 'error';
 
 const tabs: { id: Tab; label: string; icon?: ReactNode }[] = [
@@ -37,6 +37,7 @@ const tabs: { id: Tab; label: string; icon?: ReactNode }[] = [
   { id: 'html', label: 'HTML' },
   { id: 'preview', label: 'Vista previa', icon: <Eye className="h-3 w-3" /> },
   { id: 'registros', label: 'Registros BD', icon: <Database className="h-3 w-3" /> },
+  { id: 'email', label: 'Correo', icon: <Mail className="h-3 w-3" /> },
 ];
 
 const ESTADO_COLORS: Record<string, string> = {
@@ -62,6 +63,17 @@ interface RegistroRow {
   id: string; cliente: string; numero_cliente?: string | null; empresa_cliente?: string | null;
   titulo?: string | null; fecha?: string | null; estado?: string | null;
   total_con_iva?: number | null; public_link?: string | null; generated_at?: string | null;
+}
+
+interface CorreoRow {
+  id: string; presupuesto_id: string; cliente?: string; email_destinatario: string;
+  asunto?: string; estado: string; tipo?: string; reply_to_id?: string; resend_id?: string; error?: string;
+  abierto_at?: string; entregado_at?: string; mensaje_adicional?: string; created_at: string;
+}
+
+interface RespuestaRow {
+  id: number; presupuesto_id: string; correo_id?: string;
+  tipo: string; descripcion: string; nota_interna?: string; created_at: string;
 }
 
 // ─── Small reusable inputs ─────────────────────────────────────────────────────
@@ -154,6 +166,25 @@ export default function PresupuestosBuilderPage() {
   const [seccionesOpen, setSeccionesOpen] = useState<Record<string, boolean>>({ incluye: true, no_incluye: true, materiales: true, observacion: true, forma_pago: true });
   const pendingSaveRef = useRef<PresupuestoPro | null>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  // ── Email state ──────────────────────────────────────────────────────────────
+  const [emailDest, setEmailDest] = useState('');
+  const [emailAsunto, setEmailAsunto] = useState('');
+  const [emailMsg, setEmailMsg] = useState('');
+  const [emailSending, setEmailSending] = useState(false);
+  const [emailStatus, setEmailStatus] = useState('');
+  const [correos, setCorreos] = useState<CorreoRow[]>([]);
+  const [respuestas, setRespuestas] = useState<RespuestaRow[]>([]);
+  const [emailHistLoading, setEmailHistLoading] = useState(false);
+  const [replyText, setReplyText] = useState('');
+  const [replyNota, setReplyNota] = useState('');
+  const [replyFor, setReplyFor] = useState<string | null>(null);
+  const [replySubmitting, setReplySubmitting] = useState(false);
+  // Admin sends reply email to client
+  const [replyEmailFor, setReplyEmailFor] = useState<CorreoRow | null>(null);
+  const [replyEmailText, setReplyEmailText] = useState('');
+  const [replyEmailSending, setReplyEmailSending] = useState(false);
+  const [replyEmailStatus, setReplyEmailStatus] = useState('');
 
   useEffect(() => {
     const loaded = loadBudgets();
@@ -419,6 +450,99 @@ export default function PresupuestosBuilderPage() {
     setMessage('Imagen incorporada.'); setTimeout(() => setMessage(''), 1800);
   };
 
+  // ── Email functions ──────────────────────────────────────────────────────────
+  async function loadEmailHistory() {
+    setEmailHistLoading(true);
+    try {
+      const res = await fetch(`/api/admin/presupuestos/email?presupuestoId=${encodeURIComponent(selected.id)}`, { cache: 'no-store' });
+      const json = await res.json() as { correos?: CorreoRow[]; respuestas?: RespuestaRow[] };
+      setCorreos(json.correos ?? []);
+      setRespuestas(json.respuestas ?? []);
+    } catch { /* noop */ } finally {
+      setEmailHistLoading(false);
+    }
+  }
+
+  async function sendPresupuestoEmail() {
+    const dest = (emailDest || selected.email_cliente || '').trim();
+    if (!dest || !dest.includes('@')) { setEmailStatus('Ingresa un email válido.'); return; }
+    setEmailSending(true); setEmailStatus('');
+    try {
+      const res = await fetch('/api/admin/presupuestos/email', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          presupuesto: selected,
+          emailDestinatario: dest,
+          asunto: emailAsunto.trim() || undefined,
+          mensajeAdicional: emailMsg.trim() || undefined,
+          publicUrl: publicLink,
+        }),
+      });
+      const json = await res.json() as { ok?: boolean; error?: string; resendId?: string };
+      if (!res.ok) throw new Error(json.error || `Error ${res.status}`);
+      setEmailStatus(`✓ Enviado a ${dest}${json.resendId ? ` (ID: ${json.resendId.slice(0, 8)}…)` : ''}`);
+      setEmailMsg(''); setEmailAsunto('');
+      void loadEmailHistory();
+      update({ estado: 'enviado' });
+    } catch (err) {
+      setEmailStatus(`Error: ${(err as Error).message}`);
+    } finally {
+      setEmailSending(false);
+    }
+  }
+
+  async function submitReply() {
+    if (!replyText.trim()) return;
+    setReplySubmitting(true);
+    try {
+      await fetch('/api/admin/presupuestos/email', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          presupuestoId: selected.id,
+          correoId: replyFor,
+          tipo: 'respuesta',
+          descripcion: replyText.trim(),
+          notaInterna: replyNota.trim() || undefined,
+        }),
+      });
+      setReplyText(''); setReplyNota(''); setReplyFor(null);
+      void loadEmailHistory();
+    } catch { /* noop */ } finally {
+      setReplySubmitting(false);
+    }
+  }
+
+  async function sendAdminReply() {
+    if (!replyEmailFor || !replyEmailText.trim()) return;
+    setReplyEmailSending(true); setReplyEmailStatus('');
+    try {
+      const res = await fetch('/api/admin/presupuestos/email', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          presupuestoId: selected.id,
+          emailDestinatario: replyEmailFor.email_destinatario,
+          asuntoOriginal: replyEmailFor.asunto,
+          mensaje: replyEmailText.trim(),
+          replyToId: replyEmailFor.id,
+          cliente: selected.cliente,
+          presupuestoSlug: selected.slug,
+        }),
+      });
+      const json = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(json.error || `Error ${res.status}`);
+      setReplyEmailStatus(`✓ Respuesta enviada a ${replyEmailFor.email_destinatario}`);
+      setReplyEmailText(''); setReplyEmailFor(null);
+      void loadEmailHistory();
+    } catch (err) {
+      setReplyEmailStatus(`Error: ${(err as Error).message}`);
+    } finally {
+      setReplyEmailSending(false);
+    }
+  }
+
   // ── Category subtotals ───────────────────────────────────────────────────────
   const categoryTotals = useMemo(() => {
     const map: Record<string, number> = {};
@@ -615,7 +739,7 @@ export default function PresupuestosBuilderPage() {
                 {tabs.map(t => (
                   <button
                     key={t.id}
-                    onClick={() => { setTab(t.id); if (t.id === 'registros') void loadRegistros(); }}
+                    onClick={() => { setTab(t.id); if (t.id === 'registros') void loadRegistros(); if (t.id === 'email') { setEmailDest(selected.email_cliente || ''); void loadEmailHistory(); } }}
                     className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-xs font-black uppercase tracking-widest ${tab === t.id ? 'bg-yellow-400 text-black' : 'border border-white/10 text-zinc-300'}`}
                   >
                     {t.icon}{t.label}
@@ -1019,6 +1143,229 @@ export default function PresupuestosBuilderPage() {
 
             {/* ── Preview tab ───────────────────────────────────────────────── */}
             {tab === 'preview' && <PresupuestoPublicView presupuesto={selected} publicLink={publicLink} adminPreview />}
+
+            {/* ── Email tab ─────────────────────────────────────────────────── */}
+            {tab === 'email' && (
+              <div className="space-y-4">
+                {/* Send form */}
+                <AdminCard>
+                  <div className="mb-4 flex items-center gap-2">
+                    <div className="h-2 w-2 rounded-full bg-yellow-400" />
+                    <h3 className="font-black text-white">Enviar presupuesto por correo</h3>
+                  </div>
+
+                  <div className="grid gap-3">
+                    <label className="grid gap-1 text-xs font-bold uppercase tracking-widest text-zinc-400">
+                      <span>Email destinatario</span>
+                      <input
+                        type="email"
+                        value={emailDest || selected.email_cliente || ''}
+                        onChange={e => setEmailDest(e.target.value)}
+                        placeholder="cliente@empresa.cl"
+                        className="rounded-2xl border border-white/10 bg-black/50 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none focus:border-yellow-400/70"
+                      />
+                      {!selected.email_cliente && <span className="text-orange-400 text-[10px] normal-case">Sin email en datos del cliente — ingresa uno aquí o en la pestaña Datos</span>}
+                    </label>
+
+                    <label className="grid gap-1 text-xs font-bold uppercase tracking-widest text-zinc-400">
+                      <span>Asunto (opcional)</span>
+                      <input
+                        type="text"
+                        value={emailAsunto}
+                        onChange={e => setEmailAsunto(e.target.value)}
+                        placeholder={`Presupuesto: ${selected.titulo || 'Propuesta comercial'}`}
+                        className="rounded-2xl border border-white/10 bg-black/50 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none focus:border-yellow-400/70"
+                      />
+                    </label>
+
+                    <label className="grid gap-1 text-xs font-bold uppercase tracking-widest text-zinc-400">
+                      <span>Mensaje adicional (opcional)</span>
+                      <textarea
+                        rows={3}
+                        value={emailMsg}
+                        onChange={e => setEmailMsg(e.target.value)}
+                        placeholder="Hola, adjunto nuestro presupuesto. Cualquier consulta, estamos disponibles…"
+                        className="rounded-2xl border border-white/10 bg-black/50 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none focus:border-yellow-400/70"
+                      />
+                    </label>
+                  </div>
+
+                  <div className="mt-4 flex items-center gap-3 flex-wrap">
+                    <button
+                      onClick={() => void sendPresupuestoEmail()}
+                      disabled={emailSending}
+                      className="inline-flex items-center gap-2 rounded-2xl bg-yellow-400 px-5 py-2.5 text-sm font-black text-black disabled:opacity-50"
+                    >
+                      <Mail className="h-4 w-4" />
+                      {emailSending ? 'Enviando…' : 'Enviar presupuesto'}
+                    </button>
+                    <button onClick={() => void loadEmailHistory()} className="rounded-2xl border border-white/10 px-4 py-2.5 text-sm font-bold text-zinc-300">
+                      Actualizar historial
+                    </button>
+                  </div>
+
+                  {emailStatus && (
+                    <p className={`mt-3 rounded-2xl border px-4 py-2 text-sm font-bold ${emailStatus.startsWith('✓') ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300'}`}>
+                      {emailStatus}
+                    </p>
+                  )}
+
+                  <p className="mt-3 text-xs text-zinc-600">
+                    Requiere Resend configurado en{' '}
+                    <a href="/admin/integraciones" className="text-yellow-400 hover:underline">Centro de Integraciones</a>.
+                    El cliente recibirá el presupuesto completo con todos los detalles, ítems y link al presupuesto online.
+                  </p>
+                </AdminCard>
+
+                {/* Email history */}
+                <AdminCard>
+                  <div className="mb-4 flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-yellow-400" />
+                      <h3 className="font-black text-white">Historial de envíos</h3>
+                    </div>
+                    {emailHistLoading && <span className="text-xs text-zinc-500 animate-pulse">Cargando…</span>}
+                  </div>
+
+                  {replyEmailStatus && (
+                    <p className={`mb-3 rounded-2xl border px-3 py-2 text-sm font-bold ${replyEmailStatus.startsWith('✓') ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300'}`}>
+                      {replyEmailStatus}
+                    </p>
+                  )}
+
+                  {correos.length === 0 ? (
+                    <p className="text-sm text-zinc-500 py-2">Sin correos enviados para este presupuesto.</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {correos.map(c => {
+                        const isReply = c.tipo === 'reply';
+                        const estadoColors: Record<string, string> = {
+                          enviado: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
+                          entregado: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
+                          abierto: 'bg-yellow-400/15 text-yellow-300 border-yellow-400/30',
+                          fallido: 'bg-red-500/15 text-red-300 border-red-500/30',
+                          rebotado: 'bg-orange-500/15 text-orange-300 border-orange-500/30',
+                          spam: 'bg-pink-500/15 text-pink-300 border-pink-500/30',
+                        };
+                        return (
+                          <div key={c.id} className={`rounded-2xl border p-3 ${isReply ? 'border-blue-500/20 bg-blue-500/5 ml-4' : 'border-white/10 bg-black/30'}`}>
+                            <div className="flex items-start justify-between gap-2 flex-wrap">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  {isReply && <span className="text-[10px] font-black text-blue-400">↩ RESPUESTA ENVIADA</span>}
+                                  <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-black ${estadoColors[c.estado] || 'text-zinc-400 border-zinc-700'}`}>
+                                    {c.estado}
+                                  </span>
+                                  <span className="text-sm font-bold text-white truncate">{c.email_destinatario}</span>
+                                </div>
+                                <p className="mt-1 text-xs text-zinc-500 truncate">{c.asunto}</p>
+                                {c.abierto_at && <p className="text-[10px] text-yellow-300/70 mt-0.5">Abierto: {new Date(c.abierto_at).toLocaleString('es-CL')}</p>}
+                                {c.error && <p className="text-[10px] text-red-300 mt-0.5">Error: {c.error}</p>}
+                                {c.mensaje_adicional && <p className="mt-1 text-[11px] text-zinc-400 italic">"{c.mensaje_adicional.slice(0, 100)}{c.mensaje_adicional.length > 100 ? '…' : ''}"</p>}
+                              </div>
+                              <div className="text-right flex-shrink-0 space-y-1">
+                                <p className="text-[10px] text-zinc-500">{new Date(c.created_at).toLocaleString('es-CL')}</p>
+                                {!isReply && (
+                                  <button
+                                    onClick={() => { setReplyEmailFor(c); setReplyEmailText(''); setReplyEmailStatus(''); setReplyFor(null); }}
+                                    className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-300 hover:bg-blue-500/20"
+                                  >
+                                    <Send className="h-3 w-3" /> Responder
+                                  </button>
+                                )}
+                                <button
+                                  onClick={() => { setReplyFor(replyFor === c.id ? null : c.id); setReplyText(''); setReplyNota(''); setReplyEmailFor(null); }}
+                                  className="ml-1 inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-bold text-zinc-500 hover:text-zinc-200"
+                                >
+                                  <MessageSquare className="h-3 w-3" /> Anotar
+                                </button>
+                              </div>
+                            </div>
+
+                            {/* Admin reply compose form */}
+                            {replyEmailFor?.id === c.id && (
+                              <div className="mt-3 space-y-2 rounded-2xl border border-blue-500/25 bg-blue-500/8 p-3">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Responder al cliente · {c.email_destinatario}</p>
+                                <textarea
+                                  rows={4}
+                                  value={replyEmailText}
+                                  onChange={e => setReplyEmailText(e.target.value)}
+                                  placeholder="Escribe tu respuesta aquí. El cliente la recibirá por correo electrónico."
+                                  className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-blue-400/50 placeholder:text-zinc-600"
+                                />
+                                <div className="flex gap-2 flex-wrap">
+                                  <button
+                                    onClick={() => void sendAdminReply()}
+                                    disabled={!replyEmailText.trim() || replyEmailSending}
+                                    className="inline-flex items-center gap-1.5 rounded-xl bg-blue-500 px-4 py-1.5 text-[11px] font-black text-white disabled:opacity-50"
+                                  >
+                                    <Send className="h-3.5 w-3.5" />
+                                    {replyEmailSending ? 'Enviando…' : 'Enviar respuesta'}
+                                  </button>
+                                  <button onClick={() => { setReplyEmailFor(null); setReplyEmailText(''); }} className="rounded-xl border border-white/10 px-3 py-1.5 text-[11px] font-bold text-zinc-400">
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Log client response */}
+                            {replyFor === c.id && (
+                              <div className="mt-3 space-y-2 rounded-2xl border border-yellow-400/20 bg-yellow-400/5 p-3">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-yellow-400">Anotar respuesta recibida del cliente</p>
+                                <textarea
+                                  rows={2}
+                                  value={replyText}
+                                  onChange={e => setReplyText(e.target.value)}
+                                  placeholder="¿Qué respondió el cliente? Ej: Acepta el presupuesto, pide descuento…"
+                                  className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-xs text-white outline-none focus:border-yellow-400/50"
+                                />
+                                <input
+                                  value={replyNota}
+                                  onChange={e => setReplyNota(e.target.value)}
+                                  placeholder="Nota interna (opcional)"
+                                  className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-xs text-white outline-none focus:border-yellow-400/50"
+                                />
+                                <div className="flex gap-2">
+                                  <button onClick={() => void submitReply()} disabled={!replyText.trim() || replySubmitting} className="rounded-xl bg-yellow-400 px-3 py-1.5 text-[11px] font-black text-black disabled:opacity-50">
+                                    {replySubmitting ? 'Guardando…' : 'Guardar anotación'}
+                                  </button>
+                                  <button onClick={() => setReplyFor(null)} className="rounded-xl border border-white/10 px-3 py-1.5 text-[11px] font-bold text-zinc-400">Cancelar</button>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </AdminCard>
+
+                {/* Replies / responses */}
+                {respuestas.length > 0 && (
+                  <AdminCard>
+                    <div className="mb-3 flex items-center gap-2">
+                      <div className="h-2 w-2 rounded-full bg-emerald-400" />
+                      <h3 className="font-black text-white">Respuestas del cliente</h3>
+                    </div>
+                    <div className="space-y-2">
+                      {respuestas.map(r => (
+                        <div key={r.id} className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-3">
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1">
+                              <span className="inline-flex rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-black text-emerald-300 capitalize mr-2">{r.tipo}</span>
+                              <span className="text-sm text-white">{r.descripcion}</span>
+                              {r.nota_interna && <p className="mt-1 text-[11px] text-zinc-500 italic">Nota: {r.nota_interna}</p>}
+                            </div>
+                            <p className="text-[10px] text-zinc-500 flex-shrink-0">{new Date(r.created_at).toLocaleString('es-CL')}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </AdminCard>
+                )}
+              </div>
+            )}
 
             {/* ── Registros BD tab ──────────────────────────────────────────── */}
             {tab === 'registros' && (

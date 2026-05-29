@@ -35,7 +35,7 @@ async function rawsql(query: string): Promise<{ data?: { rows?: Record<string, u
 }
 
 /* ─── Types ──────────────────────────────────────────────────────────────── */
-export type AiConfig = { provider: 'anthropic' | 'groq'; apiKey: string; modelo: string };
+export type AiConfig = { provider: 'anthropic' | 'groq' | 'openrouter'; apiKey: string; modelo: string; siteUrl?: string; appName?: string };
 
 export interface SmartScrapeResult {
   data: unknown;
@@ -56,27 +56,48 @@ export interface SearchScrapeResult {
 }
 
 /* ─── AI config resolver ─────────────────────────────────────────────────── */
+type CredRow = { credentials?: Record<string, string> };
+type ConfigRow2 = { anthropic_api_key?: string; modelo_ia?: string; proveedor_ia?: string };
+
+function credRows2(d: unknown) {
+  return (d as { data?: { rows?: CredRow[] } } | null)?.data?.rows ?? [];
+}
+
 export async function resolveAiConfig(): Promise<AiConfig | null> {
   try {
     const configData = await rawsql(
       `SELECT anthropic_api_key, modelo_ia, proveedor_ia FROM configuracion_ia WHERE id = 'singleton' LIMIT 1;`,
     );
-    const row = (configData as { data?: { rows?: Array<{ anthropic_api_key?: string; modelo_ia?: string; proveedor_ia?: string }> } } | null)?.data?.rows?.[0];
-    const proveedor = (row?.proveedor_ia as 'anthropic' | 'groq' | undefined) ?? 'anthropic';
+    const row = (configData as { data?: { rows?: ConfigRow2[] } } | null)?.data?.rows?.[0];
+    const proveedor = (row?.proveedor_ia ?? 'anthropic') as AiConfig['provider'];
+    const prefModelo = row?.modelo_ia ?? '';
+
+    if (proveedor === 'openrouter') {
+      const d = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'openrouter' LIMIT 1;`);
+      const r = credRows2(d)[0];
+      const k = r?.credentials?.api_key?.trim() ?? '';
+      if (k) return { provider: 'openrouter', apiKey: k, modelo: prefModelo || 'meta-llama/llama-3.3-70b-instruct:free', siteUrl: r?.credentials?.site_url, appName: r?.credentials?.app_name };
+    }
 
     if (proveedor === 'groq') {
       const d = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'groq' LIMIT 1;`);
-      const r = (d as { data?: { rows?: Array<{ credentials?: Record<string, string> }> } } | null)?.data?.rows?.[0];
+      const r = credRows2(d)[0];
       const k = r?.credentials?.api_key?.trim() ?? '';
-      if (k) return { provider: 'groq', apiKey: k, modelo: r?.credentials?.modelo ?? 'llama-3.3-70b-versatile' };
+      if (k) return { provider: 'groq', apiKey: k, modelo: prefModelo || r?.credentials?.modelo || 'llama-3.3-70b-versatile' };
     }
 
     const anthData = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'anthropic' LIMIT 1;`);
-    const anthRow = (anthData as { data?: { rows?: Array<{ credentials?: Record<string, string> }> } } | null)?.data?.rows?.[0];
+    const anthRow = credRows2(anthData)[0];
     const anthKey = anthRow?.credentials?.api_key?.trim() ?? '';
-    if (anthKey) return { provider: 'anthropic', apiKey: anthKey, modelo: anthRow?.credentials?.modelo ?? row?.modelo_ia ?? 'claude-haiku-4-5-20251001' };
+    if (anthKey) return { provider: 'anthropic', apiKey: anthKey, modelo: prefModelo || anthRow?.credentials?.modelo || 'claude-haiku-4-5-20251001' };
 
-    if (row?.anthropic_api_key) return { provider: 'anthropic', apiKey: row.anthropic_api_key, modelo: row.modelo_ia ?? 'claude-haiku-4-5-20251001' };
+    // Fallback: try openrouter if configured (even if not primary)
+    const orData = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'openrouter' LIMIT 1;`);
+    const orRow = credRows2(orData)[0];
+    const orKey = orRow?.credentials?.api_key?.trim() ?? '';
+    if (orKey) return { provider: 'openrouter', apiKey: orKey, modelo: prefModelo || 'meta-llama/llama-3.3-70b-instruct:free', siteUrl: orRow?.credentials?.site_url, appName: orRow?.credentials?.app_name };
+
+    if (row?.anthropic_api_key) return { provider: 'anthropic', apiKey: row.anthropic_api_key, modelo: prefModelo || 'claude-haiku-4-5-20251001' };
   } catch { /* fall through */ }
 
   const envKey = process.env.ANTHROPIC_API_KEY;
@@ -96,10 +117,24 @@ export async function resolveSerperKey(): Promise<string | undefined> {
 
 /* ─── LLM caller ─────────────────────────────────────────────────────────── */
 async function callLLM(aiConfig: AiConfig, systemPrompt: string, userPrompt: string): Promise<string> {
-  if (aiConfig.provider === 'groq') {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+  // OpenAI-compatible providers: Groq and OpenRouter
+  if (aiConfig.provider === 'groq' || aiConfig.provider === 'openrouter') {
+    const url = aiConfig.provider === 'groq'
+      ? 'https://api.groq.com/openai/v1/chat/completions'
+      : 'https://openrouter.ai/api/v1/chat/completions';
+
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${aiConfig.apiKey}`,
+      'Content-Type': 'application/json',
+    };
+    if (aiConfig.provider === 'openrouter') {
+      if (aiConfig.siteUrl) headers['HTTP-Referer'] = aiConfig.siteUrl;
+      if (aiConfig.appName) headers['X-Title'] = aiConfig.appName;
+    }
+
+    const res = await fetch(url, {
       method: 'POST',
-      headers: { Authorization: `Bearer ${aiConfig.apiKey}`, 'Content-Type': 'application/json' },
+      headers,
       body: JSON.stringify({
         model: aiConfig.modelo,
         max_tokens: 4096,
@@ -110,7 +145,7 @@ async function callLLM(aiConfig: AiConfig, systemPrompt: string, userPrompt: str
       }),
       signal: AbortSignal.timeout(30_000),
     });
-    if (!res.ok) throw new Error(`Groq error: ${await res.text()}`);
+    if (!res.ok) throw new Error(`${aiConfig.provider} error: ${await res.text()}`);
     const data = await res.json() as { choices: Array<{ message: { content: string } }> };
     return data.choices[0]?.message.content ?? '';
   }

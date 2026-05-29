@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   AlertTriangle, ArrowDown, ArrowUp, Calendar, CheckCircle, Clock, Copy, Database,
@@ -109,6 +109,8 @@ export default function PresupuestosBuilderPage() {
   const [registrosError, setRegistrosError] = useState('');
   const [search, setSearch] = useState('');
   const [filterEstado, setFilterEstado] = useState<string>('todos');
+  const pendingSaveRef = useRef<PresupuestoPro | null>(null);
+  const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const loaded = loadBudgets();
@@ -155,8 +157,45 @@ export default function PresupuestosBuilderPage() {
 
   const persist = (next: PresupuestoPro[]) => { setBudgets(next); saveBudgets(next); };
   const update = (patch: Partial<PresupuestoPro>) => {
-    persist(budgets.map(b => b.id === selected.id ? calculateBudget({ ...b, ...patch, updated_at: new Date().toISOString() }) : b));
+    const updated = calculateBudget({ ...selected, ...patch, updated_at: new Date().toISOString() });
+    persist(budgets.map(b => b.id === selected.id ? updated : b));
     setSaveStatus('local');
+
+    // Debounced auto-save to DB (2.5 s after last keystroke)
+    pendingSaveRef.current = updated;
+    if (autoSaveTimerRef.current) clearTimeout(autoSaveTimerRef.current);
+    autoSaveTimerRef.current = setTimeout(async () => {
+      autoSaveTimerRef.current = null;
+      const toSave = pendingSaveRef.current;
+      pendingSaveRef.current = null;
+      if (!toSave) return;
+      setSaveStatus('syncing');
+      const pubLink = typeof window !== 'undefined'
+        ? `${window.location.origin}/presupuestos/${toSave.slug}`
+        : `/presupuestos/${toSave.slug}`;
+      try {
+        const { archivos: _a, ...payload } = toSave;
+        const res = await fetch('/api/admin/presupuestos/registros', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            presupuesto: {
+              ...payload,
+              numero_cliente: toSave.telefono_whatsapp || '',
+              public_link: pubLink,
+              meta: { modulo: 'auto_save', guardado_desde: '/admin/presupuestos' },
+            },
+          }),
+        });
+        const json = (await res.json().catch(() => ({}))) as { id?: string; error?: string };
+        if (!res.ok) throw new Error(json.error || `Error ${res.status}`);
+        setSaveStatus('saved');
+      } catch {
+        setSaveStatus('error');
+      } finally {
+        setTimeout(() => setSaveStatus(s => s === 'saved' || s === 'error' ? 'idle' : s), 3500);
+      }
+    }, 2500);
   };
 
   // ── Save to DB ───────────────────────────────────────────────────────────────
@@ -374,6 +413,11 @@ export default function PresupuestosBuilderPage() {
                         </span>
                       )}
                     </div>
+                    {b.id === selected.id && (
+                      <span className="mt-1 inline-flex items-center gap-1 text-[10px] font-black text-yellow-400">
+                        ✏ Editando
+                      </span>
+                    )}
                   </button>
                 );
               })}
@@ -387,6 +431,21 @@ export default function PresupuestosBuilderPage() {
 
           {/* ── Right panel ──────────────────────────────────────────────────── */}
           <div className="space-y-5">
+
+            {/* Editing context banner */}
+            <AdminCard className="py-3 px-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-yellow-400/15 text-base text-yellow-400">✏</div>
+                <div className="min-w-0 flex-1">
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500">Editando presupuesto</p>
+                  <h2 className="truncate font-black text-white">
+                    {selected.cliente || 'Sin cliente'}
+                    <span className="ml-2 text-sm font-normal text-zinc-400">· {selected.titulo}</span>
+                  </h2>
+                </div>
+                <SaveStatusBadge status={saveStatus} />
+              </div>
+            </AdminCard>
 
             {/* Action bar */}
             <AdminCard>

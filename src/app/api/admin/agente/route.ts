@@ -4,6 +4,7 @@ export const maxDuration = 90; // Vercel Pro / containers
 
 import { NextRequest } from 'next/server';
 import { executeTool, ensureAgentTables } from '@/lib/agent-executor';
+import { BrowserSession } from '@/lib/agent-browser';
 
 /* ─── InsForge DB helper ─────────────────────────────────────────────── */
 const INSFORGE_URL = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
@@ -238,6 +239,60 @@ const TOOLS_ANTHROPIC = [
       required: ['provider'],
     },
   },
+  {
+    name: 'hacer_clic',
+    description: 'Hace clic en un elemento de la página actual del navegador. Usa texto visible del botón/enlace o un selector CSS.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        objetivo: { type: 'string', description: 'Texto visible del elemento a clicar (ej: "Agregar al carro") o selector CSS (ej: "#btn-submit")' },
+      },
+      required: ['objetivo'],
+    },
+  },
+  {
+    name: 'escribir_en',
+    description: 'Escribe texto en un campo de la página actual del navegador (input, textarea, buscador).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        selector: { type: 'string', description: 'Selector CSS del campo (ej: input[name="q"], #search-box, textarea)' },
+        texto: { type: 'string', description: 'Texto a escribir en el campo' },
+      },
+      required: ['selector', 'texto'],
+    },
+  },
+  {
+    name: 'presionar_tecla',
+    description: 'Presiona una tecla del teclado en la página actual (Enter, Tab, Escape, ArrowDown, etc.).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        tecla: { type: 'string', description: 'Nombre de la tecla a presionar (ej: Enter, Tab, Escape, ArrowDown, ArrowUp, Space)' },
+      },
+      required: ['tecla'],
+    },
+  },
+  {
+    name: 'desplazar_pagina',
+    description: 'Desplaza la página actual del navegador hacia arriba o abajo.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        direccion: { type: 'string', description: 'Dirección del desplazamiento', enum: ['arriba', 'abajo'] },
+        pixeles: { type: 'number', description: 'Cantidad de píxeles a desplazar (default: 600)' },
+      },
+      required: ['direccion'],
+    },
+  },
+  {
+    name: 'leer_pagina_actual',
+    description: 'Lee el contenido de texto de la página actual en el navegador sin re-navegar. Útil para leer contenido cargado dinámicamente.',
+    input_schema: {
+      type: 'object',
+      properties: {},
+    },
+  },
 ] as const;
 
 // OpenAI-compatible tool format for Groq
@@ -262,10 +317,11 @@ type GroqMsg = { role: string; content: string | null; tool_calls?: unknown; too
 
 const SYSTEM_PROMPT = `Eres un agente inteligente de Soluciones Fabrick con acceso completo a:
 1. Navegador web en tiempo real (buscar_web, navegar_url, capturar_pantalla)
-2. Base de datos InsForge (consultar_bd, modificar_bd)
-3. Catálogo de productos (crear_producto, listar_productos)
-4. Memoria persistente (guardar_hallazgo, leer_memoria)
-5. Plataformas conectadas: WhatsApp (enviar_whatsapp), Email Resend (enviar_email), MercadoLibre (buscar_ml), test de integraciones (probar_integracion)
+2. Interacción con el navegador (hacer_clic, escribir_en, presionar_tecla, desplazar_pagina, leer_pagina_actual) — úsalos para navegar, llenar formularios, hacer búsquedas interactivas
+3. Base de datos InsForge (consultar_bd, modificar_bd)
+4. Catálogo de productos (crear_producto, listar_productos)
+5. Memoria persistente (guardar_hallazgo, leer_memoria)
+6. Plataformas conectadas: WhatsApp (enviar_whatsapp), Email Resend (enviar_email), MercadoLibre (buscar_ml), test de integraciones (probar_integracion)
 
 Usa estas herramientas de forma proactiva. Cuando encuentres precios o datos útiles, guárdalos en memoria. Cuando el usuario pida crear un producto, créalo directamente en la BD. Cuando el usuario pida enviar un mensaje o email, hazlo de inmediato.
 
@@ -286,6 +342,7 @@ async function runAnthropicLoop(
   config: AiConfig,
   serperKey: string | undefined,
   emit: (data: Record<string, unknown>) => void,
+  browser: BrowserSession,
 ): Promise<void> {
   const MAX_TURNS = 10;
 
@@ -333,7 +390,7 @@ async function runAnthropicLoop(
     for (const tool of toolUses) {
       emit({ type: 'tool_call', name: tool.name, input: tool.input });
 
-      const result = await executeTool(tool.name!, tool.input ?? {}, serperKey);
+      const result = await executeTool(tool.name!, tool.input ?? {}, serperKey, browser, emit);
 
       emit({ type: 'tool_result', name: tool.name, content: result.content.slice(0, 800) });
       if (result.screenshot) {
@@ -359,6 +416,7 @@ async function runGroqLoop(
   config: AiConfig,
   serperKey: string | undefined,
   emit: (data: Record<string, unknown>) => void,
+  browser: BrowserSession,
 ): Promise<void> {
   const MAX_TURNS = 10;
 
@@ -409,7 +467,7 @@ async function runGroqLoop(
 
       emit({ type: 'tool_call', name: tc.function.name, input });
 
-      const result = await executeTool(tc.function.name, input, serperKey);
+      const result = await executeTool(tc.function.name, input, serperKey, browser, emit);
 
       emit({ type: 'tool_result', name: tc.function.name, content: result.content.slice(0, 800) });
       if (result.screenshot) {
@@ -457,19 +515,22 @@ export async function POST(req: NextRequest) {
 
       emit({ type: 'thinking', content: `Usando ${config.provider === 'groq' ? 'Groq' : 'Anthropic'} · ${config.modelo}` });
 
+      const browser = await BrowserSession.create();
       try {
         if (config.provider === 'groq') {
           const groqMsgs: GroqMsg[] = [
             { role: 'system', content: SYSTEM_PROMPT },
             ...userMessages.map((m) => ({ role: m.role, content: m.content })),
           ];
-          await runGroqLoop(groqMsgs, config, serperKey, emit);
+          await runGroqLoop(groqMsgs, config, serperKey, emit, browser);
         } else {
           const anthropicMsgs: AnthropicMsg[] = userMessages.map((m) => ({ role: m.role, content: m.content }));
-          await runAnthropicLoop(anthropicMsgs, config, serperKey, emit);
+          await runAnthropicLoop(anthropicMsgs, config, serperKey, emit, browser);
         }
       } catch (err) {
         emit({ type: 'error', content: err instanceof Error ? err.message : 'Error inesperado.' });
+      } finally {
+        await browser.close();
       }
 
       emit({ type: 'done' });

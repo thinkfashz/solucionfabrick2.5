@@ -34,7 +34,7 @@ import { AdminCard, AdminMotion, AdminPage, AdminPageHeader } from '@/components
 /* ──────────────────────────────────────────────────────────────────────
    Types
 ──────────────────────────────────────────────────────────────────────── */
-type EventType = 'thinking' | 'tool_call' | 'tool_result' | 'screenshot' | 'text' | 'error' | 'done';
+type EventType = 'thinking' | 'tool_call' | 'tool_result' | 'screenshot' | 'frame' | 'text' | 'error' | 'done';
 type TabId = 'agente' | 'catalogo' | 'memoria';
 
 interface AgentEvent {
@@ -43,7 +43,9 @@ interface AgentEvent {
   name?: string;
   input?: Record<string, unknown>;
   url?: string;
-  data?: string; // base64 screenshot
+  data?: string; // base64 screenshot or frame
+  action?: string; // browser action label for frame events
+  final?: boolean;
 }
 
 interface Message {
@@ -399,6 +401,60 @@ function ManualSection() {
         </div>
       ))}
     </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Live Browser Viewer
+──────────────────────────────────────────────────────────────────────── */
+function LiveBrowserViewer({
+  frameData,
+  frameUrl,
+  frameAction,
+  isLive,
+}: {
+  frameData: string | null;
+  frameUrl: string;
+  frameAction: string;
+  isLive: boolean;
+}) {
+  if (!frameData) return null;
+
+  return (
+    <AdminCard className="overflow-hidden !p-0">
+      {/* Browser chrome */}
+      <div className="flex items-center gap-2 border-b border-white/10 bg-zinc-900 px-3 py-2">
+        <div className="flex gap-1.5">
+          <span className="h-2.5 w-2.5 rounded-full bg-red-500/70" />
+          <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
+          <span className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
+        </div>
+        <div className="flex flex-1 items-center gap-2 overflow-hidden rounded-md bg-black/40 px-2.5 py-1">
+          <Globe className="h-3 w-3 shrink-0 text-zinc-600" />
+          <span className="flex-1 truncate text-[10px] text-zinc-500 font-mono">{frameUrl || 'about:blank'}</span>
+        </div>
+        {isLive && (
+          <span className="flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-bold text-red-400">
+            <span className="relative flex h-1.5 w-1.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
+              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-red-500" />
+            </span>
+            LIVE
+          </span>
+        )}
+      </div>
+
+      {/* Frame */}
+      <div className="relative bg-black">
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src={frameData} alt="Browser live view" className="w-full object-cover" />
+        {frameAction && (
+          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-3 py-2">
+            <p className="truncate text-[10px] text-zinc-300">{frameAction}</p>
+          </div>
+        )}
+      </div>
+    </AdminCard>
   );
 }
 
@@ -811,6 +867,9 @@ export default function AgentePage() {
   const [loading, setLoading] = useState(false);
   const [showAreas, setShowAreas] = useState(true);
   const [showManual, setShowManual] = useState(false);
+  const [currentFrame, setCurrentFrame] = useState<string | null>(null);
+  const [browserUrl, setBrowserUrl] = useState('');
+  const [browserAction, setBrowserAction] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -826,6 +885,9 @@ export default function AgentePage() {
     setShowAreas(false);
     setLoading(true);
     setActiveTab('agente');
+    setCurrentFrame(null);
+    setBrowserUrl('');
+    setBrowserAction('');
 
     const userMsg: Message = { role: 'user', content };
     const agentMsg: Message = { role: 'agent', content: '', events: [], loading: true };
@@ -865,6 +927,10 @@ export default function AgentePage() {
 
             if (event.type === 'text') {
               agentText += event.content ?? '';
+            } else if (event.type === 'frame') {
+              if (event.data) setCurrentFrame(event.data);
+              if (event.url) setBrowserUrl(event.url);
+              if (event.action) setBrowserAction(event.action);
             } else if (event.type !== 'done') {
               if (event.type === 'tool_result') {
                 const last = agentEvents.filter((e) => e.type === 'tool_call').at(-1);
@@ -1034,7 +1100,7 @@ export default function AgentePage() {
                     {messages.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => { setMessages([]); setShowAreas(true); }}
+                        onClick={() => { setMessages([]); setShowAreas(true); setCurrentFrame(null); setBrowserUrl(''); setBrowserAction(''); }}
                         className="mt-2 flex items-center gap-1 text-[11px] text-zinc-600 hover:text-zinc-400"
                       >
                         <X className="h-3 w-3" /> Limpiar conversación
@@ -1136,6 +1202,12 @@ export default function AgentePage() {
 
           {/* ── Right: platforms sidebar ───────────────────────────────── */}
           <div className="space-y-4">
+            <LiveBrowserViewer
+              frameData={currentFrame}
+              frameUrl={browserUrl}
+              frameAction={browserAction}
+              isLive={loading}
+            />
             <PlatformsSidebar />
 
             {/* CheckCircle summary */}

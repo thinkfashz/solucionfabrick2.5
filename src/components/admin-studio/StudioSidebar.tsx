@@ -114,7 +114,6 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Seguridad & Claves',
     links: [
       { href: '/admin/seguridad', label: 'Seguridad · Passkeys', description: 'Acceso con huella digital o Face ID', icon: ShieldCheck, highlight: true },
-      { href: '/admin/integraciones', label: 'Credenciales oficiales', description: 'API keys, proveedores y pruebas de conexión', icon: KeyRound, highlight: true },
       { href: '/admin/extensions', label: 'Extensiones y Webhooks', description: 'Snippets, webhooks, OAuth y signing keys', icon: Plug, highlight: true },
       { href: '/admin/facturas', label: 'Facturas DTE', description: 'Documentos tributarios y SII', icon: Receipt },
     ],

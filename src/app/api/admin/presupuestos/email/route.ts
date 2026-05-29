@@ -42,12 +42,16 @@ async function ensureTables() {
       asunto TEXT,
       resend_id TEXT,
       estado TEXT DEFAULT 'enviado',
+      tipo TEXT DEFAULT 'presupuesto',
+      reply_to_id TEXT,
       abierto_at TIMESTAMPTZ,
       entregado_at TIMESTAMPTZ,
       error TEXT,
       mensaje_adicional TEXT,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
+    ALTER TABLE presupuesto_correos ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'presupuesto';
+    ALTER TABLE presupuesto_correos ADD COLUMN IF NOT EXISTS reply_to_id TEXT;
     CREATE TABLE IF NOT EXISTS presupuesto_correos_respuestas (
       id SERIAL PRIMARY KEY,
       presupuesto_id TEXT NOT NULL,
@@ -266,6 +270,83 @@ export async function POST(req: NextRequest) {
   await rawsql(`
     INSERT INTO presupuesto_correos (presupuesto_id, presupuesto_slug, cliente, email_destinatario, asunto, resend_id, estado, mensaje_adicional)
     VALUES (${sql(presupuesto.id)}, ${sql(presupuesto.slug)}, ${sql(presupuesto.cliente)}, ${sql(email)}, ${sql(asunto)}, ${sql(resendId)}, 'enviado', ${sql(mensajeAdicional)});
+  `);
+
+  return NextResponse.json({ ok: true, resendId, email, asunto });
+}
+
+/* ─── PATCH: enviar respuesta del admin al cliente ─────────────────────── */
+export async function PATCH(req: NextRequest) {
+  await ensureTables();
+
+  const body = await req.json() as {
+    presupuestoId: string;
+    emailDestinatario: string;
+    asuntoOriginal?: string;
+    mensaje: string;
+    replyToId?: string;
+    cliente?: string;
+    presupuestoSlug?: string;
+  };
+
+  const { presupuestoId, mensaje, replyToId, cliente, presupuestoSlug } = body;
+  const email = (body.emailDestinatario || '').trim();
+
+  if (!email || !email.includes('@')) {
+    return NextResponse.json({ error: 'Email del destinatario inválido.' }, { status: 400 });
+  }
+  if (!mensaje?.trim()) {
+    return NextResponse.json({ error: 'El mensaje no puede estar vacío.' }, { status: 400 });
+  }
+
+  const creds = await getResendCredentials();
+  if (!creds.ready) {
+    return NextResponse.json({ error: 'Resend no configurado. Ve a Centro de Integraciones → Resend.' }, { status: 503 });
+  }
+
+  const fromAddress = creds.from || 'Soluciones Fabrick <onboarding@resend.dev>';
+  const asunto = body.asuntoOriginal
+    ? (body.asuntoOriginal.startsWith('Re:') ? body.asuntoOriginal : `Re: ${body.asuntoOriginal}`)
+    : 'Re: Presupuesto — Soluciones Fabrick';
+
+  const html = `<!DOCTYPE html>
+<html lang="es">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
+<body style="margin:0;padding:0;background:#f5f3ef;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
+<div style="max-width:580px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+  <div style="background:#1a1a1a;padding:24px 28px;">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.2em;color:#b8860b;margin-bottom:6px;">Soluciones Fabrick</div>
+    <div style="font-size:20px;font-weight:900;color:#fff;">Respuesta a tu consulta</div>
+  </div>
+  <div style="padding:28px;">
+    <p style="font-size:14px;color:#444;line-height:1.7;margin:0;">${mensaje.replace(/\n/g, '<br>')}</p>
+  </div>
+  <div style="padding:16px 28px 24px;background:#f9f7f2;border-top:1px solid #e8e0d0;font-size:11px;color:#999;text-align:center;">
+    Soluciones Fabrick · Respuesta a presupuesto
+  </div>
+</div>
+</body>
+</html>`;
+
+  const resendRes = await fetch('https://api.resend.com/emails', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${creds.apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ from: fromAddress, to: [email], reply_to: fromAddress, subject: asunto, html }),
+    signal: AbortSignal.timeout(20_000),
+  });
+
+  const resendBody = await resendRes.json() as { id?: string; name?: string; message?: string };
+
+  if (!resendRes.ok) {
+    const errorMsg = resendBody.message ?? resendBody.name ?? `Error ${resendRes.status}`;
+    return NextResponse.json({ error: `Resend rechazó el envío: ${errorMsg}` }, { status: 400 });
+  }
+
+  const resendId = resendBody.id ?? null;
+
+  await rawsql(`
+    INSERT INTO presupuesto_correos (presupuesto_id, presupuesto_slug, cliente, email_destinatario, asunto, resend_id, estado, tipo, reply_to_id, mensaje_adicional)
+    VALUES (${sql(presupuestoId)}, ${sql(presupuestoSlug)}, ${sql(cliente)}, ${sql(email)}, ${sql(asunto)}, ${sql(resendId)}, 'enviado', 'reply', ${sql(replyToId)}, ${sql(mensaje)});
   `);
 
   return NextResponse.json({ ok: true, resendId, email, asunto });

@@ -55,17 +55,20 @@ CREATE TABLE IF NOT EXISTS scrapegraph_runs (
   input JSONB NOT NULL DEFAULT '{}',
   result JSONB,
   model TEXT,
+  provider TEXT,
   duration_ms INTEGER,
   error TEXT,
   created_at TIMESTAMPTZ DEFAULT NOW()
-);`);
+);
+ALTER TABLE scrapegraph_runs ADD COLUMN IF NOT EXISTS provider TEXT;
+`);
 }
 
 /* ─── GET — history ──────────────────────────────────────────────────────── */
 export async function GET() {
   void ensureTable().catch(() => null);
   const result = await runRawSql(
-    `SELECT id, mode, input, result, model, duration_ms, error, created_at FROM scrapegraph_runs ORDER BY created_at DESC LIMIT 50;`,
+    `SELECT id, mode, input, result, model, provider, duration_ms, error, created_at FROM scrapegraph_runs ORDER BY created_at DESC LIMIT 50;`,
   );
   const rows = (result.data as { data?: { rows?: unknown[] } })?.data?.rows ?? [];
   return NextResponse.json({ runs: rows });
@@ -133,12 +136,13 @@ export async function POST(req: NextRequest) {
   // Persist run
   const input = { url, urls, query, prompt, outputSchema };
   await runRawSql(`
-INSERT INTO scrapegraph_runs (mode, input, result, model, duration_ms, error)
+INSERT INTO scrapegraph_runs (mode, input, result, model, provider, duration_ms, error)
 VALUES (
   ${sqlText(mode)},
   ${sqlJson(input)},
   ${result !== null ? sqlJson(result) : 'NULL'},
   ${sqlText(aiConfig.modelo)},
+  ${sqlText(aiConfig.provider)},
   ${durationMs},
   ${sqlText(errorMsg)}
 );`).catch(() => null);

@@ -67,7 +67,7 @@ interface RegistroRow {
 
 interface CorreoRow {
   id: string; presupuesto_id: string; cliente?: string; email_destinatario: string;
-  asunto?: string; estado: string; resend_id?: string; error?: string;
+  asunto?: string; estado: string; tipo?: string; reply_to_id?: string; resend_id?: string; error?: string;
   abierto_at?: string; entregado_at?: string; mensaje_adicional?: string; created_at: string;
 }
 
@@ -180,6 +180,11 @@ export default function PresupuestosBuilderPage() {
   const [replyNota, setReplyNota] = useState('');
   const [replyFor, setReplyFor] = useState<string | null>(null);
   const [replySubmitting, setReplySubmitting] = useState(false);
+  // Admin sends reply email to client
+  const [replyEmailFor, setReplyEmailFor] = useState<CorreoRow | null>(null);
+  const [replyEmailText, setReplyEmailText] = useState('');
+  const [replyEmailSending, setReplyEmailSending] = useState(false);
+  const [replyEmailStatus, setReplyEmailStatus] = useState('');
 
   useEffect(() => {
     const loaded = loadBudgets();
@@ -506,6 +511,35 @@ export default function PresupuestosBuilderPage() {
       void loadEmailHistory();
     } catch { /* noop */ } finally {
       setReplySubmitting(false);
+    }
+  }
+
+  async function sendAdminReply() {
+    if (!replyEmailFor || !replyEmailText.trim()) return;
+    setReplyEmailSending(true); setReplyEmailStatus('');
+    try {
+      const res = await fetch('/api/admin/presupuestos/email', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          presupuestoId: selected.id,
+          emailDestinatario: replyEmailFor.email_destinatario,
+          asuntoOriginal: replyEmailFor.asunto,
+          mensaje: replyEmailText.trim(),
+          replyToId: replyEmailFor.id,
+          cliente: selected.cliente,
+          presupuestoSlug: selected.slug,
+        }),
+      });
+      const json = await res.json() as { ok?: boolean; error?: string };
+      if (!res.ok) throw new Error(json.error || `Error ${res.status}`);
+      setReplyEmailStatus(`✓ Respuesta enviada a ${replyEmailFor.email_destinatario}`);
+      setReplyEmailText(''); setReplyEmailFor(null);
+      void loadEmailHistory();
+    } catch (err) {
+      setReplyEmailStatus(`Error: ${(err as Error).message}`);
+    } finally {
+      setReplyEmailSending(false);
     }
   }
 
@@ -1193,11 +1227,18 @@ export default function PresupuestosBuilderPage() {
                     {emailHistLoading && <span className="text-xs text-zinc-500 animate-pulse">Cargando…</span>}
                   </div>
 
+                  {replyEmailStatus && (
+                    <p className={`mb-3 rounded-2xl border px-3 py-2 text-sm font-bold ${replyEmailStatus.startsWith('✓') ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300' : 'border-red-500/30 bg-red-500/10 text-red-300'}`}>
+                      {replyEmailStatus}
+                    </p>
+                  )}
+
                   {correos.length === 0 ? (
                     <p className="text-sm text-zinc-500 py-2">Sin correos enviados para este presupuesto.</p>
                   ) : (
                     <div className="space-y-2">
                       {correos.map(c => {
+                        const isReply = c.tipo === 'reply';
                         const estadoColors: Record<string, string> = {
                           enviado: 'bg-blue-500/15 text-blue-300 border-blue-500/30',
                           entregado: 'bg-emerald-500/15 text-emerald-300 border-emerald-500/30',
@@ -1207,10 +1248,11 @@ export default function PresupuestosBuilderPage() {
                           spam: 'bg-pink-500/15 text-pink-300 border-pink-500/30',
                         };
                         return (
-                          <div key={c.id} className="rounded-2xl border border-white/10 bg-black/30 p-3">
+                          <div key={c.id} className={`rounded-2xl border p-3 ${isReply ? 'border-blue-500/20 bg-blue-500/5 ml-4' : 'border-white/10 bg-black/30'}`}>
                             <div className="flex items-start justify-between gap-2 flex-wrap">
                               <div className="flex-1 min-w-0">
                                 <div className="flex items-center gap-2 flex-wrap">
+                                  {isReply && <span className="text-[10px] font-black text-blue-400">↩ RESPUESTA ENVIADA</span>}
                                   <span className={`inline-flex rounded-full border px-2 py-0.5 text-[10px] font-black ${estadoColors[c.estado] || 'text-zinc-400 border-zinc-700'}`}>
                                     {c.estado}
                                   </span>
@@ -1219,28 +1261,63 @@ export default function PresupuestosBuilderPage() {
                                 <p className="mt-1 text-xs text-zinc-500 truncate">{c.asunto}</p>
                                 {c.abierto_at && <p className="text-[10px] text-yellow-300/70 mt-0.5">Abierto: {new Date(c.abierto_at).toLocaleString('es-CL')}</p>}
                                 {c.error && <p className="text-[10px] text-red-300 mt-0.5">Error: {c.error}</p>}
-                                {c.mensaje_adicional && <p className="mt-1 text-[11px] text-zinc-400 italic">"{c.mensaje_adicional.slice(0, 80)}…"</p>}
+                                {c.mensaje_adicional && <p className="mt-1 text-[11px] text-zinc-400 italic">"{c.mensaje_adicional.slice(0, 100)}{c.mensaje_adicional.length > 100 ? '…' : ''}"</p>}
                               </div>
-                              <div className="text-right flex-shrink-0">
+                              <div className="text-right flex-shrink-0 space-y-1">
                                 <p className="text-[10px] text-zinc-500">{new Date(c.created_at).toLocaleString('es-CL')}</p>
+                                {!isReply && (
+                                  <button
+                                    onClick={() => { setReplyEmailFor(c); setReplyEmailText(''); setReplyEmailStatus(''); setReplyFor(null); }}
+                                    className="inline-flex items-center gap-1 rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-300 hover:bg-blue-500/20"
+                                  >
+                                    <Send className="h-3 w-3" /> Responder
+                                  </button>
+                                )}
                                 <button
-                                  onClick={() => { setReplyFor(c.id); setReplyText(''); setReplyNota(''); }}
-                                  className="mt-1 inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-bold text-zinc-400 hover:border-yellow-400/40 hover:text-yellow-200"
+                                  onClick={() => { setReplyFor(replyFor === c.id ? null : c.id); setReplyText(''); setReplyNota(''); setReplyEmailFor(null); }}
+                                  className="ml-1 inline-flex items-center gap-1 rounded-full border border-white/10 px-2 py-0.5 text-[10px] font-bold text-zinc-500 hover:text-zinc-200"
                                 >
-                                  <MessageSquare className="h-3 w-3" /> Registrar respuesta
+                                  <MessageSquare className="h-3 w-3" /> Anotar
                                 </button>
                               </div>
                             </div>
 
-                            {/* Inline reply form */}
+                            {/* Admin reply compose form */}
+                            {replyEmailFor?.id === c.id && (
+                              <div className="mt-3 space-y-2 rounded-2xl border border-blue-500/25 bg-blue-500/8 p-3">
+                                <p className="text-[10px] font-black uppercase tracking-widest text-blue-400">Responder al cliente · {c.email_destinatario}</p>
+                                <textarea
+                                  rows={4}
+                                  value={replyEmailText}
+                                  onChange={e => setReplyEmailText(e.target.value)}
+                                  placeholder="Escribe tu respuesta aquí. El cliente la recibirá por correo electrónico."
+                                  className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-blue-400/50 placeholder:text-zinc-600"
+                                />
+                                <div className="flex gap-2 flex-wrap">
+                                  <button
+                                    onClick={() => void sendAdminReply()}
+                                    disabled={!replyEmailText.trim() || replyEmailSending}
+                                    className="inline-flex items-center gap-1.5 rounded-xl bg-blue-500 px-4 py-1.5 text-[11px] font-black text-white disabled:opacity-50"
+                                  >
+                                    <Send className="h-3.5 w-3.5" />
+                                    {replyEmailSending ? 'Enviando…' : 'Enviar respuesta'}
+                                  </button>
+                                  <button onClick={() => { setReplyEmailFor(null); setReplyEmailText(''); }} className="rounded-xl border border-white/10 px-3 py-1.5 text-[11px] font-bold text-zinc-400">
+                                    Cancelar
+                                  </button>
+                                </div>
+                              </div>
+                            )}
+
+                            {/* Log client response */}
                             {replyFor === c.id && (
                               <div className="mt-3 space-y-2 rounded-2xl border border-yellow-400/20 bg-yellow-400/5 p-3">
-                                <p className="text-[10px] font-black uppercase tracking-widest text-yellow-400">Registrar respuesta del cliente</p>
+                                <p className="text-[10px] font-black uppercase tracking-widest text-yellow-400">Anotar respuesta recibida del cliente</p>
                                 <textarea
                                   rows={2}
                                   value={replyText}
                                   onChange={e => setReplyText(e.target.value)}
-                                  placeholder="¿Qué respondió el cliente? Ej: Acepta el presupuesto, pide descuento, solicita más información…"
+                                  placeholder="¿Qué respondió el cliente? Ej: Acepta el presupuesto, pide descuento…"
                                   className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-xs text-white outline-none focus:border-yellow-400/50"
                                 />
                                 <input
@@ -1251,7 +1328,7 @@ export default function PresupuestosBuilderPage() {
                                 />
                                 <div className="flex gap-2">
                                   <button onClick={() => void submitReply()} disabled={!replyText.trim() || replySubmitting} className="rounded-xl bg-yellow-400 px-3 py-1.5 text-[11px] font-black text-black disabled:opacity-50">
-                                    {replySubmitting ? 'Guardando…' : 'Guardar respuesta'}
+                                    {replySubmitting ? 'Guardando…' : 'Guardar anotación'}
                                   </button>
                                   <button onClick={() => setReplyFor(null)} className="rounded-xl border border-white/10 px-3 py-1.5 text-[11px] font-bold text-zinc-400">Cancelar</button>
                                 </div>

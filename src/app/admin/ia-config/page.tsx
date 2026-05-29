@@ -2,33 +2,50 @@
 
 import { useEffect, useState } from 'react';
 import {
-  AlertTriangle, Bot, CheckCircle, Clock, Eye, EyeOff, Save, Zap,
+  AlertTriangle, Bot, CheckCircle, Clock, ExternalLink, Eye, EyeOff, Save, Zap,
 } from 'lucide-react';
 import { AdminCard, AdminMotion, AdminPage, AdminPageHeader } from '@/components/admin/ui';
 
-const MODELOS = [
+type ProviderType = 'anthropic' | 'groq';
+
+const ANTHROPIC_MODELS = [
   { id: 'claude-opus-4-8', label: 'Opus 4.8', desc: 'Máxima calidad · más lento' },
   { id: 'claude-sonnet-4-6', label: 'Sonnet 4.6', desc: 'Recomendado · balance calidad/velocidad', recommended: true },
   { id: 'claude-haiku-4-5-20251001', label: 'Haiku 4.5', desc: 'Rápido y económico' },
 ] as const;
 
-type ModelId = typeof MODELOS[number]['id'];
+const GROQ_MODELS = [
+  { id: 'llama-3.3-70b-versatile', label: 'LLaMA 3.3 70B', desc: 'Recomendado · gratis · muy capaz', recommended: true },
+  { id: 'llama-3.1-8b-instant', label: 'LLaMA 3.1 8B Instant', desc: 'Ultra-rápido · gratis' },
+  { id: 'gemma2-9b-it', label: 'Gemma 2 9B', desc: 'Eficiente · gratis · Google' },
+  { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', desc: 'Contexto largo 32K · gratis' },
+] as const;
+
+type AnthropicModelId = typeof ANTHROPIC_MODELS[number]['id'];
+type GroqModelId = typeof GROQ_MODELS[number]['id'];
 
 interface ConfigState {
   key_configured: boolean;
-  modelo_ia: ModelId;
+  modelo_ia: string;
   activo: boolean;
+  proveedor_ia: ProviderType;
 }
 
 type TestStatus = 'idle' | 'testing' | 'ok' | 'error';
 type SaveStatus = 'idle' | 'saving' | 'saved' | 'error';
 
 export default function IaConfigPage() {
-  const [config, setConfig] = useState<ConfigState>({ key_configured: false, modelo_ia: 'claude-haiku-4-5-20251001', activo: true });
+  const [config, setConfig] = useState<ConfigState>({
+    key_configured: false,
+    modelo_ia: 'claude-haiku-4-5-20251001',
+    activo: true,
+    proveedor_ia: 'anthropic',
+  });
   const [loading, setLoading] = useState(true);
   const [apiKey, setApiKey] = useState('');
   const [showKey, setShowKey] = useState(false);
-  const [modelo, setModelo] = useState<ModelId>('claude-haiku-4-5-20251001');
+  const [modelo, setModelo] = useState<string>('claude-haiku-4-5-20251001');
+  const [proveedor, setProveedor] = useState<ProviderType>('anthropic');
   const [saveStatus, setSaveStatus] = useState<SaveStatus>('idle');
   const [testStatus, setTestStatus] = useState<TestStatus>('idle');
   const [testResult, setTestResult] = useState<{ latency_ms?: number; model?: string; error?: string } | null>(null);
@@ -47,6 +64,7 @@ export default function IaConfigPage() {
         const data = await res.json() as ConfigState;
         setConfig(data);
         setModelo(data.modelo_ia);
+        setProveedor(data.proveedor_ia ?? 'anthropic');
       }
     } finally {
       setLoading(false);
@@ -80,12 +98,12 @@ export default function IaConfigPage() {
       const res = await fetch('/api/admin/ia/config', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ modelo_ia: modelo }),
+        body: JSON.stringify({ modelo_ia: modelo, proveedor_ia: proveedor }),
       });
       if (!res.ok) throw new Error('Error al guardar');
       setSaveStatus('saved');
-      setConfig(c => ({ ...c, modelo_ia: modelo }));
-      flash('Modelo guardado.');
+      setConfig(c => ({ ...c, modelo_ia: modelo, proveedor_ia: proveedor }));
+      flash('Configuración guardada.');
     } catch {
       setSaveStatus('error');
     } finally {
@@ -113,12 +131,9 @@ export default function IaConfigPage() {
     setTimeout(() => setMsg(''), 3000);
   }
 
-  const statusColor: Record<TestStatus, string> = {
-    idle: 'text-zinc-500',
-    testing: 'text-blue-400',
-    ok: 'text-emerald-400',
-    error: 'text-red-400',
-  };
+  const currentModels = proveedor === 'groq' ? GROQ_MODELS : ANTHROPIC_MODELS;
+  const modeloChanged = modelo !== config.modelo_ia || proveedor !== config.proveedor_ia;
+
   const statusLabel: Record<TestStatus, string> = {
     idle: 'Sin probar',
     testing: 'Probando…',
@@ -131,7 +146,7 @@ export default function IaConfigPage() {
       <AdminPageHeader
         eyebrow="Soluciones Fabrick · IA"
         title="Configuración IA"
-        description="Gestiona tu conexión con la API de Anthropic (Claude). La clave se almacena en la base de datos InsForge, no en variables de entorno."
+        description="Gestiona el proveedor de IA activo y su conexión. Las claves se almacenan en el Centro de Integraciones (tabla integrations) — nunca en variables de entorno."
         icon={Bot}
       />
 
@@ -158,67 +173,115 @@ export default function IaConfigPage() {
               </div>
               <div className="text-right">
                 <p className="text-xs font-black uppercase tracking-widest text-zinc-500">Modelo activo</p>
-                <p className="font-black text-white">{MODELOS.find(m => m.id === config.modelo_ia)?.label ?? config.modelo_ia}</p>
+                <p className="font-black text-white">{config.modelo_ia}</p>
+                <p className="text-xs text-zinc-600 capitalize">{config.proveedor_ia}</p>
               </div>
             </div>
           </AdminCard>
 
-          {/* ── API Key ──────────────────────────────────────────────────────── */}
+          {/* ── Proveedor ────────────────────────────────────────────────────── */}
           <AdminCard>
             <div className="mb-4 flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-yellow-400" />
-              <h2 className="font-black text-white">API Key de Anthropic</h2>
+              <h2 className="font-black text-white">Proveedor de IA</h2>
             </div>
+            <div className="grid grid-cols-2 gap-3 mb-4">
+              {(['anthropic', 'groq'] as ProviderType[]).map(p => (
+                <label
+                  key={p}
+                  className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition ${proveedor === p ? 'border-yellow-400/60 bg-yellow-400/8' : 'border-white/10 bg-black/20 hover:border-white/25'}`}
+                >
+                  <input
+                    type="radio"
+                    name="proveedor"
+                    value={p}
+                    checked={proveedor === p}
+                    onChange={() => {
+                      setProveedor(p);
+                      setModelo(p === 'groq' ? 'llama-3.3-70b-versatile' : 'claude-haiku-4-5-20251001');
+                    }}
+                    className="accent-yellow-400"
+                  />
+                  <div>
+                    {p === 'anthropic' ? <Bot className="h-5 w-5 text-amber-400 mb-1" /> : <Zap className="h-5 w-5 text-rose-400 mb-1" />}
+                    <p className="font-black text-white capitalize">{p === 'anthropic' ? 'Anthropic' : 'Groq'}</p>
+                    <p className="text-[10px] text-zinc-500">{p === 'anthropic' ? 'Claude Opus/Sonnet/Haiku' : 'LLaMA · Gemma · gratis'}</p>
+                  </div>
+                </label>
+              ))}
+            </div>
+            <p className="text-xs text-zinc-600">
+              Las claves se guardan en{' '}
+              <a href="/admin/integraciones" className="inline-flex items-center gap-1 text-yellow-400 hover:underline">
+                Centro de Integraciones <ExternalLink className="h-3 w-3" />
+              </a>
+              {' '}— tarjeta {proveedor === 'anthropic' ? 'Anthropic · Claude' : 'Groq · LLaMA / Gemma'}.
+            </p>
+          </AdminCard>
 
-            {config.key_configured && (
-              <div className="mb-4 flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5">
-                <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
-                <p className="text-sm font-bold text-emerald-300">Clave almacenada en BD. Introduce una nueva para reemplazarla.</p>
+          {/* ── API Key (solo Anthropic legacy) ──────────────────────────────── */}
+          {proveedor === 'anthropic' && (
+            <AdminCard>
+              <div className="mb-4 flex items-center gap-2">
+                <div className="h-2 w-2 rounded-full bg-yellow-400" />
+                <h2 className="font-black text-white">API Key de Anthropic</h2>
+                <span className="ml-auto text-[10px] font-bold uppercase text-zinc-600 tracking-widest">Legacy</span>
               </div>
-            )}
 
-            <div className="space-y-3">
-              <label className="grid gap-1 text-xs font-bold uppercase tracking-widest text-zinc-400">
-                <span>{config.key_configured ? 'Nueva API key (reemplazar)' : 'API key'}</span>
-                <div className="flex gap-2">
-                  <div className="relative flex-1">
-                    <input
-                      type={showKey ? 'text' : 'password'}
-                      value={apiKey}
-                      onChange={e => setApiKey(e.target.value)}
-                      placeholder="sk-ant-..."
-                      className="w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2.5 pr-10 text-sm normal-case tracking-normal text-white outline-none focus:border-yellow-400/70"
-                    />
+              {config.key_configured && (
+                <div className="mb-4 flex items-center gap-2 rounded-2xl border border-emerald-500/20 bg-emerald-500/10 px-4 py-2.5">
+                  <CheckCircle className="h-4 w-4 shrink-0 text-emerald-400" />
+                  <p className="text-sm font-bold text-emerald-300">Clave almacenada en BD. Usa el Centro de Integraciones para gestionarla.</p>
+                </div>
+              )}
+
+              <div className="space-y-3">
+                <label className="grid gap-1 text-xs font-bold uppercase tracking-widest text-zinc-400">
+                  <span>{config.key_configured ? 'Nueva API key (reemplazar)' : 'API key directa'}</span>
+                  <div className="flex gap-2">
+                    <div className="relative flex-1">
+                      <input
+                        type={showKey ? 'text' : 'password'}
+                        value={apiKey}
+                        onChange={e => setApiKey(e.target.value)}
+                        placeholder="sk-ant-..."
+                        className="w-full rounded-2xl border border-white/10 bg-black/50 px-3 py-2.5 pr-10 text-sm normal-case tracking-normal text-white outline-none focus:border-yellow-400/70"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowKey(v => !v)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200"
+                      >
+                        {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                     <button
-                      type="button"
-                      onClick={() => setShowKey(v => !v)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-500 hover:text-zinc-200"
+                      onClick={() => void saveKey()}
+                      disabled={!apiKey.trim() || saveStatus === 'saving'}
+                      className="rounded-2xl bg-yellow-400 px-4 py-2 text-sm font-black text-black disabled:opacity-50"
                     >
-                      {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      <Save className="mr-1 inline h-4 w-4" />
+                      {saveStatus === 'saving' ? 'Guardando…' : 'Guardar'}
                     </button>
                   </div>
-                  <button
-                    onClick={() => void saveKey()}
-                    disabled={!apiKey.trim() || saveStatus === 'saving'}
-                    className="rounded-2xl bg-yellow-400 px-4 py-2 text-sm font-black text-black disabled:opacity-50"
-                  >
-                    <Save className="mr-1 inline h-4 w-4" />
-                    {saveStatus === 'saving' ? 'Guardando…' : 'Guardar'}
-                  </button>
-                </div>
-              </label>
-              <p className="text-xs text-zinc-600">La clave se guarda en la tabla <code className="text-yellow-400">configuracion_ia</code> de InsForge. Nunca se expone al cliente.</p>
-            </div>
-          </AdminCard>
+                </label>
+                <p className="text-xs text-zinc-600">
+                  Recomendado: guarda la clave en{' '}
+                  <a href="/admin/integraciones" className="text-yellow-400 hover:underline">Centro de Integraciones → Anthropic</a>
+                  {' '}para tener test de conexión integrado.
+                </p>
+              </div>
+            </AdminCard>
+          )}
 
           {/* ── Modelo ──────────────────────────────────────────────────────── */}
           <AdminCard>
             <div className="mb-4 flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-yellow-400" />
-              <h2 className="font-black text-white">Modelo de Claude</h2>
+              <h2 className="font-black text-white">Modelo de {proveedor === 'anthropic' ? 'Claude' : 'Groq'}</h2>
             </div>
             <div className="space-y-2 mb-4">
-              {MODELOS.map(m => (
+              {currentModels.map(m => (
                 <label key={m.id} className={`flex cursor-pointer items-start gap-3 rounded-2xl border p-3.5 transition ${modelo === m.id ? 'border-yellow-400/60 bg-yellow-400/8' : 'border-white/10 bg-black/20 hover:border-white/25'}`}>
                   <input
                     type="radio"
@@ -243,11 +306,11 @@ export default function IaConfigPage() {
             </div>
             <button
               onClick={() => void saveModelo()}
-              disabled={modelo === config.modelo_ia || saveStatus === 'saving'}
+              disabled={!modeloChanged || saveStatus === 'saving'}
               className="rounded-2xl bg-yellow-400 px-4 py-2 text-sm font-black text-black disabled:opacity-40"
             >
               <Save className="mr-1 inline h-4 w-4" />
-              {saveStatus === 'saving' ? 'Guardando…' : 'Guardar modelo'}
+              {saveStatus === 'saving' ? 'Guardando…' : 'Guardar configuración'}
             </button>
             {saveStatus === 'saved' && <span className="ml-3 text-sm font-bold text-emerald-400">✓ Guardado</span>}
             {saveStatus === 'error' && <span className="ml-3 text-sm font-bold text-red-400">Error</span>}
@@ -271,7 +334,7 @@ export default function IaConfigPage() {
                  testStatus === 'error' ? <AlertTriangle className="h-3.5 w-3.5" /> :
                  testStatus === 'testing' ? <Zap className="h-3.5 w-3.5 animate-pulse" /> :
                  <Clock className="h-3.5 w-3.5" />}
-                <span className={statusColor[testStatus]}>{statusLabel[testStatus]}</span>
+                <span>{statusLabel[testStatus]}</span>
               </div>
               {lastTested && <span className="text-xs text-zinc-600">Último test: {lastTested.toLocaleTimeString('es-CL')}</span>}
             </div>
@@ -289,13 +352,16 @@ export default function IaConfigPage() {
 
             <button
               onClick={() => void testConnection()}
-              disabled={testStatus === 'testing' || !config.key_configured}
+              disabled={testStatus === 'testing'}
               className="rounded-2xl border border-yellow-400/40 bg-yellow-400/10 px-4 py-2 text-sm font-black text-yellow-200 disabled:opacity-50 hover:bg-yellow-400/20"
             >
               <Zap className="mr-1 inline h-4 w-4" />
               {testStatus === 'testing' ? 'Probando…' : 'Probar conexión'}
             </button>
-            {!config.key_configured && <p className="mt-2 text-xs text-zinc-600">Guarda una API key para probar la conexión.</p>}
+            <p className="mt-2 text-xs text-zinc-600">
+              Prueba la conexión con el proveedor activo. Asegúrate de haber guardado la API key en{' '}
+              <a href="/admin/integraciones" className="text-yellow-400 hover:underline">Centro de Integraciones</a>.
+            </p>
           </AdminCard>
 
           {msg && (

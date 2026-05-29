@@ -10,41 +10,126 @@ function insforgeKey() {
     || 'ik_7e23032539c2dc64d5d27ca29d07b928';
 }
 
-interface DbConfigRow { anthropic_api_key?: string; modelo_ia?: string }
-interface DbResult { data?: { rows?: DbConfigRow[] } }
+interface DbConfigRow { anthropic_api_key?: string; modelo_ia?: string; proveedor_ia?: string }
+interface DbIntegrationRow { credentials?: Record<string, string> }
+interface DbResult { data?: { rows?: (DbConfigRow | DbIntegrationRow)[] } }
 
-async function resolveAiConfig(): Promise<{ apiKey: string | null; modelo: string }> {
-  // Prefer DB-stored key; fall back to env var
-  try {
-    const res = await fetch(
-      `${INSFORGE_URL.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`,
-      {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'x-api-key': insforgeKey() },
-        body: JSON.stringify({ query: `SELECT anthropic_api_key, modelo_ia FROM configuracion_ia WHERE id = 'singleton' LIMIT 1;` }),
-        signal: AbortSignal.timeout(8_000),
-        cache: 'no-store',
-      },
-    );
-    if (res.ok) {
-      const data = await res.json() as DbResult;
-      const row = data.data?.rows?.[0];
-      if (row?.anthropic_api_key) {
-        return { apiKey: row.anthropic_api_key, modelo: row.modelo_ia || 'claude-haiku-4-5-20251001' };
-      }
-    }
-  } catch { /* fall through */ }
-  return { apiKey: process.env.ANTHROPIC_API_KEY || null, modelo: 'claude-haiku-4-5-20251001' };
+async function rawsql(query: string) {
+  const res = await fetch(
+    `${INSFORGE_URL.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`,
+    {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'x-api-key': insforgeKey() },
+      body: JSON.stringify({ query }),
+      signal: AbortSignal.timeout(8_000),
+      cache: 'no-store',
+    },
+  );
+  if (!res.ok) return null;
+  return res.json() as Promise<DbResult>;
 }
 
-interface AnthropicResponse { content?: { text?: string }[] }
+type Provider = 'anthropic' | 'groq';
+
+interface AiConfig {
+  provider: Provider;
+  apiKey: string;
+  modelo: string;
+}
+
+async function resolveAiConfig(): Promise<AiConfig | null> {
+  // 1. Check configuracion_ia table for proveedor_ia + anthropic key
+  try {
+    const data = await rawsql(
+      `SELECT anthropic_api_key, modelo_ia, proveedor_ia FROM configuracion_ia WHERE id = 'singleton' LIMIT 1;`
+    );
+    const row = (data?.data?.rows as DbConfigRow[] | undefined)?.[0];
+    const proveedor = (row?.proveedor_ia as Provider | undefined) ?? 'anthropic';
+
+    if (proveedor === 'groq') {
+      // Check integrations table for groq key
+      const groqData = await rawsql(
+        `SELECT credentials FROM integrations WHERE provider = 'groq' LIMIT 1;`
+      );
+      const groqRow = (groqData?.data?.rows as DbIntegrationRow[] | undefined)?.[0];
+      const groqKey = (groqRow?.credentials?.api_key ?? '').trim();
+      const groqModelo = (groqRow?.credentials?.modelo ?? 'llama-3.3-70b-versatile').trim();
+      if (groqKey) return { provider: 'groq', apiKey: groqKey, modelo: groqModelo };
+    }
+
+    // Try anthropic: first check integrations table
+    const anthropicData = await rawsql(
+      `SELECT credentials FROM integrations WHERE provider = 'anthropic' LIMIT 1;`
+    );
+    const anthropicRow = (anthropicData?.data?.rows as DbIntegrationRow[] | undefined)?.[0];
+    const anthropicKey = (anthropicRow?.credentials?.api_key ?? '').trim();
+    const anthropicModelo = (anthropicRow?.credentials?.modelo ?? '').trim();
+    if (anthropicKey) {
+      return {
+        provider: 'anthropic',
+        apiKey: anthropicKey,
+        modelo: anthropicModelo || row?.modelo_ia || 'claude-haiku-4-5-20251001',
+      };
+    }
+
+    // Fall back to configuracion_ia anthropic key
+    if (row?.anthropic_api_key) {
+      return {
+        provider: 'anthropic',
+        apiKey: row.anthropic_api_key,
+        modelo: row.modelo_ia || 'claude-haiku-4-5-20251001',
+      };
+    }
+  } catch { /* fall through */ }
+
+  // 2. Env var fallback
+  const envKey = process.env.ANTHROPIC_API_KEY;
+  if (envKey) return { provider: 'anthropic', apiKey: envKey, modelo: 'claude-haiku-4-5-20251001' };
+
+  return null;
+}
+
+async function callAnthropic(apiKey: string, modelo: string, systemPrompt: string, userPrompt: string) {
+  const res = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
+    body: JSON.stringify({ model: modelo, max_tokens: 1024, system: systemPrompt, messages: [{ role: 'user', content: userPrompt }] }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Error Anthropic (${res.status}): ${err}`);
+  }
+  const data = await res.json() as { content?: { text?: string }[] };
+  return data.content?.[0]?.text ?? '';
+}
+
+async function callGroq(apiKey: string, modelo: string, systemPrompt: string, userPrompt: string) {
+  const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${apiKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      model: modelo,
+      max_tokens: 1024,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: userPrompt },
+      ],
+    }),
+  });
+  if (!res.ok) {
+    const err = await res.text();
+    throw new Error(`Error Groq (${res.status}): ${err}`);
+  }
+  const data = await res.json() as { choices?: { message?: { content?: string } }[] };
+  return data.choices?.[0]?.message?.content ?? '';
+}
 
 export async function POST(req: NextRequest) {
-  const { apiKey, modelo } = await resolveAiConfig();
+  const config = await resolveAiConfig();
 
-  if (!apiKey) {
+  if (!config) {
     return NextResponse.json({
-      error: 'No hay API key de Anthropic configurada. Ve a Admin → Configuración IA para agregarla.',
+      error: 'No hay API key de IA configurada. Ve a Admin → Centro de Integraciones y agrega tu clave de Anthropic o Groq, o ve a Admin → Configuración IA.',
     }, { status: 500 });
   }
 
@@ -68,24 +153,20 @@ Responde ÚNICAMENTE con un JSON válido con estos campos exactos (sin texto adi
 }
 Genera entre 5-8 ítems en incluye, 4-6 en no_incluye, 4-8 en materiales.`;
 
-  const res = await fetch('https://api.anthropic.com/v1/messages', {
-    method: 'POST',
-    headers: { 'x-api-key': apiKey, 'anthropic-version': '2023-06-01', 'content-type': 'application/json' },
-    body: JSON.stringify({ model: modelo, max_tokens: 1024, system: systemPrompt, messages: [{ role: 'user', content: prompt.trim() }] }),
-  });
-
-  if (!res.ok) {
-    const err = await res.text();
-    return NextResponse.json({ error: `Error Anthropic: ${err}` }, { status: res.status });
-  }
-
-  const data = await res.json() as AnthropicResponse;
-  const text = data.content?.[0]?.text || '';
   try {
+    const text = config.provider === 'groq'
+      ? await callGroq(config.apiKey, config.modelo, systemPrompt, prompt.trim())
+      : await callAnthropic(config.apiKey, config.modelo, systemPrompt, prompt.trim());
+
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     const parsed = JSON.parse(jsonMatch?.[0] ?? text) as Record<string, unknown>;
-    return NextResponse.json({ result: parsed, model: modelo });
-  } catch {
-    return NextResponse.json({ error: 'La IA no devolvió JSON válido', raw: text }, { status: 422 });
+    return NextResponse.json({ result: parsed, model: config.modelo, provider: config.provider });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    if (msg.includes('{')) {
+      // JSON parse error on a response we got
+      return NextResponse.json({ error: 'La IA no devolvió JSON válido', raw: msg }, { status: 422 });
+    }
+    return NextResponse.json({ error: msg }, { status: 500 });
   }
 }

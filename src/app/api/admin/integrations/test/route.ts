@@ -976,6 +976,91 @@ async function testOpenRouter(): Promise<NextResponse> {
   return NextResponse.json(result);
 }
 
+async function testAnthropic(): Promise<NextResponse> {
+  const creds = await readIntegrationCredentials('anthropic');
+  const apiKey = (creds.api_key ?? '').trim();
+  const checks: DiagnosticCheck[] = [];
+  if (!apiKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'anthropic',
+      error: 'No hay API key de Anthropic configurada. Guarda tu clave en Centro de Integraciones → Anthropic.',
+      checks: [{ name: 'API key', ok: false, detail: 'No configurada.' }],
+    });
+  }
+  try {
+    const t0 = Date.now();
+    const res = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'x-api-key': apiKey,
+        'anthropic-version': '2023-06-01',
+        'content-type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 16,
+        messages: [{ role: 'user', content: 'Ping' }],
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    const latency = Date.now() - t0;
+    const json = (await res.json().catch(() => ({}))) as { id?: string; model?: string; error?: { message?: string } };
+    if (!res.ok || json.error) {
+      const detail = json.error?.message ?? `HTTP ${res.status}`;
+      checks.push({ name: 'Anthropic API', ok: false, detail });
+      return NextResponse.json({ ok: false, provider: 'anthropic', error: detail, checks });
+    }
+    checks.push({ name: 'Anthropic API', ok: true, detail: `Conectado · ${json.model ?? 'claude'} · ${latency}ms` });
+    return NextResponse.json({ ok: true, provider: 'anthropic', checks });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ ok: false, provider: 'anthropic', error: msg, checks: [{ name: 'Anthropic API', ok: false, detail: msg }] });
+  }
+}
+
+async function testGroq(): Promise<NextResponse> {
+  const creds = await readIntegrationCredentials('groq');
+  const apiKey = (creds.api_key ?? '').trim();
+  const checks: DiagnosticCheck[] = [];
+  if (!apiKey) {
+    return NextResponse.json({
+      ok: false,
+      provider: 'groq',
+      error: 'No hay API key de Groq configurada. Guarda tu clave en Centro de Integraciones → Groq.',
+      checks: [{ name: 'API key', ok: false, detail: 'No configurada.' }],
+    });
+  }
+  try {
+    const t0 = Date.now();
+    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        model: 'llama-3.1-8b-instant',
+        max_tokens: 16,
+        messages: [{ role: 'user', content: 'Ping' }],
+      }),
+      signal: AbortSignal.timeout(10_000),
+    });
+    const latency = Date.now() - t0;
+    const json = (await res.json().catch(() => ({}))) as { id?: string; model?: string; error?: { message?: string } };
+    if (!res.ok || json.error) {
+      const detail = json.error?.message ?? `HTTP ${res.status}`;
+      checks.push({ name: 'Groq API', ok: false, detail });
+      return NextResponse.json({ ok: false, provider: 'groq', error: detail, checks });
+    }
+    checks.push({ name: 'Groq API', ok: true, detail: `Conectado · ${json.model ?? 'groq'} · ${latency}ms` });
+    return NextResponse.json({ ok: true, provider: 'groq', checks });
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    return NextResponse.json({ ok: false, provider: 'groq', error: msg, checks: [{ name: 'Groq API', ok: false, detail: msg }] });
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const session = await requireAdmin(request);
@@ -996,6 +1081,8 @@ export async function GET(request: NextRequest) {
     if (provider === 'resend') return await testResend();
     if (provider === 'serper') return await testSerper();
     if (provider === 'serpapi') return await testSerpApi();
+    if (provider === 'anthropic') return await testAnthropic();
+    if (provider === 'groq') return await testGroq();
     return NextResponse.json(
       { error: `Proveedor no soportado para test: ${provider || '(vacío)'}.` },
       { status: 400 },

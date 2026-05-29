@@ -106,8 +106,8 @@ export default function RadierCalculator({ onAddItem, nextOrden }: Props) {
     const desglose = [
       `Área: ${calc.area.toFixed(2)} m²`,
       `Hormigón: ${calc.volHormigon.toFixed(3)} m³ (${r.modo === 'trompo' ? `${calc.sacosTotal} sacos, ${calc.arenaM3.toFixed(2)} m³ arena` : 'camión preparado'})`,
-      r.volEstabilizado > 0 ? `Estabilizado: ${calc.volEstabilizado.toFixed(3)} m³` : '',
-      r.volGravilla > 0 ? `Gravilla: ${calc.volGravilla.toFixed(3)} m³` : '',
+      calc.volEstabilizado > 0 ? `Estabilizado: ${calc.volEstabilizado.toFixed(3)} m³` : '',
+      calc.volGravilla > 0 ? `Gravilla: ${calc.volGravilla.toFixed(3)} m³` : '',
       `Subtotal materiales: ${formatBudgetMoney(calc.subtotalMateriales)}`,
       `Mano de obra y otros: ${formatBudgetMoney(calc.subtotalMO)}`,
       `Margen ${r.margen_pct}%: ${formatBudgetMoney(calc.margen)}`,

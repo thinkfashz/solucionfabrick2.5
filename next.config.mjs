@@ -42,6 +42,9 @@ const nextConfig = {
     '@csstools/css-parser-algorithms',
     '@csstools/css-tokenizer',
     '@csstools/color-helpers',
+    'playwright',
+    '@playwright/test',
+    'playwright-core',
   ],
   async headers() {
     return [

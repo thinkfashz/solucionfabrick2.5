@@ -128,6 +128,9 @@ importers:
       nodemailer:
         specifier: ^7.0.11
         version: 7.0.13
+      playwright:
+        specifier: ^1.60.0
+        version: 1.60.0
       react:
         specifier: ^19.0.0
         version: 19.2.6

@@ -67,24 +67,27 @@ function openCompatibleUrl(url: string) {
   window.location.href = url;
 }
 
-function Section({ title, eyebrow, children, dark = false }: { title: string; eyebrow?: string; children: ReactNode; dark?: boolean }) {
+function Section({ title, eyebrow, children, dark = true }: { title: string; eyebrow?: string; children: ReactNode; dark?: boolean }) {
   return (
-    <section className={`${dark ? 'border-white/10 bg-[#111111] text-white' : 'border-black/5 bg-white text-[#111111]'} presupuesto-print-section overflow-hidden rounded-[1.75rem] border p-5 shadow-[0_18px_70px_rgba(0,0,0,0.08)] sm:p-7`}>
-      {eyebrow ? <p className="mb-2 text-[10px] font-black uppercase tracking-[0.28em] text-yellow-600">{eyebrow}</p> : null}
-      <h2 className="mb-5 flex items-center gap-2 text-xl font-black tracking-tight sm:text-2xl"><span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#f4c400]" />{title}</h2>
+    <section className={`${dark ? 'border-white/[0.07] bg-[#181818] text-white' : 'border-black/8 bg-white text-[#111111]'} presupuesto-print-section overflow-hidden rounded-[1.75rem] border p-5 shadow-[0_4px_32px_rgba(0,0,0,0.4)] sm:p-7`}>
+      {eyebrow ? <p className="mb-2 text-[10px] font-black uppercase tracking-[0.32em] text-yellow-500">{eyebrow}</p> : null}
+      <h2 className="mb-5 flex items-center gap-2.5 text-xl font-black tracking-tight sm:text-2xl">
+        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#f4c400] shadow-[0_0_8px_rgba(244,196,0,0.5)]" />
+        {title}
+      </h2>
       {children}
     </section>
   );
 }
 
-function List({ items, dark = false }: { items: string[]; dark?: boolean }) {
+function List({ items, dark = true }: { items: string[]; dark?: boolean }) {
   const cleanItems = items.filter(Boolean);
-  if (!cleanItems.length) return <p className={`${dark ? 'text-zinc-400' : 'text-zinc-500'} rounded-2xl border border-dashed border-current/20 p-4 text-sm`}>Sin información cargada.</p>;
+  if (!cleanItems.length) return <p className="rounded-2xl border border-dashed border-white/15 p-4 text-sm text-zinc-500">Sin información cargada.</p>;
   return (
-    <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+    <ul className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
       {cleanItems.map((item, i) => (
-        <li key={`${item}-${i}`} className={`${dark ? 'border-white/10 bg-white/[0.04] text-zinc-100' : 'border-black/5 bg-[#f5f5f5] text-zinc-800'} rounded-2xl border px-4 py-3 text-sm font-semibold leading-6 transition hover:-translate-y-0.5 hover:border-yellow-400/60`}>
-          <CheckCircle2 className="mr-2 inline h-4 w-4 text-yellow-500" />{item}
+        <li key={`${item}-${i}`} className={`${dark ? 'border-white/[0.08] bg-white/[0.05] text-zinc-100 hover:border-yellow-400/50 hover:bg-yellow-400/[0.06]' : 'border-black/6 bg-zinc-50 text-zinc-800 hover:border-yellow-400/50'} rounded-2xl border px-4 py-3 text-sm font-semibold leading-6 transition hover:-translate-y-0.5`}>
+          <CheckCircle2 className="mr-2 inline h-4 w-4 shrink-0 text-yellow-400" />{item}
         </li>
       ))}
     </ul>
@@ -221,7 +224,7 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
   }
 
   return (
-    <article className="presupuesto-public-page mx-auto w-full max-w-7xl overflow-hidden bg-[#f5f5f5] text-[#111111] shadow-[0_40px_120px_rgba(0,0,0,0.18)] sm:rounded-[2rem] print:overflow-visible print:bg-white print:shadow-none">
+    <article className="presupuesto-public-page mx-auto w-full max-w-7xl overflow-hidden bg-[#0d0d0d] text-white shadow-[0_40px_120px_rgba(0,0,0,0.55)] sm:rounded-[2rem] print:overflow-visible print:bg-white print:text-black print:shadow-none">
       <style jsx global>{`
         @media print {
           @page { size: letter; margin: 12mm; }
@@ -307,7 +310,7 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
 
       <div className="grid min-w-0 gap-5 p-3 sm:p-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-8">
         <div className="grid min-w-0 gap-5">
-          <Section title="Descripción del proyecto" eyebrow="01"><p className="text-sm leading-7 text-zinc-300">{presupuesto.descripcion}</p></Section>
+          <Section title="Descripción del proyecto" eyebrow="01"><p className="text-base leading-8 text-zinc-100">{presupuesto.descripcion}</p></Section>
           <Section title="Alcance incluido" eyebrow="02"><List items={presupuesto.incluye} /></Section>
           <Section title="Materiales y terminaciones" eyebrow="03"><List items={presupuesto.materiales} /></Section>
           <Section title="Galería visual del proyecto" eyebrow="04">
@@ -328,19 +331,91 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
                 style={{ maxHeight: '520px' }}
               />
               {presupuesto.video_descripcion && (
-                <p className="mt-3 text-sm leading-7 text-zinc-300">{presupuesto.video_descripcion}</p>
+                <p className="mt-3 text-sm leading-7 text-zinc-200">{presupuesto.video_descripcion}</p>
               )}
             </Section>
           )}
-          {presupuesto.items.length > 0 && <Section title="Partidas / productos" eyebrow="05"><div className="grid gap-3 md:hidden">{presupuesto.items.map((item) => <div key={item.id} className="rounded-2xl border border-white/10 bg-black/35 p-4"><b className="text-white">{item.nombre}</b><p className="mt-1 text-xs leading-relaxed text-zinc-400">{item.descripcion}</p><div className="mt-3 flex items-center justify-between text-sm"><span className="text-zinc-500">{item.cantidad} {item.unidad}</span><span className="font-black text-yellow-300">{formatBudgetMoney(item.total)}</span></div></div>)}</div><div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[640px] text-left text-sm"><thead className="text-xs uppercase tracking-widest text-yellow-300"><tr><th className="py-2">Item</th><th>Cant.</th><th>Unidad</th><th>Unitario</th><th>Total</th></tr></thead><tbody>{presupuesto.items.map((item) => <tr key={item.id} className="border-t border-white/10"><td className="py-3 pr-3"><b>{item.nombre}</b><p className="text-xs text-zinc-400">{item.descripcion}</p></td><td>{item.cantidad}</td><td>{item.unidad}</td><td>{formatBudgetMoney(item.precio_unitario)}</td><td className="font-bold text-yellow-300">{formatBudgetMoney(item.total)}</td></tr>)}</tbody></table></div></Section>}
-          <Section title="Forma de pago" eyebrow="06"><div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">{presupuesto.forma_pago.map((pago, i) => <div key={i} className="rounded-2xl border border-yellow-400/20 bg-yellow-400/10 p-4"><b className="text-2xl text-yellow-300">{pago.porcentaje}%</b><p className="mt-2 text-xs text-zinc-200">{pago.descripcion}</p></div>)}</div></Section>
+          {presupuesto.items.length > 0 && (
+            <Section title="Partidas / productos" eyebrow="05">
+              {/* Mobile cards */}
+              <div className="grid gap-3 md:hidden">
+                {presupuesto.items.map((item) => (
+                  <div key={item.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4">
+                    <div className="flex items-start justify-between gap-2">
+                      <b className="text-sm text-white">{item.nombre}</b>
+                      <span className="shrink-0 font-black text-yellow-300">{formatBudgetMoney(item.total)}</span>
+                    </div>
+                    {item.descripcion && <p className="mt-1.5 text-xs leading-relaxed text-zinc-300">{item.descripcion}</p>}
+                    <div className="mt-2 text-xs text-zinc-500">{item.cantidad} {item.unidad} · {formatBudgetMoney(item.precio_unitario)} c/u</div>
+                  </div>
+                ))}
+              </div>
+              {/* Desktop table */}
+              <div className="hidden overflow-x-auto md:block">
+                <table className="w-full min-w-[640px] text-left text-sm">
+                  <thead className="border-b border-white/10 text-[10px] uppercase tracking-widest text-yellow-400">
+                    <tr><th className="pb-3">Item</th><th>Cant.</th><th>Unidad</th><th>Unitario</th><th className="text-right">Total</th></tr>
+                  </thead>
+                  <tbody>
+                    {presupuesto.items.map((item) => (
+                      <tr key={item.id} className="border-b border-white/[0.06] last:border-0">
+                        <td className="py-3.5 pr-4">
+                          <b className="text-white">{item.nombre}</b>
+                          {item.descripcion && <p className="mt-0.5 text-xs leading-relaxed text-zinc-400">{item.descripcion}</p>}
+                        </td>
+                        <td className="text-zinc-300">{item.cantidad}</td>
+                        <td className="text-zinc-300">{item.unidad}</td>
+                        <td className="text-zinc-300">{formatBudgetMoney(item.precio_unitario)}</td>
+                        <td className="text-right font-black text-yellow-300">{formatBudgetMoney(item.total)}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                  <tfoot>
+                    <tr className="border-t-2 border-yellow-400/30">
+                      <td colSpan={4} className="pt-3 text-sm font-black text-zinc-400 uppercase tracking-wider">Total</td>
+                      <td className="pt-3 text-right text-lg font-black text-yellow-300">{formatBudgetMoney(presupuesto.total_con_iva)}</td>
+                    </tr>
+                  </tfoot>
+                </table>
+              </div>
+            </Section>
+          )}
+          <Section title="Forma de pago" eyebrow="06">
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+              {presupuesto.forma_pago.map((pago, i) => (
+                <div key={i} className="flex flex-col gap-2 rounded-2xl border border-yellow-400/25 bg-gradient-to-b from-yellow-400/[0.12] to-yellow-400/[0.04] p-4">
+                  <span className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-500">Hito {i + 1}</span>
+                  <b className="text-3xl font-black leading-none text-yellow-300">{pago.porcentaje}%</b>
+                  {presupuesto.total_con_iva > 0 && (
+                    <span className="text-sm font-black text-white">{formatBudgetMoney(Math.round(presupuesto.total_con_iva * pago.porcentaje / 100))}</span>
+                  )}
+                  <p className="text-xs leading-5 text-zinc-200">{pago.descripcion}</p>
+                </div>
+              ))}
+            </div>
+          </Section>
           <Section title="No incluye" eyebrow="07"><List items={presupuesto.no_incluye} /></Section>
-          <Section title="Observación técnica" eyebrow="08"><p className="text-sm leading-7 text-zinc-300">{presupuesto.observacion_tecnica}</p></Section>
+          <Section title="Observación técnica" eyebrow="08"><p className="text-sm leading-8 text-zinc-100">{presupuesto.observacion_tecnica}</p></Section>
         </div>
         <aside className="grid h-max min-w-0 gap-5 lg:sticky lg:top-6">
-          <Section title="Valor del proyecto" eyebrow="Resumen"><div className="rounded-3xl border border-yellow-400/30 bg-yellow-400/10 p-5"><div className="flex justify-between gap-3 py-2 text-zinc-300"><span>Valor neto</span><b>{formatBudgetMoney(presupuesto.valor_neto)}</b></div><div className="flex justify-between gap-3 border-y border-white/10 py-2 text-zinc-300"><span>IVA {presupuesto.iva_porcentaje}%</span><b>{formatBudgetMoney(presupuesto.total_iva)}</b></div><div className="flex justify-between gap-3 pt-4 text-2xl font-black text-yellow-300"><span>Total</span><span>{formatBudgetMoney(presupuesto.total_con_iva)}</span></div></div>{!adminPreview && <><ConfirmButton onConfirm={handleConfirmAcceptance} accepting={accepting} accepted={accepted} compact />{acceptMessage && <p className="mt-3 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-xs font-bold text-emerald-100">{acceptMessage}</p>}</>}</Section>
-          <Section title="Plazo de entrega" eyebrow="Compromiso"><p className="text-sm text-zinc-300">{presupuesto.plazo_entrega}</p></Section>
-          <Section title="Empresa" eyebrow="Proveedor"><p className="text-sm font-bold text-white">{companyName}</p><p className="mt-2 text-xs leading-relaxed text-zinc-400">Propuesta preparada para {presupuesto.empresa_cliente || presupuesto.cliente}. Los valores y condiciones se mantienen según la validez indicada.</p></Section>
+          <Section title="Valor del proyecto" eyebrow="Resumen">
+            <div className="rounded-3xl border border-yellow-400/30 bg-gradient-to-b from-yellow-400/[0.12] to-yellow-400/[0.05] p-5">
+              <div className="flex justify-between gap-3 py-2.5 text-sm text-zinc-300"><span>Valor neto</span><b className="text-white">{formatBudgetMoney(presupuesto.valor_neto)}</b></div>
+              <div className="flex justify-between gap-3 border-y border-yellow-400/15 py-2.5 text-sm text-zinc-300"><span>IVA {presupuesto.iva_porcentaje}%</span><b className="text-white">{formatBudgetMoney(presupuesto.total_iva)}</b></div>
+              <div className="flex justify-between gap-3 pt-4 text-2xl font-black text-yellow-300"><span>Total</span><span>{formatBudgetMoney(presupuesto.total_con_iva)}</span></div>
+            </div>
+            {!adminPreview && (
+              <>
+                <ConfirmButton onConfirm={handleConfirmAcceptance} accepting={accepting} accepted={accepted} compact />
+                {acceptMessage && <p className="mt-3 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 px-4 py-3 text-xs font-bold text-emerald-100">{acceptMessage}</p>}
+              </>
+            )}
+          </Section>
+          <Section title="Plazo de entrega" eyebrow="Compromiso"><p className="text-sm font-semibold leading-7 text-zinc-100">{presupuesto.plazo_entrega}</p></Section>
+          <Section title="Empresa" eyebrow="Proveedor">
+            <p className="text-sm font-bold text-white">{companyName}</p>
+            <p className="mt-2 text-xs leading-relaxed text-zinc-300">Propuesta preparada para <b className="text-white">{presupuesto.empresa_cliente || presupuesto.cliente}</b>. Los valores y condiciones se mantienen según la validez indicada.</p>
+          </Section>
         </aside>
       </div>
 

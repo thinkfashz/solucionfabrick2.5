@@ -1,7 +1,10 @@
 /**
- * Shared AI config resolver — reads provider credentials from integrations DB table.
+ * Shared AI config resolver — reads provider credentials via resolveIntegrationCredentials
+ * which correctly handles encryption, env vars, and InsForge SDK queries.
  * Single source of truth used by: agente, scrapegraph, ai-developer, ads/coach, video-engine.
  */
+import 'server-only';
+import { resolveIntegrationCredentials } from '@/lib/integrationCredentials';
 
 const INSFORGE_URL = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
 
@@ -42,20 +45,6 @@ export interface AiConfig {
   appName?: string;
 }
 
-type CredRow = { credentials?: Record<string, string> };
-
-function credRowsAi(d: unknown) {
-  return (d as { data?: { rows?: CredRow[] } } | null)?.data?.rows ?? [];
-}
-
-async function getIntegrationCreds(provider: string): Promise<Record<string, string> | null> {
-  const d = await rawsqlAi(
-    `SELECT credentials FROM integrations WHERE provider = '${provider}' LIMIT 1;`,
-  );
-  const r = credRowsAi(d)[0];
-  return r?.credentials ?? null;
-}
-
 const DEFAULT_MODELS: Record<AiProvider, string> = {
   anthropic: 'claude-haiku-4-5-20251001',
   groq: 'llama-3.3-70b-versatile',
@@ -64,6 +53,11 @@ const DEFAULT_MODELS: Record<AiProvider, string> = {
   gemini: 'gemini-2.0-flash-exp',
   grok: 'grok-2-1212',
 };
+
+async function getProviderCreds(provider: string): Promise<Record<string, string>> {
+  const resolved = await resolveIntegrationCredentials(provider, ['api_key'], true);
+  return resolved.values;
+}
 
 /**
  * Resolves AI config from DB (configuracion_ia → integrations table).
@@ -84,36 +78,36 @@ export async function resolveAiConfig(): Promise<AiConfig | null> {
 
     // 1. Try preferred provider
     if (preferredProvider) {
-      const creds = await getIntegrationCreds(preferredProvider);
-      const key = creds?.api_key?.trim() ?? '';
+      const creds = await getProviderCreds(preferredProvider);
+      const key = creds.api_key?.trim() ?? '';
       if (key) {
         return {
           provider: preferredProvider,
           apiKey: key,
-          modelo: prefModelo || creds?.modelo || DEFAULT_MODELS[preferredProvider] || '',
-          siteUrl: creds?.site_url,
-          appName: creds?.app_name,
+          modelo: prefModelo || creds.modelo || DEFAULT_MODELS[preferredProvider] || '',
+          siteUrl: creds.site_url,
+          appName: creds.app_name,
         };
       }
     }
 
-    // 2. Auto-detect: try providers in order of preference
+    // 2. Auto-detect: try providers in order
     const autoOrder: AiProvider[] = ['anthropic', 'openrouter', 'groq', 'openai', 'gemini', 'grok'];
     for (const p of autoOrder) {
-      const creds = await getIntegrationCreds(p);
-      const key = creds?.api_key?.trim() ?? '';
+      const creds = await getProviderCreds(p);
+      const key = creds.api_key?.trim() ?? '';
       if (key) {
         return {
           provider: p,
           apiKey: key,
-          modelo: prefModelo || creds?.modelo || DEFAULT_MODELS[p],
-          siteUrl: creds?.site_url,
-          appName: creds?.app_name,
+          modelo: prefModelo || creds.modelo || DEFAULT_MODELS[p],
+          siteUrl: creds.site_url,
+          appName: creds.app_name,
         };
       }
     }
 
-    // Legacy: key stored directly in configuracion_ia
+    // 3. Legacy: key stored directly in configuracion_ia
     if (row?.anthropic_api_key) {
       return { provider: 'anthropic', apiKey: row.anthropic_api_key, modelo: prefModelo || DEFAULT_MODELS.anthropic };
     }
@@ -128,8 +122,8 @@ export async function resolveAiConfig(): Promise<AiConfig | null> {
 
 export async function resolveSerperKey(): Promise<string | undefined> {
   try {
-    const creds = await getIntegrationCreds('serper');
-    return creds?.api_key?.trim() || process.env.SERPER_API_KEY;
+    const creds = await getProviderCreds('serper');
+    return creds.api_key?.trim() || process.env.SERPER_API_KEY;
   } catch {
     return process.env.SERPER_API_KEY;
   }

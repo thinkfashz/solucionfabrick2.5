@@ -8,7 +8,10 @@ import {
   AlertTriangle,
   BarChart3,
   BookOpen,
+  Bot,
   Boxes,
+  Camera,
+  Cpu,
   Database,
   Eye,
   FileText,
@@ -20,6 +23,7 @@ import {
   LayoutGrid,
   Link2,
   LogOut,
+  Mail,
   Megaphone,
   MessageCircle,
   Newspaper,
@@ -33,9 +37,6 @@ import {
   Send,
   Settings,
   ShieldCheck,
-  Bot,
-  Camera,
-  Cpu,
   ShoppingCart,
   Sparkles,
   Star,
@@ -48,10 +49,11 @@ import {
   Truck,
   User,
   Users,
+  Video,
   Wallet,
   X,
-  Zap,
 } from 'lucide-react';
+import { BrandMark } from '@/components/admin/ui';
 
 interface AdminContextMenuProps {
   open: boolean;
@@ -149,9 +151,12 @@ const SECTIONS: MenuSection[] = [
     title: 'Marketing & IA',
     tone: 'pink',
     items: [
-      { href: '/admin/ia-config', label: 'Configuración IA', icon: Bot, description: 'API key Anthropic / Groq y modelo activo', highlight: true },
+      { href: '/admin/ia-config', label: 'Configuración IA', icon: Bot, description: 'Proveedor activo, API key y modelo', highlight: true },
       { href: '/admin/agente', label: 'Agente IA · Playwright', icon: Sparkles, description: 'Navega internet, busca precios y analiza competencia', highlight: true },
+      { href: '/admin/ai-developer', label: 'Fabrick AI Developer', icon: Sparkles, description: 'Chat real, herramientas Git y agente Playwright', highlight: true },
       { href: '/admin/asistente-ia', label: 'Asistente IA', icon: Sparkles, description: 'Chat con IA + análisis' },
+      { href: '/admin/video-engine', label: 'Fabrick Studio IA', icon: Video, description: 'Guiones, escenas y previews HTML con IA', highlight: true },
+      { href: '/admin/correo', label: 'Correo · Resend', icon: Mail, description: 'Bandeja de entrada/salida, estadísticas y Resend', highlight: true },
       { href: '/admin/publicidad/coach', label: 'Coach de campañas', icon: Sparkles, description: 'Optimización con IA' },
       { href: '/admin/publicar', label: 'Publicar', icon: Send, description: 'Posts para redes' },
       { href: '/admin/newsletter', label: 'Boletín', icon: Newspaper, description: 'Suscriptores y campañas' },
@@ -236,46 +241,66 @@ export default function AdminContextMenu({ open, onClose, onLogout, profilePhoto
   }
 
   return (
-    <div className="fixed inset-0 z-[300] flex items-start justify-center bg-black/80 p-3 pt-[4vh] backdrop-blur-md lg:hidden">
-      <div className="flex max-h-[92vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-white/12 bg-zinc-950/98 shadow-[0_40px_120px_rgba(0,0,0,0.9)]">
-        <header className="border-b border-white/10 px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                title="Cambiar foto de perfil"
-                onClick={() => fileRef.current?.click()}
-                className="group relative h-11 w-11 overflow-hidden rounded-full border-2 border-yellow-300/40 bg-black/60 shadow-md transition-all hover:border-yellow-300/80"
-              >
-                {profilePhoto ? (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img src={profilePhoto} alt="Foto de perfil" className="h-full w-full object-cover" />
-                ) : (
-                  <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-700 to-zinc-900">
-                    <User className="h-5 w-5 text-zinc-400" />
-                  </div>
-                )}
-                <div className="absolute inset-0 flex items-center justify-center bg-black/60 opacity-0 transition-opacity group-hover:opacity-100">
-                  <Camera className="h-3.5 w-3.5 text-yellow-300" />
-                </div>
-              </button>
-              <input
-                ref={fileRef}
-                type="file"
-                accept="image/jpeg,image/png,image/webp,image/gif"
-                className="sr-only"
-                onChange={(e) => {
-                  const file = e.target.files?.[0];
-                  if (file && onPhotoUpload) onPhotoUpload(file);
-                  e.target.value = '';
-                }}
-              />
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.24em] text-yellow-300">Control room</p>
-                <Link href="/admin/perfil" onClick={onClose} className="mt-1 block text-[10px] uppercase tracking-[0.18em] text-zinc-500 hover:text-yellow-300">Ver perfil · {totalItems} opciones</Link>
-              </div>
+    <div className="fixed inset-0 z-[300] flex items-start justify-center bg-black/85 p-3 pt-[3vh] backdrop-blur-md lg:hidden">
+      <div className="flex max-h-[94vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-yellow-300/20 bg-zinc-950 shadow-[0_40px_120px_rgba(0,0,0,0.95)]">
+
+        {/* ── Premium header ── */}
+        <header className="relative overflow-hidden border-b border-white/10">
+          {/* Glow background */}
+          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_25%_50%,rgba(250,204,21,0.12),transparent_65%)]" />
+
+          {/* Top strip: logo + title + close */}
+          <div className="relative flex items-center gap-3 px-4 pt-4 pb-3">
+            <BrandMark size="md" animated />
+            <div className="flex-1 min-w-0">
+              <p className="text-[9px] font-black uppercase tracking-[0.35em] text-zinc-500">Panel Root</p>
+              <p className="text-[13px] font-black uppercase tracking-[0.22em] text-yellow-300 leading-tight">Soluciones Fabrick</p>
             </div>
-            <button onClick={onClose} className="rounded-full border border-white/10 p-2 text-zinc-300" aria-label="Cerrar menú"><X className="h-4 w-4" /></button>
+            <button onClick={onClose} className="rounded-2xl border border-white/10 bg-white/5 p-2 text-zinc-400 hover:border-white/20 hover:text-white transition-colors" aria-label="Cerrar menú">
+              <X className="h-4 w-4" />
+            </button>
+          </div>
+
+          {/* Bottom strip: profile photo + info */}
+          <div className="relative flex items-center gap-3 px-4 pb-4">
+            <button
+              type="button"
+              title="Cambiar foto de perfil"
+              onClick={() => fileRef.current?.click()}
+              className="group relative h-12 w-12 shrink-0 overflow-hidden rounded-2xl border-2 border-yellow-300/35 bg-black/60 shadow-lg transition-all hover:border-yellow-300/70"
+            >
+              {profilePhoto ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img src={profilePhoto} alt="Foto de perfil" className="h-full w-full object-cover" />
+              ) : (
+                <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-zinc-700 to-zinc-900">
+                  <User className="h-5 w-5 text-zinc-400" />
+                </div>
+              )}
+              <div className="absolute inset-0 flex items-center justify-center rounded-2xl bg-black/65 opacity-0 transition-opacity group-hover:opacity-100">
+                <Camera className="h-3.5 w-3.5 text-yellow-300" />
+              </div>
+            </button>
+            <input
+              ref={fileRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp,image/gif"
+              className="sr-only"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (file && onPhotoUpload) onPhotoUpload(file);
+                e.target.value = '';
+              }}
+            />
+            <div className="min-w-0 flex-1">
+              <div className="flex items-center gap-2">
+                <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-2 py-0.5 text-[9px] font-bold uppercase tracking-[0.2em] text-emerald-300">Administrador</span>
+                <span className="text-[9px] text-zinc-600">{totalItems} módulos</span>
+              </div>
+              <Link href="/admin/perfil" onClick={onClose} className="mt-1 block text-[11px] font-semibold text-zinc-300 hover:text-yellow-300 transition-colors">
+                Ver perfil →
+              </Link>
+            </div>
           </div>
         </header>
 

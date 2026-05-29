@@ -26,18 +26,55 @@ const TO_FABRICK = [
   { label: 'Bienvenido de vuelta',             detail: 'Soluciones Fabrick · Tu obra en buenas manos ✦' },
 ];
 
+const CODE_TO_STUDIO = [
+  '$ fabrick theme:migrate --target=studio',
+  '  ↳ loading design-system/studio.json…',
+  '  ↳ patching CSS vars: --sa-accent → #f97316',
+  '  ↳ replacing gradient blobs with flat surfaces',
+  '  ↳ applying 280px sidebar layout',
+  '  ↳ swapping gold → orange accent tokens',
+  '  ↳ rewriting border-radius: 24px → 8px',
+  '  ↳ syncing 62 module surfaces…',
+  '  ✓ Studio Admin ready',
+];
+
+const CODE_TO_FABRICK = [
+  '$ fabrick theme:restore --target=fabrick',
+  '  ↳ loading design-system/fabrick.json…',
+  '  ↳ restoring CSS vars: --accent → #facc15',
+  '  ↳ re-enabling glassmorphism layers',
+  '  ↳ restoring radial gradient blobs',
+  '  ↳ recovering gold token palette',
+  '  ↳ rehydrating sidebar backdrop-blur…',
+  '  ↳ syncing 62 module surfaces…',
+  '  ✓ Fabrick Classic restaurado',
+];
+
 const DURATION_MS = 2800;
 
 export function AdminThemeTransition({ isActive, targetTheme, onComplete }: Props) {
   const [progress, setProgress] = useState(0);
   const [stepIdx, setStepIdx] = useState(0);
   const [done, setDone] = useState(false);
+  const [codeLines, setCodeLines] = useState<string[]>([]);
 
   const steps = targetTheme === 'studio' ? TO_STUDIO : TO_FABRICK;
+  const codeScript = targetTheme === 'studio' ? CODE_TO_STUDIO : CODE_TO_FABRICK;
   const isStudio = targetTheme === 'studio';
 
   useEffect(() => {
-    if (!isActive) { setProgress(0); setStepIdx(0); setDone(false); return; }
+    if (!isActive) {
+      setProgress(0); setStepIdx(0); setDone(false); setCodeLines([]);
+      return;
+    }
+
+    // Stagger code lines
+    const codeTimers: ReturnType<typeof setTimeout>[] = [];
+    codeScript.forEach((line, i) => {
+      codeTimers.push(setTimeout(() => {
+        setCodeLines((prev) => [...prev, line]);
+      }, i * (DURATION_MS / codeScript.length)));
+    });
 
     let raf = 0;
     const start = performance.now();
@@ -54,7 +91,7 @@ export function AdminThemeTransition({ isActive, targetTheme, onComplete }: Prop
       }
     };
     raf = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf);
+    return () => { cancelAnimationFrame(raf); codeTimers.forEach(clearTimeout); };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
@@ -167,8 +204,55 @@ export function AdminThemeTransition({ isActive, targetTheme, onComplete }: Prop
               </motion.div>
             </AnimatePresence>
 
+            {/* Code viewer terminal */}
+            <div className="mt-5 w-full overflow-hidden rounded-xl border border-white/8 bg-black/60">
+              {/* Terminal title bar */}
+              <div className="flex items-center gap-2 border-b border-white/8 bg-white/4 px-3 py-2">
+                <span className="flex gap-1">
+                  <span className="h-2 w-2 rounded-full bg-red-500/50" />
+                  <span className="h-2 w-2 rounded-full bg-yellow-500/50" />
+                  <span className="h-2 w-2 rounded-full bg-green-500/50" />
+                </span>
+                <span className="text-[9px] font-mono text-white/25 mx-auto">
+                  fabrick-theme-engine — bash
+                </span>
+              </div>
+              {/* Code lines */}
+              <div className="min-h-[88px] space-y-0.5 px-3 py-2.5 font-mono text-[10px]">
+                <AnimatePresence>
+                  {codeLines.map((line, i) => {
+                    const isCmd   = line.startsWith('$');
+                    const isOk    = line.includes('✓');
+                    const isArrow = line.includes('↳');
+                    return (
+                      <motion.div
+                        key={i}
+                        initial={{ opacity: 0, x: -6 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ duration: 0.12 }}
+                        className={`leading-relaxed ${
+                          isCmd   ? 'text-amber-400/90'  :
+                          isOk    ? 'text-emerald-400'   :
+                          isArrow ? 'text-white/40'      :
+                                    'text-white/25'
+                        }`}
+                      >
+                        {line}
+                      </motion.div>
+                    );
+                  })}
+                </AnimatePresence>
+                {!done && (
+                  <span
+                    className="inline-block h-3 w-1.5 animate-pulse rounded-[1px]"
+                    style={{ background: accent, opacity: 0.7 }}
+                  />
+                )}
+              </div>
+            </div>
+
             {/* Completed steps */}
-            <div className="mt-6 flex w-full flex-col gap-1 text-left">
+            <div className="mt-4 flex w-full flex-col gap-1 text-left">
               {steps.slice(0, stepIdx).map((s, i) => (
                 <motion.div
                   key={i}

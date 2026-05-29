@@ -59,6 +59,8 @@ interface AdminContextMenuProps {
   open: boolean;
   onClose: () => void;
   onLogout: () => void;
+  onToggleTheme?: () => void;
+  currentTheme?: string;
   profilePhoto?: string | null;
   onPhotoUpload?: (file: File) => void;
 }
@@ -213,7 +215,8 @@ const toneClass: Record<MenuSection['tone'], string> = {
   red: 'text-rose-300 border-rose-300/25 hover:border-rose-300/40 hover:bg-rose-300/10',
 };
 
-export default function AdminContextMenu({ open, onClose, onLogout, profilePhoto, onPhotoUpload }: AdminContextMenuProps) {
+export default function AdminContextMenu({ open, onClose, onLogout, onToggleTheme, currentTheme, profilePhoto, onPhotoUpload }: AdminContextMenuProps) {
+  const isStudio = currentTheme === 'studio';
   const [query, setQuery] = useState('');
   const [expanded, setExpanded] = useState<Set<string>>(new Set(['Módulos 1–7', 'Seguridad & acceso', 'Operación', 'Integraciones']));
   const fileRef = useRef<HTMLInputElement | null>(null);
@@ -242,7 +245,7 @@ export default function AdminContextMenu({ open, onClose, onLogout, profilePhoto
 
   return (
     <div className="fixed inset-0 z-[300] flex items-start justify-center bg-black/85 p-3 pt-[3vh] backdrop-blur-md lg:hidden">
-      <div className="flex max-h-[94vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-yellow-300/20 bg-zinc-950 shadow-[0_40px_120px_rgba(0,0,0,0.95)]">
+      <div data-admin-context-menu="" className="flex max-h-[94vh] w-full max-w-md flex-col overflow-hidden rounded-3xl border border-yellow-300/20 bg-zinc-950 shadow-[0_40px_120px_rgba(0,0,0,0.95)]">
 
         {/* ── Premium header ── */}
         <header className="relative overflow-hidden border-b border-white/10">
@@ -347,7 +350,25 @@ export default function AdminContextMenu({ open, onClose, onLogout, profilePhoto
           })}
         </div>
 
-        <footer className="border-t border-white/10 p-3">
+        <footer className="border-t border-white/10 p-3 space-y-2">
+          {/* Theme switch */}
+          {onToggleTheme && (
+            <button
+              onClick={() => { onClose(); setTimeout(onToggleTheme, 80); }}
+              className={`flex w-full items-center justify-center gap-2 rounded-2xl border px-4 py-3 text-xs font-black uppercase tracking-[0.2em] transition-all ${
+                isStudio
+                  ? 'border-yellow-300/25 bg-yellow-300/5 text-yellow-300 hover:bg-yellow-300/10 hover:border-yellow-300/40'
+                  : 'border-orange-500/25 bg-orange-500/5 text-orange-400 hover:bg-orange-500/10 hover:border-orange-500/40'
+              }`}
+            >
+              <svg className="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <circle cx="12" cy="12" r="4" />
+                <path d="M12 2v2M12 20v2M4.93 4.93l1.41 1.41M17.66 17.66l1.41 1.41M2 12h2M20 12h2M4.93 19.07l1.41-1.41M17.66 6.34l1.41-1.41" />
+              </svg>
+              {isStudio ? '↩ Fabrick Classic' : '◆ Studio Admin'}
+            </button>
+          )}
+          {/* Logout */}
           <button onClick={() => { onClose(); onLogout(); }} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-xs font-black uppercase tracking-[0.2em] text-zinc-400 hover:border-red-400/50 hover:text-red-300">
             <LogOut className="h-4 w-4" /> Cerrar sesión
           </button>

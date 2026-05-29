@@ -2,19 +2,21 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import DOMPurify from 'isomorphic-dompurify';
 import {
   AlertTriangle,
   BadgeCheck,
   CalendarDays,
   CheckCircle2,
+  Clock,
   Copy,
   Image as ImageIcon,
   Loader2,
   MessageCircle,
   Printer,
   ShieldCheck,
+  Timer,
   X,
 } from 'lucide-react';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
@@ -142,6 +144,22 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
   const [acceptMessage, setAcceptMessage] = useState('');
   const [copied, setCopied] = useState(false);
   const [heroMode, setHeroMode] = useState<'proxy' | 'original' | 'failed'>('proxy');
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
+  const [isExpired, setIsExpired] = useState(false);
+
+  useEffect(() => {
+    const vence = presupuesto.fecha_vencimiento;
+    if (!vence) return;
+    const target = new Date(vence + 'T23:59:59').getTime();
+    function tick() {
+      const diff = target - Date.now();
+      if (diff <= 0) { setIsExpired(true); setTimeLeft(null); return; }
+      setTimeLeft({ days: Math.floor(diff / 86400000), hours: Math.floor((diff % 86400000) / 3600000), minutes: Math.floor((diff % 3600000) / 60000), seconds: Math.floor((diff % 60000) / 1000) });
+    }
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [presupuesto.fecha_vencimiento]);
 
   const safeHtml = DOMPurify.sanitize(sanitizeBudgetHtml(presupuesto.html_personalizado), {
     FORBID_TAGS: ['script', 'iframe', 'object', 'embed'],
@@ -270,7 +288,11 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
                 <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4"><ShieldCheck className="mb-3 h-5 w-5 text-yellow-300" /><p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Proveedor</p><b>{companyName}</b></div>
                 <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4"><BadgeCheck className="mb-3 h-5 w-5 text-yellow-300" /><p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Estado</p><b>{accepted ? 'Aprobado' : presupuesto.estado}</b></div>
                 <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4"><CalendarDays className="mb-3 h-5 w-5 text-yellow-300" /><p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Fecha</p><b>{presupuesto.fecha}</b></div>
-                <div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4"><AlertTriangle className="mb-3 h-5 w-5 text-yellow-300" /><p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Validez</p><b>{presupuesto.validez}</b></div>
+                <div className={`rounded-3xl border p-4 ${isExpired ? 'border-red-500/40 bg-red-500/10' : timeLeft ? 'border-orange-400/30 bg-orange-400/[0.06]' : 'border-white/10 bg-white/[0.06]'}`}>
+                  {isExpired ? <AlertTriangle className="mb-3 h-5 w-5 text-red-400" /> : timeLeft ? <Timer className="mb-3 h-5 w-5 text-orange-400" /> : <AlertTriangle className="mb-3 h-5 w-5 text-yellow-300" />}
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">{isExpired ? 'Vencida' : timeLeft ? 'Vence en' : 'Validez'}</p>
+                  {isExpired ? <b className="text-red-400">Propuesta vencida</b> : timeLeft ? <b className="text-orange-300">{timeLeft.days}d {String(timeLeft.hours).padStart(2,'0')}h {String(timeLeft.minutes).padStart(2,'0')}m</b> : <b>{presupuesto.validez}</b>}
+                </div>
               </div>
               <div className="mt-3 rounded-3xl bg-[#f4c400] p-5 text-black"><p className="text-[10px] font-black uppercase tracking-[0.26em]">Total proyecto</p><b className="mt-2 block text-3xl font-black tracking-tight">{formatBudgetMoney(presupuesto.total_con_iva)}</b><span className="mt-1 block text-sm font-black">IVA incluido · Neto {formatBudgetMoney(presupuesto.valor_neto)}</span></div>
             </aside>
@@ -291,6 +313,63 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
         <Section title="Observación técnica" eyebrow="08"><div className="rounded-2xl border-l-4 border-[#f4c400] bg-[#111111] p-5 text-white"><p className="text-sm leading-7 text-zinc-200">{presupuesto.observacion_tecnica || 'Sin observación técnica registrada.'}</p></div></Section>
         <section className="presupuesto-print-section rounded-[2rem] bg-[#111111] p-6 text-white sm:p-8 lg:p-10"><p className="text-[10px] font-black uppercase tracking-[0.34em] text-yellow-300">Total del proyecto</p><h2 className="mt-3 text-4xl font-black tracking-tight sm:text-6xl">{formatBudgetMoney(presupuesto.total_con_iva)}</h2><p className="mt-2 text-xl font-black text-[#f4c400]">IVA incluido</p><div className="mt-6 grid gap-3 sm:grid-cols-3"><div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4"><p className="text-xs text-zinc-400">IVA {presupuesto.iva_porcentaje}%</p><b className="mt-1 block text-2xl">{formatBudgetMoney(presupuesto.total_iva)}</b></div><div className="rounded-3xl border border-yellow-400/30 bg-yellow-400/10 p-4"><p className="text-xs text-yellow-200">Total con IVA</p><b className="mt-1 block text-2xl text-yellow-300">{formatBudgetMoney(presupuesto.total_con_iva)}</b></div><div className="rounded-3xl bg-[#f4c400] p-4 text-black"><p className="text-xs font-black uppercase">Plazo</p><b className="mt-1 block text-2xl">{presupuesto.plazo_entrega}</b></div></div></section>
       </main>
+
+      {presupuesto.fecha_vencimiento && (
+        <section className="presupuesto-print-section mx-4 mb-6 overflow-hidden rounded-[2rem] sm:mx-6 lg:mx-8 print:hidden">
+          {isExpired ? (
+            <div className="relative bg-[#130000] p-6 text-center sm:p-12">
+              <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(239,68,68,0.08)_0%,transparent_70%)]" />
+              <div className="relative">
+                <div className="mx-auto mb-5 flex h-20 w-20 items-center justify-center rounded-full border border-red-500/30 bg-red-500/10 shadow-[0_0_40px_rgba(239,68,68,0.2)]"><Clock className="h-10 w-10 text-red-400" /></div>
+                <p className="text-[10px] font-black uppercase tracking-[0.4em] text-red-500">⚠ Propuesta vencida</p>
+                <h2 className="mt-3 text-3xl font-black text-white sm:text-5xl">Esta propuesta ha expirado</h2>
+                <p className="mt-4 max-w-md mx-auto text-zinc-400">Venció el <b className="text-zinc-200">{new Date(presupuesto.fecha_vencimiento + 'T23:59:59').toLocaleDateString('es-CL', { day: 'numeric', month: 'long', year: 'numeric' })}</b>. El precio y las condiciones pueden haber cambiado.</p>
+                {!adminPreview && <button type="button" onClick={() => openCompatibleUrl(consultUrl)} className="mt-7 inline-flex items-center gap-2 rounded-full bg-white px-6 py-3 text-sm font-black text-black hover:bg-zinc-100"><MessageCircle className="h-4 w-4" /> Solicitar nueva propuesta</button>}
+              </div>
+            </div>
+          ) : timeLeft ? (() => {
+            const isUrgent = timeLeft.days === 0;
+            const isCritical = timeLeft.days === 0 && timeLeft.hours < 6;
+            const accentColor = isCritical ? '#ef4444' : isUrgent ? '#f97316' : '#f4c400';
+            const bgGlow = isCritical ? 'rgba(239,68,68,0.12)' : isUrgent ? 'rgba(249,115,22,0.10)' : 'rgba(244,196,0,0.07)';
+            const chipColor = isCritical ? 'border-red-500/40 bg-red-500/10 text-red-400' : isUrgent ? 'border-orange-500/40 bg-orange-500/10 text-orange-400' : 'border-yellow-400/30 bg-yellow-400/10 text-yellow-400';
+            const urgencyText = isCritical ? '¡Últimas horas! Confirma ahora antes que venza.' : isUrgent ? '¡Menos de 24 horas! No pierdas esta propuesta.' : 'Esta propuesta vence pronto. Confirma para asegurar el precio.';
+            return (
+              <div className="relative overflow-hidden bg-[#0a0a0a] p-6 sm:p-12" style={{ boxShadow: `inset 0 0 80px ${bgGlow}` }}>
+                <div className="absolute inset-0" style={{ background: `radial-gradient(ellipse at 50% 100%, ${bgGlow.replace('0.12','0.18').replace('0.10','0.15').replace('0.07','0.10')} 0%, transparent 65%)` }} />
+                {isCritical && <div className="absolute inset-x-0 top-0 h-1 animate-pulse" style={{ background: `linear-gradient(90deg, transparent, ${accentColor}, transparent)` }} />}
+                <div className="relative flex flex-col items-center text-center">
+                  <div className={`flex items-center gap-2 rounded-full border px-4 py-1.5 ${chipColor} ${isCritical ? 'animate-pulse' : ''}`}>
+                    <Timer className="h-3.5 w-3.5" />
+                    <p className="text-[10px] font-black uppercase tracking-[0.28em]">{isCritical ? '¡Crítico! · Auto-destrucción' : isUrgent ? 'Urgente · Auto-destrucción' : 'Auto-destrucción activa'}</p>
+                  </div>
+                  <p className="mt-4 max-w-sm text-sm font-bold text-zinc-400">{urgencyText}</p>
+                  <div className="mt-8 flex items-end gap-2 sm:gap-5">
+                    {[{ v: timeLeft.days, u: 'días' }, { v: timeLeft.hours, u: 'horas' }, { v: timeLeft.minutes, u: 'min' }, { v: timeLeft.seconds, u: 'seg' }].map(({ v, u }, i) => (
+                      <div key={u} className="flex flex-col items-center">
+                        <span
+                          className="min-w-[58px] rounded-2xl border px-2 py-2 text-center text-3xl font-black tabular-nums sm:min-w-[80px] sm:text-5xl"
+                          style={{ color: accentColor, borderColor: `${accentColor}30`, background: `${accentColor}10`, boxShadow: i === 3 && isCritical ? `0 0 24px ${accentColor}40` : undefined }}
+                        >
+                          {String(v).padStart(2, '0')}
+                        </span>
+                        <span className="mt-2 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">{u}</span>
+                      </div>
+                    ))}
+                  </div>
+                  <p className="mt-6 text-xs text-zinc-600">Vence el {new Date(presupuesto.fecha_vencimiento + 'T23:59:59').toLocaleDateString('es-CL', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
+                  {!adminPreview && (
+                    <div className="mt-7 flex flex-col items-center gap-3 sm:flex-row">
+                      <ConfirmButton onConfirm={handleConfirmAcceptance} accepting={accepting} accepted={accepted} />
+                      <button type="button" onClick={() => openCompatibleUrl(consultUrl)} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-5 py-3 text-sm font-black text-white"><MessageCircle className="h-4 w-4" /> Consultar por WhatsApp</button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            );
+          })() : null}
+        </section>
+      )}
 
       <footer className="bg-[#111111] p-6 text-white sm:p-8 lg:p-10"><div className="border-t border-white/10 pt-8"><div className="max-w-[260px]"><FabrickFullLogo theme="light" tagline="Diseño • Fabricación • Instalación" /></div><p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-400">Mobiliario técnico y soluciones modulares para espacios industriales, comerciales y operativos.</p><button type="button" onClick={() => openCompatibleUrl(consultUrl)} className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-[#f4c400] px-5 py-3 text-sm font-black text-black print:hidden"><MessageCircle className="h-4 w-4" /> Contactar por WhatsApp</button></div></footer>
 

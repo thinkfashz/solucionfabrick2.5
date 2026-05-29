@@ -148,7 +148,7 @@ export default function PresupuestosBuilderPage() {
         : filterEstado === 'vencido' ? expired
         : b.estado === filterEstado;
       const q = search.toLowerCase();
-      const matchSearch = !q || b.cliente.toLowerCase().includes(q) || b.titulo.toLowerCase().includes(q) || b.empresa_cliente.toLowerCase().includes(q);
+      const matchSearch = !q || (b.cliente || '').toLowerCase().includes(q) || (b.titulo || '').toLowerCase().includes(q) || (b.empresa_cliente || '').toLowerCase().includes(q);
       return estFilter && matchSearch;
     });
   }, [budgets, search, filterEstado]);
@@ -263,10 +263,12 @@ export default function PresupuestosBuilderPage() {
   const addImage = () => update({ imagenes: [...selected.imagenes, { id: createBudgetId('img'), url: '', titulo: '', descripcion: '', orden: selected.imagenes.length + 1 }] });
   const patchImage = (id: string, patch: Partial<PresupuestoImagen>) => update({ imagenes: selected.imagenes.map(img => img.id === id ? { ...img, ...patch } : img) });
   const setHeroImage = (id: string) => {
-    const updated = selected.imagenes.map(img => ({ ...img, orden: img.id === id ? 1 : img.orden >= 1 ? img.orden + 1 : img.orden }))
-      .sort((a, b) => a.orden - b.orden)
-      .map((img, i) => ({ ...img, orden: i + 1 }));
-    update({ imagenes: updated });
+    const sorted = [...selected.imagenes].sort((a, b) => a.orden - b.orden);
+    const reordered = [
+      ...sorted.filter(img => img.id === id),
+      ...sorted.filter(img => img.id !== id),
+    ].map((img, i) => ({ ...img, orden: i + 1 }));
+    update({ imagenes: reordered });
   };
   const openMediaPicker = (targetId: string | null = null) => { setImageTargetId(targetId); setMediaPickerOpen(true); };
   const selectMediaAsset = (asset: MediaAsset) => {
@@ -631,7 +633,7 @@ export default function PresupuestosBuilderPage() {
             {tab === 'radier' && (
               <AdminCard>
                 <RadierCalculator
-                  nextOrden={selected.items.length + 1}
+                  nextOrden={selected.items.length > 0 ? Math.max(...selected.items.map(it => it.orden)) + 1 : 1}
                   onAddItem={(item, desglose) => {
                     const obs = selected.observacion_tecnica;
                     const sep = obs ? '\n\n' : '';

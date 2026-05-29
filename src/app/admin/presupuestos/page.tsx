@@ -5,8 +5,9 @@
 import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
-  AlertTriangle, ArrowDown, ArrowUp, Calendar, CheckCircle, Clock, Copy, Database,
-  Eye, FileJson, FileText, ImagePlus, Play, Plus, Printer, Save, Send, Star, Trash2, Zap,
+  AlertTriangle, ArrowDown, ArrowUp, Bot, Calendar, CheckCircle, ChevronDown, Clock,
+  Copy, Database, Eye, FileJson, FileText, ImagePlus, Play, Plus, Printer, Save,
+  Send, Star, Trash2, Zap,
 } from 'lucide-react';
 import { AdminCard, AdminMotion, AdminPage, AdminPageHeader } from '@/components/admin/ui';
 import { MediaPicker, type MediaAsset } from '@/components/admin/cms/MediaPicker';
@@ -20,7 +21,7 @@ import {
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'datos' | 'items' | 'secciones' | 'imagenes' | 'video' | 'json' | 'html' | 'preview' | 'registros' | 'calendario' | 'radier';
+type Tab = 'datos' | 'items' | 'secciones' | 'imagenes' | 'video' | 'json' | 'html' | 'preview' | 'registros' | 'calendario' | 'radier' | 'ia';
 type SaveStatus = 'idle' | 'local' | 'syncing' | 'saved' | 'error';
 
 const tabs: { id: Tab; label: string; icon?: ReactNode }[] = [
@@ -31,6 +32,7 @@ const tabs: { id: Tab; label: string; icon?: ReactNode }[] = [
   { id: 'video', label: 'Video', icon: <Play className="h-3 w-3" /> },
   { id: 'calendario', label: 'Calendario', icon: <Calendar className="h-3 w-3" /> },
   { id: 'radier', label: 'Radier', icon: <Zap className="h-3 w-3" /> },
+  { id: 'ia', label: 'Asistente IA', icon: <Bot className="h-3 w-3" /> },
   { id: 'json', label: 'JSON', icon: <FileJson className="h-3 w-3" /> },
   { id: 'html', label: 'HTML' },
   { id: 'preview', label: 'Vista previa', icon: <Eye className="h-3 w-3" /> },
@@ -44,6 +46,17 @@ const ESTADO_COLORS: Record<string, string> = {
   rechazado: 'bg-red-500/20 text-red-300 border border-red-500/30',
   vencido: 'bg-orange-500/20 text-orange-300 border border-orange-500/30',
 };
+
+const CATEGORIA_PRESETS = ['Mobiliario', 'Radier / Obra civil', 'Pintura', 'Tabiquería', 'Cielos', 'Eléctrico', 'Gasfitería', 'Otro'] as const;
+
+interface AiPresupuestoResult {
+  titulo?: string;
+  descripcion?: string;
+  incluye?: string[];
+  no_incluye?: string[];
+  materiales?: string[];
+  observacion_tecnica?: string;
+}
 
 interface RegistroRow {
   id: string; cliente: string; numero_cliente?: string | null; empresa_cliente?: string | null;
@@ -68,6 +81,29 @@ function Textarea({ label, value, onChange, rows = 4 }: { label: string; value: 
       <span>{label}</span>
       <textarea rows={rows} value={value} onChange={e => onChange(e.target.value)}
         className="rounded-2xl border border-white/10 bg-black/50 px-3 py-2.5 text-sm normal-case tracking-normal text-white outline-none focus:border-yellow-400/70" />
+    </label>
+  );
+}
+
+function CategoriaSelect({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  return (
+    <label className="grid gap-1 text-xs font-bold uppercase tracking-[0.16em] text-zinc-400">
+      <span>Categoría</span>
+      <select
+        value=""
+        onChange={e => { if (e.target.value) onChange(e.target.value); }}
+        className="rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-yellow-400/70"
+      >
+        <option value="">Elige rápido…</option>
+        {CATEGORIA_PRESETS.map(c => <option key={c} value={c}>{c}</option>)}
+      </select>
+      <input
+        type="text"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        placeholder="Categoría…"
+        className="rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-yellow-400/70"
+      />
     </label>
   );
 }
@@ -109,6 +145,13 @@ export default function PresupuestosBuilderPage() {
   const [registrosError, setRegistrosError] = useState('');
   const [search, setSearch] = useState('');
   const [filterEstado, setFilterEstado] = useState<string>('todos');
+  const [nuevoFormOpen, setNuevoFormOpen] = useState(false);
+  const [nuevoForm, setNuevoForm] = useState({ cliente: '', empresa: '', titulo: '' });
+  const [aiPrompt, setAiPrompt] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiResult, setAiResult] = useState<AiPresupuestoResult | null>(null);
+  const [aiError, setAiError] = useState('');
+  const [seccionesOpen, setSeccionesOpen] = useState<Record<string, boolean>>({ incluye: true, no_incluye: true, materiales: true, observacion: true, forma_pago: true });
   const pendingSaveRef = useRef<PresupuestoPro | null>(null);
   const autoSaveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -256,11 +299,53 @@ export default function PresupuestosBuilderPage() {
     }
   }
 
+  // ── AI assistant ─────────────────────────────────────────────────────────────
+  const toggleSeccion = (key: string) => setSeccionesOpen(prev => ({ ...prev, [key]: !prev[key] }));
+
+  async function runAi() {
+    if (!aiPrompt.trim()) return;
+    setAiLoading(true); setAiError(''); setAiResult(null);
+    try {
+      const res = await fetch('/api/admin/presupuestos/ai', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: aiPrompt }),
+      });
+      const json = (await res.json().catch(() => ({}))) as { result?: AiPresupuestoResult; error?: string };
+      if (!res.ok) throw new Error(json.error || `Error ${res.status}`);
+      setAiResult(json.result || null);
+    } catch (err) {
+      setAiError((err as Error).message);
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  function applyAiResult() {
+    if (!aiResult) return;
+    const patch: Partial<PresupuestoPro> = {};
+    if (aiResult.titulo) patch.titulo = aiResult.titulo;
+    if (aiResult.descripcion) patch.descripcion = aiResult.descripcion;
+    if (aiResult.incluye?.length) patch.incluye = aiResult.incluye;
+    if (aiResult.no_incluye?.length) patch.no_incluye = aiResult.no_incluye;
+    if (aiResult.materiales?.length) patch.materiales = aiResult.materiales;
+    if (aiResult.observacion_tecnica) patch.observacion_tecnica = aiResult.observacion_tecnica;
+    update(patch);
+    setAiResult(null);
+    setTab('secciones');
+    setMessage('Campos generados por IA aplicados al presupuesto.');
+    setTimeout(() => setMessage(''), 2500);
+  }
+
   // ── Budget list actions ──────────────────────────────────────────────────────
-  const nuevo = () => {
-    const n = normalizeBudget({ ...baseBudgetExample, id: createBudgetId(), slug: slugifyBudget(`nuevo-${Date.now()}`), cliente: 'Nuevo cliente', empresa_cliente: '', email_cliente: '', titulo: 'Nuevo presupuesto', telefono_whatsapp: '', created_at: new Date().toISOString() });
+  const crearBudget = () => {
+    if (!nuevoForm.cliente.trim()) return;
+    const titulo = nuevoForm.titulo.trim() || 'Nuevo presupuesto';
+    const n = normalizeBudget({ ...baseBudgetExample, id: createBudgetId(), slug: slugifyBudget(`${nuevoForm.cliente}-${titulo}`), cliente: nuevoForm.cliente.trim(), empresa_cliente: nuevoForm.empresa.trim(), email_cliente: '', titulo, telefono_whatsapp: '', created_at: new Date().toISOString() });
     persist([n, ...budgets]); setSelectedId(n.id); setTab('datos');
+    setNuevoFormOpen(false); setNuevoForm({ cliente: '', empresa: '', titulo: '' });
   };
+  const nuevo = () => setNuevoFormOpen(v => !v);
   const duplicar = () => {
     const d = normalizeBudget({ ...selected, id: createBudgetId(), slug: `${selected.slug}-copia-${Date.now().toString(36)}`, titulo: `${selected.titulo} — copia`, estado: 'borrador' });
     persist([d, ...budgets]); setSelectedId(d.id);
@@ -360,11 +445,46 @@ export default function PresupuestosBuilderPage() {
           {/* ── Left sidebar ─────────────────────────────────────────────────── */}
           <AdminCard className="h-max space-y-3">
             <div className="flex gap-2">
-              <button onClick={nuevo} className="flex-1 rounded-2xl bg-yellow-400 px-3 py-2 text-sm font-black text-black">
-                <Plus className="mr-1 inline h-4 w-4" />Nuevo
+              <button onClick={nuevo} className={`flex-1 rounded-2xl px-3 py-2 text-sm font-black ${nuevoFormOpen ? 'bg-yellow-400/20 text-yellow-300 border border-yellow-400/40' : 'bg-yellow-400 text-black'}`}>
+                <Plus className="mr-1 inline h-4 w-4" />{nuevoFormOpen ? 'Cancelar' : 'Nuevo'}
               </button>
               <button onClick={duplicar} className="rounded-2xl border border-white/10 px-3 py-2 text-sm font-bold text-white">Duplicar</button>
             </div>
+
+            {/* Inline new-budget form */}
+            {nuevoFormOpen && (
+              <div className="rounded-2xl border border-yellow-400/30 bg-yellow-400/5 p-3 space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-widest text-yellow-400">Nuevo presupuesto</p>
+                <input
+                  placeholder="Cliente *"
+                  value={nuevoForm.cliente}
+                  onChange={e => setNuevoForm(p => ({ ...p, cliente: e.target.value }))}
+                  onKeyDown={e => e.key === 'Enter' && crearBudget()}
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-yellow-400/50 placeholder:text-zinc-600"
+                />
+                <input
+                  placeholder="Empresa"
+                  value={nuevoForm.empresa}
+                  onChange={e => setNuevoForm(p => ({ ...p, empresa: e.target.value }))}
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-yellow-400/50 placeholder:text-zinc-600"
+                />
+                <input
+                  placeholder="Título del presupuesto"
+                  value={nuevoForm.titulo}
+                  onChange={e => setNuevoForm(p => ({ ...p, titulo: e.target.value }))}
+                  onKeyDown={e => e.key === 'Enter' && crearBudget()}
+                  className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-yellow-400/50 placeholder:text-zinc-600"
+                />
+                <div className="flex gap-2">
+                  <button onClick={crearBudget} disabled={!nuevoForm.cliente.trim()} className="flex-1 rounded-xl bg-yellow-400 px-3 py-2 text-sm font-black text-black disabled:opacity-50">
+                    Crear
+                  </button>
+                  <button onClick={() => { setNuevoFormOpen(false); setNuevoForm({ cliente: '', empresa: '', titulo: '' }); }} className="rounded-xl border border-white/10 px-3 py-2 text-sm text-zinc-400">
+                    Cancelar
+                  </button>
+                </div>
+              </div>
+            )}
 
             {/* Search */}
             <input
@@ -539,11 +659,11 @@ export default function PresupuestosBuilderPage() {
                   </div>
                 )}
 
-                <div className="space-y-3">
+                <div className="space-y-3" id="items-list">
                   {[...selected.items].sort((a, b) => a.orden - b.orden).map((item, idx, arr) => (
                     <div key={item.id} className="grid gap-2 rounded-3xl border border-white/10 bg-black/30 p-3 md:grid-cols-8">
                       <Input label="Nombre" value={item.nombre} onChange={v => patchItem(item.id, { nombre: v })} />
-                      <Input label="Categoría" value={item.categoria} onChange={v => patchItem(item.id, { categoria: v })} />
+                      <CategoriaSelect value={item.categoria} onChange={v => patchItem(item.id, { categoria: v })} />
                       <Input label="Cantidad" type="number" value={item.cantidad} onChange={v => patchItem(item.id, { cantidad: Number(v) })} />
                       <Input label="Unidad" value={item.unidad} onChange={v => patchItem(item.id, { unidad: v })} />
                       <Input label="Precio unit." type="number" value={item.precio_unitario} onChange={v => patchItem(item.id, { precio_unitario: Number(v) })} />
@@ -559,29 +679,96 @@ export default function PresupuestosBuilderPage() {
                     </div>
                   ))}
                 </div>
+
+                {/* Items total footer */}
+                {selected.items.length > 0 && (
+                  <div className="mt-4 rounded-2xl border border-yellow-400/20 bg-yellow-400/5 p-4">
+                    <div className="grid gap-3 sm:grid-cols-3 text-sm">
+                      <div><span className="block text-xs uppercase text-zinc-400">Subtotal neto</span><b className="text-white">{formatBudgetMoney(selected.valor_neto)}</b></div>
+                      <div><span className="block text-xs uppercase text-zinc-400">IVA {selected.iva_porcentaje}%</span><b className="text-yellow-300">{formatBudgetMoney(selected.total_iva)}</b></div>
+                      <div><span className="block text-xs uppercase text-zinc-400">Total con IVA</span><b className="text-2xl font-black text-yellow-300">{formatBudgetMoney(selected.total_con_iva)}</b></div>
+                    </div>
+                  </div>
+                )}
               </AdminCard>
             )}
 
             {/* ── Secciones tab ─────────────────────────────────────────────── */}
             {tab === 'secciones' && (
               <AdminCard>
-                <div className="grid gap-4 md:grid-cols-2">
-                  <Textarea label="Incluye · una línea por punto" value={joinLines(selected.incluye)} onChange={v => update({ incluye: splitLines(v) })} rows={8} />
-                  <Textarea label="No incluye" value={joinLines(selected.no_incluye)} onChange={v => update({ no_incluye: splitLines(v) })} rows={8} />
-                  <Textarea label="Materiales" value={joinLines(selected.materiales)} onChange={v => update({ materiales: splitLines(v) })} rows={8} />
-                  <Textarea label="Observación técnica" value={selected.observacion_tecnica} onChange={v => update({ observacion_tecnica: v })} rows={8} />
+                <div className="space-y-3">
+                  {/* Incluye */}
+                  <div className="overflow-hidden rounded-2xl border border-white/10">
+                    <button onClick={() => toggleSeccion('incluye')} className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-black text-white hover:bg-white/5">
+                      <span>Incluye <span className="ml-2 text-xs font-normal text-zinc-500">({selected.incluye.length} ítems)</span></span>
+                      <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform ${seccionesOpen.incluye ? 'rotate-180' : ''}`} />
+                    </button>
+                    {seccionesOpen.incluye && (
+                      <div className="border-t border-white/10 p-3">
+                        <Textarea label="" value={joinLines(selected.incluye)} onChange={v => update({ incluye: splitLines(v) })} rows={7} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* No incluye */}
+                  <div className="overflow-hidden rounded-2xl border border-white/10">
+                    <button onClick={() => toggleSeccion('no_incluye')} className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-black text-white hover:bg-white/5">
+                      <span>No incluye <span className="ml-2 text-xs font-normal text-zinc-500">({selected.no_incluye.length} ítems)</span></span>
+                      <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform ${seccionesOpen.no_incluye ? 'rotate-180' : ''}`} />
+                    </button>
+                    {seccionesOpen.no_incluye && (
+                      <div className="border-t border-white/10 p-3">
+                        <Textarea label="" value={joinLines(selected.no_incluye)} onChange={v => update({ no_incluye: splitLines(v) })} rows={7} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Materiales */}
+                  <div className="overflow-hidden rounded-2xl border border-white/10">
+                    <button onClick={() => toggleSeccion('materiales')} className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-black text-white hover:bg-white/5">
+                      <span>Materiales <span className="ml-2 text-xs font-normal text-zinc-500">({selected.materiales.length} ítems)</span></span>
+                      <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform ${seccionesOpen.materiales ? 'rotate-180' : ''}`} />
+                    </button>
+                    {seccionesOpen.materiales && (
+                      <div className="border-t border-white/10 p-3">
+                        <Textarea label="" value={joinLines(selected.materiales)} onChange={v => update({ materiales: splitLines(v) })} rows={7} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Observación técnica */}
+                  <div className="overflow-hidden rounded-2xl border border-white/10">
+                    <button onClick={() => toggleSeccion('observacion')} className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-black text-white hover:bg-white/5">
+                      <span>Observación técnica</span>
+                      <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform ${seccionesOpen.observacion ? 'rotate-180' : ''}`} />
+                    </button>
+                    {seccionesOpen.observacion && (
+                      <div className="border-t border-white/10 p-3">
+                        <Textarea label="" value={selected.observacion_tecnica} onChange={v => update({ observacion_tecnica: v })} rows={5} />
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Forma de pago */}
+                  <div className="overflow-hidden rounded-2xl border border-white/10">
+                    <button onClick={() => toggleSeccion('forma_pago')} className="flex w-full items-center justify-between px-4 py-3 text-left text-sm font-black text-white hover:bg-white/5">
+                      <span>Forma de pago <span className="ml-2 text-xs font-normal text-zinc-500">({selected.forma_pago.length} hitos)</span></span>
+                      <ChevronDown className={`h-4 w-4 text-zinc-400 transition-transform ${seccionesOpen.forma_pago ? 'rotate-180' : ''}`} />
+                    </button>
+                    {seccionesOpen.forma_pago && (
+                      <div className="border-t border-white/10 p-4 space-y-3">
+                        {selected.forma_pago.map((p, i) => (
+                          <div key={i} className="grid gap-2 md:grid-cols-[130px_1fr_50px]">
+                            <Input label="%" type="number" value={p.porcentaje} onChange={v => update({ forma_pago: selected.forma_pago.map((x, idx) => idx === i ? { ...x, porcentaje: Number(v) } : x) })} />
+                            <Input label="Descripción" value={p.descripcion} onChange={v => update({ forma_pago: selected.forma_pago.map((x, idx) => idx === i ? { ...x, descripcion: v } : x) })} />
+                            <button onClick={() => update({ forma_pago: selected.forma_pago.filter((_, idx) => idx !== i) })} className="mt-4 text-red-300"><Trash2 /></button>
+                          </div>
+                        ))}
+                        <button onClick={() => update({ forma_pago: [...selected.forma_pago, { porcentaje: 0, descripcion: 'Nuevo hito de pago' }] })} className="rounded-2xl border border-yellow-400/40 px-4 py-2 text-sm font-bold text-yellow-200">Agregar hito de pago</button>
+                      </div>
+                    )}
+                  </div>
                 </div>
-                <h3 className="mt-6 mb-3 font-black text-white">Forma de pago</h3>
-                <div className="space-y-2">
-                  {selected.forma_pago.map((p, i) => (
-                    <div key={i} className="grid gap-2 md:grid-cols-[130px_1fr_50px]">
-                      <Input label="%" type="number" value={p.porcentaje} onChange={v => update({ forma_pago: selected.forma_pago.map((x, idx) => idx === i ? { ...x, porcentaje: Number(v) } : x) })} />
-                      <Input label="Descripción" value={p.descripcion} onChange={v => update({ forma_pago: selected.forma_pago.map((x, idx) => idx === i ? { ...x, descripcion: v } : x) })} />
-                      <button onClick={() => update({ forma_pago: selected.forma_pago.filter((_, idx) => idx !== i) })} className="text-red-300"><Trash2 /></button>
-                    </div>
-                  ))}
-                </div>
-                <button onClick={() => update({ forma_pago: [...selected.forma_pago, { porcentaje: 0, descripcion: 'Nuevo hito de pago' }] })} className="mt-3 rounded-2xl border border-yellow-400/40 px-4 py-2 text-sm font-bold text-yellow-200">Agregar forma de pago</button>
               </AdminCard>
             )}
 
@@ -702,6 +889,84 @@ export default function PresupuestosBuilderPage() {
                     setTimeout(() => setMessage(''), 2000);
                   }}
                 />
+              </AdminCard>
+            )}
+
+            {/* ── IA tab ────────────────────────────────────────────────────── */}
+            {tab === 'ia' && (
+              <AdminCard>
+                <div className="mb-5 flex items-center gap-3">
+                  <Bot className="h-5 w-5 text-yellow-400" />
+                  <h3 className="font-black text-white">Asistente IA · Generar contenido del presupuesto</h3>
+                </div>
+                <div className="space-y-4">
+                  <Textarea
+                    label="Describe el proyecto brevemente"
+                    value={aiPrompt}
+                    onChange={setAiPrompt}
+                    rows={4}
+                  />
+                  <p className="text-xs text-zinc-500">Ej: &quot;Muebles de melamina blanca para oficina 20 m²&quot; · &quot;Radier hormigón 40 m² con estabilizado&quot; · &quot;Tabiquería drywall para sala de reuniones&quot;</p>
+                  <button
+                    onClick={() => void runAi()}
+                    disabled={aiLoading || !aiPrompt.trim()}
+                    className="rounded-2xl bg-yellow-400 px-5 py-2.5 text-sm font-black text-black disabled:opacity-50"
+                  >
+                    {aiLoading ? 'Generando…' : 'Generar con IA'}
+                  </button>
+
+                  {aiError && (
+                    <div className="rounded-2xl border border-red-400/30 bg-red-400/10 p-3 text-sm text-red-300">
+                      <AlertTriangle className="mr-2 inline h-4 w-4" />{aiError}
+                    </div>
+                  )}
+
+                  {aiResult && (
+                    <div className="rounded-3xl border border-yellow-400/20 bg-yellow-400/5 p-5 space-y-4">
+                      <p className="text-xs font-black uppercase tracking-widest text-yellow-400">Resultado generado — revisa antes de aplicar</p>
+                      {aiResult.titulo && (
+                        <p><span className="text-xs uppercase text-zinc-500">Título: </span><b className="text-white">{aiResult.titulo}</b></p>
+                      )}
+                      {aiResult.descripcion && (
+                        <p className="text-sm leading-relaxed text-zinc-300">{aiResult.descripcion}</p>
+                      )}
+                      <div className="grid gap-4 md:grid-cols-2">
+                        {aiResult.incluye?.length && (
+                          <div>
+                            <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">Incluye</p>
+                            <ul className="space-y-0.5">{aiResult.incluye.map((s, i) => <li key={i} className="text-xs text-zinc-300">✓ {s}</li>)}</ul>
+                          </div>
+                        )}
+                        {aiResult.no_incluye?.length && (
+                          <div>
+                            <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">No incluye</p>
+                            <ul className="space-y-0.5">{aiResult.no_incluye.map((s, i) => <li key={i} className="text-xs text-zinc-300">✗ {s}</li>)}</ul>
+                          </div>
+                        )}
+                        {aiResult.materiales?.length && (
+                          <div>
+                            <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">Materiales</p>
+                            <ul className="space-y-0.5">{aiResult.materiales.map((s, i) => <li key={i} className="text-xs text-zinc-300">· {s}</li>)}</ul>
+                          </div>
+                        )}
+                        {aiResult.observacion_tecnica && (
+                          <div>
+                            <p className="mb-1 text-[10px] font-black uppercase tracking-widest text-zinc-500">Obs. técnica</p>
+                            <p className="border-l-2 border-yellow-400/30 pl-3 text-xs italic text-zinc-400">{aiResult.observacion_tecnica}</p>
+                          </div>
+                        )}
+                      </div>
+                      <div className="flex gap-3">
+                        <button onClick={applyAiResult} className="rounded-2xl bg-emerald-500 px-5 py-2.5 text-sm font-black text-white">
+                          Aplicar al presupuesto
+                        </button>
+                        <button onClick={() => setAiResult(null)} className="rounded-2xl border border-white/10 px-5 py-2.5 text-sm font-bold text-zinc-300">
+                          Descartar
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
               </AdminCard>
             )}
 

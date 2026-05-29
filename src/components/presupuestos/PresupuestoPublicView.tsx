@@ -357,8 +357,8 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
                     <tr><th className="pb-3">Item</th><th>Cant.</th><th>Unidad</th><th>Unitario</th><th className="text-right">Total</th></tr>
                   </thead>
                   <tbody>
-                    {presupuesto.items.map((item) => (
-                      <tr key={item.id} className="border-b border-white/[0.06] last:border-0">
+                    {presupuesto.items.map((item, idx) => (
+                      <tr key={item.id} className={`border-b border-white/[0.06] last:border-0 ${idx % 2 === 1 ? 'bg-white/[0.025]' : ''}`}>
                         <td className="py-3.5 pr-4">
                           <b className="text-white">{item.nombre}</b>
                           {item.descripcion && <p className="mt-0.5 text-xs leading-relaxed text-zinc-400">{item.descripcion}</p>}
@@ -476,7 +476,7 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
         </section>
       )}
 
-      <footer className="bg-[#111111] p-6 text-white sm:p-8 lg:p-10"><div className="border-t border-white/10 pt-8"><div className="max-w-[260px]"><FabrickFullLogo theme="light" tagline="Diseño • Fabricación • Instalación" /></div><p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-400">Mobiliario técnico y soluciones modulares para espacios industriales, comerciales y operativos.</p><button type="button" onClick={() => openCompatibleUrl(consultUrl)} className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-[#f4c400] px-5 py-3 text-sm font-black text-black print:hidden"><MessageCircle className="h-4 w-4" /> Contactar por WhatsApp</button></div></footer>
+      <footer className="bg-[#111111] p-6 text-white sm:p-8 lg:p-10"><div className="border-t border-white/10 pt-8"><div className="max-w-[260px]"><FabrickFullLogo theme="light" tagline="Diseño • Fabricación • Instalación" /></div><p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-400">Mobiliario técnico y soluciones modulares para espacios industriales, comerciales y operativos.</p><button type="button" onClick={() => openCompatibleUrl(consultUrl)} className="mt-6 inline-flex items-center justify-center gap-2 rounded-full bg-[#f4c400] px-5 py-3 text-sm font-black text-black print:hidden"><MessageCircle className="h-4 w-4" /> Contactar por WhatsApp</button><p className="mt-8 text-[10px] uppercase tracking-widest text-zinc-700">Generado con Soluciones Fabrick</p></div></footer>
 
       {activeImage && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3 backdrop-blur print:hidden" role="dialog" aria-modal="true"><button type="button" onClick={() => setActiveImage(null)} className="absolute right-4 top-4 rounded-full border border-white/20 bg-black/60 p-2 text-white hover:border-yellow-400"><X className="h-5 w-5" /></button><figure className="w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#111111] text-white"><div className="flex h-[72vh] w-full items-center justify-center bg-black"><img src={imageProxyUrl(activeImage.url)} alt={activeImage.titulo || 'Imagen del presupuesto'} className="max-h-full max-w-full object-contain" referrerPolicy="no-referrer" /></div><figcaption className="p-5"><b>{activeImage.titulo}</b>{activeImage.descripcion && <p className="mt-1 text-sm text-zinc-400">{activeImage.descripcion}</p>}</figcaption></figure></div>}
 

@@ -46,34 +46,34 @@ export async function GET(request: NextRequest) {
   const [seriesData, clientsData] = await Promise.all([
     rawsql(`
       SELECT
-        DATE_TRUNC('day', enviado_at)::date AS dia,
+        DATE_TRUNC('day', created_at)::date AS dia,
         estado,
         COUNT(*) AS cnt
       FROM presupuesto_correos
-      WHERE enviado_at >= NOW() - INTERVAL '30 days'
+      WHERE created_at >= NOW() - INTERVAL '30 days'
       GROUP BY dia, estado
       ORDER BY dia ASC;
     `),
     rawsql(`
       SELECT
-        destinatario,
+        email_destinatario AS destinatario,
         COUNT(*) AS total,
         SUM(CASE WHEN estado IN ('entregado','abierto') THEN 1 ELSE 0 END) AS entregados,
         SUM(CASE WHEN estado = 'abierto' THEN 1 ELSE 0 END) AS abiertos,
-        MAX(enviado_at) AS ultimo_correo
+        MAX(created_at) AS ultimo_correo
       FROM presupuesto_correos
-      GROUP BY destinatario
+      WHERE email_destinatario IS NOT NULL AND email_destinatario <> ''
+      GROUP BY email_destinatario
       ORDER BY total DESC
       LIMIT 20;
     `),
   ]);
 
-  // Build daily series: one entry per day, aggregating all estados
   type DayMap = Record<string, { enviado: number; entregado: number; abierto: number; rebotado: number }>;
   const dayMap: DayMap = {};
 
   for (const row of seriesData?.data?.rows ?? []) {
-    const dia = toStr(row.dia).split('T')[0]; // ensure YYYY-MM-DD
+    const dia = toStr(row.dia).split('T')[0];
     if (!dia) continue;
     if (!dayMap[dia]) dayMap[dia] = { enviado: 0, entregado: 0, abierto: 0, rebotado: 0 };
     const cnt = toNum(row.cnt);
@@ -82,7 +82,6 @@ export async function GET(request: NextRequest) {
     else if (estado === 'entregado') dayMap[dia].entregado += cnt;
     else if (estado === 'abierto') dayMap[dia].abierto += cnt;
     else if (estado === 'rebotado') dayMap[dia].rebotado += cnt;
-    // spam → counted in enviado for chart simplicity
     else dayMap[dia].enviado += cnt;
   }
 

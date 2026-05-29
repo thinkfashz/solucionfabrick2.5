@@ -12,6 +12,8 @@ import {
   KeyRound,
   Loader2,
   Mail,
+  MailOpen,
+  MessageSquareReply,
   RefreshCw,
   RotateCcw,
   Send,
@@ -23,7 +25,27 @@ import { AdminCard, AdminPage, AdminPageHeader } from '@/components/admin/ui';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
-type Tab = 'resumen' | 'bandeja' | 'envio' | 'config';
+type Tab = 'resumen' | 'bandeja' | 'recibidos' | 'envio' | 'config';
+
+interface RecibidoRow {
+  id: string;
+  resend_id: string | null;
+  de: string;
+  para: string;
+  asunto: string;
+  cuerpo_texto: string;
+  cuerpo_html: string;
+  leido: boolean;
+  respondido: boolean;
+  fecha_recibido: string;
+}
+
+interface InboxResponse {
+  ok: boolean;
+  emails: RecibidoRow[];
+  unread: number;
+  error?: string;
+}
 
 interface EmailRow {
   id: string;
@@ -32,6 +54,7 @@ interface EmailRow {
   destinatario: string;
   asunto: string;
   estado: string;
+  tipo: string;
   enviado_at: string;
 }
 
@@ -504,7 +527,7 @@ function TabResumen({ stats }: { stats: StatsResponse }) {
 
 type DateRange = '7d' | '30d' | '90d' | 'all';
 
-function TabBandeja({ emails }: { emails: EmailRow[] }) {
+function TabBandeja({ emails, onReply }: { emails: EmailRow[]; onReply: (to: string, subject: string) => void }) {
   const [search, setSearch] = useState('');
   const [estadoFilter, setEstadoFilter] = useState('todos');
   const [dateRange, setDateRange] = useState<DateRange>('all');
@@ -587,6 +610,7 @@ function TabBandeja({ emails }: { emails: EmailRow[] }) {
                   <th className="px-4 py-2.5 text-left font-semibold">Destinatario</th>
                   <th className="px-4 py-2.5 text-left font-semibold">Asunto</th>
                   <th className="px-4 py-2.5 text-left font-semibold">Estado</th>
+                  <th className="px-4 py-2.5 text-left font-semibold">Tipo</th>
                   <th className="px-4 py-2.5 text-left font-semibold">Fecha</th>
                   <th className="px-4 py-2.5 text-left font-semibold" />
                 </tr>
@@ -601,6 +625,11 @@ function TabBandeja({ emails }: { emails: EmailRow[] }) {
                       <td className="px-4 py-2.5 text-zinc-300 font-mono text-xs">{row.destinatario || '—'}</td>
                       <td className="px-4 py-2.5 text-zinc-400 max-w-[200px] truncate">{row.asunto || '—'}</td>
                       <td className="px-4 py-2.5">{estadoBadge(row.estado)}</td>
+                      <td className="px-4 py-2.5">
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider ${row.tipo === 'manual' ? 'border-amber-600/40 text-amber-400 bg-amber-900/20' : 'border-zinc-700 text-zinc-500'}`}>
+                          {row.tipo === 'manual' ? 'Manual' : 'Sistema'}
+                        </span>
+                      </td>
                       <td className="px-4 py-2.5 text-zinc-500 text-xs whitespace-nowrap">{fmtDate(row.enviado_at)}</td>
                       <td className="px-4 py-2.5 text-zinc-600">
                         {expandedId === row.id ? <ChevronUp className="h-3.5 w-3.5" /> : <ChevronDown className="h-3.5 w-3.5" />}
@@ -608,7 +637,7 @@ function TabBandeja({ emails }: { emails: EmailRow[] }) {
                     </tr>
                     {expandedId === row.id && (
                       <tr className="bg-white/2 border-b border-white/4">
-                        <td colSpan={5} className="px-4 py-3">
+                        <td colSpan={6} className="px-4 py-3">
                           <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
                             <div>
                               <span className="text-zinc-600">ID interno</span>
@@ -633,6 +662,13 @@ function TabBandeja({ emails }: { emails: EmailRow[] }) {
                               </div>
                             )}
                           </div>
+                          <button
+                            className="mt-3 flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-1.5 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors"
+                            onClick={(e) => { e.stopPropagation(); onReply(row.destinatario, `Re: ${row.asunto}`); }}
+                          >
+                            <MessageSquareReply className="h-3.5 w-3.5" />
+                            Responder
+                          </button>
                         </td>
                       </tr>
                     )}
@@ -671,9 +707,15 @@ const AI_PRESETS = [
   { label: 'Minimalista', instruccion: 'Diseño ultra-limpio: solo texto, sin decoraciones excesivas, tipografía grande, mucho espacio en blanco.' },
 ];
 
-function TabEnvio({ keyConfigured }: { keyConfigured: boolean }) {
-  const [to, setTo] = useState('');
-  const [subject, setSubject] = useState('');
+interface TabEnvioProps {
+  keyConfigured: boolean;
+  initialTo?: string;
+  initialSubject?: string;
+}
+
+function TabEnvio({ keyConfigured, initialTo = '', initialSubject = '' }: TabEnvioProps) {
+  const [to, setTo] = useState(initialTo);
+  const [subject, setSubject] = useState(initialSubject);
   const [from, setFrom] = useState('');
   const [htmlBody, setHtmlBody] = useState('');
   const [originalHtml, setOriginalHtml] = useState('');
@@ -693,6 +735,10 @@ function TabEnvio({ keyConfigured }: { keyConfigured: boolean }) {
       .then(setAiConfig)
       .catch(() => {/* silent */});
   }, []);
+
+  // Re-fill when a reply is triggered from another tab
+  useEffect(() => { if (initialTo) setTo(initialTo); }, [initialTo]);
+  useEffect(() => { if (initialSubject) setSubject(initialSubject); }, [initialSubject]);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -1055,6 +1101,186 @@ function TabConfig({ keyConfigured }: { keyConfigured: boolean }) {
   );
 }
 
+// ─── Tab: Recibidos ───────────────────────────────────────────────────────────
+
+function TabRecibidos({ onReply }: { onReply: (to: string, subject: string) => void }) {
+  const [data, setData] = useState<InboxResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [expandedId, setExpandedId] = useState<string | null>(null);
+  const [filter, setFilter] = useState<'todos' | 'noLeidos' | 'porResponder'>('todos');
+
+  const load = useCallback(async () => {
+    setLoading(true);
+    try {
+      const qs = filter === 'noLeidos' ? '?noLeidos=1' : '';
+      const res = await fetch(`/api/admin/correo/inbox${qs}`);
+      const json = (await res.json()) as InboxResponse;
+      setData(json);
+    } catch {
+      setData({ ok: false, emails: [], unread: 0, error: 'Error de red' });
+    } finally {
+      setLoading(false);
+    }
+  }, [filter]);
+
+  useEffect(() => { void load(); }, [load]);
+
+  async function markRead(id: string) {
+    await fetch('/api/admin/correo/inbox', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action: 'leido' }),
+    });
+    setData((prev) => prev ? {
+      ...prev,
+      emails: prev.emails.map((e) => e.id === id ? { ...e, leido: true } : e),
+      unread: Math.max(0, prev.unread - 1),
+    } : prev);
+  }
+
+  const emails = filter === 'porResponder'
+    ? (data?.emails ?? []).filter((e) => !e.respondido)
+    : (data?.emails ?? []);
+
+  return (
+    <div className="space-y-4">
+      {/* Filter bar */}
+      <AdminCard className="p-4">
+        <div className="flex flex-wrap items-center gap-2">
+          {([
+            { id: 'todos', label: 'Todos' },
+            { id: 'noLeidos', label: `No leídos${data?.unread ? ` (${data.unread})` : ''}` },
+            { id: 'porResponder', label: 'Por responder' },
+          ] as { id: typeof filter; label: string }[]).map(({ id, label }) => (
+            <button
+              key={id}
+              onClick={() => setFilter(id)}
+              className={`rounded-full border px-3 py-1 text-xs font-semibold transition-colors ${filter === id ? 'border-amber-500 bg-amber-500 text-black' : 'border-white/10 text-zinc-400 hover:border-white/20'}`}
+            >
+              {label}
+            </button>
+          ))}
+          <button onClick={load} className="ml-auto flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
+            <RefreshCw className={`h-3 w-3 ${loading ? 'animate-spin' : ''}`} />
+            Actualizar
+          </button>
+        </div>
+      </AdminCard>
+
+      {/* Inbox setup hint */}
+      <AdminCard className="p-4">
+        <div className="flex items-start gap-3">
+          <Mail className="h-4 w-4 text-amber-400 mt-0.5 shrink-0" />
+          <div className="text-xs text-zinc-500 space-y-1">
+            <p className="font-semibold text-zinc-300">Configurar correo entrante</p>
+            <p>Para recibir emails aquí, activa el Inbound en tu dominio Resend y apunta el webhook a:</p>
+            <code className="block rounded bg-white/5 px-2 py-1 text-zinc-400 text-[11px] break-all">
+              {typeof window !== 'undefined' ? window.location.origin : ''}/api/webhooks/resend
+            </code>
+            <a href="https://resend.com/inbound" target="_blank" rel="noreferrer" className="text-amber-400 hover:underline inline-flex items-center gap-1">
+              Documentación Resend Inbound <ExternalLink className="h-2.5 w-2.5" />
+            </a>
+          </div>
+        </div>
+      </AdminCard>
+
+      {/* Email list */}
+      <AdminCard className="p-0 overflow-hidden">
+        {loading ? (
+          <div className="flex items-center justify-center py-16 text-zinc-600">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </div>
+        ) : emails.length === 0 ? (
+          <div className="flex flex-col items-center gap-3 py-16 text-zinc-600">
+            <Inbox className="h-8 w-8" />
+            <p className="text-sm">
+              {filter === 'noLeidos' ? 'Ningún correo sin leer' : filter === 'porResponder' ? 'Ningún correo pendiente de respuesta' : 'Bandeja de entrada vacía'}
+            </p>
+          </div>
+        ) : (
+          <div>
+            {emails.map((email) => (
+              <Fragment key={email.id}>
+                <div
+                  className={`border-b border-white/4 px-4 py-3 hover:bg-white/3 transition-colors cursor-pointer ${!email.leido ? 'bg-amber-500/3 border-l-2 border-l-amber-500/40' : ''}`}
+                  onClick={() => {
+                    setExpandedId(expandedId === email.id ? null : email.id);
+                    if (!email.leido) void markRead(email.id);
+                  }}
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {email.leido ? (
+                        <MailOpen className="h-4 w-4 shrink-0 text-zinc-600" />
+                      ) : (
+                        <Mail className="h-4 w-4 shrink-0 text-amber-400" />
+                      )}
+                      <div className="min-w-0">
+                        <p className={`text-sm truncate ${email.leido ? 'text-zinc-400' : 'font-semibold text-white'}`}>
+                          {email.de || '(sin remitente)'}
+                        </p>
+                        <p className="text-xs text-zinc-500 truncate">{email.asunto || '(sin asunto)'}</p>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 shrink-0">
+                      {email.respondido && (
+                        <span className="rounded-full border border-emerald-600/40 bg-emerald-900/20 px-2 py-0.5 text-[10px] text-emerald-400">Respondido</span>
+                      )}
+                      <span className="text-[11px] text-zinc-600 whitespace-nowrap">{fmtDate(email.fecha_recibido)}</span>
+                      {expandedId === email.id ? <ChevronUp className="h-3.5 w-3.5 text-zinc-600" /> : <ChevronDown className="h-3.5 w-3.5 text-zinc-600" />}
+                    </div>
+                  </div>
+                </div>
+
+                {expandedId === email.id && (
+                  <div className="border-b border-white/4 bg-white/2 px-4 py-4 space-y-4">
+                    <div className="grid grid-cols-2 gap-2 text-xs sm:grid-cols-3">
+                      <div>
+                        <span className="text-zinc-600">De</span>
+                        <p className="font-mono text-zinc-300">{email.de}</p>
+                      </div>
+                      <div>
+                        <span className="text-zinc-600">Para</span>
+                        <p className="font-mono text-zinc-400">{email.para || '—'}</p>
+                      </div>
+                      <div>
+                        <span className="text-zinc-600">Fecha</span>
+                        <p className="text-zinc-400">{fmtDate(email.fecha_recibido)}</p>
+                      </div>
+                    </div>
+
+                    {/* Body preview */}
+                    {email.cuerpo_html ? (
+                      <iframe
+                        srcDoc={email.cuerpo_html}
+                        sandbox=""
+                        className="h-64 w-full rounded-lg border border-white/8 bg-white"
+                        title="Email body"
+                      />
+                    ) : email.cuerpo_texto ? (
+                      <div className="rounded-lg border border-white/8 bg-white/3 px-4 py-3 text-xs text-zinc-300 whitespace-pre-wrap max-h-48 overflow-y-auto">
+                        {email.cuerpo_texto}
+                      </div>
+                    ) : null}
+
+                    <button
+                      className="flex items-center gap-1.5 rounded-lg border border-amber-500/30 bg-amber-500/10 px-4 py-2 text-xs font-semibold text-amber-300 hover:bg-amber-500/20 transition-colors"
+                      onClick={() => onReply(email.de, `Re: ${email.asunto}`)}
+                    >
+                      <MessageSquareReply className="h-3.5 w-3.5" />
+                      Responder
+                    </button>
+                  </div>
+                )}
+              </Fragment>
+            ))}
+          </div>
+        )}
+      </AdminCard>
+    </div>
+  );
+}
+
 // ─── Main page ────────────────────────────────────────────────────────────────
 
 export default function CorreoPage() {
@@ -1062,6 +1288,23 @@ export default function CorreoPage() {
   const [stats, setStats] = useState<StatsResponse | null>(null);
   const [loadingStats, setLoadingStats] = useState(true);
   const [statsError, setStatsError] = useState('');
+  const [replyTo, setReplyTo] = useState('');
+  const [replySubject, setReplySubject] = useState('');
+  const [unread, setUnread] = useState(0);
+
+  // Load unread count for badge
+  useEffect(() => {
+    fetch('/api/admin/correo/inbox')
+      .then((r) => r.json() as Promise<InboxResponse>)
+      .then((d) => setUnread(d.unread ?? 0))
+      .catch(() => {/* silent */});
+  }, []);
+
+  function handleReply(to: string, subject: string) {
+    setReplyTo(to);
+    setReplySubject(subject);
+    setTab('envio');
+  }
 
   const loadStats = useCallback(async () => {
     setLoadingStats(true);
@@ -1080,9 +1323,10 @@ export default function CorreoPage() {
 
   useEffect(() => { void loadStats(); }, [loadStats]);
 
-  const TABS: { id: Tab; label: string }[] = [
+  const TABS: { id: Tab; label: string; badge?: number }[] = [
     { id: 'resumen', label: 'Resumen' },
     { id: 'bandeja', label: 'Bandeja' },
+    { id: 'recibidos', label: 'Recibidos', badge: unread },
     { id: 'envio', label: 'Envío rápido' },
     { id: 'config', label: 'Dominio & Config' },
   ];
@@ -1107,17 +1351,22 @@ export default function CorreoPage() {
 
       {/* Tabs */}
       <div className="flex gap-2 overflow-x-auto pb-1">
-        {TABS.map(({ id, label }) => (
+        {TABS.map(({ id, label, badge }) => (
           <button
             key={id}
             onClick={() => setTab(id)}
-            className={`shrink-0 rounded-full border px-4 py-2 text-sm transition-colors ${
+            className={`shrink-0 relative rounded-full border px-4 py-2 text-sm transition-colors ${
               tab === id
                 ? 'border-amber-500 bg-amber-500 text-black font-semibold'
                 : 'border-white/10 text-zinc-300 hover:border-white/20'
             }`}
           >
             {label}
+            {(badge ?? 0) > 0 && (
+              <span className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full bg-red-500 text-[9px] font-bold text-white">
+                {badge}
+              </span>
+            )}
           </button>
         ))}
       </div>
@@ -1137,8 +1386,9 @@ export default function CorreoPage() {
       ) : (
         <>
           {tab === 'resumen' && stats && <TabResumen stats={stats} />}
-          {tab === 'bandeja' && stats && <TabBandeja emails={stats.recent} />}
-          {tab === 'envio' && <TabEnvio keyConfigured={stats?.key_configured ?? false} />}
+          {tab === 'bandeja' && stats && <TabBandeja emails={stats.recent} onReply={handleReply} />}
+          {tab === 'recibidos' && <TabRecibidos onReply={handleReply} />}
+          {tab === 'envio' && <TabEnvio keyConfigured={stats?.key_configured ?? false} initialTo={replyTo} initialSubject={replySubject} />}
           {tab === 'config' && <TabConfig keyConfigured={stats?.key_configured ?? false} />}
         </>
       )}

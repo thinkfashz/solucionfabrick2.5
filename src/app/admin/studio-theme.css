@@ -314,3 +314,27 @@ body[data-admin-theme="studio"] .fabrick-shell {
 body[data-admin-theme="studio"] .studio-shell {
   display: block !important;
 }
+
+/* ── Context menu (hamburger) — Studio overrides ─────────────── */
+body[data-admin-theme="studio"] [data-admin-context-menu] {
+  background: var(--sa-surface) !important;
+  border-color: var(--sa-accent-25) !important;
+}
+body[data-admin-theme="studio"] [data-admin-context-menu] header {
+  background: var(--sa-bg) !important;
+}
+body[data-admin-theme="studio"] [data-admin-context-menu] .text-yellow-300 {
+  color: var(--sa-accent) !important;
+}
+body[data-admin-theme="studio"] [data-admin-context-menu] section {
+  background: var(--sa-surface-2) !important;
+  border-color: var(--sa-border) !important;
+}
+
+/* ── Route transition — Studio accent ────────────────────────── */
+body[data-admin-theme="studio"] [data-route-transition] .bg-amber-400 {
+  background-color: var(--sa-accent) !important;
+}
+body[data-admin-theme="studio"] [data-route-transition] .text-amber-400 {
+  color: var(--sa-accent) !important;
+}

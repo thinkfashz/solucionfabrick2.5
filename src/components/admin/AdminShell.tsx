@@ -64,6 +64,7 @@ import WhatsNewBanner from '@/components/admin/WhatsNewBanner';
 import AdminContextMenu from '@/components/admin/AdminContextMenu';
 import DemoSessionTracker from '@/components/admin/DemoSessionTracker';
 import { AdminThemeToggle } from '@/components/admin/AdminThemeToggle';
+import { AdminRouteTransition } from '@/components/admin/AdminRouteTransition';
 
 type NavIcon = typeof Package;
 type NavLink = { href: string; label: string; description: string; icon: NavIcon; superadminOnly?: boolean; highlight?: boolean };
@@ -283,6 +284,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [role, setRole] = useState<string | null>(null);
   const [now, setNow] = useState<Date | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
+  const [adminTheme, setAdminTheme] = useState<string>('');
+
+  useEffect(() => {
+    const saved = localStorage.getItem('admin-ui-theme') ?? '';
+    setAdminTheme(saved);
+  }, []);
 
   useAdminIdleLogout(10 * 60 * 1000);
 
@@ -405,9 +412,25 @@ export function AdminShell({ children }: { children: ReactNode }) {
         </main>
       </div>
 
+      <AdminRouteTransition />
       <AdminBottomNav onOpenMore={() => setContextMenuOpen(true)} />
       <AdminCommandPalette items={commandItems} open={paletteOpen} onOpenChange={setPaletteOpen} />
-      <AdminContextMenu open={contextMenuOpen} onClose={() => setContextMenuOpen(false)} onLogout={handleLogout} profilePhoto={profilePhoto} />
+      <AdminContextMenu
+        open={contextMenuOpen}
+        onClose={() => setContextMenuOpen(false)}
+        onLogout={handleLogout}
+        onToggleTheme={() => {
+          // Trigger the header theme toggle button imperatively
+          const btn = document.querySelector<HTMLButtonElement>('.admin-theme-toggle');
+          if (btn) {
+            btn.click();
+            const next = adminTheme === 'studio' ? '' : 'studio';
+            setAdminTheme(next);
+          }
+        }}
+        currentTheme={adminTheme}
+        profilePhoto={profilePhoto}
+      />
     </div>
   );
 }

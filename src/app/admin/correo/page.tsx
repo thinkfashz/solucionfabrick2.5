@@ -1,6 +1,6 @@
 'use client';
 
-import { Fragment, useCallback, useEffect, useState } from 'react';
+import { Fragment, useCallback, useEffect, useRef, useState } from 'react';
 import {
   AlertCircle,
   CheckCircle2,
@@ -13,8 +13,10 @@ import {
   Loader2,
   Mail,
   RefreshCw,
+  RotateCcw,
   Send,
   Shield,
+  Sparkles,
   Zap,
 } from 'lucide-react';
 import { AdminCard, AdminPage, AdminPageHeader } from '@/components/admin/ui';
@@ -44,6 +46,29 @@ interface StatsResponse {
   error?: string;
 }
 
+interface DaySeries {
+  dia: string;
+  enviado: number;
+  entregado: number;
+  abierto: number;
+  rebotado: number;
+}
+
+interface TopClient {
+  destinatario: string;
+  total: number;
+  entregados: number;
+  abiertos: number;
+  ultimo_correo: string;
+}
+
+interface ChartResponse {
+  ok: boolean;
+  dailySeries: DaySeries[];
+  topClients: TopClient[];
+  error?: string;
+}
+
 interface DomainRow {
   id: string;
   name: string;
@@ -62,6 +87,21 @@ interface SendResponse {
   ok: boolean;
   id?: string | null;
   error?: string;
+}
+
+interface AiStyleResponse {
+  ok: boolean;
+  html?: string;
+  provider?: string;
+  modelo?: string;
+  error?: string;
+}
+
+interface AiConfigResponse {
+  modelo_ia: string;
+  proveedor_ia: string;
+  key_configured: boolean;
+  activo: boolean;
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -87,12 +127,19 @@ function fmtDate(iso: string) {
   if (!iso) return '—';
   try {
     return new Date(iso).toLocaleString('es-CL', {
-      day: '2-digit',
-      month: '2-digit',
-      year: '2-digit',
-      hour: '2-digit',
-      minute: '2-digit',
+      day: '2-digit', month: '2-digit', year: '2-digit',
+      hour: '2-digit', minute: '2-digit',
     });
+  } catch {
+    return iso;
+  }
+}
+
+function fmtDateShort(iso: string) {
+  if (!iso) return '';
+  try {
+    const d = new Date(iso);
+    return `${d.getDate()}/${d.getMonth() + 1}`;
   } catch {
     return iso;
   }
@@ -112,10 +159,250 @@ function RateBar({ label, value, color }: { label: string; value: number; color:
   );
 }
 
+// ─── SVG Bar Chart ────────────────────────────────────────────────────────────
+
+interface TooltipData {
+  x: number;
+  y: number;
+  dia: string;
+  enviado: number;
+  entregado: number;
+  abierto: number;
+  rebotado: number;
+}
+
+function BarChart({ series }: { series: DaySeries[] }) {
+  const [tooltip, setTooltip] = useState<TooltipData | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  const W = 800, H = 220;
+  const padL = 44, padR = 12, padT = 16, padB = 44;
+  const chartW = W - padL - padR;
+  const chartH = H - padT - padB;
+
+  const maxVal = series.reduce((m, d) => Math.max(m, d.enviado + d.entregado + d.abierto + d.rebotado), 1);
+  const yTicks = [0, 0.25, 0.5, 0.75, 1].map((f) => Math.ceil(maxVal * f));
+  const barW = Math.min(chartW / Math.max(series.length, 1) - 2, 28);
+
+  function barX(i: number) {
+    return padL + (i / Math.max(series.length, 1)) * chartW + (chartW / Math.max(series.length, 1) - barW) / 2;
+  }
+
+  function yPos(v: number) {
+    return padT + chartH - (v / maxVal) * chartH;
+  }
+
+  function yH(v: number) {
+    return (v / maxVal) * chartH;
+  }
+
+  // Show every Nth label to avoid crowding
+  const labelStep = series.length <= 10 ? 1 : series.length <= 20 ? 2 : 5;
+
+  return (
+    <div className="relative select-none">
+      <svg
+        ref={svgRef}
+        viewBox={`0 0 ${W} ${H}`}
+        className="w-full"
+        style={{ height: 200 }}
+        onMouseLeave={() => setTooltip(null)}
+      >
+        {/* Grid lines */}
+        {yTicks.map((tick) => {
+          const y = yPos(tick);
+          return (
+            <g key={tick}>
+              <line x1={padL} x2={W - padR} y1={y} y2={y} stroke="rgba(255,255,255,0.06)" strokeWidth={1} />
+              <text x={padL - 5} y={y + 4} textAnchor="end" fontSize={10} fill="#52525b">
+                {tick}
+              </text>
+            </g>
+          );
+        })}
+
+        {/* Bars */}
+        {series.map((d, i) => {
+          const x = barX(i);
+          const total = d.entregado + d.abierto + d.rebotado + d.enviado;
+          let cumY = padT + chartH;
+
+          const segments: { color: string; val: number; key: string }[] = [
+            { key: 'enviado', val: d.enviado, color: '#3f3f46' },
+            { key: 'rebotado', val: d.rebotado, color: '#ef4444' },
+            { key: 'entregado', val: d.entregado, color: '#10b981' },
+            { key: 'abierto', val: d.abierto, color: '#3b82f6' },
+          ];
+
+          return (
+            <g
+              key={d.dia}
+              onMouseEnter={(e) => {
+                const svgEl = svgRef.current;
+                if (!svgEl) return;
+                const rect = svgEl.getBoundingClientRect();
+                const svgX = ((e.clientX - rect.left) / rect.width) * W;
+                const svgY = ((e.clientY - rect.top) / rect.height) * H;
+                setTooltip({ x: svgX, y: svgY, dia: d.dia, enviado: d.enviado, entregado: d.entregado, abierto: d.abierto, rebotado: d.rebotado });
+              }}
+              onMouseLeave={() => setTooltip(null)}
+              style={{ cursor: 'default' }}
+            >
+              {total === 0 ? (
+                <rect x={x} y={padT + chartH - 2} width={barW} height={2} fill="#27272a" rx={1} />
+              ) : (
+                segments.map(({ key, val, color }) => {
+                  if (val === 0) return null;
+                  const h = yH(val);
+                  cumY -= h;
+                  return (
+                    <rect
+                      key={key}
+                      x={x}
+                      y={cumY}
+                      width={barW}
+                      height={h}
+                      fill={color}
+                      opacity={0.85}
+                    />
+                  );
+                })
+              )}
+              {/* X label */}
+              {i % labelStep === 0 && (
+                <text x={x + barW / 2} y={H - 6} textAnchor="middle" fontSize={9} fill="#52525b">
+                  {fmtDateShort(d.dia)}
+                </text>
+              )}
+            </g>
+          );
+        })}
+
+        {/* Tooltip */}
+        {tooltip && (() => {
+          const bw = 130, bh = 90;
+          const tx = tooltip.x + bw + 10 > W ? tooltip.x - bw - 4 : tooltip.x + 8;
+          const ty = Math.min(tooltip.y - 10, H - bh - 4);
+          return (
+            <g pointerEvents="none">
+              <rect x={tx} y={ty} width={bw} height={bh} rx={6} fill="#18181b" stroke="rgba(255,255,255,0.12)" strokeWidth={1} />
+              <text x={tx + 8} y={ty + 16} fontSize={10} fill="#a1a1aa" fontWeight={600}>{fmtDate(tooltip.dia)}</text>
+              {[
+                { label: 'Abiertos', val: tooltip.abierto, color: '#3b82f6' },
+                { label: 'Entregados', val: tooltip.entregado, color: '#10b981' },
+                { label: 'Rebotados', val: tooltip.rebotado, color: '#ef4444' },
+                { label: 'Enviados', val: tooltip.enviado, color: '#52525b' },
+              ].map(({ label, val, color }, j) => (
+                <g key={label}>
+                  <rect x={tx + 8} y={ty + 24 + j * 16} width={6} height={6} rx={1} fill={color} />
+                  <text x={tx + 18} y={ty + 31 + j * 16} fontSize={10} fill="#d4d4d8">{label}: {val}</text>
+                </g>
+              ))}
+            </g>
+          );
+        })()}
+      </svg>
+
+      {/* Legend */}
+      <div className="mt-1 flex flex-wrap gap-3 justify-center">
+        {[
+          { label: 'Abiertos', color: 'bg-blue-500' },
+          { label: 'Entregados', color: 'bg-emerald-500' },
+          { label: 'Rebotados', color: 'bg-red-500' },
+          { label: 'Enviados', color: 'bg-zinc-600' },
+        ].map(({ label, color }) => (
+          <div key={label} className="flex items-center gap-1.5 text-xs text-zinc-500">
+            <span className={`inline-block h-2 w-2 rounded-sm ${color}`} />
+            {label}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+// ─── Frequent Clients Table ───────────────────────────────────────────────────
+
+function clientRowColor(abiertos: number, total: number): string {
+  if (total === 0) return '';
+  const rate = abiertos / total;
+  if (rate >= 0.5) return 'border-l-2 border-l-emerald-500/50 bg-emerald-950/20';
+  if (rate >= 0.2) return 'border-l-2 border-l-blue-500/40 bg-blue-950/10';
+  return '';
+}
+
+function FrequentClients({ clients }: { clients: TopClient[] }) {
+  if (clients.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-10 text-zinc-600">
+        <Mail className="h-7 w-7" />
+        <p className="text-sm">Sin datos de clientes aún</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full min-w-[560px] text-sm">
+        <thead>
+          <tr className="border-b border-white/5 text-[10px] uppercase tracking-wider text-zinc-600">
+            <th className="px-4 py-2.5 text-left font-semibold">#</th>
+            <th className="px-4 py-2.5 text-left font-semibold">Destinatario</th>
+            <th className="px-4 py-2.5 text-right font-semibold">Enviados</th>
+            <th className="px-4 py-2.5 text-right font-semibold">Entregados</th>
+            <th className="px-4 py-2.5 text-right font-semibold">Abiertos</th>
+            <th className="px-4 py-2.5 text-right font-semibold">Tasa</th>
+            <th className="px-4 py-2.5 text-left font-semibold">Último</th>
+          </tr>
+        </thead>
+        <tbody>
+          {clients.slice(0, 10).map((c, i) => {
+            const rate = c.total > 0 ? Math.round((c.abiertos / c.total) * 100) : 0;
+            const rowCls = clientRowColor(c.abiertos, c.total);
+            return (
+              <tr key={c.destinatario} className={`border-b border-white/4 hover:bg-white/3 transition-colors ${rowCls}`}>
+                <td className="px-4 py-2.5 text-zinc-600 text-xs tabular-nums">{i + 1}</td>
+                <td className="px-4 py-2.5">
+                  <a
+                    href={`mailto:${c.destinatario}`}
+                    className="font-mono text-xs text-zinc-300 hover:text-amber-400 transition-colors"
+                  >
+                    {c.destinatario}
+                  </a>
+                </td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-zinc-400">{c.total}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-emerald-400">{c.entregados}</td>
+                <td className="px-4 py-2.5 text-right tabular-nums text-blue-400">{c.abiertos}</td>
+                <td className="px-4 py-2.5 text-right">
+                  <span className={`text-xs font-bold ${rate >= 50 ? 'text-emerald-400' : rate >= 20 ? 'text-blue-400' : 'text-zinc-500'}`}>
+                    {rate}%
+                  </span>
+                </td>
+                <td className="px-4 py-2.5 text-xs text-zinc-600 whitespace-nowrap">{fmtDate(c.ultimo_correo)}</td>
+              </tr>
+            );
+          })}
+        </tbody>
+      </table>
+    </div>
+  );
+}
+
 // ─── Tab: Resumen ─────────────────────────────────────────────────────────────
 
 function TabResumen({ stats }: { stats: StatsResponse }) {
   const { totals } = stats;
+  const [chartData, setChartData] = useState<ChartResponse | null>(null);
+  const [loadingChart, setLoadingChart] = useState(true);
+
+  useEffect(() => {
+    fetch('/api/admin/correo/chart')
+      .then((r) => r.json() as Promise<ChartResponse>)
+      .then((d) => setChartData(d))
+      .catch(() => {/* silent */})
+      .finally(() => setLoadingChart(false));
+  }, []);
+
   const statCards = [
     { label: 'Enviados', value: totals.enviado + totals.entregado + totals.abierto + totals.rebotado + totals.spam, icon: Send, color: 'text-zinc-400' },
     { label: 'Entregados', value: totals.entregado + totals.abierto, icon: CheckCircle2, color: 'text-emerald-400' },
@@ -144,7 +431,37 @@ function TabResumen({ stats }: { stats: StatsResponse }) {
         <RateBar label="Tasa de rebote" value={stats.bounceRate} color="bg-red-500" />
       </AdminCard>
 
-      {/* Recent table */}
+      {/* 30-day chart */}
+      <AdminCard className="p-5">
+        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600 mb-4">Actividad 30 días</p>
+        {loadingChart ? (
+          <div className="flex items-center justify-center py-16 text-zinc-600">
+            <Loader2 className="h-5 w-5 animate-spin" />
+          </div>
+        ) : chartData?.ok && chartData.dailySeries.length > 0 ? (
+          <BarChart series={chartData.dailySeries} />
+        ) : (
+          <div className="flex flex-col items-center gap-2 py-10 text-zinc-700">
+            <span className="text-sm">Sin actividad en los últimos 30 días</span>
+          </div>
+        )}
+      </AdminCard>
+
+      {/* Frequent clients */}
+      <AdminCard className="p-0 overflow-hidden">
+        <div className="border-b border-white/8 px-4 py-3">
+          <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">Clientes frecuentes</p>
+        </div>
+        {loadingChart ? (
+          <div className="flex items-center justify-center py-10 text-zinc-600">
+            <Loader2 className="h-4 w-4 animate-spin" />
+          </div>
+        ) : (
+          <FrequentClients clients={chartData?.topClients ?? []} />
+        )}
+      </AdminCard>
+
+      {/* Recent emails table */}
       <AdminCard className="p-0 overflow-hidden">
         <div className="border-b border-white/8 px-4 py-3">
           <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">Últimos correos</p>
@@ -210,20 +527,17 @@ function TabBandeja({ emails }: { emails: EmailRow[] }) {
       if (!r.destinatario.toLowerCase().includes(q) && !r.asunto.toLowerCase().includes(q)) return false;
     }
     if (cutoff && r.enviado_at) {
-      const ts = new Date(r.enviado_at).getTime();
-      if (ts < cutoff) return false;
+      if (new Date(r.enviado_at).getTime() < cutoff) return false;
     }
     return true;
   });
 
   const totalPages = Math.ceil(filtered.length / PER_PAGE);
   const pageRows = filtered.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
-
   const statusPills = ['todos', 'enviado', 'entregado', 'abierto', 'rebotado', 'spam'];
 
   return (
     <div className="space-y-4">
-      {/* Filters */}
       <AdminCard className="p-4 space-y-3">
         <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
           <input
@@ -250,9 +564,7 @@ function TabBandeja({ emails }: { emails: EmailRow[] }) {
               key={s}
               onClick={() => { setEstadoFilter(s); setPage(0); }}
               className={`rounded-full border px-3 py-1 text-xs font-semibold capitalize transition-colors ${
-                estadoFilter === s
-                  ? 'border-amber-500 bg-amber-500 text-black'
-                  : 'border-white/10 text-zinc-400 hover:border-white/20'
+                estadoFilter === s ? 'border-amber-500 bg-amber-500 text-black' : 'border-white/10 text-zinc-400 hover:border-white/20'
               }`}
             >
               {s}
@@ -261,7 +573,6 @@ function TabBandeja({ emails }: { emails: EmailRow[] }) {
         </div>
       </AdminCard>
 
-      {/* Table */}
       <AdminCard className="p-0 overflow-hidden">
         {pageRows.length === 0 ? (
           <div className="flex flex-col items-center gap-3 py-12 text-zinc-600">
@@ -277,7 +588,7 @@ function TabBandeja({ emails }: { emails: EmailRow[] }) {
                   <th className="px-4 py-2.5 text-left font-semibold">Asunto</th>
                   <th className="px-4 py-2.5 text-left font-semibold">Estado</th>
                   <th className="px-4 py-2.5 text-left font-semibold">Fecha</th>
-                  <th className="px-4 py-2.5 text-left font-semibold">Detalle</th>
+                  <th className="px-4 py-2.5 text-left font-semibold" />
                 </tr>
               </thead>
               <tbody>
@@ -332,25 +643,16 @@ function TabBandeja({ emails }: { emails: EmailRow[] }) {
           </div>
         )}
 
-        {/* Pagination */}
         {totalPages > 1 && (
           <div className="flex items-center justify-between border-t border-white/8 px-4 py-3">
             <span className="text-xs text-zinc-600">
               {filtered.length} resultado{filtered.length !== 1 ? 's' : ''} · pág. {page + 1} de {totalPages}
             </span>
             <div className="flex gap-2">
-              <button
-                onClick={() => setPage((p) => Math.max(0, p - 1))}
-                disabled={page === 0}
-                className="rounded border border-white/8 px-3 py-1 text-xs text-zinc-400 hover:border-white/20 disabled:opacity-30"
-              >
+              <button onClick={() => setPage((p) => Math.max(0, p - 1))} disabled={page === 0} className="rounded border border-white/8 px-3 py-1 text-xs text-zinc-400 hover:border-white/20 disabled:opacity-30">
                 ← Anterior
               </button>
-              <button
-                onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))}
-                disabled={page >= totalPages - 1}
-                className="rounded border border-white/8 px-3 py-1 text-xs text-zinc-400 hover:border-white/20 disabled:opacity-30"
-              >
+              <button onClick={() => setPage((p) => Math.min(totalPages - 1, p + 1))} disabled={page >= totalPages - 1} className="rounded border border-white/8 px-3 py-1 text-xs text-zinc-400 hover:border-white/20 disabled:opacity-30">
                 Siguiente →
               </button>
             </div>
@@ -363,14 +665,34 @@ function TabBandeja({ emails }: { emails: EmailRow[] }) {
 
 // ─── Tab: Envío rápido ────────────────────────────────────────────────────────
 
-function TabEnvio() {
+const AI_PRESETS = [
+  { label: 'Oscuro', instruccion: 'Rediseña con fondo oscuro #1a1a1a, texto blanco, acentos en color amber #f59e0b. Mantén el contenido exacto.' },
+  { label: 'Profesional', instruccion: 'Estilo corporativo: fondo blanco, tipografía system-ui, colores neutros grises, botones redondeados en azul #2563eb.' },
+  { label: 'Minimalista', instruccion: 'Diseño ultra-limpio: solo texto, sin decoraciones excesivas, tipografía grande, mucho espacio en blanco.' },
+];
+
+function TabEnvio({ keyConfigured }: { keyConfigured: boolean }) {
   const [to, setTo] = useState('');
   const [subject, setSubject] = useState('');
   const [from, setFrom] = useState('');
   const [htmlBody, setHtmlBody] = useState('');
-  const [preview, setPreview] = useState(false);
+  const [originalHtml, setOriginalHtml] = useState('');
+  const [editorTab, setEditorTab] = useState<'html' | 'preview'>('html');
   const [sending, setSending] = useState(false);
   const [result, setResult] = useState<{ ok: boolean; id?: string | null; error?: string } | null>(null);
+
+  // AI
+  const [instruccion, setInstruccion] = useState('');
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiError, setAiError] = useState('');
+  const [aiConfig, setAiConfig] = useState<AiConfigResponse | null>(null);
+
+  useEffect(() => {
+    fetch('/api/admin/ia/config')
+      .then((r) => r.json() as Promise<AiConfigResponse>)
+      .then(setAiConfig)
+      .catch(() => {/* silent */});
+  }, []);
 
   async function handleSend(e: React.FormEvent) {
     e.preventDefault();
@@ -391,78 +713,205 @@ function TabEnvio() {
     }
   }
 
+  async function handleAiStyle(preset?: string) {
+    if (!htmlBody.trim()) { setAiError('Añade contenido HTML antes de usar la IA.'); return; }
+    setAiLoading(true);
+    setAiError('');
+    const instr = preset ?? instruccion;
+    try {
+      const res = await fetch('/api/admin/correo/ai-style', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ html: htmlBody, instruccion: instr }),
+      });
+      const data = (await res.json()) as AiStyleResponse;
+      if (data.ok && data.html) {
+        if (!originalHtml) setOriginalHtml(htmlBody);
+        setHtmlBody(data.html);
+        setEditorTab('preview');
+      } else {
+        setAiError(data.error ?? 'Error desconocido');
+      }
+    } catch (err) {
+      setAiError((err as Error).message);
+    } finally {
+      setAiLoading(false);
+    }
+  }
+
+  function handleRestore() {
+    if (originalHtml) {
+      setHtmlBody(originalHtml);
+      setOriginalHtml('');
+    }
+  }
+
   const inputCls = 'w-full rounded-lg border border-white/8 bg-white/4 px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/20 focus:bg-white/6 transition-colors';
 
   return (
-    <AdminCard className="p-5">
-      <p className="mb-4 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">Enviar correo único</p>
-      <form onSubmit={handleSend} className="space-y-4">
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <label className="text-[11px] uppercase tracking-wide text-zinc-500">Destinatario *</label>
-            <input type="email" required value={to} onChange={(e) => setTo(e.target.value)} placeholder="cliente@empresa.com" className={inputCls} />
-          </div>
-          <div className="space-y-1.5">
-            <label className="text-[11px] uppercase tracking-wide text-zinc-500">Remitente (opcional)</label>
-            <input type="text" value={from} onChange={(e) => setFrom(e.target.value)} placeholder="Nombre <email@dominio.com>" className={inputCls} />
-          </div>
-        </div>
+    <div className="space-y-4">
+      {/* Credential banner */}
+      <div className={`flex items-center gap-2.5 rounded-lg border px-4 py-2.5 text-sm ${keyConfigured ? 'border-emerald-500/20 bg-emerald-900/10 text-emerald-300' : 'border-red-500/20 bg-red-900/10 text-red-300'}`}>
+        <span className={`h-2 w-2 rounded-full ${keyConfigured ? 'bg-emerald-400' : 'bg-red-400'}`} />
+        {keyConfigured ? (
+          'Resend configurado · listo para enviar'
+        ) : (
+          <>Sin credenciales — <a href="/admin/integraciones" className="underline hover:text-red-200">Configurar →</a></>
+        )}
+      </div>
 
-        <div className="space-y-1.5">
-          <label className="text-[11px] uppercase tracking-wide text-zinc-500">Asunto *</label>
-          <input type="text" required value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Asunto del correo…" className={inputCls} />
-        </div>
+      <div className="grid gap-5 lg:grid-cols-[1fr_340px]">
+        {/* Left: Email form + editor */}
+        <form onSubmit={handleSend} className="space-y-4">
+          <AdminCard className="p-5 space-y-4">
+            <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">Destinatario & asunto</p>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <div className="space-y-1.5">
+                <label className="text-[11px] uppercase tracking-wide text-zinc-500">Para *</label>
+                <input type="email" required value={to} onChange={(e) => setTo(e.target.value)} placeholder="cliente@empresa.com" className={inputCls} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="text-[11px] uppercase tracking-wide text-zinc-500">De (opcional)</label>
+                <input type="text" value={from} onChange={(e) => setFrom(e.target.value)} placeholder="Nombre <email@dominio.com>" className={inputCls} />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <label className="text-[11px] uppercase tracking-wide text-zinc-500">Asunto *</label>
+              <input type="text" required value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Asunto del correo…" className={inputCls} />
+            </div>
+          </AdminCard>
 
-        <div className="space-y-1.5">
-          <div className="flex items-center justify-between">
-            <label className="text-[11px] uppercase tracking-wide text-zinc-500">Cuerpo HTML *</label>
+          {/* HTML editor with sub-tabs */}
+          <AdminCard className="p-0 overflow-hidden">
+            <div className="flex items-center gap-0 border-b border-white/8">
+              {(['html', 'preview'] as const).map((t) => (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setEditorTab(t)}
+                  className={`px-4 py-2.5 text-xs font-semibold capitalize transition-colors ${editorTab === t ? 'bg-white/6 text-white border-b-2 border-amber-500' : 'text-zinc-500 hover:text-zinc-300'}`}
+                >
+                  {t === 'html' ? 'HTML' : 'Vista previa'}
+                </button>
+              ))}
+            </div>
+            {editorTab === 'html' ? (
+              <textarea
+                value={htmlBody}
+                onChange={(e) => setHtmlBody(e.target.value)}
+                rows={18}
+                placeholder={'<!DOCTYPE html>\n<html>\n<body>\n  <p>Escribe aquí tu email en HTML…</p>\n</body>\n</html>'}
+                className="w-full resize-none bg-transparent px-4 py-3 font-mono text-xs text-zinc-300 placeholder-zinc-700 outline-none"
+                spellCheck={false}
+              />
+            ) : (
+              <iframe
+                srcDoc={htmlBody || '<p style="font-family:sans-serif;color:#888;text-align:center;padding:60px 20px">Vista previa vacía — escribe HTML en la pestaña HTML</p>'}
+                sandbox=""
+                className="h-80 w-full bg-white"
+                title="Email preview"
+              />
+            )}
+          </AdminCard>
+
+          {result && (
+            <div className={`rounded-lg border px-4 py-3 text-sm ${result.ok ? 'border-emerald-500/30 bg-emerald-900/20 text-emerald-300' : 'border-red-500/30 bg-red-900/20 text-red-300'}`}>
+              {result.ok ? `✓ Enviado correctamente${result.id ? ` · ID: ${result.id}` : ''}` : `✗ ${result.error}`}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={sending || !keyConfigured}
+            className="flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2.5 text-sm font-bold text-black hover:bg-amber-400 disabled:opacity-40 transition-colors"
+          >
+            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+            {sending ? 'Enviando…' : 'Enviar correo'}
+          </button>
+        </form>
+
+        {/* Right: AI assistant */}
+        <div className="space-y-4">
+          <AdminCard className="p-5 space-y-4">
+            <div className="flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-amber-400" />
+              <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-400">Asistente de estilo IA</p>
+            </div>
+
+            {aiConfig && (
+              <div className="rounded-lg border border-white/6 bg-white/3 px-3 py-2 text-xs text-zinc-500">
+                Usando: <span className="text-zinc-300 font-medium">{aiConfig.proveedor_ia}</span>
+                {' · '}
+                <span className="font-mono text-zinc-400">{aiConfig.modelo_ia}</span>
+              </div>
+            )}
+
+            <div className="space-y-1.5">
+              <label className="text-[11px] uppercase tracking-wide text-zinc-500">Instrucción</label>
+              <input
+                type="text"
+                value={instruccion}
+                onChange={(e) => setInstruccion(e.target.value)}
+                placeholder="Hazlo más profesional, oscuro, moderno…"
+                className="w-full rounded-lg border border-white/8 bg-white/4 px-3 py-2 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/20 focus:bg-white/6"
+              />
+            </div>
+
             <button
               type="button"
-              onClick={() => setPreview((p) => !p)}
-              className="text-[11px] text-zinc-500 hover:text-zinc-300 underline transition-colors"
+              onClick={() => handleAiStyle()}
+              disabled={aiLoading || !htmlBody.trim()}
+              className="flex w-full items-center justify-center gap-2 rounded-lg bg-amber-500/10 border border-amber-500/30 py-2.5 text-sm font-semibold text-amber-300 hover:bg-amber-500/20 disabled:opacity-40 transition-colors"
             >
-              {preview ? 'Editar HTML' : 'Vista previa'}
+              {aiLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {aiLoading ? 'Mejorando…' : 'Mejorar con IA'}
             </button>
-          </div>
-          {preview ? (
-            <iframe
-              srcDoc={htmlBody || '<p style="font-family:sans-serif;color:#888;text-align:center;padding:40px">Vista previa vacía</p>'}
-              sandbox=""
-              className="h-64 w-full rounded-lg border border-white/8 bg-white"
-              title="Email preview"
-            />
-          ) : (
-            <textarea
-              required
-              value={htmlBody}
-              onChange={(e) => setHtmlBody(e.target.value)}
-              rows={10}
-              placeholder="<p>Escribe el cuerpo del email en HTML...</p>"
-              className={`${inputCls} font-mono text-xs resize-y`}
-            />
-          )}
-        </div>
 
-        {result && (
-          <div className={`rounded-lg border px-4 py-3 text-sm ${result.ok ? 'border-emerald-500/30 bg-emerald-900/20 text-emerald-300' : 'border-red-500/30 bg-red-900/20 text-red-300'}`}>
-            {result.ok ? (
-              <span>✓ Enviado correctamente{result.id ? ` · ID: ${result.id}` : ''}</span>
-            ) : (
-              <span>✗ {result.error}</span>
+            {aiError && (
+              <div className="rounded-lg border border-red-500/20 bg-red-900/10 px-3 py-2 text-xs text-red-400">{aiError}</div>
             )}
-          </div>
-        )}
 
-        <button
-          type="submit"
-          disabled={sending}
-          className="flex items-center gap-2 rounded-lg bg-amber-500 px-5 py-2.5 text-sm font-bold text-black hover:bg-amber-400 disabled:opacity-50 transition-colors"
-        >
-          {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-          {sending ? 'Enviando…' : 'Enviar correo'}
-        </button>
-      </form>
-    </AdminCard>
+            {/* Preset pills */}
+            <div className="space-y-2">
+              <p className="text-[10px] uppercase tracking-wide text-zinc-600">Estilos rápidos</p>
+              <div className="flex flex-col gap-1.5">
+                {AI_PRESETS.map(({ label, instruccion: instr }) => (
+                  <button
+                    key={label}
+                    type="button"
+                    disabled={aiLoading || !htmlBody.trim()}
+                    onClick={() => handleAiStyle(instr)}
+                    className="rounded-lg border border-white/8 px-3 py-2 text-xs text-zinc-400 text-left hover:border-amber-500/30 hover:text-zinc-200 disabled:opacity-40 transition-colors"
+                  >
+                    {label}
+                  </button>
+                ))}
+                {originalHtml && (
+                  <button
+                    type="button"
+                    onClick={handleRestore}
+                    className="flex items-center gap-1.5 rounded-lg border border-white/8 px-3 py-2 text-xs text-zinc-500 hover:border-white/20 hover:text-zinc-300 transition-colors"
+                  >
+                    <RotateCcw className="h-3 w-3" />
+                    Restaurar original
+                  </button>
+                )}
+              </div>
+            </div>
+          </AdminCard>
+
+          <AdminCard className="p-4">
+            <p className="text-[10px] uppercase tracking-wide text-zinc-600 mb-2">Ayuda rápida</p>
+            <ul className="space-y-1.5 text-xs text-zinc-500">
+              <li>• Pega tu HTML en el editor y activa la Vista previa para ver cómo se verá</li>
+              <li>• Usa un estilo rápido o escribe tu propia instrucción para la IA</li>
+              <li>• El botón &quot;Restaurar original&quot; aparece después de usar la IA</li>
+              <li>• La IA usa el proveedor configurado en <a href="/admin/ia-config" className="text-amber-400 hover:underline">Configuración IA</a></li>
+            </ul>
+          </AdminCard>
+        </div>
+      </div>
+    </div>
   );
 }
 
@@ -496,7 +945,11 @@ function TabConfig({ keyConfigured }: { keyConfigured: boolean }) {
     setTestSending(true);
     setTestResult('');
     try {
-      const res = await fetch('/api/admin/integrations/test-resend', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({}) });
+      const res = await fetch('/api/admin/integrations/test-resend', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({}),
+      });
       const data = (await res.json()) as { ok: boolean; error?: string };
       setTestResult(data.ok ? '✓ Email de prueba enviado a tu correo' : `✗ ${data.error ?? 'Error'}`);
     } catch (err) {
@@ -514,7 +967,6 @@ function TabConfig({ keyConfigured }: { keyConfigured: boolean }) {
 
   return (
     <div className="space-y-5">
-      {/* Credential status */}
       <AdminCard className="p-5">
         <p className="mb-4 text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">Credenciales Resend</p>
         <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -529,13 +981,11 @@ function TabConfig({ keyConfigured }: { keyConfigured: boolean }) {
                 {keyConfigured ? 'API Key configurada' : 'API Key no configurada'}
               </p>
               <p className="text-xs text-zinc-500">
-                {keyConfigured
-                  ? 'Las credenciales están activas en Integraciones'
-                  : 'Ve a Integraciones para añadir tu API Key de Resend'}
+                {keyConfigured ? 'Las credenciales están activas en Integraciones' : 'Ve a Integraciones para añadir tu API Key de Resend'}
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
+          <div className="flex flex-wrap gap-2">
             <a
               href="/admin/integraciones"
               className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-xs text-zinc-300 hover:border-white/20 hover:text-white transition-colors"
@@ -561,14 +1011,10 @@ function TabConfig({ keyConfigured }: { keyConfigured: boolean }) {
         )}
       </AdminCard>
 
-      {/* Domains */}
       <AdminCard className="p-5">
         <div className="mb-4 flex items-center justify-between">
           <p className="text-[10px] font-black uppercase tracking-[0.15em] text-zinc-600">Dominios verificados</p>
-          <button
-            onClick={loadDomains}
-            className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors"
-          >
+          <button onClick={loadDomains} className="flex items-center gap-1 text-xs text-zinc-500 hover:text-zinc-300 transition-colors">
             <RefreshCw className="h-3 w-3" />
             Actualizar
           </button>
@@ -660,7 +1106,7 @@ export default function CorreoPage() {
       />
 
       {/* Tabs */}
-      <div className="flex gap-2 overflow-x-auto pb-1 scrollbar-hide">
+      <div className="flex gap-2 overflow-x-auto pb-1">
         {TABS.map(({ id, label }) => (
           <button
             key={id}
@@ -692,7 +1138,7 @@ export default function CorreoPage() {
         <>
           {tab === 'resumen' && stats && <TabResumen stats={stats} />}
           {tab === 'bandeja' && stats && <TabBandeja emails={stats.recent} />}
-          {tab === 'envio' && <TabEnvio />}
+          {tab === 'envio' && <TabEnvio keyConfigured={stats?.key_configured ?? false} />}
           {tab === 'config' && <TabConfig keyConfigured={stats?.key_configured ?? false} />}
         </>
       )}

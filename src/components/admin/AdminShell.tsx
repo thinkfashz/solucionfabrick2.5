@@ -226,17 +226,27 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, now, profilePhot
 
   return (
     <div className="space-y-3">
-      <div className="relative overflow-hidden rounded-[1.5rem] border border-yellow-300/25 bg-black/55 p-4 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_18%,rgba(250,204,21,0.10),rgba(0,0,0,0)_60%)]" />
-        <Link href="/admin/perfil" onClick={onNavigate} className="group relative flex items-center gap-3">
-          <AvatarCircle photo={profilePhoto} size="lg" />
+      <div className="relative overflow-hidden rounded-[1.5rem] border border-yellow-300/25 bg-black/55 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_18%,rgba(250,204,21,0.12),rgba(0,0,0,0)_60%)]" />
+        {/* Logo + title row */}
+        <div className="relative flex items-center gap-3 px-4 pt-4 pb-3 border-b border-white/8">
+          <BrandMark size="sm" animated />
+          <div className="min-w-0 flex-1">
+            <p className="text-[8px] font-black uppercase tracking-[0.38em] text-zinc-600 leading-none">Panel Root</p>
+            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-yellow-300 leading-tight mt-0.5">Soluciones Fabrick</p>
+          </div>
+          {now && (
+            <span className="font-mono text-[9px] tabular-nums text-white/40">{now.toLocaleTimeString('es-CL', { hour12: false })}</span>
+          )}
+        </div>
+        {/* Profile row */}
+        <Link href="/admin/perfil" onClick={onNavigate} className="group relative flex items-center gap-3 px-4 py-3">
+          <AvatarCircle photo={profilePhoto} size="md" />
           <span className="min-w-0 flex-1">
-            <span className="block font-playfair text-[11px] font-black leading-none tracking-[0.28em] text-yellow-300">SOLUCIONES FABRICK</span>
-            <span className="mt-1.5 flex flex-wrap items-center gap-1.5">
+            <span className="mt-0 flex flex-wrap items-center gap-1.5">
               <span className="rounded-full border border-emerald-400/30 bg-emerald-400/10 px-1.5 py-0.5 text-[8.5px] font-bold uppercase tracking-[0.22em] text-emerald-300">{role === 'superadmin' ? 'Superadmin' : role === 'viewer' ? 'Demo' : 'Admin'}</span>
-              {now ? <span className="font-mono text-[9.5px] tabular-nums text-white/50">{now.toLocaleTimeString('es-CL', { hour12: false })}</span> : null}
             </span>
-            <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500 group-hover:text-yellow-300">Ver perfil</span>
+            <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500 group-hover:text-yellow-300 transition-colors">Ver perfil →</span>
           </span>
         </Link>
       </div>

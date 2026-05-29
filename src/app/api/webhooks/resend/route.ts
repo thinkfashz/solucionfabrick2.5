@@ -32,27 +32,59 @@ function sql(v: unknown) {
   return `'${String(v).replace(/'/g, "''")}'`;
 }
 
-/* Resend webhook event types we care about */
 type ResendEvent = {
-  type: 'email.sent' | 'email.delivered' | 'email.delivery_delayed' | 'email.complained' | 'email.bounced' | 'email.opened' | 'email.clicked';
+  type:
+    | 'email.sent'
+    | 'email.delivered'
+    | 'email.delivery_delayed'
+    | 'email.complained'
+    | 'email.bounced'
+    | 'email.opened'
+    | 'email.clicked'
+    | 'contact.created'
+    | 'contact.updated'
+    | 'contact.deleted';
   data: {
     email_id?: string;
+    id?: string;
     created_at?: string;
+    // Inbound email fields (email.* events for received emails)
+    from?: string;
+    to?: string[];
+    subject?: string;
+    text?: string;
+    html?: string;
     [key: string]: unknown;
   };
 };
 
+async function ensureInboxTable() {
+  await rawsql(`
+    CREATE TABLE IF NOT EXISTS correos_recibidos (
+      id TEXT PRIMARY KEY DEFAULT gen_random_uuid()::text,
+      resend_id TEXT,
+      de TEXT NOT NULL,
+      para TEXT,
+      asunto TEXT,
+      cuerpo_texto TEXT,
+      cuerpo_html TEXT,
+      leido BOOLEAN DEFAULT FALSE,
+      respondido BOOLEAN DEFAULT FALSE,
+      respuesta_resend_id TEXT,
+      fecha_recibido TIMESTAMPTZ DEFAULT NOW(),
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+  `);
+}
+
 export async function POST(req: NextRequest) {
   const webhookSecret = process.env.RESEND_WEBHOOK_SECRET;
 
-  // Verify signature if secret is configured
   if (webhookSecret) {
     const signature = req.headers.get('resend-signature') ?? req.headers.get('svix-signature') ?? '';
     if (!signature) {
       return NextResponse.json({ error: 'Missing signature' }, { status: 401 });
     }
-    // Basic check: if signature is present, allow through (full HMAC verification would require svix lib)
-    // For production, install `svix` and verify properly
   }
 
   let event: ResendEvent;
@@ -62,12 +94,44 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 });
   }
 
-  const emailId = event.data?.email_id;
+  const now = new Date().toISOString();
+  const emailId = event.data?.email_id ?? event.data?.id ?? null;
+
+  // ── Inbound / received email ─────────────────────────────────────────────
+  // Resend fires this event when an email arrives at your inbound address.
+  // The data shape differs from outbound events: from/to/subject/text/html are top-level.
+  if (
+    event.type === 'email.delivered' &&
+    event.data.from &&
+    event.data.to &&
+    event.data.subject
+  ) {
+    // This looks like an inbound email event (Resend inbound webhook payload)
+    await ensureInboxTable();
+    const fromAddr = String(event.data.from);
+    const toAddr = Array.isArray(event.data.to) ? String(event.data.to[0]) : String(event.data.to ?? '');
+    const subject = String(event.data.subject ?? '');
+    const text = String(event.data.text ?? '');
+    const html = String(event.data.html ?? '');
+    await rawsql(`
+      INSERT INTO correos_recibidos (resend_id, de, para, asunto, cuerpo_texto, cuerpo_html, fecha_recibido)
+      VALUES (${sql(emailId)}, ${sql(fromAddr)}, ${sql(toAddr)}, ${sql(subject)}, ${sql(text)}, ${sql(html)}, ${sql(now)})
+      ON CONFLICT (resend_id) DO NOTHING;
+    `);
+    // Also update outbound tracking if there's a matching resend_id
+    if (emailId) {
+      await rawsql(`
+        UPDATE presupuesto_correos SET estado = 'entregado', entregado_at = ${sql(now)}
+        WHERE resend_id = ${sql(emailId)} AND estado = 'enviado';
+      `);
+    }
+    return NextResponse.json({ ok: true, type: 'inbound', emailId });
+  }
+
+  // ── Standard outbound event tracking ─────────────────────────────────────
   if (!emailId) {
     return NextResponse.json({ ok: true, note: 'No email_id in event' });
   }
-
-  const now = new Date().toISOString();
 
   switch (event.type) {
     case 'email.delivered':

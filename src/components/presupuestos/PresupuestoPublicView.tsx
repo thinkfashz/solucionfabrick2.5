@@ -375,11 +375,26 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
 
       {activeImage && <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90 p-3 backdrop-blur print:hidden" role="dialog" aria-modal="true"><button type="button" onClick={() => setActiveImage(null)} className="absolute right-4 top-4 rounded-full border border-white/20 bg-black/60 p-2 text-white hover:border-yellow-400"><X className="h-5 w-5" /></button><figure className="w-full max-w-6xl overflow-hidden rounded-[2rem] border border-white/10 bg-[#111111] text-white"><div className="flex h-[72vh] w-full items-center justify-center bg-black"><img src={imageProxyUrl(activeImage.url)} alt={activeImage.titulo || 'Imagen del presupuesto'} className="max-h-full max-w-full object-contain" referrerPolicy="no-referrer" /></div><figcaption className="p-5"><b>{activeImage.titulo}</b>{activeImage.descripcion && <p className="mt-1 text-sm text-zinc-400">{activeImage.descripcion}</p>}</figcaption></figure></div>}
 
-      <div className="fixed bottom-3 left-3 right-3 z-50 rounded-2xl border border-yellow-300/40 bg-[#111111] p-3 text-white shadow-2xl shadow-black/30 sm:hidden print:hidden">
-        <p className="text-[10px] font-black uppercase tracking-[0.24em] text-yellow-300">Total proyecto</p>
-        <div className="mt-1 flex items-center justify-between gap-3">
-          <b className="text-xl font-black text-yellow-300">{formatBudgetMoney(presupuesto.total_con_iva)}</b>
-          {!adminPreview && (
+      <div className={`fixed bottom-3 left-3 right-3 z-50 rounded-2xl p-3 text-white shadow-2xl sm:hidden print:hidden ${isExpired ? 'border border-red-500/40 bg-[#1a0505] shadow-red-900/30' : (timeLeft && timeLeft.days === 0 && timeLeft.hours < 6) ? 'border border-red-500/40 bg-[#1a0505] shadow-red-900/30 animate-pulse' : (timeLeft && timeLeft.days === 0) ? 'border border-orange-400/40 bg-[#110a00] shadow-orange-900/20' : presupuesto.fecha_vencimiento && timeLeft ? 'border border-yellow-300/40 bg-[#111111] shadow-black/30' : 'border border-yellow-300/40 bg-[#111111] shadow-black/30'}`}>
+        {presupuesto.fecha_vencimiento && (timeLeft || isExpired) && (
+          <div className="mb-2 flex items-center justify-between gap-2">
+            <span className={`flex items-center gap-1 text-[9px] font-black uppercase tracking-[0.22em] ${isExpired ? 'text-red-400' : timeLeft && timeLeft.days === 0 && timeLeft.hours < 6 ? 'text-red-400' : timeLeft && timeLeft.days === 0 ? 'text-orange-400' : 'text-yellow-400'}`}>
+              <Timer className="h-3 w-3" />
+              {isExpired ? 'Propuesta vencida' : timeLeft && timeLeft.days === 0 && timeLeft.hours < 6 ? '¡Últimas horas!' : timeLeft && timeLeft.days === 0 ? 'Vence hoy' : 'Auto-destrucción'}
+            </span>
+            {!isExpired && timeLeft && (
+              <span className={`font-black tabular-nums text-sm ${timeLeft.days === 0 && timeLeft.hours < 6 ? 'text-red-400' : timeLeft.days === 0 ? 'text-orange-400' : 'text-yellow-300'}`}>
+                {timeLeft.days > 0 && `${timeLeft.days}d `}{String(timeLeft.hours).padStart(2,'0')}:{String(timeLeft.minutes).padStart(2,'0')}:{String(timeLeft.seconds).padStart(2,'0')}
+              </span>
+            )}
+          </div>
+        )}
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.24em] text-yellow-300">Total proyecto</p>
+            <b className="text-xl font-black text-yellow-300">{formatBudgetMoney(presupuesto.total_con_iva)}</b>
+          </div>
+          {!adminPreview && !isExpired && (
             <button
               type="button"
               onClick={handleConfirmAcceptance}
@@ -387,6 +402,11 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
               className="rounded-full bg-emerald-400 px-3 py-2 text-[11px] font-black text-black disabled:opacity-70"
             >
               {accepted ? 'Aceptado' : 'Confirmar'}
+            </button>
+          )}
+          {!adminPreview && isExpired && (
+            <button type="button" onClick={() => openCompatibleUrl(consultUrl)} className="rounded-full border border-red-400/40 bg-red-400/10 px-3 py-2 text-[11px] font-black text-red-300">
+              Renovar
             </button>
           )}
         </div>

@@ -180,6 +180,35 @@ const PATH_LABELS: Record<string, string> = Object.fromEntries(
   navSections.flatMap((section) => section.links.map((link) => [link.href.split('?')[0], link.label])),
 );
 
+function AdminClock({ compact = false }: { compact?: boolean }) {
+  const [now, setNow] = useState<Date | null>(null);
+  useEffect(() => {
+    setNow(new Date());
+    const id = setInterval(() => setNow(new Date()), 1000);
+    return () => clearInterval(id);
+  }, []);
+  if (!now) return null;
+  if (compact) {
+    return (
+      <span className="flex items-center gap-1.5 text-[10px] font-semibold tabular-nums text-zinc-400">
+        <span className="h-1 w-1 rounded-full bg-yellow-400 animate-pulse" />
+        {now.toLocaleTimeString('es-CL', { hour12: false })}
+      </span>
+    );
+  }
+  return (
+    <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-3 py-1.5">
+      <span className="h-1.5 w-1.5 rounded-full bg-yellow-400 animate-pulse" />
+      <span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">
+        {now.toLocaleDateString('es-CL', { weekday: 'short', day: '2-digit', month: 'short' })}
+      </span>
+      <span className="text-[11px] font-bold tabular-nums text-white">
+        {now.toLocaleTimeString('es-CL', { hour12: false })}
+      </span>
+    </div>
+  );
+}
+
 function AvatarCircle({ photo, size = 'md' }: { photo?: string | null; size?: 'sm' | 'md' | 'lg' }) {
   const sizeClass = size === 'lg' ? 'h-14 w-14' : size === 'sm' ? 'h-8 w-8' : 'h-10 w-10';
   return (
@@ -214,12 +243,11 @@ function NavItem({ href, label, description, icon: Icon, active, onNavigate, hig
   );
 }
 
-function SidebarContent({ pathname, onNavigate, onLogout, role, now, profilePhoto }: {
+function SidebarContent({ pathname, onNavigate, onLogout, role, profilePhoto }: {
   pathname: string;
   onNavigate?: () => void;
   onLogout: () => void;
   role: string | null;
-  now?: Date | null;
   profilePhoto?: string | null;
 }) {
   const sections = navSections
@@ -237,9 +265,7 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, now, profilePhot
             <p className="text-[8px] font-black uppercase tracking-[0.38em] text-zinc-600 leading-none">Panel Root</p>
             <p className="text-[11px] font-black uppercase tracking-[0.24em] text-yellow-300 leading-tight mt-0.5">Soluciones Fabrick</p>
           </div>
-          {now && (
-            <span className="font-mono text-[9px] tabular-nums text-white/40">{now.toLocaleTimeString('es-CL', { hour12: false })}</span>
-          )}
+          <AdminClock compact />
         </div>
         {/* Profile row */}
         <Link href="/admin/perfil" onClick={onNavigate} className="group relative flex items-center gap-3 px-4 py-3">
@@ -283,7 +309,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [contextMenuOpen, setContextMenuOpen] = useState(false);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [role, setRole] = useState<string | null>(null);
-  const [now, setNow] = useState<Date | null>(null);
   const [profilePhoto, setProfilePhoto] = useState<string | null>(null);
   const [adminTheme, setAdminTheme] = useState<string>('');
 
@@ -318,12 +343,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
       } catch {}
     })();
     return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    setNow(new Date());
-    const id = setInterval(() => setNow(new Date()), 1000);
-    return () => clearInterval(id);
   }, []);
 
   const breadcrumb = useMemo(() => {
@@ -389,7 +408,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           </div>
 
           <div className="hidden flex-1 items-center justify-center md:flex" aria-hidden="true">
-            {now && <div className="flex items-center gap-2 rounded-full border border-white/10 bg-black/60 px-3 py-1.5"><span className="h-1.5 w-1.5 rounded-full bg-yellow-400 animate-pulse" /><span className="text-[10px] font-semibold uppercase tracking-[0.2em] text-zinc-400">{now.toLocaleDateString('es-CL', { weekday: 'short', day: '2-digit', month: 'short' })}</span><span className="text-[11px] font-bold tabular-nums text-white">{now.toLocaleTimeString('es-CL', { hour12: false })}</span></div>}
+            <AdminClock />
           </div>
 
           <div className="flex items-center gap-2">
@@ -400,11 +419,11 @@ export function AdminShell({ children }: { children: ReactNode }) {
             <button onClick={handleLogout} className="flex items-center gap-1.5 rounded-full border border-white/10 px-3.5 py-2 text-[10px] font-bold uppercase tracking-[0.2em] text-zinc-300 transition hover:border-red-500/50 hover:text-red-400" title="Cerrar sesión"><LogOut className="h-3.5 w-3.5" /><span className="hidden sm:inline">Salir</span></button>
           </div>
         </div>
-        <div className="relative mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 pb-2 md:hidden"><span className="truncate text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-400">{breadcrumb}</span>{now && <span className="flex items-center gap-1.5 text-[10px] font-semibold tabular-nums text-zinc-400"><span className="h-1 w-1 rounded-full bg-yellow-400 animate-pulse" />{now.toLocaleTimeString('es-CL', { hour12: false })}</span>}</div>
+        <div className="relative mx-auto flex max-w-[1600px] items-center justify-between gap-3 px-4 pb-2 md:hidden"><span className="truncate text-[11px] font-bold uppercase tracking-[0.22em] text-yellow-400">{breadcrumb}</span><AdminClock compact /></div>
       </header>
 
       <div className="relative z-10 mx-auto grid max-w-[1600px] gap-5 px-3 pb-24 py-4 sm:px-4 md:px-6 md:py-6 lg:grid-cols-[280px_minmax(0,1fr)] lg:pb-6">
-        <aside data-admin-sidebar="" className="hidden lg:sticky lg:top-[80px] lg:block lg:h-[calc(100vh-96px)] lg:overflow-y-auto scrollbar-hide"><SidebarContent pathname={pathname} onLogout={handleLogout} role={role} now={now} profilePhoto={profilePhoto} /></aside>
+        <aside data-admin-sidebar="" className="hidden lg:sticky lg:top-[80px] lg:block lg:h-[calc(100vh-96px)] lg:overflow-y-auto scrollbar-hide"><SidebarContent pathname={pathname} onLogout={handleLogout} role={role} profilePhoto={profilePhoto} /></aside>
         <main data-admin-main="" className="relative min-w-0 overflow-hidden">
           {role === 'viewer' && <DemoSessionTracker />}
           {role === 'viewer' && <div className="mb-4 flex flex-wrap items-center gap-3 rounded-2xl border border-amber-400/40 bg-amber-400/[0.08] px-5 py-3.5"><Eye className="h-4 w-4 shrink-0 text-amber-400" /><span className="text-[12px] font-bold uppercase tracking-[0.18em] text-amber-300">Modo Demo · Solo lectura</span><span className="text-xs text-amber-300/55">Los cambios que intentes no se guardan · Expira en 24 h</span></div>}

@@ -42,6 +42,7 @@ export function AdminThemeToggle() {
       localStorage.removeItem(LS_KEY);
     }
     setTransitioning(false);
+    window.dispatchEvent(new Event('admin-theme-changed'));
   }
 
   return (

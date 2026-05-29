@@ -37,6 +37,13 @@ function buildCodeLines(label: string): string[] {
   ];
 }
 
+// CSS-animated matrix columns rendered as DOM — no canvas needed
+const MATRIX_COLS = 14;
+const MATRIX_DELAYS = Array.from({ length: MATRIX_COLS }, (_, i) => `${(i * 0.18).toFixed(2)}s`);
+const MATRIX_CHARS = Array.from({ length: MATRIX_COLS }, (_, i) =>
+  Array.from({ length: 18 }, (__, j) => ((i * 7 + j * 3) % 2 === 0 ? '1' : '0')).join('\n')
+);
+
 export function AdminRouteTransition() {
   const pathname = usePathname();
   const prevRef = useRef(pathname);
@@ -49,7 +56,6 @@ export function AdminRouteTransition() {
     if (prevRef.current === pathname) return;
     prevRef.current = pathname;
 
-    // Clear any previous timers
     timersRef.current.forEach(clearTimeout);
     timersRef.current = [];
 
@@ -59,7 +65,6 @@ export function AdminRouteTransition() {
     setLines([]);
     setVisible(true);
 
-    // Stagger code line reveals
     codeLines.forEach((line, i) => {
       const t = setTimeout(() => {
         setLines((prev) => [...prev, line]);
@@ -67,7 +72,6 @@ export function AdminRouteTransition() {
       timersRef.current.push(t);
     });
 
-    // Dismiss slightly after last line
     const dismiss = setTimeout(() => setVisible(false), codeLines.length * 48 + 160);
     timersRef.current.push(dismiss);
 
@@ -86,15 +90,32 @@ export function AdminRouteTransition() {
           exit={{ opacity: 0, scale: 1.02 }}
           transition={{ duration: 0.18, ease: 'easeOut' }}
           data-route-transition=""
-          className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/88 backdrop-blur-sm"
+          className="fixed inset-0 z-[9990] flex items-center justify-center bg-black/88 backdrop-blur-sm overflow-hidden"
         >
-          {/* Terminal window */}
+          {/* Matrix binary rain — CSS only, no canvas */}
+          <div className="pointer-events-none absolute inset-0 flex justify-around opacity-30 overflow-hidden">
+            {MATRIX_COLS > 0 && MATRIX_DELAYS.map((delay, i) => (
+              <div
+                key={i}
+                className="text-[11px] leading-[1.55] text-[#00ff41] whitespace-pre select-none"
+                style={{
+                  animation: `rt-fall 1.6s linear infinite`,
+                  animationDelay: delay,
+                  willChange: 'transform',
+                }}
+              >
+                {MATRIX_CHARS[i]}
+              </div>
+            ))}
+          </div>
+
+          {/* Terminal window — responsive width */}
           <motion.div
             initial={{ y: 12, scale: 0.97 }}
             animate={{ y: 0, scale: 1 }}
             exit={{ y: -8, scale: 0.98 }}
             transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-            className="w-full max-w-sm overflow-hidden rounded-2xl border border-white/10 bg-zinc-950 shadow-[0_32px_80px_rgba(0,0,0,0.9)]"
+            className="relative z-10 w-[min(90vw,_420px)] overflow-hidden rounded-2xl border border-white/10 bg-zinc-950/95 shadow-[0_32px_80px_rgba(0,0,0,0.95)]"
           >
             {/* macOS-style title bar */}
             <div className="flex items-center gap-2 border-b border-white/8 bg-zinc-900/80 px-4 py-2.5">
@@ -103,7 +124,7 @@ export function AdminRouteTransition() {
                 <span className="h-2.5 w-2.5 rounded-full bg-yellow-500/70" />
                 <span className="h-2.5 w-2.5 rounded-full bg-green-500/70" />
               </span>
-              <span className="mx-auto font-mono text-[10px] tracking-wider text-zinc-500">
+              <span className="mx-auto truncate font-mono text-[10px] tracking-wider text-zinc-500">
                 fabrick-admin — {label}
               </span>
             </div>
@@ -150,6 +171,13 @@ export function AdminRouteTransition() {
               />
             </div>
           </motion.div>
+
+          <style>{`
+            @keyframes rt-fall {
+              0%   { transform: translateY(-60%); }
+              100% { transform: translateY(100vh); }
+            }
+          `}</style>
         </motion.div>
       )}
     </AnimatePresence>

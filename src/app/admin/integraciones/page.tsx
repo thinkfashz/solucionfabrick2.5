@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
 	Activity,
+	Bot,
 	CheckCircle2,
 	ChevronDown,
 	Cloud,
@@ -29,6 +30,7 @@ import {
 	Wallet,
 	Workflow,
 	X,
+	Zap,
 	type LucideIcon,
 } from 'lucide-react';
 import AdminActionGuard, { type AdminActionResult } from '@/components/admin/AdminActionGuard';
@@ -41,7 +43,7 @@ const INTEGRATIONS_TABLE_SQL = `CREATE TABLE IF NOT EXISTS public.integrations (
   updated_at timestamptz DEFAULT now()
 );`;
 
-type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary' | 'vercel' | 'mercadolibre' | 'mercadopago' | 'stripe' | 'whatsapp' | 'resend' | 'openrouter' | 'serper' | 'serpapi';
+type ProviderKey = 'meta' | 'google' | 'google_ads' | 'tiktok' | 'cloudinary' | 'vercel' | 'mercadolibre' | 'mercadopago' | 'stripe' | 'whatsapp' | 'resend' | 'openrouter' | 'serper' | 'serpapi' | 'anthropic' | 'groq';
 
 /** Providers that use OAuth and have a dedicated Conectar/Desconectar flow. */
 const OAUTH_PROVIDERS = new Set<ProviderKey>(['mercadolibre', 'google', 'meta', 'tiktok']);
@@ -277,6 +279,47 @@ const PROVIDERS: ProviderDefinition[] = [
 		],
 	},
 	{
+		id: 'anthropic',
+		label: 'Anthropic · Claude',
+		description: 'API oficial de Anthropic para usar modelos Claude (Opus, Sonnet, Haiku) en el Asistente IA de presupuestos y otras funciones del admin.',
+		icon: Bot,
+		accent: 'from-amber-400/20 to-orange-500/10',
+		uses: ['Asistente IA presupuestos', 'Claude Opus / Sonnet / Haiku', 'Análisis de proyectos', 'Generación de contenido'],
+		apiKeyUrl: 'https://console.anthropic.com/settings/keys',
+		apiKeyLabel: 'Obtener API Key',
+		instructions: [
+			'Crea una cuenta en console.anthropic.com e inicia sesión.',
+			'Ve a Settings → API Keys y haz clic en "Create Key". Cópiala (empieza por sk-ant-…). Solo se muestra una vez.',
+			'Selecciona el modelo que quieres usar en el campo "Modelo activo" (Haiku es el más rápido y económico; Sonnet ofrece el mejor balance).',
+			'Pega la API key abajo y guarda. El Asistente IA usará esta clave automáticamente.',
+		],
+		fields: [
+			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 'sk-ant-api03-xxxxxxxxxxxxxxxx' },
+			{ key: 'modelo', label: 'Modelo activo', placeholder: 'claude-haiku-4-5-20251001', hint: 'Opciones: claude-haiku-4-5-20251001 · claude-sonnet-4-6 · claude-opus-4-8' },
+		],
+	},
+	{
+		id: 'groq',
+		label: 'Groq · LLaMA / Gemma',
+		description: 'Inferencia ultra-rápida con hardware Groq. Plan gratuito generoso: modelos LLaMA 3.3, LLaMA 3.1 y Gemma disponibles sin saldo. Alternativa económica a Anthropic.',
+		icon: Zap,
+		accent: 'from-rose-400/20 to-pink-500/10',
+		uses: ['Asistente IA presupuestos (alternativa)', 'LLaMA 3.3 70B gratis', 'Inferencia ultra-rápida', 'Sin costo para pruebas'],
+		apiKeyUrl: 'https://console.groq.com/keys',
+		apiKeyLabel: 'Obtener API Key gratis',
+		instructions: [
+			'Crea una cuenta gratis en console.groq.com (puedes usar Google o GitHub).',
+			'Ve a API Keys y haz clic en "Create API Key". Cópiala (empieza por gsk_…). Solo se muestra una vez.',
+			'El plan free incluye: llama-3.3-70b-versatile (~30 req/min), llama-3.1-8b-instant (~30 req/min), gemma2-9b-it, mixtral-8x7b-32768.',
+			'Selecciona el modelo en el campo "Modelo activo". Para el Asistente IA se recomienda llama-3.3-70b-versatile.',
+			'Pega la API key abajo y guarda. En el Admin → Configuración IA puedes seleccionar Groq como proveedor activo.',
+		],
+		fields: [
+			{ key: 'api_key', label: 'API Key', type: 'password', placeholder: 'gsk_xxxxxxxxxxxxxxxxxxxxxxxx' },
+			{ key: 'modelo', label: 'Modelo activo', placeholder: 'llama-3.3-70b-versatile', hint: 'Gratuitos: llama-3.3-70b-versatile · llama-3.1-8b-instant · gemma2-9b-it · mixtral-8x7b-32768' },
+		],
+	},
+	{
 		id: 'serper',
 		label: 'Serper.dev',
 		description: 'Google SERP API ultra-rápida con plan gratuito (≈2.500 búsquedas one-time). Alimenta el módulo Inteligencia de Mercado para descubrir precios, productos ganadores y competencia en Google.',
@@ -446,6 +489,18 @@ const DIAGNOSTIC_TIPS: Partial<Record<ProviderKey, string[]>> = {
 		'La API key empieza con sk-or-v1-. Créala en openrouter.ai/keys.',
 		'Los modelos gratis (sufijo :free) no requieren saldo pero sí una key válida.',
 		'Si el test falla, verifica que el modelo seleccionado en el Asistente IA esté actualmente disponible.',
+	],
+	anthropic: [
+		'La API key empieza con sk-ant-. Créala en console.anthropic.com/settings/keys.',
+		'Asegúrate de que la cuenta de Anthropic tiene saldo disponible para usar la API (o está en el tier gratuito de prueba).',
+		'Si recibes error 401, la API key es inválida o fue revocada. Genera una nueva desde la consola.',
+		'Si recibes error 529 (overloaded), Anthropic está saturado; reintenta en unos minutos.',
+	],
+	groq: [
+		'La API key empieza con gsk_. Créala gratis en console.groq.com/keys.',
+		'El plan gratuito tiene límites de velocidad (~30 req/min para llama-3.3-70b-versatile). Si el test falla por rate limit, espera un minuto.',
+		'Asegúrate de que el modelo en el campo "Modelo activo" sea exactamente uno de los soportados: llama-3.3-70b-versatile, llama-3.1-8b-instant, gemma2-9b-it, mixtral-8x7b-32768.',
+		'Para usar Groq como proveedor principal del Asistente IA, ve a Admin → Configuración IA y selecciona "Groq".',
 	],
 	serper: [
 		'La API key es una cadena hexadecimal de 64 caracteres (sin prefijos).',

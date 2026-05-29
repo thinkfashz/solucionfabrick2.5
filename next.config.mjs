@@ -45,7 +45,28 @@ const nextConfig = {
     'playwright',
     '@playwright/test',
     'playwright-core',
+    'chromium-bidi',
   ],
+  webpack(config, { isServer }) {
+    if (isServer) {
+      // Playwright and its native sub-packages must never be bundled by webpack.
+      // pnpm's virtual-store paths make serverExternalPackages unreliable for
+      // transitive deps, so we add an explicit externals function as a backstop.
+      const existing = Array.isArray(config.externals) ? config.externals : [config.externals].filter(Boolean);
+      config.externals = [
+        ...existing,
+        /** @param {{ request?: string }} ctx @param {Function} cb */
+        ({ request }, cb) => {
+          const pwPkgs = ['playwright', 'playwright-core', '@playwright/test', 'chromium-bidi'];
+          if (request && pwPkgs.some((p) => request === p || request.startsWith(p + '/'))) {
+            return cb(null, `commonjs ${request}`);
+          }
+          return cb();
+        },
+      ];
+    }
+    return config;
+  },
   async headers() {
     return [
       {

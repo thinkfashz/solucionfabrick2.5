@@ -8,10 +8,11 @@ import {
   AlertTriangle,
   BarChart3,
   BookOpen,
-  Cpu,
+  Bot,
   Boxes,
   ChevronRight,
   Cloud,
+  Cpu,
   Database,
   ExternalLink,
   Eye,
@@ -122,6 +123,8 @@ const navSections: NavSection[] = [
   {
     title: 'Marketing & IA',
     links: [
+      { href: '/admin/ia-config', label: 'Configuración IA', description: 'API key Anthropic / Groq y modelo activo', icon: Bot, highlight: true },
+      { href: '/admin/agente', label: 'Agente IA · Playwright', description: 'Navega internet, busca precios y analiza competencia', icon: Sparkles, highlight: true },
       { href: '/admin/ai-developer', label: 'Fabrick AI Developer', description: 'Chat real y herramientas Git', icon: Sparkles, highlight: true },
       { href: '/admin/asistente-ia', label: 'Asistente IA', description: 'OpenRouter y análisis', icon: Sparkles, highlight: true },
       { href: '/admin/video-engine', label: 'Fabrick Studio IA', description: 'Guiones, escenas y previews HTML', icon: Video, highlight: true },

@@ -33,6 +33,7 @@ import {
   Send,
   Settings,
   ShieldCheck,
+  Bot,
   Camera,
   Cpu,
   ShoppingCart,
@@ -148,6 +149,8 @@ const SECTIONS: MenuSection[] = [
     title: 'Marketing & IA',
     tone: 'pink',
     items: [
+      { href: '/admin/ia-config', label: 'Configuración IA', icon: Bot, description: 'API key Anthropic / Groq y modelo activo', highlight: true },
+      { href: '/admin/agente', label: 'Agente IA · Playwright', icon: Sparkles, description: 'Navega internet, busca precios y analiza competencia', highlight: true },
       { href: '/admin/asistente-ia', label: 'Asistente IA', icon: Sparkles, description: 'Chat con IA + análisis' },
       { href: '/admin/publicidad/coach', label: 'Coach de campañas', icon: Sparkles, description: 'Optimización con IA' },
       { href: '/admin/publicar', label: 'Publicar', icon: Send, description: 'Posts para redes' },

@@ -36,32 +36,55 @@ async function rawsql(query: string): Promise<Record<string, unknown> | null> {
   }
 }
 
-/* ─── Resolve AI config (Anthropic or Groq) from DB ─────────────────── */
-type Provider = 'anthropic' | 'groq';
+/* ─── Resolve AI config (Anthropic, Groq, or OpenRouter) from DB ────── */
+type Provider = 'anthropic' | 'groq' | 'openrouter';
 
-interface AiConfig { provider: Provider; apiKey: string; modelo: string }
+interface AiConfig { provider: Provider; apiKey: string; modelo: string; siteUrl?: string; appName?: string }
+
+type CredRow = { credentials?: Record<string, string> };
+type ConfigRow = { anthropic_api_key?: string; modelo_ia?: string; proveedor_ia?: string };
+
+function credRows(d: unknown) {
+  return (d as { data?: { rows?: CredRow[] } } | null)?.data?.rows ?? [];
+}
 
 async function resolveAiConfig(): Promise<AiConfig | null> {
   try {
     const configData = await rawsql(
       `SELECT anthropic_api_key, modelo_ia, proveedor_ia FROM configuracion_ia WHERE id = 'singleton' LIMIT 1;`
     );
-    const row = (configData as { data?: { rows?: Array<{ anthropic_api_key?: string; modelo_ia?: string; proveedor_ia?: string }> } } | null)?.data?.rows?.[0];
-    const proveedor = (row?.proveedor_ia as Provider | undefined) ?? 'anthropic';
+    const row = (configData as { data?: { rows?: ConfigRow[] } } | null)?.data?.rows?.[0];
+    const proveedor = (row?.proveedor_ia ?? 'anthropic') as Provider;
+    const prefModelo = row?.modelo_ia ?? '';
+
+    if (proveedor === 'openrouter') {
+      const d = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'openrouter' LIMIT 1;`);
+      const r = credRows(d)[0];
+      const k = r?.credentials?.api_key?.trim() ?? '';
+      if (k) return { provider: 'openrouter', apiKey: k, modelo: prefModelo || 'meta-llama/llama-3.3-70b-instruct:free', siteUrl: r?.credentials?.site_url, appName: r?.credentials?.app_name };
+    }
 
     if (proveedor === 'groq') {
       const d = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'groq' LIMIT 1;`);
-      const r = (d as { data?: { rows?: Array<{ credentials?: Record<string, string> }> } } | null)?.data?.rows?.[0];
+      const r = credRows(d)[0];
       const k = r?.credentials?.api_key?.trim() ?? '';
-      if (k) return { provider: 'groq', apiKey: k, modelo: r?.credentials?.modelo ?? 'llama-3.3-70b-versatile' };
+      if (k) return { provider: 'groq', apiKey: k, modelo: prefModelo || r?.credentials?.modelo || 'llama-3.3-70b-versatile' };
     }
 
+    // Try anthropic from integrations
     const anthData = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'anthropic' LIMIT 1;`);
-    const anthRow = (anthData as { data?: { rows?: Array<{ credentials?: Record<string, string> }> } } | null)?.data?.rows?.[0];
+    const anthRow = credRows(anthData)[0];
     const anthKey = anthRow?.credentials?.api_key?.trim() ?? '';
-    if (anthKey) return { provider: 'anthropic', apiKey: anthKey, modelo: anthRow?.credentials?.modelo ?? row?.modelo_ia ?? 'claude-haiku-4-5-20251001' };
+    if (anthKey) return { provider: 'anthropic', apiKey: anthKey, modelo: prefModelo || anthRow?.credentials?.modelo || 'claude-haiku-4-5-20251001' };
 
-    if (row?.anthropic_api_key) return { provider: 'anthropic', apiKey: row.anthropic_api_key, modelo: row.modelo_ia ?? 'claude-haiku-4-5-20251001' };
+    // Fallback: try openrouter even if not primary (user has it configured)
+    const orData = await rawsql(`SELECT credentials FROM integrations WHERE provider = 'openrouter' LIMIT 1;`);
+    const orRow = credRows(orData)[0];
+    const orKey = orRow?.credentials?.api_key?.trim() ?? '';
+    if (orKey) return { provider: 'openrouter', apiKey: orKey, modelo: prefModelo || 'meta-llama/llama-3.3-70b-instruct:free', siteUrl: orRow?.credentials?.site_url, appName: orRow?.credentials?.app_name };
+
+    // Legacy: key stored directly in configuracion_ia
+    if (row?.anthropic_api_key) return { provider: 'anthropic', apiKey: row.anthropic_api_key, modelo: prefModelo || 'claude-haiku-4-5-20251001' };
   } catch { /* fall through */ }
 
   const envKey = process.env.ANTHROPIC_API_KEY;
@@ -410,6 +433,86 @@ async function runAnthropicLoop(
   }
 }
 
+/* ─── OpenRouter agent loop (OpenAI-compatible) ──────────────────────── */
+async function runOpenRouterLoop(
+  messages: GroqMsg[],
+  config: AiConfig,
+  serperKey: string | undefined,
+  emit: (data: Record<string, unknown>) => void,
+  browser: BrowserSession,
+): Promise<void> {
+  const MAX_TURNS = 10;
+
+  for (let turn = 0; turn < MAX_TURNS; turn++) {
+    const headers: Record<string, string> = {
+      Authorization: `Bearer ${config.apiKey}`,
+      'Content-Type': 'application/json',
+    };
+    if (config.siteUrl) headers['HTTP-Referer'] = config.siteUrl;
+    if (config.appName) headers['X-Title'] = config.appName;
+
+    const res = await fetch('https://openrouter.ai/api/v1/chat/completions', {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: config.modelo,
+        max_tokens: 4096,
+        messages,
+        tools: TOOLS_GROQ,
+        tool_choice: 'auto',
+      }),
+      signal: AbortSignal.timeout(60_000),
+    });
+
+    if (!res.ok) {
+      emit({ type: 'error', content: `Error API OpenRouter: ${await res.text()}` });
+      return;
+    }
+
+    const data = await res.json() as {
+      choices: Array<{
+        finish_reason: string;
+        message: {
+          role: string;
+          content: string | null;
+          tool_calls?: Array<{ id: string; function: { name: string; arguments: string } }>;
+        };
+      }>;
+    };
+
+    const choice = data.choices[0];
+    if (!choice) break;
+
+    if (choice.message.content) {
+      emit({ type: 'text', content: choice.message.content });
+    }
+
+    if (choice.finish_reason !== 'tool_calls' || !choice.message.tool_calls?.length) break;
+
+    messages.push({ role: 'assistant', content: choice.message.content, tool_calls: choice.message.tool_calls });
+
+    for (const tc of choice.message.tool_calls) {
+      let input: Record<string, unknown> = {};
+      try { input = JSON.parse(tc.function.arguments) as Record<string, unknown>; } catch { /* noop */ }
+
+      emit({ type: 'tool_call', name: tc.function.name, input });
+
+      const result = await executeTool(tc.function.name, input, serperKey, browser, emit);
+
+      emit({ type: 'tool_result', name: tc.function.name, content: result.content.slice(0, 800) });
+      if (result.screenshot) {
+        emit({ type: 'screenshot', url: String(input.url ?? ''), data: result.screenshot });
+      }
+
+      messages.push({
+        role: 'tool',
+        tool_call_id: tc.id,
+        content: result.content,
+      });
+    }
+  }
+}
+
 /* ─── Groq agent loop ────────────────────────────────────────────────── */
 async function runGroqLoop(
   messages: GroqMsg[],
@@ -513,7 +616,8 @@ export async function POST(req: NextRequest) {
         return;
       }
 
-      emit({ type: 'thinking', content: `Usando ${config.provider === 'groq' ? 'Groq' : 'Anthropic'} · ${config.modelo}` });
+      const providerLabel = config.provider === 'groq' ? 'Groq' : config.provider === 'openrouter' ? 'OpenRouter' : 'Anthropic';
+      emit({ type: 'thinking', content: `Usando ${providerLabel} · ${config.modelo}` });
 
       const browser = await BrowserSession.create();
       try {
@@ -523,6 +627,12 @@ export async function POST(req: NextRequest) {
             ...userMessages.map((m) => ({ role: m.role, content: m.content })),
           ];
           await runGroqLoop(groqMsgs, config, serperKey, emit, browser);
+        } else if (config.provider === 'openrouter') {
+          const orMsgs: GroqMsg[] = [
+            { role: 'system', content: SYSTEM_PROMPT },
+            ...userMessages.map((m) => ({ role: m.role, content: m.content })),
+          ];
+          await runOpenRouterLoop(orMsgs, config, serperKey, emit, browser);
         } else {
           const anthropicMsgs: AnthropicMsg[] = userMessages.map((m) => ({ role: m.role, content: m.content }));
           await runAnthropicLoop(anthropicMsgs, config, serperKey, emit, browser);

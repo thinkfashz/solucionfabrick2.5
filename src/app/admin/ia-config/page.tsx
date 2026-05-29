@@ -6,7 +6,7 @@ import {
 } from 'lucide-react';
 import { AdminCard, AdminMotion, AdminPage, AdminPageHeader } from '@/components/admin/ui';
 
-type ProviderType = 'anthropic' | 'groq';
+type ProviderType = 'anthropic' | 'groq' | 'openrouter';
 
 const ANTHROPIC_MODELS = [
   { id: 'claude-opus-4-8', label: 'Opus 4.8', desc: 'Máxima calidad · más lento' },
@@ -21,8 +21,14 @@ const GROQ_MODELS = [
   { id: 'mixtral-8x7b-32768', label: 'Mixtral 8x7B', desc: 'Contexto largo 32K · gratis' },
 ] as const;
 
-type AnthropicModelId = typeof ANTHROPIC_MODELS[number]['id'];
-type GroqModelId = typeof GROQ_MODELS[number]['id'];
+const OPENROUTER_MODELS = [
+  { id: 'meta-llama/llama-3.3-70b-instruct:free', label: 'LLaMA 3.3 70B', desc: 'Gratis · tool use · recomendado para agente', recommended: true },
+  { id: 'google/gemma-3-27b-it:free', label: 'Gemma 3 27B', desc: 'Gratis · Google · buen razonamiento' },
+  { id: 'mistralai/mistral-small-3.1-24b-instruct:free', label: 'Mistral Small 3.1 24B', desc: 'Gratis · multimodal · Mistral AI' },
+  { id: 'anthropic/claude-haiku-4', label: 'Claude Haiku 4', desc: 'Pago · rápido · Claude vía OpenRouter' },
+] as const;
+
+type _ModelIds = typeof ANTHROPIC_MODELS[number]['id'] | typeof GROQ_MODELS[number]['id'] | typeof OPENROUTER_MODELS[number]['id'];
 
 interface ConfigState {
   key_configured: boolean;
@@ -131,7 +137,7 @@ export default function IaConfigPage() {
     setTimeout(() => setMsg(''), 3000);
   }
 
-  const currentModels = proveedor === 'groq' ? GROQ_MODELS : ANTHROPIC_MODELS;
+  const currentModels = proveedor === 'groq' ? GROQ_MODELS : proveedor === 'openrouter' ? OPENROUTER_MODELS : ANTHROPIC_MODELS;
   const modeloChanged = modelo !== config.modelo_ia || proveedor !== config.proveedor_ia;
 
   const statusLabel: Record<TestStatus, string> = {
@@ -185,28 +191,32 @@ export default function IaConfigPage() {
               <div className="h-2 w-2 rounded-full bg-yellow-400" />
               <h2 className="font-black text-white">Proveedor de IA</h2>
             </div>
-            <div className="grid grid-cols-2 gap-3 mb-4">
-              {(['anthropic', 'groq'] as ProviderType[]).map(p => (
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              {([
+                { id: 'anthropic' as ProviderType, label: 'Anthropic', sub: 'Claude Opus/Sonnet/Haiku', color: 'text-amber-400' },
+                { id: 'groq' as ProviderType, label: 'Groq', sub: 'LLaMA · Gemma · gratis', color: 'text-rose-400' },
+                { id: 'openrouter' as ProviderType, label: 'OpenRouter', sub: 'Multi-modelo · gratis disponible', color: 'text-purple-400' },
+              ]).map(p => (
                 <label
-                  key={p}
-                  className={`flex cursor-pointer items-center gap-3 rounded-2xl border p-4 transition ${proveedor === p ? 'border-yellow-400/60 bg-yellow-400/8' : 'border-white/10 bg-black/20 hover:border-white/25'}`}
+                  key={p.id}
+                  className={`flex cursor-pointer flex-col gap-2 rounded-2xl border p-3 transition ${proveedor === p.id ? 'border-yellow-400/60 bg-yellow-400/8' : 'border-white/10 bg-black/20 hover:border-white/25'}`}
                 >
                   <input
                     type="radio"
                     name="proveedor"
-                    value={p}
-                    checked={proveedor === p}
+                    value={p.id}
+                    checked={proveedor === p.id}
                     onChange={() => {
-                      setProveedor(p);
-                      setModelo(p === 'groq' ? 'llama-3.3-70b-versatile' : 'claude-haiku-4-5-20251001');
+                      setProveedor(p.id);
+                      if (p.id === 'groq') setModelo('llama-3.3-70b-versatile');
+                      else if (p.id === 'openrouter') setModelo('meta-llama/llama-3.3-70b-instruct:free');
+                      else setModelo('claude-haiku-4-5-20251001');
                     }}
-                    className="accent-yellow-400"
+                    className="accent-yellow-400 sr-only"
                   />
-                  <div>
-                    {p === 'anthropic' ? <Bot className="h-5 w-5 text-amber-400 mb-1" /> : <Zap className="h-5 w-5 text-rose-400 mb-1" />}
-                    <p className="font-black text-white capitalize">{p === 'anthropic' ? 'Anthropic' : 'Groq'}</p>
-                    <p className="text-[10px] text-zinc-500">{p === 'anthropic' ? 'Claude Opus/Sonnet/Haiku' : 'LLaMA · Gemma · gratis'}</p>
-                  </div>
+                  <Zap className={`h-5 w-5 ${p.color}`} />
+                  <p className="font-black text-white text-sm">{p.label}</p>
+                  <p className="text-[10px] text-zinc-500 leading-tight">{p.sub}</p>
                 </label>
               ))}
             </div>
@@ -215,7 +225,8 @@ export default function IaConfigPage() {
               <a href="/admin/integraciones" className="inline-flex items-center gap-1 text-yellow-400 hover:underline">
                 Centro de Integraciones <ExternalLink className="h-3 w-3" />
               </a>
-              {' '}— tarjeta {proveedor === 'anthropic' ? 'Anthropic · Claude' : 'Groq · LLaMA / Gemma'}.
+              {' '}— tarjeta{' '}
+              {proveedor === 'anthropic' ? 'Anthropic · Claude' : proveedor === 'groq' ? 'Groq · LLaMA / Gemma' : 'OpenRouter'}.
             </p>
           </AdminCard>
 
@@ -278,7 +289,7 @@ export default function IaConfigPage() {
           <AdminCard>
             <div className="mb-4 flex items-center gap-2">
               <div className="h-2 w-2 rounded-full bg-yellow-400" />
-              <h2 className="font-black text-white">Modelo de {proveedor === 'anthropic' ? 'Claude' : 'Groq'}</h2>
+              <h2 className="font-black text-white">Modelo de {proveedor === 'anthropic' ? 'Claude' : proveedor === 'openrouter' ? 'OpenRouter' : 'Groq'}</h2>
             </div>
             <div className="space-y-2 mb-4">
               {currentModels.map(m => (

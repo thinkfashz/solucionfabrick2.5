@@ -6,18 +6,21 @@ import {
   ArrowLeft,
   CheckCheck,
   CheckCircle2,
-  ChevronRight,
+  Clock,
+  ExternalLink,
   Eye,
   Inbox,
   Loader2,
   MailOpen,
   MailPlus,
+  MousePointerClick,
   RefreshCw,
   Reply,
   Send,
   Settings,
   Sparkles,
   X,
+  Zap,
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -50,7 +53,7 @@ type EmailItem =
   | ({ _kind: 'received' } & RecibidoRow)
   | ({ _kind: 'sent' } & EnviadoRow);
 
-type Folder = 'inbox' | 'sent' | 'all';
+type Folder = 'inbox' | 'sent' | 'all' | 'resend';
 
 interface StatsData {
   enviado: number;
@@ -61,6 +64,24 @@ interface StatsData {
   deliveryRate: number;
   openRate: number;
   bounceRate: number;
+}
+
+interface ResendItem {
+  id: string;
+  from: string;
+  to: string[];
+  subject: string;
+  created_at: string;
+  last_event: string;
+  // loaded lazily
+  html?: string | null;
+  text?: string | null;
+  bcc?: string[];
+  cc?: string[];
+  opens_count?: number;
+  clicks_count?: number;
+  opens?: { timestamp: string; ip: string }[];
+  clicks?: { timestamp: string; link: string }[];
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
@@ -104,7 +125,13 @@ function fullDate(iso: string): string {
   } catch { return iso; }
 }
 
-const ESTADO_STYLES: Record<string, string> = {
+const EVENT_STYLES: Record<string, string> = {
+  sent:      'border-zinc-600   text-zinc-300   bg-zinc-900/60',
+  delivered: 'border-emerald-600/50 text-emerald-300 bg-emerald-900/20',
+  opened:    'border-blue-600/50   text-blue-300   bg-blue-900/20',
+  bounced:   'border-red-600/50    text-red-300    bg-red-900/20',
+  complained:'border-orange-600/50 text-orange-300 bg-orange-900/20',
+  // DB states
   enviado:   'border-zinc-600   text-zinc-300   bg-zinc-900/60',
   entregado: 'border-emerald-600/50 text-emerald-300 bg-emerald-900/20',
   abierto:   'border-blue-600/50   text-blue-300   bg-blue-900/20',
@@ -112,11 +139,17 @@ const ESTADO_STYLES: Record<string, string> = {
   spam:      'border-orange-600/50 text-orange-300 bg-orange-900/20',
 };
 
-function EstadoBadge({ estado }: { estado: string }) {
-  const cls = ESTADO_STYLES[estado] ?? 'border-zinc-700 text-zinc-400';
+const EVENT_LABELS: Record<string, string> = {
+  sent: 'enviado', delivered: 'entregado', opened: 'abierto',
+  bounced: 'rebotado', complained: 'spam',
+};
+
+function StatusBadge({ event }: { event: string }) {
+  const cls = EVENT_STYLES[event] ?? 'border-zinc-700 text-zinc-400';
+  const label = EVENT_LABELS[event] ?? event;
   return (
     <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${cls}`}>
-      {estado}
+      {label}
     </span>
   );
 }
@@ -195,28 +228,25 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: 
       <div className="flex w-full max-w-2xl flex-col rounded-t-2xl sm:rounded-2xl bg-[#18181b] border border-white/[0.08] shadow-2xl max-h-[95dvh] overflow-hidden">
         <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
           <h2 className="font-semibold text-white flex items-center gap-2 text-sm">
-            <MailPlus className="h-4 w-4 text-amber-400" />
-            Nuevo correo
+            <MailPlus className="h-4 w-4 text-amber-400" /> Nuevo correo
           </h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-zinc-500 hover:text-white hover:bg-white/8 transition-colors">
+          <button onClick={onClose} className="rounded-lg p-1.5 text-zinc-500 hover:text-white hover:bg-white/[0.06] transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
-
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
           <div className="space-y-3">
             <div>
               <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-zinc-600">Para</label>
               <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="destinatario@email.com"
-                className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none focus:ring-1 focus:ring-amber-500/20 transition-colors" />
+                className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none transition-colors" />
             </div>
             <div>
               <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-zinc-600">Asunto</label>
               <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Asunto del correo"
-                className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none focus:ring-1 focus:ring-amber-500/20 transition-colors" />
+                className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none transition-colors" />
             </div>
           </div>
-
           <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 flex items-center gap-1.5">
               <Sparkles className="h-3 w-3 text-amber-500" /> Asistente IA
@@ -246,7 +276,6 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: 
               </button>
             </div>
           </div>
-
           <div>
             <div className="mb-2 flex items-center gap-2">
               <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Cuerpo HTML</label>
@@ -261,10 +290,9 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: 
               </div>
             ) : (
               <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8}
-                className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-xs font-mono text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none resize-none transition-colors" />
+                className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-xs font-mono text-white focus:border-amber-500/40 focus:outline-none resize-none transition-colors" />
             )}
           </div>
-
           {notice && (
             <div className={`rounded-xl px-4 py-2.5 text-xs ${notice.type === 'ok'
               ? 'bg-emerald-900/20 text-emerald-300 border border-emerald-600/20'
@@ -273,8 +301,7 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: 
             </div>
           )}
         </div>
-
-        <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-5 py-4">
+        <div className="flex items-center justify-between border-t border-white/[0.06] px-5 py-4">
           <button onClick={onClose} className="text-sm text-zinc-500 hover:text-white transition-colors">Cancelar</button>
           <button onClick={handleSend} disabled={sending}
             className="flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-black hover:bg-amber-400 disabled:opacity-50 transition-colors">
@@ -287,7 +314,7 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: 
   );
 }
 
-// ─── Email Row ────────────────────────────────────────────────────────────────
+// ─── DB Email Row ─────────────────────────────────────────────────────────────
 
 function EmailRow({ item, selected, onClick }: { item: EmailItem; selected: boolean; onClick: () => void }) {
   const isReceived = item._kind === 'received';
@@ -297,49 +324,59 @@ function EmailRow({ item, selected, onClick }: { item: EmailItem; selected: bool
   const snippet = isReceived ? item.cuerpo_texto.slice(0, 90) : '';
 
   return (
-    <button
-      onClick={onClick}
-      className={[
-        'group w-full text-left flex items-start gap-3 px-4 py-3.5 border-b border-white/[0.04] transition-all',
-        selected
-          ? 'bg-amber-500/[0.07] border-l-2 border-l-amber-500'
-          : 'hover:bg-white/[0.03] border-l-2 border-l-transparent',
-      ].join(' ')}
-    >
+    <button onClick={onClick} className={[
+      'group w-full text-left flex items-start gap-3 px-4 py-3.5 border-b border-white/[0.04] transition-all',
+      selected ? 'bg-amber-500/[0.07] border-l-2 border-l-amber-500' : 'hover:bg-white/[0.03] border-l-2 border-l-transparent',
+    ].join(' ')}>
       <div className={`h-8 w-8 shrink-0 rounded-full ${avatarColor(sender)} flex items-center justify-center text-white text-xs font-bold mt-0.5`}>
         {avatarInitial(sender)}
       </div>
       <div className="flex-1 min-w-0">
         <div className="flex items-center justify-between gap-2 mb-0.5">
-          <span className={`truncate text-sm ${isUnread ? 'font-semibold text-white' : 'text-zinc-300'}`}>
-            {sender || '(sin remitente)'}
-          </span>
+          <span className={`truncate text-sm ${isUnread ? 'font-semibold text-white' : 'text-zinc-300'}`}>{sender || '(sin remitente)'}</span>
           <span className="shrink-0 text-[10px] text-zinc-600">{relDate(date)}</span>
         </div>
-        <p className={`truncate text-xs ${isUnread ? 'text-zinc-200' : 'text-zinc-500'}`}>
-          {item.asunto || '(sin asunto)'}
-        </p>
-        {snippet && (
-          <p className="truncate text-[11px] text-zinc-700 mt-0.5">{snippet}</p>
-        )}
+        <p className={`truncate text-xs ${isUnread ? 'text-zinc-200' : 'text-zinc-500'}`}>{item.asunto || '(sin asunto)'}</p>
+        {snippet && <p className="truncate text-[11px] text-zinc-700 mt-0.5">{snippet}</p>}
         <div className="flex items-center gap-2 mt-1.5">
           {isUnread && <span className="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0" />}
-          {!isReceived && <EstadoBadge estado={item.estado} />}
-          {isReceived && item.respondido && (
-            <span className="text-[10px] text-zinc-700">↩ respondido</span>
-          )}
+          {!isReceived && <StatusBadge event={item.estado} />}
+          {isReceived && item.respondido && <span className="text-[10px] text-zinc-700">↩ respondido</span>}
         </div>
       </div>
-      <ChevronRight className="h-3 w-3 shrink-0 text-zinc-700 mt-2 group-hover:text-zinc-500 transition-colors" />
     </button>
   );
 }
 
-// ─── Email Detail ─────────────────────────────────────────────────────────────
+// ─── Resend History Row ───────────────────────────────────────────────────────
 
-function EmailDetail({
-  item, onBack, onReply, onMarkRead,
-}: {
+function ResendRow({ item, selected, onClick }: { item: ResendItem; selected: boolean; onClick: () => void }) {
+  const to = item.to[0] ?? '';
+  return (
+    <button onClick={onClick} className={[
+      'group w-full text-left flex items-start gap-3 px-4 py-3.5 border-b border-white/[0.04] transition-all',
+      selected ? 'bg-amber-500/[0.07] border-l-2 border-l-amber-500' : 'hover:bg-white/[0.03] border-l-2 border-l-transparent',
+    ].join(' ')}>
+      <div className={`h-8 w-8 shrink-0 rounded-full ${avatarColor(to)} flex items-center justify-center text-white text-xs font-bold mt-0.5`}>
+        {avatarInitial(to)}
+      </div>
+      <div className="flex-1 min-w-0">
+        <div className="flex items-center justify-between gap-2 mb-0.5">
+          <span className="truncate text-sm text-zinc-300">{to || '(desconocido)'}</span>
+          <span className="shrink-0 text-[10px] text-zinc-600">{relDate(item.created_at)}</span>
+        </div>
+        <p className="truncate text-xs text-zinc-500">{item.subject}</p>
+        <div className="mt-1.5">
+          <StatusBadge event={item.last_event} />
+        </div>
+      </div>
+    </button>
+  );
+}
+
+// ─── DB Email Detail ──────────────────────────────────────────────────────────
+
+function EmailDetail({ item, onBack, onReply, onMarkRead }: {
   item: EmailItem;
   onBack: () => void;
   onReply: (to: string, subject: string) => void;
@@ -355,7 +392,6 @@ function EmailDetail({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Subject header */}
       <div className="shrink-0 border-b border-white/[0.06] px-5 py-4">
         <div className="flex items-start gap-3 mb-3">
           <button onClick={onBack} className="lg:hidden rounded-lg p-1.5 text-zinc-500 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0 mt-0.5">
@@ -363,7 +399,6 @@ function EmailDetail({
           </button>
           <h2 className="flex-1 text-base font-bold text-white leading-snug">{item.asunto || '(sin asunto)'}</h2>
         </div>
-
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2.5">
             <div className={`h-8 w-8 rounded-full ${avatarColor(from)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
@@ -374,12 +409,9 @@ function EmailDetail({
               <p className="text-[10px] text-zinc-500 mt-0.5">→ {to}</p>
             </div>
           </div>
-
           <div className="ml-auto flex flex-wrap items-center gap-2">
-            {!isReceived && <EstadoBadge estado={item.estado} />}
-            {isReceived && (
-              <span className="rounded-full border border-blue-500/25 bg-blue-500/8 px-2 py-0.5 text-[10px] font-bold text-blue-300">Recibido</span>
-            )}
+            {!isReceived && <StatusBadge event={item.estado} />}
+            {isReceived && <span className="rounded-full border border-blue-500/25 bg-blue-500/8 px-2 py-0.5 text-[10px] font-bold text-blue-300">Recibido</span>}
             {item.resend_id && (
               <span className="text-[10px] text-zinc-700 font-mono truncate max-w-[160px]" title={item.resend_id}>
                 ID: {item.resend_id.slice(0, 12)}…
@@ -389,8 +421,6 @@ function EmailDetail({
           </div>
         </div>
       </div>
-
-      {/* Body */}
       <div className="flex-1 overflow-hidden">
         {isReceived ? (
           hasHtml ? (
@@ -400,46 +430,23 @@ function EmailDetail({
               <pre className="text-sm text-zinc-300 whitespace-pre-wrap font-sans leading-relaxed">{item.cuerpo_texto}</pre>
             </div>
           ) : (
-            <div className="flex h-full items-center justify-center">
-              <div className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
-                  <MailOpen className="h-5 w-5 text-zinc-600" />
-                </div>
-                <p className="text-sm text-zinc-600">Sin contenido</p>
-              </div>
-            </div>
+            <EmptyBody icon={MailOpen} msg="Sin contenido" />
           )
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
-            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
-              <Send className="h-6 w-6 text-zinc-600" />
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-zinc-500">El cuerpo no se almacena</p>
-              <p className="text-xs text-zinc-700 mt-1">Consulta el estado de entrega en el badge de arriba.</p>
-            </div>
-          </div>
+          <EmptyBody icon={Send} msg="El cuerpo no se almacena localmente." sub="Consulta el historial de Resend para ver el contenido." />
         )}
       </div>
-
-      {/* Actions */}
       <div className="shrink-0 border-t border-white/[0.06] px-4 py-3 flex flex-wrap items-center gap-2">
         {isReceived && (
           <>
-            <button
-              onClick={() => onReply(item.de, `Re: ${item.asunto}`)}
-              className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-black hover:bg-amber-400 transition-colors"
-            >
-              <Reply className="h-3.5 w-3.5" />
-              Responder
+            <button onClick={() => onReply(item.de, `Re: ${item.asunto}`)}
+              className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-black hover:bg-amber-400 transition-colors">
+              <Reply className="h-3.5 w-3.5" /> Responder
             </button>
             {!item.leido && (
-              <button
-                onClick={() => onMarkRead(item.id)}
-                className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] px-3 py-2 text-xs text-zinc-400 hover:text-white hover:bg-white/[0.05] transition-colors"
-              >
-                <CheckCheck className="h-3.5 w-3.5" />
-                Marcar leído
+              <button onClick={() => onMarkRead(item.id)}
+                className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] px-3 py-2 text-xs text-zinc-400 hover:text-white hover:bg-white/[0.05] transition-colors">
+                <CheckCheck className="h-3.5 w-3.5" /> Marcar leído
               </button>
             )}
             <button
@@ -452,8 +459,7 @@ function EmailDetail({
                 setArchived(true);
               }}
               disabled={archived}
-              className="flex items-center gap-1.5 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] px-3 py-2 text-xs text-emerald-400 hover:bg-emerald-500/12 disabled:opacity-50 transition-colors"
-            >
+              className="flex items-center gap-1.5 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] px-3 py-2 text-xs text-emerald-400 hover:bg-emerald-500/12 disabled:opacity-50 transition-colors">
               <CheckCircle2 className="h-3.5 w-3.5" />
               {archived ? 'Guardado ✓' : 'Guardar en historial'}
             </button>
@@ -464,33 +470,144 @@ function EmailDetail({
   );
 }
 
-// ─── Empty State ──────────────────────────────────────────────────────────────
+// ─── Resend Email Detail ──────────────────────────────────────────────────────
 
-function EmptyState({ folder }: { folder: Folder }) {
+function ResendDetail({ item, loading, onBack }: {
+  item: ResendItem;
+  loading: boolean;
+  onBack: () => void;
+}) {
+  const to = item.to[0] ?? '';
   return (
-    <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
-        {folder === 'inbox' ? (
-          <Inbox className="h-6 w-6 text-zinc-600" />
-        ) : (
-          <Send className="h-6 w-6 text-zinc-600" />
+    <div className="flex flex-col h-full">
+      {/* Header */}
+      <div className="shrink-0 border-b border-white/[0.06] px-5 py-4">
+        <div className="flex items-start gap-3 mb-3">
+          <button onClick={onBack} className="lg:hidden rounded-lg p-1.5 text-zinc-500 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0 mt-0.5">
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <h2 className="flex-1 text-base font-bold text-white leading-snug">{item.subject}</h2>
+        </div>
+
+        <div className="flex flex-wrap items-start gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className={`h-8 w-8 rounded-full ${avatarColor(to)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+              {avatarInitial(to)}
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-white leading-none">{item.from}</p>
+              <p className="text-[10px] text-zinc-500 mt-0.5">→ {item.to.join(', ')}</p>
+              {item.cc && item.cc.length > 0 && (
+                <p className="text-[10px] text-zinc-600 mt-0.5">CC: {item.cc.join(', ')}</p>
+              )}
+            </div>
+          </div>
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            <StatusBadge event={item.last_event} />
+            <span className="text-[10px] font-mono text-zinc-700 truncate max-w-[160px]" title={item.id}>
+              {item.id.slice(0, 16)}…
+            </span>
+            <span className="text-[11px] text-zinc-500">{fullDate(item.created_at)}</span>
+          </div>
+        </div>
+
+        {/* Engagement metrics */}
+        {(item.opens_count !== undefined || item.clicks_count !== undefined) && (
+          <div className="mt-3 flex gap-4">
+            {item.opens_count !== undefined && (
+              <div className="flex items-center gap-1.5 text-[11px]">
+                <Eye className="h-3 w-3 text-blue-400" />
+                <span className="font-semibold text-white">{item.opens_count}</span>
+                <span className="text-zinc-600">aperturas</span>
+              </div>
+            )}
+            {item.clicks_count !== undefined && (
+              <div className="flex items-center gap-1.5 text-[11px]">
+                <MousePointerClick className="h-3 w-3 text-emerald-400" />
+                <span className="font-semibold text-white">{item.clicks_count}</span>
+                <span className="text-zinc-600">clics</span>
+              </div>
+            )}
+          </div>
         )}
       </div>
-      <div className="text-center">
-        <p className="text-sm font-semibold text-zinc-500">
-          {folder === 'inbox' ? 'Bandeja vacía' : folder === 'sent' ? 'Sin enviados' : 'Sin correos'}
-        </p>
-        <p className="text-xs text-zinc-700 mt-1">
-          {folder === 'inbox'
-            ? 'Los correos recibidos aparecerán aquí'
-            : 'Los correos enviados aparecerán aquí'}
-        </p>
+
+      {/* Body */}
+      <div className="flex-1 overflow-hidden relative">
+        {loading && (
+          <div className="absolute inset-0 flex items-center justify-center bg-[#09090b]/80 z-10">
+            <div className="flex items-center gap-2 text-zinc-500 text-sm">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Cargando desde Resend…
+            </div>
+          </div>
+        )}
+        {item.html ? (
+          <iframe srcDoc={item.html} sandbox="" className="h-full w-full bg-white" title="Email Resend" />
+        ) : item.text ? (
+          <div className="h-full overflow-y-auto p-5">
+            <pre className="text-sm text-zinc-300 whitespace-pre-wrap font-sans leading-relaxed">{item.text}</pre>
+          </div>
+        ) : !loading ? (
+          <EmptyBody icon={Clock} msg="Sin contenido HTML disponible" sub="Este email no tiene cuerpo almacenado en Resend." />
+        ) : null}
+      </div>
+
+      {/* Footer */}
+      <div className="shrink-0 border-t border-white/[0.06] px-4 py-3 flex items-center gap-2">
+        <div className="flex items-center gap-1.5 text-[10px] text-zinc-700">
+          <Zap className="h-3 w-3 text-amber-500/50" />
+          Datos en tiempo real de Resend
+        </div>
+        <a
+          href={`https://resend.com/emails/${item.id}`}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="ml-auto flex items-center gap-1.5 rounded-xl border border-white/[0.08] px-3 py-2 text-xs text-zinc-400 hover:text-white hover:bg-white/[0.05] transition-colors"
+        >
+          <ExternalLink className="h-3.5 w-3.5" />
+          Ver en Resend
+        </a>
       </div>
     </div>
   );
 }
 
-// ─── Loading Skeleton ─────────────────────────────────────────────────────────
+// ─── Empty helpers ────────────────────────────────────────────────────────────
+
+function EmptyBody({ icon: Icon, msg, sub }: { icon: React.ElementType; msg: string; sub?: string }) {
+  const El = Icon as React.ComponentType<{ className?: string }>;
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
+        <El className="h-6 w-6 text-zinc-600" />
+      </div>
+      <div className="text-center">
+        <p className="text-sm font-semibold text-zinc-500">{msg}</p>
+        {sub && <p className="text-xs text-zinc-700 mt-1">{sub}</p>}
+      </div>
+    </div>
+  );
+}
+
+function EmptyState({ folder }: { folder: Folder }) {
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
+        {folder === 'inbox' ? <Inbox className="h-6 w-6 text-zinc-600" /> : <Send className="h-6 w-6 text-zinc-600" />}
+      </div>
+      <div className="text-center">
+        <p className="text-sm font-semibold text-zinc-500">
+          {folder === 'resend' ? 'Sin correos en Resend' : folder === 'inbox' ? 'Bandeja vacía' : folder === 'sent' ? 'Sin enviados' : 'Sin correos'}
+        </p>
+        <p className="text-xs text-zinc-700 mt-1">
+          {folder === 'resend' ? 'No hay correos en el historial de Resend' : 'Los correos aparecerán aquí'}
+        </p>
+      </div>
+    </div>
+  );
+}
 
 function Skeleton() {
   return (
@@ -512,23 +629,31 @@ function Skeleton() {
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CorreoPage() {
-  // Data state
-  const [recibidos, setRecibidos] = useState<RecibidoRow[]>([]);
-  const [enviados, setEnviados] = useState<EnviadoRow[]>([]);
-  const [unread, setUnread] = useState(0);
-  const [emailStats, setEmailStats] = useState<StatsData | null>(null);
+  // DB data
+  const [recibidos, setRecibidos]         = useState<RecibidoRow[]>([]);
+  const [enviados, setEnviados]           = useState<EnviadoRow[]>([]);
+  const [unread, setUnread]               = useState(0);
+  const [emailStats, setEmailStats]       = useState<StatsData | null>(null);
   const [resendConfigured, setResendConfigured] = useState(true);
-  const [loadingInbox, setLoadingInbox] = useState(true);
-  const [loadingSent, setLoadingSent] = useState(true);
+  const [loadingInbox, setLoadingInbox]   = useState(true);
+  const [loadingSent, setLoadingSent]     = useState(true);
 
-  // UI state
-  const [folder, setFolder] = useState<Folder>('all');
-  const [search, setSearch] = useState('');
+  // Resend real-time data
+  const [resendEmails, setResendEmails]   = useState<ResendItem[]>([]);
+  const [loadingResend, setLoadingResend] = useState(false);
+  const [resendError, setResendError]     = useState<string | null>(null);
+  const [resendSelected, setResendSelected] = useState<ResendItem | null>(null);
+  const [loadingDetail, setLoadingDetail] = useState(false);
+
+  // UI
+  const [folder, setFolder]     = useState<Folder>('all');
+  const [search, setSearch]     = useState('');
   const [selected, setSelected] = useState<EmailItem | null>(null);
-  const [compose, setCompose] = useState<{ to?: string; subject?: string } | null>(null);
+  const [compose, setCompose]   = useState<{ to?: string; subject?: string } | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
 
-  // Fetch functions
+  // ── Fetch DB inbox ────────────────────────────────────────────────────────
+
   const fetchInbox = useCallback(async (signal?: AbortSignal) => {
     setLoadingInbox(true);
     try {
@@ -539,6 +664,8 @@ export default function CorreoPage() {
     } catch { /* ignore abort */ }
     finally { setLoadingInbox(false); }
   }, []);
+
+  // ── Fetch DB sent + stats ─────────────────────────────────────────────────
 
   const fetchSent = useCallback(async (signal?: AbortSignal) => {
     setLoadingSent(true);
@@ -559,19 +686,36 @@ export default function CorreoPage() {
         setEnviados(data.recent ?? []);
         const t = data.totals ?? { enviado: 0, entregado: 0, abierto: 0, rebotado: 0, spam: 0 };
         setEmailStats({
-          enviado:      t.enviado,
-          entregado:    t.entregado,
-          abierto:      t.abierto,
-          rebotado:     t.rebotado,
-          spam:         t.spam,
+          enviado: t.enviado, entregado: t.entregado, abierto: t.abierto,
+          rebotado: t.rebotado, spam: t.spam,
           deliveryRate: data.deliveryRate ?? 0,
-          openRate:     data.openRate ?? 0,
-          bounceRate:   data.bounceRate ?? 0,
+          openRate: data.openRate ?? 0,
+          bounceRate: data.bounceRate ?? 0,
         });
         setResendConfigured(data.key_configured ?? false);
       }
     } catch { /* ignore abort */ }
     finally { setLoadingSent(false); }
+  }, []);
+
+  // ── Fetch Resend real-time history ────────────────────────────────────────
+
+  const fetchResend = useCallback(async () => {
+    setLoadingResend(true);
+    setResendError(null);
+    try {
+      const r = await fetch('/api/admin/correo/resend-list?limit=50', { cache: 'no-store' });
+      const data = await r.json() as { ok: boolean; emails: ResendItem[]; error?: string };
+      if (data.ok) {
+        setResendEmails(data.emails);
+      } else {
+        setResendError(data.error ?? 'Error al cargar historial de Resend');
+      }
+    } catch (e) {
+      setResendError((e as Error).message);
+    } finally {
+      setLoadingResend(false);
+    }
   }, []);
 
   const refresh = useCallback(() => {
@@ -581,11 +725,21 @@ export default function CorreoPage() {
     return ctrl;
   }, [fetchInbox, fetchSent]);
 
+  // Initial load
   useEffect(() => {
     const ctrl = refresh();
     const interval = setInterval(() => { void refresh(); }, 30_000);
     return () => { ctrl.abort(); clearInterval(interval); };
   }, [refresh]);
+
+  // Auto-load Resend history when switching to that folder
+  useEffect(() => {
+    if (folder === 'resend' && resendEmails.length === 0 && !loadingResend && !resendError) {
+      void fetchResend();
+    }
+  }, [folder, resendEmails.length, loadingResend, resendError, fetchResend]);
+
+  // ── Combined filtered list (DB) ───────────────────────────────────────────
 
   const allItems = useMemo<EmailItem[]>(() => {
     const received: EmailItem[] = recibidos.map((e) => ({ _kind: 'received' as const, ...e }));
@@ -608,10 +762,23 @@ export default function CorreoPage() {
     return list;
   }, [recibidos, enviados, folder, search]);
 
+  const filteredResend = useMemo(() => {
+    if (!search.trim()) return resendEmails;
+    const q = search.toLowerCase();
+    return resendEmails.filter((e) =>
+      e.subject.toLowerCase().includes(q) ||
+      e.to.some((t) => t.toLowerCase().includes(q)) ||
+      e.from.toLowerCase().includes(q)
+    );
+  }, [resendEmails, search]);
+
   const loading = loadingInbox || loadingSent;
+
+  // ── Handlers ─────────────────────────────────────────────────────────────
 
   const handleSelect = useCallback(async (item: EmailItem) => {
     setSelected(item);
+    setResendSelected(null);
     setMobileView('detail');
     if (item._kind === 'received' && !item.leido) {
       setRecibidos((prev) => prev.map((e) => e.id === item.id ? { ...e, leido: true } : e));
@@ -620,6 +787,31 @@ export default function CorreoPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: item.id, action: 'leido' }),
       }).catch(() => {});
+    }
+  }, []);
+
+  const handleSelectResend = useCallback(async (email: ResendItem) => {
+    setResendSelected(email);
+    setSelected(null);
+    setMobileView('detail');
+    // If we don't have HTML yet, fetch the full detail
+    if (email.html === undefined) {
+      setLoadingDetail(true);
+      try {
+        const r = await fetch(`/api/admin/correo/resend-detail?id=${encodeURIComponent(email.id)}`, { cache: 'no-store' });
+        const data = await r.json() as {
+          ok: boolean;
+          email?: ResendItem & { html: string | null; text: string | null; opens_count: number; clicks_count: number };
+          error?: string;
+        };
+        if (data.ok && data.email) {
+          const enriched = { ...email, ...data.email };
+          setResendSelected(enriched);
+          setResendEmails((prev) => prev.map((e) => e.id === email.id ? enriched : e));
+        }
+      } finally {
+        setLoadingDetail(false);
+      }
     }
   }, []);
 
@@ -638,6 +830,11 @@ export default function CorreoPage() {
   const handleReply = useCallback((to: string, subject: string) => { setCompose({ to, subject }); }, []);
   const handleSent = useCallback(() => { void fetchSent(); }, [fetchSent]);
 
+  const isResendFolder = folder === 'resend';
+  const activeDetail = isResendFolder ? resendSelected : selected;
+
+  // ── Render ────────────────────────────────────────────────────────────────
+
   return (
     <div className="flex h-screen flex-col overflow-hidden bg-[#09090b]">
 
@@ -653,7 +850,7 @@ export default function CorreoPage() {
           </div>
         </div>
 
-        {/* Resend status */}
+        {/* Resend status badge */}
         {!loadingSent && (
           <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold border ${
             resendConfigured
@@ -667,13 +864,18 @@ export default function CorreoPage() {
 
         <div className="ml-auto flex items-center gap-2">
           {unread > 0 && (
-            <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white tabular-nums">
-              {unread}
-            </span>
+            <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white tabular-nums">{unread}</span>
           )}
-          <button onClick={() => refresh()} disabled={loading} title="Actualizar"
-            className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/[0.05] disabled:opacity-40 transition-colors">
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          <button
+            onClick={() => {
+              if (isResendFolder) void fetchResend();
+              else refresh();
+            }}
+            disabled={loading || loadingResend}
+            title="Actualizar"
+            className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/[0.05] disabled:opacity-40 transition-colors"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${(loading || loadingResend) ? 'animate-spin' : ''}`} />
           </button>
           <button onClick={() => setCompose({})}
             className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-bold text-black hover:bg-amber-400 transition-colors">
@@ -687,9 +889,7 @@ export default function CorreoPage() {
       {!loadingSent && !resendConfigured && (
         <div className="shrink-0 flex items-center gap-3 border-b border-amber-500/20 bg-amber-500/[0.05] px-4 py-2.5">
           <AlertCircle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
-          <p className="text-xs text-amber-300 flex-1">
-            Resend no está configurado. Los correos no se enviarán hasta agregar una API key.
-          </p>
+          <p className="text-xs text-amber-300 flex-1">Resend no configurado. Agrega tu API key para enviar correos y ver el historial real.</p>
           <a href="/admin/integraciones"
             className="shrink-0 rounded-lg border border-amber-500/25 px-3 py-1 text-[11px] font-semibold text-amber-400 hover:bg-amber-500/10 transition-colors">
             Configurar →
@@ -701,10 +901,10 @@ export default function CorreoPage() {
       {emailStats && (
         <div className="shrink-0 flex gap-5 overflow-x-auto border-b border-white/[0.06] bg-[#18181b]/40 px-4 py-2.5">
           {[
-            { label: 'Enviados', value: String(emailStats.enviado), icon: Send, color: 'text-zinc-400' },
-            { label: 'Entrega', value: `${emailStats.deliveryRate.toFixed(1)}%`, icon: CheckCircle2, color: 'text-emerald-400' },
-            { label: 'Apertura', value: `${emailStats.openRate.toFixed(1)}%`, icon: Eye, color: 'text-blue-400' },
-            { label: 'Rebotes', value: String(emailStats.rebotado), icon: AlertCircle, color: emailStats.bounceRate > 5 ? 'text-red-400' : 'text-zinc-600' },
+            { label: 'Enviados',  value: String(emailStats.enviado),                     icon: Send,          color: 'text-zinc-400'   },
+            { label: 'Entrega',   value: `${emailStats.deliveryRate.toFixed(1)}%`,        icon: CheckCircle2,  color: 'text-emerald-400' },
+            { label: 'Apertura',  value: `${emailStats.openRate.toFixed(1)}%`,            icon: Eye,           color: 'text-blue-400'    },
+            { label: 'Rebotes',   value: String(emailStats.rebotado),                    icon: AlertCircle,   color: emailStats.bounceRate > 5 ? 'text-red-400' : 'text-zinc-600' },
           ].map(({ label, value, icon: Icon, color }, i, arr) => (
             <div key={label} className="flex items-center gap-2 shrink-0">
               <Icon className={`h-3.5 w-3.5 ${color} shrink-0`} />
@@ -727,7 +927,8 @@ export default function CorreoPage() {
               { key: 'inbox', label: 'Recibidos', icon: Inbox,    count: recibidos.length, badge: unread },
               { key: 'sent',  label: 'Enviados',  icon: Send,     count: enviados.length, badge: 0 },
             ] as const).map(({ key, label, icon: Icon, count, badge }) => (
-              <button key={key} onClick={() => { setFolder(key); setSelected(null); }}
+              <button key={key}
+                onClick={() => { setFolder(key); setSelected(null); setResendSelected(null); }}
                 className={`w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-all ${
                   folder === key
                     ? 'bg-amber-500/10 text-amber-300 font-semibold'
@@ -742,18 +943,34 @@ export default function CorreoPage() {
                 )}
               </button>
             ))}
+
+            {/* Divider */}
+            <div className="my-2 border-t border-white/[0.04]" />
+
+            {/* Resend real-time folder */}
+            <button
+              onClick={() => { setFolder('resend'); setSelected(null); setResendSelected(null); }}
+              className={`w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-all ${
+                folder === 'resend'
+                  ? 'bg-amber-500/10 text-amber-300 font-semibold'
+                  : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04]'
+              }`}>
+              <Zap className="h-4 w-4 shrink-0" />
+              <span className="flex-1 text-left">Historial Resend</span>
+              {folder === 'resend' && resendEmails.length > 0 && (
+                <span className="text-[10px] text-zinc-700 tabular-nums">{resendEmails.length}</span>
+              )}
+            </button>
           </nav>
 
           <div className="mt-auto p-2 border-t border-white/[0.06] space-y-0.5">
             <button onClick={() => setCompose({})}
               className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-zinc-600 hover:text-zinc-400 hover:bg-white/[0.03] transition-colors">
-              <MailPlus className="h-3.5 w-3.5" />
-              Nuevo correo
+              <MailPlus className="h-3.5 w-3.5" /> Nuevo correo
             </button>
             <a href="/admin/integraciones"
               className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-zinc-700 hover:text-zinc-500 hover:bg-white/[0.03] transition-colors">
-              <Settings className="h-3.5 w-3.5" />
-              Configurar Resend
+              <Settings className="h-3.5 w-3.5" /> Configurar Resend
             </a>
           </div>
         </div>
@@ -777,27 +994,58 @@ export default function CorreoPage() {
             </div>
           </div>
 
-          {/* List */}
+          {/* List content */}
           <div className="flex-1 overflow-y-auto">
-            {loading ? <Skeleton /> :
-             allItems.length === 0 ? <EmptyState folder={folder} /> : (
-              <div>
-                {allItems.map((item) => (
-                  <EmailRow
-                    key={`${item._kind}-${item.id}`}
-                    item={item}
-                    selected={selected?._kind === item._kind && selected?.id === item.id}
-                    onClick={() => void handleSelect(item)}
-                  />
-                ))}
-              </div>
+            {isResendFolder ? (
+              // ── Resend real-time list ──
+              loadingResend ? <Skeleton /> :
+              resendError ? (
+                <div className="flex flex-col items-center justify-center gap-4 p-6 h-full">
+                  <AlertCircle className="h-8 w-8 text-red-400/60" />
+                  <div className="text-center">
+                    <p className="text-sm font-semibold text-zinc-500">Error al cargar</p>
+                    <p className="text-xs text-zinc-700 mt-1 max-w-[200px] mx-auto">{resendError}</p>
+                  </div>
+                  <button onClick={() => void fetchResend()}
+                    className="flex items-center gap-2 rounded-xl border border-white/[0.08] px-3 py-2 text-xs text-zinc-400 hover:text-white hover:bg-white/[0.05] transition-colors">
+                    <RefreshCw className="h-3.5 w-3.5" /> Reintentar
+                  </button>
+                </div>
+              ) :
+              filteredResend.length === 0 ? <EmptyState folder="resend" /> :
+              filteredResend.map((email) => (
+                <ResendRow
+                  key={email.id}
+                  item={email}
+                  selected={resendSelected?.id === email.id}
+                  onClick={() => void handleSelectResend(email)}
+                />
+              ))
+            ) : (
+              // ── DB list ──
+              loading ? <Skeleton /> :
+              allItems.length === 0 ? <EmptyState folder={folder} /> :
+              allItems.map((item) => (
+                <EmailRow
+                  key={`${item._kind}-${item.id}`}
+                  item={item}
+                  selected={selected?._kind === item._kind && selected?.id === item.id}
+                  onClick={() => void handleSelect(item)}
+                />
+              ))
             )}
           </div>
         </div>
 
         {/* ── Detail panel ── */}
         <div className={`${mobileView === 'detail' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col min-w-0 bg-[#09090b] overflow-hidden`}>
-          {selected ? (
+          {isResendFolder && resendSelected ? (
+            <ResendDetail
+              item={resendSelected}
+              loading={loadingDetail}
+              onBack={() => setMobileView('list')}
+            />
+          ) : !isResendFolder && selected ? (
             <EmailDetail
               item={selected}
               onBack={() => setMobileView('list')}
@@ -805,12 +1053,16 @@ export default function CorreoPage() {
               onMarkRead={handleMarkRead}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center h-full gap-4 text-zinc-700">
+            <div className="flex flex-col items-center justify-center h-full gap-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
-                <MailOpen className="h-7 w-7 text-zinc-700" />
+                {isResendFolder
+                  ? <Zap className="h-7 w-7 text-zinc-700" />
+                  : <MailOpen className="h-7 w-7 text-zinc-700" />}
               </div>
               <div className="text-center">
-                <p className="text-sm font-semibold text-zinc-600">Selecciona un correo</p>
+                <p className="text-sm font-semibold text-zinc-600">
+                  {isResendFolder ? 'Selecciona un correo de Resend' : 'Selecciona un correo'}
+                </p>
                 <p className="text-xs text-zinc-800 mt-1">para ver su contenido aquí</p>
               </div>
             </div>

@@ -1,10 +1,13 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 import {
   ArrowLeft,
   CheckCheck,
+  CheckCircle2,
   ChevronRight,
+  Eye,
   Inbox,
   Loader2,
   MailOpen,
@@ -13,6 +16,7 @@ import {
   Reply,
   Send,
   Sparkles,
+  TrendingUp,
   X,
 } from 'lucide-react';
 
@@ -47,6 +51,17 @@ type EmailItem =
   | ({ _kind: 'sent' } & EnviadoRow);
 
 type Folder = 'inbox' | 'sent' | 'all';
+
+interface StatsData {
+  enviado: number;
+  entregado: number;
+  abierto: number;
+  rebotado: number;
+  spam: number;
+  deliveryRate: number;
+  openRate: number;
+  bounceRate: number;
+}
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -96,6 +111,37 @@ const ESTADO_STYLES: Record<string, string> = {
   rebotado:  'border-red-600/50    text-red-300    bg-red-900/20',
   spam:      'border-orange-600/50 text-orange-300 bg-orange-900/20',
 };
+
+function StatCard({
+  icon: Icon,
+  label,
+  value,
+  color,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: string | number;
+  color: 'blue' | 'emerald' | 'yellow' | 'purple' | 'red';
+}) {
+  const colors = {
+    blue:    'text-blue-400   bg-blue-500/10   border-blue-500/20',
+    emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
+    yellow:  'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
+    purple:  'text-purple-400 bg-purple-500/10 border-purple-500/20',
+    red:     'text-red-400    bg-red-500/10    border-red-500/20',
+  };
+  const El = Icon as React.ComponentType<{ className?: string }>;
+  const textColor = colors[color].split(' ')[0] ?? '';
+  return (
+    <div className={`flex items-center gap-3 rounded-2xl border p-4 ${colors[color]}`}>
+      <El className={`h-5 w-5 shrink-0 ${textColor}`} />
+      <div className="min-w-0">
+        <p className="text-lg font-black leading-none text-white">{value}</p>
+        <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider opacity-70">{label}</p>
+      </div>
+    </div>
+  );
+}
 
 function EstadoBadge({ estado }: { estado: string }) {
   const cls = ESTADO_STYLES[estado] ?? 'border-zinc-700 text-zinc-400';
@@ -418,6 +464,7 @@ function EmailDetail({
   const date = isReceived ? item.fecha_recibido : item.enviado_at;
   const hasHtml = isReceived && Boolean(item.cuerpo_html?.trim());
   const hasText = isReceived && Boolean(item.cuerpo_texto?.trim());
+  const [archived, setArchived] = useState(false);
 
   return (
     <div className="flex flex-col h-full">
@@ -438,20 +485,22 @@ function EmailDetail({
         <span className="shrink-0 text-xs text-zinc-500">{fullDate(date)}</span>
       </div>
 
-      {/* Metadata for sent */}
-      {!isReceived && (
-        <div className="border-b border-white/8 px-5 py-3 flex flex-wrap gap-3 items-center shrink-0">
-          <EstadoBadge estado={item.estado} />
-          {item.tipo === 'manual' && (
-            <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-500">manual</span>
-          )}
-          {item.resend_id && (
-            <span className="text-[10px] text-zinc-600 font-mono truncate max-w-[180px]" title={item.resend_id}>
-              ID: {item.resend_id.slice(0, 16)}…
-            </span>
-          )}
-        </div>
-      )}
+      {/* Metadata */}
+      <div className="border-b border-white/8 px-5 py-3 flex flex-wrap gap-3 items-center shrink-0">
+        {!isReceived && <EstadoBadge estado={item.estado} />}
+        {isReceived && (
+          <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-300">Recibido</span>
+        )}
+        {!isReceived && item.tipo === 'manual' && (
+          <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-500">manual</span>
+        )}
+        {item.resend_id && (
+          <span className="text-[10px] text-zinc-600 font-mono truncate max-w-[200px]" title={item.resend_id}>
+            Resend: {item.resend_id}
+          </span>
+        )}
+        <span className="ml-auto text-[11px] text-zinc-500">{fullDate(date)}</span>
+      </div>
 
       {/* Body */}
       <div className="flex-1 overflow-hidden">
@@ -482,7 +531,7 @@ function EmailDetail({
       </div>
 
       {/* Actions */}
-      <div className="border-t border-white/8 px-4 py-3 flex items-center gap-2 shrink-0">
+      <div className="border-t border-white/8 px-4 py-3 flex flex-wrap items-center gap-2 shrink-0">
         {isReceived && (
           <>
             <button
@@ -501,6 +550,21 @@ function EmailDetail({
                 Marcar leído
               </button>
             )}
+            <button
+              onClick={async () => {
+                await fetch('/api/admin/correo/inbox', {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ id: item.id, action: 'archivado' }),
+                }).catch(() => {});
+                setArchived(true);
+              }}
+              disabled={archived}
+              className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/8 px-3 py-2 text-sm text-emerald-300 hover:bg-emerald-500/15 disabled:opacity-50 transition-colors"
+            >
+              <CheckCircle2 className="h-3.5 w-3.5" />
+              {archived ? 'Guardado ✓' : 'Guardar en historial'}
+            </button>
           </>
         )}
       </div>
@@ -539,6 +603,8 @@ export default function CorreoPage() {
   const [recibidos, setRecibidos] = useState<RecibidoRow[]>([]);
   const [enviados, setEnviados] = useState<EnviadoRow[]>([]);
   const [unread, setUnread] = useState(0);
+  const [emailStats, setEmailStats] = useState<StatsData | null>(null);
+  const [resendConfigured, setResendConfigured] = useState(true);
   const [loadingInbox, setLoadingInbox] = useState(true);
   const [loadingSent, setLoadingSent] = useState(true);
 
@@ -570,8 +636,12 @@ export default function CorreoPage() {
     try {
       const r = await fetch('/api/admin/correo/stats', { signal, cache: 'no-store' });
       if (!r.ok) return;
-      const data = await r.json() as { ok: boolean; recent: EnviadoRow[] };
-      if (data.ok) setEnviados(data.recent ?? []);
+      const data = await r.json() as { ok: boolean; recent: EnviadoRow[]; stats: StatsData; resendConfigured: boolean };
+      if (data.ok) {
+        setEnviados(data.recent ?? []);
+        setEmailStats(data.stats ?? null);
+        setResendConfigured(data.resendConfigured ?? false);
+      }
     } catch { /* ignore abort */ }
     finally { setLoadingSent(false); }
   }, []);
@@ -686,8 +756,30 @@ export default function CorreoPage() {
         </button>
       </div>
 
+      {/* Resend status + stats bar */}
+      {!resendConfigured && (
+        <div className="mx-4 mt-3 rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-3 flex items-center gap-3">
+          <TrendingUp className="h-4 w-4 text-amber-400 shrink-0" />
+          <p className="text-xs text-amber-300">
+            Resend no está configurado.{' '}
+            <Link href="/admin/integraciones" className="underline hover:text-amber-200">
+              Configura tu API key →
+            </Link>
+          </p>
+        </div>
+      )}
+
+      {emailStats && (
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-4 pt-3">
+          <StatCard icon={Send}        label="Enviados"       value={emailStats.enviado}                              color="blue" />
+          <StatCard icon={CheckCircle2} label="Entregados"    value={`${emailStats.deliveryRate.toFixed(0)}%`}        color="emerald" />
+          <StatCard icon={Eye}         label="Tasa apertura"  value={`${emailStats.openRate.toFixed(0)}%`}            color="yellow" />
+          <StatCard icon={TrendingUp}  label="Rebotes"        value={emailStats.rebotado}                             color={emailStats.bounceRate > 5 ? 'red' : 'purple'} />
+        </div>
+      )}
+
       {/* 3-panel layout */}
-      <div className="flex h-[calc(100dvh-7rem)] overflow-hidden">
+      <div className={`flex overflow-hidden ${emailStats ? 'h-[calc(100dvh-12rem)]' : 'h-[calc(100dvh-7rem)]'}`}>
 
         {/* ── Sidebar ── */}
         <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} lg:flex w-full lg:w-52 shrink-0 flex-col border-r border-white/8 bg-zinc-950/60 overflow-y-auto`}>

@@ -10,6 +10,7 @@ import {
   CheckCircle,
   ChevronDown,
   ChevronRight,
+  Copy,
   Database,
   ExternalLink,
   FileText,
@@ -19,6 +20,7 @@ import {
   MessageCircle,
   Package,
   Plus,
+  Power,
   RefreshCw,
   Search,
   Send,
@@ -412,13 +414,25 @@ function LiveBrowserViewer({
   frameUrl,
   frameAction,
   isLive,
+  navHistory,
+  agentActive,
 }: {
   frameData: string | null;
   frameUrl: string;
   frameAction: string;
   isLive: boolean;
+  navHistory: string[];
+  agentActive: boolean;
 }) {
-  if (!frameData) return null;
+  const [copied, setCopied] = useState(false);
+
+  function copyUrl() {
+    if (!frameUrl) return;
+    void navigator.clipboard.writeText(frameUrl).then(() => {
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    });
+  }
 
   return (
     <AdminCard className="overflow-hidden !p-0">
@@ -432,8 +446,13 @@ function LiveBrowserViewer({
         <div className="flex flex-1 items-center gap-2 overflow-hidden rounded-md bg-black/40 px-2.5 py-1">
           <Globe className="h-3 w-3 shrink-0 text-zinc-600" />
           <span className="flex-1 truncate text-[10px] text-zinc-500 font-mono">{frameUrl || 'about:blank'}</span>
+          {frameUrl && (
+            <button onClick={copyUrl} title="Copiar URL" className="shrink-0 text-zinc-600 hover:text-zinc-400 transition-colors">
+              <Copy className="h-2.5 w-2.5" />
+            </button>
+          )}
         </div>
-        {isLive && (
+        {isLive ? (
           <span className="flex items-center gap-1 rounded-full bg-red-500/20 px-2 py-0.5 text-[10px] font-bold text-red-400">
             <span className="relative flex h-1.5 w-1.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-red-400 opacity-75" />
@@ -441,19 +460,68 @@ function LiveBrowserViewer({
             </span>
             LIVE
           </span>
+        ) : agentActive ? (
+          <span className="rounded-full bg-emerald-500/20 px-2 py-0.5 text-[10px] font-bold text-emerald-400">activo</span>
+        ) : (
+          <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] font-bold text-zinc-600">inactivo</span>
         )}
       </div>
 
-      {/* Frame */}
-      <div className="relative bg-black">
-        {/* eslint-disable-next-line @next/next/no-img-element */}
-        <img src={frameData} alt="Browser live view" className="w-full object-cover" />
-        {frameAction && (
-          <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-3 py-2">
-            <p className="truncate text-[10px] text-zinc-300">{frameAction}</p>
+      {/* Frame or placeholder */}
+      <div className="relative bg-black min-h-[180px]">
+        {frameData ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src={frameData} alt="Browser live view" className="w-full object-cover" />
+            {frameAction && (
+              <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent px-3 py-2">
+                <p className="truncate text-[10px] text-zinc-300">{frameAction}</p>
+              </div>
+            )}
+            {frameUrl && (
+              <a
+                href={frameUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="absolute top-2 right-2 flex items-center gap-1 rounded-full bg-black/70 px-2 py-1 text-[10px] text-zinc-300 hover:text-white transition-colors"
+              >
+                <ExternalLink className="h-2.5 w-2.5" />
+                Abrir
+              </a>
+            )}
+          </>
+        ) : (
+          <div className="flex flex-col items-center justify-center gap-3 py-10 text-zinc-700">
+            <Globe className="h-8 w-8 opacity-30" />
+            <p className="text-[11px] text-center px-4">
+              {agentActive
+                ? 'El agente mostrará páginas web aquí'
+                : 'Activa el agente para navegar la web'}
+            </p>
           </div>
         )}
       </div>
+
+      {/* Nav history */}
+      {navHistory.length > 0 && (
+        <div className="border-t border-white/10 px-3 py-2">
+          <p className="mb-1.5 text-[9px] font-bold uppercase tracking-widest text-zinc-700">Historial</p>
+          <div className="flex flex-col gap-1">
+            {navHistory.map((url, i) => (
+              <a
+                key={i}
+                href={url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="flex items-center gap-1.5 truncate text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors"
+              >
+                <Globe className="h-2.5 w-2.5 shrink-0" />
+                <span className="truncate">{url}</span>
+              </a>
+            ))}
+          </div>
+        </div>
+      )}
     </AdminCard>
   );
 }
@@ -870,6 +938,12 @@ export default function AgentePage() {
   const [currentFrame, setCurrentFrame] = useState<string | null>(null);
   const [browserUrl, setBrowserUrl] = useState('');
   const [browserAction, setBrowserAction] = useState('');
+  const [agentActive, setAgentActive] = useState(false);
+  const [navHistory, setNavHistory] = useState<string[]>([]);
+  const [showUrlInput, setShowUrlInput] = useState(false);
+  const [showJsInput, setShowJsInput] = useState(false);
+  const [quickUrl, setQuickUrl] = useState('');
+  const [quickJs, setQuickJs] = useState('');
   const bottomRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
@@ -879,7 +953,7 @@ export default function AgentePage() {
 
   const sendMessage = useCallback(async (text?: string) => {
     const content = (text ?? input).trim();
-    if (!content || loading) return;
+    if (!content || loading || !agentActive) return;
 
     setInput('');
     setShowAreas(false);
@@ -929,7 +1003,13 @@ export default function AgentePage() {
               agentText += event.content ?? '';
             } else if (event.type === 'frame') {
               if (event.data) setCurrentFrame(event.data);
-              if (event.url) setBrowserUrl(event.url);
+              if (event.url) {
+                setBrowserUrl(event.url);
+                setNavHistory((prev) => {
+                  const url = event.url!;
+                  return [url, ...prev.filter((u) => u !== url)].slice(0, 5);
+                });
+              }
               if (event.action) setBrowserAction(event.action);
             } else if (event.type !== 'done') {
               if (event.type === 'tool_result') {
@@ -998,6 +1078,18 @@ export default function AgentePage() {
         icon={Bot}
         actions={
           <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setAgentActive((v) => !v)}
+              className={`inline-flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-bold transition ${
+                agentActive
+                  ? 'border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20'
+                  : 'border-zinc-700 bg-zinc-900 text-zinc-400 hover:bg-zinc-800'
+              }`}
+            >
+              <Power className="h-3.5 w-3.5" />
+              {agentActive ? 'Agente ON' : 'Agente OFF'}
+            </button>
             <button
               type="button"
               onClick={() => setShowManual((v) => !v)}
@@ -1085,13 +1177,13 @@ export default function AgentePage() {
                         onKeyDown={handleKeyDown}
                         placeholder="¿Qué quieres hacer? (Enter para enviar, Shift+Enter para nueva línea)"
                         rows={2}
-                        disabled={loading}
+                        disabled={loading || !agentActive}
                         className="flex-1 resize-none rounded-2xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white placeholder-zinc-600 outline-none focus:border-yellow-400/50 disabled:opacity-50"
                       />
                       <button
                         type="button"
                         onClick={() => void sendMessage()}
-                        disabled={loading || !input.trim()}
+                        disabled={loading || !input.trim() || !agentActive}
                         className="flex h-full items-center justify-center rounded-2xl bg-yellow-400 px-4 font-black text-black disabled:opacity-40 hover:bg-yellow-300"
                       >
                         {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
@@ -1100,11 +1192,107 @@ export default function AgentePage() {
                     {messages.length > 0 && (
                       <button
                         type="button"
-                        onClick={() => { setMessages([]); setShowAreas(true); setCurrentFrame(null); setBrowserUrl(''); setBrowserAction(''); }}
+                        onClick={() => { setMessages([]); setShowAreas(true); setCurrentFrame(null); setBrowserUrl(''); setBrowserAction(''); setBrowserUrl(''); setNavHistory([]); }}
                         className="mt-2 flex items-center gap-1 text-[11px] text-zinc-600 hover:text-zinc-400"
                       >
                         <X className="h-3 w-3" /> Limpiar conversación
                       </button>
+                    )}
+
+                    {/* Quick actions */}
+                    {agentActive && (
+                      <div className="mt-3 flex flex-wrap gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void sendMessage('Toma una captura de la pantalla actual del agente')}
+                          disabled={loading}
+                          className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-[11px] text-zinc-400 hover:text-white hover:border-white/20 disabled:opacity-50 transition-colors"
+                        >
+                          <Camera className="h-3 w-3" />
+                          Captura
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => void sendMessage('Muéstrame el DOM simplificado de la página actual')}
+                          disabled={loading}
+                          className="flex items-center gap-1.5 rounded-full border border-white/10 px-3 py-1.5 text-[11px] text-zinc-400 hover:text-white hover:border-white/20 disabled:opacity-50 transition-colors"
+                        >
+                          <FileText className="h-3 w-3" />
+                          Ver DOM
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowUrlInput((v) => !v); setShowJsInput(false); }}
+                          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] transition-colors ${showUrlInput ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-400' : 'border-white/10 text-zinc-400 hover:text-white hover:border-white/20'}`}
+                        >
+                          <Globe className="h-3 w-3" />
+                          Navegar URL
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => { setShowJsInput((v) => !v); setShowUrlInput(false); }}
+                          className={`flex items-center gap-1.5 rounded-full border px-3 py-1.5 text-[11px] transition-colors ${showJsInput ? 'border-yellow-400/30 bg-yellow-400/10 text-yellow-400' : 'border-white/10 text-zinc-400 hover:text-white hover:border-white/20'}`}
+                        >
+                          <Zap className="h-3 w-3" />
+                          Ejecutar JS
+                        </button>
+                      </div>
+                    )}
+
+                    {agentActive && showUrlInput && (
+                      <div className="mt-2 flex gap-2">
+                        <input
+                          value={quickUrl}
+                          onChange={(e) => setQuickUrl(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && quickUrl.trim()) {
+                              void sendMessage(`Navega a esta URL: ${quickUrl}`);
+                              setQuickUrl('');
+                              setShowUrlInput(false);
+                            }
+                          }}
+                          placeholder="https://..."
+                          className="flex-1 rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:border-yellow-400/50 focus:outline-none"
+                        />
+                        <button
+                          onClick={() => {
+                            if (quickUrl.trim()) {
+                              void sendMessage(`Navega a esta URL: ${quickUrl}`);
+                              setQuickUrl('');
+                              setShowUrlInput(false);
+                            }
+                          }}
+                          disabled={!quickUrl.trim()}
+                          className="rounded-xl bg-yellow-400 px-3 py-2 text-xs font-bold text-black disabled:opacity-40 hover:bg-yellow-300"
+                        >
+                          Ir
+                        </button>
+                      </div>
+                    )}
+
+                    {agentActive && showJsInput && (
+                      <div className="mt-2 flex gap-2">
+                        <textarea
+                          value={quickJs}
+                          onChange={(e) => setQuickJs(e.target.value)}
+                          placeholder="document.title"
+                          rows={2}
+                          className="flex-1 resize-none rounded-xl border border-white/10 bg-black/50 px-3 py-2 font-mono text-xs text-white placeholder:text-zinc-600 focus:border-yellow-400/50 focus:outline-none"
+                        />
+                        <button
+                          onClick={() => {
+                            if (quickJs.trim()) {
+                              void sendMessage(`Ejecuta este JavaScript en la página: ${quickJs}`);
+                              setQuickJs('');
+                              setShowJsInput(false);
+                            }
+                          }}
+                          disabled={!quickJs.trim()}
+                          className="rounded-xl bg-yellow-400 px-3 py-2 text-xs font-bold text-black disabled:opacity-40 hover:bg-yellow-300"
+                        >
+                          Ejecutar
+                        </button>
+                      </div>
                     )}
                   </div>
                 </AdminCard>
@@ -1207,6 +1395,8 @@ export default function AgentePage() {
               frameUrl={browserUrl}
               frameAction={browserAction}
               isLive={loading}
+              navHistory={navHistory}
+              agentActive={agentActive}
             />
             <PlatformsSidebar />
 

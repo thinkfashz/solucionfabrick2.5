@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  AlertTriangle, BarChart3, BookOpen, Boxes, Cloud, Database, ExternalLink, Eye,
+  AlertTriangle, BarChart3, BookOpen, Bot, Boxes, Cloud, Cpu, Database, Eye,
   FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut,
-  Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck,
+  Mail, Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck,
   ShoppingCart, Sparkles, Star, Stethoscope, Store, Tag, Terminal,
   TrendingDown, Truck, Telescope, Users, Video, Wallet, X, Plus,
   MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
@@ -68,7 +68,11 @@ const navSections: { title: string; links: NavLink[] }[] = [
   {
     title: 'Expansión',
     links: [
+      { href: '/admin/ia-config', label: 'Configuración IA', description: 'Proveedor activo, API key y modelo', icon: Bot, highlight: true },
+      { href: '/admin/agente', label: 'Agente IA · Playwright', description: 'Navega internet, busca precios y analiza competencia', icon: Sparkles, highlight: true },
       { href: '/admin/ai-developer', label: 'Fabrick AI Developer', description: 'Chat real, proveedores IA y herramientas Git seguras', icon: Sparkles, highlight: true },
+      { href: '/admin/correo', label: 'Correo · Resend', description: 'Bandeja de entrada/salida, estadísticas y Resend', icon: Mail, highlight: true },
+      { href: '/admin/scrapegraph', label: 'ScrapeGraph IA', description: 'Extrae datos estructurados de cualquier web con IA', icon: Cpu, highlight: true },
       { href: '/admin/publicidad', label: 'Publicidad', description: 'Meta Ads', icon: Megaphone },
       { href: '/admin/publicidad/coach', label: 'Coach de campañas', description: 'Agente IA: analizar, sugerir, optimizar', icon: Sparkles, highlight: true },
       { href: '/admin/video-engine', label: 'Fabrick Studio IA', description: 'Genera guiones, escenas y previews HTML con IA', icon: Video, highlight: true },
@@ -110,7 +114,6 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Seguridad & Claves',
     links: [
       { href: '/admin/seguridad', label: 'Seguridad · Passkeys', description: 'Acceso con huella digital o Face ID', icon: ShieldCheck, highlight: true },
-      { href: '/admin/integraciones', label: 'Credenciales oficiales', description: 'API keys, proveedores y pruebas de conexión', icon: KeyRound, highlight: true },
       { href: '/admin/extensions', label: 'Extensiones y Webhooks', description: 'Snippets, webhooks, OAuth y signing keys', icon: Plug, highlight: true },
       { href: '/admin/facturas', label: 'Facturas DTE', description: 'Documentos tributarios y SII', icon: Receipt },
     ],

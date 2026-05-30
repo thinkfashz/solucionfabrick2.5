@@ -72,6 +72,12 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/center': 'Centro de integración',
   '/admin/extensions': 'Extensiones y Webhooks',
   '/admin/facturas': 'Facturas DTE',
+  '/admin/correo': 'Correo · Resend',
+  '/admin/scrapegraph': 'ScrapeGraph IA',
+  '/admin/agente': 'Agente IA · Playwright',
+  '/admin/ia-config': 'Configuración IA',
+  '/admin/perfil': 'Perfil administrador',
+  '/admin/sesiones': 'Sesiones y dispositivos',
 };
 
 const LS_COLLAPSED_KEY = 'studio-sidebar-collapsed';
@@ -174,6 +180,12 @@ export function StudioShell({ children }: { children: ReactNode }) {
     router.replace('/admin/login');
   }
 
+  function handleSwitchToFabrick() {
+    localStorage.removeItem('admin-ui-theme');
+    delete document.body.dataset.adminTheme;
+    window.dispatchEvent(new Event('admin-theme-changed'));
+  }
+
   /* skip for observatory and login */
   const isObservatory = pathname?.startsWith('/admin/observatory');
   const isLogin = pathname === '/admin/login';
@@ -245,13 +257,12 @@ export function StudioShell({ children }: { children: ReactNode }) {
         collapsed={collapsed}
         onToggleCollapse={toggleCollapsed}
         onOpenMobile={() => setMobileOpen(true)}
-        onOpenPalette={() => {
-          /* TODO: wire up command palette if needed */
-        }}
+        onOpenPalette={() => {/* TODO: wire up command palette */}}
         breadcrumb={breadcrumb}
         darkMode={dark}
         onToggleDarkMode={toggleDark}
         onLogout={handleLogout}
+        onSwitchToFabrick={handleSwitchToFabrick}
       />
 
       {/* ── Main content ───────────────────────────────────── */}

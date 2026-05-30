@@ -1,16 +1,21 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import {
   Activity,
   AlertCircle,
+  Bot,
   CheckCircle2,
   ChevronRight,
+  CornerDownLeft,
   ExternalLink,
   Loader2,
+  Paperclip,
   RefreshCw,
   Search,
   Sparkles,
+  Trash2,
+  User,
   X,
   Zap,
 } from 'lucide-react';
@@ -43,6 +48,34 @@ interface ModelTest {
   error?: string;
   errorType?: string;
 }
+
+interface ContentPart {
+  type: 'text' | 'image_url';
+  text?: string;
+  image_url?: { url: string };
+}
+
+interface ApiMessage {
+  role: 'user' | 'assistant';
+  content: string | ContentPart[];
+}
+
+interface ChatMessage {
+  id: string;
+  role: 'user' | 'assistant';
+  content: string;
+  imageUrl?: string;
+  tokens?: { input: number; output: number };
+  streaming?: boolean;
+  error?: string;
+  errorType?: string;
+}
+
+type SseEvent =
+  | { type: 'chunk'; text: string }
+  | { type: 'usage'; tokens: { input: number; output: number; total: number } }
+  | { type: 'error'; message: string; errorType: string }
+  | { type: 'done' };
 
 /* ─── Constants ─────────────────────────────────────────────────────────── */
 
@@ -101,6 +134,31 @@ function formatCtx(n?: number): string {
   return `${n} ctx`;
 }
 
+function formatNumber(n: number): string {
+  return n.toLocaleString('es-ES');
+}
+
+function parseModelValue(value: string): { provider: string; modelo: string } {
+  const idx = value.indexOf(':');
+  if (idx === -1) return { provider: value, modelo: value };
+  return { provider: value.slice(0, idx), modelo: value.slice(idx + 1) };
+}
+
+function buildApiMessages(msgs: ChatMessage[]): ApiMessage[] {
+  return msgs.map((m) => {
+    if (m.role === 'user' && m.imageUrl) {
+      return {
+        role: 'user' as const,
+        content: [
+          { type: 'text' as const, text: m.content || 'Analiza esta imagen.' },
+          { type: 'image_url' as const, image_url: { url: m.imageUrl } },
+        ],
+      };
+    }
+    return { role: m.role, content: m.content };
+  });
+}
+
 /* ─── Semaphore for concurrency control ─────────────────────────────────── */
 
 function createSemaphore(limit: number) {
@@ -128,9 +186,425 @@ function createSemaphore(limit: number) {
   };
 }
 
+/* ─── Chat Tab Component ─────────────────────────────────────────────────── */
+
+interface ChatTabProps {
+  providers: ProviderResult[];
+  onLoadModels: () => Promise<void>;
+  loading: boolean;
+}
+
+function ChatTab({ providers, onLoadModels, loading }: ChatTabProps) {
+  const [chatModel, setChatModel] = useState('');
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [input, setInput] = useState('');
+  const [attached, setAttached] = useState<{ dataUrl: string; mimeType: string } | null>(null);
+  const [streaming, setStreaming] = useState(false);
+  const [totalTokens, setTotalTokens] = useState({ input: 0, output: 0 });
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+
+  // Build flat model options
+  const modelOptions = providers
+    .filter((p) => p.configured && p.models.length > 0)
+    .flatMap((p) =>
+      p.models.map((m) => ({
+        value: `${p.id}:${m.id}`,
+        label: m.id,
+        provider: p.id,
+        providerLabel: PROVIDER_LABELS[p.id] ?? p.label,
+        contextLength: m.contextLength,
+      })),
+    );
+
+  // Set default model on first load
+  useEffect(() => {
+    if (!chatModel && modelOptions.length > 0) {
+      setChatModel(modelOptions[0].value);
+    }
+  }, [modelOptions, chatModel]);
+
+  // Auto-scroll on new messages
+  useEffect(() => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+  }, [messages.length, messages]);
+
+  const selectedOption = modelOptions.find((o) => o.value === chatModel);
+
+  async function sendMessage() {
+    if (!input.trim() && !attached) return;
+    if (streaming) return;
+
+    const userMsg: ChatMessage = {
+      id: crypto.randomUUID(),
+      role: 'user',
+      content: input,
+      imageUrl: attached?.dataUrl,
+    };
+    setMessages((prev) => [...prev, userMsg]);
+    setInput('');
+    setAttached(null);
+    setStreaming(true);
+
+    const assistantId = crypto.randomUUID();
+    setMessages((prev) => [
+      ...prev,
+      { id: assistantId, role: 'assistant', content: '', streaming: true },
+    ]);
+
+    const apiMessages = buildApiMessages([...messages, userMsg]);
+    const { provider, modelo } = parseModelValue(chatModel);
+
+    try {
+      const res = await fetch('/api/admin/modelos-ia/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ provider, modelo, messages: apiMessages }),
+      });
+
+      if (!res.body) throw new Error('No stream body');
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let usage = { input: 0, output: 0 };
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          const json = line.slice(6);
+          try {
+            const event = JSON.parse(json) as SseEvent;
+            if (event.type === 'chunk' && event.text) {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId ? { ...m, content: m.content + event.text } : m,
+                ),
+              );
+            } else if (event.type === 'usage' && event.tokens) {
+              usage = { input: event.tokens.input, output: event.tokens.output };
+            } else if (event.type === 'error') {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId
+                    ? { ...m, error: event.message, errorType: event.errorType, streaming: false }
+                    : m,
+                ),
+              );
+            } else if (event.type === 'done') {
+              setMessages((prev) =>
+                prev.map((m) =>
+                  m.id === assistantId
+                    ? { ...m, streaming: false, tokens: usage }
+                    : m,
+                ),
+              );
+              if (usage.input > 0 || usage.output > 0) {
+                setTotalTokens((prev) => ({
+                  input: prev.input + usage.input,
+                  output: prev.output + usage.output,
+                }));
+              }
+            }
+          } catch { /* ignore parse error */ }
+        }
+      }
+    } catch (e) {
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === assistantId
+            ? { ...m, streaming: false, error: (e as Error).message, errorType: 'other' }
+            : m,
+        ),
+      );
+    } finally {
+      setStreaming(false);
+    }
+  }
+
+  function handleKeyDown(e: React.KeyboardEvent<HTMLTextAreaElement>) {
+    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
+      e.preventDefault();
+      void sendMessage();
+    }
+  }
+
+  function clearChat() {
+    setMessages([]);
+    setTotalTokens({ input: 0, output: 0 });
+    setAttached(null);
+    setInput('');
+  }
+
+  const hasModels = modelOptions.length > 0;
+  const totalAll = totalTokens.input + totalTokens.output;
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* ── Model selector bar ── */}
+      <AdminMotion>
+        <div className="flex flex-wrap items-center gap-3 rounded-2xl border border-white/10 bg-zinc-900/60 px-4 py-3">
+          <Bot className="h-4 w-4 shrink-0 text-amber-400" />
+          {!hasModels ? (
+            <div className="flex flex-1 items-center gap-3">
+              <span className="text-xs text-zinc-400">Carga los modelos primero</span>
+              <button
+                onClick={() => void onLoadModels()}
+                disabled={loading}
+                className="flex items-center gap-1.5 rounded-full border border-amber-500/40 bg-amber-500/10 px-3 py-1.5 text-xs font-bold text-amber-300 transition hover:bg-amber-500/20 disabled:opacity-50"
+              >
+                {loading ? <Loader2 className="h-3 w-3 animate-spin" /> : <RefreshCw className="h-3 w-3" />}
+                Cargar modelos
+              </button>
+            </div>
+          ) : (
+            <>
+              <select
+                value={chatModel}
+                onChange={(e) => setChatModel(e.target.value)}
+                className="min-w-0 flex-1 rounded-xl border border-zinc-700 bg-zinc-800 px-3 py-1.5 text-xs text-white focus:border-amber-400 focus:outline-none"
+              >
+                {providers
+                  .filter((p) => p.configured && p.models.length > 0)
+                  .map((p) => (
+                    <optgroup key={p.id} label={PROVIDER_LABELS[p.id] ?? p.label}>
+                      {p.models.map((m) => (
+                        <option key={`${p.id}:${m.id}`} value={`${p.id}:${m.id}`}>
+                          {m.id}
+                          {m.contextLength ? ` · ${formatCtx(m.contextLength)}` : ''}
+                        </option>
+                      ))}
+                    </optgroup>
+                  ))}
+              </select>
+
+              {selectedOption && (
+                <span
+                  className={`rounded-full border px-2 py-0.5 text-[10px] font-bold shrink-0 ${PROVIDER_COLORS[selectedOption.provider] ?? 'text-zinc-300 border-zinc-600/30 bg-zinc-800/20'}`}
+                >
+                  {selectedOption.providerLabel}
+                </span>
+              )}
+
+              <button
+                onClick={clearChat}
+                disabled={messages.length === 0}
+                title="Limpiar chat"
+                className="flex items-center gap-1.5 rounded-full border border-zinc-700 bg-zinc-800/60 px-3 py-1.5 text-xs font-bold text-zinc-400 transition hover:border-zinc-500 hover:text-white disabled:opacity-30"
+              >
+                <Trash2 className="h-3 w-3" />
+                Limpiar
+              </button>
+            </>
+          )}
+        </div>
+      </AdminMotion>
+
+      {/* ── Token counter ── */}
+      {(totalTokens.input > 0 || totalTokens.output > 0) && (
+        <AdminMotion>
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-white/[0.06] bg-zinc-900/40 px-4 py-2 text-[11px] text-zinc-500">
+            <span>Sesión:</span>
+            <span>
+              <span className="font-mono text-amber-400">{formatNumber(totalTokens.input)}</span>
+              {' '}tokens entrada
+            </span>
+            <span className="text-zinc-700">·</span>
+            <span>
+              <span className="font-mono text-amber-400">{formatNumber(totalTokens.output)}</span>
+              {' '}salida
+            </span>
+            <span className="text-zinc-700">·</span>
+            <span>
+              <span className="font-mono text-amber-300 font-bold">{formatNumber(totalAll)}</span>
+              {' '}total
+            </span>
+            {selectedOption?.contextLength && (
+              <>
+                <span className="text-zinc-700">·</span>
+                <span className="text-zinc-600">
+                  Límite ctx: <span className="font-mono">{formatCtx(selectedOption.contextLength)}</span>
+                </span>
+              </>
+            )}
+          </div>
+        </AdminMotion>
+      )}
+
+      {/* ── Messages area ── */}
+      <AdminMotion>
+        <div className="flex flex-col gap-2 min-h-[320px] max-h-[520px] overflow-y-auto rounded-2xl border border-white/10 bg-zinc-950/60 p-4">
+          {messages.length === 0 ? (
+            <div className="flex flex-1 flex-col items-center justify-center gap-2 py-16 text-center text-zinc-600">
+              <Sparkles className="h-8 w-8 opacity-30" />
+              <p className="text-sm font-bold">Chat con el modelo IA</p>
+              <p className="text-xs">
+                {hasModels
+                  ? 'Escribe un mensaje para comenzar (Ctrl+Enter para enviar)'
+                  : 'Carga los modelos primero para chatear'}
+              </p>
+            </div>
+          ) : (
+            messages.map((msg) => (
+              <div
+                key={msg.id}
+                className={`flex gap-2 ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
+              >
+                {/* Avatar */}
+                <div className={`shrink-0 flex h-7 w-7 items-center justify-center rounded-full mt-1 ${msg.role === 'user' ? 'bg-amber-500/20' : 'bg-zinc-700/60'}`}>
+                  {msg.role === 'user' ? (
+                    <User className="h-3.5 w-3.5 text-amber-400" />
+                  ) : (
+                    <Bot className="h-3.5 w-3.5 text-zinc-400" />
+                  )}
+                </div>
+
+                {/* Bubble */}
+                <div className={`flex flex-col gap-1 max-w-[78%] ${msg.role === 'user' ? 'items-end' : 'items-start'}`}>
+                  {/* Image preview */}
+                  {msg.imageUrl && (
+                    <img
+                      src={msg.imageUrl}
+                      alt="adjunto"
+                      className="max-h-40 max-w-xs rounded-xl border border-white/10 object-cover"
+                    />
+                  )}
+
+                  {/* Content bubble */}
+                  <div
+                    className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed whitespace-pre-wrap ${
+                      msg.role === 'user'
+                        ? 'bg-zinc-800 text-white rounded-tr-sm'
+                        : 'bg-zinc-900/80 text-zinc-100 rounded-tl-sm'
+                    }`}
+                  >
+                    {msg.content || (msg.streaming ? '' : '…')}
+                    {msg.streaming && (
+                      <span className="ml-0.5 inline-block h-4 w-0.5 animate-pulse bg-amber-400 align-middle" />
+                    )}
+                    {!msg.content && !msg.streaming && msg.error && null}
+                  </div>
+
+                  {/* Error badge */}
+                  {msg.error && (
+                    <div className="flex items-center gap-1.5">
+                      {msg.errorType && ERROR_LABELS[msg.errorType] && (
+                        <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold ${ERROR_LABELS[msg.errorType].color}`}>
+                          {ERROR_LABELS[msg.errorType].label}
+                        </span>
+                      )}
+                      <span className="text-[10px] text-red-400 max-w-[240px] truncate" title={msg.error}>
+                        {msg.error}
+                      </span>
+                    </div>
+                  )}
+
+                  {/* Token info */}
+                  {msg.tokens && (msg.tokens.input > 0 || msg.tokens.output > 0) && (
+                    <p className="text-[10px] text-zinc-700">
+                      {formatNumber(msg.tokens.input)} entrada · {formatNumber(msg.tokens.output)} salida
+                    </p>
+                  )}
+                </div>
+              </div>
+            ))
+          )}
+          <div ref={messagesEndRef} />
+        </div>
+      </AdminMotion>
+
+      {/* ── Input area ── */}
+      <AdminMotion>
+        <div className="flex flex-col gap-2 rounded-2xl border border-white/10 bg-zinc-900/60 p-3">
+          {/* Image preview */}
+          {attached && (
+            <div className="relative w-fit">
+              <img
+                src={attached.dataUrl}
+                alt="adjunto"
+                className="h-20 rounded-xl border border-white/10 object-cover"
+              />
+              <button
+                onClick={() => setAttached(null)}
+                className="absolute -right-1.5 -top-1.5 flex h-5 w-5 items-center justify-center rounded-full bg-zinc-800 border border-zinc-600 text-zinc-300 hover:text-white transition"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            </div>
+          )}
+
+          <div className="flex items-end gap-2">
+            {/* File attach */}
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/gif,image/webp,image/svg+xml"
+              className="hidden"
+              onChange={(e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                const reader = new FileReader();
+                reader.onload = (ev) => {
+                  setAttached({ dataUrl: ev.target?.result as string, mimeType: file.type });
+                };
+                reader.readAsDataURL(file);
+                e.target.value = '';
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              disabled={streaming}
+              title="Adjuntar imagen"
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border border-zinc-700 bg-zinc-800/60 text-zinc-400 transition hover:border-zinc-500 hover:text-white disabled:opacity-30"
+            >
+              <Paperclip className="h-4 w-4" />
+            </button>
+
+            {/* Textarea */}
+            <textarea
+              ref={textareaRef}
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              onKeyDown={handleKeyDown}
+              disabled={streaming || !hasModels}
+              placeholder={hasModels ? 'Escribe un mensaje… (Ctrl+Enter para enviar)' : 'Carga los modelos primero'}
+              rows={2}
+              className="flex-1 resize-none rounded-xl border border-zinc-700 bg-zinc-800/60 px-3 py-2 text-sm text-white placeholder-zinc-500 focus:border-amber-400/50 focus:outline-none disabled:opacity-40"
+            />
+
+            {/* Send button */}
+            <button
+              onClick={() => void sendMessage()}
+              disabled={streaming || !hasModels || (!input.trim() && !attached)}
+              className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-500 text-black transition hover:bg-amber-400 disabled:opacity-30"
+              title="Enviar (Ctrl+Enter)"
+            >
+              {streaming ? (
+                <Loader2 className="h-4 w-4 animate-spin" />
+              ) : (
+                <CornerDownLeft className="h-4 w-4" />
+              )}
+            </button>
+          </div>
+        </div>
+      </AdminMotion>
+    </div>
+  );
+}
+
 /* ─── Component ──────────────────────────────────────────────────────────── */
 
+type MainTab = 'modelos' | 'chat';
+
 export default function ModelosIaPage() {
+  const [mainTab, setMainTab] = useState<MainTab>('modelos');
   const [providers, setProviders] = useState<ProviderResult[]>([]);
   const [loading, setLoading] = useState(true);
   const [fetchError, setFetchError] = useState('');
@@ -243,6 +717,9 @@ export default function ModelosIaPage() {
 
   const totalModels = providers.reduce((s, p) => s + p.models.length, 0);
 
+  // Suppress unused variable warning — kept for potential dot legend usage
+  void PROVIDER_DOT_COLORS;
+
   return (
     <AdminPage>
       {/* ── Header ── */}
@@ -261,24 +738,58 @@ export default function ModelosIaPage() {
               <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
               Actualizar
             </button>
-            <button
-              onClick={() => void testAllVisible()}
-              disabled={testingAll || loading || visibleModels.length === 0}
-              className="flex items-center gap-2 rounded-full bg-amber-400 px-4 py-2 text-xs font-black uppercase tracking-[0.15em] text-black transition hover:bg-amber-300 disabled:opacity-50"
-            >
-              {testingAll ? (
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-              ) : (
-                <Zap className="h-3.5 w-3.5" />
-              )}
-              Testear todos visibles
-            </button>
+            {mainTab === 'modelos' && (
+              <button
+                onClick={() => void testAllVisible()}
+                disabled={testingAll || loading || visibleModels.length === 0}
+                className="flex items-center gap-2 rounded-full bg-amber-400 px-4 py-2 text-xs font-black uppercase tracking-[0.15em] text-black transition hover:bg-amber-300 disabled:opacity-50"
+              >
+                {testingAll ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Zap className="h-3.5 w-3.5" />
+                )}
+                Testear todos visibles
+              </button>
+            )}
           </div>
         }
       />
 
+      {/* ── Main tabs ── */}
+      <AdminMotion>
+        <div className="flex gap-1 rounded-xl bg-white/[0.06] p-1 w-fit">
+          {(['modelos', 'chat'] as const).map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setMainTab(tab)}
+              className={`flex items-center gap-1.5 rounded-lg px-4 py-2 text-xs font-bold transition ${
+                mainTab === tab
+                  ? 'bg-amber-500 text-black'
+                  : 'text-zinc-400 hover:text-white'
+              }`}
+            >
+              {tab === 'modelos' ? (
+                <><Sparkles className="h-3.5 w-3.5" /> Modelos</>
+              ) : (
+                <><Bot className="h-3.5 w-3.5" /> Chat</>
+              )}
+            </button>
+          ))}
+        </div>
+      </AdminMotion>
+
+      {/* ── Chat tab ── */}
+      {mainTab === 'chat' && (
+        <ChatTab
+          providers={providers}
+          onLoadModels={fetchModels}
+          loading={loading}
+        />
+      )}
+
       {/* ── Fetch error ── */}
-      {fetchError && (
+      {fetchError && mainTab === 'modelos' && (
         <AdminMotion>
           <div className="flex items-center gap-3 rounded-2xl border border-red-500/30 bg-red-900/20 px-4 py-3 text-sm text-red-300">
             <AlertCircle className="h-4 w-4 shrink-0" />
@@ -288,7 +799,7 @@ export default function ModelosIaPage() {
       )}
 
       {/* ── Loading skeleton ── */}
-      {loading && (
+      {loading && mainTab === 'modelos' && (
         <AdminMotion>
           <div className="flex items-center justify-center gap-3 rounded-2xl border border-white/10 bg-zinc-900/50 py-16 text-sm text-zinc-500">
             <Loader2 className="h-5 w-5 animate-spin" />
@@ -297,7 +808,7 @@ export default function ModelosIaPage() {
         </AdminMotion>
       )}
 
-      {!loading && providers.length > 0 && (
+      {!loading && providers.length > 0 && mainTab === 'modelos' && (
         <>
           {/* ── Provider tabs ── */}
           <AdminMotion>

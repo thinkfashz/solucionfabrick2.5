@@ -69,6 +69,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Expansión',
     links: [
       { href: '/admin/ia-config', label: 'Configuración IA', description: 'Proveedor activo, API key y modelo', icon: Bot, highlight: true },
+      { href: '/admin/modelos-ia', label: 'Prueba de IAs gratuitas', description: 'Diagnóstico en vivo — testea qué modelos realmente funcionan', icon: FlaskConical, highlight: true },
       { href: '/admin/agente', label: 'Agente IA · Playwright', description: 'Navega internet, busca precios y analiza competencia', icon: Sparkles, highlight: true },
       { href: '/admin/ai-developer', label: 'Fabrick AI Developer', description: 'Chat real, proveedores IA y herramientas Git seguras', icon: Sparkles, highlight: true },
       { href: '/admin/correo', label: 'Correo · Resend', description: 'Bandeja de entrada/salida, estadísticas y Resend', icon: Mail, highlight: true },

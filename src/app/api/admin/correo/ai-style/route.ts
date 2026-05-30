@@ -4,7 +4,8 @@ export const runtime = 'nodejs';
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireAdminPermission } from '@/lib/adminPermissions';
-import { resolveAiConfig } from '@/lib/resolveAiConfig';
+import { resolveAiConfig, resolveProviderConfig } from '@/lib/resolveAiConfig';
+import type { AiConfig, AiProvider } from '@/lib/resolveAiConfig';
 
 const SYSTEM_PROMPT =
   'Eres un experto en diseño de emails HTML. El usuario quiere mejorar el estilo de su email. ' +
@@ -19,21 +20,13 @@ const OPENAI_COMPAT_URLS: Partial<Record<string, string>> = {
 };
 
 function stripMarkdown(text: string): string {
-  // Remove ```html ... ``` or ``` ... ``` wrappers the model might add
   return text
     .replace(/^```(?:html)?\s*/i, '')
     .replace(/\s*```\s*$/, '')
     .trim();
 }
 
-async function callAi(html: string, instruccion: string): Promise<string> {
-  const config = await resolveAiConfig();
-  if (!config) throw new Error('Sin proveedor IA configurado. Configura uno en Centro de Integraciones.');
-
-  const userContent = instruccion
-    ? `Instrucción: ${instruccion}\n\nHTML original:\n${html}`
-    : `Mejora el estilo visual de este email HTML:\n${html}`;
-
+async function callProvider(config: AiConfig, userContent: string): Promise<string> {
   const openaiUrl = OPENAI_COMPAT_URLS[config.provider];
 
   if (openaiUrl) {
@@ -119,11 +112,15 @@ export async function POST(request: NextRequest) {
 
   let html = '';
   let instruccion = '';
+  let providerParam = '';
+  let modeloParam = '';
 
   try {
     const body = (await request.json()) as Record<string, unknown>;
     if (typeof body.html === 'string') html = body.html;
     if (typeof body.instruccion === 'string') instruccion = body.instruccion;
+    if (typeof body.provider === 'string') providerParam = body.provider;
+    if (typeof body.modelo === 'string') modeloParam = body.modelo;
   } catch {
     return NextResponse.json({ ok: false, error: 'JSON inválido' }, { status: 400 });
   }
@@ -132,21 +129,92 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: 'El HTML no puede estar vacío' }, { status: 400 });
   }
 
-  try {
-    const improved = await callAi(html, instruccion);
-    if (!improved) {
-      return NextResponse.json({ ok: false, error: 'La IA no devolvió contenido' }, { status: 502 });
-    }
+  const userContent = instruccion
+    ? `Instrucción: ${instruccion}\n\nHTML original:\n${html}`
+    : `Mejora el estilo visual de este email HTML:\n${html}`;
 
-    // Retrieve config again to return provider info (no key)
-    const config = await resolveAiConfig();
-    return NextResponse.json({
-      ok: true,
-      html: improved,
-      provider: config?.provider ?? 'unknown',
-      modelo: config?.modelo ?? '',
-    });
-  } catch (err) {
-    return NextResponse.json({ ok: false, error: (err as Error).message }, { status: 502 });
+  const errors: string[] = [];
+
+  // Resolve primary config
+  let primaryConfig: AiConfig | null = null;
+  if (providerParam && providerParam !== 'auto') {
+    primaryConfig = await resolveProviderConfig(providerParam as AiProvider, modeloParam);
+  } else {
+    primaryConfig = await resolveAiConfig();
   }
+
+  // 1. Try primary config
+  if (primaryConfig) {
+    try {
+      const improved = await callProvider(primaryConfig, userContent);
+      if (improved) {
+        return NextResponse.json({
+          ok: true,
+          html: improved,
+          provider: primaryConfig.provider,
+          modelo: primaryConfig.modelo,
+          usedFallback: false,
+        });
+      }
+      errors.push(`${primaryConfig.provider}: respuesta vacía`);
+    } catch (err) {
+      errors.push((err as Error).message);
+    }
+  } else {
+    errors.push('Sin proveedor IA configurado. Configura uno en Centro de Integraciones.');
+  }
+
+  // 2. Fallback: OpenRouter free models
+  const openrouterFreeModels = [
+    'meta-llama/llama-3.3-70b-instruct:free',
+    'google/gemma-3-27b-it:free',
+    'deepseek/deepseek-r1:free',
+  ];
+  for (const model of openrouterFreeModels) {
+    const config = await resolveProviderConfig('openrouter', model);
+    if (!config) break; // No OpenRouter key at all, skip remaining
+    try {
+      const improved = await callProvider(config, userContent);
+      if (improved) {
+        return NextResponse.json({
+          ok: true,
+          html: improved,
+          provider: config.provider,
+          modelo: config.modelo,
+          usedFallback: true,
+        });
+      }
+      errors.push(`openrouter/${model}: respuesta vacía`);
+    } catch (err) {
+      errors.push(`openrouter/${model}: ${(err as Error).message}`);
+    }
+  }
+
+  // 3. Fallback: Groq free models
+  const groqFreeModels = ['llama-3.3-70b-versatile', 'llama3-8b-8192'];
+  for (const model of groqFreeModels) {
+    const config = await resolveProviderConfig('groq', model);
+    if (!config) break; // No Groq key at all, skip remaining
+    try {
+      const improved = await callProvider(config, userContent);
+      if (improved) {
+        return NextResponse.json({
+          ok: true,
+          html: improved,
+          provider: config.provider,
+          modelo: config.modelo,
+          usedFallback: true,
+        });
+      }
+      errors.push(`groq/${model}: respuesta vacía`);
+    } catch (err) {
+      errors.push(`groq/${model}: ${(err as Error).message}`);
+    }
+  }
+
+  // All failed
+  return NextResponse.json(
+    { ok: false, error: `Todos los proveedores fallaron: ${errors.join(' | ')}` },
+    { status: 502 },
+  );
 }

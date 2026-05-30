@@ -171,6 +171,12 @@ const AI_PRESETS = [
   { label: 'Minimalista', prompt: 'Hazlo minimalista: fondo blanco, texto negro, sin imágenes, solo tipografía y espaciado.' },
 ];
 
+function parseModelValue(val: string): { provider: string; modelo: string } {
+  if (val === 'auto') return { provider: 'auto', modelo: '' };
+  const colon = val.indexOf(':');
+  return { provider: val.slice(0, colon), modelo: val.slice(colon + 1) };
+}
+
 function RecipientTag({ email, onRemove }: { email: string; onRemove: () => void }) {
   return (
     <span className="flex items-center gap-1 rounded-full border border-white/[0.10] bg-zinc-800 pl-2.5 pr-1.5 py-1 text-xs text-zinc-200">
@@ -236,6 +242,8 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '', fr
   const [aiLoading, setAiLoading] = useState(false);
   const [notice, setNotice] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null);
   const [instruccion, setInstruccion] = useState('');
+  const [selectedModel, setSelectedModel] = useState('auto');
+  const [fallbackNotice, setFallbackNotice] = useState<{ provider: string; modelo: string } | null>(null);
   const originalRef = useRef(body);
 
   const handleSend = useCallback(async () => {
@@ -261,21 +269,25 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '', fr
   }, [toTags, toInput, ccInput, bccInput, subject, body, onSent, onClose]);
 
   const handleAi = useCallback(async (presetPrompt?: string) => {
-    const prompt = presetPrompt ?? instruccion;
-    if (!prompt.trim()) { setNotice({ type: 'err', msg: 'Escribe una instrucción' }); return; }
-    setAiLoading(true); setNotice(null);
+    const promptText = presetPrompt ?? instruccion;
+    if (!promptText.trim()) { setNotice({ type: 'err', msg: 'Escribe una instrucción' }); return; }
+    const { provider: selProvider, modelo: selModelo } = parseModelValue(selectedModel);
+    setAiLoading(true); setNotice(null); setFallbackNotice(null);
     try {
       const r = await fetch('/api/admin/correo/ai-style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, currentHtml: body }),
+        body: JSON.stringify({ instruccion: promptText, html: body, provider: selProvider, modelo: selModelo }),
       });
-      const data = await r.json() as { ok: boolean; html?: string; error?: string };
+      const data = await r.json() as { ok: boolean; html?: string; error?: string; provider?: string; modelo?: string; usedFallback?: boolean };
       if (!data.ok || !data.html) { setNotice({ type: 'err', msg: data.error ?? 'Sin respuesta de IA' }); return; }
       originalRef.current = body;
       setBody(data.html);
+      if (data.usedFallback && data.provider && data.modelo) {
+        setFallbackNotice({ provider: data.provider, modelo: data.modelo });
+      }
     } finally { setAiLoading(false); }
-  }, [instruccion, body]);
+  }, [instruccion, body, selectedModel]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -396,6 +408,34 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '', fr
                   </button>
                 )}
               </div>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="bg-zinc-900 border border-white/[0.08] text-xs text-zinc-300 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-amber-500/40 w-full"
+              >
+                <option value="auto">Auto · proveedor configurado</option>
+                <optgroup label="Gratis">
+                  <option value="openrouter:meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B · OpenRouter</option>
+                  <option value="openrouter:google/gemma-3-27b-it:free">Gemma 3 27B · OpenRouter</option>
+                  <option value="openrouter:deepseek/deepseek-r1:free">DeepSeek R1 · OpenRouter</option>
+                  <option value="groq:llama-3.3-70b-versatile">Llama 3.3 70B · Groq</option>
+                  <option value="groq:llama3-8b-8192">Llama 3 8B · Groq</option>
+                  <option value="groq:gemma2-9b-it">Gemma 2 9B · Groq</option>
+                </optgroup>
+                <optgroup label="De pago">
+                  <option value="anthropic:claude-haiku-4-5-20251001">Claude Haiku · Anthropic</option>
+                  <option value="anthropic:claude-sonnet-4-6">Claude Sonnet · Anthropic</option>
+                  <option value="openai:gpt-4o-mini">GPT-4o mini · OpenAI</option>
+                  <option value="openai:gpt-4o">GPT-4o · OpenAI</option>
+                  <option value="gemini:gemini-2.0-flash-exp">Gemini 2.0 Flash · Google</option>
+                  <option value="grok:grok-2-1212">Grok-2 · xAI</option>
+                </optgroup>
+              </select>
+              {fallbackNotice && (
+                <p className="text-[10px] text-amber-400/80 bg-amber-500/[0.06] border border-amber-500/20 rounded-lg px-2.5 py-1.5">
+                  Usando {fallbackNotice.provider} · {fallbackNotice.modelo} (fallback automático)
+                </p>
+              )}
               <div className="flex gap-2">
                 <input value={instruccion} onChange={(e) => setInstruccion(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') void handleAi(); }}

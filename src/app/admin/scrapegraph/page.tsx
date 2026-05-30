@@ -1,14 +1,19 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
+  Bot,
   Brain,
   CheckCircle,
+  ChevronDown,
+  ChevronUp,
   Clock,
+  Code2,
   Copy,
   Cpu,
   Database,
+  Download,
   ExternalLink,
   FileJson,
   Globe,
@@ -17,6 +22,7 @@ import {
   Play,
   RefreshCw,
   Search,
+  Sparkles,
   Trash2,
   X,
   Zap,
@@ -27,6 +33,33 @@ import { AdminCard, AdminMotion, AdminPage, AdminPageHeader } from '@/components
    Types
 ──────────────────────────────────────────────────────────────────────── */
 type Mode = 'smart' | 'search' | 'batch';
+
+type StatusKind = 'idle' | 'running' | 'done' | 'error';
+
+interface Step {
+  text: string;
+  ts: number;
+}
+
+interface ResultData {
+  data: unknown;
+  provider: string;
+  modelo: string;
+  duration_ms: number;
+}
+
+interface ProviderModel {
+  id: string;
+  name: string;
+  free: boolean;
+}
+
+interface ProviderResult {
+  id: string;
+  label: string;
+  configured: boolean;
+  models: ProviderModel[];
+}
 
 interface RunEntry {
   id: number;
@@ -40,15 +73,12 @@ interface RunEntry {
   created_at: string;
 }
 
-interface ScrapeResponse {
-  ok: boolean;
-  mode: Mode;
-  result: unknown;
-  model: string;
-  provider: string;
-  duration_ms: number;
-  error?: string;
-}
+type SseEvent =
+  | { type: 'progress'; step: string }
+  | { type: 'screenshot'; b64: string; url: string }
+  | { type: 'result'; data: unknown; provider: string; modelo: string; duration_ms: number }
+  | { type: 'error'; message: string }
+  | { type: 'done' };
 
 /* ──────────────────────────────────────────────────────────────────────
    Constants
@@ -77,45 +107,362 @@ const EXAMPLES: Record<Mode, { label: string; prompt: string; input?: string }[]
   ],
 };
 
+// AI provider models (mirrors ia-config page)
+const PROVIDER_MODELS: Record<string, ProviderModel[]> = {
+  anthropic: [
+    { id: 'claude-opus-4-8', name: 'Opus 4.8', free: false },
+    { id: 'claude-sonnet-4-6', name: 'Sonnet 4.6', free: false },
+    { id: 'claude-haiku-4-5-20251001', name: 'Haiku 4.5', free: false },
+  ],
+  groq: [
+    { id: 'llama-3.3-70b-versatile', name: 'LLaMA 3.3 70B', free: true },
+    { id: 'llama-3.1-8b-instant', name: 'LLaMA 3.1 8B Instant', free: true },
+    { id: 'gemma2-9b-it', name: 'Gemma 2 9B', free: true },
+    { id: 'mixtral-8x7b-32768', name: 'Mixtral 8x7B', free: true },
+  ],
+  openrouter: [
+    { id: 'meta-llama/llama-3.3-70b-instruct:free', name: 'LLaMA 3.3 70B', free: true },
+    { id: 'google/gemma-3-27b-it:free', name: 'Gemma 3 27B', free: true },
+    { id: 'mistralai/mistral-small-3.1-24b-instruct:free', name: 'Mistral Small 3.1', free: true },
+    { id: 'anthropic/claude-haiku-4', name: 'Claude Haiku 4', free: false },
+  ],
+  openai: [
+    { id: 'gpt-4o-mini', name: 'GPT-4o mini', free: false },
+    { id: 'gpt-4o', name: 'GPT-4o', free: false },
+    { id: 'o3-mini', name: 'o3 mini', free: false },
+  ],
+  gemini: [
+    { id: 'gemini-2.0-flash-exp', name: 'Gemini 2.0 Flash', free: true },
+    { id: 'gemini-1.5-flash', name: 'Gemini 1.5 Flash', free: true },
+    { id: 'gemini-1.5-pro', name: 'Gemini 1.5 Pro', free: false },
+  ],
+  grok: [
+    { id: 'grok-2-1212', name: 'Grok 2', free: false },
+    { id: 'grok-2-vision-1212', name: 'Grok 2 Vision', free: false },
+    { id: 'grok-beta', name: 'Grok Beta', free: false },
+  ],
+};
+
+const PROVIDER_LABELS: Record<string, string> = {
+  anthropic: 'Anthropic',
+  groq: 'Groq',
+  openrouter: 'OpenRouter',
+  openai: 'OpenAI',
+  gemini: 'Google Gemini',
+  grok: 'xAI Grok',
+};
+
 /* ──────────────────────────────────────────────────────────────────────
-   JSON Viewer
+   Utility functions
 ──────────────────────────────────────────────────────────────────────── */
-function JsonViewer({ data }: { data: unknown }) {
+function jsonToCSV(data: unknown[]): string {
+  if (!data.length) return '';
+  const keys = [...new Set(data.flatMap((item) => Object.keys(item as Record<string, unknown>)))];
+  const rows = data.map((item) =>
+    keys
+      .map((k) => {
+        const v = (item as Record<string, unknown>)[k];
+        if (v === null || v === undefined) return '';
+        const s = typeof v === 'object' ? JSON.stringify(v) : String(v);
+        return s.includes(',') || s.includes('"') || s.includes('\n')
+          ? `"${s.replace(/"/g, '""')}"`
+          : s;
+      })
+      .join(','),
+  );
+  return [keys.join(','), ...rows].join('\n');
+}
+
+function downloadFile(content: string, filename: string, mimeType: string) {
+  const blob = new Blob([content], { type: mimeType });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = filename;
+  a.click();
+  URL.revokeObjectURL(url);
+}
+
+function formatDate(dt: string) {
+  try {
+    return new Date(dt).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' });
+  } catch {
+    return dt;
+  }
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Status chip
+──────────────────────────────────────────────────────────────────────── */
+const STATUS_STYLES: Record<StatusKind, string> = {
+  idle: 'bg-zinc-800 text-zinc-400',
+  running: 'bg-amber-400/20 text-amber-400 animate-pulse',
+  done: 'bg-emerald-500/20 text-emerald-400',
+  error: 'bg-red-500/20 text-red-400',
+};
+
+const STATUS_LABELS: Record<StatusKind, string> = {
+  idle: 'En reposo',
+  running: 'Navegando',
+  done: '✓ Listo',
+  error: 'Error',
+};
+
+function StatusChip({ status }: { status: StatusKind }) {
+  return (
+    <span className={`rounded-full px-2.5 py-1 text-[10px] font-bold ${STATUS_STYLES[status]}`}>
+      {STATUS_LABELS[status]}
+    </span>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Mode badge
+──────────────────────────────────────────────────────────────────────── */
+const MODE_COLORS: Record<Mode, string> = {
+  smart: 'bg-yellow-400/15 text-yellow-400',
+  search: 'bg-blue-500/15 text-blue-400',
+  batch: 'bg-purple-500/15 text-purple-400',
+};
+
+/* ──────────────────────────────────────────────────────────────────────
+   Provider selector
+──────────────────────────────────────────────────────────────────────── */
+function ProviderSelector({
+  providers,
+  selectedProvider,
+  selectedModel,
+  onProviderChange,
+  onModelChange,
+}: {
+  providers: ProviderResult[];
+  selectedProvider: string;
+  selectedModel: string;
+  onProviderChange: (p: string) => void;
+  onModelChange: (m: string) => void;
+}) {
+  const configuredProviders = providers.filter((p) => p.configured);
+  const currentModels =
+    selectedProvider !== 'auto'
+      ? (PROVIDER_MODELS[selectedProvider] ?? configuredProviders.find((p) => p.id === selectedProvider)?.models ?? [])
+      : [];
+
+  return (
+    <div className="space-y-2">
+      <label className="block text-xs font-bold uppercase tracking-wider text-zinc-500">
+        Proveedor IA
+      </label>
+      <select
+        value={selectedProvider}
+        onChange={(e) => {
+          const p = e.target.value;
+          onProviderChange(p);
+          // Reset model to first available
+          const models = p !== 'auto' ? (PROVIDER_MODELS[p] ?? []) : [];
+          onModelChange(models[0]?.id ?? '');
+        }}
+        className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-yellow-400/40"
+      >
+        <option value="auto">Auto (configuración actual)</option>
+        {configuredProviders.length > 0 && (
+          <optgroup label="Proveedores configurados">
+            {configuredProviders.map((p) => (
+              <option key={p.id} value={p.id}>
+                {p.label || PROVIDER_LABELS[p.id] || p.id}
+              </option>
+            ))}
+          </optgroup>
+        )}
+      </select>
+
+      {selectedProvider !== 'auto' && currentModels.length > 0 && (
+        <select
+          value={selectedModel}
+          onChange={(e) => onModelChange(e.target.value)}
+          className="w-full rounded-xl border border-white/10 bg-black/50 px-3 py-2 text-sm text-white outline-none focus:border-yellow-400/40"
+        >
+          {currentModels.map((m) => (
+            <option key={m.id} value={m.id}>
+              {m.name}{m.free ? ' (gratis)' : ''}
+            </option>
+          ))}
+        </select>
+      )}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Live Preview
+──────────────────────────────────────────────────────────────────────── */
+function LivePreview({
+  screenshot,
+  currentUrl,
+  status,
+}: {
+  screenshot: string | null;
+  currentUrl: string;
+  status: StatusKind;
+}) {
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/60">
+      <div className="flex items-center justify-between border-b border-white/10 px-4 py-2.5">
+        <div className="flex items-center gap-2">
+          <Globe className="h-3.5 w-3.5 text-zinc-500" />
+          <span className="text-xs font-bold text-white">Vista Previa en Vivo</span>
+        </div>
+        <StatusChip status={status} />
+      </div>
+
+      <div className="relative min-h-[280px] max-h-[400px] overflow-hidden bg-black/40">
+        {screenshot ? (
+          <img
+            src={`data:image/jpeg;base64,${screenshot}`}
+            alt="Browser preview"
+            className="w-full object-contain rounded-b-none"
+          />
+        ) : (
+          <div className="flex min-h-[280px] flex-col items-center justify-center gap-3 text-center">
+            <Globe className="h-12 w-12 text-zinc-700" />
+            <p className="text-xs text-zinc-600">Aquí aparecerá la vista previa del navegador</p>
+          </div>
+        )}
+      </div>
+
+      {currentUrl && (
+        <div className="border-t border-white/10 px-4 py-2 flex items-center gap-2">
+          <ExternalLink className="h-3 w-3 shrink-0 text-zinc-600" />
+          <p className="truncate text-[10px] text-zinc-500">{currentUrl}</p>
+        </div>
+      )}
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Step log
+──────────────────────────────────────────────────────────────────────── */
+function StepLog({ steps }: { steps: Step[] }) {
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (ref.current) {
+      ref.current.scrollTop = ref.current.scrollHeight;
+    }
+  }, [steps]);
+
+  if (!steps.length) return null;
+
+  return (
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/60">
+      <div className="border-b border-white/10 px-4 py-2.5 flex items-center gap-2">
+        <Loader2 className="h-3.5 w-3.5 text-yellow-400 animate-spin" />
+        <span className="text-xs font-bold text-white">Progreso</span>
+      </div>
+      <div ref={ref} className="max-h-36 overflow-y-auto px-4 py-2 space-y-1.5">
+        {steps.map((step, i) => (
+          <div key={i} className="flex items-start gap-2">
+            <div className="mt-1.5 h-1.5 w-1.5 shrink-0 rounded-full bg-yellow-400/60" />
+            <p className="flex-1 text-[11px] text-zinc-400 leading-relaxed">{step.text}</p>
+            <span className="shrink-0 text-[10px] text-zinc-700">
+              {new Date(step.ts).toLocaleTimeString('es-CL', { timeStyle: 'medium' })}
+            </span>
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/* ──────────────────────────────────────────────────────────────────────
+   Results panel
+──────────────────────────────────────────────────────────────────────── */
+function ResultsPanel({ result }: { result: ResultData }) {
   const [copied, setCopied] = useState(false);
-  const text = JSON.stringify(data, null, 2);
+  const jsonText = JSON.stringify(result.data, null, 2);
+  const isArray = Array.isArray(result.data);
+  const count = isArray ? (result.data as unknown[]).length : null;
+
+  const PROVIDER_COLORS: Record<string, string> = {
+    openrouter: 'bg-purple-500/20 text-purple-300',
+    groq: 'bg-rose-500/20 text-rose-300',
+    openai: 'bg-green-500/20 text-green-300',
+    gemini: 'bg-blue-500/20 text-blue-300',
+    grok: 'bg-violet-500/20 text-violet-300',
+    anthropic: 'bg-amber-500/20 text-amber-300',
+  };
 
   async function copy() {
-    await navigator.clipboard.writeText(text);
+    await navigator.clipboard.writeText(jsonText);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   }
 
-  const isArray = Array.isArray(data);
-  const count = isArray ? (data as unknown[]).length : null;
+  function exportCSV() {
+    if (!isArray) return;
+    const csv = jsonToCSV(result.data as unknown[]);
+    downloadFile(csv, `scrapegraph-${Date.now()}.csv`, 'text/csv');
+  }
+
+  function downloadJSON() {
+    downloadFile(jsonText, `scrapegraph-${Date.now()}.json`, 'application/json');
+  }
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/10">
-      <div className="flex items-center justify-between gap-2 border-b border-white/10 px-4 py-2.5">
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/60">
+      <div className="flex flex-wrap items-center gap-2 border-b border-white/10 px-4 py-2.5">
         <div className="flex items-center gap-2">
-          <FileJson className="h-3.5 w-3.5 text-yellow-400" />
-          <span className="text-xs font-bold text-white">Resultado JSON</span>
-          {count !== null && (
-            <span className="rounded-full bg-yellow-400/15 px-2 py-0.5 text-[10px] font-bold text-yellow-400">
-              {count} items
-            </span>
-          )}
+          <CheckCircle className="h-4 w-4 text-emerald-400" />
+          <span className="font-black text-white text-sm">Resultado</span>
         </div>
+        <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${PROVIDER_COLORS[result.provider] ?? 'bg-zinc-800 text-zinc-400'}`}>
+          {result.provider}
+        </span>
+        <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-400">
+          {result.modelo}
+        </span>
+        <span className="flex items-center gap-1 text-[10px] text-zinc-600">
+          <Clock className="h-3 w-3" />
+          {(result.duration_ms / 1000).toFixed(1)}s
+        </span>
+        {count !== null && (
+          <span className="rounded-full bg-yellow-400/15 px-2 py-0.5 text-[10px] font-bold text-yellow-400">
+            {count} items
+          </span>
+        )}
+      </div>
+
+      <div className="flex flex-wrap gap-1.5 border-b border-white/10 px-4 py-2">
         <button
           type="button"
           onClick={() => void copy()}
           className="flex items-center gap-1.5 rounded-xl border border-white/10 px-2.5 py-1 text-[11px] font-bold text-zinc-400 hover:bg-white/5 hover:text-zinc-200 transition"
         >
           {copied ? <CheckCircle className="h-3 w-3 text-emerald-400" /> : <Copy className="h-3 w-3" />}
-          {copied ? 'Copiado' : 'Copiar'}
+          {copied ? 'Copiado' : 'Copiar JSON'}
+        </button>
+        {isArray && (
+          <button
+            type="button"
+            onClick={exportCSV}
+            className="flex items-center gap-1.5 rounded-xl border border-white/10 px-2.5 py-1 text-[11px] font-bold text-zinc-400 hover:bg-white/5 hover:text-zinc-200 transition"
+          >
+            <FileJson className="h-3 w-3" />
+            Exportar CSV
+          </button>
+        )}
+        <button
+          type="button"
+          onClick={downloadJSON}
+          className="flex items-center gap-1.5 rounded-xl border border-white/10 px-2.5 py-1 text-[11px] font-bold text-zinc-400 hover:bg-white/5 hover:text-zinc-200 transition"
+        >
+          <Download className="h-3 w-3" />
+          Descargar JSON
         </button>
       </div>
-      <pre className="max-h-80 overflow-auto bg-black/40 p-4 text-[11px] leading-relaxed text-zinc-300 font-mono">
-        {text}
+
+      <pre className="max-h-96 overflow-auto bg-black/40 p-4 text-[11px] leading-relaxed text-zinc-300 font-mono">
+        {jsonText}
       </pre>
     </div>
   );
@@ -127,17 +474,19 @@ function JsonViewer({ data }: { data: unknown }) {
 function HistoryPanel({
   runs,
   loading,
+  open,
+  onToggle,
   onRefresh,
   onLoad,
   onDelete,
-  onClearAll,
 }: {
   runs: RunEntry[];
   loading: boolean;
+  open: boolean;
+  onToggle: () => void;
   onRefresh: () => void;
   onLoad: (run: RunEntry) => void;
   onDelete: (id: number) => void;
-  onClearAll: () => void;
 }) {
   function label(run: RunEntry) {
     if (run.input.url) return run.input.url;
@@ -146,180 +495,80 @@ function HistoryPanel({
     return '—';
   }
 
-  const MODE_COLORS: Record<Mode, string> = {
-    smart: 'bg-yellow-400/15 text-yellow-400',
-    search: 'bg-blue-500/15 text-blue-400',
-    batch: 'bg-purple-500/15 text-purple-400',
-  };
-
-  function formatDate(dt: string) {
-    try { return new Date(dt).toLocaleString('es-CL', { dateStyle: 'short', timeStyle: 'short' }); }
-    catch { return dt; }
-  }
-
   return (
-    <AdminCard>
-      <div className="mb-3 flex items-center justify-between gap-2">
+    <div className="overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/60">
+      <button
+        type="button"
+        onClick={onToggle}
+        className="flex w-full items-center justify-between px-4 py-3 hover:bg-white/5 transition"
+      >
         <div className="flex items-center gap-2">
-          <div className="h-2 w-2 rounded-full bg-yellow-400" />
-          <h2 className="font-black text-white text-sm">Historial</h2>
+          <Database className="h-4 w-4 text-zinc-500" />
+          <span className="font-black text-white text-sm">Historial</span>
           <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-xs text-zinc-400">{runs.length}</span>
         </div>
-        <div className="flex items-center gap-1.5">
-          {runs.length > 0 && (
-            <button
-              type="button"
-              onClick={onClearAll}
-              className="text-[11px] font-bold text-red-400/70 hover:text-red-400"
-            >
-              Limpiar todo
-            </button>
-          )}
+        <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={onRefresh}
+            onClick={(e) => { e.stopPropagation(); onRefresh(); }}
             className="text-zinc-600 hover:text-zinc-400"
             title="Actualizar"
           >
             {loading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
           </button>
+          {open ? <ChevronUp className="h-4 w-4 text-zinc-500" /> : <ChevronDown className="h-4 w-4 text-zinc-500" />}
         </div>
-      </div>
+      </button>
 
-      {runs.length === 0 && !loading ? (
-        <div className="flex flex-col items-center gap-2 py-8 text-center">
-          <Database className="h-8 w-8 text-zinc-700" />
-          <p className="text-xs text-zinc-600">Sin ejecuciones aún</p>
-        </div>
-      ) : (
-        <div className="space-y-1.5 max-h-80 overflow-y-auto">
-          {runs.map((run) => (
-            <div
-              key={run.id}
-              className="group flex items-start gap-2 rounded-xl border border-white/8 p-2.5 hover:bg-white/5 cursor-pointer transition"
-              onClick={() => onLoad(run)}
-            >
-              <span className={`mt-0.5 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase shrink-0 ${MODE_COLORS[run.mode]}`}>
-                {run.mode}
-              </span>
-              <div className="min-w-0 flex-1">
-                <p className="truncate text-[11px] text-zinc-300">{label(run)}</p>
-                <div className="flex items-center gap-2 mt-0.5">
-                  {run.provider && (
-                    <span className={`rounded-full px-1.5 py-0.5 text-[9px] font-bold ${
-                      run.provider === 'openrouter' ? 'text-purple-400' :
-                      run.provider === 'groq' ? 'text-rose-400' :
-                      run.provider === 'openai' ? 'text-green-400' :
-                      run.provider === 'gemini' ? 'text-blue-400' :
-                      run.provider === 'grok' ? 'text-violet-400' :
-                      'text-amber-400'
-                    }`}>{run.provider}</span>
-                  )}
-                  {run.duration_ms && (
-                    <span className="flex items-center gap-0.5 text-[10px] text-zinc-600">
-                      <Clock className="h-2.5 w-2.5" />{(run.duration_ms / 1000).toFixed(1)}s
-                    </span>
-                  )}
-                  <span className="text-[10px] text-zinc-700">{formatDate(run.created_at)}</span>
-                  {run.error && <AlertTriangle className="h-2.5 w-2.5 text-red-400" />}
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={(e) => { e.stopPropagation(); onDelete(run.id); }}
-                className="opacity-0 group-hover:opacity-100 rounded-lg p-1 text-zinc-600 hover:text-red-400 hover:bg-red-500/10 transition"
-                title="Eliminar"
-              >
-                <Trash2 className="h-3 w-3" />
-              </button>
+      {open && (
+        <div className="border-t border-white/10">
+          {runs.length === 0 && !loading ? (
+            <div className="flex flex-col items-center gap-2 py-8 text-center">
+              <Database className="h-8 w-8 text-zinc-700" />
+              <p className="text-xs text-zinc-600">Sin ejecuciones aún</p>
             </div>
-          ))}
+          ) : (
+            <div className="max-h-72 overflow-y-auto space-y-0.5 p-2">
+              {runs.map((run) => (
+                <div
+                  key={run.id}
+                  className="group flex cursor-pointer items-start gap-2 rounded-xl border border-white/5 p-2.5 hover:bg-white/5 transition"
+                  onClick={() => onLoad(run)}
+                >
+                  <span className={`mt-0.5 shrink-0 rounded-full px-1.5 py-0.5 text-[9px] font-bold uppercase ${MODE_COLORS[run.mode]}`}>
+                    {run.mode}
+                  </span>
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-[11px] text-zinc-300">{label(run)}</p>
+                    <div className="mt-0.5 flex items-center gap-2">
+                      {run.provider && (
+                        <span className="text-[9px] font-bold text-zinc-500">{run.provider}</span>
+                      )}
+                      {run.duration_ms !== null && (
+                        <span className="flex items-center gap-0.5 text-[10px] text-zinc-600">
+                          <Clock className="h-2.5 w-2.5" />
+                          {(run.duration_ms / 1000).toFixed(1)}s
+                        </span>
+                      )}
+                      <span className="text-[10px] text-zinc-700">{formatDate(run.created_at)}</span>
+                      {run.error && <AlertTriangle className="h-2.5 w-2.5 text-red-400" />}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={(e) => { e.stopPropagation(); onDelete(run.id); }}
+                    className="rounded-lg p-1 text-zinc-700 opacity-0 transition hover:bg-red-500/10 hover:text-red-400 group-hover:opacity-100"
+                    title="Eliminar"
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
-    </AdminCard>
-  );
-}
-
-/* ──────────────────────────────────────────────────────────────────────
-   How-to card
-──────────────────────────────────────────────────────────────────────── */
-function HowToCard() {
-  const [open, setOpen] = useState<Mode>('smart');
-
-  const CONTENT: Record<Mode, { icon: React.ComponentType<{ className?: string }>; title: string; desc: string; examples: string[] }> = {
-    smart: {
-      icon: Cpu,
-      title: 'Smart Scraper',
-      desc: 'Extrae datos estructurados de una URL específica con un prompt en lenguaje natural.',
-      examples: [
-        '"Extrae todos los productos con nombre y precio"',
-        '"Dame el listado de servicios con descripción y valor"',
-        '"Encuentra el email y teléfono de contacto"',
-      ],
-    },
-    search: {
-      icon: Search,
-      title: 'Search Scraper',
-      desc: 'Busca en Google/DuckDuckGo y extrae datos de los primeros N resultados.',
-      examples: [
-        'Query: "muebles cocina chile precio 2025"',
-        'Query: "empresas pisos laminados Santiago"',
-        'Query: "proveedores MDF Chile mayorista"',
-      ],
-    },
-    batch: {
-      icon: Layers,
-      title: 'Batch Scraper',
-      desc: 'Procesa múltiples URLs con el mismo prompt. Ideal para comparar.',
-      examples: [
-        'Comparar precios entre Easy, Sodimac y Leroy Merlin',
-        'Analizar 5 competidores a la vez',
-        'Monitorear múltiples proveedores',
-      ],
-    },
-  };
-
-  const info = CONTENT[open];
-
-  return (
-    <AdminCard>
-      <div className="mb-3 flex items-center gap-2">
-        <div className="h-2 w-2 rounded-full bg-yellow-400" />
-        <h2 className="font-black text-white text-sm">Cómo usar</h2>
-      </div>
-
-      <div className="mb-3 flex gap-1">
-        {(Object.keys(CONTENT) as Mode[]).map((m) => (
-          <button
-            key={m}
-            type="button"
-            onClick={() => setOpen(m)}
-            className={`flex-1 rounded-xl py-1.5 text-[10px] font-bold transition ${
-              open === m ? 'bg-yellow-400/15 text-yellow-400' : 'text-zinc-600 hover:text-zinc-400 hover:bg-white/5'
-            }`}
-          >
-            {m}
-          </button>
-        ))}
-      </div>
-
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <info.icon className="h-4 w-4 text-yellow-400" />
-          <span className="text-xs font-bold text-white">{info.title}</span>
-        </div>
-        <p className="text-[11px] text-zinc-400 leading-relaxed">{info.desc}</p>
-        <div className="space-y-1">
-          {info.examples.map((ex, i) => (
-            <p key={i} className="text-[10px] text-zinc-600 pl-2 border-l border-yellow-400/20">{ex}</p>
-          ))}
-        </div>
-        <div className="mt-3 flex items-center gap-1.5 rounded-xl border border-yellow-400/15 bg-yellow-400/5 px-2.5 py-1.5">
-          <Zap className="h-3 w-3 text-yellow-400" />
-          <span className="text-[10px] text-yellow-400/80 font-bold">Powered by Playwright + IA</span>
-        </div>
-      </div>
-    </AdminCard>
+    </div>
   );
 }
 
@@ -327,6 +576,7 @@ function HowToCard() {
    Main page
 ──────────────────────────────────────────────────────────────────────── */
 export default function ScrapeGraphPage() {
+  // Form state
   const [mode, setMode] = useState<Mode>('smart');
   const [url, setUrl] = useState('');
   const [query, setQuery] = useState('');
@@ -334,66 +584,163 @@ export default function ScrapeGraphPage() {
   const [prompt, setPrompt] = useState('');
   const [schema, setSchema] = useState('');
   const [pages, setPages] = useState('3');
-  const [loading, setLoading] = useState(false);
-  const [progress, setProgress] = useState('');
-  const [result, setResult] = useState<ScrapeResponse | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [runs, setRuns] = useState<RunEntry[]>([]);
-  const [runsLoading, setRunsLoading] = useState(false);
 
-  const loadRuns = useCallback(async () => {
-    setRunsLoading(true);
+  // Provider state
+  const [selectedProvider, setSelectedProvider] = useState('auto');
+  const [selectedModel, setSelectedModel] = useState('');
+  const [availableProviders, setAvailableProviders] = useState<ProviderResult[]>([]);
+
+  // Execution state
+  const [running, setRunning] = useState(false);
+  const [steps, setSteps] = useState<Step[]>([]);
+  const [screenshot, setScreenshot] = useState<string | null>(null);
+  const [currentUrl, setCurrentUrl] = useState('');
+  const [result, setResult] = useState<ResultData | null>(null);
+  const [error, setError] = useState<string | null>(null);
+
+  // History state
+  const [runs, setRuns] = useState<RunEntry[]>([]);
+  const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyLoading, setHistoryLoading] = useState(false);
+
+  // Computed status
+  const status: StatusKind = running ? 'running' : error ? 'error' : result ? 'done' : 'idle';
+
+  /* ── Load available providers ── */
+  useEffect(() => {
+    void loadProviders();
+  }, []);
+
+  async function loadProviders() {
+    try {
+      const res = await fetch('/api/admin/integrations', { cache: 'no-store' });
+      if (!res.ok) return;
+      type FieldStatus = { set: boolean; preview: string; source?: string; envVar?: string };
+      type ProviderEntry = { credentials: Record<string, FieldStatus>; updated_at?: string; encrypted?: boolean; envManaged?: boolean };
+      const data = await res.json() as { providers?: Record<string, ProviderEntry> };
+      // A provider is "configured" if it has api_key set
+      const knownProviders: ProviderResult[] = Object.entries(PROVIDER_LABELS).map(([id, label]) => {
+        const entry = data.providers?.[id];
+        const hasKey = entry?.credentials?.['api_key']?.set === true;
+        return {
+          id,
+          label,
+          configured: hasKey,
+          models: PROVIDER_MODELS[id] ?? [],
+        };
+      });
+      setAvailableProviders(knownProviders);
+    } catch {
+      // Use static list as fallback (all unconfigured)
+      const knownProviders: ProviderResult[] = Object.entries(PROVIDER_LABELS).map(([id, label]) => ({
+        id,
+        label,
+        configured: false,
+        models: PROVIDER_MODELS[id] ?? [],
+      }));
+      setAvailableProviders(knownProviders);
+    }
+  }
+
+  /* ── Load history ── */
+  const loadHistory = useCallback(async () => {
+    setHistoryLoading(true);
     try {
       const res = await fetch('/api/admin/scrapegraph');
       if (res.ok) {
         const data = await res.json() as { runs: RunEntry[] };
-        setRuns(data.runs ?? []);
+        setRuns((data.runs ?? []).slice(0, 20));
       }
     } catch { /* silent */ }
-    finally { setRunsLoading(false); }
+    finally { setHistoryLoading(false); }
   }, []);
 
-  useEffect(() => { void loadRuns(); }, [loadRuns]);
+  useEffect(() => { void loadHistory(); }, [loadHistory]);
 
+  /* ── Execute via SSE ── */
   async function execute() {
-    setLoading(true);
-    setError(null);
+    setRunning(true);
+    setSteps([]);
+    setScreenshot(null);
+    setCurrentUrl('');
     setResult(null);
-    setProgress(mode === 'smart' ? 'Iniciando navegador…' : mode === 'search' ? 'Buscando en la web…' : 'Procesando URLs…');
+    setError(null);
 
-    const body: Record<string, unknown> = { mode, prompt };
-    if (mode === 'smart') { body.url = url; if (schema.trim()) body.outputSchema = schema; }
-    if (mode === 'search') { body.query = query; body.maxPages = Number(pages); }
-    if (mode === 'batch') { body.urls = batchUrls.split('\n').map((s) => s.trim()).filter(Boolean); }
+    const body: Record<string, unknown> = {
+      mode,
+      prompt,
+      provider: selectedProvider,
+      modelo: selectedModel,
+    };
+    if (mode === 'smart') {
+      body.url = url;
+      if (schema.trim()) body.outputSchema = schema;
+    }
+    if (mode === 'search') {
+      body.query = query;
+      body.maxPages = Number(pages);
+    }
+    if (mode === 'batch') {
+      body.urls = batchUrls.split('\n').map((s) => s.trim()).filter(Boolean);
+    }
 
     try {
-      const res = await fetch('/api/admin/scrapegraph', {
+      const res = await fetch('/api/admin/scrapegraph/stream', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       });
-      const data = await res.json() as ScrapeResponse & { error?: string };
-      if (!res.ok || data.error) throw new Error(data.error ?? `HTTP ${res.status}`);
-      setResult(data);
-      void loadRuns();
+
+      if (!res.ok || !res.body) {
+        setError('Error de red al conectar con el servidor');
+        setRunning(false);
+        return;
+      }
+
+      const reader = res.body.getReader();
+      const dec = new TextDecoder();
+      let buf = '';
+      let done = false;
+
+      while (!done) {
+        const { done: streamDone, value } = await reader.read();
+        if (streamDone) break;
+        buf += dec.decode(value, { stream: true });
+        const lines = buf.split('\n');
+        buf = lines.pop() ?? '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data:')) continue;
+          try {
+            const evt = JSON.parse(line.slice(5).trim()) as SseEvent;
+            if (evt.type === 'progress') {
+              setSteps((prev) => [...prev, { text: evt.step, ts: Date.now() }]);
+            } else if (evt.type === 'screenshot') {
+              setScreenshot(evt.b64);
+              setCurrentUrl(evt.url);
+            } else if (evt.type === 'result') {
+              setResult({ data: evt.data, provider: evt.provider, modelo: evt.modelo, duration_ms: evt.duration_ms });
+              void loadHistory();
+            } else if (evt.type === 'error') {
+              setError(evt.message);
+            } else if (evt.type === 'done') {
+              done = true;
+              break;
+            }
+          } catch { /* ignore parse errors */ }
+        }
+      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error inesperado');
     } finally {
-      setLoading(false);
-      setProgress('');
+      setRunning(false);
     }
   }
 
+  /* ── History actions ── */
   async function deleteRun(id: number) {
     await fetch(`/api/admin/scrapegraph?id=${id}`, { method: 'DELETE' });
     setRuns((prev) => prev.filter((r) => r.id !== id));
-  }
-
-  async function clearAll() {
-    for (const run of runs) {
-      await fetch(`/api/admin/scrapegraph?id=${run.id}`, { method: 'DELETE' });
-    }
-    setRuns([]);
   }
 
   function loadFromHistory(run: RunEntry) {
@@ -404,11 +751,9 @@ export default function ScrapeGraphPage() {
     if (run.mode === 'batch' && run.input.urls) setBatchUrls(run.input.urls.join('\n'));
     if (run.result) {
       setResult({
-        ok: !run.error,
-        mode: run.mode,
-        result: run.result,
-        model: run.model ?? '',
+        data: run.result,
         provider: run.provider ?? '',
+        modelo: run.model ?? '',
         duration_ms: run.duration_ms ?? 0,
       });
     }
@@ -420,16 +765,19 @@ export default function ScrapeGraphPage() {
   }
 
   const canExecute =
-    !loading &&
-    prompt.trim() &&
+    !running &&
+    prompt.trim().length > 0 &&
     (mode === 'smart' ? !!url.trim() : mode === 'search' ? !!query.trim() : !!batchUrls.trim());
 
+  /* ──────────────────────────────────────────────────────────────────
+     Render
+  ────────────────────────────────────────────────────────────────── */
   return (
     <AdminPage>
       <AdminPageHeader
         eyebrow="Soluciones Fabrick · IA"
         title="ScrapeGraph IA"
-        description="Extrae datos estructurados de cualquier web usando Playwright + LLM. Inspirado en ScrapeGraphAI."
+        description="Extrae datos estructurados de cualquier web con Playwright en tiempo real + LLM. Vista previa en vivo."
         icon={Cpu}
         actions={
           <a
@@ -439,13 +787,14 @@ export default function ScrapeGraphPage() {
             className="inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-1.5 text-xs font-bold text-zinc-300 hover:bg-white/5"
           >
             <Brain className="h-3.5 w-3.5" />
-            Ver ScrapeGraphAI
+            ScrapeGraphAI
             <ExternalLink className="h-3 w-3" />
           </a>
         }
       />
 
       <AdminMotion>
+        {/* Error banner */}
         {error && (
           <div className="mb-4 flex items-start gap-3 rounded-2xl border border-red-500/20 bg-red-500/5 px-4 py-3">
             <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
@@ -456,9 +805,10 @@ export default function ScrapeGraphPage() {
           </div>
         )}
 
-        <div className="grid gap-5 lg:grid-cols-[1fr_380px]">
+        {/* Main grid: left form + right live panel */}
+        <div className="grid gap-5 lg:grid-cols-[400px_1fr]">
 
-          {/* ── Left: configurator + result ─────────────────────────────── */}
+          {/* ── LEFT PANEL: Form ───────────────────────────────────── */}
           <div className="flex flex-col gap-4">
             <AdminCard>
               {/* Mode tabs */}
@@ -468,13 +818,13 @@ export default function ScrapeGraphPage() {
                     key={tab.id}
                     type="button"
                     onClick={() => { setMode(tab.id); setResult(null); setError(null); }}
-                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-bold transition ${
+                    className={`flex flex-1 items-center justify-center gap-2 rounded-xl px-2 py-2 text-xs font-bold transition ${
                       mode === tab.id
                         ? 'bg-yellow-400/15 text-yellow-400 border border-yellow-400/20'
                         : 'text-zinc-500 hover:text-zinc-300 hover:bg-white/5'
                     }`}
                   >
-                    <tab.icon className="h-4 w-4" />
+                    <tab.icon className="h-3.5 w-3.5" />
                     <span className="hidden sm:inline">{tab.label}</span>
                     <span className="sm:hidden">{tab.id}</span>
                   </button>
@@ -509,14 +859,15 @@ export default function ScrapeGraphPage() {
                   </div>
                   <div>
                     <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-500">
-                      Schema JSON <span className="text-zinc-700 normal-case font-normal">(opcional)</span>
+                      Schema JSON{' '}
+                      <span className="font-normal normal-case text-zinc-700">(opcional)</span>
                     </label>
                     <textarea
                       value={schema}
                       onChange={(e) => setSchema(e.target.value)}
                       rows={2}
                       placeholder={'{"name": "string", "price": "number", "category": "string"}'}
-                      className="w-full resize-none rounded-2xl border border-white/10 bg-black/50 px-3 py-2 text-[11px] font-mono text-zinc-300 placeholder-zinc-700 outline-none focus:border-yellow-400/40"
+                      className="w-full resize-none rounded-2xl border border-white/10 bg-black/50 px-3 py-2 font-mono text-[11px] text-zinc-300 placeholder-zinc-700 outline-none focus:border-yellow-400/40"
                     />
                   </div>
                 </div>
@@ -567,13 +918,16 @@ export default function ScrapeGraphPage() {
               {mode === 'batch' && (
                 <div className="space-y-4">
                   <div>
-                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-500">URLs <span className="text-zinc-600 normal-case font-normal">(una por línea)</span></label>
+                    <label className="mb-1.5 block text-xs font-bold uppercase tracking-wider text-zinc-500">
+                      URLs{' '}
+                      <span className="font-normal normal-case text-zinc-600">(una por línea)</span>
+                    </label>
                     <textarea
                       value={batchUrls}
                       onChange={(e) => setBatchUrls(e.target.value)}
                       rows={5}
                       placeholder={'https://www.easy.cl\nhttps://www.sodimac.cl\nhttps://www.leroymerlin.cl'}
-                      className="w-full resize-none rounded-2xl border border-white/10 bg-black/50 px-4 py-3 text-sm text-white placeholder-zinc-700 outline-none focus:border-yellow-400/40 font-mono"
+                      className="w-full resize-none rounded-2xl border border-white/10 bg-black/50 px-4 py-3 font-mono text-sm text-white placeholder-zinc-700 outline-none focus:border-yellow-400/40"
                     />
                     <p className="mt-1 text-[10px] text-zinc-600">
                       {batchUrls.split('\n').filter((s) => s.trim()).length} URL(s) detectada(s)
@@ -592,6 +946,17 @@ export default function ScrapeGraphPage() {
                 </div>
               )}
 
+              {/* Provider selector */}
+              <div className="mt-4 border-t border-white/10 pt-4">
+                <ProviderSelector
+                  providers={availableProviders}
+                  selectedProvider={selectedProvider}
+                  selectedModel={selectedModel}
+                  onProviderChange={setSelectedProvider}
+                  onModelChange={setSelectedModel}
+                />
+              </div>
+
               {/* Example prompts */}
               <div className="mt-4 border-t border-white/10 pt-4">
                 <p className="mb-2 text-[10px] font-bold uppercase tracking-widest text-zinc-600">Ejemplos rápidos</p>
@@ -601,7 +966,7 @@ export default function ScrapeGraphPage() {
                       key={i}
                       type="button"
                       onClick={() => applyExample(ex)}
-                      className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] text-zinc-500 hover:border-yellow-400/30 hover:text-zinc-300 transition"
+                      className="rounded-full border border-white/10 px-2.5 py-1 text-[10px] text-zinc-500 transition hover:border-yellow-400/30 hover:text-zinc-300"
                     >
                       {ex.label}
                     </button>
@@ -615,9 +980,9 @@ export default function ScrapeGraphPage() {
                   type="button"
                   onClick={() => void execute()}
                   disabled={!canExecute}
-                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 py-3 font-black text-black disabled:opacity-40 hover:bg-yellow-300 transition"
+                  className="flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 py-3 font-black text-black transition hover:bg-yellow-300 disabled:opacity-40"
                 >
-                  {loading ? (
+                  {running ? (
                     <>
                       <Loader2 className="h-5 w-5 animate-spin" />
                       Procesando…
@@ -629,73 +994,70 @@ export default function ScrapeGraphPage() {
                     </>
                   )}
                 </button>
-                <p className="text-center text-[10px] text-zinc-700">
-                  Usando credenciales de{' '}
-                  <a href="/admin/integraciones" className="text-yellow-400/70 hover:text-yellow-400 underline-offset-2 hover:underline">Centro de Integraciones</a>
-                  {' '}·{' '}
-                  <a href="/admin/ia-config" className="text-yellow-400/70 hover:text-yellow-400 underline-offset-2 hover:underline">Cambiar proveedor →</a>
-                </p>
+                <div className="flex items-center justify-center gap-2 text-[10px] text-zinc-700">
+                  <Zap className="h-3 w-3 text-yellow-400/50" />
+                  <span>
+                    Playwright + IA ·{' '}
+                    <a href="/admin/integraciones" className="text-yellow-400/70 underline-offset-2 hover:text-yellow-400 hover:underline">
+                      Integraciones
+                    </a>
+                  </span>
+                </div>
               </div>
             </AdminCard>
 
-            {/* Progress */}
-            {loading && progress && (
-              <AdminCard>
-                <div className="flex items-center gap-3">
-                  <Loader2 className="h-4 w-4 animate-spin text-yellow-400 shrink-0" />
-                  <div>
-                    <p className="text-sm font-bold text-white">{progress}</p>
-                    <p className="text-xs text-zinc-500">Esto puede tomar 20-60 segundos…</p>
-                  </div>
+            {/* How-to hint card */}
+            <AdminCard>
+              <div className="flex items-center gap-2 mb-3">
+                <Sparkles className="h-4 w-4 text-yellow-400" />
+                <span className="text-sm font-black text-white">Cómo funciona</span>
+              </div>
+              <div className="space-y-2 text-[11px] text-zinc-500 leading-relaxed">
+                <div className="flex items-start gap-2">
+                  <Bot className="h-3.5 w-3.5 mt-0.5 shrink-0 text-yellow-400/60" />
+                  <span><strong className="text-zinc-400">Smart:</strong> Abre la URL con Playwright y extrae datos con IA</span>
                 </div>
-              </AdminCard>
-            )}
-
-            {/* Result */}
-            {result && !loading && (
-              <AdminCard>
-                <div className="mb-4 flex flex-wrap items-center gap-2">
-                  <div className="flex items-center gap-2">
-                    <CheckCircle className="h-4 w-4 text-emerald-400" />
-                    <span className="font-black text-white">Resultado</span>
-                  </div>
-                  <span className="rounded-full bg-yellow-400/15 px-2 py-0.5 text-[10px] font-bold text-yellow-400">{result.mode}</span>
-                  {result.provider && (
-                    <span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${
-                      result.provider === 'openrouter' ? 'bg-purple-500/20 text-purple-300' :
-                      result.provider === 'groq' ? 'bg-rose-500/20 text-rose-300' :
-                      result.provider === 'openai' ? 'bg-green-500/20 text-green-300' :
-                      result.provider === 'gemini' ? 'bg-blue-500/20 text-blue-300' :
-                      result.provider === 'grok' ? 'bg-violet-500/20 text-violet-300' :
-                      'bg-amber-500/20 text-amber-300'
-                    }`}>{result.provider}</span>
-                  )}
-                  {result.model && (
-                    <span className="rounded-full bg-zinc-800 px-2 py-0.5 text-[10px] text-zinc-400">{result.model}</span>
-                  )}
-                  {result.duration_ms > 0 && (
-                    <span className="flex items-center gap-1 text-[10px] text-zinc-600">
-                      <Clock className="h-3 w-3" />
-                      {(result.duration_ms / 1000).toFixed(1)}s
-                    </span>
-                  )}
+                <div className="flex items-start gap-2">
+                  <Search className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-400/60" />
+                  <span><strong className="text-zinc-400">Search:</strong> Busca en Google/DuckDuckGo y analiza los primeros N resultados</span>
                 </div>
-                <JsonViewer data={result.result} />
-              </AdminCard>
-            )}
+                <div className="flex items-start gap-2">
+                  <Layers className="h-3.5 w-3.5 mt-0.5 shrink-0 text-purple-400/60" />
+                  <span><strong className="text-zinc-400">Batch:</strong> Procesa múltiples URLs con el mismo prompt</span>
+                </div>
+                <div className="flex items-start gap-2">
+                  <Code2 className="h-3.5 w-3.5 mt-0.5 shrink-0 text-emerald-400/60" />
+                  <span>Los screenshots en vivo muestran el navegador mientras trabaja</span>
+                </div>
+              </div>
+            </AdminCard>
           </div>
 
-          {/* ── Right: history + how-to ──────────────────────────────────── */}
-          <div className="space-y-4">
+          {/* ── RIGHT PANEL: Live preview + Steps + Results + History ── */}
+          <div className="flex flex-col gap-4">
+            {/* Live browser preview */}
+            <LivePreview
+              screenshot={screenshot}
+              currentUrl={currentUrl}
+              status={status}
+            />
+
+            {/* Step log */}
+            {steps.length > 0 && <StepLog steps={steps} />}
+
+            {/* Results panel */}
+            {result !== null && <ResultsPanel result={result} />}
+
+            {/* History panel (collapsible) */}
             <HistoryPanel
               runs={runs}
-              loading={runsLoading}
-              onRefresh={() => void loadRuns()}
+              loading={historyLoading}
+              open={historyOpen}
+              onToggle={() => setHistoryOpen((v) => !v)}
+              onRefresh={() => void loadHistory()}
               onLoad={loadFromHistory}
               onDelete={(id) => void deleteRun(id)}
-              onClearAll={() => void clearAll()}
             />
-            <HowToCard />
           </div>
         </div>
       </AdminMotion>

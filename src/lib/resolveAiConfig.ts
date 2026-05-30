@@ -129,6 +129,10 @@ export async function resolveSerperKey(): Promise<string | undefined> {
   }
 }
 
+/**
+ * Resolves AI config for a specific provider + model combo.
+ * Returns null if provider is not configured.
+ */
 export async function resolveProviderConfig(provider: AiProvider, modelo: string): Promise<AiConfig | null> {
   try {
     const creds = await getProviderCreds(provider);

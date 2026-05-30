@@ -127,6 +127,7 @@ const navSections: NavSection[] = [
     title: 'Marketing & IA',
     links: [
       { href: '/admin/ia-config', label: 'Configuración IA', description: 'API key Anthropic / Groq y modelo activo', icon: Bot, highlight: true },
+      { href: '/admin/modelos-ia', label: 'Prueba de IAs gratuitas', description: 'Diagnóstico en vivo — testea qué modelos realmente funcionan', icon: FlaskConical, highlight: true },
       { href: '/admin/agente', label: 'Agente IA · Playwright', description: 'Navega internet, busca precios y analiza competencia', icon: Sparkles, highlight: true },
       { href: '/admin/ai-developer', label: 'Fabrick AI Developer', description: 'Chat real y herramientas Git', icon: Sparkles, highlight: true },
       { href: '/admin/asistente-ia', label: 'Asistente IA', description: 'OpenRouter y análisis', icon: Sparkles, highlight: true },

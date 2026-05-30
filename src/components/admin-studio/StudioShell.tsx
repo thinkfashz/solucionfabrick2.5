@@ -76,6 +76,7 @@ const PATH_LABELS: Record<string, string> = {
   '/admin/scrapegraph': 'ScrapeGraph IA',
   '/admin/agente': 'Agente IA · Playwright',
   '/admin/ia-config': 'Configuración IA',
+  '/admin/modelos-ia': 'Prueba de IAs gratuitas',
   '/admin/perfil': 'Perfil administrador',
   '/admin/sesiones': 'Sesiones y dispositivos',
 };

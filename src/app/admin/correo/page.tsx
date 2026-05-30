@@ -7,6 +7,7 @@ import {
   CheckCheck,
   CheckCircle2,
   Clock,
+  Download,
   ExternalLink,
   Eye,
   Inbox,
@@ -170,6 +171,12 @@ const AI_PRESETS = [
   { label: 'Minimalista', prompt: 'Hazlo minimalista: fondo blanco, texto negro, sin imágenes, solo tipografía y espaciado.' },
 ];
 
+function parseModelValue(val: string): { provider: string; modelo: string } {
+  if (val === 'auto') return { provider: 'auto', modelo: '' };
+  const colon = val.indexOf(':');
+  return { provider: val.slice(0, colon), modelo: val.slice(colon + 1) };
+}
+
 function RecipientTag({ email, onRemove }: { email: string; onRemove: () => void }) {
   return (
     <span className="flex items-center gap-1 rounded-full border border-white/[0.10] bg-zinc-800 pl-2.5 pr-1.5 py-1 text-xs text-zinc-200">
@@ -235,6 +242,8 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '', fr
   const [aiLoading, setAiLoading] = useState(false);
   const [notice, setNotice] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null);
   const [instruccion, setInstruccion] = useState('');
+  const [selectedModel, setSelectedModel] = useState('auto');
+  const [fallbackNotice, setFallbackNotice] = useState<{ provider: string; modelo: string } | null>(null);
   const originalRef = useRef(body);
 
   const handleSend = useCallback(async () => {
@@ -260,21 +269,25 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '', fr
   }, [toTags, toInput, ccInput, bccInput, subject, body, onSent, onClose]);
 
   const handleAi = useCallback(async (presetPrompt?: string) => {
-    const prompt = presetPrompt ?? instruccion;
-    if (!prompt.trim()) { setNotice({ type: 'err', msg: 'Escribe una instrucción' }); return; }
-    setAiLoading(true); setNotice(null);
+    const promptText = presetPrompt ?? instruccion;
+    if (!promptText.trim()) { setNotice({ type: 'err', msg: 'Escribe una instrucción' }); return; }
+    const { provider: selProvider, modelo: selModelo } = parseModelValue(selectedModel);
+    setAiLoading(true); setNotice(null); setFallbackNotice(null);
     try {
       const r = await fetch('/api/admin/correo/ai-style', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, currentHtml: body }),
+        body: JSON.stringify({ instruccion: promptText, html: body, provider: selProvider, modelo: selModelo }),
       });
-      const data = await r.json() as { ok: boolean; html?: string; error?: string };
+      const data = await r.json() as { ok: boolean; html?: string; error?: string; provider?: string; modelo?: string; usedFallback?: boolean };
       if (!data.ok || !data.html) { setNotice({ type: 'err', msg: data.error ?? 'Sin respuesta de IA' }); return; }
       originalRef.current = body;
       setBody(data.html);
+      if (data.usedFallback && data.provider && data.modelo) {
+        setFallbackNotice({ provider: data.provider, modelo: data.modelo });
+      }
     } finally { setAiLoading(false); }
-  }, [instruccion, body]);
+  }, [instruccion, body, selectedModel]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => { if (e.key === 'Escape') onClose(); };
@@ -395,6 +408,34 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '', fr
                   </button>
                 )}
               </div>
+              <select
+                value={selectedModel}
+                onChange={(e) => setSelectedModel(e.target.value)}
+                className="bg-zinc-900 border border-white/[0.08] text-xs text-zinc-300 rounded-xl px-2.5 py-1.5 focus:outline-none focus:border-amber-500/40 w-full"
+              >
+                <option value="auto">Auto · proveedor configurado</option>
+                <optgroup label="Gratis">
+                  <option value="openrouter:meta-llama/llama-3.3-70b-instruct:free">Llama 3.3 70B · OpenRouter</option>
+                  <option value="openrouter:google/gemma-3-27b-it:free">Gemma 3 27B · OpenRouter</option>
+                  <option value="openrouter:deepseek/deepseek-r1:free">DeepSeek R1 · OpenRouter</option>
+                  <option value="groq:llama-3.3-70b-versatile">Llama 3.3 70B · Groq</option>
+                  <option value="groq:llama3-8b-8192">Llama 3 8B · Groq</option>
+                  <option value="groq:gemma2-9b-it">Gemma 2 9B · Groq</option>
+                </optgroup>
+                <optgroup label="De pago">
+                  <option value="anthropic:claude-haiku-4-5-20251001">Claude Haiku · Anthropic</option>
+                  <option value="anthropic:claude-sonnet-4-6">Claude Sonnet · Anthropic</option>
+                  <option value="openai:gpt-4o-mini">GPT-4o mini · OpenAI</option>
+                  <option value="openai:gpt-4o">GPT-4o · OpenAI</option>
+                  <option value="gemini:gemini-2.0-flash-exp">Gemini 2.0 Flash · Google</option>
+                  <option value="grok:grok-2-1212">Grok-2 · xAI</option>
+                </optgroup>
+              </select>
+              {fallbackNotice && (
+                <p className="text-[10px] text-amber-400/80 bg-amber-500/[0.06] border border-amber-500/20 rounded-lg px-2.5 py-1.5">
+                  Usando {fallbackNotice.provider} · {fallbackNotice.modelo} (fallback automático)
+                </p>
+              )}
               <div className="flex gap-2">
                 <input value={instruccion} onChange={(e) => setInstruccion(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') void handleAi(); }}
@@ -795,6 +836,8 @@ export default function CorreoPage() {
   const [selected, setSelected] = useState<EmailItem | null>(null);
   const [compose, setCompose]   = useState<{ to?: string; subject?: string } | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+  const [syncing, setSyncing]   = useState(false);
+  const [syncNotice, setSyncNotice] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null);
 
   // ── Fetch DB inbox ────────────────────────────────────────────────────────
 
@@ -976,6 +1019,31 @@ export default function CorreoPage() {
   const handleReply = useCallback((to: string, subject: string) => { setCompose({ to, subject }); }, []);
   const handleSent = useCallback(() => { void fetchSent(); }, [fetchSent]);
 
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
+    setSyncNotice(null);
+    try {
+      const r = await fetch('/api/admin/correo/resend-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 100 }),
+      });
+      const data = await r.json() as { ok: boolean; message?: string; synced?: number; error?: string };
+      if (data.ok) {
+        setSyncNotice({ type: 'ok', msg: data.message ?? 'Sincronizado correctamente' });
+        void fetchSent();
+        if (folder === 'resend') void fetchResend();
+      } else {
+        setSyncNotice({ type: 'err', msg: data.error ?? 'Error al sincronizar' });
+      }
+    } catch (e) {
+      setSyncNotice({ type: 'err', msg: (e as Error).message });
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncNotice(null), 5000);
+    }
+  }, [fetchSent, fetchResend, folder]);
+
   const isResendFolder = folder === 'resend';
   const activeDetail = isResendFolder ? resendSelected : selected;
 
@@ -1011,6 +1079,20 @@ export default function CorreoPage() {
         <div className="ml-auto flex items-center gap-2">
           {unread > 0 && (
             <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white tabular-nums">{unread}</span>
+          )}
+          {/* Sync Resend → DB */}
+          {resendConfigured && (
+            <button
+              onClick={() => void handleSync()}
+              disabled={syncing}
+              title="Importar correos de Resend a la base de datos"
+              className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] px-2.5 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-white/[0.05] disabled:opacity-40 transition-colors"
+            >
+              {syncing
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Download className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{syncing ? 'Importando…' : 'Importar Resend'}</span>
+            </button>
           )}
           <button
             onClick={() => {
@@ -1059,6 +1141,23 @@ export default function CorreoPage() {
               {i < arr.length - 1 && <span className="ml-3 h-3.5 w-px bg-white/[0.08]" />}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── Sync notice ── */}
+      {syncNotice && (
+        <div className={`shrink-0 flex items-center gap-2.5 border-b px-4 py-2 text-xs transition-all ${
+          syncNotice.type === 'ok'
+            ? 'border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-300'
+            : 'border-red-500/20 bg-red-500/[0.06] text-red-300'
+        }`}>
+          {syncNotice.type === 'ok'
+            ? <Download className="h-3.5 w-3.5 shrink-0" />
+            : <AlertCircle className="h-3.5 w-3.5 shrink-0" />}
+          {syncNotice.msg}
+          <button onClick={() => setSyncNotice(null)} className="ml-auto text-current opacity-50 hover:opacity-100 transition-opacity">
+            <X className="h-3 w-3" />
+          </button>
         </div>
       )}
 
@@ -1159,14 +1258,29 @@ export default function CorreoPage() {
                 </div>
               ) :
               filteredResend.length === 0 ? <EmptyState folder="resend" /> :
-              filteredResend.map((email) => (
-                <ResendRow
-                  key={email.id}
-                  item={email}
-                  selected={resendSelected?.id === email.id}
-                  onClick={() => void handleSelectResend(email)}
-                />
-              ))
+              <>
+                {/* Banner: save to DB */}
+                <div className="flex items-center gap-2 border-b border-white/[0.04] bg-zinc-900/40 px-4 py-2">
+                  <Zap className="h-3 w-3 text-amber-500/60 shrink-0" />
+                  <span className="text-[10px] text-zinc-600 flex-1">Tiempo real · no guardado en BD</span>
+                  <button
+                    onClick={() => void handleSync()}
+                    disabled={syncing}
+                    className="flex items-center gap-1 rounded-lg border border-white/[0.08] px-2.5 py-1 text-[10px] font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.05] disabled:opacity-40 transition-colors"
+                  >
+                    {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                    Guardar en BD
+                  </button>
+                </div>
+                {filteredResend.map((email) => (
+                  <ResendRow
+                    key={email.id}
+                    item={email}
+                    selected={resendSelected?.id === email.id}
+                    onClick={() => void handleSelectResend(email)}
+                  />
+                ))}
+              </>
             ) : (
               // ── DB list ──
               loading ? <Skeleton /> :

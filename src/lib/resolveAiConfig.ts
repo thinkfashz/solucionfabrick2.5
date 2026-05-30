@@ -128,3 +128,20 @@ export async function resolveSerperKey(): Promise<string | undefined> {
     return process.env.SERPER_API_KEY;
   }
 }
+
+export async function resolveProviderConfig(provider: AiProvider, modelo: string): Promise<AiConfig | null> {
+  try {
+    const creds = await getProviderCreds(provider);
+    const key = creds.api_key?.trim() ?? '';
+    if (!key) return null;
+    return {
+      provider,
+      apiKey: key,
+      modelo: modelo || creds.modelo || DEFAULT_MODELS[provider] || '',
+      siteUrl: creds.site_url,
+      appName: creds.app_name,
+    };
+  } catch {
+    return null;
+  }
+}

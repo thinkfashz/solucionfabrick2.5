@@ -7,7 +7,7 @@ import {
   FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut,
   Mail, Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck,
   ShoppingCart, Sparkles, Star, Stethoscope, Store, Tag, Terminal,
-  TrendingDown, Truck, Telescope, Users, Video, Wallet, X, Plus,
+  TrendingDown, Truck, Telescope, User, Users, Video, Wallet, X, Plus,
   MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
   ChevronRight,
 } from 'lucide-react';
@@ -25,6 +25,14 @@ type NavLink = {
 };
 
 const navSections: { title: string; links: NavLink[] }[] = [
+  {
+    title: 'Perfil & Cuenta',
+    links: [
+      { href: '/admin/perfil', label: 'Perfil administrador', description: 'Foto, bio, contacto, redes y presentación', icon: User, highlight: true },
+      { href: '/admin/sesiones', label: 'Sesiones y dispositivos', description: 'IPs, dispositivos y auditoría', icon: Activity, highlight: true },
+      { href: '/admin/seguridad', label: 'Seguridad · Passkeys', description: 'Acceso con huella digital o Face ID', icon: KeyRound, highlight: true },
+    ],
+  },
   {
     title: 'Visión general',
     links: [

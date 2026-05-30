@@ -43,10 +43,8 @@ async function saveToDb(opts: {
   resendId: string | null;
   sentBy: string;
 }): Promise<void> {
-  // Ensure tipo column exists (idempotent)
   await rawsql(`ALTER TABLE presupuesto_correos ADD COLUMN IF NOT EXISTS tipo TEXT DEFAULT 'presupuesto';`);
   await rawsql(`ALTER TABLE presupuesto_correos ADD COLUMN IF NOT EXISTS enviado_por TEXT;`);
-
   await rawsql(`
     INSERT INTO presupuesto_correos
       (presupuesto_id, email_destinatario, asunto, resend_id, estado, tipo, enviado_por)
@@ -55,18 +53,28 @@ async function saveToDb(opts: {
   `);
 }
 
+function parseRecipients(v: unknown): string[] {
+  if (typeof v === 'string') return v.split(',').map((s) => s.trim()).filter((s) => s.includes('@'));
+  if (Array.isArray(v)) return (v as unknown[]).flatMap((s) => (typeof s === 'string' ? [s.trim()] : [])).filter((s) => s.includes('@'));
+  return [];
+}
+
 export async function POST(request: NextRequest) {
   const auth = await requireAdminPermission(request, { resource: 'integrations', action: 'test' });
   if (!auth.ok) return auth.response;
 
-  let to = '';
+  let toList: string[] = [];
+  let cc: string[] = [];
+  let bcc: string[] = [];
   let subject = '';
   let html = '';
   let from: string | undefined;
 
   try {
     const body = (await request.json()) as Record<string, unknown>;
-    if (typeof body.to === 'string') to = body.to.trim();
+    toList = parseRecipients(body.to);
+    cc = parseRecipients(body.cc);
+    bcc = parseRecipients(body.bcc);
     if (typeof body.subject === 'string') subject = body.subject.trim();
     if (typeof body.html === 'string') html = body.html;
     if (typeof body.from === 'string' && body.from.trim()) from = body.from.trim();
@@ -74,7 +82,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ ok: false, error: 'JSON inválido' }, { status: 400 });
   }
 
-  if (!to || !to.includes('@')) return NextResponse.json({ ok: false, error: 'Destinatario inválido' }, { status: 400 });
+  if (toList.length === 0) return NextResponse.json({ ok: false, error: 'Agrega al menos un destinatario' }, { status: 400 });
   if (!subject) return NextResponse.json({ ok: false, error: 'Asunto requerido' }, { status: 400 });
   if (!html) return NextResponse.json({ ok: false, error: 'Contenido HTML requerido' }, { status: 400 });
 
@@ -84,18 +92,22 @@ export async function POST(request: NextRequest) {
   }
 
   try {
+    const resendBody: Record<string, unknown> = {
+      from: from ?? creds.from ?? DEFAULT_FROM,
+      to: toList,
+      subject,
+      html,
+    };
+    if (cc.length > 0) resendBody.cc = cc;
+    if (bcc.length > 0) resendBody.bcc = bcc;
+
     const res = await fetch('https://api.resend.com/emails', {
       method: 'POST',
       headers: {
         Authorization: `Bearer ${creds.apiKey}`,
         'Content-Type': 'application/json',
       },
-      body: JSON.stringify({
-        from: from ?? creds.from ?? DEFAULT_FROM,
-        to: [to],
-        subject,
-        html,
-      }),
+      body: JSON.stringify(resendBody),
       signal: AbortSignal.timeout(20_000),
     });
 
@@ -107,10 +119,12 @@ export async function POST(request: NextRequest) {
     const data = (await res.json().catch(() => ({}))) as { id?: string };
     const resendId = data.id ?? null;
 
-    // Persist to DB (best-effort, don't fail the send if DB write fails)
-    void saveToDb({ to, subject, resendId, sentBy: auth.session.email ?? 'admin' });
+    // Persist to DB — one row per primary recipient (best-effort)
+    for (const addr of toList) {
+      void saveToDb({ to: addr, subject, resendId, sentBy: auth.session.email ?? 'admin' });
+    }
 
-    return NextResponse.json({ ok: true, id: resendId });
+    return NextResponse.json({ ok: true, id: resendId, to: toList });
   } catch (err) {
     return NextResponse.json({ ok: false, error: (err as Error).message }, { status: 502 });
   }

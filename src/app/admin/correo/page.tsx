@@ -244,7 +244,17 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '', fr
   const [instruccion, setInstruccion] = useState('');
   const [selectedModel, setSelectedModel] = useState('auto');
   const [fallbackNotice, setFallbackNotice] = useState<{ provider: string; modelo: string } | null>(null);
+  const [aiProvider, setAiProvider] = useState<string | null>(null);
   const originalRef = useRef(body);
+
+  useEffect(() => {
+    fetch('/api/admin/ai/config')
+      .then(r => r.json())
+      .then((d: { ok: boolean; provider?: string; modelo?: string }) => {
+        if (d.ok && d.provider) setAiProvider(`${d.provider} · ${d.modelo}`);
+      })
+      .catch(() => {});
+  }, []);
 
   const handleSend = useCallback(async () => {
     const pendingTo = toInput.trim().includes('@') ? toInput.trim() : null;
@@ -393,6 +403,9 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '', fr
             <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 space-y-2">
               <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 flex items-center gap-1.5">
                 <Sparkles className="h-3 w-3 text-amber-500" /> Asistente IA
+                {aiProvider && (
+                  <span className="ml-auto font-normal normal-case tracking-normal text-zinc-700">{aiProvider}</span>
+                )}
               </p>
               <div className="flex flex-wrap gap-1.5">
                 {AI_PRESETS.map((p) => (
@@ -810,6 +823,15 @@ function Skeleton() {
   );
 }
 
+// ─── Bottom tab definition ────────────────────────────────────────────────────
+
+const MOBILE_TABS: { folder: Folder; label: string; icon: React.ComponentType<{ className?: string }> }[] = [
+  { folder: 'all',    label: 'Todos',     icon: MailOpen },
+  { folder: 'inbox',  label: 'Recibidos', icon: Inbox },
+  { folder: 'sent',   label: 'Enviados',  icon: Send },
+  { folder: 'resend', label: 'Resend',    icon: Zap },
+];
+
 // ─── Main Page ────────────────────────────────────────────────────────────────
 
 export default function CorreoPage() {
@@ -838,6 +860,8 @@ export default function CorreoPage() {
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
   const [syncing, setSyncing]   = useState(false);
   const [syncNotice, setSyncNotice] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null);
+  const [resendBannerDismissed, setResendBannerDismissed] = useState(false);
+  const [resendSaveBannerCollapsed, setResendSaveBannerCollapsed] = useState(false);
 
   // ── Fetch DB inbox ────────────────────────────────────────────────────────
 
@@ -1049,11 +1073,19 @@ export default function CorreoPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
 
-  return (
-    <div className="flex h-screen flex-col overflow-hidden bg-[#09090b]">
+  // Stats items shared between mobile/desktop renders
+  const statsItems = emailStats ? [
+    { label: 'Enviados',  value: String(emailStats.enviado),              icon: Send,          color: 'text-zinc-400'   },
+    { label: 'Entrega',   value: `${emailStats.deliveryRate.toFixed(1)}%`, icon: CheckCircle2,  color: 'text-emerald-400' },
+    { label: 'Apertura',  value: `${emailStats.openRate.toFixed(1)}%`,     icon: Eye,           color: 'text-blue-400'    },
+    { label: 'Rebotes',   value: String(emailStats.rebotado),             icon: AlertCircle,   color: emailStats.bounceRate > 5 ? 'text-red-400' : 'text-zinc-600' },
+  ] : [];
 
-      {/* ── Top bar ── */}
-      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.06] bg-[#09090b]/95 backdrop-blur-md px-4">
+  return (
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#09090b]">
+
+      {/* ── Desktop Header (lg+) ── */}
+      <header className="hidden lg:flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.06] bg-[#09090b]/95 backdrop-blur-md px-4">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20">
             <MailOpen className="h-4 w-4 text-amber-400" />
@@ -1076,11 +1108,24 @@ export default function CorreoPage() {
           </div>
         )}
 
+        {/* Desktop stats strip */}
+        {emailStats && (
+          <div className="flex items-center gap-4 ml-2">
+            {statsItems.map(({ label, value, icon: Icon, color }, i, arr) => (
+              <div key={label} className="flex items-center gap-2 shrink-0">
+                <Icon className={`h-3.5 w-3.5 ${color} shrink-0`} />
+                <span className="text-sm font-bold text-white tabular-nums">{value}</span>
+                <span className="text-[11px] text-zinc-600">{label}</span>
+                {i < arr.length - 1 && <span className="ml-1 h-3.5 w-px bg-white/[0.08]" />}
+              </div>
+            ))}
+          </div>
+        )}
+
         <div className="ml-auto flex items-center gap-2">
           {unread > 0 && (
             <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white tabular-nums">{unread}</span>
           )}
-          {/* Sync Resend → DB */}
           {resendConfigured && (
             <button
               onClick={() => void handleSync()}
@@ -1091,7 +1136,7 @@ export default function CorreoPage() {
               {syncing
                 ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 : <Download className="h-3.5 w-3.5" />}
-              <span className="hidden sm:inline">{syncing ? 'Importando…' : 'Importar Resend'}</span>
+              <span>{syncing ? 'Importando…' : 'Importar Resend'}</span>
             </button>
           )}
           <button
@@ -1108,13 +1153,79 @@ export default function CorreoPage() {
           <button onClick={() => setCompose({})}
             className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-bold text-black hover:bg-amber-400 transition-colors">
             <MailPlus className="h-3.5 w-3.5" />
-            <span className="hidden sm:inline">Redactar</span>
+            Redactar
           </button>
         </div>
       </header>
 
+      {/* ── Mobile Header (below lg) ── */}
+      <header className="flex lg:hidden h-12 shrink-0 items-center gap-2 border-b border-white/[0.06] bg-[#09090b]/95 backdrop-blur-md px-3">
+        {mobileView === 'detail' && activeDetail ? (
+          /* Mobile detail sticky header */
+          <>
+            <button
+              onClick={() => setMobileView('list')}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0"
+            >
+              <ArrowLeft className="h-4 w-4" />
+            </button>
+            <p className="flex-1 truncate text-sm font-semibold text-white">
+              {'subject' in activeDetail ? activeDetail.subject : activeDetail.asunto}
+            </p>
+          </>
+        ) : (
+          /* Mobile list header */
+          <>
+            <div className="flex items-center gap-2 flex-1">
+              <div className="flex h-7 w-7 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20">
+                <MailOpen className="h-3.5 w-3.5 text-amber-400" />
+              </div>
+              <h1 className="text-sm font-bold text-white leading-none">Correo</h1>
+              {unread > 0 && (
+                <span className="rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold text-white tabular-nums leading-none">{unread}</span>
+              )}
+            </div>
+            <div className="flex items-center gap-1.5">
+              {resendConfigured && (
+                <button
+                  onClick={() => void handleSync()}
+                  disabled={syncing}
+                  title="Importar Resend"
+                  className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/[0.05] disabled:opacity-40 transition-colors"
+                >
+                  {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                </button>
+              )}
+              <button
+                onClick={() => {
+                  if (isResendFolder) void fetchResend();
+                  else refresh();
+                }}
+                disabled={loading || loadingResend}
+                className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/[0.05] disabled:opacity-40 transition-colors"
+              >
+                <RefreshCw className={`h-4 w-4 ${(loading || loadingResend) ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          </>
+        )}
+      </header>
+
+      {/* ── Mobile compact stats strip ── */}
+      {emailStats && mobileView === 'list' && (
+        <div className="flex lg:hidden gap-3 overflow-x-auto border-b border-white/[0.06] bg-[#18181b]/40 px-3 py-1.5 shrink-0">
+          {statsItems.map(({ label, value, icon: Icon, color }) => (
+            <div key={label} className="flex items-center gap-1 shrink-0">
+              <Icon className={`h-3 w-3 ${color} shrink-0`} />
+              <span className="text-[10px] font-bold text-white tabular-nums">{value}</span>
+              <span className="text-[10px] text-zinc-600">{label}</span>
+            </div>
+          ))}
+        </div>
+      )}
+
       {/* ── Resend not configured banner ── */}
-      {!loadingSent && !resendConfigured && (
+      {!loadingSent && !resendConfigured && !resendBannerDismissed && (
         <div className="shrink-0 flex items-center gap-3 border-b border-amber-500/20 bg-amber-500/[0.05] px-4 py-2.5">
           <AlertCircle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
           <p className="text-xs text-amber-300 flex-1">Resend no configurado. Agrega tu API key para enviar correos y ver el historial real.</p>
@@ -1122,25 +1233,13 @@ export default function CorreoPage() {
             className="shrink-0 rounded-lg border border-amber-500/25 px-3 py-1 text-[11px] font-semibold text-amber-400 hover:bg-amber-500/10 transition-colors">
             Configurar →
           </a>
-        </div>
-      )}
-
-      {/* ── Stats strip ── */}
-      {emailStats && (
-        <div className="shrink-0 flex gap-5 overflow-x-auto border-b border-white/[0.06] bg-[#18181b]/40 px-4 py-2.5">
-          {[
-            { label: 'Enviados',  value: String(emailStats.enviado),                     icon: Send,          color: 'text-zinc-400'   },
-            { label: 'Entrega',   value: `${emailStats.deliveryRate.toFixed(1)}%`,        icon: CheckCircle2,  color: 'text-emerald-400' },
-            { label: 'Apertura',  value: `${emailStats.openRate.toFixed(1)}%`,            icon: Eye,           color: 'text-blue-400'    },
-            { label: 'Rebotes',   value: String(emailStats.rebotado),                    icon: AlertCircle,   color: emailStats.bounceRate > 5 ? 'text-red-400' : 'text-zinc-600' },
-          ].map(({ label, value, icon: Icon, color }, i, arr) => (
-            <div key={label} className="flex items-center gap-2 shrink-0">
-              <Icon className={`h-3.5 w-3.5 ${color} shrink-0`} />
-              <span className="text-sm font-bold text-white tabular-nums">{value}</span>
-              <span className="text-[11px] text-zinc-600">{label}</span>
-              {i < arr.length - 1 && <span className="ml-3 h-3.5 w-px bg-white/[0.08]" />}
-            </div>
-          ))}
+          {/* Dismissible on mobile */}
+          <button
+            onClick={() => setResendBannerDismissed(true)}
+            className="lg:hidden shrink-0 rounded-lg p-1 text-amber-400/60 hover:text-amber-400 hover:bg-amber-500/10 transition-colors"
+          >
+            <X className="h-3.5 w-3.5" />
+          </button>
         </div>
       )}
 
@@ -1162,11 +1261,11 @@ export default function CorreoPage() {
       )}
 
       {/* ── 3-panel layout ── */}
-      <div className="flex flex-1 overflow-hidden">
+      <div className="flex flex-1 overflow-hidden min-h-0">
 
-        {/* ── Sidebar (folders) ── */}
-        <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} lg:flex w-full lg:w-48 shrink-0 flex-col border-r border-white/[0.06] bg-[#18181b]`}>
-          <nav className="flex-1 p-2 space-y-0.5">
+        {/* ── Sidebar (desktop only) ── */}
+        <div className="hidden lg:flex w-52 shrink-0 flex-col border-r border-white/[0.06] bg-[#18181b]">
+          <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
             {([
               { key: 'all',   label: 'Todos',     icon: MailOpen, count: enviados.length + recibidos.length, badge: 0 },
               { key: 'inbox', label: 'Recibidos', icon: Inbox,    count: recibidos.length, badge: unread },
@@ -1259,17 +1358,28 @@ export default function CorreoPage() {
               ) :
               filteredResend.length === 0 ? <EmptyState folder="resend" /> :
               <>
-                {/* Banner: save to DB */}
+                {/* Banner: save to BD — collapsible on mobile */}
                 <div className="flex items-center gap-2 border-b border-white/[0.04] bg-zinc-900/40 px-4 py-2">
                   <Zap className="h-3 w-3 text-amber-500/60 shrink-0" />
-                  <span className="text-[10px] text-zinc-600 flex-1">Tiempo real · no guardado en BD</span>
+                  {/* Desktop always shows full text */}
+                  <span className="hidden lg:inline text-[10px] text-zinc-600 flex-1">Tiempo real · no guardado en BD</span>
+                  {/* Mobile collapsed */}
+                  <span className="lg:hidden text-[10px] text-zinc-600 flex-1">
+                    {resendSaveBannerCollapsed ? 'Resend en vivo' : 'Tiempo real · no guardado en BD'}
+                  </span>
                   <button
                     onClick={() => void handleSync()}
                     disabled={syncing}
-                    className="flex items-center gap-1 rounded-lg border border-white/[0.08] px-2.5 py-1 text-[10px] font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.05] disabled:opacity-40 transition-colors"
+                    className="flex items-center gap-1 rounded-lg border border-white/[0.08] px-2.5 py-1 text-[10px] font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.05] disabled:opacity-40 transition-colors shrink-0"
                   >
                     {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                    Guardar en BD
+                    <span className={resendSaveBannerCollapsed ? 'hidden' : ''}>Guardar en BD</span>
+                  </button>
+                  <button
+                    onClick={() => setResendSaveBannerCollapsed((v) => !v)}
+                    className="lg:hidden text-zinc-700 hover:text-zinc-500 transition-colors"
+                  >
+                    <X className="h-3 w-3" />
                   </button>
                 </div>
                 {filteredResend.map((email) => (
@@ -1313,7 +1423,8 @@ export default function CorreoPage() {
               onMarkRead={handleMarkRead}
             />
           ) : (
-            <div className="flex flex-col items-center justify-center h-full gap-4">
+            /* Desktop-only empty state */
+            <div className="hidden lg:flex flex-col items-center justify-center h-full gap-4">
               <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
                 {isResendFolder
                   ? <Zap className="h-7 w-7 text-zinc-700" />
@@ -1329,6 +1440,49 @@ export default function CorreoPage() {
           )}
         </div>
       </div>
+
+      {/* ── Bottom tabs (mobile only) ── */}
+      <nav className="flex lg:hidden h-16 shrink-0 items-stretch border-t border-white/[0.06] bg-[#09090b]/95 backdrop-blur-md pb-safe">
+        {MOBILE_TABS.map(({ folder: tabFolder, label, icon: Icon }) => {
+          const isActive = folder === tabFolder;
+          const badge = tabFolder === 'inbox' ? unread : 0;
+          return (
+            <button
+              key={tabFolder}
+              onClick={() => {
+                setFolder(tabFolder);
+                setSelected(null);
+                setResendSelected(null);
+                setMobileView('list');
+              }}
+              className={`relative flex flex-1 flex-col items-center justify-center gap-0.5 transition-colors ${
+                isActive ? 'text-amber-400' : 'text-zinc-600 hover:text-zinc-400'
+              }`}
+            >
+              {/* Active indicator bar */}
+              {isActive && (
+                <span className="absolute top-0 left-1/2 -translate-x-1/2 h-0.5 w-8 rounded-full bg-amber-400" />
+              )}
+              <Icon className="h-5 w-5" />
+              <span className="text-[10px] leading-none">{label}</span>
+              {badge > 0 && (
+                <span className="absolute top-2 right-1/4 translate-x-1/2 flex h-4 min-w-4 items-center justify-center rounded-full bg-blue-500 px-1 text-[9px] font-bold text-white leading-none">
+                  {badge}
+                </span>
+              )}
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* ── Mobile FAB (Redactar) ── */}
+      <button
+        onClick={() => setCompose({})}
+        className="fixed bottom-20 right-4 z-30 flex h-14 w-14 items-center justify-center rounded-full bg-amber-500 shadow-lg shadow-amber-500/25 hover:bg-amber-400 active:scale-95 transition-all lg:hidden"
+        aria-label="Redactar correo"
+      >
+        <MailPlus className="h-6 w-6 text-black" />
+      </button>
 
       {/* Compose Modal */}
       {compose !== null && (

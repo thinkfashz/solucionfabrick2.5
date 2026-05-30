@@ -5,7 +5,8 @@
  */
 
 export type { AiConfig } from '@/lib/resolveAiConfig';
-export { resolveAiConfig, resolveSerperKey } from '@/lib/resolveAiConfig';
+export { resolveAiConfig, resolveSerperKey, resolveProviderConfig } from '@/lib/resolveAiConfig';
+export type { AiProvider } from '@/lib/resolveAiConfig';
 import type { AiConfig } from '@/lib/resolveAiConfig';
 
 const INSFORGE_URL =
@@ -152,12 +153,18 @@ function cleanText(raw: string): string {
   return raw.replace(/\s{3,}/g, '\n\n').replace(/\n{4,}/g, '\n\n').trim().slice(0, MAX_TEXT);
 }
 
-async function fetchPageText(url: string): Promise<string> {
+async function fetchPageText(
+  url: string,
+  onProgress?: (msg: string) => void,
+  onScreenshot?: (b64: string, url: string) => void,
+): Promise<string> {
+  onProgress?.(`Navegando a ${url}…`);
   const { chromium } = await import('@playwright/test');
   const browser = await chromium.launch({ headless: true, args: BROWSER_ARGS });
   try {
     const ctx = await browser.newContext({
       userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+      viewport: { width: 1280, height: 800 },
     });
     const page = await ctx.newPage();
     await page.route('**/*', (route) => {
@@ -169,6 +176,13 @@ async function fetchPageText(url: string): Promise<string> {
     });
     await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 });
     await page.waitForTimeout(700);
+    // Take viewport screenshot
+    if (onScreenshot) {
+      try {
+        const buf = await page.screenshot({ fullPage: false, type: 'jpeg', quality: 60 });
+        onScreenshot(buf.toString('base64'), page.url());
+      } catch { /* non-critical */ }
+    }
     const raw = await page.evaluate(() => {
       const rm = (sel: string) => document.querySelectorAll(sel).forEach((el) => el.remove());
       rm('script'); rm('style'); rm('nav'); rm('footer');
@@ -208,12 +222,12 @@ export async function smartScrape(params: {
   outputSchema?: string;
   aiConfig: AiConfig;
   onProgress?: (msg: string) => void;
+  onScreenshot?: (b64: string, url: string) => void;
 }): Promise<SmartScrapeResult> {
-  const { url, prompt, outputSchema, aiConfig, onProgress } = params;
+  const { url, prompt, outputSchema, aiConfig, onProgress, onScreenshot } = params;
   const t0 = Date.now();
 
-  onProgress?.(`Navegando a ${url}…`);
-  const rawText = await fetchPageText(url);
+  const rawText = await fetchPageText(url, onProgress, onScreenshot);
 
   onProgress?.('Extrayendo datos con IA…');
   const schemaHint = outputSchema
@@ -242,8 +256,9 @@ export async function searchAndScrape(params: {
   serperKey?: string;
   aiConfig: AiConfig;
   onProgress?: (msg: string) => void;
+  onScreenshot?: (b64: string, url: string) => void;
 }): Promise<SearchScrapeResult> {
-  const { query, prompt, maxPages = 3, serperKey, aiConfig, onProgress } = params;
+  const { query, prompt, maxPages = 3, serperKey, aiConfig, onProgress, onScreenshot } = params;
   const t0 = Date.now();
 
   onProgress?.(`Buscando: "${query}"…`);
@@ -270,7 +285,7 @@ export async function searchAndScrape(params: {
   if (!urls.length) {
     try {
       const ddgUrl = `https://html.duckduckgo.com/html/?q=${encodeURIComponent(query)}`;
-      const text = await fetchPageText(ddgUrl);
+      const text = await fetchPageText(ddgUrl, onProgress, onScreenshot);
       // Extract URLs from text
       const matches = text.matchAll(/https?:\/\/[^\s"'<>]+/g);
       for (const m of matches) {
@@ -293,7 +308,7 @@ export async function searchAndScrape(params: {
   for (const url of urls) {
     try {
       onProgress?.(`Scrapeando ${url}…`);
-      const r = await smartScrape({ url, prompt, aiConfig });
+      const r = await smartScrape({ url, prompt, aiConfig, onProgress, onScreenshot });
       results.push({ url, data: r.data });
     } catch {
       results.push({ url, data: null });
@@ -309,8 +324,9 @@ export async function batchScrape(params: {
   prompt: string;
   aiConfig: AiConfig;
   onProgress?: (msg: string) => void;
+  onScreenshot?: (b64: string, url: string) => void;
 }): Promise<BatchScrapeResult> {
-  const { urls, prompt, aiConfig, onProgress } = params;
+  const { urls, prompt, aiConfig, onProgress, onScreenshot } = params;
   const t0 = Date.now();
 
   const results: Array<{ url: string; data: unknown; error?: string }> = [];
@@ -318,7 +334,7 @@ export async function batchScrape(params: {
   for (const url of urls) {
     try {
       onProgress?.(`Scrapeando ${url}…`);
-      const r = await smartScrape({ url, prompt, aiConfig });
+      const r = await smartScrape({ url, prompt, aiConfig, onProgress, onScreenshot });
       results.push({ url, data: r.data });
     } catch (err) {
       results.push({ url, data: null, error: err instanceof Error ? err.message : String(err) });

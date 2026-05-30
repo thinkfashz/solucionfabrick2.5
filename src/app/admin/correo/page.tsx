@@ -7,6 +7,7 @@ import {
   CheckCheck,
   CheckCircle2,
   Clock,
+  Download,
   ExternalLink,
   Eye,
   Inbox,
@@ -795,6 +796,8 @@ export default function CorreoPage() {
   const [selected, setSelected] = useState<EmailItem | null>(null);
   const [compose, setCompose]   = useState<{ to?: string; subject?: string } | null>(null);
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
+  const [syncing, setSyncing]   = useState(false);
+  const [syncNotice, setSyncNotice] = useState<{ type: 'ok' | 'err'; msg: string } | null>(null);
 
   // ── Fetch DB inbox ────────────────────────────────────────────────────────
 
@@ -976,6 +979,31 @@ export default function CorreoPage() {
   const handleReply = useCallback((to: string, subject: string) => { setCompose({ to, subject }); }, []);
   const handleSent = useCallback(() => { void fetchSent(); }, [fetchSent]);
 
+  const handleSync = useCallback(async () => {
+    setSyncing(true);
+    setSyncNotice(null);
+    try {
+      const r = await fetch('/api/admin/correo/resend-sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 100 }),
+      });
+      const data = await r.json() as { ok: boolean; message?: string; synced?: number; error?: string };
+      if (data.ok) {
+        setSyncNotice({ type: 'ok', msg: data.message ?? 'Sincronizado correctamente' });
+        void fetchSent();
+        if (folder === 'resend') void fetchResend();
+      } else {
+        setSyncNotice({ type: 'err', msg: data.error ?? 'Error al sincronizar' });
+      }
+    } catch (e) {
+      setSyncNotice({ type: 'err', msg: (e as Error).message });
+    } finally {
+      setSyncing(false);
+      setTimeout(() => setSyncNotice(null), 5000);
+    }
+  }, [fetchSent, fetchResend, folder]);
+
   const isResendFolder = folder === 'resend';
   const activeDetail = isResendFolder ? resendSelected : selected;
 
@@ -1011,6 +1039,20 @@ export default function CorreoPage() {
         <div className="ml-auto flex items-center gap-2">
           {unread > 0 && (
             <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white tabular-nums">{unread}</span>
+          )}
+          {/* Sync Resend → DB */}
+          {resendConfigured && (
+            <button
+              onClick={() => void handleSync()}
+              disabled={syncing}
+              title="Importar correos de Resend a la base de datos"
+              className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] px-2.5 py-1.5 text-xs text-zinc-400 hover:text-white hover:bg-white/[0.05] disabled:opacity-40 transition-colors"
+            >
+              {syncing
+                ? <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                : <Download className="h-3.5 w-3.5" />}
+              <span className="hidden sm:inline">{syncing ? 'Importando…' : 'Importar Resend'}</span>
+            </button>
           )}
           <button
             onClick={() => {
@@ -1059,6 +1101,23 @@ export default function CorreoPage() {
               {i < arr.length - 1 && <span className="ml-3 h-3.5 w-px bg-white/[0.08]" />}
             </div>
           ))}
+        </div>
+      )}
+
+      {/* ── Sync notice ── */}
+      {syncNotice && (
+        <div className={`shrink-0 flex items-center gap-2.5 border-b px-4 py-2 text-xs transition-all ${
+          syncNotice.type === 'ok'
+            ? 'border-emerald-500/20 bg-emerald-500/[0.06] text-emerald-300'
+            : 'border-red-500/20 bg-red-500/[0.06] text-red-300'
+        }`}>
+          {syncNotice.type === 'ok'
+            ? <Download className="h-3.5 w-3.5 shrink-0" />
+            : <AlertCircle className="h-3.5 w-3.5 shrink-0" />}
+          {syncNotice.msg}
+          <button onClick={() => setSyncNotice(null)} className="ml-auto text-current opacity-50 hover:opacity-100 transition-opacity">
+            <X className="h-3 w-3" />
+          </button>
         </div>
       )}
 
@@ -1159,14 +1218,29 @@ export default function CorreoPage() {
                 </div>
               ) :
               filteredResend.length === 0 ? <EmptyState folder="resend" /> :
-              filteredResend.map((email) => (
-                <ResendRow
-                  key={email.id}
-                  item={email}
-                  selected={resendSelected?.id === email.id}
-                  onClick={() => void handleSelectResend(email)}
-                />
-              ))
+              <>
+                {/* Banner: save to DB */}
+                <div className="flex items-center gap-2 border-b border-white/[0.04] bg-zinc-900/40 px-4 py-2">
+                  <Zap className="h-3 w-3 text-amber-500/60 shrink-0" />
+                  <span className="text-[10px] text-zinc-600 flex-1">Tiempo real · no guardado en BD</span>
+                  <button
+                    onClick={() => void handleSync()}
+                    disabled={syncing}
+                    className="flex items-center gap-1 rounded-lg border border-white/[0.08] px-2.5 py-1 text-[10px] font-semibold text-zinc-400 hover:text-white hover:bg-white/[0.05] disabled:opacity-40 transition-colors"
+                  >
+                    {syncing ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                    Guardar en BD
+                  </button>
+                </div>
+                {filteredResend.map((email) => (
+                  <ResendRow
+                    key={email.id}
+                    item={email}
+                    selected={resendSelected?.id === email.id}
+                    onClick={() => void handleSelectResend(email)}
+                  />
+                ))}
+              </>
             ) : (
               // ── DB list ──
               loading ? <Skeleton /> :

@@ -96,5 +96,5 @@ export async function GET(request: NextRequest) {
   const openRate = pct(totals.abierto, totals.entregado + totals.abierto);
   const bounceRate = pct(totals.rebotado, totalSent);
 
-  return NextResponse.json({ ok: true, totals, recent, deliveryRate, openRate, bounceRate, key_configured });
+  return NextResponse.json({ ok: true, totals, recent, deliveryRate, openRate, bounceRate, key_configured, from_address: credsResult.from ?? null });
 }

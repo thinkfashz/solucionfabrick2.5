@@ -161,6 +161,7 @@ interface ComposeProps {
   onSent: () => void;
   initialTo?: string;
   initialSubject?: string;
+  fromAddress?: string | null;
 }
 
 const AI_PRESETS = [
@@ -169,8 +170,64 @@ const AI_PRESETS = [
   { label: 'Minimalista', prompt: 'Hazlo minimalista: fondo blanco, texto negro, sin imágenes, solo tipografía y espaciado.' },
 ];
 
-function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: ComposeProps) {
-  const [to, setTo] = useState(initialTo);
+function RecipientTag({ email, onRemove }: { email: string; onRemove: () => void }) {
+  return (
+    <span className="flex items-center gap-1 rounded-full border border-white/[0.10] bg-zinc-800 pl-2.5 pr-1.5 py-1 text-xs text-zinc-200">
+      {email}
+      <button type="button" onClick={onRemove} className="rounded-full p-0.5 text-zinc-500 hover:text-white hover:bg-white/[0.08] transition-colors">
+        <X className="h-2.5 w-2.5" />
+      </button>
+    </span>
+  );
+}
+
+function TagInput({
+  tags, inputVal, onAdd, onRemove, onInputChange, placeholder,
+}: {
+  tags: string[];
+  inputVal: string;
+  onAdd: (v: string) => void;
+  onRemove: (i: number) => void;
+  onInputChange: (v: string) => void;
+  placeholder?: string;
+}) {
+  function commit(val: string) {
+    const trimmed = val.trim().replace(/,+$/, '');
+    if (trimmed.includes('@')) onAdd(trimmed);
+    onInputChange('');
+  }
+
+  return (
+    <div className="flex flex-wrap items-center gap-1.5 rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 min-h-[40px] focus-within:border-amber-500/40 transition-colors">
+      {tags.map((t, i) => (
+        <RecipientTag key={t} email={t} onRemove={() => onRemove(i)} />
+      ))}
+      <input
+        type="text"
+        value={inputVal}
+        onChange={(e) => onInputChange(e.target.value)}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ',' || e.key === 'Tab') {
+            e.preventDefault();
+            commit(inputVal);
+          } else if (e.key === 'Backspace' && inputVal === '' && tags.length > 0) {
+            onRemove(tags.length - 1);
+          }
+        }}
+        onBlur={() => { if (inputVal.trim().includes('@')) commit(inputVal); }}
+        placeholder={tags.length === 0 ? placeholder : ''}
+        className="flex-1 min-w-[120px] bg-transparent text-sm text-white placeholder:text-zinc-600 focus:outline-none"
+      />
+    </div>
+  );
+}
+
+function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '', fromAddress }: ComposeProps) {
+  const [toTags, setToTags] = useState<string[]>(initialTo && initialTo.includes('@') ? [initialTo] : []);
+  const [toInput, setToInput] = useState(initialTo && !initialTo.includes('@') ? initialTo : '');
+  const [ccInput, setCcInput] = useState('');
+  const [bccInput, setBccInput] = useState('');
+  const [showCcBcc, setShowCcBcc] = useState(false);
   const [subject, setSubject] = useState(initialSubject);
   const [body, setBody] = useState('<p>Hola,</p><p><br/></p><p>Saludos,<br/>Soluciones Fabrick</p>');
   const [preview, setPreview] = useState(false);
@@ -181,21 +238,26 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: 
   const originalRef = useRef(body);
 
   const handleSend = useCallback(async () => {
-    if (!to.includes('@')) { setNotice({ type: 'err', msg: 'Destinatario inválido' }); return; }
+    const pendingTo = toInput.trim().includes('@') ? toInput.trim() : null;
+    const allTo = pendingTo ? [...toTags, pendingTo] : toTags;
+    if (allTo.length === 0) { setNotice({ type: 'err', msg: 'Agrega al menos un destinatario' }); return; }
     if (!subject.trim()) { setNotice({ type: 'err', msg: 'Asunto requerido' }); return; }
     setSending(true); setNotice(null);
     try {
+      const payload: Record<string, unknown> = { to: allTo, subject, html: body };
+      if (ccInput.trim()) payload.cc = ccInput;
+      if (bccInput.trim()) payload.bcc = bccInput;
       const r = await fetch('/api/admin/correo/send', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to, subject, html: body }),
+        body: JSON.stringify(payload),
       });
       const data = await r.json() as { ok: boolean; error?: string };
       if (!data.ok) { setNotice({ type: 'err', msg: data.error ?? 'Error al enviar' }); return; }
-      setNotice({ type: 'ok', msg: '¡Correo enviado!' });
-      setTimeout(() => { onSent(); onClose(); }, 1500);
+      setNotice({ type: 'ok', msg: `¡Correo enviado a ${allTo.length > 1 ? `${allTo.length} destinatarios` : allTo[0]}!` });
+      setTimeout(() => { onSent(); onClose(); }, 1800);
     } finally { setSending(false); }
-  }, [to, subject, body, onSent, onClose]);
+  }, [toTags, toInput, ccInput, bccInput, subject, body, onSent, onClose]);
 
   const handleAi = useCallback(async (presetPrompt?: string) => {
     const prompt = presetPrompt ?? instruccion;
@@ -226,7 +288,8 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: 
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
       <div className="flex w-full max-w-2xl flex-col rounded-t-2xl sm:rounded-2xl bg-[#18181b] border border-white/[0.08] shadow-2xl max-h-[95dvh] overflow-hidden">
-        <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
+        {/* Header */}
+        <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3.5">
           <h2 className="font-semibold text-white flex items-center gap-2 text-sm">
             <MailPlus className="h-4 w-4 text-amber-400" /> Nuevo correo
           </h2>
@@ -234,80 +297,160 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: 
             <X className="h-4 w-4" />
           </button>
         </div>
-        <div className="overflow-y-auto flex-1 p-5 space-y-4">
-          <div className="space-y-3">
-            <div>
-              <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-zinc-600">Para</label>
-              <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="destinatario@email.com"
-                className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none transition-colors" />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-zinc-600">Asunto</label>
-              <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Asunto del correo"
-                className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none transition-colors" />
-            </div>
-          </div>
-          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 flex items-center gap-1.5">
-              <Sparkles className="h-3 w-3 text-amber-500" /> Asistente IA
-            </p>
-            <div className="flex flex-wrap gap-1.5">
-              {AI_PRESETS.map((p) => (
-                <button key={p.label} onClick={() => void handleAi(p.prompt)} disabled={aiLoading}
-                  className="rounded-full border border-white/[0.08] bg-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:border-amber-500/30 hover:text-amber-300 transition-colors disabled:opacity-50">
-                  {p.label}
-                </button>
-              ))}
-              {body !== originalRef.current && (
-                <button onClick={() => setBody(originalRef.current)}
-                  className="rounded-full border border-white/[0.08] bg-zinc-800 px-3 py-1 text-xs text-zinc-500 hover:text-white transition-colors">
-                  ↩ Restaurar
-                </button>
-              )}
-            </div>
-            <div className="flex gap-2">
-              <input value={instruccion} onChange={(e) => setInstruccion(e.target.value)}
-                onKeyDown={(e) => { if (e.key === 'Enter') void handleAi(); }}
-                placeholder="Ej: hazlo más formal, agrega firma..."
-                className="flex-1 rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none transition-colors" />
-              <button onClick={() => void handleAi()} disabled={aiLoading || !instruccion.trim()}
-                className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-black hover:bg-amber-400 disabled:opacity-40 transition-colors">
-                {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Generar'}
-              </button>
-            </div>
-          </div>
-          <div>
-            <div className="mb-2 flex items-center gap-2">
-              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Cuerpo HTML</label>
-              <button onClick={() => setPreview(!preview)}
-                className="ml-auto rounded-full border border-white/[0.08] px-3 py-0.5 text-[10px] text-zinc-500 hover:text-white transition-colors">
-                {preview ? 'Editar' : 'Vista previa'}
-              </button>
-            </div>
-            {preview ? (
-              <div className="h-48 overflow-auto rounded-xl border border-white/[0.08] bg-white">
-                <iframe srcDoc={body} sandbox="" className="h-full w-full" title="Preview" />
-              </div>
-            ) : (
-              <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8}
-                className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-xs font-mono text-white focus:border-amber-500/40 focus:outline-none resize-none transition-colors" />
+
+        {/* Fields */}
+        <div className="overflow-y-auto flex-1 divide-y divide-white/[0.05]">
+
+          {/* From (read-only) */}
+          <div className="flex items-center gap-3 px-5 py-2.5">
+            <span className="w-8 shrink-0 text-[10px] font-bold uppercase tracking-widest text-zinc-700 text-right">De</span>
+            <span className="text-sm text-zinc-500 truncate">
+              {fromAddress ?? 'Soluciones Fabrick <onboarding@resend.dev>'}
+            </span>
+            {!fromAddress && (
+              <a href="/admin/integraciones" target="_blank" className="ml-auto shrink-0 text-[10px] text-amber-500/70 hover:text-amber-400 transition-colors">
+                Configurar →
+              </a>
             )}
           </div>
-          {notice && (
-            <div className={`rounded-xl px-4 py-2.5 text-xs ${notice.type === 'ok'
-              ? 'bg-emerald-900/20 text-emerald-300 border border-emerald-600/20'
-              : 'bg-red-900/20 text-red-300 border border-red-600/20'}`}>
-              {notice.msg}
+
+          {/* To (tag input) */}
+          <div className="flex items-start gap-3 px-5 py-2.5">
+            <span className="mt-2 w-8 shrink-0 text-[10px] font-bold uppercase tracking-widest text-zinc-700 text-right">Para</span>
+            <div className="flex-1">
+              <TagInput
+                tags={toTags}
+                inputVal={toInput}
+                onAdd={(v) => setToTags((p) => p.includes(v) ? p : [...p, v])}
+                onRemove={(i) => setToTags((p) => p.filter((_, idx) => idx !== i))}
+                onInputChange={setToInput}
+                placeholder="nombre@email.com — Enter o coma para agregar"
+              />
             </div>
+            <button
+              type="button"
+              onClick={() => setShowCcBcc((v) => !v)}
+              className="mt-2 shrink-0 text-[10px] text-zinc-600 hover:text-zinc-400 transition-colors"
+            >
+              {showCcBcc ? 'Ocultar CC' : 'CC/BCC'}
+            </button>
+          </div>
+
+          {/* CC/BCC */}
+          {showCcBcc && (
+            <>
+              <div className="flex items-center gap-3 px-5 py-2.5">
+                <span className="w-8 shrink-0 text-[10px] font-bold uppercase tracking-widest text-zinc-700 text-right">CC</span>
+                <input
+                  type="text"
+                  value={ccInput}
+                  onChange={(e) => setCcInput(e.target.value)}
+                  placeholder="cc@email.com, otro@email.com"
+                  className="flex-1 rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none transition-colors"
+                />
+              </div>
+              <div className="flex items-center gap-3 px-5 py-2.5">
+                <span className="w-8 shrink-0 text-[10px] font-bold uppercase tracking-widest text-zinc-700 text-right">BCC</span>
+                <input
+                  type="text"
+                  value={bccInput}
+                  onChange={(e) => setBccInput(e.target.value)}
+                  placeholder="bcc@email.com"
+                  className="flex-1 rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none transition-colors"
+                />
+              </div>
+            </>
           )}
+
+          {/* Subject */}
+          <div className="flex items-center gap-3 px-5 py-2.5">
+            <span className="w-8 shrink-0 text-[10px] font-bold uppercase tracking-widest text-zinc-700 text-right">Asunto</span>
+            <input
+              type="text"
+              value={subject}
+              onChange={(e) => setSubject(e.target.value)}
+              placeholder="Asunto del correo"
+              className="flex-1 rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none transition-colors"
+            />
+          </div>
+
+          {/* Body + AI */}
+          <div className="p-5 space-y-4">
+            {/* AI presets */}
+            <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 space-y-2">
+              <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 flex items-center gap-1.5">
+                <Sparkles className="h-3 w-3 text-amber-500" /> Asistente IA
+              </p>
+              <div className="flex flex-wrap gap-1.5">
+                {AI_PRESETS.map((p) => (
+                  <button key={p.label} onClick={() => void handleAi(p.prompt)} disabled={aiLoading}
+                    className="rounded-full border border-white/[0.08] bg-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:border-amber-500/30 hover:text-amber-300 transition-colors disabled:opacity-50">
+                    {p.label}
+                  </button>
+                ))}
+                {body !== originalRef.current && (
+                  <button onClick={() => setBody(originalRef.current)}
+                    className="rounded-full border border-white/[0.08] bg-zinc-800 px-3 py-1 text-xs text-zinc-500 hover:text-white transition-colors">
+                    ↩ Restaurar
+                  </button>
+                )}
+              </div>
+              <div className="flex gap-2">
+                <input value={instruccion} onChange={(e) => setInstruccion(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') void handleAi(); }}
+                  placeholder="Ej: hazlo más formal, agrega firma..."
+                  className="flex-1 rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none transition-colors" />
+                <button onClick={() => void handleAi()} disabled={aiLoading || !instruccion.trim()}
+                  className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-black hover:bg-amber-400 disabled:opacity-40 transition-colors">
+                  {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Generar'}
+                </button>
+              </div>
+            </div>
+
+            {/* Body editor */}
+            <div>
+              <div className="mb-2 flex items-center gap-2">
+                <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Cuerpo HTML</label>
+                <button onClick={() => setPreview(!preview)}
+                  className="ml-auto rounded-full border border-white/[0.08] px-3 py-0.5 text-[10px] text-zinc-500 hover:text-white transition-colors">
+                  {preview ? 'Editar' : 'Vista previa'}
+                </button>
+              </div>
+              {preview ? (
+                <div className="h-48 overflow-auto rounded-xl border border-white/[0.08] bg-white">
+                  <iframe srcDoc={body} sandbox="" className="h-full w-full" title="Preview" />
+                </div>
+              ) : (
+                <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8}
+                  className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-xs font-mono text-white focus:border-amber-500/40 focus:outline-none resize-none transition-colors" />
+              )}
+            </div>
+
+            {notice && (
+              <div className={`rounded-xl px-4 py-2.5 text-xs ${notice.type === 'ok'
+                ? 'bg-emerald-900/20 text-emerald-300 border border-emerald-600/20'
+                : 'bg-red-900/20 text-red-300 border border-red-600/20'}`}>
+                {notice.msg}
+              </div>
+            )}
+          </div>
         </div>
-        <div className="flex items-center justify-between border-t border-white/[0.06] px-5 py-4">
+
+        {/* Footer */}
+        <div className="flex items-center justify-between border-t border-white/[0.06] px-5 py-3.5">
           <button onClick={onClose} className="text-sm text-zinc-500 hover:text-white transition-colors">Cancelar</button>
-          <button onClick={handleSend} disabled={sending}
-            className="flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-black hover:bg-amber-400 disabled:opacity-50 transition-colors">
-            {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-            Enviar
-          </button>
+          <div className="flex items-center gap-3">
+            {toTags.length > 0 && (
+              <span className="text-[11px] text-zinc-600">
+                {toTags.length} destinatario{toTags.length > 1 ? 's' : ''}
+              </span>
+            )}
+            <button onClick={() => void handleSend()} disabled={sending}
+              className="flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-black hover:bg-amber-400 disabled:opacity-50 transition-colors">
+              {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Enviar
+            </button>
+          </div>
         </div>
       </div>
     </div>
@@ -635,6 +778,7 @@ export default function CorreoPage() {
   const [unread, setUnread]               = useState(0);
   const [emailStats, setEmailStats]       = useState<StatsData | null>(null);
   const [resendConfigured, setResendConfigured] = useState(true);
+  const [fromAddress, setFromAddress]     = useState<string | null>(null);
   const [loadingInbox, setLoadingInbox]   = useState(true);
   const [loadingSent, setLoadingSent]     = useState(true);
 
@@ -680,6 +824,7 @@ export default function CorreoPage() {
         openRate: number;
         bounceRate: number;
         key_configured: boolean;
+        from_address: string | null;
       };
       const data = await r.json() as StatsApiResponse;
       if (data.ok) {
@@ -693,6 +838,7 @@ export default function CorreoPage() {
           bounceRate: data.bounceRate ?? 0,
         });
         setResendConfigured(data.key_configured ?? false);
+        setFromAddress(data.from_address ?? null);
       }
     } catch { /* ignore abort */ }
     finally { setLoadingSent(false); }
@@ -1077,6 +1223,7 @@ export default function CorreoPage() {
           onSent={handleSent}
           initialTo={compose.to}
           initialSubject={compose.subject}
+          fromAddress={fromAddress}
         />
       )}
     </div>

@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import Link from 'next/link';
 import {
+  AlertCircle,
   ArrowLeft,
   CheckCheck,
   CheckCircle2,
@@ -15,8 +15,8 @@ import {
   RefreshCw,
   Reply,
   Send,
+  Settings,
   Sparkles,
-  TrendingUp,
   X,
 } from 'lucide-react';
 
@@ -112,59 +112,12 @@ const ESTADO_STYLES: Record<string, string> = {
   spam:      'border-orange-600/50 text-orange-300 bg-orange-900/20',
 };
 
-function StatCard({
-  icon: Icon,
-  label,
-  value,
-  color,
-}: {
-  icon: React.ElementType;
-  label: string;
-  value: string | number;
-  color: 'blue' | 'emerald' | 'yellow' | 'purple' | 'red';
-}) {
-  const colors = {
-    blue:    'text-blue-400   bg-blue-500/10   border-blue-500/20',
-    emerald: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-    yellow:  'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
-    purple:  'text-purple-400 bg-purple-500/10 border-purple-500/20',
-    red:     'text-red-400    bg-red-500/10    border-red-500/20',
-  };
-  const El = Icon as React.ComponentType<{ className?: string }>;
-  const textColor = colors[color].split(' ')[0] ?? '';
-  return (
-    <div className={`flex items-center gap-3 rounded-2xl border p-4 ${colors[color]}`}>
-      <El className={`h-5 w-5 shrink-0 ${textColor}`} />
-      <div className="min-w-0">
-        <p className="text-lg font-black leading-none text-white">{value}</p>
-        <p className="mt-1 text-[11px] font-semibold uppercase tracking-wider opacity-70">{label}</p>
-      </div>
-    </div>
-  );
-}
-
 function EstadoBadge({ estado }: { estado: string }) {
   const cls = ESTADO_STYLES[estado] ?? 'border-zinc-700 text-zinc-400';
   return (
     <span className={`rounded-full border px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${cls}`}>
       {estado}
     </span>
-  );
-}
-
-function Skeleton() {
-  return (
-    <div className="space-y-3 p-3">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="flex gap-3 rounded-xl p-3 animate-pulse">
-          <div className="h-9 w-9 shrink-0 rounded-full bg-white/8" />
-          <div className="flex-1 space-y-2">
-            <div className="h-3 w-3/4 rounded bg-white/8" />
-            <div className="h-2 w-1/2 rounded bg-white/6" />
-          </div>
-        </div>
-      ))}
-    </div>
   );
 }
 
@@ -197,8 +150,7 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: 
   const handleSend = useCallback(async () => {
     if (!to.includes('@')) { setNotice({ type: 'err', msg: 'Destinatario inválido' }); return; }
     if (!subject.trim()) { setNotice({ type: 'err', msg: 'Asunto requerido' }); return; }
-    setSending(true);
-    setNotice(null);
+    setSending(true); setNotice(null);
     try {
       const r = await fetch('/api/admin/correo/send', {
         method: 'POST',
@@ -207,7 +159,7 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: 
       });
       const data = await r.json() as { ok: boolean; error?: string };
       if (!data.ok) { setNotice({ type: 'err', msg: data.error ?? 'Error al enviar' }); return; }
-      setNotice({ type: 'ok', msg: '¡Correo enviado correctamente!' });
+      setNotice({ type: 'ok', msg: '¡Correo enviado!' });
       setTimeout(() => { onSent(); onClose(); }, 1500);
     } finally { setSending(false); }
   }, [to, subject, body, onSent, onClose]);
@@ -237,137 +189,95 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: 
 
   return (
     <div
-      className="fixed inset-0 z-50 flex items-end justify-center bg-black/70 sm:items-center"
+      className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 backdrop-blur-sm sm:items-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="flex w-full max-w-2xl flex-col rounded-t-2xl sm:rounded-2xl bg-zinc-900 border border-white/10 shadow-2xl max-h-[95dvh] overflow-hidden">
-        {/* Header */}
-        <div className="flex items-center justify-between border-b border-white/8 px-5 py-4">
-          <h2 className="font-semibold text-white flex items-center gap-2">
+      <div className="flex w-full max-w-2xl flex-col rounded-t-2xl sm:rounded-2xl bg-[#18181b] border border-white/[0.08] shadow-2xl max-h-[95dvh] overflow-hidden">
+        <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-4">
+          <h2 className="font-semibold text-white flex items-center gap-2 text-sm">
             <MailPlus className="h-4 w-4 text-amber-400" />
             Nuevo correo
           </h2>
-          <button onClick={onClose} className="rounded-lg p-1.5 text-zinc-400 hover:text-white hover:bg-white/8 transition-colors">
+          <button onClick={onClose} className="rounded-lg p-1.5 text-zinc-500 hover:text-white hover:bg-white/8 transition-colors">
             <X className="h-4 w-4" />
           </button>
         </div>
 
         <div className="overflow-y-auto flex-1 p-5 space-y-4">
-          {/* Fields */}
           <div className="space-y-3">
             <div>
-              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Para</label>
-              <input
-                type="email"
-                value={to}
-                onChange={(e) => setTo(e.target.value)}
-                placeholder="destinatario@email.com"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/20"
-              />
+              <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-zinc-600">Para</label>
+              <input type="email" value={to} onChange={(e) => setTo(e.target.value)} placeholder="destinatario@email.com"
+                className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none focus:ring-1 focus:ring-amber-500/20 transition-colors" />
             </div>
             <div>
-              <label className="mb-1 block text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Asunto</label>
-              <input
-                type="text"
-                value={subject}
-                onChange={(e) => setSubject(e.target.value)}
-                placeholder="Asunto del correo"
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none focus:ring-1 focus:ring-amber-500/20"
-              />
+              <label className="mb-1.5 block text-[10px] font-bold uppercase tracking-widest text-zinc-600">Asunto</label>
+              <input type="text" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="Asunto del correo"
+                className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-sm text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none focus:ring-1 focus:ring-amber-500/20 transition-colors" />
             </div>
           </div>
 
-          {/* AI toolbar */}
-          <div className="rounded-xl border border-white/8 bg-white/3 p-3 space-y-2">
+          <div className="rounded-xl border border-white/[0.06] bg-white/[0.02] p-3 space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-600 flex items-center gap-1.5">
-              <Sparkles className="h-3 w-3 text-amber-500" />
-              Asistente IA
+              <Sparkles className="h-3 w-3 text-amber-500" /> Asistente IA
             </p>
             <div className="flex flex-wrap gap-1.5">
               {AI_PRESETS.map((p) => (
-                <button
-                  key={p.label}
-                  onClick={() => void handleAi(p.prompt)}
-                  disabled={aiLoading}
-                  className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-xs text-zinc-300 hover:border-amber-500/40 hover:text-amber-300 transition-colors disabled:opacity-50"
-                >
+                <button key={p.label} onClick={() => void handleAi(p.prompt)} disabled={aiLoading}
+                  className="rounded-full border border-white/[0.08] bg-zinc-800 px-3 py-1 text-xs text-zinc-400 hover:border-amber-500/30 hover:text-amber-300 transition-colors disabled:opacity-50">
                   {p.label}
                 </button>
               ))}
               {body !== originalRef.current && (
-                <button
-                  onClick={() => setBody(originalRef.current)}
-                  className="rounded-full border border-white/10 bg-zinc-800 px-3 py-1 text-xs text-zinc-500 hover:text-white transition-colors"
-                >
+                <button onClick={() => setBody(originalRef.current)}
+                  className="rounded-full border border-white/[0.08] bg-zinc-800 px-3 py-1 text-xs text-zinc-500 hover:text-white transition-colors">
                   ↩ Restaurar
                 </button>
               )}
             </div>
             <div className="flex gap-2">
-              <input
-                value={instruccion}
-                onChange={(e) => setInstruccion(e.target.value)}
+              <input value={instruccion} onChange={(e) => setInstruccion(e.target.value)}
                 onKeyDown={(e) => { if (e.key === 'Enter') void handleAi(); }}
                 placeholder="Ej: hazlo más formal, agrega firma..."
-                className="flex-1 rounded-lg border border-white/10 bg-white/5 px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none"
-              />
-              <button
-                onClick={() => void handleAi()}
-                disabled={aiLoading || !instruccion.trim()}
-                className="rounded-lg bg-amber-500 px-3 py-2 text-xs font-semibold text-black hover:bg-amber-400 disabled:opacity-40 transition-colors"
-              >
+                className="flex-1 rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2 text-xs text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none transition-colors" />
+              <button onClick={() => void handleAi()} disabled={aiLoading || !instruccion.trim()}
+                className="rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-black hover:bg-amber-400 disabled:opacity-40 transition-colors">
                 {aiLoading ? <Loader2 className="h-3 w-3 animate-spin" /> : 'Generar'}
               </button>
             </div>
           </div>
 
-          {/* Body / Preview toggle */}
           <div>
             <div className="mb-2 flex items-center gap-2">
-              <label className="text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Cuerpo HTML</label>
-              <button
-                onClick={() => setPreview(!preview)}
-                className="ml-auto rounded-full border border-white/10 px-3 py-0.5 text-[10px] text-zinc-400 hover:text-white transition-colors"
-              >
+              <label className="text-[10px] font-bold uppercase tracking-widest text-zinc-600">Cuerpo HTML</label>
+              <button onClick={() => setPreview(!preview)}
+                className="ml-auto rounded-full border border-white/[0.08] px-3 py-0.5 text-[10px] text-zinc-500 hover:text-white transition-colors">
                 {preview ? 'Editar' : 'Vista previa'}
               </button>
             </div>
             {preview ? (
-              <div className="h-48 overflow-auto rounded-lg border border-white/10 bg-white">
-                <iframe
-                  srcDoc={body}
-                  sandbox=""
-                  className="h-full w-full"
-                  title="Preview"
-                />
+              <div className="h-48 overflow-auto rounded-xl border border-white/[0.08] bg-white">
+                <iframe srcDoc={body} sandbox="" className="h-full w-full" title="Preview" />
               </div>
             ) : (
-              <textarea
-                value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={8}
-                className="w-full rounded-lg border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-mono text-white placeholder:text-zinc-600 focus:border-amber-500/50 focus:outline-none resize-none"
-              />
+              <textarea value={body} onChange={(e) => setBody(e.target.value)} rows={8}
+                className="w-full rounded-xl border border-white/[0.08] bg-black/40 px-3 py-2.5 text-xs font-mono text-white placeholder:text-zinc-600 focus:border-amber-500/40 focus:outline-none resize-none transition-colors" />
             )}
           </div>
 
           {notice && (
-            <div className={`rounded-lg px-4 py-2.5 text-sm ${notice.type === 'ok' ? 'bg-emerald-900/30 text-emerald-300 border border-emerald-600/30' : 'bg-red-900/30 text-red-300 border border-red-600/30'}`}>
+            <div className={`rounded-xl px-4 py-2.5 text-xs ${notice.type === 'ok'
+              ? 'bg-emerald-900/20 text-emerald-300 border border-emerald-600/20'
+              : 'bg-red-900/20 text-red-300 border border-red-600/20'}`}>
               {notice.msg}
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-3 border-t border-white/8 px-5 py-4">
-          <button onClick={onClose} className="text-sm text-zinc-500 hover:text-white transition-colors">
-            Cancelar
-          </button>
-          <button
-            onClick={handleSend}
-            disabled={sending}
-            className="flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-black hover:bg-amber-400 disabled:opacity-50 transition-colors"
-          >
+        <div className="flex items-center justify-between gap-3 border-t border-white/[0.06] px-5 py-4">
+          <button onClick={onClose} className="text-sm text-zinc-500 hover:text-white transition-colors">Cancelar</button>
+          <button onClick={handleSend} disabled={sending}
+            className="flex items-center gap-2 rounded-xl bg-amber-500 px-5 py-2.5 text-sm font-semibold text-black hover:bg-amber-400 disabled:opacity-50 transition-colors">
             {sending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
             Enviar
           </button>
@@ -377,81 +287,58 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '' }: 
   );
 }
 
-// ─── Email List Row ────────────────────────────────────────────────────────────
+// ─── Email Row ────────────────────────────────────────────────────────────────
 
-function EmailRow({
-  item,
-  selected,
-  onClick,
-}: {
-  item: EmailItem;
-  selected: boolean;
-  onClick: () => void;
-}) {
+function EmailRow({ item, selected, onClick }: { item: EmailItem; selected: boolean; onClick: () => void }) {
   const isReceived = item._kind === 'received';
   const sender = isReceived ? item.de : item.destinatario;
   const date = isReceived ? item.fecha_recibido : item.enviado_at;
   const isUnread = isReceived && !item.leido;
-  const snippet = isReceived
-    ? item.cuerpo_texto.slice(0, 80)
-    : '';
+  const snippet = isReceived ? item.cuerpo_texto.slice(0, 90) : '';
 
   return (
     <button
       onClick={onClick}
-      className={`w-full text-left flex items-start gap-3 px-3 py-3 rounded-xl transition-all ${
+      className={[
+        'group w-full text-left flex items-start gap-3 px-4 py-3.5 border-b border-white/[0.04] transition-all',
         selected
-          ? 'bg-amber-500/10 border border-amber-500/20'
-          : 'hover:bg-white/5 border border-transparent'
-      } ${isUnread ? 'font-semibold' : ''}`}
+          ? 'bg-amber-500/[0.07] border-l-2 border-l-amber-500'
+          : 'hover:bg-white/[0.03] border-l-2 border-l-transparent',
+      ].join(' ')}
     >
-      {/* Avatar */}
-      <div className={`h-9 w-9 shrink-0 rounded-full ${avatarColor(sender)} flex items-center justify-center text-white text-sm font-bold`}>
+      <div className={`h-8 w-8 shrink-0 rounded-full ${avatarColor(sender)} flex items-center justify-center text-white text-xs font-bold mt-0.5`}>
         {avatarInitial(sender)}
       </div>
-
       <div className="flex-1 min-w-0">
-        {/* Top row */}
-        <div className="flex items-center justify-between gap-1">
-          <span className={`truncate text-sm ${isUnread ? 'text-white' : 'text-zinc-200'}`}>
+        <div className="flex items-center justify-between gap-2 mb-0.5">
+          <span className={`truncate text-sm ${isUnread ? 'font-semibold text-white' : 'text-zinc-300'}`}>
             {sender || '(sin remitente)'}
           </span>
-          <span className="shrink-0 text-[10px] text-zinc-500">{relDate(date)}</span>
+          <span className="shrink-0 text-[10px] text-zinc-600">{relDate(date)}</span>
         </div>
-        {/* Subject */}
-        <p className={`truncate text-xs mt-0.5 ${isUnread ? 'text-zinc-200' : 'text-zinc-400'}`}>
+        <p className={`truncate text-xs ${isUnread ? 'text-zinc-200' : 'text-zinc-500'}`}>
           {item.asunto || '(sin asunto)'}
         </p>
-        {/* Snippet / badge */}
-        <div className="flex items-center gap-2 mt-1">
-          {snippet && (
-            <p className="flex-1 truncate text-[11px] text-zinc-600 line-clamp-1">
-              {snippet}
-            </p>
-          )}
-          {isUnread && (
-            <span className="h-2 w-2 shrink-0 rounded-full bg-blue-500" />
-          )}
-          {!isReceived && (
-            <EstadoBadge estado={item.estado} />
-          )}
+        {snippet && (
+          <p className="truncate text-[11px] text-zinc-700 mt-0.5">{snippet}</p>
+        )}
+        <div className="flex items-center gap-2 mt-1.5">
+          {isUnread && <span className="h-1.5 w-1.5 rounded-full bg-blue-400 shrink-0" />}
+          {!isReceived && <EstadoBadge estado={item.estado} />}
           {isReceived && item.respondido && (
-            <span className="shrink-0 text-[10px] text-zinc-600">↩</span>
+            <span className="text-[10px] text-zinc-700">↩ respondido</span>
           )}
         </div>
       </div>
-      <ChevronRight className="h-3.5 w-3.5 shrink-0 text-zinc-700 mt-1" />
+      <ChevronRight className="h-3 w-3 shrink-0 text-zinc-700 mt-2 group-hover:text-zinc-500 transition-colors" />
     </button>
   );
 }
 
-// ─── Email Detail ──────────────────────────────────────────────────────────────
+// ─── Email Detail ─────────────────────────────────────────────────────────────
 
 function EmailDetail({
-  item,
-  onBack,
-  onReply,
-  onMarkRead,
+  item, onBack, onReply, onMarkRead,
 }: {
   item: EmailItem;
   onBack: () => void;
@@ -468,75 +355,80 @@ function EmailDetail({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Header bar */}
-      <div className="flex items-center gap-3 border-b border-white/8 px-4 py-4 shrink-0">
-        <button onClick={onBack} className="lg:hidden rounded-lg p-1.5 text-zinc-400 hover:text-white hover:bg-white/8 transition-colors">
-          <ArrowLeft className="h-4 w-4" />
-        </button>
-        <div className={`h-10 w-10 shrink-0 rounded-full ${avatarColor(from)} flex items-center justify-center text-white font-bold`}>
-          {avatarInitial(from)}
+      {/* Subject header */}
+      <div className="shrink-0 border-b border-white/[0.06] px-5 py-4">
+        <div className="flex items-start gap-3 mb-3">
+          <button onClick={onBack} className="lg:hidden rounded-lg p-1.5 text-zinc-500 hover:text-white hover:bg-white/[0.06] transition-colors shrink-0 mt-0.5">
+            <ArrowLeft className="h-4 w-4" />
+          </button>
+          <h2 className="flex-1 text-base font-bold text-white leading-snug">{item.asunto || '(sin asunto)'}</h2>
         </div>
-        <div className="flex-1 min-w-0">
-          <p className="truncate font-semibold text-white">{item.asunto || '(sin asunto)'}</p>
-          <p className="truncate text-xs text-zinc-400 mt-0.5">
-            {from} → {to}
-          </p>
-        </div>
-        <span className="shrink-0 text-xs text-zinc-500">{fullDate(date)}</span>
-      </div>
 
-      {/* Metadata */}
-      <div className="border-b border-white/8 px-5 py-3 flex flex-wrap gap-3 items-center shrink-0">
-        {!isReceived && <EstadoBadge estado={item.estado} />}
-        {isReceived && (
-          <span className="rounded-full border border-blue-500/30 bg-blue-500/10 px-2 py-0.5 text-[10px] font-bold text-blue-300">Recibido</span>
-        )}
-        {!isReceived && item.tipo === 'manual' && (
-          <span className="rounded-full border border-zinc-700 px-2 py-0.5 text-[10px] text-zinc-500">manual</span>
-        )}
-        {item.resend_id && (
-          <span className="text-[10px] text-zinc-600 font-mono truncate max-w-[200px]" title={item.resend_id}>
-            Resend: {item.resend_id}
-          </span>
-        )}
-        <span className="ml-auto text-[11px] text-zinc-500">{fullDate(date)}</span>
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2.5">
+            <div className={`h-8 w-8 rounded-full ${avatarColor(from)} flex items-center justify-center text-white text-xs font-bold shrink-0`}>
+              {avatarInitial(from)}
+            </div>
+            <div>
+              <p className="text-xs font-semibold text-white leading-none">{from}</p>
+              <p className="text-[10px] text-zinc-500 mt-0.5">→ {to}</p>
+            </div>
+          </div>
+
+          <div className="ml-auto flex flex-wrap items-center gap-2">
+            {!isReceived && <EstadoBadge estado={item.estado} />}
+            {isReceived && (
+              <span className="rounded-full border border-blue-500/25 bg-blue-500/8 px-2 py-0.5 text-[10px] font-bold text-blue-300">Recibido</span>
+            )}
+            {item.resend_id && (
+              <span className="text-[10px] text-zinc-700 font-mono truncate max-w-[160px]" title={item.resend_id}>
+                ID: {item.resend_id.slice(0, 12)}…
+              </span>
+            )}
+            <span className="text-[11px] text-zinc-500">{fullDate(date)}</span>
+          </div>
+        </div>
       </div>
 
       {/* Body */}
       <div className="flex-1 overflow-hidden">
         {isReceived ? (
           hasHtml ? (
-            <iframe
-              srcDoc={item.cuerpo_html}
-              sandbox=""
-              className="h-full w-full bg-white"
-              title="Correo recibido"
-            />
+            <iframe srcDoc={item.cuerpo_html} sandbox="" className="h-full w-full bg-white" title="Correo recibido" />
           ) : hasText ? (
             <div className="h-full overflow-y-auto p-5">
-              <pre className="text-sm text-zinc-200 whitespace-pre-wrap font-sans">{item.cuerpo_texto}</pre>
+              <pre className="text-sm text-zinc-300 whitespace-pre-wrap font-sans leading-relaxed">{item.cuerpo_texto}</pre>
             </div>
           ) : (
-            <div className="flex h-full items-center justify-center text-zinc-600 text-sm">
-              Sin contenido
+            <div className="flex h-full items-center justify-center">
+              <div className="text-center">
+                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
+                  <MailOpen className="h-5 w-5 text-zinc-600" />
+                </div>
+                <p className="text-sm text-zinc-600">Sin contenido</p>
+              </div>
             </div>
           )
         ) : (
-          <div className="flex h-full flex-col items-center justify-center gap-3 text-zinc-600 p-6">
-            <Send className="h-8 w-8 opacity-30" />
-            <p className="text-sm text-center">El cuerpo de los correos enviados no se almacena en la base de datos.</p>
-            <p className="text-xs text-zinc-700 text-center">Puedes ver el estado de entrega en el badge de arriba.</p>
+          <div className="flex h-full flex-col items-center justify-center gap-4 p-6">
+            <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
+              <Send className="h-6 w-6 text-zinc-600" />
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-zinc-500">El cuerpo no se almacena</p>
+              <p className="text-xs text-zinc-700 mt-1">Consulta el estado de entrega en el badge de arriba.</p>
+            </div>
           </div>
         )}
       </div>
 
       {/* Actions */}
-      <div className="border-t border-white/8 px-4 py-3 flex flex-wrap items-center gap-2 shrink-0">
+      <div className="shrink-0 border-t border-white/[0.06] px-4 py-3 flex flex-wrap items-center gap-2">
         {isReceived && (
           <>
             <button
               onClick={() => onReply(item.de, `Re: ${item.asunto}`)}
-              className="flex items-center gap-1.5 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-black hover:bg-amber-400 transition-colors"
+              className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-4 py-2 text-xs font-bold text-black hover:bg-amber-400 transition-colors"
             >
               <Reply className="h-3.5 w-3.5" />
               Responder
@@ -544,7 +436,7 @@ function EmailDetail({
             {!item.leido && (
               <button
                 onClick={() => onMarkRead(item.id)}
-                className="flex items-center gap-1.5 rounded-lg border border-white/10 px-3 py-2 text-sm text-zinc-300 hover:text-white hover:bg-white/8 transition-colors"
+                className="flex items-center gap-1.5 rounded-xl border border-white/[0.08] px-3 py-2 text-xs text-zinc-400 hover:text-white hover:bg-white/[0.05] transition-colors"
               >
                 <CheckCheck className="h-3.5 w-3.5" />
                 Marcar leído
@@ -560,7 +452,7 @@ function EmailDetail({
                 setArchived(true);
               }}
               disabled={archived}
-              className="flex items-center gap-1.5 rounded-lg border border-emerald-500/30 bg-emerald-500/8 px-3 py-2 text-sm text-emerald-300 hover:bg-emerald-500/15 disabled:opacity-50 transition-colors"
+              className="flex items-center gap-1.5 rounded-xl border border-emerald-500/25 bg-emerald-500/[0.06] px-3 py-2 text-xs text-emerald-400 hover:bg-emerald-500/12 disabled:opacity-50 transition-colors"
             >
               <CheckCircle2 className="h-3.5 w-3.5" />
               {archived ? 'Guardado ✓' : 'Guardar en historial'}
@@ -572,26 +464,47 @@ function EmailDetail({
   );
 }
 
-// ─── Empty State ───────────────────────────────────────────────────────────────
+// ─── Empty State ──────────────────────────────────────────────────────────────
 
 function EmptyState({ folder }: { folder: Folder }) {
   return (
-    <div className="flex flex-col items-center justify-center h-full gap-4 text-zinc-600 p-8">
-      {folder === 'inbox' ? (
-        <Inbox className="h-12 w-12 opacity-30" />
-      ) : (
-        <Send className="h-12 w-12 opacity-30" />
-      )}
+    <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
+        {folder === 'inbox' ? (
+          <Inbox className="h-6 w-6 text-zinc-600" />
+        ) : (
+          <Send className="h-6 w-6 text-zinc-600" />
+        )}
+      </div>
       <div className="text-center">
-        <p className="text-sm font-medium text-zinc-500">
-          {folder === 'inbox' ? 'Bandeja vacía' : folder === 'sent' ? 'Sin correos enviados' : 'Sin correos'}
+        <p className="text-sm font-semibold text-zinc-500">
+          {folder === 'inbox' ? 'Bandeja vacía' : folder === 'sent' ? 'Sin enviados' : 'Sin correos'}
         </p>
-        <p className="text-xs mt-1">
+        <p className="text-xs text-zinc-700 mt-1">
           {folder === 'inbox'
-            ? 'Los correos recibidos en tu dominio Resend aparecerán aquí'
-            : 'Los correos enviados desde este panel aparecerán aquí'}
+            ? 'Los correos recibidos aparecerán aquí'
+            : 'Los correos enviados aparecerán aquí'}
         </p>
       </div>
+    </div>
+  );
+}
+
+// ─── Loading Skeleton ─────────────────────────────────────────────────────────
+
+function Skeleton() {
+  return (
+    <div className="animate-pulse">
+      {[1, 2, 3, 4, 5].map((i) => (
+        <div key={i} className="flex gap-3 px-4 py-3.5 border-b border-white/[0.04]">
+          <div className="h-8 w-8 rounded-full bg-white/[0.06] shrink-0" />
+          <div className="flex-1 space-y-2 pt-1">
+            <div className="h-2.5 rounded-full bg-white/[0.06] w-3/4" />
+            <div className="h-2 rounded-full bg-white/[0.04] w-1/2" />
+            <div className="h-2 rounded-full bg-white/[0.03] w-2/3" />
+          </div>
+        </div>
+      ))}
     </div>
   );
 }
@@ -613,7 +526,6 @@ export default function CorreoPage() {
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState<EmailItem | null>(null);
   const [compose, setCompose] = useState<{ to?: string; subject?: string } | null>(null);
-  // mobile: 'list' shows list panel, 'detail' shows detail panel
   const [mobileView, setMobileView] = useState<'list' | 'detail'>('list');
 
   // Fetch functions
@@ -623,10 +535,7 @@ export default function CorreoPage() {
       const r = await fetch('/api/admin/correo/inbox', { signal, cache: 'no-store' });
       if (!r.ok) return;
       const data = await r.json() as { ok: boolean; emails: RecibidoRow[]; unread: number };
-      if (data.ok) {
-        setRecibidos(data.emails ?? []);
-        setUnread(data.unread ?? 0);
-      }
+      if (data.ok) { setRecibidos(data.emails ?? []); setUnread(data.unread ?? 0); }
     } catch { /* ignore abort */ }
     finally { setLoadingInbox(false); }
   }, []);
@@ -636,11 +545,30 @@ export default function CorreoPage() {
     try {
       const r = await fetch('/api/admin/correo/stats', { signal, cache: 'no-store' });
       if (!r.ok) return;
-      const data = await r.json() as { ok: boolean; recent: EnviadoRow[]; stats: StatsData; resendConfigured: boolean };
+      type StatsApiResponse = {
+        ok: boolean;
+        recent: EnviadoRow[];
+        totals: { enviado: number; entregado: number; abierto: number; rebotado: number; spam: number };
+        deliveryRate: number;
+        openRate: number;
+        bounceRate: number;
+        key_configured: boolean;
+      };
+      const data = await r.json() as StatsApiResponse;
       if (data.ok) {
         setEnviados(data.recent ?? []);
-        setEmailStats(data.stats ?? null);
-        setResendConfigured(data.resendConfigured ?? false);
+        const t = data.totals ?? { enviado: 0, entregado: 0, abierto: 0, rebotado: 0, spam: 0 };
+        setEmailStats({
+          enviado:      t.enviado,
+          entregado:    t.entregado,
+          abierto:      t.abierto,
+          rebotado:     t.rebotado,
+          spam:         t.spam,
+          deliveryRate: data.deliveryRate ?? 0,
+          openRate:     data.openRate ?? 0,
+          bounceRate:   data.bounceRate ?? 0,
+        });
+        setResendConfigured(data.key_configured ?? false);
       }
     } catch { /* ignore abort */ }
     finally { setLoadingSent(false); }
@@ -653,18 +581,15 @@ export default function CorreoPage() {
     return ctrl;
   }, [fetchInbox, fetchSent]);
 
-  // Initial load + 30s auto-refresh
   useEffect(() => {
     const ctrl = refresh();
     const interval = setInterval(() => { void refresh(); }, 30_000);
     return () => { ctrl.abort(); clearInterval(interval); };
   }, [refresh]);
 
-  // Combined + filtered list
   const allItems = useMemo<EmailItem[]>(() => {
     const received: EmailItem[] = recibidos.map((e) => ({ _kind: 'received' as const, ...e }));
     const sent: EmailItem[] = enviados.map((e) => ({ _kind: 'sent' as const, ...e }));
-
     let list: EmailItem[] =
       folder === 'inbox' ? received :
       folder === 'sent'  ? sent :
@@ -673,7 +598,6 @@ export default function CorreoPage() {
         const tb = b._kind === 'received' ? b.fecha_recibido : b.enviado_at;
         return new Date(tb).getTime() - new Date(ta).getTime();
       });
-
     if (search.trim()) {
       const q = search.toLowerCase();
       list = list.filter((item) => {
@@ -681,7 +605,6 @@ export default function CorreoPage() {
         return item.asunto.toLowerCase().includes(q) || sender.toLowerCase().includes(q);
       });
     }
-
     return list;
   }, [recibidos, enviados, folder, search]);
 
@@ -691,7 +614,6 @@ export default function CorreoPage() {
     setSelected(item);
     setMobileView('detail');
     if (item._kind === 'received' && !item.leido) {
-      // Optimistic update
       setRecibidos((prev) => prev.map((e) => e.id === item.id ? { ...e, leido: true } : e));
       await fetch('/api/admin/correo/inbox', {
         method: 'PATCH',
@@ -713,178 +635,153 @@ export default function CorreoPage() {
     }).catch(() => {});
   }, [selected]);
 
-  const handleReply = useCallback((to: string, subject: string) => {
-    setCompose({ to, subject });
-  }, []);
-
-  const handleSent = useCallback(() => {
-    void fetchSent();
-  }, [fetchSent]);
-
-  const isRefreshing = loading;
+  const handleReply = useCallback((to: string, subject: string) => { setCompose({ to, subject }); }, []);
+  const handleSent = useCallback(() => { void fetchSent(); }, [fetchSent]);
 
   return (
-    <>
-      {/* Header */}
-      <div className="border-b border-white/8 bg-zinc-950/80 backdrop-blur-sm sticky top-0 z-20 px-4 py-3 flex items-center gap-3">
-        <div className="flex-1 min-w-0">
-          <h1 className="text-base font-bold text-white flex items-center gap-2">
+    <div className="flex h-screen flex-col overflow-hidden bg-[#09090b]">
+
+      {/* ── Top bar ── */}
+      <header className="flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.06] bg-[#09090b]/95 backdrop-blur-md px-4">
+        <div className="flex items-center gap-2.5">
+          <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20">
             <MailOpen className="h-4 w-4 text-amber-400" />
-            Centro de Correo
-          </h1>
-          <p className="text-xs text-zinc-500 mt-0.5">
-            {unread > 0 ? (
-              <span className="text-blue-400">{unread} sin leer · </span>
-            ) : null}
-            {enviados.length} enviados · {recibidos.length} recibidos
-          </p>
+          </div>
+          <div>
+            <h1 className="text-sm font-bold text-white leading-none">Correo</h1>
+            <p className="text-[10px] text-zinc-600 mt-0.5 leading-none">Powered by Resend</p>
+          </div>
         </div>
-        <button
-          onClick={() => refresh()}
-          disabled={isRefreshing}
-          className="rounded-lg p-2 text-zinc-400 hover:text-white hover:bg-white/8 transition-colors"
-          title="Actualizar"
-        >
-          <RefreshCw className={`h-4 w-4 ${isRefreshing ? 'animate-spin' : ''}`} />
-        </button>
-        <button
-          onClick={() => setCompose({})}
-          className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-2 text-xs font-bold text-black hover:bg-amber-400 transition-colors"
-        >
-          <MailPlus className="h-3.5 w-3.5" />
-          Redactar
-        </button>
-      </div>
 
-      {/* Resend status + stats bar */}
-      {!resendConfigured && (
-        <div className="mx-4 mt-3 rounded-xl border border-amber-500/30 bg-amber-500/8 px-4 py-3 flex items-center gap-3">
-          <TrendingUp className="h-4 w-4 text-amber-400 shrink-0" />
-          <p className="text-xs text-amber-300">
-            Resend no está configurado.{' '}
-            <Link href="/admin/integraciones" className="underline hover:text-amber-200">
-              Configura tu API key →
-            </Link>
+        {/* Resend status */}
+        {!loadingSent && (
+          <div className={`flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold border ${
+            resendConfigured
+              ? 'border-emerald-500/20 bg-emerald-500/[0.07] text-emerald-400'
+              : 'border-red-500/20 bg-red-500/[0.07] text-red-400'
+          }`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${resendConfigured ? 'bg-emerald-400 animate-pulse' : 'bg-red-400'}`} />
+            {resendConfigured ? 'Conectado' : 'Sin configurar'}
+          </div>
+        )}
+
+        <div className="ml-auto flex items-center gap-2">
+          {unread > 0 && (
+            <span className="rounded-full bg-blue-500 px-2 py-0.5 text-[10px] font-bold text-white tabular-nums">
+              {unread}
+            </span>
+          )}
+          <button onClick={() => refresh()} disabled={loading} title="Actualizar"
+            className="h-8 w-8 flex items-center justify-center rounded-lg text-zinc-500 hover:text-white hover:bg-white/[0.05] disabled:opacity-40 transition-colors">
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+          </button>
+          <button onClick={() => setCompose({})}
+            className="flex items-center gap-1.5 rounded-xl bg-amber-500 px-3 py-1.5 text-xs font-bold text-black hover:bg-amber-400 transition-colors">
+            <MailPlus className="h-3.5 w-3.5" />
+            <span className="hidden sm:inline">Redactar</span>
+          </button>
+        </div>
+      </header>
+
+      {/* ── Resend not configured banner ── */}
+      {!loadingSent && !resendConfigured && (
+        <div className="shrink-0 flex items-center gap-3 border-b border-amber-500/20 bg-amber-500/[0.05] px-4 py-2.5">
+          <AlertCircle className="h-3.5 w-3.5 text-amber-400 shrink-0" />
+          <p className="text-xs text-amber-300 flex-1">
+            Resend no está configurado. Los correos no se enviarán hasta agregar una API key.
           </p>
+          <a href="/admin/integraciones"
+            className="shrink-0 rounded-lg border border-amber-500/25 px-3 py-1 text-[11px] font-semibold text-amber-400 hover:bg-amber-500/10 transition-colors">
+            Configurar →
+          </a>
         </div>
       )}
 
+      {/* ── Stats strip ── */}
       {emailStats && (
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 px-4 pt-3">
-          <StatCard icon={Send}        label="Enviados"       value={emailStats.enviado}                              color="blue" />
-          <StatCard icon={CheckCircle2} label="Entregados"    value={`${emailStats.deliveryRate.toFixed(0)}%`}        color="emerald" />
-          <StatCard icon={Eye}         label="Tasa apertura"  value={`${emailStats.openRate.toFixed(0)}%`}            color="yellow" />
-          <StatCard icon={TrendingUp}  label="Rebotes"        value={emailStats.rebotado}                             color={emailStats.bounceRate > 5 ? 'red' : 'purple'} />
+        <div className="shrink-0 flex gap-5 overflow-x-auto border-b border-white/[0.06] bg-[#18181b]/40 px-4 py-2.5">
+          {[
+            { label: 'Enviados', value: String(emailStats.enviado), icon: Send, color: 'text-zinc-400' },
+            { label: 'Entrega', value: `${emailStats.deliveryRate.toFixed(1)}%`, icon: CheckCircle2, color: 'text-emerald-400' },
+            { label: 'Apertura', value: `${emailStats.openRate.toFixed(1)}%`, icon: Eye, color: 'text-blue-400' },
+            { label: 'Rebotes', value: String(emailStats.rebotado), icon: AlertCircle, color: emailStats.bounceRate > 5 ? 'text-red-400' : 'text-zinc-600' },
+          ].map(({ label, value, icon: Icon, color }, i, arr) => (
+            <div key={label} className="flex items-center gap-2 shrink-0">
+              <Icon className={`h-3.5 w-3.5 ${color} shrink-0`} />
+              <span className="text-sm font-bold text-white tabular-nums">{value}</span>
+              <span className="text-[11px] text-zinc-600">{label}</span>
+              {i < arr.length - 1 && <span className="ml-3 h-3.5 w-px bg-white/[0.08]" />}
+            </div>
+          ))}
         </div>
       )}
 
-      {/* 3-panel layout */}
-      <div className={`flex overflow-hidden ${emailStats ? 'h-[calc(100dvh-12rem)]' : 'h-[calc(100dvh-7rem)]'}`}>
+      {/* ── 3-panel layout ── */}
+      <div className="flex flex-1 overflow-hidden">
 
-        {/* ── Sidebar ── */}
-        <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} lg:flex w-full lg:w-52 shrink-0 flex-col border-r border-white/8 bg-zinc-950/60 overflow-y-auto`}>
-          <nav className="p-3 space-y-1">
+        {/* ── Sidebar (folders) ── */}
+        <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} lg:flex w-full lg:w-48 shrink-0 flex-col border-r border-white/[0.06] bg-[#18181b]`}>
+          <nav className="flex-1 p-2 space-y-0.5">
             {([
-              { key: 'all',   label: 'Todos',      icon: MailOpen, count: enviados.length + recibidos.length, badge: 0 },
-              { key: 'inbox', label: 'Recibidos',  icon: Inbox,    count: recibidos.length, badge: unread },
-              { key: 'sent',  label: 'Enviados',   icon: Send,     count: enviados.length, badge: 0 },
+              { key: 'all',   label: 'Todos',     icon: MailOpen, count: enviados.length + recibidos.length, badge: 0 },
+              { key: 'inbox', label: 'Recibidos', icon: Inbox,    count: recibidos.length, badge: unread },
+              { key: 'sent',  label: 'Enviados',  icon: Send,     count: enviados.length, badge: 0 },
             ] as const).map(({ key, label, icon: Icon, count, badge }) => (
-              <button
-                key={key}
-                onClick={() => { setFolder(key); setSelected(null); }}
+              <button key={key} onClick={() => { setFolder(key); setSelected(null); }}
                 className={`w-full flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm transition-all ${
                   folder === key
-                    ? 'bg-amber-500/10 text-amber-300 font-semibold border border-amber-500/20'
-                    : 'text-zinc-400 hover:text-white hover:bg-white/5'
-                }`}
-              >
+                    ? 'bg-amber-500/10 text-amber-300 font-semibold'
+                    : 'text-zinc-500 hover:text-zinc-200 hover:bg-white/[0.04]'
+                }`}>
                 <Icon className="h-4 w-4 shrink-0" />
                 <span className="flex-1 text-left">{label}</span>
-                {badge !== undefined && badge > 0 ? (
-                  <span className="rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none">
-                    {badge}
-                  </span>
+                {badge > 0 ? (
+                  <span className="rounded-full bg-blue-500 px-1.5 py-0.5 text-[10px] font-bold text-white leading-none tabular-nums">{badge}</span>
                 ) : (
-                  <span className="text-[10px] text-zinc-700">{count}</span>
+                  <span className="text-[10px] text-zinc-700 tabular-nums">{count}</span>
                 )}
               </button>
             ))}
           </nav>
 
-          {/* Compose shortcut in sidebar */}
-          <div className="mt-auto p-3 border-t border-white/8">
-            <button
-              onClick={() => setCompose({})}
-              className="w-full flex items-center gap-2 rounded-xl border border-dashed border-white/10 px-3 py-2.5 text-xs text-zinc-500 hover:text-white hover:border-white/20 transition-colors"
-            >
+          <div className="mt-auto p-2 border-t border-white/[0.06] space-y-0.5">
+            <button onClick={() => setCompose({})}
+              className="w-full flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-zinc-600 hover:text-zinc-400 hover:bg-white/[0.03] transition-colors">
               <MailPlus className="h-3.5 w-3.5" />
               Nuevo correo
             </button>
+            <a href="/admin/integraciones"
+              className="flex items-center gap-2 rounded-xl px-3 py-2 text-xs text-zinc-700 hover:text-zinc-500 hover:bg-white/[0.03] transition-colors">
+              <Settings className="h-3.5 w-3.5" />
+              Configurar Resend
+            </a>
           </div>
         </div>
 
-        {/* ── Email List ── */}
-        <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-80 shrink-0 border-r border-white/8 bg-zinc-950/30 overflow-hidden`}>
+        {/* ── Email list ── */}
+        <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-80 shrink-0 border-r border-white/[0.06] bg-[#09090b] overflow-hidden`}>
           {/* Search */}
-          <div className="border-b border-white/8 p-3">
-            <div className="flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-3 py-2">
-              <svg className="h-3.5 w-3.5 text-zinc-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+          <div className="shrink-0 border-b border-white/[0.06] p-3">
+            <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
+              <svg className="h-3.5 w-3.5 text-zinc-600 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
               </svg>
-              <input
-                type="search"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                placeholder="Buscar por asunto o remitente…"
-                className="flex-1 bg-transparent text-xs text-white placeholder:text-zinc-600 focus:outline-none"
-              />
+              <input type="search" value={search} onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar…"
+                className="flex-1 bg-transparent text-xs text-white placeholder:text-zinc-600 focus:outline-none" />
               {search && (
-                <button onClick={() => setSearch('')} className="text-zinc-600 hover:text-white">
+                <button onClick={() => setSearch('')} className="text-zinc-600 hover:text-white transition-colors">
                   <X className="h-3 w-3" />
                 </button>
               )}
             </div>
           </div>
 
-          {/* Filter pills */}
-          <div className="flex gap-1.5 px-3 py-2 border-b border-white/8 overflow-x-auto">
-            {folder === 'inbox' && (
-              <>
-                {['Todos','No leídos','Respondidos'].map((f) => (
-                  <button key={f} className="shrink-0 rounded-full border border-white/10 bg-zinc-800/60 px-2.5 py-1 text-[11px] text-zinc-400 hover:text-white transition-colors">
-                    {f}
-                  </button>
-                ))}
-              </>
-            )}
-            {folder === 'sent' && (
-              <>
-                {['Todos','Entregado','Abierto','Rebotado'].map((f) => (
-                  <button key={f} className="shrink-0 rounded-full border border-white/10 bg-zinc-800/60 px-2.5 py-1 text-[11px] text-zinc-400 hover:text-white transition-colors">
-                    {f}
-                  </button>
-                ))}
-              </>
-            )}
-            {folder === 'all' && (
-              <>
-                {['Todos','Recibidos','Enviados'].map((f) => (
-                  <button key={f} className="shrink-0 rounded-full border border-white/10 bg-zinc-800/60 px-2.5 py-1 text-[11px] text-zinc-400 hover:text-white transition-colors">
-                    {f}
-                  </button>
-                ))}
-              </>
-            )}
-          </div>
-
           {/* List */}
           <div className="flex-1 overflow-y-auto">
-            {loading ? (
-              <Skeleton />
-            ) : allItems.length === 0 ? (
-              <EmptyState folder={folder} />
-            ) : (
-              <div className="p-2 space-y-0.5">
+            {loading ? <Skeleton /> :
+             allItems.length === 0 ? <EmptyState folder={folder} /> : (
+              <div>
                 {allItems.map((item) => (
                   <EmailRow
                     key={`${item._kind}-${item.id}`}
@@ -898,8 +795,8 @@ export default function CorreoPage() {
           </div>
         </div>
 
-        {/* ── Detail Panel ── */}
-        <div className={`${mobileView === 'detail' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col min-w-0 bg-zinc-950/10 overflow-hidden`}>
+        {/* ── Detail panel ── */}
+        <div className={`${mobileView === 'detail' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col min-w-0 bg-[#09090b] overflow-hidden`}>
           {selected ? (
             <EmailDetail
               item={selected}
@@ -909,10 +806,12 @@ export default function CorreoPage() {
             />
           ) : (
             <div className="flex flex-col items-center justify-center h-full gap-4 text-zinc-700">
-              <MailOpen className="h-14 w-14 opacity-20" />
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
+                <MailOpen className="h-7 w-7 text-zinc-700" />
+              </div>
               <div className="text-center">
-                <p className="text-sm font-medium">Selecciona un correo</p>
-                <p className="text-xs mt-1 text-zinc-800">para ver su contenido aquí</p>
+                <p className="text-sm font-semibold text-zinc-600">Selecciona un correo</p>
+                <p className="text-xs text-zinc-800 mt-1">para ver su contenido aquí</p>
               </div>
             </div>
           )}
@@ -928,6 +827,6 @@ export default function CorreoPage() {
           initialSubject={compose.subject}
         />
       )}
-    </>
+    </div>
   );
 }

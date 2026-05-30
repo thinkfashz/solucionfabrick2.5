@@ -105,11 +105,11 @@ export function StudioHeader({
           <button
             type="button"
             onClick={onSwitchToFabrick}
-            className="hidden h-7 items-center gap-1.5 rounded-md px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 transition-colors hover:bg-white/5 hover:text-yellow-300 sm:flex"
+            className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400 transition-colors hover:bg-white/5 hover:text-yellow-300"
             title="Cambiar a Fabrick Classic"
           >
             <Palette className="h-3.5 w-3.5" />
-            <span className="hidden md:inline">Fabrick</span>
+            <span className="hidden sm:inline">Fabrick</span>
           </button>
         )}
 

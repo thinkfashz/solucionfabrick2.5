@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import { headers } from 'next/headers';
 import Navbar from '@/components/Navbar';
 import Hero from '@/components/Hero';
@@ -11,7 +12,7 @@ import { getCmsSettings, getPublicHomeSections, renderCopyright } from '@/lib/cm
 // matches the runtime nonce, so the inline scripts get blocked and the page
 // fails to hydrate (black screen until a reload happens to land on a fresh
 // dynamic render). See src/lib/csp.ts for the full rationale.
-export const dynamic = 'force-dynamic';
+
 
 export default async function Home() {
   const nonce = (await headers()).get('x-nonce') ?? undefined;

@@ -1,3 +1,4 @@
+export const dynamic = 'force-dynamic';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
@@ -34,7 +35,7 @@ import { getSiteSection } from '@/lib/siteStructure';
 // the inline scripts with the runtime nonce. This is the canonical Next.js
 // pattern paired with strict nonce CSP. See the README of @next/csp examples
 // and the middleware source in this repo for the full rationale.
-export const dynamic = 'force-dynamic';
+
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.solucionesfabrick.com'),

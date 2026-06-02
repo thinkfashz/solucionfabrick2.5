@@ -777,7 +777,7 @@ export default function ScrapeGraphPage() {
       <AdminPageHeader
         eyebrow="Soluciones Fabrick · IA"
         title="ScrapeGraph IA"
-        description="Extrae datos estructurados de cualquier web con Playwright en tiempo real + LLM. Vista previa en vivo."
+        description="Extrae datos estructurados de cualquier web rápido (Edge/Cheerio) + LLM. Vista de logs en tiempo real."
         icon={Cpu}
         actions={
           <a
@@ -997,7 +997,7 @@ export default function ScrapeGraphPage() {
                 <div className="flex items-center justify-center gap-2 text-[10px] text-zinc-700">
                   <Zap className="h-3 w-3 text-yellow-400/50" />
                   <span>
-                    Playwright + IA ·{' '}
+                    Extracción IA ·{' '}
                     <a href="/admin/integraciones" className="text-yellow-400/70 underline-offset-2 hover:text-yellow-400 hover:underline">
                       Integraciones
                     </a>
@@ -1015,7 +1015,7 @@ export default function ScrapeGraphPage() {
               <div className="space-y-2 text-[11px] text-zinc-500 leading-relaxed">
                 <div className="flex items-start gap-2">
                   <Bot className="h-3.5 w-3.5 mt-0.5 shrink-0 text-yellow-400/60" />
-                  <span><strong className="text-zinc-400">Smart:</strong> Abre la URL con Playwright y extrae datos con IA</span>
+                  <span><strong className="text-zinc-400">Smart:</strong> Lee la URL y extrae datos estructurados con IA</span>
                 </div>
                 <div className="flex items-start gap-2">
                   <Search className="h-3.5 w-3.5 mt-0.5 shrink-0 text-blue-400/60" />

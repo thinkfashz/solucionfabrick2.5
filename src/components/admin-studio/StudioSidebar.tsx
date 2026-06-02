@@ -30,6 +30,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     links: [
       { href: '/admin', label: 'Centro de control', description: 'KPIs y salud operativa', icon: BarChart3 },
       { href: '/admin/modulos', label: 'Módulos y Apps', description: 'Explora y añade nuevos módulos', icon: LayoutGrid, highlight: true },
+      { href: '/admin/saas', label: 'Mi SaaS', description: 'Clientes, instalación y plataforma', icon: Rocket, highlight: true },
       { href: '/admin/clientes', label: 'Clientes', description: 'Historial y recurrencia', icon: Users },
       { href: '/admin/reportes', label: 'Reportes', description: 'Ventas y métricas', icon: BarChart3 },
     ],
@@ -75,6 +76,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Configuración y Conexiones',
     links: [
       { href: '/admin/integraciones', label: 'Integraciones Globales', description: 'MercadoPago, Google, Meta, MercadoLibre', icon: Link2, highlight: true },
+      { href: '/admin/herramientas', label: 'Herramientas', description: 'Base de datos, migraciones y utilidades', icon: Terminal },
       { href: '/admin/configuracion', label: 'Ajustes del Negocio', description: 'Datos y cuenta', icon: Settings },
       { href: '/admin/equipo', label: 'Mi Equipo', description: 'Usuarios y roles', icon: ShieldCheck, superadminOnly: true },
       { href: '/admin/estado', label: 'Salud del Sistema', description: 'Logs y diagnóstico', icon: Activity },

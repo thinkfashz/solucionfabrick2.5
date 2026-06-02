@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
         }
 
         send({ type: 'progress', step: `Proveedor: ${aiConfig.provider} · ${aiConfig.modelo}` });
-        send({ type: 'progress', step: 'Iniciando navegador Playwright…' });
+        send({ type: 'progress', step: 'Iniciando navegador web rápido (Cheerio/Edge)…' });
 
         const onProgress = (msg: string) => send({ type: 'progress', step: msg });
         const onScreenshot = (b64: string, url: string) => send({ type: 'screenshot', b64, url });

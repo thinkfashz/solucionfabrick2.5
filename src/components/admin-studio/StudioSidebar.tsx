@@ -1,5 +1,6 @@
 'use client';
 
+import React from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -9,7 +10,7 @@ import {
   ShoppingCart, Sparkles, Star, Stethoscope, Store, Tag, Terminal,
   TrendingDown, Truck, Telescope, User, Users, Video, Wallet, X, Plus,
   MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
-  ChevronRight,
+  ChevronRight, Palette,
 } from 'lucide-react';
 import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 
@@ -24,7 +25,7 @@ type NavLink = {
   comingSoon?: boolean;
 };
 
-const navSections: { title: string; links: NavLink[] }[] = [
+export const navSections: { title: string; links: NavLink[] }[] = [
   {
     title: 'Visión general',
     links: [
@@ -77,6 +78,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
     links: [
       { href: '/admin/integraciones', label: 'Integraciones Globales', description: 'MercadoPago, Google, Meta, MercadoLibre', icon: Link2, highlight: true },
       { href: '/admin/herramientas', label: 'Herramientas', description: 'Base de datos, migraciones y utilidades', icon: Terminal },
+      { href: '/admin/diseno', label: 'Motor de Diseño', description: 'Colores, logos y UI global', icon: Palette, highlight: true },
       { href: '/admin/configuracion', label: 'Ajustes del Negocio', description: 'Datos y cuenta', icon: Settings },
       { href: '/admin/equipo', label: 'Mi Equipo', description: 'Usuarios y roles', icon: ShieldCheck, superadminOnly: true },
       { href: '/admin/estado', label: 'Salud del Sistema', description: 'Logs y diagnóstico', icon: Activity },
@@ -155,6 +157,21 @@ export function StudioSidebarContent({
   onLogout: () => void;
 }) {
   const pathname = usePathname();
+  const [logoText, setLogoText] = React.useState('SOLUCIONES FABRICK');
+
+  React.useEffect(() => {
+    // Load persisted logo from design engine
+    const savedLogo = localStorage.getItem('admin-logo-text');
+    if (savedLogo) setLogoText(savedLogo);
+
+    const handleDesignUpdate = (e: any) => {
+      if (e.detail?.logoText) {
+        setLogoText(e.detail.logoText);
+      }
+    };
+    window.addEventListener('admin-design-updated', handleDesignUpdate);
+    return () => window.removeEventListener('admin-design-updated', handleDesignUpdate);
+  }, []);
 
   const sections = navSections
     .map((s) => ({
@@ -178,8 +195,8 @@ export function StudioSidebarContent({
         </div>
         {!collapsed && (
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] font-black uppercase tracking-[0.22em] text-yellow-300">
-              SOLUCIONES FABRICK
+            <p className="truncate text-[11px] font-black uppercase tracking-[0.22em]" style={{ color: 'var(--admin-accent, #fde047)' }}>
+              {logoText}
             </p>
             <p className="truncate text-[9px] uppercase tracking-[0.2em] text-zinc-500">Studio Admin</p>
           </div>

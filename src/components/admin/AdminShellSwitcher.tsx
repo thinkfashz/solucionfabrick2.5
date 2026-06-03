@@ -14,6 +14,13 @@ export function AdminShellSwitcher({ children }: { children: ReactNode }) {
   useEffect(() => {
     document.body.dataset.adminTheme = 'studio';
     localStorage.setItem('admin-ui-theme', 'studio');
+
+    // Inject user's custom accent color if it exists
+    const savedAccent = localStorage.getItem('admin-accent-color');
+    if (savedAccent) {
+      document.documentElement.style.setProperty('--admin-accent', savedAccent);
+    }
+
     setMounted(true);
   }, []);
 

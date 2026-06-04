@@ -57,7 +57,7 @@ import {
   ArrowLeft, ShieldCheck, Lock, Truck, 
   CheckCircle2, ChevronRight, Fingerprint,
   Wifi, Battery, Wrench, Check, Building2, Copy, ExternalLink,
-  CreditCard, RefreshCw
+  CreditCard, RefreshCw, Navigation, Loader2
 } from 'lucide-react';
 
 const FABRICK_HUB = {
@@ -2346,18 +2346,30 @@ const CheckoutApp = () => {
                     ))}
                   </div>
 
-                  <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.25em] text-zinc-300 font-bold">Conexión satelital libre</p>
-                      <p className="text-xs text-zinc-500 mt-1">Emitimos señal GPS, consultamos OpenStreetMap y retornamos dirección para auto relleno.</p>
+                  <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-2 bg-gradient-to-r from-yellow-400/5 to-transparent rounded-xl border border-yellow-400/20">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2">
+                        <Wifi className="w-4 h-4 text-yellow-400" />
+                        <p className="text-[10px] uppercase tracking-[0.25em] text-yellow-400 font-bold">Auto Relleno GPS Inteligente</p>
+                      </div>
+                      <p className="text-xs text-zinc-400 mt-2 font-medium">Localiza tu dispositivo vía GPS para un despacho exacto y sin errores tipográficos.</p>
                     </div>
                     <button
                       type="button"
                       onClick={requestSatelliteAutofill}
                       disabled={locationLoading}
-                      className="px-5 py-3 rounded-full border border-yellow-400/40 text-yellow-400 text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-400/10 disabled:opacity-50"
+                      className="group flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-yellow-400 text-black text-[10px] font-black uppercase tracking-widest shadow-[0_0_20px_rgba(250,204,21,0.2)] hover:shadow-[0_0_30px_rgba(250,204,21,0.4)] hover:scale-105 transition-all disabled:opacity-50"
                     >
-                      {locationLoading ? 'Sincronizando órbita...' : 'Autorrelleno satelital'}
+                      {locationLoading ? (
+                        <>
+                           <Loader2 className="w-4 h-4 animate-spin" /> Localizando...
+                        </>
+                      ) : (
+                        <>
+                           <Navigation className="w-4 h-4 transition-transform group-hover:-rotate-45" />
+                           Usar Mi Ubicación Actual
+                        </>
+                      )}
                     </button>
                   </div>
 

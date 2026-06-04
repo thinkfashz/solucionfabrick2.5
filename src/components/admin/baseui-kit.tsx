@@ -16,9 +16,9 @@ export function AdminBasePage({
   children: ReactNode;
 }) {
   return (
-    <section className="min-h-full bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.10),transparent_32%),linear-gradient(180deg,rgba(9,9,11,0.98),rgba(0,0,0,1))] px-3 py-4 text-zinc-100 sm:px-5 lg:px-8">
+    <section className="min-h-full w-full max-w-[100vw] overflow-x-hidden bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.10),transparent_32%),linear-gradient(180deg,rgba(9,9,11,0.98),rgba(0,0,0,1))] px-3 py-4 text-zinc-100 sm:px-5 lg:px-8">
       <div className="mx-auto w-full max-w-[1600px] space-y-5">
-        <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/80 p-5 shadow-[0_28px_120px_rgba(0,0,0,0.55)] backdrop-blur-2xl sm:p-6">
+        <div className="relative overflow-hidden w-full rounded-[2rem] border border-white/10 bg-zinc-950/80 p-5 shadow-[0_28px_120px_rgba(0,0,0,0.55)] backdrop-blur-2xl sm:p-6">
           <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.08),transparent_38%,rgba(250,204,21,0.08))]" />
           <div className="relative z-10 flex flex-col gap-4 lg:flex-row lg:items-end lg:justify-between">
             <div className="max-w-4xl">
@@ -43,7 +43,7 @@ export function AdminBaseGrid({ children, cols = 'auto' }: { children: ReactNode
       : cols === '4'
         ? 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-4'
         : 'grid-cols-1 sm:grid-cols-2 xl:grid-cols-4';
-  return <div className={`grid gap-4 ${grid}`}>{children}</div>;
+  return <div className={`grid gap-4 w-full ${grid}`}>{children}</div>;
 }
 
 export function AdminBaseCard({

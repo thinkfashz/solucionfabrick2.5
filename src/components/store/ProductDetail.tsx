@@ -152,6 +152,37 @@ export default function ProductDetail({ product, onClose, onAddToCart }: Product
             Añadir al Carrito
           </SilverGoldButton>
         </div>
+
+        {/* Productos Relacionados Simulados */}
+        <div className="detail-reveal mt-16 border-t border-white/10 pt-10">
+          <div className="flex items-center justify-between mb-6">
+            <h4 className="text-white text-lg font-playfair font-bold">También podría interesarte</h4>
+            <span className="text-[10px] uppercase tracking-[0.2em] text-yellow-400">Ver más</span>
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+             {/* Mock 1 */}
+             <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-yellow-400/30 transition-colors cursor-pointer p-3">
+               <div className="w-full h-32 bg-black/40 rounded-xl mb-3 overflow-hidden flex items-center justify-center">
+                  <div className="w-10 h-10 border border-white/20 rounded-full flex items-center justify-center">
+                     <span className="text-xs text-white/40">3D</span>
+                  </div>
+               </div>
+               <p className="text-white text-xs font-bold truncate">Madera Estructural</p>
+               <p className="text-yellow-400 text-xs mt-1">$4.500</p>
+             </div>
+             {/* Mock 2 */}
+             <div className="bg-white/5 border border-white/10 rounded-2xl overflow-hidden hover:border-yellow-400/30 transition-colors cursor-pointer p-3">
+               <div className="w-full h-32 bg-black/40 rounded-xl mb-3 overflow-hidden flex items-center justify-center">
+                  <div className="w-10 h-10 border border-white/20 rounded-full flex items-center justify-center">
+                     <span className="text-xs text-white/40">3D</span>
+                  </div>
+               </div>
+               <p className="text-white text-xs font-bold truncate">Adhesivo Montaje</p>
+               <p className="text-yellow-400 text-xs mt-1">$2.990</p>
+             </div>
+          </div>
+        </div>
+
       </div>
     </div>
   );

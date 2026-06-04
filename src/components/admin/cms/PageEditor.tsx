@@ -315,6 +315,27 @@ export function PageEditor({ page, title, subtitle, previewPath, settingGroups, 
     for (const t of Object.values(textTimers.current)) clearTimeout(t);
   }, []);
 
+  // Listen for visual selection from the iframe
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      const data = e.data as { type?: string; id?: string };
+      if (data && data.type === 'cms:select' && data.id) {
+        if (data.id === 'hero') {
+          setActiveTab('editor');
+          return;
+        }
+        setActiveTab('estructura');
+        setTimeout(() => {
+          const el = document.getElementById(`section-${data.id}`);
+          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }, 100);
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   // Focus a setting input when navigating from the structure tab.
   useEffect(() => {
     if (activeTab !== 'editor' || !focusFieldRef.current) return;
@@ -831,6 +852,14 @@ function SectionEditor({ section, index, total, onUpdateText, onUpdateNow, onPic
           <p className="mt-1 text-[10px] text-zinc-600">Se inyecta directo en la página. Sólo disponible para administradores.</p>
         </details>
       )}
+
+      {/* Common Advanced section */}
+      <details className="mt-3 rounded-lg border border-white/5 bg-black/40 p-3">
+        <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Configuración global de sección</summary>
+        <div className="mt-3 grid gap-2 md:grid-cols-2">
+          <DataInput label="Clases CSS (Tailwind)" value={dataString('custom_classes')} onChange={(v) => setDataDebounced({ custom_classes: v })} placeholder="ej. pt-20 pb-10 bg-yellow-400" />
+        </div>
+      </details>
     </li>
   );
 }
@@ -971,7 +1000,7 @@ function StructureDynamicRow({ section, index, total, onMove, onToggle, onEdit }
 }) {
   const snippet = section.title || section.subtitle || section.body || '(sin contenido)';
   return (
-    <div className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-zinc-950 p-3">
+    <div id={`section-${section.id}`} className="flex flex-wrap items-center gap-3 rounded-xl border border-white/10 bg-zinc-950 p-3">
       {section.image_url && (
         <img src={section.image_url} alt="" className="h-10 w-14 flex-shrink-0 rounded-lg border border-white/10 object-cover" />
       )}

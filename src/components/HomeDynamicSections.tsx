@@ -59,6 +59,7 @@ function SectionRenderer({ section }: { section: PublicHomeSection }) {
   const ctaUrl = getString(data, 'cta_url') || section.link_url || '';
   const ctaLabel = getString(data, 'cta_label') || section.link_label || 'Ver más';
   const ctaStyle = getString(data, 'cta_style') === 'outline' ? 'outline' : 'solid';
+  const customClasses = getString(data, 'custom_classes');
 
   const cta = ctaUrl ? (
     <Link
@@ -80,7 +81,7 @@ function SectionRenderer({ section }: { section: PublicHomeSection }) {
     const grid =
       validCols === 2 ? 'md:grid-cols-2' : validCols === 4 ? 'md:grid-cols-4' : 'md:grid-cols-3';
     return (
-      <section className="bg-black py-12 md:py-16">
+      <section className={`bg-black py-12 md:py-16 ${customClasses || ''}`.trim()} data-cms-id={section.id}>
         <div className="mx-auto max-w-6xl px-6">
           {section.title && <h2 className="font-playfair text-2xl font-black text-white md:text-4xl">{section.title}</h2>}
           {section.subtitle && <p className="mt-2 text-xs uppercase tracking-[0.3em] text-yellow-400">{section.subtitle}</p>}
@@ -108,7 +109,7 @@ function SectionRenderer({ section }: { section: PublicHomeSection }) {
     const html = getString(data, 'html');
     if (html) {
       return (
-        <section className="bg-black py-12 md:py-16">
+        <section className={`bg-black py-12 md:py-16 ${customClasses || ''}`.trim()} data-cms-id={section.id}>
           <div
             className="mx-auto max-w-5xl px-6 text-zinc-200 prose prose-invert"
             // Editor-controlled HTML; only superadmin can write here. Keep
@@ -124,8 +125,9 @@ function SectionRenderer({ section }: { section: PublicHomeSection }) {
     const bg = getString(data, 'bg_color');
     return (
       <section
-        className="relative w-full overflow-hidden py-12 md:py-20"
+        className={`relative w-full overflow-hidden py-12 md:py-20 ${customClasses || ''}`.trim()}
         style={{ background: bg || 'black' }}
+        data-cms-id={section.id}
       >
         <img src={cloudinaryUrl(section.image_url, { width: 1600, quality: 65 })} alt={section.title ?? ''} className="absolute inset-0 h-full w-full object-cover opacity-50" loading="lazy" decoding="async" />
         <div className="relative z-10 mx-auto max-w-5xl px-6 text-center text-white">
@@ -140,7 +142,7 @@ function SectionRenderer({ section }: { section: PublicHomeSection }) {
 
   if (section.kind === 'cta') {
     return (
-      <section className="bg-zinc-950 py-12 md:py-20">
+      <section className={`bg-zinc-950 py-12 md:py-20 ${customClasses || ''}`.trim()} data-cms-id={section.id}>
         <div className="mx-auto max-w-3xl px-6 text-center">
           {section.title && <h2 className="font-playfair text-2xl font-black text-yellow-400 md:text-4xl">{section.title}</h2>}
           {section.body && <p className="mt-3 text-sm text-zinc-300 md:text-base">{section.body}</p>}
@@ -153,7 +155,7 @@ function SectionRenderer({ section }: { section: PublicHomeSection }) {
   // Default / hero / custom layout
   const badge = getString(data, 'badge');
   return (
-    <section className="bg-black py-12 md:py-16">
+    <section className={`bg-black py-12 md:py-16 ${customClasses || ''}`.trim()} data-cms-id={section.id}>
       <div className="mx-auto max-w-5xl px-6">
         <div className={section.image_url ? 'grid gap-8 md:grid-cols-2 md:items-center' : ''}>
           <div>

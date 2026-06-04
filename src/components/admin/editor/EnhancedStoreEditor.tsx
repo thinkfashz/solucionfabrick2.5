@@ -221,6 +221,21 @@ export function EnhancedStoreEditor({
 
   useEffect(() => () => { if (autoSaveTimer.current) clearTimeout(autoSaveTimer.current); }, []);
 
+  // Listen for visual selection from the iframe
+  useEffect(() => {
+    const handleMessage = (e: MessageEvent) => {
+      if (e.origin !== window.location.origin) return;
+      const data = e.data as { type?: string; id?: string };
+      if (data && data.type === 'cms:select' && data.id) {
+        setExpandedSection(data.id);
+        const el = document.getElementById(`section-${data.id}`);
+        if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }
+    };
+    window.addEventListener('message', handleMessage);
+    return () => window.removeEventListener('message', handleMessage);
+  }, []);
+
   // ── Section operations ──────────────────────────────────────────────────────
   const addSection = useCallback((kind: string) => {
     const newSection: Section = {
@@ -577,7 +592,7 @@ function SortableSectionCard(props: SortableSectionCardProps) {
   };
 
   return (
-    <div ref={setNodeRef} style={style}>
+    <div ref={setNodeRef} style={style} id={`section-${props.section.id}`}>
       <SectionCard {...props} dragHandleProps={{ ...attributes, ...listeners }} />
     </div>
   );
@@ -712,6 +727,14 @@ function SectionCard({
                     />
                   </div>
                 )}
+                <div className="pt-2 mt-2 border-t border-yellow-400/10">
+                  <input
+                    value={(section.data?.custom_classes as string) ?? ''}
+                    onChange={(e) => onUpdate(section.id, { data: { ...section.data, custom_classes: e.target.value } })}
+                    placeholder="Clases CSS (Tailwind)"
+                    className="w-full text-xs rounded-lg bg-black/60 border border-yellow-400/15 px-2.5 py-1.5 text-white outline-none focus:border-yellow-400/40 transition-colors"
+                  />
+                </div>
               </div>
             </motion.div>
           )}

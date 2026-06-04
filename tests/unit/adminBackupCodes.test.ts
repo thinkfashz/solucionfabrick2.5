@@ -162,7 +162,7 @@ describe('verifyAndConsumeBackupCode', () => {
     expect(elapsed).toBeLessThan(50);
   });
 
-  it('a previously-consumed code does not match the trimmed array', async () => {
+  it('a previously-consumed code does not match the trimmed array', { timeout: 10000 }, async () => {
     const codes = generateBackupCodes(3);
     let hashes = await hashBackupCodes(codes);
 

@@ -21,10 +21,10 @@ import { useSiteConfigContextOrNull } from '@/context/SiteConfigContext';
 export default function CmsPreviewOverlay() {
   const ctx = useSiteConfigContextOrNull();
 
-  // Only activate in preview mode
-  if (!ctx?.previewMode) return null;
-
   useEffect(() => {
+    // Only activate in preview mode
+    if (!ctx?.previewMode) return;
+
     // 1. Inject global hover styles for editable elements
     const styleId = 'cms-preview-overlay-styles';
     if (!document.getElementById(styleId)) {
@@ -89,7 +89,9 @@ export default function CmsPreviewOverlay() {
       const styleEl = document.getElementById(styleId);
       if (styleEl) styleEl.remove();
     };
-  }, []);
+  }, [ctx?.previewMode]);
+
+  if (!ctx?.previewMode) return null;
 
   return null;
 }

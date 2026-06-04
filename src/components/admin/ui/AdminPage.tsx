@@ -33,7 +33,7 @@ export function AdminPage({ children, className = '' }: { children: ReactNode; c
       variants={containerVars}
       initial="hidden"
       animate="show"
-      className={`space-y-5 pb-24 lg:pb-8 ${className}`}
+      className={`space-y-5 pb-24 lg:pb-8 w-full max-w-[100vw] overflow-x-hidden ${className}`}
     >
       {children}
     </motion.div>
@@ -61,7 +61,7 @@ export function AdminPageHeader({ eyebrow, title, description, icon: Icon, actio
   return (
     <motion.section
       variants={itemVars}
-      className="relative overflow-hidden rounded-[1.75rem] border border-white/10 bg-black/55 p-5 backdrop-blur-2xl md:p-7"
+      className="relative overflow-hidden w-full rounded-[1.75rem] border border-white/10 bg-black/55 p-5 backdrop-blur-2xl md:p-7"
     >
       {/* Glow ambient */}
       <div className="pointer-events-none absolute inset-0">
@@ -110,12 +110,12 @@ export function AdminCard({ children, className = '', glow = false, as = 'sectio
   return (
     <Component
       variants={itemVars}
-      className={`relative overflow-hidden rounded-[1.5rem] border border-white/10 bg-black/45 p-5 backdrop-blur-xl transition-colors duration-300 hover:border-yellow-300/30 ${glow ? 'shadow-[0_18px_60px_rgba(0,0,0,0.55)]' : ''} ${className}`}
+      className={`relative overflow-hidden w-full max-w-full rounded-[1.5rem] border border-white/10 bg-black/45 p-5 backdrop-blur-xl transition-colors duration-300 hover:border-yellow-300/30 ${glow ? 'shadow-[0_18px_60px_rgba(0,0,0,0.55)]' : ''} ${className}`}
     >
       {glow ? (
         <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(250,204,21,0.06),transparent_60%)]" />
       ) : null}
-      <div className="relative">{children}</div>
+      <div className="relative w-full max-w-full overflow-x-auto">{children}</div>
     </Component>
   );
 }

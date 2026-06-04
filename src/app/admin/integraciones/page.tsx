@@ -1263,7 +1263,7 @@ export default function AdminIntegracionesPage() {
 				</div>
 			) : null}
 
-			<div className="grid gap-5 md:grid-cols-2 xl:grid-cols-3">
+			<div className="grid gap-5 grid-cols-1 xl:grid-cols-2 2xl:grid-cols-3">
 				{PROVIDERS.map((provider) => {
 					const Icon = provider.icon;
 					const status = integrations[provider.id];
@@ -1541,7 +1541,7 @@ export default function AdminIntegracionesPage() {
 										</div>
 									) : null}
 
-									<div className="grid gap-3 sm:grid-cols-2">
+									<div className="grid gap-3 grid-cols-1 md:grid-cols-2 xl:grid-cols-1 2xl:grid-cols-2">
 										{provider.fields.map((field) => {
 											const existing = status?.credentials?.[field.key];
 											const isEnv = existing?.source === 'env';

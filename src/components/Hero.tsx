@@ -79,6 +79,7 @@ export default function Hero({
     <section
       id="inicio"
       className="relative isolate flex min-h-[100svh] overflow-hidden bg-zinc-950"
+      data-cms-id="hero"
     >
       {/* â”€â”€ Background: photo + overlays + blueprint grid â”€â”€ */}
       <div aria-hidden className="pointer-events-none absolute inset-0 -z-10">

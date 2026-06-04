@@ -16,6 +16,7 @@ import Analytics from '@/components/Analytics';
 import CmsRealtimeListener from '@/components/CmsRealtimeListener';
 import CustomInjectionRoot from '@/components/CustomInjectionRoot';
 import GlobalStylesRoot from '@/components/GlobalStylesRoot';
+import CmsPreviewOverlay from '@/components/admin/cms/CmsPreviewOverlay';
 import { getSiteSection } from '@/lib/siteStructure';
 
 // Force per-request rendering for every route in the app.
@@ -141,6 +142,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <AIAgentChat hideOn={['/admin', '/auth', '/checkout', '/presupuestos', '/p/']} />
                   <Analytics />
                   <CmsRealtimeListener />
+                  <CmsPreviewOverlay />
                 </QuoteCartProvider>
               </CartProvider>
             </AuthProvider>

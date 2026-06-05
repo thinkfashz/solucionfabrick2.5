@@ -527,11 +527,11 @@ export default function AsistenteIaPage() {
   // ── RENDER ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex h-[calc(100vh-80px)] overflow-hidden bg-[#0a0a0a] text-white">
+    <div className="flex flex-col sm:flex-row h-[calc(100vh-80px)] lg:h-[calc(100vh-64px)] w-full overflow-hidden bg-[#0a0a0a] text-white">
 
       {/* ── SIDEBAR: Threads ── */}
       {showSidebar && (
-        <aside className="flex w-52 shrink-0 flex-col border-r border-white/8 bg-black/20">
+        <aside className="absolute inset-y-0 left-0 z-30 flex w-full max-w-[240px] sm:relative sm:w-52 shrink-0 flex-col border-r border-white/8 bg-[#0a0a0a]">
           {/* Sidebar header */}
           <div className="flex shrink-0 items-center justify-between border-b border-white/8 px-3 py-2.5">
             <div className="flex items-center gap-1.5">
@@ -905,7 +905,7 @@ export default function AsistenteIaPage() {
 
       {/* ── SETTINGS PANEL ── */}
       {showSettings && (
-        <aside className="flex w-72 shrink-0 flex-col overflow-y-auto border-l border-white/8 bg-black/20">
+        <aside className="absolute inset-y-0 right-0 z-30 flex w-full max-w-[280px] lg:relative lg:w-72 shrink-0 flex-col overflow-y-auto border-l border-white/8 bg-[#0a0a0a]">
           <div className="flex shrink-0 items-center justify-between border-b border-white/8 px-4 py-2.5">
             <span className="text-[11px] font-bold text-zinc-400">Configuración</span>
             <button type="button" onClick={() => setShowSettings(false)} className="text-zinc-600 hover:text-zinc-300">

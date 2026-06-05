@@ -135,17 +135,8 @@ async function callLLM(aiConfig: AiConfig, systemPrompt: string, userPrompt: str
   return data.content.find((b) => b.type === 'text')?.text ?? '';
 }
 
-/* ─── Text extractor — self-contained Playwright fetch ───────────────────── */
-const BROWSER_ARGS = [
-  '--no-sandbox',
-  '--disable-setuid-sandbox',
-  '--disable-dev-shm-usage',
-  '--disable-gpu',
-  '--single-process',
-  '--ignore-certificate-errors',
-];
-
-const BLOCK_TYPES = new Set(['image', 'stylesheet', 'font', 'media', 'websocket']);
+/* ─── Text extractor — Cheerio fetch ─────────────────────────────────────── */
+import * as cheerio from 'cheerio';
 
 const MAX_TEXT = 10_000;
 
@@ -159,41 +150,32 @@ async function fetchPageText(
   onScreenshot?: (b64: string, url: string) => void,
 ): Promise<string> {
   onProgress?.(`Navegando a ${url}…`);
-  const { chromium } = await import('@playwright/test');
-  const browser = await chromium.launch({ headless: true, args: BROWSER_ARGS });
   try {
-    const ctx = await browser.newContext({
-      userAgent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-      viewport: { width: 1280, height: 800 },
+    const res = await fetch(url, {
+      headers: {
+        'User-Agent':
+          'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+        Accept: 'text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8',
+        'Accept-Language': 'es-CL,es;q=0.9,en-US;q=0.8,en;q=0.7',
+      },
+      signal: AbortSignal.timeout(20_000),
     });
-    const page = await ctx.newPage();
-    await page.route('**/*', (route) => {
-      if (BLOCK_TYPES.has(route.request().resourceType())) {
-        route.abort().catch(() => null);
-      } else {
-        route.continue().catch(() => null);
-      }
-    });
-    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 20_000 });
-    await page.waitForTimeout(700);
-    // Take viewport screenshot
-    if (onScreenshot) {
-      try {
-        const buf = await page.screenshot({ fullPage: false, type: 'jpeg', quality: 60 });
-        onScreenshot(buf.toString('base64'), page.url());
-      } catch { /* non-critical */ }
+
+    if (!res.ok) {
+      throw new Error(`HTTP ${res.status}`);
     }
-    const raw = await page.evaluate(() => {
-      const rm = (sel: string) => document.querySelectorAll(sel).forEach((el) => el.remove());
-      rm('script'); rm('style'); rm('nav'); rm('footer');
-      rm('header'); rm('noscript'); rm('[aria-hidden="true"]');
-      return document.body?.innerText ?? '';
-    });
+
+    const html = await res.text();
+    const $ = cheerio.load(html);
+
+    // Remove unwanted elements
+    $('script, style, nav, footer, header, noscript, [aria-hidden="true"]').remove();
+
+    const raw = $('body').text();
     return cleanText(raw);
-  } catch {
+  } catch (error) {
+    onProgress?.(`Error navegando a ${url}: ${error}`);
     return '';
-  } finally {
-    await browser.close().catch(() => null);
   }
 }
 

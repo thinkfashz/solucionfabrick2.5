@@ -12,7 +12,11 @@ import {
   Send,
   Ban,
   CheckCircle2,
+  TrendingDown,
+  Receipt,
+  Download,
 } from 'lucide-react';
+import { AdminBasePage, AdminBaseGrid, AdminBaseMetric } from '@/components/admin/baseui-kit';
 
 interface InvoiceRow {
   id: string;
@@ -432,32 +436,47 @@ export default function AdminFacturasPage() {
     void load();
   }, [load]);
 
-  return (
-    <main className="mx-auto max-w-6xl px-4 py-8 text-zinc-100">
-      <header className="mb-6 flex items-start justify-between flex-wrap gap-3">
-        <div>
-          <h1 className="flex items-center gap-2 text-2xl font-bold">
-            <FileText className="text-yellow-400" /> Facturas electrónicas
-          </h1>
-          <p className="mt-1 text-sm text-zinc-400">
-            DTE emitidos a través de{' '}
-            <span className="text-yellow-400 font-semibold">
-              {billingStatus?.provider ?? '…'}
-            </span>
-          </p>
-        </div>
-        <button
-          type="button"
-          onClick={() => void load()}
-          className="inline-flex items-center gap-2 rounded-lg border border-zinc-800 bg-zinc-900 px-3 py-1.5 text-xs hover:bg-zinc-800"
-        >
-          <RefreshCcw size={14} /> Refrescar
-        </button>
-      </header>
+  const ivaVentas = rows.reduce((acc, r) => r.voided ? acc : acc + (r.total * 0.19), 0);
+  const totalVentas = rows.reduce((acc, r) => r.voided ? acc : acc + r.total, 0);
 
-      {/* Billing status banner */}
+  // Mocks de gastos para demostrar la funcionalidad SII (Gastos)
+  const gastosMock = [
+    { id: 1, fecha: '2025-06-01', proveedor: 'Sodimac S.A', rut: '96.792.430-K', monto: 1250000, tipo: 'Materiales' },
+    { id: 2, fecha: '2025-06-03', proveedor: 'Microsoft Cloud', rut: '59.112.332-1', monto: 45000, tipo: 'Software' },
+    { id: 3, fecha: '2025-06-05', proveedor: 'Easy Chile', rut: '76.134.990-2', monto: 450000, tipo: 'Herramientas' },
+  ];
+  const totalGastosMock = gastosMock.reduce((a, b) => a + b.monto, 0);
+  const ivaComprasMock = totalGastosMock * 0.19;
+
+  const impuestoAPagar = Math.max(0, ivaVentas - ivaComprasMock);
+
+  return (
+    <AdminBasePage
+      eyebrow="Finanzas & SII"
+      title="Contabilidad e Impuestos"
+      description="Emite DTEs, controla tus ventas y estima tus pagos mensuales de IVA (F29) basándose en tu registro de compras."
+      actions={
+        <>
+          <EmitForm onSuccess={() => void load()} />
+          <button
+            type="button"
+            onClick={() => void load()}
+            className="inline-flex items-center gap-2 rounded-lg border border-white/10 bg-white/5 px-4 py-2 text-xs font-bold hover:bg-white/10"
+          >
+            <RefreshCcw size={14} /> Sincronizar
+          </button>
+        </>
+      }
+    >
+      <AdminBaseGrid cols="4">
+        <AdminBaseMetric label="Ventas Mensuales" value={formatCLP(totalVentas)} hint="Total emitido sin anular" />
+        <AdminBaseMetric label="Gastos Mensuales" value={formatCLP(totalGastosMock)} hint="Compras con factura" />
+        <AdminBaseMetric label="IVA Débito (Ventas)" value={formatCLP(ivaVentas)} hint="19% a retener" />
+        <AdminBaseMetric label="IVA a Pagar (F29)" value={formatCLP(impuestoAPagar)} hint="Débito menos Crédito" />
+      </AdminBaseGrid>
+
       {billingStatus && !billingStatus.configured && (
-        <div className="mb-4 flex items-start gap-2 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-200">
+        <div className="mb-4 mt-4 flex items-start gap-2 rounded-xl border border-yellow-500/30 bg-yellow-500/10 p-3 text-sm text-yellow-200">
           <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
           <div>
             <p className="font-semibold">Modo simulado ({billingStatus.provider})</p>
@@ -470,19 +489,16 @@ export default function AdminFacturasPage() {
       )}
 
       {billingStatus?.configured && (
-        <div className="mb-4 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
+        <div className="mb-6 mt-4 flex items-center gap-2 rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-sm text-emerald-200">
           <CheckCircle2 size={16} className="flex-shrink-0" />
           <p>
-            <strong>Haulmer activo</strong> — las emisiones van contra el SII en tiempo real.
+            Conectado a {billingStatus.provider}. Los DTEs emitidos se informan al SII.
           </p>
         </div>
       )}
 
-      {/* Emit form */}
-      <EmitForm onSuccess={() => void load()} />
-
       {error && (
-        <div className="my-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
+        <div className="mb-4 rounded-xl border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-200">
           {error}
           <p className="mt-1 text-xs text-red-200/70">
             ¿Tabla <code>invoices</code> no creada? Andá a{' '}
@@ -568,6 +584,6 @@ export default function AdminFacturasPage() {
           </tbody>
         </table>
       </div>
-    </main>
+    </AdminBasePage>
   );
 }

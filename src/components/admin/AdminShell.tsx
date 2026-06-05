@@ -555,15 +555,6 @@ export function AdminShell({ children }: { children: ReactNode }) {
         open={contextMenuOpen}
         onClose={() => setContextMenuOpen(false)}
         onLogout={handleLogout}
-        onToggleTheme={() => {
-          // Trigger the header theme toggle button imperatively
-          const btn = document.querySelector<HTMLButtonElement>('.admin-theme-toggle');
-          if (btn) {
-            btn.click();
-            const next = adminTheme === 'studio' ? '' : 'studio';
-            setAdminTheme(next);
-          }
-        }}
         currentTheme={adminTheme}
         profilePhoto={profilePhoto}
       />

@@ -151,10 +151,10 @@ export default function FabrickAiDeveloperPage() {
   }
 
   return (
-    <div className="flex h-[calc(100vh-80px)] flex-col overflow-hidden bg-[#0a0a0a] text-white">
+    <div className="flex flex-col h-[calc(100vh-80px)] lg:h-[calc(100vh-64px)] w-full overflow-hidden bg-[#0a0a0a] text-white">
 
       {/* ── Header ── */}
-      <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/8 bg-black/60 px-4 py-3 backdrop-blur-xl sm:px-5">
+      <header className="flex shrink-0 items-center justify-between gap-2 border-b border-white/8 bg-black/60 px-3 py-3 backdrop-blur-xl sm:px-5 sm:gap-3">
         <div className="flex min-w-0 items-center gap-2.5">
           <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-300 to-amber-600 text-black shadow-[0_0_20px_rgba(250,204,21,0.3)]">
             <BrainCircuit className="h-4 w-4" />
@@ -286,9 +286,9 @@ export default function FabrickAiDeveloperPage() {
           </div>
 
           {/* ── Input bar ── */}
-          <div className="shrink-0 border-t border-white/8 bg-[#0c0c0c] p-3 sm:p-4">
+          <div className="shrink-0 border-t border-white/8 bg-[#0c0c0c] p-2 sm:p-4 pb-safe-offset-2">
             {/* Quick prompts */}
-            <div className="mb-2.5 flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide">
+            <div className="mb-2.5 flex gap-2 overflow-x-auto pb-0.5 scrollbar-hide w-full max-w-[100vw]">
               {QUICK_PROMPTS.map((prompt) => (
                 <button
                   key={prompt}
@@ -334,8 +334,14 @@ export default function FabrickAiDeveloperPage() {
         </div>
 
         {/* ── Right sidebar ── */}
-        <aside className={`border-l border-white/8 bg-[#0c0c0c] ${showInfo ? 'block' : 'hidden lg:block'}`}>
-          <div className="overflow-y-auto p-4" style={{ height: 'calc(100vh - 80px)' }}>
+        <aside className={`border-l border-white/8 bg-[#0c0c0c] shrink-0 w-full lg:w-[320px] absolute inset-y-0 right-0 z-20 lg:relative lg:block transition-transform ${showInfo ? 'translate-x-0' : 'translate-x-full lg:translate-x-0'}`}>
+          <div className="overflow-y-auto p-4 h-full pb-safe-offset-4">
+            <div className="flex justify-between lg:hidden mb-4 items-center">
+               <h3 className="text-xs font-bold text-zinc-400 uppercase tracking-widest">Opciones IA</h3>
+               <button onClick={() => setShowInfo(false)} className="p-2 text-zinc-500 hover:text-white bg-white/5 rounded-lg">
+                 <X className="h-4 w-4" />
+               </button>
+            </div>
             <div className="space-y-5">
 
               {/* Provider selector */}

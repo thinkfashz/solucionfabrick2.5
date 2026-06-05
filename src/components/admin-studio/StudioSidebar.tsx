@@ -3,11 +3,11 @@
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
-  AlertTriangle, BarChart3, BookOpen, Bot, Boxes, Cloud, Cpu, Database, Eye,
-  FileText, Hammer, Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut,
+  AlertTriangle, BadgePercent, BarChart3, BookOpen, Bot, Boxes, Calculator, Cloud, Cpu, Database, Eye,
+  FileText, Hammer, Image as ImageIcon, Inbox, Kanban, LayoutGrid, Link2, LogOut,
   Mail, Megaphone, Newspaper, Package, Radio, Search, Send, Settings, ShieldCheck,
   ShoppingCart, Sparkles, Star, Stethoscope, Store, Tag, Terminal,
-  TrendingDown, Truck, Telescope, User, Users, Video, Wallet, X, Plus,
+  TrendingDown, TrendingUp, Truck, Telescope, User, Users, Video, Wallet, X, Plus,
   MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
   ChevronRight,
 } from 'lucide-react';
@@ -31,6 +31,15 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/perfil', label: 'Perfil administrador', description: 'Foto, bio, contacto, redes y presentación', icon: User, highlight: true },
       { href: '/admin/sesiones', label: 'Sesiones y dispositivos', description: 'IPs, dispositivos y auditoría', icon: Activity, highlight: true },
       { href: '/admin/seguridad', label: 'Seguridad · Passkeys', description: 'Acceso con huella digital o Face ID', icon: KeyRound, highlight: true },
+    ],
+  },
+  {
+    title: 'Negocio',
+    links: [
+      { href: '/admin/crm', label: 'CRM & Pipeline', description: 'Oportunidades, leads y seguimiento de ventas', icon: Kanban, highlight: true },
+      { href: '/admin/analytics', label: 'Analytics', description: 'Métricas de ventas y rendimiento del negocio', icon: TrendingUp, highlight: true },
+      { href: '/admin/contabilidad', label: 'Contabilidad F29 / SII', description: 'Declaraciones mensuales de IVA y PPM', icon: Calculator, highlight: true },
+      { href: '/admin/beneficios', label: 'Beneficios Fiscales', description: 'Ahorro tributario y créditos disponibles en Chile', icon: BadgePercent, highlight: true },
     ],
   },
   {

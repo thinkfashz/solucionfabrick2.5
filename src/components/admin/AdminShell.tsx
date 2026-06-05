@@ -10,11 +10,14 @@ import {
   BarChart3,
   BookOpen,
   Bot,
+  Box,
   Boxes,
   Calculator,
+  ChevronDown,
   ChevronRight,
   Cloud,
   Cpu,
+  Plus,
   Mail,
   Database,
   ExternalLink,
@@ -109,6 +112,7 @@ const navSections: NavSection[] = [
     title: 'Operación',
     links: [
       { href: '/admin/productos', label: 'Productos', description: 'Catálogo y stock', icon: Package },
+      { href: '/admin/productos/nuevo', label: 'Nuevo producto', description: 'Crear producto manualmente', icon: Plus },
       { href: '/admin/productos/importar', label: 'Importar de Mercado Libre', description: 'Vista previa desde URL de ML Chile', icon: Link2 },
       { href: '/admin/materiales', label: 'Materiales', description: 'Cotizador en vivo', icon: Package },
       { href: '/admin/proyectos', label: 'Proyectos', description: 'Obras terminadas', icon: Hammer },
@@ -116,6 +120,8 @@ const navSections: NavSection[] = [
       { href: '/admin/pagos', label: 'Pagos · MercadoPago', description: 'Pasarela y métricas', icon: Wallet, highlight: true },
       { href: '/admin/cotizaciones', label: 'Cotizaciones', description: 'Solicitudes y diseños 3D', icon: FileText },
       { href: '/admin/presupuestos', label: 'Presupuestos', description: 'Links autodestruibles de presupuesto', icon: FileText, highlight: true },
+      { href: '/admin/presupuestos/modelos-3d', label: 'Modelos 3D presupuesto', description: 'Galería 3D para cotizaciones', icon: Box },
+      { href: '/admin/presupuestos/videos', label: 'Videos presupuesto', description: 'Videos de presentación', icon: Video },
       { href: '/admin/entregas', label: 'Entregas', description: 'Seguimiento logístico', icon: Truck },
       { href: '/admin/inventario', label: 'Inventario', description: 'Stock y movimientos', icon: Scan },
       { href: '/admin/inventario/scan', label: 'Escáner inventario', description: 'Códigos de barra y QR', icon: Scan },
@@ -129,6 +135,8 @@ const navSections: NavSection[] = [
     title: 'Contenido',
     links: [
       { href: '/admin/blog', label: 'Blog', description: 'Entradas y publicación', icon: Newspaper },
+      { href: '/admin/blog/nuevo', label: 'Nuevo post', description: 'Crear entrada de blog', icon: Plus },
+      { href: '/admin/blog/comments', label: 'Comentarios', description: 'Moderar comentarios del blog', icon: MessageCircle },
       { href: '/admin/home', label: 'Pantalla principal', description: 'Banners y secciones', icon: LayoutGrid },
       { href: '/admin/editor', label: 'Editor universal', description: 'Navbar, footer, checkout y más', icon: LayoutGrid, highlight: true },
       { href: '/admin/tienda', label: 'Tienda', description: 'Portada y catálogo', icon: ShoppingCart },
@@ -146,6 +154,7 @@ const navSections: NavSection[] = [
       { href: '/admin/asistente-ia', label: 'Asistente IA', description: 'OpenRouter y análisis', icon: Sparkles, highlight: true },
       { href: '/admin/video-engine', label: 'Fabrick Studio IA', description: 'Guiones, escenas y previews HTML', icon: Video, highlight: true },
       { href: '/admin/publicidad', label: 'Publicidad', description: 'Meta Ads', icon: Globe2 },
+      { href: '/admin/publicidad/nuevo', label: 'Nueva campaña', description: 'Crear campaña publicitaria', icon: Plus },
       { href: '/admin/publicidad/coach', label: 'Coach campañas', description: 'Optimización con IA', icon: Sparkles, highlight: true },
       { href: '/admin/publicar', label: 'Publicar', description: 'Posts para redes', icon: Send },
       { href: '/admin/newsletter', label: 'Boletín', description: 'Suscriptores y campañas', icon: Newspaper, highlight: true },
@@ -154,6 +163,7 @@ const navSections: NavSection[] = [
       { href: '/admin/inteligencia-mercado', label: 'Inteligencia mercado', description: 'Tendencias y SEO con IA', icon: Telescope, highlight: true },
       { href: '/admin/social', label: 'Social', description: 'Hub social', icon: Inbox },
       { href: '/admin/social/inbox', label: 'Inbox social', description: 'Mensajes y canales', icon: MessageCircle, highlight: true },
+      { href: '/admin/center', label: 'Centro de mando', description: 'Vista unificada de operaciones', icon: LayoutGrid },
     ],
   },
   {
@@ -186,6 +196,7 @@ const navSections: NavSection[] = [
       { href: '/admin/setup', label: 'Setup', description: 'Verificar tablas', icon: Database, superadminOnly: true },
       { href: '/admin/extensions', label: 'Extensiones', description: 'Webhooks y signing keys', icon: Plug, highlight: true },
       { href: '/admin/facturas', label: 'Facturas DTE', description: 'Documentos tributarios', icon: Receipt },
+      { href: '/admin/acceso-demo', label: 'Acceso demo', description: 'Enlace de demostración temporal', icon: Eye },
     ],
   },
 ];
@@ -268,6 +279,39 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, profilePhoto }: 
     .map((section) => ({ ...section, links: section.links.filter((link) => !link.superadminOnly || role === 'superadmin') }))
     .filter((section) => section.links.length > 0);
 
+  const [openSections, setOpenSections] = useState<Set<string>>(() => {
+    const active = new Set<string>();
+    active.add('Perfil & acceso');
+    for (const section of navSections) {
+      if (section.links.some((l) => pathname === l.href.split('?')[0] || (l.href !== '/admin' && pathname.startsWith(l.href.split('?')[0])))) {
+        active.add(section.title);
+      }
+    }
+    return active;
+  });
+
+  const [search, setSearch] = useState('');
+
+  function toggleSection(title: string) {
+    setOpenSections((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
+      return next;
+    });
+  }
+
+  const filteredForSearch = search.trim()
+    ? sections.flatMap((s) =>
+        s.links
+          .filter((l) =>
+            l.label.toLowerCase().includes(search.toLowerCase()) ||
+            l.description.toLowerCase().includes(search.toLowerCase())
+          )
+          .map((l) => ({ ...l, section: s.title }))
+      )
+    : [];
+
   return (
     <div className="space-y-3">
       <div className="relative overflow-hidden rounded-[1.5rem] border border-yellow-300/25 bg-black/55 shadow-[0_20px_60px_rgba(0,0,0,0.45)] backdrop-blur-2xl">
@@ -291,22 +335,79 @@ function SidebarContent({ pathname, onNavigate, onLogout, role, profilePhoto }: 
             <span className="mt-1 block text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-500 group-hover:text-yellow-300 transition-colors">Ver perfil →</span>
           </span>
         </Link>
+        {/* Search bar */}
+        <div className="px-3 pb-3">
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-zinc-600" />
+            <input
+              type="text"
+              placeholder="Buscar módulo..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full rounded-xl border border-white/10 bg-black/40 pl-8 pr-3 py-2 text-xs text-white placeholder-zinc-600 outline-none focus:border-yellow-300/40 focus:ring-1 focus:ring-yellow-300/20"
+            />
+          </div>
+        </div>
       </div>
 
-      {sections.map((section) => (
-        <nav key={section.title} className="rounded-[1.5rem] border border-white/12 bg-black/45 p-3 shadow-[0_14px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl">
-          <div className="mb-2 flex items-center justify-between px-1">
-            <p className="text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">{section.title}</p>
-            <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-500">{section.links.length}</span>
+      {search.trim() ? (
+        <nav className="rounded-[1.5rem] border border-white/12 bg-black/45 overflow-hidden shadow-[0_14px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+          <div className="px-4 py-3 border-b border-white/8">
+            <p className="text-[9.5px] font-bold uppercase tracking-[0.32em] text-zinc-500">
+              Resultados <span className="ml-1 rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-600">{filteredForSearch.length}</span>
+            </p>
           </div>
-          <div className="space-y-1">
-            {section.links.map((link) => {
-              const hrefPath = link.href.split('?')[0];
-              return <NavItem key={`${section.title}-${link.href}`} {...link} active={pathname === hrefPath} onNavigate={onNavigate} />;
-            })}
+          <div className="px-2 pb-3 pt-1 space-y-1">
+            {filteredForSearch.length === 0 ? (
+              <p className="px-3 py-4 text-center text-[11px] text-zinc-600">Sin resultados para &ldquo;{search}&rdquo;</p>
+            ) : (
+              filteredForSearch.map((link) => {
+                const hrefPath = link.href.split('?')[0];
+                const active = pathname === hrefPath || (hrefPath !== '/admin' && pathname.startsWith(hrefPath));
+                return (
+                  <div key={`search-${link.href}`}>
+                    <p className="px-1 pb-0.5 pt-2 text-[8.5px] font-bold uppercase tracking-[0.28em] text-zinc-600">{link.section}</p>
+                    <NavItem {...link} active={active} onNavigate={() => { setSearch(''); onNavigate?.(); }} />
+                  </div>
+                );
+              })
+            )}
           </div>
         </nav>
-      ))}
+      ) : (
+        sections.map((section) => {
+          const isOpen = openSections.has(section.title);
+          const hasActive = section.links.some((l) => {
+            const p = l.href.split('?')[0];
+            return pathname === p || (p !== '/admin' && pathname.startsWith(p));
+          });
+          return (
+            <nav key={section.title} className="rounded-[1.5rem] border border-white/12 bg-black/45 overflow-hidden shadow-[0_14px_40px_rgba(0,0,0,0.4)] backdrop-blur-xl">
+              <button
+                onClick={() => toggleSection(section.title)}
+                className={`flex w-full items-center justify-between px-4 py-3 transition-colors hover:bg-white/5 ${hasActive ? 'text-yellow-300' : 'text-zinc-500'}`}
+              >
+                <span className={`text-[9.5px] font-bold uppercase tracking-[0.32em] ${hasActive ? 'text-yellow-400' : 'text-zinc-500'}`}>
+                  {section.title}
+                </span>
+                <div className="flex items-center gap-2">
+                  <span className="rounded-full border border-white/10 bg-white/5 px-1.5 py-0.5 font-mono text-[9px] text-zinc-600">{section.links.length}</span>
+                  <ChevronDown className={`h-3 w-3 transition-transform duration-200 ${isOpen ? 'rotate-0' : '-rotate-90'} ${hasActive ? 'text-yellow-400' : 'text-zinc-600'}`} />
+                </div>
+              </button>
+              {isOpen && (
+                <div className="px-2 pb-3 space-y-1">
+                  {section.links.map((link) => {
+                    const hrefPath = link.href.split('?')[0];
+                    const active = pathname === hrefPath || (hrefPath !== '/admin' && pathname.startsWith(hrefPath));
+                    return <NavItem key={`${section.title}-${link.href}`} {...link} active={active} onNavigate={onNavigate} />;
+                  })}
+                </div>
+              )}
+            </nav>
+          );
+        })
+      )}
 
       <div className="rounded-[1.5rem] border border-white/12 bg-black/45 p-3 backdrop-blur-xl">
         <button onClick={onLogout} className="group flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-black/40 px-4 py-2.5 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-300 transition hover:border-rose-500/60 hover:bg-rose-500/10 hover:text-rose-300">

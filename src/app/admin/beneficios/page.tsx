@@ -3,6 +3,7 @@ import { useEffect, useState, useCallback } from "react";
 import { BadgePercent, ChevronDown, Loader2, ArrowRight, AlertTriangle, TrendingUp, Info } from "lucide-react";
 import { cn } from "@/lib/utils";
 import Link from "next/link";
+import { BeneficiosMeter } from "@/components/admin/BeneficiosMeter";
 
 type Estado = "pendiente" | "declarado" | "pagado";
 type Categoria = "iva" | "renta" | "inversion" | "pyme";
@@ -313,6 +314,11 @@ export default function BeneficiosPage() {
 
   const totalSavings = withSavings.reduce((s, b) => s + b.savings, 0);
 
+  // Derived fiscal summary values for sticky bar and meter
+  const ivaNeto = Math.max(0, Math.round(v * 0.19 - c * 0.19));
+  const ppmMensual = Math.round(v * 0.025);
+  const total = ivaNeto + ppmMensual;
+
   return (
     <div className="space-y-6 p-4 md:p-8">
       {/* Header */}
@@ -329,6 +335,26 @@ export default function BeneficiosPage() {
           </p>
         </div>
       </div>
+
+      {/* Sticky summary bar */}
+      {hasData && (
+        <div className="sticky top-0 z-10 -mx-4 px-4 py-2 bg-zinc-950/90 backdrop-blur-xl border-b border-white/[0.08] md:-mx-8 md:px-8">
+          <div className="flex items-center gap-4 overflow-x-auto">
+            <span className="text-xs text-zinc-500 shrink-0">Resumen fiscal:</span>
+            {[
+              { label: "IVA neto", value: ivaNeto, color: "text-red-400" },
+              { label: "PPM", value: ppmMensual, color: "text-amber-400" },
+              { label: "Total a pagar", value: total, color: "text-orange-400" },
+              { label: "Ahorro estimado", value: totalSavings, color: "text-emerald-400" },
+            ].map((item) => (
+              <div key={item.label} className="flex items-center gap-1.5 shrink-0">
+                <span className="text-xs text-zinc-600">{item.label}:</span>
+                <span className={`text-xs font-bold ${item.color}`}>{fmt.format(item.value)}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
 
       {/* No data banner */}
       {!hasData && (
@@ -603,6 +629,19 @@ export default function BeneficiosPage() {
             {fmt.format(totalSavings)}
           </p>
         </div>
+      </div>
+
+      {/* Fiscal benefits progress meter */}
+      <div className="rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur-sm p-5">
+        <p className="text-sm font-semibold text-white mb-4">
+          Medidor de beneficios fiscales
+        </p>
+        <BeneficiosMeter
+          ventas={v}
+          compras={c}
+          gastos={a}
+          propyme={propyme}
+        />
       </div>
 
       {/* Benefits accordion */}

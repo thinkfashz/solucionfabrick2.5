@@ -62,6 +62,8 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/pagos', label: 'Pagos · MercadoPago', description: 'Modo, latencia y KPIs de la pasarela', icon: Wallet, highlight: true },
       { href: '/admin/cotizaciones', label: 'Cotizaciones', description: 'Solicitudes de servicios y diseños 3D', icon: FileText },
       { href: '/admin/presupuestos', label: 'Presupuestos · 5 días', description: 'Generar link autodestruible y enviar al cliente', icon: FileText, highlight: true },
+      { href: '/admin/presupuestos/modelos-3d', label: 'Modelos 3D', description: 'Galería 3D para cotizaciones', icon: Boxes },
+      { href: '/admin/presupuestos/videos', label: 'Videos presupuesto', description: 'Videos de presentación', icon: Video },
       { href: '/admin/entregas', label: 'Entregas', description: 'Seguimiento logístico', icon: Truck },
       { href: '/admin/inventario', label: 'Inventario', description: 'Stock, escáner y movimientos de bodega', icon: Scan },
       { href: '/admin/inventario/scan', label: 'Escáner de inventario', description: 'Lectura de códigos de barras y QR', icon: Scan },
@@ -75,6 +77,8 @@ const navSections: { title: string; links: NavLink[] }[] = [
     title: 'Contenido',
     links: [
       { href: '/admin/blog', label: 'Blog', description: 'Entradas, portadas y publicación', icon: Newspaper },
+      { href: '/admin/blog/nuevo', label: 'Nuevo post', description: 'Crear nueva entrada de blog', icon: Plus },
+      { href: '/admin/blog/comments', label: 'Comentarios blog', description: 'Moderar comentarios del blog', icon: MessageCircle },
       { href: '/admin/home', label: 'Pantalla principal', description: 'Banners, secciones y orden', icon: LayoutGrid },
       { href: '/admin/editor', label: 'Editor universal', description: 'Navbar, footer, checkout, 404 e inyección de código', icon: LayoutGrid, highlight: true },
       { href: '/admin/tienda', label: 'Tienda · Edición', description: 'Portada, banners y secciones del catálogo', icon: ShoppingCart },
@@ -109,6 +113,8 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/integraciones', label: 'Centro de integraciones', description: 'Conectar, probar y desactivar APIs', icon: Link2, highlight: true },
       { href: '/admin/integraciones/marketplace', label: 'Marketplace de extensiones', description: 'Apps, snippets, webhooks y OAuth', icon: Boxes, highlight: true },
       { href: '/admin/configuracion', label: 'Configuración', description: 'Datos del negocio y acceso admin', icon: Settings },
+      { href: '/admin/publicidad/nuevo', label: 'Nueva campaña', description: 'Crear campaña publicitaria', icon: Megaphone },
+      { href: '/admin/center', label: 'Centro de mando', description: 'Vista unificada de operaciones', icon: LayoutGrid },
     ],
   },
   {
@@ -126,6 +132,7 @@ const navSections: { title: string; links: NavLink[] }[] = [
       { href: '/admin/testing', label: 'Testing', description: 'Suite de pruebas y smoke tests', icon: FlaskConical },
       { href: '/admin/setup', label: 'Setup', description: 'Verificar tablas InsForge', icon: Database, superadminOnly: true },
       { href: '/admin/equipo', label: 'Equipo', description: 'Roles, invitaciones y aprobaciones', icon: ShieldCheck, superadminOnly: true },
+      { href: '/admin/acceso-demo', label: 'Acceso demo', description: 'Enlace de demostración temporal', icon: Eye },
     ],
   },
   {

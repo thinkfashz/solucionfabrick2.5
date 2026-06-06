@@ -222,12 +222,12 @@ function NumInput({
         readOnly={readOnly}
         onChange={readOnly ? undefined : (e) => onChange?.(e.target.value)}
         className={cn(
-          "w-full rounded-xl border px-3 py-2 text-sm outline-none",
+          "w-full rounded-xl border px-3 py-2.5 text-sm outline-none transition",
           readOnly
             ? highlight
               ? "border-amber-400/30 bg-amber-400/5 text-amber-400 font-semibold cursor-default"
               : "border-white/5 bg-zinc-900/50 text-zinc-400 cursor-default"
-            : "border-white/10 bg-zinc-900 text-white focus:border-amber-400/50"
+            : "border-white/10 bg-black/30 text-white placeholder-zinc-700 focus:border-amber-400/50 focus:bg-black/50 focus:ring-1 focus:ring-amber-400/20"
         )}
       />
     </div>
@@ -393,28 +393,31 @@ export default function ContabilidadPage() {
   return (
     <div className="space-y-6 p-4 md:p-8">
       {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold text-white tracking-tight">
-          Contabilidad F29 / SII
-        </h1>
-        <p className="text-sm text-zinc-500 mt-1">
-          Declaraciones mensuales de IVA y PPM — {currentYear}
-        </p>
+      <div className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-900/70 p-5 shadow-[0_20px_80px_rgba(0,0,0,0.4)] backdrop-blur-xl sm:p-7">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_40%,rgba(251,191,36,0.08))]" />
+        <div className="relative z-10 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-amber-400">SII · Declaraciones</p>
+            <h1 className="mt-2 text-2xl font-black tracking-tight text-white sm:text-3xl">Contabilidad F29</h1>
+            <p className="mt-2 text-sm leading-relaxed text-zinc-400">Declaraciones mensuales de IVA y PPM — {currentYear}</p>
+          </div>
+        </div>
       </div>
 
       {/* Setup banner */}
       {!tableExists && (
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-yellow-500/30 bg-yellow-900/20 px-4 py-3">
+        <div className="flex items-center justify-between gap-4 rounded-2xl border border-amber-500/30 bg-amber-500/[0.08] px-5 py-4">
           <div className="flex items-center gap-3">
-            <AlertTriangle className="size-4 shrink-0 text-yellow-400" />
-            <p className="text-sm text-yellow-300">
-              Base de datos no configurada. Haz clic en &apos;Crear tabla&apos; para empezar.
-            </p>
+            <AlertTriangle className="h-5 w-5 shrink-0 text-amber-400" />
+            <div>
+              <p className="text-sm font-semibold text-amber-300">Base de datos no configurada</p>
+              <p className="text-xs text-amber-400/70">Haz clic en &apos;Crear tabla&apos; para empezar a registrar declaraciones.</p>
+            </div>
           </div>
           <button
             onClick={handleSetup}
             disabled={setupLoading}
-            className="shrink-0 rounded-lg bg-yellow-400 px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-60"
+            className="shrink-0 rounded-xl bg-amber-400 px-4 py-2 text-xs font-semibold text-black shadow-[0_2px_12px_rgba(251,191,36,0.35)] transition hover:opacity-90 disabled:opacity-60"
           >
             {setupLoading ? "Creando…" : "Crear tabla"}
           </button>
@@ -422,41 +425,41 @@ export default function ContabilidadPage() {
       )}
 
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-900/20 px-4 py-3 text-sm text-red-300">
+        <div className="rounded-2xl border border-red-500/30 bg-red-900/20 px-4 py-3 text-sm text-red-300">
           {error}
         </div>
       )}
 
       {/* KPI Cards */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { label: "Ventas acumuladas", value: fmt.format(totalVentas) },
-          { label: "IVA neto pagado", value: fmt.format(totalIva) },
-          { label: "PPM acumulado", value: fmt.format(totalPpm) },
-          { label: "Total a pagar", value: fmt.format(totalPagar) },
-        ].map((k) => (
-          <div
-            key={k.label}
-            className="rounded-2xl border border-white/10 bg-zinc-900/60 p-4"
-          >
-            <p className="text-xs text-zinc-500 uppercase tracking-wide mb-1">
-              {k.label}
-            </p>
-            <p className="text-xl font-bold text-white truncate">{k.value}</p>
-          </div>
-        ))}
+        <div className="rounded-2xl border border-sky-400/20 bg-gradient-to-br from-sky-400/12 to-transparent p-4 shadow-[0_8px_24px_rgba(0,0,0,0.3)]">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-sky-300 mb-2">Ventas acumuladas</p>
+          <p className="text-2xl font-black text-white truncate">{fmt.format(totalVentas)}</p>
+        </div>
+        <div className="rounded-2xl border border-amber-400/20 bg-gradient-to-br from-amber-400/12 to-transparent p-4 shadow-[0_8px_24px_rgba(0,0,0,0.3)]">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-amber-300 mb-2">IVA neto pagado</p>
+          <p className="text-2xl font-black text-white truncate">{fmt.format(totalIva)}</p>
+        </div>
+        <div className="rounded-2xl border border-violet-400/20 bg-gradient-to-br from-violet-400/12 to-transparent p-4 shadow-[0_8px_24px_rgba(0,0,0,0.3)]">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-violet-300 mb-2">PPM acumulado</p>
+          <p className="text-2xl font-black text-white truncate">{fmt.format(totalPpm)}</p>
+        </div>
+        <div className="rounded-2xl border border-emerald-400/20 bg-gradient-to-br from-emerald-400/12 to-transparent p-4 shadow-[0_8px_24px_rgba(0,0,0,0.3)]">
+          <p className="text-[10px] font-black uppercase tracking-[0.18em] text-emerald-300 mb-2">Total a pagar</p>
+          <p className="text-2xl font-black text-white truncate">{fmt.format(totalPagar)}</p>
+        </div>
       </div>
 
       {/* Tabs */}
-      <div className="flex gap-1 rounded-xl border border-white/10 bg-zinc-900/60 p-1 w-fit">
+      <div className="flex gap-1 rounded-2xl border border-white/10 bg-zinc-900/60 p-1 w-fit">
         {tabs.map((t) => (
           <button
             key={t.id}
             onClick={() => setActiveTab(t.id)}
             className={cn(
-              "flex items-center gap-2 rounded-lg px-3 py-2 text-sm transition-colors",
+              "flex items-center gap-2 rounded-xl px-4 py-2 text-[11px] font-semibold transition-all duration-150",
               activeTab === t.id
-                ? "bg-amber-400 text-black font-semibold"
+                ? "bg-amber-400 text-black shadow-[0_2px_12px_rgba(251,191,36,0.4)]"
                 : "text-zinc-400 hover:text-white hover:bg-white/5"
             )}
           >
@@ -479,6 +482,7 @@ export default function ContabilidadPage() {
           {monthData.map((m) => {
             const hasDecl = !!m.decl;
             const estado = m.decl?.estado;
+            const isSelected = m.periodo === selectedPeriodo;
 
             let cardClass = "border-white/8 bg-zinc-900/20 opacity-50";
             if (hasDecl) {
@@ -500,20 +504,21 @@ export default function ContabilidadPage() {
                 key={m.periodo}
                 onClick={() => openForm(m.periodo, m.decl)}
                 className={cn(
-                  "rounded-2xl border p-4 text-left transition-all hover:scale-[1.02] hover:brightness-110",
-                  cardClass
+                  "rounded-2xl border p-4 text-left transition-all hover:scale-[1.02] hover:brightness-110 min-h-[100px]",
+                  cardClass,
+                  isSelected && "ring-2 ring-amber-400/50"
                 )}
               >
                 <div className="flex items-start justify-between gap-2 mb-2">
-                  <p className="text-sm font-semibold text-white">{m.short}</p>
+                  <p className="text-lg font-black text-white">{m.short}</p>
                   {m.isUrgent && (
-                    <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white">
+                    <span className="rounded-full bg-red-500 px-1.5 py-0.5 text-[10px] font-bold text-white shadow-[0_0_8px_rgba(239,68,68,0.5)]">
                       Urgente
                     </span>
                   )}
                 </div>
                 {hasDecl && m.decl && (
-                  <p className="text-xs font-medium text-amber-400 mb-2">
+                  <p className="text-xs font-semibold text-amber-400 mb-2">
                     {fmt.format(m.decl.total_pagar)}
                   </p>
                 )}
@@ -521,8 +526,12 @@ export default function ContabilidadPage() {
                   {hasDecl && estado ? (
                     <span
                       className={cn(
-                        "rounded-full px-2 py-0.5 text-[10px] font-medium",
-                        ESTADO_STYLE[estado]
+                        "rounded-full px-2 py-0.5 text-[10px] font-bold border",
+                        estado === "pagado"
+                          ? "bg-green-900/50 text-green-300 border-green-500/30"
+                          : estado === "declarado"
+                          ? "bg-blue-900/50 text-blue-300 border-blue-500/30"
+                          : "bg-red-900/50 text-red-300 border-red-500/30"
                       )}
                     >
                       {ESTADO_LABEL[estado]}
@@ -530,8 +539,8 @@ export default function ContabilidadPage() {
                   ) : (
                     <span className="text-[10px] text-zinc-600">Sin declarar</span>
                   )}
-                  <span className="text-[10px] text-zinc-600">
-                    Vence: {vencStr}
+                  <span className="text-[10px] font-medium text-zinc-500 bg-white/5 rounded-full px-1.5 py-0.5">
+                    Vence {vencStr}
                   </span>
                 </div>
               </button>
@@ -557,16 +566,18 @@ export default function ContabilidadPage() {
                   setForm((f) => ({ ...f, periodo: e.target.value }))
                 }
                 placeholder="2025-01"
-                className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-400/50"
+                className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white placeholder-zinc-700 outline-none transition focus:border-amber-400/50 focus:bg-black/50 focus:ring-1 focus:ring-amber-400/20"
               />
             </div>
           </div>
 
           {/* Ventas */}
           <div>
-            <p className="text-sm font-semibold text-white mb-3 border-t border-white/[0.06] pt-4">
-              Ventas y Servicios Prestados
-            </p>
+            <div className="mb-3 mt-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-white/[0.06]" />
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">Ventas y Servicios Prestados</span>
+              <div className="h-px flex-1 bg-white/[0.06]" />
+            </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               <NumInput
                 label="Ventas afectas al IVA"
@@ -594,9 +605,11 @@ export default function ContabilidadPage() {
 
           {/* Compras */}
           <div>
-            <p className="text-sm font-semibold text-white mb-3 border-t border-white/[0.06] pt-4">
-              Compras y Servicios Utilizados
-            </p>
+            <div className="mb-3 mt-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-white/[0.06]" />
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">Compras y Servicios Utilizados</span>
+              <div className="h-px flex-1 bg-white/[0.06]" />
+            </div>
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <NumInput
                 label="Compras afectas al IVA"
@@ -630,9 +643,11 @@ export default function ContabilidadPage() {
 
           {/* Resultado IVA */}
           <div>
-            <p className="text-sm font-semibold text-white mb-3 border-t border-white/[0.06] pt-4">
-              Resultado IVA
-            </p>
+            <div className="mb-3 mt-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-white/[0.06]" />
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">Resultado IVA</span>
+              <div className="h-px flex-1 bg-white/[0.06]" />
+            </div>
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-4">
                 <p className="text-xs text-zinc-500 mb-1">IVA a pagar</p>
@@ -655,9 +670,11 @@ export default function ContabilidadPage() {
 
           {/* PPM */}
           <div>
-            <p className="text-sm font-semibold text-white mb-3 border-t border-white/[0.06] pt-4">
-              PPM — Pagos Provisionales Mensuales
-            </p>
+            <div className="mb-3 mt-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-white/[0.06]" />
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">PPM — Pagos Provisionales Mensuales</span>
+              <div className="h-px flex-1 bg-white/[0.06]" />
+            </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <NumInput
                 label="Tasa PPM (%)"
@@ -680,9 +697,11 @@ export default function ContabilidadPage() {
 
           {/* Otros créditos */}
           <div>
-            <p className="text-sm font-semibold text-white mb-3 border-t border-white/[0.06] pt-4">
-              Otros créditos y rebajas
-            </p>
+            <div className="mb-3 mt-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-white/[0.06]" />
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">Otros créditos y rebajas</span>
+              <div className="h-px flex-1 bg-white/[0.06]" />
+            </div>
             <div className="max-w-xs">
               <NumInput
                 label="Otros créditos"
@@ -693,25 +712,27 @@ export default function ContabilidadPage() {
           </div>
 
           {/* Total */}
-          <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-5 flex items-center justify-between">
+          <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-5 flex items-center justify-between shadow-[0_4px_20px_rgba(251,191,36,0.08)]">
             <div>
-              <p className="text-xs text-zinc-400 uppercase tracking-wide font-semibold">
+              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-amber-300">
                 Total a pagar
               </p>
               <p className="text-xs text-zinc-600 mt-0.5">
                 IVA neto + PPM − otros créditos
               </p>
             </div>
-            <p className="text-3xl font-bold text-amber-400">
+            <p className="text-3xl font-black text-amber-400">
               {fmt.format(n(form.total_pagar))}
             </p>
           </div>
 
           {/* Estado */}
           <div>
-            <p className="text-sm font-semibold text-white mb-3 border-t border-white/[0.06] pt-4">
-              Estado de declaración
-            </p>
+            <div className="mb-3 mt-5 flex items-center gap-3">
+              <div className="h-px flex-1 bg-white/[0.06]" />
+              <span className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">Estado de declaración</span>
+              <div className="h-px flex-1 bg-white/[0.06]" />
+            </div>
             <div className="grid gap-4 sm:grid-cols-3">
               <div>
                 <label className="mb-1.5 block text-xs text-zinc-500">
@@ -725,7 +746,7 @@ export default function ContabilidadPage() {
                       estado: e.target.value as Estado,
                     }))
                   }
-                  className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-400/50"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white outline-none transition focus:border-amber-400/50 focus:bg-black/50 focus:ring-1 focus:ring-amber-400/20"
                 >
                   <option value="pendiente">Pendiente</option>
                   <option value="declarado">Declarado</option>
@@ -746,7 +767,7 @@ export default function ContabilidadPage() {
                         fecha_declaracion: e.target.value,
                       }))
                     }
-                    className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-400/50"
+                    className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white outline-none transition focus:border-amber-400/50 focus:bg-black/50 focus:ring-1 focus:ring-amber-400/20"
                   />
                 </div>
               )}
@@ -761,7 +782,7 @@ export default function ContabilidadPage() {
                   }
                   rows={2}
                   placeholder="Observaciones…"
-                  className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-400/50 resize-none"
+                  className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-2.5 text-sm text-white placeholder-zinc-700 outline-none transition focus:border-amber-400/50 focus:bg-black/50 focus:ring-1 focus:ring-amber-400/20 resize-none"
                 />
               </div>
             </div>
@@ -770,14 +791,14 @@ export default function ContabilidadPage() {
           <div className="flex justify-end gap-3 border-t border-white/[0.06] pt-4">
             <button
               onClick={() => setActiveTab("calendar")}
-              className="rounded-xl border border-white/20 bg-transparent px-4 py-2 text-sm text-zinc-400 hover:bg-white/5"
+              className="rounded-xl border border-white/20 bg-transparent px-4 py-2 text-sm text-zinc-400 hover:bg-white/5 transition-colors"
             >
               Cancelar
             </button>
             <button
               onClick={handleSave}
               disabled={saving || !form.periodo}
-              className="flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-2 text-sm font-semibold text-black disabled:opacity-50 hover:opacity-90"
+              className="flex items-center gap-2 rounded-xl bg-amber-400 px-5 py-2 text-sm font-semibold text-black shadow-[0_2px_12px_rgba(251,191,36,0.35)] disabled:opacity-50 hover:opacity-90 transition-opacity"
             >
               {saving && <Loader2 className="size-3.5 animate-spin" />}
               {saving ? "Guardando…" : "Guardar declaración"}
@@ -796,37 +817,40 @@ export default function ContabilidadPage() {
           ) : (
             <table className="w-full">
               <thead>
-                <tr className="border-b border-white/10">
-                  <th className="text-left text-xs text-zinc-600 uppercase tracking-wide px-5 py-3">
+                <tr className="border-b border-white/10 bg-white/[0.02]">
+                  <th className="text-left text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500 px-5 py-3.5">
                     Período
                   </th>
-                  <th className="text-right text-xs text-zinc-600 uppercase tracking-wide px-5 py-3 hidden sm:table-cell">
+                  <th className="text-right text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500 px-5 py-3.5 hidden sm:table-cell">
                     Ventas
                   </th>
-                  <th className="text-right text-xs text-zinc-600 uppercase tracking-wide px-5 py-3 hidden md:table-cell">
+                  <th className="text-right text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500 px-5 py-3.5 hidden md:table-cell">
                     IVA débito
                   </th>
-                  <th className="text-right text-xs text-zinc-600 uppercase tracking-wide px-5 py-3 hidden md:table-cell">
+                  <th className="text-right text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500 px-5 py-3.5 hidden md:table-cell">
                     Crédito fiscal
                   </th>
-                  <th className="text-right text-xs text-zinc-600 uppercase tracking-wide px-5 py-3">
+                  <th className="text-right text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500 px-5 py-3.5">
                     Total pagar
                   </th>
-                  <th className="text-left text-xs text-zinc-600 uppercase tracking-wide px-5 py-3 hidden sm:table-cell">
+                  <th className="text-left text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500 px-5 py-3.5 hidden sm:table-cell">
                     Estado
                   </th>
-                  <th className="text-right text-xs text-zinc-600 uppercase tracking-wide px-5 py-3">
+                  <th className="text-right text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500 px-5 py-3.5">
                     Acciones
                   </th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/[0.08]">
-                {declaraciones.map((d) => (
+              <tbody>
+                {declaraciones.map((d, idx) => (
                   <tr
                     key={d.id}
-                    className="hover:bg-white/5 transition-colors"
+                    className={cn(
+                      "border-b border-white/[0.05] transition-colors hover:bg-white/[0.04]",
+                      idx % 2 === 0 ? "bg-transparent" : "bg-white/[0.015]"
+                    )}
                   >
-                    <td className="px-5 py-3.5 text-sm font-medium text-white">
+                    <td className="px-5 py-3.5 text-sm font-semibold text-white">
                       {d.periodo}
                     </td>
                     <td className="px-5 py-3.5 text-sm text-right text-zinc-300 hidden sm:table-cell">
@@ -844,8 +868,12 @@ export default function ContabilidadPage() {
                     <td className="px-5 py-3.5 hidden sm:table-cell">
                       <span
                         className={cn(
-                          "rounded-full px-2.5 py-0.5 text-xs font-medium",
-                          ESTADO_STYLE[d.estado]
+                          "rounded-full px-2.5 py-0.5 text-xs font-bold border",
+                          d.estado === "pagado"
+                            ? "bg-green-900/50 text-green-300 border-green-500/30"
+                            : d.estado === "declarado"
+                            ? "bg-blue-900/50 text-blue-300 border-blue-500/30"
+                            : "bg-red-900/50 text-red-300 border-red-500/30"
                         )}
                       >
                         {ESTADO_LABEL[d.estado]}
@@ -855,13 +883,13 @@ export default function ContabilidadPage() {
                       <div className="flex items-center justify-end gap-1.5">
                         <button
                           onClick={() => openForm(d.periodo, d)}
-                          className="rounded-lg border border-white/10 p-1.5 text-zinc-400 hover:bg-white/5 hover:text-white"
+                          className="rounded-lg border border-white/10 p-1.5 text-zinc-400 hover:bg-white/5 hover:text-white transition-colors"
                         >
                           <Pencil className="size-3.5" />
                         </button>
                         <button
                           onClick={() => handleDelete(d.id)}
-                          className="rounded-lg border border-red-500/20 p-1.5 text-red-400 hover:bg-red-900/20"
+                          className="rounded-lg border border-red-500/20 p-1.5 text-red-400 hover:bg-red-900/30 transition-colors"
                         >
                           <Trash2 className="size-3.5" />
                         </button>

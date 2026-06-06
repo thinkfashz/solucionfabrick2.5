@@ -2,7 +2,7 @@
 
 import React from 'react';
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 import {
   AlertTriangle, BadgePercent, BarChart3, BookOpen, Bot, Boxes, Calculator, Cloud, Cpu, Database, Eye,
   FileText, Hammer, Image as ImageIcon, Inbox, Kanban, LayoutGrid, Link2, LogOut,
@@ -10,10 +10,151 @@ import {
   ShoppingCart, Sparkles, Star, Stethoscope, Store, Tag, Terminal,
   TrendingDown, TrendingUp, Truck, Telescope, User, Users, Video, Wallet, X, Plus,
   MessageCircle, KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket,
-  ChevronRight, Palette, Store as StoreIcon, HardHat, FileSpreadsheet,
+  ChevronRight, Palette, HardHat, FileSpreadsheet,
   Globe, Paintbrush, Zap, Code2, LineChart, SlidersHorizontal, Book,
 } from 'lucide-react';
 import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
+
+/* ── Section color configuration ─────────────────────────────── */
+type SectionColor = {
+  label: string;
+  header: string;
+  badge: string;
+  iconBg: string;
+  iconColor: string;
+  hoverBg: string;
+  pillBg: string;
+  pillText: string;
+  divider: string;
+};
+
+const SECTION_COLORS: Record<string, SectionColor> = {
+  'Perfil & Cuenta': {
+    label: 'amber',
+    header: 'text-amber-400',
+    badge: 'bg-amber-500/20 text-amber-400 border border-amber-500/30',
+    iconBg: 'bg-amber-500/15',
+    iconColor: 'text-amber-400',
+    hoverBg: 'hover:bg-amber-500/8',
+    pillBg: 'bg-amber-500/20',
+    pillText: 'text-amber-400',
+    divider: 'bg-amber-500/20',
+  },
+  'Visión general': {
+    label: 'zinc',
+    header: 'text-zinc-300',
+    badge: 'bg-zinc-700/60 text-zinc-300 border border-zinc-600/40',
+    iconBg: 'bg-zinc-700/60',
+    iconColor: 'text-zinc-300',
+    hoverBg: 'hover:bg-white/5',
+    pillBg: 'bg-zinc-700/60',
+    pillText: 'text-zinc-300',
+    divider: 'bg-zinc-700/40',
+  },
+  'Negocio': {
+    label: 'sky',
+    header: 'text-sky-400',
+    badge: 'bg-sky-500/20 text-sky-400 border border-sky-500/30',
+    iconBg: 'bg-sky-500/15',
+    iconColor: 'text-sky-400',
+    hoverBg: 'hover:bg-sky-500/8',
+    pillBg: 'bg-sky-500/20',
+    pillText: 'text-sky-400',
+    divider: 'bg-sky-500/20',
+  },
+  'Ventas y E-Commerce': {
+    label: 'emerald',
+    header: 'text-emerald-400',
+    badge: 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30',
+    iconBg: 'bg-emerald-500/15',
+    iconColor: 'text-emerald-400',
+    hoverBg: 'hover:bg-emerald-500/8',
+    pillBg: 'bg-emerald-500/20',
+    pillText: 'text-emerald-400',
+    divider: 'bg-emerald-500/20',
+  },
+  'Contenido y Sitio Web': {
+    label: 'violet',
+    header: 'text-violet-400',
+    badge: 'bg-violet-500/20 text-violet-400 border border-violet-500/30',
+    iconBg: 'bg-violet-500/15',
+    iconColor: 'text-violet-400',
+    hoverBg: 'hover:bg-violet-500/8',
+    pillBg: 'bg-violet-500/20',
+    pillText: 'text-violet-400',
+    divider: 'bg-violet-500/20',
+  },
+  'Inteligencia Artificial': {
+    label: 'violet',
+    header: 'text-violet-300',
+    badge: 'bg-violet-500/25 text-violet-300 border border-violet-400/30',
+    iconBg: 'bg-violet-500/15',
+    iconColor: 'text-violet-300',
+    hoverBg: 'hover:bg-violet-500/8',
+    pillBg: 'bg-violet-600/30',
+    pillText: 'text-violet-300',
+    divider: 'bg-violet-500/20',
+  },
+  'Marketing y Omnicanalidad': {
+    label: 'indigo',
+    header: 'text-indigo-400',
+    badge: 'bg-indigo-500/20 text-indigo-400 border border-indigo-500/30',
+    iconBg: 'bg-indigo-500/15',
+    iconColor: 'text-indigo-400',
+    hoverBg: 'hover:bg-indigo-500/8',
+    pillBg: 'bg-indigo-500/20',
+    pillText: 'text-indigo-400',
+    divider: 'bg-indigo-500/20',
+  },
+  'Sistema y Avanzado': {
+    label: 'rose',
+    header: 'text-rose-400',
+    badge: 'bg-rose-500/20 text-rose-400 border border-rose-500/30',
+    iconBg: 'bg-rose-500/15',
+    iconColor: 'text-rose-400',
+    hoverBg: 'hover:bg-rose-500/8',
+    pillBg: 'bg-rose-500/20',
+    pillText: 'text-rose-400',
+    divider: 'bg-rose-500/20',
+  },
+  'Seguridad & Claves': {
+    label: 'amber',
+    header: 'text-amber-500',
+    badge: 'bg-amber-500/20 text-amber-500 border border-amber-500/30',
+    iconBg: 'bg-amber-500/15',
+    iconColor: 'text-amber-500',
+    hoverBg: 'hover:bg-amber-500/8',
+    pillBg: 'bg-amber-500/20',
+    pillText: 'text-amber-500',
+    divider: 'bg-amber-500/20',
+  },
+};
+
+const DEFAULT_SECTION_COLOR: SectionColor = {
+  label: 'zinc',
+  header: 'text-zinc-400',
+  badge: 'bg-zinc-700/60 text-zinc-400 border border-zinc-600/40',
+  iconBg: 'bg-zinc-700/60',
+  iconColor: 'text-zinc-400',
+  hoverBg: 'hover:bg-white/5',
+  pillBg: 'bg-zinc-700/60',
+  pillText: 'text-zinc-400',
+  divider: 'bg-zinc-700/40',
+};
+
+function getSectionColor(title: string): SectionColor {
+  return SECTION_COLORS[title] ?? DEFAULT_SECTION_COLOR;
+}
+
+/* ── Pill label logic ─────────────────────────────────────────── */
+const SECTION_PILL_LABELS: Record<string, string> = {
+  'Inteligencia Artificial': 'IA',
+  'Negocio': 'Pro',
+  'Contenido y Sitio Web': 'Pro',
+  'Sistema y Avanzado': 'Dev',
+  'Marketing y Omnicanalidad': 'Pro',
+  'Ventas y E-Commerce': 'Pro',
+};
 
 /* ── Nav data ─────────────────────────────────────────────────── */
 type NavLink = {
@@ -67,9 +208,10 @@ export const navSections: { title: string; links: NavLink[] }[] = [
   {
     title: 'Contenido y Sitio Web',
     links: [
-      { href: '/admin/home', label: 'Páginas y Estructura', description: 'Gestor de Banners y Secciones', icon: Globe },
-      { href: '/admin/editor', label: 'Editor universal', description: 'Navbar, footer, checkout, 404 e inyección de código', icon: LayoutGrid, highlight: true },
-      { href: '/admin/tienda', label: 'Tienda · Edición', description: 'Portada, banners y secciones del catálogo', icon: ShoppingCart },
+      { href: '/admin/editor', label: 'Editor de temas', description: 'Colores, tipografías y estilos globales del sitio', icon: Palette, highlight: true },
+      { href: '/admin/editor?tab=home', label: 'Pantalla principal', description: 'Banners y secciones de la página de inicio', icon: LayoutGrid },
+      { href: '/admin/editor?tab=tienda', label: 'Tienda · Edición', description: 'Portada, banners y secciones del catálogo', icon: ShoppingCart },
+      { href: '/admin/editor?tab=estructura', label: 'Estructura del sitio', description: 'Navbar, footer, checkout, 404 e inyección de código', icon: Code2 },
       { href: '/admin/blog', label: 'Blog / Novedades', description: 'Artículos y SEO Content', icon: Newspaper },
       { href: '/admin/blog/nuevo', label: 'Nuevo post', description: 'Crear nueva entrada de blog', icon: Plus },
       { href: '/admin/blog/comments', label: 'Comentarios blog', description: 'Moderar comentarios del blog', icon: MessageCircle },
@@ -139,6 +281,32 @@ export const navSections: { title: string; links: NavLink[] }[] = [
   },
 ];
 
+/* ── Pulsing dot for highlighted items ───────────────────────── */
+function PulsingDot({ color }: { color: string }) {
+  const dotColor =
+    color === 'sky' ? 'bg-sky-400' :
+    color === 'emerald' ? 'bg-emerald-400' :
+    color === 'violet' ? 'bg-violet-400' :
+    color === 'indigo' ? 'bg-indigo-400' :
+    color === 'rose' ? 'bg-rose-400' :
+    'bg-amber-400';
+
+  const pingColor =
+    color === 'sky' ? 'bg-sky-400' :
+    color === 'emerald' ? 'bg-emerald-400' :
+    color === 'violet' ? 'bg-violet-400' :
+    color === 'indigo' ? 'bg-indigo-400' :
+    color === 'rose' ? 'bg-rose-400' :
+    'bg-amber-400';
+
+  return (
+    <span className="relative flex h-1.5 w-1.5 flex-shrink-0">
+      <span className={`absolute inline-flex h-full w-full animate-ping rounded-full opacity-75 ${pingColor}`} />
+      <span className={`relative inline-flex h-1.5 w-1.5 rounded-full ${dotColor}`} />
+    </span>
+  );
+}
+
 /* ── NavItem ──────────────────────────────────────────────────── */
 function NavItem({
   href,
@@ -148,6 +316,7 @@ function NavItem({
   highlight,
   comingSoon,
   collapsed,
+  sectionColor,
   onNavigate,
 }: {
   href: string;
@@ -157,43 +326,226 @@ function NavItem({
   highlight?: boolean;
   comingSoon?: boolean;
   collapsed: boolean;
+  sectionColor: SectionColor;
   onNavigate?: () => void;
 }) {
+  const pillLabel = highlight && !comingSoon ? 'Pro' : undefined;
+
   return (
     <Link
       href={href}
       onClick={onNavigate}
       title={collapsed ? label : undefined}
       className={[
-        'group relative flex items-center gap-3 rounded-lg transition-all duration-150',
-        collapsed ? 'justify-center px-0 py-2' : 'px-3 py-2',
+        'group relative flex items-center gap-2.5 rounded-lg transition-all duration-150',
+        collapsed ? 'justify-center px-0 py-2' : 'py-[5px] pr-2 pl-1',
         active
-          ? 'border-l-2 border-orange-500 bg-orange-500/10 text-orange-400'
-          : 'border-l-2 border-transparent text-zinc-400 hover:bg-white/5 hover:text-zinc-200',
+          ? 'border-l-2 border-amber-400 bg-amber-500/10 text-amber-300'
+          : [
+              'border-l-2 border-transparent text-zinc-400',
+              sectionColor.hoverBg,
+              'hover:text-zinc-100',
+            ].join(' '),
       ].join(' ')}
     >
-      <Icon
+      {/* Icon container */}
+      <div
         className={[
-          'h-4 w-4 flex-shrink-0 transition-colors',
-          active ? 'text-orange-400' : 'text-zinc-400 group-hover:text-zinc-200',
+          'flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md transition-colors',
+          active ? 'bg-amber-500/20' : sectionColor.iconBg,
         ].join(' ')}
-      />
+      >
+        <Icon
+          className={[
+            'h-3.5 w-3.5 flex-shrink-0 transition-colors',
+            active ? 'text-amber-400' : sectionColor.iconColor,
+          ].join(' ')}
+        />
+      </div>
+
       {!collapsed && (
         <>
-          <span className="min-w-0 flex-1 truncate text-[13px] leading-none">{label}</span>
+          <span
+            className={[
+              'min-w-0 flex-1 truncate text-[12.5px] font-[500] leading-none transition-colors',
+              active ? 'text-amber-300' : 'text-zinc-300 group-hover:text-zinc-100',
+            ].join(' ')}
+          >
+            {label}
+          </span>
+
+          {/* Right badges / indicators */}
           {comingSoon && (
-            <span className="flex-shrink-0 rounded-full bg-zinc-800 px-1.5 py-px text-[9px] text-zinc-500">
-              Próximamente
+            <span className="flex-shrink-0 rounded-full bg-zinc-800 px-1.5 py-px text-[9px] font-medium text-zinc-500">
+              Pronto
             </span>
           )}
           {highlight && !comingSoon && (
-            <span className="flex-shrink-0 rounded-full bg-orange-500/15 px-1.5 py-px text-[9px] text-orange-400">
-              Nuevo
+            <span
+              className={[
+                'flex-shrink-0 rounded-full px-1.5 py-px text-[9px] font-semibold tracking-wide',
+                sectionColor.pillBg,
+                sectionColor.pillText,
+              ].join(' ')}
+            >
+              {SECTION_PILL_LABELS[/* resolved at render time via prop */'']}
             </span>
           )}
         </>
       )}
+
+      {/* Active amber glow */}
+      {active && (
+        <span className="pointer-events-none absolute inset-0 rounded-lg bg-amber-400/5" />
+      )}
     </Link>
+  );
+}
+
+/* ── NavItem with section-aware pill label ────────────────────── */
+function NavItemWithPill({
+  href,
+  label,
+  icon: Icon,
+  active,
+  highlight,
+  comingSoon,
+  collapsed,
+  sectionColor,
+  sectionTitle,
+  onNavigate,
+}: {
+  href: string;
+  label: string;
+  icon: typeof Package;
+  active: boolean;
+  highlight?: boolean;
+  comingSoon?: boolean;
+  collapsed: boolean;
+  sectionColor: SectionColor;
+  sectionTitle: string;
+  onNavigate?: () => void;
+}) {
+  const pillLabel = SECTION_PILL_LABELS[sectionTitle] ?? 'Pro';
+
+  return (
+    <Link
+      href={href}
+      onClick={onNavigate}
+      title={collapsed ? label : undefined}
+      className={[
+        'group relative flex items-center gap-2.5 rounded-lg transition-all duration-150',
+        collapsed ? 'justify-center px-0 py-2' : 'py-[5px] pr-2 pl-1',
+        active
+          ? 'border-l-2 border-amber-400 bg-amber-500/10 text-amber-300'
+          : [
+              'border-l-2 border-transparent text-zinc-400',
+              sectionColor.hoverBg,
+              'hover:text-zinc-100',
+            ].join(' '),
+      ].join(' ')}
+    >
+      {/* Icon container */}
+      <div
+        className={[
+          'flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md transition-colors',
+          active ? 'bg-amber-500/20' : sectionColor.iconBg,
+        ].join(' ')}
+      >
+        <Icon
+          className={[
+            'h-3.5 w-3.5 flex-shrink-0 transition-colors',
+            active ? 'text-amber-400' : sectionColor.iconColor,
+          ].join(' ')}
+        />
+      </div>
+
+      {!collapsed && (
+        <>
+          <span
+            className={[
+              'min-w-0 flex-1 truncate text-[12.5px] font-[500] leading-none transition-colors',
+              active ? 'text-amber-300' : 'text-zinc-300 group-hover:text-zinc-100',
+            ].join(' ')}
+          >
+            {label}
+          </span>
+
+          {comingSoon ? (
+            <span className="flex-shrink-0 rounded-full bg-zinc-800 px-1.5 py-px text-[9px] font-medium text-zinc-500">
+              Pronto
+            </span>
+          ) : highlight ? (
+            <span
+              className={[
+                'flex-shrink-0 rounded-full px-1.5 py-px text-[9px] font-semibold tracking-wide',
+                sectionColor.pillBg,
+                sectionColor.pillText,
+              ].join(' ')}
+            >
+              {pillLabel}
+            </span>
+          ) : null}
+        </>
+      )}
+
+      {/* Active amber glow overlay */}
+      {active && (
+        <span className="pointer-events-none absolute inset-0 rounded-lg bg-amber-400/5" />
+      )}
+    </Link>
+  );
+}
+
+/* ── Section header with badge ────────────────────────────────── */
+function SectionHeader({
+  title,
+  color,
+  collapsed,
+}: {
+  title: string;
+  color: SectionColor;
+  collapsed: boolean;
+}) {
+  if (collapsed) {
+    return <div className={`my-1.5 mx-2 h-px ${color.divider}`} />;
+  }
+
+  return (
+    <div className="mb-1 flex items-center gap-2 px-2 pt-4 pb-0.5">
+      <p
+        className={[
+          'text-[10px] font-bold uppercase tracking-[0.18em]',
+          color.header,
+        ].join(' ')}
+      >
+        {title}
+      </p>
+      <span
+        className={[
+          'rounded px-1.5 py-px text-[9px] font-semibold uppercase tracking-wide',
+          color.badge,
+        ].join(' ')}
+      >
+        {title === 'Inteligencia Artificial'
+          ? 'IA'
+          : title === 'Negocio'
+          ? 'Biz'
+          : title === 'Ventas y E-Commerce'
+          ? 'Ops'
+          : title === 'Contenido y Sitio Web'
+          ? 'CMS'
+          : title === 'Marketing y Omnicanalidad'
+          ? 'Mkt'
+          : title === 'Sistema y Avanzado'
+          ? 'Sys'
+          : title === 'Visión general'
+          ? 'Hub'
+          : title === 'Seguridad & Claves'
+          ? 'Sec'
+          : '—'}
+      </span>
+    </div>
   );
 }
 
@@ -236,73 +588,96 @@ export function StudioSidebarContent({
 
   return (
     <div className="flex h-full flex-col overflow-hidden">
-      {/* Brand */}
+
+      {/* ── Brand header ──────────────────────────────────────────── */}
       <div
         className={[
           'flex flex-shrink-0 items-center border-b px-3 py-3',
-          'border-white/[0.08] dark:border-white/[0.08]',
+          'border-white/[0.07]',
           collapsed ? 'justify-center' : 'gap-2.5',
         ].join(' ')}
       >
-        <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-yellow-300/40 bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 shadow-[0_4px_14px_rgba(250,204,21,0.35)]">
+        {/* Logo mark */}
+        <div className="relative flex h-8 w-8 flex-shrink-0 items-center justify-center overflow-hidden rounded-lg border border-yellow-300/40 bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 shadow-[0_4px_14px_rgba(250,204,21,0.35)]">
           <FabrickPeakIcon size={18} />
         </div>
+
         {!collapsed && (
           <div className="min-w-0 flex-1">
-            <p className="truncate text-[11px] font-black uppercase tracking-[0.22em]" style={{ color: 'var(--admin-accent, #fde047)' }}>
+            <p
+              className="truncate text-[11px] font-black uppercase tracking-[0.22em]"
+              style={{ color: 'var(--admin-accent, #fde047)' }}
+            >
               {logoText}
             </p>
-            <p className="truncate text-[9px] uppercase tracking-[0.2em] text-zinc-500">Studio Admin</p>
+            <p className="truncate text-[9px] uppercase tracking-[0.2em] text-zinc-500">
+              Studio Admin
+            </p>
+          </div>
+        )}
+
+        {/* Collapse indicator when expanded */}
+        {!collapsed && (
+          <div className="ml-auto flex-shrink-0">
+            <span className="flex h-5 w-5 items-center justify-center rounded-md bg-zinc-800/80 text-zinc-600">
+              <ChevronRight className="h-3 w-3" />
+            </span>
           </div>
         )}
       </div>
 
-      {/* Nav sections */}
-      <div className="min-h-0 flex-1 overflow-y-auto py-2 scrollbar-hide">
-        {sections.map((section) => (
-          <div key={section.title} className="mb-1">
-            {!collapsed && (
-              <p className="mb-1 px-3 pt-3 text-[10px] font-semibold uppercase tracking-widest text-zinc-500">
-                {section.title}
-              </p>
-            )}
-            {collapsed && <div className="my-1.5 mx-2 h-px bg-white/[0.06]" />}
-            <div className={collapsed ? 'space-y-0.5 px-1.5' : 'space-y-0.5 px-2'}>
-              {section.links.map((link) => {
-                const hrefPath = link.href.split('?')[0];
-                const isActive = pathname === hrefPath;
-                return (
-                  <NavItem
-                    key={link.href}
-                    href={link.href}
-                    label={link.label}
-                    icon={link.icon}
-                    active={isActive}
-                    highlight={link.highlight}
-                    comingSoon={link.comingSoon}
-                    collapsed={collapsed}
-                    onNavigate={onNavigate}
-                  />
-                );
-              })}
+      {/* ── Nav sections ──────────────────────────────────────────── */}
+      <div className="min-h-0 flex-1 overflow-y-auto py-1 scrollbar-hide">
+        {sections.map((section) => {
+          const color = getSectionColor(section.title);
+
+          return (
+            <div key={section.title} className="mb-0.5">
+              <SectionHeader title={section.title} color={color} collapsed={collapsed} />
+
+              <div className={collapsed ? 'space-y-0.5 px-1.5' : 'space-y-0 px-1.5'}>
+                {section.links.map((link) => {
+                  const hrefPath = link.href.split('?')[0];
+                  const isActive = pathname === hrefPath;
+
+                  return (
+                    <NavItemWithPill
+                      key={link.href}
+                      href={link.href}
+                      label={link.label}
+                      icon={link.icon}
+                      active={isActive}
+                      highlight={link.highlight}
+                      comingSoon={link.comingSoon}
+                      collapsed={collapsed}
+                      sectionColor={color}
+                      sectionTitle={section.title}
+                      onNavigate={onNavigate}
+                    />
+                  );
+                })}
+              </div>
             </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
 
-      {/* Logout */}
-      <div className="flex-shrink-0 border-t border-white/[0.08] p-2">
+      {/* ── Footer: logout ────────────────────────────────────────── */}
+      <div className="flex-shrink-0 border-t border-white/[0.07] p-2">
         <button
           type="button"
           onClick={onLogout}
           title={collapsed ? 'Cerrar sesión' : undefined}
           className={[
-            'group flex w-full items-center gap-2 rounded-lg px-3 py-2 text-[13px] text-zinc-400',
-            'transition-colors hover:bg-red-500/10 hover:text-red-400',
+            'group flex w-full items-center gap-2.5 rounded-lg px-2 py-2 text-[12.5px] font-[500]',
+            'text-zinc-500 transition-all duration-150',
+            'hover:bg-rose-500/10 hover:text-rose-400',
             collapsed ? 'justify-center' : '',
           ].join(' ')}
         >
-          <LogOut className="h-4 w-4 flex-shrink-0" />
+          <div className="flex h-6 w-6 flex-shrink-0 items-center justify-center rounded-md bg-zinc-800/80 transition-colors group-hover:bg-rose-500/20">
+            <LogOut className="h-3.5 w-3.5 flex-shrink-0 transition-colors group-hover:text-rose-400" />
+          </div>
           {!collapsed && <span>Cerrar sesión</span>}
         </button>
       </div>
@@ -325,10 +700,13 @@ export function StudioSidebar({
       data-studio-sidebar=""
       className={[
         'fixed left-0 top-0 z-30 hidden h-full flex-col',
-        'border-r border-white/[0.08] bg-[#18181b]',
+        'border-r border-white/[0.07] bg-[#18181b]',
         'transition-[width] duration-200 ease-in-out lg:flex',
         collapsed ? 'w-14' : 'w-[272px]',
       ].join(' ')}
+      style={{
+        background: 'linear-gradient(180deg, #1c1c1f 0%, #18181b 40%, #17171a 100%)',
+      }}
     >
       <StudioSidebarContent collapsed={collapsed} role={role} onLogout={onLogout} />
     </aside>

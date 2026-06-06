@@ -1,8 +1,3 @@
-import type { Metadata } from 'next';
-import { HomeAdmin } from './HomeAdmin';
-
-export const metadata: Metadata = { title: 'Pantalla principal · Admin' };
-
-export default function HomeAdminPage() {
-  return <HomeAdmin />;
-}
+import { redirect } from 'next/navigation';
+export const dynamic = 'force-dynamic';
+export default function HomeAdminPage() { redirect('/admin/editor?tab=home'); }

@@ -1,8 +1,3 @@
-import type { Metadata } from 'next';
-import { TiendaAdmin } from './TiendaAdmin';
-
-export const metadata: Metadata = { title: 'Tienda · Admin' };
-
-export default function TiendaAdminPage() {
-  return <TiendaAdmin />;
-}
+import { redirect } from 'next/navigation';
+export const dynamic = 'force-dynamic';
+export default function TiendaAdminPage() { redirect('/admin/editor?tab=tienda'); }

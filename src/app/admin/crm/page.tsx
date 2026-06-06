@@ -13,6 +13,7 @@ import {
   TrendingUp,
   DollarSign,
   Handshake,
+  Zap,
 } from "lucide-react";
 
 type Stage =
@@ -48,12 +49,32 @@ const STAGES: Stage[] = [
 
 const ALL_FILTERS = ["Todos", ...STAGES];
 
+// Badge styles for stage pills
 const STAGE_COLOR: Record<Stage, string> = {
-  "Contacto inicial": "bg-zinc-800 text-zinc-300",
-  Calificación: "bg-blue-900/40 text-blue-300",
-  Propuesta: "bg-yellow-900/40 text-yellow-300",
-  Negociación: "bg-orange-900/40 text-orange-300",
-  Cerrado: "bg-green-900/40 text-green-300",
+  "Contacto inicial": "bg-zinc-800/80 text-zinc-300 border border-zinc-700/60",
+  Calificación: "bg-sky-900/50 text-sky-300 border border-sky-700/40",
+  Propuesta: "bg-amber-900/50 text-amber-300 border border-amber-700/40",
+  Negociación: "bg-orange-900/50 text-orange-300 border border-orange-700/40",
+  Cerrado: "bg-emerald-900/50 text-emerald-300 border border-emerald-700/40",
+};
+
+// Left-border accent per stage for card/row highlights
+const STAGE_BORDER_ACCENT: Record<Stage, string> = {
+  "Contacto inicial": "border-l-zinc-600",
+  Calificación: "border-l-sky-500",
+  Propuesta: "border-l-amber-400",
+  Negociación: "border-l-orange-400",
+  Cerrado: "border-l-emerald-500",
+};
+
+// Filter button active accent per stage
+const STAGE_FILTER_ACTIVE: Record<string, string> = {
+  Todos: "border-amber-400 bg-amber-400/10 text-amber-400",
+  "Contacto inicial": "border-zinc-400 bg-zinc-400/10 text-zinc-300",
+  Calificación: "border-sky-400 bg-sky-400/10 text-sky-300",
+  Propuesta: "border-amber-400 bg-amber-400/10 text-amber-300",
+  Negociación: "border-orange-400 bg-orange-400/10 text-orange-300",
+  Cerrado: "border-emerald-400 bg-emerald-400/10 text-emerald-300",
 };
 
 const fmt = new Intl.NumberFormat("es-CL", {
@@ -115,7 +136,7 @@ function InputField({
         value={value}
         onChange={(e) => onChange(e.target.value)}
         placeholder={placeholder}
-        className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-400/50"
+        className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-400/50 transition-colors"
       />
     </div>
   );
@@ -309,110 +330,142 @@ export default function CRMPage() {
       value: leads.length.toString(),
       sub: "en pipeline",
       icon: Users,
+      accent: "text-sky-400",
+      glow: "from-sky-400/10",
     },
     {
       label: "Valor total",
       value: fmt.format(totalValue),
       sub: "en pipeline",
       icon: DollarSign,
+      accent: "text-emerald-400",
+      glow: "from-emerald-400/10",
     },
     {
       label: "Valor ponderado",
       value: fmt.format(weightedValue),
       sub: "por probabilidad",
       icon: TrendingUp,
+      accent: "text-amber-400",
+      glow: "from-amber-400/10",
     },
     {
       label: "En negociación",
       value: negotiating.toString(),
       sub: "leads activos",
       icon: Handshake,
+      accent: "text-orange-400",
+      glow: "from-orange-400/10",
     },
   ];
 
   return (
     <div className="space-y-6 p-4 md:p-8">
-      {/* Header */}
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold text-white tracking-tight">
-            CRM & Pipeline de Ventas
-          </h1>
-          <p className="text-sm text-zinc-500 mt-1">
-            Gestiona tus oportunidades comerciales
-          </p>
-        </div>
-        <button
-          onClick={openNew}
-          className="flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-black transition-opacity hover:opacity-90"
-        >
-          <Plus className="size-4" />
-          Nuevo lead
-        </button>
-      </div>
-
-      {/* Setup banner */}
-      {!tableExists && (
-        <div className="flex items-center justify-between gap-4 rounded-xl border border-yellow-500/30 bg-yellow-900/20 px-4 py-3">
-          <div className="flex items-center gap-3">
-            <AlertTriangle className="size-4 shrink-0 text-yellow-400" />
-            <p className="text-sm text-yellow-300">
-              Base de datos no configurada. Haz clic en &apos;Crear tabla&apos;
-              para empezar.
+      {/* ── Header ─────────────────────────────────────────────────── */}
+      <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.12] bg-zinc-950/85 px-6 py-5 shadow-[0_20px_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_35%,rgba(250,204,21,0.06))]" />
+        <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-amber-400/[0.07] blur-[64px]" />
+        <div className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-sky-400/[0.05] blur-[56px]" />
+        <div className="relative z-10 flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[11px] font-black uppercase tracking-[0.28em] text-amber-400">
+              Ventas
+            </p>
+            <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">
+              CRM &amp; Pipeline de Ventas
+            </h1>
+            <p className="mt-1.5 text-sm text-zinc-400">
+              Gestiona tus oportunidades comerciales
             </p>
           </div>
           <button
-            onClick={handleSetup}
-            disabled={setupLoading}
-            className="shrink-0 rounded-lg bg-yellow-400 px-3 py-1.5 text-xs font-semibold text-black disabled:opacity-60"
+            onClick={openNew}
+            className="flex shrink-0 items-center gap-2 rounded-2xl bg-amber-400 px-4 py-2 text-sm font-bold text-black shadow-[0_4px_16px_rgba(251,191,36,0.25)] transition-all hover:bg-amber-300 hover:shadow-[0_4px_24px_rgba(251,191,36,0.35)]"
           >
-            {setupLoading ? "Creando…" : "Crear tabla"}
+            <Plus className="size-4" />
+            Nuevo lead
           </button>
+        </div>
+      </div>
+
+      {/* ── Setup banner ───────────────────────────────────────────── */}
+      {!tableExists && (
+        <div className="relative overflow-hidden rounded-[1.5rem] border border-amber-500/30 bg-zinc-950/80 px-5 py-4 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.4)]">
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(251,191,36,0.08),transparent_50%)]" />
+          <div className="pointer-events-none absolute -right-8 -top-8 h-32 w-32 rounded-full bg-amber-400/10 blur-[48px]" />
+          <div className="relative z-10 flex items-center justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl border border-amber-500/30 bg-amber-400/10">
+                <AlertTriangle className="size-4 text-amber-400" />
+              </span>
+              <div>
+                <p className="text-sm font-semibold text-amber-300">
+                  Base de datos no configurada
+                </p>
+                <p className="text-xs text-zinc-500">
+                  Haz clic en &apos;Crear tabla&apos; para empezar.
+                </p>
+              </div>
+            </div>
+            <button
+              onClick={handleSetup}
+              disabled={setupLoading}
+              className="flex shrink-0 items-center gap-1.5 rounded-xl bg-amber-400 px-3 py-1.5 text-xs font-bold text-black disabled:opacity-60 transition-opacity hover:opacity-90"
+            >
+              {setupLoading && <Loader2 className="size-3 animate-spin" />}
+              {setupLoading ? "Creando…" : "Crear tabla"}
+            </button>
+          </div>
         </div>
       )}
 
-      {/* Error state */}
+      {/* ── Error state ────────────────────────────────────────────── */}
       {error && (
-        <div className="rounded-xl border border-red-500/30 bg-red-900/20 px-4 py-3 text-sm text-red-300">
+        <div className="rounded-2xl border border-red-500/30 bg-red-900/20 px-4 py-3 text-sm text-red-300">
           {error}
         </div>
       )}
 
-      {/* KPI Cards */}
+      {/* ── KPI Cards ──────────────────────────────────────────────── */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
         {kpis.map((k) => (
           <div
             key={k.label}
-            className="rounded-2xl border border-white/10 bg-zinc-900/60 p-4"
+            className={`relative overflow-hidden rounded-2xl border border-white/10 bg-zinc-900/70 p-4 backdrop-blur-xl shadow-[0_4px_24px_rgba(0,0,0,0.3)]`}
           >
-            <div className="flex items-center justify-between mb-2">
-              <p className="text-xs text-zinc-500 uppercase tracking-wide">
-                {k.label}
-              </p>
-              <k.icon className="size-4 text-zinc-600" />
+            <div className={`pointer-events-none absolute inset-0 bg-gradient-to-br ${k.glow} to-transparent`} />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">
+                  {k.label}
+                </p>
+                <span className={`${k.accent}`}>
+                  <k.icon className="size-4 opacity-70" />
+                </span>
+              </div>
+              <p className={`text-xl font-black truncate ${k.accent}`}>{k.value}</p>
+              <p className="text-xs text-zinc-600 mt-0.5">{k.sub}</p>
             </div>
-            <p className="text-xl font-bold text-white truncate">{k.value}</p>
-            <p className="text-xs text-zinc-600 mt-0.5">{k.sub}</p>
           </div>
         ))}
       </div>
 
-      {/* Filter pills */}
+      {/* ── Filter pills ───────────────────────────────────────────── */}
       <div className="flex flex-wrap gap-2">
         {ALL_FILTERS.map((s) => (
           <button
             key={s}
             onClick={() => setFilter(s)}
             className={cn(
-              "rounded-full border px-3 py-1 text-xs transition-colors",
+              "rounded-full border px-3 py-1 text-xs font-medium transition-colors",
               filter === s
-                ? "border-amber-400 bg-amber-400/10 text-amber-400"
+                ? (STAGE_FILTER_ACTIVE[s] ?? "border-amber-400 bg-amber-400/10 text-amber-400")
                 : "border-white/20 bg-transparent text-zinc-400 hover:bg-white/5 hover:text-white"
             )}
           >
             {s}
             {s !== "Todos" && (
-              <span className="ml-1.5 text-zinc-600">
+              <span className="ml-1.5 opacity-50">
                 {leads.filter((l) => l.stage === s).length}
               </span>
             )}
@@ -420,16 +473,16 @@ export default function CRMPage() {
         ))}
       </div>
 
-      {/* Loading */}
+      {/* ── Loading ────────────────────────────────────────────────── */}
       {loading && (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="size-6 animate-spin text-amber-400" />
         </div>
       )}
 
-      {/* Lead list */}
+      {/* ── Lead list ──────────────────────────────────────────────── */}
       {!loading && (
-        <div className="rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur-sm overflow-hidden">
+        <div className="rounded-2xl border border-white/10 bg-zinc-900/60 backdrop-blur-xl overflow-hidden shadow-[0_8px_32px_rgba(0,0,0,0.35)]">
           {filtered.length === 0 ? (
             <div className="py-16 text-center text-zinc-600 text-sm">
               {tableExists
@@ -444,36 +497,39 @@ export default function CRMPage() {
               <table className="w-full hidden md:table">
                 <thead>
                   <tr className="border-b border-white/10">
-                    <th className="text-left text-xs text-zinc-600 uppercase tracking-wide px-5 py-3">
+                    <th className="text-left text-xs text-zinc-600 font-black uppercase tracking-[0.15em] px-5 py-3">
                       Empresa / Contacto
                     </th>
-                    <th className="text-left text-xs text-zinc-600 uppercase tracking-wide px-5 py-3">
+                    <th className="text-left text-xs text-zinc-600 font-black uppercase tracking-[0.15em] px-5 py-3">
                       Info
                     </th>
-                    <th className="text-left text-xs text-zinc-600 uppercase tracking-wide px-5 py-3">
+                    <th className="text-left text-xs text-zinc-600 font-black uppercase tracking-[0.15em] px-5 py-3">
                       Etapa
                     </th>
-                    <th className="text-left text-xs text-zinc-600 uppercase tracking-wide px-5 py-3">
+                    <th className="text-left text-xs text-zinc-600 font-black uppercase tracking-[0.15em] px-5 py-3">
                       Probabilidad
                     </th>
-                    <th className="text-right text-xs text-zinc-600 uppercase tracking-wide px-5 py-3">
+                    <th className="text-right text-xs text-zinc-600 font-black uppercase tracking-[0.15em] px-5 py-3">
                       Valor
                     </th>
-                    <th className="text-right text-xs text-zinc-600 uppercase tracking-wide px-5 py-3">
+                    <th className="text-right text-xs text-zinc-600 font-black uppercase tracking-[0.15em] px-5 py-3">
                       Acciones
                     </th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/[0.08]">
+                <tbody className="divide-y divide-white/[0.06]">
                   {filtered.map((lead) => {
                     const ns = nextStage(lead.stage);
                     return (
                       <tr
                         key={lead.id}
-                        className="hover:bg-white/5 transition-colors"
+                        className={cn(
+                          "border-l-2 hover:bg-white/[0.03] transition-colors",
+                          STAGE_BORDER_ACCENT[lead.stage]
+                        )}
                       >
                         <td className="px-5 py-3.5">
-                          <p className="text-sm font-medium text-white">
+                          <p className="text-sm font-semibold text-white">
                             {lead.name}
                           </p>
                           {lead.company && (
@@ -498,7 +554,7 @@ export default function CRMPage() {
                         <td className="px-5 py-3.5">
                           <span
                             className={cn(
-                              "rounded-full px-2.5 py-0.5 text-xs font-medium",
+                              "rounded-full px-2.5 py-0.5 text-xs font-semibold",
                               STAGE_COLOR[lead.stage]
                             )}
                           >
@@ -509,7 +565,7 @@ export default function CRMPage() {
                           <div className="flex items-center gap-2">
                             <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
                               <div
-                                className="h-full rounded-full bg-amber-400/70"
+                                className="h-full rounded-full bg-gradient-to-r from-amber-400 to-emerald-400"
                                 style={{ width: `${lead.probability}%` }}
                               />
                             </div>
@@ -518,8 +574,10 @@ export default function CRMPage() {
                             </span>
                           </div>
                         </td>
-                        <td className="px-5 py-3.5 text-sm font-semibold text-right text-white">
-                          {fmt.format(lead.value)}
+                        <td className="px-5 py-3.5 text-sm font-bold text-right text-white">
+                          <span className="rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-xs font-black text-zinc-200">
+                            {fmt.format(lead.value)}
+                          </span>
                         </td>
                         <td className="px-5 py-3.5">
                           <div className="flex items-center justify-end gap-1.5">
@@ -554,14 +612,20 @@ export default function CRMPage() {
               </table>
 
               {/* Mobile list */}
-              <ul className="md:hidden divide-y divide-white/[0.08]">
+              <ul className="md:hidden divide-y divide-white/[0.06]">
                 {filtered.map((lead) => {
                   const ns = nextStage(lead.stage);
                   return (
-                    <li key={lead.id} className="px-4 py-4">
+                    <li
+                      key={lead.id}
+                      className={cn(
+                        "border-l-2 px-4 py-4",
+                        STAGE_BORDER_ACCENT[lead.stage]
+                      )}
+                    >
                       <div className="flex items-start justify-between gap-2 mb-2">
                         <div className="min-w-0">
-                          <p className="text-sm font-medium text-white truncate">
+                          <p className="text-sm font-semibold text-white truncate">
                             {lead.name}
                           </p>
                           {lead.company && (
@@ -571,7 +635,7 @@ export default function CRMPage() {
                         </div>
                         <span
                           className={cn(
-                            "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium",
+                            "shrink-0 rounded-full px-2.5 py-0.5 text-xs font-semibold",
                             STAGE_COLOR[lead.stage]
                           )}
                         >
@@ -581,14 +645,14 @@ export default function CRMPage() {
                       <div className="flex items-center gap-2 mb-3">
                         <div className="flex-1 h-1.5 rounded-full bg-white/5 overflow-hidden">
                           <div
-                            className="h-full rounded-full bg-amber-400/70"
+                            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-emerald-400"
                             style={{ width: `${lead.probability}%` }}
                           />
                         </div>
                         <span className="text-xs text-zinc-400">
                           {lead.probability}%
                         </span>
-                        <span className="text-sm font-semibold text-white ml-2">
+                        <span className="ml-2 rounded-lg border border-white/10 bg-white/5 px-2 py-0.5 text-xs font-black text-zinc-200">
                           {fmt.format(lead.value)}
                         </span>
                       </div>
@@ -624,133 +688,142 @@ export default function CRMPage() {
         </div>
       )}
 
-      {/* Add/Edit Modal */}
+      {/* ── Add/Edit Modal ─────────────────────────────────────────── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
           <div
-            className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/70 backdrop-blur-sm"
             onClick={() => setShowModal(false)}
           />
-          <div className="relative z-10 w-full max-w-lg rounded-2xl border border-white/10 bg-zinc-950 p-6 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between mb-5">
-              <h2 className="text-base font-semibold text-white">
-                {editLead ? "Editar lead" : "Nuevo lead"}
-              </h2>
-              <button
-                onClick={() => setShowModal(false)}
-                className="rounded-lg p-1.5 text-zinc-500 hover:bg-white/5 hover:text-white"
-              >
-                <X className="size-4" />
-              </button>
-            </div>
-
-            <div className="grid gap-4 sm:grid-cols-2">
-              <InputField
-                label="Nombre *"
-                value={form.name}
-                onChange={(v) => setForm((f) => ({ ...f, name: v }))}
-                placeholder="Nombre del lead"
-              />
-              <InputField
-                label="Contacto"
-                value={form.contact}
-                onChange={(v) => setForm((f) => ({ ...f, contact: v }))}
-                placeholder="Persona de contacto"
-              />
-              <InputField
-                label="Email"
-                value={form.email}
-                onChange={(v) => setForm((f) => ({ ...f, email: v }))}
-                type="email"
-                placeholder="email@empresa.cl"
-              />
-              <InputField
-                label="Teléfono"
-                value={form.phone}
-                onChange={(v) => setForm((f) => ({ ...f, phone: v }))}
-                placeholder="+56 9 1234 5678"
-              />
-              <InputField
-                label="Empresa"
-                value={form.company}
-                onChange={(v) => setForm((f) => ({ ...f, company: v }))}
-                placeholder="Nombre de la empresa"
-              />
-              <InputField
-                label="Valor (CLP)"
-                value={form.value}
-                onChange={(v) => setForm((f) => ({ ...f, value: v }))}
-                type="number"
-                placeholder="0"
-              />
-
-              <div>
-                <label className="mb-1.5 block text-xs text-zinc-500">
-                  Etapa
-                </label>
-                <select
-                  value={form.stage}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, stage: e.target.value as Stage }))
-                  }
-                  className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-400/50"
+          <div className="relative z-10 w-full max-w-lg rounded-[1.5rem] border border-white/10 bg-zinc-950 p-6 shadow-[0_32px_120px_rgba(0,0,0,0.7)] max-h-[90vh] overflow-y-auto">
+            {/* Modal header shimmer */}
+            <div className="pointer-events-none absolute inset-0 rounded-[1.5rem] bg-[linear-gradient(135deg,rgba(255,255,255,0.05),transparent_40%)]" />
+            <div className="relative z-10">
+              <div className="flex items-center justify-between mb-5">
+                <div className="flex items-center gap-2">
+                  <span className="flex h-7 w-7 items-center justify-center rounded-xl bg-amber-400/15 text-amber-400">
+                    <Zap className="size-3.5" />
+                  </span>
+                  <h2 className="text-base font-black text-white">
+                    {editLead ? "Editar lead" : "Nuevo lead"}
+                  </h2>
+                </div>
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="rounded-xl border border-white/10 p-1.5 text-zinc-500 hover:bg-white/5 hover:text-white transition-colors"
                 >
-                  {STAGES.map((s) => (
-                    <option key={s} value={s}>
-                      {s}
-                    </option>
-                  ))}
-                </select>
+                  <X className="size-4" />
+                </button>
               </div>
 
-              <InputField
-                label="Probabilidad (%)"
-                value={form.probability}
-                onChange={(v) => setForm((f) => ({ ...f, probability: v }))}
-                type="number"
-                placeholder="0–100"
-              />
-
-              <div className="sm:col-span-2">
+              <div className="grid gap-4 sm:grid-cols-2">
                 <InputField
-                  label="Próxima acción"
-                  value={form.next_action}
-                  onChange={(v) => setForm((f) => ({ ...f, next_action: v }))}
-                  placeholder="¿Qué sigue?"
+                  label="Nombre *"
+                  value={form.name}
+                  onChange={(v) => setForm((f) => ({ ...f, name: v }))}
+                  placeholder="Nombre del lead"
                 />
+                <InputField
+                  label="Contacto"
+                  value={form.contact}
+                  onChange={(v) => setForm((f) => ({ ...f, contact: v }))}
+                  placeholder="Persona de contacto"
+                />
+                <InputField
+                  label="Email"
+                  value={form.email}
+                  onChange={(v) => setForm((f) => ({ ...f, email: v }))}
+                  type="email"
+                  placeholder="email@empresa.cl"
+                />
+                <InputField
+                  label="Teléfono"
+                  value={form.phone}
+                  onChange={(v) => setForm((f) => ({ ...f, phone: v }))}
+                  placeholder="+56 9 1234 5678"
+                />
+                <InputField
+                  label="Empresa"
+                  value={form.company}
+                  onChange={(v) => setForm((f) => ({ ...f, company: v }))}
+                  placeholder="Nombre de la empresa"
+                />
+                <InputField
+                  label="Valor (CLP)"
+                  value={form.value}
+                  onChange={(v) => setForm((f) => ({ ...f, value: v }))}
+                  type="number"
+                  placeholder="0"
+                />
+
+                <div>
+                  <label className="mb-1.5 block text-xs text-zinc-500">
+                    Etapa
+                  </label>
+                  <select
+                    value={form.stage}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, stage: e.target.value as Stage }))
+                    }
+                    className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-400/50 transition-colors"
+                  >
+                    {STAGES.map((s) => (
+                      <option key={s} value={s}>
+                        {s}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                <InputField
+                  label="Probabilidad (%)"
+                  value={form.probability}
+                  onChange={(v) => setForm((f) => ({ ...f, probability: v }))}
+                  type="number"
+                  placeholder="0–100"
+                />
+
+                <div className="sm:col-span-2">
+                  <InputField
+                    label="Próxima acción"
+                    value={form.next_action}
+                    onChange={(v) => setForm((f) => ({ ...f, next_action: v }))}
+                    placeholder="¿Qué sigue?"
+                  />
+                </div>
+
+                <div className="sm:col-span-2">
+                  <label className="mb-1.5 block text-xs text-zinc-500">
+                    Notas
+                  </label>
+                  <textarea
+                    value={form.notes}
+                    onChange={(e) =>
+                      setForm((f) => ({ ...f, notes: e.target.value }))
+                    }
+                    rows={3}
+                    placeholder="Observaciones adicionales…"
+                    className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-400/50 resize-none transition-colors"
+                  />
+                </div>
               </div>
 
-              <div className="sm:col-span-2">
-                <label className="mb-1.5 block text-xs text-zinc-500">
-                  Notas
-                </label>
-                <textarea
-                  value={form.notes}
-                  onChange={(e) =>
-                    setForm((f) => ({ ...f, notes: e.target.value }))
-                  }
-                  rows={3}
-                  placeholder="Observaciones adicionales…"
-                  className="w-full rounded-xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white outline-none focus:border-amber-400/50 resize-none"
-                />
+              <div className="mt-5 flex justify-end gap-3">
+                <button
+                  onClick={() => setShowModal(false)}
+                  className="rounded-xl border border-white/20 bg-transparent px-4 py-2 text-sm text-zinc-400 hover:bg-white/5 transition-colors"
+                >
+                  Cancelar
+                </button>
+                <button
+                  onClick={handleSave}
+                  disabled={saving || !form.name.trim()}
+                  className="flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-sm font-bold text-black shadow-[0_4px_16px_rgba(251,191,36,0.2)] disabled:opacity-50 transition-all hover:bg-amber-300 hover:shadow-[0_4px_24px_rgba(251,191,36,0.3)]"
+                >
+                  {saving && <Loader2 className="size-3.5 animate-spin" />}
+                  {saving ? "Guardando…" : "Guardar"}
+                </button>
               </div>
-            </div>
-
-            <div className="mt-5 flex justify-end gap-3">
-              <button
-                onClick={() => setShowModal(false)}
-                className="rounded-xl border border-white/20 bg-transparent px-4 py-2 text-sm text-zinc-400 hover:bg-white/5"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleSave}
-                disabled={saving || !form.name.trim()}
-                className="flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-black disabled:opacity-50 transition-opacity hover:opacity-90"
-              >
-                {saving && <Loader2 className="size-3.5 animate-spin" />}
-                {saving ? "Guardando…" : "Guardar"}
-              </button>
             </div>
           </div>
         </div>

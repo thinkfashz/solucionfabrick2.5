@@ -13,6 +13,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
+import DottedSurface from './DottedSurface';
 
 const SESSION_FLAG = 'fabrick.splash.seen.v2';
 const LEGACY_SESSION_FLAG = 'fabrick.loadingScreen.seen.v1';
@@ -118,6 +119,11 @@ export default function SplashScreen() {
               text-shadow: 0 0 28px rgba(250,204,21,0.85), 0 0 60px rgba(250,204,21,0.35);
             }
           `}</style>
+
+          {/* Animated dotted-surface background — Three.js wave-of-dots
+              (estilo "Dotted Surface" de 21st.dev), tema ámbar Fabrick.
+              Se omite con prefers-reduced-motion para no animar de más. */}
+          {!prefersReduced && <DottedSurface className="opacity-[0.55] mix-blend-screen" />}
 
           {/* Ambient radial glow */}
           <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(250,204,21,0.09)_0%,rgba(0,0,0,0)_60%)]" />

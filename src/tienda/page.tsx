@@ -188,6 +188,9 @@ export default function TiendaClientPage() {
 
 	const cartIconRef = useRef<HTMLDivElement>(null);
 	const gsapRef = useRef<null | typeof import('gsap').default>(null);
+	// Tracks in-flight "add to cart" particle animations so we can kill the GSAP
+	// tweens and remove the orphaned DOM nodes if the component unmounts mid-flight.
+	const activeParticlesRef = useRef<Array<{ el: HTMLDivElement; tween: gsap.core.Tween }>>([]);
 
 	const liveProducts = useMemo<Product[]>(() => {
 		// After DB fetch completes, show the live result (possibly empty)
@@ -361,7 +364,7 @@ export default function TiendaClientPage() {
 		particle.innerHTML = `<img src="${product.img}" class="w-full h-full object-cover opacity-60" />`;
 		document.body.appendChild(particle);
 
-		gsapRef.current.to(particle, {
+		const tween = gsapRef.current.to(particle, {
 			duration: 1.2,
 			x: cartRect.left - rect.left + 5,
 			y: cartRect.top - rect.top + 5,
@@ -370,12 +373,29 @@ export default function TiendaClientPage() {
 			opacity: 0,
 			ease: 'power4.inOut',
 			onComplete: () => {
+				// Drop from the tracking list once it finishes naturally
+				activeParticlesRef.current = activeParticlesRef.current.filter((entry) => entry.el !== particle);
 				particle.remove();
 				if (!gsapRef.current || !cartIconRef.current) return;
 				gsapRef.current.fromTo(cartIconRef.current, { scale: 1 }, { scale: 1.25, duration: 0.25, yoyo: true, repeat: 1 });
 			},
 		});
+
+		// Track this particle/tween so we can kill it and remove the node on unmount
+		activeParticlesRef.current.push({ el: particle, tween });
 	};
+
+	// Cleanup any in-flight "add to cart" particle animations on unmount so we
+	// never leave orphaned DOM nodes or running GSAP tweens behind.
+	useEffect(() => {
+		return () => {
+			activeParticlesRef.current.forEach(({ el, tween }) => {
+				tween.kill();
+				el.remove();
+			});
+			activeParticlesRef.current = [];
+		};
+	}, []);
 
 	const handleSelectProduct = (product: Product) => {
 		// Navigate to the full detail page so the user sees all information
@@ -586,6 +606,10 @@ export default function TiendaClientPage() {
 						.nike-card-img { transition: transform 600ms cubic-bezier(0.22,1,0.36,1); }
 						.nike-card-quickadd { opacity: 0; transform: translateY(6px); transition: opacity 220ms ease, transform 220ms ease; }
 						.nike-card:hover .nike-card-quickadd { opacity: 1; transform: translateY(0); }
+						/* Touch devices have no hover state — keep the quick-add CTA reachable with a thumb */
+						@media (hover: none) {
+							.nike-card-quickadd { opacity: 1; transform: translateY(0); }
+						}
 						.nike-pill { transition: background 180ms ease, color 180ms ease, border-color 180ms ease; }
 						.nike-link { position: relative; }
 						.nike-link::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; transform: scaleX(0); transform-origin: left; transition: transform 240ms ease; }
@@ -1193,7 +1217,7 @@ export default function TiendaClientPage() {
 								</div>
 								<div className="mt-4 rounded-xl border border-yellow-400/25 bg-yellow-400/10 p-3">
 									<p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-bold">Ahorro total visible</p>
-									<p className="mt-1 text-xl font-black text-yellow-300">${totalSavingsFiltered.toLocaleString()}</p>
+									<p className="mt-1 text-xl font-black text-yellow-300">${totalSavingsFiltered.toLocaleString('es-CL')}</p>
 									<p className="mt-1 text-xs text-zinc-400">Basado en descuentos aplicados de los productos filtrados.</p>
 								</div>
 							</aside>
@@ -1319,7 +1343,7 @@ export default function TiendaClientPage() {
 									<div className="w-full md:w-1/2 space-y-6 text-center md:text-left">
 										<div>
 											<p className="text-[9px] uppercase tracking-[0.4em] text-yellow-400/70 mb-3">{p.category}</p>
-											<h3 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-[0.9] text-white group-hover:text-yellow-50 transition-colors">
+											<h3 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-[0.9] text-white break-words group-hover:text-yellow-50 transition-colors">
 												{p.name}
 											</h3>
 										</div>
@@ -1365,12 +1389,12 @@ export default function TiendaClientPage() {
 												const finalPrice = pct > 0 ? Math.round(p.price * (1 - pct / 100)) : p.price;
 												return (
 													<div className="flex items-baseline gap-3 justify-center md:justify-start flex-wrap">
-														<span className="font-mono text-3xl md:text-4xl font-bold text-white">${finalPrice.toLocaleString()}</span>
+														<span className="font-mono text-3xl md:text-4xl font-bold text-white">${finalPrice.toLocaleString('es-CL')}</span>
 														{pct > 0 ? (
 															<>
-																<span className="text-base text-zinc-500 line-through">${p.price.toLocaleString()}</span>
+																<span className="text-base text-zinc-500 line-through">${p.price.toLocaleString('es-CL')}</span>
 																<span className="px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 text-[9px] font-black uppercase tracking-wider">
-																	Ahorras ${Math.round(p.price - finalPrice).toLocaleString()}
+																	Ahorras ${Math.round(p.price - finalPrice).toLocaleString('es-CL')}
 																</span>
 															</>
 														) : null}
@@ -1456,7 +1480,7 @@ export default function TiendaClientPage() {
 									</div>
 									<div>
 										<p className="text-[9px] text-zinc-500 uppercase tracking-widest mb-2 font-black">Precio Final</p>
-										<p className="text-4xl md:text-5xl font-black text-white">${selectedProduct.price.toLocaleString()}</p>
+										<p className="text-4xl md:text-5xl font-black text-white">${selectedProduct.price.toLocaleString('es-CL')}</p>
 									</div>
 								</div>
 

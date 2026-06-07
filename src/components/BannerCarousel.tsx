@@ -106,8 +106,7 @@ export default function BannerCarousel() {
 
   return (
     <div
-      className="relative w-full overflow-hidden bg-zinc-900"
-      style={{ maxHeight: 200, height: 200 }}
+      className="relative w-full overflow-hidden bg-zinc-950 border-b border-white/5 h-[180px] sm:h-[260px] md:h-[320px] lg:h-[380px]"
       onMouseEnter={() => setPaused(true)}
       onMouseLeave={() => setPaused(false)}
       onTouchStart={handleTouchStart}
@@ -124,46 +123,48 @@ export default function BannerCarousel() {
         >
           {banner.link ? (
             <a href={banner.link} className="block w-full h-full">
-              <BannerSlide banner={banner} />
+              <BannerSlide banner={banner} priority={current === 0} />
             </a>
           ) : (
-            <BannerSlide banner={banner} />
+            <BannerSlide banner={banner} priority={current === 0} />
           )}
         </motion.div>
       </AnimatePresence>
 
-      {/* Prev / Next arrows */}
+      {/* Prev / Next arrows — glass-card language matching the site's
+          yellow-electric accent (border-white/10 + bg-black/40 + backdrop blur,
+          glowing border on hover). */}
       {count > 1 && (
         <>
           <button
             onClick={prev}
             aria-label="Banner anterior"
-            className="absolute left-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/80 transition-colors"
+            className="absolute left-2 sm:left-4 top-1/2 -translate-y-1/2 z-10 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white backdrop-blur transition-all hover:border-yellow-400/40 hover:bg-black/60 hover:text-yellow-400"
           >
             <ChevronLeft size={18} />
           </button>
           <button
             onClick={next}
             aria-label="Banner siguiente"
-            className="absolute right-2 top-1/2 -translate-y-1/2 z-10 w-8 h-8 flex items-center justify-center rounded-full bg-black/50 text-white hover:bg-black/80 transition-colors"
+            className="absolute right-2 sm:right-4 top-1/2 -translate-y-1/2 z-10 flex h-9 w-9 sm:h-10 sm:w-10 items-center justify-center rounded-full border border-white/10 bg-black/40 text-white backdrop-blur transition-all hover:border-yellow-400/40 hover:bg-black/60 hover:text-yellow-400"
           >
             <ChevronRight size={18} />
           </button>
         </>
       )}
 
-      {/* Position indicators */}
+      {/* Position indicators — glass pill matching the accent palette */}
       {count > 1 && (
-        <div className="absolute bottom-2 left-1/2 -translate-x-1/2 z-10 flex gap-1.5">
+        <div className="absolute bottom-3 sm:bottom-4 left-1/2 -translate-x-1/2 z-10 flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-2.5 py-1.5 backdrop-blur">
           {banners.map((_, i) => (
             <button
               key={i}
               onClick={() => setCurrent(i)}
               aria-label={`Ir al banner ${i + 1}`}
-              className={`transition-all rounded-full ${
+              className={`rounded-full transition-all ${
                 i === current
-                  ? 'w-5 h-1.5 bg-yellow-400'
-                  : 'w-1.5 h-1.5 bg-white/40 hover:bg-white/70'
+                  ? 'w-5 h-1.5 bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]'
+                  : 'w-1.5 h-1.5 bg-white/30 hover:bg-yellow-400/50'
               }`}
             />
           ))}
@@ -173,26 +174,27 @@ export default function BannerCarousel() {
   );
 }
 
-function BannerSlide({ banner }: { banner: Banner }) {
+function BannerSlide({ banner, priority = false }: { banner: Banner; priority?: boolean }) {
   return (
     <div className="relative w-full h-full">
       <img
         src={cloudinaryUrl(banner.image_url, { width: 1600, quality: 70 })}
         alt={banner.title ?? 'Oferta Fabrick'}
         className="w-full h-full object-cover"
-        loading="lazy"
+        loading={priority ? 'eager' : 'lazy'}
+        fetchPriority={priority ? 'high' : 'auto'}
         decoding="async"
         sizes="100vw"
       />
       {(banner.title || banner.subtitle) && (
-        <div className="absolute inset-0 bg-gradient-to-r from-black/70 via-black/30 to-transparent flex flex-col justify-center px-6">
+        <div className="absolute inset-0 bg-gradient-to-r from-black/75 via-black/35 to-transparent flex flex-col justify-center px-5 sm:px-8 md:px-10">
           {banner.title && (
-            <p className="text-white text-base md:text-xl font-black uppercase tracking-wider leading-tight drop-shadow">
+            <p className="font-playfair text-lg sm:text-2xl md:text-3xl lg:text-4xl font-black uppercase tracking-wide leading-tight text-white drop-shadow-lg">
               {banner.title}
             </p>
           )}
           {banner.subtitle && (
-            <p className="text-yellow-400 text-xs md:text-sm font-semibold mt-1 tracking-wide drop-shadow">
+            <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm md:text-base font-semibold tracking-wide text-yellow-400 drop-shadow">
               {banner.subtitle}
             </p>
           )}

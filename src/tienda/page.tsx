@@ -4,6 +4,7 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { navigateWithTransition } from '@/lib/routeTransition';
 import { useCatalogProducts } from '@/hooks/useCatalogProducts';
 import { useAuth } from '@/context/AuthContext';
 import { getInitials } from '@/lib/initials';
@@ -400,8 +401,9 @@ export default function TiendaClientPage() {
 	const handleSelectProduct = (product: Product) => {
 		// Navigate to the full detail page so the user sees all information
 		// (image, specs, stock, description, price breakdown) instead of the
-		// in-page overlay which was confusing.
-		router.push(`/tienda/${product.id}`);
+		// in-page overlay which was confusing. Uses the same cinematic
+		// transition overlay as the rest of the site for a consistent feel.
+		navigateWithTransition(`/tienda/${product.id}`, router);
 	};
 
 	useEffect(() => {

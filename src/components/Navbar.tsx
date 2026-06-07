@@ -20,6 +20,8 @@ import {
   BookOpen,
   Phone,
   ShieldCheck,
+  User,
+  LogIn,
 } from 'lucide-react';
 import FabrickLogo3DLazy from '@/components/FabrickLogo3DLazy';
 import ThemeToggle from '@/components/ThemeToggle';
@@ -34,19 +36,23 @@ const PRIMARY_MENU_ITEMS = [
   { label: 'Servicios',        href: '/servicios',    Icon: Wrench },
   { label: 'Diseñar mi casa',  href: '/juego',        Icon: Gamepad2 },
   { label: 'Cotización',       href: '/cotizaciones', Icon: FileText, quoteCount: true },
-  { label: 'Tienda',           href: '/tienda',       Icon: ShoppingBag },
+  { label: 'Tienda',           href: '/tienda',       Icon: ShoppingBag, cartCount: true },
 ];
 
-const MENU_ITEMS = [
-  ...PRIMARY_MENU_ITEMS,
+/** Segundo grupo del drawer: secciones de exploración / contenido. */
+const SECONDARY_MENU_ITEMS = [
   { label: 'Evolución',   href: '/evolucion',   Icon: TrendingUp },
   { label: 'Soluciones',  href: '/soluciones',  Icon: Lightbulb },
   { label: 'Presupuesto', href: '/presupuesto', Icon: Calculator },
   { label: 'Proyectos',   href: '/proyectos',   Icon: Building2 },
   { label: 'Casos',       href: '/casos',       Icon: Layers },
   { label: 'Blog',        href: '/blog',        Icon: BookOpen },
-  { label: 'Contacto',    href: '/contacto',    Icon: Phone },
-  { label: 'Garantías',   href: '/garantias',   Icon: ShieldCheck },
+];
+
+/** Tercer grupo del drawer: contacto / soporte / garantías. */
+const SUPPORT_MENU_ITEMS = [
+  { label: 'Contacto',  href: '/contacto',  Icon: Phone },
+  { label: 'Garantías', href: '/garantias', Icon: ShieldCheck },
 ];
 
 const drawerVariants = {
@@ -122,6 +128,20 @@ function NavbarBrandLogo({ onClick }: { onClick: () => void }) {
         </span>
       </div>
     </div>
+  );
+}
+
+/**
+ * Etiqueta de sección dentro del drawer móvil — mismo lenguaje visual que el
+ * `Eyebrow` de las secciones dinámicas del home (uppercase, tracking ancho,
+ * color de acento), para que cada grupo de opciones se lea como un bloque
+ * propio en lugar de una lista plana.
+ */
+function DrawerSectionLabel({ children }: { children: React.ReactNode }) {
+  return (
+    <p className="mb-2 mt-1 px-3 text-[10px] font-bold uppercase tracking-[0.32em] text-[var(--accent)]/70">
+      {children}
+    </p>
   );
 }
 
@@ -204,6 +224,17 @@ export default function Navbar() {
             className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-300 transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
           >
             <Gamepad2 className="h-4 w-4" />
+          </button>
+
+          <button
+            type="button"
+            onClick={() => (cartCtx ? cartCtx.openCart() : handleNav('/tienda'))}
+            aria-label={cartCount > 0 ? `Carrito de compras — ${cartCount} producto${cartCount === 1 ? '' : 's'}` : 'Carrito de compras'}
+            title="Carrito"
+            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-300 transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
+          >
+            <ShoppingCart className="h-4 w-4" />
+            {renderBadge(cartCount)}
           </button>
 
           <ThemeToggle />
@@ -295,8 +326,10 @@ export default function Navbar() {
               exit="exit"
               className="fixed inset-x-0 top-0 z-50 flex max-h-[100dvh] flex-col overflow-y-auto bg-[var(--bg)] border-b border-[var(--accent)]/30 shadow-[0_24px_60px_rgba(0,0,0,0.5)] lg:hidden"
             >
-              {/* Sticky header in drawer */}
-              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/5 bg-[var(--bg)]/95 px-5 py-3 backdrop-blur-md">
+              {/* Sticky header — visually separated from the scrolling list via
+                  a stronger border + its own backdrop blur + soft shadow, so
+                  it reads as a fixed "toolbar" rather than blending in. */}
+              <div className="sticky top-0 z-10 flex items-center justify-between border-b border-white/10 bg-[var(--bg)]/95 px-5 py-3 shadow-[0_4px_24px_rgba(0,0,0,0.35)] backdrop-blur-xl">
                 <NavbarBrandLogo onClick={() => handleNav('/')} />
                 <button
                   type="button"
@@ -308,9 +341,11 @@ export default function Navbar() {
                 </button>
               </div>
 
-              <div className="flex-1 px-6 pb-10 pt-6">
+              <div className="flex-1 px-5 pb-10 pt-5 sm:px-6">
+                {/* Grupo 1 — navegación principal */}
+                <DrawerSectionLabel>Navegar</DrawerSectionLabel>
                 <nav className="flex flex-col gap-1">
-                  {MENU_ITEMS.map(({ label, href, Icon, ...flags }, i) => {
+                  {PRIMARY_MENU_ITEMS.map(({ label, href, Icon, ...flags }, i) => {
                     const showQuoteCount = 'quoteCount' in flags && quoteCount > 0;
                     const showCartCount = 'cartCount' in flags && cartCount > 0;
                     return (
@@ -321,9 +356,9 @@ export default function Navbar() {
                         initial="hidden"
                         animate="visible"
                         onClick={() => handleNav(href)}
-                        className="group flex w-full items-center gap-4 rounded-2xl px-3 py-3.5 text-left transition-colors hover:bg-white/5 active:bg-white/10"
+                        className="group flex w-full min-h-[44px] items-center gap-4 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-white/5 active:bg-white/10"
                       >
-                        <span className="relative flex h-10 w-10 items-center justify-center rounded-xl border border-white/10 bg-zinc-900/60 transition-all group-hover:border-[var(--accent)]/40 group-hover:bg-[var(--accent)]/10">
+                        <span className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-white/10 bg-zinc-900/60 transition-all group-hover:border-[var(--accent)]/40 group-hover:bg-[var(--accent)]/10 group-hover:shadow-[0_0_16px_rgba(250,204,21,0.18)]">
                           <Icon size={18} className="text-zinc-300 transition-colors group-hover:text-[var(--accent)]" />
                           {showQuoteCount && renderBadge(quoteCount)}
                           {showCartCount && renderBadge(cartCount)}
@@ -331,25 +366,82 @@ export default function Navbar() {
                         <span className="flex-1 text-sm font-semibold uppercase tracking-[0.14em] text-[var(--text)] transition-colors group-hover:text-[var(--accent)]">
                           {label}
                         </span>
+                        <span className="h-1.5 w-1.5 flex-shrink-0 rounded-full bg-transparent transition-colors group-hover:bg-[var(--accent)]" aria-hidden />
                       </motion.button>
                     );
                   })}
                 </nav>
 
+                <div className="my-5 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+                {/* Grupo 2 — explorar / contenido */}
+                <DrawerSectionLabel>Explorar</DrawerSectionLabel>
+                <nav className="grid grid-cols-2 gap-1.5">
+                  {SECONDARY_MENU_ITEMS.map(({ label, href, Icon }, i) => (
+                    <motion.button
+                      key={href}
+                      custom={PRIMARY_MENU_ITEMS.length + i}
+                      variants={itemVariants}
+                      initial="hidden"
+                      animate="visible"
+                      onClick={() => handleNav(href)}
+                      className="group flex min-h-[44px] items-center gap-2.5 rounded-xl border border-white/5 bg-white/[0.02] px-3 py-2.5 text-left transition-all hover:border-[var(--accent)]/25 hover:bg-white/5"
+                    >
+                      <Icon size={15} className="flex-shrink-0 text-zinc-400 transition-colors group-hover:text-[var(--accent)]" />
+                      <span className="truncate text-xs font-semibold uppercase tracking-[0.1em] text-zinc-300 transition-colors group-hover:text-[var(--text)]">
+                        {label}
+                      </span>
+                    </motion.button>
+                  ))}
+                </nav>
+
+                <div className="my-5 h-px w-full bg-gradient-to-r from-transparent via-white/10 to-transparent" />
+
+                {/* Grupo 3 — soporte / garantías */}
+                <DrawerSectionLabel>Ayuda</DrawerSectionLabel>
+                <nav className="flex flex-col gap-1">
+                  {SUPPORT_MENU_ITEMS.map(({ label, href, Icon }, i) => (
+                    <motion.button
+                      key={href}
+                      custom={PRIMARY_MENU_ITEMS.length + SECONDARY_MENU_ITEMS.length + i}
+                      variants={itemVariants}
+                      initial="hidden"
+                      animate="visible"
+                      onClick={() => handleNav(href)}
+                      className="group flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-white/5 active:bg-white/10"
+                    >
+                      <Icon size={16} className="flex-shrink-0 text-zinc-400 transition-colors group-hover:text-[var(--accent)]" />
+                      <span className="flex-1 text-xs font-semibold uppercase tracking-[0.16em] text-zinc-300 transition-colors group-hover:text-[var(--text)]">
+                        {label}
+                      </span>
+                    </motion.button>
+                  ))}
+                </nav>
+
                 <div className="my-6 h-px w-full bg-gradient-to-r from-transparent via-[var(--accent)]/30 to-transparent" />
 
-                <button
-                  onClick={() => handleNav('/mi-cuenta')}
-                  className="mb-3 w-full text-center text-xs font-bold uppercase tracking-widest text-[var(--text)]/70 transition-colors hover:text-[var(--accent)]"
-                >
-                  Mi Cuenta
-                </button>
-                <button
-                  onClick={() => handleNav('/auth')}
-                  className="w-full rounded-full bg-[var(--accent)] py-3.5 text-sm font-black uppercase tracking-widest text-black shadow-[0_8px_24px_rgba(201,169,110,0.35)] transition-all hover:bg-[var(--accent2,#b8860b)]"
-                >
-                  Iniciar Sesión
-                </button>
+                {/* Grupo 4 — cuenta / sesión, presentado como bloque "glass card"
+                    diferenciado para que se lea como acción principal del cierre. */}
+                <div className="flex flex-col gap-2.5 rounded-2xl border border-white/10 bg-zinc-950/80 p-3 backdrop-blur">
+                  <button
+                    onClick={() => handleNav('/mi-cuenta')}
+                    className="group flex min-h-[44px] w-full items-center gap-3 rounded-xl px-3 py-2.5 text-left transition-colors hover:bg-white/5"
+                  >
+                    <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/5 transition-all group-hover:border-[var(--accent)]/40 group-hover:bg-[var(--accent)]/10">
+                      <User size={15} className="text-zinc-300 transition-colors group-hover:text-[var(--accent)]" />
+                    </span>
+                    <span className="flex-1 text-xs font-bold uppercase tracking-widest text-[var(--text)]/80 transition-colors group-hover:text-[var(--accent)]">
+                      Mi Cuenta
+                    </span>
+                  </button>
+                  <button
+                    onClick={() => handleNav('/auth')}
+                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-[var(--accent)] py-3.5 text-sm font-black uppercase tracking-widest text-black shadow-[0_8px_24px_rgba(201,169,110,0.35)] transition-all hover:bg-[var(--accent2,#b8860b)] active:scale-[0.99]"
+                  >
+                    <LogIn size={16} aria-hidden />
+                    Iniciar Sesión
+                  </button>
+                </div>
               </div>
             </motion.aside>
           </>

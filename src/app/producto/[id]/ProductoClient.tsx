@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -10,7 +10,10 @@ import { useRealtimeProducts } from '@/hooks/useRealtimeProducts';
 import { useCartContext } from '@/context/CartContext';
 import { formatCLP } from '@/hooks/useCart';
 import { useSiteContent } from '@/hooks/useSiteContent';
-import { Star, Check, Truck, ArrowLeft, ShoppingCart, ChevronRight, Zap } from 'lucide-react';
+import {
+  Star, Check, Truck, ArrowLeft, ShoppingCart, ChevronRight, Zap,
+  CircleCheckBig, LoaderCircle, Minus, Plus,
+} from 'lucide-react';
 import FavoriteButton from '@/components/store/FavoriteButton';
 
 /* ─── Animation variants (motion.dev / framer-motion) ───────── */
@@ -96,7 +99,42 @@ export default function ProductoClient() {
   const { addToCart, openCart } = useCartContext();
   const productoCms = useSiteContent('producto');
   const [added, setAdded] = useState(false);
+  const [adding, setAdding] = useState(false);
   const [quantity, setQuantity] = useState(1);
+
+  /* ─── Particle burst (fly-to-cart) refs ───────────────────────
+     Mirrors the pattern used in the storefront listing: a small
+     pool of GSAP-driven particles spawned from the add-to-cart
+     button and arced toward the navbar cart icon, tracked so we
+     can kill any in-flight tweens and remove their DOM nodes on
+     unmount (avoids leaking tweens/nodes between navigations). */
+  const addButtonRef     = useRef<HTMLButtonElement>(null);
+  const gsapRef          = useRef<null | typeof import('gsap').default>(null);
+  const activeParticlesRef = useRef<Array<{ el: HTMLDivElement; tween: gsap.core.Tween }>>([]);
+
+  useEffect(() => {
+    let mounted = true;
+    async function loadGsap() {
+      const { default: gsap } = await import('gsap');
+      if (mounted) gsapRef.current = gsap;
+    }
+    void loadGsap();
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  // Cleanup any in-flight "add to cart" particle animations on unmount so we
+  // never leave orphaned DOM nodes or running GSAP tweens behind.
+  useEffect(() => {
+    return () => {
+      activeParticlesRef.current.forEach(({ el, tween }) => {
+        tween.kill();
+        el.remove();
+      });
+      activeParticlesRef.current = [];
+    };
+  }, []);
 
   const id = params?.id ?? '';
 
@@ -116,18 +154,84 @@ export default function ProductoClient() {
     ? Object.entries(product.specifications)
     : [];
 
-  function handleAddToCart() {
+  /* Spawns a small burst of yellow/amber particles from the add-to-cart
+     button that arc toward the navbar's cart icon (or the top-right
+     corner as a fallback target), mirroring the storefront listing's
+     fly-to-cart effect — kept lighter for a single-product page. */
+  function spawnAddToCartParticles() {
+    const gsap   = gsapRef.current;
+    const button = addButtonRef.current;
+    if (!gsap || !button) return;
+
+    const originRect = button.getBoundingClientRect();
+    const cartEl     = document.querySelector<HTMLElement>('[aria-label*="Carrito de compras"]');
+    const targetRect = cartEl?.getBoundingClientRect() ?? null;
+    const targetX    = targetRect ? targetRect.left + targetRect.width  / 2 : window.innerWidth - 32;
+    const targetY    = targetRect ? targetRect.top  + targetRect.height / 2 : 28;
+
+    const PARTICLE_COUNT = 8;
+    for (let i = 0; i < PARTICLE_COUNT; i += 1) {
+      const startX = originRect.left + originRect.width  * (0.3 + Math.random() * 0.4);
+      const startY = originRect.top  + originRect.height * (0.3 + Math.random() * 0.4);
+
+      const particle = document.createElement('div');
+      particle.className = 'fixed z-[600] rounded-full pointer-events-none';
+      const size = 6 + Math.random() * 6;
+      particle.style.width  = `${size}px`;
+      particle.style.height = `${size}px`;
+      particle.style.left   = `${startX}px`;
+      particle.style.top    = `${startY}px`;
+      particle.style.background = i % 2 === 0 ? '#FACC15' : '#FDE047';
+      particle.style.boxShadow  = '0 0 12px rgba(250, 204, 21, 0.65)';
+      document.body.appendChild(particle);
+
+      const tween = gsap.to(particle, {
+        duration: 0.6 + Math.random() * 0.3,
+        x: targetX - startX,
+        y: targetY - startY,
+        scale: 0.2,
+        opacity: 0,
+        ease: 'power2.in',
+        delay: i * 0.035,
+        onComplete: () => {
+          activeParticlesRef.current = activeParticlesRef.current.filter((entry) => entry.el !== particle);
+          particle.remove();
+        },
+      });
+
+      activeParticlesRef.current.push({ el: particle, tween });
+    }
+  }
+
+  async function handleAddToCart() {
     if (!product) return;
     if (typeof product.stock === 'number' && product.stock < 1) return;
+    if (adding) return;
     const qty = Math.max(1, Math.min(99, quantity || 1));
+
+    setAdding(true);
+    const startedAt = Date.now();
     try {
       addToCart(product, qty);
+      spawnAddToCartParticles();
+
+      // `addToCart` is synchronous, but a tiny minimum-duration loading
+      // state reads as more deliberate/premium than an instant flicker —
+      // without padding it past what feels responsive.
+      const MIN_LOADING_MS = 320;
+      const elapsed = Date.now() - startedAt;
+      if (elapsed < MIN_LOADING_MS) {
+        await new Promise((resolve) => setTimeout(resolve, MIN_LOADING_MS - elapsed));
+      }
+
       setAdded(true);
       setTimeout(() => setAdded(false), 2200);
       openCart();
     } catch {
       // Defensive: if the store throws, don't lock the UI in "added" state.
       setAdded(false);
+    } finally {
+      setAdding(false);
     }
   }
 
@@ -274,7 +378,9 @@ export default function ProductoClient() {
                 product!.stock > 0 ? (
                   <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-green-500/[0.07] border border-green-500/[0.18] text-green-400 text-xs">
                     <Check size={11} strokeWidth={2.5} />
-                    <span>En stock · {product!.stock} disponibles</span>
+                    <span>En stock</span>
+                    <span className="text-green-400/40">·</span>
+                    <span className="text-green-400/70">{product!.stock} disponibles</span>
                   </div>
                 ) : (
                   <div className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-red-500/[0.07] border border-red-500/[0.18] text-red-400/70 text-xs">
@@ -307,10 +413,10 @@ export default function ProductoClient() {
                       type="button"
                       onClick={() => setQuantity((q) => Math.max(1, q - 1))}
                       aria-label="Disminuir cantidad"
-                      className="px-3 py-1.5 text-white/60 hover:text-yellow-400 transition-colors disabled:opacity-30"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center text-white/60 hover:text-yellow-400 transition-colors disabled:opacity-30 disabled:hover:text-white/60"
                       disabled={quantity <= 1}
                     >
-                      −
+                      <Minus size={14} strokeWidth={2.5} />
                     </button>
                     <span
                       className="min-w-[2.25rem] text-center text-sm text-white tabular-nums"
@@ -329,12 +435,12 @@ export default function ProductoClient() {
                         )
                       }
                       aria-label="Aumentar cantidad"
-                      className="px-3 py-1.5 text-white/60 hover:text-yellow-400 transition-colors disabled:opacity-30"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center text-white/60 hover:text-yellow-400 transition-colors disabled:opacity-30 disabled:hover:text-white/60"
                       disabled={
                         typeof product!.stock === 'number' && quantity >= product!.stock
                       }
                     >
-                      +
+                      <Plus size={14} strokeWidth={2.5} />
                     </button>
                   </div>
                 </div>
@@ -348,26 +454,28 @@ export default function ProductoClient() {
                     animate={{ opacity: 1, scale: 1,  y: 0 }}
                     exit={{    opacity: 0, scale: 0.96, y: -4 }}
                     transition={{ duration: 0.25 }}
-                    className="w-full py-4 rounded-xl bg-green-500/[0.12] border border-green-500/25 text-green-400 flex items-center justify-center gap-3 text-sm font-medium"
+                    className="w-full min-h-[44px] py-4 rounded-xl bg-yellow-400/10 border border-yellow-400/30 text-yellow-300 flex items-center justify-center gap-3 text-sm font-medium"
                   >
-                    <Check size={15} strokeWidth={2.5} />
+                    <CircleCheckBig size={16} strokeWidth={2.25} className="text-yellow-400" />
                     ¡Agregado al carrito!
                   </motion.div>
                 ) : (
                   <motion.button
                     key="add"
+                    ref={addButtonRef}
                     initial={{ opacity: 0, scale: 0.94, y: 6 }}
                     animate={{ opacity: 1, scale: 1,  y: 0 }}
                     exit={{    opacity: 0, scale: 0.94, y: -6 }}
-                    whileHover={{ scale: 1.025, boxShadow: '0 0 28px rgba(250,204,21,0.18)' }}
-                    whileTap={{ scale: 0.97 }}
+                    whileHover={adding ? undefined : { scale: 1.025, boxShadow: '0 0 28px rgba(250,204,21,0.18)' }}
+                    whileTap={adding ? undefined : { scale: 0.97 }}
                     transition={{ type: 'spring', stiffness: 300, damping: 22 }}
                     onClick={handleAddToCart}
-                    disabled={product!.stock !== undefined && product!.stock < 1}
-                    className="w-full py-4 rounded-xl relative overflow-hidden group
+                    disabled={(product!.stock !== undefined && product!.stock < 1) || adding}
+                    aria-busy={adding}
+                    className="w-full min-h-[44px] py-4 rounded-xl relative overflow-hidden group
                       bg-gradient-to-r from-zinc-800 to-zinc-700 border border-white/[0.09] text-white
                       hover:border-yellow-400/35 hover:from-zinc-700 hover:to-zinc-600
-                      disabled:opacity-40 disabled:cursor-not-allowed
+                      disabled:opacity-60 disabled:cursor-not-allowed
                       flex items-center justify-center gap-3 text-sm font-medium cursor-pointer"
                   >
                     {/* Shimmer sweep */}
@@ -375,8 +483,17 @@ export default function ProductoClient() {
                       className="absolute inset-0 bg-gradient-to-r from-transparent via-yellow-400/[0.08] to-transparent
                         translate-x-[-100%] group-hover:translate-x-[100%] transition-transform duration-700 pointer-events-none"
                     />
-                    <ShoppingCart size={15} className="text-yellow-400 relative z-10" />
-                    <span className="relative z-10">{productoCms.addToCartLabel}</span>
+                    {adding ? (
+                      <>
+                        <LoaderCircle size={15} className="text-yellow-400 relative z-10 animate-spin" />
+                        <span className="relative z-10">Agregando…</span>
+                      </>
+                    ) : (
+                      <>
+                        <ShoppingCart size={15} className="text-yellow-400 relative z-10" />
+                        <span className="relative z-10">{productoCms.addToCartLabel}</span>
+                      </>
+                    )}
                   </motion.button>
                 )}
               </AnimatePresence>

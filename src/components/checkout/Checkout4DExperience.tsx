@@ -16,6 +16,10 @@ interface Props {
   isSuccess: boolean;
 }
 
+const STORE_POS = new THREE.Vector3(-1.85, -0.25, 0);
+const BANK_POS = new THREE.Vector3(1.85, 0.35, 0);
+const PULSE_COUNT = 16;
+
 function CheckoutField({
   mode,
   secureProgress,
@@ -25,23 +29,53 @@ function CheckoutField({
   isSuccess,
 }: Props) {
   const groupRef = useRef<THREE.Group>(null);
-  const knotRef = useRef<THREE.Mesh>(null);
-  const haloRef = useRef<THREE.Mesh>(null);
-  const ringARef = useRef<THREE.Mesh>(null);
-  const ringBRef = useRef<THREE.Mesh>(null);
-  const bankNodeRef = useRef<THREE.Mesh>(null);
-  const bankPulseRef = useRef<THREE.Mesh>(null);
+  const storeRef = useRef<THREE.Mesh>(null);
+  const storeHaloRef = useRef<THREE.Mesh>(null);
+  const bankRef = useRef<THREE.Mesh>(null);
+  const bankHaloRef = useRef<THREE.Mesh>(null);
+  const tubeRef = useRef<THREE.Mesh>(null);
+  const pulseRefs = useRef<(THREE.Mesh | null)[]>([]);
   const dustRef = useRef<THREE.Points>(null);
 
-  const particles = useMemo(() => {
-    const count = 520;
+  // ── The "spatial bridge": a curved channel that links the Fabrick node
+  // (store) to the bank node (Mercado Pago) — the literal connection the
+  // client asked the scene to represent.
+  const channelCurve = useMemo(
+    () =>
+      new THREE.CatmullRomCurve3([
+        STORE_POS.clone(),
+        new THREE.Vector3(0, 1.35, 0.85),
+        BANK_POS.clone(),
+      ]),
+    [],
+  );
+
+  const channelGeometry = useMemo(
+    () => new THREE.TubeGeometry(channelCurve, 96, 0.05, 14, false),
+    [channelCurve],
+  );
+
+  // Pulses alternate direction: even index travels store → bank (the
+  // outgoing payment request), odd index travels bank → store (the
+  // authorization response) — visually narrating the round trip.
+  const pulseSeeds = useMemo(
+    () =>
+      Array.from({ length: PULSE_COUNT }, (_, i) => ({
+        offset: i / PULSE_COUNT,
+        forward: i % 2 === 0,
+      })),
+    [],
+  );
+
+  const dust = useMemo(() => {
+    const count = 260;
     const positions = new Float32Array(count * 3);
     for (let i = 0; i < count; i++) {
-      const angle = i * 0.117;
-      const radius = 1.8 + ((i * 17) % 100) * 0.012;
+      const angle = i * 0.19;
+      const radius = 2.1 + ((i * 17) % 100) * 0.014;
       positions[i * 3] = Math.cos(angle) * radius;
-      positions[i * 3 + 1] = (((i * 13) % 70) - 35) * 0.02;
-      positions[i * 3 + 2] = Math.sin(angle) * radius;
+      positions[i * 3 + 1] = (((i * 13) % 70) - 35) * 0.022;
+      positions[i * 3 + 2] = Math.sin(angle) * radius * 0.6;
     }
     return positions;
   }, []);
@@ -66,6 +100,7 @@ function CheckoutField({
   }, [mode, outcome, isSuccess]);
 
   useFrame((state, delta) => {
+    const t = state.clock.elapsedTime;
     const spinBoost = isProcessing ? 0.9 : 0.45;
     const normalizedSecure = Math.min(1, Math.max(0, secureProgress / 100));
     const normalizedPayment = Math.min(1, Math.max(0, paymentProgress / 100));
@@ -75,102 +110,145 @@ function CheckoutField({
     const pendingFloat = outcome === 'pending' ? 1 : 0;
 
     if (groupRef.current) {
-      groupRef.current.rotation.y += delta * (0.14 + spinBoost * 0.06 + successBurst * 0.35);
-      groupRef.current.rotation.x = Math.sin(state.clock.elapsedTime * (0.42 - pendingFloat * 0.16)) * (0.14 + pendingFloat * 0.08);
-      groupRef.current.position.x = rejectionGlitch ? Math.sin(state.clock.elapsedTime * 34) * 0.035 : 0;
+      groupRef.current.rotation.y = Math.sin(t * 0.18) * (0.16 + successBurst * 0.1);
+      groupRef.current.rotation.x = Math.sin(t * (0.32 - pendingFloat * 0.12)) * (0.08 + pendingFloat * 0.05);
+      groupRef.current.position.x = rejectionGlitch ? Math.sin(t * 34) * 0.04 : 0;
     }
 
-    if (knotRef.current) {
-      knotRef.current.rotation.x += delta * (0.25 + spinBoost * 0.2 + successBurst * 0.6);
-      knotRef.current.rotation.z += delta * (0.11 + spinBoost * 0.18 + rejectionGlitch * 0.45);
-      const s = isSuccess
-        ? 1 + normalizedPayment * 0.65 + Math.sin(state.clock.elapsedTime * 9) * 0.08
-        : 1 + Math.sin(state.clock.elapsedTime * (pendingFloat ? 1.2 : 2.2)) * 0.06 * energy;
-      knotRef.current.scale.set(s, s, s);
-      knotRef.current.position.y = pendingFloat ? Math.sin(state.clock.elapsedTime * 0.8) * 0.14 : 0;
+    // ── The Fabrick node — the storefront endpoint of the connection ──
+    if (storeRef.current) {
+      storeRef.current.rotation.y += delta * (0.5 + spinBoost * 0.4 + successBurst * 0.6);
+      storeRef.current.rotation.x += delta * 0.18;
+      const s = 1 + Math.sin(t * 1.6) * 0.05 * energy + normalizedSecure * 0.18;
+      storeRef.current.scale.setScalar(s);
+    }
+    if (storeHaloRef.current) {
+      const haloScale = 1.3 + normalizedSecure * 0.7 + (isProcessing ? Math.sin(t * 4) * 0.08 : 0);
+      storeHaloRef.current.scale.setScalar(haloScale);
+      storeHaloRef.current.rotation.z += delta * 0.4;
     }
 
-    if (haloRef.current) {
-      const haloScale = isSuccess
-        ? 1.8 + normalizedPayment * 1.8
-        : 1.2 + normalizedPayment * 0.9 + (isProcessing ? 0.2 : 0);
-      haloRef.current.scale.setScalar(haloScale);
-      haloRef.current.rotation.y -= delta * (0.06 + spinBoost * 0.05 + successBurst * 0.18);
+    // ── The bank node — Mercado Pago / financial institution endpoint ──
+    if (bankRef.current) {
+      bankRef.current.rotation.y -= delta * (0.4 + spinBoost * 0.35 + successBurst * 0.55);
+      bankRef.current.rotation.z += delta * (pendingFloat ? 0.22 : 0.08);
+      const s = 1 + Math.sin(t * 1.8 + 1.4) * 0.05 * energy + normalizedPayment * 0.22;
+      bankRef.current.scale.setScalar(s);
+      bankRef.current.position.y = BANK_POS.y + (pendingFloat ? Math.sin(t * 1.1) * 0.1 : 0);
+    }
+    if (bankHaloRef.current) {
+      const haloScale = 1.3 + normalizedPayment * 0.75 + (outcome === 'pending' ? Math.sin(t * 4.4) * 0.09 : 0);
+      bankHaloRef.current.scale.setScalar(haloScale);
+      bankHaloRef.current.rotation.z -= delta * 0.32;
+      bankHaloRef.current.position.y = bankRef.current?.position.y ?? BANK_POS.y;
     }
 
-    if (ringARef.current) {
-      ringARef.current.rotation.y += delta * (0.35 + spinBoost * 0.28 + successBurst * 0.7);
-      ringARef.current.rotation.x = Math.cos(state.clock.elapsedTime * (pendingFloat ? 0.38 : 0.8)) * 0.28;
-      const ringAScale = isSuccess ? Math.max(0.4, 1 - normalizedPayment * 0.55) : 1;
-      ringARef.current.scale.setScalar(ringAScale);
+    // ── The channel itself: brightens and "thickens" as the secure
+    // handshake and payment progress advance, so the bridge visibly
+    // strengthens as the transaction moves forward. ──
+    if (tubeRef.current) {
+      const mat = tubeRef.current.material as THREE.MeshStandardMaterial;
+      mat.emissiveIntensity = 0.25 + energy * 0.65 + successBurst * 0.5 + rejectionGlitch * 0.3;
+      const channelScale = 1 + normalizedSecure * 0.18 + normalizedPayment * 0.22;
+      tubeRef.current.scale.set(1, channelScale, 1);
     }
 
-    if (ringBRef.current) {
-      ringBRef.current.rotation.x -= delta * (0.22 + spinBoost * 0.16 + rejectionGlitch * 0.55);
-      ringBRef.current.rotation.z += delta * (0.18 + spinBoost * 0.1 + successBurst * 0.25);
-      const ringBScale = isSuccess ? Math.max(0.2, 1 - normalizedPayment * 0.72) : 1;
-      ringBRef.current.scale.setScalar(ringBScale);
-    }
+    // ── Light pulses traveling the channel — the literal "data flowing
+    // between your page and the bank" the client asked to visualize.
+    // Speed scales with secure/payment progress; direction alternates. ──
+    const baseSpeed = 0.12 + energy * 0.34 + successBurst * 0.4 + (isProcessing ? 0.12 : 0);
+    pulseRefs.current.forEach((mesh, i) => {
+      if (!mesh) return;
+      const seed = pulseSeeds[i];
+      let progress = (seed.offset + t * baseSpeed) % 1;
+      if (!seed.forward) progress = 1 - progress;
+      const point = channelCurve.getPointAt(Math.min(0.999, Math.max(0.001, progress)));
+      mesh.position.copy(point);
+      const pulse = 1 + Math.sin(t * 6 + i) * 0.25;
+      const edgeFade = Math.sin(progress * Math.PI);
+      mesh.scale.setScalar(pulse * (0.55 + edgeFade * 0.7) * (0.7 + energy * 0.6));
+      const mat = mesh.material as THREE.MeshBasicMaterial;
+      mat.opacity = (rejectionGlitch ? 0.35 : 0.55 + edgeFade * 0.45) * (0.5 + energy * 0.7);
+    });
 
     if (dustRef.current) {
-      dustRef.current.rotation.y += delta * (0.04 + energy * 0.07 + successBurst * 0.3);
-      dustRef.current.rotation.z += delta * 0.02;
-      const dustScale = isSuccess ? 1.4 + normalizedPayment * 1.8 : outcome === 'rejected' ? 1.15 : 1;
+      dustRef.current.rotation.y += delta * (0.03 + energy * 0.05 + successBurst * 0.22);
+      const dustScale = isSuccess ? 1.3 + normalizedPayment * 1.4 : outcome === 'rejected' ? 1.1 : 1;
       dustRef.current.scale.setScalar(dustScale);
-    }
-
-    if (bankNodeRef.current) {
-      bankNodeRef.current.position.y = pendingFloat ? 0.95 + Math.sin(state.clock.elapsedTime * 1.1) * 0.12 : 0.95;
-      bankNodeRef.current.rotation.z += delta * (pendingFloat ? 0.18 : 0.05);
-    }
-
-    if (bankPulseRef.current) {
-      const pulse = pendingFloat ? 1.1 + Math.sin(state.clock.elapsedTime * 1.5) * 0.14 : 1;
-      bankPulseRef.current.scale.setScalar(pulse);
     }
   });
 
   return (
     <group ref={groupRef}>
-      <ambientLight intensity={0.35} />
-      <directionalLight position={[2.5, 2, 3]} intensity={1.15} color={palette.secondary} />
-      <pointLight position={[-2, -1, 2.5]} intensity={1.25} color={palette.primary} />
+      <ambientLight intensity={0.38} />
+      <directionalLight position={[2.5, 2, 3]} intensity={1.1} color={palette.secondary} />
+      <pointLight position={[-2, -1, 2.5]} intensity={1.2} color={palette.primary} />
+      <pointLight position={STORE_POS.toArray()} intensity={1.4} color={palette.accent} distance={3.2} />
+      <pointLight position={BANK_POS.toArray()} intensity={1.4} color={palette.secondary} distance={3.2} />
 
-      <mesh ref={haloRef}>
-        <sphereGeometry args={[1.35, 36, 36]} />
-        <meshBasicMaterial color={palette.primary} transparent opacity={0.09} wireframe />
+      {/* ── Fabrick node (the store / your page) ── */}
+      <group position={STORE_POS.toArray()}>
+        <mesh ref={storeHaloRef}>
+          <ringGeometry args={[0.34, 0.4, 48]} />
+          <meshBasicMaterial color={palette.accent} transparent opacity={0.35} side={THREE.DoubleSide} />
+        </mesh>
+        <mesh ref={storeRef}>
+          <icosahedronGeometry args={[0.27, 0]} />
+          <meshStandardMaterial
+            color={palette.accent}
+            emissive={palette.primary}
+            emissiveIntensity={0.55}
+            roughness={0.2}
+            metalness={0.75}
+          />
+        </mesh>
+      </group>
+
+      {/* ── Bank node (Mercado Pago / financial institution) ── */}
+      <group position={BANK_POS.toArray()}>
+        <mesh ref={bankHaloRef}>
+          <ringGeometry args={[0.3, 0.36, 6]} />
+          <meshBasicMaterial color={palette.secondary} transparent opacity={0.32} side={THREE.DoubleSide} />
+        </mesh>
+        <mesh ref={bankRef}>
+          <octahedronGeometry args={[0.25, 0]} />
+          <meshStandardMaterial
+            color={palette.secondary}
+            emissive={palette.primary}
+            emissiveIntensity={0.5}
+            roughness={0.22}
+            metalness={0.7}
+          />
+        </mesh>
+      </group>
+
+      {/* ── The connection channel — the literal bridge between the two ── */}
+      <mesh ref={tubeRef} geometry={channelGeometry}>
+        <meshStandardMaterial
+          color={palette.primary}
+          emissive={palette.secondary}
+          emissiveIntensity={0.4}
+          roughness={0.35}
+          metalness={0.4}
+          transparent
+          opacity={0.4}
+        />
       </mesh>
 
-      <mesh ref={ringARef} rotation={[0.4, 0, 0.1]}>
-        <torusGeometry args={[1.75, 0.045, 24, 180]} />
-        <meshStandardMaterial color={palette.secondary} emissive={palette.primary} emissiveIntensity={0.3} roughness={0.2} metalness={0.65} />
-      </mesh>
+      {/* ── Encrypted-data light pulses traveling the channel ── */}
+      {pulseSeeds.map((_, i) => (
+        <mesh key={i} ref={(el) => { pulseRefs.current[i] = el; }}>
+          <sphereGeometry args={[0.05, 16, 16]} />
+          <meshBasicMaterial color={i % 2 === 0 ? palette.accent : palette.secondary} transparent opacity={0.6} />
+        </mesh>
+      ))}
 
-      <mesh ref={ringBRef} rotation={[1, 0.4, 0]}>
-        <torusGeometry args={[2.05, 0.028, 16, 160]} />
-        <meshStandardMaterial color={palette.accent} emissive={palette.secondary} emissiveIntensity={0.18} roughness={0.3} metalness={0.45} />
-      </mesh>
-
-      <mesh ref={bankPulseRef} position={[0, 0.95, 0]}>
-        <sphereGeometry args={[0.24, 24, 24]} />
-        <meshBasicMaterial color={palette.secondary} transparent opacity={outcome === 'pending' ? 0.22 : 0.08} />
-      </mesh>
-
-      <mesh ref={bankNodeRef} position={[0, 0.95, 0]}>
-        <octahedronGeometry args={[0.14, 0]} />
-        <meshStandardMaterial color={palette.accent} emissive={palette.primary} emissiveIntensity={0.35} roughness={0.25} metalness={0.6} />
-      </mesh>
-
-      <mesh ref={knotRef}>
-        <torusKnotGeometry args={[0.72, 0.19, 180, 28, 2, 3]} />
-        <meshStandardMaterial color={palette.primary} emissive={palette.secondary} emissiveIntensity={0.45} roughness={0.25} metalness={0.8} />
-      </mesh>
-
+      {/* ── Ambient particle field ── */}
       <points ref={dustRef}>
         <bufferGeometry>
-          <bufferAttribute attach="attributes-position" args={[particles, 3]} />
+          <bufferAttribute attach="attributes-position" args={[dust, 3]} />
         </bufferGeometry>
-        <pointsMaterial color={palette.accent} size={0.015} transparent opacity={0.85} sizeAttenuation />
+        <pointsMaterial color={palette.accent} size={0.014} transparent opacity={0.55} sizeAttenuation />
       </points>
     </group>
   );
@@ -180,7 +258,7 @@ export default function Checkout4DExperience(props: Props) {
   return (
     <div className="rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_18%_15%,rgba(250,204,21,0.12),transparent_45%),radial-gradient(circle_at_80%_78%,rgba(56,189,248,0.18),transparent_42%),linear-gradient(160deg,rgba(0,0,0,0.88),rgba(9,9,11,0.95))] p-4 sm:p-5 overflow-hidden">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
-        <p className="text-[10px] uppercase tracking-[0.24em] font-bold text-zinc-300">Checkout 4D • Spatial Payment Field</p>
+        <p className="text-[10px] uppercase tracking-[0.24em] font-bold text-zinc-300">Checkout 4D • Canal Fabrick ⇄ Banco</p>
         <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-500">Three.js</p>
       </div>
       <div className="h-44 sm:h-56 rounded-2xl border border-white/10 bg-black/40">

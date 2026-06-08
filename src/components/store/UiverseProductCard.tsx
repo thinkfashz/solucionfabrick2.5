@@ -92,30 +92,33 @@ export default function UiverseProductCard({
 
       {/* Product info */}
       <div className="mt-3 px-0.5">
-        {rating !== undefined && (
-          <div className="flex items-center gap-0.5 mb-1.5">
-            {[...Array(5)].map((_, i) => (
-              <svg
-                key={i}
-                viewBox="0 0 12 12"
-                className={`w-2.5 h-2.5 ${
-                  i < Math.round(rating)
-                    ? isDark
-                      ? 'fill-yellow-400'
-                      : 'fill-black'
-                    : isDark
-                    ? 'fill-zinc-700'
-                    : 'fill-neutral-300'
-                }`}
-              >
-                <path d="M6 .5l1.546 3.13 3.454.502-2.5 2.436.59 3.432L6 8.5 2.91 10l.59-3.432L1 4.132l3.454-.502L6 .5z" />
-              </svg>
-            ))}
-            <span className={`text-[10px] ml-1 ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>
-              {rating.toFixed(1)}
-            </span>
-          </div>
-        )}
+        {/* Reserve a fixed-height slot so cards align in a row whether or not a product has a rating */}
+        <div className="flex items-center gap-0.5 mb-1.5 min-h-[14px]">
+          {rating !== undefined && (
+            <>
+              {[...Array(5)].map((_, i) => (
+                <svg
+                  key={i}
+                  viewBox="0 0 12 12"
+                  className={`w-2.5 h-2.5 ${
+                    i < Math.round(rating)
+                      ? isDark
+                        ? 'fill-yellow-400'
+                        : 'fill-black'
+                      : isDark
+                      ? 'fill-zinc-700'
+                      : 'fill-neutral-300'
+                  }`}
+                >
+                  <path d="M6 .5l1.546 3.13 3.454.502-2.5 2.436.59 3.432L6 8.5 2.91 10l.59-3.432L1 4.132l3.454-.502L6 .5z" />
+                </svg>
+              ))}
+              <span className={`text-[10px] ml-1 ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>
+                {rating.toFixed(1)}
+              </span>
+            </>
+          )}
+        </div>
 
         <p
           className={`text-[10px] uppercase tracking-wider font-bold mb-0.5 ${
@@ -126,18 +129,16 @@ export default function UiverseProductCard({
         </p>
 
         <p
-          className={`text-sm font-medium line-clamp-2 leading-snug ${
+          className={`text-sm font-medium line-clamp-2 leading-snug min-h-[2.5em] ${
             isDark ? 'text-white' : 'text-black'
           }`}
         >
           {name}
         </p>
 
-        {deliveryLabel && (
-          <p className={`text-[10px] mt-1 ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>
-            {deliveryLabel}
-          </p>
-        )}
+        <p className={`text-[10px] mt-1 min-h-[1.4em] ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>
+          {deliveryLabel ?? ''}
+        </p>
 
         <div className="mt-2 flex items-baseline gap-2">
           <span className={`text-sm font-semibold ${isDark ? 'text-yellow-400' : 'text-black'}`}>

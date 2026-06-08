@@ -51,13 +51,14 @@ declare global {
 }
 import { useSearchParams } from 'next/navigation';
 import { CART_SESSION_KEY, useCartContextSafe } from '@/context/CartContext';
+import { calculateCheckoutSummary } from '@/lib/checkout';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import Checkout4DExperience from '@/components/checkout/Checkout4DExperience';
 import { 
   ArrowLeft, ShieldCheck, Lock, Truck, 
   CheckCircle2, ChevronRight, Fingerprint,
   Wifi, Battery, Wrench, Check, Building2, Copy, ExternalLink,
-  CreditCard, RefreshCw, Navigation, Loader2
+  CreditCard, RefreshCw, Loader2
 } from 'lucide-react';
 
 const FABRICK_HUB = {
@@ -226,6 +227,12 @@ const CheckoutApp = () => {
   const [gsapLoaded, setGsapLoaded] = useState(false);
   const stepContentRef = useRef<HTMLDivElement>(null);
   
+  // Collapsible order-summary drawer shown during step 3 (payment) so the
+  // buyer always has quick access to "what am I buying / how much" without
+  // the full sidebar taking over the single-column payment layout. Starts
+  // closed on every viewport — purely a presentational affordance.
+  const [paymentSummaryOpen, setPaymentSummaryOpen] = useState(false);
+
   // Payment method selection: 'mercadopago' | 'bricks' | 'transfer'
   const [paymentMethod, setPaymentMethod] = useState<'mercadopago' | 'bricks' | 'transfer'>('bricks');
   const [bricksBooting, setBricksBooting] = useState(false);
@@ -308,7 +315,6 @@ const CheckoutApp = () => {
   const [locationError, setLocationError] = useState('');
   const [locationSuggestion, setLocationSuggestion] = useState<{ address: string; region: string } | null>(null);
   const [locationCoords, setLocationCoords] = useState<{ lat: number; lon: number } | null>(null);
-  const [mapTeleporting, setMapTeleporting] = useState(false);
   const [satellitePhase, setSatellitePhase] = useState<'idle' | 'uplink' | 'processing' | 'downlink' | 'completed'>('idle');
   const [satelliteProgress, setSatelliteProgress] = useState(0);
   const [cardNumber, setCardNumber] = useState('');
@@ -375,11 +381,24 @@ const CheckoutApp = () => {
         image: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=2070&auto=format&fit=crop',
       };
 
-  const cartTotal = cartItems.reduce((s, i) => {
-    const discount = i.product.discount_percentage || 0;
-    return s + i.product.price * (1 - discount / 100) * i.quantity;
-  }, 0);
   const cartItemCount = cartItems.reduce((s, i) => s + i.quantity, 0);
+
+  // ── Authoritative price summary (subtotal + IVA + despacho) ──────────────
+  // Computed with the EXACT same function the backend uses
+  // (`calculateCheckoutSummary` from `@/lib/checkout`) so the number shown
+  // to the buyer, the amount actually charged via Mercado Pago, and the
+  // total persisted on the order can never drift apart — this is the single
+  // source of truth for "what the customer pays".
+  const checkoutSummary = useMemo(() => {
+    const lineItems = cartItems.map((i) => ({
+      productoId: i.product.id,
+      cantidad: i.quantity,
+      precioUnitario: i.product.price * (1 - (i.product.discount_percentage || 0) / 100),
+      nombre: i.product.name,
+    }));
+    return calculateCheckoutSummary(lineItems, shippingRegion || 'RM');
+  }, [cartItems, shippingRegion]);
+  const grandTotal = checkoutSummary.total;
   const relatedProducts = useMemo(() => {
     const categories = new Set(
       cartItems
@@ -445,7 +464,6 @@ const CheckoutApp = () => {
         try {
           const { latitude, longitude } = position.coords;
           setLocationCoords({ lat: latitude, lon: longitude });
-          setMapTeleporting(true);
           const response = await fetch(`/api/location/reverse?lat=${latitude}&lon=${longitude}`);
           const payload = await response.json();
 
@@ -478,13 +496,11 @@ const CheckoutApp = () => {
           window.setTimeout(() => {
             setSatellitePhase('completed');
             setSatelliteProgress(100);
-            setMapTeleporting(false);
           }, 360);
         } catch {
           setLocationError('Error al consultar el servicio de ubicación.');
           setSatellitePhase('idle');
           setSatelliteProgress(0);
-          setMapTeleporting(false);
         } finally {
           window.clearTimeout(uplinkTimer);
           setLocationLoading(false);
@@ -496,7 +512,6 @@ const CheckoutApp = () => {
         setLocationError('No se obtuvo permiso de ubicación.');
         setSatellitePhase('idle');
         setSatelliteProgress(0);
-        setMapTeleporting(false);
       },
       { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
     );
@@ -824,9 +839,6 @@ const CheckoutApp = () => {
     },
   ];
 
-  const activePaymentOption =
-    paymentOptions.find((option) => option.id === paymentMethod) ?? paymentOptions[0];
-
   // ── Card input helpers ───────────────────────────────────────────────────
   const rawCardDigits = cardNumber.replace(/\s+/g, '');
   const detectBrand = (num: string): 'visa' | 'mastercard' | 'amex' | 'diners' | 'unknown' => {
@@ -1133,7 +1145,7 @@ const CheckoutApp = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token: mpToken,
-          amount: cartTotal,
+          amount: grandTotal,
           description: cartItems.length === 1
             ? product.name
             : `Pedido Fabrick (${cartItemCount} productos)`,
@@ -1433,7 +1445,7 @@ const CheckoutApp = () => {
         throw new Error(body?.error ?? 'No se pudo crear la orden de transferencia.');
       }
       setTransferOrderId(body.data.id as string);
-      setTransferOrderTotal(body.data.resumen?.total ?? cartTotal);
+      setTransferOrderTotal(body.data.resumen?.total ?? grandTotal);
       setTransferOrderStatus('pendiente_transferencia');
       setTransferOrderReady(true);
     } catch (e) {
@@ -1579,71 +1591,6 @@ const CheckoutApp = () => {
             0% { transform: translate(0px, 0px); opacity: 0; }
             8% { opacity: 1; }
             100% { transform: translate(90px, 46px); opacity: 0; }
-          }
-
-          @keyframes locator-route-flow {
-            from { stroke-dashoffset: 24; }
-            to { stroke-dashoffset: 0; }
-          }
-          @keyframes locator-scanline {
-            0% { transform: translateX(-120%); }
-            100% { transform: translateX(120%); }
-          }
-          @keyframes locator-grid-layer {
-            0% { background-position: 0 0, 0 0; }
-            100% { background-position: 0 34px, 34px 0; }
-          }
-          @keyframes locator-ripple {
-            0% { transform: translate(-50%, -50%) scale(0.4); opacity: 0.9; }
-            100% { transform: translate(-50%, -50%) scale(1.4); opacity: 0; }
-          }
-          @keyframes locator-core-pulse {
-            0%, 100% { transform: scale(0.92); opacity: 0.55; }
-            50% { transform: scale(1.08); opacity: 1; }
-          }
-          @keyframes locator-orbit-spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-          }
-          @keyframes locator-orbit-spin-rev {
-            from { transform: rotate(360deg); }
-            to { transform: rotate(0deg); }
-          }
-          @keyframes locator-route-pulse {
-            0% { opacity: 0; }
-            25% { opacity: 1; }
-            100% { opacity: 0; }
-          }
-          .locator-grid-layer {
-            background-image:
-              linear-gradient(to right, rgba(34,211,238,0.08) 1px, transparent 1px),
-              linear-gradient(to bottom, rgba(34,211,238,0.08) 1px, transparent 1px);
-            background-size: 34px 34px;
-            animation: locator-grid-layer 8s linear infinite;
-          }
-          .locator-scanline {
-            animation: locator-scanline 2.6s linear infinite;
-          }
-          .locator-route-flow {
-            animation: locator-route-flow 0.85s linear infinite;
-          }
-          .locator-route-pulse {
-            animation: locator-route-pulse 1.35s linear infinite;
-          }
-          .locator-ripple-warp {
-            animation: locator-ripple 1.1s ease-out infinite;
-          }
-          .locator-ripple-idle {
-            animation: locator-ripple 2.2s ease-out infinite;
-          }
-          .locator-core-pulse {
-            animation: locator-core-pulse 1.7s ease-in-out infinite;
-          }
-          .locator-orbit-spin {
-            animation: locator-orbit-spin 4.6s linear infinite;
-          }
-          .locator-orbit-spin-rev {
-            animation: locator-orbit-spin-rev 3.2s linear infinite;
           }
 
           @keyframes orbit-spin {
@@ -2068,7 +2015,7 @@ const CheckoutApp = () => {
                    </div>
                    <div className="text-right">
                      <div className="text-[8px] uppercase tracking-widest text-zinc-500 mb-2">Inversión Total</div>
-                     <div className="font-black text-lg md:text-xl text-yellow-400">{formatCLP(cartTotal)}</div>
+                     <div className="font-black text-lg md:text-xl text-yellow-400">{formatCLP(grandTotal)}</div>
                    </div>
                  </div>
                  
@@ -2218,15 +2165,19 @@ const CheckoutApp = () => {
                 <div className="pt-2 space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Subtotal</span>
-                    <span className="font-mono text-zinc-300">{formatCLP(cartTotal)}</span>
+                    <span className="font-mono text-zinc-300">{formatCLP(checkoutSummary.subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Logística Fabrick</span>
-                    <span className="font-mono text-yellow-400">Bonificada</span>
+                    <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">IVA (19%)</span>
+                    <span className="font-mono text-zinc-300">{formatCLP(checkoutSummary.iva)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Despacho</span>
+                    <span className="font-mono text-zinc-300">{formatCLP(checkoutSummary.despacho)}</span>
                   </div>
                   <div className="flex justify-between items-center pt-4 mt-2 border-t border-white/5">
                     <span className="text-white font-black uppercase tracking-widest text-xs">Total Inversión</span>
-                    <span className="font-black text-3xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{formatCLP(cartTotal)}</span>
+                    <span className="font-black text-3xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{formatCLP(grandTotal)}</span>
                   </div>
                 </div>
 
@@ -2302,25 +2253,31 @@ const CheckoutApp = () => {
           <div ref={stepContentRef} className="bg-zinc-950 p-5 sm:p-8 md:p-12 rounded-[2rem] sm:rounded-[3rem] border border-white/5 shadow-2xl">
             
             {step === 1 && (
-              <div className="space-y-8">
+              <div className="space-y-6">
                 <div>
-                  <h3 className="text-3xl font-black uppercase tracking-tighter mb-2">Revisión de <span className="text-yellow-400">Orden</span></h3>
-                  <p className="text-zinc-400 text-sm font-light leading-relaxed">Verifique los detalles del producto de grado arquitectónico seleccionado antes de coordinar la logística de entrega.</p>
+                  <h3 className="font-playfair text-3xl font-black tracking-tight mb-2">Revisa tu <span className="text-yellow-400">pedido</span></h3>
+                  <p className="text-zinc-400 text-sm font-light leading-relaxed">Confirma los datos antes de continuar con el despacho. Todo el proceso está protegido y tus datos nunca se almacenan sin cifrar.</p>
                 </div>
-                <div className="bg-black rounded-3xl p-6 border border-white/5 flex gap-6 items-center">
-                  <div className="w-16 h-16 rounded-full bg-zinc-900 flex items-center justify-center border border-white/10">
-                    <ShieldCheck className="w-8 h-8 text-yellow-400" />
+
+                <div className="flex items-center gap-4 rounded-2xl border border-white/5 bg-black/40 p-5">
+                  <div className="flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-full bg-yellow-400/10">
+                    <ShieldCheck className="h-6 w-6 text-yellow-400" />
                   </div>
                   <div>
-                    <h4 className="font-bold text-sm uppercase tracking-wider text-white">Cobertura Fabrick Activada</h4>
-                    <p className="text-[10px] text-zinc-500 uppercase tracking-widest mt-1">Este producto incluye seguro de traslado e instalación opcional.</p>
+                    <h4 className="text-sm font-bold uppercase tracking-wide text-white">Cobertura Fabrick incluida</h4>
+                    <p className="text-xs text-zinc-500 mt-0.5">Seguro de traslado e instalación opcional, sin costo adicional.</p>
                   </div>
                 </div>
-                <div className="pt-6">
-                  <button onClick={() => changeStep(2)} className="w-full py-6 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all transform active:scale-95 flex justify-center items-center gap-3 shadow-[0_15px_40px_rgba(250,204,21,0.2)]">
-                    Continuar al Despacho <ChevronRight className="w-5 h-5" />
-                  </button>
-                </div>
+
+                <button
+                  onClick={() => changeStep(2)}
+                  className="w-full min-h-[56px] py-4 bg-yellow-400 text-black font-black uppercase text-xs tracking-[0.3em] rounded-full hover:bg-white transition-all transform active:scale-95 flex justify-center items-center gap-3 shadow-[0_15px_40px_rgba(250,204,21,0.2)]"
+                >
+                  Continuar al despacho <ChevronRight className="w-5 h-5" />
+                </button>
+                <p className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                  <Lock className="h-3 w-3 text-emerald-500" /> Pago 100% seguro vía Mercado Pago
+                </p>
               </div>
             )}
 
@@ -2328,16 +2285,19 @@ const CheckoutApp = () => {
               <div className="space-y-8">
                 <div className="flex justify-between items-start">
                   <div>
-                    <h3 className="text-3xl font-black uppercase tracking-tighter mb-2">Coordenadas de <span className="text-yellow-400">Entrega</span></h3>
-                    <p className="text-zinc-400 text-sm font-light leading-relaxed">Ingrese la ubicación exacta para nuestra flota logística directa.</p>
+                    <h3 className="font-playfair text-3xl font-black tracking-tight mb-2">Datos de <span className="text-yellow-400">despacho</span></h3>
+                    <p className="text-zinc-400 text-sm font-light leading-relaxed">Indícanos a quién y dónde entregar tu pedido. Puedes autocompletar la dirección con tu ubicación.</p>
                   </div>
-                  <div className="w-12 h-12 rounded-full bg-yellow-400/10 flex items-center justify-center">
+                  <div className="hidden sm:flex w-12 h-12 rounded-full bg-yellow-400/10 items-center justify-center flex-shrink-0">
                     <Truck className="w-6 h-6 text-yellow-400" />
                   </div>
                 </div>
 
-                <div className="bg-black/50 border border-white/10 rounded-2xl p-4 overflow-hidden relative">
-                  <div className="absolute inset-0 pointer-events-none opacity-70">
+                {/* Geolocation autofill — single consolidated panel (was two
+                    overlapping "satelital" cards before; merged into one to
+                    cut visual noise while keeping the live status animation). */}
+                <div className="bg-black/50 border border-white/10 rounded-2xl p-4 sm:p-5 overflow-hidden relative">
+                  <div className="absolute inset-0 pointer-events-none opacity-50">
                     {Array.from({ length: 14 }).map((_, i) => (
                       <span
                         key={i}
@@ -2346,36 +2306,29 @@ const CheckoutApp = () => {
                     ))}
                   </div>
 
-                  <div className="relative z-10 flex flex-col md:flex-row md:items-center md:justify-between gap-4 p-2 bg-gradient-to-r from-yellow-400/5 to-transparent rounded-xl border border-yellow-400/20">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <Wifi className="w-4 h-4 text-yellow-400" />
-                        <p className="text-[10px] uppercase tracking-[0.25em] text-yellow-400 font-bold">Auto Relleno GPS Inteligente</p>
+                  <div className="relative z-10 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-cyan-400/10 border border-cyan-300/30">
+                        <Wifi className="h-4 w-4 text-cyan-300" />
                       </div>
-                      <p className="text-xs text-zinc-400 mt-2 font-medium">Localiza tu dispositivo vía GPS para un despacho exacto y sin errores tipográficos.</p>
+                      <div>
+                        <p className="text-[11px] uppercase tracking-[0.2em] text-zinc-200 font-bold">Autocompletar con tu ubicación</p>
+                        <p className="text-xs text-zinc-500 mt-0.5">Usamos tu GPS para sugerir la dirección automáticamente.</p>
+                      </div>
                     </div>
                     <button
                       type="button"
                       onClick={requestSatelliteAutofill}
                       disabled={locationLoading}
-                      className="group flex items-center justify-center gap-2 px-6 py-3 rounded-full bg-yellow-400 text-black text-[10px] font-black uppercase tracking-widest shadow-[0_0_20px_rgba(250,204,21,0.2)] hover:shadow-[0_0_30px_rgba(250,204,21,0.4)] hover:scale-105 transition-all disabled:opacity-50"
+                      className="min-h-[44px] px-5 py-3 rounded-full border border-yellow-400/40 text-yellow-400 text-[10px] font-bold uppercase tracking-widest hover:bg-yellow-400/10 disabled:opacity-50 flex-shrink-0"
                     >
-                      {locationLoading ? (
-                        <>
-                           <Loader2 className="w-4 h-4 animate-spin" /> Localizando...
-                        </>
-                      ) : (
-                        <>
-                           <Navigation className="w-4 h-4 transition-transform group-hover:-rotate-45" />
-                           Usar Mi Ubicación Actual
-                        </>
-                      )}
+                      {locationLoading ? 'Buscando ubicación...' : 'Usar mi ubicación'}
                     </button>
                   </div>
 
-                  {(locationLoading || satellitePhase !== 'idle' || locationSuggestion) && (
+                  {(locationLoading || satellitePhase !== 'idle') && (
                     <div className="relative z-10 mt-4 rounded-xl border border-yellow-400/25 bg-zinc-950/80 p-3">
-                      <div className="relative h-24 rounded-lg border border-white/10 bg-black/65 overflow-hidden">
+                      <div className="relative h-20 rounded-lg border border-white/10 bg-black/65 overflow-hidden">
                         <div className="absolute left-4 bottom-3 flex flex-col items-center gap-1">
                           <div className="w-8 h-8 rounded-full border border-white/20 bg-zinc-900/90 flex items-center justify-center">
                             <Wifi className="w-4 h-4 text-yellow-400" />
@@ -2383,7 +2336,7 @@ const CheckoutApp = () => {
                           <span className="text-[8px] uppercase tracking-[0.2em] text-zinc-500">Dispositivo</span>
                         </div>
 
-                        <div className="absolute left-1/2 top-7 -translate-x-1/2">
+                        <div className="absolute left-1/2 top-5 -translate-x-1/2">
                           <span className="absolute left-1/2 top-1/2 w-10 h-10 rounded-full border border-cyan-300/40 [animation:sat-pulse_1.2s_ease-out_infinite]" />
                           <div className="relative w-9 h-9 rounded-full border border-cyan-300/60 bg-cyan-400/10 flex items-center justify-center">
                             <RefreshCw className={`w-4 h-4 text-cyan-300 ${locationLoading ? 'animate-spin' : ''}`} />
@@ -2416,74 +2369,15 @@ const CheckoutApp = () => {
                         <progress className="checkout-progress-satellite h-full w-full" value={satelliteProgress} max={100} />
                       </div>
                       <p className="mt-2 text-[10px] uppercase tracking-[0.18em] font-bold text-zinc-300">{satelliteStatusText}</p>
+
+                      {locationCoords && (
+                        <p className="mt-2 text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+                          Coordenadas: <span className="text-emerald-300 font-mono">{locationCoordsLabel}</span> · Origen: <span className="text-yellow-300 font-bold">{FABRICK_HUB.name}</span>
+                        </p>
+                      )}
                     </div>
                   )}
-                </div>
-                {locationError && <p className="text-xs text-red-400">{locationError}</p>}
-
-                <div className="rounded-2xl border border-cyan-300/25 bg-black/60 p-3 sm:p-4 overflow-hidden">
-                  <div className="mb-3 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
-                    <div>
-                      <p className="text-[10px] uppercase tracking-[0.25em] font-bold text-cyan-300">Conexión satelital libre</p>
-                      <p className="text-[11px] text-zinc-500">Ruteo holográfico de envío con fijación satelital en tiempo real.</p>
-                    </div>
-                    <span className={`inline-flex items-center rounded-full px-3 py-1 text-[9px] uppercase tracking-[0.2em] font-bold border ${mapTeleporting ? 'border-cyan-300/45 bg-cyan-300/10 text-cyan-200' : 'border-white/15 bg-white/5 text-zinc-400'}`}>
-                      {mapTeleporting ? 'Warp de coordenadas activo' : 'Enlace orbital estable'}
-                    </span>
-                  </div>
-
-                  <div className="relative rounded-xl border border-white/10 overflow-hidden bg-[radial-gradient(circle_at_30%_10%,rgba(16,185,129,0.08),transparent_40%),radial-gradient(circle_at_80%_80%,rgba(6,182,212,0.12),transparent_48%),linear-gradient(180deg,rgba(2,6,23,0.96),rgba(0,0,0,0.98))]">
-                    <div className="absolute inset-0 locator-grid-layer opacity-50" />
-                    <div className="absolute inset-0 bg-[linear-gradient(110deg,transparent,rgba(125,211,252,0.11),transparent)] locator-scanline" />
-
-                    <div className="relative h-56 sm:h-64 perspective-[1200px]">
-                      <div className="absolute inset-0 transform-gpu [transform:rotateX(58deg)_translateY(32px)]">
-                        <div className="absolute left-[17%] top-[74%] w-4 h-4 rounded-full bg-yellow-300 shadow-[0_0_20px_rgba(250,204,21,0.75)]" />
-                        <div className="absolute left-[84%] top-[30%] w-4 h-4 rounded-full bg-cyan-300 shadow-[0_0_22px_rgba(34,211,238,0.85)]" />
-                        <div className={`absolute left-[84%] top-[30%] w-16 h-16 -translate-x-1/2 -translate-y-1/2 rounded-full border border-cyan-300/45 ${mapTeleporting ? 'locator-ripple-warp' : 'locator-ripple-idle'}`} />
-                        <svg viewBox="0 0 100 100" className="absolute inset-0 h-full w-full">
-                          <path
-                            d="M17 74 C 38 54, 62 44, 84 30"
-                            fill="none"
-                            stroke="rgba(34,211,238,0.78)"
-                            strokeWidth="1.7"
-                            strokeDasharray="4 3"
-                            className="locator-route-flow"
-                          />
-                          <circle r="1.2" fill="rgba(250,204,21,0.95)" className="locator-route-pulse">
-                            <animateMotion dur="1.35s" repeatCount="indefinite" path="M17 74 C 38 54, 62 44, 84 30" />
-                          </circle>
-                        </svg>
-                      </div>
-
-                      <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 pointer-events-none">
-                        <div className="relative w-28 h-28">
-                          <span className="absolute inset-0 rounded-full border border-cyan-300/40 locator-orbit-spin" />
-                          <span className="absolute inset-3 rounded-full border border-cyan-200/35 locator-orbit-spin-rev" />
-                          <span className="absolute inset-[26%] rounded-full bg-cyan-300/25 shadow-[0_0_30px_rgba(34,211,238,0.35)] locator-core-pulse" />
-                        </div>
-                      </div>
-
-                      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_center,transparent_38%,rgba(0,0,0,0.45)_100%)]" />
-                    </div>
-                  </div>
-
-                  <div className="mt-3 grid grid-cols-1 sm:grid-cols-3 gap-2 text-[10px] uppercase tracking-[0.16em]">
-                    <div className="rounded-lg border border-white/10 bg-black/45 px-3 py-2">
-                      <span className="text-zinc-500">Origen</span>
-                      <p className="mt-1 text-yellow-300 font-bold">{FABRICK_HUB.name}</p>
-                    </div>
-                    <div className="rounded-lg border border-white/10 bg-black/45 px-3 py-2">
-                      <span className="text-zinc-500">Destino</span>
-                      <p className="mt-1 text-cyan-200 font-bold truncate">
-                        {locationSuggestion?.address || 'Esperando ubicación satelital'}
-                      </p>
-                    </div>
-                    <div className="rounded-lg border border-white/10 bg-black/45 px-3 py-2">
-                      <span className="text-zinc-500">Coordenadas</span>
-                      <p className="mt-1 text-emerald-300 font-bold truncate">{locationCoordsLabel}</p>
-                    </div>
-                  </div>
+                  {locationError && <p className="relative z-10 mt-3 text-xs text-red-400">{locationError}</p>}
                 </div>
 
                 {locationSuggestion && (
@@ -2494,7 +2388,7 @@ const CheckoutApp = () => {
                     <div className="flex gap-2 flex-shrink-0">
                       <button
                         type="button"
-                        className="px-4 py-2 bg-yellow-400 text-black text-[10px] font-black uppercase tracking-widest rounded-full hover:bg-white transition-colors"
+                        className="min-h-[40px] px-4 py-2 bg-yellow-400 text-black text-[10px] font-black uppercase tracking-widest rounded-full hover:bg-white transition-colors"
                         onClick={() => {
                           if (locationSuggestion.address) setShippingAddress(locationSuggestion.address);
                           if (locationSuggestion.region) setShippingRegion(locationSuggestion.region);
@@ -2505,7 +2399,7 @@ const CheckoutApp = () => {
                       </button>
                       <button
                         type="button"
-                        className="px-4 py-2 border border-white/20 text-zinc-400 text-[10px] font-bold uppercase tracking-widest rounded-full hover:border-white/40 transition-colors"
+                        className="min-h-[40px] px-4 py-2 border border-white/20 text-zinc-400 text-[10px] font-bold uppercase tracking-widest rounded-full hover:border-white/40 transition-colors"
                         onClick={() => setLocationSuggestion(null)}
                       >
                         Cancelar
@@ -2514,39 +2408,136 @@ const CheckoutApp = () => {
                   </div>
                 )}
 
-                <form className="space-y-6">
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <input type="text" value={shippingName} onChange={(e) => setShippingName(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Nombre Contacto" />
-                    <input type="email" value={shippingEmail} onChange={(e) => setShippingEmail(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Email Contacto" />
+                {/* Form grouped into clear sections: Contacto / Dirección */}
+                <form className="space-y-8">
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">Contacto</p>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <label className="block">
+                        <span className="sr-only">Nombre de contacto</span>
+                        <input type="text" value={shippingName} onChange={(e) => setShippingName(e.target.value)} className="w-full min-h-[52px] bg-black border border-white/10 rounded-full px-6 py-3.5 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Nombre completo" />
+                      </label>
+                      <label className="block">
+                        <span className="sr-only">Email de contacto</span>
+                        <input type="email" value={shippingEmail} onChange={(e) => setShippingEmail(e.target.value)} className="w-full min-h-[52px] bg-black border border-white/10 rounded-full px-6 py-3.5 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Correo electrónico" />
+                      </label>
+                    </div>
+                    <label className="block">
+                      <span className="sr-only">Teléfono móvil</span>
+                      <input type="tel" value={shippingPhone} onChange={(e) => setShippingPhone(e.target.value)} className="w-full min-h-[52px] bg-black border border-white/10 rounded-full px-6 py-3.5 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors md:max-w-[calc(50%-0.5rem)]" placeholder="Teléfono móvil" />
+                    </label>
                   </div>
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <input type="tel" value={shippingPhone} onChange={(e) => setShippingPhone(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Teléfono Móvil" />
-                    <div className="hidden md:block" />
+
+                  <div className="space-y-4">
+                    <p className="text-[10px] font-black uppercase tracking-[0.3em] text-zinc-500">Dirección de despacho</p>
+                    <label className="block">
+                      <span className="sr-only">Calle y número de dirección</span>
+                      <input type="text" value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} className="w-full min-h-[52px] bg-black border border-white/10 rounded-full px-6 py-3.5 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Calle / Dirección (ej: Av. Apoquindo 4700)" />
+                    </label>
+                    <div className="grid md:grid-cols-2 gap-4">
+                      <label className="block">
+                        <span className="sr-only">Número de casa o departamento</span>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={shippingHouseNumber}
+                          onChange={(e) => setShippingHouseNumber(e.target.value)}
+                          className="w-full min-h-[52px] bg-black border border-white/10 rounded-full px-6 py-3.5 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors"
+                          placeholder="N° casa / depto (ej: 123, Depto 402)"
+                        />
+                      </label>
+                      <label className="block">
+                        <span className="sr-only">Región</span>
+                        <input type="text" value={shippingRegion} onChange={(e) => setShippingRegion(e.target.value)} className="w-full min-h-[52px] bg-black border border-white/10 rounded-full px-6 py-3.5 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Región" />
+                      </label>
+                    </div>
                   </div>
-                  <input type="text" value={shippingAddress} onChange={(e) => setShippingAddress(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Calle / Dirección (ej: Av. Apoquindo 4700)" />
-                  <div className="grid md:grid-cols-2 gap-6">
-                    <input
-                      type="text"
-                      inputMode="numeric"
-                      value={shippingHouseNumber}
-                      onChange={(e) => setShippingHouseNumber(e.target.value)}
-                      className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors"
-                      placeholder="Número de casa / depto (ej: 123, Dpto 402)"
-                    />
-                    <input type="text" value={shippingRegion} onChange={(e) => setShippingRegion(e.target.value)} className="w-full bg-black border border-white/10 rounded-full px-6 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none transition-colors" placeholder="Región / Estado" />
-                  </div>
+
                   {checkoutError && <p className="text-xs text-red-400">{checkoutError}</p>}
-                  <div className="pt-8 flex gap-4">
-                    <button onClick={() => changeStep(1)} type="button" className="px-8 py-5 border border-white/20 rounded-full bg-black text-white font-bold text-xs uppercase hover:border-yellow-400 transition-colors">Volver</button>
-                    <button onClick={() => changeStep(3)} type="button" className="flex-1 py-5 bg-yellow-400 text-black font-black uppercase text-xs rounded-full shadow-[0_15px_40px_rgba(250,204,21,0.2)] hover:bg-white transition-colors">Continuar al Pago</button>
+                  <div className="pt-2 flex gap-3">
+                    <button onClick={() => changeStep(1)} type="button" className="min-h-[52px] px-6 sm:px-8 border border-white/20 rounded-full bg-black text-white font-bold text-xs uppercase hover:border-yellow-400 transition-colors">Volver</button>
+                    <button onClick={() => changeStep(3)} type="button" className="flex-1 min-h-[52px] bg-yellow-400 text-black font-black uppercase text-xs rounded-full shadow-[0_15px_40px_rgba(250,204,21,0.2)] hover:bg-white transition-colors flex items-center justify-center gap-2">
+                      Continuar al pago <ChevronRight className="w-4 h-4" />
+                    </button>
                   </div>
+                  <p className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                    <Lock className="h-3 w-3 text-emerald-500" /> Tus datos viajan cifrados y solo se usan para tu entrega
+                  </p>
                 </form>
               </div>
             )}
 
             {step === 3 && (
               <div className="space-y-8 animate-fade-up">
-                
+
+                {/* ORDER SUMMARY — collapsible on every viewport during the
+                    payment step, so the buyer always has "what / how much"
+                    one tap away without the full sidebar competing for
+                    space in this single-column layout. Purely presentational:
+                    no effect on totals, validation, or payment logic. */}
+                <div className="rounded-2xl border border-white/10 bg-zinc-950/80 overflow-hidden">
+                  <button
+                    type="button"
+                    onClick={() => setPaymentSummaryOpen((v) => !v)}
+                    aria-expanded={paymentSummaryOpen}
+                    className="w-full flex items-center justify-between gap-3 px-5 py-4 text-left"
+                  >
+                    <span className="flex items-center gap-3 min-w-0">
+                      <span className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-full bg-yellow-400/10">
+                        <Fingerprint className="h-4 w-4 text-yellow-400" />
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block text-[10px] uppercase tracking-[0.2em] text-zinc-500 font-bold">
+                          {cartItems.length > 1 ? `${cartItemCount} productos en tu pedido` : product.name}
+                        </span>
+                        <span className="block text-sm font-black text-white truncate">Ver resumen del pedido</span>
+                      </span>
+                    </span>
+                    <span className="flex items-center gap-2 flex-shrink-0">
+                      <span className="text-base font-black text-yellow-400">{formatCLP(grandTotal)}</span>
+                      <ChevronRight className={`h-4 w-4 text-zinc-500 transition-transform ${paymentSummaryOpen ? 'rotate-90' : ''}`} />
+                    </span>
+                  </button>
+                  {paymentSummaryOpen && (
+                    <div className="border-t border-white/5 px-5 py-4 space-y-3">
+                      <div className="space-y-2 max-h-44 overflow-y-auto scrollbar-hide">
+                        {cartItems.map((item) => (
+                          <div key={item.product.id} className="flex justify-between items-center text-sm gap-3">
+                            <span className="text-white/70 truncate">
+                              {item.product.name}
+                              {item.quantity > 1 && <span className="text-white/40 ml-1">×{item.quantity}</span>}
+                            </span>
+                            <span className="font-mono text-zinc-300 text-xs shrink-0">
+                              {formatCLP(item.product.price * (1 - (item.product.discount_percentage || 0) / 100) * item.quantity)}
+                            </span>
+                          </div>
+                        ))}
+                      </div>
+                      {/* Transparent breakdown — every line here matches EXACTLY
+                          what `calculateCheckoutSummary` charges and persists,
+                          so "Total a pagar" never surprises the buyer. */}
+                      <div className="space-y-1.5 pt-3 border-t border-white/5 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-zinc-500 uppercase tracking-widest font-bold">Subtotal</span>
+                          <span className="font-mono text-zinc-300">{formatCLP(checkoutSummary.subtotal)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-zinc-500 uppercase tracking-widest font-bold">IVA (19%)</span>
+                          <span className="font-mono text-zinc-300">{formatCLP(checkoutSummary.iva)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-zinc-500 uppercase tracking-widest font-bold">Despacho</span>
+                          <span className="font-mono text-zinc-300">{formatCLP(checkoutSummary.despacho)}</span>
+                        </div>
+                      </div>
+                      <div className="flex justify-between items-center pt-1">
+                        <span className="text-white font-black uppercase tracking-widest text-xs">Total a pagar</span>
+                        <span className="font-black text-xl text-yellow-400">{formatCLP(grandTotal)}</span>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
                 {/* SECURE CONNECTION — Fabrick ↔ Mercado Pago ↔ Banco
                     Driven by /api/payments/mp-status: every node colour and
                     the line-fill levels reflect the most recent live probe of
@@ -2698,54 +2689,30 @@ const CheckoutApp = () => {
                   isSuccess={isSuccess || bankApprovalActive}
                 />
 
-                <div className="rounded-[1.75rem] sm:rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.18),transparent_42%),linear-gradient(145deg,rgba(24,24,27,0.96),rgba(8,8,10,0.98))] p-5 sm:p-6 md:p-7 overflow-hidden relative">
-                  <div className="absolute inset-y-0 right-0 w-40 bg-[radial-gradient(circle_at_center,rgba(14,165,233,0.14),transparent_65%)] pointer-events-none" />
-                  <div className="relative grid gap-5 lg:grid-cols-[1.25fr_0.75fr] lg:items-end">
-                    <div>
-                      <div className="inline-flex items-center gap-2 rounded-full border border-yellow-400/25 bg-yellow-400/10 px-3 py-1 text-[9px] font-black uppercase tracking-[0.35em] text-yellow-300">
-                        <ShieldCheck className="h-3.5 w-3.5" /> Checkout Fabrick Blindado
-                      </div>
-                      <h3 className="mt-4 text-3xl md:text-4xl font-black uppercase tracking-tighter">
-                        Paga con una experiencia
-                        <span className="block text-yellow-400">mas clara, segura y premium</span>
-                      </h3>
-                      <p className="mt-3 max-w-2xl text-sm leading-relaxed text-zinc-300">
-                        Mantuvimos el lenguaje visual de la tienda, reforzamos el foco en confianza y dejamos a Mercado Pago Bricks como ruta principal, con tarjeta inline y transferencia como respaldos inmediatos.
-                      </p>
-                      <div className="mt-5 flex flex-wrap gap-2">
-                        {CHECKOUT_TRUST_POINTS.map((point) => (
-                          <span
-                            key={point}
-                            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-2 text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-200"
-                          >
-                            <CheckCircle2 className="h-3.5 w-3.5 text-yellow-400" />
-                            {point}
-                          </span>
-                        ))}
-                      </div>
-                    </div>
-                    <div className="rounded-[1.5rem] border border-white/10 bg-black/35 p-4 sm:p-5">
-                      <p className="text-[9px] uppercase tracking-[0.35em] text-zinc-500 font-bold">Ruta activa</p>
-                      <div className="mt-3 flex items-start gap-3">
-                        <div className="flex h-11 w-11 items-center justify-center rounded-2xl border border-white/10 bg-white/[0.04]">
-                          <activePaymentOption.icon className={`h-5 w-5 ${paymentMethod === 'bricks' ? 'text-sky-300' : paymentMethod === 'mercadopago' ? 'text-yellow-400' : 'text-zinc-200'}`} />
-                        </div>
-                        <div>
-                          <p className="text-[9px] uppercase tracking-[0.28em] text-zinc-500 font-bold">{activePaymentOption.eyebrow}</p>
-                          <h4 className="mt-1 text-lg font-black uppercase tracking-tight text-white">{activePaymentOption.title}</h4>
-                          <p className="mt-1 text-xs leading-relaxed text-zinc-400">{activePaymentOption.detail}</p>
-                        </div>
-                      </div>
+                {/* Single intro block — merges what used to be two separate
+                    "hero" panels (marketing card + section header) saying
+                    nearly the same thing, into one scannable section. */}
+                <div className="rounded-[1.75rem] sm:rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.14),transparent_42%),linear-gradient(145deg,rgba(24,24,27,0.96),rgba(8,8,10,0.98))] p-5 sm:p-6 md:p-7 overflow-hidden relative">
+                  <div className="relative">
+                    <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase">Paso final</span>
+                    <h3 className="font-playfair mt-1 text-3xl md:text-4xl font-black tracking-tight">
+                      Elige tu <span className="text-yellow-400">método de pago</span>
+                    </h3>
+                    <p className="mt-2 max-w-2xl text-sm leading-relaxed text-zinc-300">
+                      Mercado Pago Bricks queda destacado como ruta principal por su mayor tasa de aprobación; tarjeta inline y transferencia están siempre disponibles como respaldo inmediato.
+                    </p>
+                    <div className="mt-4 flex flex-wrap gap-2">
+                      {CHECKOUT_TRUST_POINTS.map((point) => (
+                        <span
+                          key={point}
+                          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.03] px-3 py-1.5 text-[10px] font-semibold uppercase tracking-[0.16em] text-zinc-200"
+                        >
+                          <CheckCircle2 className="h-3.5 w-3.5 text-yellow-400" />
+                          {point}
+                        </span>
+                      ))}
                     </div>
                   </div>
-                </div>
-
-                <div>
-                  <span className="text-yellow-400 font-bold tracking-[0.4em] text-[9px] uppercase">Paso Final</span>
-                  <h3 className="text-3xl md:text-4xl font-black uppercase tracking-tighter mb-2 mt-1">
-                    Método de <span className="text-yellow-400">Pago</span>
-                  </h3>
-                  <p className="text-zinc-400 text-sm">Elige cómo deseas completar tu compra. La opción oficial embebida queda destacada para mejorar la continuidad del pago.</p>
                 </div>
 
                 {checkoutCms.warrantyPolicies?.length > 0 && (
@@ -2764,11 +2731,38 @@ const CheckoutApp = () => {
                   </div>
                 )}
 
-                {/* PAYMENT METHOD SELECTOR */}
-                <div className="grid sm:grid-cols-3 gap-4">
+                {/* PAYMENT METHOD SELECTOR — three scannable cards. Each
+                    option's "active" styling is resolved once via a small
+                    lookup (`activeStyles`) instead of repeating the same
+                    three-way ternary five times per card. */}
+                <div className="grid sm:grid-cols-3 gap-3 sm:gap-4">
                   {paymentOptions.map((option) => {
                     const isActive = paymentMethod === option.id;
                     const Icon = option.icon;
+                    const activeStyles: Record<typeof option.id, { card: string; iconBox: string; icon: string; badge: string; copy: string }> = {
+                      bricks: {
+                        card: 'border-sky-400/45 bg-sky-400/[0.08] shadow-[0_14px_40px_rgba(14,165,233,0.12)]',
+                        iconBox: 'border-sky-300/30 bg-sky-400/15',
+                        icon: 'text-sky-300',
+                        badge: 'bg-sky-400/15 text-sky-200',
+                        copy: 'text-sky-200',
+                      },
+                      mercadopago: {
+                        card: 'border-yellow-400/45 bg-yellow-400/[0.08] shadow-[0_14px_40px_rgba(250,204,21,0.1)]',
+                        iconBox: 'border-yellow-300/30 bg-yellow-400/15',
+                        icon: 'text-yellow-400',
+                        badge: 'bg-yellow-400/15 text-yellow-300',
+                        copy: 'text-yellow-300',
+                      },
+                      transfer: {
+                        card: 'border-white/25 bg-white/[0.06] shadow-[0_14px_40px_rgba(255,255,255,0.05)]',
+                        iconBox: 'border-white/20 bg-white/10',
+                        icon: 'text-white',
+                        badge: 'bg-white/10 text-zinc-100',
+                        copy: 'text-zinc-200',
+                      },
+                    };
+                    const styles = activeStyles[option.id];
                     return (
                       <button
                         key={option.id}
@@ -2781,66 +2775,25 @@ const CheckoutApp = () => {
                             setTransferOrderId('');
                           }
                         }}
-                        className={`group rounded-[1.6rem] border p-5 text-left transition-all duration-300 ${
-                          isActive
-                            ? option.id === 'bricks'
-                              ? 'border-sky-400/45 bg-sky-400/[0.08] shadow-[0_18px_55px_rgba(14,165,233,0.12)]'
-                              : option.id === 'mercadopago'
-                                ? 'border-yellow-400/45 bg-yellow-400/[0.08] shadow-[0_18px_55px_rgba(250,204,21,0.1)]'
-                                : 'border-white/25 bg-white/[0.06] shadow-[0_18px_55px_rgba(255,255,255,0.05)]'
-                            : 'border-white/8 bg-black/30 hover:border-white/15 hover:bg-white/[0.02]'
+                        aria-pressed={isActive}
+                        className={`group rounded-2xl border p-4 sm:p-5 text-left transition-all duration-300 ${
+                          isActive ? styles.card : 'border-white/8 bg-black/30 hover:border-white/15 hover:bg-white/[0.02]'
                         }`}
                       >
-                        <div className="flex items-center gap-3 mb-4">
-                          <div
-                            className={`flex h-11 w-11 items-center justify-center rounded-2xl border ${
-                              isActive
-                                ? option.id === 'bricks'
-                                  ? 'border-sky-300/30 bg-sky-400/15'
-                                  : option.id === 'mercadopago'
-                                    ? 'border-yellow-300/30 bg-yellow-400/15'
-                                    : 'border-white/20 bg-white/10'
-                                : 'border-white/10 bg-white/5'
-                            }`}
-                          >
-                            <Icon
-                              className={`h-4.5 w-4.5 ${
-                                isActive
-                                  ? option.id === 'bricks'
-                                    ? 'text-sky-300'
-                                    : option.id === 'mercadopago'
-                                      ? 'text-yellow-400'
-                                      : 'text-white'
-                                  : 'text-zinc-400'
-                              }`}
-                            />
+                        <div className="flex items-center gap-3 mb-3">
+                          <div className={`flex h-10 w-10 items-center justify-center rounded-xl border ${isActive ? styles.iconBox : 'border-white/10 bg-white/5'}`}>
+                            <Icon className={`h-4.5 w-4.5 ${isActive ? styles.icon : 'text-zinc-400'}`} />
                           </div>
-                          <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.22em] ${
-                            isActive
-                              ? option.id === 'bricks'
-                                ? 'bg-sky-400/15 text-sky-200'
-                                : option.id === 'mercadopago'
-                                  ? 'bg-yellow-400/15 text-yellow-300'
-                                  : 'bg-white/10 text-zinc-100'
-                              : 'bg-white/5 text-zinc-500'
-                          }`}>
+                          <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.2em] ${isActive ? styles.badge : 'bg-white/5 text-zinc-500'}`}>
                             {option.eyebrow}
                           </span>
                           <div className={`ml-auto flex h-4 w-4 items-center justify-center rounded-full border-2 ${isActive ? 'border-white bg-white' : 'border-zinc-600'}`}>
                             {isActive && <div className="h-1.5 w-1.5 rounded-full bg-black" />}
                           </div>
                         </div>
-                        <p className={`font-black text-sm uppercase tracking-[0.08em] ${isActive ? 'text-white' : 'text-zinc-100'}`}>{option.title}</p>
-                        <p className="mt-2 text-[11px] leading-relaxed text-zinc-400">{option.description}</p>
-                        <p className={`mt-4 text-[10px] font-semibold uppercase tracking-[0.16em] ${
-                          isActive
-                            ? option.id === 'bricks'
-                              ? 'text-sky-200'
-                              : option.id === 'mercadopago'
-                                ? 'text-yellow-300'
-                                : 'text-zinc-200'
-                            : 'text-zinc-500'
-                        }`}>
+                        <p className={`font-black text-sm uppercase tracking-[0.06em] ${isActive ? 'text-white' : 'text-zinc-100'}`}>{option.title}</p>
+                        <p className="mt-1.5 text-[11px] leading-relaxed text-zinc-400">{option.description}</p>
+                        <p className={`mt-3 text-[10px] font-semibold uppercase tracking-[0.14em] ${isActive ? styles.copy : 'text-zinc-500'}`}>
                           {option.detail}
                         </p>
                       </button>
@@ -3008,7 +2961,21 @@ const CheckoutApp = () => {
                     {/* Amount summary */}
                     <div className="flex items-center justify-between rounded-2xl border border-yellow-400/15 bg-yellow-400/5 px-5 py-4">
                       <span className="text-zinc-400 text-sm uppercase tracking-widest">Total a pagar</span>
-                      <span className="text-yellow-400 font-black text-xl">{formatCLP(cartTotal)}</span>
+                      <span className="text-yellow-400 font-black text-xl">{formatCLP(grandTotal)}</span>
+                    </div>
+
+                    {/* Trust strip — builds confidence right where the user
+                        types sensitive data. Purely informational, no logic. */}
+                    <div className="flex flex-wrap items-center justify-center gap-x-5 gap-y-2 text-[10px] uppercase tracking-[0.16em] text-zinc-500">
+                      <span className="inline-flex items-center gap-1.5">
+                        <Lock className="h-3 w-3 text-emerald-500" /> Conexión cifrada SSL
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <ShieldCheck className="h-3 w-3 text-emerald-500" /> Tus datos están protegidos
+                      </span>
+                      <span className="inline-flex items-center gap-1.5">
+                        <Fingerprint className="h-3 w-3 text-emerald-500" /> Tokenización Mercado Pago
+                      </span>
                     </div>
 
                     {/* Sub-step indicator */}
@@ -3183,7 +3150,7 @@ const CheckoutApp = () => {
                               </div>
                               <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-4">
                                 <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Monto total</div>
-                                <div className="text-yellow-400 font-bold text-base">{formatCLP(cartTotal)}</div>
+                                <div className="text-yellow-400 font-bold text-base">{formatCLP(grandTotal)}</div>
                               </div>
                               <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
                                 <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Tarjeta</div>
@@ -3282,7 +3249,7 @@ const CheckoutApp = () => {
                             { label: 'Banco', value: BANK_INFO.bank },
                             { label: 'Titular', value: BANK_INFO.holder },
                             { label: 'Tipo de Cuenta', value: BANK_INFO.type },
-                            { label: 'Monto', value: formatCLP(transferOrderTotal || cartTotal) },
+                            { label: 'Monto', value: formatCLP(transferOrderTotal || grandTotal) },
                           ].map((row) => (
                             <div key={row.label} className="flex justify-between text-sm">
                               <span className="text-zinc-500">{row.label}</span>
@@ -3320,7 +3287,7 @@ const CheckoutApp = () => {
                           </div>
                           <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-5">
                             <p className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Monto a Transferir</p>
-                            <p className="text-yellow-400 font-black text-xl">{formatCLP(transferOrderTotal || cartTotal)}</p>
+                            <p className="text-yellow-400 font-black text-xl">{formatCLP(transferOrderTotal || grandTotal)}</p>
                           </div>
                         </div>
 
@@ -3335,7 +3302,7 @@ const CheckoutApp = () => {
                           <CopyField label="Tipo de Cuenta" value={BANK_INFO.type} />
                           <CopyField label="N° de Cuenta" value={BANK_INFO.number} />
                           <CopyField label="Email para Comprobante" value={BANK_INFO.email} />
-                          <CopyField label="Monto exacto" value={formatCLP(transferOrderTotal || cartTotal)} />
+                          <CopyField label="Monto exacto" value={formatCLP(transferOrderTotal || grandTotal)} />
                           <CopyField label="Referencia / Glosa" value={transferOrderId} />
                         </div>
 
@@ -3369,7 +3336,7 @@ const CheckoutApp = () => {
                     >
                       {hostedRedirecting
                         ? <><RefreshCw className="w-4 h-4 animate-spin" /> Redirigiendo…</>
-                        : <><Lock className="w-4 h-4" /> Pagar {formatCLP(cartTotal)}</>
+                        : <><Lock className="w-4 h-4" /> Pagar {formatCLP(grandTotal)}</>
                       }
                     </button>
                   )}
@@ -3393,6 +3360,9 @@ const CheckoutApp = () => {
                     </button>
                   )}
                 </div>
+                <p className="flex items-center justify-center gap-2 text-[10px] uppercase tracking-[0.2em] text-zinc-500">
+                  <Lock className="h-3 w-3 text-emerald-500" /> Pago 100% seguro vía Mercado Pago · Fabrick no almacena tu tarjeta
+                </p>
                 {checkoutError && (paymentMethod === 'mercadopago' || paymentMethod === 'bricks') && <p className="text-xs text-red-400 pt-2">{checkoutError}</p>}
               </div>
             )}

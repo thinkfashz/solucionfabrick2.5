@@ -10,7 +10,7 @@ export const dynamic = 'force-dynamic';
 export const metadata: Metadata = {
   title: 'Catálogo de Materiales',
   description:
-    'Catálogo Fabrick: materiales premium que puedes comprar solo, con mano de obra o como proyecto llave en mano cobrado por m². Seleccionados por nuestro equipo certificado en la Región del Maule, Chile.',
+    'Catálogo Fabrick: materiales premium con compra directa o al carrito en un solo paso, despacho a tu zona y calculadora de m² para pisos y revestimientos. Seleccionados por nuestro equipo certificado en la Región del Maule, Chile.',
   alternates: { canonical: 'https://www.solucionesfabrick.com/tienda' },
 };
 

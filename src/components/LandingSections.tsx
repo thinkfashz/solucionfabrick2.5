@@ -357,10 +357,10 @@ export default function LandingSections({
             <span className="text-yellow-400 font-medium tracking-[0.4em] text-[10px] uppercase block mb-3">
               Explora Fabrick
             </span>
-            <h2 className="text-2xl md:text-4xl font-light uppercase tracking-tighter text-white/90">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-light uppercase tracking-tighter leading-tight text-white/90">
               Elige por dónde <span className="font-bold text-yellow-400">empezar</span>
             </h2>
-            <p className="mt-3 text-zinc-500 text-xs md:text-sm max-w-xl mx-auto leading-relaxed">
+            <p className="mt-3 text-zinc-500 text-xs sm:text-sm md:text-base max-w-xl mx-auto leading-relaxed">
               Cada puerta lleva a una parte real del oficio: nuestros materiales,
               las casas que ya entregamos y la garantía que respalda tu inversión.
             </p>
@@ -419,7 +419,7 @@ export default function LandingSections({
             <span className="text-yellow-400 font-medium tracking-[0.4em] text-[10px] uppercase block mb-3">
               El ciclo 360°
             </span>
-            <h2 className="text-3xl md:text-5xl font-light uppercase tracking-tighter text-white/90">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-light uppercase tracking-tighter leading-tight text-white/90">
               Integración <span className="font-bold text-yellow-400">Total</span>
             </h2>
             <p className="text-zinc-400 text-sm md:text-base font-light max-w-2xl mx-auto mt-5 leading-relaxed">
@@ -509,10 +509,10 @@ export default function LandingSections({
             <span className="text-yellow-400 font-medium tracking-[0.4em] text-[10px] uppercase border-b border-yellow-400/30 pb-2">
               El camino del oficio
             </span>
-            <h2 className="text-4xl md:text-6xl font-light uppercase tracking-tighter mt-6 mb-6">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl lg:text-6xl font-light uppercase tracking-tighter leading-tight mt-6 mb-6">
               <span className="font-bold text-yellow-400"><span className="traj-counter">8</span> Años</span> de Evolución
             </h2>
-            <p className="text-zinc-400 max-w-3xl mx-auto text-xs md:text-base font-light leading-relaxed">
+            <p className="text-zinc-400 max-w-3xl mx-auto text-sm md:text-base font-light leading-relaxed">
               Cada fase tiene su color. Empezamos en gris (la cancha) y avanzamos
               por bronce, cobre, oro y ámbar hasta llegar al esmeralda — la madurez
               de Fabrick. No es marketing: es el orden real en que pasamos por la
@@ -809,11 +809,16 @@ export default function LandingSections({
       </section>
 
       {/* ══ TIENDA ════════════════════════════════════════════ */}
-      <section id="tienda" className="py-24 md:py-36 px-4 md:px-12 bg-black border-t border-white/5">
-        <div className="max-w-7xl mx-auto">
+      <section id="tienda" className="relative py-24 md:py-36 px-4 md:px-12 bg-black border-t border-white/5 overflow-hidden">
+        {/* Atmospheric gradient orbs — same language as /tienda's hero */}
+        <div aria-hidden className="pointer-events-none absolute inset-0 -z-0">
+          <div className="absolute -top-32 -right-24 h-72 w-72 md:h-96 md:w-96 rounded-full opacity-20 [background:radial-gradient(circle,rgba(250,204,21,0.5)_0%,transparent_70%)] blur-3xl" />
+          <div className="absolute -bottom-32 -left-20 h-64 w-64 md:h-80 md:w-80 rounded-full opacity-15 [background:radial-gradient(circle,rgba(99,102,241,0.4)_0%,transparent_70%)] blur-3xl" />
+        </div>
+        <div className="relative z-10 max-w-7xl mx-auto">
           <ScrollReveal className="text-center mb-16 md:mb-20">
             <span className="text-yellow-400 font-bold tracking-[0.5em] text-[10px] uppercase">Selección exclusiva del autor</span>
-            <h2 className="text-4xl md:text-6xl font-black uppercase tracking-tighter mt-3">
+            <h2 className="text-4xl sm:text-5xl md:text-6xl font-black uppercase tracking-tighter leading-[0.95] mt-3">
               Insumos de <span className="text-yellow-400">Autor</span>
             </h2>
             <p className="mt-5 text-zinc-300 max-w-2xl mx-auto text-sm md:text-base font-light leading-relaxed">
@@ -860,7 +865,7 @@ export default function LandingSections({
         <div className="max-w-7xl mx-auto">
           <ScrollReveal className="text-center mb-14 md:mb-20">
             <span className="text-yellow-400 font-bold tracking-[0.5em] text-[10px] uppercase">Garantía Comprobada</span>
-            <h2 className="text-3xl md:text-5xl font-black uppercase tracking-tighter mt-3 mb-3">
+            <h2 className="text-3xl sm:text-4xl md:text-5xl font-black uppercase tracking-tighter leading-tight mt-3 mb-3">
               Familias que ya <span className="text-yellow-400">duermen tranquilas</span>
             </h2>
             <p className="mt-3 text-zinc-400 text-sm md:text-base max-w-2xl mx-auto leading-relaxed font-light">
@@ -947,7 +952,7 @@ export default function LandingSections({
           <ScrollReveal className="space-y-8">
             <div>
               <span className="text-yellow-400 font-bold tracking-[0.4em] text-[10px] uppercase">Contacto Directo</span>
-              <h2 className="text-4xl md:text-7xl font-black uppercase tracking-tighter mt-3 leading-none">
+              <h2 className="text-4xl sm:text-5xl md:text-6xl lg:text-7xl font-black uppercase tracking-tighter mt-3 leading-[0.95]">
                 Hablemos<br /><span className="text-yellow-400">de tu obra.</span>
               </h2>
               <p className="text-zinc-300 mt-5 text-sm md:text-lg font-light leading-relaxed max-w-md">

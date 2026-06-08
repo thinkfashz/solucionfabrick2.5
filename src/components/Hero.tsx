@@ -146,7 +146,7 @@ export default function Hero({
         {/* Headline — last line always gold */}
         <motion.h1
           variants={itemVars}
-          className="font-playfair max-w-2xl text-[clamp(3rem,7.5vw,5.75rem)] font-black leading-[0.95] tracking-tight"
+          className="font-playfair max-w-2xl text-balance break-words text-[clamp(2.75rem,9vw,5.75rem)] font-black leading-[0.97] tracking-tight sm:leading-[0.95]"
         >
           {headlineLines.map((line, i) => (
             <span
@@ -171,7 +171,7 @@ export default function Hero({
         {/* Subtitle */}
         <motion.p
           variants={itemVars}
-          className="mt-5 max-w-xl text-base leading-relaxed text-zinc-300 md:text-[1.1rem]"
+          className="mt-5 max-w-xl text-sm leading-relaxed text-zinc-300 sm:text-base md:text-lg"
         >
           {subtitle}
         </motion.p>
@@ -203,7 +203,7 @@ export default function Hero({
             href={buildWhatsAppLink(CTA_MSG)}
             target="_blank"
             rel="noopener noreferrer"
-            className="group inline-flex items-center gap-2.5 rounded-full bg-yellow-400 px-7 py-3.5 text-[13px] font-black uppercase tracking-[0.18em] text-black transition-all duration-300 hover:bg-yellow-300 hover:shadow-[0_0_36px_rgba(250,204,21,0.45)]"
+            className="group inline-flex min-h-[44px] items-center gap-2.5 rounded-full bg-yellow-400 px-6 py-3 text-[13px] font-black uppercase tracking-[0.18em] text-black transition-all duration-300 hover:bg-yellow-300 hover:shadow-[0_0_36px_rgba(250,204,21,0.45)] sm:px-7 sm:py-3.5"
           >
             <MessageCircle size={15} aria-hidden />
             Conversemos por WhatsApp
@@ -211,14 +211,14 @@ export default function Hero({
           </a>
           <a
             href="/contacto"
-            className="group inline-flex items-center gap-2 rounded-full border border-yellow-400/40 bg-yellow-400/[0.04] px-7 py-3.5 text-[13px] font-bold uppercase tracking-[0.18em] text-yellow-200 transition-all duration-300 hover:border-yellow-400 hover:bg-yellow-400/[0.1] hover:text-yellow-300"
+            className="group inline-flex min-h-[44px] items-center gap-2 rounded-full border border-yellow-400/40 bg-yellow-400/[0.04] px-6 py-3 text-[13px] font-bold uppercase tracking-[0.18em] text-yellow-200 transition-all duration-300 hover:border-yellow-400 hover:bg-yellow-400/[0.1] hover:text-yellow-300 sm:px-7 sm:py-3.5"
           >
             Pedir consulta gratuita
             <ArrowRight size={13} className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
           </a>
           <a
             href="/proyectos"
-            className="group inline-flex items-center gap-2 rounded-full border border-white/15 px-7 py-3.5 text-[13px] font-bold text-zinc-200 transition-all duration-300 hover:border-white/40 hover:text-white"
+            className="group inline-flex min-h-[44px] items-center gap-2 rounded-full border border-white/15 px-6 py-3 text-[13px] font-bold text-zinc-200 transition-all duration-300 hover:border-white/40 hover:text-white sm:px-7 sm:py-3.5"
           >
             Mira nuestros proyectos
             <ArrowRight size={13} className="transition-transform duration-300 group-hover:translate-x-1" aria-hidden />
@@ -228,7 +228,7 @@ export default function Hero({
         {/* Stats bar */}
         <motion.div
           variants={itemVars}
-          className="mt-14 flex flex-wrap gap-6 border-t border-white/[0.07] pt-8 md:gap-12"
+          className="mt-14 grid grid-cols-2 gap-x-6 gap-y-5 border-t border-white/[0.07] pt-8 sm:flex sm:flex-wrap sm:gap-x-10 sm:gap-y-6 md:gap-x-12"
         >
           {STATS.map(({ n, label, Icon }) => (
             <div key={label} className="flex items-center gap-3">

@@ -5,6 +5,7 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Sparkles } from 'lucide-react';
+import { navigateWithTransition } from '@/lib/routeTransition';
 import { useCatalogProducts } from '@/hooks/useCatalogProducts';
 import AnimatedButton from '@/components/ui/animated-button';
 
@@ -31,6 +32,10 @@ export default function TiendaSection({
 
   const visibleProducts = limit > 0 ? products.slice(0, limit) : products;
 
+  // Same cinematic transition overlay used across the rest of the site —
+  // keeps catalog → product-detail navigation visually consistent.
+  const goToProduct = (id: string) => navigateWithTransition(`/tienda/${id}`, router);
+
   return (
     <section className="py-10">
       <div className="text-center mb-14">
@@ -52,11 +57,11 @@ export default function TiendaSection({
               key={prod.id}
               className="card-3d glass-card rounded-4xl overflow-hidden group relative cursor-pointer focus-within:ring-2 focus-within:ring-yellow-400/60 slide-up"
               style={{ animationDelay: `${i * 0.08}s`, animationFillMode: 'both' }}
-              onClick={() => router.push(`/tienda/${prod.id}`)}
+              onClick={() => goToProduct(prod.id)}
               onKeyDown={(e) => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
-                  router.push(`/tienda/${prod.id}`);
+                  goToProduct(prod.id);
                 }
               }}
               role="link"
@@ -118,7 +123,7 @@ export default function TiendaSection({
                   <AnimatedButton
                     onClick={(e) => {
                       e.stopPropagation();
-                      router.push(`/tienda/${prod.id}`);
+                      goToProduct(prod.id);
                     }}
                     className="inline-flex items-center gap-2 px-5 py-3 rounded-full bg-yellow-400/10 border border-yellow-400/30 text-yellow-400 text-xs font-semibold tracking-wider hover:bg-yellow-400 hover:text-black transition-all duration-300"
                   >

@@ -4,12 +4,14 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { navigateWithTransition } from '@/lib/routeTransition';
 import { useCatalogProducts } from '@/hooks/useCatalogProducts';
 import { useAuth } from '@/context/AuthContext';
 import { getInitials } from '@/lib/initials';
 import { useTheme } from '@/context/ThemeContext';
 import {
 	ShoppingBag,
+	ShieldCheck,
 	Menu,
 	X,
 	Zap,
@@ -28,16 +30,19 @@ import {
 	LogOut,
 	ChevronRight,
 	Star,
-	Package,
 	ArrowRight,
 	Phone,
 	SlidersHorizontal,
-	ArrowUpDown,
-	Tag,
 	Search,
 	Sun,
 	Moon,
 	Palette,
+	Droplets,
+	Wrench,
+	Lightbulb,
+	Smartphone,
+	ShowerHead,
+	Lock,
 } from 'lucide-react';
 import BannerCarousel from '@/components/BannerCarousel';
 import { useCartContext } from '@/context/CartContext';
@@ -116,7 +121,7 @@ const PRODUCTS: Product[] = [
 
 const MENU_OPTIONS = [
 	{ icon: Home, label: 'Inicio', description: 'Volver a la página principal', href: '/' },
-	{ icon: LayoutGrid, label: 'Ver Catálogo', description: 'Explorar todos nuestros productos', href: null },
+	{ icon: LayoutGrid, label: 'Ver Catálogo', description: 'Explorar todos nuestros productos', href: '/tienda/catalogo' },
 	{ icon: Award, label: 'Garantías', description: 'Conoce nuestra política de garantías', href: '/garantias' },
 	{ icon: User, label: 'Mi Cuenta', description: 'Perfil y panel de pedidos', href: '/mi-cuenta' },
 	{ icon: Settings, label: 'Ajustes', description: 'Configuración de tu cuenta', href: '/ajustes' },
@@ -179,15 +184,15 @@ export default function TiendaClientPage() {
 	const [cart, setCart] = useState<Product[]>([]);
 	const [gsapReady, setGsapReady] = useState(false);
 	const [selectedCategory, setSelectedCategory] = useState('all');
-	const [priceFilter, setPriceFilter] = useState<'all' | 'low' | 'mid' | 'high'>('all');
-	const [sortMode, setSortMode] = useState<'featured' | 'price-asc' | 'price-desc' | 'name-asc'>('featured');
 	const [onlyDiscounted, setOnlyDiscounted] = useState(false);
-	const [mobileFiltersOpen, setMobileFiltersOpen] = useState(false);
 	const [searchQuery, setSearchQuery] = useState('');
 	const [searchOpen, setSearchOpen] = useState(false);
 
 	const cartIconRef = useRef<HTMLDivElement>(null);
 	const gsapRef = useRef<null | typeof import('gsap').default>(null);
+	// Tracks in-flight "add to cart" particle animations so we can kill the GSAP
+	// tweens and remove the orphaned DOM nodes if the component unmounts mid-flight.
+	const activeParticlesRef = useRef<Array<{ el: HTMLDivElement; tween: gsap.core.Tween }>>([]);
 
 	const liveProducts = useMemo<Product[]>(() => {
 		// After DB fetch completes, show the live result (possibly empty)
@@ -208,68 +213,13 @@ export default function TiendaClientPage() {
 
 	const filteredProducts = useMemo(() => {
 		const q = searchQuery.trim().toLowerCase();
-		const base = liveProducts.filter((product) => {
+		return liveProducts.filter((product) => {
 			if (q && !product.name.toLowerCase().includes(q) && !product.category.toLowerCase().includes(q)) return false;
 			if (selectedCategory !== 'all' && product.category !== selectedCategory) return false;
-			const finalPrice = getFinalPrice(product);
-			if (priceFilter === 'low' && finalPrice > 80000) return false;
-			if (priceFilter === 'mid' && (finalPrice <= 80000 || finalPrice > 150000)) return false;
-			if (priceFilter === 'high' && finalPrice <= 150000) return false;
 			if (onlyDiscounted && !((product as { discountPercentage?: number }).discountPercentage ?? 0)) return false;
 			return true;
 		});
-
-		const sorted = [...base];
-		sorted.sort((a, b) => {
-			if (sortMode === 'price-asc') return getFinalPrice(a) - getFinalPrice(b);
-			if (sortMode === 'price-desc') return getFinalPrice(b) - getFinalPrice(a);
-			if (sortMode === 'name-asc') return a.name.localeCompare(b.name, 'es');
-			const aScore = ((a as { rating?: number }).rating ?? 4.4) + (((a as { discountPercentage?: number }).discountPercentage ?? 0) / 20);
-			const bScore = ((b as { rating?: number }).rating ?? 4.4) + (((b as { discountPercentage?: number }).discountPercentage ?? 0) / 20);
-			return bScore - aScore;
-		});
-		return sorted;
-	}, [liveProducts, selectedCategory, priceFilter, onlyDiscounted, sortMode, searchQuery]);
-
-	const totalSavingsFiltered = useMemo(() => {
-		return filteredProducts.reduce((acc, product) => {
-			const original = product.price;
-			const final = getFinalPrice(product);
-			return acc + Math.max(0, original - final);
-		}, 0);
-	}, [filteredProducts]);
-
-	const getDeliveryBadge = (product: Product) => {
-		const raw = (product.delivery || '').toLowerCase();
-		const days = Number(raw.replace(/\D/g, ''));
-		if (raw.includes('inmediata') || raw.includes('24h')) {
-			return { label: 'Envio express', className: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-300' };
-		}
-		if (Number.isFinite(days) && days > 0 && days <= 2) {
-			return { label: `${days} dias`, className: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-300' };
-		}
-		if (Number.isFinite(days) && days <= 5) {
-			return { label: `${days} dias`, className: 'border-yellow-400/30 bg-yellow-500/15 text-yellow-300' };
-		}
-		if (Number.isFinite(days) && days > 5) {
-			return { label: `${days} dias`, className: 'border-red-400/30 bg-red-500/15 text-red-300' };
-		}
-		return { label: 'Plazo normal', className: 'border-zinc-500/30 bg-zinc-500/15 text-zinc-300' };
-	};
-
-	const getStockBadge = (product: Product) => {
-		const stock = Number((product as { stock?: number | string }).stock ?? NaN);
-		if (!Number.isFinite(stock)) {
-			return { label: 'Stock por confirmar', className: 'border-zinc-500/30 bg-zinc-500/15 text-zinc-300' };
-		}
-		if (stock <= 3) {
-			return { label: `Stock critico: ${stock}`, className: 'border-red-400/35 bg-red-500/15 text-red-300' };
-		}
-		if (stock <= 10) {
-			return { label: `Stock bajo: ${stock}`, className: 'border-yellow-400/30 bg-yellow-500/15 text-yellow-300' };
-		}
-		return { label: `Stock: ${stock}`, className: 'border-emerald-400/30 bg-emerald-500/15 text-emerald-300' };
-	};
+	}, [liveProducts, selectedCategory, onlyDiscounted, searchQuery]);
 
 	useEffect(() => {
 		let mounted = true;
@@ -327,12 +277,7 @@ export default function TiendaClientPage() {
 	const handleMenuAction = (item: typeof MENU_OPTIONS[number]) => {
 		setIsMenuOpen(false);
 		if (item.label === 'Inicio') { router.push('/'); return; }
-		if (item.label === 'Ver Catálogo') {
-			setSelectedProduct(null);
-			setTimeout(() => window.scrollTo({ top: window.innerHeight, behavior: 'smooth' }), 100);
-			return;
-		}
-		if (item.href) { router.push(item.href); return; }
+		if (item.href) { navigateWithTransition(item.href, router); return; }
 	};
 
 	const handleSignOut = async () => {
@@ -361,7 +306,7 @@ export default function TiendaClientPage() {
 		particle.innerHTML = `<img src="${product.img}" class="w-full h-full object-cover opacity-60" />`;
 		document.body.appendChild(particle);
 
-		gsapRef.current.to(particle, {
+		const tween = gsapRef.current.to(particle, {
 			duration: 1.2,
 			x: cartRect.left - rect.left + 5,
 			y: cartRect.top - rect.top + 5,
@@ -370,18 +315,36 @@ export default function TiendaClientPage() {
 			opacity: 0,
 			ease: 'power4.inOut',
 			onComplete: () => {
+				// Drop from the tracking list once it finishes naturally
+				activeParticlesRef.current = activeParticlesRef.current.filter((entry) => entry.el !== particle);
 				particle.remove();
 				if (!gsapRef.current || !cartIconRef.current) return;
 				gsapRef.current.fromTo(cartIconRef.current, { scale: 1 }, { scale: 1.25, duration: 0.25, yoyo: true, repeat: 1 });
 			},
 		});
+
+		// Track this particle/tween so we can kill it and remove the node on unmount
+		activeParticlesRef.current.push({ el: particle, tween });
 	};
+
+	// Cleanup any in-flight "add to cart" particle animations on unmount so we
+	// never leave orphaned DOM nodes or running GSAP tweens behind.
+	useEffect(() => {
+		return () => {
+			activeParticlesRef.current.forEach(({ el, tween }) => {
+				tween.kill();
+				el.remove();
+			});
+			activeParticlesRef.current = [];
+		};
+	}, []);
 
 	const handleSelectProduct = (product: Product) => {
 		// Navigate to the full detail page so the user sees all information
 		// (image, specs, stock, description, price breakdown) instead of the
-		// in-page overlay which was confusing.
-		router.push(`/tienda/${product.id}`);
+		// in-page overlay which was confusing. Uses the same cinematic
+		// transition overlay as the rest of the site for a consistent feel.
+		navigateWithTransition(`/tienda/${product.id}`, router);
 	};
 
 	useEffect(() => {
@@ -525,7 +488,7 @@ export default function TiendaClientPage() {
 
 					{/* Center nav links - desktop */}
 					<div className="hidden md:flex items-center gap-6">
-						<button onClick={() => document.getElementById('nike-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className={`text-sm font-medium transition-colors ${isDark ? 'text-white/70 hover:text-white' : 'text-neutral-700 hover:text-black'}`}>Catálogo</button>
+						<button onClick={() => navigateWithTransition('/tienda/catalogo', router)} className={`text-sm font-medium transition-colors ${isDark ? 'text-white/70 hover:text-white' : 'text-neutral-700 hover:text-black'}`}>Catálogo</button>
 						<button onClick={() => setSelectedCategory('Seguridad')} className={`text-sm font-medium transition-colors ${isDark ? 'text-white/70 hover:text-white' : 'text-neutral-700 hover:text-black'}`}>Seguridad</button>
 						<button onClick={() => setSelectedCategory('Iluminación')} className={`text-sm font-medium transition-colors ${isDark ? 'text-white/70 hover:text-white' : 'text-neutral-700 hover:text-black'}`}>Iluminación</button>
 						<button onClick={() => setOnlyDiscounted((v) => !v)} className={`text-sm font-medium transition-colors ${onlyDiscounted ? 'text-red-500' : isDark ? 'text-white/70 hover:text-white' : 'text-neutral-700 hover:text-black'}`}>Ofertas</button>
@@ -586,6 +549,10 @@ export default function TiendaClientPage() {
 						.nike-card-img { transition: transform 600ms cubic-bezier(0.22,1,0.36,1); }
 						.nike-card-quickadd { opacity: 0; transform: translateY(6px); transition: opacity 220ms ease, transform 220ms ease; }
 						.nike-card:hover .nike-card-quickadd { opacity: 1; transform: translateY(0); }
+						/* Touch devices have no hover state — keep the quick-add CTA reachable with a thumb */
+						@media (hover: none) {
+							.nike-card-quickadd { opacity: 1; transform: translateY(0); }
+						}
 						.nike-pill { transition: background 180ms ease, color 180ms ease, border-color 180ms ease; }
 						.nike-link { position: relative; }
 						.nike-link::after { content: ''; position: absolute; left: 0; right: 0; bottom: -2px; height: 2px; transform: scaleX(0); transform-origin: left; transition: transform 240ms ease; }
@@ -632,8 +599,8 @@ export default function TiendaClientPage() {
 						<div className="relative overflow-hidden rounded-2xl aspect-[16/8] md:aspect-[16/6] group">
 							{/* Imagen con parallax suave */}
 							<img
-								src="https://images.unsplash.com/photo-1581094288338-2314dddb7ece?q=80&w=1800&auto=format&fit=crop"
-								alt="Fabrick"
+								src="https://images.unsplash.com/photo-1615873968403-89e068629265?q=80&w=1800&auto=format&fit=crop"
+								alt="Pisos, puertas y revestimientos de madera instalados por Soluciones Fabrick"
 								className="w-full h-full object-cover transition-transform duration-[8000ms] ease-linear group-hover:scale-105"
 							/>
 							{/* Overlay con gradiente mejorado */}
@@ -651,21 +618,23 @@ export default function TiendaClientPage() {
 							{/* CTA content */}
 							<div className="absolute inset-0 flex items-end md:items-center">
 								<div className="px-6 md:px-14 pb-10 md:pb-0 max-w-2xl text-white">
-									<p className="hero-animate text-[10px] md:text-[11px] uppercase tracking-[0.3em] mb-3 text-yellow-400 font-semibold">Lo último de Fabrick</p>
-									<h1 className="hero-animate-delay-1 nike-headline text-4xl md:text-7xl">
-										Construye<br />lo que sigue.
+									<p className="hero-animate text-[10px] md:text-[11px] uppercase tracking-[0.4em] mb-3 text-yellow-400 font-bold">Pisos · Puertas · Ventanas · Cerraduras</p>
+									<h1 className="hero-animate-delay-1 font-playfair text-4xl md:text-7xl font-bold leading-[0.98] tracking-tight">
+										Construye<br /><span className="shimmer-gold">lo que sigue.</span>
 									</h1>
-									<p className="hero-animate-delay-2 mt-4 text-sm md:text-base opacity-80 max-w-xl leading-relaxed">
-										Materiales premium curados, instalados por expertos, con garantía real.
+									<p className="hero-animate-delay-2 mt-4 text-sm md:text-base text-white/70 max-w-xl leading-relaxed">
+										Materiales premium curados e <span className="text-white font-semibold">instalados por nuestro equipo certificado</span> — desde pisos flotantes y puertas hasta cerraduras inteligentes, con garantía real en cada obra.
 									</p>
-									<div className="hero-animate-delay-2 mt-5 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em]">
-										<span className="rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-300 px-3 py-1.5">Materiales premium</span>
-										<span className="rounded-full border border-white/20 bg-white/8 text-white/80 px-3 py-1.5">Instalación certificada</span>
-										<span className="rounded-full border border-white/20 bg-white/8 text-white/80 px-3 py-1.5">Asesoría real</span>
+									<div className="hero-animate-delay-2 mt-5 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.22em]">
+										<span className="rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-300 px-3.5 py-1.5 font-semibold">Materiales premium</span>
+										<span className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/50 bg-gradient-to-r from-yellow-400/20 to-yellow-400/5 text-yellow-200 px-3.5 py-1.5 font-bold shadow-[0_0_22px_rgba(250,204,21,0.18)]">
+											<ShieldCheck className="h-3 w-3" /> Instalación certificada
+										</span>
+										<span className="rounded-full border border-white/20 bg-white/8 text-white/80 px-3.5 py-1.5 font-semibold">Asesoría real</span>
 									</div>
 									<div className="hero-animate-delay-3 mt-6 flex gap-3 flex-wrap">
 										<button
-											onClick={() => { const el = document.getElementById('nike-grid'); el?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }}
+											onClick={() => navigateWithTransition('/tienda/catalogo', router)}
 											className="group/btn relative overflow-hidden bg-white text-black rounded-full px-7 py-3 text-sm font-semibold hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all duration-300 hover:scale-105"
 										>
 											<span className="relative z-10">Comprar ahora</span>
@@ -703,31 +672,47 @@ export default function TiendaClientPage() {
 					</section>
 
 					{/* ── ANUNCIANTES / MARCAS PARTNER ── */}
-					<section className={`overflow-hidden border-b py-8 ${isDark ? 'bg-zinc-900/60 border-white/8' : 'bg-neutral-50 border-neutral-200'}`}>
-						<div className="max-w-[1400px] mx-auto px-4 md:px-8 mb-5">
-							<p className={`text-center text-[10px] uppercase tracking-[0.4em] ${isDark ? 'text-zinc-500' : 'text-neutral-400'}`}>Marcas y anunciantes que confían en nosotros</p>
+					<section className={`overflow-hidden border-b py-10 ${isDark ? 'bg-zinc-900/60 border-white/8' : 'bg-neutral-50 border-neutral-200'}`}>
+						<div className="max-w-[1400px] mx-auto px-4 md:px-8 mb-7 text-center">
+							<p className="text-[9px] uppercase tracking-[0.5em] text-yellow-400/70 font-bold mb-2">Anuncia con nosotros</p>
+							<h3 className={`font-playfair text-xl md:text-2xl font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+								Marcas líderes que ya confían en Fabrick
+							</h3>
+							<p className={`mt-2 max-w-xl mx-auto text-xs leading-relaxed ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>
+								Tu logotipo junto a los fabricantes que ya forman parte del catálogo que instalamos en obra. Espacios publicitarios disponibles — <a href="/contacto" className="text-yellow-500 font-semibold hover:underline">conversemos</a>.
+							</p>
 						</div>
 						<div className="overflow-hidden">
 							<div className="flex brand-marquee whitespace-nowrap gap-0">
 								{Array.from({ length: 2 }).map((_, bi) => (
-									<div key={bi} className="flex shrink-0 items-center gap-16 px-8">
+									<div key={bi} className="flex shrink-0 items-center gap-5 px-6">
 										{[
-											{ name: 'Bosch', icon: '⚡' },
-											{ name: 'Grohe', icon: '💧' },
-											{ name: 'Siemens', icon: '🔧' },
-											{ name: 'Philips', icon: '💡' },
-											{ name: 'Samsung', icon: '📱' },
-											{ name: 'Moen', icon: '🚿' },
-											{ name: 'Schneider', icon: '⚙️' },
-											{ name: 'Lutron', icon: '🎛️' },
-											{ name: 'Yale', icon: '🔐' },
-											{ name: 'LG', icon: '🏠' },
-										].map((brand) => (
-											<div key={`${bi}-${brand.name}`} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border transition-all duration-300 cursor-default select-none ${isDark ? 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-yellow-400/30' : 'border-neutral-200 bg-white hover:bg-yellow-50 hover:border-yellow-300 shadow-sm'}`}>
-												<span className="text-lg">{brand.icon}</span>
-												<span className={`text-sm font-semibold tracking-wide ${isDark ? 'text-zinc-300' : 'text-neutral-700'}`}>{brand.name}</span>
-											</div>
-										))}
+											{ name: 'BOSCH', Icon: Zap },
+											{ name: 'GROHE', Icon: Droplets },
+											{ name: 'SIEMENS', Icon: Wrench },
+											{ name: 'PHILIPS', Icon: Lightbulb },
+											{ name: 'SAMSUNG', Icon: Smartphone },
+											{ name: 'MOEN', Icon: ShowerHead },
+											{ name: 'SCHNEIDER', Icon: Settings },
+											{ name: 'LUTRON', Icon: SlidersHorizontal },
+											{ name: 'YALE', Icon: Lock },
+											{ name: 'LG', Icon: Home },
+										].map((brand) => {
+											const BrandIcon = brand.Icon;
+											return (
+												<div
+													key={`${bi}-${brand.name}`}
+													className={`group/brand flex items-center gap-3 px-6 py-4 rounded-2xl border transition-all duration-300 cursor-default select-none ${isDark ? 'border-white/10 bg-gradient-to-br from-white/[0.04] to-transparent hover:border-yellow-400/40 hover:from-yellow-400/[0.08]' : 'border-neutral-200 bg-white hover:border-yellow-300 hover:shadow-md'}`}
+												>
+													<span className={`flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${isDark ? 'border-white/15 bg-white/5 text-zinc-400 group-hover/brand:border-yellow-400/50 group-hover/brand:text-yellow-400' : 'border-neutral-200 bg-neutral-50 text-neutral-400 group-hover/brand:border-yellow-400 group-hover/brand:text-yellow-500'}`}>
+														<BrandIcon className="h-4 w-4" strokeWidth={1.75} />
+													</span>
+													<span className={`font-playfair text-base md:text-lg font-bold tracking-[0.12em] transition-colors ${isDark ? 'text-zinc-300 group-hover/brand:text-white' : 'text-neutral-600 group-hover/brand:text-neutral-900'}`}>
+														{brand.name}
+													</span>
+												</div>
+											);
+										})}
 									</div>
 								))}
 							</div>
@@ -791,7 +776,7 @@ export default function TiendaClientPage() {
 									<p className={`text-[10px] uppercase tracking-[0.3em] mb-1 font-semibold ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>Favoritos del catálogo</p>
 									<h2 className="nike-headline text-xl md:text-2xl">Más vendidos.</h2>
 								</div>
-								<button onClick={() => document.getElementById('nike-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' })} className={`text-sm font-medium underline underline-offset-4 hover:no-underline hidden md:block hover:text-yellow-500 transition-colors ${isDark ? 'text-zinc-400' : 'text-neutral-600'}`}>Ver todos →</button>
+								<button onClick={() => navigateWithTransition('/tienda/catalogo', router)} className={`text-sm font-medium underline underline-offset-4 hover:no-underline hidden md:block hover:text-yellow-500 transition-colors ${isDark ? 'text-zinc-400' : 'text-neutral-600'}`}>Ver todos →</button>
 							</div>
 							<div className="nike-scroll flex gap-4 overflow-x-auto -mx-4 md:-mx-8 px-4 md:px-8 pb-4">
 								{[...liveProducts].sort((a, b) => ((b as { rating?: number }).rating ?? 4.4) - ((a as { rating?: number }).rating ?? 4.4)).slice(0, 8).map((p) => {
@@ -830,575 +815,74 @@ export default function TiendaClientPage() {
 						</section>
 					)}
 
-					{/* Title + sticky filter bar */}
-					<section id="nike-grid" className="max-w-[1400px] mx-auto px-4 md:px-8 pt-14">
-						<div className="flex flex-col md:flex-row md:items-end md:justify-between gap-4 mb-2">
-							<div>
-								<p className={`text-[11px] uppercase tracking-[0.18em] ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>Catálogo completo</p>
-								<h2 className="nike-headline text-3xl md:text-4xl mt-1">Productos ({filteredProducts.length})</h2>
-							</div>
-							<div className="flex items-center gap-3">
-								<button onClick={() => setMobileFiltersOpen((v) => !v)} className={`md:hidden inline-flex items-center gap-2 border rounded-full px-4 py-2 text-sm font-medium transition-colors ${isDark ? 'border-white/20 text-white hover:bg-white/10' : 'border-neutral-300 hover:bg-neutral-100'}`}>
-									<SlidersHorizontal size={14} /> Filtros
-								</button>
-								<div className="hidden md:flex items-center gap-2">
-									<ArrowUpDown size={14} className={isDark ? 'text-zinc-500' : 'text-neutral-500'} />
-									<select
-										aria-label="Ordenar por"
-										value={sortMode}
-										onChange={(e) => setSortMode(e.target.value as 'featured' | 'price-asc' | 'price-desc' | 'name-asc')}
-										className={`border-none text-sm font-medium focus:outline-none cursor-pointer ${isDark ? 'bg-zinc-950 text-white' : 'bg-transparent text-black'}`}
-									>
-										<option value="featured">Destacados</option>
-										<option value="price-asc">Precio: menor a mayor</option>
-										<option value="price-desc">Precio: mayor a menor</option>
-										<option value="name-asc">Nombre: A-Z</option>
-									</select>
+					{/* Acceso directo al catálogo completo */}
+					<section id="nike-grid" className="max-w-[1400px] mx-auto px-4 md:px-8 pt-14 pb-4">
+						<div className={`relative overflow-hidden rounded-[2rem] border ${isDark ? 'border-yellow-400/20 bg-gradient-to-br from-yellow-400/10 via-zinc-900/85 to-black' : 'border-yellow-400/30 bg-gradient-to-br from-yellow-50 via-white to-neutral-50'}`}>
+							<div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-yellow-400/15 blur-3xl pointer-events-none" />
+							<div className="absolute -left-20 -bottom-20 h-56 w-56 rounded-full bg-white/5 blur-3xl pointer-events-none" />
+							<div className="relative z-10 grid md:grid-cols-[1.1fr_0.9fr] gap-8 lg:gap-12 items-center p-6 md:p-10">
+								<div>
+									<p className="text-[10px] uppercase tracking-[0.4em] text-yellow-500 font-bold mb-3">Catálogo completo</p>
+									<h2 className={`font-playfair text-2xl md:text-4xl font-bold leading-tight ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+										Explora los {liveProducts.length} productos<br className="hidden md:block" /> que instalamos en obra.
+									</h2>
+									<p className={`mt-3 max-w-lg text-sm leading-relaxed ${isDark ? 'text-zinc-400' : 'text-neutral-600'}`}>
+										Búsqueda en tiempo real, filtros por categoría, precio y ofertas — ahora en su propia página, pensada para encontrar justo lo que tu proyecto necesita.
+									</p>
+									<div className="mt-6 flex flex-wrap gap-3">
+										<button
+											onClick={() => navigateWithTransition('/tienda/catalogo', router)}
+											className="inline-flex items-center gap-2 rounded-full bg-yellow-400 text-black font-black uppercase text-[11px] tracking-[0.25em] px-7 py-3.5 hover:bg-yellow-300 transition-all hover:scale-105 shadow-[0_0_30px_rgba(250,204,21,0.3)]"
+										>
+											<LayoutGrid size={14} /> Ver catálogo completo
+										</button>
+										<button
+											onClick={() => setSearchOpen(true)}
+											className={`inline-flex items-center gap-2 rounded-full border font-bold uppercase text-[11px] tracking-[0.25em] px-7 py-3.5 transition-all ${isDark ? 'border-white/20 text-white hover:border-yellow-400/50 hover:text-yellow-300' : 'border-neutral-300 text-neutral-800 hover:border-black'}`}
+										>
+											<Search size={14} /> Buscar producto
+										</button>
+									</div>
+								</div>
+								<div className="grid grid-cols-3 gap-2.5">
+									{liveProducts.slice(0, 6).map((p, i) => (
+										<button
+											key={`mini-${p.id}`}
+											onClick={() => handleSelectProduct(p)}
+											className={`relative overflow-hidden rounded-xl aspect-square group ${isDark ? 'bg-zinc-800' : 'bg-neutral-100'} ${i >= 4 ? 'hidden sm:block' : ''}`}
+										>
+											<img src={p.img} alt={p.name} className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-110" />
+											<div className="absolute inset-0 bg-gradient-to-t from-black/55 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+										</button>
+									))}
 								</div>
 							</div>
 						</div>
 					</section>
 
-					{/* Category chip strip - sticky */}
-					<div className={`sticky top-[60px] z-30 backdrop-blur-xl border-y transition-colors duration-300 ${isDark ? 'bg-zinc-950/95 border-white/10' : 'bg-white/95 border-neutral-200'}`}>
-						<div className="max-w-[1400px] mx-auto px-4 md:px-8 py-3 flex items-center gap-2 overflow-x-auto nike-scroll">
-							{categories.map((category) => (
-								<button
-									key={`chip-${category}`}
-									onClick={() => setSelectedCategory(category)}
-									className={`nike-pill shrink-0 rounded-full border px-4 py-2 text-sm font-medium transition-all ${selectedCategory === category ? (isDark ? 'bg-yellow-400 text-black border-yellow-400' : 'bg-black text-white border-black') : (isDark ? 'bg-transparent text-zinc-400 border-zinc-700 hover:border-white hover:text-white' : 'bg-white text-black border-neutral-300 hover:border-black')}`}
-								>
-									{category === 'all' ? 'Todos' : category}
-								</button>
-							))}
-							<div className="ml-auto flex items-center gap-2 shrink-0">
-								<button
-									onClick={() => setOnlyDiscounted((v) => !v)}
-									className={`nike-pill rounded-full border px-4 py-2 text-sm font-medium inline-flex items-center gap-1.5 transition-all ${onlyDiscounted ? 'bg-red-500 text-white border-red-500' : (isDark ? 'bg-transparent text-zinc-400 border-zinc-700 hover:border-white hover:text-white' : 'bg-white text-black border-neutral-300 hover:border-black')}`}
-								>
-									<Tag size={13} /> Ofertas
-								</button>
-								<select
-									aria-label="Filtrar por precio"
-									value={priceFilter}
-									onChange={(e) => setPriceFilter(e.target.value as 'all' | 'low' | 'mid' | 'high')}
-									className={`rounded-full border text-sm font-medium px-4 py-2 focus:outline-none transition-colors ${isDark ? 'border-zinc-700 bg-zinc-900 text-white focus:border-yellow-400' : 'border-neutral-300 bg-white text-black focus:border-black'}`}
-								>
-									<option value="all">Todo precio</option>
-									<option value="low">Hasta $80.000</option>
-									<option value="mid">$80.001 – $150.000</option>
-									<option value="high">Sobre $150.000</option>
-								</select>
-							</div>
-						</div>
-					</div>
-
-					{/* Main grid layout */}
-					<main className="max-w-[1400px] mx-auto px-4 md:px-8 pt-6 pb-32">
-						<div className="md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-8">
-							{/* Sidebar filters - desktop */}
-							<aside className="hidden md:block">
-								<div className="sticky top-[140px] space-y-7 pb-10">
-									<div>
-										<p className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>Categoría</p>
-										<ul className="space-y-2">
-											{categories.map((category) => (
-												<li key={`side-${category}`}>
-													<button
-														onClick={() => setSelectedCategory(category)}
-														className={`text-left text-sm w-full transition-colors ${selectedCategory === category ? (isDark ? 'text-yellow-400 font-bold' : 'text-black font-bold') : (isDark ? 'text-zinc-500 hover:text-white' : 'text-neutral-600 hover:text-black')}`}
-													>
-														{category === 'all' ? 'Todos los productos' : category}
-													</button>
-												</li>
-											))}
-										</ul>
-									</div>
-									<div className={`border-t pt-6 ${isDark ? 'border-white/10' : 'border-neutral-200'}`}>
-										<p className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>Precio</p>
-										<ul className="space-y-2">
-											{(['all','low','mid','high'] as const).map((p) => (
-												<li key={p}>
-													<button onClick={() => setPriceFilter(p)} className={`text-left text-sm w-full transition-colors ${priceFilter === p ? (isDark ? 'text-yellow-400 font-bold' : 'text-black font-bold') : (isDark ? 'text-zinc-500 hover:text-white' : 'text-neutral-600 hover:text-black')}`}>
-														{p === 'all' ? 'Todos' : p === 'low' ? 'Hasta $80.000' : p === 'mid' ? '$80.001 – $150.000' : 'Sobre $150.000'}
-													</button>
-												</li>
-											))}
-										</ul>
-									</div>
-									<div className={`border-t pt-6 ${isDark ? 'border-white/10' : 'border-neutral-200'}`}>
-										<p className={`text-xs font-bold uppercase tracking-wider mb-3 ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>Otros</p>
-										<label className={`flex items-center gap-2 text-sm cursor-pointer ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>
-											<input type="checkbox" checked={onlyDiscounted} onChange={(e) => setOnlyDiscounted(e.target.checked)} className={`w-4 h-4 ${isDark ? 'accent-yellow-400' : 'accent-black'}`} />
-											Solo en oferta
-										</label>
-									</div>
-									{totalSavingsFiltered > 0 && (
-										<div className={`border-t pt-6 ${isDark ? 'border-white/10' : 'border-neutral-200'}`}>
-											<p className={`text-xs ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>Ahorro visible</p>
-											<p className="text-2xl font-black text-red-500">${totalSavingsFiltered.toLocaleString('es-CL')}</p>
-										</div>
-									)}
+					{/* Trust strip */}
+					<section className={`max-w-[1400px] mx-auto px-4 md:px-8 mt-2 mb-16 grid grid-cols-2 md:grid-cols-4 gap-6 border-t pt-10 ${isDark ? 'border-white/10' : 'border-neutral-200'}`}>
+						{[
+							{ icon: Award, title: 'Garantía real', desc: 'Cobertura extendida en todas las instalaciones.' },
+							{ icon: Clock, title: 'Despacho rápido', desc: 'Entregas en 24-48h en stock disponible.' },
+							{ icon: Sparkles, title: 'Curatoría premium', desc: 'Solo productos validados por nuestros expertos.' },
+							{ icon: Phone, title: 'Asesoría dedicada', desc: 'Habla con un especialista antes de comprar.' },
+						].map(({ icon: Icon, title, desc }) => (
+							<div key={title} className={`flex items-start gap-3 p-4 rounded-xl transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-50'}`}>
+								<Icon size={20} className={`mt-0.5 flex-shrink-0 ${isDark ? 'text-yellow-400' : 'text-black'}`} />
+								<div>
+									<p className="text-sm font-bold">{title}</p>
+									<p className={`text-xs mt-1 ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>{desc}</p>
 								</div>
-							</aside>
-
-							{/* Mobile filters drawer */}
-							{mobileFiltersOpen && (
-								<div className={`md:hidden mb-6 border rounded-xl p-4 space-y-4 ${isDark ? 'border-white/10 bg-zinc-900' : 'border-neutral-200 bg-neutral-50'}`}>
-									<div>
-										<p className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>Precio</p>
-										<select aria-label="Filtrar por precio" value={priceFilter} onChange={(e) => setPriceFilter(e.target.value as 'all' | 'low' | 'mid' | 'high')} className={`w-full rounded-lg border px-3 py-2 text-sm ${isDark ? 'border-white/10 bg-zinc-800 text-white' : 'border-neutral-300 bg-white'}`}>
-											<option value="all">Todo precio</option>
-											<option value="low">Hasta $80.000</option>
-											<option value="mid">$80.001 – $150.000</option>
-											<option value="high">Sobre $150.000</option>
-										</select>
-									</div>
-									<div>
-										<p className={`text-xs font-bold uppercase tracking-wider mb-2 ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>Ordenar</p>
-										<select aria-label="Ordenar por" value={sortMode} onChange={(e) => setSortMode(e.target.value as 'featured' | 'price-asc' | 'price-desc' | 'name-asc')} className={`w-full rounded-lg border px-3 py-2 text-sm ${isDark ? 'border-white/10 bg-zinc-800 text-white' : 'border-neutral-300 bg-white'}`}>
-											<option value="featured">Destacados</option>
-											<option value="price-asc">Precio: menor a mayor</option>
-											<option value="price-desc">Precio: mayor a menor</option>
-											<option value="name-asc">Nombre: A-Z</option>
-										</select>
-									</div>
-									<label className={`flex items-center gap-2 text-sm ${isDark ? 'text-zinc-400' : 'text-neutral-700'}`}>
-										<input type="checkbox" checked={onlyDiscounted} onChange={(e) => setOnlyDiscounted(e.target.checked)} className={`w-4 h-4 ${isDark ? 'accent-yellow-400' : 'accent-black'}`} />
-										Solo en oferta
-									</label>
-								</div>
-							)}
-
-							{/* Product grid */}
-							<div>
-								{fetchComplete && filteredProducts.length === 0 ? (
-									<div className="flex flex-col items-center justify-center py-32 text-center gap-4">
-										<Package size={48} className="text-neutral-300" />
-										<p className="text-neutral-700 text-lg font-medium">
-											{searchQuery.trim() ? `Sin resultados para "${searchQuery}"` : 'No encontramos productos con estos filtros'}
-										</p>
-										<button onClick={() => { setSelectedCategory('all'); setPriceFilter('all'); setOnlyDiscounted(false); setSearchQuery(''); }} className="mt-2 rounded-full bg-black text-white px-6 py-2.5 text-sm font-medium hover:bg-neutral-800">Limpiar filtros</button>
-									</div>
-								) : (
-									<div className="grid grid-cols-2 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
-										{filteredProducts.map((p) => {
-											const pct = (p as { discountPercentage?: number }).discountPercentage ?? 0;
-											const stockBadge = getStockBadge(p);
-											const deliveryBadge = getDeliveryBadge(p);
-											const rating = (p as { rating?: number }).rating;
-											return (
-												<UiverseProductCard
-													key={p.id}
-													name={p.name}
-													price={p.price}
-													category={p.category}
-													img={p.img}
-													discountPct={pct}
-													rating={rating}
-													stockLabel={stockBadge.label}
-													deliveryLabel={deliveryBadge.label}
-													isDark={isDark}
-													onSelect={() => handleSelectProduct(p)}
-													onAddToCart={(e) => handleAddToCart(e as React.MouseEvent<HTMLButtonElement>, p)}
-												/>
-											);
-										})}
-									</div>
-								)}
-
-								{/* Editorial banner mid-grid */}
-								{filteredProducts.length > 4 && (
-									<section className="my-14 grid grid-cols-1 md:grid-cols-2 gap-4">
-										<div className={`relative overflow-hidden rounded-2xl aspect-[4/3] group cursor-pointer ${isDark ? 'bg-zinc-800' : 'bg-neutral-100'}`} onClick={() => setSelectedCategory('Iluminación')}>
-											<img src="https://images.unsplash.com/photo-1513506003901-1e6a229e2d15?q=80&w=1200&auto=format&fit=crop" alt="Iluminación" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-											<div className="absolute inset-0 nike-hero-grad" />
-											<div className="absolute bottom-6 left-6 text-white">
-												<p className="text-[10px] uppercase tracking-[0.25em] mb-1 text-yellow-400 font-semibold">Ambientes</p>
-												<h3 className="nike-headline text-2xl md:text-3xl">Iluminación</h3>
-												<button className="mt-3 bg-white text-black rounded-full px-5 py-2 text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-yellow-400 transition-colors">Ver colección <ArrowRight size={12} /></button>
-											</div>
-										</div>
-										<div className={`relative overflow-hidden rounded-2xl aspect-[4/3] group cursor-pointer ${isDark ? 'bg-zinc-800' : 'bg-neutral-100'}`} onClick={() => setSelectedCategory('Seguridad')}>
-											<img src="https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=1200&auto=format&fit=crop" alt="Seguridad" className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" />
-											<div className="absolute inset-0 nike-hero-grad" />
-											<div className="absolute bottom-6 left-6 text-white">
-												<p className="text-[10px] uppercase tracking-[0.25em] mb-1 text-yellow-400 font-semibold">Tu hogar</p>
-												<h3 className="nike-headline text-2xl md:text-3xl">Seguridad inteligente</h3>
-												<button className="mt-3 bg-white text-black rounded-full px-5 py-2 text-xs font-semibold inline-flex items-center gap-1.5 hover:bg-yellow-400 transition-colors">Explorar <ArrowRight size={12} /></button>
-											</div>
-										</div>
-									</section>
-								)}
-
-								{/* Trust strip */}
-								<section className={`mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 border-t pt-10 ${isDark ? 'border-white/10' : 'border-neutral-200'}`}>
-									{[
-										{ icon: Award, title: 'Garantía real', desc: 'Cobertura extendida en todas las instalaciones.' },
-										{ icon: Clock, title: 'Despacho rápido', desc: 'Entregas en 24-48h en stock disponible.' },
-										{ icon: Sparkles, title: 'Curatoría premium', desc: 'Solo productos validados por nuestros expertos.' },
-										{ icon: Phone, title: 'Asesoría dedicada', desc: 'Habla con un especialista antes de comprar.' },
-									].map(({ icon: Icon, title, desc }) => (
-										<div key={title} className={`flex items-start gap-3 p-4 rounded-xl transition-colors ${isDark ? 'hover:bg-white/5' : 'hover:bg-neutral-50'}`}>
-											<Icon size={20} className={`mt-0.5 flex-shrink-0 ${isDark ? 'text-yellow-400' : 'text-black'}`} />
-											<div>
-												<p className="text-sm font-bold">{title}</p>
-												<p className={`text-xs mt-1 ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>{desc}</p>
-											</div>
-										</div>
-									))}
-								</section>
 							</div>
-						</div>
-					</main>
+						))}
+					</section>
 
 					{/* Hidden legacy intro retained for SEO crawlers */}
 					<div className="sr-only">
 						<h2>Catálogo Fabrick - materiales premium instalados</h2>
 					</div>
 				</div>
-			)}
-
-			{/* Legacy intro strip kept hidden to preserve hooks */}
-			{false && !selectedProduct && (
-				<>
-					<section className="relative px-6 md:px-10 pt-10 pb-6 max-w-6xl mx-auto">
-						<div className="flex flex-col md:flex-row md:items-end md:justify-between gap-6">
-							<div>
-								<p className="text-[9px] uppercase tracking-[0.5em] text-yellow-400/70 mb-3">Catálogo Fabrick</p>
-								<h1 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-[0.95] text-white">
-									Materiales que instalamos<br />
-									<span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-yellow-500 bg-clip-text text-transparent">en tu obra</span>
-								</h1>
-								<p className="mt-4 text-zinc-400 text-sm max-w-xl leading-relaxed">
-									Cada material de este catálogo es seleccionado, adquirido e instalado por nuestro equipo certificado directamente en tu proyecto.
-								</p>
-							</div>
-							<div className="flex flex-col sm:flex-row gap-3">
-								<button
-									onClick={() => window.scrollTo({ top: window.innerHeight * 0.85, behavior: 'smooth' })}
-									className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-yellow-400 text-black font-black uppercase text-[10px] tracking-[0.3em] hover:bg-yellow-300 transition-all hover:scale-105 shadow-[0_0_30px_rgba(250,204,21,0.3)]"
-								>
-									<Package size={13} /> Ver colección
-								</button>
-								<button
-									onClick={() => router.push('/contacto')}
-									className="inline-flex items-center gap-2 px-6 py-3 rounded-full border border-white/15 text-white/70 font-semibold uppercase text-[10px] tracking-[0.3em] hover:border-yellow-400/40 hover:text-white transition-all"
-								>
-									<Phone size={13} /> Contactar
-								</button>
-							</div>
-						</div>
-					</section>
-
-					{/* Products catalogue */}
-					<main className="max-w-6xl mx-auto px-5 md:px-8 pb-48 relative z-10">
-						<section className="mb-10 md:mb-14 rounded-[2rem] border border-yellow-400/20 bg-gradient-to-br from-yellow-400/10 via-black/60 to-black/70 p-5 md:p-8 overflow-hidden relative">
-							<div className="absolute -right-16 -top-16 h-44 w-44 rounded-full bg-yellow-400/15 blur-3xl" />
-							<div className="absolute -left-16 -bottom-16 h-44 w-44 rounded-full bg-white/10 blur-3xl" />
-							<div className="relative z-10 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-								<div>
-									<p className="text-[9px] uppercase tracking-[0.45em] text-yellow-400/85 mb-3">Dropshipping Pro Layer</p>
-									<h3 className="text-2xl md:text-4xl font-black uppercase tracking-tight text-white leading-[0.95]">
-										Colecciones listas para convertir
-									</h3>
-									<p className="mt-3 max-w-xl text-sm text-zinc-300">
-										Visual premium, lectura rápida y foco en decisión de compra para móvil y desktop.
-									</p>
-								</div>
-								<div className="grid grid-cols-2 gap-2 md:grid-cols-3">
-									<div className="depth-glass rounded-xl border border-white/15 px-3 py-2 text-center">
-										<p className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">Productos</p>
-										<p className="text-lg font-black text-white">{liveProducts.length}</p>
-									</div>
-									<div className="depth-glass rounded-xl border border-white/15 px-3 py-2 text-center">
-										<p className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">Con oferta</p>
-										<p className="text-lg font-black text-yellow-300">{liveProducts.filter((p) => ((p as { discountPercentage?: number }).discountPercentage ?? 0) > 0).length}</p>
-									</div>
-									<div className="depth-glass rounded-xl border border-white/15 px-3 py-2 text-center col-span-2 md:col-span-1">
-										<p className="text-[10px] uppercase tracking-[0.14em] text-zinc-400">Tiempo real</p>
-										<p className={`text-lg font-black ${realtimeConnected ? 'text-emerald-300' : 'text-zinc-300'}`}>
-											{realtimeConnected ? 'Online' : 'Sync'}
-										</p>
-									</div>
-								</div>
-							</div>
-						</section>
-
-						{/* Section header */}
-						<div className="flex flex-col sm:flex-row sm:items-end justify-between gap-4 mb-16 pt-16 border-t border-white/5">
-							<div>
-								<p className="text-[9px] uppercase tracking-[0.4em] text-yellow-400/70 mb-2">Nuestro catálogo</p>
-								<h2 className="text-3xl md:text-4xl font-black uppercase tracking-tighter text-white">
-									{filteredProducts.length} Productos
-								</h2>
-							</div>
-							<div className="flex items-center gap-2">
-								<span className={`w-2 h-2 rounded-full ${realtimeConnected ? 'bg-emerald-400 shadow-[0_0_6px_#4ade80]' : 'bg-zinc-600'}`} />
-								<span className={`text-[10px] uppercase tracking-widest ${realtimeConnected ? 'text-emerald-400' : 'text-zinc-500'}`}>
-									{realtimeConnected ? 'Catálogo actualizado' : 'Cargando catálogo'}
-								</span>
-							</div>
-						</div>
-
-						<div className="xl:grid xl:grid-cols-[280px_minmax(0,1fr)] xl:gap-8">
-						<div className="hidden xl:block">
-							<aside className="sticky top-28 rounded-[1.25rem] border border-white/10 bg-white/[0.02] p-4">
-								<p className="text-[10px] uppercase tracking-[0.26em] text-zinc-500 font-bold">Panel de filtros</p>
-								<p className="mt-1 text-xs text-zinc-400">Ajusta catálogo y maximiza margen de conversión.</p>
-								<div className="mt-4 space-y-2">
-									<p className="text-[10px] uppercase tracking-[0.18em] text-zinc-500 font-bold">Categorias</p>
-									<div className="flex flex-wrap gap-2">
-										{categories.map((category) => (
-											<button
-												key={`desk-${category}`}
-												onClick={() => setSelectedCategory(category)}
-												className={`rounded-full border px-3 py-1.5 text-[10px] uppercase tracking-[0.14em] font-bold transition-all ${selectedCategory === category ? 'filter-pill-active border-yellow-400/40 bg-yellow-400/15 text-yellow-300' : 'border-white/15 text-zinc-300 hover:border-white/35 hover:text-white'}`}
-											>
-												{category === 'all' ? 'Todas' : category}
-											</button>
-										))}
-									</div>
-								</div>
-								<div className="mt-3 space-y-2">
-									<select
-										aria-label="Filtrar por precio"
-										value={priceFilter}
-										onChange={(e) => setPriceFilter(e.target.value as 'all' | 'low' | 'mid' | 'high')}
-										className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-[10px] uppercase tracking-[0.14em] font-bold text-zinc-200 focus:border-yellow-400/40 focus:outline-none"
-									>
-										<option value="all">Todo precio</option>
-										<option value="low">Hasta $80.000</option>
-										<option value="mid">$80.001 a $150.000</option>
-										<option value="high">Sobre $150.000</option>
-									</select>
-									<select
-										aria-label="Ordenar por"
-
-										value={sortMode}
-										onChange={(e) => setSortMode(e.target.value as 'featured' | 'price-asc' | 'price-desc' | 'name-asc')}
-										className="w-full rounded-xl border border-white/15 bg-black/40 px-3 py-2 text-[10px] uppercase tracking-[0.14em] font-bold text-zinc-200 focus:border-yellow-400/40 focus:outline-none"
-									>
-										<option value="featured">Destacados</option>
-										<option value="price-asc">Precio menor</option>
-										<option value="price-desc">Precio mayor</option>
-										<option value="name-asc">A-Z</option>
-									</select>
-									<button
-										onClick={() => setOnlyDiscounted((v) => !v)}
-										className={`w-full inline-flex items-center justify-center gap-1.5 rounded-xl border px-3 py-2 text-[10px] uppercase tracking-[0.14em] font-bold transition-all ${onlyDiscounted ? 'filter-pill-active border-yellow-400/40 bg-yellow-400/15 text-yellow-300' : 'border-white/15 text-zinc-300 hover:border-white/35 hover:text-white'}`}
-									>
-										<Tag size={11} /> Solo ofertas
-									</button>
-								</div>
-								<div className="mt-4 rounded-xl border border-yellow-400/25 bg-yellow-400/10 p-3">
-									<p className="text-[10px] uppercase tracking-[0.16em] text-zinc-500 font-bold">Ahorro total visible</p>
-									<p className="mt-1 text-xl font-black text-yellow-300">${totalSavingsFiltered.toLocaleString()}</p>
-									<p className="mt-1 text-xs text-zinc-400">Basado en descuentos aplicados de los productos filtrados.</p>
-								</div>
-							</aside>
-						</div>
-						<div>
-						<div className="mb-12 rounded-[1.5rem] border border-white/10 bg-white/[0.02] p-4 md:p-5">
-							<div className="mb-3 flex items-center gap-2">
-								<SlidersHorizontal size={14} className="text-yellow-400" />
-								<p className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 font-bold">Filtros avanzados</p>
-							</div>
-							<div className="grid gap-3 md:grid-cols-[1fr_auto]">
-								<div className="flex flex-wrap gap-2">
-									{categories.map((category, fIdx) => (
-										<button
-											key={category}
-											onClick={() => setSelectedCategory(category)}
-											className={`mobile-stagger rounded-full border px-3 py-2 text-[10px] uppercase tracking-[0.16em] font-bold transition-all ${selectedCategory === category ? 'filter-pill-active border-yellow-400/40 bg-yellow-400/15 text-yellow-300' : 'border-white/15 text-zinc-300 hover:border-white/35 hover:text-white'}`}
-										>
-											{category === 'all' ? 'Todas' : category}
-										</button>
-									))}
-								</div>
-								<div className="flex flex-wrap gap-2 md:justify-end">
-									<select
-										aria-label="Filtrar por precio"
-										value={priceFilter}
-										onChange={(e) => setPriceFilter(e.target.value as 'all' | 'low' | 'mid' | 'high')}
-										className="rounded-full border border-white/15 bg-black/40 px-3 py-2 text-[10px] uppercase tracking-[0.14em] font-bold text-zinc-200 focus:border-yellow-400/40 focus:outline-none"
-									>
-										<option value="all">Todo precio</option>
-										<option value="low">Hasta $80.000</option>
-										<option value="mid">$80.001 a $150.000</option>
-										<option value="high">Sobre $150.000</option>
-									</select>
-									<select
-										aria-label="Ordenar por"
-										value={sortMode}
-										onChange={(e) => setSortMode(e.target.value as 'featured' | 'price-asc' | 'price-desc' | 'name-asc')}
-										className="rounded-full border border-white/15 bg-black/40 px-3 py-2 text-[10px] uppercase tracking-[0.14em] font-bold text-zinc-200 focus:border-yellow-400/40 focus:outline-none"
-									>
-										<option value="featured">Destacados</option>
-										<option value="price-asc">Precio menor</option>
-										<option value="price-desc">Precio mayor</option>
-										<option value="name-asc">A-Z</option>
-									</select>
-									<button
-										onClick={() => setOnlyDiscounted((v) => !v)}
-										className={`inline-flex items-center gap-1.5 rounded-full border px-3 py-2 text-[10px] uppercase tracking-[0.14em] font-bold transition-all ${onlyDiscounted ? 'filter-pill-active border-yellow-400/40 bg-yellow-400/15 text-yellow-300' : 'border-white/15 text-zinc-300 hover:border-white/35 hover:text-white'}`}
-									>
-										<Tag size={11} /> Solo ofertas
-									</button>
-								</div>
-							</div>
-							<button
-								onClick={() => setMobileFiltersOpen((v) => !v)}
-								className="mt-3 inline-flex items-center gap-2 rounded-full border border-white/15 px-3 py-2 text-[10px] uppercase tracking-[0.16em] font-bold text-zinc-300 md:hidden"
-							>
-								<ArrowUpDown size={11} />
-								{mobileFiltersOpen ? 'Cerrar panel' : 'Ver panel rápido'}
-							</button>
-							{mobileFiltersOpen && (
-								<p className="mt-3 text-xs text-zinc-500 md:hidden">
-									Aplica filtros para encontrar combinaciones con mayor margen y mejor conversión en checkout.
-								</p>
-							)}
-						</div>
-
-						{/* Products */}
-						<div className="space-y-28 md:space-y-40">
-							{fetchComplete && filteredProducts.length === 0 ? (
-								<div className="flex flex-col items-center justify-center py-32 text-center gap-4">
-									<span className="text-5xl">📦</span>
-									<p className="text-white/60 text-lg">No hay productos con estos filtros</p>
-									<p className="text-white/30 text-sm">Prueba otra categoría o rango de precio</p>
-								</div>
-							) : (
-							filteredProducts.map((p, idx) => (
-								<div key={p.id} className={`mobile-card-stagger scroll-reveal group flex flex-col ${idx % 2 === 0 ? 'md:flex-row' : 'md:flex-row-reverse'} items-center gap-10 md:gap-20`}>
-									{/* Image */}
-									<div className="product-3d-wrap w-full md:w-1/2">
-									<div
-										className="product-3d-card aspect-[4/5] overflow-hidden rounded-[2.5rem] border border-white/5 shadow-[0_30px_80px_rgba(0,0,0,0.7)] relative cursor-pointer"
-										onClick={() => handleSelectProduct(p)}
-									>
-										<img
-											src={p.img}
-											className="w-full h-full object-cover grayscale-[0.5] group-hover:grayscale-0 group-hover:scale-105 transition-all duration-[2s] ease-out"
-											alt={p.name}
-										/>
-										<div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-										<div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_20%,rgba(255,255,255,0.18),transparent_45%)] opacity-70 mix-blend-screen pointer-events-none" />
-										<div className="absolute -inset-[2px] rounded-[2.6rem] border border-yellow-400/20 pointer-events-none" />
-										{/* Category badge */}
-										<span className="absolute top-5 left-5 px-3 py-1.5 rounded-full text-[9px] uppercase tracking-widest font-bold product-badge-shine border border-yellow-400/20 text-yellow-400">
-											{p.category}
-										</span>
-										{(p as { discountPercentage?: number }).discountPercentage ? (
-											<span className="absolute top-5 right-5 flex items-center gap-1 px-3 py-1 rounded-full bg-red-500/95 text-white text-[9px] font-black uppercase tracking-wider shadow-[0_0_22px_rgba(239,68,68,0.55)]">
-												<span className="motion-safe:animate-pulse">●</span> Última Oferta · -{(p as { discountPercentage?: number }).discountPercentage}%
-											</span>
-										) : null}
-										{/* Quick action overlay */}
-										<div className="absolute inset-x-0 bottom-0 translate-y-full group-hover:translate-y-0 transition-transform duration-500 p-5">
-											<div className="flex gap-2">
-												<button
-													onClick={(e) => { e.stopPropagation(); handleSelectProduct(p); }}
-													className="flex-1 py-3 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-white text-[10px] font-bold uppercase tracking-wider hover:bg-white/20 transition-all flex items-center justify-center gap-2"
-												>
-													<ArrowRight size={13} /> Ver Detalle
-												</button>
-												<button
-													onClick={(e) => { e.stopPropagation(); handleAddToCart(e, p); }}
-													className="flex-1 py-3 rounded-full bg-yellow-400/90 text-black text-[10px] font-black uppercase tracking-wider hover:bg-yellow-400 transition-all"
-												>
-													Añadir
-												</button>
-											</div>
-										</div>
-									</div>
-									</div>
-
-									{/* Info */}
-									<div className="w-full md:w-1/2 space-y-6 text-center md:text-left">
-										<div>
-											<p className="text-[9px] uppercase tracking-[0.4em] text-yellow-400/70 mb-3">{p.category}</p>
-											<h3 className="text-3xl md:text-5xl font-black uppercase tracking-tighter leading-[0.9] text-white group-hover:text-yellow-50 transition-colors">
-												{p.name}
-											</h3>
-										</div>
-
-										<p className="text-zinc-400 text-sm md:text-base font-light leading-relaxed italic max-w-sm">
-											&ldquo;{p.tagline}&rdquo;
-										</p>
-
-										{(p as { rating?: number }).rating ? (
-											<div className="flex items-center gap-1 justify-center md:justify-start">
-												{[...Array(5)].map((_, si) => (
-													<Star
-														key={si}
-														size={12}
-														className={si < Math.round((p as { rating?: number }).rating ?? 0) ? 'text-yellow-400 fill-yellow-400' : 'text-zinc-700 fill-zinc-700'}
-													/>
-												))}
-												<span className="text-zinc-500 text-xs ml-1">{((p as { rating?: number }).rating ?? 0).toFixed(1)}</span>
-											</div>
-										) : null}
-
-										{(() => {
-											const deliveryBadge = getDeliveryBadge(p);
-											const stockBadge = getStockBadge(p);
-											return (
-												<div className="flex flex-wrap items-center gap-2 justify-center md:justify-start">
-													<span className={`rounded-full border px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] ${deliveryBadge.className}`}>
-														{deliveryBadge.label}
-													</span>
-													<span className={`rounded-full border px-2.5 py-1 text-[9px] font-bold uppercase tracking-[0.12em] ${stockBadge.className}`}>
-														{stockBadge.label}
-													</span>
-												</div>
-											);
-										})()}
-
-										<div className="pt-2">
-											<p className="text-[9px] uppercase tracking-widest text-zinc-600 mb-1">
-												{(p as { discountPercentage?: number }).discountPercentage ? 'Precio promocional' : 'Inversión'}
-											</p>
-											{(() => {
-												const pct = (p as { discountPercentage?: number }).discountPercentage ?? 0;
-												const finalPrice = pct > 0 ? Math.round(p.price * (1 - pct / 100)) : p.price;
-												return (
-													<div className="flex items-baseline gap-3 justify-center md:justify-start flex-wrap">
-														<span className="font-mono text-3xl md:text-4xl font-bold text-white">${finalPrice.toLocaleString()}</span>
-														{pct > 0 ? (
-															<>
-																<span className="text-base text-zinc-500 line-through">${p.price.toLocaleString()}</span>
-																<span className="px-2 py-0.5 rounded-full bg-red-500/15 border border-red-500/30 text-red-400 text-[9px] font-black uppercase tracking-wider">
-																	Ahorras ${Math.round(p.price - finalPrice).toLocaleString()}
-																</span>
-															</>
-														) : null}
-													</div>
-												);
-											})()}
-										</div>
-
-										<div className="flex flex-col sm:flex-row gap-3 justify-center md:justify-start pt-2">
-											<SilverGoldButton onClick={() => goToCheckout(p)}>
-												Comprar Ahora
-											</SilverGoldButton>
-											<button
-												onClick={(e) => handleAddToCart(e, p)}
-												className="px-6 py-3 rounded-full border border-white/10 text-white/60 text-[10px] font-bold uppercase tracking-widest hover:border-yellow-400/30 hover:text-white/90 transition-all"
-											>
-												Añadir al Carrito
-											</button>
-										</div>
-									</div>
-								</div>
-							))
-							)}
-						</div>
-						</div>
-						</div>
-					</main>
-				</>
 			)}
 
 			{/* ── PRODUCT DETAIL VIEW ── */}
@@ -1456,7 +940,7 @@ export default function TiendaClientPage() {
 									</div>
 									<div>
 										<p className="text-[9px] text-zinc-500 uppercase tracking-widest mb-2 font-black">Precio Final</p>
-										<p className="text-4xl md:text-5xl font-black text-white">${selectedProduct.price.toLocaleString()}</p>
+										<p className="text-4xl md:text-5xl font-black text-white">${selectedProduct.price.toLocaleString('es-CL')}</p>
 									</div>
 								</div>
 
@@ -1689,9 +1173,9 @@ export default function TiendaClientPage() {
 					<div>
 						<p className="text-[11px] uppercase tracking-[0.2em] text-neutral-500 mb-4 font-medium">Tienda</p>
 						<ul className="space-y-3">
-							{[['Catálogo completo', '#nike-grid'], ['Seguridad', null], ['Iluminación', null], ['Ofertas activas', null]].map(([label, href]) => (
+							{[['Catálogo completo', '/tienda/catalogo'], ['Seguridad', null], ['Iluminación', null], ['Ofertas activas', null]].map(([label, href]) => (
 								<li key={label as string}>
-									<button onClick={() => href ? document.getElementById('nike-grid')?.scrollIntoView({ behavior: 'smooth', block: 'start' }) : null} className="text-sm text-neutral-400 hover:text-white transition-colors">{label}</button>
+									<button onClick={() => href ? navigateWithTransition(href, router) : null} className="text-sm text-neutral-400 hover:text-white transition-colors">{label}</button>
 								</li>
 							))}
 						</ul>
@@ -1728,7 +1212,7 @@ export default function TiendaClientPage() {
 				value={searchQuery}
 				onChange={(v) => setSearchQuery(v)}
 				onClose={() => setSearchOpen(false)}
-				onFilterClick={() => { setSearchOpen(false); setMobileFiltersOpen(true); }}
+				onFilterClick={() => { setSearchOpen(false); navigateWithTransition('/tienda/catalogo', router); }}
 				resultCount={searchQuery.trim() ? filteredProducts.length : undefined}
 			/>
 

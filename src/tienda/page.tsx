@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { navigateWithTransition } from '@/lib/routeTransition';
-import { useCatalogProducts } from '@/hooks/useCatalogProducts';
+import { useCatalogProducts, FALLBACK_CATALOG_PRODUCTS } from '@/hooks/useCatalogProducts';
 import { useAuth } from '@/context/AuthContext';
 import { getInitials } from '@/lib/initials';
 import { useTheme } from '@/context/ThemeContext';
@@ -65,60 +65,7 @@ type Product = {
 	img: string;
 };
 
-const PRODUCTS: Product[] = [
-	{
-		id: 'FBK-01',
-		name: 'Cerradura Biométrica Titanio',
-		price: 189900,
-		category: 'Seguridad',
-		tagline: 'Tu familia, siempre segura',
-		description:
-			'Diseñada para brindar tranquilidad absoluta. Un sistema de reconocimiento intuitivo que protege lo que más quieres con la resistencia del titanio.',
-		features: ['Sensor de alta precisión', 'Apertura de emergencia', 'Gestión desde tu móvil'],
-		dimensions: '35 x 7 x 4 cm',
-		delivery: 'Entrega inmediata',
-		img: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=800&auto=format&fit=crop',
-	},
-	{
-		id: 'FBK-02',
-		name: 'Luz LED Arquitectónica',
-		price: 85500,
-		category: 'Iluminación',
-		tagline: 'El alma de tu espacio',
-		description:
-			'Crea ambientes acogedores con nuestra iluminación adaptativa. Una luz que se ajusta a tu ritmo de vida y resalta la belleza de tu hogar.',
-		features: ['Luz cálida relajante', 'Control por WiFi', 'Bajo consumo'],
-		dimensions: '120 x 2 x 2 cm',
-		delivery: 'Envío en 24h',
-		img: 'https://images.unsplash.com/photo-1565814329452-e1efa11c5e8a?q=80&w=800&auto=format&fit=crop',
-	},
-	{
-		id: 'FBK-03',
-		name: 'Grifería Monomando Ónix',
-		price: 145000,
-		category: 'Grifería',
-		tagline: 'Detalles que enamoran',
-		description:
-			'La combinación perfecta entre suavidad y durabilidad. Un diseño pensado para el uso diario que mantiene su elegancia intacta por años.',
-		features: ['Tacto sedoso', 'Fácil limpieza', 'Garantía extendida'],
-		dimensions: '32 x 22 cm',
-		delivery: 'Entrega inmediata',
-		img: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop',
-	},
-	{
-		id: 'FBK-04',
-		name: 'Panel Acústico Roble',
-		price: 42900,
-		category: 'Revestimiento',
-		tagline: 'Tu refugio de paz',
-		description:
-			'Disfruta del silencio y la calidez de la madera real. Un revestimiento que transforma cualquier habitación en un espacio de descanso total.',
-		features: ['Aislamiento acústico', 'Madera natural', 'Fácil instalación'],
-		dimensions: '240 x 60 cm',
-		delivery: 'Envío en 48h',
-		img: 'https://images.unsplash.com/photo-1615873968403-89e068629265?q=80&w=800&auto=format&fit=crop',
-	},
-];
+const PRODUCTS: Product[] = FALLBACK_CATALOG_PRODUCTS as Product[];
 
 const MENU_OPTIONS = [
 	{ icon: Home, label: 'Inicio', description: 'Volver a la página principal', href: '/' },

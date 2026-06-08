@@ -54,6 +54,7 @@ import { CART_SESSION_KEY, useCartContextSafe } from '@/context/CartContext';
 import { calculateCheckoutSummary } from '@/lib/checkout';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import Checkout4DExperience from '@/components/checkout/Checkout4DExperience';
+import FabrickLogo3DLazy from '@/components/FabrickLogo3DLazy';
 import { 
   ArrowLeft, ShieldCheck, Lock, Truck, 
   CheckCircle2, ChevronRight, Fingerprint,
@@ -2045,7 +2046,20 @@ const CheckoutApp = () => {
 
       {/* NAVBAR MINIMALISTA */}
       <nav className="fixed top-0 left-0 w-full z-50 bg-black/90 backdrop-blur-xl border-b border-white/5 py-4 px-6 md:px-12 flex items-center justify-between">
-        <span className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-400">Soluciones Fabrick</span>
+        <div className="flex flex-shrink-0 select-none items-center gap-2">
+          <div className="relative h-9 w-[44px] flex-shrink-0">
+            <FabrickLogo3DLazy
+              height="100%"
+              interactive={false}
+              showHint={false}
+              showText={false}
+              cameraZ={14}
+            />
+          </div>
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">
+            SOLUCIONES <span className="text-yellow-400">FABRICK</span>
+          </span>
+        </div>
         <div className="flex items-center gap-4">
           <div className="flex items-center gap-1.5">
             <Lock className="w-3 h-3 text-emerald-500" />

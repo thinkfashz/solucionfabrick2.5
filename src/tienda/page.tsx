@@ -44,6 +44,7 @@ import {
 	ShowerHead,
 	Lock,
 } from 'lucide-react';
+import FabrickLogo3DLazy from '@/components/FabrickLogo3DLazy';
 import BannerCarousel from '@/components/BannerCarousel';
 import { useCartContext } from '@/context/CartContext';
 import UiverseProductCard from '@/components/store/UiverseProductCard';
@@ -127,36 +128,64 @@ const MENU_OPTIONS = [
 	{ icon: Settings, label: 'Ajustes', description: 'Configuración de tu cuenta', href: '/ajustes' },
 ];
 
-function FabrickLogo({ className = '', centered = false, active = false, tone = 'light', onClick }: { className?: string; centered?: boolean; active?: boolean; tone?: 'light' | 'dark'; onClick?: () => void }) {
-const solutionsFill = tone === 'dark' ? 'rgba(17,17,17,0.52)' : 'rgba(255,255,255,0.5)';
-const wordmarkFill = tone === 'dark' ? '#111111' : '#FFFFFF';
-return (
-<div onClick={onClick} className={`select-none cursor-pointer ${className}`}>
-  <svg
-    viewBox="0 0 214 52"
-    className={`${centered ? 'h-14' : 'h-10'} w-auto transition-all duration-300 ${active ? 'drop-shadow-[0_0_12px_rgba(255,199,0,0.5)]' : 'opacity-95 hover:opacity-100'}`}
-    role="img"
-    aria-label="Soluciones Fabrick"
-  >
-    <defs>
-      <linearGradient id="tfl-gold" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#FFE566" />
-        <stop offset="100%" stopColor="#FFC700" />
-      </linearGradient>
-      <linearGradient id="tfl-depth" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stopColor="#B37E00" />
-        <stop offset="100%" stopColor="#D9A100" />
-      </linearGradient>
-    </defs>
-    <path d="M 2,46 L 21,4 L 40,46 L 33,46 L 21,13 L 9,46 Z" fill="url(#tfl-gold)" />
-    <path d="M 9,46 L 21,13 L 21,19 L 14,46 Z" fill="url(#tfl-depth)" opacity="0.75" />
-    <rect x="25" y="11" width="8" height="20" rx="1.5" fill="#FFC700" />
-    <line x1="52" y1="9" x2="52" y2="44" stroke="rgba(255,255,255,0.13)" strokeWidth="1" />
-		<text x="61" y="26" fontFamily="Montserrat, Poppins, Arial, sans-serif" fontSize="9.5" fontWeight="500" letterSpacing="3" fill={solutionsFill}>SOLUCIONES</text>
-		<text x="60" y="47" fontFamily="Montserrat, Poppins, Arial, sans-serif" fontSize="25" fontWeight="900" letterSpacing="1.5" fill={wordmarkFill}>FABRICK</text>
-  </svg>
-</div>
-);
+/**
+ * Versión "tienda" del logo de marca: misma cercha 3D (`FabrickLogo3DLazy`,
+ * `showText={false}`) + wordmark HTML "SOLUCIONES FABRICK" que usa
+ * `NavbarBrandLogo` en el navbar principal (ver `src/components/Navbar.tsx`),
+ * para que el logo sea idéntico en toda la tienda y el checkout en lugar del
+ * SVG plano que tenía esta página antes. A diferencia del navbar principal
+ * (siempre sobre fondo oscuro), la tienda soporta tema claro/oscuro, así que
+ * el wordmark adapta su color según `tone`.
+ *
+ * `size` controla el tamaño de la cercha y la tipografía del wordmark para
+ * encajar en cada contexto (botón compacto del navbar, badge del hero,
+ * encabezado del panel de producto, drawer del menú móvil).
+ */
+function StoreFabrickLogo({
+	size = 'md',
+	tone = 'dark',
+	centered = false,
+	active = false,
+	className = '',
+	onClick,
+}: {
+	size?: 'sm' | 'md' | 'lg';
+	tone?: 'light' | 'dark';
+	centered?: boolean;
+	active?: boolean;
+	className?: string;
+	onClick?: () => void;
+}) {
+	const truss =
+		size === 'sm' ? 'h-8 w-[40px]' : size === 'lg' ? 'h-16 w-[80px]' : 'h-11 w-[56px]';
+	const wordmark =
+		size === 'sm'
+			? 'text-[9px] tracking-[0.1em]'
+			: size === 'lg'
+				? 'text-[15px] tracking-[0.16em] sm:text-[17px]'
+				: 'text-[11px] tracking-[0.12em]';
+	const wordmarkColor = tone === 'dark' ? 'text-white' : 'text-neutral-900';
+	const glow = active ? 'drop-shadow-[0_0_12px_rgba(255,199,0,0.5)]' : '';
+
+	return (
+		<div
+			onClick={onClick}
+			className={`group flex select-none items-center gap-2 ${onClick ? 'cursor-pointer' : ''} ${centered ? 'flex-col text-center' : ''} ${className}`}
+		>
+			<div className={`relative flex-shrink-0 ${truss} ${glow} transition-all duration-300`}>
+				<FabrickLogo3DLazy
+					height="100%"
+					interactive={false}
+					showHint={false}
+					showText={false}
+					cameraZ={14}
+				/>
+			</div>
+			<span className={`font-black uppercase leading-none ${wordmark} ${wordmarkColor}`}>
+				SOLUCIONES <span className="text-[var(--accent)]">FABRICK</span>
+			</span>
+		</div>
+	);
 }
 function SilverGoldButton({ children, onClick, className = '' }: { children: React.ReactNode; onClick?: React.MouseEventHandler<HTMLButtonElement>; className?: string }) {
 	return (
@@ -479,7 +508,7 @@ export default function TiendaClientPage() {
 					{/* Logo */}
 					<button onClick={() => router.push('/')} className={`flex-shrink-0 rounded-full border px-3 py-2 transition-all hover:border-yellow-400/60 hover:shadow-[0_14px_34px_rgba(250,204,21,0.18)] ${isDark ? 'border-white/10 bg-zinc-900/80' : 'border-neutral-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)]'}`}>
 						<div className="flex items-center gap-3">
-							<FabrickLogo tone={isDark ? 'light' : 'dark'} className="pointer-events-none" />
+							<StoreFabrickLogo size="sm" tone={isDark ? 'dark' : 'light'} className="pointer-events-none" />
 							<span className={`hidden lg:inline-flex rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.24em] ${isDark ? 'bg-white/10 text-white/50' : 'bg-neutral-100 text-neutral-500'}`}>
 								Store
 							</span>
@@ -611,7 +640,7 @@ export default function TiendaClientPage() {
 
 							{/* Logo badge */}
 							<div className="absolute left-4 top-4 md:left-8 md:top-8 max-w-[240px] rounded-2xl border border-white/20 bg-black/40 px-4 py-3 backdrop-blur-xl shadow-[0_16px_48px_rgba(0,0,0,0.3)] hero-badge">
-								<FabrickLogo active centered className="pointer-events-none" />
+								<StoreFabrickLogo size="lg" tone="dark" active centered className="pointer-events-none" />
 								<p className="mt-2 text-[9px] uppercase tracking-[0.35em] text-white/55">Catálogo oficial</p>
 							</div>
 
@@ -908,7 +937,7 @@ export default function TiendaClientPage() {
 						<div className="relative z-10 bg-black pt-20 pb-40 shadow-[0_-120px_150px_rgba(0,0,0,1)] px-6 md:px-10 border-t border-white/5">
 							<div className="max-w-4xl mx-auto space-y-16">
 								<div className="space-y-6">
-									<FabrickLogo active className="mb-4" />
+									<StoreFabrickLogo size="md" tone="dark" active className="mb-4" />
 									<p className="text-zinc-400 text-lg md:text-xl font-light leading-relaxed max-w-2xl">{selectedProduct.description}</p>
 								</div>
 
@@ -977,7 +1006,7 @@ export default function TiendaClientPage() {
 
 						{/* Header */}
 						<div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
-							<FabrickLogo />
+							<StoreFabrickLogo size="md" tone="dark" />
 							<button
 								onClick={() => setIsMenuOpen(false)}
 								className="w-8 h-8 flex items-center justify-center rounded-full border border-white/10 text-zinc-500 hover:border-white/25 hover:text-white transition-all"

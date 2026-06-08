@@ -51,6 +51,7 @@ declare global {
 }
 import { useSearchParams } from 'next/navigation';
 import { CART_SESSION_KEY, useCartContextSafe } from '@/context/CartContext';
+import { calculateCheckoutSummary } from '@/lib/checkout';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import Checkout4DExperience from '@/components/checkout/Checkout4DExperience';
 import { 
@@ -380,11 +381,24 @@ const CheckoutApp = () => {
         image: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=2070&auto=format&fit=crop',
       };
 
-  const cartTotal = cartItems.reduce((s, i) => {
-    const discount = i.product.discount_percentage || 0;
-    return s + i.product.price * (1 - discount / 100) * i.quantity;
-  }, 0);
   const cartItemCount = cartItems.reduce((s, i) => s + i.quantity, 0);
+
+  // ── Authoritative price summary (subtotal + IVA + despacho) ──────────────
+  // Computed with the EXACT same function the backend uses
+  // (`calculateCheckoutSummary` from `@/lib/checkout`) so the number shown
+  // to the buyer, the amount actually charged via Mercado Pago, and the
+  // total persisted on the order can never drift apart — this is the single
+  // source of truth for "what the customer pays".
+  const checkoutSummary = useMemo(() => {
+    const lineItems = cartItems.map((i) => ({
+      productoId: i.product.id,
+      cantidad: i.quantity,
+      precioUnitario: i.product.price * (1 - (i.product.discount_percentage || 0) / 100),
+      nombre: i.product.name,
+    }));
+    return calculateCheckoutSummary(lineItems, shippingRegion || 'RM');
+  }, [cartItems, shippingRegion]);
+  const grandTotal = checkoutSummary.total;
   const relatedProducts = useMemo(() => {
     const categories = new Set(
       cartItems
@@ -1131,7 +1145,7 @@ const CheckoutApp = () => {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           token: mpToken,
-          amount: cartTotal,
+          amount: grandTotal,
           description: cartItems.length === 1
             ? product.name
             : `Pedido Fabrick (${cartItemCount} productos)`,
@@ -1431,7 +1445,7 @@ const CheckoutApp = () => {
         throw new Error(body?.error ?? 'No se pudo crear la orden de transferencia.');
       }
       setTransferOrderId(body.data.id as string);
-      setTransferOrderTotal(body.data.resumen?.total ?? cartTotal);
+      setTransferOrderTotal(body.data.resumen?.total ?? grandTotal);
       setTransferOrderStatus('pendiente_transferencia');
       setTransferOrderReady(true);
     } catch (e) {
@@ -2001,7 +2015,7 @@ const CheckoutApp = () => {
                    </div>
                    <div className="text-right">
                      <div className="text-[8px] uppercase tracking-widest text-zinc-500 mb-2">Inversión Total</div>
-                     <div className="font-black text-lg md:text-xl text-yellow-400">{formatCLP(cartTotal)}</div>
+                     <div className="font-black text-lg md:text-xl text-yellow-400">{formatCLP(grandTotal)}</div>
                    </div>
                  </div>
                  
@@ -2151,15 +2165,19 @@ const CheckoutApp = () => {
                 <div className="pt-2 space-y-3">
                   <div className="flex justify-between text-sm">
                     <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Subtotal</span>
-                    <span className="font-mono text-zinc-300">{formatCLP(cartTotal)}</span>
+                    <span className="font-mono text-zinc-300">{formatCLP(checkoutSummary.subtotal)}</span>
                   </div>
                   <div className="flex justify-between text-sm">
-                    <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Logística Fabrick</span>
-                    <span className="font-mono text-yellow-400">Bonificada</span>
+                    <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">IVA (19%)</span>
+                    <span className="font-mono text-zinc-300">{formatCLP(checkoutSummary.iva)}</span>
+                  </div>
+                  <div className="flex justify-between text-sm">
+                    <span className="text-zinc-500 uppercase tracking-widest text-[10px] font-bold">Despacho</span>
+                    <span className="font-mono text-zinc-300">{formatCLP(checkoutSummary.despacho)}</span>
                   </div>
                   <div className="flex justify-between items-center pt-4 mt-2 border-t border-white/5">
                     <span className="text-white font-black uppercase tracking-widest text-xs">Total Inversión</span>
-                    <span className="font-black text-3xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{formatCLP(cartTotal)}</span>
+                    <span className="font-black text-3xl text-transparent bg-clip-text bg-gradient-to-r from-yellow-300 to-yellow-500">{formatCLP(grandTotal)}</span>
                   </div>
                 </div>
 
@@ -2476,7 +2494,7 @@ const CheckoutApp = () => {
                       </span>
                     </span>
                     <span className="flex items-center gap-2 flex-shrink-0">
-                      <span className="text-base font-black text-yellow-400">{formatCLP(cartTotal)}</span>
+                      <span className="text-base font-black text-yellow-400">{formatCLP(grandTotal)}</span>
                       <ChevronRight className={`h-4 w-4 text-zinc-500 transition-transform ${paymentSummaryOpen ? 'rotate-90' : ''}`} />
                     </span>
                   </button>
@@ -2495,13 +2513,26 @@ const CheckoutApp = () => {
                           </div>
                         ))}
                       </div>
-                      <div className="flex justify-between items-center pt-3 border-t border-white/5 text-xs">
-                        <span className="text-zinc-500 uppercase tracking-widest font-bold">Logística Fabrick</span>
-                        <span className="font-mono text-yellow-400">Bonificada</span>
+                      {/* Transparent breakdown — every line here matches EXACTLY
+                          what `calculateCheckoutSummary` charges and persists,
+                          so "Total a pagar" never surprises the buyer. */}
+                      <div className="space-y-1.5 pt-3 border-t border-white/5 text-xs">
+                        <div className="flex justify-between items-center">
+                          <span className="text-zinc-500 uppercase tracking-widest font-bold">Subtotal</span>
+                          <span className="font-mono text-zinc-300">{formatCLP(checkoutSummary.subtotal)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-zinc-500 uppercase tracking-widest font-bold">IVA (19%)</span>
+                          <span className="font-mono text-zinc-300">{formatCLP(checkoutSummary.iva)}</span>
+                        </div>
+                        <div className="flex justify-between items-center">
+                          <span className="text-zinc-500 uppercase tracking-widest font-bold">Despacho</span>
+                          <span className="font-mono text-zinc-300">{formatCLP(checkoutSummary.despacho)}</span>
+                        </div>
                       </div>
                       <div className="flex justify-between items-center pt-1">
                         <span className="text-white font-black uppercase tracking-widest text-xs">Total a pagar</span>
-                        <span className="font-black text-xl text-yellow-400">{formatCLP(cartTotal)}</span>
+                        <span className="font-black text-xl text-yellow-400">{formatCLP(grandTotal)}</span>
                       </div>
                     </div>
                   )}
@@ -2930,7 +2961,7 @@ const CheckoutApp = () => {
                     {/* Amount summary */}
                     <div className="flex items-center justify-between rounded-2xl border border-yellow-400/15 bg-yellow-400/5 px-5 py-4">
                       <span className="text-zinc-400 text-sm uppercase tracking-widest">Total a pagar</span>
-                      <span className="text-yellow-400 font-black text-xl">{formatCLP(cartTotal)}</span>
+                      <span className="text-yellow-400 font-black text-xl">{formatCLP(grandTotal)}</span>
                     </div>
 
                     {/* Trust strip — builds confidence right where the user
@@ -3119,7 +3150,7 @@ const CheckoutApp = () => {
                               </div>
                               <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-4">
                                 <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Monto total</div>
-                                <div className="text-yellow-400 font-bold text-base">{formatCLP(cartTotal)}</div>
+                                <div className="text-yellow-400 font-bold text-base">{formatCLP(grandTotal)}</div>
                               </div>
                               <div className="rounded-2xl border border-white/10 bg-black/50 p-4">
                                 <div className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Tarjeta</div>
@@ -3218,7 +3249,7 @@ const CheckoutApp = () => {
                             { label: 'Banco', value: BANK_INFO.bank },
                             { label: 'Titular', value: BANK_INFO.holder },
                             { label: 'Tipo de Cuenta', value: BANK_INFO.type },
-                            { label: 'Monto', value: formatCLP(transferOrderTotal || cartTotal) },
+                            { label: 'Monto', value: formatCLP(transferOrderTotal || grandTotal) },
                           ].map((row) => (
                             <div key={row.label} className="flex justify-between text-sm">
                               <span className="text-zinc-500">{row.label}</span>
@@ -3256,7 +3287,7 @@ const CheckoutApp = () => {
                           </div>
                           <div className="rounded-2xl border border-yellow-400/15 bg-yellow-400/5 p-5">
                             <p className="text-[9px] uppercase tracking-widest text-zinc-500 mb-2">Monto a Transferir</p>
-                            <p className="text-yellow-400 font-black text-xl">{formatCLP(transferOrderTotal || cartTotal)}</p>
+                            <p className="text-yellow-400 font-black text-xl">{formatCLP(transferOrderTotal || grandTotal)}</p>
                           </div>
                         </div>
 
@@ -3271,7 +3302,7 @@ const CheckoutApp = () => {
                           <CopyField label="Tipo de Cuenta" value={BANK_INFO.type} />
                           <CopyField label="N° de Cuenta" value={BANK_INFO.number} />
                           <CopyField label="Email para Comprobante" value={BANK_INFO.email} />
-                          <CopyField label="Monto exacto" value={formatCLP(transferOrderTotal || cartTotal)} />
+                          <CopyField label="Monto exacto" value={formatCLP(transferOrderTotal || grandTotal)} />
                           <CopyField label="Referencia / Glosa" value={transferOrderId} />
                         </div>
 
@@ -3305,7 +3336,7 @@ const CheckoutApp = () => {
                     >
                       {hostedRedirecting
                         ? <><RefreshCw className="w-4 h-4 animate-spin" /> Redirigiendo…</>
-                        : <><Lock className="w-4 h-4" /> Pagar {formatCLP(cartTotal)}</>
+                        : <><Lock className="w-4 h-4" /> Pagar {formatCLP(grandTotal)}</>
                       }
                     </button>
                   )}

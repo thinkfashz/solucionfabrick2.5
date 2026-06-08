@@ -11,6 +11,7 @@ import { getInitials } from '@/lib/initials';
 import { useTheme } from '@/context/ThemeContext';
 import {
 	ShoppingBag,
+	ShieldCheck,
 	Menu,
 	X,
 	Zap,
@@ -39,6 +40,12 @@ import {
 	Sun,
 	Moon,
 	Palette,
+	Droplets,
+	Wrench,
+	Lightbulb,
+	Smartphone,
+	ShowerHead,
+	Lock,
 } from 'lucide-react';
 import BannerCarousel from '@/components/BannerCarousel';
 import { useCartContext } from '@/context/CartContext';
@@ -658,8 +665,8 @@ export default function TiendaClientPage() {
 						<div className="relative overflow-hidden rounded-2xl aspect-[16/8] md:aspect-[16/6] group">
 							{/* Imagen con parallax suave */}
 							<img
-								src="https://images.unsplash.com/photo-1581094288338-2314dddb7ece?q=80&w=1800&auto=format&fit=crop"
-								alt="Fabrick"
+								src="https://images.unsplash.com/photo-1615873968403-89e068629265?q=80&w=1800&auto=format&fit=crop"
+								alt="Pisos, puertas y revestimientos de madera instalados por Soluciones Fabrick"
 								className="w-full h-full object-cover transition-transform duration-[8000ms] ease-linear group-hover:scale-105"
 							/>
 							{/* Overlay con gradiente mejorado */}
@@ -677,17 +684,19 @@ export default function TiendaClientPage() {
 							{/* CTA content */}
 							<div className="absolute inset-0 flex items-end md:items-center">
 								<div className="px-6 md:px-14 pb-10 md:pb-0 max-w-2xl text-white">
-									<p className="hero-animate text-[10px] md:text-[11px] uppercase tracking-[0.3em] mb-3 text-yellow-400 font-semibold">Lo último de Fabrick</p>
-									<h1 className="hero-animate-delay-1 nike-headline text-4xl md:text-7xl">
-										Construye<br />lo que sigue.
+									<p className="hero-animate text-[10px] md:text-[11px] uppercase tracking-[0.4em] mb-3 text-yellow-400 font-bold">Pisos · Puertas · Ventanas · Cerraduras</p>
+									<h1 className="hero-animate-delay-1 font-playfair text-4xl md:text-7xl font-bold leading-[0.98] tracking-tight">
+										Construye<br /><span className="shimmer-gold">lo que sigue.</span>
 									</h1>
-									<p className="hero-animate-delay-2 mt-4 text-sm md:text-base opacity-80 max-w-xl leading-relaxed">
-										Materiales premium curados, instalados por expertos, con garantía real.
+									<p className="hero-animate-delay-2 mt-4 text-sm md:text-base text-white/70 max-w-xl leading-relaxed">
+										Materiales premium curados e <span className="text-white font-semibold">instalados por nuestro equipo certificado</span> — desde pisos flotantes y puertas hasta cerraduras inteligentes, con garantía real en cada obra.
 									</p>
-									<div className="hero-animate-delay-2 mt-5 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.2em]">
-										<span className="rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-300 px-3 py-1.5">Materiales premium</span>
-										<span className="rounded-full border border-white/20 bg-white/8 text-white/80 px-3 py-1.5">Instalación certificada</span>
-										<span className="rounded-full border border-white/20 bg-white/8 text-white/80 px-3 py-1.5">Asesoría real</span>
+									<div className="hero-animate-delay-2 mt-5 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.22em]">
+										<span className="rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-300 px-3.5 py-1.5 font-semibold">Materiales premium</span>
+										<span className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/50 bg-gradient-to-r from-yellow-400/20 to-yellow-400/5 text-yellow-200 px-3.5 py-1.5 font-bold shadow-[0_0_22px_rgba(250,204,21,0.18)]">
+											<ShieldCheck className="h-3 w-3" /> Instalación certificada
+										</span>
+										<span className="rounded-full border border-white/20 bg-white/8 text-white/80 px-3.5 py-1.5 font-semibold">Asesoría real</span>
 									</div>
 									<div className="hero-animate-delay-3 mt-6 flex gap-3 flex-wrap">
 										<button
@@ -729,31 +738,47 @@ export default function TiendaClientPage() {
 					</section>
 
 					{/* ── ANUNCIANTES / MARCAS PARTNER ── */}
-					<section className={`overflow-hidden border-b py-8 ${isDark ? 'bg-zinc-900/60 border-white/8' : 'bg-neutral-50 border-neutral-200'}`}>
-						<div className="max-w-[1400px] mx-auto px-4 md:px-8 mb-5">
-							<p className={`text-center text-[10px] uppercase tracking-[0.4em] ${isDark ? 'text-zinc-500' : 'text-neutral-400'}`}>Marcas y anunciantes que confían en nosotros</p>
+					<section className={`overflow-hidden border-b py-10 ${isDark ? 'bg-zinc-900/60 border-white/8' : 'bg-neutral-50 border-neutral-200'}`}>
+						<div className="max-w-[1400px] mx-auto px-4 md:px-8 mb-7 text-center">
+							<p className="text-[9px] uppercase tracking-[0.5em] text-yellow-400/70 font-bold mb-2">Anuncia con nosotros</p>
+							<h3 className={`font-playfair text-xl md:text-2xl font-bold ${isDark ? 'text-white' : 'text-neutral-900'}`}>
+								Marcas líderes que ya confían en Fabrick
+							</h3>
+							<p className={`mt-2 max-w-xl mx-auto text-xs leading-relaxed ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>
+								Tu logotipo junto a los fabricantes que ya forman parte del catálogo que instalamos en obra. Espacios publicitarios disponibles — <a href="/contacto" className="text-yellow-500 font-semibold hover:underline">conversemos</a>.
+							</p>
 						</div>
 						<div className="overflow-hidden">
 							<div className="flex brand-marquee whitespace-nowrap gap-0">
 								{Array.from({ length: 2 }).map((_, bi) => (
-									<div key={bi} className="flex shrink-0 items-center gap-16 px-8">
+									<div key={bi} className="flex shrink-0 items-center gap-5 px-6">
 										{[
-											{ name: 'Bosch', icon: '⚡' },
-											{ name: 'Grohe', icon: '💧' },
-											{ name: 'Siemens', icon: '🔧' },
-											{ name: 'Philips', icon: '💡' },
-											{ name: 'Samsung', icon: '📱' },
-											{ name: 'Moen', icon: '🚿' },
-											{ name: 'Schneider', icon: '⚙️' },
-											{ name: 'Lutron', icon: '🎛️' },
-											{ name: 'Yale', icon: '🔐' },
-											{ name: 'LG', icon: '🏠' },
-										].map((brand) => (
-											<div key={`${bi}-${brand.name}`} className={`flex items-center gap-2 px-5 py-2.5 rounded-xl border transition-all duration-300 cursor-default select-none ${isDark ? 'border-white/10 bg-white/5 hover:bg-white/10 hover:border-yellow-400/30' : 'border-neutral-200 bg-white hover:bg-yellow-50 hover:border-yellow-300 shadow-sm'}`}>
-												<span className="text-lg">{brand.icon}</span>
-												<span className={`text-sm font-semibold tracking-wide ${isDark ? 'text-zinc-300' : 'text-neutral-700'}`}>{brand.name}</span>
-											</div>
-										))}
+											{ name: 'BOSCH', Icon: Zap },
+											{ name: 'GROHE', Icon: Droplets },
+											{ name: 'SIEMENS', Icon: Wrench },
+											{ name: 'PHILIPS', Icon: Lightbulb },
+											{ name: 'SAMSUNG', Icon: Smartphone },
+											{ name: 'MOEN', Icon: ShowerHead },
+											{ name: 'SCHNEIDER', Icon: Settings },
+											{ name: 'LUTRON', Icon: SlidersHorizontal },
+											{ name: 'YALE', Icon: Lock },
+											{ name: 'LG', Icon: Home },
+										].map((brand) => {
+											const BrandIcon = brand.Icon;
+											return (
+												<div
+													key={`${bi}-${brand.name}`}
+													className={`group/brand flex items-center gap-3 px-6 py-4 rounded-2xl border transition-all duration-300 cursor-default select-none ${isDark ? 'border-white/10 bg-gradient-to-br from-white/[0.04] to-transparent hover:border-yellow-400/40 hover:from-yellow-400/[0.08]' : 'border-neutral-200 bg-white hover:border-yellow-300 hover:shadow-md'}`}
+												>
+													<span className={`flex h-9 w-9 items-center justify-center rounded-full border transition-colors ${isDark ? 'border-white/15 bg-white/5 text-zinc-400 group-hover/brand:border-yellow-400/50 group-hover/brand:text-yellow-400' : 'border-neutral-200 bg-neutral-50 text-neutral-400 group-hover/brand:border-yellow-400 group-hover/brand:text-yellow-500'}`}>
+														<BrandIcon className="h-4 w-4" strokeWidth={1.75} />
+													</span>
+													<span className={`font-playfair text-base md:text-lg font-bold tracking-[0.12em] transition-colors ${isDark ? 'text-zinc-300 group-hover/brand:text-white' : 'text-neutral-600 group-hover/brand:text-neutral-900'}`}>
+														{brand.name}
+													</span>
+												</div>
+											);
+										})}
 									</div>
 								))}
 							</div>

@@ -24,7 +24,7 @@ type NavLink = {
   comingSoon?: boolean;
 };
 
-const navSections: { title: string; links: NavLink[] }[] = [
+export const navSections: { title: string; links: NavLink[] }[] = [
   {
     title: 'Perfil & Cuenta',
     links: [

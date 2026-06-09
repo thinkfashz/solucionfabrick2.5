@@ -1,0 +1,66 @@
+/* ── Neo Admin Theme — Lava / Cream Neon Edition ───────────────── */
+/* Shell toggle (visibility controlled by CSS, same pattern as studio) */
+.neo-shell { display: none !important; }
+body[data-admin-theme="neo"] .fabrick-shell { display: none !important; }
+body[data-admin-theme="neo"] .studio-shell  { display: none !important; }
+body[data-admin-theme="neo"] .neo-shell     { display: block !important; }
+
+/* ── Global background when Neo is active ── */
+body[data-admin-theme="neo"] {
+  background:
+    radial-gradient(circle at 16% 15%, rgba(255,241,214,.10), transparent 23%),
+    radial-gradient(circle at 88% 10%, rgba(255,106,0,.28),   transparent 25%),
+    radial-gradient(circle at 82% 86%, rgba(255,213,74,.18),  transparent 24%),
+    linear-gradient(140deg, #050403 0%, #090604 36%, #120a05 100%);
+}
+
+/* ── Neo ambient overlay ── */
+.neo-ambient {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  /* subtle scanlines + grid */
+  background-image:
+    linear-gradient(rgba(255,138,31,.022) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,255,255,.014) 1px, transparent 1px);
+  background-size: 100% 4px, 36px 36px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.60), transparent 88%);
+}
+.neo-ambient::before {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  pointer-events: none;
+  background:
+    radial-gradient(circle at 20% 22%, rgba(255,241,214,.22), transparent 18rem),
+    radial-gradient(circle at 77% 22%, rgba(255,106,0,.48),   transparent 22rem),
+    radial-gradient(circle at 70% 84%, rgba(255,213,74,.28),  transparent 18rem);
+  filter: blur(55px);
+  animation: neo-drift 14s ease-in-out infinite alternate;
+  z-index: 0;
+}
+.neo-ambient::after {
+  content: "";
+  position: fixed;
+  inset: auto;
+  right: -14vw;
+  top: -12vw;
+  width: 50vw;
+  height: 50vw;
+  border-radius: 50%;
+  pointer-events: none;
+  background: radial-gradient(circle, rgba(255,106,0,.42), transparent 65%);
+  filter: blur(44px);
+  animation: neo-pulse 9s ease-in-out infinite alternate;
+  z-index: 0;
+}
+
+@keyframes neo-drift {
+  0%   { transform: translate3d(0,0,0) scale(1); }
+  100% { transform: translate3d(4vw,2vh,0) scale(1.1); }
+}
+@keyframes neo-pulse {
+  0%   { transform: scale(1);    opacity: .50; }
+  100% { transform: scale(1.18); opacity: .88; }
+}

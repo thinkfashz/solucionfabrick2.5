@@ -6,7 +6,7 @@ import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 
 interface Props {
   isActive: boolean;
-  targetTheme: '' | 'studio';
+  targetTheme: '' | 'studio' | 'neo';
   onComplete: () => void;
 }
 
@@ -50,6 +50,26 @@ const CODE_TO_FABRICK = [
   '  ✓ Fabrick Classic restaurado',
 ];
 
+const TO_NEO = [
+  { label: 'Activando Neo Dashboard',      detail: 'Preparando interfaz con rail de iconos…' },
+  { label: 'Cargando diseño Neo',          detail: 'Rail · Drawer · Topbar · Neon ambient…' },
+  { label: 'Aplicando tokens lava/neon',   detail: 'Orange · Lava · Cream · Scanlines…' },
+  { label: 'Verificando módulos',          detail: '62 módulos disponibles en drawer…' },
+  { label: 'Neo Admin listo',              detail: 'Fondo neon animado activo ✦' },
+];
+
+const CODE_TO_NEO = [
+  '$ fabrick theme:migrate --target=neo',
+  '  ↳ loading design-system/neo.json…',
+  '  ↳ patching layout: sidebar → icon-rail',
+  '  ↳ activating neon ambient overlay',
+  '  ↳ applying lava/cream token palette',
+  '  ↳ enabling drawer navigation system',
+  '  ↳ wiring 62 modules to accordion…',
+  '  ↳ syncing animated scanlines…',
+  '  ✓ Neo Admin Dashboard ready',
+];
+
 const DURATION_MS = 2800;
 
 export function AdminThemeTransition({ isActive, targetTheme, onComplete }: Props) {
@@ -58,9 +78,8 @@ export function AdminThemeTransition({ isActive, targetTheme, onComplete }: Prop
   const [done, setDone] = useState(false);
   const [codeLines, setCodeLines] = useState<string[]>([]);
 
-  const steps = targetTheme === 'studio' ? TO_STUDIO : TO_FABRICK;
-  const codeScript = targetTheme === 'studio' ? CODE_TO_STUDIO : CODE_TO_FABRICK;
-  const isStudio = targetTheme === 'studio';
+  const steps = targetTheme === 'neo' ? TO_NEO : targetTheme === 'studio' ? TO_STUDIO : TO_FABRICK;
+  const codeScript = targetTheme === 'neo' ? CODE_TO_NEO : targetTheme === 'studio' ? CODE_TO_STUDIO : CODE_TO_FABRICK;
 
   useEffect(() => {
     if (!isActive) {
@@ -95,9 +114,9 @@ export function AdminThemeTransition({ isActive, targetTheme, onComplete }: Prop
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [isActive]);
 
-  const accent = isStudio ? '#f97316' : '#facc15';
-  const accentGlow = isStudio ? 'rgba(249,115,22,0.55)' : 'rgba(250,204,21,0.55)';
-  const accentSoft = isStudio ? 'rgba(249,115,22,0.15)' : 'rgba(250,204,21,0.15)';
+  const accent = targetTheme === 'neo' ? '#ff8a1f' : targetTheme === 'studio' ? '#f97316' : '#facc15';
+  const accentGlow = targetTheme === 'neo' ? 'rgba(255,138,31,0.55)' : targetTheme === 'studio' ? 'rgba(249,115,22,0.55)' : 'rgba(250,204,21,0.55)';
+  const accentSoft = targetTheme === 'neo' ? 'rgba(255,138,31,0.15)' : targetTheme === 'studio' ? 'rgba(249,115,22,0.15)' : 'rgba(250,204,21,0.15)';
 
   return (
     <AnimatePresence>
@@ -125,7 +144,7 @@ export function AdminThemeTransition({ isActive, targetTheme, onComplete }: Prop
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 1.4, delay: 0.2, ease: 'easeOut' }}
               className="absolute -bottom-32 -right-32 h-[500px] w-[500px] rounded-full blur-[120px]"
-              style={{ background: isStudio ? 'rgba(249,115,22,0.10)' : 'rgba(56,189,248,0.12)' }}
+              style={{ background: targetTheme === 'neo' ? 'rgba(255,138,31,0.10)' : targetTheme === 'studio' ? 'rgba(249,115,22,0.10)' : 'rgba(56,189,248,0.12)' }}
             />
             <div className="absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[length:100%_8px] opacity-20" />
           </div>
@@ -172,7 +191,7 @@ export function AdminThemeTransition({ isActive, targetTheme, onComplete }: Prop
                 <motion.div
                   className="absolute inset-y-0 left-0 rounded-full"
                   style={{
-                    background: `linear-gradient(90deg, ${accent}, ${isStudio ? '#fb923c' : '#fde68a'})`,
+                    background: `linear-gradient(90deg, ${accent}, ${targetTheme === 'neo' ? '#ffb347' : targetTheme === 'studio' ? '#fb923c' : '#fde68a'})`,
                     boxShadow: `0 0 12px ${accentGlow}`,
                   }}
                   initial={{ width: '0%' }}
@@ -261,7 +280,7 @@ export function AdminThemeTransition({ isActive, targetTheme, onComplete }: Prop
                   transition={{ duration: 0.2 }}
                   className="flex items-center gap-2 text-[10px] font-mono tracking-[0.12em] text-white/30"
                 >
-                  <span style={{ color: isStudio ? '#22c55e' : '#34d399' }}>✓</span>
+                  <span style={{ color: targetTheme === 'neo' ? '#22c55e' : targetTheme === 'studio' ? '#22c55e' : '#34d399' }}>✓</span>
                   <span className="truncate">{s.label}</span>
                 </motion.div>
               ))}
@@ -276,7 +295,7 @@ export function AdminThemeTransition({ isActive, targetTheme, onComplete }: Prop
                   className="mt-6 text-[11px] font-bold uppercase tracking-[0.28em]"
                   style={{ color: accent }}
                 >
-                  {isStudio ? '✦ Studio Admin activado' : '✦ Fabrick restaurado'}
+                  {targetTheme === 'neo' ? '✦ Neo Admin activado' : targetTheme === 'studio' ? '✦ Studio Admin activado' : '✦ Fabrick restaurado'}
                 </motion.p>
               )}
             </AnimatePresence>

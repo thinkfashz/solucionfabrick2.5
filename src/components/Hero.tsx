@@ -143,10 +143,16 @@ export default function Hero({
           </span>
         </motion.div>
 
-        {/* Headline — last line always gold */}
+        {/* Headline — last line always gold.
+            Playfair Display has tall ascenders/descenders/swashes relative to
+            its em-box, so leading must clear roughly 1.1× the font-size to
+            avoid adjacent lines colliding ("letras remontadas"). Mobile gets
+            slightly more room (text wraps more + the 9vw clamp term can push
+            rendered size up relative to the narrow viewport); desktop can
+            tighten a touch since the type sits closer to its max clamp size. */}
         <motion.h1
           variants={itemVars}
-          className="font-playfair max-w-2xl text-balance break-words text-[clamp(2.75rem,9vw,5.75rem)] font-black leading-[0.97] tracking-tight sm:leading-[0.95]"
+          className="font-playfair max-w-2xl text-balance break-words text-[clamp(2.75rem,9vw,5.75rem)] font-black leading-[1.18] tracking-normal sm:leading-[1.14] md:leading-[1.1]"
         >
           {headlineLines.map((line, i) => (
             <span

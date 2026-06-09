@@ -5,7 +5,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { navigateWithTransition } from '@/lib/routeTransition';
-import { useCatalogProducts } from '@/hooks/useCatalogProducts';
+import { useCatalogProducts, FALLBACK_CATALOG_PRODUCTS } from '@/hooks/useCatalogProducts';
 import { useAuth } from '@/context/AuthContext';
 import { getInitials } from '@/lib/initials';
 import { useTheme } from '@/context/ThemeContext';
@@ -44,6 +44,7 @@ import {
 	ShowerHead,
 	Lock,
 } from 'lucide-react';
+import FabrickLogo3DLazy from '@/components/FabrickLogo3DLazy';
 import BannerCarousel from '@/components/BannerCarousel';
 import { useCartContext } from '@/context/CartContext';
 import UiverseProductCard from '@/components/store/UiverseProductCard';
@@ -64,60 +65,7 @@ type Product = {
 	img: string;
 };
 
-const PRODUCTS: Product[] = [
-	{
-		id: 'FBK-01',
-		name: 'Cerradura Biométrica Titanio',
-		price: 189900,
-		category: 'Seguridad',
-		tagline: 'Tu familia, siempre segura',
-		description:
-			'Diseñada para brindar tranquilidad absoluta. Un sistema de reconocimiento intuitivo que protege lo que más quieres con la resistencia del titanio.',
-		features: ['Sensor de alta precisión', 'Apertura de emergencia', 'Gestión desde tu móvil'],
-		dimensions: '35 x 7 x 4 cm',
-		delivery: 'Entrega inmediata',
-		img: 'https://images.unsplash.com/photo-1558002038-1055907df827?q=80&w=800&auto=format&fit=crop',
-	},
-	{
-		id: 'FBK-02',
-		name: 'Luz LED Arquitectónica',
-		price: 85500,
-		category: 'Iluminación',
-		tagline: 'El alma de tu espacio',
-		description:
-			'Crea ambientes acogedores con nuestra iluminación adaptativa. Una luz que se ajusta a tu ritmo de vida y resalta la belleza de tu hogar.',
-		features: ['Luz cálida relajante', 'Control por WiFi', 'Bajo consumo'],
-		dimensions: '120 x 2 x 2 cm',
-		delivery: 'Envío en 24h',
-		img: 'https://images.unsplash.com/photo-1565814329452-e1efa11c5e8a?q=80&w=800&auto=format&fit=crop',
-	},
-	{
-		id: 'FBK-03',
-		name: 'Grifería Monomando Ónix',
-		price: 145000,
-		category: 'Grifería',
-		tagline: 'Detalles que enamoran',
-		description:
-			'La combinación perfecta entre suavidad y durabilidad. Un diseño pensado para el uso diario que mantiene su elegancia intacta por años.',
-		features: ['Tacto sedoso', 'Fácil limpieza', 'Garantía extendida'],
-		dimensions: '32 x 22 cm',
-		delivery: 'Entrega inmediata',
-		img: 'https://images.unsplash.com/photo-1584622650111-993a426fbf0a?q=80&w=800&auto=format&fit=crop',
-	},
-	{
-		id: 'FBK-04',
-		name: 'Panel Acústico Roble',
-		price: 42900,
-		category: 'Revestimiento',
-		tagline: 'Tu refugio de paz',
-		description:
-			'Disfruta del silencio y la calidez de la madera real. Un revestimiento que transforma cualquier habitación en un espacio de descanso total.',
-		features: ['Aislamiento acústico', 'Madera natural', 'Fácil instalación'],
-		dimensions: '240 x 60 cm',
-		delivery: 'Envío en 48h',
-		img: 'https://images.unsplash.com/photo-1615873968403-89e068629265?q=80&w=800&auto=format&fit=crop',
-	},
-];
+const PRODUCTS: Product[] = FALLBACK_CATALOG_PRODUCTS as Product[];
 
 const MENU_OPTIONS = [
 	{ icon: Home, label: 'Inicio', description: 'Volver a la página principal', href: '/' },
@@ -127,36 +75,64 @@ const MENU_OPTIONS = [
 	{ icon: Settings, label: 'Ajustes', description: 'Configuración de tu cuenta', href: '/ajustes' },
 ];
 
-function FabrickLogo({ className = '', centered = false, active = false, tone = 'light', onClick }: { className?: string; centered?: boolean; active?: boolean; tone?: 'light' | 'dark'; onClick?: () => void }) {
-const solutionsFill = tone === 'dark' ? 'rgba(17,17,17,0.52)' : 'rgba(255,255,255,0.5)';
-const wordmarkFill = tone === 'dark' ? '#111111' : '#FFFFFF';
-return (
-<div onClick={onClick} className={`select-none cursor-pointer ${className}`}>
-  <svg
-    viewBox="0 0 214 52"
-    className={`${centered ? 'h-14' : 'h-10'} w-auto transition-all duration-300 ${active ? 'drop-shadow-[0_0_12px_rgba(255,199,0,0.5)]' : 'opacity-95 hover:opacity-100'}`}
-    role="img"
-    aria-label="Soluciones Fabrick"
-  >
-    <defs>
-      <linearGradient id="tfl-gold" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stopColor="#FFE566" />
-        <stop offset="100%" stopColor="#FFC700" />
-      </linearGradient>
-      <linearGradient id="tfl-depth" x1="0" y1="0" x2="1" y2="0">
-        <stop offset="0%" stopColor="#B37E00" />
-        <stop offset="100%" stopColor="#D9A100" />
-      </linearGradient>
-    </defs>
-    <path d="M 2,46 L 21,4 L 40,46 L 33,46 L 21,13 L 9,46 Z" fill="url(#tfl-gold)" />
-    <path d="M 9,46 L 21,13 L 21,19 L 14,46 Z" fill="url(#tfl-depth)" opacity="0.75" />
-    <rect x="25" y="11" width="8" height="20" rx="1.5" fill="#FFC700" />
-    <line x1="52" y1="9" x2="52" y2="44" stroke="rgba(255,255,255,0.13)" strokeWidth="1" />
-		<text x="61" y="26" fontFamily="Montserrat, Poppins, Arial, sans-serif" fontSize="9.5" fontWeight="500" letterSpacing="3" fill={solutionsFill}>SOLUCIONES</text>
-		<text x="60" y="47" fontFamily="Montserrat, Poppins, Arial, sans-serif" fontSize="25" fontWeight="900" letterSpacing="1.5" fill={wordmarkFill}>FABRICK</text>
-  </svg>
-</div>
-);
+/**
+ * Versión "tienda" del logo de marca: misma cercha 3D (`FabrickLogo3DLazy`,
+ * `showText={false}`) + wordmark HTML "SOLUCIONES FABRICK" que usa
+ * `NavbarBrandLogo` en el navbar principal (ver `src/components/Navbar.tsx`),
+ * para que el logo sea idéntico en toda la tienda y el checkout en lugar del
+ * SVG plano que tenía esta página antes. A diferencia del navbar principal
+ * (siempre sobre fondo oscuro), la tienda soporta tema claro/oscuro, así que
+ * el wordmark adapta su color según `tone`.
+ *
+ * `size` controla el tamaño de la cercha y la tipografía del wordmark para
+ * encajar en cada contexto (botón compacto del navbar, badge del hero,
+ * encabezado del panel de producto, drawer del menú móvil).
+ */
+function StoreFabrickLogo({
+	size = 'md',
+	tone = 'dark',
+	centered = false,
+	active = false,
+	className = '',
+	onClick,
+}: {
+	size?: 'sm' | 'md' | 'lg';
+	tone?: 'light' | 'dark';
+	centered?: boolean;
+	active?: boolean;
+	className?: string;
+	onClick?: () => void;
+}) {
+	const truss =
+		size === 'sm' ? 'h-8 w-[40px]' : size === 'lg' ? 'h-16 w-[80px]' : 'h-11 w-[56px]';
+	const wordmark =
+		size === 'sm'
+			? 'text-[9px] tracking-[0.1em]'
+			: size === 'lg'
+				? 'text-[15px] tracking-[0.16em] sm:text-[17px]'
+				: 'text-[11px] tracking-[0.12em]';
+	const wordmarkColor = tone === 'dark' ? 'text-white' : 'text-neutral-900';
+	const glow = active ? 'drop-shadow-[0_0_12px_rgba(255,199,0,0.5)]' : '';
+
+	return (
+		<div
+			onClick={onClick}
+			className={`group flex select-none items-center gap-2 ${onClick ? 'cursor-pointer' : ''} ${centered ? 'flex-col text-center' : ''} ${className}`}
+		>
+			<div className={`relative flex-shrink-0 ${truss} ${glow} transition-all duration-300`}>
+				<FabrickLogo3DLazy
+					height="100%"
+					interactive={false}
+					showHint={false}
+					showText={false}
+					cameraZ={14}
+				/>
+			</div>
+			<span className={`font-black uppercase leading-none ${wordmark} ${wordmarkColor}`}>
+				SOLUCIONES <span className="text-[var(--accent)]">FABRICK</span>
+			</span>
+		</div>
+	);
 }
 function SilverGoldButton({ children, onClick, className = '' }: { children: React.ReactNode; onClick?: React.MouseEventHandler<HTMLButtonElement>; className?: string }) {
 	return (
@@ -479,7 +455,7 @@ export default function TiendaClientPage() {
 					{/* Logo */}
 					<button onClick={() => router.push('/')} className={`flex-shrink-0 rounded-full border px-3 py-2 transition-all hover:border-yellow-400/60 hover:shadow-[0_14px_34px_rgba(250,204,21,0.18)] ${isDark ? 'border-white/10 bg-zinc-900/80' : 'border-neutral-200 bg-white shadow-[0_10px_30px_rgba(15,23,42,0.06)]'}`}>
 						<div className="flex items-center gap-3">
-							<FabrickLogo tone={isDark ? 'light' : 'dark'} className="pointer-events-none" />
+							<StoreFabrickLogo size="sm" tone={isDark ? 'dark' : 'light'} className="pointer-events-none" />
 							<span className={`hidden lg:inline-flex rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.24em] ${isDark ? 'bg-white/10 text-white/50' : 'bg-neutral-100 text-neutral-500'}`}>
 								Store
 							</span>
@@ -573,15 +549,15 @@ export default function TiendaClientPage() {
 						.orb2 { animation: orbFloat2 16s ease-in-out infinite; }
 					`}</style>
 
-					{/* Top promo bar */}
-					<div className={`text-[11px] border-b ${isDark ? 'bg-zinc-900 text-zinc-400 border-white/10' : 'bg-neutral-100 text-neutral-700 border-neutral-200'}`}>
-						<div className="max-w-[1400px] mx-auto px-4 md:px-8 py-2 flex items-center justify-between">
-							<span>✦ Envío estándar gratis sobre $79.990</span>
-							<div className="hidden md:flex items-center gap-5">
-								<button onClick={() => router.push('/garantias')} className={`hover:text-yellow-500 transition-colors`}>Ayuda</button>
-								<button onClick={() => router.push('/mi-cuenta')} className={`hover:text-yellow-500 transition-colors`}>Mi cuenta</button>
-								<button onClick={() => router.push('/contacto')} className={`hover:text-yellow-500 transition-colors`}>Contacto</button>
-							</div>
+					{/* Announcement bar */}
+					<div className="border-b overflow-hidden px-4 py-2.5 flex items-center justify-center gap-3 text-[13px]"
+						style={{ borderColor: 'rgba(255,248,237,0.1)', background: 'linear-gradient(90deg,rgba(255,210,41,0.09),rgba(255,255,255,0.022),rgba(255,210,41,0.09))', color: '#dfd5c7', minHeight: '38px', whiteSpace: 'nowrap' }}>
+						<span style={{ color: '#ffd229' }}>✦</span>
+						<span><b style={{ color: '#ffd229', fontWeight: 900 }}>Instalación certificada</b> · Envío gratis sobre $79.990 · Asesoría por WhatsApp</span>
+						<div className="hidden md:flex items-center gap-5 ml-auto text-[11px]">
+							<button onClick={() => router.push('/garantias')} style={{ color: '#b9afa2' }} className="hover:text-yellow-400 transition-colors">Ayuda</button>
+							<button onClick={() => router.push('/mi-cuenta')} style={{ color: '#b9afa2' }} className="hover:text-yellow-400 transition-colors">Mi cuenta</button>
+							<button onClick={() => router.push('/contacto')} style={{ color: '#b9afa2' }} className="hover:text-yellow-400 transition-colors">Contacto</button>
 						</div>
 					</div>
 
@@ -594,67 +570,108 @@ export default function TiendaClientPage() {
 						</ol>
 					</nav>
 
-					{/* ── HERO SECTION (MODERNIZADO) ── */}
-					<section className="max-w-[1400px] mx-auto px-4 md:px-8 mt-2">
-						<div className="relative overflow-hidden rounded-2xl aspect-[16/8] md:aspect-[16/6] group">
-							{/* Imagen con parallax suave */}
-							<img
-								src="https://images.unsplash.com/photo-1615873968403-89e068629265?q=80&w=1800&auto=format&fit=crop"
-								alt="Pisos, puertas y revestimientos de madera instalados por Soluciones Fabrick"
-								className="w-full h-full object-cover transition-transform duration-[8000ms] ease-linear group-hover:scale-105"
-							/>
-							{/* Overlay con gradiente mejorado */}
-							<div className="absolute inset-0 hero-overlay-light" />
-							{/* Orbs decorativos */}
-							<div className="orb1 absolute top-[-20%] right-[-10%] w-[50%] h-[80%] rounded-full opacity-20 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(250,204,21,0.5) 0%, transparent 70%)' }} />
-							<div className="orb2 absolute bottom-[-30%] left-[-5%] w-[40%] h-[70%] rounded-full opacity-15 pointer-events-none" style={{ background: 'radial-gradient(circle, rgba(99,102,241,0.5) 0%, transparent 70%)' }} />
-
-							{/* Logo badge */}
-							<div className="absolute left-4 top-4 md:left-8 md:top-8 max-w-[240px] rounded-2xl border border-white/20 bg-black/40 px-4 py-3 backdrop-blur-xl shadow-[0_16px_48px_rgba(0,0,0,0.3)] hero-badge">
-								<FabrickLogo active centered className="pointer-events-none" />
-								<p className="mt-2 text-[9px] uppercase tracking-[0.35em] text-white/55">Catálogo oficial</p>
-							</div>
-
-							{/* CTA content */}
-							<div className="absolute inset-0 flex items-end md:items-center">
-								<div className="px-6 md:px-14 pb-10 md:pb-0 max-w-2xl text-white">
-									<p className="hero-animate text-[10px] md:text-[11px] uppercase tracking-[0.4em] mb-3 text-yellow-400 font-bold">Pisos · Puertas · Ventanas · Cerraduras</p>
-									<h1 className="hero-animate-delay-1 font-playfair text-4xl md:text-7xl font-bold leading-[0.98] tracking-tight">
-										Construye<br /><span className="shimmer-gold">lo que sigue.</span>
-									</h1>
-									<p className="hero-animate-delay-2 mt-4 text-sm md:text-base text-white/70 max-w-xl leading-relaxed">
-										Materiales premium curados e <span className="text-white font-semibold">instalados por nuestro equipo certificado</span> — desde pisos flotantes y puertas hasta cerraduras inteligentes, con garantía real en cada obra.
-									</p>
-									<div className="hero-animate-delay-2 mt-5 flex flex-wrap gap-2 text-[10px] uppercase tracking-[0.22em]">
-										<span className="rounded-full border border-yellow-400/40 bg-yellow-400/10 text-yellow-300 px-3.5 py-1.5 font-semibold">Materiales premium</span>
-										<span className="inline-flex items-center gap-1.5 rounded-full border border-yellow-400/50 bg-gradient-to-r from-yellow-400/20 to-yellow-400/5 text-yellow-200 px-3.5 py-1.5 font-bold shadow-[0_0_22px_rgba(250,204,21,0.18)]">
-											<ShieldCheck className="h-3 w-3" /> Instalación certificada
+					{/* ── HERO BENTO LAYOUT ── */}
+					<section className="max-w-[1400px] mx-auto px-4 md:px-8 mt-3">
+						<div className="grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] gap-4 items-stretch">
+							{/* hero-main */}
+							<article className="relative min-h-[580px] overflow-hidden rounded-[40px] border border-yellow-400/20 shadow-[0_30px_90px_rgba(0,0,0,0.5)] isolate"
+								style={{ background: 'linear-gradient(115deg,rgba(8,7,6,0.95) 0%,rgba(8,7,6,0.75) 42%,rgba(8,7,6,0.25) 100%), url("https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?auto=format&fit=crop&w=1600&q=80") center/cover no-repeat' }}>
+								<div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 18% 18%,rgba(255,210,41,0.15),transparent 22rem), linear-gradient(0deg,rgba(5,5,4,0.95),transparent 45%)' }} />
+								<div className="relative z-10 h-full flex flex-col justify-between gap-8 p-8 md:p-11">
+									<div>
+										<span className="inline-flex items-center gap-2.5 text-yellow-400 text-[11px] font-black uppercase tracking-[0.34em]">
+											<span className="w-8 h-px bg-gradient-to-r from-yellow-400 to-transparent" />
+											Tienda profesional
 										</span>
-										<span className="rounded-full border border-white/20 bg-white/8 text-white/80 px-3.5 py-1.5 font-semibold">Asesoría real</span>
+										<h1 className="mt-4 font-playfair text-[clamp(44px,7vw,86px)] font-black leading-[0.9] tracking-tight text-white max-w-[640px] text-balance">
+											Compra materiales premium y agenda <span className="text-yellow-400">instalación</span>.
+										</h1>
+										<p className="mt-5 text-[#e7ddd0] text-[17px] leading-[1.7] max-w-[540px]">
+											Materiales curados, instalados por nuestro equipo certificado. Despacho a la Región del Maule con asesoría directa.
+										</p>
+										<div className="mt-7 flex flex-wrap gap-3">
+											<button
+												onClick={() => navigateWithTransition('/tienda/catalogo', router)}
+												className="min-h-[52px] px-7 rounded-full inline-flex items-center gap-2.5 text-[13px] font-black uppercase tracking-[0.08em] text-black transition-all duration-300 hover:shadow-[0_20px_62px_rgba(255,210,41,0.32)] hover:-translate-y-0.5"
+												style={{ background: 'linear-gradient(180deg,#ffe260,#ffc800)' }}
+											>
+												Explorar catálogo <ArrowRight size={15} />
+											</button>
+											<button
+												onClick={() => router.push('/contacto')}
+												className="min-h-[52px] px-7 rounded-full inline-flex items-center gap-2 text-[13px] font-bold uppercase tracking-[0.08em] text-white border border-white/20 backdrop-blur-sm hover:-translate-y-0.5 hover:border-yellow-400/40 transition-all duration-300"
+												style={{ background: 'rgba(255,255,255,0.075)' }}
+											>
+												Asesoría gratis
+											</button>
+										</div>
 									</div>
-									<div className="hero-animate-delay-3 mt-6 flex gap-3 flex-wrap">
-										<button
-											onClick={() => navigateWithTransition('/tienda/catalogo', router)}
-											className="group/btn relative overflow-hidden bg-white text-black rounded-full px-7 py-3 text-sm font-semibold hover:shadow-[0_0_30px_rgba(255,255,255,0.3)] transition-all duration-300 hover:scale-105"
-										>
-											<span className="relative z-10">Comprar ahora</span>
-											<div className="absolute inset-0 -translate-x-full group-hover/btn:translate-x-0 bg-yellow-400 transition-transform duration-300 ease-out" />
-										</button>
-										<button
-											onClick={() => router.push('/contacto')}
-											className="border border-white/50 text-white rounded-full px-7 py-3 text-sm font-medium hover:bg-white/15 hover:border-white/80 transition-all duration-300"
-										>
-											Asesoría gratis
-										</button>
+									<div className="grid grid-cols-3 gap-3 max-w-[600px]">
+										{([
+											{ n: '4.9★', label: 'Calificación promedio' },
+											{ n: '24–48h', label: 'Despacho en stock' },
+											{ n: '100%', label: 'Asesoría antes de comprar' },
+										] as const).map(({ n, label }) => (
+											<div key={label} className="rounded-[18px] border border-white/12 backdrop-blur-sm p-3.5" style={{ background: 'rgba(10,9,8,0.55)' }}>
+												<b className="block text-[22px] font-black text-white leading-none tracking-[-0.03em]">{n}</b>
+												<span className="text-[#b9afa2] text-[11px] mt-1 block">{label}</span>
+											</div>
+										))}
 									</div>
 								</div>
-							</div>
+							</article>
 
-							{/* Scroll indicator */}
-							<div className="absolute bottom-5 right-6 md:right-10 flex items-center gap-2 text-white/40 text-[10px] uppercase tracking-[0.3em]">
-								<span>Scroll</span>
-								<div className="w-8 h-px bg-white/30" />
-							</div>
+							{/* hero-side */}
+							<aside className="hidden lg:grid grid-rows-2 gap-4">
+								{/* Category card */}
+								<article className="rounded-[38px] border border-white/10 p-7 overflow-hidden relative"
+									style={{ background: 'radial-gradient(circle at 88% 10%,rgba(255,210,41,0.14),transparent 16rem), linear-gradient(180deg,rgba(255,255,255,0.06),rgba(255,255,255,0.02)), #0d0c0b', boxShadow: '0 18px 70px rgba(0,0,0,0.25)' }}>
+									<span className="inline-flex items-center gap-2.5 text-yellow-400 text-[11px] font-black uppercase tracking-[0.34em]">
+										<span className="w-8 h-px bg-gradient-to-r from-yellow-400 to-transparent" />Categorías
+									</span>
+									<h2 className="mt-3 font-playfair text-[clamp(26px,3.2vw,38px)] font-black text-white leading-[0.97] text-balance tracking-tight">
+										Catálogo ordenado para vender más.
+									</h2>
+									<p className="mt-2.5 text-[#b9afa2] text-sm leading-relaxed">Explora por categoría o busca directamente en el catálogo en tiempo real.</p>
+									<div className="mt-5 grid grid-cols-3 gap-2.5">
+										{([
+											{ label: 'Pisos', onClick: () => { setSelectedCategory('Pisos'); } },
+											{ label: 'Seguridad', onClick: () => { setSelectedCategory('Seguridad'); } },
+											{ label: 'Iluminación', onClick: () => { setSelectedCategory('Iluminación'); } },
+										] as const).map(({ label, onClick }) => (
+											<button key={label} onClick={onClick}
+												className="min-h-[100px] rounded-[20px] border border-white/10 flex flex-col justify-end gap-2 p-3 text-left hover:border-yellow-400/35 hover:bg-yellow-400/5 transition-all duration-200 relative overflow-hidden"
+												style={{ background: '#0d0c0b' }}>
+												<div className="absolute inset-0 pointer-events-none" style={{ background: 'radial-gradient(circle at 80% -20%, rgba(255,210,41,0.18), transparent 55%)' }} />
+												<b className="relative text-white text-[12px] font-black uppercase tracking-[0.04em]">{label}</b>
+											</button>
+										))}
+									</div>
+								</article>
+
+								{/* Service/project card */}
+								<article className="rounded-[38px] overflow-hidden border border-white/8 relative flex flex-col justify-end p-7"
+									style={{ background: 'linear-gradient(180deg,rgba(0,0,0,0.04),rgba(0,0,0,0.84)), url("https://images.unsplash.com/photo-1616046229478-9901c5536a45?auto=format&fit=crop&w=1200&q=80") center/cover no-repeat', boxShadow: '0 30px 90px rgba(0,0,0,0.48)', minHeight: '260px' }}>
+									<span className="inline-flex items-center gap-2 self-start rounded-full px-3 py-2 text-[11px] font-black uppercase tracking-[0.08em] text-black mb-4" style={{ background: '#ffd229' }}>
+										Agenda + instalación
+									</span>
+									<h3 className="font-playfair text-[clamp(30px,3.8vw,52px)] font-black text-white leading-[0.96] tracking-tight text-balance">
+										Del producto a la obra terminada.
+									</h3>
+									<p className="mt-3 text-[#e5ddd0] text-sm leading-relaxed max-w-[400px]">
+										Cada producto puede conectar con compra directa, cotización o agenda de instalación en tu zona.
+									</p>
+									<div className="mt-5">
+										<button
+											onClick={() => router.push('/contacto')}
+											className="min-h-[50px] px-6 rounded-full inline-flex items-center gap-2 text-[12px] font-black uppercase tracking-[0.08em] text-black hover:-translate-y-0.5 transition-all duration-300"
+											style={{ background: 'linear-gradient(180deg,#ffe260,#ffc800)' }}
+										>
+											Agendar evaluación <ArrowRight size={13} />
+										</button>
+									</div>
+								</article>
+							</aside>
 						</div>
 					</section>
 
@@ -908,7 +925,7 @@ export default function TiendaClientPage() {
 						<div className="relative z-10 bg-black pt-20 pb-40 shadow-[0_-120px_150px_rgba(0,0,0,1)] px-6 md:px-10 border-t border-white/5">
 							<div className="max-w-4xl mx-auto space-y-16">
 								<div className="space-y-6">
-									<FabrickLogo active className="mb-4" />
+									<StoreFabrickLogo size="md" tone="dark" active className="mb-4" />
 									<p className="text-zinc-400 text-lg md:text-xl font-light leading-relaxed max-w-2xl">{selectedProduct.description}</p>
 								</div>
 
@@ -977,7 +994,7 @@ export default function TiendaClientPage() {
 
 						{/* Header */}
 						<div className="flex items-center justify-between px-6 py-5 border-b border-white/5">
-							<FabrickLogo />
+							<StoreFabrickLogo size="md" tone="dark" />
 							<button
 								onClick={() => setIsMenuOpen(false)}
 								className="w-8 h-8 flex items-center justify-center rounded-full border border-white/10 text-zinc-500 hover:border-white/25 hover:text-white transition-all"

@@ -1,5 +1,5 @@
 /* ============================================================
-   STUDIO ADMIN THEME
+   STUDIO ADMIN THEME — Lava / Cream edition
    Scoped to body[data-admin-theme="studio"].
    Modular, fully independent from business logic, auth, and endpoints.
    Toggle from admin header; preference persisted in localStorage.
@@ -7,27 +7,82 @@
 
 /* ── Design tokens ─────────────────────────────────────────── */
 body[data-admin-theme="studio"] {
-  --sa-bg:         #09090b;
-  --sa-surface:    #111113;
-  --sa-surface-2:  #18181b;
-  --sa-border:     #27272a;
-  --sa-border-sub: rgba(255,255,255,0.07);
-  --sa-accent:     #f97316;            /* orange-500  */
-  --sa-accent-4:   #fb923c;            /* orange-400  */
-  --sa-accent-6:   #ea580c;            /* orange-600  */
-  --sa-accent-15:  rgba(249,115,22,0.15);
-  --sa-accent-25:  rgba(249,115,22,0.25);
-  --sa-accent-40:  rgba(249,115,22,0.40);
-  --sa-accent-glow: 0 0 18px rgba(249,115,22,0.5);
-  --sa-text:       #fafafa;
-  --sa-muted:      #71717a;
-  --sa-dim:        #52525b;
+  --sa-bg:          #050403;
+  --sa-bg-2:        #0c0906;
+  --sa-surface:     #15110c;
+  --sa-surface-2:   #21170f;
+  --sa-soft:        #241a12;
+  --sa-border:      rgba(255,246,230,.10);
+  --sa-border-2:    rgba(255,246,230,.16);
+  --sa-border-sub:  rgba(255,246,230,.06);
+  --sa-accent:      #ff8a1f;            /* orange          */
+  --sa-accent-4:    #ffd54a;            /* yellow          */
+  --sa-accent-6:    #ff6a00;            /* lava            */
+  --sa-accent-2:    #ff4d00;            /* lava-deep       */
+  --sa-accent-15:   rgba(255,138,31,.15);
+  --sa-accent-25:   rgba(255,138,31,.25);
+  --sa-accent-40:   rgba(255,138,31,.40);
+  --sa-accent-glow: 0 0 18px rgba(255,106,0,.45);
+  --sa-cream:       #fff1d6;
+  --sa-cream-2:     #d8c2a1;
+  --sa-muted:       #dccab0;
+  --sa-muted-2:     #9f8d74;
+  --sa-text:        #ffffff;
+  --sa-green:       #3fe0c0;
+  --sa-danger:      #ff6b74;
+  --sa-purple:      #8e79ff;
+}
+
+/* ── Ambient grid & blob overlay ────────────────────────────── */
+.sa-ambient {
+  background:
+    linear-gradient(90deg, rgba(255,255,255,.02) 1px, transparent 1px),
+    linear-gradient(rgba(255,255,255,.02) 1px, transparent 1px);
+  background-size: 36px 36px;
+  mask-image: linear-gradient(to bottom, rgba(0,0,0,.55), transparent 90%);
+  -webkit-mask-image: linear-gradient(to bottom, rgba(0,0,0,.55), transparent 90%);
+}
+.sa-ambient::before {
+  content: "";
+  position: fixed;
+  inset: -20%;
+  background:
+    radial-gradient(circle at 20% 22%, rgba(255,241,214,.16), transparent 18rem),
+    radial-gradient(circle at 77% 22%, rgba(255,106,0,.34), transparent 22rem),
+    radial-gradient(circle at 70% 84%, rgba(255,213,74,.22), transparent 18rem);
+  filter: blur(60px);
+  animation: sa-drift 18s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: -1;
+}
+.sa-ambient::after {
+  content: "";
+  position: fixed;
+  width: 45vw; height: 45vw;
+  right: -12vw; top: -10vw;
+  border-radius: 50%;
+  background: radial-gradient(circle, rgba(255,138,31,.28), transparent 65%);
+  filter: blur(40px);
+  animation: sa-pulse 12s ease-in-out infinite alternate;
+  pointer-events: none;
+  z-index: -1;
+}
+@keyframes sa-drift {
+  0%   { transform: translate3d(0,0,0) scale(1); }
+  100% { transform: translate3d(4vw,2vh,0) scale(1.08); }
+}
+@keyframes sa-pulse {
+  0%   { transform: scale(1);    opacity: .55; }
+  100% { transform: scale(1.14); opacity: .80; }
 }
 
 /* ── AdminBaseThemeFrame ────────────────────────────────────── */
 body[data-admin-theme="studio"] [data-admin-frame] {
-  background: var(--sa-bg) !important;
-  background-image: none !important;
+  background:
+    radial-gradient(circle at 16% 15%, rgba(255,241,214,.10), transparent 23%),
+    radial-gradient(circle at 88% 10%, rgba(255,106,0,.24), transparent 25%),
+    radial-gradient(circle at 82% 86%, rgba(255,213,74,.14), transparent 24%),
+    linear-gradient(140deg,#050403 0%,#090604 36%,#120a05 100%) !important;
 }
 body[data-admin-theme="studio"] [data-admin-grid],
 body[data-admin-theme="studio"] [data-admin-top-grad] {
@@ -39,302 +94,192 @@ body[data-admin-theme="studio"] [data-admin-root] {
   background-color: var(--sa-bg) !important;
 }
 
-/* Hide gradient glow blobs */
-body[data-admin-theme="studio"] [data-admin-glow] {
-  display: none !important;
-}
-/* Replace the inline-style fixed background */
-body[data-admin-theme="studio"] [data-admin-fixed-bg] {
+body[data-admin-theme="studio"] [data-admin-glow]      { display: none !important; }
+body[data-admin-theme="studio"] [data-admin-fixed-bg]  {
   background: var(--sa-bg) !important;
   background-image: none !important;
 }
-body[data-admin-theme="studio"] [data-admin-fixed-bg] > div {
-  display: none !important;
-}
+body[data-admin-theme="studio"] [data-admin-fixed-bg] > div { display: none !important; }
 
 /* ── Header ──────────────────────────────────────────────────── */
 body[data-admin-theme="studio"] [data-admin-header] {
   border-bottom: 1px solid var(--sa-border) !important;
 }
 body[data-admin-theme="studio"] [data-admin-header] > .absolute {
-  background: rgba(9,9,11,0.88) !important;
+  background: rgba(7,5,4,0.92) !important;
   backdrop-filter: blur(12px) !important;
 }
-/* Hide the gold header gradient line */
 body[data-admin-theme="studio"] [data-admin-header] .pointer-events-none.absolute.-bottom-px {
   background: linear-gradient(90deg, transparent, var(--sa-accent-25), transparent) !important;
 }
 
 /* ── Sidebar ─────────────────────────────────────────────────── */
-/* Section cards */
 body[data-admin-theme="studio"] [data-admin-sidebar] nav {
   background: var(--sa-surface-2) !important;
   border-color: var(--sa-border) !important;
   backdrop-filter: none !important;
   box-shadow: none !important;
 }
-/* Brand card */
 body[data-admin-theme="studio"] [data-admin-sidebar] > div > div:first-child {
   background: var(--sa-surface) !important;
   border-color: var(--sa-accent-25) !important;
   backdrop-filter: none !important;
 }
-/* Logout card */
 body[data-admin-theme="studio"] [data-admin-sidebar] > div > div:last-child {
   background: var(--sa-surface-2) !important;
   border-color: var(--sa-border) !important;
   backdrop-filter: none !important;
 }
-/* Quick actions */
 body[data-admin-theme="studio"] [data-admin-sidebar] > div > div:nth-child(2) {
   background: transparent !important;
 }
 
-/* ── Yellow → Orange: text colors ───────────────────────────── */
-body[data-admin-theme="studio"] [data-admin-root] .text-yellow-300 {
-  color: var(--sa-accent) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .text-yellow-200 {
-  color: var(--sa-accent-4) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .text-yellow-400 {
-  color: var(--sa-accent) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .text-amber-300 {
-  color: var(--sa-accent-4) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .text-amber-400 {
-  color: var(--sa-accent) !important;
-}
+/* ── Yellow → Lava/Cream: text colors ───────────────────────── */
+body[data-admin-theme="studio"] [data-admin-root] .text-yellow-300,
+body[data-admin-theme="studio"] [data-admin-root] .text-yellow-400  { color: var(--sa-accent) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .text-yellow-200  { color: var(--sa-accent-4) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .text-amber-300,
+body[data-admin-theme="studio"] [data-admin-root] .text-amber-400   { color: var(--sa-accent-4) !important; }
 
-/* ── Yellow → Orange: backgrounds ───────────────────────────── */
-body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-300 {
-  background-color: var(--sa-accent) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-300\/5 {
-  background-color: rgba(249,115,22,0.05) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-300\/10 {
-  background-color: rgba(249,115,22,0.10) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-300\/15 {
-  background-color: var(--sa-accent-15) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-300\/20 {
-  background-color: rgba(249,115,22,0.20) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-400\/\[0\.08\] {
-  background-color: rgba(249,115,22,0.08) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .bg-amber-400\/10 {
-  background-color: rgba(249,115,22,0.10) !important;
-}
+/* ── Yellow → Lava/Cream: backgrounds ───────────────────────── */
+body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-300                   { background-color: var(--sa-accent) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-300\/5                { background-color: rgba(255,138,31,.05) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-300\/10               { background-color: rgba(255,138,31,.10) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-300\/15               { background-color: var(--sa-accent-15) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-300\/20               { background-color: rgba(255,138,31,.20) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-300\/\[0\.08\]        { background-color: rgba(255,138,31,.08) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .bg-amber-400\/10                { background-color: rgba(255,138,31,.10) !important; }
 
-/* ── Yellow → Orange: borders ───────────────────────────────── */
-body[data-admin-theme="studio"] [data-admin-root] .border-yellow-300\/25 {
-  border-color: var(--sa-accent-25) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .border-yellow-300\/30 {
-  border-color: rgba(249,115,22,0.30) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .border-yellow-300\/40 {
-  border-color: var(--sa-accent-40) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .border-yellow-300\/60 {
-  border-color: rgba(249,115,22,0.60) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .border-yellow-300\/70 {
-  border-color: rgba(249,115,22,0.70) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .border-amber-400\/30 {
-  border-color: rgba(249,115,22,0.30) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .border-amber-400\/40 {
-  border-color: rgba(249,115,22,0.40) !important;
-}
+/* ── Yellow → Lava/Cream: borders ───────────────────────────── */
+body[data-admin-theme="studio"] [data-admin-root] .border-yellow-300\/25  { border-color: var(--sa-accent-25) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .border-yellow-300\/30  { border-color: rgba(255,138,31,.30) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .border-yellow-300\/40  { border-color: var(--sa-accent-40) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .border-yellow-300\/60  { border-color: rgba(255,138,31,.60) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .border-yellow-300\/70  { border-color: rgba(255,138,31,.70) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .border-amber-400\/30   { border-color: rgba(255,138,31,.30) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .border-amber-400\/40   { border-color: rgba(255,138,31,.40) !important; }
 
-/* ── Yellow → Orange: rings ─────────────────────────────────── */
+/* ── Yellow → Lava/Cream: rings ─────────────────────────────── */
 body[data-admin-theme="studio"] [data-admin-root] .ring-yellow-300\/30 {
-  --tw-ring-color: rgba(249,115,22,0.30) !important;
+  --tw-ring-color: rgba(255,138,31,.30) !important;
 }
 
-/* ── Yellow → Orange: gradients ─────────────────────────────── */
+/* ── Yellow → Lava/Cream: gradients ─────────────────────────── */
 body[data-admin-theme="studio"] [data-admin-root] .from-yellow-300 {
   --tw-gradient-from: var(--sa-accent) var(--tw-gradient-from-position) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(249,115,22,0) var(--tw-gradient-to-position)) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(255,138,31,0) var(--tw-gradient-to-position)) !important;
 }
 body[data-admin-theme="studio"] [data-admin-root] .from-yellow-300\/60 {
-  --tw-gradient-from: rgba(249,115,22,0.60) var(--tw-gradient-from-position) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(249,115,22,0) var(--tw-gradient-to-position)) !important;
+  --tw-gradient-from: rgba(255,138,31,.60) var(--tw-gradient-from-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(255,138,31,0) var(--tw-gradient-to-position)) !important;
 }
 body[data-admin-theme="studio"] [data-admin-root] .from-yellow-400\/20 {
-  --tw-gradient-from: rgba(249,115,22,0.20) var(--tw-gradient-from-position) !important;
-  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(249,115,22,0) var(--tw-gradient-to-position)) !important;
+  --tw-gradient-from: rgba(255,138,31,.20) var(--tw-gradient-from-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to, rgba(255,138,31,0) var(--tw-gradient-to-position)) !important;
 }
 body[data-admin-theme="studio"] [data-admin-root] .via-yellow-300\/10 {
-  --tw-gradient-via: rgba(249,115,22,0.10) !important;
+  --tw-gradient-via: rgba(255,138,31,.10) !important;
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-via), var(--tw-gradient-to) !important;
 }
 body[data-admin-theme="studio"] [data-admin-root] .to-amber-500 {
   --tw-gradient-to: var(--sa-accent-6) var(--tw-gradient-to-position) !important;
 }
 body[data-admin-theme="studio"] [data-admin-root] .from-yellow-300\/10 {
-  --tw-gradient-from: rgba(249,115,22,0.10) var(--tw-gradient-from-position) !important;
+  --tw-gradient-from: rgba(255,138,31,.10) var(--tw-gradient-from-position) !important;
 }
 
-/* ── Yellow → Orange: box shadows ───────────────────────────── */
+/* ── Yellow → Lava/Cream: box shadows ───────────────────────── */
 body[data-admin-theme="studio"] [data-admin-root] .shadow-\[0_0_10px_rgba\(250\2c 204\2c 21\2c 0\.6\)\] {
   box-shadow: var(--sa-accent-glow) !important;
 }
 body[data-admin-theme="studio"] [data-admin-root] .shadow-\[inset_0_1px_0_rgba\(250\2c 204\2c 21\2c 0\.25\)\] {
-  box-shadow: inset 0 1px 0 rgba(249,115,22,0.25) !important;
+  box-shadow: inset 0 1px 0 rgba(255,138,31,.25) !important;
 }
 body[data-admin-theme="studio"] [data-admin-root] .shadow-\[0_6px_20px_rgba\(250\2c 204\2c 21\2c 0\.25\)\] {
-  box-shadow: 0 6px 20px rgba(249,115,22,0.25) !important;
+  box-shadow: 0 6px 20px rgba(255,138,31,.25) !important;
 }
 body[data-admin-theme="studio"] [data-admin-root] .hover\:shadow-\[0_6px_20px_rgba\(250\2c 204\2c 21\2c 0\.25\)\]:hover {
-  box-shadow: 0 6px 20px rgba(249,115,22,0.25) !important;
+  box-shadow: 0 6px 20px rgba(255,138,31,.25) !important;
 }
 
-/* ── Hover states: yellow → orange ──────────────────────────── */
-body[data-admin-theme="studio"] [data-admin-root] .hover\:border-yellow-300\/60:hover {
-  border-color: rgba(249,115,22,0.60) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .hover\:border-yellow-300\/70:hover {
-  border-color: rgba(249,115,22,0.70) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .hover\:bg-yellow-300\/10:hover {
-  background-color: rgba(249,115,22,0.10) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .hover\:bg-yellow-300\/20:hover {
-  background-color: rgba(249,115,22,0.20) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .hover\:text-yellow-400:hover {
-  color: var(--sa-accent) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .group:hover .group-hover\:text-yellow-300 {
-  color: var(--sa-accent) !important;
-}
-body[data-admin-theme="studio"] [data-admin-root] .group:hover .group-hover\:border-yellow-300\/60 {
-  border-color: rgba(249,115,22,0.60) !important;
-}
+/* ── Hover states: yellow → lava ────────────────────────────── */
+body[data-admin-theme="studio"] [data-admin-root] .hover\:border-yellow-300\/60:hover   { border-color: rgba(255,138,31,.60) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .hover\:border-yellow-300\/70:hover   { border-color: rgba(255,138,31,.70) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .hover\:bg-yellow-300\/10:hover       { background-color: rgba(255,138,31,.10) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .hover\:bg-yellow-300\/20:hover       { background-color: rgba(255,138,31,.20) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .hover\:text-yellow-400:hover         { color: var(--sa-accent) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .group:hover .group-hover\:text-yellow-300  { color: var(--sa-accent) !important; }
+body[data-admin-theme="studio"] [data-admin-root] .group:hover .group-hover\:border-yellow-300\/60 { border-color: rgba(255,138,31,.60) !important; }
 
 /* ── Sidebar surface cleanup ─────────────────────────────────── */
-body[data-admin-theme="studio"] [data-admin-sidebar] .bg-black\/45 {
-  background-color: var(--sa-surface-2) !important;
-  backdrop-filter: none !important;
-}
-body[data-admin-theme="studio"] [data-admin-sidebar] .bg-black\/55 {
-  background-color: var(--sa-surface) !important;
-  backdrop-filter: none !important;
-}
-body[data-admin-theme="studio"] [data-admin-sidebar] .border-white\/12 {
-  border-color: var(--sa-border) !important;
-}
-body[data-admin-theme="studio"] [data-admin-sidebar] .shadow-\[0_14px_40px_rgba\(0\2c 0\2c 0\2c 0\.4\)\] {
-  box-shadow: 0 1px 3px rgba(0,0,0,0.4) !important;
-}
-body[data-admin-theme="studio"] [data-admin-sidebar] .shadow-\[0_20px_60px_rgba\(0\2c 0\2c 0\2c 0\.45\)\] {
-  box-shadow: 0 2px 6px rgba(0,0,0,0.5) !important;
-}
+body[data-admin-theme="studio"] [data-admin-sidebar] .bg-black\/45     { background-color: var(--sa-surface-2) !important; backdrop-filter: none !important; }
+body[data-admin-theme="studio"] [data-admin-sidebar] .bg-black\/55     { background-color: var(--sa-surface) !important;   backdrop-filter: none !important; }
+body[data-admin-theme="studio"] [data-admin-sidebar] .border-white\/12 { border-color: var(--sa-border) !important; }
+body[data-admin-theme="studio"] [data-admin-sidebar] .shadow-\[0_14px_40px_rgba\(0\2c 0\2c 0\2c 0\.4\)\]  { box-shadow: 0 1px 3px rgba(0,0,0,.4) !important; }
+body[data-admin-theme="studio"] [data-admin-sidebar] .shadow-\[0_20px_60px_rgba\(0\2c 0\2c 0\2c 0\.45\)\] { box-shadow: 0 2px 6px rgba(0,0,0,.5) !important; }
 body[data-admin-theme="studio"] [data-admin-sidebar] .backdrop-blur-xl,
-body[data-admin-theme="studio"] [data-admin-sidebar] .backdrop-blur-2xl {
-  backdrop-filter: none !important;
-}
+body[data-admin-theme="studio"] [data-admin-sidebar] .backdrop-blur-2xl { backdrop-filter: none !important; }
 
 /* ── Header surface cleanup ──────────────────────────────────── */
-body[data-admin-theme="studio"] [data-admin-header] .bg-black\/55 {
-  background-color: rgba(9,9,11,0.90) !important;
-  backdrop-filter: blur(10px) !important;
-}
-body[data-admin-theme="studio"] [data-admin-header] .border-white\/15 {
-  border-color: var(--sa-border) !important;
-}
+body[data-admin-theme="studio"] [data-admin-header] .bg-black\/55     { background-color: rgba(7,5,4,.92) !important; backdrop-filter: blur(10px) !important; }
+body[data-admin-theme="studio"] [data-admin-header] .border-white\/15  { border-color: var(--sa-border) !important; }
 
 /* ── Main content area ───────────────────────────────────────── */
-body[data-admin-theme="studio"] [data-admin-main] .bg-white\/5 {
-  background-color: rgba(249,115,22,0.05) !important;
-}
+body[data-admin-theme="studio"] [data-admin-main] .bg-white\/5 { background-color: rgba(255,138,31,.05) !important; }
 
 /* ── Studio Admin animate-pulse (status dot) ─────────────────── */
-body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-400.animate-pulse {
-  background-color: var(--sa-accent) !important;
-}
+body[data-admin-theme="studio"] [data-admin-root] .bg-yellow-400.animate-pulse { background-color: var(--sa-accent) !important; }
 
 /* ── Quick action primary card ───────────────────────────────── */
 body[data-admin-theme="studio"] [data-admin-root] .border-yellow-300\/40.bg-yellow-300\/10 {
   border-color: var(--sa-accent-40) !important;
-  background-color: rgba(249,115,22,0.10) !important;
+  background-color: rgba(255,138,31,.10) !important;
   color: var(--sa-accent-4) !important;
 }
 
-/* ── Theme toggle button itself ──────────────────────────────── */
+/* ── Theme toggle button ─────────────────────────────────────── */
 .admin-theme-toggle {
   position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 0.375rem;
-  padding: 0.4rem 0.75rem;
+  gap: .375rem;
+  padding: .4rem .75rem;
   border-radius: 9999px;
-  border: 1px solid rgba(255,255,255,0.12);
+  border: 1px solid rgba(255,246,230,.12);
   background: transparent;
-  font-size: 0.625rem;
+  font-size: .625rem;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: rgba(161,161,170,1);
+  letter-spacing: .18em;
+  color: rgba(156,132,104,1);
   cursor: pointer;
-  transition: all 0.2s;
+  transition: all .2s;
   white-space: nowrap;
 }
 .admin-theme-toggle:hover {
-  border-color: rgba(249,115,22,0.40);
-  color: #f97316;
+  border-color: rgba(255,138,31,.40);
+  color: #ff8a1f;
 }
 body[data-admin-theme="studio"] .admin-theme-toggle {
-  border-color: rgba(249,115,22,0.40);
-  color: #f97316;
-  background: rgba(249,115,22,0.06);
+  border-color: rgba(255,138,31,.40);
+  color: #ff8a1f;
+  background: rgba(255,138,31,.06);
 }
 body[data-admin-theme="studio"] .admin-theme-toggle:hover {
-  background: rgba(249,115,22,0.12);
+  background: rgba(255,138,31,.12);
 }
 
 /* ── Shell visibility toggling ───────────────────────────────── */
-/* By default, only the Fabrick shell is visible (inline style on
-   .studio-shell already sets display:none, but we also enforce it here). */
-.studio-shell {
-  display: none !important;
-}
+.studio-shell { display: none !important; }
+body[data-admin-theme="studio"] .fabrick-shell  { display: none !important; }
+body[data-admin-theme="studio"] .studio-shell   { display: block !important; }
 
-/* When Studio theme is active: hide Fabrick, show Studio */
-body[data-admin-theme="studio"] .fabrick-shell {
-  display: none !important;
-}
-body[data-admin-theme="studio"] .studio-shell {
-  display: block !important;
-}
+/* ── Context menu — Studio overrides ────────────────────────── */
+body[data-admin-theme="studio"] [data-admin-context-menu]          { background: var(--sa-surface) !important; border-color: var(--sa-accent-25) !important; }
+body[data-admin-theme="studio"] [data-admin-context-menu] header   { background: var(--sa-bg) !important; }
+body[data-admin-theme="studio"] [data-admin-context-menu] .text-yellow-300 { color: var(--sa-accent) !important; }
+body[data-admin-theme="studio"] [data-admin-context-menu] section  { background: var(--sa-surface-2) !important; border-color: var(--sa-border) !important; }
 
-/* ── Context menu (hamburger) — Studio overrides ─────────────── */
-body[data-admin-theme="studio"] [data-admin-context-menu] {
-  background: var(--sa-surface) !important;
-  border-color: var(--sa-accent-25) !important;
-}
-body[data-admin-theme="studio"] [data-admin-context-menu] header {
-  background: var(--sa-bg) !important;
-}
-body[data-admin-theme="studio"] [data-admin-context-menu] .text-yellow-300 {
-  color: var(--sa-accent) !important;
-}
-body[data-admin-theme="studio"] [data-admin-context-menu] section {
-  background: var(--sa-surface-2) !important;
-  border-color: var(--sa-border) !important;
-}
-
-/* ── Route transition — Studio accent ────────────────────────── */
-body[data-admin-theme="studio"] [data-route-transition] .bg-amber-400 {
-  background-color: var(--sa-accent) !important;
-}
-body[data-admin-theme="studio"] [data-route-transition] .text-amber-400 {
-  color: var(--sa-accent) !important;
-}
+/* ── Route transition ────────────────────────────────────────── */
+body[data-admin-theme="studio"] [data-route-transition] .bg-amber-400  { background-color: var(--sa-accent) !important; }
+body[data-admin-theme="studio"] [data-route-transition] .text-amber-400 { color: var(--sa-accent) !important; }

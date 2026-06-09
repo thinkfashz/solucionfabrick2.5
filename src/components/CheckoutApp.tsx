@@ -1791,32 +1791,53 @@ const CheckoutApp = () => {
           
           {paymentOutcome === 'rejected' ? (
             /* ── REJECTION PANEL ───────────────────────────────────────── */
-            <div className="w-full max-w-md flex flex-col items-center text-center animate-fade-up py-8">
-              <div className="relative mb-8 mt-4">
-                <div className="absolute inset-0 rounded-full border border-red-500/40 animate-[pulse-ring_2s_cubic-bezier(0.2,0,0.2,1)_infinite]" />
-                <div className="w-16 h-16 bg-red-500/10 border border-red-500/50 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(239,68,68,0.25)]">
-                  <svg viewBox="0 0 24 24" className="w-8 h-8 text-red-400" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
-                    <line x1="18" y1="6" x2="6" y2="18" />
-                    <line x1="6" y1="6" x2="18" y2="18" />
-                  </svg>
+            <div className="w-full max-w-[520px] flex flex-col items-center text-center animate-fade-up py-8">
+              <style>{`
+                @keyframes fail-shake{0%,100%{transform:translateX(0)}20%{transform:translateX(-7px)}40%{transform:translateX(7px)}60%{transform:translateX(-4px)}80%{transform:translateX(4px)}}
+                @keyframes fail-draw{to{stroke-dashoffset:0}}
+                .fail-icon{animation:fail-shake .55s ease .2s both}
+                .fail-path{stroke-dasharray:80;stroke-dashoffset:80;animation:fail-draw .7s .25s ease forwards}
+              `}</style>
+
+              {/* Animated X icon */}
+              <div className="fail-icon w-[116px] h-[116px] rounded-full flex items-center justify-center mb-5"
+                style={{ background: 'radial-gradient(circle,rgba(255,93,93,.22),rgba(255,93,93,.05))', border: '1px solid rgba(255,93,93,.35)', boxShadow: '0 0 60px rgba(255,93,93,.18)' }}>
+                <svg viewBox="0 0 100 100" fill="none" className="w-[64px] h-[64px]">
+                  <path d="M32 32 68 68" stroke="#ff5d5d" strokeWidth="10" strokeLinecap="round" className="fail-path" />
+                  <path d="M68 32 32 68" stroke="#ff5d5d" strokeWidth="10" strokeLinecap="round" className="fail-path" />
+                </svg>
+              </div>
+
+              <span className="inline-flex items-center gap-2.5 text-[#ffd229] text-[11px] font-black uppercase tracking-[0.34em] mb-2">
+                <span className="block w-6 h-px bg-gradient-to-r from-[#ffd229] to-transparent" />
+                Compra no completada
+              </span>
+              <h2 className="text-[clamp(30px,6vw,52px)] font-black tracking-[-0.055em] leading-[0.94] mt-1 mb-4 text-white">
+                No hubo <span style={{ color: '#ffd229' }}>cobro</span>.
+              </h2>
+              <p className="text-[#b9afa2] text-[16px] leading-[1.7] max-w-[400px] mb-5">
+                {paymentRejectionMessage || 'El intento se detuvo antes de confirmar. El producto sigue disponible y puedes volver al pago sin llenar todo de nuevo.'}
+              </p>
+
+              {/* Info cards */}
+              <div className="w-full grid gap-3 mb-6 text-left">
+                <div className="flex items-start gap-3 rounded-[20px] border border-white/[0.12] p-4" style={{ background: 'rgba(255,255,255,.035)' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 mt-0.5"><path d="M12 9v4m0 4h.01M10.3 4.4 2.6 18a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4.4a2 2 0 0 0-3.4 0Z" stroke="#ffd229" strokeWidth="2" strokeLinecap="round"/></svg>
+                  <div>
+                    <p className="font-bold text-sm text-white mb-1">Datos protegidos</p>
+                    <p className="text-[#b9afa2] text-[13px] leading-[1.5]">No guardamos números de tarjeta. Puedes reintentar con Mercado Pago, tarjeta o transferencia.</p>
+                  </div>
+                </div>
+                <div className="flex items-start gap-3 rounded-[20px] border border-white/[0.12] p-4" style={{ background: 'rgba(255,255,255,.035)' }}>
+                  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" className="flex-shrink-0 mt-0.5"><path d="M4 5c0 8.3 6.7 15 15 15h1.5c.8 0 1.5-.7 1.5-1.5v-2.3c0-.7-.5-1.3-1.2-1.5l-3.1-.8c-.6-.2-1.3.1-1.7.6l-.7 1c-2.8-1.3-5.1-3.6-6.4-6.4l1-.7c.5-.4.8-1.1.6-1.7L9.7 3.6C9.5 2.9 8.9 2.4 8.2 2.4H5.5C4.7 2.4 4 3.1 4 3.9V5Z" stroke="#23d18b" strokeWidth="2"/></svg>
+                  <div>
+                    <p className="font-bold text-sm text-white mb-1">Cierre asistido</p>
+                    <p className="text-[#b9afa2] text-[13px] leading-[1.5]">Si lo prefieres, un asesor puede tomar el pedido y coordinar despacho o instalación contigo.</p>
+                  </div>
                 </div>
               </div>
 
-              <span className="text-red-400 font-bold tracking-[0.5em] text-[9px] uppercase">Pago Rechazado</span>
-              <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter leading-none mt-3 mb-4">
-                Tarjeta <span className="text-red-400">no aprobada</span>
-              </h2>
-
-              <p className="text-zinc-300 text-sm leading-relaxed max-w-sm mx-auto mb-2 px-2">
-                {paymentRejectionMessage || 'Mercado Pago no aprobó el pago. No se realizó ningún cobro a tu tarjeta.'}
-              </p>
-              {orderId && (
-                <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 mb-6">
-                  Orden: <span className="text-zinc-300 font-mono">{orderId}</span> · sin cobro
-                </p>
-              )}
-
-              <div className="flex flex-col sm:flex-row gap-3 w-full mt-6">
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
                 <button
                   type="button"
                   onClick={() => {
@@ -1829,9 +1850,10 @@ const CheckoutApp = () => {
                     setCardCVC('');
                     setStep(3);
                   }}
-                  className="flex-1 py-4 bg-yellow-400 text-black font-black uppercase text-[10px] tracking-[0.3em] rounded-full hover:bg-white transition-all shadow-[0_10px_30px_rgba(250,204,21,0.25)]"
+                  className="flex-1 min-h-[52px] font-black uppercase text-[11px] tracking-[0.13em] rounded-full transition-all hover:-translate-y-0.5 text-black"
+                  style={{ background: 'linear-gradient(180deg,#ffe56b,#ffd229)', boxShadow: '0 14px 40px rgba(255,210,41,.22)' }}
                 >
-                  Intentar otra tarjeta
+                  Intentar de nuevo
                 </button>
                 <button
                   type="button"
@@ -1845,7 +1867,8 @@ const CheckoutApp = () => {
                     setTransferOrderId('');
                     setStep(3);
                   }}
-                  className="flex-1 py-4 border border-white/20 rounded-full text-white font-bold uppercase text-[10px] tracking-[0.3em] hover:border-yellow-400 hover:text-yellow-400 transition-colors"
+                  className="flex-1 min-h-[52px] border border-white/[0.12] rounded-full font-bold uppercase text-[11px] tracking-[0.13em] text-white hover:border-yellow-400/50 hover:text-yellow-400 transition-colors"
+                  style={{ background: 'rgba(255,255,255,.055)' }}
                 >
                   Pagar por transferencia
                 </button>
@@ -1853,46 +1876,61 @@ const CheckoutApp = () => {
             </div>
           ) : paymentOutcome === 'pending' ? (
             /* ── PENDING PANEL ─────────────────────────────────────────── */
-            <div className="w-full max-w-md flex flex-col items-center text-center animate-fade-up py-8">
-              <div className="relative mb-8 mt-4">
-                <div className="absolute inset-0 rounded-full border border-yellow-400/40 animate-[pulse-ring_2s_cubic-bezier(0.2,0,0.2,1)_infinite]" />
-                <div className="w-16 h-16 bg-yellow-400/10 border border-yellow-400/50 rounded-full flex items-center justify-center shadow-[0_0_30px_rgba(250,204,21,0.25)]">
-                  <RefreshCw className="w-7 h-7 text-yellow-400" strokeWidth={2.2} />
-                </div>
+            <div className="w-full max-w-[520px] flex flex-col items-center text-center animate-fade-up py-8">
+              <style>{`
+                @keyframes pending-pulse{50%{transform:scale(1.05)}}
+                .pending-icon{animation:pending-pulse 1.8s ease-in-out infinite}
+                @keyframes pending-draw{to{stroke-dashoffset:0}}
+                .pending-arc{stroke-dasharray:80;stroke-dashoffset:80;animation:pending-draw 1.1s .1s ease forwards}
+              `}</style>
+
+              {/* Animated clock icon */}
+              <div className="pending-icon w-[116px] h-[116px] rounded-full flex items-center justify-center mb-5"
+                style={{ background: 'radial-gradient(circle,rgba(255,210,41,.22),rgba(255,210,41,.05))', border: '1px solid rgba(255,210,41,.40)', boxShadow: '0 0 60px rgba(255,210,41,.20)' }}>
+                <svg viewBox="0 0 100 100" fill="none" className="w-[62px] h-[62px]">
+                  <circle cx="50" cy="50" r="32" stroke="#ffd229" strokeWidth="8" className="pending-arc" />
+                  <path d="M50 34 50 52 62 58" stroke="#ffd229" strokeWidth="8" strokeLinecap="round" strokeLinejoin="round" className="pending-arc" />
+                </svg>
               </div>
 
-              <span className="text-yellow-400 font-bold tracking-[0.5em] text-[9px] uppercase">Pago en revisión</span>
-              <h2 className="text-3xl sm:text-4xl font-black uppercase tracking-tighter leading-none mt-3 mb-4">
-                Pago <span className="text-yellow-400">pendiente</span>
+              <span className="inline-flex items-center gap-2.5 text-[#ffd229] text-[11px] font-black uppercase tracking-[0.34em] mb-2">
+                <span className="block w-6 h-px bg-gradient-to-r from-[#ffd229] to-transparent" />
+                Pago en revisión
+              </span>
+              <h2 className="text-[clamp(30px,6vw,52px)] font-black tracking-[-0.055em] leading-[0.94] mt-1 mb-4 text-white">
+                Pago <span style={{ color: '#ffd229' }}>pendiente</span>.
               </h2>
 
-              <p className="text-zinc-300 text-sm leading-relaxed max-w-sm mx-auto mb-2 px-2">
+              <p className="text-[#b9afa2] text-[16px] leading-[1.7] max-w-[400px] mb-4">
                 {paymentRejectionMessage || checkoutCms.successMessages.pending}
               </p>
               {orderId && (
-                <p className="text-[10px] uppercase tracking-[0.3em] text-zinc-500 mb-6">
-                  Orden: <span className="text-zinc-300 font-mono">{orderId}</span>
+                <p className="text-[11px] uppercase tracking-[0.3em] mb-5" style={{ color: '#7e7469' }}>
+                  Orden: <span className="text-white font-mono">{orderId}</span>
                 </p>
               )}
 
-              <button
-                type="button"
-                onClick={() => window.location.assign('/')}
-                className="mt-4 px-10 py-4 bg-white text-black font-black uppercase text-[10px] tracking-[0.3em] rounded-full hover:bg-yellow-400 transition-all"
-              >
-                Volver al inicio
-              </button>
-
-              {mpPaymentId && (
-                <a
-                  href={`https://www.mercadopago.cl/activities/?searchQuery=${encodeURIComponent(mpPaymentId)}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="mt-3 inline-flex items-center gap-2 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-5 py-2.5 text-[10px] font-bold uppercase tracking-[0.25em] text-yellow-300 transition hover:border-yellow-400 hover:bg-yellow-400/20"
+              <div className="flex flex-col sm:flex-row gap-3 w-full">
+                <button
+                  type="button"
+                  onClick={() => window.location.assign('/tienda')}
+                  className="flex-1 min-h-[52px] font-black uppercase text-[11px] tracking-[0.13em] rounded-full transition-all hover:-translate-y-0.5 text-black"
+                  style={{ background: 'linear-gradient(180deg,#ffe56b,#ffd229)', boxShadow: '0 14px 40px rgba(255,210,41,.22)' }}
                 >
-                  Ver estado / cancelar en Mercado Pago ↗
-                </a>
-              )}
+                  Volver al catálogo
+                </button>
+                {mpPaymentId && (
+                  <a
+                    href={`https://www.mercadopago.cl/activities/?searchQuery=${encodeURIComponent(mpPaymentId)}`}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex-1 min-h-[52px] flex items-center justify-center gap-2 border border-white/[0.12] rounded-full font-bold uppercase text-[11px] tracking-[0.13em] text-white hover:border-yellow-400/50 hover:text-yellow-400 transition-colors"
+                    style={{ background: 'rgba(255,255,255,.055)' }}
+                  >
+                    Ver en Mercado Pago ↗
+                  </a>
+                )}
+              </div>
             </div>
           ) : !isSuccess ? (
             <div className="w-full max-w-md flex flex-col items-center text-center animate-fade-up">

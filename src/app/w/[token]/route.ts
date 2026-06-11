@@ -33,6 +33,20 @@ async function runRawSql(query: string) {
   return { ok: res.ok, status: res.status, data };
 }
 
+function htmlHeaders(status = 200) {
+  return {
+    status,
+    headers: {
+      'content-type': 'text/html; charset=utf-8',
+      'cache-control': 'no-store, max-age=0',
+      'x-robots-tag': 'noindex, nofollow',
+      'x-content-type-options': 'nosniff',
+      'referrer-policy': 'strict-origin-when-cross-origin',
+      'permissions-policy': 'camera=(), microphone=(), geolocation=()',
+    },
+  };
+}
+
 function expiredHtml() {
   return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Link expirado</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090806;color:#fff7e8;font-family:system-ui}.box{max-width:560px;padding:32px;border:1px solid rgba(255,190,56,.24);border-radius:32px;background:#111;box-shadow:0 24px 80px rgba(0,0,0,.45)}h1{font-size:42px;letter-spacing:-.05em}.tag{color:#fbbf24;text-transform:uppercase;font-size:12px;font-weight:900;letter-spacing:.22em}</style></head><body><main class="box"><p class="tag">Soluciones Fabrick</p><h1>Este link ya expiró</h1><p>Solicita una nueva versión para ver precios y condiciones actualizadas.</p></main></body></html>`;
 }
@@ -40,7 +54,7 @@ function expiredHtml() {
 export async function GET(_request: NextRequest, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
   if (!/^[a-zA-Z0-9_-]{8,80}$/.test(token || '')) {
-    return new NextResponse(expiredHtml(), { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
+    return new NextResponse(expiredHtml(), htmlHeaders(404));
   }
 
   const result = await runRawSql(`
@@ -54,19 +68,13 @@ LIMIT 1;
 
   const row = rows(result)[0];
   if (!row || row.status !== 'publicado') {
-    return new NextResponse(expiredHtml(), { status: 404, headers: { 'content-type': 'text/html; charset=utf-8' } });
+    return new NextResponse(expiredHtml(), htmlHeaders(404));
   }
 
   const expires = row.expires_at ? new Date(String(row.expires_at)).getTime() : Number.NaN;
   if (Number.isFinite(expires) && Date.now() > expires) {
-    return new NextResponse(expiredHtml(), { status: 410, headers: { 'content-type': 'text/html; charset=utf-8' } });
+    return new NextResponse(expiredHtml(), htmlHeaders(410));
   }
 
-  return new NextResponse(String(row.html || expiredHtml()), {
-    headers: {
-      'content-type': 'text/html; charset=utf-8',
-      'cache-control': 'no-store, max-age=0',
-      'x-robots-tag': 'noindex, nofollow',
-    },
-  });
+  return new NextResponse(String(row.html || expiredHtml()), htmlHeaders(200));
 }

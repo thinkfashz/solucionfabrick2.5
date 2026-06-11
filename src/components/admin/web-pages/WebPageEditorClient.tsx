@@ -1,21 +1,15 @@
 'use client';
 
-declare global { interface Window { grapesjs?: any } }
-
 import Link from 'next/link';
 import { useEffect, useRef, useState } from 'react';
 import { ArrowLeft, Copy, ExternalLink, Loader2, Save, Send } from 'lucide-react';
 
 type PageData = { id:number; slug:string; title:string; niche:string; client_name:string; client_phone:string; status:string; project_json:any; html:string; css:string; js:string; seo_json:any; public_url:string };
 
-function loadScript(src: string) {
-  return new Promise<void>((resolve, reject) => {
-    const existing = document.querySelector(`script[src="${src}"]`);
-    if (existing) return resolve();
-    const s = document.createElement('script');
-    s.src = src; s.async = true; s.onload = () => resolve(); s.onerror = () => reject(new Error(`No se pudo cargar ${src}`));
-    document.body.appendChild(s);
-  });
+async function loadGrapesJS() {
+  await import('grapesjs/dist/css/grapes.min.css');
+  const mod = await import('grapesjs');
+  return mod.default ?? mod;
 }
 
 export function WebPageEditorClient({ id }: { id: string }) {
@@ -35,11 +29,14 @@ export function WebPageEditorClient({ id }: { id: string }) {
     let cancelled = false;
     async function init() {
       try {
-        if (!document.querySelector('link[data-grapesjs]')) { const link=document.createElement('link'); link.rel='stylesheet'; link.href='https://unpkg.com/grapesjs@0.22.13/dist/css/grapes.min.css'; link.dataset.grapesjs='true'; document.head.appendChild(link); }
-        if (!window.grapesjs) await loadScript('https://unpkg.com/grapesjs@0.22.13/dist/grapes.min.js');
-        if (cancelled || !canvasRef.current || !window.grapesjs) return;
-        const editor = window.grapesjs.init({
-          container: canvasRef.current, height:'calc(100vh - 210px)', width:'100%', storageManager:false, fromElement:false,
+        const grapesjs = await loadGrapesJS();
+        if (cancelled || !canvasRef.current) return;
+        const editor = grapesjs.init({
+          container: canvasRef.current,
+          height:'calc(100vh - 210px)',
+          width:'100%',
+          storageManager:false,
+          fromElement:false,
           blockManager:{ blocks:[
             {id:'hero-fabrick',label:'Hero Fabrick',category:'Fabrick',content:'<section class="hero"><div class="badge">Nuevo</div><h1>Título potente</h1><p>Describe el beneficio principal para el cliente.</p><div class="btns"><a class="btn primary" href="#contacto">Contactar</a></div></section>'},
             {id:'cards-3',label:'3 beneficios',category:'Fabrick',content:'<section class="grid"><article class="card"><span>01</span><h2>Beneficio</h2><p>Explica el valor.</p></article><article class="card"><span>02</span><h2>Proceso</h2><p>Explica el orden.</p></article><article class="card"><span>03</span><h2>Garantía</h2><p>Explica seguridad.</p></article></section>'},
@@ -49,7 +46,7 @@ export function WebPageEditorClient({ id }: { id: string }) {
         editor.setComponents(activePage.html || '<main><h1>Nueva página</h1></main>'); editor.setStyle(activePage.css || '');
         try { if (activePage.project_json && Object.keys(activePage.project_json).length) editor.loadProjectData(activePage.project_json); } catch {}
         editorRef.current = editor; setReady(true);
-      } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo iniciar GrapesJS'); }
+      } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo iniciar GrapesJS local'); }
     }
     void init(); return()=>{cancelled=true; editorRef.current?.destroy?.(); editorRef.current=null;};
   }, [page]);

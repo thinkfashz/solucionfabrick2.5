@@ -6,6 +6,18 @@ export const dynamic = 'force-dynamic';
 
 type Props = { params: Promise<{ token: string }> };
 
+export async function generateMetadata({ params }: Props) {
+  const { token } = await params;
+  const safe = String(token || '').replace(/[^a-zA-Z0-9-_]/g, '');
+  const result = await runRawSql(`SELECT title, seo_json FROM web_pages WHERE slug = ${sqlText(safe)} OR token = ${sqlText(safe)} LIMIT 1`);
+  const page = result.ok ? rows(result)[0] : null;
+  const seo = (page?.seo_json as Record<string, unknown>) || {};
+  return {
+    title: String(seo.title || page?.title || 'Página Fabrick'),
+    description: String(seo.description || 'Página creada con Fabrick Page Engine'),
+  };
+}
+
 export default async function PublicLandingPage({ params }: Props) {
   const { token } = await params;
   const safe = String(token || '').replace(/[^a-zA-Z0-9-_]/g, '');
@@ -17,8 +29,5 @@ export default async function PublicLandingPage({ params }: Props) {
   const html = DOMPurify.sanitize(String(page.html || ''), { ADD_ATTR: ['target', 'rel'] });
   const css = String(page.css || '');
   const js = String(page.js || '');
-  const seo = (page.seo_json as Record<string, unknown>) || {};
-  const title = String(seo.title || page.title || 'Página Fabrick');
-  const description = String(seo.description || 'Página creada con Fabrick Page Engine');
-  return <html lang="es"><head><title>{title}</title><meta name="description" content={description}/><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover"/><style dangerouslySetInnerHTML={{ __html: css }} /></head><body><div dangerouslySetInnerHTML={{ __html: html }} />{js ? <script dangerouslySetInnerHTML={{ __html: js }} /> : null}</body></html>;
+  return <main className="min-h-screen overflow-x-hidden bg-black text-white"><style dangerouslySetInnerHTML={{ __html: css }} /><div dangerouslySetInnerHTML={{ __html: html }} />{js ? <script dangerouslySetInnerHTML={{ __html: js }} /> : null}</main>;
 }

@@ -2,11 +2,11 @@
 
 import dynamic from 'next/dynamic';
 
-const AdvancedHtmlPageEngineClient = dynamic(() => import('@/components/admin/page-engine/AdvancedHtmlPageEngineClient'), {
+const AdvancedHtmlPageEngineClientV2 = dynamic(() => import('@/components/admin/page-engine/AdvancedHtmlPageEngineClientV2'), {
   ssr: false,
-  loading: () => <main className="min-h-screen bg-[#050403] p-6 text-white">Cargando editor avanzado HTML / JSON / JS / JTree…</main>,
+  loading: () => <main className="min-h-screen bg-[#050403] p-6 text-white">Cargando editor avanzado HTML / JSON / JS / JTree / Cloudinary…</main>,
 });
 
 export default function PageEngine21stDevPage() {
-  return <AdvancedHtmlPageEngineClient />;
+  return <AdvancedHtmlPageEngineClientV2 />;
 }

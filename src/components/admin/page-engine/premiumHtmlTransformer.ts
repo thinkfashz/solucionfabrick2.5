@@ -83,6 +83,22 @@ function presetColors(preset: VisualPreset) {
   return { bg: '#0d0a06', text: '#fff7e8', accent: '#f59e0b', surface: '#fff7e9', dark: '#17120a' };
 }
 
+function needsShowcase(text: string, preset: VisualPreset) {
+  return preset === 'booking-beauty' || preset === 'mobile-app-premium' || /app|reserva|booking|agenda|dashboard|software|plataforma|premium|demo|panel|m[oó]vil/i.test(text);
+}
+
+function buildShowcaseHtml(args: { preset: VisualPreset; title: string; subtitle: string; benefits: string[]; ctaLabel: string; image: string; colors: ReturnType<typeof presetColors> }) {
+  const isBeauty = args.preset === 'booking-beauty' || args.preset === 'glass-rose';
+  const isApp = args.preset === 'mobile-app-premium';
+  const label = isBeauty ? 'Booking experience' : isApp ? 'App showcase' : 'Premium system';
+  const screenTitle = isBeauty ? 'Reserva premium' : isApp ? 'Panel inteligente' : 'Propuesta visual';
+  const imageTag = args.image ? `<div class="fab-img" style="background-image:url('${args.image}')"></div>` : '';
+  const chips = args.benefits.slice(0, 4).map((b) => `<span>${b}</span>`).join('');
+  return `<style>
+.fab-showcase{font-family:Inter,system-ui,sans-serif;color:${args.colors.text};padding:12px}.fab-showcase-grid{display:grid;grid-template-columns:1fr .86fr;gap:28px;align-items:center}.fab-glass{border:1px solid rgba(255,255,255,.18);background:linear-gradient(180deg,rgba(255,255,255,.17),rgba(255,255,255,.06));backdrop-filter:blur(22px);border-radius:36px;padding:34px;box-shadow:0 30px 100px rgba(0,0,0,.22)}.fab-eyebrow{display:inline-flex;border:1px solid rgba(255,255,255,.18);border-radius:999px;padding:8px 12px;font-size:11px;text-transform:uppercase;letter-spacing:.18em}.fab-showcase h2{font-size:clamp(36px,5vw,72px);letter-spacing:-.07em;line-height:.92;margin:18px 0}.fab-showcase p{line-height:1.7;color:rgba(255,255,255,.76)}.fab-chips{display:flex;flex-wrap:wrap;gap:9px;margin-top:20px}.fab-chips span{border-radius:999px;background:rgba(255,255,255,.13);border:1px solid rgba(255,255,255,.13);padding:10px 13px;font-size:12px}.fab-phone{width:min(330px,100%);margin:auto;border-radius:42px;padding:14px;background:linear-gradient(135deg,rgba(255,255,255,.32),rgba(255,255,255,.08));border:1px solid rgba(255,255,255,.22);box-shadow:0 38px 100px rgba(0,0,0,.34);transform:rotate(2deg)}.fab-screen{min-height:520px;border-radius:32px;background:${args.colors.surface};color:${args.colors.dark};padding:18px;overflow:hidden}.fab-top{display:flex;justify-content:space-between;align-items:center}.fab-pill{width:74px;height:8px;border-radius:999px;background:rgba(0,0,0,.18)}.fab-avatar{width:38px;height:38px;border-radius:16px;background:${args.colors.accent}}.fab-img{height:190px;border-radius:28px;background-size:cover;background-position:center;margin:18px 0;box-shadow:0 20px 50px rgba(0,0,0,.16)}.fab-card{border-radius:24px;background:rgba(255,255,255,.72);padding:16px;margin-top:12px;box-shadow:0 18px 44px rgba(0,0,0,.08)}.fab-card strong{display:block;font-size:22px;letter-spacing:-.04em}.fab-action{display:block;margin-top:18px;text-align:center;border-radius:20px;background:${args.colors.accent};color:${args.colors.dark};padding:14px;font-weight:900}@media(max-width:820px){.fab-showcase-grid{grid-template-columns:1fr}.fab-phone{transform:none}.fab-screen{min-height:420px}.fab-glass{padding:24px}}
+</style><section class="fab-showcase"><div class="fab-showcase-grid"><div class="fab-glass"><span class="fab-eyebrow">${label}</span><h2>${args.title}</h2><p>${args.subtitle}</p><div class="fab-chips">${chips}</div></div><div class="fab-phone"><div class="fab-screen"><div class="fab-top"><div class="fab-pill"></div><div class="fab-avatar"></div></div>${imageTag}<div class="fab-card"><small>${label}</small><strong>${screenTitle}</strong><p>${args.subtitle}</p></div><div class="fab-card"><strong>${args.benefits[0] || 'Experiencia clara'}</strong><p>${args.benefits[1] || 'Flujo pensado para vender mejor.'}</p></div><a class="fab-action" href="/contacto">${args.ctaLabel}</a></div></div></div></section>`;
+}
+
 export function transformHtmlToPremiumPage(rawHtml: string): PremiumPageJson {
   const clean = safeHtml(rawHtml || '');
   const body = clean.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || clean;
@@ -100,11 +116,15 @@ export function transformHtmlToPremiumPage(rawHtml: string): PremiumPageJson {
   const heroText = paragraphs[0] || h2s[0] || 'Convierte tu contenido en una experiencia visual premium, lista para vender y compartir.';
   const cta = links[0] || { label: preset === 'booking-beauty' ? 'Reservar ahora' : 'Solicitar demo', href: '/contacto' };
   const benefits = (listItems.length ? listItems : [...h3s, ...paragraphs.slice(1, 4)]).slice(0, 6);
+  const safeBenefits = benefits.length ? benefits : ['Diseño premium', 'Experiencia clara', 'Mayor conversión'];
   const blocks: Block[] = [
     { type: 'hero', title: h1, text: heroText, image, buttonText: cta.label, buttonHref: cta.href, background: colors.bg, textColor: colors.text, accent: colors.accent },
   ];
-  if (benefits.length) {
-    blocks.push({ type: 'cards', title: h2s[0] || 'Beneficios principales', text: benefits.join(' | '), background: colors.surface, textColor: colors.dark, accent: colors.accent });
+  if (needsShowcase(`${title} ${textContent}`, preset)) {
+    blocks.push({ type: 'custom', title: 'Showcase premium', text: '', html: buildShowcaseHtml({ preset, title: h2s[0] || h1, subtitle: paragraphs[1] || heroText, benefits: safeBenefits, ctaLabel: cta.label, image, colors }), background: colors.bg, textColor: colors.text, accent: colors.accent });
+  }
+  if (safeBenefits.length) {
+    blocks.push({ type: 'cards', title: h2s[0] || 'Beneficios principales', text: safeBenefits.join(' | '), background: colors.surface, textColor: colors.dark, accent: colors.accent });
   }
   if (paragraphs[1] || h2s[1] || image) {
     blocks.push({ type: 'split', title: h2s[1] || 'Una experiencia diseñada para convertir', text: paragraphs[1] || paragraphs[0] || 'Diseño limpio, visual premium y estructura comercial clara.', image, buttonText: cta.label, buttonHref: cta.href, background: colors.bg, textColor: colors.text, accent: colors.accent });

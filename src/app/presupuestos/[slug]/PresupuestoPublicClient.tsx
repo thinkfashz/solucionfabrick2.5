@@ -9,6 +9,7 @@ export default function PresupuestoPublicClient({ slug: initialSlug }: { slug: s
   const [slug, setSlug] = useState(initialSlug);
   const [budget, setBudget] = useState<PresupuestoPro | null>(null);
   const [ready, setReady] = useState(false);
+  const [expired, setExpired] = useState(false);
 
   const applyModelPreview = useCallback((current: PresupuestoPro | null) => {
     if (!current || typeof window === 'undefined') return current;
@@ -35,8 +36,14 @@ export default function PresupuestoPublicClient({ slug: initialSlug }: { slug: s
   }, []);
 
   const loadCurrentBudget = useCallback(async (nextSlug: string) => {
+    setExpired(false);
     try {
       const res = await fetch(`/api/presupuestos/${encodeURIComponent(nextSlug)}`, { cache: 'no-store' });
+      if (res.status === 410) {
+        setBudget(null);
+        setExpired(true);
+        return;
+      }
       if (res.ok) {
         const json = (await res.json()) as { presupuesto?: PresupuestoPro };
         if (json.presupuesto) {
@@ -73,6 +80,19 @@ export default function PresupuestoPublicClient({ slug: initialSlug }: { slug: s
 
   if (!ready) {
     return <main className="min-h-screen bg-[#111111] px-4 py-10 text-white"><div className="mx-auto max-w-4xl rounded-3xl border border-yellow-400/20 bg-zinc-950 p-8 text-center">Cargando presupuesto...</div></main>;
+  }
+
+  if (expired) {
+    return (
+      <main className="min-h-screen bg-[#111111] px-4 py-10 text-white">
+        <div className="mx-auto max-w-3xl rounded-[2rem] border border-orange-400/25 bg-zinc-950 p-8 text-center shadow-2xl">
+          <p className="text-xs font-black uppercase tracking-[0.3em] text-orange-300">Presupuesto expirado</p>
+          <h1 className="mt-4 text-3xl font-black">Este link ya se autodestruyó</h1>
+          <p className="mt-3 text-zinc-400">Solicita una nueva versión para ver precios, disponibilidad y condiciones actualizadas.</p>
+          <Link href="/contacto" className="mt-6 inline-flex rounded-full bg-yellow-400 px-5 py-2 text-sm font-black text-black">Solicitar actualización</Link>
+        </div>
+      </main>
+    );
   }
 
   if (!budget) {

@@ -24,6 +24,10 @@ function rows(result: { data: unknown }): Record<string, unknown>[] {
   return (result.data as { data?: { rows?: Record<string, unknown>[] } } | null)?.data?.rows ?? [];
 }
 
+function plainObject(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
 async function runRawSql(query: string) {
   const res = await fetch(`${INSFORGE_URL.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`, {
     method: 'POST',
@@ -68,8 +72,9 @@ function cleanStatus(value: unknown) {
   return ['borrador', 'publicado', 'archivado'].includes(status) ? status : 'publicado';
 }
 
-function cleanHtml(value: unknown) {
+function cleanHtml(value: unknown, allowExactHtml = false) {
   let html = String(value || '').trim();
+  if (allowExactHtml) return html;
   html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
   html = html.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '');
   html = html.replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '');
@@ -82,9 +87,14 @@ function cleanHtml(value: unknown) {
 
 function validateProjectJson(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return { ok: false, error: 'project_json debe ser un objeto.' };
-  const obj = value as { blocks?: unknown; sections?: unknown };
-  const blocks = Array.isArray(obj.blocks) ? obj.blocks : Array.isArray(obj.sections) ? obj.sections : [];
-  if (!blocks.length) return { ok: false, error: 'El JSON debe incluir blocks o sections con al menos un bloque.' };
+  const project = plainObject(value);
+  const blocks = Array.isArray(project.blocks) ? project.blocks : Array.isArray(project.sections) ? project.sections : [];
+  const modules = Array.isArray(project.modules) ? project.modules : [];
+  const htmlCode = String(project.htmlCode || project.rawHtml || '').trim();
+  const mode = String(project.mode || '').toLowerCase();
+  if (!blocks.length && !modules.length && !(mode === 'html' && htmlCode.length > 20)) {
+    return { ok: false, error: 'El JSON debe incluir modules, blocks, sections o htmlCode en modo html.' };
+  }
   return { ok: true, error: '' };
 }
 
@@ -117,8 +127,10 @@ export async function POST(request: NextRequest) {
   if (session.rol === 'viewer') return NextResponse.json({ error: 'Modo demo: solo lectura.' }, { status: 403 });
 
   const body = await request.json().catch(() => null) as { token?: string; title?: string; html?: string; project_json?: unknown; status?: string; expires_in_hours?: number } | null;
+  const project = plainObject(body?.project_json);
+  const allowExactHtml = String(project.mode || '').toLowerCase() === 'html' && project.allowUnsafeHtml === true;
   const title = cleanTitle(body?.title);
-  const html = cleanHtml(body?.html);
+  const html = cleanHtml(body?.html, allowExactHtml);
   if (!title || title.length < 3) return NextResponse.json({ error: 'El título es obligatorio y debe tener al menos 3 caracteres.' }, { status: 400 });
   if (!html || html.length < 40) return NextResponse.json({ error: 'El HTML está vacío, es demasiado corto o fue limpiado por seguridad.' }, { status: 400 });
   const jsonValidation = validateProjectJson(body?.project_json);

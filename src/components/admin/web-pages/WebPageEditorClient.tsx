@@ -31,6 +31,7 @@ export function WebPageEditorClient({ id }: { id: string }) {
 
   useEffect(() => {
     if (!page || !canvasRef.current || editorRef.current) return;
+    const activePage = page;
     let cancelled = false;
     async function init() {
       try {
@@ -45,8 +46,8 @@ export function WebPageEditorClient({ id }: { id: string }) {
             {id:'cta',label:'CTA WhatsApp',category:'Fabrick',content:'<section class="contact" id="contacto"><h2>¿Listo para avanzar?</h2><p>Agenda una revisión rápida.</p><a class="btn primary" href="https://wa.me/56900000000">WhatsApp</a></section>'},
           ]}
         });
-        editor.setComponents(page.html || '<main><h1>Nueva página</h1></main>'); editor.setStyle(page.css || '');
-        try { if (page.project_json && Object.keys(page.project_json).length) editor.loadProjectData(page.project_json); } catch {}
+        editor.setComponents(activePage.html || '<main><h1>Nueva página</h1></main>'); editor.setStyle(activePage.css || '');
+        try { if (activePage.project_json && Object.keys(activePage.project_json).length) editor.loadProjectData(activePage.project_json); } catch {}
         editorRef.current = editor; setReady(true);
       } catch (e) { setError(e instanceof Error ? e.message : 'No se pudo iniciar GrapesJS'); }
     }

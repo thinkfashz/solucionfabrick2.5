@@ -60,7 +60,7 @@ function htmlHeaders(status = 200) {
 }
 
 function expiredHtml() {
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Link expirado</title><meta name="robots" content="noindex,nofollow,noarchive"><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090806;color:#fff7e8;font-family:system-ui}.box{max-width:560px;padding:32px;border:1px solid rgba(255,190,56,.24);border-radius:32px;background:#111;box-shadow:0 24px 80px rgba(0,0,0,.45)}h1{font-size:42px;letter-spacing:-.05em}.tag{color:#fbbf24;text-transform:uppercase;font-size:12px;font-weight:900;letter-spacing:.22em}</style></head><body><main class="box"><p class="tag">Soluciones Fabrick</p><h1>Este link ya expiró</h1><p>Solicita una nueva versión para ver precios y condiciones actualizadas.</p></main></body></html>`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Link expirado</title><meta name="robots" content="noindex,nofollow,noarchive"><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090806;color:#fff7e8;font-family:system-ui}.box{max-width:560px;padding:32px;border:1px solid rgba(255,190,56,.24);border-radius:32px;background:#111;box-shadow:0 24px 80px rgba(0,0,0,.45)}h1{font-size:42px;letter-spacing:-.05em}.tag{color:#fbbf24;text-transform:uppercase;font-size:12px;font-weight:900;letter-spacing:.22em}</style></head><body><main class="box"><p class="tag">Soluciones Fabrick</p><h1>Este link no está disponible</h1><p>La propuesta no existe, fue archivada o el token no es válido.</p></main></body></html>`;
 }
 
 function parseProjectJson(value: unknown): Record<string, unknown> {
@@ -89,14 +89,10 @@ function metadataFor(row: Record<string, unknown>, request: NextRequest, token: 
   const client = obj(project.client);
   const title = text(project.shareTitle || project.title || row.title || client.brand, 'Presentación premium Soluciones Fabrick');
   const brand = text(client.brand || project.brand, title);
-  const account = text(client.account || client.instagram || client.facebook, '');
-  const description = text(
-    project.shareDescription || project.description,
-    `${brand} · Demo privada y temporal enviada por Soluciones Fabrick. Vista segura HTTPS, renderizada desde servidor y protegida contra indexación pública.`
-  );
+  const description = text(project.shareDescription || project.description, `${brand} · Demo privada y temporal enviada por Soluciones Fabrick. Vista segura HTTPS, renderizada desde servidor y protegida contra indexación pública.`);
   const image = firstImage(project, html);
   const url = `${request.nextUrl.origin}/w/${token}`;
-  return { title, description, image, url, brand, account };
+  return { title, description, image, url, brand };
 }
 
 function metaTags(meta: ReturnType<typeof metadataFor>) {
@@ -133,6 +129,16 @@ function injectMetadata(html: string, meta: ReturnType<typeof metadataFor>) {
   return `<!doctype html><html lang="es"><head>${tags}</head><body>${document}</body></html>`;
 }
 
+function expiredBanner(expiresAt: string) {
+  return `<div style="position:sticky;top:0;z-index:999999;background:linear-gradient(135deg,#f59e0b,#fb923c);color:#120700;padding:12px 16px;font-family:Inter,system-ui,sans-serif;font-weight:900;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.18)">Versión vencida el ${escapeHtml(expiresAt)} · vista solo referencial. Solicita una nueva versión para precios actualizados.</div>`;
+}
+
+function injectExpiredBanner(html: string, expiresAt: string) {
+  const banner = expiredBanner(expiresAt);
+  if (/<body[^>]*>/i.test(html)) return html.replace(/<body[^>]*>/i, (match) => `${match}${banner}`);
+  return `${banner}${html}`;
+}
+
 export async function GET(request: NextRequest, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
   if (!/^[a-zA-Z0-9_-]{8,80}$/.test(token || '')) {
@@ -153,11 +159,15 @@ LIMIT 1;
     return new NextResponse(expiredHtml(), htmlHeaders(404));
   }
 
+  const project = parseProjectJson(row.project_json);
+  const strictExpiry = project.strictExpiry === true;
   const expires = row.expires_at ? new Date(String(row.expires_at)).getTime() : Number.NaN;
+  let html = String(row.html || expiredHtml());
   if (Number.isFinite(expires) && Date.now() > expires) {
-    return new NextResponse(expiredHtml(), htmlHeaders(410));
+    if (strictExpiry) return new NextResponse(expiredHtml(), htmlHeaders(410));
+    html = injectExpiredBanner(html, String(row.expires_at));
   }
 
   const meta = metadataFor(row, request, token);
-  return new NextResponse(injectMetadata(String(row.html || expiredHtml()), meta), htmlHeaders(200));
+  return new NextResponse(injectMetadata(html, meta), htmlHeaders(200));
 }

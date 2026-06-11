@@ -1,3 +1,5 @@
+'use client';
+
 import dynamic from 'next/dynamic';
 
 const FabrickBudgetEnginesClient = dynamic(() => import('@/components/admin/motores/FabrickBudgetEnginesClient'), {

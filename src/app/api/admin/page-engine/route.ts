@@ -140,8 +140,9 @@ export async function POST(request: NextRequest) {
   if (!ensure.ok) return NextResponse.json({ error: 'No se pudo preparar page_engine_documents', detail: ensure.data }, { status: 502 });
 
   const docToken = body?.token && /^[a-zA-Z0-9_-]{8,80}$/.test(body.token) ? body.token : makeToken();
-  const hours = Math.max(1, Math.min(24 * 30, Number(body?.expires_in_hours || 168)));
-  const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
+  const neverExpire = project.neverExpire === true || project.expires === false;
+  const hours = Math.max(1, Math.min(24 * 365, Number(body?.expires_in_hours || project.expires_in_hours || 720)));
+  const expiresAt = neverExpire ? null : new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
   const status = cleanStatus(body?.status);
 
   const result = await runRawSql(`
@@ -158,5 +159,5 @@ ON CONFLICT (token) DO UPDATE SET
 
   if (!result.ok) return NextResponse.json({ error: 'No se pudo guardar la página', detail: result.data }, { status: 502 });
 
-  return NextResponse.json({ ok: true, token: docToken, expires_at: expiresAt, public_url: `${request.nextUrl.origin}/w/${docToken}` });
+  return NextResponse.json({ ok: true, token: docToken, expires_at: expiresAt, never_expire: neverExpire, public_url: `${request.nextUrl.origin}/w/${docToken}` });
 }

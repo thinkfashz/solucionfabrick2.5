@@ -198,11 +198,14 @@ export function StudioShell({ children }: { children: ReactNode }) {
   return (
     <div
       data-studio-mode={dark ? 'dark' : 'light'}
-      className={[
-        'relative min-h-screen',
-        dark ? 'bg-[#09090b] text-zinc-100' : 'bg-white text-zinc-900',
-      ].join(' ')}
+      className={['relative min-h-screen', dark ? 'text-[#fff1d6]' : 'bg-white text-zinc-900'].join(' ')}
+      style={dark ? {
+        background: 'radial-gradient(circle at 16% 15%,rgba(255,241,214,.10),transparent 23%), radial-gradient(circle at 88% 10%,rgba(255,106,0,.24),transparent 25%), radial-gradient(circle at 82% 86%,rgba(255,213,74,.14),transparent 24%), linear-gradient(140deg,#050403 0%,#090604 36%,#120a05 100%)',
+      } : {}}
     >
+      {/* Animated ambient grid + blob overlay (dark only) */}
+      {dark && <div aria-hidden="true" className="sa-ambient pointer-events-none fixed inset-0 z-0" />}
+
       {/* ── Fixed sidebar (desktop) ─────────────────────────── */}
       <StudioSidebar collapsed={collapsed} role={role} onLogout={handleLogout} />
 
@@ -217,7 +220,7 @@ export function StudioShell({ children }: { children: ReactNode }) {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.2 }}
-              className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+              className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm lg:hidden"
               onClick={() => setMobileOpen(false)}
             />
             {/* drawer panel */}
@@ -229,15 +232,15 @@ export function StudioShell({ children }: { children: ReactNode }) {
               transition={{ duration: 0.25, ease: [0.32, 0.72, 0, 1] }}
               className={[
                 'fixed left-0 top-0 z-50 flex h-full w-[272px] flex-col lg:hidden',
-                'border-r border-white/[0.08]',
-                dark ? 'bg-[#18181b]' : 'bg-[#fafafa]',
+                'border-r border-[rgba(255,246,230,.10)]',
+                dark ? 'bg-[rgba(19,13,8,0.98)] backdrop-blur-xl' : 'bg-[#fafafa]',
               ].join(' ')}
             >
               {/* close button */}
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-md text-zinc-400 hover:bg-white/5 hover:text-zinc-200"
+                className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-md text-[#9f8d74] hover:bg-[rgba(255,138,31,.10)] hover:text-[#fff1d6]"
                 aria-label="Cerrar menú"
               >
                 <X className="h-4 w-4" />
@@ -269,16 +272,11 @@ export function StudioShell({ children }: { children: ReactNode }) {
       {/* ── Main content ───────────────────────────────────── */}
       <div
         className={[
-          'min-h-screen pt-12 transition-[padding] duration-200 ease-in-out',
+          'relative z-10 min-h-screen pt-12 transition-[padding] duration-200 ease-in-out',
           sidebarWidth,
         ].join(' ')}
       >
-        <main
-          className={[
-            'min-h-[calc(100vh-3rem)] p-4 md:p-6',
-            dark ? 'bg-[#09090b]' : 'bg-white',
-          ].join(' ')}
-        >
+        <main className={['min-h-[calc(100vh-3rem)] p-4 md:p-6', dark ? 'bg-transparent' : 'bg-white'].join(' ')}>
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
               key={pathname}

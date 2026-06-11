@@ -6,7 +6,20 @@ type Device = 'phone' | 'tablet' | 'desktop' | 'wide';
 type BlockType = 'hero' | 'cards' | 'split' | 'cta' | 'calculator' | 'custom';
 type JsonState = 'idle' | 'valid' | 'invalid' | 'applied';
 
-type Block = { id: string; type: BlockType; title: string; text: string; background: string; textColor: string; accent: string; html?: string; image?: string; buttonText?: string; buttonHref?: string };
+type Block = {
+  id: string;
+  type: BlockType;
+  title: string;
+  text: string;
+  background: string;
+  textColor: string;
+  accent: string;
+  html?: string;
+  image?: string;
+  buttonText?: string;
+  buttonHref?: string;
+};
+
 type PageState = { title: string; token?: string; device: Device; blocks: Block[] };
 type PageDoc = { token: string; title: string; status: string; updated_at?: string | null; expires_at?: string | null };
 
@@ -14,7 +27,10 @@ const STORAGE = 'sf_page_engine_21stdev_v8';
 const TYPES: BlockType[] = ['hero', 'cards', 'split', 'calculator', 'cta', 'custom'];
 const DEVICES: Device[] = ['phone', 'tablet', 'desktop', 'wide'];
 
-function uid() { if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID(); return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`; }
+function uid() {
+  if (typeof crypto !== 'undefined' && 'randomUUID' in crypto) return crypto.randomUUID();
+  return `${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
 function esc(value: unknown) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'); }
 function text(value: unknown, fallback = '') { const next = typeof value === 'string' ? value.trim() : typeof value === 'number' ? String(value) : ''; return next || fallback; }
 function color(value: unknown, fallback: string) { const next = text(value); if (/^#[0-9a-fA-F]{3,8}$/.test(next)) return next; return fallback; }
@@ -23,7 +39,17 @@ function obj(value: unknown): Record<string, unknown> { return value && typeof v
 function firstObj(source: Record<string, unknown>, keys: string[]) { for (const key of keys) { const current = obj(source[key]); if (Object.keys(current).length) return current; } return {}; }
 function firstArray(source: Record<string, unknown>, keys: string[]) { for (const key of keys) { const current = source[key]; if (Array.isArray(current) && current.length) return current; } return []; }
 function joinItems(items: unknown[]) { return items.map((item) => { if (typeof item === 'string') return item.trim(); const itemObj = obj(item); return text(itemObj.title ?? itemObj.name ?? itemObj.label ?? itemObj.text ?? itemObj.description); }).filter(Boolean).join(' | '); }
-function safeHtml(value: unknown) { let html = text(value); html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, ''); html = html.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, ''); html = html.replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, ''); html = html.replace(/<embed\b[^>]*>/gi, ''); html = html.replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, ''); html = html.replace(/\son[a-z]+\s*=\s*'[^']*'/gi, ''); html = html.replace(/javascript:/gi, ''); return html; }
+function safeHtml(value: unknown) {
+  let html = text(value);
+  html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+  html = html.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '');
+  html = html.replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '');
+  html = html.replace(/<embed\b[^>]*>/gi, '');
+  html = html.replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '');
+  html = html.replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '');
+  html = html.replace(/javascript:/gi, '');
+  return html;
+}
 
 function makeBlock(type: BlockType): Block {
   const base: Block = { id: uid(), type, title: 'Nuevo bloque Fabrick', text: 'Edita este contenido desde el inspector.', background: '#0d0a06', textColor: '#fff7e8', accent: '#f59e0b', buttonText: 'Solicitar presupuesto', buttonHref: '/contacto' };
@@ -47,20 +73,15 @@ function buildBlocksFromSmartJson(source: Record<string, unknown>, defaults: Par
   const hero = firstObj(source, ['hero', 'header', 'cover', 'main']);
   const hasTopHero = text(source.headline ?? source.title ?? source.subtitle ?? source.description);
   if (Object.keys(hero).length || hasTopHero) blocks.push(normalizeBlock({ type: 'hero', title: hero.title ?? hero.heading ?? hero.headline ?? source.headline ?? source.title, text: hero.text ?? hero.description ?? hero.subtitle ?? source.subtitle ?? source.description, image: hero.image ?? hero.cover ?? source.image, buttonText: hero.buttonText ?? hero.cta ?? source.ctaText, buttonHref: hero.buttonHref ?? hero.href ?? source.ctaHref }, blocks.length, defaults));
-
   const features = firstArray(source, ['features', 'benefits', 'services', 'cards', 'bullets', 'items']);
   if (features.length) blocks.push(normalizeBlock({ type: 'cards', title: source.featuresTitle ?? source.benefitsTitle ?? source.servicesTitle ?? 'Beneficios', text: joinItems(features), background: '#fff7e9', textColor: '#17120a' }, blocks.length, { ...defaults, background: '#fff7e9', textColor: '#17120a' }));
-
   const split = firstObj(source, ['about', 'problem', 'solution', 'story', 'details']);
   if (Object.keys(split).length) blocks.push(normalizeBlock({ type: 'split', title: split.title ?? split.heading ?? 'Detalle de la propuesta', text: split.text ?? split.description ?? split.copy, image: split.image ?? split.cover }, blocks.length, defaults));
-
   const calculators = source.calculator === true || source.calculators === true || source.hasCalculator === true;
   if (calculators) blocks.push(normalizeBlock({ type: 'calculator', title: 'Motores conectados', text: 'Genera presupuestos conectados a tus herramientas internas.' }, blocks.length, defaults));
-
   const cta = firstObj(source, ['cta', 'callToAction', 'finalCta']);
   const hasCta = Object.keys(cta).length || text(source.ctaText ?? source.ctaHref);
   if (hasCta) blocks.push(normalizeBlock({ type: 'cta', title: cta.title ?? source.ctaTitle ?? '¿Listo para avanzar?', text: cta.text ?? cta.description ?? 'Solicita una propuesta y recibe respuesta rápida.', buttonText: cta.buttonText ?? cta.label ?? source.ctaText ?? 'Contactar', buttonHref: cta.buttonHref ?? cta.href ?? source.ctaHref ?? '/contacto', background: defaults.accent || '#f59e0b', textColor: '#17120a' }, blocks.length, { ...defaults, background: defaults.accent || '#f59e0b', textColor: '#17120a' }));
-
   if (!blocks.length && text(source.html)) blocks.push(normalizeBlock({ type: 'custom', title: source.title ?? 'HTML importado', html: source.html, background: '#ffffff', textColor: '#111111' }, blocks.length));
   return blocks;
 }
@@ -80,9 +101,25 @@ function parseJson(value: string) { try { const page = normalizePage(JSON.parse(
 function htmlToPage(raw: string): PageState { const title = raw.match(/<title[^>]*>(.*?)<\/title>/i)?.[1]?.trim() || 'HTML importado'; const body = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1] || raw; return { title, device: 'desktop', blocks: [{ ...makeBlock('custom'), title, html: safeHtml(body), background: '#ffffff', textColor: '#111111' }] }; }
 function initialState(): PageState { if (typeof window !== 'undefined') { try { const saved = window.localStorage.getItem(STORAGE) || window.localStorage.getItem('sf_page_engine_21stdev_v7'); if (saved) return normalizePage(JSON.parse(saved)); } catch {} } return { title: 'Landing Fabrick', device: 'desktop', blocks: [makeBlock('hero'), makeBlock('cards'), makeBlock('split'), makeBlock('calculator'), makeBlock('cta')] }; }
 
-function css() { return `<style>*{box-sizing:border-box}body{margin:0;background:#050505;color:#fff;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}a{text-decoration:none}.block{padding:68px 42px}.kicker{display:inline-flex;border:1px solid rgba(255,190,56,.38);background:rgba(255,190,56,.12);color:#ffd777;border-radius:999px;padding:8px 14px;font-size:12px;font-weight:1000;letter-spacing:.2em;text-transform:uppercase}h1,h2{font-size:clamp(36px,6vw,76px);line-height:.96;letter-spacing:-.06em;margin:18px 0 14px}p{font-size:18px;line-height:1.65;max-width:780px}.btn{display:inline-flex;margin-top:24px;border-radius:18px;background:var(--accent,#f59e0b);color:#111;padding:15px 20px;font-weight:1000}.cards-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}.card{border:1px solid rgba(0,0,0,.08);border-radius:26px;background:#fff;padding:24px;box-shadow:0 16px 35px rgba(20,10,0,.08)}.split-grid{display:grid;grid-template-columns:1.05fr .95fr;gap:26px;align-items:center}.split-grid img{width:100%;border-radius:28px;min-height:280px;object-fit:cover}.calc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:14px;margin-top:24px}.calc-grid a{border:1px solid rgba(255,255,255,.14);border-radius:24px;padding:22px;background:rgba(255,255,255,.08);color:currentColor}.calc-grid strong{display:block;font-size:24px}.center{text-align:center}.center p{margin-inline:auto}@media(max-width:720px){.block{padding:42px 22px!important}.cards-grid,.split-grid,.calc-grid{grid-template-columns:1fr}h1,h2{font-size:38px!important}}</style>`; }
-function renderBlock(block: Block, live = false) { const style = `style="background:${esc(block.background)};color:${esc(block.textColor)};--accent:${esc(block.accent)}"`; const attrs = live ? ` data-id="${esc(block.id)}"` : ''; const buttonText = esc(block.buttonText || 'Solicitar presupuesto'); const buttonHref = esc(block.buttonHref || '/contacto'); if (block.type === 'hero') return `<section class="block hero"${attrs} ${style}><span class="kicker">Soluciones Fabrick</span><h1>${esc(block.title)}</h1><p>${esc(block.text)}</p><a class="btn" href="${buttonHref}">${buttonText}</a></section>`; if (block.type === 'cards') { const parts = block.text.split('|').map((v) => v.trim()).filter(Boolean); return `<section class="block"${attrs} ${style}><span class="kicker">Beneficios</span><h2>${esc(block.title)}</h2><div class="cards-grid">${parts.map((p, i) => `<article class="card"><b>0${i + 1}</b><h3>${esc(p)}</h3><p>Bloque editable desde el admin.</p></article>`).join('')}</div></section>`; } if (block.type === 'split') return `<section class="block"${attrs} ${style}><div class="split-grid"><div><span class="kicker">Estrategia</span><h2>${esc(block.title)}</h2><p>${esc(block.text)}</p></div>${block.image ? `<img src="${esc(block.image)}" alt="" loading="lazy" />` : ''}</div></section>`; if (block.type === 'calculator') return `<section class="block"${attrs} ${style}><span class="kicker">Motores conectados</span><h2>${esc(block.title)}</h2><p>${esc(block.text)}</p><div class="calc-grid"><a href="/admin/motores/radier"><strong>Radier 3D</strong><span>Cubicación + presupuesto</span></a><a href="/admin/motores/aire-acondicionado"><strong>Aire acondicionado</strong><span>BTU + equipo + instalación</span></a></div></section>`; if (block.type === 'cta') return `<section class="block center"${attrs} ${style}><h2>${esc(block.title)}</h2><p>${esc(block.text)}</p><a class="btn" href="${buttonHref}">${buttonText}</a></section>`; return `<section class="block"${attrs} ${style}>${safeHtml(block.html || '')}</section>`; }
-function finalHtml(state: PageState) { return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(state.title)}</title>${css()}</head><body>${state.blocks.map((b) => renderBlock(b)).join('')}</body></html>`; }
+function css() {
+  return `<style>
+*{box-sizing:border-box}html{scroll-behavior:smooth}body{margin:0;background:#050302;color:#fff7e8;font-family:Inter,ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;-webkit-font-smoothing:antialiased}a{text-decoration:none;color:inherit}.page-wrap{overflow:hidden;background:radial-gradient(circle at 8% 0%,rgba(255,192,56,.18),transparent 30rem),radial-gradient(circle at 92% 18%,rgba(255,96,24,.12),transparent 26rem),linear-gradient(180deg,#100904,#050302 70%)}.block{position:relative;padding:86px 44px;isolation:isolate}.block:before{content:"";position:absolute;inset:0;pointer-events:none;background:radial-gradient(circle at 12% 0%,rgba(255,214,120,.09),transparent 24rem);opacity:.85}.inner{position:relative;z-index:1;width:min(1120px,100%);margin:0 auto}.kicker{display:inline-flex;align-items:center;gap:8px;border:1px solid rgba(255,190,56,.34);background:rgba(255,190,56,.11);color:#ffd777;border-radius:999px;padding:9px 14px;font-size:11px;font-weight:1000;letter-spacing:.22em;text-transform:uppercase;box-shadow:0 12px 36px rgba(255,138,31,.12)}.kicker:before{content:"";width:7px;height:7px;border-radius:99px;background:#facc15;box-shadow:0 0 16px #facc15}h1,h2{font-size:clamp(42px,7vw,92px);line-height:.9;letter-spacing:-.07em;margin:22px 0 16px;text-wrap:balance}h3{font-size:22px;letter-spacing:-.03em;margin:10px 0 8px}p{font-size:clamp(16px,2vw,20px);line-height:1.7;max-width:820px;color:color-mix(in srgb,currentColor 78%,transparent)}.btn{display:inline-flex;align-items:center;justify-content:center;margin-top:30px;border-radius:999px;background:linear-gradient(135deg,#fff1d6 0%,var(--accent,#f59e0b) 48%,#ff7a1f 100%);color:#150b04;padding:16px 23px;font-weight:1000;box-shadow:0 22px 65px rgba(255,138,31,.28);transition:transform .25s ease,box-shadow .25s ease}.btn:hover{transform:translateY(-2px);box-shadow:0 30px 90px rgba(255,138,31,.38)}.hero{min-height:620px;display:grid;place-items:center;overflow:hidden}.hero-bg{position:absolute;inset:0;background-size:cover;background-position:center;opacity:.38;filter:saturate(1.1) contrast(1.05)}.hero:after{content:"";position:absolute;inset:18px;border:1px solid rgba(255,190,56,.12);border-radius:34px;pointer-events:none}.hero .inner{max-width:1040px}.hero p{font-size:clamp(18px,2.2vw,24px);max-width:850px}.cards-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:18px;margin-top:34px}.card{position:relative;overflow:hidden;border:1px solid rgba(20,10,0,.08);border-radius:30px;background:linear-gradient(180deg,rgba(255,255,255,.92),rgba(255,247,233,.84));padding:28px;box-shadow:0 22px 60px rgba(20,10,0,.10)}.card:before{content:"";position:absolute;right:-48px;top:-48px;width:130px;height:130px;border-radius:999px;background:rgba(245,158,11,.14)}.card b{display:inline-grid;place-items:center;width:42px;height:42px;border-radius:16px;background:#17120a;color:#facc15}.card p{font-size:15px;color:#5f4c2d}.split-grid{display:grid;grid-template-columns:1.04fr .96fr;gap:34px;align-items:center}.split-grid img{width:100%;border-radius:34px;min-height:360px;object-fit:cover;box-shadow:0 26px 80px rgba(0,0,0,.32);border:1px solid rgba(255,255,255,.12)}.split-copy{padding:34px;border:1px solid rgba(255,190,56,.12);border-radius:34px;background:rgba(0,0,0,.20);backdrop-filter:blur(14px)}.calc-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:16px;margin-top:28px}.calc-grid a{border:1px solid rgba(255,190,56,.18);border-radius:28px;padding:26px;background:linear-gradient(180deg,rgba(255,255,255,.08),rgba(255,255,255,.03));color:currentColor;box-shadow:0 18px 50px rgba(0,0,0,.18)}.calc-grid strong{display:block;font-size:26px;letter-spacing:-.04em}.center{text-align:center}.center p{margin-inline:auto}.cta-panel{width:min(980px,100%);margin:0 auto;border:1px solid rgba(20,10,0,.12);border-radius:40px;padding:54px;background:rgba(255,255,255,.24);box-shadow:0 24px 80px rgba(20,10,0,.18)}.custom-shell{width:min(1120px,100%);margin:0 auto;border-radius:28px;overflow:hidden}.footer-note{padding:26px;text-align:center;color:#8f7651;background:#050302;font-size:12px;letter-spacing:.18em;text-transform:uppercase}@media(max-width:820px){.block{padding:54px 22px!important}.hero{min-height:560px}.cards-grid,.split-grid,.calc-grid{grid-template-columns:1fr}.split-copy{padding:24px}.cta-panel{padding:34px 22px;border-radius:30px}h1,h2{font-size:42px!important}.hero:after{inset:10px;border-radius:24px}}
+</style>`;
+}
+
+function renderBlock(block: Block, live = false) {
+  const style = `style="background:${esc(block.background)};color:${esc(block.textColor)};--accent:${esc(block.accent)}"`;
+  const attrs = live ? ` data-id="${esc(block.id)}"` : '';
+  const buttonText = esc(block.buttonText || 'Solicitar presupuesto');
+  const buttonHref = esc(block.buttonHref || '/contacto');
+  if (block.type === 'hero') return `<section class="block hero"${attrs} ${style}>${block.image ? `<div class="hero-bg" style="background-image:url('${esc(block.image)}')"></div>` : ''}<div class="inner"><span class="kicker">Soluciones Fabrick</span><h1>${esc(block.title)}</h1><p>${esc(block.text)}</p><a class="btn" href="${buttonHref}">${buttonText} →</a></div></section>`;
+  if (block.type === 'cards') { const parts = block.text.split('|').map((v) => v.trim()).filter(Boolean); return `<section class="block"${attrs} ${style}><div class="inner"><span class="kicker">Beneficios</span><h2>${esc(block.title)}</h2><div class="cards-grid">${parts.map((p, i) => `<article class="card"><b>0${i + 1}</b><h3>${esc(p)}</h3><p>Beneficio preparado para mostrar valor, confianza y claridad comercial.</p></article>`).join('')}</div></div></section>`; }
+  if (block.type === 'split') return `<section class="block"${attrs} ${style}><div class="inner split-grid"><div class="split-copy"><span class="kicker">Estrategia</span><h2>${esc(block.title)}</h2><p>${esc(block.text)}</p><a class="btn" href="${buttonHref}">${buttonText} →</a></div>${block.image ? `<img src="${esc(block.image)}" alt="" loading="lazy" />` : ''}</div></section>`;
+  if (block.type === 'calculator') return `<section class="block"${attrs} ${style}><div class="inner"><span class="kicker">Motores conectados</span><h2>${esc(block.title)}</h2><p>${esc(block.text)}</p><div class="calc-grid"><a href="/admin/motores/radier"><strong>Radier 3D</strong><span>Cubicación + presupuesto automático</span></a><a href="/admin/motores/aire-acondicionado"><strong>Aire acondicionado</strong><span>BTU + equipo + instalación</span></a></div></div></section>`;
+  if (block.type === 'cta') return `<section class="block center"${attrs} ${style}><div class="cta-panel"><h2>${esc(block.title)}</h2><p>${esc(block.text)}</p><a class="btn" href="${buttonHref}">${buttonText} →</a></div></section>`;
+  return `<section class="block"${attrs} ${style}><div class="custom-shell">${safeHtml(block.html || '')}</div></section>`;
+}
+function finalHtml(state: PageState) { return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(state.title)}</title>${css()}</head><body><main class="page-wrap">${state.blocks.map((b) => renderBlock(b)).join('')}<div class="footer-note">Generado con Soluciones Fabrick · propuesta privada</div></main></body></html>`; }
 
 export default function FabrickPageEngine21stClient() {
   const start = useMemo(() => initialState(), []); const [state, setState] = useState<PageState>(start); const [selectedId, setSelectedId] = useState(start.blocks[0]?.id || ''); const [expiresHours, setExpiresHours] = useState(168); const [publicUrl, setPublicUrl] = useState(''); const [status, setStatus] = useState(''); const [jsonText, setJsonText] = useState(() => JSON.stringify(start, null, 2)); const [jsonState, setJsonState] = useState<JsonState>('idle'); const [jsonMessage, setJsonMessage] = useState('Pega JSON o sube un archivo para actualizar la vista previa.'); const [saving, setSaving] = useState(false); const [docs, setDocs] = useState<PageDoc[]>([]); const [loadingDocs, setLoadingDocs] = useState(false); const fileRef = useRef<HTMLInputElement | null>(null); const selected = state.blocks.find((b) => b.id === selectedId) || state.blocks[0]; const html = useMemo(() => finalHtml(state), [state]); const pageWidth = state.device === 'phone' ? 'max-w-[390px]' : state.device === 'tablet' ? 'max-w-[780px]' : state.device === 'wide' ? 'max-w-[1440px]' : 'max-w-[1180px]';

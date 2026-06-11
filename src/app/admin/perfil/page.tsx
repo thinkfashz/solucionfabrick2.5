@@ -1,11 +1,8 @@
 'use client';
 
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { Camera, ExternalLink, Globe2, Grid2X2, Instagram, Linkedin, Loader2, Mail, MessageCircle, Phone, Save, ShieldCheck, Sparkles, User, X } from 'lucide-react';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
+import { BarChart3, Camera, CheckCircle2, ExternalLink, Facebook, Globe2, Instagram, Linkedin, Loader2, Megaphone, MessageCircle, Save, ShieldCheck, Sparkles, User, X, Zap } from 'lucide-react';
 
 type Profile = {
   email: string;
@@ -18,26 +15,38 @@ type Profile = {
   linkedin: string | null;
   whatsapp: string | null;
   website: string | null;
+  metadata?: { social_stats?: SocialStats } | null;
+};
+
+type SocialStats = {
+  instagram_followers?: number;
+  facebook_followers?: number;
+  linkedin_followers?: number;
+  tiktok_followers?: number;
+};
+
+type AdsStatus = {
+  connected: boolean;
+  accessToken?: { present: boolean; source: string | null; healthy: boolean; message: string };
+  adAccount?: { present: boolean; source: string | null; masked: string | null };
+  facebookPage?: { present: boolean; source: string | null; masked: string | null };
+  instagramBusiness?: { present: boolean; source: string | null; masked: string | null };
 };
 
 const emptyProfile: Profile = {
-  email: '',
-  display_name: '',
-  phone: '',
-  bio: '',
-  avatar_url: null,
-  instagram: '',
-  facebook: '',
-  linkedin: '',
-  whatsapp: '',
-  website: '',
+  email: '', display_name: '', phone: '', bio: '', avatar_url: null, instagram: '', facebook: '', linkedin: '', whatsapp: '', website: '', metadata: { social_stats: {} },
 };
 
-const inputClass = 'w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none transition placeholder:text-zinc-700 focus:border-yellow-300/60 focus:ring-2 focus:ring-yellow-300/10';
-const labelClass = 'text-[11px] font-black uppercase tracking-[0.22em] text-zinc-500';
+function initials(name: string) { return name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || 'SF'; }
+function fmt(n?: number) { return Math.max(0, Number(n || 0)).toLocaleString('es-CL'); }
+function socialStats(profile: Profile): SocialStats { return profile.metadata?.social_stats || {}; }
 
-function initials(name: string) {
-  return name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'SF';
+function Field({ label, value, onChange, placeholder, textarea = false, type = 'text' }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; textarea?: boolean; type?: string }) {
+  return <label className="block"><span className="mb-2 block text-[10px] font-black uppercase tracking-[0.28em] text-sky-200/55">{label}</span>{textarea ? <textarea value={value} onChange={(e)=>onChange(e.target.value)} placeholder={placeholder} rows={5} className="w-full rounded-[1.4rem] border border-white/10 bg-black/25 px-4 py-4 text-base text-white outline-none placeholder:text-white/25 focus:border-sky-200/50" /> : <input type={type} value={value} onChange={(e)=>onChange(e.target.value)} placeholder={placeholder} className="h-14 w-full rounded-[1.4rem] border border-white/10 bg-black/25 px-4 text-base text-white outline-none placeholder:text-white/25 focus:border-sky-200/50" />}</label>;
+}
+
+function SocialCard({ icon: Icon, title, handle, followers, href }: { icon: typeof Instagram; title: string; handle?: string | null; followers?: number; href?: string | null }) {
+  return <a href={href || '#'} target={href ? '_blank' : undefined} rel="noreferrer" className="group rounded-[2rem] border border-white/10 bg-white/[0.075] p-5 shadow-[0_25px_70px_rgba(0,0,0,.22)] backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/12"><Icon className="mb-5 h-8 w-8 text-sky-200"/><h3 className="text-2xl font-black text-white">{title}</h3><p className="mt-1 truncate text-sm text-white/45">{handle || 'Sin configurar'}</p><div className="mt-5 rounded-[1.2rem] bg-[#d9ecff] p-4 text-[#0a2540]"><b className="block text-2xl font-black">{fmt(followers)}</b><span className="text-xs font-bold text-[#486984]">seguidores</span></div></a>;
 }
 
 export default function AdminProfilePage() {
@@ -46,197 +55,119 @@ export default function AdminProfilePage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
-  const [status, setStatus] = useState<string | null>(null);
+  const [status, setStatus] = useState('');
+  const [ads, setAds] = useState<AdsStatus | null>(null);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      try {
-        const res = await fetch('/api/admin/profile', { cache: 'no-store' });
-        const json = await res.json();
-        if (!alive) return;
-        if (json.profile) setProfile({ ...emptyProfile, ...json.profile });
-        if (json.session?.rol) setRole(json.session.rol);
-      } catch {
-        if (alive) setStatus('No se pudo cargar el perfil.');
-      } finally {
-        if (alive) setLoading(false);
+  async function load() {
+    setLoading(true);
+    try {
+      const [profileRes, adsRes] = await Promise.allSettled([
+        fetch('/api/admin/profile', { cache: 'no-store' }).then((r)=>r.json()),
+        fetch('/api/admin/ads/status', { cache: 'no-store' }).then((r)=>r.json()),
+      ]);
+      if (profileRes.status === 'fulfilled') {
+        if (profileRes.value.profile) setProfile({ ...emptyProfile, ...profileRes.value.profile });
+        if (profileRes.value.session?.rol) setRole(profileRes.value.session.rol);
       }
-    })();
-    return () => { alive = false; };
-  }, []);
+      if (adsRes.status === 'fulfilled' && adsRes.value?.ok) setAds(adsRes.value);
+    } catch { setStatus('No se pudo cargar el perfil.'); } finally { setLoading(false); }
+  }
 
-  const displayName = profile.display_name || 'Administrador Fabrick';
-  const profileInitials = useMemo(() => initials(displayName), [displayName]);
+  useEffect(() => { void load(); }, []);
+
+  const displayName = profile.display_name || profile.email.split('@')[0] || 'Administrador Fabrick';
+  const stats = socialStats(profile);
+  const totalFollowers = Number(stats.instagram_followers || 0) + Number(stats.facebook_followers || 0) + Number(stats.linkedin_followers || 0) + Number(stats.tiktok_followers || 0);
+  const socialCount = [profile.instagram, profile.facebook, profile.linkedin, profile.website].filter(Boolean).length;
   const completion = Math.round(([profile.display_name, profile.phone, profile.bio, profile.avatar_url, profile.instagram, profile.facebook, profile.linkedin, profile.whatsapp, profile.website].filter(Boolean).length / 9) * 100);
 
-  function update(key: keyof Profile, value: string) {
-    setProfile((prev) => ({ ...prev, [key]: value }));
+  function update(key: keyof Profile, value: string) { setProfile((prev) => ({ ...prev, [key]: value })); }
+  function updateFollower(key: keyof SocialStats, value: string) {
+    setProfile((prev) => ({ ...prev, metadata: { ...(prev.metadata || {}), social_stats: { ...(prev.metadata?.social_stats || {}), [key]: Number(value) || 0 } } }));
   }
 
   async function saveProfile() {
-    setSaving(true);
-    setStatus(null);
+    setSaving(true); setStatus('');
     try {
-      const res = await fetch('/api/admin/profile', {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile),
-      });
+      const res = await fetch('/api/admin/profile', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...profile, social_stats: socialStats(profile), metadata: profile.metadata || {} }) });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'No se pudo guardar.');
-      setProfile((prev) => ({ ...prev, ...json.profile }));
+      setProfile((prev)=>({ ...prev, ...json.profile }));
       setStatus('Perfil guardado correctamente.');
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Error guardando perfil.');
-    } finally {
-      setSaving(false);
-    }
+    } catch (err) { setStatus(err instanceof Error ? err.message : 'Error guardando perfil.'); } finally { setSaving(false); }
   }
 
   async function uploadAvatar(file: File) {
-    setUploading(true);
-    setStatus(null);
+    setUploading(true); setStatus('');
     try {
-      const form = new FormData();
-      form.append('photo', file);
+      const form = new FormData(); form.append('photo', file);
       const res = await fetch('/api/admin/profile/photo', { method: 'POST', body: form });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'No se pudo subir la imagen.');
-      setProfile((prev) => ({ ...prev, avatar_url: json.photo }));
-      setStatus(json.storage === 'cloudinary' ? 'Imagen guardada en Cloudinary.' : 'Imagen guardada en base de datos.');
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Error subiendo imagen.');
-    } finally {
-      setUploading(false);
-    }
+      setProfile((prev)=>({ ...prev, avatar_url: json.photo }));
+      setStatus('Imagen guardada correctamente.');
+    } catch (err) { setStatus(err instanceof Error ? err.message : 'Error subiendo imagen.'); } finally { setUploading(false); }
   }
 
   async function deleteAvatar() {
-    setUploading(true);
-    setStatus(null);
+    setUploading(true); setStatus('');
     try {
       const res = await fetch('/api/admin/profile/photo', { method: 'DELETE' });
-      const json = await res.json().catch(() => ({}));
+      const json = await res.json().catch(()=>({}));
       if (!res.ok) throw new Error(json.error || 'No se pudo eliminar la imagen.');
-      setProfile((prev) => ({ ...prev, avatar_url: null }));
+      setProfile((prev)=>({ ...prev, avatar_url: null }));
       setStatus('Imagen eliminada.');
-    } catch (error) {
-      setStatus(error instanceof Error ? error.message : 'Error eliminando imagen.');
-    } finally {
-      setUploading(false);
-    }
+    } catch (err) { setStatus(err instanceof Error ? err.message : 'Error eliminando imagen.'); } finally { setUploading(false); }
   }
 
-  if (loading) {
-    return <div className="flex min-h-[60vh] items-center justify-center text-zinc-400"><Loader2 className="mr-2 h-5 w-5 animate-spin" /> Cargando perfil...</div>;
-  }
+  if (loading) return <div className="grid min-h-[70vh] place-items-center bg-[#07192c] text-white"><Loader2 className="h-8 w-8 animate-spin text-sky-200" /></div>;
 
-  return (
-    <main className="mx-auto w-full max-w-7xl space-y-8 pb-10">
-      <section className="grid gap-6 xl:grid-cols-[420px_minmax(0,1fr)]">
-        <Card className="relative mx-auto w-full max-w-md overflow-hidden border-white/10 bg-white text-zinc-950 shadow-2xl shadow-black/35 dark:bg-zinc-950 dark:text-white">
-          <div className="absolute right-[-80px] top-[-130px] z-0 h-72 w-72 rounded-full bg-emerald-600/90" />
-          <div className="absolute bottom-[-120px] left-[-120px] z-0 h-72 w-72 rounded-full bg-zinc-100 dark:bg-white/10" />
-          <div className="relative z-10 h-56 overflow-hidden rounded-b-[3rem] bg-zinc-900">
-            {profile.avatar_url ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img src={profile.avatar_url} alt="Portada del perfil" className="h-full w-full object-cover brightness-75 grayscale" />
-            ) : (
-              <div className="h-full w-full bg-[radial-gradient(circle_at_30%_20%,rgba(16,185,129,0.45),transparent_34%),linear-gradient(135deg,#111827,#020617)]" />
-            )}
-            <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-black/15 to-transparent" />
-            <button type="button" onClick={() => fileRef.current?.click()} className="absolute right-4 top-4 rounded-full bg-white/15 p-2 text-white backdrop-blur" aria-label="Cambiar avatar"><Camera className="h-4 w-4" /></button>
+  return <main className="relative min-h-screen overflow-hidden bg-[#07192c] p-4 text-white sm:p-6 lg:p-8">
+    <input ref={fileRef} type="file" accept="image/*" hidden onChange={(e)=>{ const file = e.target.files?.[0]; if (file) void uploadAvatar(file); e.currentTarget.value=''; }} />
+    <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_0%,rgba(125,211,252,.25),transparent_32rem),radial-gradient(circle_at_90%_18%,rgba(255,255,255,.1),transparent_28rem),linear-gradient(180deg,#08243d,#07192c_55%,#06111f)]" />
+    <section className="relative mx-auto grid max-w-7xl gap-5">
+      <header className="grid gap-5 xl:grid-cols-[420px_minmax(0,1fr)]">
+        <article className="overflow-hidden rounded-[2.8rem] border border-white/10 bg-white/[0.075] shadow-[0_30px_90px_rgba(0,0,0,.30)] backdrop-blur-2xl">
+          <div className="relative h-72 bg-[#06111f]">
+            {profile.avatar_url ? <img src={profile.avatar_url} alt={displayName} className="h-full w-full object-cover grayscale opacity-70" /> : <div className="grid h-full w-full place-items-center bg-gradient-to-br from-sky-200 to-blue-950 text-5xl font-black">{initials(displayName)}</div>}
+            <div className="absolute inset-0 bg-gradient-to-t from-[#06111f] via-[#06111f]/25 to-transparent" />
+            <button onClick={()=>fileRef.current?.click()} className="absolute right-5 top-5 grid h-12 w-12 place-items-center rounded-full bg-white/15 backdrop-blur-xl"><Camera className="h-5 w-5"/></button>
           </div>
-
-          <div className="relative z-20 -mt-16 px-6 text-center">
-            <div className="mx-auto w-fit rounded-full border-[8px] border-white bg-white shadow-xl dark:border-zinc-950 dark:bg-zinc-950">
-              <Avatar className="h-32 w-32 border-4 border-white bg-zinc-900 dark:border-zinc-900">
-                {profile.avatar_url ? <AvatarImage src={profile.avatar_url} alt={displayName} /> : null}
-                <AvatarFallback className="bg-gradient-to-br from-emerald-500 to-zinc-950 text-3xl text-white">{profileInitials}</AvatarFallback>
-              </Avatar>
-            </div>
-
-            <CardHeader className="px-0 pb-2 pt-4">
-              <div className="flex justify-center gap-2"><Badge variant="secondary">{role}</Badge><Badge variant="success">Activo</Badge></div>
-              <CardTitle className="mt-3 text-3xl font-black tracking-[-0.06em] text-zinc-950 dark:text-white">{displayName}</CardTitle>
-              <CardDescription className="flex items-center justify-center gap-1 text-zinc-500"><Mail className="h-3.5 w-3.5" /> {profile.email}</CardDescription>
-              <CardDescription className="mx-auto max-w-xs pt-2 text-sm leading-relaxed text-zinc-500">{profile.bio || 'Añade una descripción profesional para que tu perfil se vea completo en demos y presentaciones.'}</CardDescription>
-            </CardHeader>
-
-            <CardContent className="px-0 pt-2">
-              <div className="grid grid-cols-3 gap-2 rounded-3xl border border-zinc-200 bg-zinc-50 p-3 dark:border-white/10 dark:bg-white/[0.03]">
-                <div className="text-center"><p className="text-2xl font-black">{completion}%</p><p className="text-[10px] uppercase tracking-widest text-zinc-500">Perfil</p></div>
-                <div className="border-x border-zinc-200 text-center dark:border-white/10"><p className="text-2xl font-black">{[profile.instagram, profile.facebook, profile.linkedin, profile.website].filter(Boolean).length}</p><p className="text-[10px] uppercase tracking-widest text-zinc-500">Redes</p></div>
-                <div className="text-center"><p className="text-2xl font-black">5</p><p className="text-[10px] uppercase tracking-widest text-zinc-500">Módulos</p></div>
-              </div>
-            </CardContent>
-
-            <CardFooter className="grid gap-3 px-0 pb-6 pt-2 sm:grid-cols-2">
-              <Button type="button" onClick={() => fileRef.current?.click()} disabled={uploading} className="rounded-2xl">{uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Camera className="h-4 w-4" />} Cambiar foto</Button>
-              <Button type="button" variant="outline" onClick={deleteAvatar} disabled={uploading || !profile.avatar_url} className="rounded-2xl"><X className="h-4 w-4" /> Eliminar</Button>
-            </CardFooter>
+          <div className="relative -mt-16 px-6 pb-7 text-center">
+            <div className="mx-auto grid h-36 w-36 place-items-center overflow-hidden rounded-full border-[10px] border-[#06111f] bg-gradient-to-br from-sky-200 to-blue-900 text-3xl font-black shadow-2xl">{profile.avatar_url ? <img src={profile.avatar_url} alt={displayName} className="h-full w-full object-cover" /> : initials(displayName)}</div>
+            <div className="mt-5 flex justify-center gap-2"><span className="rounded-full bg-white/12 px-4 py-1 text-xs font-black uppercase tracking-wider">{role}</span><span className="rounded-full bg-emerald-400/18 px-4 py-1 text-xs font-black uppercase tracking-wider text-emerald-200">Activo</span></div>
+            <h1 className="mt-4 text-4xl font-black tracking-tight">{displayName}</h1>
+            <p className="mt-2 text-sm text-white/45">{profile.email}</p>
+            <p className="mx-auto mt-4 max-w-sm text-sm leading-6 text-white/55">{profile.bio || 'Añade una descripción profesional para demos y presentaciones.'}</p>
+            <div className="mt-6 grid grid-cols-3 overflow-hidden rounded-[1.6rem] border border-white/10 bg-white/[0.07]"><div className="p-4"><b className="block text-2xl">{completion}%</b><span className="text-[10px] uppercase tracking-widest text-white/40">Perfil</span></div><div className="border-x border-white/10 p-4"><b className="block text-2xl">{socialCount}</b><span className="text-[10px] uppercase tracking-widest text-white/40">Redes</span></div><div className="p-4"><b className="block text-2xl">{fmt(totalFollowers)}</b><span className="text-[10px] uppercase tracking-widest text-white/40">Seguidores</span></div></div>
+            <div className="mt-5 grid gap-3"><button onClick={()=>fileRef.current?.click()} className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl bg-[#f4bf38] text-sm font-black text-[#07192c] disabled:opacity-50" disabled={uploading}>{uploading ? <Loader2 className="h-4 w-4 animate-spin"/> : <Camera className="h-4 w-4"/>} Cambiar foto</button><button onClick={()=>void deleteAvatar()} disabled={!profile.avatar_url || uploading} className="inline-flex h-14 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] text-sm font-black text-white disabled:opacity-40"><X className="h-4 w-4"/> Eliminar</button></div>
           </div>
-        </Card>
+        </article>
 
-        <div className="space-y-6">
-          <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950 p-6 shadow-2xl shadow-black/40 sm:p-8">
-            <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_5%_10%,rgba(16,185,129,0.24),transparent_35%),radial-gradient(circle_at_95%_0%,rgba(250,204,21,0.14),transparent_32%)]" />
-            <div className="relative">
-              <p className="text-xs font-black uppercase tracking-[0.28em] text-emerald-300">Perfil administrativo</p>
-              <h1 className="mt-3 max-w-3xl text-4xl font-black tracking-[-0.07em] text-white sm:text-6xl">Controla tu identidad dentro del admin</h1>
-              <p className="mt-4 max-w-2xl text-sm leading-relaxed text-zinc-400">Este perfil alimenta la barra superior, el menú móvil, tus demos comerciales y las futuras firmas de correo o presentaciones internas.</p>
-              <div className="mt-6 grid gap-3 sm:grid-cols-3">
-                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4"><ShieldCheck className="mb-3 h-5 w-5 text-emerald-300" /><p className="text-lg font-black text-white">{role}</p><p className="text-xs text-zinc-500">Rol activo</p></div>
-                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4"><Grid2X2 className="mb-3 h-5 w-5 text-yellow-300" /><p className="text-lg font-black text-white">{completion}%</p><p className="text-xs text-zinc-500">Perfil completo</p></div>
-                <div className="rounded-3xl border border-white/10 bg-white/[0.04] p-4"><Sparkles className="mb-3 h-5 w-5 text-sky-300" /><p className="text-lg font-black text-white">Activo</p><p className="text-xs text-zinc-500">Estado de cuenta</p></div>
-              </div>
-            </div>
-          </section>
+        <article className="rounded-[2.8rem] border border-white/10 bg-white/[0.075] p-6 shadow-[0_30px_90px_rgba(0,0,0,.25)] backdrop-blur-2xl sm:p-8">
+          <p className="text-[10px] font-black uppercase tracking-[0.35em] text-sky-200">Perfil administrativo</p>
+          <h2 className="mt-4 max-w-4xl text-5xl font-black leading-[.95] tracking-tight sm:text-7xl">Identidad, redes y anuncios en un solo lugar.</h2>
+          <p className="mt-5 max-w-2xl text-base leading-8 text-white/60">Tu foto, nombre, rol y datos sociales ahora alimentan el sidebar, demos comerciales y panel de control. También puedes validar si Meta/Facebook Ads está conectado.</p>
+          <div className="mt-8 grid gap-4 md:grid-cols-3"><div className="rounded-[2rem] bg-[#d9ecff] p-5 text-[#0a2540]"><ShieldCheck className="mb-3 h-6 w-6"/><b className="block text-2xl">{role}</b><span className="text-sm text-[#486984]">Rol activo</span></div><div className="rounded-[2rem] bg-white/10 p-5"><BarChart3 className="mb-3 h-6 w-6 text-sky-200"/><b className="block text-2xl">{fmt(totalFollowers)}</b><span className="text-sm text-white/50">Seguidores totales</span></div><div className="rounded-[2rem] bg-white/10 p-5"><Sparkles className="mb-3 h-6 w-6 text-yellow-200"/><b className="block text-2xl">{ads?.connected ? 'Conectado' : 'Revisar'}</b><span className="text-sm text-white/50">Meta Ads</span></div></div>
+        </article>
+      </header>
 
-          <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-            {[
-              { label: 'Instagram', value: profile.instagram, icon: Instagram },
-              { label: 'Facebook', value: profile.facebook, icon: MessageCircle },
-              { label: 'LinkedIn', value: profile.linkedin, icon: Linkedin },
-              { label: 'Sitio web', value: profile.website, icon: Globe2 },
-            ].map(({ label, value, icon: Icon }) => (
-              <a key={label} href={value || '#'} target={value ? '_blank' : undefined} rel="noreferrer" className="rounded-3xl border border-white/10 bg-zinc-950/80 p-5 transition hover:border-emerald-300/40 hover:bg-emerald-300/[0.04]">
-                <Icon className="mb-4 h-5 w-5 text-emerald-300" /><p className="font-black text-white">{label}</p><p className="mt-1 truncate text-xs text-zinc-500">{value || 'Sin configurar'}</p>
-              </a>
-            ))}
-          </section>
-        </div>
-      </section>
+      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
+        <article className="rounded-[2.8rem] border border-white/10 bg-white/[0.075] p-6 shadow-[0_30px_90px_rgba(0,0,0,.22)] backdrop-blur-2xl sm:p-8">
+          <div className="flex flex-wrap items-center justify-between gap-3"><div><h2 className="text-3xl font-black">Editar información</h2><p className="mt-1 text-sm text-white/50">Guarda datos personales, redes y métricas visibles.</p></div><button onClick={()=>void saveProfile()} disabled={saving} className="inline-flex h-13 min-h-[52px] items-center gap-2 rounded-2xl bg-[#f4bf38] px-6 text-sm font-black text-[#07192c] disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Save className="h-4 w-4"/>} Guardar</button></div>
+          {status && <div className="mt-5 rounded-2xl border border-sky-200/20 bg-sky-200/10 p-4 text-sm text-sky-100">{status}</div>}
+          <div className="mt-6 grid gap-5 md:grid-cols-2"><Field label="Nombre" value={profile.display_name || ''} onChange={(v)=>update('display_name', v)} /><Field label="Teléfono" value={profile.phone || ''} onChange={(v)=>update('phone', v)} /><div className="md:col-span-2"><Field label="Bio" value={profile.bio || ''} onChange={(v)=>update('bio', v)} textarea /></div><Field label="Instagram" value={profile.instagram || ''} onChange={(v)=>update('instagram', v)} placeholder="@usuario o URL" /><Field label="Facebook" value={profile.facebook || ''} onChange={(v)=>update('facebook', v)} /><Field label="LinkedIn" value={profile.linkedin || ''} onChange={(v)=>update('linkedin', v)} /><Field label="WhatsApp" value={profile.whatsapp || ''} onChange={(v)=>update('whatsapp', v)} /><div className="md:col-span-2"><Field label="Sitio web" value={profile.website || ''} onChange={(v)=>update('website', v)} /></div></div>
+          <div className="mt-8"><h3 className="text-2xl font-black">Seguidores y alcance social</h3><p className="mt-1 text-sm text-white/50">Ingresa los números reales; después podemos conectarlos por API.</p><div className="mt-5 grid gap-4 md:grid-cols-4"><Field label="Instagram" type="number" value={String(stats.instagram_followers || 0)} onChange={(v)=>updateFollower('instagram_followers', v)} /><Field label="Facebook" type="number" value={String(stats.facebook_followers || 0)} onChange={(v)=>updateFollower('facebook_followers', v)} /><Field label="LinkedIn" type="number" value={String(stats.linkedin_followers || 0)} onChange={(v)=>updateFollower('linkedin_followers', v)} /><Field label="TikTok" type="number" value={String(stats.tiktok_followers || 0)} onChange={(v)=>updateFollower('tiktok_followers', v)} /></div></div>
+        </article>
 
-      <section className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <Card className="border-white/10 bg-zinc-950/80">
-          <CardHeader className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div><CardTitle className="text-2xl font-black tracking-[-0.05em] text-white">Editar información</CardTitle><CardDescription>Rellena los datos y presiona guardar para actualizar el perfil.</CardDescription></div>
-            <Button type="button" onClick={saveProfile} disabled={saving} className="rounded-2xl">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Guardar</Button>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <label className="space-y-2"><span className={labelClass}>Nombre</span><input className={inputClass} value={profile.display_name ?? ''} onChange={(e) => update('display_name', e.target.value)} placeholder="Eduardo Fabrick" /></label>
-              <label className="space-y-2"><span className={labelClass}>Teléfono</span><input className={inputClass} value={profile.phone ?? ''} onChange={(e) => update('phone', e.target.value)} placeholder="+56 9..." /></label>
-              <label className="space-y-2 sm:col-span-2"><span className={labelClass}>Bio</span><textarea className={inputClass} rows={5} value={profile.bio ?? ''} onChange={(e) => update('bio', e.target.value)} placeholder="Constructor, gestor comercial y administrador de Soluciones Fabrick..." /></label>
-              <label className="space-y-2"><span className={labelClass}>Instagram</span><input className={inputClass} value={profile.instagram ?? ''} onChange={(e) => update('instagram', e.target.value)} placeholder="https://instagram.com/..." /></label>
-              <label className="space-y-2"><span className={labelClass}>Facebook</span><input className={inputClass} value={profile.facebook ?? ''} onChange={(e) => update('facebook', e.target.value)} placeholder="https://facebook.com/..." /></label>
-              <label className="space-y-2"><span className={labelClass}>LinkedIn</span><input className={inputClass} value={profile.linkedin ?? ''} onChange={(e) => update('linkedin', e.target.value)} placeholder="https://linkedin.com/in/..." /></label>
-              <label className="space-y-2"><span className={labelClass}>WhatsApp</span><input className={inputClass} value={profile.whatsapp ?? ''} onChange={(e) => update('whatsapp', e.target.value)} placeholder="+569..." /></label>
-              <label className="space-y-2 sm:col-span-2"><span className={labelClass}>Sitio web</span><input className={inputClass} value={profile.website ?? ''} onChange={(e) => update('website', e.target.value)} placeholder="https://solucionesfabrick.com" /></label>
-            </div>
-            {status && <p className="mt-4 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-sm text-zinc-300">{status}</p>}
-          </CardContent>
-        </Card>
-
-        <aside className="space-y-4">
-          <Card className="border-white/10 bg-zinc-950/80"><CardHeader><CardTitle className="text-white">Estado del perfil</CardTitle><CardDescription>Información lista para demos, navegación y presentación interna.</CardDescription></CardHeader><CardContent className="space-y-3"><div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm"><span className="text-zinc-400">Foto</span><span className="font-bold text-white">{profile.avatar_url ? 'Configurada' : 'Pendiente'}</span></div><div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm"><span className="text-zinc-400">Contacto</span><span className="font-bold text-white">{profile.phone ? 'Completo' : 'Pendiente'}</span></div><div className="flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm"><span className="text-zinc-400">Redes</span><span className="font-bold text-white">{[profile.instagram, profile.facebook, profile.linkedin, profile.website].filter(Boolean).length}/4</span></div></CardContent></Card>
+        <aside className="grid h-fit gap-5">
+          <article className="rounded-[2.5rem] border border-white/10 bg-[#d9ecff] p-5 text-[#0a2540] shadow-[0_25px_80px_rgba(0,0,0,.22)]"><div className="flex items-center justify-between"><h3 className="text-2xl font-black">Meta / Facebook Ads</h3><Megaphone className="h-6 w-6"/></div><p className="mt-2 text-sm text-[#486984]">Estado de tu clave y cuenta publicitaria sin mostrar secretos.</p><div className="mt-5 grid gap-3"><div className="rounded-2xl bg-white/65 p-4"><span className="text-xs font-black uppercase tracking-widest text-[#486984]">Token</span><b className="mt-1 block">{ads?.accessToken?.present ? ads.accessToken.healthy ? 'Activo' : 'Presente con error' : 'No configurado'}</b><p className="mt-1 text-xs text-[#486984]">{ads?.accessToken?.message || 'Sin validar'}</p></div><div className="rounded-2xl bg-white/65 p-4"><span className="text-xs font-black uppercase tracking-widest text-[#486984]">Ad Account</span><b className="mt-1 block">{ads?.adAccount?.masked || 'No configurada'}</b><p className="mt-1 text-xs text-[#486984]">Fuente: {ads?.adAccount?.source || 'sin fuente'}</p></div><div className="rounded-2xl bg-white/65 p-4"><span className="text-xs font-black uppercase tracking-widest text-[#486984]">Instagram Business</span><b className="mt-1 block">{ads?.instagramBusiness?.present ? 'Conectado' : 'No conectado'}</b></div></div><div className="mt-5 grid gap-2"><Link href="/admin/publicidad" className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#0a2540] text-sm font-black text-white"><Megaphone className="h-4 w-4"/> Ir a publicidad</Link><Link href="/admin/publicidad/coach" className="inline-flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#f4bf38] text-sm font-black text-[#0a2540]"><Zap className="h-4 w-4"/> Coach anuncios</Link></div></article>
+          <article className="rounded-[2.5rem] border border-white/10 bg-white/[0.075] p-5 backdrop-blur-xl"><h3 className="text-2xl font-black">Estado del perfil</h3><p className="mt-2 text-sm text-white/50">Información lista para demos, sidebar y presentación interna.</p><div className="mt-5 grid gap-3"><div className="flex justify-between rounded-2xl bg-white/10 p-4"><span>Foto</span><b>{profile.avatar_url ? 'Configurada' : 'Pendiente'}</b></div><div className="flex justify-between rounded-2xl bg-white/10 p-4"><span>Contacto</span><b>{profile.phone && profile.whatsapp ? 'Completo' : 'Parcial'}</b></div><div className="flex justify-between rounded-2xl bg-white/10 p-4"><span>Redes</span><b>{socialCount}/4</b></div></div></article>
         </aside>
       </section>
 
-      <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(event) => { const file = event.target.files?.[0]; if (file) void uploadAvatar(file); event.target.value = ''; }} />
-    </main>
-  );
+      <section className="grid gap-5 md:grid-cols-2 xl:grid-cols-4"><SocialCard icon={Instagram} title="Instagram" handle={profile.instagram} followers={stats.instagram_followers} href={profile.instagram} /><SocialCard icon={Facebook} title="Facebook" handle={profile.facebook} followers={stats.facebook_followers} href={profile.facebook} /><SocialCard icon={Linkedin} title="LinkedIn" handle={profile.linkedin} followers={stats.linkedin_followers} href={profile.linkedin} /><SocialCard icon={Globe2} title="Sitio web" handle={profile.website} followers={stats.tiktok_followers} href={profile.website} /></section>
+    </section>
+  </main>;
 }

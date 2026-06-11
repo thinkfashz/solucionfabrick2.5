@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useRef, useState } from 'react';
-import { Bell, Code2, Database, Eye, Facebook, FileUp, Instagram, Mail, Menu, Monitor, Moon, Phone, Search, Send, Share2, Smartphone, Tablet, UploadCloud } from 'lucide-react';
+import { Bell, Code2, Database, Eye, Facebook, FileUp, Instagram, Mail, Menu, Monitor, Moon, Phone, Search, Send, Share2, Smartphone, Sparkles, Tablet, UploadCloud } from 'lucide-react';
 import { transformHtmlToPremiumPage } from './premiumHtmlTransformer';
 import { buildNicheTemplate } from './premiumNicheTemplates';
 

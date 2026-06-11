@@ -59,6 +59,35 @@ function makeToken() {
   return Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-6);
 }
 
+function cleanTitle(value: unknown) {
+  return String(value || '').trim().slice(0, 140);
+}
+
+function cleanStatus(value: unknown) {
+  const status = String(value || 'publicado').trim().toLowerCase();
+  return ['borrador', 'publicado', 'archivado'].includes(status) ? status : 'publicado';
+}
+
+function cleanHtml(value: unknown) {
+  let html = String(value || '').trim();
+  html = html.replace(/<script\b[^>]*>[\s\S]*?<\/script>/gi, '');
+  html = html.replace(/<iframe\b[^>]*>[\s\S]*?<\/iframe>/gi, '');
+  html = html.replace(/<object\b[^>]*>[\s\S]*?<\/object>/gi, '');
+  html = html.replace(/<embed\b[^>]*>/gi, '');
+  html = html.replace(/\son[a-z]+\s*=\s*"[^"]*"/gi, '');
+  html = html.replace(/\son[a-z]+\s*=\s*'[^']*'/gi, '');
+  html = html.replace(/javascript:/gi, '');
+  return html;
+}
+
+function validateProjectJson(value: unknown) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return { ok: false, error: 'project_json debe ser un objeto.' };
+  const obj = value as { blocks?: unknown; sections?: unknown };
+  const blocks = Array.isArray(obj.blocks) ? obj.blocks : Array.isArray(obj.sections) ? obj.sections : [];
+  if (!blocks.length) return { ok: false, error: 'El JSON debe incluir blocks o sections con al menos un bloque.' };
+  return { ok: true, error: '' };
+}
+
 async function requireAdmin(request: NextRequest) {
   const cookie = request.cookies.get(ADMIN_COOKIE_NAME);
   if (!cookie?.value) return null;
@@ -88,19 +117,24 @@ export async function POST(request: NextRequest) {
   if (session.rol === 'viewer') return NextResponse.json({ error: 'Modo demo: solo lectura.' }, { status: 403 });
 
   const body = await request.json().catch(() => null) as { token?: string; title?: string; html?: string; project_json?: unknown; status?: string; expires_in_hours?: number } | null;
-  if (!body?.html || !body?.title) return NextResponse.json({ error: 'title y html son obligatorios.' }, { status: 400 });
+  const title = cleanTitle(body?.title);
+  const html = cleanHtml(body?.html);
+  if (!title || title.length < 3) return NextResponse.json({ error: 'El título es obligatorio y debe tener al menos 3 caracteres.' }, { status: 400 });
+  if (!html || html.length < 40) return NextResponse.json({ error: 'El HTML está vacío, es demasiado corto o fue limpiado por seguridad.' }, { status: 400 });
+  const jsonValidation = validateProjectJson(body?.project_json);
+  if (!jsonValidation.ok) return NextResponse.json({ error: jsonValidation.error }, { status: 400 });
 
   const ensure = await ensureTable();
   if (!ensure.ok) return NextResponse.json({ error: 'No se pudo preparar page_engine_documents', detail: ensure.data }, { status: 502 });
 
-  const docToken = body.token && /^[a-zA-Z0-9_-]{8,80}$/.test(body.token) ? body.token : makeToken();
-  const hours = Math.max(1, Number(body.expires_in_hours || 168));
+  const docToken = body?.token && /^[a-zA-Z0-9_-]{8,80}$/.test(body.token) ? body.token : makeToken();
+  const hours = Math.max(1, Math.min(24 * 30, Number(body?.expires_in_hours || 168)));
   const expiresAt = new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
-  const status = body.status || 'publicado';
+  const status = cleanStatus(body?.status);
 
   const result = await runRawSql(`
 INSERT INTO page_engine_documents (token, title, status, html, project_json, expires_at, updated_at)
-VALUES (${sqlText(docToken)}, ${sqlText(body.title)}, ${sqlText(status)}, ${sqlText(body.html)}, ${sqlJson(body.project_json)}, ${sqlText(expiresAt)}, NOW())
+VALUES (${sqlText(docToken)}, ${sqlText(title)}, ${sqlText(status)}, ${sqlText(html)}, ${sqlJson(body?.project_json)}, ${sqlText(expiresAt)}, NOW())
 ON CONFLICT (token) DO UPDATE SET
   title = EXCLUDED.title,
   status = EXCLUDED.status,

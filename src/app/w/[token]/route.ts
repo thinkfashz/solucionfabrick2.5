@@ -19,6 +19,18 @@ function rows(result: { data: unknown }): Record<string, unknown>[] {
   return (result.data as { data?: { rows?: Record<string, unknown>[] } } | null)?.data?.rows ?? [];
 }
 
+function obj(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
+}
+
+function text(value: unknown, fallback = '') {
+  return typeof value === 'string' && value.trim() ? value.trim() : typeof value === 'number' ? String(value) : fallback;
+}
+
+function escapeHtml(value: unknown) {
+  return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
+}
+
 async function runRawSql(query: string) {
   const res = await fetch(`${INSFORGE_URL.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`, {
     method: 'POST',
@@ -27,9 +39,9 @@ async function runRawSql(query: string) {
     signal: AbortSignal.timeout(30_000),
     cache: 'no-store',
   });
-  const text = await res.text();
+  const raw = await res.text();
   let data: unknown;
-  try { data = JSON.parse(text); } catch { data = { raw: text }; }
+  try { data = JSON.parse(raw); } catch { data = { raw }; }
   return { ok: res.ok, status: res.status, data };
 }
 
@@ -39,7 +51,7 @@ function htmlHeaders(status = 200) {
     headers: {
       'content-type': 'text/html; charset=utf-8',
       'cache-control': 'no-store, max-age=0',
-      'x-robots-tag': 'noindex, nofollow',
+      'x-robots-tag': 'noindex, nofollow, noarchive',
       'x-content-type-options': 'nosniff',
       'referrer-policy': 'strict-origin-when-cross-origin',
       'permissions-policy': 'camera=(), microphone=(), geolocation=()',
@@ -48,17 +60,87 @@ function htmlHeaders(status = 200) {
 }
 
 function expiredHtml() {
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Link expirado</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090806;color:#fff7e8;font-family:system-ui}.box{max-width:560px;padding:32px;border:1px solid rgba(255,190,56,.24);border-radius:32px;background:#111;box-shadow:0 24px 80px rgba(0,0,0,.45)}h1{font-size:42px;letter-spacing:-.05em}.tag{color:#fbbf24;text-transform:uppercase;font-size:12px;font-weight:900;letter-spacing:.22em}</style></head><body><main class="box"><p class="tag">Soluciones Fabrick</p><h1>Este link ya expiró</h1><p>Solicita una nueva versión para ver precios y condiciones actualizadas.</p></main></body></html>`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Link expirado</title><meta name="robots" content="noindex,nofollow,noarchive"><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090806;color:#fff7e8;font-family:system-ui}.box{max-width:560px;padding:32px;border:1px solid rgba(255,190,56,.24);border-radius:32px;background:#111;box-shadow:0 24px 80px rgba(0,0,0,.45)}h1{font-size:42px;letter-spacing:-.05em}.tag{color:#fbbf24;text-transform:uppercase;font-size:12px;font-weight:900;letter-spacing:.22em}</style></head><body><main class="box"><p class="tag">Soluciones Fabrick</p><h1>Este link ya expiró</h1><p>Solicita una nueva versión para ver precios y condiciones actualizadas.</p></main></body></html>`;
 }
 
-export async function GET(_request: NextRequest, context: { params: Promise<{ token: string }> }) {
+function parseProjectJson(value: unknown): Record<string, unknown> {
+  if (!value) return {};
+  if (typeof value === 'string') {
+    try { return obj(JSON.parse(value)); } catch { return {}; }
+  }
+  return obj(value);
+}
+
+function firstImage(project: Record<string, unknown>, html: string) {
+  const images = Array.isArray(project.images) ? project.images : [];
+  const first = images.find((image) => typeof image === 'string' && /^https?:\/\//i.test(image));
+  if (first) return String(first);
+  const match = html.match(/<img[^>]+src=["']([^"']+)["']/i)?.[1];
+  if (match && /^https?:\/\//i.test(match)) return match;
+  const client = obj(project.client);
+  const avatar = text(client.avatar || client.logo);
+  if (/^https?:\/\//i.test(avatar)) return avatar;
+  return 'https://www.solucionesfabrick.com/icon-512.png';
+}
+
+function metadataFor(row: Record<string, unknown>, request: NextRequest, token: string) {
+  const html = String(row.html || '');
+  const project = parseProjectJson(row.project_json);
+  const client = obj(project.client);
+  const title = text(project.shareTitle || project.title || row.title || client.brand, 'Presentación premium Soluciones Fabrick');
+  const brand = text(client.brand || project.brand, title);
+  const account = text(client.account || client.instagram || client.facebook, '');
+  const description = text(
+    project.shareDescription || project.description,
+    `${brand} · Demo privada y temporal enviada por Soluciones Fabrick. Vista segura HTTPS, renderizada desde servidor y protegida contra indexación pública.`
+  );
+  const image = firstImage(project, html);
+  const url = `${request.nextUrl.origin}/w/${token}`;
+  return { title, description, image, url, brand, account };
+}
+
+function metaTags(meta: ReturnType<typeof metadataFor>) {
+  return `
+<title>${escapeHtml(meta.title)}</title>
+<meta name="description" content="${escapeHtml(meta.description)}">
+<meta name="robots" content="noindex,nofollow,noarchive">
+<link rel="canonical" href="${escapeHtml(meta.url)}">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Soluciones Fabrick">
+<meta property="og:title" content="${escapeHtml(meta.title)}">
+<meta property="og:description" content="${escapeHtml(meta.description)}">
+<meta property="og:image" content="${escapeHtml(meta.image)}">
+<meta property="og:url" content="${escapeHtml(meta.url)}">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="${escapeHtml(meta.title)}">
+<meta name="twitter:description" content="${escapeHtml(meta.description)}">
+<meta name="twitter:image" content="${escapeHtml(meta.image)}">
+<meta name="fabrick-security" content="Demo temporal con HTTPS, SSR y noindex/noarchive para evitar indexación pública.">
+`;
+}
+
+function injectMetadata(html: string, meta: ReturnType<typeof metadataFor>) {
+  const tags = metaTags(meta);
+  let document = html || expiredHtml();
+  document = document.replace(/<title>[\s\S]*?<\/title>/i, '');
+  document = document.replace(/<meta\s+name=["']description["'][^>]*>/gi, '');
+  document = document.replace(/<meta\s+property=["']og:[^"']+["'][^>]*>/gi, '');
+  document = document.replace(/<meta\s+name=["']twitter:[^"']+["'][^>]*>/gi, '');
+  document = document.replace(/<meta\s+name=["']robots["'][^>]*>/gi, '');
+  document = document.replace(/<link\s+rel=["']canonical["'][^>]*>/gi, '');
+  if (/<head[^>]*>/i.test(document)) return document.replace(/<head[^>]*>/i, (match) => `${match}${tags}`);
+  if (/<html[^>]*>/i.test(document)) return document.replace(/<html[^>]*>/i, (match) => `${match}<head>${tags}</head>`);
+  return `<!doctype html><html lang="es"><head>${tags}</head><body>${document}</body></html>`;
+}
+
+export async function GET(request: NextRequest, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
   if (!/^[a-zA-Z0-9_-]{8,80}$/.test(token || '')) {
     return new NextResponse(expiredHtml(), htmlHeaders(404));
   }
 
   const result = await runRawSql(`
-SELECT html, status, expires_at
+SELECT html, title, status, expires_at, project_json
 FROM page_engine_documents
 WHERE token = ${sqlText(token)}
 LIMIT 1;
@@ -76,5 +158,6 @@ LIMIT 1;
     return new NextResponse(expiredHtml(), htmlHeaders(410));
   }
 
-  return new NextResponse(String(row.html || expiredHtml()), htmlHeaders(200));
+  const meta = metadataFor(row, request, token);
+  return new NextResponse(injectMetadata(String(row.html || expiredHtml()), meta), htmlHeaders(200));
 }

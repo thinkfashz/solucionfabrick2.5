@@ -25,157 +25,98 @@ function clamp(value: number, min: number, max: number) {
   return Math.max(min, Math.min(max, value));
 }
 
+function depthStyle(width: number, depth: number, height: number, colorTop: string, colorSide: string, z = 0) {
+  return { width, height: depth, transform: `translate3d(${-width / 2}px, ${-depth / 2}px, ${z}px)`, '--h': `${height}px`, '--top': colorTop, '--side': colorSide } as React.CSSProperties;
+}
+
 export default function BudgetScene360({ kind = 'default', title, subtitle, data, compact = false }: BudgetScene360Props) {
-  const wrapRef = useRef<HTMLDivElement | null>(null);
   const dragRef = useRef<{ x: number; y: number; yaw: number; pitch: number } | null>(null);
-  const [yaw, setYaw] = useState(28);
-  const [pitch, setPitch] = useState(14);
+  const [yaw, setYaw] = useState(38);
+  const [pitch, setPitch] = useState(55);
   const [zoom, setZoom] = useState(1);
+  const [explode, setExplode] = useState(false);
+  const [labels, setLabels] = useState(true);
+  const [cutaway, setCutaway] = useState(false);
 
-  const transform = useMemo(() => {
-    const rotate = `rotateX(${pitch}deg) rotateZ(${yaw}deg)`;
-    const scale = `scale(${zoom})`;
-    return `${rotate} ${scale}`;
-  }, [pitch, yaw, zoom]);
-
+  const transform = useMemo(() => `rotateX(${pitch}deg) rotateZ(${yaw}deg) scale(${zoom})`, [pitch, yaw, zoom]);
   const stats = useMemo(() => {
-    if (kind === 'radier') {
-      return [
-        ['Área', `${num.format(readNumber(data, 'area'))} m²`],
-        ['Hormigón', `${num.format(readNumber(data, 'hormigon'))} m³`],
-        ['Sacos', `${whole.format(readNumber(data, 'sacos'))}`],
-      ];
-    }
-    if (kind === 'aire') {
-      return [
-        ['Área', `${num.format(readNumber(data, 'area'))} m²`],
-        ['BTU', `${whole.format(readNumber(data, 'btu'))}`],
-        ['Equipo', `${whole.format(readNumber(data, 'seleccionado'))} BTU`],
-      ];
-    }
-    return [['Vista', '360°'], ['Modo', 'Cliente'], ['Estado', 'Interactivo']];
+    if (kind === 'radier') return [['Área', `${num.format(readNumber(data, 'area'))} m²`], ['Hormigón', `${num.format(readNumber(data, 'hormigon'))} m³`], ['Sacos', `${whole.format(readNumber(data, 'sacos'))}`]];
+    if (kind === 'aire') return [['Área', `${num.format(readNumber(data, 'area'))} m²`], ['BTU', `${whole.format(readNumber(data, 'btu'))}`], ['Equipo', `${whole.format(readNumber(data, 'seleccionado'))} BTU`]];
+    return [['Vista', '3D'], ['Modo', 'Cliente'], ['Estado', 'Interactivo']];
   }, [data, kind]);
 
-  function startDrag(clientX: number, clientY: number) {
-    dragRef.current = { x: clientX, y: clientY, yaw, pitch };
-  }
+  function startDrag(clientX: number, clientY: number) { dragRef.current = { x: clientX, y: clientY, yaw, pitch }; }
+  function moveDrag(clientX: number, clientY: number) { const s = dragRef.current; if (!s) return; setYaw(s.yaw + (clientX - s.x) * 0.48); setPitch(clamp(s.pitch - (clientY - s.y) * 0.32, 18, 76)); }
+  function endDrag() { dragRef.current = null; }
 
-  function moveDrag(clientX: number, clientY: number) {
-    const start = dragRef.current;
-    if (!start) return;
-    setYaw(start.yaw + (clientX - start.x) * 0.45);
-    setPitch(clamp(start.pitch - (clientY - start.y) * 0.28, -32, 38));
-  }
-
-  function endDrag() {
-    dragRef.current = null;
-  }
-
-  const baseHeight = compact ? 'min-h-[420px]' : 'min-h-[560px]';
-
-  return (
-    <section className={`relative overflow-hidden rounded-[2rem] border border-amber-300/25 bg-[#050505] text-white shadow-[0_30px_90px_rgba(0,0,0,.5)] ${baseHeight}`}>
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,193,7,.18),transparent_24rem),radial-gradient(circle_at_80%_60%,rgba(249,115,22,.10),transparent_28rem)]" />
-      <div className="absolute inset-0 opacity-[.16] [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:42px_42px]" />
-
-      <div className="relative z-10 flex flex-col gap-4 p-4 sm:p-5">
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.32em] text-amber-300">Visor 360 interactivo</p>
-            <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-4xl">{title || (kind === 'aire' ? 'Cuarto + condensador' : kind === 'radier' ? 'Radier volumétrico' : 'Escena técnica')}</h2>
-            <p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-400">{subtitle || 'Arrastra con el dedo para girar. Usa los controles para mostrar la propuesta desde cualquier ángulo.'}</p>
+  return <section className={`relative overflow-hidden rounded-[2rem] border border-amber-300/25 bg-[#050505] text-white shadow-[0_30px_90px_rgba(0,0,0,.5)] ${compact ? 'min-h-[460px]' : 'min-h-[620px]'}`}>
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,193,7,.18),transparent_24rem),radial-gradient(circle_at_80%_60%,rgba(249,115,22,.10),transparent_28rem)]" />
+    <div className="absolute inset-0 opacity-[.13] [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:42px_42px]" />
+    <style jsx>{`
+      .scene-shell{perspective:980px;perspective-origin:50% 38%;}
+      .scene-root{transform-style:preserve-3d;transition:transform 80ms linear;}
+      .box3d{position:absolute;left:50%;top:50%;transform-style:preserve-3d;}
+      .box3d .top{position:absolute;inset:0;background:var(--top);border:1px solid rgba(255,209,102,.45);box-shadow:inset 0 0 28px rgba(255,255,255,.12),0 22px 55px rgba(0,0,0,.28);}
+      .box3d:before{content:'';position:absolute;left:0;right:0;bottom:0;height:var(--h);background:linear-gradient(180deg,var(--side),#17100a);transform:translateY(100%) rotateX(-90deg);transform-origin:top;filter:brightness(.9);}
+      .box3d:after{content:'';position:absolute;top:0;right:0;width:var(--h);height:100%;background:linear-gradient(90deg,var(--side),#070604);transform:translateX(100%) rotateY(90deg);transform-origin:left;filter:brightness(.72);}
+      .label3d{position:absolute;transform:translateZ(72px);padding:7px 10px;border-radius:999px;border:1px solid rgba(255,209,102,.36);background:rgba(0,0,0,.62);backdrop-filter:blur(10px);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.14em;color:#fde68a;white-space:nowrap;}
+      .pipe{position:absolute;height:8px;border-radius:999px;background:linear-gradient(90deg,#c98347,#f6c28b);box-shadow:0 0 16px rgba(245,158,11,.42);transform-style:preserve-3d;}
+      .pipe.cable{height:4px;background:#e5e7eb;box-shadow:0 0 12px rgba(255,255,255,.2)}
+      .air{position:absolute;border:1px solid rgba(103,232,249,.32);border-radius:999px;background:rgba(103,232,249,.10);box-shadow:0 0 22px rgba(103,232,249,.22);}
+    `}</style>
+    <div className="relative z-10 flex flex-col gap-4 p-4 sm:p-5">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div><p className="text-[10px] font-black uppercase tracking-[0.32em] text-amber-300">Visor 3D interactivo</p><h2 className="mt-2 text-2xl font-black tracking-tight sm:text-4xl">{title || (kind === 'aire' ? 'Cuarto + condensador 3D' : kind === 'radier' ? 'Radier volumétrico 3D' : 'Escena técnica 3D')}</h2><p className="mt-1 max-w-2xl text-sm leading-6 text-zinc-400">{subtitle || 'Arrastra para girar, usa zoom, activa capas y cotas. La escena se arma desde los datos/JTree del motor.'}</p></div>
+        <div className="grid grid-cols-3 gap-2 sm:min-w-[300px]">{stats.map(([label, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-3 text-center"><p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{label}</p><b className="mt-1 block text-sm text-amber-200 sm:text-base">{value}</b></div>)}</div>
+      </div>
+      <div className={`relative grid select-none place-items-center overflow-hidden rounded-[1.6rem] border border-white/10 bg-black/45 ${compact ? 'min-h-[340px]' : 'min-h-[470px]'} touch-none`} onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); startDrag(e.clientX, e.clientY); }} onPointerMove={(e) => moveDrag(e.clientX, e.clientY)} onPointerUp={endDrag} onPointerCancel={endDrag}>
+        <div className="pointer-events-none absolute left-4 top-4 z-20 rounded-full border border-amber-300/30 bg-black/60 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-amber-200">Tocar + arrastrar</div>
+        <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-20 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-amber-300" style={{ width: `${((yaw % 360 + 360) % 360) / 3.6}%` }} /></div>
+        <div className="scene-shell relative h-[360px] w-[660px] max-w-[94vw]">
+          <div className="scene-root absolute left-1/2 top-1/2 h-0 w-0" style={{ transform }}>
+            {kind === 'aire' ? <AirScene data={data} cutaway={cutaway} labels={labels} /> : kind === 'radier' ? <RadierScene data={data} explode={explode} labels={labels} /> : <DefaultScene labels={labels} />}
           </div>
-          <div className="grid grid-cols-3 gap-2 sm:min-w-[300px]">
-            {stats.map(([label, value]) => (
-              <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-3 text-center">
-                <p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{label}</p>
-                <b className="mt-1 block text-sm text-amber-200 sm:text-base">{value}</b>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        <div
-          ref={wrapRef}
-          className={`relative grid select-none place-items-center overflow-hidden rounded-[1.6rem] border border-white/10 bg-black/45 ${compact ? 'min-h-[300px]' : 'min-h-[430px]'} touch-none`}
-          onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); startDrag(e.clientX, e.clientY); }}
-          onPointerMove={(e) => moveDrag(e.clientX, e.clientY)}
-          onPointerUp={endDrag}
-          onPointerCancel={endDrag}
-        >
-          <div className="pointer-events-none absolute left-4 top-4 rounded-full border border-amber-300/30 bg-black/60 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-amber-200">Tocar + arrastrar</div>
-          <div className="absolute bottom-4 left-4 right-4 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-amber-300" style={{ width: `${((yaw % 360 + 360) % 360) / 3.6}%` }} /></div>
-
-          <div className="relative h-[320px] w-[620px] max-w-[92vw]" style={{ perspective: 980 }}>
-            <div className="absolute inset-0 transition-transform duration-75 ease-out" style={{ transform, transformOrigin: '50% 58%', transformStyle: 'preserve-3d' }}>
-              {kind === 'aire' ? <AirScene /> : kind === 'radier' ? <RadierScene /> : <DefaultScene />}
-            </div>
-          </div>
-        </div>
-
-        <div className="flex flex-wrap items-center gap-2">
-          <button type="button" onClick={() => { setYaw(0); setPitch(10); }} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black">Frontal</button>
-          <button type="button" onClick={() => { setYaw(85); setPitch(12); }} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black">Lateral</button>
-          <button type="button" onClick={() => { setYaw(35); setPitch(34); }} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black">Superior</button>
-          <button type="button" onClick={() => setZoom((z) => clamp(z + 0.12, 0.75, 1.55))} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black">Zoom +</button>
-          <button type="button" onClick={() => setZoom((z) => clamp(z - 0.12, 0.75, 1.55))} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black">Zoom -</button>
-          <button type="button" onClick={() => { setYaw(28); setPitch(14); setZoom(1); }} className="rounded-full bg-amber-400 px-4 py-2 text-xs font-black text-black">Reset</button>
         </div>
       </div>
-    </section>
-  );
+      <div className="flex flex-wrap items-center gap-2">
+        <button type="button" onClick={() => { setYaw(0); setPitch(52); }} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black">Frontal</button>
+        <button type="button" onClick={() => { setYaw(90); setPitch(54); }} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black">Lateral</button>
+        <button type="button" onClick={() => { setYaw(35); setPitch(76); }} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black">Superior</button>
+        <button type="button" onClick={() => setZoom((z) => clamp(z + 0.12, 0.65, 1.65))} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black">Zoom +</button>
+        <button type="button" onClick={() => setZoom((z) => clamp(z - 0.12, 0.65, 1.65))} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black">Zoom -</button>
+        <button type="button" onClick={() => setLabels((v) => !v)} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black">Cotas</button>
+        {kind === 'radier' && <button type="button" onClick={() => setExplode((v) => !v)} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black">Capas</button>}
+        {kind === 'aire' && <button type="button" onClick={() => setCutaway((v) => !v)} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black">Corte muro</button>}
+        <button type="button" onClick={() => { setYaw(38); setPitch(55); setZoom(1); }} className="rounded-full bg-amber-400 px-4 py-2 text-xs font-black text-black">Reset</button>
+      </div>
+    </div>
+  </section>;
 }
 
-function RadierScene() {
-  return (
-    <svg viewBox="0 0 620 320" className="h-full w-full drop-shadow-[0_30px_50px_rgba(0,0,0,.55)]">
-      <defs>
-        <linearGradient id="slabTop" x1="0" x2="1"><stop offset="0" stopColor="#fff2d1"/><stop offset="0.55" stopColor="#b7a28a"/><stop offset="1" stopColor="#77614f"/></linearGradient>
-        <linearGradient id="slabSide" x1="0" x2="1"><stop offset="0" stopColor="#7a5035"/><stop offset="1" stopColor="#2d2119"/></linearGradient>
-      </defs>
-      <ellipse cx="315" cy="252" rx="240" ry="38" fill="#000" opacity=".35" />
-      <polygon points="88,88 488,76 540,198 156,236" fill="url(#slabSide)" transform="translate(0 34)" />
-      <polygon points="88,88 488,76 540,198 156,236" fill="url(#slabTop)" stroke="#ffd166" strokeWidth="4" />
-      <path d="M120 103 L492 90 M145 144 L510 127 M170 190 L527 169" stroke="#3b2b1f" strokeWidth="2" opacity=".28" />
-      <path d="M155 236 L155 270 M540 198 L540 228 M488 76 L488 108" stroke="#ffd166" strokeWidth="3" opacity=".85" />
-      <rect x="212" y="111" width="92" height="50" rx="10" fill="#6b5d50" opacity=".24" />
-      <rect x="330" y="103" width="112" height="66" rx="12" fill="#fff" opacity=".11" />
-      <text x="95" y="300" fill="#fff4df" fontSize="17" fontWeight="900">Radier técnico · volumen, perímetro y materiales</text>
-    </svg>
-  );
+function RadierScene({ data, explode, labels }: { data?: Record<string, unknown>; explode: boolean; labels: boolean }) {
+  const area = readNumber(data, 'area', 24); const hormigon = readNumber(data, 'hormigon', 2.4); const per = readNumber(data, 'perimetro', 20); const width = clamp(Math.sqrt(area) * 58, 260, 520); const depth = clamp((area / Math.max(1, Math.sqrt(area))) * 44, 150, 330); const z1 = explode ? -54 : -34; const z2 = explode ? 6 : -10; const z3 = explode ? 70 : 24;
+  return <>
+    <div className="box3d" style={depthStyle(width + 34, depth + 34, 24, 'linear-gradient(135deg,#8a7057,#3e3024)', '#3a2a1c', z1)}><div className="top" /></div>
+    <div className="box3d" style={depthStyle(width + 18, depth + 18, 18, 'linear-gradient(135deg,#a48d70,#5d4a39)', '#4b3626', z2)}><div className="top" /></div>
+    <div className="box3d" style={depthStyle(width, depth, 30, 'linear-gradient(135deg,#fff2d1,#bba98f 56%,#806a55)', '#7a5035', z3)}><div className="top"><div className="absolute inset-x-8 top-1/3 h-[2px] bg-black/20" /><div className="absolute inset-x-10 bottom-1/3 h-[2px] bg-black/20" /><div className="absolute left-1/3 top-8 bottom-8 w-[2px] bg-black/15" /><div className="absolute right-1/3 top-8 bottom-8 w-[2px] bg-black/15" /></div></div>
+    {labels && <><div className="label3d" style={{ left: -width / 2, top: -depth / 2 - 48 }}>{num.format(area)} m² superficie</div><div className="label3d" style={{ left: width / 2 - 100, top: depth / 2 + 22 }}>{num.format(hormigon)} m³ hormigón</div><div className="label3d" style={{ left: -80, top: depth / 2 + 58 }}>{num.format(per)} ml perímetro</div></>}
+  </>;
 }
 
-function AirScene() {
-  return (
-    <svg viewBox="0 0 650 330" className="h-full w-full drop-shadow-[0_30px_50px_rgba(0,0,0,.55)]">
-      <defs>
-        <linearGradient id="wall" x1="0" x2="1"><stop offset="0" stopColor="#0f172a"/><stop offset="1" stopColor="#111827"/></linearGradient>
-        <linearGradient id="floor" x1="0" x2="1"><stop offset="0" stopColor="#2f241b"/><stop offset="1" stopColor="#0b0b0b"/></linearGradient>
-      </defs>
-      <ellipse cx="325" cy="270" rx="250" ry="38" fill="#000" opacity=".36" />
-      <polygon points="95,86 410,88 515,226 170,254" fill="url(#floor)" stroke="#ffd166" strokeWidth="3" />
-      <polygon points="95,86 170,254 170,130 95,45" fill="url(#wall)" stroke="#2d3748" />
-      <polygon points="410,88 515,226 515,124 410,42" fill="#09111f" stroke="#2d3748" />
-      <rect x="226" y="201" width="116" height="50" rx="14" fill="#3a2a1d" />
-      <rect x="288" y="58" width="160" height="42" rx="16" fill="#e0f7ff" stroke="#ffffff" strokeWidth="2" />
-      <path d="M333 107 C308 146, 349 164, 321 210 M382 107 C355 146, 401 167, 372 214 M426 107 C398 145, 444 168, 420 204" stroke="#66e7ff" strokeWidth="5" fill="none" strokeLinecap="round" opacity=".9" />
-      <path d="M448 78 L494 78 L494 139 L562 139" stroke="#c98347" strokeWidth="8" fill="none" strokeLinejoin="round" />
-      <path d="M452 95 L485 95 L485 160 L560 160" stroke="#e5e7eb" strokeWidth="4" fill="none" strokeLinejoin="round" />
-      <rect x="560" y="111" width="76" height="76" rx="14" fill="#1f2937" stroke="#ffd166" strokeWidth="3" />
-      <circle cx="598" cy="149" r="25" fill="none" stroke="#85dfff" strokeWidth="6" />
-      <circle cx="598" cy="149" r="12" fill="#0b1220" />
-      <text x="112" y="303" fill="#fff4df" fontSize="17" fontWeight="900">Cuarto equipado · evaporador, tubería, cableado y condensador</text>
-    </svg>
-  );
+function AirScene({ data, cutaway, labels }: { data?: Record<string, unknown>; cutaway: boolean; labels: boolean }) {
+  const area = readNumber(data, 'area', 16); const btu = readNumber(data, 'btu', 12000); const equipo = readNumber(data, 'seleccionado', 12000); const w = clamp(Math.sqrt(area) * 72, 280, 470); const d = clamp((area / Math.max(1, Math.sqrt(area))) * 55, 170, 360);
+  return <>
+    <div className="box3d" style={depthStyle(w, d, 12, 'linear-gradient(135deg,#3b2b1f,#12100d)', '#271a10', -18)}><div className="top" /></div>
+    {!cutaway && <div className="box3d" style={{ width: w, height: 180, transform: `translate3d(${-w / 2}px, ${-d / 2}px, 0px) rotateX(90deg) translateZ(90px)`, '--h': '8px', '--top': 'linear-gradient(135deg,#111827,#0b1220)', '--side': '#0f172a' } as React.CSSProperties}><div className="top opacity-80" /></div>}
+    <div className="box3d" style={{ width: 150, height: 42, transform: `translate3d(${w / 2 - 210}px, ${-d / 2 - 8}px, 130px)`, '--h': '22px', '--top': 'linear-gradient(135deg,#e0f7ff,#bdefff)', '--side': '#64748b' } as React.CSSProperties}><div className="top rounded-xl"><div className="absolute left-5 right-5 bottom-2 h-1 rounded-full bg-cyan-300" /></div></div>
+    <div className="pipe" style={{ width: 175, left: w / 2 - 70, top: -d / 2 + 4, transform: 'translateZ(104px) rotateZ(0deg)' }} />
+    <div className="pipe cable" style={{ width: 160, left: w / 2 - 70, top: -d / 2 + 22, transform: 'translateZ(96px)' }} />
+    <div className="box3d" style={{ width: 92, height: 82, transform: `translate3d(${w / 2 + 70}px, ${-d / 2 + 26}px, 54px)`, '--h': '42px', '--top': 'linear-gradient(135deg,#1f2937,#0f172a)', '--side': '#0b1220' } as React.CSSProperties}><div className="top rounded-2xl border-amber-300/80"><div className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full border-[6px] border-cyan-200/80" /></div></div>
+    {[0, 1, 2].map((i) => <div key={i} className="air" style={{ width: 110 + i * 36, height: 50 + i * 20, left: w / 2 - 205 - i * 18, top: -d / 2 + 48 + i * 28, transform: `translateZ(${112 - i * 12}px)` }} />)}
+    {labels && <><div className="label3d" style={{ left: -w / 2, top: -d / 2 - 42 }}>{num.format(area)} m² cuarto</div><div className="label3d" style={{ left: w / 2 - 220, top: -d / 2 - 50 }}>{whole.format(btu)} BTU requeridos</div><div className="label3d" style={{ left: w / 2 + 48, top: -d / 2 + 130 }}>{whole.format(equipo)} BTU equipo</div></>}
+  </>;
 }
 
-function DefaultScene() {
-  return (
-    <svg viewBox="0 0 620 320" className="h-full w-full drop-shadow-[0_30px_50px_rgba(0,0,0,.55)]">
-      <ellipse cx="310" cy="252" rx="230" ry="38" fill="#000" opacity=".35" />
-      <polygon points="120,80 480,80 520,220 160,240" fill="#111827" stroke="#ffd166" strokeWidth="4" />
-      <rect x="220" y="118" width="180" height="80" rx="18" fill="#f59e0b" opacity=".82" />
-      <text x="142" y="292" fill="#fff4df" fontSize="17" fontWeight="900">Vista técnica interactiva para cliente</text>
-    </svg>
-  );
+function DefaultScene({ labels }: { labels: boolean }) {
+  return <>{<div className="box3d" style={depthStyle(420, 220, 42, 'linear-gradient(135deg,#facc15,#7c2d12)', '#431407', 10)}><div className="top" /></div>}{labels && <div className="label3d" style={{ left: -150, top: -150 }}>Escena técnica 3D</div>}</>;
 }

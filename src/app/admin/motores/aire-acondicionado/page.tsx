@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import BudgetLinksHistory from '@/components/admin/motores/BudgetLinksHistory';
 
 const FabrickBudgetEnginesPremiumClient = dynamic(() => import('@/components/admin/motores/FabrickBudgetEnginesPremiumClient'), {
   ssr: false,
@@ -8,5 +9,8 @@ const FabrickBudgetEnginesPremiumClient = dynamic(() => import('@/components/adm
 });
 
 export default function MotorAireAcondicionadoPage() {
-  return <FabrickBudgetEnginesPremiumClient kind="aire" />;
+  return <>
+    <FabrickBudgetEnginesPremiumClient kind="aire" />
+    <BudgetLinksHistory />
+  </>;
 }

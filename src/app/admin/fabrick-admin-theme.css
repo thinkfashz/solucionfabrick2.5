@@ -1,0 +1,159 @@
+/* Fabrick Admin Theme — single source of truth for /admin */
+:root {
+  --fabrick-bg: #050403;
+  --fabrick-panel: rgba(5, 5, 5, 0.54);
+  --fabrick-panel-strong: rgba(3, 3, 3, 0.78);
+  --fabrick-border: rgba(255, 255, 255, 0.12);
+  --fabrick-gold: #facc15;
+  --fabrick-amber: #f59e0b;
+  --fabrick-blue: #2563eb;
+  --fabrick-red: #dc2626;
+  --fabrick-text: #fff7e8;
+  --fabrick-muted: rgba(255, 247, 232, .62);
+}
+
+html, body { max-width: 100%; overflow-x: hidden; background: var(--fabrick-bg); }
+body { color: var(--fabrick-text); }
+
+[data-admin-shell],
+.admin-shell,
+main {
+  max-width: 100vw;
+  overflow-x: hidden;
+}
+
+main {
+  width: 100%;
+  min-height: 100dvh;
+  margin-inline: auto;
+}
+
+main > section,
+main > div,
+.fabrick-page,
+.fabrick-container {
+  width: min(100%, 1680px);
+  max-width: calc(100vw - 24px);
+  margin-inline: auto;
+}
+
+section, article, aside, header, footer, div, form, table, input, textarea, select, iframe {
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+img, video, canvas, svg, iframe { max-width: 100%; }
+
+table { border-collapse: collapse; }
+.overflow-x-auto { max-width: 100%; }
+
+input, textarea, select {
+  color: var(--fabrick-text);
+  background: rgba(0, 0, 0, .35);
+  border-color: rgba(255, 255, 255, .12);
+}
+
+input:focus, textarea:focus, select:focus {
+  outline: none;
+  border-color: rgba(250, 204, 21, .74) !important;
+  box-shadow: 0 0 0 4px rgba(250, 204, 21, .09);
+}
+
+button, a { -webkit-tap-highlight-color: transparent; }
+button { touch-action: manipulation; }
+
+.fabrick-card,
+.fabrick-panel,
+.glass-card,
+[class*='bg-black/55'],
+[class*='bg-black/45'],
+[class*='bg-zinc-950'],
+[class*='bg-[#050403]'] {
+  border-color: rgba(250, 204, 21, .14) !important;
+  background-color: rgba(3, 3, 3, .56);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+}
+
+[class*='rounded-[2rem]'],
+[class*='rounded-[2.4rem]'],
+[class*='rounded-[2.6rem]'],
+.rounded-3xl {
+  box-shadow: 0 24px 90px rgba(0, 0, 0, .34);
+}
+
+.fabrick-grid-safe,
+[class*='grid'] {
+  min-width: 0;
+}
+
+.fabrick-scroll-safe {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.fabrick-admin-title {
+  color: var(--fabrick-text);
+  letter-spacing: -0.055em;
+}
+
+.fabrick-admin-muted { color: var(--fabrick-muted); }
+
+.fabrick-admin-button,
+button[class*='bg-amber-400'],
+button[class*='bg-yellow'] {
+  box-shadow: 0 16px 40px rgba(250, 204, 21, .16);
+}
+
+@media (max-width: 1280px) {
+  main > section,
+  main > div,
+  .fabrick-page,
+  .fabrick-container {
+    max-width: calc(100vw - 18px);
+  }
+
+  [class*='xl:grid-cols'] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  aside[class*='sticky'],
+  section[class*='sticky'],
+  div[class*='sticky'] {
+    position: static !important;
+    max-height: none !important;
+  }
+}
+
+@media (max-width: 768px) {
+  main { padding-inline: 0 !important; }
+  main > section,
+  main > div,
+  .fabrick-page,
+  .fabrick-container {
+    max-width: calc(100vw - 12px);
+  }
+
+  [class*='p-8'] { padding: 1rem !important; }
+  [class*='p-7'] { padding: 1rem !important; }
+  [class*='p-6'] { padding: .9rem !important; }
+  [class*='text-7xl'] { font-size: 2.6rem !important; line-height: .96 !important; }
+  [class*='text-6xl'] { font-size: 2.25rem !important; line-height: .98 !important; }
+  [class*='text-5xl'] { font-size: 2rem !important; line-height: 1 !important; }
+  [class*='text-4xl'] { font-size: 1.75rem !important; line-height: 1.05 !important; }
+
+  button, a { max-width: 100%; }
+  .flex { min-width: 0; }
+  .break-all { word-break: break-word; }
+
+  table { min-width: 640px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after {
+    animation-duration: .001ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .001ms !important;
+    scroll-behavior: auto !important;
+  }
+}

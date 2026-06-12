@@ -2,8 +2,7 @@ import type { Metadata } from 'next';
 import { AdminShellSwitcher } from '@/components/admin/AdminShellSwitcher';
 import Presupuesto3DAdminWidget from '@/components/presupuestos/Presupuesto3DAdminWidget';
 import AdminColombiaGradientBackground from '@/components/admin/visual/AdminColombiaGradientBackground';
-import './studio-theme.css';
-import './neo-theme.css';
+import './fabrick-admin-theme.css';
 
 export const metadata: Metadata = {
   title: 'Admin | Fabrick',

@@ -59,19 +59,9 @@ CREATE INDEX IF NOT EXISTS idx_page_engine_documents_status ON page_engine_docum
 `);
 }
 
-function makeToken() {
-  return Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-6);
-}
-
-function cleanTitle(value: unknown) {
-  return String(value || '').trim().slice(0, 140);
-}
-
-function cleanStatus(value: unknown) {
-  const status = String(value || 'publicado').trim().toLowerCase();
-  return ['borrador', 'publicado', 'archivado'].includes(status) ? status : 'publicado';
-}
-
+function makeToken() { return Math.random().toString(36).slice(2, 8) + Date.now().toString(36).slice(-6); }
+function cleanTitle(value: unknown) { return String(value || '').trim().slice(0, 140); }
+function cleanStatus(value: unknown) { const status = String(value || 'publicado').trim().toLowerCase(); return ['borrador', 'publicado', 'archivado'].includes(status) ? status : 'publicado'; }
 function cleanHtml(value: unknown, allowExactHtml = false) {
   let html = String(value || '').trim();
   if (allowExactHtml) return html;
@@ -84,7 +74,6 @@ function cleanHtml(value: unknown, allowExactHtml = false) {
   html = html.replace(/javascript:/gi, '');
   return html;
 }
-
 function validateProjectJson(value: unknown) {
   if (!value || typeof value !== 'object' || Array.isArray(value)) return { ok: false, error: 'project_json debe ser un objeto.' };
   const project = plainObject(value);
@@ -92,31 +81,17 @@ function validateProjectJson(value: unknown) {
   const modules = Array.isArray(project.modules) ? project.modules : [];
   const htmlCode = String(project.htmlCode || project.rawHtml || '').trim();
   const mode = String(project.mode || '').toLowerCase();
-  if (!blocks.length && !modules.length && !(mode === 'html' && htmlCode.length > 20)) {
-    return { ok: false, error: 'El JSON debe incluir modules, blocks, sections o htmlCode en modo html.' };
-  }
+  if (!blocks.length && !modules.length && !(mode === 'html' && htmlCode.length > 20)) return { ok: false, error: 'El JSON debe incluir modules, blocks, sections o htmlCode en modo html.' };
   return { ok: true, error: '' };
 }
-
-async function requireAdmin(request: NextRequest) {
-  const cookie = request.cookies.get(ADMIN_COOKIE_NAME);
-  if (!cookie?.value) return null;
-  return decodeSession(cookie.value);
-}
+async function requireAdmin(request: NextRequest) { const cookie = request.cookies.get(ADMIN_COOKIE_NAME); if (!cookie?.value) return null; return decodeSession(cookie.value); }
 
 export async function GET(request: NextRequest) {
   const session = await requireAdmin(request);
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-
   const ensure = await ensureTable();
   if (!ensure.ok) return NextResponse.json({ error: 'No se pudo preparar page_engine_documents', detail: ensure.data }, { status: 502 });
-
-  const result = await runRawSql(`
-SELECT token, title, status, expires_at, created_at, updated_at
-FROM page_engine_documents
-ORDER BY updated_at DESC
-LIMIT 100;
-`);
+  const result = await runRawSql(`SELECT token, title, status, expires_at, created_at, updated_at FROM page_engine_documents ORDER BY updated_at DESC LIMIT 100;`);
   if (!result.ok) return NextResponse.json({ error: 'No se pudieron leer páginas', detail: result.data }, { status: 502 });
   return NextResponse.json({ ok: true, documents: rows(result) });
 }
@@ -125,7 +100,6 @@ export async function POST(request: NextRequest) {
   const session = await requireAdmin(request);
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   if (session.rol === 'viewer') return NextResponse.json({ error: 'Modo demo: solo lectura.' }, { status: 403 });
-
   const body = await request.json().catch(() => null) as { token?: string; title?: string; html?: string; project_json?: unknown; status?: string; expires_in_hours?: number } | null;
   const project = plainObject(body?.project_json);
   const allowExactHtml = String(project.mode || '').toLowerCase() === 'html' && project.allowUnsafeHtml === true;
@@ -135,29 +109,27 @@ export async function POST(request: NextRequest) {
   if (!html || html.length < 40) return NextResponse.json({ error: 'El HTML está vacío, es demasiado corto o fue limpiado por seguridad.' }, { status: 400 });
   const jsonValidation = validateProjectJson(body?.project_json);
   if (!jsonValidation.ok) return NextResponse.json({ error: jsonValidation.error }, { status: 400 });
-
   const ensure = await ensureTable();
   if (!ensure.ok) return NextResponse.json({ error: 'No se pudo preparar page_engine_documents', detail: ensure.data }, { status: 502 });
-
   const docToken = body?.token && /^[a-zA-Z0-9_-]{8,80}$/.test(body.token) ? body.token : makeToken();
   const neverExpire = project.neverExpire === true || project.expires === false;
   const hours = Math.max(1, Math.min(24 * 365, Number(body?.expires_in_hours || project.expires_in_hours || 720)));
   const expiresAt = neverExpire ? null : new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
   const status = cleanStatus(body?.status);
-
-  const result = await runRawSql(`
-INSERT INTO page_engine_documents (token, title, status, html, project_json, expires_at, updated_at)
-VALUES (${sqlText(docToken)}, ${sqlText(title)}, ${sqlText(status)}, ${sqlText(html)}, ${sqlJson(body?.project_json)}, ${sqlText(expiresAt)}, NOW())
-ON CONFLICT (token) DO UPDATE SET
-  title = EXCLUDED.title,
-  status = EXCLUDED.status,
-  html = EXCLUDED.html,
-  project_json = EXCLUDED.project_json,
-  expires_at = EXCLUDED.expires_at,
-  updated_at = NOW();
-`);
-
+  const result = await runRawSql(`INSERT INTO page_engine_documents (token, title, status, html, project_json, expires_at, updated_at) VALUES (${sqlText(docToken)}, ${sqlText(title)}, ${sqlText(status)}, ${sqlText(html)}, ${sqlJson(body?.project_json)}, ${sqlText(expiresAt)}, NOW()) ON CONFLICT (token) DO UPDATE SET title = EXCLUDED.title, status = EXCLUDED.status, html = EXCLUDED.html, project_json = EXCLUDED.project_json, expires_at = EXCLUDED.expires_at, updated_at = NOW();`);
   if (!result.ok) return NextResponse.json({ error: 'No se pudo guardar la página', detail: result.data }, { status: 502 });
-
   return NextResponse.json({ ok: true, token: docToken, expires_at: expiresAt, never_expire: neverExpire, public_url: `${request.nextUrl.origin}/w/${docToken}` });
+}
+
+export async function DELETE(request: NextRequest) {
+  const session = await requireAdmin(request);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+  if (session.rol === 'viewer') return NextResponse.json({ error: 'Modo demo: solo lectura.' }, { status: 403 });
+  const token = request.nextUrl.searchParams.get('token') || '';
+  if (!/^[a-zA-Z0-9_-]{8,80}$/.test(token)) return NextResponse.json({ error: 'Token inválido.' }, { status: 400 });
+  const ensure = await ensureTable();
+  if (!ensure.ok) return NextResponse.json({ error: 'No se pudo preparar page_engine_documents', detail: ensure.data }, { status: 502 });
+  const result = await runRawSql(`DELETE FROM page_engine_documents WHERE token = ${sqlText(token)};`);
+  if (!result.ok) return NextResponse.json({ error: 'No se pudo eliminar la página', detail: result.data }, { status: 502 });
+  return NextResponse.json({ ok: true, deleted: token });
 }

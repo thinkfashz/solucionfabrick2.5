@@ -2,11 +2,11 @@
 
 import dynamic from 'next/dynamic';
 
-const FabrickBudgetEnginesClient = dynamic(() => import('@/components/admin/motores/FabrickBudgetEnginesClient'), {
+const FabrickBudgetEnginesPremiumClient = dynamic(() => import('@/components/admin/motores/FabrickBudgetEnginesPremiumClient'), {
   ssr: false,
-  loading: () => <main className="min-h-screen bg-[#090806] p-6 text-white">Cargando motor de radier…</main>,
+  loading: () => <main className="min-h-screen bg-[#050403] p-6 text-white">Cargando motor premium de radier…</main>,
 });
 
 export default function MotorRadierPage() {
-  return <FabrickBudgetEnginesClient kind="radier" />;
+  return <FabrickBudgetEnginesPremiumClient kind="radier" />;
 }

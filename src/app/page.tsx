@@ -1,8 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { headers } from 'next/headers';
-import Link from 'next/link';
 import Navbar from '@/components/Navbar';
-import FabrickPoemAnimation from '@/components/brand/FabrickPoemAnimation';
+import StaticConstructionHero from '@/components/landing/StaticConstructionHero';
 import LandingSections from '@/components/LandingSections';
 import HomeDynamicSections from '@/components/HomeDynamicSections';
 import { getCmsSettings, getPublicHomeSections, renderCopyright } from '@/lib/cms';
@@ -33,12 +32,9 @@ export default async function Home() {
   return (
     <>
       <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <div className="min-h-screen overflow-x-hidden bg-black">
+      <div className="min-h-screen overflow-x-hidden bg-[#050505]">
         <Navbar />
-        <FabrickPoemAnimation backgroundImageUrl={settings.hero_cover_url || '/og-image.jpg'} accentImageUrl="/icon-512.png">
-          <Link href="/presupuestos" className="rounded-full bg-white px-5 py-3 text-sm font-black text-black shadow-2xl transition hover:scale-105">Ver propuestas</Link>
-          <Link href="/contacto" className="rounded-full border border-white/25 bg-white/10 px-5 py-3 text-sm font-black text-white backdrop-blur-xl transition hover:bg-white/20">Cotizar mi obra</Link>
-        </FabrickPoemAnimation>
+        <StaticConstructionHero coverUrl={settings.hero_cover_url || undefined} />
         <HomeDynamicSections sections={sections} />
         <LandingSections copyrightText={copyrightText} socialLinks={socialLinks} />
       </div>

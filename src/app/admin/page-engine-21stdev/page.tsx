@@ -2,6 +2,7 @@
 
 import dynamic from 'next/dynamic';
 import PageEngineMobileDrawerEnhancer from '@/components/admin/page-engine/PageEngineMobileDrawerEnhancer';
+import PageEngineLiveExpiryBadge from '@/components/admin/page-engine/PageEngineLiveExpiryBadge';
 
 const AdvancedHtmlPageEngineClientV2 = dynamic(() => import('@/components/admin/page-engine/AdvancedHtmlPageEngineClientV2'), {
   ssr: false,
@@ -12,5 +13,6 @@ export default function PageEngine21stDevPage() {
   return <>
     <PageEngineMobileDrawerEnhancer />
     <AdvancedHtmlPageEngineClientV2 />
+    <PageEngineLiveExpiryBadge />
   </>;
 }

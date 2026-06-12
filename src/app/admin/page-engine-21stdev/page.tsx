@@ -1,6 +1,7 @@
 'use client';
 
 import dynamic from 'next/dynamic';
+import PageEngineMobileDrawerEnhancer from '@/components/admin/page-engine/PageEngineMobileDrawerEnhancer';
 
 const AdvancedHtmlPageEngineClientV2 = dynamic(() => import('@/components/admin/page-engine/AdvancedHtmlPageEngineClientV2'), {
   ssr: false,
@@ -8,5 +9,8 @@ const AdvancedHtmlPageEngineClientV2 = dynamic(() => import('@/components/admin/
 });
 
 export default function PageEngine21stDevPage() {
-  return <AdvancedHtmlPageEngineClientV2 />;
+  return <>
+    <PageEngineMobileDrawerEnhancer />
+    <AdvancedHtmlPageEngineClientV2 />
+  </>;
 }

@@ -2,11 +2,11 @@
 
 import dynamic from 'next/dynamic';
 
-const FabrickBudgetEnginesClient = dynamic(() => import('@/components/admin/motores/FabrickBudgetEnginesClient'), {
+const FabrickBudgetEnginesPremiumClient = dynamic(() => import('@/components/admin/motores/FabrickBudgetEnginesPremiumClient'), {
   ssr: false,
-  loading: () => <main className="min-h-screen bg-[#090806] p-6 text-white">Cargando motor de aire acondicionado…</main>,
+  loading: () => <main className="min-h-screen bg-[#050403] p-6 text-white">Cargando motor premium de aire acondicionado…</main>,
 });
 
 export default function MotorAireAcondicionadoPage() {
-  return <FabrickBudgetEnginesClient kind="aire" />;
+  return <FabrickBudgetEnginesPremiumClient kind="aire" />;
 }

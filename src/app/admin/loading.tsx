@@ -1,9 +1,15 @@
-import FabrickPoemAnimation from '@/components/brand/FabrickPoemAnimation';
-
 export default function AdminLoading() {
   return (
-    <main className="fixed inset-0 z-[9999] bg-black">
-      <FabrickPoemAnimation compact backgroundImageUrl="/og-image.jpg" accentImageUrl="/icon-512.png" />
+    <main className="fixed inset-0 z-[9999] grid place-items-center bg-[#050505] text-white">
+      <div className="w-[min(92vw,420px)] rounded-[2rem] border border-yellow-300/15 bg-black/70 p-8 text-center shadow-[0_30px_90px_rgba(0,0,0,.55)] backdrop-blur-xl">
+        <div className="mx-auto grid h-16 w-16 place-items-center rounded-2xl border border-yellow-300/20 bg-yellow-300/10 text-2xl font-black text-yellow-300">SF</div>
+        <p className="mt-5 text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300">Soluciones Fabrick</p>
+        <h1 className="mt-3 text-2xl font-black tracking-tight">Cargando admin</h1>
+        <div className="mx-auto mt-5 h-1.5 w-44 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full w-1/2 rounded-full bg-yellow-300 [animation:sf-loading_1.1s_ease-in-out_infinite]" />
+        </div>
+      </div>
+      <style jsx>{`@keyframes sf-loading{0%{transform:translateX(-110%)}100%{transform:translateX(220%)}}`}</style>
     </main>
   );
 }

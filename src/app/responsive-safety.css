@@ -1,0 +1,169 @@
+/* Global responsive safety layer for public site + admin */
+html,
+body {
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body,
+#__next,
+.app-shell {
+  min-width: 0;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+main,
+section,
+article,
+aside,
+header,
+footer,
+nav,
+div,
+form,
+ul,
+ol,
+li,
+table,
+thead,
+tbody,
+tr,
+td,
+th,
+canvas,
+svg,
+iframe,
+video,
+img {
+  max-width: 100%;
+}
+
+main,
+section,
+article,
+aside,
+header,
+footer,
+div,
+form {
+  min-width: 0;
+}
+
+img,
+video,
+canvas,
+svg,
+iframe {
+  height: auto;
+}
+
+pre,
+code,
+textarea,
+input,
+select,
+button,
+a {
+  max-width: 100%;
+}
+
+pre,
+code {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.overflow-x-auto,
+.fabrick-scroll-safe,
+[data-radix-scroll-area-viewport] {
+  max-width: 100%;
+  -webkit-overflow-scrolling: touch;
+}
+
+[class*='grid-cols-['],
+[class*='xl:grid-cols-['],
+[class*='lg:grid-cols-['],
+[class*='md:grid-cols-['] {
+  min-width: 0;
+}
+
+[class*='w-[1000px]'],
+[class*='w-[900px]'],
+[class*='w-[800px]'],
+[class*='min-w-[900px]'],
+[class*='min-w-[800px]'],
+[class*='min-w-[700px]'] {
+  max-width: 100vw !important;
+}
+
+@media (max-width: 1280px) {
+  [class*='xl:grid-cols-['] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+
+  [class*='xl:sticky'],
+  [class*='sticky'] {
+    max-width: 100%;
+  }
+}
+
+@media (max-width: 900px) {
+  [class*='lg:grid-cols-['] {
+    grid-template-columns: minmax(0, 1fr) !important;
+  }
+}
+
+@media (max-width: 768px) {
+  body {
+    overscroll-behavior-x: none;
+  }
+
+  main,
+  section {
+    max-width: 100vw;
+  }
+
+  [class*='p-12'] { padding: 1.25rem !important; }
+  [class*='p-10'] { padding: 1.15rem !important; }
+  [class*='p-8'] { padding: 1rem !important; }
+  [class*='p-7'] { padding: 1rem !important; }
+  [class*='p-6'] { padding: .95rem !important; }
+
+  [class*='text-8xl'] { font-size: 3rem !important; line-height: .94 !important; }
+  [class*='text-7xl'] { font-size: 2.65rem !important; line-height: .96 !important; }
+  [class*='text-6xl'] { font-size: 2.35rem !important; line-height: .98 !important; }
+  [class*='text-5xl'] { font-size: 2.05rem !important; line-height: 1 !important; }
+  [class*='text-4xl'] { font-size: 1.75rem !important; line-height: 1.05 !important; }
+
+  table {
+    min-width: 640px;
+  }
+
+  .table-auto,
+  .table-fixed {
+    display: block;
+    overflow-x: auto;
+  }
+
+  button,
+  a {
+    min-width: 0;
+  }
+}
+
+@media (max-width: 420px) {
+  [class*='rounded-[2.6rem]'],
+  [class*='rounded-[2.4rem]'],
+  [class*='rounded-[2rem]'] {
+    border-radius: 1.35rem !important;
+  }
+}

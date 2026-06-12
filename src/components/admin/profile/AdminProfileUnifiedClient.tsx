@@ -1,0 +1,130 @@
+'use client';
+
+import { useEffect, useRef, useState } from 'react';
+import { Camera, Facebook, Globe2, Instagram, Linkedin, Loader2, Save, ShieldCheck, Sparkles, UploadCloud, Wand2 } from 'lucide-react';
+
+type SocialStats = { instagram_followers?: number; facebook_followers?: number; linkedin_followers?: number; tiktok_followers?: number };
+type Profile = { email: string; display_name: string | null; phone: string | null; bio: string | null; avatar_url: string | null; instagram: string | null; facebook: string | null; linkedin: string | null; whatsapp: string | null; website: string | null; metadata?: { social_stats?: SocialStats; cover_url?: string | null; [key: string]: unknown } | null };
+type Snapshot = { platform: string; url: string; title: string; description: string; followers?: number | null; ok: boolean; error?: string };
+
+const emptyProfile: Profile = { email: '', display_name: '', phone: '', bio: '', avatar_url: null, instagram: '', facebook: '', linkedin: '', whatsapp: '', website: '', metadata: { social_stats: {}, cover_url: null } };
+const fallbackCover = 'https://images.unsplash.com/photo-1519681393784-d120267933ba?auto=format&fit=crop&w=1800&q=80';
+
+function initials(name: string) { return name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || 'SF'; }
+function fmt(n?: number | null) { return Math.max(0, Number(n || 0)).toLocaleString('es-CL'); }
+function statsOf(profile: Profile): SocialStats { return profile.metadata?.social_stats || {}; }
+function coverOf(profile: Profile) { return profile.metadata?.cover_url || fallbackCover; }
+function urlOrHash(value?: string | null, network = 'instagram') { if (!value) return '#'; if (/^https?:\/\//i.test(value)) return value; if (value.startsWith('@')) return network === 'instagram' ? `https://instagram.com/${value.slice(1)}` : value; return value.includes('.') ? `https://${value}` : value; }
+
+function Field({ label, value, onChange, textarea = false }: { label: string; value: string; onChange: (v: string) => void; textarea?: boolean }) {
+  return <label className="block min-w-0"><span className="mb-2 block text-[10px] font-black uppercase tracking-[0.28em] text-white/60">{label}</span>{textarea ? <textarea value={value} onChange={(e) => onChange(e.target.value)} rows={5} className="w-full rounded-[1.35rem] border border-white/15 bg-black/35 px-4 py-4 text-base text-white outline-none placeholder:text-white/35" /> : <input value={value} onChange={(e) => onChange(e.target.value)} className="h-14 w-full rounded-[1.35rem] border border-white/15 bg-black/35 px-4 text-base text-white outline-none placeholder:text-white/35" />}</label>;
+}
+
+function SocialCard({ icon: Icon, title, handle, followers, href, tone }: { icon: typeof Instagram; title: string; handle?: string | null; followers?: number; href?: string | null; tone: string }) {
+  return <a href={href || '#'} target={href ? '_blank' : undefined} rel="noreferrer" className="group relative min-w-0 overflow-hidden rounded-[2rem] border border-white/15 bg-white/10 p-5 shadow-[0_25px_70px_rgba(0,0,0,.28)] backdrop-blur-xl transition hover:-translate-y-1 hover:bg-white/15"><div className={`absolute inset-x-0 top-0 h-1 ${tone}`} /><Icon className="mb-5 h-8 w-8 text-white transition group-hover:scale-110" /><h3 className="text-2xl font-black text-white">{title}</h3><p className="mt-1 truncate text-sm text-white/65">{handle || 'Sin configurar'}</p><div className="mt-5 rounded-[1.2rem] bg-white/90 p-4 text-[#101010]"><b className="block text-2xl font-black">{fmt(followers)}</b><span className="text-xs font-bold text-black/55">seguidores</span></div></a>;
+}
+
+export default function AdminProfileUnifiedClient() {
+  const [profile, setProfile] = useState<Profile>(emptyProfile);
+  const [role, setRole] = useState('admin');
+  const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const [status, setStatus] = useState('');
+  const [snapshots, setSnapshots] = useState<Snapshot[]>([]);
+  const avatarRef = useRef<HTMLInputElement | null>(null);
+  const coverRef = useRef<HTMLInputElement | null>(null);
+
+  async function load() {
+    setLoading(true);
+    try {
+      const res = await fetch('/api/admin/profile', { cache: 'no-store' });
+      const json = await res.json();
+      if (json.profile) setProfile({ ...emptyProfile, ...json.profile, metadata: { ...(emptyProfile.metadata || {}), ...(json.profile.metadata || {}) } });
+      if (json.session?.rol) setRole(json.session.rol);
+    } catch { setStatus('No se pudo cargar el perfil.'); }
+    finally { setLoading(false); }
+  }
+  useEffect(() => { void load(); }, []);
+
+  const displayName = profile.display_name || profile.email.split('@')[0] || 'Administrador Fabrick';
+  const stats = statsOf(profile);
+  const totalFollowers = Number(stats.instagram_followers || 0) + Number(stats.facebook_followers || 0) + Number(stats.linkedin_followers || 0) + Number(stats.tiktok_followers || 0);
+  const socialCount = [profile.instagram, profile.facebook, profile.linkedin, profile.website, profile.whatsapp].filter(Boolean).length;
+  const completion = Math.round(([profile.display_name, profile.phone, profile.bio, profile.avatar_url, profile.instagram, profile.facebook, profile.linkedin, profile.whatsapp, profile.website, profile.metadata?.cover_url].filter(Boolean).length / 10) * 100);
+
+  function update(key: keyof Profile, value: string) { setProfile((prev) => ({ ...prev, [key]: value })); }
+  function updateFollower(key: keyof SocialStats, value: string) { setProfile((prev) => ({ ...prev, metadata: { ...(prev.metadata || {}), social_stats: { ...(prev.metadata?.social_stats || {}), [key]: Number(value) || 0 } } })); }
+
+  async function saveProfile() {
+    setSaving(true); setStatus('');
+    try {
+      const res = await fetch('/api/admin/profile', { method: 'PATCH', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ ...profile, social_stats: statsOf(profile), metadata: profile.metadata || {} }) });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || 'No se pudo guardar.');
+      setProfile((prev) => ({ ...prev, ...json.profile, metadata: { ...(prev.metadata || {}), ...(json.profile?.metadata || {}) } }));
+      setStatus('Perfil y ajustes guardados.');
+    } catch (err) { setStatus(err instanceof Error ? err.message : 'Error guardando.'); }
+    finally { setSaving(false); }
+  }
+
+  async function uploadAvatar(file: File) {
+    setUploading(true);
+    try {
+      const form = new FormData(); form.append('photo', file);
+      const res = await fetch('/api/admin/profile/photo', { method: 'POST', body: form });
+      const json = await res.json(); if (!res.ok) throw new Error(json.error || 'No se pudo subir.');
+      setProfile((prev) => ({ ...prev, avatar_url: json.photo })); setStatus('Foto de perfil actualizada.');
+    } catch (err) { setStatus(err instanceof Error ? err.message : 'Error subiendo foto.'); }
+    finally { setUploading(false); }
+  }
+
+  async function uploadCover(file: File) {
+    setUploading(true);
+    try {
+      const form = new FormData(); form.append('cover', file);
+      const res = await fetch('/api/admin/profile/cover', { method: 'POST', body: form });
+      const json = await res.json(); if (!res.ok) throw new Error(json.error || 'No se pudo subir portada.');
+      setProfile((prev) => ({ ...prev, metadata: { ...(prev.metadata || {}), cover_url: json.cover } })); setStatus('Portada actualizada.');
+    } catch (err) { setStatus(err instanceof Error ? err.message : 'Error subiendo portada.'); }
+    finally { setUploading(false); }
+  }
+
+  async function captureSocial() {
+    setStatus('Capturando información pública…');
+    const urls = [profile.instagram, profile.facebook, profile.linkedin, profile.website].filter(Boolean) as string[];
+    const res = await fetch('/api/admin/profile/social-snapshot', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ urls }) });
+    const json = await res.json().catch(() => ({}));
+    if (!res.ok) { setStatus(json.error || 'No se pudo capturar.'); return; }
+    const shots = Array.isArray(json.snapshots) ? json.snapshots as Snapshot[] : [];
+    setSnapshots(shots);
+    const nextStats: SocialStats = { ...statsOf(profile) };
+    for (const s of shots) {
+      if (!s.followers) continue;
+      if (s.platform === 'Instagram') nextStats.instagram_followers = s.followers;
+      if (s.platform === 'Facebook') nextStats.facebook_followers = s.followers;
+      if (s.platform === 'LinkedIn') nextStats.linkedin_followers = s.followers;
+      if (s.platform === 'TikTok') nextStats.tiktok_followers = s.followers;
+    }
+    setProfile((prev) => ({ ...prev, metadata: { ...(prev.metadata || {}), social_stats: nextStats, social_snapshots: shots, social_captured_at: new Date().toISOString() } }));
+    setStatus('Captura pública aplicada. Revisa y guarda.');
+  }
+
+  if (loading) return <div className="grid min-h-screen place-items-center text-white"><Loader2 className="h-9 w-9 animate-spin text-yellow-300" /></div>;
+
+  return <main className="fabrick-page relative min-h-screen p-3 text-white sm:p-5 lg:p-7">
+    <input ref={avatarRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadAvatar(f); e.currentTarget.value = ''; }} />
+    <input ref={coverRef} type="file" accept="image/*" hidden onChange={(e) => { const f = e.target.files?.[0]; if (f) void uploadCover(f); e.currentTarget.value = ''; }} />
+    <section className="mx-auto grid w-full max-w-[1580px] gap-5">
+      <header className="grid gap-5 xl:grid-cols-[440px_minmax(0,1fr)]">
+        <article className="glass-card hover-float overflow-hidden rounded-[2.6rem]">
+          <div className="relative h-80"><img src={coverOf(profile)} alt="Portada" className="h-full w-full object-cover opacity-85" /><div className="absolute inset-0 bg-gradient-to-t from-black via-black/20 to-transparent" /><button onClick={() => coverRef.current?.click()} className="absolute right-5 top-5 inline-flex items-center gap-2 rounded-full border border-white/20 bg-black/40 px-4 py-3 text-xs font-black backdrop-blur-xl"><UploadCloud className="h-4 w-4" /> Portada</button></div>
+          <div className="relative -mt-16 px-6 pb-7 text-center"><div className="mx-auto grid h-36 w-36 place-items-center overflow-hidden rounded-full border-[10px] border-black bg-gradient-to-br from-yellow-300 via-blue-500 to-red-600 text-3xl font-black text-white shadow-2xl">{profile.avatar_url ? <img src={profile.avatar_url} alt={displayName} className="h-full w-full object-cover" /> : initials(displayName)}</div><button onClick={() => avatarRef.current?.click()} disabled={uploading} className="mt-4 inline-flex h-12 items-center justify-center gap-2 rounded-full bg-white/90 px-5 text-sm font-black text-black"><Camera className="h-4 w-4" /> Foto perfil</button><h1 className="mt-5 text-4xl font-black tracking-tight">{displayName}</h1><p className="mt-1 text-sm text-white/65">{profile.email}</p><p className="mx-auto mt-4 max-w-sm text-sm leading-6 text-white/70">{profile.bio || 'Añade una descripción profesional para demos, propuestas y tu perfil público.'}</p><div className="mt-6 grid grid-cols-3 overflow-hidden rounded-[1.6rem] border border-white/15 bg-white/10"><div className="p-4"><b className="block text-2xl">{completion}%</b><span className="text-[10px] uppercase tracking-widest text-white/55">Perfil</span></div><div className="border-x border-white/15 p-4"><b className="block text-2xl">{socialCount}</b><span className="text-[10px] uppercase tracking-widest text-white/55">Redes</span></div><div className="p-4"><b className="block text-2xl">{fmt(totalFollowers)}</b><span className="text-[10px] uppercase tracking-widest text-white/55">Fans</span></div></div></div>
+        </article>
+        <article className="glass-card rounded-[2.6rem] p-6 sm:p-8"><p className="text-[10px] font-black uppercase tracking-[0.35em] text-yellow-200">Perfil administrativo</p><h2 className="mt-4 max-w-4xl text-5xl font-black leading-[.95] tracking-tight sm:text-7xl">Identidad, app y redes con una sola estética.</h2><p className="mt-5 max-w-2xl text-base leading-8 text-white/70">Configura foto de perfil, portada independiente, redes sociales, seguidores y datos visibles para demos comerciales. Todo hereda el tema base Fabrick.</p><div className="mt-8 grid gap-4 md:grid-cols-3"><div className="rounded-[2rem] bg-white/90 p-5 text-black"><ShieldCheck className="mb-3 h-6 w-6" /><b className="block text-2xl">{role}</b><span className="text-sm text-black/55">Rol activo</span></div><div className="rounded-[2rem] border border-white/15 bg-white/10 p-5"><Sparkles className="mb-3 h-6 w-6 text-yellow-200" /><b className="block text-2xl">Soluciones Fabrick</b><span className="text-sm text-white/60">App admin premium</span></div><div className="rounded-[2rem] border border-white/15 bg-white/10 p-5"><Wand2 className="mb-3 h-6 w-6 text-blue-200" /><b className="block text-2xl">{fmt(totalFollowers)}</b><span className="text-sm text-white/60">Audiencia total</span></div></div>{status && <p className="mt-5 rounded-2xl border border-white/15 bg-white/10 p-4 text-sm text-white/80">{status}</p>}</article>
+      </header>
+      <section className="grid gap-5 xl:grid-cols-[1fr_420px]"><article className="glass-card rounded-[2.4rem] p-5 sm:p-7"><p className="text-[10px] font-black uppercase tracking-[0.32em] text-yellow-200">Datos guardados</p><div className="mt-5 grid gap-4 md:grid-cols-2"><Field label="Nombre visible" value={profile.display_name || ''} onChange={(v) => update('display_name', v)} /><Field label="Teléfono" value={profile.phone || ''} onChange={(v) => update('phone', v)} /><Field label="WhatsApp" value={profile.whatsapp || ''} onChange={(v) => update('whatsapp', v)} /><Field label="Sitio web" value={profile.website || ''} onChange={(v) => update('website', v)} /><div className="md:col-span-2"><Field label="Bio / presentación" value={profile.bio || ''} onChange={(v) => update('bio', v)} textarea /></div></div><div className="mt-5 grid gap-4 md:grid-cols-3"><Field label="Instagram" value={profile.instagram || ''} onChange={(v) => update('instagram', v)} /><Field label="Facebook" value={profile.facebook || ''} onChange={(v) => update('facebook', v)} /><Field label="LinkedIn" value={profile.linkedin || ''} onChange={(v) => update('linkedin', v)} /></div><div className="mt-5 grid gap-4 md:grid-cols-4"><Field label="IG seguidores" value={String(stats.instagram_followers || 0)} onChange={(v) => updateFollower('instagram_followers', v)} /><Field label="FB seguidores" value={String(stats.facebook_followers || 0)} onChange={(v) => updateFollower('facebook_followers', v)} /><Field label="LinkedIn seguidores" value={String(stats.linkedin_followers || 0)} onChange={(v) => updateFollower('linkedin_followers', v)} /><Field label="TikTok seguidores" value={String(stats.tiktok_followers || 0)} onChange={(v) => updateFollower('tiktok_followers', v)} /></div><div className="mt-6 flex flex-wrap gap-3"><button onClick={saveProfile} disabled={saving} className="inline-flex h-14 items-center gap-2 rounded-2xl bg-white px-6 text-sm font-black text-black disabled:opacity-60">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Guardar ajustes</button><button onClick={captureSocial} className="inline-flex h-14 items-center gap-2 rounded-2xl border border-white/20 bg-white/10 px-6 text-sm font-black text-white"><Sparkles className="h-4 w-4" /> Capturar datos públicos</button></div></article><aside className="grid gap-4"><SocialCard icon={Instagram} title="Instagram" handle={profile.instagram} followers={stats.instagram_followers} href={urlOrHash(profile.instagram, 'instagram')} tone="bg-gradient-to-r from-pink-500 to-yellow-400" /><SocialCard icon={Facebook} title="Facebook" handle={profile.facebook} followers={stats.facebook_followers} href={urlOrHash(profile.facebook, 'facebook')} tone="bg-blue-500" /><SocialCard icon={Linkedin} title="LinkedIn" handle={profile.linkedin} followers={stats.linkedin_followers} href={urlOrHash(profile.linkedin, 'linkedin')} tone="bg-sky-500" /><SocialCard icon={Globe2} title="Web / App" handle={profile.website} followers={totalFollowers} href={urlOrHash(profile.website, 'web')} tone="bg-gradient-to-r from-yellow-400 via-blue-500 to-red-500" /></aside></section>
+      {snapshots.length > 0 && <section className="glass-card rounded-[2rem] p-5"><p className="text-[10px] font-black uppercase tracking-[0.32em] text-yellow-200">Captura pública</p><div className="mt-3 grid gap-3 md:grid-cols-2 xl:grid-cols-4">{snapshots.map((s) => <article key={s.url} className="rounded-2xl border border-white/15 bg-white/10 p-4"><b>{s.platform}</b><p className="mt-1 line-clamp-2 text-xs text-white/60">{s.title}</p><p className="mt-2 text-xl font-black">{fmt(s.followers)}</p><span className="text-xs text-white/45">{s.ok ? 'leído' : s.error || 'bloqueado'}</span></article>)}</div></section>}
+    </section>
+  </main>;
+}

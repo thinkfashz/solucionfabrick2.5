@@ -6,10 +6,9 @@ export default function AdminLoading() {
         <p className="mt-5 text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300">Soluciones Fabrick</p>
         <h1 className="mt-3 text-2xl font-black tracking-tight">Cargando admin</h1>
         <div className="mx-auto mt-5 h-1.5 w-44 overflow-hidden rounded-full bg-white/10">
-          <div className="h-full w-1/2 rounded-full bg-yellow-300 [animation:sf-loading_1.1s_ease-in-out_infinite]" />
+          <div className="h-full w-full origin-left animate-pulse rounded-full bg-yellow-300" />
         </div>
       </div>
-      <style jsx>{`@keyframes sf-loading{0%{transform:translateX(-110%)}100%{transform:translateX(220%)}}`}</style>
     </main>
   );
 }

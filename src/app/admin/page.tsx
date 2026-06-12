@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Activity, AlertTriangle, ArrowRight, BarChart3, Bell, Briefcase, CalendarDays, CheckCircle2, Clock, FileText, Folder, Gauge, Loader2, Package, Receipt, ShieldCheck, Terminal, UserPlus, Users, Wallet, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowRight, Bell, Briefcase, CheckCircle2, Clock, FileText, Folder, Gauge, Loader2, Package, ShieldCheck, Users, Wallet, Zap } from 'lucide-react';
 
 type AdminSessionRow = {
   session_id: string;
@@ -29,7 +29,6 @@ type DashboardPayload = {
 
 function clp(value: number) { return '$' + Math.round(Number(value || 0)).toLocaleString('es-CL'); }
 function initials(name: string) { return name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || 'SF'; }
-function secondsToText(seconds?: number | null) { const s = Math.max(0, Number(seconds || 0)); if (s < 60) return `${s}s`; const m = Math.floor(s / 60); if (m < 60) return `${m}m ${s % 60}s`; const h = Math.floor(m / 60); return `${h}h ${m % 60}m`; }
 
 type IconType = typeof Package;
 

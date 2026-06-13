@@ -1,23 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { insforgeAdmin } from '@/lib/insforge';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
-
-const INSFORGE_URL = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
-
-function apiKey() {
-  return process.env.INSFORGE_API_KEY || process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY || 'ik_7e23032539c2dc64d5d27ca29d07b928';
-}
-
-function sqlText(value: unknown) {
-  if (value === null || value === undefined || value === '') return 'NULL';
-  return `'${String(value).replace(/'/g, "''")}'`;
-}
-
-function rows(result: { data: unknown }): Record<string, unknown>[] {
-  return (result.data as { data?: { rows?: Record<string, unknown>[] } } | null)?.data?.rows ?? [];
-}
 
 function obj(value: unknown): Record<string, unknown> {
   return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : {};
@@ -29,20 +15,6 @@ function text(value: unknown, fallback = '') {
 
 function escapeHtml(value: unknown) {
   return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;');
-}
-
-async function runRawSql(query: string) {
-  const res = await fetch(`${INSFORGE_URL.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey() },
-    body: JSON.stringify({ query }),
-    signal: AbortSignal.timeout(30_000),
-    cache: 'no-store',
-  });
-  const raw = await res.text();
-  let data: unknown;
-  try { data = JSON.parse(raw); } catch { data = { raw }; }
-  return { ok: res.ok, status: res.status, data };
 }
 
 function htmlHeaders(status = 200) {
@@ -60,7 +32,7 @@ function htmlHeaders(status = 200) {
 }
 
 function expiredHtml() {
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Link expirado</title><meta name="robots" content="noindex,nofollow,noarchive"><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090806;color:#fff7e8;font-family:system-ui}.box{max-width:560px;padding:32px;border:1px solid rgba(255,190,56,.24);border-radius:32px;background:#111;box-shadow:0 24px 80px rgba(0,0,0,.45)}h1{font-size:42px;letter-spacing:-.05em}.tag{color:#fbbf24;text-transform:uppercase;font-size:12px;font-weight:900;letter-spacing:.22em}</style></head><body><main class="box"><p class="tag">Soluciones Fabrick</p><h1>Este link no está disponible</h1><p>La propuesta no existe, fue archivada o el token no es válido.</p></main></body></html>`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Link no disponible</title><meta name="robots" content="noindex,nofollow,noarchive"><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#050505;color:#fff7e8;font-family:Inter,system-ui,sans-serif;padding:16px}.box{width:min(92vw,620px);padding:32px;border:1px solid rgba(255,190,56,.24);border-radius:32px;background:#111;box-shadow:0 24px 80px rgba(0,0,0,.45)}h1{font-size:clamp(40px,10vw,68px);line-height:.95;letter-spacing:-.07em}.tag{color:#fbbf24;text-transform:uppercase;font-size:12px;font-weight:900;letter-spacing:.22em}p{font-size:18px;line-height:1.5;color:#e8dcc9}</style></head><body><main class="box"><p class="tag">Soluciones Fabrick</p><h1>Este link no está disponible</h1><p>La propuesta no existe, fue archivada o el token no es válido.</p></main></body></html>`;
 }
 
 function parseProjectJson(value: unknown): Record<string, unknown> {
@@ -89,7 +61,7 @@ function metadataFor(row: Record<string, unknown>, request: NextRequest, token: 
   const client = obj(project.client);
   const title = text(project.shareTitle || project.title || row.title || client.brand, 'Presentación premium Soluciones Fabrick');
   const brand = text(client.brand || project.brand, title);
-  const description = text(project.shareDescription || project.description, `${brand} · Demo privada y temporal enviada por Soluciones Fabrick. Vista segura HTTPS, renderizada desde servidor y protegida contra indexación pública.`);
+  const description = text(project.shareDescription || project.description, `${brand} · Demo privada y temporal enviada por Soluciones Fabrick.`);
   const image = firstImage(project, html);
   const url = `${request.nextUrl.origin}/w/${token}`;
   return { title, description, image, url, brand };
@@ -111,7 +83,7 @@ function metaTags(meta: ReturnType<typeof metadataFor>) {
 <meta name="twitter:title" content="${escapeHtml(meta.title)}">
 <meta name="twitter:description" content="${escapeHtml(meta.description)}">
 <meta name="twitter:image" content="${escapeHtml(meta.image)}">
-<meta name="fabrick-security" content="Demo temporal con HTTPS, SSR y noindex/noarchive para evitar indexación pública.">
+<meta name="fabrick-security" content="Demo temporal con HTTPS, SSR y noindex/noarchive.">
 `;
 }
 
@@ -145,19 +117,16 @@ export async function GET(request: NextRequest, context: { params: Promise<{ tok
     return new NextResponse(expiredHtml(), htmlHeaders(404));
   }
 
-  const result = await runRawSql(`
-SELECT html, title, status, expires_at, project_json
-FROM page_engine_documents
-WHERE token = ${sqlText(token)}
-LIMIT 1;
-`);
+  const { data, error } = await insforgeAdmin.database
+    .from('page_engine_documents')
+    .select('html, title, status, expires_at, project_json')
+    .eq('token', token)
+    .limit(1)
+    .maybeSingle();
 
-  if (!result.ok) return NextResponse.json({ error: 'No se pudo leer la página.' }, { status: 502 });
-
-  const row = rows(result)[0];
-  if (!row || row.status !== 'publicado') {
-    return new NextResponse(expiredHtml(), htmlHeaders(404));
-  }
+  if (error) return NextResponse.json({ error: 'No se pudo leer la página.', detail: error }, { status: 502 });
+  const row = data as Record<string, unknown> | null;
+  if (!row || row.status !== 'publicado') return new NextResponse(expiredHtml(), htmlHeaders(404));
 
   const project = parseProjectJson(row.project_json);
   const strictExpiry = project.strictExpiry === true;

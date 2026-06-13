@@ -82,6 +82,7 @@ src/modules/prospecting-engine/utils/generated-page-parser.ts
 src/modules/prospecting-engine/services/ai-provider.server.ts
 src/modules/prospecting-engine/services/page-document.server.ts
 src/modules/prospecting-engine/services/ai-generation.server.ts
+src/modules/prospecting-engine/services/ai-landing.service.ts
 src/app/api/admin/prospecting/generate-page/route.ts
 src/modules/prospecting-engine/docs/MODULE_03_AI_LANDING_GENERATOR.md
 ```

@@ -35,7 +35,8 @@ function stripTags(html: string) {
 }
 
 function normalizeDetected(input: ProspectInput, sourceType: LocalImportSourceType, rawBlock?: string, confidence = 72): LocalDetectedProspect | null {
-  const brand = clean(input.brand || (input as Record<string, unknown>).name || '', 180);
+  const inputRecord = input as unknown as Record<string, unknown>;
+  const brand = clean(input.brand || inputRecord.name || '', 180);
   if (!brand || brand.length < 2) return null;
   return {
     ...input,

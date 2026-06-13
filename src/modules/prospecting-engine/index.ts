@@ -9,3 +9,4 @@ export * from './utils/ai-integration-utils';
 export * from './utils/generated-page-parser';
 export * from './services/prospect.service';
 export * from './services/ai-integration.service';
+export * from './services/ai-landing.service';

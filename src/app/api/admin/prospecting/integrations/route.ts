@@ -7,7 +7,6 @@ import {
   listAiIntegrations,
   saveAiIntegration,
 } from '@/modules/prospecting-engine/services/ai-integration.server';
-import type { AiProviderId } from '@/modules/prospecting-engine/types/ai.types';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -32,7 +31,7 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   const auth = await requireWritableAdmin(request);
-  if (auth.error) return auth.error;
+  if ('error' in auth) return auth.error;
 
   const body = await request.json().catch(() => null) as { provider?: string; credentials?: unknown } | null;
   const provider = String(body?.provider || '').trim();
@@ -48,13 +47,13 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   const auth = await requireWritableAdmin(request);
-  if (auth.error) return auth.error;
+  if ('error' in auth) return auth.error;
 
   const provider = request.nextUrl.searchParams.get('provider') || '';
   if (!isAiProviderId(provider)) return NextResponse.json({ error: 'Proveedor IA no permitido.' }, { status: 400 });
 
   try {
-    await deleteAiIntegration(provider as AiProviderId);
+    await deleteAiIntegration(provider);
     return NextResponse.json({ ok: true, deleted: provider });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'No se pudo eliminar la integración IA.' }, { status: 500 });

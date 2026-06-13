@@ -32,6 +32,7 @@ Incluye:
 - Parser robusto de respuesta IA.
 - Cliente multi-proveedor para OpenAI, Gemini, OpenRouter y Groq.
 - Servicio de orquestación IA.
+- Servicio cliente para llamar el generador desde UI.
 - Servicio para guardar la landing generada en `page_engine_documents`.
 - API REST para generar landing.
 
@@ -47,6 +48,7 @@ src/modules/prospecting-engine/utils/generated-page-parser.ts
 src/modules/prospecting-engine/services/ai-provider.server.ts
 src/modules/prospecting-engine/services/page-document.server.ts
 src/modules/prospecting-engine/services/ai-generation.server.ts
+src/modules/prospecting-engine/services/ai-landing.service.ts
 src/app/api/admin/prospecting/generate-page/route.ts
 ```
 
@@ -95,6 +97,24 @@ Body usando prospecto guardado:
 
 ---
 
+## Servicio cliente
+
+Archivo:
+
+```txt
+src/modules/prospecting-engine/services/ai-landing.service.ts
+```
+
+Función:
+
+```txt
+generateLandingPage(request)
+```
+
+Este servicio será consumido por el futuro `AiGeneratorPanel` de la interfaz.
+
+---
+
 ## Respuesta esperada
 
 ```json
@@ -138,7 +158,7 @@ Body usando prospecto guardado:
 
 ```txt
 openai
- gemini
+gemini
 openrouter
 groq
 ```
@@ -231,7 +251,7 @@ src/modules/prospecting-engine/utils/generated-page-parser.ts
 El parser:
 
 - Acepta JSON puro.
-- Acepta JSON dentro de ```json.
+- Acepta JSON dentro de bloque markdown.
 - Extrae desde el primer `{` al último `}` si el modelo responde con texto extra.
 - Genera fallback HTML si la respuesta no trae HTML útil.
 

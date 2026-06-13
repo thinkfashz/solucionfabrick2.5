@@ -32,6 +32,7 @@ Prospecto → Análisis IA → Demo HTML → Link público → Mensaje comercial
 - Las API keys se deben guardar en integraciones/base de datos, no en frontend.
 - Cada mejora debe actualizar este README o el documento del módulo correspondiente.
 - La página visual debe importar componentes/servicios desde este motor, no contener toda la lógica mezclada.
+- Los módulos locales deben funcionar sin IA y degradar de forma segura si no hay credenciales.
 
 ## Módulos planeados
 
@@ -40,6 +41,7 @@ Prospecto → Análisis IA → Demo HTML → Link público → Mensaje comercial
 | 01 | Prospectos BD + Importador ChatGPT | Implementado base | Guardar prospectos reales en base de datos e importar JSON desde ChatGPT |
 | 02 | Integraciones IA | Implementado base | Guardar/testear claves de OpenAI, Gemini, OpenRouter, Groq, SerpAPI y Apify |
 | 03 | Generador IA de landing | Implementado base | Crear HTML/CSS/JS desde datos del prospecto y guardar link público opcional |
+| 03.5 | Importador híbrido local + IA | Implementado base | Extraer prospectos desde HTML/JSON/TXT local con botón IA ON/OFF |
 | 04 | Editor IA por selección | Pendiente | Mejorar solo una sección, párrafo o bloque del HTML |
 | 05 | Plantillas por nicho | Pendiente | Templates reutilizables para dental, hotel, restaurante, construcción, etc. |
 | 06 | Búsqueda externa de prospectos | Pendiente | Google Places, SerpAPI, Apify, Meta/Instagram cuando corresponda |
@@ -87,6 +89,21 @@ src/app/api/admin/prospecting/generate-page/route.ts
 src/modules/prospecting-engine/docs/MODULE_03_AI_LANDING_GENERATOR.md
 ```
 
+## Módulo 03.5 implementado
+
+```txt
+src/modules/prospecting-engine/types/import.types.ts
+src/modules/prospecting-engine/utils/local-prospect-detector.ts
+src/modules/prospecting-engine/prompts/enhance-imported-prospects.prompt.ts
+src/modules/prospecting-engine/services/hybrid-import-enhance.server.ts
+src/modules/prospecting-engine/services/local-hybrid-import.service.ts
+src/app/api/admin/prospecting/import/enhance/route.ts
+src/modules/prospecting-engine/ui/LocalProspectImportPanel.tsx
+src/components/admin/page-engine/PageEngineProspectingStudioHybridClient.tsx
+src/app/admin/page-engine-21stdev/page.tsx
+src/modules/prospecting-engine/docs/MODULE_03_5_LOCAL_HYBRID_IMPORTER.md
+```
+
 ## Tablas agregadas/preparadas
 
 ```txt
@@ -105,6 +122,7 @@ POST   /api/admin/prospecting/prospects
 PUT    /api/admin/prospecting/prospects
 DELETE /api/admin/prospecting/prospects?id=...
 POST   /api/admin/prospecting/import
+POST   /api/admin/prospecting/import/enhance
 GET    /api/admin/prospecting/integrations
 POST   /api/admin/prospecting/integrations
 DELETE /api/admin/prospecting/integrations?provider=...
@@ -136,6 +154,22 @@ POST   /api/admin/prospecting/generate-page
   ]
 }
 ```
+
+## Importación híbrida local + IA
+
+Modo local:
+
+```txt
+HTML/JSON/TXT → detector local → lista glamour → guardar seleccionados
+```
+
+Modo IA ON:
+
+```txt
+HTML/JSON/TXT → detector local → IA normaliza → lista glamour → guardar seleccionados
+```
+
+Si la IA falla o no hay credenciales, el panel mantiene el modo local y avisa al usuario.
 
 ## Próximo paso recomendado
 

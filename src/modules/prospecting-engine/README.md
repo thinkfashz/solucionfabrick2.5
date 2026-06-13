@@ -38,7 +38,7 @@ Prospecto → Análisis IA → Demo HTML → Link público → Mensaje comercial
 | Módulo | Nombre | Estado | Objetivo |
 |---|---|---:|---|
 | 01 | Prospectos BD + Importador ChatGPT | Implementado base | Guardar prospectos reales en base de datos e importar JSON desde ChatGPT |
-| 02 | Integraciones IA | Pendiente | Guardar/testear claves de OpenAI, Gemini, OpenRouter, etc. |
+| 02 | Integraciones IA | Implementado base | Guardar/testear claves de OpenAI, Gemini, OpenRouter, Groq, SerpAPI y Apify |
 | 03 | Generador IA de landing | Pendiente | Crear HTML/CSS/JS desde datos del prospecto |
 | 04 | Editor IA por selección | Pendiente | Mejorar solo una sección, párrafo o bloque del HTML |
 | 05 | Plantillas por nicho | Pendiente | Templates reutilizables para dental, hotel, restaurante, construcción, etc. |
@@ -60,13 +60,30 @@ src/app/api/admin/prospecting/import/route.ts
 src/modules/prospecting-engine/docs/MODULE_01_PROSPECTS.md
 ```
 
-## Tabla agregada
+## Módulo 02 implementado
+
+Carpetas/archivos principales:
+
+```txt
+src/modules/prospecting-engine/types/ai.types.ts
+src/modules/prospecting-engine/config/providers.ts
+src/modules/prospecting-engine/utils/ai-integration-utils.ts
+src/modules/prospecting-engine/services/ai-integration-table.server.ts
+src/modules/prospecting-engine/services/ai-integration.server.ts
+src/modules/prospecting-engine/services/ai-integration.service.ts
+src/app/api/admin/prospecting/integrations/route.ts
+src/app/api/admin/prospecting/integrations/test/route.ts
+src/modules/prospecting-engine/docs/MODULE_02_AI_INTEGRATIONS.md
+```
+
+## Tablas agregadas/preparadas
 
 ```txt
 prospects
+integrations
 ```
 
-Se crea automáticamente desde backend con raw SQL cuando se llama a las APIs del módulo.
+Se crean automáticamente desde backend con raw SQL cuando se llama a las APIs del módulo.
 
 ## APIs agregadas
 
@@ -76,6 +93,10 @@ POST   /api/admin/prospecting/prospects
 PUT    /api/admin/prospecting/prospects
 DELETE /api/admin/prospecting/prospects?id=...
 POST   /api/admin/prospecting/import
+GET    /api/admin/prospecting/integrations
+POST   /api/admin/prospecting/integrations
+DELETE /api/admin/prospecting/integrations?provider=...
+POST   /api/admin/prospecting/integrations/test
 ```
 
 ## Formato recomendado para importar desde ChatGPT
@@ -105,6 +126,6 @@ POST   /api/admin/prospecting/import
 
 ## Próximo paso recomendado
 
-Conectar la UI actual del Page Engine al servicio `prospect.service.ts` para que la lista de prospectos deje de depender de `localStorage` y use la tabla real `prospects`.
-
-Después de eso, implementar el Módulo 02: Integraciones IA.
+1. Conectar la UI actual del Page Engine al servicio `prospect.service.ts` para que la lista de prospectos deje de depender de `localStorage` y use la tabla real `prospects`.
+2. Crear un panel visual `IntegrationsPanel` que consuma `ai-integration.service.ts` para guardar/testear claves desde la interfaz.
+3. Después implementar el Módulo 03: Generador IA de landing usando las integraciones guardadas.

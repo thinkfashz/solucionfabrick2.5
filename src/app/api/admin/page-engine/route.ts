@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import { insforgeAdmin } from '@/lib/insforge';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -14,14 +15,6 @@ function apiKey() {
 function sqlText(value: unknown) {
   if (value === null || value === undefined || value === '') return 'NULL';
   return `'${String(value).replace(/'/g, "''")}'`;
-}
-
-function sqlJson(value: unknown) {
-  return `${sqlText(JSON.stringify(value ?? {}))}::jsonb`;
-}
-
-function rows(result: { data: unknown }): Record<string, unknown>[] {
-  return (result.data as { data?: { rows?: Record<string, unknown>[] } } | null)?.data?.rows ?? [];
 }
 
 function plainObject(value: unknown): Record<string, unknown> {
@@ -86,14 +79,30 @@ function validateProjectJson(value: unknown) {
 }
 async function requireAdmin(request: NextRequest) { const cookie = request.cookies.get(ADMIN_COOKIE_NAME); if (!cookie?.value) return null; return decodeSession(cookie.value); }
 
+function buildPublicUrl(token: string, request: NextRequest) {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+  if (explicit) return `${explicit.replace(/\/+$/, '')}/w/${token}`;
+  return `${request.nextUrl.origin}/w/${token}`;
+}
+
+function serializeDbError(error: unknown) {
+  if (!error || typeof error !== 'object') return String(error || 'Error desconocido');
+  const e = error as { message?: string; code?: string; details?: string; hint?: string };
+  return [e.message, e.code, e.details, e.hint].filter(Boolean).join(' · ') || 'Error de base de datos';
+}
+
 export async function GET(request: NextRequest) {
   const session = await requireAdmin(request);
   if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   const ensure = await ensureTable();
   if (!ensure.ok) return NextResponse.json({ error: 'No se pudo preparar page_engine_documents', detail: ensure.data }, { status: 502 });
-  const result = await runRawSql(`SELECT token, title, status, expires_at, created_at, updated_at FROM page_engine_documents ORDER BY updated_at DESC LIMIT 100;`);
-  if (!result.ok) return NextResponse.json({ error: 'No se pudieron leer páginas', detail: result.data }, { status: 502 });
-  return NextResponse.json({ ok: true, documents: rows(result) });
+  const { data, error } = await insforgeAdmin.database
+    .from('page_engine_documents')
+    .select('token, title, status, expires_at, created_at, updated_at')
+    .order('updated_at', { ascending: false })
+    .limit(100);
+  if (error) return NextResponse.json({ error: serializeDbError(error), detail: error }, { status: 502 });
+  return NextResponse.json({ ok: true, connected: true, table: 'page_engine_documents', documents: data ?? [] });
 }
 
 export async function POST(request: NextRequest) {
@@ -111,14 +120,29 @@ export async function POST(request: NextRequest) {
   if (!jsonValidation.ok) return NextResponse.json({ error: jsonValidation.error }, { status: 400 });
   const ensure = await ensureTable();
   if (!ensure.ok) return NextResponse.json({ error: 'No se pudo preparar page_engine_documents', detail: ensure.data }, { status: 502 });
-  const docToken = body?.token && /^[a-zA-Z0-9_-]{8,80}$/.test(body.token) ? body.token : makeToken();
+
   const neverExpire = project.neverExpire === true || project.expires === false;
   const hours = Math.max(1, Math.min(24 * 365, Number(body?.expires_in_hours || project.expires_in_hours || 720)));
   const expiresAt = neverExpire ? null : new Date(Date.now() + hours * 60 * 60 * 1000).toISOString();
   const status = cleanStatus(body?.status);
-  const result = await runRawSql(`INSERT INTO page_engine_documents (token, title, status, html, project_json, expires_at, updated_at) VALUES (${sqlText(docToken)}, ${sqlText(title)}, ${sqlText(status)}, ${sqlText(html)}, ${sqlJson(body?.project_json)}, ${sqlText(expiresAt)}, NOW()) ON CONFLICT (token) DO UPDATE SET title = EXCLUDED.title, status = EXCLUDED.status, html = EXCLUDED.html, project_json = EXCLUDED.project_json, expires_at = EXCLUDED.expires_at, updated_at = NOW();`);
-  if (!result.ok) return NextResponse.json({ error: 'No se pudo guardar la página', detail: result.data }, { status: 502 });
-  return NextResponse.json({ ok: true, token: docToken, expires_at: expiresAt, never_expire: neverExpire, public_url: `${request.nextUrl.origin}/w/${docToken}` });
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const docToken = body?.token && /^[a-zA-Z0-9_-]{8,80}$/.test(body.token) ? body.token : makeToken();
+    const row = { token: docToken, title, status, html, project_json: body?.project_json ?? {}, expires_at: expiresAt, updated_at: new Date().toISOString() };
+    const { data, error } = await insforgeAdmin.database
+      .from('page_engine_documents')
+      .insert([row])
+      .select('token, title, status, expires_at, created_at, updated_at')
+      .single();
+    if (error) {
+      const code = (error as { code?: string }).code;
+      if (code === '23505' && !body?.token) continue;
+      return NextResponse.json({ error: `No se pudo guardar la página: ${serializeDbError(error)}`, detail: error }, { status: 502 });
+    }
+    if (!data?.token) return NextResponse.json({ error: 'La base de datos no devolvió el token guardado.' }, { status: 502 });
+    return NextResponse.json({ ok: true, connected: true, table: 'page_engine_documents', saved: data, token: docToken, expires_at: expiresAt, never_expire: neverExpire, public_url: buildPublicUrl(docToken, request) });
+  }
+  return NextResponse.json({ error: 'No se pudo generar un token único. Intenta nuevamente.' }, { status: 500 });
 }
 
 export async function DELETE(request: NextRequest) {
@@ -129,7 +153,7 @@ export async function DELETE(request: NextRequest) {
   if (!/^[a-zA-Z0-9_-]{8,80}$/.test(token)) return NextResponse.json({ error: 'Token inválido.' }, { status: 400 });
   const ensure = await ensureTable();
   if (!ensure.ok) return NextResponse.json({ error: 'No se pudo preparar page_engine_documents', detail: ensure.data }, { status: 502 });
-  const result = await runRawSql(`DELETE FROM page_engine_documents WHERE token = ${sqlText(token)};`);
-  if (!result.ok) return NextResponse.json({ error: 'No se pudo eliminar la página', detail: result.data }, { status: 502 });
+  const { error } = await insforgeAdmin.database.from('page_engine_documents').delete().eq('token', token);
+  if (error) return NextResponse.json({ error: `No se pudo eliminar la página: ${serializeDbError(error)}`, detail: error }, { status: 502 });
   return NextResponse.json({ ok: true, deleted: token });
 }

@@ -1,22 +1,19 @@
 'use client';
 
 import dynamic from 'next/dynamic';
-import PageEngineMobileDrawerEnhancer from '@/components/admin/page-engine/PageEngineMobileDrawerEnhancer';
-import PageEngineLiveExpiryBadge from '@/components/admin/page-engine/PageEngineLiveExpiryBadge';
-import PageEngineShopifyChrome from '@/components/admin/page-engine/PageEngineShopifyChrome';
-import PageEngineLinksHistory from '@/components/admin/page-engine/PageEngineLinksHistory';
 
-const AdvancedHtmlPageEngineClientV2 = dynamic(() => import('@/components/admin/page-engine/AdvancedHtmlPageEngineClientV2'), {
+const PageEngineProspectingStudioClient = dynamic(() => import('@/components/admin/page-engine/PageEngineProspectingStudioClient'), {
   ssr: false,
-  loading: () => <main className="min-h-screen bg-[#050403] p-6 text-white">Cargando editor avanzado HTML / JSON / JS / JTree / Cloudinary…</main>,
+  loading: () => (
+    <main className="grid min-h-[70vh] place-items-center bg-[#050403] p-6 text-white">
+      <section className="w-full max-w-md rounded-[2rem] border border-yellow-300/15 bg-black/70 p-8 text-center shadow-[0_30px_90px_rgba(0,0,0,.45)]">
+        <p className="text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300">Page Engine 21stDev</p>
+        <h1 className="mt-3 text-2xl font-black">Cargando estudio de prospección…</h1>
+      </section>
+    </main>
+  ),
 });
 
 export default function PageEngine21stDevPage() {
-  return <>
-    <PageEngineShopifyChrome />
-    <PageEngineMobileDrawerEnhancer />
-    <AdvancedHtmlPageEngineClientV2 />
-    <PageEngineLinksHistory />
-    <PageEngineLiveExpiryBadge />
-  </>;
+  return <PageEngineProspectingStudioClient />;
 }

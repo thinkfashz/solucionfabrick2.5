@@ -1,62 +1,18 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { CheckCircle2, Clock3, Code2, Copy, Database, ExternalLink, Eye, FileText, ImagePlus, Layers3, Link2, Loader2, PanelRightClose, PanelRightOpen, Plus, RefreshCcw, Save, Search, Settings2, Sparkles, Trash2, UploadCloud, Users } from 'lucide-react';
+import { Clock3, Code2, Copy, Database, ExternalLink, Eye, FileText, FileUp, ImagePlus, Link2, Loader2, PanelRightClose, PanelRightOpen, Plus, RefreshCcw, Save, Search, Settings2, Sparkles, Trash2, UploadCloud, Users, X } from 'lucide-react';
 
-type Prospect = {
-  id: string;
-  brand: string;
-  client: string;
-  account: string;
-  followers: string;
-  instagram: string;
-  facebook: string;
-  whatsapp: string;
-  website: string;
-  location: string;
-  notes: string;
-  logo: string;
-};
-
-type CloudAsset = {
-  id: string;
-  public_id: string;
-  url: string;
-  width?: number;
-  height?: number;
-  format?: string;
-  created_at?: string;
-};
-
-type SavedDoc = {
-  token: string;
-  title: string;
-  status: string;
-  expires_at?: string | null;
-  updated_at?: string;
-  created_at?: string;
-};
-
+type Prospect = { id: string; brand: string; client: string; account: string; followers: string; instagram: string; facebook: string; whatsapp: string; website: string; location: string; notes: string; logo: string };
+type CloudAsset = { id: string; public_id: string; url: string; width?: number; height?: number; format?: string; created_at?: string };
+type SavedDoc = { token: string; title: string; status: string; expires_at?: string | null; updated_at?: string; created_at?: string };
 type Tab = 'prospecto' | 'html' | 'css' | 'js' | 'imagenes' | 'ajustes';
 type Device = 'mobile' | 'tablet' | 'desktop';
 
+type ToolsPanelProps = { prospect: Prospect; images: string[]; hours: number; neverExpire: boolean; docs: SavedDoc[]; onRefresh: () => void; onRemove: (token: string) => void; onClose?: () => void };
+
 const PROSPECT_STORAGE = 'sf_page_engine_prospects_v1';
-
-const starterProspect: Prospect = {
-  id: 'aurora-glam-studio',
-  brand: 'Aurora Glam Studio',
-  client: 'Camila Rojas',
-  account: '@auroraglam.cl',
-  followers: '18.4K',
-  instagram: 'https://instagram.com/auroraglam.cl',
-  facebook: 'https://facebook.com/auroraglam',
-  whatsapp: '+56912345678',
-  website: 'auroraglam.cl',
-  location: 'Linares, Chile',
-  notes: 'Instagram con buena base visual, pero sin página demo de conversión para cotizar servicios.',
-  logo: '',
-};
-
+const starterProspect: Prospect = { id: 'aurora-glam-studio', brand: 'Aurora Glam Studio', client: 'Camila Rojas', account: '@auroraglam.cl', followers: '18.4K', instagram: 'https://instagram.com/auroraglam.cl', facebook: 'https://facebook.com/auroraglam', whatsapp: '+56912345678', website: 'auroraglam.cl', location: 'Linares, Chile', notes: 'Instagram con buena base visual, pero sin página demo de conversión para cotizar servicios.', logo: '' };
 const starterHtml = `<main class="hero">
   <section class="card">
     <p class="eyebrow">Demo privada</p>
@@ -64,43 +20,30 @@ const starterHtml = `<main class="hero">
     <p>Diseñamos una presentación digital para que la marca se vea profesional, confiable y lista para vender desde redes sociales.</p>
     <a class="button" href="#contacto">Solicitar evaluación</a>
   </section>
-  <section class="gallery">
-    <img src="{{heroImage}}" alt="Imagen principal de la marca" />
-  </section>
-  <section class="stats">
-    <article><strong>{{followers}}</strong><span>seguidores</span></article>
-    <article><strong>+42%</strong><span>potencial visual</span></article>
-    <article><strong>24h</strong><span>demo temporal</span></article>
-  </section>
+  <section class="gallery"><img src="{{heroImage}}" alt="Imagen principal de la marca" /></section>
+  <section class="stats"><article><strong>{{followers}}</strong><span>seguidores</span></article><article><strong>+42%</strong><span>potencial visual</span></article><article><strong>24h</strong><span>demo temporal</span></article></section>
 </main>`;
-
-const starterCss = `body{margin:0;background:#080807;color:#fff7eb;font-family:Inter,system-ui,sans-serif} .hero{min-height:100vh;padding:28px;background:radial-gradient(circle at 80% 0%,rgba(250,204,21,.18),transparent 28rem),linear-gradient(180deg,#080807,#020202)} .card{border:1px solid rgba(250,204,21,.22);border-radius:32px;padding:38px;background:rgba(255,255,255,.07);backdrop-filter:blur(18px);box-shadow:0 30px 100px rgba(0,0,0,.4)} .eyebrow{color:#facc15;text-transform:uppercase;letter-spacing:.28em;font-weight:900;font-size:12px} h1{font-size:clamp(42px,8vw,86px);line-height:.92;letter-spacing:-.07em;margin:18px 0;color:#fff7eb} p{max-width:680px;line-height:1.7;color:#d8cbbb}.button{display:inline-flex;margin-top:18px;border-radius:999px;background:#facc15;color:#111;padding:15px 22px;font-weight:900;text-decoration:none}.gallery{margin-top:24px;border-radius:30px;overflow:hidden;border:1px solid rgba(255,255,255,.12);min-height:260px;background:#121212}.gallery img{width:100%;height:420px;object-fit:cover;display:block}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}.stats article{border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:20px;background:rgba(255,255,255,.06)}.stats strong{display:block;font-size:28px;color:#facc15}.stats span{color:#d8cbbb}@media(max-width:720px){.hero{padding:14px}.card{padding:26px;border-radius:24px}.stats{grid-template-columns:1fr}.gallery img{height:280px}}`;
+const starterCss = `body{margin:0;background:#080807;color:#fff7eb;font-family:Inter,system-ui,sans-serif}.hero{min-height:100vh;padding:28px;background:radial-gradient(circle at 80% 0%,rgba(250,204,21,.18),transparent 28rem),linear-gradient(180deg,#080807,#020202)}.card{border:1px solid rgba(250,204,21,.22);border-radius:32px;padding:38px;background:rgba(255,255,255,.07);backdrop-filter:blur(18px);box-shadow:0 30px 100px rgba(0,0,0,.4)}.eyebrow{color:#facc15;text-transform:uppercase;letter-spacing:.28em;font-weight:900;font-size:12px}h1{font-size:clamp(42px,8vw,86px);line-height:.92;letter-spacing:-.07em;margin:18px 0;color:#fff7eb}p{max-width:680px;line-height:1.7;color:#d8cbbb}.button{display:inline-flex;margin-top:18px;border-radius:999px;background:#facc15;color:#111;padding:15px 22px;font-weight:900;text-decoration:none}.gallery{margin-top:24px;border-radius:30px;overflow:hidden;border:1px solid rgba(255,255,255,.12);min-height:260px;background:#121212}.gallery img{width:100%;height:420px;object-fit:cover;display:block}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:18px}.stats article{border:1px solid rgba(255,255,255,.12);border-radius:22px;padding:20px;background:rgba(255,255,255,.06)}.stats strong{display:block;font-size:28px;color:#facc15}.stats span{color:#d8cbbb}@media(max-width:720px){.hero{padding:14px}.card{padding:26px;border-radius:24px}.stats{grid-template-columns:1fr}.gallery img{height:280px}}`;
 
 function uid() { return Math.random().toString(36).slice(2, 9); }
 function esc(value: unknown) { return String(value ?? '').replaceAll('&', '&amp;').replaceAll('<', '&lt;').replaceAll('>', '&gt;').replaceAll('"', '&quot;'); }
-function loadProspects(): Prospect[] {
-  if (typeof window === 'undefined') return [starterProspect];
-  try { const list = JSON.parse(localStorage.getItem(PROSPECT_STORAGE) || '[]') as Prospect[]; return list.length ? list : [starterProspect]; } catch { return [starterProspect]; }
-}
+function loadProspects(): Prospect[] { if (typeof window === 'undefined') return [starterProspect]; try { const list = JSON.parse(localStorage.getItem(PROSPECT_STORAGE) || '[]') as Prospect[]; return list.length ? list : [starterProspect]; } catch { return [starterProspect]; } }
 function saveProspects(list: Prospect[]) { localStorage.setItem(PROSPECT_STORAGE, JSON.stringify(list.slice(0, 80))); }
 function normalizeHost(url: string) { return url.replace(/^https?:\/\//i, '').replace(/\/+$/, '') || ''; }
-function expiryLabel(hours: number, neverExpire: boolean) {
-  if (neverExpire) return 'Sin desactivación';
-  if (hours < 24) return `${hours}h`;
-  const days = Math.round(hours / 24);
-  return `${days}d (${hours}h)`;
-}
+function expiryLabel(hours: number, neverExpire: boolean) { if (neverExpire) return 'Sin desactivación'; if (hours < 24) return `${hours}h`; const days = Math.round(hours / 24); return `${days}d (${hours}h)`; }
+function fillTokens(source: string, prospect: Prospect, hero: string) { return source.replaceAll('{{brand}}', esc(prospect.brand)).replaceAll('{{client}}', esc(prospect.client)).replaceAll('{{account}}', esc(prospect.account)).replaceAll('{{followers}}', esc(prospect.followers)).replaceAll('{{heroImage}}', esc(hero)); }
+function injectBeforeBodyClose(doc: string, content: string) { return /<\/body>/i.test(doc) ? doc.replace(/<\/body>/i, `${content}</body>`) : `${doc}${content}`; }
+function injectHeadStyle(doc: string, css: string) { if (!css.trim()) return doc; const style = `<style id="sf-imported-css">${css}</style>`; if (/<\/head>/i.test(doc)) return doc.replace(/<\/head>/i, `${style}</head>`); if (/<html[^>]*>/i.test(doc)) return doc.replace(/<html[^>]*>/i, (m) => `${m}<head>${style}</head>`); return `<!doctype html><html lang="es"><head>${style}</head><body>${doc}</body></html>`; }
 function completeHtml(html: string, css: string, js: string, prospect: Prospect, images: string[], hours: number, neverExpire: boolean) {
   const hero = images[0] || prospect.logo || 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1600&q=85';
-  const body = html.replaceAll('{{brand}}', esc(prospect.brand)).replaceAll('{{client}}', esc(prospect.client)).replaceAll('{{account}}', esc(prospect.account)).replaceAll('{{followers}}', esc(prospect.followers)).replaceAll('{{heroImage}}', esc(hero));
   const expires = neverExpire ? '' : `<div style="position:fixed;left:16px;right:16px;bottom:16px;z-index:99999;border:1px solid rgba(250,204,21,.22);border-radius:22px;padding:14px 16px;background:rgba(0,0,0,.72);backdrop-filter:blur(14px);color:#fff;font-family:Inter,system-ui,sans-serif;box-shadow:0 20px 70px rgba(0,0,0,.35)"><strong style="color:#facc15;letter-spacing:.18em;text-transform:uppercase;font-size:10px">Demo temporal</strong><div style="font-weight:900;margin-top:4px">Acceso disponible por ${expiryLabel(hours, false)}</div></div>`;
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(prospect.brand)} | Demo digital</title><style>${css}</style></head><body>${body}${expires}<script>${js.replace(/<\/script/gi, '<\\/script')}<\/script></body></html>`;
+  const script = js.trim() ? `<script>${js.replace(/<\/script/gi, '<\\/script')}<\/script>` : '';
+  const replaced = fillTokens(html, prospect, hero);
+  if (/<!doctype|<html[\s>]/i.test(replaced)) return injectBeforeBodyClose(injectHeadStyle(replaced, css), `${expires}${script}`);
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>${esc(prospect.brand)} | Demo digital</title><style>${css}</style></head><body>${replaced}${expires}${script}</body></html>`;
 }
-function deviceClass(device: Device) {
-  if (device === 'mobile') return 'mx-auto h-[680px] w-[min(360px,100%)] rounded-[2.2rem]';
-  if (device === 'tablet') return 'mx-auto h-[720px] w-[min(720px,100%)] rounded-[2rem]';
-  return 'h-[760px] w-full rounded-[1.8rem]';
-}
+function extractHtmlParts(raw: string) { const styles = [...raw.matchAll(/<style[^>]*>([\s\S]*?)<\/style>/gi)].map((m) => m[1].trim()).filter(Boolean).join('\n\n'); const scripts = [...raw.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/gi)].map((m) => m[1].trim()).filter(Boolean).join('\n\n'); const title = raw.match(/<title[^>]*>([\s\S]*?)<\/title>/i)?.[1]?.trim() || ''; const body = raw.match(/<body[^>]*>([\s\S]*?)<\/body>/i)?.[1]?.trim(); const fallback = raw.replace(/<!doctype[^>]*>/i, '').replace(/<html[^>]*>|<\/html>/gi, '').replace(/<head[\s\S]*?<\/head>/i, '').replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '').replace(/<script[\s\S]*?<\/script>/gi, '').trim(); return { title, html: body || fallback || raw, css: styles, js: scripts }; }
+function deviceClass(device: Device) { if (device === 'mobile') return 'mx-auto h-[680px] w-[min(360px,100%)] rounded-[2.2rem]'; if (device === 'tablet') return 'mx-auto h-[720px] w-[min(720px,100%)] rounded-[2rem]'; return 'h-[760px] w-full rounded-[1.8rem]'; }
 
 export default function PageEngineProspectingStudioClient() {
   const [prospects, setProspects] = useState<Prospect[]>([]);
@@ -116,212 +59,54 @@ export default function PageEngineProspectingStudioClient() {
   const [hours, setHours] = useState(720);
   const [neverExpire, setNeverExpire] = useState(false);
   const [rightOpen, setRightOpen] = useState(true);
+  const [mobileToolsOpen, setMobileToolsOpen] = useState(false);
   const [docs, setDocs] = useState<SavedDoc[]>([]);
   const [query, setQuery] = useState('');
   const [status, setStatus] = useState('');
   const [busy, setBusy] = useState(false);
   const [dbConnected, setDbConnected] = useState(false);
 
-  useEffect(() => {
-    const list = loadProspects();
-    setProspects(list);
-    setActiveId(list[0]?.id || '');
-    void loadDocs();
-    void loadCloudinary();
-  }, []);
+  useEffect(() => { const list = loadProspects(); setProspects(list); setActiveId(list[0]?.id || ''); void loadDocs(); void loadCloudinary(); }, []);
 
   const activeProspect = useMemo(() => prospects.find((item) => item.id === activeId) || prospects[0] || starterProspect, [prospects, activeId]);
-  const filteredProspects = useMemo(() => {
-    const term = query.trim().toLowerCase();
-    if (!term) return prospects;
-    return prospects.filter((p) => `${p.brand} ${p.client} ${p.account} ${p.location} ${p.notes}`.toLowerCase().includes(term));
-  }, [prospects, query]);
+  const filteredProspects = useMemo(() => { const term = query.trim().toLowerCase(); return term ? prospects.filter((p) => `${p.brand} ${p.client} ${p.account} ${p.location} ${p.notes}`.toLowerCase().includes(term)) : prospects; }, [prospects, query]);
   const previewHtml = useMemo(() => completeHtml(html, css, js, activeProspect, images, hours, neverExpire), [html, css, js, activeProspect, images, hours, neverExpire]);
 
-  function updateProspect(patch: Partial<Prospect>) {
-    const id = activeProspect.id || uid();
-    const next = prospects.map((p) => p.id === id ? { ...p, ...patch } : p);
-    setProspects(next);
-    saveProspects(next);
-  }
+  function updateProspect(patch: Partial<Prospect>) { const id = activeProspect.id || uid(); const next = prospects.map((p) => p.id === id ? { ...p, ...patch } : p); setProspects(next); saveProspects(next); }
+  function newProspect() { const p: Prospect = { ...starterProspect, id: uid(), brand: 'Nueva marca prospecto', client: '', account: '@marca', followers: '0', instagram: '', facebook: '', whatsapp: '', website: '', location: 'Chile', notes: '', logo: '' }; const next = [p, ...prospects]; setProspects(next); setActiveId(p.id); saveProspects(next); setStatus('Prospecto creado localmente. Completa sus datos y publica la demo.'); }
+  function saveProspect() { saveProspects(prospects); setStatus('Datos del prospecto guardados en este dispositivo. Al publicar también viajan a la base de datos.'); }
 
-  function newProspect() {
-    const p: Prospect = { ...starterProspect, id: uid(), brand: 'Nueva marca prospecto', client: '', account: '@marca', followers: '0', instagram: '', facebook: '', whatsapp: '', website: '', location: 'Chile', notes: '', logo: '' };
-    const next = [p, ...prospects];
-    setProspects(next);
-    setActiveId(p.id);
-    saveProspects(next);
-    setStatus('Prospecto creado localmente. Completa sus datos y publica la demo.');
-  }
-
-  function saveProspect() {
-    saveProspects(prospects);
-    setStatus('Datos del prospecto guardados en este dispositivo. Al publicar también viajan a la base de datos.');
-  }
-
-  async function loadDocs() {
-    const res = await fetch('/api/admin/page-engine', { cache: 'no-store' });
-    const json = await res.json().catch(() => ({}));
-    if (res.ok) {
-      setDbConnected(Boolean(json.connected));
-      setDocs(Array.isArray(json.documents) ? json.documents : []);
-    } else {
-      setDbConnected(false);
-    }
-  }
-
-  async function loadCloudinary(nextFolder = folder) {
-    setStatus('Cargando imágenes de Cloudinary…');
-    const res = await fetch(`/api/admin/cloudinary?folder=${encodeURIComponent(nextFolder)}&max_results=60`, { cache: 'no-store' });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) { setStatus(json.error || 'No pude cargar Cloudinary. Revisa Integraciones.'); return; }
-    setCloudAssets(Array.isArray(json.assets) ? json.assets : []);
-    setStatus(`Cloudinary conectado · ${Array.isArray(json.assets) ? json.assets.length : 0} imágenes disponibles.`);
-  }
-
-  async function uploadImage(file: File) {
-    const form = new FormData();
-    form.set('file', file);
-    form.set('folder', folder);
-    setBusy(true);
-    setStatus('Subiendo imagen a Cloudinary…');
-    const res = await fetch('/api/admin/cloudinary', { method: 'POST', body: form });
-    const json = await res.json().catch(() => ({}));
-    setBusy(false);
-    if (!res.ok) { setStatus(json.error || 'No se pudo subir la imagen.'); return; }
-    const url = json.url || json.asset?.url;
-    if (url) {
-      setImages((list) => [url, ...list]);
-      updateProspect({ logo: activeProspect.logo || url });
-      setStatus('Imagen subida e insertada en la demo.');
-      void loadCloudinary();
-    }
-  }
-
-  function insertImage(url: string) {
-    setImages((list) => list.includes(url) ? list : [url, ...list]);
-    setHtml((value) => value.includes('{{heroImage}}') ? value : `${value}\n<section class="sf-extra-image"><img src="${url}" alt="Imagen de ${activeProspect.brand}" /></section>`);
-    setStatus('Imagen seleccionada e insertada en la demo.');
-  }
+  async function importHtmlFile(file?: File | null) { if (!file) return; const raw = await file.text(); const imported = extractHtmlParts(raw); setHtml(imported.html || raw); if (imported.css) setCss(imported.css); if (imported.js) setJs(imported.js); if (imported.title && activeProspect.brand === 'Nueva marca prospecto') updateProspect({ brand: imported.title }); setTab('html'); setStatus(`HTML importado: ${file.name}. Revisa el preview y publica cuando esté listo.`); }
+  async function loadDocs() { const res = await fetch('/api/admin/page-engine', { cache: 'no-store' }); const json = await res.json().catch(() => ({})); if (res.ok) { setDbConnected(Boolean(json.connected)); setDocs(Array.isArray(json.documents) ? json.documents : []); } else setDbConnected(false); }
+  async function loadCloudinary(nextFolder = folder) { setStatus('Cargando imágenes de Cloudinary…'); const res = await fetch(`/api/admin/cloudinary?folder=${encodeURIComponent(nextFolder)}&max_results=60`, { cache: 'no-store' }); const json = await res.json().catch(() => ({})); if (!res.ok) { setStatus(json.error || 'No pude cargar Cloudinary. Revisa Integraciones.'); return; } setCloudAssets(Array.isArray(json.assets) ? json.assets : []); setStatus(`Cloudinary conectado · ${Array.isArray(json.assets) ? json.assets.length : 0} imágenes disponibles.`); }
+  async function uploadImage(file: File) { const form = new FormData(); form.set('file', file); form.set('folder', folder); setBusy(true); setStatus('Subiendo imagen a Cloudinary…'); const res = await fetch('/api/admin/cloudinary', { method: 'POST', body: form }); const json = await res.json().catch(() => ({})); setBusy(false); if (!res.ok) { setStatus(json.error || 'No se pudo subir la imagen.'); return; } const url = json.url || json.asset?.url; if (url) { setImages((list) => [url, ...list]); updateProspect({ logo: activeProspect.logo || url }); setStatus('Imagen subida e insertada en la demo.'); void loadCloudinary(); } }
+  function insertImage(url: string) { setImages((list) => list.includes(url) ? list : [url, ...list]); setHtml((value) => value.includes('{{heroImage}}') ? value : `${value}\n<section class="sf-extra-image"><img src="${url}" alt="Imagen de ${activeProspect.brand}" /></section>`); setStatus('Imagen seleccionada e insertada en la demo.'); }
 
   async function publish() {
-    setBusy(true);
-    setStatus('Guardando en base de datos y generando link…');
-    const projectJson = {
-      mode: 'html',
-      allowUnsafeHtml: true,
-      htmlCode: html,
-      css,
-      js,
-      images,
-      logo: activeProspect.logo || images[0] || '',
-      brand: activeProspect.brand,
-      shareTitle: `${activeProspect.brand} | Demo digital`,
-      shareDescription: `Vista previa privada para ${activeProspect.brand}. ${activeProspect.followers} seguidores · propuesta digital lista para revisar.`,
-      shareImage: activeProspect.logo || images[0] || '',
-      website: activeProspect.website,
-      instagram: activeProspect.instagram,
-      facebook: activeProspect.facebook,
-      client: activeProspect,
-      prospect: activeProspect,
-      neverExpire,
-      expires_in_hours: hours,
-      modules: [{ type: 'prospect-demo', brand: activeProspect.brand }],
-    };
-    const res = await fetch('/api/admin/page-engine', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ title: `${activeProspect.brand} · Demo`, html: previewHtml, css, js, status: 'publicado', expires_in_hours: hours, project_json: projectJson }),
-    });
-    const json = await res.json().catch(() => ({}));
-    setBusy(false);
-    if (!res.ok) { setStatus(json.error || 'No se pudo publicar.'); return; }
-    await loadDocs();
-    setStatus(`Publicado: ${json.public_url}`);
-    if (json.public_url) await navigator.clipboard?.writeText(json.public_url).catch(() => undefined);
+    setBusy(true); setStatus('Guardando en base de datos y generando link…');
+    const projectJson = { mode: 'html', allowUnsafeHtml: true, htmlCode: html, css, js, images, logo: activeProspect.logo || images[0] || '', brand: activeProspect.brand, shareTitle: `${activeProspect.brand} | Demo digital`, shareDescription: `Vista previa privada para ${activeProspect.brand}. ${activeProspect.followers} seguidores · propuesta digital lista para revisar.`, shareImage: activeProspect.logo || images[0] || '', website: activeProspect.website, instagram: activeProspect.instagram, facebook: activeProspect.facebook, client: activeProspect, prospect: activeProspect, neverExpire, expires_in_hours: hours, modules: [{ type: 'prospect-demo', brand: activeProspect.brand }] };
+    const res = await fetch('/api/admin/page-engine', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ title: `${activeProspect.brand} · Demo`, html: previewHtml, css, js, status: 'publicado', expires_in_hours: hours, project_json: projectJson }) });
+    const json = await res.json().catch(() => ({})); setBusy(false); if (!res.ok) { setStatus(json.error || 'No se pudo publicar.'); return; } await loadDocs(); setStatus(`Publicado: ${json.public_url}`); if (json.public_url) await navigator.clipboard?.writeText(json.public_url).catch(() => undefined);
   }
+  async function removeDoc(token: string) { if (!confirm('¿Eliminar este link de la base de datos?')) return; const res = await fetch(`/api/admin/page-engine?token=${encodeURIComponent(token)}`, { method: 'DELETE' }); const json = await res.json().catch(() => ({})); if (!res.ok) { setStatus(json.error || 'No se pudo eliminar.'); return; } setDocs((list) => list.filter((doc) => doc.token !== token)); setStatus('Link eliminado de la base de datos.'); }
 
-  async function removeDoc(token: string) {
-    if (!confirm('¿Eliminar este link de la base de datos?')) return;
-    const res = await fetch(`/api/admin/page-engine?token=${encodeURIComponent(token)}`, { method: 'DELETE' });
-    const json = await res.json().catch(() => ({}));
-    if (!res.ok) { setStatus(json.error || 'No se pudo eliminar.'); return; }
-    setDocs((list) => list.filter((doc) => doc.token !== token));
-    setStatus('Link eliminado de la base de datos.');
-  }
+  const toolsPanel = <ToolsPanel prospect={activeProspect} images={images} hours={hours} neverExpire={neverExpire} docs={docs} onRefresh={loadDocs} onRemove={removeDoc} />;
 
-  return (
-    <main className="mx-auto grid w-full max-w-[1780px] gap-4 overflow-x-hidden p-2 text-white sm:p-4 xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
-      <aside className="min-w-0 rounded-[2rem] border border-white/10 bg-black/60 p-3 shadow-[0_24px_80px_rgba(0,0,0,.35)] backdrop-blur-xl xl:sticky xl:top-24 xl:h-[calc(100vh-120px)] xl:overflow-hidden">
-        <div className="flex items-center justify-between gap-2">
-          <div><p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">Prospección</p><h2 className="text-xl font-black">Demos guardadas</h2></div>
-          <button onClick={newProspect} className="grid h-10 w-10 place-items-center rounded-2xl bg-yellow-300 text-black"><Plus className="h-5 w-5" /></button>
-        </div>
-        <label className="mt-3 flex h-11 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3"><Search className="h-4 w-4 text-white/40" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar prospecto" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-white/30" /></label>
-        <div className="mt-3 grid max-h-[46vh] gap-2 overflow-y-auto pr-1 xl:max-h-[calc(100vh-320px)]">
-          {filteredProspects.map((p) => <button key={p.id} onClick={() => setActiveId(p.id)} className={`rounded-2xl border p-3 text-left transition ${p.id === activeProspect.id ? 'border-yellow-300/45 bg-yellow-300/10' : 'border-white/10 bg-white/[0.035] hover:border-white/20'}`}><b className="block truncate text-sm text-white">{p.brand}</b><span className="mt-1 block truncate text-xs text-white/45">{p.account} · {p.followers} seguidores</span></button>)}
-        </div>
-        <div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-xs text-white/50"><Database className="mr-1 inline h-3.5 w-3.5" />{dbConnected ? 'BD conectada · page_engine_documents' : 'BD pendiente de confirmar'}</div>
-      </aside>
+  return <main className="mx-auto grid w-full max-w-[1780px] gap-4 overflow-x-hidden p-2 text-white sm:p-4 xl:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[340px_minmax(0,1fr)]">
+    <aside className="min-w-0 rounded-[2rem] border border-white/10 bg-black/60 p-3 shadow-[0_24px_80px_rgba(0,0,0,.35)] backdrop-blur-xl xl:sticky xl:top-24 xl:h-[calc(100vh-120px)] xl:overflow-hidden"><div className="flex items-center justify-between gap-2"><div><p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">Prospección</p><h2 className="text-xl font-black">Demos guardadas</h2></div><button onClick={newProspect} className="grid h-10 w-10 place-items-center rounded-2xl bg-yellow-300 text-black"><Plus className="h-5 w-5" /></button></div><label className="mt-3 flex h-11 items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-3"><Search className="h-4 w-4 text-white/40" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar prospecto" className="min-w-0 flex-1 bg-transparent text-sm outline-none placeholder:text-white/30" /></label><div className="mt-3 grid max-h-[46vh] gap-2 overflow-y-auto pr-1 xl:max-h-[calc(100vh-320px)]">{filteredProspects.map((p) => <button key={p.id} onClick={() => setActiveId(p.id)} className={`rounded-2xl border p-3 text-left transition ${p.id === activeProspect.id ? 'border-yellow-300/45 bg-yellow-300/10' : 'border-white/10 bg-white/[0.035] hover:border-white/20'}`}><b className="block truncate text-sm text-white">{p.brand}</b><span className="mt-1 block truncate text-xs text-white/45">{p.account} · {p.followers} seguidores</span></button>)}</div><div className="mt-3 rounded-2xl border border-white/10 bg-white/[0.035] p-3 text-xs text-white/50"><Database className="mr-1 inline h-3.5 w-3.5" />{dbConnected ? 'BD conectada · page_engine_documents' : 'BD pendiente de confirmar'}</div></aside>
 
-      <section className="min-w-0 overflow-hidden rounded-[2.2rem] border border-white/10 bg-[#080807] shadow-[0_28px_100px_rgba(0,0,0,.38)]">
-        <header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.035] p-4">
-          <div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">Page Engine 21stDev</p><h1 className="truncate text-2xl font-black tracking-tight sm:text-4xl">Generador de páginas demo</h1></div>
-          <div className="flex flex-wrap gap-2">
-            <button onClick={() => setRightOpen((v) => !v)} className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-black text-white">{rightOpen ? <PanelRightClose className="mr-2 inline h-4 w-4" /> : <PanelRightOpen className="mr-2 inline h-4 w-4" />}Opciones</button>
-            <button onClick={publish} disabled={busy} className="rounded-2xl bg-yellow-300 px-5 py-3 text-sm font-black text-black disabled:opacity-60">{busy ? <Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 inline h-4 w-4" />}Publicar demo</button>
-          </div>
-        </header>
-
-        {status && <div className="mx-4 mt-4 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-sm text-yellow-100">{status}</div>}
-
-        <div className={`grid min-w-0 gap-4 p-4 ${rightOpen ? 'xl:grid-cols-[minmax(0,1fr)_360px]' : 'xl:grid-cols-1'}`}>
-          <div className="min-w-0 space-y-4">
-            <nav className="flex gap-2 overflow-x-auto pb-1">
-              {(['prospecto', 'html', 'css', 'js', 'imagenes', 'ajustes'] as Tab[]).map((item) => <button key={item} onClick={() => setTab(item)} className={`shrink-0 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.16em] ${tab === item ? 'border-yellow-300 bg-yellow-300 text-black' : 'border-white/10 bg-white/[0.035] text-white/60'}`}>{item}</button>)}
-            </nav>
-
-            {tab === 'prospecto' && <ProspectPanel prospect={activeProspect} onChange={updateProspect} onSave={saveProspect} />}
-            {tab === 'html' && <Editor label="HTML" value={html} onChange={setHtml} height="420px" />}
-            {tab === 'css' && <Editor label="CSS" value={css} onChange={setCss} height="420px" />}
-            {tab === 'js' && <Editor label="JavaScript" value={js} onChange={setJs} height="420px" />}
-            {tab === 'imagenes' && <ImagePanel assets={cloudAssets} images={images} folder={folder} busy={busy} onFolder={setFolder} onRefresh={() => loadCloudinary()} onInsert={insertImage} onUpload={uploadImage} onRemove={(url) => setImages((list) => list.filter((item) => item !== url))} />}
-            {tab === 'ajustes' && <SettingsPanel hours={hours} neverExpire={neverExpire} onHours={setHours} onNever={setNeverExpire} />}
-
-            <section className="rounded-[1.8rem] border border-white/10 bg-black/40 p-3">
-              <div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2 text-sm font-black"><Eye className="h-4 w-4 text-yellow-300" />Preview responsive</div><div className="flex gap-2">{(['mobile', 'tablet', 'desktop'] as Device[]).map((item) => <button key={item} onClick={() => setDevice(item)} className={`rounded-full px-3 py-1.5 text-xs font-black ${device === item ? 'bg-yellow-300 text-black' : 'bg-white/[0.06] text-white/60'}`}>{item}</button>)}</div></div>
-              <iframe title="Preview demo prospecto" srcDoc={previewHtml} sandbox="allow-scripts allow-forms allow-popups allow-same-origin" className={`${deviceClass(device)} block border border-white/10 bg-white`} />
-            </section>
-          </div>
-
-          {rightOpen && <aside className="min-w-0 space-y-4 xl:sticky xl:top-24 xl:max-h-[calc(100vh-130px)] xl:overflow-y-auto">
-            <QuickStatus prospect={activeProspect} images={images} hours={hours} neverExpire={neverExpire} />
-            <DocsPanel docs={docs} onRefresh={loadDocs} onRemove={removeDoc} />
-          </aside>}
-        </div>
-      </section>
-    </main>
-  );
+    <section className="min-w-0 overflow-hidden rounded-[2.2rem] border border-white/10 bg-[#080807] shadow-[0_28px_100px_rgba(0,0,0,.38)]"><header className="flex flex-wrap items-center justify-between gap-3 border-b border-white/10 bg-white/[0.035] p-4"><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">Page Engine 21stDev</p><h1 className="truncate text-2xl font-black tracking-tight sm:text-4xl">Generador de páginas demo</h1></div><div className="flex flex-wrap gap-2"><label className="inline-flex cursor-pointer items-center rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-black text-white"><FileUp className="mr-2 h-4 w-4" />Importar HTML<input type="file" accept=".html,.htm,.txt,text/html,text/plain" className="hidden" onChange={(event) => { void importHtmlFile(event.currentTarget.files?.[0]); event.currentTarget.value = ''; }} /></label><button onClick={() => setMobileToolsOpen(true)} className="rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-black text-white xl:hidden"><PanelRightOpen className="mr-2 inline h-4 w-4" />Opciones</button><button onClick={() => setRightOpen((v) => !v)} className="hidden rounded-2xl border border-white/10 bg-white/[0.05] px-4 py-3 text-sm font-black text-white xl:inline-flex">{rightOpen ? <PanelRightClose className="mr-2 h-4 w-4" /> : <PanelRightOpen className="mr-2 h-4 w-4" />}Opciones</button><button onClick={publish} disabled={busy} className="rounded-2xl bg-yellow-300 px-5 py-3 text-sm font-black text-black disabled:opacity-60">{busy ? <Loader2 className="mr-2 inline h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 inline h-4 w-4" />}Publicar demo</button></div></header>
+    {status && <div className="mx-4 mt-4 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 p-3 text-sm text-yellow-100">{status}</div>}
+    <div className={`grid min-w-0 gap-4 p-4 ${rightOpen ? 'xl:grid-cols-[minmax(0,1fr)_360px]' : 'xl:grid-cols-1'}`}><div className="min-w-0 space-y-4"><nav className="flex gap-2 overflow-x-auto pb-1">{(['prospecto', 'html', 'css', 'js', 'imagenes', 'ajustes'] as Tab[]).map((item) => <button key={item} onClick={() => setTab(item)} className={`shrink-0 rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.16em] ${tab === item ? 'border-yellow-300 bg-yellow-300 text-black' : 'border-white/10 bg-white/[0.035] text-white/60'}`}>{item}</button>)}</nav>{tab === 'prospecto' && <ProspectPanel prospect={activeProspect} onChange={updateProspect} onSave={saveProspect} />}{tab === 'html' && <Editor label="HTML" value={html} onChange={setHtml} height="420px" />}{tab === 'css' && <Editor label="CSS" value={css} onChange={setCss} height="420px" />}{tab === 'js' && <Editor label="JavaScript" value={js} onChange={setJs} height="420px" />}{tab === 'imagenes' && <ImagePanel assets={cloudAssets} images={images} folder={folder} busy={busy} onFolder={setFolder} onRefresh={() => loadCloudinary()} onAll={() => { setFolder(''); void loadCloudinary(''); }} onInsert={insertImage} onUpload={uploadImage} onRemove={(url) => setImages((list) => list.filter((item) => item !== url))} />}{tab === 'ajustes' && <SettingsPanel hours={hours} neverExpire={neverExpire} onHours={setHours} onNever={setNeverExpire} />}<section className="rounded-[1.8rem] border border-white/10 bg-black/40 p-3"><div className="mb-3 flex flex-wrap items-center justify-between gap-2"><div className="flex items-center gap-2 text-sm font-black"><Eye className="h-4 w-4 text-yellow-300" />Preview responsive</div><div className="flex gap-2">{(['mobile', 'tablet', 'desktop'] as Device[]).map((item) => <button key={item} onClick={() => setDevice(item)} className={`rounded-full px-3 py-1.5 text-xs font-black ${device === item ? 'bg-yellow-300 text-black' : 'bg-white/[0.06] text-white/60'}`}>{item}</button>)}</div></div><iframe title="Preview demo prospecto" srcDoc={previewHtml} sandbox="allow-scripts allow-forms allow-popups allow-same-origin" className={`${deviceClass(device)} block border border-white/10 bg-white`} /></section></div>{rightOpen && <aside className="hidden min-w-0 space-y-4 xl:sticky xl:top-24 xl:block xl:max-h-[calc(100vh-130px)] xl:overflow-y-auto">{toolsPanel}</aside>}</div></section>
+    {mobileToolsOpen && <div className="fixed inset-0 z-[90] xl:hidden"><button className="absolute inset-0 bg-black/75 backdrop-blur-sm" onClick={() => setMobileToolsOpen(false)} aria-label="Cerrar opciones" /><aside className="absolute bottom-0 left-0 right-0 max-h-[82vh] overflow-y-auto rounded-t-[2rem] border border-white/10 bg-[#080807] p-4 shadow-[0_-24px_80px_rgba(0,0,0,.45)]"><div className="mb-3 flex items-center justify-between"><b className="text-lg text-white">Opciones de la demo</b><button onClick={() => setMobileToolsOpen(false)} className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/[0.05]"><X className="h-5 w-5" /></button></div><ToolsPanel prospect={activeProspect} images={images} hours={hours} neverExpire={neverExpire} docs={docs} onRefresh={loadDocs} onRemove={removeDoc} onClose={() => setMobileToolsOpen(false)} /></aside></div>}
+  </main>;
 }
 
-function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) {
-  return <label className="block rounded-2xl border border-white/10 bg-white/[0.035] p-3"><span className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-300">{label}</span><input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="mt-2 w-full bg-transparent text-base text-white outline-none placeholder:text-white/25" /></label>;
-}
-function ProspectPanel({ prospect, onChange, onSave }: { prospect: Prospect; onChange: (patch: Partial<Prospect>) => void; onSave: () => void }) {
-  return <section className="grid gap-3 rounded-[1.8rem] border border-white/10 bg-black/40 p-4 md:grid-cols-2"><Field label="Marca" value={prospect.brand} onChange={(brand) => onChange({ brand })} /><Field label="Cliente" value={prospect.client} onChange={(client) => onChange({ client })} /><Field label="Cuenta" value={prospect.account} onChange={(account) => onChange({ account })} /><Field label="Seguidores" value={prospect.followers} onChange={(followers) => onChange({ followers })} /><Field label="Instagram" value={prospect.instagram} onChange={(instagram) => onChange({ instagram })} /><Field label="Facebook" value={prospect.facebook} onChange={(facebook) => onChange({ facebook })} /><Field label="WhatsApp" value={prospect.whatsapp} onChange={(whatsapp) => onChange({ whatsapp })} /><Field label="Web visible" value={prospect.website} onChange={(website) => onChange({ website })} /><Field label="Logo / imagen marca" value={prospect.logo} onChange={(logo) => onChange({ logo })} /><Field label="Ubicación" value={prospect.location} onChange={(location) => onChange({ location })} /><label className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.035] p-3"><span className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-300">Notas / dolor del prospecto</span><textarea value={prospect.notes} onChange={(event) => onChange({ notes: event.target.value })} className="mt-2 min-h-28 w-full resize-y bg-transparent text-base text-white outline-none placeholder:text-white/25" /></label><button onClick={onSave} className="md:col-span-2 rounded-2xl bg-yellow-300 px-5 py-3 font-black text-black"><Save className="mr-2 inline h-4 w-4" />Guardar prospecto</button></section>;
-}
-function Editor({ label, value, onChange, height }: { label: string; value: string; onChange: (value: string) => void; height: string }) {
-  return <section className="rounded-[1.8rem] border border-white/10 bg-black/40 p-4"><div className="mb-3 flex items-center justify-between"><b className="flex items-center gap-2 text-white"><Code2 className="h-4 w-4 text-yellow-300" />{label}</b><button onClick={() => navigator.clipboard.writeText(value)} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-white/60"><Copy className="mr-1 inline h-3.5 w-3.5" />Copiar</button></div><textarea value={value} onChange={(event) => onChange(event.target.value)} spellCheck={false} style={{ minHeight: height }} className="w-full resize-y rounded-2xl border border-white/10 bg-[#050505] p-4 font-mono text-sm leading-6 text-yellow-50 outline-none focus:border-yellow-300/45" /></section>;
-}
-function ImagePanel({ assets, images, folder, busy, onFolder, onRefresh, onInsert, onUpload, onRemove }: { assets: CloudAsset[]; images: string[]; folder: string; busy: boolean; onFolder: (v: string) => void; onRefresh: () => void; onInsert: (url: string) => void; onUpload: (file: File) => void; onRemove: (url: string) => void }) {
-  return <section className="rounded-[1.8rem] border border-white/10 bg-black/40 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><b className="text-white">Imágenes Cloudinary</b><p className="text-xs text-white/45">Selecciona una imagen guardada o sube una nueva.</p></div><button onClick={onRefresh} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-white/70"><RefreshCcw className="mr-1 inline h-3.5 w-3.5" />Actualizar</button></div><div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]"><input value={folder} onChange={(event) => onFolder(event.target.value)} className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm outline-none" placeholder="carpeta Cloudinary" /><label className="inline-flex cursor-pointer items-center justify-center rounded-2xl bg-yellow-300 px-4 py-3 text-sm font-black text-black"><UploadCloud className="mr-2 h-4 w-4" />Subir<input type="file" accept="image/*" className="hidden" disabled={busy} onChange={(event) => { const file = event.target.files?.[0]; if (file) void onUpload(file); event.currentTarget.value = ''; }} /></label></div>{images.length > 0 && <div className="mt-4"><p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-yellow-300">Imágenes montadas</p><div className="flex gap-2 overflow-x-auto pb-2">{images.map((url) => <button key={url} onClick={() => onRemove(url)} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-yellow-300/25"><img src={url} alt="Seleccionada" className="h-full w-full object-cover" /><span className="absolute inset-x-0 bottom-0 bg-black/70 py-1 text-[10px] text-white">Quitar</span></button>)}</div></div>}<div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">{assets.map((asset) => <button key={asset.public_id} onClick={() => onInsert(asset.url)} className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] text-left transition hover:border-yellow-300/35"><img src={asset.url} alt={asset.public_id} className="h-28 w-full object-cover" /><div className="p-2"><span className="block truncate text-xs font-bold text-white/70">{asset.public_id}</span><span className="text-[10px] text-white/35">{asset.width}×{asset.height}</span></div></button>)}</div></section>;
-}
-function SettingsPanel({ hours, neverExpire, onHours, onNever }: { hours: number; neverExpire: boolean; onHours: (v: number) => void; onNever: (v: boolean) => void }) {
-  return <section className="rounded-[1.8rem] border border-white/10 bg-black/40 p-4"><b className="flex items-center gap-2 text-white"><Settings2 className="h-4 w-4 text-yellow-300" />Desactivación y acceso</b><label className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.035] p-4"><span><b className="block text-white">No desactivar</b><span className="text-sm text-white/45">Mantener demo disponible hasta eliminarla manualmente.</span></span><input type="checkbox" checked={neverExpire} onChange={(e) => onNever(e.target.checked)} /></label><label className="mt-4 block rounded-2xl border border-white/10 bg-white/[0.035] p-4"><span className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-300">Horas de acceso</span><input type="number" min={1} max={8760} disabled={neverExpire} value={hours} onChange={(e) => onHours(Math.max(1, Number(e.target.value || 1)))} className="mt-2 w-full bg-transparent text-3xl font-black text-white outline-none disabled:opacity-35" /><span className="mt-1 block text-sm text-white/45">Actual: {expiryLabel(hours, neverExpire)}</span></label><div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">{[24, 72, 168, 720].map((h) => <button key={h} onClick={() => { onNever(false); onHours(h); }} className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm font-black text-white/70 hover:border-yellow-300/35">{expiryLabel(h, false)}</button>)}</div></section>;
-}
-function QuickStatus({ prospect, images, hours, neverExpire }: { prospect: Prospect; images: string[]; hours: number; neverExpire: boolean }) {
-  return <section className="rounded-[1.8rem] border border-white/10 bg-black/50 p-4"><p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">Resumen demo</p><h3 className="mt-2 text-2xl font-black">{prospect.brand}</h3><div className="mt-4 grid gap-2 text-sm text-white/60"><p><Users className="mr-2 inline h-4 w-4 text-yellow-300" />{prospect.client || 'Sin cliente'} · {prospect.followers} seguidores</p><p><ImagePlus className="mr-2 inline h-4 w-4 text-yellow-300" />{images.length} imágenes montadas</p><p><Clock3 className="mr-2 inline h-4 w-4 text-yellow-300" />{expiryLabel(hours, neverExpire)}</p><p><Link2 className="mr-2 inline h-4 w-4 text-yellow-300" />{normalizeHost(prospect.website) || 'URL demo por definir'}</p></div></section>;
-}
-function DocsPanel({ docs, onRefresh, onRemove }: { docs: SavedDoc[]; onRefresh: () => void; onRemove: (token: string) => void }) {
-  return <section className="rounded-[1.8rem] border border-white/10 bg-black/50 p-4"><div className="flex items-center justify-between"><b className="text-white"><FileText className="mr-2 inline h-4 w-4 text-yellow-300" />Links publicados</b><button onClick={onRefresh} className="rounded-xl border border-white/10 p-2 text-white/60"><RefreshCcw className="h-4 w-4" /></button></div><div className="mt-3 grid max-h-[420px] gap-2 overflow-y-auto pr-1">{docs.length ? docs.map((doc) => { const url = `${location.origin}/w/${doc.token}`; return <article key={doc.token} className="rounded-2xl border border-white/10 bg-white/[0.035] p-3"><b className="block truncate text-sm text-white">{doc.title}</b><span className="mt-1 block truncate text-xs text-white/35">/{doc.token} · {doc.status}</span><div className="mt-3 flex gap-2"><button onClick={() => navigator.clipboard.writeText(url)} className="rounded-xl bg-white/[0.06] p-2 text-white/70"><Copy className="h-4 w-4" /></button><a href={url} target="_blank" rel="noreferrer" className="rounded-xl bg-white/[0.06] p-2 text-white/70"><ExternalLink className="h-4 w-4" /></a><button onClick={() => onRemove(doc.token)} className="rounded-xl bg-red-500/10 p-2 text-red-300"><Trash2 className="h-4 w-4" /></button></div></article>; }) : <p className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-sm text-white/45">Aún no hay links publicados.</p>}</div></section>;
-}
+function Field({ label, value, onChange, placeholder }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string }) { return <label className="block rounded-2xl border border-white/10 bg-white/[0.035] p-3"><span className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-300">{label}</span><input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className="mt-2 w-full bg-transparent text-base text-white outline-none placeholder:text-white/25" /></label>; }
+function ProspectPanel({ prospect, onChange, onSave }: { prospect: Prospect; onChange: (patch: Partial<Prospect>) => void; onSave: () => void }) { return <section className="grid gap-3 rounded-[1.8rem] border border-white/10 bg-black/40 p-4 md:grid-cols-2"><Field label="Marca" value={prospect.brand} onChange={(brand) => onChange({ brand })} /><Field label="Cliente" value={prospect.client} onChange={(client) => onChange({ client })} /><Field label="Cuenta" value={prospect.account} onChange={(account) => onChange({ account })} /><Field label="Seguidores" value={prospect.followers} onChange={(followers) => onChange({ followers })} /><Field label="Instagram" value={prospect.instagram} onChange={(instagram) => onChange({ instagram })} /><Field label="Facebook" value={prospect.facebook} onChange={(facebook) => onChange({ facebook })} /><Field label="WhatsApp" value={prospect.whatsapp} onChange={(whatsapp) => onChange({ whatsapp })} /><Field label="Web visible" value={prospect.website} onChange={(website) => onChange({ website })} /><Field label="Logo / imagen marca" value={prospect.logo} onChange={(logo) => onChange({ logo })} /><Field label="Ubicación" value={prospect.location} onChange={(location) => onChange({ location })} /><label className="md:col-span-2 rounded-2xl border border-white/10 bg-white/[0.035] p-3"><span className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-300">Notas / dolor del prospecto</span><textarea value={prospect.notes} onChange={(event) => onChange({ notes: event.target.value })} className="mt-2 min-h-28 w-full resize-y bg-transparent text-base text-white outline-none placeholder:text-white/25" /></label><button onClick={onSave} className="md:col-span-2 rounded-2xl bg-yellow-300 px-5 py-3 font-black text-black"><Save className="mr-2 inline h-4 w-4" />Guardar prospecto</button></section>; }
+function Editor({ label, value, onChange, height }: { label: string; value: string; onChange: (value: string) => void; height: string }) { return <section className="rounded-[1.8rem] border border-white/10 bg-black/40 p-4"><div className="mb-3 flex items-center justify-between"><b className="flex items-center gap-2 text-white"><Code2 className="h-4 w-4 text-yellow-300" />{label}</b><button onClick={() => navigator.clipboard.writeText(value)} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-white/60"><Copy className="mr-1 inline h-3.5 w-3.5" />Copiar</button></div><textarea value={value} onChange={(event) => onChange(event.target.value)} spellCheck={false} style={{ minHeight: height }} className="w-full resize-y rounded-2xl border border-white/10 bg-[#050505] p-4 font-mono text-sm leading-6 text-yellow-50 outline-none focus:border-yellow-300/45" /></section>; }
+function ImagePanel({ assets, images, folder, busy, onFolder, onRefresh, onAll, onInsert, onUpload, onRemove }: { assets: CloudAsset[]; images: string[]; folder: string; busy: boolean; onFolder: (v: string) => void; onRefresh: () => void; onAll: () => void; onInsert: (url: string) => void; onUpload: (file: File) => void; onRemove: (url: string) => void }) { return <section className="rounded-[1.8rem] border border-white/10 bg-black/40 p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><b className="text-white">Imágenes Cloudinary</b><p className="text-xs text-white/45">Selecciona una imagen guardada o sube una nueva.</p></div><div className="flex gap-2"><button onClick={onAll} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-white/70">Ver todo</button><button onClick={onRefresh} className="rounded-xl border border-white/10 px-3 py-2 text-xs font-black text-white/70"><RefreshCcw className="mr-1 inline h-3.5 w-3.5" />Actualizar</button></div></div><div className="mt-3 grid gap-3 md:grid-cols-[1fr_auto]"><input value={folder} onChange={(event) => onFolder(event.target.value)} className="rounded-2xl border border-white/10 bg-white/[0.035] px-4 py-3 text-sm outline-none" placeholder="carpeta Cloudinary o vacío para todas" /><label className="inline-flex cursor-pointer items-center justify-center rounded-2xl bg-yellow-300 px-4 py-3 text-sm font-black text-black"><UploadCloud className="mr-2 h-4 w-4" />Subir<input type="file" accept="image/*" className="hidden" disabled={busy} onChange={(event) => { const file = event.target.files?.[0]; if (file) void onUpload(file); event.currentTarget.value = ''; }} /></label></div>{images.length > 0 && <div className="mt-4"><p className="mb-2 text-xs font-black uppercase tracking-[0.18em] text-yellow-300">Imágenes montadas</p><div className="flex gap-2 overflow-x-auto pb-2">{images.map((url) => <button key={url} onClick={() => onRemove(url)} className="relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-yellow-300/25"><img src={url} alt="Seleccionada" className="h-full w-full object-cover" /><span className="absolute inset-x-0 bottom-0 bg-black/70 py-1 text-[10px] text-white">Quitar</span></button>)}</div></div>}<div className="mt-4 grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-4">{assets.map((asset) => <button key={asset.public_id} onClick={() => onInsert(asset.url)} className="group overflow-hidden rounded-2xl border border-white/10 bg-white/[0.035] text-left transition hover:border-yellow-300/35"><img src={asset.url} alt={asset.public_id} className="h-28 w-full object-cover" /><div className="p-2"><span className="block truncate text-xs font-bold text-white/70">{asset.public_id}</span><span className="text-[10px] text-white/35">{asset.width}×{asset.height}</span></div></button>)}</div></section>; }
+function SettingsPanel({ hours, neverExpire, onHours, onNever }: { hours: number; neverExpire: boolean; onHours: (v: number) => void; onNever: (v: boolean) => void }) { return <section className="rounded-[1.8rem] border border-white/10 bg-black/40 p-4"><b className="flex items-center gap-2 text-white"><Settings2 className="h-4 w-4 text-yellow-300" />Desactivación y acceso</b><label className="mt-4 flex items-center justify-between rounded-2xl border border-white/10 bg-white/[0.035] p-4"><span><b className="block text-white">No desactivar</b><span className="text-sm text-white/45">Mantener demo disponible hasta eliminarla manualmente.</span></span><input type="checkbox" checked={neverExpire} onChange={(e) => onNever(e.target.checked)} /></label><label className="mt-4 block rounded-2xl border border-white/10 bg-white/[0.035] p-4"><span className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-300">Horas de acceso</span><input type="number" min={1} max={8760} disabled={neverExpire} value={hours} onChange={(e) => onHours(Math.max(1, Number(e.target.value || 1)))} className="mt-2 w-full bg-transparent text-3xl font-black text-white outline-none disabled:opacity-35" /><span className="mt-1 block text-sm text-white/45">Actual: {expiryLabel(hours, neverExpire)}</span></label><div className="mt-4 grid grid-cols-2 gap-2 md:grid-cols-4">{[24, 72, 168, 720].map((h) => <button key={h} onClick={() => { onNever(false); onHours(h); }} className="rounded-2xl border border-white/10 bg-white/[0.04] px-3 py-3 text-sm font-black text-white/70 hover:border-yellow-300/35">{expiryLabel(h, false)}</button>)}</div></section>; }
+function QuickStatus({ prospect, images, hours, neverExpire }: { prospect: Prospect; images: string[]; hours: number; neverExpire: boolean }) { return <section className="rounded-[1.8rem] border border-white/10 bg-black/50 p-4"><p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">Resumen demo</p><h3 className="mt-2 text-2xl font-black">{prospect.brand}</h3><div className="mt-4 grid gap-2 text-sm text-white/60"><p><Users className="mr-2 inline h-4 w-4 text-yellow-300" />{prospect.client || 'Sin cliente'} · {prospect.followers} seguidores</p><p><ImagePlus className="mr-2 inline h-4 w-4 text-yellow-300" />{images.length} imágenes montadas</p><p><Clock3 className="mr-2 inline h-4 w-4 text-yellow-300" />{expiryLabel(hours, neverExpire)}</p><p><Link2 className="mr-2 inline h-4 w-4 text-yellow-300" />{normalizeHost(prospect.website) || 'URL demo por definir'}</p></div></section>; }
+function DocsPanel({ docs, onRefresh, onRemove }: { docs: SavedDoc[]; onRefresh: () => void; onRemove: (token: string) => void }) { return <section className="rounded-[1.8rem] border border-white/10 bg-black/50 p-4"><div className="flex items-center justify-between"><b className="text-white"><FileText className="mr-2 inline h-4 w-4 text-yellow-300" />Links publicados</b><button onClick={onRefresh} className="rounded-xl border border-white/10 p-2 text-white/60"><RefreshCcw className="h-4 w-4" /></button></div><div className="mt-3 grid max-h-[420px] gap-2 overflow-y-auto pr-1">{docs.length ? docs.map((doc) => { const url = `${location.origin}/w/${doc.token}`; return <article key={doc.token} className="rounded-2xl border border-white/10 bg-white/[0.035] p-3"><b className="block truncate text-sm text-white">{doc.title}</b><span className="mt-1 block truncate text-xs text-white/35">/{doc.token} · {doc.status}</span><div className="mt-3 flex gap-2"><button onClick={() => navigator.clipboard.writeText(url)} className="rounded-xl bg-white/[0.06] p-2 text-white/70"><Copy className="h-4 w-4" /></button><a href={url} target="_blank" rel="noreferrer" className="rounded-xl bg-white/[0.06] p-2 text-white/70"><ExternalLink className="h-4 w-4" /></a><button onClick={() => onRemove(doc.token)} className="rounded-xl bg-red-500/10 p-2 text-red-300"><Trash2 className="h-4 w-4" /></button></div></article>; }) : <p className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-sm text-white/45">Aún no hay links publicados.</p>}</div></section>; }
+function ToolsPanel({ prospect, images, hours, neverExpire, docs, onRefresh, onRemove }: ToolsPanelProps) { return <div className="space-y-4"><QuickStatus prospect={prospect} images={images} hours={hours} neverExpire={neverExpire} /><DocsPanel docs={docs} onRefresh={onRefresh} onRemove={onRemove} /></div>; }

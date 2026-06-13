@@ -39,15 +39,13 @@ Prospecto → Análisis IA → Demo HTML → Link público → Mensaje comercial
 |---|---|---:|---|
 | 01 | Prospectos BD + Importador ChatGPT | Implementado base | Guardar prospectos reales en base de datos e importar JSON desde ChatGPT |
 | 02 | Integraciones IA | Implementado base | Guardar/testear claves de OpenAI, Gemini, OpenRouter, Groq, SerpAPI y Apify |
-| 03 | Generador IA de landing | Pendiente | Crear HTML/CSS/JS desde datos del prospecto |
+| 03 | Generador IA de landing | Implementado base | Crear HTML/CSS/JS desde datos del prospecto y guardar link público opcional |
 | 04 | Editor IA por selección | Pendiente | Mejorar solo una sección, párrafo o bloque del HTML |
 | 05 | Plantillas por nicho | Pendiente | Templates reutilizables para dental, hotel, restaurante, construcción, etc. |
 | 06 | Búsqueda externa de prospectos | Pendiente | Google Places, SerpAPI, Apify, Meta/Instagram cuando corresponda |
 | 07 | CRM y seguimiento comercial | Pendiente | Estados, notas, recordatorios, mensajes enviados y cierres |
 
 ## Módulo 01 implementado
-
-Carpetas/archivos principales:
 
 ```txt
 src/modules/prospecting-engine/types/prospect.types.ts
@@ -62,8 +60,6 @@ src/modules/prospecting-engine/docs/MODULE_01_PROSPECTS.md
 
 ## Módulo 02 implementado
 
-Carpetas/archivos principales:
-
 ```txt
 src/modules/prospecting-engine/types/ai.types.ts
 src/modules/prospecting-engine/config/providers.ts
@@ -76,11 +72,26 @@ src/app/api/admin/prospecting/integrations/test/route.ts
 src/modules/prospecting-engine/docs/MODULE_02_AI_INTEGRATIONS.md
 ```
 
+## Módulo 03 implementado
+
+```txt
+src/modules/prospecting-engine/types/page.types.ts
+src/modules/prospecting-engine/config/niches.ts
+src/modules/prospecting-engine/prompts/generate-landing.prompt.ts
+src/modules/prospecting-engine/utils/generated-page-parser.ts
+src/modules/prospecting-engine/services/ai-provider.server.ts
+src/modules/prospecting-engine/services/page-document.server.ts
+src/modules/prospecting-engine/services/ai-generation.server.ts
+src/app/api/admin/prospecting/generate-page/route.ts
+src/modules/prospecting-engine/docs/MODULE_03_AI_LANDING_GENERATOR.md
+```
+
 ## Tablas agregadas/preparadas
 
 ```txt
 prospects
 integrations
+page_engine_documents
 ```
 
 Se crean automáticamente desde backend con raw SQL cuando se llama a las APIs del módulo.
@@ -97,6 +108,7 @@ GET    /api/admin/prospecting/integrations
 POST   /api/admin/prospecting/integrations
 DELETE /api/admin/prospecting/integrations?provider=...
 POST   /api/admin/prospecting/integrations/test
+POST   /api/admin/prospecting/generate-page
 ```
 
 ## Formato recomendado para importar desde ChatGPT
@@ -128,4 +140,5 @@ POST   /api/admin/prospecting/integrations/test
 
 1. Conectar la UI actual del Page Engine al servicio `prospect.service.ts` para que la lista de prospectos deje de depender de `localStorage` y use la tabla real `prospects`.
 2. Crear un panel visual `IntegrationsPanel` que consuma `ai-integration.service.ts` para guardar/testear claves desde la interfaz.
-3. Después implementar el Módulo 03: Generador IA de landing usando las integraciones guardadas.
+3. Crear un panel visual `AiGeneratorPanel` que llame a `/api/admin/prospecting/generate-page` y pueble el editor HTML/CSS/JS.
+4. Después implementar el Módulo 04: Editor IA por selección.

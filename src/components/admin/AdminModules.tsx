@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { motion, type Variants } from 'framer-motion';
-import { navSections } from '@/components/admin-studio/StudioSidebar';
+import { navSections } from '@/components/admin/AdminShell';
 
 const containerVariants: Variants = {
   hidden: { opacity: 0 },
@@ -16,14 +16,16 @@ const itemVariants: Variants = {
 
 /** Maps section title → accent colors for card gradients & icon tints */
 const SECTION_ACCENTS: Record<string, { gradient: string; iconBg: string; iconColor: string; badge: string; dot: string }> = {
-  'Negocio':                  { gradient: 'from-sky-500/12 via-sky-600/5 to-transparent',    iconBg: 'bg-sky-500/15',     iconColor: 'text-sky-300',     badge: 'bg-sky-500/20 text-sky-300 border-sky-500/30',    dot: 'bg-sky-400' },
-  'Visión general':           { gradient: 'from-zinc-500/10 via-zinc-600/5 to-transparent',  iconBg: 'bg-zinc-700/60',    iconColor: 'text-zinc-200',    badge: 'bg-zinc-700/50 text-zinc-300 border-zinc-600/40', dot: 'bg-zinc-400' },
-  'Ventas y E-Commerce':      { gradient: 'from-emerald-500/12 via-emerald-600/5 to-transparent', iconBg: 'bg-emerald-500/15', iconColor: 'text-emerald-300', badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', dot: 'bg-emerald-400' },
-  'Contenido y Sitio Web':    { gradient: 'from-violet-500/12 via-violet-600/5 to-transparent', iconBg: 'bg-violet-500/15',  iconColor: 'text-violet-300',  badge: 'bg-violet-500/20 text-violet-300 border-violet-500/30',  dot: 'bg-violet-400' },
-  'Inteligencia Artificial':  { gradient: 'from-fuchsia-500/12 via-purple-600/5 to-transparent', iconBg: 'bg-fuchsia-500/15', iconColor: 'text-fuchsia-300', badge: 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30', dot: 'bg-fuchsia-400' },
-  'Marketing y Omnicanalidad':{ gradient: 'from-indigo-500/12 via-indigo-600/5 to-transparent', iconBg: 'bg-indigo-500/15',  iconColor: 'text-indigo-300',  badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',  dot: 'bg-indigo-400' },
-  'Sistema y Avanzado':       { gradient: 'from-rose-500/12 via-rose-600/5 to-transparent',  iconBg: 'bg-rose-500/15',    iconColor: 'text-rose-300',    badge: 'bg-rose-500/20 text-rose-300 border-rose-500/30',    dot: 'bg-rose-400' },
-  'Seguridad & Claves':       { gradient: 'from-amber-500/12 via-amber-600/5 to-transparent', iconBg: 'bg-amber-500/15',   iconColor: 'text-amber-300',   badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30',   dot: 'bg-amber-400' },
+  'Perfil & acceso':           { gradient: 'from-amber-500/12 via-amber-600/5 to-transparent', iconBg: 'bg-amber-500/15',   iconColor: 'text-amber-300',   badge: 'bg-amber-500/20 text-amber-300 border-amber-500/30',   dot: 'bg-amber-400' },
+  'Negocio':                   { gradient: 'from-sky-500/12 via-sky-600/5 to-transparent',    iconBg: 'bg-sky-500/15',     iconColor: 'text-sky-300',     badge: 'bg-sky-500/20 text-sky-300 border-sky-500/30',    dot: 'bg-sky-400' },
+  'Finanzas & SII':            { gradient: 'from-emerald-500/12 via-emerald-600/5 to-transparent', iconBg: 'bg-emerald-500/15', iconColor: 'text-emerald-300', badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', dot: 'bg-emerald-400' },
+  'Visión general':            { gradient: 'from-zinc-500/10 via-zinc-600/5 to-transparent',  iconBg: 'bg-zinc-700/60',    iconColor: 'text-zinc-200',    badge: 'bg-zinc-700/50 text-zinc-300 border-zinc-600/40', dot: 'bg-zinc-400' },
+  'Motores de venta':          { gradient: 'from-yellow-500/12 via-yellow-600/5 to-transparent', iconBg: 'bg-yellow-500/15', iconColor: 'text-yellow-300', badge: 'bg-yellow-500/20 text-yellow-300 border-yellow-500/30', dot: 'bg-yellow-400' },
+  'Operación':                 { gradient: 'from-emerald-500/12 via-emerald-600/5 to-transparent', iconBg: 'bg-emerald-500/15', iconColor: 'text-emerald-300', badge: 'bg-emerald-500/20 text-emerald-300 border-emerald-500/30', dot: 'bg-emerald-400' },
+  'Contenido':                 { gradient: 'from-violet-500/12 via-violet-600/5 to-transparent', iconBg: 'bg-violet-500/15',  iconColor: 'text-violet-300',  badge: 'bg-violet-500/20 text-violet-300 border-violet-500/30',  dot: 'bg-violet-400' },
+  'Marketing & IA':            { gradient: 'from-fuchsia-500/12 via-purple-600/5 to-transparent', iconBg: 'bg-fuchsia-500/15', iconColor: 'text-fuchsia-300', badge: 'bg-fuchsia-500/20 text-fuchsia-300 border-fuchsia-500/30', dot: 'bg-fuchsia-400' },
+  'MercadoLibre':              { gradient: 'from-indigo-500/12 via-indigo-600/5 to-transparent', iconBg: 'bg-indigo-500/15',  iconColor: 'text-indigo-300',  badge: 'bg-indigo-500/20 text-indigo-300 border-indigo-500/30',  dot: 'bg-indigo-400' },
+  'Sistema':                   { gradient: 'from-rose-500/12 via-rose-600/5 to-transparent',  iconBg: 'bg-rose-500/15',    iconColor: 'text-rose-300',    badge: 'bg-rose-500/20 text-rose-300 border-rose-500/30',    dot: 'bg-rose-400' },
 };
 
 const DEFAULT_ACCENT = {

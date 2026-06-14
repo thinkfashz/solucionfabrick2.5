@@ -2,167 +2,57 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { Activity, AlertTriangle, ArrowRight, Bell, Briefcase, CheckCircle2, Clock, FileText, Folder, Gauge, Loader2, Package, ShieldCheck, Users, Wallet, Zap } from 'lucide-react';
+import { Activity, AlertTriangle, ArrowRight, Bell, Briefcase, CheckCircle2, Clock, Database, FileText, Folder, Gauge, Loader2, Package, ShieldCheck, Users, Wallet, Zap, type LucideIcon } from 'lucide-react';
 
-type AdminSessionRow = {
-  session_id: string;
-  email: string | null;
-  role: string | null;
-  ip: string | null;
-  device: string | null;
-  location_hint: string | null;
-  login_at: string;
-  last_seen_at: string | null;
-  logout_at: string | null;
-  duration_seconds: number | null;
-  status: string | null;
-};
-
-type DashboardPayload = {
-  ok: boolean;
-  profile: { email: string; name: string; avatar_url: string | null; bio: string; role: string; session_id: string | null };
-  stats: { products: number; orders: number; budgets: number; invoices: number; leads: number; revenue: number };
-  sessions: AdminSessionRow[];
-  health: { app: string; db: string; latency_ms: number; realtime: string; last_deploy: string };
-  console: string[];
-};
+type AdminSessionRow = { session_id: string; email: string | null; role: string | null; ip: string | null; device: string | null; location_hint: string | null; login_at: string; last_seen_at: string | null; logout_at: string | null; duration_seconds: number | null; status: string | null };
+type DashboardPayload = { ok: boolean; profile: { email: string; name: string; avatar_url: string | null; bio: string; role: string; session_id: string | null }; stats: { products: number; orders: number; budgets: number; invoices: number; leads: number; revenue: number }; sessions: AdminSessionRow[]; health: { app: string; db: string; latency_ms: number; realtime: string; last_deploy: string }; console: string[] };
 
 function clp(value: number) { return '$' + Math.round(Number(value || 0)).toLocaleString('es-CL'); }
 function initials(name: string) { return name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || 'SF'; }
 
-type IconType = typeof Package;
+type IconType = LucideIcon;
 
-function Metric({ title, value, hint, icon: Icon }: { title: string; value: string | number; hint: string; icon: IconType }) {
-  return <article className="rounded-[1.8rem] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_70px_rgba(0,0,0,.28)] backdrop-blur-xl">
+function AnimatedNumber({ value, format }: { value: number; format?: (value: number) => string }) {
+  const [current, setCurrent] = useState(0);
+  useEffect(() => { const target = Number(value || 0); const start = performance.now(); const duration = 650; let frame = 0; const tick = (now: number) => { const p = Math.min(1, (now - start) / duration); const eased = 1 - Math.pow(1 - p, 3); setCurrent(Math.round(target * eased)); if (p < 1) frame = requestAnimationFrame(tick); }; frame = requestAnimationFrame(tick); return () => cancelAnimationFrame(frame); }, [value]);
+  return <>{format ? format(current) : current.toLocaleString('es-CL')}</>;
+}
+
+function Metric({ title, value, hint, icon: Icon, money = false }: { title: string; value: number; hint: string; icon: IconType; money?: boolean }) {
+  return <article className="group rounded-[1.8rem] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_70px_rgba(0,0,0,.28)] backdrop-blur-xl transition duration-300 hover:-translate-y-1 hover:border-yellow-300/30 hover:bg-white/[0.07]">
     <div className="grid h-12 w-12 place-items-center rounded-full border border-yellow-300/20 bg-yellow-300/10 text-yellow-300"><Icon className="h-5 w-5" /></div>
     <p className="mt-5 text-sm text-zinc-400">{title}</p>
-    <b className="mt-2 block text-3xl font-black tracking-tight text-white">{value}</b>
+    <b className="mt-2 block text-3xl font-black tracking-tight text-white"><AnimatedNumber value={value} format={money ? clp : undefined} /></b>
     <span className="mt-1 block text-xs text-emerald-300">{hint}</span>
-    <svg viewBox="0 0 120 28" className="mt-4 h-7 w-full text-yellow-300/80" fill="none"><path d="M2 22 C18 20 18 13 32 16 C48 19 48 9 64 12 C82 15 82 5 98 9 C110 12 112 17 118 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" /></svg>
+    <svg viewBox="0 0 120 28" className="mt-4 h-7 w-full text-yellow-300/80" fill="none"><path className="[stroke-dasharray:160] [stroke-dashoffset:160] animate-[dash_1.2s_ease-out_forwards]" d="M2 22 C18 20 18 13 32 16 C48 19 48 9 64 12 C82 15 82 5 98 9 C110 12 112 17 118 11" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" /></svg>
   </article>;
 }
 
 function QuickAction({ href, title, text, icon: Icon }: { href: string; title: string; text: string; icon: IconType }) {
-  return <Link href={href} className="group rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-4 shadow-[0_18px_50px_rgba(0,0,0,.22)] backdrop-blur-xl transition hover:-translate-y-1 hover:border-yellow-300/30 hover:bg-white/[0.07]">
-    <div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-yellow-300/20 bg-yellow-300/10 text-yellow-300"><Icon className="h-5 w-5" /></span><span className="min-w-0 flex-1"><b className="block text-white">{title}</b><span className="mt-1 block text-xs leading-5 text-zinc-400">{text}</span></span><ArrowRight className="mt-3 h-4 w-4 text-yellow-300/35 transition group-hover:translate-x-1 group-hover:text-yellow-300" /></div>
-  </Link>;
+  return <Link href={href} className="group rounded-[1.6rem] border border-white/10 bg-white/[0.04] p-4 shadow-[0_18px_50px_rgba(0,0,0,.22)] backdrop-blur-xl transition hover:-translate-y-1 hover:border-yellow-300/30 hover:bg-white/[0.07]"><div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-yellow-300/20 bg-yellow-300/10 text-yellow-300"><Icon className="h-5 w-5" /></span><span className="min-w-0 flex-1"><b className="block text-white">{title}</b><span className="mt-1 block text-xs leading-5 text-zinc-400">{text}</span></span><ArrowRight className="mt-3 h-4 w-4 text-yellow-300/35 transition group-hover:translate-x-1 group-hover:text-yellow-300" /></div></Link>;
+}
+
+function Status({ label, value, icon: Icon, live = false }: { label: string; value: string; icon: IconType; live?: boolean }) {
+  return <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/25 p-4"><span className="flex items-center gap-2 text-sm font-bold text-zinc-300"><Icon className="h-4 w-4 text-yellow-300" />{label}</span><span className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${live ? 'animate-pulse bg-emerald-400 shadow-[0_0_14px_rgba(52,211,153,.7)]' : 'bg-zinc-500'}`} /><b className="text-sm text-white">{value}</b></span></div>;
 }
 
 function ActivityItem({ icon: Icon, time, title, detail }: { icon: IconType; time: string; title: string; detail: string }) {
-  return <div className="relative flex gap-4 pb-5 last:pb-0">
-    <span className="relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.07] text-yellow-300"><Icon className="h-5 w-5" /></span>
-    <div className="min-w-0"><p className="text-xs text-zinc-500">{time}</p><b className="mt-1 block text-sm text-white">{title}</b><p className="mt-1 text-sm leading-6 text-zinc-400">{detail}</p></div>
-  </div>;
+  return <div className="relative flex gap-4 pb-5 last:pb-0"><span className="relative z-10 grid h-11 w-11 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.07] text-yellow-300"><Icon className="h-5 w-5" /></span><div className="min-w-0"><p className="text-xs text-zinc-500">{time}</p><b className="mt-1 block text-sm text-white">{title}</b><p className="mt-1 text-sm leading-6 text-zinc-400">{detail}</p></div></div>;
+}
+
+function ChartCard({ series }: { series: Array<{ label: string; value: number }> }) {
+  const max = Math.max(1, ...series.map((item) => item.value));
+  return <article className="rounded-[2.2rem] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,.30)] backdrop-blur-xl sm:p-6"><div className="flex items-center justify-between gap-3"><div><h2 className="text-2xl font-black">Gráfica de datos reales</h2><p className="mt-1 text-sm text-zinc-500">Conteo directo desde la API del dashboard.</p></div><Database className="h-6 w-6 text-yellow-300" /></div><div className="mt-6 grid gap-4">{series.map((item, index) => { const width = Math.max(8, Math.round((item.value / max) * 100)); return <div key={item.label} className="grid gap-2"><div className="flex items-center justify-between text-sm"><span className="font-bold text-zinc-300">{item.label}</span><span className="font-mono text-yellow-200">{item.value.toLocaleString('es-CL')}</span></div><div className="h-3 overflow-hidden rounded-full bg-black/35 ring-1 ring-white/10"><div className="h-full rounded-full bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-400 transition-[width] duration-700 ease-out" style={{ width: `${width}%`, transitionDelay: `${index * 90}ms` }} /></div></div>; })}</div></article>;
 }
 
 export default function AdminDashboardPage() {
-  const [data, setData] = useState<DashboardPayload | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState('');
-  const [lastBeat, setLastBeat] = useState<string>('');
-
-  async function load() {
-    setError('');
-    try {
-      const res = await fetch('/api/admin/dashboard/blue', { cache: 'no-store' });
-      const json = await res.json();
-      if (!res.ok) throw new Error(json.error || 'No se pudo cargar dashboard');
-      setData(json);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error cargando dashboard');
-    } finally {
-      setLoading(false);
-    }
-  }
-
-  useEffect(() => { void load(); }, []);
-  useEffect(() => {
-    let disposed = false;
-    async function beat() {
-      try {
-        const res = await fetch('/api/admin/session/heartbeat', { method: 'POST', cache: 'no-store' });
-        const json = await res.json().catch(() => ({}));
-        if (!disposed && res.ok) setLastBeat(json.ts || new Date().toISOString());
-      } catch {}
-    }
-    void beat();
-    const id = setInterval(() => { if (document.visibilityState === 'visible') void beat(); }, 45_000);
-    const onVisible = () => { if (document.visibilityState === 'visible') void beat(); };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => { disposed = true; clearInterval(id); document.removeEventListener('visibilitychange', onVisible); };
-  }, []);
-
+  const [data, setData] = useState<DashboardPayload | null>(null); const [loading, setLoading] = useState(true); const [error, setError] = useState(''); const [lastBeat, setLastBeat] = useState<string>('');
+  async function load() { setError(''); try { const res = await fetch('/api/admin/dashboard/blue', { cache: 'no-store' }); const json = await res.json(); if (!res.ok) throw new Error(json.error || 'No se pudo cargar dashboard'); setData(json); } catch (err) { setError(err instanceof Error ? err.message : 'Error cargando dashboard'); } finally { setLoading(false); } }
+  useEffect(() => { void load(); const id = setInterval(() => { if (document.visibilityState === 'visible') void load(); }, 60_000); return () => clearInterval(id); }, []);
+  useEffect(() => { let disposed = false; async function beat() { try { const res = await fetch('/api/admin/session/heartbeat', { method: 'POST', cache: 'no-store' }); const json = await res.json().catch(() => ({})); if (!disposed && res.ok) setLastBeat(json.ts || new Date().toISOString()); } catch {} } void beat(); const id = setInterval(() => { if (document.visibilityState === 'visible') void beat(); }, 45_000); return () => { disposed = true; clearInterval(id); }; }, []);
   const profile = data?.profile;
-  const recentSessions = useMemo(() => data?.sessions?.slice(0, 5) || [], [data]);
-
+  const chartSeries = useMemo(() => [{ label: 'Productos', value: data?.stats.products || 0 }, { label: 'Pedidos', value: data?.stats.orders || 0 }, { label: 'Presupuestos', value: data?.stats.budgets || 0 }, { label: 'Facturas', value: data?.stats.invoices || 0 }, { label: 'Leads', value: data?.stats.leads || 0 }], [data]);
+  const recentSessions = useMemo(() => data?.sessions?.slice(0, 5) || [], [data]); const dbLive = data?.health.db === 'online';
   if (loading) return <div className="grid min-h-[70vh] place-items-center text-white"><Loader2 className="h-8 w-8 animate-spin text-yellow-300" /></div>;
-
-  return <main className="fabrick-page relative min-h-screen p-3 text-white sm:p-6 lg:p-8">
-    <section className="mx-auto grid w-full max-w-[1500px] gap-6">
-      {error && <div className="rounded-3xl border border-red-300/25 bg-red-500/10 p-4 text-sm text-red-100"><AlertTriangle className="mr-2 inline h-4 w-4" />{error}</div>}
-
-      <header className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_360px]">
-        <article className="relative overflow-hidden rounded-[2.4rem] border border-white/10 bg-white/[0.045] p-6 shadow-[0_30px_100px_rgba(0,0,0,.36)] backdrop-blur-xl sm:p-8">
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_10%,rgba(250,204,21,.12),transparent_20rem),linear-gradient(135deg,rgba(255,255,255,.04),transparent_45%)]" />
-          <div className="relative grid gap-6 md:grid-cols-[minmax(0,1fr)_260px] md:items-center">
-            <div className="min-w-0">
-              <p className="text-lg text-zinc-300">Bienvenido, <span className="font-black text-yellow-300">{profile?.name || 'Admin'}</span></p>
-              <h1 className="mt-4 max-w-3xl text-4xl font-black tracking-tight text-white sm:text-6xl">Panel de administración</h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-400">Gestiona tu negocio de forma eficiente y profesional. Resumen de ventas, presupuestos, clientes, sesiones y estado del sistema.</p>
-            </div>
-            <div className="mx-auto grid h-56 w-56 place-items-center rounded-[2rem] border border-yellow-300/15 bg-black/50 shadow-[0_22px_70px_rgba(0,0,0,.45)]">
-              <div className="relative h-36 w-36 rounded-[1.6rem] border border-yellow-300/20 bg-gradient-to-br from-[#171717] to-[#050505] shadow-[0_20px_80px_rgba(250,204,21,.12)]">
-                <div className="absolute inset-4 grid place-items-center rounded-[1.1rem] bg-yellow-300/10 text-5xl font-black text-yellow-300">{initials(profile?.name || 'SF')}</div>
-              </div>
-            </div>
-          </div>
-        </article>
-
-        <aside className="grid gap-4 rounded-[2.4rem] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,.30)] backdrop-blur-xl">
-          <div className="flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">Estado</p><Bell className="h-5 w-5 text-yellow-300" /></div>
-          <Status label="App" value={data?.health.app || 'ok'} icon={ShieldCheck} />
-          <Status label="DB" value={`${data?.health.latency_ms || 0}ms`} icon={Zap} />
-          <Status label="Heartbeat" value={lastBeat ? 'Activo' : '...'} icon={Activity} />
-          <Status label="Deploy" value={data?.health.last_deploy || 'actual'} icon={Clock} />
-        </aside>
-      </header>
-
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Metric title="Presupuestos" value={data?.stats.budgets || 0} hint="+12% vs ayer" icon={FileText} />
-        <Metric title="Clientes" value={data?.stats.leads || 0} hint="+5% vs ayer" icon={Users} />
-        <Metric title="Proyectos" value={data?.stats.orders || 0} hint="+3% vs ayer" icon={Folder} />
-        <Metric title="Ingresos" value={clp(data?.stats.revenue || 0)} hint="+18% vs ayer" icon={Wallet} />
-      </section>
-
-      <section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(340px,.9fr)]">
-        <article className="rounded-[2.2rem] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,.30)] backdrop-blur-xl sm:p-6">
-          <div className="flex items-center justify-between gap-3"><h2 className="text-2xl font-black">Presupuestos recientes</h2><Link href="/admin/presupuestos" className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold text-zinc-300 hover:border-yellow-300/30 hover:text-yellow-300">Ver todos</Link></div>
-          <div className="mt-5 grid gap-3">
-            {recentSessions.length ? recentSessions.map((session, index) => <div key={session.session_id} className="flex items-center justify-between gap-3 rounded-[1.4rem] border border-white/10 bg-black/25 p-4"><div className="flex min-w-0 items-center gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-yellow-300/10 text-yellow-300"><FileText className="h-5 w-5" /></span><div className="min-w-0"><b className="block truncate text-white">P-{new Date(session.login_at).getFullYear()}-{String(index + 21).padStart(3, '0')}</b><p className="truncate text-sm text-zinc-400">{session.email || 'Cliente Fabrick'}</p></div></div><div className="text-right"><b className="text-white">{clp((data?.stats.revenue || 0) / Math.max(1, index + 2))}</b><p className="mt-1 rounded-full bg-yellow-300/10 px-3 py-1 text-xs font-bold text-yellow-200">Enviado</p></div></div>) : <p className="rounded-2xl bg-black/25 p-5 text-sm text-zinc-400">Aún no hay movimientos recientes.</p>}
-          </div>
-        </article>
-
-        <article className="rounded-[2.2rem] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,.30)] backdrop-blur-xl sm:p-6">
-          <h2 className="text-2xl font-black">Actividad reciente</h2>
-          <div className="relative mt-6 space-y-1 before:absolute before:left-[21px] before:top-2 before:h-[calc(100%-18px)] before:w-px before:bg-white/10">
-            <ActivityItem icon={FileText} time="Hace 1 h" title="Nuevo presupuesto" detail="Propuesta comercial creada desde el admin." />
-            <ActivityItem icon={CheckCircle2} time="Hace 3 h" title="Presupuesto aprobado" detail="Cliente confirmó una propuesta enviada." />
-            <ActivityItem icon={Users} time="Hace 5 h" title="Nuevo cliente registrado" detail="Se agregó un contacto al pipeline comercial." />
-            <ActivityItem icon={Briefcase} time="Hace 1 día" title="Proyecto actualizado" detail="Se modificó el estado de una obra activa." />
-          </div>
-        </article>
-      </section>
-
-      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-        <QuickAction href="/admin/presupuestos" title="Crear presupuesto" text="Link comercial con vista cliente." icon={FileText} />
-        <QuickAction href="/admin/clientes" title="Clientes" text="Contactos, historial y seguimiento." icon={Users} />
-        <QuickAction href="/admin/proyectos" title="Proyectos" text="Obras, avances y entregas." icon={Briefcase} />
-        <QuickAction href="/admin/monitor" title="Monitor" text="Latencia y salud de la app." icon={Gauge} />
-      </section>
-    </section>
-  </main>;
-}
-
-function Status({ label, value, icon: Icon }: { label: string; value: string; icon: IconType }) {
-  return <div className="flex items-center justify-between rounded-2xl border border-white/10 bg-black/25 p-4"><span className="flex items-center gap-2 text-sm font-bold text-zinc-300"><Icon className="h-4 w-4 text-yellow-300" />{label}</span><b className="text-sm text-white">{value}</b></div>;
+  return <main className="fabrick-page relative min-h-screen p-3 text-white sm:p-6 lg:p-8"><style jsx global>{`@keyframes dash{to{stroke-dashoffset:0}}`}</style><section className="mx-auto grid w-full max-w-[1500px] gap-6">{error && <div className="rounded-3xl border border-red-300/25 bg-red-500/10 p-4 text-sm text-red-100"><AlertTriangle className="mr-2 inline h-4 w-4" />{error}</div>}<header className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_380px]"><article className="relative overflow-hidden rounded-[2.4rem] border border-white/10 bg-white/[0.045] p-6 shadow-[0_30px_100px_rgba(0,0,0,.36)] backdrop-blur-xl sm:p-8"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_90%_10%,rgba(250,204,21,.12),transparent_20rem),linear-gradient(135deg,rgba(255,255,255,.04),transparent_45%)]" /><div className="relative grid gap-6 md:grid-cols-[minmax(0,1fr)_260px] md:items-center"><div><p className="text-lg text-zinc-300">Bienvenido, <span className="font-black text-yellow-300">{profile?.name || 'Admin'}</span></p><h1 className="mt-4 max-w-3xl text-4xl font-black tracking-tight text-white sm:text-6xl">Panel de administración real</h1><p className="mt-5 max-w-2xl text-base leading-8 text-zinc-400">Datos conectados: productos, pedidos, presupuestos, facturas, leads, sesiones y salud de la base de datos con refresco liviano cada minuto.</p><div className="mt-5 flex flex-wrap gap-2 text-xs font-black uppercase tracking-[0.16em]"><span className={`rounded-full border px-3 py-2 ${dbLive ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300' : 'border-red-400/30 bg-red-400/10 text-red-300'}`}>{dbLive ? 'BD conectada' : 'BD sin respuesta'}</span><span className="rounded-full border border-white/10 bg-black/30 px-3 py-2 text-zinc-400">Latency {data?.health.latency_ms || 0}ms</span></div></div><div className="mx-auto grid h-56 w-56 place-items-center rounded-[2rem] border border-yellow-300/15 bg-black/50"><div className="relative h-36 w-36 rounded-[1.6rem] border border-yellow-300/20 bg-gradient-to-br from-[#171717] to-[#050505]"><div className="absolute inset-4 grid place-items-center rounded-[1.1rem] bg-yellow-300/10 text-5xl font-black text-yellow-300">{initials(profile?.name || 'SF')}</div><span className={`absolute -right-2 -top-2 h-5 w-5 rounded-full border-2 border-black ${dbLive ? 'animate-pulse bg-emerald-400' : 'bg-red-400'}`} /></div></div></div></article><aside className="grid gap-4 rounded-[2.4rem] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,.30)] backdrop-blur-xl"><div className="flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">Estado en vivo</p><Bell className="h-5 w-5 text-yellow-300" /></div><Status label="App" value={data?.health.app || 'ok'} icon={ShieldCheck} live /><Status label="Base de datos" value={dbLive ? `${data?.health.latency_ms || 0}ms` : 'sin conexión'} icon={Database} live={dbLive} /><Status label="Tiempo real" value={data?.health.realtime || 'polling'} icon={Zap} live={dbLive} /><Status label="Heartbeat" value={lastBeat ? 'Activo' : '...'} icon={Activity} live={Boolean(lastBeat)} /><Status label="Deploy" value={data?.health.last_deploy || 'actual'} icon={Clock} /></aside></header><section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5"><Metric title="Productos" value={data?.stats.products || 0} hint="tabla products" icon={Package} /><Metric title="Presupuestos" value={data?.stats.budgets || 0} hint="presupuesto_registros" icon={FileText} /><Metric title="Leads" value={data?.stats.leads || 0} hint="tabla leads" icon={Users} /><Metric title="Pedidos" value={data?.stats.orders || 0} hint="tabla orders" icon={Folder} /><Metric title="Ingresos" value={data?.stats.revenue || 0} hint="órdenes recientes" icon={Wallet} money /></section><section className="grid gap-5 xl:grid-cols-[minmax(0,1fr)_minmax(360px,.9fr)]"><ChartCard series={chartSeries} /><article className="rounded-[2.2rem] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,.30)] backdrop-blur-xl sm:p-6"><h2 className="text-2xl font-black">Actividad real del sistema</h2><div className="relative mt-6 space-y-1 before:absolute before:left-[21px] before:top-2 before:h-[calc(100%-18px)] before:w-px before:bg-white/10">{(data?.console || []).slice(0, 5).map((line, index) => <ActivityItem key={line} icon={index === 0 ? Activity : index === 1 ? Database : CheckCircle2} time={`Log ${index + 1}`} title={line.split('] ')[0]?.replace('[', '') || 'Sistema'} detail={line.split('] ')[1] || line} />)}</div></article></section><article className="rounded-[2.2rem] border border-white/10 bg-white/[0.045] p-5 shadow-[0_24px_80px_rgba(0,0,0,.30)] backdrop-blur-xl sm:p-6"><div className="flex items-center justify-between gap-3"><h2 className="text-2xl font-black">Sesiones auditadas</h2><Link href="/admin/sesiones" className="rounded-xl border border-white/10 px-4 py-2 text-sm font-bold text-zinc-300 hover:border-yellow-300/30 hover:text-yellow-300">Ver sesiones</Link></div><div className="mt-5 grid gap-3">{recentSessions.length ? recentSessions.map((s) => <div key={s.session_id} className="flex items-center justify-between gap-3 rounded-[1.4rem] border border-white/10 bg-black/25 p-4"><div className="min-w-0"><b className="block truncate text-white">{s.email || 'Admin'}</b><p className="truncate text-sm text-zinc-400">{s.device || 'dispositivo'} · {s.ip || 'IP sin registrar'}</p></div><span className="rounded-full bg-yellow-300/10 px-3 py-1 text-xs font-bold text-yellow-200">{s.status || 'activa'}</span></div>) : <p className="rounded-2xl bg-black/25 p-5 text-sm text-zinc-400">Sin sesiones auditadas todavía.</p>}</div></article><section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4"><QuickAction href="/admin/presupuestos" title="Crear presupuesto" text="Link comercial con vista cliente." icon={FileText} /><QuickAction href="/admin/contabilidad" title="Calculadora impuestos" text="IVA, PPM y total a pagar." icon={Database} /><QuickAction href="/admin/paginas" title="Creador de páginas" text="HTMLs por nicho y URLs." icon={Briefcase} /><QuickAction href="/admin/monitor" title="Monitor" text="Latencia y salud de la app." icon={Gauge} /></section></section></main>;
 }

@@ -73,10 +73,10 @@ import DemoSessionTracker from '@/components/admin/DemoSessionTracker';
 
 type ProductivityGroup = 'Todos' | 'Productividad' | 'Ventas' | 'Operación' | 'Contenido' | 'IA' | 'Sistema';
 type NavIcon = LucideIcon;
-type NavLink = { href: string; label: string; description: string; icon: NavIcon; superadminOnly?: boolean; highlight?: boolean };
+type NavLink = { href: string; label: string; description: string; icon: NavIcon; superadminOnly?: boolean; highlight?: boolean; comingSoon?: boolean };
 type NavSection = { title: string; group: Exclude<ProductivityGroup, 'Todos'>; links: NavLink[] };
 
-const navSections: NavSection[] = [
+export const navSections: NavSection[] = [
   {
     title: 'Perfil & acceso',
     group: 'Productividad',
@@ -84,6 +84,7 @@ const navSections: NavSection[] = [
       { href: '/admin/perfil', label: 'Perfil administrador', description: 'Foto, bio, contacto, redes y presentación', icon: User, highlight: true },
       { href: '/admin/equipo', label: 'Equipo', description: 'Roles, invitaciones y aprobaciones', icon: ShieldCheck, superadminOnly: true },
       { href: '/admin/equipo/demo', label: 'Links demo 24h', description: 'Accesos guiados de solo lectura', icon: Eye, highlight: true },
+      { href: '/admin/invitaciones', label: 'Invitaciones demo', description: 'Generar usuarios demo y links temporales', icon: User, highlight: true },
       { href: '/admin/sesiones', label: 'Sesiones y dispositivos', description: 'IPs, dispositivos y auditoría', icon: Activity, highlight: true },
       { href: '/admin/seguridad', label: 'Seguridad · Passkeys', description: 'Huella, Face ID y claves de acceso', icon: KeyRound, highlight: true },
     ],
@@ -94,8 +95,20 @@ const navSections: NavSection[] = [
     links: [
       { href: '/admin/crm', label: 'CRM & Pipeline', description: 'Oportunidades, leads y seguimiento de ventas', icon: Kanban, highlight: true },
       { href: '/admin/analytics', label: 'Analytics', description: 'Métricas de ventas y rendimiento del negocio', icon: TrendingUp, highlight: true },
-      { href: '/admin/contabilidad', label: 'Contabilidad F29 / SII', description: 'Declaraciones mensuales de IVA y PPM', icon: Calculator, highlight: true },
+      { href: '/admin/contabilidad', label: 'Calculadora de impuestos', description: 'IVA, crédito fiscal, PPM, remanentes y total a pagar', icon: Calculator, highlight: true },
       { href: '/admin/beneficios', label: 'Beneficios Fiscales', description: 'Ahorro tributario y créditos disponibles en Chile', icon: BadgePercent, highlight: true },
+    ],
+  },
+  {
+    title: 'Finanzas & SII',
+    group: 'Ventas',
+    links: [
+      { href: '/admin/f29', label: 'F29 · IVA mensual', description: 'IVA, PPM, remanentes y vencimientos', icon: FileText, highlight: true },
+      { href: '/admin/contabilidad/f12', label: 'F12 · Registro mensual', description: 'Ventas, compras y respaldos del mes', icon: BookOpen, highlight: true },
+      { href: '/admin/contabilidad/f21', label: 'F21 · Pagos tributarios', description: 'Obligaciones, pagos y comprobantes', icon: Wallet, highlight: true },
+      { href: '/admin/facturas', label: 'Facturas DTE', description: 'Documentos tributarios, boletas y facturas', icon: Receipt, highlight: true },
+      { href: '/admin/pagos', label: 'Pagos · MercadoPago', description: 'Pasarela, cobros y métricas', icon: Wallet, highlight: true },
+      { href: '/admin/reportes', label: 'Reportes financieros', description: 'Ventas, métricas y resultados', icon: BarChart3 },
     ],
   },
   {
@@ -128,7 +141,6 @@ const navSections: NavSection[] = [
       { href: '/admin/materiales', label: 'Materiales', description: 'Cotizador en vivo', icon: Package },
       { href: '/admin/proyectos', label: 'Proyectos', description: 'Obras terminadas', icon: Hammer },
       { href: '/admin/pedidos', label: 'Pedidos', description: 'Órdenes y estados', icon: ShoppingCart },
-      { href: '/admin/pagos', label: 'Pagos · MercadoPago', description: 'Pasarela y métricas', icon: Wallet, highlight: true },
       { href: '/admin/cotizaciones', label: 'Cotizaciones', description: 'Solicitudes y diseños 3D', icon: FileText },
       { href: '/admin/presupuestos/modelos-3d', label: 'Modelos 3D presupuesto', description: 'Galería 3D para cotizaciones', icon: Box },
       { href: '/admin/presupuestos/videos', label: 'Videos presupuesto', description: 'Videos de presentación', icon: Video },
@@ -138,7 +150,6 @@ const navSections: NavSection[] = [
       { href: '/admin/clientes', label: 'Clientes', description: 'Historial y recurrencia', icon: Users },
       { href: '/admin/cupones', label: 'Cupones', description: 'Promociones y descuentos', icon: Tag, highlight: true },
       { href: '/admin/reviews', label: 'Reseñas', description: 'Opiniones de clientes', icon: Star, highlight: true },
-      { href: '/admin/reportes', label: 'Reportes', description: 'Ventas y métricas', icon: BarChart3 },
     ],
   },
   {
@@ -150,6 +161,7 @@ const navSections: NavSection[] = [
       { href: '/admin/blog/comments', label: 'Comentarios', description: 'Moderar comentarios del blog', icon: MessageCircle },
       { href: '/admin/home', label: 'Pantalla principal', description: 'Banners y secciones', icon: LayoutGrid },
       { href: '/admin/editor', label: 'Editor universal', description: 'Navbar, footer, checkout y más', icon: LayoutGrid, highlight: true },
+      { href: '/admin/paginas', label: 'Creador de páginas', description: 'HTMLs por nicho y URLs personalizadas', icon: LayoutGrid, highlight: true },
       { href: '/admin/tienda', label: 'Tienda', description: 'Portada y catálogo', icon: ShoppingCart },
       { href: '/admin/medios', label: 'Medios', description: 'Biblioteca de imágenes', icon: ImageIcon },
       { href: '/admin/medios?tab=cloudinary', label: 'Cloudinary', description: 'Nube de medios', icon: Cloud, highlight: true },
@@ -209,7 +221,6 @@ const navSections: NavSection[] = [
       { href: '/admin/testing', label: 'Testing', description: 'Smoke tests', icon: FlaskConical },
       { href: '/admin/setup', label: 'Setup', description: 'Verificar tablas', icon: Database, superadminOnly: true },
       { href: '/admin/extensions', label: 'Extensiones', description: 'Webhooks y signing keys', icon: Plug, highlight: true },
-      { href: '/admin/facturas', label: 'Facturas DTE', description: 'Documentos tributarios', icon: Receipt },
       { href: '/admin/acceso-demo', label: 'Acceso demo', description: 'Enlace de demostración temporal', icon: Eye },
     ],
   },
@@ -261,7 +272,7 @@ function NavItem({ href, label, description, icon: Icon, active, onNavigate, hig
 
 function SidebarContent({ pathname, onNavigate, onLogout, onClose, role, profilePhoto }: { pathname: string; onNavigate?: () => void; onLogout: () => void; onClose?: () => void; role: string | null; profilePhoto?: string | null }) {
   const [openSections, setOpenSections] = useState<Set<string>>(() => {
-    const active = new Set<string>(['Motores de venta', 'Perfil & acceso', 'Visión general']);
+    const active = new Set<string>(['Motores de venta', 'Finanzas & SII', 'Perfil & acceso', 'Visión general']);
     for (const section of navSections) if (section.links.some((link) => isActivePath(pathname, link.href))) active.add(section.title);
     return active;
   });

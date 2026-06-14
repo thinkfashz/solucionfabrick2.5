@@ -9,6 +9,14 @@ export const runtime = 'nodejs';
 
 type SessionPayload = { email: string; rol?: string; tenant_id?: string; session_id?: string };
 
+type DbPing = {
+  ok: boolean;
+  latency_ms: number;
+  checked_at: string;
+  source: 'insforge';
+  message: string;
+};
+
 async function getProfile(email: string) {
   const { data } = await insforge.database
     .from('admin_profiles')
@@ -22,6 +30,28 @@ async function getProfile(email: string) {
     avatar_url: p?.avatar_url || null,
     bio: p?.bio || 'Administrador Soluciones Fabrick',
   };
+}
+
+async function pingDatabase(): Promise<DbPing> {
+  const started = Date.now();
+  try {
+    await insforge.database.from('admin_profiles').select('email', { count: 'exact', head: true });
+    return {
+      ok: true,
+      latency_ms: Date.now() - started,
+      checked_at: new Date().toISOString(),
+      source: 'insforge',
+      message: 'InsForge conectado y respondiendo',
+    };
+  } catch (error) {
+    return {
+      ok: false,
+      latency_ms: Date.now() - started,
+      checked_at: new Date().toISOString(),
+      source: 'insforge',
+      message: error instanceof Error ? error.message : 'No se pudo verificar InsForge',
+    };
+  }
 }
 
 async function safeCount(table: string) {
@@ -45,7 +75,8 @@ export async function GET(request: NextRequest) {
   const session = await decodeSession(cookie.value) as SessionPayload | null;
   if (!session) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
 
-  const [profile, sessions, products, orders, budgets, invoices, leads, recentOrders] = await Promise.all([
+  const [dbPing, profile, sessions, products, orders, budgets, invoices, leads, recentOrders, recentBudgets, recentLeads] = await Promise.all([
+    pingDatabase(),
     getProfile(session.email),
     recentAdminSessions(10).catch(() => []),
     safeCount('products'),
@@ -54,26 +85,38 @@ export async function GET(request: NextRequest) {
     safeCount('invoices'),
     safeCount('leads'),
     safeRows('orders', 6),
+    safeRows('presupuesto_registros', 6),
+    safeRows('leads', 6),
   ]);
 
-  const revenue = (recentOrders as Record<string, unknown>[]).reduce((sum, row) => sum + Number(row.total || 0), 0);
+  const revenue = (recentOrders as Record<string, unknown>[]).reduce((sum, row) => sum + Number(row.total || row.amount || 0), 0);
   const health = {
     app: 'online',
-    db: 'online',
+    db: dbPing.ok ? 'online' : 'offline',
     latency_ms: Date.now() - started,
-    realtime: 'on-demand',
+    db_latency_ms: dbPing.latency_ms,
+    db_checked_at: dbPing.checked_at,
+    db_message: dbPing.message,
+    realtime: dbPing.ok ? 'live' : 'degraded',
     last_deploy: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'local',
   };
 
   return NextResponse.json({
     ok: true,
+    connected: dbPing.ok,
     profile: { ...profile, role: session.rol || 'admin', session_id: session.session_id || null },
     stats: { products, orders, budgets, invoices, leads, revenue },
+    recent: {
+      orders: recentOrders,
+      budgets: recentBudgets,
+      leads: recentLeads,
+    },
     sessions,
     health,
     console: [
       `[${new Date().toLocaleTimeString('es-CL')}] Admin activo: ${session.email}`,
-      `[DB] latency=${health.latency_ms}ms · productos=${products} · pedidos=${orders}`,
+      `[DB] ${health.db} · latency=${health.db_latency_ms}ms · productos=${products} · pedidos=${orders}`,
+      `[REALTIME] estado=${health.realtime} · checked=${health.db_checked_at}`,
       `[SECURITY] sesiones auditadas=${sessions.length}`,
       `[BUILD] commit=${health.last_deploy}`,
     ],

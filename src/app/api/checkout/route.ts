@@ -1,9 +1,12 @@
 import { NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
 import { calculateCheckoutSummary, estimateInternalShipping, validateCheckoutPayload, type CheckoutPayload } from '@/lib/checkout';
-import { createMercadoPagoPreference } from '@/lib/mercadopago';
+import { createMercadoPagoPreference, getAppBaseUrl } from '@/lib/mercadopago';
+import { createOrderTrackingToken } from '@/lib/orderTracking';
 import { dispatchHookAsync } from '@/lib/extensionsBus';
-import { sendCheckoutOrderEmails } from '@/lib/checkoutNotifications';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 export async function POST(request: Request) {
   try {
@@ -19,6 +22,8 @@ export async function POST(request: Request) {
     const internalShippingEstimate = estimateInternalShipping(items, region, shippingAddress || '');
     const id = body.clientOrderKey?.trim() || `FBK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
     const createdAt = new Date().toISOString();
+    const trackingToken = createOrderTrackingToken(id);
+    const trackingUrl = `${getAppBaseUrl()}/pedido/${trackingToken}`;
 
     const orden = {
       id,
@@ -27,10 +32,12 @@ export async function POST(request: Request) {
       resumen,
       shippingAddress: shippingAddress ?? '',
       region,
-      estado: body.paymentMethod === 'transfer' ? 'transferencia_pendiente' : 'pendiente',
-      paymentMethod: body.paymentMethod || 'checkout',
+      estado: 'pendiente_pago',
+      paymentMethod: 'mercadopago',
       deliveryEstimate: '7 a 21 días hábiles',
       internalShippingEstimate,
+      trackingToken,
+      trackingUrl,
       creadoEn: createdAt,
     };
 
@@ -74,22 +81,12 @@ export async function POST(request: Request) {
       });
     }
 
-    let emailStatus: Awaited<ReturnType<typeof sendCheckoutOrderEmails>> | null = null;
-    try {
-      emailStatus = await sendCheckoutOrderEmails(orden);
-    } catch (emailError) {
-      persistenceWarning = [persistenceWarning, `Email no enviado: ${emailError instanceof Error ? emailError.message : 'error desconocido'}`].filter(Boolean).join(' · ');
-    }
-
-    let payment: { provider: string; preferenceId: string | null; checkoutUrl: string | null } | null = null;
-    if (body.paymentMethod !== 'transfer') {
-      const preference = await createMercadoPagoPreference({ orderId: orden.id, payload: body, summary: resumen });
-      payment = {
-        provider: 'mercado_pago',
-        preferenceId: preference.id,
-        checkoutUrl: preference.init_point || preference.sandbox_init_point || null,
-      };
-    }
+    const preference = await createMercadoPagoPreference({ orderId: orden.id, payload: { ...body, paymentMethod: 'mercadopago' }, summary: resumen });
+    const payment = {
+      provider: 'mercado_pago',
+      preferenceId: preference.id,
+      checkoutUrl: preference.init_point || preference.sandbox_init_point || null,
+    };
 
     return NextResponse.json(
       {
@@ -97,7 +94,11 @@ export async function POST(request: Request) {
         persistence: persisted ? 'db' : 'memory_or_existing',
         warning: persistenceWarning,
         payment,
-        notifications: emailStatus,
+        notification: {
+          ok: true,
+          deferred: true,
+          reason: 'El correo y la boleta se enviarán solo cuando Mercado Pago confirme pago aprobado o rechazado por webhook.',
+        },
       },
       { status: 201 },
     );

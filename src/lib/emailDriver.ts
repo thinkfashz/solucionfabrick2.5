@@ -8,6 +8,12 @@ import NewsletterEmail from '@/emails/NewsletterEmail';
 
 const DEFAULT_FROM = 'Soluciones Fabrick <onboarding@resend.dev>';
 
+export interface EmailAttachment {
+  filename: string;
+  content: string;
+  contentType?: string;
+}
+
 export interface EmailPayload {
   to: string | string[];
   subject: string;
@@ -16,6 +22,7 @@ export interface EmailPayload {
   text?: string;
   from?: string;
   replyTo?: string;
+  attachments?: EmailAttachment[];
 }
 
 export interface EmailResult {
@@ -70,6 +77,7 @@ export async function sendEmail(payload: EmailPayload): Promise<EmailResult> {
         html,
         text: payload.text,
         ...(payload.replyTo ? { reply_to: payload.replyTo } : {}),
+        ...(payload.attachments?.length ? { attachments: payload.attachments } : {}),
       }),
       cache: 'no-store',
     });

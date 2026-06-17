@@ -87,7 +87,11 @@ export default function UiverseProductCard({
           </button>
           <button
             type="button"
-            onClick={(e) => { e.stopPropagation(); (onBuyNow || onSelect)(e); }}
+            onClick={(e) => {
+              e.stopPropagation();
+              if (onBuyNow) onBuyNow(e);
+              else onSelect();
+            }}
             className="inline-flex min-h-10 items-center justify-center rounded-full border border-white/15 bg-white/12 px-3 text-[11px] font-black text-white backdrop-blur-md transition hover:bg-white hover:text-black"
           >
             Comprar

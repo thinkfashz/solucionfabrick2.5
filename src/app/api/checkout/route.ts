@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
-import { calculateCheckoutSummary, validateCheckoutPayload, type CheckoutPayload } from '@/lib/checkout';
+import { calculateCheckoutSummary, estimateInternalShipping, validateCheckoutPayload, type CheckoutPayload } from '@/lib/checkout';
 import { createMercadoPagoPreference } from '@/lib/mercadopago';
 import { dispatchHookAsync } from '@/lib/extensionsBus';
+import { sendCheckoutOrderEmails } from '@/lib/checkoutNotifications';
 
 export async function POST(request: Request) {
   try {
@@ -15,7 +16,9 @@ export async function POST(request: Request) {
     }
 
     const resumen = calculateCheckoutSummary(items, region);
-    const id = `FBK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const internalShippingEstimate = estimateInternalShipping(items, region, shippingAddress || '');
+    const id = body.clientOrderKey?.trim() || `FBK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+    const createdAt = new Date().toISOString();
 
     const orden = {
       id,
@@ -24,8 +27,11 @@ export async function POST(request: Request) {
       resumen,
       shippingAddress: shippingAddress ?? '',
       region,
-      estado: 'pendiente',
-      creadoEn: new Date().toISOString(),
+      estado: body.paymentMethod === 'transfer' ? 'transferencia_pendiente' : 'pendiente',
+      paymentMethod: body.paymentMethod || 'checkout',
+      deliveryEstimate: '7 a 21 días hábiles',
+      internalShippingEstimate,
+      creadoEn: createdAt,
     };
 
     let persisted = false;
@@ -39,9 +45,9 @@ export async function POST(request: Request) {
           customer_name: cliente.nombre,
           customer_email: cliente.email,
           customer_phone: cliente.telefono ?? null,
-          region: region,
+          region,
           shipping_address: shippingAddress ?? null,
-          items: items,
+          items,
           subtotal: resumen.subtotal,
           tax: resumen.iva,
           shipping_fee: resumen.despacho,
@@ -54,10 +60,10 @@ export async function POST(request: Request) {
       ]);
 
     if (insertError) {
-      persistenceWarning = `No se pudo persistir en DB (orders): ${insertError.message}`;
+      const duplicateLike = /duplicate|unique|already/i.test(insertError.message || '');
+      if (!duplicateLike) persistenceWarning = `No se pudo persistir en DB (orders): ${insertError.message}`;
     } else {
       persisted = true;
-      // Notify marketplace extensions subscribed to order.created. Fire-and-forget.
       dispatchHookAsync('order.created', {
         id: orden.id,
         customer: { name: cliente.nombre, email: cliente.email, phone: cliente.telefono ?? null },
@@ -68,22 +74,30 @@ export async function POST(request: Request) {
       });
     }
 
-    const preference = await createMercadoPagoPreference({
-      orderId: orden.id,
-      payload: body,
-      summary: resumen,
-    });
+    let emailStatus: Awaited<ReturnType<typeof sendCheckoutOrderEmails>> | null = null;
+    try {
+      emailStatus = await sendCheckoutOrderEmails(orden);
+    } catch (emailError) {
+      persistenceWarning = [persistenceWarning, `Email no enviado: ${emailError instanceof Error ? emailError.message : 'error desconocido'}`].filter(Boolean).join(' · ');
+    }
+
+    let payment: { provider: string; preferenceId: string | null; checkoutUrl: string | null } | null = null;
+    if (body.paymentMethod !== 'transfer') {
+      const preference = await createMercadoPagoPreference({ orderId: orden.id, payload: body, summary: resumen });
+      payment = {
+        provider: 'mercado_pago',
+        preferenceId: preference.id,
+        checkoutUrl: preference.init_point || preference.sandbox_init_point || null,
+      };
+    }
 
     return NextResponse.json(
       {
         data: orden,
-        persistence: persisted ? 'db' : 'memory',
+        persistence: persisted ? 'db' : 'memory_or_existing',
         warning: persistenceWarning,
-        payment: {
-          provider: 'mercado_pago',
-          preferenceId: preference.id,
-          checkoutUrl: preference.init_point || preference.sandbox_init_point || null,
-        },
+        payment,
+        notifications: emailStatus,
       },
       { status: 201 },
     );

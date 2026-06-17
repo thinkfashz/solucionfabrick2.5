@@ -3,6 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import { useMemo, useState } from 'react';
+import type { MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, CheckCircle2, Facebook, Instagram, Menu, Moon, Search, ShoppingBag, Sparkles, Sun, User, X, Zap } from 'lucide-react';
 import { navigateWithTransition } from '@/lib/routeTransition';
@@ -76,12 +77,12 @@ export default function TiendaClientPage() {
     navigateWithTransition(`/tienda/${product.id}`, router);
   }
 
-  function addProduct(e: React.MouseEvent, product: Product) {
+  function addProduct(e: MouseEvent, product: Product) {
     e.stopPropagation();
     addToCart({ id: product.id, name: product.name, price: product.price, image_url: product.img } as Parameters<typeof addToCart>[0]);
   }
 
-  function buyNow(e: React.MouseEvent, product: Product) {
+  function buyNow(e: MouseEvent, product: Product) {
     e.stopPropagation();
     addProduct(e, product);
     navigateWithTransition(`/checkout?productId=${encodeURIComponent(product.id)}&name=${encodeURIComponent(product.name)}&price=${getFinalPrice(product)}`, router);

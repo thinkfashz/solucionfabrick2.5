@@ -16,6 +16,8 @@ export interface CheckoutPayload {
   region: string;
   cliente: ClienteCheckout;
   shippingAddress?: string;
+  paymentMethod?: 'transfer' | 'mercadopago' | 'bricks';
+  clientOrderKey?: string;
 }
 
 export interface CheckoutValidationError {
@@ -31,16 +33,45 @@ export interface CheckoutSummary {
   moneda: 'CLP';
 }
 
-const IVA = 0.19;
-const DESPACHO_BASE = 35000;
-const DESPACHO_REGIONES_EXTREMAS = ['XV', 'I', 'XI', 'XII'];
+export interface InternalShippingEstimate {
+  amount: number;
+  currency: 'CLP';
+  source: 'free-local-estimator';
+  confidence: 'baja' | 'media';
+  note: string;
+}
 
-export function calculateCheckoutSummary(items: LineItem[], region: string): CheckoutSummary {
+const IVA = 0.19;
+const REGION_EXTREMA = ['XV', 'I', 'II', 'XI', 'XII'];
+const REGION_SUR = ['VIII', 'IX', 'X', 'XIV', 'XVI'];
+const REGION_CENTRO = ['RM', 'V', 'VI', 'VII', 'ÑUBLE', 'MAULE'];
+
+export function normalizeRegion(region: string) {
+  return region.trim().toUpperCase().replace('REGIÓN', '').replace('REGION', '').trim();
+}
+
+export function estimateInternalShipping(items: LineItem[], region: string, address = ''): InternalShippingEstimate {
+  const normalized = normalizeRegion(region || 'VII');
+  const units = Math.max(1, items.reduce((acc, item) => acc + Math.max(1, Number(item.cantidad || 1)), 0));
   const subtotal = items.reduce((acc, item) => acc + item.cantidad * item.precioUnitario, 0);
+  const bulkyHint = /piso|flotante|ceram|porcelanato|madera|panel|plancha|mueble|radier|cemento/i.test(`${address} ${items.map((i) => i.nombre).join(' ')}`);
+  const base = REGION_EXTREMA.includes(normalized) ? 82000 : REGION_SUR.includes(normalized) ? 52000 : REGION_CENTRO.includes(normalized) ? 32000 : 42000;
+  const bulky = bulkyHint ? 28000 : 0;
+  const unitFee = Math.min(45000, Math.max(0, units - 1) * 5500);
+  const valueFee = subtotal > 400000 ? 18000 : subtotal > 180000 ? 9000 : 0;
+  return {
+    amount: Math.round((base + bulky + unitFee + valueFee) / 1000) * 1000,
+    currency: 'CLP',
+    source: 'free-local-estimator',
+    confidence: 'media',
+    note: 'Estimación interna sin cobro al cliente hasta confirmar dimensiones, comuna y operador logístico.',
+  };
+}
+
+export function calculateCheckoutSummary(items: LineItem[], _region: string): CheckoutSummary {
+  const subtotal = Math.round(items.reduce((acc, item) => acc + item.cantidad * item.precioUnitario, 0));
   const iva = Math.round(subtotal * IVA);
-  const despacho = DESPACHO_REGIONES_EXTREMAS.includes(region.toUpperCase())
-    ? DESPACHO_BASE * 2
-    : DESPACHO_BASE;
+  const despacho = 0;
 
   return {
     subtotal,

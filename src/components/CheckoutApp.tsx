@@ -29,6 +29,7 @@ interface OrderResponse {
     paymentMethod?: string;
   };
   payment?: { checkoutUrl?: string | null; preferenceId?: string | null } | null;
+  notification?: { ok?: boolean; reason?: string; customerError?: string | null; adminError?: string | null };
   error?: string;
   warning?: string | null;
 }
@@ -84,6 +85,7 @@ export default function CheckoutApp() {
   const [error, setError] = useState('');
   const [order, setOrder] = useState<OrderResponse['data'] | null>(null);
   const [paymentUrl, setPaymentUrl] = useState('');
+  const [notificationMessage, setNotificationMessage] = useState('');
 
   useEffect(() => {
     try {
@@ -109,15 +111,14 @@ export default function CheckoutApp() {
     ]);
   }, [searchParams]);
 
-  const summary = useMemo(() => {
-    return calculateCheckoutSummary(items.map((item) => ({
-      productoId: item.product.id,
-      cantidad: item.quantity,
-      precioUnitario: item.product.price * (1 - (item.product.discount_percentage || 0) / 100),
-      nombre: item.product.name,
-    })), region);
-  }, [items, region]);
+  const lineItems = useMemo(() => items.map((item) => ({
+    productoId: item.product.id,
+    cantidad: item.quantity,
+    precioUnitario: item.product.price * (1 - (item.product.discount_percentage || 0) / 100),
+    nombre: item.product.name,
+  })), [items]);
 
+  const summary = useMemo(() => calculateCheckoutSummary(lineItems, region), [lineItems, region]);
   const product = items[0]?.product;
   const itemCount = items.reduce((acc, item) => acc + item.quantity, 0);
   const canSubmit = name.trim().length > 2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) && phone.replace(/\D/g, '').length >= 8 && address.trim().length > 5 && items.length > 0;
@@ -142,11 +143,11 @@ export default function CheckoutApp() {
     setLoading(true);
     try {
       const clientOrderKey = ensureOrderKey();
-      const response = await fetch('/api/checkout', {
+      const response = await fetch(method === 'transfer' ? '/api/checkout/transfer' : '/api/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          items: items.map((item) => ({ productoId: item.product.id, cantidad: item.quantity, precioUnitario: item.product.price, nombre: item.product.name })),
+          items: lineItems,
           region,
           shippingAddress: address,
           cliente: { nombre: name, email, telefono: phone },
@@ -158,6 +159,7 @@ export default function CheckoutApp() {
       if (!response.ok || !payload.data) throw new Error(payload.error || 'No se pudo crear la orden.');
       setOrder(payload.data);
       setPaymentUrl(payload.payment?.checkoutUrl || '');
+      setNotificationMessage(payload.notification?.ok ? 'Correo enviado al cliente y admin con boleta PDF.' : payload.notification?.reason || 'Orden creada. Revisa configuración Resend si no llegó el correo.');
       if (method === 'mercadopago' && payload.payment?.checkoutUrl) {
         window.location.href = payload.payment.checkoutUrl;
       }
@@ -176,6 +178,7 @@ export default function CheckoutApp() {
             <span className="inline-flex items-center rounded-full border border-emerald-300/25 bg-emerald-400/10 px-3 py-1 text-xs font-black text-emerald-100"><CheckCircle2 className="mr-2 h-4 w-4" />Orden creada</span>
             <h1 className="mt-5 text-4xl font-black tracking-[-0.06em] sm:text-6xl">Compra registrada.</h1>
             <p className="mt-4 max-w-2xl text-white/60">Te enviamos el detalle al correo con un comprobante PDF. La entrega estimada es de <b className="text-white">7 a 21 días hábiles</b> desde confirmación y coordinación.</p>
+            <div className="mt-4 rounded-[1.4rem] border border-emerald-300/20 bg-emerald-400/10 p-4 text-sm text-emerald-50"><BadgeCheck className="mr-2 inline h-4 w-4" />{notificationMessage}</div>
             <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-black/35 p-4">
               <p className="text-xs uppercase tracking-[0.25em] text-yellow-300">Código de orden</p>
               <div className="mt-2 flex flex-wrap items-center gap-3"><b className="text-2xl">{order.id}</b><button onClick={() => void copyToClipboard(order.id)} className="rounded-xl border border-white/10 px-3 py-2 text-sm"><Copy className="mr-2 inline h-4 w-4" />Copiar</button></div>

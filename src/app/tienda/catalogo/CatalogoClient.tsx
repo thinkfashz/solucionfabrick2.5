@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import type { MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowLeft, ArrowUpDown, Package, Search, ShoppingBag, Tag, X } from 'lucide-react';
 import { navigateWithTransition } from '@/lib/routeTransition';
@@ -97,11 +98,11 @@ export default function CatalogoClient() {
   };
 
   const handleSelectProduct = (product: CatalogProduct) => navigateWithTransition(`/tienda/${product.id}`, router);
-  const handleAddToCart = (e: React.MouseEvent, product: CatalogProduct) => {
+  const handleAddToCart = (e: MouseEvent, product: CatalogProduct) => {
     e.stopPropagation();
     addToCart({ id: product.id, name: product.name, price: product.price, image_url: product.img } as Parameters<typeof addToCart>[0]);
   };
-  const handleBuyNow = (e: React.MouseEvent, product: CatalogProduct) => {
+  const handleBuyNow = (e: MouseEvent, product: CatalogProduct) => {
     e.stopPropagation();
     addToCart({ id: product.id, name: product.name, price: product.price, image_url: product.img } as Parameters<typeof addToCart>[0]);
     navigateWithTransition(`/checkout?productId=${encodeURIComponent(product.id)}&name=${encodeURIComponent(product.name)}&price=${product.price}`, router);

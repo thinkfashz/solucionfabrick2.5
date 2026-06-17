@@ -2,6 +2,7 @@
 
 import { useEffect, useState, useCallback, useRef } from 'react';
 import { insforge } from '@/lib/insforge';
+import type { ProductShippingMode } from '@/lib/shipping';
 
 const PRODUCTS_CACHE_KEY = 'fabrick.products.cache.v1';
 const PRODUCTS_CACHE_TTL_MS = 5 * 60 * 1000;
@@ -21,6 +22,11 @@ export interface Product {
   discount_percentage?: number;
   specifications?: Record<string, unknown>;
   category_id?: string;
+  shipping_mode?: ProductShippingMode | null;
+  shipping_fee?: number | null;
+  shipping_weight_kg?: number | null;
+  shipping_dimensions?: string | null;
+  shipping_region_overrides?: Record<string, number> | null;
 }
 
 interface RealtimeEvent {
@@ -28,6 +34,8 @@ interface RealtimeEvent {
   product: Partial<Product>;
   timestamp: Date;
 }
+
+const PRODUCT_SELECT = 'id, name, description, price, stock, image_url, featured, activo, tagline, rating, delivery_days, discount_percentage, specifications, category_id, shipping_mode, shipping_fee, shipping_weight_kg, shipping_dimensions, shipping_region_overrides';
 
 export function useRealtimeProducts() {
   const [products, setProducts]       = useState<Product[]>([]);
@@ -38,15 +46,12 @@ export function useRealtimeProducts() {
   const [updateCount, setUpdateCount] = useState(0);
   const isMounted = useRef(true);
 
-  /* ── Carga instantánea desde caché local ── */
   const loadFromCache = useCallback(() => {
     try {
       const raw = localStorage.getItem(PRODUCTS_CACHE_KEY);
       if (!raw) return false;
-
       const parsed = JSON.parse(raw) as { ts: number; data: Product[] };
       if (!parsed?.data || !Array.isArray(parsed.data)) return false;
-
       const isFresh = Date.now() - parsed.ts < PRODUCTS_CACHE_TTL_MS;
       if (isMounted.current) {
         setProducts(parsed.data);
@@ -59,22 +64,14 @@ export function useRealtimeProducts() {
   }, []);
 
   const persistCache = useCallback((nextProducts: Product[]) => {
-    try {
-      localStorage.setItem(
-        PRODUCTS_CACHE_KEY,
-        JSON.stringify({ ts: Date.now(), data: nextProducts }),
-      );
-    } catch {
-      // Ignorar errores de quota/storage
-    }
+    try { localStorage.setItem(PRODUCTS_CACHE_KEY, JSON.stringify({ ts: Date.now(), data: nextProducts })); } catch {}
   }, []);
 
-  /* ── Carga inicial desde DB ── */
   const loadProducts = useCallback(async () => {
     setLoading((prev) => (products.length ? prev : true));
     const { data, error } = await insforge.database
       .from('products')
-      .select('id, name, description, price, stock, image_url, featured, activo, tagline, rating, delivery_days, discount_percentage, specifications, category_id')
+      .select(PRODUCT_SELECT)
       .neq('activo', false)
       .order('featured', { ascending: false })
       .order('created_at', { ascending: false });
@@ -90,83 +87,53 @@ export function useRealtimeProducts() {
     }
   }, [persistCache, products.length]);
 
-  /* ── Aplicar patch cuando llega evento real-time ── */
   const applyPatch = useCallback((payload: Partial<Product> & { operation?: string }) => {
     if (!payload.id || !isMounted.current) return;
-
     setProducts((prev) => {
       const idx = prev.findIndex((p) => p.id === payload.id);
-
-      // If product was set to activo=false, remove it from the tienda list
       if (payload.activo === false) {
         if (idx === -1) return prev;
         const updated = prev.filter((p) => p.id !== payload.id);
         persistCache(updated);
         return updated;
       }
-
       if (idx === -1) {
-        // INSERT — agregar al inicio
         const newProduct = { ...payload } as Product;
         const merged = [newProduct, ...prev];
         persistCache(merged);
         return merged;
       }
-      // UPDATE — patch inmutable
       const updated = [...prev];
       updated[idx] = { ...updated[idx], ...payload };
       persistCache(updated);
       return updated;
     });
-
-    setLastEvent({
-      type: (payload.operation === 'INSERT' ? 'INSERT_product' : 'UPDATE_product') as RealtimeEvent['type'],
-      product: payload,
-      timestamp: new Date(),
-    });
+    setLastEvent({ type: (payload.operation === 'INSERT' ? 'INSERT_product' : 'UPDATE_product') as RealtimeEvent['type'], product: payload, timestamp: new Date() });
     setUpdateCount((c) => c + 1);
   }, [persistCache]);
 
-  /* ── Conectar real-time InsForge ── */
   useEffect(() => {
     isMounted.current = true;
     loadFromCache();
     loadProducts();
-
     let cleanup = false;
-
     (async () => {
       try {
         await insforge.realtime.connect();
         if (cleanup) return;
-
         const { ok } = await insforge.realtime.subscribe('products');
         if (!ok || cleanup) return;
-
         if (isMounted.current) setConnected(true);
-
-        insforge.realtime.on('INSERT_product', (payload: Partial<Product> & { operation?: string }) => {
-          if (isMounted.current) applyPatch({ ...payload, operation: 'INSERT' });
-        });
-
-        insforge.realtime.on('UPDATE_product', (payload: Partial<Product> & { operation?: string }) => {
-          if (isMounted.current) applyPatch({ ...payload, operation: 'UPDATE' });
-        });
-
+        insforge.realtime.on('INSERT_product', (payload: Partial<Product> & { operation?: string }) => { if (isMounted.current) applyPatch({ ...payload, operation: 'INSERT' }); });
+        insforge.realtime.on('UPDATE_product', (payload: Partial<Product> & { operation?: string }) => { if (isMounted.current) applyPatch({ ...payload, operation: 'UPDATE' }); });
         insforge.realtime.on('connect', () => { if (isMounted.current) setConnected(true); });
         insforge.realtime.on('disconnect', () => { if (isMounted.current) setConnected(false); });
-      } catch {
-        // Silenciar errores de conexión real-time (no bloquea la UI)
-      }
+      } catch {}
     })();
-
     return () => {
       cleanup = true;
       isMounted.current = false;
-      try {
-        insforge.realtime.unsubscribe('products');
-        insforge.realtime.disconnect();
-      } catch { /* ignorar */ }
+      try { insforge.realtime.unsubscribe('products'); insforge.realtime.disconnect(); } catch {}
     };
   }, [loadFromCache, loadProducts, applyPatch]);
 

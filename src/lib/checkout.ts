@@ -42,6 +42,8 @@ export interface InternalShippingEstimate {
 }
 
 const IVA = 0.19;
+const LOW_VALUE_CHECKOUT_LIMIT = 50_000;
+const LOW_VALUE_CHECKOUT_DISPATCH = 10_000;
 const REGION_EXTREMA = ['XV', 'I', 'II', 'XI', 'XII'];
 const REGION_SUR = ['VIII', 'IX', 'X', 'XIV', 'XVI'];
 const REGION_CENTRO = ['RM', 'V', 'VI', 'VII', 'ÑUBLE', 'MAULE'];
@@ -64,14 +66,14 @@ export function estimateInternalShipping(items: LineItem[], region: string, addr
     currency: 'CLP',
     source: 'free-local-estimator',
     confidence: 'media',
-    note: 'Estimación interna sin cobro al cliente hasta confirmar dimensiones, comuna y operador logístico.',
+    note: 'Estimación interna para operación, comuna, dimensiones y operador logístico.',
   };
 }
 
 export function calculateCheckoutSummary(items: LineItem[], _region: string): CheckoutSummary {
   const subtotal = Math.round(items.reduce((acc, item) => acc + item.cantidad * item.precioUnitario, 0));
   const iva = Math.round(subtotal * IVA);
-  const despacho = 0;
+  const despacho = subtotal > 0 && subtotal < LOW_VALUE_CHECKOUT_LIMIT ? LOW_VALUE_CHECKOUT_DISPATCH : 0;
 
   return {
     subtotal,

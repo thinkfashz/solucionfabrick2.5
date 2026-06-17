@@ -1,6 +1,7 @@
 import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 import type { CheckoutPayload, CheckoutSummary, LineItem } from '@/lib/checkout';
 import { getMercadoPagoCredentials } from '@/lib/mercadoPagoCredentials';
+import { createOrderTrackingToken } from '@/lib/orderTracking';
 
 const DEFAULT_SITE_URL = 'https://fabrick.cl';
 const API_BASE = 'https://api.mercadopago.com';
@@ -43,16 +44,6 @@ export function getMercadoPagoAccessToken() {
   ).trim();
 }
 
-/**
- * Resolve the Mercado Pago **public** key. The client-side card tokenizer
- * (`new window.MercadoPago(publicKey).createCardToken(...)`) needs this value;
- * it's safe to expose to the browser (that's why MP calls it "public"). To
- * avoid the very common foot-gun of naming the env var slightly wrong on
- * Vercel, we accept the most common spellings — both the `NEXT_PUBLIC_*`
- * variants (inlined into the JS bundle at build time) and the server-only
- * variants (read at request time and surfaced to the browser via
- * `/api/payments/mp-status`).
- */
 export function getMercadoPagoPublicKey() {
   return (
     process.env.NEXT_PUBLIC_MP_PUBLIC_KEY ||
@@ -65,12 +56,7 @@ export function getMercadoPagoPublicKey() {
   ).trim();
 }
 
-export type MercadoPagoConnectionStatus =
-  | 'ok'
-  | 'unconfigured'
-  | 'unreachable'
-  | 'invalid_token';
-
+export type MercadoPagoConnectionStatus = 'ok' | 'unconfigured' | 'unreachable' | 'invalid_token';
 export type MercadoPagoMode = 'production' | 'sandbox' | 'unknown';
 
 export interface MercadoPagoStatusResult {
@@ -81,15 +67,9 @@ export interface MercadoPagoStatusResult {
   latencyMs: number | null;
   message: string;
   mode: MercadoPagoMode;
-  /** First few characters of the access token (e.g. `APP_USR` / `TEST`). */
   tokenPrefix: string;
 }
 
-/**
- * Heuristic: Mercado Pago issues access tokens prefixed with `APP_USR-` for
- * production credentials and `TEST-` for sandbox/test users. This tells the
- * mode without an extra HTTP round-trip.
- */
 export function detectMpMode(accessToken: string): MercadoPagoMode {
   const t = accessToken.trim();
   if (!t) return 'unknown';
@@ -101,7 +81,6 @@ export function detectMpMode(accessToken: string): MercadoPagoMode {
 export function getMpTokenPrefix(accessToken: string): string {
   const t = accessToken.trim();
   if (!t) return '';
-  // Return the alphanumeric prefix before the first '-' (e.g. APP_USR, TEST).
   const dash = t.indexOf('-');
   return dash > 0 ? t.slice(0, dash) : t.slice(0, Math.min(8, t.length));
 }
@@ -122,35 +101,17 @@ interface AccountCacheEntry {
 const ACCOUNT_CACHE_TTL_MS = 60_000;
 const accountCache = new Map<string, AccountCacheEntry>();
 
-/**
- * Derive a stable, non-reversible cache key from a Mercado Pago access
- * token. We never want the raw secret to live in an in-process Map (it ends
- * up in heap dumps, debugger inspections and log snapshots), so we hash it
- * with SHA-256 and keep the first 16 hex chars (64 bits of entropy — far
- * more than enough to deduplicate concurrent callers without ever exposing
- * the token itself).
- */
 function tokenCacheKey(token: string): string {
   return createHash('sha256').update(token).digest('hex').slice(0, 16);
 }
 
-/**
- * Fetch the merchant identity from Mercado Pago's `/users/me` endpoint.
- * Cached per-token for 60s to keep admin polling lightweight. Never call
- * this from the public probe (`probeMercadoPago`) — leaks merchant identity.
- */
-export async function fetchMercadoPagoAccount(
-  accessToken: string,
-  options: { fetchImpl?: typeof fetch; timeoutMs?: number } = {},
-): Promise<MercadoPagoAccountInfo | null> {
+export async function fetchMercadoPagoAccount(accessToken: string, options: { fetchImpl?: typeof fetch; timeoutMs?: number } = {}): Promise<MercadoPagoAccountInfo | null> {
   const token = accessToken.trim();
   if (!token) return null;
 
   const cacheKey = tokenCacheKey(token);
   const cached = accountCache.get(cacheKey);
-  if (cached && Date.now() - cached.fetchedAt < ACCOUNT_CACHE_TTL_MS) {
-    return cached.account;
-  }
+  if (cached && Date.now() - cached.fetchedAt < ACCOUNT_CACHE_TTL_MS) return cached.account;
 
   const fetchImpl = options.fetchImpl ?? fetch;
   const timeoutMs = options.timeoutMs ?? 6000;
@@ -158,25 +119,12 @@ export async function fetchMercadoPagoAccount(
   const timer = setTimeout(() => controller.abort(), timeoutMs);
 
   try {
-    const res = await fetchImpl(`${API_BASE}/users/me`, {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${token}` },
-      signal: controller.signal,
-      cache: 'no-store',
-    });
+    const res = await fetchImpl(`${API_BASE}/users/me`, { method: 'GET', headers: { Authorization: `Bearer ${token}` }, signal: controller.signal, cache: 'no-store' });
     if (!res.ok) {
       accountCache.set(cacheKey, { fetchedAt: Date.now(), account: null });
       return null;
     }
-    const data = (await res.json().catch(() => null)) as
-      | {
-          id?: number | string;
-          email?: string;
-          nickname?: string;
-          site_id?: string;
-          tags?: string[];
-        }
-      | null;
+    const data = (await res.json().catch(() => null)) as { id?: number | string; email?: string; nickname?: string; site_id?: string; tags?: string[] } | null;
     if (!data) {
       accountCache.set(cacheKey, { fetchedAt: Date.now(), account: null });
       return null;
@@ -198,19 +146,7 @@ export async function fetchMercadoPagoAccount(
   }
 }
 
-/**
- * Probe the Mercado Pago gateway and return a sanitized status object suitable
- * for the public `/api/payments/mp-status` endpoint.
- *
- * The probe issues a lightweight authenticated GET against a stable endpoint
- * (`/v1/payment_methods?site_id=MLC`) — it requires a valid access token, is
- * idempotent, costs nothing, and is the documented health-check path used in
- * the official examples. We deliberately do not call `/users/me` because that
- * leaks merchant identity into application logs.
- */
-export async function probeMercadoPago(
-  options: { timeoutMs?: number; fetchImpl?: typeof fetch } = {},
-): Promise<MercadoPagoStatusResult> {
+export async function probeMercadoPago(options: { timeoutMs?: number; fetchImpl?: typeof fetch } = {}): Promise<MercadoPagoStatusResult> {
   const resolved = await getMercadoPagoCredentials();
   const publicKey = resolved.publicKey ?? getMercadoPagoPublicKey();
   const accessToken = resolved.accessToken ?? getMercadoPagoAccessToken();
@@ -219,31 +155,10 @@ export async function probeMercadoPago(
   const tokenPrefix = getMpTokenPrefix(accessToken);
 
   if (!publicKey && !hasAccessToken) {
-    return {
-      status: 'unconfigured',
-      publicKey: '',
-      hasAccessToken: false,
-      reachable: false,
-      latencyMs: null,
-      mode,
-      tokenPrefix,
-      message:
-        'Pasarela no configurada: define MERCADO_PAGO_ACCESS_TOKEN y MP_PUBLIC_KEY (o sus variantes NEXT_PUBLIC_*) en el entorno.',
-    };
+    return { status: 'unconfigured', publicKey: '', hasAccessToken: false, reachable: false, latencyMs: null, mode, tokenPrefix, message: 'Pasarela no configurada: define MERCADO_PAGO_ACCESS_TOKEN y MP_PUBLIC_KEY en el entorno.' };
   }
-
   if (!hasAccessToken) {
-    return {
-      status: 'unconfigured',
-      publicKey,
-      hasAccessToken: false,
-      reachable: false,
-      latencyMs: null,
-      mode,
-      tokenPrefix,
-      message:
-        'Falta MERCADO_PAGO_ACCESS_TOKEN: la tokenización funcionará pero no se puede cobrar desde el servidor.',
-    };
+    return { status: 'unconfigured', publicKey, hasAccessToken: false, reachable: false, latencyMs: null, mode, tokenPrefix, message: 'Falta MERCADO_PAGO_ACCESS_TOKEN: no se puede cobrar desde el servidor.' };
   }
 
   const fetchImpl = options.fetchImpl ?? fetch;
@@ -253,237 +168,90 @@ export async function probeMercadoPago(
   const startedAt = Date.now();
 
   try {
-    const response = await fetchImpl(`${API_BASE}/v1/payment_methods?site_id=MLC`, {
-      method: 'GET',
-      headers: { Authorization: `Bearer ${accessToken}` },
-      signal: controller.signal,
-      cache: 'no-store',
-    });
+    const response = await fetchImpl(`${API_BASE}/v1/payment_methods?site_id=MLC`, { method: 'GET', headers: { Authorization: `Bearer ${accessToken}` }, signal: controller.signal, cache: 'no-store' });
     const latencyMs = Date.now() - startedAt;
-
     if (response.status === 401 || response.status === 403) {
-      return {
-        status: 'invalid_token',
-        publicKey,
-        hasAccessToken: true,
-        reachable: true,
-        latencyMs,
-        mode,
-        tokenPrefix,
-        message:
-          'Mercado Pago rechazó el access token. Genera uno nuevo en el panel de Mercado Pago y actualízalo en Vercel.',
-      };
+      return { status: 'invalid_token', publicKey, hasAccessToken: true, reachable: true, latencyMs, mode, tokenPrefix, message: 'Mercado Pago rechazó el access token. Actualízalo en Vercel.' };
     }
-
     if (!response.ok) {
-      return {
-        status: 'unreachable',
-        publicKey,
-        hasAccessToken: true,
-        reachable: false,
-        latencyMs,
-        mode,
-        tokenPrefix,
-        message: `Mercado Pago respondió con estado ${response.status}.`,
-      };
+      return { status: 'unreachable', publicKey, hasAccessToken: true, reachable: false, latencyMs, mode, tokenPrefix, message: `Mercado Pago respondió con estado ${response.status}.` };
     }
-
-    return {
-      status: 'ok',
-      publicKey,
-      hasAccessToken: true,
-      reachable: true,
-      latencyMs,
-      mode,
-      tokenPrefix,
-      message:
-        mode === 'sandbox'
-          ? 'Conexión activa con Mercado Pago en modo demo (TEST).'
-          : 'Conexión activa con Mercado Pago.',
-    };
+    return { status: 'ok', publicKey, hasAccessToken: true, reachable: true, latencyMs, mode, tokenPrefix, message: mode === 'sandbox' ? 'Conexión activa con Mercado Pago en modo demo (TEST).' : 'Conexión activa con Mercado Pago.' };
   } catch (err) {
     const latencyMs = Date.now() - startedAt;
     const aborted = err instanceof Error && err.name === 'AbortError';
-    return {
-      status: 'unreachable',
-      publicKey,
-      hasAccessToken: true,
-      reachable: false,
-      latencyMs,
-      mode,
-      tokenPrefix,
-      message: aborted
-        ? `Mercado Pago no respondió en ${timeoutMs} ms.`
-        : 'No se pudo contactar con api.mercadopago.com.',
-    };
+    return { status: 'unreachable', publicKey, hasAccessToken: true, reachable: false, latencyMs, mode, tokenPrefix, message: aborted ? `Mercado Pago no respondió en ${timeoutMs} ms.` : 'No se pudo contactar con api.mercadopago.com.' };
   } finally {
     clearTimeout(timer);
   }
 }
 
 export function getMercadoPagoWebhookSecret() {
-  return (
-    process.env.MERCADO_PAGO_WEBHOOK_SECRET ||
-    process.env.MERCADOPAGO_WEBHOOK_SECRET ||
-    process.env.MP_WEBHOOK_SECRET ||
-    ''
-  ).trim();
+  return (process.env.MERCADO_PAGO_WEBHOOK_SECRET || process.env.MERCADOPAGO_WEBHOOK_SECRET || process.env.MP_WEBHOOK_SECRET || '').trim();
 }
 
 function getPaymentItems(items: LineItem[], summary: CheckoutSummary) {
-  const mapped = items.map((item) => ({
-    id: String(item.productoId),
-    title: item.nombre || `Producto ${item.productoId}`,
-    quantity: item.cantidad,
-    currency_id: summary.moneda,
-    unit_price: Number(item.precioUnitario.toFixed(2)),
-  }));
-
-  if (summary.iva > 0) {
-    mapped.push({
-      id: 'iva',
-      title: 'IVA',
-      quantity: 1,
-      currency_id: summary.moneda,
-      unit_price: Number(summary.iva.toFixed(2)),
-    });
-  }
-
-  if (summary.despacho > 0) {
-    mapped.push({
-      id: 'despacho',
-      title: 'Despacho',
-      quantity: 1,
-      currency_id: summary.moneda,
-      unit_price: Number(summary.despacho.toFixed(2)),
-    });
-  }
-
+  const mapped = items.map((item) => ({ id: String(item.productoId), title: item.nombre || `Producto ${item.productoId}`, quantity: item.cantidad, currency_id: summary.moneda, unit_price: Number(item.precioUnitario.toFixed(2)) }));
+  if (summary.iva > 0) mapped.push({ id: 'iva', title: 'IVA', quantity: 1, currency_id: summary.moneda, unit_price: Number(summary.iva.toFixed(2)) });
+  if (summary.despacho > 0) mapped.push({ id: 'despacho', title: 'Despacho', quantity: 1, currency_id: summary.moneda, unit_price: Number(summary.despacho.toFixed(2)) });
   return mapped;
 }
 
 async function mercadoPagoFetch<T>(path: string, init: RequestInit) {
   const resolved = await getMercadoPagoCredentials();
   const accessToken = resolved.accessToken ?? getMercadoPagoAccessToken();
-  if (!accessToken) {
-    throw new Error('Falta configurar MERCADO_PAGO_ACCESS_TOKEN.');
-  }
-
-  const response = await fetch(`${API_BASE}${path}`, {
-    ...init,
-    headers: {
-      Authorization: `Bearer ${accessToken}`,
-      'Content-Type': 'application/json',
-      ...(init.headers || {}),
-    },
-    cache: 'no-store',
-  });
-
+  if (!accessToken) throw new Error('Falta configurar MERCADO_PAGO_ACCESS_TOKEN.');
+  const response = await fetch(`${API_BASE}${path}`, { ...init, headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', ...(init.headers || {}) }, cache: 'no-store' });
   const text = await response.text();
   const data = text ? JSON.parse(text) : null;
-
-  if (!response.ok) {
-    const message = data?.message || data?.error || `Mercado Pago respondió con estado ${response.status}.`;
-    throw new Error(message);
-  }
-
+  if (!response.ok) throw new Error(data?.message || data?.error || `Mercado Pago respondió con estado ${response.status}.`);
   return data as T;
 }
 
-export async function createMercadoPagoPreference(params: {
-  orderId: string;
-  payload: CheckoutPayload;
-  summary: CheckoutSummary;
-}) {
+export async function createMercadoPagoPreference(params: { orderId: string; payload: CheckoutPayload; summary: CheckoutSummary }) {
   const baseUrl = getAppBaseUrl();
   const { orderId, payload, summary } = params;
-
-  const successUrl = `${baseUrl}/checkout?payment_status=success&external_reference=${encodeURIComponent(orderId)}`;
-  const failureUrl = `${baseUrl}/checkout?payment_status=failure&external_reference=${encodeURIComponent(orderId)}`;
-  const pendingUrl = `${baseUrl}/checkout?payment_status=pending&external_reference=${encodeURIComponent(orderId)}`;
+  const trackingToken = createOrderTrackingToken(orderId);
+  const trackingUrl = `${baseUrl}/pedido/${trackingToken}`;
+  const successUrl = `${trackingUrl}?payment_status=success`;
+  const failureUrl = `${trackingUrl}?payment_status=failure`;
+  const pendingUrl = `${trackingUrl}?payment_status=pending`;
   const notificationUrl = `${baseUrl}/api/payments/webhook?source=mercadopago`;
 
   const body = {
     items: getPaymentItems(payload.items, summary),
-    payer: {
-      name: payload.cliente.nombre,
-      email: payload.cliente.email,
-      phone: payload.cliente.telefono
-        ? {
-            number: payload.cliente.telefono,
-          }
-        : undefined,
-    },
+    payer: { name: payload.cliente.nombre, email: payload.cliente.email, phone: payload.cliente.telefono ? { number: payload.cliente.telefono } : undefined },
     external_reference: orderId,
     statement_descriptor: 'FABRICK',
     notification_url: notificationUrl,
-    back_urls: {
-      success: successUrl,
-      failure: failureUrl,
-      pending: pendingUrl,
-    },
+    back_urls: { success: successUrl, failure: failureUrl, pending: pendingUrl },
     auto_return: 'approved',
     binary_mode: false,
-    metadata: {
-      order_id: orderId,
-      region: payload.region,
-      shipping_address: payload.shippingAddress || '',
-    },
+    metadata: { order_id: orderId, tracking_token: trackingToken, region: payload.region, shipping_address: payload.shippingAddress || '' },
   };
 
-  return mercadoPagoFetch<MercadoPagoPreferenceResult>('/checkout/preferences', {
-    method: 'POST',
-    body: JSON.stringify(body),
-  });
+  return mercadoPagoFetch<MercadoPagoPreferenceResult>('/checkout/preferences', { method: 'POST', body: JSON.stringify(body) });
 }
 
 export async function getMercadoPagoPayment(paymentId: string) {
-  return mercadoPagoFetch<MercadoPagoPaymentResponse>(`/v1/payments/${paymentId}`, {
-    method: 'GET',
-  });
+  return mercadoPagoFetch<MercadoPagoPaymentResponse>(`/v1/payments/${paymentId}`, { method: 'GET' });
 }
 
 function parseSignatureParts(signatureHeader: string | null) {
   if (!signatureHeader) return null;
-
-  const parts = Object.fromEntries(
-    signatureHeader
-      .split(',')
-      .map((entry) => entry.trim())
-      .map((entry) => {
-        const [key, ...rest] = entry.split('=');
-        return [key, rest.join('=')];
-      }),
-  );
-
-  return {
-    ts: parts.ts || '',
-    v1: parts.v1 || '',
-  };
+  const parts = Object.fromEntries(signatureHeader.split(',').map((entry) => entry.trim()).map((entry) => { const [key, ...rest] = entry.split('='); return [key, rest.join('=')]; }));
+  return { ts: parts.ts || '', v1: parts.v1 || '' };
 }
 
-export async function verifyMercadoPagoSignature(args: {
-  signatureHeader: string | null;
-  requestIdHeader: string | null;
-  dataId: string | null;
-}) {
+export async function verifyMercadoPagoSignature(args: { signatureHeader: string | null; requestIdHeader: string | null; dataId: string | null }) {
   const resolved = await getMercadoPagoCredentials();
   const secret = resolved.webhookSecret ?? getMercadoPagoWebhookSecret();
   if (!secret) return true;
-
   const parts = parseSignatureParts(args.signatureHeader);
-  if (!parts?.ts || !parts.v1 || !args.dataId || !args.requestIdHeader) {
-    return false;
-  }
-
+  if (!parts?.ts || !parts.v1 || !args.dataId || !args.requestIdHeader) return false;
   const manifest = `id:${args.dataId.toLowerCase()};request-id:${args.requestIdHeader};ts:${parts.ts};`;
   const expected = createHmac('sha256', secret).update(manifest).digest('hex');
-
-  try {
-    return timingSafeEqual(Buffer.from(expected), Buffer.from(parts.v1));
-  } catch {
-    return false;
-  }
+  try { return timingSafeEqual(Buffer.from(expected), Buffer.from(parts.v1)); } catch { return false; }
 }
 
 export function mapMercadoPagoStatus(status?: string) {

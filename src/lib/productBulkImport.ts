@@ -23,6 +23,16 @@ export interface ParsedImportProduct {
   shipping_fee?: number | null;
   shipping_weight_kg?: number | null;
   shipping_dimensions?: string | null;
+  margin_pct?: number | null;
+  brand?: string | null;
+  capacity_btu?: number | null;
+  warranty?: string | null;
+  query_date?: string | null;
+  stock_status?: string | null;
+  installation_price?: number | null;
+  price_pack?: number | null;
+  price_offer?: number | null;
+  specifications?: Record<string, unknown> | null;
 }
 
 export interface ProductImportParseResult {
@@ -43,13 +53,22 @@ const FIELD_ALIASES: Record<string, keyof ParsedImportProduct> = {
   featured: 'featured', destacado: 'featured', inicio: 'featured', home: 'featured',
   delivery_days: 'delivery_days', dias_envio: 'delivery_days', entrega_dias: 'delivery_days', tiempo_envio: 'delivery_days',
   discount: 'discount_percentage', descuento: 'discount_percentage', discount_percentage: 'discount_percentage',
-  source: 'source', origen: 'source', tienda: 'source', proveedor: 'source',
-  source_url: 'source_url', url: 'source_url', link: 'source_url', link_compra: 'source_url', url_compra: 'source_url', url_proveedor: 'source_url', proveedor_url: 'source_url', proveedor_link: 'source_url', tienda_url: 'source_url', compra_url: 'source_url',
+  source: 'source', origen: 'source', tienda: 'source', proveedor: 'source', supplier: 'source',
+  source_url: 'source_url', url: 'source_url', link: 'source_url', link_compra: 'source_url', url_compra: 'source_url', url_proveedor: 'source_url', proveedor_url: 'source_url', proveedor_link: 'source_url', tienda_url: 'source_url', compra_url: 'source_url', link_original: 'source_url', original_url: 'source_url',
   source_id: 'source_id', id_proveedor: 'source_id', proveedor_id: 'source_id', external_id: 'source_id',
-  supplier_price: 'supplier_price', precio_proveedor: 'supplier_price', costo: 'supplier_price', costo_compra: 'supplier_price', precio_compra: 'supplier_price', precio_costo: 'supplier_price', compra: 'supplier_price', cost: 'supplier_price', purchase_price: 'supplier_price', supplier_cost: 'supplier_price',
+  supplier_price: 'supplier_price', precio_proveedor: 'supplier_price', costo: 'supplier_price', costo_compra: 'supplier_price', precio_compra: 'supplier_price', precio_costo: 'supplier_price', compra: 'supplier_price', cost: 'supplier_price', purchase_price: 'supplier_price', supplier_cost: 'supplier_price', precio_mercado: 'supplier_price',
   supplier_currency: 'supplier_currency', moneda_proveedor: 'supplier_currency', moneda: 'supplier_currency', currency: 'supplier_currency',
   shipping_mode: 'shipping_mode', modo_envio: 'shipping_mode', shipping_fee: 'shipping_fee', envio: 'shipping_fee', costo_envio: 'shipping_fee', tarifa_envio: 'shipping_fee',
   shipping_weight_kg: 'shipping_weight_kg', peso_kg: 'shipping_weight_kg', shipping_dimensions: 'shipping_dimensions', dimensiones_envio: 'shipping_dimensions',
+  margin: 'margin_pct', margen: 'margin_pct', margin_pct: 'margin_pct', margen_producto: 'margin_pct', margen_ganancia: 'margin_pct',
+  marca: 'brand', brand: 'brand', fabricante: 'brand',
+  capacidad_btu: 'capacity_btu', btu: 'capacity_btu', capacidad: 'capacity_btu',
+  garantia: 'warranty', warranty: 'warranty', garantia_proveedor: 'warranty',
+  fecha_consulta: 'query_date', fecha_captura: 'query_date', consulted_at: 'query_date', query_date: 'query_date',
+  estado_stock: 'stock_status', status_stock: 'stock_status', disponibilidad: 'stock_status', availability: 'stock_status',
+  instalacion: 'installation_price', precio_instalacion: 'installation_price', installation: 'installation_price', installation_price: 'installation_price',
+  precio_pack: 'price_pack', pack: 'price_pack', pack_price: 'price_pack', producto_instalacion: 'price_pack',
+  precio_oferta: 'price_offer', oferta: 'price_offer', offer_price: 'price_offer', sale_offer: 'price_offer',
 };
 
 function normalizeHeader(value: string) {
@@ -83,6 +102,10 @@ function parseBool(value: unknown, fallback = false) {
 function cleanText(value: unknown) {
   const text = String(value ?? '').trim();
   return text.length ? text : null;
+}
+
+function compactSpecs(specs: Record<string, unknown>) {
+  return Object.fromEntries(Object.entries(specs).filter(([, value]) => value !== null && value !== undefined && value !== ''));
 }
 
 function splitDelimitedLine(line: string, delimiter: string) {
@@ -147,6 +170,27 @@ export function normalizeImportRows(rows: unknown[]): ProductImportParseResult {
     const price = importedPrice > 0 ? importedPrice : supplierPrice;
     if (!name) { errors.push({ row: index + 2, message: 'Falta nombre del producto.' }); return; }
     if (price <= 0) { errors.push({ row: index + 2, message: `Precio o costo inválido para ${name}.` }); return; }
+
+    const brand = cleanText(mapped.brand);
+    const capacityBtu = parseNumber(mapped.capacity_btu);
+    const warranty = cleanText(mapped.warranty);
+    const queryDate = cleanText(mapped.query_date);
+    const stockStatus = cleanText(mapped.stock_status);
+    const installationPrice = parseMoney(mapped.installation_price) || null;
+    const pricePack = parseMoney(mapped.price_pack) || null;
+    const priceOffer = parseMoney(mapped.price_offer) || null;
+    const marginPct = parseNumber(mapped.margin_pct);
+    const specifications = compactSpecs({
+      marca: brand,
+      capacidad_btu: capacityBtu,
+      garantia: warranty,
+      fecha_consulta: queryDate,
+      estado_stock: stockStatus,
+      instalacion: installationPrice,
+      precio_pack: pricePack,
+      precio_oferta: priceOffer,
+    });
+
     products.push({
       id: cleanText(mapped.id) || undefined,
       name,
@@ -169,6 +213,16 @@ export function normalizeImportRows(rows: unknown[]): ProductImportParseResult {
       shipping_fee: parseMoney(mapped.shipping_fee) || null,
       shipping_weight_kg: parseNumber(mapped.shipping_weight_kg),
       shipping_dimensions: cleanText(mapped.shipping_dimensions),
+      margin_pct: marginPct,
+      brand,
+      capacity_btu: capacityBtu,
+      warranty,
+      query_date: queryDate,
+      stock_status: stockStatus,
+      installation_price: installationPrice,
+      price_pack: pricePack,
+      price_offer: priceOffer,
+      specifications: Object.keys(specifications).length ? specifications : null,
     });
   });
   return { products, errors };

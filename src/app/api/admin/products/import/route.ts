@@ -55,11 +55,12 @@ function isValidHttpUrl(value?: string | null) {
   }
 }
 
-function applyResellerMargin(product: ParsedImportProduct, defaultMarginPct: number): PreviewProduct {
+function applyResellerMargin(product: ParsedImportProduct, defaultMarginPct: number, preserveEditedPrice = false): PreviewProduct {
   const marginPct = normalizeMarginPct(product.margin_pct ?? defaultMarginPct);
   const cost = Number(product.supplier_price || product.price || 0);
-  const rawPrice = Number.isFinite(cost) && cost > 0 ? cost * (1 + marginPct / 100) : Number(product.price || 0);
-  const roundedPrice = roundCommercial(rawPrice);
+  const calculatedRaw = Number.isFinite(cost) && cost > 0 ? cost * (1 + marginPct / 100) : Number(product.price || 0);
+  const rawPrice = preserveEditedPrice && Number(product.price) > 0 ? Number(product.price) : calculatedRaw;
+  const roundedPrice = preserveEditedPrice && Number(product.price) > 0 ? Number(product.price) : roundCommercial(rawPrice);
   const specs = {
     ...(product.specifications ?? {}),
     margen_importacion: marginPct,
@@ -86,7 +87,7 @@ async function parseIncomingProducts(body: ImportBody) {
   let content = String(body.content || '');
 
   if (Array.isArray(body.products) && body.products.length > 0) {
-    return { source, products: body.products as ParsedImportProduct[], errors: [] as Array<{ row: number; message: string }> };
+    return { source, products: body.products as ParsedImportProduct[], errors: [] as Array<{ row: number; message: string }>, fromPreview: true };
   }
 
   if (source === 'google_sheets') {
@@ -99,7 +100,7 @@ async function parseIncomingProducts(body: ImportBody) {
   if (!content.trim()) throw new Error('No hay contenido para importar.');
 
   const parsed = source === 'json' ? parseJsonProducts(content) : parseDelimitedProducts(content);
-  return { source, products: parsed.products, errors: parsed.errors };
+  return { source, products: parsed.products, errors: parsed.errors, fromPreview: false };
 }
 
 async function loadExistingProducts(): Promise<ExistingProduct[]> {
@@ -146,7 +147,7 @@ function validatePreviewProduct(product: ParsedImportProduct, existing: Existing
 }
 
 function toDbRow(product: ParsedImportProduct, asDraft: boolean) {
-  const { brand, capacity_btu, warranty, query_date, stock_status, installation_price, price_pack, price_offer, margin_pct, raw_price, rounded_price, ...rest } = product as ParsedImportProduct & Record<string, unknown>;
+  const { brand, capacity_btu, warranty, query_date, stock_status, installation_price, price_pack, price_offer, margin_pct, raw_price, rounded_price, row, warnings, ...rest } = product as ParsedImportProduct & Record<string, unknown>;
   const specs = {
     ...(product.specifications ?? {}),
     marca: brand ?? product.brand,
@@ -194,7 +195,7 @@ export async function POST(request: NextRequest) {
 
     const existing = await loadExistingProducts();
     const previewProducts = parsed.products.map((product, index) => {
-      const withMargin = applyResellerMargin(product, normalizeMarginPct(product.margin_pct ?? marginPct));
+      const withMargin = applyResellerMargin(product, normalizeMarginPct(product.margin_pct ?? marginPct), parsed.fromPreview);
       const warnings = validatePreviewProduct(withMargin, existing);
       return { ...withMargin, row: index + 2, warnings };
     });

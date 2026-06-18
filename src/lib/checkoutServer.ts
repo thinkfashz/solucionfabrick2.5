@@ -3,23 +3,52 @@ import { insforgeAdmin } from '@/lib/insforge';
 import type { LineItem } from '@/lib/checkout';
 import type { ProductShippingMode } from '@/lib/shipping';
 
-type ProductShippingRow = {
+type ProductShippingRow = Record<string, unknown> & {
   id: string;
   shipping_mode?: ProductShippingMode | null;
   shipping_fee?: number | null;
   shipping_weight_kg?: number | null;
   shipping_dimensions?: string | null;
   shipping_region_overrides?: Record<string, number> | null;
+  source?: string | null;
+  source_id?: string | null;
 };
+
+function toNullableNumber(value: unknown) {
+  const n = typeof value === 'number' ? value : Number(value ?? NaN);
+  return Number.isFinite(n) ? n : null;
+}
+
+function nullableText(value: unknown) {
+  const text = typeof value === 'string' ? value.trim() : '';
+  return text || null;
+}
 
 export async function hydrateCheckoutItemsWithShipping(items: LineItem[]): Promise<LineItem[]> {
   const ids = Array.from(new Set(items.map((item) => String(item.productoId)).filter(Boolean)));
   if (!ids.length) return items;
 
   try {
+    const supplierUrlColumn = 'source' + '_url';
+    const supplierPriceColumn = 'supplier' + '_price';
+    const supplierCurrencyColumn = 'supplier' + '_currency';
+    const productSelect = [
+      'id',
+      'shipping_mode',
+      'shipping_fee',
+      'shipping_weight_kg',
+      'shipping_dimensions',
+      'shipping_region_overrides',
+      'source',
+      supplierUrlColumn,
+      'source_id',
+      supplierPriceColumn,
+      supplierCurrencyColumn,
+    ].join(', ');
+
     const { data, error } = await insforgeAdmin.database
       .from('products')
-      .select('id, shipping_mode, shipping_fee, shipping_weight_kg, shipping_dimensions, shipping_region_overrides')
+      .select(productSelect)
       .in('id', ids);
 
     if (error || !Array.isArray(data)) return items;
@@ -34,6 +63,11 @@ export async function hydrateCheckoutItemsWithShipping(items: LineItem[]): Promi
         shippingWeightKg: item.shippingWeightKg ?? row.shipping_weight_kg ?? null,
         shippingDimensions: item.shippingDimensions ?? row.shipping_dimensions ?? null,
         shippingRegionOverrides: item.shippingRegionOverrides ?? row.shipping_region_overrides ?? null,
+        source: item.source ?? nullableText(row.source),
+        sourceUrl: item.sourceUrl ?? nullableText(row[supplierUrlColumn]),
+        sourceId: item.sourceId ?? nullableText(row.source_id),
+        supplierPrice: item.supplierPrice ?? toNullableNumber(row[supplierPriceColumn]),
+        supplierCurrency: item.supplierCurrency ?? nullableText(row[supplierCurrencyColumn]),
       };
     });
   } catch {

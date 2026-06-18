@@ -40,7 +40,13 @@ function escapeHtml(value: unknown) {
 }
 
 function adminRecipients() {
-  const candidates = [process.env.CHECKOUT_ADMIN_EMAIL, process.env.ADMIN_EMAIL, process.env.RESEND_ADMIN_EMAIL, process.env.NEXT_PUBLIC_ADMIN_EMAIL, 'faubricioedms@gmail.com'];
+  const candidates = [
+    process.env.CHECKOUT_ADMIN_EMAIL,
+    process.env.ADMIN_EMAIL,
+    process.env.RESEND_ADMIN_EMAIL,
+    process.env.NEXT_PUBLIC_ADMIN_EMAIL,
+    'faubricioedms@gmail.com',
+  ];
   return Array.from(new Set(candidates.filter((email): email is string => Boolean(email && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)))));
 }
 
@@ -52,6 +58,56 @@ function itemsRows(order: CheckoutOrderEmailInput) {
       <td style="padding:12px 0;border-bottom:1px solid #242424;color:#fff;text-align:right;font-weight:900;">${clp(item.precioUnitario * item.cantidad)}</td>
     </tr>
   `).join('');
+}
+
+function adminSupplierRows(order: CheckoutOrderEmailInput) {
+  return order.items.map((item) => {
+    const supplierUrl = item.sourceUrl || '';
+    const supplierUnit = Number(item.supplierPrice || 0);
+    const supplierTotal = supplierUnit > 0 ? supplierUnit * item.cantidad : 0;
+    const clientTotal = item.precioUnitario * item.cantidad;
+    const profit = supplierTotal > 0 ? clientTotal - supplierTotal : 0;
+    const supplierLabel = item.source || (supplierUrl ? 'Proveedor' : 'Sin proveedor');
+    const button = supplierUrl
+      ? `<a href="${escapeHtml(supplierUrl)}" style="display:inline-block;background:#facc15;color:#050505;text-decoration:none;font-weight:900;border-radius:999px;padding:9px 13px;">Abrir link</a>`
+      : '<span style="color:#777;font-size:12px;">Sin link guardado</span>';
+
+    return `
+      <tr>
+        <td style="padding:14px 0;border-bottom:1px solid #242424;color:#fff;font-weight:800;">${escapeHtml(item.nombre || item.productoId)}<br><span style="color:#777;font-size:12px;font-weight:400;">${escapeHtml(supplierLabel)}${item.sourceId ? ` · ${escapeHtml(item.sourceId)}` : ''}</span></td>
+        <td style="padding:14px 0;border-bottom:1px solid #242424;color:#ddd;text-align:center;">${item.cantidad}</td>
+        <td style="padding:14px 0;border-bottom:1px solid #242424;color:#fde68a;text-align:right;font-weight:800;">${supplierTotal > 0 ? clp(supplierTotal) : '—'}</td>
+        <td style="padding:14px 0;border-bottom:1px solid #242424;color:#86efac;text-align:right;font-weight:800;">${profit > 0 ? clp(profit) : '—'}</td>
+        <td style="padding:14px 0;border-bottom:1px solid #242424;text-align:right;">${button}</td>
+      </tr>
+    `;
+  }).join('');
+}
+
+function adminSupplierBlock(order: CheckoutOrderEmailInput) {
+  const hasAnySupplierData = order.items.some((item) => item.sourceUrl || item.supplierPrice || item.source || item.sourceId);
+  if (!hasAnySupplierData) {
+    return `<div style="background:#171200;border:1px solid #4a3a00;border-radius:16px;padding:16px;color:#fde68a;margin:18px 0;">No hay links de proveedor guardados para esta compra. Puedes agregarlos en Admin → Productos → Editar producto.</div>`;
+  }
+
+  return `
+    <div style="background:#0b0b0b;border:1px solid #3f3207;border-radius:18px;padding:18px;margin:20px 0;">
+      <div style="font-size:11px;letter-spacing:2px;text-transform:uppercase;color:#facc15;font-weight:900;margin-bottom:10px;">Operación interna · solo admin</div>
+      <p style="color:#aaa;line-height:1.6;margin:0 0 12px;">Estos datos no se envían al cliente. Úsalos para comprar el producto en la tienda proveedora y coordinar el despacho.</p>
+      <table style="width:100%;border-collapse:collapse;font-size:13px;">
+        <thead>
+          <tr>
+            <th style="padding:0 0 8px;color:#777;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:1.8px;">Producto / proveedor</th>
+            <th style="padding:0 0 8px;color:#777;text-align:center;font-size:11px;text-transform:uppercase;letter-spacing:1.8px;">Cant.</th>
+            <th style="padding:0 0 8px;color:#777;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:1.8px;">Costo</th>
+            <th style="padding:0 0 8px;color:#777;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:1.8px;">Ganancia</th>
+            <th style="padding:0 0 8px;color:#777;text-align:right;font-size:11px;text-transform:uppercase;letter-spacing:1.8px;">Link</th>
+          </tr>
+        </thead>
+        <tbody>${adminSupplierRows(order)}</tbody>
+      </table>
+    </div>
+  `;
 }
 
 function buildReceiptPdf(order: CheckoutOrderEmailInput, forAdmin = false) {
@@ -179,6 +235,7 @@ function adminHtml(order: CheckoutOrderEmailInput) {
         <div style="background:#0b0b0b;border:1px solid #242424;border-radius:16px;padding:16px;">Dirección: ${escapeHtml(order.shippingAddress || '-')}<br>Región: ${escapeHtml(order.region || '-')}</div>
         <div style="background:#171200;border:1px solid #4a3a00;border-radius:16px;padding:16px;color:#fde68a;">Envío interno estimado: <strong>${estimate ? clp(estimate.amount) : 'No calculado'}</strong></div>
       </div>
+      ${adminSupplierBlock(order)}
       <table style="width:100%;border-collapse:collapse;font-size:14px;">${itemsRows(order)}</table>
       <div style="margin-top:18px;text-align:right;font-size:18px;font-weight:900;color:#fff;">Total cliente: ${clp(order.resumen.total)}</div>
       ${order.trackingUrl ? `<p style="margin-top:18px;color:#aaa;">Tracking público: <a href="${escapeHtml(order.trackingUrl)}" style="color:#facc15">${escapeHtml(order.trackingUrl)}</a></p>` : ''}

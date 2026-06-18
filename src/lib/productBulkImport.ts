@@ -31,21 +31,23 @@ export interface ProductImportParseResult {
 }
 
 const FIELD_ALIASES: Record<string, keyof ParsedImportProduct> = {
-  id: 'id', sku: 'id', product_id: 'id', producto_id: 'id',
+  id: 'id', sku: 'id', product_id: 'id', producto_id: 'id', codigo: 'id', codigo_producto: 'id',
   name: 'name', nombre: 'name', producto: 'name', product: 'name', titulo: 'name', title: 'name',
   description: 'description', descripcion: 'description', detalle: 'description', descripcion_larga: 'description',
-  price: 'price', precio: 'price', valor: 'price', precio_venta: 'price', venta: 'price',
-  stock: 'stock', cantidad: 'stock', inventario: 'stock',
-  image: 'image_url', img: 'image_url', imagen: 'image_url', image_url: 'image_url', imagen_url: 'image_url', url_imagen: 'image_url',
-  category: 'category_id', categoria: 'category_id', category_id: 'category_id',
-  tagline: 'tagline', subtitulo: 'tagline', slogan: 'tagline',
-  active: 'activo', activo: 'activo', visible: 'activo',
-  featured: 'featured', destacado: 'featured',
-  delivery_days: 'delivery_days', dias_envio: 'delivery_days', entrega_dias: 'delivery_days',
+  price: 'price', precio: 'price', valor: 'price', precio_venta: 'price', venta: 'price', precio_publico: 'price', public_price: 'price', sale_price: 'price',
+  stock: 'stock', cantidad: 'stock', inventario: 'stock', unidades: 'stock',
+  image: 'image_url', img: 'image_url', imagen: 'image_url', image_url: 'image_url', imagen_url: 'image_url', url_imagen: 'image_url', foto: 'image_url', photo: 'image_url',
+  category: 'category_id', categoria: 'category_id', category_id: 'category_id', categoria_id: 'category_id',
+  tagline: 'tagline', subtitulo: 'tagline', slogan: 'tagline', bajada: 'tagline',
+  active: 'activo', activo: 'activo', visible: 'activo', publicado: 'activo',
+  featured: 'featured', destacado: 'featured', inicio: 'featured', home: 'featured',
+  delivery_days: 'delivery_days', dias_envio: 'delivery_days', entrega_dias: 'delivery_days', tiempo_envio: 'delivery_days',
   discount: 'discount_percentage', descuento: 'discount_percentage', discount_percentage: 'discount_percentage',
-  source: 'source', origen: 'source', source_url: 'source_url', url_proveedor: 'source_url', proveedor_url: 'source_url',
-  source_id: 'source_id', id_proveedor: 'source_id', supplier_price: 'supplier_price', precio_proveedor: 'supplier_price', costo: 'supplier_price', costo_compra: 'supplier_price',
-  supplier_currency: 'supplier_currency', moneda_proveedor: 'supplier_currency',
+  source: 'source', origen: 'source', tienda: 'source', proveedor: 'source',
+  source_url: 'source_url', url: 'source_url', link: 'source_url', link_compra: 'source_url', url_compra: 'source_url', url_proveedor: 'source_url', proveedor_url: 'source_url', proveedor_link: 'source_url', tienda_url: 'source_url', compra_url: 'source_url',
+  source_id: 'source_id', id_proveedor: 'source_id', proveedor_id: 'source_id', external_id: 'source_id',
+  supplier_price: 'supplier_price', precio_proveedor: 'supplier_price', costo: 'supplier_price', costo_compra: 'supplier_price', precio_compra: 'supplier_price', precio_costo: 'supplier_price', compra: 'supplier_price', cost: 'supplier_price', purchase_price: 'supplier_price', supplier_cost: 'supplier_price',
+  supplier_currency: 'supplier_currency', moneda_proveedor: 'supplier_currency', moneda: 'supplier_currency', currency: 'supplier_currency',
   shipping_mode: 'shipping_mode', modo_envio: 'shipping_mode', shipping_fee: 'shipping_fee', envio: 'shipping_fee', costo_envio: 'shipping_fee', tarifa_envio: 'shipping_fee',
   shipping_weight_kg: 'shipping_weight_kg', peso_kg: 'shipping_weight_kg', shipping_dimensions: 'shipping_dimensions', dimensiones_envio: 'shipping_dimensions',
 };
@@ -140,9 +142,11 @@ export function normalizeImportRows(rows: unknown[]): ProductImportParseResult {
       mapped[alias] = value;
     }
     const name = cleanText(mapped.name);
-    const price = parseMoney(mapped.price);
+    const supplierPrice = parseMoney(mapped.supplier_price);
+    const importedPrice = parseMoney(mapped.price);
+    const price = importedPrice > 0 ? importedPrice : supplierPrice;
     if (!name) { errors.push({ row: index + 2, message: 'Falta nombre del producto.' }); return; }
-    if (price <= 0) { errors.push({ row: index + 2, message: `Precio inválido para ${name}.` }); return; }
+    if (price <= 0) { errors.push({ row: index + 2, message: `Precio o costo inválido para ${name}.` }); return; }
     products.push({
       id: cleanText(mapped.id) || undefined,
       name,
@@ -159,8 +163,8 @@ export function normalizeImportRows(rows: unknown[]): ProductImportParseResult {
       source: cleanText(mapped.source),
       source_url: cleanText(mapped.source_url),
       source_id: cleanText(mapped.source_id),
-      supplier_price: parseMoney(mapped.supplier_price) || null,
-      supplier_currency: cleanText(mapped.supplier_currency),
+      supplier_price: supplierPrice || importedPrice || null,
+      supplier_currency: cleanText(mapped.supplier_currency) || 'CLP',
       shipping_mode: cleanText(mapped.shipping_mode),
       shipping_fee: parseMoney(mapped.shipping_fee) || null,
       shipping_weight_kg: parseNumber(mapped.shipping_weight_kg),

@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { insforgeAdmin } from '@/lib/insforge';
 import { requireAdminPermission } from '@/lib/adminPermissions';
-import { googleSheetCsvUrl, parseDelimitedProducts, parseJsonProducts, type ProductImportMode, type ProductImportSource } from '@/lib/productBulkImport';
+import { googleSheetCsvUrl, parseDelimitedProducts, parseJsonProducts, type ParsedImportProduct, type ProductImportMode, type ProductImportSource } from '@/lib/productBulkImport';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -12,10 +12,28 @@ type ImportBody = {
   mode?: ProductImportMode;
   content?: string;
   url?: string;
+  marginPct?: number | string;
 };
 
 function cleanProductForDb(product: Record<string, unknown>) {
   return Object.fromEntries(Object.entries(product).filter(([, value]) => value !== undefined));
+}
+
+function normalizeMarginPct(value: unknown) {
+  const n = typeof value === 'number' ? value : Number(String(value ?? '').replace(',', '.'));
+  if (!Number.isFinite(n)) return 25;
+  return Math.min(1000, Math.max(0, n));
+}
+
+function applyResellerMargin(product: ParsedImportProduct, marginPct: number): ParsedImportProduct {
+  const cost = Number(product.supplier_price || product.price || 0);
+  if (!Number.isFinite(cost) || cost <= 0) return product;
+  return {
+    ...product,
+    supplier_price: product.supplier_price || product.price,
+    supplier_currency: product.supplier_currency || 'CLP',
+    price: Math.round(cost * (1 + marginPct / 100)),
+  };
 }
 
 export async function POST(request: NextRequest) {
@@ -31,6 +49,7 @@ export async function POST(request: NextRequest) {
 
   const source = body.source || 'table';
   const mode = body.mode === 'upsert' ? 'upsert' : 'insert';
+  const marginPct = normalizeMarginPct(body.marginPct);
   let content = String(body.content || '');
 
   try {
@@ -48,7 +67,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'No se encontró ningún producto válido.', errors: parsed.errors }, { status: 422 });
     }
 
-    const rows = parsed.products.map((product) => cleanProductForDb({
+    const rows = parsed.products.map((product) => applyResellerMargin(product, marginPct)).map((product) => cleanProductForDb({
       ...product,
       activo: product.activo !== false,
       featured: !!product.featured,
@@ -59,7 +78,7 @@ export async function POST(request: NextRequest) {
     const { error } = mode === 'upsert' ? await query.upsert(rows) : await query.insert(rows);
     if (error) return NextResponse.json({ error: error.message || 'No se pudieron importar los productos.', parsed: parsed.products.length, errors: parsed.errors }, { status: 500 });
 
-    return NextResponse.json({ ok: true, imported: rows.length, skipped: parsed.errors.length, errors: parsed.errors, mode, source });
+    return NextResponse.json({ ok: true, imported: rows.length, skipped: parsed.errors.length, errors: parsed.errors, mode, source, marginPct });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Error importando productos.' }, { status: 500 });
   }

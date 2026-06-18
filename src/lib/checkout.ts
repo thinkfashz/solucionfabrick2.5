@@ -10,6 +10,11 @@ export interface LineItem {
   shippingWeightKg?: number | null;
   shippingDimensions?: string | null;
   shippingRegionOverrides?: Record<string, number> | null;
+  source?: string | null;
+  sourceUrl?: string | null;
+  sourceId?: string | null;
+  supplierPrice?: number | null;
+  supplierCurrency?: string | null;
 }
 
 export interface ClienteCheckout {

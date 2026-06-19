@@ -14,6 +14,11 @@
 html, body { max-width: 100%; overflow-x: hidden; background: var(--fabrick-bg); }
 body { color: var(--fabrick-text); }
 
+@keyframes adminPaletteIn {
+  from { opacity: 0; transform: translateY(-10px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
 .sf-admin-colombia-bg {
   position: relative;
   min-height: 100dvh;
@@ -51,23 +56,23 @@ body { color: var(--fabrick-text); }
   position: fixed;
   inset: -12%;
   z-index: -2;
-  opacity: .30;
+  opacity: .22;
   pointer-events: none;
-  filter: blur(56px);
+  filter: blur(36px);
 }
 
 .sf-admin-blob {
   position: absolute;
   left: 50%;
   top: 50%;
-  width: 52vmax;
-  height: 52vmax;
+  width: 46vmax;
+  height: 46vmax;
   border-radius: 9999px;
-  opacity: .42;
+  opacity: .34;
 }
-.sf-admin-blob-1 { background: radial-gradient(circle, rgba(250,204,21,.34) 0%, rgba(250,204,21,0) 58%); transform: translate(-78%, -60%); }
-.sf-admin-blob-2 { background: radial-gradient(circle, rgba(255,255,255,.20) 0%, rgba(255,255,255,0) 60%); transform: translate(-18%, -72%); }
-.sf-admin-blob-3 { background: radial-gradient(circle, rgba(214,165,47,.20) 0%, rgba(214,165,47,0) 58%); transform: translate(-15%, -15%); }
+.sf-admin-blob-1 { background: radial-gradient(circle, rgba(250,204,21,.28) 0%, rgba(250,204,21,0) 58%); transform: translate(-78%, -60%); }
+.sf-admin-blob-2 { background: radial-gradient(circle, rgba(255,255,255,.16) 0%, rgba(255,255,255,0) 60%); transform: translate(-18%, -72%); }
+.sf-admin-blob-3 { background: radial-gradient(circle, rgba(214,165,47,.16) 0%, rgba(214,165,47,0) 58%); transform: translate(-15%, -15%); }
 .sf-admin-blob-4 { display: none; }
 .sf-admin-blob-5 { display: none; }
 .sf-admin-colombia-content { position: relative; z-index: 1; min-height: 100dvh; }
@@ -87,16 +92,16 @@ button { touch-action: manipulation; }
 
 .fabrick-card, .fabrick-panel, .glass-card, [class*='bg-black/55'], [class*='bg-black/45'], [class*='bg-zinc-950'], [class*='bg-[#050403]'] {
   border-color: rgba(250, 204, 21, .13) !important;
-  background-color: rgba(4, 4, 4, .58);
-  backdrop-filter: blur(18px);
-  -webkit-backdrop-filter: blur(18px);
+  background-color: rgba(4, 4, 4, .68);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
 }
-[class*='rounded-[2rem]'], [class*='rounded-[2.4rem]'], [class*='rounded-[2.6rem]'], .rounded-3xl { box-shadow: 0 24px 90px rgba(0, 0, 0, .34); }
+[class*='rounded-[2rem]'], [class*='rounded-[2.4rem]'], [class*='rounded-[2.6rem]'], .rounded-3xl { box-shadow: 0 18px 56px rgba(0, 0, 0, .28); }
 .fabrick-grid-safe, [class*='grid'] { min-width: 0; }
 .fabrick-scroll-safe { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .fabrick-admin-title { color: var(--fabrick-text); letter-spacing: -0.055em; }
 .fabrick-admin-muted { color: var(--fabrick-muted); }
-.fabrick-admin-button, button[class*='bg-amber-400'], button[class*='bg-yellow'] { box-shadow: 0 16px 40px rgba(250, 204, 21, .16); }
+.fabrick-admin-button, button[class*='bg-amber-400'], button[class*='bg-yellow'] { box-shadow: 0 12px 26px rgba(250, 204, 21, .12); }
 
 @media (max-width: 1280px) {
   main > section, main > div, .fabrick-page, .fabrick-container { max-width: calc(100vw - 18px); }
@@ -118,8 +123,14 @@ button { touch-action: manipulation; }
   .flex { min-width: 0; }
   .break-all { word-break: break-word; }
   table { min-width: 640px; }
-  .sf-admin-colombia-gradients { opacity: .22; filter: blur(54px); }
-  .sf-admin-blob { width: 66vmax; height: 66vmax; }
+  .sf-admin-colombia-gradients { display: none; }
+  .sf-admin-blob { display: none; }
+  .fabrick-card, .fabrick-panel, .glass-card, [class*='bg-black/55'], [class*='bg-black/45'], [class*='bg-zinc-950'], [class*='bg-[#050403]'] {
+    background-color: rgba(4, 4, 4, .78);
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+  [class*='rounded-[2rem]'], [class*='rounded-[2.4rem]'], [class*='rounded-[2.6rem]'], .rounded-3xl { box-shadow: 0 12px 32px rgba(0, 0, 0, .24); }
 }
 
 @media (prefers-reduced-motion: reduce) {

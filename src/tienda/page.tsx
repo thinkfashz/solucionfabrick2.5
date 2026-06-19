@@ -52,6 +52,8 @@ type Product = {
 
 const PRODUCTS = FALLBACK_CATALOG_PRODUCTS as Product[];
 const CATEGORY_ALL = 'Todos';
+const CONSTRUCTION_HERO_IMAGE =
+  'https://res.cloudinary.com/disghf6xc/image/upload/f_auto,q_auto,c_fill,g_auto,w_1400,h_1200/v1781844764/Contemporary_design_advertisement._A_close-up_202606030147_oeelof.jpg';
 
 function StoreFabrickLogo({ tone = 'dark' }: { tone?: 'light' | 'dark' }) {
   return (
@@ -95,10 +97,10 @@ export default function TiendaClientPage() {
   const [menuOpen, setMenuOpen] = useState(false);
   const [selectedCategory, setSelectedCategory] = useState(CATEGORY_ALL);
 
-  const liveProducts = useMemo<Product[]>(() => {
+  const liveProducts = useMemo<Product[]>((() => {
     if (fetchComplete) return catalogProducts as Product[];
     return catalogProducts.length ? (catalogProducts as Product[]) : PRODUCTS;
-  }, [catalogProducts, fetchComplete]);
+  }) as () => Product[], [catalogProducts, fetchComplete]);
 
   const categories = useMemo(() => {
     const found = Array.from(new Set(liveProducts.map((product) => getCategory(product)).filter(Boolean)));
@@ -139,7 +141,11 @@ export default function TiendaClientPage() {
 
   const featured = filteredProducts.slice(0, 12);
   const heroProduct = liveProducts[0];
-  const heroImage = heroProduct?.img;
+  const heroStats = [
+    { value: '24–48h', label: 'Despacho stock' },
+    { value: '+Montaje', label: 'Servicio opcional' },
+    { value: `${liveProducts.length}+`, label: 'Productos activos' },
+  ];
   const pageBg = isDark
     ? 'bg-[radial-gradient(circle_at_18%_0%,rgba(250,204,21,.12),transparent_28rem),linear-gradient(180deg,#060606_0%,#11110d_45%,#050505_100%)] text-white'
     : 'bg-[radial-gradient(circle_at_18%_0%,rgba(250,204,21,.18),transparent_25rem),linear-gradient(180deg,#f7f7f4_0%,#fff_48%,#f4f4f1_100%)] text-neutral-950';
@@ -152,7 +158,7 @@ export default function TiendaClientPage() {
       `}</style>
 
       <nav className={`fixed left-0 top-0 z-[100] w-full border-b backdrop-blur-xl ${isDark ? 'border-white/10 bg-zinc-950/88' : 'border-neutral-200 bg-white/90'}`}>
-        <div className="mx-auto flex h-[64px] max-w-[1440px] items-center justify-between gap-4 px-4 md:px-8">
+        <div className="mx-auto flex h-[64px] max-w-[1440px] items-center justify-between gap-2 px-3 md:gap-4 md:px-8">
           <button onClick={() => router.push('/')} className={`rounded-full border px-3 py-2 ${isDark ? 'border-white/10 bg-white/[0.04]' : 'border-neutral-200 bg-white shadow-sm'}`}>
             <StoreFabrickLogo tone={isDark ? 'dark' : 'light'} />
           </button>
@@ -177,37 +183,42 @@ export default function TiendaClientPage() {
       </nav>
       <div className="h-[64px]" />
 
-      <header className="mx-auto grid max-w-[1440px] gap-5 px-4 py-6 md:px-8 lg:grid-cols-[1fr_.86fr] lg:py-10">
-        <section className={`relative overflow-hidden rounded-[2.2rem] border p-5 shadow-[0_30px_100px_rgba(0,0,0,.26)] md:rounded-[2.8rem] md:p-8 ${isDark ? 'border-white/10 bg-black/45' : 'border-neutral-200 bg-white'}`}>
-          <div className="relative z-10 grid min-h-[620px] gap-8 lg:grid-cols-[1fr_380px]">
-            <div className="flex flex-col justify-between gap-8">
+      <header className="mx-auto grid max-w-[1440px] gap-5 px-3 py-4 md:px-8 md:py-6 lg:grid-cols-[1fr_.7fr] lg:py-10">
+        <section className={`relative overflow-hidden rounded-[1.75rem] border p-4 shadow-[0_30px_100px_rgba(0,0,0,.26)] sm:rounded-[2.2rem] sm:p-5 md:rounded-[2.8rem] md:p-8 ${isDark ? 'border-white/10 bg-black/45' : 'border-neutral-200 bg-white'}`}>
+          <div className="pointer-events-none absolute inset-0 opacity-80">
+            <img src={CONSTRUCTION_HERO_IMAGE} alt="" className="h-full w-full object-cover object-center opacity-18 blur-[1px]" loading="eager" />
+            <div className={`absolute inset-0 ${isDark ? 'bg-[linear-gradient(180deg,rgba(0,0,0,.80),rgba(0,0,0,.58)_45%,rgba(0,0,0,.88))]' : 'bg-[linear-gradient(180deg,rgba(255,255,255,.78),rgba(255,255,255,.58)_45%,rgba(255,255,255,.90))]'}`} />
+          </div>
+
+          <div className="relative z-10 grid gap-5 lg:min-h-[650px] lg:grid-cols-[minmax(0,1fr)_420px] lg:gap-8">
+            <div className="flex min-w-0 flex-col justify-center gap-5 md:gap-7">
               <div>
-                <span className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] ${isDark ? 'border-yellow-300/25 bg-yellow-400/10 text-yellow-300' : 'border-yellow-500/20 bg-yellow-50 text-yellow-700'}`}>
+                <span className={`inline-flex max-w-full items-center gap-2 rounded-full border px-3 py-2 text-[9px] font-black uppercase tracking-[0.22em] sm:px-4 sm:text-[10px] sm:tracking-[0.28em] ${isDark ? 'border-yellow-300/25 bg-yellow-400/10 text-yellow-300' : 'border-yellow-500/20 bg-yellow-50 text-yellow-700'}`}>
                   <Sparkles size={14} /> Tienda + servicios + instalación
                 </span>
-                <h1 className="mt-7 max-w-4xl text-[clamp(46px,8vw,106px)] font-black leading-[0.88] tracking-[-0.07em]">
+                <h1 className="mt-5 max-w-4xl text-[clamp(38px,12vw,106px)] font-black leading-[0.92] tracking-[-0.07em] md:mt-7 md:leading-[0.88]">
                   Compra simple. Ficha clara. Instalación lista.
                 </h1>
-                <p className={`mt-6 max-w-2xl text-base leading-8 md:text-lg ${isDark ? 'text-zinc-300' : 'text-neutral-600'}`}>
-                  Catálogo visual tipo app: productos, servicios, precio, stock y compra directa. Ideal para vender rápido y compartir fichas por WhatsApp con información completa.
+                <p className={`mt-5 max-w-2xl text-[15px] leading-7 sm:text-base md:mt-6 md:text-lg md:leading-8 ${isDark ? 'text-zinc-300' : 'text-neutral-600'}`}>
+                  Catálogo visual con productos, servicios, precio, stock y compra directa. Ideal para vender rápido, compartir por WhatsApp y cerrar con instalación.
                 </p>
               </div>
 
               <div className="grid gap-3 sm:grid-cols-[1fr_auto]">
                 <button
                   onClick={() => setSearchOpen(true)}
-                  className={`flex min-h-[58px] items-center gap-3 rounded-full border px-5 text-left ${isDark ? 'border-white/10 bg-white/[0.06] text-zinc-400' : 'border-neutral-200 bg-neutral-50 text-neutral-500'}`}
+                  className={`flex min-h-[54px] items-center gap-3 rounded-full border px-4 text-left sm:min-h-[58px] sm:px-5 ${isDark ? 'border-white/10 bg-white/[0.06] text-zinc-400' : 'border-neutral-200 bg-neutral-50 text-neutral-500'}`}
                 >
-                  <Search className="h-5 w-5" />
-                  <span className="flex-1 text-sm">Buscar producto, servicio o material...</span>
-                  <Filter className="h-4 w-4 opacity-60" />
+                  <Search className="h-5 w-5 shrink-0" />
+                  <span className="min-w-0 flex-1 truncate text-sm">Buscar producto, servicio o material...</span>
+                  <Filter className="h-4 w-4 shrink-0 opacity-60" />
                 </button>
-                <button onClick={() => navigateWithTransition('/tienda/catalogo', router)} className="inline-flex min-h-[58px] items-center justify-center gap-2 rounded-full bg-yellow-400 px-7 text-sm font-black text-black shadow-[0_20px_60px_rgba(250,204,21,.22)] transition hover:-translate-y-0.5 hover:bg-yellow-300">
+                <button onClick={() => navigateWithTransition('/tienda/catalogo', router)} className="inline-flex min-h-[54px] items-center justify-center gap-2 rounded-full bg-yellow-400 px-7 text-sm font-black text-black shadow-[0_20px_60px_rgba(250,204,21,.22)] transition hover:-translate-y-0.5 hover:bg-yellow-300 sm:min-h-[58px]">
                   Ver catálogo <ArrowRight size={16} />
                 </button>
               </div>
 
-              <div className="store-scroll flex gap-2 overflow-x-auto pb-1">
+              <div className="store-scroll -mx-1 flex gap-2 overflow-x-auto px-1 pb-1">
                 {categories.map((category) => {
                   const active = category === selectedCategory;
                   return (
@@ -228,36 +239,30 @@ export default function TiendaClientPage() {
                 })}
               </div>
 
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  ['24–48h', 'Despacho stock'],
-                  ['+Instalación', 'Servicio opcional'],
-                  [`${liveProducts.length}+`, 'Productos activos'],
-                ].map(([n, label]) => (
-                  <div key={label} className={`rounded-[1.4rem] border p-4 ${isDark ? 'border-white/10 bg-white/[0.045]' : 'border-neutral-200 bg-neutral-50'}`}>
-                    <b className="block text-2xl font-black">{n}</b>
-                    <span className={`text-xs ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>{label}</span>
+              <div className="grid grid-cols-2 gap-2 sm:gap-3 min-[520px]:grid-cols-3">
+                {heroStats.map((stat, index) => (
+                  <div key={stat.label} className={`min-w-0 rounded-[1.25rem] border p-3 sm:rounded-[1.4rem] sm:p-4 ${index === 2 ? 'col-span-2 min-[520px]:col-span-1' : ''} ${isDark ? 'border-white/10 bg-black/35' : 'border-neutral-200 bg-white/70'}`}>
+                    <b className="block truncate text-[clamp(22px,6.5vw,34px)] font-black leading-none tracking-[-0.06em]">{stat.value}</b>
+                    <span className={`mt-2 block text-[11px] leading-4 sm:text-xs ${isDark ? 'text-zinc-500' : 'text-neutral-500'}`}>{stat.label}</span>
                   </div>
                 ))}
               </div>
             </div>
 
-            <button onClick={() => heroProduct && selectProduct(heroProduct)} className={`relative min-h-[460px] overflow-hidden rounded-[2rem] border p-5 text-left ${isDark ? 'border-white/10 bg-zinc-950' : 'border-neutral-200 bg-[#f3f4f1]'}`}>
-              {heroImage ? <img src={heroImage} alt={heroProduct?.name ?? 'Producto destacado'} className="absolute inset-0 h-full w-full object-cover opacity-85 transition duration-700 hover:scale-105" /> : null}
+            <button onClick={() => router.push('/contacto')} className={`relative min-h-[360px] overflow-hidden rounded-[1.8rem] border p-5 text-left sm:min-h-[430px] lg:min-h-full ${isDark ? 'border-white/10 bg-zinc-950' : 'border-neutral-200 bg-[#f3f4f1]'}`}>
+              <img src={CONSTRUCTION_HERO_IMAGE} alt="Construcción, diseño e instalación Soluciones Fabrick" className="absolute inset-0 h-full w-full object-cover object-center transition duration-700 hover:scale-105" loading="eager" />
               <div className="absolute inset-0 bg-gradient-to-t from-black via-black/30 to-transparent" />
-              <div className="relative z-10 flex h-full flex-col justify-between">
-                <span className="w-fit rounded-full bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-black">Producto destacado</span>
-                {heroProduct && (
-                  <div>
-                    <p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">{getCategory(heroProduct)}</p>
-                    <h2 className="mt-2 text-4xl font-black leading-none tracking-[-0.06em] text-white">{heroProduct.name}</h2>
-                    <p className="mt-3 line-clamp-2 text-sm leading-6 text-zinc-300">{heroProduct.description}</p>
-                    <div className="mt-5 flex items-center justify-between gap-3">
-                      <b className="text-2xl font-black text-yellow-300">${getFinalPrice(heroProduct).toLocaleString('es-CL')}</b>
-                      <span className="rounded-full bg-yellow-400 px-4 py-2 text-xs font-black text-black">Ver ficha</span>
-                    </div>
+              <div className="relative z-10 flex h-full min-h-[320px] flex-col justify-between sm:min-h-[390px] lg:min-h-full">
+                <span className="w-fit rounded-full bg-white px-4 py-2 text-[10px] font-black uppercase tracking-[0.22em] text-black">Portada construcción</span>
+                <div>
+                  <p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">Producto + servicio + montaje</p>
+                  <h2 className="mt-2 max-w-sm text-4xl font-black leading-none tracking-[-0.06em] text-white md:text-5xl">Solución llave en mano</h2>
+                  <p className="mt-3 max-w-sm text-sm leading-6 text-zinc-300">Te ayudamos a comprar, coordinar e instalar sin perder tiempo comparando proveedores.</p>
+                  <div className="mt-5 flex flex-wrap items-center gap-3">
+                    {heroProduct && <b className="rounded-full bg-black/55 px-4 py-2 text-sm font-black text-yellow-300">Desde ${getFinalPrice(heroProduct).toLocaleString('es-CL')}</b>}
+                    <span className="rounded-full bg-yellow-400 px-4 py-2 text-xs font-black text-black">Cotizar montaje</span>
                   </div>
-                )}
+                </div>
               </div>
             </button>
           </div>

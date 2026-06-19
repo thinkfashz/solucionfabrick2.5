@@ -24,6 +24,14 @@ function nullableText(value: unknown) {
   return text || null;
 }
 
+function asProductShippingRows(data: unknown): ProductShippingRow[] {
+  if (!Array.isArray(data)) return [];
+  return data.filter((row): row is ProductShippingRow => {
+    if (!row || typeof row !== 'object') return false;
+    return typeof (row as Record<string, unknown>).id === 'string' || typeof (row as Record<string, unknown>).id === 'number';
+  }).map((row) => ({ ...(row as Record<string, unknown>), id: String((row as Record<string, unknown>).id) } as ProductShippingRow));
+}
+
 export async function hydrateCheckoutItemsWithShipping(items: LineItem[]): Promise<LineItem[]> {
   const ids = Array.from(new Set(items.map((item) => String(item.productoId)).filter(Boolean)));
   if (!ids.length) return items;
@@ -51,8 +59,11 @@ export async function hydrateCheckoutItemsWithShipping(items: LineItem[]): Promi
       .select(productSelect)
       .in('id', ids);
 
-    if (error || !Array.isArray(data)) return items;
-    const map = new Map((data as ProductShippingRow[]).map((row) => [String(row.id), row]));
+    if (error) return items;
+    const rows = asProductShippingRows(data);
+    if (!rows.length) return items;
+
+    const map = new Map(rows.map((row) => [String(row.id), row]));
     return items.map((item) => {
       const row = map.get(String(item.productoId));
       if (!row) return item;

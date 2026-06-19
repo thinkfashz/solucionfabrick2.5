@@ -8,6 +8,17 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 type SessionPayload = { email: string; rol?: string; tenant_id?: string; session_id?: string };
+type DashboardPayload = {
+  ok: boolean;
+  profile: Record<string, unknown>;
+  stats: { products: number; orders: number; budgets: number; invoices: number; leads: number; revenue: number };
+  sessions: unknown[];
+  health: { app: string; db: string; latency_ms: number; realtime: string; last_deploy: string; cached?: boolean };
+  console: string[];
+};
+
+const DASHBOARD_CACHE_TTL_MS = 15_000;
+const dashboardCache = new Map<string, { expiresAt: number; payload: DashboardPayload }>();
 
 async function getProfile(email: string) {
   const { data } = await insforge.database
@@ -38,12 +49,33 @@ async function safeRows(table: string, limit = 8) {
   } catch { return []; }
 }
 
+function cacheKeyFor(session: SessionPayload) {
+  return `${session.email}:${session.rol || 'admin'}:${session.tenant_id || 'default'}`;
+}
+
+function cachedResponse(key: string, started: number) {
+  const cached = dashboardCache.get(key);
+  if (!cached || cached.expiresAt <= Date.now()) return null;
+  return {
+    ...cached.payload,
+    health: {
+      ...cached.payload.health,
+      latency_ms: Date.now() - started,
+      cached: true,
+    },
+  } satisfies DashboardPayload;
+}
+
 export async function GET(request: NextRequest) {
   const started = Date.now();
   const cookie = request.cookies.get(ADMIN_COOKIE_NAME);
   if (!cookie?.value) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   const session = await decodeSession(cookie.value) as SessionPayload | null;
   if (!session) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+
+  const cacheKey = cacheKeyFor(session);
+  const cached = cachedResponse(cacheKey, started);
+  if (cached) return NextResponse.json(cached);
 
   const [profile, sessions, products, orders, budgets, invoices, leads, recentOrders] = await Promise.all([
     getProfile(session.email),
@@ -65,7 +97,7 @@ export async function GET(request: NextRequest) {
     last_deploy: process.env.VERCEL_GIT_COMMIT_SHA?.slice(0, 7) || 'local',
   };
 
-  return NextResponse.json({
+  const payload: DashboardPayload = {
     ok: true,
     profile: { ...profile, role: session.rol || 'admin', session_id: session.session_id || null },
     stats: { products, orders, budgets, invoices, leads, revenue },
@@ -77,5 +109,8 @@ export async function GET(request: NextRequest) {
       `[SECURITY] sesiones auditadas=${sessions.length}`,
       `[BUILD] commit=${health.last_deploy}`,
     ],
-  });
+  };
+
+  dashboardCache.set(cacheKey, { expiresAt: Date.now() + DASHBOARD_CACHE_TTL_MS, payload });
+  return NextResponse.json(payload);
 }

@@ -95,7 +95,7 @@ const nextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
+const sentryOptions = {
   // Only print logs for uploading source maps in CI / Vercel builds.
   silent: !process.env.CI,
   // Sentry org/project + auth token are read from env (SENTRY_ORG, SENTRY_PROJECT,
@@ -104,13 +104,14 @@ export default withSentryConfig(nextConfig, {
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
   // Uploading a wider source-map set makes builds slower; only do it when Sentry is configured.
-  widenClientFileUpload: hasSentryAuthToken,
+  widenClientFileUpload: true,
   // Route browser SDK requests through this Next.js path to bypass ad-blockers.
   tunnelRoute: '/monitoring',
   // Hide Sentry-injected source map comments from the generated client bundles.
   hideSourceMaps: true,
-  // Skip source-map upload when there is no Sentry auth token or outside production builds.
   sourcemaps: {
-    disable: !hasSentryAuthToken || process.env.NODE_ENV !== 'production',
+    disable: process.env.NODE_ENV !== 'production',
   },
-});
+};
+
+export default hasSentryAuthToken ? withSentryConfig(nextConfig, sentryOptions) : nextConfig;

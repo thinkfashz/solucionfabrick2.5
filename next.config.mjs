@@ -14,6 +14,8 @@ const securityHeaders = [
   // each navigation gets a fresh nonce for inline JSON-LD scripts.
 ];
 
+const hasSentryAuthToken = Boolean(process.env.SENTRY_AUTH_TOKEN);
+
 const nextConfig = {
   ...(process.platform === 'win32' ? {} : { output: 'standalone' }),
   // Tree-shake bigger ecosystems (lucide-react ships hundreds of icons,
@@ -97,19 +99,18 @@ export default withSentryConfig(nextConfig, {
   // Only print logs for uploading source maps in CI / Vercel builds.
   silent: !process.env.CI,
   // Sentry org/project + auth token are read from env (SENTRY_ORG, SENTRY_PROJECT,
-  // SENTRY_AUTH_TOKEN). When not configured (e.g. local dev) the Sentry build
-  // plugin skips source-map upload automatically and the build proceeds normally.
+  // SENTRY_AUTH_TOKEN). When not configured, avoid release/source-map work entirely.
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
-  // Upload a larger set of source maps for prettier stack traces.
-  widenClientFileUpload: true,
+  // Uploading a wider source-map set makes builds slower; only do it when Sentry is configured.
+  widenClientFileUpload: hasSentryAuthToken,
   // Route browser SDK requests through this Next.js path to bypass ad-blockers.
   tunnelRoute: '/monitoring',
   // Hide Sentry-injected source map comments from the generated client bundles.
   hideSourceMaps: true,
-  // Skip source-map upload entirely outside production builds.
+  // Skip source-map upload when there is no Sentry auth token or outside production builds.
   sourcemaps: {
-    disable: process.env.NODE_ENV !== 'production',
+    disable: !hasSentryAuthToken || process.env.NODE_ENV !== 'production',
   },
 });

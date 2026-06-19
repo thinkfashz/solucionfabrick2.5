@@ -7,7 +7,7 @@ const STORE_URL = 'https://www.solucionesfabrick.com/tienda';
 const STORE_TITLE = 'Tienda Soluciones Fabrick | Productos, servicios e instalación';
 const STORE_DESCRIPTION =
   'Explora productos, materiales y servicios seleccionados por Soluciones Fabrick. Compra directo, pide asesoría, cotiza instalación y comparte fichas con precio, disponibilidad e imagen.';
-const STORE_OG_IMAGE = 'https://www.solucionesfabrick.com/logo-soluciones-fabrick.svg';
+const STORE_OG_IMAGE = 'https://res.cloudinary.com/disghf6xc/image/upload/f_auto,q_auto,c_fill,g_auto,w_1200,h_630/v1781844764/Contemporary_design_advertisement._A_close-up_202606030147_oeelof.jpg';
 
 // Match root layout: per-request render so admin-edited sections show up
 // immediately after a save (revalidatePath('/tienda') triggers re-render).
@@ -58,6 +58,7 @@ export default async function TiendaPage() {
     '@type': 'Store',
     name: 'Soluciones Fabrick',
     url: STORE_URL,
+    image: STORE_OG_IMAGE,
     description: STORE_DESCRIPTION,
     areaServed: ['Chile', 'Región del Maule', 'Linares', 'Santiago'],
     makesOffer: ['Productos para obra', 'Materiales', 'Servicios de instalación', 'Asesoría técnica'],

@@ -33,7 +33,7 @@ function calc(r:R){
   const hormigon=area*(r.espesor/100), base=area*(r.base/100), gravBase=area*(r.gravillaBase/100), sacos=Math.ceil(hormigon*r.sacosM3), kg=sacos*25, arena=hormigon*.52, gravilla=hormigon*.78;
   const cemento=sacos*r.precioSaco, cArena=arena*r.precioArena, cGravilla=gravilla*r.precioGravilla, cBase=(base+gravBase)*r.precioBase, cMoldaje=per*r.precioMoldaje, cMano=area*r.manoObra;
   const costo=cemento+cArena+cGravilla+cBase+cMoldaje+cMano+r.fijo, margen=costo*(r.margen/100), neto=costo+margen, iva=neto*(r.iva/100);
-  return {area,per,hormigon,base,gravBase,sacos,kg,arena,gravilla,cemento,cArena,cGravilla,cBase,cMoldaje,cMano,costo,margen,neto,iva,total:neto+iva,formula,shape:r.shape};
+  return {area,per,hormigon,base,gravBase,sacos,kg,arena,gravilla,cemento,cArena,cGravilla,cBase,cMoldaje,cMano,costo,margen,neto,iva,total:neto+iva,formula,shape:r.shape,largo:r.largo,ancho:r.ancho,brazoX:r.brazoX,brazoY:r.brazoY,vanoW:r.vanoW,vanoD:r.vanoD,almaW:r.almaW,almaD:r.almaD,espesor:r.espesor};
 }
 
 export default function RadierBudgetEngineLite(){

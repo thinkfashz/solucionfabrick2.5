@@ -3,14 +3,14 @@
 import dynamic from 'next/dynamic';
 import BudgetLinksHistory from '@/components/admin/motores/BudgetLinksHistory';
 
-const FabrickBudgetEnginesPremiumClient = dynamic(() => import('@/components/admin/motores/FabrickBudgetEnginesPremiumClient'), {
+const AireAcondicionado3DViewerClient = dynamic(() => import('@/components/admin/motores/AireAcondicionado3DViewerClient'), {
   ssr: false,
-  loading: () => <main className="min-h-screen bg-[#050403] p-6 text-white">Cargando motor premium de aire acondicionado…</main>,
+  loading: () => <main className="min-h-screen bg-[#050403] p-6 text-white">Cargando visor 3D de aire acondicionado…</main>,
 });
 
 export default function MotorAireAcondicionadoPage() {
   return <>
-    <FabrickBudgetEnginesPremiumClient kind="aire" />
+    <AireAcondicionado3DViewerClient />
     <BudgetLinksHistory />
   </>;
 }

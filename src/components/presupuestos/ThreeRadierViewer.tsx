@@ -7,25 +7,7 @@ import { Edges, Html, OrbitControls } from '@react-three/drei';
 type Shape = 'rect' | 'L' | 'U' | 'T' | 'H' | 'I';
 type Piece = { x: number; z: number; w: number; d: number; name: string };
 
-export type ThreeRadierViewerProps = {
-  shape?: Shape | string;
-  largo?: number;
-  ancho?: number;
-  brazoX?: number;
-  brazoY?: number;
-  vanoW?: number;
-  vanoD?: number;
-  almaW?: number;
-  almaD?: number;
-  espesor?: number;
-  base?: number;
-  gravillaBase?: number;
-  area?: number;
-  hormigon?: number;
-  sacos?: number;
-  compact?: boolean;
-  title?: string;
-};
+export type ThreeRadierViewerProps = { shape?: Shape | string; largo?: number; ancho?: number; brazoX?: number; brazoY?: number; vanoW?: number; vanoD?: number; almaW?: number; almaD?: number; espesor?: number; base?: number; gravillaBase?: number; area?: number; hormigon?: number; sacos?: number; compact?: boolean; title?: string };
 
 const labels: Record<Shape, string> = { rect: 'Recto', L: 'Tipo L', U: 'Tipo U', T: 'Tipo T', H: 'Tipo H', I: 'Tipo I' };
 const num = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
@@ -46,7 +28,7 @@ function pieces(p: Required<Pick<ThreeRadierViewerProps, 'shape' | 'largo' | 'an
 }
 
 function Slab({ piece, y, h, color, label }: { piece: Piece; y: number; h: number; color: string; label?: string }) {
-  return <mesh position={[piece.x, y, piece.z]} castShadow receiveShadow><boxGeometry args={[piece.w, h, piece.d]} /><meshStandardMaterial color={color} roughness={0.82} /><Edges color="rgba(255,255,255,.48)" />{label && <Html center position={[0, h / 2 + .04, 0]} className="pointer-events-none"><span className="rounded-full border border-amber-300/40 bg-black/75 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-amber-100">{label}</span></Html>}</mesh>;
+  return <mesh position={[piece.x, y, piece.z]} castShadow receiveShadow><boxGeometry args={[piece.w, h, piece.d]} /><meshStandardMaterial color={color} roughness={0.82} /><Edges color="#ffffff" />{label && <Html center position={[0, h / 2 + .04, 0]} className="pointer-events-none"><span className="rounded-full border border-amber-300/40 bg-black/75 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-amber-100">{label}</span></Html>}</mesh>;
 }
 
 function RadierModel(props: ThreeRadierViewerProps) {

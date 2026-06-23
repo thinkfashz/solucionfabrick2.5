@@ -25,13 +25,27 @@ const cameraViews: Record<View, [number, number, number]> = { corner: [5.8, 4.2,
 
 function CameraRig({ view, spinning, controls }: { view: View; spinning: boolean; controls: MutableRefObject<OrbitControlsImpl | null> }) {
   const { camera } = useThree();
+
   useEffect(() => {
     const p = cameraViews[view];
     camera.position.set(...p);
     camera.lookAt(0, 1, 0);
-    if (controls.current) { controls.current.target.set(0, 1, 0); controls.current.autoRotate = spinning; controls.current.update(); }
+    if (controls.current) {
+      controls.current.target.set(0, 1, 0);
+      controls.current.autoRotate = spinning;
+      controls.current.autoRotateSpeed = .65;
+      controls.current.update();
+    }
   }, [camera, controls, spinning, view]);
-  useFrame((_, delta) => { if (controls.current) controls.current.update(delta); });
+
+  useFrame(() => {
+    const current = controls.current;
+    if (!current) return;
+    current.autoRotate = spinning;
+    current.autoRotateSpeed = .65;
+    current.update();
+  });
+
   return null;
 }
 
@@ -49,7 +63,9 @@ function AirWaves() {
 }
 
 function RoomModel(props: ThreeAirRoomViewerProps) {
-  const area = safe(props.area, 14.7); const largo = safe(props.largo, Math.sqrt(area)); const scale = Math.min(1.15, Math.max(.84, Math.sqrt(area) / 4.2));
+  const area = safe(props.area, 14.7);
+  const scale = Math.min(1.15, Math.max(.84, Math.sqrt(area) / 4.2));
+
   return <group scale={[scale, scale, scale]}>
     <ambientLight intensity={.58} />
     <directionalLight castShadow intensity={1.25} position={[3.5, 6, 5]} />
@@ -84,5 +100,5 @@ export default function ThreeAirRoomViewer(props: ThreeAirRoomViewerProps) {
   const [spin, setSpin] = useState(false);
   const area = safe(props.area, 14.7); const btu = safe(props.btu, 12895); const equipo = safe(props.seleccionado, 13000);
   const h = props.compact ? 'h-[360px]' : 'h-[520px]';
-  return <section className="overflow-hidden rounded-[2rem] border border-amber-300/20 bg-[#050505] text-white shadow-2xl"><div className="grid gap-3 border-b border-white/10 p-4 lg:grid-cols-[1fr_320px]"><div><p className="text-[10px] font-black uppercase tracking-[.32em] text-amber-300">Visor 3D premium</p><h2 className="mt-1 text-2xl font-black tracking-tight sm:text-4xl">{props.title || 'Habitación 360 + aire acondicionado'}</h2><p className="mt-1 text-sm text-zinc-400">Arrastra para rotar, usa zoom y cambia entre vistas técnicas.</p></div><div className="grid grid-cols-3 gap-2 text-center text-xs"><b className="rounded-xl bg-white/10 p-2">{num.format(area)} m²</b><b className="rounded-xl bg-white/10 p-2">{whole.format(btu)} BTU</b><b className="rounded-xl bg-amber-400 p-2 text-black">{whole.format(equipo)} BTU</b></div></div><div className={`${h} relative bg-[radial-gradient(circle_at_50%_35%,rgba(245,158,11,.12),transparent_22rem),#050505]`}><Canvas shadows camera={{ position: cameraViews.corner, fov: 42 }}><Suspense fallback={null}><CameraRig view={view} spinning={spin} controls={controls} /><RoomModel {...props} /></Suspense><OrbitControls ref={controls} enableDamping makeDefault minDistance={4} maxDistance={12} maxPolarAngle={Math.PI / 2.05} /></Canvas><div className="pointer-events-none absolute left-4 top-4 rounded-full border border-amber-300/40 bg-black/70 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-amber-200">Arrastra para girar</div><div className="absolute bottom-4 left-1/2 flex w-[calc(100%-2rem)] max-w-4xl -translate-x-1/2 flex-wrap justify-center gap-2 rounded-full border border-white/10 bg-black/70 p-2 backdrop-blur-xl">{(['front','corner','side','back','top'] as View[]).map(v=><button key={v} type="button" onClick={()=>{setView(v);setSpin(false)}} className={`rounded-full px-4 py-2 text-xs font-black ${view===v?'bg-amber-400 text-black':'bg-white/10 text-white'}`}>{v==='front'?'Frontal':v==='corner'?'Esquina':v==='side'?'Lateral':v==='back'?'Trasera':'Techo'}</button>)}<button type="button" onClick={()=>setSpin(s=>!s)} className="rounded-full bg-amber-400 px-4 py-2 text-xs font-black text-black">{spin?'Pausar':'Giro suave'}</button></div></div></section>;
+  return <section className="overflow-hidden rounded-[2rem] border border-amber-300/20 bg-[#050505] text-white shadow-2xl"><div className="grid gap-3 border-b border-white/10 p-4 lg:grid-cols-[1fr_320px]"><div><p className="text-[10px] font-black uppercase tracking-[.32em] text-amber-300">Visor 3D premium</p><h2 className="mt-1 text-2xl font-black tracking-tight sm:text-4xl">{props.title || 'Habitación 360 + aire acondicionado'}</h2><p className="mt-1 text-sm text-zinc-400">Arrastra para rotar, usa zoom y cambia entre vistas técnicas.</p></div><div className="grid grid-cols-3 gap-2 text-center text-xs"><b className="rounded-xl bg-white/10 p-2">{num.format(area)} m²</b><b className="rounded-xl bg-white/10 p-2">{whole.format(btu)} BTU</b><b className="rounded-xl bg-amber-400 p-2 text-black">{whole.format(equipo)} BTU</b></div></div><div className={`${h} relative bg-[radial-gradient(circle_at_50%_35%,rgba(245,158,11,.12),transparent_22rem),#050505]`}><Canvas shadows dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: 'high-performance' }} camera={{ position: cameraViews.corner, fov: 42 }}><Suspense fallback={null}><CameraRig view={view} spinning={spin} controls={controls} /><RoomModel {...props} /></Suspense><OrbitControls ref={controls} enableDamping makeDefault minDistance={4} maxDistance={12} maxPolarAngle={Math.PI / 2.05} /></Canvas><div className="pointer-events-none absolute left-4 top-4 rounded-full border border-amber-300/40 bg-black/70 px-4 py-2 text-[10px] font-black uppercase tracking-widest text-amber-200">Arrastra para girar</div><div className="absolute bottom-4 left-1/2 flex w-[calc(100%-2rem)] max-w-4xl -translate-x-1/2 flex-wrap justify-center gap-2 rounded-full border border-white/10 bg-black/70 p-2 backdrop-blur-xl">{(['front','corner','side','back','top'] as View[]).map(v=><button key={v} type="button" onClick={()=>{setView(v);setSpin(false)}} className={`rounded-full px-4 py-2 text-xs font-black ${view===v?'bg-amber-400 text-black':'bg-white/10 text-white'}`}>{v==='front'?'Frontal':v==='corner'?'Esquina':v==='side'?'Lateral':v==='back'?'Trasera':'Techo'}</button>)}<button type="button" onClick={()=>setSpin(s=>!s)} className="rounded-full bg-amber-400 px-4 py-2 text-xs font-black text-black">{spin?'Pausar':'Giro suave'}</button></div></div></section>;
 }

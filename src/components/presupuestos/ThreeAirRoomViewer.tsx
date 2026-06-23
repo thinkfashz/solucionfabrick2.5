@@ -44,6 +44,7 @@ const btuOptions: Array<{ btu: BtuOption; label: string; price: number; kwh: num
 
 const fanLabels = ['Baja', 'Media', 'Media-Alta', 'Alta'];
 const modeLabels: Record<Mode, string> = { frio: 'Frío', seco: 'Seco', vent: 'Vent.', auto: 'Auto' };
+const viewLabels: Record<View, string> = { front: 'Frontal', corner: 'Esquina', side: 'Lateral', back: 'Trasera', top: 'Techo' };
 
 function closestBtu(value: number): BtuOption {
   const n = safe(value, 12000);
@@ -110,7 +111,11 @@ function CameraRig({ view, spinning, controls }: { view: View; spinning: boolean
 }
 
 function Label({ children, position }: { children: ReactNode; position: [number, number, number] }) {
-  return <Html center distanceFactor={8} position={position} className="pointer-events-none"><span className="whitespace-nowrap rounded-full border border-amber-300/50 bg-black/80 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-200 shadow-xl shadow-black/40">{children}</span></Html>;
+  return (
+    <Html center distanceFactor={8} position={position} className="pointer-events-none hidden md:block">
+      <span className="whitespace-nowrap rounded-full border border-amber-300/50 bg-black/80 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-amber-200 shadow-xl shadow-black/40">{children}</span>
+    </Html>
+  );
 }
 
 function Box({ args, position, color, label, map, transparent = false, opacity = 1 }: { args: [number, number, number]; position: [number, number, number]; color: string; label?: string; map?: THREE.Texture; transparent?: boolean; opacity?: number }) {
@@ -211,27 +216,41 @@ function RoomModel({ area, btu, fan, mode }: ThreeAirRoomViewerProps & { fan: nu
     <mesh position={[2.98, .92, -1.335]}><torusGeometry args={[.25, .018, 10, 36]} /><meshStandardMaterial color="#56616b" metalness={.2} roughness={.5} /></mesh>
 
     <AirFlow fan={fan} mode={mode} />
-    <Label position={[-1.86, 2.82, -1.94]}>Pared principal</Label><Label position={[-.86, 2.34, -1.98]}>Ventana</Label><Label position={[1.72, 2.62, -1.98]}>Tubería</Label><Label position={[-2.78, 1.45, .9]}>Puerta translúcida</Label><Label position={[2.98, 1.74, -1.08]}>Unidad exterior</Label><Label position={[-.18, .16, 1.65]}>{num.format(sceneArea)} m²</Label>
+    <Label position={[-1.86, 2.82, -1.94]}>Pared principal</Label>
+    <Label position={[-.86, 2.34, -1.98]}>Ventana</Label>
+    <Label position={[1.72, 2.62, -1.98]}>Tubería</Label>
+    <Label position={[-2.78, 1.45, .9]}>Puerta translúcida</Label>
+    <Label position={[2.98, 1.74, -1.08]}>Unidad exterior</Label>
+    <Label position={[-.18, .16, 1.65]}>{num.format(sceneArea)} m²</Label>
   </group>;
 }
 
 function ControlPanel({ temp, setTemp, fan, setFan, mode, setMode, selected, setSelected, speed, price, kwh }: { temp: number; setTemp: (v: number) => void; fan: number; setFan: (v: number) => void; mode: Mode; setMode: (v: Mode) => void; selected: BtuOption; setSelected: (v: BtuOption) => void; speed: number; price: number; kwh: number }) {
-  return <aside className="grid content-start gap-3 rounded-[1.7rem] border border-white/10 bg-black/55 p-3 backdrop-blur-xl xl:p-4">
-    <div className="flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-[.28em] text-amber-300">Control del equipo</p><button type="button" className="grid h-10 w-10 place-items-center rounded-full border border-amber-300/30 bg-amber-400/10 text-amber-300">⏻</button></div>
-    <div className="rounded-2xl border border-white/10 bg-white/[.045] p-3"><p className="text-xs text-zinc-400">Temperatura</p><div className="mt-2 flex items-center justify-between gap-2"><b className="text-3xl">{temp} °C</b><div className="flex gap-1"><button type="button" onClick={() => setTemp(clamp(temp - 1, 16, 30))} className="h-10 w-10 rounded-xl bg-white/10 font-black">−</button><button type="button" onClick={() => setTemp(clamp(temp + 1, 16, 30))} className="h-10 w-10 rounded-xl bg-white/10 font-black">+</button></div></div><p className="mt-1 text-[11px] text-zinc-500">{mode === 'frio' ? `Enfriando a ${temp} °C` : mode === 'seco' ? 'Reduciendo humedad' : mode === 'auto' ? 'Ajuste automático' : 'Ventilación activa'}</p></div>
-    <div className="rounded-2xl border border-white/10 bg-white/[.045] p-3"><p className="text-xs text-zinc-400">Velocidad del ventilador</p><div className="mt-2 grid grid-cols-4 gap-2">{[1,2,3,4].map(v => <button type="button" key={v} onClick={() => setFan(v)} className={`rounded-xl px-2 py-2 text-lg ${fan === v ? 'bg-amber-400 text-black' : 'bg-white/10 text-white'}`}>♨</button>)}</div><p className="mt-2 text-xs text-zinc-400">{fanLabels[fan - 1]}</p></div>
-    <div className="rounded-2xl border border-white/10 bg-white/[.045] p-3"><p className="text-xs text-zinc-400">Clima / modo</p><div className="mt-2 grid grid-cols-4 gap-2">{(['frio','seco','vent','auto'] as Mode[]).map(v => <button type="button" key={v} onClick={() => setMode(v)} className={`rounded-xl px-2 py-2 text-xs font-black ${mode === v ? 'bg-amber-400 text-black' : 'bg-white/10 text-white'}`}>{modeLabels[v]}</button>)}</div></div>
-    <div className="rounded-2xl border border-white/10 bg-white/[.045] p-3"><div className="flex items-center justify-between"><p className="text-xs text-zinc-400">Partículas de aire</p><span className="text-[11px] text-emerald-300">● óptimo</span></div><b className="mt-1 block text-3xl">{num.format(speed)} m/s</b><div className="mt-3 h-12 overflow-hidden rounded-xl bg-cyan-400/10"><div className="h-full origin-left bg-[linear-gradient(90deg,rgba(34,211,238,.05),rgba(34,211,238,.7),rgba(34,211,238,.05))]" style={{ transform: `scaleX(${clamp(speed / 4, .25, 1)})` }} /></div></div>
+  return <aside className="grid content-start gap-3 rounded-[1.5rem] border border-white/10 bg-black/55 p-3 backdrop-blur-xl sm:rounded-[1.7rem] xl:p-4">
+    <div className="flex items-center justify-between gap-3"><p className="text-[10px] font-black uppercase tracking-[.24em] text-amber-300 sm:tracking-[.28em]">Control del equipo</p><button type="button" className="grid h-10 w-10 shrink-0 place-items-center rounded-full border border-amber-300/30 bg-amber-400/10 text-amber-300">⏻</button></div>
+    <div className="rounded-2xl border border-white/10 bg-white/[.045] p-3"><p className="text-xs text-zinc-400">Temperatura</p><div className="mt-2 flex items-center justify-between gap-2"><b className="text-4xl sm:text-3xl">{temp} °C</b><div className="flex gap-2"><button type="button" onClick={() => setTemp(clamp(temp - 1, 16, 30))} className="h-12 w-12 rounded-xl bg-white/10 text-xl font-black sm:h-10 sm:w-10">−</button><button type="button" onClick={() => setTemp(clamp(temp + 1, 16, 30))} className="h-12 w-12 rounded-xl bg-white/10 text-xl font-black sm:h-10 sm:w-10">+</button></div></div><p className="mt-1 text-[11px] text-zinc-500">{mode === 'frio' ? `Enfriando a ${temp} °C` : mode === 'seco' ? 'Reduciendo humedad' : mode === 'auto' ? 'Ajuste automático' : 'Ventilación activa'}</p></div>
+    <div className="rounded-2xl border border-white/10 bg-white/[.045] p-3"><p className="text-xs text-zinc-400">Velocidad del ventilador</p><div className="mt-2 grid grid-cols-4 gap-2">{[1,2,3,4].map(v => <button type="button" key={v} onClick={() => setFan(v)} className={`min-h-11 rounded-xl px-2 py-2 text-lg ${fan === v ? 'bg-amber-400 text-black' : 'bg-white/10 text-white'}`}>♨</button>)}</div><p className="mt-2 text-xs text-zinc-400">{fanLabels[fan - 1]}</p></div>
+    <div className="rounded-2xl border border-white/10 bg-white/[.045] p-3"><p className="text-xs text-zinc-400">Clima / modo</p><div className="mt-2 grid grid-cols-4 gap-2">{(['frio','seco','vent','auto'] as Mode[]).map(v => <button type="button" key={v} onClick={() => setMode(v)} className={`min-h-11 rounded-xl px-2 py-2 text-xs font-black ${mode === v ? 'bg-amber-400 text-black' : 'bg-white/10 text-white'}`}>{modeLabels[v]}</button>)}</div></div>
+    <div className="rounded-2xl border border-white/10 bg-white/[.045] p-3"><div className="flex items-center justify-between"><p className="text-xs text-zinc-400">Partículas de aire</p><span className="text-[11px] text-emerald-300">● óptimo</span></div><b className="mt-1 block text-3xl">{num.format(speed)} m/s</b><div className="mt-3 h-10 overflow-hidden rounded-xl bg-cyan-400/10 sm:h-12"><div className="h-full origin-left bg-[linear-gradient(90deg,rgba(34,211,238,.05),rgba(34,211,238,.7),rgba(34,211,238,.05))]" style={{ transform: `scaleX(${clamp(speed / 4, .25, 1)})` }} /></div></div>
     <div className="rounded-2xl border border-white/10 bg-white/[.045] p-3"><p className="text-[10px] font-black uppercase tracking-[.22em] text-amber-300">Selecciona BTU</p><div className="mt-3 grid grid-cols-2 gap-2">{btuOptions.map(item => <button type="button" key={item.btu} onClick={() => setSelected(item.btu)} className={`rounded-2xl border p-3 text-left ${selected === item.btu ? 'border-amber-300 bg-amber-400 text-black' : 'border-white/10 bg-black/25 text-white'}`}><b className="text-xl">{item.label}</b><p className="text-xs opacity-75">{whole.format(item.btu)} BTU</p></button>)}</div></div>
     <div className="rounded-2xl border border-amber-300/20 bg-black/45 p-4"><p className="text-[10px] font-black uppercase tracking-[.28em] text-amber-300">Presupuesto</p><b className="mt-2 block text-sm">Equipo referencial {whole.format(selected)} BTU</b><strong className="mt-1 block text-3xl">{money.format(price)}</strong><p className="mt-1 text-xs text-zinc-400">{num.format(kwh)} kWh/mes estimado</p><button type="button" className="mt-4 w-full rounded-2xl bg-amber-400 px-4 py-3 text-sm font-black text-black">Agregar al presupuesto →</button></div>
   </aside>;
 }
 
+function ViewControls({ view, setView, spin, setSpin }: { view: View; setView: (v: View) => void; spin: boolean; setSpin: (v: boolean) => void }) {
+  return <div className="rounded-[1.35rem] border border-white/10 bg-black/55 p-2 backdrop-blur-xl sm:rounded-full">
+    <div className="grid grid-cols-3 gap-2 sm:flex sm:flex-wrap sm:justify-center">
+      {(['front','corner','side','back','top'] as View[]).map(v => <button key={v} type="button" onClick={() => { setView(v); setSpin(false); }} className={`min-h-11 rounded-2xl px-3 py-2 text-xs font-black sm:rounded-full sm:px-4 ${view === v ? 'bg-amber-400 text-black' : 'bg-white/10 text-white'}`}>{viewLabels[v]}</button>)}
+      <button type="button" onClick={() => setSpin(!spin)} className="col-span-3 min-h-11 rounded-2xl bg-amber-400 px-4 py-2 text-xs font-black text-black sm:col-auto sm:rounded-full">{spin ? 'Pausar giro' : 'Giro suave'}</button>
+    </div>
+  </div>;
+}
+
 function MobileCalculator({ selected, temp, speed, price }: { selected: BtuOption; temp: number; speed: number; price: number }) {
-  return <div className="grid gap-3 rounded-[1.7rem] border border-amber-300/15 bg-black/55 p-4 sm:grid-cols-[170px_1fr_auto] sm:items-center">
+  return <div className="grid gap-3 rounded-[1.5rem] border border-amber-300/15 bg-black/55 p-4 sm:grid-cols-[170px_1fr_auto] sm:items-center sm:rounded-[1.7rem]">
     <div className="rounded-[1.3rem] border border-white/10 bg-[#0d1115] p-3"><div className="mx-auto h-24 w-14 rounded-2xl border border-white/15 bg-black p-1"><div className="h-full rounded-xl bg-[linear-gradient(180deg,#141922,#050505)] p-1 text-[7px] text-zinc-300"><b className="text-amber-300">Calculadora</b><p className="mt-1">{temp}°C · {num.format(speed)} m/s</p><p>{whole.format(selected)} BTU</p><p className="mt-2 text-amber-200">{money.format(price)}</p></div></div></div>
-    <div><p className="text-[10px] font-black uppercase tracking-[.28em] text-amber-300">Calculadora responsive</p><h4 className="mt-1 text-xl font-black">También visible en pantallas pequeñas</h4><p className="mt-1 text-sm text-zinc-400">El resumen del equipo, temperatura, flujo y precio queda disponible para móvil sin perder la escena 3D.</p></div>
-    <button type="button" className="rounded-2xl border border-amber-300/30 bg-amber-400/10 px-5 py-3 text-sm font-black text-amber-200">Ver en móvil ↗</button>
+    <div><p className="text-[10px] font-black uppercase tracking-[.24em] text-amber-300 sm:tracking-[.28em]">Calculadora responsive</p><h4 className="mt-1 text-xl font-black">Resumen claro para móvil</h4><p className="mt-1 text-sm text-zinc-400">El equipo, temperatura, flujo y precio quedan separados del visor para evitar textos montados.</p></div>
+    <button type="button" className="rounded-2xl border border-amber-300/30 bg-amber-400/10 px-5 py-3 text-sm font-black text-amber-200">Ver detalle ↗</button>
   </div>;
 }
 
@@ -248,12 +267,35 @@ export default function ThreeAirRoomViewer(props: ThreeAirRoomViewerProps) {
   const calculatedBtu = safe(props.btu, 12895);
   const selectedInfo = btuOptions.find(item => item.btu === selected) || btuOptions[1];
   const speed = Number((1.1 + fan * .55 + (mode === 'frio' ? .25 : mode === 'auto' ? .1 : 0)).toFixed(1));
-  const h = props.compact ? 'h-[360px]' : 'h-[520px]';
+  const h = props.compact ? 'h-[290px] sm:h-[360px]' : 'h-[310px] sm:h-[430px] xl:h-[520px]';
 
-  return <section className="overflow-hidden rounded-[2rem] border border-amber-300/20 bg-[#050505] text-white shadow-2xl">
-    <div className="grid gap-3 border-b border-white/10 p-4 lg:grid-cols-[1fr_340px]"><div><p className="text-[10px] font-black uppercase tracking-[.32em] text-amber-300">Visor 3D premium</p><h2 className="mt-1 text-2xl font-black tracking-tight sm:text-4xl">{props.title || 'Habitación 360 + aire acondicionado'}</h2><p className="mt-1 text-sm text-zinc-400">Cuarto mejorado con texturas procedurales, control de equipo y flujo en tiempo real.</p></div><div className="grid grid-cols-3 gap-2 text-center text-xs"><b className="rounded-xl bg-white/10 p-2">{num.format(area)} m²</b><b className="rounded-xl bg-white/10 p-2">{whole.format(calculatedBtu)} BTU</b><b className="rounded-xl bg-amber-400 p-2 text-black">{whole.format(selected)} BTU</b></div></div>
+  return <section className="overflow-hidden rounded-[1.6rem] border border-amber-300/20 bg-[#050505] pb-24 text-white shadow-2xl sm:rounded-[2rem] md:pb-0">
+    <div className="grid gap-3 border-b border-white/10 p-3 sm:p-4 lg:grid-cols-[1fr_340px]">
+      <div>
+        <p className="text-[9px] font-black uppercase tracking-[.26em] text-amber-300 sm:text-[10px] sm:tracking-[.32em]">Visor 3D premium</p>
+        <h2 className="mt-1 text-xl font-black tracking-tight sm:text-4xl">{props.title || 'Habitación 360 + aire acondicionado'}</h2>
+        <p className="mt-1 text-xs leading-relaxed text-zinc-400 sm:text-sm">Cuarto mejorado con texturas, control de equipo y flujo en tiempo real.</p>
+      </div>
+      <div className="grid grid-cols-3 gap-2 text-center text-[11px] sm:text-xs">
+        <b className="rounded-xl bg-white/10 px-2 py-3">{num.format(area)} m²</b>
+        <b className="rounded-xl bg-white/10 px-2 py-3">{whole.format(calculatedBtu)} BTU</b>
+        <b className="rounded-xl bg-amber-400 px-2 py-3 text-black">{whole.format(selected)} BTU</b>
+      </div>
+    </div>
+
     <div className="grid gap-4 p-3 xl:grid-cols-[minmax(0,1fr)_340px] xl:p-4">
-      <div className={`${h} relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-[radial-gradient(circle_at_50%_35%,rgba(245,158,11,.12),transparent_22rem),#050505]`}><Canvas shadows dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: 'high-performance' }} camera={{ position: cameraViews.corner, fov: 42 }}><Suspense fallback={null}><CameraRig view={view} spinning={spin} controls={controls} /><RoomModel {...props} btu={selected} fan={fan} mode={mode} /></Suspense><OrbitControls ref={controls} enableDamping makeDefault minDistance={4} maxDistance={12} maxPolarAngle={Math.PI / 2.05} /></Canvas><div className="pointer-events-none absolute left-4 top-4 max-w-[220px] rounded-2xl border border-amber-300/30 bg-black/70 p-3 text-xs text-zinc-300"><b className="block text-[10px] uppercase tracking-[.25em] text-amber-300">Arrastra para girar</b><span>Explora en 360°, usa zoom y revisa tubería, puerta, ventana y flujo.</span></div><div className="pointer-events-none absolute left-1/2 top-[42%] -translate-x-1/2 rounded-2xl border border-cyan-300/25 bg-black/70 px-4 py-2 text-center text-xs"><span className="block text-zinc-400">Velocidad de aire</span><b className="text-xl text-cyan-200">{num.format(speed)} m/s</b></div><div className="absolute bottom-4 left-1/2 flex w-[calc(100%-2rem)] max-w-4xl -translate-x-1/2 flex-wrap justify-center gap-2 rounded-full border border-white/10 bg-black/70 p-2 backdrop-blur-xl">{(['front','corner','side','back','top'] as View[]).map(v => <button key={v} type="button" onClick={() => { setView(v); setSpin(false); }} className={`rounded-full px-4 py-2 text-xs font-black ${view === v ? 'bg-amber-400 text-black' : 'bg-white/10 text-white'}`}>{v === 'front' ? 'Frontal' : v === 'corner' ? 'Esquina' : v === 'side' ? 'Lateral' : v === 'back' ? 'Trasera' : 'Techo'}</button>)}<button type="button" onClick={() => setSpin(s => !s)} className="rounded-full bg-amber-400 px-4 py-2 text-xs font-black text-black">{spin ? 'Pausar' : 'Giro suave'}</button></div></div>
+      <div className="grid gap-3">
+        <div className={`${h} relative overflow-hidden rounded-[1.35rem] border border-white/10 bg-[radial-gradient(circle_at_50%_35%,rgba(245,158,11,.12),transparent_22rem),#050505] sm:rounded-[1.7rem]`}>
+          <Canvas shadows dpr={[1, 1.5]} gl={{ antialias: true, powerPreference: 'high-performance' }} camera={{ position: cameraViews.corner, fov: 42 }}>
+            <Suspense fallback={null}><CameraRig view={view} spinning={spin} controls={controls} /><RoomModel {...props} btu={selected} fan={fan} mode={mode} /></Suspense>
+            <OrbitControls ref={controls} enableDamping makeDefault minDistance={4} maxDistance={12} maxPolarAngle={Math.PI / 2.05} />
+          </Canvas>
+          <div className="pointer-events-none absolute left-3 top-3 rounded-full border border-amber-300/30 bg-black/70 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.2em] text-amber-200 sm:hidden">360°</div>
+          <div className="pointer-events-none absolute left-4 top-4 hidden max-w-[220px] rounded-2xl border border-amber-300/30 bg-black/70 p-3 text-xs text-zinc-300 sm:block"><b className="block text-[10px] uppercase tracking-[.25em] text-amber-300">Arrastra para girar</b><span>Explora en 360°, usa zoom y revisa tubería, puerta, ventana y flujo.</span></div>
+          <div className="pointer-events-none absolute right-3 top-3 rounded-2xl border border-cyan-300/25 bg-black/70 px-3 py-2 text-right text-[10px] sm:left-1/2 sm:right-auto sm:top-[42%] sm:-translate-x-1/2 sm:text-center sm:text-xs"><span className="block text-zinc-400">Velocidad</span><b className="text-lg text-cyan-200 sm:text-xl">{num.format(speed)} m/s</b></div>
+        </div>
+        <ViewControls view={view} setView={setView} spin={spin} setSpin={setSpin} />
+      </div>
       <ControlPanel temp={temp} setTemp={setTemp} fan={fan} setFan={setFan} mode={mode} setMode={setMode} selected={selected} setSelected={setSelected} speed={speed} price={selectedInfo.price} kwh={selectedInfo.kwh} />
     </div>
     <div className="border-t border-white/10 p-3 xl:p-4"><MobileCalculator selected={selected} temp={temp} speed={speed} price={selectedInfo.price} /></div>

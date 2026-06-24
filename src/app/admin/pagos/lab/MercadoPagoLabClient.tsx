@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { AlertTriangle, CheckCircle2, Copy, CreditCard, ExternalLink, Loader2, RefreshCw, Save, ShieldCheck, TestTube2, Webhook } from 'lucide-react';
 
 type LabStatus = {
@@ -249,6 +249,6 @@ export default function MercadoPagoLabClient() {
 }
 
 function Metric({ label, value, good }: { label: string; value: string; good?: boolean }) { return <div className="rounded-2xl border border-white/10 bg-black/30 p-4"><p className="text-[10px] font-black uppercase tracking-[.22em] text-zinc-500">{label}</p><p className={`mt-1 text-lg font-black ${good ? 'text-emerald-300' : 'text-white'}`}>{value}</p></div>; }
-function Card({ title, subtitle, icon, children }: { title: string; subtitle: string; icon: React.ReactNode; children: React.ReactNode }) { return <section className="rounded-[2rem] border border-white/10 bg-zinc-950/70 p-5 shadow-2xl shadow-black/30"><div className="mb-4 flex items-start gap-3"><div className="rounded-2xl bg-amber-400/10 p-2 text-amber-300 ring-1 ring-amber-300/25">{icon}</div><div><h2 className="text-xl font-black text-white">{title}</h2><p className="mt-1 text-xs leading-5 text-zinc-400">{subtitle}</p></div></div>{children}</section>; }
+function Card({ title, subtitle, icon, children }: { title: string; subtitle: string; icon: ReactNode; children: ReactNode }) { return <section className="rounded-[2rem] border border-white/10 bg-zinc-950/70 p-5 shadow-2xl shadow-black/30"><div className="mb-4 flex items-start gap-3"><div className="rounded-2xl bg-amber-400/10 p-2 text-amber-300 ring-1 ring-amber-300/25">{icon}</div><div><h2 className="text-xl font-black text-white">{title}</h2><p className="mt-1 text-xs leading-5 text-zinc-400">{subtitle}</p></div></div>{children}</section>; }
 function Input({ label, value, onChange, placeholder, secret }: { label: string; value: string; onChange: (v: string) => void; placeholder?: string; secret?: boolean }) { return <label className="grid gap-1 text-xs font-black uppercase tracking-[.16em] text-zinc-500">{label}<input type={secret ? 'password' : 'text'} value={value} onChange={(e) => onChange(e.target.value)} placeholder={placeholder} className="rounded-2xl border border-white/10 bg-black/35 px-3 py-3 text-sm normal-case tracking-normal text-white outline-none focus:border-amber-300/70" /></label>; }
 function NumberInput({ label, value, onChange }: { label: string; value: number; onChange: (v: number) => void }) { return <label className="grid gap-1 text-xs font-black uppercase tracking-[.16em] text-zinc-500">{label}<input type="number" value={value} onChange={(e) => onChange(Number(e.target.value) || 0)} className="rounded-2xl border border-white/10 bg-black/35 px-3 py-3 text-sm normal-case tracking-normal text-white outline-none focus:border-amber-300/70" /></label>; }

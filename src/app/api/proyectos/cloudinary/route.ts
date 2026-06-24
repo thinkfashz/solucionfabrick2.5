@@ -19,6 +19,8 @@ const CATEGORY_MAP = [
   { key: 'aire', label: 'Aire acondicionado', words: ['aire', 'ac', 'split', 'clima', 'condensador'] },
 ];
 
+type CloudinaryContext = { custom?: Record<string, string> } | Record<string, string> | string | null | undefined;
+
 type CloudinaryResource = {
   public_id: string;
   secure_url: string;
@@ -28,7 +30,7 @@ type CloudinaryResource = {
   width?: number;
   height?: number;
   tags?: string[];
-  context?: { custom?: Record<string, string> } | Record<string, string>;
+  context?: CloudinaryContext;
   folder?: string;
 };
 
@@ -46,12 +48,19 @@ function normalize(value: string) {
   return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 }
 
+function contextRecord(context: CloudinaryContext): Record<string, string> {
+  if (!context || typeof context === 'string') return {};
+  if ('custom' in context && context.custom && typeof context.custom === 'object') return context.custom;
+  return context as Record<string, string>;
+}
+
 function inferCategory(resource: CloudinaryResource) {
+  const context = contextRecord(resource.context);
   const haystack = normalize([
     resource.public_id,
     resource.folder || '',
     ...(resource.tags || []),
-    ...Object.values((resource.context && 'custom' in resource.context ? resource.context.custom : resource.context) || {}),
+    ...Object.values(context),
   ].join(' '));
   return CATEGORY_MAP.find((cat) => cat.words.some((word) => haystack.includes(normalize(word))))?.key || 'ideas';
 }
@@ -120,8 +129,8 @@ export async function GET(request: NextRequest) {
       .filter((item) => item.secure_url)
       .map((item) => {
         const category = inferCategory(item);
-        const context = item.context && 'custom' in item.context ? item.context.custom : item.context;
-        const title = context?.caption || context?.title || titleFromPublicId(item.public_id);
+        const context = contextRecord(item.context);
+        const title = context.caption || context.title || context.alt || titleFromPublicId(item.public_id);
         return {
           id: item.public_id,
           public_id: item.public_id,

@@ -1,14 +1,20 @@
 import type { Metadata } from 'next';
-import ProyectosClient from './ProyectosClient';
+import CloudinaryProjectsGallery from '@/components/proyectos/CloudinaryProjectsGallery';
+
+export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Proyectos Ejecutados',
-  description:
-    'Obras terminadas por Soluciones Fabrick en la Región del Maule, Chile: ampliaciones, remodelaciones, estructura Metalcon, instalaciones y obras llave en mano.',
+  title: 'Proyectos e ideas de remodelación | Soluciones Fabrick',
+  description: 'Catálogo visual de ideas para remodelación, materiales, puertas, muebles, terminaciones, baños, cocinas y proyectos de Soluciones Fabrick.',
   alternates: { canonical: 'https://www.solucionesfabrick.com/proyectos' },
+  openGraph: {
+    title: 'Proyectos e ideas de remodelación | Soluciones Fabrick',
+    description: 'Explora referencias visuales y cotiza algo parecido para tu espacio.',
+    type: 'website',
+    url: 'https://www.solucionesfabrick.com/proyectos',
+  },
 };
 
 export default function ProyectosPage() {
-  return <ProyectosClient />;
+  return <CloudinaryProjectsGallery />;
 }
-

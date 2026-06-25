@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit",
+    "audit:tenant": "node scripts/audit-multitenancy.mjs",
     "admin:set-password": "tsx scripts/set-admin-password.ts",
     "admin:enable-totp": "tsx scripts/enable-admin-totp.ts",
     "admin:disable-totp": "tsx scripts/disable-admin-totp.ts",

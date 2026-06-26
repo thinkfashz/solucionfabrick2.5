@@ -5,7 +5,22 @@ import { DEFAULT_TENANT_ID, getTenantById, getTenantBySlug } from '@/lib/tenant'
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const FALLBACK_BRANDING = {
+type PublicBrandingSource = {
+  id: string;
+  slug: string;
+  name: string;
+  primaryColor: string;
+  logoUrl: string | null;
+  phone: string | null;
+  billingEmail: string | null;
+  ownerEmail: string | null;
+  ownerName: string | null;
+  customDomain: string | null;
+  status: string;
+  planId: string;
+};
+
+const FALLBACK_BRANDING: PublicBrandingSource = {
   id: DEFAULT_TENANT_ID,
   slug: 'fabrick',
   name: 'Soluciones Fabrick',
@@ -20,7 +35,12 @@ const FALLBACK_BRANDING = {
   planId: 'pro',
 };
 
-function publicBranding(tenant: typeof FALLBACK_BRANDING) {
+function buildWhatsappUrl(phone: string | null) {
+  const digits = (phone || '').replace(/\D/g, '');
+  return digits ? `https://wa.me/${digits}` : null;
+}
+
+function publicBranding(tenant: PublicBrandingSource) {
   return {
     id: tenant.id,
     slug: tenant.slug,
@@ -34,7 +54,7 @@ function publicBranding(tenant: typeof FALLBACK_BRANDING) {
     customDomain: tenant.customDomain,
     status: tenant.status,
     planId: tenant.planId,
-    whatsappUrl: tenant.phone ? `https://wa.me/${tenant.phone.replace(/\D/g, '')}` : null,
+    whatsappUrl: buildWhatsappUrl(tenant.phone),
   };
 }
 
@@ -51,7 +71,7 @@ export async function GET(request: NextRequest) {
 
     return NextResponse.json({
       ok: true,
-      branding: publicBranding(tenant ?? FALLBACK_BRANDING),
+      branding: publicBranding((tenant ?? FALLBACK_BRANDING) as PublicBrandingSource),
       fallback: !tenant,
     }, { headers: { 'Cache-Control': 'no-store' } });
   } catch {

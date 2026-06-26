@@ -16,6 +16,18 @@ const securityHeaders = [
 
 const nextConfig = {
   ...(process.platform === 'win32' ? {} : { output: 'standalone' }),
+  // Vercel was failing with OOM after compilation while running the full lint
+  // phase. Keep lint available through `pnpm lint`, but do not run it inside
+  // `next build` so production deploys finish within the build container RAM.
+  eslint: {
+    ignoreDuringBuilds: true,
+  },
+  // Keep TypeScript as a hard gate. If Vercel still runs out of memory, switch
+  // this to true only as a temporary emergency workaround.
+  typescript: {
+    ignoreBuildErrors: false,
+  },
+  productionBrowserSourceMaps: false,
   // Tree-shake bigger ecosystems (lucide-react ships hundreds of icons,
   // recharts pulls a heavy d3 graph) so admin bundles only ship what's used.
   experimental: {
@@ -93,23 +105,21 @@ const nextConfig = {
   },
 };
 
-export default withSentryConfig(nextConfig, {
-  // Only print logs for uploading source maps in CI / Vercel builds.
-  silent: !process.env.CI,
-  // Sentry org/project + auth token are read from env (SENTRY_ORG, SENTRY_PROJECT,
-  // SENTRY_AUTH_TOKEN). When not configured (e.g. local dev) the Sentry build
-  // plugin skips source-map upload automatically and the build proceeds normally.
+const sentryOptions = {
+  // Keep Sentry quiet and light during Vercel builds. Source-map upload can be
+  // re-enabled later when production is stable and SENTRY_AUTH_TOKEN is present.
+  silent: true,
   org: process.env.SENTRY_ORG,
   project: process.env.SENTRY_PROJECT,
   authToken: process.env.SENTRY_AUTH_TOKEN,
-  // Upload a larger set of source maps for prettier stack traces.
-  widenClientFileUpload: true,
-  // Route browser SDK requests through this Next.js path to bypass ad-blockers.
+  widenClientFileUpload: false,
   tunnelRoute: '/monitoring',
-  // Hide Sentry-injected source map comments from the generated client bundles.
   hideSourceMaps: true,
-  // Skip source-map upload entirely outside production builds.
   sourcemaps: {
-    disable: process.env.NODE_ENV !== 'production',
+    disable: true,
   },
-});
+};
+
+export default process.env.SENTRY_AUTH_TOKEN
+  ? withSentryConfig(nextConfig, sentryOptions)
+  : nextConfig;

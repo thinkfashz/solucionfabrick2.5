@@ -33,6 +33,11 @@ export interface TenantContext {
   status: string;
   primaryColor: string;
   logoUrl: string | null;
+  phone: string | null;
+  billingEmail: string | null;
+  ownerEmail: string | null;
+  ownerName: string | null;
+  customDomain: string | null;
   mpAccessToken: string | null;
   mpPublicKey: string | null;
 }
@@ -52,26 +57,27 @@ function toCache(key: string, ctx: TenantContext) {
   cache.set(key, { ctx, at: Date.now() });
 }
 
-/** Fetch a full TenantContext by slug (with in-process cache). */
-export async function getTenantBySlug(slug: string): Promise<TenantContext | null> {
-  const cached = fromCache(`slug:${slug}`);
-  if (cached) return cached;
+const TENANT_SELECT = 'id, slug, name, plan_id, status, primary_color, logo_url, phone, billing_email, owner_email, owner_name, custom_domain, mp_access_token, mp_public_key';
 
-  const { data, error } = await insforge.database
-    .from('tenants')
-    .select('id, slug, name, plan_id, status, primary_color, logo_url, mp_access_token, mp_public_key')
-    .eq('slug', slug)
-    .limit(1);
+type TenantRow = {
+  id: string;
+  slug: string;
+  name: string;
+  plan_id: string;
+  status: string;
+  primary_color: string | null;
+  logo_url: string | null;
+  phone: string | null;
+  billing_email: string | null;
+  owner_email: string | null;
+  owner_name: string | null;
+  custom_domain: string | null;
+  mp_access_token: string | null;
+  mp_public_key: string | null;
+};
 
-  if (error || !data || data.length === 0) return null;
-
-  const row = data[0] as {
-    id: string; slug: string; name: string; plan_id: string; status: string;
-    primary_color: string | null; logo_url: string | null;
-    mp_access_token: string | null; mp_public_key: string | null;
-  };
-
-  const ctx: TenantContext = {
+function rowToContext(row: TenantRow): TenantContext {
+  return {
     id: row.id,
     slug: row.slug,
     name: row.name,
@@ -79,9 +85,30 @@ export async function getTenantBySlug(slug: string): Promise<TenantContext | nul
     status: row.status,
     primaryColor: row.primary_color ?? '#10b981',
     logoUrl: row.logo_url ?? null,
+    phone: row.phone ?? null,
+    billingEmail: row.billing_email ?? null,
+    ownerEmail: row.owner_email ?? null,
+    ownerName: row.owner_name ?? null,
+    customDomain: row.custom_domain ?? null,
     mpAccessToken: row.mp_access_token ?? null,
     mpPublicKey: row.mp_public_key ?? null,
   };
+}
+
+/** Fetch a full TenantContext by slug (with in-process cache). */
+export async function getTenantBySlug(slug: string): Promise<TenantContext | null> {
+  const cached = fromCache(`slug:${slug}`);
+  if (cached) return cached;
+
+  const { data, error } = await insforge.database
+    .from('tenants')
+    .select(TENANT_SELECT)
+    .eq('slug', slug)
+    .limit(1);
+
+  if (error || !data || data.length === 0) return null;
+
+  const ctx = rowToContext(data[0] as TenantRow);
 
   toCache(`slug:${slug}`, ctx);
   toCache(`id:${ctx.id}`, ctx);
@@ -95,29 +122,13 @@ export async function getTenantById(id: string): Promise<TenantContext | null> {
 
   const { data, error } = await insforge.database
     .from('tenants')
-    .select('id, slug, name, plan_id, status, primary_color, logo_url, mp_access_token, mp_public_key')
+    .select(TENANT_SELECT)
     .eq('id', id)
     .limit(1);
 
   if (error || !data || data.length === 0) return null;
 
-  const row = data[0] as {
-    id: string; slug: string; name: string; plan_id: string; status: string;
-    primary_color: string | null; logo_url: string | null;
-    mp_access_token: string | null; mp_public_key: string | null;
-  };
-
-  const ctx: TenantContext = {
-    id: row.id,
-    slug: row.slug,
-    name: row.name,
-    planId: row.plan_id,
-    status: row.status,
-    primaryColor: row.primary_color ?? '#10b981',
-    logoUrl: row.logo_url ?? null,
-    mpAccessToken: row.mp_access_token ?? null,
-    mpPublicKey: row.mp_public_key ?? null,
-  };
+  const ctx = rowToContext(data[0] as TenantRow);
 
   toCache(`id:${id}`, ctx);
   toCache(`slug:${ctx.slug}`, ctx);

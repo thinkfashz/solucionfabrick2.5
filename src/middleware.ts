@@ -120,6 +120,8 @@ function isMainIntegrationsApi(pathname: string): boolean {
 function tenantIntegrationRewriteTarget(pathname: string): string | null {
   if (pathname === '/api/admin/integrations') return '/api/admin/tenant-integrations'
   if (pathname === '/api/admin/integrations/reveal') return '/api/admin/tenant-integrations/reveal'
+  if (pathname === '/api/admin/integrations/quota') return '/api/admin/tenant-integrations/quota'
+  if (pathname === '/api/admin/integrations/test') return '/api/admin/tenant-integrations/test'
   return null
 }
 

@@ -61,11 +61,19 @@ Cron jobs
 
 ## 5. Base de datos
 
-Ejecutar:
+Ejecutar primero:
 
 ```txt
 scripts/add-multitenancy.sql
 ```
+
+Luego ejecutar:
+
+```txt
+scripts/saas-tenant-hardening.sql
+```
+
+El primer archivo crea la estructura SaaS base. El segundo agrega constraints e índices para evitar colisiones entre empresas y permitir operaciones seguras por tenant.
 
 Validar que existan:
 
@@ -80,6 +88,16 @@ Validar que las tablas operativas tengan:
 
 ```txt
 tenant_id
+```
+
+Validar constraints clave:
+
+```txt
+integrations: provider + tenant_id
+admin_users: email + tenant_id
+presupuestos: id + tenant_id
+presupuestos: slug + tenant_id
+orders: id + tenant_id indexado
 ```
 
 ## 6. Dominio

@@ -38,7 +38,7 @@ export async function POST(request: NextRequest) {
     await insforgeAdmin.database.from('integration_audit').insert([{
       provider,
       action: 'delete',
-      actor: ctx.session.email ?? ctx.session.sub ?? null,
+      actor: ctx.session.email ?? null,
       ip,
       user_agent: request.headers.get('user-agent') ?? null,
       details: { via: 'tenant_oauth_revoke', tenantId: ctx.tenantId },

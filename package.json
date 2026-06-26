@@ -8,7 +8,7 @@
   },
   "scripts": {
     "dev": "next dev",
-    "build": "next build",
+    "build": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
@@ -78,38 +78,21 @@
     "zundo": "^2.3.0",
     "zustand": "^5.0.2"
   },
-  "overrides": {
-    "jsdom": "27.3.0"
-  },
   "devDependencies": {
-    "@playwright/test": "^1.48.2",
-    "@tailwindcss/typography": "^0.5.15",
-    "@types/animejs": "^3.1.13",
-    "@types/node": "^20",
-    "@types/nodemailer": "^8.0.0",
-    "@types/react": "^18",
-    "@types/react-dom": "^18",
-    "@types/three": "^0.184.0",
-    "@types/web-push": "^3.6.4",
-    "@vitest/coverage-v8": "^2.1.9",
-    "autoprefixer": "^10",
-    "domhandler": "^6.0.1",
-    "eslint": "^9.39.4",
-    "eslint-config-next": "^15.5.15",
-    "form-data": "^4.0.5",
-    "node-fetch": "^3.3.2",
-    "postcss": "^8",
-    "tailwindcss": "3.4.17",
-    "three-stdlib": "^2.36.1",
-    "tsx": "^4.19.2",
-    "typescript": "^5",
-    "vitest": "^2.1.9"
-  },
-  "pnpm": {
-    "onlyBuiltDependencies": [
-      "@sentry/cli",
-      "esbuild",
-      "sharp"
-    ]
+    "@playwright/test": "^1.60.0",
+    "@tailwindcss/postcss": "^4.1.17",
+    "@types/node": "^22.19.3",
+    "@types/react": "^19.0.14",
+    "@types/react-dom": "^19.0.14",
+    "@vitejs/plugin-react": "^5.1.2",
+    "autoprefixer": "^10.4.22",
+    "eslint": "^9.39.1",
+    "eslint-config-next": "15.5.15",
+    "postcss": "^8.5.6",
+    "tailwindcss": "^4.1.17",
+    "tsx": "^4.21.0",
+    "typescript": "^5.9.3",
+    "vite": "^7.2.7",
+    "vitest": "^3.2.4"
   }
 }

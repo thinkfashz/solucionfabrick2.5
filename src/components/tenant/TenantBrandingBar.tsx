@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
+import { usePathname } from 'next/navigation';
 import { MessageCircle, Sparkles } from 'lucide-react';
 
 type Branding = {
@@ -40,11 +41,22 @@ function initials(name: string) {
   return name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'SF';
 }
 
-export function TenantBrandingBar({ compact = false }: { compact?: boolean }) {
+function shouldHide(pathname: string, forceShow: boolean) {
+  if (forceShow) return false;
+  return pathname.startsWith('/admin')
+    || pathname.startsWith('/auth')
+    || pathname.startsWith('/checkout')
+    || pathname.startsWith('/api')
+    || pathname.startsWith('/registro');
+}
+
+export function TenantBrandingBar({ compact = false, forceShow = false }: { compact?: boolean; forceShow?: boolean }) {
+  const pathname = usePathname();
   const [branding, setBranding] = useState<Branding>(FALLBACK);
   const [fallback, setFallback] = useState(false);
 
   useEffect(() => {
+    if (shouldHide(pathname, forceShow) && !compact) return;
     let alive = true;
     fetch('/api/tenant/branding', { cache: 'no-store' })
       .then((res) => res.json())
@@ -57,13 +69,15 @@ export function TenantBrandingBar({ compact = false }: { compact?: boolean }) {
       })
       .catch(() => undefined);
     return () => { alive = false; };
-  }, []);
+  }, [compact, forceShow, pathname]);
 
   const subtitle = useMemo(() => {
     if (fallback) return 'Modo compatible · branding SaaS preparado';
     if (branding.customDomain) return branding.customDomain;
     return `${branding.slug}.solucionesfabrick.com`;
   }, [branding.customDomain, branding.slug, fallback]);
+
+  if (shouldHide(pathname, forceShow) && !compact) return null;
 
   return <div className={compact ? 'rounded-3xl border border-white/10 bg-black/45 p-3 text-white' : 'fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-5xl rounded-[1.6rem] border border-white/10 bg-black/70 p-3 text-white shadow-2xl shadow-black/50 backdrop-blur-2xl md:left-auto md:right-5 md:max-w-sm'}>
     <div className="flex items-center gap-3">

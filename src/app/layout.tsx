@@ -18,6 +18,7 @@ import CmsRealtimeListener from '@/components/CmsRealtimeListener';
 import CustomInjectionRoot from '@/components/CustomInjectionRoot';
 import GlobalStylesRoot from '@/components/GlobalStylesRoot';
 import CmsPreviewOverlay from '@/components/admin/cms/CmsPreviewOverlay';
+import { TenantBrandingBar } from '@/components/tenant/TenantBrandingBar';
 import { getSiteSection } from '@/lib/siteStructure';
 
 // Force per-request rendering for every route in the app.
@@ -134,6 +135,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <QuoteCartProvider>
                   <SmoothScrollProvider />
                   {children}
+                  <TenantBrandingBar />
                   <ServiceWorkerRegister />
                   <InstallAppPrompt />
                   {/* AIAgentChat reemplaza al botón flotante de WhatsApp en

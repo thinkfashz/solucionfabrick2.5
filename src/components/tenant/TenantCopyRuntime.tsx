@@ -73,10 +73,10 @@ function applyTenantCopy(root: ParentNode, replacements: Record<string, string>)
 
 export function TenantCopyRuntime() {
   const pathname = usePathname();
-  const { branding } = useTenantBranding();
+  const { branding, enabled } = useTenantBranding();
 
   useEffect(() => {
-    if (!shouldApply(pathname)) return;
+    if (!enabled || !shouldApply(pathname)) return;
 
     const brandName = branding.name || 'Soluciones Fabrick';
     const brandUpper = brandName.toUpperCase();
@@ -114,7 +114,7 @@ export function TenantCopyRuntime() {
 
     observer.observe(document.body, { childList: true, subtree: true });
     return () => observer.disconnect();
-  }, [branding.billingEmail, branding.customDomain, branding.name, branding.ownerEmail, branding.slug, pathname]);
+  }, [branding.billingEmail, branding.customDomain, branding.name, branding.ownerEmail, branding.slug, enabled, pathname]);
 
   return null;
 }

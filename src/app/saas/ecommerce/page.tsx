@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ArrowRight, BadgeCheck, BarChart3, Boxes, CheckCircle2, CreditCard, Globe2, Package, Palette, Receipt, ShoppingCart, Store, Truck, Users } from 'lucide-react';
+import { ArrowRight, BadgeCheck, BarChart3, Boxes, CreditCard, Package, Palette, Receipt, ShoppingCart, Store, Truck } from 'lucide-react';
 
 const features = [
   { title: 'Catálogo por empresa', text: 'Cada tenant administra sus productos, categorías, precios, stock e imágenes.', icon: Package },

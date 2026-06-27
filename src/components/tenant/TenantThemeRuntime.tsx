@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import type { TenantPalette } from '@/lib/tenantTheme';
+import { isSaaSRuntimeEnabled, SAAS_RUNTIME_CHANGE_EVENT } from '@/lib/saasFeatureFlag';
 
 type Branding = {
   name?: string;
@@ -54,9 +55,20 @@ function clearThemeMarker() {
 
 export function TenantThemeRuntime() {
   const pathname = usePathname();
+  const [enabled, setEnabled] = useState(() => isSaaSRuntimeEnabled());
 
   useEffect(() => {
-    if (!shouldApplyTenantTheme(pathname)) {
+    function sync() { setEnabled(isSaaSRuntimeEnabled()); }
+    window.addEventListener(SAAS_RUNTIME_CHANGE_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(SAAS_RUNTIME_CHANGE_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!enabled || !shouldApplyTenantTheme(pathname)) {
       clearThemeMarker();
       return;
     }
@@ -74,7 +86,7 @@ export function TenantThemeRuntime() {
       });
 
     return () => { alive = false; };
-  }, [pathname]);
+  }, [enabled, pathname]);
 
   return null;
 }

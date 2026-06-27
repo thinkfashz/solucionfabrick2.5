@@ -1,0 +1,81 @@
+/*
+ * Tenant public theme adapters.
+ *
+ * The existing public UI uses many Tailwind yellow classes because Fabrick's
+ * default brand is lava/gold. When a tenant palette is loaded by
+ * TenantThemeRuntime, these adapters remap those yellow accents to the tenant
+ * palette without touching admin routes.
+ */
+
+html[data-tenant-theme='ready'] .text-yellow-50,
+html[data-tenant-theme='ready'] .text-yellow-100,
+html[data-tenant-theme='ready'] .text-yellow-200,
+html[data-tenant-theme='ready'] .text-yellow-300,
+html[data-tenant-theme='ready'] .text-yellow-400,
+html[data-tenant-theme='ready'] .text-yellow-500 {
+  color: var(--tenant-accent) !important;
+}
+
+html[data-tenant-theme='ready'] .bg-yellow-300,
+html[data-tenant-theme='ready'] .bg-yellow-400 {
+  background: linear-gradient(135deg, var(--tenant-primary), var(--tenant-secondary)) !important;
+  color: #050505 !important;
+}
+
+html[data-tenant-theme='ready'] .bg-yellow-300\/10,
+html[data-tenant-theme='ready'] .bg-yellow-400\/10,
+html[data-tenant-theme='ready'] .bg-yellow-400\/15,
+html[data-tenant-theme='ready'] .bg-yellow-400\/20 {
+  background-color: color-mix(in srgb, var(--tenant-primary) 14%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .border-yellow-300\/20,
+html[data-tenant-theme='ready'] .border-yellow-300\/25,
+html[data-tenant-theme='ready'] .border-yellow-300\/30,
+html[data-tenant-theme='ready'] .border-yellow-400\/20,
+html[data-tenant-theme='ready'] .border-yellow-400\/30,
+html[data-tenant-theme='ready'] .border-yellow-400 {
+  border-color: color-mix(in srgb, var(--tenant-primary) 34%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .from-yellow-400\/15,
+html[data-tenant-theme='ready'] .from-yellow-400,
+html[data-tenant-theme='ready'] .to-yellow-400,
+html[data-tenant-theme='ready'] .via-yellow-400 {
+  --tw-gradient-from: color-mix(in srgb, var(--tenant-primary) 22%, transparent) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: color-mix(in srgb, var(--tenant-secondary) 0%, transparent) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+html[data-tenant-theme='ready'] .shadow-yellow-400\/20,
+html[data-tenant-theme='ready'] .shadow-yellow-400\/25,
+html[data-tenant-theme='ready'] .shadow-yellow-300\/20 {
+  --tw-shadow-color: color-mix(in srgb, var(--tenant-primary) 25%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .ring-yellow-300,
+html[data-tenant-theme='ready'] .ring-yellow-400,
+html[data-tenant-theme='ready'] .ring-yellow-300\/30,
+html[data-tenant-theme='ready'] .ring-yellow-400\/30 {
+  --tw-ring-color: color-mix(in srgb, var(--tenant-primary) 38%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .hover\:bg-yellow-300:hover,
+html[data-tenant-theme='ready'] .hover\:bg-yellow-400:hover {
+  background: linear-gradient(135deg, var(--tenant-accent), var(--tenant-primary)) !important;
+  color: #050505 !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-icon {
+  color: var(--tenant-primary) !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-text {
+  color: var(--tenant-primary) !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-bg,
+html[data-tenant-theme='ready'] .tenant-primary-bg {
+  background: linear-gradient(135deg, var(--tenant-primary), var(--tenant-secondary)) !important;
+  color: #050505 !important;
+}

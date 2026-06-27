@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, BadgeCheck, CheckCircle2, Facebook, Instagram, Menu, Moon, PackageCheck, Search, ShieldCheck, ShoppingBag, Sparkles, Sun, Truck, User, X, Zap } from 'lucide-react';
@@ -99,6 +99,41 @@ function asCartProduct(product: Product) {
   };
 }
 
+function HeroProductGallery({ products, activeIndex, onSelect }: { products: Product[]; activeIndex: number; onSelect: (product: Product) => void }) {
+  if (!products.length) return null;
+  const safeIndex = activeIndex % products.length;
+  return <article className="tenant-card overflow-hidden rounded-[2.2rem] border p-4">
+    <div className="mb-4 flex items-center justify-between gap-3">
+      <div>
+        <p className="tenant-text text-[10px] font-black uppercase tracking-[0.3em]">Gallery automático</p>
+        <h2 className="mt-1 text-2xl font-black tracking-tight text-white">Productos en movimiento</h2>
+      </div>
+      <BadgeCheck className="h-5 w-5 tenant-icon" />
+    </div>
+    <div className="relative overflow-hidden rounded-[1.6rem] border border-white/10 bg-black/35">
+      <div className="flex transition-transform duration-700 ease-out" style={{ transform: `translateX(-${safeIndex * 100}%)` }}>
+        {products.map((product) => <button key={product.id} onClick={() => onSelect(product)} className="relative min-w-full text-left">
+          <div className="aspect-[4/3] overflow-hidden bg-zinc-900">
+            <img src={getImage(product)} alt={product.name} className="h-full w-full object-cover" loading="lazy" />
+          </div>
+          <div className="absolute inset-0 bg-gradient-to-t from-black via-black/35 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 p-4">
+            <span className="rounded-full border border-white/15 bg-black/45 px-3 py-1 text-[10px] font-black uppercase tracking-[.2em] text-yellow-200 backdrop-blur-xl">{getCategory(product)}</span>
+            <h3 className="mt-3 line-clamp-2 text-2xl font-black leading-none tracking-tight text-white">{product.name}</h3>
+            <div className="mt-3 flex items-end justify-between gap-3">
+              <b className="text-2xl font-black text-yellow-300">${getFinalPrice(product).toLocaleString('es-CL')}</b>
+              <span className="rounded-full bg-white/10 px-3 py-1 text-[10px] font-black text-white/75">{getStockBadge(product)}</span>
+            </div>
+          </div>
+        </button>)}
+      </div>
+      <div className="absolute bottom-3 right-3 flex gap-1.5">
+        {products.map((product, index) => <span key={product.id} className={`h-1.5 rounded-full transition-all ${index === safeIndex ? 'w-7 bg-yellow-300' : 'w-1.5 bg-white/35'}`} />)}
+      </div>
+    </div>
+  </article>;
+}
+
 export default function TiendaClientPage() {
   const router = useRouter();
   const { user } = useAuth();
@@ -110,14 +145,15 @@ export default function TiendaClientPage() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [menuOpen, setMenuOpen] = useState(false);
+  const [activeSlide, setActiveSlide] = useState(0);
 
   const brandName = branding.name || 'Soluciones Fabrick';
   const supportLink = branding.whatsappUrl || '/contacto';
 
   const liveProducts = useMemo<Product[]>(() => {
-    if (fetchComplete) return catalogProducts as Product[];
-    return catalogProducts.length ? catalogProducts as Product[] : PRODUCTS;
-  }, [catalogProducts, fetchComplete]);
+    if (catalogProducts.length) return catalogProducts as Product[];
+    return PRODUCTS;
+  }, [catalogProducts]);
 
   const filteredProducts = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -128,7 +164,20 @@ export default function TiendaClientPage() {
   const categories = useMemo(() => Array.from(new Set(liveProducts.map(getCategory))).slice(0, 6), [liveProducts]);
   const featured = filteredProducts.slice(0, 8);
   const heroProduct = liveProducts[0];
-  const secondProduct = liveProducts[1] || heroProduct;
+  const galleryProducts = useMemo(() => (liveProducts.length ? liveProducts : PRODUCTS).slice(0, 6), [liveProducts]);
+
+  useEffect(() => {
+    if (!galleryProducts.length) return;
+    setActiveSlide((current) => current % galleryProducts.length);
+  }, [galleryProducts.length]);
+
+  useEffect(() => {
+    if (galleryProducts.length <= 1) return;
+    const id = window.setInterval(() => {
+      setActiveSlide((current) => (current + 1) % galleryProducts.length);
+    }, 1000);
+    return () => window.clearInterval(id);
+  }, [galleryProducts.length]);
 
   function selectProduct(product: Product) {
     navigateWithTransition(`/tienda/${product.id}`, router);
@@ -171,29 +220,30 @@ export default function TiendaClientPage() {
           <div className="absolute -bottom-24 -right-24 h-72 w-72 rounded-full bg-yellow-300/20 blur-3xl" />
           <div className="relative z-10 flex h-full min-h-[640px] flex-col justify-between p-6 md:p-11">
             <div>
-              <span className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] tenant-border" style={{ background: 'color-mix(in srgb, var(--tenant-primary) 14%, transparent)', color: 'var(--tenant-accent)' }}><Sparkles size={14}/> Tienda premium + despacho + instalación</span>
-              <h1 className="mt-6 max-w-4xl text-[clamp(42px,7.5vw,96px)] font-black leading-[0.88] tracking-[-0.06em] text-white">Compra productos con ficha clara, stock visible y soporte real.</h1>
-              <p className="mt-6 max-w-2xl text-base leading-8 text-zinc-200 md:text-lg">Elige productos para obra, hogar o negocio. Mira stock, precio, detalles, categoría y compra directo o coordina instalación con {brandName}.</p>
+              <span className="inline-flex items-center gap-2 rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] tenant-border" style={{ background: 'color-mix(in srgb, var(--tenant-primary) 14%, transparent)', color: 'var(--tenant-accent)' }}><Sparkles size={14}/> Catálogo real · stock visible · compra guiada</span>
+              <h1 className="mt-6 max-w-4xl text-[clamp(42px,7.5vw,96px)] font-black leading-[0.88] tracking-[-0.06em] text-white">Encuentra el producto correcto, mira su stock y compra sin vueltas.</h1>
+              <p className="mt-6 max-w-2xl text-base leading-8 text-zinc-200 md:text-lg">Explora productos cargados desde tu base de datos, revisa categoría, precio y disponibilidad, agrégalos al carrito y finaliza con checkout guiado y GPS opcional.</p>
               <div className="mt-8 flex flex-wrap gap-3"><button onClick={() => navigateWithTransition('/tienda/catalogo', router)} className="tenant-primary-bg inline-flex min-h-[56px] items-center gap-2 rounded-full px-7 text-sm font-black text-black shadow-lg transition hover:-translate-y-0.5">Explorar catálogo <ArrowRight size={16}/></button><button onClick={() => setSearchOpen(true)} className="inline-flex min-h-[56px] items-center gap-2 rounded-full border border-white/20 bg-white/10 px-7 text-sm font-black text-white backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-white hover:text-black"><Search size={16}/> Buscar producto</button><button onClick={openCart} className="inline-flex min-h-[56px] items-center gap-2 rounded-full border border-yellow-300/25 bg-yellow-300/10 px-7 text-sm font-black text-yellow-100 backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-yellow-300 hover:text-black"><ShoppingBag size={16}/> Ver carrito</button></div>
             </div>
-            <div className="grid max-w-3xl grid-cols-3 gap-3">{[['Stock','Barra visible'],['Compra','Checkout guiado'],['Soporte','Humano + GPS']].map(([n,l])=><div key={l} className="rounded-[1.3rem] border border-white/10 bg-black/45 p-4 backdrop-blur-xl"><b className="block text-xl font-black text-white md:text-2xl">{n}</b><span className="text-xs text-zinc-400">{l}</span></div>)}</div>
+            <div className="grid max-w-3xl grid-cols-3 gap-3">{[['Base de datos', fetchComplete ? 'Sincronizada' : 'Cargando'],['Stock','Barra visible'],['Checkout','GPS opcional']].map(([n,l])=><div key={String(n)} className="rounded-[1.3rem] border border-white/10 bg-black/45 p-4 backdrop-blur-xl"><b className="block text-xl font-black text-white md:text-2xl">{n}</b><span className="text-xs text-zinc-400">{l}</span></div>)}</div>
           </div>
         </article>
 
         <aside className="grid gap-5">
+          <HeroProductGallery products={galleryProducts} activeIndex={activeSlide} onSelect={selectProduct} />
           {heroProduct && <article className={`tenant-card rounded-[2.2rem] border p-5 ${!isDark ? 'bg-neutral-50 text-black' : ''}`}>
             <div className="flex items-center justify-between"><p className="tenant-text text-[10px] font-black uppercase tracking-[0.3em]">Producto destacado</p><BadgeCheck className="h-5 w-5 tenant-icon" /></div>
             <button onClick={() => selectProduct(heroProduct)} className="mt-4 grid w-full gap-4 text-left sm:grid-cols-[150px_1fr] lg:grid-cols-1"><div className="aspect-square overflow-hidden rounded-[1.5rem] bg-zinc-900"><img src={getImage(heroProduct)} alt={heroProduct.name} className="h-full w-full object-cover transition duration-700 hover:scale-105"/></div><div><p className="text-[10px] font-black uppercase tracking-[.2em] tenant-text">{getCategory(heroProduct)}</p><h2 className="mt-2 text-3xl font-black tracking-tight">{heroProduct.name}</h2><p className="mt-2 text-sm leading-6 opacity-65 line-clamp-3">{heroProduct.description || heroProduct.tagline || 'Producto recomendado para compra rápida y asesoría técnica.'}</p><div className="mt-4 flex items-end justify-between gap-3"><b className="tenant-text block text-2xl">${getFinalPrice(heroProduct).toLocaleString('es-CL')}</b><span className="rounded-full border border-white/10 bg-white/10 px-3 py-1 text-xs font-black">{getStockBadge(heroProduct)}</span></div></div></button>
           </article>}
-          {secondProduct && <article className="tenant-card rounded-[2.2rem] border p-5"><Zap className="tenant-icon mb-4 h-8 w-8"/><h3 className="text-3xl font-black tracking-tight text-white">Compra ahora o cotiza instalación.</h3><p className="mt-3 text-sm leading-7 text-zinc-300">Agrega productos al carrito, coordina despacho y usa GPS en checkout para acelerar la dirección.</p><div className="mt-6 grid grid-cols-2 gap-3"><button onClick={goSupport} className="tenant-primary-bg rounded-2xl px-4 py-3 text-sm font-black text-black">Asesoría</button><button onClick={openCart} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-black text-white">Carrito</button></div></article>}
+          <article className="tenant-card rounded-[2.2rem] border p-5"><Zap className="tenant-icon mb-4 h-8 w-8"/><h3 className="text-3xl font-black tracking-tight text-white">Compra ahora o cotiza instalación.</h3><p className="mt-3 text-sm leading-7 text-zinc-300">Agrega productos al carrito, coordina despacho y usa GPS en checkout para acelerar la dirección.</p><div className="mt-6 grid grid-cols-2 gap-3"><button onClick={goSupport} className="tenant-primary-bg rounded-2xl px-4 py-3 text-sm font-black text-black">Asesoría</button><button onClick={openCart} className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-black text-white">Carrito</button></div></article>
         </aside>
       </section>
     </header>
 
-    <section className={`overflow-hidden border-y ${isDark ? 'tenant-border bg-black/35' : 'border-neutral-200 bg-neutral-50'}`}><div className="store-scroll flex gap-10 overflow-x-auto px-4 py-4 text-xs font-black uppercase tracking-[0.26em] opacity-70">{['Stock en vivo','GPS en checkout','Carrito mejorado','Compra segura','Despacho coordinado','Instalación opcional'].map((t)=><span key={t} className="shrink-0">★ {t}</span>)}</div></section>
+    <section className={`overflow-hidden border-y ${isDark ? 'tenant-border bg-black/35' : 'border-neutral-200 bg-neutral-50'}`}><div className="store-scroll flex gap-10 overflow-x-auto px-4 py-4 text-xs font-black uppercase tracking-[0.26em] opacity-70">{['Productos desde base de datos','Gallery automático 1s','Stock en vivo','GPS en checkout','Carrito mejorado','Despacho coordinado'].map((t)=><span key={t} className="shrink-0">★ {t}</span>)}</div></section>
 
     <main className="mx-auto max-w-[1440px] px-4 py-12 md:px-8">
-      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><p className="tenant-text text-[10px] font-black uppercase tracking-[0.3em]">Productos destacados</p><h2 className="mt-2 text-3xl font-black tracking-tight md:text-5xl">Cards con precio, categoría, detalles y stock.</h2><p className="mt-2 max-w-2xl text-sm leading-6 opacity-65">Cada producto muestra información rápida para decidir sin entrar obligatoriamente a la ficha.</p></div><button onClick={() => navigateWithTransition('/tienda/catalogo', router)} className="tenant-border tenant-text w-fit rounded-full border px-5 py-3 text-sm font-black">Ver todos <ArrowRight className="ml-1 inline h-4 w-4"/></button></div>
+      <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><p className="tenant-text text-[10px] font-black uppercase tracking-[0.3em]">Productos destacados</p><h2 className="mt-2 text-3xl font-black tracking-tight md:text-5xl">Productos reales con precio, categoría, detalles y stock.</h2><p className="mt-2 max-w-2xl text-sm leading-6 opacity-65">Si hay productos activos en la base de datos, se cargan desde el endpoint público seguro de tienda.</p></div><button onClick={() => navigateWithTransition('/tienda/catalogo', router)} className="tenant-border tenant-text w-fit rounded-full border px-5 py-3 text-sm font-black">Ver todos <ArrowRight className="ml-1 inline h-4 w-4"/></button></div>
 
       {categories.length > 0 && <div className="store-scroll mb-8 flex gap-2 overflow-x-auto pb-1">{categories.map((cat) => <button key={cat} onClick={() => { setSearchQuery(cat); setSearchOpen(true); }} className={`shrink-0 rounded-full border px-4 py-2 text-xs font-black ${isDark ? 'border-white/10 bg-white/[0.05] text-white/75 hover:bg-yellow-300 hover:text-black' : 'border-neutral-200 bg-white text-neutral-700'}`}>{cat}</button>)}</div>}
 

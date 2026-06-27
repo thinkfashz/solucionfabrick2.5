@@ -3,10 +3,9 @@
 /* eslint-disable @next/next/no-img-element */
 
 import React from 'react';
-import { X, Plus, Minus, Trash2 } from 'lucide-react';
+import { ArrowRight, Minus, PackageCheck, Plus, ShieldCheck, ShoppingBag, Trash2, Truck, X } from 'lucide-react';
 import type { CartItem } from '@/context/CartContext';
 import { formatCLP } from '@/hooks/useCart';
-import SilverGoldButton from './SilverGoldButton';
 
 interface CartDrawerProps {
   open: boolean;
@@ -17,103 +16,132 @@ interface CartDrawerProps {
   onCheckout: () => void;
 }
 
+function getUnitPrice(item: CartItem) {
+  const discount = item.product.discount_percentage || 0;
+  return Math.round(item.product.price * (1 - discount / 100));
+}
+
 export default function CartDrawer({ open, items, onClose, onUpdateQuantity, onRemoveItem, onCheckout }: CartDrawerProps) {
   if (!open) return null;
 
-  const subtotal = items.reduce((s, i) => {
-    const discount = i.product.discount_percentage || 0;
-    const price = i.product.price * (1 - discount / 100);
-    return s + price * i.quantity;
-  }, 0);
+  const subtotal = items.reduce((s, item) => s + getUnitPrice(item) * item.quantity, 0);
+  const originalTotal = items.reduce((s, item) => s + item.product.price * item.quantity, 0);
+  const savings = Math.max(0, originalTotal - subtotal);
+  const itemCount = items.reduce((s, item) => s + item.quantity, 0);
+  const shippingGoal = 300000;
+  const shippingPct = Math.min(100, Math.round((subtotal / shippingGoal) * 100));
+  const missingForShipping = Math.max(0, shippingGoal - subtotal);
 
   return (
     <div className="fixed inset-0 z-[220]">
-      {/* Backdrop */}
-      <div className="absolute inset-0 bg-black/80 backdrop-blur-sm" onClick={onClose} />
+      <div className="absolute inset-0 bg-black/82 backdrop-blur-md" onClick={onClose} />
 
-      {/* Drawer */}
-      <div className="absolute inset-y-0 right-0 w-full max-w-md bg-black/95 border-l border-yellow-400/10 flex flex-col cart-border-run">
-        {/* Header */}
-        <div className="flex items-center justify-between p-6 border-b border-white/5">
-          <h3 className="font-playfair text-lg text-white">Tu Carrito</h3>
-          <button onClick={onClose} className="text-white/40 hover:text-white transition-colors">
-            <X size={20} />
-          </button>
+      <aside className="absolute inset-y-0 right-0 flex w-full max-w-[460px] flex-col overflow-hidden border-l border-yellow-300/15 bg-[#050403]/98 text-white shadow-[0_0_120px_rgba(0,0,0,.75)]">
+        <div className="relative overflow-hidden border-b border-white/10 p-5">
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_80%_0%,rgba(250,204,21,.18),transparent_18rem)]" />
+          <div className="relative flex items-start justify-between gap-4">
+            <div>
+              <p className="inline-flex items-center gap-2 rounded-full border border-yellow-300/20 bg-yellow-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[.22em] text-yellow-100"><ShoppingBag className="h-3.5 w-3.5" /> Carrito activo</p>
+              <h3 className="mt-4 text-3xl font-black tracking-[-.05em]">Tu compra</h3>
+              <p className="mt-1 text-sm text-zinc-400">{itemCount} producto(s) listos para checkout.</p>
+            </div>
+            <button onClick={onClose} className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/5 text-white/50 transition hover:bg-white hover:text-black" aria-label="Cerrar carrito">
+              <X size={19} />
+            </button>
+          </div>
         </div>
 
-        {/* Items */}
-        <div className="flex-1 overflow-y-auto p-6 space-y-4 scrollbar-hide">
+        <div className="flex-1 overflow-y-auto p-5 space-y-4 scrollbar-hide">
           {items.length === 0 ? (
-            <div className="flex flex-col items-center justify-center h-full text-white/20">
-              <p className="text-sm">Tu carrito está vacío</p>
-              <p className="text-xs mt-1">Explora nuestra boutique</p>
+            <div className="flex h-full flex-col items-center justify-center rounded-[2rem] border border-white/10 bg-white/[0.035] p-8 text-center">
+              <div className="grid h-16 w-16 place-items-center rounded-3xl bg-yellow-300 text-black"><ShoppingBag className="h-8 w-8" /></div>
+              <p className="mt-5 text-xl font-black">Tu carrito está vacío</p>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">Explora productos y agrega lo que necesitas para tu obra, casa o instalación.</p>
+              <button onClick={onClose} className="mt-6 rounded-2xl border border-white/10 bg-white/10 px-5 py-3 text-sm font-black text-white">Seguir comprando</button>
             </div>
           ) : (
             items.map((item) => {
+              const unitPrice = getUnitPrice(item);
               const discount = item.product.discount_percentage || 0;
-              const unitPrice = item.product.price * (1 - discount / 100);
+              const lineTotal = unitPrice * item.quantity;
               return (
-                <div key={item.product.id} className="flex gap-4 p-3 rounded-xl bg-white/[0.02] border border-white/5">
-                  {/* Thumbnail */}
-                  <div className="w-16 h-16 rounded-lg overflow-hidden bg-white/5 flex-shrink-0">
-                    {item.product.image_url ? (
-                      <img src={item.product.image_url} alt={item.product.name} className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-white/10 text-[10px]">N/A</div>
-                    )}
-                  </div>
+                <article key={item.product.id} className="rounded-[1.5rem] border border-white/10 bg-white/[0.045] p-3 transition hover:border-yellow-300/25 hover:bg-yellow-300/[0.06]">
+                  <div className="flex gap-3">
+                    <div className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-[1.1rem] bg-white/5">
+                      {item.product.image_url ? (
+                        <img src={item.product.image_url} alt={item.product.name} className="h-full w-full object-cover" />
+                      ) : (
+                        <div className="flex h-full w-full items-center justify-center text-[10px] text-white/15">Sin imagen</div>
+                      )}
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-start gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="line-clamp-2 text-sm font-black leading-5 text-white">{item.product.name}</p>
+                          <p className="mt-1 text-[10px] font-black uppercase tracking-[.18em] text-yellow-300/80">{item.product.category_id || 'Producto'}</p>
+                        </div>
+                        <button onClick={() => onRemoveItem(item.product.id)} className="grid h-9 w-9 place-items-center rounded-xl border border-white/10 text-white/25 transition hover:border-red-300/30 hover:bg-red-500/10 hover:text-red-300" aria-label="Eliminar producto">
+                          <Trash2 size={14} />
+                        </button>
+                      </div>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <p className="text-white text-sm truncate">{item.product.name}</p>
-                    <p className="text-yellow-400/70 text-xs mt-1">{formatCLP(unitPrice)}</p>
-
-                    {/* Qty controls */}
-                    <div className="flex items-center gap-2 mt-2">
-                      <button
-                        onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
-                        className="w-6 h-6 flex items-center justify-center rounded border border-white/10 text-white/40 hover:text-white hover:border-white/30 transition-colors"
-                        disabled={item.quantity <= 1}
-                      >
-                        <Minus size={12} />
-                      </button>
-                      <span className="text-white text-xs w-6 text-center">{item.quantity}</span>
-                      <button
-                        onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
-                        className="w-6 h-6 flex items-center justify-center rounded border border-white/10 text-white/40 hover:text-white hover:border-white/30 transition-colors"
-                      >
-                        <Plus size={12} />
-                      </button>
+                      <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
+                        <div>
+                          <p className="text-lg font-black text-yellow-300">{formatCLP(unitPrice)}</p>
+                          {discount > 0 && <p className="text-xs text-zinc-600 line-through">{formatCLP(item.product.price)}</p>}
+                        </div>
+                        <div className="inline-flex items-center rounded-2xl border border-white/10 bg-black/35 p-1">
+                          <button
+                            onClick={() => onUpdateQuantity(item.product.id, item.quantity - 1)}
+                            className="grid h-8 w-8 place-items-center rounded-xl text-white/50 transition hover:bg-white/10 hover:text-white disabled:opacity-30"
+                            disabled={item.quantity <= 1}
+                            aria-label="Restar cantidad"
+                          >
+                            <Minus size={13} />
+                          </button>
+                          <span className="grid h-8 min-w-8 place-items-center px-2 text-sm font-black">{item.quantity}</span>
+                          <button
+                            onClick={() => onUpdateQuantity(item.product.id, item.quantity + 1)}
+                            className="grid h-8 w-8 place-items-center rounded-xl text-white/50 transition hover:bg-white/10 hover:text-white"
+                            aria-label="Sumar cantidad"
+                          >
+                            <Plus size={13} />
+                          </button>
+                        </div>
+                      </div>
+                      <div className="mt-3 flex items-center justify-between rounded-2xl border border-white/10 bg-black/25 px-3 py-2 text-xs">
+                        <span className="text-zinc-500">Subtotal línea</span>
+                        <b className="text-white">{formatCLP(lineTotal)}</b>
+                      </div>
                     </div>
                   </div>
-
-                  {/* Remove */}
-                  <button onClick={() => onRemoveItem(item.product.id)} className="self-start text-white/20 hover:text-red-400 transition-colors">
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+                </article>
               );
             })
           )}
         </div>
 
-        {/* Footer */}
         {items.length > 0 && (
-          <div className="p-6 border-t border-white/5 space-y-4">
-            <div className="flex justify-between text-sm">
-              <span className="text-white/40">Subtotal</span>
-              <span className="text-white">{formatCLP(subtotal)}</span>
+          <div className="border-t border-white/10 bg-black/45 p-5">
+            <div className="rounded-[1.5rem] border border-white/10 bg-white/[0.045] p-4">
+              <div className="flex items-center gap-2 text-xs text-emerald-200"><Truck className="h-4 w-4" />Despacho coordinado después de confirmar disponibilidad.</div>
+              <div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-yellow-300 transition-all duration-700" style={{ width: `${shippingPct}%` }} /></div>
+              <p className="mt-2 text-[11px] text-zinc-500">{missingForShipping > 0 ? `Agrega ${formatCLP(missingForShipping)} para priorizar despacho coordinado.` : 'Compra lista para despacho coordinado prioritario.'}</p>
             </div>
-            <div className="flex justify-between text-lg">
-              <span className="text-white/60 font-medium">Total</span>
-              <span className="text-yellow-400 font-playfair">{formatCLP(subtotal)}</span>
+
+            <div className="mt-4 space-y-2 text-sm">
+              <div className="flex justify-between"><span className="text-white/45">Subtotal</span><span className="text-white">{formatCLP(subtotal)}</span></div>
+              {savings > 0 && <div className="flex justify-between"><span className="text-emerald-300/75">Ahorro aplicado</span><span className="text-emerald-300">-{formatCLP(savings)}</span></div>}
+              <div className="flex justify-between border-t border-white/10 pt-3 text-lg"><span className="font-black text-white">Total</span><span className="font-black text-yellow-300">{formatCLP(subtotal)}</span></div>
             </div>
-            <SilverGoldButton onClick={onCheckout} className="w-full py-4">
-              Finalizar Compra
-            </SilverGoldButton>
+
+            <button onClick={onCheckout} className="mt-5 inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-5 text-sm font-black text-black shadow-[0_20px_70px_rgba(250,204,21,.18)] transition hover:-translate-y-0.5 hover:bg-yellow-200">
+              Finalizar compra <ArrowRight className="h-4 w-4" />
+            </button>
+            <div className="mt-3 flex items-center justify-center gap-2 text-[11px] text-zinc-500"><ShieldCheck className="h-3.5 w-3.5 text-emerald-300" /> Pago seguro · compra validada · soporte humano</div>
           </div>
         )}
-      </div>
+      </aside>
     </div>
   );
 }

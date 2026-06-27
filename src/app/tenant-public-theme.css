@@ -40,6 +40,14 @@ html[data-tenant-theme='ready'] .bg-amber-300\/10,
 html[data-tenant-theme='ready'] .bg-amber-400\/10,
 html[data-tenant-theme='ready'] .bg-amber-400\/15,
 html[data-tenant-theme='ready'] .bg-amber-400\/20,
+html[data-tenant-theme='ready'] .bg-yellow-400\/\[0\.04\],
+html[data-tenant-theme='ready'] .bg-yellow-400\/\[0\.06\],
+html[data-tenant-theme='ready'] .bg-yellow-400\/\[0\.10\],
+html[data-tenant-theme='ready'] .bg-yellow-400\/\[0\.12\],
+html[data-tenant-theme='ready'] .bg-amber-400\/\[0\.04\],
+html[data-tenant-theme='ready'] .bg-amber-400\/\[0\.06\],
+html[data-tenant-theme='ready'] .bg-amber-400\/\[0\.10\],
+html[data-tenant-theme='ready'] .bg-amber-400\/\[0\.12\],
 html[data-tenant-theme='ready'] .tenant-soft-bg {
   background-color: color-mix(in srgb, var(--tenant-primary) 14%, transparent) !important;
 }
@@ -66,16 +74,27 @@ html[data-tenant-theme='ready'] .tenant-border {
   border-color: color-mix(in srgb, var(--tenant-primary) 38%, transparent) !important;
 }
 
+html[data-tenant-theme='ready'] .hover\:border-yellow-400\/40:hover,
+html[data-tenant-theme='ready'] .hover\:border-yellow-400\/50:hover,
+html[data-tenant-theme='ready'] .hover\:border-amber-400\/40:hover,
+html[data-tenant-theme='ready'] .hover\:border-amber-400\/50:hover {
+  border-color: color-mix(in srgb, var(--tenant-primary) 58%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .from-yellow-300,
 html[data-tenant-theme='ready'] .from-yellow-400\/15,
 html[data-tenant-theme='ready'] .from-yellow-400,
+html[data-tenant-theme='ready'] .to-yellow-300,
 html[data-tenant-theme='ready'] .to-yellow-400,
 html[data-tenant-theme='ready'] .via-yellow-400,
+html[data-tenant-theme='ready'] .from-amber-300,
 html[data-tenant-theme='ready'] .from-amber-400\/15,
 html[data-tenant-theme='ready'] .from-amber-400,
+html[data-tenant-theme='ready'] .to-amber-300,
 html[data-tenant-theme='ready'] .to-amber-400,
 html[data-tenant-theme='ready'] .via-amber-400 {
-  --tw-gradient-from: color-mix(in srgb, var(--tenant-primary) 22%, transparent) var(--tw-gradient-from-position) !important;
-  --tw-gradient-to: color-mix(in srgb, var(--tenant-secondary) 0%, transparent) var(--tw-gradient-to-position) !important;
+  --tw-gradient-from: color-mix(in srgb, var(--tenant-primary) 88%, white) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: color-mix(in srgb, var(--tenant-secondary) 90%, transparent) var(--tw-gradient-to-position) !important;
   --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
 }
 
@@ -95,7 +114,11 @@ html[data-tenant-theme='ready'] .ring-yellow-400\/30,
 html[data-tenant-theme='ready'] .ring-amber-300,
 html[data-tenant-theme='ready'] .ring-amber-400,
 html[data-tenant-theme='ready'] .ring-amber-300\/30,
-html[data-tenant-theme='ready'] .ring-amber-400\/30 {
+html[data-tenant-theme='ready'] .ring-amber-400\/30,
+html[data-tenant-theme='ready'] .focus-visible\:ring-yellow-300:focus-visible,
+html[data-tenant-theme='ready'] .focus-visible\:ring-yellow-400:focus-visible,
+html[data-tenant-theme='ready'] .focus-visible\:ring-amber-300:focus-visible,
+html[data-tenant-theme='ready'] .focus-visible\:ring-amber-400:focus-visible {
   --tw-ring-color: color-mix(in srgb, var(--tenant-primary) 38%, transparent) !important;
 }
 
@@ -105,6 +128,11 @@ html[data-tenant-theme='ready'] .hover\:bg-amber-300:hover,
 html[data-tenant-theme='ready'] .hover\:bg-amber-400:hover {
   background: linear-gradient(135deg, var(--tenant-accent), var(--tenant-primary)) !important;
   color: #050505 !important;
+}
+
+html[data-tenant-theme='ready'] .hover\:bg-yellow-400\/20:hover,
+html[data-tenant-theme='ready'] .hover\:bg-amber-400\/20:hover {
+  background-color: color-mix(in srgb, var(--tenant-primary) 22%, transparent) !important;
 }
 
 html[data-tenant-theme='ready'] .tenant-icon,

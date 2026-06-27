@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Check, Zap, Building2, Rocket, ArrowRight, Star, Shield, Clock, BarChart3, Globe, ChevronDown } from 'lucide-react';
+import { Check, Zap, Building2, Rocket, ArrowRight, Star, Shield, Clock, BarChart3, Globe, ChevronDown, Store, Palette, ShoppingCart } from 'lucide-react';
 import { useState } from 'react';
 
 const PLANS = [
@@ -100,6 +100,12 @@ const FEATURES = [
   { icon: Clock, title: 'Prueba 14 días gratis', desc: 'Sin tarjeta. Sin compromisos. Si no te convence, se borra todo sin costo.' },
 ];
 
+const ECOMMERCE_FEATURES = [
+  { icon: Store, title: 'Tienda por tenant', desc: 'Cada empresa puede tener su propia tienda pública, colores, logo y datos comerciales.' },
+  { icon: ShoppingCart, title: 'Compra guiada', desc: 'Carrito, checkout, pedido, cliente, despacho y método de pago en un solo flujo.' },
+  { icon: Palette, title: 'Diseño de marca', desc: 'La experiencia visual toma la paleta seleccionada por el negocio desde Mi Empresa.' },
+];
+
 function formatClp(n: number) {
   return n.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 }
@@ -132,6 +138,7 @@ export default function SaasLandingPage() {
           FABRICK
         </button>
         <div className="flex items-center gap-4">
+          <button onClick={() => router.push('/saas/ecommerce')} className="text-sm text-white/50 hover:text-white transition-colors hidden md:block">E-commerce SaaS</button>
           <a href="#precios" className="text-sm text-white/50 hover:text-white transition-colors hidden md:block">Precios</a>
           <a href="#faq" className="text-sm text-white/50 hover:text-white transition-colors hidden md:block">FAQ</a>
           <button
@@ -166,6 +173,12 @@ export default function SaasLandingPage() {
           >
             Prueba 14 días gratis <ArrowRight size={16} />
           </button>
+          <button
+            onClick={() => router.push('/saas/ecommerce')}
+            className="flex items-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-100 font-bold text-base px-8 py-4 hover:border-emerald-300/60 hover:bg-emerald-400/20 transition-colors"
+          >
+            Ver módulo e-commerce <Store size={16} />
+          </button>
           <a
             href="#precios"
             className="flex items-center gap-2 rounded-2xl border border-white/20 text-white/70 font-medium text-base px-8 py-4 hover:border-white/40 hover:text-white transition-colors"
@@ -186,6 +199,41 @@ export default function SaasLandingPage() {
               <p className="text-sm text-white/50 leading-relaxed">{f.desc}</p>
             </div>
           ))}
+        </div>
+      </section>
+
+      {/* Ecommerce SaaS module */}
+      <section className="px-4 pb-16 max-w-6xl mx-auto">
+        <div className="overflow-hidden rounded-3xl border border-emerald-400/20 bg-[radial-gradient(circle_at_80%_0%,rgba(16,185,129,.18),transparent_30rem),linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02))] p-6 md:p-8">
+          <div className="grid gap-8 lg:grid-cols-[1fr_360px] lg:items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-emerald-400/25 bg-emerald-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[.24em] text-emerald-200">
+                <Store className="h-3.5 w-3.5" /> Módulo vendible
+              </div>
+              <h2 className="mt-5 text-3xl md:text-5xl font-black tracking-[-0.06em] leading-[.95]">E-commerce SaaS para cada empresa.</h2>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-white/55">Convierte la tienda en un módulo comercial del SaaS: catálogo por tenant, checkout, carrito, productos, paleta visual y experiencia pública adaptada a la marca de cada cliente.</p>
+              <div className="mt-6 grid gap-3 md:grid-cols-3">
+                {ECOMMERCE_FEATURES.map((item) => <article key={item.title} className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                  <item.icon className="h-5 w-5 text-emerald-300" />
+                  <h3 className="mt-3 text-sm font-black text-white">{item.title}</h3>
+                  <p className="mt-1 text-xs leading-5 text-white/45">{item.desc}</p>
+                </article>)}
+              </div>
+              <button onClick={() => router.push('/saas/ecommerce')} className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-emerald-400 px-6 py-4 text-sm font-black text-black hover:bg-emerald-300 transition-colors">
+                Abrir página e-commerce SaaS <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+            <aside className="rounded-[2rem] border border-white/10 bg-black/35 p-4">
+              <div className="rounded-[1.5rem] bg-white p-3 text-black">
+                <div className="h-36 rounded-2xl bg-gradient-to-br from-emerald-400 to-cyan-500" />
+                <h3 className="mt-4 text-lg font-black">Tienda demo por tenant</h3>
+                <p className="mt-1 text-sm text-black/55">Productos, instalación y checkout con colores de marca.</p>
+                <div className="mt-4 grid grid-cols-3 gap-2">
+                  {['#10b981', '#06b6d4', '#a7f3d0'].map((color) => <span key={color} className="h-8 rounded-xl" style={{ background: color }} />)}
+                </div>
+              </div>
+            </aside>
+          </div>
         </div>
       </section>
 
@@ -301,12 +349,20 @@ export default function SaasLandingPage() {
         <div className="max-w-xl mx-auto rounded-3xl border border-emerald-500/20 bg-gradient-to-b from-emerald-950/30 to-transparent p-10">
           <h2 className="text-3xl font-black mb-3">Empieza hoy, gratis</h2>
           <p className="text-white/50 mb-6 text-sm">14 días sin costo. Sin tarjeta. Tu tienda lista en minutos.</p>
-          <button
-            onClick={() => router.push('/registro')}
-            className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-base px-8 py-4 transition-colors"
-          >
-            Crear mi tienda gratis <ArrowRight size={16} />
-          </button>
+          <div className="flex flex-wrap justify-center gap-3">
+            <button
+              onClick={() => router.push('/registro')}
+              className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-base px-8 py-4 transition-colors"
+            >
+              Crear mi tienda gratis <ArrowRight size={16} />
+            </button>
+            <button
+              onClick={() => router.push('/saas/ecommerce')}
+              className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/8 text-white font-bold text-base px-8 py-4 transition-colors hover:bg-white/12"
+            >
+              Explorar e-commerce <Store size={16} />
+            </button>
+          </div>
         </div>
       </section>
 

@@ -192,13 +192,11 @@ html[data-tenant-theme='ready'] [class*="rgba(250,204,21,"] {
   --tw-shadow-color: color-mix(in srgb, var(--tenant-primary) 20%, transparent) !important;
 }
 
-html[data-tenant-theme='ready'] :global(.finput),
 html[data-tenant-theme='ready'] .finput {
   border-color: color-mix(in srgb, var(--tenant-primary) 20%, transparent) !important;
   background-color: color-mix(in srgb, var(--tenant-surface) 70%, black) !important;
 }
 
-html[data-tenant-theme='ready'] :global(.finput:focus),
 html[data-tenant-theme='ready'] .finput:focus {
   border-color: color-mix(in srgb, var(--tenant-primary) 62%, transparent) !important;
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--tenant-primary) 18%, transparent) !important;

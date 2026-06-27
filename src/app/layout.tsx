@@ -21,6 +21,7 @@ import GlobalStylesRoot from '@/components/GlobalStylesRoot';
 import CmsPreviewOverlay from '@/components/admin/cms/CmsPreviewOverlay';
 import { TenantBrandingBar } from '@/components/tenant/TenantBrandingBar';
 import { TenantThemeRuntime } from '@/components/tenant/TenantThemeRuntime';
+import { TenantCopyRuntime } from '@/components/tenant/TenantCopyRuntime';
 import { getSiteSection } from '@/lib/siteStructure';
 
 // Force per-request rendering for every route in the app.
@@ -137,6 +138,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                 <QuoteCartProvider>
                   <SmoothScrollProvider />
                   <TenantThemeRuntime />
+                  <TenantCopyRuntime />
                   {children}
                   <TenantBrandingBar />
                   <ServiceWorkerRegister />

@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Building2, FlaskConical, Palette, Rocket, ShieldCheck, UserPlus } from 'lucide-react';
+import { SaaSRuntimeToggle } from '@/components/admin/SaaSRuntimeToggle';
 
 const modules = [
   {
@@ -42,6 +43,8 @@ export default function SuperAdminSaaSPage() {
         <h1 className="mt-5 text-4xl font-black tracking-[-.06em] md:text-6xl">Control central del SaaS</h1>
         <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-300">Centro para controlar empresas, validar el creador SaaS, probar tenants de ejemplo y revisar que cada cliente tenga su propia marca, plan, integraciones y paleta visual.</p>
       </header>
+
+      <SaaSRuntimeToggle />
 
       <section className="grid gap-4 md:grid-cols-4">
         {[

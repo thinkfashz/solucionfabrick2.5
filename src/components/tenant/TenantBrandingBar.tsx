@@ -3,6 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { MessageCircle, Sparkles } from 'lucide-react';
+import type { TenantPalette } from '@/lib/tenantTheme';
 
 type Branding = {
   id: string;
@@ -15,6 +16,7 @@ type Branding = {
   ownerEmail: string | null;
   customDomain: string | null;
   whatsappUrl: string | null;
+  theme?: TenantPalette;
 };
 
 type BrandingResponse = {
@@ -50,6 +52,17 @@ function shouldHide(pathname: string, forceShow: boolean) {
     || pathname.startsWith('/registro');
 }
 
+function applyTheme(branding: Branding) {
+  const theme = branding.theme;
+  document.documentElement.style.setProperty('--tenant-primary', theme?.primary || branding.primaryColor || FALLBACK.primaryColor);
+  document.documentElement.style.setProperty('--tenant-secondary', theme?.secondary || '#ea580c');
+  document.documentElement.style.setProperty('--tenant-accent', theme?.accent || '#fde68a');
+  document.documentElement.style.setProperty('--tenant-bg', theme?.background || '#050505');
+  document.documentElement.style.setProperty('--tenant-surface', theme?.surface || '#11100d');
+  document.documentElement.style.setProperty('--tenant-text', theme?.text || '#fff7ed');
+  document.documentElement.style.setProperty('--tenant-name', branding.name || FALLBACK.name);
+}
+
 export function TenantBrandingBar({ compact = false, forceShow = false }: { compact?: boolean; forceShow?: boolean }) {
   const pathname = usePathname();
   const [branding, setBranding] = useState<Branding>(FALLBACK);
@@ -64,8 +77,7 @@ export function TenantBrandingBar({ compact = false, forceShow = false }: { comp
         if (!alive || !json?.branding) return;
         setBranding(json.branding);
         setFallback(Boolean(json.fallback || json.setupRequired));
-        document.documentElement.style.setProperty('--tenant-primary', json.branding.primaryColor || FALLBACK.primaryColor);
-        document.documentElement.style.setProperty('--tenant-name', json.branding.name || FALLBACK.name);
+        applyTheme(json.branding);
       })
       .catch(() => undefined);
     return () => { alive = false; };
@@ -79,16 +91,18 @@ export function TenantBrandingBar({ compact = false, forceShow = false }: { comp
 
   if (shouldHide(pathname, forceShow) && !compact) return null;
 
+  const mainColor = branding.theme?.primary || branding.primaryColor || FALLBACK.primaryColor;
+
   return <div className={compact ? 'rounded-3xl border border-white/10 bg-black/45 p-3 text-white' : 'fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-5xl rounded-[1.6rem] border border-white/10 bg-black/70 p-3 text-white shadow-2xl shadow-black/50 backdrop-blur-2xl md:left-auto md:right-5 md:max-w-sm'}>
     <div className="flex items-center gap-3">
-      <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl text-sm font-black text-black ring-1 ring-white/15" style={{ background: branding.primaryColor || FALLBACK.primaryColor }}>
+      <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl text-sm font-black text-black ring-1 ring-white/15" style={{ background: mainColor }}>
         {branding.logoUrl ? <img src={branding.logoUrl} alt={branding.name} className="h-full w-full object-cover" /> : initials(branding.name)}
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-black">{branding.name}</p>
         <p className="truncate text-[11px] text-zinc-400">{subtitle}</p>
       </div>
-      {branding.whatsappUrl ? <a href={branding.whatsappUrl} target="_blank" rel="noreferrer" className="grid h-10 w-10 place-items-center rounded-2xl text-black" style={{ background: branding.primaryColor || FALLBACK.primaryColor }} aria-label="WhatsApp"><MessageCircle className="h-4 w-4" /></a> : <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white/10 text-amber-200"><Sparkles className="h-4 w-4" /></span>}
+      {branding.whatsappUrl ? <a href={branding.whatsappUrl} target="_blank" rel="noreferrer" className="grid h-10 w-10 place-items-center rounded-2xl text-black" style={{ background: mainColor }} aria-label="WhatsApp"><MessageCircle className="h-4 w-4" /></a> : <span className="grid h-10 w-10 place-items-center rounded-2xl bg-white/10 text-amber-200"><Sparkles className="h-4 w-4" /></span>}
     </div>
   </div>;
 }

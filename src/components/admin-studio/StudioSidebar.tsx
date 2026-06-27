@@ -4,9 +4,9 @@ import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import {
-  AlertTriangle, BarChart3, BookOpen, Bot, Boxes, Cloud, Cpu, Database, FileText, Hammer,
+  AlertTriangle, BarChart3, BookOpen, Bot, Boxes, Building2, Cloud, Cpu, Crown, Database, FileText, Hammer,
   Image as ImageIcon, Inbox, LayoutGrid, Link2, LogOut, Mail, Megaphone, Newspaper, Package,
-  Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Star, Stethoscope, Store,
+  Palette, Radio, Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Star, Stethoscope, Store,
   Tag, Terminal, TrendingDown, Truck, Telescope, User, Users, Video, Wallet, MessageCircle,
   KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket, UserPlus,
 } from 'lucide-react';
@@ -32,6 +32,13 @@ export const navSections: NavSection[] = [
     { href: '/admin/beneficios', label: 'Beneficios', description: 'Valor y ventajas comerciales', icon: Star, highlight: true },
     { href: '/admin/saas', label: 'Mi SaaS', description: 'Clientes y plataforma', icon: Rocket, highlight: true },
     { href: '/admin/activar', label: 'Activar plataforma', description: 'Variables y conexiones', icon: ShieldCheck },
+  ]},
+  { title: 'Super Admin SaaS', links: [
+    { href: '/admin/superadmin/saas', label: 'Control SaaS', description: 'Tenants, planes y estado plataforma', icon: Crown, superadminOnly: true, highlight: true },
+    { href: '/admin/superadmin/saas/creador', label: 'Tester creador SaaS', description: 'Crear y validar flujo de alta', icon: FlaskConical, superadminOnly: true, highlight: true },
+    { href: '/admin/superadmin/saas/demo', label: 'Empresa demo SaaS', description: 'Tenant ejemplo para pruebas', icon: Building2, superadminOnly: true, highlight: true },
+    { href: '/admin/mi-empresa', label: 'Marca y paletas', description: 'Color, logo y tema visual', icon: Palette, superadminOnly: true, highlight: true },
+    { href: '/admin/saas-migracion', label: 'Migración final SaaS', description: 'Dejar para el cierre', icon: Database, superadminOnly: true },
   ]},
   { title: 'Operación', links: [
     { href: '/admin/productos', label: 'Productos', description: 'Catálogo y stock', icon: Package },
@@ -136,7 +143,7 @@ export function StudioSidebarContent({ collapsed, role, onNavigate, onLogout }: 
         {!collapsed && <div className="min-w-0"><p className="truncate text-[11px] font-black uppercase tracking-[0.22em] text-amber-200">Soluciones Fabrick</p><p className="mt-1 truncate text-sm font-black text-white">{profile.name}</p><p className="truncate text-[10px] uppercase tracking-[0.18em] text-white/45">{profile.role}</p></div>}
       </Link>
     </div>
-    {!collapsed && <div className="relative shrink-0 px-4 py-3"><Search className="pointer-events-none absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/55" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar opción… F29, tienda, demo" className="h-11 w-full rounded-[18px] border border-amber-300/12 bg-black/30 pl-10 pr-3 text-sm text-white outline-none backdrop-blur-xl placeholder:text-[#8e7d61] focus:border-amber-200/50" /></div>}
+    {!collapsed && <div className="relative shrink-0 px-4 py-3"><Search className="pointer-events-none absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/55" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar opción… SaaS, paleta, demo" className="h-11 w-full rounded-[18px] border border-amber-300/12 bg-black/30 pl-10 pr-3 text-sm text-white outline-none backdrop-blur-xl placeholder:text-[#8e7d61] focus:border-amber-200/50" /></div>}
     <div className="relative min-h-0 flex-1 overflow-y-auto py-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{sections.map((section) => <div key={section.title} className="mb-1">{!collapsed && <p className="mb-1 px-5 pt-3 text-[10px] font-black uppercase tracking-[0.25em] text-amber-200/65">{section.title}</p>}{collapsed && <div className="mx-4 my-2 h-px bg-amber-300/10" />}<div className={collapsed ? 'space-y-1 px-1' : 'space-y-1'}>{section.links.map((link) => { const hrefPath = link.href.split('?')[0]; const active = pathname === hrefPath || (hrefPath !== '/admin' && pathname.startsWith(`${hrefPath}/`)); return <NavItem key={link.href} {...link} active={active} collapsed={collapsed} onNavigate={onNavigate} />; })}</div></div>)}{!sections.length && !collapsed && <div className="m-4 rounded-2xl border border-amber-300/10 bg-white/[0.045] p-4 text-sm text-[#e8d6b7]">No encontré opciones para “{query}”.</div>}</div>
     <div className="relative shrink-0 border-t border-amber-300/10 p-3"><div className="mb-2 flex items-center gap-3 rounded-[22px] bg-white/[0.055] px-3 py-3 backdrop-blur-xl"><div className="grid h-10 w-10 shrink-0 place-items-center overflow-hidden rounded-full bg-gradient-to-br from-amber-300 to-orange-900 text-xs font-black text-black">{profile.avatar_url ? <img src={profile.avatar_url} alt={profile.name} className="h-full w-full object-cover" /> : initials(profile.name)}</div>{!collapsed && <div className="min-w-0 flex-1"><p className="truncate text-sm font-black text-white">{profile.name}</p><p className="truncate text-xs text-[#d8c8aa]">{profile.email}</p></div>}</div><button type="button" onClick={onLogout} title={collapsed ? 'Cerrar sesión' : undefined} className={[collapsed ? 'justify-center' : '', 'group flex w-full items-center gap-2 rounded-[18px] px-3 py-3 text-[13px] font-bold text-[#e8d6b7] transition hover:bg-red-500/10 hover:text-red-300'].join(' ')}><LogOut className="h-4 w-4 shrink-0" />{!collapsed && <span>Cerrar sesión</span>}</button></div>
   </div>;

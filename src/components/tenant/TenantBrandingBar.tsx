@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { MessageCircle, Sparkles } from 'lucide-react';
 import type { TenantPalette } from '@/lib/tenantTheme';
+import { isSaaSRuntimeEnabled, SAAS_RUNTIME_CHANGE_EVENT } from '@/lib/saasFeatureFlag';
 
 type Branding = {
   id: string;
@@ -67,8 +68,20 @@ export function TenantBrandingBar({ compact = false, forceShow = false }: { comp
   const pathname = usePathname();
   const [branding, setBranding] = useState<Branding>(FALLBACK);
   const [fallback, setFallback] = useState(false);
+  const [enabled, setEnabled] = useState(() => isSaaSRuntimeEnabled());
 
   useEffect(() => {
+    function sync() { setEnabled(isSaaSRuntimeEnabled()); }
+    window.addEventListener(SAAS_RUNTIME_CHANGE_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(SAAS_RUNTIME_CHANGE_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!enabled) return;
     if (shouldHide(pathname, forceShow) && !compact) return;
     let alive = true;
     fetch('/api/tenant/branding', { cache: 'no-store' })
@@ -81,7 +94,7 @@ export function TenantBrandingBar({ compact = false, forceShow = false }: { comp
       })
       .catch(() => undefined);
     return () => { alive = false; };
-  }, [compact, forceShow, pathname]);
+  }, [compact, enabled, forceShow, pathname]);
 
   const subtitle = useMemo(() => {
     if (fallback) return 'Modo compatible · branding SaaS preparado';
@@ -89,6 +102,7 @@ export function TenantBrandingBar({ compact = false, forceShow = false }: { comp
     return `${branding.slug}.solucionesfabrick.com`;
   }, [branding.customDomain, branding.slug, fallback]);
 
+  if (!enabled) return null;
   if (shouldHide(pathname, forceShow) && !compact) return null;
 
   const mainColor = branding.theme?.primary || branding.primaryColor || FALLBACK.primaryColor;

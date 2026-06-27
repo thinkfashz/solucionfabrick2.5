@@ -1,7 +1,13 @@
 import Link from 'next/link';
-import { Building2, FlaskConical, Palette, Rocket, ShieldCheck, Users } from 'lucide-react';
+import { Building2, FlaskConical, Palette, Rocket, ShieldCheck, UserPlus } from 'lucide-react';
 
 const modules = [
+  {
+    href: '/admin/superadmin/saas/onboarding',
+    title: 'Estado onboarding real',
+    description: 'Verifica tablas, variables, correo y módulos antes de crear empresas piloto desde registro.',
+    icon: UserPlus,
+  },
   {
     href: '/admin/superadmin/saas/creador',
     title: 'Tester creador SaaS',

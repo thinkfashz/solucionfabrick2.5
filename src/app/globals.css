@@ -20,6 +20,12 @@
   --fg2: #4a4135;
   --border: rgba(20, 17, 13, 0.14);
   --glass: rgba(255, 252, 246, 0.78);
+  --tenant-primary: #f59e0b;
+  --tenant-secondary: #ea580c;
+  --tenant-accent: #fde68a;
+  --tenant-bg: #050505;
+  --tenant-surface: #11100d;
+  --tenant-text: #fff7ed;
 }
 
 .dark {
@@ -69,6 +75,66 @@ html { scroll-padding-top: 80px; }
 html, body, header, nav, main, footer, section, article, aside, div, p, h1, h2, h3, h4, h5, h6, a, button, span { transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease; }
 html { background-color: var(--bg); color: var(--text); }
 body { background-color: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
+
+/* ───────────────────────────────────────────────────────────
+   PUBLIC TENANT THEME — applied by TenantThemeRuntime.
+   It avoids /admin and only affects public/store/quote/checkout routes.
+   ─────────────────────────────────────────────────────────── */
+html[data-tenant-theme='ready'] {
+  --bg: var(--tenant-bg);
+  --text: var(--tenant-text);
+  --accent: var(--tenant-primary);
+  --accent2: var(--tenant-secondary);
+  --bg2: var(--tenant-surface);
+  --fg: var(--tenant-text);
+  --border: color-mix(in srgb, var(--tenant-primary) 24%, transparent);
+}
+
+html[data-tenant-theme='ready'] body {
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--tenant-primary) 22%, transparent), transparent 30rem),
+    radial-gradient(circle at 88% 18%, color-mix(in srgb, var(--tenant-secondary) 18%, transparent), transparent 28rem),
+    linear-gradient(180deg, var(--tenant-bg), #030303 70%);
+  color: var(--tenant-text);
+}
+
+html[data-tenant-theme='ready'] a:not([class*='text-']):not([data-no-tenant-theme]) {
+  color: var(--tenant-accent);
+}
+
+html[data-tenant-theme='ready'] button:not([data-no-tenant-theme]),
+html[data-tenant-theme='ready'] .tenant-button {
+  --tw-ring-color: color-mix(in srgb, var(--tenant-primary) 42%, transparent);
+}
+
+html[data-tenant-theme='ready'] .tenant-surface {
+  background: linear-gradient(145deg, var(--tenant-bg), var(--tenant-surface));
+  color: var(--tenant-text);
+}
+
+html[data-tenant-theme='ready'] .tenant-card {
+  border-color: color-mix(in srgb, var(--tenant-primary) 18%, transparent);
+  background:
+    radial-gradient(circle at 85% 0%, color-mix(in srgb, var(--tenant-primary) 18%, transparent), transparent 22rem),
+    color-mix(in srgb, var(--tenant-surface) 78%, black);
+  box-shadow: 0 20px 70px color-mix(in srgb, var(--tenant-primary) 10%, transparent);
+}
+
+html[data-tenant-theme='ready'] .tenant-gradient-text {
+  background: linear-gradient(90deg, var(--tenant-text), var(--tenant-accent), var(--tenant-primary));
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+}
+
+html[data-tenant-theme='ready'] .tenant-primary-bg {
+  background: linear-gradient(135deg, var(--tenant-primary), var(--tenant-secondary));
+  color: #050505;
+}
+
+html[data-tenant-theme='ready'] .tenant-border {
+  border-color: color-mix(in srgb, var(--tenant-primary) 28%, transparent);
+}
 
 .font-playfair { font-family: 'Playfair Display', serif; }
 .font-cormorant { font-family: 'Cormorant Garamond', serif; }
@@ -200,7 +266,7 @@ body { animation: route-cinematic-in .42s cubic-bezier(.16,1,.3,1); }
 
 [data-studio-sidebar] input {
   background: rgba(0,0,0,.30) !important;
-  border-color: rgba(250, 204, 21, .14) !important;
+  border-color: rgba(250, 204, 21,.14) !important;
   color: #fff7df !important;
 }
 

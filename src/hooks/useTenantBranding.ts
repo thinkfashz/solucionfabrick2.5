@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import type { TenantPalette } from '@/lib/tenantTheme';
+import { isSaaSRuntimeEnabled, SAAS_RUNTIME_CHANGE_EVENT } from '@/lib/saasFeatureFlag';
 
 export type TenantBranding = {
   id: string;
@@ -47,9 +48,28 @@ export function useTenantBranding() {
   const [branding, setBranding] = useState<TenantBranding>(FALLBACK_TENANT_BRANDING);
   const [loading, setLoading] = useState(true);
   const [fallback, setFallback] = useState(false);
+  const [enabled, setEnabled] = useState(() => isSaaSRuntimeEnabled());
+
+  useEffect(() => {
+    function sync() { setEnabled(isSaaSRuntimeEnabled()); }
+    window.addEventListener(SAAS_RUNTIME_CHANGE_EVENT, sync);
+    window.addEventListener('storage', sync);
+    return () => {
+      window.removeEventListener(SAAS_RUNTIME_CHANGE_EVENT, sync);
+      window.removeEventListener('storage', sync);
+    };
+  }, []);
 
   useEffect(() => {
     let alive = true;
+
+    if (!enabled) {
+      setBranding(FALLBACK_TENANT_BRANDING);
+      setFallback(true);
+      setLoading(false);
+      return () => { alive = false; };
+    }
+
     setLoading(true);
     fetch('/api/tenant/branding', { cache: 'no-store' })
       .then((res) => res.json())
@@ -68,9 +88,9 @@ export function useTenantBranding() {
       });
 
     return () => { alive = false; };
-  }, []);
+  }, [enabled]);
 
-  return { branding, loading, fallback };
+  return { branding, loading, fallback, enabled };
 }
 
 export function tenantInitials(name: string) {

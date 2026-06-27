@@ -176,3 +176,53 @@ html[data-tenant-theme='ready'] .tenant-project-builder .subtleGrid {
     linear-gradient(color-mix(in srgb, var(--tenant-primary) 42%, transparent) 1px, transparent 1px),
     linear-gradient(90deg, color-mix(in srgb, var(--tenant-primary) 42%, transparent) 1px, transparent 1px) !important;
 }
+
+/* Checkout and quote screens still contain some legacy hardcoded dark panels.
+   Attribute selectors let us theme those Tailwind arbitrary-value classes safely. */
+html[data-tenant-theme='ready'] [class~="bg-[#050403]"],
+html[data-tenant-theme='ready'] [class~="bg-[#090806]"],
+html[data-tenant-theme='ready'] [class~="bg-[#070707]"] {
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--tenant-primary) 18%, transparent), transparent 26rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--tenant-bg) 92%, black), #030303) !important;
+}
+
+html[data-tenant-theme='ready'] [class*="rgba(250,204,21"],
+html[data-tenant-theme='ready'] [class*="rgba(250,204,21,"] {
+  --tw-shadow-color: color-mix(in srgb, var(--tenant-primary) 20%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] :global(.finput),
+html[data-tenant-theme='ready'] .finput {
+  border-color: color-mix(in srgb, var(--tenant-primary) 20%, transparent) !important;
+  background-color: color-mix(in srgb, var(--tenant-surface) 70%, black) !important;
+}
+
+html[data-tenant-theme='ready'] :global(.finput:focus),
+html[data-tenant-theme='ready'] .finput:focus {
+  border-color: color-mix(in srgb, var(--tenant-primary) 62%, transparent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tenant-primary) 18%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] select.finput option,
+html[data-tenant-theme='ready'] select option {
+  background-color: var(--tenant-surface) !important;
+  color: var(--tenant-text) !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-checkout-shell,
+html[data-tenant-theme='ready'] .tenant-quote-shell {
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--tenant-primary) 18%, transparent), transparent 26rem),
+    linear-gradient(180deg, var(--tenant-bg), #030303 78%) !important;
+  color: var(--tenant-text) !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-checkout-card,
+html[data-tenant-theme='ready'] .tenant-quote-card {
+  border-color: color-mix(in srgb, var(--tenant-primary) 24%, transparent) !important;
+  background:
+    radial-gradient(circle at 85% 0%, color-mix(in srgb, var(--tenant-primary) 16%, transparent), transparent 24rem),
+    color-mix(in srgb, var(--tenant-surface) 82%, black) !important;
+  box-shadow: 0 30px 110px color-mix(in srgb, var(--tenant-primary) 13%, transparent) !important;
+}

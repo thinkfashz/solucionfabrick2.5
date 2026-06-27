@@ -64,6 +64,7 @@ export const navSections: NavSection[] = [
     { href: '/admin/contabilidad/f12', label: 'F12 · Registro mensual', description: 'Ventas y compras', icon: BookOpen, highlight: true },
     { href: '/admin/contabilidad/f21', label: 'F21 · Pagos tributarios', description: 'Obligaciones y pagos', icon: Wallet, highlight: true },
     { href: '/admin/pagos', label: 'Pagos · MercadoPago', description: 'Pasarela y cobros', icon: Wallet },
+    { href: '/admin/pagos/mercadopago-test', label: 'MercadoPago TEST', description: 'Probar credenciales sandbox', icon: FlaskConical, highlight: true },
     { href: '/admin/reportes', label: 'Reportes financieros', description: 'Totales y métricas', icon: BarChart3 },
     { href: '/admin/sql', label: 'Terminal SQL', description: 'Ejecutar SQL', icon: Database },
   ]},

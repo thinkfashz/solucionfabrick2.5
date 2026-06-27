@@ -2,7 +2,7 @@ export const SAAS_RUNTIME_STORAGE_KEY = 'sf_saas_runtime_enabled';
 export const SAAS_RUNTIME_CHANGE_EVENT = 'sf-saas-runtime-change';
 
 export function getDefaultSaaSRuntimeEnabled() {
-  return process.env.NEXT_PUBLIC_SAAS_RUNTIME_ENABLED !== 'false';
+  return process.env.NEXT_PUBLIC_SAAS_RUNTIME_ENABLED === 'true';
 }
 
 export function isSaaSRuntimeEnabled() {

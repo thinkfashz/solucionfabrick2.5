@@ -77,6 +77,12 @@ function isMissingTableError(error: unknown) {
   return /does not exist|schema cache|relation .* not found|table .* not found|404/i.test(message);
 }
 
+function appBaseUrl() {
+  if (process.env.NEXT_PUBLIC_APP_URL) return process.env.NEXT_PUBLIC_APP_URL;
+  if (process.env.VERCEL_URL) return `https://${process.env.VERCEL_URL}`;
+  return '';
+}
+
 async function findAvailableSlug(base: string) {
   for (let i = 0; i < 8; i++) {
     const candidate = i === 0 ? base : `${base}-${randomSuffix()}`;
@@ -110,7 +116,7 @@ async function createAuthUser(email: string, password: string) {
 
 async function notifyWelcome(tenantId: string, tempPassword: string) {
   const secret = process.env.PLATFORM_ADMIN_SECRET;
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : '';
+  const baseUrl = appBaseUrl();
   if (!secret || !baseUrl) return 'skipped' as const;
 
   try {

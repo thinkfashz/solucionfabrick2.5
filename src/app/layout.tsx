@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import './tenant-public-theme.css';
 import './responsive-safety.css';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
 import SmoothScrollProvider from '@/components/SmoothScrollProvider';

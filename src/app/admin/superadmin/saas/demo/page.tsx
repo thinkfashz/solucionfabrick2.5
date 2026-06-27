@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { Building2, CheckCircle2, Palette, Rocket, Store } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { TENANT_PALETTES } from '@/lib/tenantTheme';
 
 const demo = {
@@ -9,6 +10,13 @@ const demo = {
   plan: 'pro',
   niche: 'Instalación de aire acondicionado y servicios técnicos',
 };
+
+const testCards: Array<{ title: string; text: string; icon: LucideIcon }> = [
+  { title: 'Branding', text: 'Logo, color aqua, botones y fondos con variables del tenant.', icon: Palette },
+  { title: 'Tienda', text: 'Catálogo filtrado por tenant_id y diseño con color del cliente.', icon: Store },
+  { title: 'Presupuestos', text: 'Links públicos con marca de la empresa y datos del negocio.', icon: CheckCircle2 },
+  { title: 'Pagos', text: 'MercadoPago por tenant cuando se configure access token propio.', icon: CheckCircle2 },
+];
 
 export default function SaaSDemoCompanyPage() {
   const palette = TENANT_PALETTES.find((item) => item.id === 'aqua') ?? TENANT_PALETTES[0];
@@ -36,16 +44,14 @@ export default function SaaSDemoCompanyPage() {
         <article className="rounded-[2rem] border border-white/10 bg-white/[0.045] p-5">
           <h2 className="flex items-center gap-2 text-2xl font-black tracking-[-.04em]"><Rocket className="h-5 w-5 text-cyan-200" /> Qué debe probar esta empresa</h2>
           <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {[
-              ['Branding', 'Logo, color aqua, botones y fondos con variables del tenant.', Palette],
-              ['Tienda', 'Catálogo filtrado por tenant_id y diseño con color del cliente.', Store],
-              ['Presupuestos', 'Links públicos con marca de la empresa y datos del negocio.', CheckCircle2],
-              ['Pagos', 'MercadoPago por tenant cuando se configure access token propio.', CheckCircle2],
-            ].map(([title, text, Icon]) => <div key={String(title)} className="rounded-2xl border border-white/10 bg-black/25 p-4">
-              <Icon className="h-5 w-5 text-cyan-200" />
-              <p className="mt-3 text-sm font-black text-white">{title as string}</p>
-              <p className="mt-1 text-xs leading-5 text-zinc-400">{text as string}</p>
-            </div>)}
+            {testCards.map((item) => {
+              const Icon = item.icon;
+              return <div key={item.title} className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                <Icon className="h-5 w-5 text-cyan-200" />
+                <p className="mt-3 text-sm font-black text-white">{item.title}</p>
+                <p className="mt-1 text-xs leading-5 text-zinc-400">{item.text}</p>
+              </div>;
+            })}
           </div>
           <div className="mt-5 flex flex-wrap gap-3">
             <Link href="/admin/mi-empresa" className="rounded-2xl border border-white/10 bg-white/10 px-4 py-3 text-sm font-black text-white">Editar marca</Link>

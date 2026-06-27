@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { DEFAULT_TENANT_ID, getTenantById, getTenantBySlug } from '@/lib/tenant';
+import { paletteFromPrimary } from '@/lib/tenantTheme';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -41,6 +42,7 @@ function buildWhatsappUrl(phone: string | null) {
 }
 
 function publicBranding(tenant: PublicBrandingSource) {
+  const theme = paletteFromPrimary(tenant.primaryColor);
   return {
     id: tenant.id,
     slug: tenant.slug,
@@ -55,6 +57,7 @@ function publicBranding(tenant: PublicBrandingSource) {
     status: tenant.status,
     planId: tenant.planId,
     whatsappUrl: buildWhatsappUrl(tenant.phone),
+    theme,
   };
 }
 

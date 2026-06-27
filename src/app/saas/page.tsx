@@ -1,7 +1,7 @@
 'use client';
 
 import { useRouter } from 'next/navigation';
-import { Check, Zap, Building2, Rocket, ArrowRight, Star, Shield, Clock, BarChart3, Globe, ChevronDown, Store, Palette, ShoppingCart } from 'lucide-react';
+import { Check, Zap, Building2, Rocket, ArrowRight, Star, Shield, Clock, BarChart3, Globe, ChevronDown, Store, Palette, ShoppingCart, FileText, Calculator } from 'lucide-react';
 import { useState } from 'react';
 
 const PLANS = [
@@ -106,6 +106,12 @@ const ECOMMERCE_FEATURES = [
   { icon: Palette, title: 'Diseño de marca', desc: 'La experiencia visual toma la paleta seleccionada por el negocio desde Mi Empresa.' },
 ];
 
+const BUDGET_FEATURES = [
+  { icon: FileText, title: 'Propuestas públicas', desc: 'Links de presupuesto para enviar por WhatsApp, correo o campañas.' },
+  { icon: Calculator, title: 'Motores técnicos', desc: 'Radier, aire acondicionado, muebles, instalación y servicios medibles.' },
+  { icon: Palette, title: 'Marca del cliente', desc: 'Cada presupuesto usa logo, colores, correo y datos del tenant.' },
+];
+
 function formatClp(n: number) {
   return n.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 }
@@ -138,7 +144,8 @@ export default function SaasLandingPage() {
           FABRICK
         </button>
         <div className="flex items-center gap-4">
-          <button onClick={() => router.push('/saas/ecommerce')} className="text-sm text-white/50 hover:text-white transition-colors hidden md:block">E-commerce SaaS</button>
+          <button onClick={() => router.push('/saas/ecommerce')} className="text-sm text-white/50 hover:text-white transition-colors hidden lg:block">E-commerce</button>
+          <button onClick={() => router.push('/saas/presupuestos')} className="text-sm text-white/50 hover:text-white transition-colors hidden lg:block">Presupuestos</button>
           <a href="#precios" className="text-sm text-white/50 hover:text-white transition-colors hidden md:block">Precios</a>
           <a href="#faq" className="text-sm text-white/50 hover:text-white transition-colors hidden md:block">FAQ</a>
           <button
@@ -177,14 +184,14 @@ export default function SaasLandingPage() {
             onClick={() => router.push('/saas/ecommerce')}
             className="flex items-center gap-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 text-emerald-100 font-bold text-base px-8 py-4 hover:border-emerald-300/60 hover:bg-emerald-400/20 transition-colors"
           >
-            Ver módulo e-commerce <Store size={16} />
+            Ver e-commerce <Store size={16} />
           </button>
-          <a
-            href="#precios"
-            className="flex items-center gap-2 rounded-2xl border border-white/20 text-white/70 font-medium text-base px-8 py-4 hover:border-white/40 hover:text-white transition-colors"
+          <button
+            onClick={() => router.push('/saas/presupuestos')}
+            className="flex items-center gap-2 rounded-2xl border border-amber-400/30 bg-amber-400/10 text-amber-100 font-bold text-base px-8 py-4 hover:border-amber-300/60 hover:bg-amber-400/20 transition-colors"
           >
-            Ver precios
-          </a>
+            Ver presupuestos <FileText size={16} />
+          </button>
         </div>
         <p className="mt-4 text-xs text-white/30">Sin tarjeta de crédito · Cancela cuando quieras</p>
       </section>
@@ -230,6 +237,45 @@ export default function SaasLandingPage() {
                 <p className="mt-1 text-sm text-black/55">Productos, instalación y checkout con colores de marca.</p>
                 <div className="mt-4 grid grid-cols-3 gap-2">
                   {['#10b981', '#06b6d4', '#a7f3d0'].map((color) => <span key={color} className="h-8 rounded-xl" style={{ background: color }} />)}
+                </div>
+              </div>
+            </aside>
+          </div>
+        </div>
+      </section>
+
+      {/* Presupuestos SaaS module */}
+      <section className="px-4 pb-16 max-w-6xl mx-auto">
+        <div className="overflow-hidden rounded-3xl border border-amber-400/20 bg-[radial-gradient(circle_at_80%_0%,rgba(245,158,11,.18),transparent_30rem),linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02))] p-6 md:p-8">
+          <div className="grid gap-8 lg:grid-cols-[1fr_360px] lg:items-center">
+            <div>
+              <div className="inline-flex items-center gap-2 rounded-full border border-amber-400/25 bg-amber-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[.24em] text-amber-200">
+                <FileText className="h-3.5 w-3.5" /> Módulo técnico
+              </div>
+              <h2 className="mt-5 text-3xl md:text-5xl font-black tracking-[-0.06em] leading-[.95]">Presupuestos SaaS para servicios técnicos.</h2>
+              <p className="mt-4 max-w-2xl text-sm leading-7 text-white/55">Convierte la cotización en una experiencia comercial: links públicos, motores técnicos, propuesta clara, marca del cliente y seguimiento de aprobación.</p>
+              <div className="mt-6 grid gap-3 md:grid-cols-3">
+                {BUDGET_FEATURES.map((item) => <article key={item.title} className="rounded-2xl border border-white/10 bg-black/25 p-4">
+                  <item.icon className="h-5 w-5 text-amber-300" />
+                  <h3 className="mt-3 text-sm font-black text-white">{item.title}</h3>
+                  <p className="mt-1 text-xs leading-5 text-white/45">{item.desc}</p>
+                </article>)}
+              </div>
+              <button onClick={() => router.push('/saas/presupuestos')} className="mt-6 inline-flex items-center gap-2 rounded-2xl bg-amber-300 px-6 py-4 text-sm font-black text-black hover:bg-amber-200 transition-colors">
+                Abrir página presupuestos SaaS <ArrowRight className="h-4 w-4" />
+              </button>
+            </div>
+            <aside className="rounded-[2rem] border border-white/10 bg-black/35 p-4">
+              <div className="rounded-[1.5rem] bg-white p-3 text-black">
+                <div className="flex items-center justify-between rounded-2xl bg-gradient-to-br from-amber-300 to-orange-500 p-4 text-black">
+                  <span className="text-xs font-black uppercase tracking-[.2em]">Propuesta</span>
+                  <Calculator className="h-5 w-5" />
+                </div>
+                <h3 className="mt-4 text-lg font-black">Instalación 12.000 BTU</h3>
+                <p className="mt-1 text-sm text-black/55">Equipo, instalación, garantía y visita técnica opcional.</p>
+                <div className="mt-4 flex items-end justify-between border-t border-black/10 pt-4">
+                  <span className="text-xs uppercase tracking-[.18em] text-black/45">Total</span>
+                  <b className="text-2xl">$489.990</b>
                 </div>
               </div>
             </aside>
@@ -346,21 +392,27 @@ export default function SaasLandingPage() {
 
       {/* Final CTA */}
       <section className="py-20 px-4 text-center">
-        <div className="max-w-xl mx-auto rounded-3xl border border-emerald-500/20 bg-gradient-to-b from-emerald-950/30 to-transparent p-10">
+        <div className="max-w-2xl mx-auto rounded-3xl border border-emerald-500/20 bg-gradient-to-b from-emerald-950/30 to-transparent p-10">
           <h2 className="text-3xl font-black mb-3">Empieza hoy, gratis</h2>
-          <p className="text-white/50 mb-6 text-sm">14 días sin costo. Sin tarjeta. Tu tienda lista en minutos.</p>
+          <p className="text-white/50 mb-6 text-sm">14 días sin costo. Sin tarjeta. Tu tienda y presupuestos listos en minutos.</p>
           <div className="flex flex-wrap justify-center gap-3">
             <button
               onClick={() => router.push('/registro')}
               className="inline-flex items-center gap-2 rounded-2xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold text-base px-8 py-4 transition-colors"
             >
-              Crear mi tienda gratis <ArrowRight size={16} />
+              Crear demo gratis <ArrowRight size={16} />
             </button>
             <button
               onClick={() => router.push('/saas/ecommerce')}
               className="inline-flex items-center gap-2 rounded-2xl border border-white/15 bg-white/8 text-white font-bold text-base px-8 py-4 transition-colors hover:bg-white/12"
             >
               Explorar e-commerce <Store size={16} />
+            </button>
+            <button
+              onClick={() => router.push('/saas/presupuestos')}
+              className="inline-flex items-center gap-2 rounded-2xl border border-amber-300/25 bg-amber-300/10 text-amber-100 font-bold text-base px-8 py-4 transition-colors hover:bg-amber-300/20"
+            >
+              Explorar presupuestos <FileText size={16} />
             </button>
           </div>
         </div>

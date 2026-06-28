@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { ArrowLeft, CheckCircle2, Minus, PackageCheck, Plus, ShieldCheck, ShoppingCart, Star, Truck, Zap } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Minus, PackageCheck, Plus, ShieldCheck, ShoppingCart, Truck, Zap } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { FALLBACK_CATALOG_PRODUCTS, useCatalogProducts, type CatalogProduct } from '@/hooks/useCatalogProducts';
 import { useCartContext } from '@/context/CartContext';
@@ -109,13 +109,14 @@ export default function ProductoTiendaClient() {
     </div>;
   }
 
-  const finalPrice = getFinalPrice(product);
-  const outOfStock = typeof product.stock === 'number' && product.stock <= 0;
-  const checkoutHref = `/checkout?productId=${encodeURIComponent(product.id)}&name=${encodeURIComponent(product.name)}&price=${encodeURIComponent(String(finalPrice))}&img=${encodeURIComponent(getImage(product))}&category=${encodeURIComponent(getCategory(product))}`;
-  const whatsappHref = buildWhatsAppLink(`Hola Soluciones Fabrick, me interesa el producto ${product.name}. ¿Me puedes confirmar disponibilidad y despacho?`);
+  const currentProduct = product;
+  const finalPrice = getFinalPrice(currentProduct);
+  const outOfStock = typeof currentProduct.stock === 'number' && currentProduct.stock <= 0;
+  const checkoutHref = `/checkout?productId=${encodeURIComponent(currentProduct.id)}&name=${encodeURIComponent(currentProduct.name)}&price=${encodeURIComponent(String(finalPrice))}&img=${encodeURIComponent(getImage(currentProduct))}&category=${encodeURIComponent(getCategory(currentProduct))}`;
+  const whatsappHref = buildWhatsAppLink(`Hola Soluciones Fabrick, me interesa el producto ${currentProduct.name}. ¿Me puedes confirmar disponibilidad y despacho?`);
 
   function addCurrentToCart() {
-    for (let i = 0; i < quantity; i += 1) addToCart(asCartProduct(product) as Parameters<typeof addToCart>[0]);
+    for (let i = 0; i < quantity; i += 1) addToCart(asCartProduct(currentProduct) as Parameters<typeof addToCart>[0]);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1800);
   }
@@ -132,30 +133,30 @@ export default function ProductoTiendaClient() {
       <section className="grid gap-6 lg:grid-cols-[0.96fr_1.04fr] lg:items-start">
         <article className="overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.035] shadow-[0_28px_90px_rgba(0,0,0,.45)]">
           <div className="relative aspect-square bg-zinc-950">
-            <img src={getImage(product)} alt={product.name} className="h-full w-full object-cover" loading="eager" />
-            <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-black/55 px-3 py-1 text-[10px] font-black uppercase tracking-[.2em] text-yellow-200 backdrop-blur-xl">{getCategory(product)}</div>
-            {getDiscount(product) > 0 && <div className="absolute right-4 top-4 rounded-full bg-red-500 px-3 py-1 text-[10px] font-black text-white">-{getDiscount(product)}%</div>}
+            <img src={getImage(currentProduct)} alt={currentProduct.name} className="h-full w-full object-cover" loading="eager" />
+            <div className="absolute left-4 top-4 rounded-full border border-white/15 bg-black/55 px-3 py-1 text-[10px] font-black uppercase tracking-[.2em] text-yellow-200 backdrop-blur-xl">{getCategory(currentProduct)}</div>
+            {getDiscount(currentProduct) > 0 && <div className="absolute right-4 top-4 rounded-full bg-red-500 px-3 py-1 text-[10px] font-black text-white">-{getDiscount(currentProduct)}%</div>}
           </div>
         </article>
 
         <article className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-5 shadow-[0_28px_90px_rgba(0,0,0,.32)] md:p-7">
-          <p className="text-[10px] font-black uppercase tracking-[.28em] text-yellow-300">{getCategory(product)}</p>
-          <h1 className="mt-4 text-4xl font-black leading-[.95] tracking-[-.07em] md:text-6xl">{product.name}</h1>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-400">{product.description || product.tagline || 'Producto disponible para compra, despacho coordinado y asesoría comercial.'}</p>
+          <p className="text-[10px] font-black uppercase tracking-[.28em] text-yellow-300">{getCategory(currentProduct)}</p>
+          <h1 className="mt-4 text-4xl font-black leading-[.95] tracking-[-.07em] md:text-6xl">{currentProduct.name}</h1>
+          <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-400">{currentProduct.description || currentProduct.tagline || 'Producto disponible para compra, despacho coordinado y asesoría comercial.'}</p>
 
           <div className="mt-6 flex flex-wrap items-end justify-between gap-4 rounded-[1.5rem] border border-white/10 bg-black/35 p-4">
             <div>
               <p className="text-xs font-black uppercase tracking-[.22em] text-zinc-500">Precio</p>
               <div className="mt-1 flex items-baseline gap-3">
                 <span className="text-4xl font-black text-yellow-300">{formatCLP(finalPrice)}</span>
-                {getDiscount(product) > 0 && <span className="text-sm text-zinc-600 line-through">{formatCLP(product.price)}</span>}
+                {getDiscount(currentProduct) > 0 && <span className="text-sm text-zinc-600 line-through">{formatCLP(currentProduct.price)}</span>}
               </div>
             </div>
-            <span className={`rounded-full px-3 py-2 text-xs font-black ${outOfStock ? 'bg-red-500/10 text-red-200' : 'bg-emerald-400/10 text-emerald-200'}`}>{stockLabel(product.stock)}</span>
+            <span className={`rounded-full px-3 py-2 text-xs font-black ${outOfStock ? 'bg-red-500/10 text-red-200' : 'bg-emerald-400/10 text-emerald-200'}`}>{stockLabel(currentProduct.stock)}</span>
           </div>
 
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
-            {(product.features || ['Compra segura', product.delivery || 'Entrega coordinada', 'Soporte Fabrick']).slice(0, 3).map((feature) => <div key={feature} className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-sm text-zinc-300"><CheckCircle2 className="mb-2 h-4 w-4 text-yellow-300" />{feature}</div>)}
+            {(currentProduct.features || ['Compra segura', currentProduct.delivery || 'Entrega coordinada', 'Soporte Fabrick']).slice(0, 3).map((feature) => <div key={feature} className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 text-sm text-zinc-300"><CheckCircle2 className="mb-2 h-4 w-4 text-yellow-300" />{feature}</div>)}
           </div>
 
           <div className="mt-6 flex flex-col gap-3 sm:flex-row">
@@ -170,7 +171,7 @@ export default function ProductoTiendaClient() {
 
           <div className="mt-6 grid gap-3 rounded-[1.5rem] border border-white/10 bg-black/30 p-4 text-sm text-zinc-400 sm:grid-cols-3">
             <div><ShieldCheck className="mb-2 h-5 w-5 text-emerald-300" />Pago seguro</div>
-            <div><Truck className="mb-2 h-5 w-5 text-yellow-300" />{product.delivery || 'Despacho coordinado'}</div>
+            <div><Truck className="mb-2 h-5 w-5 text-yellow-300" />{currentProduct.delivery || 'Despacho coordinado'}</div>
             <a href={whatsappHref} target="_blank" rel="noreferrer"><PackageCheck className="mb-2 h-5 w-5 text-sky-300" />Consultar asesor</a>
           </div>
         </article>

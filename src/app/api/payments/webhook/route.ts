@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createHmac } from 'node:crypto';
 import { insforge } from '@/lib/insforge';
 import { getMercadoPagoPayment, mapMercadoPagoStatus, verifyMercadoPagoSignature } from '@/lib/mercadopago';
-import { emitBoletaForOrder } from '@/lib/billing/autoEmit';
+import { confirmPaidOrderAndSendReceiptAsync } from '@/lib/orders/paidConfirmation';
 import { dispatchHookAsync } from '@/lib/extensionsBus';
 
 type GenericPaymentWebhookBody = {
@@ -116,12 +116,10 @@ async function handleMercadoPagoWebhook(request: Request) {
 
   const updated = await updateOrderStatus(orderId, paymentId, paymentStatus);
 
-  // Auto-emit boleta and dispatch order.paid when payment is approved.
-  // Both are fire-and-forget — the webhook must respond quickly to MercadoPago.
+  // Cuando queda pagada: emite/asegura boleta y envía correo con PDF Fabrick adjunto.
+  // Corre en segundo plano para responder rápido a Mercado Pago, pero queda idempotente por payment_webhooks + invoices.
   if (updated.orderStatus === 'pagada') {
-    emitBoletaForOrder(orderId).catch((err) =>
-      console.warn('[dte] auto-emit failed for order', orderId, err),
-    );
+    confirmPaidOrderAndSendReceiptAsync(orderId);
     dispatchHookAsync('order.paid', {
       orderId,
       paymentId,
@@ -137,6 +135,7 @@ async function handleMercadoPagoWebhook(request: Request) {
     orderId,
     paymentStatus,
     orderStatus: updated.orderStatus,
+    notification: updated.orderStatus === 'pagada' ? 'Correo con boleta PDF en proceso de envío.' : 'Pendiente de pago aprobado.',
     warning: updated.warning,
   });
 }
@@ -169,7 +168,18 @@ async function handleLegacyWebhook(request: Request) {
     return NextResponse.json({ ok: true, duplicated: true }, { status: 200 });
   }
 
-  return NextResponse.json(await updateOrderStatus(body.orderId, body.paymentId ?? null, body.status), { status: 200 });
+  const updated = await updateOrderStatus(body.orderId, body.paymentId ?? null, body.status);
+  if (updated.orderStatus === 'pagada') {
+    confirmPaidOrderAndSendReceiptAsync(body.orderId);
+    dispatchHookAsync('order.paid', {
+      orderId: body.orderId,
+      paymentId: body.paymentId ?? null,
+      paymentStatus: body.status,
+      provider: 'legacy',
+    });
+  }
+
+  return NextResponse.json({ ...updated, notification: updated.orderStatus === 'pagada' ? 'Correo con boleta PDF en proceso de envío.' : undefined }, { status: 200 });
 }
 
 export async function POST(request: Request) {

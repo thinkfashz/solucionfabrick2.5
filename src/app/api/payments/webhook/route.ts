@@ -14,6 +14,19 @@ type GenericPaymentWebhookBody = {
   currency?: string;
 };
 
+type MercadoPagoWebhookBody = {
+  action?: string;
+  type?: string;
+  topic?: string;
+  id?: string | number;
+  data?: {
+    id?: string | number;
+    external_reference?: string;
+    status?: string;
+    payments?: Array<{ id?: string | number; status?: string }>;
+  };
+};
+
 function verifyLegacySignature(rawBody: string, signature: string | null) {
   const secret = process.env.PAYMENTS_WEBHOOK_SECRET;
   if (!secret || !signature) return true;
@@ -75,12 +88,42 @@ async function updateOrderStatus(orderId: string, paymentId: string | null, stat
   };
 }
 
+function safeJsonParse(rawBody: string): MercadoPagoWebhookBody | null {
+  try {
+    return rawBody ? JSON.parse(rawBody) as MercadoPagoWebhookBody : null;
+  } catch {
+    return null;
+  }
+}
+
+function isMercadoPagoSimulation(body: MercadoPagoWebhookBody | null) {
+  const action = body?.action || '';
+  const eventType = body?.type || body?.topic || '';
+  return action.startsWith('order.') || eventType === 'order' || eventType === 'merchant_order';
+}
+
 async function handleMercadoPagoWebhook(request: Request) {
   const url = new URL(request.url);
-  const topic = url.searchParams.get('topic') || url.searchParams.get('type') || '';
-  const dataId = url.searchParams.get('data.id') || url.searchParams.get('id');
+  const rawBody = await request.text();
+  const body = safeJsonParse(rawBody);
+  const topic = url.searchParams.get('topic') || url.searchParams.get('type') || body?.type || body?.topic || '';
+  const dataId = url.searchParams.get('data.id') || url.searchParams.get('id') || (body?.data?.id != null ? String(body.data.id) : '') || (body?.id != null ? String(body.id) : '');
   const signatureHeader = request.headers.get('x-signature');
   const requestIdHeader = request.headers.get('x-request-id');
+
+  // La simulación de Mercado Pago puede enviar order.processed/merchant_order.
+  // Eso sirve para validar que la URL responde, pero no es el evento final de pago aprobado.
+  // Respondemos 200 para que el panel deje de marcar 404/fallo.
+  if (isMercadoPagoSimulation(body) && topic !== 'payment') {
+    return NextResponse.json({
+      ok: true,
+      provider: 'mercado_pago',
+      simulated: true,
+      ignored: true,
+      action: body?.action || topic,
+      message: 'URL recibida correctamente. Evento de simulación/order ignorado; el pago real se procesa con evento payment.',
+    }, { status: 200 });
+  }
 
   if (!(await verifyMercadoPagoSignature({
     signatureHeader,
@@ -95,7 +138,7 @@ async function handleMercadoPagoWebhook(request: Request) {
   }
 
   if (!dataId) {
-    return NextResponse.json({ error: 'No se recibió data.id desde Mercado Pago.' }, { status: 400 });
+    return NextResponse.json({ ok: true, ignored: true, message: 'Webhook recibido sin data.id de pago.' }, { status: 200 });
   }
 
   const payment = await getMercadoPagoPayment(dataId);
@@ -116,8 +159,6 @@ async function handleMercadoPagoWebhook(request: Request) {
 
   const updated = await updateOrderStatus(orderId, paymentId, paymentStatus);
 
-  // Cuando queda pagada: emite/asegura boleta y envía correo con PDF Fabrick adjunto.
-  // Corre en segundo plano para responder rápido a Mercado Pago, pero queda idempotente por payment_webhooks + invoices.
   if (updated.orderStatus === 'pagada') {
     confirmPaidOrderAndSendReceiptAsync(orderId);
     dispatchHookAsync('order.paid', {
@@ -184,8 +225,9 @@ async function handleLegacyWebhook(request: Request) {
 
 export async function POST(request: Request) {
   try {
-    const source = new URL(request.url).searchParams.get('source');
-    if (source === 'mercadopago' || request.headers.has('x-signature')) {
+    const url = new URL(request.url);
+    const source = url.searchParams.get('source');
+    if (source === 'mercadopago' || request.headers.has('x-signature') || url.pathname.includes('/api/webhooks/mercadopago')) {
       return await handleMercadoPagoWebhook(request);
     }
 

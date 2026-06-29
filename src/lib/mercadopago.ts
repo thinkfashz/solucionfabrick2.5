@@ -220,7 +220,7 @@ export async function verifyMercadoPagoSignature(args: { signatureHeader: string
   const parts = parseSignatureParts(args.signatureHeader);
   if (!parts?.ts || !parts.v1 || !args.dataId || !args.requestIdHeader) return false;
   const manifest = `id:${args.dataId.toLowerCase()};request-id:${args.requestIdHeader};ts:${parts.ts};`;
-  const expected = createHmac('sha256').update(manifest).digest('hex');
+  const expected = createHmac('sha256', secret).update(manifest).digest('hex');
   try { return timingSafeEqual(Buffer.from(expected), Buffer.from(parts.v1)); } catch { return false; }
 }
 

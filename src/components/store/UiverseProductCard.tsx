@@ -3,7 +3,7 @@
 /* eslint-disable @next/next/no-img-element */
 
 import type { MouseEvent } from 'react';
-import { Eye, PackageCheck, Plus, ShoppingBag, Sparkles, Truck } from 'lucide-react';
+import { CreditCard, Eye, PackageCheck, ShoppingBag, Sparkles, Truck } from 'lucide-react';
 
 interface UiverseProductCardProps {
   name: string;
@@ -131,25 +131,20 @@ export default function UiverseProductCard({
             </div>
             <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${isDark ? 'bg-white/8 text-zinc-300' : 'bg-neutral-100 text-neutral-600'}`}>Ver ficha</span>
           </div>
-          <div className="mt-4 grid grid-cols-[1fr_auto] gap-2">
+          <div className="mt-4 grid gap-2">
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); if (onBuyNow) onBuyNow(e); else onSelect(); }}
+              className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-emerald-300 px-3 text-[12px] font-black text-black shadow-[0_16px_40px_rgba(110,231,183,.16)] transition hover:bg-emerald-200"
+            >
+              <CreditCard className="h-4 w-4" /> Obtener ahora
+            </button>
             <button
               type="button"
               onClick={(e) => { e.stopPropagation(); onAddToCart(e); }}
               className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-3 text-[12px] font-black text-black shadow-lg transition hover:bg-yellow-300"
             >
-              <ShoppingBag className="h-4 w-4" /> Agregar
-            </button>
-            <button
-              type="button"
-              onClick={(e) => {
-                e.stopPropagation();
-                if (onBuyNow) onBuyNow(e);
-                else onSelect();
-              }}
-              className="grid h-11 w-11 place-items-center rounded-2xl border border-white/15 bg-white/10 text-white backdrop-blur-md transition hover:bg-white hover:text-black"
-              aria-label="Comprar ahora"
-            >
-              <Plus className="h-4 w-4" />
+              <ShoppingBag className="h-4 w-4" /> Agregar al bolso
             </button>
           </div>
         </div>

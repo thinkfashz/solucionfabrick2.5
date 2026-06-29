@@ -1,373 +1,161 @@
 'use client';
 
-import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Check, Zap, Building2, Rocket, ChevronRight, Loader2, AlertCircle, Star } from 'lucide-react';
-
-const PLANS = [
-  {
-    id: 'starter',
-    name: 'Starter',
-    price: 29990,
-    badge: null,
-    description: 'Para negocios que recién empiezan a vender online.',
-    features: [
-      'Tienda online completa',
-      'Hasta 100 productos',
-      'Hasta 50 pedidos/mes',
-      'Pagos con MercadoPago',
-      'Cotizaciones de clientes',
-      'Panel administrativo',
-    ],
-    cta: 'Empezar con Starter',
-    color: 'from-zinc-700 to-zinc-900',
-    accent: 'text-zinc-400',
-    border: 'border-zinc-700',
-  },
-  {
-    id: 'pro',
-    name: 'Pro',
-    price: 59990,
-    badge: 'Más popular',
-    description: 'Todo lo que necesita un negocio en crecimiento.',
-    features: [
-      'Todo lo del Starter',
-      'Productos ilimitados',
-      'Pedidos ilimitados',
-      'Meta Ads integrado',
-      'Facturación DTE (SII)',
-      'Envíos Chilexpress / Starken',
-      'Programa de fidelidad',
-      'Blog y contenido',
-    ],
-    cta: 'Empezar con Pro',
-    color: 'from-emerald-700 to-emerald-900',
-    accent: 'text-emerald-400',
-    border: 'border-emerald-500',
-  },
-  {
-    id: 'enterprise',
-    name: 'Enterprise',
-    price: 149990,
-    badge: null,
-    description: 'Plataforma completa con soporte prioritario.',
-    features: [
-      'Todo lo del Pro',
-      'Acceso a API',
-      'Soporte prioritario',
-      'Onboarding dedicado',
-      'Dominio personalizado',
-      'SLA garantizado',
-    ],
-    cta: 'Contactar para Enterprise',
-    color: 'from-violet-700 to-violet-900',
-    accent: 'text-violet-400',
-    border: 'border-violet-600',
-  },
-] as const;
+import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { AlertTriangle, ArrowRight, Building2, CheckCircle2, Loader2, Mail, Palette, Phone, Rocket, ShieldCheck, Sparkles, Store, User } from 'lucide-react';
+import { TENANT_PALETTES, type TenantPaletteId } from '@/lib/tenantTheme';
 
 type PlanId = 'starter' | 'pro' | 'enterprise';
-type Step = 'plans' | 'form' | 'processing' | 'done';
 
-interface FormData {
-  business_name: string;
-  owner_email: string;
-  owner_name: string;
-  phone: string;
-  slug: string;
+type ApiResponse = {
+  ok: boolean;
+  error?: string;
+  setupRequired?: boolean;
+  tenantId?: string;
+  slug?: string;
+  adminEmail?: string;
+  modules?: string[];
+  welcomeEmail?: 'sent' | 'skipped' | 'failed';
+  urls?: { storeUrl: string; adminUrl: string; fallbackAdminUrl: string } | null;
+  message?: string;
+};
+
+const plans: Array<{ id: PlanId; name: string; price: string; text: string }> = [
+  { id: 'starter', name: 'Starter', price: '$29.990', text: 'Tienda, catálogo y presupuestos base.' },
+  { id: 'pro', name: 'Pro', price: '$59.990', text: 'Tienda completa, integraciones y motores técnicos.' },
+  { id: 'enterprise', name: 'Enterprise', price: '$149.990', text: 'Multiempresa, soporte y operación avanzada.' },
+];
+
+const modules = [
+  ['store', 'Tienda pública'],
+  ['checkout', 'Carrito y checkout'],
+  ['quotes', 'Cotizaciones'],
+  ['budgets', 'Presupuestos'],
+  ['tenant_branding', 'Marca y paletas'],
+  ['integrations', 'Integraciones'],
+];
+
+function fieldClass() {
+  return 'h-13 w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm font-semibold text-white outline-none transition placeholder:text-zinc-600 focus:border-amber-300/50';
 }
 
-function formatClp(n: number) {
-  return n.toLocaleString('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
-}
-
-function slugify(s: string) {
-  return s.toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 40);
-}
-
-export default function RegistroPage() {
-  const router = useRouter();
-  const [step, setStep] = useState<Step>('plans');
-  const [selectedPlan, setSelectedPlan] = useState<PlanId>('pro');
-  const [form, setForm] = useState<FormData>({ business_name: '', owner_email: '', owner_name: '', phone: '', slug: '' });
-  const [slugEdited, setSlugEdited] = useState(false);
-  const [error, setError] = useState<string | null>(null);
+export default function RegistroSaaSPage() {
+  const [businessName, setBusinessName] = useState('');
+  const [ownerName, setOwnerName] = useState('');
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerPhone, setOwnerPhone] = useState('');
+  const [planId, setPlanId] = useState<PlanId>('pro');
+  const [paletteId, setPaletteId] = useState<TenantPaletteId>('lava');
+  const [acceptTerms, setAcceptTerms] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+  const [result, setResult] = useState<ApiResponse | null>(null);
 
-  function handleBusinessName(val: string) {
-    setForm((f) => ({
-      ...f,
-      business_name: val,
-      slug: slugEdited ? f.slug : slugify(val),
-    }));
-  }
+  const palette = useMemo(() => TENANT_PALETTES.find((item) => item.id === paletteId) || TENANT_PALETTES[0], [paletteId]);
+  const valid = businessName.trim().length > 2 && /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(ownerEmail.trim()) && acceptTerms;
 
-  function handleSlug(val: string) {
-    setSlugEdited(true);
-    setForm((f) => ({ ...f, slug: slugify(val) }));
-  }
-
-  async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
-    setError(null);
-    if (!form.business_name || !form.owner_email) {
-      setError('Nombre del negocio y correo son requeridos.');
-      return;
-    }
+  async function submit() {
+    if (!valid || loading) return;
     setLoading(true);
-    setStep('processing');
-
+    setError('');
+    setResult(null);
     try {
-      const res = await fetch('/api/platform/subscriptions/checkout', {
+      const res = await fetch('/api/saas/onboarding', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          plan_id: selectedPlan,
-          business_name: form.business_name,
-          owner_email: form.owner_email,
-          owner_name: form.owner_name || undefined,
-          phone: form.phone || undefined,
-          slug: form.slug || undefined,
+          businessName,
+          ownerName,
+          ownerEmail,
+          ownerPhone,
+          planId,
+          paletteId,
+          primaryColor: palette.primary,
+          acceptTerms,
         }),
       });
-
-      const data = await res.json() as { ok?: boolean; error?: string; init_point?: string; slug?: string };
-
-      if (!res.ok || !data.ok) {
-        setError(data.error ?? 'Error al procesar el registro.');
-        setStep('form');
-        return;
-      }
-
-      // Enterprise: no MP checkout → show contact message
-      if (selectedPlan === 'enterprise') {
-        setStep('done');
-        return;
-      }
-
-      // Redirect to MercadoPago subscription checkout
-      if (data.init_point) {
-        window.location.href = data.init_point;
-        return;
-      }
-
-      setStep('done');
-    } catch {
-      setError('Error de red. Por favor intenta de nuevo.');
-      setStep('form');
+      const json = await res.json() as ApiResponse;
+      if (!res.ok || !json.ok) throw new Error(json.error || 'No se pudo crear la empresa.');
+      setResult(json);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error creando empresa.');
     } finally {
       setLoading(false);
     }
   }
 
-  const plan = PLANS.find((p) => p.id === selectedPlan)!;
+  if (result?.ok) {
+    return <main className="min-h-screen bg-[#050505] px-4 py-8 text-white md:px-6">
+      <section className="mx-auto max-w-5xl rounded-[2.5rem] border border-emerald-300/25 bg-[radial-gradient(circle_at_80%_0%,rgba(16,185,129,.22),transparent_34rem),linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.025))] p-6 shadow-2xl shadow-black/50 md:p-10">
+        <div className="grid h-16 w-16 place-items-center rounded-3xl bg-emerald-300 text-black"><CheckCircle2 className="h-8 w-8" /></div>
+        <h1 className="mt-6 text-4xl font-black tracking-[-.06em] md:text-6xl">Empresa creada.</h1>
+        <p className="mt-4 max-w-3xl text-sm leading-7 text-zinc-300">{result.message || 'El tenant fue creado correctamente.'}</p>
+        <div className="mt-6 grid gap-3 md:grid-cols-3">
+          <div className="rounded-3xl border border-white/10 bg-black/35 p-4"><p className="text-[10px] font-black uppercase tracking-[.2em] text-emerald-200">Tenant</p><b className="mt-2 block text-lg">{result.slug}</b></div>
+          <div className="rounded-3xl border border-white/10 bg-black/35 p-4"><p className="text-[10px] font-black uppercase tracking-[.2em] text-emerald-200">Admin</p><b className="mt-2 block truncate text-lg">{result.adminEmail}</b></div>
+          <div className="rounded-3xl border border-white/10 bg-black/35 p-4"><p className="text-[10px] font-black uppercase tracking-[.2em] text-emerald-200">Correo</p><b className="mt-2 block text-lg">{result.welcomeEmail || 'pendiente'}</b></div>
+        </div>
+        <div className="mt-8 flex flex-wrap gap-3">
+          {result.urls?.adminUrl && <a href={result.urls.adminUrl} className="rounded-2xl bg-emerald-300 px-5 py-4 text-sm font-black text-black">Abrir panel del tenant</a>}
+          {result.urls?.storeUrl && <a href={result.urls.storeUrl} className="rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-sm font-black text-white">Ver tienda pública</a>}
+          <Link href="/admin/superadmin/saas" className="rounded-2xl border border-white/10 bg-white/10 px-5 py-4 text-sm font-black text-white">Revisar Super Admin</Link>
+        </div>
+        <div className="mt-6 rounded-3xl border border-amber-300/20 bg-amber-400/10 p-4 text-sm leading-6 text-amber-50"><AlertTriangle className="mr-2 inline h-4 w-4" /> Si el correo no llegó, revisa configuración de Resend/SMTP o entrega acceso manual desde el panel.</div>
+      </section>
+    </main>;
+  }
 
-  return (
-    <div className="min-h-screen bg-black text-white">
-      {/* Header */}
-      <header className="border-b border-white/10 px-6 py-4 flex items-center gap-3">
-        <button onClick={() => router.push('/')} className="text-lg font-black tracking-tight hover:text-emerald-400 transition-colors">
-          FABRICK
+  return <main className="min-h-screen bg-[#050505] px-4 py-8 text-white md:px-6">
+    <section className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-[1fr_430px]">
+      <div className="space-y-5">
+        <header className="rounded-[2.5rem] border border-amber-300/20 bg-[radial-gradient(circle_at_82%_0%,rgba(245,158,11,.25),transparent_34rem),linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.025))] p-6 shadow-2xl shadow-black/40 md:p-8">
+          <Link href="/saas" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-black text-white">← Volver al SaaS</Link>
+          <p className="mt-8 inline-flex items-center gap-2 rounded-full border border-amber-300/25 bg-amber-400/10 px-4 py-2 text-[10px] font-black uppercase tracking-[.26em] text-amber-100"><Rocket className="h-4 w-4" /> Onboarding SaaS real</p>
+          <h1 className="mt-5 text-5xl font-black leading-[.9] tracking-[-.07em] md:text-7xl">Crea una empresa tenant.</h1>
+          <p className="mt-5 max-w-3xl text-sm leading-7 text-zinc-300">Registro → tenant → admin dueño → paleta → módulos → acceso. La migración final/RLS queda para el cierre, pero este flujo ya prepara la operación real.</p>
+        </header>
+
+        {error && <div className="rounded-3xl border border-red-300/25 bg-red-500/10 p-4 text-sm leading-6 text-red-100"><AlertTriangle className="mr-2 inline h-4 w-4" />{error}</div>}
+
+        <section className="grid gap-4 md:grid-cols-2">
+          <label className="rounded-3xl border border-white/10 bg-white/[0.045] p-4"><span className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-amber-200"><Building2 className="h-4 w-4" /> Empresa</span><input className={fieldClass()} value={businessName} onChange={(e) => setBusinessName(e.target.value)} placeholder="Ej: Clima Demo Chile" /></label>
+          <label className="rounded-3xl border border-white/10 bg-white/[0.045] p-4"><span className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-amber-200"><User className="h-4 w-4" /> Dueño/admin</span><input className={fieldClass()} value={ownerName} onChange={(e) => setOwnerName(e.target.value)} placeholder="Nombre del encargado" /></label>
+          <label className="rounded-3xl border border-white/10 bg-white/[0.045] p-4"><span className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-amber-200"><Mail className="h-4 w-4" /> Correo de acceso</span><input className={fieldClass()} value={ownerEmail} onChange={(e) => setOwnerEmail(e.target.value)} placeholder="admin@empresa.cl" /></label>
+          <label className="rounded-3xl border border-white/10 bg-white/[0.045] p-4"><span className="mb-2 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-amber-200"><Phone className="h-4 w-4" /> WhatsApp</span><input className={fieldClass()} value={ownerPhone} onChange={(e) => setOwnerPhone(e.target.value)} placeholder="+56 9 0000 0000" /></label>
+        </section>
+
+        <section className="rounded-[2rem] border border-white/10 bg-white/[0.045] p-4">
+          <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-amber-200"><Sparkles className="h-4 w-4" /> Plan inicial</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">{plans.map((plan) => <button key={plan.id} type="button" onClick={() => setPlanId(plan.id)} className={`rounded-3xl border p-4 text-left transition ${planId === plan.id ? 'border-amber-300/60 bg-amber-400/15' : 'border-white/10 bg-black/25 hover:bg-white/10'}`}><p className="text-lg font-black">{plan.name}</p><p className="mt-1 text-2xl font-black text-amber-200">{plan.price}</p><p className="mt-2 text-xs leading-5 text-zinc-400">{plan.text}</p></button>)}</div>
+        </section>
+
+        <section className="rounded-[2rem] border border-white/10 bg-white/[0.045] p-4">
+          <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-amber-200"><Palette className="h-4 w-4" /> Paleta visual</p>
+          <div className="mt-4 grid gap-3 md:grid-cols-3">{TENANT_PALETTES.map((item) => <button key={item.id} type="button" onClick={() => setPaletteId(item.id)} className={`rounded-3xl border p-4 text-left transition ${paletteId === item.id ? 'border-white/45 bg-white/15' : 'border-white/10 bg-black/25 hover:bg-white/10'}`}><div className="flex gap-2">{[item.primary, item.secondary, item.accent].map((color) => <span key={color} className="h-7 flex-1 rounded-xl border border-white/10" style={{ background: color }} />)}</div><p className="mt-3 text-sm font-black">{item.name}</p><p className="mt-1 text-xs leading-5 text-zinc-400">{item.description}</p></button>)}</div>
+        </section>
+
+        <section className="rounded-[2rem] border border-white/10 bg-white/[0.045] p-4">
+          <p className="text-[10px] font-black uppercase tracking-[.2em] text-amber-200">Módulos que se activan</p>
+          <div className="mt-4 grid gap-2 md:grid-cols-3">{modules.map(([id, label]) => <div key={id} className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black/25 p-3 text-sm text-zinc-300"><CheckCircle2 className="h-4 w-4 text-emerald-300" />{label}</div>)}</div>
+        </section>
+
+        <label className="flex items-start gap-3 rounded-3xl border border-white/10 bg-white/[0.045] p-4 text-sm leading-6 text-zinc-300"><input type="checkbox" checked={acceptTerms} onChange={(e) => setAcceptTerms(e.target.checked)} className="mt-1" /><span>Acepto crear una empresa demo/piloto y entiendo que la activación productiva final requiere revisión de pago, seguridad y migración final.</span></label>
+
+        <button onClick={submit} disabled={!valid || loading} className="inline-flex w-full items-center justify-center gap-2 rounded-3xl bg-amber-300 px-6 py-5 text-sm font-black text-black transition hover:bg-amber-200 disabled:cursor-not-allowed disabled:opacity-45 md:w-auto">
+          {loading ? <Loader2 className="h-5 w-5 animate-spin" /> : <ShieldCheck className="h-5 w-5" />} Crear tenant y enviar acceso
         </button>
-        <span className="text-white/30">/</span>
-        <span className="text-white/60 text-sm">Registro</span>
-      </header>
+      </div>
 
-      <main className="max-w-5xl mx-auto px-4 py-12">
-
-        {/* ── STEP: Plan selection ── */}
-        {(step === 'plans' || step === 'form') && (
-          <>
-            <div className="text-center mb-10">
-              <p className="text-xs uppercase tracking-[0.3em] text-emerald-400 mb-3">Plataforma SaaS</p>
-              <h1 className="text-4xl md:text-5xl font-black tracking-tight">
-                Tu negocio online,<br />listo en minutos.
-              </h1>
-              <p className="mt-4 text-white/50 max-w-xl mx-auto">
-                Elige el plan que se adapte a tu etapa. Sin contratos anuales. Cambia cuando quieras.
-              </p>
-            </div>
-
-            {/* Plans grid */}
-            <div className="grid md:grid-cols-3 gap-4 mb-10">
-              {PLANS.map((p) => (
-                <button
-                  key={p.id}
-                  onClick={() => setSelectedPlan(p.id)}
-                  className={`relative text-left rounded-2xl border p-6 transition-all ${
-                    selectedPlan === p.id
-                      ? `${p.border} bg-gradient-to-br ${p.color} shadow-lg scale-[1.02]`
-                      : 'border-white/10 bg-white/5 hover:bg-white/8 hover:border-white/20'
-                  }`}
-                >
-                  {p.badge && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 flex items-center gap-1 rounded-full bg-emerald-500 text-black text-[10px] font-bold px-3 py-1 uppercase tracking-wide">
-                      <Star size={10} fill="currentColor" /> {p.badge}
-                    </span>
-                  )}
-                  {selectedPlan === p.id && (
-                    <span className="absolute top-4 right-4 w-5 h-5 rounded-full bg-white/20 flex items-center justify-center">
-                      <Check size={11} className="text-white" />
-                    </span>
-                  )}
-                  <div className="mb-4">
-                    {p.id === 'starter' && <Building2 size={20} className={p.accent} />}
-                    {p.id === 'pro' && <Zap size={20} className={p.accent} />}
-                    {p.id === 'enterprise' && <Rocket size={20} className={p.accent} />}
-                  </div>
-                  <div className={`text-xs font-bold uppercase tracking-widest mb-1 ${p.accent}`}>{p.name}</div>
-                  <div className="text-2xl font-black">{formatClp(p.price)}<span className="text-sm font-normal text-white/40">/mes</span></div>
-                  <p className="mt-2 text-xs text-white/50 leading-relaxed">{p.description}</p>
-                  <ul className="mt-4 space-y-1.5">
-                    {p.features.map((f) => (
-                      <li key={f} className="flex items-center gap-2 text-xs text-white/70">
-                        <Check size={11} className={p.accent} />
-                        {f}
-                      </li>
-                    ))}
-                  </ul>
-                </button>
-              ))}
-            </div>
-
-            {/* ── STEP: Registration form ── */}
-            {step === 'form' && (
-              <form onSubmit={handleSubmit} className="max-w-xl mx-auto space-y-4">
-                <h2 className="text-xl font-bold mb-2">Datos de tu negocio</h2>
-
-                {error && (
-                  <div className="flex items-center gap-2 rounded-xl bg-red-500/10 border border-red-500/30 px-4 py-3 text-sm text-red-400">
-                    <AlertCircle size={14} />
-                    {error}
-                  </div>
-                )}
-
-                <div>
-                  <label className="block text-xs text-white/50 mb-1">Nombre del negocio *</label>
-                  <input
-                    value={form.business_name}
-                    onChange={(e) => handleBusinessName(e.target.value)}
-                    placeholder="Ej: Constructora Pérez"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
-                    required
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-xs text-white/50 mb-1">Subdominio *</label>
-                  <div className="flex items-center rounded-xl border border-white/10 bg-white/5 overflow-hidden focus-within:border-emerald-500 transition-colors">
-                    <input
-                      value={form.slug}
-                      onChange={(e) => handleSlug(e.target.value)}
-                      placeholder="tu-negocio"
-                      className="flex-1 bg-transparent px-4 py-3 text-sm focus:outline-none"
-                    />
-                    <span className="pr-4 text-xs text-white/30">.fabrick.cl</span>
-                  </div>
-                  <p className="mt-1 text-xs text-white/30">Solo letras, números y guiones. Mín. 3 caracteres.</p>
-                </div>
-
-                <div>
-                  <label className="block text-xs text-white/50 mb-1">Correo de contacto *</label>
-                  <input
-                    type="email"
-                    value={form.owner_email}
-                    onChange={(e) => setForm((f) => ({ ...f, owner_email: e.target.value }))}
-                    placeholder="tu@negocio.cl"
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs text-white/50 mb-1">Nombre (opcional)</label>
-                    <input
-                      value={form.owner_name}
-                      onChange={(e) => setForm((f) => ({ ...f, owner_name: e.target.value }))}
-                      placeholder="Tu nombre"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
-                    />
-                  </div>
-                  <div>
-                    <label className="block text-xs text-white/50 mb-1">Teléfono (opcional)</label>
-                    <input
-                      value={form.phone}
-                      onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
-                      placeholder="+56 9 1234 5678"
-                      className="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-emerald-500 transition-colors"
-                    />
-                  </div>
-                </div>
-
-                {/* Plan summary */}
-                <div className={`rounded-xl border ${plan.border} bg-gradient-to-r ${plan.color} p-4 flex items-center justify-between`}>
-                  <div>
-                    <div className={`text-xs font-bold uppercase tracking-widest ${plan.accent}`}>{plan.name}</div>
-                    <div className="text-white font-semibold">{formatClp(plan.price)}<span className="text-white/50 text-xs">/mes</span></div>
-                  </div>
-                  <button type="button" onClick={() => setStep('plans')} className="text-xs text-white/50 hover:text-white underline">
-                    Cambiar
-                  </button>
-                </div>
-
-                <button
-                  type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold py-3.5 transition-colors disabled:opacity-50"
-                >
-                  {loading ? <Loader2 size={16} className="animate-spin" /> : <ChevronRight size={16} />}
-                  {selectedPlan === 'enterprise' ? 'Solicitar acceso Enterprise' : 'Ir al pago →'}
-                </button>
-
-                <p className="text-center text-xs text-white/30">
-                  Al continuar aceptas los términos de servicio. Puedes cancelar en cualquier momento.
-                </p>
-              </form>
-            )}
-
-            {step === 'plans' && (
-              <div className="flex justify-center">
-                <button
-                  onClick={() => setStep('form')}
-                  className="flex items-center gap-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-bold px-8 py-3.5 transition-colors"
-                >
-                  Registrarse con {plan.name} — {formatClp(plan.price)}/mes
-                  <ChevronRight size={16} />
-                </button>
-              </div>
-            )}
-          </>
-        )}
-
-        {/* ── STEP: Processing ── */}
-        {step === 'processing' && (
-          <div className="flex flex-col items-center justify-center min-h-[40vh] gap-4">
-            <Loader2 size={40} className="animate-spin text-emerald-400" />
-            <p className="text-white/60">Preparando tu plataforma…</p>
+      <aside className="space-y-5">
+        <article className="sticky top-5 rounded-[2.4rem] border border-white/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/40">
+          <div className="rounded-[2rem] border border-white/10 p-5" style={{ background: `linear-gradient(145deg, ${palette.background}, ${palette.surface})` }}>
+            <div className="grid h-16 w-16 place-items-center rounded-2xl text-xl font-black text-black" style={{ background: palette.primary }}>{businessName.trim().slice(0, 2).toUpperCase() || 'CD'}</div>
+            <h2 className="mt-4 text-3xl font-black tracking-[-.05em]" style={{ color: palette.text }}>{businessName || 'Tu Empresa Demo'}</h2>
+            <p className="mt-2 text-sm" style={{ color: palette.accent }}>tu-empresa.solucionesfabrick.com</p>
+            <div className="mt-5 rounded-3xl border border-white/10 bg-white/[0.04] p-4"><Store className="h-6 w-6" style={{ color: palette.primary }} /><p className="mt-3 text-sm font-black" style={{ color: palette.text }}>Vista previa SaaS</p><p className="mt-1 text-xs leading-5 text-zinc-400">Tienda, presupuestos, checkout y panel tomarán esta paleta como base.</p><button className="mt-4 w-full rounded-2xl px-4 py-3 text-sm font-black text-black" style={{ background: palette.primary }}>Comprar / Cotizar</button></div>
           </div>
-        )}
-
-        {/* ── STEP: Done (enterprise / no-redirect) ── */}
-        {step === 'done' && (
-          <div className="flex flex-col items-center justify-center min-h-[40vh] gap-6 text-center">
-            <div className="w-16 h-16 rounded-full bg-emerald-500/20 border border-emerald-500/40 flex items-center justify-center">
-              <Check size={28} className="text-emerald-400" />
-            </div>
-            <div>
-              <h2 className="text-2xl font-black">¡Solicitud recibida!</h2>
-              <p className="mt-2 text-white/50 max-w-sm">
-                {selectedPlan === 'enterprise'
-                  ? 'Un especialista se contactará contigo en menos de 24 horas para configurar tu plataforma Enterprise.'
-                  : 'Tu plataforma estará activa en cuanto confirmemos el pago. Recibirás un correo con tus credenciales.'}
-              </p>
-            </div>
-            <button onClick={() => router.push('/')} className="text-sm text-emerald-400 hover:underline">
-              Volver al inicio
-            </button>
-          </div>
-        )}
-      </main>
-    </div>
-  );
+        </article>
+      </aside>
+    </section>
+  </main>;
 }

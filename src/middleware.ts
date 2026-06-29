@@ -23,6 +23,7 @@ const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 function isPlatformHost(host: string): boolean {
   const h = host.split(':')[0].toLowerCase()
   return h === 'fabrick.cl' || h === 'www.fabrick.cl' ||
+    h === 'solucionesfabrick.com' || h === 'www.solucionesfabrick.com' || h.endsWith('.solucionesfabrick.com') ||
     h.endsWith('.fabrick.cl') || h === 'localhost' || h.endsWith('.localhost') ||
     /^\d{1,3}(\.\d{1,3}){3}$/.test(h)
 }
@@ -114,6 +115,15 @@ function isIntegrationsApi(pathname: string): boolean {
 
 function isMainIntegrationsApi(pathname: string): boolean {
   return pathname === '/api/admin/integrations'
+}
+
+function tenantIntegrationRewriteTarget(pathname: string): string | null {
+  if (pathname === '/api/admin/integrations') return '/api/admin/tenant-integrations'
+  if (pathname === '/api/admin/integrations/reveal') return '/api/admin/tenant-integrations/reveal'
+  if (pathname === '/api/admin/integrations/quota') return '/api/admin/tenant-integrations/quota'
+  if (pathname === '/api/admin/integrations/test') return '/api/admin/tenant-integrations/test'
+  if (pathname === '/api/admin/integrations/oauth/revoke') return '/api/admin/tenant-integrations/oauth/revoke'
+  return null
 }
 
 export async function middleware(request: NextRequest) {
@@ -239,6 +249,13 @@ export async function middleware(request: NextRequest) {
   if (isHtml) {
     requestHeaders.set('x-nonce', nonce)
     requestHeaders.set('Content-Security-Policy', csp)
+  }
+
+  const integrationTarget = tenantIntegrationRewriteTarget(pathname)
+  if (integrationTarget) {
+    const rewriteUrl = request.nextUrl.clone()
+    rewriteUrl.pathname = integrationTarget
+    return NextResponse.rewrite(rewriteUrl, { request: { headers: requestHeaders } })
   }
 
   const response = NextResponse.next({ request: { headers: requestHeaders } })

@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
+import './tenant-public-theme.css';
 import './responsive-safety.css';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
 import SmoothScrollProvider from '@/components/SmoothScrollProvider';
@@ -18,6 +19,9 @@ import CmsRealtimeListener from '@/components/CmsRealtimeListener';
 import CustomInjectionRoot from '@/components/CustomInjectionRoot';
 import GlobalStylesRoot from '@/components/GlobalStylesRoot';
 import CmsPreviewOverlay from '@/components/admin/cms/CmsPreviewOverlay';
+import { TenantBrandingBar } from '@/components/tenant/TenantBrandingBar';
+import { TenantThemeRuntime } from '@/components/tenant/TenantThemeRuntime';
+import { TenantCopyRuntime } from '@/components/tenant/TenantCopyRuntime';
 import { getSiteSection } from '@/lib/siteStructure';
 
 // Force per-request rendering for every route in the app.
@@ -133,7 +137,10 @@ export default async function RootLayout({ children }: { children: React.ReactNo
               <CartProvider>
                 <QuoteCartProvider>
                   <SmoothScrollProvider />
+                  <TenantThemeRuntime />
+                  <TenantCopyRuntime />
                   {children}
+                  <TenantBrandingBar />
                   <ServiceWorkerRegister />
                   <InstallAppPrompt />
                   {/* AIAgentChat reemplaza al botón flotante de WhatsApp en

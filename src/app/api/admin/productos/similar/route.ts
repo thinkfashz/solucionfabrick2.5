@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import * as cheerio from 'cheerio';
-import type { Element } from 'domhandler';
 import { adminUnauthorized, getAdminSession } from '@/lib/adminApi';
 
 export const dynamic = 'force-dynamic';
@@ -164,11 +163,11 @@ async function googleShoppingScrape(q: string, limit: number): Promise<SimilarIt
       const title = $el.find('h3,h4').first().text().trim() || $el.text().trim().slice(0, 140);
       if (!title) return undefined;
 
-      let $ctx: cheerio.Cheerio<Element> = $el as cheerio.Cheerio<Element>;
+      let $ctx = $el;
       for (let i = 0; i < 4; i++) {
         const parent = $ctx.parent();
         if (!parent.length) break;
-        $ctx = parent as cheerio.Cheerio<Element>;
+        $ctx = parent;
       }
       const img = $ctx.find('img').first().attr('src') || $ctx.find('img').first().attr('data-src') || null;
       const priceText =

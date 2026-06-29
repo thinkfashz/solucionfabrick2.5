@@ -37,6 +37,13 @@ interface RealtimeEvent {
 
 const PRODUCT_SELECT = 'id, name, description, price, stock, image_url, featured, activo, tagline, rating, delivery_days, discount_percentage, specifications, category_id, shipping_mode, shipping_fee, shipping_weight_kg, shipping_dimensions, shipping_region_overrides';
 
+function normalizeProducts(value: unknown): Product[] {
+  if (!Array.isArray(value)) return [];
+  return value
+    .filter((item): item is Product => Boolean(item && typeof item === 'object' && 'id' in item && 'name' in item))
+    .filter((product) => product.activo !== false);
+}
+
 export function useRealtimeProducts() {
   const [products, setProducts]       = useState<Product[]>([]);
   const [loading, setLoading]         = useState(true);
@@ -69,6 +76,24 @@ export function useRealtimeProducts() {
 
   const loadProducts = useCallback(async () => {
     setLoading((prev) => (products.length ? prev : true));
+
+    try {
+      const res = await fetch('/api/tienda/products', { cache: 'no-store' });
+      const json = await res.json() as { products?: Product[]; error?: string };
+      if (res.ok) {
+        const typed = normalizeProducts(json.products);
+        if (isMounted.current) {
+          setProducts(typed);
+          persistCache(typed);
+          setLoading(false);
+          setFetchComplete(true);
+        }
+        return;
+      }
+    } catch {
+      // Fallback to direct client read below.
+    }
+
     const { data, error } = await insforge.database
       .from('products')
       .select(PRODUCT_SELECT)
@@ -77,7 +102,7 @@ export function useRealtimeProducts() {
       .order('created_at', { ascending: false });
 
     if (!error && data && isMounted.current) {
-      const typed = data as Product[];
+      const typed = normalizeProducts(data);
       setProducts(typed);
       persistCache(typed);
     }

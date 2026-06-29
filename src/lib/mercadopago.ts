@@ -188,7 +188,7 @@ export async function createMercadoPagoPreference(params: { orderId: string; pay
   const { orderId, payload, summary } = params;
   const trackingToken = createOrderTrackingToken(orderId);
   const trackingUrl = `${baseUrl}/pedido/${trackingToken}`;
-  const notificationUrl = `${baseUrl}/api/payments/webhook?source=mercadopago`;
+  const notificationUrl = `${baseUrl}/api/webhooks/mercadopago`;
   const body = {
     items: getPaymentItems(payload.items, summary),
     payer: { name: payload.cliente.nombre, email: payload.cliente.email, phone: payload.cliente.telefono ? { number: payload.cliente.telefono } : undefined },

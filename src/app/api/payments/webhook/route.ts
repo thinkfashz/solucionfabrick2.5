@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { createHmac } from 'node:crypto';
 import { insforge } from '@/lib/insforge';
 import { getMercadoPagoPayment, mapMercadoPagoStatus, verifyMercadoPagoSignature } from '@/lib/mercadopago';
-import { emitBoletaForOrder } from '@/lib/billing/autoEmit';
+import { confirmPaidOrderAndSendReceiptAsync } from '@/lib/orders/paidConfirmation';
 import { dispatchHookAsync } from '@/lib/extensionsBus';
 
 type GenericPaymentWebhookBody = {
@@ -12,6 +12,19 @@ type GenericPaymentWebhookBody = {
   status: 'succeeded' | 'failed' | 'refunded' | 'pending';
   amount?: number;
   currency?: string;
+};
+
+type MercadoPagoWebhookBody = {
+  action?: string;
+  type?: string;
+  topic?: string;
+  id?: string | number;
+  data?: {
+    id?: string | number;
+    external_reference?: string;
+    status?: string;
+    payments?: Array<{ id?: string | number; status?: string }>;
+  };
 };
 
 function verifyLegacySignature(rawBody: string, signature: string | null) {
@@ -75,12 +88,42 @@ async function updateOrderStatus(orderId: string, paymentId: string | null, stat
   };
 }
 
+function safeJsonParse(rawBody: string): MercadoPagoWebhookBody | null {
+  try {
+    return rawBody ? JSON.parse(rawBody) as MercadoPagoWebhookBody : null;
+  } catch {
+    return null;
+  }
+}
+
+function isMercadoPagoSimulation(body: MercadoPagoWebhookBody | null) {
+  const action = body?.action || '';
+  const eventType = body?.type || body?.topic || '';
+  return action.startsWith('order.') || eventType === 'order' || eventType === 'merchant_order';
+}
+
 async function handleMercadoPagoWebhook(request: Request) {
   const url = new URL(request.url);
-  const topic = url.searchParams.get('topic') || url.searchParams.get('type') || '';
-  const dataId = url.searchParams.get('data.id') || url.searchParams.get('id');
+  const rawBody = await request.text();
+  const body = safeJsonParse(rawBody);
+  const topic = url.searchParams.get('topic') || url.searchParams.get('type') || body?.type || body?.topic || '';
+  const dataId = url.searchParams.get('data.id') || url.searchParams.get('id') || (body?.data?.id != null ? String(body.data.id) : '') || (body?.id != null ? String(body.id) : '');
   const signatureHeader = request.headers.get('x-signature');
   const requestIdHeader = request.headers.get('x-request-id');
+
+  // La simulación de Mercado Pago puede enviar order.processed/merchant_order.
+  // Eso sirve para validar que la URL responde, pero no es el evento final de pago aprobado.
+  // Respondemos 200 para que el panel deje de marcar 404/fallo.
+  if (isMercadoPagoSimulation(body) && topic !== 'payment') {
+    return NextResponse.json({
+      ok: true,
+      provider: 'mercado_pago',
+      simulated: true,
+      ignored: true,
+      action: body?.action || topic,
+      message: 'URL recibida correctamente. Evento de simulación/order ignorado; el pago real se procesa con evento payment.',
+    }, { status: 200 });
+  }
 
   if (!(await verifyMercadoPagoSignature({
     signatureHeader,
@@ -95,7 +138,7 @@ async function handleMercadoPagoWebhook(request: Request) {
   }
 
   if (!dataId) {
-    return NextResponse.json({ error: 'No se recibió data.id desde Mercado Pago.' }, { status: 400 });
+    return NextResponse.json({ ok: true, ignored: true, message: 'Webhook recibido sin data.id de pago.' }, { status: 200 });
   }
 
   const payment = await getMercadoPagoPayment(dataId);
@@ -116,12 +159,8 @@ async function handleMercadoPagoWebhook(request: Request) {
 
   const updated = await updateOrderStatus(orderId, paymentId, paymentStatus);
 
-  // Auto-emit boleta and dispatch order.paid when payment is approved.
-  // Both are fire-and-forget — the webhook must respond quickly to MercadoPago.
   if (updated.orderStatus === 'pagada') {
-    emitBoletaForOrder(orderId).catch((err) =>
-      console.warn('[dte] auto-emit failed for order', orderId, err),
-    );
+    confirmPaidOrderAndSendReceiptAsync(orderId);
     dispatchHookAsync('order.paid', {
       orderId,
       paymentId,
@@ -137,6 +176,7 @@ async function handleMercadoPagoWebhook(request: Request) {
     orderId,
     paymentStatus,
     orderStatus: updated.orderStatus,
+    notification: updated.orderStatus === 'pagada' ? 'Correo con boleta PDF en proceso de envío.' : 'Pendiente de pago aprobado.',
     warning: updated.warning,
   });
 }
@@ -169,13 +209,25 @@ async function handleLegacyWebhook(request: Request) {
     return NextResponse.json({ ok: true, duplicated: true }, { status: 200 });
   }
 
-  return NextResponse.json(await updateOrderStatus(body.orderId, body.paymentId ?? null, body.status), { status: 200 });
+  const updated = await updateOrderStatus(body.orderId, body.paymentId ?? null, body.status);
+  if (updated.orderStatus === 'pagada') {
+    confirmPaidOrderAndSendReceiptAsync(body.orderId);
+    dispatchHookAsync('order.paid', {
+      orderId: body.orderId,
+      paymentId: body.paymentId ?? null,
+      paymentStatus: body.status,
+      provider: 'legacy',
+    });
+  }
+
+  return NextResponse.json({ ...updated, notification: updated.orderStatus === 'pagada' ? 'Correo con boleta PDF en proceso de envío.' : undefined }, { status: 200 });
 }
 
 export async function POST(request: Request) {
   try {
-    const source = new URL(request.url).searchParams.get('source');
-    if (source === 'mercadopago' || request.headers.has('x-signature')) {
+    const url = new URL(request.url);
+    const source = url.searchParams.get('source');
+    if (source === 'mercadopago' || request.headers.has('x-signature') || url.pathname.includes('/api/webhooks/mercadopago')) {
       return await handleMercadoPagoWebhook(request);
     }
 

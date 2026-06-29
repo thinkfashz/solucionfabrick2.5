@@ -1,0 +1,226 @@
+/*
+ * Tenant public theme adapters.
+ *
+ * The existing public UI uses many Tailwind yellow/amber classes because
+ * Fabrick's default brand is lava/gold. When a tenant palette is loaded by
+ * TenantThemeRuntime, these adapters remap those accents to the tenant palette
+ * without touching admin routes.
+ */
+
+html[data-tenant-theme='ready'] .text-yellow-50,
+html[data-tenant-theme='ready'] .text-yellow-100,
+html[data-tenant-theme='ready'] .text-yellow-200,
+html[data-tenant-theme='ready'] .text-yellow-300,
+html[data-tenant-theme='ready'] .text-yellow-400,
+html[data-tenant-theme='ready'] .text-yellow-500,
+html[data-tenant-theme='ready'] .text-amber-50,
+html[data-tenant-theme='ready'] .text-amber-100,
+html[data-tenant-theme='ready'] .text-amber-200,
+html[data-tenant-theme='ready'] .text-amber-300,
+html[data-tenant-theme='ready'] .text-amber-400,
+html[data-tenant-theme='ready'] .text-amber-500 {
+  color: var(--tenant-accent) !important;
+}
+
+html[data-tenant-theme='ready'] .bg-yellow-300,
+html[data-tenant-theme='ready'] .bg-yellow-400,
+html[data-tenant-theme='ready'] .bg-amber-300,
+html[data-tenant-theme='ready'] .bg-amber-400,
+html[data-tenant-theme='ready'] .tenant-bg,
+html[data-tenant-theme='ready'] .tenant-primary-bg {
+  background: linear-gradient(135deg, var(--tenant-primary), var(--tenant-secondary)) !important;
+  color: #050505 !important;
+}
+
+html[data-tenant-theme='ready'] .bg-yellow-300\/10,
+html[data-tenant-theme='ready'] .bg-yellow-400\/10,
+html[data-tenant-theme='ready'] .bg-yellow-400\/15,
+html[data-tenant-theme='ready'] .bg-yellow-400\/20,
+html[data-tenant-theme='ready'] .bg-amber-300\/10,
+html[data-tenant-theme='ready'] .bg-amber-400\/10,
+html[data-tenant-theme='ready'] .bg-amber-400\/15,
+html[data-tenant-theme='ready'] .bg-amber-400\/20,
+html[data-tenant-theme='ready'] .bg-yellow-400\/\[0\.04\],
+html[data-tenant-theme='ready'] .bg-yellow-400\/\[0\.06\],
+html[data-tenant-theme='ready'] .bg-yellow-400\/\[0\.10\],
+html[data-tenant-theme='ready'] .bg-yellow-400\/\[0\.12\],
+html[data-tenant-theme='ready'] .bg-amber-400\/\[0\.04\],
+html[data-tenant-theme='ready'] .bg-amber-400\/\[0\.06\],
+html[data-tenant-theme='ready'] .bg-amber-400\/\[0\.10\],
+html[data-tenant-theme='ready'] .bg-amber-400\/\[0\.12\],
+html[data-tenant-theme='ready'] .tenant-soft-bg {
+  background-color: color-mix(in srgb, var(--tenant-primary) 14%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .border-yellow-300\/20,
+html[data-tenant-theme='ready'] .border-yellow-300\/25,
+html[data-tenant-theme='ready'] .border-yellow-300\/30,
+html[data-tenant-theme='ready'] .border-yellow-400\/20,
+html[data-tenant-theme='ready'] .border-yellow-400\/25,
+html[data-tenant-theme='ready'] .border-yellow-400\/30,
+html[data-tenant-theme='ready'] .border-yellow-400\/40,
+html[data-tenant-theme='ready'] .border-yellow-400\/50,
+html[data-tenant-theme='ready'] .border-yellow-400,
+html[data-tenant-theme='ready'] .border-amber-300\/20,
+html[data-tenant-theme='ready'] .border-amber-300\/25,
+html[data-tenant-theme='ready'] .border-amber-300\/30,
+html[data-tenant-theme='ready'] .border-amber-400\/20,
+html[data-tenant-theme='ready'] .border-amber-400\/25,
+html[data-tenant-theme='ready'] .border-amber-400\/30,
+html[data-tenant-theme='ready'] .border-amber-400\/40,
+html[data-tenant-theme='ready'] .border-amber-400\/50,
+html[data-tenant-theme='ready'] .border-amber-400,
+html[data-tenant-theme='ready'] .tenant-border {
+  border-color: color-mix(in srgb, var(--tenant-primary) 38%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .hover\:border-yellow-400\/40:hover,
+html[data-tenant-theme='ready'] .hover\:border-yellow-400\/50:hover,
+html[data-tenant-theme='ready'] .hover\:border-amber-400\/40:hover,
+html[data-tenant-theme='ready'] .hover\:border-amber-400\/50:hover {
+  border-color: color-mix(in srgb, var(--tenant-primary) 58%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .from-yellow-300,
+html[data-tenant-theme='ready'] .from-yellow-400\/15,
+html[data-tenant-theme='ready'] .from-yellow-400,
+html[data-tenant-theme='ready'] .to-yellow-300,
+html[data-tenant-theme='ready'] .to-yellow-400,
+html[data-tenant-theme='ready'] .via-yellow-400,
+html[data-tenant-theme='ready'] .from-amber-300,
+html[data-tenant-theme='ready'] .from-amber-400\/15,
+html[data-tenant-theme='ready'] .from-amber-400,
+html[data-tenant-theme='ready'] .to-amber-300,
+html[data-tenant-theme='ready'] .to-amber-400,
+html[data-tenant-theme='ready'] .via-amber-400 {
+  --tw-gradient-from: color-mix(in srgb, var(--tenant-primary) 88%, white) var(--tw-gradient-from-position) !important;
+  --tw-gradient-to: color-mix(in srgb, var(--tenant-secondary) 90%, transparent) var(--tw-gradient-to-position) !important;
+  --tw-gradient-stops: var(--tw-gradient-from), var(--tw-gradient-to) !important;
+}
+
+html[data-tenant-theme='ready'] .shadow-yellow-400\/20,
+html[data-tenant-theme='ready'] .shadow-yellow-400\/25,
+html[data-tenant-theme='ready'] .shadow-yellow-300\/20,
+html[data-tenant-theme='ready'] .shadow-amber-400\/20,
+html[data-tenant-theme='ready'] .shadow-amber-400\/25,
+html[data-tenant-theme='ready'] .shadow-amber-300\/20 {
+  --tw-shadow-color: color-mix(in srgb, var(--tenant-primary) 25%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .ring-yellow-300,
+html[data-tenant-theme='ready'] .ring-yellow-400,
+html[data-tenant-theme='ready'] .ring-yellow-300\/30,
+html[data-tenant-theme='ready'] .ring-yellow-400\/30,
+html[data-tenant-theme='ready'] .ring-amber-300,
+html[data-tenant-theme='ready'] .ring-amber-400,
+html[data-tenant-theme='ready'] .ring-amber-300\/30,
+html[data-tenant-theme='ready'] .ring-amber-400\/30,
+html[data-tenant-theme='ready'] .focus-visible\:ring-yellow-300:focus-visible,
+html[data-tenant-theme='ready'] .focus-visible\:ring-yellow-400:focus-visible,
+html[data-tenant-theme='ready'] .focus-visible\:ring-amber-300:focus-visible,
+html[data-tenant-theme='ready'] .focus-visible\:ring-amber-400:focus-visible {
+  --tw-ring-color: color-mix(in srgb, var(--tenant-primary) 38%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .hover\:bg-yellow-300:hover,
+html[data-tenant-theme='ready'] .hover\:bg-yellow-400:hover,
+html[data-tenant-theme='ready'] .hover\:bg-amber-300:hover,
+html[data-tenant-theme='ready'] .hover\:bg-amber-400:hover {
+  background: linear-gradient(135deg, var(--tenant-accent), var(--tenant-primary)) !important;
+  color: #050505 !important;
+}
+
+html[data-tenant-theme='ready'] .hover\:bg-yellow-400\/20:hover,
+html[data-tenant-theme='ready'] .hover\:bg-amber-400\/20:hover {
+  background-color: color-mix(in srgb, var(--tenant-primary) 22%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-icon,
+html[data-tenant-theme='ready'] .tenant-text {
+  color: var(--tenant-primary) !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-accent-text {
+  color: var(--tenant-accent) !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-gradient-text {
+  background-image: linear-gradient(90deg, var(--tenant-accent), var(--tenant-primary), var(--tenant-secondary)) !important;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-card {
+  border-color: color-mix(in srgb, var(--tenant-primary) 22%, transparent) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tenant-surface) 86%, black), #050505) !important;
+  box-shadow: 0 18px 55px color-mix(in srgb, var(--tenant-primary) 14%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-chip {
+  border-color: color-mix(in srgb, var(--tenant-primary) 34%, transparent) !important;
+  background: color-mix(in srgb, var(--tenant-primary) 10%, transparent) !important;
+  color: var(--tenant-accent) !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-divider {
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--tenant-primary) 42%, transparent), transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-glow {
+  background: color-mix(in srgb, var(--tenant-primary) 10%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-project-builder .subtleGrid {
+  background-image:
+    linear-gradient(color-mix(in srgb, var(--tenant-primary) 42%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in srgb, var(--tenant-primary) 42%, transparent) 1px, transparent 1px) !important;
+}
+
+/* Checkout and quote screens still contain some legacy hardcoded dark panels.
+   Attribute selectors let us theme those Tailwind arbitrary-value classes safely. */
+html[data-tenant-theme='ready'] [class~="bg-[#050403]"],
+html[data-tenant-theme='ready'] [class~="bg-[#090806]"],
+html[data-tenant-theme='ready'] [class~="bg-[#070707]"] {
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--tenant-primary) 18%, transparent), transparent 26rem),
+    linear-gradient(180deg, color-mix(in srgb, var(--tenant-bg) 92%, black), #030303) !important;
+}
+
+html[data-tenant-theme='ready'] [class*="rgba(250,204,21"],
+html[data-tenant-theme='ready'] [class*="rgba(250,204,21,"] {
+  --tw-shadow-color: color-mix(in srgb, var(--tenant-primary) 20%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] .finput {
+  border-color: color-mix(in srgb, var(--tenant-primary) 20%, transparent) !important;
+  background-color: color-mix(in srgb, var(--tenant-surface) 70%, black) !important;
+}
+
+html[data-tenant-theme='ready'] .finput:focus {
+  border-color: color-mix(in srgb, var(--tenant-primary) 62%, transparent) !important;
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--tenant-primary) 18%, transparent) !important;
+}
+
+html[data-tenant-theme='ready'] select.finput option,
+html[data-tenant-theme='ready'] select option {
+  background-color: var(--tenant-surface) !important;
+  color: var(--tenant-text) !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-checkout-shell,
+html[data-tenant-theme='ready'] .tenant-quote-shell {
+  background:
+    radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--tenant-primary) 18%, transparent), transparent 26rem),
+    linear-gradient(180deg, var(--tenant-bg), #030303 78%) !important;
+  color: var(--tenant-text) !important;
+}
+
+html[data-tenant-theme='ready'] .tenant-checkout-card,
+html[data-tenant-theme='ready'] .tenant-quote-card {
+  border-color: color-mix(in srgb, var(--tenant-primary) 24%, transparent) !important;
+  background:
+    radial-gradient(circle at 85% 0%, color-mix(in srgb, var(--tenant-primary) 16%, transparent), transparent 24rem),
+    color-mix(in srgb, var(--tenant-surface) 82%, black) !important;
+  box-shadow: 0 30px 110px color-mix(in srgb, var(--tenant-primary) 13%, transparent) !important;
+}

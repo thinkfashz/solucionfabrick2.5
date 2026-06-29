@@ -2,52 +2,31 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type ReactNode } from 'react';
 import DOMPurify from 'isomorphic-dompurify';
+import { CheckCircle2, Copy, Loader2, Mail, MessageCircle, Printer, Timer } from 'lucide-react';
 import BudgetScene360 from '@/components/presupuestos/BudgetScene360';
-import {
-  AlertTriangle,
-  BadgeCheck,
-  CalendarDays,
-  CheckCircle2,
-  Clock,
-  Copy,
-  Eye,
-  EyeOff,
-  Image as ImageIcon,
-  Loader2,
-  MessageCircle,
-  Printer,
-  Search,
-  ShieldCheck,
-  Timer,
-  X,
-} from 'lucide-react';
-import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
-import { formatBudgetMoney, sanitizeBudgetHtml, type PresupuestoImagen, type PresupuestoPro } from '@/lib/presupuestosBuilder';
+import { AnimatedBudgetTicket } from '@/components/presupuestos/AnimatedBudgetTicket';
+import { formatBudgetMoney, sanitizeBudgetHtml, type PresupuestoPro } from '@/lib/presupuestosBuilder';
+import type { TenantPalette } from '@/lib/tenantTheme';
 
 const DEFAULT_WHATSAPP_PHONE = '56930121625';
+const DEFAULT_BRAND = {
+  name: 'Soluciones Fabrick',
+  primaryColor: '#f59e0b',
+  logoUrl: null as string | null,
+  phone: null as string | null,
+  billingEmail: null as string | null,
+  whatsappUrl: null as string | null,
+};
 
-function cleanUrl(url?: string) {
-  if (!url) return '';
-  const trimmed = url.trim();
-  if (!trimmed) return '';
-  if (trimmed.startsWith('//')) return `https:${trimmed}`;
-  return trimmed;
-}
+type TenantBranding = typeof DEFAULT_BRAND & {
+  slug?: string;
+  customDomain?: string | null;
+  theme?: TenantPalette;
+};
 
-function isExternalUrl(url: string) {
-  return url.startsWith('http://') || url.startsWith('https://');
-}
-
-function imageProxyUrl(url?: string) {
-  const cleaned = cleanUrl(url);
-  if (!cleaned) return '';
-  if (!isExternalUrl(cleaned)) return cleaned;
-  return `/api/presupuestos/image-proxy?url=${encodeURIComponent(cleaned)}`;
-}
-
-function normalizeWhatsappPhone(phone?: string) {
+function normalizeWhatsappPhone(phone?: string | null) {
   const digits = (phone || '').replace(/[^0-9]/g, '');
   if (!digits) return DEFAULT_WHATSAPP_PHONE;
   if (digits.startsWith('569') && digits.length === 11) return digits;
@@ -57,7 +36,7 @@ function normalizeWhatsappPhone(phone?: string) {
   return digits;
 }
 
-function buildWhatsAppUrl(phone: string | undefined, text: string) {
+function buildWhatsAppUrl(phone: string | undefined | null, text: string) {
   return `https://wa.me/${normalizeWhatsappPhone(phone)}?text=${encodeURIComponent(text)}`;
 }
 
@@ -66,120 +45,121 @@ function openCompatibleUrl(url: string) {
   window.location.href = url;
 }
 
-function Section({ title, eyebrow, children, dark = true }: { title: string; eyebrow?: string; children: ReactNode; dark?: boolean }) {
-  return (
-    <section className={`${dark ? 'border-white/[0.07] bg-[#181818] text-white' : 'border-black/8 bg-white text-[#111111]'} presupuesto-print-section overflow-hidden rounded-[1.75rem] border p-5 shadow-[0_4px_32px_rgba(0,0,0,0.4)] sm:p-7`}>
-      {eyebrow ? <p className="mb-2 text-[10px] font-black uppercase tracking-[0.32em] text-yellow-500">{eyebrow}</p> : null}
-      <h2 className="mb-5 flex items-center gap-2.5 text-xl font-black tracking-tight sm:text-2xl">
-        <span className="h-2.5 w-2.5 shrink-0 rounded-full bg-[#f4c400] shadow-[0_0_8px_rgba(244,196,0,0.5)]" />
-        {title}
-      </h2>
-      {children}
-    </section>
-  );
+function initials(name: string) {
+  return name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'SF';
 }
 
-function List({ items, dark = true }: { items: string[]; dark?: boolean }) {
-  const cleanItems = items.filter(Boolean);
-  if (!cleanItems.length) return <p className="rounded-2xl border border-dashed border-white/15 p-4 text-sm text-zinc-500">Sin información cargada.</p>;
-  return (
-    <ul className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">
-      {cleanItems.map((item, i) => (
-        <li key={`${item}-${i}`} className={`${dark ? 'border-white/[0.08] bg-white/[0.05] text-zinc-100 hover:border-yellow-400/50 hover:bg-yellow-400/[0.06]' : 'border-black/6 bg-zinc-50 text-zinc-800 hover:border-yellow-400/50'} rounded-2xl border px-4 py-3 text-sm font-semibold leading-6 transition hover:-translate-y-0.5`}>
-          <CheckCircle2 className="mr-2 inline h-4 w-4 shrink-0 text-yellow-400" />{item}
-        </li>
-      ))}
-    </ul>
-  );
+function Section({ title, eyebrow, children }: { title: string; eyebrow?: string; children: ReactNode }) {
+  return <section className="tenant-card overflow-hidden rounded-[1.75rem] border border-white/[0.07] p-5 text-white shadow-[0_4px_32px_rgba(0,0,0,0.4)] sm:p-7">
+    {eyebrow ? <p className="tenant-text mb-2 text-[10px] font-black uppercase tracking-[0.32em]">{eyebrow}</p> : null}
+    <h2 className="mb-5 flex items-center gap-2.5 text-xl font-black tracking-tight sm:text-2xl"><span className="tenant-dot h-2.5 w-2.5 shrink-0 rounded-full" />{title}</h2>
+    {children}
+  </section>;
 }
 
-function BudgetImage({ img, index, onClick }: { img: PresupuestoImagen; index: number; onClick: () => void }) {
-  const originalSrc = cleanUrl(img.url);
-  const [mode, setMode] = useState<'proxy' | 'original' | 'failed'>('proxy');
-  const src = mode === 'proxy' ? imageProxyUrl(originalSrc) : originalSrc;
+function List({ items }: { items: string[] }) {
+  const clean = items.filter(Boolean);
+  if (!clean.length) return <p className="rounded-2xl border border-dashed border-white/15 p-4 text-sm text-zinc-500">Sin información cargada.</p>;
+  return <ul className="grid gap-2.5 sm:grid-cols-2 xl:grid-cols-3">{clean.map((item, i) => <li key={`${item}-${i}`} className="tenant-border rounded-2xl border bg-white/[0.05] px-4 py-3 text-sm font-semibold leading-6 text-zinc-100"><CheckCircle2 className="tenant-icon mr-2 inline h-4 w-4 shrink-0" />{item}</li>)}</ul>;
+}
 
-  if (!originalSrc || mode === 'failed') {
-    return (
-      <div className="presupuesto-print-image flex min-h-[240px] flex-col items-center justify-center rounded-[1.5rem] border border-dashed border-black/10 bg-[#f5f5f5] p-5 text-center text-zinc-500">
-        <ImageIcon className="mb-3 h-8 w-8 text-yellow-500" />
-        <b className="text-sm text-zinc-700">Imagen no disponible en este dispositivo</b>
-        {originalSrc && <a href={originalSrc} target="_blank" rel="noreferrer" className="mt-3 rounded-full bg-[#111111] px-4 py-2 text-xs font-black text-white print:hidden">Abrir imagen</a>}
-      </div>
-    );
-  }
+function readNumber(data: Record<string, unknown>, key: string, fallback = 0) {
+  const value = data[key];
+  const n = typeof value === 'number' ? value : Number(value);
+  return Number.isFinite(n) ? n : fallback;
+}
 
-  return (
-    <button type="button" onClick={onClick} className="presupuesto-print-image group overflow-hidden rounded-[1.5rem] border border-black/5 bg-white text-left shadow-xl shadow-black/5 transition duration-300 hover:-translate-y-1 hover:shadow-2xl print:block print:break-inside-avoid print:shadow-none">
-      <div className="relative aspect-[4/3] w-full overflow-hidden bg-zinc-100 print:aspect-auto print:overflow-visible">
-        <img src={src} alt={img.titulo || `Imagen ${index + 1}`} className="h-full w-full object-cover object-center transition duration-700 group-hover:scale-105 print:h-auto print:max-h-none print:w-full print:object-contain" loading="eager" decoding="async" referrerPolicy="no-referrer" onError={() => setMode((current) => (current === 'proxy' ? 'original' : 'failed'))} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/65 via-black/5 to-transparent print:hidden" />
-        <span className="absolute bottom-3 left-3 right-3 text-sm font-black text-white drop-shadow print:static print:block print:bg-white print:px-4 print:py-2 print:text-black print:drop-shadow-none">{img.titulo || `Imagen ${index + 1}`}</span>
-      </div>
-      {img.descripcion && <p className="line-clamp-2 px-4 py-3 text-xs leading-5 text-zinc-500 print:line-clamp-none">{img.descripcion}</p>}
-    </button>
-  );
+function readString(data: Record<string, unknown>, key: string, fallback = '') {
+  const value = data[key];
+  return typeof value === 'string' ? value : fallback;
+}
+
+function objectFrom(value: unknown) {
+  return typeof value === 'object' && value ? value as Record<string, unknown> : {};
 }
 
 function ConfirmButton({ onConfirm, accepting, accepted, compact = false }: { onConfirm: () => void; accepting: boolean; accepted: boolean; compact?: boolean }) {
-  return (
-    <button type="button" onClick={onConfirm} disabled={accepting || accepted} className={`${compact ? 'mt-4 w-full justify-center rounded-2xl px-4 py-3' : 'w-full justify-center rounded-full px-5 py-3 sm:w-auto'} inline-flex items-center gap-2 bg-emerald-400 text-sm font-black text-black shadow-lg shadow-emerald-500/20 transition hover:bg-emerald-300 disabled:cursor-not-allowed disabled:opacity-70 print:hidden`}>
-      {accepting ? <Loader2 className="h-4 w-4 animate-spin" /> : accepted ? <CheckCircle2 className="h-4 w-4" /> : <MessageCircle className="h-4 w-4" />}
-      {accepting ? 'Confirmando...' : accepted ? 'Presupuesto aceptado' : compact ? 'Confirmar presupuesto' : 'Confirmar por WhatsApp'}
-    </button>
-  );
+  return <button type="button" onClick={onConfirm} disabled={accepting || accepted} className={`${compact ? 'mt-4 w-full justify-center rounded-2xl px-4 py-3' : 'w-full justify-center rounded-full px-5 py-3 sm:w-auto'} tenant-bg inline-flex items-center gap-2 text-sm font-black text-black shadow-lg transition disabled:cursor-not-allowed disabled:opacity-70 print:hidden`}>
+    {accepting ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+    {accepting ? 'Confirmando...' : accepted ? 'Presupuesto aceptado' : compact ? 'Confirmar presupuesto' : 'Confirmar por WhatsApp'}
+  </button>;
 }
 
 export default function PresupuestoPublicView({ presupuesto, publicLink, adminPreview = false }: { presupuesto: PresupuestoPro; publicLink?: string; adminPreview?: boolean }) {
-  const [activeImage, setActiveImage] = useState<PresupuestoImagen | null>(null);
   const [accepting, setAccepting] = useState(false);
   const [accepted, setAccepted] = useState(false);
   const [acceptMessage, setAcceptMessage] = useState('');
   const [copied, setCopied] = useState(false);
-  const [heroMode, setHeroMode] = useState<'proxy' | 'original' | 'failed'>('proxy');
-  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number; seconds: number } | null>(null);
+  const [timeLeft, setTimeLeft] = useState<{ days: number; hours: number; minutes: number } | null>(null);
   const [isExpired, setIsExpired] = useState(false);
-  const [galleryVisible, setGalleryVisible] = useState(true);
-  const [useReferences, setUseReferences] = useState(false);
+  const [brand, setBrand] = useState<TenantBranding>(DEFAULT_BRAND);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const params = new URLSearchParams(window.location.search);
-      if (params.get('print') === '1') {
-        const t = setTimeout(() => window.print(), 800);
-        return () => clearTimeout(t);
-      }
+    let alive = true;
+    fetch('/api/tenant/branding', { cache: 'no-store' })
+      .then((res) => res.json())
+      .then((json: { branding?: TenantBranding }) => {
+        if (!alive || !json?.branding) return;
+        setBrand({ ...DEFAULT_BRAND, ...json.branding });
+      })
+      .catch(() => undefined);
+    return () => { alive = false; };
+  }, []);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && new URLSearchParams(window.location.search).get('print') === '1') {
+      const t = setTimeout(() => window.print(), 800);
+      return () => clearTimeout(t);
     }
   }, []);
 
   useEffect(() => {
     const vence = presupuesto.fecha_vencimiento;
     if (!vence) return;
-    const rawTarget = new Date(vence).getTime();
-    const target = Number.isFinite(rawTarget) ? rawTarget : new Date(`${vence}T23:59:59`).getTime();
+    const target = new Date(vence).getTime();
+    if (!Number.isFinite(target)) return;
     function tick() {
       const diff = target - Date.now();
       if (diff <= 0) { setIsExpired(true); setTimeLeft(null); return; }
-      setTimeLeft({ days: Math.floor(diff / 86400000), hours: Math.floor((diff % 86400000) / 3600000), minutes: Math.floor((diff % 3600000) / 60000), seconds: Math.floor((diff % 60000) / 1000) });
+      setTimeLeft({ days: Math.floor(diff / 86400000), hours: Math.floor((diff % 86400000) / 3600000), minutes: Math.floor((diff % 3600000) / 60000) });
     }
     tick();
-    const id = setInterval(tick, 1000);
+    const id = setInterval(tick, 60000);
     return () => clearInterval(id);
   }, [presupuesto.fecha_vencimiento]);
 
   const safeHtml = DOMPurify.sanitize(sanitizeBudgetHtml(presupuesto.html_personalizado), { FORBID_TAGS: ['script', 'iframe', 'object', 'embed'], FORBID_ATTR: ['onerror', 'onclick', 'onload', 'onmouseover'] });
-  const companyName = presupuesto.proveedor || 'Soluciones Fabrick';
+  const companyName = brand.name || presupuesto.proveedor || 'Soluciones Fabrick';
   const clientName = presupuesto.empresa_cliente || presupuesto.cliente || 'Cliente';
   const currentLink = publicLink || (typeof window !== 'undefined' ? window.location.href : '');
-  const consultText = `Hola, revisé la propuesta comercial "${presupuesto.titulo}" para ${clientName}. Link: ${currentLink}`;
-  const consultUrl = buildWhatsAppUrl(presupuesto.telefono_whatsapp, consultText);
-  const sortedImages = useMemo(() => [...(presupuesto.imagenes || [])].filter((img) => cleanUrl(img.url)).sort((a, b) => a.orden - b.orden), [presupuesto.imagenes]);
-  const heroImage = sortedImages[0];
-  const heroOriginalSrc = cleanUrl(heroImage?.url);
-  const heroSrc = heroMode === 'proxy' ? imageProxyUrl(heroOriginalSrc) : heroOriginalSrc;
   const presentation = (presupuesto.json_presentacion || {}) as Record<string, unknown>;
   const motor = typeof presentation.motor === 'string' ? presentation.motor : '';
   const sceneKind = motor === 'aire' || motor === 'radier' ? motor : undefined;
-  const sceneData = typeof presentation.calculo === 'object' && presentation.calculo ? presentation.calculo as Record<string, unknown> : undefined;
+  const calc = objectFrom(presentation.calculo);
+  const inputs = objectFrom(presentation.inputs);
+  const producto = objectFrom(presentation.producto);
+  const sceneData = useMemo(() => ({ ...inputs, ...calc }), [inputs, calc]);
+  const saleMode = readString(inputs, 'venta', readString(presentation, 'venta', 'equipo_instalacion'));
+  const coverageM2 = readNumber(sceneData, 'area', readNumber(inputs, 'largo', 0) * readNumber(inputs, 'ancho', 0));
+  const btu = readNumber(sceneData, 'seleccionado', readNumber(sceneData, 'recomendado', readNumber(sceneData, 'btu', 0)));
+  const tenantPhone = brand.phone || presupuesto.telefono_whatsapp;
+  const consultText = `Hola, revisé la propuesta comercial "${presupuesto.titulo}" para ${clientName}. Link: ${currentLink}`;
+  const consultUrl = buildWhatsAppUrl(tenantPhone, consultText);
+  const emailTarget = brand.billingEmail || presupuesto.email_cliente || '';
+  const emailUrl = `mailto:${emailTarget}?subject=${encodeURIComponent(`Presupuesto ${presupuesto.titulo}`)}&body=${encodeURIComponent(`${consultText}\n\nTotal: ${formatBudgetMoney(presupuesto.total_con_iva)}`)}`;
+  const garantia = readString(presentation, 'garantia', 'Garantía según equipo, instalación y condiciones reales verificadas en visita técnica.');
+  const visitaTecnica = readString(presentation, 'visita_tecnica', 'Visita técnica recomendada para validar distancia, muro, energía, drenaje y ubicación de condensador.');
+  const limites = Array.isArray(presentation.limites) ? presentation.limites.map(String) : presupuesto.no_incluye;
+  const brandColor = /^#[0-9a-fA-F]{6}$/.test(brand.primaryColor || '') ? brand.primaryColor : '#f59e0b';
+  const theme = brand.theme;
+  const themeStyle = {
+    '--tenant-primary': theme?.primary || brandColor,
+    '--tenant-secondary': theme?.secondary || '#ea580c',
+    '--tenant-accent': theme?.accent || '#fde68a',
+    '--tenant-bg': theme?.background || '#050505',
+    '--tenant-surface': theme?.surface || '#11100d',
+    '--tenant-text': theme?.text || '#fff7ed',
+  } as CSSProperties;
 
   async function handleCopyLink() { try { await navigator.clipboard.writeText(currentLink); setCopied(true); setTimeout(() => setCopied(false), 1500); } catch { setCopied(false); } }
   async function handleConfirmAcceptance() {
@@ -187,13 +167,13 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
     setAccepting(true);
     setAcceptMessage('Registrando aceptación del presupuesto...');
     const fallbackText = `Hola, confirmo la aceptación del presupuesto "${presupuesto.titulo}" para ${clientName}. Total: ${formatBudgetMoney(presupuesto.total_con_iva)}. Link: ${currentLink}`;
-    const fallbackUrl = buildWhatsAppUrl(presupuesto.telefono_whatsapp, fallbackText);
+    const fallbackUrl = buildWhatsAppUrl(tenantPhone, fallbackText);
     try {
-      const res = await fetch('/api/presupuestos/confirmar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ presupuesto: { ...presupuesto, telefono_whatsapp: normalizeWhatsappPhone(presupuesto.telefono_whatsapp), public_link: currentLink, email_cliente: presupuesto.email_cliente || '' } }) });
+      const res = await fetch('/api/presupuestos/confirmar', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ presupuesto: { ...presupuesto, proveedor: companyName, telefono_whatsapp: normalizeWhatsappPhone(tenantPhone), public_link: currentLink, email_cliente: emailTarget } }) });
       const json = (await res.json().catch(() => ({}))) as { whatsappUrl?: string; email?: { sent?: boolean }; error?: string };
       if (!res.ok) throw new Error(json.error || `Error ${res.status}`);
       setAccepted(true);
-      setAcceptMessage(json.email?.sent ? 'Confirmación registrada y correo de respaldo enviado.' : 'Confirmación registrada. Abriendo WhatsApp...');
+      setAcceptMessage(json.email?.sent ? 'Confirmación registrada y correo enviado.' : 'Confirmación registrada. Abriendo WhatsApp...');
       openCompatibleUrl(json.whatsappUrl || fallbackUrl);
     } catch (err) {
       setAcceptMessage(`No se pudo registrar automáticamente: ${(err as Error).message}. Abriré WhatsApp igualmente.`);
@@ -201,34 +181,39 @@ export default function PresupuestoPublicView({ presupuesto, publicLink, adminPr
     } finally { setAccepting(false); }
   }
 
-  if (presupuesto.usar_html_personalizado && safeHtml) return <div className="w-full overflow-hidden rounded-3xl border border-yellow-400/20 bg-white p-4 text-black"><div dangerouslySetInnerHTML={{ __html: safeHtml }} /></div>;
+  if (presupuesto.usar_html_personalizado && safeHtml) return <div className="tenant-card w-full overflow-hidden rounded-3xl border p-4 text-white"><div dangerouslySetInnerHTML={{ __html: safeHtml }} /></div>;
 
-  return (
-    <article className="presupuesto-public-page mx-auto w-full max-w-7xl overflow-hidden bg-[#0d0d0d] text-white shadow-[0_40px_120px_rgba(0,0,0,0.55)] sm:rounded-[2rem] print:overflow-visible print:bg-white print:text-black print:shadow-none">
-      <style jsx global>{`@media print{@page{size:letter;margin:12mm}.presupuesto-public-page,.presupuesto-public-page *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.presupuesto-public-page button,.presupuesto-public-page .print\:hidden,.presupuesto-public-page [role='dialog'],.presupuesto-public-page [data-fixed]{display:none!important}.presupuesto-public-page header,.presupuesto-public-page footer,.presupuesto-public-page section{background:#fff!important;color:#111!important;border-color:#ddd!important;box-shadow:none!important}.presupuesto-public-page *{background-color:transparent!important;color:inherit!important;box-shadow:none!important;text-shadow:none!important}.presupuesto-public-page thead th{background:#111!important;color:#fff!important}}`}</style>
-      <header className="relative min-h-[78vh] overflow-hidden bg-[#111111] text-white print:min-h-0 print:overflow-visible print:bg-[#111111]">
-        {heroSrc && heroMode !== 'failed' && <img src={heroSrc} alt={heroImage?.titulo || presupuesto.titulo} className="absolute inset-0 h-full w-full object-cover opacity-45 print:static print:h-auto print:opacity-100" loading="eager" decoding="async" referrerPolicy="no-referrer" crossOrigin={heroMode === 'proxy' ? 'anonymous' : undefined} onError={() => setHeroMode((current) => (current === 'proxy' ? 'original' : 'failed'))} />}
-        <div className="absolute inset-0 bg-[linear-gradient(115deg,rgba(17,17,17,0.98)_0%,rgba(17,17,17,0.86)_45%,rgba(17,17,17,0.50)_100%)] print:hidden" />
-        <div className="absolute left-0 top-0 h-1.5 w-full bg-[#f4c400]" />
-        <div className="relative z-10 flex min-h-[78vh] flex-col justify-between p-5 sm:p-8 lg:p-12 print:min-h-0">
-          <nav className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between print:hidden"><div className="max-w-[240px]"><FabrickFullLogo theme="light" tagline="Propuesta comercial" /></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-black text-[#111111]"><Printer className="h-4 w-4" /> PDF</button><button type="button" onClick={handleCopyLink} className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-bold text-white"><Copy className="h-4 w-4" /> {copied ? 'Copiado' : 'Copiar link'}</button><button type="button" onClick={() => openCompatibleUrl(consultUrl)} className="inline-flex items-center gap-2 rounded-full border border-emerald-300/40 bg-emerald-400/10 px-4 py-2.5 text-sm font-bold text-emerald-100"><MessageCircle className="h-4 w-4" /> WhatsApp</button></div></nav>
-          <div className="grid gap-8 py-10 lg:grid-cols-[minmax(0,1fr)_380px] lg:items-end print:py-5"><div className="max-w-5xl"><div className="mb-6 inline-flex rounded-full border border-[#f4c400]/40 bg-[#f4c400]/10 px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em] text-yellow-200">Cliente · {clientName}</div><h1 className="text-[2.35rem] font-black uppercase leading-[0.98] tracking-tight sm:text-6xl lg:text-7xl print:text-4xl">{presupuesto.titulo}</h1><p className="mt-7 max-w-3xl text-lg leading-8 text-zinc-200 sm:text-xl print:text-base">{presupuesto.descripcion}</p>{!adminPreview && <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap print:hidden"><ConfirmButton onConfirm={handleConfirmAcceptance} accepting={accepting} accepted={accepted} /><button type="button" onClick={() => openCompatibleUrl(consultUrl)} className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white sm:w-auto"><MessageCircle className="h-4 w-4" /> Consultar por WhatsApp</button></div>}{acceptMessage && <p className="mt-4 max-w-2xl rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-4 text-sm font-bold text-emerald-100 print:hidden">{acceptMessage}</p>}</div><aside className="rounded-[2rem] border border-white/10 bg-white/[0.07] p-4 backdrop-blur-2xl sm:p-5"><div className="grid grid-cols-2 gap-3"><div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4"><ShieldCheck className="mb-3 h-5 w-5 text-yellow-300" /><p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Proveedor</p><b>{companyName}</b></div><div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4"><BadgeCheck className="mb-3 h-5 w-5 text-yellow-300" /><p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Estado</p><b>{accepted ? 'Aprobado' : presupuesto.estado}</b></div><div className="rounded-3xl border border-white/10 bg-white/[0.06] p-4"><CalendarDays className="mb-3 h-5 w-5 text-yellow-300" /><p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">Fecha</p><b>{presupuesto.fecha}</b></div><div className={`rounded-3xl border p-4 ${isExpired ? 'border-red-500/40 bg-red-500/10' : timeLeft ? 'border-orange-400/30 bg-orange-400/[0.06]' : 'border-white/10 bg-white/[0.06]'}`}>{isExpired ? <AlertTriangle className="mb-3 h-5 w-5 text-red-400" /> : timeLeft ? <Timer className="mb-3 h-5 w-5 text-orange-400" /> : <AlertTriangle className="mb-3 h-5 w-5 text-yellow-300" />}<p className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">{isExpired ? 'Vencida' : timeLeft ? 'Vence en' : 'Validez'}</p>{isExpired ? <b className="text-red-400">Propuesta vencida</b> : timeLeft ? <b className="text-orange-300">{timeLeft.days}d {String(timeLeft.hours).padStart(2,'0')}h {String(timeLeft.minutes).padStart(2,'0')}m</b> : <b>{presupuesto.validez}</b>}</div></div><div className="mt-3 rounded-3xl bg-[#f4c400] p-5 text-black"><p className="text-[10px] font-black uppercase tracking-[0.26em]">Total proyecto</p><b className="mt-2 block text-3xl font-black tracking-tight">{formatBudgetMoney(presupuesto.total_con_iva)}</b><span className="mt-1 block text-sm font-black">IVA incluido · Neto {formatBudgetMoney(presupuesto.valor_neto)}</span></div></aside></div>
-        </div>
-      </header>
+  return <article className="presupuesto-public-page tenant-surface mx-auto w-full max-w-7xl overflow-hidden text-white shadow-[0_40px_120px_rgba(0,0,0,0.55)] sm:rounded-[2rem] print:bg-white print:text-black print:shadow-none" style={themeStyle}>
+    <style jsx global>{`.presupuesto-public-page .tenant-text{color:var(--tenant-primary)}.presupuesto-public-page .tenant-bg{background:linear-gradient(135deg,var(--tenant-primary),var(--tenant-secondary))}.presupuesto-public-page .tenant-dot{background:var(--tenant-primary);box-shadow:0 0 10px var(--tenant-primary)}.presupuesto-public-page .tenant-icon{color:var(--tenant-primary)}.presupuesto-public-page .tenant-border{border-color:color-mix(in srgb,var(--tenant-primary) 24%,transparent)}@media print{@page{size:letter;margin:12mm}.presupuesto-public-page,.presupuesto-public-page *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.presupuesto-public-page button,.presupuesto-public-page .print\:hidden{display:none!important}.presupuesto-public-page section,.presupuesto-public-page header,.presupuesto-public-page footer{background:#fff!important;color:#111!important;border-color:#ddd!important;box-shadow:none!important}}`}</style>
 
-      <div className="grid min-w-0 gap-5 p-3 sm:p-6 lg:grid-cols-[minmax(0,1fr)_360px] lg:p-8">
-        <div className="grid min-w-0 gap-5">
-          {sceneKind && <BudgetScene360 kind={sceneKind} title={sceneKind === 'aire' ? 'Visor 360 del cuarto y condensador' : 'Visor 360 del radier'} subtitle="El cliente puede girar, acercar y revisar la propuesta desde distintos ángulos." data={sceneData} />}
-          <Section title="Descripción del proyecto" eyebrow="01"><p className="text-base leading-8 text-zinc-100">{presupuesto.descripcion}</p></Section>
-          <Section title="Alcance incluido" eyebrow="02"><List items={presupuesto.incluye} /></Section>
-          <Section title="Materiales y terminaciones" eyebrow="03"><List items={presupuesto.materiales} /></Section>
-          <Section title="Galería visual del proyecto" eyebrow="04"><div className="mb-4 flex min-w-0 flex-wrap items-center gap-2 print:hidden"><button onClick={() => setGalleryVisible((v) => !v)} className="inline-flex items-center gap-2 rounded-full border border-white/10 px-3 py-2 text-xs font-bold text-zinc-200 hover:border-yellow-400/50">{galleryVisible ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}{galleryVisible ? 'Ocultar imágenes' : 'Mostrar imágenes'}</button><button onClick={() => setUseReferences((v) => !v)} className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/10 px-3 py-2 text-xs font-bold text-yellow-200 hover:bg-yellow-400/20"><Search className="h-4 w-4" />{useReferences ? 'Ocultar referencias' : 'Buscar referencias'}</button><span className="text-xs text-zinc-500">Toca cualquier imagen para verla completa.</span></div>{galleryVisible ? <div className="mx-auto grid w-full max-w-full min-w-0 grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-3">{sortedImages.map((img, index) => <BudgetImage key={img.id} img={img} index={index} onClick={() => setActiveImage(img)} />)}</div> : <div className="rounded-3xl border border-dashed border-white/15 bg-black/30 p-6 text-center text-sm text-zinc-400">La galería está oculta para una lectura más limpia del presupuesto.</div>}</Section>
-          {presupuesto.items.length > 0 && <Section title="Partidas / productos" eyebrow="05"><div className="grid gap-3 md:hidden">{presupuesto.items.map((item) => <div key={item.id} className="rounded-2xl border border-white/[0.08] bg-white/[0.04] p-4"><div className="flex items-start justify-between gap-2"><b className="text-sm text-white">{item.nombre}</b><span className="shrink-0 font-black text-yellow-300">{formatBudgetMoney(item.total)}</span></div>{item.descripcion && <p className="mt-1.5 text-xs leading-relaxed text-zinc-300">{item.descripcion}</p>}<div className="mt-2 text-xs text-zinc-500">{item.cantidad} {item.unidad} · {formatBudgetMoney(item.precio_unitario)} c/u</div></div>)}</div><div className="hidden overflow-x-auto md:block"><table className="w-full min-w-[640px] text-left text-sm"><thead className="border-b border-white/10 text-[10px] uppercase tracking-widest text-yellow-400"><tr><th className="pb-3">Item</th><th>Cant.</th><th>Unidad</th><th>Unitario</th><th className="text-right">Total</th></tr></thead><tbody>{presupuesto.items.map((item, idx) => <tr key={item.id} className={`border-b border-white/[0.06] last:border-0 ${idx % 2 === 1 ? 'bg-white/[0.025]' : ''}`}><td className="py-3.5 pr-4"><b className="text-white">{item.nombre}</b>{item.descripcion && <p className="mt-1 text-xs leading-5 text-zinc-400">{item.descripcion}</p>}</td><td>{item.cantidad}</td><td>{item.unidad}</td><td>{formatBudgetMoney(item.precio_unitario)}</td><td className="text-right font-black text-yellow-300">{formatBudgetMoney(item.total)}</td></tr>)}</tbody></table></div></Section>}
+    <header className="relative overflow-hidden p-5 text-white sm:p-8 lg:p-12 print:bg-white print:text-black" style={{ background: `radial-gradient(circle at 80% 0%, var(--tenant-primary), transparent 24rem), linear-gradient(145deg, var(--tenant-bg), var(--tenant-surface))` }}>
+      <nav className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between print:hidden">
+        <div className="flex items-center gap-3">
+          <div className="grid h-14 w-14 shrink-0 place-items-center overflow-hidden rounded-2xl text-sm font-black text-black ring-1 ring-white/20" style={{ background: 'var(--tenant-primary)' }}>{brand.logoUrl ? <img src={brand.logoUrl} alt={companyName} className="h-full w-full object-cover" /> : initials(companyName)}</div>
+          <div><p className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-400">Propuesta comercial</p><p className="text-lg font-black leading-none text-white">{companyName}</p></div>
         </div>
-        <aside className="grid h-fit gap-4 lg:sticky lg:top-6"><Section title="Resumen" eyebrow="Total"><div className="rounded-3xl bg-[#f4c400] p-5 text-black"><p className="text-[10px] font-black uppercase tracking-[0.24em]">Total estimado</p><b className="mt-2 block text-3xl font-black">{formatBudgetMoney(presupuesto.total_con_iva)}</b></div><ConfirmButton onConfirm={handleConfirmAcceptance} accepting={accepting} accepted={accepted} compact /></Section><Section title="Forma de pago" eyebrow="Pago">{presupuesto.forma_pago.map((fp, i) => <div key={`${fp.descripcion}-${i}`} className="mb-2 rounded-2xl border border-white/10 bg-white/[0.04] p-3"><b className="text-yellow-300">{fp.porcentaje}%</b><p className="text-sm text-zinc-300">{fp.descripcion}</p></div>)}</Section><Section title="No incluye" eyebrow="Límites"><List items={presupuesto.no_incluye} /></Section></aside>
+        <div className="flex flex-wrap gap-2"><button type="button" onClick={() => window.print()} className="inline-flex items-center gap-2 rounded-full bg-white px-4 py-2.5 text-sm font-black text-[#111111]"><Printer className="h-4 w-4" /> PDF</button><button type="button" onClick={handleCopyLink} className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/5 px-4 py-2.5 text-sm font-bold text-white"><Copy className="h-4 w-4" /> {copied ? 'Copiado' : 'Copiar link'}</button><button type="button" onClick={() => openCompatibleUrl(emailUrl)} className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-4 py-2.5 text-sm font-bold text-white"><Mail className="h-4 w-4" /> Correo</button><button type="button" onClick={() => openCompatibleUrl(consultUrl)} className="tenant-bg inline-flex items-center gap-2 rounded-full border border-white/15 px-4 py-2.5 text-sm font-black text-black"><MessageCircle className="h-4 w-4" /> WhatsApp</button></div>
+      </nav>
+      <div className="mt-10 grid gap-8 lg:grid-cols-[minmax(0,1fr)_360px] lg:items-end"><div><div className="mb-5 inline-flex rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-[0.28em]" style={{ borderColor: 'color-mix(in srgb, var(--tenant-primary) 45%, transparent)', background: 'color-mix(in srgb, var(--tenant-primary) 14%, transparent)', color: 'var(--tenant-accent)' }}>Cliente · {clientName}</div><h1 className="tenant-gradient-text text-[2.35rem] font-black uppercase leading-[0.98] tracking-tight sm:text-6xl lg:text-7xl print:text-4xl">{presupuesto.titulo}</h1><p className="mt-6 max-w-3xl text-lg leading-8 text-zinc-200 sm:text-xl print:text-base">{presupuesto.descripcion}</p>{!adminPreview && <div className="mt-8 flex flex-col gap-3 sm:flex-row sm:flex-wrap print:hidden"><ConfirmButton onConfirm={handleConfirmAcceptance} accepting={accepting} accepted={accepted} /><button type="button" onClick={() => openCompatibleUrl(consultUrl)} className="inline-flex w-full items-center justify-center gap-2 rounded-full border border-white/15 bg-white/10 px-5 py-3 text-sm font-black text-white sm:w-auto"><MessageCircle className="h-4 w-4" /> Consultar</button></div>}{acceptMessage && <p className="mt-4 rounded-2xl border border-emerald-300/30 bg-emerald-400/10 p-4 text-sm font-bold text-emerald-100 print:hidden">{acceptMessage}</p>}</div><aside className="tenant-card rounded-[2rem] border border-white/10 p-5 backdrop-blur-2xl"><p className="text-[10px] font-black uppercase tracking-[0.24em] text-zinc-400">Total proyecto</p><b className="tenant-text mt-2 block text-4xl font-black">{formatBudgetMoney(presupuesto.total_con_iva)}</b><p className="mt-2 text-sm text-zinc-300">Neto {formatBudgetMoney(presupuesto.valor_neto)} · IVA {formatBudgetMoney(presupuesto.total_iva)}</p><div className="mt-4 rounded-2xl border border-white/10 bg-black/30 p-3"><Timer className="tenant-icon mb-2 h-5 w-5" />{isExpired ? <b className="text-red-300">Propuesta vencida</b> : timeLeft ? <b className="tenant-text">Vence en {timeLeft.days}d {String(timeLeft.hours).padStart(2, '0')}h {String(timeLeft.minutes).padStart(2, '0')}m</b> : <b>{presupuesto.validez}</b>}</div></aside></div>
+    </header>
+
+    <div className="grid min-w-0 gap-5 p-3 sm:p-6 lg:grid-cols-[minmax(0,1fr)_380px] lg:p-8">
+      <div className="grid min-w-0 gap-5">
+        {sceneKind && <BudgetScene360 kind={sceneKind} title={sceneKind === 'aire' ? 'Visor 360 del cuarto y condensador' : 'Visor 360 del radier'} subtitle="El cliente puede girar, acercar y revisar la propuesta desde distintos ángulos." data={sceneData} />}
+        <Section title="Descripción del proyecto" eyebrow="01"><p className="text-base leading-8 text-zinc-100">{presupuesto.descripcion}</p></Section>
+        <Section title="Alcance incluido" eyebrow="02"><List items={presupuesto.incluye} /></Section>
+        <Section title="Materiales y productos relacionados" eyebrow="03"><List items={presupuesto.materiales} /></Section>
+        <Section title="Visita técnica y garantía" eyebrow="04"><div className="grid gap-3 sm:grid-cols-2"><div className="tenant-border rounded-2xl border bg-white/[.045] p-4"><p className="tenant-text text-[10px] font-black uppercase tracking-widest">Visita técnica</p><p className="mt-2 text-sm leading-6 text-zinc-300">{visitaTecnica}</p></div><div className="tenant-border rounded-2xl border bg-white/[.045] p-4"><p className="tenant-text text-[10px] font-black uppercase tracking-widest">Garantía</p><p className="mt-2 text-sm leading-6 text-zinc-300">{garantia}</p></div></div></Section>
+        {presupuesto.items.length > 0 && <Section title="Partidas / productos" eyebrow="05"><div className="grid gap-3">{presupuesto.items.map((item) => <div key={item.id} className="tenant-border rounded-2xl border bg-white/[0.04] p-4"><div className="flex items-start justify-between gap-3"><div><b>{item.nombre}</b>{item.descripcion && <p className="mt-1 text-xs leading-5 text-zinc-400">{item.descripcion}</p>}<p className="mt-2 text-xs text-zinc-500">{item.cantidad} {item.unidad} · {formatBudgetMoney(item.precio_unitario)} c/u</p></div><span className="tenant-text font-black">{formatBudgetMoney(item.total)}</span></div></div>)}</div></Section>}
       </div>
-      {activeImage && <div role="dialog" className="fixed inset-0 z-50 grid place-items-center bg-black/90 p-4" onClick={() => setActiveImage(null)}><button className="absolute right-4 top-4 rounded-full bg-white p-2 text-black"><X className="h-5 w-5" /></button><img src={activeImage.url} alt={activeImage.titulo || 'Imagen'} className="max-h-[88vh] max-w-[96vw] rounded-3xl object-contain" /></div>}
-      <footer className="border-t border-white/10 bg-black p-6 text-center text-xs text-zinc-500">Documento comercial generado por Soluciones Fabrick · Link privado con vencimiento</footer>
-    </article>
-  );
+
+      <aside className="grid h-fit gap-4 lg:sticky lg:top-6">
+        <Section title="Boleta resumen" eyebrow="Compra"><div className="grid place-items-center"><AnimatedBudgetTicket ticketId={presupuesto.id} amount={presupuesto.total_con_iva} date={presupuesto.created_at || presupuesto.fecha} clientName={clientName} companyName={companyName} serviceMode={saleMode} projectTitle={presupuesto.titulo} coverageM2={coverageM2} btu={btu} barcodeValue={presupuesto.slug} items={presupuesto.items} showConfetti={!adminPreview} /></div></Section>
+        <Section title="Producto / tienda" eyebrow="BD"><div className="grid gap-2 text-sm text-zinc-300"><p><b className="tenant-text">ID BD:</b> {readString(producto, 'productoId', 'No definido')}</p><p><b className="tenant-text">SKU:</b> {readString(producto, 'sku', 'No definido')}</p><p><b className="tenant-text">Stock:</b> {readNumber(producto, 'stock', 0)} unidades</p>{readString(producto, 'linkProducto') && <a href={readString(producto, 'linkProducto')} className="break-all underline" target="_blank" rel="noreferrer">Ver producto</a>}</div></Section>
+        <Section title="No incluye / límites" eyebrow="Límites"><List items={limites} /></Section>
+        <Section title="Forma de pago" eyebrow="Pago">{presupuesto.forma_pago.map((fp, i) => <div key={`${fp.descripcion}-${i}`} className="tenant-border mb-2 rounded-2xl border bg-white/[0.04] p-3"><b className="tenant-text">{fp.porcentaje}%</b><p className="text-sm text-zinc-300">{fp.descripcion}</p></div>)}</Section>
+      </aside>
+    </div>
+    <footer className="border-t border-white/10 bg-black p-6 text-center text-xs text-zinc-500">Documento comercial generado por {companyName} · Link privado con vencimiento</footer>
+  </article>;
 }

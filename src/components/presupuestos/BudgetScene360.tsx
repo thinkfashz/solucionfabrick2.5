@@ -1,160 +1,147 @@
 'use client';
 
-import { useMemo, useRef, useState, type CSSProperties } from 'react';
+import { useMemo, useRef, useState, type ReactNode } from 'react';
 
 type SceneKind = 'radier' | 'aire' | 'default';
-
-type BudgetScene360Props = {
-  kind?: SceneKind;
-  title?: string;
-  subtitle?: string;
-  data?: Record<string, unknown>;
-  compact?: boolean;
-};
+type BudgetScene360Props = { kind?: SceneKind; title?: string; subtitle?: string; data?: Record<string, unknown>; compact?: boolean };
 
 const num = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
 const whole = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 0 });
+const money = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 
 function readNumber(data: Record<string, unknown> | undefined, key: string, fallback = 0) {
-  const value = data?.[key];
-  const n = typeof value === 'number' ? value : Number(value);
+  const v = data?.[key];
+  const n = typeof v === 'number' ? v : Number(v);
   return Number.isFinite(n) ? n : fallback;
 }
-
-function readColor(data: Record<string, unknown> | undefined, key: string, fallback: string) {
-  const value = data?.[key];
-  return typeof value === 'string' && /^#?[a-z0-9(),.%\s-]+$/i.test(value) ? value : fallback;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.max(min, Math.min(max, value));
-}
-
-function boxStyle(width: number, depth: number, height: number, top: string, side: string, z = 0, extra = '') {
-  return {
-    width,
-    height: depth,
-    transform: `translate3d(${-width / 2}px, ${-depth / 2}px, ${z}px) ${extra}`,
-    '--h': `${height}px`,
-    '--top': top,
-    '--side': side,
-  } as CSSProperties;
-}
+function clamp(value: number, min: number, max: number) { return Math.max(min, Math.min(max, value)); }
 
 export default function BudgetScene360({ kind = 'default', title, subtitle, data, compact = false }: BudgetScene360Props) {
-  const drag = useRef<{ x: number; y: number; yaw: number; pitch: number } | null>(null);
-  const [yaw, setYaw] = useState(36);
-  const [pitch, setPitch] = useState(56);
+  const drag = useRef<{ x: number; yaw: number } | null>(null);
+  const [yaw, setYaw] = useState(0);
   const [zoom, setZoom] = useState(1);
-  const [explode, setExplode] = useState(false);
   const [labels, setLabels] = useState(true);
-  const [cutaway, setCutaway] = useState(false);
-  const [spin, setSpin] = useState(true);
+  const [spin, setSpin] = useState(false);
+  const [tarifa, setTarifa] = useState(210);
+  const [horasNormal, setHorasNormal] = useState(6);
+  const [horasIntenso, setHorasIntenso] = useState(10);
 
   const stats = useMemo(() => {
-    if (kind === 'radier') return [['Área', `${num.format(readNumber(data, 'area', 24))} m²`], ['Hormigón', `${num.format(readNumber(data, 'hormigon', 2.4))} m³`], ['Perímetro', `${num.format(readNumber(data, 'perimetro', 20))} ml`]];
     if (kind === 'aire') return [['Área', `${num.format(readNumber(data, 'area', 16))} m²`], ['BTU', `${whole.format(readNumber(data, 'btu', 12000))}`], ['Equipo', `${whole.format(readNumber(data, 'seleccionado', 12000))} BTU`]];
+    if (kind === 'radier') return [['Área', `${num.format(readNumber(data, 'area', 24))} m²`], ['Hormigón', `${num.format(readNumber(data, 'hormigon', 2.4))} m³`], ['Perímetro', `${num.format(readNumber(data, 'perimetro', 20))} ml`]];
     return [['Vista', '3D'], ['Estado', 'Activo'], ['Modo', 'Interactivo']];
   }, [data, kind]);
 
-  const transform = `rotateX(${pitch}deg) rotateZ(${yaw}deg) scale(${zoom})`;
+  const btuEquipo = readNumber(data, 'seleccionado', 12000);
+  const kwApprox = Math.max(0.55, btuEquipo / 12000 * 0.82);
+  const kwhNormal = kwApprox * horasNormal * 30;
+  const kwhIntenso = kwApprox * horasIntenso * 30;
+  const costoNormal = Math.round(kwhNormal * tarifa);
+  const costoIntenso = Math.round(kwhIntenso * tarifa);
 
-  function start(x: number, y: number) { setSpin(false); drag.current = { x, y, yaw, pitch }; }
-  function move(x: number, y: number) { if (!drag.current) return; setYaw(drag.current.yaw + (x - drag.current.x) * 0.45); setPitch(clamp(drag.current.pitch - (y - drag.current.y) * 0.28, 18, 74)); }
+  function start(x: number) { drag.current = { x, yaw }; setSpin(false); }
+  function move(x: number) { if (!drag.current) return; setYaw(clamp(drag.current.yaw + (x - drag.current.x) * 0.18, -38, 38)); }
   function end() { drag.current = null; }
 
-  return <section className={`sf-budget-3d relative mx-auto w-full max-w-full overflow-hidden rounded-[2rem] border border-amber-300/20 bg-[#050505]/95 text-white shadow-[0_30px_90px_rgba(0,0,0,.5)] ${compact ? 'min-h-[430px]' : 'min-h-[560px]'}`}>
-    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,193,7,.18),transparent_22rem),radial-gradient(circle_at_80%_60%,rgba(37,99,235,.16),transparent_24rem),radial-gradient(circle_at_12%_80%,rgba(220,38,38,.12),transparent_18rem)]" />
-    <div className="absolute inset-0 opacity-[.12] [background-image:linear-gradient(rgba(255,255,255,.08)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.08)_1px,transparent_1px)] [background-size:42px_42px]" />
+  return <section className={`sf-air-viewer relative mx-auto w-full overflow-hidden rounded-[2rem] border border-amber-300/20 bg-[#070504] text-white shadow-[0_30px_90px_rgba(0,0,0,.55)] ${compact ? 'min-h-[520px]' : 'min-h-[650px]'}`}>
+    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_0%,rgba(255,193,7,.16),transparent_24rem),radial-gradient(circle_at_85%_58%,rgba(37,99,235,.13),transparent_24rem)]" />
     <style jsx global>{`
-      .sf-budget-3d *{box-sizing:border-box}.sf-budget-3d .scene-frame{width:100%;max-width:760px;margin:0 auto;perspective:1100px;perspective-origin:50% 38%;}
-      .sf-budget-3d .scene-stage{position:relative;display:grid;place-items:center;min-height:360px;width:100%;overflow:hidden;border-radius:1.65rem;border:1px solid rgba(255,255,255,.10);background:radial-gradient(circle at 50% 45%,rgba(250,204,21,.12),transparent 20rem),rgba(0,0,0,.42);touch-action:none;}
-      .sf-budget-3d .scene-root{position:absolute;left:50%;top:52%;width:0;height:0;transform-style:preserve-3d;transition:transform 80ms linear;}
-      .sf-budget-3d .scene-root.spin{animation:sf-budget-spin 16s linear infinite;}
-      .sf-budget-3d .box3d{position:absolute;left:50%;top:50%;transform-style:preserve-3d;display:block;overflow:visible;}
-      .sf-budget-3d .box3d .top{position:absolute;inset:0;background:var(--top);border:1px solid rgba(255,209,102,.42);box-shadow:inset 0 0 26px rgba(255,255,255,.14),0 22px 55px rgba(0,0,0,.30);display:block;}
-      .sf-budget-3d .box3d:before{content:'';position:absolute;left:0;right:0;bottom:0;height:var(--h);background:linear-gradient(180deg,var(--side),#120c07);transform:translateY(100%) rotateX(-90deg);transform-origin:top;display:block;filter:brightness(.92)}
-      .sf-budget-3d .box3d:after{content:'';position:absolute;top:0;right:0;width:var(--h);height:100%;background:linear-gradient(90deg,var(--side),#050505);transform:translateX(100%) rotateY(90deg);transform-origin:left;display:block;filter:brightness(.76)}
-      .sf-budget-3d .label3d{position:absolute;z-index:12;transform:translateZ(108px);padding:7px 10px;border-radius:999px;border:1px solid rgba(255,209,102,.34);background:rgba(0,0,0,.74);backdrop-filter:blur(10px);font-size:10px;font-weight:900;text-transform:uppercase;letter-spacing:.12em;color:#fde68a;white-space:nowrap;box-shadow:0 10px 30px rgba(0,0,0,.28)}
-      .sf-budget-3d .pipe{position:absolute;height:8px;border-radius:999px;background:var(--pipe);box-shadow:0 0 12px var(--glow),0 0 30px var(--glow);transform-style:preserve-3d;display:block;}
-      .sf-budget-3d .pipe.thin{height:4px}.sf-budget-3d .flow-dot{position:absolute;width:12px;height:12px;border-radius:999px;background:var(--dot);box-shadow:0 0 18px var(--dot);animation:sf-flow 2.6s linear infinite;}
-      .sf-budget-3d .air-wave{position:absolute;border:1px solid rgba(103,232,249,.34);border-radius:999px;background:rgba(103,232,249,.08);box-shadow:0 0 22px rgba(103,232,249,.24);display:block;}
-      .sf-budget-3d .center-glow{position:absolute;left:50%;top:50%;width:min(560px,78vw);height:260px;transform:translate(-50%,-50%);border-radius:999px;background:radial-gradient(circle,rgba(250,204,21,.16),transparent 65%);filter:blur(18px)}
-      @keyframes sf-budget-spin{from{transform:rotateX(56deg) rotateZ(0deg) scale(var(--sf-zoom,1))}to{transform:rotateX(56deg) rotateZ(360deg) scale(var(--sf-zoom,1))}}
-      @keyframes sf-flow{0%{transform:translate3d(0,0,122px) scale(.65);opacity:.2}20%{opacity:1}100%{transform:translate3d(var(--to-x),var(--to-y),122px) scale(1);opacity:.15}}
-      @media(max-width:820px){.sf-budget-3d .scene-frame{transform:scale(.86);transform-origin:center}.sf-budget-3d .scene-stage{min-height:330px}.sf-budget-3d .label3d{font-size:8px;padding:5px 7px}}
-      @media(max-width:560px){.sf-budget-3d .scene-frame{transform:scale(.72)}.sf-budget-3d .scene-stage{min-height:300px}.sf-budget-3d .scene-root{top:55%}}
+      .sf-air-viewer *{box-sizing:border-box}.sf-air-viewer .room-card{position:relative;overflow:hidden;border-radius:1.6rem;border:1px solid rgba(255,255,255,.1);background:linear-gradient(180deg,rgba(255,255,255,.045),rgba(0,0,0,.62));touch-action:none}.sf-air-viewer .room-wrap{position:relative;margin:auto;width:min(100%,920px);height:clamp(420px,64vw,620px)}.sf-air-viewer svg{display:block;width:100%;height:100%;overflow:visible}.sf-air-viewer .air-dot{animation:sf-air-move 2.2s ease-in-out infinite}.sf-air-viewer .air-dot:nth-child(2){animation-delay:.25s}.sf-air-viewer .air-dot:nth-child(3){animation-delay:.5s}.sf-air-viewer .air-dot:nth-child(4){animation-delay:.75s}@keyframes sf-air-move{0%{transform:translateX(0);opacity:.2}35%{opacity:1}100%{transform:translateX(-135px);opacity:.1}}.sf-air-viewer .fan{transform-origin:750px 258px;animation:sf-fan .9s linear infinite}@keyframes sf-fan{to{transform:rotate(360deg)}}@media(max-width:640px){.sf-air-viewer .room-wrap{height:470px}.sf-air-viewer .viewer-title{font-size:1.65rem}.sf-air-viewer .mini-label{font-size:8px}}
     `}</style>
-    <div className="relative z-10 flex flex-col gap-4 p-3 sm:p-5">
-      <div className="grid gap-3 xl:grid-cols-[1fr_320px] xl:items-start">
-        <div className="min-w-0 text-center xl:text-left">
-          <p className="text-[10px] font-black uppercase tracking-[0.32em] text-amber-300">Visor 3D interactivo</p>
-          <h2 className="mt-2 text-2xl font-black tracking-tight sm:text-4xl">{title || (kind === 'aire' ? 'Cuarto + condensador 3D' : kind === 'radier' ? 'Radier volumétrico 3D' : 'Escena técnica 3D')}</h2>
-          <p className="mx-auto mt-1 max-w-2xl text-sm leading-6 text-zinc-400 xl:mx-0">{subtitle || 'Arrastra para girar, usa zoom, activa capas y cotas.'}</p>
-        </div>
-        <div className="grid grid-cols-3 gap-2">{stats.map(([label, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[0.06] p-3 text-center"><p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{label}</p><b className="mt-1 block text-xs text-amber-200 sm:text-sm">{value}</b></div>)}</div>
+
+    <div className="relative z-10 grid gap-4 p-3 sm:p-5">
+      <div className="text-center">
+        <p className="text-[10px] font-black uppercase tracking-[0.32em] text-amber-300">Visor 3D interactivo</p>
+        <h2 className="viewer-title mt-2 text-3xl font-black tracking-tight sm:text-5xl">{title || (kind === 'aire' ? 'Habitación climatizada 360' : kind === 'radier' ? 'Radier volumétrico 3D' : 'Escena técnica 3D')}</h2>
+        <p className="mx-auto mt-2 max-w-2xl text-sm leading-6 text-zinc-400">{subtitle || 'Vista clara y responsive para que el cliente entienda el espacio, el equipo, la instalación y el consumo.'}</p>
       </div>
 
-      <div className="scene-stage" onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); start(e.clientX, e.clientY); }} onPointerMove={(e) => move(e.clientX, e.clientY)} onPointerUp={end} onPointerCancel={end}>
-        <div className="center-glow" />
-        <div className="pointer-events-none absolute left-4 top-4 z-20 rounded-full border border-amber-300/30 bg-black/60 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-amber-200">Tocar + arrastrar</div>
-        <div className="pointer-events-none absolute bottom-4 left-4 right-4 z-20 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-amber-300" style={{ width: `${((yaw % 360 + 360) % 360) / 3.6}%` }} /></div>
-        <div className="scene-frame relative h-[360px]">
-          <div className={`scene-root ${spin ? 'spin' : ''}`} style={{ transform, '--sf-zoom': String(zoom) } as CSSProperties}>
-            {kind === 'aire' ? <AirScene data={data} cutaway={cutaway} labels={labels} /> : kind === 'radier' ? <RadierScene data={data} explode={explode} labels={labels} /> : <DefaultScene labels={labels} />}
+      <div className="grid grid-cols-3 gap-2">{stats.map(([label, value]) => <div key={label} className="rounded-2xl border border-white/10 bg-white/[.06] p-3 text-center"><p className="text-[9px] font-black uppercase tracking-widest text-zinc-500">{label}</p><b className="mt-1 block text-sm text-amber-200">{value}</b></div>)}</div>
+
+      {kind === 'aire' && <div className="grid gap-3 lg:grid-cols-[1fr_260px]">
+        <div className="room-card" onPointerDown={(e) => { e.currentTarget.setPointerCapture(e.pointerId); start(e.clientX); }} onPointerMove={(e) => move(e.clientX)} onPointerUp={end} onPointerCancel={end}>
+          <div className="pointer-events-none absolute left-4 top-4 z-20 rounded-full border border-amber-300/30 bg-black/70 px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-amber-200">Arrastra para girar</div>
+          <div className="room-wrap" style={{ transform: `scale(${zoom}) rotateY(${yaw}deg)`, transformOrigin: 'center center', transition: drag.current ? 'none' : 'transform 180ms ease' }}>
+            <AirRoomSvg data={data} labels={labels} />
           </div>
         </div>
-      </div>
 
-      <div className="flex flex-wrap items-center justify-center gap-2">
-        <ToolButton onClick={() => { setSpin(false); setYaw(0); setPitch(52); }}>Frontal</ToolButton>
-        <ToolButton onClick={() => { setSpin(false); setYaw(90); setPitch(54); }}>Lateral</ToolButton>
-        <ToolButton onClick={() => { setSpin(false); setYaw(35); setPitch(74); }}>Superior</ToolButton>
-        <ToolButton onClick={() => setZoom((z) => clamp(z + 0.12, 0.65, 1.55))}>Zoom +</ToolButton>
-        <ToolButton onClick={() => setZoom((z) => clamp(z - 0.12, 0.65, 1.55))}>Zoom -</ToolButton>
-        <ToolButton onClick={() => setLabels((v) => !v)}>Cotas</ToolButton>
-        {kind === 'radier' && <ToolButton onClick={() => setExplode((v) => !v)}>Capas</ToolButton>}
-        {kind === 'aire' && <ToolButton onClick={() => setCutaway((v) => !v)}>Corte muro</ToolButton>}
-        <button type="button" onClick={() => setSpin((v) => !v)} className="rounded-full border border-amber-300/30 bg-amber-300/10 px-4 py-2 text-xs font-black text-amber-100">{spin ? 'Pausar giro' : 'Giro 3D'}</button>
-        <button type="button" onClick={() => { setSpin(false); setYaw(36); setPitch(56); setZoom(1); }} className="rounded-full bg-amber-400 px-4 py-2 text-xs font-black text-black">Reset</button>
+        <div className="grid content-start gap-3 rounded-[1.6rem] border border-white/10 bg-white/[.045] p-4">
+          <p className="text-[10px] font-black uppercase tracking-[.28em] text-amber-300">Consumo estimado</p>
+          <EnergyControl label="Precio luz kWh" value={tarifa} min={80} max={450} step={10} onChange={setTarifa} suffix="$/kWh" />
+          <EnergyControl label="Modo normal" value={horasNormal} min={1} max={12} step={1} onChange={setHorasNormal} suffix="h/día" />
+          <EnergyControl label="Modo intenso" value={horasIntenso} min={4} max={18} step={1} onChange={setHorasIntenso} suffix="h/día" />
+          <div className="grid grid-cols-2 gap-2">
+            <EnergyCard label="Normal" kwh={kwhNormal} cost={costoNormal} />
+            <EnergyCard label="Intenso" kwh={kwhIntenso} cost={costoIntenso} />
+          </div>
+          <p className="text-xs leading-5 text-zinc-400">Estimación referencial inverter. El gasto real depende de aislación, temperatura exterior, setpoint y uso.</p>
+        </div>
+      </div>}
+
+      {kind !== 'aire' && <div className="room-card"><div className="room-wrap"><RadierSvg data={data} labels={labels} /></div></div>}
+
+      <div className="flex flex-wrap justify-center gap-2">
+        <Tool onClick={() => { setYaw(0); setSpin(false); }}>Frontal</Tool>
+        <Tool onClick={() => { setYaw(26); setSpin(false); }}>Esquina</Tool>
+        <Tool onClick={() => { setYaw(-28); setSpin(false); }}>Lateral</Tool>
+        <Tool onClick={() => setZoom((z) => clamp(z + .08, .82, 1.25))}>Zoom +</Tool>
+        <Tool onClick={() => setZoom((z) => clamp(z - .08, .82, 1.25))}>Zoom -</Tool>
+        <Tool onClick={() => setLabels((v) => !v)}>Cotas</Tool>
+        <button type="button" onClick={() => { setSpin((v) => !v); setYaw(spin ? 0 : 28); }} className="rounded-full bg-amber-400 px-4 py-2 text-xs font-black text-black">{spin ? 'Pausar' : 'Giro suave'}</button>
       </div>
     </div>
   </section>;
 }
 
-function ToolButton({ children, onClick }: { children: React.ReactNode; onClick: () => void }) {
-  return <button type="button" onClick={onClick} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black text-white hover:bg-white/15">{children}</button>;
+function AirRoomSvg({ data, labels }: { data?: Record<string, unknown>; labels: boolean }) {
+  const area = readNumber(data, 'area', 16);
+  const btu = readNumber(data, 'btu', 12000);
+  const equipo = readNumber(data, 'seleccionado', 12000);
+  return <svg viewBox="0 0 920 620" role="img" aria-label="Habitación con aire acondicionado, paredes, puerta, ventana, cama, lámpara y condensador exterior">
+    <defs>
+      <linearGradient id="floor" x1="0" x2="1"><stop offset="0" stopColor="#7c5639"/><stop offset="1" stopColor="#2b1a10"/></linearGradient>
+      <linearGradient id="wall" x1="0" x2="1"><stop offset="0" stopColor="#f1dcc0"/><stop offset="1" stopColor="#b98c59"/></linearGradient>
+      <linearGradient id="rightWall" x1="0" x2="1"><stop offset="0" stopColor="#6f4b2e"/><stop offset="1" stopColor="#2a160d"/></linearGradient>
+      <filter id="glow"><feGaussianBlur stdDeviation="7" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    </defs>
+    <rect width="920" height="620" rx="28" fill="#070b12" />
+    <polygon points="150,118 665,78 807,238 265,280" fill="url(#wall)" stroke="rgba(255,255,255,.38)" strokeWidth="3"/>
+    <polygon points="265,280 807,238 777,510 185,560" fill="url(#floor)" stroke="rgba(255,255,255,.28)" strokeWidth="3"/>
+    <polygon points="665,78 807,238 777,510 650,365" fill="url(#rightWall)" stroke="rgba(255,255,255,.18)" strokeWidth="3"/>
+    <polygon points="150,118 265,280 185,560 80,385" fill="#4b321f" opacity=".95" stroke="rgba(255,255,255,.16)" strokeWidth="3"/>
+
+    <g id="window"><polygon points="260,142 390,130 390,222 260,234" fill="#103047" stroke="#e0f2fe" strokeWidth="8"/><line x1="325" y1="136" x2="325" y2="228" stroke="#e0f2fe" strokeWidth="5"/><line x1="260" y1="186" x2="390" y2="174" stroke="#e0f2fe" strokeWidth="5"/></g>
+    <g id="door"><polygon points="105,245 183,264 166,475 86,430" fill="#3b2112" stroke="#facc15" strokeOpacity=".35" strokeWidth="4"/><circle cx="154" cy="363" r="7" fill="#facc15"/></g>
+
+    <g id="split"><rect x="500" y="135" width="160" height="48" rx="16" fill="#f8fafc" stroke="#bae6fd" strokeWidth="4"/><rect x="525" y="171" width="108" height="7" rx="4" fill="#67e8f9" filter="url(#glow)"/><text x="580" y="126" textAnchor="middle" fill="#fde68a" fontSize="13" fontWeight="800">SPLIT {whole.format(equipo)} BTU</text></g>
+
+    <g id="air-flow" opacity=".9">
+      <path d="M512 190 C450 230 395 238 335 265" fill="none" stroke="#67e8f9" strokeWidth="3" strokeDasharray="10 10" filter="url(#glow)"/>
+      <path d="M548 192 C480 260 420 285 350 340" fill="none" stroke="#67e8f9" strokeWidth="3" strokeDasharray="10 10" filter="url(#glow)"/>
+      <path d="M592 192 C510 300 450 355 355 430" fill="none" stroke="#67e8f9" strokeWidth="3" strokeDasharray="10 10" filter="url(#glow)"/>
+      <circle className="air-dot" cx="500" cy="210" r="7" fill="#67e8f9"/><circle className="air-dot" cx="560" cy="235" r="6" fill="#67e8f9"/><circle className="air-dot" cx="610" cy="285" r="5" fill="#67e8f9"/><circle className="air-dot" cx="645" cy="350" r="4" fill="#67e8f9"/>
+    </g>
+
+    <g id="bed"><polygon points="312,356 520,336 595,410 372,445" fill="#412819" stroke="rgba(255,255,255,.2)" strokeWidth="3"/><polygon points="335,330 508,314 580,366 390,392" fill="#f6e8d4" stroke="#fff7ed" strokeWidth="3"/><polygon points="338,304 430,298 465,328 368,338" fill="#fef3c7"/></g>
+    <g id="lamp"><line x1="470" y1="80" x2="470" y2="170" stroke="#fef3c7" strokeWidth="4"/><ellipse cx="470" cy="188" rx="36" ry="21" fill="#facc15" filter="url(#glow)"/><circle cx="470" cy="190" r="11" fill="#fff7cc"/></g>
+
+    <g id="pipe"><path d="M660 158 C730 162 756 184 788 228" fill="none" stroke="#facc15" strokeWidth="8" strokeLinecap="round"/><path d="M660 172 C720 182 746 205 775 252" fill="none" stroke="#67e8f9" strokeWidth="5" strokeLinecap="round"/></g>
+    <g id="condenser"><rect x="718" y="230" width="112" height="86" rx="12" fill="#e5e7eb" stroke="#94a3b8" strokeWidth="4"/><circle cx="774" cy="273" r="28" fill="#0f172a"/><g className="fan"><path d="M774 250 L785 273 L774 296 L763 273 Z" fill="#67e8f9" opacity=".85"/><path d="M751 273 L774 262 L797 273 L774 284 Z" fill="#67e8f9" opacity=".65"/></g><text x="774" y="335" textAnchor="middle" fill="#fde68a" fontSize="12" fontWeight="900">CONDENSADOR</text></g>
+
+    {labels && <g className="mini-label" fontSize="12" fontWeight="900" fill="#fde68a"><LabelSvg x={178} y={105}>Pared principal</LabelSvg><LabelSvg x={304} y={258}>{num.format(area)} m²</LabelSvg><LabelSvg x={258} y={128}>Ventana</LabelSvg><LabelSvg x={83} y={238}>Puerta</LabelSvg><LabelSvg x={426} y={73}>Lámpara central</LabelSvg><LabelSvg x={500} y={112}>{whole.format(btu)} BTU calculado</LabelSvg><LabelSvg x={680} y={145}>Tubería</LabelSvg><LabelSvg x={715} y={222}>Unidad exterior</LabelSvg></g>}
+  </svg>;
 }
 
-function RadierScene({ data, explode, labels }: { data?: Record<string, unknown>; explode: boolean; labels: boolean }) {
-  const area = readNumber(data, 'area', 24); const hormigon = readNumber(data, 'hormigon', 2.4); const per = readNumber(data, 'perimetro', 20); const width = clamp(Math.sqrt(area) * 58, 260, 500); const depth = clamp((area / Math.max(1, Math.sqrt(area))) * 44, 150, 310); const z1 = explode ? -70 : -34; const z2 = explode ? 0 : -10; const z3 = explode ? 80 : 24;
-  return <>
-    <div className="box3d" style={boxStyle(width + 44, depth + 44, 24, 'linear-gradient(135deg,#7c644d,#302317)', '#3a2a1c', z1)}><div className="top" /></div>
-    <div className="box3d" style={boxStyle(width + 22, depth + 22, 20, 'linear-gradient(135deg,#a48d70,#5d4a39)', '#4b3626', z2)}><div className="top" /></div>
-    <div className="box3d" style={boxStyle(width, depth, 34, 'linear-gradient(135deg,#fff2d1,#bba98f 56%,#806a55)', '#7a5035', z3)}><div className="top"><div className="absolute inset-x-8 top-1/3 h-[2px] bg-black/20" /><div className="absolute inset-x-10 bottom-1/3 h-[2px] bg-black/20" /><div className="absolute left-1/3 top-8 bottom-8 w-[2px] bg-black/15" /><div className="absolute right-1/3 top-8 bottom-8 w-[2px] bg-black/15" /></div></div>
-    {labels && <><div className="label3d" style={{ left: -width / 2, top: -depth / 2 - 48 }}>{num.format(area)} m²</div><div className="label3d" style={{ left: width / 2 - 118, top: depth / 2 + 22 }}>{num.format(hormigon)} m³</div><div className="label3d" style={{ left: -80, top: depth / 2 + 58 }}>{num.format(per)} ml</div></>}
-  </>;
+function LabelSvg({ x, y, children }: { x: number; y: number; children: ReactNode }) { return <g><rect x={x - 8} y={y - 17} width={String(children).length * 8 + 18} height="24" rx="12" fill="rgba(0,0,0,.68)" stroke="rgba(250,204,21,.35)"/><text x={x} y={y} fill="#fde68a">{children}</text></g>; }
+
+function RadierSvg({ data, labels }: { data?: Record<string, unknown>; labels: boolean }) {
+  const area = readNumber(data, 'area', 24);
+  return <svg viewBox="0 0 900 520"><rect width="900" height="520" rx="28" fill="#090909"/><polygon points="180,150 680,120 760,330 250,390" fill="#cbb89f" stroke="#facc15" strokeWidth="4"/><polygon points="250,390 760,330 720,395 230,455" fill="#7a5035"/><text x="450" y="265" textAnchor="middle" fill="#111827" fontSize="44" fontWeight="900">{num.format(area)} m²</text>{labels && <text x="450" y="90" textAnchor="middle" fill="#fde68a" fontSize="22" fontWeight="900">Radier volumétrico</text>}</svg>;
 }
 
-function AirScene({ data, cutaway, labels }: { data?: Record<string, unknown>; cutaway: boolean; labels: boolean }) {
-  const area = readNumber(data, 'area', 16); const btu = readNumber(data, 'btu', 12000); const equipo = readNumber(data, 'seleccionado', 12000); const w = clamp(Math.sqrt(area) * 72, 280, 450); const d = clamp((area / Math.max(1, Math.sqrt(area))) * 55, 170, 340); const frio = readColor(data, 'colorLineaFrio', '#66e7ff'); const calor = readColor(data, 'colorLineaCalor', '#fb923c'); const retorno = readColor(data, 'colorRetorno', '#22c55e');
-  return <>
-    <div className="box3d" style={boxStyle(w, d, 12, 'linear-gradient(135deg,#262221,#0c0c0d)', '#22150d', -18)}><div className="top" /></div>
-    {!cutaway && <div className="box3d" style={{ width: w, height: 174, transform: `translate3d(${-w / 2}px, ${-d / 2}px, 0px) rotateX(90deg) translateZ(88px)`, '--h': '8px', '--top': 'linear-gradient(135deg,#111827,#0b1220)', '--side': '#0f172a' } as CSSProperties}><div className="top opacity-80" /></div>}
-    <div className="box3d" style={{ width: 154, height: 44, transform: `translate3d(${w / 2 - 214}px, ${-d / 2 - 10}px, 130px)`, '--h': '22px', '--top': 'linear-gradient(135deg,#eefcff,#acefff)', '--side': '#64748b' } as CSSProperties}><div className="top rounded-xl"><div className="absolute left-5 right-5 bottom-2 h-1 rounded-full" style={{ background: frio }} /></div></div>
-    <div className="box3d" style={{ width: 96, height: 86, transform: `translate3d(${w / 2 + 64}px, ${-d / 2 + 22}px, 54px)`, '--h': '42px', '--top': 'linear-gradient(135deg,#1f2937,#0f172a)', '--side': '#0b1220' } as CSSProperties}><div className="top rounded-2xl"><div className="absolute left-1/2 top-1/2 h-12 w-12 -translate-x-1/2 -translate-y-1/2 rounded-full border-[6px] border-cyan-200/80" /></div></div>
-    <Pipe color={frio} width={210} x={w / 2 - 98} y={-d / 2 + 6} z={112} label="ida fría" />
-    <Pipe color={calor} width={196} x={w / 2 - 92} y={-d / 2 + 26} z={104} label="gas caliente" delay=".65s" />
-    <Pipe color={retorno} width={180} x={w / 2 - 86} y={-d / 2 + 46} z={96} label="retorno" delay="1.15s" />
-    {[0, 1, 2].map((i) => <div key={i} className="air-wave" style={{ width: 110 + i * 36, height: 50 + i * 20, left: w / 2 - 205 - i * 18, top: -d / 2 + 58 + i * 26, transform: `translateZ(${112 - i * 12}px)` }} />)}
-    {labels && <><div className="label3d" style={{ left: -w / 2, top: -d / 2 - 42 }}>{num.format(area)} m² cuarto</div><div className="label3d" style={{ left: w / 2 - 230, top: -d / 2 - 52 }}>{whole.format(btu)} BTU</div><div className="label3d" style={{ left: w / 2 + 42, top: -d / 2 + 126 }}>{whole.format(equipo)} BTU</div></>}
-  </>;
+function EnergyControl({ label, value, min, max, step, suffix, onChange }: { label: string; value: number; min: number; max: number; step: number; suffix: string; onChange: (v: number) => void }) {
+  return <label className="grid gap-2 rounded-2xl border border-white/10 bg-black/35 p-3"><span className="flex justify-between text-[10px] font-black uppercase tracking-[.18em] text-zinc-500"><span>{label}</span><b className="text-amber-200">{value} {suffix}</b></span><input type="range" min={min} max={max} step={step} value={value} onChange={(e) => onChange(Number(e.target.value))} /></label>;
 }
-
-function Pipe({ color, width, x, y, z, label, delay = '0s' }: { color: string; width: number; x: number; y: number; z: number; label: string; delay?: string }) {
-  return <div className="pipe" style={{ width, left: x, top: y, transform: `translateZ(${z}px)`, '--pipe': `linear-gradient(90deg, ${color}, rgba(255,255,255,.86), ${color})`, '--glow': color } as CSSProperties} title={label}><span className="flow-dot" style={{ '--dot': color, '--to-x': `${width - 16}px`, '--to-y': '0px', animationDelay: delay } as CSSProperties} /></div>;
-}
-
-function DefaultScene({ labels }: { labels: boolean }) {
-  return <>{<div className="box3d" style={boxStyle(420, 220, 42, 'linear-gradient(135deg,#facc15,#7c2d12)', '#431407', 10)}><div className="top" /></div>}{labels && <div className="label3d" style={{ left: -150, top: -150 }}>Escena técnica 3D</div>}</>;
-}
+function EnergyCard({ label, kwh, cost }: { label: string; kwh: number; cost: number }) { return <div className="rounded-2xl border border-amber-300/20 bg-amber-300/10 p-3"><p className="text-[10px] font-black uppercase tracking-widest text-amber-200">{label}</p><b className="mt-1 block text-lg text-white">{money.format(cost)}</b><span className="text-xs text-zinc-400">{num.format(kwh)} kWh/mes</span></div>; }
+function Tool({ children, onClick }: { children: ReactNode; onClick: () => void }) { return <button type="button" onClick={onClick} className="rounded-full border border-white/10 bg-white/10 px-4 py-2 text-xs font-black text-white hover:bg-white/15">{children}</button>; }

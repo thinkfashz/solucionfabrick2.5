@@ -5,7 +5,7 @@
 import { useMemo, useState } from 'react';
 import type { MouseEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Facebook, Instagram, PackageCheck, Search, ShieldCheck, ShoppingBag, Truck } from 'lucide-react';
+import { ArrowRight, Facebook, Instagram, PackageCheck, Search, ShieldCheck, Truck } from 'lucide-react';
 import { navigateWithTransition } from '@/lib/routeTransition';
 import { FALLBACK_CATALOG_PRODUCTS, useCatalogProducts } from '@/hooks/useCatalogProducts';
 import { useTenantBranding } from '@/hooks/useTenantBranding';
@@ -13,7 +13,7 @@ import { useTheme } from '@/context/ThemeContext';
 import { useCartContext } from '@/context/CartContext';
 import UiverseProductCard from '@/components/store/UiverseProductCard';
 import UiverseSearchModal from '@/components/UiverseSearchModal';
-import { StoreFabrickLogo, StoreFloatingAgent, StorefrontHeader } from '@/components/store/StorefrontChrome';
+import { StoreFabrickLogo, StorefrontHeader } from '@/components/store/StorefrontChrome';
 
 type Product = {
   id: string;
@@ -102,7 +102,7 @@ export default function TiendaClientV2() {
   const { theme } = useTheme();
   const isDark = theme === 'dark' || theme === 'gold';
   const { products: catalogProducts, connected, fetchComplete } = useCatalogProducts();
-  const { addToCart, openCart } = useCartContext();
+  const { addToCart } = useCartContext();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
 
@@ -159,7 +159,6 @@ export default function TiendaClientV2() {
           <div className="mt-8 flex flex-wrap gap-3">
             <button onClick={() => navigateWithTransition('/tienda/catalogo', router)} className="inline-flex min-h-[56px] items-center gap-2 rounded-full bg-yellow-300 px-7 text-sm font-black text-black transition hover:bg-yellow-200">Explorar catálogo <ArrowRight size={16} /></button>
             <button onClick={() => setSearchOpen(true)} className="inline-flex min-h-[56px] items-center gap-2 rounded-full border border-white/15 bg-white/[0.12] px-7 text-sm font-black text-white backdrop-blur-xl transition hover:bg-white hover:text-black"><Search size={16} /> Buscar</button>
-            <button onClick={openCart} className="inline-flex min-h-[56px] items-center gap-2 rounded-full border border-white/15 bg-white/[0.12] px-7 text-sm font-black text-white backdrop-blur-xl transition hover:bg-white hover:text-black"><ShoppingBag size={16} /> Bolso</button>
           </div>
           <div className="mt-8 flex flex-wrap gap-2 text-xs font-bold text-white/70">
             <span className="rounded-full border border-white/15 bg-black/35 px-3 py-2 backdrop-blur-xl">{fetchComplete ? 'Base sincronizada' : 'Sincronizando productos'}</span>
@@ -203,7 +202,6 @@ export default function TiendaClientV2() {
       </div>
     </footer>
 
-    <StoreFloatingAgent />
     <UiverseSearchModal open={searchOpen} value={searchQuery} onChange={setSearchQuery} onClose={() => setSearchOpen(false)} onFilterClick={() => { setSearchOpen(false); navigateWithTransition('/tienda/catalogo', router); }} resultCount={searchQuery.trim() ? filteredProducts.length : undefined} />
   </div>;
 }

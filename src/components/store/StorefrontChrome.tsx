@@ -54,7 +54,7 @@ export function StorefrontHeader({ onSearch }: { onSearch: () => void }) {
   }
 
   return <>
-    <nav className={`fixed left-0 top-0 z-[220] w-full border-b backdrop-blur-2xl ${isDark ? 'border-white/10 bg-black/88' : 'border-neutral-200 bg-white/92'}`}>
+    <nav className={`fixed left-0 top-0 z-[180] w-full border-b backdrop-blur-2xl ${isDark ? 'border-white/10 bg-black/88' : 'border-neutral-200 bg-white/92'}`}>
       <div className="mx-auto flex h-[68px] max-w-[1320px] items-center justify-between gap-3 px-4 md:px-8">
         <button onClick={() => go('/tienda')} className="min-w-0 rounded-full" aria-label="Ir a tienda"><StoreFabrickLogo tone={isDark ? 'dark' : 'light'} branding={branding} compact /></button>
         <div className="hidden items-center gap-7 md:flex">
@@ -176,7 +176,7 @@ export function StoreFloatingAgent() {
       try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
       if (!wasMoved) openCart();
     }}
-    className="fixed z-[260] grid h-[72px] w-[72px] touch-none place-items-center rounded-full border border-yellow-200/55 bg-yellow-300 p-2 text-black shadow-[0_18px_55px_rgba(250,204,21,.38),0_0_0_8px_rgba(250,204,21,.12)] transition active:scale-95"
+    className="fixed z-[190] grid h-[72px] w-[72px] touch-none place-items-center rounded-full border border-yellow-200/55 bg-yellow-300 p-2 text-black shadow-[0_18px_55px_rgba(250,204,21,.38),0_0_0_8px_rgba(250,204,21,.12)] transition active:scale-95"
     style={{ left: pos.x, top: pos.y }}
     aria-label="Agente Fabrick movible"
   >

@@ -10,7 +10,7 @@ import { FALLBACK_CATALOG_PRODUCTS, useCatalogProducts, type CatalogProduct } fr
 import { useCartContext } from '@/context/CartContext';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
 import { navigateWithTransition } from '@/lib/routeTransition';
-import { StoreFloatingAgent, StorefrontHeader } from '@/components/store/StorefrontChrome';
+import { StorefrontHeader } from '@/components/store/StorefrontChrome';
 
 function formatCLP(value: number) {
   return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Math.round(value || 0));
@@ -71,7 +71,6 @@ function DetailSkeleton() {
         </div>
       </div>
     </main>
-    <StoreFloatingAgent />
   </div>;
 }
 
@@ -107,7 +106,6 @@ export default function ProductDetailClientV2() {
         <p className="mt-4 text-sm leading-7 text-zinc-400">Puede que el catálogo aún esté sincronizando o que el producto haya sido desactivado. Vuelve al catálogo para ver los productos activos.</p>
         <Link href="/tienda" className="mt-7 inline-flex items-center rounded-full bg-yellow-300 px-6 py-4 text-sm font-black text-black"><ArrowLeft className="mr-2 h-4 w-4" /> Volver al catálogo</Link>
       </main>
-      <StoreFloatingAgent />
     </div>;
   }
 
@@ -199,6 +197,5 @@ export default function ProductDetailClientV2() {
         </div>
       </section>}
     </main>
-    <StoreFloatingAgent />
   </div>;
 }

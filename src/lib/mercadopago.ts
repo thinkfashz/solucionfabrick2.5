@@ -188,7 +188,7 @@ export async function createMercadoPagoPreference(params: { orderId: string; pay
   const { orderId, payload, summary } = params;
   const trackingToken = createOrderTrackingToken(orderId);
   const trackingUrl = `${baseUrl}/pedido/${trackingToken}`;
-  const notificationUrl = `${baseUrl}/api/payments/webhook?source=mercadopago`;
+  const notificationUrl = `${baseUrl}/api/webhooks/mercadopago`;
   const body = {
     items: getPaymentItems(payload.items, summary),
     payer: { name: payload.cliente.nombre, email: payload.cliente.email, phone: payload.cliente.telefono ? { number: payload.cliente.telefono } : undefined },
@@ -220,7 +220,7 @@ export async function verifyMercadoPagoSignature(args: { signatureHeader: string
   const parts = parseSignatureParts(args.signatureHeader);
   if (!parts?.ts || !parts.v1 || !args.dataId || !args.requestIdHeader) return false;
   const manifest = `id:${args.dataId.toLowerCase()};request-id:${args.requestIdHeader};ts:${parts.ts};`;
-  const expected = createHmac('sha256', secret).update(manifest).digest('hex');
+  const expected = createHmac('sha256').update(manifest).digest('hex');
   try { return timingSafeEqual(Buffer.from(expected), Buffer.from(parts.v1)); } catch { return false; }
 }
 

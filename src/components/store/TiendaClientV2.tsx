@@ -13,7 +13,8 @@ import { useTheme } from '@/context/ThemeContext';
 import { useCartContext } from '@/context/CartContext';
 import UiverseProductCard from '@/components/store/UiverseProductCard';
 import UiverseSearchModal from '@/components/UiverseSearchModal';
-import { StoreFabrickLogo, StorefrontHeader } from '@/components/store/StorefrontChrome';
+import { StoreFabrickLogo } from '@/components/store/StorefrontChrome';
+import StorefrontHeaderV2, { type StoreDrawerFilters } from '@/components/store/StorefrontHeaderV2';
 
 type Product = {
   id: string;
@@ -33,10 +34,12 @@ type Product = {
   discount_percentage?: number;
   rating?: number;
   stock?: number | string;
+  color?: string;
 };
 
 const FALLBACK_PRODUCTS = FALLBACK_CATALOG_PRODUCTS as Product[];
 const HERO_IMAGE = 'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1600&auto=format&fit=crop';
+const EMPTY_FILTERS: StoreDrawerFilters = { query: '', category: 'all', minPrice: '', maxPrice: '', color: '', inStock: false };
 
 function getCategory(product: Product) {
   return product.category || product.category_id || 'Producto';
@@ -82,6 +85,10 @@ function asCartProduct(product: Product) {
   };
 }
 
+function productSearchText(product: Product) {
+  return `${product.name} ${getCategory(product)} ${product.description || ''} ${product.tagline || ''} ${product.color || ''} ${(product.features || []).join(' ')}`.toLowerCase();
+}
+
 function MiniProduct({ product, onClick }: { product: Product; onClick: () => void }) {
   return <button onClick={onClick} className="group flex gap-3 rounded-[1.35rem] border border-white/10 bg-white/[0.045] p-3 text-left transition hover:border-yellow-300/30 hover:bg-yellow-300/[0.07]">
     <img src={getImage(product)} alt={product.name} className="h-20 w-20 shrink-0 rounded-[1rem] object-cover" loading="lazy" />
@@ -105,6 +112,7 @@ export default function TiendaClientV2() {
   const { addToCart } = useCartContext();
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+  const [drawerFilters, setDrawerFilters] = useState<StoreDrawerFilters>(EMPTY_FILTERS);
 
   const brandName = branding.name || 'Soluciones Fabrick';
   const supportLink = branding.whatsappUrl || '/contacto';
@@ -114,15 +122,39 @@ export default function TiendaClientV2() {
     return FALLBACK_PRODUCTS;
   }, [catalogProducts]);
 
-  const filteredProducts = useMemo(() => {
-    const q = searchQuery.trim().toLowerCase();
-    if (!q) return liveProducts;
-    return liveProducts.filter((product) => product.name.toLowerCase().includes(q) || getCategory(product).toLowerCase().includes(q) || (product.tagline || '').toLowerCase().includes(q));
-  }, [liveProducts, searchQuery]);
+  const categories = useMemo(() => Array.from(new Set(liveProducts.map(getCategory))).slice(0, 12), [liveProducts]);
 
-  const categories = useMemo(() => Array.from(new Set(liveProducts.map(getCategory))).slice(0, 6), [liveProducts]);
+  const filteredProducts = useMemo(() => {
+    const q = (searchQuery || drawerFilters.query).trim().toLowerCase();
+    const min = Number(drawerFilters.minPrice || NaN);
+    const max = Number(drawerFilters.maxPrice || NaN);
+    return liveProducts.filter((product) => {
+      const text = productSearchText(product);
+      const price = getFinalPrice(product);
+      const stock = Number(product.stock ?? NaN);
+      const matchesQuery = !q || text.includes(q);
+      const matchesCategory = drawerFilters.category === 'all' || getCategory(product) === drawerFilters.category;
+      const matchesMin = Number.isNaN(min) || price >= min;
+      const matchesMax = Number.isNaN(max) || price <= max;
+      const matchesColor = !drawerFilters.color || text.includes(drawerFilters.color.toLowerCase());
+      const matchesStock = !drawerFilters.inStock || (Number.isFinite(stock) && stock > 0);
+      return matchesQuery && matchesCategory && matchesMin && matchesMax && matchesColor && matchesStock;
+    });
+  }, [liveProducts, searchQuery, drawerFilters]);
+
   const featured = filteredProducts.slice(0, 8);
   const heroSecondary = liveProducts.slice(1, 4);
+  const hasActiveFilters = Boolean(searchQuery || drawerFilters.query || drawerFilters.category !== 'all' || drawerFilters.minPrice || drawerFilters.maxPrice || drawerFilters.color || drawerFilters.inStock);
+
+  function handleDrawerFilters(filters: StoreDrawerFilters) {
+    setDrawerFilters(filters);
+    setSearchQuery(filters.query);
+  }
+
+  function clearAllFilters() {
+    setDrawerFilters(EMPTY_FILTERS);
+    setSearchQuery('');
+  }
 
   function selectProduct(product: Product) {
     navigateWithTransition(`/tienda/${product.id}`, router);
@@ -146,7 +178,7 @@ export default function TiendaClientV2() {
 
   return <div className={`min-h-screen overflow-x-hidden ${isDark ? 'bg-[#060606] text-white' : 'bg-neutral-50 text-neutral-950'}`}>
     <style>{`.store-scroll::-webkit-scrollbar{display:none}.store-scroll{scrollbar-width:none}`}</style>
-    <StorefrontHeader onSearch={() => setSearchOpen(true)} />
+    <StorefrontHeaderV2 onSearch={() => setSearchOpen(true)} onApplyFilters={handleDrawerFilters} categories={categories} />
 
     <header className="relative mx-auto max-w-[1320px] overflow-hidden px-4 py-5 md:px-8 lg:py-8">
       <section className="relative min-h-[590px] overflow-hidden rounded-[2rem] bg-zinc-950 md:min-h-[680px] md:rounded-[3rem]">
@@ -157,7 +189,7 @@ export default function TiendaClientV2() {
           <h1 className="max-w-4xl text-[clamp(46px,7vw,96px)] font-black leading-[.88] tracking-[-.08em] text-white">Soluciones para construir, remodelar y comprar mejor.</h1>
           <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-200 md:text-lg">Explora productos reales, revisa stock, agrega al bolso y coordina compra o instalación desde una tienda rápida y clara.</p>
           <div className="mt-8 flex flex-wrap gap-3">
-            <button onClick={() => navigateWithTransition('/tienda/catalogo', router)} className="inline-flex min-h-[56px] items-center gap-2 rounded-full bg-yellow-300 px-7 text-sm font-black text-black transition hover:bg-yellow-200">Explorar catálogo <ArrowRight size={16} /></button>
+            <button onClick={() => navigateWithTransition('/tienda', router)} className="inline-flex min-h-[56px] items-center gap-2 rounded-full bg-yellow-300 px-7 text-sm font-black text-black transition hover:bg-yellow-200">Explorar catálogo <ArrowRight size={16} /></button>
             <button onClick={() => setSearchOpen(true)} className="inline-flex min-h-[56px] items-center gap-2 rounded-full border border-white/15 bg-white/[0.12] px-7 text-sm font-black text-white backdrop-blur-xl transition hover:bg-white hover:text-black"><Search size={16} /> Buscar</button>
           </div>
           <div className="mt-8 flex flex-wrap gap-2 text-xs font-bold text-white/70">
@@ -178,14 +210,14 @@ export default function TiendaClientV2() {
           <h2 className="mt-2 text-3xl font-black tracking-[-.05em] md:text-5xl">Compra sin fricción.</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">Cards con categoría, precio, barra de stock y botones directos.</p>
         </div>
-        <button onClick={() => navigateWithTransition('/tienda/catalogo', router)} className="w-fit rounded-full border border-white/10 bg-white/[0.045] px-5 py-3 text-sm font-black text-white">Ver todos <ArrowRight className="ml-1 inline h-4 w-4" /></button>
+        {hasActiveFilters && <button onClick={clearAllFilters} className="w-fit rounded-full border border-yellow-300/20 bg-yellow-300/10 px-5 py-3 text-sm font-black text-yellow-100">Limpiar filtros</button>}
       </div>
 
-      {categories.length > 0 && <div className="store-scroll mb-8 flex gap-2 overflow-x-auto pb-1">{categories.map((cat) => <button key={cat} onClick={() => { setSearchQuery(cat); setSearchOpen(true); }} className="shrink-0 rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-black text-white/75 hover:bg-yellow-300 hover:text-black">{cat}</button>)}</div>}
+      {categories.length > 0 && <div className="store-scroll mb-8 flex gap-2 overflow-x-auto pb-1">{categories.map((cat) => <button key={cat} onClick={() => { setDrawerFilters((current) => ({ ...current, category: cat })); setSearchQuery(''); }} className={`shrink-0 rounded-full border px-4 py-2 text-xs font-black ${drawerFilters.category === cat ? 'border-yellow-300 bg-yellow-300 text-black' : 'border-white/10 bg-white/[0.045] text-white/75 hover:bg-yellow-300 hover:text-black'}`}>{cat}</button>)}</div>}
 
-      <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+      {featured.length > 0 ? <div className="grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
         {featured.map((product) => <UiverseProductCard key={product.id} name={product.name} price={product.price} category={getCategory(product)} img={getImage(product)} description={product.description || product.tagline} features={product.features || [product.dimensions || '', getDelivery(product)].filter(Boolean)} discountPct={getDiscount(product)} rating={product.rating} stock={product.stock} stockLabel={getStockBadge(product)} deliveryLabel={getDelivery(product)} isDark={isDark} onSelect={() => selectProduct(product)} onAddToCart={(e) => addProduct(e, product)} onBuyNow={(e) => buyNow(e, product)} />)}
-      </div>
+      </div> : <div className="rounded-[2rem] border border-white/10 bg-white/[0.035] p-8 text-center"><p className="text-2xl font-black">No encontré productos con esos filtros.</p><button onClick={clearAllFilters} className="mt-4 rounded-full bg-yellow-300 px-5 py-3 text-sm font-black text-black">Limpiar búsqueda</button></div>}
     </main>
 
     <section className="mx-auto grid max-w-[1320px] gap-4 px-4 pb-14 md:grid-cols-3 md:px-8">
@@ -202,6 +234,6 @@ export default function TiendaClientV2() {
       </div>
     </footer>
 
-    <UiverseSearchModal open={searchOpen} value={searchQuery} onChange={setSearchQuery} onClose={() => setSearchOpen(false)} onFilterClick={() => { setSearchOpen(false); navigateWithTransition('/tienda/catalogo', router); }} resultCount={searchQuery.trim() ? filteredProducts.length : undefined} />
+    <UiverseSearchModal open={searchOpen} value={searchQuery} onChange={setSearchQuery} onClose={() => setSearchOpen(false)} onFilterClick={() => { setSearchOpen(false); }} resultCount={(searchQuery || drawerFilters.query).trim() ? filteredProducts.length : undefined} />
   </div>;
 }

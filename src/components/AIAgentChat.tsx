@@ -4,11 +4,11 @@
  * AIAgentChat — Botón flotante con un asistente IA (panel chat).
  *
  * Reemplaza al WhatsAppButton en la home pública. Características:
- *  - Botón flotante con animación de halo + onda + avatar de "agente".
+ *  - Botón flotante tipo burbuja con animación de halo + avatar de "agente".
+ *  - Burbuja movible en móvil y desktop: el usuario la arrastra a cualquier lado
+ *    de la pantalla y la posición se guarda en localStorage por origen.
  *  - Panel chat tipo aplicación nativa: en mobile ocupa pantalla completa con
  *    safe-area; en desktop es un recuadro flotante 380×560 con sombra.
- *  - Arrastrable en desktop: el usuario lo posiciona en cualquier esquina/borde.
- *    La posición se persiste en localStorage por origen.
  *  - Sugerencias rápidas (Metalcón, beneficios, permisos, tiempos).
  *  - Indicador "pensando" (3 puntos animados) que se sobrescribe con la
  *    respuesta cuando llega.
@@ -18,10 +18,10 @@
  *  - Botón secundario "WhatsApp" si el usuario prefiere humano.
  */
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState, type FormEvent, type KeyboardEvent as ReactKeyboardEvent, type PointerEvent as ReactPointerEvent } from 'react';
 import { usePathname } from 'next/navigation';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Bot, Send, X, Minimize2, MessageCircle, Sparkles, GripVertical } from 'lucide-react';
+import { Bot, Send, X, Minimize2, MessageCircle, Sparkles, GripVertical, Move } from 'lucide-react';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
 
 type Role = 'user' | 'assistant';
@@ -31,13 +31,15 @@ interface AIAgentChatProps {
   hideOn?: string[];
 }
 
-const STORAGE_POS = 'fabrick.agent.position.v1';
+const STORAGE_ANCHOR = 'fabrick.agent.anchor.v1';
+const STORAGE_LEGACY_ANCHOR = 'fabrick.agent.position.v1';
+const STORAGE_BUBBLE_POS = 'fabrick.agent.bubble.position.v1';
 const STORAGE_HISTORY = 'fabrick.agent.history.v1';
-/** Mensajes a guardar localmente. El cliente conserva un historial más largo
- *  que el que envía al modelo: la API recorta a 12 antes de pasarlo al LLM
- *  para no quemar tokens, pero acá guardamos 24 para que el usuario pueda
- *  releer el contexto al reabrir el panel. */
 const MAX_HISTORY = 24;
+const FAB_SIZE = 76;
+const FAB_MARGIN = 12;
+
+type Point = { x: number; y: number };
 
 const SUGGESTIONS = [
   { label: '¿Qué es Metalcón?', icon: Sparkles, prompt: '¿Qué es Metalcón y por qué lo recomiendan para mi casa?' },
@@ -50,23 +52,73 @@ const SUGGESTIONS = [
 const WHATSAPP_FALLBACK_MSG =
   'Hola Soluciones Fabrick, estaba conversando con el asistente del sitio y me gustaría hablar con una persona. ¿Me pueden ayudar?';
 
-/** Esquinas donde puede vivir el FAB cuando está cerrado o minimizado. */
 type Anchor = 'bottom-right' | 'bottom-left' | 'top-right' | 'top-left';
 
-const ANCHOR_CLASSES: Record<Anchor, string> = {
-  'bottom-right': 'bottom-5 right-5 sm:bottom-7 sm:right-7',
-  'bottom-left':  'bottom-5 left-5 sm:bottom-7 sm:left-7',
-  'top-right':    'top-20 right-5 sm:top-24 sm:right-7',
-  'top-left':     'top-20 left-5 sm:top-24 sm:left-7',
-};
+function clamp(value: number, min: number, max: number) {
+  return Math.min(Math.max(value, min), max);
+}
+
+function isAnchor(value: string | null): value is Anchor {
+  return value === 'bottom-right' || value === 'bottom-left' || value === 'top-right' || value === 'top-left';
+}
+
+function getDefaultBubblePosition(): Point {
+  if (typeof window === 'undefined') return { x: 24, y: 420 };
+  const bottomMargin = window.matchMedia('(max-width: 640px)').matches ? 78 : 28;
+  return {
+    x: Math.max(FAB_MARGIN, window.innerWidth - FAB_SIZE - 20),
+    y: Math.max(FAB_MARGIN, window.innerHeight - FAB_SIZE - bottomMargin),
+  };
+}
+
+function clampBubblePosition(point: Point): Point {
+  if (typeof window === 'undefined') return point;
+  return {
+    x: clamp(point.x, FAB_MARGIN, Math.max(FAB_MARGIN, window.innerWidth - FAB_SIZE - FAB_MARGIN)),
+    y: clamp(point.y, FAB_MARGIN, Math.max(FAB_MARGIN, window.innerHeight - FAB_SIZE - FAB_MARGIN)),
+  };
+}
+
+function anchorFromPoint(point: Point): Anchor {
+  if (typeof window === 'undefined') return 'bottom-right';
+  const left = point.x + FAB_SIZE / 2 < window.innerWidth / 2;
+  const top = point.y + FAB_SIZE / 2 < window.innerHeight / 2;
+  if (top && left) return 'top-left';
+  if (top && !left) return 'top-right';
+  if (!top && left) return 'bottom-left';
+  return 'bottom-right';
+}
+
+function saveAnchor(next: Anchor) {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(STORAGE_ANCHOR, next); } catch { /* ignore */ }
+}
 
 function loadAnchor(): Anchor {
   if (typeof window === 'undefined') return 'bottom-right';
   try {
-    const v = window.localStorage.getItem(STORAGE_POS);
-    if (v === 'bottom-right' || v === 'bottom-left' || v === 'top-right' || v === 'top-left') return v;
+    const direct = window.localStorage.getItem(STORAGE_ANCHOR);
+    if (isAnchor(direct)) return direct;
+    const legacy = window.localStorage.getItem(STORAGE_LEGACY_ANCHOR);
+    if (isAnchor(legacy)) return legacy;
   } catch { /* ignore */ }
   return 'bottom-right';
+}
+
+function loadBubblePosition(): Point {
+  if (typeof window === 'undefined') return { x: 24, y: 420 };
+  try {
+    const raw = window.localStorage.getItem(STORAGE_BUBBLE_POS);
+    if (!raw) return getDefaultBubblePosition();
+    const parsed = JSON.parse(raw) as Partial<Point>;
+    if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number') return getDefaultBubblePosition();
+    return clampBubblePosition({ x: parsed.x, y: parsed.y });
+  } catch { return getDefaultBubblePosition(); }
+}
+
+function saveBubblePosition(point: Point) {
+  if (typeof window === 'undefined') return;
+  try { window.localStorage.setItem(STORAGE_BUBBLE_POS, JSON.stringify(clampBubblePosition(point))); } catch { /* ignore */ }
 }
 
 function loadHistory(): Msg[] {
@@ -101,6 +153,7 @@ export default function AIAgentChat({
   const [mounted, setMounted]   = useState(false);
   const [open, setOpen]         = useState(false);
   const [anchor, setAnchor]     = useState<Anchor>('bottom-right');
+  const [bubblePos, setBubblePos] = useState<Point>({ x: 24, y: 420 });
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput]       = useState('');
   const [loading, setLoading]   = useState(false);
@@ -109,25 +162,39 @@ export default function AIAgentChat({
   const scrollRef  = useRef<HTMLDivElement | null>(null);
   const inputRef   = useRef<HTMLTextAreaElement | null>(null);
   const abortRef   = useRef<AbortController | null>(null);
+  const bubbleDragRef = useRef({ active: false, moved: false, dx: 0, dy: 0 });
 
-  // Mount + restore saved state
   useEffect(() => {
+    const restoredPos = loadBubblePosition();
     setMounted(true);
     setAnchor(loadAnchor());
+    setBubblePos(restoredPos);
     setMessages(loadHistory());
   }, []);
 
-  // Persist history
   useEffect(() => { if (mounted) saveHistory(messages); }, [messages, mounted]);
 
-  // Auto-scroll to bottom on new messages / loading
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
   }, [messages, loading, open]);
 
-  // Body scroll lock when panel is open on mobile
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const onResize = () => setBubblePos((prev) => {
+      const next = clampBubblePosition(prev);
+      saveBubblePosition(next);
+      return next;
+    });
+    window.addEventListener('resize', onResize);
+    window.addEventListener('orientationchange', onResize);
+    return () => {
+      window.removeEventListener('resize', onResize);
+      window.removeEventListener('orientationchange', onResize);
+    };
+  }, []);
+
   useEffect(() => {
     if (typeof document === 'undefined') return;
     if (open && window.matchMedia('(max-width: 640px)').matches) {
@@ -137,7 +204,6 @@ export default function AIAgentChat({
     }
   }, [open]);
 
-  // ESC closes on desktop (keeps the agent button visible)
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
@@ -147,8 +213,47 @@ export default function AIAgentChat({
 
   const pickAnchor = useCallback((next: Anchor) => {
     setAnchor(next);
-    try { window.localStorage.setItem(STORAGE_POS, next); } catch { /* ignore */ }
+    saveAnchor(next);
   }, []);
+
+  const commitBubblePosition = useCallback((point: Point) => {
+    const next = clampBubblePosition(point);
+    const nextAnchor = anchorFromPoint(next);
+    setBubblePos(next);
+    setAnchor(nextAnchor);
+    saveBubblePosition(next);
+    saveAnchor(nextAnchor);
+  }, []);
+
+  const onBubblePointerDown = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+    bubbleDragRef.current = {
+      active: true,
+      moved: false,
+      dx: event.clientX - bubblePos.x,
+      dy: event.clientY - bubblePos.y,
+    };
+    event.currentTarget.setPointerCapture(event.pointerId);
+  }, [bubblePos.x, bubblePos.y]);
+
+  const onBubblePointerMove = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+    if (!bubbleDragRef.current.active) return;
+    const next = clampBubblePosition({
+      x: event.clientX - bubbleDragRef.current.dx,
+      y: event.clientY - bubbleDragRef.current.dy,
+    });
+    if (Math.abs(next.x - bubblePos.x) > 3 || Math.abs(next.y - bubblePos.y) > 3) {
+      bubbleDragRef.current.moved = true;
+    }
+    setBubblePos(next);
+  }, [bubblePos.x, bubblePos.y]);
+
+  const onBubblePointerUp = useCallback((event: ReactPointerEvent<HTMLButtonElement>) => {
+    const wasMoved = bubbleDragRef.current.moved;
+    bubbleDragRef.current.active = false;
+    commitBubblePosition(bubblePos);
+    try { event.currentTarget.releasePointerCapture(event.pointerId); } catch { /* ignore */ }
+    if (!wasMoved) setOpen(true);
+  }, [bubblePos, commitBubblePosition]);
 
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
@@ -210,12 +315,12 @@ export default function AIAgentChat({
     send(prompt);
   }, [loading, send]);
 
-  const onSubmit = useCallback((e: React.FormEvent) => {
+  const onSubmit = useCallback((e: FormEvent) => {
     e.preventDefault();
     send(input);
   }, [send, input]);
 
-  const onKeyDownTextarea = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+  const onKeyDownTextarea = useCallback((e: ReactKeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       send(input);
@@ -229,7 +334,6 @@ export default function AIAgentChat({
     inputRef.current?.focus();
   }, []);
 
-  // --- Visibility guards ---
   if (!mounted) return null;
   if (pathname && hideOn.some((p) => pathname.startsWith(p))) return null;
 
@@ -237,35 +341,39 @@ export default function AIAgentChat({
 
   return (
     <>
-      {/* ── Floating Action Button ─────────────────────────────────── */}
       <AnimatePresence>
         {showFab && (
           <motion.button
             key="fab"
             type="button"
-            initial={{ opacity: 0, scale: 0.8, y: 12 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.8, y: 12 }}
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.32, ease: [0.22, 1, 0.36, 1] }}
-            onClick={() => setOpen(true)}
-            aria-label="Abrir asistente IA de Soluciones Fabrick"
-            title="Pregúntale a Fabri, nuestro asistente"
-            className={`group fixed z-[9500] ${ANCHOR_CLASSES[anchor]} pointer-events-auto flex items-center gap-2 rounded-full bg-gradient-to-br from-yellow-400 via-yellow-500 to-amber-500 pl-3 pr-4 py-2.5 text-black shadow-[0_18px_40px_rgba(0,0,0,0.45)] ring-2 ring-yellow-300/40 transition-all duration-300 hover:shadow-[0_22px_60px_rgba(250,204,21,0.5)] hover:-translate-y-0.5 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80`}
-            style={{ WebkitTapHighlightColor: 'transparent' }}
+            onPointerDown={onBubblePointerDown}
+            onPointerMove={onBubblePointerMove}
+            onPointerUp={onBubblePointerUp}
+            onPointerCancel={onBubblePointerUp}
+            aria-label="Mover o abrir asistente IA de Soluciones Fabrick"
+            title="Arrastra para mover · toca para abrir"
+            className="group fixed z-[9500] grid h-[76px] w-[76px] touch-none place-items-center rounded-full bg-gradient-to-br from-yellow-300 via-yellow-400 to-amber-500 p-2 text-black shadow-[0_18px_48px_rgba(0,0,0,0.5),0_0_0_8px_rgba(250,204,21,0.12)] ring-2 ring-yellow-200/70 transition active:scale-95 active:cursor-grabbing sm:hover:scale-[1.04]"
+            style={{
+              left: bubblePos.x,
+              top: bubblePos.y,
+              WebkitTapHighlightColor: 'transparent',
+            }}
           >
-            {/* Halo pulse animado, respeta reduced-motion */}
             <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full">
               <span className="absolute inset-0 rounded-full bg-yellow-400/40 blur-md motion-safe:animate-[fab-pulse_2.8s_ease-out_infinite]" />
             </span>
-            {/* Avatar agente con anillo activo */}
-            <span className="relative flex h-10 w-10 items-center justify-center rounded-full bg-black/90 ring-2 ring-yellow-200/60">
-              <Bot size={18} className="text-yellow-300" aria-hidden />
-              {/* Punto online */}
-              <span className="absolute -bottom-0.5 -right-0.5 block h-3 w-3 rounded-full border-2 border-yellow-400 bg-emerald-400 motion-safe:animate-pulse" />
+            <span className="relative grid h-full w-full place-items-center rounded-full bg-black/95 ring-2 ring-yellow-100/70">
+              <Bot size={25} className="text-yellow-300" aria-hidden />
+              <span className="absolute -bottom-0.5 -right-0.5 block h-4 w-4 rounded-full border-2 border-black bg-emerald-400 motion-safe:animate-pulse" />
+              <span className="absolute -left-1 -top-1 grid h-6 w-6 place-items-center rounded-full bg-white text-black shadow-lg">
+                <Move size={13} aria-hidden />
+              </span>
             </span>
-            <span className="hidden sm:inline text-[11px] font-black tracking-[0.18em] uppercase">
-              Pregúntale a Fabri
-            </span>
+            <span className="sr-only">Arrastra para mover la burbuja. Toca para abrir el chat.</span>
             <style>{`
               @keyframes fab-pulse {
                 0%   { transform: scale(1);   opacity: 0.55; }
@@ -277,11 +385,9 @@ export default function AIAgentChat({
         )}
       </AnimatePresence>
 
-      {/* ── Chat Panel ─────────────────────────────────────────────── */}
       <AnimatePresence>
         {open && (
           <>
-            {/* Backdrop sólo en mobile */}
             <motion.div
               key="backdrop"
               initial={{ opacity: 0 }}
@@ -310,18 +416,16 @@ export default function AIAgentChat({
               className={`fixed z-[9501] flex flex-col overflow-hidden bg-zinc-950 text-white shadow-[0_30px_80px_rgba(0,0,0,0.7)] ring-1 ring-white/10
                 inset-x-0 bottom-0 top-0 sm:top-auto sm:inset-x-auto rounded-none
                 sm:rounded-3xl sm:w-[380px] sm:h-[560px] ${
-                  // En desktop, posicionamos según el anchor elegido
                   anchor === 'bottom-right' ? 'sm:bottom-7 sm:right-7' :
                   anchor === 'bottom-left'  ? 'sm:bottom-7 sm:left-7'  :
                   anchor === 'top-right'    ? 'sm:top-24 sm:right-7'   :
-                  /* top-left */              'sm:top-24 sm:left-7'
+                  'sm:top-24 sm:left-7'
                 }`}
               style={{
                 paddingTop: 'env(safe-area-inset-top)',
                 paddingBottom: 'env(safe-area-inset-bottom)',
               }}
             >
-              {/* Header */}
               <header className="flex flex-shrink-0 items-center gap-3 border-b border-white/10 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900 px-4 py-3">
                 <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 ring-2 ring-yellow-300/40">
                   <Bot size={18} className="text-black" aria-hidden />
@@ -334,7 +438,6 @@ export default function AIAgentChat({
                   </p>
                 </div>
 
-                {/* Position picker (sólo desktop) */}
                 <div className="hidden sm:flex items-center gap-1" aria-label="Mover panel">
                   <span className="mr-1 text-zinc-500" title="Mover el chat">
                     <GripVertical size={14} aria-hidden />
@@ -374,7 +477,6 @@ export default function AIAgentChat({
                 </button>
               </header>
 
-              {/* Mensajes + sugerencias */}
               <div
                 ref={scrollRef}
                 className="flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:thin]"
@@ -434,7 +536,6 @@ export default function AIAgentChat({
                 )}
               </div>
 
-              {/* Toolbar inferior */}
               <div className="flex-shrink-0 border-t border-white/10 bg-zinc-950/95 backdrop-blur">
                 {messages.length > 0 && (
                   <div className="flex items-center justify-between gap-2 px-4 pt-2 text-[10px] font-semibold uppercase tracking-[0.16em]">
@@ -489,7 +590,6 @@ export default function AIAgentChat({
   );
 }
 
-/** Indicador "pensando" — 3 puntos saltarines + barra deslizante. */
 function ThinkingDots() {
   return (
     <div className="flex items-center gap-2">
@@ -510,5 +610,4 @@ function ThinkingDots() {
   );
 }
 
-// Re-export the prop type so the layout can refer to it without recompiling.
 export type { AIAgentChatProps };

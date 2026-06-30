@@ -54,7 +54,7 @@ export function StorefrontHeader({ onSearch }: { onSearch: () => void }) {
   }
 
   return <>
-    <nav className={`fixed left-0 top-0 z-[180] w-full border-b backdrop-blur-2xl ${isDark ? 'border-white/10 bg-black/88' : 'border-neutral-200 bg-white/92'}`}>
+    <nav className={`fixed left-0 top-0 z-[180] hidden w-full border-b backdrop-blur-2xl md:block ${isDark ? 'border-white/10 bg-black/88' : 'border-neutral-200 bg-white/92'}`}>
       <div className="mx-auto flex h-[68px] max-w-[1320px] items-center justify-between gap-3 px-4 md:px-8">
         <button onClick={() => go('/tienda')} className="min-w-0 rounded-full" aria-label="Ir a tienda"><StoreFabrickLogo tone={isDark ? 'dark' : 'light'} branding={branding} compact /></button>
         <div className="hidden items-center gap-7 md:flex">
@@ -74,9 +74,9 @@ export function StorefrontHeader({ onSearch }: { onSearch: () => void }) {
         </div>
       </div>
     </nav>
-    <div className="h-[68px]" />
+    <div className="hidden h-[68px] md:block" />
 
-    {menuOpen && <div className="fixed inset-0 z-[300] bg-black/76 backdrop-blur-xl">
+    {menuOpen && <div className="fixed inset-0 z-[300] hidden bg-black/76 backdrop-blur-xl md:block">
       <aside className="ml-auto flex h-full w-[88vw] max-w-[430px] flex-col border-l border-white/10 bg-[#070707] p-5 text-white shadow-2xl shadow-black/70">
         <div className="flex items-center justify-between gap-3">
           <StoreFabrickLogo tone="dark" branding={branding} compact />
@@ -126,13 +126,19 @@ function clamp(value: number, min: number, max: number) {
 
 export function StoreFloatingAgent() {
   const { branding } = useTenantBranding();
-  const { openCart, totalItems } = useCartContext();
   const [ready, setReady] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const drag = useRef({ active: false, moved: false, dx: 0, dy: 0 });
   const logoUrl = branding.logoUrl || FABRICK_LOGO_URL;
 
   useEffect(() => {
+    const savedHidden = typeof window !== 'undefined' ? window.localStorage.getItem('sf_store_agent_hidden_v1') : null;
+    if (savedHidden === '1') {
+      setHidden(true);
+      setReady(true);
+      return;
+    }
     const saved = typeof window !== 'undefined' ? window.localStorage.getItem('sf_store_agent_pos_v1') : null;
     if (saved) {
       try {
@@ -151,39 +157,54 @@ export function StoreFloatingAgent() {
     try { window.localStorage.setItem('sf_store_agent_pos_v1', JSON.stringify(next)); } catch {}
   }
 
-  if (!ready) return null;
+  function hideAgent() {
+    setHidden(true);
+    try { window.localStorage.setItem('sf_store_agent_hidden_v1', '1'); } catch {}
+  }
 
-  return <button
-    type="button"
+  if (!ready || hidden) return null;
+
+  return <div
     data-store-floating-agent=""
-    onPointerDown={(event) => {
-      drag.current = { active: true, moved: false, dx: event.clientX - pos.x, dy: event.clientY - pos.y };
-      event.currentTarget.setPointerCapture(event.pointerId);
-    }}
-    onPointerMove={(event) => {
-      if (!drag.current.active) return;
-      const next = {
-        x: clamp(event.clientX - drag.current.dx, 12, window.innerWidth - 78),
-        y: clamp(event.clientY - drag.current.dy, 84, window.innerHeight - 92),
-      };
-      if (Math.abs(next.x - pos.x) > 2 || Math.abs(next.y - pos.y) > 2) drag.current.moved = true;
-      setPos(next);
-    }}
-    onPointerUp={(event) => {
-      const wasMoved = drag.current.moved;
-      drag.current.active = false;
-      save(pos);
-      try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
-      if (!wasMoved) openCart();
-    }}
-    className="fixed z-[190] grid h-[72px] w-[72px] touch-none place-items-center rounded-full border border-yellow-200/55 bg-yellow-300 p-2 text-black shadow-[0_18px_55px_rgba(250,204,21,.38),0_0_0_8px_rgba(250,204,21,.12)] transition active:scale-95"
+    className="fixed z-[190] hidden h-[72px] w-[72px] touch-none md:block"
     style={{ left: pos.x, top: pos.y }}
-    aria-label="Agente Fabrick movible"
   >
-    <span className="grid h-full w-full place-items-center rounded-full bg-black p-2">
-      <img src={logoUrl} alt="Agente Soluciones Fabrick" className="h-full w-full object-contain" draggable={false} />
-    </span>
-    <span className="absolute -right-1 -top-1 grid h-7 min-w-7 place-items-center rounded-full bg-emerald-300 px-1 text-[10px] font-black text-black ring-4 ring-black">{totalItems > 0 ? totalItems : <Bot className="h-3.5 w-3.5" />}</span>
-    <span className="absolute -left-1 bottom-1 grid h-6 w-6 place-items-center rounded-full bg-white text-black shadow-lg"><Move className="h-3.5 w-3.5" /></span>
-  </button>;
+    <button
+      type="button"
+      onPointerDown={(event) => {
+        drag.current = { active: true, moved: false, dx: event.clientX - pos.x, dy: event.clientY - pos.y };
+        event.currentTarget.setPointerCapture(event.pointerId);
+      }}
+      onPointerMove={(event) => {
+        if (!drag.current.active) return;
+        const next = {
+          x: clamp(event.clientX - drag.current.dx, 12, window.innerWidth - 78),
+          y: clamp(event.clientY - drag.current.dy, 84, window.innerHeight - 92),
+        };
+        if (Math.abs(next.x - pos.x) > 2 || Math.abs(next.y - pos.y) > 2) drag.current.moved = true;
+        setPos(next);
+      }}
+      onPointerUp={(event) => {
+        drag.current.active = false;
+        save(pos);
+        try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
+      }}
+      className="grid h-[72px] w-[72px] place-items-center rounded-full border border-yellow-200/55 bg-yellow-300 p-2 text-black shadow-[0_18px_55px_rgba(250,204,21,.30),0_0_0_8px_rgba(250,204,21,.10)] transition active:scale-95"
+      aria-label="Mover agente Fabrick"
+    >
+      <span className="grid h-full w-full place-items-center rounded-full bg-black p-2">
+        <img src={logoUrl} alt="Agente Soluciones Fabrick" className="h-full w-full object-contain" draggable={false} />
+      </span>
+      <span className="absolute -left-1 bottom-1 grid h-6 w-6 place-items-center rounded-full bg-white text-black shadow-lg"><Move className="h-3.5 w-3.5" /></span>
+      <span className="absolute -right-1 -top-1 grid h-7 w-7 place-items-center rounded-full bg-emerald-300 text-black ring-4 ring-black"><Bot className="h-3.5 w-3.5" /></span>
+    </button>
+    <button
+      type="button"
+      onClick={hideAgent}
+      className="absolute -right-4 -top-4 grid h-8 w-8 place-items-center rounded-full border border-white/15 bg-black text-white shadow-lg transition hover:bg-red-500"
+      aria-label="Ocultar agente Fabrick"
+    >
+      <X className="h-4 w-4" />
+    </button>
+  </div>;
 }

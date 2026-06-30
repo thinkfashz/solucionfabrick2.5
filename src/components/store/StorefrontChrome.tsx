@@ -4,7 +4,7 @@
 
 import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bot, Home, LayoutDashboard, LogIn, Menu, Move, Search, ShieldCheck, ShoppingBag, Sun, UserPlus, Wrench, X } from 'lucide-react';
+import { Home, LayoutDashboard, LogIn, Menu, Search, ShieldCheck, ShoppingBag, Sun, UserPlus, Wrench, X } from 'lucide-react';
 import { useAuth } from '@/context/AuthContext';
 import { useCartContext } from '@/context/CartContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -133,40 +133,48 @@ export function StoreFloatingAgent() {
   const logoUrl = branding.logoUrl || FABRICK_LOGO_URL;
 
   useEffect(() => {
-    const savedHidden = typeof window !== 'undefined' ? window.localStorage.getItem('sf_store_agent_hidden_v1') : null;
+    const savedHidden = typeof window !== 'undefined' ? window.localStorage.getItem('sf_store_agent_hidden_v2') : null;
     if (savedHidden === '1') {
       setHidden(true);
       setReady(true);
       return;
     }
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('sf_store_agent_pos_v1') : null;
+
+    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('sf_store_agent_pos_v2') : null;
     if (saved) {
       try {
         const parsed = JSON.parse(saved) as { x: number; y: number };
-        setPos({ x: clamp(parsed.x, 12, window.innerWidth - 78), y: clamp(parsed.y, 84, window.innerHeight - 92) });
+        setPos({
+          x: clamp(parsed.x, 12, window.innerWidth - 78),
+          y: clamp(parsed.y, 84, window.innerHeight - 112),
+        });
         setReady(true);
         return;
       } catch {}
     }
-    setPos({ x: Math.max(12, window.innerWidth - 92), y: Math.max(84, window.innerHeight - 154) });
+
+    setPos({
+      x: Math.max(12, window.innerWidth - 94),
+      y: Math.max(90, window.innerHeight - 198),
+    });
     setReady(true);
   }, []);
 
   function save(next: { x: number; y: number }) {
     setPos(next);
-    try { window.localStorage.setItem('sf_store_agent_pos_v1', JSON.stringify(next)); } catch {}
+    try { window.localStorage.setItem('sf_store_agent_pos_v2', JSON.stringify(next)); } catch {}
   }
 
   function hideAgent() {
     setHidden(true);
-    try { window.localStorage.setItem('sf_store_agent_hidden_v1', '1'); } catch {}
+    try { window.localStorage.setItem('sf_store_agent_hidden_v2', '1'); } catch {}
   }
 
   if (!ready || hidden) return null;
 
   return <div
     data-store-floating-agent=""
-    className="fixed z-[190] hidden h-[72px] w-[72px] touch-none md:block"
+    className="fixed z-[190] h-[66px] w-[66px] touch-none md:h-[72px] md:w-[72px]"
     style={{ left: pos.x, top: pos.y }}
   >
     <button
@@ -179,7 +187,7 @@ export function StoreFloatingAgent() {
         if (!drag.current.active) return;
         const next = {
           x: clamp(event.clientX - drag.current.dx, 12, window.innerWidth - 78),
-          y: clamp(event.clientY - drag.current.dy, 84, window.innerHeight - 92),
+          y: clamp(event.clientY - drag.current.dy, 84, window.innerHeight - 112),
         };
         if (Math.abs(next.x - pos.x) > 2 || Math.abs(next.y - pos.y) > 2) drag.current.moved = true;
         setPos(next);
@@ -189,19 +197,17 @@ export function StoreFloatingAgent() {
         save(pos);
         try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
       }}
-      className="grid h-[72px] w-[72px] place-items-center rounded-full border border-yellow-200/55 bg-yellow-300 p-2 text-black shadow-[0_18px_55px_rgba(250,204,21,.30),0_0_0_8px_rgba(250,204,21,.10)] transition active:scale-95"
+      className="grid h-full w-full place-items-center rounded-full bg-yellow-300 p-2 text-black shadow-[0_18px_55px_rgba(250,204,21,.34),0_0_0_8px_rgba(250,204,21,.12)] transition active:scale-95"
       aria-label="Mover agente Fabrick"
     >
       <span className="grid h-full w-full place-items-center rounded-full bg-black p-2">
         <img src={logoUrl} alt="Agente Soluciones Fabrick" className="h-full w-full object-contain" draggable={false} />
       </span>
-      <span className="absolute -left-1 bottom-1 grid h-6 w-6 place-items-center rounded-full bg-white text-black shadow-lg"><Move className="h-3.5 w-3.5" /></span>
-      <span className="absolute -right-1 -top-1 grid h-7 w-7 place-items-center rounded-full bg-emerald-300 text-black ring-4 ring-black"><Bot className="h-3.5 w-3.5" /></span>
     </button>
     <button
       type="button"
       onClick={hideAgent}
-      className="absolute -right-4 -top-4 grid h-8 w-8 place-items-center rounded-full border border-white/15 bg-black text-white shadow-lg transition hover:bg-red-500"
+      className="absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full bg-black text-white shadow-lg transition hover:bg-red-500"
       aria-label="Ocultar agente Fabrick"
     >
       <X className="h-4 w-4" />

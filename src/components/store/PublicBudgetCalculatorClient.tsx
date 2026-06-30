@@ -37,6 +37,40 @@ function Receipt({ title, rows, neto, iva, total, note }: { title: string; rows:
   </aside>;
 }
 
+function Budget3DViewer({ kind, area, total, cap, btu, volumen, sacos }: { kind: Kind; area: number; total: number; cap?: Capacity; btu?: number; volumen?: number; sacos?: number }) {
+  const isAire = kind === 'aire';
+  return <section className="mt-8 overflow-hidden rounded-[2.2rem] border border-orange-300/15 bg-[radial-gradient(circle_at_78%_8%,rgba(251,146,60,.22),transparent_22rem),linear-gradient(135deg,#0f0d09,#050403)] p-5 text-white shadow-[0_28px_100px_rgba(0,0,0,.42)] md:p-8">
+    <div className="mb-6 flex flex-col gap-2 md:flex-row md:items-end md:justify-between">
+      <div><p className="text-[10px] font-black uppercase tracking-[.32em] text-orange-300">Visor 3D referencial</p><h2 className="mt-2 text-3xl font-black tracking-[-.06em] md:text-5xl">{isAire ? 'Simulación de instalación interior/exterior' : 'Corte 3D del radier y capas'}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-zinc-500">Vista rápida para que el cliente entienda qué se está presupuestando antes de pedir visita técnica.</p></div>
+      <div className="rounded-2xl bg-gradient-to-r from-yellow-300 to-orange-500 px-4 py-3 text-black"><p className="text-[10px] font-black uppercase tracking-[.18em] text-black/60">Total ref.</p><b className="text-2xl font-black tracking-[-.04em]">{money.format(total)}</b></div>
+    </div>
+
+    {isAire ? <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+      <div className="relative min-h-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,#1b1a17,#080706)] p-4">
+        <div className="absolute inset-x-8 top-10 h-44 rounded-t-[2rem] border border-white/10 bg-white/[0.035]" />
+        <div className="absolute bottom-8 left-8 right-8 h-44 rounded-[1.6rem] border border-orange-300/15 bg-[linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02))]" style={{ transform: 'perspective(700px) rotateX(58deg) rotateZ(-22deg)', transformOrigin: 'center bottom' }} />
+        <div className="absolute left-14 top-20 h-20 w-36 rounded-2xl border border-white/15 bg-[#f8f3e8] p-3 text-black shadow-[0_20px_45px_rgba(0,0,0,.38)]"><span className="block h-2 rounded-full bg-zinc-300" /><span className="mt-3 block text-center text-[10px] font-black uppercase tracking-[.18em] text-black/45">Split interior</span></div>
+        <div className="absolute left-[11rem] top-[7.6rem] h-1 w-44 origin-left bg-gradient-to-r from-orange-300 to-transparent" style={{ transform: 'rotate(14deg)' }} />
+        <div className="absolute right-10 top-36 h-28 w-28 rounded-[1.4rem] border border-orange-300/25 bg-black/65 p-3 shadow-[0_18px_50px_rgba(249,115,22,.20)]"><div className="grid h-full place-items-center rounded-full border-4 border-orange-300/50 text-[10px] font-black uppercase tracking-[.16em] text-orange-200">Condensador</div></div>
+        <div className="absolute bottom-20 left-16 flex gap-4 opacity-90"><span className="h-16 w-28 rounded-full border border-cyan-200/30 bg-cyan-300/10 blur-[1px]" /><span className="h-16 w-28 rounded-full border border-cyan-200/25 bg-cyan-300/10 blur-[1px]" /><span className="h-16 w-28 rounded-full border border-cyan-200/20 bg-cyan-300/10 blur-[1px]" /></div>
+        <div className="absolute bottom-7 left-8 rounded-full bg-black/65 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.18em] text-cyan-100 ring-1 ring-cyan-200/20">Flujo frío</div>
+      </div>
+      <div className="grid content-start gap-3"><Metric label="Equipo sugerido" value={`${(cap || 9000).toLocaleString('es-CL')} BTU`} accent /><Metric label="BTU requeridos" value={(btu || 0).toLocaleString('es-CL')} /><Metric label="Área estimada" value={`${num.format(area)} m²`} /><div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 text-sm leading-6 text-zinc-400">Incluye equipo interior, salida de tubería, unidad exterior y flujo de aire referencial. La ubicación real depende del muro, distancia de cañería y punto eléctrico.</div></div>
+    </div> : <div className="grid gap-5 lg:grid-cols-[1fr_320px]">
+      <div className="relative min-h-[360px] overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(180deg,#15130f,#070604)] p-4">
+        <div className="absolute left-1/2 top-1/2 h-40 w-[72%] -translate-x-1/2 -translate-y-1/2 rounded-[1.4rem] bg-gradient-to-br from-zinc-200 to-zinc-400 shadow-[0_28px_80px_rgba(0,0,0,.42)]" style={{ transform: 'translate(-50%,-50%) perspective(800px) rotateX(58deg) rotateZ(-24deg)' }} />
+        <div className="absolute left-1/2 top-[58%] h-10 w-[72%] -translate-x-1/2 rounded-b-[1.4rem] bg-zinc-500/70" style={{ transform: 'translateX(-50%) perspective(800px) rotateX(58deg) rotateZ(-24deg)' }} />
+        <div className="absolute left-[17%] top-[64%] h-9 w-[64%] rounded-b-[1.2rem] bg-yellow-700/45" style={{ transform: 'perspective(800px) rotateX(58deg) rotateZ(-24deg)' }} />
+        <div className="absolute left-[22%] top-[70%] h-8 w-[56%] rounded-b-[1rem] bg-orange-950/60" style={{ transform: 'perspective(800px) rotateX(58deg) rotateZ(-24deg)' }} />
+        <div className="absolute left-[18%] top-[37%] grid h-32 w-[66%] grid-cols-6 grid-rows-4 opacity-35" style={{ transform: 'perspective(800px) rotateX(58deg) rotateZ(-24deg)' }}>{Array.from({ length: 24 }).map((_, i) => <span key={i} className="border border-black/35" />)}</div>
+        <div className="absolute left-8 bottom-8 rounded-2xl border border-white/10 bg-black/55 p-3 text-xs text-zinc-300"><b className="block text-orange-300">Capas</b> Hormigón · estabilizado · terreno compacto</div>
+        <div className="absolute right-8 top-8 rounded-2xl border border-orange-300/20 bg-orange-300/10 p-3 text-xs text-orange-100"><b className="block text-lg text-white">{num.format(volumen || 0)} m³</b> hormigón con merma</div>
+      </div>
+      <div className="grid content-start gap-3"><Metric label="Área radier" value={`${num.format(area)} m²`} accent /><Metric label="Hormigón" value={`${num.format(volumen || 0)} m³`} /><Metric label="Cemento 25kg" value={`${sacos || 0} sacos`} /><div className="rounded-[1.5rem] border border-white/10 bg-white/[0.04] p-4 text-sm leading-6 text-zinc-400">El visor representa una losa con capa superior de hormigón, base estabilizada y terreno. Sirve para explicar espesores y cubicación al cliente.</div></div>
+    </div>}
+  </section>;
+}
+
 export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
   const router = useRouter();
   const [largo, setLargo] = useState(kind === 'aire' ? 5 : 4);
@@ -113,6 +147,7 @@ export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
           </section>
         </div>
       </section>
+      <Budget3DViewer kind={kind} area={isAire ? aire.area : radier.area} total={total} cap={isAire ? aire.cap : undefined} btu={isAire ? aire.btu : undefined} volumen={isAire ? undefined : radier.volumen} sacos={isAire ? undefined : radier.sacos} />
       <div className="mt-5 grid gap-3 md:grid-cols-2"><a href="/herramientas/aire-acondicionado" className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 font-black text-white"><Snowflake className="mb-2 h-5 w-5 text-orange-300" /> Ir al motor de aire</a><a href="/herramientas/radier" className="rounded-2xl border border-white/10 bg-white/[0.035] p-4 font-black text-white"><Home className="mb-2 h-5 w-5 text-orange-300" /> Ir al motor de radier</a></div>
     </div>
   </main>;

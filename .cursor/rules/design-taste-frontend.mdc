@@ -1,0 +1,46 @@
+---
+description: Aplica taste skill frontend en Soluciones Fabrick
+globs:
+  - "src/**/*.{ts,tsx,css}"
+  - "app/**/*.{ts,tsx,css}"
+  - "components/**/*.{ts,tsx,css}"
+  - "*.md"
+alwaysApply: true
+---
+
+# Design Taste Frontend · Cursor Rule
+
+Lee primero `skills/design-taste-frontend/SKILL.md`.
+
+## Proyecto
+
+App Next.js/React/Tailwind 3.4 para Soluciones Fabrick: tienda pública, checkout, admin, SaaS, cotizadores y módulos comerciales.
+
+## Regla de diseño
+
+Cada cambio visual debe ser:
+
+- mobile-first
+- claro en Android
+- rápido
+- elegante pero no sobrecargado
+- sin UI genérica
+- sin logos falsos
+- sin acciones duplicadas
+
+## Diales
+
+- DESIGN_VARIANCE: 6
+- MOTION_INTENSITY: 4
+- VISUAL_DENSITY: 5
+
+## Tienda
+
+Prioriza: búsqueda, filtros, catálogo, stock, precio, bolso, checkout. El usuario no debe pelear con overlays, burbujas ni CTAs duplicados.
+
+## No hacer
+
+- No migrar Tailwind 3.4 a v4.
+- No introducir dependencias visuales sin revisar `package.json`.
+- No ejecutar ni tocar migraciones SQL/RLS sin instrucción explícita.
+- No crear animaciones pesadas en listas de productos.

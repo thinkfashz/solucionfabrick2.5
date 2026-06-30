@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { ArrowLeft, CheckCircle2, Snowflake, Truck } from 'lucide-react';
+import { ArrowLeft, CheckCircle2, Truck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { navigateWithTransition } from '@/lib/routeTransition';
 

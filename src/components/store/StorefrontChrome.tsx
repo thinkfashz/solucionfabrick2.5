@@ -1,10 +1,9 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Home, LayoutDashboard, LogIn, Menu, Search, ShieldCheck, ShoppingBag, Sun, UserPlus, Wrench, X } from 'lucide-react';
+import { FabrickFullLogo, FabrickNavLogo } from '@/components/FabrickBrandIcon';
 import { useAuth } from '@/context/AuthContext';
 import { useCartContext } from '@/context/CartContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -12,24 +11,14 @@ import { tenantInitials, useTenantBranding, type TenantBranding } from '@/hooks/
 import { getInitials } from '@/lib/initials';
 import { navigateWithTransition } from '@/lib/routeTransition';
 
-export const FABRICK_LOGO_URL = 'https://res.cloudinary.com/disghf6xc/image/upload/v1781396959/fabrick/general/oiol0ydk8yc48f8p6iza.png';
-
 function openExternalOrRoute(href: string, router: ReturnType<typeof useRouter>) {
   if (href.startsWith('http')) window.open(href, '_blank', 'noopener,noreferrer');
   else navigateWithTransition(href, router);
 }
 
-export function StoreFabrickLogo({ tone = 'dark', branding, compact = false }: { tone?: 'light' | 'dark'; branding: TenantBranding; compact?: boolean }) {
-  const brandName = branding.name || 'Soluciones Fabrick';
-  const logoUrl = branding.logoUrl || FABRICK_LOGO_URL;
-  const textColor = tone === 'dark' ? 'text-white' : 'text-neutral-950';
-  return <div className="flex min-w-0 items-center gap-3">
-    <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-yellow-300 p-1.5 text-sm font-black text-black shadow-[0_8px_32px_rgba(250,204,21,.22)]">
-      <img src={logoUrl} alt={brandName} className="h-full w-full object-contain" loading="eager" />
-    </div>
-    {!compact && <span className={`max-w-[205px] truncate text-xs font-black uppercase tracking-[.2em] ${textColor}`}>{brandName}</span>}
-    {compact && <span className={`max-w-[180px] truncate text-[11px] font-black uppercase tracking-[.18em] ${textColor}`}>{brandName}</span>}
-  </div>;
+export function StoreFabrickLogo({ tone = 'dark', compact = false }: { tone?: 'light' | 'dark'; branding: TenantBranding; compact?: boolean }) {
+  const logoTheme = tone === 'dark' ? 'light' : 'dark';
+  return compact ? <FabrickNavLogo theme={logoTheme} /> : <FabrickFullLogo theme={logoTheme} />;
 }
 
 export function StorefrontHeader({ onSearch }: { onSearch: () => void }) {
@@ -118,99 +107,4 @@ function MenuAction({ icon: Icon, label, description, onClick }: { icon: typeof 
     <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-black/30"><Icon className="h-5 w-5" /></span>
     <span className="min-w-0"><span className="block text-lg font-black leading-tight">{label}</span><span className="mt-1 block text-xs opacity-60">{description}</span></span>
   </button>;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
-export function StoreFloatingAgent() {
-  const { branding } = useTenantBranding();
-  const [ready, setReady] = useState(false);
-  const [hidden, setHidden] = useState(false);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const drag = useRef({ active: false, moved: false, dx: 0, dy: 0 });
-  const logoUrl = branding.logoUrl || FABRICK_LOGO_URL;
-
-  useEffect(() => {
-    const savedHidden = typeof window !== 'undefined' ? window.localStorage.getItem('sf_store_agent_hidden_v2') : null;
-    if (savedHidden === '1') {
-      setHidden(true);
-      setReady(true);
-      return;
-    }
-
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('sf_store_agent_pos_v2') : null;
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as { x: number; y: number };
-        setPos({
-          x: clamp(parsed.x, 12, window.innerWidth - 78),
-          y: clamp(parsed.y, 84, window.innerHeight - 112),
-        });
-        setReady(true);
-        return;
-      } catch {}
-    }
-
-    setPos({
-      x: Math.max(12, window.innerWidth - 94),
-      y: Math.max(90, window.innerHeight - 198),
-    });
-    setReady(true);
-  }, []);
-
-  function save(next: { x: number; y: number }) {
-    setPos(next);
-    try { window.localStorage.setItem('sf_store_agent_pos_v2', JSON.stringify(next)); } catch {}
-  }
-
-  function hideAgent() {
-    setHidden(true);
-    try { window.localStorage.setItem('sf_store_agent_hidden_v2', '1'); } catch {}
-  }
-
-  if (!ready || hidden) return null;
-
-  return <div
-    data-store-floating-agent=""
-    className="fixed z-[190] h-[66px] w-[66px] touch-none md:h-[72px] md:w-[72px]"
-    style={{ left: pos.x, top: pos.y }}
-  >
-    <button
-      type="button"
-      onPointerDown={(event) => {
-        drag.current = { active: true, moved: false, dx: event.clientX - pos.x, dy: event.clientY - pos.y };
-        event.currentTarget.setPointerCapture(event.pointerId);
-      }}
-      onPointerMove={(event) => {
-        if (!drag.current.active) return;
-        const next = {
-          x: clamp(event.clientX - drag.current.dx, 12, window.innerWidth - 78),
-          y: clamp(event.clientY - drag.current.dy, 84, window.innerHeight - 112),
-        };
-        if (Math.abs(next.x - pos.x) > 2 || Math.abs(next.y - pos.y) > 2) drag.current.moved = true;
-        setPos(next);
-      }}
-      onPointerUp={(event) => {
-        drag.current.active = false;
-        save(pos);
-        try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
-      }}
-      className="grid h-full w-full place-items-center rounded-full bg-yellow-300 p-2 text-black shadow-[0_18px_55px_rgba(250,204,21,.34),0_0_0_8px_rgba(250,204,21,.12)] transition active:scale-95"
-      aria-label="Mover agente Fabrick"
-    >
-      <span className="grid h-full w-full place-items-center rounded-full bg-black p-2">
-        <img src={logoUrl} alt="Agente Soluciones Fabrick" className="h-full w-full object-contain" draggable={false} />
-      </span>
-    </button>
-    <button
-      type="button"
-      onClick={hideAgent}
-      className="absolute -right-2 -top-2 grid h-7 w-7 place-items-center rounded-full bg-black text-white shadow-lg transition hover:bg-red-500"
-      aria-label="Ocultar agente Fabrick"
-    >
-      <X className="h-4 w-4" />
-    </button>
-  </div>;
 }

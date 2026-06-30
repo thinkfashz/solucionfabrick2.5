@@ -1,10 +1,9 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
-import { useEffect, useRef, useState } from 'react';
+import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { Bot, Home, LayoutDashboard, LogIn, Menu, Move, Search, ShieldCheck, ShoppingBag, Sun, UserPlus, Wrench, X } from 'lucide-react';
+import { Home, LayoutDashboard, LogIn, Menu, Search, ShieldCheck, ShoppingBag, Sun, UserPlus, Wrench, X } from 'lucide-react';
+import { FabrickFullLogo, FabrickNavLogo } from '@/components/FabrickBrandIcon';
 import { useAuth } from '@/context/AuthContext';
 import { useCartContext } from '@/context/CartContext';
 import { useTheme } from '@/context/ThemeContext';
@@ -12,24 +11,14 @@ import { tenantInitials, useTenantBranding, type TenantBranding } from '@/hooks/
 import { getInitials } from '@/lib/initials';
 import { navigateWithTransition } from '@/lib/routeTransition';
 
-export const FABRICK_LOGO_URL = 'https://res.cloudinary.com/disghf6xc/image/upload/v1781396959/fabrick/general/oiol0ydk8yc48f8p6iza.png';
-
 function openExternalOrRoute(href: string, router: ReturnType<typeof useRouter>) {
   if (href.startsWith('http')) window.open(href, '_blank', 'noopener,noreferrer');
   else navigateWithTransition(href, router);
 }
 
-export function StoreFabrickLogo({ tone = 'dark', branding, compact = false }: { tone?: 'light' | 'dark'; branding: TenantBranding; compact?: boolean }) {
-  const brandName = branding.name || 'Soluciones Fabrick';
-  const logoUrl = branding.logoUrl || FABRICK_LOGO_URL;
-  const textColor = tone === 'dark' ? 'text-white' : 'text-neutral-950';
-  return <div className="flex min-w-0 items-center gap-3">
-    <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl bg-yellow-300 p-1.5 text-sm font-black text-black shadow-[0_8px_32px_rgba(250,204,21,.22)]">
-      <img src={logoUrl} alt={brandName} className="h-full w-full object-contain" loading="eager" />
-    </div>
-    {!compact && <span className={`max-w-[205px] truncate text-xs font-black uppercase tracking-[.2em] ${textColor}`}>{brandName}</span>}
-    {compact && <span className={`max-w-[180px] truncate text-[11px] font-black uppercase tracking-[.18em] ${textColor}`}>{brandName}</span>}
-  </div>;
+export function StoreFabrickLogo({ tone = 'dark', compact = false }: { tone?: 'light' | 'dark'; branding: TenantBranding; compact?: boolean }) {
+  const logoTheme = tone === 'dark' ? 'light' : 'dark';
+  return compact ? <FabrickNavLogo theme={logoTheme} /> : <FabrickFullLogo theme={logoTheme} />;
 }
 
 export function StorefrontHeader({ onSearch }: { onSearch: () => void }) {
@@ -54,7 +43,7 @@ export function StorefrontHeader({ onSearch }: { onSearch: () => void }) {
   }
 
   return <>
-    <nav className={`fixed left-0 top-0 z-[180] w-full border-b backdrop-blur-2xl ${isDark ? 'border-white/10 bg-black/88' : 'border-neutral-200 bg-white/92'}`}>
+    <nav className={`fixed left-0 top-0 z-[180] hidden w-full border-b backdrop-blur-2xl md:block ${isDark ? 'border-white/10 bg-black/88' : 'border-neutral-200 bg-white/92'}`}>
       <div className="mx-auto flex h-[68px] max-w-[1320px] items-center justify-between gap-3 px-4 md:px-8">
         <button onClick={() => go('/tienda')} className="min-w-0 rounded-full" aria-label="Ir a tienda"><StoreFabrickLogo tone={isDark ? 'dark' : 'light'} branding={branding} compact /></button>
         <div className="hidden items-center gap-7 md:flex">
@@ -74,9 +63,9 @@ export function StorefrontHeader({ onSearch }: { onSearch: () => void }) {
         </div>
       </div>
     </nav>
-    <div className="h-[68px]" />
+    <div className="hidden h-[68px] md:block" />
 
-    {menuOpen && <div className="fixed inset-0 z-[300] bg-black/76 backdrop-blur-xl">
+    {menuOpen && <div className="fixed inset-0 z-[300] hidden bg-black/76 backdrop-blur-xl md:block">
       <aside className="ml-auto flex h-full w-[88vw] max-w-[430px] flex-col border-l border-white/10 bg-[#070707] p-5 text-white shadow-2xl shadow-black/70">
         <div className="flex items-center justify-between gap-3">
           <StoreFabrickLogo tone="dark" branding={branding} compact />
@@ -117,73 +106,5 @@ function MenuAction({ icon: Icon, label, description, onClick }: { icon: typeof 
   return <button onClick={onClick} className="flex items-center gap-3 rounded-2xl bg-white/[0.06] p-4 text-left transition hover:bg-yellow-300 hover:text-black">
     <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-black/30"><Icon className="h-5 w-5" /></span>
     <span className="min-w-0"><span className="block text-lg font-black leading-tight">{label}</span><span className="mt-1 block text-xs opacity-60">{description}</span></span>
-  </button>;
-}
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
-export function StoreFloatingAgent() {
-  const { branding } = useTenantBranding();
-  const { openCart, totalItems } = useCartContext();
-  const [ready, setReady] = useState(false);
-  const [pos, setPos] = useState({ x: 0, y: 0 });
-  const drag = useRef({ active: false, moved: false, dx: 0, dy: 0 });
-  const logoUrl = branding.logoUrl || FABRICK_LOGO_URL;
-
-  useEffect(() => {
-    const saved = typeof window !== 'undefined' ? window.localStorage.getItem('sf_store_agent_pos_v1') : null;
-    if (saved) {
-      try {
-        const parsed = JSON.parse(saved) as { x: number; y: number };
-        setPos({ x: clamp(parsed.x, 12, window.innerWidth - 78), y: clamp(parsed.y, 84, window.innerHeight - 92) });
-        setReady(true);
-        return;
-      } catch {}
-    }
-    setPos({ x: Math.max(12, window.innerWidth - 92), y: Math.max(84, window.innerHeight - 154) });
-    setReady(true);
-  }, []);
-
-  function save(next: { x: number; y: number }) {
-    setPos(next);
-    try { window.localStorage.setItem('sf_store_agent_pos_v1', JSON.stringify(next)); } catch {}
-  }
-
-  if (!ready) return null;
-
-  return <button
-    type="button"
-    data-store-floating-agent=""
-    onPointerDown={(event) => {
-      drag.current = { active: true, moved: false, dx: event.clientX - pos.x, dy: event.clientY - pos.y };
-      event.currentTarget.setPointerCapture(event.pointerId);
-    }}
-    onPointerMove={(event) => {
-      if (!drag.current.active) return;
-      const next = {
-        x: clamp(event.clientX - drag.current.dx, 12, window.innerWidth - 78),
-        y: clamp(event.clientY - drag.current.dy, 84, window.innerHeight - 92),
-      };
-      if (Math.abs(next.x - pos.x) > 2 || Math.abs(next.y - pos.y) > 2) drag.current.moved = true;
-      setPos(next);
-    }}
-    onPointerUp={(event) => {
-      const wasMoved = drag.current.moved;
-      drag.current.active = false;
-      save(pos);
-      try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
-      if (!wasMoved) openCart();
-    }}
-    className="fixed z-[190] grid h-[72px] w-[72px] touch-none place-items-center rounded-full border border-yellow-200/55 bg-yellow-300 p-2 text-black shadow-[0_18px_55px_rgba(250,204,21,.38),0_0_0_8px_rgba(250,204,21,.12)] transition active:scale-95"
-    style={{ left: pos.x, top: pos.y }}
-    aria-label="Agente Fabrick movible"
-  >
-    <span className="grid h-full w-full place-items-center rounded-full bg-black p-2">
-      <img src={logoUrl} alt="Agente Soluciones Fabrick" className="h-full w-full object-contain" draggable={false} />
-    </span>
-    <span className="absolute -right-1 -top-1 grid h-7 min-w-7 place-items-center rounded-full bg-emerald-300 px-1 text-[10px] font-black text-black ring-4 ring-black">{totalItems > 0 ? totalItems : <Bot className="h-3.5 w-3.5" />}</span>
-    <span className="absolute -left-1 bottom-1 grid h-6 w-6 place-items-center rounded-full bg-white text-black shadow-lg"><Move className="h-3.5 w-3.5" /></span>
   </button>;
 }

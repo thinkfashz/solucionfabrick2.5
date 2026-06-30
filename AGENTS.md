@@ -17,13 +17,13 @@ Before changing frontend UI, read and apply:
 
 ## Default design read
 
-Soluciones Fabrick is a Next.js/React/Tailwind 3.4 app for public store, checkout, admin, SaaS and quotation flows. The main QA device is Android mobile.
+Soluciones Fabrick is a Next.js/React/Tailwind 3.4 app for public store, checkout, admin, SaaS and quotation flows. The main QA targets are Android, iPhone and PC/desktop.
 
 Use a premium dark commercial language: black/zinc base, Fabrick yellow as brand accent, green only for buy/pay/success.
 
 ## Mandatory frontend rules
 
-- Mobile-first: test mentally at 360-430px width.
+- Mobile-first: test mentally at 360-430px width first, then iPhone/Safari and PC/desktop.
 - Do not create generic template-looking UI.
 - Do not duplicate actions in the same viewport.
 - Do not use random icons as brand/logo.
@@ -45,11 +45,15 @@ For `/tienda` and product pages, prioritize:
 - checkout
 - optional GPS support
 - clean mobile drawer
+- responsive desktop layout that does not feel like stretched mobile
 
 ## Pre-flight
 
 Before finishing any UI task, verify:
 
+- Android vertical works
+- iPhone/Safari mobile works
+- PC/desktop spacing and grids work
 - text is not clipped
 - contrast is readable
 - CTA is obvious

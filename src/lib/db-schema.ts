@@ -189,6 +189,22 @@ CREATE TABLE IF NOT EXISTS admin_users (
 );
 
 -- ----------------------------------------------------------------
+-- admin_error_logs
+-- ----------------------------------------------------------------
+CREATE TABLE IF NOT EXISTS admin_error_logs (
+  id            UUID         DEFAULT gen_random_uuid() PRIMARY KEY,
+  endpoint      TEXT,
+  method        TEXT,
+  status_code   INTEGER,
+  error_message TEXT,
+  details       JSONB        DEFAULT '{}'::jsonb,
+  created_at    TIMESTAMPTZ  DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS admin_error_logs_created_at_idx ON admin_error_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS admin_error_logs_endpoint_created_idx ON admin_error_logs (endpoint, created_at DESC);
+CREATE INDEX IF NOT EXISTS admin_error_logs_status_created_idx ON admin_error_logs (status_code, created_at DESC);
+
+-- ----------------------------------------------------------------
 -- updated_at auto-update trigger
 -- ----------------------------------------------------------------
 CREATE OR REPLACE FUNCTION set_updated_at()

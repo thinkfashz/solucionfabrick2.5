@@ -26,11 +26,14 @@ export async function verifyTurnstile(
     form.set('response', token);
     if (remoteIp) form.set('remoteip', remoteIp);
 
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), 5_000);
     const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
       body: form,
-      // Turnstile recommends a short timeout; we let the platform default handle it.
+      signal: controller.signal,
     });
+    clearTimeout(timer);
 
     if (!res.ok) return false;
     const data = (await res.json()) as { success?: boolean };

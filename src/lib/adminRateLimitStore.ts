@@ -50,6 +50,21 @@ export interface RateLimitEntry {
   blockedUntil: number | null;
 }
 
+export interface PersistentRateLimitOptions {
+  /** Logical bucket, e.g. `public:agent-chat` or `public:contact`. */
+  namespace: string;
+  /** Caller identity, usually an IP address. */
+  identity: string;
+  /** Max accepted requests inside the window. */
+  max: number;
+  /** Window duration in milliseconds. */
+  windowMs: number;
+}
+
+export type PersistentRateLimitDecision =
+  | { ok: true; remaining: number; resetAt: number }
+  | { ok: false; retryAfterSec: number; resetAt: number };
+
 const TABLE = 'admin_login_attempts';
 
 /** In-memory mirror of the DB row; survives only the lambda lifetime. */
@@ -153,6 +168,47 @@ export async function deleteRateLimitEntry(ip: string): Promise<void> {
   } catch (err) {
     logUnexpectedError('delete', err);
   }
+}
+
+function normalizeLimiterKey(namespace: string, identity: string): string {
+  const safeNamespace = namespace.replace(/[^a-z0-9:_-]/gi, '').slice(0, 64) || 'rate-limit';
+  const safeIdentity = (identity || 'unknown').replace(/\s+/g, '').slice(0, 180) || 'unknown';
+  return `${safeNamespace}:${safeIdentity}`;
+}
+
+/**
+ * Generic fixed-window limiter for public endpoints.
+ *
+ * It intentionally reuses the existing `admin_login_attempts` table to avoid
+ * adding infra or schema during the first hardening pass. Use namespaced keys
+ * so public limits never collide with admin login attempts.
+ */
+export async function checkPersistentRateLimit(
+  options: PersistentRateLimitOptions,
+): Promise<PersistentRateLimitDecision> {
+  const max = Math.max(1, Math.floor(options.max));
+  const windowMs = Math.max(1_000, Math.floor(options.windowMs));
+  const key = normalizeLimiterKey(options.namespace, options.identity);
+  const now = Date.now();
+  const current = await readRateLimitEntry(key);
+
+  if (!current?.blockedUntil || now >= current.blockedUntil) {
+    const resetAt = now + windowMs;
+    await writeRateLimitEntry(key, { count: 1, blockedUntil: resetAt });
+    return { ok: true, remaining: Math.max(0, max - 1), resetAt };
+  }
+
+  if (current.count >= max) {
+    return {
+      ok: false,
+      retryAfterSec: Math.max(1, Math.ceil((current.blockedUntil - now) / 1000)),
+      resetAt: current.blockedUntil,
+    };
+  }
+
+  const nextCount = current.count + 1;
+  await writeRateLimitEntry(key, { count: nextCount, blockedUntil: current.blockedUntil });
+  return { ok: true, remaining: Math.max(0, max - nextCount), resetAt: current.blockedUntil };
 }
 
 // ─────────────────────────────────────────────────────────────────────────

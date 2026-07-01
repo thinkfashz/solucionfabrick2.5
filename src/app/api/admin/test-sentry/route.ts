@@ -1,6 +1,5 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import * as Sentry from '@sentry/nextjs';
 import { adminUnauthorized, getAdminSession } from '@/lib/adminApi';
 
 export const dynamic = 'force-dynamic';
@@ -24,7 +23,10 @@ export async function GET(request: NextRequest) {
   // In production, surface a deliberate error so it shows up in Sentry.
   if (process.env.NODE_ENV === 'production') {
     // Capture explicitly as well, so the test works even if the framework
-    // catches the throw before the Sentry handler runs.
+    // catches the throw before the Sentry handler runs. Keep this as a lazy
+    // import so the admin test route does not add Sentry/OpenTelemetry noise
+    // to every build chunk analysis.
+    const Sentry = await import('@sentry/nextjs');
     const error = new Error(
       `Sentry test error triggered by admin ${session.email} at ${new Date().toISOString()}`,
     );

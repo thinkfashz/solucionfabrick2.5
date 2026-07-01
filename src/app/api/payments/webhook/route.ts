@@ -1,9 +1,11 @@
 import { NextResponse } from 'next/server';
 import { createHmac } from 'node:crypto';
-import { insforge } from '@/lib/insforge';
+import { insforgeAdmin } from '@/lib/insforge';
 import { getMercadoPagoPayment, mapMercadoPagoStatus, verifyMercadoPagoSignature } from '@/lib/mercadopago';
 import { confirmPaidOrderAndSendReceiptAsync } from '@/lib/orders/paidConfirmation';
 import { dispatchHookAsync } from '@/lib/extensionsBus';
+
+const MAX_WEBHOOK_BODY_BYTES = 64 * 1024;
 
 type GenericPaymentWebhookBody = {
   eventType: string;
@@ -27,6 +29,22 @@ type MercadoPagoWebhookBody = {
   };
 };
 
+type OrderItem = {
+  productoId?: string | number;
+  productId?: string | number;
+  id?: string | number;
+  cantidad?: number;
+  quantity?: number;
+};
+
+async function readLimitedBody(request: Request): Promise<string | null> {
+  const declaredLength = Number(request.headers.get('content-length') ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_WEBHOOK_BODY_BYTES) return null;
+  const rawBody = await request.text();
+  if (Buffer.byteLength(rawBody, 'utf8') > MAX_WEBHOOK_BODY_BYTES) return null;
+  return rawBody;
+}
+
 function verifyLegacySignature(rawBody: string, signature: string | null) {
   const secret = process.env.PAYMENTS_WEBHOOK_SECRET;
   if (!secret || !signature) return true;
@@ -35,7 +53,7 @@ function verifyLegacySignature(rawBody: string, signature: string | null) {
 }
 
 async function persistWebhookLog(idempotencyKey: string, payload: unknown, orderId: string, paymentId: string | null, status: string, eventType: string) {
-  const { data: existingLog } = await insforge.database
+  const { data: existingLog } = await insforgeAdmin.database
     .from('payment_webhooks')
     .select('id')
     .eq('idempotency_key', idempotencyKey)
@@ -45,7 +63,7 @@ async function persistWebhookLog(idempotencyKey: string, payload: unknown, order
     return { duplicated: true };
   }
 
-  await insforge.database.from('payment_webhooks').insert([
+  await insforgeAdmin.database.from('payment_webhooks').insert([
     {
       idempotency_key: idempotencyKey,
       event_type: eventType,
@@ -70,7 +88,7 @@ async function updateOrderStatus(orderId: string, paymentId: string | null, stat
           ? 'reembolsada'
           : mapMercadoPagoStatus(status);
 
-  const { error: updateError } = await insforge.database
+  const { error: updateError } = await insforgeAdmin.database
     .from('orders')
     .update({
       status: mappedOrderStatus,
@@ -86,6 +104,54 @@ async function updateOrderStatus(orderId: string, paymentId: string | null, stat
     orderStatus: mappedOrderStatus,
     warning: updateError ? `No se actualizó orders: ${updateError.message}` : null,
   };
+}
+
+function getLineItemProductId(item: OrderItem) {
+  return String(item.productoId ?? item.productId ?? item.id ?? '').trim();
+}
+
+function getLineItemQuantity(item: OrderItem) {
+  const quantity = Math.floor(Number(item.cantidad ?? item.quantity ?? 0));
+  return Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
+}
+
+async function decrementStockForPaidOrder(orderId: string) {
+  try {
+    const { data } = await insforgeAdmin.database
+      .from('orders')
+      .select('items')
+      .eq('id', orderId)
+      .limit(1);
+    const order = Array.isArray(data) ? data[0] as { items?: unknown } | undefined : undefined;
+    const items = Array.isArray(order?.items) ? order.items as OrderItem[] : [];
+    const quantities = new Map<string, number>();
+
+    for (const item of items) {
+      const productId = getLineItemProductId(item);
+      const quantity = getLineItemQuantity(item);
+      if (!productId || quantity <= 0) continue;
+      quantities.set(productId, (quantities.get(productId) ?? 0) + quantity);
+    }
+
+    for (const [productId, quantity] of quantities) {
+      const { data: productRows } = await insforgeAdmin.database
+        .from('products')
+        .select('id, stock')
+        .eq('id', productId)
+        .limit(1);
+      const product = Array.isArray(productRows) ? productRows[0] as { stock?: number | null } | undefined : undefined;
+      if (!product || typeof product.stock !== 'number') continue;
+      const nextStock = Math.max(0, product.stock - quantity);
+      await insforgeAdmin.database
+        .from('products')
+        .update({ stock: nextStock, updated_at: new Date().toISOString() })
+        .eq('id', productId);
+    }
+
+    return { ok: true };
+  } catch (error) {
+    return { ok: false, warning: error instanceof Error ? error.message : 'No se pudo descontar stock.' };
+  }
 }
 
 function safeJsonParse(rawBody: string): MercadoPagoWebhookBody | null {
@@ -104,7 +170,8 @@ function isMercadoPagoSimulation(body: MercadoPagoWebhookBody | null) {
 
 async function handleMercadoPagoWebhook(request: Request) {
   const url = new URL(request.url);
-  const rawBody = await request.text();
+  const rawBody = await readLimitedBody(request);
+  if (rawBody === null) return NextResponse.json({ error: 'Webhook demasiado grande.' }, { status: 413 });
   const body = safeJsonParse(rawBody);
   const topic = url.searchParams.get('topic') || url.searchParams.get('type') || body?.type || body?.topic || '';
   const dataId = url.searchParams.get('data.id') || url.searchParams.get('id') || (body?.data?.id != null ? String(body.data.id) : '') || (body?.id != null ? String(body.id) : '');
@@ -158,6 +225,7 @@ async function handleMercadoPagoWebhook(request: Request) {
   }
 
   const updated = await updateOrderStatus(orderId, paymentId, paymentStatus);
+  const stock = updated.orderStatus === 'pagada' ? await decrementStockForPaidOrder(orderId) : { ok: true as const };
 
   if (updated.orderStatus === 'pagada') {
     confirmPaidOrderAndSendReceiptAsync(orderId);
@@ -176,13 +244,15 @@ async function handleMercadoPagoWebhook(request: Request) {
     orderId,
     paymentStatus,
     orderStatus: updated.orderStatus,
+    stock,
     notification: updated.orderStatus === 'pagada' ? 'Correo con boleta PDF en proceso de envío.' : 'Pendiente de pago aprobado.',
-    warning: updated.warning,
+    warning: updated.warning || ('warning' in stock ? stock.warning : null),
   });
 }
 
 async function handleLegacyWebhook(request: Request) {
-  const rawBody = await request.text();
+  const rawBody = await readLimitedBody(request);
+  if (rawBody === null) return NextResponse.json({ error: 'Webhook demasiado grande.' }, { status: 413 });
   const signature = request.headers.get('x-insforge-signature');
   const idempotencyKeyHeader = request.headers.get('x-idempotency-key') ?? null;
 
@@ -210,6 +280,7 @@ async function handleLegacyWebhook(request: Request) {
   }
 
   const updated = await updateOrderStatus(body.orderId, body.paymentId ?? null, body.status);
+  const stock = updated.orderStatus === 'pagada' ? await decrementStockForPaidOrder(body.orderId) : { ok: true as const };
   if (updated.orderStatus === 'pagada') {
     confirmPaidOrderAndSendReceiptAsync(body.orderId);
     dispatchHookAsync('order.paid', {
@@ -220,7 +291,7 @@ async function handleLegacyWebhook(request: Request) {
     });
   }
 
-  return NextResponse.json({ ...updated, notification: updated.orderStatus === 'pagada' ? 'Correo con boleta PDF en proceso de envío.' : undefined }, { status: 200 });
+  return NextResponse.json({ ...updated, stock, notification: updated.orderStatus === 'pagada' ? 'Correo con boleta PDF en proceso de envío.' : undefined }, { status: 200 });
 }
 
 export async function POST(request: Request) {

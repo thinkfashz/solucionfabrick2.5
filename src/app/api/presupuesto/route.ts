@@ -3,6 +3,7 @@ import nodemailer from 'nodemailer';
 import { verifyTurnstile } from '@/lib/turnstile';
 import { getClientIp } from '@/lib/adminAuth';
 import { checkPersistentRateLimit } from '@/lib/adminRateLimitStore';
+import { campaignBusyHeaders, publicFormsEnabled } from '@/lib/campaignMode';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -104,6 +105,16 @@ export async function POST(request: Request) {
   const isHtmlForm = (request.headers.get('content-type') ?? '').includes('application/x-www-form-urlencoded');
 
   try {
+    if (!publicFormsEnabled()) {
+      if (isHtmlForm) {
+        return NextResponse.redirect(new URL('/contacto?error=campaign', request.url), 303);
+      }
+      return NextResponse.json(
+        { error: 'Formulario pausado temporalmente por modo campaña. Escríbenos por WhatsApp.' },
+        { status: 503, headers: campaignBusyHeaders() },
+      );
+    }
+
     const ip = getClientIp(request);
     const rl = await checkPersistentRateLimit({
       namespace: 'public:presupuesto',

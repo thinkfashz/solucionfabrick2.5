@@ -2,7 +2,6 @@
 
 import { useMemo } from 'react';
 import { buildProductTagline, resolveCategoryName } from '@/lib/commerce';
-import { useCategories } from '@/hooks/useCategories';
 import { Product as RealtimeProduct, useRealtimeProducts } from '@/hooks/useRealtimeProducts';
 
 export interface CatalogProduct {
@@ -11,6 +10,7 @@ export interface CatalogProduct {
   price: number;
   category: string;
   category_id?: string;
+  category_name?: string;
   tagline: string;
   description: string;
   features: string[];
@@ -123,16 +123,17 @@ const CATEGORY_FALLBACK_IMAGES: Record<string, string> = {
 const DEFAULT_FALLBACK_IMAGE =
   'https://images.unsplash.com/photo-1504307651254-35680f356dfd?q=80&w=800&auto=format&fit=crop';
 
-function mapRealtimeProductToCatalogProduct(product: RealtimeProduct, categoryMap: Record<string, string>): CatalogProduct {
-  const category = product.category_id || 'General';
+function mapRealtimeProductToCatalogProduct(product: RealtimeProduct): CatalogProduct {
+  const category = product.category_name || resolveCategoryName(product.category_id, {});
   const fallbackImage = CATEGORY_FALLBACK_IMAGES[category] ?? DEFAULT_FALLBACK_IMAGE;
   const image = product.image_url || fallbackImage;
   return {
     id: product.id,
     name: product.name,
     price: product.price,
-    category: resolveCategoryName(product.category_id, categoryMap),
+    category,
     category_id: product.category_id,
+    category_name: product.category_name,
     tagline: buildProductTagline(product.tagline, product.delivery_days),
     description: product.description || 'Producto sincronizado automáticamente desde nuestro catálogo.',
     features: [
@@ -157,13 +158,12 @@ function mapRealtimeProductToCatalogProduct(product: RealtimeProduct, categoryMa
 
 export function useCatalogProducts() {
   const realtime = useRealtimeProducts();
-  const { categoryMap } = useCategories();
 
   const products = useMemo(() => {
     if (!realtime.fetchComplete) return FALLBACK_CATALOG_PRODUCTS;
-    const mapped = realtime.products.map((product) => mapRealtimeProductToCatalogProduct(product, categoryMap));
+    const mapped = realtime.products.map((product) => mapRealtimeProductToCatalogProduct(product));
     return mapped.length ? mapped : FALLBACK_CATALOG_PRODUCTS;
-  }, [categoryMap, realtime.products, realtime.fetchComplete]);
+  }, [realtime.products, realtime.fetchComplete]);
 
   return {
     products,

@@ -8,6 +8,7 @@ import { getShippingConfig } from '@/lib/shippingServer';
 import { CheckoutHydrationError, hydrateCheckoutItemsWithShipping } from '@/lib/checkoutServer';
 import { getClientIp } from '@/lib/adminAuth';
 import { checkPersistentRateLimit } from '@/lib/adminRateLimitStore';
+import { campaignBusyHeaders, getCampaignMode, publicCheckoutEnabled } from '@/lib/campaignMode';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -53,6 +54,16 @@ async function loadExistingOrder(id: string) {
 
 export async function POST(request: Request) {
   try {
+    if (!publicCheckoutEnabled()) {
+      return NextResponse.json(
+        {
+          error: 'Checkout pausado temporalmente por modo campaña. Puedes guardar el producto o contactarnos por WhatsApp.',
+          campaignMode: getCampaignMode(),
+        },
+        { status: 503, headers: campaignBusyHeaders() },
+      );
+    }
+
     const ip = getClientIp(request);
     const rl = await checkPersistentRateLimit({
       namespace: 'public:checkout-mp',

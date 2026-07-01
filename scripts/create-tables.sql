@@ -53,6 +53,12 @@ ALTER TABLE public.products ADD COLUMN IF NOT EXISTS shipping_weight_kg numeric(
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS shipping_dimensions text;
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS shipping_region_overrides jsonb DEFAULT '{}'::jsonb;
 
+-- TABLA: products-indexes
+CREATE INDEX IF NOT EXISTS products_public_catalog_idx ON public.products (activo, featured DESC, created_at DESC);
+CREATE INDEX IF NOT EXISTS products_category_active_idx ON public.products (category_id, activo);
+CREATE INDEX IF NOT EXISTS products_stock_active_idx ON public.products (stock) WHERE activo = true;
+CREATE INDEX IF NOT EXISTS products_source_idx ON public.products (source, source_id) WHERE source IS NOT NULL;
+
 -- TABLA: integrations
 CREATE TABLE IF NOT EXISTS public.integrations (
   provider text PRIMARY KEY,
@@ -103,18 +109,131 @@ CREATE INDEX IF NOT EXISTS presupuestos_created_at_idx ON public.presupuestos (c
 
 -- TABLA: orders
 CREATE TABLE IF NOT EXISTS public.orders (
-  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  id text PRIMARY KEY,
+  customer_name text,
+  customer_email text,
+  customer_phone text,
+  region text,
+  shipping_address text,
+  items jsonb DEFAULT '[]'::jsonb,
+  subtotal numeric(12,2) DEFAULT 0,
+  tax numeric(12,2) DEFAULT 0,
+  shipping_fee numeric(12,2) DEFAULT 0,
+  total numeric(12,2) DEFAULT 0,
+  currency text DEFAULT 'CLP',
+  status text DEFAULT 'pendiente_pago',
+  payment_id text,
+  payment_status text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now(),
   cliente_nombre text,
   cliente_email text,
   cliente_telefono text,
-  items jsonb DEFAULT '[]',
-  total numeric(10,2) DEFAULT 0,
-  status text DEFAULT 'pendiente',
-  payment_id text,
-  direccion_envio text,
-  created_at timestamptz DEFAULT now(),
-  updated_at timestamptz DEFAULT now()
+  direccion_envio text
 );
+
+-- TABLA: orders-migrate
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS customer_name text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS customer_email text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS customer_phone text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS region text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS shipping_address text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS items jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS subtotal numeric(12,2) DEFAULT 0;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS tax numeric(12,2) DEFAULT 0;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS shipping_fee numeric(12,2) DEFAULT 0;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS total numeric(12,2) DEFAULT 0;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS currency text DEFAULT 'CLP';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS status text DEFAULT 'pendiente_pago';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_id text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_status text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS cliente_nombre text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS cliente_email text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS cliente_telefono text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS direccion_envio text;
+
+-- TABLA: orders-indexes
+CREATE INDEX IF NOT EXISTS orders_created_at_idx ON public.orders (created_at DESC);
+CREATE INDEX IF NOT EXISTS orders_status_created_at_idx ON public.orders (status, created_at DESC);
+CREATE INDEX IF NOT EXISTS orders_payment_id_idx ON public.orders (payment_id) WHERE payment_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS orders_payment_status_idx ON public.orders (payment_status, updated_at DESC) WHERE payment_status IS NOT NULL;
+CREATE INDEX IF NOT EXISTS orders_customer_email_idx ON public.orders (lower(customer_email)) WHERE customer_email IS NOT NULL;
+
+-- TABLA: payment_webhooks
+CREATE TABLE IF NOT EXISTS public.payment_webhooks (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  idempotency_key text UNIQUE NOT NULL,
+  event_type text,
+  order_id text,
+  payment_id text,
+  payment_status text,
+  payload jsonb,
+  created_at timestamptz DEFAULT now()
+);
+
+-- TABLA: payment-webhooks-indexes
+CREATE UNIQUE INDEX IF NOT EXISTS payment_webhooks_idempotency_key_idx ON public.payment_webhooks (idempotency_key);
+CREATE INDEX IF NOT EXISTS payment_webhooks_order_idx ON public.payment_webhooks (order_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS payment_webhooks_payment_idx ON public.payment_webhooks (payment_id) WHERE payment_id IS NOT NULL;
+CREATE INDEX IF NOT EXISTS payment_webhooks_created_at_idx ON public.payment_webhooks (created_at DESC);
+
+-- TABLA: checkout-atomic-stock
+CREATE OR REPLACE FUNCTION public.decrement_stock_for_paid_order(p_order_id text)
+RETURNS jsonb
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_items jsonb;
+  v_item jsonb;
+  v_product_id text;
+  v_qty integer;
+  v_updated integer := 0;
+  v_skipped integer := 0;
+  v_affected integer := 0;
+BEGIN
+  SELECT items INTO v_items
+  FROM public.orders
+  WHERE id::text = p_order_id
+  LIMIT 1;
+
+  IF v_items IS NULL THEN
+    RETURN jsonb_build_object('ok', false, 'warning', 'order_not_found', 'orderId', p_order_id);
+  END IF;
+
+  FOR v_item IN SELECT * FROM jsonb_array_elements(COALESCE(v_items, '[]'::jsonb)) LOOP
+    v_product_id := COALESCE(v_item->>'productoId', v_item->>'productId', v_item->>'id');
+    v_qty := CASE
+      WHEN COALESCE(v_item->>'cantidad', '') ~ '^[0-9]+$' THEN (v_item->>'cantidad')::integer
+      WHEN COALESCE(v_item->>'quantity', '') ~ '^[0-9]+$' THEN (v_item->>'quantity')::integer
+      ELSE 0
+    END;
+
+    IF v_product_id IS NULL OR v_product_id = '' OR v_qty <= 0 THEN
+      v_skipped := v_skipped + 1;
+      CONTINUE;
+    END IF;
+
+    UPDATE public.products
+    SET stock = stock - v_qty,
+        updated_at = now()
+    WHERE id::text = v_product_id
+      AND stock IS NOT NULL
+      AND stock >= v_qty;
+
+    GET DIAGNOSTICS v_affected = ROW_COUNT;
+    IF v_affected > 0 THEN
+      v_updated := v_updated + 1;
+    ELSE
+      v_skipped := v_skipped + 1;
+    END IF;
+  END LOOP;
+
+  RETURN jsonb_build_object('ok', true, 'updated', v_updated, 'skipped', v_skipped, 'orderId', p_order_id);
+END;
+$$;
 
 -- TABLA: leads
 CREATE TABLE IF NOT EXISTS public.leads (
@@ -127,6 +246,8 @@ CREATE TABLE IF NOT EXISTS public.leads (
   atendido boolean DEFAULT false,
   created_at timestamptz DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS leads_created_at_idx ON public.leads (created_at DESC);
+CREATE INDEX IF NOT EXISTS leads_atendido_created_at_idx ON public.leads (atendido, created_at DESC);
 
 -- TABLA: posts (blog)
 CREATE TABLE IF NOT EXISTS public.posts (
@@ -142,6 +263,8 @@ CREATE TABLE IF NOT EXISTS public.posts (
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS posts_slug_idx ON public.posts (slug);
+CREATE INDEX IF NOT EXISTS posts_publicado_created_at_idx ON public.posts (publicado, created_at DESC);
 
 -- TABLA: projects
 CREATE TABLE IF NOT EXISTS public.projects (
@@ -176,6 +299,11 @@ ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS created_at timestamptz DEFA
 ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS design_json jsonb;
 ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS thumbnail_url text;
 ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+
+-- TABLA: projects-indexes
+CREATE INDEX IF NOT EXISTS projects_destacado_created_at_idx ON public.projects (destacado, created_at DESC);
+CREATE INDEX IF NOT EXISTS projects_categoria_created_at_idx ON public.projects (categoria, created_at DESC);
+CREATE INDEX IF NOT EXISTS projects_anio_idx ON public.projects (anio DESC);
 
 -- TABLA: cupones
 CREATE TABLE IF NOT EXISTS public.cupones (
@@ -216,6 +344,7 @@ CREATE TABLE IF NOT EXISTS public.banners (
   orden integer DEFAULT 0,
   created_at timestamptz DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS banners_activo_orden_idx ON public.banners (activo, orden, created_at DESC);
 
 -- SEED: configuracion inicial
 INSERT INTO public.configuracion (clave, valor) VALUES
@@ -248,3 +377,5 @@ CREATE TABLE IF NOT EXISTS public.blog_posts (
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now()
 );
+CREATE INDEX IF NOT EXISTS blog_posts_slug_idx ON public.blog_posts (slug);
+CREATE INDEX IF NOT EXISTS blog_posts_published_created_at_idx ON public.blog_posts (published, created_at DESC);

@@ -25,9 +25,9 @@ export async function GET(
     { section_key: key, content },
     {
       headers: {
-        // Short max-age so admin saves propagate quickly, but
-        // stale-while-revalidate keeps it instant for warm visitors.
-        'Cache-Control': 'public, max-age=15, stale-while-revalidate=300',
+        // CDN cache absorbs traffic spikes; tag invalidation in setSiteSection
+        // drops the server cache immediately after admin saves.
+        'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
       },
     },
   );

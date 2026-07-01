@@ -172,15 +172,32 @@ function getPaymentItems(items: LineItem[], summary: CheckoutSummary) {
   return mapped;
 }
 
-async function mercadoPagoFetch<T>(path: string, init: RequestInit) {
+async function mercadoPagoFetch<T>(path: string, init: RequestInit, timeoutMs = 10_000) {
   const resolved = await getMercadoPagoCredentials();
   const accessToken = resolved.accessToken ?? getMercadoPagoAccessToken();
   if (!accessToken) throw new Error('Falta configurar MERCADO_PAGO_ACCESS_TOKEN.');
-  const response = await fetch(`${API_BASE}${path}`, { ...init, headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', ...(init.headers || {}) }, cache: 'no-store' });
-  const text = await response.text();
-  const data = text ? JSON.parse(text) : null;
-  if (!response.ok) throw new Error(data?.message || data?.error || `Mercado Pago respondió con estado ${response.status}.`);
-  return data as T;
+
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetch(`${API_BASE}${path}`, {
+      ...init,
+      headers: { Authorization: `Bearer ${accessToken}`, 'Content-Type': 'application/json', ...(init.headers || {}) },
+      cache: 'no-store',
+      signal: controller.signal,
+    });
+    const text = await response.text();
+    const data = text ? JSON.parse(text) : null;
+    if (!response.ok) throw new Error(data?.message || data?.error || `Mercado Pago respondió con estado ${response.status}.`);
+    return data as T;
+  } catch (error) {
+    if (error instanceof Error && error.name === 'AbortError') {
+      throw new Error(`Mercado Pago no respondió en ${timeoutMs} ms.`);
+    }
+    throw error;
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 export async function createMercadoPagoPreference(params: { orderId: string; payload: CheckoutPayload; summary: CheckoutSummary }) {
@@ -200,11 +217,11 @@ export async function createMercadoPagoPreference(params: { orderId: string; pay
     binary_mode: false,
     metadata: { order_id: orderId, tracking_token: trackingToken, region: payload.region, shipping_address: payload.shippingAddress || '' },
   };
-  return mercadoPagoFetch<MercadoPagoPreferenceResult>('/checkout/preferences', { method: 'POST', body: JSON.stringify(body) });
+  return mercadoPagoFetch<MercadoPagoPreferenceResult>('/checkout/preferences', { method: 'POST', body: JSON.stringify(body) }, 12_000);
 }
 
 export async function getMercadoPagoPayment(paymentId: string) {
-  return mercadoPagoFetch<MercadoPagoPaymentResponse>(`/v1/payments/${paymentId}`, { method: 'GET' });
+  return mercadoPagoFetch<MercadoPagoPaymentResponse>(`/v1/payments/${paymentId}`, { method: 'GET' }, 8_000);
 }
 
 function parseSignatureParts(signatureHeader: string | null) {

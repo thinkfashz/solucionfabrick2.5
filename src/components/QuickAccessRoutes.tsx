@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { Store, Wrench, User, Briefcase, CreditCard, Calculator, ArrowRight } from 'lucide-react';
+import { Store, User, Briefcase, CreditCard, Calculator, ArrowRight } from 'lucide-react';
 
 const ROUTES = [
   {
@@ -13,12 +13,6 @@ const ROUTES = [
     description: 'Calculadora en vivo: arma tu cotización con materiales y servicios.',
     href: '/presupuesto',
     Icon: Calculator,
-  },
-  {
-    title: 'Soluciones',
-    description: 'Paquetes llave en mano: piso, estructura metalcon, revestimientos.',
-    href: '/soluciones',
-    Icon: Wrench,
   },
   {
     title: 'Proyectos',

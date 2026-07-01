@@ -85,8 +85,8 @@ function ContactoForm() {
       eyebrow="Contacto"
       title="Conversemos tu proyecto"
       description="Escríbenos y revisa nuestra ubicación en el mapa. Respondemos en menos de 24 horas hábiles desde el primer mensaje."
-      primaryAction={{ href: '/soluciones', label: 'Ver catálogo' }}
-      secondaryAction={{ href: '/servicios', label: 'Ver servicios' }}
+      primaryAction={{ href: '/servicios', label: 'Ver servicios' }}
+      secondaryAction={{ href: '/contacto', label: 'Agendar visita' }}
     >
       {/* Response time banner */}
       <div className="mb-8 flex items-center justify-center gap-3 rounded-2xl border border-yellow-400/20 bg-yellow-400/5 px-6 py-4">

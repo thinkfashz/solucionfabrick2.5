@@ -1,7 +1,6 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { insforge } from '@/lib/insforge';
 
 export type ServiceId = 'vercel' | 'insforge' | 'github' | 'mercadopago' | 'cloudflare';
 
@@ -30,6 +29,14 @@ export interface LatencySample {
   ms: number;
 }
 
+export interface ServiceStatus {
+  online: boolean;
+  latencyMs: number;
+  history: LatencySample[];
+  status?: string;
+  message?: string;
+}
+
 export interface ObservatoryData {
   productosActivos: number;
   pedidosHoy: number;
@@ -37,12 +44,36 @@ export interface ObservatoryData {
   revenueWeek: number;
   errorsHour: number;
   latestOrders: LatestOrder[];
-  servicioStatus: Record<ServiceId, { online: boolean; latencyMs: number; history: LatencySample[] }>;
+  servicioStatus: Record<ServiceId, ServiceStatus>;
   events: ObservatoryEvent[];
   loading: boolean;
   lastUpdated: Date | null;
   syncing: boolean;
 }
+
+type ApiErrorRow = {
+  id: string;
+  error_message?: string | null;
+  endpoint?: string | null;
+  created_at: string;
+  status_code?: number | null;
+};
+
+type ObservabilityApiResponse = {
+  ok?: boolean;
+  generatedAt?: string;
+  metrics?: {
+    productosActivos?: number;
+    pedidosHoy?: number;
+    leadsHoy?: number;
+    revenueWeek?: number;
+    errorsHour?: number;
+    latestOrders?: LatestOrder[];
+    errorRows?: ApiErrorRow[];
+  };
+  servicioStatus?: Record<ServiceId, Omit<ServiceStatus, 'history'>>;
+  error?: string;
+};
 
 const COLORS: Record<EventKind, string> = {
   order: '#22c55e',
@@ -53,19 +84,45 @@ const COLORS: Record<EventKind, string> = {
 };
 
 const INITIAL_STATUS: ObservatoryData['servicioStatus'] = {
-  vercel: { online: true, latencyMs: 12, history: [] },
-  insforge: { online: true, latencyMs: 8, history: [] },
-  github: { online: true, latencyMs: 34, history: [] },
-  mercadopago: { online: true, latencyMs: 22, history: [] },
-  cloudflare: { online: true, latencyMs: 5, history: [] },
+  vercel: { online: true, latencyMs: 0, history: [] },
+  insforge: { online: false, latencyMs: 0, history: [] },
+  github: { online: true, latencyMs: 0, history: [] },
+  mercadopago: { online: false, latencyMs: 0, history: [] },
+  cloudflare: { online: true, latencyMs: 0, history: [] },
 };
 
-const POLL_INTERVAL_MS = 10_000;
+const POLL_INTERVAL_MS = 15_000;
 const MAX_HISTORY = 30;
 const MAX_EVENTS = 60;
 
 function makeId(prefix: string) {
   return `${prefix}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`;
+}
+
+function normalizeNumber(value: unknown) {
+  const n = Number(value ?? 0);
+  return Number.isFinite(n) ? n : 0;
+}
+
+function mergeServiceStatus(
+  previous: ObservatoryData['servicioStatus'],
+  incoming: ObservabilityApiResponse['servicioStatus'],
+): ObservatoryData['servicioStatus'] {
+  const now = Date.now();
+  const next: ObservatoryData['servicioStatus'] = { ...previous };
+  (Object.keys(previous) as ServiceId[]).forEach((id) => {
+    const source = incoming?.[id];
+    const prior = previous[id]?.history ?? [];
+    const latencyMs = normalizeNumber(source?.latencyMs ?? previous[id]?.latencyMs);
+    next[id] = {
+      online: Boolean(source?.online ?? previous[id]?.online),
+      latencyMs,
+      status: source?.status ?? previous[id]?.status,
+      message: source?.message ?? previous[id]?.message,
+      history: [...prior, { ts: now, ms: latencyMs }].slice(-MAX_HISTORY),
+    };
+  });
+  return next;
 }
 
 export function useObservatoryData(): ObservatoryData {
@@ -91,37 +148,27 @@ export function useObservatoryData(): ObservatoryData {
 
   const fetchAll = useCallback(async () => {
     setData((prev) => ({ ...prev, syncing: true }));
-    const tStart = performance.now();
+
     try {
-      const hoy = new Date();
-      hoy.setHours(0, 0, 0, 0);
-      const hoyISO = hoy.toISOString();
-      const weekAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString();
-      const hourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+      const res = await fetch('/api/admin/observability', {
+        cache: 'no-store',
+        headers: { Accept: 'application/json' },
+      });
+      const json = await res.json() as ObservabilityApiResponse;
+      if (!res.ok || !json.ok) {
+        throw new Error(json.error || 'No se pudo leer observabilidad.');
+      }
 
-      const [prod, ped, leads, orders, revenue, errors] = await Promise.allSettled([
-        insforge.database.from('products').select('id', { count: 'exact', head: true }).neq('activo', false),
-        insforge.database.from('orders').select('id', { count: 'exact', head: true }).gte('created_at', hoyISO),
-        insforge.database.from('leads').select('id', { count: 'exact', head: true }).gte('created_at', hoyISO),
-        insforge.database.from('orders').select('id,total,status,created_at').order('created_at', { ascending: false }).limit(8),
-        insforge.database.from('orders').select('total').gte('created_at', weekAgo).eq('status', 'pagada'),
-        insforge.database.from('admin_error_logs').select('id,error_message,endpoint,created_at,status_code').gte('created_at', hourAgo).order('created_at', { ascending: false }).limit(8),
-      ]);
+      const metrics = json.metrics ?? {};
+      const productosActivos = normalizeNumber(metrics.productosActivos);
+      const pedidosHoy = normalizeNumber(metrics.pedidosHoy);
+      const leadsHoy = normalizeNumber(metrics.leadsHoy);
+      const revenueWeek = normalizeNumber(metrics.revenueWeek);
+      const latestOrders = Array.isArray(metrics.latestOrders) ? metrics.latestOrders : [];
+      const errorRows = Array.isArray(metrics.errorRows) ? metrics.errorRows : [];
+      const errorsHour = normalizeNumber(metrics.errorsHour ?? errorRows.length);
 
-      const productosActivos = prod.status === 'fulfilled' ? (prod.value.count ?? 0) : 0;
-      const pedidosHoy = ped.status === 'fulfilled' ? (ped.value.count ?? 0) : 0;
-      const leadsHoy = leads.status === 'fulfilled' ? (leads.value.count ?? 0) : 0;
-      const latestOrders: LatestOrder[] = orders.status === 'fulfilled' ? ((orders.value.data ?? []) as LatestOrder[]) : [];
-      const revenueWeek = revenue.status === 'fulfilled'
-        ? ((revenue.value.data ?? []) as Array<{ total: number | null }>).reduce((s, r) => s + (r.total ?? 0), 0)
-        : 0;
-      type ErrorRow = { id: string; error_message?: string | null; endpoint?: string | null; created_at: string; status_code?: number | null };
-      const errorRows: ErrorRow[] = errors.status === 'fulfilled' ? ((errors.value.data ?? []) as ErrorRow[]) : [];
-      const errorsHour = errorRows.length;
-
-      // ── Detectar deltas → eventos ────────────────────────────────────────
       const newEvents: ObservatoryEvent[] = [];
-
       if (initialized.current) {
         for (const o of latestOrders) {
           if (!seenOrderIds.current.has(o.id)) {
@@ -143,7 +190,7 @@ export function useObservatoryData(): ObservatoryData {
             newEvents.push({
               id: makeId('evt-err'),
               kind: 'error',
-              service: 'insforge',
+              service: 'vercel',
               message: `ERROR ${e.status_code ?? '?'}${where}: ${(e.error_message ?? '').slice(0, 80)}`,
               ts: e.created_at,
               color: COLORS.error,
@@ -163,47 +210,24 @@ export function useObservatoryData(): ObservatoryData {
         }
       }
 
-      // Actualizar refs de "vistos"
       latestOrders.forEach((o) => seenOrderIds.current.add(o.id));
       errorRows.forEach((e) => seenErrorIds.current.add(e.id));
       lastLeadCount.current = leadsHoy;
 
-      // Latencia real medida del round-trip InsForge.
-      const insforgeLatency = Math.max(1, Math.round(performance.now() - tStart));
-      // Latencias simuladas — se pueden reemplazar por health-checks reales.
-      const latencies: Record<ServiceId, number> = {
-        vercel: Math.round(8 + Math.random() * 15),
-        insforge: insforgeLatency,
-        github: Math.round(20 + Math.random() * 40),
-        mercadopago: Math.round(15 + Math.random() * 35),
-        cloudflare: Math.round(3 + Math.random() * 10),
-      };
-
-      const now = Date.now();
-
       setData((prev) => {
-        const nextStatus: ObservatoryData['servicioStatus'] = { ...prev.servicioStatus };
-        (Object.keys(latencies) as ServiceId[]).forEach((id) => {
-          const ms = latencies[id];
-          const prior = prev.servicioStatus[id]?.history ?? [];
-          nextStatus[id] = {
-            online: true,
-            latencyMs: ms,
-            history: [...prior, { ts: now, ms }].slice(-MAX_HISTORY),
-          };
-        });
-
-        // Sync event en cada poll para que la UI muestre actividad.
+        const nextStatus = mergeServiceStatus(prev.servicioStatus, json.servicioStatus);
+        const insforgeLatency = nextStatus.insforge?.latencyMs ?? 0;
+        const offline = (Object.keys(nextStatus) as ServiceId[]).filter((id) => !nextStatus[id].online);
         const syncEvent: ObservatoryEvent = {
           id: makeId('evt-sync'),
-          kind: 'sync',
-          service: 'insforge',
-          message: `SYNC OK · ${insforgeLatency}ms · ${latestOrders.length} ord · ${errorsHour} err/h`,
-          ts: new Date().toISOString(),
-          color: COLORS.sync,
+          kind: offline.length ? 'error' : 'sync',
+          service: offline[0] ?? 'insforge',
+          message: offline.length
+            ? `HEALTH WARN · offline: ${offline.join(', ')}`
+            : `SYNC OK · ${insforgeLatency}ms · ${latestOrders.length} ord · ${errorsHour} err/h`,
+          ts: json.generatedAt ?? new Date().toISOString(),
+          color: offline.length ? COLORS.error : COLORS.sync,
         };
-
-        const events = [...newEvents, syncEvent, ...prev.events].slice(0, MAX_EVENTS);
 
         return {
           ...prev,
@@ -214,15 +238,31 @@ export function useObservatoryData(): ObservatoryData {
           errorsHour,
           latestOrders,
           servicioStatus: nextStatus,
-          events,
+          events: [...newEvents, syncEvent, ...prev.events].slice(0, MAX_EVENTS),
           loading: false,
           syncing: false,
-          lastUpdated: new Date(),
+          lastUpdated: new Date(json.generatedAt ?? Date.now()),
         };
       });
       initialized.current = true;
-    } catch {
-      setData((prev) => ({ ...prev, loading: false, syncing: false }));
+    } catch (error) {
+      const now = new Date().toISOString();
+      setData((prev) => ({
+        ...prev,
+        loading: false,
+        syncing: false,
+        events: [
+          {
+            id: makeId('evt-api'),
+            kind: 'error',
+            service: 'vercel',
+            message: `OBSERVABILITY API ERROR: ${error instanceof Error ? error.message.slice(0, 90) : 'desconocido'}`,
+            ts: now,
+            color: COLORS.error,
+          },
+          ...prev.events,
+        ].slice(0, MAX_EVENTS),
+      }));
     }
   }, []);
 

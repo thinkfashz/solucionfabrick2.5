@@ -8,12 +8,10 @@ import {
   Menu,
   Home,
   Wrench,
-  Gamepad2,
   FileText,
   ShoppingCart,
   ShoppingBag,
   TrendingUp,
-  Lightbulb,
   Calculator,
   Building2,
   Layers,
@@ -34,7 +32,6 @@ import type { NavLinkItem } from '@/lib/siteStructureTypes';
 const PRIMARY_MENU_ITEMS = [
   { label: 'Inicio',           href: '/',             Icon: Home },
   { label: 'Servicios',        href: '/servicios',    Icon: Wrench },
-  { label: 'Diseñar mi casa',  href: '/juego',        Icon: Gamepad2 },
   { label: 'Cotización',       href: '/cotizaciones', Icon: FileText, quoteCount: true },
   { label: 'Tienda',           href: '/tienda',       Icon: ShoppingBag, cartCount: true },
 ];
@@ -42,7 +39,6 @@ const PRIMARY_MENU_ITEMS = [
 /** Segundo grupo del drawer: secciones de exploración / contenido. */
 const SECONDARY_MENU_ITEMS = [
   { label: 'Evolución',   href: '/evolucion',   Icon: TrendingUp },
-  { label: 'Soluciones',  href: '/soluciones',  Icon: Lightbulb },
   { label: 'Presupuesto', href: '/presupuesto', Icon: Calculator },
   { label: 'Proyectos',   href: '/proyectos',   Icon: Building2 },
   { label: 'Casos',       href: '/casos',       Icon: Layers },
@@ -215,16 +211,6 @@ export default function Navbar() {
           ))}
 
           <span className="h-4 w-px bg-white/15" />
-
-          <button
-            type="button"
-            onClick={() => handleNav('/juego')}
-            aria-label="Diseñar mi casa"
-            title="Diseñar mi casa"
-            className="relative flex h-9 w-9 items-center justify-center rounded-full border border-white/10 bg-white/5 text-zinc-300 transition-all hover:border-[var(--accent)]/50 hover:bg-[var(--accent)]/10 hover:text-[var(--accent)]"
-          >
-            <Gamepad2 className="h-4 w-4" />
-          </button>
 
           <button
             type="button"

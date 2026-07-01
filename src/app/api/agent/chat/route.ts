@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { chatCompletionWithFallback, type ChatMessage } from '@/lib/openrouter';
 import { getClientIp } from '@/lib/adminAuth';
 import { checkPersistentRateLimit } from '@/lib/adminRateLimitStore';
+import { campaignBusyHeaders, getCampaignMode, publicAiChatEnabled } from '@/lib/campaignMode';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -20,6 +21,7 @@ export const runtime = 'nodejs';
  *    Reusa el store existente para evitar instalar Redis/KV en esta fase.
  *    Para límites estrictos globales a escala enterprise, migrar este bucket
  *    a Redis/KV administrado en el módulo de infraestructura.
+ *  - Modo campaña: FABRICK_CAMPAIGN_MODE=limited/catalog pausa el chat IA.
  *  - Cuerpo máximo: 32 KB para evitar payloads abusivos.
  *  - Ventana de contexto acotada: últimos 12 mensajes del cliente
  *    (≈6 turnos completos user→assistant).
@@ -111,6 +113,16 @@ function sanitizeMessages(raw: unknown): ClientMsg[] | null {
 }
 
 export async function POST(request: NextRequest) {
+  if (!publicAiChatEnabled()) {
+    return NextResponse.json(
+      {
+        error: 'El asistente IA está pausado temporalmente por modo campaña. Escríbenos por WhatsApp o desde contacto.',
+        campaignMode: getCampaignMode(),
+      },
+      { status: 503, headers: campaignBusyHeaders() },
+    );
+  }
+
   const ip = getClientIp(request);
   const rl = await checkPersistentRateLimit({
     namespace: 'public:agent-chat',

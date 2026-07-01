@@ -37,13 +37,16 @@ function measure() {
   return () => Math.max(1, Math.round(performance.now() - started));
 }
 
-function countFrom(result: PromiseSettledResult<{ count?: number | null }>) {
-  return result.status === 'fulfilled' ? result.value.count ?? 0 : 0;
+function countFrom(result: PromiseSettledResult<unknown>) {
+  if (result.status !== 'fulfilled') return 0;
+  const value = result.value as { count?: number | null } | null;
+  return value?.count ?? 0;
 }
 
-function dataFrom<T>(result: PromiseSettledResult<{ data?: unknown }>, fallback: T): T {
+function dataFrom<T>(result: PromiseSettledResult<unknown>, fallback: T): T {
   if (result.status !== 'fulfilled') return fallback;
-  return (result.value.data ?? fallback) as T;
+  const value = result.value as { data?: unknown } | null;
+  return (value?.data ?? fallback) as T;
 }
 
 async function requireAdmin(request: NextRequest) {
@@ -124,10 +127,10 @@ export async function GET(request: NextRequest) {
   const revenueRows = dataFrom<Array<{ total: number | null }>>(revenue, []);
   const errorRows = dataFrom<ErrorRow[]>(errors, []);
   const insforgeService = insforgeHealth.status === 'fulfilled'
-    ? insforgeHealth.value
+    ? insforgeHealth.value as ServiceHealth
     : { online: false, latencyMs: 0, status: 'error', message: 'insforge_probe_failed' };
   const mercadoPagoService = mpHealth.status === 'fulfilled'
-    ? mpHealth.value
+    ? mpHealth.value as ServiceHealth
     : { online: false, latencyMs: 0, status: 'error', message: 'mercadopago_probe_failed' };
 
   const servicioStatus: Record<ServiceId, ServiceHealth> = {

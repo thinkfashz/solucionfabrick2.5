@@ -3,7 +3,6 @@ import type { NextRequest } from 'next/server';
 import { createClient } from '@insforge/sdk';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 import { decryptCredentials } from '@/lib/integrationsCrypto';
-import { getAppBaseUrl } from '@/lib/mercadopago';
 
 export type ServiceStatus = 'online' | 'slow' | 'offline' | 'unconfigured';
 
@@ -238,7 +237,7 @@ export async function GET(request: NextRequest) {
   }
 
   const insforgeUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
-  const appBaseUrl = getAppBaseUrl();
+  const appBaseUrl = new URL(request.url).origin;
   const creds = await loadIntegrationCredentials();
 
   const publicChecks: { id: string; url: string }[] = [

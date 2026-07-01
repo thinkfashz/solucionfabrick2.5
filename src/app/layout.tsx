@@ -3,6 +3,7 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import './tenant-public-theme.css';
 import './responsive-safety.css';
+import './remove-obsolete-sections.css';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
 import SmoothScrollProvider from '@/components/SmoothScrollProvider';
 import SplashScreen from '@/components/SplashScreen';

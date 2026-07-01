@@ -14,6 +14,29 @@ const securityHeaders = [
   // each navigation gets a fresh nonce for inline JSON-LD scripts.
 ];
 
+/**
+ * Sentry pulls OpenTelemetry instrumentation packages for server tracing. Those
+ * packages intentionally use dynamic require/import patterns that webpack cannot
+ * statically analyse, so Vercel prints noisy "Critical dependency" warnings even
+ * though the build is valid. Keep the warnings suppressed only for this known
+ * dependency chain so real app warnings still surface.
+ */
+function isKnownSentryInstrumentationWarning(warning = {}) {
+  const message = String(warning.message || warning.details || '');
+  const moduleName = String(
+    warning.module?.resource ||
+    (typeof warning.module?.identifier === 'function' ? warning.module.identifier() : '') ||
+    warning.file ||
+    '',
+  );
+
+  return /Critical dependency/i.test(message) && (
+    /@opentelemetry[\\/]instrumentation/.test(moduleName) ||
+    /require-in-the-middle/.test(moduleName) ||
+    /@sentry[\\/]node/.test(moduleName)
+  );
+}
+
 const nextConfig = {
   ...(process.platform === 'win32' ? {} : { output: 'standalone' }),
   // Vercel was failing with OOM after compilation while running the full lint
@@ -60,6 +83,12 @@ const nextConfig = {
     'chromium-bidi',
   ],
   webpack(config, { isServer }) {
+    const existingIgnoredWarnings = Array.isArray(config.ignoreWarnings) ? config.ignoreWarnings : [];
+    config.ignoreWarnings = [
+      ...existingIgnoredWarnings,
+      isKnownSentryInstrumentationWarning,
+    ];
+
     if (isServer) {
       // Playwright and its native sub-packages must never be bundled by webpack.
       // pnpm's virtual-store paths make serverExternalPackages unreliable for

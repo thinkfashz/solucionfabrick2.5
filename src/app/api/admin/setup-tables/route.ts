@@ -33,6 +33,7 @@ const EXPECTED_TABLES = [
   'products',
   'integrations',
   'orders',
+  'payment_webhooks',
   'leads',
   'posts',
   'projects',

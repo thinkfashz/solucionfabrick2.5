@@ -76,7 +76,7 @@ const memoryCache = new Map<string, RateLimitEntry>();
  * everyone behind the same gateway, so we skip the DB layer for it.
  */
 function shouldPersist(ip: string): boolean {
-  return ip !== 'unknown' && ip.length > 0;
+  return ip !== 'unknown' && !ip.endsWith(':unknown') && ip.length > 0;
 }
 
 /**

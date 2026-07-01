@@ -20,25 +20,26 @@ export async function verifyTurnstile(
   if (!secret) return true; // not configured → skip
   if (!token) return false;
 
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 5_000);
   try {
     const form = new URLSearchParams();
     form.set('secret', secret);
     form.set('response', token);
     if (remoteIp) form.set('remoteip', remoteIp);
 
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), 5_000);
     const res = await fetch('https://challenges.cloudflare.com/turnstile/v0/siteverify', {
       method: 'POST',
       body: form,
       signal: controller.signal,
     });
-    clearTimeout(timer);
 
     if (!res.ok) return false;
     const data = (await res.json()) as { success?: boolean };
     return data.success === true;
   } catch {
     return false;
+  } finally {
+    clearTimeout(timer);
   }
 }

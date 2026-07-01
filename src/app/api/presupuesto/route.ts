@@ -1,6 +1,11 @@
 import { NextResponse } from 'next/server';
 import nodemailer from 'nodemailer';
 import { verifyTurnstile } from '@/lib/turnstile';
+import { getClientIp } from '@/lib/adminAuth';
+import { checkPersistentRateLimit } from '@/lib/adminRateLimitStore';
+
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
 interface FormFields {
   nombre: string;
@@ -11,21 +16,53 @@ interface FormFields {
   'cf-turnstile-response'?: string;
 }
 
-async function parseBody(request: Request): Promise<FormFields> {
-  const contentType = request.headers.get('content-type') ?? '';
-  if (contentType.includes('application/json')) {
-    return request.json();
-  }
-  // Handle application/x-www-form-urlencoded (native HTML form POST)
+const MAX_BODY_BYTES = 12 * 1024;
+const RATE_LIMIT_MAX = 8;
+const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+
+function cleanText(value: unknown, maxLength: number): string {
+  if (typeof value !== 'string') return '';
+  return value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLength);
+}
+
+function escapeHtml(value: string) {
+  return value.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+
+async function readRequestText(request: Request): Promise<string | null> {
+  const declaredLength = Number(request.headers.get('content-length') ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) return null;
   const text = await request.text();
+  if (Buffer.byteLength(text, 'utf8') > MAX_BODY_BYTES) return null;
+  return text;
+}
+
+async function parseBody(request: Request): Promise<FormFields | null> {
+  const contentType = request.headers.get('content-type') ?? '';
+  const text = await readRequestText(request);
+  if (text === null) return null;
+
+  if (contentType.includes('application/json')) {
+    const raw = JSON.parse(text) as Record<string, unknown>;
+    return {
+      nombre: cleanText(raw.nombre, 120),
+      email: cleanText(raw.email, 180),
+      telefono: cleanText(raw.telefono, 60) || undefined,
+      tipo_proyecto: cleanText(raw.tipo_proyecto, 120) || undefined,
+      descripcion: cleanText(raw.descripcion, 2_000) || undefined,
+      'cf-turnstile-response': cleanText(raw['cf-turnstile-response'], 2_048) || undefined,
+    };
+  }
+
+  // Handle application/x-www-form-urlencoded (native HTML form POST)
   const params = new URLSearchParams(text);
   return {
-    nombre: params.get('nombre') ?? '',
-    email: params.get('email') ?? '',
-    telefono: params.get('telefono') ?? undefined,
-    tipo_proyecto: params.get('tipo_proyecto') ?? undefined,
-    descripcion: params.get('descripcion') ?? undefined,
-    'cf-turnstile-response': params.get('cf-turnstile-response') ?? undefined,
+    nombre: cleanText(params.get('nombre'), 120),
+    email: cleanText(params.get('email'), 180),
+    telefono: cleanText(params.get('telefono'), 60) || undefined,
+    tipo_proyecto: cleanText(params.get('tipo_proyecto'), 120) || undefined,
+    descripcion: cleanText(params.get('descripcion'), 2_000) || undefined,
+    'cf-turnstile-response': cleanText(params.get('cf-turnstile-response'), 2_048) || undefined,
   };
 }
 
@@ -36,29 +73,29 @@ async function sendEmail(fields: FormFields): Promise<void> {
     return;
   }
 
-  const escape = (s: string) =>
-    s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-
   const transporter = nodemailer.createTransport({
     service: 'gmail',
     auth: { user: SMTP_USER, pass: SMTP_PASS },
+    connectionTimeout: 8_000,
+    greetingTimeout: 8_000,
+    socketTimeout: 10_000,
   });
 
   const html = `
     <h2>Nueva solicitud de presupuesto - Fabrick</h2>
     <table cellpadding="8" cellspacing="0" style="border-collapse:collapse">
-      <tr><td><b>Nombre:</b></td><td>${escape(fields.nombre)}</td></tr>
-      <tr><td><b>Email:</b></td><td>${escape(fields.email)}</td></tr>
-      <tr><td><b>Teléfono:</b></td><td>${escape(fields.telefono ?? '—')}</td></tr>
-      <tr><td><b>Tipo de proyecto:</b></td><td>${escape(fields.tipo_proyecto ?? '—')}</td></tr>
-      <tr><td><b>Descripción:</b></td><td>${escape(fields.descripcion ?? '—')}</td></tr>
+      <tr><td><b>Nombre:</b></td><td>${escapeHtml(fields.nombre)}</td></tr>
+      <tr><td><b>Email:</b></td><td>${escapeHtml(fields.email)}</td></tr>
+      <tr><td><b>Teléfono:</b></td><td>${escapeHtml(fields.telefono ?? '—')}</td></tr>
+      <tr><td><b>Tipo de proyecto:</b></td><td>${escapeHtml(fields.tipo_proyecto ?? '—')}</td></tr>
+      <tr><td><b>Descripción:</b></td><td>${escapeHtml(fields.descripcion ?? '—')}</td></tr>
     </table>
   `;
 
   await transporter.sendMail({
     from: `"Fabrick Contacto" <${SMTP_USER}>`,
     to: 'f.eduardomicolta@gmail.com',
-    subject: `Nueva solicitud de presupuesto de ${escape(fields.nombre)}`,
+    subject: `Nueva solicitud de presupuesto de ${fields.nombre}`,
     html,
   });
 }
@@ -67,7 +104,30 @@ export async function POST(request: Request) {
   const isHtmlForm = (request.headers.get('content-type') ?? '').includes('application/x-www-form-urlencoded');
 
   try {
+    const ip = getClientIp(request);
+    const rl = await checkPersistentRateLimit({
+      namespace: 'public:presupuesto',
+      identity: ip,
+      max: RATE_LIMIT_MAX,
+      windowMs: RATE_LIMIT_WINDOW_MS,
+    });
+    if (!rl.ok) {
+      if (isHtmlForm) {
+        return NextResponse.redirect(new URL('/contacto?error=rate-limit', request.url), 303);
+      }
+      return NextResponse.json(
+        { error: 'Demasiadas solicitudes. Intenta nuevamente en unos minutos.', retry_after: rl.retryAfterSec },
+        { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
+      );
+    }
+
     const fields = await parseBody(request);
+    if (!fields) {
+      if (isHtmlForm) {
+        return NextResponse.redirect(new URL('/contacto?error=payload', request.url), 303);
+      }
+      return NextResponse.json({ error: 'Solicitud demasiado grande.' }, { status: 413 });
+    }
 
     // Bot protection (no-op when TURNSTILE_SECRET_KEY is not configured)
     const captchaOk = await verifyTurnstile(

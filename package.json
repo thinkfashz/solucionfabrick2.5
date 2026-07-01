@@ -17,6 +17,7 @@
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",
     "typecheck": "tsc --noEmit",
+    "deploy:preflight": "node scripts/deploy-preflight.mjs",
     "load:smoke": "node scripts/smoke-load.mjs",
     "audit:tenant": "node scripts/audit-multitenancy.mjs",
     "admin:set-password": "tsx scripts/set-admin-password.ts",

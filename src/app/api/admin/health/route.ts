@@ -9,6 +9,12 @@ export type ServiceStatus = 'online' | 'slow' | 'offline' | 'unconfigured';
 
 type ProbeStatus = 'ok' | 'slow' | 'error' | 'unconfigured';
 
+type CountQueryResult = { count?: number | null; error?: { message?: string } | null };
+type CountQuery = PromiseLike<CountQueryResult> & {
+  neq: (column: string, value: unknown) => CountQuery;
+  gte: (column: string, value: unknown) => CountQuery;
+};
+
 interface ServiceResult {
   status: ServiceStatus;
   latency: number;
@@ -36,13 +42,6 @@ const ENDPOINT_TIMEOUT_MS = 5_000;
 const SLOW_ENDPOINT_MS = 900;
 const SLOW_DB_MS = 700;
 const MAX_OBSERVATORY_ROWS = 120;
-
-function serviceFromProbe(status: ProbeStatus): ServiceStatus {
-  if (status === 'ok') return 'online';
-  if (status === 'slow') return 'slow';
-  if (status === 'unconfigured') return 'unconfigured';
-  return 'offline';
-}
 
 async function pingUrl(url: string, timeoutMs = SERVICE_TIMEOUT_MS): Promise<ServiceResult> {
   const start = Date.now();
@@ -175,7 +174,7 @@ async function loadIntegrationCredentials(): Promise<Record<string, Record<strin
 
 async function probeDatabaseCount(
   table: string,
-  build?: (query: ReturnType<ReturnType<typeof createClient>['database']['from']> extends infer Q ? Q : never) => unknown,
+  build?: (query: CountQuery) => CountQuery,
 ): Promise<DatabaseProbeResult> {
   const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
   const anonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
@@ -184,8 +183,8 @@ async function probeDatabaseCount(
   const start = Date.now();
   try {
     const client = createClient({ baseUrl, anonKey });
-    let query = client.database.from(table).select('id', { count: 'exact', head: true });
-    if (build) query = build(query) as typeof query;
+    let query = client.database.from(table).select('id', { count: 'exact', head: true }) as unknown as CountQuery;
+    if (build) query = build(query);
     const { count, error } = await query;
     const latency = Date.now() - start;
     if (error) return { status: 'error', latency, note: error.message };
@@ -216,7 +215,7 @@ function buildReadinessReport(args: {
   if (args.services.insforge?.status === 'offline') blockers.push('InsForge está offline o inaccesible.');
   if (args.services.mercadopago?.status === 'offline') warnings.push('Mercado Pago no responde; checkout puede degradarse.');
 
-  const catalogCache = args.endpoints['catalog']?.cache ?? '';
+  const catalogCache = args.endpoints.catalog?.cache ?? '';
   if (catalogCache && !/s-maxage/i.test(catalogCache)) warnings.push('El catálogo no muestra header s-maxage; revisa caché CDN.');
 
   const publicPagesReady = !blockers.some((item) => /catalog|site_structure|InsForge/i.test(item));

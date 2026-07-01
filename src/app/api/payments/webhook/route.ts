@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { createHmac } from 'node:crypto';
-import { insforgeAdmin } from '@/lib/insforge';
+import { INSFORGE_BASE_URL, insforgeAdmin } from '@/lib/insforge';
 import { getMercadoPagoPayment, mapMercadoPagoStatus, verifyMercadoPagoSignature } from '@/lib/mercadopago';
 import { confirmPaidOrderAndSendReceiptAsync } from '@/lib/orders/paidConfirmation';
 import { dispatchHookAsync } from '@/lib/extensionsBus';
@@ -115,7 +115,34 @@ function getLineItemQuantity(item: OrderItem) {
   return Number.isFinite(quantity) && quantity > 0 ? quantity : 0;
 }
 
-async function decrementStockForPaidOrder(orderId: string) {
+function sqlLiteral(value: string) {
+  return value.replace(/'/g, "''").slice(0, 140);
+}
+
+async function decrementStockForPaidOrderViaSql(orderId: string) {
+  const apiKey = process.env.INSFORGE_API_KEY;
+  if (!apiKey) return { ok: false, warning: 'INSFORGE_API_KEY no configurada para stock SQL atómico.' };
+
+  try {
+    const url = `${INSFORGE_BASE_URL.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`;
+    const query = `SELECT public.decrement_stock_for_paid_order('${sqlLiteral(orderId)}') AS result;`;
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey,
+      },
+      body: JSON.stringify({ query }),
+      cache: 'no-store',
+    });
+    if (!res.ok) return { ok: false, warning: `Stock SQL atómico no disponible: HTTP ${res.status}.` };
+    return { ok: true, strategy: 'sql_function' };
+  } catch (error) {
+    return { ok: false, warning: error instanceof Error ? error.message : 'Stock SQL atómico falló.' };
+  }
+}
+
+async function decrementStockForPaidOrderBestEffort(orderId: string) {
   try {
     const { data } = await insforgeAdmin.database
       .from('orders')
@@ -148,10 +175,18 @@ async function decrementStockForPaidOrder(orderId: string) {
         .eq('id', productId);
     }
 
-    return { ok: true };
+    return { ok: true, strategy: 'best_effort' };
   } catch (error) {
     return { ok: false, warning: error instanceof Error ? error.message : 'No se pudo descontar stock.' };
   }
+}
+
+async function decrementStockForPaidOrder(orderId: string) {
+  const atomic = await decrementStockForPaidOrderViaSql(orderId);
+  if (atomic.ok) return atomic;
+  const fallback = await decrementStockForPaidOrderBestEffort(orderId);
+  if (!fallback.ok) return fallback;
+  return { ...fallback, warning: atomic.warning };
 }
 
 function safeJsonParse(rawBody: string): MercadoPagoWebhookBody | null {

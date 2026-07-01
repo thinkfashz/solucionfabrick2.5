@@ -333,6 +333,20 @@ CREATE TABLE IF NOT EXISTS public.admin_users (
   created_at timestamptz DEFAULT now()
 );
 
+-- TABLA: admin_error_logs
+CREATE TABLE IF NOT EXISTS public.admin_error_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  endpoint text,
+  method text,
+  status_code integer,
+  error_message text,
+  details jsonb DEFAULT '{}'::jsonb,
+  created_at timestamptz DEFAULT now()
+);
+CREATE INDEX IF NOT EXISTS admin_error_logs_created_at_idx ON public.admin_error_logs (created_at DESC);
+CREATE INDEX IF NOT EXISTS admin_error_logs_endpoint_created_idx ON public.admin_error_logs (endpoint, created_at DESC);
+CREATE INDEX IF NOT EXISTS admin_error_logs_status_created_idx ON public.admin_error_logs (status_code, created_at DESC);
+
 -- TABLA: banners
 CREATE TABLE IF NOT EXISTS public.banners (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

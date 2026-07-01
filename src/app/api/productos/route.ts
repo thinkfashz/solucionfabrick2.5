@@ -5,12 +5,25 @@ import { DEFAULT_TENANT_ID } from '@/lib/tenant';
 // Edge runtime is feasible here because the InsForge SDK only uses
 // fetch + web-standard primitives (no Node-only APIs). See docs/perf-runtime.md.
 export const runtime = 'edge';
+export const revalidate = 60;
+
+const CDN_CACHE = 'public, s-maxage=60, stale-while-revalidate=300';
+
+function productosResponse(payload: Record<string, unknown>, status = 200) {
+  return NextResponse.json(payload, {
+    status,
+    headers: {
+      'Cache-Control': status === 200 ? CDN_CACHE : 'no-store',
+    },
+  });
+}
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const categoria = searchParams.get('categoria');
   const featured = searchParams.get('featured');
-  const limit = parseInt(searchParams.get('limit') ?? '20');
+  const rawLimit = Number.parseInt(searchParams.get('limit') ?? '20', 10);
+  const limit = Number.isFinite(rawLimit) ? Math.min(Math.max(rawLimit, 1), 100) : 20;
 
   // Tenant isolation: each subdomain only serves its own catalog
   const tenantId = (request as { headers: { get(n: string): string | null } })
@@ -20,6 +33,7 @@ export async function GET(request: Request) {
     .from('products')
     .select('id, name, description, price, stock, image_url, specifications, featured, rating, delivery_days, discount_percentage, category_id')
     .eq('tenant_id', tenantId)
+    .neq('activo', false)
     .order('featured', { ascending: false })
     .order('created_at', { ascending: false })
     .limit(limit);
@@ -29,7 +43,7 @@ export async function GET(request: Request) {
   const { data, error } = await query;
 
   if (error) {
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return productosResponse({ error: error.message }, 500);
   }
 
   // Filtro por categoría (nombre) vía SQL separado si se especifica
@@ -41,5 +55,5 @@ export async function GET(request: Request) {
     );
   }
 
-  return NextResponse.json({ data: productos, total: productos.length }, { status: 200 });
+  return productosResponse({ data: productos, total: productos.length });
 }

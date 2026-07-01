@@ -7,6 +7,7 @@ section#tienda {
 }
 
 a[href="/juego"],
-a[href="/soluciones"] {
+a[href="/soluciones"],
+button[aria-label="Diseñar mi casa"] {
   display: none !important;
 }

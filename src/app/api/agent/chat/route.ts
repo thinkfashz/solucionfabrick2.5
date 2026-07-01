@@ -1,6 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { chatCompletionWithFallback, type ChatMessage } from '@/lib/openrouter';
 import { getClientIp } from '@/lib/adminAuth';
+import { checkPersistentRateLimit } from '@/lib/adminRateLimitStore';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -15,11 +16,11 @@ export const runtime = 'nodejs';
  *
  * Restricciones:
  *  - Sin auth: pensado para visitantes anónimos del sitio público.
- *  - Rate limit en memoria por IP (máx. 20 mensajes / 5 minutos).
- *    NOTA: el store es in-memory y vive por instancia. En serverless (Vercel,
- *    Lambda) cada cold-start o escalado horizontal tiene su propia ventana,
- *    así que el límite efectivo a nivel global puede ser mayor. Suficiente
- *    como anti-abuso de bajo costo; para protección dura migrar a Redis/KV.
+ *  - Rate limit persistente por IP: máx. 20 mensajes / 5 minutos.
+ *    Reusa el store existente para evitar instalar Redis/KV en esta fase.
+ *    Para límites estrictos globales a escala enterprise, migrar este bucket
+ *    a Redis/KV administrado en el módulo de infraestructura.
+ *  - Cuerpo máximo: 32 KB para evitar payloads abusivos.
  *  - Ventana de contexto acotada: últimos 12 mensajes del cliente
  *    (≈6 turnos completos user→assistant).
  *  - Mensajes máximo 2.000 caracteres.
@@ -34,6 +35,9 @@ interface ClientMsg { role: 'user' | 'assistant'; content: string }
 /** Máximo de MENSAJES (no turnos) que se reenvían al modelo. 12 ≈ 6 turnos. */
 const MAX_MESSAGES_TO_AI = 12;
 const MAX_USER_CHARS = 2_000;
+const MAX_BODY_BYTES = 32 * 1024;
+const RATE_LIMIT_MAX = 20;
+const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
 const SYSTEM_PROMPT = `Eres "Fabri", el asistente virtual de Soluciones Fabrick — empresa chilena de construcción y remodelación residencial con sede en Linares, Región del Maule. Llevas 9 años acompañando familias en sus proyectos.
 
@@ -79,30 +83,13 @@ Cuando convenga, sugiere acciones concretas:
 
 Si la pregunta no tiene relación con construcción / la empresa, contesta amablemente y reorienta la conversación al tema.`;
 
-interface RateLimitEntry {
-  count: number;
-  windowStart: number;
-}
+async function readJsonBody(request: NextRequest): Promise<AgentBody | null> {
+  const declaredLength = Number(request.headers.get('content-length') ?? 0);
+  if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) return null;
 
-const RATE_LIMIT_MAX = 20;
-const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
-const rateStore = new Map<string, RateLimitEntry>();
-
-function checkRateLimit(ip: string): { ok: true } | { ok: false; retryAfterSec: number } {
-  const now = Date.now();
-  const entry = rateStore.get(ip);
-  if (!entry || now - entry.windowStart > RATE_LIMIT_WINDOW_MS) {
-    rateStore.set(ip, { count: 1, windowStart: now });
-    return { ok: true };
-  }
-  if (entry.count >= RATE_LIMIT_MAX) {
-    const retryAfterSec = Math.ceil(
-      (entry.windowStart + RATE_LIMIT_WINDOW_MS - now) / 1000,
-    );
-    return { ok: false, retryAfterSec: Math.max(1, retryAfterSec) };
-  }
-  entry.count += 1;
-  return { ok: true };
+  const text = await request.text();
+  if (Buffer.byteLength(text, 'utf8') > MAX_BODY_BYTES) return null;
+  return JSON.parse(text) as AgentBody;
 }
 
 function sanitizeMessages(raw: unknown): ClientMsg[] | null {
@@ -125,7 +112,12 @@ function sanitizeMessages(raw: unknown): ClientMsg[] | null {
 
 export async function POST(request: NextRequest) {
   const ip = getClientIp(request);
-  const rl = checkRateLimit(ip);
+  const rl = await checkPersistentRateLimit({
+    namespace: 'public:agent-chat',
+    identity: ip,
+    max: RATE_LIMIT_MAX,
+    windowMs: RATE_LIMIT_WINDOW_MS,
+  });
   if (!rl.ok) {
     return NextResponse.json(
       {
@@ -136,11 +128,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  let body: AgentBody;
+  let body: AgentBody | null;
   try {
-    body = (await request.json()) as AgentBody;
+    body = await readJsonBody(request);
   } catch {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
+  }
+  if (!body) {
+    return NextResponse.json({ error: 'Solicitud demasiado grande' }, { status: 413 });
   }
 
   const conversation = sanitizeMessages(body.messages);

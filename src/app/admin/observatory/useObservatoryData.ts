@@ -59,6 +59,12 @@ type ApiErrorRow = {
   status_code?: number | null;
 };
 
+type Readiness = {
+  level?: 'ready' | 'watch' | 'degraded';
+  blockers?: string[];
+  warnings?: string[];
+};
+
 type ObservabilityApiResponse = {
   ok?: boolean;
   generatedAt?: string;
@@ -72,6 +78,7 @@ type ObservabilityApiResponse = {
     errorRows?: ApiErrorRow[];
   };
   servicioStatus?: Record<ServiceId, Omit<ServiceStatus, 'history'>>;
+  readiness?: Readiness;
   error?: string;
 };
 
@@ -91,7 +98,7 @@ const INITIAL_STATUS: ObservatoryData['servicioStatus'] = {
   cloudflare: { online: true, latencyMs: 0, history: [] },
 };
 
-const POLL_INTERVAL_MS = 15_000;
+const POLL_INTERVAL_MS = 30_000;
 const MAX_HISTORY = 30;
 const MAX_EVENTS = 60;
 
@@ -123,6 +130,20 @@ function mergeServiceStatus(
     };
   });
   return next;
+}
+
+function readinessEvent(readiness: Readiness | undefined): ObservatoryEvent | null {
+  if (!readiness?.level || readiness.level === 'ready') return null;
+  const blockers = readiness.blockers?.length ?? 0;
+  const warnings = readiness.warnings?.length ?? 0;
+  return {
+    id: makeId('evt-ready'),
+    kind: readiness.level === 'degraded' ? 'error' : 'info',
+    service: readiness.level === 'degraded' ? 'insforge' : 'vercel',
+    message: `READINESS ${readiness.level.toUpperCase()} · ${blockers} bloqueos · ${warnings} avisos`,
+    ts: new Date().toISOString(),
+    color: readiness.level === 'degraded' ? COLORS.error : COLORS.info,
+  };
 }
 
 export function useObservatoryData(): ObservatoryData {
@@ -208,6 +229,8 @@ export function useObservatoryData(): ObservatoryData {
             color: COLORS.lead,
           });
         }
+        const readyEvent = readinessEvent(json.readiness);
+        if (readyEvent) newEvents.push(readyEvent);
       }
 
       latestOrders.forEach((o) => seenOrderIds.current.add(o.id));

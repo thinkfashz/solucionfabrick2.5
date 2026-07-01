@@ -270,21 +270,19 @@ export function useObservatoryData(): ObservatoryData {
       initialized.current = true;
     } catch (error) {
       const now = new Date().toISOString();
+      const apiErrorEvent: ObservatoryEvent = {
+        id: makeId('evt-api'),
+        kind: 'error',
+        service: 'vercel',
+        message: `OBSERVABILITY API ERROR: ${error instanceof Error ? error.message.slice(0, 90) : 'desconocido'}`,
+        ts: now,
+        color: COLORS.error,
+      };
       setData((prev) => ({
         ...prev,
         loading: false,
         syncing: false,
-        events: [
-          {
-            id: makeId('evt-api'),
-            kind: 'error',
-            service: 'vercel',
-            message: `OBSERVABILITY API ERROR: ${error instanceof Error ? error.message.slice(0, 90) : 'desconocido'}`,
-            ts: now,
-            color: COLORS.error,
-          },
-          ...prev.events,
-        ].slice(0, MAX_EVENTS),
+        events: [apiErrorEvent, ...prev.events].slice(0, MAX_EVENTS),
       }));
     }
   }, []);

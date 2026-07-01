@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 import { insforgeAdmin } from '@/lib/insforge';
 import { probeMercadoPago } from '@/lib/mercadopago';
+import { campaignStatusSnapshot } from '@/lib/campaignMode';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -98,6 +99,36 @@ async function probeMercadoPagoHealth() {
   }
 }
 
+function buildReadiness(args: {
+  servicioStatus: Record<ServiceId, ServiceHealth>;
+  errorsHour: number;
+  productosActivos: number;
+}) {
+  const blockers: string[] = [];
+  const warnings: string[] = [];
+  const campaign = campaignStatusSnapshot();
+
+  if (!args.servicioStatus.insforge.online) blockers.push('InsForge no responde; catálogo, pedidos y admin pueden fallar.');
+  if (!args.servicioStatus.vercel.online) blockers.push('Runtime Vercel no aparece saludable.');
+  if (!args.servicioStatus.mercadopago.online) warnings.push('Mercado Pago no está OK; checkout puede quedar degradado.');
+  if (args.servicioStatus.insforge.latencyMs > 900) warnings.push(`InsForge lento: ${args.servicioStatus.insforge.latencyMs}ms.`);
+  if (args.servicioStatus.mercadopago.latencyMs > 1200) warnings.push(`Mercado Pago lento: ${args.servicioStatus.mercadopago.latencyMs}ms.`);
+  if (args.errorsHour >= 10) warnings.push(`Errores última hora altos: ${args.errorsHour}.`);
+  if (args.productosActivos === 0) warnings.push('No hay productos activos disponibles para catálogo/checkout.');
+  if (campaign.mode !== 'normal') warnings.push(`Modo campaña activo: ${campaign.mode}.`);
+  if (!campaign.checkoutEnabled) warnings.push('Checkout público pausado por configuración de campaña.');
+  if (!campaign.aiChatEnabled) warnings.push('Chat IA público pausado por configuración de campaña.');
+
+  return {
+    level: blockers.length ? 'degraded' : warnings.length ? 'watch' : 'ready',
+    publicPagesReady: !blockers.some((msg) => /InsForge|Vercel/i.test(msg)),
+    checkoutReady: !blockers.length && campaign.checkoutEnabled && args.servicioStatus.mercadopago.status !== 'invalid_token',
+    blockers,
+    warnings,
+    campaign,
+  };
+}
+
 export async function GET(request: NextRequest) {
   const session = await requireAdmin(request);
   if (!session) {
@@ -126,6 +157,8 @@ export async function GET(request: NextRequest) {
   const latestOrders = dataFrom<LatestOrder[]>(orders, []);
   const revenueRows = dataFrom<Array<{ total: number | null }>>(revenue, []);
   const errorRows = dataFrom<ErrorRow[]>(errors, []);
+  const productosActivos = countFrom(prod);
+  const errorsHour = errorRows.length;
   const insforgeService = insforgeHealth.status === 'fulfilled'
     ? insforgeHealth.value as ServiceHealth
     : { online: false, latencyMs: 0, status: 'error', message: 'insforge_probe_failed' };
@@ -155,20 +188,22 @@ export async function GET(request: NextRequest) {
       message: 'Protección/CDN gestionada fuera de la app.',
     },
   };
+  const readiness = buildReadiness({ servicioStatus, errorsHour, productosActivos });
 
   const payload = {
     ok: true,
     generatedAt: new Date().toISOString(),
     admin: { email: session.email, role: session.rol ?? 'admin' },
     metrics: {
-      productosActivos: countFrom(prod),
+      productosActivos,
       pedidosHoy: countFrom(ped),
       leadsHoy: countFrom(leads),
       revenueWeek: revenueRows.reduce((sum, row) => sum + Number(row.total ?? 0), 0),
-      errorsHour: errorRows.length,
+      errorsHour,
       latestOrders,
       errorRows,
     },
+    readiness,
     servicioStatus,
   };
 

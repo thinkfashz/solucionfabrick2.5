@@ -1,5 +1,6 @@
 import 'server-only';
 import { cache } from 'react';
+import { revalidateTag, unstable_cache } from 'next/cache';
 import { getAdminInsforge } from './adminApi';
 import { publishCmsEvent } from './cmsBus';
 import {
@@ -26,18 +27,9 @@ export interface SiteSectionRow<K extends SectionKey = SectionKey> {
   updated_by: string | null;
 }
 
-/**
- * Read a section from the database. Returns the merged-with-defaults content
- * so callers never have to null-check. If the table is missing, the row is
- * absent, or the database errors, the default is returned silently — this is
- * a public-content read path and must never break the page.
- *
- * Memoised per-request via `React.cache` so that multiple components on the
- * same render tree (e.g. Layout + Footer) share a single round-trip.
- */
-export const getSiteSection = cache(async <K extends SectionKey>(
-  key: K,
-): Promise<SectionContentMap[K]> => {
+export const SITE_STRUCTURE_CACHE_TAG = 'site-structure';
+
+async function readSiteSection<K extends SectionKey>(key: K): Promise<SectionContentMap[K]> {
   try {
     const client = getAdminInsforge();
     const { data, error } = await client.database
@@ -53,7 +45,40 @@ export const getSiteSection = cache(async <K extends SectionKey>(
   } catch {
     return SECTION_DEFAULTS[key];
   }
-});
+}
+
+const getSiteSectionCached = unstable_cache(
+  async (key: SectionKey): Promise<SectionContentMap[SectionKey]> => readSiteSection(key),
+  ['site-structure-section'],
+  { revalidate: 300, tags: [SITE_STRUCTURE_CACHE_TAG] },
+);
+
+function invalidateSiteStructureCache() {
+  try {
+    revalidateTag(SITE_STRUCTURE_CACHE_TAG);
+  } catch {
+    // Best effort: unavailable in some local/test contexts.
+  }
+}
+
+function publishAndInvalidate(key: SectionKey) {
+  invalidateSiteStructureCache();
+  publishCmsEvent({ topic: 'settings', action: `site:${key}`, paths: pathsForSection(key) });
+}
+
+/**
+ * Read a section from the database. Returns the merged-with-defaults content
+ * so callers never have to null-check. If the table is missing, the row is
+ * absent, or the database errors, the default is returned silently — this is
+ * a public-content read path and must never break the page.
+ *
+ * The read is cached twice:
+ *   - `unstable_cache` shares the result across requests for public traffic;
+ *   - `React.cache` dedupes repeated reads inside a single render tree.
+ */
+export const getSiteSection = cache(async <K extends SectionKey>(
+  key: K,
+): Promise<SectionContentMap[K]> => getSiteSectionCached(key) as Promise<SectionContentMap[K]>);
 
 /**
  * Persist a section. Caller is responsible for authentication. Publishes a
@@ -84,7 +109,7 @@ export async function setSiteSection<K extends SectionKey>(
 
   const updatedRows = Array.isArray(updated.data) ? updated.data : [];
   if (!updated.error && updatedRows.length > 0) {
-    publishCmsEvent({ topic: 'settings', action: `site:${key}`, paths: pathsForSection(key) });
+    publishAndInvalidate(key);
     return merged;
   }
 
@@ -108,7 +133,7 @@ export async function setSiteSection<K extends SectionKey>(
     throw new Error(inserted.error.message || 'site_structure insert failed');
   }
 
-  publishCmsEvent({ topic: 'settings', action: `site:${key}`, paths: pathsForSection(key) });
+  publishAndInvalidate(key);
   return merged;
 }
 

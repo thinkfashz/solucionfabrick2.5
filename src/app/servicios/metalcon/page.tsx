@@ -2,61 +2,52 @@ import type { Metadata } from 'next';
 import { Home } from 'lucide-react';
 import ServicePage, { type ServicePageContent } from '@/components/ServicePage';
 
-// `ServicePage` emits inline JSON-LD <script> tags carrying a per-request CSP
-// nonce. Force dynamic rendering so the runtime nonce from `middleware.ts`
-// matches the rendered nonce; otherwise CSP blocks the inline scripts and
-// breaks hydration on first navigation (black screen until reload).
 export const dynamic = 'force-dynamic';
 
 const content: ServicePageContent = {
   slug: 'metalcon',
   eyebrow: 'Metalcon',
-  heroTitle: 'Estructuras Metalcon en el Maule',
+  heroTitle: 'Estructuras Metalcon para ampliar o construir mejor',
   heroDescription:
-    'Montaje de estructuras Metalcon para viviendas, ampliaciones y segundos pisos en Linares, Longaví, Talca y toda la Región del Maule. Perfiles galvanizados certificados, montaje técnico y garantía estructural de 5 años.',
+    'Te guiamos para definir medidas, materialidad, etapas y presupuesto de tu estructura liviana sin prometer más de lo que aún no se ha revisado en terreno.',
   icon: Home,
   serviceType: 'Estructuras Metalcon residenciales',
   priceFrom: '$1.200.000',
   overview:
-    'El sistema Metalcon es la solución estructural más eficiente para obra liviana residencial en Chile: sismoresistente, rápido de montar y compatible con cualquier terminación. Nuestro equipo entrega plano estructural incluido, supervisión en terreno y garantía real escrita sobre la estructura.',
+    'Metalcon es una alternativa rápida y ordenada para ampliaciones, segundos pisos y tabiquería. Primero entendemos el espacio, el uso y el presupuesto; luego definimos una propuesta por etapas.',
   scope: [
-    'Cálculo estructural y plano ejecutado por profesional competente',
-    'Perfiles Metalcon galvanizados de primera calidad (espesores según cálculo)',
-    'Fijaciones mecánicas y anclajes sismoresistentes según NCh 2369',
-    'Muros perimetrales, tabiques interiores, entrepisos y cerchas de techumbre',
-    'Aislación térmica (lana de vidrio o roca) y barrera de humedad incluidas',
-    'Garantía estructural escrita de 5 años',
+    'Revisión de espacio, medidas y objetivo del proyecto',
+    'Orientación sobre perfiles, tabiques, cielos y estructura liviana',
+    'Recomendación de aislación y terminaciones según uso del espacio',
+    'Coordinación con electricidad, gasfitería o revestimientos cuando aplique',
+    'Presupuesto separado por partidas para decidir mejor',
+    'Acompañamiento para avanzar paso a paso sin improvisar',
   ],
   process: [
-    { step: 'Visita técnica', detail: 'Medición en terreno, levantamiento del sitio y análisis de la base existente en 48 h.' },
-    { step: 'Cálculo y plano', detail: 'Entregamos plano estructural timbrado, cronograma con hitos semanales y propuesta cerrada.' },
-    { step: 'Montaje supervisado', detail: 'Ejecución con equipo propio, inspección diaria y recepción final con checklist firmado.' },
+    { step: 'Medimos', detail: 'Revisamos medidas, fotos o visita para entender el espacio real y detectar puntos críticos.' },
+    { step: 'Ordenamos', detail: 'Separamos estructura, revestimiento, aislación y terminaciones para que el presupuesto sea claro.' },
+    { step: 'Ejecutamos', detail: 'Coordinamos avance, materiales y etapas para mantener control del tiempo y del gasto.' },
   ],
   faqs: [
     {
-      question: '¿Cuánto demora el montaje de una vivienda Metalcon?',
+      question: '¿Sirve para ampliaciones y segundos pisos?',
       answer:
-        'Una vivienda nueva de 60–90 m² toma entre 6 y 10 semanas desde el inicio de obra gruesa, dependiendo de terminaciones. Ampliaciones y segundos pisos, 3 a 6 semanas.',
+        'Sí, puede ser una buena opción por ser liviano y rápido. Antes de cotizar se debe revisar la base existente, medidas y objetivo del proyecto.',
     },
     {
-      question: '¿Metalcon resiste sismos?',
+      question: '¿Incluye terminaciones?',
       answer:
-        'Sí. Diseñado y anclado según NCh 433 y NCh 2369, Metalcon es un sistema sismoresistente certificado. El peso liviano de la estructura reduce las fuerzas inerciales en un evento sísmico.',
+        'Puede incluirlas, pero es mejor separarlas por partida: estructura, aislación, revestimiento, pintura e instalaciones. Así decides qué hacer primero.',
     },
     {
-      question: '¿Puedo construir un segundo piso en Metalcon sobre albañilería existente?',
+      question: '¿La calculadora entrega precio final?',
       answer:
-        'En la mayoría de los casos sí, previa evaluación estructural de la base y refuerzo de fundaciones si es necesario. Incluimos esa evaluación en la visita técnica.',
+        'No. Te da una referencia inicial por m². El precio final depende de altura, accesos, base existente, terminaciones y cambios solicitados.',
     },
     {
-      question: '¿Qué terminaciones exteriores acepta Metalcon?',
+      question: '¿Trabajan por etapas?',
       answer:
-        'Fibrocemento, siding, vinyl-siding, madera, EIFS, estuco acrílico o placas de cerámica. Coordinamos la terminación final según tu presupuesto y estética deseada.',
-    },
-    {
-      question: '¿Trabajan en toda la Región del Maule?',
-      answer:
-        'Sí. Operamos en Linares, Longaví, Talca, Curicó, Parral, Constitución, San Javier, Retiro y comunas aledañas sin costo adicional de traslado.',
+        'Sí. Podemos partir por estructura y luego avanzar con cerramiento, instalaciones y terminaciones según presupuesto.',
     },
   ],
   relatedSlugs: ['ampliaciones', 'electricidad', 'gasfiteria'],
@@ -65,12 +56,12 @@ const content: ServicePageContent = {
 export const metadata: Metadata = {
   title: 'Estructuras Metalcon en Maule | Linares, Longaví, Talca',
   description:
-    'Montaje de estructuras Metalcon para viviendas, ampliaciones y segundos pisos en la Región del Maule. Plano estructural incluido, garantía 5 años. Desde $1.200.000.',
+    'Estructuras Metalcon para ampliaciones, tabiquería y segundos pisos en la Región del Maule. Cálculo referencial por m² y orientación por etapas.',
   alternates: { canonical: 'https://www.solucionesfabrick.com/servicios/metalcon' },
   keywords: ['Metalcon Maule', 'Metalcon Linares', 'Metalcon Longaví', 'Metalcon Talca', 'estructura Metalcon', 'segundo piso Metalcon'],
   openGraph: {
     title: 'Estructuras Metalcon en el Maule | Soluciones Fabrick',
-    description: 'Montaje Metalcon certificado con garantía estructural de 5 años. Desde $1.200.000.',
+    description: 'Orientación por etapas, cálculo por m² y ejecución ordenada para ampliaciones.',
     url: 'https://www.solucionesfabrick.com/servicios/metalcon',
     type: 'website',
   },

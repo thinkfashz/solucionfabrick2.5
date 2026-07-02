@@ -2,74 +2,66 @@ import type { Metadata } from 'next';
 import { Droplet } from 'lucide-react';
 import ServicePage, { type ServicePageContent } from '@/components/ServicePage';
 
-// See src/app/servicios/metalcon/page.tsx for the full rationale: ServicePage
-// renders inline nonce'd <script> tags so this route must be dynamic for the
-// CSP nonce from middleware.ts to match at runtime.
 export const dynamic = 'force-dynamic';
 
 const content: ServicePageContent = {
   slug: 'gasfiteria',
   eyebrow: 'Gasfitería',
-  heroTitle: 'Gasfitería certificada en el Maule',
+  heroTitle: 'Gasfitería para resolver sin romper de más',
   heroDescription:
-    'Instalaciones de agua potable, alcantarillado y gas con certificación SEC y ESSBIO. Trabajos prolijos, materiales de primera marca y prueba de presión post-instalación.',
+    'Revisamos tu necesidad, medimos el tramo y te orientamos con una referencia por metro lineal o por punto antes de cerrar la cotización.',
   icon: Droplet,
-  serviceType: 'Gasfitería residencial certificada',
+  serviceType: 'Gasfitería residencial',
   priceFrom: '$320.000',
   overview:
-    'Las fugas no se perdonan: una mala gasfitería arruina pisos, muros y presupuestos. Nuestro equipo certificado SEC ejecuta instalaciones y reparaciones de agua, gas y alcantarillado con prueba de presión documentada y garantía escrita sobre cada tramo intervenido.',
+    'Una fuga o una mala conexión puede terminar saliendo cara. La idea es revisar bien, explicar opciones y ejecutar de forma ordenada para evitar trabajos innecesarios.',
   scope: [
-    'Instalación y reparación de redes de agua fría y caliente (PPR o cobre)',
-    'Conexiones y redes de gas natural y licuado con certificación SEC',
-    'Alcantarillado domiciliario y fosas sépticas según normativa ESSBIO',
-    'Instalación de artefactos: WC, lavamanos, tinas, duchas, calefones y termos',
-    'Detección y reparación de fugas con equipo especializado',
-    'Prueba de presión documentada con informe técnico firmado',
+    'Revisión de fugas, presión, ubicación y acceso al tramo',
+    'Instalación o reparación de redes de agua fría y caliente',
+    'Conexión de lavamanos, WC, lavaplatos, ducha, termo o calefón',
+    'Revisión de alcantarillado y desagüe domiciliario',
+    'Presupuesto separado si hay que picar, reponer cerámica o cambiar artefactos',
+    'Orientación para escoger grifería, sanitarios o accesorios compatibles',
   ],
   process: [
-    { step: 'Diagnóstico', detail: 'Visita técnica con equipo de detección, informe escrito y cotización cerrada en 24–48 h.' },
-    { step: 'Ejecución limpia', detail: 'Trabajo ordenado con protección de pisos y muros. Dejamos la obra más limpia de como la encontramos.' },
-    { step: 'Certificación', detail: 'Entrega con prueba de presión, certificación SEC cuando aplica y garantía escrita por cada tramo.' },
+    { step: 'Diagnóstico', detail: 'Revisamos el problema, la distancia, los accesos y si se puede resolver sin romper de más.' },
+    { step: 'Cotización clara', detail: 'Separamos tramo, materiales, artefactos y reposiciones para que entiendas qué estás pagando.' },
+    { step: 'Ejecución limpia', detail: 'Trabajamos con protección del área y dejamos indicado qué se hizo y qué debes revisar después.' },
   ],
   faqs: [
     {
-      question: '¿Tienen certificación SEC para gas?',
+      question: '¿Puedo comprar yo la grifería o sanitario?',
       answer:
-        'Sí. Todos nuestros gasfíteres para instalaciones de gas cuentan con licencia SEC vigente (clase 1, 2 o 3 según el trabajo) y entregamos el certificado correspondiente al finalizar la obra.',
+        'Sí. También podemos orientarte para elegir un producto compatible antes de comprarlo y evitar medidas incorrectas.',
     },
     {
-      question: '¿Cuánto demora detectar una fuga oculta?',
+      question: '¿La calculadora sirve para una fuga?',
       answer:
-        'Entre 30 minutos y 2 horas dependiendo de la complejidad. Usamos equipos de geófono, gas trazador y cámara termográfica para localizar la fuga sin picar muros al azar.',
+        'Sirve como referencia inicial. Las fugas pueden cambiar según acceso, daño oculto, necesidad de picar o reposición de terminaciones.',
     },
     {
-      question: '¿Trabajan con calefones y termos solares?',
+      question: '¿Incluye reposición de cerámica o muro?',
       answer:
-        'Sí. Instalamos y reparamos calefones Splendid, Junkers, Bosch, Albin Trotter, y sistemas termosolares. También modernizamos termos eléctricos a gas o viceversa.',
-    },
-    {
-      question: '¿Qué garantía dan en la gasfitería?',
-      answer:
-        'Garantía escrita de 1 año sobre mano de obra en cada tramo intervenido, y garantía directa del fabricante sobre los artefactos (2 a 5 años según modelo).',
+        'No siempre. Si hay que romper y reponer, lo separamos en otra partida para que el presupuesto sea más transparente.',
     },
     {
       question: '¿Atienden emergencias?',
       answer:
-        'Sí. Tenemos servicio de emergencia para fugas de gas, inundaciones y tapones graves en el Maule, con cobertura en Linares, Longaví, Talca y alrededores.',
+        'Podemos revisar disponibilidad según comuna, horario y urgencia. Para emergencias reales es mejor enviar fotos y ubicación por WhatsApp.',
     },
   ],
   relatedSlugs: ['electricidad', 'metalcon', 'ampliaciones'],
 };
 
 export const metadata: Metadata = {
-  title: 'Gasfitería en Maule | Certificación SEC | Linares, Longaví',
+  title: 'Gasfitería en Maule | Linares, Longaví, Talca',
   description:
-    'Gasfitería certificada SEC en la Región del Maule: agua, gas y alcantarillado. Prueba de presión, garantía escrita. Desde $320.000.',
+    'Gasfitería residencial en la Región del Maule: agua, desagüe, artefactos y reparación de fugas. Cálculo referencial por metro lineal o punto.',
   alternates: { canonical: 'https://www.solucionesfabrick.com/servicios/gasfiteria' },
-  keywords: ['gasfitería Maule', 'gasfíter Linares', 'gasfíter Longaví', 'gasfíter Talca', 'certificación SEC gas', 'detección fuga agua'],
+  keywords: ['gasfitería Maule', 'gasfíter Linares', 'gasfíter Longaví', 'gasfíter Talca', 'fuga agua'],
   openGraph: {
-    title: 'Gasfitería certificada en el Maule | Soluciones Fabrick',
-    description: 'Agua, gas y alcantarillado con certificación SEC. Prueba de presión documentada. Desde $320.000.',
+    title: 'Gasfitería residencial en el Maule | Soluciones Fabrick',
+    description: 'Revisión, orientación y cotización clara para agua, desagüe y artefactos.',
     url: 'https://www.solucionesfabrick.com/servicios/gasfiteria',
     type: 'website',
   },

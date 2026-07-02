@@ -4,6 +4,7 @@ import { INSFORGE_BASE_URL, insforgeAdmin } from '@/lib/insforge';
 import { getMercadoPagoPayment, mapMercadoPagoStatus, verifyMercadoPagoSignature } from '@/lib/mercadopago';
 import { confirmPaidOrderAndSendReceiptAsync } from '@/lib/orders/paidConfirmation';
 import { dispatchHookAsync } from '@/lib/extensionsBus';
+import { createDropiFulfillmentAsync } from '@/lib/dropi';
 
 const MAX_WEBHOOK_BODY_BYTES = 64 * 1024;
 
@@ -128,10 +129,7 @@ async function decrementStockForPaidOrderViaSql(orderId: string) {
     const query = `SELECT public.decrement_stock_for_paid_order('${sqlLiteral(orderId)}') AS result;`;
     const res = await fetch(url, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-      },
+      headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
       body: JSON.stringify({ query }),
       cache: 'no-store',
     });
@@ -144,11 +142,7 @@ async function decrementStockForPaidOrderViaSql(orderId: string) {
 
 async function decrementStockForPaidOrderBestEffort(orderId: string) {
   try {
-    const { data } = await insforgeAdmin.database
-      .from('orders')
-      .select('items')
-      .eq('id', orderId)
-      .limit(1);
+    const { data } = await insforgeAdmin.database.from('orders').select('items').eq('id', orderId).limit(1);
     const order = Array.isArray(data) ? data[0] as { items?: unknown } | undefined : undefined;
     const items = Array.isArray(order?.items) ? order.items as OrderItem[] : [];
     const quantities = new Map<string, number>();
@@ -161,18 +155,11 @@ async function decrementStockForPaidOrderBestEffort(orderId: string) {
     }
 
     for (const [productId, quantity] of quantities) {
-      const { data: productRows } = await insforgeAdmin.database
-        .from('products')
-        .select('id, stock')
-        .eq('id', productId)
-        .limit(1);
+      const { data: productRows } = await insforgeAdmin.database.from('products').select('id, stock').eq('id', productId).limit(1);
       const product = Array.isArray(productRows) ? productRows[0] as { stock?: number | null } | undefined : undefined;
       if (!product || typeof product.stock !== 'number') continue;
       const nextStock = Math.max(0, product.stock - quantity);
-      await insforgeAdmin.database
-        .from('products')
-        .update({ stock: nextStock, updated_at: new Date().toISOString() })
-        .eq('id', productId);
+      await insforgeAdmin.database.from('products').update({ stock: nextStock, updated_at: new Date().toISOString() }).eq('id', productId);
     }
 
     return { ok: true, strategy: 'best_effort' };
@@ -190,17 +177,19 @@ async function decrementStockForPaidOrder(orderId: string) {
 }
 
 function safeJsonParse(rawBody: string): MercadoPagoWebhookBody | null {
-  try {
-    return rawBody ? JSON.parse(rawBody) as MercadoPagoWebhookBody : null;
-  } catch {
-    return null;
-  }
+  try { return rawBody ? JSON.parse(rawBody) as MercadoPagoWebhookBody : null; } catch { return null; }
 }
 
 function isMercadoPagoSimulation(body: MercadoPagoWebhookBody | null) {
   const action = body?.action || '';
   const eventType = body?.type || body?.topic || '';
   return action.startsWith('order.') || eventType === 'order' || eventType === 'merchant_order';
+}
+
+function onPaidOrder(orderId: string, payload: { paymentId: string | null; paymentStatus: string; provider: string }) {
+  confirmPaidOrderAndSendReceiptAsync(orderId);
+  createDropiFulfillmentAsync(orderId);
+  dispatchHookAsync('order.paid', { orderId, ...payload });
 }
 
 async function handleMercadoPagoWebhook(request: Request) {
@@ -213,64 +202,30 @@ async function handleMercadoPagoWebhook(request: Request) {
   const signatureHeader = request.headers.get('x-signature');
   const requestIdHeader = request.headers.get('x-request-id');
 
-  // La simulación de Mercado Pago puede enviar order.processed/merchant_order.
-  // Eso sirve para validar que la URL responde, pero no es el evento final de pago aprobado.
-  // Respondemos 200 para que el panel deje de marcar 404/fallo.
   if (isMercadoPagoSimulation(body) && topic !== 'payment') {
-    return NextResponse.json({
-      ok: true,
-      provider: 'mercado_pago',
-      simulated: true,
-      ignored: true,
-      action: body?.action || topic,
-      message: 'URL recibida correctamente. Evento de simulación/order ignorado; el pago real se procesa con evento payment.',
-    }, { status: 200 });
+    return NextResponse.json({ ok: true, provider: 'mercado_pago', simulated: true, ignored: true, action: body?.action || topic, message: 'URL recibida correctamente. Evento de simulación/order ignorado; el pago real se procesa con evento payment.' }, { status: 200 });
   }
 
-  if (!(await verifyMercadoPagoSignature({
-    signatureHeader,
-    requestIdHeader,
-    dataId,
-  }))) {
+  if (!(await verifyMercadoPagoSignature({ signatureHeader, requestIdHeader, dataId }))) {
     return NextResponse.json({ error: 'Firma de Mercado Pago inválida.' }, { status: 401 });
   }
 
-  if (topic && topic !== 'payment') {
-    return NextResponse.json({ ok: true, ignored: true, topic }, { status: 200 });
-  }
-
-  if (!dataId) {
-    return NextResponse.json({ ok: true, ignored: true, message: 'Webhook recibido sin data.id de pago.' }, { status: 200 });
-  }
+  if (topic && topic !== 'payment') return NextResponse.json({ ok: true, ignored: true, topic }, { status: 200 });
+  if (!dataId) return NextResponse.json({ ok: true, ignored: true, message: 'Webhook recibido sin data.id de pago.' }, { status: 200 });
 
   const payment = await getMercadoPagoPayment(dataId);
   const orderId = payment.external_reference;
-
-  if (!orderId) {
-    return NextResponse.json({ error: 'El pago no contiene external_reference.' }, { status: 400 });
-  }
+  if (!orderId) return NextResponse.json({ error: 'El pago no contiene external_reference.' }, { status: 400 });
 
   const paymentId = String(payment.id);
   const paymentStatus = payment.status || 'pending';
   const idempotencyKey = `mp:${paymentId}:${paymentStatus}`;
-
   const logResult = await persistWebhookLog(idempotencyKey, payment, orderId, paymentId, paymentStatus, 'mercadopago.payment');
-  if (logResult.duplicated) {
-    return NextResponse.json({ ok: true, duplicated: true }, { status: 200 });
-  }
+  if (logResult.duplicated) return NextResponse.json({ ok: true, duplicated: true }, { status: 200 });
 
   const updated = await updateOrderStatus(orderId, paymentId, paymentStatus);
   const stock = updated.orderStatus === 'pagada' ? await decrementStockForPaidOrder(orderId) : { ok: true as const };
-
-  if (updated.orderStatus === 'pagada') {
-    confirmPaidOrderAndSendReceiptAsync(orderId);
-    dispatchHookAsync('order.paid', {
-      orderId,
-      paymentId,
-      paymentStatus,
-      provider: 'mercadopago',
-    });
-  }
+  if (updated.orderStatus === 'pagada') onPaidOrder(orderId, { paymentId, paymentStatus, provider: 'mercadopago' });
 
   return NextResponse.json({
     ok: updated.ok,
@@ -280,7 +235,7 @@ async function handleMercadoPagoWebhook(request: Request) {
     paymentStatus,
     orderStatus: updated.orderStatus,
     stock,
-    notification: updated.orderStatus === 'pagada' ? 'Correo con boleta PDF en proceso de envío.' : 'Pendiente de pago aprobado.',
+    notification: updated.orderStatus === 'pagada' ? 'Correo con boleta PDF y orden Dropi en proceso si aplica.' : 'Pendiente de pago aprobado.',
     warning: updated.warning || ('warning' in stock ? stock.warning : null),
   });
 }
@@ -291,52 +246,27 @@ async function handleLegacyWebhook(request: Request) {
   const signature = request.headers.get('x-insforge-signature');
   const idempotencyKeyHeader = request.headers.get('x-idempotency-key') ?? null;
 
-  if (!verifyLegacySignature(rawBody, signature)) {
-    return NextResponse.json({ error: 'Firma inválida.' }, { status: 401 });
-  }
+  if (!verifyLegacySignature(rawBody, signature)) return NextResponse.json({ error: 'Firma inválida.' }, { status: 401 });
 
   const body = JSON.parse(rawBody) as GenericPaymentWebhookBody;
-  if (!body.orderId || !body.eventType || !body.status) {
-    return NextResponse.json({ error: 'Payload incompleto.' }, { status: 400 });
-  }
+  if (!body.orderId || !body.eventType || !body.status) return NextResponse.json({ error: 'Payload incompleto.' }, { status: 400 });
 
   const effectiveIdempotency = idempotencyKeyHeader ?? `${body.orderId}:${body.paymentId ?? 'nopay'}:${body.status}`;
-  const logResult = await persistWebhookLog(
-    effectiveIdempotency,
-    body,
-    body.orderId,
-    body.paymentId ?? null,
-    body.status,
-    body.eventType,
-  );
-
-  if (logResult.duplicated) {
-    return NextResponse.json({ ok: true, duplicated: true }, { status: 200 });
-  }
+  const logResult = await persistWebhookLog(effectiveIdempotency, body, body.orderId, body.paymentId ?? null, body.status, body.eventType);
+  if (logResult.duplicated) return NextResponse.json({ ok: true, duplicated: true }, { status: 200 });
 
   const updated = await updateOrderStatus(body.orderId, body.paymentId ?? null, body.status);
   const stock = updated.orderStatus === 'pagada' ? await decrementStockForPaidOrder(body.orderId) : { ok: true as const };
-  if (updated.orderStatus === 'pagada') {
-    confirmPaidOrderAndSendReceiptAsync(body.orderId);
-    dispatchHookAsync('order.paid', {
-      orderId: body.orderId,
-      paymentId: body.paymentId ?? null,
-      paymentStatus: body.status,
-      provider: 'legacy',
-    });
-  }
+  if (updated.orderStatus === 'pagada') onPaidOrder(body.orderId, { paymentId: body.paymentId ?? null, paymentStatus: body.status, provider: 'legacy' });
 
-  return NextResponse.json({ ...updated, stock, notification: updated.orderStatus === 'pagada' ? 'Correo con boleta PDF en proceso de envío.' : undefined }, { status: 200 });
+  return NextResponse.json({ ...updated, stock, notification: updated.orderStatus === 'pagada' ? 'Correo con boleta PDF y orden Dropi en proceso si aplica.' : undefined }, { status: 200 });
 }
 
 export async function POST(request: Request) {
   try {
     const url = new URL(request.url);
     const source = url.searchParams.get('source');
-    if (source === 'mercadopago' || request.headers.has('x-signature') || url.pathname.includes('/api/webhooks/mercadopago')) {
-      return await handleMercadoPagoWebhook(request);
-    }
-
+    if (source === 'mercadopago' || request.headers.has('x-signature') || url.pathname.includes('/api/webhooks/mercadopago')) return await handleMercadoPagoWebhook(request);
     return await handleLegacyWebhook(request);
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Error procesando webhook de pago.';

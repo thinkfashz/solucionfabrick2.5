@@ -7,66 +7,61 @@ export const dynamic = 'force-dynamic';
 const content: ServicePageContent = {
   slug: 'cimientos',
   eyebrow: 'Cimientos',
-  heroTitle: 'Fundaciones y Cimientos Residenciales en el Maule',
+  heroTitle: 'Cimientos y radieres para avanzar con seguridad',
   heroDescription:
-    'Diseño y construcción de fundaciones sólidas para viviendas, ampliaciones y construcciones en altura en Linares, Talca, Longaví y toda la Región del Maule. Hormigón certificado, nivelación milimétrica y respaldo estructural de 5 años.',
+    'Te ayudamos a calcular, preparar y ejecutar la base de tu proyecto paso a paso, con una referencia clara por m³ y opciones según el tipo de hormigón.',
   icon: Hammer,
-  serviceType: 'Fundaciones y cimientos residenciales',
+  serviceType: 'Cimientos, fundaciones y radieres residenciales',
   priceFrom: '$480.000',
   overview:
-    'La fundación es el alma de cualquier construcción. En Soluciones Fabrick ejecutamos fundaciones continuas, aisladas y radier con hormigón de resistencia certificada (H25/H30), respetando la normativa NCh 1508 y NCh 433 sísmica. Cada proyecto incluye cálculo de cargas, diseño en terreno y supervisión técnica en todas las etapas.',
+    'La base de una obra debe hacerse con orden. Revisamos medidas, acceso, tipo de terreno y forma de preparación para darte una orientación realista antes de cerrar el presupuesto.',
   scope: [
-    'Estudio de terreno y análisis de suelo con ensayos de laboratorio',
-    'Diseño de fundación según carga estructural y tipo de suelo (continua, aislada o radier)',
-    'Hormigón H25 o H30 con aditivos certificados y fierro corrugado A63-42H',
-    'Excavación, enfierradura, moldaje y vaciado con vibrador de inmersión',
-    'Impermeabilización de fundaciones y sistema de drenaje perimetral',
-    'Nivelación topográfica y entrega con acta de recepción técnica firmada',
+    'Revisión de medidas, ubicación y acceso al punto de trabajo',
+    'Preparación de terreno, niveles y trazado base',
+    'Excavación, moldaje y preparación para vaciado',
+    'Opción de preparación con trompo para trabajos pequeños o accesos difíciles',
+    'Opción de camión premezclado cuando el volumen y acceso lo permiten',
+    'Malla, refuerzos, bombeo o despacho especial se consideran aparte si el proyecto lo necesita',
   ],
   process: [
-    { step: 'Visita y estudio de suelo', detail: 'Evaluación del terreno, calicata o ensayo de resistencia del suelo para definir el tipo de fundación adecuado.' },
-    { step: 'Diseño y propuesta cerrada', detail: 'Plano de fundación timbrado por profesional, presupuesto detallado sin sorpresas y cronograma de obra.' },
-    { step: 'Ejecución y recepción', detail: 'Vaciado de hormigón con supervisión continua, curado correcto y entrega con checklist técnico firmado.' },
+    { step: 'Revisión inicial', detail: 'Tomamos medidas, fotos o visita para entender qué necesitas construir y qué condiciones tiene el terreno.' },
+    { step: 'Cálculo y opciones', detail: 'Comparamos preparación con trompo o premezclado y te explicamos qué conviene según volumen, acceso y presupuesto.' },
+    { step: 'Ejecución ordenada', detail: 'Coordinamos materiales, tiempos y avance para que sepas qué se hará en cada etapa.' },
   ],
   faqs: [
     {
-      question: '¿Qué tipo de fundación necesito para mi terreno?',
+      question: '¿La malla va incluida en el cálculo?',
       answer:
-        'Depende del tipo de suelo, las cargas de la estructura y la normativa sísmica local. En la Región del Maule trabajamos principalmente con fundaciones continuas para muros y zapatas aisladas para pilares. Lo determinamos en la visita técnica gratuita.',
+        'No necesariamente. La malla o refuerzo se calcula aparte porque depende del uso, espesor, carga y tipo de base. Así evitamos inflar el precio inicial o prometer algo que no siempre aplica.',
     },
     {
-      question: '¿Cuánto tiempo demora la construcción de la fundación?',
+      question: '¿Qué conviene más: trompo o camión premezclado?',
       answer:
-        'Una fundación para vivienda de 60–100 m² demora entre 5 y 12 días hábiles, contando excavación, enfierradura, vaciado y curado mínimo del hormigón (28 días de resistencia garantizada).',
+        'Para trabajos pequeños o con mal acceso puede convenir trompo. Para mayor volumen, el premezclado suele ser más rápido, pero puede sumar despacho, espera o cantidad mínima.',
     },
     {
-      question: '¿Qué resistencia de hormigón usan?',
+      question: '¿El precio de la calculadora es definitivo?',
       answer:
-        'Utilizamos hormigón H25 como mínimo y H30 para estructuras de mayor carga o terrenos comprometidos. Todo el hormigón proviene de plantas certificadas con guías de despacho y ensayos de probeta.',
+        'No. Es una referencia para orientar. El precio final se confirma revisando medidas reales, acceso, profundidad, refuerzos y forma de preparación.',
     },
     {
-      question: '¿Puedo construir sobre una losa de radier existente?',
+      question: '¿Pueden hacer solo un radier?',
       answer:
-        'Sí, previa evaluación del estado y resistencia del radier existente. Si el radier está en buen estado, puede servir como fundación para una ampliación liviana en Metalcon. Lo evaluamos en terreno sin costo.',
-    },
-    {
-      question: '¿Trabajan en zonas con suelo arcilloso o expansivo?',
-      answer:
-        'Sí. En suelos de baja capacidad portante o expansivos, diseñamos fundaciones especiales con mejoramiento de suelo, geotextiles y drenajes. La solución adecuada se define tras el estudio de suelo.',
+        'Sí. Podemos orientar el cálculo por m³ y revisar si conviene hacerlo por etapas, con trompo o con premezclado.',
     },
   ],
   relatedSlugs: ['metalcon', 'ampliaciones', 'gasfiteria'],
 };
 
 export const metadata: Metadata = {
-  title: 'Cimientos y Fundaciones en Maule | Linares, Talca, Longaví',
+  title: 'Cimientos y Radieres en Maule | Linares, Talca, Longaví',
   description:
-    'Construcción de fundaciones continuas, aisladas y radier en la Región del Maule. Hormigón certificado H25/H30, diseño estructural incluido. Desde $480.000.',
+    'Cálculo y ejecución de cimientos, fundaciones y radieres en la Región del Maule. Comparativa entre trompo y camión premezclado. Desde $480.000.',
   alternates: { canonical: 'https://www.solucionesfabrick.com/servicios/cimientos' },
-  keywords: ['cimientos Maule', 'fundaciones Linares', 'fundaciones Talca', 'radier Maule', 'fundaciones residenciales'],
+  keywords: ['cimientos Maule', 'fundaciones Linares', 'radier Maule', 'cimientos residenciales'],
   openGraph: {
-    title: 'Cimientos y Fundaciones en el Maule | Soluciones Fabrick',
-    description: 'Fundaciones con hormigón certificado, diseño estructural y garantía de 5 años. Desde $480.000.',
+    title: 'Cimientos y Radieres en el Maule | Soluciones Fabrick',
+    description: 'Cálculo por m³, comparativa de preparación y orientación clara antes de cotizar.',
     url: 'https://www.solucionesfabrick.com/servicios/cimientos',
     type: 'website',
   },

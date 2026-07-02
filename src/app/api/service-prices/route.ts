@@ -3,7 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import { insforgeAdmin } from '@/lib/insforge';
-import { DEFAULT_SERVICE_PRICES, mergeServicePrices } from '@/lib/servicePricing';
+import { DEFAULT_SERVICE_PRICES, mergeServicePrices, type ServicePriceSetting, type ServiceUnit } from '@/lib/servicePricing';
 
 interface DbServicePriceRow {
   slug?: string;
@@ -20,11 +20,19 @@ interface DbServicePriceRow {
   updated_at?: string;
 }
 
-function normalizeRow(row: DbServicePriceRow) {
+const ALLOWED_UNITS: ServiceUnit[] = ['m2', 'ml', 'm3', 'punto', 'unidad'];
+
+function normalizeUnit(unit: unknown): ServiceUnit | undefined {
+  return typeof unit === 'string' && ALLOWED_UNITS.includes(unit as ServiceUnit)
+    ? (unit as ServiceUnit)
+    : undefined;
+}
+
+function normalizeRow(row: DbServicePriceRow): Partial<ServicePriceSetting> {
   return {
     slug: row.slug,
     name: row.name,
-    unit: row.unit,
+    unit: normalizeUnit(row.unit),
     basePrice: Number(row.base_price ?? 0),
     marketMin: Number(row.market_min ?? 0),
     marketMax: Number(row.market_max ?? 0),
@@ -49,10 +57,11 @@ export async function GET(request: Request) {
 
     if (error) throw error;
 
-    const merged = mergeServicePrices(((data ?? []) as DbServicePriceRow[]).map(normalizeRow));
+    const dbRows = (Array.isArray(data) ? data : []) as DbServicePriceRow[];
+    const merged = mergeServicePrices(dbRows.map(normalizeRow));
     const prices = slug ? merged.filter((item) => item.slug === slug) : merged;
     return NextResponse.json(
-      { ok: true, source: data?.length ? 'database' : 'defaults', prices },
+      { ok: true, source: dbRows.length ? 'database' : 'defaults', prices },
       { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } },
     );
   } catch (err) {

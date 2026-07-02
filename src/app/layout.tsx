@@ -23,6 +23,8 @@ import CmsPreviewOverlay from '@/components/admin/cms/CmsPreviewOverlay';
 import { TenantBrandingBar } from '@/components/tenant/TenantBrandingBar';
 import { TenantThemeRuntime } from '@/components/tenant/TenantThemeRuntime';
 import { TenantCopyRuntime } from '@/components/tenant/TenantCopyRuntime';
+import CookieConsentBanner from '@/components/CookieConsentBanner';
+import LegalFooter from '@/components/LegalFooter';
 import { getSiteSection } from '@/lib/siteStructure';
 
 // Force per-request rendering for every route in the app.
@@ -42,7 +44,6 @@ import { getSiteSection } from '@/lib/siteStructure';
 // the inline scripts with the runtime nonce. This is the canonical Next.js
 // pattern paired with strict nonce CSP. See the README of @next/csp examples
 // and the middleware source in this repo for the full rationale.
-
 
 export const metadata: Metadata = {
   metadataBase: new URL('https://www.solucionesfabrick.com'),
@@ -141,14 +142,12 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <TenantThemeRuntime />
                   <TenantCopyRuntime />
                   {children}
+                  <LegalFooter />
                   <TenantBrandingBar />
                   <ServiceWorkerRegister />
                   <InstallAppPrompt />
-                  {/* AIAgentChat reemplaza al botón flotante de WhatsApp en
-                      las páginas públicas. El visitante puede igualmente
-                      saltar a WhatsApp desde el botón "Hablar con humano"
-                      dentro del propio chat o desde los CTAs del Hero. */}
                   <AIAgentChat hideOn={['/admin', '/auth', '/checkout', '/presupuestos', '/p/']} />
+                  <CookieConsentBanner />
                   <Analytics />
                   <CmsRealtimeListener />
                   <CmsPreviewOverlay />

@@ -2,74 +2,66 @@ import type { Metadata } from 'next';
 import { Building2 } from 'lucide-react';
 import ServicePage, { type ServicePageContent } from '@/components/ServicePage';
 
-// See src/app/servicios/metalcon/page.tsx for the full rationale: ServicePage
-// renders inline nonce'd <script> tags so this route must be dynamic for the
-// CSP nonce from middleware.ts to match at runtime.
 export const dynamic = 'force-dynamic';
 
 const content: ServicePageContent = {
   slug: 'ampliaciones',
   eyebrow: 'Ampliaciones',
-  heroTitle: 'Ampliaciones residenciales llave en mano',
+  heroTitle: 'Ampliaciones por etapas y con presupuesto claro',
   heroDescription:
-    'Segundos pisos, logias, terrazas techadas, quinchos y dormitorios nuevos en Linares, Longaví, Talca y la Región del Maule. Un solo contrato, un solo equipo, fecha de entrega garantizada.',
+    'Te guiamos para ordenar una ampliación según medidas, uso, materiales y presupuesto disponible antes de comprometer un valor final.',
   icon: Building2,
-  serviceType: 'Ampliaciones residenciales llave en mano',
+  serviceType: 'Ampliaciones residenciales por etapas',
   priceFrom: '$2.500.000',
   overview:
-    'Ampliar tu casa no tiene por qué ser un dolor de cabeza. Coordinamos arquitectura, permisos (si aplica), estructura, instalaciones y terminaciones con un único responsable a cargo. Cronograma con hitos semanales y penalidades por atraso escritas en el contrato.',
+    'Ampliar una casa se vuelve difícil cuando no se separan las etapas. Organizamos estructura, instalaciones y terminaciones para que puedas decidir qué hacer primero y qué dejar para después.',
   scope: [
-    'Diseño arquitectónico y renders 3D previos al inicio de obra',
-    'Gestión de permiso de edificación / DOM cuando es necesario',
-    'Estructura en Metalcon u hormigón según proyecto',
-    'Instalaciones de agua, gas y electricidad integradas con la vivienda existente',
-    'Terminaciones premium: pisos, pintura, cielos, puertas, ventanas termopanel',
-    'Limpieza final de obra y entrega con checklist firmado',
+    'Revisión de medidas, fotos, acceso y uso del nuevo espacio',
+    'Separación de partidas: base, estructura, instalaciones y terminaciones',
+    'Orientación sobre materialidad según presupuesto y objetivo',
+    'Coordinación de electricidad, gasfitería o revestimientos si aplica',
+    'Presupuesto por etapas para evitar sorpresas',
+    'Acompañamiento para priorizar lo esencial antes de los detalles',
   ],
   process: [
-    { step: 'Proyecto', detail: 'Visita, levantamiento, propuesta con render 3D y presupuesto cerrado en 5 a 7 días hábiles.' },
-    { step: 'Ejecución coordinada', detail: 'Un jefe de obra dedicado, cronograma semanal público y reuniones de avance cada lunes.' },
-    { step: 'Entrega garantizada', detail: 'Recepción con checklist, garantía escrita por partida y soporte post-entrega durante 12 meses.' },
+    { step: 'Definir objetivo', detail: 'Vemos qué quieres lograr: dormitorio, baño, logia, quincho, bodega o segundo nivel.' },
+    { step: 'Ordenar etapas', detail: 'Separamos lo urgente, lo estructural y las terminaciones para ajustar el presupuesto.' },
+    { step: 'Ejecutar y revisar', detail: 'Avanzamos por tramos claros, revisando cambios antes de seguir gastando.' },
   ],
   faqs: [
     {
-      question: '¿Necesito permiso de edificación para ampliar?',
+      question: '¿Puedo hacer una ampliación por etapas?',
       answer:
-        'Depende de la superficie y la comuna. Ampliaciones menores a 25 m² en vivienda social generalmente no lo requieren, pero sí obras mayores. Evaluamos tu caso en la DOM correspondiente antes de iniciar obra.',
+        'Sí. De hecho, suele ser mejor partir por base, estructura y cierres principales antes de entrar a terminaciones más caras.',
     },
     {
-      question: '¿Cuánto demora una ampliación tipo dormitorio + baño (25 m²)?',
+      question: '¿La calculadora sirve para saber el total final?',
       answer:
-        'Entre 5 y 8 semanas desde el inicio, incluyendo estructura, instalaciones y terminaciones. Las obras de mayor tamaño (segundo piso completo) toman 10 a 16 semanas.',
+        'Sirve como referencia inicial por m². El valor final depende de base, estructura, instalaciones, terminaciones, acceso y cambios durante la obra.',
     },
     {
-      question: '¿Cuánto cuesta el m² de ampliación?',
+      question: '¿Qué debo definir antes de cotizar?',
       answer:
-        'Para terminaciones estándar, entre $850.000 y $1.200.000 por m² construido, según materialidad (Metalcon vs. albañilería) y nivel de terminación. Te entregamos valor cerrado antes de firmar.',
+        'Medidas aproximadas, uso del espacio, nivel de terminación deseado y si tendrá agua, electricidad, baño o cocina.',
     },
     {
-      question: '¿Cobran por la visita técnica?',
+      question: '¿Puedo comprar algunos productos aparte?',
       answer:
-        'No. La visita técnica, el levantamiento y la propuesta con render son gratuitas y sin compromiso en todo el Maule.',
-    },
-    {
-      question: '¿Qué pasa si el proyecto se atrasa?',
-      answer:
-        'El contrato incluye penalidades por día de atraso imputable a nosotros, descontables de la factura final. Si el atraso es por causas del cliente (cambios de diseño, permisos) se recalendariza con tu aprobación.',
+        'Sí. Podemos separar productos, artefactos o terminaciones para que decidas qué compras tú y qué gestiona el equipo.',
     },
   ],
   relatedSlugs: ['metalcon', 'gasfiteria', 'electricidad'],
 };
 
 export const metadata: Metadata = {
-  title: 'Ampliaciones de Casa en el Maule | Llave en Mano',
+  title: 'Ampliaciones de Casa en el Maule | Por Etapas',
   description:
-    'Ampliaciones llave en mano en Linares, Longaví y Talca: segundos pisos, logias, dormitorios y quinchos. Render 3D incluido, entrega garantizada. Desde $2.500.000.',
+    'Ampliaciones residenciales por etapas en Linares, Longaví y Talca. Cálculo referencial por m² y presupuesto separado por partidas.',
   alternates: { canonical: 'https://www.solucionesfabrick.com/servicios/ampliaciones' },
-  keywords: ['ampliación casa Maule', 'ampliación Linares', 'ampliación Longaví', 'segundo piso Chile', 'ampliar casa llave en mano'],
+  keywords: ['ampliación casa Maule', 'ampliación Linares', 'ampliación Longaví', 'segundo piso Chile', 'ampliar casa por etapas'],
   openGraph: {
-    title: 'Ampliaciones llave en mano en el Maule | Soluciones Fabrick',
-    description: 'Segundos pisos, dormitorios, quinchos y logias. Render 3D, cronograma y entrega garantizada.',
+    title: 'Ampliaciones por etapas en el Maule | Soluciones Fabrick',
+    description: 'Ordenamos base, estructura, instalaciones y terminaciones para cotizar mejor.',
     url: 'https://www.solucionesfabrick.com/servicios/ampliaciones',
     type: 'website',
   },

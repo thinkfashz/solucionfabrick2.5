@@ -133,14 +133,12 @@ export function normalizeDropiProduct(raw: AnyRecord, markupPct: number): Normal
   const externalId = pickString(raw, ['id', 'product_id', 'external_id', 'sku', 'reference', 'code']);
   const name = pickString(raw, ['name', 'title', 'product_name', 'nombre']);
   if (!externalId || !name) return null;
-
   const supplierPrice = pickNumber(raw, ['cost', 'cost_price', 'supplier_price', 'provider_price', 'wholesale_price', 'price', 'precio', 'sale_price']);
   const listedPrice = pickNumber(raw, ['sale_price', 'price', 'precio', 'selling_price', 'public_price']);
   const safeSupplier = Math.max(0, supplierPrice || listedPrice || 0);
   const safeMarkup = Math.max(0, Number(markupPct) || 0);
   const salePrice = Math.round(Math.max(listedPrice, safeSupplier * (1 + safeMarkup / 100)));
   const stock = Math.max(0, Math.floor(pickNumber(raw, ['stock', 'quantity', 'available_quantity', 'inventory', 'qty'])));
-
   return {
     externalId,
     sku: pickString(raw, ['sku', 'reference', 'code']),
@@ -175,11 +173,7 @@ function envCredentials(): Partial<DropiCredentials> {
 
 export async function getStoredDropiCredentials(): Promise<Record<string, unknown>> {
   try {
-    const { data } = await insforgeAdmin.database
-      .from('integrations')
-      .select('credentials')
-      .eq('provider', 'dropi')
-      .limit(1);
+    const { data } = await insforgeAdmin.database.from('integrations').select('credentials').eq('provider', 'dropi').limit(1);
     const row = Array.isArray(data) ? (data[0] as { credentials?: Record<string, unknown> } | undefined) : undefined;
     return decryptCredentials(row?.credentials);
   } catch {
@@ -190,7 +184,8 @@ export async function getStoredDropiCredentials(): Promise<Record<string, unknow
 export async function getDropiCredentials(): Promise<DropiCredentials | null> {
   const stored = await getStoredDropiCredentials();
   const env = envCredentials();
-  const merged = { ...stored, ...Object.fromEntries(Object.entries(env).filter(([, v]) => v !== '' && v !== undefined && !Number.isNaN(v))) } as AnyRecord;
+  const envEntries = Object.entries(env).filter(([, v]) => v !== '' && v !== undefined && !Number.isNaN(v));
+  const merged = { ...stored, ...Object.fromEntries(envEntries) } as AnyRecord;
   const apiBase = cleanString(merged.api_base_url);
   if (!apiBase) return null;
   return {
@@ -210,19 +205,20 @@ export async function getDropiCredentials(): Promise<DropiCredentials | null> {
 }
 
 export async function saveDropiCredentials(input: Record<string, unknown>) {
+  const existing = await getStoredDropiCredentials();
   const credentials = {
-    api_base_url: cleanString(input.api_base_url),
-    api_token: cleanString(input.api_token),
-    api_key: cleanString(input.api_key),
-    auth_header_name: cleanString(input.auth_header_name) || 'Authorization',
-    auth_scheme: cleanString(input.auth_scheme) || 'Bearer',
-    products_path: cleanString(input.products_path) || DEFAULT_PRODUCTS_PATH,
-    orders_path: cleanString(input.orders_path) || DEFAULT_ORDERS_PATH,
-    health_path: cleanString(input.health_path),
-    default_category_id: cleanString(input.default_category_id),
-    price_markup_pct: String(cleanNumber(input.price_markup_pct, 35)),
-    currency: cleanString(input.currency) || 'CLP',
-    auto_fulfill_paid_orders: cleanBoolean(input.auto_fulfill_paid_orders, false) ? 'true' : 'false',
+    api_base_url: cleanString(input.api_base_url) || cleanString(existing.api_base_url),
+    api_token: cleanString(input.api_token) || cleanString(existing.api_token),
+    api_key: cleanString(input.api_key) || cleanString(existing.api_key),
+    auth_header_name: cleanString(input.auth_header_name) || cleanString(existing.auth_header_name) || 'Authorization',
+    auth_scheme: cleanString(input.auth_scheme) || cleanString(existing.auth_scheme) || 'Bearer',
+    products_path: cleanString(input.products_path) || cleanString(existing.products_path) || DEFAULT_PRODUCTS_PATH,
+    orders_path: cleanString(input.orders_path) || cleanString(existing.orders_path) || DEFAULT_ORDERS_PATH,
+    health_path: cleanString(input.health_path) || cleanString(existing.health_path),
+    default_category_id: cleanString(input.default_category_id) || cleanString(existing.default_category_id),
+    price_markup_pct: String(cleanNumber(input.price_markup_pct, cleanNumber(existing.price_markup_pct, 35))),
+    currency: cleanString(input.currency) || cleanString(existing.currency) || 'CLP',
+    auto_fulfill_paid_orders: cleanBoolean(input.auto_fulfill_paid_orders, cleanBoolean(existing.auto_fulfill_paid_orders, false)) ? 'true' : 'false',
   };
   if (!credentials.api_base_url) throw new Error('api_base_url es requerido.');
   const encrypted = encryptCredentials(credentials);
@@ -267,7 +263,8 @@ export async function dropiRequest<T = unknown>(path: string, init: RequestInit 
   const text = await res.text();
   let json: unknown = null;
   try { json = text ? JSON.parse(text) : null; } catch { json = { raw: text }; }
-  if (!res.ok) throw new Error(`Dropi HTTP ${res.status}: ${typeof json === 'object' && json && 'message' in json ? String((json as AnyRecord).message) : text.slice(0, 220)}`);
+  const upstreamMessage = typeof json === 'object' && json && 'message' in json ? String((json as AnyRecord).message) : text.slice(0, 220);
+  if (!res.ok) throw new Error(`Dropi HTTP ${res.status}: ${upstreamMessage}`);
   return json as T;
 }
 
@@ -276,9 +273,7 @@ export async function fetchDropiProducts(limit = 40): Promise<NormalizedDropiPro
   if (!credentials) throw new Error('Dropi no está configurado.');
   const payload = await dropiRequest(appendLimit(joinUrl(credentials.api_base_url, credentials.products_path), limit), {}, credentials);
   const rows = extractArray(payload).slice(0, Math.max(1, Math.min(limit, 200)));
-  return rows
-    .map((raw) => normalizeDropiProduct(raw, credentials.price_markup_pct))
-    .filter((item): item is NormalizedDropiProduct => Boolean(item));
+  return rows.map((raw) => normalizeDropiProduct(raw, credentials.price_markup_pct)).filter((item): item is NormalizedDropiProduct => Boolean(item));
 }
 
 async function rawSql(query: string) {
@@ -296,39 +291,20 @@ async function rawSql(query: string) {
 
 export async function ensureDropiSchema() {
   return rawSql(`
-    CREATE TABLE IF NOT EXISTS public.integrations (
-      provider text PRIMARY KEY,
-      credentials jsonb NOT NULL DEFAULT '{}'::jsonb,
-      updated_at timestamptz DEFAULT now()
-    );
+    CREATE TABLE IF NOT EXISTS public.integrations (provider text PRIMARY KEY, credentials jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz DEFAULT now());
     ALTER TABLE public.products ADD COLUMN IF NOT EXISTS source text;
     ALTER TABLE public.products ADD COLUMN IF NOT EXISTS source_url text;
     ALTER TABLE public.products ADD COLUMN IF NOT EXISTS source_id text;
     ALTER TABLE public.products ADD COLUMN IF NOT EXISTS supplier_price numeric(12,2);
     ALTER TABLE public.products ADD COLUMN IF NOT EXISTS supplier_currency text;
     CREATE INDEX IF NOT EXISTS products_dropi_source_idx ON public.products (source, source_id) WHERE source = 'dropi';
-    CREATE TABLE IF NOT EXISTS public.dropi_order_links (
-      id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-      order_id text NOT NULL,
-      dropi_order_id text,
-      status text DEFAULT 'pending',
-      request_payload jsonb DEFAULT '{}'::jsonb,
-      response_payload jsonb DEFAULT '{}'::jsonb,
-      error_message text,
-      created_at timestamptz DEFAULT now(),
-      updated_at timestamptz DEFAULT now()
-    );
+    CREATE TABLE IF NOT EXISTS public.dropi_order_links (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), order_id text NOT NULL, dropi_order_id text, status text DEFAULT 'pending', request_payload jsonb DEFAULT '{}'::jsonb, response_payload jsonb DEFAULT '{}'::jsonb, error_message text, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now());
     CREATE INDEX IF NOT EXISTS dropi_order_links_order_idx ON public.dropi_order_links (order_id, created_at DESC);
   `);
 }
 
 async function findExistingDropiProduct(sourceId: string) {
-  const { data } = await insforgeAdmin.database
-    .from('products')
-    .select('id')
-    .eq('source', 'dropi')
-    .eq('source_id', sourceId)
-    .limit(1);
+  const { data } = await insforgeAdmin.database.from('products').select('id').eq('source', 'dropi').eq('source_id', sourceId).limit(1);
   return Array.isArray(data) ? (data[0] as { id?: string } | undefined) : undefined;
 }
 
@@ -361,13 +337,7 @@ export async function importDropiProducts(limit = 40, dryRun = false): Promise<D
           source_id: product.externalId,
           supplier_price: product.supplierPrice,
           supplier_currency: credentials.currency,
-          specifications: {
-            provider: 'dropi',
-            sku: product.sku,
-            categoryName: product.categoryName,
-            importedAt: new Date().toISOString(),
-            raw: product.raw,
-          },
+          specifications: { provider: 'dropi', sku: product.sku, categoryName: product.categoryName, importedAt: new Date().toISOString(), raw: product.raw },
           updated_at: new Date().toISOString(),
         };
         if (existing?.id) {
@@ -385,7 +355,6 @@ export async function importDropiProducts(limit = 40, dryRun = false): Promise<D
       }
     }
   }
-
   return { totalFetched: products.length, normalized: products.length, created, updated, skipped, products, warnings };
 }
 
@@ -403,12 +372,20 @@ async function readOrder(orderId: string) {
 }
 
 async function readProduct(productId: string) {
-  const { data } = await insforgeAdmin.database
-    .from('products')
-    .select('id, name, source, source_id, price, supplier_price, specifications')
-    .eq('id', productId)
-    .limit(1);
+  const { data } = await insforgeAdmin.database.from('products').select('id, name, source, source_id, price, supplier_price, specifications').eq('id', productId).limit(1);
   return Array.isArray(data) ? (data[0] as AnyRecord | undefined) : undefined;
+}
+
+function responseOrderId(response: unknown) {
+  if (!response || typeof response !== 'object') return '';
+  const root = response as AnyRecord;
+  const direct = cleanString(root.id ?? root.order_id ?? root.external_id);
+  if (direct) return direct;
+  if (root.data && typeof root.data === 'object') {
+    const data = root.data as AnyRecord;
+    return cleanString(data.id ?? data.order_id ?? data.external_id);
+  }
+  return '';
 }
 
 export async function createDropiFulfillment(orderId: string) {
@@ -425,62 +402,30 @@ export async function createDropiFulfillment(orderId: string) {
     if (!productId) continue;
     const product = await readProduct(productId);
     if (product?.source !== 'dropi' || !product.source_id) continue;
-    dropiItems.push({
-      product_id: product.source_id,
-      external_product_id: product.source_id,
-      local_product_id: product.id,
-      name: product.name,
-      quantity: quantityFromItem(item),
-      price: cleanNumber(product.supplier_price ?? product.price, 0),
-    });
+    dropiItems.push({ product_id: product.source_id, external_product_id: product.source_id, local_product_id: product.id, name: product.name, quantity: quantityFromItem(item), price: cleanNumber(product.supplier_price ?? product.price, 0) });
   }
 
   if (dropiItems.length === 0) return { ok: true, ignored: true, reason: 'order_without_dropi_products' };
 
   const payload = {
     external_reference: orderId,
-    customer: {
-      name: order.customer_name ?? order.cliente_nombre ?? '',
-      email: order.customer_email ?? order.cliente_email ?? '',
-      phone: order.customer_phone ?? order.cliente_telefono ?? '',
-    },
-    shipping: {
-      region: order.region ?? '',
-      address: order.shipping_address ?? order.direccion_envio ?? '',
-    },
-    totals: {
-      subtotal: order.subtotal ?? 0,
-      shipping_fee: order.shipping_fee ?? 0,
-      total: order.total ?? 0,
-      currency: order.currency ?? credentials.currency,
-    },
+    customer: { name: order.customer_name ?? order.cliente_nombre ?? '', email: order.customer_email ?? order.cliente_email ?? '', phone: order.customer_phone ?? order.cliente_telefono ?? '' },
+    shipping: { region: order.region ?? '', address: order.shipping_address ?? order.direccion_envio ?? '' },
+    totals: { subtotal: order.subtotal ?? 0, shipping_fee: order.shipping_fee ?? 0, total: order.total ?? 0, currency: order.currency ?? credentials.currency },
     items: dropiItems,
   };
 
   try {
     const response = await dropiRequest(credentials.orders_path, { method: 'POST', body: JSON.stringify(payload) }, credentials);
-    const dropiOrderId = cleanString((response as AnyRecord)?.id ?? (response as AnyRecord)?.order_id ?? (response as AnyRecord)?.data && typeof (response as AnyRecord).data === 'object' ? ((response as { data: AnyRecord }).data.id ?? (response as { data: AnyRecord }).data.order_id) : '');
-    await insforgeAdmin.database.from('dropi_order_links').insert([
-      {
-        order_id: orderId,
-        dropi_order_id: dropiOrderId || null,
-        status: 'sent',
-        request_payload: payload,
-        response_payload: response as AnyRecord,
-        updated_at: new Date().toISOString(),
-      },
-    ]);
+    const dropiOrderId = responseOrderId(response);
+    await insforgeAdmin.database.from('dropi_order_links').insert([{ order_id: orderId, dropi_order_id: dropiOrderId || null, status: 'sent', request_payload: payload, response_payload: response as AnyRecord, updated_at: new Date().toISOString() }]);
     return { ok: true, sent: true, dropiOrderId, response };
   } catch (err) {
-    await insforgeAdmin.database.from('dropi_order_links').insert([
-      {
-        order_id: orderId,
-        status: 'error',
-        request_payload: payload,
-        error_message: err instanceof Error ? err.message : String(err),
-        updated_at: new Date().toISOString(),
-      },
-    ]).catch?.(() => undefined);
+    try {
+      await insforgeAdmin.database.from('dropi_order_links').insert([{ order_id: orderId, status: 'error', request_payload: payload, error_message: err instanceof Error ? err.message : String(err), updated_at: new Date().toISOString() }]);
+    } catch {
+      // ignore log failure
+    }
     return { ok: false, sent: false, error: err instanceof Error ? err.message : 'No se pudo crear orden en Dropi.' };
   }
 }

@@ -41,110 +41,14 @@ export interface QuoteBreakdown {
 }
 
 export const DEFAULT_SERVICE_PRICES: ServicePriceSetting[] = [
-  {
-    slug: 'metalcon',
-    name: 'Estructura Metalcon',
-    unit: 'm2',
-    basePrice: 62000,
-    marketMin: 45000,
-    marketMax: 85000,
-    materialsPct: 0.46,
-    laborPct: 0.38,
-    logisticsPct: 0.08,
-    contingencyPct: 0.08,
-    disclaimer: 'Referencia por m² para estructura liviana. No incluye terminaciones especiales ni refuerzos no evaluados en terreno.',
-  },
-  {
-    slug: 'cimientos',
-    name: 'Cimientos y fundaciones',
-    unit: 'm3',
-    basePrice: 185000,
-    marketMin: 145000,
-    marketMax: 260000,
-    materialsPct: 0.52,
-    laborPct: 0.30,
-    logisticsPct: 0.10,
-    contingencyPct: 0.08,
-    disclaimer: 'Referencia por m³ de excavación, preparación y hormigón. El precio final depende de suelo, acceso y acero requerido.',
-  },
-  {
-    slug: 'revestimiento',
-    name: 'Revestimiento y aislación',
-    unit: 'm2',
-    basePrice: 38000,
-    marketMin: 28000,
-    marketMax: 62000,
-    materialsPct: 0.44,
-    laborPct: 0.40,
-    logisticsPct: 0.08,
-    contingencyPct: 0.08,
-    disclaimer: 'Referencia por m². Varía por preparación de superficie, tipo de revestimiento y altura de trabajo.',
-  },
-  {
-    slug: 'pintura',
-    name: 'Pintura profesional',
-    unit: 'm2',
-    basePrice: 14500,
-    marketMin: 9000,
-    marketMax: 26000,
-    materialsPct: 0.34,
-    laborPct: 0.50,
-    logisticsPct: 0.07,
-    contingencyPct: 0.09,
-    disclaimer: 'Referencia por m² con preparación básica y manos estándar. Reparaciones, humedad o altura cambian el valor.',
-  },
-  {
-    slug: 'gasfiteria',
-    name: 'Gasfitería',
-    unit: 'ml',
-    basePrice: 42000,
-    marketMin: 30000,
-    marketMax: 75000,
-    materialsPct: 0.45,
-    laborPct: 0.42,
-    logisticsPct: 0.06,
-    contingencyPct: 0.07,
-    disclaimer: 'Referencia por metro lineal o tramo simple. Artefactos, certificaciones y urgencias se cotizan aparte.',
-  },
-  {
-    slug: 'electricidad',
-    name: 'Instalación eléctrica',
-    unit: 'punto',
-    basePrice: 52000,
-    marketMin: 35000,
-    marketMax: 85000,
-    materialsPct: 0.38,
-    laborPct: 0.46,
-    logisticsPct: 0.07,
-    contingencyPct: 0.09,
-    disclaimer: 'Referencia por punto eléctrico simple. Tableros, canalizaciones complejas y certificaciones cambian el valor.',
-  },
-  {
-    slug: 'ampliaciones',
-    name: 'Ampliación residencial',
-    unit: 'm2',
-    basePrice: 185000,
-    marketMin: 130000,
-    marketMax: 320000,
-    materialsPct: 0.50,
-    laborPct: 0.34,
-    logisticsPct: 0.08,
-    contingencyPct: 0.08,
-    disclaimer: 'Referencia por m² para obra base. Terminaciones, permisos, fundaciones y especialidades pueden variar.',
-  },
-  {
-    slug: 'seguridad',
-    name: 'Seguridad residencial',
-    unit: 'unidad',
-    basePrice: 450000,
-    marketMin: 280000,
-    marketMax: 1200000,
-    materialsPct: 0.62,
-    laborPct: 0.24,
-    logisticsPct: 0.06,
-    contingencyPct: 0.08,
-    disclaimer: 'Referencia por sistema base. Cámaras adicionales, monitoreo y cableado extendido se calculan aparte.',
-  },
+  { slug: 'metalcon', name: 'Estructura Metalcon', unit: 'm2', basePrice: 62000, marketMin: 45000, marketMax: 85000, materialsPct: 0.46, laborPct: 0.38, logisticsPct: 0.08, contingencyPct: 0.08, disclaimer: 'Referencia por m² para estructura liviana. El valor final depende de medidas, altura, acceso, base existente y terminaciones.' },
+  { slug: 'cimientos', name: 'Cimientos y fundaciones', unit: 'm3', basePrice: 185000, marketMin: 145000, marketMax: 260000, materialsPct: 0.52, laborPct: 0.30, logisticsPct: 0.10, contingencyPct: 0.08, disclaimer: 'Referencia por m³. Malla, refuerzos, bombeo, despacho especial o mejoramiento de terreno se cotizan aparte si corresponde.' },
+  { slug: 'revestimiento', name: 'Revestimiento y aislación', unit: 'm2', basePrice: 38000, marketMin: 28000, marketMax: 62000, materialsPct: 0.44, laborPct: 0.40, logisticsPct: 0.08, contingencyPct: 0.08, disclaimer: 'Referencia por m². Varía por preparación, humedad, tipo de placa, aislación, altura y terminación.' },
+  { slug: 'pintura', name: 'Pintura profesional', unit: 'm2', basePrice: 14500, marketMin: 9000, marketMax: 26000, materialsPct: 0.34, laborPct: 0.50, logisticsPct: 0.07, contingencyPct: 0.09, disclaimer: 'Referencia por m² con preparación básica. Reparaciones, humedad, cambio de color fuerte o altura cambian el valor.' },
+  { slug: 'gasfiteria', name: 'Gasfitería', unit: 'ml', basePrice: 42000, marketMin: 30000, marketMax: 75000, materialsPct: 0.45, laborPct: 0.42, logisticsPct: 0.06, contingencyPct: 0.07, disclaimer: 'Referencia por metro lineal o tramo simple. Artefactos, urgencias, picado, reposición de terminaciones o daño oculto se cotizan aparte.' },
+  { slug: 'electricidad', name: 'Instalación eléctrica', unit: 'punto', basePrice: 52000, marketMin: 35000, marketMax: 85000, materialsPct: 0.38, laborPct: 0.46, logisticsPct: 0.07, contingencyPct: 0.09, disclaimer: 'Referencia por punto simple. Tableros, distancias, canalizaciones complejas, muros difíciles o aumento de carga cambian el valor.' },
+  { slug: 'ampliaciones', name: 'Ampliación residencial', unit: 'm2', basePrice: 185000, marketMin: 130000, marketMax: 320000, materialsPct: 0.50, laborPct: 0.34, logisticsPct: 0.08, contingencyPct: 0.08, disclaimer: 'Referencia por m² para obra base. Fundaciones, instalaciones, terminaciones y cambios de diseño pueden modificar el presupuesto.' },
+  { slug: 'seguridad', name: 'Seguridad residencial', unit: 'unidad', basePrice: 450000, marketMin: 280000, marketMax: 1200000, materialsPct: 0.62, laborPct: 0.24, logisticsPct: 0.06, contingencyPct: 0.08, disclaimer: 'Referencia por sistema base. Equipos adicionales, cableado extendido, almacenamiento, monitoreo y accesorios se calculan aparte.' },
 ];
 
 export const DEFAULT_PRICE_BY_SLUG = Object.fromEntries(
@@ -164,13 +68,7 @@ export function clampPriceSetting(setting: ServicePriceSetting): ServicePriceSet
   };
   const sum = clean.materialsPct + clean.laborPct + clean.logisticsPct + clean.contingencyPct;
   if (sum <= 0) return { ...clean, materialsPct: 0.45, laborPct: 0.4, logisticsPct: 0.08, contingencyPct: 0.07 };
-  return {
-    ...clean,
-    materialsPct: clean.materialsPct / sum,
-    laborPct: clean.laborPct / sum,
-    logisticsPct: clean.logisticsPct / sum,
-    contingencyPct: clean.contingencyPct / sum,
-  };
+  return { ...clean, materialsPct: clean.materialsPct / sum, laborPct: clean.laborPct / sum, logisticsPct: clean.logisticsPct / sum, contingencyPct: clean.contingencyPct / sum };
 }
 
 export function getDefaultPrice(slug: string): ServicePriceSetting {
@@ -195,17 +93,12 @@ export function resolveQuantity(input: QuoteInput): number {
   const quantity = Math.max(0, Number(input.quantity) || 0);
 
   switch (input.unit) {
-    case 'm2':
-      return Math.max(length * width, quantity);
-    case 'm3':
-      return Math.max(length * width * height, quantity);
-    case 'ml':
-      return Math.max(linearMeters, length, quantity);
+    case 'm2': return Math.max(length * width, quantity);
+    case 'm3': return Math.max(length * width * height, quantity);
+    case 'ml': return Math.max(linearMeters, length, quantity);
     case 'punto':
-    case 'unidad':
-      return Math.max(quantity, 1);
-    default:
-      return Math.max(quantity, 1);
+    case 'unidad': return Math.max(quantity, 1);
+    default: return Math.max(quantity, 1);
   }
 }
 
@@ -219,19 +112,7 @@ export function calculateServiceQuote(setting: ServicePriceSetting, input: Quote
   const contingency = Math.max(0, subtotal - materials - labor - logistics);
   const iva = input.includeIva ? Math.round(subtotal * 0.19) : 0;
   const total = subtotal + iva;
-  return {
-    quantity,
-    unit: clean.unit,
-    subtotal,
-    materials,
-    labor,
-    logistics,
-    contingency,
-    iva,
-    total,
-    marketLow: Math.round(clean.marketMin * quantity),
-    marketHigh: Math.round(clean.marketMax * quantity),
-  };
+  return { quantity, unit: clean.unit, subtotal, materials, labor, logistics, contingency, iva, total, marketLow: Math.round(clean.marketMin * quantity), marketHigh: Math.round(clean.marketMax * quantity) };
 }
 
 export function unitLabel(unit: ServiceUnit) {

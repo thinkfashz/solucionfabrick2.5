@@ -3,12 +3,19 @@
 import { useEffect, useRef } from 'react';
 import { usePathname, useRouter } from 'next/navigation';
 
+const CMS_REALTIME_ENABLED =
+  process.env.NODE_ENV !== 'production' ||
+  process.env.NEXT_PUBLIC_ENABLE_CMS_REALTIME === 'true';
+
 /**
  * Subscribes to `/api/cms/events` (Server-Sent Events) and triggers a soft
  * `router.refresh()` whenever an event relevant to the current page arrives.
  *
- * Mounted from the root layout so every public page gets live-updates from
- * admin saves (blog, home sections, footer copyright, social links, media).
+ * Runtime note:
+ *   SSE keeps a serverless function open. On Vercel production this can create
+ *   timeout noise and unnecessary runtime cost for every public visitor. It is
+ *   therefore enabled by default in development only. To re-enable live public
+ *   CMS refreshes in production set NEXT_PUBLIC_ENABLE_CMS_REALTIME=true.
  *
  * Behaviour notes:
  *   - Skips itself on `/admin/*` routes (admin uses its own forms + state).
@@ -23,6 +30,7 @@ export default function CmsRealtimeListener() {
   const refreshTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
+    if (!CMS_REALTIME_ENABLED) return;
     if (typeof window === 'undefined') return;
     if (typeof window.EventSource !== 'function') return;
     // Don't run inside /admin — admins use their own forms; refreshing while

@@ -4,20 +4,36 @@ import { subscribeCmsEvents, type CmsEvent } from '@/lib/cmsBus';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+function cmsSseEnabled() {
+  return process.env.NODE_ENV !== 'production' ||
+    process.env.ENABLE_CMS_SSE === 'true' ||
+    process.env.NEXT_PUBLIC_ENABLE_CMS_REALTIME === 'true';
+}
+
 /**
  * GET /api/cms/events — Server-Sent Events stream of CMS change notifications.
  *
  * Public endpoint (no auth): events are advisory "something changed, refresh"
- * triggers and contain no sensitive data. The browser uses `EventSource` to
- * subscribe; the listener component on the public site calls `router.refresh()`
- * when it receives a relevant topic, so admin edits show up live.
+ * triggers and contain no sensitive data. In production this route is disabled
+ * by default because SSE keeps a Vercel serverless function open and can create
+ * timeout noise. Re-enable intentionally with ENABLE_CMS_SSE=true or
+ * NEXT_PUBLIC_ENABLE_CMS_REALTIME=true.
  *
- * Protocol:
+ * Protocol when enabled:
  *   event: hello       \n data: {"ts": <ms>}                       \n\n
  *   event: cms-change  \n data: {"topic": "blog", "action": "...", "ts": <ms>}  \n\n
  *   : keep-alive ping every 25s (comment line, ignored by EventSource)
  */
 export async function GET(request: NextRequest) {
+  if (!cmsSseEnabled()) {
+    return new Response(null, {
+      status: 204,
+      headers: {
+        'Cache-Control': 'no-store',
+      },
+    });
+  }
+
   const encoder = new TextEncoder();
   let unsubscribe: (() => void) | null = null;
   let pingInterval: ReturnType<typeof setInterval> | null = null;

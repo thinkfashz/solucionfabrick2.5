@@ -2,74 +2,66 @@ import type { Metadata } from 'next';
 import { Zap } from 'lucide-react';
 import ServicePage, { type ServicePageContent } from '@/components/ServicePage';
 
-// See src/app/servicios/metalcon/page.tsx for the full rationale: ServicePage
-// renders inline nonce'd <script> tags so this route must be dynamic for the
-// CSP nonce from middleware.ts to match at runtime.
 export const dynamic = 'force-dynamic';
 
 const content: ServicePageContent = {
   slug: 'electricidad',
   eyebrow: 'Electricidad',
-  heroTitle: 'Instalaciones eléctricas certificadas SEC',
+  heroTitle: 'Instalaciones eléctricas ordenadas y seguras',
   heroDescription:
-    'Instalaciones eléctricas residenciales con plano timbrado, tablero termomagnético con diferencial y certificación SEC TE1 obligatoria. Seguridad eléctrica sin compromisos.',
+    'Te ayudamos a calcular puntos, revisar cargas básicas y organizar una instalación clara según el uso real de tu vivienda.',
   icon: Zap,
-  serviceType: 'Instalaciones eléctricas residenciales certificadas',
+  serviceType: 'Instalaciones eléctricas residenciales',
   priceFrom: '$290.000',
   overview:
-    'Una instalación eléctrica mal calculada es causa directa de incendios y daños a equipos. Trabajamos con electricistas autorizados por la SEC, entregamos el TE1 obligatorio, tablero normalizado con protector diferencial y plano eléctrico actualizado para tu vivienda.',
+    'La electricidad debe planificarse antes de instalar. Revisamos qué necesitas conectar, dónde irán los puntos y qué conviene dejar preparado para evitar cambios caros después.',
   scope: [
-    'Diseño del circuito y plano eléctrico timbrado por profesional autorizado',
-    'Tablero modular con interruptores termomagnéticos y protector diferencial',
-    'Circuitos dimensionados por consumo (iluminación, enchufes, cocina, clima)',
-    'Cableado libre de halógenos (LSZH) en ductos EMT cuando corresponda',
-    'Puesta a tierra certificada y medición con telurómetro',
-    'Certificación SEC TE1 (obligatoria para conexión a la red)',
+    'Revisión de puntos de iluminación, enchufes y usos principales',
+    'Ordenamiento de circuitos por zona o tipo de consumo',
+    'Instalación de canalización, cableado y accesorios según alcance',
+    'Tablero, protecciones y puesta en marcha según necesidad del proyecto',
+    'Separación de presupuesto por puntos, tablero y canalizaciones complejas',
+    'Orientación para comprar luminarias, enchufes o accesorios compatibles',
   ],
   process: [
-    { step: 'Evaluación', detail: 'Visita técnica, levantamiento de cargas reales y proyección de crecimiento a 10 años.' },
-    { step: 'Instalación normalizada', detail: 'Ejecución según NCh Elec. 4/2003, con materiales certificados y supervisión diaria.' },
-    { step: 'Certificación SEC', detail: 'Entregamos TE1 timbrado para que la conexión o ampliación con CGE/Frontel sea inmediata.' },
+    { step: 'Levantamiento', detail: 'Definimos cantidad de puntos, ubicación, consumo esperado y posibles ampliaciones futuras.' },
+    { step: 'Orden de trabajo', detail: 'Separamos puntos simples, tablero, canalizaciones y accesorios para que el presupuesto sea fácil de entender.' },
+    { step: 'Instalación', detail: 'Ejecutamos por zonas, probamos funcionamiento y dejamos recomendaciones de uso.' },
   ],
   faqs: [
     {
-      question: '¿La certificación SEC TE1 es obligatoria?',
+      question: '¿La calculadora funciona por punto?',
       answer:
-        'Sí. Toda instalación eléctrica domiciliaria nueva o modificada debe tener TE1 timbrado por un instalador autorizado SEC para poder conectarse a la red de CGE/Frontel y para que tu seguro incendio sea válido.',
+        'Sí. Sirve para estimar enchufes, interruptores o puntos de luz simples. Tableros, canalizaciones largas o muros complejos se revisan aparte.',
     },
     {
-      question: '¿Qué es un diferencial y por qué es obligatorio?',
+      question: '¿Puedo comprar mis propias luminarias?',
       answer:
-        'El protector diferencial (30 mA) corta la electricidad ante una fuga a tierra, protegiendo personas de electrocución. Es obligatorio por normativa desde 2004 en todas las viviendas y lo incluimos siempre en el tablero.',
+        'Sí. Podemos orientarte para que elijas productos compatibles con el espacio y con la instalación disponible.',
     },
     {
-      question: '¿Cuánto tarda una instalación completa en casa nueva?',
+      question: '¿Qué puede subir el precio?',
       answer:
-        'Entre 5 y 10 días hábiles para una vivienda de 60–120 m², incluyendo cableado, tablero, certificación TE1 y coordinación con la distribuidora eléctrica.',
+        'Distancia, canalización difícil, necesidad de tablero, aumento de carga, muros duros o cambios de ubicación durante la obra.',
     },
     {
-      question: '¿Hacen ampliación de instalación para cocina eléctrica o EV?',
+      question: '¿Trabajan por etapas?',
       answer:
-        'Sí. Recalculamos el empalme, refuerzo de alimentador y nuevo circuito dedicado con protecciones correctas. Incluye actualización del TE1 con la nueva carga.',
-    },
-    {
-      question: '¿Dan garantía?',
-      answer:
-        'Garantía escrita de 2 años sobre mano de obra y materiales que proveemos. Para certificaciones SEC la responsabilidad del instalador es permanente por ley mientras la instalación no sea modificada por terceros.',
+        'Sí. Podemos partir con lo esencial y dejar preparado lo que se instalará después.',
     },
   ],
   relatedSlugs: ['gasfiteria', 'metalcon', 'ampliaciones'],
 };
 
 export const metadata: Metadata = {
-  title: 'Instalación Eléctrica Certificada SEC | Maule',
+  title: 'Instalaciones Eléctricas Residenciales | Maule',
   description:
-    'Instalaciones eléctricas residenciales con certificación SEC TE1, tablero diferencial y plano timbrado en el Maule. Desde $290.000.',
+    'Instalaciones eléctricas residenciales en el Maule: puntos, iluminación, enchufes, tablero y orientación por etapas. Cálculo referencial por punto.',
   alternates: { canonical: 'https://www.solucionesfabrick.com/servicios/electricidad' },
-  keywords: ['electricista Maule', 'electricista Linares', 'electricista Longaví', 'certificación SEC TE1', 'instalación eléctrica Talca'],
+  keywords: ['electricista Maule', 'electricista Linares', 'electricista Longaví', 'instalación eléctrica Talca'],
   openGraph: {
-    title: 'Electricidad certificada SEC en el Maule | Soluciones Fabrick',
-    description: 'Plano timbrado, tablero diferencial y TE1 incluido. Desde $290.000.',
+    title: 'Electricidad residencial en el Maule | Soluciones Fabrick',
+    description: 'Cálculo por punto, orientación clara y ejecución por etapas.',
     url: 'https://www.solucionesfabrick.com/servicios/electricidad',
     type: 'website',
   },

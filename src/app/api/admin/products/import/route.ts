@@ -66,7 +66,7 @@ async function loadCategories() {
 async function insertCategory(name: string) {
   const { data, error } = await insforgeAdmin.database
     .from('categories')
-    .insert([{ name, description: 'Creada automáticamente desde el importador de productos.', updated_at: new Date().toISOString() }]);
+    .insert([{ name, description: 'Creada automáticamente desde el importador de productos.' }]);
 
   if (error) throw new Error(error.message || `No se pudo crear la categoría ${name}.`);
   const rows = rowsFromData(data);

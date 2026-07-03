@@ -102,34 +102,16 @@ export default function ProductoClient() {
   const [adding, setAdding] = useState(false);
   const [quantity, setQuantity] = useState(1);
 
-  /* ─── Particle burst (fly-to-cart) refs ───────────────────────
-     Mirrors the pattern used in the storefront listing: a small
-     pool of GSAP-driven particles spawned from the add-to-cart
-     button and arced toward the navbar cart icon, tracked so we
-     can kill any in-flight tweens and remove their DOM nodes on
-     unmount (avoids leaking tweens/nodes between navigations). */
-  const addButtonRef     = useRef<HTMLButtonElement>(null);
-  const gsapRef          = useRef<null | typeof import('gsap').default>(null);
-  const activeParticlesRef = useRef<Array<{ el: HTMLDivElement; tween: gsap.core.Tween }>>([]);
+  /* Native Web Animations particle burst.
+     This intentionally avoids GSAP so production builds do not require a
+     separate gsap dependency or lockfile change. */
+  const addButtonRef = useRef<HTMLButtonElement>(null);
+  const activeParticlesRef = useRef<Array<{ el: HTMLDivElement; animation: Animation }>>([]);
 
   useEffect(() => {
-    let mounted = true;
-    async function loadGsap() {
-      const { default: gsap } = await import('gsap');
-      if (mounted) gsapRef.current = gsap;
-    }
-    void loadGsap();
     return () => {
-      mounted = false;
-    };
-  }, []);
-
-  // Cleanup any in-flight "add to cart" particle animations on unmount so we
-  // never leave orphaned DOM nodes or running GSAP tweens behind.
-  useEffect(() => {
-    return () => {
-      activeParticlesRef.current.forEach(({ el, tween }) => {
-        tween.kill();
+      activeParticlesRef.current.forEach(({ el, animation }) => {
+        animation.cancel();
         el.remove();
       });
       activeParticlesRef.current = [];
@@ -154,14 +136,9 @@ export default function ProductoClient() {
     ? Object.entries(product.specifications)
     : [];
 
-  /* Spawns a small burst of yellow/amber particles from the add-to-cart
-     button that arc toward the navbar's cart icon (or the top-right
-     corner as a fallback target), mirroring the storefront listing's
-     fly-to-cart effect — kept lighter for a single-product page. */
   function spawnAddToCartParticles() {
-    const gsap   = gsapRef.current;
     const button = addButtonRef.current;
-    if (!gsap || !button) return;
+    if (!button || typeof document === 'undefined') return;
 
     const originRect = button.getBoundingClientRect();
     const cartEl     = document.querySelector<HTMLElement>('[aria-label*="Carrito de compras"]');
@@ -185,21 +162,25 @@ export default function ProductoClient() {
       particle.style.boxShadow  = '0 0 12px rgba(250, 204, 21, 0.65)';
       document.body.appendChild(particle);
 
-      const tween = gsap.to(particle, {
-        duration: 0.6 + Math.random() * 0.3,
-        x: targetX - startX,
-        y: targetY - startY,
-        scale: 0.2,
-        opacity: 0,
-        ease: 'power2.in',
-        delay: i * 0.035,
-        onComplete: () => {
-          activeParticlesRef.current = activeParticlesRef.current.filter((entry) => entry.el !== particle);
-          particle.remove();
+      const animation = particle.animate(
+        [
+          { transform: 'translate3d(0, 0, 0) scale(1)', opacity: 1 },
+          { transform: `translate3d(${targetX - startX}px, ${targetY - startY}px, 0) scale(0.2)`, opacity: 0 },
+        ],
+        {
+          duration: 600 + Math.random() * 300,
+          delay: i * 35,
+          easing: 'cubic-bezier(.4,0,.2,1)',
+          fill: 'forwards',
         },
-      });
+      );
 
-      activeParticlesRef.current.push({ el: particle, tween });
+      animation.onfinish = () => {
+        activeParticlesRef.current = activeParticlesRef.current.filter((entry) => entry.el !== particle);
+        particle.remove();
+      };
+
+      activeParticlesRef.current.push({ el: particle, animation });
     }
   }
 
@@ -215,9 +196,6 @@ export default function ProductoClient() {
       addToCart(product, qty);
       spawnAddToCartParticles();
 
-      // `addToCart` is synchronous, but a tiny minimum-duration loading
-      // state reads as more deliberate/premium than an instant flicker —
-      // without padding it past what feels responsive.
       const MIN_LOADING_MS = 320;
       const elapsed = Date.now() - startedAt;
       if (elapsed < MIN_LOADING_MS) {
@@ -228,7 +206,6 @@ export default function ProductoClient() {
       setTimeout(() => setAdded(false), 2200);
       openCart();
     } catch {
-      // Defensive: if the store throws, don't lock the UI in "added" state.
       setAdded(false);
     } finally {
       setAdding(false);
@@ -253,9 +230,7 @@ export default function ProductoClient() {
 
   return (
     <div className="min-h-screen bg-black">
-
       <div className="max-w-6xl mx-auto px-6 md:px-12 pt-24 pb-32">
-
         {/* ── Breadcrumb ── */}
         <motion.nav
           initial={{ opacity: 0, y: -8 }}
@@ -273,7 +248,6 @@ export default function ProductoClient() {
 
         {/* ── Main two-column layout ── */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-12 lg:gap-20 items-start">
-
           {/* Image */}
           <motion.div
             variants={imageVariants}
@@ -578,11 +552,7 @@ export default function ProductoClient() {
             Ver servicios
           </Link>
         </motion.div>
-
       </div>
     </div>
   );
 }
-
-
-

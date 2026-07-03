@@ -9,11 +9,13 @@ export interface ParsedImportProduct {
   stock?: number | null;
   image_url?: string | null;
   category_id?: string | null;
+  category_name?: string | null;
   tagline?: string | null;
   activo?: boolean;
   featured?: boolean;
   delivery_days?: number | null;
   discount_percentage?: number | null;
+  specifications?: Record<string, unknown> | unknown[] | null;
   source?: string | null;
   source_url?: string | null;
   source_id?: string | null;
@@ -31,21 +33,25 @@ export interface ProductImportParseResult {
 }
 
 const FIELD_ALIASES: Record<string, keyof ParsedImportProduct> = {
-  id: 'id', sku: 'id', product_id: 'id', producto_id: 'id',
+  id: 'id', product_id: 'id', producto_id: 'id', uuid: 'id',
+  sku: 'source_id', codigo: 'source_id', modelo: 'source_id', model: 'source_id', source_id: 'source_id', id_proveedor: 'source_id',
   name: 'name', nombre: 'name', producto: 'name', product: 'name', titulo: 'name', title: 'name',
-  description: 'description', descripcion: 'description', detalle: 'description', descripcion_larga: 'description',
-  price: 'price', precio: 'price', valor: 'price', precio_venta: 'price', venta: 'price',
-  stock: 'stock', cantidad: 'stock', inventario: 'stock',
-  image: 'image_url', img: 'image_url', imagen: 'image_url', image_url: 'image_url', imagen_url: 'image_url', url_imagen: 'image_url',
-  category: 'category_id', categoria: 'category_id', category_id: 'category_id',
-  tagline: 'tagline', subtitulo: 'tagline', slogan: 'tagline',
-  active: 'activo', activo: 'activo', visible: 'activo',
-  featured: 'featured', destacado: 'featured',
-  delivery_days: 'delivery_days', dias_envio: 'delivery_days', entrega_dias: 'delivery_days',
-  discount: 'discount_percentage', descuento: 'discount_percentage', discount_percentage: 'discount_percentage',
-  source: 'source', origen: 'source', source_url: 'source_url', url_proveedor: 'source_url', proveedor_url: 'source_url',
-  source_id: 'source_id', id_proveedor: 'source_id', supplier_price: 'supplier_price', precio_proveedor: 'supplier_price', costo: 'supplier_price', costo_compra: 'supplier_price',
-  supplier_currency: 'supplier_currency', moneda_proveedor: 'supplier_currency',
+  description: 'description', descripcion: 'description', detalle: 'description', descripcion_larga: 'description', copy: 'description',
+  price: 'price', precio: 'price', valor: 'price', precio_venta: 'price', venta: 'price', sale_price: 'price', precio_publicado: 'price', precio_sitio: 'price', precio_web: 'price',
+  stock: 'stock', cantidad: 'stock', inventario: 'stock', unidades: 'stock',
+  image: 'image_url', img: 'image_url', imagen: 'image_url', image_url: 'image_url', imagen_url: 'image_url', url_imagen: 'image_url', images: 'image_url', imagenes: 'image_url', fotos: 'image_url',
+  category_id: 'category_id', categoria_id: 'category_id',
+  category: 'category_name', categoria: 'category_name', category_name: 'category_name', nombre_categoria: 'category_name', categoria_nombre: 'category_name',
+  tagline: 'tagline', subtitulo: 'tagline', slogan: 'tagline', resumen: 'tagline',
+  active: 'activo', activo: 'activo', visible: 'activo', status: 'activo', estado: 'activo',
+  featured: 'featured', destacado: 'featured', promocionado: 'featured',
+  delivery_days: 'delivery_days', dias_envio: 'delivery_days', entrega_dias: 'delivery_days', despacho_dias: 'delivery_days',
+  discount: 'discount_percentage', descuento: 'discount_percentage', discount_percentage: 'discount_percentage', porcentaje_descuento: 'discount_percentage',
+  specifications: 'specifications', especificaciones: 'specifications', caracteristicas: 'specifications', features: 'specifications', detalles: 'specifications', ficha_tecnica: 'specifications',
+  source: 'source', origen: 'source', proveedor: 'source', supplier: 'source', supplier_name: 'source', vendor: 'source', tienda: 'source', brand: 'source', marca: 'source',
+  source_url: 'source_url', url_proveedor: 'source_url', proveedor_url: 'source_url', link: 'source_url', url: 'source_url', product_url: 'source_url', url_producto: 'source_url', link_producto: 'source_url', extracted_from: 'source_url', extraido_de: 'source_url', pagina_venta: 'source_url', url_pagina_venta: 'source_url',
+  supplier_price: 'supplier_price', precio_proveedor: 'supplier_price', costo: 'supplier_price', costo_compra: 'supplier_price', precio_compra: 'supplier_price', precio_origen: 'supplier_price', precio_fuente: 'supplier_price', page_price: 'supplier_price', precio_pagina: 'supplier_price', precio_tienda: 'supplier_price', precio_original: 'supplier_price', original_price: 'supplier_price', market_price: 'supplier_price',
+  supplier_currency: 'supplier_currency', moneda_proveedor: 'supplier_currency', moneda: 'supplier_currency', currency: 'supplier_currency',
   shipping_mode: 'shipping_mode', modo_envio: 'shipping_mode', shipping_fee: 'shipping_fee', envio: 'shipping_fee', costo_envio: 'shipping_fee', tarifa_envio: 'shipping_fee',
   shipping_weight_kg: 'shipping_weight_kg', peso_kg: 'shipping_weight_kg', shipping_dimensions: 'shipping_dimensions', dimensiones_envio: 'shipping_dimensions',
 };
@@ -75,12 +81,60 @@ function parseBool(value: unknown, fallback = false) {
   if (typeof value === 'boolean') return value;
   const raw = String(value ?? '').trim().toLowerCase();
   if (!raw) return fallback;
+  if (['0', 'no', 'false', 'inactivo', 'oculto', 'hidden', 'n'].includes(raw)) return false;
   return ['1', 'si', 'sí', 'true', 'activo', 'yes', 'y', 'visible'].includes(raw);
 }
 
 function cleanText(value: unknown) {
   const text = String(value ?? '').trim();
   return text.length ? text : null;
+}
+
+function cleanImageUrl(value: unknown) {
+  if (Array.isArray(value)) {
+    const first = value.find((entry) => typeof entry === 'string' && entry.trim());
+    return cleanText(first);
+  }
+  if (value && typeof value === 'object') {
+    const objectValue = value as Record<string, unknown>;
+    return cleanImageUrl(objectValue.url ?? objectValue.src ?? objectValue.image_url ?? objectValue.imagen_url);
+  }
+  const text = cleanText(value);
+  if (!text) return null;
+  return text.split(/[\n,|;]/).map((part) => part.trim()).find(Boolean) ?? text;
+}
+
+function parseSpecifications(value: unknown): Record<string, unknown> | unknown[] | null {
+  if (value == null) return null;
+  if (Array.isArray(value)) return value;
+  if (typeof value === 'object') return value as Record<string, unknown>;
+  const text = cleanText(value);
+  if (!text) return null;
+  try {
+    const parsed = JSON.parse(text) as unknown;
+    if (Array.isArray(parsed)) return parsed;
+    if (parsed && typeof parsed === 'object') return parsed as Record<string, unknown>;
+  } catch {
+    // Keep a readable fallback for pasted details that are not valid JSON.
+  }
+  return { detalle: text };
+}
+
+function sourceNameFromUrl(value: string | null) {
+  if (!value) return null;
+  try {
+    const host = new URL(value).hostname.replace(/^www\./, '');
+    if (!host) return null;
+    if (host.includes('mideastore')) return 'Midea Store';
+    if (host.includes('tclstore')) return 'TCL Store';
+    return host;
+  } catch {
+    return null;
+  }
+}
+
+function isUuid(value: string | null) {
+  return !!value && /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
 }
 
 function splitDelimitedLine(line: string, delimiter: string) {
@@ -121,8 +175,18 @@ export function parseDelimitedProducts(content: string): ProductImportParseResul
 export function parseJsonProducts(content: string): ProductImportParseResult {
   try {
     const parsed = JSON.parse(content);
-    const rows = Array.isArray(parsed) ? parsed : Array.isArray(parsed?.products) ? parsed.products : Array.isArray(parsed?.items) ? parsed.items : [];
-    if (!rows.length) return { products: [], errors: [{ row: 0, message: 'El JSON debe ser un array o tener products/items.' }] };
+    const rows = Array.isArray(parsed)
+      ? parsed
+      : Array.isArray(parsed?.products)
+        ? parsed.products
+        : Array.isArray(parsed?.items)
+          ? parsed.items
+          : Array.isArray(parsed?.productos)
+            ? parsed.productos
+            : Array.isArray(parsed?.data)
+              ? parsed.data
+              : [];
+    if (!rows.length) return { products: [], errors: [{ row: 0, message: 'El JSON debe ser un array o tener products/items/productos/data.' }] };
     return normalizeImportRows(rows);
   } catch (err) {
     return { products: [], errors: [{ row: 0, message: err instanceof Error ? err.message : 'JSON inválido.' }] };
@@ -139,28 +203,40 @@ export function normalizeImportRows(rows: unknown[]): ProductImportParseResult {
       const alias = FIELD_ALIASES[normalizeHeader(key)] || normalizeHeader(key);
       mapped[alias] = value;
     }
+
     const name = cleanText(mapped.name);
-    const price = parseMoney(mapped.price);
+    const supplierPrice = parseMoney(mapped.supplier_price) || null;
+    const price = parseMoney(mapped.price) || supplierPrice || 0;
+    const categoryIdRaw = cleanText(mapped.category_id);
+    const categoryName = cleanText(mapped.category_name) || (isUuid(categoryIdRaw) ? null : categoryIdRaw);
+    const sourceUrl = cleanText(mapped.source_url);
+    const source = cleanText(mapped.source) || sourceNameFromUrl(sourceUrl);
+    const stock = parseNumber(mapped.stock);
+    const deliveryDays = parseNumber(mapped.delivery_days);
+
     if (!name) { errors.push({ row: index + 2, message: 'Falta nombre del producto.' }); return; }
     if (price <= 0) { errors.push({ row: index + 2, message: `Precio inválido para ${name}.` }); return; }
+
     products.push({
-      id: cleanText(mapped.id) || undefined,
+      id: isUuid(cleanText(mapped.id)) ? cleanText(mapped.id)! : undefined,
       name,
       description: cleanText(mapped.description),
       price,
-      stock: parseNumber(mapped.stock) == null ? null : Math.round(parseNumber(mapped.stock) || 0),
-      image_url: cleanText(mapped.image_url),
-      category_id: cleanText(mapped.category_id),
+      stock: stock == null ? null : Math.round(stock),
+      image_url: cleanImageUrl(mapped.image_url),
+      category_id: isUuid(categoryIdRaw) ? categoryIdRaw : null,
+      category_name: categoryName,
       tagline: cleanText(mapped.tagline),
       activo: parseBool(mapped.activo, true),
       featured: parseBool(mapped.featured, false),
-      delivery_days: parseNumber(mapped.delivery_days) == null ? null : Math.round(parseNumber(mapped.delivery_days) || 0),
+      delivery_days: deliveryDays == null ? null : Math.round(deliveryDays),
       discount_percentage: parseNumber(mapped.discount_percentage),
-      source: cleanText(mapped.source),
-      source_url: cleanText(mapped.source_url),
+      specifications: parseSpecifications(mapped.specifications),
+      source,
+      source_url: sourceUrl,
       source_id: cleanText(mapped.source_id),
-      supplier_price: parseMoney(mapped.supplier_price) || null,
-      supplier_currency: cleanText(mapped.supplier_currency),
+      supplier_price: supplierPrice,
+      supplier_currency: cleanText(mapped.supplier_currency) || (supplierPrice ? 'CLP' : null),
       shipping_mode: cleanText(mapped.shipping_mode),
       shipping_fee: parseMoney(mapped.shipping_fee) || null,
       shipping_weight_kg: parseNumber(mapped.shipping_weight_kg),

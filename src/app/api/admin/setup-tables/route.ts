@@ -30,6 +30,7 @@ type StepResult = { ok: boolean; error?: string };
 
 const EXPECTED_TABLES = [
   'productos',
+  'categories',
   'products',
   'integrations',
   'orders',

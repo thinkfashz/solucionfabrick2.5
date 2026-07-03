@@ -11,21 +11,36 @@ type ImportResult = {
   imported?: number;
   skipped?: number;
   errors?: Array<{ row: number; message: string }>;
+  categories?: {
+    created: number;
+    matched: number;
+    skipped: number;
+    errors?: Array<{ category: string; message: string }>;
+  };
   error?: string;
 };
 
-const SAMPLE_TABLE = `nombre\tprecio\tstock\tcategoria\timagen_url\tdestacado\tenvio
-Aire acondicionado 9000 BTU\t299990\t8\tAire acondicionado\thttps://...\tsi\t0
-Aire acondicionado 12000 BTU\t399990\t5\tAire acondicionado\thttps://...\tno\t0`;
+const SAMPLE_TABLE = `nombre\tprecio\tstock\tcategoria\timagen_url\tproveedor\turl_proveedor\tprecio_proveedor\tcaracteristicas
+Aire acondicionado 9000 BTU\t299990\t8\tAire acondicionado\thttps://...\tMidea Store\thttps://www.mideastore.cl/...\t249990\t{"BTU":"9000","WiFi":"Sí"}
+Aire acondicionado 12000 BTU\t399990\t5\tAire acondicionado\thttps://...\tTCL Store\thttps://tclstore.cl/...\t349990\t{"BTU":"12000","Inverter":"Sí"}`;
 
 const SAMPLE_JSON = `{
   "products": [
     {
       "name": "Aire acondicionado 9000 BTU",
       "price": 299990,
+      "supplier_price": 249990,
+      "supplier_currency": "CLP",
       "stock": 8,
       "category": "Aire acondicionado",
       "image": "https://...",
+      "source": "Midea Store",
+      "source_url": "https://www.mideastore.cl/...",
+      "specifications": {
+        "BTU": "9000",
+        "Inverter": "Sí",
+        "WiFi": "Sí"
+      },
       "featured": true
     }
   ]
@@ -40,9 +55,9 @@ export default function ProductImportModal({ open, onClose, onImported }: { open
   const [result, setResult] = useState<ImportResult | null>(null);
 
   const help = useMemo(() => {
-    if (source === 'json') return 'Pega un array JSON o un objeto con products/items. Puede venir con campos en español o inglés. Si la categoría viene como texto, se ignora para evitar errores UUID.';
-    if (source === 'google_sheets') return 'Pega el link público de Google Sheets. La primera fila debe tener encabezados como nombre, precio, stock, imagen_url.';
-    return 'Pega una tabla copiada desde Excel/Google Sheets, o sube CSV/TSV/TXT. La primera fila debe tener encabezados.';
+    if (source === 'json') return 'Pega un array JSON o un objeto con products/items/productos/data. El importador crea la categoría si viene como texto, guarda proveedor, URL fuente, precio proveedor y especificaciones.';
+    if (source === 'google_sheets') return 'Pega el link público de Google Sheets. Usa encabezados como nombre, precio, categoria, proveedor, url_proveedor, precio_proveedor, caracteristicas.';
+    return 'Pega una tabla desde Excel/Sheets o sube CSV/TSV/TXT. La primera fila debe tener encabezados; las categorías se crean automáticamente si no existen.';
   }, [source]);
 
   const lineCount = useMemo(() => content.split(/\r?\n/).filter((line) => line.trim()).length, [content]);
@@ -98,7 +113,7 @@ export default function ProductImportModal({ open, onClose, onImported }: { open
           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">Carga masiva inteligente</p>
           <h2 className="mt-3 pr-14 text-2xl font-black text-white sm:text-3xl">Importar productos</h2>
           <p className="mt-2 max-w-3xl text-sm leading-6 text-zinc-400">
-            Sube JSON, CSV, TXT o pega una tabla. El importador limpia campos problemáticos, evita errores por categorías de texto y actualiza el catálogo al terminar.
+            Sube JSON, CSV, TXT o pega una tabla. Ahora crea categorías automáticamente y guarda proveedor, link fuente, precio proveedor, precio de venta y detalles técnicos.
           </p>
           <div className="mt-5 grid gap-3 sm:grid-cols-3">
             <MiniStat label="Formato activo" value={source === 'json' ? 'JSON' : source === 'google_sheets' ? 'Sheets' : 'Tabla'} />
@@ -119,7 +134,7 @@ export default function ProductImportModal({ open, onClose, onImported }: { open
                 <option value="insert">Insertar nuevos</option>
                 <option value="upsert">Actualizar por ID si existe</option>
               </select>
-              <p className="mt-3 text-xs leading-5 text-zinc-500">Usa “Actualizar” solo cuando tus filas traen un ID real del producto.</p>
+              <p className="mt-3 text-xs leading-5 text-zinc-500">Usa “Actualizar” solo cuando tus filas traen un ID real UUID del producto.</p>
             </div>
           </aside>
 
@@ -151,9 +166,15 @@ export default function ProductImportModal({ open, onClose, onImported }: { open
               <div className={`rounded-3xl border p-4 text-sm ${result.error ? 'border-red-400/30 bg-red-500/10 text-red-100' : 'border-emerald-400/30 bg-emerald-500/10 text-emerald-100'}`}>
                 <div className="flex items-start gap-3">
                   {result.error ? <AlertTriangle className="mt-0.5 h-5 w-5 flex-shrink-0" /> : <CheckCircle2 className="mt-0.5 h-5 w-5 flex-shrink-0" />}
-                  <div>
+                  <div className="space-y-2">
                     {result.error ? <p>{result.error}</p> : <p><b>{result.imported}</b> productos importados · {result.skipped || 0} filas omitidas.</p>}
-                    {!!result.errors?.length && <ul className="mt-2 max-h-32 list-disc overflow-y-auto pl-5 text-xs opacity-80">{result.errors.slice(0, 30).map((err, i) => <li key={`${err.row}-${i}`}>Fila {err.row}: {err.message}</li>)}</ul>}
+                    {result.categories && (
+                      <p className="text-xs opacity-85">
+                        Categorías: {result.categories.created} creadas · {result.categories.matched} vinculadas · {result.categories.skipped} sin categoría.
+                      </p>
+                    )}
+                    {!!result.errors?.length && <ul className="max-h-32 list-disc overflow-y-auto pl-5 text-xs opacity-80">{result.errors.slice(0, 30).map((err, i) => <li key={`${err.row}-${i}`}>Fila {err.row}: {err.message}</li>)}</ul>}
+                    {!!result.categories?.errors?.length && <ul className="max-h-32 list-disc overflow-y-auto pl-5 text-xs opacity-80">{result.categories.errors.slice(0, 20).map((err, i) => <li key={`${err.category}-${i}`}>Categoría {err.category}: {err.message}</li>)}</ul>}
                   </div>
                 </div>
               </div>
@@ -163,7 +184,7 @@ export default function ProductImportModal({ open, onClose, onImported }: { open
               <button onClick={onClose} className="rounded-2xl border border-white/10 px-5 py-4 text-sm font-black text-zinc-300 transition hover:bg-white/5">Cancelar</button>
               <button onClick={() => void submitImport()} disabled={loading} className="inline-flex items-center justify-center rounded-2xl bg-yellow-300 px-5 py-4 text-sm font-black uppercase tracking-[0.16em] text-black shadow-[0_15px_45px_rgba(250,204,21,0.18)] transition hover:bg-yellow-200 disabled:opacity-60">
                 {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                {loading ? 'Importando…' : 'Importar productos'}
+                {loading ? 'Importando…' : 'Importar a base de datos'}
               </button>
             </div>
           </section>

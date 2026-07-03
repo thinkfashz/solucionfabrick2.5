@@ -23,25 +23,17 @@ export default function ProductDetail({ product, onClose, onAddToCart }: Product
     return () => { document.body.style.overflow = ''; };
   }, []);
 
-  // GSAP enter
+  // Native enter animation. Keeps the same premium reveal without requiring GSAP.
   useEffect(() => {
-    let ctx: ReturnType<typeof import('gsap').default.context> | undefined;
-    (async () => {
-      const { default: gsap } = await import('gsap');
-      const { ScrollTrigger } = await import('gsap/ScrollTrigger');
-      gsap.registerPlugin(ScrollTrigger);
-
-      if (!overlayRef.current) return;
-      ctx = gsap.context(() => {
-        gsap.utils.toArray<HTMLElement>('.detail-reveal').forEach((el, i) => {
-          gsap.fromTo(el,
-            { opacity: 0, y: 30 },
-            { opacity: 1, y: 0, duration: 0.6, delay: 0.2 + i * 0.1, ease: 'power2.out' }
-          );
-        });
-      }, overlayRef.current);
-    })();
-    return () => ctx?.revert();
+    if (!overlayRef.current) return;
+    const animations = Array.from(overlayRef.current.querySelectorAll<HTMLElement>('.detail-reveal')).map((el, i) => el.animate(
+      [
+        { opacity: 0, transform: 'translateY(30px)' },
+        { opacity: 1, transform: 'translateY(0)' },
+      ],
+      { duration: 600, delay: 200 + i * 100, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both' },
+    ));
+    return () => animations.forEach((animation) => animation.cancel());
   }, []);
 
   const hasDiscount = product.discount_percentage && product.discount_percentage > 0;

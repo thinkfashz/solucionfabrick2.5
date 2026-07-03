@@ -17,52 +17,46 @@ export default function ProductList({ onSelectProduct, onAddToCart, cartIconRef 
   const { products, loading, connected } = useRealtimeProducts();
   const listRef = useRef<HTMLDivElement>(null);
 
-  /* ── GSAP scroll-reveal con efecto alternado izq/der ── */
   useEffect(() => {
-    if (loading || !listRef.current) return;
-    let ctx: ReturnType<typeof import('gsap').default.context> | undefined;
+    if (loading || !listRef.current || typeof IntersectionObserver === 'undefined') return;
 
-    (async () => {
-      const { default: gsap } = await import('gsap');
-      const { ScrollTrigger }  = await import('gsap/ScrollTrigger');
-      gsap.registerPlugin(ScrollTrigger);
+    const cards = Array.from(listRef.current.querySelectorAll<HTMLElement>('.product-card'));
+    const observer = new IntersectionObserver((entries) => {
+      entries.forEach((entry) => {
+        if (!entry.isIntersecting) return;
+        const card = entry.target as HTMLElement;
+        if (card.dataset.animated === 'true') return;
+        card.dataset.animated = 'true';
 
-      ctx = gsap.context(() => {
-        gsap.utils.toArray<HTMLElement>('.product-card').forEach((card, i) => {
-          const isEven = i % 2 === 0;
+        const index = Number(card.dataset.index || 0);
+        const isEven = index % 2 === 0;
+        const img = card.querySelector<HTMLElement>('.pc-image');
+        const info = card.querySelector<HTMLElement>('.pc-info');
 
-          /* Imagen: entra desde el lado exterior */
-          const img = card.querySelector<HTMLElement>('.pc-image');
-          if (img) {
-            gsap.fromTo(img,
-              { x: isEven ? -60 : 60, opacity: 0, scale: 0.94 },
-              {
-                x: 0, opacity: 1, scale: 1, duration: 1, ease: 'power3.out',
-                scrollTrigger: { trigger: card, start: 'top 85%', toggleActions: 'play none none none' },
-              }
-            );
-          }
+        img?.animate(
+          [
+            { transform: `translateX(${isEven ? -60 : 60}px) scale(.94)`, opacity: 0 },
+            { transform: 'translateX(0) scale(1)', opacity: 1 },
+          ],
+          { duration: 850, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both' },
+        );
 
-          /* Info: entra desde el lado interior con delay */
-          const info = card.querySelector<HTMLElement>('.pc-info');
-          if (info) {
-            gsap.fromTo(info,
-              { x: isEven ? 40 : -40, opacity: 0, filter: 'blur(6px)' },
-              {
-                x: 0, opacity: 1, filter: 'blur(0px)',
-                duration: 1, ease: 'power3.out', delay: 0.15,
-                scrollTrigger: { trigger: card, start: 'top 85%', toggleActions: 'play none none none' },
-              }
-            );
-          }
-        });
-      }, listRef.current!);
-    })();
+        info?.animate(
+          [
+            { transform: `translateX(${isEven ? 40 : -40}px)`, opacity: 0, filter: 'blur(6px)' },
+            { transform: 'translateX(0)', opacity: 1, filter: 'blur(0)' },
+          ],
+          { duration: 850, delay: 120, easing: 'cubic-bezier(.16,1,.3,1)', fill: 'both' },
+        );
 
-    return () => ctx?.revert();
+        observer.unobserve(card);
+      });
+    }, { threshold: 0.18, rootMargin: '0px 0px -8% 0px' });
+
+    cards.forEach((card) => observer.observe(card));
+    return () => observer.disconnect();
   }, [loading, products.length]);
 
-  /* ── GSAP fly-to-cart animado ── */
   const flyToCart = useCallback((e: React.MouseEvent, product: Product) => {
     e.stopPropagation();
     onAddToCart(product);
@@ -90,29 +84,26 @@ export default function ProductList({ onSelectProduct, onAddToCart, cartIconRef 
     });
     document.body.appendChild(clone);
 
-    import('gsap').then(({ default: gsap }) => {
-      gsap.to(clone, {
-        top: destRect.top + destRect.height / 2,
-        left: destRect.left + destRect.width / 2,
-        width: 0,
-        height: 0,
-        opacity: 0,
-        borderRadius: '50%',
-        duration: 0.65,
-        ease: 'power3.in',
-        onComplete: () => clone.remove(),
-      });
+    const deltaX = destRect.left + destRect.width / 2 - srcRect.left;
+    const deltaY = destRect.top + destRect.height / 2 - srcRect.top;
 
-      /* Rebote en el ícono del carrito */
-      gsap.fromTo(cartIconRef.current!,
-        { scale: 1 },
-        {
-          scale: 1.35, duration: 0.18, ease: 'power2.out',
-          yoyo: true, repeat: 1,
-          onComplete: () => { gsap.set(cartIconRef.current!, { scale: 1 }); },
-        },
-      );
-    });
+    const animation = clone.animate(
+      [
+        { transform: 'translate3d(0,0,0) scale(1)', opacity: 1, borderRadius: '12px' },
+        { transform: `translate3d(${deltaX}px,${deltaY}px,0) scale(0.05)`, opacity: 0, borderRadius: '50%' },
+      ],
+      { duration: 650, easing: 'cubic-bezier(.4,0,1,1)', fill: 'forwards' },
+    );
+    animation.onfinish = () => clone.remove();
+
+    cartIconRef.current.animate(
+      [
+        { transform: 'scale(1)' },
+        { transform: 'scale(1.35)' },
+        { transform: 'scale(1)' },
+      ],
+      { duration: 360, easing: 'cubic-bezier(.16,1,.3,1)' },
+    );
   }, [onAddToCart, cartIconRef]);
 
   if (loading) {
@@ -148,6 +139,7 @@ export default function ProductList({ onSelectProduct, onAddToCart, cartIconRef 
           return (
             <div
               key={product.id}
+              data-index={i}
               onClick={() => onSelectProduct(product)}
               className={`product-card group cursor-pointer flex flex-col ${
                 isEven ? 'md:flex-row' : 'md:flex-row-reverse'

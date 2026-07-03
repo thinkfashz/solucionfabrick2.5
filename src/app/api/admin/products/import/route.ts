@@ -139,7 +139,7 @@ async function resolveProductCategories(products: ParsedImportProduct[]) {
   return { products: resolved, stats };
 }
 
-function cleanProductForDb(product: ParsedImportProduct) {
+function cleanProductForDb(product: ParsedImportProduct & Record<string, unknown>) {
   const { category_name: _categoryName, ...rest } = product;
   const row: Record<string, unknown> = { ...rest };
 

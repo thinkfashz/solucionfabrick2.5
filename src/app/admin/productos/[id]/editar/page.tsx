@@ -17,7 +17,7 @@ export default function EditarProductoPage() {
     async function load() {
       const { data, error } = await insforge.database
         .from('products')
-        .select('id, name, description, price, stock, delivery_days, image_url, featured, activo, tagline, category_id, source, source_url, source_id, supplier_price, supplier_currency')
+        .select('id, name, description, price, stock, delivery_days, image_url, featured, activo, tagline, category_id, specifications, source, source_url, source_id, supplier_price, supplier_currency')
         .eq('id', id)
         .limit(1);
 
@@ -35,6 +35,7 @@ export default function EditarProductoPage() {
           image_url?: string;
           activo?: boolean;
           featured?: boolean;
+          specifications?: Record<string, unknown> | null;
           source?: string | null;
           source_url?: string | null;
           source_id?: string | null;
@@ -52,6 +53,7 @@ export default function EditarProductoPage() {
           image_url: p.image_url ?? '',
           activo: p.activo !== false,
           featured: !!p.featured,
+          specifications: p.specifications ?? {},
           source: p.source ?? '',
           source_url: p.source_url ?? '',
           source_id: p.source_id ?? '',

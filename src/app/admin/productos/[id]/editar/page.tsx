@@ -17,7 +17,7 @@ export default function EditarProductoPage() {
     async function load() {
       const { data, error } = await insforge.database
         .from('products')
-        .select('id, name, description, price, stock, delivery_days, image_url, featured, activo, tagline, category_id, specifications, source, source_url, source_id, supplier_price, supplier_currency')
+        .select('id, name, description, price, stock, delivery_days, image_url, featured, activo, tagline, category_id, specifications, source, source_url, source_id, supplier_price, supplier_currency, shipping_fee')
         .eq('id', id)
         .limit(1);
 
@@ -41,7 +41,9 @@ export default function EditarProductoPage() {
           source_id?: string | null;
           supplier_price?: number | null;
           supplier_currency?: string | null;
+          shipping_fee?: number | null;
         };
+        const specs = p.specifications ?? {};
         setInitialData({
           name: p.name ?? '',
           description: p.description ?? '',
@@ -53,12 +55,14 @@ export default function EditarProductoPage() {
           image_url: p.image_url ?? '',
           activo: p.activo !== false,
           featured: !!p.featured,
-          specifications: p.specifications ?? {},
+          specifications: specs,
           source: p.source ?? '',
           source_url: p.source_url ?? '',
           source_id: p.source_id ?? '',
           supplier_price: p.supplier_price != null ? String(p.supplier_price) : '',
-          supplier_currency: p.supplier_currency ?? '',
+          supplier_currency: p.supplier_currency ?? 'CLP',
+          shipping_fee: p.shipping_fee != null ? String(p.shipping_fee) : '',
+          tax_percentage: specs.tax_percentage != null ? String(specs.tax_percentage) : '19',
         });
       }
       setLoading(false);

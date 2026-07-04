@@ -10,7 +10,7 @@ function parseProductId(request: NextRequest) {
   return new URL(request.url).searchParams.get('id')?.trim() ?? '';
 }
 
-const PRODUCT_SELECT = 'id, name, description, price, stock, image_url, featured, activo, tagline, category_id, created_at, shipping_mode, shipping_fee, shipping_weight_kg, shipping_dimensions, shipping_region_overrides';
+const PRODUCT_SELECT = 'id, name, description, price, stock, image_url, featured, activo, tagline, category_id, created_at, source, source_url, source_id, supplier_price, supplier_currency, specifications, shipping_mode, shipping_fee, shipping_weight_kg, shipping_dimensions, shipping_region_overrides';
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdminPermission(request, { resource: 'products', action: 'read' });

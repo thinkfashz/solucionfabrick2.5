@@ -3,6 +3,7 @@ import { INSFORGE_BASE_URL, insforgeAdmin } from '@/lib/insforge';
 import { decryptCredentials, encryptCredentials } from '@/lib/integrationsCrypto';
 
 type AnyRecord = Record<string, unknown>;
+type CategoryRow = { id: string; name: string };
 
 export interface DropiCredentials {
   api_base_url: string;
@@ -127,6 +128,64 @@ function extractArray(payload: unknown): AnyRecord[] {
     }
   }
   return [];
+}
+
+function normalizeCategoryName(value: unknown) {
+  return String(value ?? '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .trim()
+    .toLowerCase()
+    .replace(/\s+/g, ' ');
+}
+
+function rowsFromCategories(data: unknown): CategoryRow[] {
+  if (!Array.isArray(data)) return [];
+  return data
+    .map((item) => item && typeof item === 'object' ? item as AnyRecord : null)
+    .filter((item): item is AnyRecord => Boolean(item))
+    .map((item) => ({ id: cleanString(item.id), name: cleanString(item.name) }))
+    .filter((item) => item.id && item.name);
+}
+
+async function loadCategoryMap() {
+  const map = new Map<string, CategoryRow>();
+  const { data, error } = await insforgeAdmin.database.from('categories').select('id, name');
+  if (error) throw new Error(error.message || 'No se pudieron cargar categorías.');
+  rowsFromCategories(data).forEach((category) => map.set(normalizeCategoryName(category.name), category));
+  return map;
+}
+
+async function insertCategory(name: string) {
+  const { data, error } = await insforgeAdmin.database.from('categories').insert([
+    { name, description: 'Creada automáticamente desde Dropi.', updated_at: new Date().toISOString() },
+  ]);
+  if (error) throw new Error(error.message || `No se pudo crear la categoría ${name}.`);
+  const rows = rowsFromCategories(data);
+  if (rows[0]?.id) return rows[0];
+
+  const fresh = await loadCategoryMap();
+  const found = fresh.get(normalizeCategoryName(name));
+  if (!found) throw new Error(`Categoría creada, pero no se pudo recuperar su ID: ${name}.`);
+  return found;
+}
+
+async function resolveDropiCategoryId(categoryName: string | undefined, fallbackCategoryId: string | undefined, categoryMap: Map<string, CategoryRow>, warnings: string[]) {
+  const rawName = cleanString(categoryName);
+  if (!rawName) return cleanString(fallbackCategoryId) || null;
+
+  const key = normalizeCategoryName(rawName);
+  const existing = categoryMap.get(key);
+  if (existing?.id) return existing.id;
+
+  try {
+    const created = await insertCategory(rawName);
+    categoryMap.set(key, created);
+    return created.id;
+  } catch (err) {
+    warnings.push(`Categoría ${rawName}: ${err instanceof Error ? err.message : 'no se pudo crear'}`);
+    return cleanString(fallbackCategoryId) || null;
+  }
 }
 
 export function normalizeDropiProduct(raw: AnyRecord, markupPct: number): NormalizedDropiProduct | null {
@@ -291,6 +350,8 @@ async function rawSql(query: string) {
 
 export async function ensureDropiSchema() {
   return rawSql(`
+    CREATE TABLE IF NOT EXISTS public.categories (id uuid PRIMARY KEY DEFAULT gen_random_uuid(), name text NOT NULL UNIQUE, description text, image_url text, created_at timestamptz DEFAULT now(), updated_at timestamptz DEFAULT now());
+    CREATE UNIQUE INDEX IF NOT EXISTS categories_name_lower_idx ON public.categories (lower(name));
     CREATE TABLE IF NOT EXISTS public.integrations (provider text PRIMARY KEY, credentials jsonb NOT NULL DEFAULT '{}'::jsonb, updated_at timestamptz DEFAULT now());
     ALTER TABLE public.products ADD COLUMN IF NOT EXISTS source text;
     ALTER TABLE public.products ADD COLUMN IF NOT EXISTS source_url text;
@@ -318,10 +379,20 @@ export async function importDropiProducts(limit = 40, dryRun = false): Promise<D
   let updated = 0;
   let skipped = 0;
 
+  let categoryMap = new Map<string, CategoryRow>();
+  if (!dryRun) {
+    try {
+      categoryMap = await loadCategoryMap();
+    } catch (err) {
+      warnings.push(`Categorías: ${err instanceof Error ? err.message : 'no se pudieron cargar'}`);
+    }
+  }
+
   if (!dryRun) {
     for (const product of products) {
       try {
         const existing = await findExistingDropiProduct(product.externalId);
+        const categoryId = await resolveDropiCategoryId(product.categoryName, credentials.default_category_id, categoryMap, warnings);
         const row = {
           name: product.name,
           description: product.description,
@@ -329,7 +400,7 @@ export async function importDropiProducts(limit = 40, dryRun = false): Promise<D
           price: product.salePrice,
           stock: product.stock,
           image_url: product.imageUrl ?? null,
-          category_id: credentials.default_category_id || null,
+          category_id: categoryId,
           featured: false,
           activo: true,
           source: 'dropi',

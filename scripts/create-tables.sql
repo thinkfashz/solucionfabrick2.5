@@ -41,6 +41,18 @@ CREATE TABLE IF NOT EXISTS public.products (
   updated_at timestamptz DEFAULT now()
 );
 
+-- TABLA: categories
+CREATE TABLE IF NOT EXISTS public.categories (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL UNIQUE,
+  description text,
+  image_url text,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+CREATE UNIQUE INDEX IF NOT EXISTS categories_name_lower_idx ON public.categories (lower(name));
+CREATE INDEX IF NOT EXISTS categories_created_at_idx ON public.categories (created_at DESC);
+
 -- TABLA: products-migrate
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS source text;
 ALTER TABLE public.products ADD COLUMN IF NOT EXISTS source_url text;
@@ -246,6 +258,15 @@ CREATE TABLE IF NOT EXISTS public.leads (
   atendido boolean DEFAULT false,
   created_at timestamptz DEFAULT now()
 );
+
+-- TABLA: leads-migrate
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS nombre text;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS email text;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS telefono text;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS tipo_proyecto text;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS mensaje text;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS atendido boolean DEFAULT false;
+ALTER TABLE public.leads ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 CREATE INDEX IF NOT EXISTS leads_created_at_idx ON public.leads (created_at DESC);
 CREATE INDEX IF NOT EXISTS leads_atendido_created_at_idx ON public.leads (atendido, created_at DESC);
 
@@ -379,6 +400,13 @@ VALUES
   ('Baño Completo Premium', 'Remodelación integral con revestimiento PVC mármol, gasfitería certificada SEC y domótica básica.', 'REMODELACIÓN', 'Talca, Maule', 12, true, 2023)
 ON CONFLICT DO NOTHING;
 
+-- SEED: categorías iniciales
+INSERT INTO public.categories (name, description) VALUES
+  ('General', 'Categoría por defecto.'),
+  ('Aire acondicionado', 'Equipos y accesorios de climatización.'),
+  ('Hogar', 'Productos para el hogar.')
+ON CONFLICT (name) DO NOTHING;
+
 -- TABLA: blog_posts
 CREATE TABLE IF NOT EXISTS public.blog_posts (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -393,3 +421,49 @@ CREATE TABLE IF NOT EXISTS public.blog_posts (
 );
 CREATE INDEX IF NOT EXISTS blog_posts_slug_idx ON public.blog_posts (slug);
 CREATE INDEX IF NOT EXISTS blog_posts_published_created_at_idx ON public.blog_posts (published, created_at DESC);
+
+-- TABLA: home_sections
+CREATE TABLE IF NOT EXISTS public.home_sections (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  kind text NOT NULL,
+  title text,
+  subtitle text,
+  body text,
+  image_url text,
+  link_url text,
+  link_label text,
+  position integer DEFAULT 0,
+  visible boolean DEFAULT true,
+  data jsonb DEFAULT '{}'::jsonb,
+  page text DEFAULT 'home',
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS page text DEFAULT 'home';
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS data jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.home_sections ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+CREATE INDEX IF NOT EXISTS home_sections_page_position_idx ON public.home_sections (page, position);
+CREATE INDEX IF NOT EXISTS home_sections_visible_idx ON public.home_sections (visible, page, position);
+
+-- TABLA: media_assets
+CREATE TABLE IF NOT EXISTS public.media_assets (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id text DEFAULT 'default',
+  bucket text DEFAULT 'media',
+  path text NOT NULL,
+  url text NOT NULL,
+  alt text,
+  folder text DEFAULT 'general',
+  mime_type text,
+  size_bytes bigint DEFAULT 0,
+  uploaded_by text,
+  created_at timestamptz DEFAULT now()
+);
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS tenant_id text DEFAULT 'default';
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS bucket text DEFAULT 'media';
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS folder text DEFAULT 'general';
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS mime_type text;
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS size_bytes bigint DEFAULT 0;
+ALTER TABLE public.media_assets ADD COLUMN IF NOT EXISTS uploaded_by text;
+CREATE INDEX IF NOT EXISTS media_assets_tenant_folder_created_idx ON public.media_assets (tenant_id, folder, created_at DESC);
+CREATE INDEX IF NOT EXISTS media_assets_created_at_idx ON public.media_assets (created_at DESC);

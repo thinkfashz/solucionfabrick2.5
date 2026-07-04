@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { insforge } from '@/lib/insforge';
 import { useCategories } from '@/hooks/useCategories';
@@ -54,19 +54,21 @@ function toImageArray(value: unknown) {
 
 function toGalleryAssets(value: unknown): GalleryImage[] {
   if (!Array.isArray(value)) return [];
-  return value
-    .map((item) => {
-      if (!item || typeof item !== 'object') return null;
-      const row = item as Record<string, unknown>;
-      const url = String(row.url ?? row.secure_url ?? '').trim();
-      if (!url) return null;
-      return {
-        url,
-        public_id: String(row.public_id ?? row.publicId ?? '').trim() || undefined,
-        source: String(row.source ?? '').trim() === 'cloudinary' ? 'cloudinary' : 'legacy',
-      } satisfies GalleryImage;
-    })
-    .filter((item): item is GalleryImage => Boolean(item));
+  const assets: GalleryImage[] = [];
+
+  for (const item of value) {
+    if (!item || typeof item !== 'object') continue;
+    const row = item as Record<string, unknown>;
+    const url = String(row.url ?? row.secure_url ?? '').trim();
+    if (!url) continue;
+    assets.push({
+      url,
+      public_id: String(row.public_id ?? row.publicId ?? '').trim() || undefined,
+      source: String(row.source ?? '').trim() === 'cloudinary' ? 'cloudinary' : 'legacy',
+    });
+  }
+
+  return assets;
 }
 
 function uniqueGallery(images: GalleryImage[]) {
@@ -81,20 +83,20 @@ function uniqueGallery(images: GalleryImage[]) {
 }
 
 function buildInitialGallery(imageUrl?: string, specs?: Record<string, unknown>) {
-  return uniqueGallery([
-    imageUrl?.trim() ? { url: imageUrl.trim(), source: 'legacy' } : null,
-    ...toGalleryAssets(specs?.gallery_assets),
-    ...toImageArray(specs?.gallery_images).map((url) => ({ url, source: 'legacy' as const })),
-    ...toImageArray(specs?.images).map((url) => ({ url, source: 'legacy' as const })),
-    ...toImageArray(specs?.image_urls).map((url) => ({ url, source: 'legacy' as const })),
-  ].filter(Boolean) as GalleryImage[]);
+  const initial: GalleryImage[] = [];
+  if (imageUrl?.trim()) initial.push({ url: imageUrl.trim(), source: 'legacy' });
+  initial.push(...toGalleryAssets(specs?.gallery_assets));
+  initial.push(...toImageArray(specs?.gallery_images).map((url) => ({ url, source: 'legacy' as const })));
+  initial.push(...toImageArray(specs?.images).map((url) => ({ url, source: 'legacy' as const })));
+  initial.push(...toImageArray(specs?.image_urls).map((url) => ({ url, source: 'legacy' as const })));
+  return uniqueGallery(initial);
 }
 
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
   return (
     <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={() => onChange(!checked)} className="flex items-center gap-3 group">
       <div className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${checked ? 'bg-[#facc15]' : 'bg-zinc-700'}`}>
-        <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow transition duration-200 ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
+        <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
       </div>
       <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">{label}</span>
     </button>
@@ -109,7 +111,7 @@ function Toast({ message, type }: { message: string; type: 'success' | 'error' }
   );
 }
 
-function Field({ label, children, required, hint }: { label: string; children: React.ReactNode; required?: boolean; hint?: string }) {
+function Field({ label, children, required, hint }: { label: string; children: ReactNode; required?: boolean; hint?: string }) {
   return (
     <div className="flex flex-col gap-2">
       <label className="text-xs tracking-widest uppercase text-zinc-500">
@@ -189,12 +191,13 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
 
   useEffect(() => {
     let cancelled = false;
-    (async () => {
+    void (async () => {
       try {
         const res = await fetch('/api/admin/cloudinary?folder=fabrick/productos&max_results=1', { cache: 'no-store' });
         if (cancelled) return;
-        if (res.ok) setCloudStatus('ready');
-        else {
+        if (res.ok) {
+          setCloudStatus('ready');
+        } else {
           const json = await res.json().catch(() => ({})) as { code?: string };
           setCloudStatus(json.code === 'NOT_CONFIGURED' ? 'missing' : 'error');
         }
@@ -317,7 +320,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
     return errs;
   }
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: FormEvent) {
     e.preventDefault();
     const errs = validate();
     if (Object.keys(errs).length) { setErrors(errs); return; }
@@ -402,147 +405,45 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 xl:grid-cols-[minmax(0,1fr)_370px]">
         <form onSubmit={handleSubmit} className="space-y-6">
           <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/65 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.25)] sm:p-5">
-            <div className="mb-5 flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-yellow-300 text-black"><Star className="h-4 w-4" /></span>
-              <div>
-                <h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Información principal</h2>
-                <p className="text-xs text-zinc-500">Nombre, descripción y estado comercial.</p>
-              </div>
-            </div>
+            <div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-yellow-300 text-black"><Star className="h-4 w-4" /></span><div><h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Información principal</h2><p className="text-xs text-zinc-500">Nombre, descripción y estado comercial.</p></div></div>
             <div className="space-y-4">
-              <Field label="Nombre" required>
-                <input type="text" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Aire acondicionado inverter 12000 BTU" className={inputClass} />
-                {errors.name && <span className="text-red-400 text-xs">{errors.name}</span>}
-              </Field>
-              <Field label="Tagline">
-                <input type="text" value={form.tagline} onChange={(e) => setForm((f) => ({ ...f, tagline: e.target.value }))} placeholder="Frío eficiente, instalación rápida" className={inputClass} />
-              </Field>
-              <Field label="Descripción">
-                <textarea rows={5} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe características, beneficios, instalación, garantía y condiciones…" className={inputClass + ' resize-none'} />
-              </Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Toggle checked={form.activo} onChange={(v) => setForm((f) => ({ ...f, activo: v }))} label="Activo — visible en la tienda" />
-                <Toggle checked={form.featured} onChange={(v) => setForm((f) => ({ ...f, featured: v }))} label="Destacado — aparece en inicio" />
-              </div>
+              <Field label="Nombre" required><input type="text" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Aire acondicionado inverter 12000 BTU" className={inputClass} />{errors.name && <span className="text-red-400 text-xs">{errors.name}</span>}</Field>
+              <Field label="Tagline"><input type="text" value={form.tagline} onChange={(e) => setForm((f) => ({ ...f, tagline: e.target.value }))} placeholder="Frío eficiente, instalación rápida" className={inputClass} /></Field>
+              <Field label="Descripción"><textarea rows={5} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe características, beneficios, instalación, garantía y condiciones…" className={inputClass + ' resize-none'} /></Field>
+              <div className="grid gap-4 sm:grid-cols-2"><Toggle checked={form.activo} onChange={(v) => setForm((f) => ({ ...f, activo: v }))} label="Activo — visible en la tienda" /><Toggle checked={form.featured} onChange={(v) => setForm((f) => ({ ...f, featured: v }))} label="Destacado — aparece en inicio" /></div>
             </div>
           </section>
 
           <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/65 p-4 sm:p-5">
-            <div className="mb-5 flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-400/15 text-emerald-300"><Calculator className="h-4 w-4" /></span>
-              <div>
-                <h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Precio, envío e impuesto</h2>
-                <p className="text-xs text-zinc-500">Controla venta, costo, envío e IVA por producto.</p>
-              </div>
-            </div>
+            <div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-400/15 text-emerald-300"><Calculator className="h-4 w-4" /></span><div><h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Precio, envío e impuesto</h2><p className="text-xs text-zinc-500">Controla venta, costo, envío e IVA por producto.</p></div></div>
             <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              <Field label="Precio venta CLP" required>
-                <div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-zinc-500">$</span><input type="text" inputMode="numeric" value={priceDisplay} onChange={(e) => handlePriceChange(e.target.value)} placeholder="000.000" className={inputClass + ' pl-8'} /></div>
-                {errors.price && <span className="text-red-400 text-xs">{errors.price}</span>}
-              </Field>
-              <Field label="Precio proveedor">
-                <input type="number" step="1" min="0" value={form.supplier_price} aria-label="Precio del proveedor" onChange={(e) => setForm((f) => ({ ...f, supplier_price: e.target.value }))} placeholder="0" className={inputClass} />
-              </Field>
-              <Field label="Moneda">
-                <input type="text" value={form.supplier_currency} onChange={(e) => setForm((f) => ({ ...f, supplier_currency: e.target.value.toUpperCase() }))} placeholder="CLP" maxLength={5} className={inputClass} />
-              </Field>
-              <Field label="Precio envío">
-                <div className="relative"><Truck className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" /><input type="number" min="0" step="1" value={form.shipping_fee} onChange={(e) => setForm((f) => ({ ...f, shipping_fee: e.target.value }))} placeholder="0" className={inputClass + ' pl-10'} /></div>
-              </Field>
-              <Field label="Impuesto / IVA %">
-                <input type="number" min="0" step="0.1" value={form.tax_percentage} onChange={(e) => setForm((f) => ({ ...f, tax_percentage: e.target.value }))} placeholder="19" className={inputClass} />
-                {errors.tax_percentage && <span className="text-red-400 text-xs">{errors.tax_percentage}</span>}
-              </Field>
-              <Field label="Días de envío">
-                <input type="number" min="0" step="1" value={form.delivery_days} onChange={(e) => setForm((f) => ({ ...f, delivery_days: e.target.value }))} placeholder="3" className={inputClass} />
-              </Field>
+              <Field label="Precio venta CLP" required><div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-zinc-500">$</span><input type="text" inputMode="numeric" value={priceDisplay} onChange={(e) => handlePriceChange(e.target.value)} placeholder="000.000" className={inputClass + ' pl-8'} /></div>{errors.price && <span className="text-red-400 text-xs">{errors.price}</span>}</Field>
+              <Field label="Precio proveedor"><input type="number" step="1" min="0" value={form.supplier_price} aria-label="Precio del proveedor" onChange={(e) => setForm((f) => ({ ...f, supplier_price: e.target.value }))} placeholder="0" className={inputClass} /></Field>
+              <Field label="Moneda"><input type="text" value={form.supplier_currency} onChange={(e) => setForm((f) => ({ ...f, supplier_currency: e.target.value.toUpperCase() }))} placeholder="CLP" maxLength={5} className={inputClass} /></Field>
+              <Field label="Precio envío"><div className="relative"><Truck className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" /><input type="number" min="0" step="1" value={form.shipping_fee} onChange={(e) => setForm((f) => ({ ...f, shipping_fee: e.target.value }))} placeholder="0" className={inputClass + ' pl-10'} /></div></Field>
+              <Field label="Impuesto / IVA %"><input type="number" min="0" step="0.1" value={form.tax_percentage} onChange={(e) => setForm((f) => ({ ...f, tax_percentage: e.target.value }))} placeholder="19" className={inputClass} />{errors.tax_percentage && <span className="text-red-400 text-xs">{errors.tax_percentage}</span>}</Field>
+              <Field label="Días de envío"><input type="number" min="0" step="1" value={form.delivery_days} onChange={(e) => setForm((f) => ({ ...f, delivery_days: e.target.value }))} placeholder="3" className={inputClass} /></Field>
             </div>
-            <div className="mt-4 grid gap-3 rounded-2xl border border-yellow-300/20 bg-yellow-300/[0.05] p-3 text-xs sm:grid-cols-4">
-              <PreviewChip label="Venta" value={formatCLP(priceNumber)} />
-              <PreviewChip label="Envío" value={shippingFee > 0 ? formatCLP(shippingFee) : 'Gratis / no definido'} />
-              <PreviewChip label="Impuesto" value={`${formatCLP(taxAmount)} (${taxPct || 0}%)`} />
-              <PreviewChip label="Total ref." value={formatCLP(totalWithCharges)} />
-            </div>
+            <div className="mt-4 grid gap-3 rounded-2xl border border-yellow-300/20 bg-yellow-300/[0.05] p-3 text-xs sm:grid-cols-4"><PreviewChip label="Venta" value={formatCLP(priceNumber)} /><PreviewChip label="Envío" value={shippingFee > 0 ? formatCLP(shippingFee) : 'Gratis / no definido'} /><PreviewChip label="Impuesto" value={`${formatCLP(taxAmount)} (${taxPct || 0}%)`} /><PreviewChip label="Total ref." value={formatCLP(totalWithCharges)} /></div>
           </section>
 
           <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/65 p-4 sm:p-5">
-            <div className="mb-5 flex items-center gap-3">
-              <span className="grid h-10 w-10 place-items-center rounded-2xl bg-sky-400/15 text-sky-300"><Cloud className="h-4 w-4" /></span>
-              <div>
-                <h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Galería Cloudinary</h2>
-                <p className="text-xs text-zinc-500">Las fotos se suben a Cloudinary; en la base solo queda la URL y el public_id.</p>
-              </div>
-            </div>
-
+            <div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-sky-400/15 text-sky-300"><Cloud className="h-4 w-4" /></span><div><h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Galería Cloudinary</h2><p className="text-xs text-zinc-500">Las fotos se suben a Cloudinary; en la base solo queda la URL y el public_id.</p></div></div>
             <div className="space-y-3">
               {previewImage && <div className="relative h-56 w-full overflow-hidden rounded-2xl border border-white/10 bg-zinc-900"><img src={previewImage} alt="Preview" className="h-full w-full object-cover" /><span className="absolute bottom-3 left-3 rounded-full border border-yellow-300/40 bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-yellow-300">Portada</span></div>}
-
-              <button type="button" onClick={() => cloudFileInputRef.current?.click()} disabled={uploadingCloud || cloudStatus === 'missing'} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 px-4 py-4 text-sm font-black uppercase tracking-[0.16em] text-yellow-300 transition hover:border-yellow-300 hover:bg-yellow-400/15 disabled:opacity-50">
-                {uploadingCloud ? <Loader2 className="h-4 w-4 animate-spin" /> : <Cloud className="h-4 w-4" />}
-                {uploadingCloud ? 'Subiendo a Cloudinary…' : 'Subir imágenes a Cloudinary'}
-              </button>
+              <button type="button" onClick={() => cloudFileInputRef.current?.click()} disabled={uploadingCloud || cloudStatus === 'missing'} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 px-4 py-4 text-sm font-black uppercase tracking-[0.16em] text-yellow-300 transition hover:border-yellow-300 hover:bg-yellow-400/15 disabled:opacity-50">{uploadingCloud ? <Loader2 className="h-4 w-4 animate-spin" /> : <Cloud className="h-4 w-4" />}{uploadingCloud ? 'Subiendo a Cloudinary…' : 'Subir imágenes a Cloudinary'}</button>
               <input ref={cloudFileInputRef} type="file" multiple accept="image/*" aria-label="Seleccionar imágenes para Cloudinary" className="hidden" onChange={(e) => { const files = e.target.files; if (files) void handleCloudinaryUpload(files); e.target.value = ''; }} />
-
-              {galleryImages.length > 0 && (
-                <div className="rounded-2xl border border-white/10 bg-black/30 p-3">
-                  <div className="mb-2 flex items-center justify-between gap-3"><p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Miniaturas</p><p className="text-xs text-zinc-600">{galleryImages.length} imagen{galleryImages.length === 1 ? '' : 'es'}</p></div>
-                  <div className="flex gap-3 overflow-x-auto pb-2 pr-2 scrollbar-hide">
-                    {galleryImages.map((image, index) => (
-                      <div key={`${image.url}-${index}`} className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black">
-                        <img src={image.url} alt={`Miniatura ${index + 1}`} className="h-full w-full object-cover" />
-                        {form.image_url === image.url && <span className="absolute left-1.5 top-1.5 rounded-full bg-yellow-300 px-1.5 py-0.5 text-[8px] font-black uppercase text-black">Portada</span>}
-                        <div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between gap-1 rounded-full bg-black/65 p-1 backdrop-blur-sm">
-                          <button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label="Mover imagen a la izquierda" className="grid h-6 w-6 place-items-center rounded-full text-white/80 disabled:opacity-25 hover:bg-white/10"><ChevronLeft className="h-3.5 w-3.5" /></button>
-                          <button type="button" onClick={() => setCoverImage(image)} aria-label="Usar como portada" className="grid h-6 w-6 place-items-center rounded-full text-yellow-300 hover:bg-yellow-300/10"><Star className="h-3.5 w-3.5" /></button>
-                          <button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === galleryImages.length - 1} aria-label="Mover imagen a la derecha" className="grid h-6 w-6 place-items-center rounded-full text-white/80 disabled:opacity-25 hover:bg-white/10"><ChevronRight className="h-3.5 w-3.5" /></button>
-                        </div>
-                        <button type="button" onClick={() => void removeGalleryImage(image)} aria-label="Eliminar miniatura" className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/70 text-red-200 backdrop-blur-sm hover:bg-red-500 hover:text-white"><Trash2 className="h-3.5 w-3.5" /></button>
-                      </div>
-                    ))}
-                  </div>
-                  <p className="mt-1 text-[11px] leading-5 text-zinc-600">★ define la portada. Las flechas ordenan la galería. Eliminar quita la miniatura y, si tiene public_id, también la borra de Cloudinary.</p>
-                </div>
-              )}
-
-              <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
-                <input type="url" value={form.image_url} onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))} placeholder="URL manual de imagen Cloudinary…" className={inputClass} />
-                <button type="button" onClick={() => addGalleryImage({ url: form.image_url, source: 'manual' }, true)} disabled={!form.image_url.trim()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-zinc-300 transition hover:border-yellow-300/40 hover:text-yellow-200 disabled:opacity-40"><ImagePlus className="h-4 w-4" />Añadir</button>
-              </div>
+              {galleryImages.length > 0 && <div className="rounded-2xl border border-white/10 bg-black/30 p-3"><div className="mb-2 flex items-center justify-between gap-3"><p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Miniaturas</p><p className="text-xs text-zinc-600">{galleryImages.length} imagen{galleryImages.length === 1 ? '' : 'es'}</p></div><div className="flex gap-3 overflow-x-auto pb-2 pr-2 scrollbar-hide">{galleryImages.map((image, index) => <div key={`${image.url}-${index}`} className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black"><img src={image.url} alt={`Miniatura ${index + 1}`} className="h-full w-full object-cover" />{form.image_url === image.url && <span className="absolute left-1.5 top-1.5 rounded-full bg-yellow-300 px-1.5 py-0.5 text-[8px] font-black uppercase text-black">Portada</span>}<div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between gap-1 rounded-full bg-black/65 p-1 backdrop-blur-sm"><button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label="Mover imagen a la izquierda" className="grid h-6 w-6 place-items-center rounded-full text-white/80 disabled:opacity-25 hover:bg-white/10"><ChevronLeft className="h-3.5 w-3.5" /></button><button type="button" onClick={() => setCoverImage(image)} aria-label="Usar como portada" className="grid h-6 w-6 place-items-center rounded-full text-yellow-300 hover:bg-yellow-300/10"><Star className="h-3.5 w-3.5" /></button><button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === galleryImages.length - 1} aria-label="Mover imagen a la derecha" className="grid h-6 w-6 place-items-center rounded-full text-white/80 disabled:opacity-25 hover:bg-white/10"><ChevronRight className="h-3.5 w-3.5" /></button></div><button type="button" onClick={() => void removeGalleryImage(image)} aria-label="Eliminar miniatura" className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/70 text-red-200 backdrop-blur-sm hover:bg-red-500 hover:text-white"><Trash2 className="h-3.5 w-3.5" /></button></div>)}</div><p className="mt-1 text-[11px] leading-5 text-zinc-600">★ define la portada. Las flechas ordenan la galería. Eliminar quita la miniatura y, si tiene public_id, también la borra de Cloudinary.</p></div>}
+              <div className="grid gap-2 sm:grid-cols-[1fr_auto]"><input type="url" value={form.image_url} onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))} placeholder="URL manual de imagen Cloudinary…" className={inputClass} /><button type="button" onClick={() => addGalleryImage({ url: form.image_url, source: 'manual' }, true)} disabled={!form.image_url.trim()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-zinc-300 transition hover:border-yellow-300/40 hover:text-yellow-200 disabled:opacity-40"><ImagePlus className="h-4 w-4" />Añadir</button></div>
             </div>
           </section>
 
-          <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/65 p-4 sm:p-5">
-            <div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-white/10 text-white"><Truck className="h-4 w-4" /></span><div><h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Proveedor / origen</h2><p className="text-xs text-zinc-500">Datos para reventa, dropshipping o compra externa.</p></div></div>
-            <div className="grid gap-4 sm:grid-cols-2">
-              <Field label="Origen"><input type="text" value={form.source} onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))} placeholder="Midea Store, TCL Store, Mercado Libre…" className={inputClass} /></Field>
-              <Field label="ID / SKU externo"><input type="text" value={form.source_id} onChange={(e) => setForm((f) => ({ ...f, source_id: e.target.value }))} placeholder="SKU, modelo, MLC…" className={inputClass} /></Field>
-            </div>
-            <div className="mt-4"><Field label="URL del proveedor"><input type="url" value={form.source_url} onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))} placeholder="https://..." className={inputClass} /></Field></div>
-          </section>
+          <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/65 p-4 sm:p-5"><div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-white/10 text-white"><Truck className="h-4 w-4" /></span><div><h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Proveedor / origen</h2><p className="text-xs text-zinc-500">Datos para reventa, dropshipping o compra externa.</p></div></div><div className="grid gap-4 sm:grid-cols-2"><Field label="Origen"><input type="text" value={form.source} onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))} placeholder="Midea Store, TCL Store, Mercado Libre…" className={inputClass} /></Field><Field label="ID / SKU externo"><input type="text" value={form.source_id} onChange={(e) => setForm((f) => ({ ...f, source_id: e.target.value }))} placeholder="SKU, modelo, MLC…" className={inputClass} /></Field></div><div className="mt-4"><Field label="URL del proveedor"><input type="url" value={form.source_url} onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))} placeholder="https://..." className={inputClass} /></Field></div></section>
 
-          <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-20 pt-2 md:static md:z-auto">
-            <button type="submit" disabled={saving || uploadingCloud} className="w-full rounded-2xl bg-[#facc15] px-5 py-4 text-sm font-black uppercase tracking-[0.18em] text-black shadow-[0_18px_48px_rgba(250,204,21,0.22)] transition hover:bg-yellow-200 active:scale-[0.99] disabled:opacity-50">
-              {saving ? 'Guardando…' : mode === 'create' ? 'Crear producto' : 'Guardar cambios'}
-            </button>
-          </div>
+          <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-20 pt-2 md:static md:z-auto"><button type="submit" disabled={saving || uploadingCloud} className="w-full rounded-2xl bg-[#facc15] px-5 py-4 text-sm font-black uppercase tracking-[0.18em] text-black shadow-[0_18px_48px_rgba(250,204,21,0.22)] transition hover:bg-yellow-200 active:scale-[0.99] disabled:opacity-50">{saving ? 'Guardando…' : mode === 'create' ? 'Crear producto' : 'Guardar cambios'}</button></div>
         </form>
 
-        <aside className="xl:sticky xl:top-28 xl:h-fit">
-          <div className="overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/80 shadow-[0_20px_70px_rgba(0,0,0,0.45)]">
-            <div className="relative h-64 border-b border-white/10 bg-zinc-900">
-              {previewImage ? <img src={previewImage} alt={form.name || 'Preview producto'} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center px-6 text-center text-xs uppercase tracking-[0.2em] text-zinc-500">Sin portada</div>}
-              <div className="absolute left-3 top-3 flex gap-2"><Badge tone={form.activo ? 'green' : 'gray'}>{form.activo ? 'Activo' : 'Oculto'}</Badge>{form.featured && <Badge tone="yellow">Destacado</Badge>}</div>
-              {galleryImages.length > 1 && <span className="absolute bottom-3 right-3 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-[10px] font-black text-white/75 backdrop-blur">{galleryImages.length} fotos</span>}
-            </div>
-            <div className="space-y-4 p-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Preview y margen</p>
-              <h3 className="line-clamp-2 text-xl font-black leading-tight text-white">{form.name || 'Nombre del producto'}</h3>
-              <p className="line-clamp-2 text-sm text-zinc-400">{form.tagline || 'Tagline comercial del producto'}</p>
-              <div className="grid grid-cols-2 gap-2"><PreviewChip label="Stock" value={form.stock || '—'} /><PreviewChip label="Fotos" value={String(galleryImages.length || (form.image_url ? 1 : 0))} /><PreviewChip label="Envío" value={shippingFee > 0 ? formatCLP(shippingFee) : 'No definido'} /><PreviewChip label="IVA" value={`${taxPct || 0}%`} /></div>
-              <div className="rounded-2xl border border-yellow-300/20 bg-yellow-300/[0.055] p-4"><p className="text-[10px] uppercase tracking-[0.2em] text-yellow-200/60">Total referencia</p><p className="mt-1 text-3xl font-black text-yellow-300">{formatCLP(totalWithCharges)}</p><div className="mt-2 space-y-1 text-xs text-zinc-500"><p>Venta: {formatCLP(priceNumber)}</p><p>Proveedor: {supplierPriceNumber > 0 ? `${formatCLP(supplierPriceNumber)} ${form.supplier_currency || ''}` : 'no definido'}</p><p>Margen estimado: {marginPct === null ? '—' : `${marginPct}%`}</p></div></div>
-            </div>
-          </div>
-        </aside>
+        <aside className="xl:sticky xl:top-28 xl:h-fit"><div className="overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/80 shadow-[0_20px_70px_rgba(0,0,0,0.45)]"><div className="relative h-64 border-b border-white/10 bg-zinc-900">{previewImage ? <img src={previewImage} alt={form.name || 'Preview producto'} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center px-6 text-center text-xs uppercase tracking-[0.2em] text-zinc-500">Sin portada</div>}<div className="absolute left-3 top-3 flex gap-2"><Badge tone={form.activo ? 'green' : 'gray'}>{form.activo ? 'Activo' : 'Oculto'}</Badge>{form.featured && <Badge tone="yellow">Destacado</Badge>}</div>{galleryImages.length > 1 && <span className="absolute bottom-3 right-3 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-[10px] font-black text-white/75 backdrop-blur">{galleryImages.length} fotos</span>}</div><div className="space-y-4 p-4"><p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Preview y margen</p><h3 className="line-clamp-2 text-xl font-black leading-tight text-white">{form.name || 'Nombre del producto'}</h3><p className="line-clamp-2 text-sm text-zinc-400">{form.tagline || 'Tagline comercial del producto'}</p><div className="grid grid-cols-2 gap-2"><PreviewChip label="Stock" value={form.stock || '—'} /><PreviewChip label="Fotos" value={String(galleryImages.length || (form.image_url ? 1 : 0))} /><PreviewChip label="Envío" value={shippingFee > 0 ? formatCLP(shippingFee) : 'No definido'} /><PreviewChip label="IVA" value={`${taxPct || 0}%`} /></div><div className="rounded-2xl border border-yellow-300/20 bg-yellow-300/[0.055] p-4"><p className="text-[10px] uppercase tracking-[0.2em] text-yellow-200/60">Total referencia</p><p className="mt-1 text-3xl font-black text-yellow-300">{formatCLP(totalWithCharges)}</p><div className="mt-2 space-y-1 text-xs text-zinc-500"><p>Venta: {formatCLP(priceNumber)}</p><p>Proveedor: {supplierPriceNumber > 0 ? `${formatCLP(supplierPriceNumber)} ${form.supplier_currency || ''}` : 'no definido'}</p><p>Margen estimado: {marginPct === null ? '—' : `${marginPct}%`}</p></div></div></div></div></aside>
       </div>
 
       {toast && <Toast message={toast.message} type={toast.type} />}
@@ -561,7 +462,7 @@ function CloudStatusBadge({ status }: { status: CloudinaryStatus }) {
   return <span className={`hidden items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] sm:inline-flex ${content.cls}`}>{status === 'checking' ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}{content.text}</span>;
 }
 
-function Badge({ tone, children }: { tone: 'green' | 'gray' | 'yellow'; children: React.ReactNode }) {
+function Badge({ tone, children }: { tone: 'green' | 'gray' | 'yellow'; children: ReactNode }) {
   const cls = tone === 'green' ? 'border-emerald-400/30 bg-emerald-500/15 text-emerald-300' : tone === 'yellow' ? 'border-yellow-400/30 bg-yellow-400/15 text-yellow-300' : 'border-zinc-500/30 bg-zinc-600/20 text-zinc-400';
   return <span className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${cls}`}>{children}</span>;
 }

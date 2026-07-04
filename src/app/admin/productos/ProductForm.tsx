@@ -6,7 +6,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { insforge } from '@/lib/insforge';
 import { useCategories } from '@/hooks/useCategories';
-import { Upload, ArrowLeft, Cloud } from 'lucide-react';
+import { ArrowLeft, ChevronLeft, ChevronRight, Cloud, ImagePlus, Star, Trash2, Upload } from 'lucide-react';
 
 /* ── Helpers ── */
 function formatDisplayPrice(raw: string) {
@@ -15,37 +15,42 @@ function formatDisplayPrice(raw: string) {
   return n.toLocaleString('es-CL');
 }
 
+function normalizeSpecs(value: unknown): Record<string, unknown> {
+  return value && typeof value === 'object' && !Array.isArray(value) ? { ...(value as Record<string, unknown>) } : {};
+}
+
+function toImageArray(value: unknown) {
+  if (!Array.isArray(value)) return [];
+  return value.map((item) => String(item ?? '').trim()).filter(Boolean);
+}
+
+function buildInitialGallery(imageUrl?: string, specs?: Record<string, unknown>) {
+  const images = [
+    imageUrl?.trim() || '',
+    ...toImageArray(specs?.gallery_images),
+    ...toImageArray(specs?.images),
+    ...toImageArray(specs?.image_urls),
+  ].filter(Boolean);
+  return Array.from(new Set(images));
+}
+
+function uniqImages(images: string[]) {
+  return Array.from(new Set(images.map((item) => item.trim()).filter(Boolean)));
+}
+
 /* ── Toggle switch ── */
 function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  if (checked) {
-    return (
-      <button
-        type="button"
-        role="switch"
-        aria-checked="true"
-        aria-label={label}
-        onClick={() => onChange(false)}
-        className="flex items-center gap-3 group"
-      >
-        <div className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-[#facc15] transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#facc15]/50 focus:ring-offset-2 focus:ring-offset-black">
-          <span className="pointer-events-none inline-block h-5 w-5 translate-x-5 transform rounded-full bg-white shadow ring-0 transition duration-200" />
-        </div>
-        <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">{label}</span>
-      </button>
-    );
-  }
-
   return (
     <button
       type="button"
       role="switch"
-      aria-checked="false"
+      aria-checked={checked ? 'true' : 'false'}
       aria-label={label}
-      onClick={() => onChange(true)}
+      onClick={() => onChange(!checked)}
       className="flex items-center gap-3 group"
     >
-      <div className="relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent bg-zinc-700 transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#facc15]/50 focus:ring-offset-2 focus:ring-offset-black">
-        <span className="pointer-events-none inline-block h-5 w-5 translate-x-0 transform rounded-full bg-white shadow ring-0 transition duration-200" />
+      <div className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 focus:outline-none focus:ring-2 focus:ring-[#facc15]/50 focus:ring-offset-2 focus:ring-offset-black ${checked ? 'bg-[#facc15]' : 'bg-zinc-700'}`}>
+        <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
       </div>
       <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">{label}</span>
     </button>
@@ -56,10 +61,10 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: 
 function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
   return (
     <div
-      className={`fixed bottom-6 right-6 z-50 px-5 py-3 rounded-xl text-sm font-medium shadow-xl border ${
+      className={`fixed bottom-28 right-4 z-50 max-w-[calc(100vw-2rem)] rounded-2xl px-5 py-3 text-sm font-medium shadow-xl border backdrop-blur-xl md:bottom-6 ${
         type === 'success'
-          ? 'bg-zinc-900 border-[#facc15]/40 text-[#facc15]'
-          : 'bg-zinc-900 border-red-500/40 text-red-400'
+          ? 'bg-zinc-900/95 border-[#facc15]/40 text-[#facc15]'
+          : 'bg-zinc-900/95 border-red-500/40 text-red-400'
       }`}
     >
       {message}
@@ -96,6 +101,7 @@ export interface ProductFormData {
   image_url: string;
   activo: boolean;
   featured: boolean;
+  specifications: Record<string, unknown>;
   /* Origen del producto (importado de Mercado Libre / Falabella / etc.) */
   source: string;
   source_url: string;
@@ -119,6 +125,8 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
   const fileInputRef = useRef<HTMLInputElement>(null);
   const cloudFileInputRef = useRef<HTMLInputElement>(null);
 
+  const initialSpecs = normalizeSpecs(initialData?.specifications);
+
   const [form, setForm] = useState<ProductFormData>({
     name: initialData?.name ?? '',
     description: initialData?.description ?? '',
@@ -130,6 +138,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
     image_url: initialData?.image_url ?? '',
     activo: initialData?.activo ?? true,
     featured: initialData?.featured ?? false,
+    specifications: initialSpecs,
     source: initialData?.source ?? '',
     source_url: initialData?.source_url ?? '',
     source_id: initialData?.source_id ?? '',
@@ -137,6 +146,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
     supplier_currency: initialData?.supplier_currency ?? '',
   });
 
+  const [galleryImages, setGalleryImages] = useState<string[]>(() => buildInitialGallery(initialData?.image_url, initialSpecs));
   const [priceDisplay, setPriceDisplay] = useState(
     initialData?.price ? formatDisplayPrice(initialData.price) : ''
   );
@@ -189,41 +199,83 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
     setPriceDisplay(digits ? parseInt(digits, 10).toLocaleString('es-CL') : '');
   }
 
+  function addGalleryImage(url: string, makeCover = false) {
+    const clean = url.trim();
+    if (!clean) return;
+    setGalleryImages((current) => uniqImages([...current, clean]));
+    setForm((current) => ({
+      ...current,
+      image_url: makeCover || !current.image_url ? clean : current.image_url,
+    }));
+  }
+
+  function removeGalleryImage(url: string) {
+    const clean = url.trim();
+    setGalleryImages((current) => {
+      const next = current.filter((item) => item !== clean);
+      setForm((formState) => ({ ...formState, image_url: formState.image_url === clean ? (next[0] ?? '') : formState.image_url }));
+      return next;
+    });
+  }
+
+  function moveGalleryImage(index: number, direction: -1 | 1) {
+    setGalleryImages((current) => {
+      const target = index + direction;
+      if (target < 0 || target >= current.length) return current;
+      const next = [...current];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  }
+
+  function setCoverImage(url: string) {
+    addGalleryImage(url, true);
+    setPreviewUrl('');
+  }
+
+  async function uploadToInsForge(file: File) {
+    const ext = file.name.split('.').pop() ?? 'jpg';
+    const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+
+    const { error: uploadError } = await insforge.storage
+      .from('product-images')
+      .upload(path, file);
+
+    if (uploadError) throw uploadError;
+
+    const publicUrlResult = await insforge.storage
+      .from('product-images')
+      .getPublicUrl(path);
+
+    return typeof publicUrlResult === 'string'
+      ? publicUrlResult
+      : (publicUrlResult as { data?: { publicUrl?: string }; publicUrl?: string })?.data?.publicUrl ??
+        (publicUrlResult as { publicUrl?: string })?.publicUrl ??
+        '';
+  }
+
   /* ── Image upload ── */
-  async function handleImageUpload(file: File) {
+  async function handleImageUpload(files: FileList | File[]) {
+    const selected = Array.from(files);
+    if (selected.length === 0) return;
     setUploading(true);
-    /* Show local preview immediately while uploading */
     try {
-      const localBlob = URL.createObjectURL(file);
-      setPreviewUrl(localBlob);
-    } catch { /* ignore if browser doesn't support it */ }
+      try {
+        const localBlob = URL.createObjectURL(selected[0]);
+        setPreviewUrl(localBlob);
+      } catch { /* ignore if browser doesn't support it */ }
 
-    try {
-      const ext = file.name.split('.').pop() ?? 'jpg';
-      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
-
-      const { error: uploadError } = await insforge.storage
-        .from('product-images')
-        .upload(path, file);
-
-      if (uploadError) throw uploadError;
-
-      const publicUrlResult = await insforge.storage
-        .from('product-images')
-        .getPublicUrl(path);
-
-      const publicUrl =
-        typeof publicUrlResult === 'string'
-          ? publicUrlResult
-          : (publicUrlResult as { data?: { publicUrl?: string }; publicUrl?: string })?.data?.publicUrl ??
-            (publicUrlResult as { publicUrl?: string })?.publicUrl ??
-            '';
-
-      /* Upload succeeded — store the persistent URL in form, clear the blob preview */
-      setForm((f) => ({ ...f, image_url: publicUrl }));
+      let added = 0;
+      for (const file of selected) {
+        const publicUrl = await uploadToInsForge(file);
+        if (publicUrl) {
+          addGalleryImage(publicUrl, galleryImages.length === 0 && added === 0 && !form.image_url);
+          added += 1;
+        }
+      }
       setPreviewUrl('');
+      if (added > 0) showToast(`${added} imagen${added === 1 ? '' : 'es'} agregada${added === 1 ? '' : 's'} a la galería.`, 'success');
     } catch (err) {
-      /* Storage failed — keep the blob preview visible but do NOT save blob URL to form/DB */
       const raw = (err instanceof Error ? err.message : String(err)).toLowerCase();
       let msg = 'Storage no disponible. Ingresa una URL de imagen manual.';
       if (/bucket.*(not.*found|does not exist)|404|no such bucket/.test(raw)) {
@@ -239,32 +291,42 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
     }
   }
 
+  async function uploadToCloudinary(file: File) {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'fabrick/productos');
+    const res = await fetch('/api/admin/cloudinary', { method: 'POST', body: fd });
+    const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string; code?: string; asset?: { url?: string } };
+    if (!res.ok) {
+      if (json.code === 'NOT_CONFIGURED') {
+        throw new Error('Cloudinary no configurado. Ve a Configuración → Integraciones.');
+      }
+      throw new Error(json.error || `HTTP ${res.status}`);
+    }
+    const url = json.url || json.asset?.url || '';
+    if (!url) throw new Error('Cloudinary no devolvió una URL.');
+    return url;
+  }
+
   /* ── Image upload to Cloudinary ── */
-  async function handleCloudinaryUpload(file: File) {
+  async function handleCloudinaryUpload(files: FileList | File[]) {
+    const selected = Array.from(files);
+    if (selected.length === 0) return;
     setUploadingCloud(true);
     try {
-      const localBlob = URL.createObjectURL(file);
-      setPreviewUrl(localBlob);
-    } catch { /* ignore */ }
+      try {
+        const localBlob = URL.createObjectURL(selected[0]);
+        setPreviewUrl(localBlob);
+      } catch { /* ignore */ }
 
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('folder', 'fabrick/productos');
-      const res = await fetch('/api/admin/cloudinary', { method: 'POST', body: fd });
-      const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string; code?: string; asset?: { url?: string } };
-      if (!res.ok) {
-        if (json.code === 'NOT_CONFIGURED') {
-          showToast('Cloudinary no configurado. Ve a Configuración → Integraciones.', 'error');
-          return;
-        }
-        throw new Error(json.error || `HTTP ${res.status}`);
+      let added = 0;
+      for (const file of selected) {
+        const url = await uploadToCloudinary(file);
+        addGalleryImage(url, galleryImages.length === 0 && added === 0 && !form.image_url);
+        added += 1;
       }
-      const url = json.url || json.asset?.url || '';
-      if (!url) throw new Error('Cloudinary no devolvió una URL.');
-      setForm((f) => ({ ...f, image_url: url }));
       setPreviewUrl('');
-      showToast('Imagen subida a Cloudinary.', 'success');
+      showToast(`${added} imagen${added === 1 ? '' : 'es'} subida${added === 1 ? '' : 's'} a Cloudinary.`, 'success');
     } catch (err) {
       showToast(err instanceof Error ? err.message : 'Error al subir a Cloudinary.', 'error');
     } finally {
@@ -288,6 +350,12 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
     setErrors({});
     setSaving(true);
 
+    const cleanGallery = uniqImages([form.image_url, ...galleryImages]);
+    const specifications = {
+      ...form.specifications,
+      gallery_images: cleanGallery,
+    };
+
     const payload = {
       name: form.name.trim(),
       description: form.description.trim() || null,
@@ -300,7 +368,8 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
         return Number.isFinite(n) && n >= 0 ? n : null;
       })(),
       tagline: form.tagline.trim() || null,
-      image_url: form.image_url || null,
+      image_url: cleanGallery[0] || form.image_url || null,
+      specifications,
       activo: form.activo,
       featured: form.featured,
       source: form.source.trim() || null,
@@ -345,12 +414,12 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
     priceNumber > 0 && supplierPriceNumber > 0
       ? Math.round(((priceNumber - supplierPriceNumber) / priceNumber) * 100)
       : null;
-  const previewImage = previewUrl || form.image_url;
+  const previewImage = previewUrl || form.image_url || galleryImages[0] || '';
 
   return (
-    <div className="min-h-screen bg-black text-white">
+    <div className="min-h-screen bg-black pb-32 text-white lg:pb-8">
       {/* ── Header ── */}
-      <div className="border-b border-white/5 bg-zinc-950/80 backdrop-blur-sm px-6 py-4 flex items-center gap-4">
+      <div className="border-b border-white/5 bg-zinc-950/80 backdrop-blur-sm px-5 py-4 flex items-center gap-4 sm:px-6">
         <button
           onClick={() => router.push('/admin/productos')}
           aria-label="Volver a productos"
@@ -369,7 +438,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
       </div>
 
       {/* ── Form + Preview ── */}
-      <div className="mx-auto grid max-w-6xl gap-8 px-6 py-8 xl:grid-cols-[minmax(0,1fr)_360px]">
+      <div className="mx-auto grid max-w-6xl gap-8 px-4 py-6 sm:px-6 sm:py-8 xl:grid-cols-[minmax(0,1fr)_360px]">
       <form onSubmit={handleSubmit} className="space-y-6">
 
         {/* Nombre */}
@@ -466,25 +535,28 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
         </Field>
 
         {/* Imagen */}
-        <Field label="Imagen del producto">
+        <Field label="Imágenes del producto">
           <div className="space-y-3">
             {/* Preview: show blob preview during upload, or the saved URL */}
-            {(previewUrl || form.image_url) && (
-              <div className="relative w-full h-48 rounded-xl overflow-hidden border border-white/10">
-                <img src={previewUrl || form.image_url} alt="Preview" className="w-full h-full object-cover" />
+            {previewImage && (
+              <div className="relative w-full h-48 rounded-xl overflow-hidden border border-white/10 bg-zinc-950">
+                <img src={previewImage} alt="Preview" className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => { setForm((f) => ({ ...f, image_url: '' })); setPreviewUrl(''); }}
-                  aria-label="Eliminar imagen"
+                  aria-label="Quitar portada"
                   className="absolute top-2 right-2 bg-black/60 rounded-full p-1.5 text-white/70 hover:text-white transition-colors"
                 >
                   ✕
                 </button>
+                <span className="absolute bottom-2 left-2 rounded-full border border-yellow-300/40 bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-yellow-300">
+                  Portada
+                </span>
               </div>
             )}
 
             {/* Upload buttons: InsForge + Cloudinary */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
               <button
                 type="button"
                 onClick={() => fileInputRef.current?.click()}
@@ -492,54 +564,95 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
                 className="flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-white/20 text-zinc-400 hover:text-white hover:border-white/40 transition-colors text-sm disabled:opacity-50"
               >
                 <Upload className="w-4 h-4" />
-                {uploading ? 'Subiendo…' : 'Subir a InsForge'}
+                {uploading ? 'Subiendo…' : 'Subir imágenes a InsForge'}
               </button>
               <button
                 type="button"
                 onClick={() => cloudFileInputRef.current?.click()}
                 disabled={uploading || uploadingCloud}
                 className="flex items-center justify-center gap-2 py-3 rounded-xl border border-yellow-400/40 bg-yellow-400/5 text-yellow-400 hover:bg-yellow-400/10 hover:border-yellow-400/70 transition-colors text-sm disabled:opacity-50"
-                title="Sube esta foto a tu cuenta de Cloudinary (carpeta fabrick/productos)"
+                title="Sube estas fotos a tu cuenta de Cloudinary (carpeta fabrick/productos)"
               >
                 <Cloud className="w-4 h-4" />
-                {uploadingCloud ? 'Subiendo a Cloudinary…' : 'Subir a Cloudinary'}
+                {uploadingCloud ? 'Subiendo a Cloudinary…' : 'Subir imágenes a Cloudinary'}
               </button>
             </div>
             <input
               ref={fileInputRef}
               type="file"
+              multiple
               accept="image/*"
-              aria-label="Seleccionar imagen para InsForge"
-              title="Seleccionar imagen para InsForge"
+              aria-label="Seleccionar imágenes para InsForge"
+              title="Seleccionar imágenes para InsForge"
               className="hidden"
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleImageUpload(file);
+                const files = e.target.files;
+                if (files) void handleImageUpload(files);
                 e.target.value = '';
               }}
             />
             <input
               ref={cloudFileInputRef}
               type="file"
+              multiple
               accept="image/*"
-              aria-label="Seleccionar imagen para Cloudinary"
-              title="Seleccionar imagen para Cloudinary"
+              aria-label="Seleccionar imágenes para Cloudinary"
+              title="Seleccionar imágenes para Cloudinary"
               className="hidden"
               onChange={(e) => {
-                const file = e.target.files?.[0];
-                if (file) handleCloudinaryUpload(file);
+                const files = e.target.files;
+                if (files) void handleCloudinaryUpload(files);
                 e.target.value = '';
               }}
             />
 
+            {galleryImages.length > 0 && (
+              <div className="rounded-2xl border border-white/10 bg-zinc-950/70 p-3">
+                <div className="mb-2 flex items-center justify-between gap-3">
+                  <p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Galería horizontal</p>
+                  <p className="text-xs text-zinc-600">{galleryImages.length} imagen{galleryImages.length === 1 ? '' : 'es'}</p>
+                </div>
+                <div className="flex gap-3 overflow-x-auto pb-2 pr-2 scrollbar-hide">
+                  {galleryImages.map((url, index) => (
+                    <div key={`${url}-${index}`} className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black">
+                      <img src={url} alt={`Miniatura ${index + 1}`} className="h-full w-full object-cover" />
+                      {form.image_url === url && (
+                        <span className="absolute left-1.5 top-1.5 rounded-full bg-yellow-300 px-1.5 py-0.5 text-[8px] font-black uppercase text-black">Portada</span>
+                      )}
+                      <div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between gap-1 rounded-full bg-black/65 p-1 opacity-100 backdrop-blur-sm sm:opacity-0 sm:transition sm:group-hover:opacity-100">
+                        <button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label="Mover imagen a la izquierda" className="grid h-6 w-6 place-items-center rounded-full text-white/80 disabled:opacity-25 hover:bg-white/10"><ChevronLeft className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => setCoverImage(url)} aria-label="Usar como portada" className="grid h-6 w-6 place-items-center rounded-full text-yellow-300 hover:bg-yellow-300/10"><Star className="h-3.5 w-3.5" /></button>
+                        <button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === galleryImages.length - 1} aria-label="Mover imagen a la derecha" className="grid h-6 w-6 place-items-center rounded-full text-white/80 disabled:opacity-25 hover:bg-white/10"><ChevronRight className="h-3.5 w-3.5" /></button>
+                      </div>
+                      <button type="button" onClick={() => removeGalleryImage(url)} aria-label="Eliminar miniatura" className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/70 text-red-200 backdrop-blur-sm hover:bg-red-500 hover:text-white">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </button>
+                    </div>
+                  ))}
+                </div>
+                <p className="mt-1 text-[11px] leading-5 text-zinc-600">Toca ★ para elegir portada, usa las flechas para cambiar el orden o elimina la imagen que no te guste.</p>
+              </div>
+            )}
+
             {/* URL manual */}
-            <input
-              type="url"
-              value={form.image_url}
-              onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
-              placeholder="O ingresa una URL de imagen…"
-              className={inputClass}
-            />
+            <div className="grid gap-2 sm:grid-cols-[1fr_auto]">
+              <input
+                type="url"
+                value={form.image_url}
+                onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))}
+                placeholder="O ingresa una URL de imagen…"
+                className={inputClass}
+              />
+              <button
+                type="button"
+                onClick={() => addGalleryImage(form.image_url, true)}
+                disabled={!form.image_url.trim()}
+                className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-zinc-300 transition hover:border-yellow-300/40 hover:text-yellow-200 disabled:opacity-40"
+              >
+                <ImagePlus className="h-4 w-4" />
+                Añadir
+              </button>
+            </div>
           </div>
         </Field>
 
@@ -557,18 +670,12 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
           />
         </div>
 
-        {/* Origen del producto — para dropshipping / reventa.
-            Cuando source_url está seteado, el detalle de pedido muestra un
-            botón "Comprar y enviar al cliente" que abre el link en una
-            pestaña nueva. */}
+        {/* Origen del producto — para dropshipping / reventa. */}
         <div className="border-t border-white/5 pt-6 space-y-4">
           <div>
             <h3 className="text-sm font-semibold text-white">Origen del producto</h3>
             <p className="text-xs text-zinc-500 mt-0.5">
-              Si revendes este producto desde otro proveedor (Mercado Libre,
-              Falabella, AliExpress…), guarda el link y el precio de origen
-              para poder comprarlo y enviarlo al cliente desde el detalle del
-              pedido.
+              Si revendes este producto desde otro proveedor, guarda el link y el precio de origen para poder comprarlo y enviarlo al cliente desde el pedido.
             </p>
           </div>
           <div className="grid grid-cols-2 gap-4">
@@ -588,7 +695,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
               <input
                 type="text"
                 value={form.source_id}
-              aria-label="ID externo del proveedor"
+                aria-label="ID externo del proveedor"
                 onChange={(e) => setForm((f) => ({ ...f, source_id: e.target.value }))}
                 placeholder="MLC123456789, SKU…"
                 className={inputClass}
@@ -611,7 +718,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
                 step="0.01"
                 min="0"
                 value={form.supplier_price}
-              aria-label="Precio del proveedor"
+                aria-label="Precio del proveedor"
                 onChange={(e) => setForm((f) => ({ ...f, supplier_price: e.target.value }))}
                 placeholder="0"
                 className={inputClass}
@@ -631,11 +738,11 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
         </div>
 
         {/* Submit */}
-        <div className="pt-4">
+        <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-20 pt-4 md:static md:z-auto">
           <button
             type="submit"
             disabled={saving || uploading || uploadingCloud}
-            className="w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 bg-[#facc15] text-black"
+            className="w-full py-4 rounded-xl font-bold text-sm tracking-wide transition-all hover:opacity-90 active:scale-[0.98] disabled:opacity-50 bg-[#facc15] text-black shadow-[0_16px_45px_rgba(250,204,21,0.18)]"
           >
             {saving ? 'Guardando…' : mode === 'create' ? 'Crear Producto' : 'Guardar Cambios'}
           </button>
@@ -672,6 +779,11 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
                 </span>
               )}
             </div>
+            {galleryImages.length > 1 && (
+              <span className="absolute bottom-3 right-3 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-[10px] font-black text-white/75 backdrop-blur">
+                {galleryImages.length} fotos
+              </span>
+            )}
           </div>
 
           <div className="space-y-3 p-4">
@@ -690,7 +802,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
               <PreviewChip label="Categoría" value={form.category_id || 'Sin categoría'} />
               <PreviewChip label="Stock" value={form.stock || '—'} />
               <PreviewChip label="Entrega" value={form.delivery_days ? `${form.delivery_days} días` : 'Sin dato'} />
-              <PreviewChip label="Origen" value={form.source || 'Propio'} />
+              <PreviewChip label="Fotos" value={String(galleryImages.length || (form.image_url ? 1 : 0))} />
             </div>
 
             <div className="rounded-2xl border border-white/10 bg-black/40 p-3">

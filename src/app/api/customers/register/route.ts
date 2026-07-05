@@ -8,6 +8,13 @@ export const runtime = 'nodejs';
 
 const MAX_BODY_BYTES = 16 * 1024;
 
+type SchemaPrepareResult = {
+  ok: boolean;
+  skipped?: boolean;
+  status?: number;
+  message?: string;
+};
+
 function cleanText(value: unknown, maxLength: number) {
   if (typeof value !== 'string') return '';
   return value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLength);
@@ -27,7 +34,7 @@ async function readBody(request: Request) {
   return text ? JSON.parse(text) as Record<string, unknown> : {};
 }
 
-async function rawSql(query: string) {
+async function rawSql(query: string): Promise<SchemaPrepareResult> {
   const apiKey = process.env.INSFORGE_API_KEY;
   if (!apiKey) return { ok: false, skipped: true, message: 'INSFORGE_API_KEY no configurada.' };
   const res = await fetch(`${INSFORGE_BASE_URL.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`, {
@@ -84,14 +91,14 @@ async function findExistingCustomer(email: string) {
   }
 }
 
-function customerTableHint(schema: { ok: boolean; skipped?: boolean; message?: string }) {
+function customerTableHint(schema: SchemaPrepareResult) {
   if (schema.ok) return '';
   if (schema.skipped) return ' Falta INSFORGE_API_KEY para crear la tabla automáticamente.';
   return ` La preparación automática de la tabla falló: ${schema.message || 'sin detalle'}`;
 }
 
 export async function POST(request: Request) {
-  let schema = { ok: false, skipped: false, message: '' };
+  let schema: SchemaPrepareResult = { ok: false, skipped: false, message: '' };
   try {
     const body = await readBody(request);
     if (!body) return NextResponse.json({ error: 'Solicitud demasiado grande.' }, { status: 413 });

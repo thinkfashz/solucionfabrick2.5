@@ -45,6 +45,12 @@ function finalUnitPrice(row: ProductCheckoutRow) {
   return Math.max(1, Math.round(basePrice * (1 - discount / 100)));
 }
 
+function resolveCheckoutShippingMode(row: ProductCheckoutRow): ProductShippingMode {
+  if (row.shipping_fee !== null && row.shipping_fee !== undefined && Number.isFinite(Number(row.shipping_fee))) return 'fixed';
+  if (row.shipping_mode && row.shipping_mode !== 'inherit') return row.shipping_mode;
+  return 'free';
+}
+
 /**
  * Build checkout line-items from authoritative product rows.
  *
@@ -96,7 +102,7 @@ export async function hydrateCheckoutItemsWithShipping(items: LineItem[]): Promi
       cantidad: quantity,
       precioUnitario: finalUnitPrice(row),
       nombre: row.name,
-      shippingMode: row.shipping_mode ?? 'inherit',
+      shippingMode: resolveCheckoutShippingMode(row),
       shippingFee: row.shipping_fee ?? null,
       shippingWeightKg: row.shipping_weight_kg ?? null,
       shippingDimensions: row.shipping_dimensions ?? null,

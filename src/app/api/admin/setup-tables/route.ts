@@ -23,6 +23,7 @@ const EXPECTED_TABLES = [
   'customer_accounts',
   'order-shipping-columns',
   'deliveries',
+  'customer-account-order-link',
   'posts',
   'projects',
   'cupones',

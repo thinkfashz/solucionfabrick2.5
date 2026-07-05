@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
-import { insforge } from '@/lib/insforge';
+import { insforgeAdmin } from '@/lib/insforge';
 import { recentAdminSessions } from '@/lib/adminSessionAudit';
 
 export const dynamic = 'force-dynamic';
@@ -10,7 +10,7 @@ export const runtime = 'nodejs';
 type SessionPayload = { email: string; rol?: string; tenant_id?: string; session_id?: string };
 
 async function getProfile(email: string) {
-  const { data } = await insforge.database
+  const { data } = await insforgeAdmin.database
     .from('admin_profiles')
     .select('email, display_name, avatar_url, bio')
     .eq('email', email)
@@ -26,14 +26,14 @@ async function getProfile(email: string) {
 
 async function safeCount(table: string) {
   try {
-    const res = await insforge.database.from(table).select('id', { count: 'exact', head: true });
+    const res = await insforgeAdmin.database.from(table).select('id', { count: 'exact', head: true });
     return typeof res.count === 'number' ? res.count : 0;
   } catch { return 0; }
 }
 
 async function safeRows(table: string, limit = 8) {
   try {
-    const res = await insforge.database.from(table).select('*').order('created_at', { ascending: false }).limit(limit);
+    const res = await insforgeAdmin.database.from(table).select('*').order('created_at', { ascending: false }).limit(limit);
     return res.data || [];
   } catch { return []; }
 }
@@ -53,10 +53,12 @@ export async function GET(request: NextRequest) {
     safeCount('presupuesto_registros'),
     safeCount('invoices'),
     safeCount('leads'),
-    safeRows('orders', 6),
+    safeRows('orders', 12),
   ]);
 
-  const revenue = (recentOrders as Record<string, unknown>[]).reduce((sum, row) => sum + Number(row.total || 0), 0);
+  const revenue = (recentOrders as Record<string, unknown>[])
+    .filter((row) => ['pagada', 'confirmado', 'confirmada'].includes(String(row.status || '').toLowerCase()))
+    .reduce((sum, row) => sum + Number(row.total || 0), 0);
   const health = {
     app: 'online',
     db: 'online',
@@ -73,7 +75,7 @@ export async function GET(request: NextRequest) {
     health,
     console: [
       `[${new Date().toLocaleTimeString('es-CL')}] Admin activo: ${session.email}`,
-      `[DB] latency=${health.latency_ms}ms · productos=${products} · pedidos=${orders}`,
+      `[DB] latency=${health.latency_ms}ms · productos=${products} · pedidos=${orders} · ingresos_pagados=${revenue}`,
       `[SECURITY] sesiones auditadas=${sessions.length}`,
       `[BUILD] commit=${health.last_deploy}`,
     ],

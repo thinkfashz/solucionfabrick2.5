@@ -2,9 +2,7 @@ import { NextResponse } from 'next/server';
 import { createHmac } from 'node:crypto';
 import { INSFORGE_BASE_URL, insforgeAdmin } from '@/lib/insforge';
 import { getMercadoPagoPayment, mapMercadoPagoStatus, verifyMercadoPagoSignature } from '@/lib/mercadopago';
-import { confirmPaidOrderAndSendReceiptAsync } from '@/lib/orders/paidConfirmation';
-import { dispatchHookAsync } from '@/lib/extensionsBus';
-import { createDropiFulfillmentAsync } from '@/lib/dropi';
+import { reconcileMercadoPagoPaymentRecord } from '@/lib/orders/paymentReconciliation';
 
 const MAX_WEBHOOK_BODY_BYTES = 64 * 1024;
 
@@ -186,12 +184,6 @@ function isMercadoPagoSimulation(body: MercadoPagoWebhookBody | null) {
   return action.startsWith('order.') || eventType === 'order' || eventType === 'merchant_order';
 }
 
-function onPaidOrder(orderId: string, payload: { paymentId: string | null; paymentStatus: string; provider: string }) {
-  confirmPaidOrderAndSendReceiptAsync(orderId);
-  createDropiFulfillmentAsync(orderId);
-  dispatchHookAsync('order.paid', { orderId, ...payload });
-}
-
 async function handleMercadoPagoWebhook(request: Request) {
   const url = new URL(request.url);
   const rawBody = await readLimitedBody(request);
@@ -223,20 +215,21 @@ async function handleMercadoPagoWebhook(request: Request) {
   const logResult = await persistWebhookLog(idempotencyKey, payment, orderId, paymentId, paymentStatus, 'mercadopago.payment');
   if (logResult.duplicated) return NextResponse.json({ ok: true, duplicated: true }, { status: 200 });
 
-  const updated = await updateOrderStatus(orderId, paymentId, paymentStatus);
-  const stock = updated.orderStatus === 'pagada' ? await decrementStockForPaidOrder(orderId) : { ok: true as const };
-  if (updated.orderStatus === 'pagada') onPaidOrder(orderId, { paymentId, paymentStatus, provider: 'mercadopago' });
+  const reconciled = await reconcileMercadoPagoPaymentRecord(payment, orderId, 'webhook');
+  const stock = reconciled.orderStatus === 'pagada' ? await decrementStockForPaidOrder(orderId) : { ok: true as const };
 
   return NextResponse.json({
-    ok: updated.ok,
+    ok: reconciled.ok,
     provider: 'mercado_pago',
     paymentId,
     orderId,
     paymentStatus,
-    orderStatus: updated.orderStatus,
+    orderStatus: reconciled.orderStatus,
+    recovered: reconciled.recovered,
+    alreadyPaid: reconciled.alreadyPaid,
     stock,
-    notification: updated.orderStatus === 'pagada' ? 'Correo con boleta PDF y orden Dropi en proceso si aplica.' : 'Pendiente de pago aprobado.',
-    warning: updated.warning || ('warning' in stock ? stock.warning : null),
+    notification: reconciled.orderStatus === 'pagada' ? 'Pedido confirmado, CRM actualizado y correo/boleta en proceso.' : 'Pendiente de pago aprobado.',
+    warning: 'warning' in stock ? stock.warning : null,
   });
 }
 
@@ -257,9 +250,8 @@ async function handleLegacyWebhook(request: Request) {
 
   const updated = await updateOrderStatus(body.orderId, body.paymentId ?? null, body.status);
   const stock = updated.orderStatus === 'pagada' ? await decrementStockForPaidOrder(body.orderId) : { ok: true as const };
-  if (updated.orderStatus === 'pagada') onPaidOrder(body.orderId, { paymentId: body.paymentId ?? null, paymentStatus: body.status, provider: 'legacy' });
 
-  return NextResponse.json({ ...updated, stock, notification: updated.orderStatus === 'pagada' ? 'Correo con boleta PDF y orden Dropi en proceso si aplica.' : undefined }, { status: 200 });
+  return NextResponse.json({ ...updated, stock, notification: updated.orderStatus === 'pagada' ? 'Pedido confirmado y stock actualizado.' : undefined }, { status: 200 });
 }
 
 export async function POST(request: Request) {

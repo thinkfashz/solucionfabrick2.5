@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, Lock, PackageCheck, Search, ShieldCheck, Truck } from 'lucide-react';
 
@@ -84,6 +84,6 @@ export default function SeguimientoLookupPage() {
   );
 }
 
-function Info({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+function Info({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
   return <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-4"><div className="grid h-10 w-10 place-items-center rounded-2xl bg-yellow-300 text-black">{icon}</div><b className="mt-3 block text-sm">{title}</b><p className="mt-1 text-xs leading-5 text-white/45">{text}</p></div>;
 }

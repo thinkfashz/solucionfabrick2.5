@@ -6,11 +6,11 @@ import { deliveryStatusFromOrderStatus, normalizeOrderStatus, type OrderStatus }
 import { createOrderTrackingToken } from '@/lib/orderTracking';
 import { getAppBaseUrl } from '@/lib/mercadopago';
 import { sendOrderStatusUpdateEmail } from '@/lib/email/orderStatusEmail';
+import { resolveDispatchCode } from '@/lib/orders/dispatchCode';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Mensajes de WhatsApp por estado
 const WA_MESSAGES: Record<OrderStatus, (name: string, orderId: string, extra?: string) => string> = {
   pendiente:       (n, id) => `Hola ${n} 👋 Recibimos tu pedido *#${id.slice(-6).toUpperCase()}* y está en revisión. Te avisaremos cuando lo confirmemos. ¡Gracias por tu compra en Soluciones Fabrick! 🏗️`,
   confirmado:      (n, id) => `Hola ${n} ✅ Tu pedido *#${id.slice(-6).toUpperCase()}* fue *confirmado* y está siendo preparado. Pronto te enviamos más novedades. – Soluciones Fabrick`,
@@ -22,6 +22,16 @@ const WA_MESSAGES: Record<OrderStatus, (name: string, orderId: string, extra?: s
 
 function hasMissingColumn(error?: { message?: string } | null) {
   return /column .* does not exist|schema cache|Could not find|PGRST204/i.test(error?.message || '');
+}
+
+function statusNeedsDispatchCode(status: OrderStatus) {
+  return status === 'confirmado' || status === 'en_preparacion' || status === 'enviado' || status === 'entregado';
+}
+
+async function requireAdmin(request: NextRequest) {
+  const sessionCookie = request.cookies.get(ADMIN_COOKIE_NAME);
+  if (!sessionCookie?.value) return null;
+  return decodeSession(sessionCookie.value);
 }
 
 async function updateOrder(orderId: string, payload: Record<string, unknown>) {
@@ -60,14 +70,22 @@ async function upsertDelivery(orderId: string, payload: Record<string, unknown>)
   }
 }
 
+async function loadOrder(orderId: string) {
+  const { data, error } = await insforgeAdmin.database
+    .from('orders')
+    .select('*')
+    .eq('id', orderId)
+    .limit(1);
+  if (error) throw new Error(error.message || 'Pedido no encontrado');
+  return Array.isArray(data) ? data[0] as Record<string, unknown> | undefined : undefined;
+}
+
 export async function PATCH(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
-  const sessionCookie = request.cookies.get(ADMIN_COOKIE_NAME);
-  if (!sessionCookie?.value) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-  const session = await decodeSession(sessionCookie.value);
-  if (!session) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+  const session = await requireAdmin(request);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
 
   const { id: orderId } = await params;
   const body = await request.json().catch(() => ({}));
@@ -90,18 +108,11 @@ export async function PATCH(
   if (!status) return NextResponse.json({ error: 'Falta status' }, { status: 400 });
   const newStatus = normalizeOrderStatus(status);
 
-  // Fetch order to get customer info. Older orders were created before tenant_id existed in orders.
-  const { data: orderData, error: fetchErr } = await insforgeAdmin.database
-    .from('orders')
-    .select('*')
-    .eq('id', orderId)
-    .limit(1);
+  const order = await loadOrder(orderId);
+  if (!order) return NextResponse.json({ error: 'Pedido no encontrado' }, { status: 404 });
 
-  if (fetchErr || !orderData?.length) {
-    return NextResponse.json({ error: fetchErr?.message || 'Pedido no encontrado' }, { status: 404 });
-  }
-  const order = orderData[0] as Record<string, unknown>;
   const now = new Date().toISOString();
+  const dispatchCode = statusNeedsDispatchCode(newStatus) ? resolveDispatchCode(order, orderId) : String(order.dispatch_code || order.codigo_despacho || '');
 
   const updatePayload: Record<string, unknown> = {
     status: newStatus,
@@ -111,6 +122,7 @@ export async function PATCH(
   if (carrier !== undefined) updatePayload.carrier = String(carrier || '').trim();
   if (shipping_fee !== undefined) updatePayload.shipping_fee = shipping_fee;
   if (notes !== undefined) updatePayload.shipping_notes = String(notes || '').trim();
+  if (dispatchCode) updatePayload.dispatch_code = dispatchCode;
 
   const updated = await updateOrder(orderId, updatePayload);
   if (!updated.ok) {
@@ -123,6 +135,7 @@ export async function PATCH(
     address: order.shipping_address ?? '',
     status: deliveryStatusFromOrderStatus(newStatus),
     carrier: carrier || order.carrier || '',
+    dispatch_code: dispatchCode || undefined,
     ...(notes?.trim() ? { notes: notes.trim() } : {}),
     ...(tracking_number ? { tracking_number } : {}),
     updated_at: now,
@@ -139,12 +152,12 @@ export async function PATCH(
       carrier: String(carrier || order.carrier || '').trim(),
       trackingUrl,
       note: notes,
+      dispatchCode,
     });
 
     if (email.ok) await markStatusEmailSent(orderId, newStatus);
   }
 
-  // Build WhatsApp notification link
   const customerName  = String(order.customer_name || 'Cliente').split(' ')[0];
   const customerPhone = String(order.customer_phone || '').replace(/\D/g, '');
   const msgFn = WA_MESSAGES[newStatus];
@@ -156,9 +169,40 @@ export async function PATCH(
   return NextResponse.json({
     ok: true,
     newStatus,
+    dispatchCode,
     strippedMissingColumns: updated.stripped,
     delivery,
     email,
     whatsapp: waLink ? { link: waLink, message: waMessage, phone: customerPhone } : null,
   });
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: Promise<{ id: string }> }
+) {
+  const session = await requireAdmin(request);
+  if (!session) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+
+  const { id: orderId } = await params;
+  const now = new Date().toISOString();
+  const { error } = await insforgeAdmin.database.from('orders').update({
+    status: 'cancelado',
+    deleted_at: now,
+    updated_at: now,
+  }).eq('id', orderId);
+
+  if (error && !hasMissingColumn(error)) {
+    return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+  if (error && hasMissingColumn(error)) {
+    const fallback = await insforgeAdmin.database.from('orders').update({ status: 'cancelado', updated_at: now }).eq('id', orderId);
+    if (fallback.error) return NextResponse.json({ error: fallback.error.message }, { status: 500 });
+  }
+
+  try {
+    await insforgeAdmin.database.from('deliveries').update({ status: 'fallido', updated_at: now }).eq('order_id', orderId);
+  } catch {}
+
+  return NextResponse.json({ ok: true, deleted: true, orderId });
 }

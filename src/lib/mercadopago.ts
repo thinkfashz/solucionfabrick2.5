@@ -19,6 +19,13 @@ export interface MercadoPagoPaymentResponse {
   external_reference?: string;
   transaction_amount?: number;
   currency_id?: string;
+  metadata?: Record<string, string>;
+  payer?: {
+    email?: string;
+    first_name?: string;
+    last_name?: string;
+    phone?: { area_code?: string; number?: string };
+  };
 }
 
 function trimTrailingSlash(value: string) {
@@ -166,10 +173,20 @@ export function getMercadoPagoWebhookSecret() {
 }
 
 function getPaymentItems(items: LineItem[], summary: CheckoutSummary) {
-  const mapped = items.map((item) => ({ id: String(item.productoId), title: item.nombre || `Producto ${item.productoId}`, quantity: item.cantidad, currency_id: summary.moneda, unit_price: Number(item.precioUnitario.toFixed(2)) }));
-  if (summary.iva > 0) mapped.push({ id: 'iva', title: 'IVA', quantity: 1, currency_id: summary.moneda, unit_price: Number(summary.iva.toFixed(2)) });
-  if (summary.despacho > 0) mapped.push({ id: 'despacho', title: 'Despacho', quantity: 1, currency_id: summary.moneda, unit_price: Number(summary.despacho.toFixed(2)) });
-  return mapped;
+  const productCount = items.reduce((acc, item) => acc + Math.max(1, Number(item.cantidad || 1)), 0);
+  const singleProduct = items.length === 1 && productCount === 1;
+  const title = singleProduct
+    ? items[0]?.nombre || 'Producto Soluciones Fabrick'
+    : `Pedido Soluciones Fabrick (${productCount} productos)`;
+
+  return [{
+    id: 'pedido-fabrick',
+    title,
+    description: `Incluye subtotal, IVA referencial y despacho según orden. Total: ${summary.total.toLocaleString('es-CL')} CLP`,
+    quantity: 1,
+    currency_id: summary.moneda,
+    unit_price: Number(summary.total.toFixed(2)),
+  }];
 }
 
 async function mercadoPagoFetch<T>(path: string, init: RequestInit, timeoutMs = 10_000) {

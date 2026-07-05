@@ -2,17 +2,20 @@
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
-import { ArrowRight, Bell, CheckCircle2, Clock, Mail, MapPin, PackageCheck, RefreshCcw, Send, Truck, UserRound } from 'lucide-react';
+import { ArrowRight, Bell, CheckCircle2, Clock, Mail, MapPin, PackageCheck, RefreshCcw, Send, Trash2, Truck, UserRound } from 'lucide-react';
 import { formatCLP, ORDER_STATUS_LABELS, orderStatusColor, type OrderStatus } from '@/lib/commerce';
+
+type QueueItem = { productId?: string; name: string; quantity: number; unitPrice: number; subtotal: number };
 
 type QueueOrder = {
   id: string;
+  dispatch_code?: string;
   customer_name: string;
   customer_email: string;
   customer_phone: string;
   region: string;
   shipping_address: string;
-  items: Array<{ name: string; quantity: number; unitPrice: number; subtotal: number }>;
+  items: QueueItem[];
   subtotal: number;
   tax: number;
   shipping_fee: number;
@@ -34,6 +37,7 @@ type PatchResult = {
   ok?: boolean;
   error?: string;
   newStatus?: OrderStatus;
+  dispatchCode?: string;
   strippedMissingColumns?: boolean;
   delivery?: { ok?: boolean; warning?: string };
   email?: { ok?: boolean; id?: string; error?: string; simulated?: boolean } | null;
@@ -43,25 +47,18 @@ const CARRIERS = ['Chilexpress', 'Starken', 'Correos de Chile', 'Blue Express', 
 const STATUS_FLOW: OrderStatus[] = ['pendiente', 'confirmado', 'en_preparacion', 'enviado', 'entregado', 'cancelado'];
 
 function dateCl(value: string) {
-  try {
-    return new Date(value).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' });
-  } catch {
-    return value || '—';
-  }
+  try { return new Date(value).toLocaleString('es-CL', { dateStyle: 'medium', timeStyle: 'short' }); } catch { return value || '—'; }
 }
 
-function shortId(id: string) {
-  return id.slice(-8).toUpperCase();
-}
-
-function countItems(order: QueueOrder) {
-  return order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0);
-}
+function shortId(id: string) { return id.slice(-8).toUpperCase(); }
+function countItems(order: QueueOrder) { return order.items.reduce((sum, item) => sum + Number(item.quantity || 0), 0); }
+function validProductId(id?: string) { return Boolean(id && id !== 'sin-id' && id !== 'mp-recovery'); }
 
 export default function AdminDespachosPage() {
   const [orders, setOrders] = useState<QueueOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [savingId, setSavingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
   const [selectedStatus, setSelectedStatus] = useState<Record<string, OrderStatus>>({});
@@ -134,14 +131,34 @@ export default function AdminDespachosPage() {
       });
       const json = await res.json() as PatchResult;
       if (!res.ok) throw new Error(json.error || 'No se pudo actualizar el pedido.');
+      const codeTxt = json.dispatchCode ? ` Código: ${json.dispatchCode}.` : '';
       const emailTxt = json.email?.ok ? ' Correo enviado al cliente.' : json.email?.simulated ? ' Correo simulado por falta de Resend.' : json.email?.error ? ` Correo no enviado: ${json.email.error}` : '';
-      const warning = json.strippedMissingColumns ? ' Ejecuta Setup Tables para guardar transportista/tracking en base de datos.' : '';
-      setMessage(`Pedido ${shortId(order.id)} actualizado.${emailTxt}${warning}`);
+      const warning = json.strippedMissingColumns ? ' Ejecuta Setup Tables para guardar transportista/tracking/código en base de datos.' : '';
+      setMessage(`Pedido ${shortId(order.id)} actualizado.${codeTxt}${emailTxt}${warning}`);
       await loadOrders();
     } catch (err) {
       setError(err instanceof Error ? err.message : 'No se pudo actualizar el pedido.');
     } finally {
       setSavingId(null);
+    }
+  }
+
+  async function deleteOrder(order: QueueOrder) {
+    const ok = window.confirm(`¿Eliminar/cancelar el pedido ${shortId(order.id)}? Esta acción lo quitará de la cola.`);
+    if (!ok) return;
+    setDeletingId(order.id);
+    setMessage('');
+    setError('');
+    try {
+      const res = await fetch(`/api/admin/orders/${encodeURIComponent(order.id)}`, { method: 'DELETE' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'No se pudo eliminar el pedido.');
+      setMessage(`Pedido ${shortId(order.id)} eliminado/cancelado.`);
+      await loadOrders();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo eliminar el pedido.');
+    } finally {
+      setDeletingId(null);
     }
   }
 
@@ -153,13 +170,12 @@ export default function AdminDespachosPage() {
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300">Despacho y logística</p>
               <h1 className="mt-2 text-3xl font-black leading-none tracking-[-0.06em] md:text-5xl">Pedidos por enviar</h1>
-              <p className="mt-2 max-w-xl text-sm leading-6 text-white/50">Controla quién compró, cuándo, dónde se envía, valor del pedido, estado del despacho y notificación por correo usando Resend.</p>
+              <p className="mt-2 max-w-xl text-sm leading-6 text-white/50">Controla cliente, productos, código de despacho, estado, tracking y correo por Resend.</p>
             </div>
             <button onClick={loadOrders} disabled={loading} className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/[0.04] text-yellow-300 active:scale-95 disabled:opacity-50" title="Actualizar">
               <RefreshCcw className={`h-5 w-5 ${loading ? 'animate-spin' : ''}`} />
             </button>
           </div>
-
           <div className="mt-5 grid grid-cols-4 gap-2">
             <Stat label="Cola" value={stats.total} />
             <Stat label="Pend." value={stats.pendientes} />
@@ -193,23 +209,29 @@ export default function AdminDespachosPage() {
                       </div>
                       <span className="rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-widest" style={{ background: `${orderStatusColor(order.status)}22`, color: orderStatusColor(order.status) }}>{ORDER_STATUS_LABELS[order.status]}</span>
                     </div>
-
                     <div className="mt-4 grid grid-cols-2 gap-2 text-xs">
                       <Info icon={<Clock className="h-4 w-4" />} label="Cuándo pidió" value={dateCl(order.created_at)} />
                       <Info icon={<MapPin className="h-4 w-4" />} label="Dónde enviar" value={order.region || 'Sin región'} />
                       <Info icon={<UserRound className="h-4 w-4" />} label="Dirección" value={order.shipping_address || 'Sin dirección'} wide />
                       <Info icon={<PackageCheck className="h-4 w-4" />} label="Detalle" value={`${itemCount} producto${itemCount === 1 ? '' : 's'} · ${formatCLP(order.total)}`} />
+                      <Info icon={<Truck className="h-4 w-4" />} label="Código despacho" value={order.dispatch_code || 'Se genera al confirmar'} wide />
                     </div>
                   </div>
 
                   <div className="space-y-4 p-4">
                     <div className="rounded-2xl border border-white/10 bg-black/35 p-3">
                       <p className="mb-2 text-[10px] font-black uppercase tracking-[0.24em] text-yellow-300">Productos</p>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {order.items.slice(0, 4).map((item, index) => (
-                          <div key={`${order.id}-${index}`} className="flex items-start justify-between gap-3 text-sm">
-                            <span className="text-white/70">{item.quantity} × {item.name}</span>
-                            <b className="text-white">{formatCLP(item.subtotal)}</b>
+                          <div key={`${order.id}-${index}`} className="rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-sm">
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="text-white/70">{item.quantity} × {item.name}</span>
+                              <b className="text-white">{formatCLP(item.subtotal)}</b>
+                            </div>
+                            <div className="mt-2 flex flex-wrap gap-2">
+                              {validProductId(item.productId) && <Link href={`/producto/${item.productId}`} className="rounded-full border border-yellow-300/25 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-yellow-300">Ver producto</Link>}
+                              {validProductId(item.productId) && <Link href={`/admin/productos/${item.productId}/editar`} className="rounded-full border border-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-widest text-white/50">Editar</Link>}
+                            </div>
                           </div>
                         ))}
                         {order.items.length > 4 && <p className="text-xs text-white/35">+ {order.items.length - 4} producto(s) más en detalle</p>}
@@ -217,41 +239,19 @@ export default function AdminDespachosPage() {
                     </div>
 
                     <div className="grid gap-3 sm:grid-cols-2">
-                      <label className="block">
-                        <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.22em] text-white/35">Estado del envío</span>
-                        <select value={status} onChange={(e) => setSelectedStatus((prev) => ({ ...prev, [order.id]: e.target.value as OrderStatus }))} className="w-full rounded-2xl border border-white/10 bg-black px-3 py-3 text-sm font-bold outline-none focus:border-yellow-300/60">
-                          {STATUS_FLOW.map((s) => <option key={s} value={s}>{ORDER_STATUS_LABELS[s]}</option>)}
-                        </select>
-                      </label>
-                      <label className="block">
-                        <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.22em] text-white/35">Transportista</span>
-                        <select value={carrier[order.id] || order.carrier || 'Chilexpress'} onChange={(e) => setCarrier((prev) => ({ ...prev, [order.id]: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black px-3 py-3 text-sm font-bold outline-none focus:border-yellow-300/60">
-                          {CARRIERS.map((c) => <option key={c}>{c}</option>)}
-                        </select>
-                      </label>
-                      <label className="block sm:col-span-2">
-                        <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.22em] text-white/35">Número de seguimiento</span>
-                        <input value={tracking[order.id] || ''} onChange={(e) => setTracking((prev) => ({ ...prev, [order.id]: e.target.value }))} placeholder="Ej: CH1234567890" className="w-full rounded-2xl border border-white/10 bg-black px-3 py-3 text-sm font-bold outline-none placeholder:text-white/22 focus:border-yellow-300/60" />
-                      </label>
-                      <label className="block sm:col-span-2">
-                        <span className="mb-1 block text-[10px] font-black uppercase tracking-[0.22em] text-white/35">Nota para el correo / interna</span>
-                        <textarea value={notes[order.id] || ''} onChange={(e) => setNotes((prev) => ({ ...prev, [order.id]: e.target.value }))} rows={2} placeholder="Ej: El pedido sale hoy por la tarde." className="w-full resize-none rounded-2xl border border-white/10 bg-black px-3 py-3 text-sm font-bold outline-none placeholder:text-white/22 focus:border-yellow-300/60" />
-                      </label>
+                      <label className="block"><span className="mb-1 block text-[10px] font-black uppercase tracking-[0.22em] text-white/35">Estado del envío</span><select value={status} onChange={(e) => setSelectedStatus((prev) => ({ ...prev, [order.id]: e.target.value as OrderStatus }))} className="w-full rounded-2xl border border-white/10 bg-black px-3 py-3 text-sm font-bold outline-none focus:border-yellow-300/60">{STATUS_FLOW.map((s) => <option key={s} value={s}>{ORDER_STATUS_LABELS[s]}</option>)}</select></label>
+                      <label className="block"><span className="mb-1 block text-[10px] font-black uppercase tracking-[0.22em] text-white/35">Transportista</span><select value={carrier[order.id] || order.carrier || 'Chilexpress'} onChange={(e) => setCarrier((prev) => ({ ...prev, [order.id]: e.target.value }))} className="w-full rounded-2xl border border-white/10 bg-black px-3 py-3 text-sm font-bold outline-none focus:border-yellow-300/60">{CARRIERS.map((c) => <option key={c}>{c}</option>)}</select></label>
+                      <label className="block sm:col-span-2"><span className="mb-1 block text-[10px] font-black uppercase tracking-[0.22em] text-white/35">Número de seguimiento</span><input value={tracking[order.id] || ''} onChange={(e) => setTracking((prev) => ({ ...prev, [order.id]: e.target.value }))} placeholder="Ej: CH1234567890" className="w-full rounded-2xl border border-white/10 bg-black px-3 py-3 text-sm font-bold outline-none placeholder:text-white/22 focus:border-yellow-300/60" /></label>
+                      <label className="block sm:col-span-2"><span className="mb-1 block text-[10px] font-black uppercase tracking-[0.22em] text-white/35">Nota para el correo / interna</span><textarea value={notes[order.id] || ''} onChange={(e) => setNotes((prev) => ({ ...prev, [order.id]: e.target.value }))} rows={2} placeholder="Ej: El pedido sale hoy por la tarde." className="w-full resize-none rounded-2xl border border-white/10 bg-black px-3 py-3 text-sm font-bold outline-none placeholder:text-white/22 focus:border-yellow-300/60" /></label>
                     </div>
 
-                    <label className="flex items-center justify-between gap-3 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm">
-                      <span className="flex items-center gap-2"><Mail className="h-4 w-4 text-yellow-300" />Enviar correo al cliente con Resend</span>
-                      <input type="checkbox" checked={notifyEmail[order.id] ?? true} onChange={(e) => setNotifyEmail((prev) => ({ ...prev, [order.id]: e.target.checked }))} className="h-5 w-5 accent-yellow-300" />
-                    </label>
+                    <label className="flex items-center justify-between gap-3 rounded-2xl border border-yellow-300/20 bg-yellow-300/10 px-4 py-3 text-sm"><span className="flex items-center gap-2"><Mail className="h-4 w-4 text-yellow-300" />Enviar correo al cliente con Resend</span><input type="checkbox" checked={notifyEmail[order.id] ?? true} onChange={(e) => setNotifyEmail((prev) => ({ ...prev, [order.id]: e.target.checked }))} className="h-5 w-5 accent-yellow-300" /></label>
 
                     <div className="grid grid-cols-[1fr_auto] gap-2">
-                      <button onClick={() => updateOrder(order)} disabled={savingId === order.id} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-4 py-3 text-sm font-black text-black disabled:opacity-50">
-                        <Send className="h-4 w-4" />{savingId === order.id ? 'Guardando…' : 'Guardar y notificar'}
-                      </button>
-                      <Link href={`/admin/pedidos/${order.id}`} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80">
-                        Detalle <ArrowRight className="h-4 w-4" />
-                      </Link>
+                      <button onClick={() => updateOrder(order)} disabled={savingId === order.id} className="inline-flex items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-4 py-3 text-sm font-black text-black disabled:opacity-50"><Send className="h-4 w-4" />{savingId === order.id ? 'Guardando…' : 'Guardar'}</button>
+                      <Link href={`/admin/pedidos/${order.id}`} className="inline-flex items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 py-3 text-sm font-black text-white/80">Detalle <ArrowRight className="h-4 w-4" /></Link>
                     </div>
+                    <button onClick={() => deleteOrder(order)} disabled={deletingId === order.id} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-red-400/25 bg-red-500/10 px-4 py-3 text-sm font-black text-red-100 disabled:opacity-50"><Trash2 className="h-4 w-4" />{deletingId === order.id ? 'Eliminando…' : 'Eliminar / cancelar pedido'}</button>
 
                     {order.status_email_sent_at && <p className="text-[11px] text-emerald-200/75"><Bell className="mr-1 inline h-3.5 w-3.5" />Último correo: {dateCl(order.status_email_sent_at)}</p>}
                   </div>

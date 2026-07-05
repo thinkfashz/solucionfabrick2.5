@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import { useParams } from 'next/navigation';
+import { useEffect, useMemo, useRef, useState } from 'react';
+import { useParams, useSearchParams } from 'next/navigation';
 import { CheckCircle2, Clock, Home, PackageCheck, ShieldCheck, Truck, XCircle } from 'lucide-react';
+import CustomerAccountInvite from '@/components/store/CustomerAccountInvite';
 
 type OrderStatusResponse = {
   id: string;
@@ -12,6 +13,8 @@ type OrderStatusResponse = {
   createdAt: string;
   updatedAt?: string;
   customerName?: string;
+  customerEmail?: string;
+  customerPhone?: string;
   region?: string;
   shippingAddress?: string | null;
   items?: Array<{ nombre?: string; productoId?: string; cantidad?: number; precioUnitario?: number }>;
@@ -22,7 +25,7 @@ type OrderStatusResponse = {
 };
 
 function clp(value?: number) {
-  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(Math.round(value || 0));
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Math.round(value || 0));
 }
 
 function dateCl(value?: string) {
@@ -46,30 +49,68 @@ function stepState(status: string, index: number) {
   return 'locked';
 }
 
+function paymentIdFromSearch(params: URLSearchParams) {
+  return params.get('payment_id') || params.get('collection_id') || params.get('id') || '';
+}
+
+function looksLikePaidReturn(params: URLSearchParams) {
+  const status = `${params.get('payment_status') || ''} ${params.get('status') || ''} ${params.get('collection_status') || ''}`.toLowerCase();
+  return status.includes('success') || status.includes('approved');
+}
+
 export default function OrderTrackingPage() {
   const params = useParams<{ token: string }>();
+  const searchParams = useSearchParams();
   const token = params?.token || '';
   const [data, setData] = useState<OrderStatusResponse | null>(null);
   const [loading, setLoading] = useState(true);
+  const [syncingPayment, setSyncingPayment] = useState(false);
+  const [syncMessage, setSyncMessage] = useState('');
+  const verifiedRef = useRef(false);
 
   useEffect(() => {
     let alive = true;
+    const paymentId = paymentIdFromSearch(searchParams);
+    const shouldVerify = Boolean(paymentId && looksLikePaidReturn(searchParams) && !verifiedRef.current);
+
+    async function confirmPaymentReturn() {
+      if (!shouldVerify) return;
+      verifiedRef.current = true;
+      setSyncingPayment(true);
+      setSyncMessage('Sincronizando pago aprobado con Mercado Pago…');
+      const res = await fetch('/api/orders/confirm-payment', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ token, payment_id: paymentId }),
+        cache: 'no-store',
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error || 'No se pudo sincronizar el pago.');
+      setSyncMessage(json.recovered ? 'Pago recuperado y pedido registrado.' : 'Pago confirmado y pedido actualizado.');
+    }
+
     async function load() {
       setLoading(true);
       try {
+        await confirmPaymentReturn().catch((error) => {
+          if (alive) setSyncMessage(error instanceof Error ? error.message : 'No se pudo sincronizar el pago.');
+        });
         const res = await fetch(`/api/orders/status?token=${encodeURIComponent(token)}`, { cache: 'no-store' });
         const json = await res.json() as OrderStatusResponse;
         if (alive) setData(json);
       } catch {
         if (alive) setData({ id: '', status: 'error', publicStatus: 'No disponible', closed: false, createdAt: '', error: 'No se pudo cargar el pedido.' });
       } finally {
-        if (alive) setLoading(false);
+        if (alive) {
+          setLoading(false);
+          setSyncingPayment(false);
+        }
       }
     }
     void load();
     const id = setInterval(load, 30000);
     return () => { alive = false; clearInterval(id); };
-  }, [token]);
+  }, [token, searchParams]);
 
   const steps = useMemo(() => [
     { label: 'Pago', icon: ShieldCheck },
@@ -80,16 +121,22 @@ export default function OrderTrackingPage() {
 
   return (
     <main className="min-h-screen overflow-hidden bg-[#050403] px-4 py-6 text-white">
-      <style>{`@keyframes pulseTrack{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.18);opacity:1}}.track-pulse{animation:pulseTrack 1.7s ease-in-out infinite}`}</style>
+      <style>{`@keyframes pulseTrack{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.18);opacity:1}}.track-pulse{animation:pulseTrack 1.7s ease-in-out infinite}@keyframes truckDrive{0%{transform:translateX(-30%)}45%{transform:translateX(55%)}100%{transform:translateX(145%)}}.truck-drive{animation:truckDrive 5.2s ease-in-out infinite}@keyframes roadMove{from{background-position-x:0}to{background-position-x:120px}}.road-move{animation:roadMove 1.2s linear infinite}`}</style>
       <section className="mx-auto max-w-5xl">
         <div className="relative overflow-hidden rounded-[2rem] border border-yellow-300/20 bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,.20),transparent_22rem),linear-gradient(145deg,#0b0a08,#050403)] p-5 shadow-[0_40px_120px_rgba(0,0,0,.7)] md:p-8">
           <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-yellow-300/20 blur-3xl" />
           <div className="relative z-10">
             <p className="text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300">Soluciones Fabrick · seguimiento</p>
             <h1 className="mt-4 text-4xl font-black leading-[0.95] tracking-[-0.06em] md:text-7xl">Estado de tu pedido</h1>
-            <p className="mt-4 max-w-2xl text-sm leading-7 text-white/58">Link privado y temporal para revisar el avance de compra, preparación, despacho y entrega.</p>
+            <p className="mt-4 max-w-2xl text-sm leading-7 text-white/58">Link privado para revisar compra, preparación, despacho y entrega.</p>
           </div>
         </div>
+
+        {(syncingPayment || syncMessage) && (
+          <div className={`mt-5 rounded-[1.5rem] border p-4 text-sm ${syncMessage.toLowerCase().includes('no se pudo') ? 'border-red-400/25 bg-red-500/10 text-red-100' : 'border-emerald-300/25 bg-emerald-500/10 text-emerald-100'}`}>
+            {syncingPayment ? <Clock className="mr-2 inline h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 inline h-4 w-4" />}{syncMessage || 'Sincronizando pago…'}
+          </div>
+        )}
 
         {loading ? (
           <div className="mt-5 rounded-[2rem] border border-white/10 bg-white/[0.04] p-8 text-center text-white/60"><Clock className="mx-auto mb-3 h-8 w-8 animate-spin text-yellow-300" />Cargando estado…</div>
@@ -106,6 +153,8 @@ export default function OrderTrackingPage() {
                 </div>
                 <span className={`rounded-full border px-4 py-2 text-xs font-black uppercase tracking-[0.18em] ${data.closed ? 'border-emerald-300/30 bg-emerald-300/10 text-emerald-200' : 'border-yellow-300/30 bg-yellow-300/10 text-yellow-200'}`}>{data.publicStatus}</span>
               </div>
+
+              <CityTruckAnimation />
 
               <div className="mt-8 grid gap-4 sm:grid-cols-4">
                 {steps.map((step, i) => {
@@ -124,6 +173,7 @@ export default function OrderTrackingPage() {
               </div>
 
               <div className="mt-6 rounded-[1.5rem] border border-yellow-300/20 bg-yellow-300/10 p-4 text-sm leading-7 text-yellow-50/80">{data.message || 'Seguimiento activo.'}</div>
+              <CustomerAccountInvite token={token} order={data} />
             </section>
 
             <aside className="rounded-[2rem] border border-white/10 bg-black/35 p-5 md:p-6">
@@ -152,6 +202,21 @@ export default function OrderTrackingPage() {
       </section>
     </main>
   );
+}
+
+function CityTruckAnimation() {
+  return <div className="relative mt-7 overflow-hidden rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(250,204,21,.10),rgba(255,255,255,.025))] p-4">
+    <div className="relative h-36 overflow-hidden rounded-[1.3rem] bg-[linear-gradient(180deg,#12100b,#050505)]">
+      <div className="absolute bottom-14 left-5 h-16 w-10 rounded-t-xl bg-yellow-300/10" />
+      <div className="absolute bottom-14 left-20 h-24 w-14 rounded-t-xl bg-white/8" />
+      <div className="absolute bottom-14 left-40 h-20 w-12 rounded-t-xl bg-yellow-300/10" />
+      <div className="absolute bottom-14 right-12 h-28 w-16 rounded-t-xl bg-white/8" />
+      <div className="road-move absolute bottom-8 h-8 w-full bg-[repeating-linear-gradient(90deg,rgba(250,204,21,.55)_0_18px,transparent_18px_42px)] opacity-80" />
+      <div className="absolute bottom-0 h-10 w-full bg-black/60" />
+      <div className="truck-drive absolute bottom-8 left-0 text-5xl drop-shadow-[0_12px_28px_rgba(250,204,21,.45)]">🚚</div>
+    </div>
+    <p className="mt-3 text-xs leading-6 text-white/50"><Truck className="mr-2 inline h-4 w-4 text-yellow-300" />Tu pedido avanza por etapas: pago, preparación, ruta y entrega.</p>
+  </div>;
 }
 
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {

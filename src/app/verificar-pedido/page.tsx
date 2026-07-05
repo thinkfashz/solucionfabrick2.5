@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { CheckCircle2, Clock, MapPin, PackageCheck, Search, Truck, XCircle } from 'lucide-react';
 

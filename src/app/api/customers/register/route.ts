@@ -15,6 +15,17 @@ type SchemaPrepareResult = {
   message?: string;
 };
 
+type CustomerPayload = {
+  order_id: string;
+  last_order_id: string;
+  name: string;
+  email: string;
+  phone: string;
+  password_hash: string;
+  status: 'active';
+  updated_at: string;
+};
+
 function cleanText(value: unknown, maxLength: number) {
   if (typeof value !== 'string') return '';
   return value.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, maxLength);
@@ -24,6 +35,11 @@ function hashPassword(password: string) {
   const salt = randomBytes(16).toString('hex');
   const hash = scryptSync(password, salt, 64).toString('hex');
   return `scrypt:${salt}:${hash}`;
+}
+
+function sqlLiteral(value: unknown) {
+  if (value === null || value === undefined) return 'NULL';
+  return `'${String(value).replace(/'/g, "''")}'`;
 }
 
 async function readBody(request: Request) {
@@ -73,6 +89,8 @@ async function ensureCustomerAccountsSchema() {
     ALTER TABLE public.customer_accounts ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
     CREATE UNIQUE INDEX IF NOT EXISTS customer_accounts_email_idx ON public.customer_accounts (lower(email));
     CREATE INDEX IF NOT EXISTS customer_accounts_order_idx ON public.customer_accounts (order_id) WHERE order_id IS NOT NULL;
+    ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS customer_account_email text;
+    ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS customer_registered_at timestamptz;
   `);
 }
 
@@ -84,10 +102,36 @@ async function loadOrder(orderId: string) {
 
 async function findExistingCustomer(email: string) {
   try {
-    const { data } = await insforgeAdmin.database.from('customer_accounts').select('id').eq('email', email).limit(1);
+    const { data } = await insforgeAdmin.database.from('customer_accounts').select('id, email').eq('email', email).limit(1);
     return Array.isArray(data) ? (data[0] as { id?: string | number } | undefined)?.id : undefined;
   } catch {
     return undefined;
+  }
+}
+
+async function saveCustomerViaSql(payload: CustomerPayload, createdAt?: string) {
+  const created = createdAt || payload.updated_at;
+  return rawSql(`
+    INSERT INTO public.customer_accounts (order_id, last_order_id, name, email, phone, password_hash, status, created_at, updated_at)
+    VALUES (${sqlLiteral(payload.order_id)}, ${sqlLiteral(payload.last_order_id)}, ${sqlLiteral(payload.name)}, ${sqlLiteral(payload.email)}, ${sqlLiteral(payload.phone)}, ${sqlLiteral(payload.password_hash)}, 'active', ${sqlLiteral(created)}, ${sqlLiteral(payload.updated_at)})
+    ON CONFLICT ((lower(email))) DO UPDATE SET
+      last_order_id = EXCLUDED.last_order_id,
+      name = EXCLUDED.name,
+      phone = EXCLUDED.phone,
+      password_hash = EXCLUDED.password_hash,
+      status = 'active',
+      updated_at = EXCLUDED.updated_at;
+  `);
+}
+
+async function markOrderCustomer(orderId: string, email: string) {
+  try {
+    await insforgeAdmin.database.from('orders').update({
+      customer_account_email: email,
+      customer_registered_at: new Date().toISOString(),
+    }).eq('id', orderId);
+  } catch {
+    // Optional columns are created by setup; account creation must not fail for this.
   }
 }
 
@@ -120,13 +164,14 @@ export async function POST(request: Request) {
     if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return NextResponse.json({ error: 'Correo inválido.' }, { status: 422 });
     if (phone.replace(/\D/g, '').length < 8) return NextResponse.json({ error: 'Ingresa un celular válido.' }, { status: 422 });
     if (password.length < 8) return NextResponse.json({ error: 'La contraseña debe tener mínimo 8 caracteres.' }, { status: 422 });
+    if (!/[A-Za-z]/.test(password) || !/\d/.test(password)) return NextResponse.json({ error: 'Usa letras y números en la contraseña.' }, { status: 422 });
     if (password !== confirmPassword) return NextResponse.json({ error: 'Las contraseñas no coinciden.' }, { status: 422 });
 
     schema = await ensureCustomerAccountsSchema();
 
     const now = new Date().toISOString();
     const password_hash = hashPassword(password);
-    const payload = {
+    const payload: CustomerPayload = {
       order_id: parsed.orderId,
       last_order_id: parsed.orderId,
       name,
@@ -140,15 +185,23 @@ export async function POST(request: Request) {
     const existingId = await findExistingCustomer(email);
     if (existingId) {
       const { error } = await insforgeAdmin.database.from('customer_accounts').update(payload).eq('id', existingId);
-      if (error) throw new Error(error.message);
+      if (error) {
+        const fallback = await saveCustomerViaSql(payload);
+        if (!fallback.ok) throw new Error(`${error.message}. ${fallback.message || ''}`);
+      }
+      await markOrderCustomer(parsed.orderId, email);
       return NextResponse.json({ ok: true, mode: 'updated', message: 'Usuario actualizado. Ya puedes usar este correo para seguimiento.' });
     }
 
     const { error } = await insforgeAdmin.database.from('customer_accounts').insert([{ ...payload, created_at: now }]);
     if (error) {
-      return NextResponse.json({ error: `No se pudo crear usuario: ${error.message}.${customerTableHint(schema)}` }, { status: 500 });
+      const fallback = await saveCustomerViaSql(payload, now);
+      if (!fallback.ok) {
+        return NextResponse.json({ error: `No se pudo crear usuario: ${error.message}.${customerTableHint(schema)} ${fallback.message || ''}` }, { status: 500 });
+      }
     }
 
+    await markOrderCustomer(parsed.orderId, email);
     return NextResponse.json({ ok: true, mode: 'created', message: 'Usuario creado. Podrás seguir tus compras con este correo.' }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : `No se pudo crear el usuario.${customerTableHint(schema)}` }, { status: 500 });

@@ -21,6 +21,8 @@ const EXPECTED_TABLES = [
   'leads-order-link',
   'crm_leads',
   'customer_accounts',
+  'order-shipping-columns',
+  'deliveries',
   'posts',
   'projects',
   'cupones',
@@ -61,7 +63,7 @@ async function runRawSql(baseUrl: string, apiKey: string, query: string): Promis
 
 function loadSqlBundle() {
   const scriptsDir = join(process.cwd(), 'scripts');
-  const files = ['create-tables.sql', 'create-sales-tables.sql'];
+  const files = ['create-tables.sql', 'create-sales-tables.sql', 'create-shipping-tables.sql'];
   return files.map((file) => {
     const path = join(scriptsDir, file);
     if (!existsSync(path)) return '';
@@ -97,7 +99,7 @@ export async function POST(request: NextRequest) {
       sql = loadSqlBundle();
       if (!sql.trim()) throw new Error('No hay SQL cargado.');
     } catch (err) {
-      return NextResponse.json({ error: 'No se pudieron leer scripts/create-tables.sql o scripts/create-sales-tables.sql.', code: 'SQL_FILE_NOT_FOUND', detail: err instanceof Error ? err.message : String(err) }, { status: 500 });
+      return NextResponse.json({ error: 'No se pudieron leer scripts/create-tables.sql, scripts/create-sales-tables.sql o scripts/create-shipping-tables.sql.', code: 'SQL_FILE_NOT_FOUND', detail: err instanceof Error ? err.message : String(err) }, { status: 500 });
     }
 
     const blocks = parseSqlBlocks(sql);

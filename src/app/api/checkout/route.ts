@@ -9,6 +9,7 @@ import { CheckoutHydrationError, hydrateCheckoutItemsWithShipping } from '@/lib/
 import { getClientIp } from '@/lib/adminAuth';
 import { checkPersistentRateLimit } from '@/lib/adminRateLimitStore';
 import { campaignBusyHeaders, getCampaignMode, publicCheckoutEnabled } from '@/lib/campaignMode';
+import { syncOrderToSalesPipelineAsync } from '@/lib/orders/salesPipeline';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -119,6 +120,55 @@ export async function POST(request: Request) {
     const trackingToken = createOrderTrackingToken(id);
     const trackingUrl = `${getAppBaseUrl()}/pedido/${trackingToken}`;
 
+    const orderRow = {
+      id,
+      customer_name: safeClient.nombre,
+      customer_email: safeClient.email,
+      customer_phone: safeClient.telefono ?? null,
+      region: safeBody.region,
+      shipping_address: safeBody.shippingAddress ?? null,
+      items: hydratedItems,
+      subtotal: resumen.subtotal,
+      tax: resumen.iva,
+      shipping_fee: resumen.despacho,
+      total: resumen.total,
+      currency: resumen.moneda,
+      status: 'pendiente_pago',
+      created_at: createdAt,
+      updated_at: createdAt,
+    };
+
+    const { error: insertError } = await insforgeAdmin.database.from('orders').insert([orderRow]);
+    let persistence: 'db' | 'existing' = 'db';
+
+    if (insertError) {
+      if (!isDuplicateError(insertError)) {
+        return NextResponse.json({
+          error: `No se pudo registrar la orden antes del pago: ${insertError.message}. No se abrió Mercado Pago para evitar pagos sin pedido.`,
+          code: 'ORDER_PERSISTENCE_FAILED',
+        }, { status: 500 });
+      }
+
+      const existing = await loadExistingOrder(id);
+      if (!existing) return NextResponse.json({ error: 'La orden ya existe, pero no se pudo recuperar.' }, { status: 409 });
+      const existingTotal = Number(existing.total ?? 0);
+      if (Number.isFinite(existingTotal) && existingTotal > 0 && existingTotal !== resumen.total) {
+        return NextResponse.json({ error: 'La llave de orden ya fue usada con otro total.' }, { status: 409 });
+      }
+      persistence = 'existing';
+    } else {
+      dispatchHookAsync('order.created', { id, customer: { name: safeClient.nombre, email: safeClient.email, phone: safeClient.telefono ?? null }, region: safeBody.region, items: hydratedItems, summary: resumen, status: orderRow.status });
+      syncOrderToSalesPipelineAsync(orderRow, {
+        stage: 'Checkout iniciado',
+        probability: 45,
+        attended: false,
+        nextAction: 'Confirmar pago y preparar despacho',
+      });
+    }
+
+    const preference = await createMercadoPagoPreference({ orderId: id, payload: { ...safeBody, items: hydratedItems, paymentMethod: 'mercadopago' }, summary: resumen });
+    const payment = { provider: 'mercado_pago', preferenceId: preference.id, checkoutUrl: preference.init_point || preference.sandbox_init_point || null };
+
     const orden = {
       id,
       cliente: safeClient,
@@ -134,49 +184,8 @@ export async function POST(request: Request) {
       trackingUrl,
       creadoEn: createdAt,
     };
-    let persisted = false;
-    let persistenceWarning: string | null = null;
-    let duplicateOrder = false;
 
-    const { error: insertError } = await insforgeAdmin.database.from('orders').insert([{
-      id: orden.id,
-      customer_name: safeClient.nombre,
-      customer_email: safeClient.email,
-      customer_phone: safeClient.telefono ?? null,
-      region: safeBody.region,
-      shipping_address: safeBody.shippingAddress ?? null,
-      items: hydratedItems,
-      subtotal: resumen.subtotal,
-      tax: resumen.iva,
-      shipping_fee: resumen.despacho,
-      total: resumen.total,
-      currency: resumen.moneda,
-      status: orden.estado,
-      created_at: orden.creadoEn,
-      updated_at: orden.creadoEn,
-    }]);
-
-    if (insertError) {
-      duplicateOrder = isDuplicateError(insertError);
-      if (!duplicateOrder) persistenceWarning = `No se pudo persistir en DB (orders): ${insertError.message}`;
-    } else {
-      persisted = true;
-      dispatchHookAsync('order.created', { id: orden.id, customer: { name: safeClient.nombre, email: safeClient.email, phone: safeClient.telefono ?? null }, region: safeBody.region, items: hydratedItems, summary: resumen, status: orden.estado });
-    }
-
-    if (duplicateOrder) {
-      const existing = await loadExistingOrder(orden.id);
-      if (!existing) return NextResponse.json({ error: 'La orden ya existe, pero no se pudo recuperar.' }, { status: 409 });
-      const existingTotal = Number(existing.total ?? 0);
-      if (Number.isFinite(existingTotal) && existingTotal > 0 && existingTotal !== resumen.total) {
-        return NextResponse.json({ error: 'La llave de orden ya fue usada con otro total.' }, { status: 409 });
-      }
-    }
-
-    const preference = await createMercadoPagoPreference({ orderId: orden.id, payload: { ...safeBody, items: hydratedItems, paymentMethod: 'mercadopago' }, summary: resumen });
-    const payment = { provider: 'mercado_pago', preferenceId: preference.id, checkoutUrl: preference.init_point || preference.sandbox_init_point || null };
-
-    return NextResponse.json({ data: orden, persistence: persisted ? 'db' : duplicateOrder ? 'existing' : 'memory', warning: persistenceWarning, payment, shippingMode: shippingConfig.mode, notification: { ok: true, deferred: true, reason: 'El correo y la boleta se enviarán solo cuando Mercado Pago confirme pago aprobado o rechazado por webhook.' } }, { status: persisted ? 201 : 200 });
+    return NextResponse.json({ data: orden, persistence, payment, shippingMode: shippingConfig.mode, notification: { ok: true, deferred: true, reason: 'Orden registrada. El correo, boleta, CRM y dashboard se actualizan al aprobarse el pago.' } }, { status: persistence === 'db' ? 201 : 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Error interno al procesar el checkout.';
     return NextResponse.json({ error: message }, { status: 500 });

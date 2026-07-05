@@ -4,9 +4,28 @@
 
 import React, { useEffect, useMemo, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
-import { ArrowLeft, ArrowRight, BadgeCheck, Building2, CheckCircle2, Copy, CreditCard, Loader2, Lock, Mail, MapPin, Navigation, PackageCheck, Phone, ShieldCheck, User } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  BadgeCheck,
+  Building2,
+  CheckCircle2,
+  Copy,
+  CreditCard,
+  Loader2,
+  Lock,
+  Mail,
+  MapPin,
+  Navigation,
+  PackageCheck,
+  Phone,
+  ShieldCheck,
+  Truck,
+  User,
+} from 'lucide-react';
 import { CART_SESSION_KEY } from '@/context/CartContext';
 import { calculateCheckoutSummary } from '@/lib/checkout';
+import type { ProductShippingMode } from '@/lib/shipping';
 
 interface StoredCartItem {
   product: {
@@ -16,6 +35,11 @@ interface StoredCartItem {
     image_url?: string;
     category_id?: string;
     discount_percentage?: number;
+    shipping_mode?: ProductShippingMode | null;
+    shipping_fee?: number | null;
+    shipping_weight_kg?: number | null;
+    shipping_dimensions?: string | null;
+    shipping_region_overrides?: Record<string, number> | null;
   };
   quantity: number;
 }
@@ -69,12 +93,18 @@ const REGIONS = [
 ];
 
 function formatCLP(value: number) {
-  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP' }).format(Math.round(value || 0));
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Math.round(value || 0));
 }
 
 function cleanPrice(value: string | null, fallback = 0) {
   const number = Number(String(value || '').replace(/[^0-9.]/g, ''));
   return Number.isFinite(number) && number > 0 ? number : fallback;
+}
+
+function nullableNumber(value: unknown) {
+  if (value === null || value === undefined || value === '') return null;
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : null;
 }
 
 function copyToClipboard(value: string) {
@@ -93,6 +123,12 @@ function guessRegionFromCoords(latitude: number, longitude: number) {
   if (latitude < -36.2 && latitude > -38.8 && longitude < -71 && longitude > -74) return 'VIII';
   if (latitude < -35.8 && latitude > -37.4 && longitude < -70 && longitude > -73.2) return 'XVI';
   return '';
+}
+
+function resolveCheckoutShippingMode(product: StoredCartItem['product']): ProductShippingMode {
+  if (product.shipping_fee !== null && product.shipping_fee !== undefined && Number.isFinite(Number(product.shipping_fee))) return 'fixed';
+  if (product.shipping_mode && product.shipping_mode !== 'inherit') return product.shipping_mode;
+  return 'free';
 }
 
 export default function CheckoutApp() {
@@ -128,6 +164,7 @@ export default function CheckoutApp() {
       }
     } catch {}
 
+    const fallbackShippingFee = nullableNumber(searchParams.get('shippingFee'));
     setItems([
       {
         product: {
@@ -136,6 +173,8 @@ export default function CheckoutApp() {
           price: cleanPrice(searchParams.get('price'), 0),
           image_url: searchParams.get('img') || 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?q=80&w=1200&auto=format&fit=crop',
           category_id: searchParams.get('category') || 'Producto',
+          shipping_fee: fallbackShippingFee,
+          shipping_mode: fallbackShippingFee !== null ? 'fixed' : 'free',
         },
         quantity: 1,
       },
@@ -163,6 +202,11 @@ export default function CheckoutApp() {
     cantidad: item.quantity,
     precioUnitario: item.product.price * (1 - (item.product.discount_percentage || 0) / 100),
     nombre: item.product.name,
+    shippingMode: resolveCheckoutShippingMode(item.product),
+    shippingFee: item.product.shipping_fee ?? null,
+    shippingWeightKg: item.product.shipping_weight_kg ?? null,
+    shippingDimensions: item.product.shipping_dimensions ?? null,
+    shippingRegionOverrides: item.product.shipping_region_overrides ?? null,
   })), [items]);
 
   const summary = useMemo(() => calculateCheckoutSummary(lineItems, region), [lineItems, region]);
@@ -192,11 +236,9 @@ export default function CheckoutApp() {
     navigator.geolocation.getCurrentPosition(
       (position) => {
         const { latitude, longitude, accuracy } = position.coords;
-        const lat = latitude.toFixed(6);
-        const lng = longitude.toFixed(6);
         const guessedRegion = guessRegionFromCoords(latitude, longitude);
         if (guessedRegion) setRegion(guessedRegion);
-        setAddress(`Ubicación GPS: ${lat}, ${lng} · precisión aprox. ${Math.round(accuracy)} m. Completa calle, número, depto/comuna.`);
+        setAddress(`Ubicación GPS: ${latitude.toFixed(6)}, ${longitude.toFixed(6)} · precisión aprox. ${Math.round(accuracy)} m. Completa calle, número, depto/comuna.`);
         setGpsMessage('Ubicación GPS agregada. Completa calle/número para evitar errores de despacho.');
         setGpsLoading(false);
       },
@@ -259,7 +301,7 @@ export default function CheckoutApp() {
             <div className="mt-6 rounded-[1.5rem] border border-white/10 bg-black/35 p-4"><p className="text-xs uppercase tracking-[0.25em] text-yellow-300">Código de orden</p><div className="mt-2 flex flex-wrap items-center gap-3"><b className="text-2xl">{order.id}</b><button onClick={() => void copyToClipboard(order.id)} className="rounded-xl border border-white/10 px-3 py-2 text-sm"><Copy className="mr-2 inline h-4 w-4" />Copiar</button></div></div>
             {order.trackingUrl && <a href={order.trackingUrl} className="mt-5 inline-flex rounded-2xl bg-yellow-300 px-5 py-3 font-black text-black">Ver estado del pedido</a>}
             {method === 'transfer' && <BankDetails />}
-            {paymentUrl && <a href={paymentUrl} className="mt-5 ml-3 inline-flex rounded-2xl border border-white/10 px-5 py-3 font-black text-white">Ir a Mercado Pago</a>}
+            {paymentUrl && <a href={paymentUrl} className="ml-0 mt-5 inline-flex rounded-2xl border border-white/10 px-5 py-3 font-black text-white sm:ml-3">Ir a Mercado Pago</a>}
           </div>
           <OrderSummary items={items} summary={summary} />
         </div>
@@ -281,10 +323,10 @@ export default function CheckoutApp() {
             {step === 2 && <FormStep name={name} setName={setName} email={email} setEmail={setEmail} phone={phone} setPhone={setPhone} region={region} setRegion={setRegion} address={address} setAddress={setAddress} formValid={formValid} onBack={() => setStep(1)} onNext={() => setStep(3)} onUseGps={useGpsLocation} gpsLoading={gpsLoading} gpsMessage={gpsMessage} />}
             {step === 3 && <PaymentStep method={method} setMethod={setMethod} mpStatus={mpStatus} cardName={cardName} setCardName={setCardName} cardNumber={cardNumber} setCardNumber={setCardNumber} cardExpiry={cardExpiry} setCardExpiry={setCardExpiry} cardCvv={cardCvv} setCardCvv={setCardCvv} loading={loading} canSubmit={canSubmit} error={error} onBack={() => setStep(2)} onSubmit={() => void submitOrder()} />}
           </div>
-          <div className="border-t border-white/10 bg-black/30 p-5 lg:border-l lg:border-t-0 sm:p-8">
+          <div className="border-t border-white/10 bg-black/30 p-5 sm:p-8 lg:border-l lg:border-t-0">
             <div className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#070707]">
               {product?.image_url && <img src={product.image_url} alt={product.name} className="h-60 w-full object-cover" loading="eager" />}
-              <div className="p-5"><p className="text-xs uppercase tracking-[0.25em] text-yellow-300">Producto seleccionado</p><h2 className="mt-2 text-2xl font-black">{product?.name || 'Producto'}</h2><p className="mt-2 text-white/45">{itemCount} unidad(es) · despacho coordinado por Soluciones Fabrick.</p></div>
+              <div className="p-5"><p className="text-xs uppercase tracking-[0.25em] text-yellow-300">Producto seleccionado</p><h2 className="mt-2 text-2xl font-black">{product?.name || 'Producto'}</h2><p className="mt-2 text-white/45">{itemCount} unidad(es) · despacho según configuración del producto.</p></div>
             </div>
             <OrderSummary items={items} summary={summary} />
           </div>
@@ -346,7 +388,7 @@ function CopyBox({ label, value }: { label: string; value: string }) {
 }
 
 function OrderSummary({ items, summary, compact }: { items: StoredCartItem[]; summary: ReturnType<typeof calculateCheckoutSummary>; compact?: boolean }) {
-  return <div className={`${compact ? '' : 'mt-5'} rounded-[1.6rem] border border-white/10 bg-black/35 p-5`}><h3 className="text-xl font-black">Resumen</h3><div className="mt-4 space-y-3">{items.map((item) => <div key={item.product.id} className="flex gap-3 text-sm"><span className="flex-1 text-white/65">{item.quantity} × {item.product.name}</span><b>{formatCLP(item.product.price * item.quantity)}</b></div>)}</div><div className="mt-4 space-y-2 border-t border-white/10 pt-4 text-sm"><Row label="Subtotal" value={formatCLP(summary.subtotal)} /><Row label="IVA referencial" value={formatCLP(summary.iva)} /><Row label="Despacho" value={formatCLP(summary.despacho)} /><Row label="Total compra" value={formatCLP(summary.total)} strong /></div></div>;
+  return <div className={`${compact ? '' : 'mt-5'} rounded-[1.6rem] border border-white/10 bg-black/35 p-5`}><h3 className="text-xl font-black">Resumen</h3><div className="mt-4 space-y-3">{items.map((item) => <div key={item.product.id} className="flex gap-3 text-sm"><span className="flex-1 text-white/65">{item.quantity} × {item.product.name}</span><b>{formatCLP(item.product.price * item.quantity)}</b></div>)}</div><div className="mt-4 space-y-2 border-t border-white/10 pt-4 text-sm"><Row label="Subtotal" value={formatCLP(summary.subtotal)} /><Row label="IVA referencial" value={formatCLP(summary.iva)} /><Row label="Despacho" value={summary.despacho > 0 ? formatCLP(summary.despacho) : 'Sin costo'} /><Row label="Total compra" value={formatCLP(summary.total)} strong /></div><div className="mt-3 flex items-start gap-2 rounded-2xl border border-white/10 bg-white/[0.03] p-3 text-xs leading-5 text-white/45"><Truck className="mt-0.5 h-4 w-4 text-yellow-300" />El despacho usa el valor configurado en el producto. Si el producto no tiene precio de despacho, se muestra sin costo.</div></div>;
 }
 
 function Row({ label, value, strong }: { label: string; value: string; strong?: boolean }) {

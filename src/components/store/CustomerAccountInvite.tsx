@@ -1,13 +1,22 @@
 'use client';
 
-import React, { useState } from 'react';
-import { Lock, Mail, Phone, User } from 'lucide-react';
+import React, { useMemo, useState } from 'react';
+import { CheckCircle2, Lock, Mail, Phone, ShieldCheck, User, XCircle } from 'lucide-react';
 
 type OrderLike = {
   customerName?: string;
   customerEmail?: string;
   customerPhone?: string;
 };
+
+function passwordScore(password: string) {
+  let score = 0;
+  if (password.length >= 8) score += 1;
+  if (/[A-Za-z]/.test(password)) score += 1;
+  if (/\d/.test(password)) score += 1;
+  if (/[^A-Za-z0-9]/.test(password)) score += 1;
+  return score;
+}
 
 export default function CustomerAccountInvite({ token, order }: { token: string; order: OrderLike }) {
   const [name, setName] = useState(order.customerName || '');
@@ -19,11 +28,15 @@ export default function CustomerAccountInvite({ token, order }: { token: string;
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
 
+  const score = useMemo(() => passwordScore(password), [password]);
+  const passwordsMatch = password.length > 0 && password === confirmPassword;
+  const canSubmit = !loading && password.length >= 8 && /[A-Za-z]/.test(password) && /\d/.test(password) && passwordsMatch;
+
   async function submit() {
     setError('');
     setMessage('');
-    if (password !== confirmPassword) {
-      setError('Las contraseñas no coinciden.');
+    if (!canSubmit) {
+      setError('Verifica que la contraseña tenga mínimo 8 caracteres, letras, números y que ambas contraseñas coincidan.');
       return;
     }
     setLoading(true);
@@ -60,10 +73,28 @@ export default function CustomerAccountInvite({ token, order }: { token: string;
       <Field icon={<Lock className="h-4 w-4" />} label="Contraseña" value={password} onChange={setPassword} placeholder="Mínimo 8 caracteres" type="password" />
       <div className="sm:col-span-2"><Field icon={<Lock className="h-4 w-4" />} label="Repetir contraseña" value={confirmPassword} onChange={setConfirmPassword} placeholder="Confirma tu contraseña" type="password" /></div>
     </div>
+
+    <div className="mt-3 rounded-2xl border border-white/10 bg-black/30 p-3 text-xs text-white/55">
+      <div className="mb-2 flex items-center justify-between gap-3">
+        <span className="flex items-center gap-2"><ShieldCheck className="h-4 w-4 text-yellow-300" />Seguridad de contraseña</span>
+        <b className={score >= 3 ? 'text-emerald-300' : 'text-yellow-300'}>{score >= 4 ? 'Alta' : score >= 3 ? 'Correcta' : 'Débil'}</b>
+      </div>
+      <div className="grid gap-1 sm:grid-cols-2">
+        <Rule ok={password.length >= 8} label="Mínimo 8 caracteres" />
+        <Rule ok={/[A-Za-z]/.test(password)} label="Incluye letras" />
+        <Rule ok={/\d/.test(password)} label="Incluye números" />
+        <Rule ok={passwordsMatch} label="Ambas coinciden" />
+      </div>
+    </div>
+
     {error && <p className="mt-3 rounded-2xl border border-red-400/25 bg-red-500/10 p-3 text-sm text-red-100">{error}</p>}
     {message && <p className="mt-3 rounded-2xl border border-emerald-300/25 bg-emerald-500/10 p-3 text-sm text-emerald-100">{message}</p>}
-    <button onClick={submit} disabled={loading} className="mt-4 w-full rounded-2xl bg-yellow-300 px-5 py-4 font-black text-black disabled:opacity-50">{loading ? 'Creando usuario…' : 'Crear usuario y seguir envío'}</button>
+    <button onClick={submit} disabled={!canSubmit} className="mt-4 w-full rounded-2xl bg-yellow-300 px-5 py-4 font-black text-black disabled:opacity-50">{loading ? 'Creando usuario…' : 'Crear usuario y seguir envío'}</button>
   </div>;
+}
+
+function Rule({ ok, label }: { ok: boolean; label: string }) {
+  return <span className={`flex items-center gap-1.5 ${ok ? 'text-emerald-300' : 'text-white/35'}`}>{ok ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}{label}</span>;
 }
 
 function Field({ label, value, onChange, placeholder, icon, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; icon?: React.ReactNode; type?: string }) {

@@ -40,8 +40,8 @@ function firstName(value: unknown) {
 }
 
 function statusMessage(status: OrderStatus, trackingNumber?: string, carrier?: string) {
-  if (status === 'confirmado') return 'Tu compra fue confirmada y ya la estamos revisando para preparar el despacho.';
-  if (status === 'en_preparacion') return 'Tu pedido está en preparación. Estamos alistando los productos y coordinando el despacho.';
+  if (status === 'confirmado') return 'Tu compra fue confirmada. Ya tenemos el pago registrado y estamos coordinando la preparación.';
+  if (status === 'en_preparacion') return 'Tu pedido pasó a preparación. Estamos alistando productos, validando despacho y preparando la entrega.';
   if (status === 'enviado') return `Tu pedido ya fue enviado.${carrier ? ` Transportista: ${carrier}.` : ''}${trackingNumber ? ` Número de seguimiento: ${trackingNumber}.` : ''}`;
   if (status === 'entregado') return 'Tu pedido fue marcado como entregado. Gracias por confiar en Soluciones Fabrick.';
   if (status === 'cancelado') return 'Tu pedido fue cancelado. Si tienes dudas, responde este correo para ayudarte.';
@@ -60,6 +60,23 @@ function itemsHtml(order: OrderEmailRow) {
   `).join('')}</table>`;
 }
 
+function stepChip(label: string, active: boolean, done: boolean) {
+  const bg = done ? '#22c55e' : active ? '#facc15' : '#27272a';
+  const color = done || active ? '#050505' : '#a1a1aa';
+  return `<td style="padding:0 4px 8px 0;"><div style="border-radius:999px;background:${bg};color:${color};padding:8px 10px;text-align:center;font-size:11px;font-weight:900;white-space:nowrap;">${label}</div></td>`;
+}
+
+function statusSteps(status: OrderStatus) {
+  const order: OrderStatus[] = ['confirmado', 'en_preparacion', 'enviado', 'entregado'];
+  const index = Math.max(0, order.indexOf(status));
+  return `<table style="width:100%;border-collapse:collapse;margin:20px 0 4px;"><tr>
+    ${stepChip('Pago confirmado', status === 'confirmado', index > 0)}
+    ${stepChip('Preparación', status === 'en_preparacion', index > 1)}
+    ${stepChip('En camino', status === 'enviado', index > 2)}
+    ${stepChip('Entregado', status === 'entregado', status === 'entregado')}
+  </tr></table>`;
+}
+
 export async function sendOrderStatusUpdateEmail(params: {
   order: OrderEmailRow;
   status: OrderStatus;
@@ -67,6 +84,7 @@ export async function sendOrderStatusUpdateEmail(params: {
   carrier?: string;
   trackingUrl?: string;
   note?: string;
+  dispatchCode?: string;
 }) {
   const email = str(params.order.customer_email || params.order.cliente_email).toLowerCase();
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
@@ -77,6 +95,7 @@ export async function sendOrderStatusUpdateEmail(params: {
   const label = ORDER_STATUS_LABELS[status];
   const orderId = str(params.order.id, 'pedido');
   const total = num(params.order.total, 0);
+  const dispatchCode = str(params.dispatchCode || params.order.dispatch_code || params.order.codigo_despacho, 'Pendiente');
   const trackingButton = params.trackingUrl
     ? `<a href="${escapeHtml(params.trackingUrl)}" style="display:inline-block;margin-top:18px;background:#facc15;color:#050505;text-decoration:none;font-weight:900;border-radius:999px;padding:14px 20px;letter-spacing:.08em;text-transform:uppercase;">Ver seguimiento</a>`
     : '';
@@ -88,23 +107,29 @@ export async function sendOrderStatusUpdateEmail(params: {
       </div>`
     : '';
   const noteBlock = params.note
-    ? `<div style="margin-top:16px;background:#111827;border:1px solid #1f2937;border-radius:16px;padding:14px;color:#dbeafe;font-size:13px;line-height:1.6;"><strong>Nota:</strong> ${escapeHtml(params.note)}</div>`
+    ? `<div style="margin-top:16px;background:#111827;border:1px solid #1f2937;border-radius:16px;padding:14px;color:#dbeafe;font-size:13px;line-height:1.6;"><strong>Nota del despacho:</strong> ${escapeHtml(params.note)}</div>`
     : '';
 
   const html = `<!doctype html><html lang="es"><body style="margin:0;background:#050505;color:#f5f5f5;font-family:Arial,Helvetica,sans-serif;padding:24px;">
     <div style="max-width:720px;margin:auto;background:#0b0b0b;border:1px solid #27272a;border-radius:28px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.45);">
-      <div style="background:radial-gradient(circle at 20% 0%,rgba(250,204,21,.22),transparent 260px),#050504;padding:28px;border-bottom:1px solid #27272a;">
+      <div style="background:radial-gradient(circle at 20% 0%,rgba(250,204,21,.26),transparent 260px),linear-gradient(145deg,#111,#050504);padding:30px;border-bottom:1px solid #27272a;">
         <div style="font-size:12px;letter-spacing:4px;text-transform:uppercase;color:#facc15;font-weight:900;">Soluciones Fabrick</div>
-        <h1 style="font-size:34px;line-height:1.02;margin:14px 0 8px;color:#fff;letter-spacing:-1.4px;">Estado actualizado: ${escapeHtml(label)}</h1>
+        <h1 style="font-size:34px;line-height:1.02;margin:14px 0 8px;color:#fff;letter-spacing:-1.4px;">Tu pedido está ${escapeHtml(label.toLowerCase())}</h1>
         <p style="color:#c8c8c8;line-height:1.6;margin:0;">Hola ${escapeHtml(firstName(params.order.customer_name || params.order.cliente_nombre))}, ${escapeHtml(statusMessage(status, params.trackingNumber, params.carrier))}</p>
       </div>
       <div style="padding:28px;">
-        <div style="background:#111;border:1px solid #27272a;border-radius:20px;padding:18px;margin-bottom:20px;">
-          <p style="margin:0 0 8px;color:#999;font-size:12px;text-transform:uppercase;letter-spacing:2px;">Pedido</p>
-          <div style="font-size:22px;font-weight:900;color:#fff;">${escapeHtml(orderId)}</div>
-          <p style="color:#888;margin:8px 0 0;">Actualizado: <strong style="color:#fff">${escapeHtml(dateCl(new Date().toISOString()))}</strong></p>
-          <p style="color:#888;margin:6px 0 0;">Compra: <strong style="color:#fff">${escapeHtml(dateCl(params.order.created_at))}</strong></p>
+        <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:18px;">
+          <div style="background:#111;border:1px solid #27272a;border-radius:20px;padding:18px;">
+            <p style="margin:0 0 8px;color:#999;font-size:12px;text-transform:uppercase;letter-spacing:2px;">Pedido</p>
+            <div style="font-size:18px;font-weight:900;color:#fff;word-break:break-word;">${escapeHtml(orderId)}</div>
+          </div>
+          <div style="background:#171200;border:1px solid #4a3a00;border-radius:20px;padding:18px;">
+            <p style="margin:0 0 8px;color:#facc15;font-size:12px;text-transform:uppercase;letter-spacing:2px;">Código despacho</p>
+            <div style="font-size:24px;font-weight:900;color:#facc15;letter-spacing:.08em;">${escapeHtml(dispatchCode)}</div>
+          </div>
         </div>
+        ${statusSteps(status)}
+        <p style="color:#888;margin:8px 0 18px;">Actualizado: <strong style="color:#fff">${escapeHtml(dateCl(new Date().toISOString()))}</strong> · Compra: <strong style="color:#fff">${escapeHtml(dateCl(params.order.created_at))}</strong></p>
         ${trackingBlock}
         ${itemsHtml(params.order)}
         <div style="margin-top:18px;text-align:right;color:#d6d6d6;line-height:1.9;">
@@ -112,14 +137,14 @@ export async function sendOrderStatusUpdateEmail(params: {
         </div>
         ${noteBlock}
         ${trackingButton}
-        <p style="margin-top:20px;color:#999;font-size:13px;line-height:1.5;">Este correo fue enviado automáticamente desde el panel de Soluciones Fabrick cuando se actualizó el estado de tu pedido.</p>
+        <p style="margin-top:20px;color:#999;font-size:13px;line-height:1.5;">Usa el código de despacho para verificar el estado de tu pedido en la página de seguimiento. Este correo fue enviado automáticamente desde Soluciones Fabrick.</p>
       </div>
     </div>
   </body></html>`;
 
   return sendEmail({
     to: email,
-    subject: `Estado de tu pedido · ${label} · ${orderId}`,
+    subject: `Pedido ${label} · Código ${dispatchCode} · Soluciones Fabrick`,
     html,
   });
 }

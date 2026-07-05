@@ -8,6 +8,8 @@ import { CheckoutHydrationError, hydrateCheckoutItemsWithShipping } from '@/lib/
 import { getClientIp } from '@/lib/adminAuth';
 import { checkPersistentRateLimit } from '@/lib/adminRateLimitStore';
 import { campaignBusyHeaders, getCampaignMode, publicCheckoutEnabled } from '@/lib/campaignMode';
+import { dispatchHookAsync } from '@/lib/extensionsBus';
+import { syncOrderToSalesPipelineAsync } from '@/lib/orders/salesPipeline';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -112,7 +114,7 @@ export async function POST(request: Request) {
     const trackingToken = createOrderTrackingToken(id);
     const trackingUrl = `${getAppBaseUrl()}/pedido/${trackingToken}`;
 
-    const { error: insertError } = await insforgeAdmin.database.from('orders').insert([{
+    const orderRow = {
       id,
       customer_name: safeClient.nombre,
       customer_email: safeClient.email,
@@ -129,7 +131,9 @@ export async function POST(request: Request) {
       payment_status: 'pending_transfer',
       created_at: now,
       updated_at: now,
-    }]);
+    };
+
+    const { error: insertError } = await insforgeAdmin.database.from('orders').insert([orderRow]);
 
     if (insertError) {
       if (isDuplicateError(insertError)) {
@@ -138,7 +142,15 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: `No se pudo registrar la orden: ${insertError.message}` }, { status: 500 });
     }
 
-    return NextResponse.json({ data: { id, resumen, estado: 'pendiente_transferencia', creadoEn: now, cliente: safeClient, shippingAddress: safeAddress, deliveryEstimate: DELIVERY_WINDOW, trackingToken, trackingUrl }, payment: { method: 'transfer' }, shippingMode: shippingConfig.mode, notification: { ok: true, deferred: true, reason: 'Orden creada sin correo de confirmación. La boleta/correo final se envía solo cuando el pago sea validado.' }, admin: { shippingEstimate } }, { status: 201 });
+    dispatchHookAsync('order.created', { id, customer: { name: safeClient.nombre, email: safeClient.email, phone: safeClient.telefono ?? null }, region: safeBody.region, items: hydratedItems, summary: resumen, status: orderRow.status });
+    syncOrderToSalesPipelineAsync(orderRow, {
+      stage: 'Transferencia pendiente',
+      probability: 55,
+      attended: false,
+      nextAction: 'Validar comprobante y confirmar pago',
+    });
+
+    return NextResponse.json({ data: { id, resumen, estado: 'pendiente_transferencia', creadoEn: now, cliente: safeClient, shippingAddress: safeAddress, deliveryEstimate: DELIVERY_WINDOW, trackingToken, trackingUrl }, payment: { method: 'transfer' }, shippingMode: shippingConfig.mode, notification: { ok: true, deferred: true, reason: 'Orden creada. El CRM y dashboard ya tienen el pedido pendiente; boleta/correo final se envía cuando el pago sea validado.' }, admin: { shippingEstimate } }, { status: 201 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Error interno.';
     return NextResponse.json({ error: message }, { status: 500 });

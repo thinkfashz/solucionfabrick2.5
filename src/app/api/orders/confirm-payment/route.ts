@@ -25,7 +25,7 @@ async function handle(request: Request) {
   if (!paymentId) return NextResponse.json({ error: 'Falta payment_id o collection_id para verificar Mercado Pago.' }, { status: 400 });
 
   const result = await reconcileMercadoPagoPayment(paymentId, parsed.orderId, 'tracking-return');
-  return NextResponse.json({ ok: true, ...result }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
+  return NextResponse.json(result, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
 }
 
 export async function GET(request: Request) {

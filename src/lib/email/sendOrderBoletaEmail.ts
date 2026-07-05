@@ -4,6 +4,7 @@ import { insforge } from '@/lib/insforge';
 import { getResendCredentials } from '@/lib/resendCredentials';
 import { getAppBaseUrl } from '@/lib/mercadopago';
 import { createOrderTrackingToken } from '@/lib/orderTracking';
+import { resolveDispatchCode } from '@/lib/orders/dispatchCode';
 import { generateFabrickBoletaPdfBase64, type BoletaPdfInvoice, type BoletaPdfOrder } from '@/lib/billing/boletaPdf';
 
 export type SendOrderBoletaEmailResult = {
@@ -26,11 +27,11 @@ function safeText(value: unknown, fallback = '-') {
 async function fetchOrder(orderId: string) {
   const { data, error } = await insforge.database
     .from('orders')
-    .select('id, customer_name, customer_email, customer_phone, region, shipping_address, items, subtotal, tax, shipping_fee, total, currency, payment_id, payment_status, status, created_at, updated_at')
+    .select('id, dispatch_code, codigo_despacho, customer_name, customer_email, customer_phone, region, shipping_address, items, subtotal, tax, shipping_fee, total, currency, payment_id, payment_status, status, created_at, updated_at')
     .eq('id', orderId)
     .single();
   if (error || !data) throw new Error(error?.message || `No se encontró la orden ${orderId}.`);
-  return data as BoletaPdfOrder & { status?: string | null };
+  return data as BoletaPdfOrder & { status?: string | null; dispatch_code?: string | null; codigo_despacho?: string | null };
 }
 
 async function fetchInvoice(orderId: string) {
@@ -43,69 +44,76 @@ async function fetchInvoice(orderId: string) {
   return Array.isArray(data) && data.length ? data[0] as BoletaPdfInvoice : null;
 }
 
-function buildHtml(order: BoletaPdfOrder & { status?: string | null }, invoice: BoletaPdfInvoice | null, trackingUrl: string) {
+function buildHtml(order: BoletaPdfOrder & { status?: string | null }, invoice: BoletaPdfInvoice | null, trackingUrl: string, dispatchCode: string) {
   const items = Array.isArray(order.items) ? order.items : [];
   const rows = items.slice(0, 8).map((item) => `
     <tr>
-      <td style="padding:10px 0;border-bottom:1px solid #eee;color:#111;font-weight:700;">${safeText(item.nombre, `Producto ${item.productoId}`)}</td>
-      <td style="padding:10px 0;border-bottom:1px solid #eee;color:#555;text-align:center;">${item.cantidad}</td>
-      <td style="padding:10px 0;border-bottom:1px solid #eee;color:#111;text-align:right;font-weight:700;">${money(Number(item.precioUnitario || 0) * Number(item.cantidad || 1))}</td>
+      <td style="padding:12px 0;border-bottom:1px solid #27272a;color:#f4f4f5;font-weight:800;">${safeText(item.nombre, `Producto ${item.productoId}`)}</td>
+      <td style="padding:12px 0;border-bottom:1px solid #27272a;color:#a1a1aa;text-align:center;">${item.cantidad}</td>
+      <td style="padding:12px 0;border-bottom:1px solid #27272a;color:#fff;text-align:right;font-weight:900;">${money(Number(item.precioUnitario || 0) * Number(item.cantidad || 1))}</td>
     </tr>`).join('');
 
   return `<!doctype html>
 <html>
-  <body style="margin:0;background:#f5f5f5;font-family:Arial,Helvetica,sans-serif;color:#111;">
-    <div style="max-width:680px;margin:0 auto;padding:28px 14px;">
-      <div style="background:#050505;border-radius:28px 28px 0 0;padding:28px;color:#fff;">
+  <body style="margin:0;background:#050505;font-family:Arial,Helvetica,sans-serif;color:#f5f5f5;">
+    <div style="max-width:720px;margin:0 auto;padding:28px 14px;">
+      <div style="background:radial-gradient(circle at 20% 0%,rgba(250,204,21,.26),transparent 260px),linear-gradient(145deg,#111,#050504);border:1px solid #27272a;border-radius:30px 30px 0 0;padding:30px;color:#fff;">
         <div style="display:flex;align-items:center;gap:12px;">
-          <div style="width:46px;height:46px;border-radius:16px;background:#f59e0b;color:#050505;display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:24px;">F</div>
+          <div style="width:48px;height:48px;border-radius:17px;background:#facc15;color:#050505;display:inline-flex;align-items:center;justify-content:center;font-weight:900;font-size:24px;">F</div>
           <div>
-            <div style="font-size:22px;font-weight:900;letter-spacing:-.03em;">FABRICK</div>
-            <div style="font-size:12px;color:#fcd34d;text-transform:uppercase;letter-spacing:.16em;">Pago confirmado</div>
+            <div style="font-size:23px;font-weight:900;letter-spacing:-.04em;">Soluciones Fabrick</div>
+            <div style="font-size:12px;color:#facc15;text-transform:uppercase;letter-spacing:.18em;">Pago confirmado · pedido en preparación</div>
           </div>
         </div>
-        <h1 style="margin:26px 0 10px;font-size:34px;line-height:1;letter-spacing:-.06em;">Tu compra fue confirmada.</h1>
-        <p style="margin:0;color:#d4d4d4;line-height:1.6;font-size:15px;">Adjuntamos tu boleta en PDF con el detalle de la compra. Guarda este correo para respaldo y seguimiento.</p>
+        <h1 style="margin:28px 0 10px;font-size:36px;line-height:1;letter-spacing:-.06em;">Tu compra fue confirmada.</h1>
+        <p style="margin:0;color:#d4d4d4;line-height:1.6;font-size:15px;">Hola <b style="color:#fff;">${safeText(order.customer_name, 'cliente')}</b>, recibimos correctamente tu pago por <b style="color:#facc15;">${money(order.total)}</b>. Tu pedido pasó automáticamente a preparación.</p>
       </div>
 
-      <div style="background:#fff;border:1px solid #eee;border-top:0;border-radius:0 0 28px 28px;padding:28px;">
+      <div style="background:#0b0b0b;border:1px solid #27272a;border-top:0;border-radius:0 0 30px 30px;padding:28px;">
         <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:22px;">
-          <div style="background:#fafafa;border:1px solid #eee;border-radius:18px;padding:16px;">
-            <div style="font-size:11px;color:#777;text-transform:uppercase;letter-spacing:.16em;font-weight:900;">Orden</div>
-            <div style="margin-top:6px;font-size:18px;font-weight:900;color:#111;">${order.id}</div>
+          <div style="background:#111;border:1px solid #27272a;border-radius:18px;padding:16px;">
+            <div style="font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.16em;font-weight:900;">Orden</div>
+            <div style="margin-top:7px;font-size:16px;font-weight:900;color:#fff;word-break:break-word;">${order.id}</div>
           </div>
-          <div style="background:#fafafa;border:1px solid #eee;border-radius:18px;padding:16px;">
-            <div style="font-size:11px;color:#777;text-transform:uppercase;letter-spacing:.16em;font-weight:900;">Boleta</div>
-            <div style="margin-top:6px;font-size:18px;font-weight:900;color:#111;">${safeText(invoice?.folio, order.id)}</div>
+          <div style="background:#171200;border:1px solid #4a3a00;border-radius:18px;padding:16px;">
+            <div style="font-size:11px;color:#facc15;text-transform:uppercase;letter-spacing:.16em;font-weight:900;">Código despacho</div>
+            <div style="margin-top:7px;font-size:24px;font-weight:900;color:#facc15;letter-spacing:.08em;">${dispatchCode}</div>
+          </div>
+          <div style="background:#111;border:1px solid #27272a;border-radius:18px;padding:16px;">
+            <div style="font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.16em;font-weight:900;">Boleta</div>
+            <div style="margin-top:7px;font-size:16px;font-weight:900;color:#fff;">${safeText(invoice?.folio, order.id)}</div>
+          </div>
+          <div style="background:#111;border:1px solid #27272a;border-radius:18px;padding:16px;">
+            <div style="font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.16em;font-weight:900;">Estado</div>
+            <div style="margin-top:7px;font-size:16px;font-weight:900;color:#22c55e;">En preparación</div>
           </div>
         </div>
-
-        <p style="margin:0 0 18px;color:#444;line-height:1.6;">Hola <b>${safeText(order.customer_name, 'cliente')}</b>, recibimos correctamente tu pago por <b>${money(order.total)}</b>.</p>
 
         <table style="width:100%;border-collapse:collapse;margin:12px 0 20px;">
           <thead>
             <tr>
-              <th align="left" style="font-size:11px;color:#777;text-transform:uppercase;letter-spacing:.14em;padding-bottom:8px;">Producto</th>
-              <th align="center" style="font-size:11px;color:#777;text-transform:uppercase;letter-spacing:.14em;padding-bottom:8px;">Cant.</th>
-              <th align="right" style="font-size:11px;color:#777;text-transform:uppercase;letter-spacing:.14em;padding-bottom:8px;">Total</th>
+              <th align="left" style="font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.14em;padding-bottom:8px;">Producto</th>
+              <th align="center" style="font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.14em;padding-bottom:8px;">Cant.</th>
+              <th align="right" style="font-size:11px;color:#a1a1aa;text-transform:uppercase;letter-spacing:.14em;padding-bottom:8px;">Total</th>
             </tr>
           </thead>
-          <tbody>${rows || '<tr><td colspan="3" style="padding:12px 0;color:#555;">Compra en tienda</td></tr>'}</tbody>
+          <tbody>${rows || '<tr><td colspan="3" style="padding:12px 0;color:#a1a1aa;">Compra en tienda</td></tr>'}</tbody>
         </table>
 
-        <div style="background:#111;border-radius:20px;padding:18px;color:#fff;margin-top:18px;">
+        <div style="background:#111;border:1px solid #27272a;border-radius:22px;padding:18px;color:#fff;margin-top:18px;">
           <div style="display:flex;justify-content:space-between;margin-bottom:8px;color:#d4d4d4;"><span>Subtotal</span><b>${money(order.subtotal)}</b></div>
           <div style="display:flex;justify-content:space-between;margin-bottom:8px;color:#d4d4d4;"><span>IVA</span><b>${money(order.tax)}</b></div>
           <div style="display:flex;justify-content:space-between;margin-bottom:12px;color:#d4d4d4;"><span>Despacho</span><b>${money(order.shipping_fee)}</b></div>
-          <div style="border-top:1px solid rgba(255,255,255,.14);padding-top:12px;display:flex;justify-content:space-between;font-size:22px;color:#fcd34d;"><span style="font-weight:900;">TOTAL</span><b>${money(order.total)}</b></div>
+          <div style="border-top:1px solid rgba(255,255,255,.14);padding-top:12px;display:flex;justify-content:space-between;font-size:22px;color:#facc15;"><span style="font-weight:900;">TOTAL</span><b>${money(order.total)}</b></div>
         </div>
 
         <div style="margin-top:22px;display:flex;gap:10px;flex-wrap:wrap;">
-          <a href="${trackingUrl}" style="background:#f59e0b;color:#050505;text-decoration:none;font-weight:900;border-radius:16px;padding:14px 18px;display:inline-block;">Ver seguimiento</a>
-          ${invoice?.pdf_url ? `<a href="${invoice.pdf_url}" style="background:#f5f5f5;color:#111;text-decoration:none;font-weight:900;border-radius:16px;padding:14px 18px;display:inline-block;border:1px solid #eee;">Ver PDF proveedor</a>` : ''}
+          <a href="${trackingUrl}" style="background:#facc15;color:#050505;text-decoration:none;font-weight:900;border-radius:999px;padding:14px 20px;display:inline-block;">Ver seguimiento</a>
+          <a href="${getAppBaseUrl()}/verificar-pedido" style="background:#111;color:#facc15;text-decoration:none;font-weight:900;border-radius:999px;padding:14px 20px;display:inline-block;border:1px solid #4a3a00;">Verificar con código</a>
+          ${invoice?.pdf_url ? `<a href="${invoice.pdf_url}" style="background:#18181b;color:#fff;text-decoration:none;font-weight:900;border-radius:999px;padding:14px 20px;display:inline-block;border:1px solid #27272a;">Ver PDF proveedor</a>` : ''}
         </div>
 
-        <p style="margin:22px 0 0;color:#777;font-size:12px;line-height:1.6;">Este correo fue generado automáticamente por Soluciones Fabrick. Si tienes dudas, responde este correo con el número de orden.</p>
+        <p style="margin:22px 0 0;color:#a1a1aa;font-size:12px;line-height:1.6;">Guarda este correo. Con el código de despacho puedes verificar el estado del pedido, transportista y número de seguimiento cuando esté disponible.</p>
       </div>
     </div>
   </body>
@@ -123,14 +131,15 @@ export async function sendOrderBoletaEmail(orderId: string): Promise<SendOrderBo
 
   const invoice = await fetchInvoice(orderId);
   const trackingUrl = `${getAppBaseUrl()}/pedido/${createOrderTrackingToken(order.id)}`;
+  const dispatchCode = resolveDispatchCode(order as unknown as Record<string, unknown>, order.id);
   const pdfBase64 = generateFabrickBoletaPdfBase64({ order, invoice, trackingUrl });
   const resend = new Resend(credentials.apiKey);
 
   const response = await resend.emails.send({
     from: credentials.from || 'Soluciones Fabrick <onboarding@resend.dev>',
     to: [order.customer_email],
-    subject: `Pago confirmado · Boleta ${invoice?.folio || order.id} · Soluciones Fabrick`,
-    html: buildHtml(order, invoice, trackingUrl),
+    subject: `Pago confirmado · Código ${dispatchCode} · Soluciones Fabrick`,
+    html: buildHtml(order, invoice, trackingUrl, dispatchCode),
     attachments: [
       {
         filename: `boleta-fabrick-${order.id}.pdf`,

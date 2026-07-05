@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { insforge } from '@/lib/insforge';
+import { insforgeAdmin } from '@/lib/insforge';
 import { parseOrderTrackingToken } from '@/lib/orderTracking';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +25,7 @@ export async function GET(request: Request) {
   const parsed = parseOrderTrackingToken(token);
   if (!parsed) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
 
-  const { data, error } = await insforge.database.from('orders').select('*').eq('id', parsed.orderId).limit(1);
+  const { data, error } = await insforgeAdmin.database.from('orders').select('*').eq('id', parsed.orderId).limit(1);
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
   const row = Array.isArray(data) ? data[0] : null;
   if (!row) return NextResponse.json({ error: 'Pedido no encontrado.' }, { status: 404 });
@@ -39,6 +39,8 @@ export async function GET(request: Request) {
     createdAt: row.created_at,
     updatedAt: row.updated_at,
     customerName: row.customer_name,
+    customerEmail: row.customer_email,
+    customerPhone: row.customer_phone,
     region: row.region,
     shippingAddress: closed ? null : row.shipping_address,
     items: row.items,

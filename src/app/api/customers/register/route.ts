@@ -33,6 +33,15 @@ async function loadOrder(orderId: string) {
   return Array.isArray(data) ? data[0] as Record<string, unknown> | undefined : undefined;
 }
 
+async function findExistingCustomer(email: string) {
+  try {
+    const { data } = await insforgeAdmin.database.from('customer_accounts').select('id').eq('email', email).limit(1);
+    return Array.isArray(data) ? (data[0] as { id?: string | number } | undefined)?.id : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
 export async function POST(request: Request) {
   try {
     const body = await readBody(request);
@@ -70,9 +79,7 @@ export async function POST(request: Request) {
       updated_at: now,
     };
 
-    const existing = await insforgeAdmin.database.from('customer_accounts').select('id').eq('email', email).limit(1).catch(() => ({ data: [], error: null }));
-    const existingId = Array.isArray(existing.data) ? (existing.data[0] as { id?: string | number } | undefined)?.id : undefined;
-
+    const existingId = await findExistingCustomer(email);
     if (existingId) {
       const { error } = await insforgeAdmin.database.from('customer_accounts').update(payload).eq('id', existingId);
       if (error) throw new Error(error.message);

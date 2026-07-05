@@ -7,7 +7,7 @@ import {
   Home,
   Menu,
   Package,
-  User,
+  Truck,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -19,8 +19,8 @@ const LEFT_ITEMS: BottomItem[] = [
 ];
 
 const RIGHT_ITEMS: BottomItem[] = [
+  { href: '/admin/despachos', label: 'Envios', icon: Truck },
   { href: '/admin/productos', label: 'Productos', icon: Package },
-  { href: '/admin/perfil', label: 'Perfil', icon: User },
 ];
 
 function DockItem({ href, label, icon: Icon, active }: BottomItem & { active: boolean }) {
@@ -33,7 +33,7 @@ function DockItem({ href, label, icon: Icon, active }: BottomItem & { active: bo
       <span className={`grid h-7 w-7 place-items-center rounded-xl transition-all ${active ? 'bg-black text-yellow-300 shadow-[0_10px_22px_rgba(0,0,0,.22)]' : 'text-zinc-500 group-hover:bg-black/5 group-hover:text-zinc-700'}`}>
         <Icon className="h-[16px] w-[16px]" />
       </span>
-      <span className={`max-w-[56px] truncate text-[8.5px] font-black tracking-tight transition-colors ${active ? 'text-black' : 'text-zinc-500 group-hover:text-zinc-700'}`}>{label}</span>
+      <span className={`max-w-[60px] truncate text-[8.5px] font-black tracking-tight transition-colors ${active ? 'text-black' : 'text-zinc-500 group-hover:text-zinc-700'}`}>{label}</span>
     </Link>
   );
 }
@@ -43,7 +43,7 @@ export function AdminBottomNav({ onOpenMore }: { onOpenMore?: () => void }) {
   const isActive = (href: string) => pathname === href || (href !== '/admin' && pathname.startsWith(`${href}/`));
 
   return (
-    <nav aria-label="Navegación inferior admin" className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[calc(env(safe-area-inset-bottom)+8px)] lg:hidden">
+    <nav aria-label="Admin bottom navigation" className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[calc(env(safe-area-inset-bottom)+8px)] lg:hidden">
       <div className="pointer-events-none absolute inset-x-0 bottom-0 h-20 bg-gradient-to-t from-black/40 via-black/15 to-transparent" />
       <div className="relative mx-auto flex h-[58px] max-w-[410px] items-end justify-center">
         <div className="pointer-events-auto absolute bottom-0 left-0 right-0 h-[54px] rounded-[1.65rem] border border-white/10 bg-white/92 shadow-[0_18px_45px_rgba(0,0,0,.22)] backdrop-blur-2xl" />
@@ -58,8 +58,8 @@ export function AdminBottomNav({ onOpenMore }: { onOpenMore?: () => void }) {
             type="button"
             onClick={onOpenMore}
             className="group relative -top-4 mx-auto grid h-[54px] w-[54px] place-items-center rounded-full border-[5px] border-[#f5f5f5] bg-black text-yellow-300 shadow-[0_16px_35px_rgba(0,0,0,.32)] transition active:scale-95"
-            aria-label="Abrir módulos"
-            title="Abrir módulos"
+            aria-label="Abrir modulos"
+            title="Abrir modulos"
           >
             <Menu className="h-6 w-6" />
           </button>

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { insforgeAdmin } from '@/lib/insforge';
 import { parseOrderTrackingToken } from '@/lib/orderTracking';
+import { normalizeDispatchCode, resolveDispatchCode } from '@/lib/orders/dispatchCode';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -8,33 +9,71 @@ export const runtime = 'nodejs';
 function publicStatus(status?: string | null) {
   const value = String(status || 'pendiente').toLowerCase();
   if (['pagada', 'confirmado', 'confirmada'].includes(value)) return 'Pago confirmado';
-  if (['preparacion', 'preparación', 'preparando'].includes(value)) return 'En preparación';
-  if (['despachada', 'en_ruta', 'envio', 'envío'].includes(value)) return 'En camino';
-  if (['entregada', 'delivered', 'entrega_confirmada'].includes(value)) return 'Entregado';
-  if (['fallida', 'cancelado', 'cancelada', 'rechazada'].includes(value)) return 'Pago no aprobado';
+  if (['en_preparacion', 'preparacion', 'preparación', 'preparando'].includes(value)) return 'En preparación';
+  if (['enviado', 'despachada', 'en_ruta', 'envio', 'envío'].includes(value)) return 'En camino';
+  if (['entregado', 'entregada', 'delivered', 'entrega_confirmada'].includes(value)) return 'Entregado';
+  if (['fallida', 'cancelado', 'cancelada', 'rechazada'].includes(value)) return 'Pedido cancelado';
   if (value.includes('transferencia')) return 'Pendiente de validación';
   return 'Pendiente de pago';
 }
 
 function isClosed(status?: string | null) {
-  return ['entregada', 'delivered', 'entrega_confirmada'].includes(String(status || '').toLowerCase());
+  return ['entregado', 'entregada', 'delivered', 'entrega_confirmada'].includes(String(status || '').toLowerCase());
+}
+
+function statusMessage(status?: string | null, dispatchCode?: string) {
+  const value = String(status || '').toLowerCase();
+  const code = dispatchCode ? ` Código de despacho: ${dispatchCode}.` : '';
+  if (['en_preparacion', 'preparacion', 'preparación', 'preparando'].includes(value)) return `Pago confirmado. Tu pedido ya está en preparación.${code}`;
+  if (['enviado', 'despachada', 'en_ruta', 'envio', 'envío'].includes(value)) return `Tu pedido está en camino.${code}`;
+  if (['entregado', 'entregada', 'delivered', 'entrega_confirmada'].includes(value)) return `Tu pedido fue entregado correctamente.${code}`;
+  if (['fallida', 'cancelado', 'cancelada', 'rechazada'].includes(value)) return 'El pedido fue cancelado o el pago no fue aprobado.';
+  if (['pagada', 'confirmado', 'confirmada'].includes(value)) return `Pago confirmado. El pedido será preparado pronto.${code}`;
+  return 'Seguimiento activo. Cuando se confirme el pago verás aquí el avance del despacho.';
+}
+
+function hasMissingColumn(error?: { message?: string } | null) {
+  return /column .* does not exist|schema cache|Could not find|PGRST204/i.test(error?.message || '');
+}
+
+async function loadByToken(token: string) {
+  const parsed = parseOrderTrackingToken(token);
+  if (!parsed) return { error: 'Token inválido.', status: 401 as const };
+  const { data, error } = await insforgeAdmin.database.from('orders').select('*').eq('id', parsed.orderId).limit(1);
+  if (error) return { error: error.message, status: 500 as const };
+  const row = Array.isArray(data) ? data[0] as Record<string, unknown> | undefined : undefined;
+  return { row, status: 200 as const };
+}
+
+async function loadByDispatchCode(code: string) {
+  const clean = normalizeDispatchCode(code);
+  if (!clean) return { error: 'Código de despacho inválido.', status: 422 as const };
+  const { data, error } = await insforgeAdmin.database.from('orders').select('*').eq('dispatch_code', clean).limit(1);
+  if (error && hasMissingColumn(error)) return { error: 'La columna dispatch_code aún no existe. Ejecuta Setup Tables en el admin.', status: 500 as const };
+  if (error) return { error: error.message, status: 500 as const };
+  const row = Array.isArray(data) ? data[0] as Record<string, unknown> | undefined : undefined;
+  return { row, status: 200 as const };
 }
 
 export async function GET(request: Request) {
-  const token = new URL(request.url).searchParams.get('token') || '';
-  const parsed = parseOrderTrackingToken(token);
-  if (!parsed) return NextResponse.json({ error: 'Token inválido.' }, { status: 401 });
+  const url = new URL(request.url);
+  const token = url.searchParams.get('token') || '';
+  const code = url.searchParams.get('code') || url.searchParams.get('dispatch_code') || '';
 
-  const { data, error } = await insforgeAdmin.database.from('orders').select('*').eq('id', parsed.orderId).limit(1);
-  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
-  const row = Array.isArray(data) ? data[0] : null;
+  const loaded = token ? await loadByToken(token) : await loadByDispatchCode(code);
+  if ('error' in loaded && loaded.error) return NextResponse.json({ error: loaded.error }, { status: loaded.status });
+
+  const row = loaded.row;
   if (!row) return NextResponse.json({ error: 'Pedido no encontrado.' }, { status: 404 });
+  if (row.deleted_at) return NextResponse.json({ error: 'Pedido eliminado o no disponible.' }, { status: 404 });
 
-  const closed = isClosed(row.status);
+  const dispatchCode = resolveDispatchCode(row, String(row.id || ''));
+  const closed = isClosed(String(row.status || ''));
   return NextResponse.json({
     id: row.id,
+    dispatchCode,
     status: row.status,
-    publicStatus: publicStatus(row.status),
+    publicStatus: publicStatus(String(row.status || '')),
     closed,
     createdAt: row.created_at,
     updatedAt: row.updated_at,
@@ -43,6 +82,9 @@ export async function GET(request: Request) {
     customerPhone: row.customer_phone,
     region: row.region,
     shippingAddress: closed ? null : row.shipping_address,
+    trackingNumber: row.tracking_number || '',
+    carrier: row.carrier || '',
+    shippingNote: row.shipping_notes || '',
     items: row.items,
     summary: {
       subtotal: row.subtotal,
@@ -52,6 +94,6 @@ export async function GET(request: Request) {
       moneda: row.currency || 'CLP',
     },
     deliveryEstimate: '7 a 21 días hábiles',
-    message: closed ? 'El seguimiento público fue cerrado porque la entrega ya fue confirmada. El registro de compra queda guardado en administración.' : 'Seguimiento activo.',
+    message: statusMessage(String(row.status || ''), dispatchCode),
   }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
 }

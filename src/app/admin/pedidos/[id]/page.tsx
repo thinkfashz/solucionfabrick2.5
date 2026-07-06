@@ -14,7 +14,7 @@ import {
 } from '@/lib/commerce';
 import {
   ArrowLeft, MessageCircle, Truck, Package,
-  CheckCircle, Clock, XCircle, Send, ExternalLink, ShoppingCart, Copy,
+  CheckCircle, Clock, XCircle, Send, ExternalLink, ShoppingCart, Copy, MapPin, Home, Navigation,
 } from 'lucide-react';
 
 type Order = ReturnType<typeof normalizeOrderRecord>;
@@ -38,14 +38,116 @@ interface WaResult {
   phone: string;
 }
 
-/**
- * Per-line-item procurement metadata fetched from `products.source_url`
- * so the admin can fulfill dropshipping orders by clicking through to
- * the supplier directly from the order detail.
- */
 interface ItemSourceInfo {
   sourceUrl: string | null;
   source: string | null;
+}
+
+const SHIPPING_STEPS: Array<{ status: OrderStatus; label: string; detail: string }> = [
+  { status: 'pendiente', label: 'Pedido recibido', detail: 'Solicitud registrada en el sistema' },
+  { status: 'confirmado', label: 'Pago confirmado', detail: 'Orden lista para preparación' },
+  { status: 'en_preparacion', label: 'Preparando', detail: 'Producto y datos de despacho en revisión' },
+  { status: 'enviado', label: 'En camino', detail: 'Pedido viajando hacia el cliente' },
+  { status: 'entregado', label: 'Entregado', detail: 'Cliente recibió su compra' },
+];
+
+function ShippingRoad({ order, tracking, carrier }: { order: Order; tracking: string; carrier: string }) {
+  const currentIdx = Math.max(0, SHIPPING_STEPS.findIndex((s) => s.status === order.status));
+  const progress = order.status === 'cancelado' ? 8 : Math.min(100, Math.max(8, (currentIdx / (SHIPPING_STEPS.length - 1)) * 100));
+  const isMoving = order.status === 'enviado' || order.status === 'en_preparacion';
+  const isDelivered = order.status === 'entregado';
+  const isCancelled = order.status === 'cancelado';
+
+  return (
+    <div className="relative overflow-hidden rounded-[1.75rem] border border-yellow-300/20 bg-gradient-to-br from-zinc-950 via-zinc-900 to-black p-5 shadow-2xl shadow-black/40">
+      <div className="pointer-events-none absolute inset-0 opacity-70">
+        <div className="absolute inset-x-0 top-0 h-28 bg-[radial-gradient(circle_at_50%_0%,rgba(250,204,21,0.18),transparent_60%)]" />
+        <div className="absolute bottom-0 left-0 h-36 w-36 rounded-full bg-emerald-500/10 blur-3xl" />
+        <div className="absolute right-0 top-10 h-36 w-36 rounded-full bg-yellow-400/10 blur-3xl" />
+      </div>
+
+      <div className="relative z-10 flex flex-col gap-4">
+        <div className="flex items-start justify-between gap-3">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300/80">Ruta de envío</p>
+            <h2 className="mt-1 text-xl font-black text-white">Estado logístico del pedido</h2>
+            <p className="mt-1 text-xs text-zinc-400">
+              {isCancelled ? 'Este pedido fue cancelado.' : isDelivered ? 'El pedido llegó a destino.' : 'Seguimiento visual del avance hasta la entrega.'}
+            </p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.06] px-3 py-2 text-right">
+            <p className="text-[9px] uppercase tracking-[0.22em] text-zinc-500">Transportista</p>
+            <p className="text-xs font-bold text-white">{carrier || 'Por definir'}</p>
+          </div>
+        </div>
+
+        <div className="relative h-44 overflow-hidden rounded-[1.4rem] border border-white/10 bg-black/45">
+          <div className="absolute inset-x-0 top-0 h-20 bg-gradient-to-b from-sky-500/10 to-transparent" />
+          <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-emerald-950/50 to-transparent" />
+
+          <div className="absolute left-0 right-0 top-[88px] h-16 -skew-y-2 bg-zinc-800 shadow-inner" />
+          <div className="absolute left-0 right-0 top-[116px] h-1 -skew-y-2 overflow-hidden bg-yellow-300/80">
+            <div className="h-full w-[200%] bg-[repeating-linear-gradient(90deg,transparent_0_24px,rgba(0,0,0,0.4)_24px_36px)] [animation:road-lines_1.2s_linear_infinite]" />
+          </div>
+          <div className="absolute left-0 right-0 top-[130px] h-10 -skew-y-2 bg-zinc-950/70" />
+
+          <div className="absolute left-5 top-9 flex flex-col items-center gap-1 text-zinc-300">
+            <span className="grid h-10 w-10 place-items-center rounded-2xl border border-white/10 bg-white/10"><Package className="h-5 w-5" /></span>
+            <span className="text-[10px] font-bold uppercase tracking-widest">Bodega</span>
+          </div>
+          <div className="absolute right-5 top-7 flex flex-col items-center gap-1 text-yellow-200">
+            <span className="grid h-11 w-11 place-items-center rounded-2xl border border-yellow-300/30 bg-yellow-300/10"><Home className="h-5 w-5" /></span>
+            <span className="max-w-[88px] text-center text-[10px] font-bold uppercase tracking-widest">Cliente</span>
+          </div>
+
+          <div className="absolute top-[95px] z-20 -translate-x-1/2 transition-all duration-700" style={{ left: `${progress}%` }}>
+            <div className={`${isMoving ? 'animate-bounce' : ''} relative grid h-12 w-12 place-items-center rounded-2xl border border-yellow-300/45 bg-yellow-300 text-black shadow-[0_0_28px_rgba(250,204,21,0.45)]`}>
+              {isCancelled ? <XCircle className="h-6 w-6" /> : isDelivered ? <CheckCircle className="h-6 w-6" /> : <Truck className="h-6 w-6" />}
+              <span className="absolute -bottom-1 left-1/2 h-2 w-8 -translate-x-1/2 rounded-full bg-black/35 blur-sm" />
+            </div>
+          </div>
+
+          <div className="absolute inset-x-5 bottom-4 z-10 h-2 rounded-full bg-white/10">
+            <div className={`h-full rounded-full ${isCancelled ? 'bg-red-400' : 'bg-gradient-to-r from-yellow-500 to-emerald-400'} transition-all duration-700`} style={{ width: `${progress}%` }} />
+          </div>
+        </div>
+
+        <div className="grid gap-2 sm:grid-cols-5">
+          {SHIPPING_STEPS.map((step, index) => {
+            const done = !isCancelled && index <= currentIdx;
+            const active = !isCancelled && index === currentIdx;
+            return (
+              <div key={step.status} className={`rounded-2xl border p-3 ${active ? 'border-yellow-300/55 bg-yellow-300/10' : done ? 'border-emerald-400/25 bg-emerald-400/8' : 'border-white/10 bg-white/[0.035]'}`}>
+                <div className={`mb-2 grid h-8 w-8 place-items-center rounded-xl ${done ? 'bg-yellow-300 text-black' : 'bg-white/10 text-zinc-500'}`}>
+                  {STATUS_ICONS[step.status]}
+                </div>
+                <p className="text-[11px] font-black text-white">{step.label}</p>
+                <p className="mt-1 text-[10px] leading-snug text-zinc-500">{step.detail}</p>
+              </div>
+            );
+          })}
+        </div>
+
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+            <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500"><Navigation className="h-3.5 w-3.5" /> Seguimiento</p>
+            <p className="mt-2 font-mono text-sm text-white">{tracking || 'Pendiente de asignar'}</p>
+          </div>
+          <div className="rounded-2xl border border-white/10 bg-white/[0.045] p-4">
+            <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500"><MapPin className="h-3.5 w-3.5" /> Destino</p>
+            <p className="mt-2 line-clamp-2 text-sm text-white">{order.shipping_address || order.region || 'Dirección pendiente'}</p>
+          </div>
+        </div>
+      </div>
+
+      <style jsx>{`
+        @keyframes road-lines {
+          from { transform: translateX(0); }
+          to { transform: translateX(-72px); }
+        }
+      `}</style>
+    </div>
+  );
 }
 
 export default function PedidoDetallePage() {
@@ -62,7 +164,6 @@ export default function PedidoDetallePage() {
   const [saving, setSaving]           = useState(false);
   const [error, setError]             = useState<string | null>(null);
   const [waResult, setWaResult]       = useState<WaResult | null>(null);
-  /* Per-product procurement info (source_url) keyed by productId. */
   const [itemSources, setItemSources] = useState<Record<string, ItemSourceInfo>>({});
   const [copyState, setCopyState]     = useState<'idle' | 'copied' | 'error'>('idle');
 
@@ -79,10 +180,6 @@ export default function PedidoDetallePage() {
       setCarrier(String(raw.carrier ?? 'Chilexpress'));
       setShippingFee(Number(raw.shipping_fee ?? 0));
 
-      // Best-effort lookup of supplier URLs for each line item. Failures
-      // are silent: the page still renders, just without "Comprar y
-      // enviar" buttons. This handles the common case where some
-      // products are dropshipped (have source_url) and others are not.
       const productIds = Array.from(
         new Set(
           o.items
@@ -108,7 +205,7 @@ export default function PedidoDetallePage() {
             }
             setItemSources(map);
           }
-        } catch { /* ignore — column may not exist before products-migrate */ }
+        } catch { /* ignore */ }
       }
     }
     setLoading(false);
@@ -116,11 +213,6 @@ export default function PedidoDetallePage() {
 
   useEffect(() => { fetchOrder(); }, [fetchOrder]);
 
-  /**
-   * Builds a single-line shipping address suitable for pasting into the
-   * supplier's checkout form. Mirrors the format admins typically copy
-   * by hand today.
-   */
   const buildShippingClipboard = useCallback((o: Order): string => {
     const lines = [
       o.customer_name || '',
@@ -132,12 +224,6 @@ export default function PedidoDetallePage() {
     return lines.join('\n');
   }, []);
 
-  /**
-   * Handler for the "Comprar y enviar al cliente" button on each line
-   * item. Copies the customer's shipping data to the clipboard *before*
-   * opening the supplier URL so the admin can paste it into the
-   * supplier's checkout in the new tab.
-   */
   const handleProcure = useCallback(async (sourceUrl: string) => {
     if (!order) return;
     setCopyState('idle');
@@ -150,8 +236,6 @@ export default function PedidoDetallePage() {
     } catch {
       setCopyState('error');
     }
-    // Open in a new tab with `noopener,noreferrer` to avoid leaking the
-    // admin session via window.opener.
     window.open(sourceUrl, '_blank', 'noopener,noreferrer');
     setTimeout(() => setCopyState('idle'), 4000);
   }, [order, buildShippingClipboard]);
@@ -204,7 +288,6 @@ export default function PedidoDetallePage() {
 
   return (
     <div className="min-h-screen bg-black text-white pb-16">
-      {/* Header */}
       <div className="border-b border-white/5 bg-zinc-950 px-4 py-4 flex items-center gap-3">
         <Link href="/admin/pedidos" className="p-2 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-white transition-colors">
           <ArrowLeft className="w-4 h-4" />
@@ -220,9 +303,9 @@ export default function PedidoDetallePage() {
         </div>
       </div>
 
-      <div className="px-4 py-5 space-y-4 max-w-2xl mx-auto">
+      <div className="px-4 py-5 space-y-4 max-w-4xl mx-auto">
+        <ShippingRoad order={order} tracking={tracking} carrier={carrier} />
 
-        {/* Timeline */}
         <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-5">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-4">Progreso del pedido</h2>
           <div className="flex items-start gap-0">
@@ -250,77 +333,75 @@ export default function PedidoDetallePage() {
           </div>
         </div>
 
-        {/* Customer info */}
-        <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-5 space-y-2">
-          <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Cliente</h2>
-          <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
-            <span className="text-zinc-500">Nombre</span>
-            <span className="text-white">{order.customer_name || '—'}</span>
-            <span className="text-zinc-500">Email</span>
-            <span className="text-white">{order.customer_email || '—'}</span>
-            <span className="text-zinc-500">Teléfono</span>
-            <span className="text-white">{order.customer_phone || '—'}</span>
-            <span className="text-zinc-500">Región</span>
-            <span className="text-white">{order.region || '—'}</span>
-            <span className="text-zinc-500">Dirección</span>
-            <span className="text-white text-xs">{order.shipping_address || '—'}</span>
-          </div>
-        </div>
-
-        {/* Items */}
-        {order.items && order.items.length > 0 && (
-          <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-5">
-            <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Productos</h2>
-            {copyState === 'copied' && (
-              <div className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300 flex items-center gap-2">
-                <Copy className="w-3.5 h-3.5" />
-                Dirección del cliente copiada al portapapeles. Pégala en el checkout del proveedor.
-              </div>
-            )}
-            {copyState === 'error' && (
-              <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
-                No se pudo copiar al portapapeles automáticamente. Copia la dirección manualmente desde la sección "Cliente".
-              </div>
-            )}
-            <div className="space-y-3">
-              {order.items.map((item, i: number) => {
-                const src = itemSources[item.productId];
-                const sourceUrl = src?.sourceUrl ?? null;
-                return (
-                  <div key={i} className="space-y-1.5">
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="text-zinc-300">{item.name || 'Producto'} × {item.quantity ?? 1}</span>
-                      <span className="text-white font-medium">{formatCLP(item.subtotal ?? Number(item.unitPrice ?? 0) * Number(item.quantity ?? 1))}</span>
-                    </div>
-                    {sourceUrl && (
-                      <button
-                        type="button"
-                        onClick={() => handleProcure(sourceUrl)}
-                        className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs font-semibold text-yellow-200 hover:bg-yellow-500/20 transition-colors"
-                        title={`Abrir ${sourceUrl} y copiar la dirección del cliente al portapapeles`}
-                      >
-                        <ShoppingCart className="w-3.5 h-3.5" />
-                        Comprar y enviar al cliente
-                        <ExternalLink className="w-3 h-3" />
-                      </button>
-                    )}
-                  </div>
-                );
-              })}
-              <div className="border-t border-white/5 pt-2 flex justify-between text-sm font-bold">
-                <span className="text-zinc-400">Total</span>
-                <span className="text-[#facc15]">{formatCLP(order.total)}</span>
-              </div>
+        <div className="grid gap-4 lg:grid-cols-[1fr_1.05fr]">
+          <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-5 space-y-2">
+            <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Cliente</h2>
+            <div className="grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
+              <span className="text-zinc-500">Nombre</span>
+              <span className="text-white">{order.customer_name || '—'}</span>
+              <span className="text-zinc-500">Email</span>
+              <span className="text-white break-all">{order.customer_email || '—'}</span>
+              <span className="text-zinc-500">Teléfono</span>
+              <span className="text-white">{order.customer_phone || '—'}</span>
+              <span className="text-zinc-500">Región</span>
+              <span className="text-white">{order.region || '—'}</span>
+              <span className="text-zinc-500">Dirección</span>
+              <span className="text-white text-xs">{order.shipping_address || '—'}</span>
             </div>
           </div>
-        )}
 
-        {/* Update status */}
+          {order.items && order.items.length > 0 && (
+            <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-5">
+              <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider mb-3">Productos</h2>
+              {copyState === 'copied' && (
+                <div className="mb-3 rounded-lg border border-emerald-500/30 bg-emerald-500/10 px-3 py-2 text-xs text-emerald-300 flex items-center gap-2">
+                  <Copy className="w-3.5 h-3.5" />
+                  Dirección del cliente copiada al portapapeles. Pégala en el checkout del proveedor.
+                </div>
+              )}
+              {copyState === 'error' && (
+                <div className="mb-3 rounded-lg border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-200">
+                  No se pudo copiar al portapapeles automáticamente. Copia la dirección manualmente desde la sección Cliente.
+                </div>
+              )}
+              <div className="space-y-3">
+                {order.items.map((item, i: number) => {
+                  const src = itemSources[item.productId];
+                  const sourceUrl = src?.sourceUrl ?? null;
+                  return (
+                    <div key={i} className="space-y-1.5 rounded-xl border border-white/5 bg-black/20 p-3">
+                      <div className="flex items-center justify-between text-sm gap-3">
+                        <span className="text-zinc-300">{item.name || 'Producto'} × {item.quantity ?? 1}</span>
+                        <span className="text-white font-medium">{formatCLP(item.subtotal ?? Number(item.unitPrice ?? 0) * Number(item.quantity ?? 1))}</span>
+                      </div>
+                      {sourceUrl && (
+                        <button
+                          type="button"
+                          onClick={() => handleProcure(sourceUrl)}
+                          className="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-xs font-semibold text-yellow-200 hover:bg-yellow-500/20 transition-colors"
+                          title={`Abrir ${sourceUrl} y copiar la dirección del cliente al portapapeles`}
+                        >
+                          <ShoppingCart className="w-3.5 h-3.5" />
+                          Comprar y enviar al cliente
+                          <ExternalLink className="w-3 h-3" />
+                        </button>
+                      )}
+                    </div>
+                  );
+                })}
+                <div className="border-t border-white/5 pt-2 flex justify-between text-sm font-bold">
+                  <span className="text-zinc-400">Total</span>
+                  <span className="text-[#facc15]">{formatCLP(order.total)}</span>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-5 space-y-4">
           <h2 className="text-xs font-semibold text-zinc-400 uppercase tracking-wider">Actualizar estado</h2>
 
-          {/* Status select */}
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
             {ALL_STATUSES.map((s) => (
               <button
                 key={s}
@@ -336,10 +417,9 @@ export default function PedidoDetallePage() {
             ))}
           </div>
 
-          {/* Tracking (show when enviado or entregado) */}
           {(newStatus === 'enviado' || newStatus === 'entregado') && (
             <div className="space-y-3 border-t border-white/5 pt-4">
-              <div className="grid grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="text-xs text-zinc-500 mb-1 block">Transportista</label>
                   <select
@@ -363,7 +443,6 @@ export default function PedidoDetallePage() {
             </div>
           )}
 
-          {/* Shipping fee */}
           <div>
             <label className="text-xs text-zinc-500 mb-1 block">Costo de envío (CLP)</label>
             <input
@@ -374,7 +453,6 @@ export default function PedidoDetallePage() {
             />
           </div>
 
-          {/* Notes */}
           <div>
             <label className="text-xs text-zinc-500 mb-1 block">Nota interna (opcional)</label>
             <textarea
@@ -399,7 +477,6 @@ export default function PedidoDetallePage() {
           </button>
         </div>
 
-        {/* WhatsApp notification */}
         {waResult && (
           <div className="rounded-2xl border border-emerald-500/30 bg-emerald-950/30 p-5 space-y-3">
             <div className="flex items-center gap-2 text-emerald-400">
@@ -421,7 +498,6 @@ export default function PedidoDetallePage() {
             </a>
           </div>
         )}
-
       </div>
     </div>
   );

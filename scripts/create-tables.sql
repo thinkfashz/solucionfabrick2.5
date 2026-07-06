@@ -136,6 +136,12 @@ CREATE TABLE IF NOT EXISTS public.orders (
   status text DEFAULT 'pendiente_pago',
   payment_id text,
   payment_status text,
+  tracking_number text,
+  carrier text,
+  delivery_status text DEFAULT 'pendiente',
+  tracking_created_at timestamptz,
+  estimated_delivery_at timestamptz,
+  shipment_details jsonb DEFAULT '{}'::jsonb,
   created_at timestamptz DEFAULT now(),
   updated_at timestamptz DEFAULT now(),
   cliente_nombre text,
@@ -159,6 +165,12 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS currency text DEFAULT 'CLP';
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS status text DEFAULT 'pendiente_pago';
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_id text;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_status text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS tracking_number text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS carrier text;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS delivery_status text DEFAULT 'pendiente';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS tracking_created_at timestamptz;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS estimated_delivery_at timestamptz;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS shipment_details jsonb DEFAULT '{}'::jsonb;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS cliente_nombre text;
@@ -172,6 +184,8 @@ CREATE INDEX IF NOT EXISTS orders_status_created_at_idx ON public.orders (status
 CREATE INDEX IF NOT EXISTS orders_payment_id_idx ON public.orders (payment_id) WHERE payment_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS orders_payment_status_idx ON public.orders (payment_status, updated_at DESC) WHERE payment_status IS NOT NULL;
 CREATE INDEX IF NOT EXISTS orders_customer_email_idx ON public.orders (lower(customer_email)) WHERE customer_email IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS orders_tracking_number_idx ON public.orders (tracking_number) WHERE tracking_number IS NOT NULL;
+CREATE INDEX IF NOT EXISTS orders_delivery_status_idx ON public.orders (delivery_status, updated_at DESC);
 
 -- TABLA: payment_webhooks
 CREATE TABLE IF NOT EXISTS public.payment_webhooks (
@@ -401,11 +415,16 @@ VALUES
 ON CONFLICT DO NOTHING;
 
 -- SEED: categorías iniciales
-INSERT INTO public.categories (name, description) VALUES
+INSERT INTO public.categories (name, description)
+SELECT v.name, v.description
+FROM (VALUES
   ('General', 'Categoría por defecto.'),
   ('Aire acondicionado', 'Equipos y accesorios de climatización.'),
   ('Hogar', 'Productos para el hogar.')
-ON CONFLICT (name) DO NOTHING;
+) AS v(name, description)
+WHERE NOT EXISTS (
+  SELECT 1 FROM public.categories c WHERE lower(c.name) = lower(v.name)
+);
 
 -- TABLA: blog_posts
 CREATE TABLE IF NOT EXISTS public.blog_posts (

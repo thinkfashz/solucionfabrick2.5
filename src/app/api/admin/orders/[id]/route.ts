@@ -8,7 +8,7 @@ import { resolveDispatchCode } from '@/lib/orders/dispatchCode';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-type RouteContext = { params: Promise<{ id: string }> | { id: string } };
+type RouteContext = { params: Promise<{ id: string }> };
 type DbRow = Record<string, unknown>;
 
 const DEFAULT_CARRIER = 'Chilexpress';
@@ -35,7 +35,7 @@ function generateTrackingNumber(orderId: string) {
 }
 
 async function getParams(ctx: RouteContext) {
-  return await Promise.resolve(ctx.params);
+  return await ctx.params;
 }
 
 async function requireAdmin(request: NextRequest) {

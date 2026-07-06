@@ -17,9 +17,18 @@ ALTER TABLE public.categories ADD COLUMN IF NOT EXISTS updated_at timestamptz DE
 CREATE UNIQUE INDEX IF NOT EXISTS categories_name_unique_idx ON public.categories (lower(name));
 CREATE INDEX IF NOT EXISTS categories_created_at_idx ON public.categories (created_at DESC);
 
-INSERT INTO public.categories (name, description) VALUES
+-- Seed idempotente sin ON CONFLICT(name), porque algunas bases antiguas
+-- solo tienen un índice único por lower(name) y no un constraint UNIQUE(name).
+INSERT INTO public.categories (name, description)
+SELECT v.name, v.description
+FROM (VALUES
   ('General', 'Categoría base para productos sin clasificación.'),
   ('Aire acondicionado', 'Equipos split, portátiles, multisplit e inverter.'),
   ('Hogar', 'Productos y accesorios para el hogar.'),
   ('Servicios', 'Servicios e instalaciones ofrecidas por Soluciones Fabrick.')
-ON CONFLICT DO NOTHING;
+) AS v(name, description)
+WHERE NOT EXISTS (
+  SELECT 1
+  FROM public.categories c
+  WHERE lower(c.name) = lower(v.name)
+);

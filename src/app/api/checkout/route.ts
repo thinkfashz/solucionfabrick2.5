@@ -17,6 +17,7 @@ export const runtime = 'nodejs';
 const MAX_BODY_BYTES = 32 * 1024;
 const RATE_LIMIT_MAX = 12;
 const RATE_LIMIT_WINDOW_MS = 10 * 60 * 1000;
+const DEFAULT_CARRIER = 'Chilexpress';
 
 function cleanText(value: unknown, maxLength: number) {
   if (typeof value !== 'string') return '';
@@ -26,6 +27,36 @@ function cleanText(value: unknown, maxLength: number) {
 function sanitizeOrderId(value: unknown) {
   const cleaned = cleanText(value, 90).replace(/[^a-zA-Z0-9._@-]/g, '').slice(0, 90);
   return cleaned || `FBK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`;
+}
+
+function createShipmentTrackingNumber(orderId: string) {
+  const date = new Date();
+  const ymd = `${date.getFullYear()}${String(date.getMonth() + 1).padStart(2, '0')}${String(date.getDate()).padStart(2, '0')}`;
+  const base = orderId.replace(/[^a-zA-Z0-9]/g, '').toUpperCase().slice(-10) || Math.random().toString(36).slice(2, 10).toUpperCase();
+  return `FBK-ENV-${ymd}-${base}`;
+}
+
+function addDays(date: Date, days: number) {
+  const d = new Date(date);
+  d.setDate(d.getDate() + days);
+  return d.toISOString();
+}
+
+function buildInitialShipmentEvents(orderId: string, createdAt: string, trackingNumber: string) {
+  return [
+    {
+      status: 'pedido_creado',
+      label: 'Pedido creado',
+      description: `Orden ${orderId} registrada en Soluciones Fabrick.`,
+      at: createdAt,
+    },
+    {
+      status: 'seguimiento_creado',
+      label: 'Seguimiento generado',
+      description: `Código automático asignado: ${trackingNumber}.`,
+      at: createdAt,
+    },
+  ];
 }
 
 async function readCheckoutBody(request: Request): Promise<CheckoutPayload | null> {
@@ -44,12 +75,47 @@ async function loadExistingOrder(id: string) {
   try {
     const { data } = await insforgeAdmin.database
       .from('orders')
-      .select('id, customer_name, customer_email, customer_phone, region, shipping_address, items, subtotal, tax, shipping_fee, total, currency, status, created_at')
+      .select('id, customer_name, customer_email, customer_phone, region, shipping_address, items, subtotal, tax, shipping_fee, total, currency, status, created_at, tracking_number, carrier, delivery_status')
       .eq('id', id)
       .limit(1);
     return Array.isArray(data) ? data[0] as Record<string, unknown> | undefined : undefined;
   } catch {
     return undefined;
+  }
+}
+
+async function ensureShipment(order: Record<string, unknown>, trackingNumber: string, createdAt: string) {
+  const orderId = String(order.id || '');
+  if (!orderId) return;
+  const carrier = String(order.carrier || DEFAULT_CARRIER);
+  const destination = String(order.shipping_address || '');
+  const estimatedDeliveryAt = String(order.estimated_delivery_at || addDays(new Date(createdAt), 7));
+  const events = buildInitialShipmentEvents(orderId, createdAt, trackingNumber);
+
+  try {
+    const { data } = await insforgeAdmin.database.from('order_shipments').select('id').eq('order_id', orderId).limit(1);
+    if (Array.isArray(data) && data.length > 0) return;
+    await insforgeAdmin.database.from('order_shipments').insert([
+      {
+        order_id: orderId,
+        tracking_number: trackingNumber,
+        carrier,
+        status: 'pendiente',
+        origin: 'Bodega Soluciones Fabrick',
+        destination,
+        estimated_delivery_at: estimatedDeliveryAt,
+        events,
+        details: {
+          orderTotal: order.total ?? 0,
+          region: order.region ?? '',
+          source: 'checkout',
+        },
+        created_at: createdAt,
+        updated_at: createdAt,
+      },
+    ]);
+  } catch (error) {
+    console.warn('[checkout] could not create order shipment:', error);
   }
 }
 
@@ -119,6 +185,8 @@ export async function POST(request: Request) {
     const createdAt = new Date().toISOString();
     const trackingToken = createOrderTrackingToken(id);
     const trackingUrl = `${getAppBaseUrl()}/pedido/${trackingToken}`;
+    const shipmentTrackingNumber = createShipmentTrackingNumber(id);
+    const estimatedDeliveryAt = addDays(new Date(createdAt), 7);
 
     const orderRow = {
       id,
@@ -134,12 +202,24 @@ export async function POST(request: Request) {
       total: resumen.total,
       currency: resumen.moneda,
       status: 'pendiente_pago',
+      tracking_number: shipmentTrackingNumber,
+      carrier: DEFAULT_CARRIER,
+      delivery_status: 'pendiente',
+      tracking_created_at: createdAt,
+      estimated_delivery_at: estimatedDeliveryAt,
+      shipment_details: {
+        trackingToken,
+        trackingUrl,
+        internalShippingEstimate,
+        source: 'checkout',
+      },
       created_at: createdAt,
       updated_at: createdAt,
     };
 
     const { error: insertError } = await insforgeAdmin.database.from('orders').insert([orderRow]);
     let persistence: 'db' | 'existing' = 'db';
+    let persistedOrder: Record<string, unknown> = orderRow;
 
     if (insertError) {
       if (!isDuplicateError(insertError)) {
@@ -156,8 +236,9 @@ export async function POST(request: Request) {
         return NextResponse.json({ error: 'La llave de orden ya fue usada con otro total.' }, { status: 409 });
       }
       persistence = 'existing';
+      persistedOrder = existing;
     } else {
-      dispatchHookAsync('order.created', { id, customer: { name: safeClient.nombre, email: safeClient.email, phone: safeClient.telefono ?? null }, region: safeBody.region, items: hydratedItems, summary: resumen, status: orderRow.status });
+      dispatchHookAsync('order.created', { id, customer: { name: safeClient.nombre, email: safeClient.email, phone: safeClient.telefono ?? null }, region: safeBody.region, items: hydratedItems, summary: resumen, status: orderRow.status, trackingNumber: shipmentTrackingNumber });
       syncOrderToSalesPipelineAsync(orderRow, {
         stage: 'Checkout iniciado',
         probability: 45,
@@ -165,6 +246,8 @@ export async function POST(request: Request) {
         nextAction: 'Confirmar pago y preparar despacho',
       });
     }
+
+    await ensureShipment(persistedOrder, String(persistedOrder.tracking_number || shipmentTrackingNumber), String(persistedOrder.created_at || createdAt));
 
     const preference = await createMercadoPagoPreference({ orderId: id, payload: { ...safeBody, items: hydratedItems, paymentMethod: 'mercadopago' }, summary: resumen });
     const payment = { provider: 'mercado_pago', preferenceId: preference.id, checkoutUrl: preference.init_point || preference.sandbox_init_point || null };
@@ -182,6 +265,8 @@ export async function POST(request: Request) {
       internalShippingEstimate,
       trackingToken,
       trackingUrl,
+      trackingNumber: String(persistedOrder.tracking_number || shipmentTrackingNumber),
+      carrier: String(persistedOrder.carrier || DEFAULT_CARRIER),
       creadoEn: createdAt,
     };
 

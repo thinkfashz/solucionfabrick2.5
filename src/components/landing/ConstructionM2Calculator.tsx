@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, Calculator, CheckCircle2, Droplets, Home, Ruler, XCircle } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Calculator, CheckCircle2, Droplets, Home, Ruler } from 'lucide-react';
 
 type OptionId = 'kit-basico' | 'kit-intermedio' | 'llave-mano';
 type HouseLevelId = 'funcional' | 'terminaciones';
@@ -301,7 +301,7 @@ function Visual3D({ optionId, title, m2, total, includes }: { optionId: OptionId
           <div className="absolute left-[55%] top-[55%] grid h-12 w-20 grid-cols-2 gap-1 rounded-lg bg-teal-300/25 p-1 ring-2 ring-teal-100/25 sm:h-16 sm:w-28">
             <span className="bg-teal-100/45" /><span className="bg-teal-100/45" /><span className="bg-teal-100/25" /><span className="bg-teal-100/25" />
           </div>
-          {isKit && <div className="absolute -right-8 bottom-4 h-28 w-28 rounded-2xl border border-yellow-300/40 bg-black/45 p-3 text-center shadow-[0_20px_70px_rgba(0,0,0,.45)]"><Hammer className="mx-auto h-7 w-7 text-yellow-300" /><p className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-yellow-100">Kit por montar</p></div>}
+          {isKit && <div className="absolute -right-8 bottom-4 h-28 w-28 rounded-2xl border border-yellow-300/40 bg-black/45 p-3 text-center shadow-[0_20px_70px_rgba(0,0,0,.45)]"><Calculator className="mx-auto h-7 w-7 text-yellow-300" /><p className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-yellow-100">Kit por montar</p></div>}
           {!isKit && <div className="absolute -right-8 bottom-4 h-28 w-28 rounded-2xl border border-teal-300/40 bg-black/45 p-3 text-center shadow-[0_20px_70px_rgba(0,0,0,.45)]"><Droplets className="mx-auto h-7 w-7 text-teal-300" /><p className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-teal-100">Llave en mano</p></div>}
         </div>
       </div>

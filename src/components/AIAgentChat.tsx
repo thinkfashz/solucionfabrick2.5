@@ -15,6 +15,7 @@ interface AIAgentChatProps {
 
 const STORAGE_POS = 'fabrick.agent.position.free.v1';
 const STORAGE_HISTORY = 'fabrick.agent.history.v1';
+const STORAGE_HIDDEN = 'fabrick.agent.hidden.v1';
 const MAX_HISTORY = 24;
 
 const SUGGESTIONS = [
@@ -65,6 +66,15 @@ function savePosition(pos: { x: number; y: number }) {
   try { window.localStorage.setItem(STORAGE_POS, JSON.stringify(pos)); } catch {}
 }
 
+function loadHidden() {
+  if (typeof window === 'undefined') return false;
+  try { return window.localStorage.getItem(STORAGE_HIDDEN) === '1'; } catch { return false; }
+}
+
+function saveHidden(value: boolean) {
+  try { window.localStorage.setItem(STORAGE_HIDDEN, value ? '1' : '0'); } catch {}
+}
+
 function loadHistory(): Msg[] {
   if (typeof window === 'undefined') return [];
   try {
@@ -87,24 +97,36 @@ function newId(): string {
   return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
+function isOverCenterDrop(clientX: number, clientY: number) {
+  if (typeof window === 'undefined') return false;
+  const cx = window.innerWidth / 2;
+  const cy = window.innerHeight / 2;
+  const distance = Math.hypot(clientX - cx, clientY - cy);
+  return distance <= 112;
+}
+
 export default function AIAgentChat({ hideOn = ['/admin', '/auth', '/checkout'] }: AIAgentChatProps) {
   const pathname = usePathname();
   const prefersReduced = useReducedMotion();
   const [mounted, setMounted] = useState(false);
+  const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
   const [pos, setPos] = useState({ x: 18, y: 420 });
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [dragging, setDragging] = useState(false);
+  const [overDrop, setOverDrop] = useState(false);
 
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const dragRef = useRef({ active: false, moved: false, dx: 0, dy: 0 });
+  const dragRef = useRef({ active: false, moved: false, dx: 0, dy: 0, lastX: 0, lastY: 0 });
 
   useEffect(() => {
     setMounted(true);
+    setHidden(loadHidden());
     setPos(loadPosition());
     setMessages(loadHistory());
   }, []);
@@ -208,6 +230,7 @@ export default function AIAgentChat({ hideOn = ['/admin', '/auth', '/checkout'] 
   }, []);
 
   if (!mounted) return null;
+  if (hidden) return null;
   if (pathname && hideOn.some((p) => pathname.startsWith(p))) return null;
 
   const showFab = !open;
@@ -215,30 +238,68 @@ export default function AIAgentChat({ hideOn = ['/admin', '/auth', '/checkout'] 
   return (
     <>
       <AnimatePresence>
+        {dragging && showFab && (
+          <motion.div
+            key="drop-center"
+            initial={{ opacity: 0, scale: 0.82 }}
+            animate={{ opacity: 1, scale: overDrop ? 1.08 : 1 }}
+            exit={{ opacity: 0, scale: 0.82 }}
+            transition={{ duration: 0.18 }}
+            className="pointer-events-none fixed inset-0 z-[9498] grid place-items-center bg-black/10 backdrop-blur-[2px]"
+            aria-hidden
+          >
+            <div className={`grid h-28 w-28 place-items-center rounded-full border text-center shadow-[0_25px_90px_rgba(0,0,0,.45)] transition ${overDrop ? 'border-red-300 bg-red-500 text-white' : 'border-white/25 bg-black/65 text-red-200'}`}>
+              <X className="h-10 w-10" />
+              <span className="mt-1 block text-[10px] font-black uppercase tracking-[0.2em]">Soltar para ocultar</span>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
         {showFab && (
           <motion.button
             key="fab"
             type="button"
             initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: 1 }}
+            animate={{ opacity: 1, scale: overDrop ? 0.82 : 1 }}
             exit={{ opacity: 0, scale: 0.8 }}
             transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
             onPointerDown={(event) => {
-              dragRef.current = { active: true, moved: false, dx: event.clientX - pos.x, dy: event.clientY - pos.y };
+              dragRef.current = { active: true, moved: false, dx: event.clientX - pos.x, dy: event.clientY - pos.y, lastX: event.clientX, lastY: event.clientY };
+              setDragging(true);
+              setOverDrop(false);
               event.currentTarget.setPointerCapture(event.pointerId);
             }}
             onPointerMove={(event) => {
               if (!dragRef.current.active) return;
               const next = safePosition({ x: event.clientX - dragRef.current.dx, y: event.clientY - dragRef.current.dy });
+              dragRef.current.lastX = event.clientX;
+              dragRef.current.lastY = event.clientY;
               if (Math.abs(next.x - pos.x) > 2 || Math.abs(next.y - pos.y) > 2) dragRef.current.moved = true;
+              setOverDrop(isOverCenterDrop(event.clientX, event.clientY));
               setPos(next);
             }}
             onPointerUp={(event) => {
+              const shouldHide = dragRef.current.moved && isOverCenterDrop(dragRef.current.lastX || event.clientX, dragRef.current.lastY || event.clientY);
               dragRef.current.active = false;
+              setDragging(false);
+              setOverDrop(false);
+              try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
+              if (shouldHide) {
+                saveHidden(true);
+                setHidden(true);
+                setOpen(false);
+                return;
+              }
               const next = safePosition(pos);
               setPos(next);
               savePosition(next);
-              try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
+            }}
+            onPointerCancel={() => {
+              dragRef.current.active = false;
+              setDragging(false);
+              setOverDrop(false);
             }}
             onClick={(event) => {
               if (dragRef.current.moved) {
@@ -249,7 +310,7 @@ export default function AIAgentChat({ hideOn = ['/admin', '/auth', '/checkout'] 
               setOpen(true);
             }}
             aria-label="Abrir y mover asistente IA de Soluciones Fabrick"
-            title="Mover o abrir Fabri, nuestro asistente"
+            title="Mover o abrir Fabri. Arrástralo a la X del centro para ocultarlo."
             className="group fixed z-[9500] grid h-16 w-16 touch-none place-items-center rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500 p-2 text-black shadow-[0_18px_48px_rgba(250,146,21,0.42),0_0_0_7px_rgba(250,204,21,.12)] ring-1 ring-yellow-200/70 transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-[72px] sm:w-[72px]"
             style={{ left: pos.x, top: pos.y, WebkitTapHighlightColor: 'transparent' }}
           >

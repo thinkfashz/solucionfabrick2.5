@@ -19,6 +19,7 @@ type CalculatorOption = {
   notIncluded: string[];
   fixedInstall?: number;
   note?: string;
+  installNote?: string;
   parts: CostPart[];
 };
 
@@ -44,6 +45,7 @@ const OPTIONS: CalculatorOption[] = [
     maxM2: 120,
     fixedInstall: BASIC_INSTALL_FROM,
     note: 'Ideal si buscas partir con la estructura principal y completar terminaciones por etapas.',
+    installNote: 'Instalación base desde $850.000. Se confirma según ubicación, acceso y tamaño.',
     includes: ['Paneles interiores/exteriores forrados por una cara', 'Cerchas y costaneras', 'Zinc 0.35 mm', 'Estructura principal del kit'],
     notIncluded: ['Forro interior completo', 'Puntos eléctricos y puntos de agua', 'Puertas, ventanas, cerámica, gas, sanitarios, fosa y empalme'],
     parts: [

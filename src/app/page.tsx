@@ -1,6 +1,7 @@
 export const dynamic = 'force-dynamic';
 import { headers } from 'next/headers';
 import Navbar from '@/components/Navbar';
+import ConstructionM2Calculator from '@/components/landing/ConstructionM2Calculator';
 import StaticConstructionHero from '@/components/landing/StaticConstructionHero';
 import LandingSections from '@/components/LandingSections';
 import { getCmsSettings, renderCopyright } from '@/lib/cms';
@@ -31,8 +32,9 @@ export default async function Home() {
   return (
     <>
       <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <div className="min-h-screen overflow-x-hidden bg-[#050505]">
+      <div className="min-h-screen overflow-x-hidden bg-[#050403] selection:bg-yellow-300 selection:text-black">
         <Navbar />
+        <ConstructionM2Calculator />
         <StaticConstructionHero coverUrl={settings.hero_cover_url || undefined} />
         <LandingSections copyrightText={copyrightText} socialLinks={socialLinks} />
       </div>

@@ -10,27 +10,27 @@ const fallbackCover = 'https://images.unsplash.com/photo-1503387762-592deb58ef4e
 const workRules = [
   {
     icon: SearchCheck,
-    title: 'Diagnóstico primero',
-    text: 'Ordenamos metros, terreno, alcance y conexiones antes de hablar de precio cerrado.',
+    title: 'Primero entendemos lo que quieres hacer',
+    text: 'Revisamos si buscas un kit, una cabaña, una casa funcional o una solución con mejores terminaciones.',
   },
   {
-    icon: ClipboardList,
-    title: 'Partidas separadas',
-    text: 'Diferenciamos estructura, terminaciones, revestimientos, fosa, empalme y red de agua.',
+    icon: Calculator,
+    title: 'Luego aterrizamos precio y alcance',
+    text: 'Separamos qué incluye, qué queda fuera y qué puede cambiar según terreno, traslado o conexiones.',
   },
   {
     icon: Wrench,
-    title: 'Ejecución con criterio',
-    text: 'Aterrizamos materiales, etapas y compra para reducir errores evitables.',
+    title: 'Después ordenamos el siguiente paso',
+    text: 'Si el número te sirve, avanzamos a medidas, ubicación, materialidad y cotización más cerrada.',
   },
 ];
 
 export default function StaticConstructionHero({ coverUrl }: Props) {
   const image = coverUrl || fallbackCover;
   return (
-    <section className="relative overflow-hidden bg-[#050403] px-4 pb-16 pt-10 text-white sm:px-6 lg:px-8 lg:pt-14">
+    <section data-scroll-section className="relative overflow-hidden bg-[#050403] px-4 pb-16 pt-10 text-white sm:px-6 lg:px-8 lg:pt-14">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(250,204,21,.14),transparent_30rem),radial-gradient(circle_at_88%_35%,rgba(20,184,166,.10),transparent_28rem),linear-gradient(180deg,#050403,#090806_58%,#020202)]" />
-      <div className="absolute inset-x-0 top-0 h-[640px] opacity-30">
+      <div className="absolute inset-x-0 top-0 h-[640px] opacity-28">
         <img src={image} alt="Soluciones para construcción y mejoras del hogar" className="h-full w-full object-cover saturate-110" />
         <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,4,3,.98),rgba(5,4,3,.82)_48%,rgba(5,4,3,.48)),linear-gradient(180deg,rgba(0,0,0,.1),#050403)]" />
       </div>
@@ -38,21 +38,21 @@ export default function StaticConstructionHero({ coverUrl }: Props) {
       <div className="relative mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(0,1fr)_440px] lg:items-center">
         <div className="min-w-0 py-10 lg:py-20">
           <div className="inline-flex w-fit items-center border-b border-teal-300/50 pb-2 text-[10px] font-black uppercase tracking-[0.28em] text-teal-100">
-            Construcción · remodelación · equipamiento
+            Kits · cabañas · casas llave en mano
           </div>
           <h2 className="mt-8 max-w-5xl text-5xl font-black leading-[.92] tracking-[-0.075em] text-white sm:text-7xl lg:text-8xl">
-            Construye con <span className="text-yellow-300">números claros</span> y decisiones mejor ordenadas.
+            Cotiza con <span className="text-yellow-300">números claros</span> antes de construir.
           </h2>
           <div className="mt-7 h-1.5 w-20 rounded-full bg-gradient-to-r from-yellow-300 to-teal-300" />
           <p className="mt-7 max-w-3xl text-base leading-8 text-zinc-200 sm:text-xl">
-            Después del cálculo inicial, revisamos el proyecto con criterio: materialidad, terminaciones, revestimientos, instalaciones, conexión de agua, empalme eléctrico, fosa y etapas de ejecución.
+            En Soluciones Fabrick te ayudamos a comparar opciones simples: kit básico, kit intermedio o casa llave en mano. La idea es que primero entiendas el precio aproximado y después veamos los detalles reales de tu terreno.
           </p>
           <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-            El objetivo no es venderte una promesa rápida, sino ayudarte a entender dónde se va el dinero y qué decisiones suben o bajan el valor por metro cuadrado.
+            No partimos con promesas infladas. Partimos con una base clara: metros cuadrados, alcance, materialidad, instalación, terminaciones y lo que se cotiza aparte.
           </p>
           <div className="mt-8 flex flex-wrap gap-3">
             <Link href="#calculadora-m2" className="inline-flex h-14 items-center gap-2 rounded-full bg-yellow-300 px-6 text-sm font-black text-black shadow-[0_18px_45px_rgba(250,204,21,.25)] transition hover:-translate-y-0.5 hover:bg-yellow-200">
-              <Calculator className="h-4 w-4" /> Calcular m²
+              <Calculator className="h-4 w-4" /> Calcular precio
             </Link>
             <Link href="/tienda" className="inline-flex h-14 items-center gap-2 rounded-full border border-white/20 px-6 text-sm font-black text-white transition hover:-translate-y-0.5 hover:border-yellow-300/50 hover:text-yellow-300">
               <ShoppingBag className="h-4 w-4" /> Ver productos
@@ -64,7 +64,7 @@ export default function StaticConstructionHero({ coverUrl }: Props) {
         </div>
 
         <aside className="border-y border-white/10 py-6 lg:border-y-0 lg:border-l lg:pl-8">
-          <p className="mb-5 text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300/90">Cómo ordenamos una obra</p>
+          <p className="mb-5 text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300/90">Cómo te guiamos</p>
           <div className="divide-y divide-white/10">
             {workRules.map(({ icon: Icon, title, text }) => (
               <div key={title} className="flex items-start gap-4 py-5">
@@ -76,16 +76,16 @@ export default function StaticConstructionHero({ coverUrl }: Props) {
         </aside>
       </div>
 
-      <section className="relative mx-auto mt-8 max-w-[1500px] border-y border-white/10 py-10 text-center">
+      <section data-scroll-section className="relative mx-auto mt-8 max-w-[1500px] border-y border-white/10 py-10 text-center">
         <p className="text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300">La promesa Fabrick</p>
-        <h2 className="mx-auto mt-4 max-w-4xl text-3xl font-black tracking-tight text-white sm:text-5xl">Que sepas qué estás pagando antes de empezar</h2>
+        <h2 className="mx-auto mt-4 max-w-4xl text-3xl font-black tracking-tight text-white sm:text-5xl">Saber qué pagas antes de avanzar</h2>
         <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-zinc-400">
-          Construir, remodelar o comprar para tu hogar debe sentirse más claro, más acompañado y menos expuesto a decisiones improvisadas.
+          Construir no debería sentirse confuso. Te mostramos un número de partida, lo que incluye y lo que queda pendiente para cotizar con más precisión.
         </p>
         <div className="mx-auto mt-9 grid max-w-5xl divide-y divide-white/10 text-left sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-          <MiniValue title="Cálculo" text="Partimos desde una referencia por m² para conversar con números reales." />
-          <MiniValue title="Alcance" text="Separamos lo incluido, lo variable y lo que depende del terreno o conexión." />
-          <MiniValue title="Ejecución" text="Ordenamos materiales, etapas y detalles para reducir errores evitables." />
+          <MiniValue title="Precio base" text="Calculamos por m² para que sepas rápido si el proyecto entra en tu presupuesto." />
+          <MiniValue title="Alcance claro" text="Marcamos lo incluido y lo que se cotiza aparte, como fosa, empalme o conexiones exteriores." />
+          <MiniValue title="Siguiente paso" text="Si el valor te sirve, revisamos medidas, lugar, accesos y terminaciones para cerrar mejor." />
         </div>
       </section>
     </section>

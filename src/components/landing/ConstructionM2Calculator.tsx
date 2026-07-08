@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, Calculator, CheckCircle2, Droplets, Home, Ruler } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Calculator, CheckCircle2, Home, Ruler } from 'lucide-react';
 
 type OptionId = 'kit-basico' | 'kit-intermedio' | 'llave-mano';
 type HouseLevelId = 'funcional' | 'terminaciones';
@@ -11,22 +11,22 @@ type CostPart = { label: string; pct?: number; amount?: number };
 type CalculatorOption = {
   id: OptionId;
   label: string;
-  subtitle: string;
+  headline: string;
   pricePerM2: number;
   minM2: number;
   maxM2: number;
   includes: string[];
   notIncluded: string[];
   fixedInstall?: number;
-  installNote?: string;
+  note?: string;
   parts: CostPart[];
 };
 
 type HouseLevel = {
   id: HouseLevelId;
   label: string;
+  headline: string;
   pricePerM2: number;
-  subtitle: string;
   includes: string[];
   notIncluded: string[];
   parts: CostPart[];
@@ -38,12 +38,12 @@ const OPTIONS: CalculatorOption[] = [
   {
     id: 'kit-basico',
     label: 'Kit básico',
-    subtitle: '$220.000/m² + instalación desde $850.000',
+    headline: '$220.000/m² + instalación desde $850.000',
     pricePerM2: 220000,
     minM2: 12,
     maxM2: 120,
     fixedInstall: BASIC_INSTALL_FROM,
-    installNote: 'Instalación base desde $850.000. Se confirma según ubicación, acceso y tamaño.',
+    note: 'Ideal si buscas partir con la estructura principal y completar terminaciones por etapas.',
     includes: ['Paneles interiores/exteriores forrados por una cara', 'Cerchas y costaneras', 'Zinc 0.35 mm', 'Estructura principal del kit'],
     notIncluded: ['Forro interior completo', 'Puntos eléctricos y puntos de agua', 'Puertas, ventanas, cerámica, gas, sanitarios, fosa y empalme'],
     parts: [
@@ -56,10 +56,11 @@ const OPTIONS: CalculatorOption[] = [
   {
     id: 'kit-intermedio',
     label: 'Kit intermedio',
-    subtitle: '$300.000/m² con instalación y puntos básicos',
+    headline: '$300.000/m² con instalación y puntos básicos',
     pricePerM2: 300000,
     minM2: 12,
     maxM2: 140,
+    note: 'Pensado para avanzar más rápido: estructura, instalación, forro interior y puntos básicos.',
     includes: ['Todo lo del kit básico', 'Instalación del kit', 'Forro interior', 'Puntos eléctricos básicos', 'Puntos de agua PPR'],
     notIncluded: ['Cerámica, ventanas y puertas finales', 'Conexión de gas, sanitarios completos, fosa séptica y empalme eléctrico'],
     parts: [
@@ -72,10 +73,11 @@ const OPTIONS: CalculatorOption[] = [
   {
     id: 'llave-mano',
     label: 'Casa llave en mano',
-    subtitle: 'Funcional o con terminaciones',
+    headline: 'Funcional o con terminaciones',
     pricePerM2: 540000,
     minM2: 30,
     maxM2: 250,
+    note: 'Para quien quiere una casa más completa y necesita comparar niveles de terminación.',
     includes: [],
     notIncluded: [],
     parts: [],
@@ -86,8 +88,8 @@ const HOUSE_LEVELS: HouseLevel[] = [
   {
     id: 'funcional',
     label: 'Llave en mano funcional',
+    headline: '$540.000/m²',
     pricePerM2: 540000,
-    subtitle: '$540.000/m²',
     includes: ['Todo lo del kit intermedio', 'Ventanas y puertas línea económica', 'Puertas de pino sólidas', 'Cerámica económica', 'Puntos eléctricos', 'Lámparas LED 18W y 24W', 'Conexión de gas interior', 'Salidas sanitarias'],
     notIncluded: ['No incluye conexión a fosa', 'No incluye fosa séptica', 'No incluye empalme eléctrico', 'No incluye permisos ni obras externas especiales'],
     parts: [
@@ -101,8 +103,8 @@ const HOUSE_LEVELS: HouseLevel[] = [
   {
     id: 'terminaciones',
     label: 'Llave en mano con terminaciones',
+    headline: '$780.000/m² según materialidad',
     pricePerM2: 780000,
-    subtitle: '$780.000/m² según materialidad',
     includes: ['Todo lo de llave en mano funcional', 'Terminaciones interiores superiores', 'Mejor selección de revestimientos', 'Mejor terminación de pintura, remates y detalles visibles', 'Mayor cuidado en cocina, baño y espacios interiores'],
     notIncluded: ['Fosa séptica, empalme eléctrico y conexión exterior de agua se cotizan aparte si el terreno lo requiere', 'Permisos, movimiento de tierra mayor u obras especiales se revisan aparte'],
     parts: [
@@ -136,7 +138,7 @@ export default function ConstructionM2Calculator() {
   const houseLevel = HOUSE_LEVELS.find((item) => item.id === houseLevelId) || HOUSE_LEVELS[0];
   const isHouse = option.id === 'llave-mano';
   const activeTitle = isHouse ? houseLevel.label : option.label;
-  const activeSubtitle = isHouse ? houseLevel.subtitle : option.subtitle;
+  const activeHeadline = isHouse ? houseLevel.headline : option.headline;
   const activePrice = isHouse ? houseLevel.pricePerM2 : option.pricePerM2;
   const activeIncludes = isHouse ? houseLevel.includes : option.includes;
   const activeNotIncluded = isHouse ? houseLevel.notIncluded : option.notIncluded;
@@ -149,6 +151,7 @@ export default function ConstructionM2Calculator() {
   const total = materialSubtotal + fixedInstall;
   const minRange = m2 * Math.min(...(isHouse ? HOUSE_LEVELS.map((level) => level.pricePerM2) : [option.pricePerM2]));
   const maxRange = isHouse ? m2 * Math.max(...HOUSE_LEVELS.map((level) => level.pricePerM2)) : total;
+  const progress = Math.min(100, Math.max(8, (m2 / option.maxM2) * 100));
 
   const breakdown = useMemo(() => activeParts.map((part) => {
     const amount = part.amount ?? materialSubtotal * (part.pct || 0);
@@ -173,59 +176,59 @@ export default function ConstructionM2Calculator() {
   }
 
   return (
-    <section id="calculadora-m2" data-scroll-section className="relative min-h-[100svh] overflow-hidden bg-[#060504] px-4 pb-14 pt-24 text-white sm:px-6 lg:px-8 lg:pt-28">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_8%,rgba(250,204,21,.18),transparent_26rem),radial-gradient(circle_at_90%_4%,rgba(20,184,166,.12),transparent_28rem),linear-gradient(180deg,#070604,#0a0805_55%,#050505)]" />
-      <style>{`
-        @keyframes houseFloat { 0%,100% { transform: translateY(0) rotateX(58deg) rotateZ(-42deg); } 50% { transform: translateY(-12px) rotateX(58deg) rotateZ(-42deg); } }
-        @keyframes orbitLine { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
-        .calc-3d-scene { perspective: 1100px; transform-style: preserve-3d; }
-        .calc-3d-house { transform-style: preserve-3d; animation: houseFloat 5.8s ease-in-out infinite; }
-        .calc-3d-orbit { animation: orbitLine 9s linear infinite; }
-      `}</style>
+    <section id="calculadora-m2" data-scroll-section className="relative overflow-hidden bg-[#060504] px-4 pb-16 pt-24 text-white sm:px-6 lg:px-8 lg:pt-28">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_8%,rgba(250,204,21,.16),transparent_25rem),radial-gradient(circle_at_90%_8%,rgba(20,184,166,.10),transparent_28rem),linear-gradient(180deg,#070604,#0a0805_55%,#050505)]" />
 
-      <div className="relative mx-auto flex min-h-[calc(100svh-7rem)] max-w-[1500px] flex-col justify-center">
-        <div className="grid gap-8 xl:grid-cols-[minmax(0,420px)_minmax(360px,1fr)_minmax(0,460px)] xl:items-center">
-          <div className="pt-2">
+      <div className="relative mx-auto max-w-[1450px]">
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:items-start">
+          <div>
             <div className="inline-flex items-center gap-2 border-b border-yellow-300/50 pb-2 text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300">
-              <Calculator className="h-4 w-4" /> Precio rápido por m²
+              <Calculator className="h-4 w-4" /> Calculadora rápida
             </div>
-            <h1 className="mt-7 max-w-4xl text-4xl font-black leading-[.92] tracking-[-0.075em] sm:text-6xl xl:text-7xl">Calcula rápido el precio de tu kit o casa.</h1>
-            <p className="mt-5 max-w-xl text-sm leading-7 text-zinc-300 sm:text-base">El cliente solo escoge tipo, metros cuadrados y ve el total. Abajo aparecen detalles claros de qué incluye y qué se cotiza aparte.</p>
+            <h1 className="mt-7 max-w-4xl text-4xl font-black leading-[.92] tracking-[-0.075em] sm:text-6xl lg:text-7xl">Precio simple para kit o casa.</h1>
+            <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-300">El cliente solo elige una opción, escribe los metros cuadrados y ve un total referencial. La explicación queda debajo, separada y ordenada.</p>
 
-            <div className="mt-8 border-y border-white/10 py-5">
-              <p className="mb-4 text-[10px] font-black uppercase tracking-[0.26em] text-zinc-500">1. Selecciona el tipo</p>
-              <div className="grid gap-2">
+            <div className="mt-9 border-y border-white/10 py-5">
+              <p className="mb-4 text-[10px] font-black uppercase tracking-[0.26em] text-zinc-500">Paso 1 · Elige qué quieres calcular</p>
+              <div className="grid gap-3 sm:grid-cols-3">
                 {OPTIONS.map((item) => (
-                  <button key={item.id} type="button" onClick={() => selectOption(item.id)} className={`group grid grid-cols-[1fr_auto] gap-3 rounded-[1.35rem] border px-4 py-3 text-left transition ${optionId === item.id ? 'border-yellow-300 bg-yellow-300 text-black shadow-[0_16px_40px_rgba(250,204,21,.16)]' : 'border-white/15 bg-white/[0.025] text-white hover:border-yellow-300/55 hover:text-yellow-300'}`}>
-                    <span>
-                      <b className="block text-sm font-black uppercase tracking-[0.12em]">{item.label}</b>
-                      <span className={`mt-1 block text-xs leading-5 ${optionId === item.id ? 'text-black/70' : 'text-zinc-400'}`}>{item.subtitle}</span>
-                    </span>
-                    <span className="mt-1 h-4 w-4 rounded-full border border-current" />
+                  <button key={item.id} type="button" onClick={() => selectOption(item.id)} className={`rounded-[1.35rem] border px-4 py-4 text-left transition ${optionId === item.id ? 'border-yellow-300 bg-yellow-300 text-black shadow-[0_16px_40px_rgba(250,204,21,.16)]' : 'border-white/15 bg-white/[0.025] text-white hover:border-yellow-300/55 hover:text-yellow-300'}`}>
+                    <b className="block text-sm font-black uppercase tracking-[0.12em]">{item.label}</b>
+                    <span className={`mt-2 block text-xs leading-5 ${optionId === item.id ? 'text-black/70' : 'text-zinc-400'}`}>{item.headline}</span>
                   </button>
                 ))}
               </div>
+              <p className="mt-4 text-sm leading-6 text-zinc-400">{option.note}</p>
             </div>
 
             {isHouse && (
               <div className="border-b border-white/10 py-5">
-                <label htmlFor="house-level" className="mb-3 block text-[10px] font-black uppercase tracking-[0.26em] text-zinc-500">2. Selecciona llave en mano</label>
+                <label htmlFor="house-level" className="mb-3 block text-[10px] font-black uppercase tracking-[0.26em] text-zinc-500">Paso 2 · Nivel de llave en mano</label>
                 <select id="house-level" value={houseLevelId} onChange={(event) => setHouseLevelId(event.target.value as HouseLevelId)} className="w-full rounded-[1.2rem] border border-teal-300/35 bg-black/60 px-4 py-4 text-base font-black text-white outline-none focus:border-yellow-300">
                   {HOUSE_LEVELS.map((level) => <option key={level.id} value={level.id}>{level.label} · {formatCLP(level.pricePerM2)}/m²</option>)}
                 </select>
               </div>
             )}
+
+            <div className="grid gap-7 border-b border-white/10 py-7 md:grid-cols-2">
+              <div>
+                <p className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.26em] text-yellow-300"><CheckCircle2 className="h-4 w-4" /> Incluye</p>
+                <div className="divide-y divide-white/10 border-y border-white/10">{activeIncludes.map((item) => <p key={item} className="py-3 text-sm leading-6 text-zinc-300">{item}</p>)}</div>
+              </div>
+              <div>
+                <p className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.26em] text-red-200"><AlertTriangle className="h-4 w-4" /> No incluye</p>
+                <div className="divide-y divide-red-300/15 border-y border-red-300/20">{activeNotIncluded.map((item) => <p key={item} className="py-3 text-sm leading-6 text-red-50/70">{item}</p>)}</div>
+              </div>
+            </div>
           </div>
 
-          <Visual3D optionId={optionId} title={activeTitle} m2={m2} total={total} includes={activeIncludes.length} />
-
-          <aside className="xl:sticky xl:top-24">
+          <aside className="lg:sticky lg:top-24">
             <div className="border-t border-yellow-300/40 pt-5">
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">Resumen en vivo</p>
                   <h2 className="mt-2 text-2xl font-black tracking-[-0.04em]">{activeTitle}</h2>
-                  <p className="mt-1 text-sm text-zinc-500">{activeSubtitle}</p>
+                  <p className="mt-1 text-sm text-zinc-500">{activeHeadline}</p>
                 </div>
                 <Home className="mt-1 h-8 w-8 shrink-0 text-yellow-300" />
               </div>
@@ -250,7 +253,12 @@ export default function ConstructionM2Calculator() {
               </div>
 
               <div className="py-6">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">Gráfico simple del gasto</p>
+                <div className="mb-3 flex items-center justify-between text-xs font-black uppercase tracking-[0.18em] text-zinc-500"><span>Avance del cálculo</span><span>{Math.round(progress)}%</span></div>
+                <div className="h-3 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-yellow-300 via-amber-400 to-teal-300 transition-all duration-700" style={{ width: `${progress}%` }} /></div>
+              </div>
+
+              <div className="py-6">
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">Detalle simple del valor</p>
                 <div className="mt-4 divide-y divide-white/10 border-y border-white/10">
                   {breakdown.map((part) => {
                     const percent = total ? Math.max(4, Math.min(100, (part.amount / total) * 100)) : 0;
@@ -268,51 +276,7 @@ export default function ConstructionM2Calculator() {
             </div>
           </aside>
         </div>
-
-        <div className="mt-10 grid gap-7 border-t border-white/10 pt-7 md:grid-cols-2">
-          <div>
-            <p className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.26em] text-yellow-300"><CheckCircle2 className="h-4 w-4" /> Incluye</p>
-            <div className="divide-y divide-white/10 border-y border-white/10">{activeIncludes.map((item) => <p key={item} className="py-3 text-sm leading-6 text-zinc-300">{item}</p>)}</div>
-          </div>
-          <div>
-            <p className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.26em] text-red-200"><AlertTriangle className="h-4 w-4" /> No incluye / se cotiza aparte</p>
-            <div className="divide-y divide-red-300/15 border-y border-red-300/20">{activeNotIncluded.map((item) => <p key={item} className="py-3 text-sm leading-6 text-red-50/70">{item}</p>)}</div>
-          </div>
-        </div>
       </div>
     </section>
-  );
-}
-
-function Visual3D({ optionId, title, m2, total, includes }: { optionId: OptionId; title: string; m2: number; total: number; includes: number }) {
-  const isKit = optionId !== 'llave-mano';
-  return (
-    <div className="calc-3d-scene relative min-h-[430px] overflow-hidden border-y border-white/10 py-8 sm:min-h-[520px] xl:min-h-[640px] xl:border-x xl:border-y-0 xl:px-6">
-      <div className="calc-3d-orbit pointer-events-none absolute left-1/2 top-1/2 h-[330px] w-[330px] -translate-x-1/2 -translate-y-1/2 rounded-full border border-yellow-300/10 sm:h-[430px] sm:w-[430px]" />
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,rgba(250,204,21,.16),transparent_18rem)]" />
-      <div className="absolute left-5 top-5 text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">Vista 3D referencial</div>
-      <div className="absolute right-5 top-5 text-right text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">{m2 || 0} m²<br />{includes} partidas</div>
-
-      <div className="absolute inset-0 grid place-items-center">
-        <div className="calc-3d-house relative h-56 w-72 sm:h-72 sm:w-96">
-          <div className="absolute left-1/2 top-[52%] h-52 w-72 -translate-x-1/2 -translate-y-1/2 skew-x-[-12deg] rounded-[1.4rem] bg-gradient-to-br from-yellow-300/90 via-amber-500 to-orange-700 shadow-[0_38px_90px_rgba(250,204,21,.18)] sm:h-64 sm:w-96" />
-          <div className="absolute left-1/2 top-[33%] h-24 w-80 -translate-x-1/2 -translate-y-1/2 skew-x-[18deg] rounded-[1.1rem] bg-gradient-to-br from-zinc-300 via-zinc-600 to-zinc-900 shadow-[0_20px_50px_rgba(0,0,0,.35)] sm:h-32 sm:w-[28rem]" />
-          <div className="absolute left-[29%] top-[55%] h-20 w-12 rounded-t-lg bg-black/65 ring-2 ring-yellow-100/25 sm:h-28 sm:w-16" />
-          <div className="absolute left-[55%] top-[55%] grid h-12 w-20 grid-cols-2 gap-1 rounded-lg bg-teal-300/25 p-1 ring-2 ring-teal-100/25 sm:h-16 sm:w-28">
-            <span className="bg-teal-100/45" /><span className="bg-teal-100/45" /><span className="bg-teal-100/25" /><span className="bg-teal-100/25" />
-          </div>
-          {isKit && <div className="absolute -right-8 bottom-4 h-28 w-28 rounded-2xl border border-yellow-300/40 bg-black/45 p-3 text-center shadow-[0_20px_70px_rgba(0,0,0,.45)]"><Calculator className="mx-auto h-7 w-7 text-yellow-300" /><p className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-yellow-100">Kit por montar</p></div>}
-          {!isKit && <div className="absolute -right-8 bottom-4 h-28 w-28 rounded-2xl border border-teal-300/40 bg-black/45 p-3 text-center shadow-[0_20px_70px_rgba(0,0,0,.45)]"><Droplets className="mx-auto h-7 w-7 text-teal-300" /><p className="mt-2 text-[10px] font-black uppercase tracking-[0.14em] text-teal-100">Llave en mano</p></div>}
-        </div>
-      </div>
-
-      <div className="absolute inset-x-5 bottom-5 border-t border-white/10 pt-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-zinc-500">Modelo seleccionado</p>
-        <div className="mt-2 flex items-end justify-between gap-4">
-          <h3 className="text-2xl font-black tracking-[-0.04em] text-white">{title}</h3>
-          <b className="text-right text-xl font-black text-yellow-300">{formatCLP(total)}</b>
-        </div>
-      </div>
-    </div>
   );
 }

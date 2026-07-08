@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import {
   ArrowRight,
@@ -31,17 +32,17 @@ const PRINCIPLES = [
   {
     Icon: SearchCheck,
     title: 'Más claridad',
-    text: 'Te ayudamos a ordenar necesidades, prioridades y alternativas antes de tomar una decisión.',
+    text: 'Ordenamos necesidades, prioridades, presupuesto y alternativas antes de tomar una decisión.',
   },
   {
     Icon: ShieldCheck,
     title: 'Más responsabilidad',
-    text: 'Buscamos procesos más claros, comunicación directa y criterios técnicos sin promesas infladas.',
+    text: 'Comunicación directa, criterios técnicos y menos promesas infladas antes de comprometer dinero.',
   },
   {
     Icon: CheckCircle2,
     title: 'Menos incertidumbre',
-    text: 'Construir, remodelar o comprar para el hogar debe sentirse más seguro, no más confuso.',
+    text: 'Construir, remodelar o comprar para el hogar debe sentirse más seguro y menos confuso.',
   },
 ];
 
@@ -49,31 +50,31 @@ const SERVICES = [
   {
     Icon: Home,
     title: 'Remodelación y mejoras del hogar',
-    text: 'Ajustamos espacios para que se vean mejor, funcionen mejor y respondan a tu necesidad real.',
+    text: 'Ajustamos espacios para que funcionen mejor, se vean mejor y respondan a una necesidad real.',
     href: '/servicios',
   },
   {
     Icon: Hammer,
     title: 'Construcción y soluciones estructurales',
-    text: 'Apoyo en planificación, ejecución y decisiones para avanzar con más orden y menos improvisación.',
+    text: 'Planificación, partidas, materiales y ejecución con más orden y menos improvisación.',
     href: '/servicios/metalcon',
   },
   {
     Icon: Wrench,
     title: 'Instalación y equipamiento',
-    text: 'Soluciones para baños, cocinas, climatización, terminaciones y mejoras prácticas del hogar.',
+    text: 'Baños, cocinas, climatización, terminaciones y mejoras prácticas para el hogar.',
     href: '/servicios',
   },
   {
     Icon: ClipboardCheck,
     title: 'Asesoría para elegir mejor',
-    text: 'Te orientamos para escoger productos y materiales según uso, presupuesto y objetivo.',
+    text: 'Comparamos opciones según uso, presupuesto, urgencia y durabilidad esperada.',
     href: '/contacto',
   },
 ];
 
 const PRODUCT_CATEGORIES = [
-  { Icon: Lightbulb, title: 'Iluminación', text: 'Lámparas y soluciones para dar presencia a tus espacios.' },
+  { Icon: Lightbulb, title: 'Iluminación', text: 'Lámparas, reflectores y soluciones para dar presencia a tus espacios.' },
   { Icon: Zap, title: 'Climatización', text: 'Aires acondicionados y equipos para mejorar confort.' },
   { Icon: Droplets, title: 'Grifería', text: 'Opciones para cocina, lavamanos y renovación de baños.' },
   { Icon: Package, title: 'Sanitarios y espejos', text: 'Elementos útiles para equipar y mejorar el hogar.' },
@@ -85,29 +86,29 @@ const WHY_US = [
   'Comunicación más clara antes de comprometer tu dinero.',
   'Menos improvisación en cada recomendación o solución.',
   'Productos y servicios pensados para resolver necesidades reales.',
-  'Atención cercana para acompañarte desde la duda inicial.',
+  'Atención cercana desde la duda inicial hasta el avance del proyecto.',
 ];
 
 const PROCESS = [
   {
     step: '01',
     title: 'Escuchamos tu necesidad',
-    text: 'Entendemos qué quieres resolver, cuál es tu prioridad y qué expectativas tienes.',
+    text: 'Entendemos qué quieres resolver, prioridad, urgencia y expectativas.',
   },
   {
     step: '02',
-    title: 'Te orientamos con criterio',
-    text: 'Ordenamos opciones de servicio, producto o solución para que compares con más claridad.',
+    title: 'Ordenamos opciones',
+    text: 'Separamos servicio, producto, materialidad, costos variables y riesgos.',
   },
   {
     step: '03',
-    title: 'Definimos el mejor camino',
-    text: 'Aterrizamos una recomendación práctica según tu espacio, presupuesto y urgencia.',
+    title: 'Definimos camino',
+    text: 'Aterrizamos una recomendación práctica según espacio, presupuesto y objetivo.',
   },
   {
     step: '04',
-    title: 'Acompañamos la compra o ejecución',
-    text: 'Buscamos que el resultado tenga sentido y se acerque realmente a lo que necesitas.',
+    title: 'Acompañamos avance',
+    text: 'Buscamos que compra o ejecución tenga sentido técnico y comercial.',
   },
 ];
 
@@ -141,38 +142,40 @@ export default function LandingSections({
   const ttHref = socialLinks?.tiktok?.trim() || '#';
 
   return (
-    <div className="overflow-x-hidden bg-black text-white">
-      <section className="border-t border-white/5 bg-[#080806] px-4 py-20 md:px-12 md:py-28">
-        <div className="mx-auto max-w-7xl">
+    <div className="overflow-x-hidden bg-[#050403] text-white">
+      <section className="border-t border-white/10 px-4 py-20 md:px-12 md:py-28">
+        <div className="mx-auto max-w-[1500px]">
           <SectionHeader
             eyebrow="Enfoque Fabrick"
             title="Venimos a quitarle ruido a la construcción"
-            text="La mala comunicación, la improvisación y las decisiones apuradas terminan costando caro. Nuestro enfoque es ayudarte a avanzar con más orden, más criterio y más confianza."
+            text="La mala comunicación, la improvisación y las decisiones apuradas terminan costando caro. Nuestro enfoque es avanzar con más orden, criterio y confianza."
           />
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
+          <div className="mt-12 grid divide-y divide-white/10 border-y border-white/10 md:grid-cols-3 md:divide-x md:divide-y-0">
             {PRINCIPLES.map(({ Icon, title, text }) => (
-              <ValueCard key={title} Icon={Icon} title={title} text={text} />
+              <LineItem key={title} Icon={Icon} title={title} text={text} />
             ))}
           </div>
         </div>
       </section>
 
-      <section id="servicios" className="border-t border-white/5 px-4 py-20 md:px-12 md:py-28">
-        <div className="mx-auto max-w-7xl">
+      <section id="servicios" className="border-t border-white/10 bg-[#080706] px-4 py-20 md:px-12 md:py-28">
+        <div className="mx-auto max-w-[1500px]">
           <SectionHeader
             eyebrow="Servicios"
             title="Soluciones pensadas para resolver de verdad"
             text="No presentamos servicios como una lista fría. Los enfocamos en lo que realmente importa: mejorar espacios, evitar errores y ayudarte a decidir mejor."
           />
-          <div className="mt-12 grid gap-4 md:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-12 divide-y divide-white/10 border-y border-white/10">
             {SERVICES.map(({ Icon, title, text, href }) => (
-              <Link key={title} href={href} className="group block rounded-[1.6rem] border border-white/10 bg-zinc-950/75 p-6 transition duration-300 hover:-translate-y-1 hover:border-yellow-300/40 hover:bg-zinc-900">
-                <span className="grid h-12 w-12 place-items-center rounded-2xl border border-yellow-300/25 bg-yellow-300/10 text-yellow-300 transition group-hover:bg-yellow-300 group-hover:text-black">
+              <Link key={title} href={href} className="group grid gap-5 py-6 transition hover:bg-white/[0.025] sm:grid-cols-[56px_minmax(0,1fr)_auto] sm:items-center sm:px-2">
+                <span className="grid h-12 w-12 place-items-center rounded-full bg-yellow-300 text-black transition group-hover:scale-105">
                   <Icon className="h-5 w-5" />
                 </span>
-                <h3 className="mt-5 text-lg font-black leading-tight text-white">{title}</h3>
-                <p className="mt-3 text-sm leading-7 text-zinc-400">{text}</p>
-                <span className="mt-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-yellow-300">
+                <span>
+                  <b className="block text-xl font-black leading-tight text-white">{title}</b>
+                  <span className="mt-2 block max-w-3xl text-sm leading-7 text-zinc-400">{text}</span>
+                </span>
+                <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-yellow-300">
                   Ver solución <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
                 </span>
               </Link>
@@ -181,21 +184,18 @@ export default function LandingSections({
         </div>
       </section>
 
-      <section id="tienda" className="relative overflow-hidden border-t border-white/5 bg-[#070707] px-4 py-20 md:px-12 md:py-28">
-        <div aria-hidden className="pointer-events-none absolute inset-0">
-          <div className="absolute -right-24 -top-32 h-96 w-96 rounded-full bg-yellow-300/15 blur-3xl" />
-          <div className="absolute -bottom-32 -left-20 h-80 w-80 rounded-full bg-orange-500/10 blur-3xl" />
-        </div>
-        <div className="relative mx-auto max-w-7xl">
+      <section id="tienda" className="relative overflow-hidden border-t border-white/10 px-4 py-20 md:px-12 md:py-28">
+        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_92%_0%,rgba(250,204,21,.12),transparent_26rem),radial-gradient(circle_at_10%_100%,rgba(20,184,166,.10),transparent_28rem)]" />
+        <div className="relative mx-auto max-w-[1500px]">
           <SectionHeader
             eyebrow="Tienda"
             title="Productos seleccionados para tu hogar y tus proyectos"
             text="La idea no es vender por vender. Queremos ayudarte a encontrar productos útiles para equipar, renovar y mejorar espacios con mejor criterio de compra."
           />
-          <div className="mt-12 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div className="mt-12 grid divide-y divide-white/10 border-y border-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-3">
             {PRODUCT_CATEGORIES.map(({ Icon, title, text }) => (
-              <Link key={title} href="/tienda" className="group flex items-start gap-4 rounded-[1.4rem] border border-white/10 bg-black/55 p-5 backdrop-blur transition hover:-translate-y-1 hover:border-yellow-300/40 hover:bg-white/[0.04]">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl border border-white/10 bg-white/5 text-yellow-300 transition group-hover:bg-yellow-300 group-hover:text-black">
+              <Link key={title} href="/tienda" className="group flex items-start gap-4 p-5 transition hover:bg-white/[0.025]">
+                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-yellow-300/30 text-yellow-300 transition group-hover:bg-yellow-300 group-hover:text-black">
                   <Icon className="h-5 w-5" />
                 </span>
                 <span>
@@ -205,14 +205,14 @@ export default function LandingSections({
               </Link>
             ))}
           </div>
-          <div className="mt-12">
+          <div className="mt-14 border-t border-white/10 pt-10">
             <TiendaSection />
           </div>
         </div>
       </section>
 
-      <section className="border-t border-white/5 bg-zinc-950 px-4 py-20 md:px-12 md:py-28">
-        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
+      <section className="border-t border-white/10 bg-[#080706] px-4 py-20 md:px-12 md:py-28">
+        <div className="mx-auto grid max-w-[1500px] gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.34em] text-yellow-300">Por qué elegirnos</p>
             <h2 className="mt-4 text-4xl font-black leading-[0.98] tracking-tight text-white md:text-6xl">Menos humo. Más claridad para avanzar.</h2>
@@ -228,28 +228,28 @@ export default function LandingSections({
               </a>
             </div>
           </div>
-          <div className="grid gap-3 sm:grid-cols-2">
+          <div className="divide-y divide-white/10 border-y border-white/10">
             {WHY_US.map((item) => (
-              <div key={item} className="rounded-[1.4rem] border border-white/10 bg-black/55 p-5">
-                <CheckCircle2 className="h-5 w-5 text-yellow-300" />
-                <p className="mt-4 text-sm leading-7 text-zinc-300">{item}</p>
+              <div key={item} className="flex gap-4 py-5">
+                <CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-yellow-300" />
+                <p className="text-sm leading-7 text-zinc-300">{item}</p>
               </div>
             ))}
           </div>
         </div>
       </section>
 
-      <section className="border-t border-white/5 px-4 py-20 md:px-12 md:py-28">
-        <div className="mx-auto max-w-7xl">
+      <section className="border-t border-white/10 px-4 py-20 md:px-12 md:py-28">
+        <div className="mx-auto max-w-[1500px]">
           <SectionHeader
             eyebrow="Proceso"
             title="Así trabajamos"
             text="Un proceso simple, claro y directo para pasar de la duda inicial a una decisión mejor tomada."
           />
-          <div className="mt-12 grid gap-4 md:grid-cols-4">
+          <div className="mt-12 grid divide-y divide-white/10 border-y border-white/10 md:grid-cols-4 md:divide-x md:divide-y-0">
             {PROCESS.map(({ step, title, text }) => (
-              <div key={step} className="rounded-[1.6rem] border border-white/10 bg-zinc-950/80 p-6">
-                <span className="text-4xl font-black text-yellow-300/30">{step}</span>
+              <div key={step} className="p-6">
+                <span className="text-4xl font-black text-yellow-300/35">{step}</span>
                 <h3 className="mt-5 text-lg font-black text-white">{title}</h3>
                 <p className="mt-3 text-sm leading-7 text-zinc-400">{text}</p>
               </div>
@@ -258,8 +258,8 @@ export default function LandingSections({
         </div>
       </section>
 
-      <section id="contacto" className="border-t border-white/5 bg-[#070707] px-4 py-20 md:px-12 md:py-28">
-        <div className="mx-auto grid max-w-7xl gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
+      <section id="contacto" className="border-t border-white/10 bg-[#070707] px-4 py-20 md:px-12 md:py-28">
+        <div className="mx-auto grid max-w-[1500px] gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
           <div className="space-y-8">
             <div>
               <p className="text-[10px] font-black uppercase tracking-[0.34em] text-yellow-300">Contacto directo</p>
@@ -268,20 +268,20 @@ export default function LandingSections({
                 Cuéntanos qué necesitas y te ayudamos a ordenar la idea. Puede ser una remodelación, una instalación, una compra para tu hogar o una duda antes de avanzar.
               </p>
             </div>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid divide-y divide-white/10 border-y border-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
               <ContactNote Icon={MapPin} title="Zona de atención" text="Base en Linares y Región del Maule; consultas puntuales en otras zonas." />
               <ContactNote Icon={Sparkles} title="Primera orientación" text="Revisamos tu necesidad para indicar el mejor camino inicial." />
             </div>
             <ContactMap className="min-h-[22rem]" title="Soluciones Fabrick" subtitle="Linares · Región del Maule" />
           </div>
-          <div className="rounded-[2rem] border border-white/10 bg-zinc-950/80 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.35)] backdrop-blur-xl md:p-8">
+          <div className="border-t border-yellow-300/35 pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0">
             <ContactForm />
           </div>
         </div>
       </section>
 
       <footer className="border-t border-white/10 bg-black px-4 py-12 md:px-12">
-        <div className="mx-auto grid max-w-7xl gap-10 md:grid-cols-[1.2fr_0.8fr_0.8fr]">
+        <div className="mx-auto grid max-w-[1500px] gap-10 md:grid-cols-[1.2fr_0.8fr_0.8fr]">
           <div>
             <p className="text-lg font-black uppercase tracking-[0.14em] text-white">Soluciones <span className="text-yellow-300">Fabrick</span></p>
             <p className="mt-4 max-w-md text-sm leading-7 text-zinc-400">{taglineText}</p>
@@ -291,10 +291,10 @@ export default function LandingSections({
               <SocialLink href={ttHref} label="TikTok"><TikTokIcon /></SocialLink>
             </div>
           </div>
-          <FooterColumn title="Explorar" items={[['Servicios', '/servicios'], ['Tienda', '/tienda'], ['Contacto', '/contacto'], ['Garantías', '/garantias']]} />
-          <FooterColumn title="Contacto" items={[['WhatsApp', buildWhatsAppLink('Hola Soluciones Fabrick, quiero orientación.')], ['Cotizar', '/contacto'], ['Productos', '/tienda']]} />
+          <FooterColumn title="Explorar" items={[["Servicios", "/servicios"], ["Tienda", "/tienda"], ["Contacto", "/contacto"], ["Garantías", "/garantias"]]} />
+          <FooterColumn title="Contacto" items={[["WhatsApp", buildWhatsAppLink('Hola Soluciones Fabrick, quiero orientación.')], ["Cotizar", "/contacto"], ["Productos", "/tienda"]]} />
         </div>
-        <div className="mx-auto mt-10 max-w-7xl border-t border-white/10 pt-6 text-xs leading-6 text-zinc-500" dangerouslySetInnerHTML={{ __html: copyrightHtml }} />
+        <div className="mx-auto mt-10 max-w-[1500px] border-t border-white/10 pt-6 text-xs leading-6 text-zinc-500" dangerouslySetInnerHTML={{ __html: copyrightHtml }} />
       </footer>
     </div>
   );
@@ -310,10 +310,10 @@ function SectionHeader({ eyebrow, title, text }: { eyebrow: string; title: strin
   );
 }
 
-function ValueCard({ Icon, title, text }: { Icon: LucideIcon; title: string; text: string }) {
+function LineItem({ Icon, title, text }: { Icon: LucideIcon; title: string; text: string }) {
   return (
-    <div className="rounded-[1.6rem] border border-white/10 bg-black/50 p-6 backdrop-blur-xl">
-      <span className="grid h-12 w-12 place-items-center rounded-2xl border border-yellow-300/25 bg-yellow-300/10 text-yellow-300">
+    <div className="p-6">
+      <span className="grid h-12 w-12 place-items-center rounded-full bg-yellow-300 text-black">
         <Icon className="h-5 w-5" />
       </span>
       <h3 className="mt-5 text-xl font-black text-white">{title}</h3>
@@ -324,7 +324,7 @@ function ValueCard({ Icon, title, text }: { Icon: LucideIcon; title: string; tex
 
 function ContactNote({ Icon, title, text }: { Icon: LucideIcon; title: string; text: string }) {
   return (
-    <div className="rounded-[1.4rem] border border-white/10 bg-black/50 p-5">
+    <div className="p-5">
       <Icon className="h-5 w-5 text-yellow-300" />
       <b className="mt-4 block text-sm font-black uppercase tracking-[0.12em] text-white">{title}</b>
       <p className="mt-2 text-sm leading-6 text-zinc-400">{text}</p>
@@ -332,7 +332,7 @@ function ContactNote({ Icon, title, text }: { Icon: LucideIcon; title: string; t
   );
 }
 
-function SocialLink({ href, label, children }: { href: string; label: string; children: React.ReactNode }) {
+function SocialLink({ href, label, children }: { href: string; label: string; children: ReactNode }) {
   const isDisabled = !href || href === '#';
   return (
     <a
@@ -352,11 +352,13 @@ function FooterColumn({ title, items }: { title: string; items: Array<[string, s
     <div>
       <p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">{title}</p>
       <div className="mt-4 grid gap-2">
-        {items.map(([label, href]) => (
-          <Link key={label + href} href={href} className="text-sm text-zinc-400 transition hover:text-yellow-300">
-            {label}
-          </Link>
-        ))}
+        {items.map(([label, href]) => {
+          const external = href.startsWith('http');
+          if (external) {
+            return <a key={label + href} href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-400 transition hover:text-yellow-300">{label}</a>;
+          }
+          return <Link key={label + href} href={href} className="text-sm text-zinc-400 transition hover:text-yellow-300">{label}</Link>;
+        })}
       </div>
     </div>
   );

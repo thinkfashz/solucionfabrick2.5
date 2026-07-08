@@ -1,7 +1,7 @@
 'use client';
 
-import { useMemo, useState } from 'react';
-import { ArrowRight, Calculator, CheckCircle2, Droplets, Gauge, Home, Info, PlugZap, Ruler, ShieldCheck, Sparkles, TreePine } from 'lucide-react';
+import { useMemo, useState, type ReactNode } from 'react';
+import { ArrowRight, Calculator, Droplets, Gauge, Home, Info, PlugZap, Ruler, ShieldCheck, Sparkles, TreePine } from 'lucide-react';
 
 const PRICE_MIN = 540000;
 const PRICE_MID = 650000;
@@ -164,7 +164,7 @@ export default function ConstructionM2Calculator() {
   );
 }
 
-function ScopeCard({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+function ScopeCard({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
   return (
     <div className="rounded-[1.4rem] border border-white/10 bg-black/35 p-4 backdrop-blur-xl">
       <span className="grid h-11 w-11 place-items-center rounded-2xl bg-yellow-300/12 text-yellow-300">{icon}</span>

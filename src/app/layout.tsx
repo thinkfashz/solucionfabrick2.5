@@ -24,7 +24,6 @@ import { TenantBrandingBar } from '@/components/tenant/TenantBrandingBar';
 import { TenantThemeRuntime } from '@/components/tenant/TenantThemeRuntime';
 import { TenantCopyRuntime } from '@/components/tenant/TenantCopyRuntime';
 import CookieConsentBanner from '@/components/CookieConsentBanner';
-import LegalFooter from '@/components/LegalFooter';
 import { getSiteSection } from '@/lib/siteStructure';
 
 // Force per-request rendering for every route in the app.
@@ -142,7 +141,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <TenantThemeRuntime />
                   <TenantCopyRuntime />
                   {children}
-                  <LegalFooter />
                   <TenantBrandingBar />
                   <ServiceWorkerRegister />
                   <InstallAppPrompt />

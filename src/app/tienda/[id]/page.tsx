@@ -1,7 +1,7 @@
-import type { Metadata } from 'next';
-import { insforge } from '@/lib/insforge';
-import { buildProductMetaDescription } from '@/lib/utils';
-import ProductoTiendaClient from './ProductoTiendaClient';
+import type { Metadata } from "next";
+import { insforge } from "@/lib/insforge";
+import { buildProductMetaDescription } from "@/lib/utils";
+import ProductoTiendaClient from "./ProductoTiendaClient";
 
 type Props = { params: Promise<{ id: string }> };
 
@@ -16,22 +16,31 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
 
   const { data } = await insforge.database
-    .from('products')
-    .select('name, description, image_url, price')
-    .eq('id', id)
+    .from("products")
+    .select("name, description, image_url, price")
+    .eq("id", id)
     .single();
 
   const product = data as ProductRow | null;
 
   if (!product?.name) {
-    return { title: 'Producto | Soluciones Fabrick' };
+    return { title: "Producto | Soluciones Fabrick" };
   }
 
   const title = product.name;
   const description =
-    product.description ?? buildProductMetaDescription(product.name, 'Compra');
+    product.description ?? buildProductMetaDescription(product.name, "Compra");
 
-  const images = product.image_url ? [{ url: product.image_url }] : [];
+  const images = product.image_url
+    ? [{ url: product.image_url, alt: product.name }]
+    : [
+        {
+          url: "/opengraph-image",
+          width: 1200,
+          height: 630,
+          alt: "Soluciones Fabrick",
+        },
+      ];
 
   return {
     title,
@@ -40,13 +49,13 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       title: `${title} | Soluciones Fabrick`,
       description,
       images,
-      type: 'website',
+      type: "website",
     },
     twitter: {
-      card: 'summary_large_image',
+      card: "summary_large_image",
       title: `${title} | Soluciones Fabrick`,
       description,
-      images: product.image_url ? [product.image_url] : [],
+      images: product.image_url ? [product.image_url] : ["/opengraph-image"],
     },
     alternates: {
       canonical: `https://www.solucionesfabrick.com/tienda/${id}`,

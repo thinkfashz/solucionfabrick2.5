@@ -17,6 +17,7 @@ import {
   PaintRoller,
   SearchCheck,
   ShieldCheck,
+  Snowflake,
   ShoppingBag,
   Sparkles,
   Wrench,
@@ -39,6 +40,12 @@ const SERVICES = [
   { Icon: Hammer, title: 'Construcción y ampliaciones', text: 'Estructura, montaje, revestimientos, terminaciones y coordinación de partidas para avanzar con orden.', href: '/servicios/metalcon' },
   { Icon: Wrench, title: 'Instalaciones y mejoras', text: 'Puntos eléctricos, agua PPR, gas interior, sanitarios, cocina, baño y soluciones prácticas para el hogar.', href: '/servicios' },
   { Icon: ClipboardCheck, title: 'Orientación antes de comprar', text: 'Te ayudamos a decidir entre materiales, productos y niveles de terminación sin gastar a ciegas.', href: '/contacto' },
+];
+
+const SOLUTION_BANNERS = [
+  { Icon: Home, tag: 'Proyecto completo', title: 'Construcción, ampliación y remodelación', text: 'Ordenamos estructura, especialidades y terminaciones desde una sola conversación.', href: '/servicios', tone: 'from-yellow-300/25' },
+  { Icon: Snowflake, tag: 'Confort todo el año', title: 'Climatización e instalación', text: 'Equipos de aire acondicionado con orientación para elegir capacidad y ubicación.', href: '/tienda', tone: 'from-cyan-300/20' },
+  { Icon: Lightbulb, tag: 'Producto + solución', title: 'Iluminación interior y exterior', text: 'Focos, lámparas y reflectores para renovar, ahorrar y mejorar cada ambiente.', href: '/tienda', tone: 'from-amber-300/20' },
 ];
 
 const PRODUCT_CATEGORIES = [
@@ -85,6 +92,13 @@ export default function LandingSections({ copyrightText, socialLinks }: { copyri
         </div>
       </section>
 
+      <section data-scroll-section className="border-t border-white/10 bg-[#080706] px-4 py-16 md:px-12 md:py-20">
+        <div className="mx-auto max-w-[1500px]">
+          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.34em] text-yellow-300">Soluciones más solicitadas</p><h2 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">Compra el producto. Resuelve el problema.</h2></div><p className="max-w-xl text-sm leading-7 text-zinc-400">Desde el equipo correcto hasta su instalación: combina tienda y servicio sin perder tiempo coordinando proveedores distintos.</p></div>
+          <div className="grid gap-4 lg:grid-cols-3">{SOLUTION_BANNERS.map(({ Icon, tag, title, text, href, tone }) => <Link key={title} href={href} className={`group relative min-h-72 overflow-hidden rounded-[1.6rem] border border-white/10 bg-gradient-to-br ${tone} via-white/[.025] to-transparent p-6 transition hover:-translate-y-1 hover:border-yellow-300/35`}><span className="grid h-12 w-12 place-items-center rounded-full bg-yellow-300 text-black"><Icon className="h-5 w-5" /></span><div className="absolute inset-x-6 bottom-6"><p className="text-[9px] font-black uppercase tracking-[.25em] text-yellow-300">{tag}</p><h3 className="mt-3 text-2xl font-black leading-tight">{title}</h3><p className="mt-3 text-sm leading-6 text-zinc-400">{text}</p><span className="mt-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.22em] text-yellow-300">Explorar <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></span></div></Link>)}</div>
+        </div>
+      </section>
+
       <section data-scroll-section id="servicios" className="border-t border-white/10 bg-[#080706] px-4 py-20 md:px-12 md:py-28">
         <div className="mx-auto max-w-[1500px]">
           <SectionHeader eyebrow="Servicios" title="Opciones para partir simple o avanzar completo" text="Puedes comenzar con un kit básico, mejorar a un kit intermedio o avanzar a una casa llave en mano. Cada alternativa tiene un alcance distinto." />
@@ -103,7 +117,7 @@ export default function LandingSections({ copyrightText, socialLinks }: { copyri
       <section data-scroll-section id="tienda" className="relative overflow-hidden border-t border-white/10 px-4 py-20 md:px-12 md:py-28">
         <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_92%_0%,rgba(250,204,21,.12),transparent_26rem),radial-gradient(circle_at_10%_100%,rgba(20,184,166,.10),transparent_28rem)]" />
         <div className="relative mx-auto max-w-[1500px]">
-          <SectionHeader eyebrow="Tienda" title="Productos para complementar tu proyecto" text="Además de construir, también reunimos productos útiles para iluminar, equipar, mejorar baños, cocinas y espacios del hogar." />
+          <SectionHeader eyebrow="Tienda" title="Productos que resuelven necesidades reales" text="Climatización, iluminación, grifería y equipamiento para completar el proyecto. Revisa cada ficha y consulta también por instalación." />
           <div className="mt-12 grid divide-y divide-white/10 border-y border-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-3">
             {PRODUCT_CATEGORIES.map(({ Icon, title, text }) => (
               <Link key={title} href="/tienda" className="group flex items-start gap-4 p-5 transition hover:bg-white/[0.025]">

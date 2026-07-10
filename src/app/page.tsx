@@ -21,7 +21,8 @@ export default async function Home() {
     name: 'Soluciones Fabrick',
     description: 'Soluciones para construcción, remodelación, equipamiento y mejoras del hogar en Chile.',
     url: 'https://www.solucionesfabrick.com',
-    image: 'https://www.solucionesfabrick.com/og-image.jpg',
+    logo: 'https://www.solucionesfabrick.com/logo-soluciones-fabrick.svg',
+    image: 'https://www.solucionesfabrick.com/opengraph-image',
     address: { '@type': 'PostalAddress', addressLocality: 'Linares', addressRegion: 'Maule', addressCountry: 'CL' },
     areaServed: ['Maule', 'Santiago', 'Chile'],
     priceRange: '$$',
@@ -34,8 +35,8 @@ export default async function Home() {
       <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
       <div className="min-h-screen overflow-x-hidden bg-[#050403] selection:bg-yellow-300 selection:text-black">
         <Navbar />
-        <ConstructionM2Calculator />
         <StaticConstructionHero coverUrl={settings.hero_cover_url || undefined} />
+        <ConstructionM2Calculator />
         <LandingSections copyrightText={copyrightText} socialLinks={socialLinks} />
       </div>
     </>

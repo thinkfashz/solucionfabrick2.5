@@ -66,18 +66,25 @@ export const metadata: Metadata = {
   ],
   authors: [{ name: 'Soluciones Fabrick' }],
   openGraph: {
-    title: 'Soluciones Fabrick | Tu Obra en Buenas Manos',
+    title: 'Soluciones Fabrick | Construye con un precio claro desde el inicio',
     description:
-      'Construcción y remodelación residencial en el Maule. Metalcon, gasfitería, electricidad y más. Evaluación gratuita.',
+      'Calcula kits, cabañas, ampliaciones y casas llave en mano. Construcción, remodelación y equipamiento para el hogar en Maule y Santiago.',
     url: 'https://www.solucionesfabrick.com',
     siteName: 'Soluciones Fabrick',
     locale: 'es_CL',
     type: 'website',
+    images: [{
+      url: '/opengraph-image',
+      width: 1200,
+      height: 630,
+      alt: 'Soluciones Fabrick — construcción, remodelación y equipamiento del hogar',
+    }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Soluciones Fabrick',
-    description: 'Construcción y remodelación residencial en Chile',
+    title: 'Soluciones Fabrick | Construcción con claridad',
+    description: 'Calcula tu proyecto, compara alternativas y avanza con un alcance claro.',
+    images: ['/opengraph-image'],
   },
   robots: {
     index: true,
@@ -110,7 +117,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#facc15',
+  themeColor: '#0a0907',
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

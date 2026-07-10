@@ -1,10 +1,11 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, Calculator, CheckCircle2, Home, Ruler } from 'lucide-react';
+import { AlertTriangle, ArrowRight, Building2, Calculator, CheckCircle2, Hammer, Home, Ruler, TentTree } from 'lucide-react';
 
 type OptionId = 'kit-basico' | 'kit-intermedio' | 'llave-mano';
 type HouseLevelId = 'funcional' | 'terminaciones';
+type ProjectTypeId = 'kit' | 'cabana' | 'ampliacion' | 'vivienda';
 
 type CostPart = { label: string; pct?: number; amount?: number };
 
@@ -34,6 +35,12 @@ type HouseLevel = {
 };
 
 const BASIC_INSTALL_FROM = 850000;
+const PROJECT_TYPES = [
+  { id: 'kit' as const, label: 'Kit para armar', short: 'Estructura para avanzar por etapas', icon: Hammer },
+  { id: 'cabana' as const, label: 'Cabaña', short: 'Desde 15 m² para parcela o descanso', icon: TentTree },
+  { id: 'ampliacion' as const, label: 'Ampliación', short: 'Más espacio conectado a tu vivienda', icon: Building2 },
+  { id: 'vivienda' as const, label: 'Casa', short: 'Vivienda nueva, funcional o terminada', icon: Home },
+] as const;
 
 const OPTIONS: CalculatorOption[] = [
   {
@@ -74,7 +81,7 @@ const OPTIONS: CalculatorOption[] = [
   },
   {
     id: 'llave-mano',
-    label: 'Casa llave en mano',
+    label: 'Llave en mano',
     headline: 'Funcional o con terminaciones',
     pricePerM2: 540000,
     minM2: 30,
@@ -133,11 +140,13 @@ function normalizeM2(value: string) {
 
 export default function ConstructionM2Calculator() {
   const [m2Input, setM2Input] = useState('54');
+  const [projectTypeId, setProjectTypeId] = useState<ProjectTypeId>('vivienda');
   const [optionId, setOptionId] = useState<OptionId>('kit-basico');
   const [houseLevelId, setHouseLevelId] = useState<HouseLevelId>('funcional');
 
   const option = OPTIONS.find((item) => item.id === optionId) || OPTIONS[0];
   const houseLevel = HOUSE_LEVELS.find((item) => item.id === houseLevelId) || HOUSE_LEVELS[0];
+  const projectType = PROJECT_TYPES.find((item) => item.id === projectTypeId) || PROJECT_TYPES[3];
   const isHouse = option.id === 'llave-mano';
   const activeTitle = isHouse ? houseLevel.label : option.label;
   const activeHeadline = isHouse ? houseLevel.headline : option.headline;
@@ -148,12 +157,14 @@ export default function ConstructionM2Calculator() {
 
   const m2Data = normalizeM2(m2Input);
   const m2 = m2Data.value;
+  const selectedMinM2 = projectTypeId === 'cabana' ? 15 : option.minM2;
+  const selectedMaxM2 = projectTypeId === 'cabana' ? 60 : option.maxM2;
   const materialSubtotal = m2 * activePrice;
   const fixedInstall = isHouse ? 0 : option.fixedInstall || 0;
   const total = materialSubtotal + fixedInstall;
   const minRange = m2 * Math.min(...(isHouse ? HOUSE_LEVELS.map((level) => level.pricePerM2) : [option.pricePerM2]));
   const maxRange = isHouse ? m2 * Math.max(...HOUSE_LEVELS.map((level) => level.pricePerM2)) : total;
-  const progress = Math.min(100, Math.max(8, (m2 / option.maxM2) * 100));
+  const progress = Math.min(100, Math.max(8, (m2 / selectedMaxM2) * 100));
 
   const breakdown = useMemo(() => activeParts.map((part) => {
     const amount = part.amount ?? materialSubtotal * (part.pct || 0);
@@ -161,7 +172,7 @@ export default function ConstructionM2Calculator() {
   }), [activeParts, materialSubtotal]);
 
   const whatsappMessage = encodeURIComponent(
-    `Hola, quiero calcular ${activeTitle} de ${m2 || 0} m². Precio por m²: ${formatCLP(activePrice)}. Total referencial: ${formatCLP(total)}. Quiero revisar qué incluye y qué se cotiza aparte.`,
+    `Hola, quiero calcular una ${projectType.label.toLowerCase()} de ${m2 || 0} m² con modalidad ${activeTitle}. Precio por m²: ${formatCLP(activePrice)}. Total referencial: ${formatCLP(total)}. Quiero revisar qué incluye y qué se cotiza aparte.`,
   );
 
   function updateM2(value: string) {
@@ -178,7 +189,7 @@ export default function ConstructionM2Calculator() {
   }
 
   return (
-    <section id="calculadora-m2" data-scroll-section className="relative overflow-hidden bg-[#060504] px-4 pb-16 pt-24 text-white sm:px-6 lg:px-8 lg:pt-28">
+    <section id="calculadora-m2" data-scroll-section className="relative overflow-hidden bg-[#060504] px-4 py-20 text-white sm:px-6 lg:px-8 lg:py-28">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_8%,rgba(250,204,21,.16),transparent_25rem),radial-gradient(circle_at_90%_8%,rgba(20,184,166,.10),transparent_28rem),linear-gradient(180deg,#070604,#0a0805_55%,#050505)]" />
 
       <div className="relative mx-auto max-w-[1450px]">
@@ -187,11 +198,24 @@ export default function ConstructionM2Calculator() {
             <div className="inline-flex items-center gap-2 border-b border-yellow-300/50 pb-2 text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300">
               <Calculator className="h-4 w-4" /> Calculadora rápida
             </div>
-            <h1 className="mt-7 max-w-4xl text-4xl font-black leading-[.92] tracking-[-0.075em] sm:text-6xl lg:text-7xl">Precio simple para kit o casa.</h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-300">El cliente solo elige una opción, escribe los metros cuadrados y ve un total referencial. La explicación queda debajo, separada y ordenada.</p>
+            <h2 className="mt-7 max-w-4xl text-4xl font-black leading-[.92] tracking-[-0.065em] sm:text-6xl lg:text-7xl">Descubre cuánto podría costar tu proyecto.</h2>
+            <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-300">Elige qué quieres construir, define el nivel de entrega y ajusta los metros cuadrados. Verás una referencia clara para decidir si vale la pena avanzar.</p>
 
-            <div className="mt-9 border-y border-white/10 py-5">
-              <p className="mb-4 text-[10px] font-black uppercase tracking-[0.26em] text-zinc-500">Paso 1 · Elige qué quieres calcular</p>
+            <div className="mt-9 border-y border-white/10 py-6">
+              <p className="mb-4 text-[10px] font-black uppercase tracking-[0.26em] text-yellow-300">Paso 1 · ¿Qué quieres construir?</p>
+              <div className="grid gap-3 sm:grid-cols-2">
+                {PROJECT_TYPES.map(({ id, label, short, icon: Icon }) => {
+                  const active = projectTypeId === id;
+                  return <button key={id} type="button" onClick={() => { setProjectTypeId(id); if (id === 'cabana' && (Number(m2Input) < 15 || Number(m2Input) > 60)) setM2Input('24'); }} className={`flex items-center gap-4 rounded-[1.35rem] border p-4 text-left transition ${active ? 'border-yellow-300 bg-yellow-300 text-black' : 'border-white/12 bg-white/[0.025] text-white hover:border-yellow-300/45'}`}>
+                    <span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${active ? 'bg-black text-yellow-300' : 'bg-white/[0.06] text-yellow-300'}`}><Icon className="h-5 w-5" /></span>
+                    <span><b className="block text-sm font-black">{label}</b><span className={`mt-1 block text-xs leading-5 ${active ? 'text-black/65' : 'text-zinc-500'}`}>{short}</span></span>
+                  </button>;
+                })}
+              </div>
+            </div>
+
+            <div className="border-b border-white/10 py-6">
+              <p className="mb-4 text-[10px] font-black uppercase tracking-[0.26em] text-yellow-300">Paso 2 · ¿Hasta dónde quieres avanzar?</p>
               <div className="grid gap-3 sm:grid-cols-3">
                 {OPTIONS.map((item) => (
                   <button key={item.id} type="button" onClick={() => selectOption(item.id)} className={`rounded-[1.35rem] border px-4 py-4 text-left transition ${optionId === item.id ? 'border-yellow-300 bg-yellow-300 text-black shadow-[0_16px_40px_rgba(250,204,21,.16)]' : 'border-white/15 bg-white/[0.025] text-white hover:border-yellow-300/55 hover:text-yellow-300'}`}>
@@ -205,7 +229,7 @@ export default function ConstructionM2Calculator() {
 
             {isHouse && (
               <div className="border-b border-white/10 py-5">
-                <label htmlFor="house-level" className="mb-3 block text-[10px] font-black uppercase tracking-[0.26em] text-zinc-500">Paso 2 · Nivel de llave en mano</label>
+                <label htmlFor="house-level" className="mb-3 block text-[10px] font-black uppercase tracking-[0.26em] text-yellow-300">Paso 3 · Elige el nivel de terminación</label>
                 <select id="house-level" value={houseLevelId} onChange={(event) => setHouseLevelId(event.target.value as HouseLevelId)} className="w-full rounded-[1.2rem] border border-teal-300/35 bg-black/60 px-4 py-4 text-base font-black text-white outline-none focus:border-yellow-300">
                   {HOUSE_LEVELS.map((level) => <option key={level.id} value={level.id}>{level.label} · {formatCLP(level.pricePerM2)}/m²</option>)}
                 </select>
@@ -229,7 +253,7 @@ export default function ConstructionM2Calculator() {
               <div className="flex items-start justify-between gap-4">
                 <div>
                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">Resumen en vivo</p>
-                  <h2 className="mt-2 text-2xl font-black tracking-[-0.04em]">{activeTitle}</h2>
+                  <h3 className="mt-2 text-2xl font-black tracking-[-0.04em]">{projectType.label} · {activeTitle}</h3>
                   <p className="mt-1 text-sm text-zinc-500">{activeHeadline}</p>
                 </div>
                 <Home className="mt-1 h-8 w-8 shrink-0 text-yellow-300" />
@@ -239,11 +263,11 @@ export default function ConstructionM2Calculator() {
                 <label className="block text-[10px] font-black uppercase tracking-[0.24em] text-zinc-400">Metros cuadrados</label>
                 <div className="mt-3 flex items-end gap-3 border-b border-white/15 pb-3">
                   <Ruler className="mb-2 h-5 w-5 text-yellow-300" />
-                  <input value={m2Input} onChange={(event) => updateM2(event.target.value)} onBlur={() => { if (!m2Input.trim()) setM2Input(String(option.minM2)); }} inputMode="decimal" className="w-full bg-transparent text-6xl font-black tracking-[-0.08em] text-white outline-none placeholder:text-white/20" placeholder="54" />
+                <input value={m2Input} onChange={(event) => updateM2(event.target.value)} onBlur={() => { if (!m2Input.trim()) setM2Input(String(selectedMinM2)); }} inputMode="decimal" className="w-full bg-transparent text-6xl font-black tracking-[-0.08em] text-white outline-none placeholder:text-white/20" placeholder="54" />
                   <span className="pb-3 text-xl font-black text-yellow-300">m²</span>
                 </div>
-                <input type="range" min={option.minM2} max={option.maxM2} step="1" value={Math.min(option.maxM2, Math.max(option.minM2, Math.round(m2 || option.minM2)))} onChange={(event) => setM2Input(event.target.value)} className="mt-5 w-full accent-yellow-300" />
-                <div className="mt-2 flex justify-between text-[11px] font-bold text-zinc-500"><span>{option.minM2} m²</span><span>{option.maxM2} m²</span></div>
+                <input type="range" min={selectedMinM2} max={selectedMaxM2} step="1" value={Math.min(selectedMaxM2, Math.max(selectedMinM2, Math.round(m2 || selectedMinM2)))} onChange={(event) => setM2Input(event.target.value)} className="mt-5 w-full accent-yellow-300" />
+                <div className="mt-2 flex justify-between text-[11px] font-bold text-zinc-500"><span>{selectedMinM2} m²</span><span>{selectedMaxM2} m²</span></div>
               </div>
 
               <div className="border-b border-white/10 py-6">

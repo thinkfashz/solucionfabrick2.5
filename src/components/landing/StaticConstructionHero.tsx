@@ -1,97 +1,41 @@
 import Link from 'next/link';
-import { ArrowRight, Calculator, ClipboardList, MessageCircle, SearchCheck, ShoppingBag, Wrench } from 'lucide-react';
+import { ArrowDown, ArrowRight, Calculator, CheckCircle2, MessageCircle, ShieldCheck } from 'lucide-react';
+import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
-type Props = {
-  coverUrl?: string;
-};
-
-const fallbackCover = 'https://images.unsplash.com/photo-1503387762-592deb58ef4e?auto=format&fit=crop&w=1800&q=85';
-
-const workRules = [
-  {
-    icon: SearchCheck,
-    title: 'Primero entendemos lo que quieres hacer',
-    text: 'Revisamos si buscas un kit, una cabaña, una casa funcional o una solución con mejores terminaciones.',
-  },
-  {
-    icon: Calculator,
-    title: 'Luego aterrizamos precio y alcance',
-    text: 'Separamos qué incluye, qué queda fuera y qué puede cambiar según terreno, traslado o conexiones.',
-  },
-  {
-    icon: Wrench,
-    title: 'Después ordenamos el siguiente paso',
-    text: 'Si el número te sirve, avanzamos a medidas, ubicación, materialidad y cotización más cerrada.',
-  },
+type Props = { coverUrl?: string };
+const fallbackCover = 'https://images.unsplash.com/photo-1541888946425-d81bb19240f5?auto=format&fit=crop&w=1800&q=88';
+const projects = [
+  { src: 'https://images.unsplash.com/photo-1510798831971-661eb04b3739?auto=format&fit=crop&w=900&q=84', alt: 'Cabaña contemporánea', label: 'Cabañas' },
+  { src: 'https://images.unsplash.com/photo-1600585154340-be6161a56a0c?auto=format&fit=crop&w=900&q=84', alt: 'Casa moderna terminada', label: 'Casas' },
 ];
 
 export default function StaticConstructionHero({ coverUrl }: Props) {
-  const image = coverUrl || fallbackCover;
   return (
-    <section data-scroll-section className="relative overflow-hidden bg-[#050403] px-4 pb-16 pt-10 text-white sm:px-6 lg:px-8 lg:pt-14">
-      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_10%,rgba(250,204,21,.14),transparent_30rem),radial-gradient(circle_at_88%_35%,rgba(20,184,166,.10),transparent_28rem),linear-gradient(180deg,#050403,#090806_58%,#020202)]" />
-      <div className="absolute inset-x-0 top-0 h-[640px] opacity-28">
-        <img src={image} alt="Soluciones para construcción y mejoras del hogar" className="h-full w-full object-cover saturate-110" />
-        <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(5,4,3,.98),rgba(5,4,3,.82)_48%,rgba(5,4,3,.48)),linear-gradient(180deg,rgba(0,0,0,.1),#050403)]" />
-      </div>
-
-      <div className="relative mx-auto grid max-w-[1500px] gap-12 lg:grid-cols-[minmax(0,1fr)_440px] lg:items-center">
-        <div className="min-w-0 py-10 lg:py-20">
-          <div className="inline-flex w-fit items-center border-b border-teal-300/50 pb-2 text-[10px] font-black uppercase tracking-[0.28em] text-teal-100">
-            Kits · cabañas · casas llave en mano
+    <section className="relative isolate min-h-[100svh] overflow-hidden bg-[#080704] px-4 pb-10 pt-24 text-white sm:px-6 lg:px-8 lg:pt-28">
+      <img src={coverUrl || fallbackCover} alt="Equipo trabajando en una obra Fabrick" className="absolute inset-0 -z-20 h-full w-full object-cover" />
+      <div className="absolute inset-0 -z-10 bg-[linear-gradient(90deg,rgba(5,5,4,.96),rgba(5,5,4,.82)_48%,rgba(5,5,4,.34)),linear-gradient(180deg,transparent,rgba(0,0,0,.72))]" />
+      <div className="mx-auto grid min-h-[calc(100svh-8.5rem)] max-w-[1500px] items-end gap-10 pb-8 lg:grid-cols-[minmax(0,1fr)_430px] lg:items-center">
+        <div className="max-w-5xl">
+          <FabrickFullLogo className="mb-10" tagline="Construcción · Remodelación · Hogar" />
+          <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-black/35 px-4 py-2 text-[10px] font-black uppercase tracking-[.25em] text-yellow-200 backdrop-blur-md"><ShieldCheck className="h-3.5 w-3.5" /> Maule y proyectos seleccionados en Santiago</p>
+          <h1 className="mt-6 max-w-5xl text-[clamp(3.3rem,8vw,7.6rem)] font-black leading-[.84] tracking-[-.075em]">Tu proyecto empieza con <span className="text-yellow-300">claridad.</span></h1>
+          <p className="mt-7 max-w-2xl text-base leading-7 text-zinc-200 sm:text-xl sm:leading-9">Compara un kit, una cabaña, una ampliación o una casa llave en mano. Define los metros, conoce el alcance y decide sin avanzar a ciegas.</p>
+          <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+            <Link href="#calculadora-m2" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-yellow-300 px-7 text-sm font-black text-black transition hover:bg-white">Calcular mi proyecto <Calculator className="h-4 w-4" /></Link>
+            <Link href="/servicios" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-white/20 bg-black/25 px-7 text-sm font-black">Explorar soluciones <ArrowRight className="h-4 w-4" /></Link>
+            <a href="https://wa.me/56930121625?text=Hola%20Soluciones%20Fabrick%2C%20quiero%20orientaci%C3%B3n%20para%20mi%20proyecto." target="_blank" rel="noopener noreferrer" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-emerald-300/35 bg-emerald-300/10 px-7 text-sm font-black text-emerald-100">WhatsApp <MessageCircle className="h-4 w-4" /></a>
           </div>
-          <h2 className="mt-8 max-w-5xl text-5xl font-black leading-[.92] tracking-[-0.075em] text-white sm:text-7xl lg:text-8xl">
-            Cotiza con <span className="text-yellow-300">números claros</span> antes de construir.
-          </h2>
-          <div className="mt-7 h-1.5 w-20 rounded-full bg-gradient-to-r from-yellow-300 to-teal-300" />
-          <p className="mt-7 max-w-3xl text-base leading-8 text-zinc-200 sm:text-xl">
-            En Soluciones Fabrick te ayudamos a comparar opciones simples: kit básico, kit intermedio o casa llave en mano. La idea es que primero entiendas el precio aproximado y después veamos los detalles reales de tu terreno.
-          </p>
-          <p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-            No partimos con promesas infladas. Partimos con una base clara: metros cuadrados, alcance, materialidad, instalación, terminaciones y lo que se cotiza aparte.
-          </p>
-          <div className="mt-8 flex flex-wrap gap-3">
-            <Link href="#calculadora-m2" className="inline-flex h-14 items-center gap-2 rounded-full bg-yellow-300 px-6 text-sm font-black text-black shadow-[0_18px_45px_rgba(250,204,21,.25)] transition hover:-translate-y-0.5 hover:bg-yellow-200">
-              <Calculator className="h-4 w-4" /> Calcular precio
-            </Link>
-            <Link href="/tienda" className="inline-flex h-14 items-center gap-2 rounded-full border border-white/20 px-6 text-sm font-black text-white transition hover:-translate-y-0.5 hover:border-yellow-300/50 hover:text-yellow-300">
-              <ShoppingBag className="h-4 w-4" /> Ver productos
-            </Link>
-            <a href="https://wa.me/56930121625" target="_blank" rel="noopener noreferrer" className="inline-flex h-14 items-center gap-2 rounded-full border border-teal-300/40 px-6 text-sm font-black text-teal-100 transition hover:-translate-y-0.5 hover:bg-teal-300 hover:text-black">
-              <MessageCircle className="h-4 w-4" /> WhatsApp
-            </a>
+          <div className="mt-9 flex flex-wrap gap-x-6 gap-y-3 border-t border-white/15 pt-6">
+            {['Valor referencial antes de la visita', 'Incluidos y adicionales por separado', 'Respuesta humana para cerrar detalles'].map(point => <span key={point} className="inline-flex items-center gap-2 text-xs font-semibold text-zinc-300"><CheckCircle2 className="h-4 w-4 text-yellow-300" />{point}</span>)}
           </div>
         </div>
-
-        <aside className="border-y border-white/10 py-6 lg:border-y-0 lg:border-l lg:pl-8">
-          <p className="mb-5 text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300/90">Cómo te guiamos</p>
-          <div className="divide-y divide-white/10">
-            {workRules.map(({ icon: Icon, title, text }) => (
-              <div key={title} className="flex items-start gap-4 py-5">
-                <span className="mt-1 grid h-10 w-10 shrink-0 place-items-center rounded-full bg-yellow-300 text-black"><Icon className="h-4 w-4" /></span>
-                <span><b className="block text-white">{title}</b><span className="mt-1 block text-sm leading-6 text-zinc-400">{text}</span></span>
-              </div>
-            ))}
-          </div>
+        <aside className="hidden self-end lg:block">
+          <p className="mb-4 text-[10px] font-black uppercase tracking-[.28em] text-yellow-200">Elige el punto de partida</p>
+          <div className="grid grid-cols-2 gap-3">{projects.map(item => <Link key={item.label} href="#calculadora-m2" className="group relative min-h-52 overflow-hidden rounded-[1.6rem] border border-white/15"><img src={item.src} alt={item.alt} loading="lazy" className="absolute inset-0 h-full w-full object-cover transition duration-700 group-hover:scale-105" /><span className="absolute inset-0 bg-gradient-to-t from-black via-black/10 to-transparent" /><span className="absolute bottom-4 left-4 right-4 flex items-center justify-between text-sm font-black">{item.label}<ArrowRight className="h-4 w-4 text-yellow-300" /></span></Link>)}</div>
+          <div className="mt-3 rounded-[1.6rem] border border-white/15 bg-black/45 p-5 backdrop-blur-xl"><p className="text-[10px] font-black uppercase tracking-[.24em] text-yellow-300">Sin compromiso</p><p className="mt-2 text-sm leading-6 text-zinc-300">Calcula una referencia en menos de un minuto. Después decides si quieres una evaluación precisa.</p></div>
         </aside>
       </div>
-
-      <section data-scroll-section className="relative mx-auto mt-8 max-w-[1500px] border-y border-white/10 py-10 text-center">
-        <p className="text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300">La promesa Fabrick</p>
-        <h2 className="mx-auto mt-4 max-w-4xl text-3xl font-black tracking-tight text-white sm:text-5xl">Saber qué pagas antes de avanzar</h2>
-        <p className="mx-auto mt-4 max-w-3xl text-base leading-7 text-zinc-400">
-          Construir no debería sentirse confuso. Te mostramos un número de partida, lo que incluye y lo que queda pendiente para cotizar con más precisión.
-        </p>
-        <div className="mx-auto mt-9 grid max-w-5xl divide-y divide-white/10 text-left sm:grid-cols-3 sm:divide-x sm:divide-y-0">
-          <MiniValue title="Precio base" text="Calculamos por m² para que sepas rápido si el proyecto entra en tu presupuesto." />
-          <MiniValue title="Alcance claro" text="Marcamos lo incluido y lo que se cotiza aparte, como fosa, empalme o conexiones exteriores." />
-          <MiniValue title="Siguiente paso" text="Si el valor te sirve, revisamos medidas, lugar, accesos y terminaciones para cerrar mejor." />
-        </div>
-      </section>
+      <a href="#calculadora-m2" aria-label="Ir a la calculadora" className="absolute bottom-6 right-6 hidden h-12 w-12 place-items-center rounded-full border border-white/15 bg-black/35 text-yellow-300 md:grid"><ArrowDown className="h-5 w-5 animate-bounce" /></a>
     </section>
   );
-}
-
-function MiniValue({ title, text }: { title: string; text: string }) {
-  return <div className="p-5 sm:p-6"><b className="block text-xl font-black text-yellow-300">{title}</b><span className="mt-2 block text-sm leading-6 text-zinc-400">{text}</span></div>;
 }

@@ -4,7 +4,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { ArrowRight, Sparkles } from 'lucide-react';
+import { ArrowRight, Lightbulb, Snowflake, Sparkles, Wrench } from 'lucide-react';
 import { navigateWithTransition } from '@/lib/routeTransition';
 import { useCatalogProducts } from '@/hooks/useCatalogProducts';
 import AnimatedButton from '@/components/ui/animated-button';
@@ -22,15 +22,20 @@ interface TiendaSectionProps {
 
 export default function TiendaSection({
   limit = 6,
-  title = 'Catálogo de Soluciones Fabrick',
-  description = 'Cada material de este catálogo es seleccionado e instalado por nuestro equipo certificado directamente en tu proyecto. Pulsa cualquier producto para ver su ficha técnica.',
+  title = 'Productos más solicitados',
+  description = 'Una selección centrada en confort, iluminación y mejoras del hogar. Revisa el producto, sus características y consulta la alternativa de instalación.',
   primaryCtaHref = '/tienda',
   primaryCtaLabel = 'Ver catálogo completo',
 }: TiendaSectionProps) {
   const router = useRouter();
   const { products } = useCatalogProducts();
 
-  const visibleProducts = limit > 0 ? products.slice(0, limit) : products;
+  const priorityWords = ['aire', 'acondicionado', 'climat', 'lámpara', 'lampara', 'luz', 'led', 'foco', 'grifer', 'ducha'];
+  const rankedProducts = [...products].sort((a, b) => {
+    const score = (product: typeof a) => (product.featured ? 20 : 0) + priorityWords.reduce((total, word) => total + (`${product.name} ${product.category} ${product.description}`.toLowerCase().includes(word) ? 3 : 0), 0);
+    return score(b) - score(a);
+  });
+  const visibleProducts = limit > 0 ? rankedProducts.slice(0, limit) : rankedProducts;
 
   // Same cinematic transition overlay used across the rest of the site —
   // keeps catalog → product-detail navigation visually consistent.
@@ -44,6 +49,11 @@ export default function TiendaSection({
           {title.split(' ').slice(0, -2).join(' ')} <span className="shimmer-gold">{title.split(' ').slice(-2).join(' ')}</span>
         </h2>
         <p className="text-white/45 mt-4 max-w-2xl mx-auto text-sm leading-relaxed hero-text-fade" style={{ animationDelay: '0.3s', animationFillMode: 'both' }}>{description}</p>
+        <div className="mt-6 flex flex-wrap justify-center gap-2">
+          <Link href="/tienda" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-xs font-bold text-zinc-300 transition hover:border-cyan-300/40 hover:text-cyan-200"><Snowflake className="h-4 w-4" /> Climatización</Link>
+          <Link href="/tienda" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-xs font-bold text-zinc-300 transition hover:border-yellow-300/40 hover:text-yellow-300"><Lightbulb className="h-4 w-4" /> Iluminación</Link>
+          <Link href="/servicios" className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[.04] px-4 py-2 text-xs font-bold text-zinc-300 transition hover:border-yellow-300/40 hover:text-yellow-300"><Wrench className="h-4 w-4" /> Consultar instalación</Link>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -83,7 +93,7 @@ export default function TiendaSection({
                 <div className="absolute inset-0 bg-gradient-to-t from-black/75 to-transparent" />
                 {prod.featured ? (
                   <span className="absolute top-3 left-3 px-3 py-1 rounded-full bg-yellow-400 text-black text-[10px] font-bold tracking-wider">
-                    Destacado
+                    Más solicitado
                   </span>
                 ) : null}
                 {hasDiscount ? (

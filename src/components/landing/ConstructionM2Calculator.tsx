@@ -1,121 +1,56 @@
 'use client';
 
 import { useMemo, useState } from 'react';
-import { AlertTriangle, ArrowRight, Calculator, CheckCircle2, Home, Ruler } from 'lucide-react';
+import { AlertTriangle, ArrowRight, BarChart3, Building2, Calculator, CheckCircle2, Hammer, Home, Info, Layers3, Ruler, TentTree } from 'lucide-react';
 
-type OptionId = 'kit-basico' | 'kit-intermedio' | 'llave-mano';
-type HouseLevelId = 'funcional' | 'terminaciones';
+type TierId = 'kit-basico' | 'remodelacion' | 'llave-mano';
+type ProjectTypeId = 'kit' | 'cabana' | 'remodelacion' | 'vivienda';
 
-type CostPart = { label: string; pct?: number; amount?: number };
-
-type CalculatorOption = {
-  id: OptionId;
+type Tier = {
+  id: TierId;
   label: string;
-  headline: string;
-  pricePerM2: number;
-  minM2: number;
-  maxM2: number;
+  eyebrow: string;
+  minPrice: number;
+  maxPrice: number;
+  referencePrice: number;
+  summary: string;
+  materials: string;
   includes: string[];
   notIncluded: string[];
-  fixedInstall?: number;
-  note?: string;
-  installNote?: string;
-  parts: CostPart[];
+  parts: Array<{ label: string; pct: number }>;
 };
 
-type HouseLevel = {
-  id: HouseLevelId;
-  label: string;
-  headline: string;
-  pricePerM2: number;
-  includes: string[];
-  notIncluded: string[];
-  parts: CostPart[];
-};
+const PROJECT_TYPES = [
+  { id: 'kit' as const, label: 'Kit prefabricado', short: 'Estructura para montar y terminar por etapas', icon: Hammer, min: 12, max: 140 },
+  { id: 'cabana' as const, label: 'Cabaña', short: 'Solución compacta desde 15 m²', icon: TentTree, min: 15, max: 80 },
+  { id: 'remodelacion' as const, label: 'Remodelación', short: 'Renovación y mejora de espacios existentes', icon: Building2, min: 12, max: 180 },
+  { id: 'vivienda' as const, label: 'Casa llave en mano', short: 'Vivienda completa lista para habitar', icon: Home, min: 30, max: 250 },
+] as const;
 
-const BASIC_INSTALL_FROM = 850000;
-
-const OPTIONS: CalculatorOption[] = [
+const TIERS: Tier[] = [
   {
-    id: 'kit-basico',
-    label: 'Kit básico',
-    headline: '$220.000/m² + instalación desde $850.000',
-    pricePerM2: 220000,
-    minM2: 12,
-    maxM2: 120,
-    fixedInstall: BASIC_INSTALL_FROM,
-    note: 'Ideal si buscas partir con la estructura principal y completar terminaciones por etapas.',
-    installNote: 'Instalación base desde $850.000. Se confirma según ubicación, acceso y tamaño.',
-    includes: ['Paneles interiores/exteriores forrados por una cara', 'Cerchas y costaneras', 'Zinc 0.35 mm', 'Estructura principal del kit'],
-    notIncluded: ['Forro interior completo', 'Puntos eléctricos y puntos de agua', 'Puertas, ventanas, cerámica, gas, sanitarios, fosa y empalme'],
-    parts: [
-      { label: 'Kit y paneles', pct: 0.64 },
-      { label: 'Cerchas, costaneras y zinc', pct: 0.18 },
-      { label: 'Instalación base desde', amount: BASIC_INSTALL_FROM },
-      { label: 'Traslado y ajustes', pct: 0.08 },
-    ],
+    id: 'kit-basico', label: 'Kit básico', eyebrow: 'Estructura para avanzar', minPrice: 160000, maxPrice: 230000, referencePrice: 195000,
+    summary: 'Kit prefabricado para quien realizará el montaje o completará instalaciones y terminaciones por etapas.',
+    materials: 'Estructura galvanizada, panelería base y cubierta según diseño y disponibilidad.',
+    includes: ['Estructura principal dimensionada', 'Panelería base del kit', 'Cerchas, costaneras y cubierta económica', 'Listado inicial de componentes'],
+    notIncluded: ['Montaje, fundaciones y traslado', 'Puertas, ventanas y terminaciones', 'Instalaciones eléctricas, sanitarias y gas', 'Permisos, empalmes y obras de terreno'],
+    parts: [{ label: 'Estructura principal', pct: .46 }, { label: 'Panelería base', pct: .28 }, { label: 'Cubierta y perfilería', pct: .18 }, { label: 'Fijaciones y reserva', pct: .08 }],
   },
   {
-    id: 'kit-intermedio',
-    label: 'Kit intermedio',
-    headline: '$300.000/m² con instalación y puntos básicos',
-    pricePerM2: 300000,
-    minM2: 12,
-    maxM2: 140,
-    note: 'Pensado para avanzar más rápido: estructura, instalación, forro interior y puntos básicos.',
-    includes: ['Todo lo del kit básico', 'Instalación del kit', 'Forro interior', 'Puntos eléctricos básicos', 'Puntos de agua PPR'],
-    notIncluded: ['Cerámica, ventanas y puertas finales', 'Conexión de gas, sanitarios completos, fosa séptica y empalme eléctrico'],
-    parts: [
-      { label: 'Kit base y estructura', pct: 0.42 },
-      { label: 'Instalación y montaje', pct: 0.24 },
-      { label: 'Forro interior', pct: 0.18 },
-      { label: 'Electricidad y agua PPR', pct: 0.16 },
-    ],
+    id: 'remodelacion', label: 'Remodelación', eyebrow: 'Mejora de espacios', minPrice: 380000, maxPrice: 380000, referencePrice: 380000,
+    summary: 'Referencia base para renovar espacios existentes; el alcance definitivo depende del estado actual y de las partidas elegidas.',
+    materials: 'Demoliciones controladas, reparación, instalaciones y terminaciones estándar según el alcance acordado.',
+    includes: ['Mano de obra general de remodelación', 'Materiales estándar definidos en la propuesta', 'Coordinación de partidas incluidas', 'Terminaciones base según alcance'],
+    notIncluded: ['Daños ocultos o reparaciones estructurales no visibles', 'Materiales premium o artefactos especiales', 'Permisos y certificaciones extraordinarias', 'Trabajos adicionales descubiertos durante la obra'],
+    parts: [{ label: 'Mano de obra y coordinación', pct: .38 }, { label: 'Materiales y revestimientos', pct: .34 }, { label: 'Instalaciones y terminaciones', pct: .20 }, { label: 'Reserva técnica', pct: .08 }],
   },
   {
-    id: 'llave-mano',
-    label: 'Casa llave en mano',
-    headline: 'Funcional o con terminaciones',
-    pricePerM2: 540000,
-    minM2: 30,
-    maxM2: 250,
-    note: 'Para quien quiere una casa más completa y necesita comparar niveles de terminación.',
-    includes: [],
-    notIncluded: [],
-    parts: [],
-  },
-];
-
-const HOUSE_LEVELS: HouseLevel[] = [
-  {
-    id: 'funcional',
-    label: 'Llave en mano funcional',
-    headline: '$540.000/m²',
-    pricePerM2: 540000,
-    includes: ['Todo lo del kit intermedio', 'Ventanas y puertas línea económica', 'Puertas de pino sólidas', 'Cerámica económica', 'Puntos eléctricos', 'Lámparas LED 18W y 24W', 'Conexión de gas interior', 'Salidas sanitarias'],
-    notIncluded: ['No incluye conexión a fosa', 'No incluye fosa séptica', 'No incluye empalme eléctrico', 'No incluye permisos ni obras externas especiales'],
-    parts: [
-      { label: 'Estructura y kit base', pct: 0.32 },
-      { label: 'Instalación y mano de obra', pct: 0.24 },
-      { label: 'Terminación funcional', pct: 0.22 },
-      { label: 'Electricidad, agua y gas interior', pct: 0.14 },
-      { label: 'Ajustes e imprevistos', pct: 0.08 },
-    ],
-  },
-  {
-    id: 'terminaciones',
-    label: 'Llave en mano con terminaciones',
-    headline: '$780.000/m² según materialidad',
-    pricePerM2: 780000,
-    includes: ['Todo lo de llave en mano funcional', 'Terminaciones interiores superiores', 'Mejor selección de revestimientos', 'Mejor terminación de pintura, remates y detalles visibles', 'Mayor cuidado en cocina, baño y espacios interiores'],
-    notIncluded: ['Fosa séptica, empalme eléctrico y conexión exterior de agua se cotizan aparte si el terreno lo requiere', 'Permisos, movimiento de tierra mayor u obras especiales se revisan aparte'],
-    parts: [
-      { label: 'Estructura y montaje', pct: 0.28 },
-      { label: 'Instalaciones interiores', pct: 0.16 },
-      { label: 'Terminaciones superiores', pct: 0.34 },
-      { label: 'Puertas, ventanas y detalles', pct: 0.14 },
-      { label: 'Gestión e imprevistos', pct: 0.08 },
-    ],
+    id: 'llave-mano', label: 'Llave en mano', eyebrow: 'Casa lista para habitar', minPrice: 540000, maxPrice: 780000, referencePrice: 660000,
+    summary: 'Casa completa con estructura, instalaciones y terminaciones; el valor cambia según materialidad y equipamiento.',
+    materials: 'Estructura, aislación, revestimientos, instalaciones y terminaciones estándar o premium según selección.',
+    includes: ['Estructura, envolvente y montaje', 'Instalaciones interiores especificadas', 'Puertas, ventanas y revestimientos acordados', 'Terminaciones estándar o premium seleccionadas'],
+    notIncluded: ['Terreno y movimiento de tierra extraordinario', 'Fosa, empalmes y conexiones exteriores', 'Permisos y obras no detalladas', 'Traslados o accesos de condición especial'],
+    parts: [{ label: 'Estructura y envolvente', pct: .34 }, { label: 'Mano de obra y montaje', pct: .26 }, { label: 'Instalaciones interiores', pct: .16 }, { label: 'Terminaciones y equipamiento', pct: .24 }],
   },
 ];
 
@@ -133,148 +68,56 @@ function normalizeM2(value: string) {
 
 export default function ConstructionM2Calculator() {
   const [m2Input, setM2Input] = useState('54');
-  const [optionId, setOptionId] = useState<OptionId>('kit-basico');
-  const [houseLevelId, setHouseLevelId] = useState<HouseLevelId>('funcional');
+  const [projectTypeId, setProjectTypeId] = useState<ProjectTypeId>('vivienda');
+  const [tierId, setTierId] = useState<TierId>('llave-mano');
+  const project = PROJECT_TYPES.find((item) => item.id === projectTypeId) || PROJECT_TYPES[3];
+  const tier = TIERS.find((item) => item.id === tierId) || TIERS[2];
+  const parsed = normalizeM2(m2Input);
+  const m2 = parsed.value;
+  const rangeMin = m2 * tier.minPrice;
+  const rangeMax = m2 * tier.maxPrice;
+  const referenceTotal = m2 * tier.referencePrice;
+  const breakdown = useMemo(() => tier.parts.map((part) => ({ ...part, amount: referenceTotal * part.pct })), [referenceTotal, tier.parts]);
+  const whatsappMessage = encodeURIComponent(`Hola, quiero revisar una ${project.label.toLowerCase()} de ${m2 || 0} m², nivel ${tier.label}. La calculadora indica un rango referencial de ${formatCLP(rangeMin)} a ${formatCLP(rangeMax)}, no un precio final. Quiero confirmar materiales, ubicación, montaje y partidas adicionales.`);
 
-  const option = OPTIONS.find((item) => item.id === optionId) || OPTIONS[0];
-  const houseLevel = HOUSE_LEVELS.find((item) => item.id === houseLevelId) || HOUSE_LEVELS[0];
-  const isHouse = option.id === 'llave-mano';
-  const activeTitle = isHouse ? houseLevel.label : option.label;
-  const activeHeadline = isHouse ? houseLevel.headline : option.headline;
-  const activePrice = isHouse ? houseLevel.pricePerM2 : option.pricePerM2;
-  const activeIncludes = isHouse ? houseLevel.includes : option.includes;
-  const activeNotIncluded = isHouse ? houseLevel.notIncluded : option.notIncluded;
-  const activeParts = isHouse ? houseLevel.parts : option.parts;
-
-  const m2Data = normalizeM2(m2Input);
-  const m2 = m2Data.value;
-  const materialSubtotal = m2 * activePrice;
-  const fixedInstall = isHouse ? 0 : option.fixedInstall || 0;
-  const total = materialSubtotal + fixedInstall;
-  const minRange = m2 * Math.min(...(isHouse ? HOUSE_LEVELS.map((level) => level.pricePerM2) : [option.pricePerM2]));
-  const maxRange = isHouse ? m2 * Math.max(...HOUSE_LEVELS.map((level) => level.pricePerM2)) : total;
-  const progress = Math.min(100, Math.max(8, (m2 / option.maxM2) * 100));
-
-  const breakdown = useMemo(() => activeParts.map((part) => {
-    const amount = part.amount ?? materialSubtotal * (part.pct || 0);
-    return { ...part, amount };
-  }), [activeParts, materialSubtotal]);
-
-  const whatsappMessage = encodeURIComponent(
-    `Hola, quiero calcular ${activeTitle} de ${m2 || 0} m². Precio por m²: ${formatCLP(activePrice)}. Total referencial: ${formatCLP(total)}. Quiero revisar qué incluye y qué se cotiza aparte.`,
-  );
-
-  function updateM2(value: string) {
-    const next = normalizeM2(value);
-    setM2Input(next.display);
-  }
-
-  function selectOption(nextId: OptionId) {
-    const nextOption = OPTIONS.find((item) => item.id === nextId) || OPTIONS[0];
-    setOptionId(nextId);
-    if (m2 < nextOption.minM2 || m2 > nextOption.maxM2) {
-      setM2Input(String(Math.min(nextOption.maxM2, Math.max(nextOption.minM2, Math.round(m2 || nextOption.minM2)))));
-    }
+  function setProject(id: ProjectTypeId) {
+    const next = PROJECT_TYPES.find((item) => item.id === id) || PROJECT_TYPES[0];
+    setProjectTypeId(id);
+    setTierId(id === 'remodelacion' ? 'remodelacion' : id === 'vivienda' ? 'llave-mano' : 'kit-basico');
+    if (m2 < next.min || m2 > next.max) setM2Input(String(id === 'cabana' ? 24 : next.min));
   }
 
   return (
-    <section id="calculadora-m2" data-scroll-section className="relative overflow-hidden bg-[#060504] px-4 pb-16 pt-24 text-white sm:px-6 lg:px-8 lg:pt-28">
+    <section id="calculadora-m2" data-scroll-section className="relative overflow-hidden bg-[#060504] px-4 py-20 text-white sm:px-6 lg:px-8 lg:py-28">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_10%_8%,rgba(250,204,21,.16),transparent_25rem),radial-gradient(circle_at_90%_8%,rgba(20,184,166,.10),transparent_28rem),linear-gradient(180deg,#070604,#0a0805_55%,#050505)]" />
-
       <div className="relative mx-auto max-w-[1450px]">
-        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_520px] lg:items-start">
-          <div>
-            <div className="inline-flex items-center gap-2 border-b border-yellow-300/50 pb-2 text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300">
-              <Calculator className="h-4 w-4" /> Calculadora rápida
-            </div>
-            <h1 className="mt-7 max-w-4xl text-4xl font-black leading-[.92] tracking-[-0.075em] sm:text-6xl lg:text-7xl">Precio simple para kit o casa.</h1>
-            <p className="mt-5 max-w-2xl text-base leading-8 text-zinc-300">El cliente solo elige una opción, escribe los metros cuadrados y ve un total referencial. La explicación queda debajo, separada y ordenada.</p>
+        <div className="mb-10 flex flex-col gap-5 border-b border-white/10 pb-8 lg:flex-row lg:items-end lg:justify-between">
+          <div><p className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.32em] text-yellow-300"><Calculator className="h-4 w-4" /> Calculadora de proyecto</p><h2 className="mt-5 max-w-4xl text-4xl font-black leading-[.94] tracking-[-.055em] sm:text-6xl">Un rango claro antes de cotizar.</h2></div>
+          <p className="max-w-xl text-sm leading-7 text-zinc-400">Compara el alcance y ordena tu presupuesto. Los valores son aproximados y cambian según diseño, materialidad, ubicación, acceso y condiciones existentes o del terreno.</p>
+        </div>
 
-            <div className="mt-9 border-y border-white/10 py-5">
-              <p className="mb-4 text-[10px] font-black uppercase tracking-[0.26em] text-zinc-500">Paso 1 · Elige qué quieres calcular</p>
-              <div className="grid gap-3 sm:grid-cols-3">
-                {OPTIONS.map((item) => (
-                  <button key={item.id} type="button" onClick={() => selectOption(item.id)} className={`rounded-[1.35rem] border px-4 py-4 text-left transition ${optionId === item.id ? 'border-yellow-300 bg-yellow-300 text-black shadow-[0_16px_40px_rgba(250,204,21,.16)]' : 'border-white/15 bg-white/[0.025] text-white hover:border-yellow-300/55 hover:text-yellow-300'}`}>
-                    <b className="block text-sm font-black uppercase tracking-[0.12em]">{item.label}</b>
-                    <span className={`mt-2 block text-xs leading-5 ${optionId === item.id ? 'text-black/70' : 'text-zinc-400'}`}>{item.headline}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="mt-4 text-sm leading-6 text-zinc-400">{option.note}</p>
-            </div>
+        <div className="grid gap-10 lg:grid-cols-[minmax(0,1fr)_540px] lg:items-start">
+          <div className="space-y-9">
+            <div><StepTitle number="01" title="Elige tu tipo de proyecto" /><div className="mt-4 grid gap-3 sm:grid-cols-2">{PROJECT_TYPES.map(({ id, label, short, icon: Icon }) => { const active = projectTypeId === id; return <button key={id} type="button" onClick={() => setProject(id)} className={`flex items-center gap-4 rounded-[1.35rem] border p-4 text-left transition ${active ? 'border-yellow-300 bg-yellow-300 text-black' : 'border-white/12 bg-white/[.025] hover:border-yellow-300/45'}`}><span className={`grid h-11 w-11 shrink-0 place-items-center rounded-xl ${active ? 'bg-black text-yellow-300' : 'bg-white/[.06] text-yellow-300'}`}><Icon className="h-5 w-5" /></span><span><b className="block text-sm font-black">{label}</b><span className={`mt-1 block text-xs leading-5 ${active ? 'text-black/65' : 'text-zinc-500'}`}>{short}</span></span></button>; })}</div></div>
 
-            {isHouse && (
-              <div className="border-b border-white/10 py-5">
-                <label htmlFor="house-level" className="mb-3 block text-[10px] font-black uppercase tracking-[0.26em] text-zinc-500">Paso 2 · Nivel de llave en mano</label>
-                <select id="house-level" value={houseLevelId} onChange={(event) => setHouseLevelId(event.target.value as HouseLevelId)} className="w-full rounded-[1.2rem] border border-teal-300/35 bg-black/60 px-4 py-4 text-base font-black text-white outline-none focus:border-yellow-300">
-                  {HOUSE_LEVELS.map((level) => <option key={level.id} value={level.id}>{level.label} · {formatCLP(level.pricePerM2)}/m²</option>)}
-                </select>
-              </div>
-            )}
+            <div><StepTitle number="02" title="Selecciona el alcance" /><div className="mt-4 grid gap-3 md:grid-cols-3">{TIERS.map((item) => { const active = item.id === tierId; const singlePrice = item.minPrice === item.maxPrice; return <button key={item.id} type="button" onClick={() => setTierId(item.id)} className={`rounded-[1.35rem] border p-5 text-left transition ${active ? 'border-yellow-300 bg-yellow-300 text-black shadow-[0_16px_40px_rgba(250,204,21,.14)]' : 'border-white/12 bg-white/[.025] hover:border-yellow-300/45'}`}><span className={`text-[9px] font-black uppercase tracking-[.22em] ${active ? 'text-black/55' : 'text-yellow-300'}`}>{item.eyebrow}</span><b className="mt-3 block text-xl font-black">{item.label}</b><span className={`mt-2 block text-sm font-black ${active ? 'text-black' : 'text-white'}`}>{singlePrice ? formatCLP(item.referencePrice) : `${formatCLP(item.minPrice)}–${formatCLP(item.maxPrice)}`}<small className="font-bold"> /m²</small></span></button>; })}</div><p className="mt-4 text-sm leading-7 text-zinc-400">{tier.summary}</p></div>
 
-            <div className="grid gap-7 border-b border-white/10 py-7 md:grid-cols-2">
-              <div>
-                <p className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.26em] text-yellow-300"><CheckCircle2 className="h-4 w-4" /> Incluye</p>
-                <div className="divide-y divide-white/10 border-y border-white/10">{activeIncludes.map((item) => <p key={item} className="py-3 text-sm leading-6 text-zinc-300">{item}</p>)}</div>
-              </div>
-              <div>
-                <p className="mb-4 flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.26em] text-red-200"><AlertTriangle className="h-4 w-4" /> No incluye</p>
-                <div className="divide-y divide-red-300/15 border-y border-red-300/20">{activeNotIncluded.map((item) => <p key={item} className="py-3 text-sm leading-6 text-red-50/70">{item}</p>)}</div>
-              </div>
-            </div>
+            <div><StepTitle number="03" title="Ajusta los metros cuadrados" /><div className="mt-4 rounded-[1.5rem] border border-white/10 bg-white/[.025] p-5 sm:p-7"><div className="flex items-end gap-3 border-b border-white/15 pb-3"><Ruler className="mb-2 h-5 w-5 text-yellow-300" /><input aria-label="Metros cuadrados" value={m2Input} onChange={(event) => setM2Input(normalizeM2(event.target.value).display)} onBlur={() => { if (!m2Input.trim() || m2 < project.min) setM2Input(String(project.min)); }} inputMode="decimal" className="w-full bg-transparent text-5xl font-black tracking-[-.07em] outline-none sm:text-6xl" /><span className="pb-2 text-xl font-black text-yellow-300">m²</span></div><input aria-label="Ajustar metros cuadrados" type="range" min={project.min} max={project.max} value={Math.min(project.max, Math.max(project.min, Math.round(m2 || project.min)))} onChange={(event) => setM2Input(event.target.value)} className="mt-6 w-full accent-yellow-300" /><div className="mt-2 flex justify-between text-xs font-bold text-zinc-500"><span>{project.min} m²</span><span>{project.max} m²</span></div></div></div>
+
+            <div className="grid gap-6 md:grid-cols-2"><InfoList icon="check" title="Qué considera esta referencia" items={tier.includes} /><InfoList icon="alert" title="Qué se cotiza aparte" items={tier.notIncluded} /></div>
           </div>
 
           <aside className="lg:sticky lg:top-24">
-            <div className="border-t border-yellow-300/40 pt-5">
-              <div className="flex items-start justify-between gap-4">
-                <div>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">Resumen en vivo</p>
-                  <h2 className="mt-2 text-2xl font-black tracking-[-0.04em]">{activeTitle}</h2>
-                  <p className="mt-1 text-sm text-zinc-500">{activeHeadline}</p>
-                </div>
-                <Home className="mt-1 h-8 w-8 shrink-0 text-yellow-300" />
-              </div>
+            <div className="overflow-hidden rounded-[1.8rem] border border-white/12 bg-[#0d0b08] shadow-2xl">
+              <div className="bg-yellow-300 p-6 text-black"><div className="flex items-start justify-between gap-4"><div><p className="text-[9px] font-black uppercase tracking-[.28em]">Resultado orientativo</p><h3 className="mt-2 text-2xl font-black tracking-[-.04em]">{project.label} · {tier.label}</h3></div><BarChart3 className="h-7 w-7" /></div></div>
+              <div className="p-6 sm:p-8">
+                <p className="text-[10px] font-black uppercase tracking-[.24em] text-zinc-500">{tier.minPrice === tier.maxPrice ? 'Total aproximado' : 'Rango total aproximado'}</p><p className="mt-3 text-3xl font-black leading-tight tracking-[-.055em] text-yellow-300 sm:text-4xl">{formatCLP(rangeMin)}{tier.minPrice !== tier.maxPrice && <span className="block text-xl text-white/35 sm:text-2xl">a {formatCLP(rangeMax)}</span>}</p>
+                <div className="mt-6 grid grid-cols-2 gap-3"><Metric label="Referencia central" value={formatCLP(referenceTotal)} /><Metric label="Superficie" value={`${m2 || 0} m²`} /><Metric label="Valor por m²" value={tier.minPrice === tier.maxPrice ? formatCLP(tier.referencePrice) : `${formatCLP(tier.minPrice)}–${formatCLP(tier.maxPrice)}`} /><Metric label="Alcance" value={tier.label} /></div>
+                <div className="mt-6 rounded-2xl border border-yellow-300/20 bg-yellow-300/[.06] p-4"><p className="flex gap-3 text-xs leading-6 text-yellow-50/80"><Info className="mt-1 h-4 w-4 shrink-0 text-yellow-300" /><span><b className="text-yellow-300">No es un precio final.</b> Es una guía inicial sin visita técnica. Montaje, traslado, fundaciones, instalaciones, permisos y conexiones se confirman aparte.</span></p></div>
 
-              <div className="border-b border-white/10 py-5">
-                <label className="block text-[10px] font-black uppercase tracking-[0.24em] text-zinc-400">Metros cuadrados</label>
-                <div className="mt-3 flex items-end gap-3 border-b border-white/15 pb-3">
-                  <Ruler className="mb-2 h-5 w-5 text-yellow-300" />
-                  <input value={m2Input} onChange={(event) => updateM2(event.target.value)} onBlur={() => { if (!m2Input.trim()) setM2Input(String(option.minM2)); }} inputMode="decimal" className="w-full bg-transparent text-6xl font-black tracking-[-0.08em] text-white outline-none placeholder:text-white/20" placeholder="54" />
-                  <span className="pb-3 text-xl font-black text-yellow-300">m²</span>
-                </div>
-                <input type="range" min={option.minM2} max={option.maxM2} step="1" value={Math.min(option.maxM2, Math.max(option.minM2, Math.round(m2 || option.minM2)))} onChange={(event) => setM2Input(event.target.value)} className="mt-5 w-full accent-yellow-300" />
-                <div className="mt-2 flex justify-between text-[11px] font-bold text-zinc-500"><span>{option.minM2} m²</span><span>{option.maxM2} m²</span></div>
+                <div className="mt-7"><p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.24em] text-yellow-300"><Layers3 className="h-4 w-4" /> Composición de referencia</p><p className="mt-3 text-sm leading-6 text-zinc-400">{tier.materials}</p><div className="mt-4 divide-y divide-white/10 border-y border-white/10">{breakdown.map((part) => <div key={part.label} className="py-4"><div className="flex justify-between gap-4 text-sm"><span className="text-zinc-300">{part.label}</span><b>{formatCLP(part.amount)}</b></div><div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-yellow-300 to-teal-300" style={{ width: `${part.pct * 100}%` }} /></div></div>)}</div></div>
+                <a href={`https://wa.me/56930121625?text=${whatsappMessage}`} target="_blank" rel="noopener noreferrer" className="mt-7 inline-flex w-full items-center justify-center gap-2 rounded-full bg-yellow-300 px-6 py-4 text-sm font-black text-black transition hover:-translate-y-0.5 hover:bg-yellow-200">Validar este cálculo <ArrowRight className="h-4 w-4" /></a><p className="mt-3 text-center text-[10px] leading-5 text-zinc-600">Referencia comercial actualizada en julio de 2026. Sujeta a evaluación y disponibilidad.</p>
               </div>
-
-              <div className="border-b border-white/10 py-6">
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Total referencial</p>
-                <b key={`${optionId}-${houseLevelId}-${m2}-total`} className="mt-2 block animate-pulse text-5xl font-black tracking-[-0.07em] text-yellow-300 sm:text-6xl">{formatCLP(total)}</b>
-                <p className="mt-3 text-sm leading-6 text-zinc-400">{m2 || 0} m² × {formatCLP(activePrice)}/m²{fixedInstall ? ` + instalación desde ${formatCLP(fixedInstall)}` : ''}</p>
-                {isHouse && <p className="mt-2 text-xs text-zinc-500">Rango llave en mano para {m2 || 0} m²: {formatCLP(minRange)} a {formatCLP(maxRange)}</p>}
-                {option.installNote && <p className="mt-2 text-xs text-yellow-100/70">{option.installNote}</p>}
-              </div>
-
-              <div className="py-6">
-                <div className="mb-3 flex items-center justify-between text-xs font-black uppercase tracking-[0.18em] text-zinc-500"><span>Avance del cálculo</span><span>{Math.round(progress)}%</span></div>
-                <div className="h-3 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-yellow-300 via-amber-400 to-teal-300 transition-all duration-700" style={{ width: `${progress}%` }} /></div>
-              </div>
-
-              <div className="py-6">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">Detalle simple del valor</p>
-                <div className="mt-4 divide-y divide-white/10 border-y border-white/10">
-                  {breakdown.map((part) => {
-                    const percent = total ? Math.max(4, Math.min(100, (part.amount / total) * 100)) : 0;
-                    return <div key={part.label} className="py-4"><div className="flex items-start justify-between gap-4"><span className="text-sm leading-6 text-zinc-300">{part.label}</span><b className="shrink-0 text-sm text-white">{formatCLP(part.amount)}</b></div><div className="mt-3 h-2 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-yellow-300 to-teal-300 transition-all duration-700" style={{ width: `${percent}%` }} /></div></div>;
-                  })}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3 border-y border-white/10 py-5 text-sm">
-                <div><span className="block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Precio por m²</span><b className="mt-1 block text-lg text-white">{formatCLP(activePrice)}</b></div>
-                <div className="text-right"><span className="block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Metros</span><b className="mt-1 block text-lg text-white">{m2 || 0} m²</b></div>
-              </div>
-
-              <a href={`https://wa.me/56930121625?text=${whatsappMessage}`} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-full bg-yellow-300 px-6 py-4 text-sm font-black text-black shadow-[0_18px_45px_rgba(250,204,21,.22)] transition hover:-translate-y-0.5 hover:bg-yellow-200">Enviar cálculo por WhatsApp <ArrowRight className="h-4 w-4" /></a>
             </div>
           </aside>
         </div>
@@ -282,3 +125,7 @@ export default function ConstructionM2Calculator() {
     </section>
   );
 }
+
+function StepTitle({ number, title }: { number: string; title: string }) { return <p className="flex items-center gap-3 text-[10px] font-black uppercase tracking-[.26em] text-yellow-300"><span className="grid h-7 w-7 place-items-center rounded-full border border-yellow-300/35">{number}</span>{title}</p>; }
+function Metric({ label, value }: { label: string; value: string }) { return <div className="rounded-2xl border border-white/10 bg-white/[.025] p-4"><span className="block text-[9px] font-black uppercase tracking-[.18em] text-zinc-500">{label}</span><b className="mt-2 block text-sm leading-5 text-white">{value}</b></div>; }
+function InfoList({ icon, title, items }: { icon: 'check' | 'alert'; title: string; items: string[] }) { const Icon = icon === 'check' ? CheckCircle2 : AlertTriangle; return <div><p className={`mb-3 flex items-center gap-2 text-[10px] font-black uppercase tracking-[.22em] ${icon === 'check' ? 'text-yellow-300' : 'text-red-200'}`}><Icon className="h-4 w-4" />{title}</p><div className="divide-y divide-white/10 border-y border-white/10">{items.map((item) => <p key={item} className="py-3 text-sm leading-6 text-zinc-400">{item}</p>)}</div></div>; }

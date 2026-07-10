@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { getActiveMaterials } from '@/lib/budget';
 import PresupuestoClient from './PresupuestoClient';
+import Navbar from '@/components/Navbar';
 
 /**
  * /presupuesto — Cotizador público (servidor + cliente).
@@ -23,8 +24,9 @@ export const metadata: Metadata = {
 export default async function PresupuestoPage() {
   const materials = await getActiveMaterials();
   return (
-    <main className="bg-black">
-      <PresupuestoClient initialMaterials={materials} />
+    <main className="min-h-screen bg-[#080705] text-white">
+      <Navbar />
+      <div className="pt-20"><PresupuestoClient initialMaterials={materials} /></div>
     </main>
   );
 }

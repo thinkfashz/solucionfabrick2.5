@@ -25,15 +25,16 @@ export default function SectionPageShell({
   children,
 }: SectionPageShellProps) {
   return (
-    <div className="min-h-screen overflow-x-hidden bg-gradient-to-b from-black via-zinc-950 to-black text-white">
+    <div className="min-h-screen overflow-x-hidden bg-[#080705] text-white">
       <Navbar />
-      <main className="px-4 pb-20 pt-28 md:px-12 md:pt-36">
-        <section className="mx-auto max-w-7xl rounded-[2rem] border border-white/5 bg-white/[0.02] px-6 py-10 md:px-12 md:py-14">
+      <main className="relative px-4 pb-20 pt-24 md:px-12 md:pt-32">
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] bg-[radial-gradient(circle_at_12%_10%,rgba(250,204,21,.14),transparent_24rem),radial-gradient(circle_at_88%_15%,rgba(20,184,166,.08),transparent_25rem)]" />
+        <section className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.015))] px-6 py-10 shadow-[0_28px_90px_rgba(0,0,0,.32)] md:px-12 md:py-14">
           <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
             <div className="max-w-3xl">
-              <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-yellow-400">{eyebrow}</p>
-              <h1 className="mt-4 text-4xl font-black uppercase tracking-tight md:text-6xl">{title}</h1>
-              <p className="mt-5 max-w-2xl text-sm leading-relaxed text-zinc-400 md:text-lg">{description}</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.35em] text-yellow-300">Soluciones Fabrick · {eyebrow}</p>
+              <h1 className="mt-4 text-4xl font-black leading-[.96] tracking-[-.05em] md:text-6xl">{title}</h1>
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-300 md:text-lg md:leading-8">{description}</p>
             </div>
             <div className="flex flex-col gap-3 sm:flex-row">
               {primaryAction ? (
@@ -62,7 +63,7 @@ export default function SectionPageShell({
         <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-6 md:flex-row">
           <FabrickLogo className="pointer-events-none" />
           <p className="text-center text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-            Soluciones Fabrick · Cada experiencia tiene su propio espacio.
+            Soluciones Fabrick · Claridad para construir, renovar y equipar.
           </p>
         </div>
       </footer>

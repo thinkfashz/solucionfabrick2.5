@@ -8,10 +8,16 @@ import { getPublicTiendaSections } from '@/lib/cms';
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Catálogo de Materiales',
+  title: 'Tienda para construir, renovar y equipar tu hogar',
   description:
-    'Catálogo Fabrick: materiales premium con compra directa o al carrito en un solo paso, despacho a tu zona y calculadora de m² para pisos y revestimientos. Seleccionados por nuestro equipo certificado en la Región del Maule, Chile.',
+    'Encuentra productos seleccionados para resolver iluminación, climatización, baño, cocina y terminaciones. Compra con información clara, despacho coordinado e instalación opcional.',
   alternates: { canonical: 'https://www.solucionesfabrick.com/tienda' },
+  openGraph: {
+    title: 'Tienda Soluciones Fabrick | Todo para mejorar tu espacio',
+    description: 'Productos útiles, precios claros y soporte humano para comprar, despachar e instalar.',
+    url: 'https://www.solucionesfabrick.com/tienda',
+    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Tienda Soluciones Fabrick' }],
+  },
 };
 
 export default async function TiendaPage() {

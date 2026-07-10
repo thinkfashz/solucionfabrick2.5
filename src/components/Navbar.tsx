@@ -18,17 +18,17 @@ import {
   LogIn,
   MessageCircle,
 } from 'lucide-react';
-import FabrickLogo3DLazy from '@/components/FabrickLogo3DLazy';
+import { FabrickFullLogo, FabrickNavLogo } from '@/components/FabrickBrandIcon';
 import { useCartContextSafe } from '@/context/CartContext';
 import { useQuoteCartSafe } from '@/context/QuoteCartContext';
 import { navigateWithTransition } from '@/lib/routeTransition';
 
 const MAIN_MENU_ITEMS = [
-  { label: 'Inicio', href: '/', Icon: Home },
-  { label: 'Servicios', href: '/servicios', Icon: Wrench },
-  { label: 'Cotizar', href: '/contacto', Icon: FileText, quoteCount: true },
-  { label: 'Tienda', href: '/tienda', Icon: ShoppingBag, cartCount: true },
-  { label: 'Contacto', href: '/contacto', Icon: Phone },
+  { label: 'Inicio', description: 'Conoce Fabrick y calcula tu proyecto', href: '/', Icon: Home },
+  { label: 'Servicios', description: 'Construcción, instalaciones y terminaciones', href: '/servicios', Icon: Wrench },
+  { label: 'Cotizar', description: 'Arma tu presupuesto en tiempo real', href: '/presupuesto', Icon: FileText, quoteCount: true },
+  { label: 'Tienda', description: 'Productos para construir y mejorar', href: '/tienda', Icon: ShoppingBag, cartCount: true },
+  { label: 'Contacto', description: 'WhatsApp, ubicación y evaluación', href: '/contacto', Icon: Phone },
 ];
 
 const SUPPORT_MENU_ITEMS = [
@@ -73,27 +73,9 @@ function NavbarBrandLogo({ onClick, compact = false }: { onClick: () => void; co
           onClick();
         }
       }}
-      className="group flex flex-shrink-0 cursor-pointer select-none items-center gap-2 rounded-lg outline-none transition-transform duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-[var(--accent)]/60 sm:gap-3"
+      className="group flex flex-shrink-0 cursor-pointer select-none items-center rounded-lg outline-none transition-transform duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-yellow-300/60"
     >
-      <div className={compact ? 'relative h-10 w-[50px] flex-shrink-0' : 'relative h-12 w-[60px] flex-shrink-0 sm:h-14 sm:w-[72px]'}>
-        <FabrickLogo3DLazy
-          height="100%"
-          interactive={false}
-          showHint={false}
-          showText={false}
-          cameraZ={14}
-        />
-      </div>
-      <div className="flex flex-col leading-none">
-        <span className={compact ? 'text-[10px] font-black uppercase tracking-[0.1em] text-white' : 'text-[11px] font-black uppercase tracking-[0.12em] text-white sm:text-[15px] sm:tracking-[0.14em]'}>
-          SOLUCIONES <span className="text-[var(--accent)]">FABRICK</span>
-        </span>
-        {!compact ? (
-          <span className="mt-1 hidden text-[9px] font-medium italic tracking-[0.08em] text-zinc-400 sm:block sm:text-[10px]">
-            Más claridad. Menos incertidumbre.
-          </span>
-        ) : null}
-      </div>
+      {compact ? <FabrickNavLogo theme="light" /> : <FabrickFullLogo theme="light" tagline="Construcción con claridad" />}
     </div>
   );
 }
@@ -277,7 +259,7 @@ export default function Navbar() {
               <div className="flex-1 px-5 pb-10 pt-5 sm:px-6">
                 <DrawerSectionLabel>Navegar</DrawerSectionLabel>
                 <nav className="flex flex-col gap-1">
-                  {MAIN_MENU_ITEMS.map(({ label, href, Icon, ...flags }, i) => {
+                  {MAIN_MENU_ITEMS.map(({ label, description, href, Icon, ...flags }, i) => {
                     const showQuoteCount = 'quoteCount' in flags && quoteCount > 0;
                     const showCartCount = 'cartCount' in flags && cartCount > 0;
                     return (
@@ -295,8 +277,9 @@ export default function Navbar() {
                           {showQuoteCount && renderBadge(quoteCount)}
                           {showCartCount && renderBadge(cartCount)}
                         </span>
-                        <span className="flex-1 text-sm font-semibold uppercase tracking-[0.14em] text-[var(--text)] transition-colors group-hover:text-[var(--accent)]">
-                          {label}
+                        <span className="flex-1">
+                          <span className="block text-sm font-black text-white transition-colors group-hover:text-yellow-300">{label}</span>
+                          <span className="mt-1 block text-xs leading-5 text-zinc-500">{description}</span>
                         </span>
                       </motion.button>
                     );

@@ -2,205 +2,73 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import type { LucideIcon } from 'lucide-react';
-import {
-  ArrowRight,
-  CheckCircle2,
-  ClipboardCheck,
-  Droplets,
-  Hammer,
-  Home,
-  Lightbulb,
-  MapPin,
-  MessageCircle,
-  Package,
-  PaintRoller,
-  SearchCheck,
-  ShieldCheck,
-  Snowflake,
-  ShoppingBag,
-  Sparkles,
-  Wrench,
-  Zap,
-} from 'lucide-react';
+import { ArrowRight, CheckCircle2, Hammer, Home, Lightbulb, MapPin, MessageCircle, Snowflake, Wrench } from 'lucide-react';
 import TiendaSection from './TiendaSection';
-import ContactMap from './ContactMap';
 import ContactForm from './ContactForm';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
 import { useSiteContent } from '@/hooks/useSiteContent';
 
-const PRINCIPLES = [
-  { Icon: SearchCheck, title: 'Entender antes de vender', text: 'Aclaramos si necesitas un kit, una cabaña, una ampliación, una remodelación o una casa llave en mano.' },
-  { Icon: ShieldCheck, title: 'Números sin vueltas', text: 'Mostramos valores referenciales, lo incluido y lo que se cotiza aparte para evitar sorpresas.' },
-  { Icon: CheckCircle2, title: 'Decisión más segura', text: 'Si el presupuesto tiene sentido, pasamos a medidas, terreno, terminaciones y una cotización más cerrada.' },
-];
-
 const SERVICES = [
-  { Icon: Home, title: 'Kits, remodelaciones y casas', text: 'Kit básico desde $160.000 a $230.000/m², remodelación referencial a $380.000/m² y llave en mano desde $540.000 a $780.000/m².', href: '#calculadora-m2' },
-  { Icon: Hammer, title: 'Construcción y ampliaciones', text: 'Estructura, montaje, revestimientos, terminaciones y coordinación de partidas para avanzar con orden.', href: '/servicios/metalcon' },
-  { Icon: Wrench, title: 'Instalaciones y mejoras', text: 'Puntos eléctricos, agua PPR, gas interior, sanitarios, cocina, baño y soluciones prácticas para el hogar.', href: '/servicios' },
-  { Icon: ClipboardCheck, title: 'Orientación antes de comprar', text: 'Te ayudamos a decidir entre materiales, productos y niveles de terminación sin gastar a ciegas.', href: '/contacto' },
-];
-
-const SOLUTION_BANNERS = [
-  { Icon: Home, tag: 'Proyecto completo', title: 'Construcción, ampliación y remodelación', text: 'Ordenamos estructura, especialidades y terminaciones desde una sola conversación.', href: '/servicios', tone: 'from-yellow-300/25' },
-  { Icon: Snowflake, tag: 'Confort todo el año', title: 'Climatización e instalación', text: 'Equipos de aire acondicionado con orientación para elegir capacidad y ubicación.', href: '/tienda', tone: 'from-cyan-300/20' },
-  { Icon: Lightbulb, tag: 'Producto + solución', title: 'Iluminación interior y exterior', text: 'Focos, lámparas y reflectores para renovar, ahorrar y mejorar cada ambiente.', href: '/tienda', tone: 'from-amber-300/20' },
-];
-
-const PRODUCT_CATEGORIES = [
-  { Icon: Lightbulb, title: 'Iluminación', text: 'Focos, lámparas y reflectores para casas, patios, bodegas y fachadas.' },
-  { Icon: Zap, title: 'Climatización', text: 'Equipos para mejorar confort y preparar espacios más habitables.' },
-  { Icon: Droplets, title: 'Grifería', text: 'Opciones para cocina, lavamanos, baños y renovaciones rápidas.' },
-  { Icon: Package, title: 'Sanitarios y espejos', text: 'Productos útiles para equipar baños y cerrar mejor una remodelación.' },
-  { Icon: PaintRoller, title: 'Terminaciones', text: 'Complementos para mejorar presentación, acabado y funcionalidad.' },
-  { Icon: ShoppingBag, title: 'Accesorios', text: 'Soluciones prácticas para el uso diario del hogar.' },
-];
-
-const WHY_US = [
-  'Te damos una referencia de precio antes de pedirte una visita o una cotización larga.',
-  'Separamos claramente lo incluido y lo que se cotiza aparte, como fosa, empalme o conexiones exteriores.',
-  'Trabajamos con opciones por etapas para que puedas partir pequeño o avanzar a llave en mano.',
-  'Buscamos que entiendas el proyecto antes de comprometer dinero.',
-];
+  { Icon: Home, title: 'Kits y casas', text: 'Kit básico, kit avanzado y llave en mano con alcance visible antes de cotizar.', href: '#calculadora-m2' },
+  { Icon: Hammer, title: 'Construcción y remodelación', text: 'Estructura, ampliaciones, revestimientos y terminaciones coordinadas.', href: '/servicios' },
+  { Icon: Wrench, title: 'Instalación y equipamiento', text: 'Electricidad, agua, climatización, iluminación y mejoras para el hogar.', href: '/servicios' },
+] as const;
 
 const PROCESS = [
-  { step: '01', title: 'Calcula rápido', text: 'Elige kit básico, remodelación o llave en mano y revisa un valor referencial por m².' },
-  { step: '02', title: 'Comparte tu caso', text: 'Nos cuentas ubicación, medidas, terreno, acceso y qué nivel de terminación buscas.' },
-  { step: '03', title: 'Ordenamos alcance', text: 'Definimos qué incluye la propuesta, qué queda fuera y qué debe revisarse en terreno.' },
-  { step: '04', title: 'Cotizamos mejor', text: 'Con más datos, armamos una propuesta más clara para avanzar sin improvisar.' },
-];
+  { step: '01', title: 'Calcula', text: 'Elige superficie y nivel de entrega.' },
+  { step: '02', title: 'Aclara', text: 'Confirmamos ubicación, acceso, plano y materiales.' },
+  { step: '03', title: 'Cotiza', text: 'Recibes un alcance preciso para decidir.' },
+] as const;
 
 export default function LandingSections({ copyrightText, socialLinks }: { copyrightText?: string; socialLinks?: { facebook?: string; instagram?: string; tiktok?: string } } = {}) {
   const footer = useSiteContent('footer');
-  const copyrightHtml = (copyrightText && copyrightText.trim())
-    ? copyrightText.replaceAll('{year}', String(new Date().getFullYear()))
-    : (footer.legal || `© ${new Date().getFullYear()} Soluciones Fabrick · Todos los derechos reservados`).replaceAll('{year}', String(new Date().getFullYear()));
-  const taglineText = footer.tagline || 'Kits, construcción y soluciones para avanzar con más claridad.';
+  const year = String(new Date().getFullYear());
+  const legalText = (copyrightText && copyrightText.trim()) ? copyrightText.replaceAll('{year}', year) : (footer.legal || `© ${year} Soluciones Fabrick. Todos los derechos reservados.`).replaceAll('{year}', year);
   const fbHref = socialLinks?.facebook?.trim() || '#';
   const igHref = socialLinks?.instagram?.trim() || '#';
   const ttHref = socialLinks?.tiktok?.trim() || '#';
 
   return (
     <div className="overflow-x-hidden bg-[#050403] text-white">
-      <section data-scroll-section className="border-t border-white/10 px-4 py-20 md:px-12 md:py-28">
-        <div className="mx-auto max-w-[1500px]">
-          <SectionHeader eyebrow="Enfoque Fabrick" title="Primero claridad. Después cotización." text="La mayoría de los problemas aparecen cuando se empieza sin saber qué incluye el precio. Por eso ordenamos opciones, alcances y costos antes de avanzar." />
-          <div className="mt-12 grid divide-y divide-white/10 border-y border-white/10 md:grid-cols-3 md:divide-x md:divide-y-0">
-            {PRINCIPLES.map(({ Icon, title, text }) => <LineItem key={title} Icon={Icon} title={title} text={text} />)}
-          </div>
+      <section id="servicios" className="border-b border-white/10 px-4 py-16 md:px-12 md:py-20">
+        <div className="mx-auto max-w-[1380px]">
+          <div className="grid gap-5 md:grid-cols-[.75fr_1.25fr] md:items-end"><div><p className="text-[10px] font-black uppercase tracking-[.3em] text-yellow-300">Qué resolvemos</p><h2 className="mt-3 text-3xl font-black tracking-[-.04em] md:text-5xl">Del material a la instalación.</h2></div><p className="max-w-2xl text-sm leading-7 text-zinc-400">No necesitas coordinar proveedores distintos para cada partida. Define el problema y ordenamos la solución adecuada.</p></div>
+          <div className="mt-9 grid divide-y divide-white/10 border-y border-white/10 md:grid-cols-3 md:divide-x md:divide-y-0">{SERVICES.map(({ Icon, title, text, href }) => <Link key={title} href={href} className="group p-6 transition hover:bg-white/[.025]"><Icon className="h-6 w-6 text-yellow-300" /><h3 className="mt-5 text-xl font-black">{title}</h3><p className="mt-3 text-sm leading-6 text-zinc-400">{text}</p><span className="mt-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.2em] text-yellow-300">Ver solución <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></span></Link>)}</div>
         </div>
       </section>
 
-      <section data-scroll-section className="border-t border-white/10 bg-[#080706] px-4 py-16 md:px-12 md:py-20">
-        <div className="mx-auto max-w-[1500px]">
-          <div className="mb-8 flex flex-col gap-4 md:flex-row md:items-end md:justify-between"><div><p className="text-[10px] font-black uppercase tracking-[.34em] text-yellow-300">Soluciones más solicitadas</p><h2 className="mt-3 text-3xl font-black tracking-tight md:text-5xl">Compra el producto. Resuelve el problema.</h2></div><p className="max-w-xl text-sm leading-7 text-zinc-400">Desde el equipo correcto hasta su instalación: combina tienda y servicio sin perder tiempo coordinando proveedores distintos.</p></div>
-          <div className="grid gap-4 lg:grid-cols-3">{SOLUTION_BANNERS.map(({ Icon, tag, title, text, href, tone }) => <Link key={title} href={href} className={`group relative min-h-72 overflow-hidden rounded-[1.6rem] border border-white/10 bg-gradient-to-br ${tone} via-white/[.025] to-transparent p-6 transition hover:-translate-y-1 hover:border-yellow-300/35`}><span className="grid h-12 w-12 place-items-center rounded-full bg-yellow-300 text-black"><Icon className="h-5 w-5" /></span><div className="absolute inset-x-6 bottom-6"><p className="text-[9px] font-black uppercase tracking-[.25em] text-yellow-300">{tag}</p><h3 className="mt-3 text-2xl font-black leading-tight">{title}</h3><p className="mt-3 text-sm leading-6 text-zinc-400">{text}</p><span className="mt-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.22em] text-yellow-300">Explorar <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></span></div></Link>)}</div>
+      <section id="tienda" className="border-b border-white/10 bg-[#080705] px-4 py-12 md:px-12 md:py-16">
+        <div className="mx-auto max-w-[1380px]">
+          <div className="mb-4 flex flex-wrap items-center gap-2 text-[10px] font-black uppercase tracking-[.22em] text-zinc-500"><Snowflake className="h-4 w-4 text-yellow-300" /> Climatización <span>·</span><Lightbulb className="h-4 w-4 text-yellow-300" /> Iluminación <span>·</span><Wrench className="h-4 w-4 text-yellow-300" /> Instalación</div>
+          <TiendaSection limit={3} title="Productos que solucionan" description="Equipos y productos seleccionados para mejorar confort, iluminación y funcionamiento. Consulta la instalación desde la misma ficha." />
         </div>
       </section>
 
-      <section data-scroll-section id="servicios" className="border-t border-white/10 bg-[#080706] px-4 py-20 md:px-12 md:py-28">
-        <div className="mx-auto max-w-[1500px]">
-          <SectionHeader eyebrow="Servicios" title="Opciones para partir simple o avanzar completo" text="Puedes comenzar con un kit básico, mejorar a un kit intermedio o avanzar a una casa llave en mano. Cada alternativa tiene un alcance distinto." />
-          <div className="mt-12 divide-y divide-white/10 border-y border-white/10">
-            {SERVICES.map(({ Icon, title, text, href }) => (
-              <Link key={title} href={href} className="group grid gap-5 py-6 transition hover:bg-white/[0.025] sm:grid-cols-[56px_minmax(0,1fr)_auto] sm:items-center sm:px-2">
-                <span className="grid h-12 w-12 place-items-center rounded-full bg-yellow-300 text-black transition group-hover:scale-105"><Icon className="h-5 w-5" /></span>
-                <span><b className="block text-xl font-black leading-tight text-white">{title}</b><span className="mt-2 block max-w-3xl text-sm leading-7 text-zinc-400">{text}</span></span>
-                <span className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-yellow-300">Ver <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" /></span>
-              </Link>
-            ))}
-          </div>
+      <section className="border-b border-white/10 px-4 py-16 md:px-12 md:py-20">
+        <div className="mx-auto grid max-w-[1380px] gap-10 lg:grid-cols-[.85fr_1.15fr] lg:items-center">
+          <div><p className="text-[10px] font-black uppercase tracking-[.3em] text-yellow-300">Proceso breve</p><h2 className="mt-3 text-3xl font-black tracking-[-.04em] md:text-5xl">Primero el alcance. Después el compromiso.</h2><p className="mt-4 max-w-xl text-sm leading-7 text-zinc-400">La calculadora orienta; la evaluación convierte ese rango en una propuesta basada en tu terreno, plano y elecciones.</p><a href={buildWhatsAppLink('Hola Soluciones Fabrick, ya revisé la calculadora y quiero validar mi proyecto.')} target="_blank" rel="noopener noreferrer" className="mt-6 inline-flex h-12 items-center gap-2 rounded-full bg-yellow-300 px-6 text-xs font-black uppercase tracking-[.18em] text-black transition hover:bg-white">Validar mi proyecto <MessageCircle className="h-4 w-4" /></a></div>
+          <div className="grid divide-y divide-white/10 border-y border-white/10 sm:grid-cols-3 sm:divide-x sm:divide-y-0">{PROCESS.map(({ step, title, text }) => <div key={step} className="p-5"><span className="text-xs font-black text-yellow-300">{step}</span><h3 className="mt-3 text-lg font-black">{title}</h3><p className="mt-2 text-sm leading-6 text-zinc-500">{text}</p></div>)}</div>
         </div>
       </section>
 
-      <section data-scroll-section id="tienda" className="relative overflow-hidden border-t border-white/10 px-4 py-20 md:px-12 md:py-28">
-        <div aria-hidden className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_92%_0%,rgba(250,204,21,.12),transparent_26rem),radial-gradient(circle_at_10%_100%,rgba(20,184,166,.10),transparent_28rem)]" />
-        <div className="relative mx-auto max-w-[1500px]">
-          <SectionHeader eyebrow="Tienda" title="Productos que resuelven necesidades reales" text="Climatización, iluminación, grifería y equipamiento para completar el proyecto. Revisa cada ficha y consulta también por instalación." />
-          <div className="mt-12 grid divide-y divide-white/10 border-y border-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0 lg:grid-cols-3">
-            {PRODUCT_CATEGORIES.map(({ Icon, title, text }) => (
-              <Link key={title} href="/tienda" className="group flex items-start gap-4 p-5 transition hover:bg-white/[0.025]">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-full border border-yellow-300/30 text-yellow-300 transition group-hover:bg-yellow-300 group-hover:text-black"><Icon className="h-5 w-5" /></span>
-                <span><b className="block text-sm font-black uppercase tracking-[0.12em] text-white">{title}</b><span className="mt-2 block text-sm leading-6 text-zinc-400">{text}</span></span>
-              </Link>
-            ))}
-          </div>
-          <div className="mt-14 border-t border-white/10 pt-10"><TiendaSection /></div>
+      <section id="contacto" className="bg-[#080705] px-4 py-16 md:px-12 md:py-20">
+        <div className="mx-auto grid max-w-[1380px] gap-10 lg:grid-cols-[.8fr_1.2fr] lg:items-start">
+          <div><p className="text-[10px] font-black uppercase tracking-[.3em] text-yellow-300">Contacto</p><h2 className="mt-3 text-3xl font-black tracking-[-.04em] md:text-5xl">Cuéntanos dónde y qué quieres construir.</h2><p className="mt-4 max-w-xl text-sm leading-7 text-zinc-400">Con superficie, comuna y nivel de entrega podemos darte una respuesta mucho más útil.</p><div className="mt-7 space-y-3 border-y border-white/10 py-5 text-sm text-zinc-300"><p className="flex gap-3"><MapPin className="h-5 w-5 shrink-0 text-yellow-300" /> Base en Linares, Región del Maule</p><p className="flex gap-3"><CheckCircle2 className="h-5 w-5 shrink-0 text-yellow-300" /> Revisión de proyectos seleccionados en otras zonas</p></div></div>
+          <div className="border-t border-yellow-300/30 pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0"><ContactForm /></div>
         </div>
       </section>
 
-      <section data-scroll-section className="border-t border-white/10 bg-[#080706] px-4 py-20 md:px-12 md:py-28">
-        <div className="mx-auto grid max-w-[1500px] gap-10 lg:grid-cols-[0.9fr_1.1fr] lg:items-center">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.34em] text-yellow-300">Por qué elegirnos</p>
-            <h2 className="mt-4 text-4xl font-black leading-[0.98] tracking-tight text-white md:text-6xl">Menos confusión. Mejor punto de partida.</h2>
-            <p className="mt-5 max-w-xl text-base leading-8 text-zinc-400">Un cliente no necesita una explicación eterna; necesita saber cuánto podría costar, qué recibe y qué falta revisar. Esa es la base de la página.</p>
-            <div className="mt-8 flex flex-wrap gap-3">
-              <Link href="/contacto" className="inline-flex h-12 items-center gap-2 rounded-full bg-yellow-300 px-6 text-xs font-black uppercase tracking-[0.2em] text-black transition hover:bg-white">Hablar de mi proyecto <ArrowRight className="h-4 w-4" /></Link>
-              <a href={buildWhatsAppLink('Hola Soluciones Fabrick, quiero orientación para calcular un kit, cabaña o casa llave en mano.')} target="_blank" rel="noopener noreferrer" className="inline-flex h-12 items-center gap-2 rounded-full border border-white/15 px-6 text-xs font-black uppercase tracking-[0.2em] text-white transition hover:border-yellow-300/40 hover:text-yellow-300">WhatsApp <MessageCircle className="h-4 w-4" /></a>
-            </div>
-          </div>
-          <div className="divide-y divide-white/10 border-y border-white/10">{WHY_US.map((item) => <div key={item} className="flex gap-4 py-5"><CheckCircle2 className="mt-1 h-5 w-5 shrink-0 text-yellow-300" /><p className="text-sm leading-7 text-zinc-300">{item}</p></div>)}</div>
+      <footer className="border-t border-white/10 bg-black px-4 py-10 md:px-12">
+        <div className="mx-auto grid max-w-[1380px] gap-8 md:grid-cols-[1.25fr_.75fr_.75fr]">
+          <div><p className="text-lg font-black uppercase tracking-[.12em]">Soluciones <span className="text-yellow-300">Fabrick</span></p><p className="mt-3 max-w-lg text-sm leading-6 text-zinc-400">Transformamos una idea difícil de presupuestar en una solución con alcance, materiales y próximos pasos claros.</p><div className="mt-5 flex gap-2"><SocialLink href={fbHref} label="Facebook">F</SocialLink><SocialLink href={igHref} label="Instagram">I</SocialLink><SocialLink href={ttHref} label="TikTok">T</SocialLink></div></div>
+          <FooterColumn title="Soluciones" items={[["Calculadora", "#calculadora-m2"], ["Servicios", "/servicios"], ["Tienda", "/tienda"]]} />
+          <FooterColumn title="Ayuda" items={[["Presupuesto", "/presupuesto"], ["Contacto", "/contacto"], ["WhatsApp", buildWhatsAppLink('Hola Soluciones Fabrick, necesito orientación.')]]} />
         </div>
-      </section>
-
-      <section data-scroll-section className="border-t border-white/10 px-4 py-20 md:px-12 md:py-28">
-        <div className="mx-auto max-w-[1500px]">
-          <SectionHeader eyebrow="Proceso" title="Cómo avanzamos" text="Un camino simple para que no tengas que partir adivinando precios ni alcances." />
-          <div className="mt-12 grid divide-y divide-white/10 border-y border-white/10 md:grid-cols-4 md:divide-x md:divide-y-0">
-            {PROCESS.map(({ step, title, text }) => <div key={step} className="p-6"><span className="text-4xl font-black text-yellow-300/35">{step}</span><h3 className="mt-5 text-lg font-black text-white">{title}</h3><p className="mt-3 text-sm leading-7 text-zinc-400">{text}</p></div>)}
-          </div>
-        </div>
-      </section>
-
-      <section data-scroll-section id="contacto" className="border-t border-white/10 bg-[#070707] px-4 py-20 md:px-12 md:py-28">
-        <div className="mx-auto grid max-w-[1500px] gap-10 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-          <div className="space-y-8">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.34em] text-yellow-300">Contacto directo</p>
-              <h2 className="mt-4 text-4xl font-black leading-[0.98] tracking-tight text-white md:text-6xl">Cuéntanos qué quieres construir.</h2>
-              <p className="mt-5 max-w-xl text-base leading-8 text-zinc-400">Puede ser un kit, una cabaña, una ampliación o una casa llave en mano. Te ayudamos a ordenar precio, alcance y próximos pasos.</p>
-            </div>
-            <div className="grid divide-y divide-white/10 border-y border-white/10 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
-              <ContactNote Icon={MapPin} title="Zona de atención" text="Base en Linares y Región del Maule; revisamos casos puntuales en otras zonas." />
-              <ContactNote Icon={Sparkles} title="Primera orientación" text="Partimos con una guía simple para saber si el proyecto puede avanzar." />
-            </div>
-            <ContactMap className="min-h-[22rem]" title="Soluciones Fabrick" subtitle="Linares · Región del Maule" />
-          </div>
-          <div className="border-t border-yellow-300/35 pt-6 lg:border-l lg:border-t-0 lg:pl-8 lg:pt-0"><ContactForm /></div>
-        </div>
-      </section>
-
-      <footer className="border-t border-white/10 bg-black px-4 py-12 md:px-12">
-        <div className="mx-auto grid max-w-[1500px] gap-10 md:grid-cols-[1.2fr_0.8fr_0.8fr]">
-          <div><p className="text-lg font-black uppercase tracking-[0.14em] text-white">Soluciones <span className="text-yellow-300">Fabrick</span></p><p className="mt-4 max-w-md text-sm leading-7 text-zinc-400">{taglineText}</p><div className="mt-5 flex gap-3"><SocialLink href={fbHref} label="Facebook">F</SocialLink><SocialLink href={igHref} label="Instagram">I</SocialLink><SocialLink href={ttHref} label="TikTok">T</SocialLink></div></div>
-          <FooterColumn title="Explorar" items={[["Calculadora", "#calculadora-m2"], ["Servicios", "/servicios"], ["Tienda", "/tienda"], ["Contacto", "/contacto"]]} />
-          <FooterColumn title="Contacto" items={[["WhatsApp", buildWhatsAppLink('Hola Soluciones Fabrick, quiero orientación.')], ["Cotizar", "/contacto"], ["Productos", "/tienda"]]} />
-        </div>
-        <div className="mx-auto mt-10 max-w-[1500px] border-t border-white/10 pt-6 text-xs leading-6 text-zinc-500" dangerouslySetInnerHTML={{ __html: copyrightHtml }} />
+        <div className="mx-auto mt-8 max-w-[1380px] border-t border-white/10 pt-5 text-[11px] leading-5 text-zinc-600"><div dangerouslySetInnerHTML={{ __html: legalText }} /><p className="mt-1">Construcción, remodelación y equipamiento con información clara antes de comenzar. Los valores publicados son referenciales y están sujetos a evaluación técnica.</p></div>
       </footer>
     </div>
   );
 }
 
-function SectionHeader({ eyebrow, title, text }: { eyebrow: string; title: string; text: string }) {
-  return <div className="mx-auto max-w-3xl text-center"><p className="text-[10px] font-black uppercase tracking-[0.34em] text-yellow-300">{eyebrow}</p><h2 className="mt-4 text-3xl font-black leading-tight tracking-tight text-white md:text-5xl">{title}</h2><p className="mx-auto mt-4 max-w-2xl text-sm leading-7 text-zinc-400 md:text-base">{text}</p></div>;
-}
-
-function LineItem({ Icon, title, text }: { Icon: LucideIcon; title: string; text: string }) {
-  return <div className="p-6"><span className="grid h-12 w-12 place-items-center rounded-full bg-yellow-300 text-black"><Icon className="h-5 w-5" /></span><h3 className="mt-5 text-xl font-black text-white">{title}</h3><p className="mt-3 text-sm leading-7 text-zinc-400">{text}</p></div>;
-}
-
-function ContactNote({ Icon, title, text }: { Icon: LucideIcon; title: string; text: string }) {
-  return <div className="p-5"><Icon className="h-5 w-5 text-yellow-300" /><b className="mt-4 block text-sm font-black uppercase tracking-[0.12em] text-white">{title}</b><p className="mt-2 text-sm leading-6 text-zinc-400">{text}</p></div>;
-}
-
-function SocialLink({ href, label, children }: { href: string; label: string; children: ReactNode }) {
-  const isDisabled = !href || href === '#';
-  return <a href={isDisabled ? undefined : href} aria-label={label} target={isDisabled ? undefined : '_blank'} rel={isDisabled ? undefined : 'noopener noreferrer'} className={`grid h-10 w-10 place-items-center rounded-full border border-white/10 bg-white/5 text-sm font-black text-zinc-300 transition ${isDisabled ? 'cursor-not-allowed opacity-40' : 'hover:border-yellow-300/50 hover:text-yellow-300'}`}>{children}</a>;
-}
-
-function FooterColumn({ title, items }: { title: string; items: Array<[string, string]> }) {
-  return <div><p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">{title}</p><div className="mt-4 grid gap-2">{items.map(([label, href]) => { const external = href.startsWith('http'); if (external) return <a key={label + href} href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-400 transition hover:text-yellow-300">{label}</a>; return <Link key={label + href} href={href} className="text-sm text-zinc-400 transition hover:text-yellow-300">{label}</Link>; })}</div></div>;
-}
+function SocialLink({ href, label, children }: { href: string; label: string; children: ReactNode }) { const disabled = !href || href === '#'; return <a href={disabled ? undefined : href} aria-label={label} target={disabled ? undefined : '_blank'} rel={disabled ? undefined : 'noopener noreferrer'} className={`grid h-9 w-9 place-items-center rounded-full border border-white/10 text-xs font-black transition ${disabled ? 'cursor-not-allowed opacity-35' : 'hover:border-yellow-300/50 hover:text-yellow-300'}`}>{children}</a>; }
+function FooterColumn({ title, items }: { title: string; items: Array<[string, string]> }) { return <div><p className="text-[9px] font-black uppercase tracking-[.25em] text-yellow-300">{title}</p><div className="mt-4 grid gap-2">{items.map(([label, href]) => href.startsWith('http') ? <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-400 hover:text-yellow-300">{label}</a> : <Link key={label} href={href} className="text-sm text-zinc-400 hover:text-yellow-300">{label}</Link>)}</div></div>; }

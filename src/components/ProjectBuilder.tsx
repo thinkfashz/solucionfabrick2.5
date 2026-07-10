@@ -51,9 +51,9 @@ interface Category {
 /* -------------------------------------------------------------------------- */
 
 const CATEGORIES: Category[] = [
-  { id: 'obra-gruesa',    label: 'Obra Gruesa',    Icon: Hammer },
+  { id: 'obra-gruesa',    label: 'Estructura y kits', Icon: Hammer },
   { id: 'terminaciones',  label: 'Terminaciones',  Icon: Paintbrush },
-  { id: 'especialidades', label: 'Especialidades', Icon: Zap },
+  { id: 'especialidades', label: 'Instalaciones', Icon: Zap },
   { id: 'servicios',      label: 'Servicios',      Icon: Wrench },
 ];
 
@@ -108,12 +108,21 @@ const PRODUCTS: Product[] = [
     image: PLACEHOLDER,
   },
   {
-    id: 'og-kit-prefab',
+    id: 'og-kit-basico',
     category: 'obra-gruesa',
-    name: 'Kit Prefabricado 36 m²',
-    description: 'Estructura llave en mano, certificada, instalación incluida.',
-    price: 15_900_000,
-    unit: 'kit',
+    name: 'Kit Básico Prefabricado',
+    description: 'Paneles forrados por una cara, cerchas en madera o Metalcon, costaneras y zinc 0,35 mm.',
+    price: 195_000,
+    unit: 'm²',
+    image: PLACEHOLDER,
+  },
+  {
+    id: 'og-kit-avanzado',
+    category: 'obra-gruesa',
+    name: 'Kit Avanzado Prefabricado',
+    description: 'Kit básico más ventanas, puertas, forro interior, puntos eléctricos y cielos.',
+    price: 390_000,
+    unit: 'm²',
     image: PLACEHOLDER,
   },
 
@@ -204,21 +213,21 @@ const PRODUCTS: Product[] = [
 
   /* Servicios */
   {
-    id: 's-ampliacion',
+    id: 's-llave-mano',
     category: 'servicios',
-    name: 'Ampliación Estándar',
-    description: 'Hasta 20 m² adicionales, integrados a vivienda existente.',
-    price: 8_900_000,
-    unit: 'proyecto',
+    name: 'Llave en Mano Estándar',
+    description: 'Kit avanzado, piso estándar, dos capas de pintura y redes interiores listas para conectar.',
+    price: 660_000,
+    unit: 'm²',
     image: PLACEHOLDER,
   },
   {
     id: 's-remodelacion',
     category: 'servicios',
     name: 'Remodelación Integral',
-    description: 'Diseño, demolición y terminaciones por especialidad.',
-    price: 6_500_000,
-    unit: 'proyecto',
+    description: 'Referencia para renovación integral; se ajusta tras revisar el estado existente.',
+    price: 380_000,
+    unit: 'm²',
     image: PLACEHOLDER,
   },
   {
@@ -332,7 +341,7 @@ export default function ProjectBuilder({ products = PRODUCTS, onSubmit }: Projec
     <section
       id="project-builder"
       aria-labelledby="project-builder-title"
-      className="relative isolate overflow-hidden bg-gradient-to-b from-black via-zinc-950 to-black py-16 sm:py-24"
+      className="relative isolate overflow-hidden bg-[#070605] py-12 sm:py-16"
     >
       {/* Subtle grid background */}
       {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
@@ -347,7 +356,7 @@ export default function ProjectBuilder({ products = PRODUCTS, onSubmit }: Projec
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6">
         {/* Heading */}
-        <div className="mb-10 text-center sm:mb-14">
+        <div className="mb-8 text-left sm:mb-10">
           <span className="inline-flex items-center gap-2 rounded-full border border-yellow-400/25 bg-yellow-400/[0.06] px-3 py-1 text-[11px] font-medium uppercase tracking-[0.25em] text-yellow-400/90">
             <PackageOpen className="h-3.5 w-3.5" aria-hidden /> Configurador de proyecto
           </span>
@@ -355,13 +364,10 @@ export default function ProjectBuilder({ products = PRODUCTS, onSubmit }: Projec
             id="project-builder-title"
             className="font-playfair mt-4 text-3xl font-bold leading-tight text-white sm:text-4xl md:text-5xl"
           >
-            Arma tu Presupuesto{' '}
-            <span className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-400 bg-clip-text text-transparent">
-              en tiempo real
-            </span>
+            Detalla las partidas de tu presupuesto
           </h2>
           <p className="mx-auto mt-4 max-w-2xl text-sm text-zinc-400 sm:text-base">
-            Selecciona materiales, especialidades y servicios. El total se actualiza al instante.
+            Añade solo lo que necesitas. Los precios del catálogo son netos y el IVA se muestra por separado antes de solicitar la evaluación.
           </p>
         </div>
 
@@ -388,7 +394,7 @@ export default function ProjectBuilder({ products = PRODUCTS, onSubmit }: Projec
                     id={`tab-${id}`}
                     onClick={() => setActiveTab(id)}
                     className={[
-                      'group relative inline-flex flex-1 min-w-[150px] items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-xs font-semibold uppercase tracking-wider transition-all duration-200 sm:text-sm',
+                      'group relative inline-flex flex-1 min-w-[135px] items-center justify-center gap-2 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all duration-200 sm:text-sm',
                       'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black',
                       active
                         ? 'bg-yellow-400 text-black shadow-[0_0_24px_rgba(250,204,21,0.35)]'
@@ -454,7 +460,7 @@ export default function ProjectBuilder({ products = PRODUCTS, onSubmit }: Projec
                           <div className="mt-auto flex items-end justify-between gap-3 pt-4">
                             <div>
                               <p className="text-[10px] uppercase tracking-wider text-zinc-500">
-                                Desde
+                                Precio neto
                               </p>
                               <p className="text-lg font-bold text-yellow-400">
                                 {formatCLP(product.price)}

@@ -2,6 +2,7 @@ import type { Metadata } from 'next';
 import { getActiveMaterials } from '@/lib/budget';
 import PresupuestoClient from './PresupuestoClient';
 import Navbar from '@/components/Navbar';
+import ConstructionM2Calculator from '@/components/landing/ConstructionM2Calculator';
 
 /**
  * /presupuesto — Cotizador público (servidor + cliente).
@@ -16,9 +17,9 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export const metadata: Metadata = {
-  title: 'Cotizador en Tiempo Real | Soluciones Fabrick',
+  title: 'Calculadora y presupuesto de construcción | Soluciones Fabrick',
   description:
-    'Arma tu presupuesto seleccionando materiales, especialidades y servicios. Precios actualizados en vivo y propuesta técnica al instante.',
+    'Compara kit básico, kit avanzado y llave en mano; luego detalla materiales, instalaciones y servicios para solicitar una evaluación.',
 };
 
 export default async function PresupuestoPage() {
@@ -26,7 +27,11 @@ export default async function PresupuestoPage() {
   return (
     <main className="min-h-screen bg-[#080705] text-white">
       <Navbar />
-      <div className="pt-20"><PresupuestoClient initialMaterials={materials} /></div>
+      <div className="border-b border-white/10 px-4 pb-9 pt-28 sm:px-6 lg:px-8">
+        <div className="mx-auto max-w-[1380px]"><p className="text-[10px] font-black uppercase tracking-[.3em] text-yellow-300">Presupuesto Fabrick</p><h1 className="mt-3 max-w-4xl text-4xl font-black tracking-[-.05em] sm:text-6xl">Primero calcula el alcance. Después agrega los detalles.</h1><p className="mt-4 max-w-2xl text-sm leading-7 text-zinc-400">Comienza con una referencia por metro cuadrado y, si necesitas partidas separadas, arma un presupuesto técnico debajo.</p></div>
+      </div>
+      <ConstructionM2Calculator />
+      <PresupuestoClient initialMaterials={materials} />
     </main>
   );
 }

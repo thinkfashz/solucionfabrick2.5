@@ -153,7 +153,7 @@ export default function PresupuestoClient({ initialMaterials }: PresupuestoClien
   }, [refetch]);
 
   /* Build the catalog passed to ProjectBuilder. */
-  const products = useMemo(() => materials.map(rowToProduct), [materials]);
+  const products = useMemo(() => materials.length > 0 ? materials.map(rowToProduct) : undefined, [materials]);
 
   /* ----- Finalize-quote modal flow ----- */
   const [pendingCart, setPendingCart] = useState<CartLine[] | null>(null);
@@ -287,7 +287,7 @@ function LiveBadge({ status }: { status: 'idle' | 'connected' | 'updated' }) {
         'pointer-events-none fixed left-1/2 top-20 z-40 -translate-x-1/2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur transition-all duration-300',
         updated
           ? 'border-yellow-400/50 bg-yellow-400/10 text-yellow-300 shadow-[0_0_24px_rgba(250,204,21,0.35)]'
-          : 'border-emerald-400/30 bg-emerald-400/10 text-emerald-300',
+          : 'border-white/15 bg-black/80 text-zinc-400',
       ].join(' ')}
     >
       <span className="inline-flex items-center gap-1.5">

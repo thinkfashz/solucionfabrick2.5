@@ -36,7 +36,7 @@ const PRINCIPLES = [
 ];
 
 const SERVICES = [
-  { Icon: Home, title: 'Kits, cabañas y casas', text: 'Opciones por etapas: kit básico, kit intermedio y llave en mano según presupuesto y necesidad.', href: '#calculadora-m2' },
+  { Icon: Home, title: 'Kits, remodelaciones y casas', text: 'Kit básico desde $160.000 a $230.000/m², remodelación referencial a $380.000/m² y llave en mano desde $540.000 a $780.000/m².', href: '#calculadora-m2' },
   { Icon: Hammer, title: 'Construcción y ampliaciones', text: 'Estructura, montaje, revestimientos, terminaciones y coordinación de partidas para avanzar con orden.', href: '/servicios/metalcon' },
   { Icon: Wrench, title: 'Instalaciones y mejoras', text: 'Puntos eléctricos, agua PPR, gas interior, sanitarios, cocina, baño y soluciones prácticas para el hogar.', href: '/servicios' },
   { Icon: ClipboardCheck, title: 'Orientación antes de comprar', text: 'Te ayudamos a decidir entre materiales, productos y niveles de terminación sin gastar a ciegas.', href: '/contacto' },
@@ -65,7 +65,7 @@ const WHY_US = [
 ];
 
 const PROCESS = [
-  { step: '01', title: 'Calcula rápido', text: 'Elige kit básico, kit intermedio o llave en mano y revisa un valor referencial por m².' },
+  { step: '01', title: 'Calcula rápido', text: 'Elige kit básico, remodelación o llave en mano y revisa un valor referencial por m².' },
   { step: '02', title: 'Comparte tu caso', text: 'Nos cuentas ubicación, medidas, terreno, acceso y qué nivel de terminación buscas.' },
   { step: '03', title: 'Ordenamos alcance', text: 'Definimos qué incluye la propuesta, qué queda fuera y qué debe revisarse en terreno.' },
   { step: '04', title: 'Cotizamos mejor', text: 'Con más datos, armamos una propuesta más clara para avanzar sin improvisar.' },

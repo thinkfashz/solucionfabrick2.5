@@ -1,9 +1,11 @@
 import Image from 'next/image';
 
 export const FABRICK_LOGOS = {
-  dark: '/brand/soluciones-fabrick-dark.jpg',
-  light: '/brand/soluciones-fabrick-light.jpg',
-  lightClassic: '/brand/soluciones-fabrick-light-classic.jpg',
+  primary: '/brand/soluciones-fabrick-transparent.png',
+  mark: '/brand/soluciones-fabrick-mark-transparent.png',
+  dark: '/brand/soluciones-fabrick-transparent.png',
+  light: '/brand/soluciones-fabrick-transparent.png',
+  lightClassic: '/brand/soluciones-fabrick-transparent.png',
 } as const;
 
 interface IconProps {
@@ -20,29 +22,21 @@ interface FullLogoProps {
   priority?: boolean;
 }
 
-function logoForTheme(theme: FullLogoProps['theme']) {
-  return theme === 'dark' ? FABRICK_LOGOS.light : FABRICK_LOGOS.dark;
-}
-
 /** Isotipo compacto derivado del archivo de marca oficial. */
 export function FabrickPeakIcon({ size = 32, className = '' }: IconProps) {
   return (
     <span
       aria-label="Soluciones Fabrick"
-      className={`inline-block shrink-0 overflow-hidden rounded-[22%] bg-black bg-no-repeat shadow-[0_6px_18px_rgba(0,0,0,0.22)] ${className}`}
+      className={`relative inline-block shrink-0 overflow-hidden ${className}`}
       role="img"
-      style={{
-        width: size,
-        height: size,
-        backgroundImage: `url(${FABRICK_LOGOS.dark})`,
-        backgroundPosition: '50% 36%',
-        backgroundSize: '290% auto',
-      }}
-    />
+      style={{ width: size, height: size }}
+    >
+      <Image alt="" className="object-contain" fill sizes={`${size}px`} src={FABRICK_LOGOS.mark} />
+    </span>
   );
 }
 
-/** Logo horizontal oficial con variante clara u oscura según la superficie. */
+/** Logo horizontal oficial sin fondo; funciona sobre superficies claras u oscuras. */
 export function FabrickFullLogo({
   theme = 'light',
   tagline,
@@ -52,14 +46,14 @@ export function FabrickFullLogo({
 }: FullLogoProps) {
   return (
     <span className={`inline-flex select-none flex-col items-center ${className}`}>
-      <span className={`relative block shrink-0 overflow-hidden ${compact ? 'h-10 w-[152px]' : 'h-[76px] w-[270px]'}`}>
+      <span className={`relative block shrink-0 ${compact ? 'h-14 w-[190px]' : 'h-[108px] w-[330px] max-w-[82vw]'}`}>
         <Image
           alt="Soluciones Fabrick"
-          className="object-cover"
+          className="object-contain"
           fill
           priority={priority}
-          sizes={compact ? '152px' : '270px'}
-          src={logoForTheme(theme)}
+          sizes={compact ? '190px' : '(max-width: 480px) 82vw, 330px'}
+          src={FABRICK_LOGOS.primary}
         />
       </span>
       {tagline ? (

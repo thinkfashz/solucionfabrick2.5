@@ -18,7 +18,7 @@ const poemHTML = `
   propuesta digital · confianza real
 `;
 
-export default function FabrickPoemAnimation({ compact = false, children, backgroundImageUrl = '/brand/soluciones-fabrick-dark.jpg', accentImageUrl = '/brand/soluciones-fabrick-dark.jpg', className = '' }: Props) {
+export default function FabrickPoemAnimation({ compact = false, children, backgroundImageUrl = '/brand/soluciones-fabrick-transparent.png', accentImageUrl = '/brand/soluciones-fabrick-transparent.png', className = '' }: Props) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {

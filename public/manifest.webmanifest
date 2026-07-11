@@ -14,9 +14,9 @@
   "categories": ["business", "lifestyle", "productivity"],
   "icons": [
     {
-      "src": "/app-icon.svg",
-      "sizes": "any",
-      "type": "image/svg+xml",
+      "src": "/app-icon.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any"
     }
   ],
@@ -26,21 +26,21 @@
       "short_name": "Cotizar",
       "description": "Solicita una evaluación gratuita",
       "url": "/contacto?source=shortcut",
-      "icons": [{ "src": "/app-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/app-icon.png", "sizes": "512x512", "type": "image/png" }]
     },
     {
       "name": "Nuestros servicios",
       "short_name": "Servicios",
       "description": "Construcción, Metalcon, gasfitería y más",
       "url": "/servicios?source=shortcut",
-      "icons": [{ "src": "/app-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/app-icon.png", "sizes": "512x512", "type": "image/png" }]
     },
     {
       "name": "Proyectos",
       "short_name": "Proyectos",
       "description": "Explora nuestros proyectos",
       "url": "/proyectos?source=shortcut",
-      "icons": [{ "src": "/app-icon.svg", "sizes": "any", "type": "image/svg+xml" }]
+      "icons": [{ "src": "/app-icon.png", "sizes": "512x512", "type": "image/png" }]
     }
   ]
 }

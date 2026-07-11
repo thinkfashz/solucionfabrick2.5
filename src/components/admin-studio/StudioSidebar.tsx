@@ -10,6 +10,7 @@ import {
   Tag, Terminal, TrendingDown, Truck, Telescope, User, Users, Video, Wallet, MessageCircle,
   KeyRound, Activity, Scan, Receipt, FlaskConical, Plug, Rocket, UserPlus,
 } from 'lucide-react';
+import { FabrickNavLogo } from '@/components/FabrickBrandIcon';
 
 const LAVA_ACTIVE = 'bg-[linear-gradient(135deg,rgba(245,158,11,.22),rgba(255,255,255,.055))] text-white shadow-[0_16px_44px_rgba(245,158,11,.20)] ring-1 ring-amber-300/35 backdrop-blur-xl';
 const LAVA_IDLE = 'text-[#f3e7d0]/75 hover:bg-amber-400/10 hover:text-white hover:ring-1 hover:ring-amber-300/25';
@@ -141,7 +142,7 @@ export function StudioSidebarContent({ collapsed, role, onNavigate, onLogout }: 
     <div className="relative shrink-0 border-b border-amber-300/10 p-4">
       <Link href="/admin/perfil" onClick={onNavigate} className={['flex items-center gap-3 rounded-[24px] border border-amber-300/15 bg-white/[0.055] p-3 backdrop-blur-xl transition hover:bg-amber-400/10', collapsed ? 'justify-center' : ''].join(' ')}>
         <div className="relative grid h-12 w-12 shrink-0 place-items-center overflow-hidden rounded-[18px] border border-amber-200/30 bg-gradient-to-br from-amber-300 via-orange-500 to-black text-sm font-black text-black shadow-[0_10px_32px_rgba(245,158,11,.24)]">{profile.avatar_url ? <img src={profile.avatar_url} alt={profile.name} className="h-full w-full object-cover" /> : initials(profile.name)}</div>
-        {!collapsed && <div className="min-w-0"><p className="truncate text-[11px] font-black uppercase tracking-[0.22em] text-amber-200">Soluciones Fabrick</p><p className="mt-1 truncate text-sm font-black text-white">{profile.name}</p><p className="truncate text-[10px] uppercase tracking-[0.18em] text-white/45">{profile.role}</p></div>}
+        {!collapsed && <div className="min-w-0"><FabrickNavLogo className="-ml-1" theme="light" /><p className="mt-1 truncate text-sm font-black text-white">{profile.name}</p><p className="truncate text-[10px] uppercase tracking-[0.18em] text-white/45">{profile.role}</p></div>}
       </Link>
     </div>
     {!collapsed && <div className="relative shrink-0 px-4 py-3"><Search className="pointer-events-none absolute left-7 top-1/2 h-4 w-4 -translate-y-1/2 text-amber-200/55" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar opción… SaaS, paleta, demo" className="h-11 w-full rounded-[18px] border border-amber-300/12 bg-black/30 pl-10 pr-3 text-sm text-white outline-none backdrop-blur-xl placeholder:text-[#8e7d61] focus:border-amber-200/50" /></div>}

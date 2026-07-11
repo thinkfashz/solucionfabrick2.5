@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation';
 import { MessageCircle, Sparkles } from 'lucide-react';
 import type { TenantPalette } from '@/lib/tenantTheme';
 import { isSaaSRuntimeEnabled, SAAS_RUNTIME_CHANGE_EVENT } from '@/lib/saasFeatureFlag';
+import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 
 type Branding = {
   id: string;
@@ -110,7 +111,7 @@ export function TenantBrandingBar({ compact = false, forceShow = false }: { comp
   return <div className={compact ? 'rounded-3xl border border-white/10 bg-black/45 p-3 text-white' : 'fixed bottom-4 left-4 right-4 z-40 mx-auto max-w-5xl rounded-[1.6rem] border border-white/10 bg-black/70 p-3 text-white shadow-2xl shadow-black/50 backdrop-blur-2xl md:left-auto md:right-5 md:max-w-sm'}>
     <div className="flex items-center gap-3">
       <div className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-2xl text-sm font-black text-black ring-1 ring-white/15" style={{ background: mainColor }}>
-        {branding.logoUrl ? <img src={branding.logoUrl} alt={branding.name} className="h-full w-full object-cover" /> : initials(branding.name)}
+        {branding.logoUrl ? <img src={branding.logoUrl} alt={branding.name} className="h-full w-full object-cover" /> : branding.slug === 'fabrick' ? <FabrickPeakIcon size={44} /> : initials(branding.name)}
       </div>
       <div className="min-w-0 flex-1">
         <p className="truncate text-sm font-black">{branding.name}</p>

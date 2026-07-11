@@ -9,7 +9,7 @@ import {
 } from 'lucide-react';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
+import { FabrickNavLogo, FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 import { navSections } from '@/components/admin-studio/StudioSidebar';
 
 /* ── PATH_LABELS (copied from StudioShell.tsx lines 12-82) ─────── */
@@ -316,9 +316,7 @@ export function NeoShell({ children }: { children: ReactNode }) {
                   <FabrickPeakIcon size={16} />
                 </div>
                 <div className="flex-1 min-w-0">
-                  <p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#ffd54a]">
-                    SOLUCIONES FABRICK
-                  </p>
+                  <FabrickNavLogo className="-ml-1" theme="light" />
                   <p className="text-[9px] uppercase tracking-[0.2em] text-[#9f8d74]">
                     Neo Admin
                   </p>

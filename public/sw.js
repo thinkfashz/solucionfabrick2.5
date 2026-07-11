@@ -14,7 +14,7 @@
 // black-screen HTML cached before v2). Increasing the version causes the
 // `activate` handler to delete every cache whose key does not start with
 // VERSION, forcing a clean slate on users' devices.
-const VERSION = 'fabrick-sw-v3';
+const VERSION = 'fabrick-sw-v4-brand';
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const IMAGE_CACHE = `${VERSION}-images`;
@@ -22,11 +22,9 @@ const IMAGE_CACHE = `${VERSION}-images`;
 const PRECACHE_URLS = [
   '/offline',
   '/manifest.webmanifest',
-  '/favicon.svg',
   '/app-icon.svg',
-  '/icon-192.png',
-  '/icon-512.png',
-  '/apple-touch-icon.png',
+  '/brand/soluciones-fabrick-dark.jpg',
+  '/brand/soluciones-fabrick-light.jpg',
 ];
 
 self.addEventListener('install', (event) => {
@@ -191,7 +189,7 @@ self.addEventListener('message', (event) => {
 
 // ── Web Push ────────────────────────────────────────────────────
 self.addEventListener('push', (event) => {
-  let payload = { title: 'Soluciones Fabrick', body: 'Tienes una nueva notificación.', url: '/', icon: '/icon-192.png', tag: 'fabrick' };
+  let payload = { title: 'Soluciones Fabrick', body: 'Tienes una nueva notificación.', url: '/', icon: '/app-icon.svg', tag: 'fabrick' };
   try {
     if (event.data) {
       const data = event.data.json();
@@ -207,8 +205,8 @@ self.addEventListener('push', (event) => {
   event.waitUntil(
     self.registration.showNotification(payload.title, {
       body: payload.body,
-      icon: payload.icon || '/icon-192.png',
-      badge: '/icon-192.png',
+      icon: payload.icon || '/app-icon.svg',
+      badge: '/app-icon.svg',
       tag: payload.tag || 'fabrick',
       data: { url: payload.url || '/' },
     })

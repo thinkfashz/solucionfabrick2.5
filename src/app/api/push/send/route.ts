@@ -50,7 +50,7 @@ export async function POST(request: Request) {
     title: title.slice(0, 120),
     body: bodyText.slice(0, 400),
     url: typeof raw.url === 'string' ? raw.url : '/',
-    icon: typeof raw.icon === 'string' ? raw.icon : '/icon-192.png',
+    icon: typeof raw.icon === 'string' ? raw.icon : '/app-icon.svg',
     tag: typeof raw.tag === 'string' ? raw.tag : 'fabrick-broadcast',
   };
 

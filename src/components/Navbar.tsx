@@ -18,7 +18,7 @@ import {
   LogIn,
   MessageCircle,
 } from 'lucide-react';
-import { FabrickFullLogo, FabrickNavLogo } from '@/components/FabrickBrandIcon';
+import { FabrickNavLogo } from '@/components/FabrickBrandIcon';
 import { useCartContextSafe } from '@/context/CartContext';
 import { useQuoteCartSafe } from '@/context/QuoteCartContext';
 import { navigateWithTransition } from '@/lib/routeTransition';
@@ -60,23 +60,16 @@ const itemVariants = {
   }),
 };
 
-function NavbarBrandLogo({ onClick, compact = false }: { onClick: () => void; compact?: boolean }) {
+function NavbarBrandLogo({ onClick }: { onClick: () => void; compact?: boolean }) {
   return (
-    <div
-      role="button"
-      tabIndex={0}
+    <button
+      type="button"
       aria-label="Soluciones Fabrick — inicio"
       onClick={onClick}
-      onKeyDown={(e) => {
-        if (e.key === 'Enter' || e.key === ' ') {
-          e.preventDefault();
-          onClick();
-        }
-      }}
       className="group flex flex-shrink-0 cursor-pointer select-none items-center rounded-lg outline-none transition-transform duration-300 hover:-translate-y-0.5 focus-visible:ring-2 focus-visible:ring-yellow-300/60"
     >
-      {compact ? <FabrickNavLogo theme="light" /> : <FabrickFullLogo theme="light" tagline="Construcción con claridad" />}
-    </div>
+      <FabrickNavLogo theme="light" />
+    </button>
   );
 }
 

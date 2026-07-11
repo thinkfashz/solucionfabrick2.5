@@ -7,6 +7,7 @@ import TiendaSection from './TiendaSection';
 import ContactForm from './ContactForm';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
 import { useSiteContent } from '@/hooks/useSiteContent';
+import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
 const SERVICES = [
   { Icon: Home, title: 'Kits y casas', text: 'Kit básico, kit avanzado y llave en mano con alcance visible antes de cotizar.', href: '#calculadora-m2' },
@@ -60,7 +61,7 @@ export default function LandingSections({ copyrightText, socialLinks }: { copyri
 
       <footer className="border-t border-white/10 bg-black px-4 py-10 md:px-12">
         <div className="mx-auto grid max-w-[1380px] gap-8 md:grid-cols-[1.25fr_.75fr_.75fr]">
-          <div><p className="text-lg font-black uppercase tracking-[.12em]">Soluciones <span className="text-yellow-300">Fabrick</span></p><p className="mt-3 max-w-lg text-sm leading-6 text-zinc-400">Transformamos una idea difícil de presupuestar en una solución con alcance, materiales y próximos pasos claros.</p><div className="mt-5 flex gap-2"><SocialLink href={fbHref} label="Facebook">F</SocialLink><SocialLink href={igHref} label="Instagram">I</SocialLink><SocialLink href={ttHref} label="TikTok">T</SocialLink></div></div>
+          <div><FabrickFullLogo priority theme="light" /><p className="mt-3 max-w-lg text-sm leading-6 text-zinc-400">Transformamos una idea difícil de presupuestar en una solución con alcance, materiales y próximos pasos claros.</p><div className="mt-5 flex gap-2"><SocialLink href={fbHref} label="Facebook">F</SocialLink><SocialLink href={igHref} label="Instagram">I</SocialLink><SocialLink href={ttHref} label="TikTok">T</SocialLink></div></div>
           <FooterColumn title="Soluciones" items={[["Calculadora", "#calculadora-m2"], ["Servicios", "/servicios"], ["Tienda", "/tienda"]]} />
           <FooterColumn title="Ayuda" items={[["Presupuesto", "/presupuesto"], ["Contacto", "/contacto"], ["WhatsApp", buildWhatsAppLink('Hola Soluciones Fabrick, necesito orientación.')]]} />
         </div>

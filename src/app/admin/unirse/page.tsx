@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { CheckCircle2 } from 'lucide-react';
+import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
 type VisualTheme = 'scifi' | 'corporate';
 
@@ -161,22 +162,7 @@ export default function UnirsePage() {
         </div>
 
         {/* Logo */}
-        <div className="mb-7 flex flex-col items-center gap-3 select-none">
-          <span className={isCorporate
-            ? 'relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-white/40 bg-white shadow-[0_10px_34px_rgba(255,255,255,0.22)]'
-            : 'relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/40 bg-yellow-400 shadow-[0_10px_34px_rgba(250,204,21,0.45)]'}>
-            <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.45),rgba(255,255,255,0)_56%)]" />
-            <span className="relative text-sm font-black uppercase tracking-[0.28em] text-black">SF</span>
-          </span>
-          <span className={isCorporate
-            ? 'font-playfair text-xl font-black tracking-[0.24em] text-white'
-            : 'font-playfair text-xl font-black tracking-[0.24em] text-yellow-300'}>
-            SOLUCIONES FABRICK
-          </span>
-          <span className={isCorporate
-            ? 'text-[10px] uppercase tracking-[0.34em] text-white/55'
-            : 'text-[10px] uppercase tracking-[0.34em] text-white/45'}>Evolution access panel</span>
-        </div>
+        <div className="mb-7 flex justify-center"><FabrickFullLogo priority tagline="Evolution access panel" theme="light" /></div>
 
         {/* Card */}
         <div className={isCorporate

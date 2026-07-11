@@ -1,107 +1,77 @@
-/**
- * FabrickBrandIcon — logo real de Soluciones Fabrick.
- * Pico arquitectónico dorado extraído del SVG oficial en /public.
- * Componente compartido: admin, frontend, tienda, login, transiciones.
- */
+import Image from 'next/image';
+
+export const FABRICK_LOGOS = {
+  dark: '/brand/soluciones-fabrick-dark.jpg',
+  light: '/brand/soluciones-fabrick-light.jpg',
+  lightClassic: '/brand/soluciones-fabrick-light-classic.jpg',
+} as const;
 
 interface IconProps {
-  /** Tamaño en píxeles del cuadrado contenedor */
   size?: number;
   className?: string;
 }
 
 interface FullLogoProps {
-  /** 'light' = texto blanco (sobre fondos oscuros) | 'dark' = texto negro (sobre fondos claros) */
+  /** `light` se usa sobre fondos oscuros; `dark`, sobre fondos claros. */
   theme?: 'light' | 'dark';
   className?: string;
   tagline?: string;
+  compact?: boolean;
+  priority?: boolean;
 }
 
-/** Sólo el pico dorado — para BrandMark, favicons, badges, etc. */
+function logoForTheme(theme: FullLogoProps['theme']) {
+  return theme === 'dark' ? FABRICK_LOGOS.light : FABRICK_LOGOS.dark;
+}
+
+/** Isotipo compacto derivado del archivo de marca oficial. */
 export function FabrickPeakIcon({ size = 32, className = '' }: IconProps) {
   return (
-    <svg
-      width={size}
-      height={size}
-      viewBox="0 0 38 46"
-      fill="none"
-      xmlns="http://www.w3.org/2000/svg"
+    <span
       aria-label="Soluciones Fabrick"
-      className={className}
-    >
-      <defs>
-        <linearGradient id="peak-gold" x1="0" y1="0" x2="0" y2="1">
-          <stop offset="0%" stopColor="#FFE566" />
-          <stop offset="100%" stopColor="#FFC700" />
-        </linearGradient>
-        <linearGradient id="peak-depth" x1="0" y1="0" x2="1" y2="0">
-          <stop offset="0%" stopColor="#B37E00" />
-          <stop offset="100%" stopColor="#D9A100" />
-        </linearGradient>
-      </defs>
-      {/* Main peak */}
-      <path d="M 2,42 L 19,4 L 36,42 L 30,42 L 19,12 L 8,42 Z" fill="url(#peak-gold)" />
-      {/* Depth shadow on left face */}
-      <path d="M 8,42 L 19,12 L 19,18 L 12,42 Z" fill="url(#peak-depth)" opacity="0.75" />
-      {/* Right pillar / column */}
-      <rect x="23" y="10" width="7" height="18" rx="1.5" fill="#FFC700" />
-    </svg>
+      className={`inline-block shrink-0 overflow-hidden rounded-[22%] bg-black bg-no-repeat shadow-[0_6px_18px_rgba(0,0,0,0.22)] ${className}`}
+      role="img"
+      style={{
+        width: size,
+        height: size,
+        backgroundImage: `url(${FABRICK_LOGOS.dark})`,
+        backgroundPosition: '50% 36%',
+        backgroundSize: '290% auto',
+      }}
+    />
   );
 }
 
-/** Logo completo: pico + "SOLUCIONES" + "FABRICK" wordmark */
-export function FabrickFullLogo({ theme = 'light', tagline, className = '' }: FullLogoProps) {
-  const textPrimary = theme === 'light' ? '#ffffff' : '#111111';
-  const textMuted   = theme === 'light' ? 'rgba(255,255,255,0.45)' : 'rgba(0,0,0,0.4)';
-
+/** Logo horizontal oficial con variante clara u oscura según la superficie. */
+export function FabrickFullLogo({
+  theme = 'light',
+  tagline,
+  className = '',
+  compact = false,
+  priority = false,
+}: FullLogoProps) {
   return (
-    <div className={`inline-flex select-none items-center gap-2.5 ${className}`}>
-      <FabrickPeakIcon size={36} />
-      <div className="flex flex-col leading-tight">
-        <span
-          className="text-[9px] font-medium uppercase tracking-[0.32em]"
-          style={{ color: textMuted }}
-        >
-          SOLUCIONES
-        </span>
-        <span
-          className="text-[20px] font-black uppercase leading-none tracking-[0.08em]"
-          style={{ color: textPrimary, fontFamily: 'Montserrat, Poppins, sans-serif' }}
-        >
-          FABRICK
-        </span>
-        {tagline && (
-          <span
-            className="mt-0.5 text-[9px] uppercase tracking-[0.28em]"
-            style={{ color: textMuted }}
-          >
-            {tagline}
-          </span>
-        )}
-      </div>
-    </div>
-  );
-}
-
-/** Versión compacta para navbars: pico + "Fabrick" en una línea */
-export function FabrickNavLogo({ theme = 'light', className = '' }: Omit<FullLogoProps, 'tagline'>) {
-  const textPrimary = theme === 'light' ? '#ffffff' : '#111111';
-  const textMuted   = theme === 'light' ? 'rgba(255,255,255,0.5)' : 'rgba(0,0,0,0.4)';
-
-  return (
-    <div className={`inline-flex select-none items-center gap-2 ${className}`}>
-      <FabrickPeakIcon size={28} />
-      <span className="flex flex-col leading-none">
-        <span
-          className="text-[13px] font-black uppercase tracking-widest"
-          style={{ color: textPrimary }}
-        >
-          Fabrick
-        </span>
-        <span className="text-[9px] uppercase tracking-widest" style={{ color: textMuted }}>
-          Soluciones
-        </span>
+    <span className={`inline-flex select-none flex-col items-center ${className}`}>
+      <span className={`relative block shrink-0 overflow-hidden ${compact ? 'h-10 w-[152px]' : 'h-[76px] w-[270px]'}`}>
+        <Image
+          alt="Soluciones Fabrick"
+          className="object-cover"
+          fill
+          priority={priority}
+          sizes={compact ? '152px' : '270px'}
+          src={logoForTheme(theme)}
+        />
       </span>
-    </div>
+      {tagline ? (
+        <span className={`mt-1 text-center uppercase tracking-[0.24em] ${compact ? 'text-[8px]' : 'text-[9px]'} ${theme === 'light' ? 'text-white/55' : 'text-black/50'}`}>
+          {tagline}
+        </span>
+      ) : null}
+    </span>
   );
+}
+
+/** Versión optimizada para barras de navegación. */
+export function FabrickNavLogo({ theme = 'light', className = '' }: Omit<FullLogoProps, 'tagline'>) {
+  return <FabrickFullLogo className={className} compact theme={theme} />;
 }

@@ -2,13 +2,13 @@
 
 import React from 'react';
 import { Instagram, Facebook } from 'lucide-react';
+import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
 export default function StoreFooter() {
   return (
     <footer className="py-16 border-t border-white/5">
       <div className="max-w-4xl mx-auto px-6 text-center">
-        {/* Logo */}
-        <p className="font-playfair text-lg tracking-[0.25em] text-white/60 uppercase mb-4">Soluciones Fabrick</p>
+        <FabrickFullLogo className="mb-4" priority theme="light" />
 
         {/* Social */}
         <div className="flex items-center justify-center gap-6 mb-6">

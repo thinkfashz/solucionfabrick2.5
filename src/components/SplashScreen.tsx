@@ -14,13 +14,10 @@ import { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import DottedSurface from './DottedSurface';
+import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
 const SESSION_FLAG = 'fabrick.splash.seen.v2';
 const LEGACY_SESSION_FLAG = 'fabrick.loadingScreen.seen.v1';
-
-const LINE1 = 'SOLUCIONES';
-const LINE2 = 'FABRICK';
-const SUBTITLE = 'Tu obra en buenas manos';
 
 export default function SplashScreen() {
   const pathname = usePathname();
@@ -98,28 +95,6 @@ export default function SplashScreen() {
           }}
           aria-hidden
         >
-          {/* CSS letter animations */}
-          <style>{`
-            @keyframes sfLetterIn {
-              0%   { opacity: 0; transform: translateY(28px) scaleY(1.15); filter: blur(8px); }
-              100% { opacity: 1; transform: translateY(0) scaleY(1); filter: blur(0); }
-            }
-            .sf-letter {
-              display: inline-block;
-              animation: sfLetterIn 0.65s cubic-bezier(0.16,1,0.3,1) both;
-            }
-            @keyframes sfFadeIn {
-              from { opacity: 0; transform: translateY(10px); }
-              to   { opacity: 1; transform: translateY(0); }
-            }
-            .sf-subtitle {
-              animation: sfFadeIn 0.8s cubic-bezier(0.16,1,0.3,1) both;
-            }
-            .sf-line2 .sf-letter {
-              text-shadow: 0 0 28px rgba(250,204,21,0.85), 0 0 60px rgba(250,204,21,0.35);
-            }
-          `}</style>
-
           {/* Animated dotted-surface background — Three.js wave-of-dots
               (estilo "Dotted Surface" de 21st.dev), tema ámbar Fabrick.
               Se omite con prefers-reduced-motion para no animar de más. */}
@@ -145,49 +120,14 @@ export default function SplashScreen() {
             exit={{ opacity: [0, 0.12, 0], transition: { duration: 0.5, times: [0, 0.2, 1] } }}
           />
 
-          {/* ── Main text block ── */}
-          <div className="relative flex flex-col items-center gap-3 select-none">
-            {/* Line 1: SOLUCIONES (smaller, zinc) */}
-            <p className="flex items-center gap-0 tracking-[0.28em] text-zinc-400"
-               style={{ fontFamily: 'Montserrat, Poppins, Arial, sans-serif', fontWeight: 500, fontSize: 'clamp(11px,2.2vw,15px)' }}>
-              {LINE1.split('').map((char, i) => (
-                <span
-                  key={i}
-                  className="sf-letter"
-                  style={{ animationDelay: `${i * 70}ms` }}
-                >
-                  {char}
-                </span>
-              ))}
-            </p>
-
-            {/* Line 2: FABRICK (large, gold glow) */}
-            <p className="sf-line2 flex items-center gap-0 leading-none font-black text-white"
-               style={{
-                 fontFamily: 'Montserrat, Poppins, Arial, sans-serif',
-                 fontSize: 'clamp(52px,12vw,96px)',
-                 letterSpacing: '0.12em',
-                 marginTop: '-4px',
-               }}>
-              {LINE2.split('').map((char, i) => (
-                <span
-                  key={i}
-                  className="sf-letter"
-                  style={{ animationDelay: `${800 + i * 90}ms` }}
-                >
-                  {char}
-                </span>
-              ))}
-            </p>
-
-            {/* Subtitle */}
-            <p
-              className="sf-subtitle mt-1 text-[10px] uppercase tracking-[0.42em] text-yellow-400/65"
-              style={{ animationDelay: '1800ms', fontFamily: 'Montserrat, Arial, sans-serif', fontWeight: 500 }}
-            >
-              {SUBTITLE}
-            </p>
-          </div>
+          <motion.div
+            animate={{ filter: 'blur(0px)', opacity: 1, scale: 1 }}
+            className="relative scale-110 select-none sm:scale-125"
+            initial={{ filter: 'blur(10px)', opacity: 0, scale: 0.92 }}
+            transition={{ duration: prefersReduced ? 0.2 : 0.9, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <FabrickFullLogo priority tagline="Tu obra en buenas manos" theme="light" />
+          </motion.div>
 
           {/* Progress bar */}
           <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-24 h-px bg-zinc-800/80 rounded-full overflow-hidden">

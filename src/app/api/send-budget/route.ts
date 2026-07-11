@@ -36,10 +36,10 @@ function pickLogoUrl(requestUrl: string): string | undefined {
   const explicit = process.env.NEXT_PUBLIC_EMAIL_LOGO_URL?.trim();
   if (explicit) return explicit;
   const site = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (site) return `${site.replace(/\/+$/, '')}/logo.png`;
+  if (site) return `${site.replace(/\/+$/, '')}/brand/soluciones-fabrick-light.jpg`;
   try {
     const u = new URL(requestUrl);
-    return `${u.origin}/logo.png`;
+    return `${u.origin}/brand/soluciones-fabrick-light.jpg`;
   } catch {
     return undefined;
   }

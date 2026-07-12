@@ -74,9 +74,9 @@ export const metadata: Metadata = {
     locale: 'es_CL',
     type: 'website',
     images: [{
-      url: '/brand/soluciones-fabrick-transparent.png',
-      width: 1404,
-      height: 482,
+      url: '/brand/soluciones-fabrick-social.png',
+      width: 1200,
+      height: 630,
       alt: 'Soluciones Fabrick — construcción, remodelación y equipamiento del hogar',
     }],
   },
@@ -84,7 +84,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Soluciones Fabrick | Construcción con claridad',
     description: 'Calcula tu proyecto, compara alternativas y avanza con un alcance claro.',
-    images: ['/brand/soluciones-fabrick-transparent.png'],
+    images: ['/brand/soluciones-fabrick-social.png'],
   },
   robots: {
     index: true,
@@ -101,13 +101,14 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
+      { url: '/app-icon.svg', type: 'image/svg+xml', sizes: 'any' },
       { url: '/app-icon.png', type: 'image/png', sizes: '512x512' },
-      { url: '/brand/soluciones-fabrick-transparent.png', type: 'image/png', sizes: '1404x482' },
+      { url: '/brand/soluciones-fabrick.svg', type: 'image/svg+xml', sizes: '1040x260' },
     ],
     apple: [
       { url: '/app-icon.png', sizes: '512x512', type: 'image/png' },
     ],
-    shortcut: ['/app-icon.png'],
+    shortcut: ['/app-icon.svg'],
   },
 };
 

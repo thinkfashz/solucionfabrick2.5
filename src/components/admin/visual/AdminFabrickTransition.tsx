@@ -18,7 +18,7 @@ export default function AdminFabrickTransition() {
       @keyframes adminFabrickFadeOut{to{opacity:0;transform:scale(1.015);visibility:hidden}}
     `}</style>
     <div className="admin-fabrick-transition-out h-full w-full">
-      <FabrickPoemAnimation compact backgroundImageUrl="/brand/soluciones-fabrick-transparent.png" accentImageUrl="/brand/soluciones-fabrick-transparent.png" />
+      <FabrickPoemAnimation compact backgroundImageUrl="/brand/soluciones-fabrick-social.png" accentImageUrl="/brand/soluciones-fabrick-mark.svg" />
     </div>
   </div>;
 }

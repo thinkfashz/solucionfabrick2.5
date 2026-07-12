@@ -1,16 +1,23 @@
 import Image from 'next/image';
 
 export const FABRICK_LOGOS = {
-  primary: '/brand/soluciones-fabrick-transparent.png',
-  mark: '/brand/soluciones-fabrick-mark-transparent.png',
-  dark: '/brand/soluciones-fabrick-transparent.png',
-  light: '/brand/soluciones-fabrick-transparent.png',
-  lightClassic: '/brand/soluciones-fabrick-transparent.png',
+  primary: '/brand/soluciones-fabrick.svg',
+  onDark: '/brand/soluciones-fabrick.svg',
+  onLight: '/brand/soluciones-fabrick-on-light.svg',
+  mark: '/brand/soluciones-fabrick-mark.svg',
+  markOnLight: '/brand/soluciones-fabrick-mark-on-light.svg',
+  social: '/brand/soluciones-fabrick-social.png',
+  email: '/brand/soluciones-fabrick-email.png',
+  dark: '/brand/soluciones-fabrick-on-light.svg',
+  light: '/brand/soluciones-fabrick.svg',
+  lightClassic: '/brand/soluciones-fabrick-on-light.svg',
 } as const;
 
 interface IconProps {
   size?: number;
   className?: string;
+  /** `light` se usa sobre fondos oscuros; `dark`, sobre fondos claros. */
+  theme?: 'light' | 'dark';
 }
 
 interface FullLogoProps {
@@ -23,7 +30,8 @@ interface FullLogoProps {
 }
 
 /** Isotipo compacto derivado del archivo de marca oficial. */
-export function FabrickPeakIcon({ size = 32, className = '' }: IconProps) {
+export function FabrickPeakIcon({ size = 32, className = '', theme = 'light' }: IconProps) {
+  const src = theme === 'dark' ? FABRICK_LOGOS.markOnLight : FABRICK_LOGOS.mark;
   return (
     <span
       aria-label="Soluciones Fabrick"
@@ -31,7 +39,14 @@ export function FabrickPeakIcon({ size = 32, className = '' }: IconProps) {
       role="img"
       style={{ width: size, height: size }}
     >
-      <Image alt="" className="object-contain" fill sizes={`${size}px`} src={FABRICK_LOGOS.mark} />
+      <Image
+        alt=""
+        className={`object-contain ${theme === 'light' ? 'drop-shadow-[0_0_10px_rgba(244,200,91,.28)]' : ''}`}
+        fill
+        sizes={`${size}px`}
+        src={src}
+        unoptimized
+      />
     </span>
   );
 }
@@ -46,14 +61,15 @@ export function FabrickFullLogo({
 }: FullLogoProps) {
   return (
     <span className={`inline-flex select-none flex-col items-center ${className}`}>
-      <span className={`relative block shrink-0 ${compact ? 'h-14 w-[190px]' : 'h-[108px] w-[330px] max-w-[82vw]'}`}>
+      <span className={`relative block shrink-0 ${compact ? 'h-12 w-[196px]' : 'h-[96px] w-[380px] max-w-[84vw]'}`}>
         <Image
           alt="Soluciones Fabrick"
-          className="object-contain"
+          className={`object-contain ${theme === 'light' ? 'drop-shadow-[0_0_16px_rgba(244,200,91,.22)]' : ''}`}
           fill
           priority={priority}
-          sizes={compact ? '190px' : '(max-width: 480px) 82vw, 330px'}
-          src={FABRICK_LOGOS.primary}
+          sizes={compact ? '196px' : '(max-width: 480px) 84vw, 380px'}
+          src={theme === 'dark' ? FABRICK_LOGOS.onLight : FABRICK_LOGOS.onDark}
+          unoptimized
         />
       </span>
       {tagline ? (

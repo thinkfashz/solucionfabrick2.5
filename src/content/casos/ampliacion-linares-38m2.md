@@ -3,7 +3,7 @@ title: Ampliación de 38 m² en Linares — Segundo dormitorio y baño
 description: Caso real de ampliación residencial Metalcon con baño completo en Linares. Entregado en 7 semanas dentro de presupuesto y con checklist firmado.
 date: 2026-03-28
 author: Equipo Fabrick
-cover: /brand/soluciones-fabrick-transparent.png
+cover: /brand/soluciones-fabrick-social.png
 client: Familia Rodríguez
 location: Linares, Región del Maule
 services:

@@ -3,7 +3,7 @@ import { createClient } from '@insforge/sdk';
 import PresupuestoPublicClient from './PresupuestoPublicClient';
 
 const SITE_URL = 'https://www.solucionesfabrick.com';
-const DEFAULT_IMAGE = `${SITE_URL}/brand/soluciones-fabrick-transparent.png`;
+const DEFAULT_IMAGE = `${SITE_URL}/brand/soluciones-fabrick-social.png`;
 
 type PageProps = { params: Promise<{ slug: string }> };
 

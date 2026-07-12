@@ -3,7 +3,7 @@ title: Metalcon en el Maule — Guía completa 2026
 description: Qué es Metalcon, cuándo conviene, cuánto cuesta por m² en el Maule y qué evitar al contratar. La guía definitiva para propietarios en Linares, Longaví y Talca.
 date: 2026-04-15
 author: Equipo Fabrick
-cover: /brand/soluciones-fabrick-transparent.png
+cover: /brand/soluciones-fabrick-social.png
 tags:
   - metalcon
   - guía

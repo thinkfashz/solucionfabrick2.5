@@ -14,7 +14,7 @@
 // black-screen HTML cached before v2). Increasing the version causes the
 // `activate` handler to delete every cache whose key does not start with
 // VERSION, forcing a clean slate on users' devices.
-const VERSION = 'fabrick-sw-v5-transparent-logo';
+const VERSION = 'fabrick-sw-v6-vector-brand';
 const STATIC_CACHE = `${VERSION}-static`;
 const RUNTIME_CACHE = `${VERSION}-runtime`;
 const IMAGE_CACHE = `${VERSION}-images`;
@@ -22,9 +22,12 @@ const IMAGE_CACHE = `${VERSION}-images`;
 const PRECACHE_URLS = [
   '/offline',
   '/manifest.webmanifest',
+  '/app-icon.svg',
   '/app-icon.png',
-  '/brand/soluciones-fabrick-transparent.png',
-  '/brand/soluciones-fabrick-mark-transparent.png',
+  '/brand/soluciones-fabrick.svg',
+  '/brand/soluciones-fabrick-on-light.svg',
+  '/brand/soluciones-fabrick-mark.svg',
+  '/brand/soluciones-fabrick-social.png',
 ];
 
 self.addEventListener('install', (event) => {

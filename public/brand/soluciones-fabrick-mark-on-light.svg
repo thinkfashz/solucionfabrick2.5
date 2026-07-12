@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title">
+  <title id="title">Isotipo Soluciones Fabrick</title>
+  <defs>
+    <linearGradient id="dark" x1="18" y1="28" x2="142" y2="84" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#17191D"/>
+      <stop offset="0.5" stop-color="#555D66"/>
+      <stop offset="1" stop-color="#121418"/>
+    </linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#D6A63D"/>
+      <stop offset="1" stop-color="#8A5605"/>
+    </linearGradient>
+  </defs>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M17 84 80 29l63 55" stroke="url(#dark)" stroke-width="9"/>
+    <path d="M35 85 80 46l45 39" stroke="url(#gold)" stroke-width="4"/>
+  </g>
+  <path d="M111 59V39h17v34" fill="url(#dark)"/>
+  <path d="M49 119h62" stroke="url(#gold)" stroke-width="6" stroke-linecap="round"/>
+</svg>

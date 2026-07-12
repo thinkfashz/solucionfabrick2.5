@@ -15,10 +15,10 @@ interface EditorBrandProps {
 }
 
 const ASSETS: Record<EditorBrandVariant, string> = {
-  full: FABRICK_LOGOS.primary,
+  full: FABRICK_LOGOS.onLight,
   icon: FABRICK_LOGOS.mark,
-  'mono-light': FABRICK_LOGOS.primary,
-  'mono-dark': FABRICK_LOGOS.primary,
+  'mono-light': FABRICK_LOGOS.onDark,
+  'mono-dark': FABRICK_LOGOS.onLight,
 };
 
 export default function EditorBrand({ variant = 'mono-light', className = '', height = 28, onClick, ariaLabel = 'Soluciones Fabrick', priority = false }: EditorBrandProps) {
@@ -26,7 +26,7 @@ export default function EditorBrand({ variant = 'mono-light', className = '', he
   const width = variant === 'icon' ? height : Math.round(height * 3.6);
   const content = (
     <span aria-hidden="true" className="relative block shrink-0 overflow-hidden" style={{ height, width }}>
-      <Image alt="" className="select-none object-contain" draggable={false} fill priority={priority} sizes={`${width}px`} src={ASSETS[variant]} />
+      <Image alt="" className="select-none object-contain" draggable={false} fill priority={priority} sizes={`${width}px`} src={ASSETS[variant]} unoptimized />
     </span>
   );
 

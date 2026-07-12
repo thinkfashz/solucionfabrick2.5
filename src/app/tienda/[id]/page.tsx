@@ -35,9 +35,9 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
     ? [{ url: product.image_url, alt: product.name }]
     : [
         {
-          url: "/brand/soluciones-fabrick-transparent.png",
-          width: 1404,
-          height: 482,
+          url: "/brand/soluciones-fabrick-social.png",
+          width: 1200,
+          height: 630,
           alt: "Soluciones Fabrick",
         },
       ];
@@ -55,7 +55,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
       card: "summary_large_image",
       title: `${title} | Soluciones Fabrick`,
       description,
-      images: product.image_url ? [product.image_url] : ["/brand/soluciones-fabrick-transparent.png"],
+      images: product.image_url ? [product.image_url] : ["/brand/soluciones-fabrick-social.png"],
     },
     alternates: {
       canonical: `https://www.solucionesfabrick.com/tienda/${id}`,

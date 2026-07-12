@@ -3,7 +3,7 @@ title: Cuánto cuesta ampliar tu casa en 2026 — Costos reales Maule
 description: Desglose honesto por partida del costo de una ampliación residencial en el Maule. Qué incluye cada rango, dónde está el ahorro real y qué evitar.
 date: 2026-04-10
 author: Equipo Fabrick
-cover: /brand/soluciones-fabrick-transparent.png
+cover: /brand/soluciones-fabrick-social.png
 tags:
   - ampliación
   - costos

@@ -4,6 +4,7 @@ import { useMemo, useState } from 'react';
 import { ArrowLeft, CheckCircle2, ClipboardList, Home, Snowflake, Truck } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { navigateWithTransition } from '@/lib/routeTransition';
+import { FabrickNavLogo } from '@/components/FabrickBrandIcon';
 
 type Kind = 'aire' | 'radier';
 type Capacity = 9000 | 12000 | 18000 | 24000;
@@ -28,7 +29,7 @@ function Receipt({ title, rows, neto, iva, total, note }: { title: string; rows:
   return <aside className="overflow-hidden rounded-[2rem] border border-orange-300/20 bg-[#f8f3e8] text-black shadow-[0_24px_80px_rgba(0,0,0,.35)]">
     <div className="flex items-center justify-between bg-[#2a2721] px-5 py-4 text-white"><span className="text-xs font-black uppercase tracking-[.26em]">Boleta digital</span><ClipboardList className="h-5 w-5 text-orange-300" /></div>
     <div className="p-5">
-      <p className="text-[10px] font-black uppercase tracking-[.24em] text-black/40">Soluciones Fabrick</p>
+      <FabrickNavLogo theme="dark" />
       <h3 className="mt-2 text-2xl font-black tracking-[-.05em]">{title}</h3>
       <div className="my-5 border-y border-dashed border-black/15 py-3">{rows.map(([label, value]) => <div key={label} className="flex items-start justify-between gap-4 py-2 text-sm"><span className="max-w-[62%] text-black/62">{label}</span><b>{money.format(value)}</b></div>)}</div>
       <div className="space-y-2 text-sm"><div className="flex justify-between text-black/55"><span>Neto estimado</span><b>{money.format(neto)}</b></div><div className="flex justify-between text-black/55"><span>IVA referencial</span><b>{money.format(iva)}</b></div><div className="mt-3 flex items-end justify-between rounded-2xl bg-gradient-to-r from-yellow-300 to-orange-500 p-4"><span className="text-xs font-black uppercase tracking-[.18em] text-black/60">Total visible</span><b className="text-3xl font-black tracking-[-.05em]">{money.format(total)}</b></div></div>

@@ -1,26 +1,25 @@
 'use client';
 
-/**
- * SplashScreen — Pantalla de carga inicial.
- *
- * Animación de letras tipo "boot" cinematográfico: cada letra de
- * "SOLUCIONES FABRICK" aparece con stagger, subtítulo con fade.
- * Duración total: 3 segundos. Solo se muestra una vez por sesión
- * (sessionStorage). El estado siempre arranca en false en el servidor
- * para evitar el hydration mismatch que causaba la pantalla negra.
- */
-
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
-import DottedSurface from './DottedSurface';
+import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
-const SESSION_FLAG = 'fabrick.splash.seen.v2';
+const SESSION_FLAG = 'fabrick.splash.seen.v3';
 const LEGACY_SESSION_FLAG = 'fabrick.loadingScreen.seen.v1';
 
-const LINE1 = 'SOLUCIONES';
-const LINE2 = 'FABRICK';
-const SUBTITLE = 'Tu obra en buenas manos';
+function delay(ms: number) {
+  return new Promise<void>((resolve) => window.setTimeout(resolve, ms));
+}
+
+function windowReady(signal: AbortSignal) {
+  if (document.readyState === 'complete') return Promise.resolve();
+  return new Promise<void>((resolve) => window.addEventListener('load', () => resolve(), { once: true, signal }));
+}
+
+function fontsReady() {
+  return document.fonts?.ready?.then(() => undefined).catch(() => undefined) ?? Promise.resolve();
+}
 
 export default function SplashScreen() {
   const pathname = usePathname();
@@ -30,7 +29,6 @@ export default function SplashScreen() {
   // Always start hidden — useEffect sets to true client-side only.
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [hardHidden, setHardHidden] = useState(false);
 
   useEffect(() => {
     if (isAdmin) return;
@@ -42,160 +40,84 @@ export default function SplashScreen() {
     } catch {
       // sessionStorage unavailable (private mode, quota) — skip splash
     }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [isAdmin]);
 
   useEffect(() => {
-    if (!visible) return;
+    if (!visible || isAdmin) return;
 
     try { window.sessionStorage.setItem(SESSION_FLAG, '1'); } catch { /* private mode */ }
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    const loadController = new AbortController();
+    let cancelled = false;
+    let closeTimer: number | undefined;
 
-    const startTime = Date.now();
-    const duration = prefersReduced ? 600 : 3000;
-    let rafId: number | null = null;
+    setProgress(document.readyState === 'complete' ? 52 : 18);
+    const fonts = fontsReady().then(() => {
+      if (!cancelled) setProgress((value) => Math.max(value, 74));
+    });
+    const loaded = windowReady(loadController.signal).then(() => {
+      if (!cancelled) setProgress((value) => Math.max(value, 90));
+    });
+    const minimum = delay(prefersReduced ? 180 : 680);
+    const maximum = delay(prefersReduced ? 500 : 1800);
 
-    const ease = (t: number) => 1 - Math.pow(1 - t, 3);
-
-    const frame = () => {
-      const elapsed = Date.now() - startTime;
-      const t = Math.min(elapsed / duration, 1);
-      setProgress(ease(t) * 100);
-      if (t < 1) {
-        rafId = requestAnimationFrame(frame);
-      } else {
-        window.setTimeout(() => setVisible(false), 180);
-      }
-    };
-
-    rafId = requestAnimationFrame(frame);
-
-    const safety = window.setTimeout(() => {
+    void Promise.race([Promise.all([fonts, loaded, minimum]), maximum]).then(() => {
+      if (cancelled) return;
       setProgress(100);
-      setVisible(false);
-      setHardHidden(true);
-    }, prefersReduced ? 900 : 3800);
+      closeTimer = window.setTimeout(() => setVisible(false), prefersReduced ? 60 : 180);
+    });
+
+    const safety = window.setTimeout(() => setVisible(false), prefersReduced ? 650 : 2300);
 
     return () => {
-      if (rafId !== null) cancelAnimationFrame(rafId);
+      cancelled = true;
+      loadController.abort();
+      if (closeTimer) window.clearTimeout(closeTimer);
       window.clearTimeout(safety);
+      document.body.style.overflow = previousOverflow;
     };
-  }, [visible, prefersReduced]);
+  }, [isAdmin, prefersReduced, visible]);
 
   if (isAdmin) return null;
-  if (hardHidden) return null;
 
   return (
     <AnimatePresence>
       {visible && (
         <motion.div
           key="splash"
-          className="fixed inset-0 z-[9999] flex flex-col items-center justify-center overflow-hidden bg-black"
-          initial={{ opacity: 1 }}
+          aria-label="Preparando Soluciones Fabrick"
+          className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-[#080704] px-6 text-white"
+          initial={{ clipPath: 'inset(0 0 0 0)', opacity: 1 }}
           exit={{
+            clipPath: prefersReduced ? 'inset(0 0 0 0)' : 'inset(0 0 100% 0)',
             opacity: 0,
-            scale: prefersReduced ? 1 : 1.04,
-            filter: prefersReduced ? 'none' : 'blur(14px)',
-            transition: { duration: prefersReduced ? 0.2 : 0.5, ease: [0.4, 0, 0.2, 1] },
+            transition: { duration: prefersReduced ? 0.16 : 0.58, ease: [0.76, 0, 0.24, 1] },
           }}
-          aria-hidden
+          role="status"
         >
-          {/* CSS letter animations */}
-          <style>{`
-            @keyframes sfLetterIn {
-              0%   { opacity: 0; transform: translateY(28px) scaleY(1.15); filter: blur(8px); }
-              100% { opacity: 1; transform: translateY(0) scaleY(1); filter: blur(0); }
-            }
-            .sf-letter {
-              display: inline-block;
-              animation: sfLetterIn 0.65s cubic-bezier(0.16,1,0.3,1) both;
-            }
-            @keyframes sfFadeIn {
-              from { opacity: 0; transform: translateY(10px); }
-              to   { opacity: 1; transform: translateY(0); }
-            }
-            .sf-subtitle {
-              animation: sfFadeIn 0.8s cubic-bezier(0.16,1,0.3,1) both;
-            }
-            .sf-line2 .sf-letter {
-              text-shadow: 0 0 28px rgba(250,204,21,0.85), 0 0 60px rgba(250,204,21,0.35);
-            }
-          `}</style>
-
-          {/* Animated dotted-surface background — Three.js wave-of-dots
-              (estilo "Dotted Surface" de 21st.dev), tema ámbar Fabrick.
-              Se omite con prefers-reduced-motion para no animar de más. */}
-          {!prefersReduced && <DottedSurface className="opacity-[0.55] mix-blend-screen" />}
-
-          {/* Ambient radial glow */}
-          <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_50%_45%,rgba(250,204,21,0.09)_0%,rgba(0,0,0,0)_60%)]" />
-
-          {/* Scanlines */}
-          <div
-            className="pointer-events-none absolute inset-0 opacity-[0.06]"
-            style={{
-              backgroundImage:
-                'repeating-linear-gradient(0deg, rgba(255,255,255,0.07) 0px, rgba(255,255,255,0.07) 1px, transparent 1px, transparent 3px)',
-            }}
-          />
-
-          {/* Flash on exit */}
+          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(244,200,91,.18),transparent_34rem),linear-gradient(135deg,#050504,#100c05_55%,#050504)]" />
+          <motion.div aria-hidden animate={prefersReduced ? { rotate: 0 } : { rotate: 360 }} className="absolute h-[min(78vw,620px)] w-[min(78vw,620px)] rounded-full border border-yellow-200/10" transition={{ duration: 22, ease: 'linear', repeat: Infinity }} />
+          <div aria-hidden className="absolute inset-0 opacity-[.06] [background-image:linear-gradient(rgba(255,255,255,.22)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.22)_1px,transparent_1px)] [background-size:48px_48px]" />
           <motion.div
-            aria-hidden
-            className="pointer-events-none absolute inset-0 bg-yellow-400"
-            initial={{ opacity: 0 }}
-            exit={{ opacity: [0, 0.12, 0], transition: { duration: 0.5, times: [0, 0.2, 1] } }}
-          />
-
-          {/* ── Main text block ── */}
-          <div className="relative flex flex-col items-center gap-3 select-none">
-            {/* Line 1: SOLUCIONES (smaller, zinc) */}
-            <p className="flex items-center gap-0 tracking-[0.28em] text-zinc-400"
-               style={{ fontFamily: 'Montserrat, Poppins, Arial, sans-serif', fontWeight: 500, fontSize: 'clamp(11px,2.2vw,15px)' }}>
-              {LINE1.split('').map((char, i) => (
-                <span
-                  key={i}
-                  className="sf-letter"
-                  style={{ animationDelay: `${i * 70}ms` }}
-                >
-                  {char}
-                </span>
-              ))}
-            </p>
-
-            {/* Line 2: FABRICK (large, gold glow) */}
-            <p className="sf-line2 flex items-center gap-0 leading-none font-black text-white"
-               style={{
-                 fontFamily: 'Montserrat, Poppins, Arial, sans-serif',
-                 fontSize: 'clamp(52px,12vw,96px)',
-                 letterSpacing: '0.12em',
-                 marginTop: '-4px',
-               }}>
-              {LINE2.split('').map((char, i) => (
-                <span
-                  key={i}
-                  className="sf-letter"
-                  style={{ animationDelay: `${800 + i * 90}ms` }}
-                >
-                  {char}
-                </span>
-              ))}
-            </p>
-
-            {/* Subtitle */}
-            <p
-              className="sf-subtitle mt-1 text-[10px] uppercase tracking-[0.42em] text-yellow-400/65"
-              style={{ animationDelay: '1800ms', fontFamily: 'Montserrat, Arial, sans-serif', fontWeight: 500 }}
-            >
-              {SUBTITLE}
-            </p>
-          </div>
-
-          {/* Progress bar */}
-          <div className="absolute bottom-10 left-1/2 -translate-x-1/2 w-24 h-px bg-zinc-800/80 rounded-full overflow-hidden">
-            <div
-              className="h-full rounded-full bg-gradient-to-r from-yellow-600 to-yellow-300 shadow-[0_0_8px_rgba(250,204,21,0.5)]"
-              style={{ width: `${progress}%`, transition: 'width 80ms linear' }}
-            />
-          </div>
+            animate={{ opacity: 1, scale: 1, y: 0 }}
+            className="relative flex w-full max-w-xl select-none flex-col items-center"
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            transition={{ duration: prefersReduced ? 0.18 : 0.65, ease: [0.16, 1, 0.3, 1] }}
+          >
+            <div className="absolute -inset-x-12 -inset-y-8 -z-10 rounded-full bg-yellow-300/10 blur-3xl" />
+            <FabrickFullLogo priority theme="light" />
+            <p className="mt-5 text-center text-[10px] font-bold uppercase tracking-[.34em] text-white/55">Construcción · Remodelación · Hogar</p>
+            <div className="mt-10 w-full max-w-xs">
+              <div className="mb-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[.2em] text-white/45">
+                <span>Preparando experiencia</span>
+                <span className="tabular-nums text-yellow-200">{Math.round(progress)}%</span>
+              </div>
+              <div className="h-px overflow-hidden bg-white/12">
+                <motion.div animate={{ width: `${progress}%` }} className="h-full bg-gradient-to-r from-amber-600 via-yellow-200 to-white shadow-[0_0_14px_rgba(244,200,91,.75)]" transition={{ duration: 0.22, ease: 'easeOut' }} />
+              </div>
+            </div>
+          </motion.div>
         </motion.div>
       )}
     </AnimatePresence>

@@ -31,7 +31,7 @@ export default async function ArticlePage({ post, related }: ArticlePageProps) {
     publisher: {
       '@type': 'Organization',
       name: 'Soluciones Fabrick',
-      logo: { '@type': 'ImageObject', url: `${BASE_URL}/icon-512.png` },
+      logo: { '@type': 'ImageObject', url: `${BASE_URL}/brand/soluciones-fabrick.svg` },
     },
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     ...(cover ? { image: [cover.startsWith('http') ? cover : `${BASE_URL}${cover}`] } : {}),
@@ -88,7 +88,6 @@ export default async function ArticlePage({ post, related }: ArticlePageProps) {
 
       {/* Cover */}
       {cover ? (
-        // eslint-disable-next-line @next/next/no-img-element
         <img
           src={cloudinaryUrl(cover, { width: 1200, quality: 75 })}
           alt={title}

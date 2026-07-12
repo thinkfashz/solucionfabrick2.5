@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useRef, type ReactNode } from 'react';
+import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
 type Props = {
   compact?: boolean;
@@ -17,7 +18,7 @@ const poemHTML = `
   propuesta digital · confianza real
 `;
 
-export default function FabrickPoemAnimation({ compact = false, children, backgroundImageUrl = '/opengraph-image', accentImageUrl = '/icon-512.png', className = '' }: Props) {
+export default function FabrickPoemAnimation({ compact = false, children, backgroundImageUrl = '/brand/soluciones-fabrick-social.png', accentImageUrl = '/brand/soluciones-fabrick-mark.svg', className = '' }: Props) {
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -76,7 +77,7 @@ export default function FabrickPoemAnimation({ compact = false, children, backgr
           <img className="fabrick-poem-bg" src={backgroundImageUrl} alt="Soluciones Fabrick obra" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           <img className="fabrick-poem-accent" src={accentImageUrl} alt="Soluciones Fabrick" onError={(e) => { e.currentTarget.style.display = 'none'; }} />
           <div className="fabrick-poem-title">
-            <p>Soluciones Fabrick</p>
+            <FabrickFullLogo priority theme="light" />
             <h1>Tu obra en buenas manos</h1>
             <span>Diseño, cálculo, presupuesto digital y ejecución con presentación profesional para cada cliente.</span>
           </div>

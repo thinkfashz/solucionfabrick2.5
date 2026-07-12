@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     title: 'Editor 3D · Soluciones Fabrick',
     description:
       'Editor arquitectónico 3D para diseñar y previsualizar proyectos de construcción y remodelación.',
-    images: ['/logo-soluciones-fabrick.svg'],
+    images: ['/brand/soluciones-fabrick-social.png'],
     type: 'website',
   },
   robots: { index: false, follow: false },

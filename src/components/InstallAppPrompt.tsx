@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import { X, Download } from 'lucide-react';
+import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 
 declare global {
   interface BeforeInstallPromptEvent extends Event {
@@ -121,9 +122,7 @@ export default function InstallAppPrompt() {
           </button>
 
           <div className="flex items-center gap-3 mb-4">
-            <div className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-yellow-400 text-black shadow-[0_0_16px_rgba(250,204,21,0.35)]">
-              <span className="text-sm font-black">F</span>
-            </div>
+            <FabrickPeakIcon size={40} />
             <div>
               <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-yellow-400">Instalar Fabrick</p>
               <p className="text-xs text-zinc-400">App rápida · Sin App Store</p>
@@ -181,4 +180,3 @@ export default function InstallAppPrompt() {
     </div>
   );
 }
-

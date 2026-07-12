@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
+import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 
 export const metadata: Metadata = {
   title: 'Sin conexión',
@@ -12,9 +13,7 @@ export default function OfflinePage() {
   return (
     <main className="min-h-screen flex flex-col items-center justify-center px-6 text-center bg-black text-white">
       <div className="max-w-md">
-        <div className="mx-auto mb-6 flex h-20 w-20 items-center justify-center rounded-3xl bg-yellow-400 text-black shadow-[0_12px_40px_rgba(250,204,21,0.35)]">
-          <span className="text-3xl font-black">F</span>
-        </div>
+        <div className="mb-6 flex justify-center"><FabrickPeakIcon size={80} /></div>
         <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-yellow-400 mb-3">
           Sin conexión
         </p>

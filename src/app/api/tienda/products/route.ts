@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import { insforgeAdmin } from '@/lib/insforge';
 
-export const runtime = 'edge';
+// InsForge currently depends on Node's crypto implementation.
+export const runtime = 'nodejs';
 export const revalidate = 60;
 
 const CDN_CACHE = 'public, s-maxage=60, stale-while-revalidate=300';

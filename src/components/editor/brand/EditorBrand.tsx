@@ -1,89 +1,38 @@
 'use client';
 
-/**
- * EditorBrand
- *
- * Centralised branding for the integrated 3D editor (pascal-editor port).
- * All upstream references to a Pascal logo are routed through this component
- * so that re-syncing with `pascalorg/editor` only requires re-applying the
- * `PascalLogo → EditorBrand` replacement.
- *
- * Two assets are reused from `public/`:
- *   - `/logo-soluciones-fabrick.svg`               full mark (light backgrounds)
- *   - `/logo-soluciones-fabrick-monocromo-claro.svg` monochrome white (dark UI)
- */
-
 import Image from 'next/image';
+import { FABRICK_LOGOS } from '@/components/FabrickBrandIcon';
 
 export type EditorBrandVariant = 'full' | 'icon' | 'mono-light' | 'mono-dark';
 
 interface EditorBrandProps {
   variant?: EditorBrandVariant;
   className?: string;
-  /** Fixed pixel height; width auto-scales to preserve aspect-ratio. */
   height?: number;
-  /** Optional clickable behaviour (e.g. "back to home"). */
   onClick?: () => void;
   ariaLabel?: string;
   priority?: boolean;
 }
 
-const ASSETS: Record<EditorBrandVariant, { src: string; alt: string }> = {
-  full:         { src: '/logo-soluciones-fabrick.svg',                  alt: 'Soluciones Fabrick' },
-  icon:         { src: '/app-icon.svg',                                 alt: 'Soluciones Fabrick' },
-  'mono-light': { src: '/logo-soluciones-fabrick-monocromo-claro.svg',  alt: 'Soluciones Fabrick' },
-  'mono-dark':  { src: '/logo-soluciones-fabrick-monocromo-oscuro.svg', alt: 'Soluciones Fabrick' },
+const ASSETS: Record<EditorBrandVariant, string> = {
+  full: FABRICK_LOGOS.onLight,
+  icon: FABRICK_LOGOS.mark,
+  'mono-light': FABRICK_LOGOS.onDark,
+  'mono-dark': FABRICK_LOGOS.onLight,
 };
 
-export default function EditorBrand({
-  variant = 'mono-light',
-  className = '',
-  height = 28,
-  onClick,
-  ariaLabel,
-  priority = false,
-}: EditorBrandProps) {
-  const { src, alt } = ASSETS[variant];
+export default function EditorBrand({ variant = 'mono-light', className = '', height = 28, onClick, ariaLabel = 'Soluciones Fabrick', priority = false }: EditorBrandProps) {
   const isInteractive = typeof onClick === 'function';
-  // Approximate aspect ratio of the wordmark so Image's width/height balance.
-  const width = variant === 'icon' ? height : Math.round(height * 3.2);
-
+  const width = variant === 'icon' ? height : Math.round(height * 3.6);
   const content = (
-    <Image
-      src={src}
-      alt={ariaLabel ?? alt}
-      width={width}
-      height={height}
-      priority={priority}
-      className="h-full w-auto select-none"
-      draggable={false}
-    />
+    <span aria-hidden="true" className="relative block shrink-0 overflow-hidden" style={{ height, width }}>
+      <Image alt="" className="select-none object-contain" draggable={false} fill priority={priority} sizes={`${width}px`} src={ASSETS[variant]} unoptimized />
+    </span>
   );
 
-  if (!isInteractive) {
-    return (
-      <span
-        className={`inline-flex items-center ${className}`}
-        style={{ height }}
-        aria-label={ariaLabel ?? alt}
-        role="img"
-      >
-        {content}
-      </span>
-    );
-  }
+  if (!isInteractive) return <span aria-label={ariaLabel} className={`inline-flex items-center ${className}`} role="img">{content}</span>;
 
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`inline-flex items-center rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-yellow-electric ${className}`}
-      style={{ height }}
-      aria-label={ariaLabel ?? alt}
-    >
-      {content}
-    </button>
-  );
+  return <button aria-label={ariaLabel} className={`inline-flex items-center rounded-md outline-none transition-opacity hover:opacity-80 focus-visible:ring-2 focus-visible:ring-yellow-electric ${className}`} onClick={onClick} type="button">{content}</button>;
 }
 
 export { EditorBrand };

@@ -16,7 +16,7 @@ export const metadata: Metadata = {
     title: 'Tienda Soluciones Fabrick | Todo para mejorar tu espacio',
     description: 'Productos útiles, precios claros y soporte humano para comprar, despachar e instalar.',
     url: 'https://www.solucionesfabrick.com/tienda',
-    images: [{ url: '/opengraph-image', width: 1200, height: 630, alt: 'Tienda Soluciones Fabrick' }],
+    images: [{ url: '/brand/soluciones-fabrick-social.png', width: 1200, height: 630, alt: 'Tienda Soluciones Fabrick' }],
   },
 };
 

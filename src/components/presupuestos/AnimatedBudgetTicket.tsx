@@ -2,6 +2,7 @@
 
 import * as React from 'react';
 import type { PresupuestoItem } from '@/lib/presupuestosBuilder';
+import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
 type SaleMode = 'equipo_instalacion' | 'solo_instalacion' | 'solo_equipo' | string;
 
@@ -43,10 +44,7 @@ const CheckCircleIcon = (props: React.SVGProps<SVGSVGElement>) => (
 
 const FabrickTicketLogo = () => (
   <div className="mx-auto grid place-items-center text-center">
-    <div className="grid h-16 w-16 place-items-center rounded-full border border-amber-300/35 bg-black shadow-[0_0_35px_rgba(245,158,11,.22)]">
-      <span className="text-xl font-black tracking-[-.06em] text-amber-300">SF</span>
-    </div>
-    <p className="mt-3 text-[10px] font-black uppercase tracking-[.35em] text-amber-300">Soluciones Fabrick</p>
+    <FabrickFullLogo theme="light" />
   </div>
 );
 

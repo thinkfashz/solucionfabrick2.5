@@ -2,6 +2,7 @@
 
 import { useEffect, useRef } from 'react';
 import { usePathname } from 'next/navigation';
+import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 
 // Shared transition used for every auto-hide path.
 const HIDE_TRANSITION = 'opacity 0.3s cubic-bezier(0.16,1,0.3,1)';
@@ -296,34 +297,7 @@ export default function PageTransition() {
               '0 0 24px rgba(250,204,21,0.45), inset 0 0 12px rgba(250,204,21,0.15)',
           }}
         >
-          <svg
-            viewBox="0 0 160 80"
-            className="motion-safe:animate-[pt-breathe_1.8s_ease-in-out_infinite]"
-            style={{
-              height: '2.4rem',
-              width: 'auto',
-              filter: 'drop-shadow(0 0 16px rgba(250,204,21,0.6))',
-            }}
-          >
-            <defs>
-              <linearGradient id="ptGold" x1="0" y1="0" x2="1" y2="1">
-                <stop offset="0%" stopColor="#FFE17A" />
-                <stop offset="60%" stopColor="#FFC700" />
-                <stop offset="100%" stopColor="#E2AE00" />
-              </linearGradient>
-            </defs>
-            <text
-              x="12"
-              y="62"
-              fontFamily="Montserrat, Arial, sans-serif"
-              fontSize="72"
-              fontWeight="900"
-              fill="url(#ptGold)"
-              letterSpacing="-2"
-            >
-              SF
-            </text>
-          </svg>
+          <span className="motion-safe:animate-[pt-breathe_1.8s_ease-in-out_infinite]"><FabrickPeakIcon size={38} /></span>
           <span
             style={{
               fontFamily: 'Montserrat, Arial, sans-serif',
@@ -390,4 +364,3 @@ export default function PageTransition() {
     </div>
   );
 }
-

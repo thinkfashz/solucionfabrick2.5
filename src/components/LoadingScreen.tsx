@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { usePathname } from 'next/navigation';
+import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
 const SESSION_FLAG = 'fabrick.loadingScreen.seen.v1';
 
@@ -116,16 +117,7 @@ export default function LoadingScreen() {
                 </div>
 
                 <div className="relative mt-8">
-                  <div className="flex items-center gap-4">
-                    <div className="relative flex h-16 w-16 items-center justify-center rounded-2xl border border-yellow-300/40 bg-yellow-400 shadow-[0_8px_30px_rgba(250,204,21,0.35)]">
-                      <span className="absolute inset-0 rounded-2xl bg-[radial-gradient(circle_at_30%_20%,rgba(255,255,255,0.45),rgba(255,255,255,0)_62%)]" />
-                      <span className="relative text-lg font-black uppercase tracking-[0.24em] text-black">SF</span>
-                    </div>
-                    <div>
-                      <p className="font-playfair text-2xl font-black tracking-[0.16em] text-yellow-400">SOLUCIONES FABRICK</p>
-                      <p className="mt-1 text-[10px] uppercase tracking-[0.3em] text-zinc-500">Evolution Transition Engine</p>
-                    </div>
-                  </div>
+                  <div className="flex items-center gap-4"><FabrickFullLogo priority tagline="Evolution Transition Engine" theme="light" /></div>
 
                   <div className="mt-7 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800/80">
                     <motion.div

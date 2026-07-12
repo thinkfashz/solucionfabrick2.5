@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { CheckCircle2, Clock, Eye, Loader2, Lock, Route, ShieldCheck, ShieldOff, Sparkles } from 'lucide-react';
+import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
 export default function AccesoDemoPage() {
   const router = useRouter();
@@ -59,14 +60,7 @@ export default function AccesoDemoPage() {
       <div className="pointer-events-none absolute -right-20 bottom-16 h-80 w-80 rounded-full bg-yellow-300/15 blur-[100px]" />
 
       <div className="relative z-10 w-full max-w-2xl">
-        <div className="mb-8 flex select-none flex-col items-center gap-3">
-          <span className="relative flex h-16 w-16 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/40 bg-yellow-400 shadow-[0_10px_34px_rgba(250,204,21,0.45)]">
-            <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.45),rgba(255,255,255,0)_56%)]" />
-            <span className="relative text-sm font-black uppercase tracking-[0.28em] text-black">SF</span>
-          </span>
-          <span className="font-playfair text-xl font-black tracking-[0.24em] text-yellow-300">SOLUCIONES FABRICK</span>
-          <span className="text-[10px] uppercase tracking-[0.34em] text-white/40">Panel de administración</span>
-        </div>
+        <div className="mb-8 flex justify-center"><FabrickFullLogo priority tagline="Panel de administración" theme="light" /></div>
 
         <div className="w-full rounded-[2rem] border border-white/20 bg-black/55 p-6 shadow-[0_20px_90px_rgba(0,0,0,0.55)] backdrop-blur-2xl sm:p-8">
           {tokenMissing ? (

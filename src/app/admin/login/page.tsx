@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { insforge } from '@/lib/insforge';
-import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
+import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 import {
   Activity, BadgePercent, Bot, Calculator, CheckCircle2, Database,
   Fingerprint, Kanban, Loader2, Lock, Palette, ShieldCheck,
@@ -107,26 +107,7 @@ function BootSecurityScreen() {
           transition={{ duration: 0.6, ease: [0.16, 1, 0.3, 1] }}
           className="flex flex-col items-center gap-4"
         >
-          <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-[1.6rem] border border-amber-400/40 bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 shadow-[0_0_60px_rgba(251,191,36,0.4)]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.45),transparent_55%)]" />
-            {/* sweep shine */}
-            <motion.div
-              className="absolute inset-y-0 w-1/3 bg-gradient-to-r from-transparent via-white/30 to-transparent"
-              animate={{ x: ['-100%', '300%'] }}
-              transition={{ duration: 2, repeat: Infinity, repeatDelay: 1.5, ease: 'linear' }}
-            />
-            <span className="relative z-10 drop-shadow-[0_2px_6px_rgba(0,0,0,0.4)]">
-              <FabrickPeakIcon size={40} />
-            </span>
-          </div>
-          <div className="text-center">
-            <p className="font-mono text-[13px] font-black uppercase tracking-[0.4em] text-amber-400" style={{ textShadow: '0 0 20px rgba(251,191,36,0.5)' }}>
-              SOLUCIONES FABRICK
-            </p>
-            <p className="mt-1 font-mono text-[9px] uppercase tracking-[0.36em] text-white/30">
-              Panel Root · Sistema administrativo
-            </p>
-          </div>
+          <FabrickFullLogo priority tagline="Panel Root · Sistema administrativo" theme="light" />
         </motion.div>
 
         {/* Progress bar */}
@@ -274,16 +255,7 @@ function BrandPanel() {
         transition={{ duration: 0.8, ease: [0.16, 1, 0.3, 1] }}
         className="relative z-10"
       >
-        <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center overflow-hidden rounded-xl border border-amber-400/40 bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 shadow-[0_8px_32px_rgba(251,191,36,0.35)]">
-            <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_25%,rgba(255,255,255,0.4),transparent_55%)]" />
-            <FabrickPeakIcon size={22} />
-          </div>
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.3em] text-amber-400">Soluciones Fabrick</p>
-            <p className="text-[9px] uppercase tracking-[0.28em] text-white/30">Panel administrativo</p>
-          </div>
-        </div>
+        <FabrickFullLogo priority tagline="Panel administrativo" theme="light" />
       </motion.div>
 
       {/* Middle: hero text + modules */}
@@ -533,12 +505,7 @@ export default function AdminLoginPage() {
         </div>
 
         {/* Mobile logo */}
-        <div className="mb-8 flex flex-col items-center gap-3 lg:hidden">
-          <div className="flex h-14 w-14 items-center justify-center overflow-hidden rounded-2xl border border-amber-400/40 bg-gradient-to-br from-amber-300 via-amber-400 to-amber-600 shadow-[0_10px_40px_rgba(251,191,36,0.4)]">
-            <FabrickPeakIcon size={26} />
-          </div>
-          <p className="text-[11px] font-black uppercase tracking-[0.3em] text-amber-400">Soluciones Fabrick</p>
-        </div>
+        <div className="mb-8 lg:hidden"><FabrickFullLogo priority tagline="Panel administrativo" theme="light" /></div>
 
         {/* Form card */}
         <motion.div

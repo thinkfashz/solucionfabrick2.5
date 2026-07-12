@@ -74,7 +74,7 @@ export const metadata: Metadata = {
     locale: 'es_CL',
     type: 'website',
     images: [{
-      url: '/opengraph-image',
+      url: '/brand/soluciones-fabrick-social.png',
       width: 1200,
       height: 630,
       alt: 'Soluciones Fabrick — construcción, remodelación y equipamiento del hogar',
@@ -84,7 +84,7 @@ export const metadata: Metadata = {
     card: 'summary_large_image',
     title: 'Soluciones Fabrick | Construcción con claridad',
     description: 'Calcula tu proyecto, compara alternativas y avanza con un alcance claro.',
-    images: ['/opengraph-image'],
+    images: ['/brand/soluciones-fabrick-social.png'],
   },
   robots: {
     index: true,
@@ -101,14 +101,14 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: [
-      { url: '/favicon.svg', type: 'image/svg+xml' },
-      { url: '/icon-192.png', type: 'image/png', sizes: '192x192' },
-      { url: '/icon-512.png', type: 'image/png', sizes: '512x512' },
+      { url: '/app-icon.svg', type: 'image/svg+xml', sizes: 'any' },
+      { url: '/app-icon.png', type: 'image/png', sizes: '512x512' },
+      { url: '/brand/soluciones-fabrick.svg', type: 'image/svg+xml', sizes: '1040x260' },
     ],
     apple: [
-      { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },
+      { url: '/app-icon.png', sizes: '512x512', type: 'image/png' },
     ],
-    shortcut: ['/favicon.svg'],
+    shortcut: ['/app-icon.svg'],
   },
 };
 

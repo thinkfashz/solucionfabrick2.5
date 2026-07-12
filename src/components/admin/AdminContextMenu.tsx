@@ -43,6 +43,7 @@ import {
   X,
 } from 'lucide-react';
 import { BrandMark } from '@/components/admin/ui';
+import { FabrickNavLogo } from '@/components/FabrickBrandIcon';
 
 interface AdminContextMenuProps {
   open: boolean;
@@ -218,7 +219,7 @@ export default function AdminContextMenu({ open, onClose, onLogout, profilePhoto
               <input ref={fileRef} type="file" accept="image/jpeg,image/png,image/webp,image/gif" className="sr-only" onChange={(e) => { const file = e.target.files?.[0]; if (file && onPhotoUpload) onPhotoUpload(file); e.target.value = ''; }} />
               <div className="min-w-0 flex-1">
                 <p className="text-[9px] font-black uppercase tracking-[0.34em] text-zinc-500">Neo Admin</p>
-                <h2 className="truncate text-[15px] font-black uppercase tracking-[0.16em] text-white">Soluciones Fabrick</h2>
+                <FabrickNavLogo className="-ml-1" theme="light" />
               </div>
               <button onClick={onClose} className="rounded-2xl border border-white/10 bg-white/5 p-2 text-zinc-400 transition hover:text-white" aria-label="Cerrar menú">
                 <X className="h-4 w-4" />

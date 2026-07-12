@@ -2,9 +2,9 @@ import { NextResponse } from 'next/server';
 import { insforge } from '@/lib/insforge';
 import { DEFAULT_TENANT_ID } from '@/lib/tenant';
 
-// Edge runtime is feasible here because the InsForge SDK only uses
-// fetch + web-standard primitives (no Node-only APIs). See docs/perf-runtime.md.
-export const runtime = 'edge';
+// The current InsForge SDK loads Node's crypto module. Keep this endpoint on
+// the Node.js runtime so production builds do not try to bundle it for Edge.
+export const runtime = 'nodejs';
 export const revalidate = 60;
 
 const CDN_CACHE = 'public, s-maxage=60, stale-while-revalidate=300';

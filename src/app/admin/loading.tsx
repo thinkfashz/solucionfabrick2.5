@@ -2,13 +2,15 @@ import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
 export default function AdminLoading() {
   return (
-    <main className="fixed inset-0 z-[9999] grid place-items-center bg-[#050505] text-white">
-      <div className="w-[min(92vw,420px)] rounded-[2rem] border border-yellow-300/15 bg-black/70 p-8 text-center shadow-[0_30px_90px_rgba(0,0,0,.55)] backdrop-blur-xl">
-        <FabrickFullLogo className="mx-auto" priority theme="light" />
-        <h1 className="mt-3 text-2xl font-black tracking-tight">Cargando admin</h1>
-        <div className="mx-auto mt-5 h-1.5 w-44 overflow-hidden rounded-full bg-white/10">
-          <div className="h-full w-full origin-left animate-pulse rounded-full bg-yellow-300" />
-        </div>
+    <main className="fixed inset-0 z-[9999] grid place-items-center overflow-hidden bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,.35),transparent_28rem),linear-gradient(145deg,#fff9ec,#dfcfad)] p-4 text-[#1b1710]">
+      <div className="pointer-events-none absolute -bottom-32 -right-24 h-96 w-96 rounded-full bg-yellow-300/25 blur-3xl" />
+      <div className="relative w-[min(94vw,520px)] overflow-hidden rounded-[2.3rem] bg-[#fbf5e8]/92 p-6 shadow-[0_35px_110px_rgba(58,45,19,.20)] backdrop-blur-2xl sm:p-8">
+        <div className="rounded-[1.6rem] bg-[#17140f] px-5 py-4"><FabrickFullLogo className="mx-auto" priority theme="light" /></div>
+        <p className="mt-6 text-[10px] font-black uppercase tracking-[.24em] text-[#9b6c12]">Preparando centro de control</p>
+        <h1 className="mt-2 text-3xl font-black leading-none tracking-[-.05em]">Tus datos están cargando.</h1>
+        <p className="mt-3 text-sm leading-6 text-black/48">Conectando ventas, visitas, pagos y operación.</p>
+        <div className="mt-6 grid grid-cols-3 gap-2">{['Ventas', 'Visitas', 'Pagos'].map((label, index) => <div key={label} className="rounded-2xl bg-black/[0.055] p-3"><span className="block h-2 animate-pulse rounded-full bg-black/10" style={{ animationDelay: `${index * 140}ms` }} /><b className="mt-3 block text-[9px] uppercase tracking-widest text-black/45">{label}</b></div>)}</div>
+        <div className="mt-6 h-1.5 overflow-hidden rounded-full bg-black/[0.07]"><div className="h-full w-2/3 animate-[pulse_1.1s_ease-in-out_infinite] rounded-full bg-yellow-400" /></div>
       </div>
     </main>
   );

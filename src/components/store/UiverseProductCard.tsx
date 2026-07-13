@@ -56,10 +56,10 @@ export default function UiverseProductCard({
 
   return (
     <article
-      className={`group relative flex h-full flex-col overflow-hidden rounded-[1.55rem] border transition duration-300 hover:-translate-y-1 ${
+      className={`store-motion group relative flex h-full flex-col overflow-hidden rounded-[1.55rem] transition duration-300 hover:-translate-y-1 ${
         isDark
-          ? 'border-white/10 bg-[#11100d] shadow-[0_22px_60px_rgba(0,0,0,.32)] hover:border-yellow-300/35'
-          : 'border-black/10 bg-white shadow-[0_22px_54px_rgba(20,20,20,.08)] hover:border-amber-500/40'
+          ? 'bg-[#fff6dc]/[0.065] shadow-[0_24px_70px_rgba(0,0,0,.28)] backdrop-blur-xl'
+          : 'bg-white/65 shadow-[0_22px_54px_rgba(20,20,20,.08)] backdrop-blur-xl'
       }`}
     >
       <div className={`relative m-2 overflow-hidden rounded-[1.3rem] ${isDark ? 'bg-[#17100a]' : 'bg-[#fff3dc]'}`}>
@@ -74,9 +74,9 @@ export default function UiverseProductCard({
         <button type="button" onClick={onSelect} aria-label={`Ver detalles de ${name}`} className="absolute inset-0 z-10 rounded-[1.3rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-yellow-300/70" />
         <div className="pointer-events-none absolute left-3 top-3 z-20 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1.5">
           {discountPct > 0 && <span className="rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">-{discountPct}%</span>}
-          <span className="rounded-full border border-white/20 bg-black/65 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white backdrop-blur-md">{category}</span>
+          <span className="rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white backdrop-blur-md">{category}</span>
         </div>
-        <span className={`pointer-events-none absolute bottom-3 left-3 z-20 rounded-full border border-white/15 bg-black/70 px-2.5 py-1 text-[10px] font-black backdrop-blur-md ${stockInfo.text}`}>{stockLabel || stockInfo.label}</span>
+        <span className={`pointer-events-none absolute bottom-3 left-3 z-20 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-black backdrop-blur-md ${stockInfo.text}`}>{stockLabel || stockInfo.label}</span>
       </div>
 
       <div className="flex flex-1 flex-col px-4 pb-4 pt-2">
@@ -90,7 +90,7 @@ export default function UiverseProductCard({
         </div>}
 
         <div className="mt-auto pt-3">
-          <div className="flex items-end justify-between gap-3 border-t border-current/10 pt-3">
+          <div className="flex items-end justify-between gap-3 pt-3">
             <div>
               <span className={`block text-2xl font-black tracking-tight ${isDark ? 'text-yellow-300' : 'text-orange-700'}`}>${finalPrice.toLocaleString('es-CL')}</span>
               {discountPct > 0 && <span className={`text-xs line-through ${isDark ? 'text-zinc-600' : 'text-neutral-400'}`}>${price.toLocaleString('es-CL')}</span>}

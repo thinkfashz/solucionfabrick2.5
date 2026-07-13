@@ -201,67 +201,96 @@ export default function TiendaClientV2() {
 
   return (
     <div
-      className={`min-h-screen overflow-x-hidden ${isDark ? "bg-[#070706] text-white" : "bg-[#f5f2ea] text-neutral-950"}`}
+      className={`relative isolate min-h-screen overflow-x-hidden ${isDark ? "bg-[#070603] text-[#fff9ec]" : "bg-[#f4edda] text-neutral-950"}`}
     >
-      <style>{`.store-scroll::-webkit-scrollbar{display:none}.store-scroll{scrollbar-width:none}`}</style>
+      <style>{`
+        .store-scroll::-webkit-scrollbar{display:none}.store-scroll{scrollbar-width:none}
+        @keyframes storeAuraOne{0%,100%{transform:translate3d(-8%,-5%,0) scale(1)}50%{transform:translate3d(18%,10%,0) scale(1.14)}}
+        @keyframes storeAuraTwo{0%,100%{transform:translate3d(9%,12%,0) scale(1.08)}50%{transform:translate3d(-18%,-8%,0) scale(.94)}}
+        @keyframes storeAuraThree{0%,100%{transform:translate3d(0,8%,0) rotate(0deg)}50%{transform:translate3d(12%,-12%,0) rotate(9deg)}}
+        .store-aura{position:absolute;border-radius:9999px;filter:blur(74px);pointer-events:none;will-change:transform}
+        .store-aura-one{animation:storeAuraOne 17s ease-in-out infinite}
+        .store-aura-two{animation:storeAuraTwo 22s ease-in-out infinite}
+        .store-aura-three{animation:storeAuraThree 19s ease-in-out infinite}
+        @media (prefers-reduced-motion:reduce){.store-aura{animation:none!important}.store-motion{transition:none!important}}
+      `}</style>
+      <div aria-hidden="true" className="pointer-events-none absolute inset-0 -z-10 overflow-hidden">
+        <span className={`store-aura store-aura-one -left-36 top-12 h-[28rem] w-[28rem] ${isDark ? "bg-yellow-300/15" : "bg-yellow-500/20"}`} />
+        <span className={`store-aura store-aura-two -right-40 top-[34rem] h-[34rem] w-[34rem] ${isDark ? "bg-[#fff0c2]/10" : "bg-[#fff8df]/75"}`} />
+        <span className={`store-aura store-aura-three left-[22%] top-[78rem] h-[30rem] w-[30rem] ${isDark ? "bg-amber-700/10" : "bg-amber-400/20"}`} />
+      </div>
       <StorefrontHeader onSearch={() => setSearchOpen(true)} />
-      <header className="mx-auto max-w-[1320px] px-4 pb-5 pt-4 md:px-8 md:pb-8">
-        <section className="relative min-h-[430px] overflow-hidden rounded-[2rem] bg-[#0a0a08] text-white shadow-[0_26px_90px_rgba(0,0,0,.22)] md:min-h-[520px] md:rounded-[2.5rem]">
-          <img src={HERO_IMAGE} alt="Cocina moderna equipada con productos para el hogar" className="absolute inset-0 h-full w-full object-cover object-center" loading="eager" />
-          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,.90)_0%,rgba(0,0,0,.72)_48%,rgba(0,0,0,.28)_100%)]" />
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_10%,rgba(250,204,21,.16),transparent_24rem)]" />
-          <div className="relative z-10 flex min-h-[430px] max-w-3xl flex-col justify-end p-6 md:min-h-[520px] md:p-10 lg:p-12">
-            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-yellow-200/20 bg-black/28 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.22em] text-yellow-100 backdrop-blur-md">
+      <header className="mx-auto max-w-[1320px] pb-5 md:px-8 md:pb-9 md:pt-4">
+        <section className="relative isolate min-h-[460px] overflow-hidden bg-[#090805]/92 text-white shadow-[0_32px_100px_rgba(0,0,0,.28)] md:min-h-[540px] md:rounded-[2.75rem]">
+          <img
+            src={HERO_IMAGE}
+            alt="Cocina moderna equipada con productos para el hogar"
+            className="absolute inset-y-0 right-0 h-full w-full object-cover object-center opacity-45 md:w-[66%] md:opacity-70"
+            style={{ WebkitMaskImage: "linear-gradient(90deg, transparent 0%, black 40%, black 100%)", maskImage: "linear-gradient(90deg, transparent 0%, black 40%, black 100%)" }}
+            loading="eager"
+          />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(8,7,4,.98)_0%,rgba(8,7,4,.86)_48%,rgba(8,7,4,.18)_100%)]" />
+          <div className="store-aura store-aura-one -left-24 -top-28 h-80 w-80 bg-yellow-300/20" />
+          <div className="store-aura store-aura-two bottom-[-12rem] right-[10%] h-96 w-96 bg-[#fff1c4]/15" />
+          <div className="relative z-10 flex min-h-[460px] max-w-3xl flex-col justify-end px-6 py-9 md:min-h-[540px] md:p-12 lg:p-14">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full bg-[#fff5d6]/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.22em] text-yellow-100 backdrop-blur-xl">
               <BadgeCheck className="h-3.5 w-3.5" /> Productos seleccionados
             </div>
-            <h1 className="mt-5 text-[clamp(40px,8vw,76px)] font-black leading-[.9] tracking-[-.075em]">Encuentra la solución correcta para tu espacio.</h1>
-            <p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-200/90 md:text-base">Compara lo esencial, revisa el precio y decide si necesitas despacho o instalación. Los detalles técnicos completos están dentro de cada producto.</p>
-            <div className="mt-6 flex flex-wrap gap-3">
-              <button onClick={() => setSearchOpen(true)} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-yellow-300 px-6 text-sm font-black text-black transition hover:bg-white"><Search className="h-4 w-4" /> Buscar productos</button>
-              <a href="#storeFilters" className="inline-flex min-h-12 items-center rounded-full border border-white/20 bg-black/25 px-6 text-sm font-black text-white backdrop-blur-md transition hover:border-yellow-200/50">Ver categorías</a>
+            <h1 className="mt-5 text-[clamp(42px,8vw,80px)] font-black leading-[.88] tracking-[-.075em]">Tu hogar, mejor resuelto.</h1>
+            <p className="mt-5 max-w-xl text-sm leading-7 text-[#f7eedb]/78 md:text-base">Productos elegidos por utilidad, consumo y respaldo. Compara sin ruido y suma instalación cuando realmente la necesitas.</p>
+            <div className="mt-7 flex flex-wrap gap-3">
+              <button onClick={() => setSearchOpen(true)} className="store-motion inline-flex min-h-12 items-center gap-2 rounded-full bg-yellow-300 px-6 text-sm font-black text-black shadow-[0_14px_40px_rgba(250,204,21,.22)] transition hover:-translate-y-0.5 hover:bg-[#fff5d6]"><Search className="h-4 w-4" /> Buscar productos</button>
+              <a href="#storeFilters" className="store-motion inline-flex min-h-12 items-center rounded-full bg-[#fff5d6]/10 px-6 text-sm font-black text-[#fff8e9] backdrop-blur-xl transition hover:-translate-y-0.5 hover:bg-[#fff5d6]/18">Explorar categorías</a>
             </div>
           </div>
         </section>
       </header>
       <main className="mx-auto max-w-[1320px] px-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:px-8 md:pb-16">
-        <section aria-label="Buscar productos" className={`mb-4 rounded-[1.5rem] border p-3 md:flex md:items-center md:gap-4 ${isDark ? "border-white/10 bg-white/[0.035]" : "border-black/5 bg-white"}`}>
+        <section aria-label="Buscar productos" className={`mb-4 rounded-[1.6rem] p-3 shadow-[0_22px_70px_rgba(0,0,0,.10)] backdrop-blur-2xl md:flex md:items-center md:gap-4 ${isDark ? "bg-[#fff6dc]/[0.07]" : "bg-white/60"}`}>
           <label className="relative block flex-1">
             <span className="sr-only">Buscar en la tienda</span>
             <Search className={`pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${isDark ? "text-yellow-300" : "text-amber-700"}`} />
-            <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="¿Qué problema quieres resolver? Busca aire, iluminación, grifería..." className={`h-14 w-full rounded-2xl border pl-12 pr-4 text-sm font-semibold outline-none transition ${isDark ? "border-white/10 bg-black/40 text-white placeholder:text-zinc-600 focus:border-yellow-300/45" : "border-black/10 bg-neutral-50 text-neutral-950 placeholder:text-neutral-400 focus:border-amber-500/45"}`} />
+            <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="¿Qué quieres mejorar? Aire, iluminación, grifería..." className={`h-14 w-full rounded-2xl border-0 pl-12 pr-4 text-sm font-semibold outline-none ring-0 transition focus:ring-2 focus:ring-yellow-300/45 ${isDark ? "bg-black/30 text-white placeholder:text-[#f7eedb]/35" : "bg-[#fffaf0]/80 text-neutral-950 placeholder:text-neutral-400"}`} />
           </label>
           <p className={`mt-3 px-2 text-xs md:mt-0 md:max-w-[280px] ${isDark ? "text-zinc-300" : "text-neutral-600"}`}>{filteredProducts.length} soluciones encontradas · compra directa o asistencia humana.</p>
         </section>
         <section
           id="storeFilters"
-          className={`sticky top-16 z-30 -mx-4 scroll-mt-20 border-y px-4 py-3 backdrop-blur-2xl md:top-[68px] md:mx-0 md:rounded-[1.5rem] md:border ${isDark ? "border-white/10 bg-[#070706]/92" : "border-black/5 bg-[#f5f2ea]/92"}`}
+          className={`sticky top-16 z-30 -mx-4 scroll-mt-20 px-4 py-3 shadow-[0_18px_46px_rgba(0,0,0,.10)] backdrop-blur-2xl md:top-[68px] md:mx-0 md:rounded-[1.5rem] ${isDark ? "bg-[#0b0905]/88" : "bg-[#f4edda]/88"}`}
         >
           <div className="store-scroll flex gap-2 overflow-x-auto pb-1">
             {categories.map((cat) => (
               <button
                 key={cat}
                 onClick={() => setActiveCategory(cat)}
-                className={`shrink-0 rounded-full px-4 py-2 text-xs font-black transition ${activeCategory === cat ? "bg-gradient-to-r from-yellow-300 to-orange-500 text-black" : isDark ? "border border-white/10 bg-white/[0.055] text-white/70" : "border border-black/5 bg-white text-neutral-600"}`}
+                className={`shrink-0 rounded-full px-4 py-2 text-xs font-black transition ${activeCategory === cat ? "bg-yellow-300 text-black shadow-[0_8px_24px_rgba(250,204,21,.18)]" : isDark ? "bg-[#fff6dc]/[0.07] text-[#fff8e9]/70" : "bg-white/65 text-neutral-600"}`}
               >
                 {cat}
               </button>
             ))}
             <button
               onClick={() => setOnlyDeals((value) => !value)}
-              className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${onlyDeals ? "bg-red-500 text-white" : isDark ? "border border-white/10 bg-white/[0.055] text-white/70" : "border border-black/5 bg-white text-neutral-600"}`}
+              className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${onlyDeals ? "bg-[#fff1c4] text-black" : isDark ? "bg-[#fff6dc]/[0.07] text-[#fff8e9]/70" : "bg-white/65 text-neutral-600"}`}
             >
               Ofertas
             </button>
             <button
               onClick={() => setOnlyInStock((value) => !value)}
-              className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${onlyInStock ? "bg-emerald-300 text-black" : isDark ? "border border-white/10 bg-white/[0.055] text-white/70" : "border border-black/5 bg-white text-neutral-600"}`}
+              className={`shrink-0 rounded-full px-4 py-2 text-xs font-black ${onlyInStock ? "bg-yellow-300 text-black" : isDark ? "bg-[#fff6dc]/[0.07] text-[#fff8e9]/70" : "bg-white/65 text-neutral-600"}`}
             >
               Stock listo
             </button>
           </div>
         </section>
+        <div className="mb-5 mt-9 flex items-end justify-between gap-4">
+          <div>
+            <p className={`text-[10px] font-black uppercase tracking-[.24em] ${isDark ? "text-yellow-200" : "text-amber-700"}`}>Selección Fabrick</p>
+            <h2 className="mt-2 text-3xl font-black tracking-[-.045em] md:text-4xl">Soluciones para usar todos los días.</h2>
+          </div>
+          <p className={`hidden max-w-sm text-right text-sm leading-6 md:block ${isDark ? "text-[#f7eedb]/55" : "text-neutral-600"}`}>Precio, disponibilidad y entrega visibles antes de entrar al detalle.</p>
+        </div>
         {featured.length > 0 ? (
-          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {featured.map((product) => (
               <UiverseProductCard
                 key={product.id}
@@ -288,13 +317,13 @@ export default function TiendaClientV2() {
             ))}
           </div>
         ) : (
-          <div className="mt-6 rounded-[2rem] border border-white/10 bg-white/[0.04] p-8 text-center">
+          <div className={`mt-6 rounded-[2rem] p-8 text-center backdrop-blur-2xl ${isDark ? "bg-[#fff6dc]/[0.07]" : "bg-white/65"}`}>
             <p className="text-xl font-black">
               No encontré productos con esos filtros.
             </p>
             <button
               onClick={clearFilters}
-              className="mt-5 rounded-full bg-gradient-to-r from-yellow-300 to-orange-500 px-5 py-3 text-sm font-black text-black"
+              className="mt-5 rounded-full bg-yellow-300 px-5 py-3 text-sm font-black text-black"
             >
               Limpiar filtros
             </button>
@@ -323,7 +352,7 @@ export default function TiendaClientV2() {
           return (
             <article
               key={String(title)}
-              className={`rounded-[1.6rem] border p-5 ${isDark ? "border-white/10 bg-white/[0.035]" : "border-black/5 bg-white shadow-[0_18px_44px_rgba(20,20,20,.06)]"}`}
+              className={`rounded-[1.6rem] p-5 shadow-[0_20px_55px_rgba(0,0,0,.08)] backdrop-blur-2xl ${isDark ? "bg-[#fff6dc]/[0.055]" : "bg-white/55"}`}
             >
               <IconComponent className="mb-4 h-7 w-7 text-yellow-300" />
               <h3 className="text-xl font-black">{String(title)}</h3>
@@ -336,7 +365,7 @@ export default function TiendaClientV2() {
           );
         })}
       </section>
-      <footer className="border-t border-white/10 bg-black px-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))] pt-8 text-white md:px-8 md:py-8">
+      <footer className="bg-black/90 px-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))] pt-8 text-white backdrop-blur-2xl md:px-8 md:py-8">
         <div className="mx-auto flex max-w-[1320px] flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
             <StoreFabrickLogo tone="dark" branding={branding} compact />
@@ -345,13 +374,13 @@ export default function TiendaClientV2() {
           </div>
           <div className="flex flex-wrap gap-2">
             <button
-              className="rounded-full border border-white/10 p-3 text-white/70 hover:text-white"
+              className="rounded-full bg-white/[0.07] p-3 text-white/70 hover:bg-white/[0.12] hover:text-white"
               aria-label="Facebook"
             >
               <Facebook size={18} />
             </button>
             <button
-              className="rounded-full border border-white/10 p-3 text-white/70 hover:text-white"
+              className="rounded-full bg-white/[0.07] p-3 text-white/70 hover:bg-white/[0.12] hover:text-white"
               aria-label="Instagram"
             >
               <Instagram size={18} />
@@ -366,7 +395,7 @@ export default function TiendaClientV2() {
         </div>
       </footer>
       {bottomMenuOpen && (
-        <div className="fixed inset-x-3 bottom-[calc(5.6rem+env(safe-area-inset-bottom))] z-[186] max-h-[calc(100dvh-7.5rem-env(safe-area-inset-bottom))] overflow-y-auto rounded-[1.7rem] border border-white/10 bg-[#0b0a08]/96 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,.48)] backdrop-blur-2xl md:hidden">
+        <div className="fixed inset-x-3 bottom-[calc(5.6rem+env(safe-area-inset-bottom))] z-[186] max-h-[calc(100dvh-7.5rem-env(safe-area-inset-bottom))] overflow-y-auto rounded-[1.7rem] bg-[#0b0a08]/94 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,.48)] backdrop-blur-2xl md:hidden">
           <div className="mb-3 flex items-center justify-between px-1">
             <p className="text-[10px] font-black uppercase tracking-[.26em] text-orange-300">
               Menú rápido
@@ -412,7 +441,7 @@ export default function TiendaClientV2() {
           </div>
         </div>
       )}
-      <div className="fixed inset-x-0 bottom-0 z-[185] rounded-t-[1.4rem] border-x border-t border-white/10 bg-[#14120d]/94 px-3 pb-[calc(.6rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_55px_rgba(0,0,0,.34)] backdrop-blur-2xl md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-[185] rounded-t-[1.4rem] bg-[#14120d]/92 px-3 pb-[calc(.6rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_55px_rgba(0,0,0,.34)] backdrop-blur-2xl md:hidden">
         <div className="flex items-center gap-2">
           <label className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-yellow-200/75" />

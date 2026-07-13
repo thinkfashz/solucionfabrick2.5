@@ -12,7 +12,7 @@ import {
 import { useCartContext } from "@/context/CartContext";
 import { useTheme } from "@/context/ThemeContext";
 import UiverseProductCard from "@/components/store/UiverseProductCard";
-import { StorefrontHeader } from "@/components/store/StorefrontChrome";
+import { StoreBottomNav, StorefrontHeader } from "@/components/store/StorefrontChrome";
 
 function getStockBadge(product: CatalogProduct) {
   const rawStock = (product as { stock?: number | string }).stock;
@@ -235,6 +235,7 @@ export default function CatalogoClient() {
           </div>
         )}
       </main>
+      <StoreBottomNav />
     </div>
   );
 }

@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 800 500" role="img" aria-labelledby="title desc">
+  <title id="title">Sistema de radier por capas</title>
+  <desc id="desc">Miniatura isométrica con hormigón, malla, gravilla y terreno</desc>
+  <defs>
+    <linearGradient id="concrete" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#f5f1e8"/><stop offset="1" stop-color="#aaa69e"/></linearGradient>
+    <linearGradient id="soil" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#9f652a"/><stop offset="1" stop-color="#4f2d13"/></linearGradient>
+    <filter id="shadow"><feDropShadow dx="0" dy="22" stdDeviation="18" flood-opacity=".35"/></filter>
+  </defs>
+  <rect width="800" height="500" rx="48" fill="#0b0906"/>
+  <circle cx="660" cy="70" r="190" fill="#facc15" opacity=".14"/>
+  <g filter="url(#shadow)" transform="translate(20 12)">
+    <path d="M112 286 380 142l300 118-276 154z" fill="url(#soil)"/>
+    <path d="m112 286 292 128v45L112 331z" fill="#4a2b16"/>
+    <path d="m404 414 276-154v45L404 459z" fill="#74441d"/>
+    <path d="M126 259 382 125l282 109-264 146z" fill="#b59d7d"/>
+    <path d="m126 259 274 121v38L126 298z" fill="#7e6b55"/>
+    <path d="m400 380 264-146v38L400 418z" fill="#938069"/>
+    <path d="M142 222 384 98l262 102-250 136z" fill="url(#concrete)"/>
+    <path d="m142 222 254 114v44L142 268z" fill="#94928d"/>
+    <path d="m396 336 250-136v44L396 380z" fill="#777570"/>
+    <g stroke="#555" stroke-width="3" opacity=".5">
+      <path d="m190 199 253 111m-204-136 253 111m-204-136 253 111m-204-136 253 111"/>
+      <path d="m197 249 241-126m-184 151 241-126m-184 151 241-126m-184 151 241-126"/>
+    </g>
+  </g>
+  <g font-family="Arial,sans-serif" font-size="18" font-weight="700"><rect x="42" y="34" width="234" height="42" rx="21" fill="#facc15"/><text x="159" y="61" text-anchor="middle" fill="#090805">SISTEMA DE RADIER</text><text x="594" y="438" text-anchor="middle" fill="#fff6dc">Hormigón · base · terreno</text></g>
+</svg>

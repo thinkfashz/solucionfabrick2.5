@@ -58,7 +58,7 @@ export default function UiverseProductCard({
     <article
       className={`store-motion group relative flex h-full flex-col overflow-hidden rounded-[1.55rem] transition duration-300 hover:-translate-y-1 ${
         isDark
-          ? 'bg-[#fff6dc]/[0.065] shadow-[0_24px_70px_rgba(0,0,0,.28)] backdrop-blur-xl'
+          ? 'bg-[#f8f1df] text-black shadow-[0_24px_70px_rgba(0,0,0,.28)]'
           : 'bg-white/65 shadow-[0_22px_54px_rgba(20,20,20,.08)] backdrop-blur-xl'
       }`}
     >
@@ -81,21 +81,21 @@ export default function UiverseProductCard({
 
       <div className="flex flex-1 flex-col px-4 pb-4 pt-2">
         <button type="button" onClick={onSelect} className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300/60">
-          <span className={`block text-[9px] font-black uppercase tracking-[0.24em] ${isDark ? 'text-yellow-300' : 'text-amber-700'}`}>{category}</span>
-          <span className={`mt-1 block min-h-[2.55em] line-clamp-2 text-[15px] font-black leading-snug ${isDark ? 'text-white' : 'text-neutral-950'}`}>{name}</span>
+          <span className="block text-[9px] font-black uppercase tracking-[0.24em] text-amber-700">{category}</span>
+          <span className="mt-1 block min-h-[2.55em] line-clamp-2 text-[15px] font-black leading-snug text-neutral-950">{name}</span>
         </button>
 
         {details.length > 0 && <div className="mt-3 grid gap-1.5">
-          {details.map((item) => <span key={item} className={`inline-flex min-w-0 items-center gap-1.5 text-[10px] ${isDark ? 'text-zinc-300' : 'text-neutral-600'}`}><Check className="h-3.5 w-3.5 shrink-0 text-yellow-300" /><span className="truncate">{item}</span></span>)}
+          {details.map((item) => <span key={item} className="inline-flex min-w-0 items-center gap-1.5 text-[10px] text-neutral-600"><Check className="h-3.5 w-3.5 shrink-0 text-amber-600" /><span className="truncate">{item}</span></span>)}
         </div>}
 
         <div className="mt-auto pt-3">
           <div className="flex items-end justify-between gap-3 pt-3">
             <div>
-              <span className={`block text-2xl font-black tracking-tight ${isDark ? 'text-yellow-300' : 'text-orange-700'}`}>${finalPrice.toLocaleString('es-CL')}</span>
-              {discountPct > 0 && <span className={`text-xs line-through ${isDark ? 'text-zinc-600' : 'text-neutral-400'}`}>${price.toLocaleString('es-CL')}</span>}
+              <span className="block text-2xl font-black tracking-tight text-neutral-950">${finalPrice.toLocaleString('es-CL')}</span>
+              {discountPct > 0 && <span className="text-xs text-neutral-400 line-through">${price.toLocaleString('es-CL')}</span>}
             </div>
-            {deliveryLabel ? <span className={`max-w-[48%] truncate text-right text-[10px] font-bold ${isDark ? 'text-zinc-400' : 'text-neutral-500'}`}>{deliveryLabel}</span> : null}
+            {deliveryLabel ? <span className="max-w-[48%] truncate text-right text-[10px] font-bold text-neutral-500">{deliveryLabel}</span> : null}
           </div>
 
           <button

@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import { useMemo, useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import Link from "next/link";
@@ -27,7 +25,7 @@ import {
 import { useCartContext } from "@/context/CartContext";
 import { buildWhatsAppLink } from "@/lib/whatsapp";
 import { navigateWithTransition } from "@/lib/routeTransition";
-import { StorefrontHeader } from "@/components/store/StorefrontChrome";
+import { StoreBottomNav, StorefrontHeader } from "@/components/store/StorefrontChrome";
 
 function formatCLP(value: number) {
   return new Intl.NumberFormat("es-CL", {
@@ -93,6 +91,7 @@ function DetailSkeleton() {
           </div>
         </div>
       </main>
+      <StoreBottomNav />
     </div>
   );
 }
@@ -145,6 +144,7 @@ export default function ProductDetailClientV2() {
             <ArrowLeft className="mr-2 h-4 w-4" /> Volver al catálogo
           </Link>
         </main>
+        <StoreBottomNav />
       </div>
     );
 
@@ -393,6 +393,7 @@ export default function ProductDetailClientV2() {
           </section>
         )}
       </main>
+      <StoreBottomNav />
     </div>
   );
 }

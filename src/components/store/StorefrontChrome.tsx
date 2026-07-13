@@ -1,110 +1,174 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { Home, LayoutDashboard, LogIn, Menu, Search, ShieldCheck, ShoppingBag, Sun, UserPlus, Wrench, X } from 'lucide-react';
+import { usePathname, useRouter } from 'next/navigation';
+import {
+  Calculator,
+  ClipboardList,
+  Home,
+  LayoutGrid,
+  LogIn,
+  Menu,
+  Search,
+  ShieldCheck,
+  ShoppingBag,
+  Sun,
+  User,
+  UserPlus,
+  Wrench,
+  X,
+  type LucideIcon,
+} from 'lucide-react';
 import { FabrickFullLogo, FabrickNavLogo } from '@/components/FabrickBrandIcon';
 import { useAuth } from '@/context/AuthContext';
 import { useCartContext } from '@/context/CartContext';
 import { useTheme } from '@/context/ThemeContext';
-import { tenantInitials, useTenantBranding, type TenantBranding } from '@/hooks/useTenantBranding';
+import { useTenantBranding, type TenantBranding } from '@/hooks/useTenantBranding';
 import { getInitials } from '@/lib/initials';
 import { navigateWithTransition } from '@/lib/routeTransition';
 
-function openExternalOrRoute(href: string, router: ReturnType<typeof useRouter>) {
-  if (href.startsWith('http')) window.open(href, '_blank', 'noopener,noreferrer');
-  else navigateWithTransition(href, router);
+function goTo(href: string, router: ReturnType<typeof useRouter>) {
+  navigateWithTransition(href, router);
 }
 
-export function StoreFabrickLogo({ tone = 'dark', compact = false }: { tone?: 'light' | 'dark'; branding: TenantBranding; compact?: boolean }) {
+export function StoreFabrickLogo({
+  tone = 'dark',
+  compact = false,
+}: {
+  tone?: 'light' | 'dark';
+  branding: TenantBranding;
+  compact?: boolean;
+}) {
   const logoTheme = tone === 'dark' ? 'light' : 'dark';
   return compact ? <FabrickNavLogo theme={logoTheme} /> : <FabrickFullLogo theme={logoTheme} />;
 }
 
-export function StorefrontHeader({ onSearch }: { onSearch: () => void }) {
+export function StorefrontHeader({ onSearch }: { onSearch?: () => void }) {
   const router = useRouter();
   const { user } = useAuth();
   const { branding } = useTenantBranding();
   const { toggleTheme } = useTheme();
   const { openCart, totalItems } = useCartContext();
-  const [menuOpen, setMenuOpen] = useState(false);
-  const brandName = branding.name || 'Soluciones Fabrick';
-  const supportLink = branding.whatsappUrl || '/contacto';
 
-  function go(href: string) {
-    setMenuOpen(false);
-    navigateWithTransition(href, router);
-  }
-
-  function contact() {
-    setMenuOpen(false);
-    openExternalOrRoute(supportLink, router);
-  }
-
-  return <>
-    <nav className="fixed left-0 top-0 z-[180] w-full bg-black/78 text-white shadow-[0_12px_42px_rgba(0,0,0,.28)] backdrop-blur-2xl">
-      <div className="relative mx-auto flex h-16 max-w-[1320px] items-center justify-between gap-3 px-4 md:h-[68px] md:px-8">
-        <button onClick={() => setMenuOpen(true)} className="grid h-10 w-10 place-items-center rounded-xl bg-white/[0.07] md:hidden" aria-label="Abrir menú"><Menu size={21} /></button>
-        <button onClick={() => go('/tienda')} className="absolute left-1/2 min-w-0 -translate-x-1/2 rounded-full md:static md:translate-x-0" aria-label="Ir a tienda"><StoreFabrickLogo tone="dark" branding={branding} compact /></button>
-        <div className="hidden items-center gap-7 md:flex">
-          <button onClick={() => go('/tienda/catalogo')} className="text-sm font-bold opacity-70 hover:opacity-100">Catálogo</button>
-          <button onClick={contact} className="text-sm font-bold opacity-70 hover:opacity-100">Instalación</button>
-          <button onClick={() => go('/mi-cuenta')} className="text-sm font-bold opacity-70 hover:opacity-100">Cliente</button>
-        </div>
-        <div className="flex shrink-0 items-center gap-1.5">
-          <button onClick={onSearch} className="hidden h-10 w-10 place-items-center rounded-full opacity-75 transition hover:bg-white/10 hover:opacity-100 md:grid" aria-label="Buscar"><Search size={20} /></button>
-          <button onClick={toggleTheme} className="hidden h-10 w-10 place-items-center rounded-full opacity-65 transition hover:bg-white/10 hover:opacity-100 sm:grid" aria-label="Cambiar tema"><Sun size={18} /></button>
-          <button onClick={openCart} className="relative grid h-10 w-10 place-items-center rounded-xl bg-white/[0.07] text-white transition hover:bg-yellow-300 hover:text-black md:h-11 md:w-11 md:rounded-2xl md:bg-yellow-300 md:text-black" aria-label="Abrir bolso de compra">
-            <ShoppingBag size={20} strokeWidth={2.8} />
-            {totalItems > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-emerald-300 px-1 text-[10px] font-black text-black ring-2 ring-black">{totalItems}</span>}
+  return (
+    <>
+      <nav className="fixed left-0 top-0 z-[180] w-full bg-black/76 text-white shadow-[0_12px_42px_rgba(0,0,0,.28)] backdrop-blur-2xl">
+        <div className="relative mx-auto flex h-16 max-w-[1320px] items-center justify-between gap-3 px-4 md:h-[68px] md:px-8">
+          <span className="h-10 w-10 md:hidden" aria-hidden="true" />
+          <button
+            onClick={() => goTo('/tienda', router)}
+            className="absolute left-1/2 min-w-0 -translate-x-1/2 md:static md:translate-x-0"
+            aria-label="Ir a la tienda"
+          >
+            <StoreFabrickLogo tone="dark" branding={branding} compact />
           </button>
-          {user ? <button onClick={() => go('/mi-cuenta')} className="hidden h-10 w-10 place-items-center rounded-full bg-white/10 text-xs font-black sm:grid">{getInitials(user.name || user.email)}</button> : null}
-          <button onClick={() => setMenuOpen(true)} className="hidden h-11 w-11 place-items-center rounded-2xl bg-white/[0.07] md:grid" aria-label="Abrir menú"><Menu size={22} /></button>
-        </div>
-      </div>
-    </nav>
-    <div className="h-16 md:h-[68px]" />
 
-    {menuOpen && <div className="fixed inset-0 z-[300] bg-black/76 backdrop-blur-xl">
-      <aside className="ml-auto flex h-full w-[92vw] max-w-[430px] flex-col overflow-y-auto border-l border-white/10 bg-[#070707] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-white shadow-2xl shadow-black/70 sm:p-5">
-        <div className="flex items-center justify-between gap-3">
-          <StoreFabrickLogo tone="dark" branding={branding} compact />
-          <button onClick={() => setMenuOpen(false)} className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.06]"><X className="h-6 w-6" /></button>
-        </div>
+          <div className="hidden items-center gap-7 md:flex">
+            <button onClick={() => goTo('/tienda', router)} className="text-sm font-bold opacity-70 transition hover:opacity-100">Productos</button>
+            <button onClick={() => goTo('/herramientas/aire-acondicionado', router)} className="text-sm font-bold opacity-70 transition hover:opacity-100">Calculadora aire</button>
+            <button onClick={() => goTo('/herramientas/radier', router)} className="text-sm font-bold opacity-70 transition hover:opacity-100">Calculadora radier</button>
+          </div>
 
-        <div className="mt-8 rounded-[2rem] border border-yellow-300/20 bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,.18),transparent_18rem),rgba(255,255,255,.045)] p-4">
-          <p className="text-[10px] font-black uppercase tracking-[.26em] text-yellow-200">Portal tienda</p>
-          <h2 className="mt-3 text-3xl font-black tracking-[-.05em]">Compra, cuenta y seguimiento.</h2>
-          <p className="mt-2 text-sm leading-6 text-zinc-400">Entra como cliente, crea tu cuenta o abre el panel administrativo del negocio.</p>
-        </div>
-
-        <div className="mt-5 grid gap-2">
-          <MenuAction icon={Home} label="Catálogo" description="Ver productos disponibles" onClick={() => go('/tienda/catalogo')} />
-          <MenuAction icon={Wrench} label="Instalación" description="Coordinar servicio o despacho" onClick={contact} />
-          <MenuAction icon={ShoppingBag} label={`Bolso de compra (${totalItems})`} description="Revisar productos agregados" onClick={() => { setMenuOpen(false); openCart(); }} />
-        </div>
-
-        <div className="mt-5 grid gap-2 rounded-[2rem] border border-white/10 bg-white/[0.035] p-3">
-          <MenuAction icon={LogIn} label="Iniciar sesión tienda" description="Entrar como cliente" onClick={() => go('/auth')} />
-          <MenuAction icon={UserPlus} label="Crear cuenta" description="Registro rápido de cliente" onClick={() => go('/registro')} />
-          <MenuAction icon={LayoutDashboard} label="Panel cliente" description="Pedidos, datos y seguimiento" onClick={() => go('/mi-cuenta')} />
-          <MenuAction icon={ShieldCheck} label="Admin del cliente" description="Dashboard del negocio" onClick={() => go('/admin')} />
-        </div>
-
-        <div className="mt-auto rounded-[2rem] border border-white/10 bg-black/45 p-4">
-          <div className="flex items-center gap-3">
-            <div className="grid h-12 w-12 place-items-center rounded-2xl bg-yellow-300 text-sm font-black text-black">{tenantInitials(brandName)}</div>
-            <div className="min-w-0"><p className="truncate font-black">{brandName}</p><p className="text-xs text-zinc-500">Tienda verificada Fabrick</p></div>
+          <div className="flex shrink-0 items-center gap-1.5">
+            {onSearch ? (
+              <button onClick={onSearch} className="hidden h-10 w-10 place-items-center rounded-full opacity-75 transition hover:bg-white/10 hover:opacity-100 md:grid" aria-label="Buscar">
+                <Search size={20} />
+              </button>
+            ) : null}
+            <button onClick={toggleTheme} className="hidden h-10 w-10 place-items-center rounded-full opacity-65 transition hover:bg-white/10 hover:opacity-100 sm:grid" aria-label="Cambiar tema">
+              <Sun size={18} />
+            </button>
+            <button onClick={openCart} className="relative grid h-10 w-10 place-items-center rounded-xl bg-white/[0.07] text-white transition hover:bg-yellow-300 hover:text-black md:h-11 md:w-11 md:rounded-2xl md:bg-yellow-300 md:text-black" aria-label="Abrir bolso de compra">
+              <ShoppingBag size={20} strokeWidth={2.8} />
+              {totalItems > 0 ? <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-emerald-300 px-1 text-[10px] font-black text-black ring-2 ring-black">{totalItems}</span> : null}
+            </button>
+            {user ? (
+              <button onClick={() => goTo('/mi-cuenta', router)} className="hidden h-10 w-10 place-items-center rounded-full bg-white/10 text-xs font-black sm:grid" aria-label="Abrir mi cuenta">
+                {getInitials(user.name || user.email)}
+              </button>
+            ) : null}
           </div>
         </div>
-      </aside>
-    </div>}
-  </>;
+      </nav>
+      <div className="h-16 md:h-[68px]" />
+    </>
+  );
 }
 
-function MenuAction({ icon: Icon, label, description, onClick }: { icon: typeof Home; label: string; description: string; onClick: () => void }) {
-  return <button onClick={onClick} className="flex items-center gap-3 rounded-2xl bg-white/[0.06] p-4 text-left transition hover:bg-yellow-300 hover:text-black">
-    <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-black/30"><Icon className="h-5 w-5" /></span>
-    <span className="min-w-0"><span className="block text-lg font-black leading-tight">{label}</span><span className="mt-1 block text-xs opacity-60">{description}</span></span>
-  </button>;
+type DockItemProps = {
+  icon: LucideIcon;
+  label: string;
+  active?: boolean;
+  onClick: () => void;
+};
+
+function DockItem({ icon: Icon, label, active, onClick }: DockItemProps) {
+  return (
+    <button onClick={onClick} className={`grid min-w-0 flex-1 place-items-center gap-1 rounded-2xl py-2 text-[10px] font-bold transition ${active ? 'text-yellow-300' : 'text-[#f7eedb]/55'}`}>
+      <Icon className="h-5 w-5" strokeWidth={active ? 2.8 : 2} />
+      <span className="truncate">{label}</span>
+    </button>
+  );
+}
+
+function QuickAction({ icon: Icon, title, description, onClick }: { icon: LucideIcon; title: string; description: string; onClick: () => void }) {
+  return (
+    <button onClick={onClick} className="flex items-center gap-3 rounded-[1.35rem] bg-[#fff6dc]/[0.07] p-3 text-left transition active:scale-[.98]">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-yellow-300 text-black"><Icon className="h-5 w-5" /></span>
+      <span className="min-w-0"><b className="block text-sm text-white">{title}</b><span className="mt-0.5 block text-[11px] leading-4 text-zinc-400">{description}</span></span>
+    </button>
+  );
+}
+
+export function StoreBottomNav() {
+  const pathname = usePathname();
+  const router = useRouter();
+  const { openCart, totalItems } = useCartContext();
+  const [open, setOpen] = useState(false);
+
+  function navigate(href: string) {
+    setOpen(false);
+    goTo(href, router);
+  }
+
+  return (
+    <>
+      {open ? (
+        <div className="fixed inset-0 z-[250] bg-black/58 backdrop-blur-sm md:hidden" onClick={() => setOpen(false)}>
+          <section
+            className="absolute inset-x-3 bottom-[calc(6.4rem+env(safe-area-inset-bottom))] max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-[2rem] bg-[#0c0a06]/96 p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,.62)] ring-1 ring-yellow-200/10 backdrop-blur-2xl"
+            onClick={(event) => event.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-4">
+              <div><p className="text-[10px] font-black uppercase tracking-[.26em] text-yellow-300">Menú Fabrick</p><h2 className="mt-1 text-2xl font-black tracking-[-.04em]">¿Qué necesitas resolver?</h2></div>
+              <button onClick={() => setOpen(false)} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10" aria-label="Cerrar menú"><X className="h-5 w-5" /></button>
+            </div>
+            <div className="mt-4 grid gap-2">
+              <QuickAction icon={LayoutGrid} title="Productos para el hogar" description="Comprar, comparar y revisar disponibilidad" onClick={() => navigate('/tienda')} />
+              <QuickAction icon={Calculator} title="Calcular aire acondicionado" description="BTU, equipo, consumo e instalación" onClick={() => navigate('/herramientas/aire-acondicionado')} />
+              <QuickAction icon={Wrench} title="Calcular radier" description="Área, hormigón, capas y mano de obra" onClick={() => navigate('/herramientas/radier')} />
+              <QuickAction icon={ShoppingBag} title={`Bolso de compra · ${totalItems}`} description="Revisar los productos seleccionados" onClick={() => { setOpen(false); openCart(); }} />
+            </div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              <button onClick={() => navigate('/auth')} className="rounded-2xl bg-white/[0.07] p-3 text-left"><LogIn className="h-4 w-4 text-yellow-300" /><b className="mt-2 block text-xs">Iniciar sesión</b></button>
+              <button onClick={() => navigate('/registro')} className="rounded-2xl bg-white/[0.07] p-3 text-left"><UserPlus className="h-4 w-4 text-yellow-300" /><b className="mt-2 block text-xs">Crear cuenta</b></button>
+              <button onClick={() => navigate('/mi-cuenta')} className="rounded-2xl bg-white/[0.07] p-3 text-left"><ShieldCheck className="h-4 w-4 text-yellow-300" /><b className="mt-2 block text-xs">Mis pedidos</b></button>
+              <button onClick={() => navigate('/contacto')} className="rounded-2xl bg-white/[0.07] p-3 text-left"><ClipboardList className="h-4 w-4 text-yellow-300" /><b className="mt-2 block text-xs">Pedir ayuda</b></button>
+            </div>
+          </section>
+        </div>
+      ) : null}
+
+      <nav className="fixed inset-x-3 bottom-[calc(.65rem+env(safe-area-inset-bottom))] z-[240] mx-auto flex h-[72px] max-w-[520px] items-center rounded-[2rem] bg-[#131006]/92 px-2 text-white shadow-[0_20px_70px_rgba(0,0,0,.54)] ring-1 ring-yellow-200/10 backdrop-blur-2xl md:hidden" aria-label="Navegación principal">
+        <DockItem icon={Home} label="Inicio" active={pathname === '/'} onClick={() => navigate('/')} />
+        <DockItem icon={ClipboardList} label="Presupuesto" active={pathname.startsWith('/presupuesto')} onClick={() => navigate('/presupuesto')} />
+        <button onClick={() => setOpen((value) => !value)} className="relative -mt-8 grid h-16 w-16 shrink-0 place-items-center rounded-full bg-yellow-300 text-black shadow-[0_12px_34px_rgba(250,204,21,.32)] ring-4 ring-[#0b0905]" aria-label="Abrir menú Fabrick">
+          {open ? <X className="h-6 w-6" /> : <Menu className="h-7 w-7" />}
+          <span className="absolute -bottom-5 text-[9px] font-black uppercase tracking-[.12em] text-yellow-200">Menú</span>
+        </button>
+        <DockItem icon={LayoutGrid} label="Productos" active={pathname.startsWith('/tienda')} onClick={() => navigate('/tienda')} />
+        <DockItem icon={User} label="Perfil" active={pathname.startsWith('/mi-cuenta')} onClick={() => navigate('/mi-cuenta')} />
+      </nav>
+    </>
+  );
 }

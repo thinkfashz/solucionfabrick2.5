@@ -4,18 +4,15 @@ import { useMemo, useState } from "react";
 import type { MouseEvent } from "react";
 import { useRouter } from "next/navigation";
 import {
+  ArrowRight,
   BadgeCheck,
-  Calculator,
   Facebook,
+  Hammer,
   Instagram,
-  LogIn,
-  Menu,
   Search,
   ShieldCheck,
-  ShoppingBag,
+  Snowflake,
   Truck,
-  UserPlus,
-  Wind,
   Wrench,
 } from "lucide-react";
 import { navigateWithTransition } from "@/lib/routeTransition";
@@ -29,6 +26,7 @@ import { useCartContext } from "@/context/CartContext";
 import UiverseProductCard from "@/components/store/UiverseProductCard";
 import UiverseSearchModal from "@/components/UiverseSearchModal";
 import {
+  StoreBottomNav,
   StoreFabrickLogo,
   StorefrontHeader,
 } from "@/components/store/StorefrontChrome";
@@ -99,33 +97,6 @@ function asCartProduct(product: Product) {
   };
 }
 
-function BottomMenuItem({
-  icon: Icon,
-  label,
-  sub,
-  onClick,
-}: {
-  icon: typeof Menu;
-  label: string;
-  sub: string;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      onClick={onClick}
-      className="flex items-center gap-3 rounded-2xl bg-white/[0.07] p-3 text-left transition hover:bg-gradient-to-r hover:from-yellow-300 hover:to-orange-500 hover:text-black"
-    >
-      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-black/35">
-        <Icon className="h-5 w-5" />
-      </span>
-      <span className="min-w-0">
-        <span className="block text-sm font-black leading-tight">{label}</span>
-        <span className="mt-0.5 block text-[11px] opacity-60">{sub}</span>
-      </span>
-    </button>
-  );
-}
-
 export default function TiendaClientV2() {
   const router = useRouter();
   const { branding } = useTenantBranding();
@@ -136,9 +107,8 @@ export default function TiendaClientV2() {
     connected,
     fetchComplete,
   } = useCatalogProducts();
-  const { addToCart, openCart, totalItems } = useCartContext();
+  const { addToCart } = useCartContext();
   const [searchOpen, setSearchOpen] = useState(false);
-  const [bottomMenuOpen, setBottomMenuOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [activeCategory, setActiveCategory] = useState("Todos");
   const [onlyDeals, setOnlyDeals] = useState(false);
@@ -194,11 +164,6 @@ export default function TiendaClientV2() {
     setOnlyDeals(false);
     setOnlyInStock(false);
   }
-  function goBottom(href: string) {
-    setBottomMenuOpen(false);
-    navigateWithTransition(href, router);
-  }
-
   return (
     <div
       className={`relative isolate min-h-screen overflow-x-hidden ${isDark ? "bg-[#070603] text-[#fff9ec]" : "bg-[#f4edda] text-neutral-950"}`}
@@ -253,6 +218,24 @@ export default function TiendaClientV2() {
             <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="¿Qué quieres mejorar? Aire, iluminación, grifería..." className={`h-14 w-full rounded-2xl border-0 pl-12 pr-4 text-sm font-semibold outline-none ring-0 transition focus:ring-2 focus:ring-yellow-300/45 ${isDark ? "bg-black/30 text-white placeholder:text-[#f7eedb]/35" : "bg-[#fffaf0]/80 text-neutral-950 placeholder:text-neutral-400"}`} />
           </label>
           <p className={`mt-3 px-2 text-xs md:mt-0 md:max-w-[280px] ${isDark ? "text-zinc-300" : "text-neutral-600"}`}>{filteredProducts.length} soluciones encontradas · compra directa o asistencia humana.</p>
+        </section>
+        <section className={`mb-4 overflow-hidden rounded-[1.8rem] p-4 shadow-[0_24px_70px_rgba(0,0,0,.10)] backdrop-blur-2xl sm:p-5 ${isDark ? "bg-[#fff6dc]/[0.075]" : "bg-white/62"}`}>
+          <div className="flex items-end justify-between gap-4">
+            <div><p className={`text-[10px] font-black uppercase tracking-[.24em] ${isDark ? "text-yellow-300" : "text-amber-700"}`}>Compra con la medida correcta</p><h2 className="mt-1 text-2xl font-black tracking-[-.045em]">Calcula primero. Elige mejor.</h2></div>
+            <p className={`hidden max-w-sm text-right text-xs leading-5 sm:block ${isDark ? "text-[#f7eedb]/48" : "text-neutral-600"}`}>Conoce BTU, materiales y rango de inversión antes de agregar un producto.</p>
+          </div>
+          <div className="store-scroll mt-4 flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-2">
+            <a href="/herramientas/aire-acondicionado" className="group grid min-w-[285px] grid-cols-[86px_1fr_auto] items-center gap-3 rounded-[1.4rem] bg-[#f8f1df] p-3 text-black transition hover:-translate-y-0.5 sm:min-w-0">
+              <img src="/images/calculators/air-conditioner.svg" alt="Equipo de aire acondicionado" className="h-[76px] w-[86px] rounded-xl object-cover" />
+              <span><span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[.18em] text-blue-700"><Snowflake className="h-3.5 w-3.5" /> Climatización</span><b className="mt-1 block text-sm">Calcula BTU y equipo</b><span className="mt-1 block text-[10px] text-black/55">Medidas, consumo e instalación</span></span>
+              <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" />
+            </a>
+            <a href="/herramientas/radier" className="group grid min-w-[285px] grid-cols-[86px_1fr_auto] items-center gap-3 rounded-[1.4rem] bg-yellow-300 p-3 text-black transition hover:-translate-y-0.5 sm:min-w-0">
+              <img src="/images/calculators/radier-solution.svg" alt="Sistema de radier por capas" className="h-[76px] w-[86px] rounded-xl object-cover" />
+              <span><span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[.18em] text-black/55"><Hammer className="h-3.5 w-3.5" /> Construcción</span><b className="mt-1 block text-sm">Calcula tu radier</b><span className="mt-1 block text-[10px] text-black/55">Capas, materiales y mano de obra</span></span>
+              <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" />
+            </a>
+          </div>
         </section>
         <section
           id="storeFilters"
@@ -394,92 +377,7 @@ export default function TiendaClientV2() {
           </div>
         </div>
       </footer>
-      {bottomMenuOpen && (
-        <div className="fixed inset-x-3 bottom-[calc(5.6rem+env(safe-area-inset-bottom))] z-[186] max-h-[calc(100dvh-7.5rem-env(safe-area-inset-bottom))] overflow-y-auto rounded-[1.7rem] bg-[#0b0a08]/94 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,.48)] backdrop-blur-2xl md:hidden">
-          <div className="mb-3 flex items-center justify-between px-1">
-            <p className="text-[10px] font-black uppercase tracking-[.26em] text-orange-300">
-              Menú rápido
-            </p>
-            <button
-              onClick={() => setBottomMenuOpen(false)}
-              className="rounded-full bg-white/10 px-3 py-1 text-xs font-black"
-            >
-              Cerrar
-            </button>
-          </div>
-          <div className="grid gap-2">
-            <BottomMenuItem
-              icon={LogIn}
-              label="Iniciar sesión"
-              sub="Entrar como cliente"
-              onClick={() => goBottom("/auth")}
-            />
-            <BottomMenuItem
-              icon={UserPlus}
-              label="Registrarse"
-              sub="Crear cuenta rápida"
-              onClick={() => goBottom("/registro")}
-            />
-            <BottomMenuItem
-              icon={Calculator}
-              label="Calculadora de radier"
-              sub="Cubicación y presupuesto libre"
-              onClick={() => goBottom("/herramientas/radier")}
-            />
-            <BottomMenuItem
-              icon={Wind}
-              label="Calculadora de aire"
-              sub="BTU y presupuesto libre"
-              onClick={() => goBottom("/herramientas/aire-acondicionado")}
-            />
-            <BottomMenuItem
-              icon={Menu}
-              label="Catálogo completo"
-              sub="Ver todos los productos"
-              onClick={() => goBottom("/tienda/catalogo")}
-            />
-          </div>
-        </div>
-      )}
-      <div className="fixed inset-x-0 bottom-0 z-[185] rounded-t-[1.4rem] bg-[#14120d]/92 px-3 pb-[calc(.6rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_55px_rgba(0,0,0,.34)] backdrop-blur-2xl md:hidden">
-        <div className="flex items-center gap-2">
-          <label className="relative min-w-0 flex-1">
-            <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-yellow-200/75" />
-            <input
-              value={searchQuery}
-              onChange={(event) => setSearchQuery(event.target.value)}
-              placeholder="Buscar producto..."
-              className="h-12 w-full rounded-2xl bg-[linear-gradient(135deg,rgba(255,184,28,.22),rgba(249,115,22,.14))] px-10 text-sm font-black text-white outline-none ring-1 ring-yellow-300/25 placeholder:text-white/55 focus:ring-orange-300/60"
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery("")}
-                className="absolute right-2 top-1/2 -translate-y-1/2 rounded-full bg-black/45 px-2 py-1 text-[10px] font-black text-white/75"
-              >
-                x
-              </button>
-            )}
-          </label>
-          <button
-            onClick={() => setBottomMenuOpen((value) => !value)}
-            className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-white/[0.08] text-white ring-1 ring-white/10"
-          >
-            <Menu className="h-5 w-5" />
-            <span className="sr-only">Menú</span>
-          </button>
-          <button
-            onClick={openCart}
-            className="relative grid h-12 w-14 shrink-0 place-items-center rounded-2xl bg-gradient-to-r from-yellow-300 to-orange-500 text-black"
-          >
-            <ShoppingBag className="h-5 w-5" />
-            {totalItems > 0 && (
-              <span className="absolute -right-1 -top-1 grid h-5 min-w-5 place-items-center rounded-full bg-emerald-300 px-1 text-[10px] font-black text-black">
-                {totalItems}
-              </span>
-            )}
-          </button>
-        </div>
-      </div>
+      <StoreBottomNav />
       <UiverseSearchModal
         open={searchOpen}
         value={searchQuery}

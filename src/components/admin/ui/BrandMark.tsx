@@ -10,7 +10,7 @@ interface BrandMarkProps {
 }
 
 const sizeMap = {
-  sm: { box: 'h-8 w-8 rounded-xl', icon: 18 },
+  sm: { box: 'h-8 w-8 rounded-xl',  icon: 18 },
   md: { box: 'h-10 w-10 rounded-xl', icon: 22 },
   lg: { box: 'h-12 w-12 rounded-2xl', icon: 26 },
   xl: { box: 'h-16 w-16 rounded-2xl', icon: 34 },
@@ -20,25 +20,22 @@ export function BrandMark({ size = 'md', animated = true, className = '' }: Bran
   const s = sizeMap[size];
   return (
     <span
-      className={`admin-brand-mark-lava relative flex flex-shrink-0 items-center justify-center overflow-hidden border border-yellow-100/20 bg-black text-yellow-200 shadow-[0_8px_24px_rgba(0,0,0,0.35)] ${s.box} ${className}`}
+      className={`relative flex flex-shrink-0 items-center justify-center overflow-hidden border border-white/15 bg-black shadow-[0_8px_24px_rgba(0,0,0,0.35)] ${s.box} ${className}`}
     >
+      {/* Animated light sweep */}
       {animated && (
-        <>
-          <span className="absolute inset-y-0 -left-full z-[3] w-1/2 bg-gradient-to-r from-transparent via-white/65 to-transparent [animation:brand-sweep_3.8s_ease-in-out_infinite]" />
-          <span className="absolute inset-0 z-[2] rounded-[inherit] bg-[radial-gradient(circle_at_50%_25%,rgba(255,241,214,.20),transparent_45%)]" />
-        </>
+        <span className="absolute inset-y-0 -left-full w-1/2 bg-gradient-to-r from-transparent via-white/50 to-transparent [animation:brand-sweep_3.8s_ease-in-out_infinite]" />
       )}
 
-      <span className="relative z-10 drop-shadow-[0_0_12px_rgba(250,204,21,.55)]">
+      <span className="relative z-10">
         <FabrickPeakIcon size={s.icon} />
       </span>
 
       <style jsx>{`
         @keyframes brand-sweep {
-          0% { transform: translateX(0%); opacity: 0; }
-          20% { opacity: .9; }
-          58% { transform: translateX(420%); opacity: 0; }
-          100% { transform: translateX(420%); opacity: 0; }
+          0%   { transform: translateX(0%); }
+          55%  { transform: translateX(420%); }
+          100% { transform: translateX(420%); }
         }
       `}</style>
     </span>
@@ -51,8 +48,8 @@ export function BrandWordmark({ tagline, className = '' }: { tagline?: string; c
       <FabrickNavLogo theme="light" />
       {tagline ? (
         <span className="mt-1 flex items-center gap-1.5">
-          <span className="h-1 w-1 rounded-full bg-orange-400 shadow-[0_0_8px_rgba(255,106,31,0.75)] animate-pulse" />
-          <span className="text-[9px] uppercase tracking-[0.32em] text-[#fff1d6]/65">{tagline}</span>
+          <span className="h-1 w-1 rounded-full bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.6)] animate-pulse" />
+          <span className="text-[9px] uppercase tracking-[0.32em] text-white/55">{tagline}</span>
         </span>
       ) : null}
     </span>

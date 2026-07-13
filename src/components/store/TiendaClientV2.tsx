@@ -219,21 +219,32 @@ export default function TiendaClientV2() {
           </label>
           <p className={`mt-3 px-2 text-xs md:mt-0 md:max-w-[280px] ${isDark ? "text-zinc-300" : "text-neutral-600"}`}>{filteredProducts.length} soluciones encontradas · compra directa o asistencia humana.</p>
         </section>
-        <section className={`mb-4 overflow-hidden rounded-[1.8rem] p-4 shadow-[0_24px_70px_rgba(0,0,0,.10)] backdrop-blur-2xl sm:p-5 ${isDark ? "bg-[#fff6dc]/[0.075]" : "bg-white/62"}`}>
+        <section className={`mb-4 overflow-hidden rounded-[1.8rem] p-4 shadow-[0_24px_70px_rgba(0,0,0,.10)] backdrop-blur-2xl sm:p-6 ${isDark ? "bg-[radial-gradient(circle_at_12%_0%,rgba(250,204,21,.12),transparent_36%),rgba(255,246,220,.065)]" : "bg-[radial-gradient(circle_at_12%_0%,rgba(250,204,21,.18),transparent_38%),rgba(255,255,255,.68)]"}`}>
           <div className="flex items-end justify-between gap-4">
-            <div><p className={`text-[10px] font-black uppercase tracking-[.24em] ${isDark ? "text-yellow-300" : "text-amber-700"}`}>Compra con la medida correcta</p><h2 className="mt-1 text-2xl font-black tracking-[-.045em]">Calcula primero. Elige mejor.</h2></div>
-            <p className={`hidden max-w-sm text-right text-xs leading-5 sm:block ${isDark ? "text-[#f7eedb]/48" : "text-neutral-600"}`}>Conoce BTU, materiales y rango de inversión antes de agregar un producto.</p>
+            <div>
+              <p className={`text-[10px] font-black uppercase tracking-[.24em] ${isDark ? "text-yellow-300" : "text-amber-700"}`}>Compra con la medida correcta</p>
+              <h2 className="mt-1 max-w-[18ch] text-[1.7rem] font-black leading-[.98] tracking-[-.05em] sm:max-w-none sm:text-3xl">Calcula antes de comprar.</h2>
+            </div>
+            <p className={`hidden max-w-sm text-right text-xs leading-5 sm:block ${isDark ? "text-[#f7eedb]/58" : "text-neutral-600"}`}>Obtén una capacidad o cantidad recomendada y compra con una referencia clara.</p>
           </div>
-          <div className="store-scroll mt-4 flex gap-3 overflow-x-auto pb-1 sm:grid sm:grid-cols-2">
-            <a href="/herramientas/aire-acondicionado" className="group grid min-w-[285px] grid-cols-[68px_1fr_auto] items-center gap-3 rounded-[1.4rem] bg-[#f8f1df] p-3 text-black transition hover:-translate-y-0.5 sm:min-w-0">
-              <span className="grid h-[68px] w-[68px] place-items-center rounded-2xl bg-[#0c1118] text-cyan-300 shadow-inner"><Snowflake className="h-7 w-7" /></span>
-              <span><span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[.18em] text-blue-700"><Snowflake className="h-3.5 w-3.5" /> Climatización</span><b className="mt-1 block text-sm">Calcula BTU y equipo</b><span className="mt-1 block text-[10px] text-black/55">Medidas, consumo e instalación</span></span>
-              <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" />
+          <div className="mt-5 grid grid-cols-2 gap-3">
+            <a href="/herramientas/aire-acondicionado" className="group flex min-w-0 flex-col rounded-[1.45rem] bg-[#f8f1df] p-3.5 text-black shadow-[0_16px_40px_rgba(0,0,0,.12)] transition hover:-translate-y-1 sm:grid sm:grid-cols-[64px_1fr_auto] sm:items-center sm:gap-4 sm:p-4">
+              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#0c1118] text-cyan-300 shadow-inner sm:h-16 sm:w-16"><Snowflake className="h-6 w-6 sm:h-7 sm:w-7" /></span>
+              <span className="mt-4 min-w-0 sm:mt-0">
+                <span className="block text-[8px] font-black uppercase tracking-[.16em] text-blue-700 sm:text-[9px]">Climatización</span>
+                <b className="mt-1 block text-[15px] leading-[1.05] sm:text-base">Aire correcto para tu espacio</b>
+                <span className="mt-2 block text-[10px] leading-4 text-black/58 sm:text-xs">BTU, equipo y consumo mensual.</span>
+              </span>
+              <span className="mt-4 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[.12em] sm:mt-0 sm:grid sm:h-10 sm:w-10 sm:place-items-center sm:rounded-full sm:bg-black sm:text-white"><span className="sm:sr-only">Calcular aire</span><ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></span>
             </a>
-            <a href="/herramientas/radier" className="group grid min-w-[285px] grid-cols-[68px_1fr_auto] items-center gap-3 rounded-[1.4rem] bg-yellow-300 p-3 text-black transition hover:-translate-y-0.5 sm:min-w-0">
-              <span className="grid h-[68px] w-[68px] place-items-center rounded-2xl bg-black/88 text-yellow-300 shadow-inner"><Hammer className="h-7 w-7" /></span>
-              <span><span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[.18em] text-black/55"><Hammer className="h-3.5 w-3.5" /> Construcción</span><b className="mt-1 block text-sm">Calcula tu radier</b><span className="mt-1 block text-[10px] text-black/55">Capas, materiales y mano de obra</span></span>
-              <ArrowRight className="h-5 w-5 transition group-hover:translate-x-1" />
+            <a href="/herramientas/radier" className="group flex min-w-0 flex-col rounded-[1.45rem] bg-yellow-300 p-3.5 text-black shadow-[0_16px_40px_rgba(250,204,21,.14)] transition hover:-translate-y-1 sm:grid sm:grid-cols-[64px_1fr_auto] sm:items-center sm:gap-4 sm:p-4">
+              <span className="grid h-12 w-12 place-items-center rounded-2xl bg-black/90 text-yellow-300 shadow-inner sm:h-16 sm:w-16"><Hammer className="h-6 w-6 sm:h-7 sm:w-7" /></span>
+              <span className="mt-4 min-w-0 sm:mt-0">
+                <span className="block text-[8px] font-black uppercase tracking-[.16em] text-black/55 sm:text-[9px]">Construcción</span>
+                <b className="mt-1 block text-[15px] leading-[1.05] sm:text-base">Radier con materiales claros</b>
+                <span className="mt-2 block text-[10px] leading-4 text-black/58 sm:text-xs">Área, capas y costo referencial.</span>
+              </span>
+              <span className="mt-4 inline-flex items-center gap-1 text-[10px] font-black uppercase tracking-[.12em] sm:mt-0 sm:grid sm:h-10 sm:w-10 sm:place-items-center sm:rounded-full sm:bg-black sm:text-white"><span className="sm:sr-only">Calcular radier</span><ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></span>
             </a>
           </div>
         </section>

@@ -5,18 +5,24 @@ import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
-  Check,
+  CalendarDays,
   CheckCircle2,
   ChevronRight,
   ClipboardList,
+  Clock3,
+  Eye,
   Layers3,
   Maximize2,
+  Minus,
   PackageCheck,
+  Plus,
+  Power,
   Ruler,
   Snowflake,
   Sparkles,
   Thermometer,
   Truck,
+  X,
   Zap,
 } from 'lucide-react';
 import { FabrickNavLogo } from '@/components/FabrickBrandIcon';
@@ -53,6 +59,22 @@ type RadierPlan = {
 const money = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 const num = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
 const capacities: Capacity[] = [9000, 12000, 18000, 24000];
+const ENERGY_REFERENCE_CLP_KWH = 263;
+const CGE_TARIFF_SOURCE = 'https://www.cge.cl/informacion-comercial/tarifas-y-procesos-tarifarios/tarifa-de-suministro/';
+const AIR_INPUT_POWER_KW: Record<Capacity, number> = {
+  9000: 0.82,
+  12000: 1.08,
+  18000: 1.58,
+  24000: 2.2,
+};
+
+function getTemperatureLoadFactor(temperature: number) {
+  if (temperature <= 18) return 0.82;
+  if (temperature <= 20) return 0.68;
+  if (temperature <= 22) return 0.56;
+  if (temperature <= 24) return 0.46;
+  return 0.38;
+}
 
 const ThreeAirRoomViewer = dynamic(() => import('@/components/presupuestos/ThreeAirRoomViewer'), {
   ssr: false,
@@ -122,12 +144,129 @@ function RadierPlanThumbnail({ reinforced }: { reinforced: boolean }) {
   );
 }
 
-function AirProductCard({ item, selected, recommended, onSelect }: { item: AirProductOption; selected: boolean; recommended: boolean; onSelect: () => void }) {
+function AirProductCard({ item, selected, recommended, onSelect, onPreview }: { item: AirProductOption; selected: boolean; recommended: boolean; onSelect: () => void; onPreview: () => void }) {
   return (
-    <button onClick={onSelect} className={`group grid min-w-[230px] grid-cols-[76px_1fr] gap-3 rounded-[1.45rem] p-3 text-left transition sm:min-w-0 ${selected ? 'bg-[#fff6dc] text-black shadow-[0_18px_44px_rgba(0,0,0,.22)]' : 'bg-[#fff6dc]/[0.065] text-white ring-1 ring-white/[0.06]'}`}>
-      <div className="relative h-[76px] overflow-hidden rounded-[1.05rem] bg-white"><AirProductThumbnail item={item} />{recommended ? <span className="absolute bottom-1 left-1 rounded-full bg-yellow-300 px-1.5 py-0.5 text-[7px] font-black uppercase text-black">Recomendado</span> : null}</div>
-      <span className="min-w-0"><span className={`block text-[9px] font-black uppercase tracking-[.18em] ${selected ? 'text-amber-700' : 'text-yellow-300'}`}>{item.cap.toLocaleString('es-CL')} BTU</span><b className="mt-1 block line-clamp-2 text-sm leading-tight">{item.name}</b><span className={`mt-2 block text-lg font-black ${selected ? 'text-black' : 'text-yellow-300'}`}>{money.format(item.price)}</span></span>
-    </button>
+    <article className={`group flex w-[252px] shrink-0 snap-center flex-col overflow-hidden rounded-[1.6rem] p-3 transition duration-300 hover:-translate-y-1 sm:w-auto ${selected ? 'bg-[#fff6dc] text-black shadow-[0_22px_56px_rgba(0,0,0,.28)]' : 'bg-[#fff6dc]/[0.075] text-white ring-1 ring-white/[0.07]'}`}>
+      <button type="button" onClick={onPreview} aria-label={`Ver detalles de ${item.name}`} className="relative h-28 overflow-hidden rounded-[1.2rem] bg-white text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300">
+        <AirProductThumbnail item={item} />
+        {recommended ? <span className="absolute left-2 top-2 rounded-full bg-yellow-300 px-2 py-1 text-[8px] font-black uppercase tracking-[.08em] text-black shadow">Recomendado</span> : null}
+        <span className="absolute bottom-2 right-2 grid h-8 w-8 place-items-center rounded-full bg-black/80 text-white backdrop-blur-md transition group-hover:scale-110"><Eye className="h-4 w-4" /></span>
+      </button>
+      <div className="flex flex-1 flex-col px-1 pb-1 pt-3">
+        <span className={`text-[9px] font-black uppercase tracking-[.18em] ${selected ? 'text-amber-700' : 'text-yellow-300'}`}>{item.cap.toLocaleString('es-CL')} BTU</span>
+        <h3 className="mt-1 line-clamp-2 min-h-9 text-sm font-black leading-[1.15]">{item.name}</h3>
+        <ul className={`mt-2 space-y-1 text-[10px] leading-4 ${selected ? 'text-black/58' : 'text-zinc-400'}`}>
+          {item.details.slice(0, 2).map((detail) => <li key={detail} className="flex gap-1.5"><CheckCircle2 className={`mt-0.5 h-3 w-3 shrink-0 ${selected ? 'text-amber-700' : 'text-yellow-300'}`} />{detail}</li>)}
+        </ul>
+        <div className="mt-auto flex items-end justify-between gap-2 pt-3">
+          <div><span className={`block text-[8px] font-bold uppercase tracking-widest ${selected ? 'text-black/40' : 'text-white/35'}`}>Precio referencial</span><b className={`block text-xl tracking-[-.04em] ${selected ? 'text-black' : 'text-yellow-300'}`}>{money.format(item.price)}</b></div>
+          <button type="button" onClick={onSelect} aria-pressed={selected} className={`min-h-10 rounded-full px-4 text-[10px] font-black uppercase tracking-[.1em] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 ${selected ? 'bg-black text-white' : 'bg-yellow-300 text-black hover:bg-[#fff6dc]'}`}>{selected ? 'Elegido' : 'Elegir'}</button>
+        </div>
+      </div>
+    </article>
+  );
+}
+
+function AirProductDialog({ item, selected, onClose, onSelect }: { item: AirProductOption; selected: boolean; onClose: () => void; onSelect: () => void }) {
+  return (
+    <div role="dialog" aria-modal="true" aria-label={`Ficha de ${item.name}`} onClick={onClose} className="fixed inset-0 z-[100] grid items-end bg-black/78 p-3 backdrop-blur-md sm:place-items-center">
+      <article onClick={(event) => event.stopPropagation()} className="max-h-[calc(100dvh-1.5rem)] w-full max-w-2xl overflow-y-auto rounded-[2rem] bg-[#f8f1df] p-4 text-black shadow-[0_30px_100px_rgba(0,0,0,.55)] sm:p-6">
+        <div className="flex items-center justify-between gap-4">
+          <div><p className="text-[9px] font-black uppercase tracking-[.22em] text-amber-700">Ficha rápida · {item.cap.toLocaleString('es-CL')} BTU</p><h2 className="mt-1 text-xl font-black tracking-[-.04em] sm:text-2xl">{item.name}</h2></div>
+          <button type="button" onClick={onClose} aria-label="Cerrar ficha" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-black text-white"><X className="h-5 w-5" /></button>
+        </div>
+        <div className="mt-5 grid gap-5 sm:grid-cols-[1.08fr_.92fr]">
+          <div className="relative h-56 overflow-hidden rounded-[1.6rem] bg-white sm:h-full sm:min-h-64"><AirProductThumbnail item={item} /><span className="absolute bottom-3 left-3 rounded-full bg-black px-3 py-1.5 text-[9px] font-black uppercase tracking-widest text-yellow-300">Inverter · frío/calor</span></div>
+          <div className="flex flex-col">
+            <span className="text-[9px] font-black uppercase tracking-[.2em] text-black/45">Lo esencial</span>
+            <ul className="mt-3 space-y-3">
+              {item.details.map((detail) => <li key={detail} className="flex items-start gap-2 text-sm font-semibold"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />{detail}</li>)}
+              <li className="flex items-start gap-2 text-sm font-semibold"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />Capacidad nominal de {item.cap.toLocaleString('es-CL')} BTU</li>
+              <li className="flex items-start gap-2 text-sm font-semibold"><CheckCircle2 className="mt-0.5 h-4 w-4 shrink-0 text-amber-600" />{typeof item.stock === 'number' ? `${item.stock} unidades informadas` : 'Stock por confirmar'}</li>
+            </ul>
+            <div className="mt-5 rounded-[1.3rem] bg-yellow-300 p-4"><span className="text-[9px] font-black uppercase tracking-[.16em] text-black/50">Precio referencial del equipo</span><b className="mt-1 block text-3xl tracking-[-.05em]">{money.format(item.price)}</b></div>
+            <div className="mt-3 grid grid-cols-2 gap-2">
+              {item.productId ? <a href={`/producto/${item.productId}`} className="inline-flex min-h-12 items-center justify-center rounded-full bg-black/8 px-4 text-center text-xs font-black">Ver producto</a> : <button type="button" onClick={onClose} className="min-h-12 rounded-full bg-black/8 px-4 text-xs font-black">Seguir comparando</button>}
+              <button type="button" onClick={() => { onSelect(); onClose(); }} className="min-h-12 rounded-full bg-black px-4 text-xs font-black text-white">{selected ? 'Mantener elegido' : 'Elegir equipo'}</button>
+            </div>
+          </div>
+        </div>
+      </article>
+    </div>
+  );
+}
+
+type EnergyRemoteCalculatorProps = {
+  capacity: Capacity;
+  temperature: number;
+  hours: number;
+  days: number;
+  tariff: number;
+  averagePowerKw: number;
+  monthlyKwh: number;
+  monthlyCost: number;
+  onTemperatureChange: (value: number) => void;
+  onHoursChange: (value: number) => void;
+  onDaysChange: (value: number) => void;
+  onTariffChange: (value: number) => void;
+};
+
+function EnergyRemoteCalculator({ capacity, temperature, hours, days, tariff, averagePowerKw, monthlyKwh, monthlyCost, onTemperatureChange, onHoursChange, onDaysChange, onTariffChange }: EnergyRemoteCalculatorProps) {
+  const nominalPower = AIR_INPUT_POWER_KW[capacity];
+  const loadFactor = getTemperatureLoadFactor(temperature);
+  const dailyCost = days > 0 ? monthlyCost / days : 0;
+
+  return (
+    <section className="mt-7 overflow-hidden rounded-[2.1rem] bg-[radial-gradient(circle_at_14%_0%,rgba(34,211,238,.16),transparent_30%),radial-gradient(circle_at_90%_100%,rgba(250,204,21,.16),transparent_34%),#0e0c08] p-4 shadow-[0_30px_90px_rgba(0,0,0,.34)] ring-1 ring-white/[0.07] sm:p-7" aria-labelledby="energy-calculator-title">
+      <header className="flex flex-wrap items-end justify-between gap-4">
+        <div><p className="text-[10px] font-black uppercase tracking-[.25em] text-cyan-300">Simulador de consumo inverter</p><h2 id="energy-calculator-title" className="mt-2 max-w-2xl text-3xl font-black leading-[.95] tracking-[-.055em] sm:text-4xl">Lo que realmente podría sumar a tu cuenta.</h2></div>
+        <span className="rounded-full bg-yellow-300 px-3 py-2 text-[9px] font-black uppercase tracking-[.13em] text-black">Referencia Chile · 2026</span>
+      </header>
+      <p className="mt-4 max-w-3xl text-sm leading-6 text-[#f7eedb]/62">Un equipo inverter no trabaja a máxima potencia durante todo el día: modula al acercarse a la temperatura elegida. Ajusta tus horas y la tarifa de tu boleta para obtener una estimación transparente.</p>
+
+      <div className="mt-6 grid gap-5 lg:grid-cols-[330px_1fr]">
+        <div className="mx-auto w-full max-w-[330px] rounded-[3.1rem] bg-[linear-gradient(150deg,#fff9e8,#ddd2b8)] p-4 text-black shadow-[0_28px_70px_rgba(0,0,0,.48),inset_0_1px_0_white] sm:p-5">
+          <div className="flex items-center justify-between px-1"><span className="text-[9px] font-black uppercase tracking-[.24em] text-black/42">Fabrick climate</span><span className="grid h-9 w-9 place-items-center rounded-full bg-black text-yellow-300 shadow"><Power className="h-4 w-4" /></span></div>
+          <div className="mt-4 overflow-hidden rounded-[1.8rem] bg-[#071018] p-5 text-cyan-300 shadow-[inset_0_0_34px_rgba(34,211,238,.12)] ring-1 ring-black/10">
+            <div className="flex items-start justify-between"><Snowflake className="h-7 w-7" /><span className="text-[9px] font-black uppercase tracking-[.18em] text-cyan-100/55">Cool · Auto</span></div>
+            <div className="mt-2 flex items-start justify-center font-mono"><span className="text-[5.3rem] font-black leading-none tracking-[-.1em]">{temperature}</span><span className="mt-2 text-2xl font-bold">°C</span></div>
+            <div className="mt-3 flex items-center justify-between border-t border-cyan-100/10 pt-3 text-[9px] font-black uppercase tracking-[.14em] text-cyan-100/55"><span>{capacity.toLocaleString('es-CL')} BTU</span><span>{averagePowerKw.toFixed(2)} kW prom.</span></div>
+          </div>
+
+          <div className="mt-4 grid grid-cols-[1fr_auto_1fr] items-center gap-3">
+            <button type="button" aria-label="Bajar temperatura" onClick={() => onTemperatureChange(Math.max(16, temperature - 1))} className="grid h-12 place-items-center rounded-full bg-black/8 shadow-inner"><Minus className="h-5 w-5" /></button>
+            <span className="text-[9px] font-black uppercase tracking-[.18em] text-black/42">Temperatura</span>
+            <button type="button" aria-label="Subir temperatura" onClick={() => onTemperatureChange(Math.min(30, temperature + 1))} className="grid h-12 place-items-center rounded-full bg-black text-white shadow"><Plus className="h-5 w-5" /></button>
+          </div>
+
+          <div className="mt-4 space-y-3 rounded-[1.55rem] bg-white/48 p-4 shadow-inner">
+            <label className="block"><span className="flex items-center justify-between text-[9px] font-black uppercase tracking-[.14em] text-black/48"><span className="inline-flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5" /> Uso diario</span><b className="text-black">{hours} h</b></span><input type="range" min="1" max="16" step="1" value={hours} onChange={(event) => onHoursChange(Number(event.target.value))} className="mt-2 w-full accent-black" /></label>
+            <label className="block"><span className="flex items-center justify-between text-[9px] font-black uppercase tracking-[.14em] text-black/48"><span className="inline-flex items-center gap-1.5"><CalendarDays className="h-3.5 w-3.5" /> Días al mes</span><b className="text-black">{days}</b></span><input type="range" min="1" max="31" step="1" value={days} onChange={(event) => onDaysChange(Number(event.target.value))} className="mt-2 w-full accent-black" /></label>
+            <label className="flex items-center justify-between gap-3 rounded-xl bg-white/70 px-3 py-2"><span className="text-[9px] font-black uppercase tracking-[.13em] text-black/48">Tarifa $/kWh</span><input type="number" min="1" max="1000" step="1" value={tariff} onChange={(event) => onTariffChange(Math.max(1, Number(event.target.value) || ENERGY_REFERENCE_CLP_KWH))} className="w-20 bg-transparent text-right font-mono text-lg font-black outline-none" /></label>
+          </div>
+        </div>
+
+        <div className="flex flex-col rounded-[1.9rem] bg-[#fff6dc]/[0.065] p-5 ring-1 ring-white/[0.06] sm:p-7">
+          <p className="text-[10px] font-black uppercase tracking-[.22em] text-yellow-300">Costo mensual estimado</p>
+          <p className="mt-2 text-[clamp(44px,8vw,82px)] font-black leading-none tracking-[-.075em] text-white">{money.format(monthlyCost)}</p>
+          <p className="mt-3 text-sm font-semibold text-cyan-200">Aproximadamente {money.format(dailyCost)} por día de uso configurado.</p>
+
+          <div className="mt-6 grid grid-cols-3 gap-2">
+            <Metric label="Energía mes" value={`${num.format(monthlyKwh)} kWh`} icon={Zap} />
+            <Metric label="Potencia media" value={`${averagePowerKw.toFixed(2)} kW`} icon={Snowflake} />
+            <Metric label="Factor inverter" value={`${Math.round(loadFactor * 100)}%`} icon={Sparkles} />
+          </div>
+
+          <div className="mt-5 rounded-[1.35rem] bg-black/28 p-4 text-xs leading-6 text-[#f7eedb]/62">
+            <b className="text-white">Cálculo visible:</b> {nominalPower.toFixed(2)} kW nominales × {Math.round(loadFactor * 100)}% de carga × {hours} h × {days} días = <b className="text-cyan-200">{num.format(monthlyKwh)} kWh</b>. Luego se multiplica por {money.format(tariff)}/kWh.
+          </div>
+          <div className="mt-4 rounded-[1.35rem] bg-yellow-300/10 p-4 text-xs leading-5 text-yellow-50/68 ring-1 ring-yellow-300/15">
+            <b className="text-yellow-200">No es correcto afirmar que todo aire acondicionado “es costoso”.</b> El gasto cambia según capacidad, aislamiento, temperatura exterior, mantención, horas de uso y tarifa. Este cálculo estima solo la energía adicional; no suma cargo fijo ni otros cargos de la cuenta.
+          </div>
+          <p className="mt-auto pt-5 text-[10px] leading-5 text-[#f7eedb]/45">Valor guía precargado: $263/kWh para una referencia residencial Maule 2026. La tarifa real cambia por comuna, sector tarifario y distribuidora; por eso puedes editarla con el valor de tu boleta. <a href={CGE_TARIFF_SOURCE} target="_blank" rel="noreferrer" className="font-black text-yellow-300 underline decoration-yellow-300/35 underline-offset-4">Revisar tarifas oficiales CGE 2026</a>.</p>
+        </div>
+      </div>
+    </section>
   );
 }
 
@@ -171,6 +310,11 @@ export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
   const [service, setService] = useState<ServiceMode>('equipo_instalacion');
   const [selectedCap, setSelectedCap] = useState<Capacity>(18000);
   const [selectedPlanId, setSelectedPlanId] = useState<RadierPlanId>('estandar');
+  const [previewProduct, setPreviewProduct] = useState<AirProductOption | null>(null);
+  const [temperature, setTemperature] = useState(22);
+  const [dailyHours, setDailyHours] = useState(4);
+  const [monthlyDays, setMonthlyDays] = useState(30);
+  const [energyTariff, setEnergyTariff] = useState(ENERGY_REFERENCE_CLP_KWH);
 
   const airOptions = useMemo<AirProductOption[]>(() => AIR_FALLBACKS.map((fallback) => {
     const match = products.find((product) => {
@@ -180,6 +324,14 @@ export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
     });
     return match ? { ...fallback, productId: match.id, name: match.name, price: match.price, image: match.image_url || match.img || fallback.image, details: (match.features || fallback.details).slice(0, 2), stock: match.stock } : fallback;
   }), [products]);
+
+  const energyEstimate = useMemo(() => {
+    const nominalPowerKw = AIR_INPUT_POWER_KW[selectedCap];
+    const loadFactor = getTemperatureLoadFactor(temperature);
+    const averagePowerKw = nominalPowerKw * loadFactor;
+    const monthlyKwh = averagePowerKw * dailyHours * monthlyDays;
+    return { averagePowerKw, monthlyKwh, monthlyCost: Math.round(monthlyKwh * energyTariff) };
+  }, [dailyHours, energyTariff, monthlyDays, selectedCap, temperature]);
 
   const air = useMemo(() => {
     const area = length * width;
@@ -195,9 +347,8 @@ export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
     const net = rows.reduce((sum, [, value]) => sum + value, 0);
     const tax = Math.round(net * 0.19);
     const total = net + tax;
-    const kwhMonth = (selectedCap === 9000 ? 0.82 : selectedCap === 12000 ? 1.08 : selectedCap === 18000 ? 1.58 : 2.2) * 6 * 30;
-    return { area, volume, requiredBtu, recommendedCap, selectedProduct, rows, net, tax, total, kwhMonth, monthlyCost: Math.round(kwhMonth * 210 * 0.72) };
-  }, [airOptions, height, length, people, selectedCap, service, watts, width]);
+    return { area, volume, requiredBtu, recommendedCap, selectedProduct, rows, net, tax, total, kwhMonth: energyEstimate.monthlyKwh, monthlyCost: energyEstimate.monthlyCost };
+  }, [airOptions, energyEstimate, height, length, people, selectedCap, service, watts, width]);
 
   const radier = useMemo(() => {
     const factor = shape === 'l' ? 0.82 : shape === 'u' ? 0.72 : 1;
@@ -250,7 +401,7 @@ export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
 
                   <section>
                     <div className="mb-3 flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-yellow-300 text-sm font-black text-black">2</span><div><h2 className="font-black">{isAir ? 'Elige el equipo' : 'Elige la solución'}</h2><p className="text-xs text-zinc-500">Miniatura, detalle corto y precio referencial.</p></div></div>
-                    {isAir ? <div className="flex gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-2">{airOptions.map((item) => <AirProductCard key={item.cap} item={item} selected={selectedCap === item.cap} recommended={air.recommendedCap === item.cap} onSelect={() => setSelectedCap(item.cap)} />)}</div> : <div className="flex gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-3">{RADIER_PLANS.map((plan) => <RadierPlanCard key={plan.id} plan={plan} selected={selectedPlanId === plan.id} onSelect={() => setSelectedPlanId(plan.id)} />)}</div>}
+                    {isAir ? <div className="flex snap-x snap-mandatory gap-3 overflow-x-auto pb-3 pr-8 sm:grid sm:grid-cols-2 sm:pr-0">{airOptions.map((item) => <AirProductCard key={item.cap} item={item} selected={selectedCap === item.cap} recommended={air.recommendedCap === item.cap} onSelect={() => setSelectedCap(item.cap)} onPreview={() => setPreviewProduct(item)} />)}</div> : <div className="flex gap-2 overflow-x-auto pb-2 sm:grid sm:grid-cols-3">{RADIER_PLANS.map((plan) => <RadierPlanCard key={plan.id} plan={plan} selected={selectedPlanId === plan.id} onSelect={() => setSelectedPlanId(plan.id)} />)}</div>}
                     {isAir && selectedCap < air.recommendedCap ? <button onClick={() => setSelectedCap(air.recommendedCap)} className="mt-3 flex w-full items-center justify-between gap-3 rounded-[1.25rem] bg-amber-400/12 p-3 text-left text-xs text-amber-100 ring-1 ring-amber-300/20"><span><b className="block">La capacidad seleccionada puede quedar corta.</b><span className="mt-0.5 block opacity-65">Tu cálculo recomienda {air.recommendedCap.toLocaleString('es-CL')} BTU.</span></span><ChevronRight className="h-5 w-5 shrink-0" /></button> : null}
                   </section>
 
@@ -269,6 +420,8 @@ export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
             </div>
           </section>
 
+          {isAir ? <EnergyRemoteCalculator capacity={selectedCap} temperature={temperature} hours={dailyHours} days={monthlyDays} tariff={energyTariff} averagePowerKw={energyEstimate.averagePowerKw} monthlyKwh={energyEstimate.monthlyKwh} monthlyCost={energyEstimate.monthlyCost} onTemperatureChange={setTemperature} onHoursChange={setDailyHours} onDaysChange={setMonthlyDays} onTariffChange={setEnergyTariff} /> : null}
+
           <section className="mt-7" aria-label={isAir ? 'Demostración 3D de aire acondicionado' : 'Demostración 3D de radier'}>
             {isAir ? (
               <ThreeAirRoomViewer key={`air-${selectedCap}`} largo={length} ancho={width} alto={height} area={air.area} btu={air.requiredBtu} seleccionado={selectedCap} title="Cuarto + aire acondicionado interactivo" />
@@ -278,6 +431,7 @@ export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
           </section>
         </div>
       </main>
+      {previewProduct ? <AirProductDialog item={previewProduct} selected={selectedCap === previewProduct.cap} onClose={() => setPreviewProduct(null)} onSelect={() => setSelectedCap(previewProduct.cap)} /> : null}
       <StoreBottomNav />
     </div>
   );

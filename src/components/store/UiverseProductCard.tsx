@@ -1,9 +1,7 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
 import type { MouseEvent } from 'react';
-import { ArrowUpRight, PackageCheck, ShoppingBag, Star, Truck } from 'lucide-react';
+import { Check, ShoppingBag } from 'lucide-react';
 
 interface UiverseProductCardProps {
   name: string;
@@ -42,10 +40,8 @@ export default function UiverseProductCard({
   price,
   category,
   img,
-  description,
   features = [],
   discountPct = 0,
-  rating,
   stock,
   stockLabel,
   deliveryLabel,
@@ -60,15 +56,14 @@ export default function UiverseProductCard({
 
   return (
     <article
-      onClick={onSelect}
-      className={`group relative flex h-full cursor-pointer flex-col overflow-hidden rounded-[1.7rem] border transition duration-300 hover:-translate-y-1 ${
+      className={`store-motion group relative flex h-full flex-col overflow-hidden rounded-[1.55rem] transition duration-300 hover:-translate-y-1 ${
         isDark
-          ? 'border-white/10 bg-[#11100d] shadow-[0_22px_60px_rgba(0,0,0,.32)] hover:border-yellow-300/35'
-          : 'border-black/10 bg-white shadow-[0_22px_54px_rgba(20,20,20,.08)] hover:border-amber-500/40'
+          ? 'bg-[#f8f1df] text-black shadow-[0_24px_70px_rgba(0,0,0,.28)]'
+          : 'bg-white/65 shadow-[0_22px_54px_rgba(20,20,20,.08)] backdrop-blur-xl'
       }`}
     >
-      <div className={`relative m-2 overflow-hidden rounded-[1.55rem] ${isDark ? 'bg-[#17100a]' : 'bg-[#fff3dc]'}`}>
-        <div className="aspect-[1.08/1]">
+      <div className={`relative m-2 overflow-hidden rounded-[1.3rem] ${isDark ? 'bg-[#17100a]' : 'bg-[#fff3dc]'}`}>
+        <div className="aspect-[4/3]">
           {img ? (
             <img src={img} alt={name} className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.05]" loading="lazy" />
           ) : (
@@ -76,49 +71,38 @@ export default function UiverseProductCard({
           )}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/78 via-black/8 to-transparent" />
-        <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1.5">
+        <button type="button" onClick={onSelect} aria-label={`Ver detalles de ${name}`} className="absolute inset-0 z-10 rounded-[1.3rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-yellow-300/70" />
+        <div className="pointer-events-none absolute left-3 top-3 z-20 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1.5">
           {discountPct > 0 && <span className="rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">-{discountPct}%</span>}
-          <span className="rounded-full border border-white/20 bg-black/65 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white backdrop-blur-md">{category}</span>
+          <span className="rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white backdrop-blur-md">{category}</span>
         </div>
-        <div className="absolute bottom-3 left-3 right-3 rounded-2xl border border-yellow-200/20 bg-[linear-gradient(135deg,rgba(255,184,28,.25),rgba(249,115,22,.14)),rgba(0,0,0,.58)] p-3 text-white shadow-[0_14px_42px_rgba(0,0,0,.28)] backdrop-blur-xl">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/58">Stock</span>
-            <span className={`text-[10px] font-black ${stockInfo.text}`}>{stockLabel || stockInfo.label}</span>
-          </div>
-          <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-white/12">
-            <div className={`h-full rounded-full ${stockInfo.tone} transition-all duration-700`} style={{ width: `${stockInfo.pct}%` }} />
-          </div>
-        </div>
+        <span className={`pointer-events-none absolute bottom-3 left-3 z-20 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-black backdrop-blur-md ${stockInfo.text}`}>{stockLabel || stockInfo.label}</span>
       </div>
 
       <div className="flex flex-1 flex-col px-4 pb-4 pt-2">
-        <div className="mb-2 flex min-h-[20px] items-center justify-between gap-2">
-          {rating !== undefined ? <span className={`inline-flex items-center gap-1 text-[10px] font-black ${isDark ? 'text-yellow-300' : 'text-orange-700'}`}><Star className="h-3 w-3 fill-current" />{rating.toFixed(1)}</span> : <span className={`text-[10px] font-semibold ${isDark ? 'text-zinc-500' : 'text-neutral-400'}`}>Producto verificado</span>}
-          {deliveryLabel && <span className={`inline-flex max-w-[52%] items-center gap-1 truncate rounded-full border px-2 py-0.5 text-[9px] font-bold ${isDark ? 'border-orange-300/15 bg-orange-300/7 text-zinc-300' : 'border-orange-200 bg-orange-50 text-orange-700'}`}><Truck className="h-3 w-3 shrink-0" />{deliveryLabel}</span>}
-        </div>
-
-        <p className={`text-[9px] font-black uppercase tracking-[0.24em] ${isDark ? 'text-yellow-300' : 'text-amber-700'}`}>{category}</p>
-        <h3 className={`mt-1 min-h-[2.6em] text-[15px] font-black leading-snug line-clamp-2 ${isDark ? 'text-white' : 'text-neutral-950'}`}>{name}</h3>
-        {description && <div className="mt-2 min-h-[3.2em]"><span className={`text-[9px] font-black uppercase tracking-[.2em] ${isDark ? 'text-zinc-600' : 'text-neutral-400'}`}>La solución</span><p className={`mt-1 text-[11px] leading-5 line-clamp-2 ${isDark ? 'text-zinc-400' : 'text-neutral-500'}`}>{description}</p></div>}
+        <button type="button" onClick={onSelect} className="text-left focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300/60">
+          <span className="block text-[9px] font-black uppercase tracking-[0.24em] text-amber-700">{category}</span>
+          <span className="mt-1 block min-h-[2.55em] line-clamp-2 text-[15px] font-black leading-snug text-neutral-950">{name}</span>
+        </button>
 
         {details.length > 0 && <div className="mt-3 grid gap-1.5">
-          {details.map((item) => <span key={item} className={`inline-flex items-center gap-1.5 text-[10px] ${isDark ? 'text-zinc-400' : 'text-neutral-500'}`}><PackageCheck className="h-3.5 w-3.5 text-orange-300" />{item}</span>)}
+          {details.map((item) => <span key={item} className="inline-flex min-w-0 items-center gap-1.5 text-[10px] text-neutral-600"><Check className="h-3.5 w-3.5 shrink-0 text-amber-600" /><span className="truncate">{item}</span></span>)}
         </div>}
 
-        <div className="mt-auto pt-4">
-          <div className="flex items-end justify-between gap-3">
+        <div className="mt-auto pt-3">
+          <div className="flex items-end justify-between gap-3 pt-3">
             <div>
-              <span className={`block text-2xl font-black tracking-tight ${isDark ? 'text-yellow-300' : 'text-orange-700'}`}>${finalPrice.toLocaleString('es-CL')}</span>
-              {discountPct > 0 && <span className={`text-xs line-through ${isDark ? 'text-zinc-600' : 'text-neutral-400'}`}>${price.toLocaleString('es-CL')}</span>}
+              <span className="block text-2xl font-black tracking-tight text-neutral-950">${finalPrice.toLocaleString('es-CL')}</span>
+              {discountPct > 0 && <span className="text-xs text-neutral-400 line-through">${price.toLocaleString('es-CL')}</span>}
             </div>
-            <span className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-black ${isDark ? 'bg-white/8 text-zinc-300' : 'bg-amber-50 text-amber-800'}`}>Detalles <ArrowUpRight className="h-3 w-3" /></span>
+            {deliveryLabel ? <span className="max-w-[48%] truncate text-right text-[10px] font-bold text-neutral-500">{deliveryLabel}</span> : null}
           </div>
 
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onAddToCart(e); }}
             disabled={stockInfo.disabled}
-            className="mt-4 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-3 text-[12px] font-black text-black transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45"
+            className="mt-3 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-xl bg-yellow-300 px-3 text-[12px] font-black text-black transition hover:bg-white disabled:cursor-not-allowed disabled:opacity-45"
           >
             <ShoppingBag className="h-4 w-4" /> {stockInfo.disabled ? 'Sin stock' : 'Agregar al bolso'}
           </button>

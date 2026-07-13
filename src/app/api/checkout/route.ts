@@ -75,7 +75,7 @@ async function loadExistingOrder(id: string) {
   try {
     const { data } = await insforgeAdmin.database
       .from('orders')
-      .select('id, customer_name, customer_email, customer_phone, region, shipping_address, items, subtotal, tax, shipping_fee, total, currency, status, created_at, tracking_number, carrier, delivery_status')
+      .select('*')
       .eq('id', id)
       .limit(1);
     return Array.isArray(data) ? data[0] as Record<string, unknown> | undefined : undefined;
@@ -117,6 +117,19 @@ async function ensureShipment(order: Record<string, unknown>, trackingNumber: st
   } catch (error) {
     console.warn('[checkout] could not create order shipment:', error);
   }
+}
+
+function coreOrderRow(order: Record<string, unknown>) {
+  const {
+    tracking_number: _trackingNumber,
+    carrier: _carrier,
+    delivery_status: _deliveryStatus,
+    tracking_created_at: _trackingCreatedAt,
+    estimated_delivery_at: _estimatedDeliveryAt,
+    shipment_details: _shipmentDetails,
+    ...core
+  } = order;
+  return core;
 }
 
 export async function POST(request: Request) {
@@ -217,7 +230,10 @@ export async function POST(request: Request) {
       updated_at: createdAt,
     };
 
-    const { error: insertError } = await insforgeAdmin.database.from('orders').insert([orderRow]);
+    let { error: insertError } = await insforgeAdmin.database.from('orders').insert([orderRow]);
+    if (insertError && /schema cache|column .* does not exist|could not find/i.test(insertError.message || '')) {
+      ({ error: insertError } = await insforgeAdmin.database.from('orders').insert([coreOrderRow(orderRow)]));
+    }
     let persistence: 'db' | 'existing' = 'db';
     let persistedOrder: Record<string, unknown> = orderRow;
 

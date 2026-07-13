@@ -76,6 +76,12 @@ ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS currency TEXT DEFAULT 'CLP';
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_id TEXT;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS payment_status TEXT;
 ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS tracking_number TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS carrier TEXT;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS delivery_status TEXT DEFAULT 'pendiente';
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS tracking_created_at TIMESTAMPTZ;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS estimated_delivery_at TIMESTAMPTZ;
+ALTER TABLE public.orders ADD COLUMN IF NOT EXISTS shipment_details JSONB DEFAULT '{}'::jsonb;
 
 UPDATE public.orders SET items = '[]'::jsonb WHERE items IS NULL;
 UPDATE public.orders SET currency = 'CLP' WHERE currency IS NULL OR btrim(currency) = '';

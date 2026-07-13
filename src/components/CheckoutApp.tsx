@@ -2,7 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import { useSearchParams } from "next/navigation";
 import { AnimatePresence, motion } from "framer-motion";
@@ -250,6 +250,8 @@ export default function CheckoutApp() {
   const [order, setOrder] = useState<OrderResponse["data"] | null>(null);
   const [paymentUrl, setPaymentUrl] = useState("");
   const [notificationMessage, setNotificationMessage] = useState("");
+  const [reminderMessage, setReminderMessage] = useState("");
+  const submitInFlight = useRef(false);
 
   useEffect(() => {
     try {
@@ -261,6 +263,17 @@ export default function CheckoutApp() {
       }
     } catch {}
 
+    const resume = searchParams.get("resume");
+    if (resume) {
+      try {
+        const normalizedResume = resume.replace(/-/g, "+").replace(/_/g, "/").padEnd(Math.ceil(resume.length / 4) * 4, "=");
+        const decoded = JSON.parse(atob(normalizedResume)) as StoredCartItem[];
+        if (Array.isArray(decoded) && decoded.length) {
+          setItems(decoded.slice(0, 20));
+          return;
+        }
+      } catch {}
+    }
     const fallbackShippingFee = nullableNumber(searchParams.get("shippingFee"));
     setItems([
       {
@@ -275,7 +288,7 @@ export default function CheckoutApp() {
           shipping_fee: fallbackShippingFee,
           shipping_mode: fallbackShippingFee !== null ? "fixed" : "free",
         },
-        quantity: 1,
+        quantity: Math.max(1, Math.min(20, Number(searchParams.get("quantity")) || 1)),
       },
     ]);
   }, [searchParams]);
@@ -407,7 +420,7 @@ export default function CheckoutApp() {
   }
 
   async function submitOrder() {
-    if (order) return;
+    if (order || submitInFlight.current) return;
     if (!canSubmit) {
       setError(
         "Completa nombre, email, teléfono y dirección antes de continuar.",
@@ -415,6 +428,7 @@ export default function CheckoutApp() {
       setStep(2);
       return;
     }
+    submitInFlight.current = true;
     setError("");
     setLoading(true);
     try {
@@ -450,8 +464,20 @@ export default function CheckoutApp() {
         err instanceof Error ? err.message : "Error al crear la compra.",
       );
     } finally {
+      submitInFlight.current = false;
       setLoading(false);
     }
+  }
+
+  async function sendCartReminder() {
+    setReminderMessage("");
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      setReminderMessage("Ingresa un correo válido para enviarte el carrito.");
+      return;
+    }
+    const response = await fetch('/api/cart/reminder', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, name, items }) });
+    const payload = await response.json().catch(() => ({}));
+    setReminderMessage(response.ok ? 'Enlace del carrito enviado. Revisa tu correo.' : (payload.error || 'No se pudo enviar el enlace.'));
   }
 
   if (order) {
@@ -562,7 +588,7 @@ export default function CheckoutApp() {
                   transition={{ duration: 0.32, ease: [0.16, 1, 0.3, 1] }}
                 >
                   {step === 1 && <ProductStep product={product} itemCount={itemCount} items={items} summary={summary} onNext={() => setStep(2)} />}
-                  {step === 2 && <FormStep name={name} setName={setName} email={email} setEmail={setEmail} phone={phone} setPhone={setPhone} region={region} setRegion={setRegion} address={address} setAddress={setAddress} formValid={formValid} onBack={() => setStep(1)} onNext={() => setStep(3)} onUseGps={useGpsLocation} gpsLoading={gpsLoading} gpsStage={gpsStage} gpsMessage={gpsMessage} />}
+                  {step === 2 && <FormStep name={name} setName={setName} email={email} setEmail={setEmail} phone={phone} setPhone={setPhone} region={region} setRegion={setRegion} address={address} setAddress={setAddress} formValid={formValid} onBack={() => setStep(1)} onNext={() => setStep(3)} onUseGps={useGpsLocation} gpsLoading={gpsLoading} gpsStage={gpsStage} gpsMessage={gpsMessage} onRemember={() => void sendCartReminder()} reminderMessage={reminderMessage} />}
                   {step === 3 && <PaymentStep method={method} setMethod={setMethod} mpStatus={mpStatus} cardName={cardName} setCardName={setCardName} cardNumber={cardNumber} setCardNumber={setCardNumber} cardExpiry={cardExpiry} setCardExpiry={setCardExpiry} cardCvv={cardCvv} setCardCvv={setCardCvv} loading={loading} canSubmit={canSubmit} error={error} onBack={() => setStep(2)} onSubmit={() => void submitOrder()} />}
                 </motion.div>
               </AnimatePresence>
@@ -679,6 +705,8 @@ function FormStep(props: {
   gpsLoading: boolean;
   gpsStage: GpsStage;
   gpsMessage: string;
+  onRemember: () => void;
+  reminderMessage: string;
 }) {
   return (
     <div className="mt-7 space-y-4">
@@ -777,6 +805,7 @@ function FormStep(props: {
           </p>
         )}
       </div>
+      <div className="flex flex-col gap-3 rounded-[1.5rem] border border-white/10 bg-white/[0.035] p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-black">¿Quieres terminar después?</p><p className="mt-1 text-xs text-white/45">Te enviamos un enlace seguro con estos productos y cantidades.</p>{props.reminderMessage && <p className="mt-2 text-xs text-yellow-200">{props.reminderMessage}</p>}</div><button type="button" onClick={props.onRemember} className="inline-flex min-h-11 items-center justify-center rounded-xl border border-yellow-300/25 px-4 text-xs font-black text-yellow-200"><Mail className="mr-2 h-4 w-4" />Enviar carrito</button></div>
       <div className="grid gap-3 sm:grid-cols-2">
         <button
           onClick={props.onBack}
@@ -815,6 +844,12 @@ function PaymentStep(props: {
   onSubmit: () => void;
 }) {
   const mpReady = props.mpStatus?.status === "ok";
+  const cardReady = props.method === "transfer" || (
+    props.cardName.trim().length >= 3 &&
+    props.cardNumber.replace(/\D/g, "").length >= 13 &&
+    /^\d{2}\/?\d{2}$/.test(props.cardExpiry.replace(/\s/g, "")) &&
+    props.cardCvv.replace(/\D/g, "").length >= 3
+  );
   return (
     <div className="mt-7 space-y-5">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -911,7 +946,7 @@ function PaymentStep(props: {
         </button>
         <button
           onClick={props.onSubmit}
-          disabled={props.loading || !props.canSubmit}
+          disabled={props.loading || !props.canSubmit || !cardReady}
           className="inline-flex items-center justify-center rounded-[1.4rem] bg-yellow-300 px-5 py-4 text-lg font-black text-black disabled:opacity-50"
         >
           {props.loading ? (
@@ -926,6 +961,7 @@ function PaymentStep(props: {
               : "Pagar con Mercado Pago"}
         </button>
       </div>
+      {props.method === "mercadopago" && !cardReady && <p className="text-center text-xs text-yellow-100/60">Completa la vista de tarjeta para activar el botón. Los datos reales se ingresan únicamente en Mercado Pago.</p>}
     </div>
   );
 }

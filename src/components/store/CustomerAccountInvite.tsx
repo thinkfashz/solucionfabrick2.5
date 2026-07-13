@@ -1,7 +1,9 @@
 'use client';
 
 import React, { useMemo, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { CheckCircle2, Lock, Mail, Phone, ShieldCheck, User, XCircle } from 'lucide-react';
+import { insforge } from '@/lib/insforge';
 
 type OrderLike = {
   customerName?: string;
@@ -19,6 +21,7 @@ function passwordScore(password: string) {
 }
 
 export default function CustomerAccountInvite({ token, order }: { token: string; order: OrderLike }) {
+  const router = useRouter();
   const [name, setName] = useState(order.customerName || '');
   const [email, setEmail] = useState(order.customerEmail || '');
   const [phone, setPhone] = useState(order.customerPhone || '');
@@ -48,7 +51,17 @@ export default function CustomerAccountInvite({ token, order }: { token: string;
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'No se pudo crear usuario.');
-      setMessage(json.message || 'Usuario creado correctamente.');
+      const signup = await insforge.auth.signUp({ email, password, name, redirectTo: `${window.location.origin}/auth` });
+      if (signup.error && !/already|existe|registered/i.test(signup.error.message || '')) throw new Error(signup.error.message);
+      if (signup.data?.requireEmailVerification) {
+        setMessage('Usuario creado. Revisa tu correo para verificar la cuenta y entrar al panel de pedidos.');
+        window.setTimeout(() => router.push('/auth'), 1400);
+      } else {
+        const login = await insforge.auth.signInWithPassword({ email, password });
+        if (login.error) throw new Error(login.error.message);
+        setMessage('Cuenta lista. Abriendo tu panel de pedidos…');
+        window.setTimeout(() => router.push('/mi-cuenta'), 700);
+      }
       setPassword('');
       setConfirmPassword('');
     } catch (err) {

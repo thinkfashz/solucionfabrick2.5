@@ -1,7 +1,7 @@
 'use client';
 
 import { Canvas, useFrame } from '@react-three/fiber';
-import { useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import * as THREE from 'three';
 
 type CheckoutMode = 'mercadopago' | 'bricks' | 'transfer';
@@ -255,16 +255,25 @@ function CheckoutField({
 }
 
 export default function Checkout4DExperience(props: Props) {
+  const [webglAvailable, setWebglAvailable] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    try {
+      const canvas = document.createElement('canvas');
+      setWebglAvailable(Boolean(canvas.getContext('webgl2') || canvas.getContext('webgl')));
+    } catch {
+      setWebglAvailable(false);
+    }
+  }, []);
+
   return (
     <div className="rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_18%_15%,rgba(250,204,21,0.12),transparent_45%),radial-gradient(circle_at_80%_78%,rgba(56,189,248,0.18),transparent_42%),linear-gradient(160deg,rgba(0,0,0,0.88),rgba(9,9,11,0.95))] p-4 sm:p-5 overflow-hidden">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[10px] uppercase tracking-[0.24em] font-bold text-zinc-300">Checkout 4D • Canal Fabrick ⇄ Banco</p>
-        <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-500">Three.js</p>
+        <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-500">{webglAvailable ? 'Vista 3D' : 'Canal seguro'}</p>
       </div>
       <div className="h-44 sm:h-56 rounded-2xl border border-white/10 bg-black/40">
-        <Canvas camera={{ position: [0, 0, 5.2], fov: 45 }} dpr={[1, 1.6]}>
-          <CheckoutField {...props} />
-        </Canvas>
+        {webglAvailable ? <Canvas camera={{ position: [0, 0, 5.2], fov: 45 }} dpr={[1, 1.6]}><CheckoutField {...props} /></Canvas> : <CheckoutChannelFallback {...props} />}
       </div>
       <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-2">
         <Metric label="Canal" value={props.mode === 'mercadopago' ? 'Inline' : props.mode === 'bricks' ? 'Bricks' : 'Transfer'} />
@@ -274,6 +283,10 @@ export default function Checkout4DExperience(props: Props) {
       </div>
     </div>
   );
+}
+
+function CheckoutChannelFallback(props: Props) {
+  return <div className="flex h-full items-center justify-center px-5"><div className="w-full max-w-md"><div className="flex items-center justify-between gap-4"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-yellow-300 text-sm font-black text-black">SF</span><span className="relative h-1 flex-1 overflow-hidden rounded-full bg-white/10"><span className="absolute inset-y-0 left-0 rounded-full bg-gradient-to-r from-yellow-300 to-sky-300 transition-[width] duration-500" style={{ width: `${Math.max(8, props.paymentProgress)}%` }} /></span><span className="grid h-12 w-12 place-items-center rounded-2xl border border-sky-300/30 bg-sky-300/10 text-xs font-black text-sky-200">PAGO</span></div><p className="mt-5 text-center text-xs font-bold text-zinc-400">Conexión segura activa · animación ligera para este dispositivo</p></div></div>;
 }
 
 function Metric({ label, value }: { label: string; value: string }) {

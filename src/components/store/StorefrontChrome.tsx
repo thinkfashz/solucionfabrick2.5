@@ -104,7 +104,7 @@ type DockItemProps = {
 
 function DockItem({ icon: Icon, label, active, onClick }: DockItemProps) {
   return (
-    <button onClick={onClick} className={`grid min-w-0 flex-1 place-items-center gap-1 rounded-2xl py-2 text-[10px] font-bold transition ${active ? 'text-yellow-300' : 'text-[#f7eedb]/55'}`}>
+    <button onClick={onClick} className={`grid min-w-0 flex-1 place-items-center gap-1 rounded-2xl py-2 text-[10px] font-black transition ${active ? 'bg-yellow-300/10 text-yellow-300' : 'text-[#fff8e7]/82'}`}>
       <Icon className="h-5 w-5" strokeWidth={active ? 2.8 : 2} />
       <span className="truncate">{label}</span>
     </button>
@@ -113,9 +113,9 @@ function DockItem({ icon: Icon, label, active, onClick }: DockItemProps) {
 
 function QuickAction({ icon: Icon, title, description, onClick }: { icon: LucideIcon; title: string; description: string; onClick: () => void }) {
   return (
-    <button onClick={onClick} className="flex items-center gap-3 rounded-[1.35rem] bg-[#fff6dc]/[0.07] p-3 text-left transition active:scale-[.98]">
-      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-yellow-300 text-black"><Icon className="h-5 w-5" /></span>
-      <span className="min-w-0"><b className="block text-sm text-white">{title}</b><span className="mt-0.5 block text-[11px] leading-4 text-zinc-400">{description}</span></span>
+    <button onClick={onClick} className="flex items-center gap-3 rounded-[1.35rem] bg-[#211b10] p-3 text-left text-white shadow-[inset_0_1px_0_rgba(255,255,255,.05)] ring-1 ring-[#fff4d6]/10 transition active:scale-[.98]">
+      <span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-yellow-300 text-black shadow-[0_8px_22px_rgba(250,204,21,.18)]"><Icon className="h-5 w-5" /></span>
+      <span className="min-w-0"><b className="block text-sm text-[#fffaf0]">{title}</b><span className="mt-0.5 block text-[11px] leading-4 text-[#f7eedb]/68">{description}</span></span>
     </button>
   );
 }
@@ -134,14 +134,14 @@ export function StoreBottomNav() {
   return (
     <>
       {open ? (
-        <div className="fixed inset-0 z-[250] bg-black/58 backdrop-blur-sm md:hidden" onClick={() => setOpen(false)}>
+        <div className="fixed inset-0 z-[250] bg-black/82 backdrop-blur-md md:hidden" onClick={() => setOpen(false)}>
           <section
-            className="absolute inset-x-3 bottom-[calc(6.4rem+env(safe-area-inset-bottom))] max-h-[calc(100dvh-8rem)] overflow-y-auto rounded-[2rem] bg-[#0c0a06]/96 p-4 text-white shadow-[0_28px_90px_rgba(0,0,0,.62)] ring-1 ring-yellow-200/10 backdrop-blur-2xl"
+            className="absolute inset-x-3 bottom-[calc(6.25rem+env(safe-area-inset-bottom))] max-h-[calc(100dvh-7.5rem)] overflow-y-auto rounded-[2rem] bg-[#100d07] p-4 text-white shadow-[0_32px_100px_rgba(0,0,0,.78)] ring-1 ring-yellow-200/20"
             onClick={(event) => event.stopPropagation()}
           >
             <div className="flex items-start justify-between gap-4">
               <div><p className="text-[10px] font-black uppercase tracking-[.26em] text-yellow-300">Menú Fabrick</p><h2 className="mt-1 text-2xl font-black tracking-[-.04em]">¿Qué necesitas resolver?</h2></div>
-              <button onClick={() => setOpen(false)} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-white/10" aria-label="Cerrar menú"><X className="h-5 w-5" /></button>
+              <button onClick={() => setOpen(false)} className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#2b2417] text-white ring-1 ring-white/10" aria-label="Cerrar menú"><X className="h-5 w-5" /></button>
             </div>
             <div className="mt-4 grid gap-2">
               <QuickAction icon={LayoutGrid} title="Productos para el hogar" description="Comprar, comparar y revisar disponibilidad" onClick={() => navigate('/tienda')} />
@@ -150,21 +150,21 @@ export function StoreBottomNav() {
               <QuickAction icon={ShoppingBag} title={`Bolso de compra · ${totalItems}`} description="Revisar los productos seleccionados" onClick={() => { setOpen(false); openCart(); }} />
             </div>
             <div className="mt-3 grid grid-cols-2 gap-2">
-              <button onClick={() => navigate('/auth')} className="rounded-2xl bg-white/[0.07] p-3 text-left"><LogIn className="h-4 w-4 text-yellow-300" /><b className="mt-2 block text-xs">Iniciar sesión</b></button>
-              <button onClick={() => navigate('/registro')} className="rounded-2xl bg-white/[0.07] p-3 text-left"><UserPlus className="h-4 w-4 text-yellow-300" /><b className="mt-2 block text-xs">Crear cuenta</b></button>
-              <button onClick={() => navigate('/mi-cuenta')} className="rounded-2xl bg-white/[0.07] p-3 text-left"><ShieldCheck className="h-4 w-4 text-yellow-300" /><b className="mt-2 block text-xs">Mis pedidos</b></button>
-              <button onClick={() => navigate('/contacto')} className="rounded-2xl bg-white/[0.07] p-3 text-left"><ClipboardList className="h-4 w-4 text-yellow-300" /><b className="mt-2 block text-xs">Pedir ayuda</b></button>
+              <button onClick={() => navigate('/auth')} className="rounded-2xl bg-[#1e190f] p-3 text-left text-[#fff8e7] ring-1 ring-white/10"><LogIn className="h-4 w-4 text-yellow-300" /><b className="mt-2 block text-xs">Iniciar sesión</b></button>
+              <button onClick={() => navigate('/registro')} className="rounded-2xl bg-[#1e190f] p-3 text-left text-[#fff8e7] ring-1 ring-white/10"><UserPlus className="h-4 w-4 text-yellow-300" /><b className="mt-2 block text-xs">Crear cuenta</b></button>
+              <button onClick={() => navigate('/mi-cuenta')} className="rounded-2xl bg-[#1e190f] p-3 text-left text-[#fff8e7] ring-1 ring-white/10"><ShieldCheck className="h-4 w-4 text-yellow-300" /><b className="mt-2 block text-xs">Mis pedidos</b></button>
+              <button onClick={() => navigate('/contacto')} className="rounded-2xl bg-[#1e190f] p-3 text-left text-[#fff8e7] ring-1 ring-white/10"><ClipboardList className="h-4 w-4 text-yellow-300" /><b className="mt-2 block text-xs">Pedir ayuda</b></button>
             </div>
           </section>
         </div>
       ) : null}
 
-      <nav className="fixed inset-x-3 bottom-[calc(.65rem+env(safe-area-inset-bottom))] z-[240] mx-auto flex h-[72px] max-w-[520px] items-center rounded-[2rem] bg-[#131006]/92 px-2 text-white shadow-[0_20px_70px_rgba(0,0,0,.54)] ring-1 ring-yellow-200/10 backdrop-blur-2xl md:hidden" aria-label="Navegación principal">
+      <nav className="fixed inset-x-3 bottom-[calc(.65rem+env(safe-area-inset-bottom))] z-[240] mx-auto flex h-[76px] max-w-[520px] items-center rounded-[2rem] bg-[#100d07]/98 px-2 text-white shadow-[0_22px_72px_rgba(0,0,0,.72)] ring-1 ring-yellow-200/20 backdrop-blur-2xl md:hidden" aria-label="Navegación principal">
         <DockItem icon={Home} label="Inicio" active={pathname === '/'} onClick={() => navigate('/')} />
         <DockItem icon={ClipboardList} label="Presupuesto" active={pathname.startsWith('/presupuesto')} onClick={() => navigate('/presupuesto')} />
-        <button onClick={() => setOpen((value) => !value)} className="relative -mt-8 grid h-16 w-16 shrink-0 place-items-center rounded-full bg-yellow-300 text-black shadow-[0_12px_34px_rgba(250,204,21,.32)] ring-4 ring-[#0b0905]" aria-label="Abrir menú Fabrick">
+        <button onClick={() => setOpen((value) => !value)} className="relative -mt-7 grid h-16 w-16 shrink-0 place-items-center rounded-full bg-yellow-300 text-black shadow-[0_12px_34px_rgba(250,204,21,.34)] ring-4 ring-[#100d07]" aria-label="Abrir menú Fabrick">
           {open ? <X className="h-6 w-6" /> : <Menu className="h-7 w-7" />}
-          <span className="absolute -bottom-5 text-[9px] font-black uppercase tracking-[.12em] text-yellow-200">Menú</span>
+          <span className="absolute -bottom-[17px] rounded-full bg-[#100d07] px-2 py-0.5 text-[9px] font-black uppercase tracking-[.12em] text-yellow-200">Menú</span>
         </button>
         <DockItem icon={LayoutGrid} label="Productos" active={pathname.startsWith('/tienda')} onClick={() => navigate('/tienda')} />
         <DockItem icon={User} label="Perfil" active={pathname.startsWith('/mi-cuenta')} onClick={() => navigate('/mi-cuenta')} />

@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState } from 'react';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/navigation';
 import {
   ArrowLeft,
@@ -52,15 +53,22 @@ type RadierPlan = {
 const money = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 const num = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
 const capacities: Capacity[] = [9000, 12000, 18000, 24000];
-const AIR_PRODUCT_IMAGE = '/images/calculators/air-conditioner.svg';
-const RADIER_PRODUCT_IMAGE = '/images/calculators/radier-solution.svg';
-const ROOM_IMAGE = 'https://images.unsplash.com/photo-1616486338812-3dadae4b4ace?q=80&w=1600&auto=format&fit=crop';
+
+const ThreeAirRoomViewer = dynamic(() => import('@/components/presupuestos/ThreeAirRoomViewer'), {
+  ssr: false,
+  loading: () => <ViewerLoading label="Preparando habitación interactiva" />,
+});
+
+const ThreeRadierViewer = dynamic(() => import('@/components/presupuestos/ThreeRadierViewer'), {
+  ssr: false,
+  loading: () => <ViewerLoading label="Preparando radier interactivo" />,
+});
 
 const AIR_FALLBACKS: AirProductOption[] = [
-  { cap: 9000, name: 'Split Inverter 9.000 BTU', price: 289000, image: AIR_PRODUCT_IMAGE, details: ['Hasta 18 m²', 'Frío/calor · bajo consumo'] },
-  { cap: 12000, name: 'TCL SaveIN 12.000 BTU WiFi', price: 349990, image: AIR_PRODUCT_IMAGE, details: ['Hasta 24 m²', 'Inverter · control WiFi'] },
-  { cap: 18000, name: 'TCL BreezeIN 18.000 BTU WiFi', price: 529990, image: AIR_PRODUCT_IMAGE, details: ['Hasta 36 m²', 'Inverter · frío/calor'] },
-  { cap: 24000, name: 'Split Inverter 24.000 BTU', price: 749990, image: AIR_PRODUCT_IMAGE, details: ['Hasta 48 m²', 'Alta capacidad · inverter'] },
+  { cap: 9000, name: 'Split Inverter 9.000 BTU', price: 289000, image: '', details: ['Hasta 18 m²', 'Frío/calor · bajo consumo'] },
+  { cap: 12000, name: 'TCL SaveIN 12.000 BTU WiFi', price: 349990, image: '', details: ['Hasta 24 m²', 'Inverter · control WiFi'] },
+  { cap: 18000, name: 'TCL BreezeIN 18.000 BTU WiFi', price: 529990, image: '', details: ['Hasta 36 m²', 'Inverter · frío/calor'] },
+  { cap: 24000, name: 'Split Inverter 24.000 BTU', price: 749990, image: '', details: ['Hasta 48 m²', 'Alta capacidad · inverter'] },
 ];
 
 const RADIER_PLANS: RadierPlan[] = [
@@ -87,10 +95,37 @@ function Metric({ label, value, accent, icon: Icon }: { label: string; value: st
   );
 }
 
+function ViewerLoading({ label }: { label: string }) {
+  return <div className="mt-7 grid min-h-[420px] place-items-center rounded-[2rem] bg-[#0b0905] text-center text-white ring-1 ring-yellow-200/15"><div><span className="mx-auto block h-10 w-10 animate-spin rounded-full border-2 border-yellow-300/20 border-t-yellow-300" /><b className="mt-4 block text-sm">{label}</b><span className="mt-1 block text-xs text-[#f7eedb]/60">Cargando controles 3D…</span></div></div>;
+}
+
+function AirProductThumbnail({ item }: { item: AirProductOption }) {
+  if (item.image) return <img src={item.image} alt={item.name} className="h-full w-full object-contain p-1.5" />;
+  return (
+    <span className="relative block h-full w-full overflow-hidden bg-[linear-gradient(145deg,#ffffff,#e7e3da)]">
+      <span className="absolute inset-x-2 top-4 h-8 rounded-[.55rem] border border-black/10 bg-white shadow-[0_7px_14px_rgba(0,0,0,.16)]">
+        <span className="absolute inset-x-2 bottom-1 h-px bg-black/20" />
+        <span className="absolute right-2 top-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />
+      </span>
+      <span className="absolute inset-x-0 bottom-2 text-center text-[7px] font-black uppercase tracking-[.13em] text-black/45">Inverter</span>
+    </span>
+  );
+}
+
+function RadierPlanThumbnail({ reinforced }: { reinforced: boolean }) {
+  return (
+    <span className="relative block h-full w-full overflow-hidden bg-[radial-gradient(circle_at_50%_5%,rgba(250,204,21,.28),transparent_55%),#17120a]">
+      <span className="absolute left-3 right-3 top-4 h-3 -skew-y-6 rounded-sm bg-[#ece5d8] shadow-[0_5px_0_#9d8c72,0_10px_0_#6f4a2d]" />
+      {reinforced ? <span className="absolute left-4 right-4 top-5 grid grid-cols-5 gap-px opacity-55">{Array.from({ length: 10 }).map((_, index) => <i key={index} className="h-px bg-black" />)}</span> : null}
+      <Layers3 className="absolute bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 text-yellow-300" />
+    </span>
+  );
+}
+
 function AirProductCard({ item, selected, recommended, onSelect }: { item: AirProductOption; selected: boolean; recommended: boolean; onSelect: () => void }) {
   return (
     <button onClick={onSelect} className={`group grid min-w-[230px] grid-cols-[76px_1fr] gap-3 rounded-[1.45rem] p-3 text-left transition sm:min-w-0 ${selected ? 'bg-[#fff6dc] text-black shadow-[0_18px_44px_rgba(0,0,0,.22)]' : 'bg-[#fff6dc]/[0.065] text-white ring-1 ring-white/[0.06]'}`}>
-      <div className="relative h-[76px] overflow-hidden rounded-[1.05rem] bg-white"><img src={item.image} alt={item.name} className="h-full w-full object-cover" />{recommended ? <span className="absolute bottom-1 left-1 rounded-full bg-yellow-300 px-1.5 py-0.5 text-[7px] font-black uppercase text-black">Recomendado</span> : null}</div>
+      <div className="relative h-[76px] overflow-hidden rounded-[1.05rem] bg-white"><AirProductThumbnail item={item} />{recommended ? <span className="absolute bottom-1 left-1 rounded-full bg-yellow-300 px-1.5 py-0.5 text-[7px] font-black uppercase text-black">Recomendado</span> : null}</div>
       <span className="min-w-0"><span className={`block text-[9px] font-black uppercase tracking-[.18em] ${selected ? 'text-amber-700' : 'text-yellow-300'}`}>{item.cap.toLocaleString('es-CL')} BTU</span><b className="mt-1 block line-clamp-2 text-sm leading-tight">{item.name}</b><span className={`mt-2 block text-lg font-black ${selected ? 'text-black' : 'text-yellow-300'}`}>{money.format(item.price)}</span></span>
     </button>
   );
@@ -99,7 +134,7 @@ function AirProductCard({ item, selected, recommended, onSelect }: { item: AirPr
 function RadierPlanCard({ plan, selected, onSelect }: { plan: RadierPlan; selected: boolean; onSelect: () => void }) {
   return (
     <button onClick={onSelect} className={`grid min-w-[240px] grid-cols-[72px_1fr] gap-3 rounded-[1.45rem] p-3 text-left transition sm:min-w-0 ${selected ? 'bg-[#fff6dc] text-black shadow-[0_18px_44px_rgba(0,0,0,.22)]' : 'bg-[#fff6dc]/[0.065] text-white ring-1 ring-white/[0.06]'}`}>
-      <div className="h-[72px] overflow-hidden rounded-[1rem] bg-black"><img src={RADIER_PRODUCT_IMAGE} alt={plan.name} className="h-full w-full object-cover" /></div>
+      <div className="h-[72px] overflow-hidden rounded-[1rem] bg-black"><RadierPlanThumbnail reinforced={plan.id === 'reforzado'} /></div>
       <span><span className={`block text-[9px] font-black uppercase tracking-[.18em] ${selected ? 'text-amber-700' : 'text-yellow-300'}`}>Desde {money.format(plan.priceM2)}/m²</span><b className="mt-1 block text-sm leading-tight">{plan.name}</b><span className={`mt-1 block text-[10px] leading-4 ${selected ? 'text-black/58' : 'text-zinc-400'}`}>{plan.description}</span></span>
     </button>
   );
@@ -122,44 +157,6 @@ function Receipt({ title, rows, neto, iva, total, note }: { title: string; rows:
   );
 }
 
-function AirViewer({ area, requiredBtu, product, temperature, setTemperature }: { area: number; requiredBtu: number; product: AirProductOption; temperature: number; setTemperature: (value: number) => void }) {
-  const [view, setView] = useState<'frontal' | 'esquina' | 'lateral'>('esquina');
-  return (
-    <section className="mt-7 overflow-hidden rounded-[2rem] bg-[#090806] text-white shadow-[0_28px_90px_rgba(0,0,0,.42)] ring-1 ring-yellow-200/10">
-      <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[1fr_250px] lg:items-end"><div><p className="text-[10px] font-black uppercase tracking-[.28em] text-yellow-300">Visor climático</p><h2 className="mt-2 text-3xl font-black tracking-[-.055em] sm:text-4xl">Cuarto + aire acondicionado</h2><p className="mt-2 text-sm leading-6 text-zinc-400">Una lectura visual del equipo, el ambiente y la capacidad seleccionada.</p></div><div className="grid grid-cols-3 gap-2"><Metric label="Área" value={`${num.format(area)} m²`} /><Metric label="Necesita" value={`${requiredBtu.toLocaleString('es-CL')}`} /><Metric label="Equipo" value={`${product.cap.toLocaleString('es-CL')}`} accent /></div></div>
-      <div className="relative mx-3 min-h-[420px] overflow-hidden rounded-[1.7rem] sm:mx-6 sm:min-h-[520px]">
-        <img src={ROOM_IMAGE} alt="Habitación moderna climatizada" className={`absolute inset-0 h-full w-full object-cover transition duration-700 ${view === 'frontal' ? 'scale-100 object-center' : view === 'lateral' ? 'scale-110 object-left' : 'scale-105 object-center'}`} />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/62 via-black/5 to-black/25" />
-        <div className="absolute left-1/2 top-8 w-[54%] max-w-[430px] -translate-x-1/2 rounded-[1.2rem] bg-gradient-to-b from-white to-zinc-300 p-3 text-black shadow-[0_18px_44px_rgba(0,0,0,.35)]"><span className="block h-1.5 rounded-full bg-zinc-400" /><div className="mt-2 flex items-center justify-between"><b className="text-[10px] uppercase tracking-[.16em] text-black/45">Inverter</b><span className="rounded bg-black px-2 py-1 text-[9px] font-black text-yellow-300">{temperature}°</span></div></div>
-        <div className="absolute left-1/2 top-[7.2rem] h-48 w-[76%] max-w-[560px] -translate-x-1/2 bg-[radial-gradient(ellipse_at_top,rgba(83,215,255,.52),rgba(83,215,255,.12)_38%,transparent_70%)] opacity-80" />
-        <div className="absolute right-3 top-3 rounded-[1.35rem] bg-black/72 p-3 backdrop-blur-xl sm:right-5 sm:top-5"><div className="flex items-center gap-2"><span className="grid h-10 w-10 place-items-center rounded-full bg-cyan-400/15 text-cyan-300"><Snowflake className="h-5 w-5" /></span><div><b className="block text-2xl text-cyan-300">{temperature}°C</b><span className="text-[10px] text-zinc-400">Enfriamiento</span></div></div><input type="range" min="16" max="30" value={temperature} onChange={(event) => setTemperature(Number(event.target.value))} className="mt-3 w-32 accent-yellow-300" /></div>
-        <div className="absolute inset-x-3 bottom-3 grid grid-cols-[72px_1fr] gap-3 rounded-[1.35rem] bg-black/74 p-3 backdrop-blur-xl sm:inset-x-5 sm:bottom-5 sm:grid-cols-[92px_1fr_auto]"><img src={product.image} alt={product.name} className="h-[72px] w-[72px] rounded-xl bg-white object-cover sm:h-[82px] sm:w-[92px]" /><div className="min-w-0 self-center"><p className="text-[9px] font-black uppercase tracking-[.2em] text-yellow-300">Producto seleccionado</p><b className="mt-1 block line-clamp-2 text-sm sm:text-base">{product.name}</b><p className="mt-1 text-xs text-zinc-400">{product.details.join(' · ')}</p></div><strong className="col-span-2 self-center text-xl text-yellow-300 sm:col-span-1">{money.format(product.price)}</strong></div>
-      </div>
-      <div className="flex gap-2 overflow-x-auto p-3 sm:justify-center sm:p-5">{(['frontal', 'esquina', 'lateral'] as const).map((item) => <button key={item} onClick={() => setView(item)} className={`min-h-11 shrink-0 rounded-full px-5 text-xs font-black capitalize ${view === item ? 'bg-yellow-300 text-black' : 'bg-white/[0.07] text-white'}`}>{item}</button>)}</div>
-    </section>
-  );
-}
-
-function RadierViewer({ area, volume, bags, plan }: { area: number; volume: number; bags: number; plan: RadierPlan }) {
-  const [layer, setLayer] = useState<'completo' | 'capas' | 'malla'>('capas');
-  return (
-    <section className="mt-7 overflow-hidden rounded-[2rem] bg-[#090806] text-white shadow-[0_28px_90px_rgba(0,0,0,.42)] ring-1 ring-yellow-200/10">
-      <div className="grid gap-4 p-4 sm:p-6 lg:grid-cols-[1fr_250px] lg:items-end"><div><p className="text-[10px] font-black uppercase tracking-[.28em] text-yellow-300">Visor técnico por capas</p><h2 className="mt-2 text-3xl font-black tracking-[-.055em] sm:text-4xl">Radier, base y terreno</h2><p className="mt-2 text-sm leading-6 text-zinc-400">Visualiza qué estás calculando y cómo se compone la solución elegida.</p></div><div className="grid grid-cols-3 gap-2"><Metric label="Área" value={`${num.format(area)} m²`} /><Metric label="Hormigón" value={`${num.format(volume)} m³`} /><Metric label="Sacos" value={`${bags}`} accent /></div></div>
-      <div className="relative mx-3 min-h-[390px] overflow-hidden rounded-[1.7rem] bg-[radial-gradient(circle_at_55%_18%,rgba(250,204,21,.13),transparent_22rem),linear-gradient(180deg,#17130c,#050403)] sm:mx-6 sm:min-h-[500px]">
-        <div className="absolute left-1/2 top-[46%] h-40 w-[74%] max-w-[720px] -translate-x-1/2 -translate-y-1/2 transition duration-500" style={{ transform: `translate(-50%,-50%) perspective(900px) rotateX(58deg) rotateZ(${layer === 'completo' ? -18 : -24}deg)` }}>
-          <div className={`absolute inset-0 rounded-[1.4rem] bg-gradient-to-br from-[#eee9df] to-[#8b8984] shadow-[0_32px_70px_rgba(0,0,0,.5)] transition ${layer === 'malla' ? 'opacity-35' : 'opacity-100'}`} />
-          <div className={`absolute inset-4 grid grid-cols-8 grid-rows-5 transition ${layer === 'completo' ? 'opacity-20' : 'opacity-65'}`}>{Array.from({ length: 40 }).map((_, index) => <span key={index} className="border border-black/45" />)}</div>
-          <div className={`absolute left-3 right-3 top-[92%] h-12 rounded-b-[1.2rem] bg-[#9b8d78] transition ${layer === 'malla' ? 'translate-y-9 opacity-35' : 'translate-y-2 opacity-100'}`} />
-          <div className={`absolute left-7 right-7 top-[112%] h-11 rounded-b-[1rem] bg-[#6f4827] transition ${layer === 'capas' ? 'translate-y-7 opacity-100' : 'translate-y-1 opacity-70'}`} />
-        </div>
-        <div className="absolute left-4 top-4 rounded-[1.2rem] bg-black/62 p-3 backdrop-blur-xl"><p className="text-[9px] font-black uppercase tracking-[.2em] text-yellow-300">Solución elegida</p><b className="mt-1 block text-sm">{plan.name}</b><p className="mt-1 text-xs text-zinc-400">Desde {money.format(plan.priceM2)}/m²</p></div>
-        <div className="absolute inset-x-3 bottom-3 grid grid-cols-3 gap-2 rounded-[1.35rem] bg-black/70 p-3 text-center text-[10px] backdrop-blur-xl sm:inset-x-5 sm:bottom-5 sm:text-xs"><span><i className="mx-auto mb-1 block h-2 w-10 rounded-full bg-zinc-300" />Hormigón</span><span><i className="mx-auto mb-1 block h-2 w-10 rounded-full bg-[#9b8d78]" />Base</span><span><i className="mx-auto mb-1 block h-2 w-10 rounded-full bg-[#6f4827]" />Terreno</span></div>
-      </div>
-      <div className="flex gap-2 overflow-x-auto p-3 sm:justify-center sm:p-5">{(['completo', 'capas', 'malla'] as const).map((item) => <button key={item} onClick={() => setLayer(item)} className={`min-h-11 shrink-0 rounded-full px-5 text-xs font-black capitalize ${layer === item ? 'bg-yellow-300 text-black' : 'bg-white/[0.07] text-white'}`}>{item === 'malla' ? 'Ver malla' : item}</button>)}</div>
-    </section>
-  );
-}
-
 export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
   const router = useRouter();
   const { products } = useCatalogProducts();
@@ -174,7 +171,6 @@ export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
   const [service, setService] = useState<ServiceMode>('equipo_instalacion');
   const [selectedCap, setSelectedCap] = useState<Capacity>(18000);
   const [selectedPlanId, setSelectedPlanId] = useState<RadierPlanId>('estandar');
-  const [temperature, setTemperature] = useState(22);
 
   const airOptions = useMemo<AirProductOption[]>(() => AIR_FALLBACKS.map((fallback) => {
     const match = products.find((product) => {
@@ -273,7 +269,13 @@ export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
             </div>
           </section>
 
-          {isAir ? <AirViewer area={air.area} requiredBtu={air.requiredBtu} product={air.selectedProduct} temperature={temperature} setTemperature={setTemperature} /> : <RadierViewer area={radier.area} volume={radier.volume} bags={radier.bags} plan={radier.plan} />}
+          <section className="mt-7" aria-label={isAir ? 'Demostración 3D de aire acondicionado' : 'Demostración 3D de radier'}>
+            {isAir ? (
+              <ThreeAirRoomViewer key={`air-${selectedCap}`} largo={length} ancho={width} alto={height} area={air.area} btu={air.requiredBtu} seleccionado={selectedCap} title="Cuarto + aire acondicionado interactivo" />
+            ) : (
+              <ThreeRadierViewer shape={shape === 'rectangular' ? 'rect' : shape.toUpperCase()} largo={length} ancho={width} espesor={thickness} base={10} gravillaBase={5} area={radier.area} hormigon={radier.volume} sacos={radier.bags} title={`Radier ${shape === 'rectangular' ? 'recto' : `forma ${shape.toUpperCase()}`} interactivo`} />
+            )}
+          </section>
         </div>
       </main>
       <StoreBottomNav />

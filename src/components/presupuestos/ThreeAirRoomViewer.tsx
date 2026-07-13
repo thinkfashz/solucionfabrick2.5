@@ -235,6 +235,16 @@ export default function ThreeAirRoomViewer(props: ThreeAirRoomViewerProps) {
   const speed = Number((1.1 + fan * .55 + (mode === 'frio' ? .25 : mode === 'auto' ? .1 : 0)).toFixed(1));
   const h = props.compact ? 'h-[330px] sm:h-[390px]' : 'h-[360px] sm:h-[480px] xl:h-[580px]';
 
+  useEffect(() => {
+    setRoomLargo(safe(props.largo, 4.2));
+    setRoomAncho(safe(props.ancho, 3.5));
+    setRoomAlto(safe(props.alto, 2.5));
+  }, [props.alto, props.ancho, props.largo]);
+
+  useEffect(() => {
+    setSelected(closestBtu(safe(props.seleccionado, props.btu || 12000)));
+  }, [props.btu, props.seleccionado]);
+
   const zoomScene = (factor: number) => {
     const current = controls.current;
     if (!current) return;

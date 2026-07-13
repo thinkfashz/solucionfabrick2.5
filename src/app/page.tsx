@@ -4,6 +4,7 @@ import Navbar from '@/components/Navbar';
 import ConstructionM2Calculator from '@/components/landing/ConstructionM2Calculator';
 import StaticConstructionHero from '@/components/landing/StaticConstructionHero';
 import LandingSections from '@/components/LandingSections';
+import { StoreBottomNav } from '@/components/store/StorefrontChrome';
 import { getCmsSettings, renderCopyright } from '@/lib/cms';
 
 export default async function Home() {
@@ -33,11 +34,12 @@ export default async function Home() {
   return (
     <>
       <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <div className="min-h-screen overflow-x-hidden bg-[#050403] selection:bg-yellow-300 selection:text-black">
+      <div className="min-h-screen overflow-x-hidden bg-[#050403] pb-[calc(6rem+env(safe-area-inset-bottom))] selection:bg-yellow-300 selection:text-black md:pb-0">
         <Navbar />
         <StaticConstructionHero coverUrl={settings.hero_cover_url || undefined} />
         <ConstructionM2Calculator />
         <LandingSections copyrightText={copyrightText} socialLinks={socialLinks} />
+        <StoreBottomNav />
       </div>
     </>
   );

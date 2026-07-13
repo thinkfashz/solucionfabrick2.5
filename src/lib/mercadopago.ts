@@ -234,7 +234,11 @@ export async function createMercadoPagoPreference(params: { orderId: string; pay
     binary_mode: false,
     metadata: { order_id: orderId, tracking_token: trackingToken, region: payload.region, shipping_address: payload.shippingAddress || '' },
   };
-  return mercadoPagoFetch<MercadoPagoPreferenceResult>('/checkout/preferences', { method: 'POST', body: JSON.stringify(body) }, 12_000);
+  return mercadoPagoFetch<MercadoPagoPreferenceResult>('/checkout/preferences', {
+    method: 'POST',
+    headers: { 'X-Idempotency-Key': `fabrick-${orderId}` },
+    body: JSON.stringify(body),
+  }, 12_000);
 }
 
 export async function getMercadoPagoPayment(paymentId: string) {

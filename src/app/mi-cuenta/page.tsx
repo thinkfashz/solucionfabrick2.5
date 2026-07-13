@@ -3,7 +3,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { Package, Clock, CheckCircle, Truck, XCircle, User, MapPin, MessageCircle, Instagram, Facebook, Edit3, LogOut, ShoppingBag } from 'lucide-react';
+import { Package, Clock, CheckCircle, Truck, XCircle, User, MapPin, MessageCircle, Instagram, Facebook, Edit3, LogOut, ShoppingBag, RotateCcw, ShieldCheck } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { useAuth } from '@/context/AuthContext';
 import { insforge } from '@/lib/insforge';
@@ -262,6 +262,11 @@ export default function MiCuentaPage() {
                       </p>
                     </div>
                   </div>
+                  <div className="mt-4 grid gap-2 border-t border-white/8 pt-4 sm:grid-cols-2">
+                    <div className="rounded-xl bg-white/[0.035] p-3 text-xs leading-5 text-zinc-400"><RotateCcw className="mb-2 h-4 w-4 text-yellow-300" /><b className="text-zinc-200">Reembolso estimado</b><br />Monto pagado por producto − despacho usado − costos no recuperables previamente informados.</div>
+                    <div className="rounded-xl bg-white/[0.035] p-3 text-xs leading-5 text-zinc-400"><ShieldCheck className="mb-2 h-4 w-4 text-emerald-300" /><b className="text-zinc-200">Garantía</b><br />Fallas de origen y cobertura del fabricante; excluye daño por uso, golpes o instalación fuera de especificación.</div>
+                  </div>
+                  <div className="mt-3 flex flex-wrap gap-4 text-[11px] font-bold"><Link href="/legal/cambios-y-devoluciones" className="text-yellow-300 hover:text-yellow-200">Términos de reembolso →</Link><Link href="/legal/terminos-y-condiciones" className="text-zinc-400 hover:text-white">Condiciones y garantía →</Link></div>
                 </div>
               ))}
             </div>
@@ -271,4 +276,3 @@ export default function MiCuentaPage() {
     </div>
   );
 }
-

@@ -25,10 +25,9 @@ export function StorefrontHeader({ onSearch }: { onSearch: () => void }) {
   const router = useRouter();
   const { user } = useAuth();
   const { branding } = useTenantBranding();
-  const { theme, toggleTheme } = useTheme();
+  const { toggleTheme } = useTheme();
   const { openCart, totalItems } = useCartContext();
   const [menuOpen, setMenuOpen] = useState(false);
-  const isDark = theme === 'dark' || theme === 'gold';
   const brandName = branding.name || 'Soluciones Fabrick';
   const supportLink = branding.whatsappUrl || '/contacto';
 
@@ -43,30 +42,31 @@ export function StorefrontHeader({ onSearch }: { onSearch: () => void }) {
   }
 
   return <>
-    <nav className={`fixed left-0 top-0 z-[180] hidden w-full border-b backdrop-blur-2xl md:block ${isDark ? 'border-white/10 bg-black/88' : 'border-neutral-200 bg-white/92'}`}>
-      <div className="mx-auto flex h-[68px] max-w-[1320px] items-center justify-between gap-3 px-4 md:px-8">
-        <button onClick={() => go('/tienda')} className="min-w-0 rounded-full" aria-label="Ir a tienda"><StoreFabrickLogo tone={isDark ? 'dark' : 'light'} branding={branding} compact /></button>
+    <nav className="fixed left-0 top-0 z-[180] w-full border-b border-white/10 bg-black/82 text-white shadow-[0_8px_30px_rgba(0,0,0,.34)] backdrop-blur-xl">
+      <div className="relative mx-auto flex h-16 max-w-[1320px] items-center justify-between gap-3 px-4 md:h-[68px] md:px-8">
+        <button onClick={() => setMenuOpen(true)} className="grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.055] md:hidden" aria-label="Abrir menú"><Menu size={21} /></button>
+        <button onClick={() => go('/tienda')} className="absolute left-1/2 min-w-0 -translate-x-1/2 rounded-full md:static md:translate-x-0" aria-label="Ir a tienda"><StoreFabrickLogo tone="dark" branding={branding} compact /></button>
         <div className="hidden items-center gap-7 md:flex">
           <button onClick={() => go('/tienda/catalogo')} className="text-sm font-bold opacity-70 hover:opacity-100">Catálogo</button>
           <button onClick={contact} className="text-sm font-bold opacity-70 hover:opacity-100">Instalación</button>
           <button onClick={() => go('/mi-cuenta')} className="text-sm font-bold opacity-70 hover:opacity-100">Cliente</button>
         </div>
         <div className="flex shrink-0 items-center gap-1.5">
-          <button onClick={onSearch} className="grid h-10 w-10 place-items-center rounded-full opacity-75 transition hover:bg-white/10 hover:opacity-100" aria-label="Buscar"><Search size={20} /></button>
+          <button onClick={onSearch} className="hidden h-10 w-10 place-items-center rounded-full opacity-75 transition hover:bg-white/10 hover:opacity-100 md:grid" aria-label="Buscar"><Search size={20} /></button>
           <button onClick={toggleTheme} className="hidden h-10 w-10 place-items-center rounded-full opacity-65 transition hover:bg-white/10 hover:opacity-100 sm:grid" aria-label="Cambiar tema"><Sun size={18} /></button>
-          <button onClick={openCart} className="relative grid h-11 w-11 place-items-center rounded-2xl border border-yellow-300/30 bg-yellow-300 text-black shadow-[0_12px_34px_rgba(250,204,21,.18)] transition hover:scale-[1.04]" aria-label="Abrir bolso de compra">
+          <button onClick={openCart} className="relative grid h-10 w-10 place-items-center rounded-xl border border-white/10 bg-white/[0.055] text-white transition hover:border-yellow-300/45 hover:text-yellow-200 md:h-11 md:w-11 md:rounded-2xl md:border-yellow-300/30 md:bg-yellow-300 md:text-black" aria-label="Abrir bolso de compra">
             <ShoppingBag size={20} strokeWidth={2.8} />
             {totalItems > 0 && <span className="absolute -right-1.5 -top-1.5 grid h-5 min-w-5 place-items-center rounded-full bg-emerald-300 px-1 text-[10px] font-black text-black ring-2 ring-black">{totalItems}</span>}
           </button>
           {user ? <button onClick={() => go('/mi-cuenta')} className="hidden h-10 w-10 place-items-center rounded-full bg-white/10 text-xs font-black sm:grid">{getInitials(user.name || user.email)}</button> : null}
-          <button onClick={() => setMenuOpen(true)} className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/[0.06]" aria-label="Abrir menú"><Menu size={22} /></button>
+          <button onClick={() => setMenuOpen(true)} className="hidden h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-white/[0.06] md:grid" aria-label="Abrir menú"><Menu size={22} /></button>
         </div>
       </div>
     </nav>
-    <div className="hidden h-[68px] md:block" />
+    <div className="h-16 md:h-[68px]" />
 
-    {menuOpen && <div className="fixed inset-0 z-[300] hidden bg-black/76 backdrop-blur-xl md:block">
-      <aside className="ml-auto flex h-full w-[88vw] max-w-[430px] flex-col border-l border-white/10 bg-[#070707] p-5 text-white shadow-2xl shadow-black/70">
+    {menuOpen && <div className="fixed inset-0 z-[300] bg-black/76 backdrop-blur-xl">
+      <aside className="ml-auto flex h-full w-[92vw] max-w-[430px] flex-col overflow-y-auto border-l border-white/10 bg-[#070707] p-4 pb-[calc(1rem+env(safe-area-inset-bottom))] text-white shadow-2xl shadow-black/70 sm:p-5">
         <div className="flex items-center justify-between gap-3">
           <StoreFabrickLogo tone="dark" branding={branding} compact />
           <button onClick={() => setMenuOpen(false)} className="grid h-12 w-12 place-items-center rounded-2xl border border-white/10 bg-white/[0.06]"><X className="h-6 w-6" /></button>

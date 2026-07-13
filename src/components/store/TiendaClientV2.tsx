@@ -1,7 +1,5 @@
 "use client";
 
-/* eslint-disable @next/next/no-img-element */
-
 import { useMemo, useState } from "react";
 import type { MouseEvent } from "react";
 import { useRouter } from "next/navigation";
@@ -57,8 +55,6 @@ type Product = {
 const FALLBACK_PRODUCTS = FALLBACK_CATALOG_PRODUCTS as Product[];
 const HERO_IMAGE =
   "https://images.unsplash.com/photo-1484154218962-a197022b5858?q=80&w=1800&auto=format&fit=crop";
-const HERO_FALLBACK =
-  "https://images.unsplash.com/photo-1505693416388-ac5ce068fe85?q=80&w=1800&auto=format&fit=crop";
 
 function getCategory(product: Product) {
   return product.category || product.category_id || "Producto";
@@ -72,10 +68,6 @@ function getImage(product: Product) {
 }
 function getDiscount(product: Product) {
   return product.discountPercentage ?? product.discount_percentage ?? 0;
-}
-function getFinalPrice(product: Product) {
-  const pct = getDiscount(product);
-  return pct > 0 ? Math.round(product.price * (1 - pct / 100)) : product.price;
 }
 function getStockNumber(product: Product) {
   if (typeof product.stock === "number") return product.stock;
@@ -107,50 +99,6 @@ function asCartProduct(product: Product) {
   };
 }
 
-function SmallProduct({
-  product,
-  onOpen,
-}: {
-  product: Product;
-  onOpen: () => void;
-}) {
-  return (
-    <button
-      onClick={onOpen}
-      className="group min-w-[220px] rounded-[1.5rem] bg-white/[0.075] p-2 text-left transition hover:-translate-y-0.5"
-    >
-      <div className="relative overflow-hidden rounded-[1.15rem] bg-[#f3efe6]">
-        <img
-          src={getImage(product)}
-          alt={product.name}
-          className="h-28 w-full object-cover transition duration-500 group-hover:scale-[1.04]"
-          loading="lazy"
-        />
-        {getDiscount(product) > 0 && (
-          <span className="absolute left-2 top-2 rounded-full bg-red-500 px-2 py-1 text-[10px] font-black text-white">
-            -{getDiscount(product)}%
-          </span>
-        )}
-      </div>
-      <div className="px-2 pb-2 pt-3">
-        <p className="text-[10px] font-black uppercase tracking-[.2em] text-yellow-300/80">
-          {getCategory(product)}
-        </p>
-        <h3 className="mt-1 line-clamp-2 text-sm font-black text-white">
-          {product.name}
-        </h3>
-        <div className="mt-2 flex items-center justify-between gap-2">
-          <span className="font-black text-yellow-300">
-            ${getFinalPrice(product).toLocaleString("es-CL")}
-          </span>
-          <span className="rounded-full bg-yellow-300 px-2.5 py-1 text-[10px] font-black text-black">
-            Ficha
-          </span>
-        </div>
-      </div>
-    </button>
-  );
-}
 function BottomMenuItem({
   icon: Icon,
   label,
@@ -227,37 +175,13 @@ export default function TiendaClientV2() {
       return !q || haystack.includes(q);
     });
   }, [activeCategory, liveProducts, onlyDeals, onlyInStock, searchQuery]);
-  const heroProduct = filteredProducts[0] || liveProducts[0];
   const featured = filteredProducts.slice(0, 12);
-  const quickProducts = (
-    liveProducts.filter((product) => getDiscount(product) > 0).length
-      ? liveProducts.filter((product) => getDiscount(product) > 0)
-      : liveProducts
-  ).slice(0, 6);
-  const stats = useMemo(
-    () => ({
-      total: liveProducts.length,
-      deals: liveProducts.filter((product) => getDiscount(product) > 0).length,
-      available: liveProducts.filter((product) => {
-        const stock = getStockNumber(product);
-        return stock === null || stock > 0;
-      }).length,
-    }),
-    [liveProducts],
-  );
   function selectProduct(product: Product) {
     navigateWithTransition(`/tienda/${product.id}`, router);
   }
   function addProduct(e: MouseEvent, product: Product) {
     e.stopPropagation();
     addToCart(asCartProduct(product) as Parameters<typeof addToCart>[0]);
-  }
-  function buyNow(e: MouseEvent, product: Product) {
-    e.stopPropagation();
-    navigateWithTransition(
-      `/checkout?productId=${encodeURIComponent(product.id)}&name=${encodeURIComponent(product.name)}&price=${getFinalPrice(product)}&img=${encodeURIComponent(getImage(product))}&category=${encodeURIComponent(getCategory(product))}`,
-      router,
-    );
   }
   function goSupport() {
     if (supportLink.startsWith("http"))
@@ -279,135 +203,38 @@ export default function TiendaClientV2() {
     <div
       className={`min-h-screen overflow-x-hidden ${isDark ? "bg-[#070706] text-white" : "bg-[#f5f2ea] text-neutral-950"}`}
     >
-      <style>{`.store-scroll::-webkit-scrollbar{display:none}.store-scroll{scrollbar-width:none}@media(max-width:767px){.sf-store-footer{padding-bottom:calc(9.5rem + env(safe-area-inset-bottom))!important}}`}</style>
+      <style>{`.store-scroll::-webkit-scrollbar{display:none}.store-scroll{scrollbar-width:none}`}</style>
       <StorefrontHeader onSearch={() => setSearchOpen(true)} />
-      <header className="mx-auto max-w-[1320px] px-4 pb-6 pt-4 md:px-8 md:pb-10">
-        <section className="relative overflow-hidden rounded-[2rem] bg-[#0a0a08] p-0 text-white shadow-[0_26px_90px_rgba(0,0,0,.22)] md:rounded-[2.5rem]">
-          <div className="relative grid gap-0 lg:grid-cols-[1.08fr_.92fr] lg:items-stretch">
-            <div className="relative min-h-[520px] overflow-hidden rounded-[2rem] md:min-h-[680px] md:rounded-[2.5rem]">
-              <img
-                src={HERO_IMAGE}
-                alt="Cocina moderna referencial Soluciones Fabrick"
-                className="absolute inset-0 h-full w-full object-cover"
-                loading="eager"
-              />
-              <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,.82)_0%,rgba(0,0,0,.66)_44%,rgba(0,0,0,.24)_100%)]" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_16%_10%,rgba(250,204,21,.18),transparent_24rem)]" />
-              <div className="relative z-10 flex min-h-[520px] flex-col justify-between p-6 md:min-h-[680px] md:p-10">
-                <div>
-                  <StoreFabrickLogo tone="dark" branding={branding} />
-                  <div className="mt-7 inline-flex items-center gap-2 rounded-full bg-yellow-300/12 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.22em] text-yellow-100 ring-1 ring-yellow-300/20">
-                    <BadgeCheck className="h-3.5 w-3.5" /> Selección Fabrick
-                  </div>
-                  <h1 className="mt-6 max-w-2xl text-[clamp(38px,10vw,84px)] font-black leading-[.9] tracking-[-.08em]">
-                    Resuelve tu espacio con la compra correcta.
-                  </h1>
-                  <p className="mt-5 max-w-xl text-sm leading-7 text-zinc-300 md:text-base">
-                    Productos para construir, renovar y equipar. Compara con información clara y coordina despacho o instalación desde un mismo lugar.
-                  </p>
-                </div>
-                <div className="grid grid-cols-3 gap-2 text-center text-[11px] font-black uppercase tracking-[.12em] text-white/80">
-                  <span className="rounded-2xl bg-white/8 px-2 py-3 backdrop-blur-md">
-                    <b className="block text-lg text-yellow-300">
-                      {stats.total}
-                    </b>{" "}
-                    productos
-                  </span>
-                  <span className="rounded-2xl bg-white/8 px-2 py-3 backdrop-blur-md">
-                    <b className="block text-lg text-yellow-300">
-                      {stats.available}
-                    </b>{" "}
-                    disponibles
-                  </span>
-                  <span className="rounded-2xl bg-white/8 px-2 py-3 backdrop-blur-md">
-                    <b className="block text-lg text-yellow-300">
-                      {stats.deals}
-                    </b>{" "}
-                    ofertas
-                  </span>
-                </div>
-              </div>
+      <header className="mx-auto max-w-[1320px] px-4 pb-5 pt-4 md:px-8 md:pb-8">
+        <section className="relative min-h-[430px] overflow-hidden rounded-[2rem] bg-[#0a0a08] text-white shadow-[0_26px_90px_rgba(0,0,0,.22)] md:min-h-[520px] md:rounded-[2.5rem]">
+          <img src={HERO_IMAGE} alt="Cocina moderna equipada con productos para el hogar" className="absolute inset-0 h-full w-full object-cover object-center" loading="eager" />
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(0,0,0,.90)_0%,rgba(0,0,0,.72)_48%,rgba(0,0,0,.28)_100%)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_14%_10%,rgba(250,204,21,.16),transparent_24rem)]" />
+          <div className="relative z-10 flex min-h-[430px] max-w-3xl flex-col justify-end p-6 md:min-h-[520px] md:p-10 lg:p-12">
+            <div className="inline-flex w-fit items-center gap-2 rounded-full border border-yellow-200/20 bg-black/28 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.22em] text-yellow-100 backdrop-blur-md">
+              <BadgeCheck className="h-3.5 w-3.5" /> Productos seleccionados
             </div>
-            <div className="hidden gap-4 p-4 pl-4 lg:grid">
-              <article className="relative min-h-[330px] overflow-hidden rounded-[2rem] bg-[#ece7dc] text-neutral-950">
-                <img
-                  src={HERO_FALLBACK}
-                  alt="Sala referencial Soluciones Fabrick"
-                  className="absolute inset-0 h-full w-full object-cover"
-                  loading="lazy"
-                />
-                <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(255,255,255,.18),rgba(255,255,255,.86)_62%,rgba(255,255,255,.95))]" />
-                <div className="relative z-10 flex min-h-[330px] flex-col justify-end p-6">
-                  <span className="w-fit rounded-full bg-black px-3 py-1.5 text-[10px] font-black uppercase tracking-[.2em] text-white">
-                    Inspiración
-                  </span>
-                  <h2 className="mt-4 max-w-md text-4xl font-black leading-[.95] tracking-[-.07em]">
-                    Espacios que inspiran tu proyecto
-                  </h2>
-                  <p className="mt-3 max-w-md text-sm leading-6 text-neutral-600">
-                    Encuentra productos para renovar sala, cocina, baño y mucho
-                    más.
-                  </p>
-                </div>
-              </article>
-              <article className="rounded-[2rem] bg-white/[0.055] p-5">
-                <p className="text-[10px] font-black uppercase tracking-[.26em] text-yellow-300">
-                  Producto recomendado
-                </p>
-                <h3 className="mt-2 line-clamp-2 text-2xl font-black tracking-[-.04em]">
-                  {heroProduct?.name || "Catálogo Fabrick"}
-                </h3>
-                <p className="mt-2 line-clamp-2 text-sm leading-6 text-zinc-400">
-                  {heroProduct?.description ||
-                    heroProduct?.tagline ||
-                    "Producto listo para revisar, agregar al bolso y finalizar compra con soporte humano."}
-                </p>
-                {heroProduct && (
-                  <div className="mt-5 flex flex-wrap items-center gap-3">
-                    <strong className="text-3xl font-black tracking-[-.04em] text-yellow-300">
-                      ${getFinalPrice(heroProduct).toLocaleString("es-CL")}
-                    </strong>
-                    <button
-                      onClick={(e) => buyNow(e, heroProduct)}
-                      className="inline-flex min-h-12 items-center gap-2 rounded-full bg-yellow-300 px-5 text-sm font-black text-black"
-                    >
-                      <ShoppingBag className="h-4 w-4" />
-                      Comprar rápido
-                    </button>
-                    <button
-                      onClick={() => selectProduct(heroProduct)}
-                      className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white/10 px-5 text-sm font-black text-white"
-                    >
-                      Ver ficha
-                    </button>
-                  </div>
-                )}
-              </article>
-              <div className="store-scroll flex gap-3 overflow-x-auto pb-1">
-                {quickProducts.map((product) => (
-                  <SmallProduct
-                    key={product.id}
-                    product={product}
-                    onOpen={() => selectProduct(product)}
-                  />
-                ))}
-              </div>
+            <h1 className="mt-5 text-[clamp(40px,8vw,76px)] font-black leading-[.9] tracking-[-.075em]">Encuentra la solución correcta para tu espacio.</h1>
+            <p className="mt-5 max-w-2xl text-sm leading-7 text-zinc-200/90 md:text-base">Compara lo esencial, revisa el precio y decide si necesitas despacho o instalación. Los detalles técnicos completos están dentro de cada producto.</p>
+            <div className="mt-6 flex flex-wrap gap-3">
+              <button onClick={() => setSearchOpen(true)} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-yellow-300 px-6 text-sm font-black text-black transition hover:bg-white"><Search className="h-4 w-4" /> Buscar productos</button>
+              <a href="#storeFilters" className="inline-flex min-h-12 items-center rounded-full border border-white/20 bg-black/25 px-6 text-sm font-black text-white backdrop-blur-md transition hover:border-yellow-200/50">Ver categorías</a>
             </div>
           </div>
         </section>
       </header>
-      <main className="mx-auto max-w-[1320px] px-4 pb-36 md:px-8 md:pb-16">
+      <main className="mx-auto max-w-[1320px] px-4 pb-[calc(8.5rem+env(safe-area-inset-bottom))] md:px-8 md:pb-16">
         <section aria-label="Buscar productos" className={`mb-4 rounded-[1.5rem] border p-3 md:flex md:items-center md:gap-4 ${isDark ? "border-white/10 bg-white/[0.035]" : "border-black/5 bg-white"}`}>
           <label className="relative block flex-1">
             <span className="sr-only">Buscar en la tienda</span>
             <Search className={`pointer-events-none absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 ${isDark ? "text-yellow-300" : "text-amber-700"}`} />
             <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder="¿Qué problema quieres resolver? Busca aire, iluminación, grifería..." className={`h-14 w-full rounded-2xl border pl-12 pr-4 text-sm font-semibold outline-none transition ${isDark ? "border-white/10 bg-black/40 text-white placeholder:text-zinc-600 focus:border-yellow-300/45" : "border-black/10 bg-neutral-50 text-neutral-950 placeholder:text-neutral-400 focus:border-amber-500/45"}`} />
           </label>
-          <p className={`mt-3 px-2 text-xs md:mt-0 md:max-w-[280px] ${isDark ? "text-zinc-500" : "text-neutral-500"}`}>{filteredProducts.length} soluciones encontradas · compra directa o asistencia humana.</p>
+          <p className={`mt-3 px-2 text-xs md:mt-0 md:max-w-[280px] ${isDark ? "text-zinc-300" : "text-neutral-600"}`}>{filteredProducts.length} soluciones encontradas · compra directa o asistencia humana.</p>
         </section>
         <section
           id="storeFilters"
-          className={`sticky top-0 z-30 -mx-4 border-y px-4 py-3 backdrop-blur-2xl md:top-[68px] md:mx-0 md:rounded-[1.5rem] md:border ${isDark ? "border-white/10 bg-[#070706]/88" : "border-black/5 bg-[#f5f2ea]/88"}`}
+          className={`sticky top-16 z-30 -mx-4 scroll-mt-20 border-y px-4 py-3 backdrop-blur-2xl md:top-[68px] md:mx-0 md:rounded-[1.5rem] md:border ${isDark ? "border-white/10 bg-[#070706]/92" : "border-black/5 bg-[#f5f2ea]/92"}`}
         >
           <div className="store-scroll flex gap-2 overflow-x-auto pb-1">
             {categories.map((cat) => (
@@ -434,7 +261,7 @@ export default function TiendaClientV2() {
           </div>
         </section>
         {featured.length > 0 ? (
-          <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2 xl:grid-cols-4">
+          <div className="mt-6 grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
             {featured.map((product) => (
               <UiverseProductCard
                 key={product.id}
@@ -474,7 +301,7 @@ export default function TiendaClientV2() {
           </div>
         )}
       </main>
-      <section className="mx-auto grid max-w-[1320px] gap-4 px-4 pb-24 md:grid-cols-3 md:px-8">
+      <section className="mx-auto grid max-w-[1320px] gap-3 px-4 pb-16 md:grid-cols-3 md:px-8 md:pb-20">
         {[
           [
             ShieldCheck,
@@ -496,12 +323,12 @@ export default function TiendaClientV2() {
           return (
             <article
               key={String(title)}
-              className={`rounded-[1.8rem] border p-6 ${isDark ? "border-white/10 bg-white/[0.035]" : "border-black/5 bg-white shadow-[0_18px_44px_rgba(20,20,20,.06)]"}`}
+              className={`rounded-[1.6rem] border p-5 ${isDark ? "border-white/10 bg-white/[0.035]" : "border-black/5 bg-white shadow-[0_18px_44px_rgba(20,20,20,.06)]"}`}
             >
               <IconComponent className="mb-4 h-7 w-7 text-yellow-300" />
               <h3 className="text-xl font-black">{String(title)}</h3>
               <p
-                className={`mt-2 text-sm leading-6 ${isDark ? "text-zinc-500" : "text-neutral-500"}`}
+                className={`mt-2 text-sm leading-6 ${isDark ? "text-zinc-300" : "text-neutral-600"}`}
               >
                 {String(text)}
               </p>
@@ -509,15 +336,12 @@ export default function TiendaClientV2() {
           );
         })}
       </section>
-      <footer className="sf-store-footer border-t border-white/10 bg-black px-4 py-10 text-white md:px-8">
-        <div className="mx-auto flex max-w-[1320px] flex-col gap-6 md:flex-row md:items-center md:justify-between">
+      <footer className="border-t border-white/10 bg-black px-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))] pt-8 text-white md:px-8 md:py-8">
+        <div className="mx-auto flex max-w-[1320px] flex-col gap-5 md:flex-row md:items-center md:justify-between">
           <div>
-            <StoreFabrickLogo tone="dark" branding={branding} />
-            <p className="mt-3 max-w-md text-sm text-zinc-500">
-              Productos que responden a una necesidad real del hogar. Compra,
-              cotiza y coordina instalación con respaldo comercial.
-            </p>
-            <p className="mt-4 text-[10px] uppercase tracking-[.18em] text-zinc-700">© {new Date().getFullYear()} {brandName} · Claridad para construir y mejorar.</p>
+            <StoreFabrickLogo tone="dark" branding={branding} compact />
+            <p className="mt-2 max-w-md text-sm leading-6 text-zinc-300">Productos útiles, compra clara e instalación coordinada cuando la necesitas.</p>
+            <p className="mt-3 text-[10px] uppercase tracking-[.14em] text-zinc-500">© {new Date().getFullYear()} {brandName} · Claridad para construir y mejorar.</p>
           </div>
           <div className="flex flex-wrap gap-2">
             <button
@@ -542,7 +366,7 @@ export default function TiendaClientV2() {
         </div>
       </footer>
       {bottomMenuOpen && (
-        <div className="fixed inset-x-3 bottom-[96px] z-[186] rounded-[1.7rem] border border-white/10 bg-[#0b0a08]/96 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,.48)] backdrop-blur-2xl md:hidden">
+        <div className="fixed inset-x-3 bottom-[calc(5.6rem+env(safe-area-inset-bottom))] z-[186] max-h-[calc(100dvh-7.5rem-env(safe-area-inset-bottom))] overflow-y-auto rounded-[1.7rem] border border-white/10 bg-[#0b0a08]/96 p-3 text-white shadow-[0_24px_80px_rgba(0,0,0,.48)] backdrop-blur-2xl md:hidden">
           <div className="mb-3 flex items-center justify-between px-1">
             <p className="text-[10px] font-black uppercase tracking-[.26em] text-orange-300">
               Menú rápido
@@ -588,7 +412,7 @@ export default function TiendaClientV2() {
           </div>
         </div>
       )}
-      <div className="fixed inset-x-3 bottom-3 z-[185] rounded-[1.4rem] border border-white/10 bg-[#14120d]/92 p-2 shadow-[0_20px_70px_rgba(0,0,0,.28)] backdrop-blur-2xl md:hidden">
+      <div className="fixed inset-x-0 bottom-0 z-[185] rounded-t-[1.4rem] border-x border-t border-white/10 bg-[#14120d]/94 px-3 pb-[calc(.6rem+env(safe-area-inset-bottom))] pt-2 shadow-[0_-16px_55px_rgba(0,0,0,.34)] backdrop-blur-2xl md:hidden">
         <div className="flex items-center gap-2">
           <label className="relative min-w-0 flex-1">
             <Search className="pointer-events-none absolute left-3 top-1/2 h-5 w-5 -translate-y-1/2 text-yellow-200/75" />

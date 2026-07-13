@@ -1,22 +1,24 @@
 'use client';
 
 import { useState } from 'react';
+import { motion } from 'framer-motion';
+import { CheckCircle2, Clock3, LockKeyhole } from 'lucide-react';
 import AnimatedButton from '@/components/ui/animated-button';
 
 const PROJECT_TYPES = [
-  'Ampliación de vivienda',
-  'Remodelación de interiores',
-  'Instalación eléctrica',
-  'Gasfitería',
-  'Estructura Metalcon',
-  'Proyecto llave en mano',
-  'Otro',
-];
+  { label: 'Construir', value: 'Kit, cabaña o casa' },
+  { label: 'Remodelar', value: 'Ampliación o remodelación' },
+  { label: 'Instalar', value: 'Instalación o equipamiento' },
+  { label: 'Otro', value: 'Otro proyecto' },
+] as const;
+
+const fieldClass = 'w-full rounded-xl border border-white/12 bg-white/[.035] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-zinc-500 focus:border-yellow-300/60 focus:bg-white/[.055] focus:ring-2 focus:ring-yellow-300/10';
 
 export default function ContactForm() {
   const [sending, setSending] = useState(false);
   const [done, setDone] = useState<null | 'ok' | 'error'>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [projectType, setProjectType] = useState<(typeof PROJECT_TYPES)[number]['value']>(PROJECT_TYPES[0].value);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -34,7 +36,7 @@ export default function ContactForm() {
 
     if (!payload.nombre || !payload.email) {
       setDone('error');
-      setErrorMsg('Nombre y correo son obligatorios.');
+      setErrorMsg('Completa tu nombre y correo para poder responderte.');
       return;
     }
 
@@ -47,13 +49,13 @@ export default function ContactForm() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      // Any 2xx (including 201 on write, 202 on graceful fallback) is success.
       if (!res.ok) {
         const json = (await res.json().catch(() => ({}))) as { error?: string };
         throw new Error(json.error || 'No pudimos enviar tu solicitud.');
       }
       setDone('ok');
       form.reset();
+      setProjectType(PROJECT_TYPES[0].value);
     } catch (err) {
       setDone('error');
       setErrorMsg((err as Error).message);
@@ -64,95 +66,66 @@ export default function ContactForm() {
 
   if (done === 'ok') {
     return (
-      <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-6 text-center">
-        <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-emerald-400">
-          Solicitud enviada
-        </p>
-        <h3 className="mt-3 text-lg font-black uppercase text-white">
-          Recibimos tu solicitud
-        </h3>
-        <p className="mt-2 text-sm leading-relaxed text-zinc-300">
-          Te contactamos en menos de 24 horas.
-        </p>
-        <AnimatedButton
-          type="button"
-          onClick={() => setDone(null)}
-          className="mt-6 rounded-full border border-emerald-400/30 px-6 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-emerald-300 hover:bg-emerald-500/10"
-        >
-          Enviar otra solicitud
-        </AnimatedButton>
-      </div>
+      <motion.div
+        initial={{ opacity: 0, y: 12, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        className="rounded-2xl border border-emerald-300/25 bg-emerald-300/[.07] p-7 text-center"
+        role="status"
+      >
+        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }} className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-emerald-300 text-black">
+          <CheckCircle2 className="h-7 w-7" />
+        </motion.span>
+        <p className="mt-5 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-200">Solicitud recibida</p>
+        <h3 className="mt-2 text-2xl font-black text-white">Ya podemos revisar tu proyecto.</h3>
+        <p className="mt-2 text-sm leading-6 text-zinc-300">Te contactaremos para confirmar ubicación, alcance y próximos pasos.</p>
+        <AnimatedButton type="button" onClick={() => setDone(null)} className="mt-6 rounded-full border border-emerald-300/30 px-6 py-3 text-xs font-black text-emerald-100 hover:bg-emerald-300/10">Enviar otra solicitud</AnimatedButton>
+      </motion.div>
     );
   }
 
   return (
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
-      <input
-        name="nombre"
-        required
-        placeholder="Nombre completo"
-        className="w-full rounded-2xl border border-white/10 bg-black px-5 py-4 text-sm text-white placeholder:text-zinc-600 focus:border-yellow-400 focus:outline-none"
-      />
-      <input
-        name="email"
-        type="email"
-        required
-        placeholder="Correo de contacto"
-        className="w-full rounded-2xl border border-white/10 bg-black px-5 py-4 text-sm text-white placeholder:text-zinc-600 focus:border-yellow-400 focus:outline-none"
-      />
-      <input
-        name="telefono"
-        type="tel"
-        placeholder="Teléfono (WhatsApp de preferencia)"
-        className="w-full rounded-2xl border border-white/10 bg-black px-5 py-4 text-sm text-white placeholder:text-zinc-600 focus:border-yellow-400 focus:outline-none"
-      />
-      <div className="relative">
-        <label htmlFor="tipo_proyecto" className="sr-only">
-          ¿Qué necesitas?
-        </label>
-        <select
-          id="tipo_proyecto"
-          name="tipo_proyecto"
-          defaultValue=""
-          className="w-full appearance-none rounded-2xl border border-white/10 bg-black px-5 py-4 text-sm text-white focus:border-yellow-400 focus:outline-none"
-        >
-          <option value="" disabled className="text-zinc-500">
-            ¿Qué necesitas?
-          </option>
-          {PROJECT_TYPES.map((t) => (
-            <option key={t} value={t} className="bg-zinc-950 text-white">
-              {t}
-            </option>
-          ))}
-        </select>
-        <span
-          aria-hidden
-          className="pointer-events-none absolute right-5 top-1/2 -translate-y-1/2 text-yellow-400"
-        >
-          ▾
-        </span>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <Field label="Nombre" required>
+          <input name="nombre" autoComplete="name" required placeholder="Tu nombre completo" className={fieldClass} />
+        </Field>
+        <Field label="Correo" required>
+          <input name="email" type="email" autoComplete="email" required placeholder="correo@ejemplo.cl" className={fieldClass} />
+        </Field>
       </div>
-      <textarea
-        name="mensaje"
-        rows={5}
-        placeholder="Cuéntanos sobre tu proyecto"
-        className="w-full rounded-2xl border border-white/10 bg-black px-5 py-4 text-sm text-white placeholder:text-zinc-600 focus:border-yellow-400 focus:outline-none"
-      />
-      {done === 'error' && errorMsg ? (
-        <p className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-2 text-xs text-red-300">
-          {errorMsg}
-        </p>
-      ) : null}
-      <AnimatedButton
-        type="submit"
-        disabled={sending}
-        className="w-full rounded-2xl bg-yellow-400 px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-black transition hover:bg-white disabled:opacity-60"
-      >
-        {sending ? 'Enviando…' : 'Enviar solicitud'}
-      </AnimatedButton>
-      <p className="text-center text-[10px] uppercase tracking-[0.25em] text-zinc-500">
-        ✓ Evaluación gratuita · ✓ Respuesta en 24h · ✓ Sin compromiso
-      </p>
+
+      <Field label="WhatsApp o teléfono">
+        <input name="telefono" type="tel" autoComplete="tel" placeholder="+56 9..." className={fieldClass} />
+      </Field>
+
+      <fieldset>
+        <legend className="mb-2 text-xs font-black text-white">¿Qué necesitas?</legend>
+        <input type="hidden" name="tipo_proyecto" value={projectType} />
+        <div className="grid grid-cols-2 gap-2">
+          {PROJECT_TYPES.map((type) => {
+            const selected = projectType === type.value;
+            return (
+              <button key={type.value} type="button" aria-pressed={selected} onClick={() => setProjectType(type.value)} className={`min-h-11 rounded-xl border px-3 text-left text-xs font-black transition ${selected ? 'border-yellow-300 bg-yellow-300 text-black shadow-[0_10px_28px_rgba(250,204,21,.12)]' : 'border-white/10 bg-white/[.035] text-zinc-300 hover:border-white/25'}`}>{type.label}</button>
+            );
+          })}
+        </div>
+      </fieldset>
+
+      <Field label="Cuéntanos lo esencial">
+        <textarea name="mensaje" rows={4} placeholder="Comuna, superficie aproximada y qué resultado buscas" className={`${fieldClass} resize-y`} />
+      </Field>
+
+      {done === 'error' && errorMsg ? <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-xs text-red-200">{errorMsg}</p> : null}
+
+      <AnimatedButton type="submit" disabled={sending} className="w-full rounded-xl bg-yellow-300 px-5 py-4 text-[11px] font-black uppercase tracking-[0.18em] text-black transition hover:bg-white disabled:opacity-60">{sending ? 'Enviando…' : 'Solicitar orientación'}</AnimatedButton>
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] text-zinc-400">
+        <span className="inline-flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5 text-yellow-300" /> Respuesta en 24 h hábiles</span>
+        <span className="inline-flex items-center gap-1.5"><LockKeyhole className="h-3.5 w-3.5 text-yellow-300" /> Datos usados solo para responderte</span>
+      </div>
     </form>
   );
+}
+
+function Field({ label, required = false, children }: { label: string; required?: boolean; children: React.ReactNode }) {
+  return <label className="grid gap-2"><span className="text-xs font-black text-white">{label}{required ? <span className="ml-1 text-yellow-300">*</span> : null}</span>{children}</label>;
 }

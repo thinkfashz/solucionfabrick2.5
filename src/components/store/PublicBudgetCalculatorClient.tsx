@@ -126,7 +126,7 @@ export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
   const neto = isAire ? aire.neto : radier.neto;
   const iva = isAire ? aire.iva : radier.iva;
 
-  return <main className="min-h-screen bg-[#060504] px-4 py-5 pb-28 text-white md:px-8">
+  return <main className="min-h-screen bg-[#060504] px-4 py-5 pb-[calc(7rem+env(safe-area-inset-bottom))] text-white md:px-8">
     <div className="mx-auto max-w-[1320px]">
       <button onClick={() => navigateWithTransition('/tienda', router)} className="mb-5 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.045] px-4 py-2 text-xs font-black text-white/75"><ArrowLeft className="h-4 w-4" /> Volver a tienda</button>
       <section className="overflow-hidden rounded-[2.2rem] border border-orange-300/15 bg-[radial-gradient(circle_at_20%_0%,rgba(255,180,0,.16),transparent_24rem),linear-gradient(135deg,#11100c,#050403)] shadow-[0_28px_100px_rgba(0,0,0,.42)]">

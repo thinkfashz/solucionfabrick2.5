@@ -1,7 +1,6 @@
 export const dynamic = 'force-dynamic';
 import type { Metadata, Viewport } from 'next';
 import './globals.css';
-import './admin-lava.css';
 import './tenant-public-theme.css';
 import './responsive-safety.css';
 import './remove-obsolete-sections.css';

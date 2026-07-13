@@ -5,7 +5,7 @@ import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
 import { usePathname } from 'next/navigation';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
-const SESSION_FLAG = 'fabrick.splash.seen.v4';
+const SESSION_FLAG = 'fabrick.splash.seen.v3';
 const LEGACY_SESSION_FLAG = 'fabrick.loadingScreen.seen.v1';
 
 function delay(ms: number) {
@@ -25,6 +25,8 @@ export default function SplashScreen() {
   const pathname = usePathname();
   const prefersReduced = useReducedMotion();
   const isAdmin = pathname?.startsWith('/admin') ?? false;
+
+  // Always start hidden — useEffect sets to true client-side only.
   const [visible, setVisible] = useState(false);
   const [progress, setProgress] = useState(0);
 
@@ -32,14 +34,17 @@ export default function SplashScreen() {
     if (isAdmin) return;
     try { window.sessionStorage.removeItem(LEGACY_SESSION_FLAG); } catch { /* ignore */ }
     try {
-      if (window.sessionStorage.getItem(SESSION_FLAG) !== '1') setVisible(true);
+      if (window.sessionStorage.getItem(SESSION_FLAG) !== '1') {
+        setVisible(true);
+      }
     } catch {
-      // sessionStorage unavailable; skip splash
+      // sessionStorage unavailable (private mode, quota) — skip splash
     }
   }, [isAdmin]);
 
   useEffect(() => {
     if (!visible || isAdmin) return;
+
     try { window.sessionStorage.setItem(SESSION_FLAG, '1'); } catch { /* private mode */ }
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
@@ -47,19 +52,23 @@ export default function SplashScreen() {
     let cancelled = false;
     let closeTimer: number | undefined;
 
-    setProgress(document.readyState === 'complete' ? 58 : 16);
-    const fonts = fontsReady().then(() => { if (!cancelled) setProgress((value) => Math.max(value, 78)); });
-    const loaded = windowReady(loadController.signal).then(() => { if (!cancelled) setProgress((value) => Math.max(value, 92)); });
-    const minimum = delay(prefersReduced ? 160 : 760);
-    const maximum = delay(prefersReduced ? 480 : 1850);
+    setProgress(document.readyState === 'complete' ? 52 : 18);
+    const fonts = fontsReady().then(() => {
+      if (!cancelled) setProgress((value) => Math.max(value, 74));
+    });
+    const loaded = windowReady(loadController.signal).then(() => {
+      if (!cancelled) setProgress((value) => Math.max(value, 90));
+    });
+    const minimum = delay(prefersReduced ? 180 : 680);
+    const maximum = delay(prefersReduced ? 500 : 1800);
 
     void Promise.race([Promise.all([fonts, loaded, minimum]), maximum]).then(() => {
       if (cancelled) return;
       setProgress(100);
-      closeTimer = window.setTimeout(() => setVisible(false), prefersReduced ? 60 : 220);
+      closeTimer = window.setTimeout(() => setVisible(false), prefersReduced ? 60 : 180);
     });
 
-    const safety = window.setTimeout(() => setVisible(false), prefersReduced ? 650 : 2450);
+    const safety = window.setTimeout(() => setVisible(false), prefersReduced ? 650 : 2300);
 
     return () => {
       cancelled = true;
@@ -78,46 +87,34 @@ export default function SplashScreen() {
         <motion.div
           key="splash"
           aria-label="Preparando Soluciones Fabrick"
-          className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-[#070503] px-6 text-[#fff1d6]"
+          className="fixed inset-0 z-[9999] flex items-center justify-center overflow-hidden bg-[#080704] px-6 text-white"
           initial={{ clipPath: 'inset(0 0 0 0)', opacity: 1 }}
           exit={{
             clipPath: prefersReduced ? 'inset(0 0 0 0)' : 'inset(0 0 100% 0)',
             opacity: 0,
-            transition: { duration: prefersReduced ? 0.16 : 0.62, ease: [0.76, 0, 0.24, 1] },
+            transition: { duration: prefersReduced ? 0.16 : 0.58, ease: [0.76, 0, 0.24, 1] },
           }}
           role="status"
         >
-          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_18%_8%,rgba(250,204,21,.28),transparent_30rem),radial-gradient(circle_at_84%_18%,rgba(255,106,31,.24),transparent_28rem),radial-gradient(circle_at_50%_110%,rgba(255,241,214,.10),transparent_26rem),linear-gradient(145deg,#170f08_0%,#070503_55%,#020201_100%)]" />
-          <motion.div aria-hidden animate={prefersReduced ? { rotate: 0 } : { rotate: 360 }} className="absolute h-[min(82vw,660px)] w-[min(82vw,660px)] rounded-full border border-[#fff1d6]/10" transition={{ duration: 24, ease: 'linear', repeat: Infinity }} />
-          <motion.div aria-hidden animate={prefersReduced ? { rotate: 0 } : { rotate: -360 }} className="absolute h-[min(58vw,440px)] w-[min(58vw,440px)] rounded-full border border-orange-400/10" transition={{ duration: 16, ease: 'linear', repeat: Infinity }} />
-          <div aria-hidden className="absolute inset-0 opacity-[.08] [background-image:linear-gradient(rgba(255,241,214,.22)_1px,transparent_1px),linear-gradient(90deg,rgba(255,241,214,.22)_1px,transparent_1px)] [background-size:50px_50px]" />
-          <div aria-hidden className="absolute inset-x-0 top-0 h-1/2 bg-[linear-gradient(180deg,rgba(255,241,214,.10),transparent)]" />
-
+          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_50%_42%,rgba(244,200,91,.18),transparent_34rem),linear-gradient(135deg,#050504,#100c05_55%,#050504)]" />
+          <motion.div aria-hidden animate={prefersReduced ? { rotate: 0 } : { rotate: 360 }} className="absolute h-[min(78vw,620px)] w-[min(78vw,620px)] rounded-full border border-yellow-200/10" transition={{ duration: 22, ease: 'linear', repeat: Infinity }} />
+          <div aria-hidden className="absolute inset-0 opacity-[.06] [background-image:linear-gradient(rgba(255,255,255,.22)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.22)_1px,transparent_1px)] [background-size:48px_48px]" />
           <motion.div
             animate={{ opacity: 1, scale: 1, y: 0 }}
             className="relative flex w-full max-w-xl select-none flex-col items-center"
-            initial={{ opacity: 0, scale: 0.95, y: 18 }}
-            transition={{ duration: prefersReduced ? 0.18 : 0.7, ease: [0.16, 1, 0.3, 1] }}
+            initial={{ opacity: 0, scale: 0.96, y: 16 }}
+            transition={{ duration: prefersReduced ? 0.18 : 0.65, ease: [0.16, 1, 0.3, 1] }}
           >
-            <div className="absolute -inset-x-16 -inset-y-10 -z-10 rounded-full bg-[radial-gradient(circle_at_50%_35%,rgba(255,241,214,.18),rgba(250,204,21,.10),transparent_70%)] blur-3xl" />
-            <div className="relative rounded-[2rem] border border-[#fff1d6]/14 bg-black/28 px-8 py-7 shadow-[0_28px_120px_rgba(0,0,0,.55),inset_0_1px_0_rgba(255,241,214,.08)] backdrop-blur-2xl">
-              <div className="absolute inset-x-6 top-0 h-px bg-gradient-to-r from-transparent via-[#fff1d6]/45 to-transparent" />
-              <FabrickFullLogo priority theme="light" />
-              <p className="mt-5 text-center text-[10px] font-black uppercase tracking-[.34em] text-[#fff1d6]/55">Construcción · Tienda · Admin</p>
-            </div>
-
-            <div className="mt-9 w-full max-w-sm">
-              <div className="mb-3 flex items-center justify-between text-[10px] font-black uppercase tracking-[.22em] text-[#fff1d6]/45">
+            <div className="absolute -inset-x-12 -inset-y-8 -z-10 rounded-full bg-yellow-300/10 blur-3xl" />
+            <FabrickFullLogo priority theme="light" />
+            <p className="mt-5 text-center text-[10px] font-bold uppercase tracking-[.34em] text-white/55">Construcción · Remodelación · Hogar</p>
+            <div className="mt-10 w-full max-w-xs">
+              <div className="mb-3 flex items-center justify-between text-[10px] font-semibold uppercase tracking-[.2em] text-white/45">
                 <span>Preparando experiencia</span>
-                <span className="tabular-nums text-[#facc15]">{Math.round(progress)}%</span>
+                <span className="tabular-nums text-yellow-200">{Math.round(progress)}%</span>
               </div>
-              <div className="h-1 overflow-hidden rounded-full bg-[#fff1d6]/12">
-                <motion.div animate={{ width: `${progress}%` }} className="h-full rounded-full bg-gradient-to-r from-[#fff1d6] via-[#facc15] to-[#ff6a1f] shadow-[0_0_22px_rgba(250,204,21,.82)]" transition={{ duration: 0.24, ease: 'easeOut' }} />
-              </div>
-              <div className="mt-4 grid grid-cols-3 gap-2 text-center text-[9px] font-black uppercase tracking-[0.18em] text-[#fff1d6]/45">
-                <span className={progress >= 36 ? 'text-[#fff1d6]' : ''}>Tema</span>
-                <span className={progress >= 72 ? 'text-[#fff1d6]' : ''}>Módulos</span>
-                <span className={progress >= 92 ? 'text-[#fff1d6]' : ''}>Listo</span>
+              <div className="h-px overflow-hidden bg-white/12">
+                <motion.div animate={{ width: `${progress}%` }} className="h-full bg-gradient-to-r from-amber-600 via-yellow-200 to-white shadow-[0_0_14px_rgba(244,200,91,.75)]" transition={{ duration: 0.22, ease: 'easeOut' }} />
               </div>
             </div>
           </motion.div>

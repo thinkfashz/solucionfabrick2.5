@@ -1,28 +1,13 @@
-import { LayoutGrid } from 'lucide-react';
-import { BrandMark } from '@/components/admin/ui/BrandMark';
+import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
 export default function AdminLoading() {
   return (
-    <main className="admin-module-loader">
-      <div className="admin-module-loader-card">
-        <div className="admin-module-loader-inner">
-          <div className="flex items-center gap-4">
-            <div className="admin-loader-orb">
-              <BrandMark size="lg" animated />
-            </div>
-            <div className="min-w-0 flex-1">
-              <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#facc15]">Admin Fabrick</p>
-              <h1 className="mt-2 text-2xl font-black tracking-[-0.05em] text-[#fff1d6]">Cargando módulo</h1>
-              <p className="mt-1 text-sm leading-6 text-[#fff1d6]/55">Preparando datos, interfaz y controles del panel.</p>
-            </div>
-            <LayoutGrid className="h-6 w-6 shrink-0 text-[#ff8a1f]" />
-          </div>
-          <div className="mt-6 admin-loader-bar"><span /></div>
-          <div className="mt-4 grid grid-cols-3 gap-2 text-[9px] font-black uppercase tracking-[0.18em] text-[#fff1d6]/42">
-            <span>Datos</span>
-            <span className="text-center">Módulos</span>
-            <span className="text-right">UI</span>
-          </div>
+    <main className="fixed inset-0 z-[9999] grid place-items-center bg-[#050505] text-white">
+      <div className="w-[min(92vw,420px)] rounded-[2rem] border border-yellow-300/15 bg-black/70 p-8 text-center shadow-[0_30px_90px_rgba(0,0,0,.55)] backdrop-blur-xl">
+        <FabrickFullLogo className="mx-auto" priority theme="light" />
+        <h1 className="mt-3 text-2xl font-black tracking-tight">Cargando admin</h1>
+        <div className="mx-auto mt-5 h-1.5 w-44 overflow-hidden rounded-full bg-white/10">
+          <div className="h-full w-full origin-left animate-pulse rounded-full bg-yellow-300" />
         </div>
       </div>
     </main>

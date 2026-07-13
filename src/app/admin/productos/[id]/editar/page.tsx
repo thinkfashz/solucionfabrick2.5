@@ -72,17 +72,21 @@ export default function EditarProductoPage() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-black flex items-center justify-center text-zinc-500 text-sm">
-        Cargando producto…
+      <div className="grid min-h-[62vh] place-items-center rounded-[32px] bg-[#f6f0df] text-[#746d5d]">
+        <div className="text-center">
+          <span className="mx-auto mb-4 block size-9 animate-spin rounded-full border-2 border-[#d7cdb5] border-t-[#17170f]" />
+          <p className="text-sm font-bold">Preparando editor de producto…</p>
+        </div>
       </div>
     );
   }
 
   if (notFound) {
     return (
-      <div className="min-h-screen bg-black flex flex-col items-center justify-center gap-3 text-zinc-500">
-        <span className="text-3xl">🔍</span>
-        <p className="text-sm">Producto no encontrado</p>
+      <div className="flex min-h-[62vh] flex-col items-center justify-center gap-3 rounded-[32px] border border-[#ded5bf] bg-[#fffaf0] text-[#746d5d]">
+        <span className="grid size-14 place-items-center rounded-2xl bg-[#17170f] text-2xl">🔍</span>
+        <p className="text-base font-black text-[#17170f]">Producto no encontrado</p>
+        <p className="text-sm">Comprueba que el producto siga disponible en el catálogo.</p>
       </div>
     );
   }

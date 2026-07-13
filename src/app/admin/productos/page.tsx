@@ -1,7 +1,5 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { buildProductTagline, resolveCategoryName } from '@/lib/commerce';
@@ -13,7 +11,9 @@ import {
   Cloud,
   DollarSign,
   Eye,
+  FolderOpen,
   Image as ImageIcon,
+  Link2,
   Package,
   Pencil,
   Plus,
@@ -25,8 +25,9 @@ import {
   Truck,
   Upload,
 } from 'lucide-react';
-import { AdminPage, AdminPageHeader } from '@/components/admin/ui';
+import { AdminPage } from '@/components/admin/ui';
 import ProductImportModal from './ProductImportModal';
+import ProductCategoryManager from './ProductCategoryManager';
 
 interface AdminProduct {
   id: string;
@@ -110,7 +111,7 @@ function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (val
         event.stopPropagation();
         onChange(!checked);
       }}
-      className={`relative inline-flex h-7 w-12 flex-shrink-0 rounded-full border border-white/10 transition ${checked ? 'bg-yellow-300' : 'bg-zinc-800'}`}
+      className={`relative inline-flex h-7 w-12 flex-shrink-0 rounded-full border border-black/10 transition ${checked ? 'bg-yellow-400' : 'bg-black/20'}`}
     >
       <span className={`pointer-events-none mt-0.5 inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
     </button>
@@ -145,20 +146,6 @@ function DeleteModal({ product, onConfirm, onCancel }: { product: AdminProduct; 
   );
 }
 
-function Mini({ label, value, tone = 'neutral' }: { label: string; value: string; tone?: 'neutral' | 'sky' | 'red' }) {
-  const cls = tone === 'sky'
-    ? 'border-sky-400/20 bg-sky-400/10 text-sky-200'
-    : tone === 'red'
-      ? 'border-red-400/25 bg-red-400/10 text-red-200'
-      : 'border-white/10 bg-white/[0.03] text-zinc-200';
-  return (
-    <div className={`rounded-2xl border p-3 ${cls}`}>
-      <p className="text-zinc-600">{label}</p>
-      <p className="mt-1 truncate font-bold">{value}</p>
-    </div>
-  );
-}
-
 function ProductCard({ product, categoryName, selected, selectionMode, onSelect, onLongPress, onEdit, onDelete, onToggle }: {
   product: AdminProduct;
   categoryName: string;
@@ -184,81 +171,21 @@ function ProductCard({ product, categoryName, selected, selectionMode, onSelect,
   }
 
   return (
-    <article
-      onPointerDown={() => { pressTimer.current = setTimeout(onLongPress, 450); }}
-      onPointerUp={clearPress}
-      onPointerLeave={clearPress}
-      onClick={() => { if (selectionMode) onSelect(); }}
-      className={`group relative overflow-hidden rounded-[1.85rem] border bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.09),transparent_34%),rgba(9,9,11,0.82)] shadow-[0_22px_70px_rgba(0,0,0,0.32)] transition ${selected ? 'border-yellow-300 ring-2 ring-yellow-300/25' : 'border-white/10 hover:border-yellow-300/30'}`}
-    >
-      {(selectionMode || selected) && (
-        <button
-          type="button"
-          onPointerDown={(event) => event.stopPropagation()}
-          onClick={(event) => { event.stopPropagation(); onSelect(); }}
-          className={`absolute right-3 top-3 z-20 flex h-10 w-10 items-center justify-center rounded-2xl border text-sm font-black backdrop-blur ${selected ? 'border-yellow-300 bg-yellow-300 text-black' : 'border-white/20 bg-black/60 text-white'}`}
-          aria-label={selected ? 'Quitar selección' : 'Seleccionar producto'}
-        >
-          {selected ? <Check className="h-4 w-4" /> : ''}
-        </button>
-      )}
+    <article onPointerDown={() => { pressTimer.current = setTimeout(onLongPress, 450); }} onPointerUp={clearPress} onPointerLeave={clearPress} onClick={() => { if (selectionMode) onSelect(); }} className={`group relative overflow-hidden rounded-[1.8rem] bg-[#fbf5e8] text-[#1b1710] shadow-[0_22px_70px_rgba(58,45,19,.11)] transition hover:-translate-y-1 ${selected ? 'ring-4 ring-yellow-400/80' : ''}`}>
+      {(selectionMode || selected) && <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onSelect(); }} className={`absolute right-3 top-3 z-20 grid h-10 w-10 place-items-center rounded-2xl shadow-lg ${selected ? 'bg-yellow-400 text-black' : 'bg-black/70 text-white'}`} aria-label={selected ? 'Quitar selección' : 'Seleccionar producto'}>{selected ? <Check className="h-4 w-4" /> : null}</button>}
 
-      <div className="relative h-48 bg-zinc-900">
-        {product.image_url ? (
-          <img src={product.image_url} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" />
-        ) : (
-          <div className="flex h-full w-full items-center justify-center text-zinc-700"><Package className="h-10 w-10" /></div>
-        )}
-        <div className="absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-black/92 to-transparent" />
-        <div className="absolute left-3 top-3 flex flex-wrap gap-2 pr-12">
-          <span className={`rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${active ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-zinc-500/30 bg-zinc-500/10 text-zinc-400'}`}>{active ? 'Activo' : 'Oculto'}</span>
-          {product.featured && <span className="rounded-full border border-yellow-300/30 bg-yellow-300/10 px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] text-yellow-200">Destacado</span>}
-        </div>
-        <div className="absolute bottom-3 left-3 right-3 flex items-end justify-between gap-3">
-          <div className="min-w-0">
-            <p className="truncate text-lg font-black text-white">{product.name}</p>
-            <p className="mt-0.5 truncate text-xs text-zinc-400">{categoryName}</p>
-          </div>
-          <span className="rounded-2xl bg-yellow-300 px-3 py-1.5 text-xs font-black text-black">{formatCLP(product.price)}</span>
-        </div>
+      <div className="relative h-52 bg-white/55 p-3">
+        {product.image_url ? <img src={product.image_url} alt={product.name} className="h-full w-full rounded-[1.25rem] object-contain transition duration-500 group-hover:scale-[1.03]" /> : <div className="flex h-full w-full items-center justify-center rounded-[1.25rem] bg-[#eadfc8] text-black/20"><Package className="h-10 w-10" /></div>}
+        <div className="absolute left-3 top-3 flex flex-wrap gap-2 pr-12"><span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] ${active ? 'bg-emerald-800 text-white' : 'bg-black/70 text-white'}`}>{active ? 'Activo' : 'Oculto'}</span>{product.featured ? <span className="rounded-full bg-yellow-400 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-black">Destacado</span> : null}</div>
       </div>
 
-      <div className="space-y-4 p-4">
-        <p className="line-clamp-2 min-h-[2.5rem] text-sm leading-5 text-zinc-500">
-          {product.description || buildProductTagline(product.tagline, undefined) || 'Sin descripción.'}
-        </p>
-        <div className="grid grid-cols-2 gap-2 text-xs">
-          <Mini label="Stock" value={String(stock)} tone={critical ? 'red' : 'neutral'} />
-          <Mini label="Fotos" value={`${galleryCount} Cloudinary`} tone="sky" />
-          <Mini label="Envío" value={toNumber(product.shipping_fee) > 0 ? formatCLP(product.shipping_fee) : 'No definido'} tone="neutral" />
-          <Mini label="IVA" value={`${taxPct || 0}%`} tone="neutral" />
-        </div>
-        <div className="rounded-2xl border border-white/10 bg-black/30 p-3 text-xs">
-          <div className="flex items-center justify-between gap-3">
-            <span className="text-zinc-500">Total ref.</span>
-            <span className="font-black text-yellow-300">{formatCLP(totalReference(product))}</span>
-          </div>
-          <div className="mt-2 flex items-center justify-between gap-3">
-            <span className="text-zinc-500">Margen</span>
-            <span className={margin == null ? 'text-zinc-600' : margin >= 30 ? 'text-emerald-300 font-black' : 'text-amber-300 font-black'}>
-              {margin == null ? '—' : `${margin}%`}
-            </span>
-          </div>
-        </div>
-        <div className="grid grid-cols-2 gap-3 rounded-2xl border border-white/10 bg-black/25 p-3">
-          <label className="flex items-center justify-between gap-2 text-xs text-zinc-400" onPointerDown={(event) => event.stopPropagation()}>
-            Activo
-            <Toggle checked={active} label={`Activo: ${product.name}`} onChange={(value) => onToggle('activo', value)} />
-          </label>
-          <label className="flex items-center justify-between gap-2 text-xs text-zinc-400" onPointerDown={(event) => event.stopPropagation()}>
-            Destacado
-            <Toggle checked={!!product.featured} label={`Destacado: ${product.name}`} onChange={(value) => onToggle('featured', value)} />
-          </label>
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          <button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onEdit(); }} className="rounded-2xl border border-white/10 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-zinc-200 hover:border-yellow-300/40 hover:text-yellow-200"><Pencil className="mr-1 inline h-4 w-4" />Editar</button>
-          <button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onDelete(); }} className="rounded-2xl border border-red-400/25 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-red-300 hover:bg-red-400/10"><Trash2 className="mr-1 inline h-4 w-4" />Eliminar</button>
-        </div>
+      <div className="space-y-4 p-4 pt-3">
+        <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-base font-black">{product.name}</p><p className="mt-1 truncate text-[10px] font-bold uppercase tracking-widest text-[#936716]">{categoryName}</p></div><span className="shrink-0 rounded-xl bg-black px-3 py-2 text-xs font-black text-yellow-300">{formatCLP(product.price)}</span></div>
+        <p className="line-clamp-2 min-h-[2.5rem] text-sm leading-5 text-black/48">{product.description || buildProductTagline(product.tagline, undefined) || 'Sin descripción.'}</p>
+        <div className="grid grid-cols-4 gap-1.5 text-center"><div className={`rounded-xl p-2 ${critical ? 'bg-red-600/10 text-red-900' : 'bg-black/[0.045]'}`}><b className="block text-sm">{stock}</b><span className="text-[8px] uppercase tracking-widest opacity-50">Stock</span></div><div className="rounded-xl bg-black/[0.045] p-2"><b className="block text-sm">{galleryCount}</b><span className="text-[8px] uppercase tracking-widest opacity-50">Fotos</span></div><div className="rounded-xl bg-black/[0.045] p-2"><b className="block text-sm">{taxPct || 0}%</b><span className="text-[8px] uppercase tracking-widest opacity-50">IVA</span></div><div className="rounded-xl bg-black/[0.045] p-2"><b className="block text-sm">{margin == null ? '—' : `${margin}%`}</b><span className="text-[8px] uppercase tracking-widest opacity-50">Margen</span></div></div>
+        <div className="flex items-center justify-between rounded-2xl bg-[#e8dcc2] px-3 py-2 text-xs"><span className="text-black/45">Total referencial</span><b>{formatCLP(totalReference(product))}</b></div>
+        <div className="grid grid-cols-2 gap-3 rounded-2xl bg-black/[0.045] p-3"><label className="flex items-center justify-between gap-2 text-xs text-black/55" onPointerDown={(event) => event.stopPropagation()}>Activo<Toggle checked={active} label={`Activo: ${product.name}`} onChange={(value) => onToggle('activo', value)} /></label><label className="flex items-center justify-between gap-2 text-xs text-black/55" onPointerDown={(event) => event.stopPropagation()}>Destacado<Toggle checked={!!product.featured} label={`Destacado: ${product.name}`} onChange={(value) => onToggle('featured', value)} /></label></div>
+        <div className="grid grid-cols-2 gap-3"><button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onEdit(); }} className="rounded-2xl bg-black px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-yellow-300"><Pencil className="mr-1 inline h-4 w-4" />Editar</button><button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onDelete(); }} className="rounded-2xl bg-red-700/[0.08] px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-red-800"><Trash2 className="mr-1 inline h-4 w-4" />Eliminar</button></div>
       </div>
     </article>
   );
@@ -274,48 +201,48 @@ function ProductsTable({ products, selectedSet, categoryMap, onSelect, onEdit, o
   onToggle: (product: AdminProduct, field: 'activo' | 'featured', value: boolean) => void;
 }) {
   return (
-    <div className="overflow-x-auto rounded-3xl border border-white/10 bg-zinc-950/70">
+    <div className="overflow-x-auto rounded-[1.8rem] bg-[#fbf5e8] text-[#1b1710] shadow-[0_22px_70px_rgba(58,45,19,.10)]">
       <table className="w-full text-sm">
         <thead>
-          <tr className="border-b border-white/10 bg-black/30">
+          <tr className="border-b border-black/10 bg-[#e8dcc2]">
             {['Sel.', 'Producto', 'Categoría', 'Precio', 'Envío', 'IVA', 'Fotos', 'Activo', 'Acciones'].map((header) => (
-              <th key={header} className="px-4 py-4 text-left text-xs font-black uppercase tracking-[0.18em] text-zinc-500">{header}</th>
+              <th key={header} className="px-4 py-4 text-left text-[10px] font-black uppercase tracking-[0.18em] text-black/45">{header}</th>
             ))}
           </tr>
         </thead>
-        <tbody className="divide-y divide-white/5">
+        <tbody className="divide-y divide-black/[0.07]">
           {products.map((product) => {
             const selected = selectedSet.has(product.id);
             return (
-              <tr key={product.id} className={selected ? 'bg-yellow-300/10' : 'hover:bg-white/[0.03]'}>
+              <tr key={product.id} className={selected ? 'bg-yellow-300/25' : 'hover:bg-black/[0.025]'}>
                 <td className="px-4 py-4">
-                  <button onClick={() => onSelect(product.id)} className={`flex h-9 w-9 items-center justify-center rounded-xl border ${selected ? 'border-yellow-300 bg-yellow-300 text-black' : 'border-white/10 text-zinc-500'}`}>
+                  <button onClick={() => onSelect(product.id)} className={`flex h-9 w-9 items-center justify-center rounded-xl ${selected ? 'bg-yellow-400 text-black' : 'bg-black/[0.06] text-black/35'}`}>
                     {selected ? <Check className="h-4 w-4" /> : ''}
                   </button>
                 </td>
                 <td className="min-w-[260px] px-4 py-4">
                   <div className="flex items-center gap-3">
                     {product.image_url ? (
-                      <img src={product.image_url} alt={product.name} className="h-14 w-14 rounded-2xl border border-white/10 object-cover" />
+                      <img src={product.image_url} alt={product.name} className="h-14 w-14 rounded-2xl bg-white object-contain p-1" />
                     ) : (
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/10 bg-zinc-900 text-zinc-700"><Package className="h-5 w-5" /></div>
+                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-black/[0.06] text-black/25"><Package className="h-5 w-5" /></div>
                     )}
                     <div className="min-w-0">
-                      <p className="truncate font-bold text-white">{product.name}</p>
-                      <p className="mt-1 line-clamp-1 text-xs text-zinc-500">{product.source || product.description || buildProductTagline(product.tagline, undefined)}</p>
+                      <p className="truncate font-bold">{product.name}</p>
+                      <p className="mt-1 line-clamp-1 text-xs text-black/40">{product.source || product.description || buildProductTagline(product.tagline, undefined)}</p>
                     </div>
                   </div>
                 </td>
-                <td className="px-4 py-4 text-zinc-300">{resolveCategoryName(product.category_id, categoryMap)}</td>
-                <td className="px-4 py-4 font-bold text-yellow-300">{formatCLP(product.price)}</td>
-                <td className="px-4 py-4 text-zinc-300">{toNumber(product.shipping_fee) > 0 ? formatCLP(product.shipping_fee) : '—'}</td>
-                <td className="px-4 py-4 text-zinc-300">{getTaxPct(product) || 0}%</td>
-                <td className="px-4 py-4 text-sky-300">{getGalleryCount(product)}</td>
+                <td className="px-4 py-4 text-black/55">{resolveCategoryName(product.category_id, categoryMap)}</td>
+                <td className="px-4 py-4 font-black">{formatCLP(product.price)}</td>
+                <td className="px-4 py-4 text-black/55">{toNumber(product.shipping_fee) > 0 ? formatCLP(product.shipping_fee) : '—'}</td>
+                <td className="px-4 py-4 text-black/55">{getTaxPct(product) || 0}%</td>
+                <td className="px-4 py-4 text-[#8c6111]">{getGalleryCount(product)}</td>
                 <td className="px-4 py-4"><Toggle checked={product.activo !== false} onChange={(value) => onToggle(product, 'activo', value)} /></td>
                 <td className="px-4 py-4">
                   <div className="flex gap-2">
-                    <button onClick={() => onEdit(product.id)} className="rounded-xl border border-white/10 p-2 text-zinc-300 hover:border-yellow-300/40 hover:text-yellow-200"><Pencil className="h-4 w-4" /></button>
-                    <button onClick={() => onDelete(product)} className="rounded-xl border border-red-400/25 p-2 text-red-300 hover:bg-red-400/10"><Trash2 className="h-4 w-4" /></button>
+                    <button onClick={() => onEdit(product.id)} className="rounded-xl bg-black p-2 text-yellow-300"><Pencil className="h-4 w-4" /></button>
+                    <button onClick={() => onDelete(product)} className="rounded-xl bg-red-700/[0.08] p-2 text-red-800"><Trash2 className="h-4 w-4" /></button>
                   </div>
                 </td>
               </tr>
@@ -329,7 +256,7 @@ function ProductsTable({ products, selectedSet, categoryMap, onSelect, onEdit, o
 
 export default function AdminProductosPage() {
   const router = useRouter();
-  const { categories, categoryMap } = useCategories();
+  const { categories, categoryMap, reload: reloadCategories } = useCategories();
   const [products, setProducts] = useState<AdminProduct[]>([]);
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -340,6 +267,7 @@ export default function AdminProductosPage() {
   const [view, setView] = useState<ViewMode>('cards');
   const [sort, setSort] = useState<SortMode>('newest');
   const [importOpen, setImportOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const isMounted = useRef(true);
 
@@ -477,6 +405,11 @@ export default function AdminProductosPage() {
     return { total, active, featured, lowStock, value, gallery };
   }, [products]);
 
+  const productCounts = useMemo(() => products.reduce<Record<string, number>>((counts, product) => {
+    if (product.category_id) counts[product.category_id] = (counts[product.category_id] || 0) + 1;
+    return counts;
+  }, {}), [products]);
+
   const filtered = useMemo(() => products.filter((product) => {
     const q = search.trim().toLowerCase();
     const categoryName = resolveCategoryName(product.category_id, categoryMap);
@@ -521,147 +454,48 @@ export default function AdminProductosPage() {
   }
 
   return (
-    <AdminPage className="px-1 md:px-2">
-      <AdminPageHeader
-        eyebrow="Catálogo"
-        icon={Package}
-        title={<>Gestión de <span className="text-yellow-300">Productos</span></>}
-        description="Productos con galería Cloudinary, precio de envío, impuesto, margen y acciones masivas optimizadas para móvil."
-        meta={<span className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/30 bg-sky-400/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-sky-300"><Cloud className="h-3 w-3" /> Cloudinary</span>}
-        actions={(
-          <>
-            <button onClick={() => setImportOpen(true)} className="inline-flex items-center gap-2 rounded-full bg-yellow-300 px-5 py-2.5 text-xs font-black uppercase tracking-[0.18em] text-black shadow-[0_16px_45px_rgba(250,204,21,0.22)] transition hover:bg-yellow-200"><Upload className="h-3.5 w-3.5" /> Importar</button>
-            <button onClick={() => router.push('/admin/productos/nuevo')} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-bold uppercase tracking-[0.18em] text-white hover:border-yellow-300/40"><Plus className="h-3.5 w-3.5" /> Nuevo</button>
-            <button onClick={() => { setLoading(true); void loadProducts(); }} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2.5 text-xs font-semibold text-zinc-300 hover:bg-white/10"><RefreshCw className="h-3.5 w-3.5" /> Refrescar</button>
-          </>
-        )}
-      />
-
-      <div className="space-y-5">
-        {loadError && (
-          <div className="rounded-3xl border border-red-500/30 bg-red-500/10 p-4 text-sm text-red-100">
-            <div className="mb-2 flex items-center gap-2 font-bold"><AlertTriangle className="h-4 w-4" /> Error cargando productos</div>
-            <p className="text-red-100/75">{loadError}</p>
+    <AdminPage className="px-1 text-[#1b1710] md:px-2">
+      <section className="relative overflow-hidden rounded-[2.2rem] bg-[radial-gradient(circle_at_90%_10%,rgba(250,204,21,.65),transparent_25rem),linear-gradient(135deg,#fff9ec,#e3d1ad)] p-5 shadow-[0_30px_100px_rgba(58,45,19,.15)] sm:p-8">
+        <div className="grid gap-7 xl:grid-cols-[1fr_520px] xl:items-end">
+          <div><div className="flex flex-wrap gap-2"><span className="rounded-full bg-black px-3 py-2 text-[9px] font-black uppercase tracking-[.18em] text-yellow-300">Catálogo central</span><span className="inline-flex items-center gap-1.5 rounded-full bg-white/55 px-3 py-2 text-[9px] font-black uppercase tracking-[.14em] text-black/55"><Cloud className="h-3 w-3" />Imágenes organizadas</span></div><h1 className="mt-6 max-w-3xl text-[clamp(42px,7vw,78px)] font-black leading-[.87] tracking-[-.075em]">Productos claros, ordenados y listos para vender.</h1><p className="mt-5 max-w-2xl text-sm leading-7 text-black/55">Crea manualmente, importa en bloque o captura desde un enlace. Las categorías organizan el catálogo y definen la carpeta de cada galería.</p></div>
+          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2">
+            <button onClick={() => router.push('/admin/productos/nuevo')} className="col-span-2 inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-black px-5 text-xs font-black uppercase tracking-[.15em] text-yellow-300 xl:col-span-2"><Plus className="h-4 w-4" />Crear producto</button>
+            <button onClick={() => setImportOpen(true)} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-4 text-xs font-black text-black"><Upload className="h-4 w-4" />Carga masiva</button>
+            <button onClick={() => router.push('/admin/productos/importar')} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-white/55 px-4 text-xs font-black text-black"><Link2 className="h-4 w-4" />Desde enlace</button>
+            <button onClick={() => setCategoriesOpen(true)} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#d4bc8e] px-4 text-xs font-black text-black"><FolderOpen className="h-4 w-4" />Categorías</button>
+            <button onClick={() => { setLoading(true); void loadProducts(); }} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-white/55 px-4 text-xs font-black text-black"><RefreshCw className="h-4 w-4" />Actualizar</button>
           </div>
-        )}
+        </div>
+      </section>
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-6">
-          {[
-            { label: 'Catálogo', value: String(metrics.total), icon: Package, tone: 'text-white' },
-            { label: 'Activos', value: String(metrics.active), icon: CheckCircle2, tone: 'text-emerald-300' },
-            { label: 'Destacados', value: String(metrics.featured), icon: Star, tone: 'text-yellow-300' },
-            { label: 'Stock crítico', value: String(metrics.lowStock), icon: AlertTriangle, tone: 'text-red-300' },
-            { label: 'Fotos', value: String(metrics.gallery), icon: ImageIcon, tone: 'text-sky-300' },
-            { label: 'Inventario', value: formatCLP(metrics.value), icon: DollarSign, tone: 'text-yellow-300' },
-          ].map(({ label, value, icon: Icon, tone }) => (
-            <div key={label} className="rounded-3xl border border-white/10 bg-zinc-950/70 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">{label}</p>
-                <Icon className={`h-4 w-4 ${tone}`} />
-              </div>
-              <p className={`mt-3 text-2xl font-black ${tone}`}>{value}</p>
-            </div>
-          ))}
-        </section>
+      {loadError ? <div className="rounded-[1.5rem] bg-[#f7d1c8] p-4 text-sm text-[#7a2418]"><b className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" />Error cargando productos</b><p className="mt-1 opacity-75">{loadError}</p></div> : null}
 
-        {selectionMode && (
-          <section className="sticky top-4 z-30 rounded-3xl border border-yellow-300/25 bg-black/85 p-3 shadow-[0_20px_80px_rgba(0,0,0,0.55)] backdrop-blur-xl">
-            <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-              <div>
-                <p className="text-sm font-black text-white">{selectedIds.length} producto{selectedIds.length !== 1 ? 's' : ''} seleccionado{selectedIds.length !== 1 ? 's' : ''}</p>
-                <p className="text-xs text-zinc-500">Acciones rápidas para varios productos.</p>
-              </div>
-              <div className="flex flex-wrap gap-2">
-                <button onClick={() => void handleBulkPatch('activo', true)} className="rounded-2xl border border-emerald-400/25 px-3 py-2 text-xs font-bold text-emerald-200 hover:bg-emerald-400/10">Activar</button>
-                <button onClick={() => void handleBulkPatch('activo', false)} className="rounded-2xl border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-white/5">Ocultar</button>
-                <button onClick={() => void handleBulkPatch('featured', true)} className="rounded-2xl border border-yellow-300/25 px-3 py-2 text-xs font-bold text-yellow-200 hover:bg-yellow-300/10">Destacar</button>
-                <button onClick={() => void handleBulkPatch('featured', false)} className="rounded-2xl border border-white/10 px-3 py-2 text-xs font-bold text-zinc-300 hover:bg-white/5">Quitar destacado</button>
-                <button onClick={() => void handleBulkDelete()} className="rounded-2xl border border-red-400/25 px-3 py-2 text-xs font-black text-red-300 hover:bg-red-400/10"><Trash2 className="mr-1 inline h-3.5 w-3.5" />Eliminar</button>
-                <button onClick={() => setSelectedIds([])} className="rounded-2xl border border-white/10 px-3 py-2 text-xs font-bold text-zinc-400 hover:bg-white/5">Cancelar</button>
-              </div>
-            </div>
-          </section>
-        )}
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-6">
+        {[
+          { label: 'Productos', value: String(metrics.total), icon: Package, card: 'bg-[#fbf5e8]' },
+          { label: 'Activos', value: String(metrics.active), icon: CheckCircle2, card: 'bg-[#d8e4cf]' },
+          { label: 'Destacados', value: String(metrics.featured), icon: Star, card: 'bg-yellow-300' },
+          { label: 'Stock crítico', value: String(metrics.lowStock), icon: AlertTriangle, card: 'bg-[#f4d3ca]' },
+          { label: 'Imágenes', value: String(metrics.gallery), icon: ImageIcon, card: 'bg-[#ded4bf]' },
+          { label: 'Valor inventario', value: formatCLP(metrics.value), icon: DollarSign, card: 'bg-[#17140f] text-[#fff7e7]' },
+        ].map(({ label, value, icon: Icon, card }) => <article key={label} className={`rounded-[1.55rem] p-4 shadow-[0_18px_55px_rgba(58,45,19,.09)] ${card}`}><div className="flex items-center justify-between"><span className="text-[9px] font-black uppercase tracking-[.17em] opacity-45">{label}</span><Icon className="h-4 w-4 opacity-55" /></div><b className="mt-4 block truncate text-2xl font-black tracking-[-.05em]">{value}</b></article>)}
+      </section>
 
-        <section className="rounded-3xl border border-white/10 bg-zinc-950/60 p-4">
-          <div className="grid gap-3 lg:grid-cols-[1fr_auto_auto_auto] lg:items-center">
-            <div className="relative min-w-[220px]">
-              <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-              <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar producto, categoría o proveedor…" className="w-full rounded-2xl border border-white/10 bg-black/35 py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-yellow-300/40" />
-            </div>
-            <select value={sort} onChange={(event) => setSort(event.target.value as SortMode)} className="rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm font-bold text-zinc-200 outline-none focus:border-yellow-300/40">
-              <option value="newest">Más recientes</option>
-              <option value="name">Nombre A-Z</option>
-              <option value="price_asc">Precio menor</option>
-              <option value="price_desc">Precio mayor</option>
-              <option value="stock_asc">Stock menor</option>
-              <option value="stock_desc">Stock mayor</option>
-              <option value="margin_desc">Mejor margen</option>
-            </select>
-            <div className="flex gap-2 rounded-2xl border border-white/10 bg-black/30 p-1">
-              <button onClick={() => setView('cards')} className={`rounded-xl px-3 py-2 text-xs font-bold ${view === 'cards' ? 'bg-yellow-300 text-black' : 'text-zinc-400'}`}><Eye className="mr-1 inline h-3.5 w-3.5" />Tarjetas</button>
-              <button onClick={() => setView('table')} className={`rounded-xl px-3 py-2 text-xs font-bold ${view === 'table' ? 'bg-yellow-300 text-black' : 'text-zinc-400'}`}><Settings2 className="mr-1 inline h-3.5 w-3.5" />Tabla</button>
-            </div>
-            <button onClick={toggleVisibleSelection} className="rounded-2xl border border-yellow-300/20 px-4 py-3 text-xs font-black uppercase tracking-[0.16em] text-yellow-200 hover:bg-yellow-300/10">
-              {allVisibleSelected ? 'Quitar visibles' : 'Seleccionar visibles'}
-            </button>
-          </div>
-          <div className="mt-4 flex gap-2 overflow-x-auto pb-1">
-            {filterOptions.map((cat) => (
-              <button key={cat} onClick={() => setActiveCategory(cat)} className={`whitespace-nowrap rounded-full px-3 py-2 text-xs font-bold transition ${activeCategory === cat ? 'bg-yellow-300 text-black' : 'border border-white/10 bg-white/[0.03] text-zinc-400 hover:text-white'}`}>{cat}</button>
-            ))}
-          </div>
-          <p className="mt-3 text-xs text-zinc-600">Tip móvil: mantén presionada una tarjeta para activar selección múltiple.</p>
-        </section>
+      {selectionMode ? <section className="sticky top-20 z-30 rounded-[1.6rem] bg-[#17140f]/95 p-3 text-white shadow-2xl backdrop-blur-xl"><div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><b className="text-sm">{selectedIds.length} seleccionado{selectedIds.length === 1 ? '' : 's'}</b><p className="text-xs text-white/40">Aplicar cambios sin abrir cada ficha.</p></div><div className="flex flex-wrap gap-2"><button onClick={() => void handleBulkPatch('activo', true)} className="rounded-xl bg-emerald-700 px-3 py-2 text-xs font-bold">Activar</button><button onClick={() => void handleBulkPatch('activo', false)} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold">Ocultar</button><button onClick={() => void handleBulkPatch('featured', true)} className="rounded-xl bg-yellow-400 px-3 py-2 text-xs font-bold text-black">Destacar</button><button onClick={() => void handleBulkPatch('featured', false)} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold">Quitar destacado</button><button onClick={() => void handleBulkDelete()} className="rounded-xl bg-red-700 px-3 py-2 text-xs font-black">Eliminar</button><button onClick={() => setSelectedIds([])} className="rounded-xl border border-white/15 px-3 py-2 text-xs font-bold">Cancelar</button></div></div></section> : null}
 
-        {loading ? (
-          <div className="flex items-center justify-center rounded-3xl border border-white/10 bg-zinc-950/60 py-20 text-sm text-zinc-500"><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Cargando productos…</div>
-        ) : sortedProducts.length === 0 ? (
-          <div className="flex flex-col items-center justify-center rounded-3xl border border-white/10 bg-zinc-950/60 py-20 text-sm text-zinc-500"><Package className="mb-3 h-10 w-10 text-zinc-700" /><span>No hay productos{search ? ` que coincidan con “${search}”` : ''}.</span></div>
-        ) : view === 'cards' ? (
-          <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">
-            {sortedProducts.map((product) => (
-              <ProductCard
-                key={product.id}
-                product={product}
-                categoryName={resolveCategoryName(product.category_id, categoryMap)}
-                selected={selectedSet.has(product.id)}
-                selectionMode={selectionMode}
-                onSelect={() => toggleSelected(product.id)}
-                onLongPress={() => enterSelection(product.id)}
-                onEdit={() => router.push(`/admin/productos/${product.id}/editar`)}
-                onDelete={() => setDeleteTarget(product)}
-                onToggle={(field, value) => handleToggle(product, field, value)}
-              />
-            ))}
-          </div>
-        ) : (
-          <ProductsTable
-            products={sortedProducts}
-            selectedSet={selectedSet}
-            categoryMap={categoryMap}
-            onSelect={toggleSelected}
-            onEdit={(id) => router.push(`/admin/productos/${id}/editar`)}
-            onDelete={(product) => setDeleteTarget(product)}
-            onToggle={handleToggle}
-          />
-        )}
+      <section className="rounded-[1.8rem] bg-[#e8dcc2] p-4 shadow-[0_20px_65px_rgba(58,45,19,.10)] sm:p-5">
+        <div className="grid gap-3 lg:grid-cols-[1fr_190px_auto_auto] lg:items-center"><div className="relative"><Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar nombre, categoría o proveedor" className="w-full rounded-2xl border border-black/10 bg-white/60 py-3.5 pl-11 pr-4 text-sm font-semibold text-black outline-none placeholder:text-black/30 focus:border-[#9b6c12]" /></div><select value={sort} onChange={(event) => setSort(event.target.value as SortMode)} className="rounded-2xl border border-black/10 bg-white/60 px-4 py-3.5 text-sm font-bold text-black outline-none"><option value="newest">Más recientes</option><option value="name">Nombre A-Z</option><option value="price_asc">Precio menor</option><option value="price_desc">Precio mayor</option><option value="stock_asc">Stock menor</option><option value="stock_desc">Stock mayor</option><option value="margin_desc">Mejor margen</option></select><div className="flex rounded-2xl bg-black/[0.07] p-1"><button onClick={() => setView('cards')} className={`rounded-xl px-3 py-2.5 text-xs font-black ${view === 'cards' ? 'bg-black text-yellow-300' : 'text-black/45'}`}><Eye className="mr-1 inline h-3.5 w-3.5" />Tarjetas</button><button onClick={() => setView('table')} className={`rounded-xl px-3 py-2.5 text-xs font-black ${view === 'table' ? 'bg-black text-yellow-300' : 'text-black/45'}`}><Settings2 className="mr-1 inline h-3.5 w-3.5" />Tabla</button></div><button onClick={toggleVisibleSelection} className="rounded-2xl bg-white/55 px-4 py-3.5 text-xs font-black">{allVisibleSelected ? 'Quitar visibles' : 'Seleccionar visibles'}</button></div>
+        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">{filterOptions.map((category) => <button key={category} onClick={() => setActiveCategory(category)} className={`whitespace-nowrap rounded-full px-3 py-2 text-xs font-bold ${activeCategory === category ? 'bg-yellow-400 text-black' : 'bg-white/48 text-black/48 hover:text-black'}`}>{category}</button>)}</div>
+      </section>
 
-        {!loading && <p className="text-xs text-zinc-600">{sortedProducts.length} producto{sortedProducts.length !== 1 ? 's' : ''} mostrado{sortedProducts.length !== 1 ? 's' : ''} · {products.length} total.</p>}
-      </div>
+      {loading ? <div className="flex items-center justify-center rounded-[1.8rem] bg-[#fbf5e8] py-24 text-sm text-black/45"><RefreshCw className="mr-2 h-4 w-4 animate-spin" />Cargando catálogo…</div> : sortedProducts.length === 0 ? <div className="flex flex-col items-center justify-center rounded-[1.8rem] bg-[#fbf5e8] py-24 text-sm text-black/45"><Package className="mb-3 h-10 w-10 text-black/20" /><span>No hay productos{search ? ` que coincidan con “${search}”` : ''}.</span><button onClick={() => router.push('/admin/productos/nuevo')} className="mt-5 rounded-full bg-black px-5 py-3 text-xs font-black text-yellow-300">Crear el primero</button></div> : view === 'cards' ? <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">{sortedProducts.map((product) => <ProductCard key={product.id} product={product} categoryName={resolveCategoryName(product.category_id, categoryMap)} selected={selectedSet.has(product.id)} selectionMode={selectionMode} onSelect={() => toggleSelected(product.id)} onLongPress={() => enterSelection(product.id)} onEdit={() => router.push(`/admin/productos/${product.id}/editar`)} onDelete={() => setDeleteTarget(product)} onToggle={(field, value) => handleToggle(product, field, value)} />)}</div> : <ProductsTable products={sortedProducts} selectedSet={selectedSet} categoryMap={categoryMap} onSelect={toggleSelected} onEdit={(id) => router.push(`/admin/productos/${id}/editar`)} onDelete={(product) => setDeleteTarget(product)} onToggle={handleToggle} />}
 
-      <ProductImportModal
-        open={importOpen}
-        onClose={() => setImportOpen(false)}
-        onImported={() => {
-          setImportOpen(false);
-          setLoading(true);
-          void loadProducts();
-          showToast('Productos importados y catálogo actualizado.');
-        }}
-      />
-      {deleteTarget && <DeleteModal product={deleteTarget} onConfirm={() => handleDelete(deleteTarget)} onCancel={() => setDeleteTarget(null)} />}
-      {toast && <Toast message={toast.message} type={toast.type} />}
+      {!loading ? <p className="px-2 text-xs font-semibold text-black/38">Mostrando {sortedProducts.length} de {products.length} productos · Mantén presionada una tarjeta para selección múltiple.</p> : null}
+
+      <ProductImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={() => { setImportOpen(false); setLoading(true); void Promise.all([loadProducts(), reloadCategories()]); showToast('Productos importados y catálogo actualizado.'); }} />
+      <ProductCategoryManager open={categoriesOpen} categories={categories} productCounts={productCounts} onClose={() => setCategoriesOpen(false)} onChanged={reloadCategories} />
+      {deleteTarget ? <DeleteModal product={deleteTarget} onConfirm={() => handleDelete(deleteTarget)} onCancel={() => setDeleteTarget(null)} /> : null}
+      {toast ? <Toast message={toast.message} type={toast.type} /> : null}
     </AdminPage>
   );
 }

@@ -1,7 +1,5 @@
 'use client';
 
-/* eslint-disable @next/next/no-img-element */
-
 import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { insforge } from '@/lib/insforge';
@@ -13,11 +11,15 @@ import {
   ChevronLeft,
   ChevronRight,
   Cloud,
+  FolderOpen,
   ImagePlus,
+  Images,
   Loader2,
+  Plus,
   Star,
   Trash2,
   Truck,
+  X,
 } from 'lucide-react';
 
 type GalleryImage = {
@@ -27,6 +29,17 @@ type GalleryImage = {
 };
 
 type CloudinaryStatus = 'checking' | 'ready' | 'missing' | 'error';
+
+type CloudinaryAsset = {
+  public_id: string;
+  url: string;
+  width?: number;
+  height?: number;
+};
+
+function folderSlug(value: string) {
+  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'general';
+}
 
 function formatDisplayPrice(raw: string) {
   const n = parseInt(raw.replace(/\D/g, ''), 10);
@@ -154,7 +167,7 @@ interface ProductFormProps {
 
 export default function ProductForm({ initialData, productId, mode }: ProductFormProps) {
   const router = useRouter();
-  const { categories } = useCategories();
+  const { categories, reload: reloadCategories } = useCategories();
   const cloudFileInputRef = useRef<HTMLInputElement>(null);
   const initialSpecs = normalizeSpecs(initialData?.specifications);
 
@@ -187,6 +200,11 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [previewUrl, setPreviewUrl] = useState<string>('');
   const [cloudStatus, setCloudStatus] = useState<CloudinaryStatus>('checking');
+  const [newCategoryName, setNewCategoryName] = useState('');
+  const [creatingCategory, setCreatingCategory] = useState(false);
+  const [libraryOpen, setLibraryOpen] = useState(false);
+  const [libraryLoading, setLibraryLoading] = useState(false);
+  const [libraryAssets, setLibraryAssets] = useState<CloudinaryAsset[]>([]);
   const prevPreviewUrl = useRef<string>('');
 
   useEffect(() => {
@@ -278,7 +296,8 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
   async function uploadToCloudinary(file: File): Promise<GalleryImage> {
     const fd = new FormData();
     fd.append('file', file);
-    fd.append('folder', 'fabrick/productos');
+    const category = categories.find((item) => item.id === form.category_id);
+    fd.append('folder', `fabrick/productos/${folderSlug(category?.name || 'general')}`);
     const res = await fetch('/api/admin/cloudinary', { method: 'POST', body: fd });
     const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string; code?: string; asset?: { url?: string; public_id?: string; source?: 'cloudinary' } };
     if (!res.ok) {
@@ -309,6 +328,45 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
       showToast(err instanceof Error ? err.message : 'Error al subir a Cloudinary.', 'error');
     } finally {
       setUploadingCloud(false);
+    }
+  }
+
+  async function createCategory() {
+    const name = newCategoryName.trim();
+    if (name.length < 2) return;
+    setCreatingCategory(true);
+    try {
+      const response = await fetch('/api/admin/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, description: 'Creada desde la ficha de producto.' }) });
+      const body = await response.json() as { error?: string; category?: { id?: string } };
+      if (!response.ok) throw new Error(body.error || 'No se pudo crear la categoría.');
+      await reloadCategories();
+      const createdCategoryId = body.category?.id;
+      if (!createdCategoryId) throw new Error('La categoría se creó sin un identificador válido. Actualiza el catálogo.');
+      setForm((current) => ({ ...current, category_id: createdCategoryId }));
+      setNewCategoryName('');
+      showToast('Categoría creada y seleccionada.');
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'No se pudo crear la categoría.', 'error');
+    } finally {
+      setCreatingCategory(false);
+    }
+  }
+
+  async function openMediaLibrary() {
+    setLibraryOpen(true);
+    setLibraryLoading(true);
+    try {
+      const category = categories.find((item) => item.id === form.category_id);
+      const folder = `fabrick/productos/${folderSlug(category?.name || 'general')}`;
+      const response = await fetch(`/api/admin/cloudinary?folder=${encodeURIComponent(folder)}&max_results=80`, { cache: 'no-store' });
+      const body = await response.json() as { assets?: CloudinaryAsset[]; error?: string };
+      if (!response.ok) throw new Error(body.error || 'No se pudo abrir la carpeta de imágenes.');
+      setLibraryAssets(Array.isArray(body.assets) ? body.assets : []);
+    } catch (error) {
+      showToast(error instanceof Error ? error.message : 'No se pudo abrir la biblioteca.', 'error');
+      setLibraryAssets([]);
+    } finally {
+      setLibraryLoading(false);
     }
   }
 
@@ -387,16 +445,16 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
   const previewImage = previewUrl || form.image_url || galleryImages[0]?.url || '';
 
   return (
-    <div className="min-h-screen bg-black pb-32 text-white lg:pb-8">
-      <div className="border-b border-white/5 bg-[radial-gradient(circle_at_top_left,rgba(250,204,21,0.14),transparent_42%),rgba(9,9,11,0.92)] px-4 py-5 backdrop-blur-sm sm:px-6">
+    <div data-product-form="" className="min-h-screen pb-32 text-[#1b1710] lg:pb-8">
+      <div className="rounded-[2rem] bg-[radial-gradient(circle_at_88%_10%,rgba(250,204,21,.55),transparent_24rem),linear-gradient(135deg,#fff9ec,#dfcdab)] px-4 py-5 shadow-[0_26px_90px_rgba(58,45,19,.13)] sm:px-6">
         <div className="mx-auto flex max-w-6xl items-center gap-4">
-          <button onClick={() => router.push('/admin/productos')} aria-label="Volver a productos" className="grid h-11 w-11 place-items-center rounded-2xl border border-white/10 bg-black/45 text-zinc-400 transition hover:text-white">
+          <button onClick={() => router.push('/admin/productos')} aria-label="Volver a productos" className="grid h-11 w-11 place-items-center rounded-2xl bg-black text-yellow-300 transition">
             <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">Catálogo Cloudinary</p>
-            <h1 className="mt-1 text-xl font-black tracking-tight sm:text-2xl">{mode === 'create' ? 'Nuevo producto' : 'Editar producto'}</h1>
-            <p className="mt-1 text-xs text-zinc-500">Imágenes reales en Cloudinary, URLs y metadatos en la ficha del producto.</p>
+            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#91620e]">Catálogo y galería</p>
+            <h1 className="mt-1 text-2xl font-black tracking-[-.045em] sm:text-3xl">{mode === 'create' ? 'Crear producto' : 'Editar producto'}</h1>
+            <p className="mt-1 text-xs text-black/45">Información comercial, categoría, carpeta de imágenes, stock y precio en una sola vista.</p>
           </div>
           <CloudStatusBadge status={cloudStatus} />
         </div>
@@ -404,12 +462,17 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
 
       <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 xl:grid-cols-[minmax(0,1fr)_370px]">
         <form onSubmit={handleSubmit} className="space-y-6">
-          <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/65 p-4 shadow-[0_24px_80px_rgba(0,0,0,0.25)] sm:p-5">
+          <section className="rounded-[1.7rem] bg-[#fbf5e8] p-4 shadow-[0_24px_80px_rgba(58,45,19,.10)] sm:p-5">
             <div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-yellow-300 text-black"><Star className="h-4 w-4" /></span><div><h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Información principal</h2><p className="text-xs text-zinc-500">Nombre, descripción y estado comercial.</p></div></div>
             <div className="space-y-4">
               <Field label="Nombre" required><input type="text" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Aire acondicionado inverter 12000 BTU" className={inputClass} />{errors.name && <span className="text-red-400 text-xs">{errors.name}</span>}</Field>
               <Field label="Tagline"><input type="text" value={form.tagline} onChange={(e) => setForm((f) => ({ ...f, tagline: e.target.value }))} placeholder="Frío eficiente, instalación rápida" className={inputClass} /></Field>
               <Field label="Descripción"><textarea rows={5} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe características, beneficios, instalación, garantía y condiciones…" className={inputClass + ' resize-none'} /></Field>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field label="Categoría" required><select value={form.category_id} onChange={(event) => setForm((current) => ({ ...current, category_id: event.target.value }))} className={inputClass}><option value="">Sin categoría</option>{categoryOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><p className="text-[10px] text-black/40">Carpeta: fabrick/productos/{folderSlug(categories.find((item) => item.id === form.category_id)?.name || 'general')}</p></Field>
+                <Field label="Stock disponible"><input type="number" min="0" step="1" value={form.stock} onChange={(event) => setForm((current) => ({ ...current, stock: event.target.value }))} placeholder="0" className={inputClass} /></Field>
+              </div>
+              <div className="grid gap-2 rounded-2xl bg-[#e8dcc2] p-3 sm:grid-cols-[1fr_auto]"><input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder="Crear nueva categoría sin salir" className={inputClass} /><button type="button" onClick={() => void createCategory()} disabled={creatingCategory || newCategoryName.trim().length < 2} className="inline-flex items-center justify-center gap-2 rounded-xl bg-black px-4 py-3 text-xs font-black text-yellow-300 disabled:opacity-40">{creatingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Crear categoría</button></div>
               <div className="grid gap-4 sm:grid-cols-2"><Toggle checked={form.activo} onChange={(v) => setForm((f) => ({ ...f, activo: v }))} label="Activo — visible en la tienda" /><Toggle checked={form.featured} onChange={(v) => setForm((f) => ({ ...f, featured: v }))} label="Destacado — aparece en inicio" /></div>
             </div>
           </section>
@@ -431,7 +494,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
             <div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-sky-400/15 text-sky-300"><Cloud className="h-4 w-4" /></span><div><h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Galería Cloudinary</h2><p className="text-xs text-zinc-500">Las fotos se suben a Cloudinary; en la base solo queda la URL y el public_id.</p></div></div>
             <div className="space-y-3">
               {previewImage && <div className="relative h-56 w-full overflow-hidden rounded-2xl border border-white/10 bg-zinc-900"><img src={previewImage} alt="Preview" className="h-full w-full object-cover" /><span className="absolute bottom-3 left-3 rounded-full border border-yellow-300/40 bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-yellow-300">Portada</span></div>}
-              <button type="button" onClick={() => cloudFileInputRef.current?.click()} disabled={uploadingCloud || cloudStatus === 'missing'} className="flex w-full items-center justify-center gap-2 rounded-2xl border border-yellow-400/40 bg-yellow-400/10 px-4 py-4 text-sm font-black uppercase tracking-[0.16em] text-yellow-300 transition hover:border-yellow-300 hover:bg-yellow-400/15 disabled:opacity-50">{uploadingCloud ? <Loader2 className="h-4 w-4 animate-spin" /> : <Cloud className="h-4 w-4" />}{uploadingCloud ? 'Subiendo a Cloudinary…' : 'Subir imágenes a Cloudinary'}</button>
+              <div className="grid gap-2 sm:grid-cols-2"><button type="button" onClick={() => cloudFileInputRef.current?.click()} disabled={uploadingCloud || cloudStatus === 'missing'} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-4 py-4 text-xs font-black uppercase tracking-[0.13em] text-black transition disabled:opacity-50">{uploadingCloud ? <Loader2 className="h-4 w-4 animate-spin" /> : <Cloud className="h-4 w-4" />}{uploadingCloud ? 'Subiendo…' : 'Subir a esta carpeta'}</button><button type="button" onClick={() => void openMediaLibrary()} disabled={cloudStatus === 'missing'} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-black px-4 py-4 text-xs font-black uppercase tracking-[0.13em] text-yellow-300 disabled:opacity-50"><Images className="h-4 w-4" />Abrir carpeta</button></div>
               <input ref={cloudFileInputRef} type="file" multiple accept="image/*" aria-label="Seleccionar imágenes para Cloudinary" className="hidden" onChange={(e) => { const files = e.target.files; if (files) void handleCloudinaryUpload(files); e.target.value = ''; }} />
               {galleryImages.length > 0 && <div className="rounded-2xl border border-white/10 bg-black/30 p-3"><div className="mb-2 flex items-center justify-between gap-3"><p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Miniaturas</p><p className="text-xs text-zinc-600">{galleryImages.length} imagen{galleryImages.length === 1 ? '' : 'es'}</p></div><div className="flex gap-3 overflow-x-auto pb-2 pr-2 scrollbar-hide">{galleryImages.map((image, index) => <div key={`${image.url}-${index}`} className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black"><img src={image.url} alt={`Miniatura ${index + 1}`} className="h-full w-full object-cover" />{form.image_url === image.url && <span className="absolute left-1.5 top-1.5 rounded-full bg-yellow-300 px-1.5 py-0.5 text-[8px] font-black uppercase text-black">Portada</span>}<div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between gap-1 rounded-full bg-black/65 p-1 backdrop-blur-sm"><button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label="Mover imagen a la izquierda" className="grid h-6 w-6 place-items-center rounded-full text-white/80 disabled:opacity-25 hover:bg-white/10"><ChevronLeft className="h-3.5 w-3.5" /></button><button type="button" onClick={() => setCoverImage(image)} aria-label="Usar como portada" className="grid h-6 w-6 place-items-center rounded-full text-yellow-300 hover:bg-yellow-300/10"><Star className="h-3.5 w-3.5" /></button><button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === galleryImages.length - 1} aria-label="Mover imagen a la derecha" className="grid h-6 w-6 place-items-center rounded-full text-white/80 disabled:opacity-25 hover:bg-white/10"><ChevronRight className="h-3.5 w-3.5" /></button></div><button type="button" onClick={() => void removeGalleryImage(image)} aria-label="Eliminar miniatura" className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/70 text-red-200 backdrop-blur-sm hover:bg-red-500 hover:text-white"><Trash2 className="h-3.5 w-3.5" /></button></div>)}</div><p className="mt-1 text-[11px] leading-5 text-zinc-600">★ define la portada. Las flechas ordenan la galería. Eliminar quita la miniatura y, si tiene public_id, también la borra de Cloudinary.</p></div>}
               <div className="grid gap-2 sm:grid-cols-[1fr_auto]"><input type="url" value={form.image_url} onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))} placeholder="URL manual de imagen Cloudinary…" className={inputClass} /><button type="button" onClick={() => addGalleryImage({ url: form.image_url, source: 'manual' }, true)} disabled={!form.image_url.trim()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-zinc-300 transition hover:border-yellow-300/40 hover:text-yellow-200 disabled:opacity-40"><ImagePlus className="h-4 w-4" />Añadir</button></div>
@@ -446,6 +509,7 @@ export default function ProductForm({ initialData, productId, mode }: ProductFor
         <aside className="xl:sticky xl:top-28 xl:h-fit"><div className="overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/80 shadow-[0_20px_70px_rgba(0,0,0,0.45)]"><div className="relative h-64 border-b border-white/10 bg-zinc-900">{previewImage ? <img src={previewImage} alt={form.name || 'Preview producto'} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center px-6 text-center text-xs uppercase tracking-[0.2em] text-zinc-500">Sin portada</div>}<div className="absolute left-3 top-3 flex gap-2"><Badge tone={form.activo ? 'green' : 'gray'}>{form.activo ? 'Activo' : 'Oculto'}</Badge>{form.featured && <Badge tone="yellow">Destacado</Badge>}</div>{galleryImages.length > 1 && <span className="absolute bottom-3 right-3 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-[10px] font-black text-white/75 backdrop-blur">{galleryImages.length} fotos</span>}</div><div className="space-y-4 p-4"><p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Preview y margen</p><h3 className="line-clamp-2 text-xl font-black leading-tight text-white">{form.name || 'Nombre del producto'}</h3><p className="line-clamp-2 text-sm text-zinc-400">{form.tagline || 'Tagline comercial del producto'}</p><div className="grid grid-cols-2 gap-2"><PreviewChip label="Stock" value={form.stock || '—'} /><PreviewChip label="Fotos" value={String(galleryImages.length || (form.image_url ? 1 : 0))} /><PreviewChip label="Envío" value={shippingFee > 0 ? formatCLP(shippingFee) : 'No definido'} /><PreviewChip label="IVA" value={`${taxPct || 0}%`} /></div><div className="rounded-2xl border border-yellow-300/20 bg-yellow-300/[0.055] p-4"><p className="text-[10px] uppercase tracking-[0.2em] text-yellow-200/60">Total referencia</p><p className="mt-1 text-3xl font-black text-yellow-300">{formatCLP(totalWithCharges)}</p><div className="mt-2 space-y-1 text-xs text-zinc-500"><p>Venta: {formatCLP(priceNumber)}</p><p>Proveedor: {supplierPriceNumber > 0 ? `${formatCLP(supplierPriceNumber)} ${form.supplier_currency || ''}` : 'no definido'}</p><p>Margen estimado: {marginPct === null ? '—' : `${marginPct}%`}</p></div></div></div></div></aside>
       </div>
 
+      {libraryOpen ? <div className="fixed inset-0 z-[95] overflow-y-auto bg-black/70 p-3 backdrop-blur-xl sm:p-6"><div className="mx-auto max-w-5xl rounded-[2rem] bg-[#f8efdd] p-4 text-[#1b1710] shadow-[0_35px_120px_rgba(0,0,0,.38)] sm:p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[.22em] text-[#91620e]">Biblioteca del producto</p><h2 className="mt-1 text-2xl font-black tracking-[-.045em]">Imágenes de {categories.find((item) => item.id === form.category_id)?.name || 'General'}</h2><p className="mt-1 text-xs text-black/45">Selecciona imágenes existentes para reutilizarlas sin volver a subir archivos.</p></div><button type="button" onClick={() => setLibraryOpen(false)} className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-black text-yellow-300"><X className="h-5 w-5" /></button></div>{libraryLoading ? <div className="grid min-h-72 place-items-center"><Loader2 className="h-7 w-7 animate-spin text-[#91620e]" /></div> : libraryAssets.length ? <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">{libraryAssets.map((asset) => <button key={asset.public_id} type="button" onClick={() => { addGalleryImage({ url: asset.url, public_id: asset.public_id, source: 'cloudinary' }, !form.image_url); setLibraryOpen(false); }} className="group overflow-hidden rounded-2xl bg-white p-2 text-left shadow-sm"><img src={asset.url} alt={asset.public_id} className="aspect-square w-full rounded-xl object-contain" /><span className="mt-2 block truncate px-1 text-[10px] font-bold text-black/45">{asset.public_id.split('/').pop()}</span></button>)}</div> : <div className="mt-5 grid min-h-72 place-items-center rounded-[1.5rem] border border-dashed border-black/15 text-center"><div><FolderOpen className="mx-auto h-8 w-8 text-black/20" /><b className="mt-3 block">La carpeta todavía está vacía</b><p className="mt-1 text-xs text-black/40">Sube la primera imagen y aparecerá aquí automáticamente.</p></div></div>}</div></div> : null}
       {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   );

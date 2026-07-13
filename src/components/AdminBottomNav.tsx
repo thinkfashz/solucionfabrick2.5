@@ -28,12 +28,12 @@ function DockItem({ href, label, icon: Icon, active }: BottomItem & { active: bo
     <Link
       href={href}
       aria-current={active ? 'page' : undefined}
-      className={`group mx-0.5 flex min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-2xl py-2 transition ${active ? 'bg-black text-white shadow-[0_10px_24px_rgba(0,0,0,.18)]' : 'text-black/48 hover:bg-black/[0.05]'}`}
+      className="group flex min-w-0 flex-1 flex-col items-center justify-center gap-1 py-2"
     >
-      <span className={`grid h-6 w-6 place-items-center transition-all ${active ? 'text-yellow-300' : 'text-black/50 group-hover:text-black'}`}>
+      <span className={`grid h-8 w-8 place-items-center rounded-xl transition-all ${active ? 'bg-black text-yellow-300 shadow-[0_10px_22px_rgba(0,0,0,.22)]' : 'text-black/48 group-hover:bg-black/5 group-hover:text-black'}`}>
         <Icon className="h-[17px] w-[17px]" />
       </span>
-      <span className={`max-w-[62px] truncate text-[9px] font-black tracking-tight transition-colors ${active ? 'text-white' : 'text-black/48 group-hover:text-black'}`}>{label}</span>
+      <span className={`max-w-[70px] truncate text-[10px] font-black tracking-tight transition-colors ${active ? 'text-black' : 'text-black/50 group-hover:text-black'}`}>{label}</span>
     </Link>
   );
 }
@@ -43,12 +43,13 @@ export function AdminBottomNav({ onOpenMore }: { onOpenMore?: () => void }) {
   const isActive = (href: string) => pathname === href || (href !== '/admin' && pathname.startsWith(`${href}/`));
 
   return (
-    <nav aria-label="Navegación principal del administrador" className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-3 pb-[calc(env(safe-area-inset-bottom)+8px)] lg:hidden">
-      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-28 bg-gradient-to-t from-[#cabd9f]/70 via-[#e8dcc4]/34 to-transparent" />
-      <div className="relative mx-auto flex h-[72px] max-w-[430px] items-end justify-center">
-        <div className="pointer-events-auto absolute bottom-0 left-0 right-0 h-[66px] rounded-[1.8rem] border border-black/[0.08] bg-[#f6edd9]/95 shadow-[0_22px_55px_rgba(45,34,14,.22)] backdrop-blur-2xl" />
+    <nav aria-label="Navegación principal del administrador" className="pointer-events-none fixed inset-x-0 bottom-0 z-40 px-4 pb-[calc(env(safe-area-inset-bottom)+8px)] lg:hidden">
+      <div className="pointer-events-none absolute inset-x-0 bottom-0 h-24 bg-gradient-to-t from-[#c7ad7c]/70 via-[#eadabd]/30 to-transparent" />
+      <div className="relative mx-auto flex h-[68px] max-w-[430px] items-end justify-center">
+        <div className="pointer-events-auto absolute bottom-0 left-0 right-0 h-[64px] rounded-[1.8rem] border border-black/10 bg-[#f4ead7]/94 shadow-[0_18px_50px_rgba(58,45,19,.28)] backdrop-blur-2xl" />
+        <div className="absolute bottom-[5px] left-1/2 h-0.5 w-20 -translate-x-1/2 rounded-full bg-zinc-300/60" />
 
-        <div className="pointer-events-auto relative grid h-[66px] w-full grid-cols-[1fr_66px_1fr] items-center px-2">
+        <div className="pointer-events-auto relative grid h-[64px] w-full grid-cols-[1fr_64px_1fr] items-end px-2.5">
           <div className="flex h-full items-stretch justify-around gap-0.5 pr-2">
             {LEFT_ITEMS.map((item) => <DockItem key={item.href} {...item} active={isActive(item.href)} />)}
           </div>
@@ -56,7 +57,7 @@ export function AdminBottomNav({ onOpenMore }: { onOpenMore?: () => void }) {
           <button
             type="button"
             onClick={onOpenMore}
-            className="group relative -top-4 mx-auto grid h-[62px] w-[62px] place-items-center rounded-full border-[6px] border-[#f6edd9] bg-yellow-300 text-black shadow-[0_18px_38px_rgba(76,55,9,.30)] transition active:scale-95"
+            className="group relative -top-4 mx-auto grid h-[60px] w-[60px] place-items-center rounded-full border-[5px] border-[#f4ead7] bg-black text-yellow-300 shadow-[0_16px_35px_rgba(0,0,0,.32)] transition active:scale-95"
             aria-label="Abrir módulos del administrador"
             title="Abrir módulos"
           >

@@ -8,48 +8,45 @@ export const metadata: Metadata = {
 export default function ImportarMercadoLibrePage() {
   return (
     <div className="mx-auto max-w-4xl space-y-6">
-      <header>
-        <p className="text-[10px] font-bold uppercase tracking-[0.28em] text-yellow-400">
-          Productos · Importar
+      <header className="overflow-hidden rounded-[32px] bg-[#17170f] p-6 text-white shadow-[0_24px_70px_rgba(26,24,16,.14)] sm:p-8">
+        <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#f2cf5b]">
+          Catálogo · Importación asistida
         </p>
-        <h1 className="mt-1 text-2xl font-black tracking-tight text-white sm:text-3xl">
-          Buscador universal de productos
+        <h1 className="mt-2 text-3xl font-black tracking-[-0.04em] sm:text-4xl">
+          Crea un producto desde un enlace
         </h1>
-        <p className="mt-2 max-w-2xl text-sm text-zinc-400">
-          Pega un link de cualquier tienda — Mercado Libre (incluye los nuevos{' '}
-          <code className="rounded bg-zinc-900 px-1.5 py-0.5 text-yellow-400">meli.la/…</code>),
-          Falabella, Ripley, AliExpress, Amazon o tu propio sitio — y crea el producto
-          automáticamente. El importer intenta 4 estrategias para superar bloqueos: navegador
-          de escritorio, navegador móvil, Jina.ai y Microlink.io. Si aún así la tienda bloquea
-          el precio, podrás ingresarlo manualmente antes de guardar.
+        <p className="mt-3 max-w-2xl text-sm leading-6 text-white/65">
+          Pega una URL de Mercado Libre, Falabella, Ripley, AliExpress, Amazon o tu propio sitio.
+          Fabrick recupera nombre, precio, stock, descripción e imágenes y te permite revisarlos
+          antes de incorporarlos al catálogo.
         </p>
       </header>
 
       <MercadoLibreScraper />
 
       {/* Quick-help / example panel */}
-      <section className="rounded-2xl border border-zinc-800/80 bg-zinc-950/60 p-5 text-sm text-zinc-400">
-        <p className="mb-2 text-[11px] font-bold uppercase tracking-[0.22em] text-zinc-500">
+      <section className="rounded-[28px] border border-[#ded5bf] bg-[#fffaf0] p-5 text-sm text-[#6f6859] shadow-[0_18px_55px_rgba(46,40,22,.08)]">
+        <p className="mb-2 text-[11px] font-black uppercase tracking-[0.22em] text-[#8b7425]">
           Ejemplos de URL aceptadas
         </p>
         <ul className="space-y-1.5">
           <li>
-            <code className="block break-all rounded-lg border border-zinc-800 bg-black/60 p-2 text-xs text-yellow-300">
+            <code className="block break-all rounded-xl border border-[#ded5bf] bg-[#f5edda] p-2.5 text-xs text-[#4f4218]">
               https://meli.la/2pWqo
             </code>
           </li>
           <li>
-            <code className="block break-all rounded-lg border border-zinc-800 bg-black/60 p-2 text-xs text-yellow-300">
+            <code className="block break-all rounded-xl border border-[#ded5bf] bg-[#f5edda] p-2.5 text-xs text-[#4f4218]">
               https://articulo.mercadolibre.cl/MLC-123456789-producto-de-ejemplo-_JM
             </code>
           </li>
           <li>
-            <code className="block break-all rounded-lg border border-zinc-800 bg-black/60 p-2 text-xs text-yellow-300">
+            <code className="block break-all rounded-xl border border-[#ded5bf] bg-[#f5edda] p-2.5 text-xs text-[#4f4218]">
               https://www.falabella.com/falabella-cl/product/…
             </code>
           </li>
         </ul>
-        <ul className="mt-3 list-disc space-y-1 pl-5 text-xs text-zinc-500">
+        <ul className="mt-4 list-disc space-y-1.5 pl-5 text-xs leading-5 text-[#746d5d]">
           <li>
             Los links de Mercado Libre se resuelven contra la API oficial: precio,
             stock, descripción y fotos del producto.
@@ -67,7 +64,7 @@ export default function ImportarMercadoLibrePage() {
           </li>
           <li>
             Puedes añadir{' '}
-            <code className="rounded bg-zinc-900 px-1 py-0.5 text-yellow-400">MICROLINK_API_KEY</code>{' '}
+            <code className="rounded bg-[#efe4c9] px-1 py-0.5 text-[#6d5916]">MICROLINK_API_KEY</code>{' '}
             en tus variables de entorno para aumentar el límite de solicitudes a Microlink.io.
           </li>
         </ul>
@@ -75,4 +72,3 @@ export default function ImportarMercadoLibrePage() {
     </div>
   );
 }
-

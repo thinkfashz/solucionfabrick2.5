@@ -1,0 +1,317 @@
+/* Admin Lava Cream Visual System
+   Scoped to the admin shell so public pages keep their own theme. */
+
+:root {
+  --fabrick-cream: #fff1d6;
+  --fabrick-cream-soft: #f6dfb8;
+  --fabrick-lava: #ff6a1f;
+  --fabrick-lava-hot: #ffb300;
+  --fabrick-lava-gold: #facc15;
+  --fabrick-admin-black: #050403;
+  --fabrick-admin-ink: #0d0906;
+}
+
+@keyframes admin-lava-flow {
+  0% { background-position: 0% 50%, 100% 0%, 50% 0%; }
+  50% { background-position: 100% 50%, 0% 100%, 50% 100%; }
+  100% { background-position: 0% 50%, 100% 0%, 50% 0%; }
+}
+
+@keyframes admin-module-rise {
+  from { opacity: 0; transform: translate3d(0, 14px, 0) scale(.985); filter: blur(5px); }
+  to { opacity: 1; transform: translate3d(0, 0, 0) scale(1); filter: blur(0); }
+}
+
+@keyframes admin-cream-scan {
+  0% { transform: translateX(-120%) skewX(-18deg); opacity: 0; }
+  35% { opacity: .36; }
+  100% { transform: translateX(240%) skewX(-18deg); opacity: 0; }
+}
+
+@keyframes admin-logo-breathe {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(255,241,214,.16), 0 0 22px rgba(250,204,21,.16), inset 0 0 16px rgba(255,241,214,.06); }
+  50% { box-shadow: 0 0 0 1px rgba(255,241,214,.34), 0 0 46px rgba(255,106,31,.28), inset 0 0 24px rgba(250,204,21,.12); }
+}
+
+@keyframes admin-loader-orbit {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+@keyframes admin-loader-pulse {
+  0%, 100% { transform: scale(.92); opacity: .72; }
+  50% { transform: scale(1.06); opacity: 1; }
+}
+
+[data-admin-root] {
+  --admin-cream: var(--fabrick-cream);
+  --admin-muted-cream: #bba37e;
+  --admin-lava: var(--fabrick-lava);
+  --admin-gold: var(--fabrick-lava-gold);
+  min-height: 100svh;
+  color: var(--admin-cream);
+  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  background:
+    radial-gradient(circle at 12% 0%, rgba(250,204,21,.18), transparent 30rem),
+    radial-gradient(circle at 88% 16%, rgba(255,106,31,.22), transparent 30rem),
+    radial-gradient(circle at 50% 110%, rgba(255,241,214,.08), transparent 26rem),
+    linear-gradient(145deg, #15100a 0%, #080604 48%, #020202 100%);
+  background-size: 120% 120%, 120% 120%, 100% 100%, 100% 100%;
+  animation: admin-lava-flow 18s ease-in-out infinite;
+}
+
+[data-admin-root]::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+  background:
+    linear-gradient(115deg, transparent 0%, rgba(255,241,214,.035) 48%, transparent 56%),
+    linear-gradient(rgba(255,241,214,.035) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(255,241,214,.03) 1px, transparent 1px);
+  background-size: 100% 100%, 54px 54px, 54px 54px;
+  opacity: .9;
+}
+
+[data-admin-root] > * {
+  position: relative;
+  z-index: 1;
+}
+
+[data-admin-root] [data-admin-header] {
+  border-color: rgba(255,241,214,.16) !important;
+}
+
+[data-admin-root] [data-admin-header] > div:first-child {
+  background:
+    linear-gradient(180deg, rgba(15,11,7,.82), rgba(5,4,3,.70)),
+    radial-gradient(circle at 12% 0%, rgba(250,204,21,.12), transparent 18rem) !important;
+  backdrop-filter: blur(28px) saturate(1.35) !important;
+}
+
+[data-admin-root] main,
+[data-admin-root] section,
+[data-admin-root] article {
+  font-feature-settings: "ss01" 1, "cv01" 1;
+}
+
+[data-admin-root] h1,
+[data-admin-root] h2,
+[data-admin-root] h3,
+[data-admin-root] .font-playfair {
+  letter-spacing: -0.035em;
+}
+
+[data-admin-root] a,
+[data-admin-root] button,
+[data-admin-root] input,
+[data-admin-root] textarea,
+[data-admin-root] select {
+  font-family: inherit;
+}
+
+[data-admin-root] .rounded-2xl,
+[data-admin-root] .rounded-\[1\.5rem\],
+[data-admin-root] .rounded-\[2rem\] {
+  box-shadow: inset 0 1px 0 rgba(255,241,214,.035);
+}
+
+[data-admin-root] nav,
+[data-admin-root] aside,
+[data-admin-root] [class*='bg-white/'],
+[data-admin-root] [class*='bg-black/'] {
+  border-color: rgba(255,241,214,.12);
+}
+
+[data-admin-root] [class*='bg-white/'] {
+  background-color: rgba(255,241,214,.045) !important;
+}
+
+[data-admin-root] [class*='text-zinc-500'],
+[data-admin-root] [class*='text-zinc-400'] {
+  color: rgba(255,241,214,.54) !important;
+}
+
+[data-admin-root] [class*='text-yellow-100'],
+[data-admin-root] [class*='text-white'] {
+  color: var(--admin-cream) !important;
+}
+
+[data-admin-root] [class*='text-yellow-300'],
+[data-admin-root] [class*='text-yellow-400'] {
+  color: #ffd66b !important;
+}
+
+[data-admin-root] [class*='bg-yellow-300'] {
+  background: linear-gradient(135deg, #fff1d6 0%, #facc15 48%, #ff8a1f 100%) !important;
+  color: #120904 !important;
+}
+
+[data-admin-root] [class*='border-yellow-300'] {
+  border-color: rgba(255,210,91,.42) !important;
+}
+
+[data-admin-root] input,
+[data-admin-root] textarea,
+[data-admin-root] select {
+  background: rgba(3,3,3,.48) !important;
+  border-color: rgba(255,241,214,.14) !important;
+  color: var(--admin-cream) !important;
+}
+
+[data-admin-root] input::placeholder,
+[data-admin-root] textarea::placeholder {
+  color: rgba(255,241,214,.34) !important;
+}
+
+[data-admin-root] a[href^='/admin'],
+[data-admin-root] nav > button,
+[data-admin-root] [role='button'] {
+  position: relative;
+  overflow: hidden;
+}
+
+[data-admin-root] a[href^='/admin']::after,
+[data-admin-root] nav > button::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background: linear-gradient(90deg, transparent, rgba(255,241,214,.10), transparent);
+  transform: translateX(-120%) skewX(-18deg);
+  opacity: 0;
+}
+
+[data-admin-root] a[href^='/admin']:hover::after,
+[data-admin-root] nav > button:hover::after {
+  animation: admin-cream-scan 1.15s ease-out;
+}
+
+[data-admin-root] nav a[href^='/admin'] {
+  animation: admin-module-rise .48s cubic-bezier(.16,1,.3,1) both;
+}
+
+[data-admin-root] nav a[href^='/admin']:nth-child(1) { animation-delay: 20ms; }
+[data-admin-root] nav a[href^='/admin']:nth-child(2) { animation-delay: 42ms; }
+[data-admin-root] nav a[href^='/admin']:nth-child(3) { animation-delay: 64ms; }
+[data-admin-root] nav a[href^='/admin']:nth-child(4) { animation-delay: 86ms; }
+[data-admin-root] nav a[href^='/admin']:nth-child(5) { animation-delay: 108ms; }
+[data-admin-root] nav a[href^='/admin']:nth-child(6) { animation-delay: 130ms; }
+
+.admin-brand-mark-lava {
+  animation: admin-logo-breathe 3.6s ease-in-out infinite;
+}
+
+.admin-brand-mark-lava::before {
+  content: '';
+  position: absolute;
+  inset: -38%;
+  background: conic-gradient(from 120deg, transparent, rgba(255,241,214,.22), rgba(250,204,21,.36), rgba(255,106,31,.28), transparent 72%);
+  animation: admin-loader-orbit 7.5s linear infinite;
+}
+
+.admin-brand-mark-lava::after {
+  content: '';
+  position: absolute;
+  inset: 2px;
+  border-radius: inherit;
+  background: radial-gradient(circle at 50% 22%, rgba(255,241,214,.18), rgba(0,0,0,.86) 54%), linear-gradient(145deg, #0f0b06, #030302);
+}
+
+.admin-module-loader {
+  min-height: 100svh;
+  display: grid;
+  place-items: center;
+  overflow: hidden;
+  color: var(--fabrick-cream);
+  background:
+    radial-gradient(circle at 18% 0%, rgba(250,204,21,.22), transparent 30rem),
+    radial-gradient(circle at 88% 18%, rgba(255,106,31,.24), transparent 28rem),
+    linear-gradient(145deg, #171008, #070504 58%, #020202);
+}
+
+.admin-module-loader-card {
+  position: relative;
+  width: min(92vw, 440px);
+  overflow: hidden;
+  border: 1px solid rgba(255,241,214,.16);
+  border-radius: 2rem;
+  padding: 1.4rem;
+  background: rgba(10,8,5,.72);
+  box-shadow: 0 28px 90px rgba(0,0,0,.56), inset 0 1px 0 rgba(255,241,214,.08);
+  backdrop-filter: blur(24px) saturate(1.2);
+}
+
+.admin-module-loader-card::before {
+  content: '';
+  position: absolute;
+  inset: -42%;
+  background: conic-gradient(from 180deg, transparent, rgba(250,204,21,.18), rgba(255,106,31,.22), transparent 68%);
+  animation: admin-loader-orbit 8.5s linear infinite;
+}
+
+.admin-module-loader-inner {
+  position: relative;
+  border-radius: 1.5rem;
+  padding: 1.25rem;
+  background: linear-gradient(145deg, rgba(255,241,214,.08), rgba(0,0,0,.52));
+}
+
+.admin-loader-orb {
+  position: relative;
+  display: grid;
+  place-items: center;
+  height: 78px;
+  width: 78px;
+  border-radius: 1.6rem;
+  background: linear-gradient(135deg, #fff1d6, #facc15 52%, #ff6a1f);
+  color: #120904;
+  animation: admin-loader-pulse 1.8s ease-in-out infinite;
+}
+
+.admin-loader-bar {
+  height: 3px;
+  overflow: hidden;
+  border-radius: 999px;
+  background: rgba(255,241,214,.12);
+}
+
+.admin-loader-bar > span {
+  display: block;
+  height: 100%;
+  width: 42%;
+  border-radius: inherit;
+  background: linear-gradient(90deg, #fff1d6, #facc15, #ff6a1f);
+  box-shadow: 0 0 18px rgba(250,204,21,.58);
+  animation: admin-cream-scan 1.55s ease-in-out infinite;
+}
+
+@media (max-width: 900px) {
+  [data-admin-root] {
+    background-attachment: scroll;
+    animation-duration: 28s;
+  }
+
+  [data-admin-root] a[href^='/admin'],
+  [data-admin-root] button {
+    min-height: 44px;
+  }
+
+  [data-admin-root] nav a[href^='/admin'] {
+    animation-duration: .34s;
+    animation-delay: 0ms !important;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  [data-admin-root],
+  [data-admin-root] nav a[href^='/admin'],
+  .admin-brand-mark-lava,
+  .admin-brand-mark-lava::before,
+  .admin-module-loader-card::before,
+  .admin-loader-orb,
+  .admin-loader-bar > span {
+    animation: none !important;
+  }
+}

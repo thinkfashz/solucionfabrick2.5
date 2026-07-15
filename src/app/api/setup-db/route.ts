@@ -154,6 +154,21 @@ CREATE TABLE IF NOT EXISTS public.business_config (
   updated_at TIMESTAMPTZ DEFAULT now()
 );
 
+CREATE TABLE IF NOT EXISTS public.pwa_events (
+  id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+  event TEXT NOT NULL,
+  user_id TEXT,
+  ua TEXT,
+  platform TEXT,
+  meta JSONB DEFAULT '{}'::jsonb,
+  created_at TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS pwa_events_event_created_at_idx
+  ON public.pwa_events (event, created_at DESC);
+CREATE INDEX IF NOT EXISTS pwa_events_user_created_at_idx
+  ON public.pwa_events (user_id, created_at DESC);
+
 ALTER TABLE public.admin_users ADD COLUMN IF NOT EXISTS nombre TEXT;
 ALTER TABLE public.admin_users ADD COLUMN IF NOT EXISTS rol TEXT DEFAULT 'admin';
 

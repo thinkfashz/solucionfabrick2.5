@@ -1,7 +1,6 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { insforge } from '@/lib/insforge';
 import { buildCategoryMap, type CategoryRecord } from '@/lib/commerce';
 
 const CATEGORY_CACHE_KEY = 'fabrick.categories.cache.v1';
@@ -33,18 +32,19 @@ export function useCategories() {
   }, []);
 
   const loadCategories = useCallback(async () => {
-    const { data, error } = await insforge.database
-      .from('categories')
-      .select('id, name, description, image_url, created_at')
-      .order('name', { ascending: true });
-
-    if (!error && Array.isArray(data)) {
-      const typed = data as CategoryRecord[];
-      setCategories(typed);
-      persistCache(typed);
+    try {
+      const response = await fetch('/api/admin/categories', { cache: 'no-store' });
+      const body = await response.json() as { categories?: CategoryRecord[] };
+      if (response.ok && Array.isArray(body.categories)) {
+        const typed = body.categories;
+        setCategories(typed);
+        persistCache(typed);
+      }
+    } catch {
+      // Keep the last cached list when the network is unavailable.
+    } finally {
+      setLoading(false);
     }
-
-    setLoading(false);
   }, [persistCache]);
 
   useEffect(() => {

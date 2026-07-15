@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { insforge } from '@/lib/insforge';
+import { insforgeAdmin } from '@/lib/insforge';
 
 /**
  * Lightweight beacon endpoint for PWA adoption analytics. Stores anonymous
@@ -30,6 +30,7 @@ const ALLOWED_EVENTS = new Set([
   'onboarding_started',
   'onboarding_completed',
   'onboarding_skipped',
+  'page_view',
 ]);
 
 export async function POST(request: Request) {
@@ -45,7 +46,7 @@ export async function POST(request: Request) {
     const meta = body.meta && typeof body.meta === 'object' ? body.meta : null;
 
     try {
-      await insforge.database.from('pwa_events').insert([
+      await insforgeAdmin.database.from('pwa_events').insert([
         {
           event,
           user_id: typeof body.user_id === 'string' ? body.user_id.slice(0, 64) : null,

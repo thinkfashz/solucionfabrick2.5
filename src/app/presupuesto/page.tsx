@@ -16,7 +16,6 @@ import {
   Ruler,
   Sofa,
   Sparkles,
-  ThermometerSun,
   Wrench,
 } from 'lucide-react';
 import { getActiveMaterials } from '@/lib/budget';
@@ -157,10 +156,10 @@ export default async function PresupuestoPage() {
               Desde una reparación puntual hasta una remodelación completa: construcción, instalaciones, terminaciones, climatización y mueblería coordinadas por un solo equipo.
             </p>
             <div className="mt-8 flex flex-wrap gap-3">
-              <a href="#servicios-presupuesto" className="inline-flex h-13 items-center gap-2 rounded-full bg-yellow-300 px-6 py-3.5 text-sm font-black text-black transition hover:-translate-y-0.5 hover:bg-yellow-200">
+              <a href="#servicios-presupuesto" className="inline-flex items-center gap-2 rounded-full bg-yellow-300 px-6 py-3.5 text-sm font-black text-black transition hover:-translate-y-0.5 hover:bg-yellow-200">
                 Ver todos los servicios <ArrowDown className="h-4 w-4" />
               </a>
-              <a href="#calculadora-m2" className="inline-flex h-13 items-center gap-2 rounded-full border border-white/20 px-6 py-3.5 text-sm font-black text-white transition hover:border-yellow-300/50 hover:text-yellow-300">
+              <a href="#calculadora-m2" className="inline-flex items-center gap-2 rounded-full border border-white/20 px-6 py-3.5 text-sm font-black text-white transition hover:border-yellow-300/50 hover:text-yellow-300">
                 Calcular mi proyecto <Sparkles className="h-4 w-4" />
               </a>
             </div>

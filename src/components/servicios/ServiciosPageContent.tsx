@@ -1,184 +1,25 @@
-"use client";
+'use client';
 
-import Link from "next/link";
-import Navbar from "@/components/Navbar";
-import FabrickLogo from "@/components/FabrickLogo";
-import {
-  ArrowRight,
-  Calculator,
-  Hammer,
-  Home,
-  PaintBucket,
-  ShieldCheck,
-  Wrench,
-  Zap,
-} from "lucide-react";
-import { DEFAULT_SERVICE_PRICES, unitLabel } from "@/lib/servicePricing";
+import Link from 'next/link';
+import { ArrowDown, CheckCircle2, FileCheck2, MapPin, MessageCircle } from 'lucide-react';
+import Navbar from '@/components/Navbar';
+import FabrickLogo from '@/components/FabrickLogo';
+import ServiceQuoteFlow from '@/components/servicios/ServiceQuoteFlow';
 
-const ICONS: Record<string, typeof Hammer> = {
-  metalcon: Home,
-  cimientos: Hammer,
-  revestimiento: Wrench,
-  pintura: PaintBucket,
-  gasfiteria: Wrench,
-  electricidad: Zap,
-  ampliaciones: Home,
-  seguridad: ShieldCheck,
-};
-
-const FEATURED = DEFAULT_SERVICE_PRICES.filter((item) =>
-  [
-    "metalcon",
-    "cimientos",
-    "gasfiteria",
-    "electricidad",
-    "pintura",
-    "revestimiento",
-    "ampliaciones",
-    "seguridad",
-  ].includes(item.slug),
-);
-
-const fmt = new Intl.NumberFormat("es-CL", {
-  style: "currency",
-  currency: "CLP",
-  maximumFractionDigits: 0,
-});
+const STEPS = [
+  ['1', 'Describe tu necesidad', 'No hace falta saber el nombre técnico: selecciona el servicio que más se parece a tu problema.'],
+  ['2', 'Indica una medida', 'M² para superficies, metros lineales para cierres, unidades o puntos cuando corresponda.'],
+  ['3', 'Revisa la boleta', 'Ves desde, hasta, una media orientativa, inclusiones y exclusiones antes de hablar con nosotros.'],
+] as const;
 
 export function ServiciosPageContent() {
-  return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_12%_5%,rgba(250,204,21,.12),transparent_25rem),linear-gradient(180deg,#080705,#030303)] text-white">
-      <Navbar />
-      <section className="px-4 pb-16 pt-32 md:px-12 md:pb-24 md:pt-40">
-        <div className="mx-auto max-w-7xl">
-          <div className="mx-auto max-w-4xl text-center">
-            <p className="text-[10px] font-black uppercase tracking-[0.35em] text-yellow-300">
-              Servicios y calculadoras
-            </p>
-            <h1 className="mt-5 text-4xl font-black leading-[0.98] tracking-tight text-white md:text-6xl">
-              Calcula una referencia antes de pedir cotización
-            </h1>
-            <p className="mx-auto mt-5 max-w-2xl text-base leading-8 text-zinc-400">
-              Elige un servicio, ingresa metros cuadrados, metros lineales,
-              metros cúbicos o cantidad de puntos y obtén un rango aproximado.
-              No es precio final: sirve para conversar con más claridad.
-            </p>
-            <div className="mt-8 flex flex-col justify-center gap-3 sm:flex-row">
-              <Link
-                href="#servicios"
-                className="inline-flex h-13 items-center justify-center gap-2 rounded-full bg-yellow-300 px-6 py-4 text-xs font-black uppercase tracking-[0.22em] text-black transition hover:bg-white"
-              >
-                Ver servicios <ArrowRight className="h-4 w-4" />
-              </Link>
-              <Link
-                href="/contacto"
-                className="inline-flex h-13 items-center justify-center gap-2 rounded-full border border-white/15 px-6 py-4 text-xs font-black uppercase tracking-[0.22em] text-white transition hover:border-yellow-300/40 hover:text-yellow-300"
-              >
-                Solicitar orientación
-              </Link>
-            </div>
-          </div>
-
-          <div className="mt-12 grid gap-4 md:grid-cols-3">
-            <InfoCard
-              title="Mide"
-              text="Define largo, ancho, alto o metros lineales según el servicio."
-            />
-            <InfoCard
-              title="Calcula"
-              text="Ves subtotal, IVA, rango mercado y balance por materiales/mano de obra."
-            />
-            <InfoCard
-              title="Confirma"
-              text="El precio real se valida con fotos, visita técnica o revisión de alcance."
-            />
-          </div>
-        </div>
-      </section>
-
-      <section
-        id="servicios"
-        className="border-t border-white/5 px-4 py-16 md:px-12 md:py-24"
-      >
-        <div className="mx-auto max-w-7xl">
-          <div className="flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300">
-                Elige una calculadora
-              </p>
-              <h2 className="mt-3 text-3xl font-black text-white md:text-5xl">
-                Servicios organizados por unidad de medida
-              </h2>
-            </div>
-            <p className="max-w-md text-sm leading-7 text-zinc-400">
-              Los precios base son editables desde el admin. La intención es
-              orientar, no confundir con un valor cerrado.
-            </p>
-          </div>
-
-          <div className="mt-10 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            {FEATURED.map((service) => {
-              const Icon = ICONS[service.slug] ?? Calculator;
-              return (
-                <Link
-                  key={service.slug}
-                  href={`/servicios/${service.slug}`}
-                  className="group rounded-[1.7rem] border border-white/10 bg-zinc-950/80 p-5 transition hover:-translate-y-1 hover:border-yellow-300/40 hover:bg-zinc-900"
-                >
-                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-yellow-300 text-black">
-                    <Icon className="h-5 w-5" />
-                  </span>
-                  <h3 className="mt-5 text-lg font-black text-white">
-                    {service.name}
-                  </h3>
-                  <p className="mt-3 text-sm leading-6 text-zinc-400">
-                    Calculadora por {unitLabel(service.unit)} con rango
-                    referencial y desglose visual.
-                  </p>
-                  <div className="mt-5 rounded-2xl border border-white/8 bg-black/45 p-4">
-                    <p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">
-                      Base editable
-                    </p>
-                    <p className="mt-1 text-xl font-black text-yellow-300">
-                      {fmt.format(service.basePrice)}
-                    </p>
-                    <p className="mt-1 text-xs text-zinc-500">
-                      por {unitLabel(service.unit)}
-                    </p>
-                  </div>
-                  <span className="mt-5 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.24em] text-yellow-300">
-                    Abrir calculadora{" "}
-                    <ArrowRight className="h-3.5 w-3.5 transition group-hover:translate-x-1" />
-                  </span>
-                </Link>
-              );
-            })}
-          </div>
-          <div className="mt-12 flex flex-col items-start justify-between gap-6 rounded-[2rem] border border-yellow-300/20 bg-yellow-300/[0.06] p-7 md:flex-row md:items-center md:p-9">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[.28em] text-yellow-300">¿No sabes cuál elegir?</p>
-              <h2 className="mt-3 text-2xl font-black tracking-[-.04em] md:text-3xl">Cuéntanos el problema, no necesitas conocer el nombre técnico.</h2>
-              <p className="mt-2 max-w-2xl text-sm leading-7 text-zinc-400">Con medidas, ubicación y una fotografía podemos orientarte hacia el servicio correcto.</p>
-            </div>
-            <Link href="/contacto" className="inline-flex min-h-14 shrink-0 items-center justify-center gap-2 rounded-full bg-yellow-300 px-6 text-sm font-black text-black transition hover:bg-white">Recibir orientación <ArrowRight className="h-4 w-4" /></Link>
-          </div>
-        </div>
-      </section>
-      <footer className="border-t border-white/10 px-4 py-10 md:px-12">
-        <div className="mx-auto flex max-w-7xl flex-col items-center justify-between gap-5 md:flex-row">
-          <FabrickLogo className="pointer-events-none" />
-          <p className="text-center text-[10px] uppercase tracking-[.2em] text-zinc-600">Soluciones Fabrick · Claridad antes de construir.</p>
-        </div>
-      </footer>
-    </main>
-  );
+  return <main className="min-h-screen bg-[#f6efe1] text-[#17120c]"><Navbar />
+    <section className="relative overflow-hidden px-4 pb-14 pt-32 sm:px-6 lg:px-8 lg:pb-20 lg:pt-40"><div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(250,204,21,.40),transparent_25rem),radial-gradient(circle_at_88%_10%,rgba(249,115,22,.16),transparent_27rem),linear-gradient(180deg,#fff9ed,#f3e7d0)]" /><div className="relative mx-auto max-w-6xl"><div className="max-w-4xl"><p className="inline-flex items-center gap-2 rounded-full bg-[#19130d] px-4 py-2 text-[10px] font-black uppercase tracking-[.28em] text-yellow-300"><FileCheck2 className="h-3.5 w-3.5" /> Presupuesto orientativo con datos claros</p><h1 className="mt-6 text-4xl font-black leading-[.94] tracking-[-.065em] sm:text-6xl lg:text-7xl">Saber cuánto podría costar no debería sentirse como adivinar.</h1><p className="mt-6 max-w-2xl text-base leading-8 text-black/60 sm:text-lg">Elige el servicio, llena unos pocos datos y recibe una boleta detallada para conversar una cotización real por WhatsApp. Los rangos se sustentan en referencias comerciales verificables y se ajustan en visita.</p><div className="mt-8 flex flex-wrap gap-3"><a href="#cotizador" className="inline-flex items-center gap-2 rounded-full bg-[#19130d] px-6 py-4 text-sm font-black text-yellow-200 transition hover:bg-black">Calcular ahora <ArrowDown className="h-4 w-4" /></a><a href="#referencias" className="inline-flex items-center gap-2 rounded-full border border-black/15 px-6 py-4 text-sm font-black transition hover:border-black/35">Ver referencias de precio</a></div></div><div className="mt-12 grid gap-3 md:grid-cols-3">{STEPS.map(([number, title, text]) => <article key={number} className="rounded-[1.5rem] bg-white/70 p-5 shadow-[0_18px_45px_rgba(87,58,17,.08)] backdrop-blur"><span className="text-3xl font-black text-[#b5760b]">0{number}</span><h2 className="mt-4 text-lg font-black">{title}</h2><p className="mt-2 text-sm leading-6 text-black/55">{text}</p></article>)}</div></div></section>
+    <ServiceQuoteFlow />
+    <section id="referencias" className="bg-[#f6efe1] px-4 py-14 sm:px-6 lg:px-8 lg:py-20"><div className="mx-auto grid max-w-6xl gap-8 lg:grid-cols-[.8fr_1.2fr]"><div><p className="text-[10px] font-black uppercase tracking-[.28em] text-[#9b6508]">Cómo leer los valores</p><h2 className="mt-3 text-3xl font-black tracking-[-.05em]">Un rango útil, no una promesa que luego cambia.</h2><p className="mt-4 text-sm leading-7 text-black/60">El mínimo representa una ejecución estándar y accesible. El máximo considera complejidad, preparación, altura, distancia, materialidad o remates. La boleta indica expresamente qué debe validarse antes de iniciar.</p><div className="mt-6 rounded-[1.4rem] bg-[#19130d] p-5 text-[#fff4dd]"><p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.22em] text-yellow-300"><MapPin className="h-4 w-4" /> Región del Maule y alrededores</p><p className="mt-3 text-sm leading-6 text-white/65">Traslados, accesos rurales, desniveles y trabajos fuera del estándar se informan antes de confirmar.</p></div></div><div className="grid gap-3 sm:grid-cols-2"><Reference title="Siding instalado" text="Sodimac publica instalación desde $25.990/m² e informa que considera evaluación, instalación, perfilería y materiales del proyecto." href="https://www.sodimac.cl/sodimac-cl/content/instalacion-de-siding" /><Reference title="Techumbre estándar" text="Sodimac publica instalación desde $19.990/m² para zinc ondulado estándar; otras cubiertas y condiciones elevan el alcance." href="https://www.sodimac.cl/sodimac-cl/content/instalacion-de-techumbre" /><Reference title="Punto eléctrico" text="Cronoshare informa $25.000–$40.000 por punto de luz; se agrega margen solo cuando hay recorrido, muro o tablero más complejo." href="https://www.cronoshare.cl/cuanto-cuesta/instalar-punto-de-luz" /><Reference title="Aire acondicionado split" text="Cronoshare sitúa la instalación split en un rango de $250.000–$360.000; equipo y obras adicionales se cotizan por separado." href="https://www.cronoshare.cl/cuanto-cuesta/instalar-aire-acondicionado" /></div></div></section>
+    <section className="bg-[#19130d] px-4 py-12 text-[#fff4dd] sm:px-6 lg:px-8"><div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 md:flex-row"><div><p className="text-[10px] font-black uppercase tracking-[.25em] text-yellow-300">¿Tienes fotos o planos?</p><h2 className="mt-2 text-2xl font-black">Envíalos y afinamos el alcance antes de cotizar.</h2></div><Link href="/contacto" className="inline-flex items-center gap-2 rounded-full bg-yellow-300 px-6 py-4 text-sm font-black text-black"><MessageCircle className="h-4 w-4" /> Hablar con Fabrick</Link></div></section>
+    <footer className="border-t border-black/10 px-4 py-8 sm:px-6"><div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-4 sm:flex-row"><FabrickLogo className="pointer-events-none" /><p className="text-center text-[10px] font-black uppercase tracking-[.16em] text-black/40">Soluciones Fabrick · Claridad antes de construir.</p></div></footer>
+  </main>;
 }
 
-function InfoCard({ title, text }: { title: string; text: string }) {
-  return (
-    <div className="rounded-[1.5rem] border border-white/10 bg-zinc-950/80 p-5">
-      <p className="text-xl font-black text-yellow-300">{title}</p>
-      <p className="mt-2 text-sm leading-7 text-zinc-400">{text}</p>
-    </div>
-  );
-}
+function Reference({ title, text, href }: { title: string; text: string; href: string }) { return <a href={href} target="_blank" rel="noreferrer" className="group rounded-[1.4rem] border border-black/10 bg-white p-5 transition hover:-translate-y-0.5 hover:border-[#b5760b]/40 hover:shadow-[0_18px_40px_rgba(87,58,17,.10)]"><CheckCircle2 className="h-5 w-5 text-[#b5760b]" /><h3 className="mt-4 font-black">{title}</h3><p className="mt-2 text-sm leading-6 text-black/55">{text}</p><span className="mt-4 inline-block text-[10px] font-black uppercase tracking-[.18em] text-[#9b6508]">Abrir fuente ↗</span></a>; }

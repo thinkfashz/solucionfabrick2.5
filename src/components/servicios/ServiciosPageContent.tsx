@@ -1,5 +1,6 @@
 'use client';
 
+import type { ReactNode } from 'react';
 import Link from 'next/link';
 import {
   ArrowDown,
@@ -62,7 +63,7 @@ export function ServiciosPageContent() {
 
               <div className="mt-10 grid max-w-xl grid-cols-3 divide-x divide-white/10 border-y border-white/10">
                 {METRICS.map(([value, label]) => (
-                  <div key={label} className="py-4 pr-3 first:pl-0 not-first:px-3">
+                  <div key={label} className="px-3 py-4 first:pl-0">
                     <strong className="block text-2xl font-black tracking-[-.06em] text-yellow-200 sm:text-3xl">{value}</strong>
                     <span className="mt-1 block text-[9px] font-black uppercase tracking-[.16em] text-white/42">{label}</span>
                   </div>
@@ -178,7 +179,7 @@ export function ServiciosPageContent() {
   );
 }
 
-function Metric({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
+function Metric({ icon, label, value }: { icon: ReactNode; label: string; value: string }) {
   return (
     <div className="rounded-2xl border border-white/10 bg-white/[.045] p-3">
       <span className="text-yellow-300">{icon}</span>

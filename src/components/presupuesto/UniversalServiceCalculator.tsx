@@ -121,6 +121,27 @@ function productForCart(product: CatalogProduct): StoreProduct {
   };
 }
 
+function getRelatedProducts(products: CatalogProduct[], service: Service) {
+  const keywords: Record<Category, string[]> = {
+    Construcción: ['panel', 'piso', 'revest', 'puerta', 'seguridad'],
+    Terminaciones: ['piso', 'panel', 'grifer', 'ducha', 'luz'],
+    Instalaciones: ['luz', 'interruptor', 'cámara', 'grifer', 'ducha'],
+    Climatización: ['aire', 'luz', 'interruptor', 'energía', 'panel'],
+    Exterior: ['cámara', 'seguridad', 'luz', 'panel'],
+    Mueblería: ['luz', 'panel', 'interruptor', 'grifer'],
+  };
+  const terms = keywords[service.category];
+  return [...products]
+    .map((product) => {
+      const content = (product.name + ' ' + product.category + ' ' + product.description).toLocaleLowerCase('es');
+      const score = terms.reduce((total, term) => total + (content.includes(term) ? 1 : 0), 0);
+      return { product, score };
+    })
+    .sort((left, right) => right.score - left.score)
+    .slice(0, 6)
+    .map(({ product }) => product);
+}
+
 export default function UniversalServiceCalculator() {
   const [category, setCategory] = useState<Category>('Construcción');
   const [serviceId, setServiceId] = useState('kit-basico');
@@ -165,7 +186,7 @@ export default function UniversalServiceCalculator() {
     const item = SERVICES.find((candidate) => candidate.id === line.serviceId) || service;
     return total + line.quantity * item.max;
   }, 0);
-  const storePreview = storeProducts.slice(0, 6);
+  const storePreview = useMemo(() => getRelatedProducts(storeProducts, service), [service, storeProducts]);
 
   const whatsappMessage = useMemo(() => {
     const lines = quoteLines.length ? quoteLines : [{ serviceId: service.id, quantity: selectedQuantity }];
@@ -323,7 +344,7 @@ export default function UniversalServiceCalculator() {
                       })}
                     </div>
 
-                    <StoreRibbon products={storePreview} onAdd={addProduct} cartItems={storeCartItems} />
+                    <StoreRibbon products={storePreview} service={service} onAdd={addProduct} cartItems={storeCartItems} />
                   </motion.div>
                 )}
 
@@ -496,14 +517,19 @@ function MeasurementPlan({ service, quantity, length, width, height, facadeMode 
   );
 }
 
-function StoreRibbon({ products, onAdd, cartItems }: { products: CatalogProduct[]; onAdd: (product: CatalogProduct) => void; cartItems: number }) {
+function StoreRibbon({ products, service, onAdd, cartItems }: { products: CatalogProduct[]; service: Service; onAdd: (product: CatalogProduct) => void; cartItems: number }) {
+  const ServiceIcon = service.icon;
   return (
-    <section className="mt-7 overflow-hidden rounded-[1.55rem] bg-[linear-gradient(100deg,rgba(250,204,21,.14),rgba(255,255,255,.045),rgba(249,115,22,.12))] p-4 sm:p-5">
-      <div className="flex flex-wrap items-end justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-yellow-200">Completa tu proyecto</p><h3 className="mt-2 text-lg font-black">Productos de la tienda, sin salir del flujo.</h3></div><Link href="/tienda" className="inline-flex items-center gap-1 text-xs font-black text-yellow-200 hover:text-white">Ver tienda <ArrowRight className="h-3.5 w-3.5" /></Link></div>
-      <div className="fabrick-scroll mt-4 flex gap-3 overflow-x-auto pb-2">
-        {products.map((product) => <article key={product.id} className="w-[180px] shrink-0 overflow-hidden rounded-2xl bg-[#11100d]/92 ring-1 ring-white/10"><div className="h-20 bg-black/30"><img src={product.img || product.image_url || ''} alt="" className="h-full w-full object-cover" loading="lazy" onError={(event) => { event.currentTarget.style.opacity = '0'; }} /></div><div className="p-3"><p className="line-clamp-2 min-h-9 text-xs font-black">{product.name}</p><p className="mt-2 text-[11px] font-black text-yellow-200">{formatCLP(product.price)}</p><button type="button" onClick={() => onAdd(product)} className="mt-3 inline-flex w-full items-center justify-center gap-1 rounded-lg bg-yellow-300 px-2 py-2 text-[10px] font-black text-black transition hover:bg-white"><ShoppingBag className="h-3.5 w-3.5" /> Añadir</button></div></article>)}
+    <section className="relative mt-7 overflow-hidden rounded-[1.7rem] bg-[linear-gradient(112deg,rgba(250,204,21,.20),rgba(24,20,13,.94)_46%,rgba(249,115,22,.18))] p-4 sm:p-5">
+      <div aria-hidden className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_70%_40%,rgba(255,255,255,.12),transparent_60%)]" />
+      <div className="relative flex flex-wrap items-end justify-between gap-3">
+        <div className="flex items-start gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-yellow-300 text-black shadow-[0_10px_26px_rgba(250,204,21,.22)]"><ServiceIcon className="h-4.5 w-4.5" /></span><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-yellow-200">Productos relacionados</p><h3 className="mt-1 text-lg font-black">Para complementar {service.short.toLocaleLowerCase('es')}.</h3></div></div>
+        <Link href="/tienda" className="inline-flex items-center gap-1 rounded-full bg-white/[.09] px-3 py-2 text-xs font-black text-yellow-100 transition hover:bg-white hover:text-black">Ver tienda <ArrowRight className="h-3.5 w-3.5" /></Link>
       </div>
-      <p className="mt-2 text-[10px] font-bold text-white/45">{cartItems ? cartItems + ' producto' + (cartItems === 1 ? '' : 's') + ' añadido' + (cartItems === 1 ? '' : 's') + ' al carrito.' : 'Puedes añadir productos y continuar después con tu compra.'}</p>
+      <div className="fabrick-scroll relative mt-4 flex gap-3 overflow-x-auto pb-2">
+        {products.map((product) => <article key={product.id} className="w-[202px] shrink-0 overflow-hidden rounded-[1.35rem] bg-[#100e0a]/86 shadow-[0_16px_34px_rgba(0,0,0,.22)]"><div className="relative h-24 overflow-hidden bg-[linear-gradient(135deg,rgba(250,204,21,.18),rgba(0,0,0,.18))]"><img src={product.img || product.image_url || ''} alt="" className="h-full w-full object-cover mix-blend-luminosity opacity-85 transition duration-500 hover:scale-105 hover:opacity-100" loading="lazy" onError={(event) => { event.currentTarget.style.opacity = '0'; }} /><span className="absolute left-3 top-3 rounded-full bg-black/50 px-2 py-1 text-[9px] font-black uppercase tracking-[.11em] text-yellow-100">{product.category}</span></div><div className="p-3.5"><p className="line-clamp-2 min-h-9 text-xs font-black leading-4">{product.name}</p><p className="mt-1.5 text-[11px] leading-4 text-white/48">{product.tagline}</p><div className="mt-3 flex items-center justify-between gap-2"><p className="text-sm font-black text-yellow-200">{formatCLP(product.price)}</p><button type="button" onClick={() => onAdd(product)} className="grid h-9 w-9 place-items-center rounded-xl bg-yellow-300 text-black transition hover:bg-white" aria-label={'Añadir ' + product.name}><ShoppingBag className="h-4 w-4" /></button></div></div></article>)}
+      </div>
+      <p className="relative mt-2 text-[10px] font-bold text-white/50">{cartItems ? cartItems + ' producto' + (cartItems === 1 ? '' : 's') + ' añadido' + (cartItems === 1 ? '' : 's') + ' al carrito.' : 'Añade los productos que necesites y continúa con la compra cuando quieras.'}</p>
     </section>
   );
 }

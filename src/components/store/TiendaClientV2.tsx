@@ -10,6 +10,7 @@ import {
   Hammer,
   Instagram,
   Search,
+  RefreshCw,
   ShieldCheck,
   Snowflake,
   Truck,
@@ -106,6 +107,10 @@ export default function TiendaClientV2() {
     products: catalogProducts,
     connected,
     fetchComplete,
+    loading,
+    source,
+    error: catalogError,
+    reload,
   } = useCatalogProducts();
   const { addToCart } = useCartContext();
   const [searchOpen, setSearchOpen] = useState(false);
@@ -185,6 +190,14 @@ export default function TiendaClientV2() {
         <span className={`store-aura store-aura-three left-[22%] top-[78rem] h-[30rem] w-[30rem] ${isDark ? "bg-amber-700/10" : "bg-amber-400/20"}`} />
       </div>
       <StorefrontHeader onSearch={() => setSearchOpen(true)} />
+      {fetchComplete && source === "fallback" && (
+        <section role="status" className="mx-auto mt-3 flex max-w-[1320px] flex-col gap-3 rounded-[1.25rem] border border-yellow-300/20 bg-yellow-300/[.07] px-4 py-3 text-sm text-yellow-50 shadow-[0_14px_40px_rgba(0,0,0,.16)] sm:flex-row sm:items-center sm:justify-between md:mx-8">
+          <p className="leading-6"><b className="font-black text-yellow-200">Catálogo protegido.</b> {catalogError || "Mostramos productos de respaldo mientras reconectamos el catálogo."}</p>
+          <button onClick={() => void reload()} disabled={loading} className="inline-flex shrink-0 items-center justify-center gap-2 rounded-full border border-yellow-300/35 bg-black/25 px-4 py-2 text-xs font-black text-yellow-100 transition hover:bg-yellow-300 hover:text-black disabled:cursor-wait disabled:opacity-60">
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? "animate-spin" : ""}`} /> Reintentar
+          </button>
+        </section>
+      )}
       <header className="mx-auto max-w-[1320px] pb-5 md:px-8 md:pb-9 md:pt-4">
         <section className="relative isolate min-h-[460px] overflow-hidden bg-[#090805]/92 text-white shadow-[0_32px_100px_rgba(0,0,0,.28)] md:min-h-[540px] md:rounded-[2.75rem]">
           <img

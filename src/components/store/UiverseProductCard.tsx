@@ -50,6 +50,7 @@ export default function UiverseProductCard({
   img,
   features = [],
   discountPct = 0,
+  rating,
   stock,
   stockLabel,
   deliveryLabel,

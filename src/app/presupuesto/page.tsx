@@ -1,6 +1,4 @@
 import type { Metadata } from 'next';
-import { getActiveMaterials } from '@/lib/budget';
-import PresupuestoClient from './PresupuestoClient';
 import Navbar from '@/components/Navbar';
 import UniversalServiceCalculator from '@/components/presupuesto/UniversalServiceCalculator';
 import { StoreBottomNav } from '@/components/store/StorefrontChrome';
@@ -22,14 +20,11 @@ export const metadata: Metadata = {
   alternates: { canonical: 'https://www.solucionesfabrick.com/presupuesto' },
 };
 
-export default async function PresupuestoPage() {
-  const materials = await getActiveMaterials();
-
+export default function PresupuestoPage() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#070706] pb-[calc(6rem+env(safe-area-inset-bottom))] text-white sm:pb-0">
       <Navbar />
       <UniversalServiceCalculator />
-      <PresupuestoClient initialMaterials={materials} />
       <StoreBottomNav />
     </main>
   );

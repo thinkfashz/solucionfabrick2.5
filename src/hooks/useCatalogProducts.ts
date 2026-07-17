@@ -159,11 +159,15 @@ function mapRealtimeProductToCatalogProduct(product: RealtimeProduct): CatalogPr
 export function useCatalogProducts() {
   const realtime = useRealtimeProducts();
 
-  const products = useMemo(() => {
-    if (!realtime.fetchComplete) return FALLBACK_CATALOG_PRODUCTS;
-    const mapped = realtime.products.map((product) => mapRealtimeProductToCatalogProduct(product));
-    return mapped.length ? mapped : FALLBACK_CATALOG_PRODUCTS;
-  }, [realtime.products, realtime.fetchComplete]);
+  const liveProducts = useMemo(
+    () => realtime.products.map((product) => mapRealtimeProductToCatalogProduct(product)),
+    [realtime.products],
+  );
+  const hasLiveData = liveProducts.length > 0;
+  const products = useMemo(
+    () => (hasLiveData ? liveProducts : FALLBACK_CATALOG_PRODUCTS),
+    [hasLiveData, liveProducts],
+  );
 
   return {
     products,
@@ -172,7 +176,10 @@ export function useCatalogProducts() {
     connected: realtime.connected,
     lastEvent: realtime.lastEvent,
     updateCount: realtime.updateCount,
-    hasLiveData: realtime.products.length > 0,
+    hasLiveData,
+    source: hasLiveData ? 'live' as const : realtime.fetchComplete ? 'fallback' as const : 'loading' as const,
+    error: realtime.error,
+    lastUpdated: realtime.lastUpdated,
     reload: realtime.reload,
   };
 }

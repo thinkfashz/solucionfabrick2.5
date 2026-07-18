@@ -1,6 +1,6 @@
 'use client';
 
-import type { MouseEvent } from 'react';
+import { useState, type MouseEvent } from 'react';
 import { Check, ShoppingBag } from 'lucide-react';
 
 interface UiverseProductCardProps {
@@ -35,6 +35,14 @@ function stockMeta(stockNumber: number | null) {
   return { label: `Disponible · ${stockNumber}`, pct: Math.min(100, 60 + stockNumber), tone: 'bg-emerald-300', text: 'text-emerald-200', disabled: false };
 }
 
+function safePrice(value: number) {
+  return Number.isFinite(value) && value >= 0 ? value : 0;
+}
+
+function safeRating(value?: number) {
+  return value !== undefined && Number.isFinite(value) ? Math.max(0, Math.min(5, value)) : null;
+}
+
 export default function UiverseProductCard({
   name,
   price,
@@ -42,6 +50,7 @@ export default function UiverseProductCard({
   img,
   features = [],
   discountPct = 0,
+  rating,
   stock,
   stockLabel,
   deliveryLabel,
@@ -49,7 +58,12 @@ export default function UiverseProductCard({
   onSelect,
   onAddToCart,
 }: UiverseProductCardProps) {
-  const finalPrice = discountPct > 0 ? Math.round(price * (1 - discountPct / 100)) : price;
+  const [imageFailed, setImageFailed] = useState(false);
+  const validPrice = safePrice(price);
+  const validDiscount = Number.isFinite(discountPct) ? Math.max(0, Math.min(100, discountPct)) : 0;
+  const finalPrice = validDiscount > 0 ? Math.round(validPrice * (1 - validDiscount / 100)) : validPrice;
+  const validRating = safeRating(rating);
+  const productInitial = name.trim().charAt(0).toUpperCase() || 'F';
   const stockNumber = parseStock(stock, stockLabel);
   const stockInfo = stockMeta(stockNumber);
   const details = features.filter(Boolean).slice(0, 2);
@@ -64,16 +78,22 @@ export default function UiverseProductCard({
     >
       <div className={`relative m-2 overflow-hidden rounded-[1.3rem] ${isDark ? 'bg-[#17100a]' : 'bg-[#fff3dc]'}`}>
         <div className="aspect-[4/3]">
-          {img ? (
-            <img src={img} alt={name} className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.05]" loading="lazy" />
+          {img && !imageFailed ? (
+            <img
+              src={img}
+              alt={name}
+              className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.05]"
+              loading="lazy"
+              onError={() => setImageFailed(true)}
+            />
           ) : (
-            <div className="grid h-full w-full place-items-center text-4xl font-black text-black/10">{name[0]}</div>
+            <div className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_50%_0%,rgba(250,204,21,.24),transparent_55%),#17120c] text-4xl font-black text-yellow-200/60">{productInitial}</div>
           )}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/78 via-black/8 to-transparent" />
         <button type="button" onClick={onSelect} aria-label={`Ver detalles de ${name}`} className="absolute inset-0 z-10 rounded-[1.3rem] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-yellow-300/70" />
         <div className="pointer-events-none absolute left-3 top-3 z-20 flex max-w-[calc(100%-1.5rem)] flex-wrap gap-1.5">
-          {discountPct > 0 && <span className="rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">-{discountPct}%</span>}
+          {validDiscount > 0 && <span className="rounded-full bg-red-500 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white">-{discountPct}%</span>}
           <span className="rounded-full bg-black/65 px-2.5 py-1 text-[10px] font-black uppercase tracking-wider text-white backdrop-blur-md">{category}</span>
         </div>
         <span className={`pointer-events-none absolute bottom-3 left-3 z-20 rounded-full bg-black/70 px-2.5 py-1 text-[10px] font-black backdrop-blur-md ${stockInfo.text}`}>{stockLabel || stockInfo.label}</span>
@@ -93,7 +113,7 @@ export default function UiverseProductCard({
           <div className="flex items-end justify-between gap-3 pt-3">
             <div>
               <span className="block text-2xl font-black tracking-tight text-neutral-950">${finalPrice.toLocaleString('es-CL')}</span>
-              {discountPct > 0 && <span className="text-xs text-neutral-400 line-through">${price.toLocaleString('es-CL')}</span>}
+              {validDiscount > 0 && <span className="text-xs text-neutral-400 line-through">${validPrice.toLocaleString('es-CL')}</span>}
             </div>
             {deliveryLabel ? <span className="max-w-[48%] truncate text-right text-[10px] font-bold text-neutral-500">{deliveryLabel}</span> : null}
           </div>

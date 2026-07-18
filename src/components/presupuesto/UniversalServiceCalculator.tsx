@@ -10,7 +10,6 @@ import {
   Bath,
   Blocks,
   Check,
-  ChevronDown,
   ChevronRight,
   ClipboardList,
   DoorOpen,
@@ -147,7 +146,6 @@ export default function UniversalServiceCalculator() {
   const [category, setCategory] = useState<Category>('Construcción');
   const [serviceId, setServiceId] = useState('kit-basico');
   const [stage, setStage] = useState<1 | 2 | 3>(1);
-  const [servicePickerOpen, setServicePickerOpen] = useState(false);
   const [measureMode, setMeasureMode] = useState<'manual' | 'dimensions'>('dimensions');
   const [quantity, setQuantity] = useState('36');
   const [length, setLength] = useState('6');
@@ -192,15 +190,11 @@ export default function UniversalServiceCalculator() {
 
   const whatsappMessage = useMemo(() => {
     const lines = quoteLines.length ? quoteLines : [{ serviceId: service.id, quantity: selectedQuantity }];
-    const details = lines.flatMap((line) => {
+    const details = lines.map((line) => {
       const item = SERVICES.find((candidate) => candidate.id === line.serviceId) || service;
       const low = line.quantity * item.min;
       const high = line.quantity * item.max;
-      return [
-        '- ' + item.title + ': ' + formatNumber(line.quantity) + ' ' + item.unit + ' · ' + formatCLP(low) + ' a ' + formatCLP(high),
-        '  Incluye: ' + item.includes.join(', '),
-        item.note ? '  Considerar: ' + item.note : '',
-      ].filter(Boolean);
+      return '- ' + item.title + ': ' + formatNumber(line.quantity) + ' ' + item.unit + ' · ' + formatCLP(low) + ' a ' + formatCLP(high);
     });
     return [
       'Hola Soluciones Fabrick, necesito una cotización real.',
@@ -226,7 +220,6 @@ export default function UniversalServiceCalculator() {
   function chooseService(next: Service) {
     setServiceId(next.id);
     setCategory(next.category);
-    setServicePickerOpen(false);
     setQuantity(String(next.defaultQuantity));
     if (next.unit === 'm²') {
       setMeasureMode('dimensions');
@@ -315,48 +308,41 @@ export default function UniversalServiceCalculator() {
               <AnimatePresence mode="wait" initial={false}>
                 {stage === 1 && (
                   <motion.div key="select" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, x: -20 }} transition={motionConfig}>
-                    <StepHeading eyebrow="Paso 01" title="Selecciona lo que quieres resolver." text="Pulsa “Elegir servicio” para abrir las opciones. Cada una muestra rango de mercado, promedio referencial y su alcance breve." />
-                    <ServicePickerControl service={service} open={servicePickerOpen} onToggle={() => setServicePickerOpen((current) => !current)} />
-                    <AnimatePresence initial={false}>
-                      {servicePickerOpen && (
-                        <motion.div initial={{ opacity: 0, height: 0, y: -8 }} animate={{ opacity: 1, height: 'auto', y: 0 }} exit={{ opacity: 0, height: 0, y: -8 }} transition={motionConfig} className="overflow-hidden">
-                          <div className="fabrick-scroll mt-5 flex gap-2 overflow-x-auto pb-2">
-                            {CATEGORIES.map((item) => {
-                              const CategoryIcon = item.icon;
-                              const active = category === item.id;
-                              return (
-                                <button key={item.id} type="button" onClick={() => setCategory(item.id)} className={active ? 'flex shrink-0 items-center gap-2 rounded-full bg-yellow-300 px-4 py-2.5 text-xs font-black text-black shadow-[0_8px_28px_rgba(250,204,21,.20)]' : 'flex shrink-0 items-center gap-2 rounded-full bg-white/[.055] px-4 py-2.5 text-xs font-black text-white/65 transition hover:bg-white/[.11] hover:text-white'}>
-                                  <CategoryIcon className="h-4 w-4" /> {item.label}
-                                </button>
-                              );
-                            })}
-                          </div>
+                    <StepHeading eyebrow="Paso 01" title="Selecciona lo que quieres resolver." text="Cada opción tiene un rango de mercado, un promedio referencial y un alcance breve. Tócala para abrir su cálculo." />
+                    <div className="fabrick-scroll mt-5 flex gap-2 overflow-x-auto pb-2">
+                      {CATEGORIES.map((item) => {
+                        const CategoryIcon = item.icon;
+                        const active = category === item.id;
+                        return (
+                          <button key={item.id} type="button" onClick={() => setCategory(item.id)} className={active ? 'flex shrink-0 items-center gap-2 rounded-full bg-yellow-300 px-4 py-2.5 text-xs font-black text-black shadow-[0_8px_28px_rgba(250,204,21,.20)]' : 'flex shrink-0 items-center gap-2 rounded-full bg-white/[.055] px-4 py-2.5 text-xs font-black text-white/65 transition hover:bg-white/[.11] hover:text-white'}>
+                            <CategoryIcon className="h-4 w-4" /> {item.label}
+                          </button>
+                        );
+                      })}
+                    </div>
 
-                          <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-                            {categoryServices.map((item) => {
-                              const ServiceIcon = item.icon;
-                              return (
-                                <article key={item.id} className="group flex min-h-[226px] flex-col rounded-[1.45rem] bg-white/[.055] p-4 transition hover:-translate-y-0.5 hover:bg-white/[.085]">
-                                  <div className="flex items-start justify-between gap-3">
-                                    <span className="grid h-10 w-10 place-items-center rounded-xl bg-yellow-300/12 text-yellow-300"><ServiceIcon className="h-4.5 w-4.5" /></span>
-                                    <span className="rounded-full bg-white/[.06] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.13em] text-white/54">{unitLabel(item.unit)}</span>
-                                  </div>
-                                  <h3 className="mt-4 text-base font-black tracking-[-.035em]">{item.title}</h3>
-                                  <p className="mt-2 min-h-10 text-xs leading-5 text-white/57">{item.description}</p>
-                                  <div className="mt-4 grid grid-cols-2 gap-2 border-t border-white/10 pt-3">
-                                    <div><p className="text-[9px] font-black uppercase tracking-[.13em] text-white/35">Mercado</p><b className="mt-1 block text-xs text-yellow-200">{formatCLP(item.min)} – {formatCLP(item.max)}</b></div>
-                                    <div><p className="text-[9px] font-black uppercase tracking-[.13em] text-white/35">Promedio</p><b className="mt-1 block text-xs">{formatCLP(average(item))}</b></div>
-                                  </div>
-                                  <button type="button" onClick={() => chooseService(item)} className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-300 px-3 text-xs font-black text-black transition hover:bg-white">
-                                    Elegir este servicio <ChevronRight className="h-4 w-4" />
-                                  </button>
-                                </article>
-                              );
-                            })}
-                          </div>
-                        </motion.div>
-                      )}
-                    </AnimatePresence>
+                    <div className="mt-5 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                      {categoryServices.map((item) => {
+                        const ServiceIcon = item.icon;
+                        return (
+                          <article key={item.id} className="group flex min-h-[226px] flex-col rounded-[1.45rem] bg-white/[.055] p-4 transition hover:-translate-y-0.5 hover:bg-white/[.085]">
+                            <div className="flex items-start justify-between gap-3">
+                              <span className="grid h-10 w-10 place-items-center rounded-xl bg-yellow-300/12 text-yellow-300"><ServiceIcon className="h-4.5 w-4.5" /></span>
+                              <span className="rounded-full bg-white/[.06] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.13em] text-white/54">{unitLabel(item.unit)}</span>
+                            </div>
+                            <h3 className="mt-4 text-base font-black tracking-[-.035em]">{item.title}</h3>
+                            <p className="mt-2 min-h-10 text-xs leading-5 text-white/57">{item.description}</p>
+                            <div className="mt-4 grid grid-cols-2 gap-2 border-t border-white/10 pt-3">
+                              <div><p className="text-[9px] font-black uppercase tracking-[.13em] text-white/35">Mercado</p><b className="mt-1 block text-xs text-yellow-200">{formatCLP(item.min)} – {formatCLP(item.max)}</b></div>
+                              <div><p className="text-[9px] font-black uppercase tracking-[.13em] text-white/35">Promedio</p><b className="mt-1 block text-xs">{formatCLP(average(item))}</b></div>
+                            </div>
+                            <button type="button" onClick={() => chooseService(item)} className="mt-auto inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-yellow-300 px-3 text-xs font-black text-black transition hover:bg-white">
+                              Ver detalle y calcular <ChevronRight className="h-4 w-4" />
+                            </button>
+                          </article>
+                        );
+                      })}
+                    </div>
 
                     <StoreRibbon products={storePreview} service={service} onAdd={addProduct} cartItems={storeCartItems} />
                   </motion.div>
@@ -367,7 +353,7 @@ export default function UniversalServiceCalculator() {
                     <div className="flex flex-col gap-5 lg:grid lg:grid-cols-[1.15fr_.85fr]">
                       <div>
                         <StepHeading eyebrow="Paso 02" title="Mide el servicio sin perder el contexto." text="El plano se actualiza cuando cambias las medidas. Es una guía visual, no una simulación decorativa." />
-                        <ServiceDetail service={service} onChange={() => { setServicePickerOpen(true); moveTo(1); }} />
+                        <ServiceDetail service={service} />
                         <MeasurementControls
                           service={service}
                           quantity={quantity}
@@ -395,7 +381,7 @@ export default function UniversalServiceCalculator() {
                       </aside>
                     </div>
                     <div className="mt-6 grid gap-3 sm:grid-cols-2">
-                      <button type="button" onClick={() => { setServicePickerOpen(true); moveTo(1); }} className="inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl bg-white/[.06] px-5 text-sm font-black text-white/75 transition hover:bg-white/[.11]"><ArrowLeft className="h-4 w-4" /> Cambiar servicio</button>
+                      <button type="button" onClick={() => moveTo(1)} className="inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl bg-white/[.06] px-5 text-sm font-black text-white/75 transition hover:bg-white/[.11]"><ArrowLeft className="h-4 w-4" /> Cambiar servicio</button>
                       <button type="button" onClick={addSelectedService} className="inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-5 text-sm font-black text-black transition hover:bg-white">
                         <Plus className="h-4 w-4" /> {selectedLine ? 'Actualizar mi boleta' : 'Añadir a mi boleta'}
                       </button>
@@ -419,7 +405,7 @@ export default function UniversalServiceCalculator() {
                           <label className="block sm:col-span-2"><span className="text-[10px] font-black uppercase tracking-[.16em] text-white/42">Detalle importante</span><textarea value={customer.note} onChange={(event) => setCustomer((current) => ({ ...current, note: event.target.value }))} placeholder="Fotos, accesos, medidas exactas o fecha ideal…" className="mt-2 min-h-24 w-full resize-none rounded-2xl bg-white/[.055] px-4 py-3 text-sm text-white outline-none ring-1 ring-white/10 placeholder:text-white/30 focus:ring-yellow-300/60" /></label>
                         </div>
                         <button type="submit" className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(90deg,#facc15,#fb923c)] px-5 text-sm font-black text-black transition hover:brightness-110"><MessageCircle className="h-4 w-4" /> Enviar boleta a WhatsApp</button>
-                        <button type="button" onClick={() => { setServicePickerOpen(true); moveTo(1); }} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-xs font-black text-white/56 transition hover:bg-white/[.055] hover:text-white"><Plus className="h-4 w-4" /> Añadir otro servicio</button>
+                        <button type="button" onClick={() => moveTo(1)} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-xs font-black text-white/56 transition hover:bg-white/[.055] hover:text-white"><Plus className="h-4 w-4" /> Añadir otro servicio</button>
                       </form>
                     </div>
                   </motion.div>
@@ -442,23 +428,11 @@ function StepHeading({ eyebrow, title, text }: { eyebrow: string; title: string;
   return <div><p className="text-[10px] font-black uppercase tracking-[.24em] text-yellow-300">{eyebrow}</p><h2 className="mt-3 max-w-2xl text-2xl font-black tracking-[-.05em] text-white sm:text-3xl">{title}</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-white/57">{text}</p></div>;
 }
 
-function ServicePickerControl({ service, open, onToggle }: { service: Service; open: boolean; onToggle: () => void }) {
-  const Icon = service.icon;
-  return (
-    <button type="button" onClick={onToggle} aria-expanded={open} className="relative mt-6 flex w-full items-center gap-4 overflow-hidden rounded-[1.55rem] bg-[linear-gradient(112deg,rgba(250,204,21,.26),rgba(33,27,17,.96)_47%,rgba(249,115,22,.18))] p-4 text-left shadow-[0_18px_40px_rgba(0,0,0,.22)] transition hover:brightness-110 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-yellow-300 sm:p-5">
-      <span aria-hidden className="absolute -right-4 top-1/2 h-16 w-16 -translate-y-1/2 rounded-full bg-yellow-200/15 blur-xl" />
-      <span className="relative grid h-14 w-14 shrink-0 place-items-center rounded-2xl bg-yellow-300 text-black shadow-[0_10px_28px_rgba(250,204,21,.30)]"><Icon className="h-6 w-6" /></span>
-      <span className="relative min-w-0 flex-1"><span className="block text-[10px] font-black uppercase tracking-[.22em] text-yellow-200">Servicio a cotizar</span><span className="mt-1 block truncate text-lg font-black tracking-[-.045em] text-white sm:text-xl">{service.title}</span><span className="mt-1 block text-xs font-bold text-white/62">{open ? 'Elige una opción para continuar.' : 'Toca aquí para elegir o cambiar el servicio.'}</span></span>
-      <span className="relative flex shrink-0 flex-col items-center gap-1.5"><motion.span animate={!open ? { scale: [1, 1.12, 1], boxShadow: ['0 0 0 0 rgba(250,204,21,.38)', '0 0 0 9px rgba(250,204,21,0)', '0 0 0 0 rgba(250,204,21,0)'] } : undefined} transition={{ duration: 1.8, repeat: open ? 0 : Infinity, ease: 'easeOut' }} className="grid h-10 w-10 place-items-center rounded-full bg-[#15110a] text-yellow-200"><ChevronDown className={open ? 'h-5 w-5 rotate-180 transition-transform' : 'h-5 w-5 transition-transform'} /></motion.span><span className="text-[9px] font-black uppercase tracking-[.12em] text-yellow-100">{open ? 'Cerrar' : 'Toca aquí'}</span></span>
-    </button>
-  );
-}
-
-function ServiceDetail({ service, onChange }: { service: Service; onChange: () => void }) {
+function ServiceDetail({ service }: { service: Service }) {
   const Icon = service.icon;
   return (
     <article className="mt-6 rounded-[1.5rem] bg-black/28 p-5">
-      <button type="button" onClick={onChange} className="flex w-full items-start justify-between gap-4 rounded-2xl p-1 text-left transition hover:bg-white/[.045] focus-visible:outline focus-visible:outline-2 focus-visible:outline-yellow-300"><div className="min-w-0"><p className="text-[10px] font-black uppercase tracking-[.2em] text-yellow-300">Servicio que estás calculando</p><h3 className="mt-2 text-xl font-black tracking-[-.045em]">{service.title}</h3><p className="mt-2 text-sm leading-6 text-white/58">{service.description}</p><span className="mt-3 inline-flex items-center gap-1.5 text-[10px] font-black uppercase tracking-[.13em] text-yellow-200">Cambiar servicio <ChevronRight className="h-3.5 w-3.5" /></span></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-yellow-300 text-black"><Icon className="h-5 w-5" /></span></button>
+      <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-yellow-300">Servicio seleccionado</p><h3 className="mt-2 text-xl font-black tracking-[-.045em]">{service.title}</h3><p className="mt-2 text-sm leading-6 text-white/58">{service.description}</p></div><span className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-yellow-300 text-black"><Icon className="h-5 w-5" /></span></div>
       <div className="mt-5 grid gap-2 border-t border-white/10 pt-4 sm:grid-cols-3"><InfoCell label="Desde" value={formatCLP(service.min) + ' / ' + service.unit} /><InfoCell label="Hasta" value={formatCLP(service.max) + ' / ' + service.unit} /><InfoCell label="Promedio mercado" value={formatCLP(average(service))} /></div>
       <div className="mt-5 grid gap-2 sm:grid-cols-2">{service.includes.map((item) => <p key={item} className="flex gap-2 text-xs leading-5 text-white/70"><Check className="h-4 w-4 shrink-0 text-yellow-300" />{item}</p>)}</div>
       {service.note && <p className="mt-4 border-t border-white/10 pt-4 text-[11px] leading-5 text-yellow-100/58">{service.note}</p>}
@@ -563,20 +537,13 @@ function StoreRibbon({ products, service, onAdd, cartItems }: { products: Catalo
 function Receipt({ lines, low, high, onRemove }: { lines: QuoteLine[]; low: number; high: number; onRemove: (serviceId: string) => void }) {
   return (
     <article className="receipt-shape overflow-hidden bg-[#fff4dc] px-5 pb-10 pt-6 text-[#17120c] shadow-[0_24px_65px_rgba(0,0,0,.28)]">
-      <header className="flex items-start justify-between gap-3">
-        <div className="flex min-w-0 items-center gap-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#17120c] text-yellow-300"><Home className="h-6 w-6" /></span><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#9b6508]">Soluciones Fabrick</p><h3 className="mt-1 text-lg font-black tracking-[-.04em]">Referencia de proyecto</h3><p className="mt-1 text-[10px] font-semibold text-[#6f604b]">Construcción · Remodelación · Hogar</p></div></div>
-        <span className="inline-flex shrink-0 items-center gap-1 rounded-full bg-[#e2c179]/28 px-2.5 py-1.5 text-[9px] font-black uppercase tracking-[.12em] text-[#6b4707]"><ReceiptText className="h-3.5 w-3.5" /> SF · REF</span>
-      </header>
-      <div className="mt-5 grid grid-cols-2 gap-3 rounded-2xl bg-[#17120c]/[.055] p-3 text-[10px]">
-        <div><p className="font-black uppercase tracking-[.14em] text-[#806c4e]">Documento</p><p className="mt-1 font-bold text-[#342715]">Orientación comercial</p></div>
-        <div className="border-l border-black/10 pl-3"><p className="font-black uppercase tracking-[.14em] text-[#806c4e]">Cliente</p><p className="mt-1 font-bold text-[#342715]">Por confirmar</p></div>
-      </div>
+      <div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.22em] text-[#9b6508]">Boleta referencial</p><h3 className="mt-2 text-xl font-black">Soluciones Fabrick</h3><p className="mt-1 text-[11px] text-[#6f604b]">No es documento tributario ni precio final.</p></div><span className="grid h-10 w-10 place-items-center rounded-full bg-[#17120c] text-yellow-300"><ReceiptText className="h-4 w-4" /></span></div>
       <div className="my-5 border-t border-dashed border-black/20" />
-      <div className="space-y-4">{lines.map((line, index) => { const service = SERVICES.find((item) => item.id === line.serviceId) || SERVICES[0]; const lineLow = line.quantity * service.min; const lineHigh = line.quantity * service.max; return <section key={line.serviceId} className="relative overflow-hidden rounded-2xl bg-white/48 p-4 shadow-[0_8px_20px_rgba(55,38,9,.06)]"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[.17em] text-[#9b6508]">Partida {String(index + 1).padStart(2, '0')}</p><p className="mt-1 pr-7 text-sm font-black leading-5">{service.title}</p><p className="mt-1 text-[11px] leading-4 text-[#6f604b]">{service.description}</p></div>{lines.length > 1 && <button type="button" aria-label="Quitar servicio" onClick={() => onRemove(line.serviceId)} className="grid h-7 w-7 shrink-0 place-items-center rounded-full text-[#7a6345] transition hover:bg-black/10 hover:text-[#17120c]"><Trash2 className="h-3.5 w-3.5" /></button>}</div><div className="mt-3 flex items-end justify-between gap-3 border-y border-dashed border-black/15 py-3"><p className="text-[10px] leading-4 text-[#6f604b]"><b className="block text-[#342715]">{formatNumber(line.quantity)} {service.unit}</b>Referencia unitaria {formatCLP(service.min)} – {formatCLP(service.max)}</p><p className="text-right text-[10px] leading-4 text-[#6f604b]"><b className="block text-sm text-[#342715]">{formatCLP(lineLow)} – {formatCLP(lineHigh)}</b>Rango de la partida</p></div><div className="mt-3"><p className="text-[9px] font-black uppercase tracking-[.16em] text-[#806c4e]">Incluye en esta referencia</p><ul className="mt-2 space-y-1.5">{service.includes.map((item) => <li key={item} className="flex gap-2 text-[10px] leading-4 text-[#4d3e29]"><Check className="mt-0.5 h-3 w-3 shrink-0 text-[#a56b09]" />{item}</li>)}</ul>{service.note && <p className="mt-3 border-t border-black/10 pt-2 text-[10px] leading-4 text-[#7b6545]"><b className="text-[#5a431e]">Importante: </b>{service.note}</p>}</div></section>; })}</div>
+      <div className="space-y-4">{lines.map((line) => { const service = SERVICES.find((item) => item.id === line.serviceId) || SERVICES[0]; return <div key={line.serviceId} className="group relative"><p className="pr-8 text-sm font-black">{service.title}</p><p className="mt-1 text-[11px] text-[#6f604b]">{formatNumber(line.quantity)} {service.unit} · promedio {formatCLP(line.quantity * average(service))}</p>{lines.length > 1 && <button type="button" aria-label="Quitar servicio" onClick={() => onRemove(line.serviceId)} className="absolute right-0 top-0 grid h-7 w-7 place-items-center rounded-full text-[#7a6345] transition hover:bg-black/10 hover:text-[#17120c]"><Trash2 className="h-3.5 w-3.5" /></button>}</div>; })}</div>
       <div className="my-5 border-t border-dashed border-black/20" />
-      <section aria-label="Resumen de costos"><p className="text-[9px] font-black uppercase tracking-[.19em] text-[#9b6508]">Resumen del cálculo</p><ReceiptLine label="Total referencial desde" value={formatCLP(low)} /><ReceiptLine label="Total referencial hasta" value={formatCLP(high)} /><div className="mt-4 flex items-center justify-between gap-4 rounded-2xl bg-[#17120c] px-4 py-3 text-[#fff4dc]"><span className="text-[11px] font-bold">Promedio orientativo</span><b className="text-base text-yellow-200">{formatCLP(Math.round((low + high) / 2))}</b></div></section>
-      <div className="mt-5 rounded-2xl bg-[#e7c46c]/18 p-4"><p className="text-[9px] font-black uppercase tracking-[.19em] text-[#815306]">Validación requerida</p><p className="mt-2 text-[11px] leading-5 text-[#5c4827]">Antes de confirmar, revisamos visita, acceso, materiales, medidas y partidas no incluidas. Este documento no es una boleta tributaria ni constituye una oferta final.</p></div>
-      <footer className="mt-5 flex items-center justify-between gap-3 border-t border-dashed border-black/20 pt-4 text-[9px] font-semibold leading-4 text-[#806c4e]"><span>Valores sujetos a disponibilidad y condiciones reales.</span><span className="shrink-0 font-black uppercase tracking-[.12em] text-[#9b6508]">Fabrick</span></footer>
+      <ReceiptLine label="Total desde" value={formatCLP(low)} /><ReceiptLine label="Total hasta" value={formatCLP(high)} /><ReceiptLine label="Promedio orientativo" value={formatCLP(Math.round((low + high) / 2))} strong />
+      <div className="mt-5 rounded-2xl bg-[#17120c] p-4 text-[#fff4dc]"><p className="text-[9px] font-black uppercase tracking-[.19em] text-yellow-300">Antes de confirmar</p><p className="mt-2 text-[11px] leading-5 text-white/67">Validamos visita, acceso, materiales, dimensiones, instalación existente y partidas no incluidas.</p></div>
+      <p className="mt-5 text-[10px] leading-4 text-[#6f604b]">Los valores son aproximados y se actualizan según disponibilidad, proveedor y condiciones reales del proyecto.</p>
     </article>
   );
 }

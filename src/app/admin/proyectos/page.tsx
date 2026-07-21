@@ -271,7 +271,25 @@ export default function AdminProyectosPage() {
       const next = await loadStudio();
       const saved = next?.media.find((item) => item.public_id === draft.public_id);
       if (saved && selected) setDraft(toDraft(selected, saved, folder));
-      setNotice('Ficha guardada. La galería pública seguirá funcionando incluso si este catálogo no está disponible.');
+      let cloudinarySynced = true;
+      try {
+        const cloudinaryResponse = await fetch('/api/admin/cloudinary', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            public_id: draft.public_id,
+            title: draft.title,
+            description: draft.description,
+            tags: draft.keywords,
+          }),
+        });
+        cloudinarySynced = cloudinaryResponse.ok;
+      } catch {
+        cloudinarySynced = false;
+      }
+      setNotice(cloudinarySynced
+        ? 'Ficha y etiquetas de Cloudinary guardadas.'
+        : 'Ficha guardada. Cloudinary se reintentará al volver a editarla; la galería pública no se interrumpe.');
     } catch (reason) {
       setError(statusText(reason, 'No se pudo guardar la ficha.'));
     } finally {

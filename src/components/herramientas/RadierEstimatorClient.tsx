@@ -8,9 +8,7 @@ import {
   Info,
   Layers3,
   Maximize2,
-  Minus,
   PackageCheck,
-  Plus,
   Ruler,
   Sparkles,
   Truck,
@@ -18,7 +16,6 @@ import {
 import { useRouter } from 'next/navigation';
 import { navigateWithTransition } from '@/lib/routeTransition';
 import { StoreBottomNav, StorefrontHeader } from '@/components/store/StorefrontChrome';
-import { FabrickNavLogo } from '@/components/FabrickBrandIcon';
 
 const money = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 const decimal = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
@@ -81,7 +78,7 @@ function NumberField({
 }) {
   return (
     <label className="grid gap-2 bg-white/[0.055] p-3.5 ring-1 ring-white/[0.075] transition focus-within:bg-white/[0.09] focus-within:ring-yellow-300/60">
-      <span className="flex items-center justify-between gap-2 text-[9px] font-black uppercase tracking-[.17em] text-[#f9efd9]/53]">
+      <span className="flex items-center justify-between gap-2 text-[9px] font-black uppercase tracking-[.17em] text-[#f9efd9]/53">
         <span>{label}</span>
         <span>{suffix}</span>
       </span>

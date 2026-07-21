@@ -340,6 +340,100 @@ CREATE INDEX IF NOT EXISTS projects_destacado_created_at_idx ON public.projects 
 CREATE INDEX IF NOT EXISTS projects_categoria_created_at_idx ON public.projects (categoria, created_at DESC);
 CREATE INDEX IF NOT EXISTS projects_anio_idx ON public.projects (anio DESC);
 
+-- TABLA: project_categories
+CREATE TABLE IF NOT EXISTS public.project_categories (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  name text NOT NULL,
+  slug text UNIQUE NOT NULL,
+  description text DEFAULT '',
+  color text DEFAULT '#FDE047',
+  sort_order integer DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: project-categories-migrate
+ALTER TABLE public.project_categories ADD COLUMN IF NOT EXISTS name text;
+ALTER TABLE public.project_categories ADD COLUMN IF NOT EXISTS slug text;
+ALTER TABLE public.project_categories ADD COLUMN IF NOT EXISTS description text DEFAULT '';
+ALTER TABLE public.project_categories ADD COLUMN IF NOT EXISTS color text DEFAULT '#FDE047';
+ALTER TABLE public.project_categories ADD COLUMN IF NOT EXISTS sort_order integer DEFAULT 0;
+ALTER TABLE public.project_categories ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.project_categories ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+CREATE UNIQUE INDEX IF NOT EXISTS project_categories_slug_idx ON public.project_categories (slug);
+CREATE INDEX IF NOT EXISTS project_categories_order_idx ON public.project_categories (sort_order, name);
+
+-- TABLA: project-categories-seed
+INSERT INTO public.project_categories (name, slug, description, color, sort_order)
+VALUES
+  ('Ideas', 'ideas', 'Referencias para inspirar nuevos proyectos.', '#FDE047', 0),
+  ('Remodelación', 'remodelacion', 'Antes y después, interiores y cambios de espacios.', '#FB923C', 10),
+  ('Interiores', 'interiores', 'Terminaciones, cocinas, baños y muebles.', '#F7EFD9', 20)
+ON CONFLICT (slug) DO NOTHING;
+
+-- TABLA: project_media
+CREATE TABLE IF NOT EXISTS public.project_media (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  public_id text UNIQUE NOT NULL,
+  cloudinary_url text NOT NULL,
+  folder text DEFAULT 'fabrick/proyectos',
+  category_slug text DEFAULT 'ideas',
+  title text DEFAULT '',
+  story text DEFAULT '',
+  description text DEFAULT '',
+  seo_title text DEFAULT '',
+  seo_description text DEFAULT '',
+  keywords jsonb DEFAULT '[]'::jsonb,
+  social jsonb DEFAULT '{}'::jsonb,
+  is_favorite boolean DEFAULT false,
+  is_published boolean DEFAULT true,
+  sort_order integer DEFAULT 0,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: project-media-migrate
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS public_id text;
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS cloudinary_url text;
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS folder text DEFAULT 'fabrick/proyectos';
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS category_slug text DEFAULT 'ideas';
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS title text DEFAULT '';
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS story text DEFAULT '';
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS description text DEFAULT '';
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS seo_title text DEFAULT '';
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS seo_description text DEFAULT '';
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS keywords jsonb DEFAULT '[]'::jsonb;
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS social jsonb DEFAULT '{}'::jsonb;
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS is_favorite boolean DEFAULT false;
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS is_published boolean DEFAULT true;
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS sort_order integer DEFAULT 0;
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.project_media ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+CREATE UNIQUE INDEX IF NOT EXISTS project_media_public_id_idx ON public.project_media (public_id);
+CREATE INDEX IF NOT EXISTS project_media_public_gallery_idx ON public.project_media (is_published, is_favorite DESC, sort_order, updated_at DESC);
+CREATE INDEX IF NOT EXISTS project_media_category_idx ON public.project_media (category_slug, is_published);
+
+-- TABLA: project_media_comments
+CREATE TABLE IF NOT EXISTS public.project_media_comments (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  media_id uuid NOT NULL REFERENCES public.project_media(id) ON DELETE CASCADE,
+  author_name text DEFAULT 'Equipo Fabrick',
+  body text NOT NULL,
+  is_resolved boolean DEFAULT false,
+  created_at timestamptz DEFAULT now(),
+  updated_at timestamptz DEFAULT now()
+);
+
+-- TABLA: project-media-comments-migrate
+ALTER TABLE public.project_media_comments ADD COLUMN IF NOT EXISTS media_id uuid;
+ALTER TABLE public.project_media_comments ADD COLUMN IF NOT EXISTS author_name text DEFAULT 'Equipo Fabrick';
+ALTER TABLE public.project_media_comments ADD COLUMN IF NOT EXISTS body text;
+ALTER TABLE public.project_media_comments ADD COLUMN IF NOT EXISTS is_resolved boolean DEFAULT false;
+ALTER TABLE public.project_media_comments ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+ALTER TABLE public.project_media_comments ADD COLUMN IF NOT EXISTS updated_at timestamptz DEFAULT now();
+CREATE INDEX IF NOT EXISTS project_media_comments_media_idx ON public.project_media_comments (media_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS project_media_comments_pending_idx ON public.project_media_comments (is_resolved, created_at DESC);
+
 -- TABLA: cupones
 CREATE TABLE IF NOT EXISTS public.cupones (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),

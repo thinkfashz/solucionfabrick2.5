@@ -110,6 +110,52 @@ export async function POST(request: NextRequest) {
   }
 }
 
+export async function PATCH(request: NextRequest) {
+  try {
+    const session = await getAdminSession(request);
+    if (!session) return adminUnauthorized();
+
+    const creds = await getCloudinaryCredentials();
+    if (!creds) return NextResponse.json({ error: 'Cloudinary no configurado.', code: 'NOT_CONFIGURED' }, { status: 503 });
+
+    const body = await request.json().catch(() => ({})) as { public_id?: unknown; tags?: unknown; title?: unknown; description?: unknown };
+    const publicId = typeof body.public_id === 'string' ? body.public_id.trim().slice(0, 240) : '';
+    if (!publicId) return NextResponse.json({ error: 'Falta public_id.', code: 'VALIDATION' }, { status: 400 });
+    const tags = Array.isArray(body.tags)
+      ? Array.from(new Set(body.tags.filter((tag): tag is string => typeof tag === 'string').map((tag) => tag.trim().replace(/[^a-zA-Z0-9áéíóúñü -]/gi, '').slice(0, 70)).filter(Boolean))).slice(0, 24).join(',')
+      : '';
+    const cleanContext = (value: unknown, max: number) => typeof value === 'string'
+      ? value.trim().replace(/[|=]/g, ' ').slice(0, max)
+      : '';
+    const title = cleanContext(body.title, 180);
+    const description = cleanContext(body.description, 500);
+    const context = [title ? 'title=' + title : '', description ? 'caption=' + description : ''].filter(Boolean).join('|');
+
+    const timestamp = String(Math.floor(Date.now() / 1000));
+    const signature = await generateSignature({ public_id: publicId, type: 'upload', tags, context, timestamp }, creds.api_secret);
+    const explicitUrl = 'https://api.cloudinary.com/v1_1/' + encodeURIComponent(creds.cloud_name) + '/image/explicit';
+    const form = new FormData();
+    form.append('public_id', publicId);
+    form.append('type', 'upload');
+    form.append('timestamp', timestamp);
+    form.append('api_key', creds.api_key);
+    form.append('signature', signature);
+    if (tags) form.append('tags', tags);
+    if (context) form.append('context', context);
+
+    const response = await fetch(explicitUrl, { method: 'POST', body: form });
+    if (!response.ok) {
+      const detail = await response.text().catch(() => '');
+      return NextResponse.json({ error: 'Cloudinary update error: ' + response.status + ' ' + detail, code: 'CLOUDINARY_UPDATE_ERROR' }, { status: 502 });
+    }
+    const updated = await response.json() as { public_id: string; secure_url: string; tags?: string[]; context?: unknown };
+    publishCmsEvent({ topic: 'media', action: 'update' });
+    return NextResponse.json({ asset: { id: updated.public_id, public_id: updated.public_id, url: updated.secure_url, tags: updated.tags || [], context: updated.context || {} }, source: 'cloudinary' });
+  } catch (err) {
+    return adminError(err, 'CLOUDINARY_UPDATE_FAILED');
+  }
+}
+
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getAdminSession(request);

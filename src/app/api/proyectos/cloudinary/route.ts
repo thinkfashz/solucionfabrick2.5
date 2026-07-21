@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { getCloudinaryCredentials } from '@/lib/cloudinaryCredentials';
+import { insforge } from '@/lib/insforge';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -70,6 +71,54 @@ function titleFromPublicId(publicId: string) {
   return last.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 80);
 }
 
+type ProjectMediaMetadata = {
+  public_id: string;
+  category_slug?: string;
+  title?: string;
+  story?: string;
+  description?: string;
+  seo_title?: string;
+  seo_description?: string;
+  keywords?: unknown;
+  social?: unknown;
+  is_favorite?: boolean;
+  sort_order?: number;
+};
+
+type ProjectCategoryMetadata = { key: string; label: string };
+
+function safeStringList(value: unknown): string[] {
+  return Array.isArray(value)
+    ? value.filter((item): item is string => typeof item === 'string').map((item) => item.trim()).filter(Boolean).slice(0, 24)
+    : [];
+}
+
+async function getPublicCatalogMetadata(): Promise<{ media: Map<string, ProjectMediaMetadata>; categories: ProjectCategoryMetadata[] }> {
+  try {
+    const [mediaResult, categoriesResult] = await Promise.all([
+      insforge.database.from('project_media').select('public_id, category_slug, title, story, description, seo_title, seo_description, keywords, social, is_favorite, sort_order').eq('is_published', true).limit(350),
+      insforge.database.from('project_categories').select('slug, name').order('sort_order', { ascending: true }).limit(100),
+    ]);
+    const media = mediaResult.error || !Array.isArray(mediaResult.data)
+      ? new Map<string, ProjectMediaMetadata>()
+      : new Map((mediaResult.data as ProjectMediaMetadata[]).filter((item) => item.public_id).map((item) => [item.public_id, item]));
+    const categories = categoriesResult.error || !Array.isArray(categoriesResult.data)
+      ? []
+      : (categoriesResult.data as Array<{ slug?: string; name?: string }>)
+        .filter((item) => item.slug && item.name)
+        .map((item) => ({ key: item.slug as string, label: item.name as string }));
+    return { media, categories };
+  } catch {
+    // The catalog metadata is optional. A missing table or a temporary
+    // database issue must never blank the Cloudinary gallery.
+    return { media: new Map(), categories: [] };
+  }
+}
+
+function galleryCategories(categories: ProjectCategoryMetadata[]) {
+  const base = [{ key: 'ideas', label: 'Ideas' }, ...CATEGORY_MAP.map(({ key, label }) => ({ key, label }))];
+  return [...categories, ...base].filter((item, index, all) => all.findIndex((candidate) => candidate.key === item.key) === index);
+}
 function fallbackAssets() {
   const cloud = FALLBACK_CLOUD_NAME;
   const base = `https://res.cloudinary.com/${cloud}/image/upload`;
@@ -125,12 +174,14 @@ export async function GET(request: NextRequest) {
     }
 
     const json = await res.json() as { resources?: CloudinaryResource[]; next_cursor?: string };
+    const catalog = await getPublicCatalogMetadata();
     const assets = (json.resources || [])
       .filter((item) => item.secure_url)
       .map((item) => {
-        const category = inferCategory(item);
+        const metadata = catalog.media.get(item.public_id);
+        const category = metadata?.category_slug || inferCategory(item);
         const context = contextRecord(item.context);
-        const title = context.caption || context.title || context.alt || titleFromPublicId(item.public_id);
+        const title = metadata?.title || context.caption || context.title || context.alt || titleFromPublicId(item.public_id);
         return {
           id: item.public_id,
           public_id: item.public_id,
@@ -141,15 +192,23 @@ export async function GET(request: NextRequest) {
           width: item.width || 1200,
           height: item.height || 900,
           format: item.format || '',
-          tags: item.tags || [],
+          tags: Array.from(new Set([...(item.tags || []), ...safeStringList(metadata?.keywords)])),
+          story: metadata?.story || '',
+          description: metadata?.description || '',
+          seo_title: metadata?.seo_title || '',
+          seo_description: metadata?.seo_description || '',
+          social: metadata?.social && typeof metadata.social === 'object' ? metadata.social : {},
+          is_favorite: Boolean(metadata?.is_favorite),
+          sort_order: typeof metadata?.sort_order === 'number' ? metadata.sort_order : 0,
           created_at: item.created_at || '',
           folder,
         };
-      });
+      })
+      .sort((a, b) => Number(b.is_favorite) - Number(a.is_favorite) || a.sort_order - b.sort_order);
 
     return NextResponse.json({
       assets: assets.length ? assets : fallbackAssets(),
-      categories: [{ key: 'ideas', label: 'Ideas' }, ...CATEGORY_MAP.map(({ key, label }) => ({ key, label }))],
+      categories: galleryCategories(catalog.categories),
       next_cursor: json.next_cursor || null,
       source: assets.length ? 'cloudinary' : 'fallback',
       folder,

@@ -5,6 +5,7 @@ import {
   ArrowDown,
   ArrowUpRight,
   ExternalLink,
+  Heart,
   Images,
   Loader2,
   RotateCcw,
@@ -24,6 +25,13 @@ type ProjectAsset = {
   width: number;
   height: number;
   tags?: string[];
+  story?: string;
+  description?: string;
+  seo_title?: string;
+  seo_description?: string;
+  social?: Record<string, string>;
+  is_favorite?: boolean;
+  sort_order?: number;
   created_at?: string;
   fallback?: boolean;
 };
@@ -97,7 +105,7 @@ function GalleryCard({ asset, index, onOpen }: { asset: ProjectAsset; index: num
         <div className="absolute inset-0 bg-[linear-gradient(180deg,rgba(5,5,4,.06),rgba(5,5,4,.08)_34%,rgba(5,5,4,.90))]" />
         <div className="absolute left-3 top-3 flex max-w-[calc(100%-1.5rem)] items-center gap-2">
           <span className="truncate rounded-full bg-[#090806]/70 px-2.5 py-1 text-[8px] font-black uppercase tracking-[.16em] text-yellow-100 backdrop-blur-xl">{asset.category}</span>
-          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-yellow-300 text-black"><ArrowUpRight className="h-3.5 w-3.5" /></span>
+          <span className="grid h-7 w-7 shrink-0 place-items-center rounded-full bg-yellow-300 text-black">{asset.is_favorite ? <Heart className="h-3.5 w-3.5 fill-current" /> : <ArrowUpRight className="h-3.5 w-3.5" />}</span>
         </div>
         <div className="absolute inset-x-3 bottom-3">
           <p className="line-clamp-2 text-sm font-black leading-4 tracking-[-.025em] text-white sm:text-base">{asset.title}</p>
@@ -124,10 +132,11 @@ function Lightbox({ asset, onClose }: { asset: ProjectAsset | null; onClose: () 
           <div>
             <p className="inline-flex rounded-full bg-yellow-300/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[.2em] text-yellow-200">Referencia de inspiración</p>
             <h2 className="mt-4 text-3xl font-black leading-[.95] tracking-[-.055em] text-white">{asset.title}</h2>
-            <p className="mt-3 text-sm leading-6 text-[#f6ecd9]/62">Usa esta imagen como punto de partida. El equipo confirma medidas, materiales, acceso y alcance antes de cotizar.</p>
+            <p className="mt-3 text-sm leading-6 text-[#f6ecd9]/68">{asset.description || asset.story || 'Usa esta imagen como punto de partida. El equipo confirma medidas, materiales, acceso y alcance antes de cotizar.'}</p>
+            {asset.story ? <div className="mt-5 bg-white/[.055] p-4"><p className="text-[9px] font-black uppercase tracking-[.18em] text-yellow-200">La historia detrás</p><p className="mt-2 text-xs leading-5 text-[#fff7e8]/65">{asset.story}</p></div> : null}
             <div className="mt-5 flex flex-wrap gap-2"><span className="rounded-full bg-white/[.08] px-3 py-1.5 text-xs font-bold text-white">{asset.category}</span>{asset.tags?.slice(0, 4).map((tag) => <span key={tag} className="rounded-full bg-white/[.045] px-3 py-1.5 text-xs text-[#f5ead5]/72">{tag}</span>)}</div>
           </div>
-          <div className="grid gap-2"><a href={quoteUrl(asset)} target="_blank" rel="noreferrer" className="rounded-2xl bg-[linear-gradient(90deg,#fde047,#fb923c)] px-5 py-4 text-center text-sm font-black text-black transition hover:brightness-110">Quiero cotizar algo parecido</a><button type="button" onClick={onClose} className="rounded-2xl bg-white/[.07] px-5 py-3 text-xs font-black text-white/75 transition hover:bg-white hover:text-black">Seguir explorando</button></div>
+          <div className="grid gap-2"><a href={quoteUrl(asset)} target="_blank" rel="noreferrer" className="rounded-2xl bg-[linear-gradient(90deg,#fde047,#fb923c)] px-5 py-4 text-center text-sm font-black text-black transition hover:brightness-110">Quiero cotizar algo parecido</a>{asset.social?.instagram || asset.social?.facebook ? <div className="grid grid-cols-2 gap-2">{asset.social.instagram ? <a href={asset.social.instagram} target="_blank" rel="noreferrer" className="rounded-2xl bg-white/[.07] px-3 py-3 text-center text-xs font-black text-white/75 transition hover:bg-white hover:text-black">Ver Instagram</a> : null}{asset.social.facebook ? <a href={asset.social.facebook} target="_blank" rel="noreferrer" className="rounded-2xl bg-white/[.07] px-3 py-3 text-center text-xs font-black text-white/75 transition hover:bg-white hover:text-black">Ver Facebook</a> : null}</div> : null}<button type="button" onClick={onClose} className="rounded-2xl bg-white/[.07] px-5 py-3 text-xs font-black text-white/75 transition hover:bg-white hover:text-black">Seguir explorando</button></div>
         </aside>
       </div>
     </div>

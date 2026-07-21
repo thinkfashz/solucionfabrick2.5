@@ -181,7 +181,7 @@ export default function CloudinaryProjectsGallery() {
     return assets
       .filter((asset) => {
         const byCategory = active === 'todo' || active === asset.category;
-        const searchable = `${asset.title} ${asset.category} ${asset.public_id} ${(asset.tags || []).join(' ')}`.toLocaleLowerCase('es');
+        const searchable = `${asset.title} ${asset.category} ${asset.public_id} ${asset.description || ''} ${asset.story || ''} ${asset.seo_title || ''} ${(asset.tags || []).join(' ')}`.toLocaleLowerCase('es');
         return byCategory && (!q || searchable.includes(q));
       })
       .sort((a, b) => {

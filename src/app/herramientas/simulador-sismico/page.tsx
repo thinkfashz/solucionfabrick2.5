@@ -8,5 +8,27 @@ export const metadata: Metadata = {
 };
 
 export default function Page() {
-  return <SeismicSimulator />;
+  return (
+    <div className="sismo-page">
+      <style>{`
+        .sismo-page [class*="min-h-[620px]"] {
+          height: clamp(520px, 72svh, 760px);
+          min-height: 520px;
+        }
+        .sismo-page [class*="min-h-[620px]"] > div,
+        .sismo-page [class*="min-h-[620px]"] canvas {
+          width: 100% !important;
+          height: 100% !important;
+          min-height: 100% !important;
+        }
+        @media (max-width: 640px) {
+          .sismo-page [class*="min-h-[620px]"] {
+            height: 62svh;
+            min-height: 500px;
+          }
+        }
+      `}</style>
+      <SeismicSimulator />
+    </div>
+  );
 }

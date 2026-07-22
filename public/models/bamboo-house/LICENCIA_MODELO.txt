@@ -1,0 +1,5 @@
+Modelo 3D incorporado desde el paquete “All Bambo House” entregado por el propietario del proyecto para su uso en esta experiencia de Soluciones Fabrick.
+
+La versión publicada fue optimizada y cuantizada para navegación web. El archivo se utiliza únicamente como elemento visual dentro de un simulador educativo y no representa una vivienda calculada, certificada ni validada estructuralmente.
+
+Conservar este aviso junto al recurso si el modelo se redistribuye o se reutiliza fuera del proyecto.

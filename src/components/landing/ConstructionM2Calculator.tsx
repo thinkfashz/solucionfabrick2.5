@@ -172,11 +172,12 @@ export default function ConstructionM2Calculator() {
   const [quantity, setQuantity] = useState(SERVICES[0].defaultQuantity);
 
   const service = SERVICES.find((item) => item.id === serviceId) ?? SERVICES[0];
+  const Icon = service.icon;
   const minimum = service.unit === 'unidad' || service.unit === 'punto' ? 1 : 0;
   const cleanQuantity = Math.max(minimum, Math.min(5000, Number(quantity) || 0));
   const low = cleanQuantity * service.low;
   const high = cleanQuantity * service.high;
-  const step = service.unit === 'm2' || service.unit === 'ml' ? 1 : 1;
+  const step = 1;
 
   const reference = useMemo(() => {
     const compactService = service.id
@@ -256,7 +257,7 @@ export default function ConstructionM2Calculator() {
                       className={`group min-w-[78%] snap-center rounded-[1.35rem] p-4 text-left shadow-[0_10px_28px_rgba(55,37,18,.06)] transition duration-300 sm:min-w-0 ${active ? 'scale-[1.01] bg-[#17120c] text-white shadow-[0_18px_42px_rgba(23,18,12,.22)]' : 'bg-[#faf6ee] text-[#342719] hover:-translate-y-0.5 hover:bg-[#f7edda]'}`}
                     >
                       <div className="flex items-start justify-between gap-3">
-                        <span className={`grid h-10 w-10 place-items-center rounded-full transition ${active ? 'bg-yellow-300 text-black' : 'bg-white text-orange-700 shadow-sm'}`}><ItemIcon className="h-4.5 w-4.5" /></span>
+                        <span className={`grid h-10 w-10 place-items-center rounded-full transition ${active ? 'bg-yellow-300 text-black' : 'bg-white text-orange-700 shadow-sm'}`}><ItemIcon className="h-4 w-4" /></span>
                         <span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-[.12em] ${active ? 'bg-white/10 text-yellow-200' : 'bg-white text-[#8c775d]'}`}>{unitLabel(item.unit)}</span>
                       </div>
                       <strong className="mt-4 block text-sm leading-5">{item.name}</strong>
@@ -269,7 +270,7 @@ export default function ConstructionM2Calculator() {
 
             <div className="mt-5 rounded-[1.6rem] bg-[linear-gradient(135deg,#fff8e9,#f7ebd4)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.85)] sm:p-5">
               <div className="flex items-start gap-3">
-                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-yellow-300 text-black"><service.icon className="h-5 w-5" /></span>
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-yellow-300 text-black"><Icon className="h-5 w-5" /></span>
                 <div>
                   <p className="text-[9px] font-black uppercase tracking-[.16em] text-orange-700">Solución seleccionada</p>
                   <h3 className="mt-1 text-lg font-black">{service.name}</h3>

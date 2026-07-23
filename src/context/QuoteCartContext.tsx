@@ -26,22 +26,15 @@ import React, {
 export type QuoteItemKind = 'service' | 'panel' | 'material';
 
 export interface QuoteItem {
-  /** Identificador único en el carrito (no necesariamente el id del recurso). */
   id: string;
   kind: QuoteItemKind;
   title: string;
   description?: string;
-  /** Cantidad (paneles, m², horas, unidades…). */
   quantity: number;
-  /** Unidad legible (m², un, ml, h…). */
   unit?: string;
-  /** Costo de referencia unitario. */
   refPrice?: number;
-  /** Notas que añade el cliente. */
   notes?: string;
-  /** Imagen opcional. */
   image?: string;
-  /** Metadata específica del cálculo. */
   meta?: Record<string, unknown>;
 }
 
@@ -71,6 +64,11 @@ function serviceKey(item: Omit<QuoteItem, 'id'> & { id?: string }) {
   return metaId || item.id || item.title;
 }
 
+function finiteMetaNumber(meta: Record<string, unknown> | undefined, key: string) {
+  const value = meta?.[key];
+  return typeof value === 'number' && Number.isFinite(value) ? value : 0;
+}
+
 export function QuoteCartProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<QuoteItem[]>([]);
   const hydrated = useRef(false);
@@ -80,11 +78,7 @@ export function QuoteCartProvider({ children }: { children: React.ReactNode }) {
       const raw = localStorage.getItem(STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as { ts: number; data: QuoteItem[] };
-        if (
-          parsed?.data &&
-          Array.isArray(parsed.data) &&
-          Date.now() - parsed.ts < TTL_MS
-        ) {
+        if (parsed?.data && Array.isArray(parsed.data) && Date.now() - parsed.ts < TTL_MS) {
           setItems(parsed.data);
         }
       }
@@ -97,69 +91,71 @@ export function QuoteCartProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!hydrated.current) return;
     try {
-      localStorage.setItem(
-        STORAGE_KEY,
-        JSON.stringify({ ts: Date.now(), data: items }),
-      );
+      localStorage.setItem(STORAGE_KEY, JSON.stringify({ ts: Date.now(), data: items }));
     } catch {
       /* ignore */
     }
   }, [items]);
 
   const addItem = useCallback<QuoteCartContextValue['addItem']>((item) => {
-    setItems((prev) => {
+    setItems((previous) => {
       if (item.kind === 'service') {
         const nextKey = serviceKey(item);
-        const idx = prev.findIndex((candidate) => {
+        const index = previous.findIndex((candidate) => {
           if (candidate.kind !== 'service') return false;
-          const candidateMetaId = typeof candidate.meta?.serviceId === 'string'
-            ? candidate.meta.serviceId
-            : '';
+          const candidateMetaId = typeof candidate.meta?.serviceId === 'string' ? candidate.meta.serviceId : '';
           const candidateKey = candidateMetaId || candidate.id || candidate.title;
           return candidateKey === nextKey || candidate.title === item.title;
         });
 
-        if (idx !== -1) {
-          const updated = [...prev];
-          updated[idx] = {
-            ...updated[idx],
+        if (index !== -1) {
+          const updated = [...previous];
+          updated[index] = {
+            ...updated[index],
             ...item,
-            id: item.id ?? updated[idx].id,
+            id: item.id ?? updated[index].id,
             quantity: Math.max(1, Number(item.quantity) || 1),
           };
           return updated;
         }
       }
 
-      return [...prev, { ...item, id: item.id ?? makeId(item.kind) }];
+      return [...previous, { ...item, id: item.id ?? makeId(item.kind) }];
     });
   }, []);
 
   const addPanels = useCallback<QuoteCartContextValue['addPanels']>((panels) => {
-    setItems((prev) => {
-      const withoutPanels = prev.filter((item) => item.kind !== 'panel');
-      const added = panels.map((panel) => ({
-        ...panel,
-        kind: 'panel' as const,
-        id: makeId('panel'),
-      }));
+    setItems((previous) => {
+      const withoutPanels = previous.filter((item) => item.kind !== 'panel');
+      const added = panels.map((panel) => ({ ...panel, kind: 'panel' as const, id: makeId('panel') }));
       return [...withoutPanels, ...added];
     });
   }, []);
 
   const removeItem = useCallback((id: string) => {
-    setItems((prev) => prev.filter((item) => item.id !== id));
+    setItems((previous) => previous.filter((item) => item.id !== id));
   }, []);
 
   const updateQuantity = useCallback((id: string, quantity: number) => {
     if (!Number.isFinite(quantity) || quantity < 1) return;
-    setItems((prev) =>
-      prev.map((item) => (item.id === id ? { ...item, quantity } : item)),
-    );
+    setItems((previous) => previous.map((item) => {
+      if (item.id !== id) return item;
+      const marketMinUnit = finiteMetaNumber(item.meta, 'marketMinUnit');
+      const marketMaxUnit = finiteMetaNumber(item.meta, 'marketMaxUnit');
+      return {
+        ...item,
+        quantity,
+        meta: {
+          ...item.meta,
+          ...(marketMinUnit ? { marketLow: marketMinUnit * quantity } : {}),
+          ...(marketMaxUnit ? { marketHigh: marketMaxUnit * quantity } : {}),
+        },
+      };
+    }));
   }, []);
 
   const updateNotes = useCallback((id: string, notes: string) => {
-    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, notes } : item)));
+    setItems((previous) => previous.map((item) => (item.id === id ? { ...item, notes } : item)));
   }, []);
 
   const clear = useCallback(() => setItems([]), []);
@@ -170,46 +166,24 @@ export function QuoteCartProvider({ children }: { children: React.ReactNode }) {
   );
 
   const refTotal = useMemo(
-    () =>
-      items.reduce(
-        (sum, item) =>
-          sum + (typeof item.refPrice === 'number' ? item.refPrice * item.quantity : 0),
-        0,
-      ),
+    () => items.reduce((sum, item) => sum + (typeof item.refPrice === 'number' ? item.refPrice * item.quantity : 0), 0),
     [items],
   );
 
   const value = useMemo<QuoteCartContextValue>(
-    () => ({
-      items,
-      totalItems,
-      refTotal,
-      addItem,
-      addPanels,
-      removeItem,
-      updateQuantity,
-      updateNotes,
-      clear,
-    }),
+    () => ({ items, totalItems, refTotal, addItem, addPanels, removeItem, updateQuantity, updateNotes, clear }),
     [items, totalItems, refTotal, addItem, addPanels, removeItem, updateQuantity, updateNotes, clear],
   );
 
-  return (
-    <QuoteCartContext.Provider value={value}>
-      {children}
-    </QuoteCartContext.Provider>
-  );
+  return <QuoteCartContext.Provider value={value}>{children}</QuoteCartContext.Provider>;
 }
 
 export function useQuoteCart(): QuoteCartContextValue {
-  const ctx = useContext(QuoteCartContext);
-  if (!ctx) {
-    throw new Error('useQuoteCart must be used within QuoteCartProvider');
-  }
-  return ctx;
+  const context = useContext(QuoteCartContext);
+  if (!context) throw new Error('useQuoteCart must be used within QuoteCartProvider');
+  return context;
 }
 
-/** Hook que devuelve un valor seguro incluso fuera del provider (SSR/edge). */
 export function useQuoteCartSafe(): QuoteCartContextValue | null {
   return useContext(QuoteCartContext);
 }

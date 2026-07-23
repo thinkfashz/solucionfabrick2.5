@@ -15,6 +15,7 @@ export interface CspBuildOptions {
 
 const INSFORGE_HOSTS = ['https://*.insforge.app'];
 const CLOUDFLARE_HOSTS = ['https://challenges.cloudflare.com'];
+const CDNJS_HOSTS = ['https://cdnjs.cloudflare.com'];
 const CLOUDINARY_HOSTS = [
   'https://api.cloudinary.com',
   'https://res.cloudinary.com',
@@ -42,6 +43,7 @@ export function buildCsp({ nonce, isDev = false }: CspBuildOptions): string {
     "'self'",
     `'nonce-${nonce}'`,
     ...CLOUDFLARE_HOSTS,
+    ...CDNJS_HOSTS,
     ...MERCADOPAGO_HOSTS,
     ...VERCEL_HOSTS,
     ...(isDev ? ["'unsafe-eval'"] : []),
@@ -51,6 +53,7 @@ export function buildCsp({ nonce, isDev = false }: CspBuildOptions): string {
     "'self'",
     "'unsafe-inline'",
     ...GOOGLE_FONT_HOSTS,
+    ...CDNJS_HOSTS,
   ];
 
   const imgSrc = [
@@ -60,7 +63,7 @@ export function buildCsp({ nonce, isDev = false }: CspBuildOptions): string {
     'https:',
   ];
 
-  const fontSrc = ["'self'", 'data:', ...GOOGLE_FONT_HOSTS];
+  const fontSrc = ["'self'", 'data:', ...GOOGLE_FONT_HOSTS, ...CDNJS_HOSTS];
 
   const connectSrc = [
     "'self'",

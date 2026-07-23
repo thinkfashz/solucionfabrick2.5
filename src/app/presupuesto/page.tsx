@@ -24,6 +24,7 @@ export default function PresupuestoPage() {
   return (
     <main className="min-h-screen overflow-x-hidden bg-[#070706] pb-[calc(6rem+env(safe-area-inset-bottom))] text-white sm:pb-0">
       <Navbar />
+      {/* Configurador central: calcula cada especialidad y conserva el carrito entre páginas. */}
       <ServiceBudgetShop />
       <StoreBottomNav />
     </main>

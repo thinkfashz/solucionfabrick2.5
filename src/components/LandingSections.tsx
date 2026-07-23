@@ -3,26 +3,17 @@
 import Link from 'next/link';
 import type { ReactNode } from 'react';
 import {
-  AirVent,
-  ArrowRight,
   BadgeCheck,
-  Building2,
   Clock3,
-  Hammer,
-  Home,
   MapPin,
   MessageCircle,
-  PaintRoller,
-  ShieldCheck,
   ShoppingBag,
-  Zap,
-  type LucideIcon,
 } from 'lucide-react';
 import ContactForm from './ContactForm';
 import TiendaSection from './TiendaSection';
+import ServicesVerticalGallery from '@/components/landing/ServicesVerticalGallery';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 import { useSiteContent } from '@/hooks/useSiteContent';
-import { buildWhatsAppLink } from '@/lib/whatsapp';
 
 interface LandingSectionsProps {
   copyrightText?: string;
@@ -33,59 +24,6 @@ interface LandingSectionsProps {
   };
 }
 
-type ServiceItem = {
-  title: string;
-  outcome: string;
-  description: string;
-  href: string;
-  icon: LucideIcon;
-};
-
-const SERVICES: ServiceItem[] = [
-  {
-    title: 'Construcción y ampliaciones',
-    outcome: 'De terreno disponible a espacio habitable',
-    description: 'Viviendas, cabañas, kits y ampliaciones organizadas por etapas, partidas y nivel de terminación.',
-    href: '#cotizador',
-    icon: Home,
-  },
-  {
-    title: 'Remodelación integral',
-    outcome: 'Más espacio, mejor uso y una sola coordinación',
-    description: 'Redistribución, revestimientos, terminaciones y especialidades bajo una propuesta común.',
-    href: '/servicios',
-    icon: PaintRoller,
-  },
-  {
-    title: 'Radier y obra base',
-    outcome: 'Una base calculada para el uso real',
-    description: 'Superficie, espesor, preparación, hormigón y refuerzo definidos antes de ejecutar.',
-    href: '/herramientas/radier',
-    icon: Building2,
-  },
-  {
-    title: 'Techumbre y filtraciones',
-    outcome: 'Protección antes de que el daño avance',
-    description: 'Diagnóstico, reparación o renovación de cubierta, fijaciones, canaletas, sellos y remates.',
-    href: '/servicios',
-    icon: Hammer,
-  },
-  {
-    title: 'Gasfitería y electricidad',
-    outcome: 'Instalaciones coordinadas con la obra',
-    description: 'Puntos de agua, desagüe, electricidad, iluminación y adecuaciones para espacios nuevos o existentes.',
-    href: '/servicios',
-    icon: Zap,
-  },
-  {
-    title: 'Climatización y equipamiento',
-    outcome: 'Producto, instalación y soporte en una sola ruta',
-    description: 'Selección de aire acondicionado y equipamiento para el hogar con instalación evaluada.',
-    href: '/herramientas/aire-acondicionado',
-    icon: AirVent,
-  },
-];
-
 export default function LandingSections({ copyrightText, socialLinks }: LandingSectionsProps = {}) {
   const footer = useSiteContent('footer');
   const year = String(new Date().getFullYear());
@@ -93,7 +31,6 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
     ? copyrightText.replaceAll('{year}', year)
     : (footer.legal || `© ${year} Soluciones Fabrick. Todos los derechos reservados.`).replaceAll('{year}', year);
 
-  const orientationLink = buildWhatsAppLink('Hola Soluciones Fabrick, necesito orientación para definir mi proyecto.');
   const fbHref = socialLinks?.facebook?.trim() || '#';
   const igHref = socialLinks?.instagram?.trim() || '#';
   const ttHref = socialLinks?.tiktok?.trim() || '#';
@@ -107,50 +44,7 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
 
   return (
     <div className="overflow-x-hidden bg-[#080705] text-white">
-      <section id="servicios" className="relative overflow-hidden px-4 py-16 sm:px-6 md:px-12 lg:py-20">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_15%,rgba(250,204,21,.09),transparent_28%),radial-gradient(circle_at_92%_88%,rgba(249,115,22,.08),transparent_28%)]" />
-        <div className="relative mx-auto max-w-[1320px]">
-          <header data-reveal className="grid gap-5 lg:grid-cols-[.82fr_1.18fr] lg:items-end">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[.24em] text-yellow-300">Servicios</p>
-              <h2 className="mt-3 text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>
-                Una sola empresa para resolver la parte difícil.
-              </h2>
-            </div>
-            <p className="max-w-2xl text-sm leading-7 text-zinc-400 sm:text-base">
-              No vendemos tareas aisladas: organizamos el problema, definimos el alcance y conectamos las especialidades necesarias para que el proyecto avance con menos improvisación.
-            </p>
-          </header>
-
-          <div data-reveal-group className="mt-8 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
-            {SERVICES.map(({ title, outcome, description, href, icon: Icon }) => (
-              <Link key={title} href={href} className="group flex min-h-[250px] flex-col rounded-[1.65rem] border border-white/9 bg-white/[.03] p-5 transition duration-300 hover:-translate-y-1 hover:border-yellow-300/28 hover:bg-yellow-300/[.045]">
-                <div className="flex items-start justify-between gap-4">
-                  <span className="grid h-12 w-12 place-items-center rounded-2xl bg-yellow-300 text-black"><Icon className="h-5 w-5" /></span>
-                  <ArrowRight className="h-4 w-4 text-zinc-600 transition group-hover:translate-x-1 group-hover:text-yellow-300" />
-                </div>
-                <p className="mt-6 text-[9px] font-black uppercase tracking-[.18em] text-yellow-300">{outcome}</p>
-                <h3 className="mt-2 text-xl font-black tracking-[-.035em]">{title}</h3>
-                <p className="mt-3 text-sm leading-6 text-zinc-500">{description}</p>
-                <span className="mt-auto pt-5 text-[10px] font-black uppercase tracking-[.16em] text-zinc-300">Conocer solución</span>
-              </Link>
-            ))}
-          </div>
-
-          <div data-reveal className="mt-5 flex flex-col gap-4 rounded-[1.5rem] border border-yellow-300/14 bg-yellow-300/[.055] p-5 sm:flex-row sm:items-center sm:justify-between">
-            <div className="flex items-start gap-3">
-              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-yellow-300 text-black"><ShieldCheck className="h-4 w-4" /></span>
-              <div>
-                <p className="text-sm font-black">¿Tu proyecto mezcla varias especialidades?</p>
-                <p className="mt-1 text-xs leading-5 text-zinc-400">Describe el resultado que buscas; nosotros te ayudamos a ordenar el alcance.</p>
-              </div>
-            </div>
-            <a href={orientationLink} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-11 shrink-0 items-center justify-center gap-2 rounded-full bg-yellow-300 px-5 text-xs font-black text-black transition hover:bg-white">
-              Orientar mi proyecto <MessageCircle className="h-4 w-4" />
-            </a>
-          </div>
-        </div>
-      </section>
+      <ServicesVerticalGallery />
 
       <section id="mas-vendidos" className="border-y border-white/8 bg-[#0d0b08] px-4 py-16 sm:px-6 md:px-12 lg:py-20">
         <div data-reveal className="mx-auto max-w-[1320px]">

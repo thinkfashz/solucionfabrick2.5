@@ -1,11 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import {
   AirVent,
+  ArrowRight,
   Building2,
   Check,
-  ChevronDown,
   CircleDollarSign,
   Fence,
   Home,
@@ -13,9 +14,13 @@ import {
   Info,
   Layers3,
   MessageCircle,
+  Minus,
   PaintRoller,
+  Plus,
+  ReceiptText,
   Ruler,
   ShieldCheck,
+  Sparkles,
   type LucideIcon,
 } from 'lucide-react';
 
@@ -167,27 +172,40 @@ export default function ConstructionM2Calculator() {
   const [quantity, setQuantity] = useState(SERVICES[0].defaultQuantity);
 
   const service = SERVICES.find((item) => item.id === serviceId) ?? SERVICES[0];
-  const Icon = service.icon;
   const minimum = service.unit === 'unidad' || service.unit === 'punto' ? 1 : 0;
   const cleanQuantity = Math.max(minimum, Math.min(5000, Number(quantity) || 0));
   const low = cleanQuantity * service.low;
   const high = cleanQuantity * service.high;
+  const step = service.unit === 'm2' || service.unit === 'ml' ? 1 : 1;
+
+  const reference = useMemo(() => {
+    const compactService = service.id
+      .split('-')
+      .map((part) => part.slice(0, 2).toUpperCase())
+      .join('')
+      .slice(0, 8);
+    return `FBK-${compactService}-${String(Math.round(cleanQuantity)).padStart(3, '0')}`;
+  }, [cleanQuantity, service.id]);
 
   const whatsappMessage = useMemo(() => [
     'Hola Soluciones Fabrick, quiero revisar este cálculo.',
     '',
+    `Referencia: ${reference}`,
     `Servicio: ${service.name}`,
     `${quantityLabel(service.unit)}: ${cleanQuantity} ${unitLabel(service.unit)}`,
     `Rango mostrado: ${money(low)} a ${money(high)}`,
     '',
     'Quiero confirmar alcance, ubicación y precio final.',
-  ].join('\n'), [cleanQuantity, high, low, service]);
+  ].join('\n'), [cleanQuantity, high, low, reference, service]);
 
   const chooseService = (nextId: string) => {
     const next = SERVICES.find((item) => item.id === nextId) ?? SERVICES[0];
     setServiceId(next.id);
     setQuantity(next.defaultQuantity);
   };
+
+  const decrease = () => setQuantity(Math.max(minimum, cleanQuantity - step));
+  const increase = () => setQuantity(Math.min(5000, cleanQuantity + step));
 
   return (
     <section id="cotizador" className="relative overflow-hidden bg-[#f3ecdf] px-4 py-16 text-[#17120c] sm:px-6 lg:px-8 lg:py-20">
@@ -206,36 +224,56 @@ export default function ConstructionM2Calculator() {
           </p>
         </header>
 
-        <div data-reveal className="mt-8 grid overflow-hidden rounded-[2rem] border border-[#2f2518]/10 bg-white shadow-[0_30px_90px_rgba(70,48,22,.13)] lg:grid-cols-[minmax(0,1.08fr)_minmax(350px,.72fr)]">
+        <div data-reveal className="mt-8 grid overflow-hidden rounded-[2.25rem] bg-white shadow-[0_32px_100px_rgba(70,48,22,.16)] lg:grid-cols-[minmax(0,1.08fr)_minmax(370px,.72fr)]">
           <div className="p-5 sm:p-7 lg:p-8">
-            <div className="flex items-center gap-3 border-b border-[#2f2518]/10 pb-5">
+            <div className="flex items-center gap-3 pb-2">
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#17120c] text-yellow-300"><Ruler className="h-5 w-5" /></span>
               <div>
                 <p className="text-sm font-black">Configura tu referencia</p>
-                <p className="mt-1 text-xs text-[#7a6a55]">Dos datos para obtener un rango inmediato.</p>
+                <p className="mt-1 text-xs text-[#7a6a55]">Elige una solución y ajusta la medida del proyecto.</p>
               </div>
             </div>
 
-            <label className="mt-6 block">
-              <span className="text-[10px] font-black uppercase tracking-[.18em] text-[#7a6a55]">¿Qué necesitas resolver?</span>
-              <div className="relative mt-2">
-                <select
-                  value={serviceId}
-                  onChange={(event) => chooseService(event.target.value)}
-                  className="min-h-14 w-full appearance-none rounded-2xl border border-[#2f2518]/12 bg-[#faf6ee] px-4 pr-12 text-sm font-black text-[#17120c] outline-none transition focus:border-orange-500/55 focus:ring-4 focus:ring-orange-500/10"
-                >
-                  {SERVICES.map((item) => <option key={item.id} value={item.id}>{item.name}</option>)}
-                </select>
-                <ChevronDown className="pointer-events-none absolute right-4 top-1/2 h-5 w-5 -translate-y-1/2 text-orange-700" />
-              </div>
-            </label>
-
-            <div className="mt-5 rounded-2xl border border-[#2f2518]/10 bg-[#faf6ee] p-4">
-              <div className="flex items-start gap-3">
-                <span className="grid h-11 w-11 shrink-0 place-items-center rounded-xl bg-yellow-300 text-black"><Icon className="h-5 w-5" /></span>
+            <div className="mt-6">
+              <div className="flex items-end justify-between gap-3">
                 <div>
-                  <h3 className="text-base font-black">{service.name}</h3>
-                  <p className="mt-1 text-xs leading-5 text-[#74634e]">{service.description}</p>
+                  <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#7a6a55]">¿Qué necesitas resolver?</p>
+                  <p className="mt-1 text-xs text-[#9a896f]">Desliza las opciones en móvil o selecciona una tarjeta.</p>
+                </div>
+                <span className="hidden rounded-full bg-[#17120c] px-3 py-1.5 text-[9px] font-black uppercase tracking-[.15em] text-yellow-300 sm:inline">{SERVICES.length} soluciones</span>
+              </div>
+
+              <div className="-mx-1 mt-3 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-3 [scrollbar-width:none] sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0 lg:grid-cols-3 [&::-webkit-scrollbar]:hidden">
+                {SERVICES.map((item) => {
+                  const ItemIcon = item.icon;
+                  const active = item.id === serviceId;
+                  return (
+                    <button
+                      key={item.id}
+                      type="button"
+                      aria-pressed={active}
+                      onClick={() => chooseService(item.id)}
+                      className={`group min-w-[78%] snap-center rounded-[1.35rem] p-4 text-left shadow-[0_10px_28px_rgba(55,37,18,.06)] transition duration-300 sm:min-w-0 ${active ? 'scale-[1.01] bg-[#17120c] text-white shadow-[0_18px_42px_rgba(23,18,12,.22)]' : 'bg-[#faf6ee] text-[#342719] hover:-translate-y-0.5 hover:bg-[#f7edda]'}`}
+                    >
+                      <div className="flex items-start justify-between gap-3">
+                        <span className={`grid h-10 w-10 place-items-center rounded-full transition ${active ? 'bg-yellow-300 text-black' : 'bg-white text-orange-700 shadow-sm'}`}><ItemIcon className="h-4.5 w-4.5" /></span>
+                        <span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-[.12em] ${active ? 'bg-white/10 text-yellow-200' : 'bg-white text-[#8c775d]'}`}>{unitLabel(item.unit)}</span>
+                      </div>
+                      <strong className="mt-4 block text-sm leading-5">{item.name}</strong>
+                      <span className={`mt-2 block text-[9px] leading-4 ${active ? 'text-zinc-400' : 'text-[#927e64]'}`}>{money(item.low)}–{money(item.high)} / {unitLabel(item.unit)}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="mt-5 rounded-[1.6rem] bg-[linear-gradient(135deg,#fff8e9,#f7ebd4)] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.85)] sm:p-5">
+              <div className="flex items-start gap-3">
+                <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-yellow-300 text-black"><service.icon className="h-5 w-5" /></span>
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[.16em] text-orange-700">Solución seleccionada</p>
+                  <h3 className="mt-1 text-lg font-black">{service.name}</h3>
+                  <p className="mt-2 text-xs leading-5 text-[#74634e]">{service.description}</p>
                 </div>
               </div>
             </div>
@@ -249,7 +287,7 @@ export default function ConstructionM2Calculator() {
                       key={value}
                       type="button"
                       onClick={() => setQuantity(value)}
-                      className={`rounded-xl border px-2 py-3 text-xs font-black transition ${cleanQuantity === value ? 'border-[#17120c] bg-[#17120c] text-yellow-300' : 'border-[#2f2518]/10 bg-white text-[#5d4d39] hover:border-orange-400/50'}`}
+                      className={`rounded-xl px-2 py-3 text-xs font-black transition ${cleanQuantity === value ? 'bg-[#17120c] text-yellow-300 shadow-[0_10px_24px_rgba(23,18,12,.18)]' : 'bg-[#faf6ee] text-[#5d4d39] hover:bg-[#f4e5ca]'}`}
                     >
                       {value} m²
                     </button>
@@ -258,73 +296,108 @@ export default function ConstructionM2Calculator() {
               </div>
             ) : null}
 
-            <label className="mt-5 block">
+            <div className="mt-5">
               <span className="text-[10px] font-black uppercase tracking-[.18em] text-[#7a6a55]">{quantityLabel(service.unit)}</span>
-              <div className="mt-2 flex items-center rounded-2xl border border-[#2f2518]/12 bg-[#faf6ee] px-4 focus-within:border-orange-500/55 focus-within:ring-4 focus-within:ring-orange-500/10">
-                <input
-                  type="number"
-                  min={minimum}
-                  inputMode="decimal"
-                  value={quantity || ''}
-                  onChange={(event) => setQuantity(Number(event.target.value) || 0)}
-                  className="min-h-16 w-full bg-transparent text-3xl font-black text-[#17120c] outline-none"
-                />
-                <strong className="text-sm uppercase tracking-widest text-orange-700">{unitLabel(service.unit)}</strong>
+              <div className="mt-2 grid grid-cols-[52px_1fr_52px] items-center gap-2 rounded-[1.5rem] bg-[#faf6ee] p-2 shadow-[inset_0_1px_0_rgba(255,255,255,.9)]">
+                <button type="button" onClick={decrease} aria-label="Disminuir cantidad" className="grid h-12 w-12 place-items-center rounded-full bg-white text-[#17120c] shadow-sm transition hover:bg-yellow-300"><Minus className="h-4 w-4" /></button>
+                <label className="flex min-w-0 items-center justify-center gap-3 px-2">
+                  <input
+                    type="number"
+                    min={minimum}
+                    inputMode="decimal"
+                    value={quantity || ''}
+                    onChange={(event) => setQuantity(Number(event.target.value) || 0)}
+                    className="min-w-0 max-w-[170px] bg-transparent text-center text-3xl font-black text-[#17120c] outline-none"
+                  />
+                  <strong className="shrink-0 text-sm uppercase tracking-widest text-orange-700">{unitLabel(service.unit)}</strong>
+                </label>
+                <button type="button" onClick={increase} aria-label="Aumentar cantidad" className="grid h-12 w-12 place-items-center rounded-full bg-[#17120c] text-yellow-300 shadow-sm transition hover:bg-yellow-300 hover:text-black"><Plus className="h-4 w-4" /></button>
               </div>
-            </label>
+            </div>
 
-            <div className="mt-5 rounded-2xl border border-orange-500/12 bg-orange-50 p-4">
+            <div className="mt-5 rounded-[1.35rem] bg-orange-50 px-4 py-3.5">
               <p className="flex gap-2 text-xs leading-5 text-[#6b4b2d]"><Info className="mt-0.5 h-4 w-4 shrink-0 text-orange-600" />{service.note}</p>
             </div>
           </div>
 
-          <aside className="bg-[#17120c] p-5 text-white sm:p-7 lg:p-8">
-            <div className="flex items-start justify-between gap-4 border-b border-white/10 pb-5">
-              <div>
-                <p className="text-[9px] font-black uppercase tracking-[.22em] text-yellow-300">Rango comercial</p>
-                <h3 className="mt-2 text-2xl font-black tracking-[-.04em]">Tu referencia inicial</h3>
-              </div>
-              <CircleDollarSign className="h-8 w-8 text-yellow-300" />
-            </div>
+          <aside className="relative overflow-hidden bg-[linear-gradient(160deg,#1b150e_0%,#100d09_55%,#070605_100%)] p-5 text-white sm:p-7 lg:p-8">
+            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-yellow-300/10 blur-3xl" />
+            <div className="pointer-events-none absolute -bottom-24 -left-20 h-60 w-60 rounded-full bg-orange-500/10 blur-3xl" />
 
-            <div className="mt-6">
-              <p className="text-xs text-zinc-400">Para {cleanQuantity} {unitLabel(service.unit)} de {service.name.toLowerCase()}</p>
-              <div className="mt-4 grid grid-cols-2 gap-3">
-                <div className="rounded-2xl border border-white/10 bg-white/[.045] p-4">
-                  <span className="text-[9px] font-black uppercase tracking-[.18em] text-zinc-500">Desde</span>
-                  <strong className="mt-2 block text-xl font-black text-white">{money(low)}</strong>
+            <div className="relative">
+              <div className="flex items-start justify-between gap-4">
+                <div>
+                  <p className="text-[9px] font-black uppercase tracking-[.23em] text-yellow-300">Estimación preliminar</p>
+                  <h3 className="mt-2 text-2xl font-black tracking-[-.04em]">Recibo de cálculo</h3>
                 </div>
-                <div className="rounded-2xl border border-yellow-300/22 bg-yellow-300/[.08] p-4">
-                  <span className="text-[9px] font-black uppercase tracking-[.18em] text-yellow-300">Hasta</span>
-                  <strong className="mt-2 block text-xl font-black text-yellow-100">{money(high)}</strong>
+                <span className="grid h-12 w-12 place-items-center rounded-full bg-yellow-300 text-black shadow-[0_12px_34px_rgba(250,204,21,.18)]"><ReceiptText className="h-5 w-5" /></span>
+              </div>
+
+              <div className="mt-5 flex items-center justify-between rounded-full bg-white/[.065] px-4 py-2.5 text-[9px] font-black uppercase tracking-[.13em] text-zinc-400">
+                <span>Referencia</span>
+                <span className="text-yellow-200">{reference}</span>
+              </div>
+
+              <div className="mt-5 rounded-[1.5rem] bg-white/[.055] p-4 shadow-[inset_0_1px_0_rgba(255,255,255,.05)]">
+                <ReceiptRow label="Servicio" value={service.name} />
+                <ReceiptRow label={quantityLabel(service.unit)} value={`${cleanQuantity} ${unitLabel(service.unit)}`} />
+                <ReceiptRow label="Tarifa referencial" value={`${money(service.low)}–${money(service.high)} / ${unitLabel(service.unit)}`} last />
+              </div>
+
+              <div className="mt-4 overflow-hidden rounded-[1.7rem] bg-[linear-gradient(135deg,#fde047,#fb923c)] p-5 text-black shadow-[0_22px_54px_rgba(249,115,22,.18)]">
+                <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.17em] text-black/60"><Sparkles className="h-4 w-4" /> Rango estimado del proyecto</div>
+                <div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-[.15em] text-black/55">Desde</span>
+                    <strong className="mt-1 block text-2xl font-black tracking-[-.045em]">{money(low)}</strong>
+                  </div>
+                  <div>
+                    <span className="text-[9px] font-black uppercase tracking-[.15em] text-black/55">Hasta</span>
+                    <strong className="mt-1 block text-2xl font-black tracking-[-.045em]">{money(high)}</strong>
+                  </div>
                 </div>
               </div>
+
+              <div className="mt-6">
+                <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.2em] text-yellow-300"><CircleDollarSign className="h-4 w-4" /> Esta referencia considera</div>
+                <ul className="mt-3 grid gap-2">
+                  {service.includes.map((item) => (
+                    <li key={item} className="flex gap-2 rounded-xl bg-white/[.045] px-3 py-2.5 text-xs leading-5 text-zinc-300"><Check className="mt-0.5 h-4 w-4 shrink-0 text-yellow-300" />{item}</li>
+                  ))}
+                </ul>
+              </div>
+
+              <p className="mt-5 rounded-[1.25rem] bg-white/[.045] px-4 py-3 text-[10px] leading-5 text-zinc-500">
+                Este recibo funciona como referencia inicial. El valor final se confirma al revisar ubicación, acceso, medidas, materialidad y condiciones existentes.
+              </p>
+
+              <a
+                href={`https://wa.me/56930121625?text=${encodeURIComponent(whatsappMessage)}`}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="fabrick-gradient-button mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black text-black"
+              >
+                Revisar por WhatsApp <MessageCircle className="h-4 w-4" />
+              </a>
+
+              <Link href="/presupuesto" className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white/[.075] px-5 text-xs font-black text-white transition hover:bg-white/[.13]">
+                Abrir presupuesto detallado <ArrowRight className="h-4 w-4" />
+              </Link>
+
+              <p className="mt-4 text-center text-[10px] leading-5 text-zinc-600">Sin pago ni compromiso para revisar el cálculo.</p>
             </div>
-
-            <div className="mt-6">
-              <p className="text-[9px] font-black uppercase tracking-[.2em] text-yellow-300">Esta referencia considera</p>
-              <ul className="mt-3 space-y-3">
-                {service.includes.map((item) => (
-                  <li key={item} className="flex gap-2 text-xs leading-5 text-zinc-300"><Check className="mt-0.5 h-4 w-4 shrink-0 text-yellow-300" />{item}</li>
-                ))}
-              </ul>
-            </div>
-
-            <a
-              href={`https://wa.me/56930121625?text=${encodeURIComponent(whatsappMessage)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="fabrick-gradient-button mt-7 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl px-5 text-sm font-black text-black"
-            >
-              Revisar este cálculo <MessageCircle className="h-4 w-4" />
-            </a>
-
-            <p className="mt-4 text-center text-[10px] leading-5 text-zinc-500">
-              Sin pago ni compromiso. Confirmamos el valor después de revisar el alcance real.
-            </p>
           </aside>
         </div>
       </div>
     </section>
+  );
+}
+
+function ReceiptRow({ label, value, last = false }: { label: string; value: string; last?: boolean }) {
+  return (
+    <div className={`grid gap-1 py-3 sm:grid-cols-[120px_1fr] sm:items-start ${last ? '' : 'border-b border-white/8'}`}>
+      <span className="text-[9px] font-black uppercase tracking-[.14em] text-zinc-500">{label}</span>
+      <strong className="text-xs leading-5 text-zinc-100 sm:text-right">{value}</strong>
+    </div>
   );
 }

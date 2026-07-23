@@ -28,6 +28,7 @@ import styles from './ServiciosImmersive.module.css';
 
 type ServiceChapter = {
   id: string;
+  budgetId: string;
   title: string;
   shortTitle: string;
   eyebrow: string;
@@ -45,7 +46,7 @@ type ServiceChapter = {
 
 const SERVICES: ServiceChapter[] = [
   {
-    id: 'albanileria', title: 'Albañilería y obra gruesa', shortTitle: 'Albañilería', eyebrow: 'Muros · pisos · reparaciones',
+    id: 'albanileria', budgetId: 'albanileria', title: 'Albañilería y obra gruesa', shortTitle: 'Albañilería', eyebrow: 'Muros · pisos · reparaciones',
     promise: 'Construimos y recuperamos las superficies que sostienen el proyecto.',
     description: 'La albañilería reúne trabajos húmedos y de obra base para levantar, corregir o preparar un espacio. El alcance se define según soporte, materialidad, humedad, cargas y terminación requerida.',
     functions: ['Construcción y reparación de muros, bloques y elementos de cierre.', 'Sobrecimientos, radieres, afinados y preparación de superficies.', 'Enchapes, cerámicas, porcelanatos y revestimientos adheridos.', 'Corrección de fisuras, desprendimientos y encuentros visibles.'],
@@ -53,7 +54,7 @@ const SERVICES: ServiceChapter[] = [
     bg: '#a64f2c', accent: '#ffd166', text: '#fff8ed', muted: 'rgba(255,248,237,.72)', iconColor: '#291207', icon: Hammer,
   },
   {
-    id: 'carpinteria', title: 'Carpintería y mobiliario', shortTitle: 'Carpintería', eyebrow: 'Madera · puertas · muebles',
+    id: 'carpinteria', budgetId: 'carpinteria', title: 'Carpintería y mobiliario', shortTitle: 'Carpintería', eyebrow: 'Madera · puertas · muebles',
     promise: 'Convertimos medidas reales en soluciones que aprovechan mejor el espacio.',
     description: 'La carpintería combina fabricación, ajuste e instalación para resolver puertas, ventanas, divisiones, clósets y mobiliario a medida considerando uso, herrajes, humedad, peso y mantenimiento.',
     functions: ['Puertas, marcos, ventanas y ajustes de elementos existentes.', 'Clósets, repisas, escritorios y almacenamiento a medida.', 'Divisiones, revestimientos decorativos y remates interiores.', 'Muebles de baño y cocina coordinados con las instalaciones.'],
@@ -61,7 +62,7 @@ const SERVICES: ServiceChapter[] = [
     bg: '#6a3f27', accent: '#e8b36d', text: '#fff8ef', muted: 'rgba(255,248,239,.7)', iconColor: '#25140b', icon: PanelsTopLeft,
   },
   {
-    id: 'gasfiteria', title: 'Gasfitería y redes sanitarias', shortTitle: 'Gasfitería', eyebrow: 'Agua · desagüe · artefactos',
+    id: 'gasfiteria', budgetId: 'gasfiteria', title: 'Gasfitería y redes sanitarias', shortTitle: 'Gasfitería', eyebrow: 'Agua · desagüe · artefactos',
     promise: 'Ordenamos el recorrido del agua para evitar pérdidas y daños posteriores.',
     description: 'La gasfitería interviene redes de agua potable, desagües y conexiones sanitarias. Antes de ejecutar se revisan presión, diámetros, pendientes, puntos existentes y compatibilidad con los artefactos.',
     functions: ['Instalación y modificación de redes de agua fría y caliente.', 'Detección y reparación de filtraciones visibles o localizadas.', 'Distribución sanitaria, desagües, ventilaciones y pendientes.', 'Instalación de lavaplatos, sanitarios, duchas y griferías.'],
@@ -69,7 +70,7 @@ const SERVICES: ServiceChapter[] = [
     bg: '#087f9c', accent: '#82e9f5', text: '#ecfeff', muted: 'rgba(236,254,255,.74)', iconColor: '#062b33', icon: Droplets,
   },
   {
-    id: 'electricidad', title: 'Electricidad e iluminación', shortTitle: 'Electricidad', eyebrow: 'Circuitos · puntos · tableros',
+    id: 'electricidad', budgetId: 'electricidad', title: 'Electricidad e iluminación', shortTitle: 'Electricidad', eyebrow: 'Circuitos · puntos · tableros',
     promise: 'Diseñamos recorridos claros para que cada punto tenga una función conocida.',
     description: 'Los trabajos eléctricos se organizan por circuitos, consumos, protecciones y recorridos. La propuesta distingue instalaciones nuevas, reparaciones, ampliaciones y equipos con alimentación dedicada.',
     functions: ['Instalación o traslado de enchufes, interruptores y luces.', 'Canalización, cableado y distribución de circuitos acordados.', 'Revisión de fallas visibles y puntos sin funcionamiento.', 'Preparación para climatización, cocina, bombas y equipos.'],
@@ -77,7 +78,7 @@ const SERVICES: ServiceChapter[] = [
     bg: '#172554', accent: '#fde047', text: '#f8fafc', muted: 'rgba(248,250,252,.7)', iconColor: '#172554', icon: Zap,
   },
   {
-    id: 'fundaciones', title: 'Fundaciones y obra base', shortTitle: 'Fundaciones', eyebrow: 'Terreno · apoyos · hormigón',
+    id: 'fundaciones', budgetId: 'cimientos', title: 'Fundaciones y obra base', shortTitle: 'Fundaciones', eyebrow: 'Terreno · apoyos · hormigón',
     promise: 'Preparamos la base para que la construcción transmita sus cargas de forma ordenada.',
     description: 'Las fundaciones conectan la estructura con el terreno. La solución depende del proyecto, suelo, desniveles, humedad, cargas y sistema constructivo, por lo que se confirma después de revisar las condiciones reales.',
     functions: ['Trazado, excavación y preparación del terreno definido.', 'Zapatas, vigas, sobrecimientos y apoyos para estructuras.', 'Radieres, capas de base, estabilizado, refuerzos y juntas.', 'Coordinación de pasadas, drenajes y niveles antes de hormigonar.'],
@@ -85,7 +86,7 @@ const SERVICES: ServiceChapter[] = [
     bg: '#5b3828', accent: '#d6a36f', text: '#fff7ed', muted: 'rgba(255,247,237,.71)', iconColor: '#29170e', icon: Layers3,
   },
   {
-    id: 'estructuras', title: 'Estructuras Metalcon y ampliaciones', shortTitle: 'Estructuras', eyebrow: 'Perfiles · refuerzos · aislación',
+    id: 'estructuras', budgetId: 'metalcon', title: 'Estructuras Metalcon y ampliaciones', shortTitle: 'Estructuras', eyebrow: 'Perfiles · refuerzos · aislación',
     promise: 'Damos forma al proyecto con una estructura liviana preparada para recibir sus capas.',
     description: 'La construcción en perfiles galvanizados organiza muros, techumbres y ampliaciones por capas. La propuesta contempla modulación, arriostramiento, vanos, aislación, barreras y terminaciones desde el inicio.',
     functions: ['Muros perimetrales e interiores en estructura galvanizada.', 'Ampliaciones, recintos anexos y soluciones prefabricadas.', 'Cerchas, envigados, refuerzos y preparación de vanos.', 'Coordinación de aislación, placas, revestimientos y redes.'],
@@ -93,7 +94,7 @@ const SERVICES: ServiceChapter[] = [
     bg: '#29323d', accent: '#d8dee7', text: '#f8fafc', muted: 'rgba(248,250,252,.68)', iconColor: '#18202a', icon: Building2,
   },
   {
-    id: 'techumbre', title: 'Techumbre, filtraciones y protección', shortTitle: 'Techumbre', eyebrow: 'Cubierta · canaletas · sellos',
+    id: 'techumbre', budgetId: 'techumbre', title: 'Techumbre, filtraciones y protección', shortTitle: 'Techumbre', eyebrow: 'Cubierta · canaletas · sellos',
     promise: 'Protegemos el interior atacando el recorrido del agua, no solo la mancha visible.',
     description: 'Una filtración puede originarse lejos del punto donde aparece. La revisión considera cubierta, fijaciones, pendientes, encuentros, cumbreras, canaletas, sellos y condiciones de acceso.',
     functions: ['Diagnóstico de filtraciones y revisión de puntos críticos.', 'Cambio parcial o renovación de cubiertas según su estado.', 'Canaletas, bajadas, cumbreras, tapacanes y remates.', 'Sellos, fijaciones, membranas y coordinación de aislación.'],
@@ -101,7 +102,7 @@ const SERVICES: ServiceChapter[] = [
     bg: '#171717', accent: '#fb923c', text: '#fff7ed', muted: 'rgba(255,247,237,.68)', iconColor: '#2a1305', icon: Home,
   },
   {
-    id: 'terminaciones', title: 'Terminaciones y renovación interior', shortTitle: 'Terminaciones', eyebrow: 'Pintura · pisos · revestimientos',
+    id: 'terminaciones', budgetId: 'terminaciones', title: 'Terminaciones y renovación interior', shortTitle: 'Terminaciones', eyebrow: 'Pintura · pisos · revestimientos',
     promise: 'Unificamos superficies y detalles para que el proyecto se vea realmente terminado.',
     description: 'Las terminaciones reúnen las capas visibles y los remates que definen la percepción final. Antes de instalar o pintar se revisan humedad, planeidad, adherencia, encuentros y compatibilidad entre materiales.',
     functions: ['Empaste, reparación superficial y pintura interior o exterior.', 'Pisos vinílicos, flotantes, cerámicos y porcelanatos.', 'Revestimientos, siding, molduras y guardapolvos.', 'Cielos, placas, sellos y correcciones finales de presentación.'],
@@ -165,14 +166,12 @@ export function ServiciosPageContent() {
     let timer = 0;
     let context: { revert?: () => void } | undefined;
     let mediaCleanup: (() => void) | undefined;
-
     const init = () => {
       if (initialized || !rootRef.current) return;
       const runtime = window as unknown as { gsap?: any; ScrollTrigger?: any };
       const gsap = runtime.gsap;
       const ScrollTrigger = runtime.ScrollTrigger;
       if (!gsap || !ScrollTrigger) return;
-
       initialized = true;
       window.clearInterval(timer);
       gsap.registerPlugin(ScrollTrigger);
@@ -199,7 +198,6 @@ export function ServiciosPageContent() {
       }, rootRef.current);
       window.setTimeout(() => ScrollTrigger.refresh(), 180);
     };
-
     timer = window.setInterval(init, 120);
     init();
     return () => { window.clearInterval(timer); mediaCleanup?.(); context?.revert?.(); };
@@ -214,12 +212,12 @@ export function ServiciosPageContent() {
           <div>
             <p data-services-hero-reveal className={styles.heroLabel}><ShieldCheck className="h-4 w-4" /> Construcción, reparación y terminaciones</p>
             <div data-services-hero-reveal className={styles.heroBand}><h1 className={styles.heroTitle}>Servicios</h1></div>
-            <p data-services-hero-reveal className={styles.heroCopy}>Cada especialidad cumple una función distinta. Recorre la página para entender qué resuelve, qué trabajos agrupa y qué debemos revisar antes de cotizar.</p>
-            <div data-services-hero-reveal className={styles.heroActions}><a href="#mapa-servicios" className={styles.primaryButton}>Explorar especialidades <ArrowDown className="h-4 w-4" /></a><Link href="/presupuesto" className={styles.secondaryButton}>Solicitar presupuesto <ArrowRight className="h-4 w-4" /></Link></div>
+            <p data-services-hero-reveal className={styles.heroCopy}>Cada especialidad cumple una función distinta. Recorre la página para entender qué resuelve y abre su calculadora para añadirla al carrito del proyecto.</p>
+            <div data-services-hero-reveal className={styles.heroActions}><a href="#mapa-servicios" className={styles.primaryButton}>Explorar especialidades <ArrowDown className="h-4 w-4" /></a><Link href="/presupuesto" className={styles.secondaryButton}>Abrir carrito de servicios <ArrowRight className="h-4 w-4" /></Link></div>
           </div>
           <aside data-services-hero-reveal className={styles.heroAside}>
             <p className={styles.kicker}>Una ruta por capas</p><h2>Del terreno a la terminación final.</h2><p>El orden correcto reduce retrabajos: primero base y estructura, luego redes, protección y finalmente las capas visibles.</p>
-            <div className={styles.heroProof}><div className={styles.heroProofItem}><CheckCircle2 className="h-4 w-4 text-yellow-300" /> Alcance explicado antes de ejecutar.</div><div className={styles.heroProofItem}><CheckCircle2 className="h-4 w-4 text-yellow-300" /> Especialidades coordinadas cuando el proyecto las combina.</div><div className={styles.heroProofItem}><CheckCircle2 className="h-4 w-4 text-yellow-300" /> Valor final sujeto a medidas y condiciones reales.</div></div>
+            <div className={styles.heroProof}><div className={styles.heroProofItem}><CheckCircle2 className="h-4 w-4 text-yellow-300" /> Alcance explicado antes de ejecutar.</div><div className={styles.heroProofItem}><CheckCircle2 className="h-4 w-4 text-yellow-300" /> Especialidades sumadas en un mismo presupuesto.</div><div className={styles.heroProofItem}><CheckCircle2 className="h-4 w-4 text-yellow-300" /> Valor final sujeto a medidas y condiciones reales.</div></div>
           </aside>
         </div>
         <div className="absolute inset-x-0 bottom-0"><div className={styles.hazardTape} /></div>
@@ -228,13 +226,17 @@ export function ServiciosPageContent() {
       <section id="mapa-servicios" ref={spinSectionRef} className={styles.spinSection}>
         <div className={styles.texture} aria-hidden />
         <header className={styles.spinHeader}><div><p className={styles.kicker}>Mapa interactivo de servicios</p><h2>Gira por cada especialidad y descubre su función.</h2></div><p>En escritorio, el scroll vertical hace girar el carrusel. En móvil, desliza horizontalmente para proyectar el servicio activo.</p></header>
-        <div className={styles.spinDesktop}><div className={styles.spinStage}><div ref={ringRef} className={styles.orbit}>{SERVICES.map((service, index) => { const Icon = service.icon; const active = activeIndex === index; return <div key={service.id} className={styles.orbitSlot} style={orbitStyle(service, index)}><button type="button" data-spin-face className={`${styles.orbitCard} ${active ? styles.orbitCardActive : ''}`} onMouseEnter={() => setActive(index)} onFocus={() => setActive(index)} onClick={() => scrollToService(index)} aria-current={active ? 'true' : undefined}><span><Icon className="h-5 w-5" /></span><b>{service.shortTitle}</b><small>{service.eyebrow}</small></button></div>; })}</div><article className={styles.centerCard} style={customStyle(activeService)} aria-live="polite"><span className={styles.centerIcon}><ActiveIcon className="h-8 w-8" /></span><p className={styles.kicker}>{activeService.eyebrow}</p><h3>{activeService.shortTitle}</h3><p>{activeService.promise}</p><button type="button" className={styles.lightButton} onClick={() => scrollToService(activeIndex)}>Explorar servicio <ArrowDown className="h-4 w-4" /></button></article></div></div>
-        <div className={styles.mobileCarousel}><div ref={mobileTrackRef} className={styles.mobileTrack} onScroll={(event) => handleMobileScroll(event.currentTarget)}>{SERVICES.map((service, index) => { const Icon = service.icon; const active = activeIndex === index; return <button key={service.id} type="button" className={`${styles.mobileServiceCard} ${active ? styles.mobileServiceCardActive : ''}`} style={customStyle(service)} onClick={() => setActive(index)} aria-current={active ? 'true' : undefined}><span><Icon className="h-5 w-5" /></span><b>{service.shortTitle}</b><small>{service.eyebrow}</small></button>; })}</div><article className={styles.mobileProjection} style={customStyle(activeService)} aria-live="polite"><div className={styles.mobileProjectionHeader}><span className={styles.mobileProjectionIcon}><ActiveIcon className="h-6 w-6" /></span><span className={styles.kicker}>{String(activeIndex + 1).padStart(2, '0')} / {String(SERVICES.length).padStart(2, '0')}</span></div><h3>{activeService.shortTitle}</h3><p>{activeService.promise}</p><button type="button" className={`${styles.lightButton} mt-5 border-0`} onClick={() => scrollToService(activeIndex)}>Ver funciones <ArrowDown className="h-4 w-4" /></button></article><div className={styles.carouselControls}><button type="button" onClick={() => moveMobile(-1)} aria-label="Servicio anterior"><ChevronLeft className="h-5 w-5" /></button><span>{activeIndex + 1} de {SERVICES.length}</span><button type="button" onClick={() => moveMobile(1)} aria-label="Servicio siguiente"><ChevronRight className="h-5 w-5" /></button></div></div>
+        <div className={styles.spinDesktop}><div className={styles.spinStage}><div ref={ringRef} className={styles.orbit}>{SERVICES.map((service, index) => { const Icon = service.icon; const active = activeIndex === index; return <div key={service.id} className={styles.orbitSlot} style={orbitStyle(service, index)}><button type="button" data-spin-face className={`${styles.orbitCard} ${active ? styles.orbitCardActive : ''}`} onMouseEnter={() => setActive(index)} onFocus={() => setActive(index)} onClick={() => scrollToService(index)} aria-current={active ? 'true' : undefined}><span><Icon className="h-5 w-5" /></span><b>{service.shortTitle}</b><small>{service.eyebrow}</small></button></div>; })}</div><article className={styles.centerCard} style={customStyle(activeService)} aria-live="polite"><span className={styles.centerIcon}><ActiveIcon className="h-8 w-8" /></span><p className={styles.kicker}>{activeService.eyebrow}</p><h3>{activeService.shortTitle}</h3><p>{activeService.promise}</p><Link href={`/presupuesto?servicio=${activeService.budgetId}`} className={styles.lightButton}>Calcular este servicio <ArrowRight className="h-4 w-4" /></Link></article></div></div>
+        <div className={styles.mobileCarousel}><div ref={mobileTrackRef} className={styles.mobileTrack} onScroll={(event) => handleMobileScroll(event.currentTarget)}>{SERVICES.map((service, index) => { const Icon = service.icon; const active = activeIndex === index; return <button key={service.id} type="button" className={`${styles.mobileServiceCard} ${active ? styles.mobileServiceCardActive : ''}`} style={customStyle(service)} onClick={() => setActive(index)} aria-current={active ? 'true' : undefined}><span><Icon className="h-5 w-5" /></span><b>{service.shortTitle}</b><small>{service.eyebrow}</small></button>; })}</div><article className={styles.mobileProjection} style={customStyle(activeService)} aria-live="polite"><div className={styles.mobileProjectionHeader}><span className={styles.mobileProjectionIcon}><ActiveIcon className="h-6 w-6" /></span><span className={styles.kicker}>{String(activeIndex + 1).padStart(2, '0')} / {String(SERVICES.length).padStart(2, '0')}</span></div><h3>{activeService.shortTitle}</h3><p>{activeService.promise}</p><div className="mt-5 flex flex-wrap gap-2"><button type="button" className={`${styles.lightButton} border-0`} onClick={() => scrollToService(activeIndex)}>Ver funciones <ArrowDown className="h-4 w-4" /></button><Link href={`/presupuesto?servicio=${activeService.budgetId}`} className={styles.darkButton}>Calcular <ArrowRight className="h-4 w-4" /></Link></div></article><div className={styles.carouselControls}><button type="button" onClick={() => moveMobile(-1)} aria-label="Servicio anterior"><ChevronLeft className="h-5 w-5" /></button><span>{activeIndex + 1} de {SERVICES.length}</span><button type="button" onClick={() => moveMobile(1)} aria-label="Servicio siguiente"><ChevronRight className="h-5 w-5" /></button></div></div>
       </section>
 
-      {SERVICES.map((service, index) => { const Icon = service.icon; const quoteLink = buildWhatsAppLink(`Hola Soluciones Fabrick, quiero evaluar un trabajo de ${service.title}. Necesito orientación sobre alcance, medidas y próximos pasos.`); return <section key={service.id} id={`servicio-${service.id}`} data-service-panel className={styles.servicePanel} style={customStyle(service)} aria-labelledby={`titulo-${service.id}`}><div className={styles.serviceGrid}><div data-service-visual className={styles.serviceVisual}><span className={styles.serviceNumber}>{String(index + 1).padStart(2, '0')}</span><span className={styles.serviceIcon}><Icon className="h-10 w-10" /></span><div className={styles.serviceVisualTitle}><p>{service.eyebrow}</p><h2 id={`titulo-${service.id}`}>{service.shortTitle}</h2></div></div><div className={styles.serviceContent}><p data-service-reveal className={styles.eyebrow}>Qué función cumple</p><h3 data-service-reveal>{service.promise}</h3><p data-service-reveal className={styles.serviceDescription}>{service.description}</p><div data-service-reveal className={styles.functionGrid}>{service.functions.map((item) => <div key={item} className={styles.functionItem}><CheckCircle2 className="h-4 w-4" /><span>{item}</span></div>)}</div><div data-service-reveal className={styles.outcomeBox}><strong>Resultado que debe quedar definido</strong><div className={styles.outcomeTags}>{service.outcomes.map((item) => <span key={item}>{item}</span>)}</div></div><div data-service-reveal className={styles.serviceActions}><a href={quoteLink} target="_blank" rel="noopener noreferrer" className={styles.lightButton}>Cotizar este servicio <MessageCircle className="h-4 w-4" /></a><Link href="/presupuesto" className={styles.darkButton}>Abrir calculadora <ArrowRight className="h-4 w-4" /></Link></div></div></div><div className="absolute inset-x-0 bottom-0 opacity-70"><div className={styles.hazardTape} /></div></section>; })}
+      {SERVICES.map((service, index) => {
+        const Icon = service.icon;
+        const quoteLink = buildWhatsAppLink(`Hola Soluciones Fabrick, quiero evaluar un trabajo de ${service.title}. Necesito orientación sobre alcance, medidas y próximos pasos.`);
+        return <section key={service.id} id={`servicio-${service.id}`} data-service-panel className={styles.servicePanel} style={customStyle(service)} aria-labelledby={`titulo-${service.id}`}><div className={styles.serviceGrid}><div data-service-visual className={styles.serviceVisual}><span className={styles.serviceNumber}>{String(index + 1).padStart(2, '0')}</span><span className={styles.serviceIcon}><Icon className="h-10 w-10" /></span><div className={styles.serviceVisualTitle}><p>{service.eyebrow}</p><h2 id={`titulo-${service.id}`}>{service.shortTitle}</h2></div></div><div className={styles.serviceContent}><p data-service-reveal className={styles.eyebrow}>Qué función cumple</p><h3 data-service-reveal>{service.promise}</h3><p data-service-reveal className={styles.serviceDescription}>{service.description}</p><div data-service-reveal className={styles.functionGrid}>{service.functions.map((item) => <div key={item} className={styles.functionItem}><CheckCircle2 className="h-4 w-4" /><span>{item}</span></div>)}</div><div data-service-reveal className={styles.outcomeBox}><strong>Resultado que debe quedar definido</strong><div className={styles.outcomeTags}>{service.outcomes.map((item) => <span key={item}>{item}</span>)}</div></div><div data-service-reveal className={styles.serviceActions}><Link href={`/presupuesto?servicio=${service.budgetId}`} className={styles.lightButton}>Calcular y añadir <Sparkles className="h-4 w-4" /></Link><a href={quoteLink} target="_blank" rel="noopener noreferrer" className={styles.darkButton}>Consultar por WhatsApp <MessageCircle className="h-4 w-4" /></a></div></div></div><div className="absolute inset-x-0 bottom-0 opacity-70"><div className={styles.hazardTape} /></div></section>;
+      })}
 
-      <section className={styles.finalCta}><div className={styles.texture} aria-hidden /><div className={styles.finalCtaInner}><div><p className={styles.kicker} style={{ color: '#0b0b0b' }}>Un proyecto puede mezclar varias áreas</p><h2>Cuéntanos el resultado final. Nosotros ordenamos las especialidades.</h2><p>Envía comuna, medidas aproximadas, fotografías y estado actual. Con esa información indicamos qué revisar primero y cómo separar el trabajo por etapas.</p></div><div className={styles.finalCtaActions}><a href={buildWhatsAppLink('Hola Soluciones Fabrick, tengo un proyecto que combina varias especialidades y quiero ordenar el alcance.')} target="_blank" rel="noopener noreferrer" className={styles.primaryButton}>Hablar por WhatsApp <MessageCircle className="h-4 w-4" /></a><Link href="/presupuesto" className={styles.secondaryButton}>Crear presupuesto <Sparkles className="h-4 w-4" /></Link></div></div></section>
+      <section className={styles.finalCta}><div className={styles.texture} aria-hidden /><div className={styles.finalCtaInner}><div><p className={styles.kicker} style={{ color: '#0b0b0b' }}>Un proyecto puede mezclar varias áreas</p><h2>Calcula cada partida y arma una sola solicitud.</h2><p>Añade servicios por separado, revisa el rango total y envía el carrito completo para validar medidas, fotografías, acceso y estado actual.</p></div><div className={styles.finalCtaActions}><Link href="/presupuesto" className={styles.primaryButton}>Crear carrito de servicios <Sparkles className="h-4 w-4" /></Link><a href={buildWhatsAppLink('Hola Soluciones Fabrick, tengo un proyecto que combina varias especialidades y quiero ordenar el alcance.')} target="_blank" rel="noopener noreferrer" className={styles.secondaryButton}>Hablar por WhatsApp <MessageCircle className="h-4 w-4" /></a></div></div></section>
       <footer className={styles.footer}><div className={styles.footerInner}><FabrickLogo className="pointer-events-none" /><span>Servicios sujetos a revisión de medidas, acceso, materialidad y condiciones reales.</span></div></footer>
     </main>
   );

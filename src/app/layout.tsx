@@ -134,11 +134,22 @@ export default async function RootLayout({ children }: { children: React.ReactNo
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
+        <link
+          rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Sora:wght@600;700;800&display=swap"
+        />
+        <link
+          rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/boxicons/2.1.4/css/boxicons.min.css"
+        />
         <meta name="mobile-web-app-capable" content="yes" />
         <GlobalStylesRoot />
         <CustomInjectionRoot slot="head" />
       </head>
-      <body className="bg-black text-white antialiased app-shell">
+      <body
+        className="bg-black text-white antialiased app-shell"
+        style={{ fontFamily: 'Manrope, ui-sans-serif, system-ui, sans-serif' }}
+      >
         <SplashScreen />
         <SiteConfigProvider initial={{ 'nav-menu': navMenu, 'global-styles': globalStyles }}>
           <ThemeProvider>

@@ -1,23 +1,21 @@
 'use client';
 
 import { useState } from 'react';
-import { motion } from 'framer-motion';
-import { CheckCircle2, Clock3, LockKeyhole } from 'lucide-react';
-import AnimatedButton from '@/components/ui/animated-button';
+import { ArrowRight, CheckCircle2, Clock3, LockKeyhole } from 'lucide-react';
 
 const PROJECT_TYPES = [
-  { label: 'Construir', value: 'Kit, cabaña o casa' },
-  { label: 'Remodelar', value: 'Ampliación o remodelación' },
-  { label: 'Instalar', value: 'Instalación o equipamiento' },
-  { label: 'Otro', value: 'Otro proyecto' },
+  { label: 'Construcción', value: 'Construcción o ampliación' },
+  { label: 'Remodelación', value: 'Remodelación integral' },
+  { label: 'Instalación', value: 'Instalación o reparación' },
+  { label: 'Producto', value: 'Producto con instalación' },
 ] as const;
 
-const fieldClass = 'w-full rounded-xl border border-white/12 bg-white/[.035] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-zinc-500 focus:border-yellow-300/60 focus:bg-white/[.055] focus:ring-2 focus:ring-yellow-300/10';
+const fieldClass = 'w-full rounded-xl border border-white/12 bg-white/[.035] px-4 py-3.5 text-sm text-white outline-none transition placeholder:text-zinc-600 focus:border-yellow-300/60 focus:bg-white/[.055] focus:ring-2 focus:ring-yellow-300/10';
 
 export default function ContactForm() {
   const [sending, setSending] = useState(false);
-  const [done, setDone] = useState<null | 'ok' | 'error'>(null);
-  const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [status, setStatus] = useState<null | 'ok' | 'error'>(null);
+  const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [projectType, setProjectType] = useState<(typeof PROJECT_TYPES)[number]['value']>(PROJECT_TYPES[0].value);
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
@@ -35,51 +33,47 @@ export default function ContactForm() {
     };
 
     if (!payload.nombre || !payload.email) {
-      setDone('error');
-      setErrorMsg('Completa tu nombre y correo para poder responderte.');
+      setStatus('error');
+      setErrorMessage('Necesitamos tu nombre y correo para responder la solicitud.');
       return;
     }
 
     setSending(true);
-    setErrorMsg(null);
+    setStatus(null);
+    setErrorMessage(null);
 
     try {
-      const res = await fetch('/api/leads', {
+      const response = await fetch('/api/leads', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
       });
-      if (!res.ok) {
-        const json = (await res.json().catch(() => ({}))) as { error?: string };
-        throw new Error(json.error || 'No pudimos enviar tu solicitud.');
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as { error?: string };
+        throw new Error(data.error || 'No pudimos enviar la solicitud. Intenta nuevamente.');
       }
-      setDone('ok');
+
+      setStatus('ok');
       form.reset();
       setProjectType(PROJECT_TYPES[0].value);
-    } catch (err) {
-      setDone('error');
-      setErrorMsg((err as Error).message);
+    } catch (error) {
+      setStatus('error');
+      setErrorMessage((error as Error).message);
     } finally {
       setSending(false);
     }
   }
 
-  if (done === 'ok') {
+  if (status === 'ok') {
     return (
-      <motion.div
-        initial={{ opacity: 0, y: 12, scale: 0.98 }}
-        animate={{ opacity: 1, y: 0, scale: 1 }}
-        className="rounded-2xl border border-emerald-300/25 bg-emerald-300/[.07] p-7 text-center"
-        role="status"
-      >
-        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} transition={{ type: 'spring', stiffness: 260, damping: 18 }} className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-emerald-300 text-black">
-          <CheckCircle2 className="h-7 w-7" />
-        </motion.span>
-        <p className="mt-5 text-[10px] font-black uppercase tracking-[0.3em] text-emerald-200">Solicitud recibida</p>
-        <h3 className="mt-2 text-2xl font-black text-white">Ya podemos revisar tu proyecto.</h3>
-        <p className="mt-2 text-sm leading-6 text-zinc-300">Te contactaremos para confirmar ubicación, alcance y próximos pasos.</p>
-        <AnimatedButton type="button" onClick={() => setDone(null)} className="mt-6 rounded-full border border-emerald-300/30 px-6 py-3 text-xs font-black text-emerald-100 hover:bg-emerald-300/10">Enviar otra solicitud</AnimatedButton>
-      </motion.div>
+      <div className="rounded-2xl border border-emerald-300/25 bg-emerald-300/[.07] p-7 text-center" role="status">
+        <span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-emerald-300 text-black"><CheckCircle2 className="h-7 w-7" /></span>
+        <p className="mt-5 text-[10px] font-black uppercase tracking-[.26em] text-emerald-200">Solicitud enviada</p>
+        <h3 className="mt-2 text-2xl font-black text-white">Ya tenemos el punto de partida.</h3>
+        <p className="mt-2 text-sm leading-6 text-zinc-300">Revisaremos el tipo de proyecto y te contactaremos para confirmar ubicación, medidas y próximos pasos.</p>
+        <button type="button" onClick={() => setStatus(null)} className="mt-6 rounded-full border border-emerald-300/30 px-6 py-3 text-xs font-black text-emerald-100 transition hover:bg-emerald-300/10">Enviar otra solicitud</button>
+      </div>
     );
   }
 
@@ -87,7 +81,7 @@ export default function ContactForm() {
     <form onSubmit={handleSubmit} className="space-y-5" noValidate>
       <div className="grid gap-4 sm:grid-cols-2">
         <Field label="Nombre" required>
-          <input name="nombre" autoComplete="name" required placeholder="Tu nombre completo" className={fieldClass} />
+          <input name="nombre" autoComplete="name" required placeholder="Nombre y apellido" className={fieldClass} />
         </Field>
         <Field label="Correo" required>
           <input name="email" type="email" autoComplete="email" required placeholder="correo@ejemplo.cl" className={fieldClass} />
@@ -99,33 +93,55 @@ export default function ContactForm() {
       </Field>
 
       <fieldset>
-        <legend className="mb-2 text-xs font-black text-white">¿Qué necesitas?</legend>
+        <legend className="mb-2 text-xs font-black text-white">Tipo de proyecto</legend>
         <input type="hidden" name="tipo_proyecto" value={projectType} />
         <div className="grid grid-cols-2 gap-2">
           {PROJECT_TYPES.map((type) => {
             const selected = projectType === type.value;
             return (
-              <button key={type.value} type="button" aria-pressed={selected} onClick={() => setProjectType(type.value)} className={`min-h-11 rounded-xl border px-3 text-left text-xs font-black transition ${selected ? 'border-yellow-300 bg-yellow-300 text-black shadow-[0_10px_28px_rgba(250,204,21,.12)]' : 'border-white/10 bg-white/[.035] text-zinc-300 hover:border-white/25'}`}>{type.label}</button>
+              <button
+                key={type.value}
+                type="button"
+                aria-pressed={selected}
+                onClick={() => setProjectType(type.value)}
+                className={`min-h-11 rounded-xl border px-3 text-left text-xs font-black transition ${selected ? 'border-yellow-300 bg-yellow-300 text-black' : 'border-white/10 bg-white/[.035] text-zinc-300 hover:border-white/25'}`}
+              >
+                {type.label}
+              </button>
             );
           })}
         </div>
       </fieldset>
 
-      <Field label="Cuéntanos lo esencial">
-        <textarea name="mensaje" rows={4} placeholder="Comuna, superficie aproximada y qué resultado buscas" className={`${fieldClass} resize-y`} />
+      <Field label="Datos para evaluar">
+        <textarea
+          name="mensaje"
+          rows={4}
+          placeholder="Comuna, superficie aproximada, estado actual y resultado que buscas"
+          className={`${fieldClass} resize-y`}
+        />
       </Field>
 
-      {done === 'error' && errorMsg ? <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-xs text-red-200">{errorMsg}</p> : null}
+      {status === 'error' && errorMessage ? <p role="alert" className="rounded-xl border border-red-400/30 bg-red-400/10 px-4 py-3 text-xs text-red-200">{errorMessage}</p> : null}
 
-      <AnimatedButton type="submit" disabled={sending} className="w-full rounded-xl bg-yellow-300 px-5 py-4 text-[11px] font-black uppercase tracking-[0.18em] text-black transition hover:bg-white disabled:opacity-60">{sending ? 'Enviando…' : 'Solicitar orientación'}</AnimatedButton>
-      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] text-zinc-400">
-        <span className="inline-flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5 text-yellow-300" /> Respuesta en 24 h hábiles</span>
-        <span className="inline-flex items-center gap-1.5"><LockKeyhole className="h-3.5 w-3.5 text-yellow-300" /> Datos usados solo para responderte</span>
+      <button type="submit" disabled={sending} className="fabrick-gradient-button inline-flex w-full items-center justify-center gap-2 rounded-xl px-5 py-4 text-[11px] font-black uppercase tracking-[.16em] text-black disabled:opacity-60">
+        {sending ? 'Enviando solicitud…' : 'Solicitar evaluación'}
+        {!sending ? <ArrowRight className="h-4 w-4" /> : null}
+      </button>
+
+      <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2 text-[10px] text-zinc-500">
+        <span className="inline-flex items-center gap-1.5"><Clock3 className="h-3.5 w-3.5 text-yellow-300" /> Respuesta en horario hábil</span>
+        <span className="inline-flex items-center gap-1.5"><LockKeyhole className="h-3.5 w-3.5 text-yellow-300" /> Tus datos se usan solo para responder</span>
       </div>
     </form>
   );
 }
 
 function Field({ label, required = false, children }: { label: string; required?: boolean; children: React.ReactNode }) {
-  return <label className="grid gap-2"><span className="text-xs font-black text-white">{label}{required ? <span className="ml-1 text-yellow-300">*</span> : null}</span>{children}</label>;
+  return (
+    <label className="grid gap-2">
+      <span className="text-xs font-black text-white">{label}{required ? <span className="ml-1 text-yellow-300">*</span> : null}</span>
+      {children}
+    </label>
+  );
 }

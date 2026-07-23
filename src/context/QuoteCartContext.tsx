@@ -5,7 +5,7 @@
  * de productos de tienda (`CartContext`).
  *
  * Items posibles:
- *   - 'service'  → tarjeta de /servicios  ("Cotizar")
+ *   - 'service'  → calculadoras y tarjetas de servicios
  *   - 'panel'    → panel del diseñador 3D /juego (con altura y m²)
  *   - 'material' → producto del catálogo añadido como insumo de obra
  *
@@ -35,18 +35,18 @@ export interface QuoteItem {
   quantity: number;
   /** Unidad legible (m², un, ml, h…). */
   unit?: string;
-  /** Costo de referencia interno; nunca se renderiza en /servicios. */
+  /** Costo de referencia unitario. */
   refPrice?: number;
   /** Notas que añade el cliente. */
   notes?: string;
   /** Imagen opcional. */
   image?: string;
-  /** Metadata específica (m², altura, color del panel…). */
+  /** Metadata específica del cálculo. */
   meta?: Record<string, unknown>;
 }
 
 const STORAGE_KEY = 'fabrick.quote-cart.v1';
-const TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 días
+const TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 interface QuoteCartContextValue {
   items: QuoteItem[];
@@ -64,6 +64,11 @@ const QuoteCartContext = createContext<QuoteCartContextValue | null>(null);
 
 function makeId(prefix = 'qi'): string {
   return `${prefix}_${Date.now().toString(36)}_${Math.random().toString(36).slice(2, 8)}`;
+}
+
+function serviceKey(item: Omit<QuoteItem, 'id'> & { id?: string }) {
+  const metaId = typeof item.meta?.serviceId === 'string' ? item.meta.serviceId : '';
+  return metaId || item.id || item.title;
 }
 
 export function QuoteCartProvider({ children }: { children: React.ReactNode }) {
@@ -103,30 +108,38 @@ export function QuoteCartProvider({ children }: { children: React.ReactNode }) {
 
   const addItem = useCallback<QuoteCartContextValue['addItem']>((item) => {
     setItems((prev) => {
-      // Si ya existe un servicio con mismo título, sumamos cantidad
       if (item.kind === 'service') {
-        const idx = prev.findIndex(
-          (i) => i.kind === 'service' && i.title === item.title,
-        );
+        const nextKey = serviceKey(item);
+        const idx = prev.findIndex((candidate) => {
+          if (candidate.kind !== 'service') return false;
+          const candidateMetaId = typeof candidate.meta?.serviceId === 'string'
+            ? candidate.meta.serviceId
+            : '';
+          const candidateKey = candidateMetaId || candidate.id || candidate.title;
+          return candidateKey === nextKey || candidate.title === item.title;
+        });
+
         if (idx !== -1) {
           const updated = [...prev];
           updated[idx] = {
             ...updated[idx],
-            quantity: updated[idx].quantity + (item.quantity ?? 1),
+            ...item,
+            id: item.id ?? updated[idx].id,
+            quantity: Math.max(1, Number(item.quantity) || 1),
           };
           return updated;
         }
       }
+
       return [...prev, { ...item, id: item.id ?? makeId(item.kind) }];
     });
   }, []);
 
   const addPanels = useCallback<QuoteCartContextValue['addPanels']>((panels) => {
     setItems((prev) => {
-      // Reemplaza paneles previos del diseñador por los nuevos (snapshot del diseño)
-      const withoutPanels = prev.filter((i) => i.kind !== 'panel');
-      const added = panels.map((p) => ({
-        ...p,
+      const withoutPanels = prev.filter((item) => item.kind !== 'panel');
+      const added = panels.map((panel) => ({
+        ...panel,
         kind: 'panel' as const,
         id: makeId('panel'),
       }));
@@ -135,32 +148,32 @@ export function QuoteCartProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const removeItem = useCallback((id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id));
+    setItems((prev) => prev.filter((item) => item.id !== id));
   }, []);
 
   const updateQuantity = useCallback((id: string, quantity: number) => {
     if (!Number.isFinite(quantity) || quantity < 1) return;
     setItems((prev) =>
-      prev.map((i) => (i.id === id ? { ...i, quantity } : i)),
+      prev.map((item) => (item.id === id ? { ...item, quantity } : item)),
     );
   }, []);
 
   const updateNotes = useCallback((id: string, notes: string) => {
-    setItems((prev) => prev.map((i) => (i.id === id ? { ...i, notes } : i)));
+    setItems((prev) => prev.map((item) => (item.id === id ? { ...item, notes } : item)));
   }, []);
 
   const clear = useCallback(() => setItems([]), []);
 
   const totalItems = useMemo(
-    () => items.reduce((s, i) => s + (Number.isFinite(i.quantity) ? i.quantity : 0), 0),
+    () => items.reduce((sum, item) => sum + (Number.isFinite(item.quantity) ? item.quantity : 0), 0),
     [items],
   );
 
   const refTotal = useMemo(
     () =>
       items.reduce(
-        (s, i) =>
-          s + (typeof i.refPrice === 'number' ? i.refPrice * i.quantity : 0),
+        (sum, item) =>
+          sum + (typeof item.refPrice === 'number' ? item.refPrice * item.quantity : 0),
         0,
       ),
     [items],

@@ -1,7 +1,8 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Calculator, Info, PackageSearch, Send, Truck } from 'lucide-react';
+import { Calculator, Check, Info, PackageSearch, Plus, Send, ShoppingCart, Truck } from 'lucide-react';
 import {
   calculateServiceQuote,
   getDefaultPrice,
@@ -11,6 +12,7 @@ import {
   unitLabel,
 } from '@/lib/servicePricing';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
+import { useQuoteCart } from '@/context/QuoteCartContext';
 
 const fmt = new Intl.NumberFormat('es-CL', {
   style: 'currency',
@@ -76,7 +78,7 @@ function numberInput(value: number, set: (n: number) => void, label: string, suf
           min="0"
           step="0.1"
           value={value || ''}
-          onChange={(e) => set(Number(e.target.value) || 0)}
+          onChange={(event) => set(Number(event.target.value) || 0)}
           className="w-full bg-transparent text-lg font-black text-white outline-none placeholder:text-zinc-700"
           placeholder="0"
         />
@@ -105,18 +107,20 @@ export default function ServiceQuoteCalculator({ slug, serviceName }: Props) {
   const [input, setInput] = useState<QuoteInput>(() => buildInitialInput(fallback));
   const [source, setSource] = useState<'defaults' | 'database' | 'loading'>('loading');
   const [concreteMode, setConcreteMode] = useState<ConcreteMode>('trompo');
+  const [added, setAdded] = useState(false);
+  const { addItem } = useQuoteCart();
 
   useEffect(() => {
     let alive = true;
     async function load() {
       try {
-        const res = await fetch(`/api/service-prices?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
-        const json = (await res.json()) as { prices?: ServicePriceSetting[]; source?: 'defaults' | 'database' };
+        const response = await fetch(`/api/service-prices?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
+        const json = (await response.json()) as { prices?: ServicePriceSetting[]; source?: 'defaults' | 'database' };
         const next = json.prices?.[0] ?? fallback;
         if (!alive) return;
         setSetting(next);
         setSource(json.source ?? 'defaults');
-        setInput((prev) => ({ ...buildInitialInput(next), ...prev, slug: next.slug, unit: next.unit }));
+        setInput((previous) => ({ ...buildInitialInput(next), ...previous, slug: next.slug, unit: next.unit }));
       } catch {
         if (!alive) return;
         setSetting(fallback);
@@ -125,17 +129,23 @@ export default function ServiceQuoteCalculator({ slug, serviceName }: Props) {
     }
     void load();
     return () => { alive = false; };
-  }, [slug]);
+  }, [fallback, slug]);
 
   const baseQuote: QuoteBreakdown = useMemo(() => calculateServiceQuote(setting, input), [setting, input]);
   const concreteFactor = setting.slug === 'cimientos' ? CONCRETE_MODE[concreteMode].factor : 1;
   const quote = useMemo<QuoteBreakdown>(() => {
     if (concreteFactor === 1) return baseQuote;
+    const subtotal = Math.round(baseQuote.subtotal * concreteFactor);
+    const iva = input.includeIva ? Math.round(subtotal * 0.19) : 0;
     return {
       ...baseQuote,
-      subtotal: Math.round(baseQuote.subtotal * concreteFactor),
-      iva: input.includeIva ? Math.round(baseQuote.subtotal * concreteFactor * 0.19) : 0,
-      total: Math.round(baseQuote.subtotal * concreteFactor) + (input.includeIva ? Math.round(baseQuote.subtotal * concreteFactor * 0.19) : 0),
+      subtotal,
+      iva,
+      total: subtotal + iva,
+      materials: Math.round(baseQuote.materials * concreteFactor),
+      labor: Math.round(baseQuote.labor * concreteFactor),
+      logistics: Math.round(baseQuote.logistics * concreteFactor),
+      contingency: Math.round(baseQuote.contingency * concreteFactor),
       marketLow: Math.round(baseQuote.marketLow * concreteFactor),
       marketHigh: Math.round(baseQuote.marketHigh * concreteFactor),
     };
@@ -143,36 +153,63 @@ export default function ServiceQuoteCalculator({ slug, serviceName }: Props) {
 
   const serviceLabel = serviceName || setting.name;
   const relatedProducts = RELATED_PRODUCTS[setting.slug] ?? [];
-  const update = (patch: Partial<QuoteInput>) => setInput((prev) => ({ ...prev, ...patch }));
+  const update = (patch: Partial<QuoteInput>) => {
+    setAdded(false);
+    setInput((previous) => ({ ...previous, ...patch }));
+  };
   const whatsappText = `Hola Soluciones Fabrick, calculé un aproximado para ${serviceLabel}. Cantidad: ${quote.quantity.toFixed(2)} ${unitLabel(quote.unit)}. Rango referencial: ${fmt.format(quote.marketLow)} a ${fmt.format(quote.marketHigh)}. Quiero revisión real y cotización final.`;
+
+  function addCalculationToBudget() {
+    const unitAverage = quote.quantity > 0
+      ? Math.round(((quote.marketLow + quote.marketHigh) / 2) / quote.quantity)
+      : setting.basePrice;
+    addItem({
+      id: `service_${setting.slug}`,
+      kind: 'service',
+      title: serviceLabel,
+      description: setting.disclaimer,
+      quantity: quote.quantity,
+      unit: unitLabel(quote.unit),
+      refPrice: unitAverage,
+      notes: 'Cálculo añadido desde la página individual del servicio',
+      meta: {
+        serviceId: setting.slug,
+        marketMinUnit: setting.marketMin * concreteFactor,
+        marketMaxUnit: setting.marketMax * concreteFactor,
+        marketLow: quote.marketLow,
+        marketHigh: quote.marketHigh,
+        subtotal: quote.subtotal,
+        iva: quote.iva,
+        total: quote.total,
+        includeIva: input.includeIva,
+        length: input.length,
+        width: input.width,
+        height: input.height,
+        linearMeters: input.linearMeters,
+        source,
+      },
+    });
+    setAdded(true);
+  }
 
   return (
     <section className="rounded-[2rem] border border-yellow-300/20 bg-gradient-to-br from-zinc-950 via-black to-zinc-950 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.35)] md:p-8">
       <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
         <div>
           <div className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-yellow-300 text-black">
-              <Calculator className="h-5 w-5" />
-            </span>
+            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-yellow-300 text-black"><Calculator className="h-5 w-5" /></span>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">Calculadora aproximada</p>
+              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">Calculadora independiente</p>
               <h2 className="text-2xl font-black text-white md:text-3xl">Calcula por {unitLabel(setting.unit)}</h2>
             </div>
           </div>
-          <p className="mt-4 text-sm leading-7 text-zinc-400">
-            Ingresa medidas simples para tener una referencia inicial. El precio final se confirma después de revisar medidas, acceso y alcance real.
-          </p>
+          <p className="mt-4 text-sm leading-7 text-zinc-400">Ingresa medidas simples para obtener una referencia inicial. Este cálculo puede añadirse al carrito general de servicios y combinarse con otras especialidades.</p>
 
           <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {(setting.unit === 'm2' || setting.unit === 'm3') ? (
-              <>
-                {numberInput(input.length, (n) => update({ length: n }), 'Largo', 'm')}
-                {numberInput(input.width, (n) => update({ width: n }), 'Ancho', 'm')}
-              </>
-            ) : null}
-            {setting.unit === 'm3' ? numberInput(input.height, (n) => update({ height: n }), setting.slug === 'cimientos' ? 'Espesor / alto' : 'Alto', 'm') : null}
-            {setting.unit === 'ml' ? numberInput(input.linearMeters, (n) => update({ linearMeters: n }), 'Metros lineales', 'ml') : null}
-            {(setting.unit === 'punto' || setting.unit === 'unidad') ? numberInput(input.quantity, (n) => update({ quantity: n }), setting.unit === 'punto' ? 'Cantidad de puntos' : 'Cantidad', setting.unit === 'punto' ? 'pts' : 'u') : null}
+            {(setting.unit === 'm2' || setting.unit === 'm3') ? <>{numberInput(input.length, (value) => update({ length: value }), 'Largo', 'm')}{numberInput(input.width, (value) => update({ width: value }), 'Ancho', 'm')}</> : null}
+            {setting.unit === 'm3' ? numberInput(input.height, (value) => update({ height: value }), setting.slug === 'cimientos' ? 'Espesor / alto' : 'Alto', 'm') : null}
+            {setting.unit === 'ml' ? numberInput(input.linearMeters, (value) => update({ linearMeters: value }), 'Metros lineales', 'ml') : null}
+            {(setting.unit === 'punto' || setting.unit === 'unidad') ? numberInput(input.quantity, (value) => update({ quantity: value }), setting.unit === 'punto' ? 'Cantidad de puntos' : 'Cantidad', setting.unit === 'punto' ? 'pts' : 'u') : null}
           </div>
 
           {setting.slug === 'cimientos' ? (
@@ -180,12 +217,7 @@ export default function ServiceQuoteCalculator({ slug, serviceName }: Props) {
               <p className="text-[10px] font-black uppercase tracking-[0.24em] text-yellow-300">Comparativa de hormigón</p>
               <div className="mt-3 grid gap-3 sm:grid-cols-2">
                 {(['trompo', 'premezclado'] as ConcreteMode[]).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setConcreteMode(mode)}
-                    className={`rounded-2xl border px-4 py-3 text-left transition ${concreteMode === mode ? 'border-yellow-300 bg-yellow-300/12 text-white' : 'border-white/10 bg-black text-zinc-400 hover:border-yellow-300/40'}`}
-                  >
+                  <button key={mode} type="button" onClick={() => { setConcreteMode(mode); setAdded(false); }} className={`rounded-2xl border px-4 py-3 text-left transition ${concreteMode === mode ? 'border-yellow-300 bg-yellow-300/12 text-white' : 'border-white/10 bg-black text-zinc-400 hover:border-yellow-300/40'}`}>
                     <span className="block text-sm font-black">{CONCRETE_MODE[mode].label}</span>
                     <span className="mt-1 block text-xs leading-5 text-zinc-500">{CONCRETE_MODE[mode].detail}</span>
                   </button>
@@ -196,78 +228,34 @@ export default function ServiceQuoteCalculator({ slug, serviceName }: Props) {
           ) : null}
 
           <label className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-300">
-            <input
-              type="checkbox"
-              checked={input.includeIva}
-              onChange={(e) => update({ includeIva: e.target.checked })}
-              className="h-4 w-4 accent-yellow-300"
-            />
-            Incluir IVA 19% en el resultado aproximado
+            <input type="checkbox" checked={input.includeIva} onChange={(event) => update({ includeIva: event.target.checked })} className="h-4 w-4 accent-yellow-300" />
+            Incluir IVA 19% en el total contable mostrado
           </label>
         </div>
 
         <div className="rounded-[1.6rem] border border-white/10 bg-black/70 p-5 md:p-6">
           <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.26em] text-zinc-500">Referencia inicial</p>
-              <h3 className="mt-2 text-3xl font-black text-yellow-300">{fmt.format(quote.total)}</h3>
-              <p className="mt-1 text-xs text-zinc-500">{quote.quantity.toFixed(2)} {unitLabel(quote.unit)} · {source === 'database' ? 'precio ajustado en admin' : 'precio de referencia'}</p>
-            </div>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">
-              {source === 'database' ? 'Admin' : source === 'loading' ? 'Cargando' : 'Referencia'}
-            </span>
+            <div><p className="text-[10px] font-black uppercase tracking-[0.26em] text-zinc-500">Referencia inicial</p><h3 className="mt-2 text-3xl font-black text-yellow-300">{fmt.format(quote.total)}</h3><p className="mt-1 text-xs text-zinc-500">{quote.quantity.toFixed(2)} {unitLabel(quote.unit)} · {source === 'database' ? 'precio ajustado en admin' : 'precio de referencia'}</p></div>
+            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">{source === 'database' ? 'Admin' : source === 'loading' ? 'Cargando' : 'Referencia'}</span>
           </div>
 
-          <div className="mt-6 grid gap-3 text-sm">
-            <Row label="Subtotal estimado" value={fmt.format(quote.subtotal)} />
-            <Row label="IVA referencial" value={fmt.format(quote.iva)} />
-            <Row label="Rango de mercado" value={`${fmt.format(quote.marketLow)} – ${fmt.format(quote.marketHigh)}`} highlight />
-          </div>
+          <div className="mt-6 grid gap-3 text-sm"><Row label="Subtotal estimado" value={fmt.format(quote.subtotal)} /><Row label="IVA contable" value={fmt.format(quote.iva)} /><Row label="Rango de mercado" value={`${fmt.format(quote.marketLow)} – ${fmt.format(quote.marketHigh)}`} highlight /></div>
+          <div className="mt-6 grid gap-3 sm:grid-cols-3"><SoftMetric label="Materiales" value={fmt.format(quote.materials)} /><SoftMetric label="Mano de obra" value={fmt.format(quote.labor)} /><SoftMetric label="Gestión y margen" value={fmt.format(quote.logistics + quote.contingency)} /></div>
 
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <SoftMetric label="Materiales estimados" value="Según alcance" />
-            <SoftMetric label="Ejecución estimada" value="Según dificultad" />
-            <SoftMetric label="Traslado / gestión" value="Según ubicación" />
-          </div>
+          <div className="mt-6 rounded-2xl border border-yellow-300/20 bg-yellow-300/8 p-4 text-xs leading-6 text-zinc-300"><div className="mb-2 flex items-center gap-2 font-black uppercase tracking-[0.18em] text-yellow-300"><Info className="h-4 w-4" /> Aviso importante</div>{setting.disclaimer || 'Este valor es aproximado. El precio final requiere revisión de terreno, materiales y condiciones reales.'}</div>
 
-          <div className="mt-6 rounded-2xl border border-yellow-300/20 bg-yellow-300/8 p-4 text-xs leading-6 text-zinc-300">
-            <div className="mb-2 flex items-center gap-2 font-black uppercase tracking-[0.18em] text-yellow-300">
-              <Info className="h-4 w-4" /> Aviso importante
-            </div>
-            {setting.disclaimer || 'Este valor es aproximado. El precio final requiere revisión de terreno, materiales y condiciones reales.'}
-          </div>
-
-          <a
-            href={buildWhatsAppLink(whatsappText)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-black transition hover:bg-white"
-          >
-            Pedir revisión real <Send className="h-4 w-4" />
-          </a>
+          <button type="button" onClick={addCalculationToBudget} className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-5 py-4 text-[11px] font-black uppercase tracking-[0.16em] text-black transition hover:bg-white">
+            {added ? <Check className="h-4 w-4" /> : <Plus className="h-4 w-4" />} {added ? 'Cálculo guardado en presupuesto' : 'Añadir al carrito de servicios'}
+          </button>
+          <Link href={`/presupuesto?servicio=${encodeURIComponent(setting.slug)}`} className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl border border-white/12 bg-white/[.055] px-5 py-4 text-[11px] font-black uppercase tracking-[0.16em] text-white transition hover:bg-white/[.11]"><ShoppingCart className="h-4 w-4" /> Abrir carrito de presupuesto</Link>
+          <a href={buildWhatsAppLink(whatsappText)} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-2xl px-5 py-3 text-[10px] font-black uppercase tracking-[0.16em] text-yellow-200 transition hover:bg-yellow-300/8"><Send className="h-4 w-4" /> Revisar solo este cálculo</a>
         </div>
       </div>
 
       {relatedProducts.length > 0 ? (
         <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
-          <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-yellow-300/12 text-yellow-300">
-              <PackageSearch className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.26em] text-yellow-300">Productos relacionados</p>
-              <p className="text-sm text-zinc-400">Puedes comprar materiales o accesorios si quieres avanzar por etapas.</p>
-            </div>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {relatedProducts.map((item) => (
-              <a key={item.title} href={item.href} className="group rounded-2xl border border-white/10 bg-black/45 p-4 transition hover:border-yellow-300/40">
-                <p className="font-black text-white">{item.title}</p>
-                <p className="mt-1 text-sm text-zinc-500">{item.detail}</p>
-                <span className="mt-3 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-yellow-300">Ver opciones <Truck className="h-3.5 w-3.5 transition group-hover:translate-x-1" /></span>
-              </a>
-            ))}
-          </div>
+          <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-xl bg-yellow-300/12 text-yellow-300"><PackageSearch className="h-5 w-5" /></span><div><p className="text-[10px] font-black uppercase tracking-[0.26em] text-yellow-300">Productos relacionados</p><p className="text-sm text-zinc-400">Puedes comprar materiales o accesorios si quieres avanzar por etapas.</p></div></div>
+          <div className="mt-4 grid gap-3 md:grid-cols-2">{relatedProducts.map((item) => <a key={item.title} href={item.href} className="group rounded-2xl border border-white/10 bg-black/45 p-4 transition hover:border-yellow-300/40"><p className="font-black text-white">{item.title}</p><p className="mt-1 text-sm text-zinc-500">{item.detail}</p><span className="mt-3 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-yellow-300">Ver opciones <Truck className="h-3.5 w-3.5 transition group-hover:translate-x-1" /></span></a>)}</div>
         </div>
       ) : null}
     </section>
@@ -275,19 +263,9 @@ export default function ServiceQuoteCalculator({ slug, serviceName }: Props) {
 }
 
 function Row({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3">
-      <span className="text-zinc-500">{label}</span>
-      <span className={highlight ? 'font-black text-yellow-300' : 'font-bold text-white'}>{value}</span>
-    </div>
-  );
+  return <div className="flex items-center justify-between gap-4 rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3"><span className="text-zinc-500">{label}</span><span className={highlight ? 'font-black text-yellow-300' : 'font-bold text-white'}>{value}</span></div>;
 }
 
 function SoftMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-3">
-      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</p>
-      <p className="mt-1 text-xs font-bold text-zinc-300">{value}</p>
-    </div>
-  );
+  return <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-3"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</p><p className="mt-1 text-xs font-bold text-zinc-300">{value}</p></div>;
 }

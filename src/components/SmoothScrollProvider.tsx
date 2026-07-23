@@ -1,10 +1,37 @@
 'use client';
 
+import Script from 'next/script';
 import { useEffect, useRef, useState } from 'react';
 
 interface LenisInstance {
   raf: (time: number) => void;
   destroy: () => void;
+  on?: (event: 'scroll', callback: () => void) => void;
+  off?: (event: 'scroll', callback: () => void) => void;
+}
+
+interface GsapContext {
+  revert: () => void;
+}
+
+interface GsapApi {
+  registerPlugin: (plugin: unknown) => void;
+  context: (callback: () => void) => GsapContext;
+  utils: { toArray: <T extends Element>(selector: string) => T[] };
+  fromTo: (target: unknown, fromVars: Record<string, unknown>, toVars: Record<string, unknown>) => unknown;
+  to: (target: unknown, vars: Record<string, unknown>) => unknown;
+}
+
+interface ScrollTriggerApi {
+  update: () => void;
+  refresh: () => void;
+}
+
+declare global {
+  interface Window {
+    gsap?: GsapApi;
+    ScrollTrigger?: ScrollTriggerApi;
+  }
 }
 
 function isInteractiveTarget(target: EventTarget | null) {
@@ -19,33 +46,40 @@ function shouldUseNativeTouchScroll() {
 
 export default function SmoothScrollProvider() {
   const [sweep, setSweep] = useState<'down' | 'up' | null>(null);
+  const [gsapReady, setGsapReady] = useState(false);
+  const [scrollTriggerReady, setScrollTriggerReady] = useState(false);
+  const [lenisReady, setLenisReady] = useState(false);
   const timeoutRef = useRef<number | null>(null);
   const lastTriggerRef = useRef(0);
   const lastScrollYRef = useRef(0);
+  const lenisRef = useRef<LenisInstance | null>(null);
 
   useEffect(() => {
     if (shouldUseNativeTouchScroll()) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    let lenis: LenisInstance | undefined;
     let rafId = 0;
     let alive = true;
 
     const init = async () => {
       const Lenis = (await import('lenis')).default;
       if (!alive) return;
-      lenis = new Lenis({
-        duration: 1.15,
+
+      const lenis = new Lenis({
+        duration: 1.12,
         easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
         smoothWheel: true,
         wheelMultiplier: 0.82,
         infinite: false,
       }) as LenisInstance;
 
-      function raf(time: number) {
-        lenis?.raf(time);
+      lenisRef.current = lenis;
+      setLenisReady(true);
+
+      const raf = (time: number) => {
+        lenis.raf(time);
         rafId = requestAnimationFrame(raf);
-      }
+      };
       rafId = requestAnimationFrame(raf);
     };
 
@@ -53,10 +87,124 @@ export default function SmoothScrollProvider() {
 
     return () => {
       alive = false;
+      setLenisReady(false);
       if (rafId) cancelAnimationFrame(rafId);
-      lenis?.destroy();
+      lenisRef.current?.destroy();
+      lenisRef.current = null;
     };
   }, []);
+
+  useEffect(() => {
+    if (!scrollTriggerReady || !lenisReady) return;
+    const update = () => window.ScrollTrigger?.update();
+    lenisRef.current?.on?.('scroll', update);
+    return () => lenisRef.current?.off?.('scroll', update);
+  }, [lenisReady, scrollTriggerReady]);
+
+  useEffect(() => {
+    if (!gsapReady || !scrollTriggerReady) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+    const gsap = window.gsap;
+    const ScrollTrigger = window.ScrollTrigger;
+    if (!gsap || !ScrollTrigger) return;
+
+    gsap.registerPlugin(ScrollTrigger);
+    const desktop = window.matchMedia('(min-width: 900px)').matches;
+
+    const context = gsap.context(() => {
+      gsap.utils.toArray<HTMLElement>('[data-reveal]').forEach((element) => {
+        const delay = Number(element.dataset.revealDelay || 0);
+        gsap.fromTo(
+          element,
+          { autoAlpha: 0, y: desktop ? 42 : 22, filter: desktop ? 'blur(9px)' : 'blur(3px)' },
+          {
+            autoAlpha: 1,
+            y: 0,
+            filter: 'blur(0px)',
+            duration: desktop ? 0.9 : 0.62,
+            delay,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: element,
+              start: 'top 88%',
+              once: true,
+            },
+          },
+        );
+      });
+
+      gsap.utils.toArray<HTMLElement>('[data-reveal-group]').forEach((group) => {
+        const children = Array.from(group.children);
+        if (!children.length) return;
+        gsap.fromTo(
+          children,
+          { autoAlpha: 0, y: 28, scale: 0.985 },
+          {
+            autoAlpha: 1,
+            y: 0,
+            scale: 1,
+            duration: 0.72,
+            stagger: 0.09,
+            ease: 'power3.out',
+            scrollTrigger: {
+              trigger: group,
+              start: 'top 84%',
+              once: true,
+            },
+          },
+        );
+      });
+
+      if (desktop) {
+        gsap.utils.toArray<HTMLElement>('[data-parallax]').forEach((element) => {
+          const amount = Number(element.dataset.parallax || -10);
+          gsap.to(element, {
+            yPercent: amount,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: element.closest('section') || element,
+              start: 'top bottom',
+              end: 'bottom top',
+              scrub: 1.1,
+            },
+          });
+        });
+
+        const spinSection = document.querySelector<HTMLElement>('[data-spin-carousel]');
+        const ring = spinSection?.querySelector<HTMLElement>('.spin-carousel-ring');
+        const cardFaces = spinSection ? Array.from(spinSection.querySelectorAll<HTMLElement>('.spin-card-content')) : [];
+        if (spinSection && ring) {
+          gsap.to(ring, {
+            rotation: 360,
+            ease: 'none',
+            scrollTrigger: {
+              trigger: spinSection,
+              start: 'top 78%',
+              end: 'bottom 22%',
+              scrub: 1.15,
+            },
+          });
+          gsap.to(cardFaces, {
+            rotation: '-=360',
+            ease: 'none',
+            scrollTrigger: {
+              trigger: spinSection,
+              start: 'top 78%',
+              end: 'bottom 22%',
+              scrub: 1.15,
+            },
+          });
+        }
+      }
+    });
+
+    const refreshId = window.setTimeout(() => ScrollTrigger.refresh(), 180);
+    return () => {
+      window.clearTimeout(refreshId);
+      context.revert();
+    };
+  }, [gsapReady, scrollTriggerReady]);
 
   useEffect(() => {
     lastScrollYRef.current = window.scrollY || 0;
@@ -94,37 +242,28 @@ export default function SmoothScrollProvider() {
     };
   }, []);
 
-  useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') return;
-    const sections = Array.from(document.querySelectorAll<HTMLElement>('section, footer'))
-      .filter((section) => !section.closest('[data-no-section-reveal]'));
-    if (!sections.length) return;
-
-    sections.forEach((section, index) => {
-      section.classList.add('scroll-section-reveal');
-      section.style.setProperty('--scroll-reveal-delay', `${Math.min(index * 35, 140)}ms`);
-    });
-
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.setAttribute('data-in-view', 'true');
-        }
-      });
-    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
-
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
-  }, []);
-
   return (
     <>
+      <Script
+        src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js"
+        strategy="afterInteractive"
+        onReady={() => setGsapReady(true)}
+      />
+      {gsapReady ? (
+        <Script
+          src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js"
+          strategy="afterInteractive"
+          onReady={() => setScrollTriggerReady(true)}
+        />
+      ) : null}
+
       <div aria-hidden className={`pointer-events-none fixed inset-0 z-[9400] transition-opacity duration-200 ${sweep ? 'opacity-100' : 'opacity-0'}`}>
-        <div className={`absolute inset-x-0 h-[38vh] ${sweep === 'up' ? 'bottom-0 origin-bottom animate-[scroll-sweep-up_.54s_cubic-bezier(.22,1,.36,1)_both]' : 'top-0 origin-top animate-[scroll-sweep-down_.54s_cubic-bezier(.22,1,.36,1)_both]'} bg-[linear-gradient(180deg,rgba(250,204,21,.18),rgba(20,184,166,.08),rgba(5,5,5,0))] blur-[1px]`} />
+        <div className={`absolute inset-x-0 h-[38vh] ${sweep === 'up' ? 'bottom-0 origin-bottom animate-[scroll-sweep-up_.54s_cubic-bezier(.22,1,.36,1)_both]' : 'top-0 origin-top animate-[scroll-sweep-down_.54s_cubic-bezier(.22,1,.36,1)_both]'} bg-[linear-gradient(180deg,rgba(250,204,21,.17),rgba(249,115,22,.08),rgba(5,5,5,0))] blur-[1px]`} />
       </div>
+
       <style>{`
         html {
-          scroll-behavior: smooth;
+          scroll-behavior: auto;
           overflow-x: hidden;
           touch-action: pan-y pinch-zoom;
           -webkit-overflow-scrolling: touch;
@@ -136,34 +275,45 @@ export default function SmoothScrollProvider() {
           -webkit-overflow-scrolling: touch;
         }
         section, footer { scroll-margin-top: 92px; }
-        .scroll-section-reveal {
+        [data-reveal], [data-reveal-group] > * {
+          backface-visibility: hidden;
+          transform: translateZ(0);
+        }
+        .fabrick-glass {
+          border: 1px solid rgba(255,255,255,.12);
+          background: linear-gradient(145deg, rgba(255,255,255,.095), rgba(255,255,255,.025));
+          box-shadow: inset 0 1px 0 rgba(255,255,255,.1), 0 24px 80px rgba(0,0,0,.28);
+          backdrop-filter: blur(20px);
+          -webkit-backdrop-filter: blur(20px);
+        }
+        .fabrick-gradient-button {
           position: relative;
-          opacity: .88;
-          transform: translate3d(0, 22px, 0);
-          filter: saturate(.94) contrast(.99);
-          transition:
-            opacity .68s cubic-bezier(.22,1,.36,1) var(--scroll-reveal-delay, 0ms),
-            transform .68s cubic-bezier(.22,1,.36,1) var(--scroll-reveal-delay, 0ms),
-            filter .68s cubic-bezier(.22,1,.36,1) var(--scroll-reveal-delay, 0ms);
-          will-change: opacity, transform;
+          isolation: isolate;
+          overflow: hidden;
+          border: 1px solid rgba(254,240,138,.38);
+          background: linear-gradient(112deg, rgba(250,204,21,.96), rgba(251,146,60,.92) 56%, rgba(244,63,94,.82));
+          box-shadow: 0 16px 48px rgba(250,204,21,.19), inset 0 1px 0 rgba(255,255,255,.55);
+          transition: transform .3s ease, box-shadow .3s ease, filter .3s ease;
         }
-        .scroll-section-reveal[data-in-view="true"] {
-          opacity: 1;
-          transform: translate3d(0, 0, 0);
-          filter: saturate(1) contrast(1);
-        }
-        .scroll-section-reveal::before {
+        .fabrick-gradient-button::after {
           content: '';
           position: absolute;
-          left: 50%;
-          top: 0;
-          z-index: 1;
-          width: min(76vw, 980px);
-          height: 1px;
-          transform: translateX(-50%);
-          background: linear-gradient(90deg, transparent, rgba(250,204,21,.28), rgba(20,184,166,.16), transparent);
-          opacity: .48;
+          inset: -120% auto -120% -30%;
+          width: 34%;
+          transform: rotate(16deg);
+          background: linear-gradient(90deg, transparent, rgba(255,255,255,.72), transparent);
+          animation: fabrick-button-shine 4.2s ease-in-out infinite;
           pointer-events: none;
+        }
+        .fabrick-gradient-button:hover {
+          transform: translateY(-3px);
+          filter: saturate(1.08) brightness(1.04);
+          box-shadow: 0 22px 62px rgba(250,204,21,.27), inset 0 1px 0 rgba(255,255,255,.65);
+        }
+        @keyframes fabrick-button-shine {
+          0%, 58% { left: -38%; opacity: 0; }
+          64% { opacity: .85; }
+          82%, 100% { left: 118%; opacity: 0; }
         }
         @keyframes scroll-sweep-down {
           0% { transform: translateY(-100%) scaleY(.8); opacity: 0; }
@@ -177,25 +327,23 @@ export default function SmoothScrollProvider() {
         }
         @media (hover: none), (pointer: coarse), (max-width: 899px) {
           html { scroll-behavior: auto; }
-          .scroll-section-reveal {
-            opacity: 1;
-            transform: none;
-            filter: none;
-            transition: opacity .28s ease-out;
-            will-change: auto;
+          [data-parallax] { transform: none !important; }
+          .fabrick-glass {
+            backdrop-filter: blur(13px);
+            -webkit-backdrop-filter: blur(13px);
           }
-          .scroll-section-reveal::before { opacity: .32; }
         }
         @media (prefers-reduced-motion: reduce) {
-          .scroll-section-reveal {
+          *, *::before, *::after {
+            scroll-behavior: auto !important;
+            animation-duration: .01ms !important;
+            animation-iteration-count: 1 !important;
+          }
+          [data-reveal], [data-reveal-group] > * {
             opacity: 1 !important;
             transform: none !important;
             filter: none !important;
-            transition: none !important;
-            will-change: auto !important;
           }
-          .animate-[scroll-sweep-down_.54s_cubic-bezier(.22,1,.36,1)_both],
-          .animate-[scroll-sweep-up_.54s_cubic-bezier(.22,1,.36,1)_both] { animation: none !important; }
         }
       `}</style>
     </>

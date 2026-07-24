@@ -45,7 +45,11 @@ type MetadataPayload = {
   category?: string;
   album?: string;
   albumTitle?: string;
+  albumDescription?: string;
   hashtags?: string[];
+  albumHashtags?: string[];
+  sortOrder?: number;
+  albumCover?: boolean;
 };
 
 function cleanFolder(input: string | null) {
@@ -58,6 +62,10 @@ function cleanSlug(input: string | null | undefined, fallback = 'general') {
 }
 function cleanText(input: FormDataEntryValue | string | null | undefined, max = 500) {
   return String(input || '').trim().replace(/[|]/g, ' ').slice(0, max);
+}
+function cleanNumber(value: unknown, fallback = 0) {
+  const number = Number(value);
+  return Number.isFinite(number) ? Math.max(0, Math.floor(number)) : fallback;
 }
 function cloudinaryTransform(url: string, transform: string) {
   if (!url.includes('/upload/')) return url;
@@ -86,6 +94,9 @@ function albumFromResource(resource: CloudinaryResource, context: Record<string,
   const marker = pieces.indexOf('inspiraciones');
   return cleanSlug(marker >= 0 ? pieces[marker + 1] : pieces.at(-2), 'general');
 }
+function parseTags(value: string | undefined) {
+  return Array.from(new Set(String(value || '').split(/[\s,]+/).map((tag) => cleanSlug(tag.replace(/^#/, ''), '')).filter(Boolean))).slice(0, 20);
+}
 function contextString(payload: MetadataPayload) {
   const entries = {
     title: cleanText(payload.title, 120),
@@ -95,14 +106,21 @@ function contextString(payload: MetadataPayload) {
     category: cleanSlug(payload.category, 'ideas'),
     album: cleanSlug(payload.album, 'general'),
     album_title: cleanText(payload.albumTitle || payload.album, 120),
+    album_description: cleanText(payload.albumDescription, 900),
+    album_hashtags: (payload.albumHashtags || []).map((tag) => cleanSlug(String(tag).replace(/^#/, ''), '')).filter(Boolean).slice(0, 20).join(','),
+    sort_order: String(cleanNumber(payload.sortOrder, 0)),
+    album_cover: payload.albumCover ? 'true' : 'false',
   };
-  return Object.entries(entries).filter(([, value]) => value).map(([key, value]) => `${key}=${value}`).join('|');
+  return Object.entries(entries).filter(([, value]) => value !== '').map(([key, value]) => `${key}=${value}`).join('|');
 }
 function tagString(payload: MetadataPayload) {
-  const tags = [...(payload.hashtags || []), cleanSlug(payload.category, ''), cleanSlug(payload.album, '')]
-    .map((tag) => cleanSlug(String(tag).replace(/^#/, ''), ''))
-    .filter(Boolean);
-  return Array.from(new Set(tags)).slice(0, 20).join(',');
+  const tags = [
+    ...(payload.hashtags || []),
+    ...(payload.albumHashtags || []),
+    cleanSlug(payload.category, ''),
+    cleanSlug(payload.album, ''),
+  ].map((tag) => cleanSlug(String(tag).replace(/^#/, ''), '')).filter(Boolean);
+  return Array.from(new Set(tags)).slice(0, 24).join(',');
 }
 function signParams(params: Record<string, string | number | boolean>, secret: string) {
   const base = Object.entries(params)
@@ -131,8 +149,12 @@ function normalizeAsset(resource: CloudinaryResource) {
     category,
     album,
     album_title: context.album_title || album.replace(/-/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase()),
-    url: cloudinaryTransform(resource.secure_url, 'f_auto,q_auto,w_1600'),
-    thumb: cloudinaryTransform(resource.secure_url, 'f_auto,q_auto,w_760'),
+    album_description: context.album_description || '',
+    album_hashtags: parseTags(context.album_hashtags),
+    album_cover: context.album_cover === 'true',
+    sort_order: cleanNumber(context.sort_order, 0),
+    url: cloudinaryTransform(resource.secure_url, 'f_auto,q_auto,w_1800'),
+    thumb: cloudinaryTransform(resource.secure_url, 'f_auto,q_auto,w_820'),
     width: resource.width || 1200,
     height: resource.height || 900,
     format: resource.format || '',
@@ -153,6 +175,10 @@ function fallbackAssets() {
     category: 'remodelacion',
     album: 'ideas-generales',
     album_title: 'Ideas generales',
+    album_description: 'Colección visual para comparar estilo, distribución, materialidad y terminaciones antes de adaptar una idea al espacio real.',
+    album_hashtags: ['inspiracion', 'remodelacion', 'solucionesfabrick'],
+    album_cover: true,
+    sort_order: 0,
     url: `${base}/f_auto,q_auto,w_1400/${id}.png`,
     thumb: `${base}/f_auto,q_auto,w_720/${id}.png`,
     width: 1200,
@@ -193,7 +219,10 @@ export async function GET(request: NextRequest) {
     const response = await fetch(apiUrl.toString(), { headers: { Authorization: `Basic ${authorization}` }, cache: 'no-store' });
     if (!response.ok) throw new Error(`Cloudinary API error ${response.status}: ${await response.text().catch(() => '')}`);
     const json = await response.json() as { resources?: CloudinaryResource[]; next_cursor?: string };
-    const assets = (json.resources || []).filter((item) => item.secure_url).map(normalizeAsset);
+    const assets = (json.resources || [])
+      .filter((item) => item.secure_url)
+      .map(normalizeAsset)
+      .sort((left, right) => left.album.localeCompare(right.album) || left.sort_order - right.sort_order || left.created_at.localeCompare(right.created_at));
     const finalAssets = assets.length ? assets : fallbackAssets();
     return NextResponse.json({ assets: finalAssets, albums: buildAlbums(finalAssets), categories: categoryOptions(), next_cursor: json.next_cursor || null, source: assets.length ? 'cloudinary' : 'fallback', folder });
   } catch (error) {
@@ -223,7 +252,11 @@ export async function POST(request: NextRequest) {
       category: cleanSlug(cleanText(form.get('category'), 80), 'ideas'),
       album,
       albumTitle: cleanText(form.get('albumTitle'), 120) || album,
+      albumDescription: cleanText(form.get('albumDescription'), 900),
       hashtags: cleanText(form.get('hashtags'), 500).split(/[\s,]+/).filter(Boolean),
+      albumHashtags: cleanText(form.get('albumHashtags'), 500).split(/[\s,]+/).filter(Boolean),
+      sortOrder: cleanNumber(form.get('sortOrder'), 0),
+      albumCover: String(form.get('albumCover') || '') === 'true',
     };
     const folder = cleanFolder(`${DEFAULT_FOLDER}/${album}`);
     const timestamp = Math.floor(Date.now() / 1000);
@@ -299,11 +332,20 @@ function categoryOptions() {
   return [{ key: 'ideas', label: 'Todas las ideas' }, ...CATEGORY_MAP.map(({ key, label }) => ({ key, label }))];
 }
 function buildAlbums(assets: Array<ReturnType<typeof normalizeAsset> | ReturnType<typeof fallbackAssets>[number]>) {
-  const map = new Map<string, { key: string; title: string; category: string; description: string; cover: string; count: number }>();
+  type Album = { key: string; title: string; category: string; description: string; cover: string; count: number; hashtags: string[] };
+  const map = new Map<string, Album>();
   for (const asset of assets) {
     const current = map.get(asset.album);
-    if (current) current.count += 1;
-    else map.set(asset.album, { key: asset.album, title: asset.album_title, category: asset.category, description: asset.description || 'Álbum visual de ideas para conversar, adaptar y cotizar.', cover: asset.thumb, count: 1 });
+    const description = asset.album_description || asset.description || 'Álbum visual de ideas para conversar, adaptar y cotizar.';
+    const hashtags = asset.album_hashtags?.length ? asset.album_hashtags : asset.tags || [];
+    if (current) {
+      current.count += 1;
+      current.hashtags = Array.from(new Set([...current.hashtags, ...hashtags])).slice(0, 16);
+      if (asset.album_cover) current.cover = asset.thumb;
+      if (!current.description && description) current.description = description;
+    } else {
+      map.set(asset.album, { key: asset.album, title: asset.album_title, category: asset.category, description, cover: asset.thumb, count: 1, hashtags: [...hashtags].slice(0, 16) });
+    }
   }
   return Array.from(map.values()).sort((left, right) => left.title.localeCompare(right.title));
 }

@@ -14,9 +14,12 @@ const MODELS = [
 
 type Body = {
   imageUrl?: string;
+  imageUrls?: string[];
   albumTitle?: string;
   category?: string;
   locale?: string;
+  mode?: 'asset' | 'album';
+  fileNames?: string[];
 };
 
 type Metadata = {
@@ -27,14 +30,26 @@ type Metadata = {
   hashtags: string[];
 };
 
+type AlbumMetadata = {
+  albumTitle: string;
+  albumDescription: string;
+  category: string;
+  hashtags: string[];
+};
+
 async function requireAdmin(request: NextRequest) {
   const cookie = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
   if (!cookie) return null;
   return decodeSession(cookie);
 }
 
+function titleFromFiles(fileNames: string[] | undefined) {
+  const first = String(fileNames?.[0] || '').replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ').trim();
+  return first ? first.replace(/\b\w/g, (character) => character.toUpperCase()).slice(0, 120) : 'Inspiraciones Fabrick';
+}
+
 function fallbackMetadata(body: Body): Metadata {
-  const album = String(body.albumTitle || 'Inspiración Fabrick').trim();
+  const album = String(body.albumTitle || titleFromFiles(body.fileNames)).trim();
   const category = String(body.category || 'ideas').trim();
   return {
     title: album || 'Inspiración para tu proyecto',
@@ -45,20 +60,50 @@ function fallbackMetadata(body: Body): Metadata {
   };
 }
 
-function cleanJson(text: string) {
-  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
-  const candidate = fenced || text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1);
-  return JSON.parse(candidate) as Partial<Metadata>;
+function fallbackAlbumMetadata(body: Body): AlbumMetadata {
+  const albumTitle = String(body.albumTitle || titleFromFiles(body.fileNames)).trim() || 'Inspiraciones Fabrick';
+  const category = String(body.category || 'ideas').trim();
+  return {
+    albumTitle,
+    albumDescription: 'Colección visual agrupada para comparar distribución, estilo, materiales, colores y terminaciones antes de adaptar la idea a un espacio real.',
+    category,
+    hashtags: ['inspiracion', 'solucionesfabrick', category, 'diseno', 'construccion', 'remodelacion'].filter(Boolean),
+  };
 }
 
-function normalize(result: Partial<Metadata>, fallback: Metadata): Metadata {
-  const tags = Array.isArray(result.hashtags) ? result.hashtags : fallback.hashtags;
+function cleanJson<T>(text: string) {
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i)?.[1];
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  const candidate = fenced || (start >= 0 && end > start ? text.slice(start, end + 1) : text);
+  return JSON.parse(candidate) as Partial<T>;
+}
+
+function cleanCategory(value: unknown, fallback = 'ideas') {
+  return String(value || fallback).trim().toLowerCase().replace(/[^a-z0-9áéíóúñ-]+/gi, '-').replace(/^-|-$/g, '').slice(0, 80) || fallback;
+}
+
+function cleanTags(value: unknown, fallback: string[]) {
+  const tags = Array.isArray(value) ? value : fallback;
+  return Array.from(new Set(tags.map((tag) => String(tag).replace(/^#/, '').trim().toLowerCase().replace(/\s+/g, '-')).filter(Boolean))).slice(0, 14);
+}
+
+function normalizeMetadata(result: Partial<Metadata>, fallback: Metadata): Metadata {
   return {
     title: String(result.title || fallback.title).trim().slice(0, 120),
     description: String(result.description || fallback.description).trim().slice(0, 900),
     alt: String(result.alt || result.title || fallback.alt).trim().slice(0, 180),
-    category: String(result.category || fallback.category).trim().toLowerCase().replace(/[^a-z0-9áéíóúñ-]+/gi, '-').replace(/^-|-$/g, '').slice(0, 80) || 'ideas',
-    hashtags: Array.from(new Set(tags.map((tag) => String(tag).replace(/^#/, '').trim().toLowerCase().replace(/\s+/g, '-')).filter(Boolean))).slice(0, 14),
+    category: cleanCategory(result.category, fallback.category),
+    hashtags: cleanTags(result.hashtags, fallback.hashtags),
+  };
+}
+
+function normalizeAlbumMetadata(result: Partial<AlbumMetadata>, fallback: AlbumMetadata): AlbumMetadata {
+  return {
+    albumTitle: String(result.albumTitle || fallback.albumTitle).trim().slice(0, 120),
+    albumDescription: String(result.albumDescription || fallback.albumDescription).trim().slice(0, 900),
+    category: cleanCategory(result.category, fallback.category),
+    hashtags: cleanTags(result.hashtags, fallback.hashtags),
   };
 }
 
@@ -67,14 +112,44 @@ export async function POST(request: NextRequest) {
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
 
   const body = await request.json().catch(() => ({})) as Body;
-  const fallback = fallbackMetadata(body);
-  const imageUrl = String(body.imageUrl || '').trim();
-  if (!/^https:\/\//i.test(imageUrl)) return NextResponse.json({ ok: true, metadata: fallback, source: 'fallback', warning: 'La imagen todavía no tiene una URL pública válida.' });
+  const mode = body.mode === 'album' ? 'album' : 'asset';
+  const urls = Array.from(new Set([...(body.imageUrls || []), body.imageUrl || ''].map((value) => String(value).trim()).filter((value) => /^https:\/\//i.test(value)))).slice(0, mode === 'album' ? 6 : 1);
+  const fallback = mode === 'album' ? fallbackAlbumMetadata(body) : fallbackMetadata(body);
+
+  if (!urls.length) {
+    return NextResponse.json({
+      ok: true,
+      ...(mode === 'album' ? { albumMetadata: fallback } : { metadata: fallback }),
+      source: 'fallback',
+      warning: 'Las imágenes todavía no tienen una URL pública válida.',
+    });
+  }
 
   const credentials = await getOpenRouterCredentials();
-  if (!credentials) return NextResponse.json({ ok: true, metadata: fallback, source: 'fallback', warning: 'OpenRouter no está configurado. Se generó un relleno local editable.' });
+  if (!credentials) {
+    return NextResponse.json({
+      ok: true,
+      ...(mode === 'album' ? { albumMetadata: fallback } : { metadata: fallback }),
+      source: 'fallback',
+      warning: 'OpenRouter no está configurado. Se generó un relleno local editable.',
+    });
+  }
 
-  const prompt = `Analiza esta imagen como curador de un catálogo chileno de inspiración para construcción, remodelación y diseño interior.
+  const prompt = mode === 'album'
+    ? `Analiza este GRUPO de imágenes como curador de un catálogo chileno de inspiración para construcción, remodelación y diseño interior.
+Devuelve SOLO JSON válido con esta estructura:
+{"albumTitle":"...","albumDescription":"...","category":"cocinas|casas|planos|banos|muebles|piscinas|quinchos|terrazas|materiales|remodelacion|ideas","hashtags":["..."]}
+Reglas:
+- Trata las imágenes como un solo álbum coherente.
+- Título de 3 a 8 palabras.
+- Descripción de 45 a 85 palabras que explique qué une al grupo, estilo visible y cómo puede usarse como referencia.
+- Entre 7 y 12 hashtags sin #.
+- Título sugerido por el administrador: ${body.albumTitle || 'sin definir'}.
+- Categoría sugerida: ${body.category || 'ideas'}.
+- Archivos del grupo: ${(body.fileNames || []).slice(0, 12).join(', ') || 'sin nombres'}.
+- No afirmes que las obras fueron ejecutadas por la empresa.
+- No inventes medidas, marcas, materiales ocultos ni certificaciones.`
+    : `Analiza esta imagen como curador de un catálogo chileno de inspiración para construcción, remodelación y diseño interior.
 Devuelve SOLO JSON válido con esta estructura:
 {"title":"...","description":"...","alt":"...","category":"cocinas|casas|planos|banos|muebles|piscinas|quinchos|terrazas|materiales|remodelacion|ideas","hashtags":["..."]}
 Reglas:
@@ -100,13 +175,13 @@ Reglas:
         },
         body: JSON.stringify({
           model,
-          temperature: 0.25,
-          max_tokens: 650,
+          temperature: 0.22,
+          max_tokens: mode === 'album' ? 760 : 650,
           messages: [{
             role: 'user',
             content: [
               { type: 'text', text: prompt },
-              { type: 'image_url', image_url: { url: imageUrl } },
+              ...urls.map((url) => ({ type: 'image_url', image_url: { url } })),
             ],
           }],
         }),
@@ -122,12 +197,21 @@ Reglas:
         lastError = 'El modelo no devolvió contenido.';
         continue;
       }
-      const metadata = normalize(cleanJson(text), fallback);
+      if (mode === 'album') {
+        const albumMetadata = normalizeAlbumMetadata(cleanJson<AlbumMetadata>(text), fallback as AlbumMetadata);
+        return NextResponse.json({ ok: true, albumMetadata, source: 'ai', model });
+      }
+      const metadata = normalizeMetadata(cleanJson<Metadata>(text), fallback as Metadata);
       return NextResponse.json({ ok: true, metadata, source: 'ai', model });
     } catch (error) {
       lastError = error instanceof Error ? error.message : 'Error desconocido';
     }
   }
 
-  return NextResponse.json({ ok: true, metadata: fallback, source: 'fallback', warning: `La IA visual no respondió. Se generó metadata editable: ${lastError}` });
+  return NextResponse.json({
+    ok: true,
+    ...(mode === 'album' ? { albumMetadata: fallback } : { metadata: fallback }),
+    source: 'fallback',
+    warning: `La IA visual no respondió. Se generó metadata editable: ${lastError}`,
+  });
 }

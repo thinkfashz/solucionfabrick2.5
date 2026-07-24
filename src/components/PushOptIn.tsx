@@ -44,9 +44,7 @@ export default function PushOptIn() {
       }
     }
     void init();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, []);
 
   async function subscribe() {
@@ -61,21 +59,13 @@ export default function PushOptIn() {
       }
       const registration = (await navigator.serviceWorker.getRegistration()) || (await navigator.serviceWorker.ready);
       const existing = await registration.pushManager.getSubscription();
-      const subscription =
-        existing ??
-        (await registration.pushManager.subscribe({
-          userVisibleOnly: true,
-          applicationServerKey: urlBase64ToUint8Array(publicKey),
-        }));
-
+      const subscription = existing ?? (await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: urlBase64ToUint8Array(publicKey) }));
       const response = await fetch('/api/push/subscribe', {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ subscription: subscription.toJSON() }),
       });
-      if (!response.ok && response.status !== 202) {
-        throw new Error(`Server returned ${response.status}`);
-      }
+      if (!response.ok && response.status !== 202) throw new Error(`Server returned ${response.status}`);
       setStatus('granted');
     } catch (err) {
       console.error('[PushOptIn] subscribe failed', err);
@@ -109,50 +99,33 @@ export default function PushOptIn() {
   if (status === 'loading' || status === 'unsupported' || status === 'disabled') return null;
 
   return (
-    <div className="rounded-[1.5rem] border border-white/5 bg-zinc-950/85 p-5">
+    <div className="rounded-[1.75rem] bg-[#fffaf5] p-5 text-[#171820] shadow-[0_18px_60px_rgba(23,24,32,.08)] ring-1 ring-[#171820]/10">
       <div className="flex items-start gap-4">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-yellow-400/10 text-yellow-400">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#171820] text-[#ccb196]">
           {status === 'granted' ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
         </div>
-        <div className="flex-1">
-          <h3 className="text-sm font-bold uppercase tracking-[0.15em] text-white">Notificaciones push</h3>
-          <p className="mt-1 text-xs leading-relaxed text-zinc-400">
+        <div className="min-w-0 flex-1">
+          <h3 className="text-sm font-black">Notificaciones del proyecto</h3>
+          <p className="mt-1 text-xs leading-6 text-[#6b625c]">
             {status === 'granted'
-              ? 'Recibirás avisos sobre el avance de tu obra, cambios de estado de órdenes y anuncios importantes.'
-              : 'Activa los avisos para recibir el estado de tu proyecto y anuncios importantes. Puedes desactivarlos cuando quieras.'}
+              ? 'Recibirás avisos sobre pedidos, avances y comunicaciones importantes.'
+              : 'Activa los avisos para recibir cambios relevantes sin tener que revisar la cuenta constantemente.'}
           </p>
-          {error ? <p className="mt-2 text-xs text-red-400">{error}</p> : null}
-          <div className="mt-3 flex gap-2">
+          {error ? <p className="mt-2 rounded-xl bg-red-50 px-3 py-2 text-xs font-semibold text-red-800">{error}</p> : null}
+          <div className="mt-4 flex flex-wrap gap-2">
             {status === 'granted' ? (
-              <button
-                type="button"
-                onClick={unsubscribe}
-                className="inline-flex items-center gap-2 rounded-full border border-white/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-300 transition hover:border-red-400/40 hover:text-red-400"
-              >
-                <BellOff className="h-3.5 w-3.5" />
-                Desactivar
+              <button type="button" onClick={unsubscribe} className="inline-flex items-center gap-2 rounded-full bg-[#f2e9e3] px-4 py-2.5 text-[10px] font-black uppercase tracking-[.14em] text-[#6f6259] transition hover:bg-red-50 hover:text-red-800">
+                <BellOff className="h-3.5 w-3.5" /> Desactivar
               </button>
             ) : status === 'working' ? (
-              <button
-                type="button"
-                disabled
-                className="inline-flex items-center gap-2 rounded-full border border-yellow-400/30 bg-yellow-400/5 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-yellow-400"
-              >
-                <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                Configurando…
+              <button type="button" disabled className="inline-flex items-center gap-2 rounded-full bg-[#ccb196]/35 px-4 py-2.5 text-[10px] font-black uppercase tracking-[.14em] text-[#765438]">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" /> Configurando…
               </button>
             ) : status === 'denied' ? (
-              <p className="text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-500">
-                Bloqueadas en el navegador · habilítalas desde la configuración del sitio
-              </p>
+              <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#8c817a]">Bloqueadas en el navegador · habilítalas desde la configuración del sitio</p>
             ) : (
-              <button
-                type="button"
-                onClick={subscribe}
-                className="inline-flex items-center gap-2 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-4 py-2 text-[10px] font-bold uppercase tracking-[0.25em] text-yellow-400 transition hover:bg-yellow-400/20"
-              >
-                <Bell className="h-3.5 w-3.5" />
-                Activar notificaciones
+              <button type="button" onClick={subscribe} className="inline-flex items-center gap-2 rounded-full bg-[#b6906c] px-4 py-2.5 text-[10px] font-black uppercase tracking-[.14em] text-[#171820] transition hover:bg-[#ccb196]">
+                <Bell className="h-3.5 w-3.5" /> Activar notificaciones
               </button>
             )}
           </div>

@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
-import { X, Download } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Download, X } from 'lucide-react';
 import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 
 declare global {
@@ -12,7 +12,7 @@ declare global {
 }
 
 const DISMISS_KEY = 'fabrick.install.dismissed.v1';
-const AUTO_DISMISS_MS = 60_000; // 60 seconds
+const AUTO_DISMISS_MS = 60_000;
 
 function trackPwa(event: string, extra?: Record<string, unknown>) {
   if (typeof window === 'undefined') return;
@@ -23,9 +23,7 @@ function trackPwa(event: string, extra?: Record<string, unknown>) {
       body: JSON.stringify({ event, ...(extra ?? {}) }),
       keepalive: true,
     });
-  } catch {
-    /* analytics is best-effort */
-  }
+  } catch {}
 }
 
 function isStandaloneDisplay() {
@@ -42,12 +40,10 @@ export default function InstallAppPrompt() {
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
-
     const ua = window.navigator.userAgent.toLowerCase();
     const mobile = /iphone|ipad|ipod|android/.test(ua);
     const ios = /iphone|ipad|ipod/.test(ua);
     const hidden = window.localStorage.getItem(DISMISS_KEY) === '1';
-
     setIsMobile(mobile);
     setIsIos(ios);
     setDismissed(hidden || isStandaloneDisplay());
@@ -58,12 +54,10 @@ export default function InstallAppPrompt() {
       setDismissed(hidden || isStandaloneDisplay());
       trackPwa('install_prompt_available');
     };
-
     const handleInstalled = () => {
       trackPwa('installed');
       setDismissed(true);
     };
-
     window.addEventListener('beforeinstallprompt', handleBeforeInstall);
     window.addEventListener('appinstalled', handleInstalled);
     return () => {
@@ -75,31 +69,24 @@ export default function InstallAppPrompt() {
   const close = useCallback(() => {
     setDismissed(true);
     setExpanded(false);
-    if (typeof window !== 'undefined') {
-      window.localStorage.setItem(DISMISS_KEY, '1');
-    }
+    if (typeof window !== 'undefined') window.localStorage.setItem(DISMISS_KEY, '1');
     trackPwa('install_banner_dismissed');
   }, []);
 
-  // Auto-dismiss after 60 seconds
   useEffect(() => {
     if (dismissed) return;
-    const timer = setTimeout(close, AUTO_DISMISS_MS);
-    return () => clearTimeout(timer);
+    const timer = window.setTimeout(close, AUTO_DISMISS_MS);
+    return () => window.clearTimeout(timer);
   }, [dismissed, close]);
 
-  const install = async () => {
+  async function install() {
     if (!promptEvent) return;
     trackPwa('install_prompt_shown');
     await promptEvent.prompt();
     const choice = await promptEvent.userChoice;
-    trackPwa(choice.outcome === 'accepted' ? 'install_accepted' : 'install_dismissed', {
-      platform: choice.platform,
-    });
-    if (choice.outcome === 'accepted') {
-      close();
-    }
-  };
+    trackPwa(choice.outcome === 'accepted' ? 'install_accepted' : 'install_dismissed', { platform: choice.platform });
+    if (choice.outcome === 'accepted') close();
+  }
 
   const canShow = useMemo(() => {
     if (!isMobile || dismissed || isStandaloneDisplay()) return false;
@@ -109,74 +96,21 @@ export default function InstallAppPrompt() {
   if (!canShow) return null;
 
   return (
-    <div className="fixed bottom-5 right-4 z-[250] md:hidden">
+    <div className="fixed bottom-[calc(11.6rem+env(safe-area-inset-bottom))] right-4 z-[9400] md:hidden">
       {expanded ? (
-        /* Expanded card */
-        <div className="w-72 rounded-[1.75rem] border border-yellow-400/20 bg-[#0a0a0b]/96 p-5 shadow-[0_20px_60px_rgba(0,0,0,0.5)] backdrop-blur-2xl animate-[slideUp_0.3s_cubic-bezier(0.16,1,0.3,1)_both]">
-          {/* Close */}
-          <button
-            onClick={close}
-            className="absolute right-4 top-4 flex h-7 w-7 items-center justify-center rounded-full border border-white/10 text-zinc-500 hover:text-white transition-colors"
-          >
-            <X className="h-3.5 w-3.5" />
-          </button>
-
-          <div className="flex items-center gap-3 mb-4">
-            <FabrickPeakIcon size={40} />
-            <div>
-              <p className="text-[10px] font-bold uppercase tracking-[0.22em] text-yellow-400">Instalar Fabrick</p>
-              <p className="text-xs text-zinc-400">App rápida · Sin App Store</p>
-            </div>
-          </div>
-
-          <p className="text-xs leading-relaxed text-zinc-300 mb-4">
-            Accede más rápido desde tu pantalla de inicio con experiencia de pantalla completa.
-          </p>
-
-          {isIos && !promptEvent ? (
-            <p className="mb-4 text-xs text-zinc-400 bg-white/5 rounded-xl p-3">
-              Toca <strong className="text-white">Compartir</strong> y luego <strong className="text-white">Añadir a pantalla de inicio</strong>.
-            </p>
-          ) : null}
-
-          <div className="flex gap-2">
-            {promptEvent ? (
-              <button
-                onClick={() => void install()}
-                className="flex-1 rounded-full bg-yellow-400 py-2.5 text-[11px] font-black uppercase tracking-[0.18em] text-black hover:bg-yellow-300 transition-all"
-              >
-                Instalar
-              </button>
-            ) : null}
-            <button
-              onClick={close}
-              className="flex-1 rounded-full border border-white/10 py-2.5 text-[11px] font-semibold text-zinc-400 hover:text-white transition-all"
-            >
-              No gracias
-            </button>
+        <div className="relative w-[min(19rem,calc(100vw-2rem))] rounded-[1.8rem] bg-[#fffaf5] p-5 text-[#171820] shadow-[0_26px_80px_rgba(23,24,32,.28)] ring-1 ring-[#171820]/12">
+          <button type="button" onClick={close} className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-[#171820]/5 text-[#6b625c] transition hover:bg-[#171820] hover:text-[#f8f0e9]" aria-label="Cerrar instalación"><X className="h-4 w-4" /></button>
+          <div className="flex items-center gap-3 pr-8"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#171820] text-[#ccb196]"><FabrickPeakIcon size={32} /></span><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#765438]">Instalar Fabrick</p><p className="mt-1 text-xs font-semibold text-[#6b625c]">Acceso rápido · pantalla completa</p></div></div>
+          <p className="mt-4 text-xs leading-6 text-[#5f5853]">Añade Soluciones Fabrick a tu pantalla de inicio para abrir la tienda, tus presupuestos y tu cuenta con menos pasos.</p>
+          {isIos && !promptEvent ? <p className="mt-4 rounded-xl bg-[#f3ebe4] p-3 text-xs leading-5 text-[#625a54]">Toca <strong>Compartir</strong> y después <strong>Añadir a pantalla de inicio</strong>.</p> : null}
+          <div className="mt-5 grid grid-cols-2 gap-2">
+            {promptEvent ? <button type="button" onClick={() => void install()} className="rounded-full bg-[#b6906c] py-3 text-[10px] font-black uppercase tracking-[.14em] text-[#171820] transition hover:bg-[#ccb196]">Instalar</button> : <span />}
+            <button type="button" onClick={close} className="rounded-full bg-[#171820] py-3 text-[10px] font-black uppercase tracking-[.14em] text-[#f8f0e9] transition hover:bg-[#2a2c37]">Ahora no</button>
           </div>
         </div>
       ) : (
-        /* Collapsed bubble */
-        <button
-          onClick={() => setExpanded(true)}
-          className="flex h-14 w-14 items-center justify-center rounded-full bg-yellow-400 text-black shadow-[0_8px_32px_rgba(250,204,21,0.45)] hover:scale-110 active:scale-95 transition-transform duration-200 animate-[bubblePop_0.4s_cubic-bezier(0.34,1.56,0.64,1)_both]"
-          aria-label="Instalar app"
-        >
-          <Download className="h-6 w-6" />
-        </button>
+        <button type="button" onClick={() => setExpanded(true)} className="grid h-12 w-12 place-items-center rounded-full bg-[#b6906c] text-[#171820] shadow-[0_14px_36px_rgba(94,65,43,.28),0_0_0_5px_rgba(248,240,233,.55)] ring-1 ring-[#765438]/35 transition hover:-translate-y-1 active:scale-95" aria-label="Instalar aplicación"><Download className="h-5 w-5" /></button>
       )}
-
-      <style>{`
-        @keyframes slideUp {
-          from { opacity: 0; transform: translateY(16px) scale(0.96); }
-          to   { opacity: 1; transform: translateY(0) scale(1); }
-        }
-        @keyframes bubblePop {
-          from { opacity: 0; transform: scale(0.5); }
-          to   { opacity: 1; transform: scale(1); }
-        }
-      `}</style>
     </div>
   );
 }

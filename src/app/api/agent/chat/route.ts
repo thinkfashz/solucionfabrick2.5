@@ -7,88 +7,67 @@ import { campaignBusyHeaders, getCampaignMode, publicAiChatEnabled } from '@/lib
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-/**
- * POST /api/agent/chat — endpoint público del asistente IA del sitio.
- *
- * Característica clave: usa `chatCompletionWithFallback` para que si el
- * modelo gratuito preferido falla / está caído / responde 429, se prueben
- * automáticamente otros modelos gratuitos sin que el usuario lo note.
- * El frontend sólo recibe la respuesta final.
- *
- * Restricciones:
- *  - Sin auth: pensado para visitantes anónimos del sitio público.
- *  - Rate limit persistente por IP: máx. 20 mensajes / 5 minutos.
- *    Reusa el store existente para evitar instalar Redis/KV en esta fase.
- *    Para límites estrictos globales a escala enterprise, migrar este bucket
- *    a Redis/KV administrado en el módulo de infraestructura.
- *  - Modo campaña: FABRICK_CAMPAIGN_MODE=limited/catalog pausa el chat IA.
- *  - Cuerpo máximo: 32 KB para evitar payloads abusivos.
- *  - Ventana de contexto acotada: últimos 12 mensajes del cliente
- *    (≈6 turnos completos user→assistant).
- *  - Mensajes máximo 2.000 caracteres.
- */
-
-interface AgentBody {
-  messages?: unknown;
-}
-
+interface AgentBody { messages?: unknown }
 interface ClientMsg { role: 'user' | 'assistant'; content: string }
 
-/** Máximo de MENSAJES (no turnos) que se reenvían al modelo. 12 ≈ 6 turnos. */
 const MAX_MESSAGES_TO_AI = 12;
 const MAX_USER_CHARS = 2_000;
 const MAX_BODY_BYTES = 32 * 1024;
 const RATE_LIMIT_MAX = 20;
 const RATE_LIMIT_WINDOW_MS = 5 * 60 * 1000;
 
-const SYSTEM_PROMPT = `Eres "Fabri", el asistente virtual de Soluciones Fabrick — empresa chilena de construcción y remodelación residencial con sede en Linares, Región del Maule. Llevas 9 años acompañando familias en sus proyectos.
+const SYSTEM_PROMPT = `Eres "Fabri", el asistente virtual de Soluciones Fabrick, empresa chilena de construcción, remodelación y soluciones para el hogar con atención principal en la Región del Maule y proyectos seleccionados en Santiago.
 
-Tu rol: responder consultas de visitantes del sitio sobre construcción, remodelación, Metalcón, permisos y todo lo que ayude a un cliente a decidir si trabajar con Soluciones Fabrick.
+Tu función:
+- Ayudar al visitante a entender servicios, calculadoras, materiales, permisos, etapas y preguntas necesarias antes de cotizar.
+- Organizar la información entregada por el usuario, sin reemplazar la inspección, el cálculo profesional ni la cotización final.
+- Guiar hacia /presupuesto, /proyectos, /contacto o WhatsApp cuando corresponda.
 
 Tono:
-- Cercano, claro, profesional. Tutea (chileno neutro), sin tecnicismos innecesarios.
-- Respuestas BREVES (4–8 líneas máx por defecto) y accionables.
-- Si la pregunta es muy general, da una respuesta concisa y ofrece profundizar.
-- NUNCA inventes precios exactos. Si te piden cotización, deriva a /contacto o WhatsApp.
-- Si no sabes algo específico de la empresa, dilo y sugiere contactar al equipo.
+- Cercano, claro, profesional y chileno neutro. Tutea.
+- Responde normalmente en 4–8 líneas. Cuando recibas un cálculo estructurado puedes usar hasta 12 líneas breves.
+- Evita tecnicismos innecesarios; explica cualquier concepto importante.
+- No inventes experiencia, certificaciones, tiempos, cobertura, materiales, medidas ni características que no estén expresamente informadas.
 
-Conocimiento clave de Soluciones Fabrick:
-- 9 años de experiencia, 100% sin subcontratistas (equipo propio).
-- Construcción llave en mano, remodelaciones, ampliaciones.
-- Especialidad: estructura Metalcón (perfiles de acero galvanizado).
-- Servicios complementarios: gasfitería, electricidad, pintura, revestimientos, cimientos, seguridad.
-- Atendemos toda la Región del Maule (Linares, Longaví, Talca, Parral) y proyectos puntuales en Santiago.
-- Anticipo claro y sin sorpresas; respuesta a consultas en menos de 24 h.
+Reglas de precios y presupuestos:
+- Nunca presentes un rango de calculadora como precio cerrado, promesa contractual o valor garantizado.
+- No reemplaces el rango recibido por otro sin explicar claramente el supuesto y la limitación.
+- Si el usuario envía servicio, fórmula, medidas, cantidad y rango, organiza la respuesta en este orden:
+  1. Lectura del cálculo.
+  2. Partidas o alcance probable.
+  3. Exclusiones, riesgos y variables que pueden cambiar el precio.
+  4. Preguntas pendientes.
+  5. Próximo paso recomendado.
+- Recuerda que ubicación, acceso, estado existente, permisos, especificación, materiales, retiro de escombros y terminaciones pueden cambiar el valor.
 
-Por qué Metalcón (estructura de acero galvanizado tipo "steel frame"):
-- No se pudre como la madera ni se triza como el hormigón.
-- Vida útil estimada +60 años con mantención mínima.
-- Antisísmica: cumple normativa chilena (NCh433).
-- Construcción 30–50% más rápida que albañilería tradicional.
-- Mejor aislación térmica y acústica con paneles adecuados (lana mineral + placa).
-- Más liviana → menor exigencia de fundaciones, ideal para terrenos complicados.
+Servicios disponibles:
+- Construcción llave en mano, kits prefabricados, ampliaciones, radier, fundaciones, techumbre y estructuras Metalcon.
+- Gasfitería, electricidad, climatización, pintura, revestimientos, pisos, baños, cierres, seguridad y muebles a medida.
+- La página /presupuesto permite calcular cada especialidad y reunir varias partidas en un carrito de servicios.
+- /proyectos funciona como biblioteca de Inspiraciones: sus imágenes son referencias visuales y no deben presentarse automáticamente como obras ejecutadas por la empresa.
 
-Permisos de construcción en Chile (general):
-- Para obra nueva o ampliación >5 m² normalmente se requiere permiso de edificación en la DOM (Dirección de Obras Municipales).
-- Documentos típicos: planos arquitectura/estructural, especificaciones técnicas, cálculo, certificado de informaciones previas.
-- Tiempos: la DOM tiene 30 días hábiles para revisar (ley 19.880); sumando ajustes y Recepción Final, en la práctica son 2–4 meses.
-- Soluciones Fabrick coordina con arquitecto y revisor independiente cuando aplica.
+Metalcon y contexto sísmico chileno:
+- Metalcon es un sistema de perfiles de acero galvanizado conformados en frío.
+- Una estructura más liviana y dúctil puede ofrecer ventajas dentro de un diseño sismorresistente bien resuelto.
+- Nunca digas que es indestructible, "a prueba de terremotos" o seguro por sí solo.
+- El desempeño depende del proyecto estructural, fundaciones, anclajes, arriostramientos, uniones, protección frente a humedad/corrosión, calidad de materiales y correcta ejecución.
+- Recomienda revisión profesional y cumplimiento de las normas chilenas aplicables al proyecto.
+- Puedes compararlo con sistemas tradicionales de forma equilibrada: rapidez de montaje, obra seca, control dimensional y menor masa son ventajas posibles; acústica, fuego, humedad, puentes térmicos y detalles de unión deben resolverse con el sistema completo.
 
-Tiempos típicos de obra (orientativos, dependen de m² y terreno):
-- Ampliación 30–60 m² Metalcón: 6–10 semanas.
-- Casa 90–120 m² Metalcón llave en mano: 4–6 meses (incluyendo terminaciones).
-- Remodelación interior: 3–8 semanas según alcance.
+Permisos en Chile:
+- No entregues asesoría legal definitiva. Explica que obra nueva, ampliaciones y cambios estructurales suelen requerir revisión en la DOM y profesionales competentes.
+- Los requisitos y plazos dependen de comuna, tipo de obra, antecedentes y observaciones.
 
-Cuando convenga, sugiere acciones concretas:
-- "¿Quieres que te enviemos un presupuesto sin compromiso? Escríbenos en /contacto."
-- "Si quieres conversar al tiro, escríbenos por WhatsApp desde el botón del sitio."
+Acciones útiles:
+- Para un cálculo inicial: /presupuesto.
+- Para explorar referencias: /proyectos.
+- Para evaluación humana: /contacto o WhatsApp.
 
-Si la pregunta no tiene relación con construcción / la empresa, contesta amablemente y reorienta la conversación al tema.`;
+Si la pregunta no se relaciona con construcción, hogar, servicios o productos de Fabrick, responde con amabilidad y reorienta.`;
 
 async function readJsonBody(request: NextRequest): Promise<AgentBody | null> {
   const declaredLength = Number(request.headers.get('content-length') ?? 0);
   if (Number.isFinite(declaredLength) && declaredLength > MAX_BODY_BYTES) return null;
-
   const text = await request.text();
   if (Buffer.byteLength(text, 'utf8') > MAX_BODY_BYTES) return null;
   return JSON.parse(text) as AgentBody;
@@ -96,48 +75,29 @@ async function readJsonBody(request: NextRequest): Promise<AgentBody | null> {
 
 function sanitizeMessages(raw: unknown): ClientMsg[] | null {
   if (!Array.isArray(raw)) return null;
-  const out: ClientMsg[] = [];
-  for (const m of raw) {
-    if (!m || typeof m !== 'object') continue;
-    const role = (m as { role?: unknown }).role;
-    const content = (m as { content?: unknown }).content;
+  const output: ClientMsg[] = [];
+  for (const message of raw) {
+    if (!message || typeof message !== 'object') continue;
+    const role = (message as { role?: unknown }).role;
+    const content = (message as { content?: unknown }).content;
     if (role !== 'user' && role !== 'assistant') continue;
     if (typeof content !== 'string') continue;
     const trimmed = content.trim();
     if (!trimmed) continue;
-    out.push({ role, content: trimmed.slice(0, MAX_USER_CHARS) });
+    output.push({ role, content: trimmed.slice(0, MAX_USER_CHARS) });
   }
-  // Mantener sólo los últimos N mensajes para no quemar tokens si el cliente
-  // (p.ej. otra pestaña con un historial gigante) reenvía mucho contexto.
-  return out.slice(-MAX_MESSAGES_TO_AI);
+  return output.slice(-MAX_MESSAGES_TO_AI);
 }
 
 export async function POST(request: NextRequest) {
   if (!publicAiChatEnabled()) {
-    return NextResponse.json(
-      {
-        error: 'El asistente IA está pausado temporalmente por modo campaña. Escríbenos por WhatsApp o desde contacto.',
-        campaignMode: getCampaignMode(),
-      },
-      { status: 503, headers: campaignBusyHeaders() },
-    );
+    return NextResponse.json({ error: 'El asistente IA está pausado temporalmente por modo campaña. Escríbenos por WhatsApp o desde contacto.', campaignMode: getCampaignMode() }, { status: 503, headers: campaignBusyHeaders() });
   }
 
   const ip = getClientIp(request);
-  const rl = await checkPersistentRateLimit({
-    namespace: 'public:agent-chat',
-    identity: ip,
-    max: RATE_LIMIT_MAX,
-    windowMs: RATE_LIMIT_WINDOW_MS,
-  });
-  if (!rl.ok) {
-    return NextResponse.json(
-      {
-        error: 'Estamos recibiendo muchas consultas desde tu conexión. Intenta de nuevo en un momento.',
-        retry_after: rl.retryAfterSec,
-      },
-      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
-    );
+  const rateLimit = await checkPersistentRateLimit({ namespace: 'public:agent-chat', identity: ip, max: RATE_LIMIT_MAX, windowMs: RATE_LIMIT_WINDOW_MS });
+  if (!rateLimit.ok) {
+    return NextResponse.json({ error: 'Estamos recibiendo muchas consultas desde tu conexión. Intenta de nuevo en un momento.', retry_after: rateLimit.retryAfterSec }, { status: 429, headers: { 'Retry-After': String(rateLimit.retryAfterSec) } });
   }
 
   let body: AgentBody | null;
@@ -146,51 +106,30 @@ export async function POST(request: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
   }
-  if (!body) {
-    return NextResponse.json({ error: 'Solicitud demasiado grande' }, { status: 413 });
-  }
+  if (!body) return NextResponse.json({ error: 'Solicitud demasiado grande' }, { status: 413 });
 
   const conversation = sanitizeMessages(body.messages);
-  if (!conversation || conversation.length === 0) {
-    return NextResponse.json({ error: 'Mensaje vacío' }, { status: 400 });
-  }
-  const lastMsg = conversation[conversation.length - 1];
-  if (lastMsg.role !== 'user') {
-    return NextResponse.json({ error: 'El último mensaje debe ser del usuario' }, { status: 400 });
-  }
+  if (!conversation || conversation.length === 0) return NextResponse.json({ error: 'Mensaje vacío' }, { status: 400 });
+  const lastMessage = conversation[conversation.length - 1];
+  if (lastMessage.role !== 'user') return NextResponse.json({ error: 'El último mensaje debe ser del usuario' }, { status: 400 });
 
   const messages: ChatMessage[] = [
     { role: 'system', content: SYSTEM_PROMPT },
-    ...conversation.map<ChatMessage>((m) => ({ role: m.role, content: m.content })),
+    ...conversation.map<ChatMessage>((message) => ({ role: message.role, content: message.content })),
   ];
-
-  // Modelo preferido: Llama 3.2 3B free (rápido + barato). Si falla,
-  // chatCompletionWithFallback prueba el resto de RECOMMENDED_FREE_MODELS.
-  const PREFERRED = 'meta-llama/llama-3.2-3b-instruct:free';
 
   try {
     const result = await chatCompletionWithFallback({
-      preferredModel: PREFERRED,
+      preferredModel: 'meta-llama/llama-3.2-3b-instruct:free',
       messages,
-      temperature: 0.5,
-      maxTokens: 600,
+      temperature: 0.4,
+      maxTokens: 800,
       allowPaid: false,
     });
-    return NextResponse.json({
-      ok: true,
-      answer: result.text,
-      // No exponemos qué modelo respondió: el usuario no debe notar el cambio.
-    });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : 'Error desconocido';
-    // Mensaje genérico para el cliente; dejamos el detalle en el log.
-    console.error('[agent/chat] fallback exhausted:', msg);
-    return NextResponse.json(
-      {
-        error:
-          'El asistente está temporalmente fuera de línea. Por favor escríbenos por WhatsApp o desde la página de contacto.',
-      },
-      { status: 503 },
-    );
+    return NextResponse.json({ ok: true, answer: result.text });
+  } catch (error) {
+    const message = error instanceof Error ? error.message : 'Error desconocido';
+    console.error('[agent/chat] fallback exhausted:', message);
+    return NextResponse.json({ error: 'El asistente está temporalmente fuera de línea. Por favor escríbenos por WhatsApp o desde la página de contacto.' }, { status: 503 });
   }
 }

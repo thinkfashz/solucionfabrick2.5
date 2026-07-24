@@ -1,202 +1,160 @@
 'use client';
 
+import Script from 'next/script';
 import { useEffect, useRef, useState } from 'react';
 
 interface LenisInstance {
   raf: (time: number) => void;
   destroy: () => void;
+  on?: (event: 'scroll', callback: () => void) => void;
+  off?: (event: 'scroll', callback: () => void) => void;
 }
 
-function isInteractiveTarget(target: EventTarget | null) {
-  if (!(target instanceof HTMLElement)) return false;
-  return Boolean(target.closest('input, textarea, select, button, a, [contenteditable="true"], [data-no-scroll-sweep]'));
+interface GsapContext { revert: () => void; }
+interface GsapApi {
+  registerPlugin: (plugin: unknown) => void;
+  context: (callback: () => void) => GsapContext;
+  utils: { toArray: <T extends Element>(selector: string) => T[] };
+  fromTo: (target: unknown, fromVars: Record<string, unknown>, toVars: Record<string, unknown>) => unknown;
+  to: (target: unknown, vars: Record<string, unknown>) => unknown;
+}
+interface ScrollTriggerApi { update: () => void; refresh: () => void; }
+
+declare global {
+  interface Window {
+    gsap?: GsapApi;
+    ScrollTrigger?: ScrollTriggerApi;
+  }
 }
 
-function shouldUseNativeTouchScroll() {
+function shouldUseNativeScroll() {
   if (typeof window === 'undefined') return true;
-  return window.matchMedia('(pointer: coarse)').matches || window.matchMedia('(hover: none)').matches || window.innerWidth < 900;
+  return window.matchMedia('(pointer: coarse)').matches
+    || window.matchMedia('(hover: none)').matches
+    || window.innerWidth < 900
+    || window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 }
 
 export default function SmoothScrollProvider() {
-  const [sweep, setSweep] = useState<'down' | 'up' | null>(null);
-  const timeoutRef = useRef<number | null>(null);
-  const lastTriggerRef = useRef(0);
-  const lastScrollYRef = useRef(0);
+  const [gsapReady, setGsapReady] = useState(false);
+  const [scrollTriggerReady, setScrollTriggerReady] = useState(false);
+  const lenisRef = useRef<LenisInstance | null>(null);
 
   useEffect(() => {
-    if (shouldUseNativeTouchScroll()) return;
+    if (shouldUseNativeScroll()) return;
+
+    let frame = 0;
+    let active = true;
+    let timer = 0;
+    let idleId = 0;
+
+    const start = async () => {
+      const Lenis = (await import('lenis')).default;
+      if (!active) return;
+      const lenis = new Lenis({ duration: .92, smoothWheel: true, wheelMultiplier: .88, infinite: false }) as LenisInstance;
+      lenisRef.current = lenis;
+      const raf = (time: number) => {
+        lenis.raf(time);
+        frame = window.requestAnimationFrame(raf);
+      };
+      frame = window.requestAnimationFrame(raf);
+    };
+
+    const idleWindow = window as Window & { requestIdleCallback?: (callback: () => void, options?: { timeout: number }) => number; cancelIdleCallback?: (id: number) => void };
+    if (idleWindow.requestIdleCallback) idleId = idleWindow.requestIdleCallback(() => void start(), { timeout: 1500 });
+    else timer = window.setTimeout(() => void start(), 900);
+
+    return () => {
+      active = false;
+      if (timer) window.clearTimeout(timer);
+      if (idleId) idleWindow.cancelIdleCallback?.(idleId);
+      if (frame) window.cancelAnimationFrame(frame);
+      lenisRef.current?.destroy();
+      lenisRef.current = null;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!scrollTriggerReady) return;
+    const update = () => window.ScrollTrigger?.update();
+    lenisRef.current?.on?.('scroll', update);
+    return () => lenisRef.current?.off?.('scroll', update);
+  }, [scrollTriggerReady]);
+
+  useEffect(() => {
+    if (!gsapReady || !scrollTriggerReady) return;
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
 
-    let lenis: LenisInstance | undefined;
-    let rafId = 0;
-    let alive = true;
+    const gsap = window.gsap;
+    const ScrollTrigger = window.ScrollTrigger;
+    if (!gsap || !ScrollTrigger) return;
+    gsap.registerPlugin(ScrollTrigger);
+    const desktop = window.matchMedia('(min-width: 900px)').matches;
 
-    const init = async () => {
-      const Lenis = (await import('lenis')).default;
-      if (!alive) return;
-      lenis = new Lenis({
-        duration: 1.15,
-        easing: (t: number) => Math.min(1, 1.001 - Math.pow(2, -10 * t)),
-        smoothWheel: true,
-        wheelMultiplier: 0.82,
-        infinite: false,
-      }) as LenisInstance;
+    const context = gsap.context(() => {
+      gsap.utils.toArray<HTMLElement>('[data-reveal]').forEach((element) => {
+        if (element.getBoundingClientRect().top < window.innerHeight * .92) return;
+        const delay = Number(element.dataset.revealDelay || 0);
+        gsap.fromTo(element, { autoAlpha: 0, y: desktop ? 26 : 16 }, {
+          autoAlpha: 1,
+          y: 0,
+          duration: desktop ? .66 : .46,
+          delay,
+          ease: 'power3.out',
+          scrollTrigger: { trigger: element, start: 'top 90%', once: true },
+        });
+      });
 
-      function raf(time: number) {
-        lenis?.raf(time);
-        rafId = requestAnimationFrame(raf);
+      gsap.utils.toArray<HTMLElement>('[data-reveal-group]').forEach((group) => {
+        if (group.getBoundingClientRect().top < window.innerHeight * .92) return;
+        const children = Array.from(group.children);
+        if (!children.length) return;
+        gsap.fromTo(children, { autoAlpha: 0, y: 18 }, {
+          autoAlpha: 1,
+          y: 0,
+          duration: .5,
+          stagger: .05,
+          ease: 'power3.out',
+          scrollTrigger: { trigger: group, start: 'top 88%', once: true },
+        });
+      });
+
+      if (desktop) {
+        gsap.utils.toArray<HTMLElement>('[data-parallax]').forEach((element) => {
+          gsap.to(element, {
+            yPercent: Number(element.dataset.parallax || -6),
+            ease: 'none',
+            scrollTrigger: {
+              trigger: element.closest('section') || element,
+              start: 'top bottom',
+              end: 'bottom top',
+              scrub: 1.2,
+            },
+          });
+        });
       }
-      rafId = requestAnimationFrame(raf);
-    };
-
-    void init();
-
-    return () => {
-      alive = false;
-      if (rafId) cancelAnimationFrame(rafId);
-      lenis?.destroy();
-    };
-  }, []);
-
-  useEffect(() => {
-    lastScrollYRef.current = window.scrollY || 0;
-
-    const triggerSweep = (direction: 'down' | 'up') => {
-      const now = performance.now();
-      if (now - lastTriggerRef.current < 520) return;
-      lastTriggerRef.current = now;
-      setSweep(direction);
-      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-      timeoutRef.current = window.setTimeout(() => setSweep(null), 560);
-    };
-
-    const onWheel = (event: WheelEvent) => {
-      if (shouldUseNativeTouchScroll()) return;
-      if (isInteractiveTarget(event.target)) return;
-      if (Math.abs(event.deltaY) < 42) return;
-      triggerSweep(event.deltaY > 0 ? 'down' : 'up');
-    };
-
-    const onScroll = () => {
-      const current = window.scrollY || 0;
-      const delta = current - lastScrollYRef.current;
-      lastScrollYRef.current = current;
-      if (Math.abs(delta) < 90) return;
-      triggerSweep(delta > 0 ? 'down' : 'up');
-    };
-
-    window.addEventListener('wheel', onWheel, { passive: true });
-    window.addEventListener('scroll', onScroll, { passive: true });
-    return () => {
-      window.removeEventListener('wheel', onWheel);
-      window.removeEventListener('scroll', onScroll);
-      if (timeoutRef.current) window.clearTimeout(timeoutRef.current);
-    };
-  }, []);
-
-  useEffect(() => {
-    if (typeof IntersectionObserver === 'undefined') return;
-    const sections = Array.from(document.querySelectorAll<HTMLElement>('section, footer'))
-      .filter((section) => !section.closest('[data-no-section-reveal]'));
-    if (!sections.length) return;
-
-    sections.forEach((section, index) => {
-      section.classList.add('scroll-section-reveal');
-      section.style.setProperty('--scroll-reveal-delay', `${Math.min(index * 35, 140)}ms`);
     });
 
-    const observer = new IntersectionObserver((entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          entry.target.setAttribute('data-in-view', 'true');
-        }
-      });
-    }, { threshold: 0.12, rootMargin: '0px 0px -8% 0px' });
-
-    sections.forEach((section) => observer.observe(section));
-    return () => observer.disconnect();
-  }, []);
+    const refreshId = window.setTimeout(() => ScrollTrigger.refresh(), 140);
+    return () => {
+      window.clearTimeout(refreshId);
+      context.revert();
+    };
+  }, [gsapReady, scrollTriggerReady]);
 
   return (
     <>
-      <div aria-hidden className={`pointer-events-none fixed inset-0 z-[9400] transition-opacity duration-200 ${sweep ? 'opacity-100' : 'opacity-0'}`}>
-        <div className={`absolute inset-x-0 h-[38vh] ${sweep === 'up' ? 'bottom-0 origin-bottom animate-[scroll-sweep-up_.54s_cubic-bezier(.22,1,.36,1)_both]' : 'top-0 origin-top animate-[scroll-sweep-down_.54s_cubic-bezier(.22,1,.36,1)_both]'} bg-[linear-gradient(180deg,rgba(250,204,21,.18),rgba(20,184,166,.08),rgba(5,5,5,0))] blur-[1px]`} />
-      </div>
+      <Script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/gsap.min.js" strategy="lazyOnload" onReady={() => setGsapReady(true)} />
+      {gsapReady ? <Script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.5/ScrollTrigger.min.js" strategy="lazyOnload" onReady={() => setScrollTriggerReady(true)} /> : null}
       <style>{`
-        html {
-          scroll-behavior: smooth;
-          overflow-x: hidden;
-          touch-action: pan-y pinch-zoom;
-          -webkit-overflow-scrolling: touch;
-        }
-        body {
-          overflow-x: hidden;
-          overscroll-behavior-y: auto;
-          touch-action: pan-y pinch-zoom;
-          -webkit-overflow-scrolling: touch;
-        }
-        section, footer { scroll-margin-top: 92px; }
-        .scroll-section-reveal {
-          position: relative;
-          opacity: .88;
-          transform: translate3d(0, 22px, 0);
-          filter: saturate(.94) contrast(.99);
-          transition:
-            opacity .68s cubic-bezier(.22,1,.36,1) var(--scroll-reveal-delay, 0ms),
-            transform .68s cubic-bezier(.22,1,.36,1) var(--scroll-reveal-delay, 0ms),
-            filter .68s cubic-bezier(.22,1,.36,1) var(--scroll-reveal-delay, 0ms);
-          will-change: opacity, transform;
-        }
-        .scroll-section-reveal[data-in-view="true"] {
-          opacity: 1;
-          transform: translate3d(0, 0, 0);
-          filter: saturate(1) contrast(1);
-        }
-        .scroll-section-reveal::before {
-          content: '';
-          position: absolute;
-          left: 50%;
-          top: 0;
-          z-index: 1;
-          width: min(76vw, 980px);
-          height: 1px;
-          transform: translateX(-50%);
-          background: linear-gradient(90deg, transparent, rgba(250,204,21,.28), rgba(20,184,166,.16), transparent);
-          opacity: .48;
-          pointer-events: none;
-        }
-        @keyframes scroll-sweep-down {
-          0% { transform: translateY(-100%) scaleY(.8); opacity: 0; }
-          28% { opacity: .75; }
-          100% { transform: translateY(120%) scaleY(1); opacity: 0; }
-        }
-        @keyframes scroll-sweep-up {
-          0% { transform: translateY(100%) scaleY(.8); opacity: 0; }
-          28% { opacity: .75; }
-          100% { transform: translateY(-120%) scaleY(1); opacity: 0; }
-        }
-        @media (hover: none), (pointer: coarse), (max-width: 899px) {
-          html { scroll-behavior: auto; }
-          .scroll-section-reveal {
-            opacity: 1;
-            transform: none;
-            filter: none;
-            transition: opacity .28s ease-out;
-            will-change: auto;
-          }
-          .scroll-section-reveal::before { opacity: .32; }
-        }
-        @media (prefers-reduced-motion: reduce) {
-          .scroll-section-reveal {
-            opacity: 1 !important;
-            transform: none !important;
-            filter: none !important;
-            transition: none !important;
-            will-change: auto !important;
-          }
-          .animate-[scroll-sweep-down_.54s_cubic-bezier(.22,1,.36,1)_both],
-          .animate-[scroll-sweep-up_.54s_cubic-bezier(.22,1,.36,1)_both] { animation: none !important; }
-        }
+        html, body { overflow-x: hidden; overscroll-behavior-y: auto; touch-action: pan-y pinch-zoom; -webkit-overflow-scrolling: touch; }
+        section, footer { scroll-margin-top: 88px; }
+        [data-reveal], [data-reveal-group] > * { backface-visibility: hidden; }
+        .fabrick-glass { background: linear-gradient(145deg, rgba(248,240,233,.09), rgba(248,240,233,.03)); box-shadow: 0 24px 70px rgba(0,0,0,.24); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
+        .fabrick-gradient-button { position: relative; isolation: isolate; overflow: hidden; background: linear-gradient(112deg, #B6906C, #CCB196 62%, #F8F0E9); box-shadow: 0 14px 38px rgba(182,144,108,.18); transition: transform .25s ease, box-shadow .25s ease, filter .25s ease; }
+        .fabrick-gradient-button:hover { transform: translateY(-2px); filter: brightness(1.03); box-shadow: 0 18px 48px rgba(182,144,108,.25); }
+        @media (hover: none), (pointer: coarse), (max-width: 899px) { [data-parallax] { transform: none !important; } .fabrick-glass { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); } }
+        @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } [data-reveal], [data-reveal-group] > * { opacity: 1 !important; transform: none !important; } }
       `}</style>
     </>
   );

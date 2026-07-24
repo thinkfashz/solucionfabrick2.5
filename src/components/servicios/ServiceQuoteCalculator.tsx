@@ -1,122 +1,57 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { Calculator, Info, PackageSearch, Send, Truck } from 'lucide-react';
-import {
-  calculateServiceQuote,
-  getDefaultPrice,
-  type QuoteBreakdown,
-  type QuoteInput,
-  type ServicePriceSetting,
-  unitLabel,
-} from '@/lib/servicePricing';
+import { Calculator, Info, Minus, Plus, ReceiptText, Ruler, Send, ShoppingCart } from 'lucide-react';
+import { useQuoteCart } from '@/context/QuoteCartContext';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
+import {
+  calculateServiceMeasurement,
+  getBudgetService,
+  type MeasurementValues,
+} from '@/components/presupuesto/serviceCatalog';
+import {
+  getDefaultPrice,
+  type ServicePriceSetting,
+} from '@/lib/servicePricing';
 
-const fmt = new Intl.NumberFormat('es-CL', {
-  style: 'currency',
-  currency: 'CLP',
-  maximumFractionDigits: 0,
-});
+const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
+const NUMBER = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
+const money = (value: number) => CLP.format(Math.round(value || 0));
+const number = (value: number) => NUMBER.format(value || 0);
 
-interface Props {
+type Props = {
   slug: string;
   serviceName?: string;
-}
+};
 
 type ConcreteMode = 'trompo' | 'premezclado';
 
 const CONCRETE_MODE: Record<ConcreteMode, { label: string; factor: number; detail: string }> = {
-  trompo: {
-    label: 'Preparación con trompo',
-    factor: 0.92,
-    detail: 'Mejor para trabajos pequeños o accesos complicados. Puede tomar más tiempo, pero suele ser más flexible.',
-  },
-  premezclado: {
-    label: 'Camión premezclado',
-    factor: 1.12,
-    detail: 'Más rápido para mayor volumen. Puede subir por despacho, espera, acceso y cantidad mínima solicitada.',
-  },
+  trompo: { label: 'Preparación con trompo', factor: .92, detail: 'Alternativa flexible para menor volumen o accesos complejos.' },
+  premezclado: { label: 'Camión premezclado', factor: 1.12, detail: 'Alternativa rápida para mayor volumen, sujeta a despacho y acceso.' },
 };
-
-const RELATED_PRODUCTS: Record<string, Array<{ title: string; detail: string; href: string }>> = {
-  gasfiteria: [
-    { title: 'Llaves y grifería', detail: 'Cocina, lavamanos y ducha', href: '/tienda?categoria=griferia' },
-    { title: 'Sanitarios y accesorios', detail: 'WC, lavamanos y kit instalación', href: '/tienda?categoria=banos' },
-  ],
-  electricidad: [
-    { title: 'Iluminación y focos', detail: 'Opciones para interior y exterior', href: '/tienda?categoria=iluminacion' },
-    { title: 'Accesorios eléctricos', detail: 'Canalización, enchufes y protecciones', href: '/tienda?categoria=electricidad' },
-  ],
-  pintura: [
-    { title: 'Pinturas y selladores', detail: 'Terminación interior y exterior', href: '/tienda?categoria=pintura' },
-    { title: 'Herramientas de aplicación', detail: 'Rodillos, brochas y protección', href: '/tienda?categoria=herramientas' },
-  ],
-  revestimiento: [
-    { title: 'Revestimientos', detail: 'Opciones para muros y terminaciones', href: '/tienda?categoria=revestimientos' },
-    { title: 'Aislación y placas', detail: 'Materiales complementarios', href: '/tienda?categoria=materiales' },
-  ],
-  seguridad: [
-    { title: 'Cámaras y sensores', detail: 'Equipamiento para seguridad hogar', href: '/tienda?categoria=seguridad' },
-    { title: 'Cerraduras y control', detail: 'Acceso y protección diaria', href: '/tienda?categoria=seguridad' },
-  ],
-  metalcon: [
-    { title: 'Tornillería y fijaciones', detail: 'Complementos para montaje', href: '/tienda?categoria=materiales' },
-    { title: 'Aislación y terminación', detail: 'Opciones para mejorar confort', href: '/tienda?categoria=materiales' },
-  ],
-};
-
-function numberInput(value: number, set: (n: number) => void, label: string, suffix: string) {
-  return (
-    <label className="block">
-      <span className="mb-2 block text-[10px] font-black uppercase tracking-[0.24em] text-zinc-500">{label}</span>
-      <div className="flex items-center gap-2 rounded-2xl border border-white/10 bg-black px-4 py-3 focus-within:border-yellow-300/60">
-        <input
-          type="number"
-          inputMode="decimal"
-          min="0"
-          step="0.1"
-          value={value || ''}
-          onChange={(e) => set(Number(e.target.value) || 0)}
-          className="w-full bg-transparent text-lg font-black text-white outline-none placeholder:text-zinc-700"
-          placeholder="0"
-        />
-        <span className="text-xs font-bold uppercase tracking-widest text-yellow-300">{suffix}</span>
-      </div>
-    </label>
-  );
-}
-
-function buildInitialInput(setting: ServicePriceSetting): QuoteInput {
-  return {
-    slug: setting.slug,
-    unit: setting.unit,
-    length: setting.unit === 'm2' || setting.unit === 'm3' ? 3 : 0,
-    width: setting.unit === 'm2' || setting.unit === 'm3' ? 3 : 0,
-    height: setting.unit === 'm3' ? 0.12 : 0,
-    linearMeters: setting.unit === 'ml' ? 5 : 0,
-    quantity: setting.unit === 'punto' || setting.unit === 'unidad' ? 1 : 0,
-    includeIva: true,
-  };
-}
 
 export default function ServiceQuoteCalculator({ slug, serviceName }: Props) {
+  const profile = getBudgetService(slug);
   const fallback = getDefaultPrice(slug);
   const [setting, setSetting] = useState<ServicePriceSetting>(fallback);
-  const [input, setInput] = useState<QuoteInput>(() => buildInitialInput(fallback));
   const [source, setSource] = useState<'defaults' | 'database' | 'loading'>('loading');
+  const [values, setValues] = useState<MeasurementValues>(profile.defaultValues);
+  const [includeIva, setIncludeIva] = useState(true);
   const [concreteMode, setConcreteMode] = useState<ConcreteMode>('trompo');
+  const [added, setAdded] = useState(false);
+  const { addItem, items } = useQuoteCart();
 
   useEffect(() => {
     let alive = true;
     async function load() {
       try {
-        const res = await fetch(`/api/service-prices?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
-        const json = (await res.json()) as { prices?: ServicePriceSetting[]; source?: 'defaults' | 'database' };
-        const next = json.prices?.[0] ?? fallback;
+        const response = await fetch(`/api/service-prices?slug=${encodeURIComponent(slug)}`, { cache: 'no-store' });
+        const json = await response.json() as { prices?: ServicePriceSetting[]; source?: 'defaults' | 'database' };
         if (!alive) return;
-        setSetting(next);
-        setSource(json.source ?? 'defaults');
-        setInput((prev) => ({ ...buildInitialInput(next), ...prev, slug: next.slug, unit: next.unit }));
+        setSetting(json.prices?.[0] || fallback);
+        setSource(json.source || 'defaults');
       } catch {
         if (!alive) return;
         setSetting(fallback);
@@ -125,169 +60,170 @@ export default function ServiceQuoteCalculator({ slug, serviceName }: Props) {
     }
     void load();
     return () => { alive = false; };
-  }, [slug]);
+  }, [fallback, slug]);
 
-  const baseQuote: QuoteBreakdown = useMemo(() => calculateServiceQuote(setting, input), [setting, input]);
-  const concreteFactor = setting.slug === 'cimientos' ? CONCRETE_MODE[concreteMode].factor : 1;
-  const quote = useMemo<QuoteBreakdown>(() => {
-    if (concreteFactor === 1) return baseQuote;
-    return {
-      ...baseQuote,
-      subtotal: Math.round(baseQuote.subtotal * concreteFactor),
-      iva: input.includeIva ? Math.round(baseQuote.subtotal * concreteFactor * 0.19) : 0,
-      total: Math.round(baseQuote.subtotal * concreteFactor) + (input.includeIva ? Math.round(baseQuote.subtotal * concreteFactor * 0.19) : 0),
-      marketLow: Math.round(baseQuote.marketLow * concreteFactor),
-      marketHigh: Math.round(baseQuote.marketHigh * concreteFactor),
-    };
-  }, [baseQuote, concreteFactor, input.includeIva]);
+  useEffect(() => {
+    setValues(profile.defaultValues);
+    setAdded(false);
+  }, [profile]);
 
-  const serviceLabel = serviceName || setting.name;
-  const relatedProducts = RELATED_PRODUCTS[setting.slug] ?? [];
-  const update = (patch: Partial<QuoteInput>) => setInput((prev) => ({ ...prev, ...patch }));
-  const whatsappText = `Hola Soluciones Fabrick, calculé un aproximado para ${serviceLabel}. Cantidad: ${quote.quantity.toFixed(2)} ${unitLabel(quote.unit)}. Rango referencial: ${fmt.format(quote.marketLow)} a ${fmt.format(quote.marketHigh)}. Quiero revisión real y cotización final.`;
+  const measurement = useMemo(() => calculateServiceMeasurement(profile, values), [profile, values]);
+  const concreteFactor = slug === 'cimientos' ? CONCRETE_MODE[concreteMode].factor : 1;
+  const priceFactor = measurement.priceFactor * concreteFactor;
+  const subtotal = Math.round(setting.basePrice * measurement.quantity * priceFactor);
+  const materials = Math.round(subtotal * setting.materialsPct);
+  const labor = Math.round(subtotal * setting.laborPct);
+  const logistics = Math.round(subtotal * setting.logisticsPct);
+  const contingency = Math.max(0, subtotal - materials - labor - logistics);
+  const iva = includeIva ? Math.round(subtotal * .19) : 0;
+  const total = subtotal + iva;
+  const marketLow = Math.round(setting.marketMin * measurement.quantity * priceFactor);
+  const marketHigh = Math.round(setting.marketMax * measurement.quantity * priceFactor);
+  const serviceLabel = serviceName || setting.name || profile.title;
+  const inCart = items.some((item) => item.kind === 'service' && (item.id === `service_${profile.id}` || item.meta?.serviceId === profile.id));
+
+  const whatsappText = [
+    `Hola Soluciones Fabrick, calculé un aproximado para ${serviceLabel}.`,
+    `Fórmula: ${measurement.formula}.`,
+    `Medidas: ${measurement.detail}.`,
+    measurement.secondary ? `Resultado dimensional: ${measurement.secondary}.` : '',
+    `Cantidad: ${number(measurement.quantity)} ${profile.unit}.`,
+    `Rango referencial: ${money(marketLow)} a ${money(marketHigh)}.`,
+    'Quiero revisión real y cotización final.',
+  ].filter(Boolean).join('\n');
+
+  function updateValue(key: keyof MeasurementValues, value: number) {
+    setValues((current) => ({ ...current, [key]: Math.max(0, Number(value) || 0) }));
+    setAdded(false);
+  }
+
+  function addToBudget() {
+    addItem({
+      id: `service_${profile.id}`,
+      kind: 'service',
+      title: serviceLabel,
+      description: profile.description,
+      quantity: measurement.quantity,
+      unit: profile.unit,
+      refPrice: measurement.quantity ? total / measurement.quantity : total,
+      notes: 'Cálculo generado en la página individual del servicio',
+      meta: {
+        serviceId: profile.id,
+        category: profile.category,
+        measurement: profile.measurement,
+        marketMinUnit: setting.marketMin * priceFactor,
+        marketMaxUnit: setting.marketMax * priceFactor,
+        marketLow,
+        marketHigh,
+        subtotal,
+        iva,
+        total,
+        length: values.length,
+        width: values.width,
+        height: values.height,
+        quantityInput: values.quantity,
+        formula: `${measurement.formula}: ${measurement.detail}`,
+        secondary: measurement.secondary || '',
+        source,
+      },
+    });
+    setAdded(true);
+  }
 
   return (
-    <section className="rounded-[2rem] border border-yellow-300/20 bg-gradient-to-br from-zinc-950 via-black to-zinc-950 p-5 shadow-[0_24px_80px_rgba(0,0,0,0.35)] md:p-8">
-      <div className="grid gap-6 lg:grid-cols-[0.95fr_1.05fr] lg:items-start">
-        <div>
-          <div className="flex items-center gap-3">
-            <span className="grid h-12 w-12 place-items-center rounded-2xl bg-yellow-300 text-black">
-              <Calculator className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.3em] text-yellow-300">Calculadora aproximada</p>
-              <h2 className="text-2xl font-black text-white md:text-3xl">Calcula por {unitLabel(setting.unit)}</h2>
-            </div>
+    <section className="overflow-hidden rounded-[2rem] bg-[#F8F0E9] text-[#171820] shadow-[0_28px_90px_rgba(0,0,0,.3)]">
+      <div className="bg-[linear-gradient(135deg,#F8F0E9,#DDC7B1)] p-5 md:p-8">
+        <div className="flex items-start justify-between gap-4">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[.26em] text-[#895E3D]">Calculadora aproximada</p>
+            <h2 className="mt-3 text-3xl font-black tracking-[-.05em] md:text-4xl">{serviceLabel}</h2>
+            <p className="mt-3 max-w-2xl text-sm leading-7 text-[#685D55]">Ingresa las dimensiones que corresponden al trabajo. La fórmula y el rango cambian automáticamente según la especialidad.</p>
           </div>
-          <p className="mt-4 text-sm leading-7 text-zinc-400">
-            Ingresa medidas simples para tener una referencia inicial. El precio final se confirma después de revisar medidas, acceso y alcance real.
-          </p>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {(setting.unit === 'm2' || setting.unit === 'm3') ? (
-              <>
-                {numberInput(input.length, (n) => update({ length: n }), 'Largo', 'm')}
-                {numberInput(input.width, (n) => update({ width: n }), 'Ancho', 'm')}
-              </>
-            ) : null}
-            {setting.unit === 'm3' ? numberInput(input.height, (n) => update({ height: n }), setting.slug === 'cimientos' ? 'Espesor / alto' : 'Alto', 'm') : null}
-            {setting.unit === 'ml' ? numberInput(input.linearMeters, (n) => update({ linearMeters: n }), 'Metros lineales', 'ml') : null}
-            {(setting.unit === 'punto' || setting.unit === 'unidad') ? numberInput(input.quantity, (n) => update({ quantity: n }), setting.unit === 'punto' ? 'Cantidad de puntos' : 'Cantidad', setting.unit === 'punto' ? 'pts' : 'u') : null}
-          </div>
-
-          {setting.slug === 'cimientos' ? (
-            <div className="mt-5 rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-              <p className="text-[10px] font-black uppercase tracking-[0.24em] text-yellow-300">Comparativa de hormigón</p>
-              <div className="mt-3 grid gap-3 sm:grid-cols-2">
-                {(['trompo', 'premezclado'] as ConcreteMode[]).map((mode) => (
-                  <button
-                    key={mode}
-                    type="button"
-                    onClick={() => setConcreteMode(mode)}
-                    className={`rounded-2xl border px-4 py-3 text-left transition ${concreteMode === mode ? 'border-yellow-300 bg-yellow-300/12 text-white' : 'border-white/10 bg-black text-zinc-400 hover:border-yellow-300/40'}`}
-                  >
-                    <span className="block text-sm font-black">{CONCRETE_MODE[mode].label}</span>
-                    <span className="mt-1 block text-xs leading-5 text-zinc-500">{CONCRETE_MODE[mode].detail}</span>
-                  </button>
-                ))}
-              </div>
-              <p className="mt-3 text-xs leading-6 text-zinc-500">La malla ACMA, refuerzos especiales, bombeo o despacho fuera de radio se suman aparte si el proyecto los necesita.</p>
-            </div>
-          ) : null}
-
-          <label className="mt-5 flex items-center gap-3 rounded-2xl border border-white/10 bg-white/[0.03] px-4 py-3 text-sm text-zinc-300">
-            <input
-              type="checkbox"
-              checked={input.includeIva}
-              onChange={(e) => update({ includeIva: e.target.checked })}
-              className="h-4 w-4 accent-yellow-300"
-            />
-            Incluir IVA 19% en el resultado aproximado
-          </label>
-        </div>
-
-        <div className="rounded-[1.6rem] border border-white/10 bg-black/70 p-5 md:p-6">
-          <div className="flex items-start justify-between gap-4">
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.26em] text-zinc-500">Referencia inicial</p>
-              <h3 className="mt-2 text-3xl font-black text-yellow-300">{fmt.format(quote.total)}</h3>
-              <p className="mt-1 text-xs text-zinc-500">{quote.quantity.toFixed(2)} {unitLabel(quote.unit)} · {source === 'database' ? 'precio ajustado en admin' : 'precio de referencia'}</p>
-            </div>
-            <span className="rounded-full border border-white/10 bg-white/5 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-zinc-400">
-              {source === 'database' ? 'Admin' : source === 'loading' ? 'Cargando' : 'Referencia'}
-            </span>
-          </div>
-
-          <div className="mt-6 grid gap-3 text-sm">
-            <Row label="Subtotal estimado" value={fmt.format(quote.subtotal)} />
-            <Row label="IVA referencial" value={fmt.format(quote.iva)} />
-            <Row label="Rango de mercado" value={`${fmt.format(quote.marketLow)} – ${fmt.format(quote.marketHigh)}`} highlight />
-          </div>
-
-          <div className="mt-6 grid gap-3 sm:grid-cols-3">
-            <SoftMetric label="Materiales estimados" value="Según alcance" />
-            <SoftMetric label="Ejecución estimada" value="Según dificultad" />
-            <SoftMetric label="Traslado / gestión" value="Según ubicación" />
-          </div>
-
-          <div className="mt-6 rounded-2xl border border-yellow-300/20 bg-yellow-300/8 p-4 text-xs leading-6 text-zinc-300">
-            <div className="mb-2 flex items-center gap-2 font-black uppercase tracking-[0.18em] text-yellow-300">
-              <Info className="h-4 w-4" /> Aviso importante
-            </div>
-            {setting.disclaimer || 'Este valor es aproximado. El precio final requiere revisión de terreno, materiales y condiciones reales.'}
-          </div>
-
-          <a
-            href={buildWhatsAppLink(whatsappText)}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-5 py-4 text-[11px] font-black uppercase tracking-[0.2em] text-black transition hover:bg-white"
-          >
-            Pedir revisión real <Send className="h-4 w-4" />
-          </a>
+          <span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#171820] text-[#CCB196]"><Calculator className="h-5 w-5" /></span>
         </div>
       </div>
 
-      {relatedProducts.length > 0 ? (
-        <div className="mt-6 rounded-[1.6rem] border border-white/10 bg-white/[0.03] p-5">
-          <div className="flex items-center gap-3">
-            <span className="grid h-10 w-10 place-items-center rounded-xl bg-yellow-300/12 text-yellow-300">
-              <PackageSearch className="h-5 w-5" />
-            </span>
-            <div>
-              <p className="text-[10px] font-black uppercase tracking-[0.26em] text-yellow-300">Productos relacionados</p>
-              <p className="text-sm text-zinc-400">Puedes comprar materiales o accesorios si quieres avanzar por etapas.</p>
+      <div className="grid gap-6 p-5 md:p-8 lg:grid-cols-[1fr_.9fr]">
+        <div>
+          <div className="flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-full bg-[#CCB196] text-[#171820]"><Ruler className="h-4 w-4" /></span><div><p className="text-sm font-black">Medidas del servicio</p><p className="mt-1 text-xs text-[#7A6C61]">Usamos {measurement.formula.toLocaleLowerCase('es')}.</p></div></div>
+          <MeasurementFields profile={profile} values={values} onChange={updateValue} />
+
+          {slug === 'cimientos' ? (
+            <div className="mt-5 rounded-[1.4rem] bg-[#EADBCB] p-4">
+              <p className="text-[10px] font-black uppercase tracking-[.2em] text-[#895E3D]">Preparación del hormigón</p>
+              <div className="mt-3 grid gap-2 sm:grid-cols-2">
+                {(Object.keys(CONCRETE_MODE) as ConcreteMode[]).map((mode) => (
+                  <button key={mode} type="button" onClick={() => setConcreteMode(mode)} className={`rounded-2xl p-3 text-left transition ${concreteMode === mode ? 'bg-[#171820] text-[#F8F0E9]' : 'bg-[#F8F0E9] text-[#5F5148]'}`}>
+                    <span className="block text-xs font-black">{CONCRETE_MODE[mode].label}</span>
+                    <span className="mt-1 block text-[10px] leading-4 opacity-65">{CONCRETE_MODE[mode].detail}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-          </div>
-          <div className="mt-4 grid gap-3 md:grid-cols-2">
-            {relatedProducts.map((item) => (
-              <a key={item.title} href={item.href} className="group rounded-2xl border border-white/10 bg-black/45 p-4 transition hover:border-yellow-300/40">
-                <p className="font-black text-white">{item.title}</p>
-                <p className="mt-1 text-sm text-zinc-500">{item.detail}</p>
-                <span className="mt-3 inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[0.2em] text-yellow-300">Ver opciones <Truck className="h-3.5 w-3.5 transition group-hover:translate-x-1" /></span>
-              </a>
-            ))}
-          </div>
+          ) : null}
+
+          <label className="mt-5 flex items-center gap-3 rounded-2xl bg-[#EEE1D5] px-4 py-3 text-sm text-[#554A43]">
+            <input type="checkbox" checked={includeIva} onChange={(event) => setIncludeIva(event.target.checked)} className="h-4 w-4 accent-[#B6906C]" />
+            Incluir IVA 19% en esta referencia
+          </label>
         </div>
-      ) : null}
+
+        <aside className="rounded-[1.7rem] bg-[#171820] p-5 text-white md:p-6">
+          <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[.24em] text-[#CCB196]">Resultado dimensional</p><h3 className="mt-2 text-2xl font-black">{number(measurement.quantity)} {profile.unit}</h3><p className="mt-1 text-xs leading-5 text-white/45">{measurement.detail}</p></div><span className="grid h-11 w-11 place-items-center rounded-full bg-[#CCB196] text-[#171820]"><ReceiptText className="h-4 w-4" /></span></div>
+
+          {measurement.secondary ? <p className="mt-4 rounded-xl bg-white/[.06] px-3 py-2.5 text-xs text-[#E3D3C5]">{measurement.secondary}</p> : null}
+
+          <div className="mt-5 overflow-hidden rounded-[1.5rem] bg-[linear-gradient(135deg,#CCB196,#F8F0E9)] p-5 text-[#171820]">
+            <p className="text-[9px] font-black uppercase tracking-[.18em] text-[#171820]/55">Total aproximado</p>
+            <p className="mt-2 text-3xl font-black tracking-[-.05em]">{money(total)}</p>
+            <div className="mt-4 grid grid-cols-2 gap-3 border-t border-[#171820]/12 pt-4"><ResultCell label="Mercado desde" value={money(marketLow)} /><ResultCell label="Mercado hasta" value={money(marketHigh)} /></div>
+          </div>
+
+          <div className="mt-5 grid gap-2 text-xs">
+            <Row label="Materiales estimados" value={money(materials)} />
+            <Row label="Mano de obra estimada" value={money(labor)} />
+            <Row label="Logística estimada" value={money(logistics)} />
+            <Row label="Contingencia" value={money(contingency)} />
+            <Row label="IVA referencial" value={money(iva)} />
+          </div>
+
+          <div className="mt-5 rounded-2xl bg-white/[.055] p-4 text-xs leading-6 text-[#CFC2B7]"><span className="mb-2 flex items-center gap-2 font-black uppercase tracking-[.16em] text-[#CCB196]"><Info className="h-4 w-4" /> Antes de confirmar</span>{setting.disclaimer || profile.disclaimer}</div>
+
+          <button type="button" onClick={addToBudget} className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#CCB196] px-5 text-sm font-black text-[#171820] transition hover:bg-[#F8F0E9]"><ShoppingCart className="h-4 w-4" /> {added || inCart ? 'Actualizar en mi presupuesto' : 'Añadir a mi presupuesto'}</button>
+          <Link href="/presupuesto" className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white/[.07] px-5 text-xs font-black text-white transition hover:bg-white/[.12]">Abrir carrito de servicios</Link>
+          <a href={buildWhatsAppLink(whatsappText)} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl border border-[#CCB196]/22 px-5 text-xs font-black text-[#E5CFBA] transition hover:bg-[#CCB196] hover:text-[#171820]">Revisar este cálculo <Send className="h-4 w-4" /></a>
+          <p className="mt-3 text-center text-[10px] text-white/32">{source === 'database' ? 'Valores ajustados desde administración.' : source === 'loading' ? 'Cargando referencia comercial…' : 'Valores referenciales del sistema.'}</p>
+        </aside>
+      </div>
     </section>
   );
 }
 
-function Row({ label, value, highlight = false }: { label: string; value: string; highlight?: boolean }) {
-  return (
-    <div className="flex items-center justify-between gap-4 rounded-xl border border-white/8 bg-white/[0.025] px-4 py-3">
-      <span className="text-zinc-500">{label}</span>
-      <span className={highlight ? 'font-black text-yellow-300' : 'font-bold text-white'}>{value}</span>
-    </div>
-  );
+function MeasurementFields({ profile, values, onChange }: { profile: ReturnType<typeof getBudgetService>; values: MeasurementValues; onChange: (key: keyof MeasurementValues, value: number) => void }) {
+  if (profile.measurement === 'count') return <div className="mt-5"><QuantityField value={values.quantity} onChange={(value) => onChange('quantity', value)} suffix={profile.unit === 'punto' ? 'puntos' : 'unidades'} /></div>;
+  if (profile.measurement === 'linear') return <div className="mt-5"><NumberField label="Largo total" value={values.length} onChange={(value) => onChange('length', value)} suffix="m" /></div>;
+
+  const fields: Array<{ key: keyof MeasurementValues; label: string }> = [];
+  if (profile.measurement === 'floor') fields.push({ key: 'length', label: 'Largo' }, { key: 'width', label: 'Ancho' });
+  if (profile.measurement === 'wall') fields.push({ key: 'length', label: 'Largo del muro' }, { key: 'height', label: 'Alto del muro' });
+  if (profile.measurement === 'room-walls') fields.push({ key: 'length', label: 'Largo del recinto' }, { key: 'width', label: 'Ancho del recinto' }, { key: 'height', label: 'Alto de los muros' });
+  if (profile.measurement === 'slab') fields.push({ key: 'length', label: 'Largo' }, { key: 'width', label: 'Ancho' }, { key: 'height', label: 'Espesor' });
+  if (profile.measurement === 'volume') fields.push({ key: 'length', label: 'Largo' }, { key: 'width', label: 'Ancho' }, { key: 'height', label: 'Profundidad / alto' });
+  return <div className="mt-5 grid gap-4 sm:grid-cols-2">{fields.map((field) => <NumberField key={field.key} label={field.label} value={values[field.key]} onChange={(value) => onChange(field.key, value)} suffix="m" />)}</div>;
 }
 
-function SoftMetric({ label, value }: { label: string; value: string }) {
-  return (
-    <div className="rounded-2xl border border-white/8 bg-white/[0.025] p-3">
-      <p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</p>
-      <p className="mt-1 text-xs font-bold text-zinc-300">{value}</p>
-    </div>
-  );
+function NumberField({ label, value, onChange, suffix }: { label: string; value: number; onChange: (value: number) => void; suffix: string }) {
+  return <label><span className="text-[10px] font-black uppercase tracking-[.16em] text-[#806E61]">{label}</span><div className="mt-2 flex items-end gap-3 rounded-[1.25rem] bg-[#EADBCB] px-4 py-3 focus-within:ring-2 focus-within:ring-[#B6906C]/40"><input type="number" min="0" step="0.01" inputMode="decimal" value={value || ''} onChange={(event) => onChange(Math.max(0, Number(event.target.value) || 0))} className="min-w-0 flex-1 bg-transparent text-3xl font-black tracking-[-.05em] outline-none" /><b className="mb-1 text-xs text-[#895E3D]">{suffix}</b></div></label>;
+}
+
+function QuantityField({ value, onChange, suffix }: { value: number; onChange: (value: number) => void; suffix: string }) {
+  return <div><span className="text-[10px] font-black uppercase tracking-[.16em] text-[#806E61]">Cantidad</span><div className="mt-2 grid grid-cols-[52px_1fr_52px] items-center gap-2 rounded-[1.25rem] bg-[#EADBCB] p-2"><button type="button" onClick={() => onChange(Math.max(1, value - 1))} className="grid h-12 w-12 place-items-center rounded-full bg-white shadow-sm"><Minus className="h-4 w-4" /></button><div className="text-center"><input type="number" min="1" inputMode="numeric" value={value || ''} onChange={(event) => onChange(Math.max(1, Number(event.target.value) || 1))} className="w-full bg-transparent text-center text-3xl font-black outline-none" /><span className="text-[10px] font-bold uppercase tracking-[.13em] text-[#895E3D]">{suffix}</span></div><button type="button" onClick={() => onChange(value + 1)} className="grid h-12 w-12 place-items-center rounded-full bg-[#171820] text-[#CCB196] shadow-sm"><Plus className="h-4 w-4" /></button></div></div>;
+}
+
+function ResultCell({ label, value }: { label: string; value: string }) {
+  return <div><span className="text-[9px] font-black uppercase tracking-[.14em] text-[#171820]/50">{label}</span><b className="mt-1 block text-sm">{value}</b></div>;
+}
+
+function Row({ label, value }: { label: string; value: string }) {
+  return <div className="flex items-center justify-between gap-4 rounded-xl bg-white/[.045] px-4 py-3"><span className="text-white/45">{label}</span><b>{value}</b></div>;
 }

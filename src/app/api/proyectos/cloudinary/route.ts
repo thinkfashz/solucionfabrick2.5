@@ -1,160 +1,196 @@
-import { NextResponse } from 'next/server';
-import type { NextRequest } from 'next/server';
+import { createHash } from 'node:crypto';
+import { NextResponse, type NextRequest } from 'next/server';
 import { getCloudinaryCredentials } from '@/lib/cloudinaryCredentials';
+import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import {
+  DEFAULT_INSPIRATIONS_FOLDER,
+  cleanFolder,
+  cleanNumber,
+  cleanSlug,
+  cleanText,
+  contextString,
+  loadInspirationCatalog,
+  normalizeInspirationAsset,
+  tagString,
+  type CloudinaryResource,
+  type InspirationMetadataPayload,
+} from '@/lib/inspirationCatalog';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const DEFAULT_FOLDER = process.env.CLOUDINARY_PROJECTS_FOLDER || 'fabrick';
-const FALLBACK_CLOUD_NAME = process.env.NEXT_PUBLIC_CLOUDINARY_CLOUD_NAME || process.env.CLOUDINARY_CLOUD_NAME || 'disghf6xc';
+const MAX_UPLOAD_BYTES = 12 * 1024 * 1024;
 
-const CATEGORY_MAP = [
-  { key: 'cocinas', label: 'Cocinas', words: ['cocina', 'kitchen', 'meson', 'mueble-cocina'] },
-  { key: 'banos', label: 'Baños', words: ['bano', 'baño', 'bath', 'ducha', 'wc'] },
-  { key: 'puertas', label: 'Puertas', words: ['puerta', 'door', 'porton'] },
-  { key: 'materiales', label: 'Materiales', words: ['material', 'madera', 'piso', 'ceramica', 'metalcon', 'melamina', 'marmol', 'porcelanato'] },
-  { key: 'remodelacion', label: 'Remodelación', words: ['remodel', 'antes', 'despues', 'renova', 'obra'] },
-  { key: 'terrazas', label: 'Terrazas', words: ['terraza', 'deck', 'patio', 'quincho'] },
-  { key: 'muebles', label: 'Muebles', words: ['mueble', 'closet', 'rack', 'vanitorio', 'repisas'] },
-  { key: 'aire', label: 'Aire acondicionado', words: ['aire', 'ac', 'split', 'clima', 'condensador'] },
-];
-
-type CloudinaryContext = { custom?: Record<string, string> } | Record<string, string> | string | null | undefined;
-
-type CloudinaryResource = {
-  public_id: string;
-  secure_url: string;
-  format?: string;
-  bytes?: number;
-  created_at?: string;
-  width?: number;
-  height?: number;
-  tags?: string[];
-  context?: CloudinaryContext;
-  folder?: string;
-};
-
-function cleanFolder(input: string | null) {
-  const value = (input || DEFAULT_FOLDER).replace(/[^a-zA-Z0-9_/-]/g, '').slice(0, 120);
-  return value || DEFAULT_FOLDER;
+function signParams(params: Record<string, string | number | boolean>, secret: string) {
+  const base = Object.entries(params)
+    .filter(([, value]) => value !== '' && value !== undefined)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join('&');
+  return createHash('sha1').update(`${base}${secret}`).digest('hex');
 }
 
-function cloudinaryTransform(url: string, transform: string) {
-  if (!url.includes('/upload/')) return url;
-  return url.replace('/upload/', `/upload/${transform}/`);
+async function requireAdmin(request: NextRequest) {
+  const cookie = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  if (!cookie) return null;
+  return decodeSession(cookie);
 }
 
-function normalize(value: string) {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
-}
-
-function contextRecord(context: CloudinaryContext): Record<string, string> {
-  if (!context || typeof context === 'string') return {};
-  if ('custom' in context && context.custom && typeof context.custom === 'object') return context.custom;
-  return context as Record<string, string>;
-}
-
-function inferCategory(resource: CloudinaryResource) {
-  const context = contextRecord(resource.context);
-  const haystack = normalize([
-    resource.public_id,
-    resource.folder || '',
-    ...(resource.tags || []),
-    ...Object.values(context),
-  ].join(' '));
-  return CATEGORY_MAP.find((cat) => cat.words.some((word) => haystack.includes(normalize(word))))?.key || 'ideas';
-}
-
-function titleFromPublicId(publicId: string) {
-  const last = publicId.split('/').pop() || publicId;
-  return last.replace(/[-_]+/g, ' ').replace(/\b\w/g, (c) => c.toUpperCase()).slice(0, 80);
-}
-
-function fallbackAssets() {
-  const cloud = FALLBACK_CLOUD_NAME;
-  const base = `https://res.cloudinary.com/${cloud}/image/upload`;
-  const ids = [
-    'fabrick/general/oiol0ydk8yc48f8p6iza',
-    'fabrick/general/oiol0ydk8yc48f8p6iza',
-  ];
-  return ids.map((id, index) => ({
-    id,
-    public_id: id,
-    title: index === 0 ? 'Inspiración Soluciones Fabrick' : 'Materiales y remodelación',
-    category: index === 0 ? 'remodelacion' : 'materiales',
-    url: `${base}/f_auto,q_auto,w_1200/${id}.png`,
-    thumb: `${base}/f_auto,q_auto,w_680/${id}.png`,
-    width: 1200,
-    height: 900,
-    tags: ['demo'],
-    created_at: new Date().toISOString(),
-    fallback: true,
-  }));
+function payloadFromForm(form: FormData, fileName: string): InspirationMetadataPayload {
+  const album = cleanSlug(cleanText(form.get('album'), 80), 'general');
+  return {
+    title: cleanText(form.get('title'), 120) || fileName.replace(/\.[^.]+$/, ''),
+    description: cleanText(form.get('description'), 900),
+    alt: cleanText(form.get('alt'), 180),
+    category: cleanSlug(cleanText(form.get('category'), 80), 'ideas'),
+    album,
+    albumTitle: cleanText(form.get('albumTitle'), 120) || album,
+    albumDescription: cleanText(form.get('albumDescription'), 900),
+    hashtags: cleanText(form.get('hashtags'), 500).split(/[\s,]+/).filter(Boolean),
+    albumHashtags: cleanText(form.get('albumHashtags'), 500).split(/[\s,]+/).filter(Boolean),
+    albumKeywords: cleanText(form.get('albumKeywords'), 900).split(/[,\n]+/).map((value) => value.trim()).filter(Boolean),
+    primaryKeyword: cleanText(form.get('primaryKeyword'), 100),
+    seoTitle: cleanText(form.get('seoTitle'), 70),
+    seoDescription: cleanText(form.get('seoDescription'), 180),
+    imageSearchCaption: cleanText(form.get('imageSearchCaption'), 240),
+    interestScore: cleanNumber(form.get('interestScore'), 0, 5),
+    interestLabel: cleanText(form.get('interestLabel'), 40),
+    organizationSummary: cleanText(form.get('organizationSummary'), 500),
+    sortOrder: cleanNumber(form.get('sortOrder'), 0),
+    albumCover: String(form.get('albumCover') || '') === 'true',
+  };
 }
 
 export async function GET(request: NextRequest) {
   const url = new URL(request.url);
-  const folder = cleanFolder(url.searchParams.get('folder'));
-  const maxResults = Math.min(Math.max(Number(url.searchParams.get('max') || '80'), 12), 100);
-  const nextCursor = url.searchParams.get('next_cursor') || '';
+  const catalog = await loadInspirationCatalog({
+    folder: url.searchParams.get('folder') || DEFAULT_INSPIRATIONS_FOLDER,
+    maxResults: Number(url.searchParams.get('max') || '100'),
+    nextCursor: url.searchParams.get('next_cursor') || undefined,
+  });
 
-  const creds = await getCloudinaryCredentials({ preferDb: true });
-  if (!creds.ready) {
-    return NextResponse.json({
-      assets: fallbackAssets(),
-      categories: [{ key: 'ideas', label: 'Ideas' }, ...CATEGORY_MAP.map(({ key, label }) => ({ key, label }))],
-      source: 'fallback',
-      warning: 'Cloudinary no está configurado. Agrega CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY y CLOUDINARY_API_SECRET o configura la integración en admin.',
-      missing: creds.missing,
-    }, { headers: { 'Cache-Control': 's-maxage=60, stale-while-revalidate=300' } });
+  return NextResponse.json({
+    assets: catalog.assets,
+    albums: catalog.albums,
+    categories: catalog.categories,
+    next_cursor: catalog.nextCursor,
+    source: catalog.source,
+    folder: catalog.folder,
+    ...(catalog.warning ? { warning: catalog.warning } : {}),
+    ...(catalog.error ? { error: catalog.error } : {}),
+  });
+}
+
+export async function POST(request: NextRequest) {
+  const session = await requireAdmin(request);
+  if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
+  const credentials = await getCloudinaryCredentials({ preferDb: true });
+  if (!credentials.ready) {
+    return NextResponse.json({ error: 'Cloudinary no está configurado', missing: credentials.missing }, { status: 503 });
   }
 
   try {
-    const apiUrl = new URL(`https://api.cloudinary.com/v1_1/${encodeURIComponent(creds.cloudName)}/resources/image/upload`);
-    apiUrl.searchParams.set('max_results', String(maxResults));
-    apiUrl.searchParams.set('prefix', folder);
-    apiUrl.searchParams.set('tags', 'true');
-    apiUrl.searchParams.set('context', 'true');
-    if (nextCursor) apiUrl.searchParams.set('next_cursor', nextCursor);
+    const form = await request.formData();
+    const file = form.get('file');
+    if (!(file instanceof File)) return NextResponse.json({ error: 'Selecciona una imagen válida.' }, { status: 400 });
+    if (!file.type.startsWith('image/')) return NextResponse.json({ error: 'Solo se permiten imágenes.' }, { status: 400 });
+    if (file.size > MAX_UPLOAD_BYTES) return NextResponse.json({ error: 'La imagen supera el máximo de 12 MB.' }, { status: 413 });
 
-    const auth = Buffer.from(`${creds.apiKey}:${creds.apiSecret}`).toString('base64');
-    const res = await fetch(apiUrl.toString(), { headers: { Authorization: `Basic ${auth}` }, next: { revalidate: 300 } });
-    if (!res.ok) {
-      const body = await res.text().catch(() => '');
-      return NextResponse.json({ assets: fallbackAssets(), source: 'fallback', error: `Cloudinary API error ${res.status}: ${body}` }, { status: 200 });
+    const payload = payloadFromForm(form, file.name);
+    const folder = cleanFolder(`${DEFAULT_INSPIRATIONS_FOLDER}/${cleanSlug(payload.album, 'general')}`);
+    const timestamp = Math.floor(Date.now() / 1000);
+    const context = contextString(payload);
+    const tags = tagString(payload);
+    const params = { folder, timestamp, context, tags };
+
+    const upload = new FormData();
+    upload.set('file', file);
+    upload.set('api_key', credentials.apiKey);
+    upload.set('timestamp', String(timestamp));
+    upload.set('folder', folder);
+    upload.set('context', context);
+    upload.set('tags', tags);
+    upload.set('signature', signParams(params, credentials.apiSecret));
+
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(credentials.cloudName)}/image/upload`, {
+      method: 'POST',
+      body: upload,
+    });
+    const json = await response.json().catch(() => ({})) as CloudinaryResource & { error?: { message?: string } };
+    if (!response.ok || !json.secure_url) {
+      return NextResponse.json({ error: json.error?.message || `Cloudinary upload error ${response.status}` }, { status: 502 });
     }
 
-    const json = await res.json() as { resources?: CloudinaryResource[]; next_cursor?: string };
-    const assets = (json.resources || [])
-      .filter((item) => item.secure_url)
-      .map((item) => {
-        const category = inferCategory(item);
-        const context = contextRecord(item.context);
-        const title = context.caption || context.title || context.alt || titleFromPublicId(item.public_id);
-        return {
-          id: item.public_id,
-          public_id: item.public_id,
-          title,
-          category,
-          url: cloudinaryTransform(item.secure_url, 'f_auto,q_auto,w_1400'),
-          thumb: cloudinaryTransform(item.secure_url, 'f_auto,q_auto,w_720'),
-          width: item.width || 1200,
-          height: item.height || 900,
-          format: item.format || '',
-          tags: item.tags || [],
-          created_at: item.created_at || '',
-          folder,
-        };
-      });
+    return NextResponse.json({ ok: true, asset: normalizeInspirationAsset(json), uploadedBy: session.email || 'admin' }, { status: 201 });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo subir la imagen.' }, { status: 500 });
+  }
+}
 
-    return NextResponse.json({
-      assets: assets.length ? assets : fallbackAssets(),
-      categories: [{ key: 'ideas', label: 'Ideas' }, ...CATEGORY_MAP.map(({ key, label }) => ({ key, label }))],
-      next_cursor: json.next_cursor || null,
-      source: assets.length ? 'cloudinary' : 'fallback',
-      folder,
-    }, { headers: { 'Cache-Control': 's-maxage=300, stale-while-revalidate=900' } });
-  } catch (err) {
-    return NextResponse.json({ assets: fallbackAssets(), source: 'fallback', error: (err as Error).message }, { status: 200 });
+export async function PATCH(request: NextRequest) {
+  const session = await requireAdmin(request);
+  if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
+  const credentials = await getCloudinaryCredentials({ preferDb: true });
+  if (!credentials.ready) return NextResponse.json({ error: 'Cloudinary no está configurado' }, { status: 503 });
+
+  try {
+    const payload = await request.json() as InspirationMetadataPayload;
+    if (!payload.public_id) return NextResponse.json({ error: 'Falta public_id' }, { status: 400 });
+
+    const body = new URLSearchParams();
+    body.set('context', contextString(payload));
+    body.set('tags', tagString(payload));
+    const authorization = Buffer.from(`${credentials.apiKey}:${credentials.apiSecret}`).toString('base64');
+    const response = await fetch(
+      `https://api.cloudinary.com/v1_1/${encodeURIComponent(credentials.cloudName)}/resources/image/upload/${encodeURIComponent(payload.public_id)}`,
+      {
+        method: 'POST',
+        headers: { Authorization: `Basic ${authorization}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+        body,
+      },
+    );
+    const json = await response.json().catch(() => ({})) as CloudinaryResource & { error?: { message?: string } };
+    if (!response.ok) {
+      return NextResponse.json({ error: json.error?.message || `Cloudinary metadata error ${response.status}` }, { status: 502 });
+    }
+    return NextResponse.json({ ok: true, asset: json.secure_url ? normalizeInspirationAsset(json) : null });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo actualizar la metadata.' }, { status: 500 });
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const session = await requireAdmin(request);
+  if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
+  const credentials = await getCloudinaryCredentials({ preferDb: true });
+  if (!credentials.ready) return NextResponse.json({ error: 'Cloudinary no está configurado' }, { status: 503 });
+
+  try {
+    const publicId = cleanText(new URL(request.url).searchParams.get('public_id'), 300);
+    if (!publicId) return NextResponse.json({ error: 'Falta public_id' }, { status: 400 });
+    const timestamp = Math.floor(Date.now() / 1000);
+    const params = { public_id: publicId, timestamp, invalidate: true };
+    const body = new URLSearchParams({
+      public_id: publicId,
+      timestamp: String(timestamp),
+      invalidate: 'true',
+      api_key: credentials.apiKey,
+      signature: signParams(params, credentials.apiSecret),
+    });
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(credentials.cloudName)}/image/destroy`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+      body,
+    });
+    const json = await response.json().catch(() => ({})) as { result?: string; error?: { message?: string } };
+    if (!response.ok || (json.result !== 'ok' && json.result !== 'not found')) {
+      return NextResponse.json({ error: json.error?.message || 'No se pudo eliminar la imagen.' }, { status: 502 });
+    }
+    return NextResponse.json({ ok: true, result: json.result });
+  } catch (error) {
+    return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo eliminar la imagen.' }, { status: 500 });
   }
 }

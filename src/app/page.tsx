@@ -1,4 +1,5 @@
 export const dynamic = 'force-dynamic';
+
 import { headers } from 'next/headers';
 import Navbar from '@/components/Navbar';
 import ConstructionM2Calculator from '@/components/landing/ConstructionM2Calculator';
@@ -16,29 +17,46 @@ export default async function Home() {
     instagram: settings.social_instagram,
     tiktok: settings.social_tiktok,
   };
+
   const jsonLd = {
     '@context': 'https://schema.org',
-    '@type': 'LocalBusiness',
+    '@type': 'HomeAndConstructionBusiness',
     name: 'Soluciones Fabrick',
-    description: 'Soluciones para construcción, remodelación, equipamiento y mejoras del hogar en Chile.',
+    description: 'Construcción, remodelación e instalaciones con calculadoras por especialidad, alcance definido y evaluación técnica.',
     url: 'https://www.solucionesfabrick.com',
     logo: 'https://www.solucionesfabrick.com/brand/soluciones-fabrick.svg',
     image: 'https://www.solucionesfabrick.com/brand/soluciones-fabrick-social.png',
-    address: { '@type': 'PostalAddress', addressLocality: 'Linares', addressRegion: 'Maule', addressCountry: 'CL' },
-    areaServed: ['Maule', 'Santiago', 'Chile'],
+    address: {
+      '@type': 'PostalAddress',
+      addressLocality: 'Linares',
+      addressRegion: 'Maule',
+      addressCountry: 'CL',
+    },
+    areaServed: ['Región del Maule', 'Santiago', 'Chile'],
     priceRange: '$$',
     openingHours: 'Mo-Fr 08:00-18:00',
-    serviceType: ['Remodelación residencial', 'Mejoras del hogar', 'Estructura Metalcon', 'Gasfitería', 'Instalación eléctrica', 'Equipamiento del hogar'],
+    serviceType: [
+      'Construcción de viviendas',
+      'Ampliaciones',
+      'Remodelación integral',
+      'Radier y obra base',
+      'Techumbre',
+      'Gasfitería',
+      'Electricidad domiciliaria',
+      'Climatización',
+    ],
   };
 
   return (
     <>
       <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <div className="min-h-screen overflow-x-hidden bg-[#050403] pb-[calc(6rem+env(safe-area-inset-bottom))] selection:bg-yellow-300 selection:text-black md:pb-0">
+      <div className="min-h-screen overflow-x-hidden bg-[#171820] pb-[calc(6rem+env(safe-area-inset-bottom))] selection:bg-[#CCB196] selection:text-[#171820] md:pb-0">
         <Navbar />
-        <StaticConstructionHero coverUrl={settings.hero_cover_url || undefined} />
-        <ConstructionM2Calculator />
-        <LandingSections copyrightText={copyrightText} socialLinks={socialLinks} />
+        <main>
+          <StaticConstructionHero coverUrl={settings.hero_cover_url || undefined} />
+          <ConstructionM2Calculator />
+          <LandingSections copyrightText={copyrightText} socialLinks={socialLinks} />
+        </main>
         <StoreBottomNav />
       </div>
     </>

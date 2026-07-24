@@ -1,20 +1,20 @@
 import type { Metadata } from 'next';
 import Navbar from '@/components/Navbar';
-import UniversalServiceCalculator from '@/components/presupuesto/UniversalServiceCalculator';
+import ServiceBudgetShop from '@/components/presupuesto/ServiceBudgetShop';
 import { StoreBottomNav } from '@/components/store/StorefrontChrome';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export const metadata: Metadata = {
-  title: 'Presupuesto guiado de construcción y hogar | Soluciones Fabrick',
+  title: 'Calculadoras y carrito de servicios | Soluciones Fabrick',
   description:
-    'Recorre un presupuesto guiado para construcción, remodelación, instalaciones y terminaciones. Obtén un rango orientativo y solicita tu cotización real en Maule.',
+    'Calcula cada especialidad por largo, ancho, alto, volumen, metros lineales o unidades. Añade servicios al carrito y envía el rango total por WhatsApp.',
   keywords: [
     'presupuesto construcción Linares',
     'cotización remodelación Maule',
-    'calculadora de servicios hogar',
-    'instalación aire acondicionado Linares',
+    'carrito de servicios construcción',
+    'calculadora metros cuadrados construcción',
     'precio construcción por m2 Chile',
   ],
   alternates: { canonical: 'https://www.solucionesfabrick.com/presupuesto' },
@@ -22,9 +22,9 @@ export const metadata: Metadata = {
 
 export default function PresupuestoPage() {
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#070706] pb-[calc(6rem+env(safe-area-inset-bottom))] text-white sm:pb-0">
+    <main className="min-h-screen overflow-x-hidden bg-[#171820] pb-[calc(6rem+env(safe-area-inset-bottom))] text-[#F8F0E9] sm:pb-0">
       <Navbar />
-      <UniversalServiceCalculator />
+      <ServiceBudgetShop />
       <StoreBottomNav />
     </main>
   );

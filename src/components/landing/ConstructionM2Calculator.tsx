@@ -1,70 +1,182 @@
 'use client';
 
-import { type FormEvent, useMemo, useState } from 'react';
-import { AirVent, ArrowRight, Check, ChevronDown, CircleCheck, ClipboardList, Fence, Hammer, Home, HousePlug, Info, Layers3, PackageCheck, PaintRoller, Ruler, Send, ShieldCheck, Sparkles, TentTree, type LucideIcon } from 'lucide-react';
+import Link from 'next/link';
+import { useMemo, useState } from 'react';
+import {
+  ArrowRight,
+  Bot,
+  Check,
+  CircleDollarSign,
+  Info,
+  MessageCircle,
+  Minus,
+  Plus,
+  ReceiptText,
+  Ruler,
+  Sparkles,
+} from 'lucide-react';
+import {
+  BUDGET_SERVICES,
+  calculateServiceMeasurement,
+  type BudgetService,
+  type MeasurementValues,
+} from '@/components/presupuesto/serviceCatalog';
 
-type Unit = 'm2' | 'ml' | 'unidad' | 'punto';
-type Group = 'Kits y casas' | 'Instalaciones' | 'Exterior y perímetro';
-type Service = { id: string; name: string; short: string; group: Group; unit: Unit; low: number; high: number; defaultQuantity: number; icon: LucideIcon; summary: string; includes: string[]; note: string };
-
-const SERVICES: Service[] = [
-  { id: 'kit-basico', name: 'Kit prefabricado básico', short: 'Kit básico', group: 'Kits y casas', unit: 'm2', low: 160000, high: 230000, defaultQuantity: 36, icon: PackageCheck, summary: 'La base para construir y avanzar por etapas.', includes: ['Paneles interiores y exteriores forrados por una cara', 'Cerchas en madera o Metalcon según definición', 'Zinc 0,35 mm, costaneras y estructura principal'], note: 'No incluye fundaciones, montaje, traslado, ventanas, puertas ni instalaciones.' },
-  { id: 'kit-avanzado', name: 'Kit prefabricado avanzado', short: 'Kit avanzado', group: 'Kits y casas', unit: 'm2', low: 320000, high: 460000, defaultQuantity: 54, icon: Layers3, summary: 'Una base más completa para reducir trabajos posteriores.', includes: ['Todo lo incluido en el kit básico', 'Ventanas estándar y puertas interiores', 'Forro interior, puerta principal y salida de emergencia', 'Puntos eléctricos básicos y cielos considerados'], note: 'No incluye fundaciones, fosa, conexiones exteriores, pisos ni pintura.' },
-  { id: 'llave-en-mano', name: 'Casa llave en mano estándar', short: 'Llave en mano', group: 'Kits y casas', unit: 'm2', low: 540000, high: 780000, defaultQuantity: 72, icon: Home, summary: 'Vivienda terminada con estándar acordado y redes interiores listas.', includes: ['Todo lo incluido en el kit avanzado', 'Cerámica o porcelanato de marca acordada', 'Dos capas de pintura', 'Conexión sanitaria y agua potable listas para conectar'], note: 'No incluye fosa séptica, pozo de agua, empalmes exteriores, permisos ni obras de terreno.' },
-  { id: 'montaje-kit', name: 'Instalación de kit prefabricado', short: 'Montaje de kit', group: 'Instalaciones', unit: 'm2', low: 45000, high: 75000, defaultQuantity: 36, icon: Hammer, summary: 'Montaje técnico de estructura y componentes definidos del kit.', includes: ['Revisión previa del kit y área de montaje', 'Armado de estructura según alcance', 'Fijaciones y orden de trabajo base'], note: 'Altura, acceso, fundación disponible y modelo cambian el valor final.' },
-  { id: 'fosa-septica', name: 'Instalación de fosa séptica', short: 'Fosa séptica', group: 'Instalaciones', unit: 'unidad', low: 900000, high: 1800000, defaultQuantity: 1, icon: ShieldCheck, summary: 'Solución sanitaria exterior según terreno y capacidad.', includes: ['Revisión técnica inicial', 'Excavación y nivelación según alcance', 'Instalación y conexión definida en cotización'], note: 'Capacidad, terreno, distancia, permisos y disposición final se confirman antes de iniciar.' },
-  { id: 'siding', name: 'Instalación de revestimiento siding', short: 'Revestimiento siding', group: 'Instalaciones', unit: 'm2', low: 35000, high: 65000, defaultQuantity: 30, icon: PaintRoller, summary: 'Fachada renovada, protegida y con una terminación clara.', includes: ['Revisión de superficie existente', 'Fijación e instalación de siding', 'Remates estándar definidos en el alcance'], note: 'Aislación, humedad, retiro previo, altura y reparaciones se revisan en terreno.' },
-  { id: 'techumbre', name: 'Instalación o renovación de techumbre', short: 'Techumbre', group: 'Instalaciones', unit: 'm2', low: 55000, high: 95000, defaultQuantity: 45, icon: HousePlug, summary: 'Cubierta y protección para el área que necesitas intervenir.', includes: ['Evaluación de estructura existente', 'Cubierta y fijaciones según propuesta', 'Remates básicos del área intervenida'], note: 'Canaletas, aislación, reparación estructural, altura y acceso se revisan aparte.' },
-  { id: 'aire', name: 'Instalación de aire acondicionado', short: 'Aire acondicionado', group: 'Instalaciones', unit: 'unidad', low: 130000, high: 240000, defaultQuantity: 1, icon: AirVent, summary: 'Instalación profesional para un equipo split con recorrido estándar.', includes: ['Montaje de unidad interior y exterior', 'Tubería y cableado en recorrido estándar', 'Prueba básica de funcionamiento'], note: 'Equipo, metros extra, altura, canaleta y obras eléctricas se validan en visita.' },
-  { id: 'electricidad', name: 'Instalación eléctrica domiciliaria', short: 'Electricidad domiciliaria', group: 'Instalaciones', unit: 'punto', low: 35000, high: 85000, defaultQuantity: 8, icon: HousePlug, summary: 'Puntos eléctricos para habilitar y ordenar tus espacios.', includes: ['Puntos considerados en propuesta', 'Canalización y accesorios estándar', 'Pruebas básicas de operación'], note: 'Tablero, aumento de carga, distancias, muros y certificaciones se revisan aparte.' },
-  { id: 'cierre', name: 'Cierre perimetral', short: 'Cierre perimetral', group: 'Exterior y perímetro', unit: 'ml', low: 45000, high: 90000, defaultQuantity: 20, icon: Fence, summary: 'Delimitación y protección según el trazado de tu terreno.', includes: ['Trazado del tramo a intervenir', 'Postes y estructura según propuesta', 'Instalación del cierre definido'], note: 'Portones, desniveles, tipo de suelo y material final se confirman al evaluar el lugar.' },
-];
-
-const GROUPS: Group[] = ['Kits y casas', 'Instalaciones', 'Exterior y perímetro'];
-const PRESETS = [{ label: 'Cabaña', value: 15, icon: TentTree }, { label: 'Compacta', value: 36, icon: Home }, { label: 'Familiar', value: 54, icon: Home }, { label: 'Ampliada', value: 72, icon: Home }];
-const money = (value: number) => new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Math.round(value || 0));
-const unitLabel = (unit: Unit) => ({ m2: 'm²', ml: 'metro lineal', unidad: 'unidad', punto: 'punto' }[unit]);
-const quantityLabel = (unit: Unit) => unit === 'm2' ? 'Superficie a intervenir' : unit === 'ml' ? 'Metros lineales' : unit === 'punto' ? 'Cantidad de puntos' : 'Cantidad de unidades';
+const FEATURED_IDS = ['llave-mano', 'kit-basico', 'ampliaciones', 'radier', 'techumbre', 'gasfiteria', 'electricidad', 'aire', 'cierre'];
+const SERVICES = FEATURED_IDS.map((id) => BUDGET_SERVICES.find((service) => service.id === id)).filter(Boolean) as BudgetService[];
+const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
+const NUMBER = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
+const money = (value: number) => CLP.format(Math.round(value || 0));
+const number = (value: number) => NUMBER.format(value || 0);
 
 export default function ConstructionM2Calculator() {
-  const [serviceId, setServiceId] = useState('kit-basico');
-  const [showServices, setShowServices] = useState(false);
-  const [step, setStep] = useState<1 | 2 | 3>(1);
-  const [quantity, setQuantity] = useState(36);
-  const [customer, setCustomer] = useState({ name: '', phone: '', place: '', detail: '' });
-  const [sent, setSent] = useState(false);
-  const service = SERVICES.find((item) => item.id === serviceId) ?? SERVICES[0];
+  const [serviceId, setServiceId] = useState(SERVICES[0].id);
+  const [values, setValues] = useState<MeasurementValues>(SERVICES[0].defaultValues);
+  const service = SERVICES.find((item) => item.id === serviceId) || SERVICES[0];
   const Icon = service.icon;
-  const cleanQuantity = Math.max(service.unit === 'unidad' ? 1 : 0, Math.min(5000, Number(quantity) || 0));
-  const low = cleanQuantity * service.low;
-  const high = cleanQuantity * service.high;
-  const average = (low + high) / 2;
-  const message = useMemo(() => [
-    'Hola Soluciones Fabrick, quiero una cotización real.', '', `Servicio: ${service.name}`, `${quantityLabel(service.unit)}: ${cleanQuantity} ${unitLabel(service.unit)}`, `Rango referencial mostrado: ${money(low)} a ${money(high)}`,
-    customer.name && `Nombre: ${customer.name}`, customer.phone && `Teléfono: ${customer.phone}`, customer.place && `Comuna / ubicación: ${customer.place}`, customer.detail && `Detalle: ${customer.detail}`, '', 'Entiendo que es una referencia y quiero validar alcance, visita y precio final.',
-  ].filter(Boolean).join('\n'), [cleanQuantity, customer, high, low, service]);
-  const choose = (next: Service) => { setServiceId(next.id); setQuantity(next.defaultQuantity); setShowServices(false); setSent(false); };
-  const submit = (event: FormEvent<HTMLFormElement>) => { event.preventDefault(); setSent(true); window.open(`https://wa.me/56930121625?text=${encodeURIComponent(message)}`, '_blank', 'noopener,noreferrer'); };
+  const measurement = useMemo(() => calculateServiceMeasurement(service, values), [service, values]);
+  const low = measurement.quantity * service.marketMin * measurement.priceFactor;
+  const high = measurement.quantity * service.marketMax * measurement.priceFactor;
+  const average = Math.round((low + high) / 2);
 
-  return <section id="calculadora-m2" className="relative overflow-hidden bg-[#0b0906] px-4 py-14 text-white sm:px-6 lg:px-8 lg:py-20">
-    <div aria-hidden className="pointer-events-none absolute inset-0"><div className="absolute -left-36 top-12 h-80 w-80 rounded-full bg-yellow-300/10 blur-[110px]" /><div className="absolute -right-36 top-0 h-[30rem] w-[30rem] rounded-full bg-orange-500/10 blur-[130px]" /></div>
-    <div className="relative mx-auto max-w-6xl"><header className="mx-auto max-w-3xl text-center"><p className="inline-flex items-center gap-2 rounded-full bg-yellow-300/10 px-3 py-1.5 text-[10px] font-black uppercase tracking-[.28em] text-yellow-200"><Sparkles className="h-3.5 w-3.5" /> Cotiza con una ruta clara</p><h2 className="mt-4 text-4xl font-black tracking-[-.055em] sm:text-6xl">Cuéntanos qué necesitas. Te guiamos a una cotización real.</h2><p className="mt-4 text-sm leading-7 text-zinc-400 sm:text-base">Elige el servicio, indica la medida y revisa una boleta referencial antes de hablar con Fabrick.</p></header>
-      <div className="mx-auto mt-9 max-w-5xl rounded-[2rem] bg-[#16120c]/80 p-4 shadow-[0_28px_95px_rgba(0,0,0,.42)] backdrop-blur-xl sm:p-6 lg:p-8"><div className="flex flex-wrap items-center justify-between gap-4"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-yellow-300 text-black"><ClipboardList className="h-5 w-5" /></span><div><p className="text-[10px] font-black uppercase tracking-[.24em] text-yellow-300">Presupuesto guiado</p><p className="mt-1 text-sm font-bold text-zinc-300">Paso {step} de 3 · {step === 1 ? 'Servicio' : step === 2 ? 'Medida' : 'Cotización real'}</p></div></div><p className="hidden text-[10px] font-black uppercase tracking-[.16em] text-zinc-500 sm:block">Servicio · Alcance · Envío</p></div><div className="mt-5 h-1 overflow-hidden rounded-full bg-white/10"><div className="h-full rounded-full bg-gradient-to-r from-yellow-300 via-amber-400 to-orange-500 transition-all duration-500" style={{ width: `${step * 33.33}%` }} /></div>
-        <div className="mt-7 grid gap-6 lg:grid-cols-[minmax(0,1fr)_390px]"><div><p className="text-[10px] font-black uppercase tracking-[.24em] text-zinc-500">{step === 1 ? '1 · Selecciona el servicio' : step === 2 ? '2 · Indica el alcance' : '3 · Solicita tu revisión real'}</p>
-          {step === 1 && <div className="mt-4"><button type="button" onClick={() => setShowServices((current) => !current)} className="flex w-full items-center justify-between rounded-[1.5rem] bg-gradient-to-br from-[#282013] to-[#15110b] p-5 text-left transition hover:-translate-y-0.5"><span className="flex min-w-0 items-center gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-yellow-300 text-black"><Icon className="h-5 w-5" /></span><span className="min-w-0"><span className="block text-[10px] font-black uppercase tracking-[.2em] text-yellow-300">Servicio seleccionado</span><strong className="mt-1 block truncate text-lg">{service.name}</strong><span className="mt-1 block truncate text-xs text-zinc-400">{service.summary}</span></span></span><span className="grid h-10 w-10 place-items-center rounded-full bg-white/8 text-yellow-200"><ChevronDown className={`h-5 w-5 transition ${showServices ? 'rotate-180' : ''}`} /></span></button>
-            {showServices && <div className="mt-3 space-y-4">{GROUPS.map((group) => <div key={group}><p className="mb-2 px-1 text-[9px] font-black uppercase tracking-[.22em] text-zinc-500">{group}</p><div className="grid gap-2 sm:grid-cols-2">{SERVICES.filter((item) => item.group === group).map((item) => { const ItemIcon = item.icon; const active = item.id === service.id; return <button key={item.id} type="button" onClick={() => choose(item)} className={`flex items-start gap-3 rounded-2xl p-3 text-left transition ${active ? 'bg-yellow-300 text-black' : 'bg-white/[.045] text-zinc-200 hover:bg-white/10'}`}><span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${active ? 'bg-black/10' : 'bg-yellow-300/10 text-yellow-300'}`}><ItemIcon className="h-4 w-4" /></span><span><b className="block text-xs leading-5">{item.short}</b><small className={`mt-0.5 block text-[10px] leading-4 ${active ? 'text-black/60' : 'text-zinc-500'}`}>{item.group}</small></span></button>; })}</div></div>)}</div>}
-            <div className="mt-6 rounded-[1.4rem] bg-black/20 p-5"><p className="text-[10px] font-black uppercase tracking-[.22em] text-yellow-300">Qué considera este servicio</p><ul className="mt-4 grid gap-3 sm:grid-cols-2">{service.includes.map((item) => <li key={item} className="flex gap-2 text-xs leading-5 text-zinc-300"><Check className="mt-0.5 h-4 w-4 shrink-0 text-yellow-300" />{item}</li>)}</ul><p className="mt-4 flex gap-2 text-[11px] leading-5 text-zinc-500"><Info className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />{service.note}</p></div><button type="button" onClick={() => setStep(2)} className="mt-6 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-5 py-4 text-sm font-black text-black transition hover:bg-white">Continuar con la medida <ArrowRight className="h-4 w-4" /></button></div>}
-          {step === 2 && <div className="mt-4 rounded-[1.5rem] bg-black/20 p-5 sm:p-6"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-yellow-300/10 text-yellow-300"><Ruler className="h-5 w-5" /></span><div><h3 className="text-lg font-black">Define el alcance aproximado</h3><p className="mt-1 text-xs text-zinc-500">Usaremos este dato para orientarte, no para cerrar un precio final.</p></div></div>{service.unit === 'm2' && <div className="mt-6 grid grid-cols-2 gap-2 sm:grid-cols-4">{PRESETS.map(({ label, value, icon: PresetIcon }) => <button key={value} type="button" onClick={() => setQuantity(value)} className={`flex items-center gap-2 rounded-xl px-3 py-3 text-left transition ${cleanQuantity === value ? 'bg-yellow-300 text-black' : 'bg-white/[.055] text-zinc-300 hover:bg-white/10'}`}><PresetIcon className="h-4 w-4" /><span><b className="block text-xs">{label}</b><small className={cleanQuantity === value ? 'text-black/55' : 'text-zinc-500'}>{value} m²</small></span></button>)}</div>}<label className="mt-5 block"><span className="text-[10px] font-black uppercase tracking-[.22em] text-zinc-500">{quantityLabel(service.unit)}</span><div className="mt-2 flex items-center gap-3 rounded-2xl bg-[#080705] px-4 py-3 focus-within:ring-1 focus-within:ring-yellow-300/60"><input type="number" min={service.unit === 'unidad' ? 1 : 0} inputMode="decimal" value={quantity || ''} onChange={(event) => setQuantity(Number(event.target.value) || 0)} className="w-full bg-transparent text-3xl font-black text-white outline-none" /><strong className="text-sm uppercase tracking-widest text-yellow-300">{unitLabel(service.unit)}</strong></div></label><div className="mt-5 flex flex-col gap-3 sm:flex-row"><button type="button" onClick={() => setStep(1)} className="rounded-2xl bg-white/7 px-5 py-3 text-sm font-bold text-zinc-300">Cambiar servicio</button><button type="button" onClick={() => setStep(3)} disabled={!cleanQuantity} className="inline-flex flex-1 items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-5 py-3 text-sm font-black text-black disabled:opacity-40">Ver boleta referencial <ArrowRight className="h-4 w-4" /></button></div></div>}
-          {step === 3 && <form onSubmit={submit} className="mt-4 rounded-[1.5rem] bg-black/20 p-5 sm:p-6"><div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-yellow-300/10 text-yellow-300"><Send className="h-5 w-5" /></span><div><h3 className="text-lg font-black">Pidamos el precio real</h3><p className="mt-1 text-xs text-zinc-500">El mensaje sale a WhatsApp con este servicio y su referencia.</p></div></div><div className="mt-6 grid gap-3 sm:grid-cols-2"><Field label="Tu nombre" value={customer.name} onChange={(value) => setCustomer((current) => ({ ...current, name: value }))} placeholder="Nombre y apellido" required /><Field label="Teléfono" value={customer.phone} onChange={(value) => setCustomer((current) => ({ ...current, phone: value }))} placeholder="+56 9..." required /><Field label="Comuna o ciudad" value={customer.place} onChange={(value) => setCustomer((current) => ({ ...current, place: value }))} placeholder="Ej. Linares" required /></div><label className="mt-3 block"><span className="text-[10px] font-black uppercase tracking-[.2em] text-zinc-500">Cuéntanos un poco más</span><textarea value={customer.detail} onChange={(event) => setCustomer((current) => ({ ...current, detail: event.target.value }))} placeholder="Medidas, dirección aproximada, fotos o fecha ideal para comenzar…" className="mt-2 min-h-24 w-full resize-y rounded-2xl bg-[#080705] px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:ring-1 focus:ring-yellow-300/60" /></label><button type="submit" className="mt-5 inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-gradient-to-r from-yellow-300 via-amber-300 to-orange-400 px-5 py-4 text-sm font-black text-black">Enviar solicitud por WhatsApp <ArrowRight className="h-4 w-4" /></button>{sent && <p className="mt-3 flex items-center justify-center gap-2 text-xs font-bold text-yellow-200"><CircleCheck className="h-4 w-4" /> Abrimos WhatsApp con tu solicitud lista para enviar.</p>}<button type="button" onClick={() => setStep(2)} className="mt-4 w-full text-xs font-bold text-zinc-500">Volver y modificar alcance</button></form>}
-        </div><QuoteTicket service={service} quantity={cleanQuantity} low={low} high={high} average={average} /></div></div></div>
-    <style jsx>{`.receipt { position:relative; isolation:isolate; } .receipt::after { content:''; position:absolute; z-index:2; left:0; right:0; bottom:-1px; height:14px; background:linear-gradient(135deg,transparent 7px,#fff4dd 0) 0 0/14px 14px repeat-x; transform:rotate(180deg); } @media (prefers-reduced-motion:no-preference) { .receipt { animation:print .56s cubic-bezier(.16,1,.3,1) both; } } @keyframes print { from { opacity:0; transform:translateY(-16px) scaleY(.94); transform-origin:top; } to { opacity:1; transform:translateY(0) scaleY(1); } }`}</style>
-  </section>;
+  const reference = useMemo(() => {
+    const compactService = service.id.split('-').map((part) => part.slice(0, 2).toUpperCase()).join('').slice(0, 8);
+    return `FBK-${compactService}-${String(Math.round(measurement.quantity)).padStart(3, '0')}`;
+  }, [measurement.quantity, service.id]);
+
+  const whatsappMessage = useMemo(() => [
+    'Hola Soluciones Fabrick, quiero revisar este cálculo.',
+    '',
+    `Referencia: ${reference}`,
+    `Servicio: ${service.title}`,
+    `Fórmula: ${measurement.formula}`,
+    `Medidas: ${measurement.detail}`,
+    measurement.secondary ? `Resultado dimensional: ${measurement.secondary}` : '',
+    `Cantidad calculada: ${number(measurement.quantity)} ${service.unit}`,
+    `Rango mostrado: ${money(low)} a ${money(high)}`,
+    '',
+    'Quiero confirmar alcance, ubicación y precio final.',
+  ].filter(Boolean).join('\n'), [high, low, measurement, reference, service]);
+
+  function chooseService(nextId: string) {
+    const next = SERVICES.find((item) => item.id === nextId) || SERVICES[0];
+    setServiceId(next.id);
+    setValues(next.defaultValues);
+  }
+
+  function updateValue(key: keyof MeasurementValues, value: number) {
+    setValues((current) => ({ ...current, [key]: Math.max(0, Number(value) || 0) }));
+  }
+
+  function analyzeWithFabri() {
+    const prompt = [
+      'Analiza este cálculo preliminar como orientador comercial y técnico de construcción en Chile.',
+      `Referencia: ${reference}`,
+      `Servicio: ${service.title}`,
+      `Categoría: ${service.category}`,
+      `Fórmula utilizada: ${measurement.formula}`,
+      `Medidas ingresadas: ${measurement.detail}`,
+      measurement.secondary ? `Resultado dimensional adicional: ${measurement.secondary}` : '',
+      `Cantidad calculada: ${number(measurement.quantity)} ${service.unit}`,
+      `Rango referencial actual: ${money(low)} a ${money(high)}. Promedio: ${money(average)}.`,
+      `Incluye como referencia: ${service.includes.join('; ')}.`,
+      `Advertencia de la calculadora: ${service.disclaimer}`,
+      '',
+      'Entrégame un análisis más sofisticado y breve con: alcance probable, partidas que debería separar, exclusiones o riesgos, preguntas que faltan responder, etapas recomendadas y próximo paso. No conviertas este rango en precio final ni inventes medidas, permisos o materiales no informados.',
+    ].filter(Boolean).join('\n');
+
+    window.dispatchEvent(new CustomEvent('fabrick:agent-open', {
+      detail: { prompt, autoSend: true },
+    }));
+  }
+
+  return (
+    <section id="cotizador" className="relative overflow-hidden bg-[#F8F0E9] px-4 py-16 text-[#171820] sm:px-6 lg:px-8 lg:py-20">
+      <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(204,177,150,.34),transparent_28%),radial-gradient(circle_at_90%_80%,rgba(182,144,108,.18),transparent_30%)]" />
+      <div className="relative mx-auto max-w-[1260px]">
+        <header data-reveal className="grid gap-5 lg:grid-cols-[.9fr_1.1fr] lg:items-end">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[.24em] text-[#895E3D]">Cotizador dimensional</p>
+            <h2 className="mt-3 text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>Mide el trabajo antes de comprometer tu inversión.</h2>
+          </div>
+          <p className="max-w-2xl text-sm leading-7 text-[#685D55] sm:text-base">Cada especialidad aplica una fórmula distinta. Ingresa largo, ancho, alto, espesor, metros lineales o unidades; después Fabri puede ordenar las partidas y preguntas pendientes para una revisión más completa.</p>
+        </header>
+
+        <div data-reveal className="mt-8 grid overflow-hidden rounded-[2.25rem] bg-white shadow-[0_32px_100px_rgba(70,48,22,.16)] lg:grid-cols-[minmax(0,1.08fr)_minmax(370px,.72fr)]">
+          <div className="p-5 sm:p-7 lg:p-8">
+            <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#171820] text-[#CCB196]"><Ruler className="h-5 w-5" /></span><div><p className="text-sm font-black">Configura una referencia real</p><p className="mt-1 text-xs text-[#7A6C61]">Selecciona el servicio y completa las medidas que correspondan.</p></div></div>
+
+            <div className="-mx-1 mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
+              {SERVICES.map((item) => {
+                const ItemIcon = item.icon;
+                const active = item.id === serviceId;
+                return (
+                  <button key={item.id} type="button" aria-pressed={active} onClick={() => chooseService(item.id)} className={`min-w-[76%] snap-center rounded-[1.45rem] p-4 text-left transition sm:min-w-[250px] ${active ? 'bg-[#171820] text-[#F8F0E9] shadow-[0_18px_42px_rgba(23,24,32,.22)]' : 'bg-[#F4E9DE] text-[#342C27] hover:-translate-y-0.5 hover:bg-[#EADBCB]'}`}>
+                    <div className="flex items-start justify-between gap-3"><span className={`grid h-10 w-10 place-items-center rounded-full ${active ? 'bg-[#CCB196] text-[#171820]' : 'bg-white text-[#895E3D]'}`}><ItemIcon className="h-4 w-4" /></span><span className={`rounded-full px-2 py-1 text-[8px] font-black uppercase tracking-[.12em] ${active ? 'bg-white/10 text-[#E5CFBA]' : 'bg-white text-[#806E61]'}`}>{item.unit}</span></div>
+                    <strong className="mt-4 block text-sm leading-5">{item.short}</strong>
+                    <span className={`mt-2 block text-[9px] leading-4 ${active ? 'text-white/50' : 'text-[#8A7769]'}`}>{money(item.marketMin)}–{money(item.marketMax)} / {item.unit}</span>
+                  </button>
+                );
+              })}
+            </div>
+
+            <div className="mt-4 rounded-[1.6rem] bg-[linear-gradient(135deg,#F8F0E9,#E4CFBC)] p-4 sm:p-5">
+              <div className="flex items-start gap-3"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-full bg-[#CCB196] text-[#171820]"><Icon className="h-5 w-5" /></span><div><p className="text-[9px] font-black uppercase tracking-[.16em] text-[#895E3D]">Solución seleccionada</p><h3 className="mt-1 text-lg font-black">{service.title}</h3><p className="mt-2 text-xs leading-5 text-[#685D55]">{service.description}</p></div></div>
+            </div>
+
+            <MeasurementFields service={service} values={values} onChange={updateValue} />
+            <div className="mt-5 rounded-[1.35rem] bg-[#EEE1D5] px-4 py-3.5"><p className="flex gap-2 text-xs leading-5 text-[#5E5148]"><Info className="mt-0.5 h-4 w-4 shrink-0 text-[#895E3D]" />{service.disclaimer}</p></div>
+          </div>
+
+          <aside className="relative overflow-hidden bg-[linear-gradient(160deg,#242630_0%,#171820_70%,#101117_100%)] p-5 text-white sm:p-7 lg:p-8">
+            <div className="pointer-events-none absolute -right-20 -top-20 h-64 w-64 rounded-full bg-[#CCB196]/14 blur-3xl" />
+            <div className="relative">
+              <div className="flex items-start justify-between gap-4"><div><p className="text-[9px] font-black uppercase tracking-[.23em] text-[#CCB196]">Estimación preliminar</p><h3 className="mt-2 text-2xl font-black tracking-[-.04em]">Recibo de cálculo</h3></div><span className="grid h-12 w-12 place-items-center rounded-full bg-[#CCB196] text-[#171820]"><ReceiptText className="h-5 w-5" /></span></div>
+              <div className="mt-5 flex items-center justify-between rounded-full bg-white/[.065] px-4 py-2.5 text-[9px] font-black uppercase tracking-[.13em] text-white/45"><span>Referencia</span><span className="text-[#E5CFBA]">{reference}</span></div>
+
+              <div className="mt-5 rounded-[1.5rem] bg-white/[.055] p-4"><ReceiptRow label="Servicio" value={service.short} /><ReceiptRow label="Fórmula" value={measurement.formula} /><ReceiptRow label="Medidas" value={measurement.detail} /><ReceiptRow label="Resultado" value={`${number(measurement.quantity)} ${service.unit}`} last /></div>
+
+              <div className="mt-4 overflow-hidden rounded-[1.7rem] bg-[linear-gradient(135deg,#CCB196,#F8F0E9)] p-5 text-[#171820]">
+                <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.17em] text-[#171820]/60"><Sparkles className="h-4 w-4" /> Rango estimado</div>
+                <div className="mt-4 grid grid-cols-2 gap-4"><div><span className="text-[9px] font-black uppercase tracking-[.15em] text-[#171820]/55">Desde</span><strong className="mt-1 block text-2xl font-black">{money(low)}</strong></div><div><span className="text-[9px] font-black uppercase tracking-[.15em] text-[#171820]/55">Hasta</span><strong className="mt-1 block text-2xl font-black">{money(high)}</strong></div></div>
+                <div className="mt-4 flex items-center justify-between border-t border-[#171820]/12 pt-3 text-xs"><span className="text-[#171820]/60">Promedio orientativo</span><b>{money(average)}</b></div>
+              </div>
+
+              <div className="mt-6"><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.2em] text-[#CCB196]"><CircleDollarSign className="h-4 w-4" /> Esta referencia considera</div><ul className="mt-3 grid gap-2">{service.includes.map((item) => <li key={item} className="flex gap-2 rounded-xl bg-white/[.045] px-3 py-2.5 text-xs leading-5 text-[#D7CCC4]"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[#CCB196]" />{item}</li>)}</ul></div>
+
+              <button type="button" onClick={analyzeWithFabri} className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#F8F0E9] px-5 text-sm font-black text-[#171820] transition hover:bg-[#CCB196]"><Bot className="h-4 w-4" /> Analizar este cálculo con Fabri IA</button>
+              <Link href={`/presupuesto?servicio=${service.id}`} className="mt-3 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#CCB196] px-5 text-sm font-black text-[#171820] transition hover:bg-[#F8F0E9]">Añadir al presupuesto completo <ArrowRight className="h-4 w-4" /></Link>
+              <a href={`https://wa.me/56930121625?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white/[.075] px-5 text-xs font-black text-white transition hover:bg-white/[.13]">Revisar solo este cálculo <MessageCircle className="h-4 w-4" /></a>
+              <p className="mt-4 text-center text-[10px] leading-5 text-white/35">Fabri organiza supuestos y preguntas pendientes; el equipo confirma factibilidad y precio final.</p>
+            </div>
+          </aside>
+        </div>
+      </div>
+    </section>
+  );
 }
 
-function QuoteTicket({ service, quantity, low, high, average }: { service: Service; quantity: number; low: number; high: number; average: number }) {
-  const Icon = service.icon;
-  return <aside className="lg:sticky lg:top-24 lg:self-start"><div className="receipt overflow-hidden rounded-t-[1.75rem] bg-[#fff4dd] px-5 pb-9 pt-6 text-[#17120c] shadow-[0_28px_65px_rgba(0,0,0,.35)] sm:px-6"><div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.23em] text-orange-700">Boleta referencial</p><h3 className="mt-2 text-xl font-black tracking-[-.04em]">Soluciones Fabrick</h3><p className="mt-1 text-[11px] text-[#6b5c4a]">Presupuesto de orientación · no tributario</p></div><span className="grid h-10 w-10 place-items-center rounded-full bg-[#1a140d] text-yellow-300"><Icon className="h-4 w-4" /></span></div><div className="my-5 border-t border-dashed border-[#2d2519]/30" /><div className="flex items-start justify-between gap-5 text-sm"><div><p className="font-black">{service.name}</p><p className="mt-1 text-xs leading-5 text-[#6b5c4a]">{quantity} {unitLabel(service.unit)}</p></div><p className="text-right text-xs font-black text-[#6b5c4a]">Rango<br />estimado</p></div><div className="my-5 border-t border-dashed border-[#2d2519]/30" /><div className="space-y-3 text-xs"><Line label="Alcance aproximado" value={`${quantity} ${unitLabel(service.unit)}`} /><Line label="Referencia de mercado" value={`${money(low)} – ${money(high)}`} /><Line label="Valor medio orientativo" value={money(average)} bold /></div><div className="mt-5 rounded-2xl bg-[#1b160f] p-4 text-[#fff4dd]"><p className="text-[9px] font-black uppercase tracking-[.2em] text-yellow-300">Incluye en esta referencia</p><ul className="mt-3 space-y-2">{service.includes.slice(0, 3).map((item) => <li key={item} className="flex gap-2 text-[11px] leading-4 text-[#f6e8d3]/78"><Check className="h-3.5 w-3.5 shrink-0 text-yellow-300" />{item}</li>)}</ul></div><p className="mt-5 text-[10px] leading-4 text-[#6b5c4a]">El precio final depende de ubicación, acceso, medidas, estado existente, materiales y partidas adicionales. Se confirma todo antes de iniciar.</p></div></aside>;
+function MeasurementFields({ service, values, onChange }: { service: BudgetService; values: MeasurementValues; onChange: (key: keyof MeasurementValues, value: number) => void }) {
+  if (service.measurement === 'count') return <div className="mt-5"><QuantityField value={values.quantity} onChange={(value) => onChange('quantity', value)} suffix={service.unit === 'punto' ? 'puntos' : 'unidades'} /></div>;
+  if (service.measurement === 'linear') return <div className="mt-5 grid gap-3 sm:grid-cols-2"><NumberField label="Largo total" value={values.length} onChange={(value) => onChange('length', value)} suffix="m" />{service.id === 'cierre' ? <NumberField label="Altura referencial" value={values.height} onChange={(value) => onChange('height', value)} suffix="m" /> : null}</div>;
+
+  const fields: Array<{ key: keyof MeasurementValues; label: string }> = [];
+  if (service.measurement === 'floor') fields.push({ key: 'length', label: 'Largo' }, { key: 'width', label: 'Ancho' });
+  if (service.measurement === 'wall') fields.push({ key: 'length', label: 'Largo del muro' }, { key: 'height', label: 'Alto del muro' });
+  if (service.measurement === 'room-walls') fields.push({ key: 'length', label: 'Largo del recinto' }, { key: 'width', label: 'Ancho del recinto' }, { key: 'height', label: 'Alto de los muros' });
+  if (service.measurement === 'slab') fields.push({ key: 'length', label: 'Largo' }, { key: 'width', label: 'Ancho' }, { key: 'height', label: 'Espesor' });
+  if (service.measurement === 'volume') fields.push({ key: 'length', label: 'Largo' }, { key: 'width', label: 'Ancho' }, { key: 'height', label: 'Profundidad / alto' });
+  return <div className="mt-5 grid gap-3 sm:grid-cols-2">{fields.map((field) => <NumberField key={field.key} label={field.label} value={values[field.key]} onChange={(value) => onChange(field.key, value)} suffix="m" />)}</div>;
 }
 
-function Line({ label, value, bold = false }: { label: string; value: string; bold?: boolean }) { return <div className="flex items-start justify-between gap-3"><span className="text-[#6b5c4a]">{label}</span><span className={`max-w-[58%] text-right ${bold ? 'font-black text-[#17120c]' : 'font-bold text-[#302719]'}`}>{value}</span></div>; }
-function Field({ label, value, onChange, placeholder, required = false }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; required?: boolean }) { return <label className="block"><span className="text-[10px] font-black uppercase tracking-[.2em] text-zinc-500">{label}</span><input value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} required={required} className="mt-2 w-full rounded-2xl bg-[#080705] px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:ring-1 focus:ring-yellow-300/60" /></label>; }
+function NumberField({ label, value, onChange, suffix }: { label: string; value: number; onChange: (value: number) => void; suffix: string }) {
+  return <label><span className="text-[10px] font-black uppercase tracking-[.16em] text-[#806E61]">{label}</span><div className="mt-2 flex items-end gap-3 rounded-[1.25rem] bg-[#F4E9DE] px-4 py-3 focus-within:ring-2 focus-within:ring-[#B6906C]/40"><input type="number" min="0" step="0.01" inputMode="decimal" value={value || ''} onChange={(event) => onChange(Math.max(0, Number(event.target.value) || 0))} className="min-w-0 flex-1 bg-transparent text-3xl font-black tracking-[-.05em] outline-none" /><b className="mb-1 text-xs text-[#895E3D]">{suffix}</b></div></label>;
+}
+
+function QuantityField({ value, onChange, suffix }: { value: number; onChange: (value: number) => void; suffix: string }) {
+  return <div><span className="text-[10px] font-black uppercase tracking-[.16em] text-[#806E61]">Cantidad</span><div className="mt-2 grid grid-cols-[52px_1fr_52px] items-center gap-2 rounded-[1.25rem] bg-[#F4E9DE] p-2"><button type="button" onClick={() => onChange(Math.max(1, value - 1))} className="grid h-12 w-12 place-items-center rounded-full bg-white shadow-sm"><Minus className="h-4 w-4" /></button><div className="text-center"><input type="number" min="1" inputMode="numeric" value={value || ''} onChange={(event) => onChange(Math.max(1, Number(event.target.value) || 1))} className="w-full bg-transparent text-center text-3xl font-black outline-none" /><span className="text-[10px] font-bold uppercase tracking-[.13em] text-[#895E3D]">{suffix}</span></div><button type="button" onClick={() => onChange(value + 1)} className="grid h-12 w-12 place-items-center rounded-full bg-[#171820] text-[#CCB196] shadow-sm"><Plus className="h-4 w-4" /></button></div></div>;
+}
+
+function ReceiptRow({ label, value, last = false }: { label: string; value: string; last?: boolean }) {
+  return <div className={`grid gap-1 py-3 sm:grid-cols-[110px_1fr] sm:items-start ${last ? '' : 'border-b border-white/8'}`}><span className="text-[9px] font-black uppercase tracking-[.14em] text-white/38">{label}</span><strong className="text-xs leading-5 text-[#F8F0E9] sm:text-right">{value}</strong></div>;
+}

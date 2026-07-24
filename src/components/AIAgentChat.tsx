@@ -2,8 +2,7 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
-import { motion, AnimatePresence, useReducedMotion } from 'framer-motion';
-import { Bot, Send, X, Minimize2, MessageCircle, Sparkles } from 'lucide-react';
+import { Bot, CheckCircle2, MessageCircle, Minimize2, Send, Sparkles, Trash2, X } from 'lucide-react';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
 
 type Role = 'user' | 'assistant';
@@ -13,155 +12,72 @@ interface AIAgentChatProps {
   hideOn?: string[];
 }
 
-const STORAGE_POS = 'fabrick.agent.position.free.v1';
-const STORAGE_HISTORY = 'fabrick.agent.history.v1';
-const STORAGE_HIDDEN = 'fabrick.agent.hidden.v1';
+const STORAGE_HISTORY = 'fabrick.agent.history.v2';
 const MAX_HISTORY = 24;
-
 const SUGGESTIONS = [
-  { label: '¿Qué es Metalcón?', icon: Sparkles, prompt: '¿Qué es Metalcón y por qué lo recomiendan para mi casa?' },
-  { label: 'Por qué elegirlos',  icon: Sparkles, prompt: '¿Por qué debería contratar a Soluciones Fabrick para mi proyecto?' },
-  { label: 'Permisos de obra',   icon: Sparkles, prompt: 'Quiero ampliar mi casa, ¿qué permisos necesito y cuánto demoran?' },
-  { label: 'Tiempos de obra',    icon: Sparkles, prompt: '¿Cuánto se demora una casa de 100 m² en Metalcón?' },
-  { label: 'Beneficios Metalcón',icon: Sparkles, prompt: 'Compárame Metalcón vs hormigón vs madera para una casa nueva.' },
+  { label: 'Calcular un proyecto', prompt: '¿Cómo puedo calcular un proyecto y añadir servicios al presupuesto?' },
+  { label: 'Construcción Metalcon', prompt: 'Explícame cuándo conviene construir con Metalcon.' },
+  { label: 'Permisos de obra', prompt: 'Quiero ampliar mi casa. ¿Qué permisos debería revisar?' },
+  { label: 'Tiempos de ejecución', prompt: '¿Qué factores definen el tiempo aproximado de una obra?' },
 ] as const;
+const WHATSAPP_FALLBACK_MSG = 'Hola Soluciones Fabrick, estaba conversando con Fabri y quiero revisar mi proyecto con una persona.';
 
-const WHATSAPP_FALLBACK_MSG =
-  'Hola Soluciones Fabrick, estaba conversando con el asistente del sitio y me gustaría hablar con una persona. ¿Me pueden ayudar?';
-
-function clamp(value: number, min: number, max: number) {
-  return Math.min(Math.max(value, min), max);
-}
-
-function defaultPosition() {
-  if (typeof window === 'undefined') return { x: 18, y: 420 };
-  return {
-    x: Math.max(14, window.innerWidth - 88),
-    y: Math.max(92, window.innerHeight - 190),
-  };
-}
-
-function safePosition(pos: { x: number; y: number }) {
-  if (typeof window === 'undefined') return pos;
-  return {
-    x: clamp(pos.x, 12, Math.max(12, window.innerWidth - 74)),
-    y: clamp(pos.y, 76, Math.max(90, window.innerHeight - 112)),
-  };
-}
-
-function loadPosition() {
-  if (typeof window === 'undefined') return defaultPosition();
-  try {
-    const raw = window.localStorage.getItem(STORAGE_POS);
-    if (!raw) return defaultPosition();
-    const parsed = JSON.parse(raw) as { x?: number; y?: number };
-    if (typeof parsed.x !== 'number' || typeof parsed.y !== 'number') return defaultPosition();
-    return safePosition({ x: parsed.x, y: parsed.y });
-  } catch {
-    return defaultPosition();
-  }
-}
-
-function savePosition(pos: { x: number; y: number }) {
-  try { window.localStorage.setItem(STORAGE_POS, JSON.stringify(pos)); } catch {}
-}
-
-function loadHidden() {
-  if (typeof window === 'undefined') return false;
-  try { return window.localStorage.getItem(STORAGE_HIDDEN) === '1'; } catch { return false; }
-}
-
-function saveHidden(value: boolean) {
-  try { window.localStorage.setItem(STORAGE_HIDDEN, value ? '1' : '0'); } catch {}
+function newId() {
+  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
 }
 
 function loadHistory(): Msg[] {
   if (typeof window === 'undefined') return [];
   try {
     const raw = window.localStorage.getItem(STORAGE_HISTORY);
-    if (!raw) return [];
-    const parsed = JSON.parse(raw) as unknown;
+    const parsed = raw ? JSON.parse(raw) : [];
     if (!Array.isArray(parsed)) return [];
-    return (parsed as Msg[])
-      .filter((m) => m && (m.role === 'user' || m.role === 'assistant') && typeof m.content === 'string')
-      .slice(-MAX_HISTORY);
-  } catch { return []; }
+    return (parsed as Msg[]).filter((item) => item && (item.role === 'user' || item.role === 'assistant') && typeof item.content === 'string').slice(-MAX_HISTORY);
+  } catch {
+    return [];
+  }
 }
 
-function saveHistory(msgs: Msg[]) {
-  if (typeof window === 'undefined') return;
-  try { window.localStorage.setItem(STORAGE_HISTORY, JSON.stringify(msgs.slice(-MAX_HISTORY))); } catch {}
-}
-
-function newId(): string {
-  return `${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 7)}`;
-}
-
-function isOverCenterDrop(clientX: number, clientY: number) {
-  if (typeof window === 'undefined') return false;
-  const cx = window.innerWidth / 2;
-  const cy = window.innerHeight / 2;
-  const distance = Math.hypot(clientX - cx, clientY - cy);
-  return distance <= 112;
+function saveHistory(messages: Msg[]) {
+  try { window.localStorage.setItem(STORAGE_HISTORY, JSON.stringify(messages.slice(-MAX_HISTORY))); } catch {}
 }
 
 export default function AIAgentChat({ hideOn = ['/admin', '/auth', '/checkout'] }: AIAgentChatProps) {
   const pathname = usePathname();
-  const prefersReduced = useReducedMotion();
   const [mounted, setMounted] = useState(false);
-  const [hidden, setHidden] = useState(false);
   const [open, setOpen] = useState(false);
-  const [pos, setPos] = useState({ x: 18, y: 420 });
   const [messages, setMessages] = useState<Msg[]>([]);
   const [input, setInput] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [dragging, setDragging] = useState(false);
-  const [overDrop, setOverDrop] = useState(false);
-
   const scrollRef = useRef<HTMLDivElement | null>(null);
   const inputRef = useRef<HTMLTextAreaElement | null>(null);
   const abortRef = useRef<AbortController | null>(null);
-  const dragRef = useRef({ active: false, moved: false, dx: 0, dy: 0, lastX: 0, lastY: 0 });
 
   useEffect(() => {
     setMounted(true);
-    setHidden(loadHidden());
-    setPos(loadPosition());
     setMessages(loadHistory());
   }, []);
 
-  useEffect(() => { if (mounted) saveHistory(messages); }, [messages, mounted]);
+  useEffect(() => {
+    if (mounted) saveHistory(messages);
+  }, [messages, mounted]);
 
   useEffect(() => {
-    if (!mounted) return;
-    const onResize = () => setPos((current) => {
-      const next = safePosition(current);
-      savePosition(next);
-      return next;
-    });
-    window.addEventListener('resize', onResize);
-    return () => window.removeEventListener('resize', onResize);
-  }, [mounted]);
-
-  useEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    el.scrollTop = el.scrollHeight;
+    const element = scrollRef.current;
+    if (element) element.scrollTop = element.scrollHeight;
   }, [messages, loading, open]);
 
   useEffect(() => {
-    if (typeof document === 'undefined') return;
-    if (open && window.matchMedia('(max-width: 640px)').matches) {
-      const prev = document.body.style.overflow;
-      document.body.style.overflow = 'hidden';
-      return () => { document.body.style.overflow = prev; };
-    }
+    if (!open || typeof document === 'undefined' || !window.matchMedia('(max-width: 640px)').matches) return;
+    const previous = document.body.style.overflow;
+    document.body.style.overflow = 'hidden';
+    return () => { document.body.style.overflow = previous; };
   }, [open]);
 
   useEffect(() => {
     if (!open) return;
-    const onKey = (e: KeyboardEvent) => { if (e.key === 'Escape') setOpen(false); };
+    const onKey = (event: KeyboardEvent) => { if (event.key === 'Escape') setOpen(false); };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
   }, [open]);
@@ -169,263 +85,113 @@ export default function AIAgentChat({ hideOn = ['/admin', '/auth', '/checkout'] 
   const send = useCallback(async (text: string) => {
     const trimmed = text.trim();
     if (!trimmed || loading) return;
-    setError(null);
-
-    const userMsg: Msg = { id: newId(), role: 'user', content: trimmed };
-    const next = [...messages, userMsg];
+    const userMessage: Msg = { id: newId(), role: 'user', content: trimmed };
+    const next = [...messages, userMessage];
     setMessages(next);
     setInput('');
+    setError(null);
     setLoading(true);
-
-    const ctrl = new AbortController();
-    abortRef.current = ctrl;
+    const controller = new AbortController();
+    abortRef.current = controller;
 
     try {
-      const res = await fetch('/api/agent/chat', {
+      const response = await fetch('/api/agent/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ messages: next.map((m) => ({ role: m.role, content: m.content })) }),
-        signal: ctrl.signal,
+        body: JSON.stringify({ messages: next.map((message) => ({ role: message.role, content: message.content })) }),
+        signal: controller.signal,
       });
-      const data = (await res.json().catch(() => ({}))) as { ok?: boolean; answer?: string; error?: string };
-      if (!res.ok || !data.ok || typeof data.answer !== 'string') {
-        const errMsg = data.error || 'No pude responder ahora. Intenta de nuevo o escríbenos por WhatsApp.';
-        setError(errMsg);
-        setMessages((prev) => [...prev, { id: newId(), role: 'assistant', content: errMsg }]);
-      } else {
-        setMessages((prev) => [...prev, { id: newId(), role: 'assistant', content: data.answer ?? '' }]);
-      }
-    } catch (err) {
-      if ((err as Error).name === 'AbortError') return;
-      setError('No pudimos conectarnos. Revisa tu conexión e intenta de nuevo.');
-      setMessages((prev) => [...prev, { id: newId(), role: 'assistant', content: 'No logré conectarme al asistente. ¿Quieres conversar con nuestro equipo por WhatsApp?' }]);
+      const data = (await response.json().catch(() => ({}))) as { ok?: boolean; answer?: string; error?: string };
+      if (!response.ok || !data.ok || typeof data.answer !== 'string') throw new Error(data.error || 'No pude responder ahora.');
+      setMessages((current) => [...current, { id: newId(), role: 'assistant', content: data.answer || '' }]);
+    } catch (requestError) {
+      if ((requestError as Error).name === 'AbortError') return;
+      const message = 'No pude conectarme. Puedes intentarlo nuevamente o hablar con nuestro equipo por WhatsApp.';
+      setError(message);
+      setMessages((current) => [...current, { id: newId(), role: 'assistant', content: message }]);
     } finally {
       setLoading(false);
       abortRef.current = null;
     }
   }, [loading, messages]);
 
-  const onSuggestion = useCallback((prompt: string) => {
-    if (loading) return;
-    send(prompt);
-  }, [loading, send]);
+  const submit = (event: React.FormEvent) => {
+    event.preventDefault();
+    void send(input);
+  };
 
-  const onSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    send(input);
-  }, [send, input]);
-
-  const onKeyDownTextarea = useCallback((e: React.KeyboardEvent<HTMLTextAreaElement>) => {
-    if (e.key === 'Enter' && !e.shiftKey) {
-      e.preventDefault();
-      send(input);
-    }
-  }, [input, send]);
-
-  const clearChat = useCallback(() => {
+  const clearChat = () => {
+    abortRef.current?.abort();
     setMessages([]);
-    saveHistory([]);
     setError(null);
+    saveHistory([]);
     inputRef.current?.focus();
-  }, []);
+  };
 
   if (!mounted) return null;
-  if (hidden) return null;
-  if (pathname && hideOn.some((p) => pathname.startsWith(p))) return null;
-
-  const showFab = !open;
+  if (pathname && hideOn.some((path) => pathname.startsWith(path))) return null;
 
   return (
     <>
-      <AnimatePresence>
-        {dragging && showFab && (
-          <motion.div
-            key="drop-center"
-            initial={{ opacity: 0, scale: 0.82 }}
-            animate={{ opacity: 1, scale: overDrop ? 1.08 : 1 }}
-            exit={{ opacity: 0, scale: 0.82 }}
-            transition={{ duration: 0.18 }}
-            className="pointer-events-none fixed inset-0 z-[9498] grid place-items-center bg-black/10 backdrop-blur-[2px]"
-            aria-hidden
+      {!open ? (
+        <button
+          type="button"
+          onClick={() => setOpen(true)}
+          aria-label="Abrir asistente Fabri"
+          className="fixed bottom-[calc(7.4rem+env(safe-area-inset-bottom))] right-4 z-[9500] grid h-14 w-14 place-items-center rounded-full bg-[#171820] text-[#ccb196] shadow-[0_18px_48px_rgba(23,24,32,.3),0_0_0_6px_rgba(182,144,108,.18)] ring-1 ring-[#ccb196]/50 transition hover:-translate-y-1 hover:bg-[#242630] active:scale-95 sm:bottom-7 sm:right-7 sm:h-16 sm:w-16"
+        >
+          <Bot className="h-6 w-6" />
+          <span className="absolute -right-0.5 -top-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#171820] bg-emerald-400" />
+        </button>
+      ) : null}
+
+      {open ? (
+        <>
+          <button type="button" aria-label="Cerrar chat" onClick={() => setOpen(false)} className="fixed inset-0 z-[9499] bg-[#171820]/55 backdrop-blur-sm sm:hidden" />
+          <section
+            role="dialog"
+            aria-modal="true"
+            aria-label="Asistente IA Fabri"
+            className="fixed inset-0 z-[9501] flex flex-col overflow-hidden bg-[#f8f0e9] text-[#171820] shadow-[0_35px_110px_rgba(23,24,32,.42)] sm:inset-auto sm:bottom-7 sm:right-7 sm:h-[610px] sm:w-[390px] sm:rounded-[2rem] sm:ring-1 sm:ring-[#171820]/12"
+            style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
           >
-            <div className={`grid h-28 w-28 place-items-center rounded-full border text-center shadow-[0_25px_90px_rgba(0,0,0,.45)] transition ${overDrop ? 'border-red-300 bg-red-500 text-white' : 'border-white/25 bg-black/65 text-red-200'}`}>
-              <X className="h-10 w-10" />
-              <span className="mt-1 block text-[10px] font-black uppercase tracking-[0.2em]">Soltar para ocultar</span>
+            <header className="flex shrink-0 items-center gap-3 bg-[#171820] px-4 py-3.5 text-[#f8f0e9]">
+              <span className="relative grid h-11 w-11 place-items-center rounded-2xl bg-[#b6906c] text-[#171820]"><Bot className="h-5 w-5" /><span className="absolute -bottom-1 -right-1 h-3.5 w-3.5 rounded-full border-2 border-[#171820] bg-emerald-400" /></span>
+              <div className="min-w-0 flex-1"><p className="truncate text-sm font-black">Fabri · Asistente</p><p className="mt-0.5 truncate text-[9px] font-black uppercase tracking-[.18em] text-[#ccb196]">En línea · orientación inicial</p></div>
+              <button type="button" onClick={() => setOpen(false)} className="grid h-9 w-9 place-items-center rounded-full bg-white/5 text-[#c7bbb2] transition hover:bg-white/10 hover:text-white" aria-label="Minimizar"><Minimize2 className="h-4 w-4" /></button>
+              <button type="button" onClick={() => setOpen(false)} className="grid h-9 w-9 place-items-center rounded-full bg-white/5 text-[#c7bbb2] transition hover:bg-red-400/15 hover:text-red-200" aria-label="Cerrar"><X className="h-4 w-4" /></button>
+            </header>
+
+            <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-5 [scrollbar-width:thin]">
+              {messages.length === 0 ? (
+                <div>
+                  <div className="rounded-[1.5rem] rounded-bl-md bg-white p-4 shadow-sm ring-1 ring-[#171820]/8"><div className="flex items-center gap-2 text-[#765438]"><CheckCircle2 className="h-4 w-4" /><p className="text-xs font-black uppercase tracking-[.12em]">Hola, soy Fabri</p></div><p className="mt-3 text-sm leading-6 text-[#5f5853]">Puedo orientarte sobre servicios, calculadoras, permisos y próximos pasos. Los valores finales siempre se validan con el equipo.</p></div>
+                  <div className="mt-4 grid gap-2">{SUGGESTIONS.map((suggestion) => <button key={suggestion.label} type="button" onClick={() => void send(suggestion.prompt)} className="flex items-center justify-between gap-3 rounded-2xl bg-[#ccb196]/28 px-4 py-3 text-left text-xs font-black text-[#5f4430] ring-1 ring-[#b6906c]/20 transition hover:bg-[#ccb196]/45"><span className="inline-flex items-center gap-2"><Sparkles className="h-3.5 w-3.5" />{suggestion.label}</span><span aria-hidden>→</span></button>)}</div>
+                </div>
+              ) : null}
+
+              {messages.map((message) => (
+                <div key={message.id} className={`mt-3 flex ${message.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                  <div className={`max-w-[88%] whitespace-pre-wrap break-words rounded-[1.35rem] px-3.5 py-3 text-sm leading-6 shadow-sm ${message.role === 'user' ? 'rounded-br-md bg-[#b6906c] text-[#171820]' : 'rounded-bl-md bg-white text-[#4f4945] ring-1 ring-[#171820]/8'}`}>{message.content}</div>
+                </div>
+              ))}
+
+              {loading ? <div className="mt-3 flex justify-start"><div className="flex items-center gap-2 rounded-[1.35rem] rounded-bl-md bg-white px-4 py-3 text-xs font-bold text-[#766d67] ring-1 ring-[#171820]/8"><span className="flex gap-1">{[0, 1, 2].map((index) => <span key={index} className="h-2 w-2 animate-bounce rounded-full bg-[#b6906c]" style={{ animationDelay: `${index * 120}ms` }} />)}</span> Pensando…</div></div> : null}
+              {error && messages.length === 0 ? <p className="mt-3 rounded-xl bg-red-50 p-3 text-xs font-semibold text-red-800">{error}</p> : null}
             </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
 
-      <AnimatePresence>
-        {showFab && (
-          <motion.button
-            key="fab"
-            type="button"
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ opacity: 1, scale: overDrop ? 0.82 : 1 }}
-            exit={{ opacity: 0, scale: 0.8 }}
-            transition={{ duration: 0.24, ease: [0.22, 1, 0.36, 1] }}
-            onPointerDown={(event) => {
-              dragRef.current = { active: true, moved: false, dx: event.clientX - pos.x, dy: event.clientY - pos.y, lastX: event.clientX, lastY: event.clientY };
-              setDragging(true);
-              setOverDrop(false);
-              event.currentTarget.setPointerCapture(event.pointerId);
-            }}
-            onPointerMove={(event) => {
-              if (!dragRef.current.active) return;
-              const next = safePosition({ x: event.clientX - dragRef.current.dx, y: event.clientY - dragRef.current.dy });
-              dragRef.current.lastX = event.clientX;
-              dragRef.current.lastY = event.clientY;
-              if (Math.abs(next.x - pos.x) > 2 || Math.abs(next.y - pos.y) > 2) dragRef.current.moved = true;
-              setOverDrop(isOverCenterDrop(event.clientX, event.clientY));
-              setPos(next);
-            }}
-            onPointerUp={(event) => {
-              const shouldHide = dragRef.current.moved && isOverCenterDrop(dragRef.current.lastX || event.clientX, dragRef.current.lastY || event.clientY);
-              dragRef.current.active = false;
-              setDragging(false);
-              setOverDrop(false);
-              try { event.currentTarget.releasePointerCapture(event.pointerId); } catch {}
-              if (shouldHide) {
-                saveHidden(true);
-                setHidden(true);
-                setOpen(false);
-                return;
-              }
-              const next = safePosition(pos);
-              setPos(next);
-              savePosition(next);
-            }}
-            onPointerCancel={() => {
-              dragRef.current.active = false;
-              setDragging(false);
-              setOverDrop(false);
-            }}
-            onClick={(event) => {
-              if (dragRef.current.moved) {
-                dragRef.current.moved = false;
-                event.preventDefault();
-                return;
-              }
-              setOpen(true);
-            }}
-            aria-label="Abrir y mover asistente IA de Soluciones Fabrick"
-            title="Mover o abrir Fabri. Arrástralo a la X del centro para ocultarlo."
-            className="group fixed z-[9500] grid h-16 w-16 touch-none place-items-center rounded-full bg-gradient-to-br from-yellow-300 via-amber-400 to-orange-500 p-2 text-black shadow-[0_18px_48px_rgba(250,146,21,0.42),0_0_0_7px_rgba(250,204,21,.12)] ring-1 ring-yellow-200/70 transition active:scale-95 focus:outline-none focus-visible:ring-2 focus-visible:ring-white/80 sm:h-[72px] sm:w-[72px]"
-            style={{ left: pos.x, top: pos.y, WebkitTapHighlightColor: 'transparent' }}
-          >
-            <span aria-hidden className="pointer-events-none absolute inset-0 rounded-full bg-yellow-400/30 blur-md motion-safe:animate-[fab-pulse_2.8s_ease-out_infinite]" />
-            <span className="relative grid h-full w-full place-items-center rounded-full bg-black/92 ring-2 ring-yellow-100/50">
-              <Bot size={22} className="text-yellow-300" aria-hidden />
-              <span className="absolute -bottom-0.5 -right-0.5 block h-3.5 w-3.5 rounded-full border-2 border-yellow-400 bg-emerald-400 motion-safe:animate-pulse" />
-            </span>
-            <style>{`
-              @keyframes fab-pulse { 0% { transform: scale(1); opacity: .55; } 70%, 100% { transform: scale(1.42); opacity: 0; } }
-            `}</style>
-          </motion.button>
-        )}
-      </AnimatePresence>
-
-      <AnimatePresence>
-        {open && (
-          <>
-            <motion.div
-              key="backdrop"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
-              onClick={() => setOpen(false)}
-              className="fixed inset-0 z-[9499] bg-black/55 backdrop-blur-sm sm:hidden"
-              aria-hidden
-            />
-            <motion.div
-              key="panel"
-              role="dialog"
-              aria-modal="true"
-              aria-label="Asistente IA Fabri"
-              initial={prefersReduced ? { opacity: 0 } : { opacity: 0, y: 24, scale: 0.96 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={prefersReduced ? { opacity: 0 } : { opacity: 0, y: 16, scale: 0.96 }}
-              transition={{ duration: 0.28, ease: [0.22, 1, 0.36, 1] }}
-              className="fixed inset-x-0 bottom-0 top-0 z-[9501] flex flex-col overflow-hidden rounded-none bg-zinc-950 text-white shadow-[0_30px_80px_rgba(0,0,0,0.7)] ring-1 ring-white/10 sm:inset-x-auto sm:bottom-7 sm:right-7 sm:top-auto sm:h-[560px] sm:w-[380px] sm:rounded-3xl"
-              style={{ paddingTop: 'env(safe-area-inset-top)', paddingBottom: 'env(safe-area-inset-bottom)' }}
-            >
-              <header className="flex flex-shrink-0 items-center gap-3 border-b border-white/10 bg-gradient-to-br from-zinc-900 via-zinc-950 to-zinc-900 px-4 py-3">
-                <div className="relative flex h-10 w-10 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 ring-2 ring-yellow-300/40">
-                  <Bot size={18} className="text-black" aria-hidden />
-                  <span className="absolute -bottom-0.5 -right-0.5 block h-3 w-3 rounded-full border-2 border-zinc-950 bg-emerald-400 motion-safe:animate-pulse" />
-                </div>
-                <div className="min-w-0 flex-1">
-                  <p className="truncate text-sm font-black tracking-tight">Fabri · Asistente IA</p>
-                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.18em] text-emerald-400">En línea · Soluciones Fabrick</p>
-                </div>
-                <button type="button" onClick={() => setOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition hover:bg-white/5 hover:text-white" aria-label="Minimizar chat" title="Minimizar">
-                  <Minimize2 size={16} aria-hidden />
-                </button>
-                <button type="button" onClick={() => setOpen(false)} className="flex h-8 w-8 items-center justify-center rounded-full text-zinc-400 transition hover:bg-red-500/10 hover:text-red-300" aria-label="Cerrar chat" title="Cerrar">
-                  <X size={16} aria-hidden />
-                </button>
-              </header>
-
-              <div ref={scrollRef} className="flex-1 overflow-y-auto px-4 py-4 [scrollbar-width:thin]">
-                {messages.length === 0 && (
-                  <div className="space-y-3">
-                    <div className="rounded-2xl rounded-bl-sm bg-zinc-900/80 px-4 py-3 text-sm leading-relaxed text-zinc-200 ring-1 ring-white/5">
-                      <p className="font-semibold text-yellow-300">¡Hola! 👋 Soy Fabri.</p>
-                      <p className="mt-1 text-zinc-300">Te ayudo con dudas sobre Metalcón, costos, permisos, tiempos y todo lo que necesites para decidir tu proyecto con Soluciones Fabrick. ¿En qué te ayudo?</p>
-                    </div>
-                    <div className="flex flex-wrap gap-2 pt-1">
-                      {SUGGESTIONS.map(({ label, prompt, icon: Icon }) => (
-                        <button key={label} type="button" onClick={() => onSuggestion(prompt)} className="group inline-flex items-center gap-1.5 rounded-full border border-yellow-400/25 bg-yellow-400/[0.06] px-3 py-1.5 text-[11px] font-semibold text-yellow-200 transition hover:border-yellow-400/60 hover:bg-yellow-400/[0.12] hover:text-yellow-100">
-                          <Icon size={11} aria-hidden className="text-yellow-300" />{label}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                )}
-
-                {messages.map((m) => (
-                  <div key={m.id} className={`mt-3 flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                    <div className={`max-w-[88%] whitespace-pre-wrap break-words rounded-2xl px-3.5 py-2.5 text-sm leading-relaxed ring-1 ${m.role === 'user' ? 'rounded-br-sm bg-gradient-to-br from-yellow-400 to-amber-500 text-black ring-yellow-300/40' : 'rounded-bl-sm bg-zinc-900/80 text-zinc-200 ring-white/5'}`}>{m.content}</div>
-                  </div>
-                ))}
-
-                {loading && <div className="mt-3 flex justify-start"><div className="rounded-2xl rounded-bl-sm bg-zinc-900/80 px-3.5 py-2.5 ring-1 ring-white/5"><ThinkingDots /></div></div>}
-                {error && messages.length === 0 && <p className="mt-3 text-xs text-red-300/90">{error}</p>}
-              </div>
-
-              <div className="flex-shrink-0 border-t border-white/10 bg-zinc-950/95 backdrop-blur">
-                {messages.length > 0 && (
-                  <div className="flex items-center justify-between gap-2 px-4 pt-2 text-[10px] font-semibold uppercase tracking-[0.16em]">
-                    <a href={buildWhatsAppLink(WHATSAPP_FALLBACK_MSG)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-full border border-emerald-400/30 bg-emerald-500/10 px-3 py-1 text-emerald-200 transition hover:border-emerald-400 hover:text-emerald-100"><MessageCircle size={11} aria-hidden /> Hablar con humano</a>
-                    <button type="button" onClick={clearChat} className="text-zinc-500 transition hover:text-zinc-200">Limpiar</button>
-                  </div>
-                )}
-                <form onSubmit={onSubmit} className="flex items-end gap-2 p-3">
-                  <textarea ref={inputRef} value={input} onChange={(e) => setInput(e.target.value)} onKeyDown={onKeyDownTextarea} rows={1} placeholder="Escribe tu pregunta…" aria-label="Mensaje al asistente" disabled={loading} className="max-h-32 min-h-[40px] flex-1 resize-none rounded-2xl border border-white/10 bg-zinc-900 px-3 py-2 text-sm text-white placeholder:text-zinc-500 outline-none ring-yellow-400/0 transition focus:border-yellow-400/50 focus:ring-yellow-400/20 disabled:opacity-60" />
-                  <button type="submit" disabled={loading || input.trim().length === 0} aria-label="Enviar mensaje" className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-yellow-400 to-amber-500 text-black shadow-[0_8px_24px_rgba(250,204,21,0.35)] transition hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-40"><Send size={16} aria-hidden /></button>
-                </form>
-                <p className="px-4 pb-3 text-[9px] uppercase tracking-[0.18em] text-zinc-600">Respuestas generadas por IA · Verifica datos críticos con nuestro equipo</p>
-              </div>
-            </motion.div>
-          </>
-        )}
-      </AnimatePresence>
+            <footer className="shrink-0 border-t border-[#171820]/10 bg-[#fffaf5]">
+              {messages.length > 0 ? <div className="flex items-center justify-between gap-2 px-4 pt-3"><a href={buildWhatsAppLink(WHATSAPP_FALLBACK_MSG)} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1.5 rounded-full bg-[#edf4ee] px-3 py-2 text-[9px] font-black uppercase tracking-[.12em] text-emerald-800"><MessageCircle className="h-3.5 w-3.5" /> Hablar con persona</a><button type="button" onClick={clearChat} className="inline-flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[.12em] text-[#8a7f77]"><Trash2 className="h-3.5 w-3.5" /> Limpiar</button></div> : null}
+              <form onSubmit={submit} className="flex items-end gap-2 p-3">
+                <textarea ref={inputRef} value={input} onChange={(event) => setInput(event.target.value)} onKeyDown={(event) => { if (event.key === 'Enter' && !event.shiftKey) { event.preventDefault(); void send(input); } }} rows={1} placeholder="Escribe tu pregunta…" disabled={loading} className="max-h-28 min-h-11 flex-1 resize-none rounded-2xl bg-[#f3ebe4] px-4 py-3 text-sm text-[#171820] outline-none ring-1 ring-[#171820]/10 placeholder:text-[#958980] focus:ring-[#9a6f4f]/50" />
+                <button type="submit" disabled={loading || !input.trim()} aria-label="Enviar mensaje" className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#171820] text-[#f8f0e9] shadow-[0_10px_26px_rgba(23,24,32,.18)] transition hover:bg-[#2a2c37] disabled:opacity-35"><Send className="h-4 w-4" /></button>
+              </form>
+              <p className="px-4 pb-3 text-[8px] font-bold uppercase tracking-[.15em] text-[#9a8f87]">Orientación generada por IA · confirma datos críticos con el equipo</p>
+            </footer>
+          </section>
+        </>
+      ) : null}
     </>
-  );
-}
-
-function ThinkingDots() {
-  return (
-    <div className="flex items-center gap-2">
-      <div className="flex items-center gap-1" aria-label="Pensando" role="status">
-        {[0, 1, 2].map((i) => (
-          <motion.span key={i} className="block h-2 w-2 rounded-full bg-yellow-300" animate={{ y: [0, -4, 0], opacity: [0.45, 1, 0.45] }} transition={{ duration: 0.9, repeat: Infinity, ease: 'easeInOut', delay: i * 0.15 }} />
-        ))}
-      </div>
-      <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-zinc-500">Fabri está pensando</span>
-    </div>
   );
 }
 

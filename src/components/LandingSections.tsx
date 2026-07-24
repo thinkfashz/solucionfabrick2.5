@@ -12,6 +12,7 @@ import {
 import ContactForm from './ContactForm';
 import TiendaSection from './TiendaSection';
 import ServicesVerticalGallery from '@/components/landing/ServicesVerticalGallery';
+import MetalconSeismicStory from '@/components/landing/MetalconSeismicStory';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 import { useSiteContent } from '@/hooks/useSiteContent';
 
@@ -38,13 +39,14 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
   const footerGroups: Array<{ title: string; items: Array<[string, string]> }> = [
     { title: 'Explorar', items: [['Cotizador', '#cotizador'], ['Servicios', '#servicios'], ['Más vendidos', '#mas-vendidos']] },
     { title: 'Herramientas', items: [['Calculadora de radier', '/herramientas/radier'], ['Calculadora de aire', '/herramientas/aire-acondicionado'], ['Presupuestos', '/presupuesto']] },
-    { title: 'Empresa', items: [['Proyectos', '/proyectos'], ['Garantías', '/garantias'], ['Contacto', '#contacto']] },
+    { title: 'Empresa', items: [['Inspiraciones', '/proyectos'], ['Garantías', '/garantias'], ['Contacto', '#contacto']] },
     { title: 'Tienda', items: [['Catálogo', '/tienda'], ['Mi cuenta', '/mi-cuenta'], ['Privacidad', '/legal/privacidad']] },
   ];
 
   return (
     <div className="overflow-x-hidden bg-[#171820] text-[#F8F0E9]">
       <ServicesVerticalGallery />
+      <MetalconSeismicStory />
 
       <section id="mas-vendidos" className="bg-[#F8F0E9] px-4 py-16 text-[#171820] sm:px-6 md:px-12 lg:py-20">
         <div data-reveal className="mx-auto max-w-[1320px]">

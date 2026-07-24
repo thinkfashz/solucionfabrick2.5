@@ -17,7 +17,6 @@ import { useQuoteCart, type QuoteItem } from '@/context/QuoteCartContext';
 import { buildWhatsAppLink } from '@/lib/whatsapp';
 import {
   BUDGET_SERVICES,
-  FABRICK_PALETTE,
   SERVICE_CATEGORIES,
   calculateServiceMeasurement,
   getBudgetService,

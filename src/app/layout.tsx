@@ -102,7 +102,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   viewportFit: 'cover',
-  themeColor: '#0a0907',
+  themeColor: '#171820',
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -112,7 +112,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   ]);
 
   return (
-    <html lang="es" className="scroll-smooth" suppressHydrationWarning>
+    <html lang="es" className="scroll-smooth bg-[#171820]" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="anonymous" />
@@ -125,7 +125,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <CustomInjectionRoot slot="head" />
       </head>
       <body
-        className="bg-black text-white antialiased app-shell"
+        className="bg-[#171820] text-[#F8F0E9] antialiased app-shell"
         style={{ fontFamily: 'Manrope, ui-sans-serif, system-ui, sans-serif' }}
       >
         <SplashScreen />

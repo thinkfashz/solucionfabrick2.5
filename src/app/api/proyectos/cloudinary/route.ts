@@ -74,11 +74,11 @@ function contextRecord(context: CloudinaryContext): Record<string, string> {
 function inferCategory(resource: CloudinaryResource, context = contextRecord(resource.context)) {
   if (context.category) return cleanSlug(context.category, 'ideas');
   const haystack = normalize([resource.public_id, resource.folder || '', ...(resource.tags || []), ...Object.values(context)].join(' '));
-  return CATEGORY_MAP.find((cat) => cat.words.some((word) => haystack.includes(normalize(word))))?.key || 'ideas';
+  return CATEGORY_MAP.find((category) => category.words.some((word) => haystack.includes(normalize(word))))?.key || 'ideas';
 }
 function titleFromPublicId(publicId: string) {
   const last = publicId.split('/').pop() || publicId;
-  return last.replace(/[-_]+/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()).slice(0, 100);
+  return last.replace(/[-_]+/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase()).slice(0, 100);
 }
 function albumFromResource(resource: CloudinaryResource, context: Record<string, string>) {
   if (context.album) return cleanSlug(context.album);
@@ -105,7 +105,11 @@ function tagString(payload: MetadataPayload) {
   return Array.from(new Set(tags)).slice(0, 20).join(',');
 }
 function signParams(params: Record<string, string | number | boolean>, secret: string) {
-  const base = Object.entries(params).filter(([, value]) => value !== '' && value !== undefined).sort(([a], [b]) => a.localeCompare(b)).map(([key, value]) => `${key}=${String(value)}`).join('&');
+  const base = Object.entries(params)
+    .filter(([, value]) => value !== '' && value !== undefined)
+    .sort(([left], [right]) => left.localeCompare(right))
+    .map(([key, value]) => `${key}=${String(value)}`)
+    .join('&');
   return createHash('sha1').update(`${base}${secret}`).digest('hex');
 }
 async function requireAdmin(request: NextRequest) {
@@ -126,7 +130,7 @@ function normalizeAsset(resource: CloudinaryResource) {
     alt: context.alt || title,
     category,
     album,
-    album_title: context.album_title || album.replace(/-/g, ' ').replace(/\b\w/g, (char) => char.toUpperCase()),
+    album_title: context.album_title || album.replace(/-/g, ' ').replace(/\b\w/g, (character) => character.toUpperCase()),
     url: cloudinaryTransform(resource.secure_url, 'f_auto,q_auto,w_1600'),
     thumb: cloudinaryTransform(resource.secure_url, 'f_auto,q_auto,w_760'),
     width: resource.width || 1200,
@@ -164,22 +168,29 @@ export async function GET(request: NextRequest) {
   const folder = cleanFolder(url.searchParams.get('folder'));
   const maxResults = Math.min(Math.max(Number(url.searchParams.get('max') || '80'), 12), 100);
   const nextCursor = url.searchParams.get('next_cursor') || '';
-  const creds = await getCloudinaryCredentials({ preferDb: true });
+  const credentials = await getCloudinaryCredentials({ preferDb: true });
 
-  if (!creds.ready) {
+  if (!credentials.ready) {
     const assets = fallbackAssets();
-    return NextResponse.json({ assets, albums: buildAlbums(assets), categories: categoryOptions(), source: 'fallback', warning: 'Cloudinary no está configurado. Configura la integración desde admin para gestionar Inspiraciones.', missing: creds.missing });
+    return NextResponse.json({
+      assets,
+      albums: buildAlbums(assets),
+      categories: categoryOptions(),
+      source: 'fallback',
+      warning: 'Cloudinary no está configurado. Configura la integración desde admin para gestionar Inspiraciones.',
+      missing: credentials.missing,
+    });
   }
 
   try {
-    const apiUrl = new URL(`https://api.cloudinary.com/v1_1/${encodeURIComponent(creds.cloudName)}/resources/image/upload`);
+    const apiUrl = new URL(`https://api.cloudinary.com/v1_1/${encodeURIComponent(credentials.cloudName)}/resources/image/upload`);
     apiUrl.searchParams.set('max_results', String(maxResults));
     apiUrl.searchParams.set('prefix', folder);
     apiUrl.searchParams.set('tags', 'true');
     apiUrl.searchParams.set('context', 'true');
     if (nextCursor) apiUrl.searchParams.set('next_cursor', nextCursor);
-    const auth = Buffer.from(`${creds.apiKey}:${creds.apiSecret}`).toString('base64');
-    const response = await fetch(apiUrl.toString(), { headers: { Authorization: `Basic ${auth}` }, cache: 'no-store' });
+    const authorization = Buffer.from(`${credentials.apiKey}:${credentials.apiSecret}`).toString('base64');
+    const response = await fetch(apiUrl.toString(), { headers: { Authorization: `Basic ${authorization}` }, cache: 'no-store' });
     if (!response.ok) throw new Error(`Cloudinary API error ${response.status}: ${await response.text().catch(() => '')}`);
     const json = await response.json() as { resources?: CloudinaryResource[]; next_cursor?: string };
     const assets = (json.resources || []).filter((item) => item.secure_url).map(normalizeAsset);
@@ -194,8 +205,8 @@ export async function GET(request: NextRequest) {
 export async function POST(request: NextRequest) {
   const session = await requireAdmin(request);
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  const creds = await getCloudinaryCredentials({ preferDb: true });
-  if (!creds.ready) return NextResponse.json({ error: 'Cloudinary no está configurado', missing: creds.missing }, { status: 503 });
+  const credentials = await getCloudinaryCredentials({ preferDb: true });
+  if (!credentials.ready) return NextResponse.json({ error: 'Cloudinary no está configurado', missing: credentials.missing }, { status: 503 });
 
   try {
     const form = await request.formData();
@@ -221,17 +232,17 @@ export async function POST(request: NextRequest) {
     const params = { folder, timestamp, context, tags };
     const upload = new FormData();
     upload.set('file', file);
-    upload.set('api_key', creds.apiKey);
+    upload.set('api_key', credentials.apiKey);
     upload.set('timestamp', String(timestamp));
     upload.set('folder', folder);
     upload.set('context', context);
     upload.set('tags', tags);
-    upload.set('signature', signParams(params, creds.apiSecret));
+    upload.set('signature', signParams(params, credentials.apiSecret));
 
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(creds.cloudName)}/image/upload`, { method: 'POST', body: upload });
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(credentials.cloudName)}/image/upload`, { method: 'POST', body: upload });
     const json = await response.json().catch(() => ({})) as CloudinaryResource & { error?: { message?: string } };
     if (!response.ok || !json.secure_url) return NextResponse.json({ error: json.error?.message || `Cloudinary upload error ${response.status}` }, { status: 502 });
-    return NextResponse.json({ ok: true, asset: normalizeAsset(json), uploadedBy: session.email || session.sub }, { status: 201 });
+    return NextResponse.json({ ok: true, asset: normalizeAsset(json), uploadedBy: session.email || 'admin' }, { status: 201 });
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 });
   }
@@ -240,8 +251,8 @@ export async function POST(request: NextRequest) {
 export async function PATCH(request: NextRequest) {
   const session = await requireAdmin(request);
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  const creds = await getCloudinaryCredentials({ preferDb: true });
-  if (!creds.ready) return NextResponse.json({ error: 'Cloudinary no está configurado' }, { status: 503 });
+  const credentials = await getCloudinaryCredentials({ preferDb: true });
+  if (!credentials.ready) return NextResponse.json({ error: 'Cloudinary no está configurado' }, { status: 503 });
 
   try {
     const payload = await request.json() as MetadataPayload;
@@ -249,10 +260,10 @@ export async function PATCH(request: NextRequest) {
     const body = new URLSearchParams();
     body.set('context', contextString(payload));
     body.set('tags', tagString(payload));
-    const auth = Buffer.from(`${creds.apiKey}:${creds.apiSecret}`).toString('base64');
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(creds.cloudName)}/resources/image/upload/${encodeURIComponent(payload.public_id)}`, {
+    const authorization = Buffer.from(`${credentials.apiKey}:${credentials.apiSecret}`).toString('base64');
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(credentials.cloudName)}/resources/image/upload/${encodeURIComponent(payload.public_id)}`, {
       method: 'POST',
-      headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
+      headers: { Authorization: `Basic ${authorization}`, 'Content-Type': 'application/x-www-form-urlencoded' },
       body,
     });
     const json = await response.json().catch(() => ({})) as CloudinaryResource & { error?: { message?: string } };
@@ -266,16 +277,16 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const session = await requireAdmin(request);
   if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
-  const creds = await getCloudinaryCredentials({ preferDb: true });
-  if (!creds.ready) return NextResponse.json({ error: 'Cloudinary no está configurado' }, { status: 503 });
+  const credentials = await getCloudinaryCredentials({ preferDb: true });
+  if (!credentials.ready) return NextResponse.json({ error: 'Cloudinary no está configurado' }, { status: 503 });
 
   try {
     const publicId = cleanText(new URL(request.url).searchParams.get('public_id'), 300);
     if (!publicId) return NextResponse.json({ error: 'Falta public_id' }, { status: 400 });
     const timestamp = Math.floor(Date.now() / 1000);
     const params = { public_id: publicId, timestamp, invalidate: true };
-    const body = new URLSearchParams({ public_id: publicId, timestamp: String(timestamp), invalidate: 'true', api_key: creds.apiKey, signature: signParams(params, creds.apiSecret) });
-    const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(creds.cloudName)}/image/destroy`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
+    const body = new URLSearchParams({ public_id: publicId, timestamp: String(timestamp), invalidate: 'true', api_key: credentials.apiKey, signature: signParams(params, credentials.apiSecret) });
+    const response = await fetch(`https://api.cloudinary.com/v1_1/${encodeURIComponent(credentials.cloudName)}/image/destroy`, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
     const json = await response.json().catch(() => ({})) as { result?: string; error?: { message?: string } };
     if (!response.ok || (json.result !== 'ok' && json.result !== 'not found')) return NextResponse.json({ error: json.error?.message || 'No se pudo eliminar la imagen.' }, { status: 502 });
     return NextResponse.json({ ok: true, result: json.result });
@@ -294,5 +305,5 @@ function buildAlbums(assets: Array<ReturnType<typeof normalizeAsset> | ReturnTyp
     if (current) current.count += 1;
     else map.set(asset.album, { key: asset.album, title: asset.album_title, category: asset.category, description: asset.description || 'Álbum visual de ideas para conversar, adaptar y cotizar.', cover: asset.thumb, count: 1 });
   }
-  return Array.from(map.values()).sort((a, b) => a.title.localeCompare(b.title));
+  return Array.from(map.values()).sort((left, right) => left.title.localeCompare(right.title));
 }

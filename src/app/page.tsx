@@ -22,7 +22,7 @@ export default async function Home() {
     '@context': 'https://schema.org',
     '@type': 'HomeAndConstructionBusiness',
     name: 'Soluciones Fabrick',
-    description: 'Construcción, remodelación e instalaciones con cotización inicial, alcance definido y evaluación técnica.',
+    description: 'Construcción, remodelación e instalaciones con calculadoras por especialidad, alcance definido y evaluación técnica.',
     url: 'https://www.solucionesfabrick.com',
     logo: 'https://www.solucionesfabrick.com/brand/soluciones-fabrick.svg',
     image: 'https://www.solucionesfabrick.com/brand/soluciones-fabrick-social.png',
@@ -50,7 +50,7 @@ export default async function Home() {
   return (
     <>
       <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <div className="min-h-screen overflow-x-hidden bg-[#080705] pb-[calc(6rem+env(safe-area-inset-bottom))] selection:bg-yellow-300 selection:text-black md:pb-0">
+      <div className="min-h-screen overflow-x-hidden bg-[#171820] pb-[calc(6rem+env(safe-area-inset-bottom))] selection:bg-[#CCB196] selection:text-[#171820] md:pb-0">
         <Navbar />
         <main>
           <StaticConstructionHero coverUrl={settings.hero_cover_url || undefined} />

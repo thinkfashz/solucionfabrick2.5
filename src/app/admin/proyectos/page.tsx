@@ -2,11 +2,10 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import {
   AlertCircle,
-  Check,
   ExternalLink,
   FolderPlus,
   Images,
@@ -38,7 +37,8 @@ type Asset = {
 };
 
 type Album = { key: string; title: string; category: string; description: string; cover: string; count: number };
-type Toast = { text: string; type: 'success' | 'error' | 'info' } | null;
+type ToastKind = 'success' | 'error' | 'info';
+type ToastState = { text: string; type: ToastKind } | null;
 type AiMetadata = { title: string; description: string; alt: string; category: string; hashtags: string[] };
 
 const CATEGORIES = [
@@ -73,7 +73,7 @@ export default function AdminInspiracionesPage() {
   const [hashtags, setHashtags] = useState('inspiracion solucionesfabrick');
   const [files, setFiles] = useState<File[]>([]);
   const [editing, setEditing] = useState<Asset | null>(null);
-  const [toast, setToast] = useState<Toast>(null);
+  const [toast, setToast] = useState<ToastState>(null);
   const [source, setSource] = useState('');
 
   async function reload() {
@@ -94,7 +94,7 @@ export default function AdminInspiracionesPage() {
 
   useEffect(() => { void reload(); }, []);
 
-  function notify(text: string, type: Toast['type'] = 'success') {
+  function notify(text: string, type: ToastKind = 'success') {
     setToast({ text, type });
     window.setTimeout(() => setToast(null), 4200);
   }
@@ -105,7 +105,7 @@ export default function AdminInspiracionesPage() {
     setFiles(selected);
     if (!albumTitle && selected[0]) {
       const suggestion = selected[0].name.replace(/\.[^.]+$/, '').replace(/[-_]+/g, ' ');
-      setAlbumTitle(suggestion.replace(/\b\w/g, (char) => char.toUpperCase()));
+      setAlbumTitle(suggestion.replace(/\b\w/g, (character) => character.toUpperCase()));
       setAlbumSlug(slugify(suggestion));
     }
   }
@@ -201,7 +201,16 @@ export default function AdminInspiracionesPage() {
     const response = await fetch('/api/proyectos/cloudinary', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ public_id: asset.public_id, title: asset.title, description: asset.description, alt: asset.alt, category: asset.category, album: asset.album, albumTitle: asset.album_title, hashtags: asset.tags || [] }),
+      body: JSON.stringify({
+        public_id: asset.public_id,
+        title: asset.title,
+        description: asset.description,
+        alt: asset.alt,
+        category: asset.category,
+        album: asset.album,
+        albumTitle: asset.album_title,
+        hashtags: asset.tags || [],
+      }),
     });
     const json = await response.json().catch(() => ({})) as { error?: string };
     if (!response.ok) return notify(json.error || 'No se pudo actualizar la imagen.', 'error');
@@ -271,7 +280,7 @@ export default function AdminInspiracionesPage() {
   );
 }
 
-function AdminField({ label, children }: { label: string; children: React.ReactNode }) {
+function AdminField({ label, children }: { label: string; children: ReactNode }) {
   return <label className="grid gap-2"><span className="text-[10px] font-black uppercase tracking-[.18em] text-[#756B63]">{label}</span>{children}</label>;
 }
 

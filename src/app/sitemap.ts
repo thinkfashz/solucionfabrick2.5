@@ -2,17 +2,14 @@ import type { MetadataRoute } from 'next';
 import { getSeedProjects, type FabrickProject } from '@/lib/projects';
 import { insforge } from '@/lib/insforge';
 import { listContent } from '@/lib/content';
+import { loadInspirationCatalog } from '@/lib/inspirationCatalog';
 
 const BASE_URL = 'https://www.solucionesfabrick.com';
 
 async function loadProjects(): Promise<FabrickProject[]> {
   try {
-    const { data } = await insforge.database
-      .from('projects')
-      .select('id, updated_at');
-    if (Array.isArray(data) && data.length > 0) {
-      return data as FabrickProject[];
-    }
+    const { data } = await insforge.database.from('projects').select('id, updated_at');
+    if (Array.isArray(data) && data.length > 0) return data as FabrickProject[];
   } catch {
     /* fall through to seed */
   }
@@ -21,13 +18,8 @@ async function loadProjects(): Promise<FabrickProject[]> {
 
 async function loadProducts(): Promise<{ id: string; updated_at?: string }[]> {
   try {
-    const { data } = await insforge.database
-      .from('products')
-      .select('id, updated_at')
-      .neq('activo', false);
-    if (Array.isArray(data) && data.length > 0) {
-      return data as { id: string; updated_at?: string }[];
-    }
+    const { data } = await insforge.database.from('products').select('id, updated_at').neq('activo', false);
+    if (Array.isArray(data) && data.length > 0) return data as { id: string; updated_at?: string }[];
   } catch {
     /* ignore */
   }
@@ -36,7 +28,6 @@ async function loadProducts(): Promise<{ id: string; updated_at?: string }[]> {
 
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const now = new Date();
-
   const staticRoutes: MetadataRoute.Sitemap = [
     { url: `${BASE_URL}/`, lastModified: now, changeFrequency: 'daily', priority: 1 },
     { url: `${BASE_URL}/tienda`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
@@ -55,35 +46,46 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/auth`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
   ];
 
-  const [projects, products] = await Promise.all([loadProjects(), loadProducts()]);
+  const [projects, products, inspirationCatalog] = await Promise.all([
+    loadProjects(),
+    loadProducts(),
+    loadInspirationCatalog({ maxResults: 100 }),
+  ]);
 
-  const projectRoutes: MetadataRoute.Sitemap = projects.map((p) => ({
-    url: `${BASE_URL}/proyectos/${p.id}`,
-    lastModified: p.updated_at ? new Date(p.updated_at) : now,
+  const projectRoutes: MetadataRoute.Sitemap = projects.map((project) => ({
+    url: `${BASE_URL}/proyectos/${project.id}`,
+    lastModified: project.updated_at ? new Date(project.updated_at) : now,
     changeFrequency: 'monthly',
     priority: 0.7,
   }));
 
-  const productRoutes: MetadataRoute.Sitemap = products.map((p) => ({
-    url: `${BASE_URL}/tienda/${p.id}`,
-    lastModified: p.updated_at ? new Date(p.updated_at) : now,
+  const inspirationRoutes: MetadataRoute.Sitemap = inspirationCatalog.albums.map((album) => ({
+    url: `${BASE_URL}/inspiraciones/${album.key}`,
+    lastModified: now,
+    changeFrequency: 'weekly',
+    priority: 0.82,
+  }));
+
+  const productRoutes: MetadataRoute.Sitemap = products.map((product) => ({
+    url: `${BASE_URL}/tienda/${product.id}`,
+    lastModified: product.updated_at ? new Date(product.updated_at) : now,
     changeFrequency: 'weekly',
     priority: 0.8,
   }));
 
-  const blogRoutes: MetadataRoute.Sitemap = listContent('blog').map((p) => ({
-    url: `${BASE_URL}/blog/${p.slug}`,
-    lastModified: new Date(p.date),
+  const blogRoutes: MetadataRoute.Sitemap = listContent('blog').map((post) => ({
+    url: `${BASE_URL}/blog/${post.slug}`,
+    lastModified: new Date(post.date),
     changeFrequency: 'monthly',
     priority: 0.7,
   }));
 
-  const casosRoutes: MetadataRoute.Sitemap = listContent('casos').map((p) => ({
-    url: `${BASE_URL}/casos/${p.slug}`,
-    lastModified: new Date(p.date),
+  const casosRoutes: MetadataRoute.Sitemap = listContent('casos').map((item) => ({
+    url: `${BASE_URL}/casos/${item.slug}`,
+    lastModified: new Date(item.date),
     changeFrequency: 'monthly',
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...projectRoutes, ...productRoutes, ...blogRoutes, ...casosRoutes];
+  return [...staticRoutes, ...inspirationRoutes, ...projectRoutes, ...productRoutes, ...blogRoutes, ...casosRoutes];
 }

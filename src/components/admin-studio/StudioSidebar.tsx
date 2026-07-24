@@ -45,7 +45,7 @@ export const navSections: NavSection[] = [
     { href: '/admin/productos', label: 'Productos', description: 'Catálogo y stock', icon: Package },
     { href: '/admin/productos/importar', label: 'Importar de Mercado Libre', description: 'Vista previa ML Chile', icon: Link2 },
     { href: '/admin/materiales', label: 'Materiales', description: 'Cotizador en vivo', icon: Package },
-    { href: '/admin/proyectos', label: 'Proyectos', description: 'Obras terminadas', icon: Hammer },
+    { href: '/admin/proyectos', label: 'Estudio de Inspiraciones', description: 'Álbumes, Cloudinary, carga múltiple e IA', icon: ImageIcon, highlight: true },
     { href: '/admin/pedidos', label: 'Pedidos', description: 'Cobros y estados', icon: ShoppingCart },
     { href: '/admin/cotizaciones', label: 'Cotizaciones', description: 'Solicitudes y diseños 3D', icon: FileText },
     { href: '/admin/presupuestos', label: 'Presupuestos', description: 'Links autodestruibles', icon: FileText, highlight: true },
@@ -125,7 +125,7 @@ export const navSections: NavSection[] = [
 ];
 
 function normalize(value: string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(); }
-function initials(name: string) { return name.split(' ').filter(Boolean).slice(0, 2).map((p) => p[0]?.toUpperCase()).join('') || 'SF'; }
+function initials(name: string) { return name.split(' ').filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'SF'; }
 
 function NavItem({ href, label, description, icon: Icon, active, highlight, comingSoon, collapsed, onNavigate }: NavLink & { active: boolean; collapsed: boolean; onNavigate?: () => void }) {
   return <Link href={href} onClick={onNavigate} title={collapsed ? label : undefined} className={['group relative flex items-center gap-3 rounded-[20px] transition-all duration-200', collapsed ? 'mx-1 justify-center px-0 py-3' : 'mx-2 px-3 py-3', active ? LAVA_ACTIVE : LAVA_IDLE].join(' ')}>{active && <span className="absolute -left-[9px] top-1/2 h-9 w-1 -translate-y-1/2 rounded-full bg-amber-300 shadow-[0_0_20px_rgba(245,158,11,.95)]" />}<span className={[active ? 'bg-amber-300/18' : 'bg-white/[0.045] group-hover:bg-amber-400/12', 'grid h-9 w-9 shrink-0 place-items-center rounded-[14px] transition'].join(' ')}><Icon className={[active ? 'text-amber-100 drop-shadow-[0_0_10px_rgba(245,158,11,0.6)]' : 'text-[#d8c8aa] group-hover:text-amber-100', 'h-4 w-4 transition-all duration-200'].join(' ')} /></span>{!collapsed && <><span className="min-w-0 flex-1"><span className="block truncate text-[13px] font-black leading-none">{label}</span><span className="mt-1 block truncate text-[10px] leading-none text-[#9a896e] group-hover:text-[#f5d49b]">{description}</span></span>{comingSoon && <span className="shrink-0 rounded-full bg-white/[0.06] px-1.5 py-px text-[9px] text-[#d8c8aa]">Próx.</span>}{highlight && !comingSoon && <span className="shrink-0 rounded-full bg-amber-300/15 px-1.5 py-px text-[9px] text-amber-200">Nuevo</span>}</>}</Link>;
@@ -135,8 +135,8 @@ export function StudioSidebarContent({ collapsed, role, onNavigate, onLogout }: 
   const pathname = usePathname();
   const [query, setQuery] = useState('');
   const [profile, setProfile] = useState<SidebarProfile>({ name: 'Administrador', email: 'Soluciones Fabrick', avatar_url: null, role: role || 'admin' });
-  useEffect(() => { let alive = true; fetch('/api/admin/profile', { cache: 'no-store' }).then((r) => r.json()).then((json) => { if (!alive) return; const p = json?.profile || {}; const s = json?.session || {}; setProfile({ name: p.display_name || s.email?.split('@')?.[0] || 'Administrador', email: s.email || p.email || 'Soluciones Fabrick', avatar_url: p.avatar_url || null, role: s.rol || role || 'admin' }); }).catch(() => undefined); return () => { alive = false; }; }, [role]);
-  const sections = useMemo(() => { const q = normalize(query.trim()); return navSections.map((section) => ({ ...section, links: section.links.filter((link) => { if (link.superadminOnly && profile.role !== 'superadmin') return false; if (!q) return true; return normalize(`${link.label} ${link.description} ${section.title} ${link.href}`).includes(q); }) })).filter((section) => section.links.length > 0); }, [query, profile.role]);
+  useEffect(() => { let alive = true; fetch('/api/admin/profile', { cache: 'no-store' }).then((response) => response.json()).then((json) => { if (!alive) return; const profileData = json?.profile || {}; const session = json?.session || {}; setProfile({ name: profileData.display_name || session.email?.split('@')?.[0] || 'Administrador', email: session.email || profileData.email || 'Soluciones Fabrick', avatar_url: profileData.avatar_url || null, role: session.rol || role || 'admin' }); }).catch(() => undefined); return () => { alive = false; }; }, [role]);
+  const sections = useMemo(() => { const normalizedQuery = normalize(query.trim()); return navSections.map((section) => ({ ...section, links: section.links.filter((link) => { if (link.superadminOnly && profile.role !== 'superadmin') return false; if (!normalizedQuery) return true; return normalize(`${link.label} ${link.description} ${section.title} ${link.href}`).includes(normalizedQuery); }) })).filter((section) => section.links.length > 0); }, [query, profile.role]);
 
   return <div className="relative flex h-full flex-col overflow-hidden text-white"><div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(245,158,11,.22),transparent_16rem),radial-gradient(circle_at_100%_40%,rgba(255,96,24,.10),transparent_18rem),linear-gradient(180deg,rgba(10,8,5,.82),rgba(3,3,3,.96))]" />
     <div className="relative shrink-0 border-b border-amber-300/10 p-4">

@@ -33,5 +33,20 @@ export const metadata: Metadata = {
 };
 
 export default function InspiracionesPage() {
-  return <CloudinaryProjectsGallery />;
+  return (
+    <>
+      <CloudinaryProjectsGallery />
+      <style>{`
+        @media (min-width: 640px) {
+          #albumes .mt-7.grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+          #albumes .mt-7.grid > article { grid-row: auto !important; }
+          #albumes .mt-7.grid > article figure > div { height: 430px !important; }
+        }
+        @media (min-width: 1024px) {
+          #albumes .mt-7.grid { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 1.75rem !important; }
+          #albumes .mt-7.grid > article figure > div { height: 520px !important; }
+        }
+      `}</style>
+    </>
+  );
 }

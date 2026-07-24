@@ -1,47 +1,37 @@
 import type { Metadata } from 'next';
 import CloudinaryProjectsGallery from '@/components/proyectos/CloudinaryProjectsGallery';
-import InspirationSeoIndex from '@/components/proyectos/InspirationSeoIndex';
 
 export const dynamic = 'force-dynamic';
 
 export const metadata: Metadata = {
-  title: 'Ideas para casas, cocinas, baños y remodelaciones en Chile',
-  description: 'Explora álbumes visuales de casas, cocinas, planos, baños, muebles, piscinas, terrazas, quinchos y remodelaciones. Compara estilos, materiales visibles y terminaciones antes de cotizar tu proyecto.',
+  title: 'Ideas de construcción y remodelación por álbum',
+  description: 'Explora álbumes de cocinas, casas, planos, baños, muebles, piscinas, terrazas y quinchos con descripciones, palabras clave y galerías visuales.',
   keywords: [
-    'ideas para casas en Chile',
-    'ideas de cocinas modernas',
-    'diseños de baños',
-    'ideas para quinchos',
-    'terrazas y patios',
-    'piscinas para casas',
-    'muebles a medida',
-    'planos de casas',
+    'ideas de construcción',
     'ideas de remodelación',
-    'inspiración construcción Chile',
+    'diseño de cocinas',
+    'ideas para casas',
+    'quinchos y terrazas',
+    'inspiración para el hogar Chile',
     'Soluciones Fabrick',
   ],
   alternates: { canonical: 'https://www.solucionesfabrick.com/proyectos' },
-  robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large', 'max-snippet': -1, 'max-video-preview': -1 } },
+  robots: { index: true, follow: true, googleBot: { index: true, follow: true, 'max-image-preview': 'large' } },
   openGraph: {
-    title: 'Inspiraciones para construir y remodelar | Soluciones Fabrick',
-    description: 'Álbumes organizados por tema, estilo e intención para descubrir ideas de casas, cocinas, baños, terrazas, quinchos, piscinas y muebles.',
+    title: 'Inspiraciones Soluciones Fabrick | Álbumes de ideas para el hogar',
+    description: 'Catálogo visual organizado por álbumes para comparar estilos, distribución, materiales visibles y terminaciones antes de cotizar.',
     type: 'website',
     url: 'https://www.solucionesfabrick.com/proyectos',
-    images: [{ url: '/brand/soluciones-fabrick-social.png', width: 1200, height: 630, alt: 'Ideas para construcción, diseño y remodelación en Chile' }],
+    images: [{ url: '/brand/soluciones-fabrick-social.png', width: 1200, height: 630, alt: 'Álbumes de inspiración Soluciones Fabrick' }],
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Ideas para construir y remodelar en Chile',
-    description: 'Explora colecciones visuales organizadas por espacio, estilo, palabras clave e intención de proyecto.',
+    title: 'Ideas de construcción y remodelación | Soluciones Fabrick',
+    description: 'Explora álbumes visuales organizados por espacio, estilo y palabras clave.',
     images: ['/brand/soluciones-fabrick-social.png'],
   },
 };
 
 export default function InspiracionesPage() {
-  return (
-    <>
-      <CloudinaryProjectsGallery />
-      <InspirationSeoIndex />
-    </>
-  );
+  return <CloudinaryProjectsGallery />;
 }

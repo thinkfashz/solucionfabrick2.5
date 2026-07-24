@@ -43,56 +43,56 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
   ];
 
   return (
-    <div className="overflow-x-hidden bg-[#080705] text-white">
+    <div className="overflow-x-hidden bg-[#171820] text-[#F8F0E9]">
       <ServicesVerticalGallery />
 
-      <section id="mas-vendidos" className="border-y border-white/8 bg-[#0d0b08] px-4 py-16 sm:px-6 md:px-12 lg:py-20">
+      <section id="mas-vendidos" className="bg-[#F8F0E9] px-4 py-16 text-[#171820] sm:px-6 md:px-12 lg:py-20">
         <div data-reveal className="mx-auto max-w-[1320px]">
           <TiendaSection
             limit={3}
             variant="banner"
-            title="Los más vendidos para mejorar tu hogar"
-            description="Productos destacados directamente desde la tienda. Revisa precio, disponibilidad y características sin repetir el catálogo completo en la portada."
+            title="Productos elegidos para completar tu proyecto"
+            description="Una selección breve de la tienda para complementar instalaciones, terminaciones y mejoras del hogar sin duplicar el catálogo completo."
             primaryCtaLabel="Explorar catálogo"
           />
         </div>
       </section>
 
-      <section id="contacto" className="relative overflow-hidden px-4 py-16 sm:px-6 md:px-12 lg:py-20">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_18%,rgba(249,115,22,.1),transparent_28%)]" />
+      <section id="contacto" className="relative overflow-hidden bg-[#B6906C] px-4 py-16 text-[#171820] sm:px-6 md:px-12 lg:py-20">
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_18%,rgba(248,240,233,.3),transparent_30%)]" />
         <div className="relative mx-auto grid max-w-[1200px] gap-8 lg:grid-cols-[.78fr_1.22fr] lg:items-start">
           <div data-reveal>
-            <p className="text-[10px] font-black uppercase tracking-[.24em] text-yellow-300">Solicitar evaluación</p>
+            <p className="text-[10px] font-black uppercase tracking-[.24em] text-[#5E3F2A]">Solicitar evaluación</p>
             <h2 className="mt-3 text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>
-              Cuéntanos el resultado que necesitas lograr.
+              Cuéntanos qué quieres resolver y nosotros ordenamos el siguiente paso.
             </h2>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-zinc-400 sm:text-base">
-              Indica comuna, superficie aproximada y tipo de trabajo. Te responderemos con las preguntas correctas para definir viabilidad, alcance y próximos pasos.
+            <p className="mt-4 max-w-xl text-sm leading-7 text-[#493B32] sm:text-base">
+              Indica comuna, medidas aproximadas y estado actual. Te responderemos con las preguntas necesarias para definir viabilidad, alcance y una cotización responsable.
             </p>
 
             <div className="mt-6 grid gap-2">
               <ProofLine icon={<MapPin className="h-4 w-4" />} title="Cobertura principal" text="Región del Maule y proyectos seleccionados en Santiago." />
-              <ProofLine icon={<Clock3 className="h-4 w-4" />} title="Respuesta comercial" text="Revisamos tu solicitud y te indicamos qué información falta." />
+              <ProofLine icon={<Clock3 className="h-4 w-4" />} title="Respuesta comercial" text="Revisamos la información y te indicamos qué falta para avanzar." />
               <ProofLine icon={<BadgeCheck className="h-4 w-4" />} title="Cotización responsable" text="El valor final se confirma con medidas y condiciones reales." />
             </div>
           </div>
 
-          <div data-reveal className="rounded-[1.8rem] border border-white/10 bg-white/[.04] p-4 shadow-[0_28px_80px_rgba(0,0,0,.28)] sm:p-6">
-            <div className="mb-5 flex items-center gap-3 border-b border-white/9 pb-4">
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-yellow-300 text-black"><MessageCircle className="h-5 w-5" /></span>
-              <div><p className="text-sm font-black">Hablemos de tu proyecto</p><p className="mt-1 text-[10px] text-zinc-500">Formulario breve · orientación personalizada</p></div>
+          <div data-reveal className="rounded-[1.8rem] bg-[#F8F0E9] p-4 text-[#171820] shadow-[0_28px_80px_rgba(23,24,32,.22)] sm:p-6">
+            <div className="mb-5 flex items-center gap-3 border-b border-[#171820]/10 pb-4">
+              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#171820] text-[#CCB196]"><MessageCircle className="h-5 w-5" /></span>
+              <div><p className="text-sm font-black">Hablemos de tu proyecto</p><p className="mt-1 text-[10px] text-[#756B63]">Formulario breve · orientación personalizada</p></div>
             </div>
             <ContactForm />
           </div>
         </div>
       </section>
 
-      <footer className="border-t border-white/8 bg-black px-4 py-9 sm:px-6 md:px-12">
+      <footer className="bg-[#171820] px-4 py-9 text-[#F8F0E9] sm:px-6 md:px-12">
         <div className="mx-auto max-w-[1320px]">
           <div className="grid gap-7 lg:grid-cols-[1.05fr_1.95fr] lg:items-start">
             <div>
               <FabrickFullLogo compact priority theme="light" />
-              <p className="mt-3 max-w-md text-sm leading-6 text-zinc-400">Construcción, remodelación y equipamiento con alcance claro antes de ejecutar.</p>
+              <p className="mt-3 max-w-md text-sm leading-6 text-[#BEB2A8]">Servicios, calculadoras y productos para organizar una inversión antes de ejecutar.</p>
               <div className="mt-4 flex gap-2">
                 <SocialLink href={fbHref} label="Facebook"><span aria-hidden>f</span></SocialLink>
                 <SocialLink href={igHref} label="Instagram"><span aria-hidden>◎</span></SocialLink>
@@ -104,9 +104,9 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
             </div>
           </div>
 
-          <div className="mt-7 flex flex-col gap-2 border-t border-white/8 pt-4 text-[9px] leading-5 text-zinc-600 md:flex-row md:items-center md:justify-between">
+          <div className="mt-7 flex flex-col gap-2 border-t border-[#F8F0E9]/8 pt-4 text-[9px] leading-5 text-[#81776F] md:flex-row md:items-center md:justify-between">
             <div dangerouslySetInnerHTML={{ __html: legalText }} />
-            <span className="inline-flex items-center gap-1.5"><ShoppingBag className="h-3.5 w-3.5 text-yellow-300" /> Servicios y productos en una sola plataforma.</span>
+            <span className="inline-flex items-center gap-1.5"><ShoppingBag className="h-3.5 w-3.5 text-[#CCB196]" /> Servicios y productos en una sola plataforma.</span>
           </div>
         </div>
       </footer>
@@ -116,9 +116,9 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
 
 function ProofLine({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
   return (
-    <div className="flex gap-3 rounded-2xl border border-white/8 bg-white/[.025] p-3.5">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-yellow-300/[.09] text-yellow-300">{icon}</span>
-      <span><b className="block text-xs">{title}</b><span className="mt-1 block text-[10px] leading-5 text-zinc-500">{text}</span></span>
+    <div className="flex gap-3 rounded-2xl bg-[#F8F0E9]/35 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,.18)]">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#171820] text-[#CCB196]">{icon}</span>
+      <span><b className="block text-xs">{title}</b><span className="mt-1 block text-[10px] leading-5 text-[#55463B]">{text}</span></span>
     </div>
   );
 }
@@ -131,7 +131,7 @@ function SocialLink({ href, label, children }: { href: string; label: string; ch
       aria-label={label}
       target={disabled ? undefined : '_blank'}
       rel={disabled ? undefined : 'noopener noreferrer'}
-      className={`grid h-10 w-10 place-items-center rounded-full border border-white/10 text-sm font-black transition ${disabled ? 'cursor-not-allowed opacity-35' : 'text-zinc-300 hover:border-yellow-300/45 hover:bg-yellow-300 hover:text-black'}`}
+      className={`grid h-10 w-10 place-items-center rounded-full border border-[#F8F0E9]/10 text-sm font-black transition ${disabled ? 'cursor-not-allowed opacity-35' : 'text-[#D4C7BD] hover:border-[#CCB196]/45 hover:bg-[#CCB196] hover:text-[#171820]'}`}
     >
       {children}
     </a>
@@ -142,18 +142,18 @@ function FooterGroup({ title, items }: { title: string; items: Array<[string, st
   const links = (
     <div className="grid gap-2 pb-2 pt-3 md:pb-0">
       {items.map(([label, href]) => href.startsWith('http')
-        ? <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-zinc-400 transition hover:text-yellow-300">{label}</a>
-        : <Link key={label} href={href} className="text-sm text-zinc-400 transition hover:text-yellow-300">{label}</Link>)}
+        ? <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-[#BEB2A8] transition hover:text-[#CCB196]">{label}</a>
+        : <Link key={label} href={href} className="text-sm text-[#BEB2A8] transition hover:text-[#CCB196]">{label}</Link>)}
     </div>
   );
 
   return (
     <div>
-      <details className="group border-t border-white/9 md:hidden">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-xs font-black text-white"><span>{title}</span><span className="text-yellow-300 transition group-open:rotate-45">+</span></summary>
+      <details className="group border-t border-[#F8F0E9]/9 md:hidden">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-xs font-black text-[#F8F0E9]"><span>{title}</span><span className="text-[#CCB196] transition group-open:rotate-45">+</span></summary>
         {links}
       </details>
-      <div className="hidden md:block"><p className="text-[8px] font-black uppercase tracking-[.22em] text-yellow-300">{title}</p>{links}</div>
+      <div className="hidden md:block"><p className="text-[8px] font-black uppercase tracking-[.22em] text-[#CCB196]">{title}</p>{links}</div>
     </div>
   );
 }

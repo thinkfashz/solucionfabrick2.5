@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import {
   ArrowRight,
+  Bot,
   Check,
   CircleDollarSign,
   Info,
@@ -67,6 +68,28 @@ export default function ConstructionM2Calculator() {
     setValues((current) => ({ ...current, [key]: Math.max(0, Number(value) || 0) }));
   }
 
+  function analyzeWithFabri() {
+    const prompt = [
+      'Analiza este cálculo preliminar como orientador comercial y técnico de construcción en Chile.',
+      `Referencia: ${reference}`,
+      `Servicio: ${service.title}`,
+      `Categoría: ${service.category}`,
+      `Fórmula utilizada: ${measurement.formula}`,
+      `Medidas ingresadas: ${measurement.detail}`,
+      measurement.secondary ? `Resultado dimensional adicional: ${measurement.secondary}` : '',
+      `Cantidad calculada: ${number(measurement.quantity)} ${service.unit}`,
+      `Rango referencial actual: ${money(low)} a ${money(high)}. Promedio: ${money(average)}.`,
+      `Incluye como referencia: ${service.includes.join('; ')}.`,
+      `Advertencia de la calculadora: ${service.disclaimer}`,
+      '',
+      'Entrégame un análisis más sofisticado y breve con: alcance probable, partidas que debería separar, exclusiones o riesgos, preguntas que faltan responder, etapas recomendadas y próximo paso. No conviertas este rango en precio final ni inventes medidas, permisos o materiales no informados.',
+    ].filter(Boolean).join('\n');
+
+    window.dispatchEvent(new CustomEvent('fabrick:agent-open', {
+      detail: { prompt, autoSend: true },
+    }));
+  }
+
   return (
     <section id="cotizador" className="relative overflow-hidden bg-[#F8F0E9] px-4 py-16 text-[#171820] sm:px-6 lg:px-8 lg:py-20">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(204,177,150,.34),transparent_28%),radial-gradient(circle_at_90%_80%,rgba(182,144,108,.18),transparent_30%)]" />
@@ -76,7 +99,7 @@ export default function ConstructionM2Calculator() {
             <p className="text-[10px] font-black uppercase tracking-[.24em] text-[#895E3D]">Cotizador dimensional</p>
             <h2 className="mt-3 text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>Mide el trabajo antes de comprometer tu inversión.</h2>
           </div>
-          <p className="max-w-2xl text-sm leading-7 text-[#685D55] sm:text-base">Cada especialidad aplica una fórmula distinta. Ingresa largo, ancho, alto, espesor, metros lineales o unidades y obtén un rango que puedas añadir al presupuesto completo.</p>
+          <p className="max-w-2xl text-sm leading-7 text-[#685D55] sm:text-base">Cada especialidad aplica una fórmula distinta. Ingresa largo, ancho, alto, espesor, metros lineales o unidades; después Fabri puede ordenar las partidas y preguntas pendientes para una revisión más completa.</p>
         </header>
 
         <div data-reveal className="mt-8 grid overflow-hidden rounded-[2.25rem] bg-white shadow-[0_32px_100px_rgba(70,48,22,.16)] lg:grid-cols-[minmax(0,1.08fr)_minmax(370px,.72fr)]">
@@ -102,7 +125,6 @@ export default function ConstructionM2Calculator() {
             </div>
 
             <MeasurementFields service={service} values={values} onChange={updateValue} />
-
             <div className="mt-5 rounded-[1.35rem] bg-[#EEE1D5] px-4 py-3.5"><p className="flex gap-2 text-xs leading-5 text-[#5E5148]"><Info className="mt-0.5 h-4 w-4 shrink-0 text-[#895E3D]" />{service.disclaimer}</p></div>
           </div>
 
@@ -112,12 +134,7 @@ export default function ConstructionM2Calculator() {
               <div className="flex items-start justify-between gap-4"><div><p className="text-[9px] font-black uppercase tracking-[.23em] text-[#CCB196]">Estimación preliminar</p><h3 className="mt-2 text-2xl font-black tracking-[-.04em]">Recibo de cálculo</h3></div><span className="grid h-12 w-12 place-items-center rounded-full bg-[#CCB196] text-[#171820]"><ReceiptText className="h-5 w-5" /></span></div>
               <div className="mt-5 flex items-center justify-between rounded-full bg-white/[.065] px-4 py-2.5 text-[9px] font-black uppercase tracking-[.13em] text-white/45"><span>Referencia</span><span className="text-[#E5CFBA]">{reference}</span></div>
 
-              <div className="mt-5 rounded-[1.5rem] bg-white/[.055] p-4">
-                <ReceiptRow label="Servicio" value={service.short} />
-                <ReceiptRow label="Fórmula" value={measurement.formula} />
-                <ReceiptRow label="Medidas" value={measurement.detail} />
-                <ReceiptRow label="Resultado" value={`${number(measurement.quantity)} ${service.unit}`} last />
-              </div>
+              <div className="mt-5 rounded-[1.5rem] bg-white/[.055] p-4"><ReceiptRow label="Servicio" value={service.short} /><ReceiptRow label="Fórmula" value={measurement.formula} /><ReceiptRow label="Medidas" value={measurement.detail} /><ReceiptRow label="Resultado" value={`${number(measurement.quantity)} ${service.unit}`} last /></div>
 
               <div className="mt-4 overflow-hidden rounded-[1.7rem] bg-[linear-gradient(135deg,#CCB196,#F8F0E9)] p-5 text-[#171820]">
                 <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.17em] text-[#171820]/60"><Sparkles className="h-4 w-4" /> Rango estimado</div>
@@ -127,9 +144,10 @@ export default function ConstructionM2Calculator() {
 
               <div className="mt-6"><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.2em] text-[#CCB196]"><CircleDollarSign className="h-4 w-4" /> Esta referencia considera</div><ul className="mt-3 grid gap-2">{service.includes.map((item) => <li key={item} className="flex gap-2 rounded-xl bg-white/[.045] px-3 py-2.5 text-xs leading-5 text-[#D7CCC4]"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[#CCB196]" />{item}</li>)}</ul></div>
 
-              <Link href={`/presupuesto?servicio=${service.id}`} className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#CCB196] px-5 text-sm font-black text-[#171820] transition hover:bg-[#F8F0E9]">Añadir al presupuesto completo <ArrowRight className="h-4 w-4" /></Link>
+              <button type="button" onClick={analyzeWithFabri} className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#F8F0E9] px-5 text-sm font-black text-[#171820] transition hover:bg-[#CCB196]"><Bot className="h-4 w-4" /> Analizar este cálculo con Fabri IA</button>
+              <Link href={`/presupuesto?servicio=${service.id}`} className="mt-3 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#CCB196] px-5 text-sm font-black text-[#171820] transition hover:bg-[#F8F0E9]">Añadir al presupuesto completo <ArrowRight className="h-4 w-4" /></Link>
               <a href={`https://wa.me/56930121625?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white/[.075] px-5 text-xs font-black text-white transition hover:bg-white/[.13]">Revisar solo este cálculo <MessageCircle className="h-4 w-4" /></a>
-              <p className="mt-4 text-center text-[10px] leading-5 text-white/35">La calculadora completa permite combinar este servicio con otras partidas.</p>
+              <p className="mt-4 text-center text-[10px] leading-5 text-white/35">Fabri organiza supuestos y preguntas pendientes; el equipo confirma factibilidad y precio final.</p>
             </div>
           </aside>
         </div>
@@ -139,13 +157,8 @@ export default function ConstructionM2Calculator() {
 }
 
 function MeasurementFields({ service, values, onChange }: { service: BudgetService; values: MeasurementValues; onChange: (key: keyof MeasurementValues, value: number) => void }) {
-  if (service.measurement === 'count') {
-    return <div className="mt-5"><QuantityField value={values.quantity} onChange={(value) => onChange('quantity', value)} suffix={service.unit === 'punto' ? 'puntos' : 'unidades'} /></div>;
-  }
-
-  if (service.measurement === 'linear') {
-    return <div className="mt-5 grid gap-3 sm:grid-cols-2"><NumberField label="Largo total" value={values.length} onChange={(value) => onChange('length', value)} suffix="m" />{service.id === 'cierre' ? <NumberField label="Altura referencial" value={values.height} onChange={(value) => onChange('height', value)} suffix="m" /> : null}</div>;
-  }
+  if (service.measurement === 'count') return <div className="mt-5"><QuantityField value={values.quantity} onChange={(value) => onChange('quantity', value)} suffix={service.unit === 'punto' ? 'puntos' : 'unidades'} /></div>;
+  if (service.measurement === 'linear') return <div className="mt-5 grid gap-3 sm:grid-cols-2"><NumberField label="Largo total" value={values.length} onChange={(value) => onChange('length', value)} suffix="m" />{service.id === 'cierre' ? <NumberField label="Altura referencial" value={values.height} onChange={(value) => onChange('height', value)} suffix="m" /> : null}</div>;
 
   const fields: Array<{ key: keyof MeasurementValues; label: string }> = [];
   if (service.measurement === 'floor') fields.push({ key: 'length', label: 'Largo' }, { key: 'width', label: 'Ancho' });
@@ -153,7 +166,6 @@ function MeasurementFields({ service, values, onChange }: { service: BudgetServi
   if (service.measurement === 'room-walls') fields.push({ key: 'length', label: 'Largo del recinto' }, { key: 'width', label: 'Ancho del recinto' }, { key: 'height', label: 'Alto de los muros' });
   if (service.measurement === 'slab') fields.push({ key: 'length', label: 'Largo' }, { key: 'width', label: 'Ancho' }, { key: 'height', label: 'Espesor' });
   if (service.measurement === 'volume') fields.push({ key: 'length', label: 'Largo' }, { key: 'width', label: 'Ancho' }, { key: 'height', label: 'Profundidad / alto' });
-
   return <div className="mt-5 grid gap-3 sm:grid-cols-2">{fields.map((field) => <NumberField key={field.key} label={field.label} value={values[field.key]} onChange={(value) => onChange(field.key, value)} suffix="m" />)}</div>;
 }
 

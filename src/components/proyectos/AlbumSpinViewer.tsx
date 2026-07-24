@@ -53,9 +53,9 @@ export default function AlbumSpinViewer({ assets, onOpen, quoteHref }: Props) {
   }, []);
 
   useEffect(() => {
+    if (!sectionRef.current || !stageRef.current || count < 2) return;
     const sectionElement = sectionRef.current;
     const stageElement = stageRef.current;
-    if (!sectionElement || !stageElement || count < 2) return;
     const desktop = window.matchMedia('(min-width: 1024px)');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 

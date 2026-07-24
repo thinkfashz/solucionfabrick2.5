@@ -84,6 +84,7 @@ export default function ServiceBudgetShop() {
     if (params.get('servicio')) {
       window.setTimeout(() => calculatorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
     }
+    // La URL se lee una sola vez; los cambios posteriores se gestionan con history.replaceState.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 

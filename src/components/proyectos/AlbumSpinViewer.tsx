@@ -53,28 +53,27 @@ export default function AlbumSpinViewer({ assets, onOpen, quoteHref }: Props) {
   }, []);
 
   useEffect(() => {
-    const section = sectionRef.current;
-    const stage = stageRef.current;
-    if (!section || !stage || count < 2) return;
+    const sectionElement = sectionRef.current;
+    const stageElement = stageRef.current;
+    if (!sectionElement || !stageElement || count < 2) return;
     const desktop = window.matchMedia('(min-width: 1024px)');
     const reducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)');
 
     function render() {
       frameRef.current = null;
       if (!desktop.matches || reducedMotion.matches) {
-        stage.style.transform = 'rotateX(-4deg) rotateY(0deg)';
+        stageElement.style.transform = 'rotateX(-4deg) rotateY(0deg)';
         return;
       }
-      const rect = section.getBoundingClientRect();
+      const rect = sectionElement.getBoundingClientRect();
       const absoluteTop = rect.top + window.scrollY;
       const start = absoluteTop - 72;
-      const end = Math.max(start + 1, absoluteTop + section.offsetHeight - window.innerHeight);
+      const end = Math.max(start + 1, absoluteTop + sectionElement.offsetHeight - window.innerHeight);
       const progress = clamp((window.scrollY - start) / (end - start));
       const exactIndex = progress * (count - 1);
       const nextIndex = Math.round(exactIndex);
       const rotation = exactIndex * step;
-      stage.style.transform = `rotateX(-4deg) rotateY(${-rotation}deg)`;
-      section.style.setProperty('--album-spin-progress', String(progress));
+      stageElement.style.transform = `rotateX(-4deg) rotateY(${-rotation}deg)`;
       setActiveIndex((current) => current === nextIndex ? current : nextIndex);
     }
 
@@ -112,7 +111,7 @@ export default function AlbumSpinViewer({ assets, onOpen, quoteHref }: Props) {
       <section
         ref={sectionRef}
         className="relative mt-7 hidden lg:block"
-        style={{ height: `${trackHeight}vh`, ['--album-spin-progress' as string]: 0 }}
+        style={{ height: `${trackHeight}vh` }}
         aria-label={`Carrusel 3D del álbum ${active.album_title}`}
       >
         <div className="sticky top-[88px] h-[calc(100vh-104px)] min-h-[620px] overflow-hidden rounded-[2.5rem] bg-[radial-gradient(circle_at_50%_45%,rgba(204,177,150,.18),transparent_23rem),linear-gradient(145deg,#242630,#111218)] text-[#F8F0E9] shadow-[0_34px_110px_rgba(23,24,32,.24)] ring-1 ring-white/8">

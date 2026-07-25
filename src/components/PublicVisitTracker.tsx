@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect } from 'react';
-import { usePathname, useSearchParams } from 'next/navigation';
+import { usePathname } from 'next/navigation';
 
 const EXCLUDED_PREFIXES = ['/admin', '/api', '/auth', '/checkout'];
 const VISITOR_KEY = 'fabrick_visitor_id';
@@ -62,17 +62,17 @@ function browserName() {
 
 export default function PublicVisitTracker() {
   const pathname = usePathname() || '/';
-  const searchParams = useSearchParams();
 
   useEffect(() => {
     if (EXCLUDED_PREFIXES.some((prefix) => pathname.startsWith(prefix))) return;
     const startedAt = Date.now();
     const visitor = stableId(VISITOR_KEY, 'visitor');
     const session = sessionId();
-    const query = searchParams?.toString() || '';
+    const searchParams = new URLSearchParams(window.location.search);
+    const query = searchParams.toString();
     const fullPath = query ? `${pathname}?${query}` : pathname;
     const referrer = referrerInfo();
-    const utm = Object.fromEntries(['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].map((key) => [key, searchParams?.get(key) || null]));
+    const utm = Object.fromEntries(['utm_source', 'utm_medium', 'utm_campaign', 'utm_content', 'utm_term'].map((key) => [key, searchParams.get(key) || null]));
 
     const pageViewBody = JSON.stringify({
       event: 'page_view',
@@ -112,7 +112,7 @@ export default function PublicVisitTracker() {
       window.removeEventListener('pagehide', sendDuration);
       sendDuration();
     };
-  }, [pathname, searchParams]);
+  }, [pathname]);
 
   return null;
 }

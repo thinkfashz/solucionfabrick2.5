@@ -1,71 +1,56 @@
-import { NextResponse } from 'next/server';
-import { createClient } from '@insforge/sdk';
-import { META_GRAPH_URL, getMetaAdAccountId, normalizeAdAccountId } from '@/lib/meta';
-import { decryptCredentials } from '@/lib/integrationsCrypto';
+import { NextResponse, type NextRequest } from 'next/server';
+import { META_GRAPH_URL, normalizeAdAccountId } from '@/lib/meta';
+import { getMetaCredentials } from '@/lib/metaCredentials';
+import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 
-/**
- * Resolves Meta credentials from env vars first, then from the InsForge
- * `integrations` table (provider = 'meta'). This lets the admin paste the
- * access token into the UI instead of redeploying with new env vars.
- */
-async function resolveMetaCredentials(): Promise<{ accessToken?: string; adAccountId?: string }> {
-  const envToken = process.env.META_ACCESS_TOKEN;
-  const envAccount = getMetaAdAccountId();
-  if (envToken && envAccount) {
-    return { accessToken: envToken, adAccountId: envAccount };
-  }
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
 
-  const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
-  const anonKey = process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
-  if (!baseUrl || !anonKey) {
-    return { accessToken: envToken, adAccountId: envAccount };
-  }
-  try {
-    const client = createClient({ baseUrl, anonKey });
-    const { data } = await client.database
-      .from('integrations')
-      .select('credentials')
-      .eq('provider', 'meta')
-      .limit(1);
-    if (Array.isArray(data) && data.length > 0) {
-      const row = data[0] as { credentials?: Record<string, unknown> };
-      const creds = decryptCredentials(row.credentials ?? {}) as Record<string, string>;
-      return {
-        accessToken: envToken ?? creds.access_token,
-        adAccountId: envAccount ?? normalizeAdAccountId(creds.ad_account_id),
-      };
-    }
-  } catch {
-    // Table may be missing — fall through to env-only values.
-  }
-  return { accessToken: envToken, adAccountId: envAccount };
+async function requireAdmin(request: NextRequest) {
+  const cookie = request.cookies.get(ADMIN_COOKIE_NAME)?.value;
+  return cookie ? decodeSession(cookie) : null;
 }
 
-export async function GET() {
-  const { accessToken, adAccountId } = await resolveMetaCredentials();
+export async function GET(request: NextRequest) {
+  const session = await requireAdmin(request);
+  if (!session) return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+
+  const credentials = await getMetaCredentials();
+  const accessToken = credentials?.accessToken;
+  const adAccountId = normalizeAdAccountId(credentials?.adAccountId);
 
   if (!accessToken || !adAccountId) {
     return NextResponse.json(
-      { error: 'Credenciales de Meta no configuradas. Agrega META_ACCESS_TOKEN y META_AD_ACCOUNT_ID en Configuración → Integraciones.' },
-      { status: 503 }
+      { error: 'Credenciales de Meta no configuradas. Agrégalas en Configuración → Integraciones.' },
+      { status: 503 },
     );
   }
 
   try {
-    const fields = 'id,name,status,effective_status,insights{spend,clicks,impressions,ctr}';
-    const url = `${META_GRAPH_URL}/act_${adAccountId}/ads?fields=${encodeURIComponent(fields)}&access_token=${accessToken}&limit=50`;
+    const fields = [
+      'id',
+      'name',
+      'status',
+      'effective_status',
+      'created_time',
+      'updated_time',
+      'campaign{id,name,objective,status,effective_status}',
+      'adset{id,name,daily_budget,lifetime_budget,bid_strategy,optimization_goal,billing_event,status,effective_status}',
+      'creative{id,name}',
+      'insights{spend,clicks,impressions,reach,frequency,ctr,cpc,cpm,actions,cost_per_action_type}',
+    ].join(',');
+    const url = `${META_GRAPH_URL}/act_${adAccountId}/ads?fields=${encodeURIComponent(fields)}&access_token=${encodeURIComponent(accessToken)}&limit=100`;
+    const response = await fetch(url, { cache: 'no-store' });
+    const json = await response.json();
 
-    const res = await fetch(url);
-    const json = await res.json();
-
-    if (!res.ok || json.error) {
-      const msg = json.error?.message ?? `Meta API error ${res.status}`;
-      return NextResponse.json({ error: msg }, { status: res.ok ? 502 : res.status });
+    if (!response.ok || json.error) {
+      const message = json.error?.message ?? `Meta API error ${response.status}`;
+      return NextResponse.json({ error: message }, { status: response.ok ? 502 : response.status });
     }
 
-    return NextResponse.json({ data: json.data ?? [] });
-  } catch (err: unknown) {
-    console.error('Meta ads fetch error:', err);
+    return NextResponse.json({ data: json.data ?? [], paging: json.paging ?? null });
+  } catch (error) {
+    console.error('Meta ads fetch error:', error);
     return NextResponse.json({ error: 'Error interno al consultar Meta API.' }, { status: 500 });
   }
 }

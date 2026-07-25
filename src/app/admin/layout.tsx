@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import { AdminShellSwitcher } from '@/components/admin/AdminShellSwitcher';
 import AdminInspirationSidebarShortcut from '@/components/admin/AdminInspirationSidebarShortcut';
+import AdminHomeAnalyticsBanner from '@/components/admin/AdminHomeAnalyticsBanner';
 import Presupuesto3DAdminWidget from '@/components/presupuestos/Presupuesto3DAdminWidget';
 import AdminColombiaGradientBackground from '@/components/admin/visual/AdminColombiaGradientBackground';
 import './fabrick-admin-theme.css';
@@ -17,6 +18,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <AdminColombiaGradientBackground>
       <AdminShellSwitcher>{children}</AdminShellSwitcher>
       <AdminInspirationSidebarShortcut />
+      <AdminHomeAnalyticsBanner />
       <Presupuesto3DAdminWidget />
     </AdminColombiaGradientBackground>
   );

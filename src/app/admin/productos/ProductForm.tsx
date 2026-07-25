@@ -1,536 +1,221 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type FormEvent, type ReactNode } from 'react';
+/* eslint-disable @next/next/no-img-element */
+
+import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { insforge } from '@/lib/insforge';
 import { useCategories } from '@/hooks/useCategories';
 import {
-  ArrowLeft,
-  Calculator,
-  CheckCircle2,
-  ChevronLeft,
-  ChevronRight,
-  Cloud,
-  FolderOpen,
-  ImagePlus,
-  Images,
-  Loader2,
-  Plus,
-  Star,
-  Trash2,
-  Truck,
-  X,
+  ArrowLeft, ArrowRight, BadgePercent, Calculator, Check, ChevronLeft, ChevronRight,
+  Cloud, ImagePlus, Images, Loader2, Package, Sparkles, Star, Trash2, Truck, WandSparkles,
 } from 'lucide-react';
 
-type GalleryImage = {
-  url: string;
-  public_id?: string;
-  source?: 'cloudinary' | 'manual' | 'legacy';
+type GalleryImage = { url: string; public_id?: string; source?: 'cloudinary' | 'manual' | 'legacy' };
+type Step = 1 | 2 | 3 | 4 | 5 | 6;
+type Analysis = {
+  title: string; shortDescription: string; longDescription: string; category: string; tags: string[];
+  rating: number; estimatedDemand: number; estimatedPurchasePopularity: number;
+  priceLow: number; priceMid: number; priceHigh: number; recommendedPrice: number;
+  marginNote: string; buyerProfile: string; positioning: string; evidenceNote: string;
 };
 
-type CloudinaryStatus = 'checking' | 'ready' | 'missing' | 'error';
-
-type CloudinaryAsset = {
-  public_id: string;
-  url: string;
-  width?: number;
-  height?: number;
-};
-
-function folderSlug(value: string) {
-  return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'general';
+function money(value: unknown) {
+  const number = Number(String(value ?? '').replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(number) ? number : 0;
 }
-
-function formatDisplayPrice(raw: string) {
-  const n = parseInt(raw.replace(/\D/g, ''), 10);
-  if (Number.isNaN(n)) return '';
-  return n.toLocaleString('es-CL');
+function clp(value: unknown) { return '$' + Math.round(money(value)).toLocaleString('es-CL'); }
+function slug(value: string) { return value.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'general'; }
+function specs(value: unknown): Record<string, unknown> { return value && typeof value === 'object' && !Array.isArray(value) ? { ...(value as Record<string, unknown>) } : {}; }
+function uniqueImages(images: GalleryImage[]) { const map = new Map<string, GalleryImage>(); images.forEach((image) => { const url = image.url.trim(); if (url) map.set(url, { ...map.get(url), ...image, url }); }); return Array.from(map.values()); }
+function initialGallery(image?: string, specifications?: Record<string, unknown>) {
+  const result: GalleryImage[] = [];
+  if (image) result.push({ url: image, source: 'legacy' });
+  const gallery = specifications?.gallery_assets;
+  if (Array.isArray(gallery)) gallery.forEach((item) => { if (item && typeof item === 'object') { const row = item as Record<string, unknown>; const url = String(row.url || row.secure_url || ''); if (url) result.push({ url, public_id: String(row.public_id || '') || undefined, source: 'legacy' }); } });
+  const urls = specifications?.gallery_images;
+  if (Array.isArray(urls)) urls.forEach((url) => { if (String(url).trim()) result.push({ url: String(url), source: 'legacy' }); });
+  return uniqueImages(result);
 }
-
-function toMoney(raw: string | number | null | undefined) {
-  const value = typeof raw === 'number' ? raw : Number(String(raw ?? '').replace(/[^0-9.-]/g, ''));
-  return Number.isFinite(value) ? value : 0;
-}
-
-function formatCLP(value: number) {
-  return '$' + Math.round(value).toLocaleString('es-CL');
-}
-
-function normalizeSpecs(value: unknown): Record<string, unknown> {
-  return value && typeof value === 'object' && !Array.isArray(value) ? { ...(value as Record<string, unknown>) } : {};
-}
-
-function toImageArray(value: unknown) {
-  if (!Array.isArray(value)) return [];
-  return value.map((item) => String(item ?? '').trim()).filter(Boolean);
-}
-
-function toGalleryAssets(value: unknown): GalleryImage[] {
-  if (!Array.isArray(value)) return [];
-  const assets: GalleryImage[] = [];
-
-  for (const item of value) {
-    if (!item || typeof item !== 'object') continue;
-    const row = item as Record<string, unknown>;
-    const url = String(row.url ?? row.secure_url ?? '').trim();
-    if (!url) continue;
-    assets.push({
-      url,
-      public_id: String(row.public_id ?? row.publicId ?? '').trim() || undefined,
-      source: String(row.source ?? '').trim() === 'cloudinary' ? 'cloudinary' : 'legacy',
-    });
-  }
-
-  return assets;
-}
-
-function uniqueGallery(images: GalleryImage[]) {
-  const map = new Map<string, GalleryImage>();
-  images.forEach((image) => {
-    const url = image.url.trim();
-    if (!url) return;
-    const previous = map.get(url);
-    map.set(url, { ...previous, ...image, url });
-  });
-  return Array.from(map.values());
-}
-
-function buildInitialGallery(imageUrl?: string, specs?: Record<string, unknown>) {
-  const initial: GalleryImage[] = [];
-  if (imageUrl?.trim()) initial.push({ url: imageUrl.trim(), source: 'legacy' });
-  initial.push(...toGalleryAssets(specs?.gallery_assets));
-  initial.push(...toImageArray(specs?.gallery_images).map((url) => ({ url, source: 'legacy' as const })));
-  initial.push(...toImageArray(specs?.images).map((url) => ({ url, source: 'legacy' as const })));
-  initial.push(...toImageArray(specs?.image_urls).map((url) => ({ url, source: 'legacy' as const })));
-  return uniqueGallery(initial);
-}
-
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (v: boolean) => void; label: string }) {
-  return (
-    <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={() => onChange(!checked)} className="flex items-center gap-3 group">
-      <div className={`relative inline-flex h-6 w-11 flex-shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ${checked ? 'bg-[#facc15]' : 'bg-zinc-700'}`}>
-        <span className={`pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow ring-0 transition duration-200 ${checked ? 'translate-x-5' : 'translate-x-0'}`} />
-      </div>
-      <span className="text-sm text-zinc-300 group-hover:text-white transition-colors">{label}</span>
-    </button>
-  );
-}
-
-function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
-  return (
-    <div className={`fixed bottom-28 right-4 z-50 max-w-[calc(100vw-2rem)] rounded-2xl px-5 py-3 text-sm font-medium shadow-xl border backdrop-blur-xl md:bottom-6 ${type === 'success' ? 'bg-zinc-900/95 border-[#facc15]/40 text-[#facc15]' : 'bg-zinc-900/95 border-red-500/40 text-red-400'}`}>
-      {message}
-    </div>
-  );
-}
-
-function Field({ label, children, required, hint }: { label: string; children: ReactNode; required?: boolean; hint?: string }) {
-  return (
-    <div className="flex flex-col gap-2">
-      <label className="text-xs tracking-widest uppercase text-zinc-500">
-        {label}{required && <span className="text-[#facc15] ml-1">*</span>}
-      </label>
-      {children}
-      {hint && <p className="text-[11px] leading-5 text-zinc-600">{hint}</p>}
-    </div>
-  );
-}
-
-const inputClass = 'bg-zinc-900 border border-white/10 rounded-xl px-4 py-3 text-white text-sm placeholder:text-zinc-600 focus:outline-none focus:border-[#facc15]/50 transition-colors';
 
 export interface ProductFormData {
-  name: string;
-  description: string;
-  price: string;
-  category_id: string;
-  stock: string;
-  delivery_days: string;
-  tagline: string;
-  image_url: string;
-  activo: boolean;
-  featured: boolean;
-  specifications: Record<string, unknown>;
-  source: string;
-  source_url: string;
-  source_id: string;
-  supplier_price: string;
-  supplier_currency: string;
-  shipping_fee: string;
-  tax_percentage: string;
+  name: string; description: string; price: string; category_id: string; stock: string; delivery_days: string;
+  tagline: string; image_url: string; activo: boolean; featured: boolean; specifications: Record<string, unknown>;
+  source: string; source_url: string; source_id: string; supplier_price: string; supplier_currency: string;
+  shipping_fee: string; tax_percentage: string; discount_percentage: string;
 }
 
-interface ProductFormProps {
-  initialData?: Partial<ProductFormData>;
-  productId?: string;
-  mode: 'create' | 'edit';
-}
-
-export default function ProductForm({ initialData, productId, mode }: ProductFormProps) {
+export default function ProductForm({ initialData, productId, mode }: { initialData?: Partial<ProductFormData>; productId?: string; mode: 'create' | 'edit' }) {
   const router = useRouter();
-  const { categories, reload: reloadCategories } = useCategories();
-  const cloudFileInputRef = useRef<HTMLInputElement>(null);
-  const initialSpecs = normalizeSpecs(initialData?.specifications);
-
+  const { categories } = useCategories();
+  const fileRef = useRef<HTMLInputElement>(null);
+  const initialSpecs = specs(initialData?.specifications);
+  const [step, setStep] = useState<Step>(1);
   const [form, setForm] = useState<ProductFormData>({
-    name: initialData?.name ?? '',
-    description: initialData?.description ?? '',
-    price: initialData?.price ?? '',
-    category_id: initialData?.category_id ?? '',
-    stock: initialData?.stock ?? '',
-    delivery_days: initialData?.delivery_days ?? '',
-    tagline: initialData?.tagline ?? '',
-    image_url: initialData?.image_url ?? '',
-    activo: initialData?.activo ?? true,
-    featured: initialData?.featured ?? false,
-    specifications: initialSpecs,
-    source: initialData?.source ?? '',
-    source_url: initialData?.source_url ?? '',
-    source_id: initialData?.source_id ?? '',
-    supplier_price: initialData?.supplier_price ?? '',
-    supplier_currency: initialData?.supplier_currency ?? 'CLP',
-    shipping_fee: initialData?.shipping_fee ?? '',
-    tax_percentage: initialData?.tax_percentage ?? String(initialSpecs.tax_percentage ?? '19'),
+    name: initialData?.name || '', description: initialData?.description || '', price: initialData?.price || '', category_id: initialData?.category_id || '',
+    stock: initialData?.stock || '', delivery_days: initialData?.delivery_days || '', tagline: initialData?.tagline || '', image_url: initialData?.image_url || '',
+    activo: initialData?.activo ?? true, featured: initialData?.featured ?? false, specifications: initialSpecs,
+    source: initialData?.source || '', source_url: initialData?.source_url || '', source_id: initialData?.source_id || '', supplier_price: initialData?.supplier_price || '',
+    supplier_currency: initialData?.supplier_currency || 'CLP', shipping_fee: initialData?.shipping_fee || '', tax_percentage: initialData?.tax_percentage || String(initialSpecs.tax_percentage || '19'),
+    discount_percentage: initialData?.discount_percentage || String(initialSpecs.discount_percentage || '0'),
   });
-
-  const [galleryImages, setGalleryImages] = useState<GalleryImage[]>(() => buildInitialGallery(initialData?.image_url, initialSpecs));
-  const [priceDisplay, setPriceDisplay] = useState(initialData?.price ? formatDisplayPrice(initialData.price) : '');
-  const [uploadingCloud, setUploadingCloud] = useState(false);
+  const [gallery, setGallery] = useState<GalleryImage[]>(() => initialGallery(initialData?.image_url, initialSpecs));
+  const [markup, setMarkup] = useState(Number(initialSpecs.default_markup_percentage || 30));
+  const [autoMarkup, setAutoMarkup] = useState(mode === 'create' || Boolean(initialSpecs.auto_markup_enabled));
+  const [analysis, setAnalysis] = useState<Analysis | null>((initialSpecs.commerce_ai as Analysis | undefined) || null);
+  const [loadingAi, setLoadingAi] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [errors, setErrors] = useState<Record<string, string>>({});
-  const [previewUrl, setPreviewUrl] = useState<string>('');
-  const [cloudStatus, setCloudStatus] = useState<CloudinaryStatus>('checking');
-  const [newCategoryName, setNewCategoryName] = useState('');
-  const [creatingCategory, setCreatingCategory] = useState(false);
-  const [libraryOpen, setLibraryOpen] = useState(false);
-  const [libraryLoading, setLibraryLoading] = useState(false);
-  const [libraryAssets, setLibraryAssets] = useState<CloudinaryAsset[]>([]);
-  const prevPreviewUrl = useRef<string>('');
+  const [notice, setNotice] = useState('');
 
   useEffect(() => {
-    let cancelled = false;
-    void (async () => {
-      try {
-        const res = await fetch('/api/admin/cloudinary?folder=fabrick/productos&max_results=1', { cache: 'no-store' });
-        if (cancelled) return;
-        if (res.ok) {
-          setCloudStatus('ready');
-        } else {
-          const json = await res.json().catch(() => ({})) as { code?: string };
-          setCloudStatus(json.code === 'NOT_CONFIGURED' ? 'missing' : 'error');
-        }
-      } catch {
-        if (!cancelled) setCloudStatus('error');
-      }
-    })();
-    return () => { cancelled = true; };
-  }, []);
-
-  useEffect(() => {
-    if (prevPreviewUrl.current && prevPreviewUrl.current !== previewUrl) URL.revokeObjectURL(prevPreviewUrl.current);
-    prevPreviewUrl.current = previewUrl;
-    return () => {
-      if (prevPreviewUrl.current) {
-        URL.revokeObjectURL(prevPreviewUrl.current);
-        prevPreviewUrl.current = '';
-      }
-    };
-  }, [previewUrl]);
-
-  const categoryOptions = useMemo(() => {
-    const options = categories.map((category) => ({ value: category.id, label: category.name }));
-    if (form.category_id && !options.some((option) => option.value === form.category_id)) options.unshift({ value: form.category_id, label: form.category_id });
-    return options;
+    if (!form.category_id && categories[0]?.id) setForm((current) => ({ ...current, category_id: categories[0].id }));
   }, [categories, form.category_id]);
 
-  useEffect(() => {
-    if (!form.category_id && categoryOptions.length > 0) setForm((current) => ({ ...current, category_id: categoryOptions[0].value }));
-  }, [categoryOptions, form.category_id]);
+  const cost = money(form.supplier_price);
+  const basePrice = money(form.price);
+  const discount = Math.min(100, Math.max(0, money(form.discount_percentage)));
+  const suggestedPrice = cost > 0 ? Math.round(cost * (1 + markup / 100)) : basePrice;
+  const regularPrice = autoMarkup && cost > 0 ? suggestedPrice : basePrice;
+  const promoPrice = Math.round(regularPrice * (1 - discount / 100));
+  const shipping = money(form.shipping_fee);
+  const tax = Math.round((promoPrice + shipping) * (money(form.tax_percentage) / 100));
+  const checkoutReference = promoPrice + shipping + tax;
+  const margin = regularPrice > 0 && cost > 0 ? Math.round(((regularPrice - cost) / regularPrice) * 100) : null;
+  const cover = form.image_url || gallery[0]?.url || '';
 
-  const showToast = (message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => setToast(null), 3500);
-  };
+  function set<K extends keyof ProductFormData>(key: K, value: ProductFormData[K]) { setForm((current) => ({ ...current, [key]: value })); }
+  function next() { setStep((current) => Math.min(6, current + 1) as Step); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function previous() { setStep((current) => Math.max(1, current - 1) as Step); window.scrollTo({ top: 0, behavior: 'smooth' }); }
+  function chooseCover(image: GalleryImage) { set('image_url', image.url); }
+  function moveImage(index: number, direction: -1 | 1) { setGallery((current) => { const target = index + direction; if (target < 0 || target >= current.length) return current; const copy = [...current]; [copy[index], copy[target]] = [copy[target], copy[index]]; return copy; }); }
+  function removeImage(image: GalleryImage) { setGallery((current) => { const next = current.filter((item) => item.url !== image.url); if (form.image_url === image.url) set('image_url', next[0]?.url || ''); return next; }); if (image.public_id) void fetch(`/api/admin/cloudinary?public_id=${encodeURIComponent(image.public_id)}`, { method: 'DELETE' }); }
 
-  function handlePriceChange(raw: string) {
-    const digits = raw.replace(/\D/g, '');
-    setForm((f) => ({ ...f, price: digits }));
-    setPriceDisplay(digits ? parseInt(digits, 10).toLocaleString('es-CL') : '');
-  }
-
-  function addGalleryImage(image: GalleryImage, makeCover = false) {
-    const clean = image.url.trim();
-    if (!clean) return;
-    setGalleryImages((current) => uniqueGallery([...current, { ...image, url: clean }]));
-    setForm((current) => ({ ...current, image_url: makeCover || !current.image_url ? clean : current.image_url }));
-  }
-
-  async function removeGalleryImage(image: GalleryImage) {
-    const clean = image.url.trim();
-    setGalleryImages((current) => {
-      const next = current.filter((item) => item.url !== clean);
-      setForm((formState) => ({ ...formState, image_url: formState.image_url === clean ? (next[0]?.url ?? '') : formState.image_url }));
-      return next;
-    });
-
-    if (image.public_id) {
-      fetch(`/api/admin/cloudinary?public_id=${encodeURIComponent(image.public_id)}`, { method: 'DELETE' }).catch(() => undefined);
-    }
-  }
-
-  function moveGalleryImage(index: number, direction: -1 | 1) {
-    setGalleryImages((current) => {
-      const target = index + direction;
-      if (target < 0 || target >= current.length) return current;
-      const next = [...current];
-      [next[index], next[target]] = [next[target], next[index]];
-      return next;
-    });
-  }
-
-  function setCoverImage(image: GalleryImage) {
-    addGalleryImage(image, true);
-    setPreviewUrl('');
-  }
-
-  async function uploadToCloudinary(file: File): Promise<GalleryImage> {
-    const fd = new FormData();
-    fd.append('file', file);
-    const category = categories.find((item) => item.id === form.category_id);
-    fd.append('folder', `fabrick/productos/${folderSlug(category?.name || 'general')}`);
-    const res = await fetch('/api/admin/cloudinary', { method: 'POST', body: fd });
-    const json = (await res.json().catch(() => ({}))) as { url?: string; error?: string; code?: string; asset?: { url?: string; public_id?: string; source?: 'cloudinary' } };
-    if (!res.ok) {
-      if (json.code === 'NOT_CONFIGURED') throw new Error('Cloudinary no configurado. Ve a Configuración → Integraciones.');
-      throw new Error(json.error || `HTTP ${res.status}`);
-    }
-    const url = json.url || json.asset?.url || '';
-    if (!url) throw new Error('Cloudinary no devolvió una URL.');
-    return { url, public_id: json.asset?.public_id, source: 'cloudinary' };
-  }
-
-  async function handleCloudinaryUpload(files: FileList | File[]) {
-    const selected = Array.from(files);
-    if (selected.length === 0) return;
-    setUploadingCloud(true);
+  async function upload(files: FileList) {
+    setUploading(true); setNotice('');
     try {
-      try { setPreviewUrl(URL.createObjectURL(selected[0])); } catch { /* ignore */ }
-      let added = 0;
-      for (const file of selected) {
-        const image = await uploadToCloudinary(file);
-        addGalleryImage(image, galleryImages.length === 0 && added === 0 && !form.image_url);
-        added += 1;
+      const added: GalleryImage[] = [];
+      for (const file of Array.from(files)) {
+        const data = new FormData(); data.append('file', file);
+        const category = categories.find((item) => item.id === form.category_id)?.name || 'general';
+        data.append('folder', `fabrick/productos/${slug(category)}`);
+        const response = await fetch('/api/admin/cloudinary', { method: 'POST', body: data });
+        const json = await response.json() as { url?: string; asset?: { url?: string; public_id?: string }; error?: string };
+        if (!response.ok) throw new Error(json.error || 'No se pudo subir una imagen.');
+        const url = json.url || json.asset?.url || '';
+        if (url) added.push({ url, public_id: json.asset?.public_id, source: 'cloudinary' });
       }
-      setPreviewUrl('');
-      setCloudStatus('ready');
-      showToast(`${added} imagen${added === 1 ? '' : 'es'} subida${added === 1 ? '' : 's'} a Cloudinary.`, 'success');
-    } catch (err) {
-      showToast(err instanceof Error ? err.message : 'Error al subir a Cloudinary.', 'error');
-    } finally {
-      setUploadingCloud(false);
-    }
+      setGallery((current) => uniqueImages([...current, ...added]));
+      if (!form.image_url && added[0]) set('image_url', added[0].url);
+      setNotice(`${added.length} imagen${added.length === 1 ? '' : 'es'} añadida${added.length === 1 ? '' : 's'}.`);
+    } catch (error) { setNotice(error instanceof Error ? error.message : 'Error subiendo imágenes.'); }
+    finally { setUploading(false); }
   }
 
-  async function createCategory() {
-    const name = newCategoryName.trim();
-    if (name.length < 2) return;
-    setCreatingCategory(true);
+  async function analyze() {
+    if (!form.name.trim()) { setNotice('Escribe primero el nombre del producto.'); return; }
+    setLoadingAi(true); setNotice('');
     try {
-      const response = await fetch('/api/admin/categories', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name, description: 'Creada desde la ficha de producto.' }) });
-      const body = await response.json() as { error?: string; category?: { id?: string } };
-      if (!response.ok) throw new Error(body.error || 'No se pudo crear la categoría.');
-      await reloadCategories();
-      const createdCategoryId = body.category?.id;
-      if (!createdCategoryId) throw new Error('La categoría se creó sin un identificador válido. Actualiza el catálogo.');
-      setForm((current) => ({ ...current, category_id: createdCategoryId }));
-      setNewCategoryName('');
-      showToast('Categoría creada y seleccionada.');
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'No se pudo crear la categoría.', 'error');
-    } finally {
-      setCreatingCategory(false);
-    }
+      const category = categories.find((item) => item.id === form.category_id)?.name || '';
+      const response = await fetch('/api/admin/products/ai-commerce', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ product: { name: form.name, description: form.description, category, price: regularPrice, cost, stock: form.stock, specifications: form.specifications } }) });
+      const json = await response.json() as { analysis?: Analysis; error?: string; warning?: string };
+      if (!response.ok || !json.analysis) throw new Error(json.error || 'La IA no pudo analizar el producto.');
+      setAnalysis(json.analysis); setNotice(json.warning || 'Análisis privado generado. Revisa y aplica solo lo que te convenga.');
+    } catch (error) { setNotice(error instanceof Error ? error.message : 'Error analizando el producto.'); }
+    finally { setLoadingAi(false); }
   }
 
-  async function openMediaLibrary() {
-    setLibraryOpen(true);
-    setLibraryLoading(true);
-    try {
-      const category = categories.find((item) => item.id === form.category_id);
-      const folder = `fabrick/productos/${folderSlug(category?.name || 'general')}`;
-      const response = await fetch(`/api/admin/cloudinary?folder=${encodeURIComponent(folder)}&max_results=80`, { cache: 'no-store' });
-      const body = await response.json() as { assets?: CloudinaryAsset[]; error?: string };
-      if (!response.ok) throw new Error(body.error || 'No se pudo abrir la carpeta de imágenes.');
-      setLibraryAssets(Array.isArray(body.assets) ? body.assets : []);
-    } catch (error) {
-      showToast(error instanceof Error ? error.message : 'No se pudo abrir la biblioteca.', 'error');
-      setLibraryAssets([]);
-    } finally {
-      setLibraryLoading(false);
-    }
+  function applyAnalysis() {
+    if (!analysis) return;
+    setForm((current) => ({ ...current, name: analysis.title, tagline: analysis.shortDescription, description: analysis.longDescription, price: String(analysis.recommendedPrice), specifications: { ...current.specifications, commerce_ai: analysis } }));
+    setAutoMarkup(false); setNotice('Título, descripción y precio recomendado aplicados.'); setStep(6);
   }
 
-  function validate() {
-    const errs: Record<string, string> = {};
-    if (!form.name.trim()) errs.name = 'El nombre es requerido';
-    if (!form.price) errs.price = 'El precio es requerido';
-    if (toMoney(form.tax_percentage) < 0) errs.tax_percentage = 'El impuesto no puede ser negativo';
-    return errs;
-  }
-
-  async function handleSubmit(e: FormEvent) {
-    e.preventDefault();
-    const errs = validate();
-    if (Object.keys(errs).length) { setErrors(errs); return; }
-    setErrors({});
-    setSaving(true);
-
-    const cleanGallery = uniqueGallery([{ url: form.image_url, source: 'legacy' }, ...galleryImages]);
-    const galleryUrls = cleanGallery.map((image) => image.url);
-    const taxPercentage = toMoney(form.tax_percentage);
-    const shippingFee = toMoney(form.shipping_fee);
+  async function submit(event: FormEvent) {
+    event.preventDefault();
+    if (!form.name.trim() || regularPrice <= 0) { setNotice('Completa el nombre y un precio válido.'); return; }
+    setSaving(true); setNotice('');
+    const cleanGallery = uniqueImages([{ url: form.image_url, source: 'legacy' }, ...gallery].filter((item) => item.url));
     const specifications = {
       ...form.specifications,
-      gallery_images: galleryUrls,
-      gallery_assets: cleanGallery,
-      tax_percentage: taxPercentage,
+      gallery_images: cleanGallery.map((image) => image.url), gallery_assets: cleanGallery,
+      tax_percentage: money(form.tax_percentage), discount_percentage: discount,
+      default_markup_percentage: markup, auto_markup_enabled: autoMarkup,
+      ...(analysis ? { commerce_ai: analysis } : {}),
     };
-
     const payload = {
-      name: form.name.trim(),
-      description: form.description.trim() || null,
-      price: parseInt(form.price, 10),
-      category_id: form.category_id || null,
-      stock: form.stock ? parseInt(form.stock, 10) : null,
-      delivery_days: form.delivery_days ? Math.max(0, parseInt(form.delivery_days, 10) || 0) : null,
-      tagline: form.tagline.trim() || null,
-      image_url: galleryUrls[0] || null,
-      specifications,
-      activo: form.activo,
-      featured: form.featured,
-      source: form.source.trim() || null,
-      source_url: form.source_url.trim() || null,
-      source_id: form.source_id.trim() || null,
-      supplier_price: form.supplier_price ? Number(form.supplier_price) : null,
-      supplier_currency: form.supplier_currency.trim() || null,
-      shipping_fee: shippingFee > 0 ? shippingFee : null,
+      name: form.name.trim(), description: form.description.trim() || null, tagline: form.tagline.trim() || null,
+      price: regularPrice, discount_percentage: discount, supplier_price: cost || null, supplier_currency: form.supplier_currency || 'CLP',
+      shipping_fee: shipping || null, category_id: form.category_id || null, stock: form.stock ? Number(form.stock) : null,
+      delivery_days: form.delivery_days ? Number(form.delivery_days) : null, image_url: cleanGallery[0]?.url || null,
+      activo: form.activo, featured: form.featured, source: form.source || null, source_url: form.source_url || null, source_id: form.source_id || null, specifications,
     };
-
-    let error;
-    if (mode === 'create') ({ error } = await insforge.database.from('products').insert([payload]));
-    else ({ error } = await insforge.database.from('products').update(payload).eq('id', productId!));
-
+    const query = insforge.database.from('products');
+    const { error } = mode === 'create' ? await query.insert([payload]) : await query.update(payload).eq('id', productId!);
     setSaving(false);
-    if (error) {
-      const errAny = error as unknown as { message?: string };
-      const raw = (errAny.message ?? '').toLowerCase();
-      let hint = '';
-      if (/relation .* does not exist|table .* not found|42p01/.test(raw) || (/products/.test(raw) && /not.*exist/.test(raw))) hint = ' La tabla "products" no existe en InsForge. Ve a /admin/productos y usa el botón "Configurar tablas".';
-      else if (/permission denied|42501|not authorized|unauthorized/.test(raw)) hint = ' Revisa los permisos de la tabla "products" en InsForge.';
-      else if (/violates not-null|null value in column/.test(raw)) hint = ' Falta completar un campo obligatorio.';
-      showToast(`${errAny.message || 'Error al guardar el producto'}.${hint}`, 'error');
-    } else {
-      showToast(mode === 'create' ? '✓ Producto creado exitosamente' : '✓ Producto actualizado correctamente');
-      setTimeout(() => router.push('/admin/productos'), 1200);
-    }
+    if (error) { setNotice(error.message || 'No se pudo guardar el producto.'); return; }
+    setNotice(mode === 'create' ? 'Producto creado correctamente.' : 'Producto actualizado correctamente.');
+    setTimeout(() => router.push('/admin/productos'), 900);
   }
 
-  const priceNumber = toMoney(form.price);
-  const supplierPriceNumber = toMoney(form.supplier_price);
-  const shippingFee = toMoney(form.shipping_fee);
-  const taxPct = toMoney(form.tax_percentage);
-  const taxAmount = Math.round((priceNumber + shippingFee) * (taxPct / 100));
-  const totalWithCharges = priceNumber + shippingFee + taxAmount;
-  const marginPct = priceNumber > 0 && supplierPriceNumber > 0 ? Math.round(((priceNumber - supplierPriceNumber) / priceNumber) * 100) : null;
-  const previewImage = previewUrl || form.image_url || galleryImages[0]?.url || '';
+  const steps = [
+    ['Información', 'Nombre y clasificación'], ['Imágenes', 'Portada y galería'], ['Costo y margen', 'Precio automático'],
+    ['Promoción', 'Antes y ahora'], ['IA', 'Análisis privado'], ['Publicar', 'Vista final'],
+  ];
 
   return (
-    <div data-product-form="" className="min-h-screen pb-32 text-[#1b1710] lg:pb-8">
-      <div className="rounded-[2rem] bg-[radial-gradient(circle_at_88%_10%,rgba(250,204,21,.55),transparent_24rem),linear-gradient(135deg,#fff9ec,#dfcdab)] px-4 py-5 shadow-[0_26px_90px_rgba(58,45,19,.13)] sm:px-6">
-        <div className="mx-auto flex max-w-6xl items-center gap-4">
-          <button onClick={() => router.push('/admin/productos')} aria-label="Volver a productos" className="grid h-11 w-11 place-items-center rounded-2xl bg-black text-yellow-300 transition">
-            <ArrowLeft className="h-4 w-4" />
-          </button>
-          <div className="min-w-0 flex-1">
-            <p className="text-[10px] font-black uppercase tracking-[0.28em] text-[#91620e]">Catálogo y galería</p>
-            <h1 className="mt-1 text-2xl font-black tracking-[-.045em] sm:text-3xl">{mode === 'create' ? 'Crear producto' : 'Editar producto'}</h1>
-            <p className="mt-1 text-xs text-black/45">Información comercial, categoría, carpeta de imágenes, stock y precio en una sola vista.</p>
-          </div>
-          <CloudStatusBadge status={cloudStatus} />
+    <div className="min-h-screen bg-[#EDE3D8] pb-28 text-[#171820] md:pb-10">
+      <header className="sticky top-0 z-40 bg-[#171820]/96 px-3 py-3 text-[#F8F0E9] shadow-xl backdrop-blur-xl sm:px-6">
+        <div className="mx-auto flex max-w-[1500px] items-center gap-3">
+          <button type="button" onClick={() => router.push('/admin/productos')} className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-white/8"><ArrowLeft className="h-4 w-4" /></button>
+          <div className="min-w-0 flex-1"><p className="text-[9px] font-black uppercase tracking-[.22em] text-[#CCB196]">Editor profesional de productos</p><h1 className="truncate text-xl font-black">{mode === 'create' ? 'Crear producto' : form.name || 'Editar producto'}</h1></div>
+          <div className="hidden rounded-full bg-[#B6906C] px-4 py-2 text-xs font-black text-[#171820] sm:block">Paso {step} de 6</div>
         </div>
-      </div>
+      </header>
 
-      <div className="mx-auto grid max-w-6xl gap-6 px-4 py-6 sm:px-6 xl:grid-cols-[minmax(0,1fr)_370px]">
-        <form onSubmit={handleSubmit} className="space-y-6">
-          <section className="rounded-[1.7rem] bg-[#fbf5e8] p-4 shadow-[0_24px_80px_rgba(58,45,19,.10)] sm:p-5">
-            <div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-yellow-300 text-black"><Star className="h-4 w-4" /></span><div><h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Información principal</h2><p className="text-xs text-zinc-500">Nombre, descripción y estado comercial.</p></div></div>
-            <div className="space-y-4">
-              <Field label="Nombre" required><input type="text" value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Aire acondicionado inverter 12000 BTU" className={inputClass} />{errors.name && <span className="text-red-400 text-xs">{errors.name}</span>}</Field>
-              <Field label="Tagline"><input type="text" value={form.tagline} onChange={(e) => setForm((f) => ({ ...f, tagline: e.target.value }))} placeholder="Frío eficiente, instalación rápida" className={inputClass} /></Field>
-              <Field label="Descripción"><textarea rows={5} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe características, beneficios, instalación, garantía y condiciones…" className={inputClass + ' resize-none'} /></Field>
-              <div className="grid gap-4 sm:grid-cols-2">
-                <Field label="Categoría" required><select value={form.category_id} onChange={(event) => setForm((current) => ({ ...current, category_id: event.target.value }))} className={inputClass}><option value="">Sin categoría</option>{categoryOptions.map((option) => <option key={option.value} value={option.value}>{option.label}</option>)}</select><p className="text-[10px] text-black/40">Carpeta: fabrick/productos/{folderSlug(categories.find((item) => item.id === form.category_id)?.name || 'general')}</p></Field>
-                <Field label="Stock disponible"><input type="number" min="0" step="1" value={form.stock} onChange={(event) => setForm((current) => ({ ...current, stock: event.target.value }))} placeholder="0" className={inputClass} /></Field>
-              </div>
-              <div className="grid gap-2 rounded-2xl bg-[#e8dcc2] p-3 sm:grid-cols-[1fr_auto]"><input value={newCategoryName} onChange={(event) => setNewCategoryName(event.target.value)} placeholder="Crear nueva categoría sin salir" className={inputClass} /><button type="button" onClick={() => void createCategory()} disabled={creatingCategory || newCategoryName.trim().length < 2} className="inline-flex items-center justify-center gap-2 rounded-xl bg-black px-4 py-3 text-xs font-black text-yellow-300 disabled:opacity-40">{creatingCategory ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}Crear categoría</button></div>
-              <div className="grid gap-4 sm:grid-cols-2"><Toggle checked={form.activo} onChange={(v) => setForm((f) => ({ ...f, activo: v }))} label="Activo — visible en la tienda" /><Toggle checked={form.featured} onChange={(v) => setForm((f) => ({ ...f, featured: v }))} label="Destacado — aparece en inicio" /></div>
+      <div className="mx-auto max-w-[1500px] px-2 py-4 sm:px-5 lg:px-7">
+        <nav className="grid grid-cols-3 gap-2 rounded-[1.5rem] bg-[#F8F0E9] p-2 shadow-[0_15px_50px_rgba(23,24,32,.08)] lg:grid-cols-6">
+          {steps.map(([title, subtitle], index) => { const number = (index + 1) as Step; const active = step === number; const complete = step > number; return <button type="button" key={title} onClick={() => setStep(number)} className={`rounded-[1.15rem] px-3 py-3 text-left transition ${active ? 'bg-[#171820] text-white' : complete ? 'bg-[#D8C0A8] text-[#171820]' : 'bg-white text-[#6E625A]'}`}><span className="text-[9px] font-black uppercase tracking-[.14em]">{complete ? '✓' : `0${number}`} · {title}</span><span className="mt-1 hidden text-[10px] opacity-65 sm:block">{subtitle}</span></button>; })}
+        </nav>
+
+        {notice ? <div className="mt-4 rounded-2xl bg-[#171820] px-4 py-3 text-sm text-[#F8F0E9]">{notice}</div> : null}
+
+        <form onSubmit={submit} className="mt-4 grid gap-4 xl:grid-cols-[minmax(0,1fr)_420px]">
+          <main className="min-w-0 rounded-[2rem] bg-[#F8F0E9] p-4 shadow-[0_24px_80px_rgba(23,24,32,.09)] sm:p-7">
+            {step === 1 && <StepInfo form={form} set={set} categories={categories} />}
+            {step === 2 && <StepImages cover={cover} gallery={gallery} uploading={uploading} fileRef={fileRef} onUpload={upload} onCover={chooseCover} onMove={moveImage} onRemove={removeImage} onManual={(url) => { if (!url.trim()) return; const image = { url: url.trim(), source: 'manual' as const }; setGallery((current) => uniqueImages([...current, image])); if (!form.image_url) set('image_url', image.url); }} />}
+            {step === 3 && <StepPricing form={form} set={set} markup={markup} setMarkup={setMarkup} autoMarkup={autoMarkup} setAutoMarkup={setAutoMarkup} cost={cost} regularPrice={regularPrice} margin={margin} />}
+            {step === 4 && <StepPromotion form={form} set={set} regularPrice={regularPrice} promoPrice={promoPrice} discount={discount} />}
+            {step === 5 && <StepAi analysis={analysis} loading={loadingAi} onAnalyze={analyze} onApply={applyAnalysis} />}
+            {step === 6 && <StepPublish form={form} set={set} regularPrice={regularPrice} promoPrice={promoPrice} checkoutReference={checkoutReference} margin={margin} galleryCount={gallery.length} />}
+
+            <div className="mt-8 flex items-center justify-between gap-3 border-t border-[#171820]/8 pt-5">
+              <button type="button" onClick={previous} disabled={step === 1} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white px-5 text-sm font-black disabled:opacity-30"><ChevronLeft className="h-4 w-4" />Anterior</button>
+              {step < 6 ? <button type="button" onClick={next} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#171820] px-6 text-sm font-black text-white">Continuar <ArrowRight className="h-4 w-4" /></button> : <button type="submit" disabled={saving || uploading} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#B6906C] px-7 text-sm font-black text-[#171820] disabled:opacity-50">{saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{saving ? 'Guardando…' : 'Guardar y publicar'}</button>}
             </div>
-          </section>
+          </main>
 
-          <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/65 p-4 sm:p-5">
-            <div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-emerald-400/15 text-emerald-300"><Calculator className="h-4 w-4" /></span><div><h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Precio, envío e impuesto</h2><p className="text-xs text-zinc-500">Controla venta, costo, envío e IVA por producto.</p></div></div>
-            <div className="grid grid-cols-2 gap-4 sm:grid-cols-3">
-              <Field label="Precio venta CLP" required><div className="relative"><span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm text-zinc-500">$</span><input type="text" inputMode="numeric" value={priceDisplay} onChange={(e) => handlePriceChange(e.target.value)} placeholder="000.000" className={inputClass + ' pl-8'} /></div>{errors.price && <span className="text-red-400 text-xs">{errors.price}</span>}</Field>
-              <Field label="Precio proveedor"><input type="number" step="1" min="0" value={form.supplier_price} aria-label="Precio del proveedor" onChange={(e) => setForm((f) => ({ ...f, supplier_price: e.target.value }))} placeholder="0" className={inputClass} /></Field>
-              <Field label="Moneda"><input type="text" value={form.supplier_currency} onChange={(e) => setForm((f) => ({ ...f, supplier_currency: e.target.value.toUpperCase() }))} placeholder="CLP" maxLength={5} className={inputClass} /></Field>
-              <Field label="Precio envío"><div className="relative"><Truck className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" /><input type="number" min="0" step="1" value={form.shipping_fee} onChange={(e) => setForm((f) => ({ ...f, shipping_fee: e.target.value }))} placeholder="0" className={inputClass + ' pl-10'} /></div></Field>
-              <Field label="Impuesto / IVA %"><input type="number" min="0" step="0.1" value={form.tax_percentage} onChange={(e) => setForm((f) => ({ ...f, tax_percentage: e.target.value }))} placeholder="19" className={inputClass} />{errors.tax_percentage && <span className="text-red-400 text-xs">{errors.tax_percentage}</span>}</Field>
-              <Field label="Días de envío"><input type="number" min="0" step="1" value={form.delivery_days} onChange={(e) => setForm((f) => ({ ...f, delivery_days: e.target.value }))} placeholder="3" className={inputClass} /></Field>
+          <aside className="min-w-0 xl:sticky xl:top-24 xl:h-fit">
+            <div className="overflow-hidden rounded-[2rem] bg-[#171820] text-[#F8F0E9] shadow-[0_28px_90px_rgba(23,24,32,.28)]">
+              <div className="relative aspect-[4/3] bg-[#2B2C34]">{cover ? <img src={cover} alt={form.name || 'Producto'} className="h-full w-full object-cover" /> : <div className="grid h-full place-items-center"><Package className="h-14 w-14 text-white/15" /></div>}<div className="absolute left-4 top-4 flex gap-2">{form.featured ? <Badge>Destacado</Badge> : null}{discount > 0 ? <Badge>-{discount}%</Badge> : null}</div></div>
+              <div className="p-5"><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#CCB196]">Vista previa permanente</p><h2 className="mt-3 text-2xl font-black leading-tight">{form.name || 'Nombre del producto'}</h2><p className="mt-2 text-sm leading-6 text-white/55">{form.tagline || form.description || 'La descripción aparecerá aquí mientras avanzas.'}</p><div className="mt-5 flex items-end justify-between gap-3"><div><p className="text-[10px] text-white/38">Precio actual</p><p className="text-3xl font-black text-[#E5CFBA]">{clp(promoPrice || regularPrice)}</p>{discount > 0 ? <p className="text-xs text-white/35 line-through">Antes {clp(regularPrice)}</p> : null}</div><div className="text-right text-xs text-white/45"><p>{gallery.length} fotos</p><p>{margin == null ? 'Margen pendiente' : `${margin}% margen`}</p></div></div></div>
             </div>
-            <div className="mt-4 grid gap-3 rounded-2xl border border-yellow-300/20 bg-yellow-300/[0.05] p-3 text-xs sm:grid-cols-4"><PreviewChip label="Venta" value={formatCLP(priceNumber)} /><PreviewChip label="Envío" value={shippingFee > 0 ? formatCLP(shippingFee) : 'Gratis / no definido'} /><PreviewChip label="Impuesto" value={`${formatCLP(taxAmount)} (${taxPct || 0}%)`} /><PreviewChip label="Total ref." value={formatCLP(totalWithCharges)} /></div>
-          </section>
-
-          <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/65 p-4 sm:p-5">
-            <div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-sky-400/15 text-sky-300"><Cloud className="h-4 w-4" /></span><div><h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Galería Cloudinary</h2><p className="text-xs text-zinc-500">Las fotos se suben a Cloudinary; en la base solo queda la URL y el public_id.</p></div></div>
-            <div className="space-y-3">
-              {previewImage && <div className="relative h-56 w-full overflow-hidden rounded-2xl border border-white/10 bg-zinc-900"><img src={previewImage} alt="Preview" className="h-full w-full object-cover" /><span className="absolute bottom-3 left-3 rounded-full border border-yellow-300/40 bg-black/70 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-yellow-300">Portada</span></div>}
-              <div className="grid gap-2 sm:grid-cols-2"><button type="button" onClick={() => cloudFileInputRef.current?.click()} disabled={uploadingCloud || cloudStatus === 'missing'} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-4 py-4 text-xs font-black uppercase tracking-[0.13em] text-black transition disabled:opacity-50">{uploadingCloud ? <Loader2 className="h-4 w-4 animate-spin" /> : <Cloud className="h-4 w-4" />}{uploadingCloud ? 'Subiendo…' : 'Subir a esta carpeta'}</button><button type="button" onClick={() => void openMediaLibrary()} disabled={cloudStatus === 'missing'} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-black px-4 py-4 text-xs font-black uppercase tracking-[0.13em] text-yellow-300 disabled:opacity-50"><Images className="h-4 w-4" />Abrir carpeta</button></div>
-              <input ref={cloudFileInputRef} type="file" multiple accept="image/*" aria-label="Seleccionar imágenes para Cloudinary" className="hidden" onChange={(e) => { const files = e.target.files; if (files) void handleCloudinaryUpload(files); e.target.value = ''; }} />
-              {galleryImages.length > 0 && <div className="rounded-2xl border border-white/10 bg-black/30 p-3"><div className="mb-2 flex items-center justify-between gap-3"><p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Miniaturas</p><p className="text-xs text-zinc-600">{galleryImages.length} imagen{galleryImages.length === 1 ? '' : 'es'}</p></div><div className="flex gap-3 overflow-x-auto pb-2 pr-2 scrollbar-hide">{galleryImages.map((image, index) => <div key={`${image.url}-${index}`} className="group relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl border border-white/10 bg-black"><img src={image.url} alt={`Miniatura ${index + 1}`} className="h-full w-full object-cover" />{form.image_url === image.url && <span className="absolute left-1.5 top-1.5 rounded-full bg-yellow-300 px-1.5 py-0.5 text-[8px] font-black uppercase text-black">Portada</span>}<div className="absolute inset-x-1.5 bottom-1.5 flex items-center justify-between gap-1 rounded-full bg-black/65 p-1 backdrop-blur-sm"><button type="button" onClick={() => moveGalleryImage(index, -1)} disabled={index === 0} aria-label="Mover imagen a la izquierda" className="grid h-6 w-6 place-items-center rounded-full text-white/80 disabled:opacity-25 hover:bg-white/10"><ChevronLeft className="h-3.5 w-3.5" /></button><button type="button" onClick={() => setCoverImage(image)} aria-label="Usar como portada" className="grid h-6 w-6 place-items-center rounded-full text-yellow-300 hover:bg-yellow-300/10"><Star className="h-3.5 w-3.5" /></button><button type="button" onClick={() => moveGalleryImage(index, 1)} disabled={index === galleryImages.length - 1} aria-label="Mover imagen a la derecha" className="grid h-6 w-6 place-items-center rounded-full text-white/80 disabled:opacity-25 hover:bg-white/10"><ChevronRight className="h-3.5 w-3.5" /></button></div><button type="button" onClick={() => void removeGalleryImage(image)} aria-label="Eliminar miniatura" className="absolute right-1.5 top-1.5 grid h-7 w-7 place-items-center rounded-full bg-black/70 text-red-200 backdrop-blur-sm hover:bg-red-500 hover:text-white"><Trash2 className="h-3.5 w-3.5" /></button></div>)}</div><p className="mt-1 text-[11px] leading-5 text-zinc-600">★ define la portada. Las flechas ordenan la galería. Eliminar quita la miniatura y, si tiene public_id, también la borra de Cloudinary.</p></div>}
-              <div className="grid gap-2 sm:grid-cols-[1fr_auto]"><input type="url" value={form.image_url} onChange={(e) => setForm((f) => ({ ...f, image_url: e.target.value }))} placeholder="URL manual de imagen Cloudinary…" className={inputClass} /><button type="button" onClick={() => addGalleryImage({ url: form.image_url, source: 'manual' }, true)} disabled={!form.image_url.trim()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 px-4 py-3 text-sm font-bold text-zinc-300 transition hover:border-yellow-300/40 hover:text-yellow-200 disabled:opacity-40"><ImagePlus className="h-4 w-4" />Añadir</button></div>
-            </div>
-          </section>
-
-          <section className="rounded-[1.7rem] border border-white/10 bg-zinc-950/65 p-4 sm:p-5"><div className="mb-5 flex items-center gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-white/10 text-white"><Truck className="h-4 w-4" /></span><div><h2 className="text-sm font-black uppercase tracking-[0.18em] text-white">Proveedor / origen</h2><p className="text-xs text-zinc-500">Datos para reventa, dropshipping o compra externa.</p></div></div><div className="grid gap-4 sm:grid-cols-2"><Field label="Origen"><input type="text" value={form.source} onChange={(e) => setForm((f) => ({ ...f, source: e.target.value }))} placeholder="Midea Store, TCL Store, Mercado Libre…" className={inputClass} /></Field><Field label="ID / SKU externo"><input type="text" value={form.source_id} onChange={(e) => setForm((f) => ({ ...f, source_id: e.target.value }))} placeholder="SKU, modelo, MLC…" className={inputClass} /></Field></div><div className="mt-4"><Field label="URL del proveedor"><input type="url" value={form.source_url} onChange={(e) => setForm((f) => ({ ...f, source_url: e.target.value }))} placeholder="https://..." className={inputClass} /></Field></div></section>
-
-          <div className="sticky bottom-[calc(env(safe-area-inset-bottom)+5.75rem)] z-20 pt-2 md:static md:z-auto"><button type="submit" disabled={saving || uploadingCloud} className="w-full rounded-2xl bg-[#facc15] px-5 py-4 text-sm font-black uppercase tracking-[0.18em] text-black shadow-[0_18px_48px_rgba(250,204,21,0.22)] transition hover:bg-yellow-200 active:scale-[0.99] disabled:opacity-50">{saving ? 'Guardando…' : mode === 'create' ? 'Crear producto' : 'Guardar cambios'}</button></div>
+          </aside>
         </form>
-
-        <aside className="xl:sticky xl:top-28 xl:h-fit"><div className="overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/80 shadow-[0_20px_70px_rgba(0,0,0,0.45)]"><div className="relative h-64 border-b border-white/10 bg-zinc-900">{previewImage ? <img src={previewImage} alt={form.name || 'Preview producto'} className="h-full w-full object-cover" /> : <div className="flex h-full w-full items-center justify-center px-6 text-center text-xs uppercase tracking-[0.2em] text-zinc-500">Sin portada</div>}<div className="absolute left-3 top-3 flex gap-2"><Badge tone={form.activo ? 'green' : 'gray'}>{form.activo ? 'Activo' : 'Oculto'}</Badge>{form.featured && <Badge tone="yellow">Destacado</Badge>}</div>{galleryImages.length > 1 && <span className="absolute bottom-3 right-3 rounded-full border border-white/10 bg-black/70 px-3 py-1 text-[10px] font-black text-white/75 backdrop-blur">{galleryImages.length} fotos</span>}</div><div className="space-y-4 p-4"><p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">Preview y margen</p><h3 className="line-clamp-2 text-xl font-black leading-tight text-white">{form.name || 'Nombre del producto'}</h3><p className="line-clamp-2 text-sm text-zinc-400">{form.tagline || 'Tagline comercial del producto'}</p><div className="grid grid-cols-2 gap-2"><PreviewChip label="Stock" value={form.stock || '—'} /><PreviewChip label="Fotos" value={String(galleryImages.length || (form.image_url ? 1 : 0))} /><PreviewChip label="Envío" value={shippingFee > 0 ? formatCLP(shippingFee) : 'No definido'} /><PreviewChip label="IVA" value={`${taxPct || 0}%`} /></div><div className="rounded-2xl border border-yellow-300/20 bg-yellow-300/[0.055] p-4"><p className="text-[10px] uppercase tracking-[0.2em] text-yellow-200/60">Total referencia</p><p className="mt-1 text-3xl font-black text-yellow-300">{formatCLP(totalWithCharges)}</p><div className="mt-2 space-y-1 text-xs text-zinc-500"><p>Venta: {formatCLP(priceNumber)}</p><p>Proveedor: {supplierPriceNumber > 0 ? `${formatCLP(supplierPriceNumber)} ${form.supplier_currency || ''}` : 'no definido'}</p><p>Margen estimado: {marginPct === null ? '—' : `${marginPct}%`}</p></div></div></div></div></aside>
       </div>
-
-      {libraryOpen ? <div className="fixed inset-0 z-[95] overflow-y-auto bg-black/70 p-3 backdrop-blur-xl sm:p-6"><div className="mx-auto max-w-5xl rounded-[2rem] bg-[#f8efdd] p-4 text-[#1b1710] shadow-[0_35px_120px_rgba(0,0,0,.38)] sm:p-6"><div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[.22em] text-[#91620e]">Biblioteca del producto</p><h2 className="mt-1 text-2xl font-black tracking-[-.045em]">Imágenes de {categories.find((item) => item.id === form.category_id)?.name || 'General'}</h2><p className="mt-1 text-xs text-black/45">Selecciona imágenes existentes para reutilizarlas sin volver a subir archivos.</p></div><button type="button" onClick={() => setLibraryOpen(false)} className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-black text-yellow-300"><X className="h-5 w-5" /></button></div>{libraryLoading ? <div className="grid min-h-72 place-items-center"><Loader2 className="h-7 w-7 animate-spin text-[#91620e]" /></div> : libraryAssets.length ? <div className="mt-5 grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4">{libraryAssets.map((asset) => <button key={asset.public_id} type="button" onClick={() => { addGalleryImage({ url: asset.url, public_id: asset.public_id, source: 'cloudinary' }, !form.image_url); setLibraryOpen(false); }} className="group overflow-hidden rounded-2xl bg-white p-2 text-left shadow-sm"><img src={asset.url} alt={asset.public_id} className="aspect-square w-full rounded-xl object-contain" /><span className="mt-2 block truncate px-1 text-[10px] font-bold text-black/45">{asset.public_id.split('/').pop()}</span></button>)}</div> : <div className="mt-5 grid min-h-72 place-items-center rounded-[1.5rem] border border-dashed border-black/15 text-center"><div><FolderOpen className="mx-auto h-8 w-8 text-black/20" /><b className="mt-3 block">La carpeta todavía está vacía</b><p className="mt-1 text-xs text-black/40">Sube la primera imagen y aparecerá aquí automáticamente.</p></div></div>}</div></div> : null}
-      {toast && <Toast message={toast.message} type={toast.type} />}
     </div>
   );
 }
 
-function CloudStatusBadge({ status }: { status: CloudinaryStatus }) {
-  const content = status === 'checking'
-    ? { text: 'Revisando Cloudinary', cls: 'border-white/10 bg-white/5 text-zinc-300' }
-    : status === 'ready'
-      ? { text: 'Cloudinary conectado', cls: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' }
-      : status === 'missing'
-        ? { text: 'Cloudinary sin configurar', cls: 'border-red-400/30 bg-red-400/10 text-red-200' }
-        : { text: 'Cloudinary con error', cls: 'border-amber-400/30 bg-amber-400/10 text-amber-200' };
-  return <span className={`hidden items-center gap-2 rounded-full border px-3 py-1.5 text-[10px] font-black uppercase tracking-[0.16em] sm:inline-flex ${content.cls}`}>{status === 'checking' ? <Loader2 className="h-3 w-3 animate-spin" /> : <CheckCircle2 className="h-3 w-3" />}{content.text}</span>;
-}
-
-function Badge({ tone, children }: { tone: 'green' | 'gray' | 'yellow'; children: ReactNode }) {
-  const cls = tone === 'green' ? 'border-emerald-400/30 bg-emerald-500/15 text-emerald-300' : tone === 'yellow' ? 'border-yellow-400/30 bg-yellow-400/15 text-yellow-300' : 'border-zinc-500/30 bg-zinc-600/20 text-zinc-400';
-  return <span className={`rounded-full border px-2 py-1 text-[9px] font-black uppercase tracking-[0.16em] ${cls}`}>{children}</span>;
-}
-
-function PreviewChip({ label, value }: { label: string; value: string }) {
-  return <div className="rounded-xl border border-white/10 bg-black/30 p-2"><p className="text-[9px] uppercase tracking-[0.14em] text-zinc-600">{label}</p><p className="truncate text-xs font-semibold text-zinc-300">{value}</p></div>;
-}
+function Label({ title, children, hint }: { title: string; children: React.ReactNode; hint?: string }) { return <label className="block"><span className="text-[10px] font-black uppercase tracking-[.16em] text-[#895E3D]">{title}</span><div className="mt-2">{children}</div>{hint ? <p className="mt-2 text-[11px] leading-5 text-[#7A6D64]">{hint}</p> : null}</label>; }
+const input = 'min-h-12 w-full rounded-2xl bg-white px-4 text-sm font-semibold text-[#171820] outline-none shadow-[inset_0_0_0_1px_rgba(23,24,32,.08)] focus:shadow-[inset_0_0_0_2px_rgba(182,144,108,.7)]';
+function StepTitle({ icon: Icon, eyebrow, title, text }: { icon: typeof Star; eyebrow: string; title: string; text: string }) { return <div className="mb-7 flex items-start gap-4"><span className="grid h-12 w-12 shrink-0 place-items-center rounded-2xl bg-[#171820] text-[#CCB196]"><Icon className="h-5 w-5" /></span><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#895E3D]">{eyebrow}</p><h2 className="mt-1 text-3xl font-black tracking-[-.045em]">{title}</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-[#70645C]">{text}</p></div></div>; }
+function StepInfo({ form, set, categories }: { form: ProductFormData; set: <K extends keyof ProductFormData>(key: K, value: ProductFormData[K]) => void; categories: Array<{ id: string; name: string }> }) { return <><StepTitle icon={Star} eyebrow="Paso 1" title="Información principal" text="Primero define qué vendes. El resto del editor utilizará estos datos para imágenes, precio, promoción e IA." /><div className="grid gap-5"><Label title="Nombre del producto"><input className={input} value={form.name} onChange={(e) => set('name', e.target.value)} placeholder="Nombre claro, modelo y característica principal" /></Label><Label title="Frase comercial"><input className={input} value={form.tagline} onChange={(e) => set('tagline', e.target.value)} placeholder="Beneficio principal en una frase" /></Label><Label title="Descripción"><textarea className={`${input} min-h-40 py-4`} value={form.description} onChange={(e) => set('description', e.target.value)} placeholder="Características comprobables, beneficios, condiciones y uso recomendado" /></Label><div className="grid gap-4 sm:grid-cols-2"><Label title="Categoría"><select className={input} value={form.category_id} onChange={(e) => set('category_id', e.target.value)}>{categories.map((category) => <option key={category.id} value={category.id}>{category.name}</option>)}</select></Label><Label title="Stock"><input className={input} type="number" min="0" value={form.stock} onChange={(e) => set('stock', e.target.value)} /></Label></div></div></>; }
+function StepImages({ cover, gallery, uploading, fileRef, onUpload, onCover, onMove, onRemove, onManual }: { cover: string; gallery: GalleryImage[]; uploading: boolean; fileRef: React.RefObject<HTMLInputElement | null>; onUpload: (files: FileList) => void; onCover: (image: GalleryImage) => void; onMove: (index: number, direction: -1 | 1) => void; onRemove: (image: GalleryImage) => void; onManual: (url: string) => void }) { const [url, setUrl] = useState(''); return <><StepTitle icon={Images} eyebrow="Paso 2" title="Portada y galería" text="Ocupa todo el ancho disponible. Elige una portada grande y ordena el resto como una secuencia visual del producto." /><button type="button" onClick={() => fileRef.current?.click()} className="grid min-h-40 w-full place-items-center rounded-[1.7rem] bg-[#E5D2C0] p-6 text-center"><span><Cloud className="mx-auto h-8 w-8" /><b className="mt-3 block">{uploading ? 'Subiendo imágenes…' : 'Subir varias imágenes'}</b><small className="mt-1 block text-[#756B63]">JPG, PNG, WEBP o AVIF</small></span></button><input ref={fileRef} type="file" multiple accept="image/*" className="hidden" onChange={(e) => { if (e.target.files) void onUpload(e.target.files); e.target.value = ''; }} />{cover ? <img src={cover} alt="Portada" className="mt-5 aspect-[16/8] w-full rounded-[1.7rem] object-cover" /> : null}<div className="mt-5 grid grid-cols-2 gap-3 md:grid-cols-3">{gallery.map((image, index) => <div key={image.url} className="relative overflow-hidden rounded-2xl bg-white p-2 shadow-sm"><img src={image.url} alt={`Imagen ${index + 1}`} className="aspect-square w-full rounded-xl object-cover" /><div className="mt-2 grid grid-cols-4 gap-1"><button type="button" onClick={() => onMove(index, -1)} className="grid h-9 place-items-center rounded-xl bg-[#EEE5DC]" disabled={index === 0}><ChevronLeft className="h-4 w-4" /></button><button type="button" onClick={() => onCover(image)} className="grid h-9 place-items-center rounded-xl bg-[#D8C0A8]"><Star className="h-4 w-4" /></button><button type="button" onClick={() => onMove(index, 1)} className="grid h-9 place-items-center rounded-xl bg-[#EEE5DC]" disabled={index === gallery.length - 1}><ChevronRight className="h-4 w-4" /></button><button type="button" onClick={() => onRemove(image)} className="grid h-9 place-items-center rounded-xl bg-red-100 text-red-700"><Trash2 className="h-4 w-4" /></button></div></div>)}</div><div className="mt-5 flex gap-2"><input className={input} value={url} onChange={(e) => setUrl(e.target.value)} placeholder="Pegar URL de imagen" /><button type="button" onClick={() => { onManual(url); setUrl(''); }} className="rounded-2xl bg-[#171820] px-5 text-white"><ImagePlus className="h-4 w-4" /></button></div></>; }
+function StepPricing({ form, set, markup, setMarkup, autoMarkup, setAutoMarkup, cost, regularPrice, margin }: { form: ProductFormData; set: <K extends keyof ProductFormData>(key: K, value: ProductFormData[K]) => void; markup: number; setMarkup: (value: number) => void; autoMarkup: boolean; setAutoMarkup: (value: boolean) => void; cost: number; regularPrice: number; margin: number | null }) { return <><StepTitle icon={Calculator} eyebrow="Paso 3" title="Costo, margen y precio de venta" text="El precio se construye en orden: costo del proveedor → porcentaje de aumento → precio normal. Por defecto, cada producto nuevo o importado utiliza 30%." /><div className="grid gap-4 md:grid-cols-3"><PriceBox label="1. Costo proveedor" value={form.supplier_price} onChange={(value) => set('supplier_price', value)} /><PriceBox label="2. Aumento %" value={String(markup)} onChange={(value) => setMarkup(Math.max(0, Number(value) || 0))} suffix="%" /><div className="rounded-[1.5rem] bg-[#171820] p-5 text-white"><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#CCB196]">3. Precio normal calculado</p><p className="mt-3 text-3xl font-black">{clp(regularPrice)}</p><p className="mt-2 text-xs text-white/50">{margin == null ? 'Ingresa el costo para calcular margen.' : `${margin}% de margen bruto sobre el precio normal.`}</p></div></div><label className="mt-5 flex items-center justify-between gap-4 rounded-2xl bg-white p-4"><span><b className="block text-sm">Calcular automáticamente desde el costo</b><small className="text-[#756B63]">Al cambiar el precio proveedor, se recalcula el precio normal.</small></span><input type="checkbox" checked={autoMarkup} onChange={(e) => setAutoMarkup(e.target.checked)} className="h-6 w-6" /></label>{!autoMarkup ? <div className="mt-4"><Label title="Precio normal manual"><input className={input} inputMode="numeric" value={form.price} onChange={(e) => set('price', e.target.value.replace(/\D/g, ''))} /></Label></div> : null}<div className="mt-5 grid gap-4 sm:grid-cols-3"><Label title="Envío"><input className={input} type="number" min="0" value={form.shipping_fee} onChange={(e) => set('shipping_fee', e.target.value)} /></Label><Label title="IVA %"><input className={input} type="number" min="0" value={form.tax_percentage} onChange={(e) => set('tax_percentage', e.target.value)} /></Label><Label title="Días de entrega"><input className={input} type="number" min="0" value={form.delivery_days} onChange={(e) => set('delivery_days', e.target.value)} /></Label></div></>; }
+function PriceBox({ label, value, onChange, suffix }: { label: string; value: string; onChange: (value: string) => void; suffix?: string }) { return <label className="rounded-[1.5rem] bg-white p-5 shadow-sm"><span className="text-[9px] font-black uppercase tracking-[.16em] text-[#895E3D]">{label}</span><div className="mt-3 flex items-center gap-2"><span className="text-xl font-black">{suffix ? '' : '$'}</span><input type="number" min="0" className="min-w-0 flex-1 bg-transparent text-2xl font-black outline-none" value={value} onChange={(e) => onChange(e.target.value)} /><span className="font-black">{suffix}</span></div></label>; }
+function StepPromotion({ form, set, regularPrice, promoPrice, discount }: { form: ProductFormData; set: <K extends keyof ProductFormData>(key: K, value: ProductFormData[K]) => void; regularPrice: number; promoPrice: number; discount: number }) { return <><StepTitle icon={BadgePercent} eyebrow="Paso 4" title="Precio antes y precio ahora" text="La promoción queda visualmente separada del costo. El cliente verá el precio normal tachado y el precio actual destacado." /><div className="grid gap-4 md:grid-cols-[1fr_.7fr_1fr]"><div className="rounded-[1.6rem] bg-white p-6"><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#895E3D]">Precio antes</p><p className="mt-3 text-3xl font-black">{clp(regularPrice)}</p><p className="mt-2 text-xs text-[#756B63]">Precio normal construido en el paso anterior.</p></div><label className="rounded-[1.6rem] bg-[#D8C0A8] p-6"><span className="text-[9px] font-black uppercase tracking-[.18em]">Descuento</span><div className="mt-3 flex items-center"><input type="number" min="0" max="100" className="w-full bg-transparent text-4xl font-black outline-none" value={form.discount_percentage} onChange={(e) => set('discount_percentage', e.target.value)} /><b className="text-2xl">%</b></div></label><div className="rounded-[1.6rem] bg-[#171820] p-6 text-white"><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#CCB196]">Precio ahora</p><p className="mt-3 text-3xl font-black text-[#E5CFBA]">{clp(promoPrice)}</p><p className="mt-2 text-xs text-white/50">Ahorro visible: {clp(regularPrice - promoPrice)}.</p></div></div><label className="mt-5 flex items-center justify-between rounded-2xl bg-white p-4"><span><b className="block">Mostrar como producto destacado</b><small className="text-[#756B63]">Puede aparecer en los bloques editoriales de la tienda.</small></span><input type="checkbox" checked={form.featured} onChange={(e) => set('featured', e.target.checked)} className="h-6 w-6" /></label><p className="mt-4 rounded-2xl bg-[#EADBCB] p-4 text-sm leading-6 text-[#685D55]">El descuento de {discount}% no modifica el costo proveedor. Solo calcula el precio promocional que verá el cliente.</p></>; }
+function StepAi({ analysis, loading, onAnalyze, onApply }: { analysis: Analysis | null; loading: boolean; onAnalyze: () => void; onApply: () => void }) { return <><StepTitle icon={WandSparkles} eyebrow="Paso 5" title="Análisis privado con IA" text="La IA propone título, descripción, clasificación y rango de precio. Las señales de demanda son estimaciones editoriales, no ventas ni búsquedas verificadas." /><button type="button" onClick={() => void onAnalyze()} disabled={loading} className="inline-flex min-h-13 items-center gap-2 rounded-full bg-[#171820] px-6 text-sm font-black text-white">{loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4 text-[#CCB196]" />}{loading ? 'Analizando producto…' : 'Generar análisis privado'}</button>{analysis ? <div className="mt-6 grid gap-4"><div className="grid gap-3 sm:grid-cols-4"><Metric label="Precio inicial" value={clp(analysis.priceLow)} /><Metric label="Precio medio" value={clp(analysis.priceMid)} /><Metric label="Precio máximo" value={clp(analysis.priceHigh)} /><Metric label="Recomendado" value={clp(analysis.recommendedPrice)} dark /></div><div className="grid gap-4 md:grid-cols-2"><div className="rounded-[1.5rem] bg-white p-5"><p className="text-[9px] font-black uppercase tracking-[.16em] text-[#895E3D]">Demanda estimada</p><p className="mt-2 text-4xl font-black">{analysis.estimatedDemand}%</p><p className="mt-2 text-xs leading-5 text-[#756B63]">{analysis.evidenceNote}</p></div><div className="rounded-[1.5rem] bg-white p-5"><p className="text-[9px] font-black uppercase tracking-[.16em] text-[#895E3D]">Popularidad de compra estimada</p><p className="mt-2 text-4xl font-black">{analysis.estimatedPurchasePopularity}%</p><div className="mt-2 flex gap-1">{Array.from({ length: 5 }, (_, index) => <Star key={index} className={`h-4 w-4 ${index < Math.round(analysis.rating) ? 'fill-[#B6906C] text-[#B6906C]' : 'text-black/15'}`} />)}</div></div></div><div className="rounded-[1.5rem] bg-white p-5"><h3 className="text-xl font-black">{analysis.title}</h3><p className="mt-2 text-sm leading-6 text-[#685D55]">{analysis.longDescription}</p><p className="mt-4 text-xs font-bold text-[#895E3D]">{analysis.tags.join(' · ')}</p></div><button type="button" onClick={onApply} className="rounded-full bg-[#B6906C] px-6 py-4 text-sm font-black">Aplicar título, descripción y precio recomendado</button></div> : null}</>; }
+function Metric({ label, value, dark }: { label: string; value: string; dark?: boolean }) { return <div className={`rounded-2xl p-4 ${dark ? 'bg-[#171820] text-white' : 'bg-white'}`}><p className="text-[9px] font-black uppercase tracking-[.14em] opacity-55">{label}</p><p className="mt-2 text-xl font-black">{value}</p></div>; }
+function StepPublish({ form, set, regularPrice, promoPrice, checkoutReference, margin, galleryCount }: { form: ProductFormData; set: <K extends keyof ProductFormData>(key: K, value: ProductFormData[K]) => void; regularPrice: number; promoPrice: number; checkoutReference: number; margin: number | null; galleryCount: number }) { return <><StepTitle icon={Check} eyebrow="Paso 6" title="Revisión y publicación" text="Comprueba la ficha completa. Al guardar, el precio normal, el descuento y el precio actual quedarán coordinados en la tienda." /><div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4"><Metric label="Precio normal" value={clp(regularPrice)} /><Metric label="Precio promoción" value={clp(promoPrice)} dark /><Metric label="Total referencial" value={clp(checkoutReference)} /><Metric label="Margen bruto" value={margin == null ? 'Pendiente' : `${margin}%`} /></div><div className="mt-5 grid gap-4 sm:grid-cols-2"><label className="flex items-center justify-between rounded-2xl bg-white p-4"><span><b className="block">Visible en la tienda</b><small className="text-[#756B63]">Publica la ficha al guardar.</small></span><input type="checkbox" checked={form.activo} onChange={(e) => set('activo', e.target.checked)} className="h-6 w-6" /></label><div className="rounded-2xl bg-white p-4"><b className="block">Galería</b><small className="text-[#756B63]">{galleryCount} imágenes preparadas.</small></div></div><div className="mt-5 rounded-[1.5rem] bg-[#EADBCB] p-5"><p className="text-[9px] font-black uppercase tracking-[.16em] text-[#895E3D]">Resumen comercial</p><h3 className="mt-2 text-2xl font-black">{form.name || 'Producto sin nombre'}</h3><p className="mt-2 text-sm leading-6 text-[#685D55]">{form.description || 'Sin descripción.'}</p></div></>; }
+function Badge({ children }: { children: React.ReactNode }) { return <span className="rounded-full bg-[#B6906C] px-3 py-1.5 text-[9px] font-black uppercase text-[#171820]">{children}</span>; }

@@ -1,10 +1,5 @@
-import ProductMerchandisingStudio from '@/components/admin/ProductMerchandisingStudio';
+import ProductsAdminWorkspace from '@/components/admin/ProductsAdminWorkspace';
 
 export default function ProductsAdminLayout({ children }: { children: React.ReactNode }) {
-  return (
-    <>
-      <ProductMerchandisingStudio />
-      {children}
-    </>
-  );
+  return <ProductsAdminWorkspace>{children}</ProductsAdminWorkspace>;
 }

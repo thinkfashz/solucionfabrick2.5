@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
 
   try {
     const contentType = request.headers.get('content-type') || '';
-    let buffer: Buffer;
+    let bytes: ArrayBuffer;
     let mimeType = 'image/jpeg';
     let fileName = `meta-${Date.now()}.jpg`;
 
@@ -38,9 +38,8 @@ export async function POST(request: NextRequest) {
       if (!remote.ok) return NextResponse.json({ error: `No se pudo descargar la imagen (${remote.status}).` }, { status: 502 });
       mimeType = (remote.headers.get('content-type') || 'image/jpeg').split(';')[0].trim();
       if (!ALLOWED_TYPES.has(mimeType)) return NextResponse.json({ error: 'El formato remoto no es compatible con Meta.' }, { status: 415 });
-      const bytes = await remote.arrayBuffer();
+      bytes = await remote.arrayBuffer();
       if (bytes.byteLength > MAX_BYTES) return NextResponse.json({ error: 'La imagen supera 12 MB.' }, { status: 413 });
-      buffer = Buffer.from(bytes);
       fileName = cleanName(String(body.fileName || imageUrl.split('/').pop() || `meta-${Date.now()}.jpg`));
     } else {
       const formData = await request.formData();
@@ -49,17 +48,17 @@ export async function POST(request: NextRequest) {
       if (imageFile.size > MAX_BYTES) return NextResponse.json({ error: 'La imagen supera 12 MB.' }, { status: 413 });
       mimeType = imageFile.type || 'image/jpeg';
       if (!ALLOWED_TYPES.has(mimeType)) return NextResponse.json({ error: 'Usa JPG, PNG, WEBP o AVIF.' }, { status: 415 });
-      buffer = Buffer.from(await imageFile.arrayBuffer());
+      bytes = await imageFile.arrayBuffer();
       fileName = cleanName(imageFile.name || `meta-${Date.now()}.jpg`);
     }
 
     const storageName = `meta-ads/${Date.now()}-${fileName}`;
-    const blob = new Blob([buffer], { type: mimeType });
+    const blob = new Blob([bytes], { type: mimeType });
     const { error: storageError } = await insforge.storage.from('publicidad').upload(storageName, blob);
     if (storageError) console.warn('InsForge storage upload warning:', storageError.message);
 
     const metaFormData = new FormData();
-    metaFormData.append('source', new Blob([buffer], { type: mimeType }), fileName);
+    metaFormData.append('source', new Blob([bytes], { type: mimeType }), fileName);
     metaFormData.append('access_token', accessToken);
 
     const metaRes = await fetch(`${META_GRAPH_URL}/act_${adAccountId}/adimages`, { method: 'POST', body: metaFormData });

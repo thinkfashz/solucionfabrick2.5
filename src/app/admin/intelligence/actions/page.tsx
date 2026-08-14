@@ -58,6 +58,8 @@ export default function IntelligenceActionsPage() {
   const [currentPrice, setCurrentPrice] = useState('');
   const [preview, setPreview] = useState<Preview | null>(null);
   const [loading, setLoading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [savedId, setSavedId] = useState('');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -72,10 +74,7 @@ export default function IntelligenceActionsPage() {
 
   const needsResource = useMemo(() => ['product.update', 'product.publish', 'stock.update', 'seo.update', 'blog.update'].includes(actionType), [actionType]);
 
-  async function previewAction() {
-    setLoading(true);
-    setError('');
-    setPreview(null);
+  function buildPayload() {
     const payload: Record<string, unknown> = {};
     if (name.trim()) payload.name = name.trim();
     if (description.trim()) payload.description = description.trim();
@@ -83,24 +82,40 @@ export default function IntelligenceActionsPage() {
     if (price) payload.price = Number(price);
     if (supplierPrice) payload.supplierPrice = Number(supplierPrice);
     if (stock) payload.stock = Number(stock);
+    return payload;
+  }
 
+  function buildRequest() {
+    return {
+      action: { type: actionType, resourceId: resourceId.trim() || null, payload: buildPayload() },
+      context: { currentPrice: currentPrice ? Number(currentPrice) : null, supplierPrice: supplierPrice ? Number(supplierPrice) : null },
+    };
+  }
+
+  async function previewAction() {
+    setLoading(true); setError(''); setPreview(null); setSavedId('');
     try {
       const res = await fetch('/api/admin/intelligence/actions', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          action: { type: actionType, resourceId: resourceId.trim() || null, payload },
-          context: { currentPrice: currentPrice ? Number(currentPrice) : null, supplierPrice: supplierPrice ? Number(supplierPrice) : null },
-        }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildRequest()),
       });
       const json = await res.json();
       setPreview(json);
       if (!res.ok && !json.decision) throw new Error(json.error || 'No se pudo evaluar la acción.');
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error evaluando acción.');
-    } finally {
-      setLoading(false);
-    }
+    } catch (err) { setError(err instanceof Error ? err.message : 'Error evaluando acción.'); }
+    finally { setLoading(false); }
+  }
+
+  async function saveProposal() {
+    setSaving(true); setError(''); setSavedId('');
+    try {
+      const res = await fetch('/api/admin/intelligence/proposals', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(buildRequest()),
+      });
+      const json = await res.json();
+      if (!res.ok) throw new Error(json.error || json.decision?.reasons?.join(' ') || 'No se pudo guardar la propuesta.');
+      setSavedId(json.proposal?.id || 'ok');
+    } catch (err) { setError(err instanceof Error ? err.message : 'Error guardando propuesta.'); }
+    finally { setSaving(false); }
   }
 
   return <main className="min-h-screen bg-[#101116] px-4 py-6 text-white sm:px-6">
@@ -108,8 +123,8 @@ export default function IntelligenceActionsPage() {
       <header className="rounded-[2rem] border border-[#f4cf57]/20 bg-[radial-gradient(circle_at_top_right,rgba(244,207,87,.16),transparent_35%),#171820] p-6 sm:p-8">
         <Link href="/admin/intelligence" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[.14em] text-white/45"><ArrowLeft className="h-4 w-4"/> Fabrick Intelligence</Link>
         <div className="mt-5 flex flex-col gap-5 lg:flex-row lg:items-end lg:justify-between">
-          <div><span className="inline-flex items-center gap-2 rounded-full bg-[#f4cf57]/10 px-3 py-2 text-[10px] font-black uppercase tracking-[.18em] text-[#f4cf57]"><Bot className="h-4 w-4"/> V2 · Action Lab</span><h1 className="mt-4 text-4xl font-black tracking-[-.05em] sm:text-6xl">Propuesta antes de ejecución.</h1><p className="mt-3 max-w-3xl text-sm leading-7 text-white/50">Prueba cómo Fabrick Intelligence evaluará productos, stock, precios, SEO y contenido antes de permitir cualquier cambio real.</p></div>
-          {policy ? <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-xs text-emerald-200"><b>Rol:</b> {policy.role} · {policy.permissions.length} permisos activos</div> : null}
+          <div><span className="inline-flex items-center gap-2 rounded-full bg-[#f4cf57]/10 px-3 py-2 text-[10px] font-black uppercase tracking-[.18em] text-[#f4cf57]"><Bot className="h-4 w-4"/> V2 · Action Lab</span><h1 className="mt-4 text-4xl font-black tracking-[-.05em] sm:text-6xl">Propuesta antes de ejecución.</h1><p className="mt-3 max-w-3xl text-sm leading-7 text-white/50">Evalúa, guarda y envía cambios a una cola de aprobación. La ejecución real queda separada y auditada.</p></div>
+          <div className="flex flex-wrap gap-2">{policy ? <div className="rounded-2xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-3 text-xs text-emerald-200"><b>Rol:</b> {policy.role} · {policy.permissions.length} permisos</div> : null}<Link href="/admin/intelligence/proposals" className="rounded-2xl border border-[#f4cf57]/30 bg-[#f4cf57]/10 px-4 py-3 text-xs font-black text-[#f4cf57]">Cola de aprobación</Link></div>
         </div>
       </header>
 
@@ -127,26 +142,14 @@ export default function IntelligenceActionsPage() {
             <label className="text-xs font-bold text-white/55">Stock<input type="number" value={stock} onChange={(e) => setStock(e.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-[#171820] px-4 text-sm text-white outline-none"/></label>
             <label className="text-xs font-bold text-white/55">Precio actual<input type="number" value={currentPrice} onChange={(e) => setCurrentPrice(e.target.value)} className="mt-2 h-12 w-full rounded-2xl border border-white/10 bg-[#171820] px-4 text-sm text-white outline-none"/></label>
           </div>
-          <button onClick={() => void previewAction()} disabled={loading} className="mt-5 flex h-12 w-full items-center justify-center gap-2 rounded-2xl bg-[#f4cf57] px-5 text-sm font-black text-black disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin"/> : <ShieldCheck className="h-4 w-4"/>} Evaluar propuesta</button>
+          <div className="mt-5 grid gap-2 sm:grid-cols-2"><button onClick={() => void previewAction()} disabled={loading || saving} className="flex h-12 items-center justify-center gap-2 rounded-2xl border border-[#f4cf57]/30 bg-[#f4cf57]/10 px-5 text-sm font-black text-[#f4cf57] disabled:opacity-50">{loading ? <Loader2 className="h-4 w-4 animate-spin"/> : <ShieldCheck className="h-4 w-4"/>} Evaluar</button><button onClick={() => void saveProposal()} disabled={loading || saving || preview?.decision?.allowed === false} className="flex h-12 items-center justify-center gap-2 rounded-2xl bg-[#f4cf57] px-5 text-sm font-black text-black disabled:opacity-40">{saving ? <Loader2 className="h-4 w-4 animate-spin"/> : <Sparkles className="h-4 w-4"/>} Guardar propuesta</button></div>
+          {savedId ? <p className="mt-4 rounded-2xl border border-emerald-400/20 bg-emerald-400/10 p-4 text-sm text-emerald-100">Propuesta guardada. <Link href="/admin/intelligence/proposals" className="font-black underline">Abrir cola de aprobación</Link></p> : null}
           {error ? <p className="mt-4 rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-100">{error}</p> : null}
         </article>
 
         <div className="space-y-5">
-          <article className="rounded-[2rem] border border-white/8 bg-white/[0.035] p-5">
-            <div className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-[#f4cf57]"/><h2 className="text-lg font-black">Reglas activas</h2></div>
-            <div className="mt-4 space-y-3 text-sm text-white/55">
-              <p>• Margen mínimo: <b className="text-white">{policy?.safeguards.minimumMarginPercent ?? 25}%</b></p>
-              <p>• Cambios de precio ≥ <b className="text-white">{policy?.safeguards.priceChangeThresholdPercent ?? 10}%</b> requieren aprobación.</p>
-              <p>• Publicación de productos requiere aprobación explícita.</p>
-              <p>• Secretos, sesiones y credenciales de pago están bloqueados.</p>
-              <p>• Las acciones destructivas no forman parte de V2.</p>
-            </div>
-          </article>
-
-          {preview ? <article className={`rounded-[2rem] border p-5 ${preview.decision?.allowed ? 'border-emerald-400/20 bg-emerald-400/[0.07]' : 'border-amber-300/20 bg-amber-300/[0.07]'}`}>
-            <div className="flex items-start gap-3">{preview.decision?.allowed ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-300"/> : <TriangleAlert className="mt-0.5 h-5 w-5 text-amber-300"/>}<div><h2 className="font-black">{preview.decision?.allowed ? 'Propuesta válida' : 'Propuesta bloqueada'}</h2><p className="mt-1 text-sm leading-6 text-white/55">{preview.nextStep}</p></div></div>
-            {preview.decision ? <div className="mt-4 space-y-2 text-xs text-white/55"><p><b className="text-white">Permiso:</b> {preview.decision.permission}</p><p><b className="text-white">Aprobación:</b> {preview.decision.requiresApproval ? 'Sí' : 'No'}</p>{preview.decision.reasons?.length ? <div className="rounded-xl bg-black/20 p-3">{preview.decision.reasons.map((reason) => <p key={reason}>• {reason}</p>)}</div> : null}</div> : null}
-          </article> : null}
+          <article className="rounded-[2rem] border border-white/8 bg-white/[0.035] p-5"><div className="flex items-center gap-3"><ShieldCheck className="h-5 w-5 text-[#f4cf57]"/><h2 className="text-lg font-black">Reglas activas</h2></div><div className="mt-4 space-y-3 text-sm text-white/55"><p>• Margen mínimo: <b className="text-white">{policy?.safeguards.minimumMarginPercent ?? 25}%</b></p><p>• Cambios de precio ≥ <b className="text-white">{policy?.safeguards.priceChangeThresholdPercent ?? 10}%</b> requieren aprobación.</p><p>• Publicación de productos requiere aprobación explícita.</p><p>• Secretos, sesiones y credenciales de pago están bloqueados.</p><p>• Las acciones destructivas no forman parte de V2.</p></div></article>
+          {preview ? <article className={`rounded-[2rem] border p-5 ${preview.decision?.allowed ? 'border-emerald-400/20 bg-emerald-400/[0.07]' : 'border-amber-300/20 bg-amber-300/[0.07]'}`}><div className="flex items-start gap-3">{preview.decision?.allowed ? <CheckCircle2 className="mt-0.5 h-5 w-5 text-emerald-300"/> : <TriangleAlert className="mt-0.5 h-5 w-5 text-amber-300"/>}<div><h2 className="font-black">{preview.decision?.allowed ? 'Propuesta válida' : 'Propuesta bloqueada'}</h2><p className="mt-1 text-sm leading-6 text-white/55">{preview.nextStep}</p></div></div>{preview.decision ? <div className="mt-4 space-y-2 text-xs text-white/55"><p><b className="text-white">Permiso:</b> {preview.decision.permission}</p><p><b className="text-white">Aprobación:</b> {preview.decision.requiresApproval ? 'Sí' : 'No'}</p>{preview.decision.reasons?.length ? <div className="rounded-xl bg-black/20 p-3">{preview.decision.reasons.map((reason) => <p key={reason}>• {reason}</p>)}</div> : null}</div> : null}</article> : null}
         </div>
       </section>
     </section>

@@ -3,14 +3,13 @@ import fs from 'node:fs';
 import path from 'node:path';
 import matter from 'gray-matter';
 import { marked } from 'marked';
-import DOMPurify from 'isomorphic-dompurify';
 
 export type ContentType = 'blog' | 'casos';
 
 export interface ContentFrontmatter {
   title: string;
   description: string;
-  date: string; // ISO 8601
+  date: string;
   author?: string;
   cover?: string;
   tags?: string[];
@@ -49,6 +48,24 @@ function contentDir(type: ContentType): string {
 function estimateReadingMinutes(markdown: string): number {
   const words = markdown.trim().split(/\s+/).filter(Boolean).length;
   return Math.max(1, Math.round(words / 220));
+}
+
+/**
+ * Markdown files live inside the repository and are trusted editorial input.
+ * Keep the output safe without importing isomorphic-dompurify/jsdom into the
+ * request bundle: that dependency chain caused ERR_REQUIRE_ESM on Node 24 and
+ * broke /blog/[slug] and /sitemap.xml in production.
+ *
+ * This sanitizer intentionally strips active content and inline event handlers.
+ * Public user-authored HTML should continue to go through the CMS validation path.
+ */
+function sanitizeTrustedMarkdownHtml(input: string): string {
+  return input
+    .replace(/<script\b[^>]*>[\s\S]*?<\/script\s*>/gi, '')
+    .replace(/<style\b[^>]*>[\s\S]*?<\/style\s*>/gi, '')
+    .replace(/\s+on[a-z]+\s*=\s*(?:"[^"]*"|'[^']*'|[^\s>]+)/gi, '')
+    .replace(/\s+(href|src)\s*=\s*(["'])\s*javascript:[\s\S]*?\2/gi, ' $1="#"')
+    .replace(/\s+(href|src)\s*=\s*javascript:[^\s>]*/gi, ' $1="#"');
 }
 
 function assertFrontmatter(data: Record<string, unknown>, filePath: string): ContentFrontmatter {
@@ -112,16 +129,9 @@ export function getContent(type: ContentType, slug: string): ContentPost | null 
 
   if (fm.draft && process.env.NODE_ENV === 'production') return null;
 
-  // Render Markdown → HTML (synchronous mode) and sanitize defensively with DOMPurify,
-  // even though our source is trusted, to guarantee no XSS can ever leak through
-  // user-authored quotes or HTML snippets inside posts.
   marked.setOptions({ gfm: true, breaks: false });
   const rendered = marked.parse(content, { async: false }) as string;
-  const html = DOMPurify.sanitize(rendered, {
-    ADD_ATTR: ['target', 'rel'],
-    FORBID_TAGS: ['style', 'script'],
-    FORBID_ATTR: ['onerror', 'onload', 'onclick'],
-  });
+  const html = sanitizeTrustedMarkdownHtml(rendered);
 
   return {
     ...fm,

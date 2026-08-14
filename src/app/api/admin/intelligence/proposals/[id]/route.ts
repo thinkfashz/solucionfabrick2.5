@@ -17,11 +17,14 @@ async function getSession(request: NextRequest) {
 }
 
 function productPayload(payload: Record<string, unknown>) {
-  const allowed = ['name', 'description', 'price', 'stock', 'image_url', 'specifications', 'featured', 'category_id', 'delivery_days', 'discount_percentage'];
+  const allowed = ['name', 'description', 'price', 'stock', 'image_url', 'specifications', 'featured', 'category_id', 'delivery_days', 'discount_percentage', 'source', 'source_url', 'supplier_currency'];
   const out: Record<string, unknown> = {};
   for (const key of allowed) if (key in payload) out[key] = payload[key];
   if ('supplierPrice' in payload) out.supplier_price = payload.supplierPrice;
-  return out;
+  if ('supplier' in payload && !('source' in out)) out.source = payload.supplier;
+  if ('supplierUrl' in payload && !('source_url' in out)) out.source_url = payload.supplierUrl;
+  if (out.supplier_price && !out.supplier_currency) out.supplier_currency = 'CLP';
+  return Object.fromEntries(Object.entries(out).filter(([, value]) => value !== undefined && value !== null && value !== ''));
 }
 
 async function loadProduct(tenantId: string, id: string) {

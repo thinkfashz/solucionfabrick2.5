@@ -111,7 +111,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     if (body.operation === 'reject') {
       if (proposal.status === 'executed') return NextResponse.json({ error: 'Una propuesta ejecutada no puede rechazarse.' }, { status: 409, headers: NO_STORE });
       const next = { ...proposal, status: 'rejected' as const, approvedBy: session.email };
-      await saveProposalRevision(next);
+      await saveProposalRevision(next, tenantId);
       await appendAudit({ tenantId, actorEmail: session.email, actorRole: role, proposalId: id, action: proposal.action.type, status: 'rejected' });
       return NextResponse.json({ ok: true, proposal: next }, { headers: NO_STORE });
     }
@@ -119,7 +119,7 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     if (body.operation === 'approve') {
       if (proposal.status !== 'pending') return NextResponse.json({ error: `No se puede aprobar una propuesta ${proposal.status}.` }, { status: 409, headers: NO_STORE });
       const next = { ...proposal, status: 'approved' as const, approvedAt: new Date().toISOString(), approvedBy: session.email };
-      await saveProposalRevision(next);
+      await saveProposalRevision(next, tenantId);
       await appendAudit({ tenantId, actorEmail: session.email, actorRole: role, proposalId: id, action: proposal.action.type, status: 'approved' });
       return NextResponse.json({ ok: true, proposal: next, nextStep: 'La propuesta ya puede ejecutarse de forma controlada.' }, { headers: NO_STORE });
     }
@@ -139,13 +139,13 @@ export async function POST(request: NextRequest, context: { params: Promise<{ id
     try {
       const result = await executeProposal(proposal, tenantId);
       const next = { ...proposal, status: 'executed' as const, executedAt: new Date().toISOString(), result };
-      await saveProposalRevision(next);
+      await saveProposalRevision(next, tenantId);
       await appendAudit({ tenantId, actorEmail: session.email, actorRole: role, proposalId: id, action: proposal.action.type, status: 'executed', detail: result });
       return NextResponse.json({ ok: true, proposal: next, result }, { headers: NO_STORE });
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Ejecución fallida';
       const next = { ...proposal, status: 'failed' as const, result: { error: message } };
-      await saveProposalRevision(next).catch(() => undefined);
+      await saveProposalRevision(next, tenantId).catch(() => undefined);
       await appendAudit({ tenantId, actorEmail: session.email, actorRole: role, proposalId: id, action: proposal.action.type, status: 'failed', detail: { error: message } }).catch(() => undefined);
       return NextResponse.json({ error: message, proposal: next }, { status: 500, headers: NO_STORE });
     }

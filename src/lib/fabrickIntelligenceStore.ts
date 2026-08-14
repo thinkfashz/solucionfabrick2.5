@@ -94,6 +94,7 @@ export async function getProposal(tenantId: string, id: string): Promise<Intelli
   return rows.find((item) => item.id === id) || null;
 }
 
-export async function saveProposalRevision(proposal: IntelligenceProposal) {
+export async function saveProposalRevision(proposal: IntelligenceProposal, tenantId: string) {
+  if (proposal.tenantId !== tenantId) throw new Error('La propuesta no pertenece al tenant activo.');
   await saveProposal(proposal);
 }

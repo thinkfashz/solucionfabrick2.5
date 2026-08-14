@@ -29,22 +29,10 @@
  *     reason      text,
  *     user_agent  text
  *   );
- *
- * Read it back from /admin/sql with:
- *
- *   SELECT ts, ip, email, outcome, reason
- *     FROM admin_login_audit
- *    ORDER BY ts DESC
- *    LIMIT 100;
  */
 
-import { insforge } from '@/lib/insforge';
+import { insforgeAdmin } from '@/lib/insforge';
 
-/**
- * Closed enum mirroring every terminal branch in /api/admin/login. Update
- * this list AND the login route together; tests assert that the route
- * inserts at least one row per outcome.
- */
 export type LoginOutcome =
   | 'success'
   | 'rate_limited'
@@ -62,44 +50,37 @@ export interface LoginAuditEvent {
   ip: string;
   email?: string | null;
   outcome: LoginOutcome;
-  /** Free-form short note (e.g. error code from InsForge). Capped to 500 chars. */
   reason?: string | null;
-  /** Raw User-Agent header from the request. Capped to 500 chars. */
   userAgent?: string | null;
 }
 
 const TABLE = 'admin_login_audit';
 
-/** Caps a value to N chars; preserves null/undefined. */
 function cap(value: string | null | undefined, max: number): string | null {
   if (value === null || value === undefined) return null;
   return value.length > max ? value.slice(0, max) : value;
 }
 
-/**
- * Same heuristic as `adminRateLimitStore.ts`. PostgREST returns an opaque
- * error when the table doesn't exist; we treat it as "feature not yet
- * provisioned" and degrade silently to a no-op.
- */
 function isMissingTableError(err: unknown): boolean {
   const message = (err as { message?: string } | null)?.message ?? String(err ?? '');
   return /could not find the table|relation .* does not exist|schema cache/i.test(message);
 }
 
-/**
- * Record a single login attempt. Best-effort: never throws, never blocks the
- * caller. The returned promise always resolves (even on DB failure).
- */
 export async function recordLoginAttempt(event: LoginAuditEvent): Promise<void> {
   try {
     const row = {
       ip: cap(event.ip, 100) || 'unknown',
-      email: cap(event.email ?? null, 320), // RFC 5321 max email length
+      email: cap(event.email ?? null, 320),
       outcome: event.outcome,
       reason: cap(event.reason ?? null, 500),
       user_agent: cap(event.userAgent ?? null, 500),
     };
-    const { error } = await insforge.database.from(TABLE).insert([row]);
+
+    // Security/audit tables must be written with the server-side privileged
+    // client. Using the public client made PostgreSQL reject the bigserial
+    // sequence (`admin_login_audit_id_seq`) even when the table itself was
+    // writable through the API.
+    const { error } = await insforgeAdmin.database.from(TABLE).insert([row]);
     if (error && !isMissingTableError(error)) {
       // eslint-disable-next-line no-console
       console.error('[adminLoginAudit] insert failed:', error);
@@ -112,11 +93,6 @@ export async function recordLoginAttempt(event: LoginAuditEvent): Promise<void> 
   }
 }
 
-/**
- * Convenience reader for `Request` objects: pulls the User-Agent header.
- * Returns `null` when the header is missing — safer than the empty string
- * for forensics since it preserves "we didn't see a UA" vs "client sent ''".
- */
 export function userAgentFromRequest(request: Request): string | null {
   return request.headers.get('user-agent') ?? null;
 }

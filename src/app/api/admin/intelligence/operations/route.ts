@@ -58,14 +58,15 @@ export async function GET(request: NextRequest) {
     const products = (Array.isArray(productsRes.data) ? productsRes.data : []).map((row: any) => {
       const target = targetByProduct.get(String(row.id)) || null;
       const last = latestHistory.get(String(row.id)) || null;
-      const supplierPrice = n(row.supplier_price);
+      const baselineSupplierPrice = n(row.supplier_price);
+      const lastSupplier = last ? n((last as any).supplier_price) : 0;
+      const supplierPrice = lastSupplier > 0 ? lastSupplier : baselineSupplierPrice;
       const sellPrice = n(row.price);
-      const marginPercent = sellPrice > 0 ? Math.round(((sellPrice - supplierPrice) / sellPrice) * 1000) / 10 : 0;
+      const marginPercent = sellPrice > 0 && supplierPrice > 0 ? Math.round(((sellPrice - supplierPrice) / sellPrice) * 1000) / 10 : 0;
       const stock = Math.max(0, Math.floor(n(row.stock)));
       const stockStatus = stock <= 0 ? 'out' : stock <= 3 ? 'critical' : stock <= 8 ? 'low' : 'ok';
-      const lastSupplier = last ? n((last as any).supplier_price) : supplierPrice;
-      const supplierDeltaPercent = supplierPrice > 0 && lastSupplier > 0
-        ? Math.round(((lastSupplier - supplierPrice) / supplierPrice) * 1000) / 10
+      const supplierDeltaPercent = baselineSupplierPrice > 0 && lastSupplier > 0
+        ? Math.round(((lastSupplier - baselineSupplierPrice) / baselineSupplierPrice) * 1000) / 10
         : 0;
 
       return {
@@ -78,7 +79,8 @@ export async function GET(request: NextRequest) {
         source: row.source || null,
         sourceUrl: row.source_url || null,
         supplierPrice,
-        supplierCurrency: row.supplier_currency || 'CLP',
+        baselineSupplierPrice,
+        supplierCurrency: (last as any)?.currency || row.supplier_currency || 'CLP',
         marginPercent,
         marginStatus: supplierPrice > 0 && marginPercent < 25 ? 'risk' : 'ok',
         watch: target ? {
@@ -108,6 +110,7 @@ export async function GET(request: NextRequest) {
       marginRisk: products.filter((p) => p.marginStatus === 'risk').length,
       watchEnabled: products.filter((p) => p.watch?.enabled).length,
       watchCandidates: products.filter((p) => p.sourceUrl && !p.watch).length,
+      watchErrors: products.filter((p) => p.watch?.lastStatus === 'error').length,
     };
 
     return NextResponse.json({ ok: true, tenantId, summary, products }, { headers: NO_STORE });

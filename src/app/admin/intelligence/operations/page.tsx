@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
-import { ArrowLeft, Boxes, CircleDollarSign, ExternalLink, Loader2, RefreshCw, ShieldCheck, TriangleAlert, Watch } from 'lucide-react';
+import { ArrowLeft, Boxes, ChartNoAxesCombined, CircleDollarSign, ExternalLink, Loader2, RefreshCw, ShieldCheck, TriangleAlert, Watch } from 'lucide-react';
 
 type Product = {
   id: string;
@@ -117,7 +117,8 @@ export default function IntelligenceOperationsPage() {
                 <Mini label="Stock" value={String(product.stock)}/>
               </div>
             </div>
-            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:items-center">
+            <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-center">
+              <Link href={`/admin/intelligence/operations/history?productId=${encodeURIComponent(product.id)}`} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-[#f4cf57]/20 bg-[#f4cf57]/[0.06] px-4 text-xs font-black text-[#f4cf57]"><ChartNoAxesCombined className="h-4 w-4"/> Historial de precio</Link>
               {product.sourceUrl ? <a href={product.sourceUrl} target="_blank" rel="noreferrer" className="inline-flex h-11 items-center justify-center gap-2 rounded-xl border border-white/10 px-4 text-xs font-black"><ExternalLink className="h-4 w-4"/> Ver proveedor</a> : <span className="inline-flex h-11 items-center rounded-xl border border-amber-300/10 bg-amber-300/[0.04] px-4 text-xs text-amber-100/60">Sin URL de proveedor</span>}
               <button disabled={!product.sourceUrl || saving === product.id} onClick={() => void toggleWatch(product)} className="inline-flex h-11 items-center justify-center gap-2 rounded-xl bg-[#f4cf57] px-4 text-xs font-black text-black disabled:cursor-not-allowed disabled:opacity-35">{saving === product.id ? <Loader2 className="h-4 w-4 animate-spin"/> : <Watch className="h-4 w-4"/>}{product.watch?.enabled ? 'Desactivar monitor' : 'Activar monitor diario'}</button>
               {product.watch?.lastError ? <span className="text-xs text-red-200/70">Último error: {product.watch.lastError}</span> : null}

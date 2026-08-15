@@ -22,7 +22,7 @@ export async function GET(request: NextRequest) {
 
   try {
     const report = await runSupplierPriceWatch();
-    return NextResponse.json({ ok: true, ...report }, { headers: { 'Cache-Control': 'no-store' } });
+    return NextResponse.json(report, { headers: { 'Cache-Control': 'no-store' } });
   } catch (error) {
     return NextResponse.json({
       ok: false,

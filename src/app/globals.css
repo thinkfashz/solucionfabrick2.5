@@ -80,7 +80,9 @@
 
 html { scroll-padding-top: 80px; }
 * { box-sizing: border-box; }
-html, body, header, nav, main, footer, section, article, aside, div, p, h1, h2, h3, h4, h5, h6, a, button, span { transition: background-color 300ms ease, color 300ms ease, border-color 300ms ease; }
+/* Keep colour transitions on controls only. Applying them to every rendered
+   element forces unnecessary style work while the visitor scrolls. */
+a, button, input, textarea, select, [data-theme-transition] { transition: background-color 220ms ease, color 220ms ease, border-color 220ms ease; }
 html { background-color: var(--bg); color: var(--text); }
 body { background-color: var(--bg); color: var(--text); font-family: 'Inter', sans-serif; -webkit-font-smoothing: antialiased; }
 

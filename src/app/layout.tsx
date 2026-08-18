@@ -45,9 +45,9 @@ export const metadata: Metadata = {
   applicationName: 'Soluciones Fabrick',
   category: 'Construcción, remodelación y reparación del hogar',
   openGraph: {
-    title: 'Soluciones Fabrick | Construye, remodela y transforma con claridad',
+    title: 'Soluciones Fabrick | Construye y transforma con respaldo técnico',
     description:
-      'Construcción, remodelación, reparaciones e instalaciones para ordenar tu proyecto antes de ejecutar.',
+      'Construcción, remodelación y reparación con evaluación técnica, materiales duraderos y una ruta clara de ejecución.',
     url: SITE_URL,
     siteName: 'Soluciones Fabrick',
     locale: 'es_CL',
@@ -56,8 +56,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Soluciones Fabrick | Construcción y remodelación con un plan claro',
-    description: 'Evalúa, cotiza y transforma tu proyecto con una ruta clara de construcción, reparación y remodelación.',
+    title: 'Soluciones Fabrick | Construye y transforma con respaldo técnico',
+    description: 'Construcción, remodelación y reparación con evaluación clara, materiales duraderos y ejecución por etapas.',
     images: ['/twitter-image'],
   },
   robots: {

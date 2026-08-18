@@ -1,11 +1,16 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 340" role="img" aria-labelledby="title desc">
   <title id="title">Soluciones Fabrick</title>
-  <desc id="desc">Logotipo Soluciones Fabrick para fondos claros.</desc>
-  <defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFD05A"/><stop offset=".5" stop-color="#FFB000"/><stop offset="1" stop-color="#F5871F"/></linearGradient></defs>
-  <g transform="translate(52 38)" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="m18 150 100-122 100 122" stroke="url(#gold)" stroke-width="14"/><path d="m42 150 76-92 76 92" stroke="#08090A" stroke-width="10"/>
-    <path d="M157 83V44h30v68" stroke="#08090A" stroke-width="10"/><path d="M68 178h100" stroke="url(#gold)" stroke-width="15"/>
-    <path d="M99 150v-32h38v60" stroke="url(#gold)" stroke-width="10"/><path d="M28 196h180" stroke="#F5871F" stroke-width="6" opacity=".9"/>
+  <desc id="desc">Logotipo de Soluciones Fabrick para fondos claros.</desc>
+  <defs>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFF3BC"/><stop offset=".26" stop-color="#D9A934"/><stop offset=".62" stop-color="#8E5B0D"/><stop offset="1" stop-color="#E8BF4C"/></linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#F8FAF7"/><stop offset=".24" stop-color="#9FA6A3"/><stop offset=".58" stop-color="#4E5553"/><stop offset="1" stop-color="#CDD1CE"/></linearGradient>
+  </defs>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M116 180 700 38 1284 180" stroke="url(#steel)" stroke-width="15"/>
+    <path d="M142 180 700 55 1258 180" stroke="#FFFFFF" stroke-opacity=".8" stroke-width="4"/>
+    <path d="M951 117V63h51v80" stroke="url(#steel)" stroke-width="14"/>
+    <path d="M966 113V76h13v42" stroke="#FFFFFF" stroke-opacity=".78" stroke-width="4"/>
+    <path d="M116 180h1168" stroke="#4D5452" stroke-opacity=".38" stroke-width="4"/>
   </g>
-  <g font-family="Sora, Manrope, Arial, Helvetica, sans-serif"><text x="326" y="134" fill="#08090A" font-size="77" font-weight="800" letter-spacing="4">SOLUCIONES</text><text x="326" y="226" fill="url(#gold)" font-size="101" font-weight="900" letter-spacing="6">FABRICK</text><path d="M326 249h810" stroke="#FFB000" stroke-width="3" opacity=".72"/><text x="329" y="286" fill="#6E675D" font-size="19" font-weight="800" letter-spacing="7">CONSTRUCCIÓN · REMODELACIÓN · REPARACIÓN</text></g>
+  <text x="70" y="300" fill="url(#gold)" font-family="Sora, Manrope, Arial, Helvetica, sans-serif" font-size="98" font-weight="900" letter-spacing="1.4" textLength="1260" lengthAdjust="spacingAndGlyphs">SOLUCIONES FABRICK</text>
 </svg>

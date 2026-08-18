@@ -49,17 +49,20 @@ export default function SmoothScrollProvider() {
     if (prefersReducedMotion()) return;
 
     const desktop = !prefersNativeScroll();
+    // Mobile browsers already provide momentum scrolling. Keeping Lenis and
+    // dozens of ScrollTriggers active there can compete with touch scrolling.
+    if (!desktop) return;
+
     let lenis: Lenis | null = null;
 
-    if (desktop) {
-      lenis = new Lenis({ duration: 1.08, smoothWheel: true, wheelMultiplier: 0.9 });
-      lenis.on('scroll', ScrollTrigger.update);
-      const ticker = (time: number) => lenis?.raf(time * 1000);
-      gsap.ticker.add(ticker);
-      gsap.ticker.lagSmoothing(0);
-      tickerRef.current = ticker;
-      lenisRef.current = lenis;
-    }
+    ScrollTrigger.config({ ignoreMobileResize: true, limitCallbacks: true });
+    lenis = new Lenis({ duration: 0.9, smoothWheel: true, wheelMultiplier: 0.9 });
+    lenis.on('scroll', ScrollTrigger.update);
+    const ticker = (time: number) => lenis?.raf(time * 1000);
+    gsap.ticker.add(ticker);
+    gsap.ticker.lagSmoothing(500, 33);
+    tickerRef.current = ticker;
+    lenisRef.current = lenis;
 
     const context = gsap.context(() => {
       const viewport = window.innerHeight;
@@ -113,20 +116,18 @@ export default function SmoothScrollProvider() {
         });
       });
 
-      if (desktop) {
-        gsap.utils.toArray<HTMLElement>('[data-parallax]').forEach((element) => {
-          gsap.to(element, {
-            yPercent: Number(element.dataset.parallax || -6),
-            ease: 'none',
-            scrollTrigger: {
-              trigger: element.closest('section') || element,
-              start: 'top bottom',
-              end: 'bottom top',
-              scrub: 1.2,
-            },
-          });
+      gsap.utils.toArray<HTMLElement>('[data-parallax]').forEach((element) => {
+        gsap.to(element, {
+          yPercent: Number(element.dataset.parallax || -6),
+          ease: 'none',
+          scrollTrigger: {
+            trigger: element.closest('section') || element,
+            start: 'top bottom',
+            end: 'bottom top',
+            scrub: 0.8,
+          },
         });
-      }
+      });
     });
 
     const refreshId = window.setTimeout(() => ScrollTrigger.refresh(), 160);
@@ -134,7 +135,7 @@ export default function SmoothScrollProvider() {
       window.clearTimeout(refreshId);
       context.revert();
       if (tickerRef.current) gsap.ticker.remove(tickerRef.current);
-      gsap.ticker.lagSmoothing(1.2);
+      gsap.ticker.lagSmoothing(500, 33);
       lenisRef.current?.destroy();
       lenisRef.current = null;
       tickerRef.current = null;
@@ -149,7 +150,7 @@ export default function SmoothScrollProvider() {
       .fabrick-glass { background: linear-gradient(145deg, rgba(248,240,233,.09), rgba(248,240,233,.03)); box-shadow: 0 24px 70px rgba(0,0,0,.24); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); }
       .fabrick-gradient-button { position: relative; isolation: isolate; overflow: hidden; background: linear-gradient(112deg, #F5871F, #FFB000 62%, #FFF9EE); box-shadow: 0 14px 38px rgba(182,144,108,.18); transition: transform .25s ease, box-shadow .25s ease, filter .25s ease; }
       .fabrick-gradient-button:hover { transform: translateY(-2px); filter: brightness(1.03); box-shadow: 0 18px 48px rgba(182,144,108,.25); }
-      @media (hover: none), (pointer: coarse), (max-width: 899px) { [data-parallax] { transform: none !important; } .fabrick-glass { backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); } }
+      @media (hover: none), (pointer: coarse), (max-width: 899px) { [data-parallax] { transform: none !important; } .fabrick-glass { backdrop-filter: none; -webkit-backdrop-filter: none; } }
       @media (prefers-reduced-motion: reduce) { *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; } [data-reveal], [data-reveal-group] > *, [data-split] { opacity: 1 !important; transform: none !important; } }
     `}</style>
   );

@@ -90,9 +90,9 @@ export default async function ServicePage({ content }: { content: ServicePageCon
       primaryAction={{ href: `/presupuesto?servicio=${slug}`, label: 'Calcular este servicio' }}
       secondaryAction={{ href: '/servicios', label: 'Todos los servicios' }}
     >
-      <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceLd) }} />
-      <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
-      <script type="application/ld+json" nonce={nonce} dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
+      <script type="application/ld+json" nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(serviceLd) }} />
+      <script type="application/ld+json" nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(faqLd) }} />
+      <script type="application/ld+json" nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbLd) }} />
 
       <nav aria-label="Migas de pan" className="mb-6 flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.25em] text-zinc-500">
         <Link href="/" className="hover:text-yellow-400">Inicio</Link><span>/</span><Link href="/servicios" className="hover:text-yellow-400">Servicios</Link><span>/</span><span className="text-yellow-400">{eyebrow}</span>

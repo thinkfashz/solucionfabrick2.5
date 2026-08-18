@@ -51,6 +51,9 @@ const nextConfig = {
     ignoreBuildErrors: false,
   },
   productionBrowserSourceMaps: false,
+  images: {
+    qualities: [72, 100],
+  },
   // Tree-shake bigger ecosystems (lucide-react ships hundreds of icons,
   // recharts pulls a heavy d3 graph) so admin bundles only ship what's used.
   experimental: {

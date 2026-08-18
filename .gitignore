@@ -56,3 +56,6 @@ Thumbs.db
 .pnpm-store/
 .pnpm-debug.log
 .env*
+
+# runtime logs
+dev-server.log

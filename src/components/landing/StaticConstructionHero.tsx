@@ -88,7 +88,7 @@ export default function StaticConstructionHero({ coverUrl }: StaticConstructionH
             <Link href="#cotizador" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full bg-[#D8B23D] px-7 text-sm font-black text-[#171820] shadow-[0_16px_42px_rgba(182,144,108,.25)] transition hover:-translate-y-0.5 hover:bg-[#F4D98B]">
               Cotizar mi proyecto <Calculator className="h-4 w-4" />
             </Link>
-            <Link href="#servicios" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-[#F8F0E9]/16 bg-[#F8F0E9]/[.055] px-7 text-sm font-black text-[#F8F0E9] backdrop-blur-md transition hover:border-[#CCB196]/50 hover:bg-[#F8F0E9]/[.1]">
+            <Link href="#cotizador" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-full border border-[#F8F0E9]/16 bg-[#F8F0E9]/[.055] px-7 text-sm font-black text-[#F8F0E9] backdrop-blur-md transition hover:border-[#CCB196]/50 hover:bg-[#F8F0E9]/[.1]">
               Explorar servicios <ArrowRight className="h-4 w-4" />
             </Link>
           </div>

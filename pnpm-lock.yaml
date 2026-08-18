@@ -74,6 +74,9 @@ importers:
       animejs:
         specifier: ^3.2.2
         version: 3.2.2
+      cannon-es:
+        specifier: ^0.20.0
+        version: 0.20.0
       cheerio:
         specifier: ^1.2.0
         version: 1.2.0
@@ -2575,6 +2578,9 @@ packages:
 
   caniuse-lite@1.0.30001792:
     resolution: {integrity: sha512-hVLMUZFgR4JJ6ACt1uEESvQN1/dBVqPAKY0hgrV70eN3391K6juAfTjKZLKvOMsx8PxA7gsY1/tLMMTcfFLLpw==}
+
+  cannon-es@0.20.0:
+    resolution: {integrity: sha512-eZhWTZIkFOnMAJOgfXJa9+b3kVlvG+FX4mdkpePev/w/rP5V8NRquGyEozcjPfEoXUlb+p7d9SUcmDSn14prOA==}
 
   canvg@3.0.11:
     resolution: {integrity: sha512-5ON+q7jCTgMp9cjpu4Jo6XbvfYwSB2Ow3kzHKfIyJfaCAOHLbdKPQqGKgfED/R5B+3TFFfe8pegYA+b423SRyA==}
@@ -7341,6 +7347,8 @@ snapshots:
       three: 0.184.0
 
   caniuse-lite@1.0.30001792: {}
+
+  cannon-es@0.20.0: {}
 
   canvg@3.0.11:
     dependencies:

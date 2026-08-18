@@ -14,7 +14,6 @@ import {
 } from 'lucide-react';
 import ContactForm from './ContactForm';
 import TiendaSection from './TiendaSection';
-import ServicesVerticalGallery from '@/components/landing/ServicesVerticalGallery';
 import MetalconSeismicStory from '@/components/landing/MetalconSeismicStory';
 import LandingProcessSection from '@/components/landing/LandingProcessSection';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
@@ -41,7 +40,7 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
   const ttHref = socialLinks?.tiktok?.trim() || '#';
 
   const footerGroups: Array<{ title: string; items: Array<[string, string]> }> = [
-    { title: 'Explorar', items: [['Cotizador', '#cotizador'], ['Servicios', '#servicios'], ['Más vendidos', '#mas-vendidos']] },
+    { title: 'Explorar', items: [['Cotizador', '#cotizador'], ['Más vendidos', '#mas-vendidos']] },
     { title: 'Herramientas', items: [['Estimador de radier', '/herramientas/radier'], ['Estimador de aire', '/herramientas/aire-acondicionado'], ['Presupuestos', '/presupuesto']] },
     { title: 'Empresa', items: [['Inspiraciones', '/proyectos'], ['Garantías', '/garantias'], ['Contacto', '#contacto']] },
     { title: 'Tienda', items: [['Catálogo', '/tienda'], ['Mi cuenta', '/mi-cuenta'], ['Privacidad', '/legal/privacidad']] },
@@ -49,7 +48,6 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
 
   return (
     <div className="overflow-x-hidden bg-[#171820] text-[#F8F0E9]">
-      <ServicesVerticalGallery />
       <LandingProcessSection />
       <MetalconSeismicStory />
 

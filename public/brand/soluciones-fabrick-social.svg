@@ -1,20 +1,7 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title">
-  <title id="title">Soluciones Fabrick</title>
-  <defs>
-    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#FFFDF8"/>
-      <stop offset="1" stop-color="#EFE4D1"/>
-    </linearGradient>
-    <linearGradient id="grid" x1="0" y1="0" x2="0" y2="630" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#A96F0B" stop-opacity="0.08"/>
-      <stop offset="1" stop-color="#A96F0B" stop-opacity="0.02"/>
-    </linearGradient>
-  </defs>
-  <rect width="1200" height="630" fill="url(#bg)"/>
-  <path d="M0 0h1200v630H0z" fill="url(#grid)"/>
-  <g transform="translate(415 130) scale(2.890625)">
-    <path d="M18 118 80 24l62 94" fill="#17181C"/><path d="M26 116 80 36l54 80" fill="#17181C"/><path d="M34 115 80 47l46 68" fill="#17181C"/><path d="M104 70V44h20v40" fill="#17181C"/><path d="M100 70h28" fill="#17181C"/><path d="M56 132h48" fill="#17181C"/>
-  </g>
-  <text x="600" y="560" text-anchor="middle" font-family="Sora, Manrope, Arial, sans-serif" font-size="96" font-weight="800" letter-spacing="10" fill="#A96F0B">SOLUCIONES FABRICK</text>
-  <text x="600" y="600" text-anchor="middle" font-family="Sora, Manrope, Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="12" fill="#6E5845">CONSTRUCCION · REMODELACION · HOGAR</text>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+  <title id="title">Soluciones Fabrick</title><desc id="desc">Imagen oficial para compartir de Soluciones Fabrick.</desc>
+  <defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFD05A"/><stop offset=".5" stop-color="#FFB000"/><stop offset="1" stop-color="#F5871F"/></linearGradient><radialGradient id="glow" cx="86%" cy="12%" r="65%"><stop stop-color="#FFB000" stop-opacity=".32"/><stop offset="1" stop-color="#08090A" stop-opacity="0"/></radialGradient></defs>
+  <rect width="1200" height="630" fill="#08090A"/><rect width="1200" height="630" fill="url(#glow)"/><path d="M0 548 400 316l330 194 470-273" fill="none" stroke="#F5871F" stroke-opacity=".42" stroke-width="3"/>
+  <g transform="translate(70 70)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m18 126 88-108 88 108" stroke="url(#gold)" stroke-width="13"/><path d="m38 126 68-82 68 82" stroke="#FFF9EE" stroke-width="9"/><path d="M140 67V34h26v58" stroke="#FFF9EE" stroke-width="9"/><path d="M60 151h92" stroke="url(#gold)" stroke-width="14"/><path d="M90 126V98h32v53" stroke="url(#gold)" stroke-width="9"/></g>
+  <g font-family="Sora, Manrope, Arial, Helvetica, sans-serif"><text x="320" y="170" fill="#FFF9EE" font-size="49" font-weight="800" letter-spacing="7">SOLUCIONES</text><text x="320" y="262" fill="url(#gold)" font-size="105" font-weight="900" letter-spacing="8">FABRICK</text><text x="74" y="405" fill="#FFF9EE" font-size="66" font-weight="900">Construye. Remodela. Transforma.</text><text x="77" y="465" fill="#BFB8AC" font-size="28" font-weight="600">Construcción · Remodelación · Reparación · Región del Maule</text><path d="M76 510h1048" stroke="#FFB000" stroke-opacity=".7" stroke-width="3"/><text x="77" y="558" fill="#FFB000" font-size="22" font-weight="800" letter-spacing="4">SOLUCIONESFABRICK.COM</text></g>
 </svg>

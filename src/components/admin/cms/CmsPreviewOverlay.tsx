@@ -37,7 +37,7 @@ export default function CmsPreviewOverlay() {
           transition: outline 0.2s ease-in-out;
         }
         [data-cms-id]:hover {
-          outline: 2px dashed rgba(250, 204, 21, 0.7) !important;
+          outline: 2px dashed rgba(255, 176, 0, 0.7) !important;
           outline-offset: -2px;
         }
         [data-cms-id]:hover::after {
@@ -46,7 +46,7 @@ export default function CmsPreviewOverlay() {
           top: 8px;
           right: 8px;
           background: rgba(0, 0, 0, 0.8);
-          color: #facc15;
+          color: #FFB000;
           font-size: 10px;
           font-family: monospace;
           font-weight: bold;
@@ -54,7 +54,7 @@ export default function CmsPreviewOverlay() {
           letter-spacing: 0.1em;
           padding: 4px 8px;
           border-radius: 4px;
-          border: 1px solid rgba(250, 204, 21, 0.3);
+          border: 1px solid rgba(255, 176, 0, 0.3);
           pointer-events: none;
           z-index: 9999;
         }

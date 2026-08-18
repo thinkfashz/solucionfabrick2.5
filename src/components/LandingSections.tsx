@@ -47,11 +47,11 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
   ];
 
   return (
-    <div className="overflow-x-hidden bg-[#171820] text-[#F8F0E9]">
+    <div className="overflow-x-hidden bg-[#08090A] text-[#FFF9EE]">
       <LandingProcessSection />
       <MetalconSeismicStory />
 
-      <section id="mas-vendidos" className="scroll-mt-20 bg-[#F8F0E9] px-4 py-16 text-[#171820] sm:px-6 md:px-12 lg:py-20">
+      <section id="mas-vendidos" className="scroll-mt-20 bg-[#FFF9EE] px-4 py-16 text-[#08090A] sm:px-6 md:px-12 lg:py-20">
         <div data-reveal data-reveal-dir="up" className="mx-auto max-w-[1320px]">
           <TiendaSection
             limit={3}
@@ -63,7 +63,7 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
         </div>
       </section>
 
-      <section id="contacto" className="relative scroll-mt-20 overflow-hidden bg-[#B6906C] px-4 py-16 text-[#171820] sm:px-6 md:px-12 lg:py-20">
+      <section id="contacto" className="relative scroll-mt-20 overflow-hidden bg-[#F5871F] px-4 py-16 text-[#08090A] sm:px-6 md:px-12 lg:py-20">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_18%,rgba(248,240,233,.3),transparent_30%)]" />
         <div className="relative mx-auto grid max-w-[1200px] gap-8 lg:grid-cols-[.78fr_1.22fr] lg:items-start">
           <div>
@@ -82,22 +82,22 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
             </div>
           </div>
 
-          <div data-reveal data-reveal-dir="right" className="rounded-[1.8rem] bg-[#F8F0E9] p-4 text-[#171820] shadow-[0_28px_80px_rgba(23,24,32,.22)] sm:p-6">
-            <div className="mb-5 flex items-center gap-3 border-b border-[#171820]/10 pb-4">
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#171820] text-[#CCB196]"><MessageCircle className="h-5 w-5" /></span>
-              <div><p className="text-sm font-black">Hablemos de tu proyecto</p><p className="mt-1 text-[10px] text-[#756B63]">Formulario breve · orientación personalizada</p></div>
+          <div data-reveal data-reveal-dir="right" className="rounded-[1.8rem] bg-[#FFF9EE] p-4 text-[#08090A] shadow-[0_28px_80px_rgba(23,24,32,.22)] sm:p-6">
+            <div className="mb-5 flex items-center gap-3 border-b border-[#08090A]/10 pb-4">
+              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#08090A] text-[#FFB000]"><MessageCircle className="h-5 w-5" /></span>
+              <div><p className="text-sm font-black">Hablemos de tu proyecto</p><p className="mt-1 text-[10px] text-[#BFB8AC]">Formulario breve · orientación personalizada</p></div>
             </div>
             <ContactForm />
           </div>
         </div>
       </section>
 
-      <footer data-reveal data-reveal-dir="up" className="bg-[#171820] px-4 py-9 text-[#F8F0E9] sm:px-6 md:px-12">
+      <footer data-reveal data-reveal-dir="up" className="bg-[#08090A] px-4 py-9 text-[#FFF9EE] sm:px-6 md:px-12">
         <div className="mx-auto max-w-[1320px]">
           <div className="grid gap-7 lg:grid-cols-[1.05fr_1.95fr] lg:items-start">
             <div>
               <FabrickFullLogo compact priority theme="light" />
-              <p className="mt-3 max-w-md text-sm leading-6 text-[#BEB2A8]">Servicios, estimadores y productos para organizar una inversión antes de ejecutar.</p>
+              <p className="mt-3 max-w-md text-sm leading-6 text-[#BFB8AC]">Servicios, estimadores y productos para organizar una inversión antes de ejecutar.</p>
               <div className="mt-4 flex gap-2">
                 <SocialLink href={fbHref} label="Facebook"><Facebook className="h-4 w-4" /></SocialLink>
                 <SocialLink href={igHref} label="Instagram"><Instagram className="h-4 w-4" /></SocialLink>
@@ -107,7 +107,7 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
                 href="https://wa.me/56930121625?text=Hola%20Soluciones%20Fabrick%2C%20quiero%20d%C3%ADas%20y%20horarios%20para%20revisar%20mi%20proyecto."
                 target="_blank"
                 rel="noopener noreferrer"
-                className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#D8B23D] px-5 text-[11px] font-black text-[#171820] transition hover:bg-[#F4D98B]"
+                className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#FFB000] px-5 text-[11px] font-black text-[#08090A] transition hover:bg-[#FFD05A]"
               >
                 <MessageCircle className="h-4 w-4" /> Escríbenos por WhatsApp
               </a>
@@ -117,9 +117,9 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
             </div>
           </div>
 
-          <div className="mt-7 flex flex-col gap-2 border-t border-[#F8F0E9]/8 pt-4 text-[9px] leading-5 text-[#81776F] md:flex-row md:items-center md:justify-between">
+          <div className="mt-7 flex flex-col gap-2 border-t border-[#FFF9EE]/8 pt-4 text-[9px] leading-5 text-[#81776F] md:flex-row md:items-center md:justify-between">
             <div dangerouslySetInnerHTML={{ __html: legalText }} />
-            <span className="inline-flex items-center gap-1.5"><ShoppingBag className="h-3.5 w-3.5 text-[#CCB196]" /> Servicios y productos en una sola plataforma.</span>
+            <span className="inline-flex items-center gap-1.5"><ShoppingBag className="h-3.5 w-3.5 text-[#FFB000]" /> Servicios y productos en una sola plataforma.</span>
           </div>
         </div>
       </footer>
@@ -129,8 +129,8 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
 
 function ProofLine({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
   return (
-    <div className="flex gap-3 rounded-2xl bg-[#F8F0E9]/35 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,.18)]">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#171820] text-[#CCB196]">{icon}</span>
+    <div className="flex gap-3 rounded-2xl bg-[#FFF9EE]/35 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,.18)]">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#08090A] text-[#FFB000]">{icon}</span>
       <span><b className="block text-xs">{title}</b><span className="mt-1 block text-[10px] leading-5 text-[#55463B]">{text}</span></span>
     </div>
   );
@@ -144,7 +144,7 @@ function SocialLink({ href, label, children }: { href: string; label: string; ch
       aria-label={label}
       target={disabled ? undefined : '_blank'}
       rel={disabled ? undefined : 'noopener noreferrer'}
-      className={`grid h-10 w-10 place-items-center rounded-full border border-[#F8F0E9]/10 text-sm font-black transition ${disabled ? 'cursor-not-allowed opacity-35' : 'text-[#D4C7BD] hover:border-[#CCB196]/45 hover:bg-[#CCB196] hover:text-[#171820]'}`}
+      className={`grid h-10 w-10 place-items-center rounded-full border border-[#FFF9EE]/10 text-sm font-black transition ${disabled ? 'cursor-not-allowed opacity-35' : 'text-[#D4C7BD] hover:border-[#FFB000]/45 hover:bg-[#FFB000] hover:text-[#08090A]'}`}
     >
       {children}
     </a>
@@ -155,18 +155,18 @@ function FooterGroup({ title, items }: { title: string; items: Array<[string, st
   const links = (
     <div className="grid gap-2 pb-2 pt-3 md:pb-0">
       {items.map(([label, href]) => href.startsWith('http')
-        ? <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-[#BEB2A8] transition hover:text-[#CCB196]">{label}</a>
-        : <Link key={label} href={href} className="text-sm text-[#BEB2A8] transition hover:text-[#CCB196]">{label}</Link>)}
+        ? <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-[#BFB8AC] transition hover:text-[#FFB000]">{label}</a>
+        : <Link key={label} href={href} className="text-sm text-[#BFB8AC] transition hover:text-[#FFB000]">{label}</Link>)}
     </div>
   );
 
   return (
     <div>
-      <details className="group border-t border-[#F8F0E9]/9 md:hidden">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-xs font-black text-[#F8F0E9]"><span>{title}</span><span className="text-[#CCB196] transition group-open:rotate-45">+</span></summary>
+      <details className="group border-t border-[#FFF9EE]/9 md:hidden">
+        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-xs font-black text-[#FFF9EE]"><span>{title}</span><span className="text-[#FFB000] transition group-open:rotate-45">+</span></summary>
         {links}
       </details>
-      <div className="hidden md:block"><p className="text-[8px] font-black uppercase tracking-[.22em] text-[#CCB196]">{title}</p>{links}</div>
+      <div className="hidden md:block"><p className="text-[8px] font-black uppercase tracking-[.22em] text-[#FFB000]">{title}</p>{links}</div>
     </div>
   );
 }

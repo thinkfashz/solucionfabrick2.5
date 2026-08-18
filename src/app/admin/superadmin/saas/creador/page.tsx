@@ -11,7 +11,7 @@ const checklist = [
 ];
 
 export default function SaaSCreatorTesterPage() {
-  return <main className="min-h-screen bg-[#050505] px-4 py-6 text-white md:px-6">
+  return <main className="min-h-screen bg-[#08090A] px-4 py-6 text-white md:px-6">
     <section className="mx-auto max-w-6xl space-y-5">
       <header className="rounded-[2.5rem] border border-cyan-300/20 bg-[radial-gradient(circle_at_80%_0%,rgba(6,182,212,.24),transparent_32rem),linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.025))] p-6 md:p-8">
         <p className="inline-flex items-center gap-2 rounded-full border border-cyan-300/30 bg-cyan-400/10 px-3 py-1 text-[10px] font-black uppercase tracking-[.28em] text-cyan-100"><FlaskConical className="h-3.5 w-3.5" /> Test · Creador SaaS</p>

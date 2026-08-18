@@ -174,7 +174,7 @@ Renderiza en el servidor. Lee `configuracion` y `home_sections` desde la DB.
 - **Cambiar imagen de fondo:** `/admin/configuracion` → `hero_cover_url`.
 - **Agregar secciones dinámicas:** `/admin/home`.
 
-**Hero (CSS):** `src/components/Hero.tsx`. El título usa `font-playfair`, el dorado es `yellow-400` (`#FACC15`), las animaciones de entrada usan **GSAP**.
+**Hero (CSS):** `src/components/Hero.tsx`. El título usa `font-playfair`, el dorado es `yellow-400` (`#FFB000`), las animaciones de entrada usan **GSAP**.
 
 ### 4.2 Servicios (`/servicios`) — `src/app/servicios/page.tsx`
 
@@ -442,7 +442,7 @@ Luego envuélvelo en `src/app/layout.tsx`.
 
 | Nombre | Tailwind | Hex | Uso |
 |--------|---------|-----|-----|
-| Dorado eléctrico | `yellow-400` | `#FACC15` | Acentos, botones primarios |
+| Dorado eléctrico | `yellow-400` | `#FFB000` | Acentos, botones primarios |
 | Dorado brillante | `yellow-300` | `#FDE047` | Hover de botones |
 | Dorado profundo | `yellow-600` | `#CA8A04` | Texto secundario |
 | Negro base | `black` | `#000000` | Fondo principal |
@@ -520,8 +520,8 @@ animation: {
 },
 keyframes: {
   pulseGold: {
-    '0%, 100%': { boxShadow: '0 0 15px rgba(250,204,21,0.3)' },
-    '50%':       { boxShadow: '0 0 40px rgba(250,204,21,0.7)' },
+    '0%, 100%': { boxShadow: '0 0 15px rgba(255, 176, 0,0.3)' },
+    '50%':       { boxShadow: '0 0 40px rgba(255, 176, 0,0.7)' },
   },
 },
 ```

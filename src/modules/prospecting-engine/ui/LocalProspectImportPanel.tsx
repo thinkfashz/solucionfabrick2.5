@@ -104,7 +104,7 @@ export default function LocalProspectImportPanel({
             <input type="file" accept=".json,.html,.htm,.txt,text/plain,text/html,application/json" className="hidden" onChange={(e) => { void handleFile(e.currentTarget.files?.[0]); e.currentTarget.value = ''; }} />
           </label>
         </div>
-        <textarea value={rawText} onChange={(e) => setRawText(e.target.value)} className="min-h-[260px] w-full resize-y rounded-[1.4rem] border border-white/10 bg-[#050505] p-4 font-mono text-sm leading-6 text-yellow-50 outline-none focus:border-yellow-300/40" placeholder="Pega aquí JSON generado por ChatGPT, una tabla HTML, tarjetas de prospectos o texto separado por bloques…" />
+        <textarea value={rawText} onChange={(e) => setRawText(e.target.value)} className="min-h-[260px] w-full resize-y rounded-[1.4rem] border border-white/10 bg-[#08090A] p-4 font-mono text-sm leading-6 text-yellow-50 outline-none focus:border-yellow-300/40" placeholder="Pega aquí JSON generado por ChatGPT, una tabla HTML, tarjetas de prospectos o texto separado por bloques…" />
       </div>
 
       <aside className="space-y-3 rounded-[1.4rem] border border-white/10 bg-white/[0.035] p-3">

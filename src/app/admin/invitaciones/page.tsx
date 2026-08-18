@@ -87,7 +87,7 @@ export default function AdminInvitacionesPage() {
   return <main className="min-h-screen bg-[#07192c] p-4 text-white sm:p-6 lg:p-8">
     <section className="mx-auto grid max-w-7xl gap-5">
       <header className="relative overflow-hidden rounded-[2.6rem] border border-white/10 bg-white/[0.075] p-6 shadow-[0_30px_90px_rgba(0,0,0,.28)] backdrop-blur-2xl sm:p-8">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(125,211,252,.24),transparent_32rem),radial-gradient(circle_at_90%_10%,rgba(250,204,21,.14),transparent_26rem)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_0%,rgba(125,211,252,.24),transparent_32rem),radial-gradient(circle_at_90%_10%,rgba(255, 176, 0,.14),transparent_26rem)]" />
         <div className="relative grid gap-6 lg:grid-cols-[1fr_360px] lg:items-end">
           <div>
             <p className="text-[10px] font-black uppercase tracking-[0.34em] text-sky-200">Equipo · Demo · Invitaciones</p>

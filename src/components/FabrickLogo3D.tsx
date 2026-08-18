@@ -197,10 +197,10 @@ export default function FabrickLogo3D({
       const title = 'SOLUCIONES FABRICK';
 
       ctx.lineWidth = 18;
-      ctx.strokeStyle = '#111111';
+      ctx.strokeStyle = '#111214';
       ctx.strokeText(title, textCanvas.width / 2, titleY);
 
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = '#FFF9EE';
       ctx.fillText(title, textCanvas.width / 2, titleY);
 
       ctx.font = 'italic bold 75px "Nunito", "Segoe UI", Arial, sans-serif';
@@ -208,10 +208,10 @@ export default function FabrickLogo3D({
       const slogan = 'Tu obra en buenas manos';
 
       ctx.lineWidth = 12;
-      ctx.strokeStyle = '#111111';
+      ctx.strokeStyle = '#111214';
       ctx.strokeText(slogan, textCanvas.width / 2, sloganY);
 
-      ctx.fillStyle = '#FFFFFF';
+      ctx.fillStyle = '#FFF9EE';
       ctx.fillText(slogan, textCanvas.width / 2, sloganY);
     }
 

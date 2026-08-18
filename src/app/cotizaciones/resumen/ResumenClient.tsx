@@ -67,7 +67,7 @@ export default function ResumenClient() {
           .print-page { background: white !important; color: black !important; }
           .print-page * { color: black !important; border-color: #ddd !important; background: white !important; }
           .print-page h1, .print-page h2, .print-page h3, .print-page p, .print-page span, .print-page li { color: black !important; }
-          .print-page .print-accent { color: #c9a96e !important; }
+          .print-page .print-accent { color: #FFB000 !important; }
         }
       `}</style>
       <main className="min-h-screen bg-black text-white pt-24 pb-32 px-4 print-page">

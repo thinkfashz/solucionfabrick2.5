@@ -235,7 +235,7 @@ export default function EditorClient() {
             ref={iframeRef}
             src={PREVIEW_PATHS[sectionKey]}
             title={`Vista previa: ${SECTION_LABELS[sectionKey]}`}
-            className="h-full max-h-full bg-white shadow-[0_0_60px_rgba(250,204,21,0.08)]"
+            className="h-full max-h-full bg-white shadow-[0_0_60px_rgba(255, 176, 0,0.08)]"
             style={{ width: DEVICE_WIDTHS[device], minHeight: '100%', border: 0 }}
           />
         </div>

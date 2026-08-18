@@ -190,7 +190,7 @@ export default function AdminContextMenu({ open, onClose, onLogout, profilePhoto
   return (
     <div className="fixed inset-0 z-[300] flex items-center justify-center bg-black/80 p-3 backdrop-blur-xl lg:hidden">
       <div className="relative flex h-[94vh] w-full max-w-[460px] overflow-hidden rounded-[2rem] border border-white/10 bg-zinc-950/82 shadow-[0_40px_140px_rgba(0,0,0,.95)] backdrop-blur-3xl">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_8%,rgba(255,120,80,.26),transparent_24rem),radial-gradient(circle_at_18%_80%,rgba(250,204,21,.18),transparent_20rem)]" />
+        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_8%,rgba(255,120,80,.26),transparent_24rem),radial-gradient(circle_at_18%_80%,rgba(255, 176, 0,.18),transparent_20rem)]" />
 
         <aside className="relative z-10 flex w-[72px] shrink-0 flex-col items-center border-r border-white/10 bg-black/32 px-2 py-4">
           <BrandMark size="sm" animated />
@@ -198,7 +198,7 @@ export default function AdminContextMenu({ open, onClose, onLogout, profilePhoto
             {railItems.map(({ label, icon: Icon }) => {
               const active = !query && activeSection === label;
               return (
-                <button key={label} onClick={() => { setActiveSection(label); setQuery(''); }} title={label} className={`grid h-11 w-11 place-items-center rounded-2xl border transition-all ${active ? 'border-yellow-300/50 bg-yellow-300 text-black shadow-[0_0_30px_rgba(250,204,21,.24)]' : 'border-white/8 bg-white/[0.035] text-zinc-500 hover:border-yellow-300/35 hover:text-yellow-300'}`}>
+                <button key={label} onClick={() => { setActiveSection(label); setQuery(''); }} title={label} className={`grid h-11 w-11 place-items-center rounded-2xl border transition-all ${active ? 'border-yellow-300/50 bg-yellow-300 text-black shadow-[0_0_30px_rgba(255, 176, 0,.24)]' : 'border-white/8 bg-white/[0.035] text-zinc-500 hover:border-yellow-300/35 hover:text-yellow-300'}`}>
                   <Icon className="h-4.5 w-4.5" />
                 </button>
               );

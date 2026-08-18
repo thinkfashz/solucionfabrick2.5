@@ -24,13 +24,13 @@ export interface IntegrationHealthEmailProps {
 }
 
 const COLORS = {
-	bg: '#070707',
-	card: '#0c0c0c',
+	bg: '#08090A',
+	card: '#08090A',
 	border: '#262626',
-	text: '#fafafa',
-	muted: '#a1a1aa',
+	text: '#FFF9EE',
+	muted: '#BFB8AC',
 	red: '#ef4444',
-	amber: '#f59e0b',
+	amber: '#F5871F',
 };
 
 const formatDate = (iso: string) => {

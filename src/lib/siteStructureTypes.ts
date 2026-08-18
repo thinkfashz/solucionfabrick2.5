@@ -139,10 +139,10 @@ export interface SectionContentMap {
 
 export const DEFAULT_GLOBAL_STYLES: GlobalStylesContent = {
   colors: {
-    accent: '#facc15',
-    accentSoft: 'rgba(250, 204, 21, 0.18)',
-    background: '#000000',
-    foreground: '#ffffff',
+    accent: '#FFB000',
+    accentSoft: 'rgba(255, 176, 0, 0.18)',
+    background: '#08090A',
+    foreground: '#FFF9EE',
   },
 };
 

@@ -17,7 +17,7 @@ const MOD = 0.4;
 const STEEL = '#D8DDE3';
 const TRACK = '#ECF0F4';
 const DARK = '#9BA3AC';
-const ACCENT = '#D8B23D';
+const ACCENT = '#FFB000';
 
 function cPoints(p: { web: number; flange: number; lip?: number; t: number }): Array<[number, number]> {
   const a = p.web;
@@ -93,17 +93,17 @@ export default function MetalconStructure3D() {
   const [drop, setDrop] = useState(0);
 
   return (
-    <div className="overflow-hidden rounded-[1.8rem] bg-[#171820] text-white shadow-[inset_0_0_0_1px_rgba(248,240,233,.08)]">
+    <div className="overflow-hidden rounded-[1.8rem] bg-[#08090A] text-white shadow-[inset_0_0_0_1px_rgba(248,240,233,.08)]">
       <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/8 px-4 py-3">
         <div>
-          <p className="text-[9px] font-black uppercase tracking-[.22em] text-[#D8B23D]">Simulación estructural · Metalcon D90 · física</p>
+          <p className="text-[9px] font-black uppercase tracking-[.22em] text-[#FFB000]">Simulación estructural · Metalcon D90 · física</p>
           <h3 className="mt-1 text-lg font-black tracking-[-.02em]">Módulo de vivienda en 3D · vista 360°</h3>
         </div>
         <div className="flex flex-wrap gap-2">
           <button type="button" onClick={() => setDrop((value) => value + 1)} className="inline-flex min-h-9 items-center gap-2 rounded-full bg-white/10 px-3.5 py-2 text-[10px] font-black uppercase tracking-[.12em] transition hover:bg-white/20">Dejar caer carga</button>
           <button type="button" onClick={() => setSismo((value) => value + 1)} className="inline-flex min-h-9 items-center gap-2 rounded-full bg-[#C0572B] px-3.5 py-2 text-[10px] font-black uppercase tracking-[.12em] transition hover:bg-[#E0703F]">Réplica sísmica</button>
-          <button type="button" onClick={() => setAutoRotate((value) => !value)} className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[10px] font-black uppercase tracking-[.14em] transition ${autoRotate ? 'bg-[#D8B23D] text-[#171820]' : 'bg-white/10 text-white/70'}`}>
-            <span className={`h-2 w-2 rounded-full ${autoRotate ? 'bg-[#171820]' : 'bg-white/40'}`} /> 360° {autoRotate ? 'ON' : 'OFF'}
+          <button type="button" onClick={() => setAutoRotate((value) => !value)} className={`inline-flex items-center gap-2 rounded-full px-3.5 py-2 text-[10px] font-black uppercase tracking-[.14em] transition ${autoRotate ? 'bg-[#FFB000] text-[#08090A]' : 'bg-white/10 text-white/70'}`}>
+            <span className={`h-2 w-2 rounded-full ${autoRotate ? 'bg-[#08090A]' : 'bg-white/40'}`} /> 360° {autoRotate ? 'ON' : 'OFF'}
           </button>
         </div>
       </div>
@@ -116,7 +116,7 @@ export default function MetalconStructure3D() {
             <OrbitControls makeDefault target={[0, 1.4, 0]} enableDamping dampingFactor={0.08} autoRotate={autoRotate} autoRotateSpeed={0.9} minDistance={3.5} maxDistance={26} maxPolarAngle={Math.PI * 0.55} />
           </Suspense>
         </Canvas>
-        <div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-black/60 px-3 py-1 text-[9px] font-black uppercase tracking-[.16em] text-[#CCB196]">Gira 360° · zoom · ¡prueba la física!</div>
+        <div className="pointer-events-none absolute bottom-3 left-3 rounded-full bg-black/60 px-3 py-1 text-[9px] font-black uppercase tracking-[.16em] text-[#FFB000]">Gira 360° · zoom · ¡prueba la física!</div>
       </div>
 
       <div className="grid grid-cols-2 gap-2 px-4 py-3 sm:grid-cols-4">
@@ -138,8 +138,8 @@ export default function MetalconStructure3D() {
 
 function LayerToggle({ active, onClick, label }: { active: boolean; onClick: () => void; label: string }) {
   return (
-    <button type="button" onClick={onClick} aria-pressed={active} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[10px] font-black uppercase tracking-[.12em] transition ${active ? 'bg-[#D8B23D]/15 text-[#F4D98B] ring-1 ring-[#D8B23D]/40' : 'bg-white/5 text-white/45 ring-1 ring-white/10 hover:text-white/75'}`}>
-      <span className={`h-2 w-2 shrink-0 rounded-full ${active ? 'bg-[#D8B23D]' : 'bg-white/25'}`} /> {label}
+    <button type="button" onClick={onClick} aria-pressed={active} className={`flex items-center gap-2 rounded-xl px-3 py-2 text-left text-[10px] font-black uppercase tracking-[.12em] transition ${active ? 'bg-[#FFB000]/15 text-[#FFD05A] ring-1 ring-[#FFB000]/40' : 'bg-white/5 text-white/45 ring-1 ring-white/10 hover:text-white/75'}`}>
+      <span className={`h-2 w-2 shrink-0 rounded-full ${active ? 'bg-[#FFB000]' : 'bg-white/25'}`} /> {label}
     </button>
   );
 }

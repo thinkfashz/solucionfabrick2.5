@@ -259,7 +259,7 @@ export default function IsometricMap({ statuses }: IsometricMapProps) {
       const cssH = canvas.height / dpr;
 
       // Background
-      ctx.fillStyle = '#080808';
+      ctx.fillStyle = '#08090A';
       ctx.fillRect(0, 0, cssW, cssH);
       drawDotGrid(ctx, cssW, cssH);
 
@@ -377,7 +377,7 @@ export default function IsometricMap({ statuses }: IsometricMapProps) {
         fillPolygon(ctx, cube.right, darken(topFill, 0.35));
         fillPolygon(ctx, cube.top,   topFill);
 
-        // Subtle face outlines so small cubes read well on #080808.
+        // Subtle face outlines so small cubes read well on #08090A.
         const outline = hex2rgba(color, 0.5);
         strokePolygon(ctx, cube.left,  outline);
         strokePolygon(ctx, cube.right, outline);
@@ -430,8 +430,8 @@ export default function IsometricMap({ statuses }: IsometricMapProps) {
       ref={wrapRef}
       className="relative w-full overflow-hidden rounded-xl"
       style={{
-        background: '#080808',
-        border: '1px solid rgba(250,204,21,0.08)',
+        background: '#08090A',
+        border: '1px solid rgba(255, 176, 0,0.08)',
         height: 'var(--iso-map-h, 360px)',
       }}
     >

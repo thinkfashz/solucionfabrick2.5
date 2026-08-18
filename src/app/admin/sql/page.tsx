@@ -172,7 +172,7 @@ export default function SqlTerminalPage() {
       {/* Header */}
       <div className="border-b border-white/5 bg-zinc-950 px-4 py-3 flex items-center justify-between">
         <div className="flex items-center gap-2">
-          <Database className="w-4 h-4 text-[#facc15]" />
+          <Database className="w-4 h-4 text-[#FFB000]" />
           <span className="font-bold text-sm">Terminal SQL</span>
           <span className="text-xs text-zinc-500">InsForge</span>
         </div>
@@ -280,7 +280,7 @@ export default function SqlTerminalPage() {
 
       {/* Editor */}
       <div className="flex-none px-4 pt-4 pb-2">
-        <div className={`relative rounded-xl overflow-hidden border bg-zinc-950 transition-all ${running ? 'border-yellow-400/50 shadow-[0_0_20px_-4px_rgba(250,204,21,0.4)]' : 'border-white/10'}`}>
+        <div className={`relative rounded-xl overflow-hidden border bg-zinc-950 transition-all ${running ? 'border-yellow-400/50 shadow-[0_0_20px_-4px_rgba(255, 176, 0,0.4)]' : 'border-white/10'}`}>
           <textarea
             ref={textareaRef}
             value={query}

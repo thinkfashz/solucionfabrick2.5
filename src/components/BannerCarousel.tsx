@@ -163,7 +163,7 @@ export default function BannerCarousel() {
               aria-label={`Ir al banner ${i + 1}`}
               className={`rounded-full transition-all ${
                 i === current
-                  ? 'w-5 h-1.5 bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.6)]'
+                  ? 'w-5 h-1.5 bg-yellow-400 shadow-[0_0_8px_rgba(255, 176, 0,0.6)]'
                   : 'w-1.5 h-1.5 bg-white/30 hover:bg-yellow-400/50'
               }`}
             />

@@ -71,8 +71,8 @@ const PLACEHOLDER =
   'data:image/svg+xml;utf8,' +
   encodeURIComponent(
     `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 600 400'>
-      <rect fill='#0a0a0a' width='600' height='400'/>
-      <circle cx='300' cy='200' r='44' fill='rgba(250,204,21,0.12)' stroke='rgba(250,204,21,0.5)'/>
+      <rect fill='#08090A' width='600' height='400'/>
+      <circle cx='300' cy='200' r='44' fill='rgba(255, 176, 0,0.12)' stroke='rgba(255, 176, 0,0.5)'/>
     </svg>`,
   );
 
@@ -286,7 +286,7 @@ function LiveBadge({ status }: { status: 'idle' | 'connected' | 'updated' }) {
       className={[
         'pointer-events-none fixed left-1/2 top-20 z-40 -translate-x-1/2 rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-wider backdrop-blur transition-all duration-300',
         updated
-          ? 'border-yellow-400/50 bg-yellow-400/10 text-yellow-300 shadow-[0_0_24px_rgba(250,204,21,0.35)]'
+          ? 'border-yellow-400/50 bg-yellow-400/10 text-yellow-300 shadow-[0_0_24px_rgba(255, 176, 0,0.35)]'
           : 'border-white/15 bg-black/80 text-zinc-400',
       ].join(' ')}
     >
@@ -383,7 +383,7 @@ function FinalizeModal({
       aria-labelledby="finalize-title"
       className="fixed inset-0 z-50 flex items-end justify-center overflow-y-auto bg-black/70 p-4 backdrop-blur-sm sm:items-center"
     >
-      <div className="relative w-full max-w-lg rounded-2xl border border-yellow-400/25 bg-gradient-to-b from-zinc-950 to-black shadow-[0_20px_60px_-12px_rgba(250,204,21,0.35)]">
+      <div className="relative w-full max-w-lg rounded-2xl border border-yellow-400/25 bg-gradient-to-b from-zinc-950 to-black shadow-[0_20px_60px_-12px_rgba(255, 176, 0,0.35)]">
         <button
           type="button"
           onClick={onCancel}
@@ -512,7 +512,7 @@ function FinalizeModal({
             <button
               type="submit"
               disabled={submitting}
-              className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-yellow-400 px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-black shadow-[0_8px_24px_-8px_rgba(250,204,21,0.5)] transition-all hover:-translate-y-0.5 hover:bg-yellow-300 hover:shadow-[0_0_24px_rgba(250,204,21,0.55)] disabled:cursor-not-allowed disabled:opacity-50"
+              className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-yellow-400 px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-black shadow-[0_8px_24px_-8px_rgba(255, 176, 0,0.5)] transition-all hover:-translate-y-0.5 hover:bg-yellow-300 hover:shadow-[0_0_24px_rgba(255, 176, 0,0.55)] disabled:cursor-not-allowed disabled:opacity-50"
             >
               {submitting ? (
                 <>
@@ -537,19 +537,19 @@ function FinalizeModal({
           background-color: rgba(0, 0, 0, 0.5);
           padding: 0.625rem 0.75rem;
           font-size: 0.875rem;
-          color: #fafafa;
+          color: #FFF9EE;
           outline: none;
           transition: border-color 150ms, box-shadow 150ms;
         }
         :global(.finput::placeholder) {
-          color: #52525b;
+          color: #6E675D;
         }
         :global(.finput:focus) {
-          border-color: rgba(250, 204, 21, 0.6);
-          box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.15);
+          border-color: rgba(255, 176, 0, 0.6);
+          box-shadow: 0 0 0 3px rgba(255, 176, 0, 0.15);
         }
         :global(select.finput option) {
-          background-color: #18181b;
+          background-color: #1A1B1F;
         }
       `}</style>
     </div>

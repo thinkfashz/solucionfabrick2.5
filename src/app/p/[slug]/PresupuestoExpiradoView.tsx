@@ -12,7 +12,7 @@ export default function PresupuestoExpiradoView({
 }) {
   return (
     <main
-      className="min-h-screen bg-[#070707] text-white"
+      className="min-h-screen bg-[#08090A] text-white"
       style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}
     >
       <div className="mx-auto flex min-h-screen max-w-2xl flex-col items-center justify-center px-5 py-16 text-center">

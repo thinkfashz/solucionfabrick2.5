@@ -310,7 +310,7 @@ function ComposeModal({ onClose, onSent, initialTo = '', initialSubject = '', fr
       className="fixed inset-0 z-50 flex items-end justify-center bg-black/80 backdrop-blur-sm sm:items-center"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}
     >
-      <div className="flex w-full max-w-2xl flex-col rounded-t-2xl sm:rounded-2xl bg-[#18181b] border border-white/[0.08] shadow-2xl max-h-[95dvh] overflow-hidden">
+      <div className="flex w-full max-w-2xl flex-col rounded-t-2xl sm:rounded-2xl bg-[#1A1B1F] border border-white/[0.08] shadow-2xl max-h-[95dvh] overflow-hidden">
         {/* Header */}
         <div className="flex items-center justify-between border-b border-white/[0.06] px-5 py-3.5">
           <h2 className="font-semibold text-white flex items-center gap-2 text-sm">
@@ -733,7 +733,7 @@ function ResendDetail({ item, loading, onBack }: {
       {/* Body */}
       <div className="flex-1 overflow-hidden relative">
         {loading && (
-          <div className="absolute inset-0 flex items-center justify-center bg-[#09090b]/80 z-10">
+          <div className="absolute inset-0 flex items-center justify-center bg-[#08090A]/80 z-10">
             <div className="flex items-center gap-2 text-zinc-500 text-sm">
               <Loader2 className="h-4 w-4 animate-spin" />
               Cargando desde Resend…
@@ -777,7 +777,7 @@ function EmptyBody({ icon: Icon, msg, sub }: { icon: React.ElementType; msg: str
   const El = Icon as React.ComponentType<{ className?: string }>;
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#1A1B1F]">
         <El className="h-6 w-6 text-zinc-600" />
       </div>
       <div className="text-center">
@@ -791,7 +791,7 @@ function EmptyBody({ icon: Icon, msg, sub }: { icon: React.ElementType; msg: str
 function EmptyState({ folder }: { folder: Folder }) {
   return (
     <div className="flex h-full flex-col items-center justify-center gap-4 p-8">
-      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
+      <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#1A1B1F]">
         {folder === 'inbox' ? <Inbox className="h-6 w-6 text-zinc-600" /> : <Send className="h-6 w-6 text-zinc-600" />}
       </div>
       <div className="text-center">
@@ -1082,10 +1082,10 @@ export default function CorreoPage() {
   ] : [];
 
   return (
-    <div className="flex h-dvh flex-col overflow-hidden bg-[#09090b]">
+    <div className="flex h-dvh flex-col overflow-hidden bg-[#08090A]">
 
       {/* ── Desktop Header (lg+) ── */}
-      <header className="hidden lg:flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.06] bg-[#09090b]/95 backdrop-blur-md px-4">
+      <header className="hidden lg:flex h-14 shrink-0 items-center gap-3 border-b border-white/[0.06] bg-[#08090A]/95 backdrop-blur-md px-4">
         <div className="flex items-center gap-2.5">
           <div className="flex h-8 w-8 items-center justify-center rounded-xl bg-amber-500/10 border border-amber-500/20">
             <MailOpen className="h-4 w-4 text-amber-400" />
@@ -1159,7 +1159,7 @@ export default function CorreoPage() {
       </header>
 
       {/* ── Mobile Header (below lg) ── */}
-      <header className="flex lg:hidden h-12 shrink-0 items-center gap-2 border-b border-white/[0.06] bg-[#09090b]/95 backdrop-blur-md px-3">
+      <header className="flex lg:hidden h-12 shrink-0 items-center gap-2 border-b border-white/[0.06] bg-[#08090A]/95 backdrop-blur-md px-3">
         {mobileView === 'detail' && activeDetail ? (
           /* Mobile detail sticky header */
           <>
@@ -1213,7 +1213,7 @@ export default function CorreoPage() {
 
       {/* ── Mobile compact stats strip ── */}
       {emailStats && mobileView === 'list' && (
-        <div className="flex lg:hidden gap-3 overflow-x-auto border-b border-white/[0.06] bg-[#18181b]/40 px-3 py-1.5 shrink-0">
+        <div className="flex lg:hidden gap-3 overflow-x-auto border-b border-white/[0.06] bg-[#1A1B1F]/40 px-3 py-1.5 shrink-0">
           {statsItems.map(({ label, value, icon: Icon, color }) => (
             <div key={label} className="flex items-center gap-1 shrink-0">
               <Icon className={`h-3 w-3 ${color} shrink-0`} />
@@ -1264,7 +1264,7 @@ export default function CorreoPage() {
       <div className="flex flex-1 overflow-hidden min-h-0">
 
         {/* ── Sidebar (desktop only) ── */}
-        <div className="hidden lg:flex w-52 shrink-0 flex-col border-r border-white/[0.06] bg-[#18181b]">
+        <div className="hidden lg:flex w-52 shrink-0 flex-col border-r border-white/[0.06] bg-[#1A1B1F]">
           <nav className="flex-1 p-2 space-y-0.5 overflow-y-auto">
             {([
               { key: 'all',   label: 'Todos',     icon: MailOpen, count: enviados.length + recibidos.length, badge: 0 },
@@ -1320,7 +1320,7 @@ export default function CorreoPage() {
         </div>
 
         {/* ── Email list ── */}
-        <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-80 shrink-0 border-r border-white/[0.06] bg-[#09090b] overflow-hidden`}>
+        <div className={`${mobileView === 'list' ? 'flex' : 'hidden'} lg:flex flex-col w-full lg:w-80 shrink-0 border-r border-white/[0.06] bg-[#08090A] overflow-hidden`}>
           {/* Search */}
           <div className="shrink-0 border-b border-white/[0.06] p-3">
             <div className="flex items-center gap-2 rounded-xl border border-white/[0.06] bg-white/[0.03] px-3 py-2">
@@ -1408,7 +1408,7 @@ export default function CorreoPage() {
         </div>
 
         {/* ── Detail panel ── */}
-        <div className={`${mobileView === 'detail' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col min-w-0 bg-[#09090b] overflow-hidden`}>
+        <div className={`${mobileView === 'detail' ? 'flex' : 'hidden'} lg:flex flex-1 flex-col min-w-0 bg-[#08090A] overflow-hidden`}>
           {isResendFolder && resendSelected ? (
             <ResendDetail
               item={resendSelected}
@@ -1425,7 +1425,7 @@ export default function CorreoPage() {
           ) : (
             /* Desktop-only empty state */
             <div className="hidden lg:flex flex-col items-center justify-center h-full gap-4">
-              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#18181b]">
+              <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-white/[0.06] bg-[#1A1B1F]">
                 {isResendFolder
                   ? <Zap className="h-7 w-7 text-zinc-700" />
                   : <MailOpen className="h-7 w-7 text-zinc-700" />}
@@ -1442,7 +1442,7 @@ export default function CorreoPage() {
       </div>
 
       {/* ── Bottom tabs (mobile only) ── */}
-      <nav className="flex lg:hidden h-16 shrink-0 items-stretch border-t border-white/[0.06] bg-[#09090b]/95 backdrop-blur-md pb-safe">
+      <nav className="flex lg:hidden h-16 shrink-0 items-stretch border-t border-white/[0.06] bg-[#08090A]/95 backdrop-blur-md pb-safe">
         {MOBILE_TABS.map(({ folder: tabFolder, label, icon: Icon }) => {
           const isActive = folder === tabFolder;
           const badge = tabFolder === 'inbox' ? unread : 0;

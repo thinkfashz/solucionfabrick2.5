@@ -29,7 +29,7 @@ type ApiPayload = {
   error?: string;
 };
 
-const DEFAULT_COLOR = '#f59e0b';
+const DEFAULT_COLOR = '#F5871F';
 
 function Field({ label, icon: Icon, children }: { label: string; icon: typeof Building2; children: React.ReactNode }) {
   return <label className="block rounded-3xl border border-white/10 bg-white/[0.045] p-4 shadow-[0_18px_50px_rgba(0,0,0,.25)]">
@@ -111,9 +111,9 @@ export default function MiEmpresaPage() {
     }
   }
 
-  if (loading) return <main className="grid min-h-screen place-items-center bg-[#050505] text-white"><Loader2 className="h-8 w-8 animate-spin text-amber-300" /></main>;
+  if (loading) return <main className="grid min-h-screen place-items-center bg-[#08090A] text-white"><Loader2 className="h-8 w-8 animate-spin text-amber-300" /></main>;
 
-  return <main className="min-h-screen bg-[#050505] px-4 py-6 text-white md:px-6">
+  return <main className="min-h-screen bg-[#08090A] px-4 py-6 text-white md:px-6">
     <section className="mx-auto grid max-w-7xl gap-5 xl:grid-cols-[minmax(0,1fr)_420px]">
       <div className="space-y-5">
         <header className="relative overflow-hidden rounded-[2.4rem] border border-amber-300/20 bg-[radial-gradient(circle_at_85%_0%,rgba(245,158,11,.24),transparent_30rem),linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.025))] p-6 shadow-2xl shadow-black/40 md:p-8">
@@ -133,7 +133,7 @@ export default function MiEmpresaPage() {
           <Field label="Correo de facturación" icon={Mail}><input className={inputClass()} value={profile?.billing_email || ''} onChange={(event) => update('billing_email', event.target.value)} placeholder="pagos@empresa.cl" /></Field>
           <Field label="Logo URL HTTPS" icon={Globe2}><input className={inputClass()} value={profile?.logo_url || ''} onChange={(event) => update('logo_url', event.target.value)} placeholder="https://.../logo.png" /></Field>
           <Field label="Dominio personalizado" icon={Globe2}><input className={inputClass()} value={profile?.custom_domain || ''} onChange={(event) => update('custom_domain', event.target.value)} placeholder="www.empresa.cl" /></Field>
-          <Field label="Color principal" icon={Palette}><input className={`${inputClass()} font-mono`} value={profile?.primary_color || DEFAULT_COLOR} onChange={(event) => update('primary_color', event.target.value)} placeholder="#f59e0b" /></Field>
+          <Field label="Color principal" icon={Palette}><input className={`${inputClass()} font-mono`} value={profile?.primary_color || DEFAULT_COLOR} onChange={(event) => update('primary_color', event.target.value)} placeholder="#F5871F" /></Field>
           <div className="rounded-3xl border border-white/10 bg-white/[0.045] p-4"><span className="mb-2 block text-[11px] font-black uppercase tracking-[.18em] text-amber-200">Estado</span><div className="flex flex-wrap gap-2 text-xs font-black uppercase tracking-[.16em]"><span className="rounded-full border border-white/10 bg-black/35 px-3 py-2 text-zinc-300">{profile?.status || 'sin estado'}</span><span className="rounded-full border border-white/10 bg-black/35 px-3 py-2 text-zinc-300">plan {profile?.plan_id || 'n/a'}</span></div></div>
         </section>
 

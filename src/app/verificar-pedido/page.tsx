@@ -55,9 +55,9 @@ export default function VerificarPedidoPage() {
     }
   }
 
-  return <main className="min-h-screen bg-[#050403] px-4 py-8 text-white">
+  return <main className="min-h-screen bg-[#08090A] px-4 py-8 text-white">
     <section className="mx-auto max-w-4xl">
-      <div className="rounded-[2rem] border border-yellow-300/20 bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,.20),transparent_22rem),linear-gradient(145deg,#0b0a08,#050403)] p-6 shadow-[0_35px_100px_rgba(0,0,0,.55)]">
+      <div className="rounded-[2rem] border border-yellow-300/20 bg-[radial-gradient(circle_at_20%_0%,rgba(255, 176, 0,.20),transparent_22rem),linear-gradient(145deg,#0b0a08,#08090A)] p-6 shadow-[0_35px_100px_rgba(0,0,0,.55)]">
         <p className="text-[10px] font-black uppercase tracking-[0.34em] text-yellow-300">Verificación de pedido</p>
         <h1 className="mt-3 text-4xl font-black leading-none tracking-[-0.06em] md:text-6xl">Busca por código de despacho</h1>
         <p className="mt-4 max-w-2xl text-sm leading-7 text-white/55">Ingresa el código que llegó por correo, por ejemplo FBK-26-ABC123, para ver el estado del pedido y sus productos.</p>

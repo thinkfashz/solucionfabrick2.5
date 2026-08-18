@@ -25,13 +25,13 @@ export interface PresupuestoEmailProps {
 }
 
 const COLORS = {
-  bg: '#070707',
-  card: '#0c0c0c',
+  bg: '#08090A',
+  card: '#08090A',
   border: '#262626', // neutral-800
-  text: '#fafafa',
-  muted: '#a1a1aa',
-  amber: '#f59e0b', // amber-500
-  amberSoft: '#fbbf24', // amber-400
+  text: '#FFF9EE',
+  muted: '#BFB8AC',
+  amber: '#F5871F', // amber-500
+  amberSoft: '#FFB000', // amber-400
 };
 
 const formatCLP = (n: number) =>
@@ -161,7 +161,7 @@ export function PresupuestoEmail({
               href={link}
               style={{
                 backgroundColor: COLORS.amber,
-                color: '#0a0a0a',
+                color: '#08090A',
                 fontWeight: 800,
                 padding: '14px 28px',
                 borderRadius: '999px',

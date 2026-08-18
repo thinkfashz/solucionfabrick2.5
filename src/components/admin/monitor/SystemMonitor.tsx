@@ -109,8 +109,8 @@ export default function SystemMonitor() {
 
       // Fondo con gradiente
       const gradient = ctx.createLinearGradient(0, 0, w, h);
-      gradient.addColorStop(0, '#18181b');
-      gradient.addColorStop(1, '#09090b');
+      gradient.addColorStop(0, '#1A1B1F');
+      gradient.addColorStop(1, '#08090A');
       ctx.fillStyle = gradient;
       ctx.fillRect(0, 0, w, h);
 

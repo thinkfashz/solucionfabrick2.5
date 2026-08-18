@@ -1,14 +1,14 @@
 {
   "name": "Soluciones Fabrick",
   "short_name": "Fabrick",
-  "description": "Construcción y remodelación residencial en la Región del Maule, Chile. Metalcon, gasfitería, electricidad y proyectos llave en mano.",
+  "description": "Construcción, remodelación y reparación residencial en la Región del Maule, Chile. Evalúa, cotiza y transforma tu proyecto con Soluciones Fabrick.",
   "start_url": "/?source=pwa",
   "scope": "/",
   "display": "standalone",
   "display_override": ["standalone", "minimal-ui"],
   "orientation": "portrait",
-  "background_color": "#0D0E13",
-  "theme_color": "#d8b23d",
+  "background_color": "#08090A",
+  "theme_color": "#FFB000",
   "lang": "es-CL",
   "dir": "ltr",
   "categories": ["business", "lifestyle", "productivity"],
@@ -24,6 +24,12 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    },
+    {
+      "src": "/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
     }
   ],
   "shortcuts": [

@@ -22,7 +22,7 @@ export const metadata: Metadata = {
 
 export default function PresupuestoPage() {
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#171820] pb-[calc(6rem+env(safe-area-inset-bottom))] text-[#F8F0E9] sm:pb-0">
+    <main className="min-h-screen overflow-x-hidden bg-[#08090A] pb-[calc(6rem+env(safe-area-inset-bottom))] text-[#FFF9EE] sm:pb-0">
       <Navbar />
       <ServiceBudgetShop />
       <StoreBottomNav />

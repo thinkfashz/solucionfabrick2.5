@@ -229,7 +229,7 @@ export default function EnviarClient() {
           <button
             type="submit"
             disabled={sending}
-            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-yellow-400 text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(250,204,21,0.2)]"
+            className="w-full inline-flex items-center justify-center gap-2 px-6 py-4 rounded-full bg-yellow-400 text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed shadow-[0_0_30px_rgba(255, 176, 0,0.2)]"
           >
             <Send className="w-4 h-4" />
             {sending ? 'Enviando...' : 'Enviar para cotización'}

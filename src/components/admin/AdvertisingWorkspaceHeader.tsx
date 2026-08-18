@@ -44,10 +44,10 @@ export default function AdvertisingWorkspaceHeader() {
   }, []);
 
   return (
-    <section className="mb-6 overflow-hidden rounded-[2.2rem] bg-[#171820] p-5 text-[#F8F0E9] shadow-[0_24px_80px_rgba(23,24,32,.24)] sm:p-7">
+    <section className="mb-6 overflow-hidden rounded-[2.2rem] bg-[#08090A] p-5 text-[#FFF9EE] shadow-[0_24px_80px_rgba(23,24,32,.24)] sm:p-7">
       <div className="flex flex-col gap-5 xl:flex-row xl:items-end xl:justify-between">
         <div>
-          <span className="inline-flex items-center gap-2 rounded-full bg-[#B6906C]/18 px-3 py-2 text-[9px] font-black uppercase tracking-[.2em] text-[#E5CFBA]"><Megaphone className="h-3.5 w-3.5" /> Centro publicitario Fabrick</span>
+          <span className="inline-flex items-center gap-2 rounded-full bg-[#F5871F]/18 px-3 py-2 text-[9px] font-black uppercase tracking-[.2em] text-[#F2DFBB]"><Megaphone className="h-3.5 w-3.5" /> Centro publicitario Fabrick</span>
           <h1 className="mt-4 text-3xl font-black tracking-[-.05em] sm:text-5xl">Campañas, creativos y presupuesto en un solo lugar.</h1>
           <p className="mt-3 max-w-3xl text-sm leading-7 text-white/55">Crea anuncios con IA, revisa cómo se ven, configura cada anuncio por separado y compara el gasto real informado por Meta.</p>
         </div>
@@ -62,14 +62,14 @@ export default function AdvertisingWorkspaceHeader() {
       <div className="mt-6 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
         {tabs.map(({ href, label, icon: Icon }) => {
           const active = href === '/admin/publicidad' ? pathname === href : pathname.startsWith(href);
-          return <Link key={href} href={href} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-xs font-black transition ${active ? 'bg-[#B6906C] text-[#171820]' : 'bg-white/7 text-white/65 hover:bg-white/12 hover:text-white'}`}><Icon className="h-4 w-4" />{label}</Link>;
+          return <Link key={href} href={href} className={`inline-flex min-h-11 shrink-0 items-center gap-2 rounded-full px-4 text-xs font-black transition ${active ? 'bg-[#F5871F] text-[#08090A]' : 'bg-white/7 text-white/65 hover:bg-white/12 hover:text-white'}`}><Icon className="h-4 w-4" />{label}</Link>;
         })}
       </div>
-      {error ? <p className="mt-4 text-xs text-[#E5CFBA]">{error}</p> : account?.note ? <p className="mt-4 text-[10px] leading-5 text-white/38">{account.note}</p> : null}
+      {error ? <p className="mt-4 text-xs text-[#F2DFBB]">{error}</p> : account?.note ? <p className="mt-4 text-[10px] leading-5 text-white/38">{account.note}</p> : null}
     </section>
   );
 }
 
 function Metric({ icon: Icon, label, value }: { icon: typeof WalletCards; label: string; value: string }) {
-  return <div className="rounded-[1.4rem] bg-white/7 p-4"><Icon className="h-4 w-4 text-[#CCB196]" /><p className="mt-3 text-[8px] font-black uppercase tracking-[.14em] text-white/35">{label}</p><b className="mt-1 block truncate text-lg">{value}</b></div>;
+  return <div className="rounded-[1.4rem] bg-white/7 p-4"><Icon className="h-4 w-4 text-[#FFB000]" /><p className="mt-3 text-[8px] font-black uppercase tracking-[.14em] text-white/35">{label}</p><b className="mt-1 block truncate text-lg">{value}</b></div>;
 }

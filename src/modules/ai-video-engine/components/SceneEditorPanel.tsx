@@ -40,7 +40,7 @@ function BlockChip({
       title={`${block.name} — ${block.description}`}
       className={`group relative h-14 w-10 shrink-0 overflow-hidden rounded-lg border-2 transition-all duration-150 ${
         active
-          ? 'border-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.3)]'
+          ? 'border-yellow-400 shadow-[0_0_10px_rgba(255, 176, 0,0.3)]'
           : 'border-white/10 opacity-60 hover:border-white/25 hover:opacity-90'
       }`}
     >
@@ -167,7 +167,7 @@ export function SceneEditorPanel({
             {/* Animated block preview */}
             <div className={`relative h-20 w-full overflow-hidden rounded-xl bg-gradient-to-b ${selectedBlock.gradientClasses}`}>
               <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:18px_18px]" />
-              <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(250,204,21,0.15),transparent_55%)]" />
+              <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(255, 176, 0,0.15),transparent_55%)]" />
               <div className="absolute bottom-3 left-3 right-3 space-y-1">
                 <div className="h-[2px] w-8 animate-pulse rounded-full bg-yellow-400" />
                 <p className="text-[10px] font-black text-white drop-shadow">{selectedBlock.sample_screen_text}</p>

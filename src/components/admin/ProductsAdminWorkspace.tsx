@@ -7,7 +7,7 @@ import ProductMerchandisingStudio from '@/components/admin/ProductMerchandisingS
 
 function NavLink({ href, active, icon, children }: { href: string; active: boolean; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <Link href={href} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-4 text-xs font-black transition ${active ? 'bg-[#171820] text-[#F8F0E9] shadow-[0_12px_34px_rgba(23,24,32,.18)]' : 'bg-white/70 text-[#5E5148] hover:bg-white'}`}>
+    <Link href={href} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-4 text-xs font-black transition ${active ? 'bg-[#08090A] text-[#FFF9EE] shadow-[0_12px_34px_rgba(23,24,32,.18)]' : 'bg-white/70 text-[#BFB8AC] hover:bg-white'}`}>
       {icon}{children}
     </Link>
   );
@@ -20,21 +20,21 @@ export default function ProductsAdminWorkspace({ children }: { children: React.R
   const isEditor = pathname.includes('/editar');
 
   return (
-    <div className="products-admin-workspace -mx-3 min-h-screen bg-[linear-gradient(180deg,#F8F0E9_0%,#EFE3D6_48%,#F8F0E9_100%)] px-3 pb-24 sm:-mx-5 sm:px-5 lg:-mx-8 lg:px-8">
-      <header className="sticky top-0 z-40 -mx-3 border-b border-[#171820]/6 bg-[#F8F0E9]/90 px-3 py-3 backdrop-blur-2xl sm:-mx-5 sm:px-5 lg:-mx-8 lg:px-8">
+    <div className="products-admin-workspace -mx-3 min-h-screen bg-[linear-gradient(180deg,#FFF9EE_0%,#F2DFBB_48%,#FFF9EE_100%)] px-3 pb-24 sm:-mx-5 sm:px-5 lg:-mx-8 lg:px-8">
+      <header className="sticky top-0 z-40 -mx-3 border-b border-[#08090A]/6 bg-[#FFF9EE]/90 px-3 py-3 backdrop-blur-2xl sm:-mx-5 sm:px-5 lg:-mx-8 lg:px-8">
         <div className="mx-auto flex max-w-[1680px] flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
           <div className="flex items-center gap-3">
-            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#171820] text-[#CCB196]"><Boxes className="h-5 w-5" /></span>
+            <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#08090A] text-[#FFB000]"><Boxes className="h-5 w-5" /></span>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-[.23em] text-[#895E3D]">Catálogo comercial</p>
-              <h1 className="text-lg font-black tracking-[-.035em] text-[#171820]">Productos, precios y vitrina</h1>
+              <p className="text-[9px] font-black uppercase tracking-[.23em] text-[#F5871F]">Catálogo comercial</p>
+              <h1 className="text-lg font-black tracking-[-.035em] text-[#08090A]">Productos, precios y vitrina</h1>
             </div>
           </div>
           <nav className="grid grid-cols-2 gap-2 sm:flex">
             <NavLink href="/admin/productos" active={isIndex} icon={<LayoutGrid className="h-4 w-4" />}>Catálogo</NavLink>
             <NavLink href="/admin/productos/nuevo" active={isCreate} icon={<Plus className="h-4 w-4" />}>Nuevo producto</NavLink>
-            <a href="/admin/productos#importar" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white/70 px-4 text-xs font-black text-[#5E5148] transition hover:bg-white"><Import className="h-4 w-4" />Importar</a>
-            <a href="/admin/productos#editor-comercial" className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-4 text-xs font-black transition ${isEditor ? 'bg-[#B6906C] text-[#171820]' : 'bg-white/70 text-[#5E5148] hover:bg-white'}`}><Sparkles className="h-4 w-4" />IA y vitrina</a>
+            <a href="/admin/productos#importar" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white/70 px-4 text-xs font-black text-[#BFB8AC] transition hover:bg-white"><Import className="h-4 w-4" />Importar</a>
+            <a href="/admin/productos#editor-comercial" className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-4 text-xs font-black transition ${isEditor ? 'bg-[#F5871F] text-[#08090A]' : 'bg-white/70 text-[#BFB8AC] hover:bg-white'}`}><Sparkles className="h-4 w-4" />IA y vitrina</a>
           </nav>
         </div>
       </header>

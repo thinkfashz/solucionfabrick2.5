@@ -46,7 +46,7 @@ const checklist = [
 ];
 
 export default function MercadoPagoMcpPage() {
-  return <main className="min-h-screen bg-[#050505] px-4 py-6 text-white md:px-6">
+  return <main className="min-h-screen bg-[#08090A] px-4 py-6 text-white md:px-6">
     <section className="mx-auto max-w-7xl space-y-5">
       <header className="overflow-hidden rounded-[2.5rem] border border-sky-300/20 bg-[radial-gradient(circle_at_80%_0%,rgba(56,189,248,.24),transparent_34rem),linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.025))] p-6 shadow-2xl shadow-black/40 md:p-8">
         <Link href="/admin/integraciones" className="inline-flex rounded-full border border-white/10 bg-white/10 px-3 py-2 text-xs font-black text-white">← Volver a integraciones</Link>

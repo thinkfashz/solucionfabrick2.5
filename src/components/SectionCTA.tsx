@@ -32,7 +32,7 @@ export default function SectionCTA() {
         className="pointer-events-none absolute inset-0 opacity-[0.035]"
         style={{
           backgroundImage:
-            'linear-gradient(rgba(250,204,21,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,0.4) 1px, transparent 1px)',
+            'linear-gradient(rgba(255, 176, 0,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 176, 0,0.4) 1px, transparent 1px)',
           backgroundSize: '60px 60px',
         }}
       />
@@ -43,7 +43,7 @@ export default function SectionCTA() {
         className="pointer-events-none absolute inset-0"
         style={{
           background:
-            'radial-gradient(ellipse 70% 55% at 50% 50%, rgba(250,204,21,0.10) 0%, rgba(250,204,21,0.03) 45%, transparent 75%)',
+            'radial-gradient(ellipse 70% 55% at 50% 50%, rgba(255, 176, 0,0.10) 0%, rgba(255, 176, 0,0.03) 45%, transparent 75%)',
         }}
       />
 
@@ -87,7 +87,7 @@ export default function SectionCTA() {
             className="bg-gradient-to-r from-yellow-300 via-yellow-400 to-amber-400 bg-clip-text text-transparent"
             style={{
               textShadow:
-                '0 0 40px rgba(250,204,21,0.25), 0 0 80px rgba(250,204,21,0.12)',
+                '0 0 40px rgba(255, 176, 0,0.25), 0 0 80px rgba(255, 176, 0,0.12)',
             }}
           >
             Diseña a tu Medida
@@ -128,7 +128,7 @@ export default function SectionCTA() {
           <Link
             href="/presupuesto"
             aria-label="Armar mi presupuesto de construcción"
-            className="group relative inline-flex min-h-[52px] items-center justify-center gap-3 overflow-hidden rounded-full bg-yellow-400 px-9 py-4 text-base font-semibold uppercase tracking-wider text-black shadow-[0_8px_30px_-8px_rgba(250,204,21,0.55)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_40px_rgba(250,204,21,0.6),0_0_80px_rgba(250,204,21,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+            className="group relative inline-flex min-h-[52px] items-center justify-center gap-3 overflow-hidden rounded-full bg-yellow-400 px-9 py-4 text-base font-semibold uppercase tracking-wider text-black shadow-[0_8px_30px_-8px_rgba(255, 176, 0,0.55)] transition-all duration-300 hover:-translate-y-0.5 hover:shadow-[0_0_40px_rgba(255, 176, 0,0.6),0_0_80px_rgba(255, 176, 0,0.25)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
           >
             {/* Hover sweep */}
             <span

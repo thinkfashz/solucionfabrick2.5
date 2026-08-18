@@ -164,10 +164,10 @@ export default function OrderTrackingPage() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#050403] px-4 py-6 text-white">
+    <main className="min-h-screen overflow-hidden bg-[#08090A] px-4 py-6 text-white">
       <style>{`@keyframes pulseTrack{0%,100%{transform:scale(1);opacity:.75}50%{transform:scale(1.18);opacity:1}}.track-pulse{animation:pulseTrack 1.7s ease-in-out infinite}@keyframes truckDrive{0%{transform:translateX(-30%)}45%{transform:translateX(55%)}100%{transform:translateX(145%)}}.truck-drive{animation:truckDrive 5.2s ease-in-out infinite}@keyframes roadMove{from{background-position-x:0}to{background-position-x:120px}}.road-move{animation:roadMove 1.2s linear infinite}`}</style>
       <section className="mx-auto max-w-5xl">
-        <div className="relative overflow-hidden rounded-[2rem] border border-yellow-300/20 bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,.20),transparent_22rem),linear-gradient(145deg,#0b0a08,#050403)] p-5 shadow-[0_40px_120px_rgba(0,0,0,.7)] md:p-8">
+        <div className="relative overflow-hidden rounded-[2rem] border border-yellow-300/20 bg-[radial-gradient(circle_at_20%_0%,rgba(255, 176, 0,.20),transparent_22rem),linear-gradient(145deg,#0b0a08,#08090A)] p-5 shadow-[0_40px_120px_rgba(0,0,0,.7)] md:p-8">
           <div className="pointer-events-none absolute -right-24 -top-24 h-72 w-72 rounded-full bg-yellow-300/20 blur-3xl" />
           <div className="relative z-10">
             <p className="text-[10px] font-black uppercase tracking-[0.32em] text-yellow-300">Soluciones Fabrick · seguimiento</p>
@@ -274,15 +274,15 @@ export default function OrderTrackingPage() {
 }
 
 function CityTruckAnimation({ status }: { status: string }) {
-  return <div className="relative mt-7 overflow-hidden rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(250,204,21,.10),rgba(255,255,255,.025))] p-4">
-    <div className="relative h-36 overflow-hidden rounded-[1.3rem] bg-[linear-gradient(180deg,#12100b,#050505)]">
+  return <div className="relative mt-7 overflow-hidden rounded-[1.7rem] border border-white/10 bg-[linear-gradient(180deg,rgba(255, 176, 0,.10),rgba(255,255,255,.025))] p-4">
+    <div className="relative h-36 overflow-hidden rounded-[1.3rem] bg-[linear-gradient(180deg,#12100b,#08090A)]">
       <div className="absolute bottom-14 left-5 h-16 w-10 rounded-t-xl bg-yellow-300/10" />
       <div className="absolute bottom-14 left-20 h-24 w-14 rounded-t-xl bg-white/8" />
       <div className="absolute bottom-14 left-40 h-20 w-12 rounded-t-xl bg-yellow-300/10" />
       <div className="absolute bottom-14 right-12 h-28 w-16 rounded-t-xl bg-white/8" />
-      <div className="road-move absolute bottom-8 h-8 w-full bg-[repeating-linear-gradient(90deg,rgba(250,204,21,.55)_0_18px,transparent_18px_42px)] opacity-80" />
+      <div className="road-move absolute bottom-8 h-8 w-full bg-[repeating-linear-gradient(90deg,rgba(255, 176, 0,.55)_0_18px,transparent_18px_42px)] opacity-80" />
       <div className="absolute bottom-0 h-10 w-full bg-black/60" />
-      <div className="truck-drive absolute bottom-8 left-0 text-5xl drop-shadow-[0_12px_28px_rgba(250,204,21,.45)]">🚚</div>
+      <div className="truck-drive absolute bottom-8 left-0 text-5xl drop-shadow-[0_12px_28px_rgba(255, 176, 0,.45)]">🚚</div>
     </div>
     <p className="mt-3 text-xs leading-6 text-white/50"><Truck className="mr-2 inline h-4 w-4 text-yellow-300" />Estado actual: <b className="text-white">{status}</b>. Tu pedido avanza por etapas: pago, preparación, ruta y entrega.</p>
   </div>;

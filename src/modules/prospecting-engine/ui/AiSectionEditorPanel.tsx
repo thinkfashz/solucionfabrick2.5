@@ -55,10 +55,10 @@ export default function AiSectionEditorPanel({
 
     <div className="grid gap-3 lg:grid-cols-[1fr_320px]">
       <div className="space-y-3">
-        <select value={activeSection?.id || ''} onChange={(e) => setSectionId(e.target.value)} className="w-full rounded-2xl border border-white/10 bg-[#050505] px-4 py-3 text-sm outline-none">
+        <select value={activeSection?.id || ''} onChange={(e) => setSectionId(e.target.value)} className="w-full rounded-2xl border border-white/10 bg-[#08090A] px-4 py-3 text-sm outline-none">
           {sections.length ? sections.map((section) => <option key={`${section.id}-${section.start}`} value={section.id}>{section.label} · {section.type} · {section.confidence}%</option>) : <option value="">Sin secciones detectadas</option>}
         </select>
-        <textarea value={instruction} onChange={(e) => setInstruction(e.target.value)} className="min-h-[140px] w-full resize-y rounded-2xl border border-white/10 bg-[#050505] p-4 text-sm leading-6 outline-none focus:border-yellow-300/40" />
+        <textarea value={instruction} onChange={(e) => setInstruction(e.target.value)} className="min-h-[140px] w-full resize-y rounded-2xl border border-white/10 bg-[#08090A] p-4 text-sm leading-6 outline-none focus:border-yellow-300/40" />
         <div className="rounded-2xl border border-white/10 bg-white/[0.035] p-3">
           <p className="mb-2 text-[10px] font-black uppercase tracking-[0.22em] text-yellow-300">HTML seleccionado</p>
           <pre className="max-h-64 overflow-auto whitespace-pre-wrap rounded-xl bg-black/60 p-3 text-xs text-white/60">{activeSection?.html || 'Sin sección seleccionada.'}</pre>

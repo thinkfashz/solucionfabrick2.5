@@ -111,7 +111,7 @@ export default function Hero({
 
         {/* Gold atmospheric haze */}
         <div
-          className="absolute top-1/3 left-1/4 h-[700px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full [background:radial-gradient(circle,rgba(250,204,21,0.06)_0%,transparent_65%)]"
+          className="absolute top-1/3 left-1/4 h-[700px] w-[700px] -translate-x-1/2 -translate-y-1/2 rounded-full [background:radial-gradient(circle,rgba(255, 176, 0,0.06)_0%,transparent_65%)]"
         />
       </div>
 
@@ -209,7 +209,7 @@ export default function Hero({
             href={buildWhatsAppLink(CTA_MSG)}
             target="_blank"
             rel="noopener noreferrer"
-            className="group inline-flex min-h-[44px] items-center gap-2.5 rounded-full bg-yellow-400 px-6 py-3 text-[13px] font-black uppercase tracking-[0.18em] text-black transition-all duration-300 hover:bg-yellow-300 hover:shadow-[0_0_36px_rgba(250,204,21,0.45)] sm:px-7 sm:py-3.5"
+            className="group inline-flex min-h-[44px] items-center gap-2.5 rounded-full bg-yellow-400 px-6 py-3 text-[13px] font-black uppercase tracking-[0.18em] text-black transition-all duration-300 hover:bg-yellow-300 hover:shadow-[0_0_36px_rgba(255, 176, 0,0.45)] sm:px-7 sm:py-3.5"
           >
             <MessageCircle size={15} aria-hidden />
             Conversemos por WhatsApp
@@ -275,10 +275,10 @@ export default function Hero({
         >
           <defs>
             <linearGradient id="hero-wave-gold" x1="0" y1="0" x2="1" y2="0">
-              <stop offset="0%"   stopColor="rgba(250,204,21,0)" />
-              <stop offset="35%"  stopColor="rgba(250,204,21,0.45)" />
+              <stop offset="0%"   stopColor="rgba(255, 176, 0,0)" />
+              <stop offset="35%"  stopColor="rgba(255, 176, 0,0.45)" />
               <stop offset="65%"  stopColor="rgba(252,211,77,0.45)" />
-              <stop offset="100%" stopColor="rgba(250,204,21,0)" />
+              <stop offset="100%" stopColor="rgba(255, 176, 0,0)" />
             </linearGradient>
           </defs>
           <path
@@ -308,12 +308,12 @@ export default function Hero({
         {!prefersReduced && (
           <>
             <motion.span
-              className="absolute bottom-[42%] left-[28%] block h-1 w-1 rounded-full bg-yellow-300/80 shadow-[0_0_10px_rgba(250,204,21,0.7)]"
+              className="absolute bottom-[42%] left-[28%] block h-1 w-1 rounded-full bg-yellow-300/80 shadow-[0_0_10px_rgba(255, 176, 0,0.7)]"
               animate={{ opacity: [0, 0.9, 0], y: [0, -6, 0] }}
               transition={{ duration: 3.6, repeat: Infinity, ease: 'easeInOut' }}
             />
             <motion.span
-              className="absolute bottom-[55%] left-[58%] block h-1 w-1 rounded-full bg-yellow-300/70 shadow-[0_0_10px_rgba(250,204,21,0.55)]"
+              className="absolute bottom-[55%] left-[58%] block h-1 w-1 rounded-full bg-yellow-300/70 shadow-[0_0_10px_rgba(255, 176, 0,0.55)]"
               animate={{ opacity: [0, 0.7, 0], y: [0, -8, 0] }}
               transition={{ duration: 4.2, repeat: Infinity, ease: 'easeInOut', delay: 1.1 }}
             />

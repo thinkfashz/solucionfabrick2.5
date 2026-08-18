@@ -32,7 +32,7 @@ function htmlHeaders(status = 200) {
 }
 
 function expiredHtml() {
-  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Demo no disponible</title><meta name="robots" content="noindex,nofollow,noarchive"><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#050505;color:#fff7e8;font-family:Inter,system-ui,sans-serif;padding:16px}.box{width:min(92vw,620px);padding:32px;border:1px solid rgba(255,190,56,.24);border-radius:32px;background:#111;box-shadow:0 24px 80px rgba(0,0,0,.45)}h1{font-size:clamp(40px,10vw,68px);line-height:.95;letter-spacing:-.07em}.tag{color:#fbbf24;text-transform:uppercase;font-size:12px;font-weight:900;letter-spacing:.22em}p{font-size:18px;line-height:1.5;color:#e8dcc9}</style></head><body><main class="box"><p class="tag">Demo privada</p><h1>Este link no está disponible</h1><p>La propuesta no existe, fue archivada o el token no es válido.</p></main></body></html>`;
+  return `<!doctype html><html lang="es"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Demo no disponible</title><meta name="robots" content="noindex,nofollow,noarchive"><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#08090A;color:#FFF9EE;font-family:Inter,system-ui,sans-serif;padding:16px}.box{width:min(92vw,620px);padding:32px;border:1px solid rgba(255,190,56,.24);border-radius:32px;background:#111214;box-shadow:0 24px 80px rgba(0,0,0,.45)}h1{font-size:clamp(40px,10vw,68px);line-height:.95;letter-spacing:-.07em}.tag{color:#FFB000;text-transform:uppercase;font-size:12px;font-weight:900;letter-spacing:.22em}p{font-size:18px;line-height:1.5;color:#e8dcc9}</style></head><body><main class="box"><p class="tag">Demo privada</p><h1>Este link no está disponible</h1><p>La propuesta no existe, fue archivada o el token no es válido.</p></main></body></html>`;
 }
 
 function parseProjectJson(value: unknown): Record<string, unknown> {
@@ -139,7 +139,7 @@ function injectMetadata(html: string, meta: ReturnType<typeof metadataFor>) {
 }
 
 function expiredBanner(expiresAt: string) {
-  return `<div style="position:sticky;top:0;z-index:999999;background:linear-gradient(135deg,#f59e0b,#fb923c);color:#120700;padding:12px 16px;font-family:Inter,system-ui,sans-serif;font-weight:900;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.18)">Versión vencida el ${escapeHtml(expiresAt)} · vista solo referencial. Solicita una nueva versión para precios actualizados.</div>`;
+  return `<div style="position:sticky;top:0;z-index:999999;background:linear-gradient(135deg,#F5871F,#fb923c);color:#120700;padding:12px 16px;font-family:Inter,system-ui,sans-serif;font-weight:900;text-align:center;box-shadow:0 10px 30px rgba(0,0,0,.18)">Versión vencida el ${escapeHtml(expiresAt)} · vista solo referencial. Solicita una nueva versión para precios actualizados.</div>`;
 }
 
 function injectExpiredBanner(html: string, expiresAt: string) {

@@ -254,18 +254,18 @@ export default function ReportesPage() {
                 <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.05)" />
                 <XAxis
                   dataKey="semana"
-                  tick={{ fill: '#71717a', fontSize: 11 }}
+                  tick={{ fill: '#BFB8AC', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis
-                  tick={{ fill: '#71717a', fontSize: 11 }}
+                  tick={{ fill: '#BFB8AC', fontSize: 11 }}
                   axisLine={false}
                   tickLine={false}
                   allowDecimals={false}
                 />
                 <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(255,255,255,0.04)' }} />
-                <Bar dataKey="pedidos" fill="#facc15" radius={[8, 8, 0, 0]} maxBarSize={60} />
+                <Bar dataKey="pedidos" fill="#FFB000" radius={[8, 8, 0, 0]} maxBarSize={60} />
               </BarChart>
             </ResponsiveContainer>
           </div>

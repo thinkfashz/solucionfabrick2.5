@@ -57,7 +57,7 @@ export default function ContentListPage({ type, title, description, items }: Con
           {items[0] && (
             <Link
               href={`/${type}/${items[0].slug}`}
-              className="group grid gap-6 overflow-hidden rounded-[2rem] border border-white/5 bg-gradient-to-br from-zinc-900 via-zinc-950 to-black p-8 transition hover:border-yellow-400/40 hover:shadow-[0_0_30px_rgba(250,204,21,0.1)] md:grid-cols-3"
+              className="group grid gap-6 overflow-hidden rounded-[2rem] border border-white/5 bg-gradient-to-br from-zinc-900 via-zinc-950 to-black p-8 transition hover:border-yellow-400/40 hover:shadow-[0_0_30px_rgba(255, 176, 0,0.1)] md:grid-cols-3"
             >
               {items[0].cover && (
                 <div className="overflow-hidden rounded-xl md:col-span-1">
@@ -105,7 +105,7 @@ export default function ContentListPage({ type, title, description, items }: Con
                 <Link
                   key={item.slug}
                   href={`/${type}/${item.slug}`}
-                  className="group flex flex-col overflow-hidden rounded-[2rem] border border-white/5 bg-zinc-950/85 transition hover:border-yellow-400/30 hover:shadow-[0_0_20px_rgba(250,204,21,0.05)]"
+                  className="group flex flex-col overflow-hidden rounded-[2rem] border border-white/5 bg-zinc-950/85 transition hover:border-yellow-400/30 hover:shadow-[0_0_20px_rgba(255, 176, 0,0.05)]"
                 >
                   {item.cover ? (
                     <div className="overflow-hidden h-44 w-full bg-gradient-to-br from-yellow-400/10 to-black">

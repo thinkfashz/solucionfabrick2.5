@@ -63,11 +63,11 @@ export type MeasurementResult = {
 };
 
 export const FABRICK_PALETTE = {
-  pearl: '#F8F0E9',
-  oak: '#B6906C',
-  oakLight: '#CCB196',
-  ink: '#171820',
-  inkSoft: '#242630',
+  pearl: '#FFF9EE',
+  oak: '#F5871F',
+  oakLight: '#FFB000',
+  ink: '#08090A',
+  inkSoft: '#1A1B1F',
 } as const;
 
 export const SERVICE_CATEGORIES: ServiceCategory[] = [

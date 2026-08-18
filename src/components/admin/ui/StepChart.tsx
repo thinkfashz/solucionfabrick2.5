@@ -40,7 +40,7 @@ export interface StepChartProps {
 export function StepChart({
   data,
   height = 140,
-  color = '#facc15',
+  color = '#FFB000',
   area = true,
   livePulse = false,
   className,

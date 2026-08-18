@@ -98,18 +98,18 @@ export default function InstallAppPrompt() {
   return (
     <div className="fixed bottom-[calc(11.6rem+env(safe-area-inset-bottom))] right-4 z-[9400] md:hidden">
       {expanded ? (
-        <div className="relative w-[min(19rem,calc(100vw-2rem))] rounded-[1.8rem] bg-[#fffaf5] p-5 text-[#171820] shadow-[0_26px_80px_rgba(23,24,32,.28)] ring-1 ring-[#171820]/12">
-          <button type="button" onClick={close} className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-[#171820]/5 text-[#6b625c] transition hover:bg-[#171820] hover:text-[#f8f0e9]" aria-label="Cerrar instalación"><X className="h-4 w-4" /></button>
-          <div className="flex items-center gap-3 pr-8"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#171820] text-[#ccb196]"><FabrickPeakIcon size={32} /></span><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#765438]">Instalar Fabrick</p><p className="mt-1 text-xs font-semibold text-[#6b625c]">Acceso rápido · pantalla completa</p></div></div>
+        <div className="relative w-[min(19rem,calc(100vw-2rem))] rounded-[1.8rem] bg-[#FFF9EE] p-5 text-[#08090A] shadow-[0_26px_80px_rgba(23,24,32,.28)] ring-1 ring-[#08090A]/12">
+          <button type="button" onClick={close} className="absolute right-4 top-4 grid h-8 w-8 place-items-center rounded-full bg-[#08090A]/5 text-[#BFB8AC] transition hover:bg-[#08090A] hover:text-[#FFF9EE]" aria-label="Cerrar instalación"><X className="h-4 w-4" /></button>
+          <div className="flex items-center gap-3 pr-8"><span className="grid h-12 w-12 place-items-center rounded-2xl bg-[#08090A] text-[#FFB000]"><FabrickPeakIcon size={32} /></span><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#C97700]">Instalar Fabrick</p><p className="mt-1 text-xs font-semibold text-[#BFB8AC]">Acceso rápido · pantalla completa</p></div></div>
           <p className="mt-4 text-xs leading-6 text-[#5f5853]">Añade Soluciones Fabrick a tu pantalla de inicio para abrir la tienda, tus presupuestos y tu cuenta con menos pasos.</p>
           {isIos && !promptEvent ? <p className="mt-4 rounded-xl bg-[#f3ebe4] p-3 text-xs leading-5 text-[#625a54]">Toca <strong>Compartir</strong> y después <strong>Añadir a pantalla de inicio</strong>.</p> : null}
           <div className="mt-5 grid grid-cols-2 gap-2">
-            {promptEvent ? <button type="button" onClick={() => void install()} className="rounded-full bg-[#b6906c] py-3 text-[10px] font-black uppercase tracking-[.14em] text-[#171820] transition hover:bg-[#ccb196]">Instalar</button> : <span />}
-            <button type="button" onClick={close} className="rounded-full bg-[#171820] py-3 text-[10px] font-black uppercase tracking-[.14em] text-[#f8f0e9] transition hover:bg-[#2a2c37]">Ahora no</button>
+            {promptEvent ? <button type="button" onClick={() => void install()} className="rounded-full bg-[#F5871F] py-3 text-[10px] font-black uppercase tracking-[.14em] text-[#08090A] transition hover:bg-[#FFB000]">Instalar</button> : <span />}
+            <button type="button" onClick={close} className="rounded-full bg-[#08090A] py-3 text-[10px] font-black uppercase tracking-[.14em] text-[#FFF9EE] transition hover:bg-[#2a2c37]">Ahora no</button>
           </div>
         </div>
       ) : (
-        <button type="button" onClick={() => setExpanded(true)} className="grid h-12 w-12 place-items-center rounded-full bg-[#b6906c] text-[#171820] shadow-[0_14px_36px_rgba(94,65,43,.28),0_0_0_5px_rgba(248,240,233,.55)] ring-1 ring-[#765438]/35 transition hover:-translate-y-1 active:scale-95" aria-label="Instalar aplicación"><Download className="h-5 w-5" /></button>
+        <button type="button" onClick={() => setExpanded(true)} className="grid h-12 w-12 place-items-center rounded-full bg-[#F5871F] text-[#08090A] shadow-[0_14px_36px_rgba(94,65,43,.28),0_0_0_5px_rgba(248,240,233,.55)] ring-1 ring-[#C97700]/35 transition hover:-translate-y-1 active:scale-95" aria-label="Instalar aplicación"><Download className="h-5 w-5" /></button>
       )}
     </div>
   );

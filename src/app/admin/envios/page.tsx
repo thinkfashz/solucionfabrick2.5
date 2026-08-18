@@ -113,7 +113,7 @@ export default function EnviosPage() {
       {/* Header */}
       <div className="border-b border-white/5 bg-zinc-950 px-6 py-4 flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <Truck className="w-5 h-5 text-[#facc15]" />
+          <Truck className="w-5 h-5 text-[#FFB000]" />
           <div>
             <h1 className="font-bold text-lg">Tarifas de Envío</h1>
             <p className="text-zinc-500 text-xs">Configura costos por región y transportista</p>
@@ -127,7 +127,7 @@ export default function EnviosPage() {
             onClick={saveConfig}
             disabled={saving}
             className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
-            style={{ background: '#facc15', color: '#000' }}
+            style={{ background: '#FFB000', color: '#08090A' }}
           >
             <Save className="w-4 h-4" />
             {saved ? '¡Guardado!' : saving ? 'Guardando…' : 'Guardar'}
@@ -225,7 +225,7 @@ export default function EnviosPage() {
               type="number"
               value={freeThreshold}
               onChange={(e) => setFreeThreshold(Number(e.target.value))}
-              className="bg-zinc-800 border border-white/10 rounded-xl px-4 py-2 text-white text-sm w-40 focus:outline-none focus:border-[#facc15]/50"
+              className="bg-zinc-800 border border-white/10 rounded-xl px-4 py-2 text-white text-sm w-40 focus:outline-none focus:border-[#FFB000]/50"
             />
             <span className="text-zinc-400 text-sm">CLP</span>
             <span className="text-zinc-500 text-xs ml-2">= {formatCLP(freeThreshold)}</span>
@@ -266,14 +266,14 @@ export default function EnviosPage() {
                   value={rate.region}
                   onChange={(e) => updateRate(i, 'region', e.target.value)}
                   placeholder="Nombre región"
-                  className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#facc15]/50"
+                  className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#FFB000]/50"
                 />
               </div>
               <div className="col-span-3">
                 <select
                   value={rate.carrier}
                   onChange={(e) => updateRate(i, 'carrier', e.target.value)}
-                  className="w-full bg-zinc-800 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-[#facc15]/50"
+                  className="w-full bg-zinc-800 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-[#FFB000]/50"
                 >
                   {CARRIERS.map((c) => <option key={c}>{c}</option>)}
                 </select>
@@ -283,7 +283,7 @@ export default function EnviosPage() {
                   value={rate.days}
                   onChange={(e) => updateRate(i, 'days', e.target.value)}
                   placeholder="2-3"
-                  className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#facc15]/50"
+                  className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#FFB000]/50"
                 />
               </div>
               <div className="col-span-2">
@@ -291,7 +291,7 @@ export default function EnviosPage() {
                   type="number"
                   value={rate.price}
                   onChange={(e) => updateRate(i, 'price', Number(e.target.value))}
-                  className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#facc15]/50"
+                  className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#FFB000]/50"
                 />
               </div>
               <div className="col-span-1 flex justify-end">

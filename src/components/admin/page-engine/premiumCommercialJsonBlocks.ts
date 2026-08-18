@@ -41,12 +41,12 @@ function presetType(value: unknown): VisualPreset {
 
 function colors(preset: VisualPreset) {
   if (preset === 'booking-beauty') return { bg: '#28171d', text: '#fff8fb', accent: '#ff7db2', surface: '#fff4f7', dark: '#29141c' };
-  if (preset === 'glass-rose') return { bg: '#1a1117', text: '#fff7fb', accent: '#f48fb1', surface: '#fff1f7', dark: '#241219' };
+  if (preset === 'glass-rose') return { bg: '#1a1117', text: '#FFF9EE', accent: '#f48fb1', surface: '#fff1f7', dark: '#241219' };
   if (preset === 'mobile-app-premium') return { bg: '#0d2443', text: '#f5f9ff', accent: '#6db4ff', surface: '#eff5ff', dark: '#091726' };
-  if (preset === 'luxury-soft') return { bg: '#1b1510', text: '#fff8ef', accent: '#d6a85f', surface: '#f8f1e8', dark: '#1e1409' };
-  if (preset === 'neo-minimal') return { bg: '#111214', text: '#ffffff', accent: '#cfd4dc', surface: '#f6f7f8', dark: '#151719' };
-  if (preset === 'editorial-dark') return { bg: '#070707', text: '#f7f4ef', accent: '#c9a46a', surface: '#f4f1eb', dark: '#17120a' };
-  return { bg: '#0d0a06', text: '#fff7e8', accent: '#f59e0b', surface: '#fff7e9', dark: '#17120a' };
+  if (preset === 'luxury-soft') return { bg: '#1b1510', text: '#fff8ef', accent: '#FFB000', surface: '#f8f1e8', dark: '#1e1409' };
+  if (preset === 'neo-minimal') return { bg: '#111214', text: '#FFF9EE', accent: '#cfd4dc', surface: '#f6f7f8', dark: '#151719' };
+  if (preset === 'editorial-dark') return { bg: '#08090A', text: '#f7f4ef', accent: '#FFB000', surface: '#f4f1eb', dark: '#111214' };
+  return { bg: '#0d0a06', text: '#FFF9EE', accent: '#F5871F', surface: '#fff7e9', dark: '#111214' };
 }
 
 type ColorSet = ReturnType<typeof colors>;

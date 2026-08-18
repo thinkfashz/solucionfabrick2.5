@@ -76,7 +76,7 @@ function asCartProduct(product: CatalogProduct) {
 
 function DetailSkeleton() {
   return (
-    <div className="min-h-screen bg-[#060606] text-white">
+    <div className="min-h-screen bg-[#08090A] text-white">
       <StorefrontHeader onSearch={() => undefined} />
       <main className="mx-auto max-w-6xl px-4 py-10 md:px-8">
         <div className="h-10 w-40 animate-pulse rounded-full bg-white/5" />
@@ -122,7 +122,7 @@ export default function ProductDetailClientV2() {
   if (!product && (loading || !fetchComplete)) return <DetailSkeleton />;
   if (!product)
     return (
-      <div className="min-h-screen bg-[#060606] text-white">
+      <div className="min-h-screen bg-[#08090A] text-white">
         <StorefrontHeader
           onSearch={() => navigateWithTransition("/tienda/catalogo", router)}
         />
@@ -172,7 +172,7 @@ export default function ProductDetailClientV2() {
   }
 
   return (
-    <div className="min-h-screen bg-[#060606] text-white">
+    <div className="min-h-screen bg-[#08090A] text-white">
       <StorefrontHeader
         onSearch={() => navigateWithTransition("/tienda/catalogo", router)}
       />

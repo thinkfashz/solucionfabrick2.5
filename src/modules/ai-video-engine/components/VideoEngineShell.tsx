@@ -52,7 +52,7 @@ function HyperFrameStrip({
             onClick={() => setActiveSceneIndex(idx)}
             className={`group relative h-20 w-14 shrink-0 overflow-hidden rounded-xl border-2 transition-all duration-200 ${
               active
-                ? 'border-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.4)]'
+                ? 'border-yellow-400 shadow-[0_0_12px_rgba(255, 176, 0,0.4)]'
                 : 'border-white/10 opacity-60 hover:border-white/30 hover:opacity-90'
             }`}
           >
@@ -96,12 +96,12 @@ export function VideoEngineShell() {
   const canNext = engine.activeSceneIndex < engine.plan.scenes.length - 1;
 
   return (
-    <div className="flex h-[calc(100vh-80px)] flex-col overflow-hidden bg-[#0a0a0a] text-white">
+    <div className="flex h-[calc(100vh-80px)] flex-col overflow-hidden bg-[#08090A] text-white">
 
       {/* ── App header ── */}
       <header className="flex shrink-0 items-center justify-between gap-3 border-b border-white/8 bg-black/60 px-4 py-3 backdrop-blur-xl sm:px-5">
         <div className="flex min-w-0 items-center gap-2.5">
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-amber-600 text-black shadow-[0_0_20px_rgba(250,204,21,0.3)]">
+          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-yellow-400 to-amber-600 text-black shadow-[0_0_20px_rgba(255, 176, 0,0.3)]">
             <Film className="h-4 w-4" />
           </div>
           <div className="min-w-0">
@@ -176,7 +176,7 @@ export function VideoEngineShell() {
       <div className="min-h-0 flex-1 overflow-hidden lg:grid lg:grid-cols-[280px_1fr_300px]">
 
         {/* LEFT: Brief form */}
-        <div className={`h-full overflow-y-auto border-r border-white/8 bg-[#0c0c0c] scrollbar-hide ${mobileTab === 'brief' ? 'block' : 'hidden lg:block'}`}>
+        <div className={`h-full overflow-y-auto border-r border-white/8 bg-[#08090A] scrollbar-hide ${mobileTab === 'brief' ? 'block' : 'hidden lg:block'}`}>
           <VideoPromptForm
             input={engine.input}
             setInput={engine.setInput}
@@ -191,8 +191,8 @@ export function VideoEngineShell() {
           <div className="relative min-h-0 flex-1 overflow-y-auto p-4">
             {/* Generating overlay */}
             {engine.isGenerating && (
-              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-[#0a0a0a]/92 backdrop-blur-sm">
-                <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-yellow-400/15 to-amber-600/5 shadow-[0_0_30px_rgba(250,204,21,0.12)]">
+              <div className="absolute inset-0 z-20 flex flex-col items-center justify-center gap-4 bg-[#08090A]/92 backdrop-blur-sm">
+                <div className="flex h-16 w-16 items-center justify-center rounded-2xl border border-yellow-400/20 bg-gradient-to-br from-yellow-400/15 to-amber-600/5 shadow-[0_0_30px_rgba(255, 176, 0,0.12)]">
                   <Film className="h-8 w-8 animate-pulse text-yellow-400" />
                 </div>
                 <p className="text-sm font-bold text-zinc-200">Generando plan de video…</p>
@@ -315,7 +315,7 @@ export function VideoEngineShell() {
         </div>
 
         {/* RIGHT: Script + Export */}
-        <div className={`h-full overflow-y-auto border-l border-white/8 bg-[#0c0c0c] scrollbar-hide ${mobileTab === 'script' ? 'block' : 'hidden lg:block'}`}>
+        <div className={`h-full overflow-y-auto border-l border-white/8 bg-[#08090A] scrollbar-hide ${mobileTab === 'script' ? 'block' : 'hidden lg:block'}`}>
           <div className="space-y-3 p-4">
             <SceneEditorPanel
               plan={engine.plan}

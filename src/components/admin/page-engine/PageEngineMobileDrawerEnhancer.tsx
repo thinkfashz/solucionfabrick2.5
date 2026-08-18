@@ -64,7 +64,7 @@ export default function PageEngineMobileDrawerEnhancer() {
       [data-page-engine-status], .sf-live-expiry-pill {
         border: 1px solid rgba(245,158,11,.24);
         background: rgba(245,158,11,.10);
-        color: #fde68a;
+        color: #FFD05A;
       }
     `}</style>
   </>;

@@ -51,7 +51,7 @@ export default async function QuoteSummaryPage({ params }: PageProps) {
         className="pointer-events-none absolute inset-0 opacity-[0.04]"
         style={{
           backgroundImage:
-            'linear-gradient(rgba(250,204,21,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,0.4) 1px, transparent 1px)',
+            'linear-gradient(rgba(255, 176, 0,0.4) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 176, 0,0.4) 1px, transparent 1px)',
           backgroundSize: '60px 60px',
         }}
       />
@@ -97,7 +97,7 @@ export default async function QuoteSummaryPage({ params }: PageProps) {
         <div id="quote-capture" className="space-y-6 bg-black">
 
         {/* Header card */}
-        <header className="overflow-hidden rounded-2xl border border-yellow-400/20 bg-zinc-950/60 p-6 shadow-[0_8px_40px_-12px_rgba(250,204,21,0.25)] backdrop-blur sm:p-8">
+        <header className="overflow-hidden rounded-2xl border border-yellow-400/20 bg-zinc-950/60 p-6 shadow-[0_8px_40px_-12px_rgba(255, 176, 0,0.25)] backdrop-blur sm:p-8">
           <div className="flex flex-wrap items-start justify-between gap-4">
             <div>
               <span className="inline-flex items-center gap-2 rounded-full border border-yellow-400/25 bg-yellow-400/[0.06] px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.25em] text-yellow-300">
@@ -184,7 +184,7 @@ export default async function QuoteSummaryPage({ params }: PageProps) {
         </div>
 
         {/* Totals */}
-        <section className="mt-8 overflow-hidden rounded-2xl border border-yellow-400/25 bg-gradient-to-br from-zinc-950 via-black to-zinc-950 p-6 shadow-[0_8px_40px_-12px_rgba(250,204,21,0.25)] sm:p-8">
+        <section className="mt-8 overflow-hidden rounded-2xl border border-yellow-400/25 bg-gradient-to-br from-zinc-950 via-black to-zinc-950 p-6 shadow-[0_8px_40px_-12px_rgba(255, 176, 0,0.25)] sm:p-8">
           <div className="grid grid-cols-1 gap-2 sm:grid-cols-2 sm:gap-x-12">
             <TotalRow label="Subtotal materiales/servicios" value={formatCLP(proposal.totals.itemsSubtotal)} />
             {proposal.totals.shippingCost > 0 && (

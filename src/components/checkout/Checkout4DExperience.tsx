@@ -82,21 +82,21 @@ function CheckoutField({
 
   const palette = useMemo(() => {
     if (isSuccess) {
-      return { primary: '#22c55e', secondary: '#38bdf8', accent: '#facc15' };
+      return { primary: '#22c55e', secondary: '#38bdf8', accent: '#FFB000' };
     }
     if (outcome === 'rejected') {
-      return { primary: '#ef4444', secondary: '#f97316', accent: '#fca5a5' };
+      return { primary: '#ef4444', secondary: '#F5871F', accent: '#fca5a5' };
     }
     if (outcome === 'pending') {
-      return { primary: '#f59e0b', secondary: '#fde047', accent: '#fef08a' };
+      return { primary: '#F5871F', secondary: '#FFD05A', accent: '#fef08a' };
     }
     if (mode === 'bricks') {
       return { primary: '#0ea5e9', secondary: '#38bdf8', accent: '#7dd3fc' };
     }
     if (mode === 'transfer') {
-      return { primary: '#a3a3a3', secondary: '#d4d4d8', accent: '#f4f4f5' };
+      return { primary: '#a3a3a3', secondary: '#BFB8AC', accent: '#F2DFBB' };
     }
-    return { primary: '#eab308', secondary: '#facc15', accent: '#fde047' };
+    return { primary: '#eab308', secondary: '#FFB000', accent: '#FFD05A' };
   }, [mode, outcome, isSuccess]);
 
   useFrame((state, delta) => {
@@ -267,7 +267,7 @@ export default function Checkout4DExperience(props: Props) {
   }, []);
 
   return (
-    <div className="rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_18%_15%,rgba(250,204,21,0.12),transparent_45%),radial-gradient(circle_at_80%_78%,rgba(56,189,248,0.18),transparent_42%),linear-gradient(160deg,rgba(0,0,0,0.88),rgba(9,9,11,0.95))] p-4 sm:p-5 overflow-hidden">
+    <div className="rounded-[1.8rem] border border-white/10 bg-[radial-gradient(circle_at_18%_15%,rgba(255, 176, 0,0.12),transparent_45%),radial-gradient(circle_at_80%_78%,rgba(56,189,248,0.18),transparent_42%),linear-gradient(160deg,rgba(0,0,0,0.88),rgba(9,9,11,0.95))] p-4 sm:p-5 overflow-hidden">
       <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
         <p className="text-[10px] uppercase tracking-[0.24em] font-bold text-zinc-300">Checkout 4D • Canal Fabrick ⇄ Banco</p>
         <p className="text-[10px] uppercase tracking-[0.2em] font-bold text-zinc-500">{webglAvailable ? 'Vista 3D' : 'Canal seguro'}</p>

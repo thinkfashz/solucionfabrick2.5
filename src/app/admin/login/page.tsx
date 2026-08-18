@@ -76,7 +76,7 @@ function BootSecurityScreen() {
     : 'SF-ADMIN';
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-[#030303] text-white">
+    <div className="relative min-h-screen overflow-hidden bg-[#08090A] text-white">
       {/* Ambient glows */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute left-1/2 top-0 h-[480px] w-[640px] -translate-x-1/2 rounded-full bg-amber-500/8 blur-[120px]" />
@@ -121,7 +121,7 @@ function BootSecurityScreen() {
               className="h-full rounded-full"
               style={{
                 width: `${progress}%`,
-                background: 'linear-gradient(90deg, #f59e0b, #fde68a, #fffbeb)',
+                background: 'linear-gradient(90deg, #F5871F, #FFD05A, #fffbeb)',
                 boxShadow: '0 0 12px rgba(251,191,36,0.7)',
               }}
               transition={{ ease: 'linear' }}
@@ -238,7 +238,7 @@ function BrandPanel() {
   }, []);
 
   return (
-    <div className="relative flex h-full flex-col justify-between overflow-hidden bg-[#030303] p-10">
+    <div className="relative flex h-full flex-col justify-between overflow-hidden bg-[#08090A] p-10">
       {/* Ambient glow */}
       <div className="pointer-events-none absolute inset-0">
         <div className="absolute -left-20 top-1/4 h-[500px] w-[500px] rounded-full bg-amber-500/8 blur-[130px]" />
@@ -487,7 +487,7 @@ export default function AdminLoginPage() {
   const input = 'w-full rounded-2xl border border-white/12 bg-white/[0.04] px-4 py-3.5 text-sm text-white placeholder-white/25 outline-none transition-all focus:border-amber-400/50 focus:bg-white/[0.06] focus:ring-1 focus:ring-amber-400/15 disabled:opacity-40';
 
   return (
-    <div className="flex min-h-screen overflow-hidden bg-[#030303]">
+    <div className="flex min-h-screen overflow-hidden bg-[#08090A]">
       {/* ── Left brand panel (desktop only) ── */}
       <div className="hidden w-[520px] shrink-0 lg:block xl:w-[560px]">
         <BrandPanel />

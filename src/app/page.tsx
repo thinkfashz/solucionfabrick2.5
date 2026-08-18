@@ -7,6 +7,7 @@ import StaticConstructionHero from '@/components/landing/StaticConstructionHero'
 import LandingSections from '@/components/LandingSections';
 import { StoreBottomNav } from '@/components/store/StorefrontChrome';
 import { getCmsSettings, renderCopyright } from '@/lib/cms';
+import { buildFabrickHomeJsonLd } from '@/lib/seo';
 
 export default async function Home() {
   const nonce = (await headers()).get('x-nonce') ?? undefined;
@@ -18,39 +19,12 @@ export default async function Home() {
     tiktok: settings.social_tiktok,
   };
 
-  const jsonLd = {
-    '@context': 'https://schema.org',
-    '@type': 'HomeAndConstructionBusiness',
-    name: 'Soluciones Fabrick',
-    description: 'Construcción, remodelación e instalaciones con calculadoras por especialidad, alcance definido y evaluación técnica.',
-    url: 'https://www.solucionesfabrick.com',
-    logo: 'https://www.solucionesfabrick.com/brand/soluciones-fabrick.svg',
-    image: 'https://www.solucionesfabrick.com/brand/soluciones-fabrick-social.png',
-    address: {
-      '@type': 'PostalAddress',
-      addressLocality: 'Linares',
-      addressRegion: 'Maule',
-      addressCountry: 'CL',
-    },
-    areaServed: ['Región del Maule', 'Santiago', 'Chile'],
-    priceRange: '$$',
-    openingHours: 'Mo-Fr 08:00-18:00',
-    serviceType: [
-      'Construcción de viviendas',
-      'Ampliaciones',
-      'Remodelación integral',
-      'Radier y obra base',
-      'Techumbre',
-      'Gasfitería',
-      'Electricidad domiciliaria',
-      'Climatización',
-    ],
-  };
+  const jsonLd = buildFabrickHomeJsonLd({ socialLinks });
 
   return (
     <>
       <script type="application/ld+json" nonce={nonce} suppressHydrationWarning dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }} />
-      <div className="min-h-screen overflow-x-hidden bg-[#171820] pb-[calc(6rem+env(safe-area-inset-bottom))] selection:bg-[#CCB196] selection:text-[#171820] md:pb-0">
+      <div className="min-h-screen overflow-x-hidden bg-[#08090A] pb-[calc(6rem+env(safe-area-inset-bottom))] selection:bg-[#FFB000] selection:text-[#08090A] md:pb-0">
         <Navbar />
         <main>
           <StaticConstructionHero coverUrl={settings.hero_cover_url || undefined} />

@@ -275,7 +275,7 @@ export default function PresupuestoVisor3DPage() {
   if (!ready) return null;
 
   return (
-    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(244,196,0,0.10),transparent_34%),#050505] px-3 py-5 text-white sm:px-6 sm:py-8">
+    <main className="min-h-screen bg-[radial-gradient(circle_at_top,rgba(244,196,0,0.10),transparent_34%),#08090A] px-3 py-5 text-white sm:px-6 sm:py-8">
       <div className="mx-auto grid max-w-7xl gap-5">
         <header className="flex flex-col gap-4 rounded-[1.5rem] border border-yellow-400/20 bg-zinc-950/90 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-6">
           <div className="min-w-0">

@@ -81,16 +81,16 @@ function buildEmailHtml(p: PresupuestoPro, mensajeAdicional?: string, publicUrl?
     .filter(it => it.nombre)
     .map((item, i) => `
       <tr>
-        <td style="padding:10px 14px;border-bottom:1px solid #e8e0d0;background:${i % 2 ? '#f9f7f2' : '#fff'};">
-          <strong style="color:#1a1a1a;">${esc(item.nombre)}</strong>
-          ${item.descripcion ? `<br><span style="color:#666;font-size:12px;">${esc(item.descripcion)}</span>` : ''}
+        <td style="padding:10px 14px;border-bottom:1px solid #F2DFBB;background:${i % 2 ? '#f9f7f2' : '#FFF9EE'};">
+          <strong style="color:#111214;">${esc(item.nombre)}</strong>
+          ${item.descripcion ? `<br><span style="color:#BFB8AC;font-size:12px;">${esc(item.descripcion)}</span>` : ''}
         </td>
-        <td style="padding:10px 14px;border-bottom:1px solid #e8e0d0;background:${i % 2 ? '#f9f7f2' : '#fff'};text-align:center;color:#555;white-space:nowrap;">${item.cantidad} ${esc(item.unidad)}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #e8e0d0;background:${i % 2 ? '#f9f7f2' : '#fff'};text-align:right;color:#555;white-space:nowrap;">${money(item.precio_unitario)}</td>
-        <td style="padding:10px 14px;border-bottom:1px solid #e8e0d0;background:${i % 2 ? '#f9f7f2' : '#fff'};text-align:right;font-weight:700;white-space:nowrap;">${money(item.total)}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #F2DFBB;background:${i % 2 ? '#f9f7f2' : '#FFF9EE'};text-align:center;color:#6E675D;white-space:nowrap;">${item.cantidad} ${esc(item.unidad)}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #F2DFBB;background:${i % 2 ? '#f9f7f2' : '#FFF9EE'};text-align:right;color:#6E675D;white-space:nowrap;">${money(item.precio_unitario)}</td>
+        <td style="padding:10px 14px;border-bottom:1px solid #F2DFBB;background:${i % 2 ? '#f9f7f2' : '#FFF9EE'};text-align:right;font-weight:700;white-space:nowrap;">${money(item.total)}</td>
       </tr>`).join('');
 
-  const incluyeList = (p.incluye || []).map(i => `<div style="padding:4px 0;border-bottom:1px solid #f0ead8;"><span style="color:#b8860b;margin-right:8px;">✓</span>${esc(i)}</div>`).join('');
+  const incluyeList = (p.incluye || []).map(i => `<div style="padding:4px 0;border-bottom:1px solid #f0ead8;"><span style="color:#C97700;margin-right:8px;">✓</span>${esc(i)}</div>`).join('');
   const noIncluyeList = (p.no_incluye || []).map(i => `<div style="padding:4px 0;border-bottom:1px solid #fae0e0;"><span style="color:#c0392b;margin-right:8px;">✕</span>${esc(i)}</div>`).join('');
 
   return `<!DOCTYPE html>
@@ -98,21 +98,21 @@ function buildEmailHtml(p: PresupuestoPro, mensajeAdicional?: string, publicUrl?
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>Presupuesto — ${esc(p.proveedor || 'Soluciones Fabrick')}</title>
 </head>
-<body style="margin:0;padding:0;background:#f5f3ef;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#1a1a1a;">
-<div style="max-width:680px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+<body style="margin:0;padding:0;background:#f5f3ef;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;color:#111214;">
+<div style="max-width:680px;margin:24px auto;background:#FFF9EE;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
 
   <!-- Header -->
-  <div style="background:#1a1a1a;padding:32px 32px 28px;">
+  <div style="background:#111214;padding:32px 32px 28px;">
     <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:16px;">
       <div>
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.2em;color:#b8860b;margin-bottom:8px;">Presupuesto Comercial</div>
-        <div style="font-size:28px;font-weight:900;color:#fff;line-height:1.1;">${esc(p.titulo || 'Presupuesto')}</div>
-        <div style="margin-top:8px;font-size:14px;color:#aaa;">Para: <strong style="color:#fff;">${esc(p.cliente || '')}</strong>${p.empresa_cliente ? ` · ${esc(p.empresa_cliente)}` : ''}</div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.2em;color:#C97700;margin-bottom:8px;">Presupuesto Comercial</div>
+        <div style="font-size:28px;font-weight:900;color:#FFF9EE;line-height:1.1;">${esc(p.titulo || 'Presupuesto')}</div>
+        <div style="margin-top:8px;font-size:14px;color:#aaa;">Para: <strong style="color:#FFF9EE;">${esc(p.cliente || '')}</strong>${p.empresa_cliente ? ` · ${esc(p.empresa_cliente)}` : ''}</div>
       </div>
       <div style="text-align:right;flex-shrink:0;">
-        <div style="font-size:11px;color:#666;text-transform:uppercase;letter-spacing:0.1em;">Total</div>
+        <div style="font-size:11px;color:#BFB8AC;text-transform:uppercase;letter-spacing:0.1em;">Total</div>
         <div style="font-size:32px;font-weight:900;color:#f0c040;line-height:1;">${money(p.total_con_iva || 0)}</div>
-        <div style="font-size:11px;color:#666;margin-top:4px;">IVA incluido</div>
+        <div style="font-size:11px;color:#BFB8AC;margin-top:4px;">IVA incluido</div>
       </div>
     </div>
     ${fecha ? `<div style="margin-top:16px;font-size:12px;color:#777;">${fecha}${validez ? ` · Válido hasta: ${esc(String(validez))}` : ''}</div>` : ''}
@@ -121,7 +121,7 @@ function buildEmailHtml(p: PresupuestoPro, mensajeAdicional?: string, publicUrl?
   ${mensajeAdicional ? `
   <!-- Mensaje adicional -->
   <div style="padding:20px 32px;background:#fffbf0;border-bottom:2px solid #f0c040;">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#b8860b;margin-bottom:8px;">Mensaje</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#C97700;margin-bottom:8px;">Mensaje</div>
     <div style="font-size:14px;line-height:1.6;color:#333;">${esc(mensajeAdicional).replace(/\n/g, '<br>')}</div>
   </div>` : ''}
 
@@ -134,14 +134,14 @@ function buildEmailHtml(p: PresupuestoPro, mensajeAdicional?: string, publicUrl?
   <!-- Ítems -->
   ${itemRows ? `
   <div style="padding:24px 32px 0;">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#b8860b;margin-bottom:14px;">Detalle de trabajos</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#C97700;margin-bottom:14px;">Detalle de trabajos</div>
     <table style="width:100%;border-collapse:collapse;font-size:13px;">
       <thead>
         <tr style="background:#f5f3ef;">
-          <th style="padding:8px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#888;border-bottom:2px solid #e8e0d0;">Descripción</th>
-          <th style="padding:8px 14px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#888;border-bottom:2px solid #e8e0d0;">Cant.</th>
-          <th style="padding:8px 14px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#888;border-bottom:2px solid #e8e0d0;">P. Unit.</th>
-          <th style="padding:8px 14px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#888;border-bottom:2px solid #e8e0d0;">Total</th>
+          <th style="padding:8px 14px;text-align:left;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#BFB8AC;border-bottom:2px solid #F2DFBB;">Descripción</th>
+          <th style="padding:8px 14px;text-align:center;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#BFB8AC;border-bottom:2px solid #F2DFBB;">Cant.</th>
+          <th style="padding:8px 14px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#BFB8AC;border-bottom:2px solid #F2DFBB;">P. Unit.</th>
+          <th style="padding:8px 14px;text-align:right;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.1em;color:#BFB8AC;border-bottom:2px solid #F2DFBB;">Total</th>
         </tr>
       </thead>
       <tbody>${itemRows}</tbody>
@@ -149,13 +149,13 @@ function buildEmailHtml(p: PresupuestoPro, mensajeAdicional?: string, publicUrl?
   </div>` : ''}
 
   <!-- Totales -->
-  <div style="padding:20px 32px;background:#f9f7f2;border-top:2px solid #e8e0d0;margin-top:${itemRows ? '0' : '0'};">
+  <div style="padding:20px 32px;background:#f9f7f2;border-top:2px solid #F2DFBB;margin-top:${itemRows ? '0' : '0'};">
     <table style="width:100%;max-width:280px;margin-left:auto;font-size:14px;">
-      <tr><td style="padding:4px 0;color:#666;">Neto:</td><td style="padding:4px 0;text-align:right;font-weight:700;">${money(p.valor_neto || 0)}</td></tr>
-      <tr><td style="padding:4px 0;color:#666;">IVA (${p.iva_porcentaje || 19}%):</td><td style="padding:4px 0;text-align:right;font-weight:700;">${money(p.total_iva || 0)}</td></tr>
-      <tr style="border-top:2px solid #e8e0d0;">
+      <tr><td style="padding:4px 0;color:#BFB8AC;">Neto:</td><td style="padding:4px 0;text-align:right;font-weight:700;">${money(p.valor_neto || 0)}</td></tr>
+      <tr><td style="padding:4px 0;color:#BFB8AC;">IVA (${p.iva_porcentaje || 19}%):</td><td style="padding:4px 0;text-align:right;font-weight:700;">${money(p.total_iva || 0)}</td></tr>
+      <tr style="border-top:2px solid #F2DFBB;">
         <td style="padding:8px 0;font-weight:900;font-size:16px;">TOTAL:</td>
-        <td style="padding:8px 0;text-align:right;font-weight:900;font-size:18px;color:#b8860b;">${money(p.total_con_iva || 0)}</td>
+        <td style="padding:8px 0;text-align:right;font-weight:900;font-size:18px;color:#C97700;">${money(p.total_con_iva || 0)}</td>
       </tr>
     </table>
   </div>
@@ -163,27 +163,27 @@ function buildEmailHtml(p: PresupuestoPro, mensajeAdicional?: string, publicUrl?
   <!-- Incluye / No incluye -->
   ${(p.incluye?.length || p.no_incluye?.length) ? `
   <div style="padding:20px 32px;display:flex;gap:20px;flex-wrap:wrap;">
-    ${incluyeList ? `<div style="flex:1;min-width:200px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#b8860b;margin-bottom:10px;">Incluye</div>${incluyeList}</div>` : ''}
+    ${incluyeList ? `<div style="flex:1;min-width:200px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#C97700;margin-bottom:10px;">Incluye</div>${incluyeList}</div>` : ''}
     ${noIncluyeList ? `<div style="flex:1;min-width:200px;"><div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#c0392b;margin-bottom:10px;">No incluye</div>${noIncluyeList}</div>` : ''}
   </div>` : ''}
 
   <!-- Observación técnica -->
   ${p.observacion_tecnica ? `
   <div style="padding:16px 32px;background:#fffbf0;border-top:1px solid #f0ead8;border-bottom:1px solid #f0ead8;">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#b8860b;margin-bottom:8px;">Observaciones técnicas</div>
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.15em;color:#C97700;margin-bottom:8px;">Observaciones técnicas</div>
     <div style="font-size:13px;line-height:1.6;color:#444;">${esc(p.observacion_tecnica).replace(/\n/g, '<br>')}</div>
   </div>` : ''}
 
   <!-- CTA link -->
   ${publicUrl ? `
   <div style="padding:24px 32px;text-align:center;">
-    <a href="${publicUrl}" style="display:inline-block;background:#1a1a1a;color:#f0c040;font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:0.15em;padding:14px 32px;border-radius:50px;text-decoration:none;">Ver presupuesto online →</a>
+    <a href="${publicUrl}" style="display:inline-block;background:#111214;color:#f0c040;font-weight:900;font-size:13px;text-transform:uppercase;letter-spacing:0.15em;padding:14px 32px;border-radius:50px;text-decoration:none;">Ver presupuesto online →</a>
     <div style="margin-top:10px;font-size:11px;color:#aaa;">O copia este link: ${publicUrl}</div>
   </div>` : ''}
 
   <!-- Footer -->
-  <div style="padding:20px 32px;background:#f5f3ef;border-top:1px solid #e8e0d0;font-size:11px;color:#999;text-align:center;">
-    <div style="font-weight:700;color:#555;margin-bottom:4px;">${esc(p.proveedor || 'Soluciones Fabrick')}</div>
+  <div style="padding:20px 32px;background:#f5f3ef;border-top:1px solid #F2DFBB;font-size:11px;color:#BFB8AC;text-align:center;">
+    <div style="font-weight:700;color:#6E675D;margin-bottom:4px;">${esc(p.proveedor || 'Soluciones Fabrick')}</div>
     <div>Este presupuesto fue generado digitalmente y tiene validez oficial.</div>
     ${p.ciudad ? `<div style="margin-top:4px;">${esc(p.ciudad)}</div>` : ''}
   </div>
@@ -313,15 +313,15 @@ export async function PATCH(req: NextRequest) {
 <html lang="es">
 <head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
 <body style="margin:0;padding:0;background:#f5f3ef;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;">
-<div style="max-width:580px;margin:24px auto;background:#fff;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
-  <div style="background:#1a1a1a;padding:24px 28px;">
-    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.2em;color:#b8860b;margin-bottom:6px;">Soluciones Fabrick</div>
-    <div style="font-size:20px;font-weight:900;color:#fff;">Respuesta a tu consulta</div>
+<div style="max-width:580px;margin:24px auto;background:#FFF9EE;border-radius:16px;overflow:hidden;box-shadow:0 4px 24px rgba(0,0,0,0.10);">
+  <div style="background:#111214;padding:24px 28px;">
+    <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.2em;color:#C97700;margin-bottom:6px;">Soluciones Fabrick</div>
+    <div style="font-size:20px;font-weight:900;color:#FFF9EE;">Respuesta a tu consulta</div>
   </div>
   <div style="padding:28px;">
     <p style="font-size:14px;color:#444;line-height:1.7;margin:0;">${mensaje.replace(/\n/g, '<br>')}</p>
   </div>
-  <div style="padding:16px 28px 24px;background:#f9f7f2;border-top:1px solid #e8e0d0;font-size:11px;color:#999;text-align:center;">
+  <div style="padding:16px 28px 24px;background:#f9f7f2;border-top:1px solid #F2DFBB;font-size:11px;color:#BFB8AC;text-align:center;">
     Soluciones Fabrick · Respuesta a presupuesto
   </div>
 </div>

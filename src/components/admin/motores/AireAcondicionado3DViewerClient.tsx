@@ -269,7 +269,7 @@ export default function AireAcondicionado3DViewerClient() {
   }
 
   return (
-    <main className="min-h-screen overflow-x-hidden bg-[#050403] text-white">
+    <main className="min-h-screen overflow-x-hidden bg-[#08090A] text-white">
       <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(251,191,36,.18),transparent_28rem),radial-gradient(circle_at_80%_10%,rgba(249,115,22,.14),transparent_26rem)]" />
       <div className="relative mx-auto grid max-w-[1760px] gap-5 p-3 sm:p-5 xl:grid-cols-[360px_1fr_380px]">
         <aside className="rounded-[2rem] border border-amber-300/15 bg-black/60 p-4 shadow-[0_24px_90px_rgba(0,0,0,.55)] backdrop-blur-2xl">
@@ -435,7 +435,7 @@ function RoomScene({ room, calc, showAirflow }: { room: RoomState; calc: ReturnT
       </mesh>
       <mesh castShadow position={[0, alto - 0.55, -ancho / 2 + 0.08]}>
         <boxGeometry args={[1.35, 0.34, 0.18]} />
-        <meshStandardMaterial color="#f8fafc" metalness={0.1} roughness={0.42} />
+        <meshStandardMaterial color="#FFF9EE" metalness={0.1} roughness={0.42} />
       </mesh>
       <mesh castShadow position={[0, alto - 0.74, -ancho / 2 + 0.18]} rotation={[0.12, 0, 0]}>
         <boxGeometry args={[1.1, 0.04, 0.08]} />
@@ -445,7 +445,7 @@ function RoomScene({ room, calc, showAirflow }: { room: RoomState; calc: ReturnT
       <group position={[2.15, 0.72, outsideZ]}>
         <mesh castShadow receiveShadow>
           <boxGeometry args={[1.0, 0.82, 0.55]} />
-          <meshStandardMaterial color="#e5e7eb" roughness={0.5} metalness={0.15} />
+          <meshStandardMaterial color="#F2DFBB" roughness={0.5} metalness={0.15} />
         </mesh>
         <mesh position={[0, 0, -0.29]}>
           <cylinderGeometry args={[0.24, 0.24, 0.05, 32]} />
@@ -453,11 +453,11 @@ function RoomScene({ room, calc, showAirflow }: { room: RoomState; calc: ReturnT
         </mesh>
         <mesh position={[0, 0, -0.33]} rotation={[Math.PI / 2, 0, 0]}>
           <torusGeometry args={[0.25, 0.012, 10, 48]} />
-          <meshStandardMaterial color="#94a3b8" />
+          <meshStandardMaterial color="#BFB8AC" />
         </mesh>
       </group>
       {showAirflow && <AirFlow largo={largo} ancho={ancho} alto={alto} />}
-      <Text3D position={[-largo / 2 + 0.2, alto + 0.18, -ancho / 2 + 0.05]} fontSize={0.16} color="#fbbf24" anchorX="left">
+      <Text3D position={[-largo / 2 + 0.2, alto + 0.18, -ancho / 2 + 0.05]} fontSize={0.16} color="#FFB000" anchorX="left">
         {`${calc.selected.marca} ${calc.selected.btu} BTU · ${calc.estado}`}
       </Text3D>
     </group>
@@ -471,7 +471,7 @@ function Pipe({ from, to }: { from: [number, number, number]; to: [number, numbe
   const direction = end.clone().sub(start);
   const length = direction.length();
   const quaternion = new THREE.Quaternion().setFromUnitVectors(new THREE.Vector3(0, 1, 0), direction.clone().normalize());
-  return <mesh position={mid} quaternion={quaternion} castShadow><cylinderGeometry args={[0.035, 0.035, length, 18]} /><meshStandardMaterial color="#fbbf24" metalness={0.25} roughness={0.4} /></mesh>;
+  return <mesh position={mid} quaternion={quaternion} castShadow><cylinderGeometry args={[0.035, 0.035, length, 18]} /><meshStandardMaterial color="#FFB000" metalness={0.25} roughness={0.4} /></mesh>;
 }
 
 function AirFlow({ largo, ancho, alto }: { largo: number; ancho: number; alto: number }) {

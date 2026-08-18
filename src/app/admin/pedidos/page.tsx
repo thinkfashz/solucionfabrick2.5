@@ -158,9 +158,9 @@ export default function PedidosPage() {
           <div className="flex items-center gap-3">
             <span
               className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest"
-              style={{ background: connected ? '#22c55e22' : '#f59e0b22', color: connected ? '#22c55e' : '#f59e0b' }}
+              style={{ background: connected ? '#22c55e22' : '#F5871F22', color: connected ? '#22c55e' : '#F5871F' }}
             >
-              <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: connected ? '#22c55e' : '#f59e0b' }} />
+              <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: connected ? '#22c55e' : '#F5871F' }} />
               {connected ? 'Realtime' : 'Polling'}
             </span>
             <button
@@ -214,7 +214,7 @@ export default function PedidosPage() {
               </button>
             </div>
           </div>
-          <StepChart data={dailyOrdersSeries} color="#facc15" height={120} livePulse />
+          <StepChart data={dailyOrdersSeries} color="#FFB000" height={120} livePulse />
         </section>
 
         {/* Filtros */}

@@ -54,7 +54,7 @@ export function StudioHeader({
         <button
           type="button"
           onClick={onToggleCollapse}
-          className="hidden h-7 w-7 items-center justify-center rounded-md text-[#9f8d74] transition-colors hover:bg-[rgba(255,138,31,.10)] hover:text-[#fff1d6] lg:flex"
+          className="hidden h-7 w-7 items-center justify-center rounded-md text-[#BFB8AC] transition-colors hover:bg-[rgba(245, 135, 31,.10)] hover:text-[#FFF9EE] lg:flex"
           aria-label={collapsed ? 'Expandir menú' : 'Colapsar menú'}
         >
           <PanelLeft className="h-4 w-4" />
@@ -64,7 +64,7 @@ export function StudioHeader({
         <button
           type="button"
           onClick={onOpenMobile}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-[#9f8d74] transition-colors hover:bg-[rgba(255,138,31,.10)] hover:text-[#fff1d6] lg:hidden"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-[#BFB8AC] transition-colors hover:bg-[rgba(245, 135, 31,.10)] hover:text-[#FFF9EE] lg:hidden"
           aria-label="Abrir menú"
         >
           <Menu className="h-4 w-4" />
@@ -75,7 +75,7 @@ export function StudioHeader({
 
         {/* Breadcrumb */}
         <div className="flex min-w-0 items-center gap-1.5">
-          <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-[#9f8d74]" />
+          <ChevronRight className="h-3.5 w-3.5 flex-shrink-0 text-[#BFB8AC]" />
           <span className="truncate text-[12px] font-medium text-[#dccab0]">
             {breadcrumb}
           </span>
@@ -88,13 +88,13 @@ export function StudioHeader({
         <button
           type="button"
           onClick={onOpenPalette}
-          className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] text-[#9f8d74] transition-colors hover:bg-[rgba(255,138,31,.10)] hover:text-[#fff1d6]"
+          className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] text-[#BFB8AC] transition-colors hover:bg-[rgba(245, 135, 31,.10)] hover:text-[#FFF9EE]"
           title="Buscar (⌘K)"
           aria-label="Abrir buscador"
         >
           <Search className="h-3.5 w-3.5" />
           <span className="hidden sm:inline">Buscar</span>
-          <kbd className="hidden rounded border border-[rgba(255,246,230,.10)] bg-[rgba(255,246,230,.04)] px-1 py-px font-mono text-[9px] text-[#9f8d74] sm:inline-block">
+          <kbd className="hidden rounded border border-[rgba(255,246,230,.10)] bg-[rgba(255,246,230,.04)] px-1 py-px font-mono text-[9px] text-[#BFB8AC] sm:inline-block">
             ⌘K
           </kbd>
         </button>
@@ -104,7 +104,7 @@ export function StudioHeader({
           <button
             type="button"
             onClick={onSwitchToFabrick}
-            className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#9f8d74] transition-colors hover:bg-[rgba(255,138,31,.10)] hover:text-[#ffd54a]"
+            className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[10px] font-bold uppercase tracking-[0.18em] text-[#BFB8AC] transition-colors hover:bg-[rgba(245, 135, 31,.10)] hover:text-[#FFD05A]"
             title="Cambiar a Fabrick Classic"
           >
             <Palette className="h-3.5 w-3.5" />
@@ -116,7 +116,7 @@ export function StudioHeader({
         <button
           type="button"
           onClick={onToggleDarkMode}
-          className="flex h-7 w-7 items-center justify-center rounded-md text-[#9f8d74] transition-colors hover:bg-[rgba(255,138,31,.10)] hover:text-[#fff1d6]"
+          className="flex h-7 w-7 items-center justify-center rounded-md text-[#BFB8AC] transition-colors hover:bg-[rgba(245, 135, 31,.10)] hover:text-[#FFF9EE]"
           aria-label={darkMode ? 'Cambiar a modo claro' : 'Cambiar a modo oscuro'}
           title={darkMode ? 'Modo claro' : 'Modo oscuro'}
         >
@@ -129,7 +129,7 @@ export function StudioHeader({
         {/* Ver tienda */}
         <Link
           href="/tienda"
-          className="hidden h-7 items-center gap-1 rounded-md px-2 text-[11px] text-[#9f8d74] transition-colors hover:bg-[rgba(255,138,31,.10)] hover:text-[#fff1d6] sm:flex"
+          className="hidden h-7 items-center gap-1 rounded-md px-2 text-[11px] text-[#BFB8AC] transition-colors hover:bg-[rgba(245, 135, 31,.10)] hover:text-[#FFF9EE] sm:flex"
         >
           Ver tienda
           <ExternalLink className="h-3 w-3" />
@@ -139,7 +139,7 @@ export function StudioHeader({
         <button
           type="button"
           onClick={onLogout}
-          className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] text-[#9f8d74] transition-colors hover:bg-[rgba(255,107,116,.10)] hover:text-[#ff6b74]"
+          className="flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] text-[#BFB8AC] transition-colors hover:bg-[rgba(255,107,116,.10)] hover:text-[#ff6b74]"
           title="Cerrar sesión"
         >
           <LogOut className="h-3.5 w-3.5" />

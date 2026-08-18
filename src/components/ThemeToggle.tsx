@@ -49,8 +49,8 @@ export default function ThemeToggle() {
         'group relative inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-full',
         'border border-[var(--border-main,rgba(255,255,255,0.12))] bg-[var(--glass-bg,rgba(255,255,255,0.04))] backdrop-blur-sm',
         'transition-all duration-300 ease-out',
-        'hover:border-[var(--accent,#facc15)]/60',
-        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent,#facc15)]/60',
+        'hover:border-[var(--accent,#FFB000)]/60',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[var(--accent,#FFB000)]/60',
       ].join(' ')}
     >
       {/* Background tint */}
@@ -66,7 +66,7 @@ export default function ThemeToggle() {
           animate={{ rotate: 0, opacity: 1, scale: 1 }}
           exit={{ rotate: 90, opacity: 0, scale: 0.6 }}
           transition={{ duration: 0.28, ease: 'easeOut' }}
-          className="relative z-10 flex items-center justify-center text-[var(--accent,#facc15)]"
+          className="relative z-10 flex items-center justify-center text-[var(--accent,#FFB000)]"
         >
           <Icon size={16} strokeWidth={2.4} />
         </motion.span>
@@ -75,7 +75,7 @@ export default function ThemeToggle() {
       {/* Pequeño dot indicador del tema */}
       <span
         aria-hidden
-        className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-0.5 w-3 rounded-full bg-[var(--accent,#facc15)] opacity-70"
+        className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 h-0.5 w-3 rounded-full bg-[var(--accent,#FFB000)] opacity-70"
       />
     </button>
   );

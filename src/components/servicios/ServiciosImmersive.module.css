@@ -1,9 +1,9 @@
 .root {
-  --page-bg: #090806;
+  --page-bg: #08090A;
   min-height: 100vh;
   overflow-x: clip;
   background: var(--page-bg);
-  color: #fff;
+  color: #FFF9EE;
   transition: background-color .7s ease;
 }
 
@@ -24,7 +24,7 @@
 .hazardTape {
   height: 18px;
   width: 100%;
-  background: repeating-linear-gradient(132deg, #090909 0 20px, #090909 20px 29px, #ffd400 29px 49px, #ffd400 49px 58px);
+  background: repeating-linear-gradient(132deg, #090909 0 20px, #090909 20px 29px, #FFB000 29px 49px, #FFB000 49px 58px);
   box-shadow: 0 1px 0 rgba(255,255,255,.12), 0 10px 28px rgba(0,0,0,.24);
 }
 
@@ -36,8 +36,8 @@
   padding: clamp(8rem, 12vw, 10.5rem) 1rem 4.5rem;
   background:
     radial-gradient(circle at 16% 12%, rgba(255,255,255,.34), transparent 22rem),
-    linear-gradient(118deg, #ffd400 0 62%, #111 62% 100%);
-  color: #0c0c0c;
+    linear-gradient(118deg, #FFB000 0 62%, #111214 62% 100%);
+  color: #08090A;
 }
 
 .hero::after {
@@ -83,9 +83,9 @@
   max-width: 880px;
   overflow: hidden;
   border: 1px solid rgba(255,255,255,.08);
-  background: #0c0c0c;
+  background: #08090A;
   padding: clamp(1.25rem, 3vw, 2.2rem) clamp(1rem, 3vw, 2.5rem);
-  color: #ffd400;
+  color: #FFB000;
   transform: rotate(-1.6deg);
   box-shadow: 0 28px 70px rgba(0,0,0,.24);
 }
@@ -97,7 +97,7 @@
   left: 0;
   right: 0;
   height: 12px;
-  background: repeating-linear-gradient(132deg, #ffd400 0 19px, #ffd400 19px 28px, #0c0c0c 28px 47px, #0c0c0c 47px 56px);
+  background: repeating-linear-gradient(132deg, #FFB000 0 19px, #FFB000 19px 28px, #08090A 28px 47px, #08090A 47px 56px);
 }
 
 .heroBand::before { top: 0; }
@@ -146,15 +146,15 @@
 }
 
 .primaryButton {
-  background: #0c0c0c;
-  color: #ffd400;
+  background: #08090A;
+  color: #FFB000;
   box-shadow: 0 15px 32px rgba(0,0,0,.22);
 }
 
 .secondaryButton {
   border: 1px solid rgba(0,0,0,.26);
   background: rgba(255,255,255,.42);
-  color: #0c0c0c;
+  color: #08090A;
   backdrop-filter: blur(10px);
 }
 
@@ -172,7 +172,7 @@
   border-radius: 2rem;
   background: rgba(13,13,13,.88);
   padding: clamp(1.25rem, 3vw, 2rem);
-  color: #fff;
+  color: #FFF9EE;
   box-shadow: 0 28px 80px rgba(0,0,0,.32);
   backdrop-filter: blur(14px);
 }
@@ -215,7 +215,7 @@
   border-bottom: 1px solid rgba(255,255,255,.08);
   background:
     radial-gradient(circle at 50% 42%, rgba(255,212,0,.12), transparent 24rem),
-    linear-gradient(180deg, #0b0a08, #050505);
+    linear-gradient(180deg, #0b0a08, #08090A);
   padding: clamp(5.5rem, 9vw, 8rem) 1rem;
 }
 
@@ -230,7 +230,7 @@
 
 .kicker {
   margin: 0;
-  color: #ffd400;
+  color: #FFB000;
   font-size: .66rem;
   font-weight: 900;
   letter-spacing: .26em;
@@ -328,7 +328,7 @@
   place-items: center;
   border-radius: 14px;
   background: var(--accent);
-  color: var(--icon-color, #0b0b0b);
+  color: var(--icon-color, #08090A);
 }
 
 .orbitCard b {
@@ -371,7 +371,7 @@
   place-items: center;
   border-radius: 24px;
   background: var(--accent);
-  color: var(--icon-color, #0c0c0c);
+  color: var(--icon-color, #08090A);
   box-shadow: 0 20px 46px color-mix(in srgb, var(--accent) 28%, transparent);
 }
 
@@ -418,7 +418,7 @@
   border-radius: 1.65rem;
   background: rgba(255,255,255,.045);
   padding: 1rem;
-  color: #fff;
+  color: #FFF9EE;
   text-align: left;
   transition: transform .25s ease, border-color .25s ease, background .25s ease;
 }
@@ -436,7 +436,7 @@
   place-items: center;
   border-radius: 15px;
   background: var(--accent);
-  color: var(--icon-color, #0b0b0b);
+  color: var(--icon-color, #08090A);
 }
 
 .mobileServiceCard b {
@@ -476,7 +476,7 @@
   place-items: center;
   border-radius: 18px;
   background: var(--accent);
-  color: var(--icon-color, #0b0b0b);
+  color: var(--icon-color, #08090A);
 }
 
 .mobileProjection h3 {
@@ -508,7 +508,7 @@
   border: 1px solid rgba(255,255,255,.1);
   border-radius: 50%;
   background: rgba(255,255,255,.05);
-  color: #fff;
+  color: #FFF9EE;
 }
 
 .carouselControls span {
@@ -520,11 +520,11 @@
 }
 
 .servicePanel {
-  --service-bg: #111;
-  --service-text: #fff;
+  --service-bg: #111214;
+  --service-text: #FFF9EE;
   --service-muted: rgba(255,255,255,.62);
-  --service-accent: #ffd400;
-  --service-icon: #111;
+  --service-accent: #FFB000;
+  --service-icon: #111214;
   position: relative;
   isolation: isolate;
   min-height: 108svh;
@@ -745,9 +745,9 @@
   position: relative;
   isolation: isolate;
   overflow: hidden;
-  background: #ffd400;
+  background: #FFB000;
   padding: clamp(5rem, 9vw, 8rem) 1rem clamp(8rem, 12vw, 10rem);
-  color: #0b0b0b;
+  color: #08090A;
 }
 
 .finalCtaInner {
@@ -783,7 +783,7 @@
 
 .footer {
   border-top: 1px solid rgba(255,255,255,.1);
-  background: #070707;
+  background: #08090A;
   padding: 2rem 1rem 7rem;
   color: rgba(255,255,255,.5);
 }
@@ -825,7 +825,7 @@
   .hero {
     background:
       radial-gradient(circle at 20% 8%, rgba(255,255,255,.32), transparent 16rem),
-      linear-gradient(165deg, #ffd400 0 78%, #111 78% 100%);
+      linear-gradient(165deg, #FFB000 0 78%, #111214 78% 100%);
   }
   .heroBand { transform: rotate(-.8deg); }
   .heroAside { margin-top: .5rem; }

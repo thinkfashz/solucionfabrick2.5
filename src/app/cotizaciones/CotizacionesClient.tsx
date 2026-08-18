@@ -336,7 +336,7 @@ export default function CotizacionesClient() {
           </button>
           <Link
             href="/cotizaciones/enviar"
-            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-yellow-400 text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-white transition-colors shadow-[0_0_30px_rgba(250,204,21,0.2)]"
+            className="inline-flex items-center gap-2 px-6 py-3 rounded-full bg-yellow-400 text-black text-[11px] font-black uppercase tracking-[0.2em] hover:bg-white transition-colors shadow-[0_0_30px_rgba(255, 176, 0,0.2)]"
           >
             <Send className="w-4 h-4" /> Enviar para cotizar
           </Link>

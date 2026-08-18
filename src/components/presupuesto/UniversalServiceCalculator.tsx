@@ -276,7 +276,7 @@ export default function UniversalServiceCalculator() {
   return (
     <section id="calculadora-universal" className="relative isolate overflow-hidden bg-[#080806] px-4 pb-32 pt-24 text-white sm:px-6 sm:pt-28 lg:px-8 lg:pb-24">
       <div aria-hidden className="absolute inset-0 bg-[linear-gradient(90deg,rgba(255,255,255,.035)_1px,transparent_1px),linear-gradient(rgba(255,255,255,.035)_1px,transparent_1px)] [background-size:52px_52px]" />
-      <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,rgba(250,204,21,.16),transparent_27rem),radial-gradient(circle_at_4%_86%,rgba(249,115,22,.12),transparent_30rem),linear-gradient(180deg,#17130d_0%,#080806_55%,#080806_100%)]" />
+      <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,rgba(255, 176, 0,.16),transparent_27rem),radial-gradient(circle_at_4%_86%,rgba(249,115,22,.12),transparent_30rem),linear-gradient(180deg,#17130d_0%,#080806_55%,#080806_100%)]" />
 
       <div className="relative mx-auto max-w-[1180px]">
         <header className="max-w-3xl">
@@ -292,7 +292,7 @@ export default function UniversalServiceCalculator() {
         </header>
 
         <div ref={stageRef} tabIndex={-1} className="mt-7 scroll-mt-24 outline-none">
-          <div className="overflow-hidden rounded-[1.9rem] bg-[#11100d]/88 shadow-[0_32px_100px_rgba(0,0,0,.48)] ring-1 ring-white/10 backdrop-blur-xl">
+          <div className="overflow-hidden rounded-[1.9rem] bg-[#111214]/88 shadow-[0_32px_100px_rgba(0,0,0,.48)] ring-1 ring-white/10 backdrop-blur-xl">
             <div className="flex items-center gap-2 border-b border-white/10 px-4 py-3 sm:px-6">
               <StagePill number={1} active={stage === 1} done={stage > 1} label="Elige" />
               <span className={stage > 1 ? 'h-px flex-1 bg-yellow-300/70' : 'h-px flex-1 bg-white/10'} />
@@ -314,7 +314,7 @@ export default function UniversalServiceCalculator() {
                         const CategoryIcon = item.icon;
                         const active = category === item.id;
                         return (
-                          <button key={item.id} type="button" onClick={() => setCategory(item.id)} className={active ? 'flex shrink-0 items-center gap-2 rounded-full bg-yellow-300 px-4 py-2.5 text-xs font-black text-black shadow-[0_8px_28px_rgba(250,204,21,.20)]' : 'flex shrink-0 items-center gap-2 rounded-full bg-white/[.055] px-4 py-2.5 text-xs font-black text-white/65 transition hover:bg-white/[.11] hover:text-white'}>
+                          <button key={item.id} type="button" onClick={() => setCategory(item.id)} className={active ? 'flex shrink-0 items-center gap-2 rounded-full bg-yellow-300 px-4 py-2.5 text-xs font-black text-black shadow-[0_8px_28px_rgba(255, 176, 0,.20)]' : 'flex shrink-0 items-center gap-2 rounded-full bg-white/[.055] px-4 py-2.5 text-xs font-black text-white/65 transition hover:bg-white/[.11] hover:text-white'}>
                             <CategoryIcon className="h-4 w-4" /> {item.label}
                           </button>
                         );
@@ -373,7 +373,7 @@ export default function UniversalServiceCalculator() {
                       </div>
                       <aside className="order-first lg:order-none">
                         <MeasurementPlan service={service} quantity={selectedQuantity} length={long} width={wide} height={tall} facadeMode={facadeMode} />
-                        <div className="mt-3 rounded-[1.45rem] bg-[linear-gradient(135deg,#facc15,#fb923c)] p-5 text-black">
+                        <div className="mt-3 rounded-[1.45rem] bg-[linear-gradient(135deg,#FFB000,#fb923c)] p-5 text-black">
                           <p className="text-[10px] font-black uppercase tracking-[.2em] text-black/58">Rango calculado</p>
                           <p className="mt-2 text-2xl font-black tracking-[-.055em]">{formatCLP(selectedLow)} – {formatCLP(selectedHigh)}</p>
                           <div className="mt-4 flex items-center justify-between border-t border-black/15 pt-3 text-xs"><span className="font-bold text-black/62">Promedio orientativo</span><b>{formatCLP(selectedAverage)}</b></div>
@@ -404,7 +404,7 @@ export default function UniversalServiceCalculator() {
                           <Field label="Comuna o ciudad" value={customer.place} onChange={(value) => setCustomer((current) => ({ ...current, place: value }))} placeholder="Ej. Linares" />
                           <label className="block sm:col-span-2"><span className="text-[10px] font-black uppercase tracking-[.16em] text-white/42">Detalle importante</span><textarea value={customer.note} onChange={(event) => setCustomer((current) => ({ ...current, note: event.target.value }))} placeholder="Fotos, accesos, medidas exactas o fecha ideal…" className="mt-2 min-h-24 w-full resize-none rounded-2xl bg-white/[.055] px-4 py-3 text-sm text-white outline-none ring-1 ring-white/10 placeholder:text-white/30 focus:ring-yellow-300/60" /></label>
                         </div>
-                        <button type="submit" className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(90deg,#facc15,#fb923c)] px-5 text-sm font-black text-black transition hover:brightness-110"><MessageCircle className="h-4 w-4" /> Enviar boleta a WhatsApp</button>
+                        <button type="submit" className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[linear-gradient(90deg,#FFB000,#fb923c)] px-5 text-sm font-black text-black transition hover:brightness-110"><MessageCircle className="h-4 w-4" /> Enviar boleta a WhatsApp</button>
                         <button type="button" onClick={() => moveTo(1)} className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl text-xs font-black text-white/56 transition hover:bg-white/[.055] hover:text-white"><Plus className="h-4 w-4" /> Añadir otro servicio</button>
                       </form>
                     </div>
@@ -483,32 +483,32 @@ function MeasurementPlan({ service, quantity, length, width, height, facadeMode 
   return (
     <article className="overflow-hidden rounded-[1.55rem] bg-[#0b0b09] p-5 ring-1 ring-white/10">
       <div className="flex items-start justify-between gap-3"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-yellow-300">Plano reactivo</p><h3 className="mt-2 text-lg font-black">Tu medida, en contexto.</h3></div><span className="rounded-full bg-white/[.06] px-3 py-1.5 text-[10px] font-black text-white/63">{formatNumber(quantity)} {service.unit}</span></div>
-      <div className="mt-5 grid min-h-[235px] place-items-center overflow-hidden rounded-[1.2rem] bg-[linear-gradient(135deg,rgba(250,204,21,.11),rgba(255,255,255,.02))]">
+      <div className="mt-5 grid min-h-[235px] place-items-center overflow-hidden rounded-[1.2rem] bg-[linear-gradient(135deg,rgba(255, 176, 0,.11),rgba(255,255,255,.02))]">
         {isArea ? (
           <svg viewBox="0 0 300 260" className="h-[245px] w-full" role="img" aria-label="Plano de superficie con medidas">
             <defs><pattern id="plan-grid" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M 16 0 L 0 0 0 16" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="1" /></pattern></defs>
             <rect width="300" height="260" fill="url(#plan-grid)" />
-            <rect x={(300 - planWidth) / 2} y={(230 - planHeight) / 2} width={planWidth} height={planHeight} rx="12" fill="rgba(250,204,21,.14)" stroke="#fde047" strokeWidth="2" />
-            <path d={'M ' + ((300 - planWidth) / 2) + ' 34 H ' + ((300 + planWidth) / 2)} stroke="#fde047" strokeWidth="1.5" />
-            <path d={'M ' + ((300 - planWidth) / 2) + ' 28 l -7 6 7 6 M ' + ((300 + planWidth) / 2) + ' 28 l 7 6 -7 6'} stroke="#fde047" fill="none" strokeWidth="1.5" />
-            <text x="150" y="24" textAnchor="middle" fill="#fde047" fontSize="12" fontWeight="800">{formatNumber(length)} m {facadeMode ? 'de ancho' : 'de largo'}</text>
-            <path d={'M ' + ((300 - planWidth) / 2 - 18) + ' ' + ((230 - planHeight) / 2) + ' V ' + ((230 + planHeight) / 2)} stroke="#fde047" strokeWidth="1.5" />
-            <text x={(300 - planWidth) / 2 - 29} y="132" textAnchor="middle" fill="#fde047" fontSize="12" fontWeight="800" transform={'rotate(-90 ' + ((300 - planWidth) / 2 - 29) + ' 132)'}>{formatNumber(displayHeight)} m {facadeMode ? 'de alto' : 'de ancho'}</text>
-            <text x="150" y="127" textAnchor="middle" fill="#ffffff" fontSize="28" fontWeight="900">{formatNumber(quantity)} m²</text>
+            <rect x={(300 - planWidth) / 2} y={(230 - planHeight) / 2} width={planWidth} height={planHeight} rx="12" fill="rgba(255, 176, 0,.14)" stroke="#FFD05A" strokeWidth="2" />
+            <path d={'M ' + ((300 - planWidth) / 2) + ' 34 H ' + ((300 + planWidth) / 2)} stroke="#FFD05A" strokeWidth="1.5" />
+            <path d={'M ' + ((300 - planWidth) / 2) + ' 28 l -7 6 7 6 M ' + ((300 + planWidth) / 2) + ' 28 l 7 6 -7 6'} stroke="#FFD05A" fill="none" strokeWidth="1.5" />
+            <text x="150" y="24" textAnchor="middle" fill="#FFD05A" fontSize="12" fontWeight="800">{formatNumber(length)} m {facadeMode ? 'de ancho' : 'de largo'}</text>
+            <path d={'M ' + ((300 - planWidth) / 2 - 18) + ' ' + ((230 - planHeight) / 2) + ' V ' + ((230 + planHeight) / 2)} stroke="#FFD05A" strokeWidth="1.5" />
+            <text x={(300 - planWidth) / 2 - 29} y="132" textAnchor="middle" fill="#FFD05A" fontSize="12" fontWeight="800" transform={'rotate(-90 ' + ((300 - planWidth) / 2 - 29) + ' 132)'}>{formatNumber(displayHeight)} m {facadeMode ? 'de alto' : 'de ancho'}</text>
+            <text x="150" y="127" textAnchor="middle" fill="#FFF9EE" fontSize="28" fontWeight="900">{formatNumber(quantity)} m²</text>
             <text x="150" y="149" textAnchor="middle" fill="rgba(255,255,255,.57)" fontSize="11" fontWeight="700">{facadeMode ? 'Superficie de fachada' : 'Superficie de planta'}</text>
           </svg>
         ) : isLine ? (
           <svg viewBox="0 0 300 260" className="h-[245px] w-full" role="img" aria-label="Plano lineal con medida">
             <defs><pattern id="line-grid" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M 16 0 L 0 0 0 16" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="1" /></pattern></defs><rect width="300" height="260" fill="url(#line-grid)" />
-            <path d="M 46 130 H 254" stroke="rgba(250,204,21,.2)" strokeWidth="18" strokeLinecap="round" /><path d="M 46 130 H 254" stroke="#fde047" strokeWidth="4" strokeLinecap="round" />
-            <circle cx="46" cy="130" r="10" fill="#0b0b09" stroke="#fde047" strokeWidth="3" /><circle cx="254" cy="130" r="10" fill="#0b0b09" stroke="#fde047" strokeWidth="3" />
-            <text x="150" y="103" textAnchor="middle" fill="#ffffff" fontSize="28" fontWeight="900">{formatNumber(quantity)} ml</text><text x="150" y="158" textAnchor="middle" fill="rgba(255,255,255,.57)" fontSize="11" fontWeight="700">Tramo aproximado a intervenir</text>
+            <path d="M 46 130 H 254" stroke="rgba(255, 176, 0,.2)" strokeWidth="18" strokeLinecap="round" /><path d="M 46 130 H 254" stroke="#FFD05A" strokeWidth="4" strokeLinecap="round" />
+            <circle cx="46" cy="130" r="10" fill="#0b0b09" stroke="#FFD05A" strokeWidth="3" /><circle cx="254" cy="130" r="10" fill="#0b0b09" stroke="#FFD05A" strokeWidth="3" />
+            <text x="150" y="103" textAnchor="middle" fill="#FFF9EE" fontSize="28" fontWeight="900">{formatNumber(quantity)} ml</text><text x="150" y="158" textAnchor="middle" fill="rgba(255,255,255,.57)" fontSize="11" fontWeight="700">Tramo aproximado a intervenir</text>
           </svg>
         ) : (
           <svg viewBox="0 0 300 260" className="h-[245px] w-full" role="img" aria-label="Representación de unidades">
             <defs><pattern id="point-grid" width="16" height="16" patternUnits="userSpaceOnUse"><path d="M 16 0 L 0 0 0 16" fill="none" stroke="rgba(255,255,255,.1)" strokeWidth="1" /></pattern></defs><rect width="300" height="260" fill="url(#point-grid)" />
-            {Array.from({ length: Math.min(8, Math.max(1, Math.round(quantity)) ) }).map((_, index) => <circle key={index} cx={64 + (index % 4) * 58} cy={90 + Math.floor(index / 4) * 62} r="16" fill="rgba(250,204,21,.13)" stroke="#fde047" strokeWidth="2" />)}
-            <text x="150" y="218" textAnchor="middle" fill="#ffffff" fontSize="28" fontWeight="900">{formatNumber(quantity)} {service.unit}</text>
+            {Array.from({ length: Math.min(8, Math.max(1, Math.round(quantity)) ) }).map((_, index) => <circle key={index} cx={64 + (index % 4) * 58} cy={90 + Math.floor(index / 4) * 62} r="16" fill="rgba(255, 176, 0,.13)" stroke="#FFD05A" strokeWidth="2" />)}
+            <text x="150" y="218" textAnchor="middle" fill="#FFF9EE" fontSize="28" fontWeight="900">{formatNumber(quantity)} {service.unit}</text>
           </svg>
         )}
       </div>
@@ -520,14 +520,14 @@ function MeasurementPlan({ service, quantity, length, width, height, facadeMode 
 function StoreRibbon({ products, service, onAdd, cartItems }: { products: CatalogProduct[]; service: Service; onAdd: (product: CatalogProduct) => void; cartItems: number }) {
   const ServiceIcon = service.icon;
   return (
-    <section className="relative mt-7 overflow-hidden rounded-[1.7rem] bg-[linear-gradient(112deg,rgba(250,204,21,.20),rgba(24,20,13,.94)_46%,rgba(249,115,22,.18))] p-4 sm:p-5">
+    <section className="relative mt-7 overflow-hidden rounded-[1.7rem] bg-[linear-gradient(112deg,rgba(255, 176, 0,.20),rgba(24,20,13,.94)_46%,rgba(249,115,22,.18))] p-4 sm:p-5">
       <div aria-hidden className="absolute inset-y-0 right-0 w-1/2 bg-[radial-gradient(circle_at_70%_40%,rgba(255,255,255,.12),transparent_60%)]" />
       <div className="relative flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-start gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-yellow-300 text-black shadow-[0_10px_26px_rgba(250,204,21,.22)]"><ServiceIcon className="h-4.5 w-4.5" /></span><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-yellow-200">Productos relacionados</p><h3 className="mt-1 text-lg font-black">Para complementar {service.short.toLocaleLowerCase('es')}.</h3></div></div>
+        <div className="flex items-start gap-3"><span className="grid h-10 w-10 place-items-center rounded-2xl bg-yellow-300 text-black shadow-[0_10px_26px_rgba(255, 176, 0,.22)]"><ServiceIcon className="h-4.5 w-4.5" /></span><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-yellow-200">Productos relacionados</p><h3 className="mt-1 text-lg font-black">Para complementar {service.short.toLocaleLowerCase('es')}.</h3></div></div>
         <Link href="/tienda" className="inline-flex items-center gap-1 rounded-full bg-white/[.09] px-3 py-2 text-xs font-black text-yellow-100 transition hover:bg-white hover:text-black">Ver tienda <ArrowRight className="h-3.5 w-3.5" /></Link>
       </div>
       <div className="fabrick-scroll relative mt-4 flex gap-3 overflow-x-auto pb-2">
-        {products.map((product) => <article key={product.id} className="w-[202px] shrink-0 overflow-hidden rounded-[1.35rem] bg-[#100e0a]/86 shadow-[0_16px_34px_rgba(0,0,0,.22)]"><div className="relative h-24 overflow-hidden bg-[linear-gradient(135deg,rgba(250,204,21,.18),rgba(0,0,0,.18))]"><img src={product.img || product.image_url || ''} alt="" className="h-full w-full object-cover mix-blend-luminosity opacity-85 transition duration-500 hover:scale-105 hover:opacity-100" loading="lazy" onError={(event) => { event.currentTarget.style.opacity = '0'; }} /><span className="absolute left-3 top-3 rounded-full bg-black/50 px-2 py-1 text-[9px] font-black uppercase tracking-[.11em] text-yellow-100">{product.category}</span></div><div className="p-3.5"><p className="line-clamp-2 min-h-9 text-xs font-black leading-4">{product.name}</p><p className="mt-1.5 text-[11px] leading-4 text-white/48">{product.tagline}</p><div className="mt-3 flex items-center justify-between gap-2"><p className="text-sm font-black text-yellow-200">{formatCLP(product.price)}</p><button type="button" onClick={() => onAdd(product)} className="grid h-9 w-9 place-items-center rounded-xl bg-yellow-300 text-black transition hover:bg-white" aria-label={'Añadir ' + product.name}><ShoppingBag className="h-4 w-4" /></button></div></div></article>)}
+        {products.map((product) => <article key={product.id} className="w-[202px] shrink-0 overflow-hidden rounded-[1.35rem] bg-[#100e0a]/86 shadow-[0_16px_34px_rgba(0,0,0,.22)]"><div className="relative h-24 overflow-hidden bg-[linear-gradient(135deg,rgba(255, 176, 0,.18),rgba(0,0,0,.18))]"><img src={product.img || product.image_url || ''} alt="" className="h-full w-full object-cover mix-blend-luminosity opacity-85 transition duration-500 hover:scale-105 hover:opacity-100" loading="lazy" onError={(event) => { event.currentTarget.style.opacity = '0'; }} /><span className="absolute left-3 top-3 rounded-full bg-black/50 px-2 py-1 text-[9px] font-black uppercase tracking-[.11em] text-yellow-100">{product.category}</span></div><div className="p-3.5"><p className="line-clamp-2 min-h-9 text-xs font-black leading-4">{product.name}</p><p className="mt-1.5 text-[11px] leading-4 text-white/48">{product.tagline}</p><div className="mt-3 flex items-center justify-between gap-2"><p className="text-sm font-black text-yellow-200">{formatCLP(product.price)}</p><button type="button" onClick={() => onAdd(product)} className="grid h-9 w-9 place-items-center rounded-xl bg-yellow-300 text-black transition hover:bg-white" aria-label={'Añadir ' + product.name}><ShoppingBag className="h-4 w-4" /></button></div></div></article>)}
       </div>
       <p className="relative mt-2 text-[10px] font-bold text-white/50">{cartItems ? cartItems + ' producto' + (cartItems === 1 ? '' : 's') + ' añadido' + (cartItems === 1 ? '' : 's') + ' al carrito.' : 'Añade los productos que necesites y continúa con la compra cuando quieras.'}</p>
     </section>
@@ -536,20 +536,20 @@ function StoreRibbon({ products, service, onAdd, cartItems }: { products: Catalo
 
 function Receipt({ lines, low, high, onRemove }: { lines: QuoteLine[]; low: number; high: number; onRemove: (serviceId: string) => void }) {
   return (
-    <article className="receipt-shape overflow-hidden bg-[#fff4dc] px-5 pb-10 pt-6 text-[#17120c] shadow-[0_24px_65px_rgba(0,0,0,.28)]">
-      <div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.22em] text-[#9b6508]">Boleta referencial</p><h3 className="mt-2 text-xl font-black">Soluciones Fabrick</h3><p className="mt-1 text-[11px] text-[#6f604b]">No es documento tributario ni precio final.</p></div><span className="grid h-10 w-10 place-items-center rounded-full bg-[#17120c] text-yellow-300"><ReceiptText className="h-4 w-4" /></span></div>
+    <article className="receipt-shape overflow-hidden bg-[#fff4dc] px-5 pb-10 pt-6 text-[#111214] shadow-[0_24px_65px_rgba(0,0,0,.28)]">
+      <div className="flex items-start justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.22em] text-[#9b6508]">Boleta referencial</p><h3 className="mt-2 text-xl font-black">Soluciones Fabrick</h3><p className="mt-1 text-[11px] text-[#6f604b]">No es documento tributario ni precio final.</p></div><span className="grid h-10 w-10 place-items-center rounded-full bg-[#111214] text-yellow-300"><ReceiptText className="h-4 w-4" /></span></div>
       <div className="my-5 border-t border-dashed border-black/20" />
-      <div className="space-y-4">{lines.map((line) => { const service = SERVICES.find((item) => item.id === line.serviceId) || SERVICES[0]; return <div key={line.serviceId} className="group relative"><p className="pr-8 text-sm font-black">{service.title}</p><p className="mt-1 text-[11px] text-[#6f604b]">{formatNumber(line.quantity)} {service.unit} · promedio {formatCLP(line.quantity * average(service))}</p>{lines.length > 1 && <button type="button" aria-label="Quitar servicio" onClick={() => onRemove(line.serviceId)} className="absolute right-0 top-0 grid h-7 w-7 place-items-center rounded-full text-[#7a6345] transition hover:bg-black/10 hover:text-[#17120c]"><Trash2 className="h-3.5 w-3.5" /></button>}</div>; })}</div>
+      <div className="space-y-4">{lines.map((line) => { const service = SERVICES.find((item) => item.id === line.serviceId) || SERVICES[0]; return <div key={line.serviceId} className="group relative"><p className="pr-8 text-sm font-black">{service.title}</p><p className="mt-1 text-[11px] text-[#6f604b]">{formatNumber(line.quantity)} {service.unit} · promedio {formatCLP(line.quantity * average(service))}</p>{lines.length > 1 && <button type="button" aria-label="Quitar servicio" onClick={() => onRemove(line.serviceId)} className="absolute right-0 top-0 grid h-7 w-7 place-items-center rounded-full text-[#7a6345] transition hover:bg-black/10 hover:text-[#111214]"><Trash2 className="h-3.5 w-3.5" /></button>}</div>; })}</div>
       <div className="my-5 border-t border-dashed border-black/20" />
       <ReceiptLine label="Total desde" value={formatCLP(low)} /><ReceiptLine label="Total hasta" value={formatCLP(high)} /><ReceiptLine label="Promedio orientativo" value={formatCLP(Math.round((low + high) / 2))} strong />
-      <div className="mt-5 rounded-2xl bg-[#17120c] p-4 text-[#fff4dc]"><p className="text-[9px] font-black uppercase tracking-[.19em] text-yellow-300">Antes de confirmar</p><p className="mt-2 text-[11px] leading-5 text-white/67">Validamos visita, acceso, materiales, dimensiones, instalación existente y partidas no incluidas.</p></div>
+      <div className="mt-5 rounded-2xl bg-[#111214] p-4 text-[#fff4dc]"><p className="text-[9px] font-black uppercase tracking-[.19em] text-yellow-300">Antes de confirmar</p><p className="mt-2 text-[11px] leading-5 text-white/67">Validamos visita, acceso, materiales, dimensiones, instalación existente y partidas no incluidas.</p></div>
       <p className="mt-5 text-[10px] leading-4 text-[#6f604b]">Los valores son aproximados y se actualizan según disponibilidad, proveedor y condiciones reales del proyecto.</p>
     </article>
   );
 }
 
 function ReceiptLine({ label, value, strong = false }: { label: string; value: string; strong?: boolean }) {
-  return <div className="mt-3 flex items-center justify-between gap-4 text-xs"><span className="text-[#6f604b]">{label}</span><b className={strong ? 'text-[#17120c]' : 'text-[#3d3020]'}>{value}</b></div>;
+  return <div className="mt-3 flex items-center justify-between gap-4 text-xs"><span className="text-[#6f604b]">{label}</span><b className={strong ? 'text-[#111214]' : 'text-[#3d3020]'}>{value}</b></div>;
 }
 
 function Field({ label, value, onChange, placeholder, required = false }: { label: string; value: string; onChange: (value: string) => void; placeholder: string; required?: boolean }) {
@@ -558,7 +558,7 @@ function Field({ label, value, onChange, placeholder, required = false }: { labe
 
 export function PublicBudgetBottomNav() {
   return (
-    <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-[1.35rem] bg-[#11100d]/95 p-2 text-white shadow-[0_20px_70px_rgba(0,0,0,.55)] ring-1 ring-white/12 backdrop-blur-xl sm:hidden" aria-label="Navegación de presupuesto">
+    <nav className="fixed inset-x-3 bottom-3 z-40 grid grid-cols-4 rounded-[1.35rem] bg-[#111214]/95 p-2 text-white shadow-[0_20px_70px_rgba(0,0,0,.55)] ring-1 ring-white/12 backdrop-blur-xl sm:hidden" aria-label="Navegación de presupuesto">
       <Link href="/" className="grid min-h-12 place-items-center rounded-xl text-[10px] font-black uppercase tracking-[.1em] text-white/45"><Home className="h-5 w-5" /><span>Inicio</span></Link>
       <a href="#calculadora-universal" className="grid min-h-12 place-items-center rounded-xl bg-yellow-300 text-[10px] font-black uppercase tracking-[.1em] text-black"><Ruler className="h-5 w-5" /><span>Calcular</span></a>
       <Link href="/tienda" className="grid min-h-12 place-items-center rounded-xl text-[10px] font-black uppercase tracking-[.1em] text-white/45"><Blocks className="h-5 w-5" /><span>Tienda</span></Link>

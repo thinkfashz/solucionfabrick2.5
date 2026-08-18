@@ -163,7 +163,7 @@ export default function AdminDespachosPage() {
   }
 
   return (
-    <main className="min-h-screen bg-[#050403] pb-28 text-white">
+    <main className="min-h-screen bg-[#08090A] pb-28 text-white">
       <section className="sticky top-0 z-20 border-b border-yellow-300/10 bg-black/85 px-4 py-5 backdrop-blur-xl md:px-8">
         <div className="mx-auto max-w-6xl">
           <div className="flex items-start justify-between gap-3">
@@ -199,7 +199,7 @@ export default function AdminDespachosPage() {
               const status = selectedStatus[order.id] || order.status;
               const itemCount = countItems(order);
               return (
-                <article key={order.id} className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,.12),transparent_16rem),rgba(255,255,255,.035)] shadow-[0_24px_80px_rgba(0,0,0,.32)]">
+                <article key={order.id} className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_20%_0%,rgba(255, 176, 0,.12),transparent_16rem),rgba(255,255,255,.035)] shadow-[0_24px_80px_rgba(0,0,0,.32)]">
                   <div className="border-b border-white/10 p-4">
                     <div className="flex items-start justify-between gap-3">
                       <div className="min-w-0">

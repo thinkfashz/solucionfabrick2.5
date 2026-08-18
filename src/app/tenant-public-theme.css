@@ -29,7 +29,7 @@ html[data-tenant-theme='ready'] .bg-amber-400,
 html[data-tenant-theme='ready'] .tenant-bg,
 html[data-tenant-theme='ready'] .tenant-primary-bg {
   background: linear-gradient(135deg, var(--tenant-primary), var(--tenant-secondary)) !important;
-  color: #050505 !important;
+  color: #08090A !important;
 }
 
 html[data-tenant-theme='ready'] .bg-yellow-300\/10,
@@ -127,7 +127,7 @@ html[data-tenant-theme='ready'] .hover\:bg-yellow-400:hover,
 html[data-tenant-theme='ready'] .hover\:bg-amber-300:hover,
 html[data-tenant-theme='ready'] .hover\:bg-amber-400:hover {
   background: linear-gradient(135deg, var(--tenant-accent), var(--tenant-primary)) !important;
-  color: #050505 !important;
+  color: #08090A !important;
 }
 
 html[data-tenant-theme='ready'] .hover\:bg-yellow-400\/20:hover,
@@ -153,7 +153,7 @@ html[data-tenant-theme='ready'] .tenant-gradient-text {
 
 html[data-tenant-theme='ready'] .tenant-card {
   border-color: color-mix(in srgb, var(--tenant-primary) 22%, transparent) !important;
-  background: linear-gradient(180deg, color-mix(in srgb, var(--tenant-surface) 86%, black), #050505) !important;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--tenant-surface) 86%, black), #08090A) !important;
   box-shadow: 0 18px 55px color-mix(in srgb, var(--tenant-primary) 14%, transparent) !important;
 }
 
@@ -179,16 +179,16 @@ html[data-tenant-theme='ready'] .tenant-project-builder .subtleGrid {
 
 /* Checkout and quote screens still contain some legacy hardcoded dark panels.
    Attribute selectors let us theme those Tailwind arbitrary-value classes safely. */
-html[data-tenant-theme='ready'] [class~="bg-[#050403]"],
-html[data-tenant-theme='ready'] [class~="bg-[#090806]"],
-html[data-tenant-theme='ready'] [class~="bg-[#070707]"] {
+html[data-tenant-theme='ready'] [class~="bg-[#08090A]"],
+html[data-tenant-theme='ready'] [class~="bg-[#08090A]"],
+html[data-tenant-theme='ready'] [class~="bg-[#08090A]"] {
   background:
     radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--tenant-primary) 18%, transparent), transparent 26rem),
-    linear-gradient(180deg, color-mix(in srgb, var(--tenant-bg) 92%, black), #030303) !important;
+    linear-gradient(180deg, color-mix(in srgb, var(--tenant-bg) 92%, black), #08090A) !important;
 }
 
-html[data-tenant-theme='ready'] [class*="rgba(250,204,21"],
-html[data-tenant-theme='ready'] [class*="rgba(250,204,21,"] {
+html[data-tenant-theme='ready'] [class*="rgba(255, 176, 0"],
+html[data-tenant-theme='ready'] [class*="rgba(255, 176, 0,"] {
   --tw-shadow-color: color-mix(in srgb, var(--tenant-primary) 20%, transparent) !important;
 }
 
@@ -212,7 +212,7 @@ html[data-tenant-theme='ready'] .tenant-checkout-shell,
 html[data-tenant-theme='ready'] .tenant-quote-shell {
   background:
     radial-gradient(circle at 12% 0%, color-mix(in srgb, var(--tenant-primary) 18%, transparent), transparent 26rem),
-    linear-gradient(180deg, var(--tenant-bg), #030303 78%) !important;
+    linear-gradient(180deg, var(--tenant-bg), #08090A 78%) !important;
   color: var(--tenant-text) !important;
 }
 

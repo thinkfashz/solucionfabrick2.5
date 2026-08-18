@@ -116,7 +116,7 @@ export default function Navbar() {
 
   const renderBadge = (count: number) =>
     count > 0 ? (
-      <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[9px] font-black text-black shadow-[0_0_8px_rgba(201,169,110,0.5)]">
+      <span className="absolute -right-1 -top-1 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-[var(--accent)] px-1 text-[9px] font-black text-black shadow-[0_0_8px_rgba(255, 176, 0,0.5)]">
         {count > 99 ? '99+' : count}
       </span>
     ) : null;
@@ -265,7 +265,7 @@ export default function Navbar() {
                         onClick={() => handleNav(href)}
                         className="group flex min-h-[44px] w-full items-center gap-4 rounded-2xl px-3 py-3 text-left transition-colors hover:bg-white/5 active:bg-white/10"
                       >
-                        <span className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-white/10 bg-zinc-900/60 transition-all group-hover:border-[var(--accent)]/40 group-hover:bg-[var(--accent)]/10 group-hover:shadow-[0_0_16px_rgba(250,204,21,0.18)]">
+                        <span className="relative flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-white/10 bg-zinc-900/60 transition-all group-hover:border-[var(--accent)]/40 group-hover:bg-[var(--accent)]/10 group-hover:shadow-[0_0_16px_rgba(255, 176, 0,0.18)]">
                           <Icon size={18} className="text-zinc-300 transition-colors group-hover:text-[var(--accent)]" />
                           {showQuoteCount && renderBadge(quoteCount)}
                           {showCartCount && renderBadge(cartCount)}
@@ -317,7 +317,7 @@ export default function Navbar() {
                   </button>
                   <button
                     onClick={() => handleNav('/auth')}
-                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-[var(--accent)] py-3.5 text-sm font-black uppercase tracking-widest text-black shadow-[0_8px_24px_rgba(201,169,110,0.35)] transition-all hover:bg-white active:scale-[0.99]"
+                    className="flex min-h-[44px] w-full items-center justify-center gap-2 rounded-full bg-[var(--accent)] py-3.5 text-sm font-black uppercase tracking-widest text-black shadow-[0_8px_24px_rgba(255, 176, 0,0.35)] transition-all hover:bg-white active:scale-[0.99]"
                   >
                     <LogIn size={16} aria-hidden />
                     Iniciar Sesión

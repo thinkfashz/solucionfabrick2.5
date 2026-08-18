@@ -12,7 +12,7 @@ const ObservatoryScene = dynamic(() => import('./ObservatoryScene'), {
     <div className="flex h-full w-full items-center justify-center bg-[#010103]">
       <div
         style={{
-          color: '#facc15',
+          color: '#FFB000',
           fontSize: 11,
           letterSpacing: '0.3em',
           textTransform: 'uppercase',

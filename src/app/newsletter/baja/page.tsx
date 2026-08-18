@@ -30,7 +30,7 @@ export default async function NewsletterUnsubscribePage({ searchParams }: PagePr
 
   return (
     <main
-      style={{ backgroundColor: '#070707' }}
+      style={{ backgroundColor: '#08090A' }}
       className="min-h-screen w-full text-neutral-100 font-sans flex items-center justify-center px-6 py-16"
     >
       <div className="max-w-md w-full rounded-3xl border border-neutral-800 bg-neutral-950/60 backdrop-blur-md p-10 shadow-2xl">

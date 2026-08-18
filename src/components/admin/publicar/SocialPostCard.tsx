@@ -32,28 +32,28 @@ const PALETTE: Record<
   }
 > = {
   amarillo: {
-    bg: 'linear-gradient(135deg, #fde047 0%, #facc15 55%, #eab308 100%)',
+    bg: 'linear-gradient(135deg, #FFD05A 0%, #FFB000 55%, #eab308 100%)',
     card: 'rgba(0, 0, 0, 0.88)',
-    title: '#ffffff',
-    text: '#f4f4f5',
-    muted: 'rgba(250, 204, 21, 0.85)',
-    accentBg: '#facc15',
-    accentText: '#111111',
-    border: 'rgba(250, 204, 21, 0.45)',
-    chip: 'rgba(250, 204, 21, 0.18)',
-    chipText: '#facc15',
+    title: '#FFF9EE',
+    text: '#F2DFBB',
+    muted: 'rgba(255, 176, 0, 0.85)',
+    accentBg: '#FFB000',
+    accentText: '#111214',
+    border: 'rgba(255, 176, 0, 0.45)',
+    chip: 'rgba(255, 176, 0, 0.18)',
+    chipText: '#FFB000',
   },
   claro: {
-    bg: 'linear-gradient(135deg, #ffffff 0%, #fafafa 55%, #f4f4f5 100%)',
-    card: '#ffffff',
-    title: '#0a0a0a',
+    bg: 'linear-gradient(135deg, #FFF9EE 0%, #FFF9EE 55%, #F2DFBB 100%)',
+    card: '#FFF9EE',
+    title: '#08090A',
     text: '#3f3f46',
-    muted: '#71717a',
-    accentBg: '#111111',
-    accentText: '#facc15',
+    muted: '#BFB8AC',
+    accentBg: '#111214',
+    accentText: '#FFB000',
     border: 'rgba(17, 17, 17, 0.08)',
     chip: 'rgba(17, 17, 17, 0.06)',
-    chipText: '#111111',
+    chipText: '#111214',
   },
 };
 
@@ -103,7 +103,7 @@ const SocialPostCard = forwardRef<HTMLDivElement, SocialPostCardProps>(function 
           display: 'flex',
           alignItems: 'center',
           gap: '12px',
-          color: post.tema === 'amarillo' ? '#111' : '#111',
+          color: post.tema === 'amarillo' ? '#111214' : '#111214',
           fontWeight: 900,
           letterSpacing: '0.3em',
           fontSize: exportMode ? 22 : '1.1vw',
@@ -116,7 +116,7 @@ const SocialPostCard = forwardRef<HTMLDivElement, SocialPostCardProps>(function 
             width: exportMode ? 40 : '2.2vw',
             height: exportMode ? 40 : '2.2vw',
             borderRadius: '50%',
-            background: palette.accentText === '#facc15' ? '#facc15' : '#111',
+            background: palette.accentText === '#FFB000' ? '#FFB000' : '#111214',
             boxShadow:
               post.tema === 'amarillo'
                 ? '0 4px 12px rgba(0,0,0,0.25)'
@@ -180,7 +180,7 @@ const SocialPostCard = forwardRef<HTMLDivElement, SocialPostCardProps>(function 
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'center',
-              color: post.tema === 'amarillo' ? 'rgba(250,204,21,0.7)' : 'rgba(17,17,17,0.35)',
+              color: post.tema === 'amarillo' ? 'rgba(255, 176, 0,0.7)' : 'rgba(17,17,17,0.35)',
               fontSize: exportMode ? 20 : '1vw',
               textTransform: 'uppercase',
               letterSpacing: '0.3em',
@@ -199,7 +199,7 @@ const SocialPostCard = forwardRef<HTMLDivElement, SocialPostCardProps>(function 
           bottom: '6%',
           left: '8%',
           right: '8%',
-          color: post.tema === 'amarillo' ? '#111' : '#111',
+          color: post.tema === 'amarillo' ? '#111214' : '#111214',
         }}
       >
         {post.fecha ? (
@@ -223,7 +223,7 @@ const SocialPostCard = forwardRef<HTMLDivElement, SocialPostCardProps>(function 
             fontWeight: 900,
             lineHeight: 1.05,
             margin: 0,
-            color: post.tema === 'amarillo' ? '#111' : '#0a0a0a',
+            color: post.tema === 'amarillo' ? '#111214' : '#08090A',
           }}
         >
           {post.titulo || 'Título del post'}
@@ -260,8 +260,8 @@ const SocialPostCard = forwardRef<HTMLDivElement, SocialPostCardProps>(function 
           {post.cta ? (
             <span
               style={{
-                background: post.tema === 'amarillo' ? '#111' : '#facc15',
-                color: post.tema === 'amarillo' ? '#facc15' : '#111',
+                background: post.tema === 'amarillo' ? '#111214' : '#FFB000',
+                color: post.tema === 'amarillo' ? '#FFB000' : '#111214',
                 padding: exportMode ? '16px 28px' : '0.8vw 1.4vw',
                 borderRadius: 999,
                 fontSize: exportMode ? 20 : '1vw',

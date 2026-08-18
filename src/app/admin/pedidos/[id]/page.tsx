@@ -135,7 +135,7 @@ export default function PedidoDetallePage() {
             <div className="absolute left-5 top-9 text-zinc-300"><Package className="h-8 w-8" /><p className="mt-1 text-[10px] font-bold">Bodega</p></div>
             <div className="absolute right-5 top-9 text-yellow-200"><Home className="h-8 w-8" /><p className="mt-1 text-[10px] font-bold">Cliente</p></div>
             <div className="absolute top-[95px] -translate-x-1/2 transition-all duration-700" style={{ left: `${progress}%` }}>
-              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-yellow-300 text-black shadow-[0_0_28px_rgba(250,204,21,0.45)]"><Truck className="h-6 w-6" /></div>
+              <div className="grid h-12 w-12 place-items-center rounded-2xl bg-yellow-300 text-black shadow-[0_0_28px_rgba(255, 176, 0,0.45)]"><Truck className="h-6 w-6" /></div>
             </div>
             <div className="absolute inset-x-5 bottom-4 h-2 rounded-full bg-white/10"><div className="h-full rounded-full bg-yellow-300" style={{ width: `${progress}%` }} /></div>
           </div>

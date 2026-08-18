@@ -39,10 +39,10 @@ export default function AdminInspirationSidebarShortcut() {
 
 function QuickLink({ href, title, subtitle, icon: Icon }: { href: string; title: string; subtitle: string; icon: typeof Images }) {
   return (
-    <Link href={href} className="group flex min-h-16 items-center gap-3 rounded-[1.35rem] bg-[linear-gradient(135deg,rgba(182,144,108,.2),rgba(255,255,255,.055))] px-3.5 py-3 text-left shadow-[0_16px_45px_rgba(0,0,0,.22)] transition hover:-translate-y-0.5 hover:bg-[#B6906C]/20">
-      <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#B6906C] text-[#171820] shadow-[0_10px_28px_rgba(182,144,108,.28)]"><Icon className="h-5 w-5" /><Sparkles className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full bg-[#171820] p-0.5 text-[#E5CFBA]" /></span>
-      <span className="min-w-0 flex-1"><span className="block truncate text-[12px] font-black text-[#F8F0E9]">{title}</span><span className="mt-1 block truncate text-[9px] font-bold uppercase tracking-[.12em] text-[#CCB196]">{subtitle}</span></span>
-      <span className="rounded-full bg-[#F8F0E9]/8 px-2 py-1 text-[8px] font-black uppercase tracking-[.12em] text-[#E5CFBA] transition group-hover:bg-[#B6906C] group-hover:text-[#171820]">Abrir</span>
+    <Link href={href} className="group flex min-h-16 items-center gap-3 rounded-[1.35rem] bg-[linear-gradient(135deg,rgba(182,144,108,.2),rgba(255,255,255,.055))] px-3.5 py-3 text-left shadow-[0_16px_45px_rgba(0,0,0,.22)] transition hover:-translate-y-0.5 hover:bg-[#F5871F]/20">
+      <span className="relative grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-[#F5871F] text-[#08090A] shadow-[0_10px_28px_rgba(182,144,108,.28)]"><Icon className="h-5 w-5" /><Sparkles className="absolute -right-1 -top-1 h-3.5 w-3.5 rounded-full bg-[#08090A] p-0.5 text-[#F2DFBB]" /></span>
+      <span className="min-w-0 flex-1"><span className="block truncate text-[12px] font-black text-[#FFF9EE]">{title}</span><span className="mt-1 block truncate text-[9px] font-bold uppercase tracking-[.12em] text-[#FFB000]">{subtitle}</span></span>
+      <span className="rounded-full bg-[#FFF9EE]/8 px-2 py-1 text-[8px] font-black uppercase tracking-[.12em] text-[#F2DFBB] transition group-hover:bg-[#F5871F] group-hover:text-[#08090A]">Abrir</span>
     </Link>
   );
 }

@@ -482,8 +482,8 @@ export default function CheckoutApp() {
 
   if (order) {
     return (
-      <main className="tenant-checkout-shell min-h-screen bg-[#050403] px-4 py-6 text-white">
-        <section className="tenant-checkout-card mx-auto max-w-5xl rounded-[2rem] border border-yellow-300/20 bg-[radial-gradient(circle_at_top,rgba(250,204,21,.18),transparent_38%),#090806] p-5 shadow-[0_35px_120px_rgba(0,0,0,.55)] sm:p-8">
+      <main className="tenant-checkout-shell min-h-screen bg-[#08090A] px-4 py-6 text-white">
+        <section className="tenant-checkout-card mx-auto max-w-5xl rounded-[2rem] border border-yellow-300/20 bg-[radial-gradient(circle_at_top,rgba(255, 176, 0,.18),transparent_38%),#08090A] p-5 shadow-[0_35px_120px_rgba(0,0,0,.55)] sm:p-8">
           <div className="grid gap-6 lg:grid-cols-[1fr_380px]">
             <div>
               <span className="inline-flex items-center rounded-full border border-yellow-300/25 bg-yellow-400/10 px-3 py-1 text-xs font-black text-yellow-100">
@@ -542,7 +542,7 @@ export default function CheckoutApp() {
   }
 
   return (
-    <main className="tenant-checkout-shell min-h-screen bg-[#050403] px-3 py-4 text-white sm:px-5 lg:px-8">
+    <main className="tenant-checkout-shell min-h-screen bg-[#08090A] px-3 py-4 text-white sm:px-5 lg:px-8">
       <AnimatePresence>
         {loading && (
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="fixed inset-0 z-[500] grid place-items-center bg-black/85 p-4 backdrop-blur-xl">
@@ -564,7 +564,7 @@ export default function CheckoutApp() {
           <ArrowLeft className="mr-2 h-4 w-4" />
           Volver
         </button>
-        <section className="tenant-checkout-card overflow-hidden rounded-[2rem] border border-white/10 bg-[#090806] shadow-[0_35px_120px_rgba(0,0,0,.55)]">
+        <section className="tenant-checkout-card overflow-hidden rounded-[2rem] border border-white/10 bg-[#08090A] shadow-[0_35px_120px_rgba(0,0,0,.55)]">
           <div className="grid gap-0 lg:grid-cols-[1fr_420px]">
             <div className="p-5 sm:p-8">
               <span className="inline-flex items-center rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1 text-xs font-black text-yellow-100">
@@ -594,7 +594,7 @@ export default function CheckoutApp() {
               </AnimatePresence>
             </div>
             <div className="border-t border-white/10 bg-black/30 p-5 sm:p-8 lg:border-l lg:border-t-0">
-              <div className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#070707]">
+              <div className="overflow-hidden rounded-[1.6rem] border border-white/10 bg-[#08090A]">
                 {product?.image_url && (
                   <img
                     src={product.image_url}
@@ -644,7 +644,7 @@ function Stepper({ step }: { step: 1 | 2 | 3 }) {
       <div className="grid grid-cols-3 gap-2">{steps.map((label, index) => {
           const active = step === index + 1;
           const done = step > index + 1;
-          return <div key={label} aria-current={active ? "step" : undefined} className={`rounded-2xl border p-3 transition ${active ? "border-yellow-300 bg-yellow-300 text-black shadow-[0_12px_32px_rgba(250,204,21,.16)]" : done ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-100" : "border-white/10 bg-white/[0.04] text-white/40"}`}><span className="text-[10px] font-black uppercase tracking-[0.18em]">{done ? "Listo" : `Paso ${index + 1}`}</span><b className="mt-1 block text-sm">{label}</b></div>;
+          return <div key={label} aria-current={active ? "step" : undefined} className={`rounded-2xl border p-3 transition ${active ? "border-yellow-300 bg-yellow-300 text-black shadow-[0_12px_32px_rgba(255, 176, 0,.16)]" : done ? "border-emerald-300/30 bg-emerald-300/10 text-emerald-100" : "border-white/10 bg-white/[0.04] text-white/40"}`}><span className="text-[10px] font-black uppercase tracking-[0.18em]">{done ? "Listo" : `Paso ${index + 1}`}</span><b className="mt-1 block text-sm">{label}</b></div>;
         })}</div>
     </div>
   );
@@ -976,7 +976,7 @@ function CardPreview({
   expiry: string;
 }) {
   return (
-    <div className="relative min-h-[230px] overflow-hidden rounded-[1.7rem] border border-yellow-300/25 bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,.28),transparent_18rem),linear-gradient(135deg,#15120a,#050505)] p-6 shadow-[0_24px_80px_rgba(0,0,0,.5)]">
+    <div className="relative min-h-[230px] overflow-hidden rounded-[1.7rem] border border-yellow-300/25 bg-[radial-gradient(circle_at_20%_0%,rgba(255, 176, 0,.28),transparent_18rem),linear-gradient(135deg,#15120a,#08090A)] p-6 shadow-[0_24px_80px_rgba(0,0,0,.5)]">
       <div className="absolute right-6 top-6 rounded-full border border-yellow-300/30 px-3 py-1 text-[10px] font-black uppercase tracking-[0.18em] text-yellow-300">
         Fabrick Card
       </div>

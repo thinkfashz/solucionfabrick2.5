@@ -35,12 +35,12 @@ interface PresupuestoVisualizerProps {
 const CATEGORY_COLORS: Record<string, string> = {
   'obra-gruesa': '#3b82f6',
   terminaciones: '#10b981',
-  especialidades: '#f59e0b',
+  especialidades: '#F5871F',
   servicios: '#8b5cf6',
   electricidad: '#ec4899',
   gasfiteria: '#06b6d4',
   climatizacion: '#6366f1',
-  conectividad: '#f97316',
+  conectividad: '#F5871F',
   seguridad: '#ef4444',
 };
 
@@ -59,7 +59,7 @@ export default function PresupuestoVisualizer({
       analysis.categories.map((cat) => ({
         name: cat.label,
         value: cat.subtotal,
-        color: CATEGORY_COLORS[cat.category] || '#6b7280',
+        color: CATEGORY_COLORS[cat.category] || '#BFB8AC',
       })),
     [analysis]
   );
@@ -187,13 +187,13 @@ export default function PresupuestoVisualizer({
               <CartesianGrid strokeDasharray="3 3" stroke="#374151" />
               <XAxis
                 dataKey="name"
-                stroke="#9ca3af"
+                stroke="#BFB8AC"
                 style={{ fontSize: '12px' }}
                 angle={-45}
                 textAnchor="end"
                 height={80}
               />
-              <YAxis stroke="#9ca3af" style={{ fontSize: '12px' }} />
+              <YAxis stroke="#BFB8AC" style={{ fontSize: '12px' }} />
               <Tooltip
                 contentStyle={{ backgroundColor: '#1f2937', border: '1px solid #374151', borderRadius: '8px' }}
                 formatter={(value) => `$${value}M`}
@@ -216,7 +216,7 @@ export default function PresupuestoVisualizer({
               itemCount={cat.itemCount}
               subtotal={cat.subtotal}
               percentage={cat.percentage}
-              color={CATEGORY_COLORS[cat.category] || '#6b7280'}
+              color={CATEGORY_COLORS[cat.category] || '#BFB8AC'}
             />
           ))}
         </div>

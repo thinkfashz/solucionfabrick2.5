@@ -527,11 +527,11 @@ export default function AsistenteIaPage() {
   // ── RENDER ───────────────────────────────────────────────────────────────
 
   return (
-    <div className="flex flex-col sm:flex-row h-[calc(100vh-80px)] lg:h-[calc(100vh-64px)] w-full overflow-hidden bg-[#0a0a0a] text-white">
+    <div className="flex flex-col sm:flex-row h-[calc(100vh-80px)] lg:h-[calc(100vh-64px)] w-full overflow-hidden bg-[#08090A] text-white">
 
       {/* ── SIDEBAR: Threads ── */}
       {showSidebar && (
-        <aside className="absolute inset-y-0 left-0 z-30 flex w-full max-w-[240px] sm:relative sm:w-52 shrink-0 flex-col border-r border-white/8 bg-[#0a0a0a]">
+        <aside className="absolute inset-y-0 left-0 z-30 flex w-full max-w-[240px] sm:relative sm:w-52 shrink-0 flex-col border-r border-white/8 bg-[#08090A]">
           {/* Sidebar header */}
           <div className="flex shrink-0 items-center justify-between border-b border-white/8 px-3 py-2.5">
             <div className="flex items-center gap-1.5">
@@ -684,7 +684,7 @@ export default function AsistenteIaPage() {
                 <div className="flex h-14 w-14 items-center justify-center rounded-2xl border border-amber-500/20 bg-gradient-to-br from-amber-500/15 to-orange-500/8">
                   <Sparkles className="h-6 w-6 text-amber-400" />
                 </div>
-                <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#0a0a0a] bg-emerald-500 shadow-lg shadow-emerald-500/40" />
+                <span className="absolute -bottom-0.5 -right-0.5 h-3.5 w-3.5 rounded-full border-2 border-[#08090A] bg-emerald-500 shadow-lg shadow-emerald-500/40" />
               </div>
               <p className="text-sm font-bold text-neutral-200">¿En qué te puedo ayudar?</p>
               <p className="mt-1 text-[11px] text-neutral-600">
@@ -905,7 +905,7 @@ export default function AsistenteIaPage() {
 
       {/* ── SETTINGS PANEL ── */}
       {showSettings && (
-        <aside className="absolute inset-y-0 right-0 z-30 flex w-full max-w-[280px] lg:relative lg:w-72 shrink-0 flex-col overflow-y-auto border-l border-white/8 bg-[#0a0a0a]">
+        <aside className="absolute inset-y-0 right-0 z-30 flex w-full max-w-[280px] lg:relative lg:w-72 shrink-0 flex-col overflow-y-auto border-l border-white/8 bg-[#08090A]">
           <div className="flex shrink-0 items-center justify-between border-b border-white/8 px-4 py-2.5">
             <span className="text-[11px] font-bold text-zinc-400">Configuración</span>
             <button type="button" onClick={() => setShowSettings(false)} className="text-zinc-600 hover:text-zinc-300">

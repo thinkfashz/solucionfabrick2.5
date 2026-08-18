@@ -99,14 +99,14 @@ export default function PushOptIn() {
   if (status === 'loading' || status === 'unsupported' || status === 'disabled') return null;
 
   return (
-    <div className="rounded-[1.75rem] bg-[#fffaf5] p-5 text-[#171820] shadow-[0_18px_60px_rgba(23,24,32,.08)] ring-1 ring-[#171820]/10">
+    <div className="rounded-[1.75rem] bg-[#FFF9EE] p-5 text-[#08090A] shadow-[0_18px_60px_rgba(23,24,32,.08)] ring-1 ring-[#08090A]/10">
       <div className="flex items-start gap-4">
-        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#171820] text-[#ccb196]">
+        <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-[#08090A] text-[#FFB000]">
           {status === 'granted' ? <Bell className="h-5 w-5" /> : <BellOff className="h-5 w-5" />}
         </div>
         <div className="min-w-0 flex-1">
           <h3 className="text-sm font-black">Notificaciones del proyecto</h3>
-          <p className="mt-1 text-xs leading-6 text-[#6b625c]">
+          <p className="mt-1 text-xs leading-6 text-[#BFB8AC]">
             {status === 'granted'
               ? 'Recibirás avisos sobre pedidos, avances y comunicaciones importantes.'
               : 'Activa los avisos para recibir cambios relevantes sin tener que revisar la cuenta constantemente.'}
@@ -118,13 +118,13 @@ export default function PushOptIn() {
                 <BellOff className="h-3.5 w-3.5" /> Desactivar
               </button>
             ) : status === 'working' ? (
-              <button type="button" disabled className="inline-flex items-center gap-2 rounded-full bg-[#ccb196]/35 px-4 py-2.5 text-[10px] font-black uppercase tracking-[.14em] text-[#765438]">
+              <button type="button" disabled className="inline-flex items-center gap-2 rounded-full bg-[#FFB000]/35 px-4 py-2.5 text-[10px] font-black uppercase tracking-[.14em] text-[#C97700]">
                 <Loader2 className="h-3.5 w-3.5 animate-spin" /> Configurando…
               </button>
             ) : status === 'denied' ? (
               <p className="text-[10px] font-bold uppercase tracking-[.14em] text-[#8c817a]">Bloqueadas en el navegador · habilítalas desde la configuración del sitio</p>
             ) : (
-              <button type="button" onClick={subscribe} className="inline-flex items-center gap-2 rounded-full bg-[#b6906c] px-4 py-2.5 text-[10px] font-black uppercase tracking-[.14em] text-[#171820] transition hover:bg-[#ccb196]">
+              <button type="button" onClick={subscribe} className="inline-flex items-center gap-2 rounded-full bg-[#F5871F] px-4 py-2.5 text-[10px] font-black uppercase tracking-[.14em] text-[#08090A] transition hover:bg-[#FFB000]">
                 <Bell className="h-3.5 w-3.5" /> Activar notificaciones
               </button>
             )}

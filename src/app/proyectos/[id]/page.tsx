@@ -176,7 +176,7 @@ export default function ProyectoDetailPage() {
         ) : null}
 
         {/* CTA */}
-        <div className="rounded-[2rem] border border-yellow-400/25 bg-[linear-gradient(135deg,rgba(250,204,21,0.08),rgba(250,204,21,0.015))] p-10 text-center">
+        <div className="rounded-[2rem] border border-yellow-400/25 bg-[linear-gradient(135deg,rgba(255, 176, 0,0.08),rgba(255, 176, 0,0.015))] p-10 text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-yellow-400">Tu próxima obra</p>
           <h2 className="mt-3 text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
             Quiero un proyecto así

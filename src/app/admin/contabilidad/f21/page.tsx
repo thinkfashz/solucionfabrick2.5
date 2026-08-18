@@ -10,7 +10,7 @@ const blocks = [
 
 export default function F21Page() {
   return (
-    <main className="min-h-screen bg-[#090806] p-4 text-white sm:p-6 lg:p-8">
+    <main className="min-h-screen bg-[#08090A] p-4 text-white sm:p-6 lg:p-8">
       <section className="mx-auto grid max-w-6xl gap-5">
         <Link href="/admin/contabilidad" className="inline-flex w-fit items-center gap-2 text-sm text-zinc-400 hover:text-white"><ArrowLeft className="h-4 w-4" /> Volver a contabilidad</Link>
         <header className="rounded-[2rem] border border-amber-300/20 bg-zinc-950 p-6 shadow-2xl">

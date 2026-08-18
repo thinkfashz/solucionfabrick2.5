@@ -1,31 +1,4 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title">
-  <title id="title">Isotipo Soluciones Fabrick</title>
-  <defs>
-    <linearGradient id="roof" x1="18" y1="26" x2="142" y2="120" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#3A3E46"/>
-      <stop offset="0.5" stop-color="#17181C"/>
-      <stop offset="1" stop-color="#0C0D10"/>
-    </linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#F0CF7A"/>
-      <stop offset="0.5" stop-color="#E3B44C"/>
-      <stop offset="1" stop-color="#B97E10"/>
-    </linearGradient>
-    <linearGradient id="goldSoft" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#F8E3AC"/>
-      <stop offset="1" stop-color="#C99418"/>
-    </linearGradient>
-  </defs>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M18 118 80 24l62 94" stroke="url(#gold)" stroke-width="3.5"/>
-    <path d="M26 116 80 36l54 80" stroke="url(#roof)" stroke-width="8"/>
-    <path d="M34 115 80 47l46 68" stroke="url(#goldSoft)" stroke-width="2.4"/>
-  </g>
-  <path d="M104 70V44h20v40" fill="url(#roof)"/>
-  <path d="M100 70h28" stroke="url(#gold)" stroke-width="3"/>
-  <path d="M56 132h48" stroke="url(#gold)" stroke-width="5" stroke-linecap="round"/>
-  <g fill="url(#gold)">
-    <rect x="75" y="93" width="10" height="14" rx="2"/>
-    <circle cx="80" cy="89" r="5.5" fill="url(#goldSoft)"/>
-  </g>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Isotipo Soluciones Fabrick para fondo claro">
+  <defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFD05A"/><stop offset=".5" stop-color="#FFB000"/><stop offset="1" stop-color="#F5871F"/></linearGradient></defs>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="m26 152 102-124 102 124" stroke="url(#gold)" stroke-width="15"/><path d="m50 152 78-94 78 94" stroke="#08090A" stroke-width="10"/><path d="M168 84V45h29v67" stroke="#08090A" stroke-width="10"/><path d="M74 181h108" stroke="url(#gold)" stroke-width="16"/><path d="M109 152v-32h38v61" stroke="url(#gold)" stroke-width="10"/><path d="M36 202h184" stroke="#F5871F" stroke-width="7"/></g>
 </svg>

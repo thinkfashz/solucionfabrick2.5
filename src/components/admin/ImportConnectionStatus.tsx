@@ -76,12 +76,12 @@ function statusColor(status: ServiceStatus): string {
     case 'online':
       return '#22c55e'; // emerald-500
     case 'slow':
-      return '#facc15'; // yellow-400
+      return '#FFB000'; // yellow-400
     case 'offline':
       return '#ef4444'; // red-500
     case 'unconfigured':
     default:
-      return '#52525b'; // zinc-600
+      return '#6E675D'; // zinc-600
   }
 }
 
@@ -138,7 +138,7 @@ function BlackBerrySignalBars({
 
 function BlackBerryLoadingBar({
   active,
-  color = '#facc15',
+  color = '#FFB000',
   segments = 18,
 }: {
   active: boolean;

@@ -43,7 +43,7 @@ function cleanKeywords(album: Album) {
 function Stars({ value }: { value: number }) {
   return (
     <span className="inline-flex gap-0.5" aria-label={`Interés de búsqueda estimado: ${value} de 5`} title="Interés estimado por IA; no representa volumen real de búsquedas">
-      {Array.from({ length: 5 }, (_, index) => <Star key={index} className={`h-3.5 w-3.5 ${index < value ? 'fill-[#B6906C] text-[#B6906C]' : 'text-[#171820]/18'}`} />)}
+      {Array.from({ length: 5 }, (_, index) => <Star key={index} className={`h-3.5 w-3.5 ${index < value ? 'fill-[#F5871F] text-[#F5871F]' : 'text-[#08090A]/18'}`} />)}
     </span>
   );
 }
@@ -116,14 +116,14 @@ export default function InspirationSeoIndex() {
   if (!ranked.length) return null;
 
   return (
-    <section className="bg-[#F8F0E9] px-4 pb-32 pt-8 text-[#171820] sm:px-6 lg:px-10" aria-labelledby="indice-seo-inspiraciones">
+    <section className="bg-[#FFF9EE] px-4 pb-32 pt-8 text-[#08090A] sm:px-6 lg:px-10" aria-labelledby="indice-seo-inspiraciones">
       <div className="mx-auto max-w-7xl rounded-[2.2rem] bg-white p-6 shadow-[0_22px_70px_rgba(23,24,32,.08)] sm:p-8">
         <div className="grid gap-4 lg:grid-cols-[.8fr_1.2fr] lg:items-end">
           <div>
-            <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.22em] text-[#895E3D]"><Search className="h-3.5 w-3.5" /> Índice visual para buscadores</p>
+            <p className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.22em] text-[#F5871F]"><Search className="h-3.5 w-3.5" /> Índice visual para buscadores</p>
             <h2 id="indice-seo-inspiraciones" className="mt-3 text-3xl font-black leading-tight tracking-[-.045em] sm:text-5xl">Ideas organizadas por tema e intención.</h2>
           </div>
-          <p className="text-sm leading-7 text-[#685D55]">Las estrellas representan interés estimado por IA según la amplitud del tema y su intención visual o comercial. No corresponden a cifras reales de Google. Los títulos, descripciones, palabras clave y textos alternativos ayudan a comprender e indexar cada colección.</p>
+          <p className="text-sm leading-7 text-[#BFB8AC]">Las estrellas representan interés estimado por IA según la amplitud del tema y su intención visual o comercial. No corresponden a cifras reales de Google. Los títulos, descripciones, palabras clave y textos alternativos ayudan a comprender e indexar cada colección.</p>
         </div>
 
         <div className="mt-7 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -131,13 +131,13 @@ export default function InspirationSeoIndex() {
             const interest = interestFrom(album);
             const keywords = cleanKeywords(album);
             return (
-              <article id={album.key} key={album.key} className="overflow-hidden rounded-[1.6rem] bg-[#F8F0E9] shadow-[0_12px_34px_rgba(23,24,32,.07)]">
+              <article id={album.key} key={album.key} className="overflow-hidden rounded-[1.6rem] bg-[#FFF9EE] shadow-[0_12px_34px_rgba(23,24,32,.07)]">
                 <img src={album.cover} alt={`${album.title}, colección de inspiración para proyectos en Chile`} loading="lazy" className="h-44 w-full object-cover" />
                 <div className="p-5">
-                  <div className="flex items-center justify-between gap-3"><p className="text-[9px] font-black uppercase tracking-[.16em] text-[#895E3D]">{album.category} · {album.count} imágenes</p><Stars value={interest} /></div>
+                  <div className="flex items-center justify-between gap-3"><p className="text-[9px] font-black uppercase tracking-[.16em] text-[#F5871F]">{album.category} · {album.count} imágenes</p><Stars value={interest} /></div>
                   <h3 className="mt-2 text-lg font-black leading-tight">{album.title}</h3>
-                  <p className="mt-3 line-clamp-3 text-xs leading-6 text-[#685D55]">{album.description}</p>
-                  <div className="mt-4 flex flex-wrap gap-1.5">{keywords.slice(0, 7).map((keyword) => <span key={keyword} className="rounded-full bg-white px-2.5 py-1 text-[8px] font-black text-[#5E5148]">#{keyword}</span>)}</div>
+                  <p className="mt-3 line-clamp-3 text-xs leading-6 text-[#BFB8AC]">{album.description}</p>
+                  <div className="mt-4 flex flex-wrap gap-1.5">{keywords.slice(0, 7).map((keyword) => <span key={keyword} className="rounded-full bg-white px-2.5 py-1 text-[8px] font-black text-[#BFB8AC]">#{keyword}</span>)}</div>
                 </div>
               </article>
             );

@@ -25,7 +25,7 @@ const FALLBACK_BRANDING: PublicBrandingSource = {
   id: DEFAULT_TENANT_ID,
   slug: 'fabrick',
   name: 'Soluciones Fabrick',
-  primaryColor: '#f59e0b',
+  primaryColor: '#F5871F',
   logoUrl: null,
   phone: null,
   billingEmail: null,

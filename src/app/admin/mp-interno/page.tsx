@@ -9,7 +9,7 @@ export const metadata: Metadata = {
 };
 
 export default function MpInternoPage() {
-  return <main className="min-h-screen bg-[#050505] pt-6 text-white">
+  return <main className="min-h-screen bg-[#08090A] pt-6 text-white">
     <MercadoPagoInternalLabAddon />
   </main>;
 }

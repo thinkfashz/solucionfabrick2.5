@@ -28,7 +28,7 @@ function pieces(p: Required<Pick<ThreeRadierViewerProps, 'shape' | 'largo' | 'an
 }
 
 function Slab({ piece, y, h, color, label }: { piece: Piece; y: number; h: number; color: string; label?: string }) {
-  return <mesh position={[piece.x, y, piece.z]} castShadow receiveShadow><boxGeometry args={[piece.w, h, piece.d]} /><meshStandardMaterial color={color} roughness={0.82} /><Edges color="#ffffff" />{label && <Html center position={[0, h / 2 + .04, 0]} className="pointer-events-none"><span className="rounded-full border border-amber-300/40 bg-black/75 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-amber-100">{label}</span></Html>}</mesh>;
+  return <mesh position={[piece.x, y, piece.z]} castShadow receiveShadow><boxGeometry args={[piece.w, h, piece.d]} /><meshStandardMaterial color={color} roughness={0.82} /><Edges color="#FFF9EE" />{label && <Html center position={[0, h / 2 + .04, 0]} className="pointer-events-none"><span className="rounded-full border border-amber-300/40 bg-black/75 px-2 py-1 text-[10px] font-black uppercase tracking-widest text-amber-100">{label}</span></Html>}</mesh>;
 }
 
 function RadierModel(props: ThreeRadierViewerProps) {

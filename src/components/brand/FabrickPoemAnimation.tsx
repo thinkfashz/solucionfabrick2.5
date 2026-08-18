@@ -36,30 +36,30 @@ export default function FabrickPoemAnimation({ compact = false, children, backgr
 
   return <section className={`fabrick-poem-hero ${compact ? 'fabrick-poem-compact' : ''} ${className}`}>
     <style jsx global>{`
-      .fabrick-poem-hero{position:relative;display:grid;place-items:center;min-height:100dvh;width:100%;overflow:hidden;background:#050403;color:#fff7e8;isolation:isolate;}
+      .fabrick-poem-hero{position:relative;display:grid;place-items:center;min-height:100dvh;width:100%;overflow:hidden;background:#08090A;color:#FFF9EE;isolation:isolate;}
       .fabrick-poem-compact{min-height:100dvh;}
-      .fabrick-poem-hero::before{content:'';position:absolute;inset:0;z-index:-4;background:linear-gradient(115deg,#facc15 0%,#facc15 28%,#2563eb 48%,#dc2626 75%,#080503 100%);background-size:240% 240%;animation:fabrickColombiaSweep 16s ease-in-out infinite;opacity:.42;}
+      .fabrick-poem-hero::before{content:'';position:absolute;inset:0;z-index:-4;background:linear-gradient(115deg,#FFB000 0%,#FFB000 28%,#2563eb 48%,#dc2626 75%,#080503 100%);background-size:240% 240%;animation:fabrickColombiaSweep 16s ease-in-out infinite;opacity:.42;}
       .fabrick-poem-hero::after{content:'';position:absolute;inset:0;z-index:-1;background:radial-gradient(circle at 50% 30%,rgba(255,255,255,.16),transparent 28rem),linear-gradient(180deg,rgba(0,0,0,.06),rgba(0,0,0,.78));pointer-events:none;}
       .fabrick-poem-wrap{position:relative;display:grid;place-items:center;width:100%;min-height:inherit;padding:clamp(1rem,3vw,3rem);}
       .fabrick-poem-content{position:relative;width:1000px;height:562px;transform-origin:center center;transform-style:preserve-3d;}
       .fabrick-poem-full{position:absolute;inset:0;overflow:hidden;border-radius:46px;border:1px solid rgba(255,255,255,.18);background:rgba(5,5,5,.28);box-shadow:0 40px 140px rgba(0,0,0,.52),inset 0 1px 0 rgba(255,255,255,.12);backdrop-filter:blur(20px);transform-style:preserve-3d;}
-      .fabrick-poem-hue{position:absolute;inset:-30%;z-index:0;background:radial-gradient(circle at 20% 20%,rgba(250,204,21,.55),transparent 32%),radial-gradient(circle at 72% 24%,rgba(37,99,235,.48),transparent 34%),radial-gradient(circle at 70% 78%,rgba(220,38,38,.45),transparent 36%);filter:blur(42px);mix-blend-mode:screen;animation:fabrickHue 10s ease-in-out infinite alternate;}
+      .fabrick-poem-hue{position:absolute;inset:-30%;z-index:0;background:radial-gradient(circle at 20% 20%,rgba(255, 176, 0,.55),transparent 32%),radial-gradient(circle at 72% 24%,rgba(37,99,235,.48),transparent 34%),radial-gradient(circle at 70% 78%,rgba(220,38,38,.45),transparent 36%);filter:blur(42px);mix-blend-mode:screen;animation:fabrickHue 10s ease-in-out infinite alternate;}
       .fabrick-poem-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.32;filter:saturate(1.18) contrast(1.12);}
       .fabrick-poem-accent{position:absolute;right:46px;bottom:42px;width:176px;height:176px;object-fit:contain;opacity:.82;filter:drop-shadow(0 30px 80px rgba(0,0,0,.65));animation:fabrickFloat 4.8s ease-in-out infinite;}
       .fabrick-poem-title{position:absolute;left:54px;top:56px;z-index:5;max-width:520px;}
-      .fabrick-poem-title p{font-size:12px;font-weight:1000;letter-spacing:.32em;text-transform:uppercase;color:#fde68a;}
+      .fabrick-poem-title p{font-size:12px;font-weight:1000;letter-spacing:.32em;text-transform:uppercase;color:#FFD05A;}
       .fabrick-poem-title h1{margin-top:18px;font-size:82px;line-height:.86;font-weight:1000;letter-spacing:-.08em;color:white;text-shadow:0 24px 90px rgba(0,0,0,.72);}
       .fabrick-poem-title span{display:block;margin-top:20px;max-width:460px;font-size:19px;line-height:1.65;color:rgba(255,247,232,.78);}
       .fabrick-poem-cube-container{position:absolute;left:50%;top:50%;width:280px;height:280px;perspective:900px;transform:translate(-18%,-42%);z-index:4;}
       .fabrick-poem-cube{position:relative;width:100%;height:100%;transform-style:preserve-3d;animation:fabrickCubeRotate 13s linear infinite;}
-      .fabrick-poem-face{position:absolute;display:grid;place-items:center;width:280px;height:280px;border:1px solid rgba(255,255,255,.18);background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.025));box-shadow:inset 0 0 44px rgba(250,204,21,.12),0 20px 70px rgba(0,0,0,.35);backdrop-filter:blur(14px);overflow:hidden;}
-      .fabrick-poem-face.text{padding:26px;text-align:center;font-size:19px;line-height:1.65;font-weight:800;color:#fff7e8;text-transform:uppercase;letter-spacing:.05em;}
-      .fabrick-poem-face.text strong{font-size:24px;color:#facc15;}
-      .fabrick-poem-face.top{transform:rotateX(90deg) translateZ(140px);background:rgba(250,204,21,.18)}
+      .fabrick-poem-face{position:absolute;display:grid;place-items:center;width:280px;height:280px;border:1px solid rgba(255,255,255,.18);background:linear-gradient(135deg,rgba(255,255,255,.12),rgba(255,255,255,.025));box-shadow:inset 0 0 44px rgba(255, 176, 0,.12),0 20px 70px rgba(0,0,0,.35);backdrop-filter:blur(14px);overflow:hidden;}
+      .fabrick-poem-face.text{padding:26px;text-align:center;font-size:19px;line-height:1.65;font-weight:800;color:#FFF9EE;text-transform:uppercase;letter-spacing:.05em;}
+      .fabrick-poem-face.text strong{font-size:24px;color:#FFB000;}
+      .fabrick-poem-face.top{transform:rotateX(90deg) translateZ(140px);background:rgba(255, 176, 0,.18)}
       .fabrick-poem-face.bottom{transform:rotateX(-90deg) translateZ(140px);background:rgba(37,99,235,.18)}
       .fabrick-poem-face.left{transform:rotateY(-90deg) translateZ(140px)}
       .fabrick-poem-face.right{transform:rotateY(90deg) translateZ(140px)}
-      .fabrick-poem-face.front{transform:translateZ(140px);background:linear-gradient(135deg,rgba(250,204,21,.24),rgba(220,38,38,.12));}
+      .fabrick-poem-face.front{transform:translateZ(140px);background:linear-gradient(135deg,rgba(255, 176, 0,.24),rgba(220,38,38,.12));}
       .fabrick-poem-face.back{transform:rotateY(180deg) translateZ(140px)}
       .fabrick-poem-reflect{position:absolute;left:50%;top:72%;width:280px;height:280px;perspective:900px;transform:translate(-18%,-20%) scaleY(-.36);opacity:.18;filter:blur(1px);z-index:2;}
       .fabrick-poem-reflect .fabrick-poem-cube{animation:fabrickCubeRotate 13s linear infinite;}

@@ -34,8 +34,8 @@ export default function GlobeLive({ markers = defaultMarkers, className = '', co
 
   return (
     <div className={`relative aspect-square select-none ${className}`}>
-      <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_40%,rgba(250,204,21,.18),transparent_58%)] blur-xl" />
-      <div className="absolute inset-[8%] rounded-full border border-yellow-300/20 bg-[radial-gradient(circle_at_35%_28%,#394150_0%,#131722_38%,#040506_74%)] shadow-[inset_0_0_45px_rgba(250,204,21,.08),0_25px_80px_rgba(0,0,0,.45)]">
+      <div className="absolute inset-0 rounded-full bg-[radial-gradient(circle_at_50%_40%,rgba(255, 176, 0,.18),transparent_58%)] blur-xl" />
+      <div className="absolute inset-[8%] rounded-full border border-yellow-300/20 bg-[radial-gradient(circle_at_35%_28%,#394150_0%,#131722_38%,#040506_74%)] shadow-[inset_0_0_45px_rgba(255, 176, 0,.08),0_25px_80px_rgba(0,0,0,.45)]">
         <div className="absolute inset-[14%] rounded-full border border-yellow-300/10" />
         <div className="absolute inset-[25%] rounded-full border border-yellow-300/10" />
         <div className="absolute left-1/2 top-[12%] h-[76%] w-px -translate-x-1/2 rounded-full bg-yellow-300/10" />

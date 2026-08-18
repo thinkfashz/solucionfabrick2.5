@@ -3,17 +3,17 @@
   <desc id="desc">Miniatura de un aire acondicionado mural blanco</desc>
   <defs>
     <linearGradient id="case" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#fff"/><stop offset="1" stop-color="#d8d9d7"/></linearGradient>
-    <linearGradient id="air" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#53d7ff" stop-opacity="0"/><stop offset=".5" stop-color="#53d7ff" stop-opacity=".8"/><stop offset="1" stop-color="#facc15" stop-opacity="0"/></linearGradient>
+    <linearGradient id="air" x1="0" y1="0" x2="1" y2="0"><stop stop-color="#53d7ff" stop-opacity="0"/><stop offset=".5" stop-color="#53d7ff" stop-opacity=".8"/><stop offset="1" stop-color="#FFB000" stop-opacity="0"/></linearGradient>
     <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="22" stdDeviation="18" flood-opacity=".28"/></filter>
   </defs>
   <rect width="800" height="500" rx="48" fill="#f7f0df"/>
-  <circle cx="650" cy="80" r="190" fill="#facc15" opacity=".2"/>
+  <circle cx="650" cy="80" r="190" fill="#FFB000" opacity=".2"/>
   <g filter="url(#shadow)">
     <rect x="92" y="118" width="616" height="182" rx="44" fill="url(#case)" stroke="#c8c9c7" stroke-width="4"/>
     <path d="M122 245h556l-22 45H144z" fill="#b9bbb9"/>
     <path d="M150 254h500" stroke="#343638" stroke-width="10" stroke-linecap="round"/>
     <rect x="584" y="160" width="66" height="36" rx="10" fill="#111"/>
-    <text x="617" y="184" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#facc15">22°</text>
+    <text x="617" y="184" text-anchor="middle" font-family="Arial,sans-serif" font-size="22" font-weight="700" fill="#FFB000">22°</text>
     <text x="138" y="174" font-family="Arial,sans-serif" font-size="20" font-weight="800" fill="#373737" letter-spacing="4">FABRICK INVERTER</text>
   </g>
   <path d="M160 330h480" stroke="url(#air)" stroke-width="28" stroke-linecap="round" opacity=".8"/>

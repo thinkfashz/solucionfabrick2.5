@@ -238,7 +238,7 @@ function AnimatedSection({
           whileInView={{ scale: 1, opacity: 1 }}
           viewport={{ once: true }}
           transition={{ duration: 0.4, type: 'spring' }}
-          className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl ${section.color} shadow-[0_4px_20px_rgba(250,204,21,0.25)]`}
+          className={`flex h-12 w-12 flex-shrink-0 items-center justify-center rounded-2xl ${section.color} shadow-[0_4px_20px_rgba(255, 176, 0,0.25)]`}
         >
           <Icon className="h-5 w-5 text-black" />
         </motion.span>
@@ -683,14 +683,14 @@ return <button onClick={toggleTheme}>{theme === 'dark' ? '☀️' : '🌙'}</but
             [
               <Code key="1">yellow-400</Code>,
               <span key="1b" className="inline-flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded bg-[#FACC15]" /> #FACC15
+                <span className="inline-block h-3 w-3 rounded bg-[#FFB000]" /> #FFB000
               </span>,
               'Acentos, botones primarios',
             ],
             [
               <Code key="2">yellow-300</Code>,
               <span key="2b" className="inline-flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded bg-[#FDE047]" /> #FDE047
+                <span className="inline-block h-3 w-3 rounded bg-[#FFD05A]" /> #FFD05A
               </span>,
               'Hover de botones',
             ],
@@ -704,14 +704,14 @@ return <button onClick={toggleTheme}>{theme === 'dark' ? '☀️' : '🌙'}</but
             [
               <Code key="4">black</Code>,
               <span key="4b" className="inline-flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded bg-black border border-white/20" /> #000000
+                <span className="inline-block h-3 w-3 rounded bg-black border border-white/20" /> #08090A
               </span>,
               'Fondo principal',
             ],
             [
               <Code key="5">zinc-950</Code>,
               <span key="5b" className="inline-flex items-center gap-2">
-                <span className="inline-block h-3 w-3 rounded bg-[#09090B]" /> #09090B
+                <span className="inline-block h-3 w-3 rounded bg-[#08090A]" /> #08090A
               </span>,
               'Fondo de tarjetas',
             ],
@@ -720,10 +720,10 @@ return <button onClick={toggleTheme}>{theme === 'dark' ? '☀️' : '🌙'}</but
         <H3>Sombras doradas personalizadas</H3>
         <div className="my-3 grid grid-cols-2 gap-3 md:grid-cols-4">
           {[
-            ['shadow-yellow-sm', 'shadow-[0_0_15px_rgba(250,204,21,0.25)]'],
-            ['shadow-yellow-md', 'shadow-[0_0_30px_rgba(250,204,21,0.35)]'],
-            ['shadow-yellow-lg', 'shadow-[0_0_60px_rgba(250,204,21,0.4)]'],
-            ['shadow-yellow-xl', 'shadow-[0_0_100px_rgba(250,204,21,0.45)]'],
+            ['shadow-yellow-sm', 'shadow-[0_0_15px_rgba(255, 176, 0,0.25)]'],
+            ['shadow-yellow-md', 'shadow-[0_0_30px_rgba(255, 176, 0,0.35)]'],
+            ['shadow-yellow-lg', 'shadow-[0_0_60px_rgba(255, 176, 0,0.4)]'],
+            ['shadow-yellow-xl', 'shadow-[0_0_100px_rgba(255, 176, 0,0.45)]'],
           ].map(([name, cls]) => (
             <div
               key={name}
@@ -779,8 +779,8 @@ animation: {
 },
 keyframes: {
   pulseGold: {
-    '0%, 100%': { boxShadow: '0 0 15px rgba(250,204,21,0.3)' },
-    '50%':       { boxShadow: '0 0 40px rgba(250,204,21,0.7)' },
+    '0%, 100%': { boxShadow: '0 0 15px rgba(255, 176, 0,0.3)' },
+    '50%':       { boxShadow: '0 0 40px rgba(255, 176, 0,0.7)' },
   },
 },
 
@@ -1884,7 +1884,7 @@ export default function ManualPage() {
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.6 }}
-        className="relative overflow-hidden rounded-3xl border border-yellow-400/20 bg-gradient-to-br from-black via-zinc-950 to-black p-8 md:p-12 mb-8 shadow-[0_4px_40px_rgba(250,204,21,0.1)]"
+        className="relative overflow-hidden rounded-3xl border border-yellow-400/20 bg-gradient-to-br from-black via-zinc-950 to-black p-8 md:p-12 mb-8 shadow-[0_4px_40px_rgba(255, 176, 0,0.1)]"
       >
         <div className="pointer-events-none absolute -top-20 -right-20 h-80 w-80 rounded-full bg-yellow-400/10 blur-[100px]" />
         <div className="pointer-events-none absolute -bottom-20 -left-20 h-80 w-80 rounded-full bg-yellow-400/5 blur-[100px]" />
@@ -1957,7 +1957,7 @@ export default function ManualPage() {
           >
             <a
               href="#arquitectura"
-              className="inline-flex items-center gap-2 rounded-full bg-yellow-400 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-black shadow-[0_4px_20px_rgba(250,204,21,0.4)] transition-all hover:bg-yellow-300 hover:shadow-[0_4px_30px_rgba(250,204,21,0.6)]"
+              className="inline-flex items-center gap-2 rounded-full bg-yellow-400 px-5 py-2.5 text-[11px] font-bold uppercase tracking-[0.2em] text-black shadow-[0_4px_20px_rgba(255, 176, 0,0.4)] transition-all hover:bg-yellow-300 hover:shadow-[0_4px_30px_rgba(255, 176, 0,0.6)]"
             >
               <BookOpen className="h-3.5 w-3.5" />
               Comenzar lectura
@@ -2020,7 +2020,7 @@ export default function ManualPage() {
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="relative overflow-hidden rounded-3xl border border-yellow-400/40 bg-gradient-to-br from-yellow-400/10 via-zinc-950 to-yellow-400/5 p-8 md:p-12 shadow-[0_4px_40px_rgba(250,204,21,0.15)]"
+            className="relative overflow-hidden rounded-3xl border border-yellow-400/40 bg-gradient-to-br from-yellow-400/10 via-zinc-950 to-yellow-400/5 p-8 md:p-12 shadow-[0_4px_40px_rgba(255, 176, 0,0.15)]"
           >
             <div className="pointer-events-none absolute -top-32 -right-32 h-96 w-96 rounded-full bg-yellow-400/15 blur-[120px]" />
             <div className="pointer-events-none absolute -bottom-32 -left-32 h-96 w-96 rounded-full bg-yellow-400/10 blur-[120px]" />
@@ -2031,7 +2031,7 @@ export default function ManualPage() {
                 whileInView={{ scale: 1, opacity: 1 }}
                 viewport={{ once: true }}
                 transition={{ type: 'spring', duration: 0.6 }}
-                className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-yellow-400 shadow-[0_8px_40px_rgba(250,204,21,0.5)]"
+                className="mx-auto mb-5 flex h-16 w-16 items-center justify-center rounded-3xl bg-yellow-400 shadow-[0_8px_40px_rgba(255, 176, 0,0.5)]"
               >
                 <BookOpen className="h-7 w-7 text-black" />
               </motion.div>
@@ -2052,7 +2052,7 @@ export default function ManualPage() {
                   href="/MANUAL.md"
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="group inline-flex items-center gap-2.5 rounded-full bg-yellow-400 px-7 py-3.5 text-[12px] font-black uppercase tracking-[0.25em] text-black shadow-[0_8px_30px_rgba(250,204,21,0.5)] transition-all hover:bg-yellow-300 hover:shadow-[0_8px_40px_rgba(250,204,21,0.75)]"
+                  className="group inline-flex items-center gap-2.5 rounded-full bg-yellow-400 px-7 py-3.5 text-[12px] font-black uppercase tracking-[0.25em] text-black shadow-[0_8px_30px_rgba(255, 176, 0,0.5)] transition-all hover:bg-yellow-300 hover:shadow-[0_8px_40px_rgba(255, 176, 0,0.75)]"
                 >
                   <BookOpen className="h-4 w-4" />
                   Abrir manual completo
@@ -2085,7 +2085,7 @@ export default function ManualPage() {
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.8, y: 20 }}
             onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
-            className="fixed bottom-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-400 text-black shadow-[0_8px_30px_rgba(250,204,21,0.5)] transition-all hover:scale-110 hover:bg-yellow-300"
+            className="fixed bottom-6 right-6 z-30 flex h-12 w-12 items-center justify-center rounded-full bg-yellow-400 text-black shadow-[0_8px_30px_rgba(255, 176, 0,0.5)] transition-all hover:scale-110 hover:bg-yellow-300"
             aria-label="Volver arriba"
           >
             <ChevronRight className="h-5 w-5 -rotate-90" />

@@ -54,7 +54,7 @@ export default function HeroHouse3D() {
           className="absolute -inset-6 rounded-[2.5rem] pointer-events-none"
           style={{
             background:
-              'radial-gradient(ellipse 60% 70% at 50% 50%, rgba(250,204,21,0.18) 0%, rgba(201,169,110,0.10) 40%, transparent 75%)',
+              'radial-gradient(ellipse 60% 70% at 50% 50%, rgba(255, 176, 0,0.18) 0%, rgba(255, 176, 0,0.10) 40%, transparent 75%)',
             filter: 'blur(20px)',
           }}
         />
@@ -104,9 +104,9 @@ export default function HeroHouse3D() {
         <div
           className="absolute inset-0 rounded-[1.75rem] md:rounded-[2.25rem] pointer-events-none"
           style={{
-            border: '1px solid rgba(201,169,110,0.45)',
+            border: '1px solid rgba(255, 176, 0,0.45)',
             boxShadow:
-              'inset 0 0 0 1px rgba(250,204,21,0.08), 0 30px 80px rgba(0,0,0,0.55)',
+              'inset 0 0 0 1px rgba(255, 176, 0,0.08), 0 30px 80px rgba(0,0,0,0.55)',
           }}
         />
 

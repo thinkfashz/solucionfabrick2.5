@@ -826,7 +826,7 @@ function SectionEditor({ section, index, total, onUpdateText, onUpdateNow, onPic
         <details className="mt-3 rounded-lg border border-white/5 bg-black/40 p-3" open>
           <summary className="cursor-pointer text-[10px] font-bold uppercase tracking-[0.18em] text-zinc-400">Opciones avanzadas (banner)</summary>
           <div className="mt-3 grid gap-2 md:grid-cols-2">
-            <DataInput label="Color de fondo (CSS)" value={dataString('bg_color')} onChange={(v) => setDataDebounced({ bg_color: v })} placeholder="#000000 o linear-gradient(...)" />
+            <DataInput label="Color de fondo (CSS)" value={dataString('bg_color')} onChange={(v) => setDataDebounced({ bg_color: v })} placeholder="#08090A o linear-gradient(...)" />
           </div>
         </details>
       )}

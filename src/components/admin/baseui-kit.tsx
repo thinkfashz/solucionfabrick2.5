@@ -18,12 +18,12 @@ export function AdminBasePage({
   children: ReactNode;
 }) {
   return (
-    <section className="min-h-full w-full max-w-[100vw] overflow-x-hidden bg-[#09090b] bg-[radial-gradient(ellipse_80%_40%_at_10%_0%,rgba(250,204,21,0.11),transparent),radial-gradient(ellipse_60%_50%_at_90%_100%,rgba(56,189,248,0.07),transparent)] px-3 py-4 text-zinc-100 sm:px-5 lg:px-8">
+    <section className="min-h-full w-full max-w-[100vw] overflow-x-hidden bg-[#08090A] bg-[radial-gradient(ellipse_80%_40%_at_10%_0%,rgba(255, 176, 0,0.11),transparent),radial-gradient(ellipse_60%_50%_at_90%_100%,rgba(56,189,248,0.07),transparent)] px-3 py-4 text-zinc-100 sm:px-5 lg:px-8">
       <div className="mx-auto w-full max-w-[1600px] space-y-5">
         {/* Premium header card */}
         <div className="relative overflow-hidden w-full rounded-[2rem] border border-white/[0.12] bg-zinc-950/85 p-6 shadow-[0_28px_120px_rgba(0,0,0,0.65)] backdrop-blur-2xl sm:p-7">
           {/* Inner gradient shimmer */}
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.07),transparent_35%,rgba(250,204,21,0.07))]" />
+          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.07),transparent_35%,rgba(255, 176, 0,0.07))]" />
           {/* Soft glow blob top-right */}
           <div className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-amber-400/[0.07] blur-[80px]" />
           {/* Soft glow blob bottom-left */}

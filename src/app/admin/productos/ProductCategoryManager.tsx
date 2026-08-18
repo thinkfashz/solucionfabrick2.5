@@ -83,10 +83,10 @@ export default function ProductCategoryManager({ open, categories, productCounts
   }
 
   return (
-    <div className="fixed inset-0 z-[90] overflow-y-auto bg-[#17140f]/65 p-3 backdrop-blur-xl sm:p-6">
-      <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-[#f8efdd] text-[#1b1710] shadow-[0_40px_130px_rgba(0,0,0,.35)]">
+    <div className="fixed inset-0 z-[90] overflow-y-auto bg-[#111214]/65 p-3 backdrop-blur-xl sm:p-6">
+      <div className="mx-auto max-w-5xl overflow-hidden rounded-[2rem] bg-[#f8efdd] text-[#111214] shadow-[0_40px_130px_rgba(0,0,0,.35)]">
         <header className="flex items-start justify-between gap-4 border-b border-black/10 p-5 sm:p-7">
-          <div><p className="text-[10px] font-black uppercase tracking-[.24em] text-[#9b6c12]">Orden del catálogo</p><h2 className="mt-1 text-3xl font-black tracking-[-.05em]">Categorías y carpetas</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-black/52">Cada categoría usa automáticamente una carpeta Cloudinary dentro de <b>fabrick/productos</b>. La carpeta se materializa con la primera imagen subida.</p></div>
+          <div><p className="text-[10px] font-black uppercase tracking-[.24em] text-[#C97700]">Orden del catálogo</p><h2 className="mt-1 text-3xl font-black tracking-[-.05em]">Categorías y carpetas</h2><p className="mt-2 max-w-2xl text-sm leading-6 text-black/52">Cada categoría usa automáticamente una carpeta Cloudinary dentro de <b>fabrick/productos</b>. La carpeta se materializa con la primera imagen subida.</p></div>
           <button type="button" onClick={onClose} className="grid h-11 w-11 shrink-0 place-items-center rounded-2xl bg-black text-yellow-300" aria-label="Cerrar"><X className="h-5 w-5" /></button>
         </header>
 

@@ -198,9 +198,9 @@ export function StudioShell({ children }: { children: ReactNode }) {
   return (
     <div
       data-studio-mode={dark ? 'dark' : 'light'}
-      className={['relative min-h-screen', dark ? 'text-[#fff1d6]' : 'bg-white text-zinc-900'].join(' ')}
+      className={['relative min-h-screen', dark ? 'text-[#FFF9EE]' : 'bg-white text-zinc-900'].join(' ')}
       style={dark ? {
-        background: 'radial-gradient(circle at 16% 15%,rgba(255,241,214,.10),transparent 23%), radial-gradient(circle at 88% 10%,rgba(255,106,0,.24),transparent 25%), radial-gradient(circle at 82% 86%,rgba(255,213,74,.14),transparent 24%), linear-gradient(140deg,#050403 0%,#090604 36%,#120a05 100%)',
+        background: 'radial-gradient(circle at 16% 15%,rgba(255,241,214,.10),transparent 23%), radial-gradient(circle at 88% 10%,rgba(255,106,0,.24),transparent 25%), radial-gradient(circle at 82% 86%,rgba(255,213,74,.14),transparent 24%), linear-gradient(140deg,#08090A 0%,#090604 36%,#120a05 100%)',
       } : {}}
     >
       {/* Animated ambient grid + blob overlay (dark only) */}
@@ -233,14 +233,14 @@ export function StudioShell({ children }: { children: ReactNode }) {
               className={[
                 'fixed left-0 top-0 z-50 flex h-full w-[272px] flex-col lg:hidden',
                 'border-r border-[rgba(255,246,230,.10)]',
-                dark ? 'bg-[rgba(19,13,8,0.98)] backdrop-blur-xl' : 'bg-[#fafafa]',
+                dark ? 'bg-[rgba(19,13,8,0.98)] backdrop-blur-xl' : 'bg-[#FFF9EE]',
               ].join(' ')}
             >
               {/* close button */}
               <button
                 type="button"
                 onClick={() => setMobileOpen(false)}
-                className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-md text-[#9f8d74] hover:bg-[rgba(255,138,31,.10)] hover:text-[#fff1d6]"
+                className="absolute right-3 top-3 flex h-7 w-7 items-center justify-center rounded-md text-[#BFB8AC] hover:bg-[rgba(245, 135, 31,.10)] hover:text-[#FFF9EE]"
                 aria-label="Cerrar menú"
               >
                 <X className="h-4 w-4" />

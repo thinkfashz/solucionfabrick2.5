@@ -11,7 +11,7 @@ body[data-admin-theme="neo"] {
     radial-gradient(circle at 16% 15%, rgba(255,241,214,.10), transparent 23%),
     radial-gradient(circle at 88% 10%, rgba(255,106,0,.28),   transparent 25%),
     radial-gradient(circle at 82% 86%, rgba(255,213,74,.18),  transparent 24%),
-    linear-gradient(140deg, #050403 0%, #090604 36%, #120a05 100%);
+    linear-gradient(140deg, #08090A 0%, #090604 36%, #120a05 100%);
 }
 
 /* ── Neo ambient overlay ── */
@@ -22,7 +22,7 @@ body[data-admin-theme="neo"] {
   z-index: 0;
   /* subtle scanlines + grid */
   background-image:
-    linear-gradient(rgba(255,138,31,.022) 1px, transparent 1px),
+    linear-gradient(rgba(245, 135, 31,.022) 1px, transparent 1px),
     linear-gradient(90deg, rgba(255,255,255,.014) 1px, transparent 1px);
   background-size: 100% 4px, 36px 36px;
   mask-image: linear-gradient(to bottom, rgba(0,0,0,.60), transparent 88%);

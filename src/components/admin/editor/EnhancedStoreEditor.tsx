@@ -106,7 +106,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
         'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 transition-colors duration-200',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60',
         checked
-          ? 'border-yellow-400 bg-yellow-400 shadow-[0_0_12px_rgba(250,204,21,0.45)]'
+          ? 'border-yellow-400 bg-yellow-400 shadow-[0_0_12px_rgba(255, 176, 0,0.45)]'
           : 'border-zinc-700 bg-zinc-800',
         disabled ? 'opacity-40 cursor-not-allowed' : '',
       ].join(' ')}
@@ -322,7 +322,7 @@ export function EnhancedStoreEditor({
               className={[
                 'flex-1 flex items-center justify-center gap-1.5 py-2 rounded-lg text-xs font-bold transition-all',
                 viewMode === m
-                  ? 'bg-yellow-400 text-black shadow-[0_0_14px_rgba(250,204,21,0.35)]'
+                  ? 'bg-yellow-400 text-black shadow-[0_0_14px_rgba(255, 176, 0,0.35)]'
                   : 'text-zinc-500 hover:text-zinc-200',
               ].join(' ')}
             >
@@ -458,7 +458,7 @@ export function EnhancedStoreEditor({
                   title={d}
                   className={[
                     'p-1.5 rounded-full transition-all',
-                    device === d ? 'bg-yellow-400 text-black shadow-[0_0_10px_rgba(250,204,21,0.4)]' : 'text-zinc-500 hover:text-zinc-200',
+                    device === d ? 'bg-yellow-400 text-black shadow-[0_0_10px_rgba(255, 176, 0,0.4)]' : 'text-zinc-500 hover:text-zinc-200',
                   ].join(' ')}
                 >
                   {d === 'mobile' && <Smartphone className="w-3.5 h-3.5" />}
@@ -558,7 +558,7 @@ function EmptyState() {
 function DragGhost({ section }: { section: Section }) {
   const kindLabel = KINDS.find((k) => k.value === section.kind)?.label || section.kind;
   return (
-    <div className="rounded-xl border border-yellow-400/60 bg-zinc-900/95 px-3 py-2.5 shadow-[0_8px_32px_rgba(250,204,21,0.25)] backdrop-blur-sm flex items-center gap-2 cursor-grabbing w-full">
+    <div className="rounded-xl border border-yellow-400/60 bg-zinc-900/95 px-3 py-2.5 shadow-[0_8px_32px_rgba(255, 176, 0,0.25)] backdrop-blur-sm flex items-center gap-2 cursor-grabbing w-full">
       <GripVertical className="w-3.5 h-3.5 text-yellow-400/60 shrink-0" />
       <div className="min-w-0">
         <p className="text-xs font-bold text-yellow-400 truncate">{kindLabel}</p>
@@ -622,7 +622,7 @@ function SectionCard({
       className={[
         'rounded-xl border transition-all duration-150',
         isSelected
-          ? 'border-yellow-400/50 bg-yellow-400/[0.06] shadow-[0_0_20px_rgba(250,204,21,0.1),inset_0_1px_0_rgba(250,204,21,0.15)]'
+          ? 'border-yellow-400/50 bg-yellow-400/[0.06] shadow-[0_0_20px_rgba(255, 176, 0,0.1),inset_0_1px_0_rgba(255, 176, 0,0.15)]'
           : 'border-yellow-400/10 bg-zinc-900/70 hover:border-yellow-400/25 hover:bg-zinc-900/90',
         isDragging ? 'shadow-[0_12px_40px_rgba(0,0,0,0.6)]' : '',
       ].join(' ')}

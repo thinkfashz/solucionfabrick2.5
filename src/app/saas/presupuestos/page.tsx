@@ -27,7 +27,7 @@ const flow = [
 ];
 
 export default function PresupuestosSaaSPage() {
-  return <main className="min-h-screen bg-[#050505] text-white">
+  return <main className="min-h-screen bg-[#08090A] text-white">
     <section className="relative overflow-hidden border-b border-white/10 px-4 py-10 md:px-6 md:py-16">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_0%,rgba(245,158,11,.24),transparent_32rem),radial-gradient(circle_at_88%_5%,rgba(251,146,60,.18),transparent_32rem)]" />
       <div className="relative mx-auto max-w-7xl">
@@ -48,7 +48,7 @@ export default function PresupuestosSaaSPage() {
           </div>
 
           <aside className="rounded-[2rem] border border-white/10 bg-white/[0.045] p-5 shadow-2xl shadow-black/40">
-            <div className="rounded-[1.7rem] border border-amber-300/20 bg-[linear-gradient(145deg,#181008,#050505)] p-5">
+            <div className="rounded-[1.7rem] border border-amber-300/20 bg-[linear-gradient(145deg,#181008,#08090A)] p-5">
               <div className="flex items-center justify-between"><span className="rounded-full bg-amber-300 px-3 py-1 text-[10px] font-black uppercase tracking-[.18em] text-black">Preview</span><PenTool className="h-5 w-5 text-amber-100" /></div>
               <h2 className="mt-6 text-3xl font-black tracking-[-.05em]">Propuesta #AC-12000</h2>
               <p className="mt-2 text-sm text-amber-100/70">Instalación aire acondicionado 12.000 BTU</p>

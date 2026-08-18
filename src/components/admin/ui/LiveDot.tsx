@@ -13,9 +13,9 @@ export type LiveDotStatus = 'ok' | 'warn' | 'error' | 'idle';
 
 const COLOR: Record<LiveDotStatus, string> = {
   ok: '#22c55e',
-  warn: '#f59e0b',
+  warn: '#F5871F',
   error: '#ef4444',
-  idle: '#52525b',
+  idle: '#6E675D',
 };
 
 export function LiveDot({

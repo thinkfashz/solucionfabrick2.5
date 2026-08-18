@@ -41,7 +41,7 @@ export const CATALOG: CatalogPiece[] = [
     dimensiones: [3, 0.1, 3],
     propiedadesMaterial: {
       nombre: 'Hormigón pulido',
-      color: '#9ca3af',
+      color: '#BFB8AC',
       metalness: 0.05,
       roughness: 0.85,
     },
@@ -56,7 +56,7 @@ export const CATALOG: CatalogPiece[] = [
     dimensiones: [3, 0.04, 3],
     propiedadesMaterial: {
       nombre: 'Roble tratado',
-      color: '#a16207',
+      color: '#C97700',
       metalness: 0.0,
       roughness: 0.6,
     },
@@ -103,7 +103,7 @@ export const CATALOG: CatalogPiece[] = [
     dimensiones: [3, 2.4, 0.15],
     propiedadesMaterial: {
       nombre: 'Yeso-cartón sobre Metalcom',
-      color: '#e5e7eb',
+      color: '#F2DFBB',
       metalness: 0.05,
       roughness: 0.75,
     },
@@ -133,7 +133,7 @@ export const CATALOG: CatalogPiece[] = [
     dimensiones: [3, 2.4, 0.2],
     propiedadesMaterial: {
       nombre: 'Hormigón obra gris',
-      color: '#94a3b8',
+      color: '#BFB8AC',
       metalness: 0.0,
       roughness: 0.9,
     },
@@ -165,7 +165,7 @@ export const CATALOG: CatalogPiece[] = [
     dimensiones: [0.9, 2.1, 0.06],
     propiedadesMaterial: {
       nombre: 'Aluminio anodizado',
-      color: '#52525b',
+      color: '#6E675D',
       metalness: 0.85,
       roughness: 0.3,
     },
@@ -195,7 +195,7 @@ export const CATALOG: CatalogPiece[] = [
     dimensiones: [2, 1.5, 0.06],
     propiedadesMaterial: {
       nombre: 'Aluminio anodizado',
-      color: '#27272a',
+      color: '#1A1B1F',
       metalness: 0.9,
       roughness: 0.25,
     },

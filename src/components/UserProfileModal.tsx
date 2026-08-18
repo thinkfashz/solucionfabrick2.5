@@ -116,7 +116,7 @@ export default function UserProfileModal() {
   return (
     <div
       className="fixed inset-0 z-[300] flex items-center justify-center p-4"
-      style={{ background: 'radial-gradient(circle at 50% 35%, rgba(201,169,110,0.06), rgba(0,0,0,0.96) 60%)' }}
+      style={{ background: 'radial-gradient(circle at 50% 35%, rgba(255, 176, 0,0.06), rgba(0,0,0,0.96) 60%)' }}
     >
       {/* Backdrop */}
       <div
@@ -129,7 +129,7 @@ export default function UserProfileModal() {
         {/* Gold top bar */}
         <div className="h-px w-full bg-gradient-to-r from-transparent via-yellow-400/60 to-transparent" />
 
-        <div className="rounded-b-[2rem] rounded-t-none border border-white/8 bg-[#0a0a0b]/95 p-7 shadow-[0_30px_80px_rgba(0,0,0,0.8),0_0_0_1px_rgba(201,169,110,0.08)] backdrop-blur-2xl">
+        <div className="rounded-b-[2rem] rounded-t-none border border-white/8 bg-[#0a0a0b]/95 p-7 shadow-[0_30px_80px_rgba(0,0,0,0.8),0_0_0_1px_rgba(255, 176, 0,0.08)] backdrop-blur-2xl">
           {/* Close button */}
           <button
             onClick={() => setOpen(false)}

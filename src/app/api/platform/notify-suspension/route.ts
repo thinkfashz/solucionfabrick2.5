@@ -102,51 +102,51 @@ function buildSuspensionEmail(params: {
 <!DOCTYPE html>
 <html lang="es">
 <head><meta charset="utf-8"><title>Cuenta suspendida — Fabrick</title></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:system-ui,sans-serif;color:#e5e5e5;">
-  <div style="max-width:520px;margin:32px auto;padding:32px;background:#111;border-radius:16px;border:1px solid #222;">
-    <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px;color:#fff;margin-bottom:8px;">FABRICK</div>
-    <div style="font-size:11px;text-transform:uppercase;letter-spacing:3px;color:#666;margin-bottom:32px;">Platform</div>
+<body style="margin:0;padding:0;background:#08090A;font-family:system-ui,sans-serif;color:#e5e5e5;">
+  <div style="max-width:520px;margin:32px auto;padding:32px;background:#111214;border-radius:16px;border:1px solid #222;">
+    <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px;color:#FFF9EE;margin-bottom:8px;">FABRICK</div>
+    <div style="font-size:11px;text-transform:uppercase;letter-spacing:3px;color:#BFB8AC;margin-bottom:32px;">Platform</div>
 
     <div style="display:flex;align-items:center;gap:10px;margin-bottom:20px;">
       <div style="width:40px;height:40px;border-radius:10px;background:#2d1500;border:1px solid #5c2e00;display:flex;align-items:center;justify-content:center;font-size:20px;flex-shrink:0;">⚠️</div>
-      <h1 style="font-size:18px;font-weight:800;color:#fff;margin:0;">Cuenta suspendida</h1>
+      <h1 style="font-size:18px;font-weight:800;color:#FFF9EE;margin:0;">Cuenta suspendida</h1>
     </div>
 
-    <p style="color:#999;font-size:14px;line-height:1.6;margin:0 0 8px;">
-      ${greeting}, la cuenta de <strong style="color:#fff">${params.businessName}</strong> ha sido suspendida
+    <p style="color:#BFB8AC;font-size:14px;line-height:1.6;margin:0 0 8px;">
+      ${greeting}, la cuenta de <strong style="color:#FFF9EE">${params.businessName}</strong> ha sido suspendida
       porque el período de prueba${trialDate ? ` (vencido el ${trialDate})` : ''} finalizó sin un pago activo.
     </p>
-    <p style="color:#999;font-size:14px;line-height:1.6;margin:0 0 24px;">
-      <strong style="color:#f59e0b">Tus datos se conservan por 30 días.</strong>
+    <p style="color:#BFB8AC;font-size:14px;line-height:1.6;margin:0 0 24px;">
+      <strong style="color:#F5871F">Tus datos se conservan por 30 días.</strong>
       Reactiva tu cuenta antes de que se eliminen permanentemente.
     </p>
 
-    <div style="background:#0d0d0d;border:1px solid #1a1a1a;border-radius:12px;padding:20px;margin-bottom:24px;">
-      <div style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#666;margin-bottom:14px;">Pasos para reactivar</div>
+    <div style="background:#0d0d0d;border:1px solid #111214;border-radius:12px;padding:20px;margin-bottom:24px;">
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#BFB8AC;margin-bottom:14px;">Pasos para reactivar</div>
       <div style="display:flex;gap:12px;margin-bottom:12px;">
-        <div style="width:24px;height:24px;border-radius:50%;background:#1a1a1a;color:#f59e0b;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#111214;color:#F5871F;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">1</div>
         <p style="margin:0;font-size:13px;color:#bbb;line-height:1.5;">Haz clic en el botón de abajo y elige tu plan.</p>
       </div>
       <div style="display:flex;gap:12px;margin-bottom:12px;">
-        <div style="width:24px;height:24px;border-radius:50%;background:#1a1a1a;color:#f59e0b;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#111214;color:#F5871F;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">2</div>
         <p style="margin:0;font-size:13px;color:#bbb;line-height:1.5;">Completa el pago en MercadoPago.</p>
       </div>
       <div style="display:flex;gap:12px;">
-        <div style="width:24px;height:24px;border-radius:50%;background:#1a1a1a;color:#f59e0b;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
+        <div style="width:24px;height:24px;border-radius:50%;background:#111214;color:#F5871F;font-size:11px;font-weight:800;display:flex;align-items:center;justify-content:center;flex-shrink:0;">3</div>
         <p style="margin:0;font-size:13px;color:#bbb;line-height:1.5;">Tu acceso se reactiva automáticamente en minutos.</p>
       </div>
     </div>
 
-    <a href="${renewUrl}" style="display:block;text-align:center;background:#f59e0b;color:#000;font-weight:700;font-size:14px;padding:14px;border-radius:10px;text-decoration:none;margin-bottom:12px;">
+    <a href="${renewUrl}" style="display:block;text-align:center;background:#F5871F;color:#08090A;font-weight:700;font-size:14px;padding:14px;border-radius:10px;text-decoration:none;margin-bottom:12px;">
       Renovar suscripción →
     </a>
-    <a href="${adminUrl}" style="display:block;text-align:center;background:transparent;color:#555;font-size:12px;padding:10px;border-radius:10px;text-decoration:none;border:1px solid #222;margin-bottom:24px;">
+    <a href="${adminUrl}" style="display:block;text-align:center;background:transparent;color:#6E675D;font-size:12px;padding:10px;border-radius:10px;text-decoration:none;border:1px solid #222;margin-bottom:24px;">
       Ya pagué — entrar al panel
     </a>
 
     <p style="color:#444;font-size:12px;text-align:center;margin:0;line-height:1.6;">
       ¿Necesitas ayuda? Escríbenos a
-      <a href="mailto:soporte@fabrick.cl" style="color:#666;">soporte@fabrick.cl</a>
+      <a href="mailto:soporte@fabrick.cl" style="color:#BFB8AC;">soporte@fabrick.cl</a>
     </p>
   </div>
 </body>

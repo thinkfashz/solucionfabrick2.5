@@ -26,7 +26,7 @@ export async function POST(request: Request) {
   const result = await sendEmail({
     to: email,
     subject: 'Tu carrito Fabrick sigue disponible',
-    html: `<div style="font-family:Arial,sans-serif;background:#090806;color:#fff;padding:32px;border-radius:24px"><p style="color:#facc15;font-weight:800">SOLUCIONES FABRICK</p><h1>Continúa tu compra cuando quieras</h1><p>Hola ${escapeHtml(String(body.name || ''))}, guardamos tu selección durante este proceso:</p><ul>${rows}</ul><a href="${url}" style="display:inline-block;margin-top:18px;background:#facc15;color:#000;padding:14px 22px;border-radius:999px;font-weight:800;text-decoration:none">Volver a mi carrito</a><p style="margin-top:20px;color:#aaa;font-size:12px">Los precios y el stock se validan nuevamente al pagar.</p></div>`,
+    html: `<div style="font-family:Arial,sans-serif;background:#08090A;color:#FFF9EE;padding:32px;border-radius:24px"><p style="color:#FFB000;font-weight:800">SOLUCIONES FABRICK</p><h1>Continúa tu compra cuando quieras</h1><p>Hola ${escapeHtml(String(body.name || ''))}, guardamos tu selección durante este proceso:</p><ul>${rows}</ul><a href="${url}" style="display:inline-block;margin-top:18px;background:#FFB000;color:#08090A;padding:14px 22px;border-radius:999px;font-weight:800;text-decoration:none">Volver a mi carrito</a><p style="margin-top:20px;color:#aaa;font-size:12px">Los precios y el stock se validan nuevamente al pagar.</p></div>`,
     text: `Continúa tu compra en Soluciones Fabrick: ${url}`,
   });
   if (!result.ok) return NextResponse.json({ error: 'No se pudo enviar el correo.' }, { status: 502 });

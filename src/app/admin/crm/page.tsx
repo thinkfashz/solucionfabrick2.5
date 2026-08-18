@@ -363,7 +363,7 @@ export default function CRMPage() {
     <div className="space-y-6 p-4 md:p-8">
       {/* ── Header ─────────────────────────────────────────────────── */}
       <div className="relative overflow-hidden rounded-[2rem] border border-white/[0.12] bg-zinc-950/85 px-6 py-5 shadow-[0_20px_80px_rgba(0,0,0,0.55)] backdrop-blur-2xl">
-        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_35%,rgba(250,204,21,0.06))]" />
+        <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(135deg,rgba(255,255,255,0.06),transparent_35%,rgba(255, 176, 0,0.06))]" />
         <div className="pointer-events-none absolute -right-16 -top-16 h-48 w-48 rounded-full bg-amber-400/[0.07] blur-[64px]" />
         <div className="pointer-events-none absolute -bottom-10 -left-10 h-32 w-32 rounded-full bg-sky-400/[0.05] blur-[56px]" />
         <div className="relative z-10 flex items-start justify-between gap-4">

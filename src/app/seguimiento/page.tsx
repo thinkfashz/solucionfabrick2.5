@@ -32,11 +32,11 @@ export default function SeguimientoLookupPage() {
   }
 
   return (
-    <main className="min-h-screen overflow-hidden bg-[#050403] px-4 py-7 text-white">
+    <main className="min-h-screen overflow-hidden bg-[#08090A] px-4 py-7 text-white">
       <style>{`@keyframes highwayMove{from{background-position-x:0}to{background-position-x:180px}}.highway{animation:highwayMove 1.2s linear infinite}@keyframes deliveryRun{0%{transform:translateX(-25%) translateY(0)}45%{transform:translateX(45%) translateY(-3px)}100%{transform:translateX(135%) translateY(0)}}.delivery-run{animation:deliveryRun 5s ease-in-out infinite}`}</style>
       <section className="mx-auto flex min-h-[calc(100vh-3.5rem)] max-w-5xl items-center">
         <div className="grid w-full gap-5 lg:grid-cols-[1fr_420px]">
-          <section className="relative overflow-hidden rounded-[2.2rem] border border-yellow-300/20 bg-[radial-gradient(circle_at_20%_0%,rgba(250,204,21,.25),transparent_24rem),linear-gradient(145deg,#11100c,#050403)] p-6 shadow-[0_40px_120px_rgba(0,0,0,.72)] md:p-9">
+          <section className="relative overflow-hidden rounded-[2.2rem] border border-yellow-300/20 bg-[radial-gradient(circle_at_20%_0%,rgba(255, 176, 0,.25),transparent_24rem),linear-gradient(145deg,#11100c,#08090A)] p-6 shadow-[0_40px_120px_rgba(0,0,0,.72)] md:p-9">
             <div className="pointer-events-none absolute -right-28 -top-28 h-80 w-80 rounded-full bg-yellow-300/20 blur-3xl" />
             <div className="relative z-10">
               <span className="inline-flex items-center gap-2 rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.24em] text-yellow-200"><PackageCheck className="h-4 w-4" /> Seguimiento privado</span>
@@ -64,14 +64,14 @@ export default function SeguimientoLookupPage() {
           </section>
 
           <section className="rounded-[2.2rem] border border-white/10 bg-black/35 p-5">
-            <div className="relative h-full min-h-[420px] overflow-hidden rounded-[1.7rem] bg-[linear-gradient(180deg,#17130b,#070707_52%,#030303)]">
+            <div className="relative h-full min-h-[420px] overflow-hidden rounded-[1.7rem] bg-[linear-gradient(180deg,#17130b,#070707_52%,#08090A)]">
               <div className="absolute left-6 top-8 h-28 w-16 rounded-t-3xl border border-yellow-300/15 bg-yellow-300/10" />
               <div className="absolute left-28 top-14 h-40 w-24 rounded-t-3xl border border-white/10 bg-white/[0.06]" />
               <div className="absolute right-8 top-10 h-48 w-28 rounded-t-3xl border border-yellow-300/15 bg-yellow-300/10" />
               <div className="absolute bottom-24 left-0 h-24 w-full bg-[#151515]" />
-              <div className="highway absolute bottom-32 h-4 w-full bg-[repeating-linear-gradient(90deg,rgba(250,204,21,.8)_0_26px,transparent_26px_62px)]" />
+              <div className="highway absolute bottom-32 h-4 w-full bg-[repeating-linear-gradient(90deg,rgba(255, 176, 0,.8)_0_26px,transparent_26px_62px)]" />
               <div className="absolute bottom-24 h-8 w-full bg-black/55" />
-              <div className="delivery-run absolute bottom-28 left-0 flex items-center gap-2 text-6xl drop-shadow-[0_18px_35px_rgba(250,204,21,.38)]"><span>📦</span><span>🚚</span></div>
+              <div className="delivery-run absolute bottom-28 left-0 flex items-center gap-2 text-6xl drop-shadow-[0_18px_35px_rgba(255, 176, 0,.38)]"><span>📦</span><span>🚚</span></div>
               <div className="absolute bottom-5 left-5 right-5 rounded-3xl border border-yellow-300/20 bg-yellow-300/10 p-4">
                 <p className="text-[10px] font-black uppercase tracking-[0.24em] text-yellow-300">Animación de despacho</p>
                 <p className="mt-2 text-sm leading-6 text-yellow-50/72">Un camión transporta el paquete por la autopista mientras el cliente ve las etapas reales del pedido.</p>

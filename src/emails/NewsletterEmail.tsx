@@ -23,13 +23,13 @@ export interface NewsletterEmailProps {
 }
 
 const C = {
-  bg: '#070707',
-  card: '#0c0c0c',
+  bg: '#08090A',
+  card: '#08090A',
   border: '#262626',
-  text: '#fafafa',
-  muted: '#a1a1aa',
-  amber: '#f59e0b',
-  amberSoft: '#fbbf24',
+  text: '#FFF9EE',
+  muted: '#BFB8AC',
+  amber: '#F5871F',
+  amberSoft: '#FFB000',
 };
 
 export function NewsletterEmail({ subject, previewText, bodyHtml, unsubscribeUrl, logoUrl }: NewsletterEmailProps) {

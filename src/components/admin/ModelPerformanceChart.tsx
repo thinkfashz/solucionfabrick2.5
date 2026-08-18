@@ -21,7 +21,7 @@ interface StatsResponse {
 
 const BUCKET_COLORS: Record<LatencyBucket, string> = {
   fast: '#10b981', // emerald-500
-  medium: '#f59e0b', // amber-500
+  medium: '#F5871F', // amber-500
   slow: '#ef4444', // red-500
 };
 
@@ -157,8 +157,8 @@ export function ModelPerformanceChart({ refreshSec = 30, onStatsChange }: ModelP
                 stroke="#404040"
               />
               <Tooltip
-                contentStyle={{ backgroundColor: '#0a0a0a', border: '1px solid #404040', borderRadius: 8, fontSize: 11 }}
-                labelStyle={{ color: '#fafafa' }}
+                contentStyle={{ backgroundColor: '#08090A', border: '1px solid #404040', borderRadius: 8, fontSize: 11 }}
+                labelStyle={{ color: '#FFF9EE' }}
                 formatter={(value: number, _name, props) => {
                   const p = (props as unknown as { payload: typeof chartData[number] }).payload;
                   return [`${value} ms · ${p.successPct}% OK · ${p.calls} calls`, p.fullName];

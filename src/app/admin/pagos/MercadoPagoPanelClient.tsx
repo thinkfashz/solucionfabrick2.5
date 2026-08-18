@@ -191,7 +191,7 @@ export default function MercadoPagoPanelClient() {
             type="button"
             onClick={() => void fetchOnce()}
             disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-black shadow-[0_2px_10px_rgba(250,204,21,0.45)] transition hover:bg-yellow-300 disabled:opacity-60"
+            className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-black shadow-[0_2px_10px_rgba(255, 176, 0,0.45)] transition hover:bg-yellow-300 disabled:opacity-60"
           >
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
             Actualizar

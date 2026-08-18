@@ -63,10 +63,10 @@ export default function QuoteToolbar({
       const target = document.querySelector<HTMLElement>(captureSelector);
       if (!target) throw new Error('No se encontró el contenido a exportar.');
 
-      // Snapshot the dark, branded body. backgroundColor: '#000' keeps the
+      // Snapshot the dark, branded body. backgroundColor: '#08090A' keeps the
       // estética oscura even if the page wraps the region in a transparent div.
       const canvas = await html2canvas(target, {
-        backgroundColor: '#000000',
+        backgroundColor: '#08090A',
         scale: Math.min(2, window.devicePixelRatio || 1.5),
         useCORS: true,
         logging: false,
@@ -80,7 +80,7 @@ export default function QuoteToolbar({
 
       // ---------- Brand header (crisp jsPDF text) ----------
       const headerH = 34;
-      pdf.setFillColor(0, 0, 0); // #000
+      pdf.setFillColor(0, 0, 0); // #08090A
       pdf.rect(0, 0, pageW, headerH, 'F');
 
       // Yellow accent bar
@@ -154,7 +154,7 @@ export default function QuoteToolbar({
           const remaining = canvas.height - renderedPx;
           const drawPx = Math.min(sliceHeightPx, remaining);
           sliceCanvas.height = drawPx;
-          sliceCtx.fillStyle = '#000000';
+          sliceCtx.fillStyle = '#08090A';
           sliceCtx.fillRect(0, 0, sliceCanvas.width, drawPx);
           sliceCtx.drawImage(
             canvas,

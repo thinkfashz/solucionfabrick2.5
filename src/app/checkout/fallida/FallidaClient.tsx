@@ -7,7 +7,7 @@ import { buildWhatsAppLink } from "@/lib/whatsapp";
 import CheckoutStatusTimeline from "@/components/checkout/CheckoutStatusTimeline";
 
 const PAGE_BG =
-  "radial-gradient(circle at 20% -10%,rgba(255,210,41,.16),transparent 28rem), radial-gradient(circle at 90% 10%,rgba(255,210,41,.07),transparent 22rem), linear-gradient(180deg,#030303 0%,#070706 55%,#030303 100%)";
+  "radial-gradient(circle at 20% -10%,rgba(255,210,41,.16),transparent 28rem), radial-gradient(circle at 90% 10%,rgba(255,210,41,.07),transparent 22rem), linear-gradient(180deg,#08090A 0%,#070706 55%,#08090A 100%)";
 
 const CARD_BG =
   "radial-gradient(circle at 80% 0%,rgba(255,210,41,.08),transparent 18rem), linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025))";
@@ -21,8 +21,8 @@ const CARD_STYLE: React.CSSProperties = {
 
 function Kicker({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-2.5 text-[#ffd229] text-[11px] font-black uppercase tracking-[0.34em]">
-      <span className="block w-8 h-px bg-gradient-to-r from-[#ffd229] to-transparent flex-shrink-0" />
+    <span className="inline-flex items-center gap-2.5 text-[#FFB000] text-[11px] font-black uppercase tracking-[0.34em]">
+      <span className="block w-8 h-px bg-gradient-to-r from-[#FFB000] to-transparent flex-shrink-0" />
       {label}
     </span>
   );
@@ -126,7 +126,7 @@ export default function FallidaClient() {
   return (
     <div
       className="min-h-screen"
-      style={{ color: "#fff8ed", background: PAGE_BG }}
+      style={{ color: "#FFF9EE", background: PAGE_BG }}
     >
       <Navbar />
       <main className="max-w-[640px] mx-auto px-4 md:px-8 pt-12 pb-32">
@@ -142,14 +142,14 @@ export default function FallidaClient() {
               fontSize: "clamp(36px,7vw,64px)",
               lineHeight: 0.95,
               letterSpacing: "-0.06em",
-              color: "#fff8ed",
+              color: "#FFF9EE",
             }}
           >
             No hubo cobro.
           </h1>
           <p
             className="mt-4 leading-[1.7] max-w-md"
-            style={{ color: "#b9afa2" }}
+            style={{ color: "#BFB8AC" }}
           >
             La transacción no se completó, pero no te preocupes: no se realizó
             ningún cargo y tus datos están seguros. Puedes intentarlo de nuevo o
@@ -175,13 +175,13 @@ export default function FallidaClient() {
               <span className="text-[22px]">🔒</span>
               <strong
                 className="text-[15px] font-black"
-                style={{ color: "#ffd229" }}
+                style={{ color: "#FFB000" }}
               >
                 Datos protegidos
               </strong>
               <p
                 className="text-[12px] leading-[1.6]"
-                style={{ color: "#b9afa2" }}
+                style={{ color: "#BFB8AC" }}
               >
                 No almacenamos ningún dato de tarjeta ni información sensible de
                 pago. El proceso es 100% seguro.
@@ -205,7 +205,7 @@ export default function FallidaClient() {
               </strong>
               <p
                 className="text-[12px] leading-[1.6]"
-                style={{ color: "#b9afa2" }}
+                style={{ color: "#BFB8AC" }}
               >
                 Un asesor puede ayudarte a completar la compra por WhatsApp en
                 pocos minutos, sin complicaciones.
@@ -219,7 +219,7 @@ export default function FallidaClient() {
           <Link
             href={retryHref}
             className="flex-1 flex items-center justify-center rounded-full py-4 text-[11px] font-black uppercase tracking-[0.25em] text-black hover:bg-yellow-300 transition"
-            style={{ background: "#ffd229" }}
+            style={{ background: "#FFB000" }}
           >
             Intentar de nuevo
           </Link>
@@ -231,7 +231,7 @@ export default function FallidaClient() {
             style={{
               border: "1px solid rgba(255,248,237,0.14)",
               background: "rgba(255,255,255,0.05)",
-              color: "#fff8ed",
+              color: "#FFF9EE",
             }}
           >
             Pedir ayuda

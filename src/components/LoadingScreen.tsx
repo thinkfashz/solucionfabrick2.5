@@ -102,13 +102,13 @@ export default function LoadingScreen() {
             transition={{ duration: 0.7, ease: [0.16, 1, 0.3, 1] }}
             className="relative w-[min(92vw,760px)]"
           >
-            <div className="absolute -inset-10 rounded-[3rem] bg-[radial-gradient(circle_at_50%_10%,rgba(250,204,21,0.18),rgba(0,0,0,0)_60%)] blur-2xl" />
+            <div className="absolute -inset-10 rounded-[3rem] bg-[radial-gradient(circle_at_50%_10%,rgba(255, 176, 0,0.18),rgba(0,0,0,0)_60%)] blur-2xl" />
 
             <div className="relative overflow-hidden rounded-[2.25rem] border border-white/20 bg-zinc-900/80 p-2 shadow-[0_30px_80px_rgba(0,0,0,0.65)]">
               <div className="absolute left-1/2 top-0 h-5 w-28 -translate-x-1/2 rounded-b-2xl bg-black/70" />
 
               <div className="relative overflow-hidden rounded-[1.7rem] border border-white/10 bg-black px-7 pb-8 pt-10">
-                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(250,204,21,0.14),rgba(0,0,0,0)_42%),radial-gradient(circle_at_80%_80%,rgba(56,189,248,0.14),rgba(0,0,0,0)_46%)]" />
+                <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_20%_15%,rgba(255, 176, 0,0.14),rgba(0,0,0,0)_42%),radial-gradient(circle_at_80%_80%,rgba(56,189,248,0.14),rgba(0,0,0,0)_46%)]" />
                 <div className="pointer-events-none absolute inset-0 loading-macbook-scanlines opacity-35" />
 
                 <div className="relative flex items-center justify-between">
@@ -121,7 +121,7 @@ export default function LoadingScreen() {
 
                   <div className="mt-7 h-1.5 w-full overflow-hidden rounded-full bg-zinc-800/80">
                     <motion.div
-                      className="h-full rounded-full bg-[linear-gradient(90deg,#a16207,#facc15,#fef08a)] shadow-[0_0_18px_rgba(250,204,21,0.65)]"
+                      className="h-full rounded-full bg-[linear-gradient(90deg,#C97700,#FFB000,#fef08a)] shadow-[0_0_18px_rgba(255, 176, 0,0.65)]"
                       style={{ width: `${progress}%` }}
                     />
                   </div>

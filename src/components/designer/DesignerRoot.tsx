@@ -196,10 +196,10 @@ export default function DesignerRoot() {
             args={[40, 40]}
             cellSize={0.5}
             cellThickness={0.5}
-            cellColor={viewMode === '2D' ? '#6b7280' : '#3f3f46'}
+            cellColor={viewMode === '2D' ? '#BFB8AC' : '#3f3f46'}
             sectionSize={1}
             sectionThickness={1.2}
-            sectionColor={viewMode === '2D' ? '#facc15' : '#a16207'}
+            sectionColor={viewMode === '2D' ? '#FFB000' : '#C97700'}
             fadeDistance={viewMode === '2D' ? 60 : 30}
             fadeStrength={1}
             infiniteGrid
@@ -220,7 +220,7 @@ export default function DesignerRoot() {
                 blur={2.4}
                 far={6}
                 resolution={512}
-                color="#000000"
+                color="#08090A"
               />
             </Suspense>
           )}

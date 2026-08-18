@@ -86,7 +86,7 @@ interface CustomTooltipProps {
 // Colors per metric for the chart and tooltip
 const METRIC_COLOR: Record<Metric, string> = {
   ventas: "#34d399", // emerald-400
-  iva: "#fbbf24",   // amber-400
+  iva: "#FFB000",   // amber-400
   ppm: "#38bdf8",   // sky-400
 };
 
@@ -99,14 +99,14 @@ function ChartTooltip({ active, payload, label, metric = "ventas" }: CustomToolt
         backgroundColor: "rgba(9,9,11,0.95)",
         border: "1px solid rgba(255,255,255,0.1)",
         borderRadius: "0.875rem",
-        color: "#fff",
+        color: "#FFF9EE",
         padding: "10px 14px",
         fontSize: 13,
         backdropFilter: "blur(12px)",
         boxShadow: "0 8px 32px rgba(0,0,0,0.5)",
       }}
     >
-      <p style={{ color: "#71717a", marginBottom: 4, fontSize: 11 }}>{label}</p>
+      <p style={{ color: "#BFB8AC", marginBottom: 4, fontSize: 11 }}>{label}</p>
       <p style={{ fontWeight: 800, color }}>
         {fmt.format(payload[0].value)}
       </p>
@@ -426,12 +426,12 @@ export default function AnalyticsPage() {
               <CartesianGrid stroke="rgba(255,255,255,0.05)" vertical={false} />
               <XAxis
                 dataKey="label"
-                tick={{ fill: "#52525b", fontSize: 11 }}
+                tick={{ fill: "#6E675D", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
               />
               <YAxis
-                tick={{ fill: "#52525b", fontSize: 11 }}
+                tick={{ fill: "#6E675D", fontSize: 11 }}
                 axisLine={false}
                 tickLine={false}
                 tickFormatter={fmtM}
@@ -451,7 +451,7 @@ export default function AnalyticsPage() {
                 activeDot={{
                   r: 4,
                   fill: chartColor,
-                  stroke: "#09090b",
+                  stroke: "#08090A",
                   strokeWidth: 2,
                 }}
               />

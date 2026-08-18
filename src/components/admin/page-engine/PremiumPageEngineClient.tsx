@@ -81,14 +81,14 @@ function preset(value: unknown): Preset { return Object.keys(presetLabels).inclu
 
 function defaultTheme(raw: Record<string, unknown> = {}): Theme {
   const theme = { ...obj(raw.theme), ...obj(obj(raw.brand).theme), ...obj(obj(raw.brand).colors), ...obj(raw.colors) };
-  const p = color(theme.primary ?? theme.accent ?? theme.brand ?? '#d6a85f', '#d6a85f');
-  const bg = color(theme.background ?? theme.bg ?? '#050403', '#050403');
+  const p = color(theme.primary ?? theme.accent ?? theme.brand ?? '#FFB000', '#FFB000');
+  const bg = color(theme.background ?? theme.bg ?? '#08090A', '#08090A');
   return {
     primary: p,
-    secondary: color(theme.secondary ?? '#f59e0b', '#f59e0b'),
+    secondary: color(theme.secondary ?? '#F5871F', '#F5871F'),
     background: bg,
     surface: color(theme.surface ?? '#120d08', '#120d08'),
-    text: color(theme.text ?? '#fff7e8', '#fff7e8'),
+    text: color(theme.text ?? '#FFF9EE', '#FFF9EE'),
     muted: color(theme.muted ?? '#c9b58f', '#c9b58f'),
     glow: color(theme.glow ?? p, p),
     fontHeading: text(theme.fontHeading ?? theme.headingFont, 'Georgia, serif'),
@@ -222,7 +222,7 @@ export default function PremiumPageEngineClient() {
   function shareUrl(kind: string) { const url = encodeURIComponent(publicUrl || location.href); const txt = encodeURIComponent(`${state.title} — ${message}`); if (kind === 'whatsapp') window.open(`https://wa.me/?text=${txt}%20${url}`, '_blank'); if (kind === 'facebook') window.open(`https://www.facebook.com/sharer/sharer.php?u=${url}`, '_blank'); if (kind === 'instagram') window.open('https://www.instagram.com/', '_blank'); if (kind === 'phone') location.href = state.client.phone ? `tel:${state.client.phone}` : 'tel:'; if (kind === 'direct') navigator.clipboard?.writeText(`${state.title}\n${publicUrl || location.href}`); }
   async function sendEmail() { if (!publicUrl) { setStatus('Publica primero para generar el link público.'); return; } setSending(true); const res = await fetch('/api/admin/page-engine/share', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ to, title: state.title, url: publicUrl, message }) }); const json = await res.json().catch(() => ({})); setSending(false); setStatus(res.ok ? `Correo enviado con Resend${json.simulated ? ' (simulado)' : ''}.` : json.error || 'No se pudo enviar el correo.'); }
 
-  return <main className="min-h-screen overflow-x-hidden bg-[#050403] text-white"><input ref={fileRef} type="file" hidden accept=".json,.html,.htm,.jhtml" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importFile(f); e.currentTarget.value = ''; }} />
+  return <main className="min-h-screen overflow-x-hidden bg-[#08090A] text-white"><input ref={fileRef} type="file" hidden accept=".json,.html,.htm,.jhtml" onChange={(e) => { const f = e.target.files?.[0]; if (f) void importFile(f); e.currentTarget.value = ''; }} />
     <div className="mx-auto grid w-full max-w-[1780px] gap-4 p-3 sm:p-5 xl:grid-cols-[270px_1fr_330px]">
       <aside className="hidden rounded-[30px] border border-amber-300/15 bg-black/45 p-3 shadow-[0_30px_100px_rgba(0,0,0,.6)] backdrop-blur-2xl xl:block"><div className="mb-4 flex items-center gap-3 rounded-2xl bg-white/[.04] p-3"><Sparkles className="text-amber-300"/><b>Soluciones Fabrick</b></div>{['Editor modular','Plantillas guardadas','Componentes','Animaciones','Código','Datos cliente','Redes','Ajustes'].map((x,i)=><button key={x} className={`mb-2 flex w-full items-center gap-3 rounded-2xl border px-3 py-3 text-left text-sm font-bold ${i===0?'border-amber-300/35 bg-amber-400/15 text-amber-100':'border-white/10 bg-white/[.035] text-white/70'}`}><Code2 className="h-4 w-4 text-amber-300"/>{x}</button>)}</aside>
       <section className="min-w-0 rounded-[32px] border border-amber-300/15 bg-[linear-gradient(180deg,rgba(10,9,8,.82),rgba(3,3,3,.97))] p-3 shadow-[0_30px_120px_rgba(0,0,0,.55)] backdrop-blur-2xl sm:p-5"><header className="mb-4 flex items-center justify-between"><div className="flex items-center gap-3"><button className="rounded-2xl border border-white/10 bg-white/[.04] p-3"><Menu className="h-5 w-5"/></button><b className="text-amber-100">Centro de control</b></div><div className="flex gap-2"><Small icon={Search}/><Small icon={Moon}/><Small icon={Bell}/></div></header>
@@ -239,7 +239,7 @@ const sampleJson = {
   title: 'Aurora Glam Studio — Presentación premium',
   visualPreset: 'glass-rose',
   device: 'phone',
-  theme: { primary: '#f48fb1', secondary: '#f59e0b', background: '#130911', surface: '#21101a', text: '#fff7fb', muted: '#e9c7d6', glow: '#f48fb1', fontHeading: 'Playfair Display, Georgia, serif', fontBody: 'Inter, system-ui, sans-serif', animatedBackground: true },
+  theme: { primary: '#f48fb1', secondary: '#F5871F', background: '#130911', surface: '#21101a', text: '#FFF9EE', muted: '#e9c7d6', glow: '#f48fb1', fontHeading: 'Playfair Display, Georgia, serif', fontBody: 'Inter, system-ui, sans-serif', animatedBackground: true },
   client: { name: 'Camila Rojas', brand: 'Aurora Glam Studio', account: '@auroraglam.cl', phone: '+56912345678', email: 'contacto@auroraglam.cl', location: 'Linares, Chile', followers: '18.4K' },
   socials: [{ platform: 'Instagram', handle: '@auroraglam.cl', followers: '18.4K' }, { platform: 'Facebook', handle: 'Aurora Glam Studio', followers: '6.2K' }, { platform: 'WhatsApp', handle: '+56912345678' }],
   metrics: [{ value: '18.4K', label: 'seguidores en Instagram' }, { value: '+42%', label: 'potencial de conversión visual' }, { value: '24/7', label: 'agenda visible' }],

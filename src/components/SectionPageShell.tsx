@@ -28,7 +28,7 @@ export default function SectionPageShell({
     <div className="min-h-screen overflow-x-hidden bg-[#080705] text-white">
       <Navbar />
       <main className="relative px-4 pb-20 pt-24 md:px-12 md:pt-32">
-        <div className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] bg-[radial-gradient(circle_at_12%_10%,rgba(250,204,21,.14),transparent_24rem),radial-gradient(circle_at_88%_15%,rgba(20,184,166,.08),transparent_25rem)]" />
+        <div className="pointer-events-none absolute inset-x-0 top-0 h-[34rem] bg-[radial-gradient(circle_at_12%_10%,rgba(255, 176, 0,.14),transparent_24rem),radial-gradient(circle_at_88%_15%,rgba(20,184,166,.08),transparent_25rem)]" />
         <section className="relative mx-auto max-w-7xl overflow-hidden rounded-[2rem] border border-white/10 bg-[linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.015))] px-6 py-10 shadow-[0_28px_90px_rgba(0,0,0,.32)] md:px-12 md:py-14">
           <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
             <div className="max-w-3xl">

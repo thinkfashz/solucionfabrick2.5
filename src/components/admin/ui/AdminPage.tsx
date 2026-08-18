@@ -65,14 +65,14 @@ export function AdminPageHeader({ eyebrow, title, description, icon: Icon, actio
     >
       {/* Glow ambient */}
       <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(56,189,248,0.10),transparent_55%),radial-gradient(circle_at_92%_15%,rgba(250,204,21,0.10),transparent_50%)]" />
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(56,189,248,0.10),transparent_55%),radial-gradient(circle_at_92%_15%,rgba(255, 176, 0,0.10),transparent_50%)]" />
         <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-yellow-300/30 to-transparent" />
       </div>
 
       <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex flex-1 items-start gap-4">
           {Icon ? (
-            <span className="relative hidden h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/30 bg-gradient-to-br from-yellow-400/20 via-yellow-300/10 to-transparent shadow-[0_8px_30px_rgba(250,204,21,0.18)] sm:flex">
+            <span className="relative hidden h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/30 bg-gradient-to-br from-yellow-400/20 via-yellow-300/10 to-transparent shadow-[0_8px_30px_rgba(255, 176, 0,0.18)] sm:flex">
               <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.4),transparent_60%)]" />
               <Icon className="relative h-6 w-6 text-yellow-300" strokeWidth={1.5} />
             </span>
@@ -113,7 +113,7 @@ export function AdminCard({ children, className = '', glow = false, as = 'sectio
       className={`relative overflow-hidden w-full max-w-full rounded-[1.5rem] border border-white/10 bg-black/45 p-5 backdrop-blur-xl transition-colors duration-300 hover:border-yellow-300/30 ${glow ? 'shadow-[0_18px_60px_rgba(0,0,0,0.55)]' : ''} ${className}`}
     >
       {glow ? (
-        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(250,204,21,0.06),transparent_60%)]" />
+        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(255, 176, 0,0.06),transparent_60%)]" />
       ) : null}
       <div className="relative w-full max-w-full overflow-x-auto">{children}</div>
     </Component>

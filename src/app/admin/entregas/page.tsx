@@ -20,7 +20,7 @@ interface Delivery {
 }
 
 const STATUS_COLORS: Record<DeliveryStatus, string> = {
-  pendiente:  '#f59e0b',
+  pendiente:  '#F5871F',
   en_camino:  '#8b5cf6',
   entregado:  '#22c55e',
   fallido:    '#ef4444',
@@ -234,9 +234,9 @@ export default function EntregasPage() {
           <div className="flex items-center gap-3">
             <span
               className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest"
-              style={{ background: connected ? '#22c55e22' : '#f59e0b22', color: connected ? '#22c55e' : '#f59e0b' }}
+              style={{ background: connected ? '#22c55e22' : '#F5871F22', color: connected ? '#22c55e' : '#F5871F' }}
             >
-              <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: connected ? '#22c55e' : '#f59e0b' }} />
+              <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: connected ? '#22c55e' : '#F5871F' }} />
               {connected ? 'Realtime' : 'Polling'}
             </span>
             <button
@@ -368,8 +368,8 @@ export default function EntregasPage() {
                           <span
                             className="inline-flex items-center rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest"
                             style={{
-                              background: `${STATUS_COLORS[delivery.status] ?? '#6b7280'}22`,
-                              color: STATUS_COLORS[delivery.status] ?? '#6b7280',
+                              background: `${STATUS_COLORS[delivery.status] ?? '#BFB8AC'}22`,
+                              color: STATUS_COLORS[delivery.status] ?? '#BFB8AC',
                             }}
                           >
                             {STATUS_LABELS[delivery.status] ?? delivery.status}

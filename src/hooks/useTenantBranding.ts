@@ -32,7 +32,7 @@ export const FALLBACK_TENANT_BRANDING: TenantBranding = {
   id: '00000000-0000-0000-0000-000000000001',
   slug: 'fabrick',
   name: 'Soluciones Fabrick',
-  primaryColor: '#f59e0b',
+  primaryColor: '#F5871F',
   logoUrl: null,
   phone: null,
   billingEmail: 'pagos@solucionesfabrick.cl',

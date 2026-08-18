@@ -18,7 +18,7 @@ const flow = [
 ];
 
 export default function EcommerceSaaSPage() {
-  return <main className="min-h-screen bg-[#050505] text-white">
+  return <main className="min-h-screen bg-[#08090A] text-white">
     <section className="relative overflow-hidden border-b border-white/10 px-4 py-10 md:px-6 md:py-16">
       <div className="absolute inset-0 bg-[radial-gradient(circle_at_18%_0%,rgba(6,182,212,.24),transparent_32rem),radial-gradient(circle_at_88%_8%,rgba(245,158,11,.2),transparent_32rem)]" />
       <div className="relative mx-auto max-w-7xl">

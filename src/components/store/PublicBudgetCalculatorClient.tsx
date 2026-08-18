@@ -101,8 +101,8 @@ const RADIER_PLANS: RadierPlan[] = [
 
 function Field({ label, value, onChange, suffix, step = 0.1 }: { label: string; value: number; onChange: (value: number) => void; suffix?: string; step?: number }) {
   return (
-    <label className="grid gap-2 rounded-[1.35rem] bg-[#fff6dc]/[0.07] p-3 ring-1 ring-white/[0.06] transition focus-within:ring-yellow-300/45">
-      <span className="flex items-center justify-between text-[10px] font-black uppercase tracking-[.18em] text-[#f7eedb]/45"><span>{label}</span>{suffix ? <span>{suffix}</span> : null}</span>
+    <label className="grid gap-2 rounded-[1.35rem] bg-[#FFF9EE]/[0.07] p-3 ring-1 ring-white/[0.06] transition focus-within:ring-yellow-300/45">
+      <span className="flex items-center justify-between text-[10px] font-black uppercase tracking-[.18em] text-[#F2DFBB]/45"><span>{label}</span>{suffix ? <span>{suffix}</span> : null}</span>
       <input type="number" min="0" step={step} value={value} onChange={(event) => onChange(Math.max(0, Number(event.target.value) || 0))} className="min-w-0 bg-transparent text-xl font-black text-white outline-none" />
     </label>
   );
@@ -110,21 +110,21 @@ function Field({ label, value, onChange, suffix, step = 0.1 }: { label: string; 
 
 function Metric({ label, value, accent, icon: Icon }: { label: string; value: string; accent?: boolean; icon?: typeof Ruler }) {
   return (
-    <div className={`rounded-[1.35rem] p-4 ${accent ? 'bg-yellow-300 text-black shadow-[0_14px_40px_rgba(250,204,21,.16)]' : 'bg-[#fff6dc]/[0.065] text-white ring-1 ring-white/[0.05]'}`}>
-      <div className="flex items-center justify-between gap-2"><p className={`text-[9px] font-black uppercase tracking-[.18em] ${accent ? 'text-black/55' : 'text-[#f7eedb]/42'}`}>{label}</p>{Icon ? <Icon className="h-4 w-4 opacity-55" /> : null}</div>
+    <div className={`rounded-[1.35rem] p-4 ${accent ? 'bg-yellow-300 text-black shadow-[0_14px_40px_rgba(255, 176, 0,.16)]' : 'bg-[#FFF9EE]/[0.065] text-white ring-1 ring-white/[0.05]'}`}>
+      <div className="flex items-center justify-between gap-2"><p className={`text-[9px] font-black uppercase tracking-[.18em] ${accent ? 'text-black/55' : 'text-[#F2DFBB]/42'}`}>{label}</p>{Icon ? <Icon className="h-4 w-4 opacity-55" /> : null}</div>
       <p className="mt-2 text-xl font-black tracking-[-.04em] sm:text-2xl">{value}</p>
     </div>
   );
 }
 
 function ViewerLoading({ label }: { label: string }) {
-  return <div className="mt-7 grid min-h-[420px] place-items-center rounded-[2rem] bg-[#0b0905] text-center text-white ring-1 ring-yellow-200/15"><div><span className="mx-auto block h-10 w-10 animate-spin rounded-full border-2 border-yellow-300/20 border-t-yellow-300" /><b className="mt-4 block text-sm">{label}</b><span className="mt-1 block text-xs text-[#f7eedb]/60">Cargando controles 3D…</span></div></div>;
+  return <div className="mt-7 grid min-h-[420px] place-items-center rounded-[2rem] bg-[#0b0905] text-center text-white ring-1 ring-yellow-200/15"><div><span className="mx-auto block h-10 w-10 animate-spin rounded-full border-2 border-yellow-300/20 border-t-yellow-300" /><b className="mt-4 block text-sm">{label}</b><span className="mt-1 block text-xs text-[#F2DFBB]/60">Cargando controles 3D…</span></div></div>;
 }
 
 function AirProductThumbnail({ item }: { item: AirProductOption }) {
   if (item.image) return <img src={item.image} alt={item.name} className="h-full w-full object-contain p-1.5" />;
   return (
-    <span className="relative block h-full w-full overflow-hidden bg-[linear-gradient(145deg,#ffffff,#e7e3da)]">
+    <span className="relative block h-full w-full overflow-hidden bg-[linear-gradient(145deg,#FFF9EE,#e7e3da)]">
       <span className="absolute inset-x-2 top-4 h-8 rounded-[.55rem] border border-black/10 bg-white shadow-[0_7px_14px_rgba(0,0,0,.16)]">
         <span className="absolute inset-x-2 bottom-1 h-px bg-black/20" />
         <span className="absolute right-2 top-1.5 h-1.5 w-1.5 rounded-full bg-emerald-400" />
@@ -136,7 +136,7 @@ function AirProductThumbnail({ item }: { item: AirProductOption }) {
 
 function RadierPlanThumbnail({ reinforced }: { reinforced: boolean }) {
   return (
-    <span className="relative block h-full w-full overflow-hidden bg-[radial-gradient(circle_at_50%_5%,rgba(250,204,21,.28),transparent_55%),#17120a]">
+    <span className="relative block h-full w-full overflow-hidden bg-[radial-gradient(circle_at_50%_5%,rgba(255, 176, 0,.28),transparent_55%),#111214]">
       <span className="absolute left-3 right-3 top-4 h-3 -skew-y-6 rounded-sm bg-[#ece5d8] shadow-[0_5px_0_#9d8c72,0_10px_0_#6f4a2d]" />
       {reinforced ? <span className="absolute left-4 right-4 top-5 grid grid-cols-5 gap-px opacity-55">{Array.from({ length: 10 }).map((_, index) => <i key={index} className="h-px bg-black" />)}</span> : null}
       <Layers3 className="absolute bottom-2 left-1/2 h-4 w-4 -translate-x-1/2 text-yellow-300" />
@@ -146,7 +146,7 @@ function RadierPlanThumbnail({ reinforced }: { reinforced: boolean }) {
 
 function AirProductCard({ item, selected, recommended, onSelect, onPreview }: { item: AirProductOption; selected: boolean; recommended: boolean; onSelect: () => void; onPreview: () => void }) {
   return (
-    <article className={`group flex w-[252px] shrink-0 snap-center flex-col overflow-hidden rounded-[1.6rem] p-3 transition duration-300 hover:-translate-y-1 sm:w-auto ${selected ? 'bg-[#fff6dc] text-black shadow-[0_22px_56px_rgba(0,0,0,.28)]' : 'bg-[#fff6dc]/[0.075] text-white ring-1 ring-white/[0.07]'}`}>
+    <article className={`group flex w-[252px] shrink-0 snap-center flex-col overflow-hidden rounded-[1.6rem] p-3 transition duration-300 hover:-translate-y-1 sm:w-auto ${selected ? 'bg-[#FFF9EE] text-black shadow-[0_22px_56px_rgba(0,0,0,.28)]' : 'bg-[#FFF9EE]/[0.075] text-white ring-1 ring-white/[0.07]'}`}>
       <button type="button" onClick={onPreview} aria-label={`Ver detalles de ${item.name}`} className="relative h-28 overflow-hidden rounded-[1.2rem] bg-white text-left focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300">
         <AirProductThumbnail item={item} />
         {recommended ? <span className="absolute left-2 top-2 rounded-full bg-yellow-300 px-2 py-1 text-[8px] font-black uppercase tracking-[.08em] text-black shadow">Recomendado</span> : null}
@@ -160,7 +160,7 @@ function AirProductCard({ item, selected, recommended, onSelect, onPreview }: { 
         </ul>
         <div className="mt-auto flex items-end justify-between gap-2 pt-3">
           <div><span className={`block text-[8px] font-bold uppercase tracking-widest ${selected ? 'text-black/40' : 'text-white/35'}`}>Precio referencial</span><b className={`block text-xl tracking-[-.04em] ${selected ? 'text-black' : 'text-yellow-300'}`}>{money.format(item.price)}</b></div>
-          <button type="button" onClick={onSelect} aria-pressed={selected} className={`min-h-10 rounded-full px-4 text-[10px] font-black uppercase tracking-[.1em] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 ${selected ? 'bg-black text-white' : 'bg-yellow-300 text-black hover:bg-[#fff6dc]'}`}>{selected ? 'Elegido' : 'Elegir'}</button>
+          <button type="button" onClick={onSelect} aria-pressed={selected} className={`min-h-10 rounded-full px-4 text-[10px] font-black uppercase tracking-[.1em] transition focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 ${selected ? 'bg-black text-white' : 'bg-yellow-300 text-black hover:bg-[#FFF9EE]'}`}>{selected ? 'Elegido' : 'Elegir'}</button>
         </div>
       </div>
     </article>
@@ -217,12 +217,12 @@ function EnergyRemoteCalculator({ capacity, temperature, hours, days, tariff, av
   const dailyCost = days > 0 ? monthlyCost / days : 0;
 
   return (
-    <section className="mt-7 overflow-hidden rounded-[2.1rem] bg-[radial-gradient(circle_at_14%_0%,rgba(34,211,238,.16),transparent_30%),radial-gradient(circle_at_90%_100%,rgba(250,204,21,.16),transparent_34%),#0e0c08] p-4 shadow-[0_30px_90px_rgba(0,0,0,.34)] ring-1 ring-white/[0.07] sm:p-7" aria-labelledby="energy-calculator-title">
+    <section className="mt-7 overflow-hidden rounded-[2.1rem] bg-[radial-gradient(circle_at_14%_0%,rgba(34,211,238,.16),transparent_30%),radial-gradient(circle_at_90%_100%,rgba(255, 176, 0,.16),transparent_34%),#0e0c08] p-4 shadow-[0_30px_90px_rgba(0,0,0,.34)] ring-1 ring-white/[0.07] sm:p-7" aria-labelledby="energy-calculator-title">
       <header className="flex flex-wrap items-end justify-between gap-4">
         <div><p className="text-[10px] font-black uppercase tracking-[.25em] text-cyan-300">Simulador de consumo inverter</p><h2 id="energy-calculator-title" className="mt-2 max-w-2xl text-3xl font-black leading-[.95] tracking-[-.055em] sm:text-4xl">Lo que realmente podría sumar a tu cuenta.</h2></div>
         <span className="rounded-full bg-yellow-300 px-3 py-2 text-[9px] font-black uppercase tracking-[.13em] text-black">Referencia Chile · 2026</span>
       </header>
-      <p className="mt-4 max-w-3xl text-sm leading-6 text-[#f7eedb]/62">Un equipo inverter no trabaja a máxima potencia durante todo el día: modula al acercarse a la temperatura elegida. Ajusta tus horas y la tarifa de tu boleta para obtener una estimación transparente.</p>
+      <p className="mt-4 max-w-3xl text-sm leading-6 text-[#F2DFBB]/62">Un equipo inverter no trabaja a máxima potencia durante todo el día: modula al acercarse a la temperatura elegida. Ajusta tus horas y la tarifa de tu boleta para obtener una estimación transparente.</p>
 
       <div className="mt-6 grid gap-5 lg:grid-cols-[330px_1fr]">
         <div className="mx-auto w-full max-w-[330px] rounded-[3.1rem] bg-[linear-gradient(150deg,#fff9e8,#ddd2b8)] p-4 text-black shadow-[0_28px_70px_rgba(0,0,0,.48),inset_0_1px_0_white] sm:p-5">
@@ -246,7 +246,7 @@ function EnergyRemoteCalculator({ capacity, temperature, hours, days, tariff, av
           </div>
         </div>
 
-        <div className="flex flex-col rounded-[1.9rem] bg-[#fff6dc]/[0.065] p-5 ring-1 ring-white/[0.06] sm:p-7">
+        <div className="flex flex-col rounded-[1.9rem] bg-[#FFF9EE]/[0.065] p-5 ring-1 ring-white/[0.06] sm:p-7">
           <p className="text-[10px] font-black uppercase tracking-[.22em] text-yellow-300">Costo mensual estimado</p>
           <p className="mt-2 text-[clamp(44px,8vw,82px)] font-black leading-none tracking-[-.075em] text-white">{money.format(monthlyCost)}</p>
           <p className="mt-3 text-sm font-semibold text-cyan-200">Aproximadamente {money.format(dailyCost)} por día de uso configurado.</p>
@@ -257,13 +257,13 @@ function EnergyRemoteCalculator({ capacity, temperature, hours, days, tariff, av
             <Metric label="Factor inverter" value={`${Math.round(loadFactor * 100)}%`} icon={Sparkles} />
           </div>
 
-          <div className="mt-5 rounded-[1.35rem] bg-black/28 p-4 text-xs leading-6 text-[#f7eedb]/62">
+          <div className="mt-5 rounded-[1.35rem] bg-black/28 p-4 text-xs leading-6 text-[#F2DFBB]/62">
             <b className="text-white">Cálculo visible:</b> {nominalPower.toFixed(2)} kW nominales × {Math.round(loadFactor * 100)}% de carga × {hours} h × {days} días = <b className="text-cyan-200">{num.format(monthlyKwh)} kWh</b>. Luego se multiplica por {money.format(tariff)}/kWh.
           </div>
           <div className="mt-4 rounded-[1.35rem] bg-yellow-300/10 p-4 text-xs leading-5 text-yellow-50/68 ring-1 ring-yellow-300/15">
             <b className="text-yellow-200">No es correcto afirmar que todo aire acondicionado “es costoso”.</b> El gasto cambia según capacidad, aislamiento, temperatura exterior, mantención, horas de uso y tarifa. Este cálculo estima solo la energía adicional; no suma cargo fijo ni otros cargos de la cuenta.
           </div>
-          <p className="mt-auto pt-5 text-[10px] leading-5 text-[#f7eedb]/45">Valor guía precargado: $263/kWh para una referencia residencial Maule 2026. La tarifa real cambia por comuna, sector tarifario y distribuidora; por eso puedes editarla con el valor de tu boleta. <a href={CGE_TARIFF_SOURCE} target="_blank" rel="noreferrer" className="font-black text-yellow-300 underline decoration-yellow-300/35 underline-offset-4">Revisar tarifas oficiales CGE 2026</a>.</p>
+          <p className="mt-auto pt-5 text-[10px] leading-5 text-[#F2DFBB]/45">Valor guía precargado: $263/kWh para una referencia residencial Maule 2026. La tarifa real cambia por comuna, sector tarifario y distribuidora; por eso puedes editarla con el valor de tu boleta. <a href={CGE_TARIFF_SOURCE} target="_blank" rel="noreferrer" className="font-black text-yellow-300 underline decoration-yellow-300/35 underline-offset-4">Revisar tarifas oficiales CGE 2026</a>.</p>
         </div>
       </div>
     </section>
@@ -272,7 +272,7 @@ function EnergyRemoteCalculator({ capacity, temperature, hours, days, tariff, av
 
 function RadierPlanCard({ plan, selected, onSelect }: { plan: RadierPlan; selected: boolean; onSelect: () => void }) {
   return (
-    <button onClick={onSelect} className={`grid min-w-[240px] grid-cols-[72px_1fr] gap-3 rounded-[1.45rem] p-3 text-left transition sm:min-w-0 ${selected ? 'bg-[#fff6dc] text-black shadow-[0_18px_44px_rgba(0,0,0,.22)]' : 'bg-[#fff6dc]/[0.065] text-white ring-1 ring-white/[0.06]'}`}>
+    <button onClick={onSelect} className={`grid min-w-[240px] grid-cols-[72px_1fr] gap-3 rounded-[1.45rem] p-3 text-left transition sm:min-w-0 ${selected ? 'bg-[#FFF9EE] text-black shadow-[0_18px_44px_rgba(0,0,0,.22)]' : 'bg-[#FFF9EE]/[0.065] text-white ring-1 ring-white/[0.06]'}`}>
       <div className="h-[72px] overflow-hidden rounded-[1rem] bg-black"><RadierPlanThumbnail reinforced={plan.id === 'reforzado'} /></div>
       <span><span className={`block text-[9px] font-black uppercase tracking-[.18em] ${selected ? 'text-amber-700' : 'text-yellow-300'}`}>Desde {money.format(plan.priceM2)}/m²</span><b className="mt-1 block text-sm leading-tight">{plan.name}</b><span className={`mt-1 block text-[10px] leading-4 ${selected ? 'text-black/58' : 'text-zinc-400'}`}>{plan.description}</span></span>
     </button>
@@ -387,16 +387,16 @@ export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
                 <div className="absolute -right-24 -top-24 h-64 w-64 rounded-full bg-yellow-300/15 blur-3xl" />
                 <p className="relative text-[10px] font-black uppercase tracking-[.28em] text-yellow-300">Calculadora Fabrick · uso libre</p>
                 <h1 className="relative mt-3 text-[clamp(40px,7vw,68px)] font-black leading-[.9] tracking-[-.07em]">{isAir ? 'El aire correcto para tu espacio.' : 'Tu radier, calculado con claridad.'}</h1>
-                <p className="relative mt-5 max-w-xl text-sm leading-7 text-[#f7eedb]/58">{isAir ? 'Ingresa las medidas, compara capacidades y elige el equipo antes de revisar instalación y consumo.' : 'Define medidas, forma y tipo de solución. Verás materiales, capas y un rango de inversión ordenado.'}</p>
+                <p className="relative mt-5 max-w-xl text-sm leading-7 text-[#F2DFBB]/58">{isAir ? 'Ingresa las medidas, compara capacidades y elige el equipo antes de revisar instalación y consumo.' : 'Define medidas, forma y tipo de solución. Verás materiales, capas y un rango de inversión ordenado.'}</p>
                 <div className="relative mt-6 grid grid-cols-2 gap-3"><Metric label="Total aproximado" value={money.format(total)} accent icon={Sparkles} /><Metric label={isAir ? 'Superficie' : 'Área calculada'} value={`${num.format(isAir ? air.area : radier.area)} m²`} icon={Ruler} /></div>
-                <div className="relative mt-4 rounded-[1.4rem] bg-black/28 p-4 text-xs leading-5 text-[#f7eedb]/52"><b className="text-yellow-200">Precio no final.</b> Es una referencia para decidir. El valor definitivo depende de visita técnica, acceso, stock, distancia y condiciones reales.</div>
+                <div className="relative mt-4 rounded-[1.4rem] bg-black/28 p-4 text-xs leading-5 text-[#F2DFBB]/52"><b className="text-yellow-200">Precio no final.</b> Es una referencia para decidir. El valor definitivo depende de visita técnica, acceso, stock, distancia y condiciones reales.</div>
               </header>
 
               <div className="grid gap-5 bg-black/20 p-4 sm:p-6 xl:grid-cols-[1fr_340px] xl:p-8">
                 <div className="grid content-start gap-5">
                   <section>
                     <div className="mb-3 flex items-center gap-3"><span className="grid h-9 w-9 place-items-center rounded-full bg-yellow-300 text-sm font-black text-black">1</span><div><h2 className="font-black">Medidas y condiciones</h2><p className="text-xs text-zinc-500">El cálculo cambia en tiempo real.</p></div></div>
-                    {isAir ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3"><Field label="Largo" value={length} suffix="m" onChange={setLength} /><Field label="Ancho" value={width} suffix="m" onChange={setWidth} /><Field label="Alto" value={height} suffix="m" onChange={setHeight} /><Field label="Personas" value={people} step={1} onChange={setPeople} /><Field label="Equipos eléctricos" value={watts} suffix="W" step={50} onChange={setWatts} /><label className="grid gap-2 rounded-[1.35rem] bg-[#fff6dc]/[0.07] p-3 ring-1 ring-white/[0.06]"><span className="text-[10px] font-black uppercase tracking-[.18em] text-[#f7eedb]/45">Servicio</span><select value={service} onChange={(event) => setService(event.target.value as ServiceMode)} className="min-w-0 bg-transparent text-sm font-black text-white outline-none"><option value="equipo_instalacion" className="bg-zinc-950">Equipo + instalación</option><option value="solo_equipo" className="bg-zinc-950">Solo equipo</option><option value="solo_instalacion" className="bg-zinc-950">Solo instalación</option></select></label></div> : <div className="grid grid-cols-2 gap-2 sm:grid-cols-4"><Field label="Largo" value={length} suffix="m" onChange={setLength} /><Field label="Ancho" value={width} suffix="m" onChange={setWidth} /><Field label="Espesor" value={thickness} suffix="cm" step={1} onChange={setThickness} /><label className="grid gap-2 rounded-[1.35rem] bg-[#fff6dc]/[0.07] p-3 ring-1 ring-white/[0.06]"><span className="text-[10px] font-black uppercase tracking-[.18em] text-[#f7eedb]/45">Forma</span><select value={shape} onChange={(event) => setShape(event.target.value)} className="bg-transparent text-sm font-black text-white outline-none"><option value="rectangular" className="bg-zinc-950">Rectangular</option><option value="l" className="bg-zinc-950">Forma L</option><option value="u" className="bg-zinc-950">Forma U</option></select></label></div>}
+                    {isAir ? <div className="grid grid-cols-2 gap-2 sm:grid-cols-3"><Field label="Largo" value={length} suffix="m" onChange={setLength} /><Field label="Ancho" value={width} suffix="m" onChange={setWidth} /><Field label="Alto" value={height} suffix="m" onChange={setHeight} /><Field label="Personas" value={people} step={1} onChange={setPeople} /><Field label="Equipos eléctricos" value={watts} suffix="W" step={50} onChange={setWatts} /><label className="grid gap-2 rounded-[1.35rem] bg-[#FFF9EE]/[0.07] p-3 ring-1 ring-white/[0.06]"><span className="text-[10px] font-black uppercase tracking-[.18em] text-[#F2DFBB]/45">Servicio</span><select value={service} onChange={(event) => setService(event.target.value as ServiceMode)} className="min-w-0 bg-transparent text-sm font-black text-white outline-none"><option value="equipo_instalacion" className="bg-zinc-950">Equipo + instalación</option><option value="solo_equipo" className="bg-zinc-950">Solo equipo</option><option value="solo_instalacion" className="bg-zinc-950">Solo instalación</option></select></label></div> : <div className="grid grid-cols-2 gap-2 sm:grid-cols-4"><Field label="Largo" value={length} suffix="m" onChange={setLength} /><Field label="Ancho" value={width} suffix="m" onChange={setWidth} /><Field label="Espesor" value={thickness} suffix="cm" step={1} onChange={setThickness} /><label className="grid gap-2 rounded-[1.35rem] bg-[#FFF9EE]/[0.07] p-3 ring-1 ring-white/[0.06]"><span className="text-[10px] font-black uppercase tracking-[.18em] text-[#F2DFBB]/45">Forma</span><select value={shape} onChange={(event) => setShape(event.target.value)} className="bg-transparent text-sm font-black text-white outline-none"><option value="rectangular" className="bg-zinc-950">Rectangular</option><option value="l" className="bg-zinc-950">Forma L</option><option value="u" className="bg-zinc-950">Forma U</option></select></label></div>}
                   </section>
 
                   <section>
@@ -412,7 +412,7 @@ export default function PublicBudgetCalculatorClient({ kind }: { kind: Kind }) {
                   </section>
 
                   <div className="rounded-[1.45rem] bg-emerald-300/[0.07] p-4 text-sm leading-6 text-emerald-100 ring-1 ring-emerald-300/15"><CheckCircle2 className="mb-2 h-5 w-5 text-emerald-300" />Este resultado es una aproximación comercial. Antes de pagar se valida técnicamente y se evita generar una orden con medidas incompletas.</div>
-                  <a href="/contacto" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[1.35rem] bg-yellow-300 px-5 text-sm font-black text-black shadow-[0_14px_40px_rgba(250,204,21,.16)]"><Truck className="h-4 w-4" /> Solicitar cotización confirmada</a>
+                  <a href="/contacto" className="inline-flex min-h-14 items-center justify-center gap-2 rounded-[1.35rem] bg-yellow-300 px-5 text-sm font-black text-black shadow-[0_14px_40px_rgba(255, 176, 0,.16)]"><Truck className="h-4 w-4" /> Solicitar cotización confirmada</a>
                 </div>
 
                 <Receipt title={isAir ? air.selectedProduct.name : `${radier.plan.name} · ${num.format(radier.area)} m²`} rows={rows} neto={net} iva={tax} total={total} note={isAir ? 'Equipo, instalación y materiales son referenciales. Se confirma modelo, stock, metros de tubería, punto eléctrico y despacho.' : 'El terreno, excavación, pendientes, resistencia y acceso pueden modificar materiales, mano de obra y transporte.'} />

@@ -53,11 +53,11 @@ export default function ProductImportModal({ open, onClose, onImported }: { open
   }
 
   return (
-    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#171820]/85 px-2 py-3 backdrop-blur-xl sm:px-5 sm:py-8">
-      <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-[2rem] bg-[#F8F0E9] text-[#171820] shadow-[0_35px_120px_rgba(0,0,0,.45)]">
-        <header className="relative bg-[#171820] p-5 text-[#F8F0E9] sm:p-7">
+    <div className="fixed inset-0 z-50 overflow-y-auto bg-[#08090A]/85 px-2 py-3 backdrop-blur-xl sm:px-5 sm:py-8">
+      <div className="mx-auto w-full max-w-6xl overflow-hidden rounded-[2rem] bg-[#FFF9EE] text-[#08090A] shadow-[0_35px_120px_rgba(0,0,0,.45)]">
+        <header className="relative bg-[#08090A] p-5 text-[#FFF9EE] sm:p-7">
           <button onClick={onClose} className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-2xl bg-white/8"><X className="h-5 w-5" /></button>
-          <p className="text-[9px] font-black uppercase tracking-[.24em] text-[#CCB196]">Importación con precio automático</p>
+          <p className="text-[9px] font-black uppercase tracking-[.24em] text-[#FFB000]">Importación con precio automático</p>
           <h2 className="mt-2 pr-14 text-3xl font-black tracking-[-.045em]">Carga, calcula y publica en un solo paso.</h2>
           <p className="mt-3 max-w-3xl text-sm leading-6 text-white/55">Cada producto puede tomar el costo proveedor y sumarle automáticamente el porcentaje comercial antes de guardarse.</p>
         </header>
@@ -69,26 +69,26 @@ export default function ProductImportModal({ open, onClose, onImported }: { open
             <SourceButton active={source === 'google_sheets'} icon={<Link2 className="h-5 w-5" />} title="Google Sheets" onClick={() => changeSource('google_sheets')} />
 
             <div className="rounded-[1.5rem] bg-white p-4 shadow-sm">
-              <p className="text-[9px] font-black uppercase tracking-[.16em] text-[#895E3D]">Modo</p>
+              <p className="text-[9px] font-black uppercase tracking-[.16em] text-[#F5871F]">Modo</p>
               <select value={mode} onChange={(e) => setMode(e.target.value as Mode)} className="mt-2 min-h-12 w-full rounded-2xl bg-[#EEE5DC] px-4 text-sm font-bold outline-none"><option value="insert">Insertar nuevos</option><option value="upsert">Actualizar por ID</option></select>
             </div>
 
             <div className="rounded-[1.5rem] bg-[#D8C0A8] p-4">
               <div className="flex items-center gap-2"><Percent className="h-4 w-4" /><p className="text-[9px] font-black uppercase tracking-[.16em]">Aumento automático</p></div>
               <label className="mt-4 flex items-center justify-between gap-3 text-sm font-bold"><span>Aplicar al importar</span><input type="checkbox" checked={applyMarkup} onChange={(e) => setApplyMarkup(e.target.checked)} className="h-6 w-6" /></label>
-              <label className="mt-4 block"><span className="text-[10px] font-black uppercase tracking-[.14em]">Porcentaje</span><div className="mt-2 flex items-center rounded-2xl bg-[#F8F0E9] px-4"><input type="number" min="0" max="300" value={markupPercentage} onChange={(e) => setMarkupPercentage(Math.max(0, Number(e.target.value) || 0))} className="min-h-12 min-w-0 flex-1 bg-transparent text-2xl font-black outline-none" /><b>%</b></div></label>
-              <div className="mt-4 rounded-2xl bg-[#171820] p-4 text-[#F8F0E9]"><p className="text-[9px] uppercase tracking-[.14em] text-white/45">Ejemplo</p><p className="mt-2 text-xs text-white/55">Costo {exampleBase.toLocaleString('es-CL')}</p><p className="mt-1 text-xl font-black text-[#E5CFBA]">Venta {exampleSale.toLocaleString('es-CL')}</p></div>
+              <label className="mt-4 block"><span className="text-[10px] font-black uppercase tracking-[.14em]">Porcentaje</span><div className="mt-2 flex items-center rounded-2xl bg-[#FFF9EE] px-4"><input type="number" min="0" max="300" value={markupPercentage} onChange={(e) => setMarkupPercentage(Math.max(0, Number(e.target.value) || 0))} className="min-h-12 min-w-0 flex-1 bg-transparent text-2xl font-black outline-none" /><b>%</b></div></label>
+              <div className="mt-4 rounded-2xl bg-[#08090A] p-4 text-[#FFF9EE]"><p className="text-[9px] uppercase tracking-[.14em] text-white/45">Ejemplo</p><p className="mt-2 text-xs text-white/55">Costo {exampleBase.toLocaleString('es-CL')}</p><p className="mt-1 text-xl font-black text-[#F2DFBB]">Venta {exampleSale.toLocaleString('es-CL')}</p></div>
             </div>
           </aside>
 
           <section className="space-y-4">
-            {source === 'google_sheets' ? <input value={sheetUrl} onChange={(e) => setSheetUrl(e.target.value)} placeholder="URL pública de Google Sheets" className="min-h-14 w-full rounded-2xl bg-white px-4 text-sm outline-none shadow-sm" /> : <><label className="grid min-h-32 cursor-pointer place-items-center rounded-[1.5rem] bg-[#E5D2C0] p-5 text-center"><span><Upload className="mx-auto h-7 w-7" /><b className="mt-2 block">Subir CSV, TXT o JSON</b><small className="text-[#756B63]">También puedes pegar el contenido abajo.</small></span><input type="file" accept=".csv,.tsv,.txt,.json,.xlsx,.xls" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleFile(file); e.target.value = ''; }} /></label><textarea value={content} onChange={(e) => setContent(e.target.value)} rows={15} spellCheck={false} className="w-full rounded-[1.5rem] bg-[#171820] p-4 font-mono text-xs leading-6 text-[#F8F0E9] outline-none" /></>}
+            {source === 'google_sheets' ? <input value={sheetUrl} onChange={(e) => setSheetUrl(e.target.value)} placeholder="URL pública de Google Sheets" className="min-h-14 w-full rounded-2xl bg-white px-4 text-sm outline-none shadow-sm" /> : <><label className="grid min-h-32 cursor-pointer place-items-center rounded-[1.5rem] bg-[#E5D2C0] p-5 text-center"><span><Upload className="mx-auto h-7 w-7" /><b className="mt-2 block">Subir CSV, TXT o JSON</b><small className="text-[#BFB8AC]">También puedes pegar el contenido abajo.</small></span><input type="file" accept=".csv,.tsv,.txt,.json,.xlsx,.xls" className="hidden" onChange={(e) => { const file = e.target.files?.[0]; if (file) void handleFile(file); e.target.value = ''; }} /></label><textarea value={content} onChange={(e) => setContent(e.target.value)} rows={15} spellCheck={false} className="w-full rounded-[1.5rem] bg-[#08090A] p-4 font-mono text-xs leading-6 text-[#FFF9EE] outline-none" /></>}
 
             <div className="grid gap-3 rounded-[1.5rem] bg-white p-4 shadow-sm sm:grid-cols-3"><Mini label="Formato" value={source === 'json' ? 'JSON' : source === 'google_sheets' ? 'Sheets' : 'Tabla'} /><Mini label="Contenido" value={source === 'google_sheets' ? 'URL' : `${lineCount} líneas`} /><Mini label="Precio" value={applyMarkup ? `Costo + ${markupPercentage}%` : 'Usar recibido'} /></div>
 
             {result ? <div className={`rounded-[1.5rem] p-4 text-sm ${result.error ? 'bg-red-100 text-red-800' : 'bg-emerald-100 text-emerald-800'}`}><div className="flex gap-3">{result.error ? <AlertTriangle className="h-5 w-5" /> : <CheckCircle2 className="h-5 w-5" />}<div>{result.error ? result.error : <><b>{result.imported}</b> productos importados con {result.applyMarkup ? `${result.markupPercentage}% de aumento` : 'el precio recibido'}.</>}</div></div></div> : null}
 
-            <div className="sticky bottom-0 grid gap-3 rounded-[1.5rem] bg-[#F8F0E9]/92 p-3 backdrop-blur-xl sm:grid-cols-2"><button onClick={onClose} className="rounded-2xl bg-white px-5 py-4 text-sm font-black">Cancelar</button><button onClick={() => void submitImport()} disabled={loading} className="inline-flex items-center justify-center rounded-2xl bg-[#171820] px-5 py-4 text-sm font-black text-[#F8F0E9] disabled:opacity-50">{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}{loading ? 'Calculando e importando…' : `Importar con ${applyMarkup ? `${markupPercentage}%` : 'precio original'}`}</button></div>
+            <div className="sticky bottom-0 grid gap-3 rounded-[1.5rem] bg-[#FFF9EE]/92 p-3 backdrop-blur-xl sm:grid-cols-2"><button onClick={onClose} className="rounded-2xl bg-white px-5 py-4 text-sm font-black">Cancelar</button><button onClick={() => void submitImport()} disabled={loading} className="inline-flex items-center justify-center rounded-2xl bg-[#08090A] px-5 py-4 text-sm font-black text-[#FFF9EE] disabled:opacity-50">{loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}{loading ? 'Calculando e importando…' : `Importar con ${applyMarkup ? `${markupPercentage}%` : 'precio original'}`}</button></div>
           </section>
         </div>
       </div>
@@ -96,5 +96,5 @@ export default function ProductImportModal({ open, onClose, onImported }: { open
   );
 }
 
-function SourceButton({ active, icon, title, onClick }: { active: boolean; icon: React.ReactNode; title: string; onClick: () => void }) { return <button onClick={onClick} className={`flex min-h-16 w-full items-center gap-3 rounded-[1.4rem] p-4 text-left font-black transition ${active ? 'bg-[#171820] text-[#F8F0E9]' : 'bg-white text-[#171820]'}`}><span className={active ? 'text-[#CCB196]' : 'text-[#895E3D]'}>{icon}</span>{title}</button>; }
-function Mini({ label, value }: { label: string; value: string }) { return <div><p className="text-[9px] font-black uppercase tracking-[.14em] text-[#895E3D]">{label}</p><p className="mt-1 text-sm font-black">{value}</p></div>; }
+function SourceButton({ active, icon, title, onClick }: { active: boolean; icon: React.ReactNode; title: string; onClick: () => void }) { return <button onClick={onClick} className={`flex min-h-16 w-full items-center gap-3 rounded-[1.4rem] p-4 text-left font-black transition ${active ? 'bg-[#08090A] text-[#FFF9EE]' : 'bg-white text-[#08090A]'}`}><span className={active ? 'text-[#FFB000]' : 'text-[#F5871F]'}>{icon}</span>{title}</button>; }
+function Mini({ label, value }: { label: string; value: string }) { return <div><p className="text-[9px] font-black uppercase tracking-[.14em] text-[#F5871F]">{label}</p><p className="mt-1 text-sm font-black">{value}</p></div>; }

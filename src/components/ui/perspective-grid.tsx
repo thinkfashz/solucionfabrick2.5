@@ -34,7 +34,7 @@ export function PerspectiveGrid({
         <div
             className={cn(
                 "relative w-full h-full overflow-hidden bg-white dark:bg-black",
-                "[--fade-stop:#ffffff] dark:[--fade-stop:#000000]",
+                "[--fade-stop:#FFF9EE] dark:[--fade-stop:#08090A]",
                 className
             )}
             style={{

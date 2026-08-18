@@ -147,7 +147,7 @@ export default function PageTransition() {
         inset: 0,
         zIndex: 10000,
         background:
-          'linear-gradient(135deg, #050505 0%, #0a0a0a 40%, #111108 70%, #0a0a0a 100%)',
+          'linear-gradient(135deg, #08090A 0%, #08090A 40%, #111108 70%, #08090A 100%)',
         display: 'flex',
         flexDirection: 'column',
         alignItems: 'center',
@@ -167,7 +167,7 @@ export default function PageTransition() {
         width: '35vw',
         height: '35vw',
         borderRadius: '50%',
-        background: 'radial-gradient(circle, rgba(250,204,21,0.06) 0%, transparent 70%)',
+        background: 'radial-gradient(circle, rgba(255, 176, 0,0.06) 0%, transparent 70%)',
         pointerEvents: 'none',
         animation: 'pt-orb1 4s ease-in-out infinite alternate',
       }} />
@@ -258,7 +258,7 @@ export default function PageTransition() {
               borderRadius: '999px',
               background:
                 'linear-gradient(90deg, transparent 0%, #FFE17A 45%, #FFC700 60%, transparent 100%)',
-              boxShadow: '0 0 12px rgba(250,204,21,0.7)',
+              boxShadow: '0 0 12px rgba(255, 176, 0,0.7)',
             }}
           />
           <span
@@ -271,7 +271,7 @@ export default function PageTransition() {
               borderRadius: '999px',
               background:
                 'linear-gradient(270deg, transparent 0%, #FFE17A 45%, #FFC700 60%, transparent 100%)',
-              boxShadow: '0 0 10px rgba(250,204,21,0.55)',
+              boxShadow: '0 0 10px rgba(255, 176, 0,0.55)',
               animationDelay: '0.6s',
             }}
           />
@@ -294,7 +294,7 @@ export default function PageTransition() {
             background: 'rgba(0,0,0,0.85)',
             border: '1px solid rgba(255,199,0,0.35)',
             boxShadow:
-              '0 0 24px rgba(250,204,21,0.45), inset 0 0 12px rgba(250,204,21,0.15)',
+              '0 0 24px rgba(255, 176, 0,0.45), inset 0 0 12px rgba(255, 176, 0,0.15)',
           }}
         >
           <span className="motion-safe:animate-[pt-breathe_1.8s_ease-in-out_infinite]"><FabrickPeakIcon size={38} /></span>
@@ -303,7 +303,7 @@ export default function PageTransition() {
               fontFamily: 'Montserrat, Arial, sans-serif',
               fontSize: '7px',
               letterSpacing: '0.45em',
-              color: 'rgba(250,204,21,0.85)',
+              color: 'rgba(255, 176, 0,0.85)',
               textTransform: 'uppercase',
               fontWeight: 700,
             }}

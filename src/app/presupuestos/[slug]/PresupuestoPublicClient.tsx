@@ -79,12 +79,12 @@ export default function PresupuestoPublicClient({ slug: initialSlug }: { slug: s
   const publicLink = useMemo(() => (typeof window !== 'undefined' ? window.location.href : `/presupuestos/${slug}`), [slug]);
 
   if (!ready) {
-    return <main className="min-h-screen bg-[#111111] px-4 py-10 text-white"><div className="mx-auto max-w-4xl rounded-3xl border border-yellow-400/20 bg-zinc-950 p-8 text-center">Cargando presupuesto...</div></main>;
+    return <main className="min-h-screen bg-[#111214] px-4 py-10 text-white"><div className="mx-auto max-w-4xl rounded-3xl border border-yellow-400/20 bg-zinc-950 p-8 text-center">Cargando presupuesto...</div></main>;
   }
 
   if (expired) {
     return (
-      <main className="min-h-screen bg-[#111111] px-4 py-10 text-white">
+      <main className="min-h-screen bg-[#111214] px-4 py-10 text-white">
         <div className="mx-auto max-w-3xl rounded-[2rem] border border-orange-400/25 bg-zinc-950 p-8 text-center shadow-2xl">
           <p className="text-xs font-black uppercase tracking-[0.3em] text-orange-300">Presupuesto expirado</p>
           <h1 className="mt-4 text-3xl font-black">Este link ya se autodestruyó</h1>
@@ -96,11 +96,11 @@ export default function PresupuestoPublicClient({ slug: initialSlug }: { slug: s
   }
 
   if (!budget) {
-    return <main className="min-h-screen bg-[#111111] px-4 py-10 text-white"><div className="mx-auto max-w-3xl rounded-[2rem] border border-yellow-400/20 bg-zinc-950 p-8 text-center shadow-2xl"><p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-300">Presupuesto no encontrado</p><h1 className="mt-4 text-3xl font-black">No pudimos abrir este link</h1><p className="mt-3 text-zinc-400">Migra el presupuesto desde el admin o revisa que el slug exista en la base de datos.</p><Link href="/" className="mt-6 inline-flex rounded-full bg-yellow-400 px-5 py-2 text-sm font-black text-black">Volver al sitio</Link></div></main>;
+    return <main className="min-h-screen bg-[#111214] px-4 py-10 text-white"><div className="mx-auto max-w-3xl rounded-[2rem] border border-yellow-400/20 bg-zinc-950 p-8 text-center shadow-2xl"><p className="text-xs font-black uppercase tracking-[0.3em] text-yellow-300">Presupuesto no encontrado</p><h1 className="mt-4 text-3xl font-black">No pudimos abrir este link</h1><p className="mt-3 text-zinc-400">Migra el presupuesto desde el admin o revisa que el slug exista en la base de datos.</p><Link href="/" className="mt-6 inline-flex rounded-full bg-yellow-400 px-5 py-2 text-sm font-black text-black">Volver al sitio</Link></div></main>;
   }
 
   return (
-    <main className="min-h-screen bg-[#111111] px-0 py-0 sm:px-4 sm:py-6 lg:px-8 lg:py-10">
+    <main className="min-h-screen bg-[#111214] px-0 py-0 sm:px-4 sm:py-6 lg:px-8 lg:py-10">
       <PresupuestoPublicView presupuesto={budget} publicLink={publicLink} />
     </main>
   );

@@ -58,17 +58,17 @@ export function adminAccessEmail(params: {
   const location = params.locationHint || 'Ubicación no disponible';
   const text = `${params.title}\n\nUsuario: ${params.email}\nIP: ${params.ip}\nDispositivo: ${params.device}\nUser-Agent: ${params.userAgent}\nUbicación: ${location}\nHora: ${at.toISOString()}`;
   const html = `
-  <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#09090b;color:#f4f4f5;padding:28px;border-radius:18px;border:1px solid #27272a">
-    <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:3px;color:#f59e0b">Soluciones Fabrick · Seguridad</p>
+  <div style="font-family:system-ui,-apple-system,Segoe UI,sans-serif;background:#08090A;color:#F2DFBB;padding:28px;border-radius:18px;border:1px solid #1A1B1F">
+    <p style="margin:0 0 6px;font-size:11px;text-transform:uppercase;letter-spacing:3px;color:#F5871F">Soluciones Fabrick · Seguridad</p>
     <h1 style="margin:0 0 18px;font-size:22px;line-height:1.2">${params.title}</h1>
-    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#d4d4d8">
-      <tr><td style="padding:8px 0;color:#a1a1aa">Usuario</td><td style="padding:8px 0;font-weight:700;color:#fff">${params.email}</td></tr>
-      <tr><td style="padding:8px 0;color:#a1a1aa">IP</td><td style="padding:8px 0;font-family:monospace;color:#fff">${params.ip}</td></tr>
-      <tr><td style="padding:8px 0;color:#a1a1aa">Dispositivo</td><td style="padding:8px 0;color:#fff">${params.device}</td></tr>
-      <tr><td style="padding:8px 0;color:#a1a1aa">Ubicación</td><td style="padding:8px 0;color:#fff">${location}</td></tr>
-      <tr><td style="padding:8px 0;color:#a1a1aa">Hora</td><td style="padding:8px 0;color:#fff">${at.toLocaleString('es-CL')}</td></tr>
+    <table style="width:100%;border-collapse:collapse;font-size:14px;color:#BFB8AC">
+      <tr><td style="padding:8px 0;color:#BFB8AC">Usuario</td><td style="padding:8px 0;font-weight:700;color:#FFF9EE">${params.email}</td></tr>
+      <tr><td style="padding:8px 0;color:#BFB8AC">IP</td><td style="padding:8px 0;font-family:monospace;color:#FFF9EE">${params.ip}</td></tr>
+      <tr><td style="padding:8px 0;color:#BFB8AC">Dispositivo</td><td style="padding:8px 0;color:#FFF9EE">${params.device}</td></tr>
+      <tr><td style="padding:8px 0;color:#BFB8AC">Ubicación</td><td style="padding:8px 0;color:#FFF9EE">${location}</td></tr>
+      <tr><td style="padding:8px 0;color:#BFB8AC">Hora</td><td style="padding:8px 0;color:#FFF9EE">${at.toLocaleString('es-CL')}</td></tr>
     </table>
-    <p style="margin:18px 0 0;color:#71717a;font-size:12px;line-height:1.5">User-Agent: ${params.userAgent}</p>
+    <p style="margin:18px 0 0;color:#BFB8AC;font-size:12px;line-height:1.5">User-Agent: ${params.userAgent}</p>
   </div>`;
   return { html, text };
 }

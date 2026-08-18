@@ -156,7 +156,7 @@ export default function EvolucionClient() {
         {/* Vertical progress rail */}
         <div className="pointer-events-none absolute left-6 top-0 h-full w-[2px] bg-white/5 md:left-1/2 md:-translate-x-1/2">
           <div
-            className="absolute left-0 top-0 w-full bg-gradient-to-b from-yellow-300 via-yellow-400 to-yellow-500 shadow-[0_0_18px_rgba(250,204,21,0.45)] transition-[height] duration-150"
+            className="absolute left-0 top-0 w-full bg-gradient-to-b from-yellow-300 via-yellow-400 to-yellow-500 shadow-[0_0_18px_rgba(255, 176, 0,0.45)] transition-[height] duration-150"
             style={{ height: `${progress * 100}%` }}
           />
         </div>
@@ -179,7 +179,7 @@ export default function EvolucionClient() {
         <div className="mt-20 flex justify-center">
           <div
             className="relative flex h-44 w-44 items-center justify-center rounded-full border-4 border-yellow-400 bg-gradient-to-br from-yellow-500/20 via-yellow-400/5 to-transparent text-center motion-safe:animate-[seal-pulse_3s_ease-in-out_infinite]"
-            style={{ boxShadow: '0 0 60px rgba(250,204,21,0.35), inset 0 0 30px rgba(250,204,21,0.15)' }}
+            style={{ boxShadow: '0 0 60px rgba(255, 176, 0,0.35), inset 0 0 30px rgba(255, 176, 0,0.15)' }}
           >
             <div>
               <p className="text-[9px] font-black uppercase tracking-[0.4em] text-yellow-400">Aprobado</p>
@@ -246,7 +246,7 @@ function StageCard({
       {/* Marker */}
       <div
         className={`absolute top-4 flex h-10 w-10 items-center justify-center rounded-full border-2 border-yellow-400 bg-black font-black text-yellow-400 left-1 md:left-1/2 md:-translate-x-1/2 ${
-          visible ? 'shadow-[0_0_28px_rgba(250,204,21,0.55)]' : ''
+          visible ? 'shadow-[0_0_28px_rgba(255, 176, 0,0.55)]' : ''
         }`}
       >
         <Icon size={16} />

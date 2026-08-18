@@ -6,7 +6,7 @@ import { Paintbrush, LayoutTemplate, Type, Palette, CheckCircle, RefreshCcw } fr
 import { AdminBaseCard, AdminBaseGrid } from '@/components/admin/baseui-kit';
 
 export default function DesignEngineClient() {
-  const [accentColor, setAccentColor] = useState('#fbbf24'); // default amber-400
+  const [accentColor, setAccentColor] = useState('#FFB000'); // default amber-400
   const [logoText, setLogoText] = useState('SOLUCIONES FABRICK');
   const [saved, setSaved] = useState(false);
 
@@ -34,7 +34,7 @@ export default function DesignEngineClient() {
   };
 
   const handleReset = () => {
-    setAccentColor('#fbbf24');
+    setAccentColor('#FFB000');
     setLogoText('SOLUCIONES FABRICK');
     localStorage.removeItem('admin-accent-color');
     localStorage.removeItem('admin-logo-text');

@@ -17,11 +17,11 @@ export const TENANT_PALETTES: TenantPalette[] = [
     id: 'lava',
     name: 'Lava premium',
     description: 'Negro, crema, naranja y dorado para construcción, servicios técnicos y ventas premium.',
-    primary: '#f59e0b',
-    secondary: '#ea580c',
-    accent: '#fde68a',
-    background: '#050505',
-    surface: '#11100d',
+    primary: '#F5871F',
+    secondary: '#F5871F',
+    accent: '#FFD05A',
+    background: '#08090A',
+    surface: '#111214',
     text: '#fff7ed',
   },
   {
@@ -77,7 +77,7 @@ export const TENANT_PALETTES: TenantPalette[] = [
     accent: '#e2e8f0',
     background: '#020617',
     surface: '#0f172a',
-    text: '#f8fafc',
+    text: '#FFF9EE',
   },
 ];
 

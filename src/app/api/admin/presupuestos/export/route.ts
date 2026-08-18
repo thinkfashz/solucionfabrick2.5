@@ -12,8 +12,8 @@ function esc(s: string) {
 }
 
 function list(items: string[], symbol = '✓') {
-  if (!items?.length) return '<p style="color:#999;font-size:13px;">—</p>';
-  return items.map(i => `<div style="display:flex;gap:8px;margin-bottom:5px;"><span style="color:#b8860b;font-weight:700;flex-shrink:0;">${symbol}</span><span>${esc(i)}</span></div>`).join('');
+  if (!items?.length) return '<p style="color:#BFB8AC;font-size:13px;">—</p>';
+  return items.map(i => `<div style="display:flex;gap:8px;margin-bottom:5px;"><span style="color:#C97700;font-weight:700;flex-shrink:0;">${symbol}</span><span>${esc(i)}</span></div>`).join('');
 }
 
 function buildHtml(p: PresupuestoPro): string {
@@ -23,25 +23,25 @@ function buildHtml(p: PresupuestoPro): string {
   const itemRows = (p.items || [])
     .sort((a, b) => a.orden - b.orden)
     .map((item, i) => `
-      <tr style="background:${i % 2 === 1 ? '#f9f7f2' : '#fff'};">
-        <td style="padding:10px 12px;border-bottom:1px solid #e8e0d0;">
-          <strong style="color:#1a1a1a;">${esc(item.nombre)}</strong>
-          ${item.descripcion ? `<br><span style="color:#666;font-size:12px;">${esc(item.descripcion)}</span>` : ''}
-          ${item.categoria ? `<br><span style="color:#b8860b;font-size:11px;font-weight:700;">${esc(item.categoria)}</span>` : ''}
+      <tr style="background:${i % 2 === 1 ? '#f9f7f2' : '#FFF9EE'};">
+        <td style="padding:10px 12px;border-bottom:1px solid #F2DFBB;">
+          <strong style="color:#111214;">${esc(item.nombre)}</strong>
+          ${item.descripcion ? `<br><span style="color:#BFB8AC;font-size:12px;">${esc(item.descripcion)}</span>` : ''}
+          ${item.categoria ? `<br><span style="color:#C97700;font-size:11px;font-weight:700;">${esc(item.categoria)}</span>` : ''}
         </td>
-        <td style="padding:10px 12px;border-bottom:1px solid #e8e0d0;text-align:center;color:#555;">${item.cantidad}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #e8e0d0;text-align:center;color:#555;">${esc(item.unidad)}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #e8e0d0;text-align:right;color:#555;">${money(item.precio_unitario)}</td>
-        <td style="padding:10px 12px;border-bottom:1px solid #e8e0d0;text-align:right;font-weight:700;color:#1a1a1a;">${money(item.total)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #F2DFBB;text-align:center;color:#6E675D;">${item.cantidad}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #F2DFBB;text-align:center;color:#6E675D;">${esc(item.unidad)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #F2DFBB;text-align:right;color:#6E675D;">${money(item.precio_unitario)}</td>
+        <td style="padding:10px 12px;border-bottom:1px solid #F2DFBB;text-align:right;font-weight:700;color:#111214;">${money(item.total)}</td>
       </tr>`).join('');
 
   const pagoRows = (p.forma_pago || [])
     .map((pg, i) => `
       <div style="flex:1;min-width:150px;background:#fffbf0;border:1px solid #e8d88a;border-radius:10px;padding:14px;">
-        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#b8860b;margin-bottom:4px;">Hito ${i + 1}</div>
-        <div style="font-size:28px;font-weight:900;color:#1a1a1a;line-height:1;">${pg.porcentaje}%</div>
-        ${p.total_con_iva > 0 ? `<div style="font-size:14px;font-weight:700;color:#b8860b;margin-top:4px;">${money(Math.round(p.total_con_iva * pg.porcentaje / 100))}</div>` : ''}
-        <div style="font-size:12px;color:#555;margin-top:6px;line-height:1.4;">${esc(pg.descripcion)}</div>
+        <div style="font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#C97700;margin-bottom:4px;">Hito ${i + 1}</div>
+        <div style="font-size:28px;font-weight:900;color:#111214;line-height:1;">${pg.porcentaje}%</div>
+        ${p.total_con_iva > 0 ? `<div style="font-size:14px;font-weight:700;color:#C97700;margin-top:4px;">${money(Math.round(p.total_con_iva * pg.porcentaje / 100))}</div>` : ''}
+        <div style="font-size:12px;color:#6E675D;margin-top:6px;line-height:1.4;">${esc(pg.descripcion)}</div>
       </div>`).join('');
 
   return `<!DOCTYPE html>
@@ -52,7 +52,7 @@ function buildHtml(p: PresupuestoPro): string {
 <title>${esc(p.titulo || 'Presupuesto')} — ${esc(p.cliente || '')}</title>
 <style>
   *{box-sizing:border-box;margin:0;padding:0;}
-  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;color:#1a1a1a;background:#fff;line-height:1.6;}
+  body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;font-size:14px;color:#111214;background:#FFF9EE;line-height:1.6;}
   @media print{
     body{font-size:12px;}
     .no-print{display:none!important;}
@@ -60,19 +60,19 @@ function buildHtml(p: PresupuestoPro): string {
     h2{page-break-after:avoid;}
   }
   .page{max-width:900px;margin:0 auto;padding:32px 24px;}
-  .header{background:#111;color:#fff;padding:40px;border-radius:16px;margin-bottom:32px;}
-  .badge{display:inline-block;background:#f4c400;color:#111;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.15em;padding:4px 12px;border-radius:20px;}
+  .header{background:#111214;color:#FFF9EE;padding:40px;border-radius:16px;margin-bottom:32px;}
+  .badge{display:inline-block;background:#FFB000;color:#111214;font-size:11px;font-weight:900;text-transform:uppercase;letter-spacing:0.15em;padding:4px 12px;border-radius:20px;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;}
-  .card{background:#fafafa;border:1px solid #e8e0d0;border-radius:12px;padding:20px;}
-  .label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#999;margin-bottom:6px;}
-  h2{font-size:17px;font-weight:900;margin-bottom:14px;color:#111;display:flex;align-items:center;gap:8px;}
-  h2::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:#f4c400;flex-shrink:0;}
+  .card{background:#FFF9EE;border:1px solid #F2DFBB;border-radius:12px;padding:20px;}
+  .label{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:0.12em;color:#BFB8AC;margin-bottom:6px;}
+  h2{font-size:17px;font-weight:900;margin-bottom:14px;color:#111214;display:flex;align-items:center;gap:8px;}
+  h2::before{content:'';display:inline-block;width:8px;height:8px;border-radius:50%;background:#FFB000;flex-shrink:0;}
   table{width:100%;border-collapse:collapse;font-size:13px;}
-  thead th{background:#111;color:#fff;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;}
+  thead th{background:#111214;color:#FFF9EE;padding:10px 12px;text-align:left;font-size:11px;text-transform:uppercase;letter-spacing:0.1em;}
   thead th:last-child{text-align:right;}
   tfoot td{padding:12px;font-weight:700;border-top:2px solid #e8d88a;}
   .total-row td{background:#fffbf0;}
-  .print-btn{position:fixed;bottom:24px;right:24px;background:#f4c400;color:#111;border:none;font-size:14px;font-weight:900;padding:12px 24px;border-radius:50px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.15);}
+  .print-btn{position:fixed;bottom:24px;right:24px;background:#FFB000;color:#111214;border:none;font-size:14px;font-weight:900;padding:12px 24px;border-radius:50px;cursor:pointer;box-shadow:0 4px 20px rgba(0,0,0,0.15);}
   .watermark{text-align:center;font-size:11px;color:#ccc;text-transform:uppercase;letter-spacing:0.2em;padding:24px 0;}
 </style>
 </head>
@@ -88,9 +88,9 @@ function buildHtml(p: PresupuestoPro): string {
         <p style="margin-top:6px;color:#aaa;font-size:14px;">${esc(p.descripcion || '')}</p>
       </div>
       <div style="text-align:right;color:#ccc;font-size:13px;">
-        <div style="font-size:28px;font-weight:900;color:#f4c400;">${money(p.total_con_iva)}</div>
+        <div style="font-size:28px;font-weight:900;color:#FFB000;">${money(p.total_con_iva)}</div>
         <div style="margin-top:4px;">Total c/IVA ${p.iva_porcentaje}%</div>
-        <div style="margin-top:8px;color:#888;">${fechaStr}</div>
+        <div style="margin-top:8px;color:#BFB8AC;">${fechaStr}</div>
       </div>
     </div>
   </div>
@@ -100,18 +100,18 @@ function buildHtml(p: PresupuestoPro): string {
     <div class="card">
       <div class="label">Cliente</div>
       <div style="font-size:18px;font-weight:900;">${esc(p.cliente || '—')}</div>
-      ${p.empresa_cliente ? `<div style="color:#666;margin-top:4px;">${esc(p.empresa_cliente)}</div>` : ''}
-      ${p.telefono_whatsapp ? `<div style="color:#555;font-size:12px;margin-top:4px;">📞 ${esc(p.telefono_whatsapp)}</div>` : ''}
-      ${p.email_cliente ? `<div style="color:#555;font-size:12px;">✉ ${esc(p.email_cliente)}</div>` : ''}
+      ${p.empresa_cliente ? `<div style="color:#BFB8AC;margin-top:4px;">${esc(p.empresa_cliente)}</div>` : ''}
+      ${p.telefono_whatsapp ? `<div style="color:#6E675D;font-size:12px;margin-top:4px;">📞 ${esc(p.telefono_whatsapp)}</div>` : ''}
+      ${p.email_cliente ? `<div style="color:#6E675D;font-size:12px;">✉ ${esc(p.email_cliente)}</div>` : ''}
     </div>
     <div class="card">
       <div class="label">Datos del presupuesto</div>
       <div style="display:grid;gap:6px;">
-        <div><span style="color:#999;font-size:12px;">Proveedor:</span> <strong>${esc(p.proveedor || '—')}</strong></div>
-        <div><span style="color:#999;font-size:12px;">Ciudad:</span> ${esc(p.ciudad || '—')}</div>
-        <div><span style="color:#999;font-size:12px;">Validez:</span> ${esc(p.validez || '—')}</div>
-        ${validezStr ? `<div><span style="color:#999;font-size:12px;">Vence:</span> ${esc(validezStr)}</div>` : ''}
-        <div><span style="color:#999;font-size:12px;">Plazo entrega:</span> ${esc(p.plazo_entrega || '—')}</div>
+        <div><span style="color:#BFB8AC;font-size:12px;">Proveedor:</span> <strong>${esc(p.proveedor || '—')}</strong></div>
+        <div><span style="color:#BFB8AC;font-size:12px;">Ciudad:</span> ${esc(p.ciudad || '—')}</div>
+        <div><span style="color:#BFB8AC;font-size:12px;">Validez:</span> ${esc(p.validez || '—')}</div>
+        ${validezStr ? `<div><span style="color:#BFB8AC;font-size:12px;">Vence:</span> ${esc(validezStr)}</div>` : ''}
+        <div><span style="color:#BFB8AC;font-size:12px;">Plazo entrega:</span> ${esc(p.plazo_entrega || '—')}</div>
       </div>
     </div>
   </div>
@@ -133,13 +133,13 @@ function buildHtml(p: PresupuestoPro): string {
       <tbody>${itemRows}</tbody>
       <tfoot>
         <tr class="total-row">
-          <td colspan="4" style="color:#555;">Subtotal neto</td>
+          <td colspan="4" style="color:#6E675D;">Subtotal neto</td>
           <td style="text-align:right;">${money(p.valor_neto)}</td>
         </tr>
-        ${p.iva_porcentaje > 0 ? `<tr class="total-row"><td colspan="4" style="color:#555;">IVA ${p.iva_porcentaje}%</td><td style="text-align:right;">${money(p.total_iva)}</td></tr>` : ''}
+        ${p.iva_porcentaje > 0 ? `<tr class="total-row"><td colspan="4" style="color:#6E675D;">IVA ${p.iva_porcentaje}%</td><td style="text-align:right;">${money(p.total_iva)}</td></tr>` : ''}
         <tr style="background:#fffbf0;">
           <td colspan="4" style="font-weight:900;font-size:15px;">Total con IVA</td>
-          <td style="text-align:right;font-weight:900;font-size:18px;color:#b8860b;">${money(p.total_con_iva)}</td>
+          <td style="text-align:right;font-weight:900;font-size:18px;color:#C97700;">${money(p.total_con_iva)}</td>
         </tr>
       </tfoot>
     </table>
@@ -173,7 +173,7 @@ function buildHtml(p: PresupuestoPro): string {
   </section>` : ''}
 
   ${p.observacion_tecnica ? `
-  <section class="card" style="margin-bottom:24px;border-left:3px solid #f4c400;">
+  <section class="card" style="margin-bottom:24px;border-left:3px solid #FFB000;">
     <h2>Observación técnica</h2>
     <p style="color:#444;line-height:1.7;">${esc(p.observacion_tecnica)}</p>
   </section>` : ''}

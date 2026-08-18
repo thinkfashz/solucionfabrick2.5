@@ -115,7 +115,7 @@ export default function UnirsePage() {
     : 'bg-black/40 border border-white/15 rounded-2xl px-5 py-3.5 text-white text-sm placeholder:text-white/35 focus:outline-none focus:border-yellow-300/70 focus:bg-black/55 transition-all disabled:opacity-40';
   const buttonClass = isCorporate
     ? 'bg-white text-black font-bold uppercase tracking-widest rounded-full px-6 py-3 text-sm shadow-[0_10px_24px_rgba(255,255,255,0.18)] hover:brightness-95 transition-all disabled:opacity-40 disabled:cursor-not-allowed'
-    : 'bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-200 text-black font-bold uppercase tracking-widest rounded-full px-6 py-3 text-sm shadow-[0_10px_24px_rgba(250,204,21,0.35)] hover:brightness-105 transition-all disabled:opacity-40 disabled:cursor-not-allowed';
+    : 'bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-200 text-black font-bold uppercase tracking-widest rounded-full px-6 py-3 text-sm shadow-[0_10px_24px_rgba(255, 176, 0,0.35)] hover:brightness-105 transition-all disabled:opacity-40 disabled:cursor-not-allowed';
 
   return (
     <div className="relative min-h-screen overflow-hidden bg-black px-4 py-12">
@@ -132,7 +132,7 @@ export default function UnirsePage() {
       )}
       <div className={isCorporate
         ? 'absolute inset-0 bg-[radial-gradient(circle_at_22%_12%,rgba(255,255,255,0.09),rgba(0,0,0,0)_38%),radial-gradient(circle_at_78%_85%,rgba(255,255,255,0.07),rgba(0,0,0,0)_42%),linear-gradient(180deg,rgba(0,0,0,0.22),rgba(0,0,0,0.92))]'
-        : 'absolute inset-0 bg-[radial-gradient(circle_at_20%_12%,rgba(56,189,248,0.2),rgba(0,0,0,0)_38%),radial-gradient(circle_at_80%_85%,rgba(250,204,21,0.16),rgba(0,0,0,0)_42%),linear-gradient(180deg,rgba(0,0,0,0.26),rgba(0,0,0,0.9))]'} />
+        : 'absolute inset-0 bg-[radial-gradient(circle_at_20%_12%,rgba(56,189,248,0.2),rgba(0,0,0,0)_38%),radial-gradient(circle_at_80%_85%,rgba(255, 176, 0,0.16),rgba(0,0,0,0)_42%),linear-gradient(180deg,rgba(0,0,0,0.26),rgba(0,0,0,0.9))]'} />
       <div className={isCorporate
         ? 'pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[length:100%_10px] opacity-15'
         : 'pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.05)_1px,transparent_1px)] bg-[length:100%_9px] opacity-20'} />

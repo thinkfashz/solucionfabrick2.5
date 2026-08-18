@@ -22,8 +22,8 @@ export default function InterestStars({
   className = '',
 }: Props) {
   const safeScore = clampScore(score);
-  const textColor = tone === 'dark' ? 'text-[#E5CFBA]' : 'text-[#6B4D35]';
-  const mutedColor = tone === 'dark' ? 'text-white/45' : 'text-[#756B63]';
+  const textColor = tone === 'dark' ? 'text-[#F2DFBB]' : 'text-[#6B4D35]';
+  const mutedColor = tone === 'dark' ? 'text-white/45' : 'text-[#BFB8AC]';
 
   return (
     <span
@@ -35,7 +35,7 @@ export default function InterestStars({
         {Array.from({ length: 5 }, (_, index) => (
           <Star
             key={index}
-            className={`h-3.5 w-3.5 ${index < safeScore ? 'fill-[#B6906C] text-[#B6906C]' : tone === 'dark' ? 'text-white/18' : 'text-[#171820]/15'}`}
+            className={`h-3.5 w-3.5 ${index < safeScore ? 'fill-[#F5871F] text-[#F5871F]' : tone === 'dark' ? 'text-white/18' : 'text-[#08090A]/15'}`}
           />
         ))}
       </span>

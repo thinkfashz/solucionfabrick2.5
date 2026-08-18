@@ -112,15 +112,15 @@ async function sendConfirmationEmail(payload: ConfirmPayload) {
     to: recipient,
     subject: `Confirmación de presupuesto aceptado — ${company}`,
     html: `
-      <div style="font-family:Arial,sans-serif;background:#0a0a0a;color:#ffffff;padding:28px;border-radius:18px">
-        <p style="color:#facc15;text-transform:uppercase;letter-spacing:3px;font-size:12px;font-weight:700">Soluciones Fabris</p>
+      <div style="font-family:Arial,sans-serif;background:#08090A;color:#FFF9EE;padding:28px;border-radius:18px">
+        <p style="color:#FFB000;text-transform:uppercase;letter-spacing:3px;font-size:12px;font-weight:700">Soluciones Fabris</p>
         <h1 style="margin:8px 0 12px;font-size:24px">Presupuesto confirmado</h1>
         <p>Hola ${client}, recibimos la aceptación del presupuesto:</p>
         <p style="font-size:18px;font-weight:700">${title}</p>
         <p><strong>Empresa:</strong> ${company}</p>
         <p><strong>Total:</strong> ${total}</p>
-        ${link ? `<p><a href="${link}" style="color:#facc15">Abrir presupuesto</a></p>` : ''}
-        <p style="margin-top:22px;color:#d4d4d8;font-size:13px">Este correo confirma que el botón de aceptación fue presionado desde la página pública del presupuesto.</p>
+        ${link ? `<p><a href="${link}" style="color:#FFB000">Abrir presupuesto</a></p>` : ''}
+        <p style="margin-top:22px;color:#BFB8AC;font-size:13px">Este correo confirma que el botón de aceptación fue presionado desde la página pública del presupuesto.</p>
       </div>
     `,
   });

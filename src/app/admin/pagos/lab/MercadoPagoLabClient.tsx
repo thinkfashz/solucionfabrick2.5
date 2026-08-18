@@ -156,7 +156,7 @@ export default function MercadoPagoLabClient() {
     setNotice('Copiado al portapapeles.');
   }
 
-  return <main className="min-h-screen bg-[#050505] px-4 py-6 text-white md:px-6">
+  return <main className="min-h-screen bg-[#08090A] px-4 py-6 text-white md:px-6">
     <div className="mx-auto grid max-w-7xl gap-5 xl:grid-cols-[minmax(0,1fr)_380px]">
       <section className="space-y-5">
         <header className="rounded-[2rem] border border-amber-300/20 bg-[radial-gradient(circle_at_90%_0%,rgba(245,158,11,.24),transparent_28rem),linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02))] p-5 shadow-2xl">

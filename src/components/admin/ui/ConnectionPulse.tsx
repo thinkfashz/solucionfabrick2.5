@@ -24,9 +24,9 @@ const STATUS_TO_DOT: Record<ConnectionStatus, LiveDotStatus> = {
 
 const STATUS_COLOR: Record<ConnectionStatus, string> = {
   connected: '#22c55e',
-  reconnecting: '#f59e0b',
+  reconnecting: '#F5871F',
   error: '#ef4444',
-  unconfigured: '#52525b',
+  unconfigured: '#6E675D',
 };
 
 const STATUS_LABEL: Record<ConnectionStatus, string> = {
@@ -47,7 +47,7 @@ const STATUS_TEXT_CLASS: Record<ConnectionStatus, string> = {
 /** Tailwind class for the animated bar (eliminates inline background + boxShadow style). */
 const STATUS_BAR_CLASS: Record<ConnectionStatus, string> = {
   connected: 'bg-green-500 shadow-[0_0_6px_#22c55eaa]',
-  reconnecting: 'bg-amber-400 shadow-[0_0_6px_#f59e0baa]',
+  reconnecting: 'bg-amber-400 shadow-[0_0_6px_#F5871Faa]',
   error: 'bg-red-500 shadow-[0_0_6px_#ef4444aa]',
   unconfigured: 'bg-zinc-600',
 };

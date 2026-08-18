@@ -33,7 +33,7 @@ export default function PresupuestoVigenteView({
   const items: PresupuestoItem[] = Array.isArray(presupuesto.items) ? presupuesto.items : [];
 
   return (
-    <main className="min-h-screen bg-[#070707] text-white" style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
+    <main className="min-h-screen bg-[#08090A] text-white" style={{ fontFamily: 'Inter, ui-sans-serif, system-ui, sans-serif' }}>
       <div className="mx-auto max-w-3xl px-5 py-12 md:py-20">
         <motion.header
           initial="hidden"

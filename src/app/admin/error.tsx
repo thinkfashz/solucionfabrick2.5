@@ -5,7 +5,7 @@ import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 
 export default function AdminError({ error, reset }: { error: Error & { digest?: string }; reset: () => void }) {
   useEffect(() => { console.error(error); }, [error]);
-  return <main className="grid min-h-screen place-items-center bg-[#050505] p-4 text-white">
+  return <main className="grid min-h-screen place-items-center bg-[#08090A] p-4 text-white">
     <section className="w-full max-w-xl rounded-[2rem] border border-yellow-300/15 bg-black/70 p-8 text-center shadow-[0_30px_90px_rgba(0,0,0,.55)] backdrop-blur-xl">
       <FabrickFullLogo className="mx-auto" priority theme="light" />
       <h1 className="mt-3 text-3xl font-black tracking-tight">Algo falló en este módulo</h1>

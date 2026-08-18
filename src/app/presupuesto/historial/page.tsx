@@ -132,7 +132,7 @@ export default function HistorialPage() {
                 <li key={q.id}>
                   <Link
                     href={`/presupuesto/${q.id}`}
-                    className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-zinc-950/60 p-5 backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-yellow-400/40 hover:shadow-[0_8px_30px_-12px_rgba(250,204,21,0.35)]"
+                    className="group flex items-center justify-between gap-4 rounded-2xl border border-white/10 bg-zinc-950/60 p-5 backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:border-yellow-400/40 hover:shadow-[0_8px_30px_-12px_rgba(255, 176, 0,0.35)]"
                   >
                     <div className="min-w-0">
                       <p className="font-mono text-[11px] uppercase tracking-wider text-yellow-300">

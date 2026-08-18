@@ -7,7 +7,7 @@ import { buildWhatsAppLink } from "@/lib/whatsapp";
 import CheckoutStatusTimeline from "@/components/checkout/CheckoutStatusTimeline";
 
 const PAGE_BG =
-  "radial-gradient(circle at 20% -10%,rgba(255,210,41,.16),transparent 28rem), radial-gradient(circle at 90% 10%,rgba(255,210,41,.07),transparent 22rem), linear-gradient(180deg,#030303 0%,#070706 55%,#030303 100%)";
+  "radial-gradient(circle at 20% -10%,rgba(255,210,41,.16),transparent 28rem), radial-gradient(circle at 90% 10%,rgba(255,210,41,.07),transparent 22rem), linear-gradient(180deg,#08090A 0%,#070706 55%,#08090A 100%)";
 
 const CARD_BG =
   "radial-gradient(circle at 80% 0%,rgba(255,210,41,.08),transparent 18rem), linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025))";
@@ -31,8 +31,8 @@ interface OrderPreview {
 
 function Kicker({ label }: { label: string }) {
   return (
-    <span className="inline-flex items-center gap-2.5 text-[#ffd229] text-[11px] font-black uppercase tracking-[0.34em]">
-      <span className="block w-8 h-px bg-gradient-to-r from-[#ffd229] to-transparent flex-shrink-0" />
+    <span className="inline-flex items-center gap-2.5 text-[#FFB000] text-[11px] font-black uppercase tracking-[0.34em]">
+      <span className="block w-8 h-px bg-gradient-to-r from-[#FFB000] to-transparent flex-shrink-0" />
       {label}
     </span>
   );
@@ -130,13 +130,13 @@ function ConfettiDot({
 }
 
 const CONFETTI_DOTS = [
-  { x: 15, y: -5, color: "#ffd229", delay: 0.3, size: 8 },
+  { x: 15, y: -5, color: "#FFB000", delay: 0.3, size: 8 },
   { x: 30, y: -8, color: "#23d18b", delay: 0.5, size: 6 },
-  { x: 50, y: -6, color: "#ffd229", delay: 0.2, size: 10 },
-  { x: 65, y: -4, color: "#fff8ed", delay: 0.6, size: 5 },
+  { x: 50, y: -6, color: "#FFB000", delay: 0.2, size: 10 },
+  { x: 65, y: -4, color: "#FFF9EE", delay: 0.6, size: 5 },
   { x: 80, y: -7, color: "#23d18b", delay: 0.4, size: 7 },
-  { x: 22, y: -3, color: "#fff", delay: 0.7, size: 4 },
-  { x: 72, y: -5, color: "#ffd229", delay: 0.1, size: 6 },
+  { x: 22, y: -3, color: "#FFF9EE", delay: 0.7, size: 4 },
+  { x: 72, y: -5, color: "#FFB000", delay: 0.1, size: 6 },
 ];
 
 export default function AceptadaClient() {
@@ -173,7 +173,7 @@ export default function AceptadaClient() {
   return (
     <div
       className="min-h-screen"
-      style={{ color: "#fff8ed", background: PAGE_BG }}
+      style={{ color: "#FFF9EE", background: PAGE_BG }}
     >
       <style>{`
         @keyframes confettiFall {
@@ -200,7 +200,7 @@ export default function AceptadaClient() {
               fontSize: "clamp(36px,7vw,64px)",
               lineHeight: 0.95,
               letterSpacing: "-0.06em",
-              color: "#fff8ed",
+              color: "#FFF9EE",
             }}
           >
             Tu pedido quedó
@@ -209,7 +209,7 @@ export default function AceptadaClient() {
           </h1>
           <p
             className="mt-4 leading-[1.7] max-w-md"
-            style={{ color: "#b9afa2" }}
+            style={{ color: "#BFB8AC" }}
           >
             Recibimos tu compra correctamente. En breve nuestro equipo se pondrá
             en contacto contigo para coordinar el despacho a tu dirección en la
@@ -241,7 +241,7 @@ export default function AceptadaClient() {
                 </span>
                 <strong
                   className="text-[18px] font-black leading-snug"
-                  style={{ color: "#fff8ed" }}
+                  style={{ color: "#FFF9EE" }}
                 >
                   {value}
                 </strong>
@@ -255,7 +255,7 @@ export default function AceptadaClient() {
           <Link
             href="/tienda"
             className="flex-1 flex items-center justify-center rounded-full py-4 text-[11px] font-black uppercase tracking-[0.25em] text-black hover:bg-yellow-300 transition"
-            style={{ background: "#ffd229" }}
+            style={{ background: "#FFB000" }}
           >
             Volver al catálogo
           </Link>
@@ -267,7 +267,7 @@ export default function AceptadaClient() {
             style={{
               border: "1px solid rgba(255,248,237,0.14)",
               background: "rgba(255,255,255,0.05)",
-              color: "#fff8ed",
+              color: "#FFF9EE",
             }}
           >
             Hablar por WhatsApp

@@ -51,7 +51,7 @@ const SERVICES: ServiceChapter[] = [
     description: 'La albañilería reúne trabajos húmedos y de obra base para levantar, corregir o preparar un espacio. El alcance se define según soporte, materialidad, humedad, cargas y terminación requerida.',
     functions: ['Construcción y reparación de muros, bloques y elementos de cierre.', 'Sobrecimientos, radieres, afinados y preparación de superficies.', 'Enchapes, cerámicas, porcelanatos y revestimientos adheridos.', 'Corrección de fisuras, desprendimientos y encuentros visibles.'],
     outcomes: ['Base preparada', 'Muros aplomados', 'Superficies niveladas', 'Terminación coordinada'],
-    bg: '#a64f2c', accent: '#ffd166', text: '#fff8ed', muted: 'rgba(255,248,237,.72)', iconColor: '#291207', icon: Hammer,
+    bg: '#a64f2c', accent: '#ffd166', text: '#FFF9EE', muted: 'rgba(255,248,237,.72)', iconColor: '#291207', icon: Hammer,
   },
   {
     id: 'carpinteria', budgetId: 'carpinteria', title: 'Carpintería y mobiliario', shortTitle: 'Carpintería', eyebrow: 'Madera · puertas · muebles',
@@ -75,7 +75,7 @@ const SERVICES: ServiceChapter[] = [
     description: 'Los trabajos eléctricos se organizan por circuitos, consumos, protecciones y recorridos. La propuesta distingue instalaciones nuevas, reparaciones, ampliaciones y equipos con alimentación dedicada.',
     functions: ['Instalación o traslado de enchufes, interruptores y luces.', 'Canalización, cableado y distribución de circuitos acordados.', 'Revisión de fallas visibles y puntos sin funcionamiento.', 'Preparación para climatización, cocina, bombas y equipos.'],
     outcomes: ['Circuitos identificados', 'Puntos operativos', 'Protecciones revisadas', 'Carga coordinada'],
-    bg: '#172554', accent: '#fde047', text: '#f8fafc', muted: 'rgba(248,250,252,.7)', iconColor: '#172554', icon: Zap,
+    bg: '#172554', accent: '#FFD05A', text: '#FFF9EE', muted: 'rgba(248,250,252,.7)', iconColor: '#172554', icon: Zap,
   },
   {
     id: 'fundaciones', budgetId: 'cimientos', title: 'Fundaciones y obra base', shortTitle: 'Fundaciones', eyebrow: 'Terreno · apoyos · hormigón',
@@ -91,7 +91,7 @@ const SERVICES: ServiceChapter[] = [
     description: 'La construcción en perfiles galvanizados organiza muros, techumbres y ampliaciones por capas. La propuesta contempla modulación, arriostramiento, vanos, aislación, barreras y terminaciones desde el inicio.',
     functions: ['Muros perimetrales e interiores en estructura galvanizada.', 'Ampliaciones, recintos anexos y soluciones prefabricadas.', 'Cerchas, envigados, refuerzos y preparación de vanos.', 'Coordinación de aislación, placas, revestimientos y redes.'],
     outcomes: ['Modulación definida', 'Refuerzos ubicados', 'Capas coordinadas', 'Vanos preparados'],
-    bg: '#29323d', accent: '#d8dee7', text: '#f8fafc', muted: 'rgba(248,250,252,.68)', iconColor: '#18202a', icon: Building2,
+    bg: '#29323d', accent: '#d8dee7', text: '#FFF9EE', muted: 'rgba(248,250,252,.68)', iconColor: '#18202a', icon: Building2,
   },
   {
     id: 'techumbre', budgetId: 'techumbre', title: 'Techumbre, filtraciones y protección', shortTitle: 'Techumbre', eyebrow: 'Cubierta · canaletas · sellos',
@@ -236,7 +236,7 @@ export function ServiciosPageContent() {
         return <section key={service.id} id={`servicio-${service.id}`} data-service-panel className={styles.servicePanel} style={customStyle(service)} aria-labelledby={`titulo-${service.id}`}><div className={styles.serviceGrid}><div data-service-visual className={styles.serviceVisual}><span className={styles.serviceNumber}>{String(index + 1).padStart(2, '0')}</span><span className={styles.serviceIcon}><Icon className="h-10 w-10" /></span><div className={styles.serviceVisualTitle}><p>{service.eyebrow}</p><h2 id={`titulo-${service.id}`}>{service.shortTitle}</h2></div></div><div className={styles.serviceContent}><p data-service-reveal className={styles.eyebrow}>Qué función cumple</p><h3 data-service-reveal>{service.promise}</h3><p data-service-reveal className={styles.serviceDescription}>{service.description}</p><div data-service-reveal className={styles.functionGrid}>{service.functions.map((item) => <div key={item} className={styles.functionItem}><CheckCircle2 className="h-4 w-4" /><span>{item}</span></div>)}</div><div data-service-reveal className={styles.outcomeBox}><strong>Resultado que debe quedar definido</strong><div className={styles.outcomeTags}>{service.outcomes.map((item) => <span key={item}>{item}</span>)}</div></div><div data-service-reveal className={styles.serviceActions}><Link href={`/presupuesto?servicio=${service.budgetId}`} className={styles.lightButton}>Calcular y añadir <Sparkles className="h-4 w-4" /></Link><a href={quoteLink} target="_blank" rel="noopener noreferrer" className={styles.darkButton}>Consultar por WhatsApp <MessageCircle className="h-4 w-4" /></a></div></div></div><div className="absolute inset-x-0 bottom-0 opacity-70"><div className={styles.hazardTape} /></div></section>;
       })}
 
-      <section className={styles.finalCta}><div className={styles.texture} aria-hidden /><div className={styles.finalCtaInner}><div><p className={styles.kicker} style={{ color: '#0b0b0b' }}>Un proyecto puede mezclar varias áreas</p><h2>Calcula cada partida y arma una sola solicitud.</h2><p>Añade servicios por separado, revisa el rango total y envía el carrito completo para validar medidas, fotografías, acceso y estado actual.</p></div><div className={styles.finalCtaActions}><Link href="/presupuesto" className={styles.primaryButton}>Crear carrito de servicios <Sparkles className="h-4 w-4" /></Link><a href={buildWhatsAppLink('Hola Soluciones Fabrick, tengo un proyecto que combina varias especialidades y quiero ordenar el alcance.')} target="_blank" rel="noopener noreferrer" className={styles.secondaryButton}>Hablar por WhatsApp <MessageCircle className="h-4 w-4" /></a></div></div></section>
+      <section className={styles.finalCta}><div className={styles.texture} aria-hidden /><div className={styles.finalCtaInner}><div><p className={styles.kicker} style={{ color: '#08090A' }}>Un proyecto puede mezclar varias áreas</p><h2>Calcula cada partida y arma una sola solicitud.</h2><p>Añade servicios por separado, revisa el rango total y envía el carrito completo para validar medidas, fotografías, acceso y estado actual.</p></div><div className={styles.finalCtaActions}><Link href="/presupuesto" className={styles.primaryButton}>Crear carrito de servicios <Sparkles className="h-4 w-4" /></Link><a href={buildWhatsAppLink('Hola Soluciones Fabrick, tengo un proyecto que combina varias especialidades y quiero ordenar el alcance.')} target="_blank" rel="noopener noreferrer" className={styles.secondaryButton}>Hablar por WhatsApp <MessageCircle className="h-4 w-4" /></a></div></div></section>
       <footer className={styles.footer}><div className={styles.footerInner}><FabrickLogo className="pointer-events-none" /><span>Servicios sujetos a revisión de medidas, acceso, materialidad y condiciones reales.</span></div></footer>
     </main>
   );

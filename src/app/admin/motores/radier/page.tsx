@@ -5,7 +5,7 @@ import BudgetLinksHistory from '@/components/admin/motores/BudgetLinksHistory';
 
 const RadierBudgetEngineLite = dynamic(() => import('@/components/admin/motores/RadierBudgetEngineLite'), {
   ssr: false,
-  loading: () => <main className="min-h-screen bg-[#050403] p-6 text-white">Cargando motor mejorado de radier…</main>,
+  loading: () => <main className="min-h-screen bg-[#08090A] p-6 text-white">Cargando motor mejorado de radier…</main>,
 });
 
 export default function MotorRadierPage() {

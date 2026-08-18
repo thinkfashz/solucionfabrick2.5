@@ -233,19 +233,19 @@ export default function AlbumSeoOptionsAssistant() {
   if (!albums.length) return null;
 
   return (
-    <section className="bg-[#171820] px-4 pb-2 pt-8 text-[#F8F0E9] sm:px-6 lg:px-10">
+    <section className="bg-[#08090A] px-4 pb-2 pt-8 text-[#FFF9EE] sm:px-6 lg:px-10">
       <div className="mx-auto max-w-7xl rounded-[2rem] bg-[linear-gradient(145deg,rgba(248,240,233,.09),rgba(248,240,233,.035))] p-5 shadow-[0_24px_70px_rgba(0,0,0,.2)] sm:p-7">
         <div className="grid gap-5 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
-            <span className="inline-flex items-center gap-2 rounded-full bg-[#B6906C]/16 px-3 py-2 text-[10px] font-black uppercase tracking-[.22em] text-[#E5CFBA]"><Sparkles className="h-3.5 w-3.5" /> Organizador visual y SEO con IA</span>
+            <span className="inline-flex items-center gap-2 rounded-full bg-[#F5871F]/16 px-3 py-2 text-[10px] font-black uppercase tracking-[.22em] text-[#F2DFBB]"><Sparkles className="h-3.5 w-3.5" /> Organizador visual y SEO con IA</span>
             <h2 className="mt-4 text-2xl font-black tracking-[-.04em] sm:text-4xl">Dos formas de organizar cada álbum.</h2>
             <p className="mt-2 max-w-3xl text-sm leading-7 text-[#CFC3BA]">La IA observa las imágenes, elige una portada, propone el orden narrativo y crea dos alternativas de nombre, descripción, palabras clave, hashtags y metadata para búsqueda de imágenes.</p>
           </div>
           <div className="min-w-[280px]">
-            <label className="text-[10px] font-black uppercase tracking-[.18em] text-[#CCB196]">Álbum a organizar</label>
+            <label className="text-[10px] font-black uppercase tracking-[.18em] text-[#FFB000]">Álbum a organizar</label>
             <div className="mt-2 flex gap-2 rounded-2xl bg-white/7 p-2">
-              <Search className="mt-3 h-4 w-4 shrink-0 text-[#CCB196]" />
-              <select value={selectedAlbum} onChange={(event) => { setSelectedAlbum(event.target.value); setOptions([]); }} className="min-h-11 min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none [&>option]:bg-[#171820]">
+              <Search className="mt-3 h-4 w-4 shrink-0 text-[#FFB000]" />
+              <select value={selectedAlbum} onChange={(event) => { setSelectedAlbum(event.target.value); setOptions([]); }} className="min-h-11 min-w-0 flex-1 bg-transparent text-sm font-bold text-white outline-none [&>option]:bg-[#08090A]">
                 {albums.map((album) => <option key={album.key} value={album.key}>{album.title} · {album.count}</option>)}
               </select>
             </div>
@@ -253,7 +253,7 @@ export default function AlbumSeoOptionsAssistant() {
         </div>
 
         <div className="mt-5 flex flex-wrap items-center gap-3">
-          <button type="button" onClick={() => void generateOptions()} disabled={loading || applying !== null || !currentAssets.length} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#B6906C] px-6 text-sm font-black text-[#171820] disabled:opacity-45">
+          <button type="button" onClick={() => void generateOptions()} disabled={loading || applying !== null || !currentAssets.length} className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#F5871F] px-6 text-sm font-black text-[#08090A] disabled:opacity-45">
             {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <WandSparkles className="h-4 w-4" />}
             {loading ? 'Analizando imágenes…' : 'Generar 2 opciones'}
           </button>
@@ -265,24 +265,24 @@ export default function AlbumSeoOptionsAssistant() {
         {options.length ? (
           <div className="mt-6 grid gap-4 lg:grid-cols-2">
             {options.map((option, index) => (
-              <article key={`${option.albumTitle}-${index}`} className="rounded-[1.75rem] bg-[#F8F0E9] p-5 text-[#171820] shadow-[0_18px_55px_rgba(0,0,0,.18)]">
+              <article key={`${option.albumTitle}-${index}`} className="rounded-[1.75rem] bg-[#FFF9EE] p-5 text-[#08090A] shadow-[0_18px_55px_rgba(0,0,0,.18)]">
                 <div className="flex items-start justify-between gap-4">
-                  <div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#895E3D]">Opción {index + 1}</p><h3 className="mt-2 text-xl font-black leading-tight">{option.albumTitle}</h3></div>
+                  <div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#F5871F]">Opción {index + 1}</p><h3 className="mt-2 text-xl font-black leading-tight">{option.albumTitle}</h3></div>
                   <InterestStars score={option.interestScore} label={option.interestLabel} compact />
                 </div>
-                <p className="mt-4 text-xs leading-6 text-[#5E5148]">{option.albumDescription}</p>
-                <div className="mt-4 rounded-2xl bg-white p-3 shadow-sm"><p className="text-[9px] font-black uppercase tracking-[.13em] text-[#895E3D]">Palabra clave principal</p><p className="mt-1 text-sm font-black">{option.primaryKeyword}</p></div>
+                <p className="mt-4 text-xs leading-6 text-[#BFB8AC]">{option.albumDescription}</p>
+                <div className="mt-4 rounded-2xl bg-white p-3 shadow-sm"><p className="text-[9px] font-black uppercase tracking-[.13em] text-[#F5871F]">Palabra clave principal</p><p className="mt-1 text-sm font-black">{option.primaryKeyword}</p></div>
                 <dl className="mt-3 grid gap-3 text-[10px] sm:grid-cols-2">
-                  <div className="rounded-2xl bg-[#E6D4C3]/65 p-3"><dt className="font-black uppercase tracking-[.13em] text-[#895E3D]">Título SEO</dt><dd className="mt-1 font-semibold leading-5">{option.seoTitle}</dd></div>
-                  <div className="rounded-2xl bg-[#E6D4C3]/65 p-3"><dt className="font-black uppercase tracking-[.13em] text-[#895E3D]">Organización</dt><dd className="mt-1 font-semibold leading-5">Portada #{option.coverIndex} · {option.suggestedOrder.join(' → ')}</dd></div>
+                  <div className="rounded-2xl bg-[#F2DFBB]/65 p-3"><dt className="font-black uppercase tracking-[.13em] text-[#F5871F]">Título SEO</dt><dd className="mt-1 font-semibold leading-5">{option.seoTitle}</dd></div>
+                  <div className="rounded-2xl bg-[#F2DFBB]/65 p-3"><dt className="font-black uppercase tracking-[.13em] text-[#F5871F]">Organización</dt><dd className="mt-1 font-semibold leading-5">Portada #{option.coverIndex} · {option.suggestedOrder.join(' → ')}</dd></div>
                 </dl>
-                <p className="mt-4 text-[10px] leading-5 text-[#756B63]">{option.seoDescription}</p>
-                <p className="mt-3 text-[10px] leading-5 text-[#756B63]">{option.organizationSummary}</p>
+                <p className="mt-4 text-[10px] leading-5 text-[#BFB8AC]">{option.seoDescription}</p>
+                <p className="mt-3 text-[10px] leading-5 text-[#BFB8AC]">{option.organizationSummary}</p>
                 <div className="mt-4 flex flex-wrap gap-1.5">{option.secondaryKeywords.slice(0, 8).map((keyword) => <span key={keyword} className="rounded-full bg-white px-2.5 py-1 text-[8px] font-black shadow-sm">{keyword}</span>)}</div>
-                <div className="mt-3 flex flex-wrap gap-1.5">{option.hashtags.slice(0, 8).map((tag) => <span key={tag} className="text-[9px] font-bold text-[#895E3D]">#{tag}</span>)}</div>
-                <p className="mt-4 text-[9px] leading-5 text-[#756B63]">Las estrellas son una estimación editorial de IA, no volumen real de Google Trends.</p>
-                <button type="button" onClick={() => void applyOption(option, index)} disabled={applying !== null} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#171820] px-4 text-xs font-black text-[#F8F0E9] disabled:opacity-45">
-                  {applying === index ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 text-[#CCB196]" />}
+                <div className="mt-3 flex flex-wrap gap-1.5">{option.hashtags.slice(0, 8).map((tag) => <span key={tag} className="text-[9px] font-bold text-[#F5871F]">#{tag}</span>)}</div>
+                <p className="mt-4 text-[9px] leading-5 text-[#BFB8AC]">Las estrellas son una estimación editorial de IA, no volumen real de Google Trends.</p>
+                <button type="button" onClick={() => void applyOption(option, index)} disabled={applying !== null} className="mt-5 inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl bg-[#08090A] px-4 text-xs font-black text-[#FFF9EE] disabled:opacity-45">
+                  {applying === index ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4 text-[#FFB000]" />}
                   {applying === index ? 'Organizando todo el álbum…' : `Aplicar opción ${index + 1}`}
                 </button>
               </article>

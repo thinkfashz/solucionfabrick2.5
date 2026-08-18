@@ -36,12 +36,12 @@ const ASSURANCES = [
 
 export default function LandingProcessSection() {
   return (
-    <section id="como-funciona" className="relative scroll-mt-20 overflow-hidden bg-[#171820] px-4 pb-24 pt-4 text-[#F8F0E9] sm:px-6 md:px-12">
+    <section id="como-funciona" className="relative scroll-mt-20 overflow-hidden bg-[#08090A] px-4 pb-24 pt-4 text-[#FFF9EE] sm:px-6 md:px-12">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_86%_12%,rgba(216,178,61,.14),transparent_26rem),radial-gradient(circle_at_6%_90%,rgba(204,177,150,.12),transparent_28rem)]" />
 
       <div className="relative mx-auto max-w-[1280px]">
         <header className="mx-auto max-w-3xl text-center">
-          <p data-reveal className="inline-flex items-center gap-2 rounded-full border border-[#D8B23D]/22 bg-[#D8B23D]/8 px-4 py-2 text-[10px] font-black uppercase tracking-[.22em] text-[#D8B23D]">
+          <p data-reveal className="inline-flex items-center gap-2 rounded-full border border-[#FFB000]/22 bg-[#FFB000]/8 px-4 py-2 text-[10px] font-black uppercase tracking-[.22em] text-[#FFB000]">
             <Sparkles className="h-3.5 w-3.5" /> Proceso Fabrick en 4 pasos
           </p>
           <h2 data-split className="mt-5 text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>
@@ -53,14 +53,14 @@ export default function LandingProcessSection() {
         </header>
 
         <div data-reveal-group data-reveal-dir="up" className="relative mt-12 grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-          <div className="pointer-events-none absolute left-[12.5%] right-[12.5%] top-9 hidden h-px bg-[linear-gradient(90deg,transparent,#D8B23D/35,#D8B23D/60,#D8B23D/35,transparent)] lg:block" />
+          <div className="pointer-events-none absolute left-[12.5%] right-[12.5%] top-9 hidden h-px bg-[linear-gradient(90deg,transparent,#FFB000/35,#FFB000/60,#FFB000/35,transparent)] lg:block" />
           {STEPS.map(({ icon: Icon, step, title, text }, index) => (
-            <article key={step} className="group relative overflow-hidden rounded-[2rem] border border-[#F8F0E9]/8 bg-gradient-to-b from-white/[.05] to-white/[.015] p-6 transition duration-300 hover:-translate-y-1.5 hover:border-[#D8B23D]/35 hover:shadow-[0_24px_70px_rgba(0,0,0,.35)]">
-              <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#D8B23D]/6 blur-2xl transition group-hover:bg-[#D8B23D]/12" />
+            <article key={step} className="group relative overflow-hidden rounded-[2rem] border border-[#FFF9EE]/8 bg-gradient-to-b from-white/[.05] to-white/[.015] p-6 transition duration-300 hover:-translate-y-1.5 hover:border-[#FFB000]/35 hover:shadow-[0_24px_70px_rgba(0,0,0,.35)]">
+              <div className="pointer-events-none absolute -right-10 -top-10 h-32 w-32 rounded-full bg-[#FFB000]/6 blur-2xl transition group-hover:bg-[#FFB000]/12" />
               <div className="relative">
                 <div className="flex items-center justify-between">
-                  <span className="relative grid h-12 w-12 place-items-center rounded-2xl bg-[#F8F0E9] text-[#171820] transition duration-300 group-hover:bg-[#D8B23D]"><Icon className="h-5 w-5" strokeWidth={1.8} /><span className="absolute -bottom-2 left-1/2 h-1 w-6 -translate-x-1/2 rounded-full bg-[#D8B23D]" /></span>
-                  <span className="text-4xl font-black tracking-[-.06em] text-[#F8F0E9]/10 transition group-hover:text-[#D8B23D]/25">{step}</span>
+                  <span className="relative grid h-12 w-12 place-items-center rounded-2xl bg-[#FFF9EE] text-[#08090A] transition duration-300 group-hover:bg-[#FFB000]"><Icon className="h-5 w-5" strokeWidth={1.8} /><span className="absolute -bottom-2 left-1/2 h-1 w-6 -translate-x-1/2 rounded-full bg-[#FFB000]" /></span>
+                  <span className="text-4xl font-black tracking-[-.06em] text-[#FFF9EE]/10 transition group-hover:text-[#FFB000]/25">{step}</span>
                 </div>
                 <h3 className="mt-5 text-lg font-black">{title}</h3>
                 <p className="mt-2 text-xs leading-6 text-[#C6B9AE]">{text}</p>
@@ -69,7 +69,7 @@ export default function LandingProcessSection() {
           ))}
         </div>
 
-        <div data-reveal data-reveal-dir="zoom" className="mt-10 grid items-center gap-5 rounded-[26px] bg-[linear-gradient(120deg,#D8B23D,#C98F3C)] p-6 text-[#171820] shadow-[0_24px_70px_rgba(216,178,59,.16)] sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto]">
+        <div data-reveal data-reveal-dir="zoom" className="mt-10 grid items-center gap-5 rounded-[26px] bg-[linear-gradient(120deg,#FFB000,#C98F3C)] p-6 text-[#08090A] shadow-[0_24px_70px_rgba(216,178,59,.16)] sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto]">
           <div>
             <h3 className="text-xl font-black tracking-[-.03em] sm:text-2xl">Empieza con una estimación, no con una promesa.</h3>
             <div className="mt-3 grid gap-2 sm:grid-cols-3">
@@ -80,7 +80,7 @@ export default function LandingProcessSection() {
               ))}
             </div>
           </div>
-          <Link href="#cotizador" className="inline-flex min-h-13 items-center justify-center gap-2 rounded-full bg-[#171820] px-7 text-sm font-black text-[#D8B23D] transition hover:bg-black hover:text-[#F4D98B]">
+          <Link href="#cotizador" className="inline-flex min-h-13 items-center justify-center gap-2 rounded-full bg-[#08090A] px-7 text-sm font-black text-[#FFB000] transition hover:bg-black hover:text-[#FFD05A]">
             Cotizar mi proyecto <ArrowRight className="h-4 w-4" />
           </Link>
         </div>

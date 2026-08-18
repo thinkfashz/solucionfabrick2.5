@@ -48,7 +48,7 @@ export default function PresupuestoMixedAlbum({ presupuesto }: { presupuesto: Pr
         ))}
 
         {model && (
-          <article className="group flex min-h-[260px] flex-col justify-between overflow-hidden rounded-3xl border border-yellow-400/20 bg-[radial-gradient(circle_at_top,rgba(250,204,21,0.16),transparent_42%),#050505] p-5 transition hover:-translate-y-1 hover:border-yellow-400/60">
+          <article className="group flex min-h-[260px] flex-col justify-between overflow-hidden rounded-3xl border border-yellow-400/20 bg-[radial-gradient(circle_at_top,rgba(255, 176, 0,0.16),transparent_42%),#08090A] p-5 transition hover:-translate-y-1 hover:border-yellow-400/60">
             <div>
               <div className="mb-4 inline-flex rounded-2xl border border-yellow-400/30 bg-yellow-400/10 p-3 text-yellow-200"><Box className="h-7 w-7" /></div>
               <p className="text-[10px] font-black uppercase tracking-[0.28em] text-yellow-300">Visor 3D activo · {ext}</p>

@@ -76,7 +76,7 @@ export function SceneElements() {
               <mesh position={[0, el.dimensiones[1] / 2, 0]} renderOrder={999}>
                 <boxGeometry args={el.dimensiones} />
                 <meshBasicMaterial
-                  color="#facc15"
+                  color="#FFB000"
                   wireframe
                   transparent
                   opacity={0.85}

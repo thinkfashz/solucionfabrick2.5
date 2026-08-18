@@ -42,7 +42,7 @@ export default function NicheTemplateSelector({ onApply }: Props) {
       <div className="mb-3">
         <p className="text-[10px] font-black uppercase tracking-[0.22em] text-yellow-300">Plantillas por nicho</p>
         <h3 className="mt-1 text-sm font-black text-white">Carga una página completa</h3>
-        <p className="mt-1 text-xs leading-relaxed text-[#9f8d74]">
+        <p className="mt-1 text-xs leading-relaxed text-[#BFB8AC]">
           Selecciona un rubro y el motor genera hero, beneficios, paquetes, métricas, testimonios, garantía y CTA.
         </p>
       </div>
@@ -55,7 +55,7 @@ export default function NicheTemplateSelector({ onApply }: Props) {
             className="group rounded-2xl border border-white/10 bg-black/25 p-3 text-left transition hover:border-yellow-300/40 hover:bg-yellow-300/10"
           >
             <strong className="block text-sm text-white group-hover:text-yellow-100">{labels[key] || key}</strong>
-            <span className="text-xs text-[#9f8d74]">{hints[key] || 'Plantilla comercial premium.'}</span>
+            <span className="text-xs text-[#BFB8AC]">{hints[key] || 'Plantilla comercial premium.'}</span>
           </button>
         ))}
       </div>

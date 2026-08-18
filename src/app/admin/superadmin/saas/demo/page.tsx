@@ -20,7 +20,7 @@ const testCards: Array<{ title: string; text: string; icon: LucideIcon }> = [
 
 export default function SaaSDemoCompanyPage() {
   const palette = TENANT_PALETTES.find((item) => item.id === 'aqua') ?? TENANT_PALETTES[0];
-  return <main className="min-h-screen bg-[#050505] px-4 py-6 text-white md:px-6">
+  return <main className="min-h-screen bg-[#08090A] px-4 py-6 text-white md:px-6">
     <section className="mx-auto max-w-6xl space-y-5">
       <header className="rounded-[2.5rem] border border-white/10 p-6 md:p-8" style={{ background: `radial-gradient(circle at 80% 0%, ${palette.primary}33, transparent 34rem), linear-gradient(135deg, rgba(255,255,255,.08), rgba(255,255,255,.025))` }}>
         <p className="inline-flex items-center gap-2 rounded-full border border-white/15 bg-white/10 px-3 py-1 text-[10px] font-black uppercase tracking-[.28em]" style={{ color: palette.accent }}><Building2 className="h-3.5 w-3.5" /> Demo · Tenant</p>

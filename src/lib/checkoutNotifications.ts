@@ -47,9 +47,9 @@ function adminRecipients() {
 function itemsRows(order: CheckoutOrderEmailInput) {
   return order.items.map((item) => `
     <tr>
-      <td style="padding:12px 0;border-bottom:1px solid #242424;color:#fff;font-weight:700;">${escapeHtml(item.nombre || item.productoId)}</td>
+      <td style="padding:12px 0;border-bottom:1px solid #242424;color:#FFF9EE;font-weight:700;">${escapeHtml(item.nombre || item.productoId)}</td>
       <td style="padding:12px 0;border-bottom:1px solid #242424;color:#aaa;text-align:center;">${item.cantidad}</td>
-      <td style="padding:12px 0;border-bottom:1px solid #242424;color:#fff;text-align:right;font-weight:900;">${clp(item.precioUnitario * item.cantidad)}</td>
+      <td style="padding:12px 0;border-bottom:1px solid #242424;color:#FFF9EE;text-align:right;font-weight:900;">${clp(item.precioUnitario * item.cantidad)}</td>
     </tr>
   `).join('');
 }
@@ -61,7 +61,7 @@ function buildReceiptPdf(order: CheckoutOrderEmailInput, forAdmin = false) {
 
   doc.setFillColor(5, 5, 4);
   doc.rect(0, 0, 595, 130, 'F');
-  doc.setTextColor(250, 204, 21);
+  doc.setTextColor(255, 176, 0);
   doc.setFont('helvetica', 'bold');
   doc.setFontSize(12);
   doc.text('SOLUCIONES FABRICK', margin, y);
@@ -138,30 +138,30 @@ function buildReceiptPdf(order: CheckoutOrderEmailInput, forAdmin = false) {
 
 function customerHtml(order: CheckoutOrderEmailInput) {
   const tracking = order.trackingUrl
-    ? `<a href="${escapeHtml(order.trackingUrl)}" style="display:inline-block;margin-top:18px;background:#facc15;color:#060606;text-decoration:none;font-weight:900;border-radius:999px;padding:14px 20px;letter-spacing:.08em;text-transform:uppercase;">Ver estado del pedido</a>`
+    ? `<a href="${escapeHtml(order.trackingUrl)}" style="display:inline-block;margin-top:18px;background:#FFB000;color:#08090A;text-decoration:none;font-weight:900;border-radius:999px;padding:14px 20px;letter-spacing:.08em;text-transform:uppercase;">Ver estado del pedido</a>`
     : '';
-  return `<!doctype html><html lang="es"><body style="margin:0;background:#050505;color:#f5f5f5;font-family:Arial,Helvetica,sans-serif;padding:24px;">
-    <div style="max-width:720px;margin:auto;background:#0b0b0b;border:1px solid #272727;border-radius:28px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.45);">
-      <div style="background:radial-gradient(circle at 20% 0%,rgba(250,204,21,.22),transparent 260px),#050504;padding:28px;border-bottom:1px solid #242424;">
-        <div style="font-size:12px;letter-spacing:4px;text-transform:uppercase;color:#facc15;font-weight:900;">Soluciones Fabrick</div>
-        <h1 style="font-size:34px;line-height:1.02;margin:14px 0 8px;color:#fff;letter-spacing:-1.4px;">Pago confirmado</h1>
+  return `<!doctype html><html lang="es"><body style="margin:0;background:#08090A;color:#f5f5f5;font-family:Arial,Helvetica,sans-serif;padding:24px;">
+    <div style="max-width:720px;margin:auto;background:#08090A;border:1px solid #272727;border-radius:28px;overflow:hidden;box-shadow:0 30px 90px rgba(0,0,0,.45);">
+      <div style="background:radial-gradient(circle at 20% 0%,rgba(255, 176, 0,.22),transparent 260px),#050504;padding:28px;border-bottom:1px solid #242424;">
+        <div style="font-size:12px;letter-spacing:4px;text-transform:uppercase;color:#FFB000;font-weight:900;">Soluciones Fabrick</div>
+        <h1 style="font-size:34px;line-height:1.02;margin:14px 0 8px;color:#FFF9EE;letter-spacing:-1.4px;">Pago confirmado</h1>
         <p style="color:#c8c8c8;line-height:1.6;margin:0;">Hola ${escapeHtml(order.cliente.nombre)}, tu compra fue confirmada correctamente.</p>
       </div>
       <div style="padding:28px;">
-        <div style="background:#111;border:1px solid #242424;border-radius:20px;padding:18px;margin-bottom:20px;">
-          <p style="margin:0 0 8px;color:#999;font-size:12px;text-transform:uppercase;letter-spacing:2px;">Orden</p>
-          <div style="font-size:22px;font-weight:900;color:#fff;">${escapeHtml(order.id)}</div>
-          <p style="color:#888;margin:8px 0 0;">Entrega estimada: <strong style="color:#fff">7 a 21 días hábiles</strong></p>
+        <div style="background:#111214;border:1px solid #242424;border-radius:20px;padding:18px;margin-bottom:20px;">
+          <p style="margin:0 0 8px;color:#BFB8AC;font-size:12px;text-transform:uppercase;letter-spacing:2px;">Orden</p>
+          <div style="font-size:22px;font-weight:900;color:#FFF9EE;">${escapeHtml(order.id)}</div>
+          <p style="color:#BFB8AC;margin:8px 0 0;">Entrega estimada: <strong style="color:#FFF9EE">7 a 21 días hábiles</strong></p>
         </div>
         <table style="width:100%;border-collapse:collapse;font-size:14px;">${itemsRows(order)}</table>
         <div style="margin-top:18px;text-align:right;color:#d6d6d6;line-height:1.9;">
-          <div>Subtotal: <strong style="color:#fff">${clp(order.resumen.subtotal)}</strong></div>
-          <div>IVA referencial: <strong style="color:#fff">${clp(order.resumen.iva)}</strong></div>
-          <div>Despacho: <strong style="color:#fff">${clp(order.resumen.despacho)}</strong></div>
-          <div style="font-size:22px;font-weight:900;color:#facc15;">Total: ${clp(order.resumen.total)}</div>
+          <div>Subtotal: <strong style="color:#FFF9EE">${clp(order.resumen.subtotal)}</strong></div>
+          <div>IVA referencial: <strong style="color:#FFF9EE">${clp(order.resumen.iva)}</strong></div>
+          <div>Despacho: <strong style="color:#FFF9EE">${clp(order.resumen.despacho)}</strong></div>
+          <div style="font-size:22px;font-weight:900;color:#FFB000;">Total: ${clp(order.resumen.total)}</div>
         </div>
         ${tracking}
-        <p style="margin-top:20px;color:#999;font-size:13px;line-height:1.5;">Adjuntamos tu comprobante PDF con el detalle de compra, dirección y fecha de registro.</p>
+        <p style="margin-top:20px;color:#BFB8AC;font-size:13px;line-height:1.5;">Adjuntamos tu comprobante PDF con el detalle de compra, dirección y fecha de registro.</p>
       </div>
     </div>
   </body></html>`;
@@ -169,31 +169,31 @@ function customerHtml(order: CheckoutOrderEmailInput) {
 
 function adminHtml(order: CheckoutOrderEmailInput) {
   const estimate = order.internalShippingEstimate;
-  return `<!doctype html><html lang="es"><body style="margin:0;background:#080808;color:#f5f5f5;font-family:Arial,Helvetica,sans-serif;padding:24px;">
-    <div style="max-width:760px;margin:auto;background:#111;border:1px solid #272727;border-radius:22px;padding:28px;">
-      <div style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#facc15;font-weight:900;">Compra pagada / admin</div>
-      <h1 style="font-size:25px;margin:14px 0;color:#fff;">${escapeHtml(order.id)}</h1>
+  return `<!doctype html><html lang="es"><body style="margin:0;background:#08090A;color:#f5f5f5;font-family:Arial,Helvetica,sans-serif;padding:24px;">
+    <div style="max-width:760px;margin:auto;background:#111214;border:1px solid #272727;border-radius:22px;padding:28px;">
+      <div style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#FFB000;font-weight:900;">Compra pagada / admin</div>
+      <h1 style="font-size:25px;margin:14px 0;color:#FFF9EE;">${escapeHtml(order.id)}</h1>
       <p style="color:#bbb;line-height:1.6;">Fecha: ${dateCl(order.creadoEn)} · Método: ${escapeHtml(order.paymentMethod || 'checkout')} · Estado: ${escapeHtml(order.estado)} · Pago: ${escapeHtml(order.paymentId || '-')}</p>
       <div style="display:grid;gap:12px;margin:18px 0;">
-        <div style="background:#0b0b0b;border:1px solid #242424;border-radius:16px;padding:16px;">Cliente: <strong>${escapeHtml(order.cliente.nombre)}</strong><br>Email: ${escapeHtml(order.cliente.email)}<br>Teléfono: ${escapeHtml(order.cliente.telefono || '-')}</div>
-        <div style="background:#0b0b0b;border:1px solid #242424;border-radius:16px;padding:16px;">Dirección: ${escapeHtml(order.shippingAddress || '-')}<br>Región: ${escapeHtml(order.region || '-')}</div>
-        <div style="background:#171200;border:1px solid #4a3a00;border-radius:16px;padding:16px;color:#fde68a;">Envío interno estimado: <strong>${estimate ? clp(estimate.amount) : 'No calculado'}</strong></div>
+        <div style="background:#08090A;border:1px solid #242424;border-radius:16px;padding:16px;">Cliente: <strong>${escapeHtml(order.cliente.nombre)}</strong><br>Email: ${escapeHtml(order.cliente.email)}<br>Teléfono: ${escapeHtml(order.cliente.telefono || '-')}</div>
+        <div style="background:#08090A;border:1px solid #242424;border-radius:16px;padding:16px;">Dirección: ${escapeHtml(order.shippingAddress || '-')}<br>Región: ${escapeHtml(order.region || '-')}</div>
+        <div style="background:#171200;border:1px solid #4a3a00;border-radius:16px;padding:16px;color:#FFD05A;">Envío interno estimado: <strong>${estimate ? clp(estimate.amount) : 'No calculado'}</strong></div>
       </div>
       <table style="width:100%;border-collapse:collapse;font-size:14px;">${itemsRows(order)}</table>
-      <div style="margin-top:18px;text-align:right;font-size:18px;font-weight:900;color:#fff;">Total cliente: ${clp(order.resumen.total)}</div>
-      ${order.trackingUrl ? `<p style="margin-top:18px;color:#aaa;">Tracking público: <a href="${escapeHtml(order.trackingUrl)}" style="color:#facc15">${escapeHtml(order.trackingUrl)}</a></p>` : ''}
+      <div style="margin-top:18px;text-align:right;font-size:18px;font-weight:900;color:#FFF9EE;">Total cliente: ${clp(order.resumen.total)}</div>
+      ${order.trackingUrl ? `<p style="margin-top:18px;color:#aaa;">Tracking público: <a href="${escapeHtml(order.trackingUrl)}" style="color:#FFB000">${escapeHtml(order.trackingUrl)}</a></p>` : ''}
     </div>
   </body></html>`;
 }
 
 function rejectedHtml(order: CheckoutOrderEmailInput, reason?: string) {
-  return `<!doctype html><html lang="es"><body style="margin:0;background:#080808;color:#f5f5f5;font-family:Arial,Helvetica,sans-serif;padding:24px;">
-    <div style="max-width:680px;margin:auto;background:#111;border:1px solid #3f1d1d;border-radius:22px;padding:28px;">
-      <div style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#facc15;font-weight:900;">Soluciones Fabrick</div>
-      <h1 style="font-size:28px;line-height:1.1;margin:14px 0 8px;color:#fff;">Pago no aprobado</h1>
+  return `<!doctype html><html lang="es"><body style="margin:0;background:#08090A;color:#f5f5f5;font-family:Arial,Helvetica,sans-serif;padding:24px;">
+    <div style="max-width:680px;margin:auto;background:#111214;border:1px solid #3f1d1d;border-radius:22px;padding:28px;">
+      <div style="font-size:12px;letter-spacing:3px;text-transform:uppercase;color:#FFB000;font-weight:900;">Soluciones Fabrick</div>
+      <h1 style="font-size:28px;line-height:1.1;margin:14px 0 8px;color:#FFF9EE;">Pago no aprobado</h1>
       <p style="color:#bdbdbd;line-height:1.6;">Hola ${escapeHtml(order.cliente.nombre)}, Mercado Pago informó que el pago de la orden <b>${escapeHtml(order.id)}</b> no fue aprobado.</p>
-      <p style="color:#999;line-height:1.6;">${escapeHtml(reason || 'Puedes intentar nuevamente desde el checkout o escribirnos para coordinar otra forma de pago.')}</p>
-      ${order.trackingUrl ? `<a href="${escapeHtml(order.trackingUrl)}" style="display:inline-block;margin-top:18px;background:#facc15;color:#060606;text-decoration:none;font-weight:900;border-radius:999px;padding:14px 20px;">Ver estado</a>` : ''}
+      <p style="color:#BFB8AC;line-height:1.6;">${escapeHtml(reason || 'Puedes intentar nuevamente desde el checkout o escribirnos para coordinar otra forma de pago.')}</p>
+      ${order.trackingUrl ? `<a href="${escapeHtml(order.trackingUrl)}" style="display:inline-block;margin-top:18px;background:#FFB000;color:#08090A;text-decoration:none;font-weight:900;border-radius:999px;padding:14px 20px;">Ver estado</a>` : ''}
     </div>
   </body></html>`;
 }

@@ -22,13 +22,13 @@ export interface WelcomeEmailProps {
 }
 
 const C = {
-  bg: '#070707',
-  card: '#0c0c0c',
+  bg: '#08090A',
+  card: '#08090A',
   border: '#262626',
-  text: '#fafafa',
-  muted: '#a1a1aa',
-  amber: '#f59e0b',
-  amberSoft: '#fbbf24',
+  text: '#FFF9EE',
+  muted: '#BFB8AC',
+  amber: '#F5871F',
+  amberSoft: '#FFB000',
 };
 
 export function WelcomeEmail({ customerName, shopUrl, unsubscribeUrl, logoUrl }: WelcomeEmailProps) {
@@ -98,7 +98,7 @@ export function WelcomeEmail({ customerName, shopUrl, unsubscribeUrl, logoUrl }:
               href={shopUrl}
               style={{
                 backgroundColor: C.amber,
-                color: '#0a0a0a',
+                color: '#08090A',
                 fontWeight: 800,
                 padding: '14px 28px',
                 borderRadius: '999px',

@@ -38,7 +38,7 @@ export default function CartDrawer({ open, items, onClose, onUpdateQuantity, onR
 
       <aside className="absolute bottom-0 left-0 right-0 flex max-h-[90dvh] flex-col overflow-hidden rounded-t-[2rem] border border-white/10 bg-[#060504]/98 text-white shadow-[0_-28px_100px_rgba(0,0,0,.62)] md:inset-y-0 md:left-auto md:h-full md:max-h-none md:w-full md:max-w-[460px] md:rounded-none md:border-l md:border-r-0 md:shadow-[0_0_120px_rgba(0,0,0,.75)]">
         <div className="relative overflow-hidden border-b border-white/10 p-5">
-          <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,rgba(250,204,21,.2),transparent_18rem)]" />
+          <div className="absolute inset-0 bg-[radial-gradient(circle_at_82%_0%,rgba(255, 176, 0,.2),transparent_18rem)]" />
           <div className="relative mx-auto mb-3 h-1.5 w-12 rounded-full bg-white/14 md:hidden" />
           <div className="relative flex items-start justify-between gap-4">
             <div>
@@ -137,7 +137,7 @@ export default function CartDrawer({ open, items, onClose, onUpdateQuantity, onR
             </div>
 
             <div className="mt-5 grid gap-2">
-              <button onClick={onCheckout} className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-5 text-sm font-black text-black shadow-[0_20px_70px_rgba(250,204,21,.18)] transition hover:-translate-y-0.5 hover:bg-yellow-200">
+              <button onClick={onCheckout} className="inline-flex min-h-[56px] w-full items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-5 text-sm font-black text-black shadow-[0_20px_70px_rgba(255, 176, 0,.18)] transition hover:-translate-y-0.5 hover:bg-yellow-200">
                 Ir a checkout seguro <ArrowRight className="h-4 w-4" />
               </button>
               <button onClick={onClose} className="inline-flex min-h-11 w-full items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-5 text-xs font-black text-white/75 transition hover:bg-white hover:text-black">

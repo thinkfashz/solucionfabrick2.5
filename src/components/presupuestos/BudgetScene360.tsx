@@ -112,9 +112,9 @@ function AirRoomSvg({ data, labels }: { data?: Record<string, unknown>; labels: 
     <polygon points="150,118 265,280 185,560 80,385" fill="#4b321f" opacity=".95" stroke="rgba(255,255,255,.16)" strokeWidth="3"/>
 
     <g id="window"><polygon points="260,142 390,130 390,222 260,234" fill="#103047" stroke="#e0f2fe" strokeWidth="8"/><line x1="325" y1="136" x2="325" y2="228" stroke="#e0f2fe" strokeWidth="5"/><line x1="260" y1="186" x2="390" y2="174" stroke="#e0f2fe" strokeWidth="5"/></g>
-    <g id="door"><polygon points="105,245 183,264 166,475 86,430" fill="#3b2112" stroke="#facc15" strokeOpacity=".35" strokeWidth="4"/><circle cx="154" cy="363" r="7" fill="#facc15"/></g>
+    <g id="door"><polygon points="105,245 183,264 166,475 86,430" fill="#3b2112" stroke="#FFB000" strokeOpacity=".35" strokeWidth="4"/><circle cx="154" cy="363" r="7" fill="#FFB000"/></g>
 
-    <g id="split"><rect x="500" y="135" width="160" height="48" rx="16" fill="#f8fafc" stroke="#bae6fd" strokeWidth="4"/><rect x="525" y="171" width="108" height="7" rx="4" fill="#67e8f9" filter="url(#glow)"/><text x="580" y="126" textAnchor="middle" fill="#fde68a" fontSize="13" fontWeight="800">SPLIT {whole.format(equipo)} BTU</text></g>
+    <g id="split"><rect x="500" y="135" width="160" height="48" rx="16" fill="#FFF9EE" stroke="#bae6fd" strokeWidth="4"/><rect x="525" y="171" width="108" height="7" rx="4" fill="#67e8f9" filter="url(#glow)"/><text x="580" y="126" textAnchor="middle" fill="#FFD05A" fontSize="13" fontWeight="800">SPLIT {whole.format(equipo)} BTU</text></g>
 
     <g id="air-flow" opacity=".9">
       <path d="M512 190 C450 230 395 238 335 265" fill="none" stroke="#67e8f9" strokeWidth="3" strokeDasharray="10 10" filter="url(#glow)"/>
@@ -124,20 +124,20 @@ function AirRoomSvg({ data, labels }: { data?: Record<string, unknown>; labels: 
     </g>
 
     <g id="bed"><polygon points="312,356 520,336 595,410 372,445" fill="#412819" stroke="rgba(255,255,255,.2)" strokeWidth="3"/><polygon points="335,330 508,314 580,366 390,392" fill="#f6e8d4" stroke="#fff7ed" strokeWidth="3"/><polygon points="338,304 430,298 465,328 368,338" fill="#fef3c7"/></g>
-    <g id="lamp"><line x1="470" y1="80" x2="470" y2="170" stroke="#fef3c7" strokeWidth="4"/><ellipse cx="470" cy="188" rx="36" ry="21" fill="#facc15" filter="url(#glow)"/><circle cx="470" cy="190" r="11" fill="#fff7cc"/></g>
+    <g id="lamp"><line x1="470" y1="80" x2="470" y2="170" stroke="#fef3c7" strokeWidth="4"/><ellipse cx="470" cy="188" rx="36" ry="21" fill="#FFB000" filter="url(#glow)"/><circle cx="470" cy="190" r="11" fill="#fff7cc"/></g>
 
-    <g id="pipe"><path d="M660 158 C730 162 756 184 788 228" fill="none" stroke="#facc15" strokeWidth="8" strokeLinecap="round"/><path d="M660 172 C720 182 746 205 775 252" fill="none" stroke="#67e8f9" strokeWidth="5" strokeLinecap="round"/></g>
-    <g id="condenser"><rect x="718" y="230" width="112" height="86" rx="12" fill="#e5e7eb" stroke="#94a3b8" strokeWidth="4"/><circle cx="774" cy="273" r="28" fill="#0f172a"/><g className="fan"><path d="M774 250 L785 273 L774 296 L763 273 Z" fill="#67e8f9" opacity=".85"/><path d="M751 273 L774 262 L797 273 L774 284 Z" fill="#67e8f9" opacity=".65"/></g><text x="774" y="335" textAnchor="middle" fill="#fde68a" fontSize="12" fontWeight="900">CONDENSADOR</text></g>
+    <g id="pipe"><path d="M660 158 C730 162 756 184 788 228" fill="none" stroke="#FFB000" strokeWidth="8" strokeLinecap="round"/><path d="M660 172 C720 182 746 205 775 252" fill="none" stroke="#67e8f9" strokeWidth="5" strokeLinecap="round"/></g>
+    <g id="condenser"><rect x="718" y="230" width="112" height="86" rx="12" fill="#F2DFBB" stroke="#BFB8AC" strokeWidth="4"/><circle cx="774" cy="273" r="28" fill="#0f172a"/><g className="fan"><path d="M774 250 L785 273 L774 296 L763 273 Z" fill="#67e8f9" opacity=".85"/><path d="M751 273 L774 262 L797 273 L774 284 Z" fill="#67e8f9" opacity=".65"/></g><text x="774" y="335" textAnchor="middle" fill="#FFD05A" fontSize="12" fontWeight="900">CONDENSADOR</text></g>
 
-    {labels && <g className="mini-label" fontSize="12" fontWeight="900" fill="#fde68a"><LabelSvg x={178} y={105}>Pared principal</LabelSvg><LabelSvg x={304} y={258}>{num.format(area)} m²</LabelSvg><LabelSvg x={258} y={128}>Ventana</LabelSvg><LabelSvg x={83} y={238}>Puerta</LabelSvg><LabelSvg x={426} y={73}>Lámpara central</LabelSvg><LabelSvg x={500} y={112}>{whole.format(btu)} BTU calculado</LabelSvg><LabelSvg x={680} y={145}>Tubería</LabelSvg><LabelSvg x={715} y={222}>Unidad exterior</LabelSvg></g>}
+    {labels && <g className="mini-label" fontSize="12" fontWeight="900" fill="#FFD05A"><LabelSvg x={178} y={105}>Pared principal</LabelSvg><LabelSvg x={304} y={258}>{num.format(area)} m²</LabelSvg><LabelSvg x={258} y={128}>Ventana</LabelSvg><LabelSvg x={83} y={238}>Puerta</LabelSvg><LabelSvg x={426} y={73}>Lámpara central</LabelSvg><LabelSvg x={500} y={112}>{whole.format(btu)} BTU calculado</LabelSvg><LabelSvg x={680} y={145}>Tubería</LabelSvg><LabelSvg x={715} y={222}>Unidad exterior</LabelSvg></g>}
   </svg>;
 }
 
-function LabelSvg({ x, y, children }: { x: number; y: number; children: ReactNode }) { return <g><rect x={x - 8} y={y - 17} width={String(children).length * 8 + 18} height="24" rx="12" fill="rgba(0,0,0,.68)" stroke="rgba(250,204,21,.35)"/><text x={x} y={y} fill="#fde68a">{children}</text></g>; }
+function LabelSvg({ x, y, children }: { x: number; y: number; children: ReactNode }) { return <g><rect x={x - 8} y={y - 17} width={String(children).length * 8 + 18} height="24" rx="12" fill="rgba(0,0,0,.68)" stroke="rgba(255, 176, 0,.35)"/><text x={x} y={y} fill="#FFD05A">{children}</text></g>; }
 
 function RadierSvg({ data, labels }: { data?: Record<string, unknown>; labels: boolean }) {
   const area = readNumber(data, 'area', 24);
-  return <svg viewBox="0 0 900 520"><rect width="900" height="520" rx="28" fill="#090909"/><polygon points="180,150 680,120 760,330 250,390" fill="#cbb89f" stroke="#facc15" strokeWidth="4"/><polygon points="250,390 760,330 720,395 230,455" fill="#7a5035"/><text x="450" y="265" textAnchor="middle" fill="#111827" fontSize="44" fontWeight="900">{num.format(area)} m²</text>{labels && <text x="450" y="90" textAnchor="middle" fill="#fde68a" fontSize="22" fontWeight="900">Radier volumétrico</text>}</svg>;
+  return <svg viewBox="0 0 900 520"><rect width="900" height="520" rx="28" fill="#090909"/><polygon points="180,150 680,120 760,330 250,390" fill="#cbb89f" stroke="#FFB000" strokeWidth="4"/><polygon points="250,390 760,330 720,395 230,455" fill="#7a5035"/><text x="450" y="265" textAnchor="middle" fill="#111827" fontSize="44" fontWeight="900">{num.format(area)} m²</text>{labels && <text x="450" y="90" textAnchor="middle" fill="#FFD05A" fontSize="22" fontWeight="900">Radier volumétrico</text>}</svg>;
 }
 
 function EnergyControl({ label, value, min, max, step, suffix, onChange }: { label: string; value: number; min: number; max: number; step: number; suffix: string; onChange: (v: number) => void }) {

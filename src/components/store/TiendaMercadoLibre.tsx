@@ -106,7 +106,7 @@ function ProductCard({ product, cartItem, onAddToCart, onUpdateQuantity, onRemov
 
   return <article className="group relative min-w-0 overflow-hidden rounded-[2rem] border border-white/10 bg-white/[0.045] shadow-[0_24px_80px_rgba(0,0,0,.30)] backdrop-blur-xl transition-all duration-300 hover:-translate-y-1 hover:border-yellow-300/35 hover:bg-white/[0.07]">
     <div className="relative min-h-[280px] overflow-hidden bg-black">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_55%_45%,rgba(250,204,21,.16),transparent_45%),linear-gradient(180deg,rgba(0,0,0,.12),rgba(0,0,0,.84))]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_55%_45%,rgba(255, 176, 0,.16),transparent_45%),linear-gradient(180deg,rgba(0,0,0,.12),rgba(0,0,0,.84))]" />
       {product.image ? <img src={product.image} alt={product.name} className="absolute inset-0 h-full w-full object-cover opacity-44 saturate-110 transition duration-500 group-hover:scale-105 group-hover:opacity-58" /> : null}
       <GlobeLive markers={markers} compact className="absolute right-[-18%] top-[-8%] h-[78%] w-[78%] min-w-[220px] opacity-95" speed={0.0026} />
       <div className="absolute left-4 top-4 flex flex-wrap gap-2">

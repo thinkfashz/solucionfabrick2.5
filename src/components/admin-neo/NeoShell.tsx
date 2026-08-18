@@ -217,7 +217,7 @@ export function NeoShell({ children }: { children: ReactNode }) {
   const topbarBg = 'rgba(7,5,4,0.88)';
 
   return (
-    <div className="relative min-h-screen text-[#fff1d6]">
+    <div className="relative min-h-screen text-[#FFF9EE]">
       {/* Ambient overlay */}
       <div className="neo-ambient" aria-hidden="true" />
 
@@ -231,9 +231,9 @@ export function NeoShell({ children }: { children: ReactNode }) {
           href="/admin"
           className="mb-3 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl border"
           style={{
-            background: 'linear-gradient(135deg, #FFE566, #ff8a1f)',
+            background: 'linear-gradient(135deg, #FFD05A, #F5871F)',
             borderColor: 'rgba(255,213,74,.35)',
-            boxShadow: '0 0 18px rgba(255,138,31,.40)',
+            boxShadow: '0 0 18px rgba(245, 135, 31,.40)',
           }}
           title="Inicio"
         >
@@ -250,8 +250,8 @@ export function NeoShell({ children }: { children: ReactNode }) {
               title={label}
               className="flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-150"
               style={{
-                background: isActive ? 'rgba(255,138,31,.12)' : 'transparent',
-                color: isActive ? '#ffd54a' : '#9f8d74',
+                background: isActive ? 'rgba(245, 135, 31,.12)' : 'transparent',
+                color: isActive ? '#FFD05A' : '#BFB8AC',
               }}
             >
               <Icon className="h-5 w-5" />
@@ -266,7 +266,7 @@ export function NeoShell({ children }: { children: ReactNode }) {
           href="/admin/configuracion"
           title="Configuración"
           className="flex h-12 w-12 items-center justify-center rounded-2xl transition-all duration-150"
-          style={{ color: '#9f8d74' }}
+          style={{ color: '#BFB8AC' }}
         >
           <Settings className="h-5 w-5" />
         </Link>
@@ -309,7 +309,7 @@ export function NeoShell({ children }: { children: ReactNode }) {
                 <div
                   className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-xl border"
                   style={{
-                    background: 'linear-gradient(135deg, #FFE566, #ff8a1f)',
+                    background: 'linear-gradient(135deg, #FFD05A, #F5871F)',
                     borderColor: 'rgba(255,213,74,.35)',
                   }}
                 >
@@ -317,15 +317,15 @@ export function NeoShell({ children }: { children: ReactNode }) {
                 </div>
                 <div className="flex-1 min-w-0">
                   <FabrickNavLogo className="-ml-1" theme="light" />
-                  <p className="text-[9px] uppercase tracking-[0.2em] text-[#9f8d74]">
+                  <p className="text-[9px] uppercase tracking-[0.2em] text-[#BFB8AC]">
                     Neo Admin
                   </p>
                 </div>
                 <button
                   type="button"
                   onClick={() => setDrawerOpen(false)}
-                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-[rgba(255,138,31,.09)]"
-                  style={{ color: '#9f8d74' }}
+                  className="flex h-7 w-7 flex-shrink-0 items-center justify-center rounded-lg transition-colors hover:bg-[rgba(245, 135, 31,.09)]"
+                  style={{ color: '#BFB8AC' }}
                   aria-label="Cerrar menú"
                 >
                   <X className="h-4 w-4" />
@@ -335,13 +335,13 @@ export function NeoShell({ children }: { children: ReactNode }) {
               {/* Search input */}
               <div className="flex-shrink-0 px-3 py-2.5" style={{ borderBottom: `1px solid ${borderColor}` }}>
                 <div className="relative">
-                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#9f8d74]" />
+                  <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-[#BFB8AC]" />
                   <input
                     type="text"
                     value={search}
                     onChange={(e) => setSearch(e.target.value)}
                     placeholder="Buscar módulo…"
-                    className="w-full rounded-lg bg-[rgba(255,246,230,.06)] py-2 pl-8 pr-3 text-[12px] text-[#fff1d6] placeholder-[#9f8d74] outline-none focus:ring-1 focus:ring-[rgba(255,138,31,.35)]"
+                    className="w-full rounded-lg bg-[rgba(255,246,230,.06)] py-2 pl-8 pr-3 text-[12px] text-[#FFF9EE] placeholder-[#BFB8AC] outline-none focus:ring-1 focus:ring-[rgba(245, 135, 31,.35)]"
                     style={{ border: `1px solid ${borderColor}` }}
                   />
                 </div>
@@ -357,13 +357,13 @@ export function NeoShell({ children }: { children: ReactNode }) {
                       <button
                         type="button"
                         onClick={() => toggleSection(section.title)}
-                        className="flex w-full items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-[rgba(255,138,31,.06)]"
+                        className="flex w-full items-center gap-2 px-4 py-2 text-left transition-colors hover:bg-[rgba(245, 135, 31,.06)]"
                       >
-                        <span className="flex-1 text-[10px] font-semibold uppercase tracking-widest text-[#9f8d74]">
+                        <span className="flex-1 text-[10px] font-semibold uppercase tracking-widest text-[#BFB8AC]">
                           {section.title}
                         </span>
                         <ChevronDown
-                          className="h-3 w-3 flex-shrink-0 text-[#9f8d74] transition-transform duration-200"
+                          className="h-3 w-3 flex-shrink-0 text-[#BFB8AC] transition-transform duration-200"
                           style={{ transform: isOpen ? 'rotate(0deg)' : 'rotate(-90deg)' }}
                         />
                       </button>
@@ -382,8 +382,8 @@ export function NeoShell({ children }: { children: ReactNode }) {
                                 onClick={() => setDrawerOpen(false)}
                                 className="flex items-center gap-3 rounded-lg mx-2 px-3 py-2 transition-all duration-150"
                                 style={{
-                                  background: isActive ? 'rgba(255,138,31,.12)' : 'transparent',
-                                  color: isActive ? '#ffd54a' : '#9f8d74',
+                                  background: isActive ? 'rgba(245, 135, 31,.12)' : 'transparent',
+                                  color: isActive ? '#FFD05A' : '#BFB8AC',
                                 }}
                               >
                                 <Icon className="h-4 w-4 flex-shrink-0" />
@@ -391,12 +391,12 @@ export function NeoShell({ children }: { children: ReactNode }) {
                                   {link.label}
                                 </span>
                                 {link.highlight && !link.comingSoon && (
-                                  <span className="flex-shrink-0 rounded-full bg-[rgba(255,138,31,.15)] px-1.5 py-px text-[9px] text-[#ff8a1f]">
+                                  <span className="flex-shrink-0 rounded-full bg-[rgba(245, 135, 31,.15)] px-1.5 py-px text-[9px] text-[#F5871F]">
                                     Nuevo
                                   </span>
                                 )}
                                 {link.comingSoon && (
-                                  <span className="flex-shrink-0 rounded-full bg-[rgba(255,255,255,.06)] px-1.5 py-px text-[9px] text-[#9f8d74]">
+                                  <span className="flex-shrink-0 rounded-full bg-[rgba(255,255,255,.06)] px-1.5 py-px text-[9px] text-[#BFB8AC]">
                                     Próximo
                                   </span>
                                 )}
@@ -415,7 +415,7 @@ export function NeoShell({ children }: { children: ReactNode }) {
                 <button
                   type="button"
                   onClick={handleLogout}
-                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[12px] text-[#9f8d74] transition-colors hover:bg-red-500/10 hover:text-red-400"
+                  className="flex w-full items-center gap-2.5 rounded-lg px-3 py-2 text-[12px] text-[#BFB8AC] transition-colors hover:bg-red-500/10 hover:text-red-400"
                 >
                   <LogOut className="h-4 w-4 flex-shrink-0" />
                   <span>Cerrar sesión</span>
@@ -439,8 +439,8 @@ export function NeoShell({ children }: { children: ReactNode }) {
         <button
           type="button"
           onClick={() => setDrawerOpen((p) => !p)}
-          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-[rgba(255,138,31,.09)]"
-          style={{ color: '#9f8d74' }}
+          className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl transition-colors hover:bg-[rgba(245, 135, 31,.09)]"
+          style={{ color: '#BFB8AC' }}
           aria-label="Abrir menú"
         >
           <Menu className="h-5 w-5" />
@@ -448,7 +448,7 @@ export function NeoShell({ children }: { children: ReactNode }) {
 
         {/* Breadcrumb */}
         <div className="min-w-0 flex-1">
-          <span className="truncate text-[13px] font-semibold text-[#fff1d6]">
+          <span className="truncate text-[13px] font-semibold text-[#FFF9EE]">
             {breadcrumb}
           </span>
         </div>
@@ -458,8 +458,8 @@ export function NeoShell({ children }: { children: ReactNode }) {
           {/* Search (cosmetic button) */}
           <button
             type="button"
-            className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-[rgba(255,138,31,.09)]"
-            style={{ color: '#9f8d74' }}
+            className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-[rgba(245, 135, 31,.09)]"
+            style={{ color: '#BFB8AC' }}
             aria-label="Buscar"
           >
             <Search className="h-4 w-4" />
@@ -469,8 +469,8 @@ export function NeoShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={toggleDark}
-            className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-[rgba(255,138,31,.09)]"
-            style={{ color: '#9f8d74' }}
+            className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-[rgba(245, 135, 31,.09)]"
+            style={{ color: '#BFB8AC' }}
             aria-label={dark ? 'Modo claro' : 'Modo oscuro'}
           >
             {dark ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
@@ -480,8 +480,8 @@ export function NeoShell({ children }: { children: ReactNode }) {
           <button
             type="button"
             onClick={handleSwitchTheme}
-            className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-[rgba(255,138,31,.09)]"
-            style={{ color: '#9f8d74' }}
+            className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-[rgba(245, 135, 31,.09)]"
+            style={{ color: '#BFB8AC' }}
             aria-label="Cambiar tema"
             title="Cambiar tema del admin"
           >
@@ -493,8 +493,8 @@ export function NeoShell({ children }: { children: ReactNode }) {
             href="/tienda"
             target="_blank"
             rel="noopener noreferrer"
-            className="hidden items-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-medium transition-colors hover:bg-[rgba(255,138,31,.09)] sm:flex"
-            style={{ color: '#9f8d74' }}
+            className="hidden items-center gap-1 rounded-xl px-3 py-1.5 text-[11px] font-medium transition-colors hover:bg-[rgba(245, 135, 31,.09)] sm:flex"
+            style={{ color: '#BFB8AC' }}
           >
             <ExternalLink className="h-3.5 w-3.5" />
             <span>Tienda</span>
@@ -505,7 +505,7 @@ export function NeoShell({ children }: { children: ReactNode }) {
             type="button"
             onClick={handleLogout}
             className="hidden h-8 w-8 items-center justify-center rounded-xl transition-colors hover:bg-red-500/10 hover:text-red-400 sm:flex"
-            style={{ color: '#9f8d74' }}
+            style={{ color: '#BFB8AC' }}
             aria-label="Cerrar sesión"
           >
             <LogOut className="h-4 w-4" />

@@ -166,9 +166,9 @@ export default function FabrickBudgetEnginesPremiumClient({ kind }: { kind: Kind
     }
   }
 
-  if (kind !== 'aire') return <main className="min-h-screen bg-[#050403] p-6 text-white">Este panel comercial está optimizado para el motor de aire acondicionado.</main>;
+  if (kind !== 'aire') return <main className="min-h-screen bg-[#08090A] p-6 text-white">Este panel comercial está optimizado para el motor de aire acondicionado.</main>;
 
-  return <main className="min-h-screen overflow-x-hidden bg-[#050403] pb-24 text-white md:pb-0">
+  return <main className="min-h-screen overflow-x-hidden bg-[#08090A] pb-24 text-white md:pb-0">
     <div className="mx-auto grid max-w-[1680px] gap-5 p-3 sm:p-5 xl:grid-cols-[420px_1fr_380px]">
       <aside className="rounded-[2rem] border border-amber-300/15 bg-black/60 p-4 shadow-[0_24px_90px_rgba(0,0,0,.55)] backdrop-blur-2xl">
         <p className="text-[10px] font-black uppercase tracking-[.32em] text-amber-300">Motor comercial</p>

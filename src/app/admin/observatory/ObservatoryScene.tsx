@@ -22,13 +22,13 @@ interface PlanetData {
 // InsForge es ahora el centro (sol) del sistema porque es el backend del cual
 // dependen el resto de servicios.
 const PLANETS: PlanetData[] = [
-  { id: 'insforge',    name: 'INSFORGE',    color: '#facc15', ringColor: '#f59e0b', orbitRadius: 0,   orbitSpeed: 0,    size: 18,  hasRings: false, moons: 0, label: 'INSFORGE_CORE' },
+  { id: 'insforge',    name: 'INSFORGE',    color: '#FFB000', ringColor: '#F5871F', orbitRadius: 0,   orbitSpeed: 0,    size: 18,  hasRings: false, moons: 0, label: 'INSFORGE_CORE' },
   { id: 'vercel',      name: 'VERCEL',      color: '#4f8ef7', ringColor: '#2563eb', orbitRadius: 90,  orbitSpeed: 0.15, size: 8,   hasRings: true,  moons: 1, label: 'VERCEL_EDGE'   },
   { id: 'github',      name: 'GITHUB',      color: '#a855f7', ringColor: '#7c3aed', orbitRadius: 140, orbitSpeed: 0.11, size: 7,   hasRings: false, moons: 0, label: 'GITHUB_SOURCE' },
   { id: 'mercadopago', name: 'MERCADOPAGO', color: '#22c55e', ringColor: '#16a34a', orbitRadius: 195, orbitSpeed: 0.08, size: 10,  hasRings: true,  moons: 2, label: 'MERCADOPAGO'   },
   { id: 'cloudflare',  name: 'CLOUDFLARE',  color: '#06b6d4', ringColor: '#0891b2', orbitRadius: 250, orbitSpeed: 0.06, size: 8,   hasRings: false, moons: 1, label: 'CLOUDFLARE_CDN'},
   { id: 'analytics',   name: 'ANALYTICS',   color: '#ec4899', ringColor: '#db2777', orbitRadius: 300, orbitSpeed: 0.05, size: 6,   hasRings: false, moons: 0, label: 'ANALYTICS'     },
-  { id: 'usuarios',    name: 'USUARIOS',    color: '#f97316', ringColor: '#ea580c', orbitRadius: 350, orbitSpeed: 0.04, size: 7,   hasRings: true,  moons: 0, label: 'USUARIOS_LIVE' },
+  { id: 'usuarios',    name: 'USUARIOS',    color: '#F5871F', ringColor: '#F5871F', orbitRadius: 350, orbitSpeed: 0.04, size: 7,   hasRings: true,  moons: 0, label: 'USUARIOS_LIVE' },
 ];
 
 const SPOKES = PLANETS.slice(1);
@@ -111,7 +111,7 @@ function Nebula() {
       <bufferGeometry>
         <bufferAttribute attach="attributes-position" array={positions} count={count} itemSize={3} args={[positions, 3]} />
       </bufferGeometry>
-      <pointsMaterial color="#facc15" size={isMobile ? 2 : 4} transparent opacity={0.04} sizeAttenuation />
+      <pointsMaterial color="#FFB000" size={isMobile ? 2 : 4} transparent opacity={0.04} sizeAttenuation />
     </points>
   );
 }
@@ -124,7 +124,7 @@ function OrbitRing({ radius, highlight }: { radius: number; highlight: boolean }
     <mesh rotation={[-Math.PI / 2, 0, 0]}>
       <primitive object={geo} />
       <meshBasicMaterial
-        color={highlight ? '#facc15' : '#ffffff'}
+        color={highlight ? '#FFB000' : '#FFF9EE'}
         transparent
         opacity={highlight ? 0.18 : 0.04}
         side={THREE.DoubleSide}
@@ -394,7 +394,7 @@ function Rocket({
       </mesh>
       <mesh position={[0, 0, 3.5]} rotation={[Math.PI / 2, 0, 0]}>
         <coneGeometry args={[0.8, 3, 8]} />
-        <meshStandardMaterial color="#ffffff" emissive="#ffffff" emissiveIntensity={0.5} />
+        <meshStandardMaterial color="#FFF9EE" emissive="#FFF9EE" emissiveIntensity={0.5} />
       </mesh>
       <pointLight color={color} intensity={isReal ? 3 : 1.5} distance={isReal ? 40 : 20} position={[0, 0, -3]} />
       <mesh position={[0, 0, -3]}>
@@ -432,22 +432,22 @@ function Sun({ paused, speed, onSelect }: { paused: boolean; speed: number; onSe
         onClick={(e) => { e.stopPropagation(); onSelect(); }}
       >
         <sphereGeometry args={[18, isMobile ? 32 : 64, isMobile ? 32 : 64]} />
-        <meshStandardMaterial color="#facc15" emissive="#f59e0b" emissiveIntensity={hovered ? 2 : 1.5} roughness={1} metalness={0} />
+        <meshStandardMaterial color="#FFB000" emissive="#F5871F" emissiveIntensity={hovered ? 2 : 1.5} roughness={1} metalness={0} />
       </mesh>
       {isMobile ? (
         <mesh>
           <sphereGeometry args={[24, 16, 16]} />
-          <meshBasicMaterial color="#facc15" transparent opacity={0.04} side={THREE.BackSide} />
+          <meshBasicMaterial color="#FFB000" transparent opacity={0.04} side={THREE.BackSide} />
         </mesh>
       ) : (
         [24, 30, 38].map((r, i) => (
           <mesh key={r}>
             <sphereGeometry args={[r, 32, 32]} />
-            <meshBasicMaterial color="#facc15" transparent opacity={0.04 - i * 0.01} side={THREE.BackSide} />
+            <meshBasicMaterial color="#FFB000" transparent opacity={0.04 - i * 0.01} side={THREE.BackSide} />
           </mesh>
         ))
       )}
-      <pointLight color="#facc15" intensity={4} distance={600} />
+      <pointLight color="#FFB000" intensity={4} distance={600} />
     </group>
   );
 }
@@ -585,7 +585,7 @@ function Scene({
       />
 
       <ambientLight intensity={0.05} />
-      <directionalLight color="#ffffff" intensity={0.3} position={[200, 300, 200]} />
+      <directionalLight color="#FFF9EE" intensity={0.3} position={[200, 300, 200]} />
 
       <StarField />
       <Nebula />

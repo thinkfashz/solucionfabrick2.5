@@ -85,7 +85,7 @@ export default function RegistroSaaSPage() {
   }
 
   if (result?.ok) {
-    return <main className="min-h-screen bg-[#050505] px-4 py-8 text-white md:px-6">
+    return <main className="min-h-screen bg-[#08090A] px-4 py-8 text-white md:px-6">
       <section className="mx-auto max-w-5xl rounded-[2.5rem] border border-emerald-300/25 bg-[radial-gradient(circle_at_80%_0%,rgba(16,185,129,.22),transparent_34rem),linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.025))] p-6 shadow-2xl shadow-black/50 md:p-10">
         <div className="grid h-16 w-16 place-items-center rounded-3xl bg-emerald-300 text-black"><CheckCircle2 className="h-8 w-8" /></div>
         <h1 className="mt-6 text-4xl font-black tracking-[-.06em] md:text-6xl">Empresa creada.</h1>
@@ -105,7 +105,7 @@ export default function RegistroSaaSPage() {
     </main>;
   }
 
-  return <main className="min-h-screen bg-[#050505] px-4 py-8 text-white md:px-6">
+  return <main className="min-h-screen bg-[#08090A] px-4 py-8 text-white md:px-6">
     <section className="mx-auto grid max-w-7xl gap-5 lg:grid-cols-[1fr_430px]">
       <div className="space-y-5">
         <header className="rounded-[2.5rem] border border-amber-300/20 bg-[radial-gradient(circle_at_82%_0%,rgba(245,158,11,.25),transparent_34rem),linear-gradient(135deg,rgba(255,255,255,.08),rgba(255,255,255,.025))] p-6 shadow-2xl shadow-black/40 md:p-8">

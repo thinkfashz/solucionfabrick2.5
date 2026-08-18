@@ -551,10 +551,10 @@ export default function PublicidadPage() {
                     <ResponsiveContainer width="100%" height={220}>
                       <BarChart data={chartData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                        <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#52525b' }} />
-                        <YAxis tick={{ fontSize: 9, fill: '#52525b' }} />
+                        <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#6E675D' }} />
+                        <YAxis tick={{ fontSize: 9, fill: '#6E675D' }} />
                         <Tooltip content={<ChartTooltip />} />
-                        <Bar dataKey="Gasto" fill="#facc15" radius={[4, 4, 0, 0]} />
+                        <Bar dataKey="Gasto" fill="#FFB000" radius={[4, 4, 0, 0]} />
                       </BarChart>
                     </ResponsiveContainer>
                   </div>
@@ -571,11 +571,11 @@ export default function PublicidadPage() {
                     <ResponsiveContainer width="100%" height={220}>
                       <LineChart data={chartData} margin={{ top: 0, right: 0, bottom: 0, left: -20 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" />
-                        <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#52525b' }} />
-                        <YAxis yAxisId="left" tick={{ fontSize: 9, fill: '#52525b' }} />
-                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fill: '#52525b' }} />
+                        <XAxis dataKey="name" tick={{ fontSize: 9, fill: '#6E675D' }} />
+                        <YAxis yAxisId="left" tick={{ fontSize: 9, fill: '#6E675D' }} />
+                        <YAxis yAxisId="right" orientation="right" tick={{ fontSize: 9, fill: '#6E675D' }} />
                         <Tooltip content={<ChartTooltip />} />
-                        <Legend wrapperStyle={{ fontSize: '9px', color: '#71717a' }} />
+                        <Legend wrapperStyle={{ fontSize: '9px', color: '#BFB8AC' }} />
                         <Line yAxisId="left" type="monotone" dataKey="Clicks" stroke="#38bdf8" strokeWidth={2} dot={{ r: 3, fill: '#38bdf8' }} />
                         <Line yAxisId="right" type="monotone" dataKey="CTR" stroke="#a78bfa" strokeWidth={2} dot={{ r: 3, fill: '#a78bfa' }} />
                       </LineChart>

@@ -38,12 +38,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/servicios/gasfiteria`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${BASE_URL}/servicios/electricidad`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${BASE_URL}/servicios/ampliaciones`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
+    { url: `${BASE_URL}/servicios/cimientos`, lastModified: now, changeFrequency: 'monthly', priority: 0.82 },
+    { url: `${BASE_URL}/servicios/revestimiento`, lastModified: now, changeFrequency: 'monthly', priority: 0.82 },
+    { url: `${BASE_URL}/servicios/pintura`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
+    { url: `${BASE_URL}/servicios/seguridad`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
+    { url: `${BASE_URL}/presupuesto`, lastModified: now, changeFrequency: 'weekly', priority: 0.85 },
+    { url: `${BASE_URL}/herramientas/radier`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
+    { url: `${BASE_URL}/herramientas/aire-acondicionado`, lastModified: now, changeFrequency: 'monthly', priority: 0.78 },
     { url: `${BASE_URL}/evolucion`, lastModified: now, changeFrequency: 'monthly', priority: 0.6 },
     { url: `${BASE_URL}/contacto`, lastModified: now, changeFrequency: 'monthly', priority: 0.8 },
     { url: `${BASE_URL}/garantias`, lastModified: now, changeFrequency: 'monthly', priority: 0.5 },
     { url: `${BASE_URL}/blog`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${BASE_URL}/casos`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
-    { url: `${BASE_URL}/auth`, lastModified: now, changeFrequency: 'monthly', priority: 0.4 },
   ];
 
   const [projects, products, inspirationCatalog] = await Promise.all([

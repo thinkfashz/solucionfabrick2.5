@@ -19,9 +19,9 @@ export type BarStatus = 'ok' | 'warn' | 'error' | 'idle';
 
 const STATUS_COLOR: Record<BarStatus, { bar: string; glow: string; text: string }> = {
   ok: { bar: '#22c55e', glow: 'rgba(34,197,94,0.5)', text: 'text-emerald-300' },
-  warn: { bar: '#f59e0b', glow: 'rgba(245,158,11,0.5)', text: 'text-amber-300' },
+  warn: { bar: '#F5871F', glow: 'rgba(245,158,11,0.5)', text: 'text-amber-300' },
   error: { bar: '#ef4444', glow: 'rgba(239,68,68,0.6)', text: 'text-rose-300' },
-  idle: { bar: '#52525b', glow: 'rgba(82,82,91,0.3)', text: 'text-zinc-400' },
+  idle: { bar: '#6E675D', glow: 'rgba(82,82,91,0.3)', text: 'text-zinc-400' },
 };
 
 export interface VerticalBarProps {

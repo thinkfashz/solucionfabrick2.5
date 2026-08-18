@@ -59,7 +59,7 @@ const textareaCls = `${inputCls} font-mono min-h-[80px] resize-y`;
 
 // Primary action button (gold outline, subtle glow on hover)
 const buttonCls =
-  'inline-flex items-center justify-center gap-1.5 rounded-full border border-yellow-400/40 px-3.5 py-1.5 text-[10px] uppercase tracking-widest text-yellow-400 transition-all hover:bg-yellow-400/10 hover:border-yellow-400/70 hover:shadow-[0_0_12px_rgba(250,204,21,0.2)] active:scale-95 font-bold';
+  'inline-flex items-center justify-center gap-1.5 rounded-full border border-yellow-400/40 px-3.5 py-1.5 text-[10px] uppercase tracking-widest text-yellow-400 transition-all hover:bg-yellow-400/10 hover:border-yellow-400/70 hover:shadow-[0_0_12px_rgba(255, 176, 0,0.2)] active:scale-95 font-bold';
 
 // Danger button (red)
 const dangerBtn =
@@ -81,7 +81,7 @@ function Toggle({ checked, onChange, disabled }: { checked: boolean; onChange: (
         'relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 transition-all duration-200',
         'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400/60',
         checked
-          ? 'border-yellow-400 bg-yellow-400 shadow-[0_0_14px_rgba(250,204,21,0.4)]'
+          ? 'border-yellow-400 bg-yellow-400 shadow-[0_0_14px_rgba(255, 176, 0,0.4)]'
           : 'border-zinc-700 bg-zinc-800',
         disabled ? 'opacity-40 cursor-not-allowed' : '',
       ].join(' ')}
@@ -509,7 +509,7 @@ function CustomInjectionForm({ value, onChange }: Props<'custom-injection'>) {
             className={[
               'rounded-full px-3 py-1 text-[10px] uppercase tracking-widest font-bold transition-all',
               tab === key
-                ? 'bg-yellow-400 text-black shadow-[0_0_10px_rgba(250,204,21,0.3)]'
+                ? 'bg-yellow-400 text-black shadow-[0_0_10px_rgba(255, 176, 0,0.3)]'
                 : 'border border-yellow-400/20 text-yellow-400/70 hover:border-yellow-400/50 hover:text-yellow-400',
             ].join(' ')}
           >

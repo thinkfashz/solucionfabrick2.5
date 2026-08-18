@@ -56,9 +56,9 @@ export const ORDER_STATUS_LABELS: Record<OrderStatus, string> = {
 };
 
 export const ORDER_STATUS_COLORS: Record<OrderStatus, string> = {
-  pendiente: '#f59e0b',
+  pendiente: '#F5871F',
   confirmado: '#3b82f6',
-  en_preparacion: '#f97316',
+  en_preparacion: '#F5871F',
   enviado: '#8b5cf6',
   entregado: '#22c55e',
   cancelado: '#ef4444',

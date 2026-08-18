@@ -151,9 +151,9 @@ export default function PageEngineProspectingStudioHybridClient() {
     window.addEventListener('pointerup', up, { once: true });
   }
 
-  return <main className="min-h-screen overflow-x-hidden bg-[#050403] pb-24 text-white">
+  return <main className="min-h-screen overflow-x-hidden bg-[#08090A] pb-24 text-white">
     <section className="mx-auto w-full max-w-[1540px] space-y-4 px-3 py-3 sm:px-5 lg:px-7">
-      <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#090806] p-5 shadow-[0_35px_120px_rgba(0,0,0,.55)] sm:p-7">
+      <section className="relative overflow-hidden rounded-[2rem] border border-white/10 bg-[#08090A] p-5 shadow-[0_35px_120px_rgba(0,0,0,.55)] sm:p-7">
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_0%,rgba(253,224,71,.20),transparent_34%),radial-gradient(circle_at_95%_10%,rgba(255,255,255,.10),transparent_30%)]" />
         <div className="relative grid gap-5 lg:grid-cols-[minmax(0,1fr)_360px]">
           <div className="min-w-0">
@@ -197,7 +197,7 @@ export default function PageEngineProspectingStudioHybridClient() {
     </section>
 
     <div className="fixed z-[80]" style={{ right: menuPos.right, bottom: menuPos.bottom }}>
-      {menuOpen && <div className="mb-3 w-[min(92vw,310px)] rounded-[1.5rem] border border-yellow-300/20 bg-[#090806]/95 p-3 shadow-[0_28px_110px_rgba(0,0,0,.72)] backdrop-blur-xl">
+      {menuOpen && <div className="mb-3 w-[min(92vw,310px)] rounded-[1.5rem] border border-yellow-300/20 bg-[#08090A]/95 p-3 shadow-[0_28px_110px_rgba(0,0,0,.72)] backdrop-blur-xl">
         <div className="mb-2 flex items-center justify-between"><b>Menú rápido</b><button onClick={() => setMenuOpen(false)} className="rounded-xl border border-white/10 p-2"><X className="h-4 w-4" /></button></div>
         <div className="grid gap-2">
           <button className="rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-left text-sm font-black" onClick={() => setShowImporter((value) => !value)}>{showImporter ? 'Ocultar importador' : 'Mostrar importador'}</button>

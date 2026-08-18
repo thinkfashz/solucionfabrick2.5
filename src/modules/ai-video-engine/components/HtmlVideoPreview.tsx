@@ -34,7 +34,7 @@ function SceneCard({ scene }: { scene: VideoScene }) {
       {/* Grid */}
       <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.03)_1px,transparent_1px)] bg-[size:32px_32px]" />
       {/* Glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(250,204,21,0.18),transparent_50%)]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_25%_15%,rgba(255, 176, 0,0.18),transparent_50%)]" />
 
       {/* Topbar */}
       <div className="absolute inset-x-5 top-4 flex items-center justify-between">

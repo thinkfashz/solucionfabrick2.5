@@ -4,10 +4,10 @@
   --fabrick-panel: rgba(10, 10, 10, 0.62);
   --fabrick-panel-strong: rgba(5, 5, 5, 0.84);
   --fabrick-border: rgba(255, 255, 255, 0.12);
-  --fabrick-gold: #facc15;
+  --fabrick-gold: #FFB000;
   --fabrick-amber: #d6a52f;
   --fabrick-silver: #c8c8c8;
-  --fabrick-text: #1b1710;
+  --fabrick-text: #111214;
   --fabrick-muted: rgba(27, 23, 16, .60);
 }
 
@@ -20,7 +20,7 @@ body { color: var(--fabrick-text); }
   width: 100%;
   overflow-x: hidden;
   background:
-    radial-gradient(circle at 12% 0%, rgba(250,204,21,.30), transparent 27rem),
+    radial-gradient(circle at 12% 0%, rgba(255, 176, 0,.30), transparent 27rem),
     radial-gradient(circle at 92% 12%, rgba(255,255,255,.72), transparent 25rem),
     linear-gradient(180deg, #f7edd9 0%, #eadabd 52%, #ddcba8 100%);
   isolation: isolate;
@@ -32,7 +32,7 @@ body { color: var(--fabrick-text); }
   inset: 0;
   z-index: -3;
   background:
-    linear-gradient(120deg, rgba(250,204,21,.16), transparent 36%, rgba(255,255,255,.42) 58%, transparent),
+    linear-gradient(120deg, rgba(255, 176, 0,.16), transparent 36%, rgba(255,255,255,.42) 58%, transparent),
     radial-gradient(circle at 50% 100%, rgba(214,165,47,.14), transparent 34rem);
 }
 
@@ -65,7 +65,7 @@ body { color: var(--fabrick-text); }
   border-radius: 9999px;
   opacity: .42;
 }
-.sf-admin-blob-1 { background: radial-gradient(circle, rgba(250,204,21,.34) 0%, rgba(250,204,21,0) 58%); transform: translate(-78%, -60%); }
+.sf-admin-blob-1 { background: radial-gradient(circle, rgba(255, 176, 0,.34) 0%, rgba(255, 176, 0,0) 58%); transform: translate(-78%, -60%); }
 .sf-admin-blob-2 { background: radial-gradient(circle, rgba(255,255,255,.20) 0%, rgba(255,255,255,0) 60%); transform: translate(-18%, -72%); }
 .sf-admin-blob-3 { background: radial-gradient(circle, rgba(214,165,47,.20) 0%, rgba(214,165,47,0) 58%); transform: translate(-15%, -15%); }
 .sf-admin-blob-4 { display: none; }
@@ -81,12 +81,12 @@ table { border-collapse: collapse; }
 .overflow-x-auto { max-width: 100%; }
 
 input, textarea, select { border-color: rgba(255, 255, 255, .12); }
-input:focus, textarea:focus, select:focus { outline: none; border-color: rgba(250, 204, 21, .74) !important; box-shadow: 0 0 0 4px rgba(250, 204, 21, .09); }
+input:focus, textarea:focus, select:focus { outline: none; border-color: rgba(255, 176, 0, .74) !important; box-shadow: 0 0 0 4px rgba(255, 176, 0, .09); }
 button, a { -webkit-tap-highlight-color: transparent; }
 button { touch-action: manipulation; }
 
-.fabrick-card, .fabrick-panel, .glass-card, [class*='bg-black/55'], [class*='bg-black/45'], [class*='bg-zinc-950'], [class*='bg-[#050403]'] {
-  border-color: rgba(250, 204, 21, .13) !important;
+.fabrick-card, .fabrick-panel, .glass-card, [class*='bg-black/55'], [class*='bg-black/45'], [class*='bg-zinc-950'], [class*='bg-[#08090A]'] {
+  border-color: rgba(255, 176, 0, .13) !important;
   background-color: rgba(4, 4, 4, .58);
   backdrop-filter: blur(18px);
   -webkit-backdrop-filter: blur(18px);
@@ -96,23 +96,23 @@ button { touch-action: manipulation; }
 .fabrick-scroll-safe { overflow-x: auto; -webkit-overflow-scrolling: touch; }
 .fabrick-admin-title { color: var(--fabrick-text); letter-spacing: -0.055em; }
 .fabrick-admin-muted { color: var(--fabrick-muted); }
-.fabrick-admin-button, button[class*='bg-amber-400'], button[class*='bg-yellow'] { box-shadow: 0 16px 40px rgba(250, 204, 21, .16); }
+.fabrick-admin-button, button[class*='bg-amber-400'], button[class*='bg-yellow'] { box-shadow: 0 16px 40px rgba(255, 176, 0, .16); }
 
 /* Navegación: superficies oscuras y tipografía de alto contraste. */
 [class*='grid-cols-[60px_minmax'] > div {
   color: #fff8e8;
-  border-color: rgba(250, 204, 21, .18) !important;
+  border-color: rgba(255, 176, 0, .18) !important;
   background: rgba(20, 17, 12, .96) !important;
   box-shadow: 0 24px 80px rgba(54, 39, 13, .22);
 }
-[class*='grid-cols-[60px_minmax'] input { color: #fff; background: rgba(0,0,0,.42); }
+[class*='grid-cols-[60px_minmax'] input { color: #FFF9EE; background: rgba(0,0,0,.42); }
 [class*='grid-cols-[60px_minmax'] input::placeholder { color: rgba(255,255,255,.42); }
 [class*='grid-cols-[60px_minmax'] .text-zinc-500,
 [class*='grid-cols-[60px_minmax'] .text-zinc-600,
 [class*='grid-cols-[60px_minmax'] [class*='text-white/30'] { color: rgba(255,255,255,.50) !important; }
 
 /* Cabecera clara: logo, ruta y acciones siempre legibles. */
-[data-admin-header] { border-color: rgba(69, 51, 20, .12) !important; color: #1b1710; }
+[data-admin-header] { border-color: rgba(69, 51, 20, .12) !important; color: #111214; }
 [data-admin-header] > div:first-child { background: rgba(248, 239, 221, .91) !important; }
 [data-admin-header] .text-yellow-300,
 [data-admin-header] .text-yellow-400 { color: #7e560b !important; }
@@ -124,19 +124,19 @@ button { touch-action: manipulation; }
 [data-admin-header] a { border-color: rgba(27,23,16,.12) !important; }
 
 /* Editor de productos: crema, campos blancos y preview oscuro. */
-[data-product-form] section { border-color: rgba(53,40,17,.08) !important; background-color: #fbf5e8 !important; box-shadow: 0 24px 80px rgba(58,45,19,.10); }
+[data-product-form] section { border-color: rgba(53,40,17,.08) !important; background-color: #F2DFBB !important; box-shadow: 0 24px 80px rgba(58,45,19,.10); }
 [data-product-form] section h2,
-[data-product-form] section .text-white { color: #1b1710 !important; }
+[data-product-form] section .text-white { color: #111214 !important; }
 [data-product-form] section .text-zinc-300,
 [data-product-form] section .text-zinc-400,
 [data-product-form] section .text-zinc-500,
 [data-product-form] section .text-zinc-600 { color: rgba(27,23,16,.53) !important; }
 [data-product-form] input,
 [data-product-form] textarea,
-[data-product-form] select { color: #1b1710 !important; border-color: rgba(27,23,16,.12) !important; background: rgba(255,255,255,.65) !important; }
+[data-product-form] select { color: #111214 !important; border-color: rgba(27,23,16,.12) !important; background: rgba(255,255,255,.65) !important; }
 [data-product-form] input::placeholder,
 [data-product-form] textarea::placeholder { color: rgba(27,23,16,.28) !important; }
-[data-product-form] aside > div { color: #fff8e8; background: #17140f !important; }
+[data-product-form] aside > div { color: #fff8e8; background: #111214 !important; }
 [data-product-form] aside > div .text-white { color: #fff8e8 !important; }
 [data-product-form] aside > div .text-zinc-300,
 [data-product-form] aside > div .text-zinc-400,

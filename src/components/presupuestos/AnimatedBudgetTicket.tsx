@@ -74,7 +74,7 @@ function Barcode({ value }: { value: string }) {
 }
 
 function ConfettiExplosion() {
-  const colors = ['#f59e0b', '#22d3ee', '#22c55e', '#f97316', '#a78bfa', '#facc15'];
+  const colors = ['#F5871F', '#22d3ee', '#22c55e', '#F5871F', '#a78bfa', '#FFB000'];
   return <>
     <style>{`@keyframes sf-ticket-fall{0%{transform:translateY(-10vh) rotate(0deg);opacity:1}100%{transform:translateY(110vh) rotate(720deg);opacity:0}}`}</style>
     <div className="pointer-events-none fixed inset-0 z-0 overflow-hidden" aria-hidden="true">

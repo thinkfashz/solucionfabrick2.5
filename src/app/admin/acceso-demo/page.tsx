@@ -54,7 +54,7 @@ export default function AccesoDemoPage() {
 
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-black px-4 py-12">
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(56,189,248,0.18),rgba(0,0,0,0)_40%),radial-gradient(circle_at_78%_80%,rgba(250,204,21,0.14),rgba(0,0,0,0)_44%),linear-gradient(180deg,rgba(0,0,0,0.3),rgba(0,0,0,0.95))]" />
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_22%_18%,rgba(56,189,248,0.18),rgba(0,0,0,0)_40%),radial-gradient(circle_at_78%_80%,rgba(255, 176, 0,0.14),rgba(0,0,0,0)_44%),linear-gradient(180deg,rgba(0,0,0,0.3),rgba(0,0,0,0.95))]" />
       <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(to_bottom,rgba(255,255,255,0.04)_1px,transparent_1px)] bg-[length:100%_9px] opacity-20" />
       <div className="pointer-events-none absolute -left-20 top-16 h-80 w-80 rounded-full bg-sky-400/15 blur-[100px]" />
       <div className="pointer-events-none absolute -right-20 bottom-16 h-80 w-80 rounded-full bg-yellow-300/15 blur-[100px]" />
@@ -140,7 +140,7 @@ export default function AccesoDemoPage() {
               <button
                 onClick={handleAccess}
                 disabled={loading || !token}
-                className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-200 px-6 py-3.5 text-sm font-bold uppercase tracking-widest text-black shadow-[0_10px_24px_rgba(250,204,21,0.35)] transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
+                className="flex w-full items-center justify-center gap-2 rounded-full bg-gradient-to-r from-yellow-400 via-amber-300 to-yellow-200 px-6 py-3.5 text-sm font-bold uppercase tracking-widest text-black shadow-[0_10px_24px_rgba(255, 176, 0,0.35)] transition-all hover:brightness-105 disabled:cursor-not-allowed disabled:opacity-40"
               >
                 {loading ? <><Loader2 className="h-4 w-4 animate-spin" /> Verificando…</> : 'Iniciar recorrido seguro →'}
               </button>

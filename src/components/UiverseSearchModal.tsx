@@ -112,11 +112,11 @@ export default function UiverseSearchModal({
               }
               .fsb-glow::before {
                 transform: translate(-50%, -50%) rotate(60deg);
-                background-image: conic-gradient(#000, #b8860b 5%, #000 38%, #000 50%, #d97706 60%, #000 87%);
+                background-image: conic-gradient(#08090A, #C97700 5%, #08090A 38%, #08090A 50%, #C97700 60%, #08090A 87%);
               }
               .fsb-dark::before {
                 transform: translate(-50%, -50%) rotate(82deg);
-                background-image: conic-gradient(rgba(0,0,0,0), #78350f, rgba(0,0,0,0) 10%, rgba(0,0,0,0) 50%, #a16207, rgba(0,0,0,0) 60%);
+                background-image: conic-gradient(rgba(0,0,0,0), #78350f, rgba(0,0,0,0) 10%, rgba(0,0,0,0) 50%, #C97700, rgba(0,0,0,0) 60%);
               }
               .fsb-white {
                 max-height: 52px;
@@ -127,7 +127,7 @@ export default function UiverseSearchModal({
               .fsb-white::before {
                 transform: translate(-50%, -50%) rotate(83deg);
                 filter: brightness(1.4);
-                background-image: conic-gradient(rgba(0,0,0,0), #fef08a, rgba(0,0,0,0) 8%, rgba(0,0,0,0) 50%, #f59e0b, rgba(0,0,0,0) 58%);
+                background-image: conic-gradient(rgba(0,0,0,0), #fef08a, rgba(0,0,0,0) 8%, rgba(0,0,0,0) 50%, #F5871F, rgba(0,0,0,0) 58%);
               }
               .fsb-border {
                 max-height: 48px;
@@ -138,7 +138,7 @@ export default function UiverseSearchModal({
               .fsb-border::before {
                 transform: translate(-50%, -50%) rotate(70deg);
                 filter: brightness(1.3);
-                background-image: conic-gradient(#0f0f10, #b8860b 5%, #0f0f10 14%, #0f0f10 50%, #d97706 60%, #0f0f10 64%);
+                background-image: conic-gradient(#0f0f10, #C97700 5%, #0f0f10 14%, #0f0f10 50%, #C97700 60%, #0f0f10 64%);
               }
               #fabrick-search-poda:hover .fsb-dark::before  { transform: translate(-50%, -50%) rotate(-98deg); }
               #fabrick-search-poda:hover .fsb-glow::before  { transform: translate(-50%, -50%) rotate(-120deg); }
@@ -154,14 +154,14 @@ export default function UiverseSearchModal({
                 pointer-events: none;
                 width: 100px; height: 22px;
                 position: absolute;
-                background: linear-gradient(90deg, transparent, #0a0a0a);
+                background: linear-gradient(90deg, transparent, #08090A);
                 top: 17px; left: 62px;
               }
               #fsb-pink-mask {
                 pointer-events: none;
                 width: 30px; height: 22px;
                 position: absolute;
-                background: #d97706;
+                background: #C97700;
                 top: 10px; left: 5px;
                 filter: blur(18px);
                 opacity: 0.7;
@@ -187,7 +187,7 @@ export default function UiverseSearchModal({
               }
               @keyframes fsb-rotate { 100% { transform: translate(-50%, -50%) rotate(450deg); } }
               .fsb-input {
-                background-color: #080808;
+                background-color: #08090A;
                 border: none;
                 width: min(420px, calc(100vw - 2.5rem));
                 height: 58px;
@@ -209,15 +209,15 @@ export default function UiverseSearchModal({
                 isolation: isolate;
                 overflow: hidden;
                 border-radius: 10px;
-                background: linear-gradient(180deg, #1a1200, #0a0a0a, #1a1000);
+                background: linear-gradient(180deg, #1a1200, #08090A, #1a1000);
                 border: 1px solid rgba(184,134,11,0.2);
                 cursor: pointer;
                 transition: all 0.2s;
               }
               #fsb-filter-btn:hover {
-                background: linear-gradient(180deg, #2a1f00, #0a0a0a, #2a1800);
+                background: linear-gradient(180deg, #2a1f00, #08090A, #2a1800);
                 border-color: rgba(217,119,6,0.5);
-                box-shadow: 0 0 12px rgba(250,204,21,0.2);
+                box-shadow: 0 0 12px rgba(255, 176, 0,0.2);
               }
               #fsb-search-icon { position: absolute; left: 18px; top: 50%; transform: translateY(-50%); }
             `}</style>
@@ -259,7 +259,7 @@ export default function UiverseSearchModal({
                   >
                     <path
                       d="M8.16 6.65002H15.83C16.47 6.65002 16.99 7.17002 16.99 7.81002V9.09002C16.99 9.56002 16.7 10.14 16.41 10.43L13.91 12.64C13.56 12.93 13.33 13.51 13.33 13.98V16.48C13.33 16.83 13.1 17.29 12.81 17.47L12 17.98C11.24 18.45 10.2 17.92 10.2 16.99V13.91C10.2 13.5 9.97 12.98 9.73 12.69L7.52 10.36C7.23 10.08 7 9.55002 7 9.20002V7.87002C7 7.17002 7.52 6.65002 8.16 6.65002Z"
-                      stroke="#d97706"
+                      stroke="#C97700"
                       strokeWidth="1.2"
                       strokeMiterlimit="10"
                       strokeLinecap="round"
@@ -284,11 +284,11 @@ export default function UiverseSearchModal({
                     <defs>
                       <linearGradient gradientTransform="rotate(50)" id="fsb-sg">
                         <stop stopColor="#fef9c3" offset="0%" />
-                        <stop stopColor="#d97706" offset="50%" />
+                        <stop stopColor="#C97700" offset="50%" />
                       </linearGradient>
                       <linearGradient id="fsb-sl">
-                        <stop stopColor="#d97706" offset="0%" />
-                        <stop stopColor="#a16207" offset="50%" />
+                        <stop stopColor="#C97700" offset="0%" />
+                        <stop stopColor="#C97700" offset="50%" />
                       </linearGradient>
                     </defs>
                   </svg>

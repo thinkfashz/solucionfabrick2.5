@@ -62,7 +62,7 @@ export default function PresupuestoModelViewer({ archivos }: { archivos?: Presup
   return (
     <section className="overflow-hidden rounded-[1.75rem] border border-yellow-400/20 bg-zinc-950/90 shadow-2xl shadow-black/30">
       <div className="grid gap-0 lg:grid-cols-[minmax(0,1fr)_320px]">
-        <div className="relative flex min-h-[420px] flex-col items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_center,rgba(250,204,21,0.16),transparent_42%),#050505] p-6 text-center">
+        <div className="relative flex min-h-[420px] flex-col items-center justify-center overflow-hidden bg-[radial-gradient(circle_at_center,rgba(255, 176, 0,0.16),transparent_42%),#08090A] p-6 text-center">
           <p className="rounded-full border border-yellow-400/30 bg-yellow-400/10 px-4 py-1 text-xs font-black uppercase tracking-[0.28em] text-yellow-200">Archivo 3D</p>
           <h3 className="mt-5 max-w-xl text-3xl font-black text-white sm:text-5xl">Modelo técnico del proyecto</h3>
           <p className="mt-4 max-w-lg text-sm leading-7 text-zinc-400">El archivo GLB está asociado al presupuesto. Esta versión valida el link y permite descargarlo sin romper la página pública.</p>

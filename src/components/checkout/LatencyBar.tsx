@@ -20,9 +20,9 @@ interface LatencyBarProps {
 }
 
 const COLOUR_OK = '#34d399'; // emerald-400
-const COLOUR_WARN = '#fbbf24'; // amber-400
+const COLOUR_WARN = '#FFB000'; // amber-400
 const COLOUR_BAD = '#f87171'; // red-400
-const GRID = '#27272a'; // zinc-800
+const GRID = '#1A1B1F'; // zinc-800
 
 function bandFor(ms: number) {
   if (ms < 300) return 'ok';
@@ -146,7 +146,7 @@ export default function LatencyBar({
             y={height / 2 + 3}
             textAnchor="middle"
             fontSize={10}
-            fill="#71717a"
+            fill="#BFB8AC"
           >
             esperando primera muestra…
           </text>

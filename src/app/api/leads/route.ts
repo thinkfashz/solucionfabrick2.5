@@ -61,8 +61,8 @@ interface NotifyPayload {
 function emailRow(label: string, value: string) {
   return `
     <div style="display:grid;grid-template-columns:140px 1fr;gap:12px;padding:12px 0;border-bottom:1px solid rgba(255,255,255,.07)">
-      <div style="color:#71717a;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.18em">${label}</div>
-      <div style="color:#fff;font-size:15px;line-height:1.5">${value}</div>
+      <div style="color:#BFB8AC;font-size:12px;font-weight:900;text-transform:uppercase;letter-spacing:.18em">${label}</div>
+      <div style="color:#FFF9EE;font-size:15px;line-height:1.5">${value}</div>
     </div>`;
 }
 
@@ -80,35 +80,35 @@ function leadEmailHtml(lead: NotifyPayload) {
   <!doctype html>
   <html lang="es">
     <head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"></head>
-    <body style="margin:0;background:#050505;padding:24px;font-family:Inter,Arial,sans-serif;color:#f4f4f5">
+    <body style="margin:0;background:#08090A;padding:24px;font-family:Inter,Arial,sans-serif;color:#F2DFBB">
       <table role="presentation" width="100%" cellspacing="0" cellpadding="0" style="max-width:680px;margin:0 auto;border-collapse:collapse">
         <tr><td style="padding:0 0 18px">
-          <div style="border:1px solid rgba(250,204,21,.25);background:linear-gradient(135deg,#090909,#14110a);border-radius:28px;padding:26px;box-shadow:0 24px 80px rgba(0,0,0,.35)">
-            <div style="font-size:13px;letter-spacing:.28em;text-transform:uppercase;font-weight:900;color:#fff">SOLUCIONES <span style="color:#facc15">FABRICK</span></div>
-            <div style="height:4px;width:72px;border-radius:99px;background:#facc15;margin:18px 0"></div>
-            <p style="margin:0;color:#facc15;font-size:11px;letter-spacing:.32em;text-transform:uppercase;font-weight:900">Nuevo lead web</p>
-            <h1 style="margin:10px 0 0;font-size:30px;line-height:1.05;color:#fff">${nombre} quiere orientación</h1>
-            <p style="margin:14px 0 0;color:#a1a1aa;font-size:15px;line-height:1.7">Resumen listo para responder, guardar en CRM y convertir la consulta en una cotización real.</p>
+          <div style="border:1px solid rgba(255, 176, 0,.25);background:linear-gradient(135deg,#090909,#14110a);border-radius:28px;padding:26px;box-shadow:0 24px 80px rgba(0,0,0,.35)">
+            <div style="font-size:13px;letter-spacing:.28em;text-transform:uppercase;font-weight:900;color:#FFF9EE">SOLUCIONES <span style="color:#FFB000">FABRICK</span></div>
+            <div style="height:4px;width:72px;border-radius:99px;background:#FFB000;margin:18px 0"></div>
+            <p style="margin:0;color:#FFB000;font-size:11px;letter-spacing:.32em;text-transform:uppercase;font-weight:900">Nuevo lead web</p>
+            <h1 style="margin:10px 0 0;font-size:30px;line-height:1.05;color:#FFF9EE">${nombre} quiere orientación</h1>
+            <p style="margin:14px 0 0;color:#BFB8AC;font-size:15px;line-height:1.7">Resumen listo para responder, guardar en CRM y convertir la consulta en una cotización real.</p>
           </div>
         </td></tr>
         <tr><td>
-          <div style="border:1px solid rgba(255,255,255,.10);background:#0b0b0b;border-radius:24px;padding:22px">
+          <div style="border:1px solid rgba(255,255,255,.10);background:#08090A;border-radius:24px;padding:22px">
             ${emailRow('Nombre', nombre)}
-            ${emailRow('Correo', `<a href="mailto:${email}" style="color:#facc15;text-decoration:none">${email}</a>`)}
-            ${emailRow('Teléfono', telefonoRaw ? `<a href="tel:${telefono}" style="color:#facc15;text-decoration:none">${telefono}</a>` : telefono)}
+            ${emailRow('Correo', `<a href="mailto:${email}" style="color:#FFB000;text-decoration:none">${email}</a>`)}
+            ${emailRow('Teléfono', telefonoRaw ? `<a href="tel:${telefono}" style="color:#FFB000;text-decoration:none">${telefono}</a>` : telefono)}
             ${emailRow('Necesidad', tipo)}
             ${emailRow('Fecha', fecha)}
-            <div style="margin-top:18px;padding:18px;border:1px solid rgba(250,204,21,.18);background:rgba(250,204,21,.06);border-radius:18px">
-              <div style="font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#facc15;font-weight:900;margin-bottom:10px">Mensaje del cliente</div>
+            <div style="margin-top:18px;padding:18px;border:1px solid rgba(255, 176, 0,.18);background:rgba(255, 176, 0,.06);border-radius:18px">
+              <div style="font-size:11px;letter-spacing:.22em;text-transform:uppercase;color:#FFB000;font-weight:900;margin-bottom:10px">Mensaje del cliente</div>
               <div style="white-space:pre-wrap;color:#e4e4e7;font-size:15px;line-height:1.7">${mensaje}</div>
             </div>
             <div style="margin-top:22px">
-              <a href="mailto:${email}" style="display:inline-block;background:#facc15;color:#000;text-decoration:none;font-weight:900;letter-spacing:.16em;text-transform:uppercase;font-size:11px;padding:14px 18px;border-radius:999px">Responder correo</a>
-              ${wa ? `<a href="https://wa.me/${wa}" style="display:inline-block;margin-left:8px;border:1px solid rgba(250,204,21,.35);color:#facc15;text-decoration:none;font-weight:900;letter-spacing:.16em;text-transform:uppercase;font-size:11px;padding:14px 18px;border-radius:999px">WhatsApp</a>` : ''}
+              <a href="mailto:${email}" style="display:inline-block;background:#FFB000;color:#08090A;text-decoration:none;font-weight:900;letter-spacing:.16em;text-transform:uppercase;font-size:11px;padding:14px 18px;border-radius:999px">Responder correo</a>
+              ${wa ? `<a href="https://wa.me/${wa}" style="display:inline-block;margin-left:8px;border:1px solid rgba(255, 176, 0,.35);color:#FFB000;text-decoration:none;font-weight:900;letter-spacing:.16em;text-transform:uppercase;font-size:11px;padding:14px 18px;border-radius:999px">WhatsApp</a>` : ''}
             </div>
           </div>
         </td></tr>
-        <tr><td style="padding:18px 8px 0;color:#71717a;font-size:12px;line-height:1.6;text-align:center">Lead guardado desde formulario web y enviado al CRM del admin. Recomendación: responder en menos de 24h.</td></tr>
+        <tr><td style="padding:18px 8px 0;color:#BFB8AC;font-size:12px;line-height:1.6;text-align:center">Lead guardado desde formulario web y enviado al CRM del admin. Recomendación: responder en menos de 24h.</td></tr>
       </table>
     </body>
   </html>`;

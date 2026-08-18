@@ -2,22 +2,22 @@ import type { VideoScene } from '../types/video-engine.types';
 
 // ── Color palette per background style ──────────────────────────────────────
 const SCENE_COLORS: Record<string, readonly [string, string]> = {
-  blueprint:        ['#0c1a2e', '#000000'],
-  metal:            ['#27272a', '#09090b'],
-  premium:          ['#451a03', '#09090b'],
-  concrete:         ['#292524', '#000000'],
-  'dark-grid':      ['#0a0a0a', '#000000'],
-  'dark_editorial': ['#0a0a0a', '#000000'],
-  cinematic:        ['#1c0a00', '#000000'],
-  minimal:          ['#18181b', '#000000'],
-  technical:        ['#0a1628', '#000000'],
+  blueprint:        ['#0c1a2e', '#08090A'],
+  metal:            ['#1A1B1F', '#08090A'],
+  premium:          ['#451a03', '#08090A'],
+  concrete:         ['#292524', '#08090A'],
+  'dark-grid':      ['#08090A', '#08090A'],
+  'dark_editorial': ['#08090A', '#08090A'],
+  cinematic:        ['#1c0a00', '#08090A'],
+  minimal:          ['#1A1B1F', '#08090A'],
+  technical:        ['#0a1628', '#08090A'],
 };
 
 function sceneColors(style: string): readonly [string, string] {
   for (const [key, colors] of Object.entries(SCENE_COLORS)) {
     if (style.includes(key)) return colors;
   }
-  return ['#18181b', '#000000'];
+  return ['#1A1B1F', '#08090A'];
 }
 
 // ── Easing: cubic ease-in-out ────────────────────────────────────────────────
@@ -122,7 +122,7 @@ export function renderSceneFrame(
 
   // ── 4. Yellow radial glow (top-left) ─────────────────────────────────────
   const glow = ctx.createRadialGradient(w * 0.28, h * 0.14, 0, w * 0.28, h * 0.14, w * 0.65);
-  glow.addColorStop(0, 'rgba(250,204,21,0.14)');
+  glow.addColorStop(0, 'rgba(255, 176, 0,0.14)');
   glow.addColorStop(1, 'rgba(0,0,0,0)');
   ctx.fillStyle = glow;
   ctx.fillRect(0, 0, w, h);
@@ -141,7 +141,7 @@ export function renderSceneFrame(
   // ── 6. Top-bar brand + timing ─────────────────────────────────────────────
   const labelSize = Math.max(9, Math.floor(w * 0.028));
   ctx.font = `700 ${labelSize}px system-ui,-apple-system,sans-serif`;
-  ctx.fillStyle = 'rgba(250,204,21,0.70)';
+  ctx.fillStyle = 'rgba(255, 176, 0,0.70)';
   ctx.textAlign = 'left';
   ctx.textBaseline = 'top';
   ctx.fillText('FABRICK STUDIO', w * 0.05, h * 0.028);
@@ -225,7 +225,7 @@ export function renderSceneFrame(
   const barProgress = Math.min(1, progress / 0.18);
   const barLen = w * 0.13 * barProgress;
   if (barLen > 0) {
-    ctx.fillStyle = '#facc15';
+    ctx.fillStyle = '#FFB000';
     ctx.fillRect(padX, baseY - h * 0.052, barLen, Math.max(2, Math.floor(h * 0.0042)));
   }
 
@@ -233,7 +233,7 @@ export function renderSceneFrame(
   const isLong   = scene.screen_text.length > 20;
   const bigSize  = Math.max(13, Math.floor(w * (isLong ? 0.058 : 0.072)));
   ctx.font        = `900 ${bigSize}px system-ui,-apple-system,sans-serif`;
-  ctx.fillStyle   = '#ffffff';
+  ctx.fillStyle   = '#FFF9EE';
   ctx.textBaseline = 'alphabetic';
 
   // Subtle text shadow for legibility over images
@@ -261,11 +261,11 @@ export function renderSceneFrame(
   const badgeR = Math.max(11, Math.floor(w * 0.038));
   const badgeX = w * 0.88;
   const badgeY = h * 0.052;
-  ctx.fillStyle = '#facc15';
+  ctx.fillStyle = '#FFB000';
   ctx.beginPath();
   ctx.arc(badgeX, badgeY, badgeR, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle    = '#000000';
+  ctx.fillStyle    = '#08090A';
   ctx.font         = `900 ${Math.floor(badgeR * 1.05)}px system-ui,-apple-system,sans-serif`;
   ctx.textAlign    = 'center';
   ctx.textBaseline = 'middle';

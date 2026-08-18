@@ -87,7 +87,7 @@ export default function UiverseProductCard({
               onError={() => setImageFailed(true)}
             />
           ) : (
-            <div className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_50%_0%,rgba(250,204,21,.24),transparent_55%),#17120c] text-4xl font-black text-yellow-200/60">{productInitial}</div>
+            <div className="grid h-full w-full place-items-center bg-[radial-gradient(circle_at_50%_0%,rgba(255, 176, 0,.24),transparent_55%),#111214] text-4xl font-black text-yellow-200/60">{productInitial}</div>
           )}
         </div>
         <div className="absolute inset-0 bg-gradient-to-t from-black/78 via-black/8 to-transparent" />

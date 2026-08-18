@@ -86,8 +86,8 @@ const COLORS: Record<EventKind, string> = {
   order: '#22c55e',
   lead: '#ec4899',
   error: '#ef4444',
-  sync: '#facc15',
-  info: '#94a3b8',
+  sync: '#FFB000',
+  info: '#BFB8AC',
 };
 
 const INITIAL_STATUS: ObservatoryData['servicioStatus'] = {

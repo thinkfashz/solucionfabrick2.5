@@ -40,7 +40,7 @@ export function parseGeneratedLanding(raw: string): GeneratedLandingDraft {
     return {
       title: text(parsed.title, 'Demo digital'),
       html: `<main data-sf-block="fallback" class="sf-generated"><section data-sf-editable="fallback-copy"><h1>Demo digital generada</h1><p>No se pudo interpretar el HTML del modelo. Revisa la respuesta IA y vuelve a generar.</p></section></main>`,
-      css: css || `body{margin:0;background:#060606;color:white;font-family:Inter,system-ui,sans-serif}.sf-generated{min-height:100vh;display:grid;place-items:center;padding:24px}.sf-generated section{max-width:760px;border:1px solid rgba(255,255,255,.15);border-radius:28px;padding:32px;background:rgba(255,255,255,.06)}`,
+      css: css || `body{margin:0;background:#08090A;color:white;font-family:Inter,system-ui,sans-serif}.sf-generated{min-height:100vh;display:grid;place-items:center;padding:24px}.sf-generated section{max-width:760px;border:1px solid rgba(255,255,255,.15);border-radius:28px;padding:32px;background:rgba(255,255,255,.06)}`,
       js,
       shareTitle: text(parsed.shareTitle, 'Demo digital'),
       shareDescription: text(parsed.shareDescription, 'Vista previa comercial generada con IA.'),

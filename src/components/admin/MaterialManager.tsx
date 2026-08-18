@@ -609,7 +609,7 @@ export default function MaterialManager({ initialMaterials = [] }: MaterialManag
               <button
                 type="submit"
                 disabled={submitting}
-                className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-yellow-400 px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-black shadow-[0_8px_24px_-8px_rgba(250,204,21,0.5)] transition-all hover:-translate-y-0.5 hover:bg-yellow-300 hover:shadow-[0_0_24px_rgba(250,204,21,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50"
+                className="inline-flex min-h-[44px] items-center gap-2 rounded-full bg-yellow-400 px-5 py-2.5 text-sm font-bold uppercase tracking-wider text-black shadow-[0_8px_24px_-8px_rgba(255, 176, 0,0.5)] transition-all hover:-translate-y-0.5 hover:bg-yellow-300 hover:shadow-[0_0_24px_rgba(255, 176, 0,0.55)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-yellow-300 focus-visible:ring-offset-2 focus-visible:ring-offset-black disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {editingId ? <Save className="h-4 w-4" aria-hidden /> : <Plus className="h-4 w-4" aria-hidden />}
                 {submitting
@@ -782,19 +782,19 @@ export default function MaterialManager({ initialMaterials = [] }: MaterialManag
           background-color: rgba(0, 0, 0, 0.5);
           padding: 0.625rem 0.75rem;
           font-size: 0.875rem;
-          color: #fafafa;
+          color: #FFF9EE;
           outline: none;
           transition: border-color 150ms, box-shadow 150ms, background-color 150ms;
         }
         :global(.input::placeholder) {
-          color: #52525b;
+          color: #6E675D;
         }
         :global(.input:hover) {
           border-color: rgba(255, 255, 255, 0.18);
         }
         :global(.input:focus) {
-          border-color: rgba(250, 204, 21, 0.6);
-          box-shadow: 0 0 0 3px rgba(250, 204, 21, 0.15);
+          border-color: rgba(255, 176, 0, 0.6);
+          box-shadow: 0 0 0 3px rgba(255, 176, 0, 0.15);
           background-color: rgba(0, 0, 0, 0.7);
         }
         :global(select.input) {
@@ -802,9 +802,9 @@ export default function MaterialManager({ initialMaterials = [] }: MaterialManag
           background-image: linear-gradient(
               45deg,
               transparent 50%,
-              rgba(250, 204, 21, 0.7) 50%
+              rgba(255, 176, 0, 0.7) 50%
             ),
-            linear-gradient(135deg, rgba(250, 204, 21, 0.7) 50%, transparent 50%);
+            linear-gradient(135deg, rgba(255, 176, 0, 0.7) 50%, transparent 50%);
           background-position:
             calc(100% - 16px) 50%,
             calc(100% - 11px) 50%;
@@ -813,8 +813,8 @@ export default function MaterialManager({ initialMaterials = [] }: MaterialManag
           padding-right: 2rem;
         }
         :global(select.input option) {
-          background-color: #18181b;
-          color: #fafafa;
+          background-color: #1A1B1F;
+          color: #FFF9EE;
         }
       `}</style>
     </div>

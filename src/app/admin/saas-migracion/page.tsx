@@ -36,7 +36,7 @@ const checklist = [
 ];
 
 export default function SaasMigrationAdminPage() {
-  return <main className="min-h-screen bg-[#050505] px-4 py-6 text-white md:px-6">
+  return <main className="min-h-screen bg-[#08090A] px-4 py-6 text-white md:px-6">
     <section className="mx-auto max-w-6xl space-y-5">
       <header className="relative overflow-hidden rounded-[2.4rem] border border-amber-300/20 bg-[radial-gradient(circle_at_85%_0%,rgba(245,158,11,.25),transparent_30rem),linear-gradient(135deg,rgba(255,255,255,.07),rgba(255,255,255,.025))] p-6 shadow-2xl shadow-black/40 md:p-8">
         <div className="relative z-10 max-w-3xl">

@@ -32,7 +32,7 @@ const FALLBACK: Branding = {
   id: '00000000-0000-0000-0000-000000000001',
   slug: 'fabrick',
   name: 'Soluciones Fabrick',
-  primaryColor: '#f59e0b',
+  primaryColor: '#F5871F',
   logoUrl: null,
   phone: null,
   billingEmail: null,
@@ -57,10 +57,10 @@ function shouldHide(pathname: string, forceShow: boolean) {
 function applyTheme(branding: Branding) {
   const theme = branding.theme;
   document.documentElement.style.setProperty('--tenant-primary', theme?.primary || branding.primaryColor || FALLBACK.primaryColor);
-  document.documentElement.style.setProperty('--tenant-secondary', theme?.secondary || '#ea580c');
-  document.documentElement.style.setProperty('--tenant-accent', theme?.accent || '#fde68a');
-  document.documentElement.style.setProperty('--tenant-bg', theme?.background || '#050505');
-  document.documentElement.style.setProperty('--tenant-surface', theme?.surface || '#11100d');
+  document.documentElement.style.setProperty('--tenant-secondary', theme?.secondary || '#F5871F');
+  document.documentElement.style.setProperty('--tenant-accent', theme?.accent || '#FFD05A');
+  document.documentElement.style.setProperty('--tenant-bg', theme?.background || '#08090A');
+  document.documentElement.style.setProperty('--tenant-surface', theme?.surface || '#111214');
   document.documentElement.style.setProperty('--tenant-text', theme?.text || '#fff7ed');
   document.documentElement.style.setProperty('--tenant-name', branding.name || FALLBACK.name);
 }

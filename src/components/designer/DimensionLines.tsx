@@ -12,7 +12,7 @@
 import { Html, Line } from '@react-three/drei';
 import { useSelectedElement } from '@/store/useDesignStore';
 
-const DIM_COLOR = '#facc15';
+const DIM_COLOR = '#FFB000';
 
 function fmt(m: number): string {
   return `${m.toFixed(2)} m`;

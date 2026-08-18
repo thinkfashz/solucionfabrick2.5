@@ -42,7 +42,7 @@ export default function OnboardingStatusPage() {
 
   useEffect(() => { void load(); }, []);
 
-  return <main className="min-h-screen bg-[#050505] px-4 py-6 text-white md:px-6">
+  return <main className="min-h-screen bg-[#08090A] px-4 py-6 text-white md:px-6">
     <section className="mx-auto max-w-6xl space-y-5">
       <header className="rounded-[2rem] border border-white/10 bg-white/[0.045] p-6">
         <Link href="/admin/superadmin/saas" className="text-sm font-bold text-emerald-200">← Volver</Link>

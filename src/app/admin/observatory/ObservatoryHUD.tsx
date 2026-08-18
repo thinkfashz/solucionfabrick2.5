@@ -13,7 +13,7 @@ const SERVICE_LABELS: Record<ServiceId, string> = {
 
 const SERVICE_COLORS: Record<ServiceId, string> = {
   vercel: '#4f8ef7',
-  insforge: '#facc15',
+  insforge: '#FFB000',
   github: '#a855f7',
   mercadopago: '#22c55e',
   cloudflare: '#06b6d4',
@@ -74,13 +74,13 @@ function AnimatedNumber({ value }: { value: number }) {
   return <>{formatCLP(display)}</>;
 }
 
-const ACCENT = '#facc15';
+const ACCENT = '#FFB000';
 
 const panelStyle: React.CSSProperties = {
   background: 'rgba(6,10,18,0.88)',
   backdropFilter: 'blur(12px)',
   WebkitBackdropFilter: 'blur(12px)',
-  border: '1px solid rgba(250,204,21,0.22)',
+  border: '1px solid rgba(255, 176, 0,0.22)',
   borderRadius: 12,
   padding: '16px',
 };
@@ -154,7 +154,7 @@ export default function ObservatoryHUD({
     { label: 'Productos activos', value: data.productosActivos, color: '#22c55e' },
     { label: 'Pedidos hoy', value: data.pedidosHoy, color: '#4f8ef7' },
     { label: 'Leads nuevos', value: data.leadsHoy, color: '#ec4899' },
-    { label: 'Revenue semana', value: data.revenueWeek, color: '#f59e0b', prefix: '$' },
+    { label: 'Revenue semana', value: data.revenueWeek, color: '#F5871F', prefix: '$' },
     { label: 'Errores 1h', value: data.errorsHour, color: '#ef4444' },
   ];
 
@@ -219,7 +219,7 @@ export default function ObservatoryHUD({
             style={{
               background: paused ? '#ef4444' : `${ACCENT}2c`,
               border: `1px solid ${paused ? '#ef4444' : ACCENT + '66'}`,
-              color: paused ? '#fff' : ACCENT,
+              color: paused ? '#FFF9EE' : ACCENT,
               borderRadius: 6,
               padding: '4px 10px',
               fontSize: 11,
@@ -230,7 +230,7 @@ export default function ObservatoryHUD({
           >
             {paused ? '▶ PLAY' : '❚❚ PAUSE'}
           </button>
-          <span style={{ color: '#94a3b8', fontSize: 9, letterSpacing: '0.2em' }}>SPEED</span>
+          <span style={{ color: '#BFB8AC', fontSize: 9, letterSpacing: '0.2em' }}>SPEED</span>
           {[0.5, 1, 2, 4].map((s) => (
             <button
               key={s}
@@ -239,7 +239,7 @@ export default function ObservatoryHUD({
               style={{
                 background: speed === s ? `${ACCENT}2c` : 'transparent',
                 border: speed === s ? `1px solid ${ACCENT}66` : '1px solid #27303f',
-                color: speed === s ? ACCENT : '#94a3b8',
+                color: speed === s ? ACCENT : '#BFB8AC',
                 borderRadius: 6,
                 padding: '3px 8px',
                 fontSize: 10,
@@ -279,20 +279,20 @@ export default function ObservatoryHUD({
           <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, marginTop: 8 }}>
             <span
               style={{
-                color: '#facc15',
+                color: '#FFB000',
                 fontSize: 8,
                 letterSpacing: '0.3em',
                 textTransform: 'uppercase',
                 fontWeight: 800,
-                background: '#facc1522',
+                background: '#FFB00022',
                 padding: '2px 6px',
                 borderRadius: 4,
-                border: '1px solid #facc1555',
+                border: '1px solid #FFB00055',
               }}
             >
               InsForge
             </span>
-            <span style={{ color: '#94a3b8', fontSize: 8, letterSpacing: '0.2em' }}>NTP · UTC</span>
+            <span style={{ color: '#BFB8AC', fontSize: 8, letterSpacing: '0.2em' }}>NTP · UTC</span>
           </div>
           <div style={{ color: ACCENT, fontSize: 22, marginTop: 4, fontWeight: 800, letterSpacing: '0.05em' }}>
             {now
@@ -303,7 +303,7 @@ export default function ObservatoryHUD({
                 })
               : '—'}
           </div>
-          <div style={{ color: '#9ca3af', fontSize: 10, marginTop: 2 }}>
+          <div style={{ color: '#BFB8AC', fontSize: 10, marginTop: 2 }}>
             {now
               ? now.toLocaleDateString('es-CL', {
                   weekday: 'short',
@@ -316,7 +316,7 @@ export default function ObservatoryHUD({
           {insforgeSync !== null && (
             <div
               style={{
-                color: data.syncing ? '#facc15' : '#22c55e',
+                color: data.syncing ? '#FFB000' : '#22c55e',
                 fontSize: 9,
                 marginTop: 6,
                 letterSpacing: '0.15em',
@@ -335,7 +335,7 @@ export default function ObservatoryHUD({
               alignItems: 'baseline',
             }}
           >
-            <p style={{ color: '#6b7280', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.2em' }}>
+            <p style={{ color: '#BFB8AC', fontSize: 9, textTransform: 'uppercase', letterSpacing: '0.2em' }}>
               Data Vehicles
             </p>
             <p style={{ color: ACCENT, fontSize: 22, fontWeight: 900, lineHeight: 1.1 }}>
@@ -353,7 +353,7 @@ export default function ObservatoryHUD({
                 <p
                   className="truncate"
                   style={{
-                    color: '#6b7280',
+                    color: '#BFB8AC',
                     fontSize: 9,
                     textTransform: 'uppercase',
                     letterSpacing: '0.2em',
@@ -383,19 +383,19 @@ export default function ObservatoryHUD({
               <button
                 type="button"
                 onClick={() => onSelectService(null)}
-                style={{ background: 'transparent', border: 'none', color: '#94a3b8', cursor: 'pointer', fontSize: 14 }}
+                style={{ background: 'transparent', border: 'none', color: '#BFB8AC', cursor: 'pointer', fontSize: 14 }}
               >
                 ✕
               </button>
             </div>
             <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
-              <span style={{ color: '#94a3b8', fontSize: 10 }}>Estado</span>
+              <span style={{ color: '#BFB8AC', fontSize: 10 }}>Estado</span>
               <span style={{ color: selectedDetails.online ? '#22c55e' : '#ef4444', fontSize: 10, fontWeight: 700, letterSpacing: '0.2em' }}>
                 {selectedDetails.online ? 'ONLINE' : 'OFFLINE'}
               </span>
             </div>
             <div className="flex items-center justify-between" style={{ marginBottom: 6 }}>
-              <span style={{ color: '#94a3b8', fontSize: 10 }}>Latencia</span>
+              <span style={{ color: '#BFB8AC', fontSize: 10 }}>Latencia</span>
               <span style={{ color: SERVICE_COLORS[selectedService], fontSize: 14, fontWeight: 800 }}>
                 {selectedDetails.latencyMs}ms
               </span>
@@ -473,13 +473,13 @@ export default function ObservatoryHUD({
                         flexShrink: 0,
                       }}
                     />
-                    <span className="truncate" style={{ color: '#e5e7eb', fontSize: 11, fontWeight: 600 }}>
+                    <span className="truncate" style={{ color: '#F2DFBB', fontSize: 11, fontWeight: 600 }}>
                       {SERVICE_LABELS[id]}
                     </span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Sparkline samples={s.history} color={color} />
-                    <span style={{ color: '#94a3b8', fontSize: 10, minWidth: 36, textAlign: 'right' }}>
+                    <span style={{ color: '#BFB8AC', fontSize: 10, minWidth: 36, textAlign: 'right' }}>
                       {s.latencyMs}ms
                     </span>
                   </div>
@@ -500,7 +500,7 @@ export default function ObservatoryHUD({
                   onClick={() => setBottomTab(t)}
                   style={{
                     background: bottomTab === t ? `${ACCENT}2c` : 'transparent',
-                    color: bottomTab === t ? ACCENT : '#94a3b8',
+                    color: bottomTab === t ? ACCENT : '#BFB8AC',
                     border: bottomTab === t ? `1px solid ${ACCENT}66` : '1px solid transparent',
                     borderRadius: 6,
                     padding: '4px 8px',
@@ -526,7 +526,7 @@ export default function ObservatoryHUD({
                 style={{
                   background: logFilter === 'all' ? `${ACCENT}2c` : 'transparent',
                   border: logFilter === 'all' ? `1px solid ${ACCENT}66` : '1px solid #27303f',
-                  color: logFilter === 'all' ? ACCENT : '#94a3b8',
+                  color: logFilter === 'all' ? ACCENT : '#BFB8AC',
                   borderRadius: 4,
                   padding: '2px 6px',
                   fontSize: 8,
@@ -549,7 +549,7 @@ export default function ObservatoryHUD({
                     style={{
                       background: sel ? `${c}2c` : 'transparent',
                       border: sel ? `1px solid ${c}66` : '1px solid #27303f',
-                      color: sel ? c : '#94a3b8',
+                      color: sel ? c : '#BFB8AC',
                       borderRadius: 4,
                       padding: '2px 6px',
                       fontSize: 8,
@@ -568,7 +568,7 @@ export default function ObservatoryHUD({
 
           {bottomTab === 'events' && (
             filteredEvents.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: 11 }}>Sin eventos.</p>
+              <p style={{ color: '#BFB8AC', fontSize: 11 }}>Sin eventos.</p>
             ) : (
               <div className="flex flex-col gap-1" style={{ maxHeight: 240, overflowY: 'auto' }}>
                 {filteredEvents.slice(0, 30).map((e) => (
@@ -589,7 +589,7 @@ export default function ObservatoryHUD({
                     <span style={{ flex: 1, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {e.message}
                     </span>
-                    <span style={{ color: '#6b7280', fontSize: 9, flexShrink: 0 }}>{timeAgo(e.ts)}</span>
+                    <span style={{ color: '#BFB8AC', fontSize: 9, flexShrink: 0 }}>{timeAgo(e.ts)}</span>
                   </div>
                 ))}
               </div>
@@ -598,7 +598,7 @@ export default function ObservatoryHUD({
 
           {bottomTab === 'logs' && (
             filteredLogs.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: 11 }}>Esperando tráfico…</p>
+              <p style={{ color: '#BFB8AC', fontSize: 11 }}>Esperando tráfico…</p>
             ) : (
               <div className="flex flex-col gap-1" style={{ maxHeight: 240, overflowY: 'auto' }}>
                 {filteredLogs.slice(0, 40).map((l, i) => (
@@ -622,7 +622,7 @@ export default function ObservatoryHUD({
 
           {bottomTab === 'orders' && (
             data.latestOrders.length === 0 ? (
-              <p style={{ color: '#6b7280', fontSize: 11 }}>{data.loading ? 'Sincronizando…' : 'Sin órdenes recientes.'}</p>
+              <p style={{ color: '#BFB8AC', fontSize: 11 }}>{data.loading ? 'Sincronizando…' : 'Sin órdenes recientes.'}</p>
             ) : (
               <div className="flex flex-col gap-2">
                 {data.latestOrders.map((o) => (
@@ -632,10 +632,10 @@ export default function ObservatoryHUD({
                     style={{ borderBottom: `1px solid ${ACCENT}14`, paddingBottom: 6 }}
                   >
                     <div className="min-w-0">
-                      <p style={{ color: '#e5e7eb', fontSize: 11, fontWeight: 600 }} className="truncate">
+                      <p style={{ color: '#F2DFBB', fontSize: 11, fontWeight: 600 }} className="truncate">
                         #{o.id.slice(0, 8)}
                       </p>
-                      <p style={{ color: '#6b7280', fontSize: 9 }}>
+                      <p style={{ color: '#BFB8AC', fontSize: 9 }}>
                         {timeAgo(o.created_at)} · {o.status}
                       </p>
                     </div>
@@ -657,7 +657,7 @@ export default function ObservatoryHUD({
           style={{
             ...panelStyle,
             padding: '6px 14px',
-            color: '#facc15',
+            color: '#FFB000',
             fontSize: 10,
             letterSpacing: '0.25em',
             textTransform: 'uppercase',

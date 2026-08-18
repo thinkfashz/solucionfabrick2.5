@@ -5,7 +5,7 @@ import type { ObservatoryData, ServiceId } from './useObservatoryData';
 import styles from './MobileObservatory.module.css';
 import cityStyles from './MobileObservatoryCity.module.css';
 
-const ACCENT = '#facc15';
+const ACCENT = '#FFB000';
 
 const SERVICE_LABELS: Record<ServiceId, string> = {
   vercel: 'Vercel',
@@ -17,7 +17,7 @@ const SERVICE_LABELS: Record<ServiceId, string> = {
 
 const SERVICE_COLORS: Record<ServiceId, string> = {
   vercel: '#4f8ef7',
-  insforge: '#facc15',
+  insforge: '#FFB000',
   github: '#a855f7',
   mercadopago: '#22c55e',
   cloudflare: '#06b6d4',
@@ -144,9 +144,9 @@ function MiniCityMap() {
             position: 'absolute',
             inset: 0,
             backgroundImage:
-              'linear-gradient(rgba(250,204,21,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(250,204,21,0.18) 1px, transparent 1px)',
+              'linear-gradient(rgba(255, 176, 0,0.18) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 176, 0,0.18) 1px, transparent 1px)',
             backgroundSize: `${CELL}px ${CELL}px`,
-            boxShadow: 'inset 0 0 40px rgba(250,204,21,0.12)',
+            boxShadow: 'inset 0 0 40px rgba(255, 176, 0,0.12)',
           }}
         />
 
@@ -234,7 +234,7 @@ export default function MobileObservatory({ data }: { data: ObservatoryData }) {
     { label: 'Productos', value: data.productosActivos, color: '#22c55e' },
     { label: 'Pedidos hoy', value: data.pedidosHoy, color: '#4f8ef7' },
     { label: 'Leads', value: data.leadsHoy, color: '#ec4899' },
-    { label: 'Revenue', value: data.revenueWeek, color: '#f59e0b', prefix: '$' },
+    { label: 'Revenue', value: data.revenueWeek, color: '#F5871F', prefix: '$' },
     { label: 'Errores 1h', value: data.errorsHour, color: '#ef4444' },
   ];
 
@@ -250,7 +250,7 @@ export default function MobileObservatory({ data }: { data: ObservatoryData }) {
   return (
     <div
       className="h-full w-full overflow-y-auto"
-      style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: '#e5e7eb' }}
+      style={{ fontFamily: 'ui-monospace, SFMono-Regular, Menlo, monospace', color: '#F2DFBB' }}
     >
       <div className="flex flex-col gap-3 p-3 pb-24">
         {/* InsForge clock + status */}
@@ -261,15 +261,15 @@ export default function MobileObservatory({ data }: { data: ObservatoryData }) {
             </div>
             <span
               style={{
-                color: '#facc15',
+                color: '#FFB000',
                 fontSize: 8,
                 letterSpacing: '0.3em',
                 textTransform: 'uppercase',
                 fontWeight: 800,
-                background: '#facc1522',
+                background: '#FFB00022',
                 padding: '2px 6px',
                 borderRadius: 4,
-                border: '1px solid #facc1555',
+                border: '1px solid #FFB00055',
               }}
             >
               InsForge
@@ -279,12 +279,12 @@ export default function MobileObservatory({ data }: { data: ObservatoryData }) {
             <span style={{ color: ACCENT, fontSize: 26, fontWeight: 800, letterSpacing: '0.05em', lineHeight: 1 }}>
               {now ? now.toLocaleTimeString('es-CL', { hour: '2-digit', minute: '2-digit', second: '2-digit' }) : '—'}
             </span>
-            <span style={{ color: '#9ca3af', fontSize: 10 }}>
+            <span style={{ color: '#BFB8AC', fontSize: 10 }}>
               {now ? now.toLocaleDateString('es-CL', { weekday: 'short', day: '2-digit', month: 'short' }) : ''}
             </span>
           </div>
           {insforgeSync !== null && (
-            <div style={{ color: data.syncing ? '#facc15' : '#22c55e', fontSize: 9, marginTop: 4, letterSpacing: '0.15em' }}>
+            <div style={{ color: data.syncing ? '#FFB000' : '#22c55e', fontSize: 9, marginTop: 4, letterSpacing: '0.15em' }}>
               {data.syncing ? '⟳ SYNCING…' : `✓ NTP · sync hace ${insforgeSync}s`}
             </div>
           )}
@@ -314,7 +314,7 @@ export default function MobileObservatory({ data }: { data: ObservatoryData }) {
                 onClick={() => setTab(t.id)}
                 style={{
                   background: active ? `${ACCENT}2c` : 'transparent',
-                  color: active ? ACCENT : '#94a3b8',
+                  color: active ? ACCENT : '#BFB8AC',
                   border: active ? `1px solid ${ACCENT}66` : '1px solid transparent',
                   borderRadius: 8,
                   padding: '8px 4px',
@@ -357,7 +357,7 @@ export default function MobileObservatory({ data }: { data: ObservatoryData }) {
             <div className={styles.panel}>
               <div className={styles.panelTitle}>Últimas órdenes</div>
               {data.latestOrders.length === 0 ? (
-                <div style={{ color: '#6b7280', fontSize: 11 }}>{data.loading ? 'Cargando…' : 'Sin órdenes recientes'}</div>
+                <div style={{ color: '#BFB8AC', fontSize: 11 }}>{data.loading ? 'Cargando…' : 'Sin órdenes recientes'}</div>
               ) : (
                 <div className="flex flex-col gap-2">
                   {data.latestOrders.slice(0, 5).map((o) => (
@@ -393,26 +393,26 @@ export default function MobileObservatory({ data }: { data: ObservatoryData }) {
                     >
                       <div className="flex items-center gap-2">
                         <span style={{ width: 8, height: 8, borderRadius: '50%', background: s.online ? color : '#ef4444', boxShadow: `0 0 8px ${s.online ? color : '#ef4444'}` }} />
-                        <span style={{ color: '#e5e7eb', fontSize: 13, fontWeight: 600 }}>{SERVICE_LABELS[id]}</span>
+                        <span style={{ color: '#F2DFBB', fontSize: 13, fontWeight: 600 }}>{SERVICE_LABELS[id]}</span>
                       </div>
                       <div className="flex items-center gap-3">
                         <span style={{ color: s.online ? '#22c55e' : '#ef4444', fontSize: 9, letterSpacing: '0.2em', fontWeight: 700 }}>
                           {s.online ? 'ONLINE' : 'OFFLINE'}
                         </span>
-                        <span style={{ color: '#9ca3af', fontSize: 11 }}>{s.latencyMs}ms</span>
-                        <span style={{ color: '#94a3b8', fontSize: 12, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
+                        <span style={{ color: '#BFB8AC', fontSize: 11 }}>{s.latencyMs}ms</span>
+                        <span style={{ color: '#BFB8AC', fontSize: 12, transform: isOpen ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }}>▾</span>
                       </div>
                     </button>
                     {isOpen && (
                       <div style={{ padding: '10px 12px', borderTop: `1px solid ${color}22`, display: 'flex', flexDirection: 'column', gap: 8 }}>
                         <div className="flex items-center justify-between">
-                          <span style={{ color: '#94a3b8', fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase' }}>Latencia · 30 muestras</span>
+                          <span style={{ color: '#BFB8AC', fontSize: 10, letterSpacing: '0.2em', textTransform: 'uppercase' }}>Latencia · 30 muestras</span>
                           <span style={{ color, fontSize: 11, fontWeight: 700 }}>{s.latencyMs}ms</span>
                         </div>
                         <Sparkline samples={s.history} color={color} width={280} height={36} />
                         <div className="flex items-center justify-between">
-                          <span style={{ color: '#94a3b8', fontSize: 10 }}>Eventos recientes</span>
-                          <span style={{ color: '#94a3b8', fontSize: 10 }}>
+                          <span style={{ color: '#BFB8AC', fontSize: 10 }}>Eventos recientes</span>
+                          <span style={{ color: '#BFB8AC', fontSize: 10 }}>
                             {data.events.filter((e) => e.service === id).length}
                           </span>
                         </div>
@@ -423,7 +423,7 @@ export default function MobileObservatory({ data }: { data: ObservatoryData }) {
                             </div>
                           ))}
                           {data.events.filter((e) => e.service === id).length === 0 && (
-                            <div style={{ color: '#6b7280', fontSize: 10 }}>Sin eventos.</div>
+                            <div style={{ color: '#BFB8AC', fontSize: 10 }}>Sin eventos.</div>
                           )}
                         </div>
                       </div>
@@ -446,7 +446,7 @@ export default function MobileObservatory({ data }: { data: ObservatoryData }) {
                   style={{
                     background: eventFilter === 'all' ? `${ACCENT}2c` : 'transparent',
                     border: eventFilter === 'all' ? `1px solid ${ACCENT}66` : '1px solid #27303f',
-                    color: eventFilter === 'all' ? ACCENT : '#94a3b8',
+                    color: eventFilter === 'all' ? ACCENT : '#BFB8AC',
                     borderRadius: 6,
                     padding: '4px 10px',
                     fontSize: 10,
@@ -469,7 +469,7 @@ export default function MobileObservatory({ data }: { data: ObservatoryData }) {
                       style={{
                         background: sel ? `${c}2c` : 'transparent',
                         border: sel ? `1px solid ${c}66` : '1px solid #27303f',
-                        color: sel ? c : '#94a3b8',
+                        color: sel ? c : '#BFB8AC',
                         borderRadius: 6,
                         padding: '4px 10px',
                         fontSize: 10,
@@ -508,7 +508,7 @@ export default function MobileObservatory({ data }: { data: ObservatoryData }) {
                     >
                       <span aria-hidden style={{ width: 14, textAlign: 'center' }}>{KIND_ICON[e.kind] ?? '·'}</span>
                       <span style={{ flex: 1, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{e.message}</span>
-                      <span style={{ color: '#6b7280', fontSize: 9, flexShrink: 0 }}>{timeAgo(e.ts)}</span>
+                      <span style={{ color: '#BFB8AC', fontSize: 9, flexShrink: 0 }}>{timeAgo(e.ts)}</span>
                     </div>
                   ))
                 )}
@@ -522,7 +522,7 @@ export default function MobileObservatory({ data }: { data: ObservatoryData }) {
             <div className={styles.panel}>
               <div className={styles.panelTitle}>Ciudad 3D · InsForge core</div>
               <MiniCityMap />
-              <div style={{ color: '#9ca3af', fontSize: 10, marginTop: 8, lineHeight: 1.5 }}>
+              <div style={{ color: '#BFB8AC', fontSize: 10, marginTop: 8, lineHeight: 1.5 }}>
                 Cada paquete representa una transferencia entre tus servicios. El edificio dorado central es <b style={{ color: ACCENT }}>InsForge</b>, el núcleo de datos.
               </div>
             </div>
@@ -533,7 +533,7 @@ export default function MobileObservatory({ data }: { data: ObservatoryData }) {
                   const s = data.servicioStatus[id];
                   return (
                     <div key={id} className="flex items-center justify-between gap-2">
-                      <span style={{ color: '#e5e7eb', fontSize: 11 }}>{SERVICE_LABELS[id]}</span>
+                      <span style={{ color: '#F2DFBB', fontSize: 11 }}>{SERVICE_LABELS[id]}</span>
                       <Sparkline samples={s.history} color={SERVICE_COLORS[id]} width={140} height={20} />
                     </div>
                   );

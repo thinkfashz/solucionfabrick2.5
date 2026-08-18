@@ -19,7 +19,7 @@ export default function SilverGoldButton({ children, onClick, className = '', di
         bg-gradient-to-r from-gray-300 via-yellow-400 to-gray-300
         text-black shadow-lg
         transition-all duration-300
-        hover:scale-105 hover:shadow-[0_0_30px_rgba(250,204,21,0.4)]
+        hover:scale-105 hover:shadow-[0_0_30px_rgba(255, 176, 0,0.4)]
         active:scale-95
         disabled:opacity-40 disabled:pointer-events-none
         ${className}

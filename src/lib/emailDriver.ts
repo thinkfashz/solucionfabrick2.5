@@ -191,18 +191,18 @@ export async function sendLoginAlertEmail(params: {
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="utf-8"><title>Alerta de acceso</title></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:system-ui,sans-serif;color:#e5e5e5;">
-  <div style="max-width:520px;margin:32px auto;padding:32px;background:#111;border-radius:16px;border:1px solid #222;">
-    <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px;color:#fff;margin-bottom:4px;">FABRICK</div>
-    <div style="font-size:10px;text-transform:uppercase;letter-spacing:3px;color:#555;margin-bottom:28px;">Panel de Administración</div>
-    <h1 style="font-size:17px;font-weight:800;color:#fff;margin:0 0 6px;">Nuevo acceso detectado</h1>
-    <p style="color:#a1a1aa;font-size:13px;margin:0 0 24px;">Tu cuenta <strong style="color:#fff">${params.adminEmail}</strong> (${params.role}) acaba de iniciar sesión.</p>
-    <div style="background:#0d0d0d;border:1px solid #1a1a1a;border-radius:12px;padding:18px;margin-bottom:20px;">
+<body style="margin:0;padding:0;background:#08090A;font-family:system-ui,sans-serif;color:#e5e5e5;">
+  <div style="max-width:520px;margin:32px auto;padding:32px;background:#111214;border-radius:16px;border:1px solid #222;">
+    <div style="font-size:20px;font-weight:900;letter-spacing:-0.5px;color:#FFF9EE;margin-bottom:4px;">FABRICK</div>
+    <div style="font-size:10px;text-transform:uppercase;letter-spacing:3px;color:#6E675D;margin-bottom:28px;">Panel de Administración</div>
+    <h1 style="font-size:17px;font-weight:800;color:#FFF9EE;margin:0 0 6px;">Nuevo acceso detectado</h1>
+    <p style="color:#BFB8AC;font-size:13px;margin:0 0 24px;">Tu cuenta <strong style="color:#FFF9EE">${params.adminEmail}</strong> (${params.role}) acaba de iniciar sesión.</p>
+    <div style="background:#0d0d0d;border:1px solid #111214;border-radius:12px;padding:18px;margin-bottom:20px;">
       <table style="width:100%;border-collapse:collapse;font-size:13px;">
-        <tr><td style="color:#71717a;padding:5px 0;width:110px;">Fecha y hora</td><td style="color:#fff;padding:5px 0;">${dateStr}</td></tr>
-        <tr><td style="color:#71717a;padding:5px 0;">IP</td><td style="color:#fff;padding:5px 0;font-family:monospace;">${params.ip}</td></tr>
-        <tr><td style="color:#71717a;padding:5px 0;">Dispositivo</td><td style="color:#fff;padding:5px 0;">${params.device}</td></tr>
-        <tr><td style="color:#71717a;padding:5px 0;">Ubicación</td><td style="color:#fff;padding:5px 0;">${params.location}</td></tr>
+        <tr><td style="color:#BFB8AC;padding:5px 0;width:110px;">Fecha y hora</td><td style="color:#FFF9EE;padding:5px 0;">${dateStr}</td></tr>
+        <tr><td style="color:#BFB8AC;padding:5px 0;">IP</td><td style="color:#FFF9EE;padding:5px 0;font-family:monospace;">${params.ip}</td></tr>
+        <tr><td style="color:#BFB8AC;padding:5px 0;">Dispositivo</td><td style="color:#FFF9EE;padding:5px 0;">${params.device}</td></tr>
+        <tr><td style="color:#BFB8AC;padding:5px 0;">Ubicación</td><td style="color:#FFF9EE;padding:5px 0;">${params.location}</td></tr>
       </table>
     </div>
     ${backupWarning}
@@ -229,22 +229,22 @@ export async function sendAdminInviteEmail(params: {
   invitedBy?: string;
 }): Promise<EmailResult> {
   const codigoBlock = params.codigo
-    ? `<div style="background:#0d0d0d;border:1px solid #1a1a1a;border-radius:12px;padding:16px;margin-bottom:24px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#666;margin-bottom:8px;">Código de verificación</div><div style="font-size:28px;font-weight:900;letter-spacing:6px;color:#facc15;font-family:monospace;">${params.codigo}</div></div>`
+    ? `<div style="background:#0d0d0d;border:1px solid #111214;border-radius:12px;padding:16px;margin-bottom:24px;"><div style="font-size:11px;text-transform:uppercase;letter-spacing:2px;color:#BFB8AC;margin-bottom:8px;">Código de verificación</div><div style="font-size:28px;font-weight:900;letter-spacing:6px;color:#FFB000;font-family:monospace;">${params.codigo}</div></div>`
     : '';
   const invitedLine = params.invitedBy ? ` por ${params.invitedBy}` : '';
   const html = `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="utf-8"><title>Invitación al Panel Admin</title></head>
-<body style="margin:0;padding:0;background:#0a0a0a;font-family:system-ui,sans-serif;color:#e5e5e5;">
-  <div style="max-width:520px;margin:32px auto;padding:32px;background:#111;border-radius:16px;border:1px solid #222;">
-    <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px;color:#fff;margin-bottom:32px;">FABRICK Admin</div>
-    <h1 style="font-size:18px;font-weight:800;color:#fff;margin:0 0 12px;">Te invitaron al Panel de Administración</h1>
-    <p style="color:#999;font-size:14px;line-height:1.6;margin:0 0 24px;">
+<body style="margin:0;padding:0;background:#08090A;font-family:system-ui,sans-serif;color:#e5e5e5;">
+  <div style="max-width:520px;margin:32px auto;padding:32px;background:#111214;border-radius:16px;border:1px solid #222;">
+    <div style="font-size:22px;font-weight:900;letter-spacing:-0.5px;color:#FFF9EE;margin-bottom:32px;">FABRICK Admin</div>
+    <h1 style="font-size:18px;font-weight:800;color:#FFF9EE;margin:0 0 12px;">Te invitaron al Panel de Administración</h1>
+    <p style="color:#BFB8AC;font-size:14px;line-height:1.6;margin:0 0 24px;">
       Fuiste invitado como <strong style="color:#10b981">${params.role}</strong>${invitedLine}.
     </p>
     ${codigoBlock}
-    <a href="${params.inviteLink}" style="display:block;text-align:center;background:#10b981;color:#000;font-weight:700;font-size:14px;padding:14px;border-radius:10px;text-decoration:none;margin-bottom:16px;">Crear contraseña →</a>
-    <p style="color:#555;font-size:12px;text-align:center;margin:0;">${params.inviteLink}</p>
+    <a href="${params.inviteLink}" style="display:block;text-align:center;background:#10b981;color:#08090A;font-weight:700;font-size:14px;padding:14px;border-radius:10px;text-decoration:none;margin-bottom:16px;">Crear contraseña →</a>
+    <p style="color:#6E675D;font-size:12px;text-align:center;margin:0;">${params.inviteLink}</p>
   </div>
 </body>
 </html>`;

@@ -61,13 +61,13 @@ export function FabrickFullLogo({
 }: FullLogoProps) {
   return (
     <span className={`inline-flex select-none flex-col items-center ${className}`}>
-      <span className={`relative block shrink-0 ${compact ? 'h-12 w-[196px]' : 'h-[96px] w-[380px] max-w-[84vw]'}`}>
+      <span className={`relative block shrink-0 ${compact ? 'h-10 w-[150px]' : 'h-24 w-[290px] max-w-[92vw]'}`}>
         <Image
           alt="Soluciones Fabrick"
           className={`object-contain ${theme === 'light' ? 'drop-shadow-[0_0_16px_rgba(244,200,91,.22)]' : ''}`}
           fill
           priority={priority}
-          sizes={compact ? '196px' : '(max-width: 480px) 84vw, 380px'}
+          sizes={compact ? '150px' : '(max-width: 480px) 92vw, 290px'}
           src={theme === 'dark' ? FABRICK_LOGOS.onLight : FABRICK_LOGOS.onDark}
           unoptimized
         />

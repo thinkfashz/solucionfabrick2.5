@@ -1,34 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 630" role="img" aria-labelledby="title">
   <title id="title">Soluciones Fabrick</title>
-  <desc id="desc">Construcción, remodelación y hogar con presupuestos claros.</desc>
   <defs>
-    <linearGradient id="surface" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
+    <linearGradient id="bg" x1="0" y1="0" x2="1200" y2="630" gradientUnits="userSpaceOnUse">
       <stop stop-color="#FFFDF8"/>
-      <stop offset="1" stop-color="#F0E7D5"/>
+      <stop offset="1" stop-color="#EFE4D1"/>
     </linearGradient>
-    <linearGradient id="roof" x1="170" y1="130" x2="1030" y2="315" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#17191D"/>
-      <stop offset="0.5" stop-color="#626A74"/>
-      <stop offset="1" stop-color="#121418"/>
+    <linearGradient id="grid" x1="0" y1="0" x2="0" y2="630" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#A96F0B" stop-opacity="0.08"/>
+      <stop offset="1" stop-color="#A96F0B" stop-opacity="0.02"/>
     </linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#DDB24B"/>
-      <stop offset="0.52" stop-color="#A86D0A"/>
-      <stop offset="1" stop-color="#764704"/>
-    </linearGradient>
-    <pattern id="grid" width="48" height="48" patternUnits="userSpaceOnUse">
-      <path d="M48 0H0v48" fill="none" stroke="#A96F0B" stroke-opacity="0.06"/>
-    </pattern>
   </defs>
-  <rect width="1200" height="630" fill="url(#surface)"/>
-  <rect width="1200" height="630" fill="url(#grid)"/>
-  <rect x="32" y="32" width="1136" height="566" rx="40" fill="none" stroke="#A96F0B" stroke-opacity="0.22" stroke-width="2"/>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M170 290 600 126l430 164" stroke="url(#roof)" stroke-width="14"/>
-    <path d="M204 309 600 156l396 153" stroke="#252A31" stroke-opacity="0.4" stroke-width="4"/>
+  <rect width="1200" height="630" fill="url(#bg)"/>
+  <path d="M0 0h1200v630H0z" fill="url(#grid)"/>
+  <g transform="translate(415 130) scale(2.890625)">
+    <path d="M18 118 80 24l62 94" fill="#17181C"/><path d="M26 116 80 36l54 80" fill="#17181C"/><path d="M34 115 80 47l46 68" fill="#17181C"/><path d="M104 70V44h20v40" fill="#17181C"/><path d="M100 70h28" fill="#17181C"/><path d="M56 132h48" fill="#17181C"/>
   </g>
-  <path d="M797 201v-54h46v72" fill="url(#roof)"/>
-  <text x="600" y="428" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="92" font-weight="800" letter-spacing="5" fill="url(#gold)">SOLUCIONES FABRICK</text>
-  <text x="600" y="500" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="24" font-weight="700" letter-spacing="9" fill="#3F444B">CONSTRUCCIÓN · REMODELACIÓN · HOGAR</text>
-  <path d="M350 544h500" stroke="#A96F0B" stroke-opacity="0.5" stroke-width="2"/>
+  <text x="600" y="560" text-anchor="middle" font-family="Sora, Manrope, Arial, sans-serif" font-size="96" font-weight="800" letter-spacing="10" fill="#A96F0B">SOLUCIONES FABRICK</text>
+  <text x="600" y="600" text-anchor="middle" font-family="Sora, Manrope, Arial, sans-serif" font-size="20" font-weight="700" letter-spacing="12" fill="#6E5845">CONSTRUCCION · REMODELACION · HOGAR</text>
 </svg>

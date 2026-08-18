@@ -1,23 +1,31 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 160 160" role="img" aria-labelledby="title">
   <title id="title">Isotipo Soluciones Fabrick</title>
   <defs>
-    <linearGradient id="silver" x1="18" y1="28" x2="142" y2="84" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#BFC5CC"/>
-      <stop offset="0.5" stop-color="#FFFFFF"/>
-      <stop offset="1" stop-color="#AAB1BA"/>
+    <linearGradient id="roof" x1="18" y1="26" x2="142" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#F4F1EC"/>
+      <stop offset="0.45" stop-color="#CBD1D6"/>
+      <stop offset="1" stop-color="#8E969F"/>
     </linearGradient>
     <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#FFE58F"/>
-      <stop offset="1" stop-color="#D79820"/>
+      <stop stop-color="#F0CF7A"/>
+      <stop offset="0.5" stop-color="#E3B44C"/>
+      <stop offset="1" stop-color="#B97E10"/>
     </linearGradient>
-    <filter id="glow" x="-40%" y="-40%" width="180%" height="180%">
-      <feDropShadow dx="0" dy="0" stdDeviation="4" flood-color="#F4C85B" flood-opacity="0.34"/>
-    </filter>
+    <linearGradient id="goldSoft" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#F5DFA6"/>
+      <stop offset="1" stop-color="#D9A83C"/>
+    </linearGradient>
   </defs>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round" filter="url(#glow)">
-    <path d="M17 84 80 29l63 55" stroke="url(#silver)" stroke-width="9"/>
-    <path d="M35 85 80 46l45 39" stroke="url(#gold)" stroke-width="4"/>
+  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 118 80 24l62 94" stroke="url(#gold)" stroke-width="3.5"/>
+    <path d="M26 116 80 36l54 80" stroke="url(#roof)" stroke-width="8"/>
+    <path d="M34 115 80 47l46 68" stroke="url(#goldSoft)" stroke-width="2.4"/>
   </g>
-  <path d="M111 59V39h17v34" fill="url(#silver)"/>
-  <path d="M49 119h62" stroke="url(#gold)" stroke-width="6" stroke-linecap="round"/>
+  <path d="M104 70V44h20v40" fill="url(#roof)"/>
+  <path d="M100 70h28" stroke="url(#gold)" stroke-width="3"/>
+  <path d="M56 132h48" stroke="url(#gold)" stroke-width="5" stroke-linecap="round"/>
+  <g fill="url(#gold)">
+    <rect x="75" y="93" width="10" height="14" rx="2"/>
+    <circle cx="80" cy="89" r="5.5" fill="url(#goldSoft)"/>
+  </g>
 </svg>

@@ -1,28 +1,51 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1040 260" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 320" role="img" aria-labelledby="title desc">
   <title id="title">Soluciones Fabrick</title>
-  <desc id="desc">Versión oscura del logo Soluciones Fabrick para superficies claras.</desc>
+  <desc id="desc">Logotipo Soluciones Fabrick para superficies claras: isotipo de techo arquitectónico y wordmark tipográfico.</desc>
   <defs>
-    <linearGradient id="roof" x1="96" y1="30" x2="944" y2="120" gradientUnits="userSpaceOnUse">
-      <stop stop-color="#17191D"/>
-      <stop offset="0.5" stop-color="#5B626B"/>
-      <stop offset="1" stop-color="#14161A"/>
+    <linearGradient id="roofL" x1="18" y1="26" x2="142" y2="120" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#3A3E46"/>
+      <stop offset="0.5" stop-color="#17181C"/>
+      <stop offset="1" stop-color="#0C0D10"/>
     </linearGradient>
-    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
-      <stop stop-color="#D9AE48"/>
-      <stop offset="0.52" stop-color="#A96F0B"/>
-      <stop offset="1" stop-color="#754704"/>
+    <linearGradient id="goldL" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#F9CF6B"/>
+      <stop offset="0.5" stop-color="#E3B44C"/>
+      <stop offset="1" stop-color="#A96F0B"/>
     </linearGradient>
-    <linearGradient id="line" x1="210" y1="0" x2="830" y2="0" gradientUnits="userSpaceOnUse">
+    <linearGradient id="goldSoftL" x1="0" y1="0" x2="0" y2="1">
+      <stop stop-color="#F5DFA6"/>
+      <stop offset="1" stop-color="#C99418"/>
+    </linearGradient>
+    <linearGradient id="wordL" x1="330" y1="0" x2="1160" y2="0" gradientUnits="userSpaceOnUse">
+      <stop stop-color="#202328"/>
+      <stop offset="0.55" stop-color="#45484F"/>
+      <stop offset="1" stop-color="#6E6F74"/>
+    </linearGradient>
+    <linearGradient id="lineL" x1="258" y1="0" x2="1170" y2="0" gradientUnits="userSpaceOnUse">
       <stop stop-color="#A96F0B" stop-opacity="0"/>
-      <stop offset="0.5" stop-color="#A96F0B"/>
+      <stop offset="0.35" stop-color="#A96F0B"/>
+      <stop offset="0.7" stop-color="#A96F0B"/>
       <stop offset="1" stop-color="#A96F0B" stop-opacity="0"/>
     </linearGradient>
   </defs>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M96 112 520 28l424 84" stroke="url(#roof)" stroke-width="11"/>
-    <path d="M126 126 520 49l394 77" stroke="#1F2329" stroke-opacity="0.48" stroke-width="3"/>
+
+  <g transform="translate(60 24) scale(1.42)">
+    <g fill="none" stroke-linecap="round" stroke-linejoin="round">
+      <path d="M18 118 80 24l62 94" stroke="url(#goldL)" stroke-width="3.5"/>
+      <path d="M26 116 80 36l54 80" stroke="url(#roofL)" stroke-width="8"/>
+      <path d="M34 115 80 47l46 68" stroke="url(#goldSoftL)" stroke-width="2.4"/>
+    </g>
+    <path d="M104 70V44h20v40" fill="url(#roofL)"/>
+    <path d="M100 70h28" stroke="url(#goldL)" stroke-width="3"/>
+    <path d="M56 132h48" stroke="url(#goldL)" stroke-width="5" stroke-linecap="round"/>
+    <g fill="url(#goldL)">
+      <rect x="75" y="93" width="10" height="14" rx="2"/>
+      <circle cx="80" cy="89" r="5.5" fill="url(#goldSoftL)"/>
+    </g>
   </g>
-  <path d="M714 69V43h38v34" fill="url(#roof)"/>
-  <text x="520" y="218" text-anchor="middle" font-family="Arial, Helvetica, sans-serif" font-size="82" font-weight="800" letter-spacing="4" fill="url(#gold)">SOLUCIONES FABRICK</text>
-  <path d="M210 244h620" stroke="url(#line)" stroke-width="2"/>
+
+  <text x="310" y="156" font-family="Sora, Manrope, Arial, Helvetica, sans-serif" font-size="98" font-weight="800" letter-spacing="2" fill="url(#wordL)">SOLUCIONES</text>
+  <text x="310" y="248" font-family="Sora, Manrope, Arial, Helvetica, sans-serif" font-size="98" font-weight="800" letter-spacing="6" fill="url(#goldL)">FABRICK</text>
+  <path d="M258 288h912" stroke="url(#lineL)" stroke-width="3"/>
+  <text x="310" y="306" font-family="Sora, Manrope, Arial, Helvetica, sans-serif" font-size="19" font-weight="700" letter-spacing="9" fill="#7A7268">CONSTRUCCIÓN · REMODELACIÓN · HOGAR</text>
 </svg>

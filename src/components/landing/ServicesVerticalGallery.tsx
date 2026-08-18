@@ -43,11 +43,11 @@ const SERVICES: ServiceItem[] = [
   },
   {
     id: 'electricidad', budgetId: 'electricidad', title: 'Electricidad', promise: 'Puntos seguros y funcionales',
-    description: 'Iluminación, enchufes, canalización y adecuaciones calculadas por cada punto requerido.', functions: ['Puntos y enchufes', 'Iluminación', 'Tableros y canalización'], href: '/servicios#electricidad', tone: 'oak', icon: Zap,
+    description: 'Iluminación, enchufes, canalización y adecuaciones medidas por cada punto requerido.', functions: ['Puntos y enchufes', 'Iluminación', 'Tableros y canalización'], href: '/servicios#electricidad', tone: 'oak', icon: Zap,
   },
   {
     id: 'fundaciones', budgetId: 'cimientos', title: 'Fundaciones', promise: 'Una base coherente con la obra',
-    description: 'Trazado, excavación, armaduras y hormigón calculados por largo, ancho y profundidad.', functions: ['Trazado y excavación', 'Armaduras y moldajes', 'Hormigón y nivelación'], href: '/servicios#fundaciones', tone: 'ink', icon: Layers3,
+    description: 'Trazado, excavación, armaduras y hormigón medidos por largo, ancho y profundidad.', functions: ['Trazado y excavación', 'Armaduras y moldajes', 'Hormigón y nivelación'], href: '/servicios#fundaciones', tone: 'ink', icon: Layers3,
   },
   {
     id: 'estructuras', budgetId: 'metalcon', title: 'Estructuras Metalcon', promise: 'Estructura ligera y ordenada',
@@ -79,20 +79,20 @@ export default function ServicesVerticalGallery() {
   const orientationLink = buildWhatsAppLink('Hola Soluciones Fabrick, necesito orientación para coordinar varias especialidades en mi proyecto.');
 
   return (
-    <section id="servicios" className="relative overflow-hidden bg-[#171820] px-4 pb-28 pt-16 text-white sm:px-6 md:px-12 lg:py-24">
+    <section id="servicios" className="relative scroll-mt-20 overflow-hidden bg-[#171820] px-4 pb-28 pt-16 text-white sm:px-6 md:px-12 lg:py-24">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_8%_4%,rgba(204,177,150,.2),transparent_28rem),radial-gradient(circle_at_90%_86%,rgba(182,144,108,.15),transparent_30rem)]" />
       <div className="pointer-events-none absolute inset-0 opacity-[.035] [background-image:linear-gradient(rgba(248,240,233,.8)_1px,transparent_1px),linear-gradient(90deg,rgba(248,240,233,.8)_1px,transparent_1px)] [background-size:52px_52px]" />
 
       <div className="relative mx-auto max-w-[1320px]">
-        <header data-reveal className="grid gap-5 lg:grid-cols-[.86fr_1.14fr] lg:items-end">
+        <header className="grid gap-5 lg:grid-cols-[.86fr_1.14fr] lg:items-end">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[.3em] text-[#CCB196]">Servicios con cálculo propio</p>
-            <h2 className="mt-4 text-4xl font-black leading-[.96] tracking-[-.055em] text-[#F8F0E9] sm:text-6xl" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>Desliza, compara y abre la especialidad que necesitas.</h2>
+            <p data-reveal className="text-[10px] font-black uppercase tracking-[.3em] text-[#CCB196]">Servicios con fórmula propia</p>
+            <h2 data-split className="mt-4 text-4xl font-black leading-[.96] tracking-[-.055em] text-[#F8F0E9] sm:text-6xl" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>Desliza, compara y abre la especialidad que necesitas.</h2>
           </div>
-          <p className="max-w-2xl text-sm leading-7 text-[#CFC2B7] sm:text-base">Cada tarjeta resume el resultado esperado y abre su calculadora independiente. En móvil desliza horizontalmente; en escritorio pasa el cursor para proyectar el servicio.</p>
+          <p data-reveal data-reveal-delay="0.15" className="max-w-2xl text-sm leading-7 text-[#CFC2B7] sm:text-base">Cada tarjeta resume el resultado esperado y abre su estimador independiente. En móvil desliza horizontalmente; en escritorio pasa el cursor para proyectar el servicio.</p>
         </header>
 
-        <div className="-mx-4 mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-8 [scrollbar-width:none] sm:-mx-6 sm:px-6 md:-mx-12 md:px-12 [&::-webkit-scrollbar]:hidden">
+        <div data-reveal-group data-reveal-dir="up" className="-mx-4 mt-10 flex snap-x snap-mandatory gap-4 overflow-x-auto px-4 pb-8 [scrollbar-width:none] sm:-mx-6 sm:px-6 md:-mx-12 md:px-12 [&::-webkit-scrollbar]:hidden">
           {SERVICES.map((service, index) => {
             const Icon = service.icon;
             return (
@@ -121,7 +121,7 @@ export default function ServicesVerticalGallery() {
                   </div>
 
                   <div className="mt-auto grid gap-2 pt-7 sm:grid-cols-2">
-                    <Link href={`/presupuesto?servicio=${service.budgetId}`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#171820] px-5 text-xs font-black text-[#F8F0E9] transition hover:bg-[#CCB196] hover:text-[#171820]">Calcular <ArrowRight className="h-4 w-4" /></Link>
+                    <Link href={`/presupuesto?servicio=${service.budgetId}`} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-full bg-[#171820] px-5 text-xs font-black text-[#F8F0E9] transition hover:bg-[#CCB196] hover:text-[#171820]">Cotizar <ArrowRight className="h-4 w-4" /></Link>
                     <Link href={service.href} className="inline-flex min-h-12 items-center justify-center rounded-full border border-current/16 px-5 text-xs font-black transition hover:bg-current/[.07]">Ver servicio</Link>
                   </div>
                 </div>
@@ -130,9 +130,9 @@ export default function ServicesVerticalGallery() {
           })}
         </div>
 
-        <div data-reveal className="mt-3 flex flex-col items-center justify-between gap-4 rounded-[2rem] bg-[#242630] px-5 py-6 text-center sm:flex-row sm:text-left">
-          <div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#CCB196] text-[#171820]"><Wrench className="h-5 w-5" /></span><div><p className="text-sm font-black text-[#F8F0E9]">¿Tu proyecto combina varias especialidades?</p><p className="mt-1 text-xs leading-5 text-[#BEB2A8]">Calcula cada partida, añádela al carrito y envía el conjunto para revisión.</p></div></div>
-          <a href={orientationLink} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-[#CCB196] px-5 text-xs font-black text-[#171820] transition hover:bg-[#F8F0E9]">Orientar mi proyecto <MessageCircle className="h-4 w-4" /></a>
+        <div data-reveal data-reveal-dir="left" className="mt-3 flex flex-col items-center justify-between gap-4 rounded-[2rem] bg-[#242630] px-5 py-6 text-center sm:flex-row sm:text-left">
+          <div className="flex items-start gap-3"><span className="grid h-11 w-11 shrink-0 place-items-center rounded-full bg-[#CCB196] text-[#171820]"><Wrench className="h-5 w-5" /></span><div><p className="text-sm font-black text-[#F8F0E9]">¿Tu proyecto combina varias especialidades?</p><p className="mt-1 text-xs leading-5 text-[#BEB2A8]">Mide cada partida, añádela al carrito y envía el conjunto para revisión.</p></div></div>
+          <a href={orientationLink} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-12 shrink-0 items-center justify-center gap-2 rounded-full bg-[#D8B23D] px-5 text-xs font-black text-[#171820] transition hover:bg-[#F4D98B]">Orientar mi proyecto <MessageCircle className="h-4 w-4" /></a>
         </div>
       </div>
     </section>

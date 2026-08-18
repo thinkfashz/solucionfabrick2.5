@@ -8,11 +8,15 @@ import {
   MapPin,
   MessageCircle,
   ShoppingBag,
+  Facebook,
+  Instagram,
+  Music2,
 } from 'lucide-react';
 import ContactForm from './ContactForm';
 import TiendaSection from './TiendaSection';
 import ServicesVerticalGallery from '@/components/landing/ServicesVerticalGallery';
 import MetalconSeismicStory from '@/components/landing/MetalconSeismicStory';
+import LandingProcessSection from '@/components/landing/LandingProcessSection';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 import { useSiteContent } from '@/hooks/useSiteContent';
 
@@ -38,7 +42,7 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
 
   const footerGroups: Array<{ title: string; items: Array<[string, string]> }> = [
     { title: 'Explorar', items: [['Cotizador', '#cotizador'], ['Servicios', '#servicios'], ['Más vendidos', '#mas-vendidos']] },
-    { title: 'Herramientas', items: [['Calculadora de radier', '/herramientas/radier'], ['Calculadora de aire', '/herramientas/aire-acondicionado'], ['Presupuestos', '/presupuesto']] },
+    { title: 'Herramientas', items: [['Estimador de radier', '/herramientas/radier'], ['Estimador de aire', '/herramientas/aire-acondicionado'], ['Presupuestos', '/presupuesto']] },
     { title: 'Empresa', items: [['Inspiraciones', '/proyectos'], ['Garantías', '/garantias'], ['Contacto', '#contacto']] },
     { title: 'Tienda', items: [['Catálogo', '/tienda'], ['Mi cuenta', '/mi-cuenta'], ['Privacidad', '/legal/privacidad']] },
   ];
@@ -46,10 +50,11 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
   return (
     <div className="overflow-x-hidden bg-[#171820] text-[#F8F0E9]">
       <ServicesVerticalGallery />
+      <LandingProcessSection />
       <MetalconSeismicStory />
 
-      <section id="mas-vendidos" className="bg-[#F8F0E9] px-4 py-16 text-[#171820] sm:px-6 md:px-12 lg:py-20">
-        <div data-reveal className="mx-auto max-w-[1320px]">
+      <section id="mas-vendidos" className="scroll-mt-20 bg-[#F8F0E9] px-4 py-16 text-[#171820] sm:px-6 md:px-12 lg:py-20">
+        <div data-reveal data-reveal-dir="up" className="mx-auto max-w-[1320px]">
           <TiendaSection
             limit={3}
             variant="banner"
@@ -60,26 +65,26 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
         </div>
       </section>
 
-      <section id="contacto" className="relative overflow-hidden bg-[#B6906C] px-4 py-16 text-[#171820] sm:px-6 md:px-12 lg:py-20">
+      <section id="contacto" className="relative scroll-mt-20 overflow-hidden bg-[#B6906C] px-4 py-16 text-[#171820] sm:px-6 md:px-12 lg:py-20">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_18%,rgba(248,240,233,.3),transparent_30%)]" />
         <div className="relative mx-auto grid max-w-[1200px] gap-8 lg:grid-cols-[.78fr_1.22fr] lg:items-start">
-          <div data-reveal>
-            <p className="text-[10px] font-black uppercase tracking-[.24em] text-[#5E3F2A]">Solicitar evaluación</p>
-            <h2 className="mt-3 text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>
+          <div>
+            <p data-reveal className="text-[10px] font-black uppercase tracking-[.24em] text-[#5E3F2A]">Solicitar evaluación</p>
+            <h2 data-split className="mt-3 text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>
               Cuéntanos qué quieres resolver y nosotros ordenamos el siguiente paso.
             </h2>
-            <p className="mt-4 max-w-xl text-sm leading-7 text-[#493B32] sm:text-base">
-              Indica comuna, medidas aproximadas y estado actual. Te responderemos con las preguntas necesarias para definir viabilidad, alcance y una cotización responsable.
+            <p data-reveal data-reveal-delay="0.15" className="mt-4 max-w-xl text-sm leading-7 text-[#493B32] sm:text-base">
+              Indica comuna, medidas aproximadas y estado actual. El equipo técnico responderá con las preguntas necesarias para definir viabilidad, alcance y una cotización responsable.
             </p>
 
-            <div className="mt-6 grid gap-2">
+            <div data-reveal-group data-reveal-dir="up" className="mt-6 grid gap-2">
               <ProofLine icon={<MapPin className="h-4 w-4" />} title="Cobertura principal" text="Región del Maule y proyectos seleccionados en Santiago." />
               <ProofLine icon={<Clock3 className="h-4 w-4" />} title="Respuesta comercial" text="Revisamos la información y te indicamos qué falta para avanzar." />
               <ProofLine icon={<BadgeCheck className="h-4 w-4" />} title="Cotización responsable" text="El valor final se confirma con medidas y condiciones reales." />
             </div>
           </div>
 
-          <div data-reveal className="rounded-[1.8rem] bg-[#F8F0E9] p-4 text-[#171820] shadow-[0_28px_80px_rgba(23,24,32,.22)] sm:p-6">
+          <div data-reveal data-reveal-dir="right" className="rounded-[1.8rem] bg-[#F8F0E9] p-4 text-[#171820] shadow-[0_28px_80px_rgba(23,24,32,.22)] sm:p-6">
             <div className="mb-5 flex items-center gap-3 border-b border-[#171820]/10 pb-4">
               <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#171820] text-[#CCB196]"><MessageCircle className="h-5 w-5" /></span>
               <div><p className="text-sm font-black">Hablemos de tu proyecto</p><p className="mt-1 text-[10px] text-[#756B63]">Formulario breve · orientación personalizada</p></div>
@@ -89,17 +94,25 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
         </div>
       </section>
 
-      <footer className="bg-[#171820] px-4 py-9 text-[#F8F0E9] sm:px-6 md:px-12">
+      <footer data-reveal data-reveal-dir="up" className="bg-[#171820] px-4 py-9 text-[#F8F0E9] sm:px-6 md:px-12">
         <div className="mx-auto max-w-[1320px]">
           <div className="grid gap-7 lg:grid-cols-[1.05fr_1.95fr] lg:items-start">
             <div>
               <FabrickFullLogo compact priority theme="light" />
-              <p className="mt-3 max-w-md text-sm leading-6 text-[#BEB2A8]">Servicios, calculadoras y productos para organizar una inversión antes de ejecutar.</p>
+              <p className="mt-3 max-w-md text-sm leading-6 text-[#BEB2A8]">Servicios, estimadores y productos para organizar una inversión antes de ejecutar.</p>
               <div className="mt-4 flex gap-2">
-                <SocialLink href={fbHref} label="Facebook"><span aria-hidden>f</span></SocialLink>
-                <SocialLink href={igHref} label="Instagram"><span aria-hidden>◎</span></SocialLink>
-                <SocialLink href={ttHref} label="TikTok"><span aria-hidden>♪</span></SocialLink>
+                <SocialLink href={fbHref} label="Facebook"><Facebook className="h-4 w-4" /></SocialLink>
+                <SocialLink href={igHref} label="Instagram"><Instagram className="h-4 w-4" /></SocialLink>
+                <SocialLink href={ttHref} label="TikTok"><Music2 className="h-4 w-4" /></SocialLink>
               </div>
+              <a
+                href="https://wa.me/56930121625?text=Hola%20Soluciones%20Fabrick%2C%20quiero%20d%C3%ADas%20y%20horarios%20para%20revisar%20mi%20proyecto."
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#D8B23D] px-5 text-[11px] font-black text-[#171820] transition hover:bg-[#F4D98B]"
+              >
+                <MessageCircle className="h-4 w-4" /> Escríbenos por WhatsApp
+              </a>
             </div>
             <div className="grid gap-2 md:grid-cols-4 md:gap-6">
               {footerGroups.map((group) => <FooterGroup key={group.title} {...group} />)}

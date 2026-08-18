@@ -38,6 +38,8 @@ export default function ConstructionM2Calculator() {
   const low = measurement.quantity * service.marketMin * measurement.priceFactor;
   const high = measurement.quantity * service.marketMax * measurement.priceFactor;
   const average = Math.round((low + high) / 2);
+  const unitMin = service.marketMin * measurement.priceFactor;
+  const unitMax = service.marketMax * measurement.priceFactor;
 
   const reference = useMemo(() => {
     const compactService = service.id.split('-').map((part) => part.slice(0, 2).toUpperCase()).join('').slice(0, 8);
@@ -68,7 +70,7 @@ export default function ConstructionM2Calculator() {
     setValues((current) => ({ ...current, [key]: Math.max(0, Number(value) || 0) }));
   }
 
-  function analyzeWithFabri() {
+  function analyzeWithFabrick() {
     const prompt = [
       'Analiza este cálculo preliminar como orientador comercial y técnico de construcción en Chile.',
       `Referencia: ${reference}`,
@@ -80,7 +82,7 @@ export default function ConstructionM2Calculator() {
       `Cantidad calculada: ${number(measurement.quantity)} ${service.unit}`,
       `Rango referencial actual: ${money(low)} a ${money(high)}. Promedio: ${money(average)}.`,
       `Incluye como referencia: ${service.includes.join('; ')}.`,
-      `Advertencia de la calculadora: ${service.disclaimer}`,
+      `Advertencia del estimador: ${service.disclaimer}`,
       '',
       'Entrégame un análisis más sofisticado y breve con: alcance probable, partidas que debería separar, exclusiones o riesgos, preguntas que faltan responder, etapas recomendadas y próximo paso. No conviertas este rango en precio final ni inventes medidas, permisos o materiales no informados.',
     ].filter(Boolean).join('\n');
@@ -91,20 +93,26 @@ export default function ConstructionM2Calculator() {
   }
 
   return (
-    <section id="cotizador" className="relative overflow-hidden bg-[#F8F0E9] px-4 py-16 text-[#171820] sm:px-6 lg:px-8 lg:py-20">
+    <section id="cotizador" className="relative scroll-mt-20 overflow-hidden bg-[#F8F0E9] px-4 py-16 text-[#171820] sm:px-6 lg:px-8 lg:py-20">
       <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_8%,rgba(204,177,150,.34),transparent_28%),radial-gradient(circle_at_90%_80%,rgba(182,144,108,.18),transparent_30%)]" />
       <div className="relative mx-auto max-w-[1260px]">
-        <header data-reveal className="grid gap-5 lg:grid-cols-[.9fr_1.1fr] lg:items-end">
+        <header className="grid gap-5 lg:grid-cols-[.9fr_1.1fr] lg:items-end">
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[.24em] text-[#895E3D]">Cotizador dimensional</p>
-            <h2 className="mt-3 text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>Mide el trabajo antes de comprometer tu inversión.</h2>
+            <p data-reveal className="text-[10px] font-black uppercase tracking-[.24em] text-[#895E3D]">Cotizador dimensional</p>
+            <h2 data-split className="mt-3 text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>Mide el trabajo antes de comprometer tu inversión.</h2>
           </div>
-          <p className="max-w-2xl text-sm leading-7 text-[#685D55] sm:text-base">Cada especialidad aplica una fórmula distinta. Ingresa largo, ancho, alto, espesor, metros lineales o unidades; después Fabri puede ordenar las partidas y preguntas pendientes para una revisión más completa.</p>
+          <p data-reveal data-reveal-delay="0.15" className="max-w-2xl text-sm leading-7 text-[#685D55] sm:text-base">Cada especialidad aplica una fórmula distinta. Ingresa largo, ancho, alto, espesor, metros lineales o unidades; después Fabrick puede ordenar las partidas y preguntas pendientes para una revisión más completa.</p>
         </header>
 
-        <div data-reveal className="mt-8 grid overflow-hidden rounded-[2.25rem] bg-white shadow-[0_32px_100px_rgba(70,48,22,.16)] lg:grid-cols-[minmax(0,1.08fr)_minmax(370px,.72fr)]">
+        <div data-reveal data-reveal-dir="zoom" className="mt-8 grid overflow-hidden rounded-[2.25rem] bg-white shadow-[0_32px_100px_rgba(70,48,22,.16)] lg:grid-cols-[minmax(0,1.08fr)_minmax(370px,.72fr)]">
           <div className="p-5 sm:p-7 lg:p-8">
             <div className="flex items-center gap-3"><span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#171820] text-[#CCB196]"><Ruler className="h-5 w-5" /></span><div><p className="text-sm font-black">Configura una referencia real</p><p className="mt-1 text-xs text-[#7A6C61]">Selecciona el servicio y completa las medidas que correspondan.</p></div></div>
+
+            <ol className="mt-6 flex flex-wrap items-center gap-x-4 gap-y-2 text-[9px] font-black uppercase tracking-[.14em]">
+              {['Elige el servicio', 'Ingresa las medidas', 'Revisa el recibo'].map((step, index) => (
+                <li key={step} className="flex items-center gap-2 text-[#7A6C61]"><span className="grid h-5 w-5 place-items-center rounded-full bg-[#171820] text-[#CCB196]">{index + 1}</span>{step}{index < 2 ? <ArrowRight className="ml-3 h-3 w-3 text-[#B6906C]/60" aria-hidden /> : null}</li>
+              ))}
+            </ol>
 
             <div className="-mx-1 mt-6 flex snap-x snap-mandatory gap-3 overflow-x-auto px-1 pb-3 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
               {SERVICES.map((item) => {
@@ -134,20 +142,21 @@ export default function ConstructionM2Calculator() {
               <div className="flex items-start justify-between gap-4"><div><p className="text-[9px] font-black uppercase tracking-[.23em] text-[#CCB196]">Estimación preliminar</p><h3 className="mt-2 text-2xl font-black tracking-[-.04em]">Recibo de cálculo</h3></div><span className="grid h-12 w-12 place-items-center rounded-full bg-[#CCB196] text-[#171820]"><ReceiptText className="h-5 w-5" /></span></div>
               <div className="mt-5 flex items-center justify-between rounded-full bg-white/[.065] px-4 py-2.5 text-[9px] font-black uppercase tracking-[.13em] text-white/45"><span>Referencia</span><span className="text-[#E5CFBA]">{reference}</span></div>
 
-              <div className="mt-5 rounded-[1.5rem] bg-white/[.055] p-4"><ReceiptRow label="Servicio" value={service.short} /><ReceiptRow label="Fórmula" value={measurement.formula} /><ReceiptRow label="Medidas" value={measurement.detail} /><ReceiptRow label="Resultado" value={`${number(measurement.quantity)} ${service.unit}`} last /></div>
+              <div className="mt-5 rounded-[1.5rem] bg-white/[.055] p-4"><ReceiptRow label="Servicio" value={service.short} /><ReceiptRow label="Medidas" value={measurement.detail} /><ReceiptRow label="Fórmula" value={measurement.formula} />{measurement.secondary ? <ReceiptRow label="Desglose" value={measurement.secondary} /> : null}<ReceiptRow label="Resultado" value={`${number(measurement.quantity)} ${service.unit}`} last /></div>
 
-              <div className="mt-4 overflow-hidden rounded-[1.7rem] bg-[linear-gradient(135deg,#CCB196,#F8F0E9)] p-5 text-[#171820]">
+              <div className="mt-4 overflow-hidden rounded-[1.7rem] bg-[linear-gradient(135deg,#CCB196,#F8F0E9)] p-5 text-[#171820]" aria-live="polite">
                 <div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.17em] text-[#171820]/60"><Sparkles className="h-4 w-4" /> Rango estimado</div>
                 <div className="mt-4 grid grid-cols-2 gap-4"><div><span className="text-[9px] font-black uppercase tracking-[.15em] text-[#171820]/55">Desde</span><strong className="mt-1 block text-2xl font-black">{money(low)}</strong></div><div><span className="text-[9px] font-black uppercase tracking-[.15em] text-[#171820]/55">Hasta</span><strong className="mt-1 block text-2xl font-black">{money(high)}</strong></div></div>
                 <div className="mt-4 flex items-center justify-between border-t border-[#171820]/12 pt-3 text-xs"><span className="text-[#171820]/60">Promedio orientativo</span><b>{money(average)}</b></div>
+                <div className="mt-2 flex items-center justify-between text-[10px] text-[#171820]/55"><span>Tarifa referencial × {service.unit}</span><b>{money(unitMin)} – {money(unitMax)}</b></div>
               </div>
 
               <div className="mt-6"><div className="flex items-center gap-2 text-[9px] font-black uppercase tracking-[.2em] text-[#CCB196]"><CircleDollarSign className="h-4 w-4" /> Esta referencia considera</div><ul className="mt-3 grid gap-2">{service.includes.map((item) => <li key={item} className="flex gap-2 rounded-xl bg-white/[.045] px-3 py-2.5 text-xs leading-5 text-[#D7CCC4]"><Check className="mt-0.5 h-4 w-4 shrink-0 text-[#CCB196]" />{item}</li>)}</ul></div>
 
-              <button type="button" onClick={analyzeWithFabri} className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#F8F0E9] px-5 text-sm font-black text-[#171820] transition hover:bg-[#CCB196]"><Bot className="h-4 w-4" /> Analizar este cálculo con Fabri IA</button>
-              <Link href={`/presupuesto?servicio=${service.id}`} className="mt-3 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#CCB196] px-5 text-sm font-black text-[#171820] transition hover:bg-[#F8F0E9]">Añadir al presupuesto completo <ArrowRight className="h-4 w-4" /></Link>
+              <button type="button" onClick={analyzeWithFabrick} className="mt-5 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#F8F0E9] px-5 text-sm font-black text-[#171820] transition hover:bg-[#CCB196]"><Bot className="h-4 w-4" /> Analizar este cálculo con Fabrick IA</button>
+              <Link href={`/presupuesto?servicio=${service.id}`} className="mt-3 inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#D8B23D] px-5 text-sm font-black text-[#171820] transition hover:bg-[#F4D98B]">Añadir al presupuesto completo <ArrowRight className="h-4 w-4" /></Link>
               <a href={`https://wa.me/56930121625?text=${encodeURIComponent(whatsappMessage)}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex min-h-12 w-full items-center justify-center gap-2 rounded-2xl bg-white/[.075] px-5 text-xs font-black text-white transition hover:bg-white/[.13]">Revisar solo este cálculo <MessageCircle className="h-4 w-4" /></a>
-              <p className="mt-4 text-center text-[10px] leading-5 text-white/35">Fabri organiza supuestos y preguntas pendientes; el equipo confirma factibilidad y precio final.</p>
+              <p className="mt-4 text-center text-[10px] leading-5 text-white/35">Fabrick organiza supuestos y preguntas pendientes; el equipo confirma factibilidad y precio final.</p>
             </div>
           </aside>
         </div>

@@ -10,7 +10,7 @@ const PROJECT_TYPES = [
   { label: 'Producto', value: 'Producto con instalación' },
 ] as const;
 
-const fieldClass = 'w-full rounded-2xl border border-[#171820]/12 bg-white/75 px-4 py-4 text-sm font-semibold text-[#171820] shadow-[inset_0_1px_0_rgba(255,255,255,.75)] outline-none transition placeholder:text-[#8e8279] focus:border-[#9a6f4f]/65 focus:bg-white focus:ring-4 focus:ring-[#b6906c]/12';
+const fieldClass = 'w-full rounded-2xl border border-[#171820]/12 bg-white/75 px-4 py-4 text-sm font-semibold text-[#171820] shadow-[inset_0_1px_0_rgba(255,255,255,.75)] outline-none transition placeholder:text-[#8e8279] focus:border-[#D8B23D]/70 focus:bg-white focus:ring-4 focus:ring-[#D8B23D]/15';
 
 export default function ContactForm() {
   const [sending, setSending] = useState(false);
@@ -124,7 +124,7 @@ export default function ContactForm() {
 
       {status === 'error' && errorMessage ? <p role="alert" className="rounded-xl bg-red-50 px-4 py-3 text-xs font-semibold text-red-800 ring-1 ring-red-700/15">{errorMessage}</p> : null}
 
-      <button type="submit" disabled={sending} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#b6906c] px-5 py-4 text-[11px] font-black uppercase tracking-[.16em] text-[#171820] shadow-[0_16px_40px_rgba(92,65,43,.16)] transition hover:bg-[#ccb196] disabled:opacity-60">
+      <button type="submit" disabled={sending} className="inline-flex w-full items-center justify-center gap-2 rounded-2xl bg-[#D8B23D] px-5 py-4 text-[11px] font-black uppercase tracking-[.16em] text-[#171820] shadow-[0_16px_40px_rgba(216,178,61,.22)] transition hover:bg-[#F4D98B] disabled:opacity-60">
         {sending ? 'Enviando solicitud…' : 'Solicitar evaluación'}
         {!sending ? <ArrowRight className="h-4 w-4" /> : null}
       </button>

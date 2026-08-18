@@ -10,7 +10,8 @@ export default function OpenGraphImage() {
       <div
         style={{
           alignItems: 'stretch',
-          background: 'radial-gradient(circle at 86% 12%, rgba(255,176,0,0.30), transparent 26%), radial-gradient(circle at 7% 96%, rgba(245,135,31,0.24), transparent 34%), #08090A',
+          backgroundColor: '#08090A',
+          backgroundImage: 'radial-gradient(circle at 86% 12%, rgba(255,176,0,0.30), transparent 26%), radial-gradient(circle at 7% 96%, rgba(245,135,31,0.24), transparent 34%)',
           color: '#FFF9EE',
           display: 'flex',
           flexDirection: 'column',

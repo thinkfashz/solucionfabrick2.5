@@ -179,8 +179,8 @@ export default function ConstructionM2Calculator() {
             <h2 data-split className="mt-3 text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>Mide el trabajo antes de comprometer tu inversión.</h2>
           </div>
           <div>
-            <p data-reveal data-reveal-delay="0.1" className="max-w-2xl text-sm leading-7 text-[#BFB8AC] sm:text-base">Estima en menos de un minuto: elige la especialidad, anota tus medidas y obtén un <b className="font-black">rango referencial 2026</b> basado en tarifas del mercado chileno (Maule y Santiago). El valor final se confirma con el equipo después de revisar alcance y condiciones.</p>
-            <p data-reveal data-reveal-delay="0.18" className="mt-3 flex max-w-2xl items-start gap-2 text-[10px] leading-5 text-[#BFB8AC]"><Info className="mt-0.5 h-4 w-4 shrink-0 text-[#F5871F]" /> Estos precios son referenciales y pueden variar según materiales, terreno, acceso y nivel de terminación elegido.</p>
+            <p data-reveal data-reveal-delay="0.1" className="max-w-2xl text-sm leading-7 text-[#5E5853] sm:text-base">Estima en menos de un minuto: elige la especialidad, anota tus medidas y obtén un <b className="font-black text-[#2A2521]">rango referencial 2026</b> basado en tarifas del mercado chileno (Maule y Santiago). El valor final se confirma con el equipo después de revisar alcance y condiciones.</p>
+            <p data-reveal data-reveal-delay="0.18" className="mt-3 flex max-w-2xl items-start gap-2 text-[10px] leading-5 text-[#6B5A4C]"><Info className="mt-0.5 h-4 w-4 shrink-0 text-[#F5871F]" /> Estos precios son referenciales y pueden variar según materiales, terreno, acceso y nivel de terminación elegido.</p>
           </div>
         </header>
 
@@ -205,7 +205,7 @@ export default function ConstructionM2Calculator() {
                 <span className="min-w-0 flex-1">
                   <span className="block text-[9px] font-black uppercase tracking-[.14em] text-[#F5871F]">Cambiar especialidad</span>
                   <span className="mt-0.5 block truncate text-sm font-black">{service.short}</span>
-                  <span className="mt-0.5 block text-[9px] text-[#BFB8AC]">{money(service.marketMin)} – {money(service.marketMax)} / {service.unit}</span>
+                  <span className="mt-0.5 block text-[9px] text-[#6B5A4C]">{money(service.marketMin)} – {money(service.marketMax)} / {service.unit}</span>
                 </span>
                 <span className={`grid h-8 w-8 shrink-0 place-items-center rounded-full bg-white text-[#08090A] transition-transform ${mobileListOpen ? 'rotate-180' : ''}`}><ChevronDown className="h-4 w-4" /></span>
               </button>
@@ -219,7 +219,7 @@ export default function ConstructionM2Calculator() {
                         <span className={`grid h-9 w-9 shrink-0 place-items-center rounded-xl ${active ? 'bg-[#FFB000] text-[#08090A]' : 'bg-[#F4E9DE] text-[#F5871F]'}`}><ItemIcon className="h-4 w-4" /></span>
                         <span className="min-w-0 flex-1">
                           <span className="block text-sm font-black">{item.short}</span>
-                          <span className={`mt-0.5 block text-[9px] ${active ? 'text-white/55' : 'text-[#BFB8AC]'}`}>{money(item.marketMin)} – {money(item.marketMax)} / {item.unit}</span>
+                          <span className={`mt-0.5 block text-[9px] ${active ? 'text-white/70' : 'text-[#6B5A4C]'}`}>{money(item.marketMin)} – {money(item.marketMax)} / {item.unit}</span>
                         </span>
                         {active ? <Check className="h-4 w-4 shrink-0 text-[#FFB000]" /> : null}
                       </button>
@@ -235,10 +235,10 @@ export default function ConstructionM2Calculator() {
                 const active = item.id === serviceId;
                 return (
                   <button key={item.id} type="button" aria-pressed={active} onClick={() => chooseService(item.id)} className={`group relative overflow-hidden rounded-[1.4rem] p-4 text-left transition ${active ? 'bg-[#08090A] text-[#FFF9EE] shadow-[0_16px_38px_rgba(23,24,32,.2)]' : 'bg-[#F4E9DE] text-[#342C27] hover:-translate-y-0.5 hover:bg-[#F2DFBB]'}`}>
-                    <span className={`absolute right-3 top-3 rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-[.12em] ${active ? 'bg-white/10 text-[#F2DFBB]' : 'bg-white text-[#BFB8AC]'}`}>{item.unit}</span>
+                    <span className={`absolute right-3 top-3 rounded-full px-2 py-0.5 text-[8px] font-black uppercase tracking-[.12em] ${active ? 'bg-white/10 text-[#F2DFBB]' : 'bg-white text-[#6B5A4C]'}`}>{item.unit}</span>
                     <span className={`grid h-11 w-11 place-items-center rounded-2xl transition ${active ? 'bg-[#FFB000] text-[#08090A]' : 'bg-white text-[#F5871F]'}`}><ItemIcon className="h-4.5 w-4.5" /></span>
                     <strong className="mt-3 block text-sm leading-5">{item.short}</strong>
-                    <span className={`mt-1.5 block text-[9px] leading-4 ${active ? 'text-white/55' : 'text-[#BFB8AC]'}`}>{money(item.marketMin)} – {money(item.marketMax)} <span className="opacity-70">/ {item.unit}</span></span>
+                    <span className={`mt-1.5 block text-[9px] leading-4 ${active ? 'text-white/70' : 'text-[#6B5A4C]'}`}>{money(item.marketMin)} – {money(item.marketMax)} <span className="opacity-70">/ {item.unit}</span></span>
                   </button>
                 );
               })}
@@ -250,7 +250,7 @@ export default function ConstructionM2Calculator() {
                 <div className="min-w-0">
                   <p className="text-[9px] font-black uppercase tracking-[.16em] text-[#F5871F]">Especialidad seleccionada</p>
                   <div className="mt-1 flex flex-wrap items-baseline gap-x-3 gap-y-1"><h3 className="text-lg font-black">{service.title}</h3><span className="rounded-full bg-white px-2.5 py-1 text-[9px] font-black uppercase tracking-[.14em] text-[#F5871F]">{service.category}</span></div>
-                  <p className="mt-2 text-xs leading-5 text-[#BFB8AC]">{service.description}</p>
+                  <p className="mt-2 text-xs leading-5 text-[#5E5853]">{service.description}</p>
                 </div>
               </div>
             </div>
@@ -259,8 +259,8 @@ export default function ConstructionM2Calculator() {
               <div className="flex items-center gap-2 text-[10px] font-black uppercase tracking-[.16em] text-[#F5871F]"><Ruler className="h-4 w-4" /> Medidas del trabajo</div>
               {supportsDirect ? (
                 <div className="mt-3 grid grid-cols-2 gap-1.5 rounded-[1.25rem] bg-[#F4E9DE] p-1.5">
-                  <button type="button" onClick={() => { setDirectArea(Math.round(measurement.quantity)); setAreaMode(false); }} className={`rounded-[.9rem] px-3 py-2.5 text-[10px] font-black uppercase tracking-[.1em] transition ${!areaMode ? 'bg-white text-[#08090A] shadow-sm' : 'text-[#BFB8AC]'}`}>Largo × ancho</button>
-                  <button type="button" onClick={() => { setDirectArea(Math.round(measurement.quantity)); setAreaMode(true); }} className={`rounded-[.9rem] px-3 py-2.5 text-[10px] font-black uppercase tracking-[.1em] transition ${areaMode ? 'bg-white text-[#08090A] shadow-sm' : 'text-[#BFB8AC]'}`}>Metros cuadrados</button>
+                  <button type="button" onClick={() => { setDirectArea(Math.round(measurement.quantity)); setAreaMode(false); }} className={`rounded-[.9rem] px-3 py-2.5 text-[10px] font-black uppercase tracking-[.1em] transition ${!areaMode ? 'bg-white text-[#08090A] shadow-sm' : 'text-[#6B5A4C]'}`}>Largo × ancho</button>
+                  <button type="button" onClick={() => { setDirectArea(Math.round(measurement.quantity)); setAreaMode(true); }} className={`rounded-[.9rem] px-3 py-2.5 text-[10px] font-black uppercase tracking-[.1em] transition ${areaMode ? 'bg-white text-[#08090A] shadow-sm' : 'text-[#6B5A4C]'}`}>Metros cuadrados</button>
                 </div>
               ) : null}
               {service.measurement === 'count' ? (
@@ -277,7 +277,7 @@ export default function ConstructionM2Calculator() {
               )}
             </div>
 
-            <div className="mt-5 rounded-[1.35rem] bg-[#EEE1D5] px-4 py-3.5"><p className="flex gap-2 text-xs leading-5 text-[#BFB8AC]"><Info className="mt-0.5 h-4 w-4 shrink-0 text-[#F5871F]" />{service.disclaimer}</p></div>
+            <div className="mt-5 rounded-[1.35rem] bg-[#EEE1D5] px-4 py-3.5"><p className="flex gap-2 text-xs leading-5 text-[#5E5853]"><Info className="mt-0.5 h-4 w-4 shrink-0 text-[#F5871F]" />{service.disclaimer}</p></div>
           </div>
 
           <aside className="relative overflow-hidden bg-[linear-gradient(160deg,#1A1B1F_0%,#08090A_70%,#101117_100%)] p-5 text-white sm:p-7 lg:p-8">
@@ -331,8 +331,8 @@ function AreaField({ value, onChange }: { value: number; onChange: (value: numbe
     <label className="block">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <span className="block text-[10px] font-black uppercase tracking-[.16em] text-[#BFB8AC]">Superficie total</span>
-          <span className="block text-[9px] text-[#A08B7A]">si ya conoces los m² exactos del trabajo</span>
+          <span className="block text-[10px] font-black uppercase tracking-[.16em] text-[#5E5853]">Superficie total</span>
+          <span className="block text-[9px] text-[#7A6C61]">si ya conoces los m² exactos del trabajo</span>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => onChange(Math.max(1, value - 5))} className="grid h-10 w-10 place-items-center rounded-full bg-[#F4E9DE] text-[#F5871F] transition hover:bg-[#FFB000] hover:text-[#08090A]" aria-label="Disminuir superficie"><Minus className="h-4 w-4" /></button>
@@ -355,8 +355,8 @@ function SliderField({ field, value, onChange }: { field: FieldConfig; value: nu
     <label className="block">
       <div className="flex items-end justify-between gap-3">
         <div>
-          <span className="block text-[10px] font-black uppercase tracking-[.16em] text-[#BFB8AC]">{field.label}</span>
-          <span className="block text-[9px] text-[#A08B7A]">{field.hint}</span>
+          <span className="block text-[10px] font-black uppercase tracking-[.16em] text-[#5E5853]">{field.label}</span>
+          <span className="block text-[9px] text-[#7A6C61]">{field.hint}</span>
         </div>
         <div className="flex items-center gap-2">
           <button type="button" onClick={() => onChange(Math.max(hasDecimal ? 0.01 : 0.01, value - field.step))} className="grid h-10 w-10 place-items-center rounded-full bg-[#F4E9DE] text-[#F5871F] transition hover:bg-[#FFB000] hover:text-[#08090A]" aria-label={`Disminuir ${field.label}`}><Minus className="h-4 w-4" /></button>
@@ -372,7 +372,7 @@ function SliderField({ field, value, onChange }: { field: FieldConfig; value: nu
 function QuantityField({ value, suffix, onChange }: { value: number; suffix: string; onChange: (value: number) => void }) {
   return (
     <div>
-      <span className="text-[10px] font-black uppercase tracking-[.16em] text-[#BFB8AC]">Cantidad</span>
+      <span className="text-[10px] font-black uppercase tracking-[.16em] text-[#5E5853]">Cantidad</span>
       <div className="mt-2 grid grid-cols-[52px_1fr_52px] items-center gap-2 rounded-[1.25rem] bg-[#F4E9DE] p-2">
         <button type="button" onClick={() => onChange(Math.max(1, value - 1))} className="grid h-12 w-12 place-items-center rounded-full bg-white shadow-sm" aria-label="Reducir cantidad"><Minus className="h-4 w-4" /></button>
         <div className="text-center">

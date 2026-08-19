@@ -10,7 +10,6 @@ import {
   Ruler,
   ShieldCheck,
 } from 'lucide-react';
-import { FacebookBrandIcon, InstagramBrandIcon, WhatsAppBrandIcon } from '@/components/SocialBrandIcons';
 
 const BENEFITS = [
   {
@@ -89,34 +88,6 @@ export default function MetalconSeismicStory() {
             >
               Conocer el sistema
             </Link>
-          </div>
-
-          <div data-reveal data-reveal-delay="0.35" className="mt-5 flex flex-wrap items-center gap-2">
-            <span className="mr-1 text-[10px] font-black uppercase tracking-[.17em] text-[#FFB000]">Comunidad Fabrick</span>
-            <a
-              href="https://www.instagram.com/solucionesfabrick/"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 text-[11px] font-black text-[#FFF9EE] transition hover:border-[#FFB000] hover:bg-[#FFB000] hover:text-[#08090A]"
-            >
-              <InstagramBrandIcon className="h-4 w-4 text-[#FFD05A]" /> Instagram
-            </a>
-            <a
-              href="https://www.facebook.com/FabrickSoluciones"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 text-[11px] font-black text-[#FFF9EE] transition hover:border-[#FFB000] hover:bg-[#FFB000] hover:text-[#08090A]"
-            >
-              <FacebookBrandIcon className="h-4 w-4 text-[#8DB9FF]" /> Fabrick Soluciones
-            </a>
-            <a
-              href="https://wa.me/56930121625?text=Hola%20Soluciones%20Fabrick%2C%20quiero%20cotizar%20mi%20proyecto."
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 text-[11px] font-black text-[#FFF9EE] transition hover:border-[#FFB000] hover:bg-[#FFB000] hover:text-[#08090A]"
-            >
-              <WhatsAppBrandIcon className="h-4 w-4 text-[#76E394]" /> WhatsApp
-            </a>
           </div>
 
           <p className="mt-5 flex max-w-2xl items-start gap-2 text-[10px] leading-5 text-white/55">

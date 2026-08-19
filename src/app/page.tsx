@@ -14,8 +14,8 @@ export default async function Home() {
   const settings = await getCmsSettings();
   const copyrightText = renderCopyright(settings.copyright_text);
   const socialLinks = {
-    facebook: settings.social_facebook,
-    instagram: settings.social_instagram,
+    facebook: settings.social_facebook || 'https://www.facebook.com/FabrickSoluciones',
+    instagram: settings.social_instagram || 'https://www.instagram.com/solucionesfabrick/',
     tiktok: settings.social_tiktok,
   };
 

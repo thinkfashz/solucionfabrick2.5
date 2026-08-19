@@ -1,7 +1,7 @@
 import Image from 'next/image';
 
 export const FABRICK_LOGOS = {
-  primary: '/brand/soluciones-fabrick.svg',
+  primary: '/brand/soluciones-fabrick-on-light.svg',
   onDark: '/brand/soluciones-fabrick.svg',
   onLight: '/brand/soluciones-fabrick-on-light.svg',
   mark: '/brand/soluciones-fabrick-mark.svg',

@@ -78,7 +78,7 @@ export const metadata: Metadata = {
     icon: [
       { url: '/app-icon.svg', type: 'image/svg+xml', sizes: 'any' },
       { url: '/app-icon.png', type: 'image/png', sizes: '512x512' },
-      { url: '/brand/soluciones-fabrick.svg', type: 'image/svg+xml', sizes: '1040x260' },
+      { url: '/brand/soluciones-fabrick-on-light.svg', type: 'image/svg+xml', sizes: '1180x310' },
     ],
     apple: [
       { url: '/apple-touch-icon.png', sizes: '180x180', type: 'image/png' },

@@ -31,7 +31,7 @@ export default function TiendaSection({ limit = 6, title = 'Productos más solic
       const score = (product: typeof a) => (product.featured ? 100 : 0) + (product.discountPercentage ?? product.discount_percentage ?? 0) + Math.min(product.rating ?? 0, 5);
       return score(b) - score(a);
     });
-    const requested = variant === 'banner' ? Math.max(6, limit) : limit;
+    const requested = variant === 'banner' ? Math.max(3, limit) : limit;
     return ranked.slice(0, Math.max(1, requested));
   }, [limit, products, variant]);
 

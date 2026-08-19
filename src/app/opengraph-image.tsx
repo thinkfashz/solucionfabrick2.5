@@ -26,17 +26,19 @@ export default function OpenGraphImage() {
         <div style={{ backgroundColor: '#FFB000', bottom: 74, height: 3, opacity: 0.65, position: 'absolute', right: -80, transform: 'rotate(-25deg)', width: 700 }} />
         <div style={{ backgroundColor: '#F5871F', bottom: 118, height: 2, opacity: 0.55, position: 'absolute', right: -120, transform: 'rotate(-25deg)', width: 730 }} />
 
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 8, position: 'relative' }}>
-          <div style={{ display: 'flex', height: 82, position: 'relative', width: 350 }}>
-            <div style={{ backgroundColor: '#D4D7D4', borderRadius: 8, height: 7, left: 18, position: 'absolute', top: 45, transform: 'rotate(-20deg)', transformOrigin: 'right center', width: 170 }} />
-            <div style={{ backgroundColor: '#8C9290', borderRadius: 8, height: 7, left: 177, position: 'absolute', top: 45, transform: 'rotate(20deg)', transformOrigin: 'left center', width: 170 }} />
-            <div style={{ backgroundColor: '#F5F6F3', borderRadius: 8, height: 4, left: 28, position: 'absolute', top: 51, transform: 'rotate(-20deg)', transformOrigin: 'right center', width: 160 }} />
-            <div style={{ backgroundColor: '#B8BDBA', borderRadius: 8, height: 4, left: 177, position: 'absolute', top: 51, transform: 'rotate(20deg)', transformOrigin: 'left center', width: 160 }} />
-            <div style={{ backgroundColor: '#B6BBB8', borderRadius: 4, height: 42, left: 240, position: 'absolute', top: 7, width: 30 }} />
-            <div style={{ backgroundColor: '#EFF1EE', borderRadius: 3, height: 34, left: 246, position: 'absolute', top: 10, width: 7 }} />
+        <div style={{ alignItems: 'center', display: 'flex', gap: 19, position: 'relative' }}>
+          <div style={{ display: 'flex', height: 104, position: 'relative', width: 100 }}>
+            <div style={{ backgroundColor: '#FFB000', borderRadius: 8, height: 9, left: 4, position: 'absolute', top: 83, transform: 'rotate(-61deg)', transformOrigin: 'left center', width: 100 }} />
+            <div style={{ backgroundColor: '#F5871F', borderRadius: 8, height: 9, left: 48, position: 'absolute', top: 0, transform: 'rotate(61deg)', transformOrigin: 'left center', width: 100 }} />
+            <div style={{ backgroundColor: '#FFF9EE', borderRadius: 8, height: 4, left: 18, position: 'absolute', top: 79, transform: 'rotate(-61deg)', transformOrigin: 'left center', width: 81 }} />
+            <div style={{ backgroundColor: '#FFF9EE', borderRadius: 8, height: 4, left: 51, position: 'absolute', top: 17, transform: 'rotate(61deg)', transformOrigin: 'left center', width: 81 }} />
+            <div style={{ backgroundColor: '#FFB000', borderRadius: 5, height: 36, left: 46, position: 'absolute', top: 56, width: 9 }} />
           </div>
-          <div style={{ color: '#E8B43C', fontSize: 37, fontWeight: 900, letterSpacing: 1.2, lineHeight: 1 }}>SOLUCIONES FABRICK</div>
-          <div style={{ color: '#C1C4C1', fontSize: 17, fontWeight: 800, letterSpacing: 4 }}>CONSTRUCCIÓN · REMODELACIÓN · REPARACIÓN</div>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            <div style={{ color: '#FFF9EE', fontSize: 30, fontWeight: 800, letterSpacing: 2, lineHeight: 1 }}>SOLUCIONES</div>
+            <div style={{ color: '#FFB000', fontSize: 51, fontWeight: 900, letterSpacing: 2.8, lineHeight: 1 }}>FABRICK</div>
+            <div style={{ color: '#C9C1B5', fontSize: 13, fontWeight: 800, letterSpacing: 2.8 }}>CONSTRUIMOS CASAS · DIOS CONSTRUYE HOGARES</div>
+          </div>
         </div>
 
         <div style={{ display: 'flex', flexDirection: 'column', gap: 17, maxWidth: 830, position: 'relative' }}>

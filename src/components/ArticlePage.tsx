@@ -31,7 +31,7 @@ export default async function ArticlePage({ post, related }: ArticlePageProps) {
     publisher: {
       '@type': 'Organization',
       name: 'Soluciones Fabrick',
-      logo: { '@type': 'ImageObject', url: `${BASE_URL}/brand/soluciones-fabrick.svg` },
+      logo: { '@type': 'ImageObject', url: `${BASE_URL}/brand/soluciones-fabrick-on-light.svg` },
     },
     mainEntityOfPage: { '@type': 'WebPage', '@id': url },
     ...(cover ? { image: [cover.startsWith('http') ? cover : `${BASE_URL}${cover}`] } : {}),

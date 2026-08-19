@@ -6,13 +6,11 @@ import {
   BadgeCheck,
   Braces,
   Check,
-  Facebook,
   FileCheck2,
-  Instagram,
-  MessageCircle,
   Ruler,
   ShieldCheck,
 } from 'lucide-react';
+import { FacebookBrandIcon, InstagramBrandIcon, WhatsAppBrandIcon } from '@/components/SocialBrandIcons';
 
 const BENEFITS = [
   {
@@ -101,7 +99,7 @@ export default function MetalconSeismicStory() {
               rel="noopener noreferrer"
               className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 text-[11px] font-black text-[#FFF9EE] transition hover:border-[#FFB000] hover:bg-[#FFB000] hover:text-[#08090A]"
             >
-              <Instagram className="h-4 w-4" /> Instagram
+              <InstagramBrandIcon className="h-4 w-4 text-[#FFD05A]" /> Instagram
             </a>
             <a
               href="https://www.facebook.com/FabrickSoluciones"
@@ -109,7 +107,7 @@ export default function MetalconSeismicStory() {
               rel="noopener noreferrer"
               className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 text-[11px] font-black text-[#FFF9EE] transition hover:border-[#FFB000] hover:bg-[#FFB000] hover:text-[#08090A]"
             >
-              <Facebook className="h-4 w-4" /> Fabrick Soluciones
+              <FacebookBrandIcon className="h-4 w-4 text-[#8DB9FF]" /> Fabrick Soluciones
             </a>
             <a
               href="https://wa.me/56930121625?text=Hola%20Soluciones%20Fabrick%2C%20quiero%20cotizar%20mi%20proyecto."
@@ -117,7 +115,7 @@ export default function MetalconSeismicStory() {
               rel="noopener noreferrer"
               className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/15 bg-white/5 px-3.5 text-[11px] font-black text-[#FFF9EE] transition hover:border-[#FFB000] hover:bg-[#FFB000] hover:text-[#08090A]"
             >
-              <MessageCircle className="h-4 w-4" /> WhatsApp
+              <WhatsAppBrandIcon className="h-4 w-4 text-[#76E394]" /> WhatsApp
             </a>
           </div>
 

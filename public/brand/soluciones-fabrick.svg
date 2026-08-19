@@ -1,16 +1,20 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1400 340" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 310" role="img" aria-labelledby="title desc">
   <title id="title">Soluciones Fabrick</title>
-  <desc id="desc">Logotipo de Soluciones Fabrick: un techo metálico y el nombre de la marca en dorado.</desc>
+  <desc id="desc">Logotipo Soluciones Fabrick con símbolo de techo, nombre y lema de la marca.</desc>
   <defs>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFF3BC"/><stop offset=".26" stop-color="#E5BA4B"/><stop offset=".62" stop-color="#A66F18"/><stop offset="1" stop-color="#F1CA62"/></linearGradient>
-    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#FFFFFF"/><stop offset=".24" stop-color="#B7BCB9"/><stop offset=".58" stop-color="#747A78"/><stop offset="1" stop-color="#DCE0DC"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFF3BD"/><stop offset=".3" stop-color="#FFD05A"/><stop offset=".66" stop-color="#D49013"/><stop offset="1" stop-color="#F5871F"/></linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop stop-color="#FFFFFF"/><stop offset=".5" stop-color="#E8E4DB"/><stop offset="1" stop-color="#BFB8AC"/></linearGradient>
   </defs>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M116 180 700 38 1284 180" stroke="url(#steel)" stroke-width="15"/>
-    <path d="M142 180 700 55 1258 180" stroke="#F7F8F5" stroke-opacity=".85" stroke-width="4"/>
-    <path d="M951 117V63h51v80" stroke="url(#steel)" stroke-width="14"/>
-    <path d="M966 113V76h13v42" stroke="#F7F8F5" stroke-opacity=".82" stroke-width="4"/>
-    <path d="M116 180h1168" stroke="#5E6462" stroke-opacity=".38" stroke-width="4"/>
+  <g transform="translate(38 31)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 214 119 35l102 179" stroke="url(#gold)" stroke-width="17"/>
+    <path d="M44 214 119 82l76 132" stroke="url(#steel)" stroke-width="6" opacity=".9"/>
+    <path d="M119 154v60" stroke="url(#gold)" stroke-width="13"/>
+    <path d="M76 235h86" stroke="#F5871F" stroke-width="7"/>
   </g>
-  <text x="70" y="300" fill="url(#gold)" font-family="Sora, Manrope, Arial, Helvetica, sans-serif" font-size="98" font-weight="900" letter-spacing="1.4" textLength="1260" lengthAdjust="spacingAndGlyphs">SOLUCIONES FABRICK</text>
+  <g font-family="Sora, Manrope, Arial, Helvetica, sans-serif">
+    <text x="305" y="127" fill="#FFF9EE" font-size="71" font-weight="800" letter-spacing="2.2">SOLUCIONES</text>
+    <text x="303" y="219" fill="url(#gold)" font-size="101" font-weight="900" letter-spacing="3.2">FABRICK</text>
+    <path d="M307 237h675" stroke="#FFB000" stroke-opacity=".72" stroke-width="3"/>
+    <text x="309" y="271" fill="#C9C1B5" font-size="17" font-weight="800" letter-spacing="3.8">CONSTRUIMOS CASAS · DIOS CONSTRUYE HOGARES</text>
+  </g>
 </svg>

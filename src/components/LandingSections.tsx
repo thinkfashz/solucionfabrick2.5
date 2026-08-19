@@ -8,15 +8,13 @@ import {
   MapPin,
   MessageCircle,
   ShoppingBag,
-  Facebook,
-  Instagram,
-  Music2,
 } from 'lucide-react';
 import ContactForm from './ContactForm';
 import TiendaSection from './TiendaSection';
 import MetalconSeismicStory from '@/components/landing/MetalconSeismicStory';
 import LandingProcessSection from '@/components/landing/LandingProcessSection';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
+import { FacebookBrandIcon, InstagramBrandIcon, TikTokBrandIcon, WhatsAppBrandIcon } from '@/components/SocialBrandIcons';
 import { useSiteContent } from '@/hooks/useSiteContent';
 
 interface LandingSectionsProps {
@@ -35,9 +33,10 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
     ? copyrightText.replaceAll('{year}', year)
     : (footer.legal || `© ${year} Soluciones Fabrick. Todos los derechos reservados.`).replaceAll('{year}', year);
 
-  const fbHref = socialLinks?.facebook?.trim() || '#';
-  const igHref = socialLinks?.instagram?.trim() || '#';
-  const ttHref = socialLinks?.tiktok?.trim() || '#';
+  const fbHref = socialLinks?.facebook?.trim() || 'https://www.facebook.com/FabrickSoluciones';
+  const igHref = socialLinks?.instagram?.trim() || 'https://www.instagram.com/solucionesfabrick/';
+  const ttHref = socialLinks?.tiktok?.trim() || '';
+  const whatsappHref = 'https://wa.me/56930121625?text=Hola%20Soluciones%20Fabrick%2C%20quiero%20d%C3%ADas%20y%20horarios%20para%20revisar%20mi%20proyecto.';
 
   const footerGroups: Array<{ title: string; items: Array<[string, string]> }> = [
     { title: 'Explorar', items: [['Cotizador', '#cotizador'], ['Más vendidos', '#mas-vendidos']] },
@@ -54,14 +53,16 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
       <section id="mas-vendidos" className="scroll-mt-20 bg-[#FFF9EE] px-4 py-16 text-[#08090A] sm:px-6 md:px-12 lg:py-20">
         <div data-reveal data-reveal-dir="up" className="mx-auto max-w-[1320px]">
           <TiendaSection
-            limit={3}
+            limit={4}
             variant="banner"
             title="Productos elegidos para completar tu proyecto"
-            description="Una selección breve de la tienda para complementar instalaciones, terminaciones y mejoras del hogar sin duplicar el catálogo completo."
+            description="Recomendaciones prácticas para complementar instalaciones, terminaciones y mejoras del hogar. Selecciona una opción para comparar disponibilidad, valor y detalles."
             primaryCtaLabel="Explorar catálogo"
           />
         </div>
       </section>
+
+      <SocialCommunitySection facebookHref={fbHref} instagramHref={igHref} tiktokHref={ttHref} whatsappHref={whatsappHref} />
 
       <section id="contacto" className="relative scroll-mt-20 overflow-hidden bg-[#F5871F] px-4 py-16 text-[#08090A] sm:px-6 md:px-12 lg:py-20">
         <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_18%,rgba(248,240,233,.3),transparent_30%)]" />
@@ -98,13 +99,13 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
             <div>
               <FabrickFullLogo compact priority theme="light" />
               <p className="mt-3 max-w-md text-sm leading-6 text-[#BFB8AC]">Servicios, estimadores y productos para organizar una inversión antes de ejecutar.</p>
-              <div className="mt-4 flex gap-2">
-                <SocialLink href={fbHref} label="Facebook"><Facebook className="h-4 w-4" /></SocialLink>
-                <SocialLink href={igHref} label="Instagram"><Instagram className="h-4 w-4" /></SocialLink>
-                <SocialLink href={ttHref} label="TikTok"><Music2 className="h-4 w-4" /></SocialLink>
+              <div className="mt-4 flex flex-wrap gap-2">
+                <SocialLink href={igHref} label="Instagram" detail="@solucionesfabrick" tone="text-[#F3C85B]"><InstagramBrandIcon className="h-4 w-4" /></SocialLink>
+                <SocialLink href={fbHref} label="Facebook" detail="Fabrick Soluciones" tone="text-[#71A9FF]"><FacebookBrandIcon className="h-4 w-4" /></SocialLink>
+                <SocialLink href={whatsappHref} label="WhatsApp" detail="Cotiza directo" tone="text-[#69D88A]"><WhatsAppBrandIcon className="h-4 w-4" /></SocialLink>
               </div>
               <a
-                href="https://wa.me/56930121625?text=Hola%20Soluciones%20Fabrick%2C%20quiero%20d%C3%ADas%20y%20horarios%20para%20revisar%20mi%20proyecto."
+                href={whatsappHref}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="mt-5 inline-flex min-h-11 items-center justify-center gap-2 rounded-full bg-[#FFB000] px-5 text-[11px] font-black text-[#08090A] transition hover:bg-[#FFD05A]"
@@ -136,7 +137,7 @@ function ProofLine({ icon, title, text }: { icon: ReactNode; title: string; text
   );
 }
 
-function SocialLink({ href, label, children }: { href: string; label: string; children: ReactNode }) {
+function SocialLink({ href, label, detail, tone, children }: { href: string; label: string; detail: string; tone: string; children: ReactNode }) {
   const disabled = !href || href === '#';
   return (
     <a
@@ -144,10 +145,41 @@ function SocialLink({ href, label, children }: { href: string; label: string; ch
       aria-label={label}
       target={disabled ? undefined : '_blank'}
       rel={disabled ? undefined : 'noopener noreferrer'}
-      className={`grid h-10 w-10 place-items-center rounded-full border border-[#FFF9EE]/10 text-sm font-black transition ${disabled ? 'cursor-not-allowed opacity-35' : 'text-[#D4C7BD] hover:border-[#FFB000]/45 hover:bg-[#FFB000] hover:text-[#08090A]'}`}
+      className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#FFF9EE]/10 bg-white/[.035] px-3 py-2 transition ${disabled ? 'cursor-not-allowed opacity-35' : 'hover:-translate-y-0.5 hover:border-[#FFB000]/55 hover:bg-white/[.08]'}`}
     >
-      {children}
+      <span className={`grid h-7 w-7 place-items-center rounded-lg bg-white/[.06] ${tone}`}>{children}</span>
+      <span className="text-left"><b className="block text-[10px] font-black leading-none text-[#FFF9EE]">{label}</b><small className="mt-1 block text-[8px] leading-none text-[#AAA299]">{detail}</small></span>
     </a>
+  );
+}
+
+function SocialCommunitySection({ facebookHref, instagramHref, tiktokHref, whatsappHref }: { facebookHref: string; instagramHref: string; tiktokHref?: string; whatsappHref: string }) {
+  const channels = [
+    { href: instagramHref, label: 'Instagram', handle: '@solucionesfabrick', Icon: InstagramBrandIcon, className: 'text-[#FFD05A] ring-[#FFB000]/25 hover:bg-[#FFB000] hover:text-[#08090A]' },
+    { href: facebookHref, label: 'Facebook', handle: 'Fabrick Soluciones', Icon: FacebookBrandIcon, className: 'text-[#8DB9FF] ring-[#7AA8FF]/25 hover:bg-[#4267B2] hover:text-white' },
+    { href: whatsappHref, label: 'WhatsApp', handle: 'Cotiza directo con el equipo', Icon: WhatsAppBrandIcon, className: 'text-[#76E394] ring-[#55D979]/25 hover:bg-[#25D366] hover:text-[#08120A]' },
+    ...(tiktokHref ? [{ href: tiktokHref, label: 'TikTok', handle: 'Videos y avances', Icon: TikTokBrandIcon, className: 'text-[#FFF9EE] ring-white/20 hover:bg-white hover:text-[#08090A]' }] : []),
+  ];
+
+  return (
+    <section aria-labelledby="social-community-title" className="relative overflow-hidden bg-[#111214] px-4 py-12 text-[#FFF9EE] sm:px-6 md:px-12 lg:py-16">
+      <div aria-hidden className="pointer-events-none absolute -right-24 -top-32 h-80 w-80 rounded-full bg-[#FFB000]/10 blur-3xl" />
+      <div className="relative mx-auto grid max-w-[1320px] gap-6 lg:grid-cols-[.72fr_1.28fr] lg:items-center">
+        <div data-reveal>
+          <p className="text-[10px] font-black uppercase tracking-[.25em] text-[#FFB000]">Comunidad Fabrick</p>
+          <h2 id="social-community-title" className="mt-3 max-w-lg text-3xl font-black leading-[.98] tracking-[-.05em] sm:text-4xl">Mira ideas, avances y soluciones reales.</h2>
+          <p className="mt-3 max-w-lg text-sm leading-6 text-[#C6BFB6]">Síguenos para ver proyectos, recomendaciones y formas de transformar cada espacio.</p>
+        </div>
+        <div data-reveal data-reveal-dir="right" className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+          {channels.map(({ href, label, handle, Icon, className }) => (
+            <a key={label} href={href} target="_blank" rel="noopener noreferrer" className={`group flex min-h-[116px] flex-col justify-between rounded-[1.35rem] bg-[#08090A] p-4 ring-1 transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#FFB000] ${className}`}>
+              <span className="grid h-10 w-10 place-items-center rounded-xl bg-white/[.07] transition group-hover:scale-110"><Icon className="h-5 w-5" /></span>
+              <span><b className="block text-sm font-black text-[#FFF9EE]">{label}</b><small className="mt-1 block text-[10px] leading-4 text-[#AFA69B]">{handle}</small></span>
+            </a>
+          ))}
+        </div>
+      </div>
+    </section>
   );
 }
 

@@ -90,7 +90,7 @@ export function buildFabrickHomeJsonLd({ socialLinks = {} }: { socialLinks?: Soc
         '@id': organizationId,
         name: 'Soluciones Fabrick',
         url: SITE_URL,
-        logo: `${SITE_URL}/brand/soluciones-fabrick.svg`,
+        logo: `${SITE_URL}/brand/soluciones-fabrick-on-light.svg`,
         image: `${SITE_URL}/opengraph-image`,
         description: 'Construcción, remodelación, reparación e instalaciones para viviendas y espacios del hogar.',
         sameAs,

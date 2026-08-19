@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { ArrowRight, BadgePercent, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import type { CatalogProduct } from '@/hooks/useCatalogProducts';
 import FeaturedProductFocus from './FeaturedProductFocus';
@@ -24,12 +24,20 @@ interface FeaturedProductsCarouselProps {
  */
 export default function FeaturedProductsCarousel({ products, title, description, ctaHref, ctaLabel, addedProductId, onAdd, onBuy }: FeaturedProductsCarouselProps) {
   const [activeIndex, setActiveIndex] = useState(0);
+  const recommendationRefs = useRef<Array<HTMLButtonElement | null>>([]);
   const safeIndex = Math.min(activeIndex, Math.max(products.length - 1, 0));
   const activeProduct = products[safeIndex];
 
   if (!activeProduct) return null;
 
-  const select = (index: number) => setActiveIndex(Math.max(0, Math.min(products.length - 1, index)));
+  const select = (index: number, shouldScrollToCard = false) => {
+    const nextIndex = Math.max(0, Math.min(products.length - 1, index));
+    setActiveIndex(nextIndex);
+
+    if (shouldScrollToCard && window.matchMedia('(max-width: 639px)').matches) {
+      recommendationRefs.current[nextIndex]?.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+    }
+  };
 
   return (
     <section aria-labelledby="featured-products-title" className="relative">
@@ -60,10 +68,11 @@ export default function FeaturedProductsCarousel({ products, title, description,
             <div className="hidden xl:block"><RecommendationControls index={safeIndex} total={products.length} onSelect={select} /></div>
           </div>
           <p className="mt-3 text-xs leading-5 text-[#665C55]">Toca una tarjeta para verla en detalle, revisar su disponibilidad o añadirla al carrito.</p>
+          <p aria-live="polite" className="sr-only">Producto seleccionado: {displayProductName(activeProduct.name)}. {safeIndex + 1} de {products.length}.</p>
 
-          <div className="mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0">
+          <div id="recommended-products-track" className="mt-5 flex snap-x snap-mandatory gap-3 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden sm:grid sm:grid-cols-2 sm:overflow-visible sm:pb-0">
             {products.map((product, index) => (
-              <RecommendationCard key={product.id} product={product} selected={index === safeIndex} onSelect={() => select(index)} />
+              <RecommendationCard key={product.id} product={product} selected={index === safeIndex} cardRef={(element) => { recommendationRefs.current[index] = element; }} onSelect={(shouldScrollToCard) => select(index, shouldScrollToCard)} />
             ))}
           </div>
           <div className="mt-5 rounded-2xl border border-[#08090A]/10 bg-[#FFF9EE]/80 p-3.5 text-xs leading-5 text-[#5F5751]">
@@ -75,21 +84,21 @@ export default function FeaturedProductsCarousel({ products, title, description,
   );
 }
 
-function RecommendationControls({ index, total, onSelect }: { index: number; total: number; onSelect: (index: number) => void }) {
+function RecommendationControls({ index, total, onSelect }: { index: number; total: number; onSelect: (index: number, shouldScrollToCard?: boolean) => void }) {
   return (
     <div className="flex gap-2">
-      <button type="button" aria-label="Ver producto recomendado anterior" className="grid h-10 w-10 place-items-center rounded-full border border-[#08090A]/10 bg-[#FFF9EE] text-[#08090A] transition hover:border-[#F5871F] hover:bg-[#F5871F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5871F] disabled:cursor-not-allowed disabled:opacity-35" disabled={index === 0} onClick={() => onSelect(index - 1)}><ChevronLeft className="h-4 w-4" /></button>
-      <button type="button" aria-label="Ver siguiente producto recomendado" className="grid h-10 w-10 place-items-center rounded-full bg-[#08090A] text-[#FFF9EE] transition hover:bg-[#F5871F] hover:text-[#08090A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5871F] disabled:cursor-not-allowed disabled:opacity-35" disabled={index === total - 1} onClick={() => onSelect(index + 1)}><ChevronRight className="h-4 w-4" /></button>
+      <button type="button" aria-controls="recommended-products-track" aria-label="Ver producto recomendado anterior" className="grid h-10 w-10 place-items-center rounded-full border border-[#08090A]/10 bg-[#FFF9EE] text-[#08090A] transition hover:border-[#F5871F] hover:bg-[#F5871F] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5871F] disabled:cursor-not-allowed disabled:opacity-35" disabled={index === 0} onClick={() => onSelect(index - 1, true)}><ChevronLeft className="h-4 w-4" /></button>
+      <button type="button" aria-controls="recommended-products-track" aria-label="Ver siguiente producto recomendado" className="grid h-10 w-10 place-items-center rounded-full bg-[#08090A] text-[#FFF9EE] transition hover:bg-[#F5871F] hover:text-[#08090A] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5871F] disabled:cursor-not-allowed disabled:opacity-35" disabled={index === total - 1} onClick={() => onSelect(index + 1, true)}><ChevronRight className="h-4 w-4" /></button>
     </div>
   );
 }
 
-function RecommendationCard({ product, selected, onSelect }: { product: CatalogProduct; selected: boolean; onSelect: () => void }) {
+function RecommendationCard({ product, selected, cardRef, onSelect }: { product: CatalogProduct; selected: boolean; cardRef: (element: HTMLButtonElement | null) => void; onSelect: (shouldScrollToCard?: boolean) => void }) {
   const discount = product.discountPercentage ?? product.discount_percentage ?? 0;
   const name = displayProductName(product.name);
 
   return (
-    <button type="button" aria-pressed={selected} onClick={onSelect} onMouseEnter={onSelect} onFocus={onSelect} className={`group w-[72vw] max-w-[280px] shrink-0 snap-center overflow-hidden rounded-[1.45rem] border bg-[#FFF9EE] text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5871F] sm:w-auto sm:max-w-none ${selected ? 'border-[#F5871F] shadow-[0_16px_34px_rgba(245,135,31,.20)]' : 'border-[#08090A]/10 hover:-translate-y-0.5 hover:border-[#B56D00]/50'}`}>
+    <button ref={cardRef} type="button" aria-pressed={selected} onClick={() => onSelect(true)} onMouseEnter={() => onSelect()} onFocus={() => onSelect()} className={`group w-[72vw] max-w-[280px] shrink-0 snap-center overflow-hidden rounded-[1.45rem] border bg-[#FFF9EE] text-left transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#F5871F] sm:w-auto sm:max-w-none ${selected ? 'border-[#F5871F] shadow-[0_16px_34px_rgba(245,135,31,.20)]' : 'border-[#08090A]/10 hover:-translate-y-0.5 hover:border-[#B56D00]/50'}`}>
       <span className="relative block h-32 overflow-hidden bg-[#DACABE] sm:h-36">
         {product.img ? <img src={product.img} alt="" loading="lazy" className={`h-full w-full object-cover transition duration-500 ${selected ? 'scale-105' : 'group-hover:scale-105'}`} /> : <span className="block h-full bg-[linear-gradient(135deg,#DACABE,#FFB000)]" />}
         <span className="absolute inset-0 bg-gradient-to-t from-[#08090A]/45 to-transparent" />

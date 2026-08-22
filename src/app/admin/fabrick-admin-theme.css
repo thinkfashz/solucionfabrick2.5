@@ -98,7 +98,6 @@ button { touch-action: manipulation; }
 .fabrick-admin-muted { color: var(--fabrick-muted); }
 .fabrick-admin-button, button[class*='bg-amber-400'], button[class*='bg-yellow'] { box-shadow: 0 16px 40px rgba(255, 176, 0, .16); }
 
-/* Navegación: superficies oscuras y tipografía de alto contraste. */
 [class*='grid-cols-[60px_minmax'] > div {
   color: #fff8e8;
   border-color: rgba(255, 176, 0, .18) !important;
@@ -111,7 +110,6 @@ button { touch-action: manipulation; }
 [class*='grid-cols-[60px_minmax'] .text-zinc-600,
 [class*='grid-cols-[60px_minmax'] [class*='text-white/30'] { color: rgba(255,255,255,.50) !important; }
 
-/* Cabecera clara: logo, ruta y acciones siempre legibles. */
 [data-admin-header] { border-color: rgba(69, 51, 20, .12) !important; color: #111214; }
 [data-admin-header] > div:first-child { background: rgba(248, 239, 221, .91) !important; }
 [data-admin-header] .text-yellow-300,
@@ -123,7 +121,6 @@ button { touch-action: manipulation; }
 [data-admin-header] button,
 [data-admin-header] a { border-color: rgba(27,23,16,.12) !important; }
 
-/* Editor de productos: crema, campos blancos y preview oscuro. */
 [data-product-form] section { border-color: rgba(53,40,17,.08) !important; background-color: #F2DFBB !important; box-shadow: 0 24px 80px rgba(58,45,19,.10); }
 [data-product-form] section h2,
 [data-product-form] section .text-white { color: #111214 !important; }
@@ -167,49 +164,43 @@ button { touch-action: manipulation; }
   .sf-admin-blob { width: 66vmax; height: 66vmax; }
 }
 
-/*
- * Mobile viewport/overscroll hardening.
- * The root layout carries a dark body utility. On mobile browsers the browser canvas can become
- * visible below the last admin element during dynamic-toolbar resize or rubber-band overscroll.
- * Paint the document canvas with the same admin surface and make every admin shell own the full
- * dynamic viewport so there is never a black strip after the page content.
- */
+/* Keep the browser canvas in the admin palette without constraining page scroll. */
 html:has(.sf-admin-colombia-bg),
 body:has(.sf-admin-colombia-bg) {
-  min-height: 100%;
   background-color: #ddcba8 !important;
-  overscroll-behavior-y: contain;
 }
 
-body:has(.sf-admin-colombia-bg),
-.sf-admin-colombia-bg,
+.sf-admin-colombia-bg {
+  min-height: 100dvh;
+  height: auto;
+  overflow-y: visible;
+  background-color: #ddcba8;
+}
 .sf-admin-colombia-content,
 #shell-fabrick,
 [data-admin-frame] {
   min-height: 100dvh;
-}
-
-.sf-admin-colombia-bg {
-  min-height: max(100dvh, 100%);
-  padding-bottom: env(safe-area-inset-bottom, 0px);
-  background-color: #ddcba8;
-  background-repeat: no-repeat;
-}
-
-@supports (min-height: 100svh) {
-  body:has(.sf-admin-colombia-bg),
-  .sf-admin-colombia-bg,
-  .sf-admin-colombia-content,
-  #shell-fabrick,
-  [data-admin-frame] {
-    min-height: 100svh;
-  }
+  height: auto;
+  overflow-y: visible;
 }
 
 @media (max-width: 768px) {
   html:has(.sf-admin-colombia-bg),
   body:has(.sf-admin-colombia-bg) {
     background: #ddcba8 !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: auto;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .sf-admin-colombia-bg,
+  .sf-admin-colombia-content,
+  #shell-fabrick,
+  [data-admin-frame] {
+    min-height: 100dvh;
+    height: auto !important;
+    max-height: none !important;
+    overflow-y: visible !important;
   }
 
   .sf-admin-colombia-bg {

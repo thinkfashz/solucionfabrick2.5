@@ -167,6 +167,56 @@ button { touch-action: manipulation; }
   .sf-admin-blob { width: 66vmax; height: 66vmax; }
 }
 
+/*
+ * Mobile viewport/overscroll hardening.
+ * The root layout carries a dark body utility. On mobile browsers the browser canvas can become
+ * visible below the last admin element during dynamic-toolbar resize or rubber-band overscroll.
+ * Paint the document canvas with the same admin surface and make every admin shell own the full
+ * dynamic viewport so there is never a black strip after the page content.
+ */
+html:has(.sf-admin-colombia-bg),
+body:has(.sf-admin-colombia-bg) {
+  min-height: 100%;
+  background-color: #ddcba8 !important;
+  overscroll-behavior-y: contain;
+}
+
+body:has(.sf-admin-colombia-bg),
+.sf-admin-colombia-bg,
+.sf-admin-colombia-content,
+#shell-fabrick,
+[data-admin-frame] {
+  min-height: 100dvh;
+}
+
+.sf-admin-colombia-bg {
+  min-height: max(100dvh, 100%);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  background-color: #ddcba8;
+  background-repeat: no-repeat;
+}
+
+@supports (min-height: 100svh) {
+  body:has(.sf-admin-colombia-bg),
+  .sf-admin-colombia-bg,
+  .sf-admin-colombia-content,
+  #shell-fabrick,
+  [data-admin-frame] {
+    min-height: 100svh;
+  }
+}
+
+@media (max-width: 768px) {
+  html:has(.sf-admin-colombia-bg),
+  body:has(.sf-admin-colombia-bg) {
+    background: #ddcba8 !important;
+  }
+
+  .sf-admin-colombia-bg {
+    padding-bottom: max(env(safe-area-inset-bottom, 0px), 12px);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: .001ms !important; animation-iteration-count: 1 !important; transition-duration: .001ms !important; scroll-behavior: auto !important; }
 }

@@ -30,19 +30,17 @@ type ProductRow = {
   created_at?: string | null;
 };
 
-type ErrorRow = {
-  id?: string;
-  error_message?: string | null;
-  endpoint?: string | null;
-  status_code?: number | null;
-  created_at?: string | null;
-};
-
+type OrderRow = { id: string; status?: string; total?: number | string; created_at?: string };
+type ErrorRow = { id?: string; error_message?: string | null; endpoint?: string | null; status_code?: number | null; created_at?: string | null };
 type QueryResult<T> = { data?: T[] | null; error?: { message?: string } | null };
 
 function n(value: unknown) {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function rate(part: number, total: number) {
+  return total > 0 ? Math.round((part / total) * 10_000) / 100 : 0;
 }
 
 function countBy<T>(rows: T[], getter: (row: T) => string) {
@@ -57,6 +55,12 @@ function countBy<T>(rows: T[], getter: (row: T) => string) {
 
 function isEvent(event: string | null | undefined, pattern: RegExp) {
   return pattern.test(String(event || ''));
+}
+
+function belongsToTenant(row: EventRow, tenantId: string) {
+  const eventTenant = String(row.meta?.tenantId || row.meta?.tenant_id || '').trim();
+  if (eventTenant) return eventTenant === tenantId;
+  return tenantId === DEFAULT_TENANT_ID;
 }
 
 async function fetchAll<T>(label: string, pageFactory: (from: number, to: number) => Promise<QueryResult<T>>): Promise<T[]> {
@@ -84,7 +88,7 @@ export async function GET(request: NextRequest) {
   const hourAgo = new Date(Date.now() - 3_600_000).toISOString();
 
   try {
-    const [events, products, errors, orders, leads] = await Promise.all([
+    const [allEvents, products, errors, orders, leads] = await Promise.all([
       fetchAll<EventRow>('pwa_events', async (from, to) => {
         const result = await insforgeAdmin.database.from('pwa_events')
           .select('event,user_id,meta,created_at')
@@ -109,14 +113,14 @@ export async function GET(request: NextRequest) {
           .range(from, to);
         return result as QueryResult<ErrorRow>;
       }),
-      fetchAll<{ id: string; status?: string; total?: number | string; created_at?: string }>('orders', async (from, to) => {
+      fetchAll<OrderRow>('orders', async (from, to) => {
         const result = await insforgeAdmin.database.from('orders')
           .select('id,status,total,created_at')
           .eq('tenant_id', tenantId)
           .gte('created_at', since)
           .order('created_at', { ascending: false })
           .range(from, to);
-        return result as QueryResult<{ id: string; status?: string; total?: number | string; created_at?: string }>;
+        return result as QueryResult<OrderRow>;
       }),
       fetchAll<{ id: string; created_at?: string }>('leads', async (from, to) => {
         const result = await insforgeAdmin.database.from('leads')
@@ -128,6 +132,7 @@ export async function GET(request: NextRequest) {
       }),
     ]);
 
+    const events = allEvents.filter((row) => belongsToTenant(row, tenantId));
     const pageViews = events.filter((row) => row.event === 'page_view');
     const visitors = new Set(pageViews.map((row) => row.user_id).filter(Boolean));
     const sessions = new Set(pageViews.map((row) => String(row.meta?.session_id || '')).filter(Boolean));
@@ -149,42 +154,65 @@ export async function GET(request: NextRequest) {
       .filter((product) => product.margin !== null && product.margin < 25)
       .sort((a, b) => (a.margin ?? 0) - (b.margin ?? 0));
 
+    const paidOrders = orders.filter((order) => /(paid|pagad|approved|complet)/i.test(String(order.status || '')));
+    const revenue = paidOrders.reduce((sum, order) => sum + n(order.total), 0);
+    const averageOrderValue = paidOrders.length ? Math.round(revenue / paidOrders.length) : 0;
+    const visits = pageViews.length;
+    const contacts = contactEvents.length + leads.length;
+
+    const funnel = {
+      visits,
+      productViews: productViews.length,
+      addToCart: addToCart.length,
+      checkout: checkout.length,
+      orders: orders.length,
+      paidOrders: paidOrders.length,
+      contacts,
+      rates: {
+        visitToProduct: rate(productViews.length, visits),
+        productToCart: rate(addToCart.length, productViews.length),
+        cartToCheckout: rate(checkout.length, addToCart.length),
+        checkoutToOrder: rate(orders.length, checkout.length),
+        visitToOrder: rate(orders.length, visits),
+        visitToContact: rate(contacts, visits),
+      },
+    };
+
     const pages = countBy(pageViews, (row) => String(row.meta?.path || row.meta?.full_path || '/')).slice(0, 10);
     const sources = countBy(pageViews, (row) => String(row.meta?.utm_source || row.meta?.referrer || 'Directo')).slice(0, 10);
 
     const recommendations: Array<{ severity: 'high' | 'medium' | 'low'; title: string; detail: string; href?: string }> = [];
     if (errors.length) recommendations.push({ severity: 'high', title: `${errors.length} errores de runtime en la última hora`, detail: 'Revisa las rutas afectadas antes de publicar nuevos cambios.', href: '/admin/observabilidad' });
-    if (criticalStockAll.length) recommendations.push({ severity: 'high', title: `${criticalStockAll.length} productos con stock crítico`, detail: 'Repón, pausa o ajusta la publicidad de estos productos.', href: '/admin/productos' });
+    if (criticalStockAll.length) recommendations.push({ severity: 'high', title: `${criticalStockAll.length} productos con stock crítico`, detail: 'Repón, pausa o ajusta la publicidad de estos productos.', href: '/admin/intelligence/operations' });
     if (incompleteProductsAll.length) recommendations.push({ severity: 'medium', title: `${incompleteProductsAll.length} productos incompletos`, detail: 'Faltan imágenes o descripciones; esto reduce confianza y conversión.', href: '/admin/productos' });
-    if (lowMarginAll.length) recommendations.push({ severity: 'medium', title: `${lowMarginAll.length} productos con margen bajo 25%`, detail: 'Revisa costo proveedor, envío y precio antes de promocionarlos.', href: '/admin/productos' });
-    if (pageViews.length > 30 && contactEvents.length === 0 && leads.length === 0) recommendations.push({ severity: 'medium', title: 'Tráfico sin contactos registrados', detail: 'Revisa CTA de WhatsApp, formulario y medición de conversiones.', href: '/admin/analitica' });
+    if (lowMarginAll.length) recommendations.push({ severity: 'medium', title: `${lowMarginAll.length} productos con margen bajo 25%`, detail: 'Revisa costo proveedor, envío y Price Watch antes de promocionarlos.', href: '/admin/intelligence/operations' });
+    if (visits >= 30 && funnel.rates.visitToContact < 1) recommendations.push({ severity: 'medium', title: `Conversión a contacto de ${funnel.rates.visitToContact}%`, detail: 'Hay tráfico pero pocos contactos. Prioriza CTA, WhatsApp y formulario en las páginas más vistas.', href: '/admin/analitica' });
+    if (productViews.length >= 20 && funnel.rates.productToCart < 3) recommendations.push({ severity: 'medium', title: `Solo ${funnel.rates.productToCart}% pasa de producto a carrito`, detail: 'Revisa precio, confianza, imágenes, envío y claridad del botón de compra.', href: '/admin/productos' });
+    if (checkout.length >= 5 && funnel.rates.checkoutToOrder < 30) recommendations.push({ severity: 'high', title: `Checkout convierte ${funnel.rates.checkoutToOrder}%`, detail: 'Existe fricción entre iniciar checkout y crear pedido. Revisa errores, costos de envío y medios de pago.', href: '/admin/observabilidad' });
     if (!recommendations.length) recommendations.push({ severity: 'low', title: 'Operación sin alertas críticas', detail: 'Mantén el monitoreo y compara rendimiento semanal.' });
 
     return NextResponse.json({
       ok: true,
       generatedAt: new Date().toISOString(),
       periodDays: days,
+      tenantId,
       summary: {
-        pageViews: pageViews.length,
+        pageViews: visits,
         visitors: visitors.size,
         sessions: sessions.size,
-        contacts: contactEvents.length + leads.length,
+        contacts,
         productViews: productViews.length,
         addToCart: addToCart.length,
         checkoutStarts: checkout.length,
         orders: orders.length,
+        paidOrders: paidOrders.length,
+        revenue,
+        averageOrderValue,
         activeProducts: activeProducts.length,
         criticalStock: criticalStockAll.length,
         runtimeErrorsHour: errors.length,
       },
-      funnel: {
-        visits: pageViews.length,
-        productViews: productViews.length,
-        addToCart: addToCart.length,
-        checkout: checkout.length,
-        orders: orders.length,
-        contacts: contactEvents.length + leads.length,
-      },
+      funnel,
       pages,
       sources,
       products: {

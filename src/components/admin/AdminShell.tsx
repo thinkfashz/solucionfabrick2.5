@@ -71,9 +71,9 @@ type NavSection = {
 /**
  * Canonical admin information architecture.
  *
- * Important: this intentionally does not list route variants such as /nuevo,
- * /scan, Cloudinary tabs or legacy control centers. Those remain reachable from
- * their parent module, but the sidebar exposes one canonical destination per job.
+ * The sidebar intentionally exposes one primary destination per job. Creation,
+ * import, scanner, tab and other task routes remain inside their parent module
+ * so the navigation does not become a directory of every URL in the app.
  */
 const NAV: NavSection[] = [
   {
@@ -81,9 +81,9 @@ const NAV: NavSection[] = [
     label: 'Visión general',
     icon: LayoutDashboard,
     items: [
-      { href: '/admin', label: 'Centro de control', description: 'Resumen del negocio', icon: Gauge, exact: true },
-      { href: '/admin/analytics', label: 'Analytics', description: 'Tráfico, ventas y conversión', icon: BarChart3 },
-      { href: '/admin/modulos', label: 'Módulos', description: 'Mapa funcional del sistema', icon: LayoutGrid },
+      { href: '/admin', label: 'Centro de control', description: 'Resumen operativo del negocio', icon: Gauge, exact: true },
+      { href: '/admin/analitica', label: 'Analítica web', description: 'Visitas, sesiones, fuentes y dispositivos', icon: BarChart3 },
+      { href: '/admin/modulos', label: 'Mapa de módulos', description: 'Inventario funcional del sistema', icon: LayoutGrid },
     ],
   },
   {
@@ -130,6 +130,7 @@ const NAV: NavSection[] = [
     items: [
       { href: '/admin/f29', label: 'F29 · IVA mensual', description: 'IVA, PPM y remanentes', icon: FileText },
       { href: '/admin/contabilidad', label: 'Contabilidad', description: 'Impuestos y registros', icon: Calculator },
+      { href: '/admin/analytics', label: 'Analytics contable', description: 'Tendencias F29, IVA, PPM y ventas', icon: BarChart3 },
       { href: '/admin/facturas', label: 'Facturas DTE', description: 'Documentos tributarios', icon: Receipt },
       { href: '/admin/pagos', label: 'Pagos', description: 'MercadoPago y cobros', icon: CircleDollarSign },
       { href: '/admin/reportes', label: 'Reportes', description: 'Resultados financieros', icon: BarChart3 },
@@ -176,7 +177,7 @@ const NAV: NavSection[] = [
   },
   {
     id: 'tools',
-    label: 'Motores & herramientas',
+    label: 'Motores & presupuestos',
     icon: Hammer,
     items: [
       { href: '/admin/page-engine-21stdev', label: 'Motor de páginas', description: 'Landings y páginas comerciales', icon: LayoutGrid },
@@ -186,8 +187,20 @@ const NAV: NavSection[] = [
     ],
   },
   {
+    id: 'access',
+    label: 'Acceso & equipo',
+    icon: ShieldCheck,
+    items: [
+      { href: '/admin/equipo', label: 'Equipo & permisos', description: 'Roles, accesos y aprobaciones', icon: Users },
+      { href: '/admin/sesiones', label: 'Sesiones & dispositivos', description: 'Actividad, IP y dispositivos', icon: Activity },
+      { href: '/admin/invitaciones', label: 'Invitaciones demo', description: 'Accesos temporales de demostración', icon: Send },
+      { href: '/admin/seguridad', label: 'Seguridad', description: 'Passkeys y políticas de acceso', icon: KeyRound },
+      { href: '/admin/perfil', label: 'Perfil administrador', description: 'Cuenta y presentación', icon: User },
+    ],
+  },
+  {
     id: 'system',
-    label: 'Sistema',
+    label: 'Sistema & plataforma',
     icon: Settings,
     items: [
       { href: '/admin/integraciones', label: 'Integraciones', description: 'APIs y conexiones', icon: Link2 },
@@ -195,10 +208,10 @@ const NAV: NavSection[] = [
       { href: '/admin/diagnostico', label: 'Diagnóstico', description: 'Servicios y variables críticas', icon: Gauge },
       { href: '/admin/errores', label: 'Errores', description: 'Fallos capturados', icon: Terminal },
       { href: '/admin/vercel-logs', label: 'Vercel & logs', description: 'Deployments y runtime', icon: Terminal },
-      { href: '/admin/equipo', label: 'Equipo & permisos', description: 'Roles y aprobaciones', icon: ShieldCheck },
-      { href: '/admin/seguridad', label: 'Seguridad', description: 'Passkeys y acceso', icon: KeyRound },
+      { href: '/admin/extensions', label: 'Extensiones', description: 'Webhooks y capacidades externas', icon: Link2 },
+      { href: '/admin/testing', label: 'Testing', description: 'Pruebas, webhooks y OAuth', icon: Gauge },
+      { href: '/admin/setup', label: 'Setup & base de datos', description: 'Verificación de tablas y entorno', icon: Terminal },
       { href: '/admin/configuracion', label: 'Configuración', description: 'Negocio y plataforma', icon: Settings },
-      { href: '/admin/perfil', label: 'Perfil', description: 'Cuenta administrativa', icon: User },
     ],
   },
 ];

@@ -7,11 +7,7 @@
   "installCommand": "pnpm install --no-frozen-lockfile",
   "buildCommand": "pnpm build",
   "crons": [
-    { "path": "/api/cron/system-health", "schedule": "0 0 * * *" },
-    { "path": "/api/cron/newsletter", "schedule": "0 13 * * *" },
-    { "path": "/api/cron/integrations-healthcheck", "schedule": "0 9 * * *" },
-    { "path": "/api/cron/expire-trials", "schedule": "0 8 * * *" },
-    { "path": "/api/cron/intelligence-price-watch", "schedule": "17 */6 * * *" },
-    { "path": "/api/cron/intelligence-daily-brief", "schedule": "30 12 * * *" }
+    { "path": "/api/cron/fabrick-daily", "schedule": "15 12 * * *" },
+    { "path": "/api/cron/newsletter", "schedule": "0 13 * * *" }
   ]
 }

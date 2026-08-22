@@ -1,4 +1,4 @@
-import { NextResponse, type NextRequest } from '@/lib/nextResponseCompat';
+import { NextResponse, type NextRequest } from 'next/server';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 import { insforgeAdmin } from '@/lib/insforge';
 import { DEFAULT_TENANT_ID } from '@/lib/tenant';
@@ -60,8 +60,6 @@ function isEvent(event: string | null | undefined, pattern: RegExp) {
 function belongsToTenant(row: EventRow, tenantId: string) {
   const eventTenant = String(row.meta?.tenantId || row.meta?.tenant_id || '').trim();
   if (eventTenant) return eventTenant === tenantId;
-  // Legacy events did not always carry tenant metadata. They are only
-  // attributed to the default tenant to avoid leaking them into SaaS tenants.
   return tenantId === DEFAULT_TENANT_ID;
 }
 

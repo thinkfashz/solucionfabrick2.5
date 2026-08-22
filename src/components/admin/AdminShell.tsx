@@ -141,9 +141,8 @@ const NAV: NavSection[] = [
     label: 'Web & contenido',
     icon: LayoutGrid,
     items: [
-      { href: '/admin/editor', label: 'Editor del sitio', description: 'Edición global y páginas', icon: LayoutGrid },
-      { href: '/admin/home', label: 'Página principal', description: 'Secciones y portada', icon: Globe2 },
-      { href: '/admin/tienda', label: 'Tienda', description: 'Portada y catálogo público', icon: Store },
+      { href: '/admin/editor', label: 'Editor del sitio', description: 'Home, tienda, navegación y estilos globales', icon: LayoutGrid },
+      { href: '/admin/paginas', label: 'Páginas comerciales', description: 'Landings y páginas administrables', icon: Globe2 },
       { href: '/admin/blog', label: 'Blog', description: 'Artículos y comentarios', icon: Newspaper },
       { href: '/admin/medios', label: 'Biblioteca de medios', description: 'Imágenes, video y Cloudinary', icon: ImageIcon },
       { href: '/admin/proyectos', label: 'Proyectos', description: 'Portafolio de obras', icon: Hammer },
@@ -180,7 +179,7 @@ const NAV: NavSection[] = [
     label: 'Motores & presupuestos',
     icon: Hammer,
     items: [
-      { href: '/admin/page-engine-21stdev', label: 'Motor de páginas', description: 'Landings y páginas comerciales', icon: LayoutGrid },
+      { href: '/admin/page-engine-21stdev', label: 'Motor de páginas', description: 'Generación rápida de landings', icon: LayoutGrid },
       { href: '/admin/motores/aire-acondicionado', label: 'Aire acondicionado', description: 'BTU y presupuesto', icon: Calculator },
       { href: '/admin/motores/radier', label: 'Radier', description: 'Cubicación y presupuesto', icon: Hammer },
       { href: '/admin/presupuestos', label: 'Presupuestos', description: 'Propuestas y presentaciones', icon: FileText },

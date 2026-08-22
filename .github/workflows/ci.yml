@@ -17,31 +17,25 @@ jobs:
   ci:
     name: lint · typecheck · test · build
     runs-on: ubuntu-latest
-
-    strategy:
-      fail-fast: false
-      matrix:
-        # Node 18 omitted: globalThis.crypto was added in Node 19, but Next.js 15
-        # and our own csp.ts depend on it. Vercel runs Node 20, so 20.x + 22.x
-        # is what we actually ship against.
-        node-version: [20.x, 22.x]
+    timeout-minutes: 30
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
+      - name: Use Node.js 24
+        uses: actions/setup-node@v5
         with:
-          version: 10.33.0
-
-      - name: Use Node.js ${{ matrix.node-version }}
-        uses: actions/setup-node@v4
-        with:
-          node-version: ${{ matrix.node-version }}
+          node-version: '24.x'
           cache: pnpm
 
-      - name: Install
-        run: pnpm install --frozen-lockfile
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Prepare pnpm
+        run: corepack prepare pnpm@10.33.0 --activate
+
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
 
       - name: Lint
         run: pnpm run lint --if-present
@@ -49,11 +43,11 @@ jobs:
       - name: Typecheck
         run: pnpm run typecheck --if-present
 
-      - name: Test (with coverage gate)
+      - name: Test with coverage
         run: pnpm run test:coverage
 
       - name: Upload coverage report
-        if: matrix.node-version == '20.x'
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: coverage-report
@@ -62,4 +56,6 @@ jobs:
           retention-days: 14
 
       - name: Build
+        env:
+          CI: 'true'
         run: pnpm run build

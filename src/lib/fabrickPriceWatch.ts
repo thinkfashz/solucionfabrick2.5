@@ -329,12 +329,16 @@ export async function runSupplierPriceWatch() {
       results.push({ targetId: target.id, productId: target.product_id, ok: true, price: observation.price, currency: observation.currency, changePercent: Math.round(changePercent * 10) / 10, proposalId });
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
-      await insforgeAdmin.database.from('supplier_watch_targets').update({
-        last_checked_at: checkedAt,
-        last_status: 'error',
-        last_error: message.slice(0, 1000),
-        updated_at: checkedAt,
-      }).eq('id', target.id).eq('tenant_id', target.tenant_id).catch(() => null);
+      try {
+        await insforgeAdmin.database.from('supplier_watch_targets').update({
+          last_checked_at: checkedAt,
+          last_status: 'error',
+          last_error: message.slice(0, 1000),
+          updated_at: checkedAt,
+        }).eq('id', target.id).eq('tenant_id', target.tenant_id);
+      } catch {
+        // Best effort: the original supplier error remains the useful result.
+      }
       results.push({ targetId: target.id, productId: target.product_id, ok: false, error: message });
     }
   }

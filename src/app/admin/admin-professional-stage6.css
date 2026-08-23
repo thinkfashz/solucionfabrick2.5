@@ -1,12 +1,15 @@
-/* Stage 6 — visual convergence for remaining legacy admin workspaces.
- * This layer is route-aware. It deliberately normalizes old dark utilities
- * without changing public pages or the dark navigation shell.
+/* Stage 6 — temporary convergence for admin workspaces that have not yet
+ * migrated to the native Fabrick component system.
+ *
+ * IMPORTANT: pages marked data-admin-design="native" are deliberately
+ * excluded so Tailwind/component styles are no longer rewritten by this
+ * compatibility layer. This lets us remove Stage 6 route by route.
  */
 
-body[data-admin-area="marketing"],
-body[data-admin-area="system"],
-body[data-admin-area="operations"],
-body[data-admin-area="access"] {
+body:not([data-admin-design="native"])[data-admin-area="marketing"],
+body:not([data-admin-design="native"])[data-admin-area="system"],
+body:not([data-admin-design="native"])[data-admin-area="operations"],
+body:not([data-admin-design="native"])[data-admin-area="access"] {
   --fa-workspace-surface: rgba(255, 252, 246, .82);
   --fa-workspace-surface-soft: rgba(255,255,255,.58);
   --fa-workspace-border: rgba(57,45,25,.10);
@@ -15,89 +18,89 @@ body[data-admin-area="access"] {
 }
 
 /* Remove the legacy application-inside-an-application canvas. */
-body[data-admin-area="marketing"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
-body[data-admin-area="system"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
-body[data-admin-area="operations"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
-body[data-admin-area="access"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen) {
+body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
+body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
+body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
+body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen) {
   min-height: 0 !important;
   background: transparent !important;
   color: var(--fa-workspace-text) !important;
 }
 
-body[data-admin-area="marketing"] .fabrick-admin-content > :first-child,
-body[data-admin-area="system"] .fabrick-admin-content > :first-child,
-body[data-admin-area="operations"] .fabrick-admin-content > :first-child,
-body[data-admin-area="access"] .fabrick-admin-content > :first-child {
+body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content > :first-child,
+body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content > :first-child,
+body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content > :first-child,
+body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content > :first-child {
   margin-inline: auto;
 }
 
-/* Consistent typography across pages that still carry zinc/white legacy text. */
-body[data-admin-area="marketing"] .fabrick-admin-content :is(h1,h2,h3,h4),
-body[data-admin-area="system"] .fabrick-admin-content :is(h1,h2,h3,h4),
-body[data-admin-area="operations"] .fabrick-admin-content :is(h1,h2,h3,h4),
-body[data-admin-area="access"] .fabrick-admin-content :is(h1,h2,h3,h4) {
+/* Consistent typography across legacy pages that still carry zinc/white text. */
+body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(h1,h2,h3,h4),
+body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(h1,h2,h3,h4),
+body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(h1,h2,h3,h4),
+body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content :is(h1,h2,h3,h4) {
   color: var(--fa-workspace-text) !important;
   letter-spacing: -.025em;
 }
 
-body[data-admin-area="marketing"] .fabrick-admin-content :is(.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
-body[data-admin-area="system"] .fabrick-admin-content :is(.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
-body[data-admin-area="operations"] .fabrick-admin-content :is(.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
-body[data-admin-area="access"] .fabrick-admin-content :is(.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300) {
+body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
+body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
+body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
+body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content :is(.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300) {
   color: var(--fa-workspace-text) !important;
 }
 
-body[data-admin-area="marketing"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
-body[data-admin-area="system"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
-body[data-admin-area="operations"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
-body[data-admin-area="access"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600) {
+body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
+body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
+body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
+body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600) {
   color: var(--fa-workspace-muted) !important;
 }
 
 /* Convert legacy dark panels into one shared surface language. */
-body[data-admin-area="marketing"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/80,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
-body[data-admin-area="system"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/80,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
-body[data-admin-area="operations"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/80,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
-body[data-admin-area="access"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/80,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800) {
+body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/80,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
+body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/80,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
+body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/80,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
+body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/80,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800) {
   background: var(--fa-workspace-surface) !important;
 }
 
-body[data-admin-area="marketing"] .fabrick-admin-content :is(.bg-white\/\[0\.02\],.bg-white\/\[0\.03\],.bg-white\/\[0\.04\],.bg-white\/5,.bg-white\/\[0\.08\]),
-body[data-admin-area="system"] .fabrick-admin-content :is(.bg-white\/\[0\.02\],.bg-white\/\[0\.03\],.bg-white\/\[0\.04\],.bg-white\/5,.bg-white\/\[0\.08\]),
-body[data-admin-area="operations"] .fabrick-admin-content :is(.bg-white\/\[0\.02\],.bg-white\/\[0\.03\],.bg-white\/\[0\.04\],.bg-white\/5,.bg-white\/\[0\.08\]),
-body[data-admin-area="access"] .fabrick-admin-content :is(.bg-white\/\[0\.02\],.bg-white\/\[0\.03\],.bg-white\/\[0\.04\],.bg-white\/5,.bg-white\/\[0\.08\]) {
+body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(.bg-white\/\[0\.02\],.bg-white\/\[0\.03\],.bg-white\/\[0\.04\],.bg-white\/5,.bg-white\/\[0\.08\]),
+body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(.bg-white\/\[0\.02\],.bg-white\/\[0\.03\],.bg-white\/\[0\.04\],.bg-white\/5,.bg-white\/\[0\.08\]),
+body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(.bg-white\/\[0\.02\],.bg-white\/\[0\.03\],.bg-white\/\[0\.04\],.bg-white\/5,.bg-white\/\[0\.08\]),
+body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content :is(.bg-white\/\[0\.02\],.bg-white\/\[0\.03\],.bg-white\/\[0\.04\],.bg-white\/5,.bg-white\/\[0\.08\]) {
   background: var(--fa-workspace-surface-soft) !important;
 }
 
-body[data-admin-area="marketing"] .fabrick-admin-content [class*="border-white/"],
-body[data-admin-area="system"] .fabrick-admin-content [class*="border-white/"],
-body[data-admin-area="operations"] .fabrick-admin-content [class*="border-white/"],
-body[data-admin-area="access"] .fabrick-admin-content [class*="border-white/"] {
+body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content [class*="border-white/"],
+body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content [class*="border-white/"],
+body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content [class*="border-white/"],
+body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content [class*="border-white/"] {
   border-color: var(--fa-workspace-border) !important;
 }
 
 /* Standard controls. Keep semantic colored controls intact. */
-body[data-admin-area="marketing"] .fabrick-admin-content :is(input,select,textarea),
-body[data-admin-area="system"] .fabrick-admin-content :is(input,select,textarea),
-body[data-admin-area="operations"] .fabrick-admin-content :is(input,select,textarea),
-body[data-admin-area="access"] .fabrick-admin-content :is(input,select,textarea) {
+body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(input,select,textarea),
+body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(input,select,textarea),
+body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(input,select,textarea),
+body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content :is(input,select,textarea) {
   color: var(--fa-workspace-text) !important;
   background: rgba(255,255,255,.86) !important;
   border-color: rgba(57,45,25,.13) !important;
   box-shadow: none !important;
 }
 
-body[data-admin-area="marketing"] .fabrick-admin-content :is(input,textarea)::placeholder,
-body[data-admin-area="system"] .fabrick-admin-content :is(input,textarea)::placeholder,
-body[data-admin-area="operations"] .fabrick-admin-content :is(input,textarea)::placeholder,
-body[data-admin-area="access"] .fabrick-admin-content :is(input,textarea)::placeholder {
+body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(input,textarea)::placeholder,
+body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(input,textarea)::placeholder,
+body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(input,textarea)::placeholder,
+body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content :is(input,textarea)::placeholder {
   color: #9a9388 !important;
 }
 
-/* Pages with their own giant hero/card should read as a page header instead. */
-body[data-admin-path="/admin/service-prices"] .fabrick-admin-content > div > div > div:first-child,
-body[data-admin-path="/admin/publicidad"] .fabrick-admin-content > div > div:first-child,
-body[data-admin-path="/admin/publicidad/coach"] .fabrick-admin-content > div > div:first-child {
+/* The following compatibility rules only apply while a page is legacy. */
+body:not([data-admin-design="native"])[data-admin-path="/admin/service-prices"] .fabrick-admin-content > div > div > div:first-child,
+body:not([data-admin-design="native"])[data-admin-path="/admin/publicidad"] .fabrick-admin-content > div > div:first-child,
+body:not([data-admin-design="native"])[data-admin-path="/admin/publicidad/coach"] .fabrick-admin-content > div > div:first-child {
   background: transparent !important;
   border: 0 !important;
   border-radius: 0 !important;
@@ -106,8 +109,7 @@ body[data-admin-path="/admin/publicidad/coach"] .fabrick-admin-content > div > d
   padding-right: 0 !important;
 }
 
-/* Service pricing: flat editable rows instead of large floating cards. */
-body[data-admin-path="/admin/service-prices"] article {
+body:not([data-admin-design="native"])[data-admin-path="/admin/service-prices"] article {
   border-radius: 18px !important;
   background: rgba(255,252,246,.78) !important;
   border-color: rgba(57,45,25,.10) !important;
@@ -155,47 +157,46 @@ body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content :is(input,select
 
 /* Preserve intentional dark visualization inside logistics map and code/log surfaces. */
 body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content .relative.h-44,
-body[data-admin-area="system"] .fabrick-admin-content :is(pre,code),
+body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(pre,code),
 body[data-admin-path="/admin/vercel-logs"] .fabrick-admin-content [data-log-console] {
   color: #f4efe6 !important;
   background: #171713 !important;
 }
 
-/* Marketing tabs/buttons should look like compact SaaS controls, not nested cards. */
-body[data-admin-path="/admin/publicidad"] .fabrick-admin-content .rounded-2xl.border.p-1,
-body[data-admin-path="/admin/publicidad/coach"] .fabrick-admin-content .rounded-2xl.border.p-1 {
+body:not([data-admin-design="native"])[data-admin-path="/admin/publicidad"] .fabrick-admin-content .rounded-2xl.border.p-1,
+body:not([data-admin-design="native"])[data-admin-path="/admin/publicidad/coach"] .fabrick-admin-content .rounded-2xl.border.p-1 {
   border-radius: 14px !important;
   background: rgba(255,255,255,.55) !important;
   border-color: rgba(57,45,25,.09) !important;
 }
 
-/* Reduce nested-card effect globally inside newly normalized areas. */
-body[data-admin-area="marketing"] .fabrick-admin-content :is(article,section,div)[class*="rounded-"] :is(article,section,div)[class*="rounded-"][class*="border"][class*="bg-white"],
-body[data-admin-area="system"] .fabrick-admin-content :is(article,section,div)[class*="rounded-"] :is(article,section,div)[class*="rounded-"][class*="border"][class*="bg-white"],
-body[data-admin-area="operations"] .fabrick-admin-content :is(article,section,div)[class*="rounded-"] :is(article,section,div)[class*="rounded-"][class*="border"][class*="bg-white"] {
+/* Reduce nested-card effect only on pages still using legacy visual markup. */
+body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(article,section,div)[class*="rounded-"] :is(article,section,div)[class*="rounded-"][class*="border"][class*="bg-white"],
+body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(article,section,div)[class*="rounded-"] :is(article,section,div)[class*="rounded-"][class*="border"][class*="bg-white"],
+body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(article,section,div)[class*="rounded-"] :is(article,section,div)[class*="rounded-"][class*="border"][class*="bg-white"] {
   box-shadow: none !important;
 }
 
 @media (max-width: 767px) {
-  body[data-admin-area="marketing"] .fabrick-admin-content,
-  body[data-admin-area="system"] .fabrick-admin-content,
-  body[data-admin-area="operations"] .fabrick-admin-content,
-  body[data-admin-area="access"] .fabrick-admin-content {
+  body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content,
+  body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content,
+  body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content,
+  body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content {
     padding-inline: 12px;
   }
 
-  body[data-admin-area="marketing"] .fabrick-admin-content .rounded-\[2rem\],
-  body[data-admin-area="system"] .fabrick-admin-content .rounded-\[2rem\],
-  body[data-admin-area="operations"] .fabrick-admin-content .rounded-\[2rem\] {
+  body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content .rounded-\[2rem\],
+  body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content .rounded-\[2rem\],
+  body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content .rounded-\[2rem\] {
     border-radius: 16px !important;
   }
 
-  body[data-admin-path="/admin/publicidad"] .fabrick-admin-content .flex.gap-1.rounded-2xl {
+  body:not([data-admin-design="native"])[data-admin-path="/admin/publicidad"] .fabrick-admin-content .flex.gap-1.rounded-2xl {
     overflow-x: auto;
     justify-content: flex-start;
   }
 
-  body[data-admin-path="/admin/publicidad"] .fabrick-admin-content .flex.gap-1.rounded-2xl > button {
+  body:not([data-admin-design="native"])[data-admin-path="/admin/publicidad"] .fabrick-admin-content .flex.gap-1.rounded-2xl > button {
     min-width: 150px;
   }
 }

@@ -1,0 +1,137 @@
+/* Stage 3 — route-aware normalization for the sales family.
+   Keeps existing functionality intact while removing the legacy dark-app-inside-admin look. */
+
+body[data-admin-area='sales'] {
+  --sf-surface: rgba(255, 255, 255, 0.58);
+  --sf-surface-strong: rgba(255, 255, 255, 0.78);
+  --sf-line: rgba(31, 26, 18, 0.11);
+  --sf-text: #171612;
+  --sf-muted: #716b60;
+  --sf-accent: #c77a00;
+}
+
+body[data-admin-area='sales'] .sf-admin-colombia-content {
+  color: var(--sf-text);
+}
+
+body[data-admin-area='sales'] .sf-admin-colombia-content > main,
+body[data-admin-area='sales'] .sf-admin-colombia-content > div[class*='min-h-screen'] {
+  background: transparent !important;
+  color: var(--sf-text) !important;
+}
+
+body[data-admin-area='sales'] [class*='from-black'],
+body[data-admin-area='sales'] [class*='via-zinc-950'],
+body[data-admin-area='sales'] [class*='to-black'],
+body[data-admin-area='sales'] [class*='bg-zinc-950'],
+body[data-admin-area='sales'] [class*='bg-black/'],
+body[data-admin-area='sales'] [class*='bg-black'] {
+  background-color: transparent !important;
+  background-image: none !important;
+}
+
+body[data-admin-area='sales'] [class*='text-white'] { color: var(--sf-text) !important; }
+body[data-admin-area='sales'] [class*='text-zinc-300'],
+body[data-admin-area='sales'] [class*='text-zinc-400'],
+body[data-admin-area='sales'] [class*='text-zinc-500'],
+body[data-admin-area='sales'] [class*='text-zinc-600'] { color: var(--sf-muted) !important; }
+
+body[data-admin-area='sales'] [class*='border-white/'] { border-color: var(--sf-line) !important; }
+body[data-admin-area='sales'] [class*='bg-white/[0.0'],
+body[data-admin-area='sales'] [class*='bg-white/5'],
+body[data-admin-area='sales'] [class*='bg-white/10'] { background-color: rgba(255,255,255,.34) !important; }
+
+body[data-admin-area='sales'] table {
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--sf-text);
+}
+
+body[data-admin-area='sales'] thead tr {
+  background: rgba(255,255,255,.34) !important;
+}
+
+body[data-admin-area='sales'] tbody tr {
+  background: transparent !important;
+}
+
+body[data-admin-area='sales'] tbody tr:hover {
+  background: rgba(255,255,255,.34) !important;
+}
+
+body[data-admin-area='sales'] input,
+body[data-admin-area='sales'] select,
+body[data-admin-area='sales'] textarea {
+  background: rgba(255,255,255,.72) !important;
+  border-color: var(--sf-line) !important;
+  color: var(--sf-text) !important;
+  box-shadow: none !important;
+}
+
+body[data-admin-area='sales'] input::placeholder,
+body[data-admin-area='sales'] textarea::placeholder { color: #948d81 !important; }
+
+body[data-admin-area='sales'] [class*='shadow-[0_20px'],
+body[data-admin-area='sales'] [class*='shadow-[0_30px'],
+body[data-admin-area='sales'] [class*='shadow-2xl'] {
+  box-shadow: 0 16px 42px rgba(58,45,19,.07) !important;
+}
+
+body[data-admin-area='sales'] [class*='rounded-[2rem]'],
+body[data-admin-area='sales'] [class*='rounded-[1.5rem]'] {
+  border-color: var(--sf-line) !important;
+}
+
+/* Orders and deliveries: remove the full-width app header shell. */
+body[data-admin-path='/admin/pedidos'] .sf-admin-colombia-content > div > div:first-child,
+body[data-admin-path='/admin/entregas'] .sf-admin-colombia-content > div > div:first-child {
+  border: 0 !important;
+  background: transparent !important;
+  padding-top: 0 !important;
+}
+
+body[data-admin-path='/admin/pedidos'] .sf-admin-colombia-content > div > div:first-child > div,
+body[data-admin-path='/admin/entregas'] .sf-admin-colombia-content > div > div:first-child > div {
+  border-bottom: 1px solid var(--sf-line);
+  padding-bottom: 1.25rem;
+}
+
+/* Keep state colors, but make inactive pills feel native to the light workspace. */
+body[data-admin-area='sales'] button[class*='border'][class*='rounded-full'] {
+  background: rgba(255,255,255,.45);
+  border-color: var(--sf-line) !important;
+}
+
+body[data-admin-area='sales'] a[class*='border'][class*='rounded-full'] {
+  border-color: var(--sf-line) !important;
+}
+
+/* Clientes uses BaseUI already; flatten its remaining legacy table/modal surfaces. */
+body[data-admin-path='/admin/clientes'] .sf-admin-colombia-content [class*='bg-zinc-950/80'] {
+  background: var(--sf-surface) !important;
+  box-shadow: none !important;
+}
+
+body[data-admin-path='/admin/clientes'] .sf-admin-colombia-content [class*='bg-black/35'] {
+  background: rgba(255,255,255,.42) !important;
+}
+
+/* Cotizaciones: main list and calculator become sibling work surfaces instead of dark cards. */
+body[data-admin-path='/admin/cotizaciones'] .sf-admin-colombia-content aside,
+body[data-admin-path='/admin/cotizaciones'] .sf-admin-colombia-content section > div[class*='rounded-2xl'] {
+  background: var(--sf-surface) !important;
+  border-color: var(--sf-line) !important;
+  box-shadow: none !important;
+}
+
+@media (max-width: 767px) {
+  body[data-admin-area='sales'] .sf-admin-colombia-content > div[class*='min-h-screen'],
+  body[data-admin-area='sales'] .sf-admin-colombia-content > main {
+    padding-left: .25rem !important;
+    padding-right: .25rem !important;
+  }
+
+  body[data-admin-area='sales'] table { font-size: .78rem; }
+  body[data-admin-area='sales'] th,
+  body[data-admin-area='sales'] td { padding-left: .8rem !important; padding-right: .8rem !important; }
+}

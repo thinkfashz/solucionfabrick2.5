@@ -17,16 +17,33 @@ function resolveAdminArea(pathname: string) {
   return 'general';
 }
 
+const NATIVE_DESIGN_PATHS = new Set([
+  '/admin/publicidad',
+  '/admin/publicidad/coach',
+  '/admin/service-prices',
+  '/admin/errores',
+  '/admin/diagnostico',
+  '/admin/estado',
+  '/admin/ml',
+]);
+
+function resolveAdminDesign(pathname: string) {
+  return NATIVE_DESIGN_PATHS.has(pathname) ? 'native' : 'legacy';
+}
+
 export default function AdminRouteStyler() {
   const pathname = usePathname();
 
   useEffect(() => {
     const body = document.body;
-    body.dataset.adminArea = resolveAdminArea(pathname || '/admin');
-    body.dataset.adminPath = pathname || '/admin';
+    const resolvedPath = pathname || '/admin';
+    body.dataset.adminArea = resolveAdminArea(resolvedPath);
+    body.dataset.adminPath = resolvedPath;
+    body.dataset.adminDesign = resolveAdminDesign(resolvedPath);
     return () => {
       delete body.dataset.adminArea;
       delete body.dataset.adminPath;
+      delete body.dataset.adminDesign;
     };
   }, [pathname]);
 

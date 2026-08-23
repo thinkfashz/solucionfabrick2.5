@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
 
 function cleanCode(value: unknown) {
-  return String(value ?? '').trim().replace(/\s+/g, '');
+  return String(value ?? '').trim().replace(/\s+/g, '').slice(0, 128);
 }
 
 export async function GET(request: NextRequest) {
@@ -13,8 +13,18 @@ export async function GET(request: NextRequest) {
   const url = new URL(request.url);
   const code = cleanCode(url.searchParams.get('code'));
   const catalog = url.searchParams.get('catalog') === '1';
+  const history = url.searchParams.get('history') === '1';
 
   try {
+    if (history) {
+      const { data, error } = await db.from('inventory_movements')
+        .select('id,product_id,movement_type,quantity,stock_before,stock_after,barcode,note,actor_id,created_at,reference_type,reference_id')
+        .eq('tenant_id', tenantId)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      if (error) throw error;
+      return NextResponse.json({ movements: data ?? [] });
+    }
     if (catalog) {
       const { data, error } = await db.from('products')
         .select('id,name,stock,sku,ean,image_url,activo')
@@ -26,16 +36,18 @@ export async function GET(request: NextRequest) {
     }
     if (!code) return NextResponse.json({ error: 'Código requerido.' }, { status: 400 });
 
-    const { data, error } = await db.from('products')
-      .select('id,name,stock,sku,ean,image_url,activo')
-      .eq('tenant_id', tenantId)
-      .or(`sku.eq.${code},ean.eq.${code}`)
-      .limit(2);
-    if (error) throw error;
-    const rows = data ?? [];
-    if (rows.length === 0) return NextResponse.json({ found: false, code });
-    if (rows.length > 1) return NextResponse.json({ error: 'Código duplicado. Corrige SKU/EAN antes de mover stock.' }, { status: 409 });
-    return NextResponse.json({ found: true, product: rows[0], code });
+    const select = 'id,name,stock,sku,ean,image_url,activo';
+    const { data: byEan, error: eanError } = await db.from('products').select(select).eq('tenant_id', tenantId).eq('ean', code).limit(2);
+    if (eanError) throw eanError;
+    if ((byEan ?? []).length > 1) return NextResponse.json({ error: 'EAN duplicado. Corrige el catálogo antes de mover stock.' }, { status: 409 });
+    if (byEan?.[0]) return NextResponse.json({ found: true, product: byEan[0], code });
+
+    const { data: bySku, error: skuError } = await db.from('products').select(select).eq('tenant_id', tenantId).eq('sku', code).limit(2);
+    if (skuError) throw skuError;
+    if ((bySku ?? []).length > 1) return NextResponse.json({ error: 'SKU duplicado. Corrige el catálogo antes de mover stock.' }, { status: 409 });
+    return bySku?.[0]
+      ? NextResponse.json({ found: true, product: bySku[0], code })
+      : NextResponse.json({ found: false, code });
   } catch (error) {
     return adminError(error, 'INVENTORY_LOOKUP_FAILED', 500, request);
   }
@@ -97,8 +109,8 @@ export async function POST(request: NextRequest) {
       reference_type: body.referenceType || 'manual_scan',
       reference_id: body.referenceId || null,
       barcode: cleanCode(body.barcode) || null,
-      note: String(body.note ?? '').trim() || null,
-      actor_id: session.email || session.user_id || 'admin',
+      note: String(body.note ?? '').trim().slice(0, 500) || null,
+      actor_id: session.email || 'admin',
     };
     const { data: inserted, error: movementError } = await db.from('inventory_movements').insert([movement]).select('*').single();
     if (movementError) {

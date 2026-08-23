@@ -5,16 +5,10 @@ import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-const INSFORGE_URL = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
-
-function resolveApiKey(): { key: string; source: 'admin' | 'anon' | 'fallback' } {
-  if (process.env.INSFORGE_API_KEY) return { key: process.env.INSFORGE_API_KEY, source: 'admin' };
-  if (process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY) return { key: process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY, source: 'anon' };
-  return { key: 'ik_7e23032539c2dc64d5d27ca29d07b928', source: 'fallback' };
-}
+const INSFORGE_URL = process.env.NEXT_PUBLIC_INSFORGE_URL;
 
 const ADMIN_KEY_HINT =
-  'InsForge rechazó la API key. El endpoint /rawsql/unrestricted requiere la clave de servicio. Configura INSFORGE_API_KEY y vuelve a desplegar.';
+  'El endpoint SQL requiere INSFORGE_API_KEY en el servidor. Configura la clave de servicio en Vercel y vuelve a desplegar.';
 
 export async function POST(request: NextRequest) {
   const sessionCookie = request.cookies.get(ADMIN_COOKIE_NAME);
@@ -28,6 +22,14 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Solo superadmin puede ejecutar SQL.' }, { status: 403 });
   }
 
+  if (!INSFORGE_URL) {
+    return NextResponse.json({ error: 'NEXT_PUBLIC_INSFORGE_URL no está configurado.', code: 'INSFORGE_URL_MISSING' }, { status: 503 });
+  }
+  const apiKey = process.env.INSFORGE_API_KEY;
+  if (!apiKey) {
+    return NextResponse.json({ error: ADMIN_KEY_HINT, code: 'INSFORGE_ADMIN_KEY_MISSING' }, { status: 503 });
+  }
+
   let query: string;
   try {
     const body = await request.json();
@@ -37,9 +39,11 @@ export async function POST(request: NextRequest) {
   }
 
   if (!query) return NextResponse.json({ error: 'Query vacío' }, { status: 400 });
+  if (query.length > 100_000) {
+    return NextResponse.json({ error: 'Query demasiado grande.' }, { status: 413 });
+  }
 
   const url = `${INSFORGE_URL.replace(/\/+$/, '')}/api/database/advance/rawsql/unrestricted`;
-  const { key: apiKey, source: keySource } = resolveApiKey();
 
   try {
     const res = await fetch(url, {
@@ -47,6 +51,7 @@ export async function POST(request: NextRequest) {
       headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
       body: JSON.stringify({ query }),
       signal: AbortSignal.timeout(30_000),
+      cache: 'no-store',
     });
 
     const text = await res.text();
@@ -59,11 +64,16 @@ export async function POST(request: NextRequest) {
         ? String((data as Record<string, unknown>).error)
         : '';
       if (res.status === 401 && upstreamCode === 'AUTH_INVALID_API_KEY') {
-        friendlyError = `${ADMIN_KEY_HINT} (clave usada: ${keySource})`;
+        friendlyError = ADMIN_KEY_HINT;
       }
     }
 
-    return NextResponse.json({ ok: res.ok, status: res.status, data, keySource, ...(friendlyError ? { error: friendlyError, code: 'INSFORGE_AUTH_INVALID' } : {}) });
+    return NextResponse.json({
+      ok: res.ok,
+      status: res.status,
+      data,
+      ...(friendlyError ? { error: friendlyError, code: 'INSFORGE_AUTH_INVALID' } : {}),
+    });
   } catch (err) {
     return NextResponse.json({ ok: false, error: (err as Error).message }, { status: 502 });
   }

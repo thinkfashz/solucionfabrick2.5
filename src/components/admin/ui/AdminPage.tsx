@@ -4,26 +4,20 @@ import { motion } from 'framer-motion';
 import type { LucideIcon } from 'lucide-react';
 import type { ReactNode } from 'react';
 
-/* ─────────────────────────────────────────────────────────────────────────
- * AdminPage — wrapper visual coherente para todos los módulos del admin.
- * Aplica entrada cinematográfica + ritmo de staggering en hijos.
- * ──────────────────────────────────────────────────────────────────────── */
-
 const containerVars = {
   hidden: { opacity: 0 },
   show: {
     opacity: 1,
-    transition: { staggerChildren: 0.06, delayChildren: 0.04 },
+    transition: { staggerChildren: 0.045, delayChildren: 0.02 },
   },
 };
 
 const itemVars = {
-  hidden: { opacity: 0, y: 10, filter: 'blur(4px)' },
+  hidden: { opacity: 0, y: 8 },
   show: {
     opacity: 1,
     y: 0,
-    filter: 'blur(0px)',
-    transition: { duration: 0.35, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
+    transition: { duration: 0.28, ease: [0.16, 1, 0.3, 1] as [number, number, number, number] },
   },
 };
 
@@ -33,7 +27,7 @@ export function AdminPage({ children, className = '' }: { children: ReactNode; c
       variants={containerVars}
       initial="hidden"
       animate="show"
-      className={`space-y-5 pb-24 lg:pb-8 w-full max-w-[100vw] overflow-x-hidden ${className}`}
+      className={`fabrick-page w-full max-w-full space-y-6 pb-24 lg:pb-8 ${className}`}
     >
       {children}
     </motion.div>
@@ -41,11 +35,7 @@ export function AdminPage({ children, className = '' }: { children: ReactNode; c
 }
 
 export function AdminMotion({ children, className = '' }: { children: ReactNode; className?: string }) {
-  return (
-    <motion.div variants={itemVars} className={className}>
-      {children}
-    </motion.div>
-  );
+  return <motion.div variants={itemVars} className={className}>{children}</motion.div>;
 }
 
 interface AdminPageHeaderProps {
@@ -59,42 +49,25 @@ interface AdminPageHeaderProps {
 
 export function AdminPageHeader({ eyebrow, title, description, icon: Icon, actions, meta }: AdminPageHeaderProps) {
   return (
-    <motion.section
+    <motion.header
       variants={itemVars}
-      className="relative overflow-hidden w-full rounded-[1.75rem] border border-white/10 bg-black/55 p-5 backdrop-blur-2xl md:p-7"
+      className="flex w-full flex-col gap-5 border-b border-black/10 pb-5 lg:flex-row lg:items-end lg:justify-between"
     >
-      {/* Glow ambient */}
-      <div className="pointer-events-none absolute inset-0">
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_15%_20%,rgba(56,189,248,0.10),transparent_55%),radial-gradient(circle_at_92%_15%,rgba(255, 176, 0,0.10),transparent_50%)]" />
-        <div className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-yellow-300/30 to-transparent" />
-      </div>
-
-      <div className="relative flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div className="flex flex-1 items-start gap-4">
-          {Icon ? (
-            <span className="relative hidden h-14 w-14 shrink-0 items-center justify-center overflow-hidden rounded-2xl border border-yellow-300/30 bg-gradient-to-br from-yellow-400/20 via-yellow-300/10 to-transparent shadow-[0_8px_30px_rgba(255, 176, 0,0.18)] sm:flex">
-              <span className="absolute inset-0 bg-[radial-gradient(circle_at_30%_22%,rgba(255,255,255,0.4),transparent_60%)]" />
-              <Icon className="relative h-6 w-6 text-yellow-300" strokeWidth={1.5} />
-            </span>
-          ) : null}
-          <div className="min-w-0 flex-1">
-            {eyebrow ? (
-              <p className="text-[9px] font-bold uppercase tracking-[0.42em] text-yellow-300/85">{eyebrow}</p>
-            ) : null}
-            <h1 className="mt-1 font-playfair text-2xl font-black leading-tight text-white md:text-3xl xl:text-4xl">
-              {title}
-            </h1>
-            {description ? (
-              <p className="mt-2 max-w-2xl text-sm text-zinc-400">{description}</p>
-            ) : null}
-            {meta ? <div className="mt-3 flex flex-wrap items-center gap-2">{meta}</div> : null}
-          </div>
-        </div>
-        {actions ? (
-          <div className="flex flex-wrap items-center gap-2 lg:justify-end">{actions}</div>
+      <div className="flex min-w-0 flex-1 items-start gap-3 sm:gap-4">
+        {Icon ? (
+          <span className="mt-0.5 hidden h-11 w-11 shrink-0 items-center justify-center rounded-xl border border-[#c77a00]/15 bg-[#ffb000]/10 text-[#a56600] sm:flex">
+            <Icon className="h-5 w-5" strokeWidth={1.7} />
+          </span>
         ) : null}
+        <div className="min-w-0 flex-1">
+          {eyebrow ? <p className="text-[10px] font-black uppercase tracking-[.2em] text-[#9b6a12]">{eyebrow}</p> : null}
+          <h1 className="mt-1 text-3xl font-black tracking-[-.055em] text-[#171612] sm:text-4xl">{title}</h1>
+          {description ? <p className="mt-2 max-w-3xl text-sm leading-6 text-[#716b60]">{description}</p> : null}
+          {meta ? <div className="mt-3 flex flex-wrap items-center gap-2">{meta}</div> : null}
+        </div>
       </div>
-    </motion.section>
+      {actions ? <div className="flex flex-wrap items-center gap-2 lg:justify-end">{actions}</div> : null}
+    </motion.header>
   );
 }
 
@@ -110,12 +83,9 @@ export function AdminCard({ children, className = '', glow = false, as = 'sectio
   return (
     <Component
       variants={itemVars}
-      className={`relative overflow-hidden w-full max-w-full rounded-[1.5rem] border border-white/10 bg-black/45 p-5 backdrop-blur-xl transition-colors duration-300 hover:border-yellow-300/30 ${glow ? 'shadow-[0_18px_60px_rgba(0,0,0,0.55)]' : ''} ${className}`}
+      className={`w-full max-w-full rounded-[18px] border border-black/10 bg-white/60 p-4 sm:p-5 ${glow ? 'shadow-[0_12px_32px_rgba(51,38,18,.06)]' : ''} ${className}`}
     >
-      {glow ? (
-        <span className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_30%_0%,rgba(255, 176, 0,0.06),transparent_60%)]" />
-      ) : null}
-      <div className="relative w-full max-w-full overflow-x-auto">{children}</div>
+      {children}
     </Component>
   );
 }
@@ -129,41 +99,31 @@ interface AdminStatProps {
   hint?: string;
 }
 
-const accentMap: Record<NonNullable<AdminStatProps['accent']>, { glowClass: string; text: string; ring: string }> = {
-  yellow: { glowClass: 'stat-card-glow-yellow', text: 'text-yellow-300', ring: 'border-yellow-300/30' },
-  cyan:   { glowClass: 'stat-card-glow-cyan',   text: 'text-cyan-300',   ring: 'border-cyan-300/30'   },
-  emerald:{ glowClass: 'stat-card-glow-emerald',text: 'text-emerald-300',ring: 'border-emerald-300/30'},
-  rose:   { glowClass: 'stat-card-glow-rose',   text: 'text-rose-300',   ring: 'border-rose-300/30'   },
+const accentMap: Record<NonNullable<AdminStatProps['accent']>, { text: string; bg: string }> = {
+  yellow: { text: 'text-[#a56600]', bg: 'bg-[#ffb000]/10' },
+  cyan: { text: 'text-cyan-700', bg: 'bg-cyan-500/10' },
+  emerald: { text: 'text-emerald-700', bg: 'bg-emerald-500/10' },
+  rose: { text: 'text-rose-700', bg: 'bg-rose-500/10' },
 };
 
 export function AdminStat({ label, value, delta, icon: Icon, accent = 'yellow', hint }: AdminStatProps) {
   const a = accentMap[accent];
   const positive = delta ? delta.value >= 0 : true;
   return (
-    <motion.div
-      variants={itemVars}
-      className={`group relative overflow-hidden rounded-2xl border border-white/10 bg-black/45 p-4 backdrop-blur-xl transition-all duration-300 hover:-translate-y-0.5 hover:${a.ring}`}
-    >
-      <span
-        className={`pointer-events-none absolute inset-0 opacity-0 transition-opacity duration-300 group-hover:opacity-100 ${a.glowClass}`}
-      />
-      <div className="relative flex items-start justify-between gap-3">
+    <motion.article variants={itemVars} className="border-t border-black/10 py-4 sm:py-5">
+      <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-[9px] font-bold uppercase tracking-[0.35em] text-zinc-500">{label}</p>
-          <p className="mt-2 font-playfair text-2xl font-black text-white md:text-3xl">{value}</p>
+          <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#8f887c]">{label}</p>
+          <strong className="mt-2 block text-3xl font-black tracking-[-.05em] text-[#171612]">{value}</strong>
           {delta ? (
-            <p className={`mt-1 text-[10px] font-mono ${positive ? 'text-emerald-400' : 'text-rose-400'}`}>
+            <p className={`mt-1 text-[10px] font-semibold ${positive ? 'text-emerald-700' : 'text-rose-700'}`}>
               {positive ? '▲' : '▼'} {Math.abs(delta.value)}{delta.suffix ?? '%'}
             </p>
           ) : null}
-          {hint ? <p className="mt-1 text-[10px] text-zinc-500">{hint}</p> : null}
+          {hint ? <p className="mt-1 text-xs leading-5 text-[#8f887c]">{hint}</p> : null}
         </div>
-        {Icon ? (
-          <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl border ${a.ring} bg-black/40`}>
-            <Icon className={`h-4 w-4 ${a.text}`} strokeWidth={1.6} />
-          </span>
-        ) : null}
+        {Icon ? <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl ${a.bg}`}><Icon className={`h-4 w-4 ${a.text}`} strokeWidth={1.7} /></span> : null}
       </div>
-    </motion.div>
+    </motion.article>
   );
 }

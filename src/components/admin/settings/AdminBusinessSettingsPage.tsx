@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Building2, KeyRound, LockKeyhole, Save, ShieldCheck, UserCog } from 'lucide-react';
 import { insforge } from '@/lib/insforge';
-import { AdminBaseButton, AdminBaseCard, AdminBaseGrid, AdminBasePage } from '@/components/admin/baseui-kit';
+import { AdminCard, AdminPage, AdminPageHeader, AdminStat } from '@/components/admin/ui';
 
 type ToastState = { text: string; type: 'success' | 'error' } | null;
 
@@ -18,6 +18,9 @@ type BusinessConfig = {
   sitioWeb: string;
 };
 
+const inputClass = 'w-full rounded-xl border border-black/10 bg-white/75 px-3.5 py-3 text-sm font-semibold text-[#171612] outline-none transition focus:border-[#c77a00]/40 focus:bg-white';
+const labelClass = 'mb-2 block text-[10px] font-black uppercase tracking-[.16em] text-[#8f887c]';
+
 function Field({ label, value, onChange, type = 'text', placeholder, hint }: {
   label: string;
   value: string;
@@ -28,22 +31,20 @@ function Field({ label, value, onChange, type = 'text', placeholder, hint }: {
 }) {
   return (
     <label className="block">
-      <span className="text-[10px] font-black uppercase tracking-[0.2em] text-zinc-500">{label}</span>
-      <input
-        type={type}
-        value={value}
-        onChange={(event) => onChange(event.target.value)}
-        placeholder={placeholder}
-        className="mt-2 w-full rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-yellow-300/45"
-      />
-      {hint ? <span className="mt-1 block text-xs text-zinc-600">{hint}</span> : null}
+      <span className={labelClass}>{label}</span>
+      <input type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className={inputClass} />
+      {hint ? <span className="mt-1 block text-[11px] leading-5 text-[#8f887c]">{hint}</span> : null}
     </label>
   );
 }
 
 function Toast({ state }: { state: ToastState }) {
   if (!state) return null;
-  return <div className={`rounded-2xl border px-4 py-3 text-sm ${state.type === 'success' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-red-400/30 bg-red-400/10 text-red-200'}`}>{state.text}</div>;
+  return (
+    <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${state.type === 'success' ? 'border-emerald-600/15 bg-emerald-500/8 text-emerald-900' : 'border-rose-600/15 bg-rose-500/8 text-rose-900'}`}>
+      {state.text}
+    </div>
+  );
 }
 
 export default function AdminBusinessSettingsPage() {
@@ -52,7 +53,6 @@ export default function AdminBusinessSettingsPage() {
   const [loadingAdmin, setLoadingAdmin] = useState(true);
   const [savingBusiness, setSavingBusiness] = useState(false);
   const [businessMsg, setBusinessMsg] = useState<ToastState>(null);
-
   const [pwdStep, setPwdStep] = useState<'email' | 'code'>('email');
   const [pwdEmail, setPwdEmail] = useState('');
   const [pwdCode, setPwdCode] = useState('');
@@ -64,8 +64,8 @@ export default function AdminBusinessSettingsPage() {
   useEffect(() => {
     async function loadAdminSession() {
       try {
-        const res = await fetch('/api/admin/me', { cache: 'no-store' });
-        const json = res.ok ? await res.json() as { authenticated?: boolean; email?: string } : null;
+        const response = await fetch('/api/admin/me', { cache: 'no-store' });
+        const json = response.ok ? await response.json() as { authenticated?: boolean; email?: string } : null;
         if (json?.authenticated && json.email) {
           setAdminEmail(json.email);
           setPwdEmail(json.email);
@@ -158,42 +158,79 @@ export default function AdminBusinessSettingsPage() {
   }
 
   return (
-    <AdminBasePage
-      eyebrow="Sistema"
-      title="Configuración del negocio"
-      description="Datos reales del negocio y acceso del admin. Las credenciales API se gestionan únicamente desde el Centro de Integraciones oficial."
-      actions={<><AdminBaseButton href="/admin/integraciones">Centro de integraciones</AdminBaseButton><AdminBaseButton href="/admin/sesiones" variant="ghost">Sesiones</AdminBaseButton></>}
-    >
-      <AdminBaseGrid cols="3">
-        <AdminBaseCard title="Sesión actual" description={loadingAdmin ? 'Cargando sesión…' : adminEmail ?? 'No se pudo leer la sesión.'} icon={UserCog} tone="gold" badge="admin" />
-        <AdminBaseCard title="Credenciales API" description="El guardado de claves vive en /admin/integraciones para evitar duplicados." icon={KeyRound} tone="emerald" badge="único" href="/admin/integraciones" />
-        <AdminBaseCard title="Seguridad" description="Sesiones, IPs, dispositivos y auditoría del panel." icon={ShieldCheck} tone="blue" badge="audit" href="/admin/sesiones" />
-      </AdminBaseGrid>
+    <AdminPage>
+      <AdminPageHeader
+        eyebrow="Sistema · Empresa"
+        title="Configuración del negocio"
+        description="Administra los datos comerciales y el acceso del administrador. Las credenciales externas permanecen centralizadas en Integraciones."
+        icon={Building2}
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Link href="/admin/integraciones" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-black/10 bg-white/65 px-4 text-xs font-bold text-[#625b50] transition hover:bg-white"><KeyRound className="h-4 w-4" /> Integraciones</Link>
+            <Link href="/admin/sesiones" className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white"><ShieldCheck className="h-4 w-4" /> Sesiones</Link>
+          </div>
+        }
+      />
 
-      <form onSubmit={saveBusiness} className="rounded-[2rem] border border-white/10 bg-zinc-950/70 p-5 shadow-[0_20px_90px_rgba(0,0,0,0.35)] sm:p-7">
-        <div className="mb-5 flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl bg-yellow-300 text-black"><Building2 className="h-5 w-5" /></span><div><h2 className="text-xl font-black text-white">Datos del negocio</h2><p className="mt-1 text-sm text-zinc-500">Se guardan en la tabla real business_config.</p></div></div>
-        <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Nombre del negocio" value={business.nombre} onChange={(v) => setBusiness((p) => ({ ...p, nombre: v }))} />
-          <Field label="RUT empresa" value={business.rut} onChange={(v) => setBusiness((p) => ({ ...p, rut: v }))} />
-          <Field label="Dirección" value={business.direccion} onChange={(v) => setBusiness((p) => ({ ...p, direccion: v }))} />
-          <Field label="Ciudad" value={business.ciudad} onChange={(v) => setBusiness((p) => ({ ...p, ciudad: v }))} />
-          <Field label="WhatsApp de contacto" type="tel" value={business.whatsapp} onChange={(v) => setBusiness((p) => ({ ...p, whatsapp: v }))} />
-          <Field label="Email de contacto" type="email" value={business.emailContacto} onChange={(v) => setBusiness((p) => ({ ...p, emailContacto: v }))} />
-          <div className="sm:col-span-2"><Field label="Sitio web" type="url" value={business.sitioWeb} onChange={(v) => setBusiness((p) => ({ ...p, sitioWeb: v }))} /></div>
-        </div>
-        <div className="mt-5 space-y-3"><Toast state={businessMsg} /><div className="flex justify-end"><button type="submit" disabled={savingBusiness} className="inline-flex items-center gap-2 rounded-2xl bg-yellow-300 px-5 py-3 text-xs font-black uppercase tracking-[0.18em] text-black disabled:opacity-60"><Save className="h-4 w-4" /> {savingBusiness ? 'Guardando…' : 'Guardar cambios'}</button></div></div>
-      </form>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+        <AdminStat label="Sesión" value={loadingAdmin ? '…' : adminEmail ? 'Activa' : 'Sin leer'} icon={UserCog} accent={adminEmail ? 'emerald' : 'rose'} />
+        <AdminStat label="Credenciales API" value="Centralizadas" icon={KeyRound} />
+        <AdminStat label="Auditoría" value="Activa" icon={ShieldCheck} accent="cyan" />
+      </section>
 
-      <form onSubmit={pwdStep === 'email' ? sendCode : changePassword} className="rounded-[2rem] border border-white/10 bg-black/35 p-5 sm:p-7">
-        <div className="mb-5 flex items-center gap-3"><span className="flex h-11 w-11 items-center justify-center rounded-2xl border border-yellow-300/25 bg-yellow-300/10 text-yellow-200"><LockKeyhole className="h-5 w-5" /></span><div><h2 className="text-xl font-black text-white">Cambiar contraseña del admin</h2><p className="mt-1 text-sm text-zinc-500">Usa el flujo real de recuperación de InsForge Auth.</p></div></div>
-        {pwdStep === 'email' ? (
-          <div className="grid gap-4"><Field label="Email del admin" type="email" value={pwdEmail} onChange={setPwdEmail} /><Toast state={passwordMsg} /><div className="flex justify-end"><button type="submit" disabled={savingPassword} className="rounded-2xl border border-yellow-300/30 px-5 py-3 text-xs font-black uppercase tracking-[0.18em] text-yellow-200 disabled:opacity-60">{savingPassword ? 'Enviando…' : 'Enviar código'}</button></div></div>
-        ) : (
-          <div className="grid gap-4"><p className="text-sm text-zinc-500">Código enviado a <span className="text-yellow-200">{pwdEmail}</span>. <button type="button" onClick={() => setPwdStep('email')} className="underline">Cambiar email</button></p><Field label="Código de 6 dígitos" value={pwdCode} onChange={(v) => setPwdCode(v.replace(/\D/g, '').slice(0, 6))} /><Field label="Nueva contraseña" type="password" value={newPassword} onChange={setNewPassword} /><Field label="Confirmar contraseña" type="password" value={confirmPassword} onChange={setConfirmPassword} /><Toast state={passwordMsg} /><div className="flex justify-end"><button type="submit" disabled={savingPassword} className="rounded-2xl bg-yellow-300 px-5 py-3 text-xs font-black uppercase tracking-[0.18em] text-black disabled:opacity-60">{savingPassword ? 'Actualizando…' : 'Actualizar contraseña'}</button></div></div>
-        )}
-      </form>
+      <div className="grid gap-4 xl:grid-cols-[1.15fr_.85fr]">
+        <form onSubmit={saveBusiness}>
+          <AdminCard className="h-full p-0 sm:p-0">
+            <div className="flex items-start gap-3 border-b border-black/8 p-4 sm:p-5">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ffb000]/10 text-[#a56600]"><Building2 className="h-4 w-4" /></span>
+              <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Datos legales y contacto</p><h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">Información del negocio</h2><p className="mt-1 text-xs leading-5 text-[#817a6f]">Se guarda en la configuración real utilizada por el sitio.</p></div>
+            </div>
+            <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
+              <Field label="Nombre del negocio" value={business.nombre} onChange={(value) => setBusiness((previous) => ({ ...previous, nombre: value }))} />
+              <Field label="RUT empresa" value={business.rut} onChange={(value) => setBusiness((previous) => ({ ...previous, rut: value }))} />
+              <Field label="Dirección" value={business.direccion} onChange={(value) => setBusiness((previous) => ({ ...previous, direccion: value }))} />
+              <Field label="Ciudad" value={business.ciudad} onChange={(value) => setBusiness((previous) => ({ ...previous, ciudad: value }))} />
+              <Field label="WhatsApp de contacto" type="tel" value={business.whatsapp} onChange={(value) => setBusiness((previous) => ({ ...previous, whatsapp: value }))} />
+              <Field label="Email de contacto" type="email" value={business.emailContacto} onChange={(value) => setBusiness((previous) => ({ ...previous, emailContacto: value }))} />
+              <div className="sm:col-span-2"><Field label="Sitio web" type="url" value={business.sitioWeb} onChange={(value) => setBusiness((previous) => ({ ...previous, sitioWeb: value }))} /></div>
+              <div className="sm:col-span-2"><Toast state={businessMsg} /></div>
+              <div className="sm:col-span-2 flex justify-end"><button type="submit" disabled={savingBusiness} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white disabled:opacity-50"><Save className="h-4 w-4" /> {savingBusiness ? 'Guardando…' : 'Guardar cambios'}</button></div>
+            </div>
+          </AdminCard>
+        </form>
 
-      <div className="rounded-3xl border border-yellow-300/20 bg-yellow-300/[0.04] p-4 text-sm text-yellow-100">Las API keys ya no se administran desde esta pantalla. Usa <Link href="/admin/integraciones" className="font-black underline">/admin/integraciones</Link> para mantener una sola fuente oficial de credenciales.</div>
-    </AdminBasePage>
+        <form onSubmit={pwdStep === 'email' ? sendCode : changePassword}>
+          <AdminCard className="h-full p-0 sm:p-0">
+            <div className="flex items-start gap-3 border-b border-black/8 p-4 sm:p-5">
+              <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ffb000]/10 text-[#a56600]"><LockKeyhole className="h-4 w-4" /></span>
+              <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Cuenta administrativa</p><h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">Cambiar contraseña</h2><p className="mt-1 text-xs leading-5 text-[#817a6f]">Usa el flujo oficial de recuperación de InsForge Auth.</p></div>
+            </div>
+            <div className="grid gap-4 p-4 sm:p-5">
+              {pwdStep === 'email' ? (
+                <>
+                  <Field label="Email del admin" type="email" value={pwdEmail} onChange={setPwdEmail} />
+                  <Toast state={passwordMsg} />
+                  <button type="submit" disabled={savingPassword} className="min-h-10 rounded-xl bg-[#171612] px-4 text-xs font-black text-white disabled:opacity-50">{savingPassword ? 'Enviando…' : 'Enviar código de recuperación'}</button>
+                </>
+              ) : (
+                <>
+                  <div className="rounded-xl border border-black/8 bg-white/45 p-3 text-xs leading-5 text-[#716b60]">Código enviado a <strong className="text-[#27241f]">{pwdEmail}</strong>. <button type="button" onClick={() => setPwdStep('email')} className="font-black text-[#8a620f] underline">Cambiar email</button></div>
+                  <Field label="Código de 6 dígitos" value={pwdCode} onChange={(value) => setPwdCode(value.replace(/\D/g, '').slice(0, 6))} />
+                  <Field label="Nueva contraseña" type="password" value={newPassword} onChange={setNewPassword} />
+                  <Field label="Confirmar contraseña" type="password" value={confirmPassword} onChange={setConfirmPassword} />
+                  <Toast state={passwordMsg} />
+                  <button type="submit" disabled={savingPassword} className="min-h-10 rounded-xl bg-[#171612] px-4 text-xs font-black text-white disabled:opacity-50">{savingPassword ? 'Actualizando…' : 'Actualizar contraseña'}</button>
+                </>
+              )}
+            </div>
+          </AdminCard>
+        </form>
+      </div>
+
+      <div className="flex items-start gap-3 border-y border-[#c77a00]/12 bg-[#ffb000]/6 px-1 py-4 text-sm leading-6 text-[#6d5a34]">
+        <KeyRound className="mt-0.5 h-4 w-4 shrink-0 text-[#a56600]" />
+        <p>Las API keys ya no se administran aquí. Usa <Link href="/admin/integraciones" className="font-black underline">Centro de Integraciones</Link> para conservar una única fuente de credenciales.</p>
+      </div>
+    </AdminPage>
   );
 }

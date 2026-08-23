@@ -29,6 +29,7 @@ const NATIVE_DESIGN_PATHS = new Set([
   '/admin/perfil',
   '/admin/sesiones',
   '/admin/equipo',
+  '/admin/configuracion',
   '/admin/sql',
   '/admin/setup',
   '/admin/ml',

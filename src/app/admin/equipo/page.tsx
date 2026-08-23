@@ -2,7 +2,6 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import type { LucideIcon } from 'lucide-react';
 import {
   Activity,
   Check,
@@ -11,6 +10,7 @@ import {
   KeyRound,
   Mail,
   Plus,
+  RefreshCw,
   ShieldCheck,
   Trash2,
   UserPlus,
@@ -18,7 +18,7 @@ import {
   Wifi,
   X,
 } from 'lucide-react';
-import { AdminPage, AdminPageHeader } from '@/components/admin/ui';
+import { AdminCard, AdminPage, AdminPageHeader, AdminStat } from '@/components/admin/ui';
 
 type Role = 'superadmin' | 'admin' | 'viewer';
 
@@ -53,17 +53,14 @@ type AuditRow = {
   user_agent?: string | null;
 };
 
-type StatCard = {
-  label: string;
-  value: number;
-  icon: LucideIcon;
-};
-
 const ROLES: { value: Role; label: string }[] = [
   { value: 'superadmin', label: 'Superadmin' },
   { value: 'admin', label: 'Admin' },
   { value: 'viewer', label: 'Viewer' },
 ];
+
+const inputClass = 'w-full rounded-xl border border-black/10 bg-white/75 px-3.5 py-3 text-sm font-semibold text-[#171612] outline-none transition focus:border-[#c77a00]/40 focus:bg-white';
+const labelClass = 'mb-2 block text-[10px] font-black uppercase tracking-[.16em] text-[#8f887c]';
 
 function tempPassword() {
   const raw = crypto.randomUUID().replace(/-/g, '');
@@ -78,9 +75,9 @@ function formatDateTime(value?: string | null) {
 }
 
 function roleClass(role: Role) {
-  if (role === 'superadmin') return 'border-rose-400/40 bg-rose-400/10 text-rose-200';
-  if (role === 'admin') return 'border-yellow-300/40 bg-yellow-300/10 text-yellow-200';
-  return 'border-sky-400/40 bg-sky-400/10 text-sky-200';
+  if (role === 'superadmin') return 'bg-rose-500/10 text-rose-800';
+  if (role === 'admin') return 'bg-[#ffb000]/12 text-[#77500a]';
+  return 'bg-sky-500/10 text-sky-800';
 }
 
 export default function EquipoPage() {
@@ -93,36 +90,25 @@ export default function EquipoPage() {
   const [audit, setAudit] = useState<AuditRow[]>([]);
   const [invitations, setInvitations] = useState<Invitation[]>([]);
   const [toast, setToast] = useState<{ type: 'success' | 'error'; message: string } | null>(null);
-
   const [createOpen, setCreateOpen] = useState(false);
   const [inviteOpen, setInviteOpen] = useState(false);
   const [saving, setSaving] = useState(false);
-
   const [newName, setNewName] = useState('');
   const [newEmail, setNewEmail] = useState('');
   const [newRole, setNewRole] = useState<Role>('admin');
   const [newPassword, setNewPassword] = useState(tempPassword);
   const [createdPassword, setCreatedPassword] = useState<string | null>(null);
-
   const [inviteEmail, setInviteEmail] = useState('');
   const [inviteRole, setInviteRole] = useState<Role>('admin');
   const [createdLink, setCreatedLink] = useState<string | null>(null);
 
   const stats = useMemo(() => ({
     total: members.length,
-    superadmins: members.filter((m) => m.rol === 'superadmin').length,
-    admins: members.filter((m) => m.rol === 'admin').length,
-    viewers: members.filter((m) => m.rol === 'viewer').length,
+    superadmins: members.filter((member) => member.rol === 'superadmin').length,
+    admins: members.filter((member) => member.rol === 'admin').length,
+    viewers: members.filter((member) => member.rol === 'viewer').length,
     pending: pending.length,
   }), [members, pending]);
-
-  const statCards = useMemo<StatCard[]>(() => [
-    { label: 'Total', value: stats.total, icon: Users },
-    { label: 'Superadmin', value: stats.superadmins, icon: ShieldCheck },
-    { label: 'Admin', value: stats.admins, icon: KeyRound },
-    { label: 'Viewer', value: stats.viewers, icon: Fingerprint },
-    { label: 'Pendientes', value: stats.pending, icon: Activity },
-  ], [stats]);
 
   useEffect(() => {
     void checkAccess();
@@ -131,15 +117,15 @@ export default function EquipoPage() {
 
   function showToast(message: string, type: 'success' | 'error' = 'success') {
     setToast({ message, type });
-    setTimeout(() => setToast(null), 4200);
+    window.setTimeout(() => setToast(null), 4200);
   }
 
   async function checkAccess() {
     try {
-      const res = await fetch('/api/admin/me', { cache: 'no-store' });
-      if (!res.ok) return router.replace('/admin/login');
-      const data = await res.json();
-      if (data.rol !== 'superadmin') return router.replace('/admin');
+      const response = await fetch('/api/admin/me', { cache: 'no-store' });
+      if (!response.ok) return router.replace('/admin/login');
+      const data = await response.json();
+      if (data.rol !== 'superadmin') return router.replace('/admin?forbidden=root');
       setSessionEmail(data.email ?? '');
       await loadData();
     } catch {
@@ -150,19 +136,22 @@ export default function EquipoPage() {
   async function loadData() {
     setLoading(true);
     try {
-      const [teamRes, invRes] = await Promise.all([
+      const [teamResponse, invitationsResponse] = await Promise.all([
         fetch('/api/admin/team', { cache: 'no-store' }),
         fetch('/api/admin/invitations', { cache: 'no-store' }),
       ]);
-      if (teamRes.ok) {
-        const json = await teamRes.json();
+      if (teamResponse.ok) {
+        const json = await teamResponse.json();
         setMembers(json.members ?? []);
         setPending(json.pending ?? []);
         setAudit(json.audit ?? []);
         setRequestIp(json.requestIp ?? null);
+      } else {
+        const json = await teamResponse.json().catch(() => ({}));
+        showToast(json.error ?? 'No se pudo cargar el equipo.', 'error');
       }
-      if (invRes.ok) {
-        const json = await invRes.json();
+      if (invitationsResponse.ok) {
+        const json = await invitationsResponse.json();
         setInvitations(json.invitations ?? []);
       }
     } catch {
@@ -186,13 +175,13 @@ export default function EquipoPage() {
     if (newPassword.length < 12) return showToast('La contraseña debe tener al menos 12 caracteres.', 'error');
     setSaving(true);
     try {
-      const res = await fetch('/api/admin/team', {
+      const response = await fetch('/api/admin/team', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: newEmail, nombre: newName, rol: newRole, password: newPassword }),
       });
-      const json = await res.json();
-      if (!res.ok) return showToast(json.error ?? 'No se pudo crear el usuario.', 'error');
+      const json = await response.json();
+      if (!response.ok) return showToast(json.error ?? 'No se pudo crear el usuario.', 'error');
       setCreatedPassword(json.temporaryPassword ?? newPassword);
       setNewName('');
       setNewEmail('');
@@ -211,13 +200,13 @@ export default function EquipoPage() {
     if (!inviteEmail.trim()) return showToast('Email requerido.', 'error');
     setSaving(true);
     try {
-      const res = await fetch('/api/admin/invitations', {
+      const response = await fetch('/api/admin/invitations', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: inviteEmail, rol: inviteRole }),
       });
-      const json = await res.json();
-      if (!res.ok) return showToast(json.error ?? 'No se pudo crear invitación.', 'error');
+      const json = await response.json();
+      if (!response.ok) return showToast(json.error ?? 'No se pudo crear invitación.', 'error');
       setCreatedLink(json.link ?? null);
       setInviteEmail('');
       setInviteRole('admin');
@@ -231,43 +220,43 @@ export default function EquipoPage() {
   }
 
   async function updateRole(email: string, rol: Role) {
-    const res = await fetch('/api/admin/team', {
+    const response = await fetch('/api/admin/team', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, action: 'set_role', rol }),
     });
-    if (!res.ok) return showToast('No se pudo actualizar el rol.', 'error');
+    if (!response.ok) return showToast('No se pudo actualizar el rol.', 'error');
     showToast('Rol actualizado.');
     await loadData();
   }
 
   async function approve(email: string) {
-    const res = await fetch('/api/admin/team', {
+    const response = await fetch('/api/admin/team', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, action: 'approve' }),
     });
-    if (!res.ok) return showToast('No se pudo aprobar.', 'error');
+    if (!response.ok) return showToast('No se pudo aprobar.', 'error');
     showToast('Usuario aprobado.');
     await loadData();
   }
 
   async function reject(email: string) {
     if (!confirm(`¿Eliminar a ${email}?`)) return;
-    const res = await fetch('/api/admin/team', {
+    const response = await fetch('/api/admin/team', {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, action: 'reject' }),
     });
-    if (!res.ok) return showToast('No se pudo eliminar.', 'error');
+    if (!response.ok) return showToast('No se pudo eliminar.', 'error');
     showToast('Usuario eliminado.');
     await loadData();
   }
 
   async function deleteInvite(id: string) {
     if (!confirm('¿Cancelar esta invitación?')) return;
-    const res = await fetch(`/api/admin/invitations?id=${id}`, { method: 'DELETE' });
-    if (!res.ok) return showToast('No se pudo cancelar.', 'error');
+    const response = await fetch(`/api/admin/invitations?id=${encodeURIComponent(id)}`, { method: 'DELETE' });
+    if (!response.ok) return showToast('No se pudo cancelar.', 'error');
     showToast('Invitación cancelada.');
     await loadData();
   }
@@ -275,8 +264,8 @@ export default function EquipoPage() {
   if (loading) {
     return (
       <AdminPage>
-        <div className="flex min-h-[50vh] items-center justify-center">
-          <div className="h-12 w-12 animate-spin rounded-full border-4 border-yellow-300/20 border-t-yellow-300" />
+        <div className="grid min-h-[55vh] place-items-center text-[#817a6f]">
+          <div className="text-center"><RefreshCw className="mx-auto h-7 w-7 animate-spin text-[#c77a00]" /><p className="mt-3 text-sm">Cargando equipo…</p></div>
         </div>
       </AdminPage>
     );
@@ -284,200 +273,181 @@ export default function EquipoPage() {
 
   return (
     <AdminPage>
-      {toast && (
-        <div className="fixed right-4 top-4 z-50">
-          <div className={`rounded-2xl border px-5 py-3 text-sm shadow-2xl ${toast.type === 'success' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-red-400/30 bg-red-400/10 text-red-200'}`}>
+      {toast ? (
+        <div className="fixed right-4 top-4 z-[90] max-w-sm">
+          <div className={`rounded-xl border px-4 py-3 text-sm font-medium shadow-xl backdrop-blur ${toast.type === 'success' ? 'border-emerald-600/15 bg-[#edf8ef]/95 text-emerald-900' : 'border-rose-600/15 bg-[#fff0f0]/95 text-rose-900'}`}>
             {toast.message}
           </div>
         </div>
-      )}
+      ) : null}
 
       <AdminPageHeader
+        eyebrow="Acceso · Root"
         title="Equipo y accesos"
-        description="Crea usuarios reales, genera invitaciones, controla roles, revisa IPs y últimos accesos del panel."
+        description="Crea usuarios, genera invitaciones, administra roles y revisa la actividad reciente del equipo desde un único workspace."
+        icon={Users}
+        actions={
+          <button type="button" onClick={() => void loadData()} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white transition hover:bg-[#2a2823]">
+            <RefreshCw className="h-4 w-4" /> Actualizar
+          </button>
+        }
       />
 
-      <section className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        {statCards.map(({ label, value, icon: Icon }) => (
-          <div key={label} className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-            <div className="flex items-center justify-between">
-              <span className="text-xs font-black uppercase tracking-[0.2em] text-zinc-500">{label}</span>
-              <Icon className="h-5 w-5 text-yellow-300" />
-            </div>
-            <p className="mt-4 text-3xl font-black text-white">{value}</p>
-          </div>
-        ))}
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <AdminStat label="Miembros" value={stats.total} icon={Users} />
+        <AdminStat label="Root" value={stats.superadmins} icon={ShieldCheck} accent="emerald" />
+        <AdminStat label="Admin" value={stats.admins} icon={KeyRound} />
+        <AdminStat label="Viewer" value={stats.viewers} icon={Fingerprint} accent="cyan" />
+        <AdminStat label="Pendientes" value={stats.pending} icon={Activity} accent={stats.pending ? 'rose' : undefined} />
       </section>
 
-      <section className="grid gap-5 xl:grid-cols-[1.1fr_0.9fr]">
-        <div className="rounded-3xl border border-yellow-300/20 bg-yellow-300/[0.04] p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-black text-white">Crear usuario directo</h2>
-              <p className="mt-1 text-sm text-zinc-500">Genera una cuenta con nombre, rol y contraseña temporal verificable.</p>
-            </div>
-            <button onClick={() => setCreateOpen((v) => !v)} className="rounded-full bg-yellow-300 px-5 py-2 text-xs font-black uppercase tracking-[0.18em] text-black">
-              <Plus className="mr-1 inline h-4 w-4" /> Usuario
-            </button>
-          </div>
-
-          {createOpen && (
-            <div className="mt-5 grid gap-3 md:grid-cols-2">
-              <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nombre completo" className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-yellow-300/50" />
-              <input value={newEmail} onChange={(e) => setNewEmail(e.target.value)} placeholder="correo@dominio.com" type="email" className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-yellow-300/50" />
-              <select value={newRole} onChange={(e) => setNewRole(e.target.value as Role)} className="rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-yellow-300/50">
-                {ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
-              </select>
-              <div className="flex gap-2">
-                <input value={newPassword} onChange={(e) => setNewPassword(e.target.value)} className="min-w-0 flex-1 rounded-2xl border border-white/10 bg-black/40 px-4 py-3 font-mono text-xs text-white outline-none focus:border-yellow-300/50" />
-                <button onClick={() => setNewPassword(tempPassword())} className="rounded-2xl border border-white/10 px-3 text-xs font-bold text-zinc-300 hover:text-yellow-200">Generar</button>
+      <div className="grid gap-4 xl:grid-cols-2">
+        <AdminCard className="p-0 sm:p-0">
+          <ActionHeader
+            eyebrow="Cuenta directa"
+            title="Crear usuario"
+            description="Genera una cuenta aprobada con contraseña temporal y rol definido."
+            action={
+              <button type="button" onClick={() => setCreateOpen((value) => !value)} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white">
+                <Plus className="h-4 w-4" /> Usuario
+              </button>
+            }
+          />
+          {createOpen ? (
+            <div className="grid gap-4 border-t border-black/8 p-4 sm:grid-cols-2 sm:p-5">
+              <Field label="Nombre" value={newName} onChange={setNewName} placeholder="Nombre completo" />
+              <Field label="Email" value={newEmail} onChange={setNewEmail} placeholder="correo@dominio.com" type="email" />
+              <label className="block"><span className={labelClass}>Rol</span><select value={newRole} onChange={(event) => setNewRole(event.target.value as Role)} className={inputClass}>{ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></label>
+              <div>
+                <span className={labelClass}>Contraseña temporal</span>
+                <div className="flex gap-2"><input value={newPassword} onChange={(event) => setNewPassword(event.target.value)} className={`${inputClass} min-w-0 flex-1 font-mono text-xs`} /><button type="button" onClick={() => setNewPassword(tempPassword())} className="rounded-xl border border-black/10 bg-white/60 px-3 text-xs font-bold text-[#625b50]">Generar</button></div>
               </div>
-              <button disabled={saving} onClick={createUser} className="md:col-span-2 rounded-2xl bg-yellow-300 px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-black disabled:opacity-50">
-                {saving ? 'Creando…' : 'Crear usuario y contraseña'}
-              </button>
-              {createdPassword && (
-                <div className="md:col-span-2 rounded-2xl border border-emerald-400/30 bg-emerald-400/10 p-4">
-                  <p className="text-xs font-black uppercase tracking-[0.18em] text-emerald-200">Contraseña temporal generada</p>
-                  <div className="mt-2 flex items-center gap-2">
-                    <code className="min-w-0 flex-1 rounded-xl bg-black/40 px-3 py-2 text-xs text-white">{createdPassword}</code>
-                    <button onClick={() => copy(createdPassword, 'Contraseña')} className="rounded-xl border border-emerald-400/30 px-3 py-2 text-xs text-emerald-200"><Copy className="h-4 w-4" /></button>
-                  </div>
+              <button type="button" disabled={saving} onClick={() => void createUser()} className="sm:col-span-2 min-h-11 rounded-xl bg-[#171612] px-5 text-xs font-black text-white disabled:opacity-50">{saving ? 'Creando…' : 'Crear usuario y contraseña'}</button>
+              {createdPassword ? (
+                <div className="sm:col-span-2 rounded-xl border border-emerald-600/15 bg-emerald-500/8 p-4">
+                  <p className="text-[10px] font-black uppercase tracking-[.14em] text-emerald-800">Contraseña temporal</p>
+                  <div className="mt-2 flex items-center gap-2"><code className="min-w-0 flex-1 break-all rounded-lg bg-white/70 px-3 py-2 text-xs text-[#27241f]">{createdPassword}</code><button type="button" onClick={() => void copy(createdPassword, 'Contraseña')} className="grid h-9 w-9 shrink-0 place-items-center rounded-lg border border-black/10 bg-white/70 text-[#625b50]"><Copy className="h-4 w-4" /></button></div>
                 </div>
-              )}
+              ) : null}
             </div>
-          )}
-        </div>
+          ) : null}
+        </AdminCard>
 
-        <div className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-xl font-black text-white">Invitar persona</h2>
-              <p className="mt-1 text-sm text-zinc-500">Envía o copia un link para que cree su contraseña.</p>
-            </div>
-            <button onClick={() => setInviteOpen((v) => !v)} className="rounded-full border border-white/10 px-5 py-2 text-xs font-black uppercase tracking-[0.18em] text-zinc-200">
-              <UserPlus className="mr-1 inline h-4 w-4" /> Invitar
-            </button>
-          </div>
-
-          {inviteOpen && (
-            <div className="mt-5 space-y-3">
-              <input value={inviteEmail} onChange={(e) => setInviteEmail(e.target.value)} placeholder="correo@dominio.com" type="email" className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-yellow-300/50" />
-              <select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as Role)} className="w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-yellow-300/50">
-                {ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
-              </select>
-              <button disabled={saving} onClick={createInvite} className="w-full rounded-2xl bg-white px-5 py-3 text-sm font-black uppercase tracking-[0.18em] text-black disabled:opacity-50">
-                Crear invitación
-              </button>
-              {createdLink && (
-                <div className="rounded-2xl border border-yellow-300/30 bg-yellow-300/10 p-4">
-                  <p className="break-all font-mono text-xs text-yellow-100">{createdLink}</p>
-                  <button onClick={() => copy(createdLink, 'Link')} className="mt-3 rounded-full bg-yellow-300 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-black">Copiar link</button>
+        <AdminCard className="p-0 sm:p-0">
+          <ActionHeader
+            eyebrow="Invitación"
+            title="Invitar persona"
+            description="Crea un enlace para que el usuario configure su acceso."
+            action={<button type="button" onClick={() => setInviteOpen((value) => !value)} className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-black/10 bg-white/65 px-4 text-xs font-black text-[#625b50]"><UserPlus className="h-4 w-4" /> Invitar</button>}
+          />
+          {inviteOpen ? (
+            <div className="grid gap-4 border-t border-black/8 p-4 sm:p-5">
+              <Field label="Email" value={inviteEmail} onChange={setInviteEmail} placeholder="correo@dominio.com" type="email" />
+              <label className="block"><span className={labelClass}>Rol</span><select value={inviteRole} onChange={(event) => setInviteRole(event.target.value as Role)} className={inputClass}>{ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select></label>
+              <button type="button" disabled={saving} onClick={() => void createInvite()} className="min-h-11 rounded-xl bg-[#171612] px-5 text-xs font-black text-white disabled:opacity-50">Crear invitación</button>
+              {createdLink ? (
+                <div className="rounded-xl border border-[#c77a00]/15 bg-[#ffb000]/8 p-4">
+                  <p className="break-all font-mono text-xs text-[#5f4b24]">{createdLink}</p>
+                  <button type="button" onClick={() => void copy(createdLink, 'Link')} className="mt-3 inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-xs font-bold text-[#625b50]"><Copy className="h-3.5 w-3.5" /> Copiar link</button>
                 </div>
-              )}
+              ) : null}
             </div>
-          )}
-        </div>
-      </section>
+          ) : null}
+        </AdminCard>
+      </div>
 
-      <section className="rounded-3xl border border-white/10 bg-zinc-950/60 p-5">
-        <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
+      <AdminCard className="p-0 sm:p-0">
+        <div className="flex flex-col gap-3 border-b border-black/8 p-4 sm:flex-row sm:items-end sm:justify-between sm:p-5">
           <div>
-            <h2 className="text-xl font-black text-white">Miembros activos</h2>
-            <p className="mt-1 text-sm text-zinc-500">Tu IP actual: <span className="font-mono text-zinc-300">{requestIp ?? 'no disponible'}</span></p>
+            <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Acceso operativo</p>
+            <h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">Miembros activos</h2>
+            <p className="mt-1 text-xs text-[#817a6f]">IP actual: <span className="font-mono font-bold text-[#514b42]">{requestIp ?? 'no disponible'}</span></p>
           </div>
-          <button onClick={() => loadData()} className="rounded-full border border-white/10 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-zinc-300">Actualizar</button>
+          <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black text-emerald-800">{members.length} activos</span>
         </div>
-
-        <div className="grid gap-3">
-          {members.map((member) => (
-            <article key={member.email} className="rounded-3xl border border-white/10 bg-white/[0.03] p-4">
-              <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0 flex-1">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <h3 className="truncate text-base font-black text-white">{member.nombre || member.email}</h3>
-                    <span className={`rounded-full border px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] ${roleClass(member.rol)}`}>{member.rol}</span>
-                    {member.email === sessionEmail && <span className="rounded-full border border-yellow-300/40 bg-yellow-300/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-yellow-200">Tú</span>}
-                  </div>
-                  <p className="mt-1 truncate text-sm text-zinc-500">{member.email}</p>
-                  <div className="mt-3 grid gap-2 text-xs text-zinc-500 sm:grid-cols-3">
-                    <span className="flex items-center gap-2"><Wifi className="h-3.5 w-3.5 text-yellow-300" /> IP: <span className="font-mono text-zinc-300">{member.last_ip ?? '—'}</span></span>
-                    <span>Último acceso: <span className="text-zinc-300">{formatDateTime(member.last_seen_at)}</span></span>
-                    <span className="truncate">Resultado: <span className="text-zinc-300">{member.last_outcome ?? '—'}</span></span>
-                  </div>
+        <div className="divide-y divide-black/8 px-4 sm:px-5">
+          {members.length === 0 ? <Empty text="No hay miembros activos." /> : members.map((member) => (
+            <article key={member.email} className="flex flex-col gap-4 py-4 lg:flex-row lg:items-center">
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-2">
+                  <h3 className="truncate text-sm font-black text-[#171612]">{member.nombre || member.email}</h3>
+                  <span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] ${roleClass(member.rol)}`}>{member.rol}</span>
+                  {member.email === sessionEmail ? <span className="rounded-full bg-[#171612] px-2.5 py-1 text-[9px] font-black text-white">Tú</span> : null}
                 </div>
-                <div className="flex flex-wrap gap-2">
-                  <select disabled={member.email === sessionEmail} value={member.rol} onChange={(e) => updateRole(member.email, e.target.value as Role)} className="rounded-2xl border border-white/10 bg-black/40 px-3 py-2 text-xs font-bold uppercase tracking-[0.14em] text-white disabled:opacity-40">
-                    {ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}
-                  </select>
-                  <button disabled={member.email === sessionEmail} onClick={() => reject(member.email)} className="rounded-2xl border border-red-400/30 px-3 py-2 text-xs font-black uppercase tracking-[0.14em] text-red-300 disabled:opacity-40"><Trash2 className="h-4 w-4" /></button>
+                <p className="mt-1 truncate text-xs text-[#817a6f]">{member.email}</p>
+                <div className="mt-2 flex flex-wrap gap-x-5 gap-y-1 text-[11px] text-[#817a6f]">
+                  <span className="inline-flex items-center gap-1.5"><Wifi className="h-3.5 w-3.5 text-[#a56600]" /> <span className="font-mono">{member.last_ip ?? '—'}</span></span>
+                  <span>Último acceso {formatDateTime(member.last_seen_at)}</span>
+                  <span>Resultado {member.last_outcome ?? '—'}</span>
                 </div>
+              </div>
+              <div className="flex flex-wrap gap-2">
+                <select disabled={member.email === sessionEmail} value={member.rol} onChange={(event) => void updateRole(member.email, event.target.value as Role)} className="rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-xs font-bold text-[#514b42] disabled:opacity-40">{ROLES.map((role) => <option key={role.value} value={role.value}>{role.label}</option>)}</select>
+                <button type="button" disabled={member.email === sessionEmail} onClick={() => void reject(member.email)} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-600/15 bg-rose-500/8 px-3 py-2 text-xs font-bold text-rose-800 disabled:opacity-40"><Trash2 className="h-3.5 w-3.5" /> Eliminar</button>
               </div>
             </article>
           ))}
         </div>
-      </section>
+      </AdminCard>
 
-      {pending.length > 0 && (
-        <section className="rounded-3xl border border-orange-400/20 bg-orange-400/[0.04] p-5">
-          <h2 className="text-xl font-black text-white">Solicitudes pendientes</h2>
-          <div className="mt-4 grid gap-3">
+      {pending.length ? (
+        <AdminCard className="p-0 sm:p-0">
+          <ActionHeader eyebrow="Revisión" title="Solicitudes pendientes" description="Aprueba o rechaza cuentas que aún no tienen acceso operativo." />
+          <div className="divide-y divide-black/8 border-t border-black/8 px-4 sm:px-5">
             {pending.map((member) => (
-              <div key={member.email} className="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-white/10 bg-black/30 p-4">
-                <div>
-                  <p className="font-bold text-white">{member.nombre || member.email}</p>
-                  <p className="text-sm text-zinc-500">{member.email} · {member.rol}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => approve(member.email)} className="rounded-full bg-emerald-400 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-black"><Check className="mr-1 inline h-4 w-4" />Aprobar</button>
-                  <button onClick={() => reject(member.email)} className="rounded-full border border-red-400/30 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-red-300"><X className="mr-1 inline h-4 w-4" />Rechazar</button>
-                </div>
+              <div key={member.email} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
+                <div><p className="text-sm font-black text-[#171612]">{member.nombre || member.email}</p><p className="mt-1 text-xs text-[#817a6f]">{member.email} · {member.rol}</p></div>
+                <div className="flex gap-2"><button type="button" onClick={() => void approve(member.email)} className="inline-flex items-center gap-1.5 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-black text-white"><Check className="h-3.5 w-3.5" /> Aprobar</button><button type="button" onClick={() => void reject(member.email)} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-600/15 bg-rose-500/8 px-3 py-2 text-xs font-black text-rose-800"><X className="h-3.5 w-3.5" /> Rechazar</button></div>
               </div>
             ))}
           </div>
-        </section>
-      )}
+        </AdminCard>
+      ) : null}
 
-      {invitations.length > 0 && (
-        <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-          <h2 className="text-xl font-black text-white">Invitaciones pendientes</h2>
-          <div className="mt-4 grid gap-3">
-            {invitations.map((inv) => (
-              <div key={inv.id} className="flex flex-col gap-3 rounded-2xl border border-white/10 bg-black/30 p-4 lg:flex-row lg:items-center lg:justify-between">
-                <div className="min-w-0">
-                  <p className="font-bold text-white">{inv.email}</p>
-                  <p className="text-sm text-zinc-500">{inv.rol} · expira {formatDateTime(inv.expira_at)}</p>
-                  <p className="mt-1 truncate font-mono text-xs text-zinc-600">{inv.link}</p>
-                </div>
-                <div className="flex gap-2">
-                  <button onClick={() => copy(inv.link, 'Link')} className="rounded-full border border-yellow-300/30 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-yellow-200"><Copy className="mr-1 inline h-4 w-4" />Copiar</button>
-                  <button onClick={() => deleteInvite(inv.id)} className="rounded-full border border-red-400/30 px-4 py-2 text-xs font-black uppercase tracking-[0.16em] text-red-300"><Trash2 className="mr-1 inline h-4 w-4" />Cancelar</button>
-                </div>
+      {invitations.length ? (
+        <AdminCard className="p-0 sm:p-0">
+          <ActionHeader eyebrow="Invitaciones" title="Pendientes de activación" description="Enlaces emitidos que todavía pueden ser utilizados." />
+          <div className="divide-y divide-black/8 border-t border-black/8 px-4 sm:px-5">
+            {invitations.map((invitation) => (
+              <div key={invitation.id} className="flex flex-col gap-3 py-4 lg:flex-row lg:items-center">
+                <div className="min-w-0 flex-1"><p className="text-sm font-black text-[#171612]">{invitation.email}</p><p className="mt-1 text-xs text-[#817a6f]">{invitation.rol} · expira {formatDateTime(invitation.expira_at)}</p><p className="mt-1 truncate font-mono text-[10px] text-[#9a9286]">{invitation.link}</p></div>
+                <div className="flex gap-2"><button type="button" onClick={() => void copy(invitation.link, 'Link')} className="inline-flex items-center gap-1.5 rounded-xl border border-black/10 bg-white/65 px-3 py-2 text-xs font-bold text-[#625b50]"><Copy className="h-3.5 w-3.5" /> Copiar</button><button type="button" onClick={() => void deleteInvite(invitation.id)} className="inline-flex items-center gap-1.5 rounded-xl border border-rose-600/15 bg-rose-500/8 px-3 py-2 text-xs font-bold text-rose-800"><Trash2 className="h-3.5 w-3.5" /> Cancelar</button></div>
               </div>
             ))}
           </div>
-        </section>
-      )}
+        </AdminCard>
+      ) : null}
 
-      <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-5">
-        <div className="mb-4 flex items-center gap-3">
-          <Mail className="h-5 w-5 text-yellow-300" />
-          <h2 className="text-xl font-black text-white">Últimos accesos auditados</h2>
-        </div>
+      <AdminCard className="p-0 sm:p-0">
+        <ActionHeader eyebrow="Auditoría" title="Últimos accesos" description="Historial reciente de autenticación asociado a los miembros del tenant." action={<Mail className="h-5 w-5 text-[#a56600]" />} />
         {audit.length === 0 ? (
-          <p className="text-sm text-zinc-500">Sin auditoría disponible. Si la tabla admin_login_audit no existe, el login sigue funcionando pero no habrá historial.</p>
+          <Empty text="Sin auditoría disponible. El acceso sigue funcionando aunque no haya historial." />
         ) : (
-          <div className="grid gap-2">
-            {audit.slice(0, 10).map((row, index) => (
-              <div key={`${row.ts}-${index}`} className="grid gap-2 rounded-2xl border border-white/10 bg-black/30 p-3 text-xs text-zinc-400 md:grid-cols-[1.2fr_0.8fr_0.8fr_1fr]">
-                <span className="truncate text-zinc-200">{row.email ?? 'sin email'}</span>
-                <span className="font-mono">{row.ip ?? '—'}</span>
-                <span>{row.outcome ?? '—'}</span>
-                <span>{formatDateTime(row.ts)}</span>
-              </div>
-            ))}
+          <div className="overflow-x-auto border-t border-black/8">
+            <table className="min-w-full text-left text-xs">
+              <thead className="bg-white/35 text-[10px] font-black uppercase tracking-[.12em] text-[#8f887c]"><tr><th className="px-4 py-3 sm:px-5">Email</th><th className="px-4 py-3">IP</th><th className="px-4 py-3">Resultado</th><th className="px-4 py-3">Fecha</th></tr></thead>
+              <tbody className="divide-y divide-black/8">{audit.slice(0, 10).map((row, index) => <tr key={`${row.ts}-${index}`}><td className="px-4 py-3 sm:px-5 font-bold text-[#27241f]">{row.email ?? 'sin email'}</td><td className="px-4 py-3 font-mono text-[#625b50]">{row.ip ?? '—'}</td><td className="px-4 py-3 text-[#625b50]">{row.outcome ?? '—'}</td><td className="px-4 py-3 text-[#625b50]">{formatDateTime(row.ts)}</td></tr>)}</tbody>
+            </table>
           </div>
         )}
-      </section>
+      </AdminCard>
     </AdminPage>
   );
+}
+
+function ActionHeader({ eyebrow, title, description, action }: { eyebrow: string; title: string; description: string; action?: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+      <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">{eyebrow}</p><h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">{title}</h2><p className="mt-1 text-xs leading-5 text-[#817a6f]">{description}</p></div>
+      {action ? <div className="shrink-0">{action}</div> : null}
+    </div>
+  );
+}
+
+function Field({ label, value, onChange, placeholder, type = 'text' }: { label: string; value: string; onChange: (value: string) => void; placeholder?: string; type?: 'text' | 'email' }) {
+  return <label className="block"><span className={labelClass}>{label}</span><input type={type} value={value} onChange={(event) => onChange(event.target.value)} placeholder={placeholder} className={inputClass} /></label>;
+}
+
+function Empty({ text }: { text: string }) {
+  return <div className="px-5 py-12 text-center text-sm text-[#817a6f]">{text}</div>;
 }

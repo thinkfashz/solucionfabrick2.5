@@ -1,312 +1,232 @@
 'use client';
 
-import { useCallback, useEffect, useState } from 'react';
-import { Truck, Save, Plus, Trash2, RefreshCw, AlertTriangle, CheckCircle2, ExternalLink, KeyRound } from 'lucide-react';
-import { insforge } from '@/lib/insforge';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import {
+  AlertTriangle,
+  CheckCircle2,
+  ExternalLink,
+  Plus,
+  RefreshCw,
+  RotateCcw,
+  Save,
+  Trash2,
+  Truck,
+} from 'lucide-react';
+import { AdminCard, AdminPage, AdminPageHeader, AdminStat } from '@/components/admin/ui';
+import type { ShippingConfig, ShippingRegionRate } from '@/lib/shipping';
 
-interface ShippingRate {
-  region: string;
-  carrier: string;
-  days: string;
-  price: number;
-}
-
-interface CarrierInfo {
+type CarrierInfo = {
   configured: boolean;
   label: string;
   required: string[];
   optional: string[];
   docs: string | null;
+};
+
+type Message = { type: 'success' | 'error'; text: string } | null;
+
+const inputClass = 'w-full rounded-xl border border-black/10 bg-white px-3 py-2.5 text-sm font-semibold text-[#171612] outline-none transition focus:border-[#c77a00]/45 focus:ring-2 focus:ring-[#ffb000]/10';
+const secondaryButton = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white/70 px-3.5 text-xs font-black text-[#5f594f] transition hover:bg-white disabled:opacity-50';
+const primaryButton = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white transition hover:bg-[#2b2924] disabled:opacity-50';
+
+function money(value: number) {
+  return `$${Math.max(0, Number(value || 0)).toLocaleString('es-CL')}`;
 }
 
-const DEFAULT_RATES: ShippingRate[] = [
-  { region: 'Maule',                    carrier: 'Starken',     days: '1-2',  price: 3500  },
-  { region: 'Región Metropolitana',     carrier: 'Chilexpress', days: '2-3',  price: 4500  },
-  { region: 'Biobío',                   carrier: 'Chilexpress', days: '2-3',  price: 4500  },
-  { region: 'Valparaíso',              carrier: 'Chilexpress', days: '2-4',  price: 5000  },
-  { region: 'O\'Higgins',              carrier: 'Starken',     days: '2-3',  price: 4000  },
-  { region: 'Araucanía',               carrier: 'Correos',     days: '3-5',  price: 5500  },
-  { region: 'Los Lagos',               carrier: 'Correos',     days: '3-5',  price: 6000  },
-  { region: 'Atacama',                 carrier: 'Correos',     days: '4-6',  price: 6500  },
-  { region: 'Antofagasta',             carrier: 'Correos',     days: '5-7',  price: 7000  },
-  { region: 'Magallanes',              carrier: 'Correos',     days: '7-10', price: 9500  },
-  { region: 'Todo Chile (por defecto)', carrier: 'Correos',    days: '5-7',  price: 5900  },
-];
-
-const CARRIERS = ['Chilexpress', 'Starken', 'Correos de Chile', 'Blue Express', 'DHL', 'Retiro en tienda'];
-
-function formatCLP(n: number) { return '$' + n.toLocaleString('es-CL'); }
+function newRate(): ShippingRegionRate {
+  const now = new Date().toISOString();
+  return {
+    region: 'NUEVA',
+    label: 'Nueva región',
+    testFee: 7_990,
+    productionFee: 9_990,
+    eta: '2 a 5 días hábiles',
+    updatedAt: now,
+    source: 'manual',
+  };
+}
 
 export default function EnviosPage() {
-  const [rates, setRates]     = useState<ShippingRate[]>(DEFAULT_RATES);
-  const [saving, setSaving]   = useState(false);
-  const [saved, setSaved]     = useState(false);
-  const [freeThreshold, setFreeThreshold] = useState(50000);
+  const [config, setConfig] = useState<ShippingConfig | null>(null);
+  const [carriers, setCarriers] = useState<Record<string, CarrierInfo>>({});
   const [loading, setLoading] = useState(true);
-  const [carrierStatus, setCarrierStatus] = useState<Record<string, CarrierInfo> | null>(null);
+  const [saving, setSaving] = useState(false);
+  const [message, setMessage] = useState<Message>(null);
 
-  const loadConfig = useCallback(async () => {
+  const load = useCallback(async () => {
+    setLoading(true);
+    setMessage(null);
     try {
-      const { data } = await insforge.database
-        .from('site_config')
-        .select('clave, valor')
-        .in('clave', ['shipping_rates', 'shipping_free_threshold']);
-
-      if (data && Array.isArray(data)) {
-        for (const row of data as { clave: string; valor: string }[]) {
-          if (row.clave === 'shipping_rates') {
-            try { setRates(JSON.parse(row.valor)); } catch { /* keep defaults */ }
-          }
-          if (row.clave === 'shipping_free_threshold') {
-            setFreeThreshold(Number(row.valor) || 50000);
-          }
-        }
+      const [configRes, carriersRes] = await Promise.all([
+        fetch('/api/admin/envio', { cache: 'no-store' }),
+        fetch('/api/admin/shipping/carriers-status', { cache: 'no-store' }),
+      ]);
+      const configJson = await configRes.json().catch(() => ({}));
+      if (!configRes.ok) throw new Error(configJson.error ?? `HTTP ${configRes.status}`);
+      setConfig(configJson as ShippingConfig);
+      if (carriersRes.ok) {
+        const carriersJson = await carriersRes.json().catch(() => ({}));
+        setCarriers(carriersJson as Record<string, CarrierInfo>);
       }
-    } catch { /* use defaults */ } finally {
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'No se pudo cargar la configuración de envíos.' });
+    } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    loadConfig();
-    fetch('/api/admin/shipping/carriers-status')
-      .then((r) => r.ok ? r.json() : null)
-      .then((data) => { if (data) setCarrierStatus(data); })
-      .catch(() => {});
-  }, [loadConfig]);
+  useEffect(() => { void load(); }, [load]);
 
-  const saveConfig = async () => {
+  const carrierEntries = useMemo(() => Object.entries(carriers), [carriers]);
+  const configuredCarriers = carrierEntries.filter(([, carrier]) => carrier.configured).length;
+
+  function patchConfig(patch: Partial<ShippingConfig>) {
+    setConfig((current) => current ? { ...current, ...patch } : current);
+  }
+
+  function patchRate(index: number, patch: Partial<ShippingRegionRate>) {
+    setConfig((current) => {
+      if (!current) return current;
+      return {
+        ...current,
+        rates: current.rates.map((rate, position) => position === index ? { ...rate, ...patch, source: 'manual', updatedAt: new Date().toISOString() } : rate),
+      };
+    });
+  }
+
+  function addRate() {
+    setConfig((current) => current ? { ...current, rates: [...current.rates, newRate()] } : current);
+  }
+
+  function removeRate(index: number) {
+    setConfig((current) => current ? { ...current, rates: current.rates.filter((_, position) => position !== index) } : current);
+  }
+
+  async function save() {
+    if (!config) return;
     setSaving(true);
+    setMessage(null);
     try {
-      await insforge.database.from('site_config').upsert(
-        [
-          { clave: 'shipping_rates',          valor: JSON.stringify(rates),  tipo: 'json' },
-          { clave: 'shipping_free_threshold', valor: String(freeThreshold), tipo: 'number' },
-        ],
-        { onConflict: 'clave' },
-      );
-      setSaved(true);
-      setTimeout(() => setSaved(false), 3000);
-    } catch { /* ignore */ } finally {
+      const res = await fetch('/api/admin/envio', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(config),
+      });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+      setConfig(json as ShippingConfig);
+      setMessage({ type: 'success', text: 'Configuración de envío guardada y aplicada al cálculo real del checkout.' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'No se pudo guardar.' });
+    } finally {
       setSaving(false);
     }
-  };
+  }
 
-  const updateRate = (i: number, field: keyof ShippingRate, value: string | number) => {
-    setRates((prev) => prev.map((r, idx) => idx === i ? { ...r, [field]: value } : r));
-  };
+  async function resetDefaults() {
+    if (!config || !confirm('¿Restablecer las tarifas de referencia?')) return;
+    setSaving(true);
+    setMessage(null);
+    try {
+      const res = await fetch(`/api/admin/envio?mode=${config.mode}`, { method: 'POST' });
+      const json = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(json.error ?? `HTTP ${res.status}`);
+      setConfig(json as ShippingConfig);
+      setMessage({ type: 'success', text: 'Tarifas de referencia restauradas.' });
+    } catch (error) {
+      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'No se pudo restablecer.' });
+    } finally {
+      setSaving(false);
+    }
+  }
 
-  const removeRate = (i: number) => setRates((prev) => prev.filter((_, idx) => idx !== i));
-  const addRate = () => setRates((prev) => [...prev, { region: '', carrier: 'Chilexpress', days: '3-5', price: 5000 }]);
-
-  const unconfigured = carrierStatus
-    ? Object.entries(carrierStatus).filter(([, v]) => !v.configured)
-    : [];
-  const allConfigured = carrierStatus !== null && unconfigured.length === 0;
-
-  if (loading) {
-    return <div className="min-h-screen bg-black flex items-center justify-center text-zinc-500">Cargando…</div>;
+  if (loading || !config) {
+    return (
+      <AdminPage>
+        <AdminPageHeader eyebrow="Operaciones" title="Envíos" description="Cargando configuración de despacho…" icon={Truck} />
+        <div className="flex min-h-64 items-center justify-center gap-2 text-sm text-[#817a6f]"><RefreshCw className="h-4 w-4 animate-spin" /> Cargando tarifas…</div>
+      </AdminPage>
+    );
   }
 
   return (
-    <div className="min-h-screen bg-black text-white pb-20">
-      {/* Header */}
-      <div className="border-b border-white/5 bg-zinc-950 px-6 py-4 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Truck className="w-5 h-5 text-[#FFB000]" />
+    <AdminPage>
+      <AdminPageHeader
+        eyebrow="Operaciones · Logística"
+        title="Tarifas de envío"
+        description="Edita la misma configuración que utiliza el checkout. Se eliminaron los valores paralelos de site_config para evitar que el panel muestre precios que la tienda no usa."
+        icon={Truck}
+        meta={
+          <>
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[.14em] ${config.mode === 'production' ? 'bg-emerald-500/10 text-emerald-800' : 'bg-[#ffb000]/10 text-[#8e5c00]'}`}>{config.mode === 'production' ? 'Producción' : 'Pruebas'}</span>
+            <span className="rounded-full bg-black/5 px-2.5 py-1 text-[10px] font-black uppercase tracking-[.14em] text-[#817a6f]">{configuredCarriers}/{carrierEntries.length || 3} carriers</span>
+          </>
+        }
+        actions={
+          <>
+            <button type="button" onClick={() => void load()} disabled={saving} className={secondaryButton}><RefreshCw className="h-4 w-4" /> Actualizar</button>
+            <button type="button" onClick={() => void save()} disabled={saving} className={primaryButton}>{saving ? <RefreshCw className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />} Guardar</button>
+          </>
+        }
+      />
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStat label="Regiones" value={config.rates.length} icon={Truck} hint="Tarifas activas en checkout" />
+        <AdminStat label="Carriers" value={`${configuredCarriers}/${carrierEntries.length || 3}`} icon={CheckCircle2} accent={configuredCarriers > 0 ? 'emerald' : 'rose'} hint="Credenciales detectadas" />
+        <AdminStat label="Umbral bajo" value={money(config.lowValueThreshold)} icon={AlertTriangle} accent="yellow" hint={`Recargo ${money(config.lowValueSurcharge)}`} />
+        <AdminStat label="Unidad extra" value={money(config.extraUnitFee)} icon={Plus} accent="cyan" hint="Por unidad adicional" />
+      </section>
+
+      {message ? <div className={`rounded-xl border px-4 py-3 text-sm font-medium ${message.type === 'success' ? 'border-emerald-600/15 bg-emerald-500/8 text-emerald-900' : 'border-rose-600/15 bg-rose-500/8 text-rose-900'}`}>{message.text}</div> : null}
+
+      <AdminCard className="space-y-5">
+        <div className="flex flex-col gap-3 lg:flex-row lg:items-start lg:justify-between">
           <div>
-            <h1 className="font-bold text-lg">Tarifas de Envío</h1>
-            <p className="text-zinc-500 text-xs">Configura costos por región y transportista</p>
+            <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Motor de cálculo</p>
+            <h2 className="mt-1 text-xl font-black text-[#171612]">Reglas globales</h2>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-[#817a6f]">El modo controla qué columna de tarifa usa el checkout. Los recargos se aplican desde el motor central de shipping.</p>
           </div>
-        </div>
-        <div className="flex gap-2">
-          <button onClick={loadConfig} className="p-2 rounded-lg hover:bg-white/5 text-zinc-400 hover:text-white transition-colors">
-            <RefreshCw className="w-4 h-4" />
-          </button>
-          <button
-            onClick={saveConfig}
-            disabled={saving}
-            className="flex items-center gap-2 px-4 py-2 rounded-xl text-sm font-semibold transition-all disabled:opacity-50"
-            style={{ background: '#FFB000', color: '#08090A' }}
-          >
-            <Save className="w-4 h-4" />
-            {saved ? '¡Guardado!' : saving ? 'Guardando…' : 'Guardar'}
-          </button>
-        </div>
-      </div>
-
-      <div className="px-6 py-6 space-y-6 max-w-4xl mx-auto">
-
-        {/* ── Banner de estado de carriers ── */}
-        {carrierStatus !== null && (
-          allConfigured ? (
-            <div className="flex items-center gap-3 rounded-2xl border border-emerald-500/30 bg-emerald-500/5 px-5 py-3.5">
-              <CheckCircle2 className="h-5 w-5 flex-shrink-0 text-emerald-400" />
-              <p className="text-sm text-emerald-300">
-                <strong>¡Carriers activos!</strong> Chilexpress, Starken y Correos de Chile están configurados con credenciales reales.
-              </p>
-            </div>
-          ) : (
-            <div className="rounded-2xl border border-amber-400/30 bg-amber-400/5 px-5 py-5">
-              <div className="flex items-start gap-3">
-                <AlertTriangle className="h-5 w-5 flex-shrink-0 text-amber-400 mt-0.5" />
-                <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-amber-300 text-sm">
-                    {unconfigured.length === 3
-                      ? 'Ningún carrier real está conectado — el checkout usa precios estimados'
-                      : `${unconfigured.length} carrier${unconfigured.length > 1 ? 's' : ''} sin credenciales`}
-                  </p>
-                  <p className="mt-1 text-xs text-amber-300/70 leading-relaxed">
-                    Los drivers ya están implementados. Solo falta agregar las variables de entorno en{' '}
-                    <strong className="text-amber-200">Vercel → Settings → Environment Variables</strong> (o en tu <code className="rounded bg-amber-400/10 px-1">.env.local</code>):
-                  </p>
-
-                  <div className="mt-3 space-y-3">
-                    {unconfigured.map(([id, info]) => (
-                      <div key={id} className="rounded-xl border border-amber-400/20 bg-black/30 px-4 py-3">
-                        <div className="flex items-center gap-2 mb-2">
-                          <KeyRound className="h-3.5 w-3.5 text-amber-400" />
-                          <span className="text-xs font-bold text-amber-300 uppercase tracking-wide">{info.label}</span>
-                          {info.docs && (
-                            <a
-                              href={info.docs}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="ml-auto flex items-center gap-1 text-[10px] text-amber-400/60 hover:text-amber-400 transition-colors"
-                            >
-                              Docs <ExternalLink className="h-2.5 w-2.5" />
-                            </a>
-                          )}
-                        </div>
-                        <div className="flex flex-wrap gap-1.5">
-                          {info.required.map((v) => (
-                            <code key={v} className="rounded-md border border-amber-400/20 bg-amber-400/10 px-2 py-0.5 font-mono text-[11px] text-amber-200">
-                              {v}
-                            </code>
-                          ))}
-                          {info.optional.map((v) => (
-                            <code key={v} className="rounded-md border border-white/10 bg-white/5 px-2 py-0.5 font-mono text-[11px] text-zinc-400">
-                              {v} <span className="text-zinc-600">(opcional)</span>
-                            </code>
-                          ))}
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-
-                  <div className="mt-3 flex items-center gap-3">
-                    <a
-                      href="/admin/integraciones"
-                      className="inline-flex items-center gap-1.5 rounded-lg border border-amber-400/30 bg-amber-400/10 px-3 py-1.5 text-xs font-semibold text-amber-300 transition-all hover:bg-amber-400/20 hover:border-amber-400/50"
-                    >
-                      <KeyRound className="h-3 w-3" />
-                      Ir a Integraciones
-                    </a>
-                    <a
-                      href="/admin/manual#envio-carriers"
-                      className="text-xs text-amber-400/50 hover:text-amber-400 transition-colors"
-                    >
-                      Ver guía de configuración →
-                    </a>
-                  </div>
-                </div>
-              </div>
-            </div>
-          )
-        )}
-
-        {/* Free shipping threshold */}
-        <div className="rounded-2xl border border-white/10 bg-zinc-900/50 p-5">
-          <h2 className="font-semibold mb-1 text-sm text-zinc-300">Envío gratis desde</h2>
-          <p className="text-xs text-zinc-500 mb-4">Los pedidos sobre este monto no pagan despacho</p>
-          <div className="flex items-center gap-3">
-            <span className="text-zinc-400 text-sm">$</span>
-            <input
-              type="number"
-              value={freeThreshold}
-              onChange={(e) => setFreeThreshold(Number(e.target.value))}
-              className="bg-zinc-800 border border-white/10 rounded-xl px-4 py-2 text-white text-sm w-40 focus:outline-none focus:border-[#FFB000]/50"
-            />
-            <span className="text-zinc-400 text-sm">CLP</span>
-            <span className="text-zinc-500 text-xs ml-2">= {formatCLP(freeThreshold)}</span>
-          </div>
+          <button type="button" onClick={() => void resetDefaults()} disabled={saving} className={secondaryButton}><RotateCcw className="h-4 w-4" /> Restaurar referencia</button>
         </div>
 
-        {/* Rates table */}
-        <div className="rounded-2xl border border-white/10 bg-zinc-900/50 overflow-hidden">
-          <div className="px-5 py-4 border-b border-white/5 flex items-center justify-between">
-            <div>
-              <h2 className="font-semibold text-sm text-zinc-300">Tarifas por región</h2>
-              <p className="text-[11px] text-zinc-600 mt-0.5">
-                Usadas como fallback manual. Cuando los carriers tienen credenciales, las tarifas son en tiempo real.
-              </p>
-            </div>
-            <button
-              onClick={addRate}
-              className="flex items-center gap-1 text-xs text-zinc-400 hover:text-white transition-colors px-3 py-1.5 rounded-lg hover:bg-white/5 border border-white/10"
-            >
-              <Plus className="w-3.5 h-3.5" />
-              Agregar
-            </button>
-          </div>
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <label className="block"><span className="mb-2 block text-[10px] font-black uppercase tracking-[.14em] text-[#8f887c]">Modo</span><select value={config.mode} onChange={(e) => patchConfig({ mode: e.target.value === 'production' ? 'production' : 'test' })} className={inputClass}><option value="test">Pruebas</option><option value="production">Producción</option></select></label>
+          <label className="block"><span className="mb-2 block text-[10px] font-black uppercase tracking-[.14em] text-[#8f887c]">Umbral compra baja</span><input type="number" min={0} value={config.lowValueThreshold} onChange={(e) => patchConfig({ lowValueThreshold: Number(e.target.value) })} className={inputClass} /></label>
+          <label className="block"><span className="mb-2 block text-[10px] font-black uppercase tracking-[.14em] text-[#8f887c]">Recargo compra baja</span><input type="number" min={0} value={config.lowValueSurcharge} onChange={(e) => patchConfig({ lowValueSurcharge: Number(e.target.value) })} className={inputClass} /></label>
+          <label className="block"><span className="mb-2 block text-[10px] font-black uppercase tracking-[.14em] text-[#8f887c]">Cargo unidad extra</span><input type="number" min={0} value={config.extraUnitFee} onChange={(e) => patchConfig({ extraUnitFee: Number(e.target.value) })} className={inputClass} /></label>
+        </div>
+      </AdminCard>
 
-          {/* Header */}
-          <div className="grid grid-cols-12 gap-2 px-5 py-2 text-xs text-zinc-500 border-b border-white/5">
-            <div className="col-span-4">Región</div>
-            <div className="col-span-3">Transportista</div>
-            <div className="col-span-2">Días</div>
-            <div className="col-span-2">Precio</div>
-            <div className="col-span-1" />
-          </div>
+      <AdminCard className="p-0 sm:p-0">
+        <div className="flex flex-col gap-3 border-b border-black/8 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
+          <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Tarifas regionales</p><h2 className="mt-1 text-xl font-black text-[#171612]">Valores reales del checkout</h2></div>
+          <button type="button" onClick={addRate} className={secondaryButton}><Plus className="h-4 w-4" /> Agregar región</button>
+        </div>
+        <div className="divide-y divide-black/8">
+          {config.rates.map((rate, index) => (
+            <article key={`${rate.region}-${index}`} className="grid gap-3 px-4 py-4 sm:px-5 lg:grid-cols-[90px_minmax(180px,1fr)_130px_130px_minmax(160px,1fr)_42px] lg:items-end">
+              <label><span className="mb-1.5 block text-[9px] font-black uppercase tracking-[.13em] text-[#9a9388]">Código</span><input value={rate.region} onChange={(e) => patchRate(index, { region: e.target.value.toUpperCase() })} className={inputClass} /></label>
+              <label><span className="mb-1.5 block text-[9px] font-black uppercase tracking-[.13em] text-[#9a9388]">Región</span><input value={rate.label} onChange={(e) => patchRate(index, { label: e.target.value })} className={inputClass} /></label>
+              <label><span className="mb-1.5 block text-[9px] font-black uppercase tracking-[.13em] text-[#9a9388]">Pruebas</span><input type="number" min={0} value={rate.testFee} onChange={(e) => patchRate(index, { testFee: Number(e.target.value) })} className={inputClass} /></label>
+              <label><span className="mb-1.5 block text-[9px] font-black uppercase tracking-[.13em] text-[#9a9388]">Producción</span><input type="number" min={0} value={rate.productionFee} onChange={(e) => patchRate(index, { productionFee: Number(e.target.value) })} className={inputClass} /></label>
+              <label><span className="mb-1.5 block text-[9px] font-black uppercase tracking-[.13em] text-[#9a9388]">Entrega estimada</span><input value={rate.eta} onChange={(e) => patchRate(index, { eta: e.target.value })} className={inputClass} /></label>
+              <button type="button" onClick={() => removeRate(index)} disabled={config.rates.length <= 1} aria-label={`Eliminar ${rate.label}`} className="grid h-10 w-10 place-items-center rounded-xl border border-rose-600/15 bg-rose-500/8 text-rose-800 transition hover:bg-rose-500/12 disabled:opacity-30"><Trash2 className="h-4 w-4" /></button>
+            </article>
+          ))}
+        </div>
+      </AdminCard>
 
-          {rates.map((rate, i) => (
-            <div key={i} className="grid grid-cols-12 gap-2 px-5 py-2.5 border-b border-white/5 last:border-0 items-center hover:bg-white/[0.02]">
-              <div className="col-span-4">
-                <input
-                  value={rate.region}
-                  onChange={(e) => updateRate(i, 'region', e.target.value)}
-                  placeholder="Nombre región"
-                  className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#FFB000]/50"
-                />
-              </div>
-              <div className="col-span-3">
-                <select
-                  value={rate.carrier}
-                  onChange={(e) => updateRate(i, 'carrier', e.target.value)}
-                  className="w-full bg-zinc-800 border border-white/10 rounded-lg px-2 py-1.5 text-sm text-white focus:outline-none focus:border-[#FFB000]/50"
-                >
-                  {CARRIERS.map((c) => <option key={c}>{c}</option>)}
-                </select>
-              </div>
-              <div className="col-span-2">
-                <input
-                  value={rate.days}
-                  onChange={(e) => updateRate(i, 'days', e.target.value)}
-                  placeholder="2-3"
-                  className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#FFB000]/50"
-                />
-              </div>
-              <div className="col-span-2">
-                <input
-                  type="number"
-                  value={rate.price}
-                  onChange={(e) => updateRate(i, 'price', Number(e.target.value))}
-                  className="w-full bg-zinc-800 border border-white/10 rounded-lg px-3 py-1.5 text-sm text-white focus:outline-none focus:border-[#FFB000]/50"
-                />
-              </div>
-              <div className="col-span-1 flex justify-end">
-                <button onClick={() => removeRate(i)} className="p-1.5 rounded-lg hover:bg-red-500/20 text-zinc-600 hover:text-red-400 transition-colors">
-                  <Trash2 className="w-3.5 h-3.5" />
-                </button>
-              </div>
+      <AdminCard className="space-y-4">
+        <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Conectividad</p><h2 className="mt-1 text-xl font-black text-[#171612]">Carriers externos</h2><p className="mt-1 text-xs leading-5 text-[#817a6f]">Estas credenciales viven en el servidor. El panel solo indica si cada driver está listo; nunca muestra valores secretos.</p></div>
+        <div className="divide-y divide-black/8">
+          {carrierEntries.length === 0 ? <p className="py-5 text-sm text-[#817a6f]">No se pudo leer el estado de los carriers.</p> : carrierEntries.map(([id, carrier]) => (
+            <div key={id} className="flex flex-col gap-3 py-4 sm:flex-row sm:items-start sm:justify-between">
+              <div className="min-w-0"><div className="flex items-center gap-2"><span className={`h-2 w-2 rounded-full ${carrier.configured ? 'bg-emerald-500' : 'bg-amber-500'}`} /><p className="font-black text-[#171612]">{carrier.label}</p></div><p className="mt-1 text-xs text-[#817a6f]">{carrier.configured ? 'Driver configurado para consultas reales.' : `Faltan: ${carrier.required.join(', ')}`}</p></div>
+              {carrier.docs ? <a href={carrier.docs} target="_blank" rel="noreferrer" className={secondaryButton}>Documentación <ExternalLink className="h-3.5 w-3.5" /></a> : null}
             </div>
           ))}
         </div>
-
-        <p className="text-xs text-zinc-600 text-center">
-          Las tarifas manuales se usan en el checkout como respaldo cuando los carriers no están configurados.
-        </p>
-      </div>
-    </div>
+      </AdminCard>
+    </AdminPage>
   );
 }

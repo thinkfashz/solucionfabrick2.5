@@ -1,10 +1,5 @@
-/* Stage 6 — temporary convergence for admin workspaces that have not yet
- * migrated to the native Fabrick component system.
- *
- * IMPORTANT: pages marked data-admin-design="native" are deliberately
- * excluded so Tailwind/component styles are no longer rewritten by this
- * compatibility layer. This lets us remove Stage 6 route by route.
- */
+/* Stage 6 — compatibility layer only for workspaces not yet migrated to the
+ * native Fabrick component system. Native pages are deliberately excluded. */
 
 body:not([data-admin-design="native"])[data-admin-area="marketing"],
 body:not([data-admin-design="native"])[data-admin-area="system"],
@@ -17,7 +12,6 @@ body:not([data-admin-design="native"])[data-admin-area="access"] {
   --fa-workspace-muted: #716b60;
 }
 
-/* Remove the legacy application-inside-an-application canvas. */
 body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
 body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
 body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
@@ -27,22 +21,10 @@ body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-
   color: var(--fa-workspace-text) !important;
 }
 
-body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content > :first-child,
-body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content > :first-child,
-body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content > :first-child,
-body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content > :first-child {
-  margin-inline: auto;
-}
-
-/* Consistent typography across legacy pages that still carry zinc/white text. */
 body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(h1,h2,h3,h4),
 body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(h1,h2,h3,h4),
 body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(h1,h2,h3,h4),
-body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content :is(h1,h2,h3,h4) {
-  color: var(--fa-workspace-text) !important;
-  letter-spacing: -.025em;
-}
-
+body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content :is(h1,h2,h3,h4),
 body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
 body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
 body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
@@ -57,19 +39,11 @@ body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-
   color: var(--fa-workspace-muted) !important;
 }
 
-/* Convert legacy dark panels into one shared surface language. */
 body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/80,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
 body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/80,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
 body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/80,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
 body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/80,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800) {
   background: var(--fa-workspace-surface) !important;
-}
-
-body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(.bg-white\/\[0\.02\],.bg-white\/\[0\.03\],.bg-white\/\[0\.04\],.bg-white\/5,.bg-white\/\[0\.08\]),
-body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(.bg-white\/\[0\.02\],.bg-white\/\[0\.03\],.bg-white\/\[0\.04\],.bg-white\/5,.bg-white\/\[0\.08\]),
-body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(.bg-white\/\[0\.02\],.bg-white\/\[0\.03\],.bg-white\/\[0\.04\],.bg-white\/5,.bg-white\/\[0\.08\]),
-body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content :is(.bg-white\/\[0\.02\],.bg-white\/\[0\.03\],.bg-white\/\[0\.04\],.bg-white\/5,.bg-white\/\[0\.08\]) {
-  background: var(--fa-workspace-surface-soft) !important;
 }
 
 body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content [class*="border-white/"],
@@ -79,7 +53,6 @@ body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-
   border-color: var(--fa-workspace-border) !important;
 }
 
-/* Standard controls. Keep semantic colored controls intact. */
 body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(input,select,textarea),
 body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(input,select,textarea),
 body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(input,select,textarea),
@@ -97,33 +70,18 @@ body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-
   color: #9a9388 !important;
 }
 
-/* The following compatibility rules only apply while a page is legacy. */
-body:not([data-admin-design="native"])[data-admin-path="/admin/service-prices"] .fabrick-admin-content > div > div > div:first-child,
-body:not([data-admin-design="native"])[data-admin-path="/admin/publicidad"] .fabrick-admin-content > div > div:first-child,
-body:not([data-admin-design="native"])[data-admin-path="/admin/publicidad/coach"] .fabrick-admin-content > div > div:first-child {
-  background: transparent !important;
-  border: 0 !important;
-  border-radius: 0 !important;
-  box-shadow: none !important;
-  padding-left: 0 !important;
-  padding-right: 0 !important;
+body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(pre,code) {
+  color: #f4efe6 !important;
+  background: #171713 !important;
 }
 
-body:not([data-admin-design="native"])[data-admin-path="/admin/service-prices"] article {
-  border-radius: 18px !important;
-  background: rgba(255,252,246,.78) !important;
-  border-color: rgba(57,45,25,.10) !important;
-  box-shadow: 0 8px 26px rgba(51,38,18,.045) !important;
-}
-
-/* Sales detail pages were missed by Stage 3 because selectors targeted list roots. */
+/* Order detail remains legacy for now; preserve its temporary convergence. */
 body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content main {
   min-height: 0 !important;
   padding-bottom: 1rem !important;
-  color: var(--fa-workspace-text) !important;
+  color: #171612 !important;
   background: transparent !important;
 }
-
 body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content main > header {
   position: static !important;
   margin-bottom: 1rem;
@@ -131,72 +89,24 @@ body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content main > header {
   background: transparent !important;
   border-color: rgba(57,45,25,.10) !important;
 }
+body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content main > section { max-width: none !important; padding: 0 !important; }
+body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content :is(.bg-zinc-950,.bg-zinc-900\/50,.bg-zinc-800) { background: rgba(255,252,246,.82) !important; }
+body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content :is(.text-white,.text-zinc-300,.text-zinc-400,.text-zinc-500) { color: #171612 !important; }
+body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content [class*="border-white/"] { border-color: rgba(57,45,25,.10) !important; }
+body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content :is(input,select,textarea) { color: #171612 !important; background: #fff !important; border-color: rgba(57,45,25,.13) !important; }
+body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content .relative.h-44 { color: #f4efe6 !important; background: #171713 !important; }
 
-body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content main > section {
-  max-width: none !important;
-  padding: 0 !important;
-}
-
-body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content :is(.bg-zinc-950,.bg-zinc-900\/50,.bg-zinc-800) {
-  background: rgba(255,252,246,.82) !important;
-}
-
-body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content :is(.text-white,.text-zinc-300,.text-zinc-400,.text-zinc-500) {
-  color: var(--fa-workspace-text) !important;
-}
-
-body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content [class*="border-white/"] {
-  border-color: rgba(57,45,25,.10) !important;
-}
-
-body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content :is(input,select,textarea) {
-  color: var(--fa-workspace-text) !important;
-  background: #fff !important;
-  border-color: rgba(57,45,25,.13) !important;
-}
-
-/* Preserve intentional dark visualization inside logistics map and code/log surfaces. */
-body[data-admin-path^="/admin/pedidos/"] .fabrick-admin-content .relative.h-44,
-body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(pre,code),
-body[data-admin-path="/admin/vercel-logs"] .fabrick-admin-content [data-log-console] {
-  color: #f4efe6 !important;
-  background: #171713 !important;
-}
-
-body:not([data-admin-design="native"])[data-admin-path="/admin/publicidad"] .fabrick-admin-content .rounded-2xl.border.p-1,
-body:not([data-admin-design="native"])[data-admin-path="/admin/publicidad/coach"] .fabrick-admin-content .rounded-2xl.border.p-1 {
-  border-radius: 14px !important;
-  background: rgba(255,255,255,.55) !important;
-  border-color: rgba(57,45,25,.09) !important;
-}
-
-/* Reduce nested-card effect only on pages still using legacy visual markup. */
 body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content :is(article,section,div)[class*="rounded-"] :is(article,section,div)[class*="rounded-"][class*="border"][class*="bg-white"],
 body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content :is(article,section,div)[class*="rounded-"] :is(article,section,div)[class*="rounded-"][class*="border"][class*="bg-white"],
-body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(article,section,div)[class*="rounded-"] :is(article,section,div)[class*="rounded-"][class*="border"][class*="bg-white"] {
-  box-shadow: none !important;
-}
+body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content :is(article,section,div)[class*="rounded-"] :is(article,section,div)[class*="rounded-"][class*="border"][class*="bg-white"] { box-shadow: none !important; }
 
 @media (max-width: 767px) {
   body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content,
   body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content,
   body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content,
-  body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content {
-    padding-inline: 12px;
-  }
+  body:not([data-admin-design="native"])[data-admin-area="access"] .fabrick-admin-content { padding-inline: 12px; }
 
   body:not([data-admin-design="native"])[data-admin-area="marketing"] .fabrick-admin-content .rounded-\[2rem\],
   body:not([data-admin-design="native"])[data-admin-area="system"] .fabrick-admin-content .rounded-\[2rem\],
-  body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content .rounded-\[2rem\] {
-    border-radius: 16px !important;
-  }
-
-  body:not([data-admin-design="native"])[data-admin-path="/admin/publicidad"] .fabrick-admin-content .flex.gap-1.rounded-2xl {
-    overflow-x: auto;
-    justify-content: flex-start;
-  }
-
-  body:not([data-admin-design="native"])[data-admin-path="/admin/publicidad"] .fabrick-admin-content .flex.gap-1.rounded-2xl > button {
-    min-width: 150px;
-  }
+  body:not([data-admin-design="native"])[data-admin-area="operations"] .fabrick-admin-content .rounded-\[2rem\] { border-radius: 16px !important; }
 }

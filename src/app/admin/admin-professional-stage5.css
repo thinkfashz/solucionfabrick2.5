@@ -1,0 +1,95 @@
+/* Stage 5 — Web & Content workspaces
+ * Scope intentionally route-aware to avoid changing unrelated admin tools.
+ */
+
+body[data-admin-path="/admin/paginas"] .sf-admin-colombia-content,
+body[data-admin-path="/admin/blog"] .sf-admin-colombia-content {
+  color: #18181b;
+}
+
+/* Fabrick Page Engine: remove the legacy dark app-inside-an-app treatment. */
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen {
+  min-height: 0 !important;
+  color: #18181b !important;
+  padding: 0 !important;
+}
+
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen > section:first-child {
+  background: transparent !important;
+  border: 0 !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 0 1.25rem !important;
+}
+
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen > section:first-child h1,
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen h2,
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen h3 {
+  color: #18181b !important;
+}
+
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen p,
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen label {
+  color: #71717a !important;
+}
+
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen > section.grid > div {
+  background: rgba(255,255,255,.78) !important;
+  border: 1px solid rgba(24,24,27,.09) !important;
+  box-shadow: 0 10px 30px rgba(24,24,27,.04) !important;
+  border-radius: 20px !important;
+}
+
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen input,
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen select,
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen textarea {
+  background: rgba(255,255,255,.9) !important;
+  color: #18181b !important;
+  border-color: rgba(24,24,27,.12) !important;
+  box-shadow: none !important;
+}
+
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen article {
+  background: transparent !important;
+  border: 0 !important;
+  border-top: 1px solid rgba(24,24,27,.08) !important;
+  border-radius: 0 !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen article:first-child {
+  border-top: 0 !important;
+}
+
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen article a:not([class*="bg-white"]),
+body[data-admin-path="/admin/paginas"] main > div.min-h-screen article button {
+  background: rgba(255,255,255,.6) !important;
+}
+
+/* Blog: flatten the two legacy wrappers around setup/upload tools. */
+body[data-admin-path="/admin/blog"] main .rounded-\[2rem\].border.border-white\/10.bg-zinc-950\/70 {
+  background: rgba(255,255,255,.72) !important;
+  border-color: rgba(24,24,27,.09) !important;
+  box-shadow: none !important;
+  border-radius: 20px !important;
+}
+
+body[data-admin-path="/admin/blog"] main pre {
+  background: #18181b !important;
+  border-color: rgba(24,24,27,.12) !important;
+}
+
+/* Content workspace mobile rhythm. */
+@media (max-width: 767px) {
+  body[data-admin-path="/admin/paginas"] main > div.min-h-screen {
+    padding: 0 !important;
+  }
+  body[data-admin-path="/admin/paginas"] main > div.min-h-screen > section.grid {
+    grid-template-columns: 1fr !important;
+  }
+  body[data-admin-path="/admin/paginas"] main > div.min-h-screen > section.grid > div {
+    padding: 1rem !important;
+    border-radius: 16px !important;
+  }
+}

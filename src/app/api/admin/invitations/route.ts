@@ -16,10 +16,18 @@ async function readPayload(request: NextRequest) {
   return { payload };
 }
 
+function requireSuperadmin(payload: Awaited<ReturnType<typeof decodeSession>>) {
+  if (!payload) return NextResponse.json({ error: 'Sesión inválida.' }, { status: 401 });
+  if (payload.rol === 'viewer') return NextResponse.json({ error: 'Modo demo: zona restringida.' }, { status: 403 });
+  if (payload.rol !== 'superadmin') return NextResponse.json({ error: 'Solo Root/superadmin puede administrar invitaciones.' }, { status: 403 });
+  return null;
+}
+
 export async function GET(request: NextRequest) {
   const auth = await readPayload(request);
   if (auth.error) return auth.error;
-  if (auth.payload?.rol === 'viewer') return NextResponse.json({ invitations: [] });
+  const denied = requireSuperadmin(auth.payload ?? null);
+  if (denied) return denied;
 
   const { data, error } = await insforgeAdmin.database
     .from('admin_invitations')
@@ -35,7 +43,7 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
-  const invitations = (data || []).map((inv: any) => ({
+  const invitations = (data || []).map((inv: { id: string; email: string; rol: string; token: string; codigo: string; expira_at: string; created_at: string }) => ({
     id: inv.id,
     email: inv.email,
     rol: inv.rol,
@@ -52,8 +60,8 @@ export async function POST(request: NextRequest) {
   const auth = await readPayload(request);
   if (auth.error) return auth.error;
   const payload = auth.payload;
-  if (payload?.rol === 'viewer') return NextResponse.json({ error: 'Modo demo: solo lectura.' }, { status: 403 });
-  if (payload?.rol !== 'superadmin') return NextResponse.json({ error: 'Solo superadmin puede crear invitaciones.' }, { status: 403 });
+  const denied = requireSuperadmin(payload ?? null);
+  if (denied) return denied;
 
   let email: string;
   let rol: string;
@@ -74,7 +82,7 @@ export async function POST(request: NextRequest) {
 
   const { error: insertError } = await insforgeAdmin.database
     .from('admin_invitations')
-    .insert([{ email, token, codigo, rol, invitado_por: payload.email, expira_at, usado: false }]);
+    .insert([{ email, token, codigo, rol, invitado_por: payload!.email, expira_at, usado: false }]);
 
   if (insertError) {
     if (insertError.message?.includes('does not exist') || insertError.message?.includes('relation')) {
@@ -88,7 +96,7 @@ export async function POST(request: NextRequest) {
     role: rol,
     inviteLink: link,
     codigo,
-    invitedBy: payload?.email,
+    invitedBy: payload!.email,
   });
   const emailSent = emailResult.ok && !emailResult.simulated;
 
@@ -98,9 +106,8 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const auth = await readPayload(request);
   if (auth.error) return auth.error;
-  const payload = auth.payload;
-  if (payload?.rol === 'viewer') return NextResponse.json({ error: 'Modo demo: solo lectura.' }, { status: 403 });
-  if (payload?.rol !== 'superadmin') return NextResponse.json({ error: 'Solo superadmin puede eliminar invitaciones.' }, { status: 403 });
+  const denied = requireSuperadmin(auth.payload ?? null);
+  if (denied) return denied;
 
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');

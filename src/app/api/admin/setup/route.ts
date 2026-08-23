@@ -8,7 +8,6 @@ import { insforge } from '@/lib/insforge';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-// Tablas que el panel admin necesita — nombres reales usados en el código
 const REQUIRED_TABLES = [
   'products',
   'orders',
@@ -38,14 +37,9 @@ async function readSetupSql(): Promise<string | null> {
   }
 }
 
-// Usa el SDK con la anon key — no requiere INSFORGE_API_KEY
 async function checkTable(table: string): Promise<TableStatus> {
   try {
-    const { error } = await insforge.database
-      .from(table)
-      .select('*')
-      .limit(1);
-
+    const { error } = await insforge.database.from(table).select('*').limit(1);
     if (error) {
       const msg = (error as { message?: string }).message ?? JSON.stringify(error);
       const missing = /does not exist|not found|relation/i.test(msg);
@@ -61,25 +55,31 @@ async function checkTable(table: string): Promise<TableStatus> {
 export async function GET(request: NextRequest) {
   try {
     const sessionCookie = request.cookies.get(ADMIN_COOKIE_NAME);
-    if (!sessionCookie?.value) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
-    }
+    if (!sessionCookie?.value) return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
     const session = await decodeSession(sessionCookie.value);
-    if (!session) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!session) return NextResponse.json({ error: 'Sesión inválida.' }, { status: 401 });
+    if (session.rol !== 'superadmin') {
+      return NextResponse.json({ error: 'Solo Root/superadmin puede revisar el bootstrap del sistema.' }, { status: 403 });
+    }
+
+    const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
+    if (!baseUrl) {
+      return NextResponse.json({
+        error: 'NEXT_PUBLIC_INSFORGE_URL no está configurado.',
+        code: 'INSFORGE_URL_MISSING',
+      }, { status: 503 });
     }
 
     const sql = await readSetupSql();
-    const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL || 'https://txv86efe.us-east.insforge.app';
-
     const tables = await Promise.all(REQUIRED_TABLES.map(checkTable));
-    const reachable = tables.some((t) => t.exists);
+    const reachable = tables.some((table) => table.exists);
 
     return NextResponse.json({
       connected: reachable,
       tables,
       sql,
       dashboardUrl: `${baseUrl.replace(/\/+$/, '')}/dashboard`,
+      missingEnv: process.env.INSFORGE_API_KEY ? [] : ['INSFORGE_API_KEY'],
     });
   } catch (err) {
     console.error('GET /api/admin/setup failed', err);

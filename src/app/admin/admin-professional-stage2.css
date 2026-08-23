@@ -1,0 +1,96 @@
+/* Admin professional stage 2 — products, editor and finance. */
+
+/* Product catalogue: remove card-inside-card feel while preserving mobile actions. */
+@supports selector(:has(*)) {
+  .fabrick-admin-content .fabrick-page article.group:has(button[aria-label^='Activo:']) {
+    border: 1px solid rgba(23,22,18,.10) !important;
+    border-radius: 16px !important;
+    background: rgba(255,252,246,.62) !important;
+    box-shadow: none !important;
+    transform: none !important;
+  }
+
+  .fabrick-admin-content .fabrick-page article.group:has(button[aria-label^='Activo:']) > div:first-of-type {
+    background: rgba(255,255,255,.42) !important;
+    border-bottom: 1px solid rgba(23,22,18,.08);
+  }
+
+  .fabrick-admin-content .fabrick-page article.group:has(button[aria-label^='Activo:']) [class*='grid-cols-4'] > div,
+  .fabrick-admin-content .fabrick-page article.group:has(button[aria-label^='Activo:']) [class*='grid-cols-2'][class*='rounded'] {
+    background: transparent !important;
+    border-radius: 0 !important;
+    box-shadow: none !important;
+  }
+
+  .fabrick-admin-content .fabrick-page article.group:has(button[aria-label^='Activo:']) [class*='grid-cols-4'] > div {
+    border-right: 1px solid rgba(23,22,18,.08);
+  }
+  .fabrick-admin-content .fabrick-page article.group:has(button[aria-label^='Activo:']) [class*='grid-cols-4'] > div:last-child { border-right: 0; }
+}
+
+.fabrick-admin-content .fabrick-page table {
+  border-collapse: collapse;
+}
+.fabrick-admin-content .fabrick-page table thead tr {
+  background: rgba(23,22,18,.035) !important;
+}
+.fabrick-admin-content .fabrick-page table tbody tr {
+  transition: background .16s ease;
+}
+
+/* Unified editor is part of the admin canvas, not a second dark application. */
+[data-admin-editor] [class*='bg-zinc-950'],
+[data-admin-editor] [class*='bg-[#0d0d0f]'] {
+  background-color: rgba(255,252,246,.58) !important;
+}
+[data-admin-editor] [class*='text-white'] { color: #171612 !important; }
+[data-admin-editor] [class*='text-zinc-'] { color: #716b60 !important; }
+[data-admin-editor] [class*='border-white'] { border-color: rgba(23,22,18,.10) !important; }
+[data-admin-editor] input,
+[data-admin-editor] textarea,
+[data-admin-editor] select {
+  background: rgba(255,255,255,.62) !important;
+  color: #171612 !important;
+  border-color: rgba(23,22,18,.12) !important;
+}
+
+/* Contabilidad/F29: flatten the legacy dark dashboard into the common workspace. */
+.fabrick-admin-content > main.min-h-screen.space-y-5.text-white {
+  min-height: auto !important;
+  padding: 0 !important;
+  color: #171612 !important;
+}
+.fabrick-admin-content > main.min-h-screen.space-y-5.text-white > section,
+.fabrick-admin-content > main.min-h-screen.space-y-5.text-white > nav {
+  background: transparent !important;
+  color: #171612 !important;
+  border-color: rgba(23,22,18,.10) !important;
+  box-shadow: none !important;
+}
+.fabrick-admin-content > main.min-h-screen.space-y-5.text-white > section:first-child {
+  border-width: 0 0 1px !important;
+  border-radius: 0 !important;
+  padding: 0 0 20px !important;
+}
+.fabrick-admin-content > main.min-h-screen.space-y-5.text-white [class*='bg-zinc-950'],
+.fabrick-admin-content > main.min-h-screen.space-y-5.text-white [class*='bg-black/40'] {
+  background: rgba(255,252,246,.62) !important;
+}
+.fabrick-admin-content > main.min-h-screen.space-y-5.text-white [class*='text-zinc-'] { color: #716b60 !important; }
+.fabrick-admin-content > main.min-h-screen.space-y-5.text-white [class*='text-white'] { color: #171612 !important; }
+.fabrick-admin-content > main.min-h-screen.space-y-5.text-white input,
+.fabrick-admin-content > main.min-h-screen.space-y-5.text-white textarea,
+.fabrick-admin-content > main.min-h-screen.space-y-5.text-white select {
+  background: rgba(255,255,255,.70) !important;
+  color: #171612 !important;
+  border-color: rgba(23,22,18,.12) !important;
+}
+.fabrick-admin-content > main.min-h-screen.space-y-5.text-white table {
+  color: #171612;
+}
+
+@media (max-width: 767px) {
+  [data-admin-editor] { min-height: auto; }
+  [data-admin-editor] > div:first-child { top: 64px; }
+  .fabrick-admin-content .fabrick-page article.group:has(button[aria-label^='Activo:']) { border-radius: 14px !important; }
+}

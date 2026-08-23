@@ -24,6 +24,7 @@ const REQUIRED_FIELDS: Record<string, string[]> = {
   gemini: ['api_key'],
   groq: ['api_key'],
   anthropic: ['api_key'],
+  grok: ['api_key'],
   serper: ['api_key'],
   serpapi: ['api_key'],
 };

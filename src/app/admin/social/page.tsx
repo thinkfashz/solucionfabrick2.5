@@ -1,119 +1,84 @@
-'use client';
-
 import Link from 'next/link';
 import { ArrowRight, Facebook, Inbox, Instagram, MessageCircle, MessageSquare, Store, Wifi } from 'lucide-react';
-import { AdminBaseCard, AdminBaseGrid, AdminBaseMetric, AdminBasePage } from '@/components/admin/baseui-kit';
+import { AdminCard, AdminPage, AdminPageHeader, AdminStat } from '@/components/admin/ui';
 
 const CHANNELS = [
-  {
-    href: '/admin/social/inbox',
-    icon: Inbox,
-    label: 'Inbox unificado',
-    description: 'Todos los mensajes de Instagram, Facebook, WhatsApp y MercadoLibre en una sola vista cuando sus APIs estén conectadas.',
-    tone: 'emerald' as const,
-    badge: 'principal',
-  },
-  {
-    href: '/admin/integraciones',
-    icon: Instagram,
-    label: 'Instagram',
-    description: 'Conecta Instagram Business desde el Centro de Integraciones.',
-    tone: 'rose' as const,
-  },
-  {
-    href: '/admin/integraciones',
-    icon: Facebook,
-    label: 'Facebook Messenger',
-    description: 'Mensajes directos desde tu página de Facebook Business.',
-    tone: 'blue' as const,
-  },
-  {
-    href: '/admin/integraciones',
-    icon: MessageSquare,
-    label: 'WhatsApp Business',
-    description: 'Integración por API oficial de Meta con número verificado.',
-    tone: 'emerald' as const,
-  },
-  {
-    href: '/admin/ml/preguntas',
-    icon: Store,
-    label: 'MercadoLibre Q&A',
-    description: 'Preguntas de compradores en publicaciones de MercadoLibre Chile.',
-    tone: 'gold' as const,
-  },
-  {
-    href: '/admin/integraciones',
-    icon: MessageCircle,
-    label: 'TikTok',
-    description: 'Comentarios y mensajes directos cuando TikTok Business esté conectado.',
-    tone: 'purple' as const,
-  },
+  { href: '/admin/social/inbox', icon: Inbox, label: 'Inbox unificado', description: 'Mensajes de canales conectados en una sola bandeja.', accent: 'emerald' as const },
+  { href: '/admin/integraciones', icon: Instagram, label: 'Instagram', description: 'Instagram Business mediante Meta.', accent: 'rose' as const },
+  { href: '/admin/integraciones', icon: Facebook, label: 'Facebook Messenger', description: 'Mensajes de páginas de Facebook Business.', accent: 'cyan' as const },
+  { href: '/admin/integraciones', icon: MessageSquare, label: 'WhatsApp Business', description: 'Cloud API con número verificado.', accent: 'emerald' as const },
+  { href: '/admin/ml/preguntas', icon: Store, label: 'MercadoLibre Q&A', description: 'Preguntas reales de compradores.', accent: 'yellow' as const },
+  { href: '/admin/integraciones', icon: MessageCircle, label: 'TikTok', description: 'Canal disponible cuando Business API esté conectada.', accent: 'rose' as const },
 ];
+
+const actionClass = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white/70 px-3.5 text-xs font-black text-[#5f594f] transition hover:bg-white';
+
+const accentClasses = {
+  yellow: 'bg-[#ffb000]/10 text-[#a56600]',
+  cyan: 'bg-cyan-500/10 text-cyan-700',
+  emerald: 'bg-emerald-500/10 text-emerald-700',
+  rose: 'bg-rose-500/10 text-rose-700',
+};
 
 export default function AdminSocialPage() {
   return (
-    <AdminBasePage
-      eyebrow="Marketing & IA"
-      title="Social · Inbox"
-      description="Centro unificado de canales sociales. No muestra métricas inventadas: los contadores se activan cuando el inbox y las integraciones devuelvan datos reales."
-      actions={
-        <>
-          <Link href="/admin/social/inbox" className="inline-flex items-center justify-center gap-2 rounded-2xl bg-yellow-300 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-black hover:bg-yellow-200">
-            Abrir inbox <ArrowRight className="h-4 w-4" />
-          </Link>
-          <Link href="/admin/integraciones" className="inline-flex items-center justify-center rounded-2xl border border-white/10 bg-white/5 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-zinc-200 hover:border-yellow-300/40 hover:text-yellow-200">
-            Integraciones
-          </Link>
-        </>
-      }
-    >
-      <AdminBaseGrid cols="4">
-        <AdminBaseMetric label="Sin responder" value="—" hint="pendiente inbox real" />
-        <AdminBaseMetric label="Respondidos hoy" value="—" hint="pendiente tracking" />
-        <AdminBaseMetric label="Canales activos" value="—" hint="depende integraciones" />
-        <AdminBaseMetric label="Tiempo promedio" value="—" hint="sin datos reales aún" />
-      </AdminBaseGrid>
+    <AdminPage>
+      <AdminPageHeader
+        eyebrow="Marketing · Canales"
+        title="Social Hub"
+        description="Punto de acceso a mensajería y canales sociales. Las métricas permanecen vacías hasta que existan eventos reales; no se generan contadores demo."
+        icon={Wifi}
+        actions={
+          <>
+            <Link href="/admin/social/inbox" className={actionClass}>Abrir inbox <ArrowRight className="h-4 w-4" /></Link>
+            <Link href="/admin/integraciones" className={actionClass}>Integraciones</Link>
+          </>
+        }
+      />
 
-      <Link
-        href="/admin/social/inbox"
-        className="group flex items-center justify-between gap-4 rounded-[2rem] border border-emerald-400/25 bg-emerald-400/10 p-5 transition hover:bg-emerald-400/15"
-      >
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-emerald-400/20 text-emerald-200">
-            <Inbox className="h-5 w-5" />
-          </div>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStat label="Sin responder" value="—" icon={Inbox} hint="Se activa con datos reales" />
+        <AdminStat label="Respondidos hoy" value="—" icon={MessageSquare} accent="emerald" hint="Sin tracking simulado" />
+        <AdminStat label="Canales activos" value="—" icon={Wifi} accent="cyan" hint="Depende de integraciones" />
+        <AdminStat label="Tiempo promedio" value="—" icon={MessageCircle} accent="yellow" hint="Sin datos suficientes" />
+      </section>
+
+      <AdminCard className="space-y-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
           <div>
-            <div className="font-black text-white">Abrir Inbox unificado</div>
-            <div className="text-xs text-zinc-400">Vista central para mensajes reales cuando los canales estén conectados.</div>
+            <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Bandeja central</p>
+            <h2 className="mt-1 text-xl font-black tracking-[-.025em] text-[#171612]">Inbox unificado</h2>
+            <p className="mt-1 text-xs leading-5 text-[#817a6f]">Consulta conversaciones reales cuando los proveedores estén conectados.</p>
           </div>
+          <Link href="/admin/social/inbox" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white transition hover:bg-[#2b2924]">
+            <Inbox className="h-4 w-4" /> Abrir bandeja
+          </Link>
         </div>
-        <ArrowRight className="h-4 w-4 text-emerald-300 transition-transform group-hover:translate-x-1" />
-      </Link>
+      </AdminCard>
 
-      <div className="rounded-[2rem] border border-white/10 bg-black/30 p-5">
-        <div className="mb-4 flex items-center gap-2">
-          <Wifi className="h-5 w-5 text-yellow-300" />
-          <h2 className="text-lg font-black text-white">Canales conectables</h2>
+      <div>
+        <div className="mb-3 border-b border-black/10 pb-3">
+          <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Canales</p>
+          <h2 className="mt-1 text-xl font-black tracking-[-.025em] text-[#171612]">Conexiones disponibles</h2>
         </div>
-        <AdminBaseGrid cols="3">
-          {CHANNELS.map((channel) => (
-            <AdminBaseCard
-              key={channel.label}
-              href={channel.href}
-              icon={channel.icon}
-              title={channel.label}
-              description={channel.description}
-              tone={channel.tone}
-              badge={channel.badge}
-            />
-          ))}
-        </AdminBaseGrid>
+        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+          {CHANNELS.map((channel) => {
+            const Icon = channel.icon;
+            return (
+              <Link key={channel.label} href={channel.href} className="group flex min-h-32 items-start gap-3 rounded-[18px] border border-black/10 bg-white/60 p-4 transition hover:-translate-y-0.5 hover:bg-white sm:p-5">
+                <span className={`grid h-10 w-10 shrink-0 place-items-center rounded-xl ${accentClasses[channel.accent]}`}><Icon className="h-4 w-4" /></span>
+                <span className="min-w-0 flex-1">
+                  <strong className="block text-sm text-[#171612]">{channel.label}</strong>
+                  <small className="mt-1 block text-xs leading-5 text-[#817a6f]">{channel.description}</small>
+                </span>
+                <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-[#aaa294] transition group-hover:translate-x-0.5 group-hover:text-[#8e5c00]" />
+              </Link>
+            );
+          })}
+        </div>
       </div>
 
-      <p className="text-center text-xs text-zinc-600">
-        Las métricas se mantienen vacías hasta tener datos reales del inbox. Para conectar canales usa{' '}
-        <Link href="/admin/integraciones" className="text-zinc-400 underline hover:text-yellow-200">/admin/integraciones</Link>.
-      </p>
-    </AdminBasePage>
+      <p className="text-center text-xs leading-5 text-[#9a9388]">Las métricas se mantienen vacías hasta contar con datos reales de mensajería. Las credenciales se administran únicamente desde Integraciones.</p>
+    </AdminPage>
   );
 }

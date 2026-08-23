@@ -7,8 +7,8 @@ import {
   Activity, BarChart3, Bot, Boxes, Calculator, ChevronDown, ChevronRight,
   CircleDollarSign, FileText, Gauge, Globe2, Hammer, Image as ImageIcon,
   Inbox, KeyRound, LayoutDashboard, LayoutGrid, Link2, LogOut, Mail, Menu,
-  MessageCircle, Newspaper, Package, PanelLeftClose, PanelLeftOpen, Receipt,
-  Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Store, Tag,
+  Newspaper, Package, PanelLeftClose, PanelLeftOpen, Receipt,
+  Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Store,
   Terminal, Truck, User, Users, Wallet, X, type LucideIcon,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
@@ -55,8 +55,6 @@ const NAV: NavSection[] = [
       { href: '/admin/productos', label: 'Productos', description: 'Catálogo, precios y stock', icon: Package },
       { href: '/admin/inventario', label: 'Inventario', description: 'Existencias y movimientos', icon: Boxes },
       { href: '/admin/materiales', label: 'Materiales', description: 'Materiales y cotización', icon: Hammer },
-      { href: '/admin/cupones', label: 'Cupones', description: 'Promociones y descuentos', icon: Tag },
-      { href: '/admin/reviews', label: 'Reseñas', description: 'Opiniones de clientes', icon: MessageCircle },
     ],
   },
   {

@@ -1,71 +1,66 @@
-import { NextRequest, NextResponse } from 'next/server';
-import { insforge } from '@/lib/insforge';
+import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
+import { insforgeAdmin } from '@/lib/insforge';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 
-export async function PATCH(
-  request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
+export const dynamic = 'force-dynamic';
+export const runtime = 'nodejs';
+
+type RouteContext = { params: Promise<{ id: string }> };
+const VALID_STATUS = new Set(['approved', 'rejected', 'pending']);
+
+function cleanId(value: string) {
+  return value.trim().slice(0, 120);
+}
+
+export async function PATCH(request: NextRequest, { params }: RouteContext) {
+  const auth = await requireAdminPermission(request, { resource: 'content', action: 'update' });
+  if (!auth.ok) return auth.response;
+
+  const { id: rawId } = await params;
+  const id = cleanId(rawId);
+  if (!id) return NextResponse.json({ error: 'ID inválido.' }, { status: 400 });
+
+  const body = await request.json().catch(() => null) as { status?: unknown } | null;
+  const status = typeof body?.status === 'string' ? body.status.trim() : '';
+  if (!VALID_STATUS.has(status)) return NextResponse.json({ error: 'Estado inválido.' }, { status: 400 });
+
   try {
-    const { id } = await params;
-    const { status } = await request.json();
-
-    // Validar status
-    if (!['approved', 'rejected', 'pending'].includes(status)) {
-      return NextResponse.json(
-        { error: 'Invalid status' },
-        { status: 400 }
-      );
-    }
-
-    const { error } = await insforge.database
+    const { error } = await insforgeAdmin.database
       .from('blog_comments')
       .update({ status, updated_at: new Date().toISOString() })
       .eq('id', id);
 
-    if (error) {
-      console.error('DB Error:', error);
-      return NextResponse.json(
-        { error: 'Error updating comment' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error('Error in comments PATCH:', err);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: error instanceof Error ? error.message : 'No se pudo actualizar el comentario.' },
+      { status: 500 },
     );
   }
 }
 
-export async function DELETE(
-  _request: NextRequest,
-  { params }: { params: Promise<{ id: string }> }
-) {
-  try {
-    const { id } = await params;
+export async function DELETE(request: NextRequest, { params }: RouteContext) {
+  const auth = await requireAdminPermission(request, { resource: 'content', action: 'delete' });
+  if (!auth.ok) return auth.response;
 
-    const { error } = await insforge.database
+  const { id: rawId } = await params;
+  const id = cleanId(rawId);
+  if (!id) return NextResponse.json({ error: 'ID inválido.' }, { status: 400 });
+
+  try {
+    const { error } = await insforgeAdmin.database
       .from('blog_comments')
       .delete()
       .eq('id', id);
 
-    if (error) {
-      console.error('DB Error:', error);
-      return NextResponse.json(
-        { error: 'Error deleting comment' },
-        { status: 500 }
-      );
-    }
-
-    return NextResponse.json({ success: true });
-  } catch (err) {
-    console.error('Error in comments DELETE:', err);
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ ok: true });
+  } catch (error) {
     return NextResponse.json(
-      { error: 'Internal server error' },
-      { status: 500 }
+      { error: error instanceof Error ? error.message : 'No se pudo eliminar el comentario.' },
+      { status: 500 },
     );
   }
 }

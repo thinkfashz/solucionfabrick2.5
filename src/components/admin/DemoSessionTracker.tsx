@@ -57,6 +57,8 @@ export default function DemoSessionTracker() {
   const eventIdRef = useRef<string | null>(null);
   const enterMsRef = useRef<number>(0);
   const sentLeaveRef = useRef(false);
+  const [isViewer, setIsViewer] = useState(false);
+  const [sessionChecked, setSessionChecked] = useState(false);
   const [expiresAt, setExpiresAt] = useState<string | null>(null);
   const [now, setNow] = useState(() => Date.now());
   const [feedbackOpen, setFeedbackOpen] = useState(false);
@@ -66,16 +68,33 @@ export default function DemoSessionTracker() {
   const [sending, setSending] = useState(false);
 
   useEffect(() => {
-    if (!sessionIdRef.current) sessionIdRef.current = getSessionId();
-    setExpiresAt(getCookie('sf_demo_expires_at'));
+    let cancelled = false;
+    fetch('/api/admin/me', { cache: 'no-store' })
+      .then(async (res) => res.ok ? res.json() : null)
+      .then((data: { rol?: string } | null) => {
+        if (cancelled) return;
+        const viewer = data?.rol === 'viewer';
+        setIsViewer(viewer);
+        if (viewer) {
+          if (!sessionIdRef.current) sessionIdRef.current = getSessionId();
+          setExpiresAt(getCookie('sf_demo_expires_at'));
+        } else {
+          setExpiresAt(null);
+        }
+      })
+      .catch(() => { if (!cancelled) setIsViewer(false); })
+      .finally(() => { if (!cancelled) setSessionChecked(true); });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
+    if (!isViewer) return;
     const id = window.setInterval(() => setNow(Date.now()), 1000);
     return () => window.clearInterval(id);
-  }, []);
+  }, [isViewer]);
 
   useEffect(() => {
+    if (!isViewer) return;
     const sessionId = sessionIdRef.current || getSessionId();
     if (!pathname || !sessionId) return;
 
@@ -116,7 +135,7 @@ export default function DemoSessionTracker() {
       window.removeEventListener('beforeunload', leave);
       document.removeEventListener('visibilitychange', onVisibility);
     };
-  }, [pathname]);
+  }, [pathname, isViewer]);
 
   const remainingMs = useMemo(() => {
     if (!expiresAt) return null;
@@ -155,6 +174,8 @@ export default function DemoSessionTracker() {
       setSending(false);
     }
   }
+
+  if (!sessionChecked || !isViewer) return null;
 
   return (
     <div className={`mb-4 rounded-2xl border px-4 py-3 ${nearEnd ? 'border-orange-400/50 bg-orange-400/10' : 'border-amber-400/40 bg-amber-400/[0.08]'}`}>

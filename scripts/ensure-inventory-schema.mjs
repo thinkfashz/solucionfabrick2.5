@@ -24,8 +24,6 @@ async function runSql(label, query) {
 }
 
 try {
-  // InsForge validates referenced columns before executing a raw SQL batch. Keep
-  // column creation separate from indexes that reference those new columns.
   await runSql('phase 1 extensions', `CREATE EXTENSION IF NOT EXISTS pgcrypto;`);
 
   await runSql('phase 2 product columns', `
@@ -52,15 +50,17 @@ BEGIN
 END $$;
 `);
 
-  await runSql('phase 4 movements table', `
+  // Create the table when missing. A legacy table may already exist with only a
+  // subset of these columns, so the next phase explicitly migrates it.
+  await runSql('phase 4a movements table', `
 CREATE TABLE IF NOT EXISTS public.inventory_movements (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
   tenant_id uuid NOT NULL DEFAULT '${DEFAULT_TENANT}'::uuid,
   product_id uuid NOT NULL,
-  movement_type text NOT NULL CHECK (movement_type IN ('in','out','adjustment','order','return')),
+  movement_type text NOT NULL,
   quantity integer NOT NULL,
   stock_before integer NOT NULL,
-  stock_after integer NOT NULL CHECK (stock_after >= 0),
+  stock_after integer NOT NULL,
   reference_type text,
   reference_id text,
   barcode text,
@@ -68,6 +68,23 @@ CREATE TABLE IF NOT EXISTS public.inventory_movements (
   actor_id text,
   created_at timestamptz NOT NULL DEFAULT now()
 );
+`);
+
+  await runSql('phase 4b migrate legacy movements', `
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS tenant_id uuid DEFAULT '${DEFAULT_TENANT}'::uuid;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS product_id uuid;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS movement_type text;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS quantity integer;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS stock_before integer;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS stock_after integer;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS reference_type text;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS reference_id text;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS barcode text;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS note text;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS actor_id text;
+ALTER TABLE public.inventory_movements ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+UPDATE public.inventory_movements SET tenant_id = '${DEFAULT_TENANT}'::uuid WHERE tenant_id IS NULL;
+UPDATE public.inventory_movements SET created_at = now() WHERE created_at IS NULL;
 `);
 
   await runSql('phase 5 movement indexes', `

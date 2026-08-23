@@ -44,6 +44,7 @@ async function runRawSql(baseUrl: string, apiKey: string, query: string): Promis
     headers: { 'Content-Type': 'application/json', 'x-api-key': apiKey },
     body: JSON.stringify({ query }),
     cache: 'no-store',
+    signal: AbortSignal.timeout(30_000),
   });
   if (!res.ok) {
     let detail = '';
@@ -74,8 +75,7 @@ function loadSqlBundle() {
 }
 
 const ADMIN_KEY_HINT =
-  'InsForge rechazó la API key. El endpoint /rawsql/unrestricted requiere la ' +
-  'clave de servicio (admin). Configura INSFORGE_API_KEY en Vercel con la admin key del proyecto.';
+  'El bootstrap de esquema requiere INSFORGE_API_KEY (clave de servicio) en Vercel. No se usa la anon key para operaciones unrestricted.';
 
 export async function POST(request: NextRequest) {
   try {
@@ -83,17 +83,23 @@ export async function POST(request: NextRequest) {
     if (!sessionCookie?.value) return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
     const payload = await decodeSession(sessionCookie.value);
     if (!payload) return NextResponse.json({ error: 'Sesión inválida.' }, { status: 401 });
+    if (payload.rol !== 'superadmin') {
+      return NextResponse.json({ error: 'Solo Root/superadmin puede modificar el esquema.' }, { status: 403 });
+    }
 
     const baseUrl = process.env.NEXT_PUBLIC_INSFORGE_URL;
-    const hasAdminKey = Boolean(process.env.INSFORGE_API_KEY);
-    const apiKey = process.env.INSFORGE_API_KEY || process.env.NEXT_PUBLIC_INSFORGE_ANON_KEY;
-    const keySource: 'admin' | 'anon' = hasAdminKey ? 'admin' : 'anon';
+    const apiKey = process.env.INSFORGE_API_KEY;
 
     if (!baseUrl || !apiKey) {
       const missing: string[] = [];
       if (!baseUrl) missing.push('NEXT_PUBLIC_INSFORGE_URL');
-      if (!apiKey) missing.push('INSFORGE_API_KEY o NEXT_PUBLIC_INSFORGE_ANON_KEY');
-      return NextResponse.json({ error: 'Configuración de InsForge incompleta.', code: 'MISSING_ENV', missing }, { status: 500 });
+      if (!apiKey) missing.push('INSFORGE_API_KEY');
+      return NextResponse.json({
+        error: 'Configuración segura de InsForge incompleta.',
+        code: 'MISSING_ENV',
+        missing,
+        hint: ADMIN_KEY_HINT,
+      }, { status: 503 });
     }
 
     let sql: string;
@@ -101,7 +107,11 @@ export async function POST(request: NextRequest) {
       sql = loadSqlBundle();
       if (!sql.trim()) throw new Error('No hay SQL cargado.');
     } catch (err) {
-      return NextResponse.json({ error: 'No se pudieron leer scripts/create-tables.sql, scripts/create-sales-tables.sql o scripts/create-shipping-tables.sql.', code: 'SQL_FILE_NOT_FOUND', detail: err instanceof Error ? err.message : String(err) }, { status: 500 });
+      return NextResponse.json({
+        error: 'No se pudieron leer scripts/create-tables.sql, scripts/create-sales-tables.sql o scripts/create-shipping-tables.sql.',
+        code: 'SQL_FILE_NOT_FOUND',
+        detail: err instanceof Error ? err.message : String(err),
+      }, { status: 500 });
     }
 
     const blocks = parseSqlBlocks(sql);
@@ -117,16 +127,18 @@ export async function POST(request: NextRequest) {
         ok += 1;
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
-        const code = err && typeof err === 'object' && 'upstreamCode' in err ? String((err as { upstreamCode?: unknown }).upstreamCode || '') : '';
+        const code = err && typeof err === 'object' && 'upstreamCode' in err
+          ? String((err as { upstreamCode?: unknown }).upstreamCode || '')
+          : '';
         if (code === 'AUTH_INVALID_API_KEY') sawAuthInvalid = true;
         results[block.name] = { ok: false, error: msg };
         failed += 1;
       }
     }
 
-    for (const t of EXPECTED_TABLES) {
-      if (!(t in results)) {
-        results[t] = { ok: false, error: 'Bloque no encontrado en SQL.' };
+    for (const table of EXPECTED_TABLES) {
+      if (!(table in results)) {
+        results[table] = { ok: false, error: 'Bloque no encontrado en SQL.' };
         failed += 1;
       }
     }
@@ -135,10 +147,13 @@ export async function POST(request: NextRequest) {
       ok: failed === 0,
       summary: { total: blocks.length, ok, failed },
       results,
-      keySource,
-      ...(sawAuthInvalid ? { hint: `${ADMIN_KEY_HINT} (clave usada: ${keySource})`, code: 'INSFORGE_AUTH_INVALID' } : {}),
+      keySource: 'admin' as const,
+      ...(sawAuthInvalid ? { hint: ADMIN_KEY_HINT, code: 'INSFORGE_AUTH_INVALID' } : {}),
     });
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : 'Error inesperado.', code: 'SETUP_TABLES_FAILED' }, { status: 500 });
+    return NextResponse.json({
+      error: err instanceof Error ? err.message : 'Error inesperado.',
+      code: 'SETUP_TABLES_FAILED',
+    }, { status: 500 });
   }
 }

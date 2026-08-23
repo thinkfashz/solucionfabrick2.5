@@ -17,6 +17,18 @@ const VIEWER_BLOCKED_ADMIN_PATHS = [
   '/admin/vercel-logs',
 ]
 
+const SUPERADMIN_ONLY_ADMIN_PATHS = [
+  '/admin/equipo',
+  '/admin/sql',
+  '/admin/setup',
+]
+
+const SUPERADMIN_ONLY_ADMIN_APIS = [
+  '/api/admin/sql',
+  '/api/admin/setup',
+  '/api/admin/setup-tables',
+]
+
 const VIEWER_WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 const WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])
 
@@ -105,6 +117,14 @@ function isViewerBlockedPage(pathname: string): boolean {
   return VIEWER_BLOCKED_ADMIN_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
 }
 
+function isSuperadminOnlyPage(pathname: string): boolean {
+  return SUPERADMIN_ONLY_ADMIN_PATHS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+}
+
+function isSuperadminOnlyAdminApi(pathname: string): boolean {
+  return SUPERADMIN_ONLY_ADMIN_APIS.some((path) => pathname === path || pathname.startsWith(`${path}/`))
+}
+
 function isAllowedViewerApiWrite(pathname: string): boolean {
   return pathname === '/api/admin/demo/events' || pathname === '/api/admin/logout'
 }
@@ -141,6 +161,15 @@ export async function middleware(request: NextRequest) {
   if (sessionCookie?.value) {
     validAdminSession = await isValidSession(sessionCookie.value)
     if (validAdminSession) sessionPayload = decodeSessionPayloadUnsafe(sessionCookie.value)
+  }
+
+  if (isSuperadminOnlyAdminApi(pathname)) {
+    if (!validAdminSession) {
+      return NextResponse.json({ error: 'No autenticado.' }, { status: 401 })
+    }
+    if (sessionPayload.rol !== 'superadmin') {
+      return NextResponse.json({ error: 'Solo Root/superadmin puede acceder a esta operación.' }, { status: 403 })
+    }
   }
 
   if (pathname.startsWith('/api/admin') && VIEWER_WRITE_METHODS.has(method)) {
@@ -187,8 +216,8 @@ export async function middleware(request: NextRequest) {
       return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
     }
 
-    if (pathname.startsWith('/admin/equipo') && sessionPayload.rol !== 'superadmin') {
-      const redirect = NextResponse.redirect(new URL('/admin?forbidden=team', request.url))
+    if (isSuperadminOnlyPage(pathname) && sessionPayload.rol !== 'superadmin') {
+      const redirect = NextResponse.redirect(new URL('/admin?forbidden=root', request.url))
       return isHtml ? withSecurityHeaders(redirect, nonce, csp) : redirect
     }
   }

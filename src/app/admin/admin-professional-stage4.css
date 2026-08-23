@@ -1,0 +1,166 @@
+/* Stage 4 — Catálogo / producto / inventario / materiales */
+
+body[data-admin-area='catalog'] {
+  --catalog-ink: #171612;
+  --catalog-muted: #746d61;
+  --catalog-line: rgba(23, 22, 18, .10);
+  --catalog-surface: rgba(255, 252, 246, .72);
+  --catalog-soft: rgba(240, 227, 204, .58);
+}
+
+body[data-admin-area='catalog'] main,
+body[data-admin-area='catalog'] .fabrick-page {
+  color: var(--catalog-ink);
+}
+
+/* Product create/edit: remove the feeling of a separate embedded app. */
+body[data-admin-path^='/admin/productos/nuevo'] > div,
+body[data-admin-path*='/admin/productos/'][data-admin-path$='/editar'] > div {
+  background: transparent !important;
+}
+
+body[data-admin-path^='/admin/productos/nuevo'] header.sticky,
+body[data-admin-path*='/admin/productos/'][data-admin-path$='/editar'] header.sticky {
+  top: 0;
+  background: rgba(249, 241, 227, .92) !important;
+  color: var(--catalog-ink) !important;
+  border-bottom: 1px solid var(--catalog-line);
+  box-shadow: none !important;
+  backdrop-filter: blur(20px);
+}
+
+body[data-admin-path^='/admin/productos/nuevo'] header.sticky .text-\[\#FFF9EE\],
+body[data-admin-path*='/admin/productos/'][data-admin-path$='/editar'] header.sticky .text-\[\#FFF9EE\] {
+  color: var(--catalog-ink) !important;
+}
+
+body[data-admin-path^='/admin/productos/nuevo'] form > main,
+body[data-admin-path*='/admin/productos/'][data-admin-path$='/editar'] form > main {
+  border: 1px solid var(--catalog-line);
+  background: var(--catalog-surface) !important;
+  box-shadow: none !important;
+  border-radius: 20px !important;
+}
+
+body[data-admin-path^='/admin/productos/nuevo'] form > aside,
+body[data-admin-path*='/admin/productos/'][data-admin-path$='/editar'] form > aside {
+  border-left: 1px solid var(--catalog-line);
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+}
+
+body[data-admin-path^='/admin/productos/nuevo'] nav.grid,
+body[data-admin-path*='/admin/productos/'][data-admin-path$='/editar'] nav.grid {
+  gap: 0 !important;
+  border: 1px solid var(--catalog-line);
+  background: rgba(255,255,255,.42) !important;
+  border-radius: 16px !important;
+  padding: 4px !important;
+  box-shadow: none !important;
+}
+
+body[data-admin-path^='/admin/productos/nuevo'] nav.grid button,
+body[data-admin-path*='/admin/productos/'][data-admin-path$='/editar'] nav.grid button {
+  border-radius: 12px !important;
+  min-height: 42px;
+}
+
+body[data-admin-path^='/admin/productos/nuevo'] input,
+body[data-admin-path^='/admin/productos/nuevo'] textarea,
+body[data-admin-path^='/admin/productos/nuevo'] select,
+body[data-admin-path*='/admin/productos/'][data-admin-path$='/editar'] input,
+body[data-admin-path*='/admin/productos/'][data-admin-path$='/editar'] textarea,
+body[data-admin-path*='/admin/productos/'][data-admin-path$='/editar'] select {
+  border: 1px solid var(--catalog-line) !important;
+  background: rgba(255,255,255,.72) !important;
+  box-shadow: none !important;
+  color: var(--catalog-ink) !important;
+}
+
+/* Product list: quieter surfaces, fewer card-within-card effects. */
+body[data-admin-path='/admin/productos'] article.group {
+  border: 1px solid var(--catalog-line);
+  background: rgba(255, 249, 238, .68) !important;
+  box-shadow: none !important;
+  border-radius: 18px !important;
+  transform: none !important;
+}
+
+body[data-admin-path='/admin/productos'] article.group > div:last-child > .grid.grid-cols-4 > div {
+  border-radius: 0 !important;
+  background: transparent !important;
+  border-right: 1px solid var(--catalog-line);
+}
+body[data-admin-path='/admin/productos'] article.group > div:last-child > .grid.grid-cols-4 > div:last-child { border-right: 0; }
+body[data-admin-path='/admin/productos'] article.group .rounded-2xl.bg-black\/\[0\.045\],
+body[data-admin-path='/admin/productos'] article.group .rounded-2xl.bg-\[\#e8dcc2\] {
+  background: transparent !important;
+  border-top: 1px solid var(--catalog-line);
+  border-radius: 0 !important;
+}
+
+/* Inventory: convert module box into a flat action directory. */
+body[data-admin-path^='/admin/inventario'] .rounded-\[2rem\].border.border-white\/10.bg-black\/30 {
+  border: 0 !important;
+  border-top: 1px solid var(--catalog-line) !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding-inline: 0 !important;
+}
+
+body[data-admin-path^='/admin/inventario'] a.group.flex.items-center.justify-between {
+  background: transparent !important;
+  border-color: var(--catalog-line) !important;
+  border-radius: 14px !important;
+}
+
+/* Materials manager: bring legacy black workspace into the shared admin canvas. */
+body[data-admin-path='/admin/materiales'] .min-h-screen.bg-black {
+  min-height: auto !important;
+  background: transparent !important;
+  color: var(--catalog-ink) !important;
+}
+body[data-admin-path='/admin/materiales'] .text-white,
+body[data-admin-path='/admin/materiales'] .text-zinc-100,
+body[data-admin-path='/admin/materiales'] .text-zinc-200,
+body[data-admin-path='/admin/materiales'] .text-zinc-300 {
+  color: var(--catalog-ink) !important;
+}
+body[data-admin-path='/admin/materiales'] .text-zinc-400,
+body[data-admin-path='/admin/materiales'] .text-zinc-500,
+body[data-admin-path='/admin/materiales'] .text-zinc-600 {
+  color: var(--catalog-muted) !important;
+}
+body[data-admin-path='/admin/materiales'] [class*='bg-zinc-9'],
+body[data-admin-path='/admin/materiales'] [class*='bg-black'] {
+  background: rgba(255,255,255,.44) !important;
+}
+body[data-admin-path='/admin/materiales'] [class*='border-white'] {
+  border-color: var(--catalog-line) !important;
+}
+body[data-admin-path='/admin/materiales'] [class*='shadow-'] {
+  box-shadow: none !important;
+}
+body[data-admin-path='/admin/materiales'] input,
+body[data-admin-path='/admin/materiales'] select,
+body[data-admin-path='/admin/materiales'] textarea {
+  color: var(--catalog-ink) !important;
+  background: rgba(255,255,255,.70) !important;
+  border-color: var(--catalog-line) !important;
+}
+
+@media (max-width: 767px) {
+  body[data-admin-path^='/admin/productos/nuevo'] form,
+  body[data-admin-path*='/admin/productos/'][data-admin-path$='/editar'] form {
+    display: block !important;
+  }
+  body[data-admin-path^='/admin/productos/nuevo'] form > aside,
+  body[data-admin-path*='/admin/productos/'][data-admin-path$='/editar'] form > aside {
+    margin-top: 18px;
+    border-left: 0;
+    border-top: 1px solid var(--catalog-line);
+    padding-top: 18px;
+  }
+}

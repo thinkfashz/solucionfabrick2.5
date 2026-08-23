@@ -9,7 +9,7 @@ function resolveAdminArea(pathname: string) {
   if (/^\/admin\/(f29|contabilidad|analytics|facturas|pagos|reportes)(\/|$)/.test(pathname)) return 'finance';
   if (/^\/admin\/(editor|paginas|blog|medios|proyectos)(\/|$)/.test(pathname)) return 'content';
   if (/^\/admin\/intelligence(\/|$)/.test(pathname)) return 'intelligence';
-  if (/^\/admin\/(publicidad|newsletter|seo|redes|social|campanas)(\/|$)/.test(pathname)) return 'marketing';
+  if (/^\/admin\/(publicidad|newsletter|seo|redes|social|campanas|ml)(\/|$)/.test(pathname)) return 'marketing';
   if (/^\/admin\/(integraciones|estado|diagnostico|errores|vercel-logs|sql|setup|configuracion|modulos|health)(\/|$)/.test(pathname)) return 'system';
   if (/^\/admin\/(service-prices|envios)(\/|$)/.test(pathname)) return 'operations';
   if (/^\/admin\/(equipo|sesiones|invitaciones|seguridad|perfil|acceso-demo|unirse)(\/|$)/.test(pathname)) return 'access';

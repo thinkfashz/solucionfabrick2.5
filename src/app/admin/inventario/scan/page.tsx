@@ -6,7 +6,8 @@ import { Camera, ScanLine, PackageSearch, ArrowDownToLine, ArrowUpFromLine, Rota
 import { AdminBaseButton, AdminBaseGrid, AdminBaseMetric, AdminBasePage } from '@/components/admin/baseui-kit';
 
 type Product = { id: string; name: string; stock: number | null; sku: string | null; ean: string | null; image_url?: string | null; activo?: boolean };
-type ScanEntry = { value: string; format: string; at: string; product?: Product | null; status: 'found' | 'missing' | 'error' };
+type ScanStatus = 'found' | 'missing' | 'error';
+type ScanEntry = { value: string; format: string; at: string; product?: Product | null; status: ScanStatus };
 
 export default function AdminInventarioScanPage() {
   const [scans, setScans] = useState<ScanEntry[]>([]);
@@ -37,11 +38,14 @@ export default function AdminInventarioScanPage() {
       const json = await response.json();
       if (!response.ok) throw new Error(json.error || 'No se pudo consultar el código.');
       const product = json.found ? (json.product as Product) : null;
+      const status: ScanStatus = product ? 'found' : 'missing';
+      const entry: ScanEntry = { value: code, format, at: new Date().toISOString(), product, status };
       setCurrentProduct(product);
-      setScans((prev) => [{ value: code, format, at: new Date().toISOString(), product, status: product ? 'found' : 'missing' }, ...prev.filter((x) => x.value !== code)].slice(0, 50));
+      setScans((prev) => [entry, ...prev.filter((x) => x.value !== code)].slice(0, 50));
       if (!product) setMessage('Código sin asociar. Selecciona un producto para vincularlo.');
     } catch (error) {
-      setScans((prev) => [{ value: code, format, at: new Date().toISOString(), status: 'error' }, ...prev].slice(0, 50));
+      const entry: ScanEntry = { value: code, format, at: new Date().toISOString(), status: 'error' };
+      setScans((prev) => [entry, ...prev].slice(0, 50));
       setMessage(error instanceof Error ? error.message : 'Error consultando el código.');
     } finally { setBusy(''); }
   }
@@ -61,7 +65,7 @@ export default function AdminInventarioScanPage() {
       const product = json.product as Product;
       setCurrentProduct(product);
       setCatalog((list) => list.map((p) => p.id === product.id ? { ...p, ...product } : p));
-      setScans((list) => list.map((s) => s.value === currentCode ? { ...s, product, status: 'found' } : s));
+      setScans((list) => list.map((s) => s.value === currentCode ? { ...s, product, status: 'found' as const } : s));
       setMessage(`Código asociado a ${product.name}.`);
     } catch (error) { setMessage(error instanceof Error ? error.message : 'Error asociando código.'); }
     finally { setBusy(''); }

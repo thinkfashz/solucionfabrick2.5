@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import { Fingerprint, KeyRound, Loader2, Plus, ShieldCheck, Smartphone, Trash2 } from 'lucide-react';
-import { AdminBaseCard, AdminBaseGrid, AdminBaseMetric, AdminBasePage } from '@/components/admin/baseui-kit';
+import { AdminCard, AdminPage, AdminPageHeader, AdminStat } from '@/components/admin/ui';
 
 interface Passkey {
   id: string;
@@ -31,9 +31,7 @@ export default function SeguridadPage() {
   const [deletingId, setDeletingId] = useState<string | null>(null);
 
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setSupported(Boolean(window.PublicKeyCredential && navigator.credentials?.create));
-    }
+    if (typeof window !== 'undefined') setSupported(Boolean(window.PublicKeyCredential && navigator.credentials?.create));
   }, []);
 
   const fetchPasskeys = useCallback(async () => {
@@ -136,102 +134,127 @@ export default function SeguridadPage() {
   const used = passkeys.filter((key) => Boolean(key.last_used_at)).length;
 
   return (
-    <AdminBasePage
-      eyebrow="Seguridad real"
-      title="Passkeys y biometría"
-      description="Gestiona acceso con huella, Face ID o bloqueo del dispositivo usando WebAuthn. La app no guarda tu huella, cara ni llave privada."
-      actions={
-        <button
-          onClick={() => void handleAddPasskey()}
-          disabled={adding || supported === false}
-          className="inline-flex items-center gap-2 rounded-2xl bg-yellow-300 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-black disabled:opacity-60"
-        >
-          {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-          {supported === false ? 'No compatible' : adding ? 'Esperando…' : 'Agregar passkey'}
-        </button>
-      }
-    >
-      <AdminBaseGrid cols="4">
-        <AdminBaseMetric label="Passkeys" value={loading ? '…' : passkeys.length} hint="registradas" />
-        <AdminBaseMetric label="Sincronizadas" value={loading ? '…' : synced} hint="multi-device/backed up" />
-        <AdminBaseMetric label="Usadas" value={loading ? '…' : used} hint="con último acceso" />
-        <AdminBaseMetric label="Soporte" value={supported === null ? '…' : supported ? 'OK' : 'No'} hint="WebAuthn browser" />
-      </AdminBaseGrid>
+    <AdminPage>
+      <AdminPageHeader
+        eyebrow="Acceso · Seguridad"
+        title="Passkeys y biometría"
+        description="Gestiona acceso con huella, Face ID o bloqueo del dispositivo usando WebAuthn. Fabrick conserva únicamente la llave pública necesaria para verificar el inicio de sesión."
+        icon={ShieldCheck}
+        actions={
+          <button
+            type="button"
+            onClick={() => void handleAddPasskey()}
+            disabled={adding || supported === false}
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white transition hover:bg-[#2a2823] disabled:opacity-50"
+          >
+            {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+            {supported === false ? 'No compatible' : adding ? 'Esperando…' : 'Agregar passkey'}
+          </button>
+        }
+      />
 
-      {error ? <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-300">{error}</div> : null}
-      {success ? <div className="rounded-2xl border border-emerald-500/30 bg-emerald-500/10 px-5 py-4 text-sm text-emerald-300">{success}</div> : null}
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStat label="Passkeys" value={loading ? '…' : passkeys.length} icon={Fingerprint} />
+        <AdminStat label="Sincronizadas" value={loading ? '…' : synced} icon={Smartphone} accent="emerald" />
+        <AdminStat label="Usadas" value={loading ? '…' : used} icon={KeyRound} accent="cyan" />
+        <AdminStat label="WebAuthn" value={supported === null ? '…' : supported ? 'OK' : 'No'} icon={ShieldCheck} accent={supported === false ? 'rose' : 'emerald'} />
+      </section>
 
-      <AdminBaseGrid cols="3">
-        <AdminBaseCard title="No guarda biometría" description="La huella, cara o iris se quedan en Android, iPhone, Windows o macOS. La app solo verifica una firma segura." icon={Fingerprint} tone="gold" badge="privado" />
-        <AdminBaseCard title="Llave pública" description="El servidor guarda solo la llave pública para validar el inicio de sesión." icon={KeyRound} tone="emerald" badge="WebAuthn" />
-        <AdminBaseCard title="Anti-phishing" description="La passkey está vinculada al dominio y no se puede reutilizar en sitios falsos." icon={ShieldCheck} tone="blue" badge="seguro" />
-      </AdminBaseGrid>
+      {error ? <div className="rounded-xl border border-rose-600/15 bg-rose-500/8 px-4 py-3 text-sm font-medium text-rose-800">{error}</div> : null}
+      {success ? <div className="rounded-xl border border-emerald-600/15 bg-emerald-500/8 px-4 py-3 text-sm font-medium text-emerald-800">{success}</div> : null}
 
-      <section className="rounded-[2rem] border border-white/10 bg-zinc-950/70 p-5 shadow-[0_20px_90px_rgba(0,0,0,0.35)]">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-yellow-300">Dispositivos confiables</p>
-            <h2 className="mt-1 text-xl font-black text-white">Passkeys registradas</h2>
-          </div>
+      <div className="grid gap-4 lg:grid-cols-3">
+        <SecurityNote icon={Fingerprint} title="La biometría no sale del dispositivo" description="Huella, cara o iris permanecen en Android, iPhone, Windows o macOS. El servidor valida una firma criptográfica." />
+        <SecurityNote icon={KeyRound} title="Solo llave pública" description="El backend almacena la parte pública de la credencial; la llave privada permanece protegida en el dispositivo." />
+        <SecurityNote icon={ShieldCheck} title="Protección anti-phishing" description="Una passkey queda vinculada al dominio correcto y no puede reutilizarse en una copia falsa del sitio." />
+      </div>
+
+      <AdminCard className="p-0 sm:p-0">
+        <div className="border-b border-black/8 px-4 py-4 sm:px-5">
+          <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Dispositivos confiables</p>
+          <h2 className="mt-1 text-xl font-black tracking-[-.025em] text-[#171612]">Passkeys registradas</h2>
+          <p className="mt-1 text-xs leading-5 text-[#817a6f]">Renombra o revoca credenciales sin mezclar acciones de seguridad con tarjetas visuales redundantes.</p>
         </div>
 
         {loading ? (
-          <div className="flex items-center justify-center gap-2 py-16 text-sm text-zinc-500"><Loader2 className="h-4 w-4 animate-spin" /> Cargando passkeys…</div>
+          <div className="flex items-center justify-center gap-2 py-16 text-sm text-[#817a6f]"><Loader2 className="h-4 w-4 animate-spin" /> Cargando passkeys…</div>
         ) : passkeys.length === 0 ? (
-          <div className="rounded-3xl border border-dashed border-white/10 bg-black/30 p-10 text-center">
-            <Fingerprint className="mx-auto h-10 w-10 text-zinc-600" />
-            <p className="mt-3 text-sm text-zinc-400">No tienes passkeys registradas.</p>
-            <p className="mt-1 text-xs text-zinc-600">Agrega una passkey para iniciar sesión sin contraseña.</p>
+          <div className="grid min-h-56 place-items-center px-5 py-10 text-center">
+            <div className="max-w-md">
+              <Fingerprint className="mx-auto h-7 w-7 text-[#c77a00]" />
+              <h3 className="mt-3 text-lg font-black text-[#171612]">No hay passkeys registradas</h3>
+              <p className="mt-2 text-sm leading-6 text-[#817a6f]">Agrega una para iniciar sesión sin escribir contraseña en este dispositivo.</p>
+            </div>
           </div>
         ) : (
-          <div className="grid gap-3">
+          <div className="divide-y divide-black/8 px-4 sm:px-5">
             {passkeys.map((pk) => (
-              <article key={pk.id} className="rounded-3xl border border-white/10 bg-black/35 p-4">
-                <div className="flex items-start gap-3">
-                  <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl border border-white/10 bg-white/5 text-yellow-300">
-                    <Smartphone className="h-5 w-5" />
-                  </span>
-                  <div className="min-w-0 flex-1">
-                    {editingId === pk.id ? (
-                      <div className="flex flex-wrap gap-2">
-                        <input
-                          autoFocus
-                          value={editingName}
-                          onChange={(e) => setEditingName(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter') void handleRename(pk.id);
-                            if (e.key === 'Escape') { setEditingId(null); setEditingName(''); }
-                          }}
-                          className="min-w-0 flex-1 rounded-xl border border-white/10 bg-zinc-950 px-3 py-2 text-sm text-white outline-none focus:border-yellow-300/50"
-                          maxLength={100}
-                        />
-                        <button onClick={() => void handleRename(pk.id)} className="rounded-xl bg-yellow-300 px-3 py-2 text-xs font-black text-black">Guardar</button>
-                        <button onClick={() => { setEditingId(null); setEditingName(''); }} className="rounded-xl border border-white/10 px-3 py-2 text-xs text-zinc-400">Cancelar</button>
-                      </div>
-                    ) : (
-                      <div className="flex flex-wrap items-center gap-2">
-                        <h3 className="font-black text-white">{pk.name ?? 'Passkey'}</h3>
-                        {pk.backed_up ? <span className="rounded-full border border-yellow-300/25 bg-yellow-300/10 px-2 py-0.5 text-[10px] font-black uppercase tracking-[0.16em] text-yellow-200">sincronizada</span> : null}
-                      </div>
-                    )}
-                    <p className="mt-1 text-xs text-zinc-500">
-                      Tipo: {pk.device_type || 'unknown'} · Creada {formatDate(pk.created_at)}{pk.last_used_at ? ` · Último uso ${formatDate(pk.last_used_at)}` : ''}
-                    </p>
-                  </div>
-                  <div className="flex shrink-0 gap-1">
-                    <button onClick={() => { setEditingId(pk.id); setEditingName(pk.name ?? 'Passkey'); }} className="rounded-xl border border-white/10 px-3 py-2 text-xs text-zinc-300 hover:border-yellow-300/40 hover:text-yellow-200">Renombrar</button>
-                    <button onClick={() => void handleDelete(pk.id)} disabled={deletingId === pk.id} className="inline-flex items-center gap-1 rounded-xl border border-red-500/25 px-3 py-2 text-xs text-red-300 hover:bg-red-500/10 disabled:opacity-60">
-                      {deletingId === pk.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />} Eliminar
-                    </button>
-                  </div>
+              <article key={pk.id} className="flex flex-col gap-4 py-4 sm:flex-row sm:items-center">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ffb000]/10 text-[#a56600]">
+                  <Smartphone className="h-4 w-4" />
+                </span>
+                <div className="min-w-0 flex-1">
+                  {editingId === pk.id ? (
+                    <div className="flex flex-wrap gap-2">
+                      <input
+                        autoFocus
+                        value={editingName}
+                        onChange={(e) => setEditingName(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter') void handleRename(pk.id);
+                          if (e.key === 'Escape') { setEditingId(null); setEditingName(''); }
+                        }}
+                        className="min-w-0 flex-1 rounded-xl border border-black/10 bg-white/75 px-3 py-2 text-sm font-semibold text-[#171612] outline-none focus:border-[#c77a00]/40"
+                        maxLength={100}
+                      />
+                      <button onClick={() => void handleRename(pk.id)} className="rounded-xl bg-[#171612] px-3 py-2 text-xs font-black text-white">Guardar</button>
+                      <button onClick={() => { setEditingId(null); setEditingName(''); }} className="rounded-xl border border-black/10 bg-white/50 px-3 py-2 text-xs font-bold text-[#716b60]">Cancelar</button>
+                    </div>
+                  ) : (
+                    <div className="flex flex-wrap items-center gap-2">
+                      <h3 className="font-black text-[#171612]">{pk.name ?? 'Passkey'}</h3>
+                      {pk.backed_up ? <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-[10px] font-black text-emerald-800">Sincronizada</span> : null}
+                    </div>
+                  )}
+                  <p className="mt-1 text-xs leading-5 text-[#817a6f]">
+                    Tipo: {pk.device_type || 'unknown'} · Creada {formatDate(pk.created_at)}{pk.last_used_at ? ` · Último uso ${formatDate(pk.last_used_at)}` : ''}
+                  </p>
+                </div>
+                <div className="flex shrink-0 flex-wrap gap-2">
+                  <button
+                    type="button"
+                    onClick={() => { setEditingId(pk.id); setEditingName(pk.name ?? 'Passkey'); }}
+                    className="rounded-xl border border-black/10 bg-white/55 px-3 py-2 text-xs font-bold text-[#625b50] transition hover:bg-white"
+                  >
+                    Renombrar
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => void handleDelete(pk.id)}
+                    disabled={deletingId === pk.id}
+                    className="inline-flex items-center gap-1.5 rounded-xl border border-rose-600/15 bg-rose-500/8 px-3 py-2 text-xs font-bold text-rose-800 transition hover:bg-rose-500/12 disabled:opacity-50"
+                  >
+                    {deletingId === pk.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
+                    Eliminar
+                  </button>
                 </div>
               </article>
             ))}
           </div>
         )}
-      </section>
+      </AdminCard>
 
-      <p className="text-center text-xs text-zinc-600">Mantén al menos una passkey activa y una contraseña de respaldo segura.</p>
-    </AdminBasePage>
+      <p className="text-center text-xs text-[#8f887c]">Mantén al menos una passkey activa y una contraseña de respaldo segura.</p>
+    </AdminPage>
+  );
+}
+
+function SecurityNote({ icon: Icon, title, description }: { icon: typeof Fingerprint; title: string; description: string }) {
+  return (
+    <div className="border-t border-black/10 py-4">
+      <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#ffb000]/10 text-[#a56600]"><Icon className="h-4 w-4" /></span>
+      <h3 className="mt-3 text-sm font-black text-[#171612]">{title}</h3>
+      <p className="mt-1 text-xs leading-5 text-[#817a6f]">{description}</p>
+    </div>
   );
 }

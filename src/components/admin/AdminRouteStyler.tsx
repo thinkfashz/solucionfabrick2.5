@@ -26,6 +26,8 @@ const NATIVE_DESIGN_PATHS = new Set([
   '/admin/estado',
   '/admin/vercel-logs',
   '/admin/seguridad',
+  '/admin/sql',
+  '/admin/setup',
   '/admin/ml',
 ]);
 

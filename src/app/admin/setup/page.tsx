@@ -3,33 +3,22 @@
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
+  AlertTriangle,
+  Check,
   CheckCircle2,
-  XCircle,
+  Copy,
+  Database,
+  ExternalLink,
   Loader2,
   RefreshCw,
-  ExternalLink,
-  Copy,
-  Check,
-  Database,
-  X,
-  AlertTriangle,
-  Terminal,
+  ShieldCheck,
   Sparkles,
+  Terminal,
+  Wrench,
+  X,
+  XCircle,
 } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Progress } from '@/components/ui/progress';
-
-/* ──────────────────────────────────────────────────────────
- * Tipos / utilidades
- * ─────────────────────────────────────────────────────────*/
+import { AdminCard, AdminPage, AdminPageHeader, AdminStat } from '@/components/admin/ui';
 
 type TableStatus = {
   name: string;
@@ -55,46 +44,41 @@ type SetupTablesResponse = {
   code?: string;
   missing?: string[];
   hint?: string;
-  keySource?: 'admin' | 'anon';
+  keySource?: 'admin';
 };
 
-type ConnectionState = 'unknown' | 'ok' | 'unauthenticated' | 'error';
-
-/* ──────────────────────────────────────────────────────────
- * Página
- * ─────────────────────────────────────────────────────────*/
+type SessionState = 'checking' | 'ok' | 'unauthenticated' | 'forbidden' | 'error';
 
 export default function AdminSetupPage() {
-  const [meState, setMeState] = useState<ConnectionState>('unknown');
-  const [meEmail, setMeEmail] = useState<string | null>(null);
+  const [sessionState, setSessionState] = useState<SessionState>('checking');
+  const [sessionEmail, setSessionEmail] = useState<string | null>(null);
   const [setup, setSetup] = useState<SetupResponse | null>(null);
   const [setupError, setSetupError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [creationArmed, setCreationArmed] = useState(false);
+  const [createReport, setCreateReport] = useState<SetupTablesResponse | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
   const [showSqlModal, setShowSqlModal] = useState(false);
   const [copied, setCopied] = useState(false);
 
-  // ── State for one-click table creation ───────────────────────────────
-  const [creating, setCreating] = useState(false);
-  const [createReport, setCreateReport] = useState<SetupTablesResponse | null>(null);
-  const [createError, setCreateError] = useState<string | null>(null);
-
-  const checkConnection = useCallback(async () => {
+  const checkSession = useCallback(async () => {
+    setSessionState('checking');
     try {
-      const res = await fetch('/api/admin/me', { cache: 'no-store' });
-      if (res.status === 401) {
-        setMeState('unauthenticated');
-        setMeEmail(null);
+      const response = await fetch('/api/admin/me', { cache: 'no-store' });
+      if (response.status === 401) {
+        setSessionState('unauthenticated');
         return;
       }
-      if (!res.ok) {
-        setMeState('error');
+      if (!response.ok) {
+        setSessionState('error');
         return;
       }
-      const data = await res.json();
-      setMeEmail(typeof data?.email === 'string' ? data.email : null);
-      setMeState('ok');
+      const data = await response.json();
+      setSessionEmail(typeof data?.email === 'string' ? data.email : null);
+      setSessionState(data?.rol === 'superadmin' ? 'ok' : 'forbidden');
     } catch {
-      setMeState('error');
+      setSessionState('error');
     }
   }, []);
 
@@ -102,438 +86,273 @@ export default function AdminSetupPage() {
     setLoading(true);
     setSetupError(null);
     try {
-      const res = await fetch('/api/admin/setup', { cache: 'no-store' });
-      if (!res.ok) {
-        const body = await res.json().catch(() => ({}));
-        const message =
-          typeof body?.error === 'string' ? body.error : `Error HTTP ${res.status}`;
-        setSetupError(message);
+      const response = await fetch('/api/admin/setup', { cache: 'no-store' });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        setSetup(null);
+        setSetupError(typeof body?.error === 'string' ? body.error : `HTTP ${response.status}`);
         return;
       }
-      const data = (await res.json()) as SetupResponse;
-      setSetup(data);
-    } catch (err) {
-      setSetupError(err instanceof Error ? err.message : 'Error de red');
+      setSetup(body as SetupResponse);
+    } catch (error) {
+      setSetupError(error instanceof Error ? error.message : 'Error de red.');
     } finally {
       setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    void checkConnection();
+    void checkSession();
     void checkTables();
-  }, [checkConnection, checkTables]);
+  }, [checkSession, checkTables]);
 
-  const handleVerify = useCallback(() => {
-    void checkConnection();
-    void checkTables();
-  }, [checkConnection, checkTables]);
+  const tables = setup?.tables ?? [];
+  const readyCount = tables.filter((table) => table.exists).length;
+  const missingCount = Math.max(0, tables.length - readyCount);
+  const progress = tables.length ? Math.round((readyCount / tables.length) * 100) : 0;
+  const allReady = tables.length > 0 && readyCount === tables.length;
+  const missingEnv = useMemo(() => setup?.missingEnv ?? [], [setup]);
 
-  const handleCopySql = useCallback(async () => {
-    if (!setup?.sql) return;
-    try {
-      await navigator.clipboard.writeText(setup.sql);
-      setCopied(true);
-      setTimeout(() => setCopied(false), 2000);
-    } catch {
-      setCopied(false);
-    }
-  }, [setup?.sql]);
+  async function verify() {
+    await Promise.all([checkSession(), checkTables()]);
+  }
 
-  const handleCreateTables = useCallback(async () => {
-    if (creating) return;
+  async function createTables() {
+    if (!creationArmed || creating) return;
     setCreating(true);
     setCreateError(null);
     setCreateReport(null);
     try {
-      const res = await fetch('/api/admin/setup-tables', {
+      const response = await fetch('/api/admin/setup-tables', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       });
-      const body = (await res.json().catch(() => ({}))) as SetupTablesResponse;
-      if (!res.ok) {
-        const missing = Array.isArray(body?.missing) && body.missing.length > 0
-          ? ` Faltan: ${body.missing.join(', ')}.`
-          : '';
-        setCreateError(`${body?.error ?? `Error HTTP ${res.status}`}${missing}`);
+      const body = await response.json().catch(() => ({})) as SetupTablesResponse;
+      if (!response.ok) {
+        const missing = Array.isArray(body.missing) && body.missing.length ? ` Faltan: ${body.missing.join(', ')}.` : '';
+        setCreateError(`${body.error ?? `HTTP ${response.status}`}${missing}`);
+        if (body.hint) setCreateError((current) => `${current ?? ''} ${body.hint}`.trim());
       } else {
         setCreateReport(body);
+        if (body.ok) setCreationArmed(false);
       }
-    } catch (err) {
-      setCreateError(err instanceof Error ? err.message : 'Error de red');
+    } catch (error) {
+      setCreateError(error instanceof Error ? error.message : 'Error de red.');
     } finally {
       setCreating(false);
-      // Always re-verify table presence after attempting creation, even if some
-      // blocks failed — partial success is still progress for the user.
-      void checkTables();
+      await checkTables();
     }
-  }, [creating, checkTables]);
+  }
 
-  const tables = setup?.tables ?? [];
-  const total = tables.length;
-  const okCount = tables.filter((t) => t.exists).length;
-  const progress = total === 0 ? 0 : (okCount / total) * 100;
-  const allReady = total > 0 && okCount === total;
-
-  const dashboardUrl = setup?.dashboardUrl ?? null;
-  const missingEnv = useMemo(() => setup?.missingEnv ?? [], [setup]);
+  async function copySql() {
+    if (!setup?.sql) return;
+    try {
+      await navigator.clipboard.writeText(setup.sql);
+      setCopied(true);
+      window.setTimeout(() => setCopied(false), 1800);
+    } catch {
+      setCopied(false);
+    }
+  }
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-10 space-y-6">
-        {/* Header */}
-        <header className="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-4">
-          <div>
-            <h1 className="text-3xl sm:text-4xl font-bold tracking-tight">
-              Configuración inicial
-            </h1>
-            <p className="mt-2 text-zinc-400 max-w-2xl">
-              Verifica el estado de la conexión con InsForge y crea las tablas
-              requeridas por el panel admin.
-            </p>
-          </div>
-          <Button onClick={handleVerify} disabled={loading} variant="default">
-            {loading ? (
-              <>
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Verificando…
-              </>
-            ) : (
-              <>
-                <RefreshCw className="w-4 h-4" />
-                Verificar tablas
-              </>
-            )}
-          </Button>
-        </header>
-
-        {/* 1. Estado de conexión */}
-        <Card className="backdrop-blur-sm">
-          <CardHeader className="border-b border-white/5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <CardTitle>1. Conexión con InsForge</CardTitle>
-                <CardDescription>
-                  Sesión admin (cookie <code className="text-yellow-400">admin_session</code>) y
-                  variables de entorno del backend.
-                </CardDescription>
-              </div>
-              <ConnectionBadge state={meState} />
-            </div>
-          </CardHeader>
-          <CardContent className="space-y-3 text-sm">
-            <div className="flex items-center justify-between">
-              <span className="text-zinc-400">Sesión admin</span>
-              <span className="text-white">
-                {meState === 'ok' && meEmail ? meEmail : meState === 'ok' ? '—' : 'No autenticado'}
-              </span>
-            </div>
-            {missingEnv.length > 0 && (
-              <div className="flex items-start gap-2 rounded-lg border border-amber-500/30 bg-amber-500/10 p-3 text-amber-200">
-                <AlertTriangle className="w-4 h-4 mt-0.5 shrink-0" />
-                <div>
-                  <p className="font-semibold">Variables de entorno faltantes</p>
-                  <p className="text-xs mt-0.5">
-                    Configura en el servidor:{' '}
-                    <code className="font-mono">{missingEnv.join(', ')}</code>
-                  </p>
-                </div>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* 2. Tablas requeridas */}
-        <Card className="backdrop-blur-sm">
-          <CardHeader className="border-b border-white/5">
-            <div className="flex items-start justify-between gap-4">
-              <div>
-                <CardTitle>2. Tablas requeridas</CardTitle>
-                <CardDescription>
-                  {total === 0
-                    ? 'Sin información — verifica la conexión.'
-                    : allReady
-                      ? 'Todas las tablas están listas.'
-                      : `${okCount} de ${total} tablas detectadas.`}
-                </CardDescription>
-              </div>
-              <Badge variant={allReady ? 'success' : okCount > 0 ? 'warning' : 'destructive'}>
-                {okCount}/{total}
-              </Badge>
-            </div>
-            <div className="mt-4">
-              <Progress value={progress} />
-            </div>
-          </CardHeader>
-          <CardContent>
-            {setupError && (
-              <div className="mb-4 flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-red-200 text-sm">
-                <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                <span>{setupError}</span>
-              </div>
-            )}
-            {tables.length === 0 && !loading && !setupError && (
-              <p className="text-sm text-zinc-500">
-                Pulsa <strong>Verificar tablas</strong> para consultar el backend.
-              </p>
-            )}
-            <ul className="divide-y divide-white/5">
-              {tables.map((t) => (
-                <li
-                  key={t.name}
-                  className="flex items-center justify-between py-2.5 text-sm"
-                >
-                  <div className="flex items-center gap-2">
-                    <Database className="w-4 h-4 text-zinc-500" />
-                    <code className="font-mono text-zinc-200">{t.name}</code>
-                    {t.error && (
-                      <span className="text-xs text-zinc-500">· {t.error}</span>
-                    )}
-                  </div>
-                  {t.exists ? (
-                    <Badge variant="success">
-                      <CheckCircle2 className="w-3.5 h-3.5" />
-                      OK
-                    </Badge>
-                  ) : (
-                    <Badge variant="destructive">
-                      <XCircle className="w-3.5 h-3.5" />
-                      Falta
-                    </Badge>
-                  )}
-                </li>
-              ))}
-            </ul>
-          </CardContent>
-        </Card>
-
-        {/* 3. Crear las tablas — automático */}
-        <Card className="backdrop-blur-sm">
-          <CardHeader className="border-b border-white/5">
-            <CardTitle>3. Crear las tablas</CardTitle>
-            <CardDescription>
-              Ejecuta automáticamente <code className="text-yellow-400">scripts/create-tables.sql</code>{' '}
-              contra InsForge desde aquí. No necesitas salir del panel.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="flex flex-wrap gap-3">
-              <Button
-                onClick={handleCreateTables}
-                disabled={creating}
-                variant="default"
-              >
-                {creating ? (
-                  <>
-                    <Loader2 className="w-4 h-4 animate-spin" />
-                    Creando tablas…
-                  </>
-                ) : (
-                  <>
-                    <Sparkles className="w-4 h-4" />
-                    Crear tablas ahora
-                  </>
-                )}
-              </Button>
-              <Button
-                onClick={() => setShowSqlModal(true)}
-                disabled={!setup?.sql}
-                variant="outline"
-              >
-                Ver SQL
-              </Button>
-              <Button
-                variant="outline"
-                disabled={!dashboardUrl}
-                onClick={() => {
-                  if (dashboardUrl) window.open(dashboardUrl, '_blank', 'noopener,noreferrer');
-                }}
-              >
-                <ExternalLink className="w-4 h-4" />
-                Dashboard InsForge
-              </Button>
-            </div>
-
-            {!setup?.sql && (
-              <p className="text-xs text-zinc-500">
-                No se pudo cargar <code>scripts/create-tables.sql</code>.
-              </p>
-            )}
-
-            {createError && (
-              <div className="flex items-start gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-red-200 text-sm">
-                <XCircle className="w-4 h-4 mt-0.5 shrink-0" />
-                <span className="break-words">{createError}</span>
-              </div>
-            )}
-
-            {createReport && (
-              <div
-                className={`rounded-lg border p-3 ${
-                  createReport.ok
-                    ? 'border-emerald-500/30 bg-emerald-500/10'
-                    : 'border-amber-500/30 bg-amber-500/10'
-                }`}
-              >
-                <div className="flex items-center gap-2 text-sm font-semibold mb-2">
-                  {createReport.ok ? (
-                    <CheckCircle2 className="w-4 h-4 text-emerald-300" />
-                  ) : (
-                    <AlertTriangle className="w-4 h-4 text-amber-300" />
-                  )}
-                  <span className={createReport.ok ? 'text-emerald-200' : 'text-amber-200'}>
-                    {createReport.summary
-                      ? `${createReport.summary.ok} de ${createReport.summary.total} bloques aplicados`
-                      : createReport.ok
-                        ? 'Tablas creadas'
-                        : 'Algunos bloques fallaron'}
-                  </span>
-                </div>
-                {createReport.hint && (
-                  <div className="mb-2 rounded-md border border-red-500/40 bg-red-500/10 p-2 text-xs text-red-200">
-                    <div className="font-semibold mb-1">Acción requerida</div>
-                    <p className="break-words leading-relaxed">{createReport.hint}</p>
-                  </div>
-                )}
-                {createReport.results && (
-                  <ul className="divide-y divide-white/5 text-xs">
-                    {Object.entries(createReport.results).map(([name, r]) => (
-                      <li key={name} className="flex items-start justify-between gap-3 py-1.5">
-                        <code className="font-mono text-zinc-200 break-all">{name}</code>
-                        {r.ok ? (
-                          <span className="flex items-center gap-1 text-emerald-300 shrink-0">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            OK
-                          </span>
-                        ) : (
-                          <span className="flex items-start gap-1 text-red-300 max-w-[60%] text-right break-words">
-                            <XCircle className="w-3.5 h-3.5 mt-0.5 shrink-0" />
-                            <span>{r.error ?? 'Falló'}</span>
-                          </span>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* 4. Terminal SQL embebido en el admin */}
-        <Card className="backdrop-blur-sm">
-          <CardHeader className="border-b border-white/5">
-            <CardTitle>4. Terminal SQL</CardTitle>
-            <CardDescription>
-              ¿Necesitas crear, modificar o consultar tablas extra? Abre la
-              terminal SQL conectada a InsForge — sin salir del admin.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="flex flex-wrap gap-3">
-              <Link href="/admin/sql" prefetch={false} className="inline-flex">
-                <Button variant="default">
-                  <Terminal className="w-4 h-4" />
-                  Abrir Terminal SQL
-                </Button>
-              </Link>
-            </div>
-            <p className="mt-3 text-xs text-zinc-500">
-              La terminal usa la sesión <code>admin_session</code>. Toda la SQL
-              se ejecuta contra el endpoint <code>/api/admin/sql</code>.
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      {/* Modal SQL */}
-      {showSqlModal && setup?.sql && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="setup-sql-title"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setShowSqlModal(false)}
-        >
-          <div
-            className="relative w-full max-w-3xl max-h-[85vh] flex flex-col rounded-2xl border border-white/10 bg-zinc-950 shadow-2xl"
-            onClick={(e) => e.stopPropagation()}
+    <AdminPage>
+      <AdminPageHeader
+        eyebrow="Sistema · Bootstrap"
+        title="Configuración inicial"
+        description="Verifica la conexión de InsForge y el esquema requerido por Fabrick. Las operaciones de bootstrap están reservadas a Root/superadmin."
+        icon={Wrench}
+        actions={
+          <button
+            type="button"
+            onClick={() => void verify()}
+            disabled={loading || sessionState === 'checking'}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white transition hover:bg-[#2a2823] disabled:opacity-50"
           >
-            <div className="flex items-center justify-between p-5 border-b border-white/10">
-              <div>
-                <h3 id="setup-sql-title" className="text-lg font-semibold text-white">
-                  Instrucciones SQL
-                </h3>
-                <p className="text-xs text-zinc-400 mt-0.5">
-                  scripts/create-tables.sql · ejecuta en el editor SQL de InsForge
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <Button onClick={handleCopySql} variant="secondary">
-                  {copied ? (
-                    <>
-                      <Check className="w-4 h-4" />
-                      Copiado
-                    </>
-                  ) : (
-                    <>
-                      <Copy className="w-4 h-4" />
-                      Copiar SQL
-                    </>
-                  )}
-                </Button>
-                <Button
-                  onClick={() => setShowSqlModal(false)}
-                  variant="ghost"
-                  className="!px-2"
-                  aria-label="Cerrar"
-                >
-                  <X className="w-5 h-5" />
-                  <span className="sr-only">Cerrar</span>
-                </Button>
-              </div>
-            </div>
-            <div className="overflow-auto p-5">
-              <pre className="text-xs leading-relaxed text-zinc-200 bg-black/60 border border-white/5 rounded-xl p-4 overflow-auto whitespace-pre">
-                <code>{setup.sql}</code>
-              </pre>
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            {loading ? 'Verificando…' : 'Verificar entorno'}
+          </button>
+        }
+      />
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStat label="Sesión" value={sessionState === 'ok' ? 'Root' : sessionState === 'checking' ? '…' : 'Bloqueada'} icon={ShieldCheck} accent={sessionState === 'ok' ? 'emerald' : sessionState === 'checking' ? undefined : 'rose'} />
+        <AdminStat label="Tablas" value={tables.length ? `${readyCount}/${tables.length}` : '—'} icon={Database} />
+        <AdminStat label="Progreso" value={`${progress}%`} icon={Sparkles} accent={allReady ? 'emerald' : undefined} />
+        <AdminStat label="Pendientes" value={tables.length ? missingCount : '—'} icon={AlertTriangle} accent={missingCount > 0 ? 'rose' : 'emerald'} />
+      </section>
+
+      {sessionState !== 'ok' && sessionState !== 'checking' ? (
+        <div className="rounded-xl border border-rose-600/15 bg-rose-500/8 p-4 text-sm text-rose-900">
+          <div className="flex items-start gap-3">
+            <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <strong className="font-black">Acceso restringido.</strong>
+              <p className="mt-1">Esta pantalla solo está disponible para Root/superadmin.</p>
             </div>
           </div>
         </div>
-      )}
-    </div>
+      ) : null}
+
+      {setupError ? <div className="rounded-xl border border-rose-600/15 bg-rose-500/8 px-4 py-3 text-sm text-rose-900">{setupError}</div> : null}
+
+      <div className="grid gap-4 xl:grid-cols-[.85fr_1.15fr]">
+        <AdminCard>
+          <div className="flex items-start justify-between gap-3 border-b border-black/8 pb-4">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Conexión</p>
+              <h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">InsForge</h2>
+              <p className="mt-1 text-xs leading-5 text-[#817a6f]">Sesión administrativa y configuración del backend.</p>
+            </div>
+            <span className={`rounded-full px-2.5 py-1 text-[10px] font-black ${setup?.connected ? 'bg-emerald-500/10 text-emerald-800' : 'bg-rose-500/10 text-rose-800'}`}>
+              {setup?.connected ? 'Conectado' : 'Sin conexión'}
+            </span>
+          </div>
+
+          <div className="divide-y divide-black/8 text-sm">
+            <InfoRow label="Usuario" value={sessionEmail ?? '—'} />
+            <InfoRow label="Rol requerido" value="Root / superadmin" />
+            <InfoRow label="Service key" value={missingEnv.includes('INSFORGE_API_KEY') ? 'Falta' : 'Configurada'} warning={missingEnv.includes('INSFORGE_API_KEY')} />
+          </div>
+
+          {missingEnv.length ? (
+            <div className="mt-4 rounded-xl border border-amber-600/15 bg-amber-500/8 p-3 text-xs leading-5 text-amber-900">
+              <strong className="font-black">Variables faltantes:</strong> {missingEnv.join(', ')}. Las operaciones unrestricted no usan anon key.
+            </div>
+          ) : null}
+        </AdminCard>
+
+        <AdminCard className="p-0 sm:p-0">
+          <div className="flex items-end justify-between gap-3 border-b border-black/8 p-4 sm:p-5">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Esquema requerido</p>
+              <h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">Tablas del administrador</h2>
+              <p className="mt-1 text-xs leading-5 text-[#817a6f]">{allReady ? 'Todas las tablas principales están disponibles.' : 'Revisa los elementos pendientes antes de operar módulos críticos.'}</p>
+            </div>
+            <span className="text-sm font-black text-[#171612]">{readyCount}/{tables.length || 0}</span>
+          </div>
+
+          <div className="h-1 bg-black/5"><div className="h-full bg-[#ffb000] transition-all" style={{ width: `${progress}%` }} /></div>
+
+          <div className="divide-y divide-black/8 px-4 sm:px-5">
+            {loading && tables.length === 0 ? (
+              <div className="flex items-center justify-center gap-2 py-14 text-sm text-[#817a6f]"><Loader2 className="h-4 w-4 animate-spin" /> Consultando esquema…</div>
+            ) : tables.length ? tables.map((table) => (
+              <div key={table.name} className="flex items-start justify-between gap-3 py-3">
+                <div className="min-w-0">
+                  <code className="font-mono text-xs font-bold text-[#27241f]">{table.name}</code>
+                  {table.error ? <p className="mt-1 text-[11px] leading-5 text-rose-700">{table.error}</p> : null}
+                </div>
+                <span className={`inline-flex shrink-0 items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black ${table.exists ? 'bg-emerald-500/10 text-emerald-800' : 'bg-rose-500/10 text-rose-800'}`}>
+                  {table.exists ? <CheckCircle2 className="h-3.5 w-3.5" /> : <XCircle className="h-3.5 w-3.5" />}
+                  {table.exists ? 'OK' : 'Falta'}
+                </span>
+              </div>
+            )) : (
+              <div className="py-12 text-center text-sm text-[#817a6f]">Sin información de tablas todavía.</div>
+            )}
+          </div>
+        </AdminCard>
+      </div>
+
+      <AdminCard className="p-0 sm:p-0">
+        <div className="flex flex-col gap-4 border-b border-black/8 p-4 sm:flex-row sm:items-center sm:justify-between sm:p-5">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Acción Root</p>
+            <h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">Crear o alinear tablas</h2>
+            <p className="mt-1 max-w-2xl text-xs leading-5 text-[#817a6f]">Ejecuta los scripts versionados del proyecto usando únicamente la clave de servicio del servidor.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <button type="button" onClick={() => setShowSqlModal(true)} disabled={!setup?.sql} className="rounded-xl border border-black/10 bg-white/60 px-4 py-2 text-xs font-bold text-[#625b50] disabled:opacity-40">Ver SQL</button>
+            {setup?.dashboardUrl ? (
+              <a href={setup.dashboardUrl} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white/60 px-4 py-2 text-xs font-bold text-[#625b50]"><ExternalLink className="h-3.5 w-3.5" /> InsForge</a>
+            ) : null}
+          </div>
+        </div>
+
+        <div className="p-4 sm:p-5">
+          <div className="rounded-xl border border-amber-600/15 bg-amber-500/8 p-4 text-sm text-amber-900">
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+              <div>
+                <strong className="font-black">Operación de esquema.</strong>
+                <p className="mt-1 text-xs leading-5">Antes de ejecutar, revisa el estado del sistema y confirma que estás trabajando en el entorno correcto.</p>
+              </div>
+            </div>
+          </div>
+
+          <label className="mt-4 flex items-start gap-3 text-sm text-[#514b42]">
+            <input type="checkbox" checked={creationArmed} onChange={(event) => setCreationArmed(event.target.checked)} className="mt-0.5 h-4 w-4 accent-[#171612]" />
+            <span>Confirmo que quiero habilitar temporalmente la creación/alineación de tablas.</span>
+          </label>
+
+          <div className="mt-4 flex flex-wrap gap-2">
+            <button
+              type="button"
+              onClick={() => void createTables()}
+              disabled={!creationArmed || creating || sessionState !== 'ok'}
+              className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white disabled:opacity-40"
+            >
+              {creating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}
+              {creating ? 'Aplicando…' : 'Crear / alinear tablas'}
+            </button>
+            <Link href="/admin/sql" className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-black/10 bg-white/55 px-4 text-xs font-bold text-[#625b50]"><Terminal className="h-4 w-4" /> Abrir terminal SQL</Link>
+          </div>
+
+          {createError ? <div className="mt-4 rounded-xl border border-rose-600/15 bg-rose-500/8 p-3 text-sm text-rose-900">{createError}</div> : null}
+
+          {createReport ? (
+            <div className={`mt-4 rounded-xl border p-4 ${createReport.ok ? 'border-emerald-600/15 bg-emerald-500/8 text-emerald-900' : 'border-amber-600/15 bg-amber-500/8 text-amber-900'}`}>
+              <div className="flex items-center gap-2 font-black">
+                {createReport.ok ? <CheckCircle2 className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}
+                {createReport.summary ? `${createReport.summary.ok}/${createReport.summary.total} bloques aplicados` : createReport.ok ? 'Bootstrap completado' : 'Bootstrap parcial'}
+              </div>
+              {createReport.hint ? <p className="mt-2 text-xs leading-5">{createReport.hint}</p> : null}
+              {createReport.results ? (
+                <div className="mt-3 max-h-64 overflow-auto divide-y divide-black/8 text-[11px]">
+                  {Object.entries(createReport.results).map(([name, step]) => (
+                    <div key={name} className="flex items-start justify-between gap-3 py-2">
+                      <code className="font-mono">{name}</code>
+                      <span className={`inline-flex max-w-[65%] items-start gap-1 text-right ${step.ok ? 'text-emerald-800' : 'text-rose-800'}`}>
+                        {step.ok ? <CheckCircle2 className="mt-0.5 h-3.5 w-3.5 shrink-0" /> : <XCircle className="mt-0.5 h-3.5 w-3.5 shrink-0" />}
+                        {step.ok ? 'OK' : step.error ?? 'Falló'}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : null}
+            </div>
+          ) : null}
+        </div>
+      </AdminCard>
+
+      {showSqlModal ? (
+        <div className="fixed inset-0 z-[80] grid place-items-center p-4">
+          <button type="button" aria-label="Cerrar" onClick={() => setShowSqlModal(false)} className="absolute inset-0 bg-black/55 backdrop-blur-sm" />
+          <div className="relative z-10 flex max-h-[82vh] w-full max-w-5xl flex-col overflow-hidden rounded-2xl border border-black/10 bg-[#f8f3e9] shadow-2xl">
+            <div className="flex items-center justify-between gap-3 border-b border-black/10 px-4 py-3 sm:px-5">
+              <div>
+                <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Solo lectura</p>
+                <h2 className="mt-1 text-lg font-black text-[#171612]">SQL versionado</h2>
+              </div>
+              <div className="flex gap-2">
+                <button type="button" onClick={() => void copySql()} className="inline-flex items-center gap-2 rounded-xl border border-black/10 bg-white/70 px-3 py-2 text-xs font-bold text-[#625b50]">{copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}{copied ? 'Copiado' : 'Copiar'}</button>
+                <button type="button" onClick={() => setShowSqlModal(false)} className="grid h-9 w-9 place-items-center rounded-xl border border-black/10 bg-white/70 text-[#625b50]"><X className="h-4 w-4" /></button>
+              </div>
+            </div>
+            <pre className="m-4 overflow-auto rounded-2xl bg-[#171612] p-4 font-mono text-[11px] leading-5 text-[#eee7dc] sm:m-5">{setup?.sql ?? 'SQL no disponible.'}</pre>
+          </div>
+        </div>
+      ) : null}
+    </AdminPage>
   );
 }
 
-function ConnectionBadge({ state }: { state: ConnectionState }) {
-  if (state === 'ok') {
-    return (
-      <Badge variant="success">
-        <CheckCircle2 className="w-3.5 h-3.5" />
-        Conectado
-      </Badge>
-    );
-  }
-  if (state === 'unauthenticated') {
-    return (
-      <Badge variant="warning">
-        <AlertTriangle className="w-3.5 h-3.5" />
-        Sin sesión
-      </Badge>
-    );
-  }
-  if (state === 'error') {
-    return (
-      <Badge variant="destructive">
-        <XCircle className="w-3.5 h-3.5" />
-        Error
-      </Badge>
-    );
-  }
+function InfoRow({ label, value, warning = false }: { label: string; value: string; warning?: boolean }) {
   return (
-    <Badge variant="secondary">
-      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-      Comprobando…
-    </Badge>
+    <div className="flex items-center justify-between gap-3 py-3">
+      <span className="text-xs text-[#817a6f]">{label}</span>
+      <span className={`text-right text-xs font-black ${warning ? 'text-rose-700' : 'text-[#27241f]'}`}>{value}</span>
+    </div>
   );
 }

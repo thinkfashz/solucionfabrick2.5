@@ -13,30 +13,10 @@ import {
   Search,
   Server,
   Terminal,
-  TrendingUp,
-  BarChart3,
+  TriangleAlert,
+  Info,
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { LogStatistics } from '@/components/admin/vercel/LogStatistics';
-
-/**
- * /admin/vercel-logs (ENHANCED)
- *
- * Mejoras:
- * - Visualización de estadísticas en tiempo real
- * - Gráficos profesionales de errores/warnings
- * - Timeline de deployments
- * - Análisis inteligente de patrones
- * - Mejor coherencia visual
- *
- * Server-side bridge to the Vercel REST API. Lets the operator:
- *   1. Pick a recent deployment of the configured project.
- *   2. See its build + runtime logs filtered by level (error/warning/all).
- *   3. Refresh on demand and jump to the deployment in vercel.com.
- *
- * Credentials live in the InsForge `integrations` table (provider = 'vercel')
- * and are read server-side. The token never reaches the browser.
- */
+import { AdminCard, AdminPage, AdminPageHeader, AdminStat } from '@/components/admin/ui';
 
 interface DeploymentRow {
   id: string;
@@ -82,8 +62,7 @@ interface ApiError {
 
 function formatTimestamp(ms: number): string {
   if (!ms) return '—';
-  const d = new Date(ms);
-  return d.toLocaleString('es-CL', { hour12: false });
+  return new Date(ms).toLocaleString('es-CL', { hour12: false });
 }
 
 function relativeTime(ms: number): string {
@@ -94,22 +73,21 @@ function relativeTime(ms: number): string {
   if (min < 60) return `hace ${min} min`;
   const hr = Math.round(min / 60);
   if (hr < 24) return `hace ${hr} h`;
-  const days = Math.round(hr / 24);
-  return `hace ${days} d`;
+  return `hace ${Math.round(hr / 24)} d`;
 }
 
 const STATE_COLORS: Record<string, string> = {
-  READY: 'border-green-500/30 bg-green-500/10 text-green-400',
-  BUILDING: 'border-yellow-400/30 bg-yellow-400/10 text-yellow-300',
-  ERROR: 'border-red-500/30 bg-red-500/10 text-red-400',
-  CANCELED: 'border-zinc-700 bg-zinc-900 text-zinc-400',
-  QUEUED: 'border-blue-500/30 bg-blue-500/10 text-blue-300',
+  READY: 'bg-emerald-500/10 text-emerald-800',
+  BUILDING: 'bg-amber-500/10 text-amber-800',
+  ERROR: 'bg-rose-500/10 text-rose-800',
+  CANCELED: 'bg-zinc-500/10 text-zinc-700',
+  QUEUED: 'bg-sky-500/10 text-sky-800',
 };
 
 const LEVEL_COLORS: Record<LogRow['level'], string> = {
-  error: 'border-red-500/40 bg-red-500/10 text-red-300',
-  warning: 'border-yellow-400/40 bg-yellow-400/10 text-yellow-200',
-  info: 'border-white/10 bg-zinc-900/60 text-zinc-300',
+  error: 'border-rose-400/20 bg-rose-500/8',
+  warning: 'border-amber-400/20 bg-amber-500/8',
+  info: 'border-white/8 bg-white/[0.035]',
 };
 
 const SOURCE_LABELS: Record<LogRow['source'], string> = {
@@ -120,26 +98,11 @@ const SOURCE_LABELS: Record<LogRow['source'], string> = {
   system: 'SYS',
 };
 
-function Meta({
-  k,
-  v,
-  mono,
-  truncate,
-}: {
-  k: string;
-  v: string;
-  mono?: boolean;
-  truncate?: boolean;
-}) {
+function Meta({ k, v, mono, truncate }: { k: string; v: string; mono?: boolean; truncate?: boolean }) {
   return (
     <>
-      <dt className="text-[9px] font-bold uppercase tracking-widest text-zinc-500">{k}</dt>
-      <dd
-        className={`min-w-0 text-zinc-200 ${mono ? 'font-mono text-[10px]' : 'text-[11px]'} ${
-          truncate ? 'truncate' : 'break-all'
-        }`}
-        title={truncate ? v : undefined}
-      >
+      <dt className="text-[9px] font-black uppercase tracking-[.14em] text-[#8f887c]">{k}</dt>
+      <dd className={`min-w-0 text-[#514b42] ${mono ? 'font-mono text-[10px]' : 'text-[11px]'} ${truncate ? 'truncate' : 'break-all'}`} title={truncate ? v : undefined}>
         {v}
       </dd>
     </>
@@ -148,7 +111,7 @@ function Meta({
 
 export default function VercelLogsPage() {
   const [deployments, setDeployments] = useState<DeploymentRow[]>([]);
-  const [selectedDeployment, setSelectedDeployment] = useState<string>('');
+  const [selectedDeployment, setSelectedDeployment] = useState('');
   const [logs, setLogs] = useState<LogRow[]>([]);
   const [counts, setCounts] = useState<{ error: number; warning: number; info: number } | null>(null);
   const [level, setLevel] = useState<LevelFilter>('error');
@@ -172,17 +135,14 @@ export default function VercelLogsPage() {
     setError(null);
     try {
       const res = await fetch('/api/admin/vercel/deployments?limit=20', { cache: 'no-store' });
-      const json = (await res.json().catch(() => ({}))) as
-        | { ok: true; deployments: DeploymentRow[] }
-        | ApiError;
+      const json = (await res.json().catch(() => ({}))) as { ok: true; deployments: DeploymentRow[] } | ApiError;
       if (!res.ok || !('ok' in json)) {
         setError(('error' in json ? json : { error: `HTTP ${res.status}` }) as ApiError);
         return;
       }
       setDeployments(json.deployments);
-      // Auto-select the first READY (or first overall) deployment.
       if (!selectedDeployment) {
-        const ready = json.deployments.find((d) => d.state === 'READY');
+        const ready = json.deployments.find((deployment) => deployment.state === 'READY');
         const pick = ready ?? json.deployments[0];
         if (pick) setSelectedDeployment(pick.id);
       }
@@ -193,89 +153,66 @@ export default function VercelLogsPage() {
     }
   }, [selectedDeployment]);
 
-  const loadLogs = useCallback(
-    async (deploymentId: string, filter: LevelFilter) => {
-      if (!deploymentId) return;
-      setLoadingLogs(true);
-      setError(null);
-      try {
-        const res = await fetch(
-          `/api/admin/vercel/logs?deployment=${encodeURIComponent(deploymentId)}&level=${filter}&limit=400`,
-          { cache: 'no-store' },
-        );
-        const json = (await res.json().catch(() => ({}))) as
-          | { ok: true; logs: LogRow[]; counts: { error: number; warning: number; info: number } }
-          | ApiError;
-        if (!res.ok || !('ok' in json)) {
-          setError(('error' in json ? json : { error: `HTTP ${res.status}` }) as ApiError);
-          setLogs([]);
-          return;
-        }
-        setLogs(json.logs);
-        setCounts(json.counts);
-      } catch (err) {
-        setError({ error: err instanceof Error ? err.message : 'Error de red.' });
-      } finally {
-        setLoadingLogs(false);
+  const loadLogs = useCallback(async (deploymentId: string, filter: LevelFilter) => {
+    if (!deploymentId) return;
+    setLoadingLogs(true);
+    setError(null);
+    try {
+      const res = await fetch(`/api/admin/vercel/logs?deployment=${encodeURIComponent(deploymentId)}&level=${filter}&limit=400`, { cache: 'no-store' });
+      const json = (await res.json().catch(() => ({}))) as
+        | { ok: true; logs: LogRow[]; counts: { error: number; warning: number; info: number } }
+        | ApiError;
+      if (!res.ok || !('ok' in json)) {
+        setError(('error' in json ? json : { error: `HTTP ${res.status}` }) as ApiError);
+        setLogs([]);
+        return;
       }
-    },
-    [],
-  );
+      setLogs(json.logs);
+      setCounts(json.counts);
+    } catch (err) {
+      setError({ error: err instanceof Error ? err.message : 'Error de red.' });
+    } finally {
+      setLoadingLogs(false);
+    }
+  }, []);
 
   useEffect(() => {
     void loadDeployments();
-    // We only want to load deployments once on mount; later refreshes are user-driven.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
-    if (selectedDeployment) {
-      void loadLogs(selectedDeployment, level);
-    }
+    if (selectedDeployment) void loadLogs(selectedDeployment, level);
   }, [selectedDeployment, level, loadLogs]);
 
-  const selectedRow = useMemo(
-    () => deployments.find((d) => d.id === selectedDeployment),
-    [deployments, selectedDeployment],
-  );
+  const selectedRow = useMemo(() => deployments.find((deployment) => deployment.id === selectedDeployment), [deployments, selectedDeployment]);
 
-  // Free-text filter: matches against message, path, requestId, status code,
-  // host, region or function name. Empty string returns the original list.
   const visibleLogs = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return logs;
-    return logs.filter((l) => {
-      const hay = [
-        l.message,
-        l.path,
-        l.requestId,
-        String(l.statusCode ?? ''),
-        l.host,
-        l.region,
-        l.function,
-        l.method,
-      ]
-        .filter(Boolean)
-        .join(' ')
-        .toLowerCase();
-      return hay.includes(q);
-    });
+    const query = search.trim().toLowerCase();
+    if (!query) return logs;
+    return logs.filter((log) => [
+      log.message,
+      log.path,
+      log.requestId,
+      String(log.statusCode ?? ''),
+      log.host,
+      log.region,
+      log.function,
+      log.method,
+    ].filter(Boolean).join(' ').toLowerCase().includes(query));
   }, [logs, search]);
 
   const isMissingCreds = error?.code === 'VERCEL_NOT_CONFIGURED';
+  const stats = counts ?? { error: 0, warning: 0, info: 0 };
 
   return (
-    <div className="min-h-screen bg-black text-white">
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 sm:py-10">
-        <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.4em] text-yellow-400">Sistema</p>
-            <h1 className="mt-1 text-2xl font-extrabold tracking-tight">Logs de Vercel</h1>
-            <p className="mt-1 max-w-2xl text-[12px] leading-relaxed text-zinc-400">
-              Lee los eventos de build y runtime del deployment seleccionado directamente desde la API de Vercel.
-              Usa el filtro por nivel para acotar a errores reales.
-            </p>
-          </div>
+    <AdminPage>
+      <AdminPageHeader
+        eyebrow="Sistema · Observabilidad"
+        title="Logs de Vercel"
+        description="Inspecciona deployments, builds y eventos runtime sin salir del panel. Las credenciales permanecen del lado del servidor."
+        icon={Terminal}
+        actions={
           <button
             type="button"
             onClick={() => {
@@ -283,314 +220,195 @@ export default function VercelLogsPage() {
               if (selectedDeployment) void loadLogs(selectedDeployment, level);
             }}
             disabled={loadingDeployments || loadingLogs}
-            className="inline-flex items-center gap-2 rounded-full border border-yellow-400/40 bg-yellow-400/10 px-4 py-2 text-[11px] font-bold uppercase tracking-widest text-yellow-300 transition hover:bg-yellow-400/20 disabled:opacity-50"
+            className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white transition hover:bg-[#2a2823] disabled:opacity-50"
           >
-            <RefreshCw className={`h-3.5 w-3.5 ${loadingLogs || loadingDeployments ? 'animate-spin' : ''}`} />
+            <RefreshCw className={`h-4 w-4 ${loadingDeployments || loadingLogs ? 'animate-spin' : ''}`} />
             Refrescar
           </button>
+        }
+      />
+
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStat label="Deployments" value={deployments.length} icon={Server} />
+        <AdminStat label="Errores" value={stats.error} icon={TriangleAlert} accent="rose" />
+        <AdminStat label="Warnings" value={stats.warning} icon={AlertTriangle} />
+        <AdminStat label="Info" value={stats.info} icon={Info} accent="cyan" />
+      </section>
+
+      {isMissingCreds ? (
+        <div className="rounded-xl border border-amber-600/15 bg-amber-500/8 p-4 text-sm text-amber-900">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div>
+              <strong className="font-black">Vercel no está configurado.</strong>
+              <p className="mt-1">{error?.error}</p>
+              {error?.hint ? <p className="mt-1 text-xs text-amber-800/80">{error.hint}</p> : null}
+              <Link href="/admin/integraciones" className="mt-3 inline-flex rounded-xl bg-[#171612] px-3 py-2 text-xs font-black text-white">Configurar integración</Link>
+            </div>
+          </div>
         </div>
+      ) : null}
 
-        {isMissingCreds && (
-          <div className="mb-6 rounded-2xl border border-yellow-400/30 bg-yellow-400/5 p-4 text-[12px] text-yellow-100">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-yellow-400" />
+      {error && !isMissingCreds ? (
+        <div className="rounded-xl border border-rose-600/15 bg-rose-500/8 p-4 text-sm text-rose-900">
+          <div className="flex items-start gap-3">
+            <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+            <div className="min-w-0">
+              <strong className="font-black">Error de Vercel</strong>
+              <p className="mt-1 break-words">{error.error}</p>
+              {(error.code || error.statusCode) ? <p className="mt-1 font-mono text-[10px]">{error.code ?? ''}{error.code && error.statusCode ? ' · ' : ''}{error.statusCode ? `HTTP ${error.statusCode}` : ''}</p> : null}
+              {error.hint ? <p className="mt-1 text-xs opacity-80">{error.hint}</p> : null}
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {!isMissingCreds ? (
+        <div className="grid gap-4 xl:grid-cols-[300px_minmax(0,1fr)]">
+          <AdminCard className="h-fit p-0 sm:p-0">
+            <div className="flex items-center justify-between border-b border-black/8 px-4 py-4">
               <div>
-                <p className="font-bold uppercase tracking-widest text-[10px] text-yellow-300">Vercel sin configurar</p>
-                <p className="mt-1">{error?.error}</p>
-                {error?.hint && <p className="mt-1 text-yellow-100/80">{error.hint}</p>}
-                <Link
-                  href="/admin/configuracion"
-                  className="mt-3 inline-flex items-center gap-1.5 rounded-full bg-yellow-400 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-black transition hover:bg-yellow-300"
-                >
-                  Ir a configuración →
-                </Link>
+                <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Deployments</p>
+                <p className="mt-1 text-xs text-[#817a6f]">Selecciona una versión para inspeccionarla.</p>
               </div>
+              {loadingDeployments ? <RefreshCw className="h-4 w-4 animate-spin text-[#9a9286]" /> : null}
             </div>
-          </div>
-        )}
+            {deployments.length === 0 && !loadingDeployments ? <p className="px-4 py-8 text-center text-xs text-[#817a6f]">Sin deployments para mostrar.</p> : null}
+            <div className="max-h-[68vh] divide-y divide-black/8 overflow-y-auto px-3 py-2">
+              {deployments.map((deployment) => {
+                const active = deployment.id === selectedDeployment;
+                return (
+                  <button
+                    key={deployment.id}
+                    type="button"
+                    onClick={() => setSelectedDeployment(deployment.id)}
+                    className={`my-1 w-full rounded-xl px-3 py-3 text-left transition ${active ? 'bg-[#ffb000]/10' : 'hover:bg-black/[.035]'}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="truncate font-mono text-[11px] font-bold text-[#514b42]">{deployment.commit ?? deployment.id.slice(-8)}</span>
+                      <span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${STATE_COLORS[deployment.state] ?? 'bg-zinc-500/10 text-zinc-700'}`}>{deployment.state}</span>
+                    </div>
+                    {deployment.commitMessage ? <p className="mt-1.5 line-clamp-2 text-xs font-semibold leading-5 text-[#27241f]">{deployment.commitMessage}</p> : null}
+                    <div className="mt-2 flex items-center justify-between gap-2 text-[10px] text-[#9a9286]">
+                      <span className="truncate">{deployment.branch ?? deployment.target ?? '—'}</span>
+                      <span title={formatTimestamp(deployment.createdAt)}>{relativeTime(deployment.createdAt)}</span>
+                    </div>
+                  </button>
+                );
+              })}
+            </div>
+          </AdminCard>
 
-        {error && !isMissingCreds && (
-          <div className="mb-6 rounded-2xl border border-red-500/30 bg-red-500/10 p-4 text-[12px] text-red-200">
-            <div className="flex items-start gap-2">
-              <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-red-400" />
+          <AdminCard className="p-0 sm:p-0">
+            <div className="flex flex-col gap-3 border-b border-black/8 px-4 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-5">
               <div className="min-w-0">
-                <p className="font-bold uppercase tracking-widest text-[10px] text-red-300">Error de Vercel</p>
-                <p className="mt-1 break-words">{error.error}</p>
-                {(error.code || error.statusCode) && (
-                  <p className="mt-1 font-mono text-[10px] text-red-300/80">
-                    {error.code ? `code: ${error.code}` : ''}
-                    {error.code && error.statusCode ? ' · ' : ''}
-                    {error.statusCode ? `status: ${error.statusCode}` : ''}
-                  </p>
-                )}
-                {error.hint && <p className="mt-1 text-red-200/80">{error.hint}</p>}
+                <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Eventos</p>
+                {selectedRow ? (
+                  <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-[#716b60]">
+                    <span className="font-mono">{selectedRow.id}</span>
+                    <span className={`rounded-full px-2 py-0.5 text-[9px] font-black ${STATE_COLORS[selectedRow.state] ?? 'bg-zinc-500/10 text-zinc-700'}`}>{selectedRow.state}</span>
+                    {selectedRow.url ? (
+                      <a href={selectedRow.url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 font-semibold text-[#8a620f] hover:underline">
+                        Abrir deployment <ExternalLink className="h-3 w-3" />
+                      </a>
+                    ) : null}
+                  </div>
+                ) : <p className="mt-1 text-xs text-[#817a6f]">Selecciona un deployment.</p>}
+              </div>
+              <div className="inline-flex self-start rounded-xl border border-black/10 bg-white/55 p-1">
+                <Filter className="mx-2 my-auto h-3.5 w-3.5 text-[#9a9286]" />
+                {(['error', 'warning', 'all'] as const).map((option) => (
+                  <button
+                    key={option}
+                    type="button"
+                    onClick={() => setLevel(option)}
+                    className={`rounded-lg px-3 py-1.5 text-[10px] font-black transition ${level === option ? 'bg-[#171612] text-white' : 'text-[#716b60] hover:bg-black/[.04]'}`}
+                  >
+                    {option === 'error' ? 'Errores' : option === 'warning' ? 'Warnings+' : 'Todo'}
+                  </button>
+                ))}
               </div>
             </div>
-          </div>
-        )}
 
-        {!isMissingCreds && (
-          <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
-            {/* Deployments sidebar */}
-            <aside className="rounded-2xl border border-white/10 bg-zinc-950/60 p-3">
-              <div className="mb-3 flex items-center justify-between gap-2 px-1">
-                <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                  <Server className="mr-1 inline h-3 w-3 text-yellow-400" />
-                  Deployments
-                </p>
-                {loadingDeployments && (
-                  <span className="text-[10px] text-zinc-500">Cargando…</span>
-                )}
+            <div className="border-b border-black/8 px-4 py-3 sm:px-5">
+              <div className="flex items-center gap-2 rounded-xl border border-black/10 bg-white/70 px-3 py-2.5">
+                <Search className="h-4 w-4 text-[#9a9286]" />
+                <input
+                  type="search"
+                  placeholder="Buscar mensaje, ruta, requestId o status…"
+                  value={search}
+                  onChange={(event) => setSearch(event.target.value)}
+                  className="min-w-0 flex-1 bg-transparent text-sm text-[#171612] outline-none placeholder:text-[#aaa298]"
+                />
               </div>
-              {deployments.length === 0 && !loadingDeployments && (
-                <p className="px-2 py-4 text-[11px] text-zinc-500">Sin deployments para mostrar.</p>
-              )}
-              <ul className="space-y-1.5">
-                {deployments.map((d) => {
-                  const active = d.id === selectedDeployment;
+            </div>
+
+            <div className="max-h-[72vh] overflow-y-auto bg-[#171713] p-3" data-log-console>
+              {loadingLogs && logs.length === 0 ? <p className="px-2 py-8 text-center text-xs text-zinc-500">Cargando eventos…</p> : null}
+              {!loadingLogs && visibleLogs.length === 0 && !error ? (
+                <div className="px-2 py-12 text-center text-xs text-zinc-500">
+                  <CheckCircle2 className="mx-auto mb-2 h-5 w-5 text-emerald-400" />
+                  {search.trim() ? `Sin coincidencias para “${search}”.` : 'Sin eventos para el filtro seleccionado.'}
+                </div>
+              ) : null}
+
+              <ul className="space-y-2">
+                {visibleLogs.map((log) => {
+                  const isOpen = expanded.has(log.id);
+                  const hasMeta = Boolean(log.requestId || log.host || log.region || log.statusCode != null || log.durationMs != null || log.function || log.runtime || log.userAgent || log.referer || log.method);
                   return (
-                    <li key={d.id}>
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDeployment(d.id)}
-                        className={`w-full rounded-xl border px-3 py-2 text-left transition ${
-                          active
-                            ? 'border-yellow-400/50 bg-yellow-400/10'
-                            : 'border-white/5 bg-black/30 hover:border-white/20 hover:bg-black/50'
-                        }`}
-                      >
-                        <div className="flex items-center justify-between gap-2">
-                          <span className="truncate text-[11px] font-mono text-zinc-300">
-                            {d.commit ?? d.id.slice(-8)}
-                          </span>
-                          <span
-                            className={`rounded-full border px-1.5 py-0.5 text-[8px] font-bold uppercase tracking-widest ${
-                              STATE_COLORS[d.state] ?? 'border-zinc-700 bg-zinc-900 text-zinc-400'
-                            }`}
-                          >
-                            {d.state}
-                          </span>
-                        </div>
-                        {d.commitMessage && (
-                          <p className="mt-1 truncate text-[11px] text-zinc-200">{d.commitMessage}</p>
-                        )}
-                        <div className="mt-1 flex items-center justify-between gap-2 text-[10px] text-zinc-500">
-                          <span className="truncate">{d.branch ?? d.target ?? '—'}</span>
-                          <span title={formatTimestamp(d.createdAt)}>{relativeTime(d.createdAt)}</span>
+                    <li key={log.id} className={`overflow-hidden rounded-xl border ${LEVEL_COLORS[log.level]}`}>
+                      <button type="button" onClick={() => toggleExpanded(log.id)} className="flex w-full items-start gap-2 p-3 text-left" aria-expanded={isOpen}>
+                        <span className="mt-0.5 text-zinc-500">{isOpen ? <ChevronDown className="h-3.5 w-3.5" /> : <ChevronRight className="h-3.5 w-3.5" />}</span>
+                        <div className="min-w-0 flex-1">
+                          <div className="flex flex-wrap items-center gap-2 font-mono text-[10px] text-zinc-400">
+                            <span>{formatTimestamp(log.ts)}</span>
+                            <span className="rounded bg-black/35 px-1.5 py-0.5 text-[9px] font-black">{SOURCE_LABELS[log.source]}</span>
+                            <span className="rounded bg-black/35 px-1.5 py-0.5 text-[9px] font-black uppercase">{log.level}</span>
+                            {log.method ? <span className="rounded bg-sky-500/10 px-1.5 py-0.5 text-[9px] font-black text-sky-300">{log.method}</span> : null}
+                            {typeof log.statusCode === 'number' ? (
+                              <span className={`rounded px-1.5 py-0.5 text-[9px] font-black ${log.statusCode >= 500 ? 'bg-rose-500/12 text-rose-300' : log.statusCode >= 400 ? 'bg-amber-500/12 text-amber-300' : 'bg-emerald-500/12 text-emerald-300'}`}>{log.statusCode}</span>
+                            ) : null}
+                            {typeof log.durationMs === 'number' ? <span>{log.durationMs}ms</span> : null}
+                            {log.region ? <span>{log.region}</span> : null}
+                            {log.path ? <span className="truncate">{log.path}</span> : null}
+                          </div>
+                          <pre className="mt-2 whitespace-pre-wrap break-words font-mono text-[11px] leading-relaxed text-zinc-100">{log.message}</pre>
                         </div>
                       </button>
+
+                      {isOpen ? (
+                        <div className="border-t border-white/8 bg-black/25 p-3">
+                          {hasMeta ? (
+                            <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
+                              {log.requestId ? <Meta k="requestId" v={log.requestId} mono /> : null}
+                              {log.host ? <Meta k="host" v={log.host} /> : null}
+                              {log.region ? <Meta k="region" v={log.region} /> : null}
+                              {log.statusCode != null ? <Meta k="status" v={String(log.statusCode)} /> : null}
+                              {log.durationMs != null ? <Meta k="duration" v={`${log.durationMs}ms`} /> : null}
+                              {log.function ? <Meta k="function" v={log.function} /> : null}
+                              {log.runtime ? <Meta k="runtime" v={log.runtime} /> : null}
+                              {log.method ? <Meta k="method" v={log.method} /> : null}
+                              {log.userAgent ? <Meta k="userAgent" v={log.userAgent} truncate /> : null}
+                              {log.referer ? <Meta k="referer" v={log.referer} truncate /> : null}
+                            </dl>
+                          ) : null}
+                          {log.rawJson ? (
+                            <details className="mt-3">
+                              <summary className="cursor-pointer select-none text-[10px] font-black uppercase tracking-[.14em] text-zinc-400 hover:text-amber-300">Ver JSON crudo</summary>
+                              <pre className="mt-2 max-h-72 overflow-auto rounded-lg border border-white/8 bg-black/40 p-3 font-mono text-[10px] leading-relaxed text-zinc-300">{log.rawJson}</pre>
+                            </details>
+                          ) : null}
+                        </div>
+                      ) : null}
                     </li>
                   );
                 })}
               </ul>
-            </aside>
-
-            {/* Logs panel */}
-            <section className="rounded-2xl border border-white/10 bg-zinc-950/60">
-              {/* Header */}
-              <div className="flex flex-wrap items-center justify-between gap-3 border-b border-white/5 p-4">
-                <div className="min-w-0">
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-zinc-400">
-                    <Terminal className="mr-1 inline h-3 w-3 text-yellow-400" />
-                    Eventos
-                  </p>
-                  {selectedRow ? (
-                    <div className="mt-0.5 flex flex-wrap items-center gap-2 text-[12px]">
-                      <span className="font-mono text-zinc-200">{selectedRow.id}</span>
-                      <span
-                        className={`rounded-full border px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest ${
-                          STATE_COLORS[selectedRow.state] ?? 'border-zinc-700 bg-zinc-900 text-zinc-400'
-                        }`}
-                      >
-                        {selectedRow.state}
-                      </span>
-                      {selectedRow.url && (
-                        <a
-                          href={selectedRow.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="inline-flex items-center gap-1 text-[11px] text-zinc-400 hover:text-yellow-300"
-                        >
-                          {selectedRow.url.replace('https://', '')}
-                          <ExternalLink className="h-3 w-3" />
-                        </a>
-                      )}
-                    </div>
-                  ) : (
-                    <p className="text-[11px] text-zinc-500">Selecciona un deployment</p>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 p-1">
-                  <Filter className="ml-1.5 h-3 w-3 text-zinc-500" />
-                  {(['error', 'warning', 'all'] as const).map((opt) => (
-                    <button
-                      key={opt}
-                      type="button"
-                      onClick={() => setLevel(opt)}
-                      className={`rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest transition ${
-                        level === opt
-                          ? 'bg-yellow-400 text-black'
-                          : 'text-zinc-400 hover:text-white'
-                      }`}
-                    >
-                      {opt === 'error' && 'Errores'}
-                      {opt === 'warning' && 'Warnings+'}
-                      {opt === 'all' && 'Todo'}
-                    </button>
-                  ))}
-                </div>
-              </div>
-
-          {/* Stats and Analysis */}
-          {counts && (
-            <div className="border-b border-white/5 p-4 space-y-4">
-              <LogStatistics counts={counts} deployments={deployments} />
-              
-              {/* Search Bar */}
-              <div className="flex items-center gap-1.5 rounded-full border border-white/10 bg-black/40 px-3 py-2">
-                <Search className="h-3.5 w-3.5 text-zinc-500" />
-                <input
-                  type="search"
-                  placeholder="Buscar mensaje, ruta, requestId, status…"
-                  value={search}
-                  onChange={(e) => setSearch(e.target.value)}
-                  className="flex-1 bg-transparent text-[11px] text-white outline-none placeholder:text-zinc-600"
-                />
-              </div>
             </div>
-          )}
-
-              {/* Logs list */}
-              <div className="max-h-[70vh] overflow-y-auto p-3">
-                {loadingLogs && logs.length === 0 && (
-                  <p className="px-2 py-6 text-center text-[11px] text-zinc-500">Cargando eventos…</p>
-                )}
-                {!loadingLogs && visibleLogs.length === 0 && !error && (
-                  <p className="px-2 py-10 text-center text-[12px] text-zinc-500">
-                    <CheckCircle2 className="mx-auto mb-2 h-5 w-5 text-green-400" />
-                    {search.trim()
-                      ? `Sin coincidencias para "${search}".`
-                      : 'Sin eventos para el filtro seleccionado.'}
-                  </p>
-                )}
-                <ul className="space-y-1.5">
-                  {visibleLogs.map((log) => {
-                    const isOpen = expanded.has(log.id);
-                    const hasMeta =
-                      log.requestId || log.host || log.region || log.statusCode || log.durationMs ||
-                      log.function || log.runtime || log.userAgent || log.referer || log.method;
-                    return (
-                      <li
-                        key={log.id}
-                        className={`rounded-lg border ${LEVEL_COLORS[log.level]}`}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-style-component-with-dynamic-styles */}
-                        <button
-                          type="button"
-                          onClick={() => toggleExpanded(log.id)}
-                          className="flex w-full items-start gap-2 p-3 text-left"
-                          aria-expanded={isOpen ? 'true' : 'false'}
-                        >
-                          <span className="mt-0.5 text-zinc-500">
-                            {isOpen ? (
-                              <ChevronDown className="h-3.5 w-3.5" />
-                            ) : (
-                              <ChevronRight className="h-3.5 w-3.5" />
-                            )}
-                          </span>
-                          <div className="min-w-0 flex-1">
-                            <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-zinc-400">
-                              <span>{formatTimestamp(log.ts)}</span>
-                              <span className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold tracking-widest">
-                                {SOURCE_LABELS[log.source]}
-                              </span>
-                              <span className="rounded border border-white/10 bg-black/30 px-1.5 py-0.5 text-[9px] font-bold uppercase tracking-widest">
-                                {log.level}
-                              </span>
-                              {log.method && (
-                                <span className="rounded border border-blue-500/30 bg-blue-500/10 px-1.5 py-0.5 text-[9px] font-bold tracking-widest text-blue-300">
-                                  {log.method}
-                                </span>
-                              )}
-                              {typeof log.statusCode === 'number' && (
-                                <span
-                                  className={`rounded border px-1.5 py-0.5 text-[9px] font-bold tracking-widest ${
-                                    log.statusCode >= 500
-                                      ? 'border-red-500/40 bg-red-500/10 text-red-300'
-                                      : log.statusCode >= 400
-                                      ? 'border-yellow-400/40 bg-yellow-400/10 text-yellow-200'
-                                      : 'border-emerald-500/30 bg-emerald-500/10 text-emerald-300'
-                                  }`}
-                                >
-                                  {log.statusCode}
-                                </span>
-                              )}
-                              {typeof log.durationMs === 'number' && (
-                                <span className="text-zinc-500">{log.durationMs}ms</span>
-                              )}
-                              {log.region && (
-                                <span className="text-zinc-500">{log.region}</span>
-                              )}
-                              {log.path && (
-                                <span className="truncate text-zinc-300">{log.path}</span>
-                              )}
-                            </div>
-                            <pre className="mt-2 whitespace-pre-wrap break-words text-[11px] leading-relaxed text-zinc-100">
-                              {log.message}
-                            </pre>
-                          </div>
-                        </button>
-                        {isOpen && (
-                          <div className="border-t border-white/5 bg-black/40 p-3 text-[11px]">
-                            {hasMeta && (() => {
-                              // Use null-safe checks because durationMs/statusCode
-                              // may legitimately be 0.
-                              const showStatus = log.statusCode != null;
-                              const showDuration = log.durationMs != null;
-                              return (
-                              <dl className="grid grid-cols-1 gap-x-4 gap-y-1 sm:grid-cols-2 lg:grid-cols-3">
-                                {log.requestId && (
-                                  <Meta k="requestId" v={log.requestId} mono />
-                                )}
-                                {log.host && <Meta k="host" v={log.host} />}
-                                {log.region && <Meta k="region" v={log.region} />}
-                                {showStatus && (
-                                  <Meta k="status" v={String(log.statusCode)} />
-                                )}
-                                {showDuration && (
-                                  <Meta k="duration" v={`${log.durationMs}ms`} />
-                                )}
-                                {log.function && <Meta k="function" v={log.function} />}
-                                {log.runtime && <Meta k="runtime" v={log.runtime} />}
-                                {log.method && <Meta k="method" v={log.method} />}
-                                {log.userAgent && (
-                                  <Meta k="userAgent" v={log.userAgent} truncate />
-                                )}
-                                {log.referer && <Meta k="referer" v={log.referer} truncate />}
-                              </dl>
-                              );
-                            })()}
-                            {log.rawJson && (
-                              <details className="mt-3">
-                                <summary className="cursor-pointer select-none text-[10px] font-bold uppercase tracking-widest text-zinc-400 hover:text-yellow-300">
-                                  Ver JSON crudo
-                                </summary>
-                                <pre className="mt-2 max-h-72 overflow-auto rounded border border-white/5 bg-black/60 p-2 font-mono text-[10px] leading-relaxed text-zinc-300">
-                                  {log.rawJson}
-                                </pre>
-                              </details>
-                            )}
-                          </div>
-                        )}
-                      </li>
-                    );
-                  })}
-                </ul>
-              </div>
-            </section>
-          </div>
-        )}
-      </div>
-    </div>
+          </AdminCard>
+        </div>
+      ) : null}
+    </AdminPage>
   );
 }

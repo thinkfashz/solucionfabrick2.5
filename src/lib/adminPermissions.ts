@@ -71,7 +71,6 @@ const MATRIX: Record<AdminRole, Partial<Record<AdminResource, AdminAction[]>>> =
   admin: {
     admin: ['read'],
     products: ['read', 'create', 'update', 'delete', 'export'],
-    team: ['read'],
     integrations: ['read', 'test'],
     passkeys: ['read', 'create', 'update', 'delete'],
     sessions: ['read'],

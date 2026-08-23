@@ -1,8 +1,21 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { Activity, AlertTriangle, Clock, Database, Fingerprint, Laptop, MapPin, RefreshCw, Search, ShieldCheck, Smartphone, UserRound } from 'lucide-react';
-import { AdminPage, AdminPageHeader } from '@/components/admin/ui';
+import {
+  Activity,
+  AlertTriangle,
+  Clock,
+  Database,
+  Fingerprint,
+  Laptop,
+  MapPin,
+  RefreshCw,
+  Search,
+  ShieldCheck,
+  Smartphone,
+  UserRound,
+} from 'lucide-react';
+import { AdminCard, AdminPage, AdminPageHeader, AdminStat } from '@/components/admin/ui';
 
 type SessionRow = {
   email: string;
@@ -60,176 +73,222 @@ export default function SesionesPage() {
     setError('');
     try {
       const qs = selectedEmail ? `?email=${encodeURIComponent(selectedEmail)}` : '';
-      const res = await fetch(`/api/admin/sessions${qs}`, { cache: 'no-store' });
-      const json = await res.json().catch(() => ({}));
-      if (!res.ok) {
-        setError(json.error ?? `HTTP ${res.status}`);
-        return;
-      }
-      setData(json);
-    } catch {
-      setError('Error de red cargando sesiones.');
+      const response = await fetch(`/api/admin/sessions${qs}`, { cache: 'no-store' });
+      const json = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(json.error ?? `HTTP ${response.status}`);
+      setData(json as SessionsPayload);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error de red cargando sesiones.');
     } finally {
       setLoading(false);
     }
   }
 
-  useEffect(() => { void load(''); }, []);
+  useEffect(() => {
+    void load('');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   const filteredSessions = useMemo(() => {
-    const q = search.trim().toLowerCase();
+    const query = search.trim().toLowerCase();
     const rows = data?.sessions ?? [];
-    if (!q) return rows;
-    return rows.filter((row) =>
-      row.email.toLowerCase().includes(q) ||
-      row.ip.toLowerCase().includes(q) ||
-      row.outcome.toLowerCase().includes(q) ||
-      row.device.label.toLowerCase().includes(q) ||
-      row.user_agent.toLowerCase().includes(q),
-    );
+    if (!query) return rows;
+    return rows.filter((row) => [
+      row.email,
+      row.ip,
+      row.outcome,
+      row.device.label,
+      row.device.os,
+      row.device.browser,
+      row.user_agent,
+    ].join(' ').toLowerCase().includes(query));
   }, [data, search]);
 
   const superadmin = data?.superadminSummary;
+  const summary = data?.summary ?? { total: 0, success: 0, failed: 0, uniqueIps: 0, uniqueDevices: 0 };
 
   return (
     <AdminPage>
       <AdminPageHeader
-        eyebrow="Seguridad"
+        eyebrow="Acceso · Auditoría"
         icon={Fingerprint}
-        title={<>Sesiones y <span className="text-yellow-300">dispositivos</span></>}
-        description="Audita inicios de sesión, IPs, dispositivos móviles, navegadores y accesos recientes del panel admin."
-        meta={
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-yellow-300/30 bg-yellow-300/10 px-2.5 py-1 text-[10px] font-bold uppercase tracking-[0.22em] text-yellow-200">
-            <ShieldCheck className="h-3 w-3" /> Auditoría admin
-          </span>
-        }
+        title="Sesiones y dispositivos"
+        description="Audita inicios de sesión, IPs, dispositivos, navegadores y accesos recientes del administrador desde una sola vista."
         actions={
-          <button onClick={() => load()} disabled={loading} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-3 py-2 text-xs font-semibold text-zinc-200 transition hover:border-white/20 hover:bg-white/10 disabled:opacity-60">
-            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} /> Actualizar
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={loading}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white transition hover:bg-[#2a2823] disabled:opacity-50"
+          >
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Actualizar
           </button>
         }
       />
 
-      <div className="space-y-5">
-        {error && (
-          <section className="rounded-3xl border border-red-400/30 bg-red-400/10 p-5 text-red-200">
-            <div className="flex items-start gap-3">
-              <AlertTriangle className="mt-1 h-5 w-5" />
-              <div>
-                <p className="font-black">No se pudo cargar la auditoría</p>
-                <p className="mt-1 text-sm opacity-85">{error}</p>
-              </div>
-            </div>
-          </section>
-        )}
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+        <AdminStat label="Registros" value={loading ? '…' : summary.total} icon={Activity} />
+        <AdminStat label="Correctos" value={loading ? '…' : summary.success} icon={ShieldCheck} accent="emerald" />
+        <AdminStat label="Fallidos" value={loading ? '…' : summary.failed} icon={AlertTriangle} accent="rose" />
+        <AdminStat label="IPs únicas" value={loading ? '…' : summary.uniqueIps} icon={MapPin} accent="cyan" />
+        <AdminStat label="Dispositivos" value={loading ? '…' : summary.uniqueDevices} icon={Smartphone} />
+      </section>
 
-        {superadmin && (
-          <section className="rounded-[2rem] border border-yellow-300/25 bg-yellow-300/[0.05] p-5 shadow-[0_18px_60px_rgba(0,0,0,0.25)]">
-            <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-              <div>
-                <p className="text-xs font-black uppercase tracking-[0.24em] text-yellow-300">Resumen superadmin</p>
-                <h2 className="mt-2 text-2xl font-black text-white">Tu actividad de acceso</h2>
-                <p className="mt-1 text-sm text-zinc-500">{superadmin.email || 'superadmin'} · último acceso: <span className="text-zinc-300">{fmt(superadmin.lastLogin)}</span></p>
-              </div>
-              <div className="grid grid-cols-2 gap-3 sm:grid-cols-4 lg:min-w-[520px]">
-                <div className="rounded-2xl border border-white/10 bg-black/30 p-3"><p className="text-[10px] uppercase tracking-[0.2em] text-zinc-600">Ingresos</p><p className="mt-1 text-2xl font-black text-white">{superadmin.success}</p></div>
-                <div className="rounded-2xl border border-white/10 bg-black/30 p-3"><p className="text-[10px] uppercase tracking-[0.2em] text-zinc-600">Fallidos</p><p className="mt-1 text-2xl font-black text-red-300">{superadmin.failed}</p></div>
-                <div className="rounded-2xl border border-white/10 bg-black/30 p-3"><p className="text-[10px] uppercase tracking-[0.2em] text-zinc-600">IPs</p><p className="mt-1 text-2xl font-black text-sky-300">{superadmin.uniqueIps}</p></div>
-                <div className="rounded-2xl border border-white/10 bg-black/30 p-3"><p className="text-[10px] uppercase tracking-[0.2em] text-zinc-600">Dispositivos</p><p className="mt-1 text-2xl font-black text-yellow-300">{superadmin.uniqueDevices}</p></div>
-              </div>
-            </div>
-            <div className="mt-4 grid gap-3 lg:grid-cols-2">
-              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-600">Última IP</p>
-                <p className="mt-2 font-mono text-sm text-zinc-200">{superadmin.lastIp ?? 'Sin registro'}</p>
-                <div className="mt-3 flex flex-wrap gap-2">{(superadmin.ips ?? []).slice(0, 6).map((ip) => <span key={ip} className="rounded-full border border-sky-300/20 bg-sky-300/10 px-3 py-1 text-xs text-sky-200">{ip}</span>)}</div>
-              </div>
-              <div className="rounded-2xl border border-white/10 bg-black/25 p-4">
-                <p className="text-xs font-black uppercase tracking-[0.2em] text-zinc-600">Último dispositivo</p>
-                <p className="mt-2 text-sm text-zinc-200">{superadmin.lastDevice ?? 'Sin registro'}</p>
-                <div className="mt-3 flex flex-wrap gap-2">{(superadmin.devices ?? []).slice(0, 6).map((device) => <span key={device} className="rounded-full border border-yellow-300/20 bg-yellow-300/10 px-3 py-1 text-xs text-yellow-200">{device}</span>)}</div>
-              </div>
-            </div>
-          </section>
-        )}
+      {error ? (
+        <div className="rounded-xl border border-rose-600/15 bg-rose-500/8 p-4 text-sm text-rose-900">
+          <div className="flex items-start gap-3"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" /><div><strong className="font-black">No se pudo cargar la auditoría.</strong><p className="mt-1">{error}</p></div></div>
+        </div>
+      ) : null}
 
-        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
-          {[
-            { label: 'Inicios registrados', value: data?.summary.total ?? 0, icon: Activity, tone: 'text-white' },
-            { label: 'Correctos', value: data?.summary.success ?? 0, icon: ShieldCheck, tone: 'text-emerald-300' },
-            { label: 'Fallidos/Bloqueos', value: data?.summary.failed ?? 0, icon: AlertTriangle, tone: 'text-red-300' },
-            { label: 'IPs únicas', value: data?.summary.uniqueIps ?? 0, icon: MapPin, tone: 'text-sky-300' },
-            { label: 'Dispositivos', value: data?.summary.uniqueDevices ?? 0, icon: Smartphone, tone: 'text-yellow-300' },
-          ].map(({ label, value, icon: Icon, tone }) => (
-            <article key={label} className="rounded-3xl border border-white/10 bg-zinc-950/70 p-4">
-              <div className="flex items-center justify-between gap-3">
-                <p className="text-[10px] font-black uppercase tracking-[0.22em] text-zinc-500">{label}</p>
-                <Icon className={`h-4 w-4 ${tone}`} />
-              </div>
-              <p className={`mt-3 text-3xl font-black ${tone}`}>{loading ? '…' : value}</p>
-            </article>
-          ))}
-        </section>
-
-        <section className="rounded-3xl border border-yellow-300/20 bg-yellow-300/[0.04] p-5">
-          <div className="grid gap-4 lg:grid-cols-[1fr_1fr_auto] lg:items-end">
+      {superadmin ? (
+        <AdminCard className="p-0 sm:p-0">
+          <div className="flex flex-col gap-4 border-b border-black/8 p-4 sm:flex-row sm:items-start sm:justify-between sm:p-5">
             <div>
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-300">Filtrar por usuario</p>
-              <select value={email} onChange={(event) => { const value = event.target.value; setEmail(value); void load(value); }} className="mt-2 w-full rounded-2xl border border-white/10 bg-black/40 px-4 py-3 text-sm text-white outline-none focus:border-yellow-300/40">
-                <option value="">Todos los usuarios</option>
-                {(data?.emails ?? []).map((item) => <option key={item} value={item}>{item}</option>)}
-              </select>
+              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Actividad Root</p>
+              <h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">Resumen superadmin</h2>
+              <p className="mt-1 text-xs leading-5 text-[#817a6f]">{superadmin.email || 'superadmin'} · último acceso {fmt(superadmin.lastLogin)}</p>
             </div>
-            <div>
-              <p className="text-xs font-black uppercase tracking-[0.22em] text-yellow-300">Buscar en sesiones</p>
-              <div className="relative mt-2">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-500" />
-                <input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Email, IP, dispositivo, navegador…" className="w-full rounded-2xl border border-white/10 bg-black/40 py-3 pl-10 pr-4 text-sm text-white outline-none placeholder:text-zinc-600 focus:border-yellow-300/40" />
+            <span className="rounded-full bg-emerald-500/10 px-2.5 py-1 text-[10px] font-black text-emerald-800">Auditoría activa</span>
+          </div>
+          <div className="grid gap-0 sm:grid-cols-2 lg:grid-cols-4">
+            <MiniMetric label="Ingresos" value={superadmin.success} />
+            <MiniMetric label="Fallidos" value={superadmin.failed} tone="rose" />
+            <MiniMetric label="IPs" value={superadmin.uniqueIps} />
+            <MiniMetric label="Dispositivos" value={superadmin.uniqueDevices} />
+          </div>
+          <div className="grid border-t border-black/8 lg:grid-cols-2">
+            <div className="p-4 sm:p-5 lg:border-r lg:border-black/8">
+              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#8f887c]">Última IP</p>
+              <p className="mt-2 font-mono text-sm font-bold text-[#27241f]">{superadmin.lastIp ?? 'Sin registro'}</p>
+              <div className="mt-3 flex flex-wrap gap-2">{(superadmin.ips ?? []).slice(0, 6).map((ip) => <span key={ip} className="rounded-full bg-sky-500/10 px-2.5 py-1 font-mono text-[10px] font-bold text-sky-800">{ip}</span>)}</div>
+            </div>
+            <div className="p-4 sm:p-5">
+              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#8f887c]">Último dispositivo</p>
+              <p className="mt-2 text-sm font-bold text-[#27241f]">{superadmin.lastDevice ?? 'Sin registro'}</p>
+              <div className="mt-3 flex flex-wrap gap-2">{(superadmin.devices ?? []).slice(0, 6).map((device) => <span key={device} className="rounded-full bg-[#ffb000]/10 px-2.5 py-1 text-[10px] font-bold text-[#77500a]">{device}</span>)}</div>
+            </div>
+          </div>
+        </AdminCard>
+      ) : null}
+
+      <AdminCard>
+        <div className="grid gap-4 lg:grid-cols-[1fr_1fr_220px] lg:items-end">
+          <label className="block">
+            <span className="mb-2 block text-[10px] font-black uppercase tracking-[.16em] text-[#8f887c]">Filtrar por usuario</span>
+            <select
+              value={email}
+              onChange={(event) => { const value = event.target.value; setEmail(value); void load(value); }}
+              className="w-full rounded-xl border border-black/10 bg-white/75 px-3.5 py-3 text-sm font-semibold text-[#171612] outline-none focus:border-[#c77a00]/40"
+            >
+              <option value="">Todos los usuarios</option>
+              {(data?.emails ?? []).map((item) => <option key={item} value={item}>{item}</option>)}
+            </select>
+          </label>
+          <label className="block">
+            <span className="mb-2 block text-[10px] font-black uppercase tracking-[.16em] text-[#8f887c]">Buscar en sesiones</span>
+            <div className="relative">
+              <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9a9286]" />
+              <input
+                value={search}
+                onChange={(event) => setSearch(event.target.value)}
+                placeholder="Email, IP, dispositivo, navegador…"
+                className="w-full rounded-xl border border-black/10 bg-white/75 py-3 pl-10 pr-3 text-sm font-semibold text-[#171612] outline-none focus:border-[#c77a00]/40"
+              />
+            </div>
+          </label>
+          <div className="rounded-xl border border-black/8 bg-white/45 px-4 py-3">
+            <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#8f887c]">IP actual</p>
+            <p className="mt-1 truncate font-mono text-xs font-bold text-[#27241f]">{data?.currentIp ?? '—'}</p>
+          </div>
+        </div>
+      </AdminCard>
+
+      <div className="grid gap-4 xl:grid-cols-2">
+        <AdminCard className="p-0 sm:p-0">
+          <SectionTitle icon={MapPin} title="IPs detectadas" subtitle="Direcciones observadas en los registros de acceso." />
+          <div className="divide-y divide-black/8 px-4 sm:px-5">
+            {(data?.ips ?? []).length === 0 ? <EmptyRow text="Sin IPs registradas." /> : data!.ips.map((ip) => (
+              <div key={ip.ip} className="flex items-center justify-between gap-4 py-3">
+                <div className="min-w-0"><p className="truncate font-mono text-xs font-bold text-[#27241f]">{ip.ip}</p><p className="mt-1 text-[11px] text-[#817a6f]">Último acceso {fmt(ip.lastSeen)}</p></div>
+                <span className="shrink-0 rounded-full bg-sky-500/10 px-2.5 py-1 text-[10px] font-black text-sky-800">{ip.total} accesos</span>
               </div>
-            </div>
-            <div className="rounded-2xl border border-white/10 bg-black/35 px-4 py-3 text-sm text-zinc-400"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-600">Tu IP actual</p><p className="mt-1 font-mono text-zinc-200">{data?.currentIp ?? '—'}</p></div>
+            ))}
           </div>
-        </section>
+        </AdminCard>
 
-        <section className="grid gap-5 xl:grid-cols-2">
-          <div className="rounded-3xl border border-white/10 bg-zinc-950/70 p-5">
-            <div className="mb-4 flex items-center gap-2"><MapPin className="h-5 w-5 text-sky-300" /><h2 className="text-xl font-black text-white">IPs detectadas</h2></div>
-            <div className="grid gap-3">
-              {(data?.ips ?? []).length === 0 ? <p className="text-sm text-zinc-500">Sin IPs registradas.</p> : data!.ips.map((ip) => (
-                <article key={ip.ip} className="rounded-2xl border border-white/10 bg-black/30 p-4"><div className="flex items-center justify-between gap-3"><p className="font-mono text-sm font-bold text-white">{ip.ip}</p><span className="rounded-full border border-sky-300/25 bg-sky-300/10 px-3 py-1 text-xs text-sky-200">{ip.total} accesos</span></div><p className="mt-2 text-xs text-zinc-500">Último acceso: <span className="text-zinc-300">{fmt(ip.lastSeen)}</span></p></article>
-              ))}
-            </div>
+        <AdminCard className="p-0 sm:p-0">
+          <SectionTitle icon={Smartphone} title="Dispositivos usados" subtitle="Sistemas y navegadores detectados en la auditoría." />
+          <div className="divide-y divide-black/8 px-4 sm:px-5">
+            {(data?.devices ?? []).length === 0 ? <EmptyRow text="Sin dispositivos registrados." /> : data!.devices.map((device) => (
+              <div key={device.label} className="flex items-center gap-3 py-3">
+                <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#ffb000]/10 text-[#a56600]"><DeviceIcon type={device.type} /></span>
+                <div className="min-w-0 flex-1"><p className="truncate text-xs font-black text-[#27241f]">{device.label}</p><p className="mt-1 text-[11px] text-[#817a6f]">{device.os} · {device.browser} · {fmt(device.lastSeen)}</p></div>
+                <span className="shrink-0 rounded-full bg-[#ffb000]/10 px-2.5 py-1 text-[10px] font-black text-[#77500a]">{device.total}</span>
+              </div>
+            ))}
           </div>
-
-          <div className="rounded-3xl border border-white/10 bg-zinc-950/70 p-5">
-            <div className="mb-4 flex items-center gap-2"><Smartphone className="h-5 w-5 text-yellow-300" /><h2 className="text-xl font-black text-white">Dispositivos usados</h2></div>
-            <div className="grid gap-3">
-              {(data?.devices ?? []).length === 0 ? <p className="text-sm text-zinc-500">Sin dispositivos registrados.</p> : data!.devices.map((device) => (
-                <article key={device.label} className="rounded-2xl border border-white/10 bg-black/30 p-4"><div className="flex items-center justify-between gap-3"><div className="flex min-w-0 items-center gap-3"><span className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl bg-yellow-300/10 text-yellow-300"><DeviceIcon type={device.type} /></span><div className="min-w-0"><p className="truncate font-bold text-white">{device.label}</p><p className="text-xs text-zinc-500">{device.os} · {device.browser}</p></div></div><span className="rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1 text-xs text-yellow-200">{device.total}</span></div><p className="mt-2 text-xs text-zinc-500">Último uso: <span className="text-zinc-300">{fmt(device.lastSeen)}</span></p></article>
-              ))}
-            </div>
-          </div>
-        </section>
-
-        <section className="rounded-3xl border border-white/10 bg-zinc-950/70 p-5">
-          <div className="mb-4 flex items-center gap-2"><Database className="h-5 w-5 text-emerald-300" /><h2 className="text-xl font-black text-white">Listado detallado de inicios de sesión</h2></div>
-          {loading ? <div className="flex items-center justify-center py-12 text-sm text-zinc-500"><RefreshCw className="mr-2 h-4 w-4 animate-spin" /> Cargando auditoría…</div> : filteredSessions.length === 0 ? <div className="py-12 text-center text-sm text-zinc-500">No hay registros para mostrar.</div> : (
-            <div className="grid gap-3">
-              {filteredSessions.map((row, index) => (
-                <details key={`${row.ts}-${row.email}-${row.ip}-${index}`} className="group rounded-2xl border border-white/10 bg-black/30 p-4 open:border-yellow-300/25">
-                  <summary className="flex cursor-pointer list-none flex-col gap-3 md:flex-row md:items-center md:justify-between">
-                    <div className="flex min-w-0 items-center gap-3"><span className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-2xl ${isSuccess(row.outcome) ? 'bg-emerald-400/10 text-emerald-300' : 'bg-red-400/10 text-red-300'}`}>{isSuccess(row.outcome) ? <ShieldCheck className="h-4 w-4" /> : <AlertTriangle className="h-4 w-4" />}</span><div className="min-w-0"><p className="truncate font-bold text-white">{row.email}</p><p className="text-xs text-zinc-500">{fmt(row.ts)} · {row.ip}</p></div></div>
-                    <div className="flex flex-wrap gap-2"><span className={`rounded-full border px-3 py-1 text-xs ${isSuccess(row.outcome) ? 'border-emerald-400/25 bg-emerald-400/10 text-emerald-200' : 'border-red-400/25 bg-red-400/10 text-red-200'}`}>{row.outcome}</span><span className="rounded-full border border-white/10 bg-white/[0.03] px-3 py-1 text-xs text-zinc-300"><DeviceIcon type={row.device.type} /> <span className="ml-1">{row.device.label}</span></span></div>
-                  </summary>
-                  <div className="mt-4 grid gap-3 border-t border-white/10 pt-4 text-sm md:grid-cols-2"><div className="rounded-2xl border border-white/10 bg-black/30 p-3"><p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-600">Dispositivo</p><p className="mt-1 text-zinc-300">{row.device.type} · {row.device.os} · {row.device.browser}</p></div><div className="rounded-2xl border border-white/10 bg-black/30 p-3"><p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-600">IP</p><p className="mt-1 font-mono text-zinc-300">{row.ip}</p></div><div className="rounded-2xl border border-white/10 bg-black/30 p-3 md:col-span-2"><p className="text-xs font-black uppercase tracking-[0.18em] text-zinc-600">User Agent</p><p className="mt-1 break-all font-mono text-xs text-zinc-400">{row.user_agent || 'Sin user agent registrado'}</p></div></div>
-                </details>
-              ))}
-            </div>
-          )}
-        </section>
-
-        <section className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 text-xs text-zinc-500"><Clock className="mr-2 inline h-4 w-4 text-yellow-300" /> Esta pantalla lee la tabla <code className="rounded bg-black/40 px-1 py-0.5">admin_login_audit</code>. Si un login antiguo no registró IP o dispositivo, aparecerá como “sin registro”.</section>
+        </AdminCard>
       </div>
+
+      <AdminCard className="p-0 sm:p-0">
+        <SectionTitle icon={Database} title="Inicios de sesión" subtitle={`${filteredSessions.length} registro(s) visibles con los filtros actuales.`} />
+        {loading ? (
+          <div className="flex items-center justify-center gap-2 py-16 text-sm text-[#817a6f]"><RefreshCw className="h-4 w-4 animate-spin" /> Cargando auditoría…</div>
+        ) : filteredSessions.length === 0 ? (
+          <EmptyRow text="No hay registros para mostrar." />
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="min-w-full text-left text-xs">
+              <thead className="border-b border-black/8 bg-white/35 text-[10px] font-black uppercase tracking-[.12em] text-[#8f887c]">
+                <tr>
+                  <th className="px-4 py-3 sm:px-5">Estado</th>
+                  <th className="px-4 py-3">Usuario</th>
+                  <th className="px-4 py-3">IP</th>
+                  <th className="px-4 py-3">Dispositivo</th>
+                  <th className="px-4 py-3">Fecha</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-black/8">
+                {filteredSessions.map((row, index) => {
+                  const success = isSuccess(row.outcome);
+                  return (
+                    <tr key={`${row.email}-${row.ip}-${row.ts}-${index}`} className="align-top">
+                      <td className="px-4 py-3 sm:px-5"><span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black ${success ? 'bg-emerald-500/10 text-emerald-800' : 'bg-rose-500/10 text-rose-800'}`}>{success ? <ShieldCheck className="h-3.5 w-3.5" /> : <AlertTriangle className="h-3.5 w-3.5" />}{row.outcome}</span></td>
+                      <td className="px-4 py-3"><div className="flex items-center gap-2"><UserRound className="h-4 w-4 text-[#a56600]" /><span className="max-w-[220px] truncate font-bold text-[#27241f]">{row.email}</span></div></td>
+                      <td className="px-4 py-3 font-mono text-[11px] text-[#625b50]">{row.ip}</td>
+                      <td className="px-4 py-3"><p className="max-w-[260px] truncate font-bold text-[#514b42]">{row.device.label}</p><p className="mt-1 text-[10px] text-[#8f887c]">{row.device.os} · {row.device.browser}</p></td>
+                      <td className="px-4 py-3"><div className="flex items-center gap-2 text-[#625b50]"><Clock className="h-3.5 w-3.5 text-[#9a9286]" />{fmt(row.ts)}</div></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </AdminCard>
     </AdminPage>
   );
+}
+
+function MiniMetric({ label, value, tone = 'default' }: { label: string; value: number; tone?: 'default' | 'rose' }) {
+  return (
+    <div className="border-b border-black/8 p-4 last:border-b-0 sm:border-b-0 sm:border-r sm:last:border-r-0 sm:p-5">
+      <p className="text-[10px] font-black uppercase tracking-[.14em] text-[#8f887c]">{label}</p>
+      <p className={`mt-2 text-2xl font-black ${tone === 'rose' ? 'text-rose-700' : 'text-[#171612]'}`}>{value}</p>
+    </div>
+  );
+}
+
+function SectionTitle({ icon: Icon, title, subtitle }: { icon: typeof MapPin; title: string; subtitle: string }) {
+  return (
+    <div className="flex items-start gap-3 border-b border-black/8 p-4 sm:p-5">
+      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#ffb000]/10 text-[#a56600]"><Icon className="h-4 w-4" /></span>
+      <div><h2 className="text-sm font-black text-[#171612]">{title}</h2><p className="mt-1 text-[11px] leading-5 text-[#817a6f]">{subtitle}</p></div>
+    </div>
+  );
+}
+
+function EmptyRow({ text }: { text: string }) {
+  return <div className="px-5 py-12 text-center text-sm text-[#817a6f]">{text}</div>;
 }

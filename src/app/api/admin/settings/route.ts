@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { revalidatePath, revalidateTag } from 'next/cache';
-import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
+import { adminError, getAdminInsforge, getAdminTenantId } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { publishCmsEvent } from '@/lib/cmsBus';
 import { CMS_CACHE_TAGS } from '@/lib/cms';
 
@@ -43,8 +44,8 @@ function isSettingKey(v: unknown): v is SettingKey {
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+    const auth = await requireAdminPermission(request, { resource: 'settings', action: 'read' });
+    if (!auth.ok) return auth.response;
     const tenantId = await getAdminTenantId(request);
     const client = getAdminInsforge();
     const { data, error } = await client.database
@@ -69,8 +70,8 @@ export async function GET(request: NextRequest) {
 
 export async function PUT(request: NextRequest) {
   try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+    const auth = await requireAdminPermission(request, { resource: 'settings', action: 'update' });
+    if (!auth.ok) return auth.response;
     const tenantId = await getAdminTenantId(request);
     const body = (await request.json().catch(() => ({}))) as { settings?: Record<string, string> };
     const incoming = body.settings ?? {};

@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
+import type { NextRequest } from 'next/server';
 import { insforgeAdmin } from '@/lib/insforge';
 import { getResendCredentials } from '@/lib/resendCredentials';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -44,7 +46,10 @@ function envCheck(key: string, label: string, value: string | undefined, critica
   };
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const auth = await requireAdminPermission(request, { resource: 'admin', action: 'manage' });
+  if (!auth.ok) return auth.response;
+
   const checks: Check[] = [];
 
   checks.push(envCheck('env_insforge_api_key', 'INSFORGE_API_KEY', process.env.INSFORGE_API_KEY, true));

@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import {
   filterLogsByLevel,
   getVercelCredentials,
@@ -17,10 +17,9 @@ export const runtime = 'nodejs';
  *
  * Returns a normalised list of log entries (build + runtime) for the given
  * Vercel deployment. If no `deployment` is specified, the latest READY (or
- * most recent) deployment of the configured project is auto-selected so the
- * UI can do a single-click "ver errores recientes".
+ * most recent) deployment of the configured project is auto-selected.
  *
- * Auth: admin session cookie required. Token never leaves the server.
+ * Auth: Root/superadmin only. Token never leaves the server.
  */
 
 interface RawDeployment {
@@ -32,10 +31,8 @@ interface RawDeployment {
 }
 
 export async function GET(request: NextRequest) {
-  const cookie = request.cookies.get(ADMIN_COOKIE_NAME);
-  if (!cookie?.value) return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
-  const session = await decodeSession(cookie.value);
-  if (!session) return NextResponse.json({ error: 'Sesión inválida.' }, { status: 401 });
+  const auth = await requireAdminPermission(request, { resource: 'admin', action: 'manage' });
+  if (!auth.ok) return auth.response;
 
   const creds = await getVercelCredentials();
   if (!creds.apiToken || !creds.projectId) {
@@ -59,7 +56,6 @@ export async function GET(request: NextRequest) {
   const limitRaw = Number.parseInt(url.searchParams.get('limit') ?? '200', 10);
   const limit = Number.isFinite(limitRaw) ? Math.min(Math.max(limitRaw, 10), 1000) : 200;
 
-  // Auto-pick the most recent deployment when none is specified.
   if (!deploymentId) {
     const list = await vercelFetch<{ deployments?: RawDeployment[] }>(
       '/v6/deployments',
@@ -90,8 +86,6 @@ export async function GET(request: NextRequest) {
     }
   }
 
-  // Fetch build + runtime events. `builds=1` includes build-step logs, which
-  // is what surfaces compile/Type errors and module-not-found failures.
   const eventsRes = await vercelFetch<unknown>(
     `/v3/deployments/${encodeURIComponent(deploymentId)}/events`,
     {
@@ -108,8 +102,6 @@ export async function GET(request: NextRequest) {
     );
   }
 
-  // Vercel sometimes returns the events as a top-level array, sometimes as
-  // `{events: [...]}` depending on the deployment age. Handle both.
   const raw = eventsRes.data;
   const eventList: unknown[] = Array.isArray(raw)
     ? raw
@@ -123,7 +115,6 @@ export async function GET(request: NextRequest) {
     const entry = mapVercelEvent(ev as never, deploymentId);
     if (entry) mapped.push(entry);
   }
-  // Newest first.
   mapped.sort((a, b) => b.ts - a.ts);
 
   const filtered = filterLogsByLevel(mapped, level);

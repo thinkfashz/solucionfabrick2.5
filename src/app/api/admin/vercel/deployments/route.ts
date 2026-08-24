@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { getVercelCredentials, vercelFetch } from '@/lib/vercelClient';
 
 export const dynamic = 'force-dynamic';
@@ -10,11 +10,9 @@ export const runtime = 'nodejs';
  * GET /api/admin/vercel/deployments?limit=20
  *
  * Returns the most recent deployments for the configured Vercel project, so
- * the operator can pick which one to inspect on /admin/vercel-logs.
+ * the Root operator can pick which one to inspect on /admin/vercel-logs.
  *
- * Auth: requires an admin session cookie.
- * Credentials: read from env vars first, then from the `integrations` table
- * (provider = 'vercel'). Token is never echoed back to the browser.
+ * Auth: Root/superadmin only. Credentials never leave the server.
  */
 
 interface RawDeployment {
@@ -30,10 +28,8 @@ interface RawDeployment {
 }
 
 export async function GET(request: NextRequest) {
-  const cookie = request.cookies.get(ADMIN_COOKIE_NAME);
-  if (!cookie?.value) return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
-  const session = await decodeSession(cookie.value);
-  if (!session) return NextResponse.json({ error: 'Sesión inválida.' }, { status: 401 });
+  const auth = await requireAdminPermission(request, { resource: 'admin', action: 'manage' });
+  if (!auth.ok) return auth.response;
 
   const creds = await getVercelCredentials();
   if (!creds.apiToken || !creds.projectId) {

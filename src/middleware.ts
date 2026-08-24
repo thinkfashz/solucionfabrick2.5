@@ -15,18 +15,23 @@ const VIEWER_BLOCKED_ADMIN_PATHS = [
   '/admin/seguridad',
   '/admin/activar',
   '/admin/vercel-logs',
+  '/admin/superadmin',
 ]
 
 const SUPERADMIN_ONLY_ADMIN_PATHS = [
   '/admin/equipo',
   '/admin/sql',
   '/admin/setup',
+  '/admin/vercel-logs',
+  '/admin/superadmin',
 ]
 
 const SUPERADMIN_ONLY_ADMIN_APIS = [
   '/api/admin/sql',
   '/api/admin/setup',
   '/api/admin/setup-tables',
+  '/api/admin/vercel',
+  '/api/admin/superadmin',
 ]
 
 const VIEWER_WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])

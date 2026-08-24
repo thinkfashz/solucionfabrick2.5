@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 import { insforgeAdmin } from '@/lib/insforge';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { normalizeOrderRecord } from '@/lib/commerce';
 import { resolveDispatchCode } from '@/lib/orders/dispatchCode';
 
@@ -11,10 +11,8 @@ export const runtime = 'nodejs';
 const SHIPMENT_QUEUE = new Set(['pendiente', 'confirmado', 'en_preparacion', 'enviado']);
 
 export async function GET(request: NextRequest) {
-  const sessionCookie = request.cookies.get(ADMIN_COOKIE_NAME);
-  if (!sessionCookie?.value) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-  const session = await decodeSession(sessionCookie.value);
-  if (!session) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+  const auth = await requireAdminPermission(request, { resource: 'orders', action: 'read' });
+  if (!auth.ok) return auth.response;
 
   const url = new URL(request.url);
   const scope = url.searchParams.get('scope') || 'all';
@@ -47,5 +45,8 @@ export async function GET(request: NextRequest) {
 
   const orders = scope === 'shipping' ? rows.filter((row) => SHIPMENT_QUEUE.has(row.status)) : rows;
 
-  return NextResponse.json({ ok: true, orders, total: orders.length, scope }, { headers: { 'Cache-Control': 'no-store, max-age=0' } });
+  return NextResponse.json(
+    { ok: true, orders, total: orders.length, scope },
+    { headers: { 'Cache-Control': 'no-store, max-age=0' } },
+  );
 }

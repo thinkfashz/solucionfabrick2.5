@@ -2,22 +2,24 @@
 
 import { useCallback, useEffect, useState } from 'react';
 import Link from 'next/link';
-import { Package, ScanLine, ArrowRight, TrendingDown, AlertTriangle, RefreshCw, BarChart3 } from 'lucide-react';
-import { AdminBaseCard, AdminBaseGrid, AdminBaseMetric, AdminBasePage } from '@/components/admin/baseui-kit';
+import { AlertTriangle, ArrowRight, BarChart3, Package, RefreshCw, ScanLine, TrendingDown } from 'lucide-react';
+import { AdminCard, AdminPage, AdminPageHeader, AdminStat } from '@/components/admin/ui';
 
-interface StockSummary {
+type StockSummary = {
   total_products: number;
   low_stock: number;
   out_of_stock: number;
   total_units: number;
-}
+};
 
 const MODULES = [
-  { href: '/admin/inventario/scan', icon: ScanLine, label: 'Escáner de inventario', description: 'Lee códigos de barras EAN-13 o QR con la cámara para registrar entradas y salidas rápidamente.', tone: 'gold' as const, badge: 'Nuevo' },
-  { href: '/admin/productos', icon: Package, label: 'Catálogo de productos', description: 'Gestiona stock, precio, imágenes y variantes desde el catálogo principal.', tone: 'emerald' as const },
-  { href: '/admin/estado', icon: BarChart3, label: 'Diagnóstico de stock', description: 'Revisa contadores reales, tablas y salud técnica del inventario.', tone: 'blue' as const },
-  { href: '/admin/pedidos', icon: TrendingDown, label: 'Impacto por pedidos', description: 'Revisa el impacto operativo de pedidos pendientes y confirmados.', tone: 'purple' as const },
+  { href: '/admin/inventario/scan', icon: ScanLine, label: 'Escáner de inventario', description: 'Lee EAN-13 o QR y registra movimientos desde cámara o entrada manual.' },
+  { href: '/admin/inventario/movimientos', icon: BarChart3, label: 'Movimientos', description: 'Trazabilidad de entradas, salidas, ajustes, pedidos y devoluciones.' },
+  { href: '/admin/productos', icon: Package, label: 'Catálogo de productos', description: 'Gestiona stock, precios, imágenes y códigos persistentes.' },
+  { href: '/admin/pedidos', icon: TrendingDown, label: 'Impacto por pedidos', description: 'Revisa pedidos que afectan la operación y el stock disponible.' },
 ];
+
+const secondaryButton = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white/70 px-3.5 text-xs font-black text-[#5f594f] transition hover:bg-white disabled:opacity-50';
 
 export default function AdminInventarioPage() {
   const [summary, setSummary] = useState<StockSummary | null>(null);
@@ -48,63 +50,51 @@ export default function AdminInventarioPage() {
   useEffect(() => { void loadSummary(); }, [loadSummary]);
 
   return (
-    <AdminBasePage
-      eyebrow="Operación"
-      title="Inventario"
-      description="Control real de stock, escaneo de productos y movimientos de bodega conectado al estado actual de la plataforma."
-      actions={
-        <button onClick={() => void loadSummary()} disabled={loading} className="inline-flex items-center gap-2 rounded-2xl bg-yellow-300 px-4 py-2 text-xs font-black uppercase tracking-[0.18em] text-black disabled:opacity-60">
-          <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar
-        </button>
-      }
-    >
-      <AdminBaseGrid cols="4">
-        <AdminBaseMetric label="Productos" value={loading ? '…' : summary?.total_products ?? '—'} hint="desde /api/admin/estado" />
-        <AdminBaseMetric label="Stock bajo" value={loading ? '…' : summary?.low_stock ?? '—'} hint="requiere revisión" />
-        <AdminBaseMetric label="Sin stock" value={loading ? '…' : summary?.out_of_stock ?? '—'} hint="crítico" />
-        <AdminBaseMetric label="Unidades" value={loading ? '…' : summary?.total_units ?? '—'} hint="stock total" />
-      </AdminBaseGrid>
+    <AdminPage>
+      <AdminPageHeader
+        eyebrow="Catálogo · Inventario"
+        title="Inventario"
+        description="Control real de stock, escaneo y trazabilidad conectado al estado actual de la plataforma."
+        icon={Package}
+        actions={<button type="button" onClick={() => void loadSummary()} disabled={loading} className={secondaryButton}><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar</button>}
+      />
 
-      {error ? <div className="rounded-2xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-300">{error}</div> : null}
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStat label="Productos" value={loading ? '…' : summary?.total_products ?? '—'} icon={Package} hint="Catálogo activo" />
+        <AdminStat label="Stock bajo" value={loading ? '…' : summary?.low_stock ?? '—'} icon={AlertTriangle} accent="yellow" hint="Requiere revisión" />
+        <AdminStat label="Sin stock" value={loading ? '…' : summary?.out_of_stock ?? '—'} icon={TrendingDown} accent="rose" hint="Disponibilidad crítica" />
+        <AdminStat label="Unidades" value={loading ? '…' : summary?.total_units ?? '—'} icon={BarChart3} accent="cyan" hint="Stock total registrado" />
+      </section>
 
-      <Link href="/admin/inventario/scan" className="group flex items-center justify-between gap-4 rounded-[2rem] border border-yellow-300/25 bg-yellow-300/10 p-5 transition hover:bg-yellow-300/15">
-        <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-yellow-300/20 text-yellow-200">
-            <ScanLine className="h-5 w-5" />
-          </div>
-          <div>
-            <div className="font-black text-white">Abrir escáner</div>
-            <div className="text-xs text-zinc-400">Lee EAN-13 y QR con la cámara del dispositivo</div>
-          </div>
-        </div>
-        <ArrowRight className="h-4 w-4 text-yellow-300 transition-transform group-hover:translate-x-1" />
-      </Link>
+      {error ? <div className="rounded-xl border border-rose-600/15 bg-rose-500/8 px-4 py-3 text-sm text-rose-900">{error}</div> : null}
 
       {!loading && summary && (summary.low_stock > 0 || summary.out_of_stock > 0) ? (
-        <div className="flex items-start gap-3 rounded-2xl border border-orange-500/25 bg-orange-500/10 p-4">
-          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-orange-300" />
-          <div className="text-sm text-orange-100">
-            <strong>Atención:</strong>{' '}
-            {summary.out_of_stock > 0 ? `${summary.out_of_stock} producto(s) sin stock. ` : ''}
-            {summary.low_stock > 0 ? `${summary.low_stock} producto(s) con stock bajo.` : ''}{' '}
-            <Link href="/admin/productos" className="font-bold underline hover:text-white">Revisar catálogo →</Link>
-          </div>
+        <div className="flex items-start gap-3 rounded-xl border border-amber-600/15 bg-amber-500/8 px-4 py-3 text-sm text-amber-900">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <div><strong>Atención de stock.</strong> {summary.out_of_stock > 0 ? `${summary.out_of_stock} producto(s) sin stock. ` : ''}{summary.low_stock > 0 ? `${summary.low_stock} producto(s) con stock bajo. ` : ''}<Link href="/admin/productos" className="font-black underline">Revisar catálogo</Link>.</div>
         </div>
       ) : null}
 
-      <div className="rounded-[2rem] border border-white/10 bg-black/30 p-5">
-        <div className="mb-4 flex items-center justify-between gap-3">
-          <div>
-            <p className="text-[11px] font-black uppercase tracking-[0.24em] text-yellow-300">Módulos reales</p>
-            <h2 className="mt-1 text-xl font-black text-white">Acciones de inventario</h2>
-          </div>
+      <div>
+        <div className="mb-3 border-b border-black/10 pb-3">
+          <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Operación</p>
+          <h2 className="mt-1 text-xl font-black tracking-[-.025em] text-[#171612]">Acciones de inventario</h2>
         </div>
-        <AdminBaseGrid cols="2">
-          {MODULES.map((module) => (
-            <AdminBaseCard key={module.href} href={module.href} icon={module.icon} title={module.label} description={module.description} tone={module.tone} badge={module.badge} />
-          ))}
-        </AdminBaseGrid>
+        <div className="grid gap-3 sm:grid-cols-2">
+          {MODULES.map((module) => {
+            const Icon = module.icon;
+            return (
+              <Link key={module.href} href={module.href} className="group flex min-h-32 items-start gap-3 rounded-[18px] border border-black/10 bg-white/60 p-4 transition hover:-translate-y-0.5 hover:bg-white sm:p-5">
+                <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ffb000]/10 text-[#a56600]"><Icon className="h-4 w-4" /></span>
+                <span className="min-w-0 flex-1"><strong className="block text-sm text-[#171612]">{module.label}</strong><small className="mt-1 block text-xs leading-5 text-[#817a6f]">{module.description}</small></span>
+                <ArrowRight className="mt-1 h-4 w-4 shrink-0 text-[#aaa294] transition group-hover:translate-x-0.5 group-hover:text-[#8e5c00]" />
+              </Link>
+            );
+          })}
+        </div>
       </div>
-    </AdminBasePage>
+
+      <AdminCard className="text-xs leading-5 text-[#817a6f]">Las cifras se cargan desde el diagnóstico administrativo y los movimientos se registran mediante la API de inventario. No hay contadores demo en esta vista.</AdminCard>
+    </AdminPage>
   );
 }

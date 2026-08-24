@@ -1,13 +1,24 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  Globe, Users, CheckCircle2, XCircle, Clock, Plus, RefreshCw,
-  Copy, ChevronDown, ChevronUp, Rocket, Key, Database, Mail,
-  Wifi, CreditCard, AlertTriangle, Zap, Search, Phone, AtSign,
-  Building2, ArrowUpRight, ShieldCheck, Circle,
+  AlertTriangle,
+  ArrowUpRight,
+  Building2,
+  CheckCircle2,
+  Clock3,
+  Globe2,
+  Loader2,
+  Mail,
+  Plus,
+  RefreshCw,
+  Rocket,
+  Search,
+  ShieldCheck,
+  Users,
+  XCircle,
 } from 'lucide-react';
-import { AdminPage, AdminPageHeader } from '@/components/admin/ui';
+import { AdminCard, AdminPage, AdminPageHeader, AdminStat } from '@/components/admin/ui';
 
 interface Tenant {
   id: string;
@@ -23,351 +34,212 @@ interface Tenant {
   created_at: string;
 }
 
-const STATUS_COLORS: Record<string, string> = {
-  active: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-  trial: 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20',
-  suspended: 'text-red-400 bg-red-500/10 border-red-500/20',
-  cancelled: 'text-zinc-400 bg-zinc-500/10 border-zinc-500/20',
+type Tab = 'clients' | 'create' | 'guide';
+
+type HealthPayload = {
+  readyForPilot?: boolean;
+  readyForPublicLaunch?: boolean;
+  summary?: string;
 };
 
-const STATUS_LABELS: Record<string, string> = {
+const STATUS_LABEL: Record<Tenant['status'], string> = {
   active: 'Activo',
   trial: 'Prueba',
   suspended: 'Suspendido',
   cancelled: 'Cancelado',
 };
 
-const PLAN_LABELS: Record<string, string> = {
+const STATUS_CLASS: Record<Tenant['status'], string> = {
+  active: 'bg-emerald-500/10 text-emerald-800',
+  trial: 'bg-amber-500/10 text-amber-800',
+  suspended: 'bg-rose-500/10 text-rose-800',
+  cancelled: 'bg-black/5 text-[#716b60]',
+};
+
+const PLAN_LABEL: Record<string, string> = {
+  free: 'Gratis',
   starter: 'Starter',
   pro: 'Pro',
   enterprise: 'Enterprise',
-  free: 'Gratis',
 };
 
-const ENV_VARS = [
-  { key: 'PLATFORM_ADMIN_SECRET', desc: 'Contraseña secreta de la plataforma', example: 'una-clave-larga-y-segura-123', required: true },
-  { key: 'RESEND_API_KEY', desc: 'API Key de Resend para enviar emails', example: 're_xxxxxxxxxxxxxx', required: true },
-  { key: 'EMAIL_FROM', desc: 'El correo desde donde se envían los emails', example: 'hola@fabrick.cl', required: true },
-  { key: 'CRON_SECRET', desc: 'Clave para proteger los jobs automáticos', example: 'cron-secret-muy-largo-456', required: true },
-  { key: 'PLATFORM_MP_WEBHOOK_SECRET', desc: 'Secreto del webhook de MercadoPago', example: 'mp-webhook-secret', required: false },
-  { key: 'ADMIN_EMAIL', desc: 'Tu correo de acceso al admin', example: 'tu@email.com', required: true },
-  { key: 'ADMIN_PASSWORD_HASH', desc: 'Contraseña hasheada del admin (se genera automáticamente)', example: '', required: true },
-];
-
-const INSTALL_STEPS = [
-  {
-    num: '1',
-    title: 'Configura el DNS (el "domicilio" de tu app)',
-    icon: Globe,
-    color: 'text-blue-400',
-    bg: 'bg-blue-500/10 border-blue-500/20',
-    content: `Entra al panel de tu dominio (GoDaddy, Namecheap, Cloudflare, etc.) y agrega este registro:
-
-Tipo: CNAME
-Nombre: *
-Destino: cname.vercel-dns.com
-
-Esto hace que TODOS los subdominios (como micliente.fabrick.cl) apunten a tu app automáticamente. Si tienes Cloudflare, desactiva el proxy naranja (usa solo DNS).`,
-    code: `# Registro DNS a agregar:
-Tipo:    CNAME
-Nombre:  *
-Destino: cname.vercel-dns.com
-TTL:     Automático`,
-  },
-  {
-    num: '2',
-    title: 'Agrega los subdominios en Vercel',
-    icon: Rocket,
-    color: 'text-violet-400',
-    bg: 'bg-violet-500/10 border-violet-500/20',
-    content: `Entra a tu proyecto en vercel.com → Settings → Domains y agrega:
-
-fabrick.cl         (el dominio principal)
-*.fabrick.cl       (el wildcard para todos los clientes)
-
-Vercel verificará el DNS automáticamente (puede tardar hasta 24 horas, normalmente 5-10 minutos).`,
-    code: `# Dominios a agregar en Vercel:
-fabrick.cl
-*.fabrick.cl`,
-  },
-  {
-    num: '3',
-    title: 'Pon las variables de entorno en Vercel',
-    icon: Key,
-    color: 'text-yellow-400',
-    bg: 'bg-yellow-500/10 border-yellow-500/20',
-    content: `Entra a vercel.com → tu proyecto → Settings → Environment Variables y agrega estas claves. Son como contraseñas que la app necesita para funcionar. NUNCA las compartas con nadie.`,
-  },
-  {
-    num: '4',
-    title: 'Ejecuta la migración de base de datos',
-    icon: Database,
-    color: 'text-emerald-400',
-    bg: 'bg-emerald-500/10 border-emerald-500/20',
-    content: `Copia el contenido del archivo scripts/add-multitenancy.sql y ejecútalo en tu base de datos InsForge. Ve a admin → Terminal SQL y pega el SQL ahí, o ejecuta desde la consola de InsForge.
-
-Esto crea las columnas y tablas necesarias para que varios clientes (tenants) puedan usar tu app al mismo tiempo.`,
-    code: `-- Ejecuta en InsForge SQL o admin/sql:
--- El archivo está en: scripts/add-multitenancy.sql
--- Cópialo y pégalo completo en el editor SQL`,
-  },
-  {
-    num: '5',
-    title: 'Registra el webhook de MercadoPago (opcional)',
-    icon: CreditCard,
-    color: 'text-sky-400',
-    bg: 'bg-sky-500/10 border-sky-500/20',
-    content: `Si quieres que los pagos se procesen automáticamente, entra a mercadopago.com → Tus integraciones → Webhooks y agrega esta URL.
-
-Con esto, cuando alguien pague una suscripción, tu app se entera automáticamente y activa la cuenta.`,
-    code: `# URL del webhook:
-https://fabrick.cl/api/platform/mp-webhook
-
-# Eventos a escuchar:
-subscription_preapproval
-payment`,
-  },
-  {
-    num: '6',
-    title: '¡Listo! Prueba con tu primer cliente',
-    icon: ShieldCheck,
-    color: 'text-emerald-400',
-    bg: 'bg-emerald-500/10 border-emerald-500/20',
-    content: `Usa el formulario "Añadir cliente" de esta misma página para crear tu primer tenant. Pon el nombre del negocio, el correo, y listo.
-
-Tu cliente podrá entrar a: nombredelcliente.fabrick.cl/admin
-
-Cada cliente tiene su propio espacio con sus propios productos, blog, pedidos y configuración — completamente separado de los demás.`,
-  },
-];
-
-type Tab = 'clientes' | 'agregar' | 'guia';
-
-function CopyButton({ text }: { text: string }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button
-      onClick={() => { navigator.clipboard.writeText(text).then(() => { setCopied(true); setTimeout(() => setCopied(false), 1500); }).catch(() => {}); }}
-      className="text-[10px] font-medium text-zinc-400 hover:text-white flex items-center gap-1 transition-colors"
-    >
-      <Copy size={10} />
-      {copied ? '¡Copiado!' : 'Copiar'}
-    </button>
-  );
-}
-
-function StepCard({ step, index }: { step: typeof INSTALL_STEPS[0]; index: number }) {
-  const [open, setOpen] = useState(index === 0);
-  const Icon = step.icon;
-  return (
-    <div className={`rounded-xl border ${step.bg} overflow-hidden`}>
-      <button
-        onClick={() => setOpen((o) => !o)}
-        className="w-full flex items-center gap-3 p-4 text-left"
-      >
-        <div className="w-8 h-8 rounded-lg bg-black/30 flex items-center justify-center shrink-0">
-          <Icon size={16} className={step.color} />
-        </div>
-        <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <span className={`text-xs font-bold ${step.color} opacity-60`}>Paso {step.num}</span>
-          </div>
-          <div className="font-semibold text-sm text-white">{step.title}</div>
-        </div>
-        {open ? <ChevronUp size={14} className="text-zinc-500 shrink-0" /> : <ChevronDown size={14} className="text-zinc-500 shrink-0" />}
-      </button>
-      {open && (
-        <div className="px-4 pb-4">
-          <p className="text-sm text-zinc-300 leading-relaxed whitespace-pre-line mb-3">{step.content}</p>
-          {step.code && (
-            <div className="bg-black/40 rounded-lg p-3 font-mono text-xs text-emerald-300 whitespace-pre relative group">
-              <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <CopyButton text={step.code} />
-              </div>
-              {step.code}
-            </div>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function EnvVarRow({ v }: { v: typeof ENV_VARS[0] }) {
-  return (
-    <div className="flex flex-col sm:flex-row sm:items-center gap-2 py-3 border-b border-white/5">
-      <div className="sm:w-64 shrink-0">
-        <code className="text-xs font-mono text-yellow-300">{v.key}</code>
-        {v.required && <span className="ml-1 text-[10px] text-red-400">*obligatorio</span>}
-      </div>
-      <div className="flex-1 text-xs text-zinc-400">{v.desc}</div>
-      {v.example && (
-        <div className="sm:w-48 shrink-0 flex items-center gap-2">
-          <span className="text-[10px] font-mono text-zinc-500 truncate">{v.example}</span>
-          <CopyButton text={v.example} />
-        </div>
-      )}
-    </div>
-  );
-}
+const inputClass = 'w-full rounded-xl border border-black/10 bg-white/70 px-3.5 py-3 text-sm text-[#171612] outline-none transition placeholder:text-[#aaa397] focus:border-[#c77a00]/35 focus:bg-white focus:ring-2 focus:ring-[#ffb000]/10';
 
 export default function AdminSaasPage() {
-  const [tab, setTab] = useState<Tab>('clientes');
+  const [tab, setTab] = useState<Tab>('clients');
   const [tenants, setTenants] = useState<Tenant[]>([]);
+  const [health, setHealth] = useState<HealthPayload | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
+  const [busyTenant, setBusyTenant] = useState<string | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
-
-  // Add tenant form state
-  const [form, setForm] = useState({ name: '', owner_email: '', owner_name: '', owner_phone: '', plan_id: 'starter', custom_domain: '' });
-  const [saving, setSaving] = useState(false);
-  const [saveError, setSaveError] = useState('');
-  const [saveOk, setSaveOk] = useState(false);
-
-  const loadTenants = useCallback(() => {
-    setLoading(true);
-    fetch('/api/admin/saas/tenants')
-      .then((r) => r.json())
-      .then((d) => setTenants(Array.isArray(d) ? d : []))
-      .catch(() => setTenants([]))
-      .finally(() => setLoading(false));
-  }, []);
-
-  useEffect(() => { loadTenants(); }, [loadTenants]);
-
-  const filtered = tenants.filter((t) => {
-    if (statusFilter !== 'all' && t.status !== statusFilter) return false;
-    if (search) {
-      const q = search.toLowerCase();
-      return (
-        t.name.toLowerCase().includes(q) ||
-        t.slug.toLowerCase().includes(q) ||
-        (t.owner_email ?? '').toLowerCase().includes(q) ||
-        (t.owner_name ?? '').toLowerCase().includes(q)
-      );
-    }
-    return true;
+  const [error, setError] = useState('');
+  const [notice, setNotice] = useState('');
+  const [form, setForm] = useState({
+    name: '',
+    owner_email: '',
+    owner_name: '',
+    owner_phone: '',
+    plan_id: 'starter',
+    custom_domain: '',
   });
 
-  const stats = {
-    total: tenants.length,
-    active: tenants.filter((t) => t.status === 'active').length,
-    trial: tenants.filter((t) => t.status === 'trial').length,
-    suspended: tenants.filter((t) => t.status === 'suspended').length,
-  };
-
-  async function handleAddTenant(e: React.FormEvent) {
-    e.preventDefault();
-    setSaving(true);
-    setSaveError('');
-    setSaveOk(false);
+  const load = useCallback(async () => {
+    setLoading(true);
+    setError('');
     try {
-      const res = await fetch('/api/admin/saas/tenants', {
+      const [tenantResponse, healthResponse] = await Promise.all([
+        fetch('/api/admin/saas/tenants', { cache: 'no-store' }),
+        fetch('/api/admin/superadmin/saas/onboarding-health', { cache: 'no-store' }),
+      ]);
+
+      const tenantData = await tenantResponse.json().catch(() => ([])) as Tenant[] | { error?: string };
+      const healthData = await healthResponse.json().catch(() => ({})) as HealthPayload;
+
+      if (!tenantResponse.ok) {
+        const apiError = !Array.isArray(tenantData) ? tenantData.error : undefined;
+        throw new Error(apiError ?? 'No se pudo cargar el directorio de tenants.');
+      }
+
+      setTenants(Array.isArray(tenantData) ? tenantData : []);
+      setHealth(healthResponse.ok ? healthData : null);
+    } catch (err) {
+      setTenants([]);
+      setError(err instanceof Error ? err.message : 'No se pudo cargar la plataforma SaaS.');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    void load();
+  }, [load]);
+
+  const filtered = useMemo(() => {
+    const needle = search.trim().toLocaleLowerCase('es');
+    return tenants.filter((tenant) => {
+      if (statusFilter !== 'all' && tenant.status !== statusFilter) return false;
+      if (!needle) return true;
+      return [tenant.name, tenant.slug, tenant.owner_email ?? '', tenant.owner_name ?? '', tenant.custom_domain ?? '']
+        .some((value) => value.toLocaleLowerCase('es').includes(needle));
+    });
+  }, [search, statusFilter, tenants]);
+
+  const stats = useMemo(() => ({
+    total: tenants.length,
+    active: tenants.filter((tenant) => tenant.status === 'active').length,
+    trial: tenants.filter((tenant) => tenant.status === 'trial').length,
+    suspended: tenants.filter((tenant) => tenant.status === 'suspended').length,
+  }), [tenants]);
+
+  async function createTenant(event: React.FormEvent) {
+    event.preventDefault();
+    setSaving(true);
+    setError('');
+    setNotice('');
+    try {
+      const response = await fetch('/api/admin/saas/tenants', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),
       });
-      const data = await res.json();
-      if (!res.ok) {
-        setSaveError(data.error || 'Error al crear el cliente.');
-      } else {
-        setSaveOk(true);
-        setForm({ name: '', owner_email: '', owner_name: '', owner_phone: '', plan_id: 'starter', custom_domain: '' });
-        loadTenants();
-        setTimeout(() => { setSaveOk(false); setTab('clientes'); }, 2000);
-      }
-    } catch {
-      setSaveError('Error de red.');
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(data.error ?? 'No se pudo crear el tenant.');
+
+      setForm({ name: '', owner_email: '', owner_name: '', owner_phone: '', plan_id: 'starter', custom_domain: '' });
+      setNotice('Tenant creado correctamente. Ya aparece en el directorio Root.');
+      setTab('clients');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo crear el tenant.');
     } finally {
       setSaving(false);
     }
   }
 
-  async function toggleStatus(tenant: Tenant) {
-    const newStatus = tenant.status === 'active' ? 'suspended' : 'active';
-    await fetch('/api/admin/saas/tenants', {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ id: tenant.id, status: newStatus }),
-    });
-    loadTenants();
+  async function updateTenant(id: string, update: Record<string, unknown>) {
+    setBusyTenant(id);
+    setError('');
+    setNotice('');
+    try {
+      const response = await fetch('/api/admin/saas/tenants', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, ...update }),
+      });
+      const data = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(data.error ?? 'No se pudo actualizar el tenant.');
+      setNotice('Tenant actualizado.');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar el tenant.');
+    } finally {
+      setBusyTenant(null);
+    }
   }
 
   return (
     <AdminPage>
       <AdminPageHeader
-        title="Mi SaaS"
-        description="Panel para gestionar todos tus clientes y configurar la plataforma."
+        eyebrow="Root · Plataforma"
+        title="Fabrick SaaS"
+        description="Directorio global de tenants, planes y estado de onboarding. Esta superficie está reservada exclusivamente a Root/superadmin."
         icon={Rocket}
         actions={
           <button
-            onClick={loadTenants}
-            className="flex items-center gap-1.5 text-xs text-zinc-400 hover:text-white border border-white/10 rounded-lg px-3 py-1.5 transition-colors"
+            type="button"
+            onClick={() => void load()}
+            disabled={loading}
+            className="inline-flex min-h-10 items-center gap-2 rounded-xl border border-black/10 bg-white/70 px-4 text-xs font-black text-[#514b42] transition hover:bg-white disabled:opacity-50"
           >
-            <RefreshCw size={12} />
-            Actualizar
+            <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar
           </button>
+        }
+        meta={
+          <span className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-black uppercase tracking-[.14em] ${health?.readyForPilot ? 'bg-emerald-500/10 text-emerald-800' : 'bg-amber-500/10 text-amber-800'}`}>
+            <ShieldCheck className="h-3.5 w-3.5" />
+            {health?.readyForPilot ? 'Piloto listo' : 'Revisar onboarding'}
+          </span>
         }
       />
 
-      {/* Stats */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3 mb-6">
-        {[
-          { label: 'Clientes totales', value: stats.total, color: 'text-white', icon: Users },
-          { label: 'Activos', value: stats.active, color: 'text-emerald-400', icon: CheckCircle2 },
-          { label: 'En prueba', value: stats.trial, color: 'text-yellow-400', icon: Clock },
-          { label: 'Suspendidos', value: stats.suspended, color: 'text-red-400', icon: XCircle },
-        ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-white/8 bg-white/3 p-4 text-center">
-            <s.icon size={16} className={`${s.color} mx-auto mb-1.5`} />
-            <div className={`text-2xl font-black ${s.color} mb-0.5`}>{loading ? '…' : s.value}</div>
-            <div className="text-xs text-zinc-500">{s.label}</div>
-          </div>
-        ))}
-      </div>
+      <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        <AdminStat label="Tenants" value={loading ? '…' : stats.total} icon={Users} />
+        <AdminStat label="Activos" value={loading ? '…' : stats.active} icon={CheckCircle2} accent="emerald" />
+        <AdminStat label="En prueba" value={loading ? '…' : stats.trial} icon={Clock3} />
+        <AdminStat label="Suspendidos" value={loading ? '…' : stats.suspended} icon={XCircle} accent="rose" />
+      </section>
 
-      {/* Tabs */}
-      <div className="flex gap-1 mb-6 bg-white/3 p-1 rounded-xl border border-white/8 w-fit">
+      <div className="flex flex-wrap items-center gap-2 border-b border-black/10 pb-4">
         {([
-          { id: 'clientes', label: 'Mis clientes', icon: Users },
-          { id: 'agregar', label: 'Añadir cliente', icon: Plus },
-          { id: 'guia', label: 'Guía de instalación', icon: Zap },
-        ] as const).map((t) => (
+          ['clients', 'Tenants'],
+          ['create', 'Añadir tenant'],
+          ['guide', 'Preparación de plataforma'],
+        ] as const).map(([id, label]) => (
           <button
-            key={t.id}
-            onClick={() => setTab(t.id)}
-            className={`flex items-center gap-1.5 text-xs font-medium px-4 py-2 rounded-lg transition-all ${
-              tab === t.id
-                ? 'bg-white/10 text-white'
-                : 'text-zinc-500 hover:text-zinc-300'
-            }`}
+            key={id}
+            type="button"
+            onClick={() => setTab(id)}
+            className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[.15em] transition ${tab === id ? 'bg-[#171612] text-white' : 'border border-black/10 bg-white/55 text-[#716b60] hover:bg-white'}`}
           >
-            <t.icon size={12} />
-            {t.label}
+            {label}
           </button>
         ))}
       </div>
 
-      {/* === TAB: CLIENTES === */}
-      {tab === 'clientes' && (
-        <div className="space-y-4">
-          {/* Filters */}
-          <div className="flex flex-col sm:flex-row gap-3">
-            <div className="relative flex-1">
-              <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-              <input
-                type="text"
-                placeholder="Buscar por nombre, subdominio o correo…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2 text-sm text-white placeholder-zinc-500 outline-none focus:border-white/20"
-              />
-            </div>
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="bg-white/5 border border-white/10 rounded-lg px-3 py-2 text-sm text-white outline-none"
-            >
+      {health?.summary ? <p className="text-xs font-semibold text-[#8f887c]">{health.summary}</p> : null}
+      {error ? <div className="flex items-start gap-2 rounded-xl border border-rose-500/20 bg-rose-500/8 px-4 py-3 text-sm font-semibold text-rose-800"><AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />{error}</div> : null}
+      {notice ? <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/8 px-4 py-3 text-sm font-semibold text-emerald-800">{notice}</div> : null}
+
+      {tab === 'clients' ? (
+        <>
+          <div className="grid gap-3 md:grid-cols-[minmax(0,1fr)_200px]">
+            <label className="relative block">
+              <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-[#9b9488]" />
+              <input className={`${inputClass} pl-10`} value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar negocio, dominio, correo o contacto…" />
+            </label>
+            <select className={inputClass} value={statusFilter} onChange={(event) => setStatusFilter(event.target.value)}>
               <option value="all">Todos los estados</option>
               <option value="active">Activos</option>
               <option value="trial">En prueba</option>
@@ -376,325 +248,127 @@ export default function AdminSaasPage() {
             </select>
           </div>
 
-          {loading ? (
-            <div className="text-center text-zinc-500 py-12 text-sm">Cargando clientes…</div>
-          ) : filtered.length === 0 ? (
-            <div className="text-center py-12">
-              <Users size={32} className="text-zinc-700 mx-auto mb-3" />
-              <p className="text-zinc-500 text-sm mb-4">
-                {tenants.length === 0 ? 'Aún no tienes clientes. ¡Añade el primero!' : 'No hay clientes que coincidan con la búsqueda.'}
-              </p>
-              {tenants.length === 0 && (
-                <button
-                  onClick={() => setTab('agregar')}
-                  className="text-sm font-medium text-emerald-400 hover:text-emerald-300 flex items-center gap-1 mx-auto"
-                >
-                  <Plus size={14} /> Añadir primer cliente
-                </button>
-              )}
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {filtered.map((tenant) => (
-                <div
-                  key={tenant.id}
-                  className="rounded-xl border border-white/8 bg-white/3 p-4 hover:bg-white/5 transition-colors"
-                >
-                  <div className="flex flex-col sm:flex-row sm:items-center gap-3">
-                    {/* Icon + name */}
-                    <div className="w-10 h-10 rounded-xl bg-white/8 border border-white/10 flex items-center justify-center shrink-0">
-                      <Building2 size={18} className="text-zinc-400" />
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2 flex-wrap">
-                        <span className="font-bold text-white text-sm">{tenant.name}</span>
-                        <span
-                          className={`text-[10px] font-bold uppercase px-2 py-0.5 rounded-full border ${STATUS_COLORS[tenant.status] || STATUS_COLORS.cancelled}`}
+          <AdminCard className="p-0 sm:p-0">
+            {loading ? (
+              <div className="flex min-h-40 items-center justify-center gap-2 text-sm font-semibold text-[#716b60]"><Loader2 className="h-4 w-4 animate-spin" /> Cargando tenants…</div>
+            ) : filtered.length === 0 ? (
+              <div className="px-5 py-10 text-center">
+                <Users className="mx-auto h-7 w-7 text-[#b7aa91]" />
+                <p className="mt-3 text-sm font-black text-[#171612]">No hay tenants para mostrar.</p>
+                <button type="button" onClick={() => setTab('create')} className="mt-3 text-xs font-black text-[#9b6a12]">Añadir el primero →</button>
+              </div>
+            ) : (
+              <div className="divide-y divide-black/10">
+                {filtered.map((tenant) => {
+                  const adminHost = tenant.custom_domain || `${tenant.slug}.fabrick.cl`;
+                  return (
+                    <article key={tenant.id} className="grid gap-4 px-4 py-5 sm:px-5 xl:grid-cols-[minmax(0,1fr)_auto] xl:items-center">
+                      <div className="flex min-w-0 items-start gap-3">
+                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl bg-black/5 text-[#716b60]"><Building2 className="h-4 w-4" /></span>
+                        <div className="min-w-0">
+                          <div className="flex flex-wrap items-center gap-2">
+                            <h2 className="text-sm font-black text-[#171612]">{tenant.name}</h2>
+                            <span className={`rounded-full px-2 py-1 text-[9px] font-black uppercase tracking-[.12em] ${STATUS_CLASS[tenant.status]}`}>{STATUS_LABEL[tenant.status]}</span>
+                            <span className="rounded-full bg-black/5 px-2 py-1 text-[9px] font-black uppercase tracking-[.12em] text-[#716b60]">{PLAN_LABEL[tenant.plan_id] ?? tenant.plan_id}</span>
+                          </div>
+                          <div className="mt-2 flex flex-wrap gap-x-4 gap-y-1 text-xs text-[#8f887c]">
+                            <span className="inline-flex items-center gap-1"><Globe2 className="h-3 w-3" /> {adminHost}</span>
+                            {tenant.owner_email ? <span className="inline-flex items-center gap-1"><Mail className="h-3 w-3" /> {tenant.owner_email}</span> : null}
+                          </div>
+                          <p className="mt-2 text-[10px] font-bold uppercase tracking-[.12em] text-[#aaa397]">Creado {new Date(tenant.created_at).toLocaleDateString('es-CL')}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 xl:justify-end">
+                        <select
+                          value={tenant.plan_id}
+                          disabled={busyTenant === tenant.id}
+                          onChange={(event) => void updateTenant(tenant.id, { plan_id: event.target.value })}
+                          className="min-h-9 rounded-xl border border-black/10 bg-white px-3 text-xs font-bold text-[#514b42] disabled:opacity-50"
+                          aria-label={`Plan de ${tenant.name}`}
                         >
-                          {STATUS_LABELS[tenant.status] || tenant.status}
-                        </span>
-                        <span className="text-[10px] text-zinc-500 font-medium">{PLAN_LABELS[tenant.plan_id] || tenant.plan_id}</span>
+                          <option value="free">Gratis</option>
+                          <option value="starter">Starter</option>
+                          <option value="pro">Pro</option>
+                          <option value="enterprise">Enterprise</option>
+                        </select>
+                        <select
+                          value={tenant.status}
+                          disabled={busyTenant === tenant.id}
+                          onChange={(event) => void updateTenant(tenant.id, { status: event.target.value })}
+                          className="min-h-9 rounded-xl border border-black/10 bg-white px-3 text-xs font-bold text-[#514b42] disabled:opacity-50"
+                          aria-label={`Estado de ${tenant.name}`}
+                        >
+                          <option value="active">Activo</option>
+                          <option value="trial">Prueba</option>
+                          <option value="suspended">Suspendido</option>
+                          <option value="cancelled">Cancelado</option>
+                        </select>
+                        <a href={`https://${adminHost}/admin`} target="_blank" rel="noopener noreferrer" className="inline-flex min-h-9 items-center gap-1.5 rounded-xl bg-[#171612] px-3 text-[10px] font-black uppercase tracking-[.12em] text-white">
+                          Abrir <ArrowUpRight className="h-3.5 w-3.5" />
+                        </a>
                       </div>
-                      <div className="flex items-center gap-4 mt-1 flex-wrap">
-                        <span className="text-xs text-zinc-500 flex items-center gap-1">
-                          <Globe size={10} />
-                          {tenant.custom_domain ?? `${tenant.slug}.fabrick.cl`}
-                          {tenant.custom_domain && (
-                            <span className="text-[9px] bg-blue-500/20 text-blue-400 border border-blue-500/20 px-1 py-0.5 rounded">
-                              dominio propio
-                            </span>
-                          )}
-                        </span>
-                        {tenant.owner_email && (
-                          <span className="text-xs text-zinc-500 flex items-center gap-1">
-                            <AtSign size={10} />
-                            {tenant.owner_email}
-                          </span>
-                        )}
-                        {tenant.owner_phone && (
-                          <span className="text-xs text-zinc-500 flex items-center gap-1">
-                            <Phone size={10} />
-                            {tenant.owner_phone}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                    {/* Actions */}
-                    <div className="flex items-center gap-2 shrink-0">
-                      <a
-                        href={`https://${tenant.slug}.fabrick.cl/admin`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="text-xs text-zinc-400 hover:text-white border border-white/10 rounded-lg px-2.5 py-1.5 flex items-center gap-1 transition-colors"
-                      >
-                        <ArrowUpRight size={11} />
-                        Ver admin
-                      </a>
-                      <button
-                        onClick={() => toggleStatus(tenant)}
-                        className={`text-xs border rounded-lg px-2.5 py-1.5 flex items-center gap-1 transition-colors ${
-                          tenant.status === 'active'
-                            ? 'text-red-400 border-red-500/20 hover:bg-red-500/10'
-                            : 'text-emerald-400 border-emerald-500/20 hover:bg-emerald-500/10'
-                        }`}
-                      >
-                        <Circle size={8} className="fill-current" />
-                        {tenant.status === 'active' ? 'Suspender' : 'Activar'}
-                      </button>
-                    </div>
-                  </div>
-                  {tenant.trial_ends_at && tenant.status === 'trial' && (
-                    <div className="mt-2 flex items-center gap-1.5 text-[11px] text-yellow-400">
-                      <Clock size={10} />
-                      Prueba termina: {new Date(tenant.trial_ends_at).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}
-                    </div>
-                  )}
-                  <div className="mt-1 text-[10px] text-zinc-600">
-                    Creado el {new Date(tenant.created_at).toLocaleDateString('es-CL', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* === TAB: AGREGAR CLIENTE === */}
-      {tab === 'agregar' && (
-        <div className="max-w-lg">
-          <div className="rounded-xl border border-white/8 bg-white/3 p-6">
-            <h2 className="text-base font-bold text-white mb-1">Añadir nuevo cliente</h2>
-            <p className="text-xs text-zinc-500 mb-6">
-              Con el nombre del negocio, correo y nombre del contacto ya tienen acceso. Se crea su subdominio automáticamente.
-            </p>
-
-            {saveOk && (
-              <div className="mb-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20 p-3 flex items-center gap-2 text-sm text-emerald-400">
-                <CheckCircle2 size={14} />
-                ¡Cliente creado con éxito! Redirigiendo a la lista…
+                    </article>
+                  );
+                })}
               </div>
             )}
-            {saveError && (
-              <div className="mb-4 rounded-lg bg-red-500/10 border border-red-500/20 p-3 flex items-center gap-2 text-sm text-red-400">
-                <AlertTriangle size={14} />
-                {saveError}
-              </div>
-            )}
+          </AdminCard>
+        </>
+      ) : null}
 
-            <form onSubmit={handleAddTenant} className="space-y-4">
-              <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1.5 block">
-                  Nombre del negocio <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <Building2 size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                  <input
-                    type="text"
-                    placeholder="Ej: Tienda Marta"
-                    value={form.name}
-                    onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-                    required
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/20"
-                  />
-                </div>
-                {form.name && (
-                  <p className="text-[11px] text-zinc-500 mt-1">
-                    Su subdominio será: <span className="text-emerald-400 font-mono">
-                      {form.name.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '').slice(0, 40)}
-                    </span>.fabrick.cl
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1.5 block">
-                  Nombre del dueño o contacto <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <Users size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                  <input
-                    type="text"
-                    placeholder="Ej: María García"
-                    value={form.owner_name}
-                    onChange={(e) => setForm((f) => ({ ...f, owner_name: e.target.value }))}
-                    required
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/20"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1.5 block">
-                  Correo electrónico <span className="text-red-400">*</span>
-                </label>
-                <div className="relative">
-                  <Mail size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                  <input
-                    type="email"
-                    placeholder="Ej: maria@tiendamarta.cl"
-                    value={form.owner_email}
-                    onChange={(e) => setForm((f) => ({ ...f, owner_email: e.target.value }))}
-                    required
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/20"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1.5 block">
-                  Teléfono <span className="text-zinc-600">(opcional)</span>
-                </label>
-                <div className="relative">
-                  <Phone size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                  <input
-                    type="tel"
-                    placeholder="Ej: +56 9 1234 5678"
-                    value={form.owner_phone}
-                    onChange={(e) => setForm((f) => ({ ...f, owner_phone: e.target.value }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/20"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1.5 block">
-                  Dominio propio <span className="text-zinc-600">(opcional)</span>
-                </label>
-                <div className="relative">
-                  <Globe size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                  <input
-                    type="text"
-                    placeholder="Ej: tiendamarta.cl (sin www)"
-                    value={form.custom_domain}
-                    onChange={(e) => setForm((f) => ({ ...f, custom_domain: e.target.value.trim().toLowerCase() }))}
-                    className="w-full bg-white/5 border border-white/10 rounded-lg pl-9 pr-3 py-2.5 text-sm text-white placeholder-zinc-600 outline-none focus:border-white/20"
-                  />
-                </div>
-                {form.custom_domain && (
-                  <p className="text-[11px] text-zinc-500 mt-1">
-                    El cliente debe apuntar su dominio con un CNAME a{' '}
-                    <span className="text-blue-400 font-mono">cname.vercel-dns.com</span> y tú debes agregarlo en Vercel.
-                  </p>
-                )}
-              </div>
-
-              <div>
-                <label className="text-xs font-medium text-zinc-400 mb-1.5 block">Plan</label>
-                <select
-                  value={form.plan_id}
-                  onChange={(e) => setForm((f) => ({ ...f, plan_id: e.target.value }))}
-                  className="w-full bg-white/5 border border-white/10 rounded-lg px-3 py-2.5 text-sm text-white outline-none"
-                >
-                  <option value="starter">Starter</option>
-                  <option value="pro">Pro</option>
-                  <option value="enterprise">Enterprise</option>
-                  <option value="free">Gratis</option>
-                </select>
-              </div>
-
-              <button
-                type="submit"
-                disabled={saving}
-                className="w-full bg-emerald-600 hover:bg-emerald-500 disabled:opacity-50 text-white font-semibold text-sm rounded-xl py-3 flex items-center justify-center gap-2 transition-colors"
-              >
-                <Plus size={14} />
-                {saving ? 'Creando…' : 'Crear cliente'}
-              </button>
-            </form>
-          </div>
-
-          <div className="mt-4 rounded-xl border border-yellow-500/20 bg-yellow-500/8 p-4">
-            <div className="flex items-start gap-2">
-              <AlertTriangle size={14} className="text-yellow-400 shrink-0 mt-0.5" />
-              <div className="text-xs text-yellow-300/80">
-                <strong>Importante:</strong> Al crear un cliente, asegúrate de enviarle manualmente sus datos de acceso (su URL es {' '}
-                <span className="font-mono">su-slug.fabrick.cl/admin</span>). El sistema aún no envía email de bienvenida automáticamente.
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* === TAB: GUÍA DE INSTALACIÓN === */}
-      {tab === 'guia' && (
-        <div className="max-w-2xl space-y-6">
-          {/* Quick status */}
-          <div className="rounded-xl border border-white/8 bg-white/3 p-4">
-            <h2 className="text-sm font-bold text-white mb-3 flex items-center gap-2">
-              <Wifi size={14} className="text-emerald-400" />
-              Lista de verificación rápida
-            </h2>
-            <div className="space-y-2">
-              {[
-                { label: 'DNS wildcard configurado (*.fabrick.cl → Vercel)', done: false },
-                { label: 'Dominios agregados en Vercel', done: false },
-                { label: 'Variables de entorno configuradas', done: false },
-                { label: 'Migración SQL ejecutada (add-multitenancy.sql)', done: false },
-                { label: 'Webhook de MercadoPago registrado', done: false },
-              ].map((item) => (
-                <div key={item.label} className="flex items-center gap-2 text-sm">
-                  {item.done
-                    ? <CheckCircle2 size={14} className="text-emerald-400 shrink-0" />
-                    : <XCircle size={14} className="text-zinc-600 shrink-0" />
-                  }
-                  <span className={item.done ? 'text-zinc-300' : 'text-zinc-500'}>{item.label}</span>
-                </div>
-              ))}
-            </div>
-            <p className="text-[11px] text-zinc-600 mt-3">Esta lista es informativa — márcala tú manualmente a medida que completas cada paso.</p>
-          </div>
-
-          {/* Steps */}
-          <div className="space-y-2">
-            {INSTALL_STEPS.map((step, i) => (
-              <StepCard key={step.num} step={step} index={i} />
-            ))}
-          </div>
-
-          {/* Env vars reference */}
-          <div className="rounded-xl border border-white/8 bg-white/3 p-4">
-            <h2 className="text-sm font-bold text-white mb-1 flex items-center gap-2">
-              <Key size={14} className="text-yellow-400" />
-              Variables de entorno — referencia completa
-            </h2>
-            <p className="text-xs text-zinc-500 mb-4">Estas van en Vercel → Settings → Environment Variables</p>
+      {tab === 'create' ? (
+        <AdminCard>
+          <form onSubmit={createTenant} className="max-w-3xl space-y-5">
             <div>
-              {ENV_VARS.map((v) => <EnvVarRow key={v.key} v={v} />)}
+              <h2 className="text-lg font-black tracking-[-.03em] text-[#171612]">Nuevo tenant</h2>
+              <p className="mt-1 text-sm leading-6 text-[#716b60]">Crea la empresa, propietario y plan inicial. El subdominio se genera automáticamente y Root puede cambiar plan o estado después.</p>
             </div>
-          </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-[.14em] text-[#8f887c]">Negocio *</span><input required className={inputClass} value={form.name} onChange={(e) => setForm((v) => ({ ...v, name: e.target.value }))} placeholder="Constructora Ejemplo" /></label>
+              <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-[.14em] text-[#8f887c]">Contacto *</span><input required className={inputClass} value={form.owner_name} onChange={(e) => setForm((v) => ({ ...v, owner_name: e.target.value }))} placeholder="Nombre del propietario" /></label>
+              <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-[.14em] text-[#8f887c]">Email *</span><input required type="email" className={inputClass} value={form.owner_email} onChange={(e) => setForm((v) => ({ ...v, owner_email: e.target.value }))} placeholder="propietario@empresa.cl" /></label>
+              <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-[.14em] text-[#8f887c]">Teléfono</span><input className={inputClass} value={form.owner_phone} onChange={(e) => setForm((v) => ({ ...v, owner_phone: e.target.value }))} placeholder="+56 9 …" /></label>
+              <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-[.14em] text-[#8f887c]">Plan inicial</span><select className={inputClass} value={form.plan_id} onChange={(e) => setForm((v) => ({ ...v, plan_id: e.target.value }))}><option value="starter">Starter</option><option value="pro">Pro</option><option value="enterprise">Enterprise</option><option value="free">Gratis</option></select></label>
+              <label className="space-y-1.5"><span className="text-[10px] font-black uppercase tracking-[.14em] text-[#8f887c]">Dominio propio</span><input className={inputClass} value={form.custom_domain} onChange={(e) => setForm((v) => ({ ...v, custom_domain: e.target.value }))} placeholder="empresa.cl" /></label>
+            </div>
+            <button type="submit" disabled={saving} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#171612] px-5 text-xs font-black uppercase tracking-[.14em] text-white transition hover:bg-[#2a2823] disabled:opacity-50">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />} Crear tenant
+            </button>
+          </form>
+        </AdminCard>
+      ) : null}
 
-          {/* Help box */}
-          <div className="rounded-xl border border-blue-500/20 bg-blue-500/8 p-4">
-            <div className="flex items-start gap-2">
-              <Zap size={14} className="text-blue-400 shrink-0 mt-0.5" />
-              <div className="text-xs text-blue-300/80 space-y-1">
-                <p><strong>¿Algo no funciona?</strong> Ve a <span className="font-mono text-blue-400">/admin/estado</span> para ver el diagnóstico completo del sistema.</p>
-                <p>¿El DNS no propaga? Prueba en <a href="https://dnschecker.org" target="_blank" rel="noopener noreferrer" className="underline hover:text-white">dnschecker.org</a> poniendo <span className="font-mono">*.fabrick.cl</span>.</p>
-              </div>
+      {tab === 'guide' ? (
+        <AdminCard>
+          <div className="max-w-4xl space-y-6">
+            <div>
+              <h2 className="text-lg font-black tracking-[-.03em] text-[#171612]">Preparación antes de abrir la plataforma</h2>
+              <p className="mt-1 text-sm leading-6 text-[#716b60]">Esta guía muestra dependencias, no secretos. Los valores sensibles deben permanecer únicamente en Vercel/InsForge.</p>
+            </div>
+            <div className="grid gap-4 md:grid-cols-2">
+              {[
+                ['1', 'DNS wildcard', 'Configura *.fabrick.cl hacia Vercel para que cada slug pueda resolver su subdominio.'],
+                ['2', 'Dominios Vercel', 'Registra el dominio principal y wildcard en el proyecto de producción.'],
+                ['3', 'Variables privadas', 'Verifica PLATFORM_ADMIN_SECRET, CRON_SECRET y credenciales de correo/pagos sin exponer sus valores en el navegador.'],
+                ['4', 'Esquema multi-tenant', 'Mantén tenants, planes, suscripciones y tenant_id alineados antes del onboarding.'],
+                ['5', 'Pagos y webhooks', 'Valida Mercado Pago y firma de webhooks antes de activar cobros recurrentes.'],
+                ['6', 'Piloto controlado', 'Crea un tenant de prueba, verifica aislamiento de datos y recién después amplía el acceso.'],
+              ].map(([step, title, copy]) => (
+                <div key={step} className="border-t border-black/10 pt-4">
+                  <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#9b6a12]">Paso {step}</p>
+                  <h3 className="mt-1 text-sm font-black text-[#171612]">{title}</h3>
+                  <p className="mt-1 text-xs leading-5 text-[#8f887c]">{copy}</p>
+                </div>
+              ))}
+            </div>
+            <div className={`flex items-start gap-3 rounded-xl border px-4 py-3 ${health?.readyForPublicLaunch ? 'border-emerald-500/20 bg-emerald-500/8 text-emerald-800' : 'border-amber-500/20 bg-amber-500/8 text-amber-900'}`}>
+              <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0" />
+              <p className="text-sm font-semibold">{health?.readyForPublicLaunch ? 'Las comprobaciones actuales no muestran pendientes para apertura pública.' : 'El modo piloto puede estar disponible, pero aún conviene resolver todos los avisos antes de una apertura pública.'}</p>
             </div>
           </div>
-        </div>
-      )}
+        </AdminCard>
+      ) : null}
     </AdminPage>
   );
 }

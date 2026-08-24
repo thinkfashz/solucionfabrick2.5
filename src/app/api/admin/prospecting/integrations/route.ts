@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getAdminSession } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { isAiProviderId } from '@/modules/prospecting-engine/config/providers';
 import {
   deleteAiIntegration,
@@ -11,16 +11,9 @@ import {
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-async function requireWritableAdmin(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return { error: NextResponse.json({ error: 'No autenticado.' }, { status: 401 }) };
-  if (session.rol === 'viewer') return { error: NextResponse.json({ error: 'Modo demo: solo lectura.' }, { status: 403 }) };
-  return { session };
-}
-
 export async function GET(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
+  const auth = await requireAdminPermission(request, { resource: 'integrations', action: 'read' });
+  if (!auth.ok) return auth.response;
   try {
     const integrations = await listAiIntegrations();
     return NextResponse.json({ ok: true, integrations });
@@ -30,8 +23,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const auth = await requireWritableAdmin(request);
-  if ('error' in auth) return auth.error;
+  const auth = await requireAdminPermission(request, { resource: 'integrations', action: 'manage' });
+  if (!auth.ok) return auth.response;
 
   const body = await request.json().catch(() => null) as { provider?: string; credentials?: unknown } | null;
   const provider = String(body?.provider || '').trim();
@@ -46,8 +39,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const auth = await requireWritableAdmin(request);
-  if ('error' in auth) return auth.error;
+  const auth = await requireAdminPermission(request, { resource: 'integrations', action: 'manage' });
+  if (!auth.ok) return auth.response;
 
   const provider = request.nextUrl.searchParams.get('provider') || '';
   if (!isAiProviderId(provider)) return NextResponse.json({ error: 'Proveedor IA no permitido.' }, { status: 400 });

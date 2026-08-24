@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { adminError, getAdminInsforge } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { decryptCredentials } from '@/lib/integrationsCrypto';
 import { publishCmsEvent } from '@/lib/cmsBus';
 
@@ -36,8 +37,8 @@ async function generateSignature(params: Record<string, string>, apiSecret: stri
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+    const auth = await requireAdminPermission(request, { resource: 'content', action: 'read' });
+    if (!auth.ok) return auth.response;
 
     const creds = await getCloudinaryCredentials();
     if (!creds) {
@@ -71,8 +72,8 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+    const auth = await requireAdminPermission(request, { resource: 'content', action: 'create' });
+    if (!auth.ok) return auth.response;
 
     const creds = await getCloudinaryCredentials();
     if (!creds) {
@@ -112,8 +113,8 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+    const auth = await requireAdminPermission(request, { resource: 'content', action: 'delete' });
+    if (!auth.ok) return auth.response;
 
     const creds = await getCloudinaryCredentials();
     if (!creds) return NextResponse.json({ error: 'Cloudinary no configurado.', code: 'NOT_CONFIGURED' }, { status: 503 });

@@ -16,8 +16,9 @@ import { BrandMark } from '@/components/admin/ui';
 import WhatsNewBanner from '@/components/admin/WhatsNewBanner';
 import DemoSessionTracker from '@/components/admin/DemoSessionTracker';
 
+type AdminRole = 'superadmin' | 'admin' | 'viewer';
 type NavItem = { href: string; label: string; description?: string; icon: LucideIcon; exact?: boolean };
-type NavSection = { id: string; label: string; icon: LucideIcon; items: NavItem[] };
+type NavSection = { id: string; label: string; icon: LucideIcon; items: NavItem[]; rootOnly?: boolean };
 
 const NAV: NavSection[] = [
   {
@@ -105,25 +106,32 @@ const NAV: NavSection[] = [
     ],
   },
   {
-    id: 'access', label: 'Acceso & equipo', icon: ShieldCheck,
+    id: 'access', label: 'Acceso personal', icon: ShieldCheck,
     items: [
-      { href: '/admin/equipo', label: 'Equipo & permisos', description: 'Roles, accesos y aprobaciones', icon: Users },
       { href: '/admin/sesiones', label: 'Sesiones & dispositivos', description: 'Actividad, IP y dispositivos', icon: Activity },
-      { href: '/admin/invitaciones', label: 'Invitaciones demo', description: 'Accesos temporales de demostración', icon: Send },
       { href: '/admin/seguridad', label: 'Seguridad', description: 'Passkeys y políticas de acceso', icon: KeyRound },
       { href: '/admin/perfil', label: 'Perfil administrador', description: 'Cuenta y presentación', icon: User },
     ],
   },
   {
-    id: 'system', label: 'Sistema & plataforma', icon: Settings,
+    id: 'system', label: 'Sistema & operación', icon: Settings,
     items: [
       { href: '/admin/integraciones', label: 'Integraciones', description: 'APIs y conexiones', icon: Link2 },
       { href: '/admin/estado', label: 'Estado del sistema', description: 'Salud del CMS y base de datos', icon: Activity },
       { href: '/admin/diagnostico', label: 'Diagnóstico', description: 'Servicios y variables críticas', icon: Gauge },
       { href: '/admin/errores', label: 'Errores', description: 'Fallos capturados', icon: Terminal },
+      { href: '/admin/configuracion', label: 'Configuración', description: 'Negocio y plataforma', icon: Settings },
+    ],
+  },
+  {
+    id: 'root', label: 'Root · plataforma', icon: ShieldCheck, rootOnly: true,
+    items: [
+      { href: '/admin/saas', label: 'Fabrick SaaS', description: 'Tenants, planes y onboarding', icon: Boxes },
+      { href: '/admin/equipo', label: 'Equipo & permisos', description: 'Roles, accesos y aprobaciones', icon: Users },
+      { href: '/admin/invitaciones', label: 'Invitaciones demo', description: 'Accesos temporales de demostración', icon: Send },
       { href: '/admin/vercel-logs', label: 'Vercel & logs', description: 'Deployments y runtime', icon: Terminal },
       { href: '/admin/setup', label: 'Setup & base de datos', description: 'Verificación de tablas y entorno', icon: Terminal },
-      { href: '/admin/configuracion', label: 'Configuración', description: 'Negocio y plataforma', icon: Settings },
+      { href: '/admin/sql', label: 'Terminal SQL', description: 'Operaciones directas de base de datos', icon: Terminal },
     ],
   },
 ];
@@ -152,15 +160,34 @@ export function AdminShell({ children }: { children: ReactNode }) {
   const [collapsed, setCollapsed] = useState(false);
   const [query, setQuery] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
+  const [role, setRole] = useState<AdminRole | null>(null);
 
   useAdminIdleLogout(30 * 60 * 1000);
   const authScreen = pathname === '/admin/login' || pathname.startsWith('/admin/plan-suspendido');
+  const availableNav = useMemo(
+    () => NAV.filter((section) => !section.rootOnly || role === 'superadmin'),
+    [role],
+  );
+
+  useEffect(() => {
+    if (authScreen) return;
+    let cancelled = false;
+    void fetch('/api/admin/me', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: { rol?: AdminRole } | null) => {
+        if (!cancelled) setRole(data?.rol ?? 'admin');
+      })
+      .catch(() => {
+        if (!cancelled) setRole('admin');
+      });
+    return () => { cancelled = true; };
+  }, [authScreen]);
 
   useEffect(() => {
     setMobileOpen(false);
-    const active = NAV.find((section) => section.items.some((item) => itemIsActive(pathname, item)));
+    const active = availableNav.find((section) => section.items.some((item) => itemIsActive(pathname, item)));
     if (active) setOpenSections((value) => ({ ...value, [active.id]: true }));
-  }, [pathname]);
+  }, [pathname, availableNav]);
 
   useEffect(() => {
     if (window.localStorage.getItem('fabrick-admin-sidebar-collapsed') === '1') setCollapsed(true);
@@ -168,12 +195,12 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('es');
-    if (!needle) return NAV;
-    return NAV.map((section) => ({
+    if (!needle) return availableNav;
+    return availableNav.map((section) => ({
       ...section,
       items: section.items.filter((item) => `${item.label} ${item.description ?? ''} ${section.label}`.toLocaleLowerCase('es').includes(needle)),
     })).filter((section) => section.items.length > 0);
-  }, [query]);
+  }, [availableNav, query]);
 
   function toggleCollapse() {
     setCollapsed((value) => {
@@ -194,7 +221,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
     <aside className={`fabrick-admin-sidebar ${collapsed && !mobile ? 'is-collapsed' : ''} ${mobile ? 'is-mobile' : ''}`} aria-label="Navegación administrativa">
       <div className="fabrick-sidebar-brand">
         <Link href="/admin" className="fabrick-brand-link" aria-label="Ir al centro de control"><BrandMark className="fabrick-brand-mark" /></Link>
-        {(!collapsed || mobile) && <div className="fabrick-brand-copy"><strong>Admin</strong><span>Soluciones Fabrick</span></div>}
+        {(!collapsed || mobile) && <div className="fabrick-brand-copy"><strong>{role === 'superadmin' ? 'Root' : 'Admin'}</strong><span>Soluciones Fabrick</span></div>}
         {mobile ? (
           <button className="fabrick-icon-button" onClick={() => setMobileOpen(false)} aria-label="Cerrar menú"><X size={18} /></button>
         ) : (

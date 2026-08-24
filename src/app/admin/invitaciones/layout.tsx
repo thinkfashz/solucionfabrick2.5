@@ -3,7 +3,7 @@ import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
 import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
 
-export default async function SaasRootLayout({ children }: { children: ReactNode }) {
+export default async function InvitationsRootLayout({ children }: { children: ReactNode }) {
   const token = (await cookies()).get(ADMIN_COOKIE_NAME)?.value;
   const session = token ? await decodeSession(token).catch(() => null) : null;
 

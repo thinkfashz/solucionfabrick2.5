@@ -1,27 +1,32 @@
 'use client';
 
+import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import {
   Activity,
   BarChart3,
   Boxes,
   CircleDollarSign,
+  Database,
   FileText,
   Gauge,
   Globe2,
   Hammer,
   LayoutGrid,
   Package,
+  Rocket,
+  ServerCog,
   Settings,
   ShieldCheck,
   ShoppingCart,
   Sparkles,
+  TerminalSquare,
   Users,
   Wallet,
   type LucideIcon,
 } from 'lucide-react';
 
-type ModuleItem = { href: string; label: string; description: string; icon: LucideIcon };
+type ModuleItem = { href: string; label: string; description: string; icon: LucideIcon; rootOnly?: boolean };
 type ModuleSection = { title: string; description: string; items: ModuleItem[] };
 
 const SECTIONS: ModuleSection[] = [
@@ -77,20 +82,53 @@ const SECTIONS: ModuleSection[] = [
   },
   {
     title: 'Sistema & seguridad',
-    description: 'Accesos, integraciones y estado de plataforma.',
+    description: 'Integraciones, acceso personal y salud operativa.',
     items: [
-      { href: '/admin/equipo', label: 'Equipo & permisos', description: 'Roles y aprobaciones', icon: Users },
-      { href: '/admin/seguridad', label: 'Seguridad', description: 'Passkeys y políticas de acceso', icon: ShieldCheck },
-      { href: '/admin/integraciones', label: 'Integraciones', description: 'APIs y conexiones', icon: Settings },
+      { href: '/admin/seguridad', label: 'Seguridad', description: 'Passkeys y dispositivos de acceso', icon: ShieldCheck },
+      { href: '/admin/integraciones', label: 'Integraciones', description: 'APIs y conexiones autorizadas', icon: Settings },
       { href: '/admin/estado', label: 'Estado del sistema', description: 'Salud de servicios y base de datos', icon: Activity },
+      { href: '/admin/sesiones', label: 'Sesiones', description: 'Auditoría de accesos', icon: Users },
+    ],
+  },
+  {
+    title: 'Root · Plataforma',
+    description: 'Controles globales de infraestructura y multi-tenancy.',
+    items: [
+      { href: '/admin/saas', label: 'Fabrick SaaS', description: 'Tenants, planes y onboarding', icon: Rocket, rootOnly: true },
+      { href: '/admin/equipo', label: 'Equipo & permisos', description: 'Roles y aprobaciones administrativas', icon: Users, rootOnly: true },
+      { href: '/admin/vercel-logs', label: 'Vercel Logs', description: 'Deployments y trazas de producción', icon: ServerCog, rootOnly: true },
+      { href: '/admin/setup', label: 'Setup de plataforma', description: 'Esquema y preparación de base de datos', icon: Database, rootOnly: true },
+      { href: '/admin/sql', label: 'Terminal SQL', description: 'Operaciones directas de base de datos', icon: TerminalSquare, rootOnly: true },
     ],
   },
 ];
 
 export function AdminModules() {
+  const [role, setRole] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch('/api/admin/me', { cache: 'no-store' })
+      .then((response) => response.ok ? response.json() : null)
+      .then((data: { rol?: string } | null) => {
+        if (!cancelled) setRole(data?.rol ?? 'admin');
+      })
+      .catch(() => {
+        if (!cancelled) setRole('admin');
+      });
+    return () => { cancelled = true; };
+  }, []);
+
+  const sections = useMemo(() => {
+    const isRoot = role === 'superadmin';
+    return SECTIONS
+      .map((section) => ({ ...section, items: section.items.filter((item) => !item.rootOnly || isRoot) }))
+      .filter((section) => section.items.length > 0);
+  }, [role]);
+
   return (
     <div className="space-y-10">
-      {SECTIONS.map((section) => (
+      {sections.map((section) => (
         <section key={section.title} className="space-y-4">
           <div className="flex items-end justify-between gap-4 border-b border-black/10 pb-3">
             <div>

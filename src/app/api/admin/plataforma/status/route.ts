@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { getAdminInsforge } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { getResendCredentials } from '@/lib/resendCredentials';
 
 export const dynamic = 'force-dynamic';
@@ -97,8 +98,8 @@ export type ServiceGroup = {
 
 // ── GET: return env-var status for all groups ────────────────────────────────
 export async function GET(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return adminUnauthorized();
+  const auth = await requireAdminPermission(request, { resource: 'admin', action: 'manage' });
+  if (!auth.ok) return auth.response;
 
   const groups: ServiceGroup[] = GROUPS.map((g) => {
     const required = readEnvStatus(g.required);
@@ -130,8 +131,8 @@ export async function GET(request: NextRequest) {
 
 // ── POST: run a live connectivity test for a specific service ────────────────
 export async function POST(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return adminUnauthorized();
+  const auth = await requireAdminPermission(request, { resource: 'admin', action: 'manage' });
+  if (!auth.ok) return auth.response;
 
   const body = (await request.json().catch(() => ({}))) as { service?: string };
   const service = body.service;

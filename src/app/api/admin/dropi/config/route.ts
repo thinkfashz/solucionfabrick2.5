@@ -3,20 +3,20 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminSession } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { ensureDropiSchema, getDropiCredentials, maskedDropiCredentials, saveDropiCredentials } from '@/lib/dropi';
 
 export async function GET(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return adminUnauthorized();
+  const auth = await requireAdminPermission(request, { resource: 'integrations', action: 'read' });
+  if (!auth.ok) return auth.response;
   await ensureDropiSchema();
   const credentials = await getDropiCredentials();
   return NextResponse.json({ ok: true, provider: 'dropi', credentials: maskedDropiCredentials(credentials) });
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return adminUnauthorized();
+  const auth = await requireAdminPermission(request, { resource: 'integrations', action: 'manage' });
+  if (!auth.ok) return auth.response;
 
   let body: Record<string, unknown>;
   try {

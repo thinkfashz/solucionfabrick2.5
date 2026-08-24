@@ -22,6 +22,7 @@ const SUPERADMIN_ONLY_ADMIN_PATHS = [
   '/admin/equipo',
   '/admin/sql',
   '/admin/setup',
+  '/admin/activar',
   '/admin/vercel-logs',
   '/admin/superadmin',
   '/admin/saas',
@@ -33,12 +34,18 @@ const SUPERADMIN_ONLY_ADMIN_APIS = [
   '/api/admin/sql',
   '/api/admin/setup',
   '/api/admin/setup-tables',
+  '/api/admin/plataforma/status',
   '/api/admin/vercel',
   '/api/admin/superadmin',
   '/api/admin/saas',
   '/api/admin/invitations',
   '/api/admin/diagnostico',
   '/api/admin/test-sentry',
+  '/api/admin/google/oauth',
+  '/api/admin/meta/oauth',
+  '/api/admin/tiktok/oauth',
+  '/api/admin/ml/oauth',
+  '/api/admin/social/oauth',
 ]
 
 const VIEWER_WRITE_METHODS = new Set(['POST', 'PUT', 'PATCH', 'DELETE'])

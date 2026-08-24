@@ -12,6 +12,17 @@ import './admin-professional-stage6.css';
 export const metadata: Metadata = {
   title: 'Admin | Fabrick',
   description: 'Panel de administración Fabrick',
+  robots: {
+    index: false,
+    follow: false,
+    noarchive: true,
+    nocache: true,
+    googleBot: {
+      index: false,
+      follow: false,
+      noimageindex: true,
+    },
+  },
 };
 
 export const dynamic = 'force-dynamic';

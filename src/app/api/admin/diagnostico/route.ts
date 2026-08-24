@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { adminError, getAdminInsforge } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -8,12 +9,8 @@ export const runtime = 'nodejs';
 /**
  * GET /api/admin/diagnostico
  *
- * Quick connectivity probe used from `/admin/setup` to answer the question:
- * "¿están seteadas las variables de entorno y InsForge responde?".
- *
- * Admin-only. Never echoes credential values back to the client — only
- * boolean presence flags. The richer per-feature report lives at
- * `/api/admin/estado` (group-by-severity, latency, suggestions).
+ * Diagnóstico de plataforma reservado a Root/superadmin. Expone únicamente
+ * presencia de variables y estado de tablas, nunca valores de credenciales.
  */
 
 const TRACKED_ENV_VARS = [
@@ -34,8 +31,8 @@ const PROBE_TABLES = ['products', 'orders', 'leads', 'projects', 'admin_users'];
 
 export async function GET(request: NextRequest) {
   try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+    const auth = await requireAdminPermission(request, { resource: 'admin', action: 'manage' });
+    if (!auth.ok) return auth.response;
 
     const env: Record<string, boolean> = {};
     for (const name of TRACKED_ENV_VARS) {
@@ -69,12 +66,12 @@ export async function GET(request: NextRequest) {
         } else {
           tables[table] = { ok: true, rows: count ?? 0 };
         }
-      } catch (e) {
-        tables[table] = { ok: false, error: e instanceof Error ? e.message : String(e) };
+      } catch (error) {
+        tables[table] = { ok: false, error: error instanceof Error ? error.message : String(error) };
       }
     }
 
-    const allTablesOk = Object.values(tables).every((t) => t.ok);
+    const allTablesOk = Object.values(tables).every((table) => table.ok);
     return NextResponse.json(
       {
         ok: allTablesOk,

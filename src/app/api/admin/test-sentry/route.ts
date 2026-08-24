@@ -1,46 +1,32 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminSession } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 /**
- * Hidden admin-only endpoint to verify that Sentry is correctly wired up in
- * production. Trigger by `GET /api/admin/test-sentry` with a valid admin
- * session cookie. The thrown error propagates to the Next.js runtime so
- * Sentry's automatic instrumentation captures it and forwards it to the
- * dashboard. Anonymous (or non-admin) callers receive 401 and never reach
- * the throw.
- *
- * Sentry only sends events in production (`NODE_ENV === 'production'`),
- * so calling this endpoint locally is a no-op for the dashboard.
+ * Prueba deliberada de Sentry reservada a Root/superadmin.
+ * En producción captura y lanza un error controlado para validar la tubería
+ * de observabilidad. Nunca debe quedar disponible para roles operativos.
  */
 export async function GET(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return adminUnauthorized();
+  const auth = await requireAdminPermission(request, { resource: 'admin', action: 'manage' });
+  if (!auth.ok) return auth.response;
 
-  // In production, surface a deliberate error so it shows up in Sentry.
   if (process.env.NODE_ENV === 'production') {
-    // Capture explicitly as well, so the test works even if the framework
-    // catches the throw before the Sentry handler runs. Keep this as a lazy
-    // import so the admin test route does not add Sentry/OpenTelemetry noise
-    // to every build chunk analysis.
     const Sentry = await import('@sentry/nextjs');
     const error = new Error(
-      `Sentry test error triggered by admin ${session.email} at ${new Date().toISOString()}`,
+      `Sentry test error triggered by Root ${auth.session.email} at ${new Date().toISOString()}`,
     );
     Sentry.captureException(error);
     throw error;
   }
 
-  // Outside production we don't pollute the dashboard – just confirm the
-  // endpoint is reachable and that Sentry is wired up.
   return NextResponse.json({
     ok: true,
     env: process.env.NODE_ENV,
     sentryDsnConfigured: Boolean(process.env.NEXT_PUBLIC_SENTRY_DSN),
-    note:
-      'Sentry only reports errors in production. Deploy to production and call this endpoint to verify the dashboard.',
+    note: 'Sentry solo reporta esta prueba en producción.',
   });
 }

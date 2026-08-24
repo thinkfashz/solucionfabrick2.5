@@ -16,7 +16,7 @@ import { BrandMark } from '@/components/admin/ui';
 import WhatsNewBanner from '@/components/admin/WhatsNewBanner';
 import DemoSessionTracker from '@/components/admin/DemoSessionTracker';
 
-type AdminRole = 'superadmin' | 'admin' | 'viewer';
+type AdminRole = 'superadmin' | 'admin' | 'editor' | 'ventas' | 'soporte' | 'viewer';
 type NavItem = { href: string; label: string; description?: string; icon: LucideIcon; exact?: boolean };
 type NavSection = { id: string; label: string; icon: LucideIcon; items: NavItem[]; rootOnly?: boolean };
 
@@ -118,7 +118,6 @@ const NAV: NavSection[] = [
     items: [
       { href: '/admin/integraciones', label: 'Integraciones', description: 'APIs y conexiones', icon: Link2 },
       { href: '/admin/estado', label: 'Estado del sistema', description: 'Salud del CMS y base de datos', icon: Activity },
-      { href: '/admin/diagnostico', label: 'Diagnóstico', description: 'Servicios y variables críticas', icon: Gauge },
       { href: '/admin/errores', label: 'Errores', description: 'Fallos capturados', icon: Terminal },
       { href: '/admin/configuracion', label: 'Configuración', description: 'Negocio y plataforma', icon: Settings },
     ],
@@ -129,6 +128,7 @@ const NAV: NavSection[] = [
       { href: '/admin/saas', label: 'Fabrick SaaS', description: 'Tenants, planes y onboarding', icon: Boxes },
       { href: '/admin/equipo', label: 'Equipo & permisos', description: 'Roles, accesos y aprobaciones', icon: Users },
       { href: '/admin/invitaciones', label: 'Invitaciones demo', description: 'Accesos temporales de demostración', icon: Send },
+      { href: '/admin/diagnostico', label: 'Diagnóstico Root', description: 'Entorno, tablas y conectividad crítica', icon: Gauge },
       { href: '/admin/vercel-logs', label: 'Vercel & logs', description: 'Deployments y runtime', icon: Terminal },
       { href: '/admin/setup', label: 'Setup & base de datos', description: 'Verificación de tablas y entorno', icon: Terminal },
       { href: '/admin/sql', label: 'Terminal SQL', description: 'Operaciones directas de base de datos', icon: Terminal },

@@ -96,6 +96,7 @@ const SECTIONS: ModuleSection[] = [
     items: [
       { href: '/admin/saas', label: 'Fabrick SaaS', description: 'Tenants, planes y onboarding', icon: Rocket, rootOnly: true },
       { href: '/admin/equipo', label: 'Equipo & permisos', description: 'Roles y aprobaciones administrativas', icon: Users, rootOnly: true },
+      { href: '/admin/diagnostico', label: 'Diagnóstico Root', description: 'Entorno, tablas y conectividad crítica', icon: Gauge, rootOnly: true },
       { href: '/admin/vercel-logs', label: 'Vercel Logs', description: 'Deployments y trazas de producción', icon: ServerCog, rootOnly: true },
       { href: '/admin/setup', label: 'Setup de plataforma', description: 'Esquema y preparación de base de datos', icon: Database, rootOnly: true },
       { href: '/admin/sql', label: 'Terminal SQL', description: 'Operaciones directas de base de datos', icon: TerminalSquare, rootOnly: true },

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminError, adminUnauthorized, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
+import { adminError, getAdminTenantId } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { deletePasskey, renamePasskey, getPasskeysForUser } from '@/lib/adminPasskeys';
 import { v, parse, validationError } from '@/lib/validate';
 
@@ -12,8 +13,8 @@ type Ctx = { params: Promise<{ id: string }> };
 /** PATCH /api/admin/passkeys/[id] — rename a passkey. */
 export async function PATCH(request: NextRequest, ctx: Ctx) {
   try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+    const auth = await requireAdminPermission(request, { resource: 'passkeys', action: 'update' });
+    if (!auth.ok) return auth.response;
     const { id } = await ctx.params;
 
     const raw = await request.json().catch(() => ({}));
@@ -23,12 +24,12 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
     const tenantId = await getAdminTenantId(request);
 
     // Safety: verify the credential belongs to this admin before renaming.
-    const passkeys = await getPasskeysForUser(session.email, tenantId);
+    const passkeys = await getPasskeysForUser(auth.session.email, tenantId);
     if (!passkeys.find((p) => p.id === id)) {
       return NextResponse.json({ error: 'Passkey no encontrada.' }, { status: 404 });
     }
 
-    const ok = await renamePasskey(id, session.email, tenantId, result.data.name as string);
+    const ok = await renamePasskey(id, auth.session.email, tenantId, result.data.name as string);
     if (!ok) return NextResponse.json({ error: 'No se pudo renombrar la passkey.' }, { status: 500 });
     return NextResponse.json({ ok: true });
   } catch (err) {
@@ -39,13 +40,13 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
 /** DELETE /api/admin/passkeys/[id] — remove a passkey. */
 export async function DELETE(request: NextRequest, ctx: Ctx) {
   try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+    const auth = await requireAdminPermission(request, { resource: 'passkeys', action: 'delete' });
+    if (!auth.ok) return auth.response;
     const { id } = await ctx.params;
     const tenantId = await getAdminTenantId(request);
 
     // Safety: confirm ownership before deleting.
-    const passkeys = await getPasskeysForUser(session.email, tenantId);
+    const passkeys = await getPasskeysForUser(auth.session.email, tenantId);
     if (!passkeys.find((p) => p.id === id)) {
       return NextResponse.json({ error: 'Passkey no encontrada.' }, { status: 404 });
     }
@@ -60,7 +61,7 @@ export async function DELETE(request: NextRequest, ctx: Ctx) {
       );
     }
 
-    const ok = await deletePasskey(id, session.email, tenantId);
+    const ok = await deletePasskey(id, auth.session.email, tenantId);
     if (!ok) return NextResponse.json({ error: 'No se pudo eliminar la passkey.' }, { status: 500 });
     return NextResponse.json({ ok: true });
   } catch (err) {

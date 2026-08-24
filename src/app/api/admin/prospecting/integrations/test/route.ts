@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { getAdminSession } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { isAiProviderId } from '@/modules/prospecting-engine/config/providers';
 import { testAiIntegration } from '@/modules/prospecting-engine/services/ai-integration.server';
 
@@ -8,8 +8,8 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export async function POST(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return NextResponse.json({ error: 'No autenticado.' }, { status: 401 });
+  const auth = await requireAdminPermission(request, { resource: 'integrations', action: 'test' });
+  if (!auth.ok) return auth.response;
 
   const body = await request.json().catch(() => null) as { provider?: string; credentials?: unknown } | null;
   const provider = String(body?.provider || '').trim();

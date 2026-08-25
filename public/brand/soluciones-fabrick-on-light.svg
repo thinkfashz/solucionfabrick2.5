@@ -2,18 +2,34 @@
   <title id="title">Soluciones Fabrick</title>
   <desc id="desc">Logotipo Soluciones Fabrick de alto contraste para fondos claros.</desc>
   <defs>
-    <linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#F5CB61"/><stop offset=".36" stop-color="#C88408"/><stop offset=".72" stop-color="#944E00"/><stop offset="1" stop-color="#BB6500"/></linearGradient>
+    <linearGradient id="fabrickGold" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#F7C95A"/>
+      <stop offset=".34" stop-color="#D99016"/>
+      <stop offset=".72" stop-color="#B76508"/>
+      <stop offset="1" stop-color="#8D4003"/>
+    </linearGradient>
+    <linearGradient id="fabrickGoldText" x1="0" y1="0" x2=".9" y2="1">
+      <stop offset="0" stop-color="#E8AA2D"/>
+      <stop offset=".42" stop-color="#C8740D"/>
+      <stop offset=".78" stop-color="#9D4E05"/>
+      <stop offset="1" stop-color="#7E3500"/>
+    </linearGradient>
   </defs>
-  <g transform="translate(38 31)" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M18 214 119 35l102 179" stroke="url(#gold)" stroke-width="17"/>
-    <path d="M44 214 119 82l76 132" stroke="#17191C" stroke-width="6" opacity=".92"/>
-    <path d="M119 154v60" stroke="url(#gold)" stroke-width="13"/>
-    <path d="M76 235h86" stroke="#C26E00" stroke-width="7"/>
+
+  <g transform="translate(34 28)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 211 119 38l101 173" stroke="url(#fabrickGold)" stroke-width="17"/>
+    <path d="M50 207 119 88l69 119" stroke="#17191C" stroke-width="6" opacity=".9"/>
+    <path d="M112 203v-80" stroke="url(#fabrickGold)" stroke-width="13"/>
+    <path d="M112 136h49M112 169h37" stroke="#15171A" stroke-width="9"/>
+    <path d="M69 231h101" stroke="#B75E05" stroke-width="8"/>
+    <path d="M89 231h61" stroke="#E2A52D" stroke-width="2" opacity=".95"/>
   </g>
-  <g font-family="Sora, Manrope, Arial, Helvetica, sans-serif">
-    <text x="305" y="127" fill="#121417" font-size="71" font-weight="900" letter-spacing="2.2">SOLUCIONES</text>
-    <text x="303" y="219" fill="url(#gold)" font-size="101" font-weight="900" letter-spacing="3.2" stroke="#7A4600" stroke-width="1.1" paint-order="stroke fill">FABRICK</text>
-    <path d="M307 237h675" stroke="#9F6409" stroke-opacity=".74" stroke-width="3"/>
-    <text x="309" y="271" fill="#484947" font-size="17" font-weight="900" letter-spacing="3.8">CONSTRUIMOS CASAS · DIOS CONSTRUYE HOGARES</text>
+
+  <g font-family="Inter, Manrope, Arial, Helvetica, sans-serif">
+    <text x="303" y="116" fill="#121417" font-size="66" font-weight="900" letter-spacing="5.4">SOLUCIONES</text>
+    <text x="299" y="216" fill="url(#fabrickGoldText)" font-size="108" font-weight="900" letter-spacing="1.8">FABRICK</text>
+    <path d="M304 236h692" stroke="#9D5B0A" stroke-width="3" stroke-linecap="round" opacity=".72"/>
+    <circle cx="1013" cy="236" r="3" fill="#B76508"/>
+    <text x="305" y="274" fill="#4A4A47" font-size="17" font-weight="800" letter-spacing="4.15">CONSTRUIMOS CASAS · DIOS CONSTRUYE HOGARES</text>
   </g>
 </svg>

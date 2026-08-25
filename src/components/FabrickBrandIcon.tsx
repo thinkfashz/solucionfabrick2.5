@@ -41,7 +41,7 @@ export function FabrickPeakIcon({ size = 32, className = '', theme = 'light' }: 
     >
       <Image
         alt=""
-        className={`object-contain ${theme === 'light' ? 'drop-shadow-[0_0_10px_rgba(244,200,91,.28)]' : ''}`}
+        className={`object-contain ${theme === 'light' ? 'drop-shadow-[0_0_14px_rgba(244,164,36,.32)]' : ''}`}
         fill
         sizes={`${size}px`}
         src={src}
@@ -61,13 +61,13 @@ export function FabrickFullLogo({
 }: FullLogoProps) {
   return (
     <span className={`inline-flex select-none flex-col items-center ${className}`}>
-      <span className={`relative block shrink-0 ${compact ? 'h-10 w-[150px]' : 'h-24 w-[290px] max-w-[92vw]'}`}>
+      <span className={`relative block shrink-0 ${compact ? 'h-[42px] w-[160px]' : 'h-[82px] w-[312px] max-w-[92vw]'}`}>
         <Image
           alt="Soluciones Fabrick"
-          className={`object-contain ${theme === 'light' ? 'drop-shadow-[0_0_16px_rgba(244,200,91,.22)]' : ''}`}
+          className={`object-contain ${theme === 'light' ? 'drop-shadow-[0_0_18px_rgba(244,164,36,.2)]' : ''}`}
           fill
           priority={priority}
-          sizes={compact ? '150px' : '(max-width: 480px) 92vw, 290px'}
+          sizes={compact ? '160px' : '(max-width: 480px) 92vw, 312px'}
           src={theme === 'dark' ? FABRICK_LOGOS.onLight : FABRICK_LOGOS.onDark}
           unoptimized
         />

@@ -1,6 +1,21 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 310" role="img" aria-labelledby="title desc">
-  <title id="title">Soluciones Fabrick</title><desc id="desc">Logotipo oficial de Soluciones Fabrick.</desc>
-  <defs><linearGradient id="gold" x1="0" y1="0" x2="1" y2="1"><stop stop-color="#FFF3BD"/><stop offset=".3" stop-color="#FFD05A"/><stop offset=".66" stop-color="#D49013"/><stop offset="1" stop-color="#F5871F"/></linearGradient></defs>
-  <g transform="translate(38 31)" fill="none" stroke-linecap="round" stroke-linejoin="round"><path d="M18 214 119 35l102 179" stroke="url(#gold)" stroke-width="17"/><path d="M44 214 119 82l76 132" stroke="#FFF9EE" stroke-width="6" opacity=".9"/><path d="M119 154v60" stroke="url(#gold)" stroke-width="13"/><path d="M76 235h86" stroke="#F5871F" stroke-width="7"/></g>
-  <g font-family="Sora, Manrope, Arial, Helvetica, sans-serif"><text x="305" y="127" fill="#FFF9EE" font-size="71" font-weight="800" letter-spacing="2.2">SOLUCIONES</text><text x="303" y="219" fill="url(#gold)" font-size="101" font-weight="900" letter-spacing="3.2">FABRICK</text><path d="M307 237h675" stroke="#FFB000" stroke-opacity=".72" stroke-width="3"/><text x="309" y="271" fill="#C9C1B5" font-size="17" font-weight="800" letter-spacing="3.8">CONSTRUIMOS CASAS · DIOS CONSTRUYE HOGARES</text></g>
+  <title id="title">Soluciones Fabrick</title>
+  <desc id="desc">Logotipo oficial de Soluciones Fabrick.</desc>
+  <defs>
+    <linearGradient id="fabrickGold" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#FFF2B0"/><stop offset=".28" stop-color="#FFD15A"/><stop offset=".62" stop-color="#F3A126"/><stop offset="1" stop-color="#E86D14"/></linearGradient>
+    <linearGradient id="fabrickGoldText" x1="0" y1="0" x2=".9" y2="1"><stop offset="0" stop-color="#FFE79A"/><stop offset=".38" stop-color="#FFC13C"/><stop offset=".74" stop-color="#F18A19"/><stop offset="1" stop-color="#C8520D"/></linearGradient>
+  </defs>
+  <g transform="translate(34 28)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M18 211 119 38l101 173" stroke="url(#fabrickGold)" stroke-width="17"/>
+    <path d="M50 207 119 88l69 119" stroke="#FFF8E7" stroke-width="6" opacity=".9"/>
+    <path d="M112 203v-80" stroke="url(#fabrickGold)" stroke-width="13"/>
+    <path d="M112 136h49M112 169h37" stroke="#FFF8E7" stroke-width="9"/>
+    <path d="M69 231h101" stroke="#F28A18" stroke-width="8"/>
+  </g>
+  <g font-family="Inter, Manrope, Arial, Helvetica, sans-serif">
+    <text x="303" y="116" fill="#FFF9EE" font-size="66" font-weight="800" letter-spacing="5.4">SOLUCIONES</text>
+    <text x="299" y="216" fill="url(#fabrickGoldText)" font-size="108" font-weight="900" letter-spacing="1.8">FABRICK</text>
+    <path d="M304 236h692" stroke="#F5A11D" stroke-width="3" stroke-linecap="round" opacity=".75"/>
+    <text x="305" y="274" fill="#D8D1C7" font-size="17" font-weight="700" letter-spacing="4.15">CONSTRUIMOS CASAS · DIOS CONSTRUYE HOGARES</text>
+  </g>
 </svg>

@@ -1,10 +1,5 @@
-import type { Metadata } from 'next';
-import ProductForm from '../ProductForm';
-
-export const metadata: Metadata = {
-  title: 'Nuevo Producto | Admin Fabrick',
-};
+import { redirect } from 'next/navigation';
 
 export default function NuevoProductoPage() {
-  return <ProductForm mode="create" />;
+  redirect('/admin/productos?studio=new');
 }

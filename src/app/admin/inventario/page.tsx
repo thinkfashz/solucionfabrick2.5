@@ -13,9 +13,9 @@ type StockSummary = {
 };
 
 const MODULES = [
-  { href: '/admin/inventario/scan', icon: ScanLine, label: 'Escáner de inventario', description: 'Lee EAN-13 o QR y registra movimientos desde cámara o entrada manual.' },
+  { href: '/admin/inventario/scan', icon: ScanLine, label: 'Escáner QR y códigos', description: 'Lee QR, EAN, UPC y códigos de barras; arma una lista de recepción antes de incorporar stock.' },
   { href: '/admin/inventario/movimientos', icon: BarChart3, label: 'Movimientos', description: 'Trazabilidad de entradas, salidas, ajustes, pedidos y devoluciones.' },
-  { href: '/admin/productos', icon: Package, label: 'Catálogo de productos', description: 'Gestiona stock, precios, imágenes y códigos persistentes.' },
+  { href: '/admin/productos', icon: Package, label: 'Catálogo de productos', description: 'Gestiona stock, precios, imágenes, SKU, EAN y códigos persistentes.' },
   { href: '/admin/pedidos', icon: TrendingDown, label: 'Impacto por pedidos', description: 'Revisa pedidos que afectan la operación y el stock disponible.' },
 ];
 
@@ -54,9 +54,9 @@ export default function AdminInventarioPage() {
       <AdminPageHeader
         eyebrow="Catálogo · Inventario"
         title="Inventario"
-        description="Control real de stock, escaneo y trazabilidad conectado al estado actual de la plataforma."
+        description="Control de stock, recepción por QR/código de barras y trazabilidad conectado al catálogo real."
         icon={Package}
-        actions={<button type="button" onClick={() => void loadSummary()} disabled={loading} className={secondaryButton}><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar</button>}
+        actions={<><Link href="/admin/inventario/scan" className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white"><ScanLine className="h-4 w-4" /> Escanear ingreso</Link><button type="button" onClick={() => void loadSummary()} disabled={loading} className={secondaryButton}><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar</button></>}
       />
 
       <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
@@ -94,7 +94,7 @@ export default function AdminInventarioPage() {
         </div>
       </div>
 
-      <AdminCard className="text-xs leading-5 text-[#817a6f]">Las cifras se cargan desde el diagnóstico administrativo y los movimientos se registran mediante la API de inventario. No hay contadores demo en esta vista.</AdminCard>
+      <AdminCard className="text-xs leading-5 text-[#817a6f]">La recepción por escáner se prepara primero en una lista local: nada modifica el stock hasta pulsar “Incorporar”. Cada incorporación registra un movimiento de entrada para mantener trazabilidad.</AdminCard>
     </AdminPage>
   );
 }

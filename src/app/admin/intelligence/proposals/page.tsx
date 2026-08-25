@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useCallback, useEffect, useState } from 'react';
-import { ArrowLeft, Bot, Check, Loader2, Play, RefreshCw, X } from 'lucide-react';
+import { Bot, Check, CheckCircle2, Clock3, Loader2, Play, RefreshCw, ShieldCheck, X, XCircle } from 'lucide-react';
+import { AdminEmptyState, AdminPage, AdminPageHeader, AdminStat, AdminStats, AdminSurface } from '@/components/admin/AdminPage';
 
 type Proposal = {
   id: string;
@@ -19,7 +20,11 @@ type Proposal = {
 };
 
 const STATUS: Record<Proposal['status'], string> = {
-  pending: 'Pendiente', approved: 'Aprobada', executed: 'Ejecutada', rejected: 'Rechazada', failed: 'Fallida',
+  pending: 'Pendiente',
+  approved: 'Aprobada',
+  executed: 'Ejecutada',
+  rejected: 'Rechazada',
+  failed: 'Fallida',
 };
 
 export default function IntelligenceProposalsPage() {
@@ -29,46 +34,174 @@ export default function IntelligenceProposalsPage() {
   const [error, setError] = useState('');
 
   const load = useCallback(async () => {
-    setLoading(true); setError('');
+    setLoading(true);
+    setError('');
     try {
       const res = await fetch('/api/admin/intelligence/proposals', { cache: 'no-store' });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'No se pudieron cargar las propuestas.');
       setItems(json.proposals || []);
-    } catch (err) { setError(err instanceof Error ? err.message : 'Error cargando propuestas.'); }
-    finally { setLoading(false); }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error cargando propuestas.');
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
   async function operate(id: string, operation: 'approve' | 'reject' | 'execute') {
-    setWorking(`${id}:${operation}`); setError('');
+    setWorking(`${id}:${operation}`);
+    setError('');
     try {
       const res = await fetch(`/api/admin/intelligence/proposals/${id}`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ operation }),
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ operation }),
       });
       const json = await res.json();
       if (!res.ok) throw new Error(json.error || 'No se pudo procesar la propuesta.');
       await load();
-    } catch (err) { setError(err instanceof Error ? err.message : 'Error procesando propuesta.'); }
-    finally { setWorking(''); }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error procesando propuesta.');
+    } finally {
+      setWorking('');
+    }
   }
 
-  return <main className="min-h-screen bg-[#101116] px-4 py-6 text-white sm:px-6">
-    <section className="mx-auto max-w-6xl space-y-5">
-      <header className="rounded-[2rem] border border-[#f4cf57]/20 bg-[radial-gradient(circle_at_top_right,rgba(244,207,87,.16),transparent_35%),#171820] p-6 sm:p-8">
-        <Link href="/admin/intelligence/actions" className="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[.14em] text-white/45"><ArrowLeft className="h-4 w-4"/> Action Lab</Link>
-        <div className="mt-5 flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between"><div><span className="inline-flex items-center gap-2 rounded-full bg-[#f4cf57]/10 px-3 py-2 text-[10px] font-black uppercase tracking-[.18em] text-[#f4cf57]"><Bot className="h-4 w-4"/> V2 · Approval Queue</span><h1 className="mt-4 text-4xl font-black tracking-[-.05em] sm:text-6xl">Propuestas y ejecución.</h1><p className="mt-3 max-w-3xl text-sm leading-7 text-white/50">Nada se ejecuta sin pasar por política, tenant activo y aprobación cuando corresponde. Cada estado queda registrado en auditoría.</p></div><button onClick={() => void load()} className="inline-flex h-11 items-center justify-center gap-2 rounded-2xl border border-white/10 px-4 text-xs font-black"><RefreshCw className="h-4 w-4"/> Actualizar</button></div>
-      </header>
+  const pending = items.filter((item) => item.status === 'pending').length;
+  const approved = items.filter((item) => item.status === 'approved').length;
+  const executed = items.filter((item) => item.status === 'executed').length;
+  const blocked = items.filter((item) => item.status === 'rejected' || item.status === 'failed').length;
 
-      {error ? <p className="rounded-2xl border border-red-400/20 bg-red-400/10 p-4 text-sm text-red-100">{error}</p> : null}
-      {loading ? <div className="grid min-h-[35vh] place-items-center"><Loader2 className="h-7 w-7 animate-spin text-[#f4cf57]"/></div> : null}
+  return (
+    <AdminPage>
+      <AdminPageHeader
+        eyebrow="Fabrick Intelligence · Approval Queue"
+        title="Propuestas y ejecución"
+        description="Nada se ejecuta sin pasar por política, tenant activo y aprobación cuando corresponde. Cada transición permanece registrada en auditoría."
+        actions={(
+          <div className="flex flex-wrap gap-2">
+            <Link href="/admin/intelligence/actions" className="rounded-xl border border-black/10 bg-white/65 px-4 py-2.5 text-xs font-black text-[#514b42] transition hover:border-[#c77a00]/35 hover:text-[#9b6a12]">
+              Action Lab
+            </Link>
+            <button
+              type="button"
+              onClick={() => void load()}
+              disabled={loading}
+              className="inline-flex items-center gap-2 rounded-xl bg-[#171612] px-4 py-2.5 text-xs font-black text-white transition hover:bg-[#2b2924] disabled:opacity-50"
+            >
+              <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar
+            </button>
+          </div>
+        )}
+      />
 
-      {!loading ? <section className="space-y-3">{items.length ? items.map((item) => <article key={item.id} className="rounded-[1.6rem] border border-white/8 bg-white/[0.035] p-5">
-        <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between"><div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-[#f4cf57]/10 px-3 py-1 text-[10px] font-black uppercase tracking-[.14em] text-[#f4cf57]">{item.action.type}</span><span className="rounded-full bg-white/7 px-3 py-1 text-[10px] font-black uppercase tracking-[.14em] text-white/55">{STATUS[item.status]}</span></div><h2 className="mt-3 truncate text-lg font-black">{String(item.action.payload.name || item.action.payload.title || item.action.resourceId || item.id)}</h2><p className="mt-1 text-xs text-white/40">{item.decision.permission} · {new Date(item.createdAt).toLocaleString('es-CL')} · {item.actorEmail}</p></div>
-          <div className="flex flex-wrap gap-2">{item.status === 'pending' ? <><button disabled={!!working} onClick={() => void operate(item.id, 'approve')} className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#f4cf57] px-4 text-xs font-black text-black disabled:opacity-50"><Check className="h-4 w-4"/> Aprobar</button><button disabled={!!working} onClick={() => void operate(item.id, 'reject')} className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-400/20 bg-red-400/10 px-4 text-xs font-black text-red-200 disabled:opacity-50"><X className="h-4 w-4"/> Rechazar</button></> : null}{item.status === 'approved' ? <button disabled={!!working} onClick={() => void operate(item.id, 'execute')} className="inline-flex h-10 items-center gap-2 rounded-xl bg-emerald-300 px-4 text-xs font-black text-black disabled:opacity-50"><Play className="h-4 w-4"/> Ejecutar</button> : null}</div></div>
-        <details className="mt-4 rounded-2xl bg-black/20 p-4 text-xs text-white/55"><summary className="cursor-pointer font-black text-white/70">Ver payload y resultado</summary><pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words">{JSON.stringify({ resourceId: item.action.resourceId || null, payload: item.action.payload, result: item.result || null }, null, 2)}</pre></details>
-      </article>) : <div className="rounded-[2rem] border border-white/8 bg-white/[0.035] p-8 text-center text-sm text-white/45">Todavía no hay propuestas guardadas.</div>}</section> : null}
-    </section>
-  </main>;
+      <AdminStats>
+        <AdminStat label="Pendientes" value={pending} note="Esperan decisión humana" icon={Clock3} />
+        <AdminStat label="Aprobadas" value={approved} note="Listas para ejecutar" icon={ShieldCheck} />
+        <AdminStat label="Ejecutadas" value={executed} note="Acciones completadas" icon={CheckCircle2} />
+        <AdminStat label="Rechazadas / fallidas" value={blocked} note={`${items.length} propuestas registradas`} icon={XCircle} />
+      </AdminStats>
+
+      {error ? (
+        <div className="rounded-[16px] border border-red-200 bg-red-50 p-4 text-sm text-red-800">{error}</div>
+      ) : null}
+
+      <AdminSurface
+        title="Cola de aprobación"
+        description="Revisa qué se quiere cambiar, quién originó la propuesta y qué permiso exige antes de aprobar o ejecutar."
+      >
+        {loading ? (
+          <div className="grid min-h-72 place-items-center">
+            <Loader2 className="h-7 w-7 animate-spin text-[#c77a00]" />
+          </div>
+        ) : items.length ? (
+          <div className="space-y-3">
+            {items.map((item) => {
+              const title = String(item.action.payload.name || item.action.payload.title || item.action.resourceId || item.id);
+              return (
+                <article key={item.id} className="rounded-[18px] border border-black/10 bg-white/72 p-4 shadow-[0_12px_30px_rgba(70,55,25,.05)] sm:p-5">
+                  <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+                    <div className="min-w-0">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="rounded-full bg-[#fff2d8] px-3 py-1 text-[10px] font-black uppercase tracking-[.14em] text-[#9b6a12]">
+                          {item.action.type}
+                        </span>
+                        <span className={`rounded-full px-3 py-1 text-[10px] font-black uppercase tracking-[.14em] ${statusTone(item.status)}`}>
+                          {STATUS[item.status]}
+                        </span>
+                        {item.decision.requiresApproval ? (
+                          <span className="rounded-full border border-black/10 bg-white px-3 py-1 text-[10px] font-black uppercase tracking-[.12em] text-[#716b60]">
+                            Requiere aprobación
+                          </span>
+                        ) : null}
+                      </div>
+                      <h3 className="mt-3 truncate text-lg font-black tracking-[-.025em] text-[#171612]">{title}</h3>
+                      <p className="mt-1 text-xs leading-5 text-[#817a6f]">
+                        {item.decision.permission} · {new Date(item.createdAt).toLocaleString('es-CL')} · {item.actorEmail}
+                      </p>
+                    </div>
+
+                    <div className="flex flex-wrap gap-2">
+                      {item.status === 'pending' ? (
+                        <>
+                          <button
+                            type="button"
+                            disabled={!!working}
+                            onClick={() => void operate(item.id, 'approve')}
+                            className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#171612] px-4 text-xs font-black text-white transition hover:bg-[#2b2924] disabled:opacity-50"
+                          >
+                            {working === `${item.id}:approve` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />} Aprobar
+                          </button>
+                          <button
+                            type="button"
+                            disabled={!!working}
+                            onClick={() => void operate(item.id, 'reject')}
+                            className="inline-flex h-10 items-center gap-2 rounded-xl border border-red-200 bg-red-50 px-4 text-xs font-black text-red-800 transition hover:bg-red-100 disabled:opacity-50"
+                          >
+                            {working === `${item.id}:reject` ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />} Rechazar
+                          </button>
+                        </>
+                      ) : null}
+                      {item.status === 'approved' ? (
+                        <button
+                          type="button"
+                          disabled={!!working}
+                          onClick={() => void operate(item.id, 'execute')}
+                          className="inline-flex h-10 items-center gap-2 rounded-xl bg-[#c77a00] px-4 text-xs font-black text-white transition hover:bg-[#a96500] disabled:opacity-50"
+                        >
+                          {working === `${item.id}:execute` ? <Loader2 className="h-4 w-4 animate-spin" /> : <Play className="h-4 w-4" />} Ejecutar
+                        </button>
+                      ) : null}
+                    </div>
+                  </div>
+
+                  <details className="mt-4 rounded-[14px] border border-black/8 bg-[#f7f2e9] p-4 text-xs text-[#716b60]">
+                    <summary className="cursor-pointer font-black text-[#514b42]">Ver payload y resultado</summary>
+                    <pre className="mt-3 overflow-x-auto whitespace-pre-wrap break-words font-mono text-[11px] leading-5">
+                      {JSON.stringify({ resourceId: item.action.resourceId || null, payload: item.action.payload, result: item.result || null }, null, 2)}
+                    </pre>
+                  </details>
+                </article>
+              );
+            })}
+          </div>
+        ) : (
+          <AdminEmptyState
+            title="Todavía no hay propuestas"
+            description="Las acciones sensibles creadas por Fabrick Intelligence aparecerán aquí antes de ejecutarse."
+            icon={Bot}
+          />
+        )}
+      </AdminSurface>
+    </AdminPage>
+  );
+}
+
+function statusTone(status: Proposal['status']) {
+  if (status === 'executed') return 'bg-emerald-50 text-emerald-800';
+  if (status === 'approved') return 'bg-sky-50 text-sky-800';
+  if (status === 'rejected' || status === 'failed') return 'bg-red-50 text-red-800';
+  return 'bg-amber-50 text-amber-800';
 }

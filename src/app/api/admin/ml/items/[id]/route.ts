@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminSession } from '@/lib/adminApi';
+import { requireTenantAdmin } from '@/lib/tenantAdmin';
 import { mlGetItem, mlUpdateItem, mlPauseItem, mlActivateItem } from '@/lib/mlApi';
 
 export const dynamic = 'force-dynamic';
@@ -10,33 +10,23 @@ interface Ctx {
 	params: Promise<{ id: string }>;
 }
 
-/**
- * GET /api/admin/ml/items/[id]
- * Returns full details of a single ML listing.
- */
 export async function GET(request: NextRequest, ctx: Ctx) {
 	try {
-		const session = await getAdminSession(request);
-		if (!session) return adminUnauthorized();
+		const auth = await requireTenantAdmin(request, { resource: 'integrations', action: 'read' });
+		if (!auth.ok) return auth.response;
 		const { id } = await ctx.params;
 		const item = await mlGetItem(id);
-		return NextResponse.json({ ok: true, item });
+		return NextResponse.json({ ok: true, item, tenantId: auth.ctx.tenantId });
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : 'Error al obtener publicación ML.';
 		return NextResponse.json({ error: msg }, { status: 500 });
 	}
 }
 
-/**
- * PATCH /api/admin/ml/items/[id]
- * Body: { price?, available_quantity?, status? }
- *
- * Shortcuts: status "paused" → pause, status "active" → activate.
- */
 export async function PATCH(request: NextRequest, ctx: Ctx) {
 	try {
-		const session = await getAdminSession(request);
-		if (!session) return adminUnauthorized();
+		const auth = await requireTenantAdmin(request, { resource: 'products', action: 'update' });
+		if (!auth.ok) return auth.response;
 
 		const { id } = await ctx.params;
 		const body = (await request.json().catch(() => ({}))) as {
@@ -62,7 +52,7 @@ export async function PATCH(request: NextRequest, ctx: Ctx) {
 			updated = await mlUpdateItem(id, patch);
 		}
 
-		return NextResponse.json({ ok: true, item: updated });
+		return NextResponse.json({ ok: true, item: updated, tenantId: auth.ctx.tenantId });
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : 'Error al actualizar publicación ML.';
 		return NextResponse.json({ error: msg }, { status: 500 });

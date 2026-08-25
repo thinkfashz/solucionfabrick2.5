@@ -1,20 +1,10 @@
 import type { MetadataRoute } from 'next';
-import { getSeedProjects, type FabrickProject } from '@/lib/projects';
 import { insforge } from '@/lib/insforge';
 import { listContent } from '@/lib/content';
 import { loadInspirationCatalog } from '@/lib/inspirationCatalog';
+import { getPublicProjects } from '@/lib/projectsServer';
 
 const BASE_URL = 'https://www.solucionesfabrick.com';
-
-async function loadProjects(): Promise<FabrickProject[]> {
-  try {
-    const { data } = await insforge.database.from('projects').select('id, updated_at');
-    if (Array.isArray(data) && data.length > 0) return data as FabrickProject[];
-  } catch {
-    /* fall through to seed */
-  }
-  return getSeedProjects();
-}
 
 async function loadProducts(): Promise<{ id: string; updated_at?: string }[]> {
   try {
@@ -52,17 +42,18 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/casos`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
   ];
 
-  const [projects, products, inspirationCatalog] = await Promise.all([
-    loadProjects(),
+  const [{ data: projects }, products, inspirationCatalog] = await Promise.all([
+    getPublicProjects(),
     loadProducts(),
     loadInspirationCatalog({ maxResults: 100 }),
   ]);
 
   const projectRoutes: MetadataRoute.Sitemap = projects.map((project) => ({
     url: `${BASE_URL}/proyectos/${project.id}`,
-    lastModified: project.updated_at ? new Date(project.updated_at) : now,
+    lastModified: project.updated_at ? new Date(project.updated_at) : project.created_at ? new Date(project.created_at) : now,
     changeFrequency: 'monthly',
-    priority: 0.7,
+    priority: project.featured ? 0.82 : 0.72,
+    images: Array.from(new Set([project.hero_image, ...(project.gallery || [])].filter(Boolean))).slice(0, 30),
   }));
 
   const imagesByAlbum = new Map<string, string[]>();
@@ -80,8 +71,13 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     images: (imagesByAlbum.get(album.key) || [album.cover]).filter(Boolean).slice(0, 50),
   }));
 
+  const projectIndexImages = [
+    ...projects.map((project) => project.hero_image),
+    ...inspirationCatalog.albums.map((album) => album.cover),
+  ].filter(Boolean);
+
   const staticWithProjectImages = staticRoutes.map((route) => route.url === `${BASE_URL}/proyectos`
-    ? { ...route, images: inspirationCatalog.albums.map((album) => album.cover).filter(Boolean).slice(0, 100) }
+    ? { ...route, images: Array.from(new Set(projectIndexImages)).slice(0, 100) }
     : route);
 
   const productRoutes: MetadataRoute.Sitemap = products.map((product) => ({

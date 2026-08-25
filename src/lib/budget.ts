@@ -43,6 +43,7 @@ export interface MaterialInput {
 
 export interface QuoteRow {
   id: string;
+  tenant_id: string;
   user_id: string | null;
   customer_name: string | null;
   customer_email: string | null;
@@ -61,6 +62,7 @@ export interface QuoteRow {
 }
 
 export interface SaveBudgetInput {
+  tenantId: string;
   lines: QuoteLine[];
   customer?: {
     name?: string;
@@ -117,14 +119,15 @@ export async function getActiveMaterials(): Promise<MaterialRow[]> {
   }
 }
 
-/** Returns a single quote by id, or null. */
-export async function getQuoteById(id: string): Promise<QuoteRow | null> {
-  if (!isUuidLike(id)) return null;
+/** Returns a single quote by id inside the current tenant, or null. */
+export async function getQuoteById(id: string, tenantId: string): Promise<QuoteRow | null> {
+  if (!isUuidLike(id) || !isUuidLike(tenantId)) return null;
   try {
     const { data, error } = await insforge.database
       .from('quotes')
       .select('*')
       .eq('id', id)
+      .eq('tenant_id', tenantId)
       .limit(1);
     if (error || !Array.isArray(data) || data.length === 0) return null;
     return normalizeQuote(data[0] as QuoteRow);
@@ -133,14 +136,15 @@ export async function getQuoteById(id: string): Promise<QuoteRow | null> {
   }
 }
 
-/** Lists quotes belonging to a given user (most recent first). */
-export async function listQuotesForUser(userId: string): Promise<QuoteRow[]> {
-  if (!userId) return [];
+/** Lists quotes belonging to a given user inside the current tenant. */
+export async function listQuotesForUser(userId: string, tenantId: string): Promise<QuoteRow[]> {
+  if (!userId || !isUuidLike(tenantId)) return [];
   try {
     const { data, error } = await insforge.database
       .from('quotes')
       .select('*')
       .eq('user_id', userId)
+      .eq('tenant_id', tenantId)
       .order('created_at', { ascending: false })
       .limit(50);
     if (error || !Array.isArray(data)) return [];
@@ -156,6 +160,10 @@ export async function listQuotesForUser(userId: string): Promise<QuoteRow[]> {
 
 /** Persists a new quote. Computes totals server-side to avoid client tampering. */
 export async function saveBudget(input: SaveBudgetInput): Promise<QuoteRow> {
+  if (!isUuidLike(input.tenantId)) {
+    throw budgetError('Tenant inválido.', 'INVALID_TENANT', 400);
+  }
+
   const lines = sanitizeLines(input.lines);
   if (lines.length === 0) throw budgetError('Tu presupuesto está vacío.', 'EMPTY_CART', 400);
 
@@ -166,6 +174,7 @@ export async function saveBudget(input: SaveBudgetInput): Promise<QuoteRow> {
   });
 
   const row = {
+    tenant_id: input.tenantId,
     user_id: input.userId ?? null,
     customer_name: input.customer?.name?.trim() || null,
     customer_email: input.customer?.email?.trim().toLowerCase() || null,

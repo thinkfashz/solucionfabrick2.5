@@ -1,0 +1,210 @@
+/* Stage 7 — route-aware convergence for remaining operational workspaces.
+ * The goal is to make legacy screens feel native without changing their business logic.
+ */
+
+/* Retired duplicate content editors: keep old routes compatible, but remove them from navigation. */
+.fabrick-sidebar-nav a[href="/admin/editor"],
+.fabrick-sidebar-nav a[href="/admin/paginas"] { display: none !important; }
+
+/* Hand-audited workspaces that still render legacy dark wrappers. */
+body[data-admin-path^="/admin/pedidos"] .fabrick-admin-content,
+body[data-admin-path^="/admin/cotizaciones"] .fabrick-admin-content,
+body[data-admin-path^="/admin/entregas"] .fabrick-admin-content,
+body[data-admin-path^="/admin/productos"] .fabrick-admin-content,
+body[data-admin-path^="/admin/contabilidad"] .fabrick-admin-content,
+body[data-admin-path^="/admin/analytics"] .fabrick-admin-content,
+body[data-admin-path^="/admin/facturas"] .fabrick-admin-content,
+body[data-admin-path^="/admin/pagos"] .fabrick-admin-content,
+body[data-admin-path^="/admin/reportes"] .fabrick-admin-content,
+body[data-admin-path^="/admin/invitaciones"] .fabrick-admin-content,
+body[data-admin-path^="/admin/proyectos"] .fabrick-admin-content {
+  --fa7-text: #171612;
+  --fa7-muted: #716b60;
+  --fa7-soft: #8f887c;
+  --fa7-gold: #c77a00;
+  --fa7-gold-dark: #9b6a12;
+  --fa7-surface: rgba(255,255,255,.66);
+  --fa7-surface-strong: rgba(255,252,246,.9);
+  --fa7-border: rgba(45,37,22,.10);
+}
+
+body[data-admin-path^="/admin/pedidos"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
+body[data-admin-path^="/admin/cotizaciones"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
+body[data-admin-path^="/admin/entregas"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
+body[data-admin-path^="/admin/productos"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
+body[data-admin-path^="/admin/contabilidad"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
+body[data-admin-path^="/admin/analytics"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
+body[data-admin-path^="/admin/facturas"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
+body[data-admin-path^="/admin/pagos"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
+body[data-admin-path^="/admin/reportes"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
+body[data-admin-path^="/admin/invitaciones"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen),
+body[data-admin-path^="/admin/proyectos"] .fabrick-admin-content :is(.min-h-screen, main.min-h-screen) {
+  min-height: 0 !important;
+  max-width: none !important;
+  padding: 0 !important;
+  color: var(--fa7-text) !important;
+  background: transparent !important;
+}
+
+body[data-admin-path^="/admin/pedidos"] .fabrick-admin-content :is(h1,h2,h3,h4,.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
+body[data-admin-path^="/admin/cotizaciones"] .fabrick-admin-content :is(h1,h2,h3,h4,.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
+body[data-admin-path^="/admin/entregas"] .fabrick-admin-content :is(h1,h2,h3,h4,.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
+body[data-admin-path^="/admin/productos"] .fabrick-admin-content :is(h1,h2,h3,h4,.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
+body[data-admin-path^="/admin/contabilidad"] .fabrick-admin-content :is(h1,h2,h3,h4,.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
+body[data-admin-path^="/admin/analytics"] .fabrick-admin-content :is(h1,h2,h3,h4,.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
+body[data-admin-path^="/admin/facturas"] .fabrick-admin-content :is(h1,h2,h3,h4,.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
+body[data-admin-path^="/admin/pagos"] .fabrick-admin-content :is(h1,h2,h3,h4,.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
+body[data-admin-path^="/admin/reportes"] .fabrick-admin-content :is(h1,h2,h3,h4,.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300),
+body[data-admin-path^="/admin/invitaciones"] .fabrick-admin-content :is(h1,h2,h3,h4,.text-white,.text-zinc-100,.text-zinc-200,.text-zinc-300) {
+  color: var(--fa7-text) !important;
+}
+
+body[data-admin-path^="/admin/pedidos"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
+body[data-admin-path^="/admin/cotizaciones"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
+body[data-admin-path^="/admin/entregas"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
+body[data-admin-path^="/admin/productos"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
+body[data-admin-path^="/admin/contabilidad"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
+body[data-admin-path^="/admin/analytics"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
+body[data-admin-path^="/admin/facturas"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
+body[data-admin-path^="/admin/pagos"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
+body[data-admin-path^="/admin/reportes"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600),
+body[data-admin-path^="/admin/invitaciones"] .fabrick-admin-content :is(.text-zinc-400,.text-zinc-500,.text-zinc-600) {
+  color: var(--fa7-muted) !important;
+}
+
+body[data-admin-path^="/admin/pedidos"] .fabrick-admin-content :is(.text-yellow-300,.text-yellow-400),
+body[data-admin-path^="/admin/cotizaciones"] .fabrick-admin-content :is(.text-yellow-300,.text-yellow-400),
+body[data-admin-path^="/admin/entregas"] .fabrick-admin-content :is(.text-yellow-300,.text-yellow-400),
+body[data-admin-path^="/admin/productos"] .fabrick-admin-content :is(.text-yellow-300,.text-yellow-400),
+body[data-admin-path^="/admin/contabilidad"] .fabrick-admin-content :is(.text-yellow-300,.text-yellow-400),
+body[data-admin-path^="/admin/analytics"] .fabrick-admin-content :is(.text-yellow-300,.text-yellow-400),
+body[data-admin-path^="/admin/facturas"] .fabrick-admin-content :is(.text-yellow-300,.text-yellow-400),
+body[data-admin-path^="/admin/pagos"] .fabrick-admin-content :is(.text-yellow-300,.text-yellow-400),
+body[data-admin-path^="/admin/reportes"] .fabrick-admin-content :is(.text-yellow-300,.text-yellow-400),
+body[data-admin-path^="/admin/invitaciones"] .fabrick-admin-content :is(.text-yellow-300,.text-yellow-400) {
+  color: var(--fa7-gold-dark) !important;
+}
+
+body[data-admin-path^="/admin/pedidos"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/75,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
+body[data-admin-path^="/admin/cotizaciones"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/75,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
+body[data-admin-path^="/admin/entregas"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/75,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
+body[data-admin-path^="/admin/productos"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/75,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
+body[data-admin-path^="/admin/contabilidad"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/75,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
+body[data-admin-path^="/admin/analytics"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/75,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
+body[data-admin-path^="/admin/facturas"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/75,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
+body[data-admin-path^="/admin/pagos"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/75,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
+body[data-admin-path^="/admin/reportes"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/75,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800),
+body[data-admin-path^="/admin/invitaciones"] .fabrick-admin-content :is(.bg-black,.bg-zinc-950,.bg-zinc-950\/75,.bg-zinc-950\/70,.bg-zinc-900,.bg-zinc-900\/50,.bg-zinc-800) {
+  background: var(--fa7-surface) !important;
+}
+
+body[data-admin-path^="/admin/pedidos"] .fabrick-admin-content [class*="border-white/"],
+body[data-admin-path^="/admin/cotizaciones"] .fabrick-admin-content [class*="border-white/"],
+body[data-admin-path^="/admin/entregas"] .fabrick-admin-content [class*="border-white/"],
+body[data-admin-path^="/admin/productos"] .fabrick-admin-content [class*="border-white/"],
+body[data-admin-path^="/admin/contabilidad"] .fabrick-admin-content [class*="border-white/"],
+body[data-admin-path^="/admin/analytics"] .fabrick-admin-content [class*="border-white/"],
+body[data-admin-path^="/admin/facturas"] .fabrick-admin-content [class*="border-white/"],
+body[data-admin-path^="/admin/pagos"] .fabrick-admin-content [class*="border-white/"],
+body[data-admin-path^="/admin/reportes"] .fabrick-admin-content [class*="border-white/"],
+body[data-admin-path^="/admin/invitaciones"] .fabrick-admin-content [class*="border-white/"] {
+  border-color: var(--fa7-border) !important;
+}
+
+body[data-admin-path^="/admin/pedidos"] .fabrick-admin-content :is(input,select,textarea),
+body[data-admin-path^="/admin/cotizaciones"] .fabrick-admin-content :is(input,select,textarea),
+body[data-admin-path^="/admin/entregas"] .fabrick-admin-content :is(input,select,textarea),
+body[data-admin-path^="/admin/productos"] .fabrick-admin-content :is(input,select,textarea),
+body[data-admin-path^="/admin/contabilidad"] .fabrick-admin-content :is(input,select,textarea),
+body[data-admin-path^="/admin/analytics"] .fabrick-admin-content :is(input,select,textarea),
+body[data-admin-path^="/admin/facturas"] .fabrick-admin-content :is(input,select,textarea),
+body[data-admin-path^="/admin/pagos"] .fabrick-admin-content :is(input,select,textarea),
+body[data-admin-path^="/admin/reportes"] .fabrick-admin-content :is(input,select,textarea),
+body[data-admin-path^="/admin/invitaciones"] .fabrick-admin-content :is(input,select,textarea) {
+  color: var(--fa7-text) !important;
+  background: rgba(255,255,255,.82) !important;
+  border-color: rgba(57,45,25,.13) !important;
+  box-shadow: none !important;
+}
+
+body[data-admin-path^="/admin/pedidos"] .fabrick-admin-content :is(input,textarea)::placeholder,
+body[data-admin-path^="/admin/cotizaciones"] .fabrick-admin-content :is(input,textarea)::placeholder,
+body[data-admin-path^="/admin/entregas"] .fabrick-admin-content :is(input,textarea)::placeholder,
+body[data-admin-path^="/admin/productos"] .fabrick-admin-content :is(input,textarea)::placeholder,
+body[data-admin-path^="/admin/contabilidad"] .fabrick-admin-content :is(input,textarea)::placeholder,
+body[data-admin-path^="/admin/analytics"] .fabrick-admin-content :is(input,textarea)::placeholder,
+body[data-admin-path^="/admin/facturas"] .fabrick-admin-content :is(input,textarea)::placeholder,
+body[data-admin-path^="/admin/pagos"] .fabrick-admin-content :is(input,textarea)::placeholder,
+body[data-admin-path^="/admin/reportes"] .fabrick-admin-content :is(input,textarea)::placeholder,
+body[data-admin-path^="/admin/invitaciones"] .fabrick-admin-content :is(input,textarea)::placeholder {
+  color: #9a9388 !important;
+}
+
+/* Shared operational headers become part of the shell instead of a second application header. */
+body[data-admin-path^="/admin/pedidos"] .fabrick-admin-content > :is(div,main) > :first-child,
+body[data-admin-path^="/admin/cotizaciones"] .fabrick-admin-content main > header,
+body[data-admin-path^="/admin/entregas"] .fabrick-admin-content main > header,
+body[data-admin-path^="/admin/productos"] .fabrick-admin-content main > header,
+body[data-admin-path^="/admin/contabilidad"] .fabrick-admin-content main > header,
+body[data-admin-path^="/admin/analytics"] .fabrick-admin-content main > header,
+body[data-admin-path^="/admin/facturas"] .fabrick-admin-content main > header,
+body[data-admin-path^="/admin/pagos"] .fabrick-admin-content main > header,
+body[data-admin-path^="/admin/reportes"] .fabrick-admin-content main > header,
+body[data-admin-path^="/admin/invitaciones"] .fabrick-admin-content main > header {
+  background: transparent !important;
+  border-color: var(--fa7-border) !important;
+  box-shadow: none !important;
+}
+
+/* Tables and dense lists use the same calm admin rhythm. */
+body[data-admin-area="sales"] .fabrick-admin-content table,
+body[data-admin-area="catalog"] .fabrick-admin-content table,
+body[data-admin-area="finance"] .fabrick-admin-content table {
+  border-collapse: separate;
+  border-spacing: 0;
+  color: var(--fa7-text, #171612);
+}
+body[data-admin-area="sales"] .fabrick-admin-content tbody tr,
+body[data-admin-area="catalog"] .fabrick-admin-content tbody tr,
+body[data-admin-area="finance"] .fabrick-admin-content tbody tr { transition: background-color .16s ease; }
+body[data-admin-area="sales"] .fabrick-admin-content tbody tr:hover,
+body[data-admin-area="catalog"] .fabrick-admin-content tbody tr:hover,
+body[data-admin-area="finance"] .fabrick-admin-content tbody tr:hover { background: rgba(199,122,0,.045) !important; }
+
+/* Projects: flatten the old dark app shell while preserving its existing workflow. */
+body[data-admin-path="/admin/proyectos"] .fabrick-admin-content main > div { max-width: none !important; }
+body[data-admin-path="/admin/proyectos"] .fabrick-admin-content main > div > header {
+  padding: 0 0 1.25rem !important;
+  color: #171612 !important;
+  background: transparent !important;
+  box-shadow: none !important;
+  border-bottom: 1px solid rgba(45,37,22,.10);
+  border-radius: 0 !important;
+}
+body[data-admin-path="/admin/proyectos"] .fabrick-admin-content main > div > header :is(h1,h2,h3) { color: #171612 !important; }
+body[data-admin-path="/admin/proyectos"] .fabrick-admin-content main > div > header p { color: #716b60 !important; }
+body[data-admin-path="/admin/proyectos"] .fabrick-admin-content main > div > section {
+  color: #171612 !important;
+}
+body[data-admin-path="/admin/proyectos"] .fabrick-admin-content main > div > section.rounded-\[2rem\] {
+  background: rgba(255,255,255,.64) !important;
+  border: 1px solid rgba(45,37,22,.10) !important;
+  box-shadow: none !important;
+}
+body[data-admin-path="/admin/proyectos"] .fabrick-admin-content main > div > section.mt-10 :is(h2,h3) { color: #171612 !important; }
+body[data-admin-path="/admin/proyectos"] .fabrick-admin-content main > div > section.mt-10 p { color: #716b60 !important; }
+body[data-admin-path="/admin/proyectos"] .fabrick-admin-content main > div > section.mt-10 label { background: rgba(255,255,255,.65) !important; }
+body[data-admin-path="/admin/proyectos"] .fabrick-admin-content main > div > section.mt-10 label input { color: #171612 !important; }
+
+@media (max-width: 767px) {
+  body[data-admin-area="sales"] .fabrick-admin-content,
+  body[data-admin-area="catalog"] .fabrick-admin-content,
+  body[data-admin-area="finance"] .fabrick-admin-content,
+  body[data-admin-path^="/admin/invitaciones"] .fabrick-admin-content,
+  body[data-admin-path="/admin/proyectos"] .fabrick-admin-content { padding-inline: 0 !important; }
+
+  body[data-admin-area="sales"] .fabrick-admin-content :is(.rounded-\[2rem\],.rounded-\[2\.4rem\]),
+  body[data-admin-area="catalog"] .fabrick-admin-content :is(.rounded-\[2rem\],.rounded-\[2\.4rem\]),
+  body[data-admin-area="finance"] .fabrick-admin-content :is(.rounded-\[2rem\],.rounded-\[2\.4rem\]),
+  body[data-admin-path="/admin/proyectos"] .fabrick-admin-content :is(.rounded-\[2rem\],.rounded-\[2\.4rem\]) { border-radius: 16px !important; }
+}

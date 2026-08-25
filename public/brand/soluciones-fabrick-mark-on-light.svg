@@ -1,18 +1,12 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" role="img" aria-label="Isotipo Soluciones Fabrick para fondos claros">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 220" role="img" aria-label="Soluciones Fabrick">
   <defs>
-    <linearGradient id="fabrickGold" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#F7C95A"/>
-      <stop offset=".34" stop-color="#D99016"/>
-      <stop offset=".72" stop-color="#B76508"/>
-      <stop offset="1" stop-color="#8D4003"/>
-    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff"/><stop offset=".2" stop-color="#cfd1d5"/><stop offset=".42" stop-color="#fff"/><stop offset=".68" stop-color="#6c7076"/><stop offset="1" stop-color="#2d3035"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff1a0"/><stop offset=".25" stop-color="#ffc728"/><stop offset=".62" stop-color="#e99200"/><stop offset="1" stop-color="#8a4300"/></linearGradient>
+    <filter id="s" x="-20%" y="-20%" width="140%" height="150%"><feGaussianBlur in="SourceAlpha" stdDeviation="3"/><feOffset dy="5"/><feComponentTransfer><feFuncA type="linear" slope=".45"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
-  <g fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M25 199 128 31l103 168" stroke="url(#fabrickGold)" stroke-width="18"/>
-    <path d="M55 196 128 78l73 118" stroke="#17191C" stroke-width="7" opacity=".92"/>
-    <path d="M120 195v-78" stroke="url(#fabrickGold)" stroke-width="14"/>
-    <path d="M120 131h51M120 164h38" stroke="#15171A" stroke-width="9"/>
-    <path d="M76 220h104" stroke="#B75E05" stroke-width="8"/>
-    <path d="M96 220h64" stroke="#E2A52D" stroke-width="2"/>
+  <g filter="url(#s)" stroke-linejoin="miter">
+    <path d="M14 180 160 39 214 91 214 55 246 55 246 122 307 180 286 181 235 135 235 72 224 72 224 113 160 60 35 181Z" fill="url(#steel)" stroke="#cfd2d5" stroke-width="4"/>
+    <path d="M27 176 160 55 218 108 218 119 160 72 42 181Z" fill="url(#gold)"/>
+    <path d="M39 181 160 76 216 122 216 135 160 91 55 183Z" fill="#15171b"/>
   </g>
 </svg>

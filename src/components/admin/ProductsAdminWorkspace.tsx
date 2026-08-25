@@ -2,12 +2,11 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Boxes, Import, LayoutGrid, Plus, Sparkles } from 'lucide-react';
-import ProductMerchandisingStudio from '@/components/admin/ProductMerchandisingStudio';
+import { BarChart3, Boxes, LayoutGrid, Plus } from 'lucide-react';
 
 function NavLink({ href, active, icon, children }: { href: string; active: boolean; icon: React.ReactNode; children: React.ReactNode }) {
   return (
-    <Link href={href} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-4 text-xs font-black transition ${active ? 'bg-[#08090A] text-[#FFF9EE] shadow-[0_12px_34px_rgba(23,24,32,.18)]' : 'bg-white/70 text-[#BFB8AC] hover:bg-white'}`}>
+    <Link href={href} className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-4 text-xs font-black transition ${active ? 'bg-[#08090A] text-[#FFF9EE] shadow-[0_12px_34px_rgba(23,24,32,.18)]' : 'bg-white/70 text-[#756f66] hover:bg-white hover:text-[#08090A]'}`}>
       {icon}{children}
     </Link>
   );
@@ -16,8 +15,6 @@ function NavLink({ href, active, icon, children }: { href: string; active: boole
 export default function ProductsAdminWorkspace({ children }: { children: React.ReactNode }) {
   const pathname = usePathname();
   const isIndex = pathname === '/admin/productos';
-  const isCreate = pathname === '/admin/productos/nuevo';
-  const isEditor = pathname.includes('/editar');
 
   return (
     <div className="products-admin-workspace -mx-3 min-h-screen bg-[linear-gradient(180deg,#FFF9EE_0%,#F2DFBB_48%,#FFF9EE_100%)] px-3 pb-24 sm:-mx-5 sm:px-5 lg:-mx-8 lg:px-8">
@@ -26,21 +23,19 @@ export default function ProductsAdminWorkspace({ children }: { children: React.R
           <div className="flex items-center gap-3">
             <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#08090A] text-[#FFB000]"><Boxes className="h-5 w-5" /></span>
             <div>
-              <p className="text-[9px] font-black uppercase tracking-[.23em] text-[#F5871F]">Catálogo comercial</p>
-              <h1 className="text-lg font-black tracking-[-.035em] text-[#08090A]">Productos, precios y vitrina</h1>
+              <p className="text-[9px] font-black uppercase tracking-[.23em] text-[#F5871F]">Product Studio</p>
+              <h1 className="text-lg font-black tracking-[-.035em] text-[#08090A]">Catálogo, precio, IA e inventario</h1>
             </div>
           </div>
-          <nav className="grid grid-cols-2 gap-2 sm:flex">
+          <nav className="grid grid-cols-3 gap-2 sm:flex">
             <NavLink href="/admin/productos" active={isIndex} icon={<LayoutGrid className="h-4 w-4" />}>Catálogo</NavLink>
-            <NavLink href="/admin/productos/nuevo" active={isCreate} icon={<Plus className="h-4 w-4" />}>Nuevo producto</NavLink>
-            <a href="/admin/productos#importar" className="inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl bg-white/70 px-4 text-xs font-black text-[#BFB8AC] transition hover:bg-white"><Import className="h-4 w-4" />Importar</a>
-            <a href="/admin/productos#editor-comercial" className={`inline-flex min-h-11 items-center justify-center gap-2 rounded-2xl px-4 text-xs font-black transition ${isEditor ? 'bg-[#F5871F] text-[#08090A]' : 'bg-white/70 text-[#BFB8AC] hover:bg-white'}`}><Sparkles className="h-4 w-4" />IA y vitrina</a>
+            <NavLink href="/admin/productos?studio=new" active={false} icon={<Plus className="h-4 w-4" />}>Nuevo</NavLink>
+            <NavLink href="/admin/inteligencia-mercado" active={false} icon={<BarChart3 className="h-4 w-4" />}>Mercado</NavLink>
           </nav>
         </div>
       </header>
 
       <div className="mx-auto max-w-[1680px] pt-5">
-        {isIndex ? <div id="editor-comercial"><ProductMerchandisingStudio /></div> : null}
         {children}
       </div>
 

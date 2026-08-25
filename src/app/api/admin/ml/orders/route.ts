@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { getAdminInsforge } from '@/lib/adminApi';
+import { requireTenantAdmin } from '@/lib/tenantAdmin';
 import { mlGetOrders } from '@/lib/mlApi';
 
 export const dynamic = 'force-dynamic';
@@ -8,20 +9,22 @@ export const runtime = 'nodejs';
 
 /**
  * GET /api/admin/ml/orders?status={}&limit={}&offset={}&sync={true|false}
- *
- * Fetches ML orders. When `sync=true`, also upserts them into the
- * `ml_orders` InsForge table for local persistence.
+ * Fetches orders from the ML seller account configured for the current tenant.
+ * Optional local sync is also tagged with the same tenant_id.
  */
 export async function GET(request: NextRequest) {
 	try {
-		const session = await getAdminSession(request);
-		if (!session) return adminUnauthorized();
+		const doSync = request.nextUrl.searchParams.get('sync') === 'true';
+		const auth = await requireTenantAdmin(request, {
+			resource: 'orders',
+			action: doSync ? 'update' : 'read',
+		});
+		if (!auth.ok) return auth.response;
 
 		const { searchParams } = request.nextUrl;
 		const status = searchParams.get('status') ?? undefined;
 		const limit = Math.min(Number(searchParams.get('limit') ?? '50'), 100);
 		const offset = Math.max(Number(searchParams.get('offset') ?? '0'), 0);
-		const doSync = searchParams.get('sync') === 'true';
 
 		const { results, paging } = await mlGetOrders({ status, limit, offset });
 
@@ -29,6 +32,7 @@ export async function GET(request: NextRequest) {
 			const client = getAdminInsforge();
 			const rows = results.map((o) => ({
 				id: o.id,
+				tenant_id: auth.ctx.tenantId,
 				status: o.status,
 				status_detail: o.status_detail ?? null,
 				buyer_id: o.buyer?.id ?? null,
@@ -46,13 +50,10 @@ export async function GET(request: NextRequest) {
 				last_updated: o.last_updated,
 				synced_at: new Date().toISOString(),
 			}));
-			// Best-effort upsert — ignore failures so the API still returns data.
 			try {
-				await client.database
-					.from('ml_orders')
-					.upsert(rows, { onConflict: 'id' });
+				await client.database.from('ml_orders').upsert(rows, { onConflict: 'id' });
 			} catch {
-				// Table may not exist yet; proceed.
+				// The external result remains usable even if the optional cache fails.
 			}
 		}
 
@@ -60,6 +61,7 @@ export async function GET(request: NextRequest) {
 			ok: true,
 			results,
 			paging: { total: paging.total, limit, offset },
+			tenantId: auth.ctx.tenantId,
 		});
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : 'Error al obtener pedidos ML.';

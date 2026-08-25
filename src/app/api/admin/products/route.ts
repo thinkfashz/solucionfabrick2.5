@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { insforgeAdmin } from '@/lib/insforge';
+import { getAdminTenantId } from '@/lib/adminApi';
 import { requireAdminPermission } from '@/lib/adminPermissions';
 import { recordAdminAudit, recordAdminFailure } from '@/lib/adminAudit';
 
@@ -10,15 +11,89 @@ function parseProductId(request: NextRequest) {
   return new URL(request.url).searchParams.get('id')?.trim() ?? '';
 }
 
-const PRODUCT_SELECT = 'id, name, description, price, stock, image_url, featured, activo, tagline, category_id, created_at, source, source_url, source_id, supplier_price, supplier_currency, specifications, shipping_mode, shipping_fee, shipping_weight_kg, shipping_dimensions, shipping_region_overrides, rating, discount_percentage';
+const PRODUCT_SELECT = 'id, tenant_id, name, description, price, stock, image_url, featured, activo, tagline, category_id, created_at, source, source_url, source_id, supplier_price, supplier_currency, specifications, shipping_mode, shipping_fee, shipping_weight_kg, shipping_dimensions, shipping_region_overrides, rating, discount_percentage, sku, ean, scan_code, scan_format';
+
+function numberInRange(value: unknown, min: number, max: number) {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : null;
+}
+
+function cleanText(value: unknown, max: number) {
+  return typeof value === 'string' ? value.trim().slice(0, max) : '';
+}
+
+function cleanLegacyCode(value: unknown) {
+  return String(value ?? '').trim().replace(/\s+/g, '').slice(0, 128);
+}
+
+function cleanScanCode(value: unknown) {
+  return String(value ?? '').trim().slice(0, 512);
+}
+
+function cleanFormat(value: unknown) {
+  return String(value ?? '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+}
+
+function buildCreatePayload(body: Record<string, unknown>, tenantId: string) {
+  const name = cleanText(body.name, 180);
+  if (!name) return { error: 'Nombre requerido.' as const };
+
+  const price = numberInRange(body.price ?? 0, 0, 999999999) ?? 0;
+  const stock = numberInRange(body.stock ?? 0, 0, 999999999) ?? 0;
+  const rating = numberInRange(body.rating, 0, 5);
+  const discount = numberInRange(body.discount_percentage, 0, 95);
+  const shippingFee = numberInRange(body.shipping_fee, 0, 999999999);
+  const supplierPrice = numberInRange(body.supplier_price, 0, 999999999);
+  const deliveryDays = numberInRange(body.delivery_days, 0, 3650);
+  const shippingWeight = numberInRange(body.shipping_weight_kg, 0, 999999);
+  const scanCode = cleanScanCode(body.scan_code);
+  const scanFormat = scanCode ? (cleanFormat(body.scan_format) || 'manual') : '';
+  const ean = cleanLegacyCode(body.ean);
+  const sku = cleanLegacyCode(body.sku);
+
+  const payload: Record<string, unknown> = {
+    tenant_id: tenantId,
+    name,
+    description: cleanText(body.description, 5000) || null,
+    tagline: cleanText(body.tagline, 240) || null,
+    price: Math.round(price),
+    stock: Math.round(stock),
+    image_url: cleanText(body.image_url, 2000) || null,
+    featured: body.featured === true,
+    activo: body.activo === true,
+    category_id: cleanText(body.category_id, 120) || null,
+    source: cleanText(body.source, 120) || null,
+    source_url: cleanText(body.source_url, 2000) || null,
+    source_id: cleanText(body.source_id, 240) || null,
+    supplier_price: supplierPrice === null ? null : supplierPrice,
+    supplier_currency: cleanText(body.supplier_currency, 12) || 'CLP',
+    specifications: body.specifications && typeof body.specifications === 'object' && !Array.isArray(body.specifications) ? body.specifications : {},
+    shipping_mode: cleanText(body.shipping_mode, 40) || 'inherit',
+    shipping_fee: shippingFee === null ? null : shippingFee,
+    shipping_weight_kg: shippingWeight === null ? null : shippingWeight,
+    shipping_dimensions: cleanText(body.shipping_dimensions, 240) || null,
+    shipping_region_overrides: body.shipping_region_overrides && typeof body.shipping_region_overrides === 'object' && !Array.isArray(body.shipping_region_overrides) ? body.shipping_region_overrides : {},
+    rating: rating === null ? null : Math.round(rating * 10) / 10,
+    discount_percentage: discount === null ? 0 : Math.round(discount),
+    sku: sku || null,
+    ean: ean || null,
+    scan_code: scanCode || null,
+    scan_format: scanCode ? scanFormat : null,
+  };
+
+  if (deliveryDays !== null) payload.delivery_days = Math.round(deliveryDays);
+  return { payload };
+}
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdminPermission(request, { resource: 'products', action: 'read' });
   if (!auth.ok) return auth.response;
+  const tenantId = await getAdminTenantId(request);
 
   const { data, error } = await insforgeAdmin.database
     .from('products')
     .select(PRODUCT_SELECT)
+    .eq('tenant_id', tenantId)
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -29,14 +104,36 @@ export async function GET(request: NextRequest) {
   return NextResponse.json({ products: data ?? [] });
 }
 
-function numberInRange(value: unknown, min: number, max: number) {
-  const parsed = Number(value);
-  return Number.isFinite(parsed) ? Math.min(max, Math.max(min, parsed)) : null;
+export async function POST(request: NextRequest) {
+  const auth = await requireAdminPermission(request, { resource: 'products', action: 'create' });
+  if (!auth.ok) return auth.response;
+  const tenantId = await getAdminTenantId(request);
+
+  let body: Record<string, unknown>;
+  try { body = await request.json(); } catch { return NextResponse.json({ error: 'Cuerpo inválido.' }, { status: 400 }); }
+  const built = buildCreatePayload(body, tenantId);
+  if ('error' in built) return NextResponse.json({ error: built.error }, { status: 400 });
+
+  const { data, error } = await insforgeAdmin.database
+    .from('products')
+    .insert([built.payload])
+    .select(PRODUCT_SELECT)
+    .single();
+
+  if (error) {
+    const duplicate = (error as { code?: string }).code === '23505';
+    await recordAdminFailure({ session: auth.session, request, action: 'create', resource: 'products', metadata: { error: error.message, scanCode: built.payload.scan_code, sku: built.payload.sku, ean: built.payload.ean } });
+    return NextResponse.json({ error: duplicate ? 'Ese SKU, EAN o código QR/barra ya está asociado a otro producto.' : (error.message ?? 'No se pudo crear el producto.') }, { status: duplicate ? 409 : 500 });
+  }
+
+  await recordAdminAudit({ session: auth.session, request, action: 'create', resource: 'products', resourceId: String(data?.id ?? ''), metadata: { source: built.payload.source ?? 'admin', hasScanCode: Boolean(built.payload.scan_code) } });
+  return NextResponse.json({ ok: true, product: data }, { status: 201 });
 }
 
 export async function PATCH(request: NextRequest) {
   const auth = await requireAdminPermission(request, { resource: 'products', action: 'update' });
   if (!auth.ok) return auth.response;
+  const tenantId = await getAdminTenantId(request);
 
   const id = parseProductId(request);
   if (!id) return NextResponse.json({ error: 'ID requerido.' }, { status: 400 });
@@ -52,15 +149,21 @@ export async function PATCH(request: NextRequest) {
   if (typeof body.tagline === 'string') patch.tagline = body.tagline.trim().slice(0, 240);
   const price = numberInRange(body.price, 0, 999999999);
   if (price !== null) patch.price = Math.round(price);
+  const stock = numberInRange(body.stock, 0, 999999999);
+  if (stock !== null) patch.stock = Math.round(stock);
   const rating = numberInRange(body.rating, 0, 5);
   if (rating !== null) patch.rating = Math.round(rating * 10) / 10;
   const discount = numberInRange(body.discount_percentage, 0, 95);
   if (discount !== null) patch.discount_percentage = Math.round(discount);
   if (body.specifications && typeof body.specifications === 'object' && !Array.isArray(body.specifications)) patch.specifications = body.specifications;
+  if (body.sku !== undefined) patch.sku = cleanLegacyCode(body.sku) || null;
+  if (body.ean !== undefined) patch.ean = cleanLegacyCode(body.ean) || null;
+  if (body.scan_code !== undefined) patch.scan_code = cleanScanCode(body.scan_code) || null;
+  if (body.scan_format !== undefined) patch.scan_format = cleanFormat(body.scan_format) || null;
 
   if (Object.keys(patch).length === 0) return NextResponse.json({ error: 'No hay campos válidos para actualizar.' }, { status: 400 });
 
-  const { error } = await insforgeAdmin.database.from('products').update(patch).eq('id', id);
+  const { error } = await insforgeAdmin.database.from('products').update(patch).eq('tenant_id', tenantId).eq('id', id);
   if (error) {
     await recordAdminFailure({ session: auth.session, request, action: 'update', resource: 'products', resourceId: id, metadata: { patch, error: error.message } });
     return NextResponse.json({ error: error.message ?? 'No se pudo actualizar el producto.' }, { status: 500 });
@@ -72,11 +175,12 @@ export async function PATCH(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   const auth = await requireAdminPermission(request, { resource: 'products', action: 'delete' });
   if (!auth.ok) return auth.response;
+  const tenantId = await getAdminTenantId(request);
 
   const id = parseProductId(request);
   if (!id) return NextResponse.json({ error: 'ID requerido.' }, { status: 400 });
 
-  const { error } = await insforgeAdmin.database.from('products').delete().eq('id', id);
+  const { error } = await insforgeAdmin.database.from('products').delete().eq('tenant_id', tenantId).eq('id', id);
   if (error) {
     await recordAdminFailure({ session: auth.session, request, action: 'delete', resource: 'products', resourceId: id, metadata: { error: error.message } });
     return NextResponse.json({ error: error.message ?? 'No se pudo eliminar el producto.' }, { status: 500 });

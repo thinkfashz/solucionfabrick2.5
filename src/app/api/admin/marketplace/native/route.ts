@@ -7,6 +7,25 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 type View = 'dashboard' | 'products' | 'orders' | 'questions' | 'prices' | 'search';
+type ProductRecord = Record<string, unknown> & {
+  id?: string;
+  name?: unknown;
+  description?: unknown;
+  tagline?: unknown;
+  source?: unknown;
+  source_id?: unknown;
+  activo?: unknown;
+  price?: unknown;
+  stock?: unknown;
+  supplier_price?: unknown;
+};
+type NativeProduct = ProductRecord & {
+  price: number;
+  stock: number;
+  supplier_price: number;
+  marginPct: number | null;
+  marketplaceState: 'active' | 'paused' | 'out_of_stock';
+};
 
 function text(value: unknown) {
   return typeof value === 'string' ? value.trim() : '';
@@ -22,7 +41,7 @@ function questionStatus(value: unknown) {
   return v === 'ANSWERED' ? 'answered' : 'pending';
 }
 
-async function productsForTenant(tenantId: string) {
+async function productsForTenant(tenantId: string): Promise<ProductRecord[]> {
   const { data, error } = await insforgeAdmin.database
     .from('products')
     .select('id,name,description,tagline,price,stock,image_url,category_id,featured,activo,source,source_id,supplier_price,supplier_currency,created_at,updated_at')
@@ -30,7 +49,7 @@ async function productsForTenant(tenantId: string) {
     .order('updated_at', { ascending: false })
     .limit(250);
   if (error) throw new Error(error.message);
-  return Array.isArray(data) ? data : [];
+  return Array.isArray(data) ? data as ProductRecord[] : [];
 }
 
 async function ordersForTenant(tenantId: string) {
@@ -55,19 +74,19 @@ async function questionsForTenant(tenantId: string) {
   return Array.isArray(data) ? data : [];
 }
 
-function normalizeProducts(rows: unknown[]) {
-  return rows.map((raw) => {
-    const row = raw as Record<string, unknown>;
+function normalizeProducts(rows: ProductRecord[]): NativeProduct[] {
+  return rows.map((row) => {
     const price = num(row.price);
     const supplier = num(row.supplier_price);
+    const stock = num(row.stock);
     const marginPct = supplier > 0 ? Math.round(((price - supplier) / supplier) * 100) : null;
     return {
       ...row,
       price,
-      stock: num(row.stock),
+      stock,
       supplier_price: supplier,
       marginPct,
-      marketplaceState: row.activo === false ? 'paused' : num(row.stock) <= 0 ? 'out_of_stock' : 'active',
+      marketplaceState: row.activo === false ? 'paused' : stock <= 0 ? 'out_of_stock' : 'active',
     };
   });
 }

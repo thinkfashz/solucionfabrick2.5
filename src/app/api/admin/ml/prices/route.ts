@@ -1,19 +1,16 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { getAdminInsforge } from '@/lib/adminApi';
+import { requireTenantAdmin } from '@/lib/tenantAdmin';
 import { mlGetCompetitors, mlGetItem } from '@/lib/mlApi';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
-/**
- * GET /api/admin/ml/prices?item_id={}&limit={}
- * Returns competitor prices for a given ML item.
- */
 export async function GET(request: NextRequest) {
 	try {
-		const session = await getAdminSession(request);
-		if (!session) return adminUnauthorized();
+		const auth = await requireTenantAdmin(request, { resource: 'products', action: 'read' });
+		if (!auth.ok) return auth.response;
 
 		const { searchParams } = request.nextUrl;
 		const itemId = searchParams.get('item_id')?.trim() ?? '';
@@ -23,27 +20,21 @@ export async function GET(request: NextRequest) {
 		const limit = Math.min(Number(searchParams.get('limit') ?? '10'), 20);
 
 		const { item, competitors } = await mlGetCompetitors(itemId, { limit });
-		const minCompetitorPrice =
-			competitors.length > 0
-				? Math.min(...competitors.map((c) => c.price))
-				: null;
+		const minCompetitorPrice = competitors.length > 0
+			? Math.min(...competitors.map((c) => c.price))
+			: null;
 
-		return NextResponse.json({ ok: true, item, competitors, minCompetitorPrice });
+		return NextResponse.json({ ok: true, item, competitors, minCompetitorPrice, tenantId: auth.ctx.tenantId });
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : 'Error al obtener precios ML.';
 		return NextResponse.json({ error: msg }, { status: 500 });
 	}
 }
 
-/**
- * POST /api/admin/ml/prices
- * Body: { item_id, target_price? }
- * Adds an item to the price watch list (ml_price_alerts table).
- */
 export async function POST(request: NextRequest) {
 	try {
-		const session = await getAdminSession(request);
-		if (!session) return adminUnauthorized();
+		const auth = await requireTenantAdmin(request, { resource: 'products', action: 'update' });
+		if (!auth.ok) return auth.response;
 
 		const body = (await request.json().catch(() => ({}))) as {
 			item_id?: unknown;
@@ -55,45 +46,63 @@ export async function POST(request: NextRequest) {
 		}
 
 		const item = await mlGetItem(itemId);
-		const targetPrice =
-			typeof body.target_price === 'number' && body.target_price > 0
-				? body.target_price
-				: null;
+		const targetPrice = typeof body.target_price === 'number' && body.target_price > 0
+			? body.target_price
+			: null;
 
 		const client = getAdminInsforge();
-		const { data, error } = await client.database
+		const payload = {
+			tenant_id: auth.ctx.tenantId,
+			item_id: itemId,
+			item_title: item.title,
+			my_price: item.price,
+			target_price: targetPrice,
+			last_checked_price: item.price,
+			last_checked_at: new Date().toISOString(),
+			alert_active: true,
+		};
+
+		const existing = await client.database
 			.from('ml_price_alerts')
-			.upsert(
-				[{
-					item_id: itemId,
-					item_title: item.title,
-					my_price: item.price,
-					target_price: targetPrice,
-					last_checked_price: item.price,
-					last_checked_at: new Date().toISOString(),
-					alert_active: true,
-				}],
-				{ onConflict: 'item_id' },
-			)
-			.select()
-			.single();
+			.select('id')
+			.eq('tenant_id', auth.ctx.tenantId)
+			.eq('item_id', itemId)
+			.limit(1);
+
+		let data;
+		let error;
+		if (Array.isArray(existing.data) && existing.data[0]?.id) {
+			const result = await client.database
+				.from('ml_price_alerts')
+				.update(payload)
+				.eq('tenant_id', auth.ctx.tenantId)
+				.eq('id', existing.data[0].id)
+				.select()
+				.single();
+			data = result.data;
+			error = result.error;
+		} else {
+			const result = await client.database
+				.from('ml_price_alerts')
+				.insert([payload])
+				.select()
+				.single();
+			data = result.data;
+			error = result.error;
+		}
 
 		if (error) throw new Error(error.message);
-		return NextResponse.json({ ok: true, alert: data });
+		return NextResponse.json({ ok: true, alert: data, tenantId: auth.ctx.tenantId });
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : 'Error al agregar alerta de precio ML.';
 		return NextResponse.json({ error: msg }, { status: 500 });
 	}
 }
 
-/**
- * DELETE /api/admin/ml/prices?item_id={}
- * Removes an item from the watch list.
- */
 export async function DELETE(request: NextRequest) {
 	try {
-		const session = await getAdminSession(request);
-		if (!session) return adminUnauthorized();
+		const auth = await requireTenantAdmin(request, { resource: 'products', action: 'update' });
+		if (!auth.ok) return auth.response;
 
 		const itemId = request.nextUrl.searchParams.get('item_id')?.trim() ?? '';
 		if (!itemId) {
@@ -101,12 +110,14 @@ export async function DELETE(request: NextRequest) {
 		}
 
 		const client = getAdminInsforge();
-		await client.database
+		const { error } = await client.database
 			.from('ml_price_alerts')
 			.delete()
+			.eq('tenant_id', auth.ctx.tenantId)
 			.eq('item_id', itemId);
+		if (error) throw new Error(error.message);
 
-		return NextResponse.json({ ok: true });
+		return NextResponse.json({ ok: true, tenantId: auth.ctx.tenantId });
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : 'Error al eliminar alerta de precio ML.';
 		return NextResponse.json({ error: msg }, { status: 500 });

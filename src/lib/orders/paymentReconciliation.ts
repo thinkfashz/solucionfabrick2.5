@@ -1,7 +1,6 @@
 import 'server-only';
 import { insforgeAdmin } from '@/lib/insforge';
 import { dispatchHookAsync } from '@/lib/extensionsBus';
-import { createDropiFulfillmentAsync } from '@/lib/dropi';
 import { getMercadoPagoPayment, mapMercadoPagoStatus, type MercadoPagoPaymentResponse } from '@/lib/mercadopago';
 import { confirmPaidOrderAndSendReceiptAsync } from '@/lib/orders/paidConfirmation';
 import { syncOrderToSalesPipelineAsync } from '@/lib/orders/salesPipeline';
@@ -152,7 +151,6 @@ export async function reconcileMercadoPagoPaymentRecord(payment: MercadoPagoPaym
 
     if (!wasAlreadyPaid) {
       confirmPaidOrderAndSendReceiptAsync(orderId);
-      createDropiFulfillmentAsync(orderId);
       dispatchHookAsync('order.paid', { orderId, dispatchCode, paymentId: String(payment.id), paymentStatus: payment.status || 'unknown', provider: 'mercadopago', source });
     }
   }

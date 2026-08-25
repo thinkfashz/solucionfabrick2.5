@@ -32,7 +32,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/`, lastModified: now, changeFrequency: 'daily', priority: 1 },
     { url: `${BASE_URL}/tienda`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
     { url: `${BASE_URL}/tienda/catalogo`, lastModified: now, changeFrequency: 'daily', priority: 0.85 },
-    { url: `${BASE_URL}/proyectos`, lastModified: now, changeFrequency: 'weekly', priority: 0.9 },
+    { url: `${BASE_URL}/proyectos`, lastModified: now, changeFrequency: 'daily', priority: 0.9 },
     { url: `${BASE_URL}/servicios`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
     { url: `${BASE_URL}/servicios/metalcon`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
     { url: `${BASE_URL}/servicios/gasfiteria`, lastModified: now, changeFrequency: 'monthly', priority: 0.85 },
@@ -65,12 +65,24 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
+  const imagesByAlbum = new Map<string, string[]>();
+  for (const asset of inspirationCatalog.assets) {
+    const current = imagesByAlbum.get(asset.album) || [];
+    current.push(asset.url);
+    imagesByAlbum.set(asset.album, current);
+  }
+
   const inspirationRoutes: MetadataRoute.Sitemap = inspirationCatalog.albums.map((album) => ({
     url: `${BASE_URL}/inspiraciones/${album.key}`,
     lastModified: now,
     changeFrequency: 'weekly',
     priority: 0.82,
+    images: (imagesByAlbum.get(album.key) || [album.cover]).filter(Boolean).slice(0, 50),
   }));
+
+  const staticWithProjectImages = staticRoutes.map((route) => route.url === `${BASE_URL}/proyectos`
+    ? { ...route, images: inspirationCatalog.albums.map((album) => album.cover).filter(Boolean).slice(0, 100) }
+    : route);
 
   const productRoutes: MetadataRoute.Sitemap = products.map((product) => ({
     url: `${BASE_URL}/tienda/${product.id}`,
@@ -93,5 +105,5 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: 0.7,
   }));
 
-  return [...staticRoutes, ...inspirationRoutes, ...projectRoutes, ...productRoutes, ...blogRoutes, ...casosRoutes];
+  return [...staticWithProjectImages, ...inspirationRoutes, ...projectRoutes, ...productRoutes, ...blogRoutes, ...casosRoutes];
 }

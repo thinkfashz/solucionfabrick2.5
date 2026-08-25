@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { adminUnauthorized, getAdminInsforge, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
 import { normalizeQuery } from '@/lib/marketIntel';
 
 export const dynamic = 'force-dynamic';
@@ -8,12 +8,13 @@ export const runtime = 'nodejs';
 /**
  * GET /api/admin/market-intel/history?q=…&limit=20
  *
- * Devuelve los últimos N snapshots persistidos para una query (normalizada),
- * para alimentar la línea de tiempo de subidas/bajadas en el dashboard.
+ * Devuelve únicamente los snapshots del tenant administrativo actual para
+ * evitar que búsquedas de otra empresa alteren el histórico y la guía de precio.
  */
 export async function GET(request: NextRequest) {
 	const session = await getAdminSession(request);
 	if (!session) return adminUnauthorized();
+	const tenantId = await getAdminTenantId(request);
 	const q = request.nextUrl.searchParams.get('q')?.trim() ?? '';
 	if (!q) return NextResponse.json({ error: 'Falta el parámetro "q".' }, { status: 400 });
 	const limit = Math.min(Math.max(Number(request.nextUrl.searchParams.get('limit') ?? '20') || 20, 1), 60);
@@ -22,6 +23,7 @@ export async function GET(request: NextRequest) {
 		const { data, error } = await client.database
 			.from('market_intel_snapshots')
 			.select('id, query, stats, refs_count, created_at')
+			.eq('tenant_id', tenantId)
 			.eq('normalized_query', normalizeQuery(q))
 			.order('created_at', { ascending: false })
 			.limit(limit);

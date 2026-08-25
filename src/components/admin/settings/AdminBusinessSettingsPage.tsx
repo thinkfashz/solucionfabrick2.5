@@ -79,22 +79,23 @@ export default function AdminBusinessSettingsPage() {
 
   useEffect(() => {
     async function loadBusinessConfig() {
-      const { data, error } = await insforge.database
-        .from('business_config')
-        .select('id, nombre, rut, direccion, ciudad, whatsapp, email_contacto, sitio_web')
-        .eq('id', 'main')
-        .limit(1);
-      if (error || !Array.isArray(data) || data.length === 0) return;
-      const config = data[0] as Record<string, string | undefined>;
-      setBusiness({
-        nombre: config.nombre ?? '',
-        rut: config.rut ?? '',
-        direccion: config.direccion ?? '',
-        ciudad: config.ciudad ?? '',
-        whatsapp: config.whatsapp ?? '',
-        emailContacto: config.email_contacto ?? '',
-        sitioWeb: config.sitio_web ?? '',
-      });
+      try {
+        const response = await fetch('/api/admin/settings', { cache: 'no-store' });
+        const json = await response.json() as { settings?: Record<string, string>; error?: string };
+        if (!response.ok) throw new Error(json.error || 'No se pudo cargar la configuración.');
+        const settings = json.settings ?? {};
+        setBusiness({
+          nombre: settings.nombre_empresa ?? '',
+          rut: settings.rut_empresa ?? '',
+          direccion: settings.direccion ?? '',
+          ciudad: settings.ciudad ?? '',
+          whatsapp: settings.whatsapp ?? '',
+          emailContacto: settings.email_contacto ?? '',
+          sitioWeb: settings.sitio_web ?? '',
+        });
+      } catch (error) {
+        setBusinessMsg({ text: error instanceof Error ? error.message : 'No se pudo cargar la configuración.', type: 'error' });
+      }
     }
     void loadBusinessConfig();
   }, []);
@@ -103,21 +104,30 @@ export default function AdminBusinessSettingsPage() {
     event.preventDefault();
     setSavingBusiness(true);
     setBusinessMsg(null);
-    const { error } = await insforge.database.from('business_config').upsert([
-      {
-        id: 'main',
-        nombre: business.nombre,
-        rut: business.rut,
-        direccion: business.direccion,
-        ciudad: business.ciudad,
-        whatsapp: business.whatsapp,
-        email_contacto: business.emailContacto,
-        sitio_web: business.sitioWeb,
-        updated_at: new Date().toISOString(),
-      },
-    ], { onConflict: 'id' });
-    setSavingBusiness(false);
-    setBusinessMsg(error ? { text: `Error al guardar: ${error.message}`, type: 'error' } : { text: 'Datos del negocio guardados correctamente.', type: 'success' });
+    try {
+      const response = await fetch('/api/admin/settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          settings: {
+            nombre_empresa: business.nombre,
+            rut_empresa: business.rut,
+            direccion: business.direccion,
+            ciudad: business.ciudad,
+            whatsapp: business.whatsapp,
+            email_contacto: business.emailContacto,
+            sitio_web: business.sitioWeb,
+          },
+        }),
+      });
+      const json = await response.json() as { error?: string };
+      if (!response.ok) throw new Error(json.error || 'No se pudo guardar la configuración.');
+      setBusinessMsg({ text: 'Datos del negocio guardados correctamente.', type: 'success' });
+    } catch (error) {
+      setBusinessMsg({ text: `Error al guardar: ${error instanceof Error ? error.message : 'Error inesperado'}`, type: 'error' });
+    } finally {
+      setSavingBusiness(false);
+    }
   }
 
   async function sendCode(event: React.FormEvent) {
@@ -183,7 +193,7 @@ export default function AdminBusinessSettingsPage() {
           <AdminCard className="h-full p-0 sm:p-0">
             <div className="flex items-start gap-3 border-b border-black/8 p-4 sm:p-5">
               <span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#ffb000]/10 text-[#a56600]"><Building2 className="h-4 w-4" /></span>
-              <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Datos legales y contacto</p><h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">Información del negocio</h2><p className="mt-1 text-xs leading-5 text-[#817a6f]">Se guarda en la configuración real utilizada por el sitio.</p></div>
+              <div><p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Datos legales y contacto</p><h2 className="mt-1 text-lg font-black tracking-[-.025em] text-[#171612]">Información del negocio</h2><p className="mt-1 text-xs leading-5 text-[#817a6f]">Se guarda en la configuración tenant-aware utilizada por el sitio.</p></div>
             </div>
             <div className="grid gap-4 p-4 sm:grid-cols-2 sm:p-5">
               <Field label="Nombre del negocio" value={business.nombre} onChange={(value) => setBusiness((previous) => ({ ...previous, nombre: value }))} />

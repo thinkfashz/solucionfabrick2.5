@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { saveBudget, BudgetError } from '@/lib/budget';
 import { getInsforgeUserFromRequest } from '@/lib/insforgeAuth';
+import { getTenantIdFromHeaders } from '@/lib/tenant-edge';
 import { v, parse, validationError } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
@@ -16,6 +17,8 @@ export const runtime = 'nodejs';
  *   validate the token server-side and use the resulting `user.id` for the
  *   row's `user_id`. Any client-supplied `userId` in the body is ignored to
  *   prevent customers from attributing quotes to other users.
+ * - `tenant_id` is resolved from middleware-provided request headers and is
+ *   never accepted from the client body.
  *
  * Totals are recomputed server-side from the line items.
  */
@@ -56,10 +59,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Server-validated user id (never trust client-provided values).
+    const tenantId = getTenantIdFromHeaders(request.headers);
     const user = await getInsforgeUserFromRequest(request);
 
     const quote = await saveBudget({
+      tenantId,
       lines: body.lines as never,
       customer: body.customer,
       shippingCost: body.shippingCost,

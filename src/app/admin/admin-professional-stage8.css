@@ -1,0 +1,56 @@
+/* Stage 8 — Fabrick Intelligence sub-workspaces.
+ * Converts the remaining isolated dark screens to the native admin visual language
+ * without changing their data, ranking, proposal or automation logic.
+ */
+
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content main.min-h-screen {
+  min-height: 0 !important;
+  padding: 0 !important;
+  color: #171612 !important;
+  background: transparent !important;
+}
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content main.min-h-screen > section {
+  max-width: none !important;
+}
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content main.min-h-screen > section > header {
+  margin-bottom: 1rem !important;
+  padding: 0 0 1.25rem !important;
+  color: #171612 !important;
+  background: transparent !important;
+  border: 0 !important;
+  border-bottom: 1px solid rgba(45,37,22,.10) !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+}
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content main.min-h-screen > section > header :is(h1,h2,h3) { color: #171612 !important; }
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content main.min-h-screen > section > header p { color: #716b60 !important; }
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content main.min-h-screen > section > header a:not([class*="bg-[#f4cf57]"]) { color: #8b5a08 !important; }
+
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content :is(.bg-white\/\[0\.035\],.bg-white\/\[0\.03\],.bg-white\/\[0\.04\],.bg-black\/20,.bg-black\/10,.bg-black\/25,.bg-black\/30) {
+  background: rgba(255,255,255,.58) !important;
+}
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content :is(.border-white\/8,.border-white\/10,.border-white\/\[0\.08\],.border-white\/\[0\.1\]) {
+  border-color: rgba(45,37,22,.10) !important;
+}
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content :is(h1,h2,h3,h4,.text-white) { color: #171612 !important; }
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content :is(.text-white\/35,.text-white\/40,.text-white\/45,.text-white\/50,.text-white\/55,.text-white\/60,.text-white\/75) { color: #716b60 !important; }
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content :is(textarea,input,select) {
+  color: #171612 !important;
+  background: rgba(255,255,255,.82) !important;
+  border-color: rgba(45,37,22,.12) !important;
+}
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content :is(textarea,input)::placeholder { color: #9a9388 !important; }
+
+/* Keep the actual primary actions intentionally dark/gold so hierarchy remains clear. */
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content button.bg-\[\#f4cf57\],
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content a.bg-\[\#f4cf57\] {
+  background: #171612 !important;
+  color: #ffb000 !important;
+}
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content .text-\[\#f4cf57\] { color: #9b6a12 !important; }
+body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content .bg-\[\#f4cf57\] { background: #171612 !important; color: #ffb000 !important; }
+
+@media (max-width: 767px) {
+  body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content main.min-h-screen > section { padding-inline: 0 !important; }
+  body[data-admin-path^="/admin/intelligence/"] .fabrick-admin-content .rounded-\[2rem\] { border-radius: 16px !important; }
+}

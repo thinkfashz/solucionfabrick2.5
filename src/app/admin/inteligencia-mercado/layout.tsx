@@ -6,8 +6,8 @@ import { BarChart3, Package, Search, Sparkles } from 'lucide-react';
 
 const items = [
   { href: '/admin/inteligencia-mercado', label: 'Radar', icon: Search, exact: true },
-  { href: '/admin/inteligencia-mercado/oportunidades', label: 'Bandeja', icon: Sparkles },
-  { href: '/admin/productos?filter=market', label: 'Productos del radar', icon: Package, external: true },
+  { href: '/admin/inteligencia-mercado/oportunidades', label: 'Bandeja', icon: Sparkles, exact: false },
+  { href: '/admin/productos?filter=market', label: 'Productos del radar', icon: Package, exact: false },
 ] as const;
 
 export default function InteligenciaMercadoLayout({ children }: { children: React.ReactNode }) {
@@ -23,7 +23,8 @@ export default function InteligenciaMercadoLayout({ children }: { children: Reac
           </div>
           <nav className="flex gap-1 overflow-x-auto rounded-xl bg-[#efe6d6] p-1">
             {items.map(({ href, label, icon: Icon, exact }) => {
-              const active = exact ? pathname === href : pathname.startsWith(href.split('?')[0]);
+              const targetPath = href.split('?')[0];
+              const active = exact ? pathname === targetPath : pathname === targetPath || pathname.startsWith(`${targetPath}/`);
               return <Link key={href} href={href} className={`inline-flex min-h-9 shrink-0 items-center gap-2 rounded-lg px-3 text-[11px] font-black transition ${active ? 'bg-[#111214] text-white shadow-sm' : 'text-black/45 hover:bg-white/70 hover:text-black'}`}><Icon className={`h-3.5 w-3.5 ${active ? 'text-[#f5c75d]' : ''}`} />{label}</Link>;
             })}
           </nav>

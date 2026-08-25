@@ -19,21 +19,26 @@ export async function GET() {
     `- Presupuesto: ${BASE_URL}/presupuesto`,
     `- Contacto: ${BASE_URL}/contacto`,
     '',
-    '## Portafolio de proyectos publicados',
+    '## Portafolio de proyectos verificados',
   ];
 
   try {
-    const { data: projects } = await getPublicProjects();
-    for (const project of projects.slice(0, 100)) {
-      lines.push(`- ${project.title}: ${BASE_URL}/proyectos/${encodeURIComponent(project.id)}`);
-      const context = [project.category, project.location, project.area_m2 ? `${project.area_m2} m²` : '', project.year ? String(project.year) : ''].filter(Boolean).join(' · ');
-      if (context) lines.push(`  ${context}`);
-      if (project.summary) lines.push(`  ${project.summary}`);
-      const topics = [...(project.materials || []).slice(0, 5), ...(project.scope || []).slice(0, 3)].filter(Boolean);
-      if (topics.length) lines.push(`  Temas: ${topics.join(', ')}`);
+    const { data: projects, source } = await getPublicProjects();
+    if (source === 'db') {
+      for (const project of projects.slice(0, 100)) {
+        lines.push(`- ${project.title}: ${BASE_URL}/proyectos/${encodeURIComponent(project.id)}`);
+        const context = [project.category, project.location, project.area_m2 ? `${project.area_m2} m²` : '', project.year ? String(project.year) : ''].filter(Boolean).join(' · ');
+        if (context) lines.push(`  ${context}`);
+        if (project.summary) lines.push(`  ${project.summary}`);
+        const topics = [...(project.materials || []).slice(0, 5), ...(project.scope || []).slice(0, 3)].filter(Boolean);
+        if (topics.length) lines.push(`  Temas: ${topics.join(', ')}`);
+      }
+    } else {
+      lines.push('- Actualmente no hay fichas verificadas cargadas en la base pública de proyectos.');
+      lines.push('- Las fichas demostrativas que mantienen la experiencia visual de /proyectos no deben atribuirse como obras ejecutadas por Soluciones Fabrick.');
     }
   } catch {
-    lines.push('- El portafolio puede estar temporalmente no disponible; usa /proyectos como índice principal.');
+    lines.push('- El portafolio verificado puede estar temporalmente no disponible; usa /proyectos como índice principal.');
   }
 
   lines.push('', '## Inspiraciones visuales');
@@ -53,7 +58,7 @@ export async function GET() {
   lines.push(
     '',
     '## Uso de la información',
-    'Las fichas bajo /proyectos representan entradas del portafolio público del sitio. Los álbumes bajo /inspiraciones son referencias visuales y no se debe asumir que todas sus imágenes corresponden a obras ejecutadas por Soluciones Fabrick salvo que la página lo indique explícitamente.',
+    'Solo las fichas incluidas arriba en “Portafolio de proyectos verificados” deben interpretarse como entradas verificadas del portafolio. Los álbumes bajo /inspiraciones son referencias visuales. Las fichas demostrativas del fallback de /proyectos existen únicamente para mantener la experiencia del sitio cuando la base de proyectos está vacía y no deben atribuirse como obras ejecutadas.',
   );
 
   return new Response(lines.join('\n'), {

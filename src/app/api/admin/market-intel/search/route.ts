@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
+import { getAdminTenantId } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import {
 	aggregateProductRefs,
 	type MarketSource,
@@ -28,11 +29,11 @@ interface Body {
  *
  * Ejecuta una búsqueda agregada multi-fuente. El mercado consultado es público,
  * pero los snapshots, referencias y comparativas históricas quedan aislados por
- * tenant para que una empresa no contamine las decisiones de precio de otra.
+ * tenant. Requiere permiso de lectura de Productos.
  */
 export async function POST(request: NextRequest) {
-	const session = await getAdminSession(request);
-	if (!session) return adminUnauthorized();
+	const auth = await requireAdminPermission(request, { resource: 'products', action: 'read' });
+	if (!auth.ok) return auth.response;
 	const tenantId = await getAdminTenantId(request);
 	let body: Body;
 	try {

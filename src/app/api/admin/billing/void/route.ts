@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { getBillingDriver } from '@/lib/billing/provider';
 import { insforge } from '@/lib/insforge';
 import { ensureInvoicesTable, markInvoiceVoided } from '@/lib/billing/sql';
@@ -8,23 +8,45 @@ import { ensureInvoicesTable, markInvoiceVoided } from '@/lib/billing/sql';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
 export async function POST(req: NextRequest) {
-  const cookie = req.cookies.get(ADMIN_COOKIE_NAME);
-  if (!cookie?.value) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-  const session = await decodeSession(cookie.value);
-  if (!session) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
-  const tenantId = (session as { tenant_id?: string }).tenant_id ?? '00000000-0000-0000-0000-000000000001';
+  const access = await requireAdminPermission(req, { resource: 'finance', action: 'delete' });
+  if (!access.ok) return access.response;
+  const tenantId = access.session.tenant_id ?? DEFAULT_TENANT_ID;
 
   await ensureInvoicesTable();
 
   let body: { invoice_id: string; reason: string };
-  try { body = (await req.json()) as { invoice_id: string; reason: string }; } catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }); }
-  if (!body.invoice_id || !body.reason?.trim()) return NextResponse.json({ error: 'Faltan campos requeridos: invoice_id, reason' }, { status: 422 });
+  try {
+    body = (await req.json()) as { invoice_id: string; reason: string };
+  } catch {
+    return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
+  }
+  if (!body.invoice_id || !body.reason?.trim()) {
+    return NextResponse.json({ error: 'Faltan campos requeridos: invoice_id, reason' }, { status: 422 });
+  }
 
-  const { data: invoice, error: fetchErr } = await insforge.database.from('invoices').select('*').eq('id', body.invoice_id).eq('tenant_id', tenantId).single();
+  const { data: invoice, error: fetchErr } = await insforge.database
+    .from('invoices')
+    .select('*')
+    .eq('id', body.invoice_id)
+    .eq('tenant_id', tenantId)
+    .single();
   if (fetchErr || !invoice) return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 });
 
-  const inv = invoice as { id: string; folio: string | null; dte_type: number; voided: boolean; neto: number; iva: number; exento: number; total: number; rut_receptor: string | null; razon_social_receptor: string | null };
+  const inv = invoice as {
+    id: string;
+    folio: string | null;
+    dte_type: number;
+    voided: boolean;
+    neto: number;
+    iva: number;
+    exento: number;
+    total: number;
+    rut_receptor: string | null;
+    razon_social_receptor: string | null;
+  };
   if (inv.voided) return NextResponse.json({ error: 'La factura ya está anulada' }, { status: 409 });
 
   const driver = getBillingDriver();
@@ -46,7 +68,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Error al anular DTE' }, { status: 502 });
   }
 
-  await markInvoiceVoided(body.invoice_id);
+  await markInvoiceVoided(body.invoice_id, tenantId);
 
   const { data: creditNote } = await insforge.database.from('invoices').insert({
     tenant_id: tenantId,

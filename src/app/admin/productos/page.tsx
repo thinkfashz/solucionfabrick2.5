@@ -5,6 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
+  BarChart3,
   Boxes,
   Check,
   CheckCircle2,
@@ -21,6 +22,7 @@ import {
   Sparkles,
   Star,
   Trash2,
+  TrendingUp,
   Upload,
   X,
 } from 'lucide-react';
@@ -32,7 +34,7 @@ import ProductImportModal from './ProductImportModal';
 import ProductCategoryManager from './ProductCategoryManager';
 import ProductStudioEditor, { type ProductStudioRecord } from './ProductStudioEditor';
 
-type Filter = 'all' | 'active' | 'hidden' | 'featured' | 'low-stock' | 'without-image' | 'without-seo';
+type Filter = 'all' | 'active' | 'hidden' | 'featured' | 'low-stock' | 'without-image' | 'without-seo' | 'market';
 type Sort = 'newest' | 'name' | 'price-desc' | 'price-asc' | 'stock-asc';
 
 function numberValue(value: unknown) {
@@ -46,6 +48,20 @@ function money(value: unknown) {
 
 function specs(product: ProductStudioRecord) {
   return product.specifications && typeof product.specifications === 'object' ? product.specifications : {};
+}
+
+function marketIntel(product: ProductStudioRecord) {
+  const value = specs(product).market_intel;
+  return value && typeof value === 'object' && !Array.isArray(value) ? value as Record<string, unknown> : null;
+}
+
+function marketMargin(product: ProductStudioRecord) {
+  const market = marketIntel(product);
+  if (!market) return null;
+  const current = numberValue(market.current_estimated_net_margin_percentage);
+  if (market.current_estimated_net_margin_percentage != null) return current;
+  if (market.estimated_net_margin_percentage != null) return numberValue(market.estimated_net_margin_percentage);
+  return null;
 }
 
 function galleryCount(product: ProductStudioRecord) {
@@ -149,8 +165,9 @@ export default function AdminProductosPage() {
     const active = products.filter((product) => product.activo !== false).length;
     const lowStock = products.filter((product) => numberValue(product.stock) > 0 && numberValue(product.stock) <= 5).length;
     const ready = products.filter((product) => product.image_url && hasSeo(product) && product.description && numberValue(product.price) > 0).length;
+    const market = products.filter((product) => Boolean(marketIntel(product))).length;
     const value = products.reduce((sum, product) => sum + numberValue(product.price) * Math.max(0, numberValue(product.stock)), 0);
-    return { active, lowStock, ready, value };
+    return { active, lowStock, ready, market, value };
   }, [products]);
 
   const filtered = useMemo(() => {
@@ -164,6 +181,7 @@ export default function AdminProductosPage() {
       if (filter === 'low-stock') return numberValue(product.stock) > 0 && numberValue(product.stock) <= 5;
       if (filter === 'without-image') return !product.image_url;
       if (filter === 'without-seo') return !hasSeo(product);
+      if (filter === 'market') return Boolean(marketIntel(product));
       return true;
     });
     return result.sort((a, b) => {
@@ -269,18 +287,18 @@ export default function AdminProductosPage() {
     <AdminPage className="px-1 text-[#111214] md:px-2">
       <section className="rounded-[1.8rem] border border-black/7 bg-[#fffaf0] p-4 shadow-sm sm:p-6">
         <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
-          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-[#111214] px-3 py-1.5 text-[9px] font-black uppercase tracking-[.18em] text-[#f5c75d]">Catálogo</span><span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff0bd] px-3 py-1.5 text-[9px] font-black uppercase tracking-[.14em] text-[#7e5814]"><Sparkles className="h-3 w-3" />IA integrada</span></div><h1 className="mt-3 text-3xl font-black tracking-[-.055em] sm:text-4xl">Productos</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-black/45">Un solo lugar para crear, editar, analizar con IA, organizar imágenes, precio, inventario y SEO.</p></div>
-          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:justify-end"><button type="button" onClick={openCreate} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#111214] px-4 text-xs font-black text-white sm:col-span-1"><Plus className="h-4 w-4 text-[#f5c75d]" />Nuevo producto</button><button type="button" onClick={() => setImportOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-[#fff0bd] px-3.5 text-xs font-black text-[#76500f]"><Upload className="h-4 w-4" />Importar</button><button type="button" onClick={openUrlImport} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><Link2 className="h-4 w-4" />Desde URL</button><button type="button" onClick={() => setCategoriesOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><FolderOpen className="h-4 w-4" />Categorías</button><button type="button" onClick={() => { setLoading(true); void loadProducts(); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</button></div>
+          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-[#111214] px-3 py-1.5 text-[9px] font-black uppercase tracking-[.18em] text-[#f5c75d]">Catálogo</span><span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff0bd] px-3 py-1.5 text-[9px] font-black uppercase tracking-[.14em] text-[#7e5814]"><Sparkles className="h-3 w-3" />IA integrada</span><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-[9px] font-black uppercase tracking-[.14em] text-emerald-800"><TrendingUp className="h-3 w-3" />Radar conectado</span></div><h1 className="mt-3 text-3xl font-black tracking-[-.055em] sm:text-4xl">Productos</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-black/45">Un solo lugar para crear, editar, analizar con IA, organizar imágenes, precio, inventario y SEO. Los candidatos del radar conservan su guía de precio y margen.</p></div>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:justify-end"><button type="button" onClick={openCreate} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#111214] px-4 text-xs font-black text-white sm:col-span-1"><Plus className="h-4 w-4 text-[#f5c75d]" />Nuevo producto</button><button type="button" onClick={() => router.push('/admin/inteligencia-mercado')} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3.5 text-xs font-black text-white"><BarChart3 className="h-4 w-4" />Mercado</button><button type="button" onClick={() => setImportOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-[#fff0bd] px-3.5 text-xs font-black text-[#76500f]"><Upload className="h-4 w-4" />Importar</button><button type="button" onClick={openUrlImport} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><Link2 className="h-4 w-4" />Desde URL</button><button type="button" onClick={() => setCategoriesOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><FolderOpen className="h-4 w-4" />Categorías</button><button type="button" onClick={() => { setLoading(true); void loadProducts(); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</button></div>
         </div>
       </section>
 
       {error ? <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><AlertTriangle className="mr-2 inline h-4 w-4" />{error}</div> : null}
 
-      <section className="grid grid-cols-2 gap-3 xl:grid-cols-5"><Metric label="Productos" value={String(products.length)} note="Catálogo total" icon={Package} /><Metric label="Activos" value={String(metrics.active)} note="Visibles en tienda" icon={CheckCircle2} /><Metric label="Fichas listas" value={String(metrics.ready)} note="Contenido + imagen + SEO" icon={Sparkles} /><Metric label="Stock crítico" value={String(metrics.lowStock)} note="Entre 1 y 5 unidades" icon={AlertTriangle} tone={metrics.lowStock ? 'warning' : 'light'} /><Metric label="Valor inventario" value={money(metrics.value)} note="Precio × unidades" icon={Boxes} tone="dark" /></section>
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-6"><Metric label="Productos" value={String(products.length)} note="Catálogo total" icon={Package} /><Metric label="Activos" value={String(metrics.active)} note="Visibles en tienda" icon={CheckCircle2} /><Metric label="Fichas listas" value={String(metrics.ready)} note="Contenido + imagen + SEO" icon={Sparkles} /><Metric label="Desde radar" value={String(metrics.market)} note="Con referencia de mercado" icon={TrendingUp} /><Metric label="Stock crítico" value={String(metrics.lowStock)} note="Entre 1 y 5 unidades" icon={AlertTriangle} tone={metrics.lowStock ? 'warning' : 'light'} /><Metric label="Valor inventario" value={money(metrics.value)} note="Precio × unidades" icon={Boxes} tone="dark" /></section>
 
       {selectedIds.length ? <section className="sticky top-20 z-30 flex flex-col gap-3 rounded-2xl bg-[#111214]/96 p-3 text-white shadow-xl backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-black">{selectedIds.length} seleccionado{selectedIds.length === 1 ? '' : 's'}</p><p className="text-[11px] text-white/40">Acciones rápidas sin abrir cada ficha.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => void bulkPatch({ activo: true })} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black">Activar</button><button type="button" onClick={() => void bulkPatch({ activo: false })} className="rounded-lg bg-white/10 px-3 py-2 text-xs font-black">Ocultar</button><button type="button" onClick={() => void bulkPatch({ featured: true })} className="rounded-lg bg-[#f5c75d] px-3 py-2 text-xs font-black text-black">Destacar</button><button type="button" onClick={() => void bulkPatch({ featured: false })} className="rounded-lg bg-white/10 px-3 py-2 text-xs font-black">Quitar destacado</button><button type="button" onClick={() => setSelectedIds([])} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-black">Cancelar</button></div></section> : null}
 
-      <section className="rounded-2xl border border-black/7 bg-[#efe6d6] p-3 shadow-sm sm:p-4"><div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_180px_190px]"><label className="relative"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar producto, SKU, EAN, categoría o proveedor" className="min-h-11 w-full rounded-xl border border-black/8 bg-white pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#d18b16]" /></label><select value={filter} onChange={(event) => setFilter(event.target.value as Filter)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="all">Todos</option><option value="active">Activos</option><option value="hidden">Ocultos</option><option value="featured">Destacados</option><option value="low-stock">Stock crítico</option><option value="without-image">Sin imagen</option><option value="without-seo">SEO pendiente</option></select><select value={sort} onChange={(event) => setSort(event.target.value as Sort)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="newest">Más recientes</option><option value="name">Nombre A-Z</option><option value="price-desc">Precio mayor</option><option value="price-asc">Precio menor</option><option value="stock-asc">Stock menor</option></select></div></section>
+      <section className="rounded-2xl border border-black/7 bg-[#efe6d6] p-3 shadow-sm sm:p-4"><div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_180px_190px]"><label className="relative"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar producto, SKU, EAN, categoría o proveedor" className="min-h-11 w-full rounded-xl border border-black/8 bg-white pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#d18b16]" /></label><select value={filter} onChange={(event) => setFilter(event.target.value as Filter)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="all">Todos</option><option value="market">Desde radar</option><option value="active">Activos</option><option value="hidden">Ocultos</option><option value="featured">Destacados</option><option value="low-stock">Stock crítico</option><option value="without-image">Sin imagen</option><option value="without-seo">SEO pendiente</option></select><select value={sort} onChange={(event) => setSort(event.target.value as Sort)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="newest">Más recientes</option><option value="name">Nombre A-Z</option><option value="price-desc">Precio mayor</option><option value="price-asc">Precio menor</option><option value="stock-asc">Stock menor</option></select></div></section>
 
       <section className="overflow-hidden rounded-[1.6rem] border border-black/7 bg-[#fffaf0] shadow-sm">
         <div className="hidden grid-cols-[46px_minmax(280px,1fr)_150px_120px_92px_110px_116px] items-center gap-3 border-b border-black/7 bg-[#f1e8d8] px-4 py-3 text-[9px] font-black uppercase tracking-[.14em] text-black/35 lg:grid"><span></span><span>Producto</span><span>Precio</span><span>Stock</span><span>SEO</span><span>Estado</span><span>Acciones</span></div>
@@ -288,10 +306,12 @@ export default function AdminProductosPage() {
           const selected = selectedSet.has(product.id);
           const category = resolveCategoryName(product.category_id || undefined, categoryMap);
           const productMargin = margin(product);
+          const radarMargin = marketMargin(product);
+          const fromRadar = Boolean(marketIntel(product));
           const low = numberValue(product.stock) > 0 && numberValue(product.stock) <= 5;
           return <article key={product.id} onDoubleClick={() => openEdit(product)} className={`grid gap-3 px-3 py-3 transition hover:bg-[#fff5df] sm:px-4 lg:grid-cols-[46px_minmax(280px,1fr)_150px_120px_92px_110px_116px] lg:items-center ${selected ? 'bg-[#fff0bd]/45' : ''}`}>
             <button type="button" onClick={() => setSelectedIds((current) => current.includes(product.id) ? current.filter((id) => id !== product.id) : [...current, product.id])} className={`absolute right-3 mt-1 grid h-9 w-9 place-items-center rounded-xl lg:static lg:right-auto lg:mt-0 ${selected ? 'bg-[#f5c75d] text-black' : 'bg-black/[0.05] text-black/25'}`} aria-label="Seleccionar producto">{selected ? <Check className="h-4 w-4" /> : null}</button>
-            <div className="flex min-w-0 items-center gap-3 pr-12 lg:pr-0">{product.image_url ? <img src={product.image_url} alt={product.name} className="h-14 w-14 shrink-0 rounded-xl border border-black/7 bg-white object-contain p-1" /> : <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-black/[0.04] text-black/15"><Package className="h-5 w-5" /></div>}<div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate text-sm font-black">{product.name}</p>{product.featured ? <Star className="h-3.5 w-3.5 shrink-0 fill-[#f5c75d] text-[#aa7416]" /> : null}</div><p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[.11em] text-[#986a18]">{category}</p><div className="mt-1.5 flex flex-wrap gap-2 text-[10px] text-black/35">{product.sku ? <span>SKU {product.sku}</span> : null}<span>{galleryCount(product)} foto{galleryCount(product) === 1 ? '' : 's'}</span>{productMargin != null ? <span>Margen {productMargin}%</span> : null}</div></div></div>
+            <div className="flex min-w-0 items-center gap-3 pr-12 lg:pr-0">{product.image_url ? <img src={product.image_url} alt={product.name} className="h-14 w-14 shrink-0 rounded-xl border border-black/7 bg-white object-contain p-1" /> : <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-black/[0.04] text-black/15"><Package className="h-5 w-5" /></div>}<div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate text-sm font-black">{product.name}</p>{product.featured ? <Star className="h-3.5 w-3.5 shrink-0 fill-[#f5c75d] text-[#aa7416]" /> : null}{fromRadar ? <span className="shrink-0 rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-black uppercase tracking-[.1em] text-emerald-800">Radar</span> : null}</div><p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[.11em] text-[#986a18]">{category}</p><div className="mt-1.5 flex flex-wrap gap-2 text-[10px] text-black/35">{product.sku ? <span>SKU {product.sku}</span> : null}<span>{galleryCount(product)} foto{galleryCount(product) === 1 ? '' : 's'}</span>{radarMargin != null ? <span className={radarMargin >= 0 ? 'text-emerald-700' : 'text-red-700'}>Margen radar {radarMargin.toFixed(1)}%</span> : productMargin != null ? <span>Margen {productMargin}%</span> : null}</div></div></div>
             <div className="flex items-center justify-between lg:block"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">Precio</span><div><p className="text-sm font-black">{money(product.price)}</p>{numberValue(product.discount_percentage) > 0 ? <p className="text-[10px] font-bold text-[#a76c0a]">-{numberValue(product.discount_percentage)}%</p> : null}</div></div>
             <div className="flex items-center justify-between lg:block"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">Stock</span><span className={`inline-flex rounded-lg px-2.5 py-1.5 text-xs font-black ${low ? 'bg-red-100 text-red-700' : 'bg-black/[0.04] text-black/55'}`}>{numberValue(product.stock)}</span></div>
             <div className="flex items-center justify-between lg:block"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">SEO</span><span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-black ${hasSeo(product) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{hasSeo(product) ? <CheckCircle2 className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}{hasSeo(product) ? 'Listo' : 'Pendiente'}</span></div>

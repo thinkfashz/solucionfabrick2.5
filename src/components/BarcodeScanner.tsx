@@ -3,16 +3,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Camera, X, ZapOff } from 'lucide-react';
 
-/**
- * Barcode scanner using the native `BarcodeDetector` API (Chromium/Edge,
- * Android/iOS 17+) with no external dependency. When the API is missing,
- * the component renders a fallback message instead of pulling a 200 KB
- * polyfill — the admin scanner page is desktop-first, and on supported
- * mobiles the API is available.
- *
- * Calls `onDetect(value, format)` once per unique scan, debounced by 1.5 s
- * to avoid duplicate triggers when the same barcode stays in frame.
- */
 type BarcodeFormat =
   | 'aztec'
   | 'code_128'
@@ -33,10 +23,13 @@ interface DetectedBarcode {
   format: BarcodeFormat;
 }
 
+interface BarcodeDetectorInstance {
+  detect(source: CanvasImageSource): Promise<DetectedBarcode[]>;
+}
+
 interface BarcodeDetectorClass {
-  new (init?: { formats?: BarcodeFormat[] }): {
-    detect(source: CanvasImageSource): Promise<DetectedBarcode[]>;
-  };
+  new (init?: { formats?: BarcodeFormat[] }): BarcodeDetectorInstance;
+  getSupportedFormats?: () => Promise<BarcodeFormat[]>;
 }
 
 declare global {
@@ -51,35 +44,63 @@ interface BarcodeScannerProps {
   formats?: BarcodeFormat[];
 }
 
-const DEFAULT_FORMATS: BarcodeFormat[] = ['ean_13', 'ean_8', 'code_128', 'code_39', 'qr_code'];
-const COOLDOWN_MS = 1500;
+const DEFAULT_FORMATS: BarcodeFormat[] = [
+  'qr_code',
+  'ean_13',
+  'ean_8',
+  'upc_a',
+  'upc_e',
+  'code_128',
+  'code_39',
+  'code_93',
+  'data_matrix',
+  'itf',
+];
+
+const SAME_CODE_COOLDOWN_MS = 2500;
 
 export default function BarcodeScanner({ onDetect, onClose, formats = DEFAULT_FORMATS }: BarcodeScannerProps) {
   const videoRef = useRef<HTMLVideoElement | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const lastEmittedRef = useRef<{ value: string; t: number } | null>(null);
   const [supported, setSupported] = useState<boolean | null>(null);
+  const [activeFormats, setActiveFormats] = useState<BarcodeFormat[]>([]);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     let cancelled = false;
     let rafId: number | null = null;
+    let detecting = false;
 
     async function start() {
       if (typeof window === 'undefined') return;
-      if (!('mediaDevices' in navigator) || !window.BarcodeDetector) {
+      if (!navigator.mediaDevices?.getUserMedia || !window.BarcodeDetector) {
         setSupported(false);
         return;
       }
       setSupported(true);
 
       try {
+        const Detector = window.BarcodeDetector;
+        let usableFormats = formats;
+        if (Detector.getSupportedFormats) {
+          const supportedFormats = await Detector.getSupportedFormats();
+          usableFormats = formats.filter((format) => supportedFormats.includes(format));
+        }
+        if (!usableFormats.length) throw new Error('Este navegador no expone formatos de QR/código compatibles.');
+        if (cancelled) return;
+        setActiveFormats(usableFormats);
+
         const stream = await navigator.mediaDevices.getUserMedia({
-          video: { facingMode: 'environment' },
+          video: {
+            facingMode: { ideal: 'environment' },
+            width: { ideal: 1280 },
+            height: { ideal: 720 },
+          },
           audio: false,
         });
         if (cancelled) {
-          stream.getTracks().forEach((t) => t.stop());
+          stream.getTracks().forEach((track) => track.stop());
           return;
         }
         streamRef.current = stream;
@@ -88,25 +109,29 @@ export default function BarcodeScanner({ onDetect, onClose, formats = DEFAULT_FO
           await videoRef.current.play();
         }
 
-        const Detector = window.BarcodeDetector!;
-        const detector = new Detector({ formats });
+        const detector = new Detector({ formats: usableFormats });
 
         const tick = async () => {
           if (cancelled || !videoRef.current) return;
-          if (videoRef.current.readyState >= 2) {
+          if (!detecting && videoRef.current.readyState >= 2) {
+            detecting = true;
             try {
               const codes = await detector.detect(videoRef.current);
               const code = codes[0];
-              if (code?.rawValue) {
+              const value = code?.rawValue?.trim();
+              if (value) {
                 const now = Date.now();
                 const last = lastEmittedRef.current;
-                if (!last || last.value !== code.rawValue || now - last.t > COOLDOWN_MS) {
-                  lastEmittedRef.current = { value: code.rawValue, t: now };
-                  onDetect(code.rawValue, code.format);
+                if (!last || last.value !== value || now - last.t > SAME_CODE_COOLDOWN_MS) {
+                  lastEmittedRef.current = { value, t: now };
+                  if ('vibrate' in navigator) navigator.vibrate?.(45);
+                  onDetect(value, code.format);
                 }
               }
             } catch {
-              /* transient detect errors are fine */
+              // Transient frame decoding errors are expected while the camera moves.
+            } finally {
+              detecting = false;
             }
           }
           rafId = requestAnimationFrame(() => void tick());
@@ -123,7 +148,7 @@ export default function BarcodeScanner({ onDetect, onClose, formats = DEFAULT_FO
       cancelled = true;
       if (rafId !== null) cancelAnimationFrame(rafId);
       if (streamRef.current) {
-        streamRef.current.getTracks().forEach((t) => t.stop());
+        streamRef.current.getTracks().forEach((track) => track.stop());
         streamRef.current = null;
       }
     };
@@ -146,8 +171,7 @@ export default function BarcodeScanner({ onDetect, onClose, formats = DEFAULT_FO
         <div className="flex flex-col items-center gap-3 p-8 text-center text-zinc-300">
           <ZapOff />
           <p className="text-sm">
-            Tu navegador no soporta el lector de códigos nativo. Probá desde Chrome o Edge en
-            Android/Desktop, o Safari en iOS 17+.
+            Este navegador no ofrece el lector nativo de QR/códigos. Usa Chrome o Edge actualizado en Android/Desktop, o ingresa el código manualmente.
           </p>
         </div>
       ) : (
@@ -160,11 +184,13 @@ export default function BarcodeScanner({ onDetect, onClose, formats = DEFAULT_FO
             aria-label="Vista previa de cámara"
           />
           <div className="pointer-events-none absolute inset-0 flex items-center justify-center">
-            <div className="h-32 w-3/4 rounded-2xl border-2 border-yellow-400/80 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]" />
+            <div className="relative h-32 w-[82%] max-w-xl rounded-2xl border-2 border-yellow-400/90 shadow-[0_0_0_9999px_rgba(0,0,0,0.45)]">
+              <span className="absolute left-4 right-4 top-1/2 h-px -translate-y-1/2 animate-pulse bg-yellow-300/80" />
+            </div>
           </div>
-          <div className="flex items-center gap-2 border-t border-zinc-800 bg-zinc-900/80 px-4 py-2 text-xs text-zinc-300">
-            <Camera size={14} className="text-yellow-400" />
-            Apuntá al código EAN/QR para escanear automáticamente.
+          <div className="flex flex-col gap-1 border-t border-zinc-800 bg-zinc-900/90 px-4 py-2 text-xs text-zinc-300 sm:flex-row sm:items-center sm:justify-between">
+            <span className="flex items-center gap-2"><Camera size={14} className="text-yellow-400" /> Apunta al QR o código y mantén la cámara estable.</span>
+            {activeFormats.length ? <span className="text-[10px] text-zinc-500">{activeFormats.length} formatos activos</span> : null}
           </div>
           {error && <p className="bg-red-500/10 px-4 py-2 text-xs text-red-300">{error}</p>}
         </>

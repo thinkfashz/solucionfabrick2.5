@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { getPublicProject } from '@/lib/projectsServer';
+import { getPublicProjectEntry, type PublicProjectSource } from '@/lib/projectsServer';
+import type { FabrickProject } from '@/lib/projects';
 
 const BASE_URL = 'https://www.solucionesfabrick.com';
 
@@ -9,14 +10,14 @@ type LayoutProps = {
   params: Promise<{ id: string }>;
 };
 
-function projectImages(project: Awaited<ReturnType<typeof getPublicProject>>) {
+function projectImages(project: FabrickProject | null) {
   if (!project) return [];
   return Array.from(new Set([project.hero_image, ...(project.gallery || [])].filter(Boolean)));
 }
 
 export async function generateMetadata({ params }: LayoutProps): Promise<Metadata> {
   const { id } = await params;
-  const project = await getPublicProject(id);
+  const { project, source } = await getPublicProjectEntry(id);
   const canonical = `${BASE_URL}/proyectos/${encodeURIComponent(id)}`;
 
   if (!project) {
@@ -27,24 +28,41 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
     };
   }
 
-  const title = `${project.title} | Proyectos Soluciones Fabrick`;
-  const description = project.summary || project.description || `Proyecto ${project.category} en ${project.location}.`;
+  const verified = source === 'db';
+  const title = verified
+    ? `${project.title} | Proyectos Soluciones Fabrick`
+    : `Ejemplo referencial: ${project.title} | Soluciones Fabrick`;
+  const baseDescription = project.summary || project.description || `Proyecto ${project.category}.`;
+  const description = verified
+    ? baseDescription
+    : `Ficha demostrativa y referencia visual. No corresponde a una obra verificada de Soluciones Fabrick. ${baseDescription}`;
   const images = projectImages(project);
 
   return {
     title,
     description,
     alternates: { canonical },
-    robots: {
-      index: true,
-      follow: true,
-      googleBot: {
-        index: true,
-        follow: true,
-        'max-image-preview': 'large',
-        'max-snippet': -1,
-      },
-    },
+    robots: verified
+      ? {
+          index: true,
+          follow: true,
+          googleBot: {
+            index: true,
+            follow: true,
+            'max-image-preview': 'large',
+            'max-snippet': -1,
+          },
+        }
+      : {
+          index: false,
+          follow: true,
+          googleBot: {
+            index: false,
+            follow: true,
+            'max-image-preview': 'none',
+            'max-snippet': 0,
+          },
+        },
     openGraph: {
       title,
       description,
@@ -52,9 +70,11 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
       url: canonical,
       siteName: 'Soluciones Fabrick',
       locale: 'es_CL',
-      images: images.slice(0, 6).map((url, index) => ({
+      images: images.slice(0, verified ? 6 : 1).map((url, index) => ({
         url,
-        alt: `${project.title}${index ? ` — imagen ${index + 1}` : ''}`,
+        alt: verified
+          ? `${project.title}${index ? ` — imagen ${index + 1}` : ''}`
+          : `${project.title} — imagen referencial`,
       })),
     },
     twitter: {
@@ -64,14 +84,16 @@ export async function generateMetadata({ params }: LayoutProps): Promise<Metadat
       images: images[0] ? [images[0]] : undefined,
     },
     other: {
-      'pinterest-rich-pin': 'true',
+      'pinterest-rich-pin': verified ? 'true' : 'false',
+      'fabrick-portfolio-source': verified ? 'verified' : 'demo',
     },
   };
 }
 
-function projectJsonLd(project: NonNullable<Awaited<ReturnType<typeof getPublicProject>>>) {
+function projectJsonLd(project: FabrickProject, source: PublicProjectSource) {
   const canonical = `${BASE_URL}/proyectos/${encodeURIComponent(project.id)}`;
   const images = projectImages(project);
+  const verified = source === 'db';
 
   return {
     '@context': 'https://schema.org',
@@ -81,24 +103,27 @@ function projectJsonLd(project: NonNullable<Awaited<ReturnType<typeof getPublicP
         itemListElement: [
           { '@type': 'ListItem', position: 1, name: 'Inicio', item: BASE_URL },
           { '@type': 'ListItem', position: 2, name: 'Proyectos', item: `${BASE_URL}/proyectos` },
-          { '@type': 'ListItem', position: 3, name: project.title, item: canonical },
+          { '@type': 'ListItem', position: 3, name: verified ? project.title : `Referencia: ${project.title}`, item: canonical },
         ],
       },
       {
         '@type': 'CreativeWork',
         '@id': `${canonical}#proyecto`,
         url: canonical,
-        name: project.title,
-        headline: project.title,
-        description: project.description || project.summary,
+        name: verified ? project.title : `Ejemplo referencial: ${project.title}`,
+        headline: verified ? project.title : `Ejemplo referencial: ${project.title}`,
+        description: verified
+          ? (project.description || project.summary)
+          : `Ficha demostrativa y referencia visual. No corresponde a una obra verificada de Soluciones Fabrick. ${project.description || project.summary}`,
         abstract: project.summary,
         image: images,
-        dateCreated: project.created_at || String(project.year || ''),
-        dateModified: project.updated_at || project.created_at || undefined,
+        dateCreated: verified ? (project.created_at || String(project.year || '')) : undefined,
+        dateModified: verified ? (project.updated_at || project.created_at || undefined) : undefined,
         inLanguage: 'es-CL',
         genre: project.category,
-        spatialCoverage: project.location,
+        spatialCoverage: verified ? project.location : undefined,
         about: [project.category, ...(project.materials || []).slice(0, 8)],
+        educationalUse: verified ? undefined : 'Demonstration',
         creator: {
           '@type': 'Organization',
           name: 'Soluciones Fabrick',
@@ -115,14 +140,14 @@ function projectJsonLd(project: NonNullable<Awaited<ReturnType<typeof getPublicP
 
 export default async function ProjectLayout({ children, params }: LayoutProps) {
   const { id } = await params;
-  const project = await getPublicProject(id);
+  const { project, source } = await getPublicProjectEntry(id);
 
   return (
     <>
       {project ? (
         <script
           type="application/ld+json"
-          dangerouslySetInnerHTML={{ __html: JSON.stringify(projectJsonLd(project)).replace(/</g, '\\u003c') }}
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(projectJsonLd(project, source)).replace(/</g, '\\u003c') }}
         />
       ) : null}
       {children}

@@ -9,18 +9,22 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const SHIPMENT_QUEUE = new Set(['pendiente', 'confirmado', 'en_preparacion', 'enviado']);
+const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
 
 export async function GET(request: NextRequest) {
   const auth = await requireAdminPermission(request, { resource: 'orders', action: 'read' });
   if (!auth.ok) return auth.response;
 
+  const tenantId = auth.session.tenant_id ?? DEFAULT_TENANT_ID;
   const url = new URL(request.url);
   const scope = url.searchParams.get('scope') || 'all';
-  const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 80), 1), 200);
+  const maxLimit = scope === 'report' ? 1000 : 200;
+  const limit = Math.min(Math.max(Number(url.searchParams.get('limit') || 80), 1), maxLimit);
 
   const { data, error } = await insforgeAdmin.database
     .from('orders')
     .select('*')
+    .eq('tenant_id', tenantId)
     .order('created_at', { ascending: false })
     .limit(limit);
 

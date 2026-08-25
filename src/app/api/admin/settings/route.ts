@@ -11,8 +11,7 @@ export const runtime = 'nodejs';
 
 /**
  * Whitelisted setting keys editable from /admin/configuracion. We use the
- * existing `configuracion` table (clave/valor) so no schema change is
- * required.
+ * existing tenant-aware `configuracion` table (clave/valor).
  */
 const SETTING_KEYS = [
   'copyright_text',
@@ -26,6 +25,9 @@ const SETTING_KEYS = [
   'email_contacto',
   'direccion',
   'nombre_empresa',
+  'rut_empresa',
+  'ciudad',
+  'sitio_web',
   'slogan',
   'logo_url',
   // Tienda (catálogo)

@@ -324,7 +324,7 @@ export default function MarketAlertsPage() {
       )}
 
       <section className="rounded-2xl border border-black/7 bg-[#111214] p-5 text-white shadow-sm">
-        <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/7 text-[#f5c75d]"><ShieldAlert className="h-4 w-4" /></span><div><p className="text-sm font-black">Umbrales actuales</p><p className="mt-1 max-w-4xl text-xs leading-5 text-white/45">Crítico: utilidad negativa o precio ≥25% sobre mediana. Revisar: costo faltante, referencia ≥72 h, precio >10% sobre mediana o movimiento de mercado ≥15%. Informativo: referencia ≥24 h o movimiento ≥8%. Son señales de decisión; ninguna ejecuta cambios comerciales automáticamente.</p></div></div>
+        <div className="flex items-start gap-3"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/7 text-[#f5c75d]"><ShieldAlert className="h-4 w-4" /></span><div><p className="text-sm font-black">Umbrales actuales</p><p className="mt-1 max-w-4xl text-xs leading-5 text-white/45">Crítico: utilidad negativa o precio ≥25% sobre mediana. Revisar: costo faltante, referencia ≥72 h, precio &gt;10% sobre mediana o movimiento de mercado ≥15%. Informativo: referencia ≥24 h o movimiento ≥8%. Son señales de decisión; ninguna ejecuta cambios comerciales automáticamente.</p></div></div>
       </section>
     </AdminPage>
   );

@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminInsforge, getAdminSession } from '@/lib/adminApi';
+import { getAdminInsforge } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { getMercadoLibreTrends } from '@/lib/marketIntel';
 
 export const dynamic = 'force-dynamic';
@@ -10,19 +11,17 @@ const TREND_TTL_MS = 6 * 60 * 60 * 1000; // 6h
 /**
  * GET /api/admin/market-intel/trends?site=MLC
  *
- * Devuelve el listado de tendencias de búsqueda de MercadoLibre para el
- * sitio indicado. Cachea en `market_intel_trends` durante 6h para no
- * golpear el endpoint público en cada render.
+ * Las tendencias son una fuente pública/global, pero el acceso al módulo exige
+ * el mismo permiso products:read que el radar y el histórico.
  */
 export async function GET(request: NextRequest) {
-	const session = await getAdminSession(request);
-	if (!session) return adminUnauthorized();
+	const auth = await requireAdminPermission(request, { resource: 'products', action: 'read' });
+	if (!auth.ok) return auth.response;
 	const site = request.nextUrl.searchParams.get('site') ?? 'MLC';
 	if (!/^[A-Z]{3}$/.test(site)) {
 		return NextResponse.json({ error: 'site inválido (esperado código de 3 letras, p.ej. MLC).' }, { status: 400 });
 	}
 	const force = request.nextUrl.searchParams.get('force') === '1';
-
 	const client = getAdminInsforge();
 
 	if (!force) {
@@ -51,7 +50,7 @@ export async function GET(request: NextRequest) {
 		try {
 			await client.database.from('market_intel_trends').insert([{ site, payload: trends }]);
 		} catch {
-			/* persistencia best-effort */
+			/* persistencia best-effort; la fuente es pública y compartida */
 		}
 		return NextResponse.json({ ok: true, site, trends, cached: false });
 	} catch (err) {

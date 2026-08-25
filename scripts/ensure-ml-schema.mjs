@@ -71,6 +71,18 @@ CREATE TABLE IF NOT EXISTS public.ml_price_alerts (
   alert_active boolean DEFAULT true,
   created_at timestamptz DEFAULT now()
 );
+CREATE TABLE IF NOT EXISTS public.sync_logs (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  tenant_id uuid NOT NULL DEFAULT '${DEFAULT_TENANT}'::uuid,
+  sync_type text NOT NULL,
+  success boolean NOT NULL DEFAULT false,
+  started_at timestamptz,
+  completed_at timestamptz,
+  products_synced integer DEFAULT 0,
+  orders_synced integer DEFAULT 0,
+  errors text,
+  created_at timestamptz NOT NULL DEFAULT now()
+);
 `);
 
   await runSql('phase 2 tenant columns', `
@@ -94,6 +106,21 @@ BEGIN
     ALTER TABLE public.ml_price_alerts ALTER COLUMN tenant_id SET DEFAULT '${DEFAULT_TENANT}'::uuid;
     ALTER TABLE public.ml_price_alerts ALTER COLUMN tenant_id SET NOT NULL;
   END IF;
+  IF to_regclass('public.sync_logs') IS NOT NULL THEN
+    ALTER TABLE public.sync_logs ADD COLUMN IF NOT EXISTS tenant_id uuid DEFAULT '${DEFAULT_TENANT}'::uuid;
+    ALTER TABLE public.sync_logs ADD COLUMN IF NOT EXISTS sync_type text;
+    ALTER TABLE public.sync_logs ADD COLUMN IF NOT EXISTS success boolean DEFAULT false;
+    ALTER TABLE public.sync_logs ADD COLUMN IF NOT EXISTS started_at timestamptz;
+    ALTER TABLE public.sync_logs ADD COLUMN IF NOT EXISTS completed_at timestamptz;
+    ALTER TABLE public.sync_logs ADD COLUMN IF NOT EXISTS products_synced integer DEFAULT 0;
+    ALTER TABLE public.sync_logs ADD COLUMN IF NOT EXISTS orders_synced integer DEFAULT 0;
+    ALTER TABLE public.sync_logs ADD COLUMN IF NOT EXISTS errors text;
+    ALTER TABLE public.sync_logs ADD COLUMN IF NOT EXISTS created_at timestamptz DEFAULT now();
+    UPDATE public.sync_logs SET tenant_id = '${DEFAULT_TENANT}'::uuid WHERE tenant_id IS NULL;
+    UPDATE public.sync_logs SET created_at = now() WHERE created_at IS NULL;
+    ALTER TABLE public.sync_logs ALTER COLUMN tenant_id SET DEFAULT '${DEFAULT_TENANT}'::uuid;
+    ALTER TABLE public.sync_logs ALTER COLUMN tenant_id SET NOT NULL;
+  END IF;
 END $$;
 `);
 
@@ -110,6 +137,8 @@ CREATE INDEX IF NOT EXISTS ml_price_alerts_tenant_active_idx
   ON public.ml_price_alerts(tenant_id, alert_active, created_at DESC);
 CREATE INDEX IF NOT EXISTS ml_price_alerts_tenant_item_idx
   ON public.ml_price_alerts(tenant_id, item_id);
+CREATE INDEX IF NOT EXISTS sync_logs_tenant_type_created_idx
+  ON public.sync_logs(tenant_id, sync_type, created_at DESC);
 `);
 
   console.log('[ml-bootstrap] Mercado Libre local cache schema aligned by tenant.');

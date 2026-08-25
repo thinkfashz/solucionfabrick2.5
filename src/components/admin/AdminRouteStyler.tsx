@@ -8,7 +8,7 @@ function resolveAdminArea(pathname: string) {
   if (/^\/admin\/(productos|inventario|materiales)(\/|$)/.test(pathname)) return 'catalog';
   if (/^\/admin\/(f29|contabilidad|analytics|facturas|pagos|reportes)(\/|$)/.test(pathname)) return 'finance';
   if (/^\/admin\/(editor|paginas|blog|medios|proyectos)(\/|$)/.test(pathname)) return 'content';
-  if (/^\/admin\/intelligence(\/|$)/.test(pathname)) return 'intelligence';
+  if (/^\/admin\/(intelligence|inteligencia-mercado)(\/|$)/.test(pathname)) return 'intelligence';
   if (/^\/admin\/(publicidad|newsletter|seo|redes|social|campanas|ml)(\/|$)/.test(pathname)) return 'marketing';
   if (/^\/admin\/(integraciones|estado|diagnostico|errores|vercel-logs|sql|setup|configuracion|modulos|health)(\/|$)/.test(pathname)) return 'system';
   if (/^\/admin\/(service-prices|envios)(\/|$)/.test(pathname)) return 'operations';
@@ -47,7 +47,7 @@ const NATIVE_DESIGN_PATHS = new Set([
 ]);
 
 function resolveAdminDesign(pathname: string) {
-  if (/^\/admin\/intelligence(\/|$)/.test(pathname)) return 'native';
+  if (/^\/admin\/(intelligence|inteligencia-mercado)(\/|$)/.test(pathname)) return 'native';
   return NATIVE_DESIGN_PATHS.has(pathname) ? 'native' : 'legacy';
 }
 

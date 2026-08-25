@@ -1,462 +1,252 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivitySquare,
-  AlertTriangle,
+  ArrowRightLeft,
+  Banknote,
+  Bell,
   CheckCircle2,
-  ExternalLink,
+  CircleDollarSign,
+  Clock3,
   Loader2,
   RefreshCw,
-  ShieldAlert,
+  Search,
   ShieldCheck,
-  TestTube2,
-  Wallet,
+  TriangleAlert,
+  WalletCards,
   XCircle,
 } from 'lucide-react';
-import LatencyBar from '@/components/checkout/LatencyBar';
 
-type MpMode = 'production' | 'sandbox' | 'unknown';
-type MpStatus = 'ok' | 'unconfigured' | 'unreachable' | 'invalid_token';
+type NativeState = 'approved' | 'pending' | 'failed';
+type Filter = 'all' | NativeState | 'transfer';
 
-interface AdminMpStatus {
-  status: MpStatus;
-  publicKey: string;
-  hasAccessToken: boolean;
-  reachable: boolean;
-  latencyMs: number | null;
-  message: string;
-  mode: MpMode;
-  tokenPrefix: string;
-  verifiedMode: MpMode;
-  account: {
-    id: string | number | null;
-    email: string | null;
-    nickname: string | null;
-    siteId: string | null;
-    isTestUser: boolean;
-  } | null;
+type PaymentRow = {
+  id: string;
+  total: number;
+  status?: string | null;
+  payment_status?: string | null;
+  payment_id?: string | null;
+  customer: string;
+  email?: string | null;
+  created_at?: string | null;
+  updated_at?: string | null;
+  currency?: string | null;
+  nativeState: NativeState;
+  method: 'transfer' | 'manual' | 'gateway' | 'internal';
+};
+
+type PaymentData = {
+  ok: boolean;
+  engine: string;
+  providerRequired: boolean;
   kpis: {
     approved: number;
     pending: number;
-    rejected: number;
-    volume: number;
-    sinceIso: string;
-    currency: string;
+    failed: number;
+    transfers: number;
+    approvedVolume: number;
+    pendingVolume: number;
+    total: number;
   };
-  recentOrders: Array<{
-    id: string;
-    total: number | string | null;
-    status: string | null;
-    payment_status: string | null;
-    payment_id: string | null;
-    cliente_email: string | null;
-    created_at: string | null;
-  }>;
+  novedades: Array<{ type: string; title: string; detail: string }>;
+  orders: PaymentRow[];
+};
+
+const FILTERS: Array<{ id: Filter; label: string }> = [
+  { id: 'all', label: 'Todos' },
+  { id: 'approved', label: 'Aprobados' },
+  { id: 'pending', label: 'En proceso' },
+  { id: 'failed', label: 'Fallidos' },
+  { id: 'transfer', label: 'Transferencias' },
+];
+
+function money(value: number) {
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(value || 0);
 }
 
-const MP_DEV_PANEL = 'https://www.mercadopago.cl/developers/panel/app';
-const MP_ACTIVITIES = 'https://www.mercadopago.cl/activities';
-const MAX_LATENCY_HISTORY = 20;
-const AUTO_REFRESH_INTERVAL_MS = 10_000;
-
-function formatCLP(n: number) {
-  return new Intl.NumberFormat('es-CL', {
-    style: 'currency',
-    currency: 'CLP',
-    maximumFractionDigits: 0,
-  }).format(n);
+function dateTime(value?: string | null) {
+  if (!value) return 'Sin fecha';
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return 'Sin fecha';
+  return new Intl.DateTimeFormat('es-CL', { dateStyle: 'short', timeStyle: 'short' }).format(d);
 }
 
-function maskKey(key: string) {
-  if (!key) return '—';
-  if (key.length <= 12) return key;
-  return `${key.slice(0, 8)}…${key.slice(-4)}`;
-}
-
-function ModeBadge({ mode, hasToken }: { mode: MpMode; hasToken: boolean }) {
-  if (!hasToken) {
-    return (
-      <span className="inline-flex items-center gap-2 rounded-full bg-rose-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-rose-300 ring-1 ring-rose-400/40">
-        <XCircle className="h-3.5 w-3.5" /> No configurado
-      </span>
-    );
-  }
-  if (mode === 'production') {
-    return (
-      <span className="inline-flex items-center gap-2 rounded-full bg-emerald-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-emerald-300 ring-1 ring-emerald-400/40">
-        <ShieldCheck className="h-3.5 w-3.5" /> Producción
-      </span>
-    );
-  }
-  if (mode === 'sandbox') {
-    return (
-      <span className="inline-flex items-center gap-2 rounded-full bg-amber-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-amber-300 ring-1 ring-amber-400/40">
-        <TestTube2 className="h-3.5 w-3.5" /> Demo / Sandbox
-      </span>
-    );
-  }
-  return (
-    <span className="inline-flex items-center gap-2 rounded-full bg-zinc-500/15 px-3 py-1 text-xs font-bold uppercase tracking-wider text-zinc-300 ring-1 ring-zinc-400/40">
-      <ShieldAlert className="h-3.5 w-3.5" /> Modo desconocido
-    </span>
-  );
+function StatusBadge({ state }: { state: NativeState }) {
+  const map = {
+    approved: { label: 'Aprobado', cls: 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200', Icon: CheckCircle2 },
+    pending: { label: 'En proceso', cls: 'border-amber-400/30 bg-amber-400/10 text-amber-200', Icon: Clock3 },
+    failed: { label: 'Fallido', cls: 'border-rose-400/30 bg-rose-400/10 text-rose-200', Icon: XCircle },
+  } as const;
+  const item = map[state];
+  return <span className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-1 text-[10px] font-black uppercase tracking-[0.16em] ${item.cls}`}><item.Icon className="h-3.5 w-3.5" />{item.label}</span>;
 }
 
 export default function MercadoPagoPanelClient() {
-  const [data, setData] = useState<AdminMpStatus | null>(null);
+  const [data, setData] = useState<PaymentData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [autoRefresh, setAutoRefresh] = useState(true);
-  const [latencyHistory, setLatencyHistory] = useState<number[]>([]);
-  const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const [filter, setFilter] = useState<Filter>('all');
+  const [query, setQuery] = useState('');
+  const [selected, setSelected] = useState<PaymentRow | null>(null);
+  const [reference, setReference] = useState('');
 
-  const fetchOnce = useCallback(async () => {
+  const load = useCallback(async () => {
     setError(null);
     try {
-      const res = await fetch('/api/admin/payments/mp-status', {
-        cache: 'no-store',
-        credentials: 'same-origin',
-      });
-      const json = (await res.json().catch(() => null)) as AdminMpStatus | { error?: string } | null;
-      if (!res.ok) {
-        throw new Error((json as { error?: string } | null)?.error || `HTTP ${res.status}`);
-      }
-      const next = json as AdminMpStatus;
-      setData(next);
-      if (typeof next.latencyMs === 'number' && next.latencyMs >= 0) {
-        setLatencyHistory((prev) => {
-          const copy = [...prev, next.latencyMs as number];
-          return copy.length > MAX_LATENCY_HISTORY ? copy.slice(-MAX_LATENCY_HISTORY) : copy;
-        });
-      }
-    } catch (e) {
-      setError((e as Error).message || 'No se pudo cargar el estado.');
+      const res = await fetch('/api/admin/payments/native', { cache: 'no-store', credentials: 'same-origin' });
+      const json = await res.json().catch(() => null) as PaymentData | { error?: string } | null;
+      if (!res.ok) throw new Error((json as { error?: string } | null)?.error || `HTTP ${res.status}`);
+      setData(json as PaymentData);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo cargar el centro de pagos.');
     } finally {
       setLoading(false);
     }
   }, []);
 
-  useEffect(() => {
-    void fetchOnce();
-  }, [fetchOnce]);
+  useEffect(() => { void load(); }, [load]);
 
-  useEffect(() => {
-    if (!autoRefresh) {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-      intervalRef.current = null;
-      return;
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    return (data?.orders ?? []).filter((row) => {
+      if (filter === 'transfer' && row.method !== 'transfer') return false;
+      if (filter !== 'all' && filter !== 'transfer' && row.nativeState !== filter) return false;
+      if (!q) return true;
+      return [row.id, row.customer, row.email, row.payment_id].some((value) => String(value ?? '').toLowerCase().includes(q));
+    });
+  }, [data, filter, query]);
+
+  async function updatePayment(state: NativeState, method: 'transfer' | 'manual') {
+    if (!selected) return;
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await fetch('/api/admin/payments/native', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ orderId: selected.id, state, method, reference }),
+      });
+      const json = await res.json().catch(() => ({})) as { error?: string };
+      if (!res.ok) throw new Error(json.error || 'No se pudo actualizar el pago.');
+      setSelected(null);
+      setReference('');
+      await load();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'No se pudo actualizar el pago.');
+    } finally {
+      setSaving(false);
     }
-    intervalRef.current = setInterval(() => void fetchOnce(), AUTO_REFRESH_INTERVAL_MS);
-    return () => {
-      if (intervalRef.current) clearInterval(intervalRef.current);
-    };
-  }, [autoRefresh, fetchOnce]);
+  }
 
-  const stats = useMemo(() => {
-    if (latencyHistory.length === 0) return { p50: null, p95: null, peak: null };
-    const sorted = [...latencyHistory].sort((a, b) => a - b);
-    const at = (q: number) =>
-      sorted[Math.min(sorted.length - 1, Math.floor(q * sorted.length))];
-    return { p50: at(0.5), p95: at(0.95), peak: sorted[sorted.length - 1] };
-  }, [latencyHistory]);
-
-  const verifiedMode = data?.verifiedMode ?? 'unknown';
-  const isDemo = verifiedMode === 'sandbox';
-  const isProd = verifiedMode === 'production';
+  const k = data?.kpis;
 
   return (
-    <div className="space-y-6 px-4 py-6 md:px-6">
-      {/* Header */}
-      <header className="flex flex-wrap items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-semibold text-white">Pagos · MercadoPago</h1>
-          <p className="mt-1 max-w-2xl text-sm text-zinc-400">
-            Estado en vivo de la pasarela, modo de operación verificado (producción /
-            demo) y latencia real de la API. Verifica aquí si el ambiente está cobrando
-            de verdad o si solo está simulando.
-          </p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
-          <label className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-3 py-2 text-xs text-zinc-300">
-            <input
-              type="checkbox"
-              checked={autoRefresh}
-              onChange={(e) => setAutoRefresh(e.target.checked)}
-              className="h-3.5 w-3.5 accent-yellow-400"
-            />
-            Auto-refresh 10 s
-          </label>
-          <button
-            type="button"
-            onClick={() => void fetchOnce()}
-            disabled={loading}
-            className="inline-flex items-center gap-2 rounded-xl bg-yellow-400 px-4 py-2 text-sm font-semibold text-black shadow-[0_2px_10px_rgba(255, 176, 0,0.45)] transition hover:bg-yellow-300 disabled:opacity-60"
-          >
-            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
-            Actualizar
-          </button>
-          <a
-            href={MP_DEV_PANEL}
-            target="_blank"
-            rel="noopener noreferrer"
-            className="inline-flex items-center gap-2 rounded-xl border border-white/15 bg-white/5 px-4 py-2 text-sm font-semibold text-white transition hover:border-yellow-400/50 hover:bg-yellow-400/10"
-          >
-            <ExternalLink className="h-4 w-4" />
-            Abrir panel de Mercado Pago
-          </a>
-        </div>
-      </header>
-
-      {error && (
-        <div className="rounded-2xl border border-rose-400/40 bg-rose-400/10 p-4 text-sm text-rose-200">
-          {error}
-        </div>
-      )}
-
-      {/* Mode + Account */}
-      <section className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="rounded-2xl border border-white/10 bg-zinc-950/60 p-5 lg:col-span-2">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="rounded-xl bg-yellow-400/10 p-2 ring-1 ring-yellow-400/30">
-                <Wallet className="h-5 w-5 text-yellow-400" />
+    <div className="min-h-screen px-4 py-6 text-white md:px-6 lg:px-8">
+      <div className="mx-auto max-w-[1500px] space-y-6">
+        <header className="overflow-hidden rounded-[2rem] border border-white/10 bg-[radial-gradient(circle_at_top_right,rgba(250,204,21,0.16),transparent_34%),linear-gradient(135deg,rgba(24,24,27,0.98),rgba(9,9,11,0.98))] p-6 shadow-2xl md:p-8">
+          <div className="flex flex-wrap items-start justify-between gap-5">
+            <div className="max-w-3xl">
+              <div className="inline-flex items-center gap-2 rounded-full border border-yellow-300/25 bg-yellow-300/10 px-3 py-1 text-[10px] font-black uppercase tracking-[0.2em] text-yellow-200">
+                <ShieldCheck className="h-3.5 w-3.5" /> Motor nativo Fabrick
               </div>
-              <div>
-                <h2 className="text-base font-semibold text-white">Estado de la pasarela</h2>
-                <p className="text-xs text-zinc-400">
-                  {data?.message ?? 'Cargando estado…'}
-                </p>
-              </div>
-            </div>
-            <ModeBadge mode={verifiedMode} hasToken={!!data?.hasAccessToken} />
-          </div>
-
-          {isDemo && (
-            <div className="mt-4 flex items-start gap-2 rounded-xl border border-amber-400/30 bg-amber-400/10 p-3 text-xs text-amber-200">
-              <AlertTriangle className="mt-0.5 h-4 w-4 flex-shrink-0" />
-              <span>
-                Estás operando en modo <strong>DEMO</strong>: ningún cobro es real.
-                Para producción, reemplaza el access token por uno con prefijo{' '}
-                <code className="rounded bg-black/40 px-1">APP_USR-</code> en Vercel
-                → Environment Variables.
-              </span>
-            </div>
-          )}
-
-          <dl className="mt-4 grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
-            <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-              <dt className="text-[10px] uppercase tracking-widest text-zinc-500">Public Key</dt>
-              <dd className="mt-1 font-mono text-xs text-zinc-200">
-                {maskKey(data?.publicKey ?? '')}
-              </dd>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-              <dt className="text-[10px] uppercase tracking-widest text-zinc-500">Access Token</dt>
-              <dd className="mt-1 font-mono text-xs text-zinc-200">
-                {data?.tokenPrefix ? `${data.tokenPrefix}-…` : '—'}
-              </dd>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-              <dt className="text-[10px] uppercase tracking-widest text-zinc-500">Cuenta MP</dt>
-              <dd className="mt-1 truncate text-xs text-zinc-200">
-                {data?.account?.email ?? data?.account?.nickname ?? '—'}
-                {data?.account?.id ? (
-                  <span className="ml-2 text-zinc-500">#{String(data.account.id)}</span>
-                ) : null}
-              </dd>
-            </div>
-            <div className="rounded-xl border border-white/10 bg-black/30 p-3">
-              <dt className="text-[10px] uppercase tracking-widest text-zinc-500">Sitio MP</dt>
-              <dd className="mt-1 text-xs text-zinc-200">
-                {data?.account?.siteId ?? '—'}
-                {data?.account?.isTestUser ? (
-                  <span className="ml-2 inline-flex items-center gap-1 rounded-full bg-amber-400/15 px-2 py-0.5 text-[10px] font-bold uppercase text-amber-300">
-                    test_user
-                  </span>
-                ) : null}
-              </dd>
-            </div>
-          </dl>
-        </div>
-
-        {/* Latency live */}
-        <div className="rounded-2xl border border-white/10 bg-zinc-950/60 p-5">
-          <div className="flex items-center gap-2">
-            <ActivitySquare className="h-5 w-5 text-yellow-400" />
-            <h2 className="text-base font-semibold text-white">Latencia API MP</h2>
-          </div>
-          <p className="mt-1 text-xs text-zinc-400">
-            Tiempo real de respuesta de <code>api.mercadopago.com</code>.
-          </p>
-          <div className="mt-3">
-            <LatencyBar
-              history={latencyHistory}
-              currentMs={data?.latencyMs ?? null}
-              status={data?.status ?? 'unconfigured'}
-              mode={verifiedMode}
-            />
-          </div>
-          <dl className="mt-3 grid grid-cols-3 gap-2 text-center text-xs">
-            <div className="rounded-lg bg-white/5 p-2">
-              <dt className="text-[10px] uppercase tracking-widest text-zinc-500">p50</dt>
-              <dd className="text-zinc-100">{stats.p50 != null ? `${stats.p50} ms` : '—'}</dd>
-            </div>
-            <div className="rounded-lg bg-white/5 p-2">
-              <dt className="text-[10px] uppercase tracking-widest text-zinc-500">p95</dt>
-              <dd className="text-zinc-100">{stats.p95 != null ? `${stats.p95} ms` : '—'}</dd>
-            </div>
-            <div className="rounded-lg bg-white/5 p-2">
-              <dt className="text-[10px] uppercase tracking-widest text-zinc-500">peor</dt>
-              <dd className="text-zinc-100">{stats.peak != null ? `${stats.peak} ms` : '—'}</dd>
-            </div>
-          </dl>
-        </div>
-      </section>
-
-      {/* KPIs */}
-      <section className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {[
-          {
-            label: 'Aprobados (7d)',
-            value: data?.kpis.approved ?? 0,
-            icon: CheckCircle2,
-            tint: 'text-emerald-300',
-          },
-          {
-            label: 'Pendientes (7d)',
-            value: data?.kpis.pending ?? 0,
-            icon: Loader2,
-            tint: 'text-amber-300',
-          },
-          {
-            label: 'Rechazados (7d)',
-            value: data?.kpis.rejected ?? 0,
-            icon: XCircle,
-            tint: 'text-rose-300',
-          },
-          {
-            label: 'Volumen aprobado',
-            value: formatCLP(Number(data?.kpis.volume ?? 0)),
-            icon: Wallet,
-            tint: 'text-yellow-300',
-          },
-        ].map((kpi) => (
-          <div
-            key={kpi.label}
-            className="rounded-2xl border border-white/10 bg-zinc-950/60 p-4"
-          >
-            <div className="flex items-center gap-2 text-[10px] uppercase tracking-widest text-zinc-500">
-              <kpi.icon className={`h-3.5 w-3.5 ${kpi.tint}`} />
-              {kpi.label}
-            </div>
-            <div className="mt-2 text-2xl font-semibold text-white">{kpi.value}</div>
-          </div>
-        ))}
-      </section>
-
-      {/* Recent orders */}
-      <section className="rounded-2xl border border-white/10 bg-zinc-950/60 p-5">
-        <header className="mb-3 flex items-center justify-between">
-          <h2 className="text-base font-semibold text-white">Últimas órdenes</h2>
-          <span className="text-[10px] uppercase tracking-widest text-zinc-500">
-            últimos 7 días
-          </span>
-        </header>
-        {data && data.recentOrders.length > 0 ? (
-          <div className="overflow-x-auto">
-            <table className="min-w-full text-left text-xs">
-              <thead>
-                <tr className="text-[10px] uppercase tracking-widest text-zinc-500">
-                  <th className="px-2 py-2">Fecha</th>
-                  <th className="px-2 py-2">Cliente</th>
-                  <th className="px-2 py-2">Total</th>
-                  <th className="px-2 py-2">Estado MP</th>
-                  <th className="px-2 py-2">Acciones</th>
-                </tr>
-              </thead>
-              <tbody>
-                {data.recentOrders.map((o) => {
-                  const ps = (o.payment_status ?? '').toLowerCase();
-                  const tint =
-                    ps === 'approved'
-                      ? 'text-emerald-300'
-                      : ps === 'rejected' || ps === 'cancelled' || ps === 'refunded'
-                        ? 'text-rose-300'
-                        : 'text-amber-300';
-                  return (
-                    <tr key={o.id} className="border-t border-white/5">
-                      <td className="px-2 py-2 text-zinc-300">
-                        {o.created_at
-                          ? new Date(o.created_at).toLocaleString('es-CL')
-                          : '—'}
-                      </td>
-                      <td className="px-2 py-2 text-zinc-300">{o.cliente_email ?? '—'}</td>
-                      <td className="px-2 py-2 font-mono text-zinc-200">
-                        {formatCLP(Number(o.total ?? 0))}
-                      </td>
-                      <td className={`px-2 py-2 font-semibold ${tint}`}>
-                        {o.payment_status ?? o.status ?? '—'}
-                      </td>
-                      <td className="px-2 py-2">
-                        {o.payment_id ? (
-                          <a
-                            href={`${MP_ACTIVITIES}/?searchQuery=${encodeURIComponent(
-                              o.payment_id,
-                            )}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="inline-flex items-center gap-1 rounded-md border border-white/10 px-2 py-0.5 text-[10px] uppercase tracking-widest text-yellow-300 hover:border-yellow-400/50"
-                          >
-                            Ver en MP
-                            <ExternalLink className="h-3 w-3" />
-                          </a>
-                        ) : (
-                          <span className="text-zinc-600">—</span>
-                        )}
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <p className="text-xs text-zinc-500">
-            {loading ? 'Cargando órdenes…' : 'Sin pagos en los últimos 7 días.'}
-          </p>
-        )}
-      </section>
-
-      {/* Test payment shortcut */}
-      {isDemo && (
-        <section className="rounded-2xl border border-amber-400/30 bg-amber-400/5 p-5">
-          <div className="flex flex-wrap items-center justify-between gap-3">
-            <div>
-              <h2 className="text-sm font-semibold text-amber-200">
-                Probar pago (modo demo)
-              </h2>
-              <p className="mt-1 text-xs text-amber-200/70">
-                Estás en sandbox: cualquier &quot;cobro&quot; aquí es simulado. Para
-                un pago real necesitas un token <code>APP_USR-</code>.
+              <h1 className="mt-4 text-3xl font-black tracking-tight md:text-5xl">Centro de pagos</h1>
+              <p className="mt-3 max-w-2xl text-sm leading-7 text-zinc-400 md:text-base">
+                Controla pagos, transferencias y estados financieros directamente desde tu app. Mercado Pago puede seguir funcionando en checkout como proveedor opcional, pero este panel no necesita sus credenciales para operar.
               </p>
             </div>
-            <a
-              href="/checkout"
-              className="inline-flex items-center gap-2 rounded-xl bg-amber-400 px-4 py-2 text-sm font-semibold text-black hover:bg-amber-300"
-            >
-              <TestTube2 className="h-4 w-4" />
-              Ir al checkout
-            </a>
+            <button type="button" onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2.5 text-xs font-black uppercase tracking-[0.14em] text-white transition hover:border-yellow-300/40 hover:bg-yellow-300/10 disabled:opacity-50">
+              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />} Actualizar
+            </button>
           </div>
-        </section>
-      )}
+        </header>
 
-      {isProd && (
-        <p className="text-center text-[11px] text-emerald-300/60">
-          ✓ Modo producción: los cobros se procesan en la cuenta real de Mercado Pago.
-        </p>
-      )}
+        {error ? <div className="rounded-2xl border border-rose-400/30 bg-rose-400/10 px-4 py-3 text-sm text-rose-200"><TriangleAlert className="mr-2 inline h-4 w-4" />{error}</div> : null}
+
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-5">
+          <Metric icon={CheckCircle2} label="Aprobados" value={String(k?.approved ?? 0)} detail={money(k?.approvedVolume ?? 0)} tone="emerald" />
+          <Metric icon={Clock3} label="En proceso" value={String(k?.pending ?? 0)} detail={money(k?.pendingVolume ?? 0)} tone="amber" />
+          <Metric icon={XCircle} label="Fallidos" value={String(k?.failed ?? 0)} detail="Requieren revisión" tone="rose" />
+          <Metric icon={ArrowRightLeft} label="Transferencias" value={String(k?.transfers ?? 0)} detail="Registro interno" tone="sky" />
+          <Metric icon={CircleDollarSign} label="Movimientos" value={String(k?.total ?? 0)} detail="Últimos 250" tone="yellow" />
+        </section>
+
+        <section className="grid gap-5 xl:grid-cols-[1fr_360px]">
+          <div className="min-w-0 rounded-[2rem] border border-white/10 bg-zinc-950/75 p-4 md:p-5">
+            <div className="flex flex-col gap-3 border-b border-white/10 pb-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {FILTERS.map((item) => <button key={item.id} type="button" onClick={() => setFilter(item.id)} className={`whitespace-nowrap rounded-full px-4 py-2 text-xs font-bold transition ${filter === item.id ? 'bg-yellow-300 text-black' : 'border border-white/10 bg-white/5 text-zinc-400 hover:text-white'}`}>{item.label}</button>)}
+              </div>
+              <label className="flex min-w-0 items-center gap-2 rounded-full border border-white/10 bg-black/40 px-4 py-2.5 lg:w-80">
+                <Search className="h-4 w-4 text-zinc-500" />
+                <input value={query} onChange={(e) => setQuery(e.target.value)} placeholder="Pedido, cliente, correo o referencia" className="min-w-0 flex-1 bg-transparent text-sm text-white outline-none placeholder:text-zinc-600" />
+              </label>
+            </div>
+
+            <div className="mt-4 space-y-2">
+              {loading ? <div className="grid min-h-64 place-items-center text-zinc-500"><Loader2 className="h-6 w-6 animate-spin" /></div> : null}
+              {!loading && filtered.length === 0 ? <div className="grid min-h-64 place-items-center rounded-2xl border border-dashed border-white/10 text-sm text-zinc-500">No hay movimientos para este filtro.</div> : null}
+              {filtered.map((row) => (
+                <button key={row.id} type="button" onClick={() => { setSelected(row); setReference(row.method === 'transfer' ? String(row.payment_id ?? '').replace(/^TRF-/i, '') : ''); }} className="grid w-full gap-3 rounded-2xl border border-white/10 bg-black/35 p-4 text-left transition hover:border-yellow-300/25 hover:bg-white/[0.04] md:grid-cols-[minmax(0,1.4fr)_150px_140px_120px] md:items-center">
+                  <div className="min-w-0">
+                    <div className="flex items-center gap-2"><p className="truncate font-bold text-white">{row.customer}</p>{row.method === 'transfer' ? <ArrowRightLeft className="h-3.5 w-3.5 text-sky-300" /> : null}</div>
+                    <p className="mt-1 truncate text-xs text-zinc-500">#{row.id} · {row.email || 'sin correo'}</p>
+                  </div>
+                  <div><p className="text-sm font-black text-white">{money(row.total)}</p><p className="mt-1 text-[10px] uppercase tracking-wider text-zinc-600">{row.method}</p></div>
+                  <StatusBadge state={row.nativeState} />
+                  <p className="text-xs text-zinc-500 md:text-right">{dateTime(row.updated_at || row.created_at)}</p>
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <aside className="space-y-5">
+            <div className="rounded-[2rem] border border-white/10 bg-zinc-950/75 p-5">
+              <div className="flex items-center gap-2"><Bell className="h-5 w-5 text-yellow-300" /><h2 className="text-lg font-black">Novedades</h2></div>
+              <div className="mt-4 space-y-3">
+                {(data?.novedades ?? []).length === 0 ? <p className="text-sm leading-6 text-zinc-500">Sin alertas importantes. El motor financiero está estable.</p> : null}
+                {(data?.novedades ?? []).map((news, index) => <div key={`${news.title}-${index}`} className="rounded-2xl border border-white/10 bg-black/35 p-4"><p className="text-sm font-bold text-white">{news.title}</p><p className="mt-1 text-xs leading-5 text-zinc-500">{news.detail}</p></div>)}
+              </div>
+            </div>
+            <div className="rounded-[2rem] border border-white/10 bg-zinc-950/75 p-5">
+              <WalletCards className="h-5 w-5 text-yellow-300" />
+              <h2 className="mt-3 text-lg font-black">Cómo funciona</h2>
+              <p className="mt-2 text-sm leading-6 text-zinc-500">Los estados se guardan en tu propia orden. Una transferencia se registra con referencia interna; este módulo no ejecuta movimientos bancarios ni necesita una cuenta de Mercado Pago.</p>
+            </div>
+          </aside>
+        </section>
+      </div>
+
+      {selected ? (
+        <div className="fixed inset-0 z-[120] flex items-end justify-center bg-black/70 p-3 backdrop-blur-sm md:items-center" onMouseDown={(e) => { if (e.currentTarget === e.target && !saving) setSelected(null); }}>
+          <div className="w-full max-w-xl rounded-[2rem] border border-white/10 bg-zinc-950 p-5 shadow-2xl md:p-6">
+            <div className="flex items-start justify-between gap-4"><div><p className="text-[10px] font-black uppercase tracking-[0.2em] text-yellow-300">Revisión de movimiento</p><h3 className="mt-2 text-2xl font-black">{selected.customer}</h3><p className="mt-1 text-xs text-zinc-500">Pedido #{selected.id}</p></div><StatusBadge state={selected.nativeState} /></div>
+            <div className="mt-5 grid grid-cols-2 gap-3"><Info label="Total" value={money(selected.total)} /><Info label="Referencia" value={selected.payment_id || 'Sin referencia'} /></div>
+            <label className="mt-4 block"><span className="mb-2 block text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">Referencia de transferencia / registro</span><input value={reference} onChange={(e) => setReference(e.target.value)} placeholder="Ej: TRANSF-24891" className="w-full rounded-2xl border border-white/10 bg-black px-4 py-3 text-sm text-white outline-none focus:border-yellow-300/50" /></label>
+            <div className="mt-5 grid gap-2 sm:grid-cols-2">
+              <Action disabled={saving} onClick={() => void updatePayment('approved', 'transfer')} icon={Banknote} label="Transferencia aprobada" className="bg-sky-300 text-black" />
+              <Action disabled={saving} onClick={() => void updatePayment('approved', 'manual')} icon={CheckCircle2} label="Aprobar manual" className="bg-emerald-300 text-black" />
+              <Action disabled={saving} onClick={() => void updatePayment('pending', 'manual')} icon={Clock3} label="Dejar en proceso" className="border border-amber-300/30 bg-amber-300/10 text-amber-200" />
+              <Action disabled={saving} onClick={() => void updatePayment('failed', 'manual')} icon={XCircle} label="Marcar fallido" className="border border-rose-300/30 bg-rose-300/10 text-rose-200" />
+            </div>
+            <button type="button" disabled={saving} onClick={() => setSelected(null)} className="mt-4 w-full rounded-full border border-white/10 px-4 py-3 text-xs font-bold text-zinc-400 hover:text-white">Cerrar</button>
+          </div>
+        </div>
+      ) : null}
     </div>
   );
+}
+
+function Metric({ icon: Icon, label, value, detail, tone }: { icon: typeof CheckCircle2; label: string; value: string; detail: string; tone: 'emerald' | 'amber' | 'rose' | 'sky' | 'yellow' }) {
+  const tones = { emerald: 'text-emerald-300', amber: 'text-amber-300', rose: 'text-rose-300', sky: 'text-sky-300', yellow: 'text-yellow-300' };
+  return <div className="rounded-2xl border border-white/10 bg-zinc-950/75 p-4"><div className="flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-[0.18em] text-zinc-500">{label}</p><Icon className={`h-4 w-4 ${tones[tone]}`} /></div><p className="mt-3 text-3xl font-black text-white">{value}</p><p className="mt-1 text-xs text-zinc-500">{detail}</p></div>;
+}
+
+function Info({ label, value }: { label: string; value: string }) {
+  return <div className="rounded-2xl border border-white/10 bg-black/40 p-4"><p className="text-[10px] font-black uppercase tracking-[0.16em] text-zinc-600">{label}</p><p className="mt-2 truncate text-sm font-bold text-white">{value}</p></div>;
+}
+
+function Action({ icon: Icon, label, onClick, disabled, className }: { icon: typeof CheckCircle2; label: string; onClick: () => void; disabled?: boolean; className: string }) {
+  return <button type="button" onClick={onClick} disabled={disabled} className={`inline-flex items-center justify-center gap-2 rounded-2xl px-4 py-3 text-xs font-black uppercase tracking-[0.1em] transition disabled:opacity-50 ${className}`}>{disabled ? <Loader2 className="h-4 w-4 animate-spin" /> : <Icon className="h-4 w-4" />}{label}</button>;
 }

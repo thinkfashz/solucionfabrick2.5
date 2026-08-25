@@ -1,35 +1,25 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1180 310" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 820" role="img" aria-labelledby="title desc">
   <title id="title">Soluciones Fabrick</title>
-  <desc id="desc">Logotipo Soluciones Fabrick de alto contraste para fondos claros.</desc>
+  <desc id="desc">Logo principal metálico de Soluciones Fabrick con techo cromado, detalle dorado y nombre en oro.</desc>
   <defs>
-    <linearGradient id="fabrickGold" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#F7C95A"/>
-      <stop offset=".34" stop-color="#D99016"/>
-      <stop offset=".72" stop-color="#B76508"/>
-      <stop offset="1" stop-color="#8D4003"/>
-    </linearGradient>
-    <linearGradient id="fabrickGoldText" x1="0" y1="0" x2=".9" y2="1">
-      <stop offset="0" stop-color="#E8AA2D"/>
-      <stop offset=".42" stop-color="#C8740D"/>
-      <stop offset=".78" stop-color="#9D4E05"/>
-      <stop offset="1" stop-color="#7E3500"/>
-    </linearGradient>
+    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#ffffff"/><stop offset=".14" stop-color="#d7d9dc"/><stop offset=".32" stop-color="#ffffff"/><stop offset=".52" stop-color="#73767b"/><stop offset=".7" stop-color="#f7f7f7"/><stop offset="1" stop-color="#3c3f44"/></linearGradient>
+    <linearGradient id="steelEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fefefe"/><stop offset=".45" stop-color="#9a9da2"/><stop offset="1" stop-color="#2d3034"/></linearGradient>
+    <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff2a3"/><stop offset=".12" stop-color="#ffd84e"/><stop offset=".32" stop-color="#f6a900"/><stop offset=".58" stop-color="#ffe273"/><stop offset=".78" stop-color="#c86c00"/><stop offset="1" stop-color="#7e3c00"/></linearGradient>
+    <linearGradient id="goldEdge" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="#fff4a8"/><stop offset=".42" stop-color="#f2a400"/><stop offset="1" stop-color="#8c4600"/></linearGradient>
+    <filter id="shadow" x="-20%" y="-20%" width="140%" height="150%"><feGaussianBlur in="SourceAlpha" stdDeviation="7"/><feOffset dy="9"/><feComponentTransfer><feFuncA type="linear" slope=".42"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+    <filter id="textShadow" x="-10%" y="-20%" width="120%" height="150%"><feGaussianBlur in="SourceAlpha" stdDeviation="5"/><feOffset dx="2" dy="10"/><feComponentTransfer><feFuncA type="linear" slope=".5"/></feComponentTransfer><feMerge><feMergeNode/><feMergeNode in="SourceGraphic"/></feMerge></filter>
   </defs>
-
-  <g transform="translate(34 28)" fill="none" stroke-linecap="round" stroke-linejoin="round">
-    <path d="M18 211 119 38l101 173" stroke="url(#fabrickGold)" stroke-width="17"/>
-    <path d="M50 207 119 88l69 119" stroke="#17191C" stroke-width="6" opacity=".9"/>
-    <path d="M112 203v-80" stroke="url(#fabrickGold)" stroke-width="13"/>
-    <path d="M112 136h49M112 169h37" stroke="#15171A" stroke-width="9"/>
-    <path d="M69 231h101" stroke="#B75E05" stroke-width="8"/>
-    <path d="M89 231h61" stroke="#E2A52D" stroke-width="2" opacity=".95"/>
+  <g filter="url(#shadow)" stroke-linejoin="miter">
+    <path d="M72 470 L800 70 L1070 222 L1070 143 L1150 143 L1150 265 L1530 470 L1481 473 L1131 291 L1131 181 L1092 181 L1092 264 L800 105 L116 473 Z" fill="url(#steel)" stroke="url(#steelEdge)" stroke-width="11"/>
+    <path d="M91 478 L800 104 L1087 262 L1087 236 L800 126 L128 480 Z" fill="#111318" opacity=".94"/>
+    <path d="M92 463 L800 101 L1082 256 L1082 274 L800 121 L126 477 Z" fill="url(#goldEdge)"/>
+    <path d="M129 463 L800 127 L1066 274 L1066 292 L800 147 L165 474 Z" fill="#17191d"/>
+    <path d="M1070 222 L1070 143 L1150 143 L1150 265 L1126 252 L1126 171 L1095 171 L1095 236 Z" fill="url(#steel)" stroke="url(#steelEdge)" stroke-width="6"/>
+    <path d="M1078 224 L1078 151 L1094 151 L1094 237 Z" fill="url(#gold)"/>
   </g>
-
-  <g font-family="Inter, Manrope, Arial, Helvetica, sans-serif">
-    <text x="303" y="116" fill="#121417" font-size="66" font-weight="900" letter-spacing="5.4">SOLUCIONES</text>
-    <text x="299" y="216" fill="url(#fabrickGoldText)" font-size="108" font-weight="900" letter-spacing="1.8">FABRICK</text>
-    <path d="M304 236h692" stroke="#9D5B0A" stroke-width="3" stroke-linecap="round" opacity=".72"/>
-    <circle cx="1013" cy="236" r="3" fill="#B76508"/>
-    <text x="305" y="274" fill="#4A4A47" font-size="17" font-weight="800" letter-spacing="4.15">CONSTRUIMOS CASAS · DIOS CONSTRUYE HOGARES</text>
+  <g filter="url(#textShadow)" font-family="Arial Black, Montserrat, Manrope, Arial, sans-serif" font-weight="900" text-anchor="middle">
+    <text x="800" y="681" font-size="176" letter-spacing="-8" fill="#5b2b00" stroke="#3a1d00" stroke-width="17">SOLUCIONES FABRICK</text>
+    <text x="800" y="668" font-size="176" letter-spacing="-8" fill="url(#gold)" stroke="url(#goldEdge)" stroke-width="8">SOLUCIONES FABRICK</text>
+    <text x="800" y="642" font-size="176" letter-spacing="-8" fill="none" stroke="#fff1a1" stroke-width="2" opacity=".82">SOLUCIONES FABRICK</text>
   </g>
 </svg>

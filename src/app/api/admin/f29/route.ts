@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { rows, runRawSql, sqlDecimal, sqlNum, sqlText } from '@/lib/web-pages/sql';
 
 async function ensureF29Table() {
@@ -54,11 +55,15 @@ async function ensureF29Table() {
   if (!result.ok) throw new Error(JSON.stringify(result.data));
 }
 
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const access = await requireAdminPermission(request, { resource: 'finance', action: 'read' });
+  if (!access.ok) return access.response;
+
   try {
-    await ensureF29Table();
     const decResult = await runRawSql(`SELECT * FROM f29_declaraciones ORDER BY periodo DESC`);
-    if (!decResult.ok) return NextResponse.json({ error: 'Error al obtener declaraciones', detail: decResult.data }, { status: 500 });
+    if (!decResult.ok) {
+      return NextResponse.json({ error: 'Error al obtener declaraciones', detail: decResult.data, table_exists: false }, { status: 500 });
+    }
     return NextResponse.json({ declaraciones: rows(decResult), table_exists: true, migrated: true });
   } catch (err) {
     return NextResponse.json({ error: err instanceof Error ? err.message : 'Error desconocido', declaraciones: [], table_exists: false }, { status: 502 });
@@ -67,15 +72,32 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   let body: Record<string, unknown>;
-  try { body = await request.json(); } catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }); }
-  if (body.action === 'setup') {
-    try { await ensureF29Table(); return NextResponse.json({ ok: true, message: 'Tabla F29 creada/migrada correctamente' }); }
-    catch (err) { return NextResponse.json({ error: err instanceof Error ? err.message : 'No se pudo migrar F29' }, { status: 502 }); }
-  }
-  const periodo = body.periodo;
-  if (!periodo || typeof periodo !== 'string' || !periodo.trim()) return NextResponse.json({ error: 'El campo periodo es requerido' }, { status: 400 });
   try {
-    await ensureF29Table();
+    body = await request.json();
+  } catch {
+    return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
+  }
+
+  if (body.action === 'setup') {
+    const setupAccess = await requireAdminPermission(request, { resource: 'finance', action: 'manage' });
+    if (!setupAccess.ok) return setupAccess.response;
+    try {
+      await ensureF29Table();
+      return NextResponse.json({ ok: true, message: 'Tabla F29 creada/migrada correctamente' });
+    } catch (err) {
+      return NextResponse.json({ error: err instanceof Error ? err.message : 'No se pudo migrar F29' }, { status: 502 });
+    }
+  }
+
+  const access = await requireAdminPermission(request, { resource: 'finance', action: 'update' });
+  if (!access.ok) return access.response;
+
+  const periodo = body.periodo;
+  if (!periodo || typeof periodo !== 'string' || !periodo.trim()) {
+    return NextResponse.json({ error: 'El campo periodo es requerido' }, { status: 400 });
+  }
+
+  try {
     const fechaDeclaracion = body.fecha_declaracion ? sqlText(body.fecha_declaracion) : 'NULL';
     const fechaPago = body.fecha_pago ? sqlText(body.fecha_pago) : 'NULL';
     const result = await runRawSql(`
@@ -129,10 +151,13 @@ export async function POST(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
+  const access = await requireAdminPermission(request, { resource: 'finance', action: 'delete' });
+  if (!access.ok) return access.response;
+
   const id = new URL(request.url).searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'El parámetro id es requerido' }, { status: 400 });
+
   try {
-    await ensureF29Table();
     const result = await runRawSql(`DELETE FROM f29_declaraciones WHERE id = ${sqlNum(id)}`);
     if (!result.ok) return NextResponse.json({ error: 'Error al eliminar declaración', detail: result.data }, { status: 500 });
     return NextResponse.json({ ok: true });

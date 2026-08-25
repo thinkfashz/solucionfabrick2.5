@@ -1,4 +1,5 @@
 import { loadInspirationCatalog } from '@/lib/inspirationCatalog';
+import { getPublicProjects } from '@/lib/projectsServer';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -18,8 +19,24 @@ export async function GET() {
     `- Presupuesto: ${BASE_URL}/presupuesto`,
     `- Contacto: ${BASE_URL}/contacto`,
     '',
-    '## Proyectos e inspiraciones visuales',
+    '## Portafolio de proyectos publicados',
   ];
+
+  try {
+    const { data: projects } = await getPublicProjects();
+    for (const project of projects.slice(0, 100)) {
+      lines.push(`- ${project.title}: ${BASE_URL}/proyectos/${encodeURIComponent(project.id)}`);
+      const context = [project.category, project.location, project.area_m2 ? `${project.area_m2} m²` : '', project.year ? String(project.year) : ''].filter(Boolean).join(' · ');
+      if (context) lines.push(`  ${context}`);
+      if (project.summary) lines.push(`  ${project.summary}`);
+      const topics = [...(project.materials || []).slice(0, 5), ...(project.scope || []).slice(0, 3)].filter(Boolean);
+      if (topics.length) lines.push(`  Temas: ${topics.join(', ')}`);
+    }
+  } catch {
+    lines.push('- El portafolio puede estar temporalmente no disponible; usa /proyectos como índice principal.');
+  }
+
+  lines.push('', '## Inspiraciones visuales');
 
   try {
     const catalog = await loadInspirationCatalog({ maxResults: 100 });
@@ -33,7 +50,11 @@ export async function GET() {
     lines.push('- El catálogo visual puede estar temporalmente no disponible; usa /proyectos como índice principal.');
   }
 
-  lines.push('', '## Uso de la información', 'Los álbumes visuales son referencias de diseño y construcción. No se debe asumir que todas las imágenes corresponden a obras ejecutadas por Soluciones Fabrick salvo que la página lo indique explícitamente.');
+  lines.push(
+    '',
+    '## Uso de la información',
+    'Las fichas bajo /proyectos representan entradas del portafolio público del sitio. Los álbumes bajo /inspiraciones son referencias visuales y no se debe asumir que todas sus imágenes corresponden a obras ejecutadas por Soluciones Fabrick salvo que la página lo indique explícitamente.',
+  );
 
   return new Response(lines.join('\n'), {
     headers: {

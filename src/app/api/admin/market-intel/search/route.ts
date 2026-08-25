@@ -1,11 +1,13 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminSession } from '@/lib/adminApi';
+import { adminUnauthorized, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
 import {
 	aggregateProductRefs,
-	compareWithPrevious,
-	persistSnapshot,
 	type MarketSource,
 } from '@/lib/marketIntel';
+import {
+	compareMarketSnapshotForTenant,
+	persistMarketSnapshotForTenant,
+} from '@/lib/marketIntelTenantStore';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
@@ -24,13 +26,14 @@ interface Body {
 /**
  * POST /api/admin/market-intel/search
  *
- * Ejecuta una búsqueda agregada multi-fuente y, si `persist` es true, guarda
- * un snapshot en `market_intel_snapshots` + filas en `market_intel_refs`.
- * Devuelve también la comparativa contra el snapshot anterior (si existe).
+ * Ejecuta una búsqueda agregada multi-fuente. El mercado consultado es público,
+ * pero los snapshots, referencias y comparativas históricas quedan aislados por
+ * tenant para que una empresa no contamine las decisiones de precio de otra.
  */
 export async function POST(request: NextRequest) {
 	const session = await getAdminSession(request);
 	if (!session) return adminUnauthorized();
+	const tenantId = await getAdminTenantId(request);
 	let body: Body;
 	try {
 		body = (await request.json()) as Body;
@@ -55,9 +58,9 @@ export async function POST(request: NextRequest) {
 			useCache,
 			limitPerSource,
 		});
-		const delta = await compareWithPrevious(snapshot.normalizedQuery, snapshot.stats.avg);
+		const delta = await compareMarketSnapshotForTenant(tenantId, snapshot.normalizedQuery, snapshot.stats.avg);
 		let snapshotId: string | null = null;
-		if (persist) snapshotId = await persistSnapshot(snapshot);
+		if (persist) snapshotId = await persistMarketSnapshotForTenant(tenantId, snapshot);
 		return NextResponse.json({ ok: true, snapshot, delta, snapshotId });
 	} catch (err) {
 		const msg = err instanceof Error ? err.message : 'Error en la búsqueda agregada.';

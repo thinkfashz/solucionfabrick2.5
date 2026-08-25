@@ -23,7 +23,6 @@ import {
   Sparkles,
   Target,
   TrendingUp,
-  X,
 } from 'lucide-react';
 import { AdminPage } from '@/components/admin/ui';
 
@@ -158,33 +157,57 @@ function clamp(value: number, min: number, max: number) {
   return Math.min(max, Math.max(min, value));
 }
 
+function guideAtPrice(costInput: number, saleInput: number, marketReferenceInput: number, reservePct: number): PriceGuide {
+  const cost = Math.max(0, Math.round(costInput));
+  const suggestedPrice = Math.max(0, Math.round(saleInput));
+  const marketReference = Math.max(0, Math.round(marketReferenceInput));
+  const grossProfit = suggestedPrice - cost;
+  const grossMargin = suggestedPrice > 0 ? (grossProfit / suggestedPrice) * 100 : 0;
+  const reserveAmount = Math.round(suggestedPrice * Math.max(0, reservePct) / 100);
+  const netProfit = suggestedPrice - cost - reserveAmount;
+  const netMargin = suggestedPrice > 0 ? (netProfit / suggestedPrice) * 100 : 0;
+  const spreadToMarket = marketReference > 0 ? ((marketReference - cost) / marketReference) * 100 : null;
+  const opportunityScore = clamp(Math.round(45 + (spreadToMarket || 0) * 0.65 + clamp(netMargin, -50, 60) * 0.65), 5, 95);
+  return {
+    cost,
+    marketReference,
+    targetPrice: suggestedPrice,
+    suggestedPrice,
+    grossProfit,
+    grossMargin,
+    reserveAmount,
+    netProfit,
+    netMargin,
+    spreadToMarket,
+    opportunityScore,
+  };
+}
+
 function calculateGuide(costInput: number, stats: MarketStats | null | undefined, markupPct: number, reservePct: number): PriceGuide {
   const cost = Math.max(0, Math.round(costInput));
   const marketReference = Math.max(0, Math.round(numberValue(stats?.median) || numberValue(stats?.avg) || cost));
   const targetPrice = Math.round(cost * (1 + Math.max(0, markupPct) / 100));
   let suggestedPrice = targetPrice;
 
-  if (marketReference > cost && cost > 0) {
-    const marketCeiling = Math.round(marketReference * 0.98);
-    const minimumHealthy = Math.round(cost * 1.08);
-    suggestedPrice = Math.max(minimumHealthy, Math.min(targetPrice, marketCeiling));
+  if (marketReference > 0 && cost > 0) {
+    if (cost >= marketReference) {
+      suggestedPrice = marketReference;
+    } else {
+      const marketCeiling = Math.round(marketReference * 0.98);
+      suggestedPrice = Math.max(cost, Math.min(targetPrice, marketCeiling));
+    }
   }
   if (suggestedPrice <= 0) suggestedPrice = marketReference;
 
-  const grossProfit = Math.max(0, suggestedPrice - cost);
-  const grossMargin = suggestedPrice > 0 ? (grossProfit / suggestedPrice) * 100 : 0;
-  const reserveAmount = Math.round(suggestedPrice * Math.max(0, reservePct) / 100);
-  const netProfit = suggestedPrice - cost - reserveAmount;
-  const netMargin = suggestedPrice > 0 ? (netProfit / suggestedPrice) * 100 : 0;
-  const spreadToMarket = marketReference > 0 ? ((marketReference - cost) / marketReference) * 100 : null;
-  const opportunityScore = clamp(Math.round(45 + (spreadToMarket || 0) * 0.8 + Math.max(0, netMargin) * 0.45), 20, 95);
-
-  return { cost, marketReference, targetPrice, suggestedPrice, grossProfit, grossMargin, reserveAmount, netProfit, netMargin, spreadToMarket, opportunityScore };
+  const guide = guideAtPrice(cost, suggestedPrice, marketReference, reservePct);
+  guide.targetPrice = targetPrice;
+  return guide;
 }
 
-function Metric({ label, value, note, icon: Icon, dark = false }: { label: string; value: string; note: string; icon: typeof Package; dark?: boolean }) {
+function Metric({ label, value, note, icon: Icon, dark = false, warning = false }: { label: string; value: string; note: string; icon: typeof Package; dark?: boolean; warning?: boolean }) {
+  const style = dark ? 'border-black bg-[#111214] text-white' : warning ? 'border-amber-200 bg-amber-50 text-amber-950' : 'border-black/7 bg-[#fffaf0] text-[#111214]';
   return (
-    <article className={`rounded-2xl border p-4 shadow-sm ${dark ? 'border-black bg-[#111214] text-white' : 'border-black/7 bg-[#fffaf0] text-[#111214]'}`}>
+    <article className={`rounded-2xl border p-4 shadow-sm ${style}`}>
       <div className="flex items-center justify-between gap-3">
         <span className={`text-[9px] font-black uppercase tracking-[.16em] ${dark ? 'text-white/35' : 'text-black/35'}`}>{label}</span>
         <Icon className={`h-4 w-4 ${dark ? 'text-[#f5c75d]' : 'text-black/30'}`} />
@@ -379,14 +402,8 @@ export default function InteligenciaMercadoPage() {
       const guide = guideFor(ref);
       let commerce = analysisByKey[key];
       if (options.analyze && !commerce) commerce = await getAiAnalysis(ref);
-      const suggested = commerce?.recommendedPrice && commerce.recommendedPrice > guide.cost ? commerce.recommendedPrice : guide.suggestedPrice;
-      const finalGuide = calculateGuide(guide.cost, snapshot?.stats, ((suggested / Math.max(guide.cost, 1)) - 1) * 100, reservePct);
-      finalGuide.suggestedPrice = suggested;
-      finalGuide.grossProfit = Math.max(0, suggested - guide.cost);
-      finalGuide.grossMargin = suggested > 0 ? (finalGuide.grossProfit / suggested) * 100 : 0;
-      finalGuide.reserveAmount = Math.round(suggested * reservePct / 100);
-      finalGuide.netProfit = suggested - guide.cost - finalGuide.reserveAmount;
-      finalGuide.netMargin = suggested > 0 ? (finalGuide.netProfit / suggested) * 100 : 0;
+      const suggested = commerce?.recommendedPrice && commerce.recommendedPrice > 0 ? commerce.recommendedPrice : guide.suggestedPrice;
+      const finalGuide = guideAtPrice(guide.cost, suggested, guide.marketReference, reservePct);
 
       const marketIntel = {
         query: snapshot?.query || query,
@@ -409,7 +426,8 @@ export default function InteligenciaMercadoPage() {
         estimated_net_margin_percentage: Math.round(finalGuide.netMargin * 10) / 10,
         opportunity_score: finalGuide.opportunityScore,
         market_delta_percentage: delta?.deltaPct ?? null,
-        disclaimer: 'El precio del referente se usa como costo de referencia para comparar. No equivale necesariamente al costo mayorista real. La utilidad estimada no incluye todos los costos tributarios, logísticos, comisiones, devoluciones ni publicidad salvo la reserva indicada.',
+        price_source: commerce ? 'commerce_ai' : 'market_guide',
+        disclaimer: 'El precio encontrado puede ser minorista y no equivale necesariamente al costo mayorista real. La utilidad estimada depende del costo ingresado y no incluye todos los costos tributarios, logísticos, comisiones, devoluciones ni publicidad salvo la reserva indicada.',
       };
 
       const response = await fetch('/api/admin/products', {
@@ -444,7 +462,7 @@ export default function InteligenciaMercadoPage() {
       const id = String(json.product.id);
       setExportedByKey((current) => ({ ...current, [key]: id }));
       setExistingProducts((current) => [...current, json.product!]);
-      if (!options.silent) setNotice(`“${ref.title}” quedó guardado como borrador oculto en Productos.`);
+      if (!options.silent) setNotice(`“${ref.title}” quedó guardado como borrador oculto en Productos con su guía de mercado.`);
       if (options.open) router.push(`/admin/productos?studio=${encodeURIComponent(id)}`);
       return { ok: true, id, existing: false };
     } catch (exportError) {
@@ -455,24 +473,25 @@ export default function InteligenciaMercadoPage() {
     }
   }
 
-  async function exportMany(mode: 'selected' | 'all') {
+  async function exportMany(mode: 'selected' | 'all', analyze = false) {
     if (!snapshot) return;
     const source = mode === 'selected' ? snapshot.refs.filter((ref) => selected.includes(refKey(ref))) : snapshot.refs;
-    const candidates = source.filter((ref) => ref.price && ref.price > 0 && !existingProductId(ref)).slice(0, 30);
+    const limit = analyze ? 12 : 30;
+    const candidates = source.filter((ref) => ref.price && ref.price > 0 && !existingProductId(ref)).slice(0, limit);
     if (!candidates.length) {
       setNotice('No hay candidatos nuevos con precio para exportar.');
       return;
     }
     setError('');
-    setNotice(`Guardando ${candidates.length} candidato${candidates.length === 1 ? '' : 's'} como borrador…`);
+    setNotice(`${analyze ? 'Analizando y guardando' : 'Guardando'} ${candidates.length} candidato${candidates.length === 1 ? '' : 's'} como borrador…`);
     let created = 0;
-    for (let index = 0; index < candidates.length; index += 4) {
-      const batch = candidates.slice(index, index + 4);
-      const results = await Promise.all(batch.map((ref) => exportCandidate(ref, { silent: true })));
+    for (let index = 0; index < candidates.length; index += analyze ? 2 : 4) {
+      const batch = candidates.slice(index, index + (analyze ? 2 : 4));
+      const results = await Promise.all(batch.map((ref) => exportCandidate(ref, { analyze, silent: true })));
       created += results.filter((result) => result.ok && !result.existing).length;
     }
     setSelected([]);
-    setNotice(`${created} producto${created === 1 ? '' : 's'} guardado${created === 1 ? '' : 's'} como borrador oculto. Puedes terminar precio, IA, imágenes y SEO en Productos.`);
+    setNotice(`${created} producto${created === 1 ? '' : 's'} guardado${created === 1 ? '' : 's'} como borrador oculto con referencia de precio y margen. Ábrelos en Productos para revisar IA, imágenes, SEO e inventario.`);
   }
 
   async function analyzeSelected() {
@@ -485,7 +504,7 @@ export default function InteligenciaMercadoPage() {
     setNotice(`Analizando ${refs.length} candidato${refs.length === 1 ? '' : 's'} con Commerce AI…`);
     const results = await Promise.allSettled(refs.map((ref) => getAiAnalysis(ref)));
     const ok = results.filter((result) => result.status === 'fulfilled').length;
-    setNotice(`${ok} análisis listo${ok === 1 ? '' : 's'}. Revisa cada tarjeta antes de exportar.`);
+    setNotice(`${ok} análisis listo${ok === 1 ? '' : 's'}. Ahora puedes comparar el precio IA con el margen antes de exportar.`);
   }
 
   const validRefs = useMemo(() => snapshot?.refs.filter((ref) => ref.price && ref.price > 0) || [], [snapshot]);
@@ -495,6 +514,14 @@ export default function InteligenciaMercadoPage() {
     return Math.round(validRefs.reduce((sum, ref) => sum + guideFor(ref).opportunityScore, 0) / validRefs.length);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [validRefs, markupPct, reservePct, costOverrides, snapshot?.stats]);
+  const netMarginAverage = useMemo(() => {
+    if (!validRefs.length) return 0;
+    return validRefs.reduce((sum, ref) => sum + guideFor(ref).netMargin, 0) / validRefs.length;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [validRefs, markupPct, reservePct, costOverrides, snapshot?.stats]);
+  const profitableCount = useMemo(() => validRefs.filter((ref) => guideFor(ref).netProfit > 0).length,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [validRefs, markupPct, reservePct, costOverrides, snapshot?.stats]);
 
   const historyValues = useMemo(() => historyRows.map((row) => numberValue(row.stats.avg)).filter((value) => value > 0).reverse(), [historyRows]);
 
@@ -505,13 +532,13 @@ export default function InteligenciaMercadoPage() {
           <div>
             <div className="flex flex-wrap items-center gap-2">
               <span className="rounded-full bg-[#111214] px-3 py-1.5 text-[9px] font-black uppercase tracking-[.18em] text-[#f5c75d]">Inteligencia de mercado</span>
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-[9px] font-black uppercase tracking-[.14em] text-emerald-800"><CheckCircle2 className="h-3 w-3" />Conectado a Productos</span>
+              <span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-100 px-3 py-1.5 text-[9px] font-black uppercase tracking-[.14em] text-emerald-800"><CheckCircle2 className="h-3 w-3" />Conectado a Product Studio</span>
             </div>
-            <h1 className="mt-4 max-w-3xl text-4xl font-black leading-[.95] tracking-[-.065em] sm:text-5xl">Descubre oportunidades y conviértelas en productos.</h1>
-            <p className="mt-4 max-w-2xl text-sm leading-6 text-black/45">Busca referentes, compara el mercado, define tu costo real, simula markup y reserva operativa, analiza con IA y guarda el candidato directamente en Product Studio sin publicarlo automáticamente.</p>
+            <h1 className="mt-4 max-w-3xl text-4xl font-black leading-[.95] tracking-[-.065em] sm:text-5xl">Busca, compara, calcula y envía al catálogo.</h1>
+            <p className="mt-4 max-w-2xl text-sm leading-6 text-black/45">Cada resultado puede convertirse en un borrador de Productos conservando fuente, costo de referencia, mediana del mercado, precio sugerido, utilidad, margen, score y análisis IA. Nada se publica automáticamente.</p>
           </div>
           <div className="grid grid-cols-2 gap-2">
-            <button type="button" onClick={() => router.push('/admin/productos')} className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#111214] px-4 text-xs font-black text-white"><Package className="h-4 w-4 text-[#f5c75d]" />Abrir Productos<ArrowRight className="h-4 w-4" /></button>
+            <button type="button" onClick={() => router.push('/admin/productos')} className="col-span-2 inline-flex min-h-12 items-center justify-center gap-2 rounded-xl bg-[#111214] px-4 text-xs font-black text-white"><Package className="h-4 w-4 text-[#f5c75d]" />Abrir Product Studio<ArrowRight className="h-4 w-4" /></button>
             <button type="button" onClick={() => void exportMany('all')} disabled={!snapshot || exportingKeys.length > 0} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#fff0bd] px-3 text-xs font-black text-[#76500f] disabled:opacity-45"><Save className="h-4 w-4" />Guardar todos</button>
             <button type="button" onClick={() => { setTab('historico'); void loadHistory(); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3 text-xs font-black text-black/55"><History className="h-4 w-4" />Histórico</button>
           </div>
@@ -543,25 +570,27 @@ export default function InteligenciaMercadoPage() {
             <div className="rounded-2xl border border-black/7 bg-[#111214] p-4 text-white shadow-sm sm:p-5">
               <div className="flex items-center gap-2"><Target className="h-4 w-4 text-[#f5c75d]" /><p className="text-[9px] font-black uppercase tracking-[.18em] text-white/40">Guía de rentabilidad</p></div>
               <div className="mt-4 grid grid-cols-2 gap-3"><label><span className="text-[10px] font-bold text-white/45">Markup objetivo</span><div className="mt-1 flex min-h-11 items-center rounded-xl bg-white/8 px-3"><input type="number" min="0" max="300" value={markupPct} onChange={(event) => setMarkupPct(clamp(numberValue(event.target.value), 0, 300))} className="min-w-0 flex-1 bg-transparent text-lg font-black outline-none" /><Percent className="h-4 w-4 text-[#f5c75d]" /></div></label><label><span className="text-[10px] font-bold text-white/45">Reserva costos</span><div className="mt-1 flex min-h-11 items-center rounded-xl bg-white/8 px-3"><input type="number" min="0" max="80" value={reservePct} onChange={(event) => setReservePct(clamp(numberValue(event.target.value), 0, 80))} className="min-w-0 flex-1 bg-transparent text-lg font-black outline-none" /><Percent className="h-4 w-4 text-[#f5c75d]" /></div></label></div>
-              <p className="mt-3 text-[11px] leading-5 text-white/35">La reserva es una aproximación para comisiones, logística, publicidad, devoluciones u otros costos. Puedes ajustarla según tu operación.</p>
+              <p className="mt-3 text-[11px] leading-5 text-white/35">La reserva simula comisiones, logística, publicidad y devoluciones. Si el costo supera la referencia de mercado, ahora verás la pérdida en rojo en vez de ocultarla.</p>
             </div>
           </section>
 
-          <section className="grid grid-cols-2 gap-3 xl:grid-cols-5">
+          <section className="grid grid-cols-2 gap-3 xl:grid-cols-6">
             <Metric label="Referentes" value={String(snapshot?.refs.length || 0)} note="Resultados visibles" icon={Boxes} />
             <Metric label="Precio mediano" value={money(snapshot?.stats.median)} note="Referencia de mercado" icon={BarChart3} />
             <Metric label="Precio promedio" value={money(snapshot?.stats.avg)} note="Todas las fuentes" icon={DollarSign} />
-            <Metric label="Oportunidad" value={snapshot ? `${opportunityAverage}/95` : '—'} note="Estimación relativa" icon={Target} />
-            <Metric label="En selección" value={String(selected.length)} note="Listos para analizar/exportar" icon={Check} dark />
+            <Metric label="Margen neto ref." value={snapshot ? `${netMarginAverage.toFixed(1)}%` : '—'} note="Con reserva configurada" icon={Percent} warning={netMarginAverage <= 0} />
+            <Metric label="Rentables" value={snapshot ? `${profitableCount}/${validRefs.length}` : '—'} note="Utilidad estimada positiva" icon={TrendingUp} />
+            <Metric label="En selección" value={String(selected.length)} note="Listos para IA/exportación" icon={Check} dark />
           </section>
 
           {snapshot ? (
             <>
               <section className="rounded-2xl border border-black/7 bg-[#efe6d6] p-3 shadow-sm sm:p-4">
                 <div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between">
-                  <div><p className="text-sm font-black">{snapshot.query}</p><p className="mt-1 text-[11px] text-black/40">Mín. {money(snapshot.stats.min)} · Mediana {money(snapshot.stats.median)} · Máx. {money(snapshot.stats.max)}{delta?.deltaPct != null ? ` · Variación ${delta.deltaPct > 0 ? '+' : ''}${delta.deltaPct.toFixed(1)}%` : ''}</p></div>
-                  <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setSelected(selected.length === validRefs.length ? [] : validRefs.map(refKey))} className="rounded-xl border border-black/8 bg-white px-3 py-2 text-xs font-black">{selected.length === validRefs.length && validRefs.length ? 'Quitar selección' : 'Seleccionar todos'}</button><button type="button" onClick={() => void analyzeSelected()} disabled={!selected.length || analyzingKeys.length > 0} className="inline-flex items-center gap-2 rounded-xl bg-[#fff0bd] px-3 py-2 text-xs font-black text-[#76500f] disabled:opacity-45"><Sparkles className="h-4 w-4" />Analizar selección IA</button><button type="button" onClick={() => void exportMany('selected')} disabled={!selected.length || exportingKeys.length > 0} className="inline-flex items-center gap-2 rounded-xl bg-[#111214] px-3 py-2 text-xs font-black text-white disabled:opacity-45"><Save className="h-4 w-4 text-[#f5c75d]" />Guardar selección</button><button type="button" onClick={() => void runSearch(query, { persist: true, useCache: false })} disabled={searching} className="inline-flex items-center gap-2 rounded-xl border border-black/8 bg-white px-3 py-2 text-xs font-black"><RefreshCw className="h-4 w-4" />Guardar snapshot</button></div>
+                  <div><p className="text-sm font-black">{snapshot.query}</p><p className="mt-1 text-[11px] text-black/40">Mín. {money(snapshot.stats.min)} · Mediana {money(snapshot.stats.median)} · Máx. {money(snapshot.stats.max)} · Score medio {opportunityAverage}/95{delta?.deltaPct != null ? ` · Variación ${delta.deltaPct > 0 ? '+' : ''}${delta.deltaPct.toFixed(1)}%` : ''}</p></div>
+                  <div className="flex flex-wrap gap-2"><button type="button" onClick={() => setSelected(selected.length === validRefs.length ? [] : validRefs.map(refKey))} className="rounded-xl border border-black/8 bg-white px-3 py-2 text-xs font-black">{selected.length === validRefs.length && validRefs.length ? 'Quitar selección' : 'Seleccionar todos'}</button><button type="button" onClick={() => void analyzeSelected()} disabled={!selected.length || analyzingKeys.length > 0} className="inline-flex items-center gap-2 rounded-xl bg-[#fff0bd] px-3 py-2 text-xs font-black text-[#76500f] disabled:opacity-45"><Sparkles className="h-4 w-4" />Analizar selección IA</button><button type="button" onClick={() => void exportMany('selected', true)} disabled={!selected.length || exportingKeys.length > 0 || analyzingKeys.length > 0} className="inline-flex items-center gap-2 rounded-xl bg-emerald-700 px-3 py-2 text-xs font-black text-white disabled:opacity-45"><Sparkles className="h-4 w-4" />IA + guardar</button><button type="button" onClick={() => void exportMany('selected')} disabled={!selected.length || exportingKeys.length > 0} className="inline-flex items-center gap-2 rounded-xl bg-[#111214] px-3 py-2 text-xs font-black text-white disabled:opacity-45"><Save className="h-4 w-4 text-[#f5c75d]" />Guardar selección</button><button type="button" onClick={() => void runSearch(query, { persist: true, useCache: false })} disabled={searching} className="inline-flex items-center gap-2 rounded-xl border border-black/8 bg-white px-3 py-2 text-xs font-black"><RefreshCw className="h-4 w-4" />Guardar snapshot</button></div>
                 </div>
+                <div className="mt-3 rounded-xl border border-black/7 bg-white/55 px-3 py-2.5 text-[11px] leading-5 text-black/45"><b className="text-black/65">Exportación segura:</b> los productos se guardan como borradores ocultos con stock 0. Luego Product Studio muestra esta misma referencia de mercado y recalcula el margen cuando cambias costo o precio.</div>
               </section>
 
               <section className="grid gap-3 xl:grid-cols-2">
@@ -569,6 +598,7 @@ export default function InteligenciaMercadoPage() {
                   const key = refKey(ref);
                   const guide = guideFor(ref);
                   const analysis = analysisByKey[key];
+                  const aiGuide = analysis ? guideAtPrice(guide.cost, analysis.recommendedPrice, guide.marketReference, reservePct) : null;
                   const analyzing = analyzingKeys.includes(key);
                   const exporting = exportingKeys.includes(key);
                   const productId = existingProductId(ref);
@@ -578,25 +608,25 @@ export default function InteligenciaMercadoPage() {
                       <div className="grid grid-cols-[92px_minmax(0,1fr)] gap-3 p-3 sm:grid-cols-[112px_minmax(0,1fr)] sm:p-4">
                         <button type="button" onClick={() => setSelected((current) => current.includes(key) ? current.filter((item) => item !== key) : [...current, key])} className="relative h-28 overflow-hidden rounded-xl bg-[#f1e8d8] text-black/20 sm:h-32" aria-label={selectedNow ? 'Quitar de selección' : 'Seleccionar candidato'}>{ref.image ? <img src={ref.image} alt={ref.title} className="h-full w-full object-contain p-1" /> : <Package className="absolute left-1/2 top-1/2 h-8 w-8 -translate-x-1/2 -translate-y-1/2" />}<span className={`absolute right-2 top-2 grid h-7 w-7 place-items-center rounded-lg shadow ${selectedNow ? 'bg-[#111214] text-[#f5c75d]' : 'bg-white/90 text-black/25'}`}>{selectedNow ? <Check className="h-4 w-4" /> : null}</span></button>
                         <div className="min-w-0"><div className="flex flex-wrap items-start justify-between gap-2"><div className="min-w-0 flex-1"><span className={`inline-flex rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] ${SOURCE_BADGE[ref.source]}`}>{SOURCE_LABEL[ref.source]}</span><h3 className="mt-2 line-clamp-2 text-sm font-black leading-5">{ref.title}</h3></div><a href={ref.url} target="_blank" rel="noopener noreferrer" className="grid h-9 w-9 shrink-0 place-items-center rounded-xl border border-black/8 bg-white text-black/40 hover:text-black"><ExternalLink className="h-4 w-4" /></a></div>
-                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs"><div className="rounded-xl bg-[#f1e8d8] p-2.5"><span className="block text-[9px] font-black uppercase tracking-[.12em] text-black/30">Precio referente</span><b className="mt-1 block text-sm">{ref.price ? money(ref.price) : 'Sin precio'}</b></div><div className="rounded-xl bg-[#111214] p-2.5 text-white"><span className="block text-[9px] font-black uppercase tracking-[.12em] text-white/35">Venta sugerida</span><b className="mt-1 block text-sm text-[#f5c75d]">{guide.suggestedPrice ? money(guide.suggestedPrice) : '—'}</b></div></div>
+                          <div className="mt-3 grid grid-cols-2 gap-2 text-xs"><div className="rounded-xl bg-[#f1e8d8] p-2.5"><span className="block text-[9px] font-black uppercase tracking-[.12em] text-black/30">Precio referente</span><b className="mt-1 block text-sm">{ref.price ? money(ref.price) : 'Sin precio'}</b></div><div className="rounded-xl bg-[#111214] p-2.5 text-white"><span className="block text-[9px] font-black uppercase tracking-[.12em] text-white/35">Venta guía</span><b className="mt-1 block text-sm text-[#f5c75d]">{guide.suggestedPrice ? money(guide.suggestedPrice) : '—'}</b></div></div>
                         </div>
                       </div>
 
                       <div className="border-t border-black/7 bg-[#f8f1e5] p-3 sm:p-4">
-                        <div className="grid gap-2 sm:grid-cols-4"><label className="sm:col-span-1"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30">Costo base</span><div className="mt-1 flex min-h-10 items-center rounded-xl border border-black/8 bg-white px-3"><span className="mr-1 text-xs text-black/30">$</span><input inputMode="numeric" value={costOverrides[key] ?? String(ref.price || '')} onChange={(event) => setCostOverrides((current) => ({ ...current, [key]: event.target.value }))} className="min-w-0 flex-1 bg-transparent text-sm font-black outline-none" /></div></label><div className="rounded-xl bg-white p-2.5"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30">Ganancia bruta</span><b className="mt-1 block text-sm">{money(guide.grossProfit)}</b><small className="text-[10px] text-black/35">{guide.grossMargin.toFixed(1)}% margen</small></div><div className={`rounded-xl p-2.5 ${guide.netProfit >= 0 ? 'bg-emerald-50 text-emerald-900' : 'bg-red-50 text-red-900'}`}><span className="text-[9px] font-black uppercase tracking-[.12em] opacity-50">Utilidad estimada</span><b className="mt-1 block text-sm">{money(guide.netProfit)}</b><small className="text-[10px] opacity-55">{guide.netMargin.toFixed(1)}% tras reserva</small></div><div className="rounded-xl bg-[#fff0bd] p-2.5 text-[#6e4d10]"><span className="text-[9px] font-black uppercase tracking-[.12em] opacity-55">Score oportunidad</span><b className="mt-1 block text-sm">{guide.opportunityScore}/95</b><small className="text-[10px] opacity-55">Guía comparativa</small></div></div>
+                        <div className="grid gap-2 sm:grid-cols-4"><label className="sm:col-span-1"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30">Costo base · cámbialo</span><div className="mt-1 flex min-h-10 items-center rounded-xl border border-black/8 bg-white px-3"><span className="mr-1 text-xs text-black/30">$</span><input inputMode="numeric" value={costOverrides[key] ?? String(ref.price || '')} onChange={(event) => setCostOverrides((current) => ({ ...current, [key]: event.target.value }))} className="min-w-0 flex-1 bg-transparent text-sm font-black outline-none" /></div></label><div className={`rounded-xl p-2.5 ${guide.grossProfit >= 0 ? 'bg-white' : 'bg-red-50 text-red-900'}`}><span className="text-[9px] font-black uppercase tracking-[.12em] opacity-40">Ganancia bruta</span><b className="mt-1 block text-sm">{money(guide.grossProfit)}</b><small className="text-[10px] opacity-45">{guide.grossMargin.toFixed(1)}% margen</small></div><div className={`rounded-xl p-2.5 ${guide.netProfit >= 0 ? 'bg-emerald-50 text-emerald-900' : 'bg-red-50 text-red-900'}`}><span className="text-[9px] font-black uppercase tracking-[.12em] opacity-50">Utilidad estimada</span><b className="mt-1 block text-sm">{money(guide.netProfit)}</b><small className="text-[10px] opacity-55">{guide.netMargin.toFixed(1)}% tras reserva</small></div><div className={`rounded-xl p-2.5 ${guide.opportunityScore >= 60 ? 'bg-[#fff0bd] text-[#6e4d10]' : 'bg-black/[0.06] text-black/60'}`}><span className="text-[9px] font-black uppercase tracking-[.12em] opacity-55">Score oportunidad</span><b className="mt-1 block text-sm">{guide.opportunityScore}/95</b><small className="text-[10px] opacity-55">Guía comparativa</small></div></div>
 
-                        {analysis ? <div className="mt-3 rounded-xl border border-[#d18b16]/20 bg-[#fff7dc] p-3"><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[#b7750c]" /><b className="text-xs">Commerce AI</b><span className="ml-auto rounded-full bg-white px-2 py-1 text-[9px] font-black">Demanda {analysis.estimatedDemand}/95</span></div><p className="mt-2 text-xs leading-5 text-black/55">{analysis.positioning}</p><div className="mt-2 flex flex-wrap gap-2 text-[10px] font-bold"><span className="rounded-full bg-white px-2.5 py-1">IA: {money(analysis.recommendedPrice)}</span><span className="rounded-full bg-white px-2.5 py-1">Popularidad {analysis.estimatedPurchasePopularity}/95</span></div></div> : null}
+                        {analysis && aiGuide ? <div className="mt-3 rounded-xl border border-[#d18b16]/20 bg-[#fff7dc] p-3"><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[#b7750c]" /><b className="text-xs">Commerce AI</b><span className="ml-auto rounded-full bg-white px-2 py-1 text-[9px] font-black">Demanda {analysis.estimatedDemand}/95</span></div><p className="mt-2 text-xs leading-5 text-black/55">{analysis.positioning}</p><div className="mt-3 grid grid-cols-3 gap-2"><div className="rounded-lg bg-white p-2"><span className="block text-[8px] font-black uppercase tracking-[.1em] text-black/30">Precio IA</span><b className="mt-1 block text-xs">{money(analysis.recommendedPrice)}</b></div><div className={`rounded-lg p-2 ${aiGuide.netProfit >= 0 ? 'bg-emerald-50 text-emerald-900' : 'bg-red-50 text-red-900'}`}><span className="block text-[8px] font-black uppercase tracking-[.1em] opacity-45">Utilidad IA</span><b className="mt-1 block text-xs">{money(aiGuide.netProfit)}</b></div><div className={`rounded-lg p-2 ${aiGuide.netMargin >= 0 ? 'bg-white' : 'bg-red-50 text-red-900'}`}><span className="block text-[8px] font-black uppercase tracking-[.1em] opacity-45">Margen IA</span><b className="mt-1 block text-xs">{aiGuide.netMargin.toFixed(1)}%</b></div></div><p className="mt-2 text-[10px] leading-4 text-black/35">Popularidad estimada {analysis.estimatedPurchasePopularity}/95 · {analysis.evidenceNote}</p></div> : null}
 
-                        <div className="mt-3 flex flex-wrap gap-2">{productId ? <button type="button" onClick={() => router.push(`/admin/productos?studio=${encodeURIComponent(productId)}`)} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 text-xs font-black text-white"><CheckCircle2 className="h-4 w-4" />Abrir en Productos</button> : <><button type="button" onClick={() => void getAiAnalysis(ref)} disabled={!ref.price || analyzing || exporting} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-[#fff0bd] px-3 text-xs font-black text-[#76500f] disabled:opacity-45">{analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Analizar IA</button><button type="button" onClick={() => void exportCandidate(ref, { analyze: true, open: true })} disabled={!ref.price || exporting || analyzing} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-[#111214] px-3 text-xs font-black text-white disabled:opacity-45">{exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4 text-[#f5c75d]" />}Analizar + exportar</button></>}</div>
+                        <div className="mt-3 flex flex-wrap gap-2">{productId ? <button type="button" onClick={() => router.push(`/admin/productos?studio=${encodeURIComponent(productId)}`)} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-emerald-700 px-3 text-xs font-black text-white"><CheckCircle2 className="h-4 w-4" />Abrir en Productos</button> : <><button type="button" onClick={() => void getAiAnalysis(ref)} disabled={!ref.price || analyzing || exporting} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-[#fff0bd] px-3 text-xs font-black text-[#76500f] disabled:opacity-45">{analyzing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Sparkles className="h-4 w-4" />}Analizar IA</button><button type="button" onClick={() => void exportCandidate(ref, { analyze: true, open: true })} disabled={!ref.price || exporting || analyzing} className="inline-flex min-h-10 flex-1 items-center justify-center gap-2 rounded-xl bg-[#111214] px-3 text-xs font-black text-white disabled:opacity-45">{exporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4 text-[#f5c75d]" />}IA + exportar</button></>}</div>
                       </div>
                     </article>
                   );
                 })}
               </section>
 
-              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-[11px] leading-5 text-amber-900"><AlertTriangle className="mr-2 inline h-4 w-4" /><b>Referencia, no utilidad garantizada:</b> el precio encontrado en un marketplace puede ser precio minorista y no tu costo mayorista real. Cambia “Costo base” por tu costo real antes de decidir. La reserva operativa ayuda a simular costos adicionales, pero no reemplaza un cálculo tributario/contable completo.</div>
+              <div className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-[11px] leading-5 text-amber-900"><AlertTriangle className="mr-2 inline h-4 w-4" /><b>Referencia, no utilidad garantizada:</b> el precio encontrado puede ser precio minorista. Por defecto se copia como “Costo base” únicamente para que la tarjeta tenga una referencia inicial; reemplázalo por tu costo proveedor real. Si el costo queda sobre la mediana del mercado, el panel mostrará margen negativo.</div>
             </>
-          ) : <div className="grid min-h-56 place-items-center rounded-2xl border border-dashed border-black/10 bg-[#fffaf0] p-6 text-center"><div><Search className="mx-auto h-8 w-8 text-black/15" /><p className="mt-3 text-sm font-black">Busca un producto para comenzar</p><p className="mt-1 max-w-md text-xs leading-5 text-black/35">El radar comparará precios y preparará candidatos que luego puedes abrir directamente en Product Studio.</p></div></div>}
+          ) : <div className="grid min-h-56 place-items-center rounded-2xl border border-dashed border-black/10 bg-[#fffaf0] p-6 text-center"><div><Search className="mx-auto h-8 w-8 text-black/15" /><p className="mt-3 text-sm font-black">Busca un producto para comenzar</p><p className="mt-1 max-w-md text-xs leading-5 text-black/35">El radar compara precios, calcula escenarios de rentabilidad y prepara borradores conectados con Product Studio.</p></div></div>}
         </>
       ) : null}
 
@@ -614,7 +644,7 @@ export default function InteligenciaMercadoPage() {
         </section>
       ) : null}
 
-      <section className="rounded-2xl border border-black/7 bg-[#111214] p-4 text-white shadow-sm sm:p-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[#f5c75d]" /><b className="text-sm">Flujo conectado</b></div><p className="mt-1 text-xs leading-5 text-white/40">Inteligencia de Mercado descubre y calcula. Product Studio revisa IA, imágenes, precio, inventario, SEO y publicación final.</p></div><button type="button" onClick={() => router.push('/admin/productos')} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#f5c75d] px-4 text-xs font-black text-[#111214]">Ir a Productos<ArrowRight className="h-4 w-4" /></button></div></section>
+      <section className="rounded-2xl border border-black/7 bg-[#111214] p-4 text-white shadow-sm sm:p-5"><div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between"><div><div className="flex items-center gap-2"><Sparkles className="h-4 w-4 text-[#f5c75d]" /><b className="text-sm">Flujo conectado</b></div><p className="mt-1 text-xs leading-5 text-white/40">Inteligencia de Mercado descubre y calcula. Product Studio conserva la referencia, recalcula margen con tu costo real y termina IA, imágenes, inventario, SEO y publicación.</p></div><button type="button" onClick={() => router.push('/admin/productos')} className="inline-flex min-h-10 items-center justify-center gap-2 rounded-xl bg-[#f5c75d] px-4 text-xs font-black text-[#111214]">Ir a Productos<ArrowRight className="h-4 w-4" /></button></div></section>
     </AdminPage>
   );
 }

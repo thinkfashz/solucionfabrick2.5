@@ -85,7 +85,7 @@ CREATE INDEX IF NOT EXISTS idx_invoices_sii_status ON invoices(sii_status);
   return result;
 }
 
-export async function listInvoices(limit = 200) {
+export async function listInvoices(tenantId: string, limit = 200) {
   await ensureInvoicesTable();
   const result = await runRawSql(`
 SELECT id::text, tenant_id::text, order_id, dte_type, folio, rut_emisor, rut_receptor, razon_social_receptor,
@@ -95,6 +95,7 @@ SELECT id::text, tenant_id::text, order_id, dte_type, folio, rut_emisor, rut_rec
        COALESCE(total,0)::float AS total,
        sii_status, pdf_url, pdf_token, COALESCE(voided,false) AS voided, created_at::text
 FROM invoices
+WHERE tenant_id::text = ${sqlText(tenantId)}
 ORDER BY created_at DESC
 LIMIT ${Math.max(1, Math.min(500, Math.round(limit)))};
 `);
@@ -102,9 +103,13 @@ LIMIT ${Math.max(1, Math.min(500, Math.round(limit)))};
   return rows(result) as InvoiceRow[];
 }
 
-export async function markInvoiceVoided(invoiceId: string) {
+export async function markInvoiceVoided(invoiceId: string, tenantId: string) {
   await ensureInvoicesTable();
-  const result = await runRawSql(`UPDATE invoices SET voided = TRUE, voided_at = NOW(), updated_at = NOW() WHERE id::text = ${sqlText(invoiceId)};`);
+  const result = await runRawSql(`
+UPDATE invoices
+SET voided = TRUE, voided_at = NOW(), updated_at = NOW()
+WHERE id::text = ${sqlText(invoiceId)} AND tenant_id::text = ${sqlText(tenantId)};
+`);
   if (!result.ok) throw new Error(JSON.stringify(result.data));
   return result;
 }

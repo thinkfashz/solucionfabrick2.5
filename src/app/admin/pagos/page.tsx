@@ -2,9 +2,8 @@ import type { Metadata } from 'next';
 import MercadoPagoPanelClient from './MercadoPagoPanelClient';
 
 export const metadata: Metadata = {
-  title: 'Pagos · MercadoPago | Admin Fabrick',
-  description:
-    'Estado de la pasarela MercadoPago, modo (producción/demo), latencia en tiempo real y KPIs de pagos.',
+  title: 'Centro de pagos | Admin Fabrick',
+  description: 'Panel nativo de pagos, transferencias, aprobados, pendientes, fallidos y novedades financieras.',
 };
 
 export const dynamic = 'force-dynamic';

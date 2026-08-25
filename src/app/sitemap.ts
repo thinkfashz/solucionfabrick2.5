@@ -42,13 +42,17 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     { url: `${BASE_URL}/casos`, lastModified: now, changeFrequency: 'weekly', priority: 0.8 },
   ];
 
-  const [{ data: projects }, products, inspirationCatalog] = await Promise.all([
+  const [projectResult, products, inspirationCatalog] = await Promise.all([
     getPublicProjects(),
     loadProducts(),
     loadInspirationCatalog({ maxResults: 100 }),
   ]);
+  const { data: projects, source: projectSource } = projectResult;
+  const verifiedProjects = projectSource === 'db' ? projects : [];
 
-  const projectRoutes: MetadataRoute.Sitemap = projects.map((project) => ({
+  // Seed projects keep /proyectos useful when the DB is empty, but they are
+  // demonstrative content and must never be submitted as executed portfolio.
+  const projectRoutes: MetadataRoute.Sitemap = verifiedProjects.map((project) => ({
     url: `${BASE_URL}/proyectos/${project.id}`,
     lastModified: project.updated_at ? new Date(project.updated_at) : project.created_at ? new Date(project.created_at) : now,
     changeFrequency: 'monthly',
@@ -72,7 +76,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   }));
 
   const projectIndexImages = [
-    ...projects.map((project) => project.hero_image),
+    ...verifiedProjects.map((project) => project.hero_image),
     ...inspirationCatalog.albums.map((album) => album.cover),
   ].filter(Boolean);
 

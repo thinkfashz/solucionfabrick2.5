@@ -1,17 +1,28 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { adminError, adminUnauthorized, getAdminInsforge, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
+import { adminError, getAdminInsforge, getAdminTenantId } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 
-function cleanCode(value: unknown) {
+function cleanLegacyCode(value: unknown) {
   return String(value ?? '').trim().replace(/\s+/g, '').slice(0, 128);
 }
 
+function cleanScanCode(value: unknown) {
+  return String(value ?? '').trim().slice(0, 512);
+}
+
+function cleanFormat(value: unknown) {
+  return String(value ?? '').trim().toLowerCase().replace(/[^a-z0-9_-]/g, '').slice(0, 40);
+}
+
+const PRODUCT_SELECT = 'id,name,stock,price,sku,ean,scan_code,scan_format,image_url,activo';
+
 export async function GET(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return adminUnauthorized();
+  const auth = await requireAdminPermission(request, { resource: 'products', action: 'read' });
+  if (!auth.ok) return auth.response;
   const tenantId = await getAdminTenantId(request);
   const db = getAdminInsforge().database;
   const url = new URL(request.url);
-  const code = cleanCode(url.searchParams.get('code'));
+  const code = cleanScanCode(url.searchParams.get('code'));
   const catalog = url.searchParams.get('catalog') === '1';
   const history = url.searchParams.get('history') === '1';
 
@@ -27,7 +38,7 @@ export async function GET(request: NextRequest) {
     }
     if (catalog) {
       const { data, error } = await db.from('products')
-        .select('id,name,stock,sku,ean,image_url,activo')
+        .select(PRODUCT_SELECT)
         .eq('tenant_id', tenantId)
         .order('name', { ascending: true })
         .limit(500);
@@ -36,13 +47,18 @@ export async function GET(request: NextRequest) {
     }
     if (!code) return NextResponse.json({ error: 'Código requerido.' }, { status: 400 });
 
-    const select = 'id,name,stock,sku,ean,image_url,activo';
-    const { data: byEan, error: eanError } = await db.from('products').select(select).eq('tenant_id', tenantId).eq('ean', code).limit(2);
+    const { data: byScan, error: scanError } = await db.from('products').select(PRODUCT_SELECT).eq('tenant_id', tenantId).eq('scan_code', code).limit(2);
+    if (scanError) throw scanError;
+    if ((byScan ?? []).length > 1) return NextResponse.json({ error: 'Código de escaneo duplicado. Corrige el catálogo antes de mover stock.' }, { status: 409 });
+    if (byScan?.[0]) return NextResponse.json({ found: true, product: byScan[0], code });
+
+    const legacyCode = cleanLegacyCode(code);
+    const { data: byEan, error: eanError } = await db.from('products').select(PRODUCT_SELECT).eq('tenant_id', tenantId).eq('ean', legacyCode).limit(2);
     if (eanError) throw eanError;
     if ((byEan ?? []).length > 1) return NextResponse.json({ error: 'EAN duplicado. Corrige el catálogo antes de mover stock.' }, { status: 409 });
     if (byEan?.[0]) return NextResponse.json({ found: true, product: byEan[0], code });
 
-    const { data: bySku, error: skuError } = await db.from('products').select(select).eq('tenant_id', tenantId).eq('sku', code).limit(2);
+    const { data: bySku, error: skuError } = await db.from('products').select(PRODUCT_SELECT).eq('tenant_id', tenantId).eq('sku', legacyCode).limit(2);
     if (skuError) throw skuError;
     if ((bySku ?? []).length > 1) return NextResponse.json({ error: 'SKU duplicado. Corrige el catálogo antes de mover stock.' }, { status: 409 });
     return bySku?.[0]
@@ -54,18 +70,24 @@ export async function GET(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return adminUnauthorized();
+  const auth = await requireAdminPermission(request, { resource: 'products', action: 'update' });
+  if (!auth.ok) return auth.response;
   const tenantId = await getAdminTenantId(request);
   const db = getAdminInsforge().database;
   try {
-    const body = await request.json() as { productId?: string; sku?: string; ean?: string };
+    const body = await request.json() as { productId?: string; sku?: string; ean?: string; code?: string; format?: string };
     if (!body.productId) return NextResponse.json({ error: 'productId requerido.' }, { status: 400 });
     const patch: Record<string, string | null> = {};
-    if (body.sku !== undefined) patch.sku = cleanCode(body.sku) || null;
-    if (body.ean !== undefined) patch.ean = cleanCode(body.ean) || null;
-    if (!Object.keys(patch).length) return NextResponse.json({ error: 'Envía sku o ean.' }, { status: 400 });
-    const { data, error } = await db.from('products').update(patch).eq('tenant_id', tenantId).eq('id', body.productId).select('id,name,stock,sku,ean').single();
+    if (body.sku !== undefined) patch.sku = cleanLegacyCode(body.sku) || null;
+    if (body.ean !== undefined) patch.ean = cleanLegacyCode(body.ean) || null;
+    if (body.code !== undefined) {
+      const scanCode = cleanScanCode(body.code);
+      patch.scan_code = scanCode || null;
+      patch.scan_format = scanCode ? (cleanFormat(body.format) || 'manual') : null;
+      if ((body.format === 'ean_13' || body.format === 'ean_8') && body.ean === undefined) patch.ean = cleanLegacyCode(body.code) || null;
+    }
+    if (!Object.keys(patch).length) return NextResponse.json({ error: 'Envía sku, ean o code.' }, { status: 400 });
+    const { data, error } = await db.from('products').update(patch).eq('tenant_id', tenantId).eq('id', body.productId).select(PRODUCT_SELECT).single();
     if (error) throw error;
     return NextResponse.json({ ok: true, product: data });
   } catch (error) {
@@ -74,8 +96,8 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return adminUnauthorized();
+  const auth = await requireAdminPermission(request, { resource: 'products', action: 'update' });
+  if (!auth.ok) return auth.response;
   const tenantId = await getAdminTenantId(request);
   const db = getAdminInsforge().database;
   try {
@@ -87,7 +109,7 @@ export async function POST(request: NextRequest) {
     const quantity = Math.trunc(Number(body.quantity));
     if (!Number.isFinite(quantity) || quantity < 0) return NextResponse.json({ error: 'Cantidad inválida.' }, { status: 400 });
 
-    const { data: product, error: readError } = await db.from('products').select('id,name,stock,sku,ean').eq('tenant_id', tenantId).eq('id', body.productId).single();
+    const { data: product, error: readError } = await db.from('products').select(PRODUCT_SELECT).eq('tenant_id', tenantId).eq('id', body.productId).single();
     if (readError || !product) throw readError ?? new Error('Producto no encontrado.');
     const before = Math.max(0, Number(product.stock ?? 0));
     let after = before;
@@ -108,9 +130,9 @@ export async function POST(request: NextRequest) {
       stock_after: after,
       reference_type: body.referenceType || 'manual_scan',
       reference_id: body.referenceId || null,
-      barcode: cleanCode(body.barcode) || null,
+      barcode: cleanScanCode(body.barcode) || null,
       note: String(body.note ?? '').trim().slice(0, 500) || null,
-      actor_id: session.email || 'admin',
+      actor_id: auth.session.email || 'admin',
     };
     const { data: inserted, error: movementError } = await db.from('inventory_movements').insert([movement]).select('*').single();
     if (movementError) {

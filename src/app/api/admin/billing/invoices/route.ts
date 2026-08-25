@@ -1,20 +1,22 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { ADMIN_COOKIE_NAME, decodeSession } from '@/lib/adminAuth';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { listInvoices } from '@/lib/billing/sql';
 import { getBillingDriver } from '@/lib/billing/provider';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+const DEFAULT_TENANT_ID = '00000000-0000-0000-0000-000000000001';
+
 export async function GET(req: NextRequest) {
-  const cookie = req.cookies.get(ADMIN_COOKIE_NAME);
-  if (!cookie?.value) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-  const session = await decodeSession(cookie.value);
-  if (!session) return NextResponse.json({ error: 'Sesión inválida' }, { status: 401 });
+  const access = await requireAdminPermission(req, { resource: 'finance', action: 'read' });
+  if (!access.ok) return access.response;
+
+  const tenantId = access.session.tenant_id ?? DEFAULT_TENANT_ID;
 
   try {
-    const invoices = await listInvoices(250);
+    const invoices = await listInvoices(tenantId, 250);
     const driver = getBillingDriver();
     return NextResponse.json({
       ok: true,

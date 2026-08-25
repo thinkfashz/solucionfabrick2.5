@@ -4,7 +4,9 @@
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import {
   AlertTriangle,
+  ArrowRight,
   BadgePercent,
+  BarChart3,
   Check,
   ChevronLeft,
   ChevronRight,
@@ -17,7 +19,9 @@ import {
   Sparkles,
   Star,
   Tag,
+  Target,
   Trash2,
+  TrendingUp,
   Truck,
   WandSparkles,
   X,
@@ -284,6 +288,21 @@ export default function ProductStudioEditor({
   const margin = basePrice > 0 && cost > 0 ? Math.round(((basePrice - cost) / basePrice) * 100) : null;
   const cover = form.image_url || gallery[0]?.url || '';
 
+  const marketIntel = record(record(product?.specifications).market_intel);
+  const hasMarketIntel = Object.keys(marketIntel).length > 0;
+  const marketMin = numberValue(marketIntel.market_min);
+  const marketAverage = numberValue(marketIntel.market_avg);
+  const marketMedian = numberValue(marketIntel.market_median);
+  const marketMax = numberValue(marketIntel.market_max);
+  const marketSuggested = numberValue(marketIntel.suggested_sale_price);
+  const marketReservePct = Math.max(0, numberValue(marketIntel.operating_reserve_percentage));
+  const currentGrossProfit = basePrice - cost;
+  const currentGrossMargin = basePrice > 0 ? (currentGrossProfit / basePrice) * 100 : 0;
+  const currentReserve = Math.round(basePrice * marketReservePct / 100);
+  const currentNetProfit = basePrice - cost - currentReserve;
+  const currentNetMargin = basePrice > 0 ? (currentNetProfit / basePrice) * 100 : 0;
+  const marketGapToMedian = marketMedian > 0 ? ((basePrice - marketMedian) / marketMedian) * 100 : null;
+
   const completeness = useMemo(() => {
     const checks = [
       Boolean(form.name.trim()),
@@ -405,6 +424,14 @@ export default function ProductStudioEditor({
     setNotice({ type: 'ok', text: `Precio sugerido aplicado: ${money(commerce.recommendedPrice)}.` });
   }
 
+  function applyMarketPrice() {
+    if (!marketSuggested) return;
+    setAutoMarkup(false);
+    setField('price', String(marketSuggested));
+    setSection('precio');
+    setNotice({ type: 'ok', text: `Referencia del radar aplicada: ${money(marketSuggested)}. Revisa margen y costos antes de guardar.` });
+  }
+
   function applyMarketing(option: MarketingOption) {
     setForm((current) => ({ ...current, name: option.name, tagline: option.tagline, description: option.longDescription }));
     setSeo({
@@ -432,6 +459,7 @@ export default function ProductStudioEditor({
     try {
       const cleanGallery = uniqueImages([{ url: form.image_url, source: 'cover' }, ...gallery].filter((item) => Boolean(item.url)));
       const previousSpecs = record(product?.specifications);
+      const previousMarketIntel = record(previousSpecs.market_intel);
       const seoPayload = {
         title: seo.title.trim(),
         description: seo.description.trim(),
@@ -439,6 +467,18 @@ export default function ProductStudioEditor({
         primary_keyword: seo.primaryKeyword.trim(),
         secondary_keywords: seo.secondaryKeywords.split(',').map((item) => item.trim().toLowerCase()).filter(Boolean).slice(0, 16),
       };
+      const refreshedMarketIntel = Object.keys(previousMarketIntel).length ? {
+        ...previousMarketIntel,
+        current_cost: cost || null,
+        current_sale_price: basePrice,
+        current_gross_profit: currentGrossProfit,
+        current_gross_margin_percentage: Math.round(currentGrossMargin * 10) / 10,
+        current_reserve_amount: currentReserve,
+        current_estimated_net_profit: currentNetProfit,
+        current_estimated_net_margin_percentage: Math.round(currentNetMargin * 10) / 10,
+        current_gap_to_market_median_percentage: marketGapToMedian == null ? null : Math.round(marketGapToMedian * 10) / 10,
+        last_reviewed_at: new Date().toISOString(),
+      } : null;
       const specifications = {
         ...previousSpecs,
         gallery_images: cleanGallery.map((image) => image.url),
@@ -448,6 +488,7 @@ export default function ProductStudioEditor({
         default_markup_percentage: markup,
         auto_markup_enabled: autoMarkup,
         seo: seoPayload,
+        ...(refreshedMarketIntel ? { market_intel: refreshedMarketIntel } : {}),
         ...(commerce ? { commerce_ai: commerce } : {}),
         ...(marketingOptions.length ? { marketing_ai: { options: marketingOptions, image_observations: imageObservations, warnings: aiWarnings, analyzed_at: new Date().toISOString() } } : {}),
       };
@@ -502,7 +543,7 @@ export default function ProductStudioEditor({
         <div className="flex items-center gap-3">
           <button type="button" onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl border border-black/10 bg-white text-black/60 hover:text-black" aria-label="Cerrar editor"><X className="h-4 w-4" /></button>
           <div className="min-w-0 flex-1">
-            <div className="flex items-center gap-2"><span className="rounded-full bg-[#111214] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.16em] text-[#f5c75d]">Product Studio</span><span className="text-[10px] font-bold text-black/35">{mode === 'create' ? 'Nuevo producto' : `ID ${product?.id || ''}`}</span></div>
+            <div className="flex items-center gap-2"><span className="rounded-full bg-[#111214] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.16em] text-[#f5c75d]">Product Studio</span><span className="text-[10px] font-bold text-black/35">{mode === 'create' ? 'Nuevo producto' : `ID ${product?.id || ''}`}</span>{hasMarketIntel ? <span className="rounded-full bg-emerald-100 px-2 py-1 text-[9px] font-black uppercase tracking-[.12em] text-emerald-800">Radar conectado</span> : null}</div>
             <h2 className="mt-1 truncate text-lg font-black tracking-[-.035em] sm:text-xl">{form.name || 'Producto sin nombre'}</h2>
           </div>
           <button type="button" onClick={() => void runAiSuite()} disabled={busy !== ''} className="hidden items-center gap-2 rounded-xl border border-[#d18b16]/25 bg-[#fff3cf] px-3.5 py-2.5 text-xs font-black text-[#83590f] transition hover:bg-[#ffe9a7] disabled:opacity-50 sm:inline-flex">{busy === 'ai' ? <Loader2 className="h-4 w-4 animate-spin" /> : <WandSparkles className="h-4 w-4" />}Analizar con IA</button>
@@ -540,6 +581,18 @@ export default function ProductStudioEditor({
 
           {section === 'precio' ? (
             <div className="space-y-4">
+              {hasMarketIntel ? (
+                <Panel title="Referencia de mercado importada" description="Conserva el contexto del radar y recalcula la rentabilidad con el costo y precio que estés editando ahora.">
+                  <div className="flex flex-col gap-3 rounded-xl bg-[#111214] p-4 text-white sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><Target className="h-4 w-4 text-[#f5c75d]" /><span className="text-[10px] font-black uppercase tracking-[.14em] text-white/40">{String(marketIntel.source_label || marketIntel.source || 'Radar')}</span>{marketIntel.opportunity_score != null ? <span className="rounded-full bg-white/8 px-2.5 py-1 text-[9px] font-black text-[#f5c75d]">Oportunidad {String(marketIntel.opportunity_score)}/95</span> : null}</div><p className="mt-2 truncate text-sm font-black">{String(marketIntel.query || 'Referencia de mercado')}</p><p className="mt-1 text-[11px] text-white/40">Capturada {marketIntel.captured_at ? new Date(String(marketIntel.captured_at)).toLocaleString('es-CL') : 'desde Inteligencia de Mercado'}.</p></div>
+                    <a href="/admin/inteligencia-mercado" className="inline-flex min-h-10 shrink-0 items-center justify-center gap-2 rounded-xl bg-[#f5c75d] px-3 text-xs font-black text-[#111214]">Abrir radar<ArrowRight className="h-4 w-4" /></a>
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4"><MiniMetric label="Mínimo" value={marketMin ? money(marketMin) : '—'} /><MiniMetric label="Mediana" value={marketMedian ? money(marketMedian) : '—'} /><MiniMetric label="Promedio" value={marketAverage ? money(marketAverage) : '—'} /><MiniMetric label="Máximo" value={marketMax ? money(marketMax) : '—'} /></div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 xl:grid-cols-4"><MiniMetric label="Ganancia bruta actual" value={cost > 0 ? money(currentGrossProfit) : 'Sin costo'} /><MiniMetric label="Margen bruto actual" value={cost > 0 ? `${currentGrossMargin.toFixed(1)}%` : 'Sin costo'} /><MiniMetric label={`Utilidad tras reserva ${marketReservePct || 0}%`} value={cost > 0 ? money(currentNetProfit) : 'Sin costo'} dark={currentNetProfit >= 0} /><MiniMetric label="Margen neto estimado" value={cost > 0 ? `${currentNetMargin.toFixed(1)}%` : 'Sin costo'} /></div>
+                  <div className="mt-3 flex flex-col gap-3 rounded-xl border border-black/8 bg-[#f7efdc] p-4 sm:flex-row sm:items-center sm:justify-between"><div><p className="text-xs font-black">Comparación con mercado</p><p className="mt-1 text-[11px] leading-5 text-black/45">Tu precio actual está {marketGapToMedian == null ? 'sin mediana disponible' : `${Math.abs(marketGapToMedian).toFixed(1)}% ${marketGapToMedian > 0 ? 'sobre' : 'bajo'} la mediana`}. La utilidad es una referencia y depende del costo real y de los gastos de operación.</p></div>{marketSuggested > 0 ? <button type="button" onClick={applyMarketPrice} className="shrink-0 rounded-xl bg-white px-3 py-2.5 text-xs font-black shadow-sm">Aplicar sugerencia {money(marketSuggested)}</button> : null}</div>
+                </Panel>
+              ) : null}
+
               <Panel title="Precio y margen" description="El costo, precio, descuento e impuestos se entienden en una sola vista.">
                 <div className="grid gap-4 md:grid-cols-2"><Field label="Costo proveedor"><MoneyInput value={form.supplier_price} onChange={(value) => setField('supplier_price', value)} /></Field><Field label="Moneda proveedor"><select className={inputClass} value={form.supplier_currency} onChange={(event) => setField('supplier_currency', event.target.value)}><option value="CLP">CLP</option><option value="USD">USD</option><option value="EUR">EUR</option></select></Field></div>
                 <div className="mt-4 rounded-xl border border-black/8 bg-[#f7efdc] p-4"><div className="flex flex-wrap items-center justify-between gap-3"><div><p className="text-sm font-black">Calcular precio desde costo</p><p className="mt-1 text-xs text-black/45">Útil para mantener un margen base sin recalcular manualmente.</p></div><Toggle checked={autoMarkup} onChange={setAutoMarkup} label="Precio automático" /></div>{autoMarkup ? <div className="mt-4 max-w-xs"><Field label="Aumento sobre costo"><div className="relative"><input type="number" min="0" max="500" className={`${inputClass} pr-10`} value={markup} onChange={(event) => setMarkup(Math.max(0, Number(event.target.value) || 0))} /><span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm font-black text-black/35">%</span></div></Field></div> : null}</div>
@@ -591,13 +644,15 @@ export default function ProductStudioEditor({
             <div className="p-4"><div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-sm font-black">{form.name || 'Nombre del producto'}</p><p className="mt-1 text-[10px] font-bold uppercase tracking-[.12em] text-[#9b6b19]">{categoryName}</p></div>{form.featured ? <Star className="h-4 w-4 fill-[#f5c75d] text-[#b67c15]" /> : null}</div><p className="mt-3 line-clamp-3 text-xs leading-5 text-black/45">{form.tagline || form.description || 'Añade una descripción para mejorar la ficha.'}</p><div className="mt-4 flex items-end justify-between"><div><p className="text-xl font-black">{money(salePrice)}</p>{discount > 0 ? <p className="text-[10px] text-black/35 line-through">{money(basePrice)}</p> : null}</div><span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase ${form.activo ? 'bg-emerald-100 text-emerald-800' : 'bg-black/8 text-black/45'}`}>{form.activo ? 'Activo' : 'Oculto'}</span></div></div>
           </div>
 
+          {hasMarketIntel ? <div className="rounded-2xl border border-emerald-200 bg-emerald-50 p-4 text-emerald-950"><div className="flex items-center justify-between gap-3"><div><p className="text-[9px] font-black uppercase tracking-[.16em] text-emerald-900/45">Radar de mercado</p><p className="mt-1 text-lg font-black">{cost > 0 ? money(currentNetProfit) : 'Costo pendiente'}</p></div><TrendingUp className="h-5 w-5 text-emerald-700" /></div><p className="mt-1 text-[11px] text-emerald-900/55">Utilidad estimada con reserva {marketReservePct || 0}% · margen {cost > 0 ? `${currentNetMargin.toFixed(1)}%` : '—'}.</p><div className="mt-3 flex items-center justify-between rounded-xl bg-white/70 px-3 py-2 text-[11px]"><span className="text-emerald-900/50">Mediana mercado</span><b>{marketMedian ? money(marketMedian) : '—'}</b></div></div> : null}
+
           <div className="rounded-2xl bg-[#111214] p-4 text-white"><div className="flex items-center justify-between"><div><p className="text-[9px] font-black uppercase tracking-[.16em] text-white/35">Salud de ficha</p><p className="mt-1 text-2xl font-black">{completeness}%</p></div><div className="grid h-12 w-12 place-items-center rounded-xl bg-white/8 text-[#f5c75d]"><Sparkles className="h-5 w-5" /></div></div><div className="mt-3 h-1.5 overflow-hidden rounded-full bg-white/8"><div className="h-full rounded-full bg-[#f5c75d] transition-all" style={{ width: `${completeness}%` }} /></div><p className="mt-3 text-xs leading-5 text-white/45">Completa contenido, imagen y SEO antes de publicar para tener una ficha más consistente.</p></div>
 
           <div className="grid grid-cols-2 gap-2"><MiniMetric label="Stock" value={form.stock || '0'} /><MiniMetric label="Margen" value={margin == null ? '—' : `${margin}%`} /><MiniMetric label="Fotos" value={String(gallery.length)} /><MiniMetric label="SEO" value={seo.primaryKeyword ? 'Listo' : 'Pendiente'} /></div>
         </aside>
       </div>
 
-      <footer className="sticky bottom-0 z-20 mt-auto border-t border-black/8 bg-[#fffaf0]/95 px-4 py-3 backdrop-blur-xl sm:px-6"><div className="flex items-center justify-between gap-3"><p className="hidden text-xs text-black/40 sm:block">{mode === 'create' ? 'Se creará un nuevo producto.' : 'Los cambios se guardan sobre esta ficha.'}</p><div className="ml-auto flex gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-black/10 bg-white px-4 py-2.5 text-xs font-black text-black/55">Cancelar</button><button type="submit" disabled={busy !== ''} className="inline-flex items-center gap-2 rounded-xl bg-[#111214] px-5 py-2.5 text-xs font-black text-white disabled:opacity-50">{busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{mode === 'create' ? 'Crear producto' : 'Guardar cambios'}</button></div></div></footer>
+      <footer className="sticky bottom-0 z-20 mt-auto border-t border-black/8 bg-[#fffaf0]/95 px-4 py-3 backdrop-blur-xl sm:px-6"><div className="flex items-center justify-between gap-3"><p className="hidden text-xs text-black/40 sm:block">{mode === 'create' ? 'Se creará un nuevo producto.' : hasMarketIntel ? 'Al guardar también se actualiza la referencia de margen del radar.' : 'Los cambios se guardan sobre esta ficha.'}</p><div className="ml-auto flex gap-2"><button type="button" onClick={onClose} className="rounded-xl border border-black/10 bg-white px-4 py-2.5 text-xs font-black text-black/55">Cancelar</button><button type="submit" disabled={busy !== ''} className="inline-flex items-center gap-2 rounded-xl bg-[#111214] px-5 py-2.5 text-xs font-black text-white disabled:opacity-50">{busy === 'save' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}{mode === 'create' ? 'Crear producto' : 'Guardar cambios'}</button></div></div></footer>
     </form>
   );
 }

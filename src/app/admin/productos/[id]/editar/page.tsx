@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from 'react';
 import { useParams } from 'next/navigation';
-import { insforge } from '@/lib/insforge';
 import ProductForm, { ProductFormData } from '../../ProductForm';
 
 export default function EditarProductoPage() {
@@ -14,16 +13,16 @@ export default function EditarProductoPage() {
 
   useEffect(() => {
     async function load() {
-      const { data, error } = await insforge.database
-        .from('products')
-        .select('id, name, description, price, stock, delivery_days, image_url, featured, activo, tagline, category_id, specifications, source, source_url, source_id, supplier_price, supplier_currency, shipping_fee, discount_percentage')
-        .eq('id', id)
-        .limit(1);
-
-      if (error || !data || data.length === 0) {
-        setNotFound(true);
-      } else {
-        const p = data[0] as Record<string, unknown>;
+      setLoading(true);
+      setNotFound(false);
+      try {
+        const response = await fetch(`/api/admin/products/${encodeURIComponent(id)}`, { cache: 'no-store' });
+        const json = await response.json();
+        if (!response.ok || !json.product) {
+          setNotFound(true);
+          return;
+        }
+        const p = json.product as Record<string, unknown>;
         const productSpecs = p.specifications && typeof p.specifications === 'object' ? p.specifications as Record<string, unknown> : {};
         setInitialData({
           name: String(p.name ?? ''), description: String(p.description ?? ''), price: p.price != null ? String(p.price) : '',
@@ -34,8 +33,11 @@ export default function EditarProductoPage() {
           tax_percentage: productSpecs.tax_percentage != null ? String(productSpecs.tax_percentage) : '19',
           discount_percentage: p.discount_percentage != null ? String(p.discount_percentage) : String(productSpecs.discount_percentage ?? '0'),
         });
+      } catch {
+        setNotFound(true);
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     }
     void load();
   }, [id]);

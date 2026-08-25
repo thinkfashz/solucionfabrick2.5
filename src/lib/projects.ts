@@ -1,27 +1,28 @@
 /**
- * Project (obra terminada) domain model + 5 realistic seed projects.
+ * Project domain model + demonstrative fallback projects.
  *
- * The public `/proyectos` page and the admin CRUD both read through the
- * `/api/proyectos` endpoint. If the backend `projects` table is available
- * the DB wins; otherwise the seed list below is returned so the page never
- * looks empty.
+ * The public `/proyectos` experience reads through `/api/proyectos`. Verified
+ * database records win whenever the `projects` table has data. The seed list
+ * below exists only so the public experience is not empty while that database
+ * portfolio is unavailable; seed copy and imagery must therefore stay clearly
+ * referential and must never claim execution, certification, delivery or
+ * warranty by Soluciones Fabrick.
  */
 
 export interface FabrickProject {
   id: string;
   title: string;
-  location: string;       // City, comuna
+  location: string;
   year: number | string;
-  area_m2: number;        // Superficie construida / intervenida
-  category: string;       // e.g. "Vivienda nueva", "Ampliación", "Remodelación"
-  hero_image: string;     // Primary photo (URL)
-  gallery?: string[];     // Additional photos
-  summary: string;        // Short 1-2 line description
-  description: string;    // Full paragraph-length description
-  materials: string[];    // Materials used (bullet list)
-  highlights: string[];   // Feature bullets ("duración 60 días", etc.)
-  scope: string[];        // What the team did
-  /** Optional: marks this project as a featured/cover case. */
+  area_m2: number;
+  category: string;
+  hero_image: string;
+  gallery?: string[];
+  summary: string;
+  description: string;
+  materials: string[];
+  highlights: string[];
+  scope: string[];
   featured?: boolean;
   created_at?: string;
   updated_at?: string;
@@ -42,9 +43,9 @@ export const SEED_PROJECTS: FabrickProject[] = [
       'https://images.unsplash.com/photo-1505691938895-1758d7feb511?q=80&w=1600&auto=format&fit=crop',
     ],
     summary:
-      'Vivienda residencial de 142 m² construida con estructura Metalcon 90 y revestimientos premium, entregada llave en mano en 95 días.',
+      'Referencia de vivienda residencial de aproximadamente 142 m² con estructura Metalcon y una propuesta de terminaciones contemporáneas.',
     description:
-      'Proyecto integral de vivienda unifamiliar de dos pisos, ejecutado completamente por el equipo Fabrick desde radier hasta terminaciones finales. Diseñamos una envolvente térmica que supera la exigencia zona 3, con control de humedad por barrera DVH y aislación de lana mineral de 80 mm en muros y 100 mm en entrepiso.',
+      'Ficha demostrativa para visualizar cómo podría organizarse una vivienda unifamiliar de dos pisos con estructura liviana, aislación térmica y terminaciones modernas. Las imágenes, ubicación, año, plazos y prestaciones son referenciales y deben validarse para cada proyecto real.',
     materials: [
       'Estructura Metalcon perfil C 90 mm x 0.85 mm (muros estructurales)',
       'Estructura Metalcon 60 mm (tabiques interiores)',
@@ -55,15 +56,15 @@ export const SEED_PROJECTS: FabrickProject[] = [
       'Aislación lana mineral 80 mm muros / 100 mm entrepiso',
     ],
     highlights: [
-      'Duración total: 95 días corridos',
-      'Superficie construida: 142 m² · 2 pisos',
-      'Envolvente térmica zona 3 chilena',
-      'Cero filtraciones después de invierno 2024',
+      'Superficie referencial: 142 m² · 2 pisos',
+      'Sistema estructural sugerido: Metalcon',
+      'Envolvente térmica a definir según zona climática',
+      'Terminaciones y especificaciones sujetas a evaluación técnica',
     ],
     scope: [
       'Excavación y radier armado',
       'Estructura Metalcon completa',
-      'Gasfitería y eléctrico certificado SEC',
+      'Gasfitería e instalación eléctrica',
       'Revestimientos interiores y exteriores',
       'Pintura, pisos y terminaciones',
     ],
@@ -83,9 +84,9 @@ export const SEED_PROJECTS: FabrickProject[] = [
       'https://images.unsplash.com/photo-1600607687939-ce8a6c25118c?q=80&w=1600&auto=format&fit=crop',
     ],
     summary:
-      'Remodelación total de departamento 78 m² con redistribución de planta, cocina abierta y baño premium con revestimientos Marmo PVC.',
+      'Referencia de remodelación para un departamento de aproximadamente 78 m² con cocina abierta, renovación de revestimientos y actualización de instalaciones.',
     description:
-      'Transformamos un departamento antiguo en un espacio contemporáneo manteniendo la estructura original. Reemplazamos todos los recubrimientos, redistribuimos la cocina hacia un concepto abierto y ejecutamos una renovación completa de cañerías embutidas y circuito eléctrico.',
+      'Ejemplo conceptual de una remodelación integral orientada a redistribuir espacios, modernizar cocina y baño y renovar terminaciones e instalaciones. La solución definitiva depende del estado existente, normativa, presupuesto y levantamiento técnico de cada vivienda.',
     materials: [
       'Paneles Wall Panel PVC Mármol 8 mm (baño y cocina)',
       'Porcelanato gran formato 60 x 120 cm',
@@ -95,15 +96,15 @@ export const SEED_PROJECTS: FabrickProject[] = [
       'Griferías monomando acabado black matte',
     ],
     highlights: [
-      'Duración: 42 días corridos',
-      'Superficie intervenida: 78 m² completos',
-      '100% de cañerías y eléctrico renovado',
-      'Certificación SEC aprobada al primer intento',
+      'Superficie referencial: 78 m²',
+      'Redistribución interior como alternativa de diseño',
+      'Renovación de instalaciones sujeta a diagnóstico',
+      'Terminaciones configurables según presupuesto',
     ],
     scope: [
       'Demolición controlada y retiro de escombros',
       'Redistribución de tabiques',
-      'Gasfitería y eléctrico nuevo completo',
+      'Gasfitería e instalación eléctrica',
       'Revestimientos, pintura y piso',
       'Muebles de cocina y baño a medida',
     ],
@@ -121,9 +122,9 @@ export const SEED_PROJECTS: FabrickProject[] = [
       'https://images.unsplash.com/photo-1600585154526-990dced4db0d?q=80&w=1600&auto=format&fit=crop',
     ],
     summary:
-      'Ampliación de 34 m² en segundo piso con estructura Metalcon 60 reforzada, dormitorio principal y baño en suite completamente terminado.',
+      'Referencia de ampliación liviana de aproximadamente 34 m² para incorporar dormitorio principal y baño en un segundo nivel.',
     description:
-      'Aumento de superficie habitable sobre losa existente. El estudio estructural previo permitió diseñar una ampliación liviana con Metalcon 60 mm, reduciendo la carga sobre la losa y acelerando los tiempos de obra. Se incorporó un baño en suite completo con instalaciones nuevas conectadas al sistema existente.',
+      'Ejemplo de cómo podría plantearse una ampliación sobre una estructura existente utilizando un sistema liviano. Cualquier solución real requiere revisar capacidad estructural, permisos, instalaciones y condiciones particulares del inmueble antes de definir materiales o dimensiones.',
     materials: [
       'Estructura Metalcon 60 mm perfil C 0,85 mm',
       'Cubierta plancha zincalum AZ150 + aislación poliuretano',
@@ -132,16 +133,16 @@ export const SEED_PROJECTS: FabrickProject[] = [
       'Ventanas termopanel PVC color negro',
     ],
     highlights: [
-      'Duración: 38 días corridos',
-      'Superficie ampliada: 34 m² útiles',
-      'Estudio estructural certificado',
-      'Baño en suite listo para usar',
+      'Superficie referencial: 34 m²',
+      'Sistema liviano como alternativa estructural',
+      'Estudio estructural necesario antes de construir',
+      'Baño en suite como programa de referencia',
     ],
     scope: [
-      'Refuerzo estructural sobre losa',
-      'Estructura Metalcon y cubierta',
-      'Gasfitería caliente/fría y desagües',
-      'Eléctrico, revestimientos y pintura',
+      'Refuerzo estructural según cálculo',
+      'Estructura liviana y cubierta',
+      'Gasfitería, agua caliente/fría y desagües',
+      'Instalación eléctrica, revestimientos y pintura',
     ],
   },
   {
@@ -157,25 +158,25 @@ export const SEED_PROJECTS: FabrickProject[] = [
       'https://images.unsplash.com/photo-1497366754035-f200968a6e72?q=80&w=1600&auto=format&fit=crop',
     ],
     summary:
-      'Habilitación completa de 210 m² de oficina: revestimientos premium, cerraduras biométricas, iluminación LED arquitectónica y cableado estructurado.',
+      'Referencia para habilitación de oficina de aproximadamente 210 m² con revestimientos, iluminación, seguridad de acceso y cableado estructurado.',
     description:
-      'Proyecto comercial integral ejecutado fuera de horario operativo para evitar interrupciones. Instalamos cerraduras biométricas en accesos críticos, iluminación LED regulable DALI y un sistema de cableado estructurado CAT6A para 30 puestos de trabajo.',
+      'Ficha demostrativa de una habilitación comercial que combina tratamiento acústico, iluminación arquitectónica, control de acceso y conectividad. La distribución, certificaciones, cantidad de puestos y especificaciones finales deben definirse según el local y sus requerimientos operativos.',
     materials: [
       'Paneles acústicos roble natural 240 x 60 cm',
-      'Cerraduras biométricas Titanio (accesos restringidos)',
-      'Luminarias LED arquitectónicas regulables DALI',
+      'Cerraduras biométricas para accesos restringidos',
+      'Luminarias LED arquitectónicas regulables',
       'Alfombra modular pelo bajo 50 x 50 cm',
       'Cableado CAT6A + fibra óptica OM4',
     ],
     highlights: [
-      'Duración: 28 días nocturnos',
-      'Superficie: 210 m² habilitados',
-      '30 puestos de trabajo certificados',
-      'Trabajo fuera de horario, cero down time',
+      'Superficie referencial: 210 m²',
+      'Programa de oficina configurable',
+      'Seguridad y conectividad como componentes opcionales',
+      'Plan de trabajo a coordinar según operación del cliente',
     ],
     scope: [
       'Desmontaje y retiro controlado',
-      'Eléctrico, data y seguridad',
+      'Instalación eléctrica, datos y seguridad',
       'Revestimientos acústicos',
       'Iluminación arquitectónica',
       'Terminaciones y puesta en marcha',
@@ -194,26 +195,26 @@ export const SEED_PROJECTS: FabrickProject[] = [
       'https://images.unsplash.com/photo-1600566753190-17f0baa2a6c3?q=80&w=1600&auto=format&fit=crop',
     ],
     summary:
-      'Refuerzo estructural con Metalcon 90 + reemplazo completo de revestimientos en casa de veraneo de 96 m² expuesta a ambiente salino.',
+      'Referencia de remodelación costera de aproximadamente 96 m² con foco en refuerzo, impermeabilización y materiales apropiados para ambiente salino.',
     description:
-      'Casa costera con problemas de humedad y oxidación de estructura existente. Reforzamos con Metalcon 90 galvanizado G90, reemplazamos revestimientos por materiales resistentes al salitre y ejecutamos una membrana impermeabilizante bajo cubierta.',
+      'Ejemplo conceptual para estudiar una vivienda expuesta a humedad y salinidad. La estrategia real de reparación debe partir por un diagnóstico técnico del soporte existente y luego definir refuerzos, impermeabilización, revestimientos y protecciones compatibles con el entorno.',
     materials: [
       'Metalcon 90 mm galvanizado G90 reforzado',
-      'Fibrocemento siding tratado anti-salitre',
+      'Fibrocemento siding tratado para ambiente costero',
       'Porcelanato exterior antideslizante',
       'Membrana asfáltica bajo cubierta',
       'Pintura epóxica en estructura metálica',
     ],
     highlights: [
-      'Duración: 55 días corridos',
-      'Superficie: 96 m² reforzados',
-      'Resistencia a ambiente salino',
-      'Garantía estructural 10 años',
+      'Superficie referencial: 96 m²',
+      'Materiales sugeridos para ambiente costero',
+      'Impermeabilización sujeta a diagnóstico del soporte',
+      'Refuerzo estructural definido solo mediante evaluación técnica',
     ],
     scope: [
       'Diagnóstico estructural',
-      'Refuerzo Metalcon y anclajes',
-      'Impermeabilización completa',
+      'Refuerzo y anclajes según cálculo',
+      'Impermeabilización',
       'Revestimientos interior/exterior',
       'Pintura y terminaciones',
     ],
@@ -221,9 +222,15 @@ export const SEED_PROJECTS: FabrickProject[] = [
 ];
 
 export function getSeedProjects(): FabrickProject[] {
-  return SEED_PROJECTS.map((p) => ({ ...p }));
+  return SEED_PROJECTS.map((project) => ({
+    ...project,
+    gallery: project.gallery ? [...project.gallery] : undefined,
+    materials: [...project.materials],
+    highlights: [...project.highlights],
+    scope: [...project.scope],
+  }));
 }
 
 /** Cache tag for the public projects list. Admin POST/PATCH/DELETE handlers
- *  must call `revalidateTag(PROJECTS_CACHE_TAG)` to invalidate immediately. */
+ * must call `revalidateTag(PROJECTS_CACHE_TAG)` to invalidate immediately. */
 export const PROJECTS_CACHE_TAG = 'projects:public';

@@ -32,8 +32,14 @@ BEGIN
   IF to_regclass('public.products') IS NOT NULL THEN
     ALTER TABLE public.products ADD COLUMN IF NOT EXISTS sku text;
     ALTER TABLE public.products ADD COLUMN IF NOT EXISTS ean text;
+    ALTER TABLE public.products ADD COLUMN IF NOT EXISTS scan_code text;
+    ALTER TABLE public.products ADD COLUMN IF NOT EXISTS scan_format text;
     ALTER TABLE public.products ADD COLUMN IF NOT EXISTS tenant_id uuid DEFAULT '${DEFAULT_TENANT}'::uuid;
     UPDATE public.products SET tenant_id = '${DEFAULT_TENANT}'::uuid WHERE tenant_id IS NULL;
+    UPDATE public.products
+      SET scan_code = ean,
+          scan_format = COALESCE(scan_format, CASE WHEN length(trim(ean)) = 8 THEN 'ean_8' ELSE 'ean_13' END)
+      WHERE COALESCE(trim(scan_code),'') = '' AND COALESCE(trim(ean),'') <> '';
   END IF;
 END $$;
 `);
@@ -46,6 +52,8 @@ BEGIN
       ON public.products(tenant_id, lower(trim(sku))) WHERE COALESCE(trim(sku),'') <> '';
     CREATE UNIQUE INDEX IF NOT EXISTS products_tenant_ean_unique_idx
       ON public.products(tenant_id, trim(ean)) WHERE COALESCE(trim(ean),'') <> '';
+    CREATE UNIQUE INDEX IF NOT EXISTS products_tenant_scan_code_unique_idx
+      ON public.products(tenant_id, trim(scan_code)) WHERE COALESCE(trim(scan_code),'') <> '';
   END IF;
 END $$;
 `);
@@ -98,7 +106,7 @@ CREATE INDEX IF NOT EXISTS inventory_movements_barcode_idx
   WHERE barcode IS NOT NULL;
 `);
 
-  console.log('[inventory-bootstrap] SKU/EAN and movement schema aligned.');
+  console.log('[inventory-bootstrap] SKU/EAN/scan codes and movement schema aligned.');
 } catch (error) {
   console.error('[inventory-bootstrap] Failed:', error instanceof Error ? error.message : error);
   process.exit(1);

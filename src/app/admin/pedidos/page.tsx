@@ -3,7 +3,6 @@
 import { useEffect, useState, useCallback, useRef, useMemo } from 'react';
 import Link from 'next/link';
 import { LayoutGrid, Table2 } from 'lucide-react';
-import { insforge } from '@/lib/insforge';
 import {
   ORDER_STATUS_LABELS,
   formatCLP,
@@ -26,7 +25,6 @@ export default function PedidosPage() {
   const [filter, setFilter] = useState<OrderStatus | 'todos'>('todos');
   const [view, setView] = useState<'cards' | 'table'>('table');
   const isMounted = useRef(true);
-  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -42,11 +40,14 @@ export default function PedidosPage() {
     try {
       const response = await fetch('/api/admin/orders?limit=200', { cache: 'no-store' });
       const json = await response.json() as { orders?: Record<string, unknown>[] };
-      if (response.ok && Array.isArray(json.orders) && isMounted.current) {
+      if (!response.ok) throw new Error('No se pudieron cargar los pedidos.');
+      if (Array.isArray(json.orders) && isMounted.current) {
         setOrders(json.orders.map((order) => normalizeOrderRecord(order)));
+        setConnected(true);
       }
     } catch {
-      // Polling/realtime volverá a intentar. No rompe la última lista válida.
+      if (isMounted.current) setConnected(false);
+      // El siguiente ciclo seguro vuelve a intentar y conserva la última lista válida.
     }
     if (isMounted.current) setLoading(false);
   }, []);
@@ -54,71 +55,10 @@ export default function PedidosPage() {
   useEffect(() => {
     isMounted.current = true;
     void fetchOrders();
-
-    let cleanup = false;
-    let realtimeOk = false;
-
-    (async () => {
-      const startPolling = () => {
-        if (pollTimer.current) return;
-        const poll = () => {
-          if (!isMounted.current) return;
-          void fetchOrders();
-          pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
-        };
-        pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
-      };
-
-      const stopPolling = () => {
-        if (pollTimer.current) {
-          clearTimeout(pollTimer.current);
-          pollTimer.current = null;
-        }
-      };
-
-      try {
-        await insforge.realtime.connect();
-        if (cleanup) return;
-
-        const { ok } = await insforge.realtime.subscribe('orders');
-        if (!ok || cleanup) {
-          realtimeOk = false;
-        } else {
-          realtimeOk = true;
-          if (isMounted.current) setConnected(true);
-
-          insforge.realtime.on('INSERT_order', () => { if (isMounted.current) void fetchOrders(); });
-          insforge.realtime.on('UPDATE_order', () => { if (isMounted.current) void fetchOrders(); });
-          insforge.realtime.on('connect', () => {
-            if (isMounted.current) {
-              setConnected(true);
-              stopPolling();
-            }
-          });
-          insforge.realtime.on('disconnect', () => {
-            if (isMounted.current) {
-              setConnected(false);
-              startPolling();
-            }
-          });
-        }
-      } catch {
-        realtimeOk = false;
-      }
-
-      if (!realtimeOk && !cleanup && isMounted.current) {
-        startPolling();
-      }
-    })();
-
+    const timer = window.setInterval(() => { void fetchOrders(); }, POLL_INTERVAL_MS);
     return () => {
-      cleanup = true;
       isMounted.current = false;
-      if (pollTimer.current) clearTimeout(pollTimer.current);
-      try {
-        insforge.realtime.unsubscribe('orders');
-        insforge.realtime.disconnect();
-      } catch { /* ignorar */ }
+      window.clearInterval(timer);
     };
   }, [fetchOrders]);
 
@@ -156,7 +96,7 @@ export default function PedidosPage() {
               style={{ background: connected ? '#22c55e22' : '#F5871F22', color: connected ? '#22c55e' : '#F5871F' }}
             >
               <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: connected ? '#22c55e' : '#F5871F' }} />
-              {connected ? 'Realtime' : 'Polling'}
+              {connected ? 'API segura' : 'Reintentando'}
             </span>
             <button
               onClick={fetchOrders}
@@ -333,8 +273,7 @@ export default function PedidosPage() {
         </div>
 
         <p className="mt-4 text-xs text-zinc-600">
-          {filtered.length} pedido{filtered.length !== 1 ? 's' : ''} mostrado{filtered.length !== 1 ? 's' : ''}
-          {!connected && ' · Actualización automática cada 30 s'}
+          {filtered.length} pedido{filtered.length !== 1 ? 's' : ''} mostrado{filtered.length !== 1 ? 's' : ''} · Actualización automática cada 30 s
         </p>
       </div>
     </div>

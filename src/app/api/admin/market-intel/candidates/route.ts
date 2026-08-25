@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { NextResponse, type NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
+import { getAdminTenantId } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import {
   findMarketOpportunityBySourceUrl,
   getMarketOpportunity,
@@ -57,8 +58,8 @@ function safeStatus(value: unknown, fallback: MarketOpportunityStatus): MarketOp
 }
 
 export async function GET(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return adminUnauthorized();
+  const auth = await requireAdminPermission(request, { resource: 'products', action: 'read' });
+  if (!auth.ok) return auth.response;
   try {
     const tenantId = await getAdminTenantId(request);
     const includeDismissed = request.nextUrl.searchParams.get('dismissed') === '1';
@@ -71,8 +72,8 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return adminUnauthorized();
+  const auth = await requireAdminPermission(request, { resource: 'products', action: 'create' });
+  if (!auth.ok) return auth.response;
   let body: Record<string, unknown>;
   try {
     body = await request.json() as Record<string, unknown>;
@@ -134,7 +135,7 @@ export async function POST(request: NextRequest) {
       updatedAt: now,
     };
 
-    await saveMarketOpportunity(opportunity, session.email);
+    await saveMarketOpportunity(opportunity, auth.session.email);
     return NextResponse.json({ ok: true, opportunity, reused: Boolean(existing) });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo guardar la oportunidad.' }, { status: 500 });
@@ -142,8 +143,8 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return adminUnauthorized();
+  const auth = await requireAdminPermission(request, { resource: 'products', action: 'update' });
+  if (!auth.ok) return auth.response;
   let body: Record<string, unknown>;
   try {
     body = await request.json() as Record<string, unknown>;
@@ -186,7 +187,7 @@ export async function PATCH(request: NextRequest) {
       updatedAt: new Date().toISOString(),
     };
 
-    await saveMarketOpportunity(opportunity, session.email);
+    await saveMarketOpportunity(opportunity, auth.session.email);
     return NextResponse.json({ ok: true, opportunity });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo actualizar la oportunidad.' }, { status: 500 });
@@ -194,8 +195,8 @@ export async function PATCH(request: NextRequest) {
 }
 
 export async function DELETE(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return adminUnauthorized();
+  const auth = await requireAdminPermission(request, { resource: 'products', action: 'update' });
+  if (!auth.ok) return auth.response;
   const id = request.nextUrl.searchParams.get('id')?.trim() || '';
   if (!id) return NextResponse.json({ error: 'Falta el id de la oportunidad.' }, { status: 400 });
 
@@ -204,7 +205,7 @@ export async function DELETE(request: NextRequest) {
     const current = await getMarketOpportunity(tenantId, id);
     if (!current) return NextResponse.json({ error: 'Oportunidad no encontrada.' }, { status: 404 });
     const opportunity: MarketOpportunity = { ...current, status: 'dismissed', updatedAt: new Date().toISOString() };
-    await saveMarketOpportunity(opportunity, session.email);
+    await saveMarketOpportunity(opportunity, auth.session.email);
     return NextResponse.json({ ok: true });
   } catch (error) {
     return NextResponse.json({ error: error instanceof Error ? error.message : 'No se pudo descartar la oportunidad.' }, { status: 500 });

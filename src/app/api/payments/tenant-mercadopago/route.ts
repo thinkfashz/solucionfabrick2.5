@@ -10,7 +10,6 @@ export const runtime = 'nodejs';
 
 type TenantMercadoPagoBody = {
   token?: string;
-  amount?: number | string;
   description?: string;
   email?: string;
   installments?: number | string;
@@ -25,6 +24,15 @@ type MercadoPagoPaymentResponse = {
   status_detail?: string | null;
 };
 
+type OrderRow = {
+  id?: string;
+  total?: number | string | null;
+  status?: string | null;
+  payment_status?: string | null;
+  customer_email?: string | null;
+  cliente_email?: string | null;
+};
+
 function resolveTenantId(request: Request): string {
   return request.headers.get('x-tenant-id') || request.headers.get('x-fabrick-tenant-id') || '';
 }
@@ -36,7 +44,25 @@ function cleanText(value: unknown): string {
 function makeIdempotencyKey(request: Request, externalReference: string) {
   return request.headers.get('x-idempotency-key')
     || request.headers.get('x-request-id')
-    || `tenant-mp-${externalReference || crypto.randomUUID()}-${Date.now()}`;
+    || `tenant-mp-${externalReference}-${Date.now()}`;
+}
+
+function isAlreadyPaid(order: OrderRow) {
+  const paymentStatus = cleanText(order.payment_status).toLowerCase();
+  const status = cleanText(order.status).toLowerCase();
+  return paymentStatus === 'approved'
+    || ['pagada', 'pagado', 'confirmado', 'confirmada', 'en_preparacion', 'enviado', 'entregado'].includes(status);
+}
+
+async function loadOrder(tenantId: string, orderId: string): Promise<OrderRow | null> {
+  const { data, error } = await insforge.database
+    .from('orders')
+    .select('id,total,status,payment_status,customer_email,cliente_email')
+    .eq('tenant_id', tenantId)
+    .eq('id', orderId)
+    .limit(1);
+  if (error || !Array.isArray(data) || data.length === 0) return null;
+  return data[0] as OrderRow;
 }
 
 async function updateOrderStatus(tenantId: string, orderId: string, paymentId: string | null, paymentStatus: string) {
@@ -84,18 +110,34 @@ export async function POST(request: Request) {
   }
 
   const token = cleanText(body.token);
-  const email = cleanText(body.email).toLowerCase();
   const paymentMethodId = cleanText(body.payment_method_id) || 'visa';
   const description = cleanText(body.description) || 'Compra en Soluciones Fabrick';
   const externalReference = cleanText(body.externalReference);
-  const amount = Number(body.amount);
   const installments = Math.max(1, Number(body.installments || 1));
 
-  if (!token || !email || !Number.isFinite(amount) || amount <= 0) {
+  if (!token || !externalReference) {
     return NextResponse.json(
-      { error: 'Datos incompletos para procesar el pago.', code: 'invalid_payload' },
+      { error: 'token y externalReference son requeridos.', code: 'invalid_payload' },
       { status: 400 },
     );
+  }
+
+  const order = await loadOrder(tenantId, externalReference);
+  if (!order?.id) {
+    return NextResponse.json({ error: 'La orden no existe en este tenant.', code: 'order_not_found' }, { status: 404 });
+  }
+  if (isAlreadyPaid(order)) {
+    return NextResponse.json({ error: 'La orden ya figura pagada y no admite un segundo cobro.', code: 'order_already_paid' }, { status: 409 });
+  }
+
+  const amount = Number(order.total);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    return NextResponse.json({ error: 'La orden no tiene un total cobrable válido.', code: 'invalid_order_total' }, { status: 409 });
+  }
+
+  const email = cleanText(order.customer_email || order.cliente_email || body.email).toLowerCase();
+  if (!email) {
+    return NextResponse.json({ error: 'La orden no tiene un correo válido para el pagador.', code: 'payer_email_missing' }, { status: 409 });
   }
 
   const payload: Record<string, unknown> = {
@@ -106,11 +148,11 @@ export async function POST(request: Request) {
     payment_method_id: paymentMethodId,
     payer: { email },
     binary_mode: false,
-    metadata: { tenant_id: tenantId, source: 'tenant-mercadopago' },
+    external_reference: externalReference,
+    metadata: { tenant_id: tenantId, order_id: externalReference, source: 'tenant-mercadopago' },
   };
 
   if (body.issuer_id) payload.issuer_id = String(body.issuer_id);
-  if (externalReference) payload.external_reference = externalReference;
 
   try {
     const mpResponse = await fetch('https://api.mercadopago.com/v1/payments', {
@@ -142,15 +184,13 @@ export async function POST(request: Request) {
     const mpStatusDetail = json.status_detail ?? null;
     const mpPaymentId = json.id != null ? String(json.id) : null;
 
-    if (externalReference) {
-      try {
-        await updateOrderStatus(tenantId, externalReference, mpPaymentId, mpStatus);
-      } catch (persistErr) {
-        console.warn('[tenant-mp] could not persist order status:', persistErr);
-      }
+    try {
+      await updateOrderStatus(tenantId, externalReference, mpPaymentId, mpStatus);
+    } catch (persistErr) {
+      console.warn('[tenant-mp] could not persist order status:', persistErr);
     }
 
-    if (mpStatus === 'approved' && externalReference) {
+    if (mpStatus === 'approved') {
       emitBoletaForOrder(externalReference).catch((err) => console.warn('[tenant-mp] dte auto-emit failed:', err));
       dispatchHookAsync('order.paid', {
         orderId: externalReference,
@@ -159,9 +199,6 @@ export async function POST(request: Request) {
         paymentStatus: mpStatus,
         provider: 'mercadopago',
       });
-    }
-
-    if (mpStatus === 'approved') {
       return NextResponse.json({
         status: mpStatus,
         statusDetail: mpStatusDetail,

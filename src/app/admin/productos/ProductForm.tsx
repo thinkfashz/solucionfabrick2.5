@@ -3,7 +3,6 @@
 /* eslint-disable @next/next/no-img-element */
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
-import { insforge } from '@/lib/insforge';
 import { useCategories } from '@/hooks/useCategories';
 import { ArrowLeft, ArrowRight, BadgePercent, Calculator, Check, ChevronLeft, ChevronRight, Cloud, Images, Loader2, Package, Sparkles, Star, Trash2, WandSparkles } from 'lucide-react';
 
@@ -83,15 +82,27 @@ export default function ProductForm({ initialData, productId, mode }: { initialD
   async function submit(event: FormEvent) {
     event.preventDefault();
     if (!form.name.trim() || normalPrice <= 0) { setNotice('Completa el nombre y un precio válido.'); return; }
+    if (mode === 'edit' && !productId) { setNotice('No se pudo resolver el producto a editar.'); return; }
     setBusy('save'); setNotice('');
     const cleanGallery: GalleryImage[] = unique([{ url: form.image_url, source: 'legacy' }, ...gallery].filter((item) => Boolean(item.url)));
     const specifications = { ...form.specifications, gallery_images: cleanGallery.map((image) => image.url), gallery_assets: cleanGallery, tax_percentage: num(form.tax_percentage), discount_percentage: discount, default_markup_percentage: markup, auto_markup_enabled: autoMarkup, ...(analysis ? { commerce_ai: analysis } : {}) };
     const payload = { name: form.name.trim(), description: form.description.trim() || null, tagline: form.tagline.trim() || null, price: normalPrice, discount_percentage: discount, supplier_price: cost || null, supplier_currency: form.supplier_currency || 'CLP', shipping_fee: shipping || null, category_id: form.category_id || null, stock: form.stock ? Number(form.stock) : null, delivery_days: form.delivery_days ? Number(form.delivery_days) : null, image_url: cleanGallery[0]?.url || null, activo: form.activo, featured: form.featured, source: form.source || null, source_url: form.source_url || null, source_id: form.source_id || null, specifications };
-    const query = insforge.database.from('products');
-    const { error } = mode === 'create' ? await query.insert([payload]) : await query.update(payload).eq('id', productId!);
-    setBusy('');
-    if (error) { setNotice(error.message || 'No se pudo guardar.'); return; }
-    setNotice('Producto guardado correctamente.'); setTimeout(() => router.push('/admin/productos'), 900);
+    try {
+      const endpoint = mode === 'create' ? '/api/admin/products' : `/api/admin/products?id=${encodeURIComponent(productId || '')}`;
+      const response = await fetch(endpoint, {
+        method: mode === 'create' ? 'POST' : 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+      const json = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(json.error || 'No se pudo guardar.');
+      setNotice('Producto guardado correctamente.');
+      setTimeout(() => router.push('/admin/productos'), 900);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : 'No se pudo guardar.');
+    } finally {
+      setBusy('');
+    }
   }
 
   return <div className="min-h-screen bg-[#EDE3D8] pb-28 text-[#08090A] md:pb-8">

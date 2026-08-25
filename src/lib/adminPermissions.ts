@@ -18,6 +18,7 @@ export type AdminResource =
   | 'content'
   | 'orders'
   | 'payments'
+  | 'finance'
   | 'quotes'
   | 'settings';
 
@@ -65,6 +66,7 @@ const MATRIX: Record<AdminRole, Partial<Record<AdminResource, AdminAction[]>>> =
     content: ['read', 'create', 'update', 'delete', 'manage'],
     orders: ['read', 'create', 'update', 'delete', 'manage', 'export'],
     payments: ['read', 'update', 'manage', 'export'],
+    finance: ['read', 'create', 'update', 'delete', 'manage', 'export'],
     quotes: ['read', 'create', 'update', 'delete', 'manage', 'export'],
     settings: ['read', 'update', 'manage'],
   },
@@ -78,6 +80,7 @@ const MATRIX: Record<AdminRole, Partial<Record<AdminResource, AdminAction[]>>> =
     content: ['read', 'create', 'update', 'delete'],
     orders: ['read', 'create', 'update', 'export'],
     payments: ['read', 'export'],
+    finance: ['read', 'create', 'update', 'delete', 'export'],
     quotes: ['read', 'create', 'update', 'delete', 'export'],
     settings: ['read'],
   },

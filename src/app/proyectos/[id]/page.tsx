@@ -10,6 +10,8 @@ import { getSeedProjects, type FabrickProject } from '@/lib/projects';
 import { cloudinaryUrl } from '@/lib/cloudinaryLoader';
 import { ArrowLeft, Calendar, CheckCircle2, Hammer, MapPin, Ruler } from 'lucide-react';
 
+type ProjectSource = 'db' | 'seed';
+
 export default function ProyectoDetailPage() {
   const params = useParams<{ id: string }>();
   const id = params?.id ?? '';
@@ -17,6 +19,7 @@ export default function ProyectoDetailPage() {
   const [project, setProject] = useState<FabrickProject | null>(() => {
     return getSeedProjects().find((p) => p.id === id) || null;
   });
+  const [source, setSource] = useState<ProjectSource>('seed');
   const [notFound, setNotFound] = useState(false);
   const [activeImg, setActiveImg] = useState(0);
 
@@ -25,12 +28,13 @@ export default function ProyectoDetailPage() {
     (async () => {
       try {
         const res = await fetch('/api/proyectos', { cache: 'no-store' });
-        const json = (await res.json()) as { data: FabrickProject[] };
+        const json = (await res.json()) as { data: FabrickProject[]; source?: ProjectSource };
         if (cancelled) return;
         if (Array.isArray(json.data)) {
           const found = json.data.find((p) => String(p.id) === String(id));
           if (found) {
             setProject(found);
+            setSource(json.source === 'db' ? 'db' : 'seed');
           } else if (!project) {
             setNotFound(true);
           }
@@ -52,10 +56,10 @@ export default function ProyectoDetailPage() {
         title="Proyecto no encontrado"
         description="Este proyecto no existe o ya no está disponible en el catálogo público."
         primaryAction={{ href: '/proyectos', label: 'Ver todos los proyectos' }}
-        secondaryAction={{ href: '/contacto', label: 'Quiero un proyecto así' }}
+        secondaryAction={{ href: '/contacto', label: 'Quiero evaluar una idea' }}
       >
         <div className="py-10 text-center text-sm text-zinc-400">
-          Volvé al listado de obras ejecutadas por Soluciones Fabrick.
+          Volvé al listado de proyectos e inspiraciones de Soluciones Fabrick.
         </div>
       </SectionPageShell>
     );
@@ -66,7 +70,7 @@ export default function ProyectoDetailPage() {
       <SectionPageShell
         eyebrow="Cargando"
         title="Preparando la ficha del proyecto"
-        description="Estamos trayendo los detalles desde nuestra base de obras ejecutadas."
+        description="Estamos trayendo los detalles desde nuestra base de proyectos."
       >
         <div className="grid gap-6 md:grid-cols-2">
           <div className="aspect-[4/3] animate-pulse rounded-3xl bg-white/[0.04]" />
@@ -80,25 +84,35 @@ export default function ProyectoDetailPage() {
     );
   }
 
+  const verified = source === 'db';
   const gallery = [project.hero_image, ...(project.gallery || [])].filter(Boolean);
   const mainImg = gallery[activeImg] || project.hero_image;
 
   return (
     <SectionPageShell
-      eyebrow={`${project.category} · ${project.location}`}
+      eyebrow={verified ? `${project.category} · ${project.location}` : `Referencia visual · ${project.category}`}
       title={project.title}
-      description={project.summary}
-      primaryAction={{ href: '/contacto', label: 'Quiero un proyecto así' }}
+      description={verified
+        ? project.summary
+        : `Ejemplo demostrativo para explorar estilo, superficie y soluciones posibles. No corresponde a una obra verificada de Soluciones Fabrick. ${project.summary}`}
+      primaryAction={{ href: '/contacto', label: verified ? 'Quiero un proyecto así' : 'Quiero evaluar una idea así' }}
       secondaryAction={{ href: '/proyectos', label: 'Ver otros proyectos' }}
     >
       <div className="space-y-10">
-        {/* Gallery */}
+        {!verified ? (
+          <div className="rounded-2xl border border-amber-300/25 bg-amber-300/[0.07] px-5 py-4 text-sm leading-6 text-amber-100/85">
+            <strong className="font-black text-amber-200">Ficha demostrativa.</strong> Las imágenes y datos de esta ficha son referenciales y no deben interpretarse como registro de una obra ejecutada por Soluciones Fabrick.
+          </div>
+        ) : null}
+
         <div className="grid gap-4 md:grid-cols-[2fr_1fr]">
           <div className="relative aspect-[4/3] overflow-hidden rounded-[2rem] border border-white/5 bg-white/[0.02]">
             {mainImg ? (
               <img
                 src={cloudinaryUrl(mainImg, { width: 1200, quality: 75 })}
-                alt={`${project.title} — obra ejecutada por Soluciones Fabrick en ${project.location}`}
+                alt={verified
+                  ? `${project.title} — obra documentada por Soluciones Fabrick en ${project.location}`
+                  : `${project.title} — imagen referencial de proyecto`}
                 className="h-full w-full object-cover"
                 loading="lazy"
                 decoding="async"
@@ -125,7 +139,7 @@ export default function ProyectoDetailPage() {
                 >
                   <img
                     src={cloudinaryUrl(src, { width: 320, quality: 70 })}
-                    alt={`${project.title} — vista ${i + 1}`}
+                    alt={verified ? `${project.title} — vista ${i + 1}` : `${project.title} — referencia ${i + 1}`}
                     className="h-full w-full object-cover"
                     loading="lazy"
                     decoding="async"
@@ -136,35 +150,45 @@ export default function ProyectoDetailPage() {
           ) : null}
         </div>
 
-        {/* Technical sheet */}
-        <div className="grid gap-4 md:grid-cols-4">
-          <DataCard icon={<MapPin size={14} />} label="Ubicación" value={project.location} />
-          <DataCard icon={<Calendar size={14} />} label="Año" value={String(project.year)} />
-          <DataCard icon={<Ruler size={14} />} label="Superficie" value={`${project.area_m2} m²`} />
-          <DataCard icon={<Hammer size={14} />} label="Categoría" value={project.category} />
-        </div>
+        {verified ? (
+          <div className="grid gap-4 md:grid-cols-4">
+            <DataCard icon={<MapPin size={14} />} label="Ubicación" value={project.location} />
+            <DataCard icon={<Calendar size={14} />} label="Año" value={String(project.year)} />
+            <DataCard icon={<Ruler size={14} />} label="Superficie" value={`${project.area_m2} m²`} />
+            <DataCard icon={<Hammer size={14} />} label="Categoría" value={project.category} />
+          </div>
+        ) : (
+          <div className="grid gap-4 md:grid-cols-4">
+            <DataCard icon={<Hammer size={14} />} label="Tipo de referencia" value={project.category} />
+            <DataCard icon={<Ruler size={14} />} label="Superficie referencial" value={`${project.area_m2} m²`} />
+            <DataCard icon={<CheckCircle2 size={14} />} label="Estado" value="Ejemplo demo" />
+            <DataCard icon={<MapPin size={14} />} label="Uso" value="Inspiración" />
+          </div>
+        )}
 
-        {/* Description */}
         {project.description ? (
           <div className="rounded-[2rem] border border-white/5 bg-zinc-950/70 p-8 md:p-10">
-            <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-yellow-400">Descripción</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-yellow-400">
+              {verified ? 'Descripción' : 'Descripción referencial'}
+            </p>
             <p className="mt-3 text-sm leading-relaxed text-zinc-300 md:text-base">{project.description}</p>
           </div>
         ) : null}
 
-        {/* Materials + scope */}
         <div className="grid gap-6 md:grid-cols-2">
           {project.materials?.length ? (
-            <Block title="Materiales utilizados" items={project.materials} />
+            <Block title={verified ? 'Materiales utilizados' : 'Materiales propuestos'} items={project.materials} />
           ) : null}
           {project.scope?.length ? (
-            <Block title="Alcance ejecutado" items={project.scope} />
+            <Block title={verified ? 'Alcance ejecutado' : 'Alcance ilustrativo'} items={project.scope} />
           ) : null}
         </div>
 
         {project.highlights?.length ? (
           <div className="rounded-[2rem] border border-yellow-400/15 bg-yellow-400/[0.03] p-6 md:p-8">
-            <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.35em] text-yellow-400">Highlights</p>
+            <p className="mb-4 text-[10px] font-bold uppercase tracking-[0.35em] text-yellow-400">
+              {verified ? 'Highlights' : 'Características del ejemplo'}
+            </p>
             <div className="grid gap-3 sm:grid-cols-2">
               {project.highlights.map((h) => (
                 <div key={h} className="rounded-xl border border-yellow-400/10 bg-black/40 px-4 py-3 text-sm text-white/80">
@@ -175,21 +199,22 @@ export default function ProyectoDetailPage() {
           </div>
         ) : null}
 
-        {/* CTA */}
-        <div className="rounded-[2rem] border border-yellow-400/25 bg-[linear-gradient(135deg,rgba(255, 176, 0,0.08),rgba(255, 176, 0,0.015))] p-10 text-center">
+        <div className="rounded-[2rem] border border-yellow-400/25 bg-[linear-gradient(135deg,rgba(255,176,0,0.08),rgba(255,176,0,0.015))] p-10 text-center">
           <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-yellow-400">Tu próxima obra</p>
           <h2 className="mt-3 text-2xl font-black uppercase tracking-tight text-white md:text-3xl">
-            Quiero un proyecto así
+            {verified ? 'Quiero un proyecto así' : '¿Te interesa una solución como esta?'}
           </h2>
           <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-zinc-300">
-            Coordinamos diseño, materiales, estructura y terminaciones en un solo cronograma, ejecutado íntegramente por el equipo Fabrick.
+            {verified
+              ? 'Coordinamos diseño, materiales, estructura y terminaciones en un solo cronograma.'
+              : 'Podemos estudiar tus medidas, terreno, presupuesto y necesidades para convertir esta referencia en una propuesta real, calculada para tu caso.'}
           </p>
           <div className="mt-6 flex flex-col justify-center gap-3 sm:flex-row">
             <Link
               href="/contacto"
               className="rounded-full bg-yellow-400 px-8 py-4 text-[11px] font-black uppercase tracking-[0.3em] text-black hover:bg-yellow-300"
             >
-              Solicitar presupuesto
+              Solicitar evaluación
             </Link>
             <Link
               href="/proyectos"
@@ -199,7 +224,6 @@ export default function ProyectoDetailPage() {
             </Link>
           </div>
         </div>
-
       </div>
     </SectionPageShell>
   );

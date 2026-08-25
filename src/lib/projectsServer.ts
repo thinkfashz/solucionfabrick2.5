@@ -38,3 +38,9 @@ export const getPublicProjects = unstable_cache(
   ['projects:public'],
   { revalidate: 3600, tags: [PROJECTS_CACHE_TAG] },
 );
+
+/** Cached single-project lookup used by metadata and structured-data layers. */
+export async function getPublicProject(id: string): Promise<FabrickProject | null> {
+  const { data } = await getPublicProjects();
+  return data.find((project) => String(project.id) === String(id)) || null;
+}

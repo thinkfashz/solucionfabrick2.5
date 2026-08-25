@@ -80,6 +80,21 @@ function sameDay(value: string | null | undefined, target = new Date()) {
 }
 
 async function resolveCredential(tenantId: string): Promise<ResolvedCredential | null> {
+  // The canonical Fabrick tenant must prefer server-side Vercel environment
+  // credentials. They never cross the client boundary or appear in the repo.
+  if (tenantId === 'default') {
+    const global = await getMercadoPagoCredentials();
+    if (global.accessToken) {
+      return {
+        accessToken: global.accessToken,
+        source: global.sources.accessToken === 'env' ? 'vercel-env' : 'encrypted-db',
+        webhookSignatureConfigured: Boolean(global.webhookSecret),
+      };
+    }
+  }
+
+  // SaaS tenants use isolated encrypted credentials; never reuse the canonical
+  // merchant token across companies.
   const tenant = await readTenantIntegration(tenantId, 'mercadopago', ['access_token']);
   if (tenant.ready && tenant.values.access_token) {
     return {
@@ -89,17 +104,7 @@ async function resolveCredential(tenantId: string): Promise<ResolvedCredential |
     };
   }
 
-  // The global Vercel/env credential is only a fallback for the canonical
-  // Fabrick tenant. Never share one merchant credential across SaaS tenants.
-  if (tenantId !== 'default') return null;
-
-  const global = await getMercadoPagoCredentials();
-  if (!global.accessToken) return null;
-  return {
-    accessToken: global.accessToken,
-    source: global.sources.accessToken === 'env' ? 'vercel-env' : 'encrypted-db',
-    webhookSignatureConfigured: Boolean(global.webhookSecret),
-  };
+  return null;
 }
 
 async function searchMercadoPagoPayments(accessToken: string) {

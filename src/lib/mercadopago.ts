@@ -254,7 +254,9 @@ function parseSignatureParts(signatureHeader: string | null) {
 export async function verifyMercadoPagoSignature(args: { signatureHeader: string | null; requestIdHeader: string | null; dataId: string | null }) {
   const resolved = await getMercadoPagoCredentials();
   const secret = resolved.webhookSecret ?? getMercadoPagoWebhookSecret();
-  if (!secret) return true;
+  // Development may accept unsigned local simulations. Production fails closed:
+  // without the secret no payment event is trusted or allowed to mutate orders.
+  if (!secret) return process.env.NODE_ENV !== 'production';
   const parts = parseSignatureParts(args.signatureHeader);
   if (!parts?.ts || !parts.v1 || !args.dataId || !args.requestIdHeader) return false;
   const manifest = `id:${args.dataId.toLowerCase()};request-id:${args.requestIdHeader};ts:${parts.ts};`;

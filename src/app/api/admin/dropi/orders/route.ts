@@ -3,12 +3,12 @@ export const dynamic = 'force-dynamic';
 
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminSession } from '@/lib/adminApi';
-import { createDropiFulfillment } from '@/lib/dropi';
+import { createTenantDropiFulfillment } from '@/lib/dropiTenant';
+import { requireTenantAdmin } from '@/lib/tenantAdmin';
 
 export async function POST(request: NextRequest) {
-  const session = await getAdminSession(request);
-  if (!session) return adminUnauthorized();
+  const auth = await requireTenantAdmin(request, { resource: 'orders', action: 'update' });
+  if (!auth.ok) return auth.response;
 
   let body: { orderId?: string } = {};
   try {
@@ -20,6 +20,6 @@ export async function POST(request: NextRequest) {
   const orderId = String(body.orderId ?? '').trim();
   if (!orderId) return NextResponse.json({ error: 'orderId es requerido.' }, { status: 400 });
 
-  const result = await createDropiFulfillment(orderId);
-  return NextResponse.json(result, { status: result.ok ? 200 : 500 });
+  const result = await createTenantDropiFulfillment(auth.ctx.tenantId, orderId);
+  return NextResponse.json({ ...result, tenantId: auth.ctx.tenantId }, { status: result.ok ? 200 : 500 });
 }

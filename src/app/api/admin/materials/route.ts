@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminError, adminUnauthorized, getAdminSession } from '@/lib/adminApi';
+import { adminError } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { createMaterial, getMaterials, BudgetError } from '@/lib/budget';
 import { publishCmsEvent } from '@/lib/cmsBus';
 import { v, parse, validationError } from '@/lib/validate';
@@ -11,8 +12,8 @@ export const runtime = 'nodejs';
 /** GET /api/admin/materials — list all materials (admin view, includes inactive). */
 export async function GET(request: NextRequest) {
   try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+    const auth = await requireAdminPermission(request, { resource: 'content', action: 'read' });
+    if (!auth.ok) return auth.response;
     const materials = await getMaterials();
     return NextResponse.json({ materials });
   } catch (err) {
@@ -35,8 +36,8 @@ const materialSchema = {
 /** POST /api/admin/materials — create a new material. */
 export async function POST(request: NextRequest) {
   try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+    const auth = await requireAdminPermission(request, { resource: 'content', action: 'create' });
+    if (!auth.ok) return auth.response;
 
     const raw = await request.json().catch(() => ({}));
     const parsed = parse(materialSchema, raw);

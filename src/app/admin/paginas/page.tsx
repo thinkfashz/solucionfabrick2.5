@@ -1,5 +1,5 @@
-import { WebPagesAdminClient } from '@/components/admin/web-pages/WebPagesAdminClient';
+import { redirect } from 'next/navigation';
 
 export default function AdminPaginasPage() {
-  return <WebPagesAdminClient />;
+  redirect('/admin');
 }

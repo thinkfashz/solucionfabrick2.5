@@ -1,501 +1,315 @@
 'use client';
 
+/* eslint-disable @next/next/no-img-element */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useRouter } from 'next/navigation';
-import { buildProductTagline, resolveCategoryName } from '@/lib/commerce';
-import { useCategories } from '@/hooks/useCategories';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   AlertTriangle,
+  Boxes,
   Check,
   CheckCircle2,
-  Cloud,
-  DollarSign,
-  Eye,
+  ChevronRight,
   FolderOpen,
   Image as ImageIcon,
   Link2,
+  Loader2,
   Package,
   Pencil,
   Plus,
   RefreshCw,
   Search,
-  Settings2,
+  Sparkles,
   Star,
   Trash2,
-  Truck,
   Upload,
+  X,
 } from 'lucide-react';
 import { AdminPage } from '@/components/admin/ui';
+import { resolveCategoryName } from '@/lib/commerce';
+import { useCategories } from '@/hooks/useCategories';
+import MercadoLibreScraper from '@/components/admin/MercadoLibreScraper';
 import ProductImportModal from './ProductImportModal';
 import ProductCategoryManager from './ProductCategoryManager';
+import ProductStudioEditor, { type ProductStudioRecord } from './ProductStudioEditor';
 
-interface AdminProduct {
-  id: string;
-  name: string;
-  description?: string;
-  price: number | string;
-  stock?: number;
-  image_url?: string;
-  featured?: boolean;
-  activo?: boolean;
-  tagline?: string;
-  category_id?: string;
-  created_at?: string;
-  source?: string | null;
-  source_url?: string | null;
-  supplier_price?: number | string | null;
-  supplier_currency?: string | null;
-  shipping_fee?: number | string | null;
-  specifications?: Record<string, unknown> | null;
+type Filter = 'all' | 'active' | 'hidden' | 'featured' | 'low-stock' | 'without-image' | 'without-seo';
+type Sort = 'newest' | 'name' | 'price-desc' | 'price-asc' | 'stock-asc';
+
+function numberValue(value: unknown) {
+  const parsed = Number(String(value ?? '').replace(/[^0-9.-]/g, ''));
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
-type ViewMode = 'cards' | 'table';
-type SortMode = 'newest' | 'name' | 'price_asc' | 'price_desc' | 'stock_asc' | 'stock_desc' | 'margin_desc';
-type CategoryMap = Record<string, string>;
-
-function toNumber(value: number | string | undefined | null) {
-  const n = typeof value === 'number' ? value : Number(String(value ?? '').replace(/[^0-9.-]/g, ''));
-  return Number.isFinite(n) ? n : 0;
+function money(value: unknown) {
+  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Math.round(numberValue(value)));
 }
 
-function formatCLP(value: number | string | undefined | null) {
-  return '$' + Math.round(toNumber(value)).toLocaleString('es-CL');
-}
-
-function getSpecs(product: AdminProduct) {
+function specs(product: ProductStudioRecord) {
   return product.specifications && typeof product.specifications === 'object' ? product.specifications : {};
 }
 
-function arrayLength(value: unknown) {
-  return Array.isArray(value) ? value.length : 0;
+function galleryCount(product: ProductStudioRecord) {
+  const data = specs(product);
+  const arrays = [data.gallery_images, data.gallery_assets, data.images, data.image_urls].filter(Array.isArray) as unknown[][];
+  return Math.max(product.image_url ? 1 : 0, ...arrays.map((value) => value.length), 0);
 }
 
-function getGalleryCount(product: AdminProduct) {
-  const specs = getSpecs(product);
-  const count = Math.max(
-    arrayLength(specs.gallery_images),
-    arrayLength(specs.gallery_assets),
-    arrayLength(specs.images),
-    arrayLength(specs.image_urls),
-  );
-  return Math.max(count, product.image_url ? 1 : 0);
+function hasSeo(product: ProductStudioRecord) {
+  const seo = specs(product).seo;
+  if (!seo || typeof seo !== 'object' || Array.isArray(seo)) return false;
+  const row = seo as Record<string, unknown>;
+  return Boolean(String(row.title || '').trim() && String(row.description || '').trim() && String(row.primary_keyword || '').trim());
 }
 
-function getTaxPct(product: AdminProduct) {
-  const specs = getSpecs(product);
-  return toNumber(specs.tax_percentage as string | number | undefined);
+function margin(product: ProductStudioRecord) {
+  const price = numberValue(product.price);
+  const cost = numberValue(product.supplier_price);
+  return price > 0 && cost > 0 ? Math.round(((price - cost) / price) * 100) : null;
 }
 
-function getMarginPct(product: AdminProduct) {
-  const price = toNumber(product.price);
-  const cost = toNumber(product.supplier_price);
-  if (price <= 0 || cost <= 0) return null;
-  return Math.round(((price - cost) / price) * 100);
+function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label: string }) {
+  return <button type="button" role="switch" aria-checked={checked} aria-label={label} onClick={(event) => { event.stopPropagation(); onChange(!checked); }} className={`relative inline-flex h-6 w-10 shrink-0 rounded-full transition ${checked ? 'bg-[#111214]' : 'bg-black/15'}`}><span className={`mt-0.5 h-5 w-5 rounded-full bg-white shadow transition ${checked ? 'translate-x-[18px]' : 'translate-x-0.5'}`} /></button>;
 }
 
-function totalReference(product: AdminProduct) {
-  const price = toNumber(product.price);
-  const shipping = toNumber(product.shipping_fee);
-  const tax = Math.round((price + shipping) * (getTaxPct(product) / 100));
-  return price + shipping + tax;
+function Metric({ label, value, note, icon: Icon, tone = 'light' }: { label: string; value: string; note: string; icon: typeof Package; tone?: 'light' | 'dark' | 'warning' }) {
+  const style = tone === 'dark' ? 'bg-[#111214] text-white' : tone === 'warning' ? 'bg-[#f7dfd6] text-[#5f281d]' : 'bg-[#fffaf0] text-[#111214]';
+  return <article className={`rounded-2xl border border-black/7 p-4 shadow-sm ${style}`}><div className="flex items-center justify-between"><p className={`text-[9px] font-black uppercase tracking-[.16em] ${tone === 'dark' ? 'text-white/35' : 'text-black/35'}`}>{label}</p><Icon className={`h-4 w-4 ${tone === 'dark' ? 'text-[#f5c75d]' : 'opacity-40'}`} /></div><p className="mt-3 truncate text-2xl font-black tracking-[-.04em]">{value}</p><p className={`mt-1 text-[11px] ${tone === 'dark' ? 'text-white/40' : 'text-black/40'}`}>{note}</p></article>;
 }
 
-function Toggle({ checked, onChange, label }: { checked: boolean; onChange: (value: boolean) => void; label?: string }) {
-  return (
-    <button
-      type="button"
-      role="switch"
-      aria-checked={checked}
-      aria-label={label}
-      onClick={(event) => {
-        event.stopPropagation();
-        onChange(!checked);
-      }}
-      className={`relative inline-flex h-7 w-12 flex-shrink-0 rounded-full border border-black/10 transition ${checked ? 'bg-yellow-400' : 'bg-black/20'}`}
-    >
-      <span className={`pointer-events-none mt-0.5 inline-block h-6 w-6 transform rounded-full bg-white shadow transition ${checked ? 'translate-x-5' : 'translate-x-0.5'}`} />
-    </button>
-  );
+function DeleteModal({ product, onCancel, onConfirm, busy }: { product: ProductStudioRecord; onCancel: () => void; onConfirm: () => void; busy: boolean }) {
+  return <div className="fixed inset-0 z-[150] grid place-items-center bg-black/65 p-4 backdrop-blur-sm"><div className="w-full max-w-md rounded-2xl bg-[#fffaf0] p-5 shadow-2xl"><div className="grid h-11 w-11 place-items-center rounded-xl bg-red-100 text-red-700"><Trash2 className="h-5 w-5" /></div><h3 className="mt-4 text-xl font-black">Eliminar producto</h3><p className="mt-2 text-sm leading-6 text-black/48">Se eliminará <b className="text-black">{product.name}</b> del catálogo. Esta acción no se puede deshacer.</p><div className="mt-5 grid grid-cols-2 gap-2"><button type="button" disabled={busy} onClick={onCancel} className="rounded-xl border border-black/10 bg-white px-4 py-3 text-xs font-black">Cancelar</button><button type="button" disabled={busy} onClick={onConfirm} className="inline-flex items-center justify-center gap-2 rounded-xl bg-red-600 px-4 py-3 text-xs font-black text-white disabled:opacity-50">{busy ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}Eliminar</button></div></div></div>;
 }
 
-function Toast({ message, type }: { message: string; type: 'success' | 'error' }) {
-  return (
-    <div className={`fixed bottom-24 right-4 z-50 max-w-sm rounded-2xl border px-5 py-3 text-sm shadow-2xl backdrop-blur-xl md:bottom-6 ${type === 'success' ? 'border-emerald-400/30 bg-emerald-400/10 text-emerald-200' : 'border-red-400/30 bg-red-400/10 text-red-200'}`}>
-      {message}
-    </div>
-  );
-}
-
-function DeleteModal({ product, onConfirm, onCancel }: { product: AdminProduct; onConfirm: () => void; onCancel: () => void }) {
-  return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 px-4 backdrop-blur-sm">
-      <div className="w-full max-w-md rounded-3xl border border-red-400/25 bg-zinc-950 p-6 shadow-2xl">
-        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-2xl bg-red-400/10 text-red-300">
-          <Trash2 className="h-5 w-5" />
-        </div>
-        <h3 className="text-xl font-black text-white">Eliminar producto</h3>
-        <p className="mt-2 text-sm leading-6 text-zinc-400">
-          ¿Seguro que deseas eliminar <span className="font-bold text-white">{product.name}</span>? Esta acción no se puede deshacer.
-        </p>
-        <div className="mt-6 grid grid-cols-2 gap-3">
-          <button onClick={onCancel} className="rounded-2xl border border-white/10 px-4 py-3 text-sm font-bold text-zinc-300 hover:bg-white/5">Cancelar</button>
-          <button onClick={onConfirm} className="rounded-2xl bg-red-500 px-4 py-3 text-sm font-black text-white hover:bg-red-400">Eliminar</button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ProductCard({ product, categoryName, selected, selectionMode, onSelect, onLongPress, onEdit, onDelete, onToggle }: {
-  product: AdminProduct;
-  categoryName: string;
-  selected: boolean;
-  selectionMode: boolean;
-  onSelect: () => void;
-  onLongPress: () => void;
-  onEdit: () => void;
-  onDelete: () => void;
-  onToggle: (field: 'activo' | 'featured', value: boolean) => void;
-}) {
-  const active = product.activo !== false;
-  const stock = product.stock ?? 0;
-  const critical = stock > 0 && stock <= 5;
-  const margin = getMarginPct(product);
-  const taxPct = getTaxPct(product);
-  const galleryCount = getGalleryCount(product);
-  const pressTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  function clearPress() {
-    if (pressTimer.current) clearTimeout(pressTimer.current);
-    pressTimer.current = null;
-  }
-
-  return (
-    <article onPointerDown={() => { pressTimer.current = setTimeout(onLongPress, 450); }} onPointerUp={clearPress} onPointerLeave={clearPress} onClick={() => { if (selectionMode) onSelect(); }} className={`group relative overflow-hidden rounded-[1.8rem] bg-[#F2DFBB] text-[#111214] shadow-[0_22px_70px_rgba(58,45,19,.11)] transition hover:-translate-y-1 ${selected ? 'ring-4 ring-yellow-400/80' : ''}`}>
-      {(selectionMode || selected) && <button type="button" onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onSelect(); }} className={`absolute right-3 top-3 z-20 grid h-10 w-10 place-items-center rounded-2xl shadow-lg ${selected ? 'bg-yellow-400 text-black' : 'bg-black/70 text-white'}`} aria-label={selected ? 'Quitar selección' : 'Seleccionar producto'}>{selected ? <Check className="h-4 w-4" /> : null}</button>}
-
-      <div className="relative h-52 bg-white/55 p-3">
-        {product.image_url ? <img src={product.image_url} alt={product.name} className="h-full w-full rounded-[1.25rem] object-contain transition duration-500 group-hover:scale-[1.03]" /> : <div className="flex h-full w-full items-center justify-center rounded-[1.25rem] bg-[#eadfc8] text-black/20"><Package className="h-10 w-10" /></div>}
-        <div className="absolute left-3 top-3 flex flex-wrap gap-2 pr-12"><span className={`rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] ${active ? 'bg-emerald-800 text-white' : 'bg-black/70 text-white'}`}>{active ? 'Activo' : 'Oculto'}</span>{product.featured ? <span className="rounded-full bg-yellow-400 px-2.5 py-1 text-[9px] font-black uppercase tracking-[0.14em] text-black">Destacado</span> : null}</div>
-      </div>
-
-      <div className="space-y-4 p-4 pt-3">
-        <div className="flex items-start justify-between gap-3"><div className="min-w-0"><p className="truncate text-base font-black">{product.name}</p><p className="mt-1 truncate text-[10px] font-bold uppercase tracking-widest text-[#936716]">{categoryName}</p></div><span className="shrink-0 rounded-xl bg-black px-3 py-2 text-xs font-black text-yellow-300">{formatCLP(product.price)}</span></div>
-        <p className="line-clamp-2 min-h-[2.5rem] text-sm leading-5 text-black/48">{product.description || buildProductTagline(product.tagline, undefined) || 'Sin descripción.'}</p>
-        <div className="grid grid-cols-4 gap-1.5 text-center"><div className={`rounded-xl p-2 ${critical ? 'bg-red-600/10 text-red-900' : 'bg-black/[0.045]'}`}><b className="block text-sm">{stock}</b><span className="text-[8px] uppercase tracking-widest opacity-50">Stock</span></div><div className="rounded-xl bg-black/[0.045] p-2"><b className="block text-sm">{galleryCount}</b><span className="text-[8px] uppercase tracking-widest opacity-50">Fotos</span></div><div className="rounded-xl bg-black/[0.045] p-2"><b className="block text-sm">{taxPct || 0}%</b><span className="text-[8px] uppercase tracking-widest opacity-50">IVA</span></div><div className="rounded-xl bg-black/[0.045] p-2"><b className="block text-sm">{margin == null ? '—' : `${margin}%`}</b><span className="text-[8px] uppercase tracking-widest opacity-50">Margen</span></div></div>
-        <div className="flex items-center justify-between rounded-2xl bg-[#e8dcc2] px-3 py-2 text-xs"><span className="text-black/45">Total referencial</span><b>{formatCLP(totalReference(product))}</b></div>
-        <div className="grid grid-cols-2 gap-3 rounded-2xl bg-black/[0.045] p-3"><label className="flex items-center justify-between gap-2 text-xs text-black/55" onPointerDown={(event) => event.stopPropagation()}>Activo<Toggle checked={active} label={`Activo: ${product.name}`} onChange={(value) => onToggle('activo', value)} /></label><label className="flex items-center justify-between gap-2 text-xs text-black/55" onPointerDown={(event) => event.stopPropagation()}>Destacado<Toggle checked={!!product.featured} label={`Destacado: ${product.name}`} onChange={(value) => onToggle('featured', value)} /></label></div>
-        <div className="grid grid-cols-2 gap-3"><button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onEdit(); }} className="rounded-2xl bg-black px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-yellow-300"><Pencil className="mr-1 inline h-4 w-4" />Editar</button><button onPointerDown={(event) => event.stopPropagation()} onClick={(event) => { event.stopPropagation(); onDelete(); }} className="rounded-2xl bg-red-700/[0.08] px-4 py-3 text-xs font-black uppercase tracking-[0.14em] text-red-800"><Trash2 className="mr-1 inline h-4 w-4" />Eliminar</button></div>
-      </div>
-    </article>
-  );
-}
-
-function ProductsTable({ products, selectedSet, categoryMap, onSelect, onEdit, onDelete, onToggle }: {
-  products: AdminProduct[];
-  selectedSet: Set<string>;
-  categoryMap: CategoryMap;
-  onSelect: (id: string) => void;
-  onEdit: (id: string) => void;
-  onDelete: (product: AdminProduct) => void;
-  onToggle: (product: AdminProduct, field: 'activo' | 'featured', value: boolean) => void;
-}) {
-  return (
-    <div className="overflow-x-auto rounded-[1.8rem] bg-[#F2DFBB] text-[#111214] shadow-[0_22px_70px_rgba(58,45,19,.10)]">
-      <table className="w-full text-sm">
-        <thead>
-          <tr className="border-b border-black/10 bg-[#e8dcc2]">
-            {['Sel.', 'Producto', 'Categoría', 'Precio', 'Envío', 'IVA', 'Fotos', 'Activo', 'Acciones'].map((header) => (
-              <th key={header} className="px-4 py-4 text-left text-[10px] font-black uppercase tracking-[0.18em] text-black/45">{header}</th>
-            ))}
-          </tr>
-        </thead>
-        <tbody className="divide-y divide-black/[0.07]">
-          {products.map((product) => {
-            const selected = selectedSet.has(product.id);
-            return (
-              <tr key={product.id} className={selected ? 'bg-yellow-300/25' : 'hover:bg-black/[0.025]'}>
-                <td className="px-4 py-4">
-                  <button onClick={() => onSelect(product.id)} className={`flex h-9 w-9 items-center justify-center rounded-xl ${selected ? 'bg-yellow-400 text-black' : 'bg-black/[0.06] text-black/35'}`}>
-                    {selected ? <Check className="h-4 w-4" /> : ''}
-                  </button>
-                </td>
-                <td className="min-w-[260px] px-4 py-4">
-                  <div className="flex items-center gap-3">
-                    {product.image_url ? (
-                      <img src={product.image_url} alt={product.name} className="h-14 w-14 rounded-2xl bg-white object-contain p-1" />
-                    ) : (
-                      <div className="flex h-14 w-14 items-center justify-center rounded-2xl bg-black/[0.06] text-black/25"><Package className="h-5 w-5" /></div>
-                    )}
-                    <div className="min-w-0">
-                      <p className="truncate font-bold">{product.name}</p>
-                      <p className="mt-1 line-clamp-1 text-xs text-black/40">{product.source || product.description || buildProductTagline(product.tagline, undefined)}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-4 py-4 text-black/55">{resolveCategoryName(product.category_id, categoryMap)}</td>
-                <td className="px-4 py-4 font-black">{formatCLP(product.price)}</td>
-                <td className="px-4 py-4 text-black/55">{toNumber(product.shipping_fee) > 0 ? formatCLP(product.shipping_fee) : '—'}</td>
-                <td className="px-4 py-4 text-black/55">{getTaxPct(product) || 0}%</td>
-                <td className="px-4 py-4 text-[#8c6111]">{getGalleryCount(product)}</td>
-                <td className="px-4 py-4"><Toggle checked={product.activo !== false} onChange={(value) => onToggle(product, 'activo', value)} /></td>
-                <td className="px-4 py-4">
-                  <div className="flex gap-2">
-                    <button onClick={() => onEdit(product.id)} className="rounded-xl bg-black p-2 text-yellow-300"><Pencil className="h-4 w-4" /></button>
-                    <button onClick={() => onDelete(product)} className="rounded-xl bg-red-700/[0.08] p-2 text-red-800"><Trash2 className="h-4 w-4" /></button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-    </div>
-  );
+function UrlImportModal({ open, onClose }: { open: boolean; onClose: () => void }) {
+  if (!open) return null;
+  return <div className="fixed inset-0 z-[140] overflow-y-auto bg-black/75 p-2 backdrop-blur-xl sm:p-5"><div className="mx-auto min-h-full max-w-5xl rounded-[1.8rem] bg-[#f4efe4] p-3 shadow-2xl sm:p-5"><header className="mb-4 flex items-start justify-between gap-4 rounded-2xl bg-[#111214] p-5 text-white"><div><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#f5c75d]">Importación asistida</p><h2 className="mt-1 text-2xl font-black tracking-[-.04em]">Crear desde un enlace</h2><p className="mt-2 max-w-2xl text-xs leading-5 text-white/45">Pega una URL de Mercado Libre u otra tienda. Revisa los datos antes de incorporarlos al catálogo.</p></div><button type="button" onClick={onClose} className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-white/8"><X className="h-4 w-4" /></button></header><MercadoLibreScraper /></div></div>;
 }
 
 export default function AdminProductosPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { categories, categoryMap, reload: reloadCategories } = useCategories();
-  const [products, setProducts] = useState<AdminProduct[]>([]);
+  const [products, setProducts] = useState<ProductStudioRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [activeCategory, setActiveCategory] = useState('Todos');
-  const [search, setSearch] = useState('');
-  const [deleteTarget, setDeleteTarget] = useState<AdminProduct | null>(null);
-  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
-  const [view, setView] = useState<ViewMode>('cards');
-  const [sort, setSort] = useState<SortMode>('newest');
-  const [importOpen, setImportOpen] = useState(false);
-  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [query, setQuery] = useState('');
+  const [filter, setFilter] = useState<Filter>('all');
+  const [sort, setSort] = useState<Sort>('newest');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
-  const isMounted = useRef(true);
+  const [studio, setStudio] = useState<{ mode: 'create' | 'edit'; product?: ProductStudioRecord } | null>(null);
+  const [importOpen, setImportOpen] = useState(false);
+  const [urlImportOpen, setUrlImportOpen] = useState(false);
+  const [categoriesOpen, setCategoriesOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<ProductStudioRecord | null>(null);
+  const [deleting, setDeleting] = useState(false);
+  const [toast, setToast] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
+  const mounted = useRef(true);
 
-  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
-  const selectionMode = selectedIds.length > 0;
-
-  const showToast = useCallback((message: string, type: 'success' | 'error' = 'success') => {
-    setToast({ message, type });
-    setTimeout(() => {
-      if (isMounted.current) setToast(null);
-    }, 3200);
+  const showToast = useCallback((text: string, type: 'ok' | 'error' = 'ok') => {
+    setToast({ text, type });
+    window.setTimeout(() => { if (mounted.current) setToast(null); }, 3200);
   }, []);
 
   const loadProducts = useCallback(async () => {
     try {
-      const res = await fetch('/api/admin/products', { cache: 'no-store' });
-      const json = await res.json().catch(() => ({} as { error?: string; products?: AdminProduct[] }));
-      if (!isMounted.current) return;
-      if (!res.ok) {
-        setLoadError(json.error ?? `HTTP ${res.status}: No se pudieron cargar los productos.`);
-        setProducts([]);
-        return;
+      const response = await fetch('/api/admin/products', { cache: 'no-store' });
+      const json = await response.json().catch(() => ({})) as { products?: ProductStudioRecord[]; error?: string };
+      if (!response.ok) throw new Error(json.error || 'No se pudo cargar el catálogo.');
+      if (mounted.current) {
+        setProducts(Array.isArray(json.products) ? json.products : []);
+        setError(null);
       }
-      setProducts(Array.isArray(json.products) ? json.products : []);
-      setLoadError(null);
-    } catch (error) {
-      if (!isMounted.current) return;
-      setLoadError(error instanceof Error ? error.message : 'Error de red cargando productos.');
-      setProducts([]);
+    } catch (loadError) {
+      if (mounted.current) setError(loadError instanceof Error ? loadError.message : 'Error cargando productos.');
     } finally {
-      if (isMounted.current) setLoading(false);
+      if (mounted.current) setLoading(false);
     }
   }, []);
 
   useEffect(() => {
-    isMounted.current = true;
+    mounted.current = true;
     void loadProducts();
-    return () => { isMounted.current = false; };
+    return () => { mounted.current = false; };
   }, [loadProducts]);
 
-  function toggleSelected(id: string) {
-    setSelectedIds((prev) => prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]);
-  }
-
-  function enterSelection(id: string) {
-    setSelectedIds((prev) => prev.includes(id) ? prev : [...prev, id]);
-  }
-
-  async function handleToggle(product: AdminProduct, field: 'activo' | 'featured', value: boolean) {
-    const previous = products;
-    setProducts((prev) => prev.map((item) => item.id === product.id ? { ...item, [field]: value } : item));
-    const res = await fetch(`/api/admin/products?id=${encodeURIComponent(product.id)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ [field]: value }),
-    });
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({} as { error?: string }));
-      setProducts(previous);
-      showToast(json.error ?? 'Error al actualizar el producto.', 'error');
+  useEffect(() => {
+    const studioParam = searchParams.get('studio');
+    const importParam = searchParams.get('import');
+    if (importParam === 'url') setUrlImportOpen(true);
+    if (!studioParam) return;
+    if (studioParam === 'new') {
+      setStudio((current) => current?.mode === 'create' ? current : { mode: 'create' });
       return;
     }
-    showToast(field === 'activo' ? (value ? 'Producto activado.' : 'Producto ocultado.') : (value ? 'Producto destacado.' : 'Quitado de destacados.'));
-  }
-
-  async function handleDelete(product: AdminProduct) {
-    const res = await fetch(`/api/admin/products?id=${encodeURIComponent(product.id)}`, { method: 'DELETE' });
-    setDeleteTarget(null);
-    if (!res.ok) {
-      const json = await res.json().catch(() => ({} as { error?: string }));
-      showToast(json.error ?? 'Error al eliminar el producto.', 'error');
-      return;
-    }
-    setProducts((prev) => prev.filter((item) => item.id !== product.id));
-    setSelectedIds((prev) => prev.filter((id) => id !== product.id));
-    showToast('Producto eliminado correctamente.');
-  }
-
-  async function handleBulkPatch(field: 'activo' | 'featured', value: boolean) {
-    if (selectedIds.length === 0) return;
-    const ids = [...selectedIds];
-    const previous = products;
-    setProducts((prev) => prev.map((product) => ids.includes(product.id) ? { ...product, [field]: value } : product));
-    const results = await Promise.all(ids.map(async (id) => {
-      const res = await fetch(`/api/admin/products?id=${encodeURIComponent(id)}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ [field]: value }),
-      });
-      return res.ok;
-    }));
-    const failed = results.filter((ok) => !ok).length;
-    if (failed) {
-      setProducts(previous);
-      showToast(`${failed} producto(s) no se pudieron actualizar.`, 'error');
-      return;
-    }
-    showToast(`${ids.length} producto(s) actualizados.`);
-  }
-
-  async function handleBulkDelete() {
-    if (selectedIds.length === 0) return;
-    if (!window.confirm(`¿Eliminar ${selectedIds.length} producto(s) seleccionados?`)) return;
-    const ids = [...selectedIds];
-    const results = await Promise.all(ids.map(async (id) => ({
-      id,
-      ok: (await fetch(`/api/admin/products?id=${encodeURIComponent(id)}`, { method: 'DELETE' })).ok,
-    })));
-    const deleted = results.filter((item) => item.ok).map((item) => item.id);
-    const failed = results.length - deleted.length;
-    setProducts((prev) => prev.filter((product) => !deleted.includes(product.id)));
-    setSelectedIds([]);
-    showToast(failed ? `${deleted.length} eliminado(s), ${failed} fallaron.` : `${deleted.length} producto(s) eliminado(s).`, failed ? 'error' : 'success');
-  }
-
-  const filterOptions = useMemo(() => [
-    'Todos',
-    'Destacados',
-    'Activos',
-    'Ocultos',
-    'Bajo stock',
-    'Con envío',
-    'Con impuesto',
-    'Con fotos',
-    ...categories.map((category) => category.name),
-  ], [categories]);
+    const product = products.find((item) => item.id === studioParam);
+    if (product) setStudio({ mode: 'edit', product });
+  }, [searchParams, products]);
 
   const metrics = useMemo(() => {
-    const total = products.length;
     const active = products.filter((product) => product.activo !== false).length;
-    const featured = products.filter((product) => product.featured).length;
-    const lowStock = products.filter((product) => (product.stock ?? 0) > 0 && (product.stock ?? 0) <= 5).length;
-    const value = products.reduce((sum, product) => sum + toNumber(product.price) * (product.stock ?? 0), 0);
-    const gallery = products.reduce((sum, product) => sum + getGalleryCount(product), 0);
-    return { total, active, featured, lowStock, value, gallery };
+    const lowStock = products.filter((product) => numberValue(product.stock) > 0 && numberValue(product.stock) <= 5).length;
+    const ready = products.filter((product) => product.image_url && hasSeo(product) && product.description && numberValue(product.price) > 0).length;
+    const value = products.reduce((sum, product) => sum + numberValue(product.price) * Math.max(0, numberValue(product.stock)), 0);
+    return { active, lowStock, ready, value };
   }, [products]);
 
-  const productCounts = useMemo(() => products.reduce<Record<string, number>>((counts, product) => {
-    if (product.category_id) counts[product.category_id] = (counts[product.category_id] || 0) + 1;
-    return counts;
-  }, {}), [products]);
-
-  const filtered = useMemo(() => products.filter((product) => {
-    const q = search.trim().toLowerCase();
-    const categoryName = resolveCategoryName(product.category_id, categoryMap);
-    const matchSearch = !q
-      || product.name.toLowerCase().includes(q)
-      || (product.description ?? '').toLowerCase().includes(q)
-      || categoryName.toLowerCase().includes(q)
-      || (product.source ?? '').toLowerCase().includes(q);
-    if (!matchSearch) return false;
-    if (activeCategory === 'Todos') return true;
-    if (activeCategory === 'Destacados') return !!product.featured;
-    if (activeCategory === 'Activos') return product.activo !== false;
-    if (activeCategory === 'Ocultos') return product.activo === false;
-    if (activeCategory === 'Bajo stock') return (product.stock ?? 0) > 0 && (product.stock ?? 0) <= 5;
-    if (activeCategory === 'Con envío') return toNumber(product.shipping_fee) > 0;
-    if (activeCategory === 'Con impuesto') return getTaxPct(product) > 0;
-    if (activeCategory === 'Con fotos') return getGalleryCount(product) > 0;
-    return categoryName.toLowerCase() === activeCategory.toLowerCase();
-  }), [products, search, activeCategory, categoryMap]);
-
-  const sortedProducts = useMemo(() => {
-    const list = [...filtered];
-    list.sort((a, b) => {
-      if (sort === 'name') return a.name.localeCompare(b.name, 'es');
-      if (sort === 'price_asc') return toNumber(a.price) - toNumber(b.price);
-      if (sort === 'price_desc') return toNumber(b.price) - toNumber(a.price);
-      if (sort === 'stock_asc') return (a.stock ?? 0) - (b.stock ?? 0);
-      if (sort === 'stock_desc') return (b.stock ?? 0) - (a.stock ?? 0);
-      if (sort === 'margin_desc') return (getMarginPct(b) ?? -999) - (getMarginPct(a) ?? -999);
-      return new Date(b.created_at ?? 0).getTime() - new Date(a.created_at ?? 0).getTime();
+  const filtered = useMemo(() => {
+    const needle = query.trim().toLowerCase();
+    const result = products.filter((product) => {
+      const category = resolveCategoryName(product.category_id || undefined, categoryMap);
+      if (needle && ![product.name, product.description, product.sku, product.ean, product.source, category].some((value) => String(value || '').toLowerCase().includes(needle))) return false;
+      if (filter === 'active') return product.activo !== false;
+      if (filter === 'hidden') return product.activo === false;
+      if (filter === 'featured') return Boolean(product.featured);
+      if (filter === 'low-stock') return numberValue(product.stock) > 0 && numberValue(product.stock) <= 5;
+      if (filter === 'without-image') return !product.image_url;
+      if (filter === 'without-seo') return !hasSeo(product);
+      return true;
     });
-    return list;
-  }, [filtered, sort]);
+    return result.sort((a, b) => {
+      if (sort === 'name') return a.name.localeCompare(b.name, 'es');
+      if (sort === 'price-desc') return numberValue(b.price) - numberValue(a.price);
+      if (sort === 'price-asc') return numberValue(a.price) - numberValue(b.price);
+      if (sort === 'stock-asc') return numberValue(a.stock) - numberValue(b.stock);
+      return new Date(b.created_at || 0).getTime() - new Date(a.created_at || 0).getTime();
+    });
+  }, [products, query, filter, sort, categoryMap]);
 
-  const allVisibleSelected = sortedProducts.length > 0 && sortedProducts.every((product) => selectedSet.has(product.id));
+  const selectedSet = useMemo(() => new Set(selectedIds), [selectedIds]);
+  const categoryCounts = useMemo(() => products.reduce<Record<string, number>>((acc, product) => { if (product.category_id) acc[product.category_id] = (acc[product.category_id] || 0) + 1; return acc; }, {}), [products]);
 
-  function toggleVisibleSelection() {
-    setSelectedIds((prev) => allVisibleSelected
-      ? prev.filter((id) => !sortedProducts.some((product) => product.id === id))
-      : Array.from(new Set([...prev, ...sortedProducts.map((product) => product.id)]))
-    );
+  function replaceQuery(params: URLSearchParams) {
+    const value = params.toString();
+    router.replace(value ? `/admin/productos?${value}` : '/admin/productos', { scroll: false });
+  }
+
+  function openCreate() {
+    setStudio({ mode: 'create' });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('studio', 'new');
+    params.delete('import');
+    replaceQuery(params);
+  }
+
+  function openEdit(product: ProductStudioRecord) {
+    setStudio({ mode: 'edit', product });
+    const params = new URLSearchParams(searchParams.toString());
+    params.set('studio', product.id);
+    params.delete('import');
+    replaceQuery(params);
+  }
+
+  function closeStudio() {
+    setStudio(null);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('studio');
+    replaceQuery(params);
+  }
+
+  function openUrlImport() {
+    setUrlImportOpen(true);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('studio');
+    params.set('import', 'url');
+    replaceQuery(params);
+  }
+
+  function closeUrlImport() {
+    setUrlImportOpen(false);
+    const params = new URLSearchParams(searchParams.toString());
+    params.delete('import');
+    replaceQuery(params);
+    setLoading(true);
+    void loadProducts();
+  }
+
+  async function patchProduct(product: ProductStudioRecord, patch: Record<string, unknown>) {
+    const previous = products;
+    setProducts((current) => current.map((item) => item.id === product.id ? { ...item, ...patch } : item));
+    const response = await fetch(`/api/admin/products?id=${encodeURIComponent(product.id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) });
+    if (!response.ok) {
+      const json = await response.json().catch(() => ({})) as { error?: string };
+      setProducts(previous);
+      showToast(json.error || 'No se pudo actualizar el producto.', 'error');
+      return false;
+    }
+    return true;
+  }
+
+  async function bulkPatch(patch: Record<string, unknown>) {
+    const ids = [...selectedIds];
+    if (!ids.length) return;
+    const results = await Promise.all(ids.map(async (id) => (await fetch(`/api/admin/products?id=${encodeURIComponent(id)}`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(patch) })).ok));
+    const failed = results.filter((ok) => !ok).length;
+    if (failed) showToast(`${failed} producto(s) no se pudieron actualizar.`, 'error');
+    else showToast(`${ids.length} producto(s) actualizados.`);
+    setSelectedIds([]);
+    await loadProducts();
+  }
+
+  async function deleteProduct() {
+    if (!deleteTarget) return;
+    setDeleting(true);
+    try {
+      const response = await fetch(`/api/admin/products?id=${encodeURIComponent(deleteTarget.id)}`, { method: 'DELETE' });
+      const json = await response.json().catch(() => ({})) as { error?: string };
+      if (!response.ok) throw new Error(json.error || 'No se pudo eliminar.');
+      setProducts((current) => current.filter((item) => item.id !== deleteTarget.id));
+      setSelectedIds((current) => current.filter((id) => id !== deleteTarget.id));
+      setDeleteTarget(null);
+      showToast('Producto eliminado.');
+    } catch (deleteError) {
+      showToast(deleteError instanceof Error ? deleteError.message : 'No se pudo eliminar.', 'error');
+    } finally {
+      setDeleting(false);
+    }
   }
 
   return (
     <AdminPage className="px-1 text-[#111214] md:px-2">
-      <section className="relative overflow-hidden rounded-[2.2rem] bg-[radial-gradient(circle_at_90%_10%,rgba(255, 176, 0,.65),transparent_25rem),linear-gradient(135deg,#fff9ec,#e3d1ad)] p-5 shadow-[0_30px_100px_rgba(58,45,19,.15)] sm:p-8">
-        <div className="grid gap-7 xl:grid-cols-[1fr_520px] xl:items-end">
-          <div><div className="flex flex-wrap gap-2"><span className="rounded-full bg-black px-3 py-2 text-[9px] font-black uppercase tracking-[.18em] text-yellow-300">Catálogo central</span><span className="inline-flex items-center gap-1.5 rounded-full bg-white/55 px-3 py-2 text-[9px] font-black uppercase tracking-[.14em] text-black/55"><Cloud className="h-3 w-3" />Imágenes organizadas</span></div><h1 className="mt-6 max-w-3xl text-[clamp(42px,7vw,78px)] font-black leading-[.87] tracking-[-.075em]">Productos claros, ordenados y listos para vender.</h1><p className="mt-5 max-w-2xl text-sm leading-7 text-black/55">Crea manualmente, importa en bloque o captura desde un enlace. Las categorías organizan el catálogo y definen la carpeta de cada galería.</p></div>
-          <div className="grid grid-cols-2 gap-2 sm:grid-cols-4 xl:grid-cols-2">
-            <button onClick={() => router.push('/admin/productos/nuevo')} className="col-span-2 inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-black px-5 text-xs font-black uppercase tracking-[.15em] text-yellow-300 xl:col-span-2"><Plus className="h-4 w-4" />Crear producto</button>
-            <button onClick={() => setImportOpen(true)} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-yellow-400 px-4 text-xs font-black text-black"><Upload className="h-4 w-4" />Carga masiva</button>
-            <button onClick={() => router.push('/admin/productos/importar')} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-white/55 px-4 text-xs font-black text-black"><Link2 className="h-4 w-4" />Desde enlace</button>
-            <button onClick={() => setCategoriesOpen(true)} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-[#d4bc8e] px-4 text-xs font-black text-black"><FolderOpen className="h-4 w-4" />Categorías</button>
-            <button onClick={() => { setLoading(true); void loadProducts(); }} className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-white/55 px-4 text-xs font-black text-black"><RefreshCw className="h-4 w-4" />Actualizar</button>
-          </div>
+      <section className="rounded-[1.8rem] border border-black/7 bg-[#fffaf0] p-4 shadow-sm sm:p-6">
+        <div className="flex flex-col gap-5 xl:flex-row xl:items-center xl:justify-between">
+          <div className="min-w-0"><div className="flex flex-wrap items-center gap-2"><span className="rounded-full bg-[#111214] px-3 py-1.5 text-[9px] font-black uppercase tracking-[.18em] text-[#f5c75d]">Catálogo</span><span className="inline-flex items-center gap-1.5 rounded-full bg-[#fff0bd] px-3 py-1.5 text-[9px] font-black uppercase tracking-[.14em] text-[#7e5814]"><Sparkles className="h-3 w-3" />IA integrada</span></div><h1 className="mt-3 text-3xl font-black tracking-[-.055em] sm:text-4xl">Productos</h1><p className="mt-2 max-w-2xl text-sm leading-6 text-black/45">Un solo lugar para crear, editar, analizar con IA, organizar imágenes, precio, inventario y SEO.</p></div>
+          <div className="grid grid-cols-2 gap-2 sm:flex sm:flex-wrap xl:justify-end"><button type="button" onClick={openCreate} className="col-span-2 inline-flex min-h-11 items-center justify-center gap-2 rounded-xl bg-[#111214] px-4 text-xs font-black text-white sm:col-span-1"><Plus className="h-4 w-4 text-[#f5c75d]" />Nuevo producto</button><button type="button" onClick={() => setImportOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-[#fff0bd] px-3.5 text-xs font-black text-[#76500f]"><Upload className="h-4 w-4" />Importar</button><button type="button" onClick={openUrlImport} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><Link2 className="h-4 w-4" />Desde URL</button><button type="button" onClick={() => setCategoriesOpen(true)} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><FolderOpen className="h-4 w-4" />Categorías</button><button type="button" onClick={() => { setLoading(true); void loadProducts(); }} className="inline-flex min-h-11 items-center justify-center gap-2 rounded-xl border border-black/8 bg-white px-3.5 text-xs font-black text-black/60"><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />Actualizar</button></div>
         </div>
       </section>
 
-      {loadError ? <div className="rounded-[1.5rem] bg-[#f7d1c8] p-4 text-sm text-[#7a2418]"><b className="flex items-center gap-2"><AlertTriangle className="h-4 w-4" />Error cargando productos</b><p className="mt-1 opacity-75">{loadError}</p></div> : null}
+      {error ? <div className="rounded-2xl border border-red-200 bg-red-50 p-4 text-sm text-red-800"><AlertTriangle className="mr-2 inline h-4 w-4" />{error}</div> : null}
 
-      <section className="grid grid-cols-2 gap-3 xl:grid-cols-6">
-        {[
-          { label: 'Productos', value: String(metrics.total), icon: Package, card: 'bg-[#F2DFBB]' },
-          { label: 'Activos', value: String(metrics.active), icon: CheckCircle2, card: 'bg-[#d8e4cf]' },
-          { label: 'Destacados', value: String(metrics.featured), icon: Star, card: 'bg-yellow-300' },
-          { label: 'Stock crítico', value: String(metrics.lowStock), icon: AlertTriangle, card: 'bg-[#f4d3ca]' },
-          { label: 'Imágenes', value: String(metrics.gallery), icon: ImageIcon, card: 'bg-[#ded4bf]' },
-          { label: 'Valor inventario', value: formatCLP(metrics.value), icon: DollarSign, card: 'bg-[#111214] text-[#fff7e7]' },
-        ].map(({ label, value, icon: Icon, card }) => <article key={label} className={`rounded-[1.55rem] p-4 shadow-[0_18px_55px_rgba(58,45,19,.09)] ${card}`}><div className="flex items-center justify-between"><span className="text-[9px] font-black uppercase tracking-[.17em] opacity-45">{label}</span><Icon className="h-4 w-4 opacity-55" /></div><b className="mt-4 block truncate text-2xl font-black tracking-[-.05em]">{value}</b></article>)}
+      <section className="grid grid-cols-2 gap-3 xl:grid-cols-5"><Metric label="Productos" value={String(products.length)} note="Catálogo total" icon={Package} /><Metric label="Activos" value={String(metrics.active)} note="Visibles en tienda" icon={CheckCircle2} /><Metric label="Fichas listas" value={String(metrics.ready)} note="Contenido + imagen + SEO" icon={Sparkles} /><Metric label="Stock crítico" value={String(metrics.lowStock)} note="Entre 1 y 5 unidades" icon={AlertTriangle} tone={metrics.lowStock ? 'warning' : 'light'} /><Metric label="Valor inventario" value={money(metrics.value)} note="Precio × unidades" icon={Boxes} tone="dark" /></section>
+
+      {selectedIds.length ? <section className="sticky top-20 z-30 flex flex-col gap-3 rounded-2xl bg-[#111214]/96 p-3 text-white shadow-xl backdrop-blur-xl sm:flex-row sm:items-center sm:justify-between"><div><p className="text-sm font-black">{selectedIds.length} seleccionado{selectedIds.length === 1 ? '' : 's'}</p><p className="text-[11px] text-white/40">Acciones rápidas sin abrir cada ficha.</p></div><div className="flex flex-wrap gap-2"><button type="button" onClick={() => void bulkPatch({ activo: true })} className="rounded-lg bg-emerald-600 px-3 py-2 text-xs font-black">Activar</button><button type="button" onClick={() => void bulkPatch({ activo: false })} className="rounded-lg bg-white/10 px-3 py-2 text-xs font-black">Ocultar</button><button type="button" onClick={() => void bulkPatch({ featured: true })} className="rounded-lg bg-[#f5c75d] px-3 py-2 text-xs font-black text-black">Destacar</button><button type="button" onClick={() => void bulkPatch({ featured: false })} className="rounded-lg bg-white/10 px-3 py-2 text-xs font-black">Quitar destacado</button><button type="button" onClick={() => setSelectedIds([])} className="rounded-lg border border-white/15 px-3 py-2 text-xs font-black">Cancelar</button></div></section> : null}
+
+      <section className="rounded-2xl border border-black/7 bg-[#efe6d6] p-3 shadow-sm sm:p-4"><div className="grid gap-2 lg:grid-cols-[minmax(0,1fr)_180px_190px]"><label className="relative"><Search className="absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-black/30" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar producto, SKU, EAN, categoría o proveedor" className="min-h-11 w-full rounded-xl border border-black/8 bg-white pl-10 pr-3 text-sm font-semibold outline-none focus:border-[#d18b16]" /></label><select value={filter} onChange={(event) => setFilter(event.target.value as Filter)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="all">Todos</option><option value="active">Activos</option><option value="hidden">Ocultos</option><option value="featured">Destacados</option><option value="low-stock">Stock crítico</option><option value="without-image">Sin imagen</option><option value="without-seo">SEO pendiente</option></select><select value={sort} onChange={(event) => setSort(event.target.value as Sort)} className="min-h-11 rounded-xl border border-black/8 bg-white px-3 text-xs font-black outline-none"><option value="newest">Más recientes</option><option value="name">Nombre A-Z</option><option value="price-desc">Precio mayor</option><option value="price-asc">Precio menor</option><option value="stock-asc">Stock menor</option></select></div></section>
+
+      <section className="overflow-hidden rounded-[1.6rem] border border-black/7 bg-[#fffaf0] shadow-sm">
+        <div className="hidden grid-cols-[46px_minmax(280px,1fr)_150px_120px_92px_110px_116px] items-center gap-3 border-b border-black/7 bg-[#f1e8d8] px-4 py-3 text-[9px] font-black uppercase tracking-[.14em] text-black/35 lg:grid"><span></span><span>Producto</span><span>Precio</span><span>Stock</span><span>SEO</span><span>Estado</span><span>Acciones</span></div>
+        {loading ? <div className="grid min-h-64 place-items-center text-sm text-black/40"><span className="inline-flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" />Cargando catálogo…</span></div> : filtered.length === 0 ? <div className="grid min-h-64 place-items-center p-6 text-center"><div><Package className="mx-auto h-9 w-9 text-black/15" /><p className="mt-3 text-sm font-black">No hay productos para este filtro.</p><button type="button" onClick={openCreate} className="mt-4 rounded-xl bg-[#111214] px-4 py-2.5 text-xs font-black text-[#f5c75d]">Crear producto</button></div></div> : <div className="divide-y divide-black/[0.06]">{filtered.map((product) => {
+          const selected = selectedSet.has(product.id);
+          const category = resolveCategoryName(product.category_id || undefined, categoryMap);
+          const productMargin = margin(product);
+          const low = numberValue(product.stock) > 0 && numberValue(product.stock) <= 5;
+          return <article key={product.id} onDoubleClick={() => openEdit(product)} className={`grid gap-3 px-3 py-3 transition hover:bg-[#fff5df] sm:px-4 lg:grid-cols-[46px_minmax(280px,1fr)_150px_120px_92px_110px_116px] lg:items-center ${selected ? 'bg-[#fff0bd]/45' : ''}`}>
+            <button type="button" onClick={() => setSelectedIds((current) => current.includes(product.id) ? current.filter((id) => id !== product.id) : [...current, product.id])} className={`absolute right-3 mt-1 grid h-9 w-9 place-items-center rounded-xl lg:static lg:right-auto lg:mt-0 ${selected ? 'bg-[#f5c75d] text-black' : 'bg-black/[0.05] text-black/25'}`} aria-label="Seleccionar producto">{selected ? <Check className="h-4 w-4" /> : null}</button>
+            <div className="flex min-w-0 items-center gap-3 pr-12 lg:pr-0">{product.image_url ? <img src={product.image_url} alt={product.name} className="h-14 w-14 shrink-0 rounded-xl border border-black/7 bg-white object-contain p-1" /> : <div className="grid h-14 w-14 shrink-0 place-items-center rounded-xl bg-black/[0.04] text-black/15"><Package className="h-5 w-5" /></div>}<div className="min-w-0"><div className="flex items-center gap-2"><p className="truncate text-sm font-black">{product.name}</p>{product.featured ? <Star className="h-3.5 w-3.5 shrink-0 fill-[#f5c75d] text-[#aa7416]" /> : null}</div><p className="mt-1 truncate text-[10px] font-bold uppercase tracking-[.11em] text-[#986a18]">{category}</p><div className="mt-1.5 flex flex-wrap gap-2 text-[10px] text-black/35">{product.sku ? <span>SKU {product.sku}</span> : null}<span>{galleryCount(product)} foto{galleryCount(product) === 1 ? '' : 's'}</span>{productMargin != null ? <span>Margen {productMargin}%</span> : null}</div></div></div>
+            <div className="flex items-center justify-between lg:block"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">Precio</span><div><p className="text-sm font-black">{money(product.price)}</p>{numberValue(product.discount_percentage) > 0 ? <p className="text-[10px] font-bold text-[#a76c0a]">-{numberValue(product.discount_percentage)}%</p> : null}</div></div>
+            <div className="flex items-center justify-between lg:block"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">Stock</span><span className={`inline-flex rounded-lg px-2.5 py-1.5 text-xs font-black ${low ? 'bg-red-100 text-red-700' : 'bg-black/[0.04] text-black/55'}`}>{numberValue(product.stock)}</span></div>
+            <div className="flex items-center justify-between lg:block"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">SEO</span><span className={`inline-flex items-center gap-1 rounded-lg px-2 py-1.5 text-[10px] font-black ${hasSeo(product) ? 'bg-emerald-100 text-emerald-800' : 'bg-amber-100 text-amber-800'}`}>{hasSeo(product) ? <CheckCircle2 className="h-3 w-3" /> : <Sparkles className="h-3 w-3" />}{hasSeo(product) ? 'Listo' : 'Pendiente'}</span></div>
+            <div className="flex items-center justify-between gap-2 lg:justify-start"><span className="text-[9px] font-black uppercase tracking-[.12em] text-black/30 lg:hidden">Activo</span><Toggle checked={product.activo !== false} onChange={(value) => void patchProduct(product, { activo: value })} label={`Activo: ${product.name}`} /></div>
+            <div className="flex justify-end gap-1.5"><button type="button" onClick={() => openEdit(product)} className="inline-flex min-h-9 flex-1 items-center justify-center gap-1.5 rounded-lg bg-[#111214] px-3 text-[10px] font-black text-white lg:flex-none"><Pencil className="h-3.5 w-3.5" />Editar</button><button type="button" onClick={() => setDeleteTarget(product)} className="grid h-9 w-9 place-items-center rounded-lg bg-red-50 text-red-700"><Trash2 className="h-3.5 w-3.5" /></button><button type="button" onClick={() => openEdit(product)} className="hidden h-9 w-9 place-items-center rounded-lg bg-black/[0.04] text-black/40 xl:grid"><ChevronRight className="h-4 w-4" /></button></div>
+          </article>;
+        })}</div>}
       </section>
 
-      {selectionMode ? <section className="sticky top-20 z-30 rounded-[1.6rem] bg-[#111214]/95 p-3 text-white shadow-2xl backdrop-blur-xl"><div className="flex flex-col gap-3 lg:flex-row lg:items-center lg:justify-between"><div><b className="text-sm">{selectedIds.length} seleccionado{selectedIds.length === 1 ? '' : 's'}</b><p className="text-xs text-white/40">Aplicar cambios sin abrir cada ficha.</p></div><div className="flex flex-wrap gap-2"><button onClick={() => void handleBulkPatch('activo', true)} className="rounded-xl bg-emerald-700 px-3 py-2 text-xs font-bold">Activar</button><button onClick={() => void handleBulkPatch('activo', false)} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold">Ocultar</button><button onClick={() => void handleBulkPatch('featured', true)} className="rounded-xl bg-yellow-400 px-3 py-2 text-xs font-bold text-black">Destacar</button><button onClick={() => void handleBulkPatch('featured', false)} className="rounded-xl bg-white/10 px-3 py-2 text-xs font-bold">Quitar destacado</button><button onClick={() => void handleBulkDelete()} className="rounded-xl bg-red-700 px-3 py-2 text-xs font-black">Eliminar</button><button onClick={() => setSelectedIds([])} className="rounded-xl border border-white/15 px-3 py-2 text-xs font-bold">Cancelar</button></div></div></section> : null}
+      {!loading ? <p className="px-2 text-[11px] font-semibold text-black/35">Mostrando {filtered.length} de {products.length} productos. Doble clic en una fila para editar.</p> : null}
 
-      <section className="rounded-[1.8rem] bg-[#e8dcc2] p-4 shadow-[0_20px_65px_rgba(58,45,19,.10)] sm:p-5">
-        <div className="grid gap-3 lg:grid-cols-[1fr_190px_auto_auto] lg:items-center"><div className="relative"><Search className="absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-black/35" /><input value={search} onChange={(event) => setSearch(event.target.value)} placeholder="Buscar nombre, categoría o proveedor" className="w-full rounded-2xl border border-black/10 bg-white/60 py-3.5 pl-11 pr-4 text-sm font-semibold text-black outline-none placeholder:text-black/30 focus:border-[#C97700]" /></div><select value={sort} onChange={(event) => setSort(event.target.value as SortMode)} className="rounded-2xl border border-black/10 bg-white/60 px-4 py-3.5 text-sm font-bold text-black outline-none"><option value="newest">Más recientes</option><option value="name">Nombre A-Z</option><option value="price_asc">Precio menor</option><option value="price_desc">Precio mayor</option><option value="stock_asc">Stock menor</option><option value="stock_desc">Stock mayor</option><option value="margin_desc">Mejor margen</option></select><div className="flex rounded-2xl bg-black/[0.07] p-1"><button onClick={() => setView('cards')} className={`rounded-xl px-3 py-2.5 text-xs font-black ${view === 'cards' ? 'bg-black text-yellow-300' : 'text-black/45'}`}><Eye className="mr-1 inline h-3.5 w-3.5" />Tarjetas</button><button onClick={() => setView('table')} className={`rounded-xl px-3 py-2.5 text-xs font-black ${view === 'table' ? 'bg-black text-yellow-300' : 'text-black/45'}`}><Settings2 className="mr-1 inline h-3.5 w-3.5" />Tabla</button></div><button onClick={toggleVisibleSelection} className="rounded-2xl bg-white/55 px-4 py-3.5 text-xs font-black">{allVisibleSelected ? 'Quitar visibles' : 'Seleccionar visibles'}</button></div>
-        <div className="mt-4 flex gap-2 overflow-x-auto pb-1">{filterOptions.map((category) => <button key={category} onClick={() => setActiveCategory(category)} className={`whitespace-nowrap rounded-full px-3 py-2 text-xs font-bold ${activeCategory === category ? 'bg-yellow-400 text-black' : 'bg-white/48 text-black/48 hover:text-black'}`}>{category}</button>)}</div>
-      </section>
+      <ProductImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={() => { setImportOpen(false); setLoading(true); void Promise.all([loadProducts(), reloadCategories()]); showToast('Importación completada y catálogo actualizado.'); }} />
+      <ProductCategoryManager open={categoriesOpen} categories={categories} productCounts={categoryCounts} onClose={() => setCategoriesOpen(false)} onChanged={reloadCategories} />
+      <UrlImportModal open={urlImportOpen} onClose={closeUrlImport} />
 
-      {loading ? <div className="flex items-center justify-center rounded-[1.8rem] bg-[#F2DFBB] py-24 text-sm text-black/45"><RefreshCw className="mr-2 h-4 w-4 animate-spin" />Cargando catálogo…</div> : sortedProducts.length === 0 ? <div className="flex flex-col items-center justify-center rounded-[1.8rem] bg-[#F2DFBB] py-24 text-sm text-black/45"><Package className="mb-3 h-10 w-10 text-black/20" /><span>No hay productos{search ? ` que coincidan con “${search}”` : ''}.</span><button onClick={() => router.push('/admin/productos/nuevo')} className="mt-5 rounded-full bg-black px-5 py-3 text-xs font-black text-yellow-300">Crear el primero</button></div> : view === 'cards' ? <div className="grid gap-4 md:grid-cols-2 2xl:grid-cols-3">{sortedProducts.map((product) => <ProductCard key={product.id} product={product} categoryName={resolveCategoryName(product.category_id, categoryMap)} selected={selectedSet.has(product.id)} selectionMode={selectionMode} onSelect={() => toggleSelected(product.id)} onLongPress={() => enterSelection(product.id)} onEdit={() => router.push(`/admin/productos/${product.id}/editar`)} onDelete={() => setDeleteTarget(product)} onToggle={(field, value) => handleToggle(product, field, value)} />)}</div> : <ProductsTable products={sortedProducts} selectedSet={selectedSet} categoryMap={categoryMap} onSelect={toggleSelected} onEdit={(id) => router.push(`/admin/productos/${id}/editar`)} onDelete={(product) => setDeleteTarget(product)} onToggle={handleToggle} />}
-
-      {!loading ? <p className="px-2 text-xs font-semibold text-black/38">Mostrando {sortedProducts.length} de {products.length} productos · Mantén presionada una tarjeta para selección múltiple.</p> : null}
-
-      <ProductImportModal open={importOpen} onClose={() => setImportOpen(false)} onImported={() => { setImportOpen(false); setLoading(true); void Promise.all([loadProducts(), reloadCategories()]); showToast('Productos importados y catálogo actualizado.'); }} />
-      <ProductCategoryManager open={categoriesOpen} categories={categories} productCounts={productCounts} onClose={() => setCategoriesOpen(false)} onChanged={reloadCategories} />
-      {deleteTarget ? <DeleteModal product={deleteTarget} onConfirm={() => handleDelete(deleteTarget)} onCancel={() => setDeleteTarget(null)} /> : null}
-      {toast ? <Toast message={toast.message} type={toast.type} /> : null}
+      {studio ? <div className="fixed inset-0 z-[130] bg-black/55 backdrop-blur-sm"><div className="absolute inset-y-0 right-0 w-full overflow-y-auto shadow-[-30px_0_90px_rgba(0,0,0,.28)] xl:w-[min(1180px,88vw)]"><ProductStudioEditor key={`${studio.mode}-${studio.product?.id || 'new'}`} mode={studio.mode} product={studio.product} onClose={closeStudio} onSaved={(saved) => { setProducts((current) => { const exists = current.some((item) => item.id === saved.id); return exists ? current.map((item) => item.id === saved.id ? saved : item) : [saved, ...current]; }); showToast(studio.mode === 'create' ? 'Producto creado correctamente.' : 'Cambios guardados.'); closeStudio(); }} /></div></div> : null}
+      {deleteTarget ? <DeleteModal product={deleteTarget} busy={deleting} onCancel={() => setDeleteTarget(null)} onConfirm={() => void deleteProduct()} /> : null}
+      {toast ? <div className={`fixed bottom-20 right-4 z-[170] max-w-sm rounded-xl border px-4 py-3 text-sm font-semibold shadow-2xl backdrop-blur-xl md:bottom-5 ${toast.type === 'ok' ? 'border-emerald-300 bg-emerald-50/95 text-emerald-800' : 'border-red-300 bg-red-50/95 text-red-800'}`}>{toast.text}</div> : null}
     </AdminPage>
   );
 }

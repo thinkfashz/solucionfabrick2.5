@@ -40,12 +40,14 @@ const NATIVE_DESIGN_PATHS = new Set([
   '/admin/inventario/scan',
   '/admin/inventario/movimientos',
   '/admin/clientes',
+  '/admin/proyectos',
   '/admin/sql',
   '/admin/setup',
   '/admin/ml',
 ]);
 
 function resolveAdminDesign(pathname: string) {
+  if (/^\/admin\/intelligence(\/|$)/.test(pathname)) return 'native';
   return NATIVE_DESIGN_PATHS.has(pathname) ? 'native' : 'legacy';
 }
 

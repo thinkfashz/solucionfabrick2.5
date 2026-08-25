@@ -1,5 +1,5 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminSession } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { getMercadoLibreBestSellers } from '@/lib/marketIntel';
 
 export const dynamic = 'force-dynamic';
@@ -8,12 +8,12 @@ export const runtime = 'nodejs';
 /**
  * GET /api/admin/market-intel/winners?q=…&limit=20&site=MLC
  *
- * Lista productos "ganadores" — más vendidos en MercadoLibre para una
- * keyword. Útil para detectar oportunidades y posicionamiento.
+ * Lista referencias más vendidas de la fuente pública de Mercado Libre. El
+ * dato es público, pero el acceso al módulo exige products:read.
  */
 export async function GET(request: NextRequest) {
-	const session = await getAdminSession(request);
-	if (!session) return adminUnauthorized();
+	const auth = await requireAdminPermission(request, { resource: 'products', action: 'read' });
+	if (!auth.ok) return auth.response;
 	const q = request.nextUrl.searchParams.get('q')?.trim() ?? '';
 	if (!q) return NextResponse.json({ error: 'Falta el parámetro "q".' }, { status: 400 });
 	const limit = Math.min(Math.max(Number(request.nextUrl.searchParams.get('limit') ?? '20') || 20, 1), 50);

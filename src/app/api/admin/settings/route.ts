@@ -9,6 +9,8 @@ import { CMS_CACHE_TAGS } from '@/lib/cms';
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
+const DEFAULT_TENANT = '00000000-0000-0000-0000-000000000001';
+
 /**
  * Whitelisted setting keys editable from /admin/configuracion. We use the
  * existing tenant-aware `configuracion` table (clave/valor).
@@ -44,6 +46,36 @@ function isSettingKey(v: unknown): v is SettingKey {
   return typeof v === 'string' && (SETTING_KEYS as readonly string[]).includes(v);
 }
 
+async function applyLegacyBusinessFallback(client: ReturnType<typeof getAdminInsforge>, tenantId: string, settings: Record<string, string>) {
+  if (tenantId !== DEFAULT_TENANT) return;
+  const missingBusinessField = !settings.nombre_empresa || !settings.rut_empresa || !settings.direccion || !settings.ciudad || !settings.whatsapp || !settings.email_contacto || !settings.sitio_web;
+  if (!missingBusinessField) return;
+
+  try {
+    const { data } = await client.database
+      .from('business_config')
+      .select('id,nombre,rut,direccion,ciudad,whatsapp,email_contacto,sitio_web')
+      .eq('id', 'main')
+      .limit(1);
+    const legacy = Array.isArray(data) ? data[0] as Record<string, unknown> | undefined : undefined;
+    if (!legacy) return;
+    const map: Record<string, string> = {
+      nombre_empresa: String(legacy.nombre ?? ''),
+      rut_empresa: String(legacy.rut ?? ''),
+      direccion: String(legacy.direccion ?? ''),
+      ciudad: String(legacy.ciudad ?? ''),
+      whatsapp: String(legacy.whatsapp ?? ''),
+      email_contacto: String(legacy.email_contacto ?? ''),
+      sitio_web: String(legacy.sitio_web ?? ''),
+    };
+    for (const [key, value] of Object.entries(map)) {
+      if (!settings[key] && value) settings[key] = value;
+    }
+  } catch {
+    // Legacy table is optional. Tenant settings remain the canonical source.
+  }
+}
+
 export async function GET(request: NextRequest) {
   try {
     const auth = await requireAdminPermission(request, { resource: 'settings', action: 'read' });
@@ -64,6 +96,7 @@ export async function GET(request: NextRequest) {
         settings[row.clave] = row.valor ?? '';
       }
     }
+    await applyLegacyBusinessFallback(client, tenantId, settings);
     return NextResponse.json({ settings });
   } catch (err) {
     return adminError(err, 'SETTINGS_GET_FAILED');

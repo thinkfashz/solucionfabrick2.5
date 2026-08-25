@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
-import { insforge } from '@/lib/insforge';
+import { CheckCircle2, RefreshCw, Truck } from 'lucide-react';
+import { AdminCard, AdminPage, AdminPageHeader, AdminStat } from '@/components/admin/ui';
 
 type DeliveryStatus = 'pendiente' | 'en_camino' | 'entregado' | 'fallido';
 
@@ -16,408 +17,191 @@ interface Delivery {
   status: DeliveryStatus;
   notes?: string;
   created_at: string;
-  updated_at: string;
+  updated_at?: string;
 }
 
 const STATUS_COLORS: Record<DeliveryStatus, string> = {
-  pendiente:  '#F5871F',
-  en_camino:  '#8b5cf6',
-  entregado:  '#22c55e',
-  fallido:    '#ef4444',
+  pendiente: '#F5871F',
+  en_camino: '#8b5cf6',
+  entregado: '#22c55e',
+  fallido: '#ef4444',
 };
 
 const STATUS_LABELS: Record<DeliveryStatus, string> = {
-  pendiente:  'Pendiente',
-  en_camino:  'En camino',
-  entregado:  'Entregado',
-  fallido:    'Fallido',
+  pendiente: 'Pendiente',
+  en_camino: 'En camino',
+  entregado: 'Entregado',
+  fallido: 'Fallido',
 };
 
 const ALL_STATUSES = Object.keys(STATUS_LABELS) as DeliveryStatus[];
-
 const POLL_INTERVAL_MS = 30_000;
+const actionClass = 'inline-flex min-h-10 items-center justify-center gap-2 rounded-xl border border-black/10 bg-white/70 px-3.5 text-xs font-black text-[#5f594f] transition hover:bg-white disabled:opacity-45';
+const inputClass = 'min-h-10 rounded-xl border border-black/10 bg-white px-3 text-xs font-semibold text-[#171612] outline-none focus:border-[#c77a00]/45 focus:ring-2 focus:ring-[#ffb000]/10 disabled:opacity-40';
 
 function shortId(id: string) {
   return id.slice(-8).toUpperCase();
 }
 
 export default function EntregasPage() {
-  const [deliveries, setDeliveries]   = useState<Delivery[]>([]);
-  const [loading, setLoading]         = useState(true);
-  const [connected, setConnected]     = useState(false);
-  const [filter, setFilter]           = useState<DeliveryStatus | 'todos'>('todos');
-  const [saving, setSaving]           = useState<string | null>(null);
-  const [editState, setEditState]     = useState<Record<string, { responsible: string; estimatedDate: string }>>({});
-  const isMounted                     = useRef(true);
-  const pollTimer                     = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const [deliveries, setDeliveries] = useState<Delivery[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [filter, setFilter] = useState<DeliveryStatus | 'todos'>('todos');
+  const [saving, setSaving] = useState<string | null>(null);
+  const [editState, setEditState] = useState<Record<string, { responsible: string; estimatedDate: string }>>({});
+  const [message, setMessage] = useState('');
+  const [lastSync, setLastSync] = useState<Date | null>(null);
+  const mountedRef = useRef(true);
 
-  const fetchDeliveries = useCallback(async () => {
-    const { data, error } = await insforge.database
-      .from('deliveries')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (!error && data && isMounted.current) {
-      setDeliveries(data as Delivery[]);
+  const fetchDeliveries = useCallback(async (silent = false) => {
+    if (!silent) setLoading(true);
+    try {
+      const response = await fetch('/api/admin/deliveries', { cache: 'no-store' });
+      const json = await response.json();
+      if (!response.ok) throw new Error(json.error || 'No se pudieron cargar las entregas.');
+      if (!mountedRef.current) return;
+      setDeliveries(Array.isArray(json.deliveries) ? json.deliveries : []);
+      setLastSync(new Date());
+      if (!silent) setMessage('');
+    } catch (error) {
+      if (mountedRef.current && !silent) setMessage(error instanceof Error ? error.message : 'No se pudieron cargar las entregas.');
+    } finally {
+      if (mountedRef.current && !silent) setLoading(false);
     }
-    if (isMounted.current) setLoading(false);
-  }, []);
-
-  const applyPatch = useCallback((payload: Partial<Delivery> & { operation?: string }) => {
-    if (!payload.id || !isMounted.current) return;
-    setDeliveries((prev) => {
-      const idx = prev.findIndex((d) => d.id === payload.id);
-      if (idx === -1) return [payload as Delivery, ...prev];
-      const updated = [...prev];
-      updated[idx] = { ...updated[idx], ...payload };
-      return updated;
-    });
   }, []);
 
   useEffect(() => {
-    isMounted.current = true;
-    fetchDeliveries();
-
-    let cleanup = false;
-    let realtimeOk = false;
-
-    (async () => {
-      const startPolling = () => {
-        if (pollTimer.current) return; // already running
-        const poll = () => {
-          if (!isMounted.current) return;
-          void fetchDeliveries();
-          pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
-        };
-        pollTimer.current = setTimeout(poll, POLL_INTERVAL_MS);
-      };
-
-      const stopPolling = () => {
-        if (pollTimer.current) {
-          clearTimeout(pollTimer.current);
-          pollTimer.current = null;
-        }
-      };
-
-      try {
-        await insforge.realtime.connect();
-        if (cleanup) return;
-
-        const { ok } = await insforge.realtime.subscribe('deliveries');
-        if (!ok || cleanup) {
-          realtimeOk = false;
-        } else {
-          realtimeOk = true;
-          if (isMounted.current) setConnected(true);
-
-          insforge.realtime.on('INSERT_delivery', (p: Partial<Delivery> & { operation?: string }) => {
-            if (isMounted.current) applyPatch({ ...p, operation: 'INSERT' });
-          });
-          insforge.realtime.on('UPDATE_delivery', (p: Partial<Delivery> & { operation?: string }) => {
-            if (isMounted.current) applyPatch({ ...p, operation: 'UPDATE' });
-          });
-          insforge.realtime.on('connect', () => {
-            if (isMounted.current) {
-              setConnected(true);
-              stopPolling();
-            }
-          });
-          insforge.realtime.on('disconnect', () => {
-            if (isMounted.current) {
-              setConnected(false);
-              startPolling();
-            }
-          });
-        }
-      } catch {
-        realtimeOk = false;
-      }
-
-      if (!realtimeOk && !cleanup && isMounted.current) {
-        startPolling();
-      }
-    })();
-
+    mountedRef.current = true;
+    void fetchDeliveries();
+    const timer = window.setInterval(() => { void fetchDeliveries(true); }, POLL_INTERVAL_MS);
     return () => {
-      cleanup = true;
-      isMounted.current = false;
-      if (pollTimer.current) clearTimeout(pollTimer.current);
-      try {
-        insforge.realtime.unsubscribe('deliveries');
-        insforge.realtime.disconnect();
-      } catch { /* ignorar */ }
+      mountedRef.current = false;
+      window.clearInterval(timer);
     };
-  }, [fetchDeliveries, applyPatch]);
+  }, [fetchDeliveries]);
 
   const getEdit = (id: string, delivery: Delivery) =>
     editState[id] ?? {
-      responsible:   delivery.responsible ?? '',
+      responsible: delivery.responsible ?? '',
       estimatedDate: delivery.estimated_date ? delivery.estimated_date.slice(0, 10) : '',
     };
 
-  const setEdit = (id: string, field: 'responsible' | 'estimatedDate', value: string) => {
-    const delivery = deliveries.find((d) => d.id === id);
-    if (!delivery) return;
-    setEditState((prev) => ({
-      ...prev,
+  const setEdit = (id: string, delivery: Delivery, field: 'responsible' | 'estimatedDate', value: string) => {
+    setEditState((current) => ({
+      ...current,
       [id]: { ...getEdit(id, delivery), [field]: value },
     }));
   };
 
-  const handleSave = async (delivery: Delivery) => {
-    const edit = getEdit(delivery.id, delivery);
+  async function patchDelivery(delivery: Delivery, patch: Record<string, unknown>) {
     setSaving(delivery.id);
-
-    const payload: Partial<Delivery> = {
-      responsible:    edit.responsible.trim() || undefined,
-      estimated_date: edit.estimatedDate || undefined,
-      updated_at:     new Date().toISOString(),
-    };
-
-    const { error: saveErr } = await insforge.database
-      .from('deliveries')
-      .update(payload)
-      .eq('id', delivery.id);
-
-    if (!saveErr) {
-      setDeliveries((prev) =>
-        prev.map((d) => d.id === delivery.id ? { ...d, ...payload } : d),
-      );
-    }
-    setSaving(null);
-  };
-
-  const handleMarkDelivered = async (delivery: Delivery) => {
-    setSaving(delivery.id);
-    const now = new Date().toISOString();
-
-    const { error: deliveryErr } = await insforge.database
-      .from('deliveries')
-      .update({ status: 'entregado', updated_at: now })
-      .eq('id', delivery.id);
-
-    if (deliveryErr) {
+    setMessage('');
+    try {
+      const response = await fetch('/api/admin/deliveries', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: delivery.id, ...patch }),
+      });
+      const json = await response.json();
+      if (!response.ok && response.status !== 207) throw new Error(json.error || 'No se pudo actualizar la entrega.');
+      const updated = json.delivery as Delivery | undefined;
+      if (updated) setDeliveries((current) => current.map((item) => item.id === delivery.id ? { ...item, ...updated } : item));
+      else await fetchDeliveries(true);
+      if (json.warning) setMessage(json.warning);
+      else setMessage('Entrega actualizada correctamente.');
+      return true;
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : 'No se pudo actualizar la entrega.');
+      return false;
+    } finally {
       setSaving(null);
-      return;
     }
+  }
 
-    // Sync order status (best-effort — delivery is already marked)
-    const { error: orderSyncErr } = await insforge.database
-      .from('orders')
-      .update({ status: 'entregado' })
-      .eq('id', delivery.order_id);
+  async function handleSave(delivery: Delivery) {
+    const edit = getEdit(delivery.id, delivery);
+    const ok = await patchDelivery(delivery, {
+      responsible: edit.responsible.trim() || null,
+      estimated_date: edit.estimatedDate || null,
+    });
+    if (ok) setEditState((current) => {
+      const next = { ...current };
+      delete next[delivery.id];
+      return next;
+    });
+  }
 
-    if (orderSyncErr) {
-      console.warn('Entrega marcada, pero no se pudo sincronizar el estado del pedido:', orderSyncErr);
-      window.alert(
-        'La entrega se marcó como entregada, pero no se pudo actualizar el estado del pedido. Verifica la sincronización en el detalle del pedido.'
-      );
-    }
+  async function handleMarkDelivered(delivery: Delivery) {
+    await patchDelivery(delivery, { status: 'entregado' });
+  }
 
-    setDeliveries((prev) =>
-      prev.map((d) => d.id === delivery.id ? { ...d, status: 'entregado', updated_at: now } : d),
-    );
-    setSaving(null);
-  };
-
-  const filtered = filter === 'todos' ? deliveries : deliveries.filter((d) => d.status === filter);
+  const filtered = useMemo(() => filter === 'todos' ? deliveries : deliveries.filter((delivery) => delivery.status === filter), [deliveries, filter]);
+  const pending = useMemo(() => deliveries.filter((delivery) => delivery.status === 'pendiente').length, [deliveries]);
+  const onRoute = useMemo(() => deliveries.filter((delivery) => delivery.status === 'en_camino').length, [deliveries]);
+  const delivered = useMemo(() => deliveries.filter((delivery) => delivery.status === 'entregado').length, [deliveries]);
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-black via-zinc-950 to-black text-white">
-      {/* Header */}
-      <div className="border-b border-white/5 px-6 py-6 md:px-12">
-        <div className="mx-auto max-w-7xl flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-bold uppercase tracking-[0.35em] text-yellow-400">Admin</p>
-            <h1 className="mt-1 text-2xl font-black uppercase tracking-tight md:text-3xl">Gestión de Entregas</h1>
-          </div>
-          <div className="flex items-center gap-3">
-            <span
-              className="flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest"
-              style={{ background: connected ? '#22c55e22' : '#F5871F22', color: connected ? '#22c55e' : '#F5871F' }}
-            >
-              <span className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: connected ? '#22c55e' : '#F5871F' }} />
-              {connected ? 'Realtime' : 'Polling'}
-            </span>
-            <button
-              onClick={fetchDeliveries}
-              className="rounded-full border border-white/10 px-4 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 transition hover:border-yellow-400/50 hover:text-yellow-400"
-            >
-              Actualizar
-            </button>
-            <Link
-              href="/admin/pedidos"
-              className="rounded-full bg-yellow-400 px-4 py-1.5 text-[10px] font-black uppercase tracking-widest text-black transition hover:bg-white"
-            >
-              Pedidos
-            </Link>
-          </div>
-        </div>
+    <AdminPage>
+      <AdminPageHeader
+        eyebrow="Pedidos · Logística"
+        title="Gestión de entregas"
+        description="Seguimiento operativo tenant-aware. La pantalla ya no lee ni escribe la base directamente desde el navegador."
+        icon={Truck}
+        actions={<><Link href="/admin/pedidos" className={actionClass}>Pedidos</Link><button type="button" onClick={() => void fetchDeliveries()} disabled={loading} className={actionClass}><RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Actualizar</button></>}
+      />
+
+      <section className="grid gap-3 sm:grid-cols-3">
+        <AdminStat label="Pendientes" value={pending} icon={Truck} hint="Preparación / despacho" />
+        <AdminStat label="En camino" value={onRoute} icon={Truck} accent="cyan" hint="Despachos activos" />
+        <AdminStat label="Entregadas" value={delivered} icon={CheckCircle2} accent="emerald" hint={`${deliveries.length} en total`} />
+      </section>
+
+      <div className="flex flex-col gap-2 rounded-xl border border-black/10 bg-white/60 px-4 py-3 text-xs text-[#716b60] sm:flex-row sm:items-center sm:justify-between">
+        <span>Actualización automática cada 30 s mediante API segura.</span>
+        <span>{lastSync ? `Última sincronización ${lastSync.toLocaleTimeString('es-CL')}` : 'Sincronizando…'}</span>
       </div>
 
-      <div className="mx-auto max-w-7xl px-6 py-8 md:px-12">
-        {/* Filtros */}
-        <div className="mb-6 flex flex-wrap gap-2">
-          <button
-            onClick={() => setFilter('todos')}
-            className={`rounded-full px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition ${
-              filter === 'todos'
-                ? 'bg-yellow-400 text-black'
-                : 'border border-white/10 text-zinc-400 hover:border-yellow-400/40 hover:text-yellow-400'
-            }`}
-          >
-            Todas ({deliveries.length})
-          </button>
-          {ALL_STATUSES.map((s) => {
-            const count = deliveries.filter((d) => d.status === s).length;
-            return (
-              <button
-                key={s}
-                onClick={() => setFilter(s)}
-                className={`rounded-full px-4 py-2 text-[10px] font-bold uppercase tracking-widest transition ${
-                  filter === s ? 'text-black' : 'border border-white/10 text-zinc-400 hover:text-white'
-                }`}
-                style={filter === s ? { background: STATUS_COLORS[s] } : { borderColor: `${STATUS_COLORS[s]}33` }}
-              >
-                {STATUS_LABELS[s]} ({count})
-              </button>
-            );
-          })}
-        </div>
+      {message ? <div className="rounded-xl border border-black/8 bg-white/70 px-4 py-3 text-sm text-[#5f594f]">{message}</div> : null}
 
-        {/* Tabla */}
-        <div className="rounded-[1.5rem] border border-white/5 bg-white/[0.02] overflow-hidden">
-          {loading ? (
-            <div className="flex items-center justify-center py-24 text-zinc-500 text-sm">Cargando entregas…</div>
-          ) : filtered.length === 0 ? (
-            <div className="flex items-center justify-center py-24 text-zinc-500 text-sm">
-              No hay entregas{filter !== 'todos' ? ` con estado "${STATUS_LABELS[filter as DeliveryStatus]}"` : ''}.
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <table className="w-full text-sm">
-                <thead>
-                  <tr className="border-b border-white/5">
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-zinc-500">Pedido ID</th>
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-zinc-500">Cliente</th>
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-zinc-500">Dirección</th>
-                    <th className="px-5 py-4 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-500">Fecha Est.</th>
-                    <th className="px-5 py-4 text-left text-[10px] font-bold uppercase tracking-widest text-zinc-500">Responsable</th>
-                    <th className="px-5 py-4 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-500">Estado</th>
-                    <th className="px-5 py-4 text-center text-[10px] font-bold uppercase tracking-widest text-zinc-500">Acciones</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.map((delivery, i) => {
-                    const edit        = getEdit(delivery.id, delivery);
-                    const isSaving    = saving === delivery.id;
-                    const isDelivered = delivery.status === 'entregado';
-
-                    return (
-                      <tr
-                        key={delivery.id}
-                        className={`border-b border-white/5 transition hover:bg-white/[0.03] ${i % 2 === 0 ? '' : 'bg-white/[0.01]'}`}
-                      >
-                        {/* Pedido ID */}
-                        <td className="px-5 py-4">
-                          <Link
-                            href={`/admin/pedidos/${delivery.order_id}`}
-                            className="font-mono text-xs text-yellow-400 hover:underline"
-                          >
-                            {shortId(delivery.order_id)}
-                          </Link>
-                        </td>
-
-                        {/* Cliente */}
-                        <td className="px-5 py-4 font-semibold text-white whitespace-nowrap">
-                          {delivery.customer_name}
-                        </td>
-
-                        {/* Dirección */}
-                        <td className="px-5 py-4 max-w-[200px]">
-                          <span className="block truncate text-xs text-zinc-400" title={delivery.address}>
-                            {delivery.address || '—'}
-                          </span>
-                        </td>
-
-                        {/* Fecha estimada */}
-                        <td className="px-5 py-4 text-center">
-                          <input
-                            type="date"
-                            value={edit.estimatedDate}
-                            onChange={(e) => setEdit(delivery.id, 'estimatedDate', e.target.value)}
-                            disabled={isDelivered}
-                            className="rounded-lg border border-white/10 bg-zinc-900 px-2 py-1 text-xs text-white outline-none focus:border-yellow-400/50 disabled:opacity-40"
-                          />
-                        </td>
-
-                        {/* Responsable */}
-                        <td className="px-5 py-4">
-                          <input
-                            type="text"
-                            value={edit.responsible}
-                            onChange={(e) => setEdit(delivery.id, 'responsible', e.target.value)}
-                            disabled={isDelivered}
-                            placeholder="Asignar…"
-                            className="w-full rounded-lg border border-white/10 bg-zinc-900 px-3 py-1.5 text-xs text-white placeholder-zinc-600 outline-none focus:border-yellow-400/50 disabled:opacity-40"
-                          />
-                        </td>
-
-                        {/* Estado */}
-                        <td className="px-5 py-4 text-center">
-                          <span
-                            className="inline-flex items-center rounded-full px-3 py-1 text-[10px] font-bold uppercase tracking-widest"
-                            style={{
-                              background: `${STATUS_COLORS[delivery.status] ?? '#BFB8AC'}22`,
-                              color: STATUS_COLORS[delivery.status] ?? '#BFB8AC',
-                            }}
-                          >
-                            {STATUS_LABELS[delivery.status] ?? delivery.status}
-                          </span>
-                        </td>
-
-                        {/* Acciones */}
-                        <td className="px-5 py-4">
-                          <div className="flex items-center justify-center gap-2">
-                            {!isDelivered && (
-                              <>
-                                <button
-                                  onClick={() => handleSave(delivery)}
-                                  disabled={isSaving}
-                                  className="rounded-full border border-white/10 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-zinc-400 transition hover:border-yellow-400/40 hover:text-yellow-400 disabled:opacity-40"
-                                >
-                                  {isSaving ? '…' : 'Guardar'}
-                                </button>
-                                <button
-                                  onClick={() => handleMarkDelivered(delivery)}
-                                  disabled={isSaving}
-                                  className="rounded-full bg-green-500/20 px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest text-green-400 transition hover:bg-green-500/30 disabled:opacity-40"
-                                >
-                                  Entregado
-                                </button>
-                              </>
-                            )}
-                            {isDelivered && (
-                              <span className="text-[10px] font-bold uppercase tracking-widest text-green-400/50">
-                                ✓ Completado
-                              </span>
-                            )}
-                          </div>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </div>
-          )}
-        </div>
-
-        <p className="mt-4 text-xs text-zinc-600">
-          {filtered.length} entrega{filtered.length !== 1 ? 's' : ''} mostrada{filtered.length !== 1 ? 's' : ''}
-          {!connected && ' · Actualización automática cada 30 s'}
-        </p>
+      <div className="flex flex-wrap gap-2">
+        <button onClick={() => setFilter('todos')} className={`rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-widest transition ${filter === 'todos' ? 'bg-[#171612] text-white' : 'border border-black/10 bg-white/60 text-[#716b60]'}`}>Todas ({deliveries.length})</button>
+        {ALL_STATUSES.map((status) => {
+          const count = deliveries.filter((delivery) => delivery.status === status).length;
+          return <button key={status} onClick={() => setFilter(status)} className="rounded-full border px-4 py-2 text-[10px] font-black uppercase tracking-widest" style={filter === status ? { background: STATUS_COLORS[status], color: '#fff', borderColor: STATUS_COLORS[status] } : { color: STATUS_COLORS[status], borderColor: `${STATUS_COLORS[status]}45`, background: '#ffffff99' }}>{STATUS_LABELS[status]} ({count})</button>;
+        })}
       </div>
-    </div>
+
+      <AdminCard className="p-0 sm:p-0">
+        {loading ? (
+          <div className="px-5 py-20 text-center text-sm text-[#817a6f]">Cargando entregas…</div>
+        ) : filtered.length === 0 ? (
+          <div className="px-5 py-20 text-center text-sm text-[#817a6f]">No hay entregas para este filtro.</div>
+        ) : (
+          <div className="overflow-x-auto">
+            <table className="w-full min-w-[980px] text-sm">
+              <thead><tr className="border-b border-black/8 bg-black/[.025]">{['Pedido', 'Cliente', 'Dirección', 'Fecha est.', 'Responsable', 'Estado', 'Acciones'].map((heading) => <th key={heading} className="px-4 py-3 text-left text-[10px] font-black uppercase tracking-[.12em] text-[#817a6f]">{heading}</th>)}</tr></thead>
+              <tbody className="divide-y divide-black/6">
+                {filtered.map((delivery) => {
+                  const edit = getEdit(delivery.id, delivery);
+                  const isSaving = saving === delivery.id;
+                  const isDelivered = delivery.status === 'entregado';
+                  return (
+                    <tr key={delivery.id} className="bg-white/35 hover:bg-white/70">
+                      <td className="px-4 py-4"><Link href={`/admin/pedidos/${delivery.order_id}`} className="font-mono text-xs font-black text-[#9b6a12] hover:underline">{shortId(delivery.order_id)}</Link></td>
+                      <td className="px-4 py-4 font-bold text-[#171612]">{delivery.customer_name || '—'}</td>
+                      <td className="max-w-[240px] px-4 py-4"><span className="block truncate text-xs text-[#716b60]" title={delivery.address}>{delivery.address || '—'}</span></td>
+                      <td className="px-4 py-4"><input type="date" value={edit.estimatedDate} onChange={(event) => setEdit(delivery.id, delivery, 'estimatedDate', event.target.value)} disabled={isDelivered || isSaving} className={inputClass} /></td>
+                      <td className="px-4 py-4"><input value={edit.responsible} onChange={(event) => setEdit(delivery.id, delivery, 'responsible', event.target.value)} disabled={isDelivered || isSaving} placeholder="Responsable" className={`${inputClass} w-40`} /></td>
+                      <td className="px-4 py-4"><span className="inline-flex rounded-full px-3 py-1.5 text-[10px] font-black uppercase tracking-widest text-white" style={{ background: STATUS_COLORS[delivery.status] }}>{STATUS_LABELS[delivery.status]}</span></td>
+                      <td className="px-4 py-4"><div className="flex gap-2"><button type="button" onClick={() => void handleSave(delivery)} disabled={isDelivered || isSaving} className={actionClass}>{isSaving ? 'Guardando…' : 'Guardar'}</button>{!isDelivered ? <button type="button" onClick={() => void handleMarkDelivered(delivery)} disabled={isSaving} className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-emerald-600 px-3.5 text-xs font-black text-white disabled:opacity-45"><CheckCircle2 className="h-4 w-4" /> Entregado</button> : null}</div></td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </AdminCard>
+    </AdminPage>
   );
 }

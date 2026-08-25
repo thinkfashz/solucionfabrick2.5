@@ -17,20 +17,17 @@ import { StepChart, StatusBadge } from '@/components/admin/ui';
 type Order = ReturnType<typeof normalizeOrderRecord>;
 
 const ALL_STATUSES = Object.keys(ORDER_STATUS_LABELS) as OrderStatus[];
-
 const POLL_INTERVAL_MS = 30_000;
 
 export default function PedidosPage() {
-  const [orders, setOrders]         = useState<Order[]>([]);
-  const [loading, setLoading]       = useState(true);
-  const [connected, setConnected]   = useState(false);
-  const [filter, setFilter]         = useState<OrderStatus | 'todos'>('todos');
-  // Plan §3 — vista alterna en planilla densa (persistida en localStorage).
+  const [orders, setOrders] = useState<Order[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [connected, setConnected] = useState(false);
+  const [filter, setFilter] = useState<OrderStatus | 'todos'>('todos');
   const [view, setView] = useState<'cards' | 'table'>('table');
-  const isMounted                   = useRef(true);
-  const pollTimer                   = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isMounted = useRef(true);
+  const pollTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // Restore the user's preferred view across navigations.
   useEffect(() => {
     if (typeof window === 'undefined') return;
     const stored = window.localStorage.getItem('admin:pedidos:view');
@@ -42,27 +39,28 @@ export default function PedidosPage() {
   }, [view]);
 
   const fetchOrders = useCallback(async () => {
-    const { data, error } = await insforge.database
-      .from('orders')
-      .select('id, customer_name, customer_email, total, currency, status, created_at')
-      .order('created_at', { ascending: false });
-
-    if (!error && data && isMounted.current) {
-      setOrders((data as Record<string, unknown>[]).map((order) => normalizeOrderRecord(order)));
+    try {
+      const response = await fetch('/api/admin/orders?limit=200', { cache: 'no-store' });
+      const json = await response.json() as { orders?: Record<string, unknown>[] };
+      if (response.ok && Array.isArray(json.orders) && isMounted.current) {
+        setOrders(json.orders.map((order) => normalizeOrderRecord(order)));
+      }
+    } catch {
+      // Polling/realtime volverá a intentar. No rompe la última lista válida.
     }
     if (isMounted.current) setLoading(false);
   }, []);
 
   useEffect(() => {
     isMounted.current = true;
-    fetchOrders();
+    void fetchOrders();
 
     let cleanup = false;
     let realtimeOk = false;
 
     (async () => {
       const startPolling = () => {
-        if (pollTimer.current) return; // already running
+        if (pollTimer.current) return;
         const poll = () => {
           if (!isMounted.current) return;
           void fetchOrders();
@@ -108,7 +106,6 @@ export default function PedidosPage() {
         realtimeOk = false;
       }
 
-      // Fallback polling cuando realtime no está disponible
       if (!realtimeOk && !cleanup && isMounted.current) {
         startPolling();
       }
@@ -127,7 +124,6 @@ export default function PedidosPage() {
 
   const filtered = filter === 'todos' ? orders : orders.filter((o) => o.status === filter);
 
-  // Step chart series — pedidos por día (últimos 14 días).
   const dailyOrdersSeries = useMemo(() => {
     const now = new Date();
     const buckets: { x: number; y: number }[] = [];
@@ -148,7 +144,6 @@ export default function PedidosPage() {
 
   return (
     <div className="min-h-screen bg-gradient-to-b from-black via-zinc-950 to-black text-white">
-      {/* Header */}
       <div className="border-b border-white/5 px-6 py-6 md:px-12">
         <div className="mx-auto max-w-7xl flex items-center justify-between">
           <div>
@@ -180,7 +175,6 @@ export default function PedidosPage() {
       </div>
 
       <div className="mx-auto max-w-7xl px-6 py-8 md:px-12">
-        {/* Plan §3 — gráfica step animada de pedidos por día. */}
         <section className="mb-6 rounded-[1.5rem] border border-white/5 bg-white/[0.02] p-5">
           <div className="mb-2 flex items-center justify-between">
             <div>
@@ -217,7 +211,6 @@ export default function PedidosPage() {
           <StepChart data={dailyOrdersSeries} color="#FFB000" height={120} livePulse />
         </section>
 
-        {/* Filtros */}
         <div className="mb-6 flex flex-wrap gap-2">
           <button
             onClick={() => setFilter('todos')}
@@ -250,7 +243,6 @@ export default function PedidosPage() {
           })}
         </div>
 
-        {/* Tabla */}
         <div className="rounded-[1.5rem] border border-white/5 bg-white/[0.02] overflow-hidden">
           {loading ? (
             <div className="flex items-center justify-center py-24 text-zinc-500 text-sm">Cargando pedidos…</div>
@@ -259,7 +251,6 @@ export default function PedidosPage() {
               No hay pedidos{filter !== 'todos' ? ` con estado "${ORDER_STATUS_LABELS[filter as OrderStatus]}"` : ''}.
             </div>
           ) : view === 'cards' ? (
-            // Plan §3 — vista alternativa en grid de cards (densa pero legible).
             <div className="grid gap-3 p-4 sm:grid-cols-2 lg:grid-cols-3">
               {filtered.map((order) => (
                 <Link
@@ -270,12 +261,8 @@ export default function PedidosPage() {
                 >
                   <div className="flex items-start justify-between gap-3">
                     <div className="min-w-0">
-                      <div className="font-semibold text-white truncate">
-                        {order.customer_name}
-                      </div>
-                      <div className="text-xs text-zinc-500 truncate">
-                        {order.customer_email}
-                      </div>
+                      <div className="font-semibold text-white truncate">{order.customer_name}</div>
+                      <div className="text-xs text-zinc-500 truncate">{order.customer_email}</div>
                     </div>
                     <StatusBadge status={order.status} />
                   </div>
@@ -327,12 +314,8 @@ export default function PedidosPage() {
                           day: '2-digit', month: 'short', year: 'numeric',
                         })}
                       </td>
-                      <td className="px-6 py-4 text-right font-semibold text-white">
-                        {formatCLP(order.total)}
-                      </td>
-                      <td className="px-6 py-4 text-center">
-                        <StatusBadge status={order.status} />
-                      </td>
+                      <td className="px-6 py-4 text-right font-semibold text-white">{formatCLP(order.total)}</td>
+                      <td className="px-6 py-4 text-center"><StatusBadge status={order.status} /></td>
                       <td className="hidden md:table-cell px-6 py-4 text-center">
                         <Link
                           href={`/admin/pedidos/${order.id}`}

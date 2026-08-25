@@ -3,7 +3,6 @@
 import { useEffect, useMemo, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { FileText, Search, Calculator, Copy, CheckCircle2, RefreshCw } from 'lucide-react';
-import { insforge } from '@/lib/insforge';
 
 interface QuoteRow {
   id: string;
@@ -86,14 +85,10 @@ export default function AdminCotizacionesPage() {
     setError(null);
 
     try {
-      const { data, error: dbErr } = await insforge.database
-        .from('quotes')
-        .select(
-          'id,customer_name,customer_email,customer_phone,region,status,total,created_at',
-        )
-        .order('created_at', { ascending: false });
-      if (dbErr) throw dbErr;
-      setRows((data as QuoteRow[]) ?? []);
+      const response = await fetch('/api/admin/quotes', { cache: 'no-store' });
+      const json = await response.json() as { quotes?: QuoteRow[]; error?: string };
+      if (!response.ok) throw new Error(json.error || 'Error cargando cotizaciones');
+      setRows(Array.isArray(json.quotes) ? json.quotes : []);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Error cargando cotizaciones');
     } finally {
@@ -132,12 +127,14 @@ export default function AdminCotizacionesPage() {
     setSavingStatusId(id);
     setStatusMessage(null);
     try {
-      const { error: dbErr } = await insforge.database
-        .from('quotes')
-        .update({ status })
-        .eq('id', id);
-      if (dbErr) throw dbErr;
-      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
+      const response = await fetch('/api/admin/quotes', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, status }),
+      });
+      const json = await response.json() as { quote?: QuoteRow; error?: string };
+      if (!response.ok) throw new Error(json.error || 'No se pudo actualizar el estado.');
+      setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...(json.quote ?? {}), status } : r)));
       setStatusMessage(`Estado actualizado a ${STATUS_LABELS[status] ?? status}.`);
     } catch (err) {
       setStatusMessage(err instanceof Error ? err.message : 'No se pudo actualizar el estado.');
@@ -336,7 +333,7 @@ export default function AdminCotizacionesPage() {
               type="number"
               min={1}
               value={surface}
-            aria-label="Superficie en metros cuadrados"
+              aria-label="Superficie en metros cuadrados"
               onChange={(e) => setSurface(Number(e.target.value) || 1)}
               className="w-full rounded-xl border border-white/10 bg-black/40 px-3 py-2.5 text-sm text-white outline-none focus:border-yellow-400/40"
             />
@@ -454,7 +451,7 @@ function RangeControl({
         max={max}
         step={step}
         value={value}
-      aria-label={label}
+        aria-label={label}
         onChange={(e) => onChange(Number(e.target.value))}
         className="w-full accent-yellow-400"
       />

@@ -6,11 +6,11 @@
   "engines": { "node": "24.x" },
   "scripts": {
     "dev": "next dev",
-    "build": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build && node scripts/ensure-intelligence-schema.mjs && node scripts/ensure-inventory-schema.mjs",
+    "build": "node --max-old-space-size=4096 ./node_modules/next/dist/bin/next build && node scripts/ensure-intelligence-schema.mjs && node scripts/ensure-inventory-schema.mjs && node scripts/ensure-ml-schema.mjs",
     "start": "next start",
     "lint": "next lint",
     "test": "vitest run",
-    "test:watch": "vitest",
+    "test:watch": "vitest --watch",
     "test:coverage": "vitest run --coverage",
     "test:e2e": "playwright test",
     "test:e2e:ui": "playwright test --ui",

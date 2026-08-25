@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { insforge } from '@/lib/insforge';
 import { formatCLP, normalizeOrderRecord } from '@/lib/commerce';
 import {
   BarChart,
@@ -23,7 +22,6 @@ function formatDate(iso: string) {
   return `${dd}/${mm}/${yyyy}`;
 }
 
-/* ── Tipos ── */
 type Order = ReturnType<typeof normalizeOrderRecord>;
 
 interface WeekData {
@@ -37,7 +35,6 @@ interface TopProduct {
   revenue: number;
 }
 
-/* ── Tooltip personalizado ── */
 function CustomTooltip({ active, payload, label }: { active?: boolean; payload?: { value: number }[]; label?: string }) {
   if (!active || !payload?.length) return null;
   return (
@@ -48,7 +45,6 @@ function CustomTooltip({ active, payload, label }: { active?: boolean; payload?:
   );
 }
 
-/* ── Exportar CSV ── */
 function exportCSV(orders: Order[]) {
   const headers = ['ID', 'Cliente', 'Email', 'Total (CLP)', 'Estado', 'Fecha'];
   const rows = orders.map((o) => [
@@ -69,9 +65,6 @@ function exportCSV(orders: Order[]) {
   URL.revokeObjectURL(url);
 }
 
-/* ════════════════════════════════════════════════
-   PÁGINA PRINCIPAL
-════════════════════════════════════════════════ */
 export default function ReportesPage() {
   const [orders, setOrders] = useState<Order[]>([]);
   const [loading, setLoading] = useState(true);
@@ -80,20 +73,21 @@ export default function ReportesPage() {
   useEffect(() => {
     async function load() {
       setLoading(true);
-      const { data, error: err } = await insforge.database
-        .from('orders')
-        .select('id,customer_name,customer_email,total,status,created_at,items')
-        .order('created_at', { ascending: false })
-        .limit(1000);
-
-      if (err) { setError(err.message); setLoading(false); return; }
-      setOrders(((data ?? []) as Record<string, unknown>[]).map((order) => normalizeOrderRecord(order)));
-      setLoading(false);
+      setError('');
+      try {
+        const response = await fetch('/api/admin/orders?scope=report&limit=1000', { cache: 'no-store' });
+        const json = await response.json() as { orders?: Record<string, unknown>[]; error?: string };
+        if (!response.ok) throw new Error(json.error || 'No se pudieron cargar los pedidos.');
+        setOrders((json.orders ?? []).map((order) => normalizeOrderRecord(order)));
+      } catch (cause) {
+        setError(cause instanceof Error ? cause.message : 'No se pudieron cargar los pedidos.');
+      } finally {
+        setLoading(false);
+      }
     }
-    load();
+    void load();
   }, []);
 
-  /* ── Pedidos últimas 4 semanas ── */
   const weeklyData: WeekData[] = (() => {
     const now = new Date();
     const weeks: WeekData[] = [];
@@ -112,7 +106,6 @@ export default function ReportesPage() {
     return weeks;
   })();
 
-  /* ── Top 5 productos ── */
   const topProducts: TopProduct[] = (() => {
     const map = new Map<string, TopProduct>();
     for (const order of orders) {
@@ -130,7 +123,6 @@ export default function ReportesPage() {
       .slice(0, 5);
   })();
 
-  /* ── Ingresos mes actual y anterior ── */
   const now = new Date();
   const thisMonth = now.getMonth();
   const thisYear = now.getFullYear();
@@ -194,9 +186,7 @@ export default function ReportesPage() {
         </div>
       ) : (
         <div className="flex flex-col gap-8">
-          {/* ── Ingresos ── */}
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-5">
-            {/* Mes actual */}
             <div className="rounded-[2rem] border border-white/10 bg-zinc-950/80 p-6 sm:col-span-1">
               <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-2">
                 Ingresos — {monthNames[thisMonth]} {thisYear}
@@ -204,7 +194,6 @@ export default function ReportesPage() {
               <p className="text-3xl font-bold text-yellow-400">{formatCLP(revenueThisMonth)}</p>
             </div>
 
-            {/* Mes anterior */}
             <div className="rounded-[2rem] border border-white/10 bg-zinc-950/80 p-6 sm:col-span-1">
               <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-2">
                 Ingresos — {monthNames[lastMonth]} {lastMonthYear}
@@ -212,7 +201,6 @@ export default function ReportesPage() {
               <p className="text-3xl font-bold text-white">{formatCLP(revenueLastMonth)}</p>
             </div>
 
-            {/* Comparación */}
             <div className="rounded-[2rem] border border-white/10 bg-zinc-950/80 p-6 sm:col-span-1 flex flex-col justify-between">
               <p className="text-xs font-semibold uppercase tracking-widest text-zinc-500 mb-2">
                 Variación mensual
@@ -244,7 +232,6 @@ export default function ReportesPage() {
             </div>
           </div>
 
-          {/* ── Gráfico de barras ── */}
           <div className="rounded-[2rem] border border-white/10 bg-zinc-950/80 p-6">
             <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400 mb-6">
               Pedidos por semana — últimas 4 semanas
@@ -270,7 +257,6 @@ export default function ReportesPage() {
             </ResponsiveContainer>
           </div>
 
-          {/* ── Top 5 productos ── */}
           <div className="rounded-[2rem] border border-white/10 bg-zinc-950/80 overflow-hidden">
             <div className="px-6 py-5 border-b border-white/5">
               <h2 className="text-sm font-semibold uppercase tracking-widest text-zinc-400">

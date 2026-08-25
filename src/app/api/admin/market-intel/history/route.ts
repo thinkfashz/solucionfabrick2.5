@@ -1,5 +1,6 @@
 import { NextResponse, type NextRequest } from 'next/server';
-import { adminUnauthorized, getAdminInsforge, getAdminSession, getAdminTenantId } from '@/lib/adminApi';
+import { getAdminInsforge, getAdminTenantId } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { normalizeQuery } from '@/lib/marketIntel';
 
 export const dynamic = 'force-dynamic';
@@ -8,12 +9,12 @@ export const runtime = 'nodejs';
 /**
  * GET /api/admin/market-intel/history?q=…&limit=20
  *
- * Devuelve únicamente los snapshots del tenant administrativo actual para
- * evitar que búsquedas de otra empresa alteren el histórico y la guía de precio.
+ * Devuelve únicamente los snapshots del tenant administrativo actual. Requiere
+ * permiso de lectura de Productos para mantener el radar alineado con RBAC.
  */
 export async function GET(request: NextRequest) {
-	const session = await getAdminSession(request);
-	if (!session) return adminUnauthorized();
+	const auth = await requireAdminPermission(request, { resource: 'products', action: 'read' });
+	if (!auth.ok) return auth.response;
 	const tenantId = await getAdminTenantId(request);
 	const q = request.nextUrl.searchParams.get('q')?.trim() ?? '';
 	if (!q) return NextResponse.json({ error: 'Falta el parámetro "q".' }, { status: 400 });

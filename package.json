@@ -81,7 +81,7 @@
     "server-only": "^0.0.1",
     "tailwind-merge": "^2.5.5",
     "three": "^0.184.0",
-    "three-stdlib": "^0.184.1",
+    "three-stdlib": "^2.36.1",
     "web-push": "^3.6.7",
     "zustand": "^5.0.2"
   },

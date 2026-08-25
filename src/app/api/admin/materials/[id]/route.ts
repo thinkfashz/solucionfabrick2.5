@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
-import { adminError, adminUnauthorized, getAdminSession } from '@/lib/adminApi';
+import { adminError } from '@/lib/adminApi';
+import { requireAdminPermission } from '@/lib/adminPermissions';
 import { deleteMaterial, updateMaterial, BudgetError, type MaterialInput } from '@/lib/budget';
 import { publishCmsEvent } from '@/lib/cmsBus';
 import { v, parse, validationError } from '@/lib/validate';
@@ -24,8 +25,8 @@ export async function PATCH(
   ctx: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+    const auth = await requireAdminPermission(request, { resource: 'content', action: 'update' });
+    if (!auth.ok) return auth.response;
     const { id } = await ctx.params;
 
     const body = (await request.json().catch(() => ({}))) as Record<string, unknown>;
@@ -33,7 +34,6 @@ export async function PATCH(
     if (!parsed.ok) return validationError(parsed.errors);
 
     const patch: Partial<MaterialInput> = { ...parsed.data } as Partial<MaterialInput>;
-    // description and image_url can be explicitly null to clear the field.
     if ('description' in body) patch.description = body.description as string | null;
     if ('image_url' in body) patch.image_url = body.image_url as string | null;
 
@@ -64,8 +64,8 @@ export async function DELETE(
   ctx: { params: Promise<{ id: string }> },
 ) {
   try {
-    const session = await getAdminSession(request);
-    if (!session) return adminUnauthorized();
+    const auth = await requireAdminPermission(request, { resource: 'content', action: 'delete' });
+    if (!auth.ok) return auth.response;
     const { id } = await ctx.params;
 
     await deleteMaterial(id);

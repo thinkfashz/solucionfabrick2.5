@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { saveBudget, BudgetError } from '@/lib/budget';
 import { getInsforgeUserFromRequest } from '@/lib/insforgeAuth';
+import { getTenantIdFromHeaders } from '@/lib/tenant-edge';
 import { v, parse, validationError } from '@/lib/validate';
 
 export const dynamic = 'force-dynamic';
@@ -15,7 +16,8 @@ export const runtime = 'nodejs';
  * existing /quotes layer (saveBudget) so they end up in the `quotes` table.
  *
  * Anonymous customers (no auth header) get user_id=null. Authed customers
- * use their server-validated InsForge user id.
+ * use their server-validated InsForge user id. tenant_id always comes from
+ * middleware-provided request headers, never from the client body.
  */
 
 interface IncomingItem {
@@ -59,7 +61,6 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // Map QuoteCart items → QuoteLine[] expected by saveBudget.
     const lines = items.map((it) => {
       const kind = String(it.kind ?? 'service');
       const meta = it.meta && typeof it.meta === 'object' && !Array.isArray(it.meta)
@@ -83,14 +84,15 @@ export async function POST(request: NextRequest) {
         unitPrice: typeof it.refPrice === 'number' && it.refPrice >= 0 ? it.refPrice : 0,
         quantity: typeof it.quantity === 'number' && it.quantity > 0 ? it.quantity : 1,
         imageUrl: typeof it.image === 'string' ? it.image : undefined,
-        // Embed extra context as part of the material note via name suffix
         notes: noteParts.length > 0 ? noteParts.join(' | ') : undefined,
       };
     });
 
+    const tenantId = getTenantIdFromHeaders(request.headers);
     const user = await getInsforgeUserFromRequest(request);
 
     const quote = await saveBudget({
+      tenantId,
       lines: lines as never,
       customer: body.customer,
       userId: user?.id ?? null,

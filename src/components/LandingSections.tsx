@@ -2,18 +2,11 @@
 
 import Link from 'next/link';
 import type { ReactNode } from 'react';
-import {
-  BadgeCheck,
-  Clock3,
-  MapPin,
-  MessageCircle,
-  ShoppingBag,
-} from 'lucide-react';
 import ContactForm from './ContactForm';
 import TiendaSection from './TiendaSection';
 import MetalconSeismicStory from '@/components/landing/MetalconSeismicStory';
-import SeismicStructureShowcase from '@/components/landing/SeismicStructureShowcase';
 import LandingProcessSection from '@/components/landing/LandingProcessSection';
+import FabrickStorySection from '@/components/landing/FabrickStorySection';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 import { FacebookBrandIcon, InstagramBrandIcon, TikTokBrandIcon, WhatsAppBrandIcon } from '@/components/SocialBrandIcons';
 import { useSiteContent } from '@/hooks/useSiteContent';
@@ -37,86 +30,99 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
   const fbHref = socialLinks?.facebook?.trim() || 'https://www.facebook.com/FabrickSoluciones';
   const igHref = socialLinks?.instagram?.trim() || 'https://www.instagram.com/solucionesfabrick/';
   const ttHref = socialLinks?.tiktok?.trim() || '';
-  const whatsappHref = 'https://wa.me/56930121625?text=Hola%20Soluciones%20Fabrick%2C%20quiero%20d%C3%ADas%20y%20horarios%20para%20revisar%20mi%20proyecto.';
+  const whatsappHref = 'https://wa.me/56930121625?text=Hola%20Soluciones%20Fabrick%2C%20quiero%20revisar%20mi%20proyecto.';
 
   const footerGroups: Array<{ title: string; items: Array<[string, string]> }> = [
-    { title: 'Explorar', items: [['Cotizador', '#cotizador'], ['Más vendidos', '#mas-vendidos']] },
-    { title: 'Herramientas', items: [['Estimador de radier', '/herramientas/radier'], ['Estimador de aire', '/herramientas/aire-acondicionado'], ['Presupuestos', '/presupuesto']] },
-    { title: 'Empresa', items: [['Inspiraciones', '/proyectos'], ['Garantías', '/garantias'], ['Contacto', '#contacto']] },
-    { title: 'Tienda', items: [['Catálogo', '/tienda'], ['Mi cuenta', '/mi-cuenta'], ['Privacidad', '/legal/privacidad']] },
+    { title: 'Planificar', items: [['Calculadora', '#cotizador'], ['Presupuesto', '/presupuesto'], ['Inspiraciones', '/proyectos']] },
+    { title: 'Herramientas', items: [['Radier', '/herramientas/radier'], ['Aire acondicionado', '/herramientas/aire-acondicionado'], ['Servicios', '/servicios']] },
+    { title: 'Comprar', items: [['Tienda', '/tienda'], ['Mi cuenta', '/mi-cuenta'], ['Garantías', '/garantias']] },
+    { title: 'Empresa', items: [['Por qué Fabrick', '#nosotros'], ['Contacto', '#contacto'], ['Privacidad', '/legal/privacidad']] },
   ];
 
   return (
     <div className="overflow-x-hidden bg-[#08090A] text-[#FFF9EE]">
       <LandingProcessSection />
-      <SeismicStructureShowcase />
+      <FabrickStorySection />
       <MetalconSeismicStory />
 
-      <section id="mas-vendidos" className="scroll-mt-20 bg-[#FFF9EE] px-4 py-16 text-[#08090A] sm:px-6 md:px-12 lg:py-20">
-        <div data-reveal data-reveal-dir="up" className="mx-auto max-w-[1320px]">
-          <TiendaSection
-            limit={4}
-            variant="banner"
-            title="Productos elegidos para completar tu proyecto"
-            description="Recomendaciones prácticas para complementar instalaciones, terminaciones y mejoras del hogar. Selecciona una opción para comparar disponibilidad, valor y detalles."
-            primaryCtaLabel="Explorar catálogo"
-          />
-        </div>
-      </section>
-
-      <section id="contacto" className="relative scroll-mt-20 overflow-hidden bg-[#F5871F] px-4 py-16 text-[#08090A] sm:px-6 md:px-12 lg:py-20">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_85%_18%,rgba(248,240,233,.3),transparent_30%)]" />
-        <div className="relative mx-auto grid max-w-[1200px] gap-8 lg:grid-cols-[.78fr_1.22fr] lg:items-start">
-          <div>
-            <p data-reveal className="text-[10px] font-black uppercase tracking-[.24em] text-[#5E3F2A]">Solicitar evaluación</p>
-            <h2 data-split className="mt-3 text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl" style={{ fontFamily: 'Sora, Manrope, sans-serif' }}>
-              Cuéntanos qué quieres resolver y nosotros ordenamos el siguiente paso.
-            </h2>
-            <p data-reveal data-reveal-delay="0.15" className="mt-4 max-w-xl text-sm leading-7 text-[#493B32] sm:text-base">
-              Indica comuna, medidas aproximadas y estado actual. El equipo técnico responderá con las preguntas necesarias para definir viabilidad, alcance y una cotización responsable.
-            </p>
-
-            <div data-reveal-group data-reveal-dir="up" className="mt-6 grid gap-2">
-              <ProofLine icon={<MapPin className="h-4 w-4" />} title="Cobertura principal" text="Región del Maule y proyectos seleccionados en Santiago." />
-              <ProofLine icon={<Clock3 className="h-4 w-4" />} title="Respuesta comercial" text="Revisamos la información y te indicamos qué falta para avanzar." />
-              <ProofLine icon={<BadgeCheck className="h-4 w-4" />} title="Cotización responsable" text="El valor final se confirma con medidas y condiciones reales." />
-            </div>
-          </div>
-
-          <div data-reveal data-reveal-dir="right" className="rounded-[1.8rem] bg-[#FFF9EE] p-4 text-[#08090A] shadow-[0_28px_80px_rgba(23,24,32,.22)] sm:p-6">
-            <div className="mb-5 flex items-center gap-3 border-b border-[#08090A]/10 pb-4">
-              <span className="grid h-11 w-11 place-items-center rounded-2xl bg-[#08090A] text-[#FFB000]"><MessageCircle className="h-5 w-5" /></span>
-              <div><p className="text-sm font-black">Hablemos de tu proyecto</p><p className="mt-1 text-[10px] text-[#BFB8AC]">Formulario breve · orientación personalizada</p></div>
-            </div>
-            <ContactForm />
-          </div>
-        </div>
-      </section>
-
-      <footer data-reveal data-reveal-dir="up" className="bg-[#08090A] px-4 py-9 text-[#FFF9EE] sm:px-6 md:px-12">
+      <section id="mas-vendidos" className="scroll-mt-20 bg-[#FFF9EE] px-4 py-16 text-[#08090A] sm:px-6 md:px-12 lg:py-24">
         <div className="mx-auto max-w-[1320px]">
-          <div className="grid gap-7 lg:grid-cols-[1.05fr_1.95fr] lg:items-start">
+          <div className="grid gap-6 border-b border-black/10 pb-7 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[.22em] text-[#B96F00]">Productos para completar la obra</p>
+              <h2 className="mt-3 max-w-[10ch] text-4xl font-black leading-[.94] tracking-[-.06em] sm:text-6xl">Compra solo lo que ya sabes que necesitas.</h2>
+            </div>
+            <p className="max-w-2xl text-sm leading-7 text-black/48 sm:text-base">
+              La tienda aparece después de medir y ordenar el proyecto por una razón: un producto tiene más sentido cuando ya sabes qué partida estás resolviendo y qué cantidad o especificación necesitas comparar.
+            </p>
+          </div>
+          <div className="mt-5">
+            <TiendaSection
+              limit={6}
+              variant="grid"
+              title="Selección disponible"
+              description="Productos y accesorios con precio final publicado e IVA incluido. Abre cada ficha para revisar stock, despacho, proveedor y detalles."
+              primaryCtaLabel="Ver catálogo completo"
+            />
+          </div>
+        </div>
+      </section>
+
+      <section id="contacto" className="scroll-mt-20 bg-[#F5871F] px-4 py-16 text-[#08090A] sm:px-6 md:px-12 lg:py-24">
+        <div className="mx-auto max-w-[1200px]">
+          <div className="grid gap-10 lg:grid-cols-[.72fr_1.28fr] lg:items-start">
+            <div>
+              <p className="text-[10px] font-black uppercase tracking-[.22em] text-[#5E3F2A]">Conversemos con contexto</p>
+              <h2 className="mt-3 max-w-[10ch] text-4xl font-black leading-[.94] tracking-[-.06em] sm:text-6xl">Cuéntanos qué quieres resolver.</h2>
+              <p className="mt-5 max-w-lg text-sm leading-7 text-[#493B32] sm:text-base">
+                No necesitas tener todo definido. Si puedes indicar comuna, medidas aproximadas, estado actual y el resultado que buscas, podremos hacer mejores preguntas desde el primer contacto.
+              </p>
+              <div className="mt-7 border-t border-[#08090A]/18">
+                {[
+                  ['01', 'Ubicación', 'Comuna o sector donde se realizaría el trabajo.'],
+                  ['02', 'Medidas', 'Superficie, largo, ancho, altura o cantidad aproximada.'],
+                  ['03', 'Objetivo', 'Qué quieres construir, reparar, instalar o mejorar.'],
+                ].map(([n, title, text]) => (
+                  <div key={n} className="grid grid-cols-[42px_1fr] gap-3 border-b border-[#08090A]/18 py-4">
+                    <span className="text-xs font-black text-[#08090A]/35">{n}</span>
+                    <div><b className="text-sm">{title}</b><p className="mt-1 text-xs leading-5 text-[#55463B]">{text}</p></div>
+                  </div>
+                ))}
+              </div>
+              <p className="mt-6 text-xs leading-6 text-[#55463B]">Si todavía no sabes cómo resumir tu proyecto, puedes usar el asistente Fabrick para ordenar la información antes de enviarla.</p>
+            </div>
+
+            <div className="border-t border-[#08090A]/18 pt-6 lg:border-l lg:border-t-0 lg:pl-10 lg:pt-0">
+              <div className="mb-5">
+                <p className="text-sm font-black">Solicitud de evaluación</p>
+                <p className="mt-1 text-[10px] text-[#6C5749]">Formulario breve · tus datos se usan para responderte</p>
+              </div>
+              <ContactForm />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <footer className="bg-[#08090A] px-4 pb-28 pt-12 text-[#FFF9EE] sm:px-6 md:px-12 md:pb-12">
+        <div className="mx-auto max-w-[1320px]">
+          <div className="grid gap-10 lg:grid-cols-[1fr_1.5fr]">
             <div>
               <FabrickFullLogo compact priority theme="light" />
-              <p className="mt-3 max-w-md text-sm leading-6 text-[#BFB8AC]">Servicios, estimadores y productos para organizar una inversión antes de ejecutar.</p>
-              <div className="mt-5">
-                <p className="text-[9px] font-black uppercase tracking-[.22em] text-[#FFB000]">Canales oficiales</p>
-                <div className="mt-3 flex flex-wrap gap-2">
-                  <SocialLink href={igHref} label="Instagram" detail="@solucionesfabrick" tone="text-[#F3C85B]"><InstagramBrandIcon className="h-4 w-4" /></SocialLink>
-                  <SocialLink href={fbHref} label="Facebook" detail="Fabrick Soluciones" tone="text-[#71A9FF]"><FacebookBrandIcon className="h-4 w-4" /></SocialLink>
-                  <SocialLink href={whatsappHref} label="WhatsApp" detail="Cotiza directo" tone="text-[#69D88A]"><WhatsAppBrandIcon className="h-4 w-4" /></SocialLink>
-                  {ttHref ? <SocialLink href={ttHref} label="TikTok" detail="Videos y avances" tone="text-[#FFF9EE]"><TikTokBrandIcon className="h-4 w-4" /></SocialLink> : null}
-                </div>
+              <p className="mt-4 max-w-md text-sm leading-7 text-white/42">Medir, comparar y confirmar antes de construir. Servicios, productos, herramientas e inspiración dentro de una misma plataforma.</p>
+              <div className="mt-6 flex flex-wrap gap-2">
+                <SocialLink href={igHref} label="Instagram"><InstagramBrandIcon className="h-4 w-4" /></SocialLink>
+                <SocialLink href={fbHref} label="Facebook"><FacebookBrandIcon className="h-4 w-4" /></SocialLink>
+                <SocialLink href={whatsappHref} label="WhatsApp"><WhatsAppBrandIcon className="h-4 w-4" /></SocialLink>
+                {ttHref ? <SocialLink href={ttHref} label="TikTok"><TikTokBrandIcon className="h-4 w-4" /></SocialLink> : null}
               </div>
             </div>
-            <div className="grid gap-2 md:grid-cols-4 md:gap-6">
+            <div className="grid grid-cols-2 gap-x-6 gap-y-8 sm:grid-cols-4">
               {footerGroups.map((group) => <FooterGroup key={group.title} {...group} />)}
             </div>
           </div>
-
-          <div className="mt-7 flex flex-col gap-2 border-t border-[#FFF9EE]/8 pt-4 text-[9px] leading-5 text-[#81776F] md:flex-row md:items-center md:justify-between">
+          <div className="mt-10 flex flex-col gap-2 border-t border-white/8 pt-5 text-[9px] leading-5 text-white/28 md:flex-row md:justify-between">
             <div dangerouslySetInnerHTML={{ __html: legalText }} />
-            <span className="inline-flex items-center gap-1.5"><ShoppingBag className="h-3.5 w-3.5 text-[#FFB000]" /> Servicios y productos en una sola plataforma.</span>
+            <span>Soluciones Fabrick · Maule y proyectos seleccionados en Santiago</span>
           </div>
         </div>
       </footer>
@@ -124,47 +130,21 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
   );
 }
 
-function ProofLine({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
+function SocialLink({ href, label, children }: { href: string; label: string; children: ReactNode }) {
   return (
-    <div className="flex gap-3 rounded-2xl bg-[#FFF9EE]/35 p-3.5 shadow-[inset_0_1px_0_rgba(255,255,255,.18)]">
-      <span className="grid h-9 w-9 shrink-0 place-items-center rounded-xl bg-[#08090A] text-[#FFB000]">{icon}</span>
-      <span><b className="block text-xs">{title}</b><span className="mt-1 block text-[10px] leading-5 text-[#55463B]">{text}</span></span>
-    </div>
-  );
-}
-
-function SocialLink({ href, label, detail, tone, children }: { href: string; label: string; detail: string; tone: string; children: ReactNode }) {
-  const disabled = !href || href === '#';
-  return (
-    <a
-      href={disabled ? undefined : href}
-      aria-label={label}
-      target={disabled ? undefined : '_blank'}
-      rel={disabled ? undefined : 'noopener noreferrer'}
-      className={`inline-flex min-h-11 items-center gap-2 rounded-xl border border-[#FFF9EE]/10 bg-white/[.035] px-3 py-2 transition ${disabled ? 'cursor-not-allowed opacity-35' : 'hover:-translate-y-0.5 hover:border-[#FFB000]/55 hover:bg-white/[.08]'}`}
-    >
-      <span className={`grid h-7 w-7 place-items-center rounded-lg bg-white/[.06] ${tone}`}>{children}</span>
-      <span className="text-left"><b className="block text-[10px] font-black leading-none text-[#FFF9EE]">{label}</b><small className="mt-1 block text-[8px] leading-none text-[#AAA299]">{detail}</small></span>
+    <a href={href} target="_blank" rel="noopener noreferrer" aria-label={label} className="inline-flex min-h-10 items-center gap-2 rounded-full border border-white/10 px-3 text-[10px] font-black text-white/70 transition hover:border-[#FFB000]/50 hover:text-[#FFF9EE]">
+      {children}<span>{label}</span>
     </a>
   );
 }
 
 function FooterGroup({ title, items }: { title: string; items: Array<[string, string]> }) {
-  const links = (
-    <div className="grid gap-2 pb-2 pt-3 md:pb-0">
-      {items.map(([label, href]) => href.startsWith('http')
-        ? <a key={label} href={href} target="_blank" rel="noopener noreferrer" className="text-sm text-[#BFB8AC] transition hover:text-[#FFB000]">{label}</a>
-        : <Link key={label} href={href} className="text-sm text-[#BFB8AC] transition hover:text-[#FFB000]">{label}</Link>)}
-    </div>
-  );
-
   return (
     <div>
-      <details className="group border-t border-[#FFF9EE]/9 md:hidden">
-        <summary className="flex min-h-11 cursor-pointer list-none items-center justify-between text-xs font-black text-[#FFF9EE]"><span>{title}</span><span className="text-[#FFB000] transition group-open:rotate-45">+</span></summary>
-        {links}
-      </details>
-      <div className="hidden md:block"><p className="text-[8px] font-black uppercase tracking-[.22em] text-[#FFB000]">{title}</p>{links}</div>
+      <p className="text-[9px] font-black uppercase tracking-[.18em] text-[#FFB000]">{title}</p>
+      <div className="mt-3 grid gap-2.5">
+        {items.map(([label, href]) => <Link key={label} href={href} className="text-sm text-white/44 transition hover:text-[#FFF9EE]">{label}</Link>)}
+      </div>
     </div>
   );
 }

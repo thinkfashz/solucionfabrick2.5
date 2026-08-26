@@ -26,6 +26,11 @@ export interface CatalogProduct {
   specifications?: Record<string, unknown>;
   placement?: 'best_seller' | 'featured' | 'promotion' | 'catalog';
   placementOrder?: number;
+  shipping_mode?: RealtimeProduct['shipping_mode'];
+  shipping_fee?: number | null;
+  shipping_weight_kg?: number | null;
+  shipping_dimensions?: string | null;
+  shipping_region_overrides?: Record<string, number> | null;
 }
 
 export const FALLBACK_CATALOG_PRODUCTS: CatalogProduct[] = [
@@ -71,7 +76,7 @@ function mapRealtimeProductToCatalogProduct(product: RealtimeProduct): CatalogPr
     tagline: buildProductTagline(product.tagline, product.delivery_days),
     description: product.description || 'Producto sincronizado automáticamente desde nuestro catálogo.',
     features: ['Calidad garantizada', product.stock != null ? `Stock disponible: ${product.stock}` : 'Stock sujeto a confirmación', product.featured ? 'Producto destacado' : 'Disponible para cotizar'],
-    dimensions: typeof product.specifications?.medidas === 'string' ? String(product.specifications.medidas) : 'Especificación en ficha técnica',
+    dimensions: typeof product.specifications?.medidas === 'string' ? String(product.specifications.medidas) : product.shipping_dimensions || 'Especificación en ficha técnica',
     delivery: product.delivery_days || 'Entrega a coordinar',
     img: image,
     image_url: image,
@@ -83,6 +88,11 @@ function mapRealtimeProductToCatalogProduct(product: RealtimeProduct): CatalogPr
     specifications: product.specifications,
     placement,
     placementOrder: Number.isFinite(placementOrder) ? placementOrder : 999,
+    shipping_mode: product.shipping_mode,
+    shipping_fee: product.shipping_fee ?? null,
+    shipping_weight_kg: product.shipping_weight_kg ?? null,
+    shipping_dimensions: product.shipping_dimensions ?? null,
+    shipping_region_overrides: product.shipping_region_overrides ?? null,
   };
 }
 

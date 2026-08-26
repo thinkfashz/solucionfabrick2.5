@@ -18,7 +18,7 @@ export default function FabrickLoadingScreen({
       aria-busy="true"
       aria-live="polite"
       className="fixed inset-0 z-[9999] grid min-h-[100dvh] place-items-center overflow-hidden bg-[#050607] px-5 py-10 text-white"
-      data-fabrick-loader="true"
+      data-fabrick-loader="production"
       role="status"
     >
       <div className="pointer-events-none absolute inset-0 overflow-hidden" aria-hidden="true">

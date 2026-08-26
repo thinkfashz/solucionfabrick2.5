@@ -53,6 +53,7 @@ function rangeText(low: number, high: number) { return low === high ? money(low)
 export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetShopV2Props) {
   const initialService = getBudgetService(initialServiceId);
   const calculatorRef = useRef<HTMLElement>(null);
+  const receiptRef = useRef<HTMLElement>(null);
   const [selectedId, setSelectedId] = useState(initialService.id);
   const [category, setCategory] = useState<ServiceCategory | 'Todas'>(initialService.category);
   const [values, setValues] = useState<MeasurementValues>(initialService.defaultValues);
@@ -176,6 +177,10 @@ export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetS
     setAddedId(service.id);
   }
 
+  function viewProject() {
+    window.requestAnimationFrame(() => receiptRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+  }
+
   function editItem(item: QuoteItem) {
     const next = getBudgetService(metaString(item, 'serviceId') || resolveServiceId(item.title));
     chooseService(next);
@@ -186,6 +191,8 @@ export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetS
       quantity: metaNumber(item, 'quantityInput') || (next.measurement === 'count' ? item.quantity : next.defaultValues.quantity),
     });
   }
+
+  const activeStep = serviceItems.length ? 2 : 1;
 
   return (
     <div className="bg-[#FFF9EE] text-[#08090A]">
@@ -213,7 +220,7 @@ export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetS
             </div>
           </div>
           <div className="mt-9 grid grid-cols-4 gap-px bg-white/10 text-[9px] font-black uppercase tracking-[.1em] text-white/45">
-            {['1 · Trabajo', '2 · Medidas', '3 · Proyecto', '4 · Confirmar'].map((step, index) => <div key={step} className={`px-2 py-3 text-center ${index === 0 ? 'bg-[#F5871F] text-[#08090A]' : 'bg-[#0E0F10]'}`}>{step}</div>)}
+            {['1 · Trabajo', '2 · Medidas', '3 · Proyecto', '4 · Confirmar'].map((step, index) => <div key={step} className={`px-2 py-3 text-center transition ${index === activeStep ? 'bg-[#F5871F] text-[#08090A]' : index < activeStep ? 'bg-[#17191A] text-[#FFB000]' : 'bg-[#0E0F10]'}`}>{step}</div>)}
           </div>
         </div>
       </section>
@@ -277,9 +284,26 @@ export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetS
               </div>
 
               <button type="button" onClick={addCurrentService} className="mt-7 min-h-13 w-full rounded-full bg-[#F5871F] px-6 text-sm font-black text-[#08090A] transition hover:bg-[#08090A] hover:text-[#FFF9EE]">{addedId === service.id ? 'Cálculo actualizado en el proyecto' : 'Añadir esta partida al proyecto'}</button>
+
+              {serviceItems.length ? <div className="sf-budget-no-print mt-3 border border-black/10 bg-white p-4 shadow-[0_10px_32px_rgba(55,37,18,.08)] lg:hidden">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <p className="text-[9px] font-black uppercase tracking-[.14em] text-[#B96F00]">Proyecto en curso</p>
+                    <p className="mt-1 text-sm font-black">{serviceItems.length} {serviceItems.length === 1 ? 'partida añadida' : 'partidas añadidas'}</p>
+                  </div>
+                  <span className="rounded-full bg-[#F2DFBB]/70 px-2.5 py-1 text-[9px] font-black text-black/55">{reference}</span>
+                </div>
+                <div className="mt-4 flex items-end justify-between gap-4 border-t border-black/10 pt-4">
+                  <div>
+                    <span className="block text-[9px] font-black uppercase tracking-[.12em] text-black/38">Rango total</span>
+                    <b className="mt-1 block text-lg tracking-[-.035em]">{rangeText(totals.low, totals.high)}</b>
+                  </div>
+                  <button type="button" onClick={viewProject} className="shrink-0 rounded-full bg-[#08090A] px-4 py-2.5 text-[10px] font-black text-[#FFF9EE]">Ver proyecto →</button>
+                </div>
+              </div> : null}
             </div>
 
-            <aside className="sf-budget-receipt bg-white p-5 shadow-[0_18px_55px_rgba(55,37,18,.12)] lg:sticky lg:top-24 sm:p-6">
+            <aside ref={receiptRef} className="sf-budget-receipt scroll-mt-24 bg-white p-5 shadow-[0_18px_55px_rgba(55,37,18,.12)] lg:sticky lg:top-24 sm:p-6">
               <div className="flex items-start justify-between gap-4 border-b border-black/10 pb-4"><div><p className="text-[9px] font-black uppercase tracking-[.16em] text-[#B96F00]">Presupuesto preliminar</p><h2 className="mt-1 text-2xl font-black">Resumen del proyecto</h2></div><span className="text-[9px] font-black text-black/35">{reference}</span></div>
 
               {serviceItems.length ? <div className="divide-y divide-black/10">{serviceItems.map((item) => {

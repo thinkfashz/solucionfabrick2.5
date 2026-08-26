@@ -1,20 +1,33 @@
-import { Grid3X3, Ruler, Sparkles } from 'lucide-react';
+const BENEFITS = [
+  ['Saber qué medir', 'Antes de preguntar por un precio, identifica la superficie, longitud, volumen o cantidad que realmente interviene en el trabajo.'],
+  ['Separar partidas', 'Un proyecto se entiende mejor cuando radier, estructura, instalaciones y terminaciones se comparan por separado.'],
+  ['Llegar mejor preparado', 'Con un rango previo puedes hacer preguntas concretas, detectar diferencias y decidir qué vale la pena revisar primero.'],
+] as const;
 
 export default function CalculatorPlanShowcase() {
   return (
-    <div className="relative overflow-hidden bg-[#FFF9EE] px-3 pt-10 text-[#08090A] sm:px-6 lg:px-8 lg:pt-16">
-      <div className="mx-auto grid max-w-[1260px] overflow-hidden rounded-[2rem] bg-[#111214] text-[#FFF9EE] shadow-[0_28px_90px_rgba(70,48,22,.16)] lg:grid-cols-[.72fr_1.28fr] lg:items-stretch">
-        <div className="flex flex-col justify-center p-5 sm:p-7 lg:p-9">
-          <p className="inline-flex w-fit items-center gap-2 rounded-full border border-[#FFB000]/20 bg-[#FFB000]/10 px-3 py-1.5 text-[9px] font-black uppercase tracking-[.2em] text-[#FFB000]"><Grid3X3 className="h-3.5 w-3.5" /> Plano de referencia</p>
-          <h3 className="mt-4 text-3xl font-black leading-[.98] tracking-[-.05em] sm:text-4xl">Visualiza la distribución antes de medir.</h3>
-          <p className="mt-4 max-w-md text-sm leading-6 text-white/65">El plano te ayuda a separar recintos, superficies y partidas antes de ingresar las medidas reales en el estimador.</p>
-          <div className="mt-5 grid gap-2 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2"><span className="flex items-center gap-2 rounded-xl bg-white/[.055] p-3 text-xs text-white/75"><Ruler className="h-4 w-4 text-[#FFB000]" /> Medidas por recinto</span><span className="flex items-center gap-2 rounded-xl bg-white/[.055] p-3 text-xs text-white/75"><Sparkles className="h-4 w-4 text-[#F5871F]" /> Presupuesto más ordenado</span></div>
+    <section className="bg-[#FFF9EE] px-4 py-14 text-[#08090A] sm:px-6 lg:px-8 lg:py-18">
+      <div className="mx-auto max-w-[1260px]">
+        <div className="grid gap-7 border-b border-black/10 pb-8 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
+          <div>
+            <p className="text-[10px] font-black uppercase tracking-[.22em] text-[#B96F00]">Antes de pedir una cotización</p>
+            <h2 className="mt-3 max-w-[11ch] text-4xl font-black leading-[.94] tracking-[-.06em] sm:text-6xl">Calcula para preguntar mejor.</h2>
+          </div>
+          <p className="max-w-2xl text-sm leading-7 text-black/52 sm:text-base">
+            La calculadora no reemplaza una visita ni convierte un rango en precio final. Su valor está en darte contexto para saber qué estás comparando antes de comprometer dinero.
+          </p>
         </div>
-        <div className="relative flex min-h-[320px] items-center justify-center overflow-hidden bg-black sm:min-h-[440px] lg:min-h-[500px]">
-          <img src="/images/landing/fabrick-house-plan.webp" alt="Plano tridimensional de vivienda utilizado como referencia para el estimador de obra" loading="eager" decoding="async" className="max-h-[500px] w-full object-contain p-2 sm:p-4" />
-          <div className="pointer-events-none absolute inset-0 bg-[linear-gradient(180deg,transparent_82%,rgba(0,0,0,.16))]" />
+
+        <div className="grid gap-px bg-black/10 sm:grid-cols-3">
+          {BENEFITS.map(([title, text], index) => (
+            <article key={title} className="bg-[#FFF9EE] px-1 py-6 sm:px-5 sm:py-8">
+              <span className="text-[10px] font-black text-black/25">0{index + 1}</span>
+              <h3 className="mt-3 text-xl font-black tracking-[-.035em]">{title}</h3>
+              <p className="mt-2 max-w-sm text-sm leading-6 text-black/48">{text}</p>
+            </article>
+          ))}
         </div>
       </div>
-    </div>
+    </section>
   );
 }

@@ -32,8 +32,9 @@ export default function ProductDetailClientV2() {
   const stock = Number.isFinite(Number(product.stock)) ? Number(product.stock) : null;
   const rating = Math.max(0, Math.min(5, Number(product.rating || 0)));
   function add() {
-    if (stock === 0) return;
-    for (let i = 0; i < qty; i++) addToCart({ id: product.id, name: product.name, price: product.price, image_url: img(product), category_id: product.category_id, discount_percentage: d, stock: product.stock } as Parameters<typeof addToCart>[0]);
+    const currentProduct = product;
+    if (!currentProduct || stock === 0) return;
+    for (let i = 0; i < qty; i++) addToCart({ id: currentProduct.id, name: currentProduct.name, price: currentProduct.price, image_url: img(currentProduct), category_id: currentProduct.category_id, discount_percentage: d, stock: currentProduct.stock } as Parameters<typeof addToCart>[0]);
     setAdded(true); window.setTimeout(() => setAdded(false), 1200);
   }
   return <div className="min-h-screen bg-[#F4EFE6] text-[#111214]">

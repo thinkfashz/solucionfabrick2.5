@@ -6,7 +6,6 @@ import './responsive-safety.css';
 import './remove-obsolete-sections.css';
 import InstallAppPrompt from '@/components/InstallAppPrompt';
 import SmoothScrollProvider from '@/components/SmoothScrollProvider';
-import SplashScreen from '@/components/SplashScreen';
 
 import { ThemeProvider } from '@/context/ThemeContext';
 import { AuthProvider } from '@/context/AuthContext';
@@ -118,7 +117,6 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         className="bg-[#08090A] text-[#FFF9EE] antialiased app-shell"
         style={{ fontFamily: 'Manrope, ui-sans-serif, system-ui, sans-serif' }}
       >
-        <SplashScreen />
         <SiteConfigProvider initial={{ 'nav-menu': navMenu, 'global-styles': globalStyles }}>
           <ThemeProvider>
             <AuthProvider>

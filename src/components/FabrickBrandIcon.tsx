@@ -56,8 +56,8 @@ export function FabrickFullLogo({
   priority = false,
   responsive = true,
 }: FullLogoProps) {
-  const desktopBox = compact ? 'h-[72px] w-[300px]' : 'h-[170px] w-[min(82vw,720px)]';
-  const mobileBox = compact ? 'h-[64px] w-[230px]' : 'h-[104px] w-[min(88vw,420px)]';
+  const desktopBox = compact ? 'h-[56px] w-[235px]' : 'h-[170px] w-[min(82vw,720px)]';
+  const mobileBox = compact ? 'h-[46px] w-[174px]' : 'h-[104px] w-[min(88vw,420px)]';
 
   return (
     <span className={`inline-flex select-none flex-col items-center ${className}`}>
@@ -69,7 +69,7 @@ export function FabrickFullLogo({
               className="object-contain"
               fill
               priority={priority}
-              sizes={compact ? '230px' : '(max-width: 767px) 88vw, 420px'}
+              sizes={compact ? '174px' : '(max-width: 767px) 88vw, 420px'}
               src={FABRICK_LOGOS.mobile}
               unoptimized
             />
@@ -80,20 +80,20 @@ export function FabrickFullLogo({
               className="object-contain"
               fill
               priority={priority}
-              sizes={compact ? '300px' : '(max-width: 1280px) 82vw, 720px'}
+              sizes={compact ? '235px' : '(max-width: 1280px) 82vw, 720px'}
               src={FABRICK_LOGOS.web}
               unoptimized
             />
           </span>
         </>
       ) : (
-        <span className={`relative block shrink-0 ${compact ? 'h-[72px] w-[300px]' : 'h-[170px] w-[min(82vw,720px)]'}`}>
+        <span className={`relative block shrink-0 ${compact ? 'h-[56px] w-[235px]' : 'h-[170px] w-[min(82vw,720px)]'}`}>
           <Image
             alt="Soluciones Fabrick"
             className="object-contain"
             fill
             priority={priority}
-            sizes={compact ? '300px' : '(max-width: 1280px) 82vw, 720px'}
+            sizes={compact ? '235px' : '(max-width: 1280px) 82vw, 720px'}
             src={FABRICK_LOGOS.web}
             unoptimized
           />

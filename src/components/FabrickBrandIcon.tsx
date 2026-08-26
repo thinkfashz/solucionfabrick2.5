@@ -5,17 +5,17 @@ const WEB_LOGO = '/brand/soluciones-fabrick-web.svg';
 const MOBILE_LOGO = '/brand/soluciones-fabrick-mobile.svg';
 
 export const FABRICK_LOGOS = {
-  primary: MASTER_LOGO,
+  primary: WEB_LOGO,
   web: WEB_LOGO,
   mobile: MOBILE_LOGO,
-  onDark: MASTER_LOGO,
-  onLight: MASTER_LOGO,
+  onDark: WEB_LOGO,
+  onLight: WEB_LOGO,
   mark: '/brand/soluciones-fabrick-mark.svg',
   markOnLight: '/brand/soluciones-fabrick-mark-on-light.svg',
-  social: MASTER_LOGO,
+  social: WEB_LOGO,
   email: '/brand/soluciones-fabrick-email.png',
-  dark: MASTER_LOGO,
-  light: MASTER_LOGO,
+  dark: WEB_LOGO,
+  light: WEB_LOGO,
   lightClassic: MASTER_LOGO,
 } as const;
 
@@ -43,14 +43,7 @@ export function FabrickPeakIcon({ size = 32, className = '', theme = 'light' }: 
       role="img"
       style={{ width: size, height: size }}
     >
-      <Image
-        alt=""
-        className="object-contain drop-shadow-[0_0_14px_rgba(244,164,36,.28)]"
-        fill
-        sizes={`${size}px`}
-        src={src}
-        unoptimized
-      />
+      <Image alt="" className="object-contain" fill sizes={`${size}px`} src={src} unoptimized />
     </span>
   );
 }
@@ -63,8 +56,8 @@ export function FabrickFullLogo({
   priority = false,
   responsive = true,
 }: FullLogoProps) {
-  const desktopBox = compact ? 'h-[56px] w-[205px]' : 'h-[170px] w-[min(78vw,640px)]';
-  const mobileBox = compact ? 'h-[68px] w-[104px]' : 'h-[clamp(190px,48vw,250px)] w-[clamp(160px,44vw,220px)]';
+  const desktopBox = compact ? 'h-[72px] w-[300px]' : 'h-[170px] w-[min(82vw,720px)]';
+  const mobileBox = compact ? 'h-[64px] w-[230px]' : 'h-[104px] w-[min(88vw,420px)]';
 
   return (
     <span className={`inline-flex select-none flex-col items-center ${className}`}>
@@ -73,10 +66,10 @@ export function FabrickFullLogo({
           <span className={`relative block shrink-0 md:hidden ${mobileBox}`}>
             <Image
               alt="Soluciones Fabrick"
-              className="object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,.34)]"
+              className="object-contain"
               fill
               priority={priority}
-              sizes={compact ? '104px' : '(max-width: 767px) 44vw, 220px'}
+              sizes={compact ? '230px' : '(max-width: 767px) 88vw, 420px'}
               src={FABRICK_LOGOS.mobile}
               unoptimized
             />
@@ -84,24 +77,24 @@ export function FabrickFullLogo({
           <span className={`relative hidden shrink-0 md:block ${desktopBox}`}>
             <Image
               alt="Soluciones Fabrick"
-              className="object-contain drop-shadow-[0_10px_24px_rgba(0,0,0,.3)]"
+              className="object-contain"
               fill
               priority={priority}
-              sizes={compact ? '205px' : '(max-width: 1280px) 78vw, 640px'}
+              sizes={compact ? '300px' : '(max-width: 1280px) 82vw, 720px'}
               src={FABRICK_LOGOS.web}
               unoptimized
             />
           </span>
         </>
       ) : (
-        <span className={`relative block shrink-0 ${compact ? 'h-[58px] w-[190px]' : 'h-[126px] w-[360px] max-w-[94vw]'}`}>
+        <span className={`relative block shrink-0 ${compact ? 'h-[72px] w-[300px]' : 'h-[170px] w-[min(82vw,720px)]'}`}>
           <Image
             alt="Soluciones Fabrick"
-            className="object-contain drop-shadow-[0_8px_20px_rgba(0,0,0,.26)]"
+            className="object-contain"
             fill
             priority={priority}
-            sizes={compact ? '190px' : '(max-width: 480px) 94vw, 360px'}
-            src={FABRICK_LOGOS.primary}
+            sizes={compact ? '300px' : '(max-width: 1280px) 82vw, 720px'}
+            src={FABRICK_LOGOS.web}
             unoptimized
           />
         </span>

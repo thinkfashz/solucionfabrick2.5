@@ -129,7 +129,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <TenantBrandingBar />
                   <ServiceWorkerRegister />
                   <InstallAppPrompt />
-                  <AIAgentChat hideOn={['/admin', '/auth', '/checkout', '/presupuestos', '/p/']} />
+                  <AIAgentChat hideOn={['/admin', '/auth', '/checkout', '/presupuesto', '/presupuestos', '/p/']} />
                   <CookieConsentBanner />
                   <Analytics />
                   <PublicVisitTracker />

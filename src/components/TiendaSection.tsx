@@ -3,7 +3,6 @@
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { useMemo, useRef, useState } from 'react';
-import { ArrowRight, ShoppingBag } from 'lucide-react';
 import { navigateWithTransition } from '@/lib/routeTransition';
 import { useCatalogProducts, type CatalogProduct } from '@/hooks/useCatalogProducts';
 import { useCartContext } from '@/context/CartContext';
@@ -41,20 +40,43 @@ export default function TiendaSection({ limit = 6, title = 'Productos más solic
     addToCart(toCartProduct(product), 1);
     setAddedProductId(product.id);
     if (addedTimer.current) window.clearTimeout(addedTimer.current);
-    addedTimer.current = window.setTimeout(() => setAddedProductId(null), 2200);
+    addedTimer.current = window.setTimeout(() => setAddedProductId(null), 1800);
   };
 
-  if (visibleProducts.length === 0) return <div className="rounded-[1.75rem] border border-white/10 bg-white/[.035] p-6 text-center"><ShoppingBag className="mx-auto h-7 w-7 text-yellow-300" /><p className="mt-3 text-sm font-black text-white">El catálogo se está actualizando.</p><Link href={primaryCtaHref} className="mt-4 inline-flex items-center gap-2 text-xs font-black text-yellow-300">Ir a la tienda <ArrowRight className="h-4 w-4" /></Link></div>;
+  if (visibleProducts.length === 0) return <div className="border-t border-black/10 py-8 text-center text-sm font-black text-black/45">El catálogo se está actualizando. <Link href={primaryCtaHref} className="text-[#B96F00]">Ir a la tienda</Link></div>;
 
   if (variant === 'banner') return <FeaturedProductsCarousel products={visibleProducts} title={title} description={description} ctaHref={primaryCtaHref} ctaLabel={primaryCtaLabel} addedProductId={addedProductId} onAdd={addProduct} onBuy={goToProduct} />;
 
   return (
-    <section className="py-8 md:py-10">
-      <div className="mb-8 md:mb-10"><p className="text-[10px] font-black uppercase tracking-[.24em] text-yellow-300">Tienda Soluciones Fabrick</p><h2 className="mt-3 text-3xl font-black tracking-[-.045em] text-white md:text-5xl">{title}</h2><p className="mt-3 max-w-2xl text-sm leading-6 text-zinc-300">{description}</p></div>
-      <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {visibleProducts.map((product) => <article key={product.id} className="group overflow-hidden rounded-[1.5rem] border border-white/10 bg-[#111214] transition hover:-translate-y-1 hover:border-yellow-300/35"><button type="button" onClick={() => goToProduct(product)} className="relative block h-48 w-full overflow-hidden bg-white/5 text-left" aria-label={`Ver ${displayProductName(product.name)}`}>{product.img ? <img src={product.img} alt={displayProductName(product.name)} className="h-full w-full object-cover transition duration-500 group-hover:scale-105" /> : null}<span className="absolute inset-0 bg-gradient-to-t from-black/75 to-transparent" /></button><div className="p-5"><p className="text-[9px] font-black uppercase tracking-[.2em] text-yellow-300">{product.category}</p><button type="button" onClick={() => goToProduct(product)} className="mt-2 line-clamp-2 text-left text-lg font-black text-white">{displayProductName(product.name)}</button><div className="mt-4 flex items-end justify-between gap-3 border-t border-white/10 pt-4"><div><strong className="text-xl font-black text-yellow-300">{CLP(finalProductPrice(product))}</strong><p className="mt-1 text-[10px] text-zinc-500">{product.delivery}</p></div><ArrowRight className="h-4 w-4 text-zinc-500" /></div></div></article>)}
+    <section className="py-6 md:py-8">
+      <div className="mb-6 grid gap-3 border-b border-black/10 pb-5 sm:grid-cols-[1fr_auto] sm:items-end">
+        <div>
+          <p className="text-[10px] font-black uppercase tracking-[.18em] text-[#B96F00]">Tienda Soluciones Fabrick</p>
+          <h3 className="mt-2 text-2xl font-black tracking-[-.04em] text-[#08090A] md:text-3xl">{title}</h3>
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-black/45">{description}</p>
+        </div>
+        <Link href={primaryCtaHref} className="text-xs font-black text-[#B96F00]">{primaryCtaLabel} →</Link>
       </div>
-      <Link href={primaryCtaHref} className="mt-7 inline-flex items-center gap-2 rounded-full bg-yellow-300 px-6 py-3 text-xs font-black text-black transition hover:bg-white">{primaryCtaLabel}<ArrowRight className="h-4 w-4" /></Link>
+
+      <div className="grid grid-cols-2 gap-x-3 gap-y-8 md:grid-cols-3 lg:grid-cols-6">
+        {visibleProducts.map((product) => {
+          const price = finalProductPrice(product);
+          const discount = Number(product.discountPercentage ?? product.discount_percentage ?? 0);
+          return <article key={product.id} className="min-w-0">
+            <button type="button" onClick={() => goToProduct(product)} className="relative aspect-square w-full overflow-hidden bg-white text-left" aria-label={`Ver ${displayProductName(product.name)}`}>
+              {product.img ? <img src={product.img} alt={displayProductName(product.name)} className="h-full w-full object-contain transition duration-500 hover:scale-[1.03]" /> : null}
+              {discount > 0 ? <span className="absolute left-2 top-2 rounded-full bg-[#F5871F] px-2 py-1 text-[9px] font-black text-[#08090A]">-{discount}%</span> : null}
+            </button>
+            <p className="mt-3 text-[9px] font-black uppercase tracking-[.12em] text-[#B96F00]">{product.category}</p>
+            <button type="button" onClick={() => goToProduct(product)} className="mt-1 line-clamp-2 min-h-[2.55rem] text-left text-sm font-black leading-[1.15] text-[#08090A]">{displayProductName(product.name)}</button>
+            <div className="mt-3 border-t border-black/10 pt-3">
+              <strong className="block text-lg font-black tracking-[-.03em] text-[#08090A]">{CLP(price)}</strong>
+              <span className="mt-1 block text-[9px] font-black uppercase tracking-[.1em] text-emerald-700">IVA incluido</span>
+            </div>
+            <button type="button" disabled={product.stock === 0} onClick={() => addProduct(product)} className="mt-3 min-h-10 w-full rounded-full border border-black/15 px-3 text-[10px] font-black text-[#08090A] transition hover:border-[#F5871F] hover:bg-[#F5871F]/10 disabled:opacity-35">{addedProductId === product.id ? 'Añadido' : product.stock === 0 ? 'Sin stock' : 'Agregar'}</button>
+          </article>;
+        })}
+      </div>
     </section>
   );
 }

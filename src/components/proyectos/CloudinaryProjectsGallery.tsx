@@ -1,11 +1,11 @@
 'use client';
 
 /* eslint-disable @next/next/no-img-element */
-
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
-import { ArrowRight, FolderOpen, Images, Loader2, MessageCircle, Search, Sparkles } from 'lucide-react';
+import { ArrowRight, Eye, FolderOpen, Images, Loader2, MessageCircle, Search, Sparkles } from 'lucide-react';
 import { StoreBottomNav, StorefrontHeader } from '@/components/store/StorefrontChrome';
+import StoreFooter from '@/components/store/StoreFooter';
 import InterestStars from '@/components/proyectos/InterestStars';
 
 export type InspirationAsset = {
@@ -67,7 +67,7 @@ type ApiResponse = {
 
 const WHATSAPP_PHONE = '56930121625';
 const DEFAULT_CATEGORIES = [
-  { key: 'ideas', label: 'Todas las ideas' },
+  { key: 'ideas', label: 'Todo' },
   { key: 'cocinas', label: 'Cocinas' },
   { key: 'casas', label: 'Casas' },
   { key: 'planos', label: 'Planos' },
@@ -79,7 +79,7 @@ const DEFAULT_CATEGORIES = [
 ];
 
 function quoteUrl(album?: InspirationAlbum) {
-  const reference = album ? `el álbum ${album.title}` : 'el catálogo de Inspiraciones';
+  const reference = album ? `el álbum ${album.title}` : 'la biblioteca de Inspiraciones';
   const text = `Hola Soluciones Fabrick, vi ${reference} y quiero conversar sobre una solución parecida para mi espacio. Necesito orientación sobre medidas, materiales y rango de inversión.`;
   return `https://wa.me/${WHATSAPP_PHONE}?text=${encodeURIComponent(text)}`;
 }
@@ -94,14 +94,14 @@ function buildAlbums(assets: InspirationAsset[]): InspirationAlbum[] {
       current.count += 1;
       current.hashtags = Array.from(new Set([...(current.hashtags || []), ...tags])).slice(0, 18);
       current.keywords = Array.from(new Set([...(current.keywords || []), ...keywords])).slice(0, 18);
-      if (asset.album_cover) current.cover = asset.thumb;
+      if (asset.album_cover) current.cover = asset.thumb || asset.url;
     } else {
       map.set(asset.album, {
         key: asset.album,
         title: asset.album_title || asset.album.replace(/-/g, ' '),
         category: asset.category,
         description: asset.album_description || asset.description || 'Colección visual para comparar distribución, materiales, colores y terminaciones.',
-        cover: asset.thumb,
+        cover: asset.thumb || asset.url,
         count: 1,
         hashtags: tags.slice(0, 18),
         keywords: keywords.slice(0, 18),
@@ -115,7 +115,7 @@ function buildAlbums(assets: InspirationAsset[]): InspirationAlbum[] {
       });
     }
   }
-  return Array.from(map.values()).sort((left, right) => Number(right.interestScore || 0) - Number(left.interestScore || 0) || left.title.localeCompare(right.title));
+  return Array.from(map.values()).sort((a, b) => Number(b.interestScore || 0) - Number(a.interestScore || 0) || a.title.localeCompare(b.title));
 }
 
 function catalogJsonLd(albums: InspirationAlbum[]) {
@@ -133,19 +133,6 @@ function catalogJsonLd(albums: InspirationAlbum[]) {
         position: index + 1,
         url: `https://www.solucionesfabrick.com/inspiraciones/${album.key}`,
         name: album.title,
-        item: {
-          '@type': 'ImageGallery',
-          name: album.title,
-          description: album.description,
-          keywords: [album.primaryKeyword, ...(album.keywords || [])].filter(Boolean).join(', '),
-          image: {
-            '@type': 'ImageObject',
-            contentUrl: album.cover,
-            thumbnailUrl: album.cover,
-            caption: album.imageSearchCaption || album.description,
-            name: album.title,
-          },
-        },
       })),
     },
   };
@@ -168,7 +155,7 @@ export default function CloudinaryProjectsGallery() {
         const response = await fetch('/api/proyectos/cloudinary?folder=fabrick/inspiraciones&max=100', { cache: 'no-store' });
         const json = await response.json() as ApiResponse;
         if (!mounted) return;
-        const nextAssets = (json.assets || []).sort((left, right) => left.album.localeCompare(right.album) || Number(left.sort_order || 0) - Number(right.sort_order || 0));
+        const nextAssets = (json.assets || []).sort((a, b) => a.album.localeCompare(b.album) || Number(a.sort_order || 0) - Number(b.sort_order || 0));
         setAssets(nextAssets);
         setAlbums(json.albums?.length ? json.albums : buildAlbums(nextAssets));
         setCategories(json.categories?.length ? json.categories : DEFAULT_CATEGORIES);
@@ -184,82 +171,106 @@ export default function CloudinaryProjectsGallery() {
   }, []);
 
   const filteredAlbums = useMemo(() => {
-    const normalizedQuery = query.trim().toLowerCase();
+    const q = query.trim().toLowerCase();
     return albums.filter((album) => {
       const categoryOk = activeCategory === 'ideas' || album.category === activeCategory;
       const searchable = `${album.title} ${album.description} ${album.category} ${album.primaryKeyword || ''} ${(album.keywords || []).join(' ')} ${(album.hashtags || []).join(' ')}`.toLowerCase();
-      return categoryOk && (!normalizedQuery || searchable.includes(normalizedQuery));
+      return categoryOk && (!q || searchable.includes(q));
     });
   }, [activeCategory, albums, query]);
 
+  const albumAssets = useMemo(() => {
+    const map = new Map<string, InspirationAsset[]>();
+    for (const asset of assets) {
+      const list = map.get(asset.album) || [];
+      list.push(asset);
+      map.set(asset.album, list);
+    }
+    return map;
+  }, [assets]);
+
+  const previewAssets = useMemo(() => {
+    const allowed = new Set(filteredAlbums.map((album) => album.key));
+    return assets.filter((asset) => allowed.has(asset.album)).slice(0, 14);
+  }, [assets, filteredAlbums]);
+
   const jsonLd = useMemo(() => catalogJsonLd(albums), [albums]);
+  const heroAlbums = albums.slice(0, 4);
 
   return (
-    <div className="min-h-screen overflow-x-hidden bg-[#FFF9EE] text-[#08090A]">
+    <div className="sf-inspirations min-h-screen overflow-x-hidden bg-[#F4EFE6] text-[#111214]">
+      <style>{`
+        @media(max-width:767px){
+          .sf-inspirations > nav label{display:none!important}
+          .sf-inspirations > nav > div{padding-bottom:.45rem!important}
+        }
+        .sf-album-grid{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;gap:1rem .7rem!important}
+        .sf-album-grid>*{min-width:0!important;max-width:none!important}
+        @media(min-width:720px){.sf-album-grid{grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:1.4rem!important}}
+        @media(min-width:1180px){.sf-album-grid{grid-template-columns:repeat(4,minmax(0,1fr))!important;gap:1.6rem!important}}
+      `}</style>
       <StorefrontHeader />
       {albums.length ? <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd).replace(/</g, '\\u003c') }} /> : null}
 
-      <section className="relative overflow-hidden bg-[#08090A] px-4 pb-12 pt-12 text-[#FFF9EE] sm:px-6 lg:px-10 lg:pb-16 lg:pt-16">
-        <div className="pointer-events-none absolute inset-0 bg-[radial-gradient(circle_at_12%_12%,rgba(204,177,150,.23),transparent_30rem),radial-gradient(circle_at_88%_18%,rgba(182,144,108,.16),transparent_28rem)]" />
-        <div className="relative mx-auto max-w-7xl">
-          <span className="inline-flex items-center gap-2 rounded-full bg-white/7 px-4 py-2 text-[10px] font-black uppercase tracking-[.28em] text-[#F2DFBB]"><Sparkles className="h-3.5 w-3.5" /> Biblioteca visual Fabrick</span>
-          <div className="mt-7 grid gap-8 lg:grid-cols-[minmax(0,1.06fr)_minmax(360px,.94fr)] lg:items-end">
+      <main className="pb-24 md:pb-0">
+        <section className="relative overflow-hidden bg-[#111214] text-white">
+          {heroAlbums[0]?.cover ? <img src={heroAlbums[0].cover} alt="Inspiraciones Soluciones Fabrick" className="absolute inset-0 h-full w-full object-cover opacity-20" /> : null}
+          <div className="absolute inset-0 bg-[linear-gradient(90deg,rgba(17,18,20,.98)_0%,rgba(17,18,20,.88)_48%,rgba(17,18,20,.55)_100%)]" />
+          <div className="relative mx-auto grid max-w-[1380px] gap-8 px-4 py-10 sm:px-6 sm:py-14 lg:grid-cols-[1fr_.85fr] lg:items-end lg:px-8 lg:py-20">
             <div>
-              <h1 className="max-w-4xl text-5xl font-black leading-[.91] tracking-[-.07em] sm:text-7xl lg:text-8xl">Ideas de construcción y remodelación organizadas por álbum.</h1>
-              <p className="mt-5 max-w-2xl text-base leading-8 text-[#D5C9C0] sm:text-lg">Explora colecciones de cocinas, casas, planos, baños, muebles, piscinas, terrazas y quinchos. Cada álbum incluye palabras clave, descripciones visibles y una página propia preparada para buscadores y asistentes de IA.</p>
-              <div className="mt-7 flex flex-wrap gap-3"><a href="#albumes" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#F5871F] px-6 text-sm font-black text-[#08090A]">Explorar álbumes <ArrowRight className="h-4 w-4" /></a><a href={quoteUrl()} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-white/7 px-6 text-sm font-black text-[#FFF9EE]">Contar mi idea <MessageCircle className="h-4 w-4" /></a></div>
+              <span className="inline-flex items-center gap-2 rounded-full border border-white/12 bg-white/5 px-3 py-2 text-[9px] font-black uppercase tracking-[.2em] text-[#FFB000]"><Sparkles className="h-3.5 w-3.5"/> Inspiraciones Fabrick</span>
+              <h1 className="mt-5 max-w-[11ch] text-5xl font-black leading-[.88] tracking-[-.065em] sm:text-7xl lg:text-[5.8rem]">Ideas que puedes recorrer antes de construir.</h1>
+              <p className="mt-5 max-w-2xl text-sm leading-7 text-white/55 sm:text-base">Explora álbumes de casas, cocinas, baños, terrazas, quinchos, piscinas y detalles constructivos. Mira referencias en línea, abre la galería completa y usa una idea como punto de partida para cotizar.</p>
+              <div className="mt-7 flex flex-wrap gap-3"><a href="#albumes" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-[#F5871F] px-5 text-sm font-black text-black">Ver álbumes <ArrowRight className="h-4 w-4"/></a><a href={quoteUrl()} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-white/15 px-5 text-sm font-black">Tengo una idea <MessageCircle className="h-4 w-4"/></a></div>
+              <div className="mt-8 flex gap-7 border-t border-white/10 pt-5 text-xs"><div><b className="block text-2xl text-[#FFB000]">{albums.length}</b><span className="text-white/40">álbumes</span></div><div><b className="block text-2xl text-[#FFB000]">{assets.length}</b><span className="text-white/40">referencias</span></div><div><b className="block text-2xl text-[#FFB000]">{categories.length - 1}</b><span className="text-white/40">categorías</span></div></div>
             </div>
-            <div className="grid grid-cols-2 gap-3">
-              {albums.slice(0, 3).map((album, index) => <Link key={album.key} href={`/inspiraciones/${album.key}`} className={`group relative overflow-hidden rounded-[1.7rem] text-left ${index === 0 ? 'col-span-2 h-56' : 'h-40'}`}><img src={album.cover} alt={album.imageSearchCaption || album.title} className="h-full w-full object-cover transition duration-700 group-hover:scale-105" /><span className="absolute inset-0 bg-gradient-to-t from-[#08090A]/92 via-[#08090A]/12 to-transparent" /><span className="absolute inset-x-4 bottom-4"><span className="text-[9px] font-black uppercase tracking-[.15em] text-[#FFB000]">{album.count} imágenes agrupadas</span><b className="mt-1 block text-lg text-white">{album.title}</b></span></Link>)}
+
+            <div className="grid grid-cols-2 gap-2 sm:gap-3">
+              {heroAlbums.map((album, index) => <Link key={album.key} href={`/inspiraciones/${album.key}`} className={`group relative overflow-hidden rounded-2xl bg-white/5 ${index === 0 ? 'col-span-2 aspect-[2/1]' : 'aspect-[4/3]'}`}><img src={album.cover} alt={album.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105"/><span className="absolute inset-0 bg-gradient-to-t from-black/85 via-black/5 to-transparent"/><span className="absolute inset-x-3 bottom-3"><span className="text-[8px] font-black uppercase tracking-[.13em] text-[#FFB000]">{album.count} imágenes</span><b className="mt-1 block text-sm leading-tight text-white sm:text-lg">{album.title}</b></span></Link>)}
             </div>
           </div>
-        </div>
-      </section>
+        </section>
 
-      <section id="albumes" className="scroll-mt-24 px-4 py-14 sm:px-6 lg:px-10 lg:py-18">
-        <div className="mx-auto max-w-7xl">
-          <div className="grid gap-5 lg:grid-cols-[.72fr_1.28fr] lg:items-end"><div><p className="text-[10px] font-black uppercase tracking-[.24em] text-[#F5871F]">Álbumes de ideas</p><h2 className="mt-3 text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-6xl">Busca por espacio, estilo o palabra clave.</h2></div><p className="max-w-2xl text-sm leading-7 text-[#BFB8AC]">Cada portada abre una página semántica con carrusel 3D, galería completa, textos descriptivos, palabras relacionadas y metadata de imagen.</p></div>
+        <section id="albumes" className="scroll-mt-20 px-3 py-10 sm:px-6 lg:px-8 lg:py-16">
+          <div className="mx-auto max-w-[1380px]">
+            <div className="flex flex-col gap-4 border-b border-black/10 pb-5 lg:flex-row lg:items-end lg:justify-between"><div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#B96F00]">Biblioteca visual</p><h2 className="mt-2 text-4xl font-black leading-[.92] tracking-[-.055em] sm:text-6xl">Encuentra una idea y ábrela.</h2></div><p className="max-w-xl text-sm leading-6 text-black/45">Dos álbumes por fila en móvil y hasta cuatro en escritorio. Cada tarjeta deja ver varias imágenes antes de entrar.</p></div>
 
-          <div className="sticky top-[68px] z-20 -mx-4 mt-7 border-y border-[#08090A]/8 bg-[#FFF9EE]/94 px-4 py-3 backdrop-blur-2xl md:mx-0 md:rounded-[1.6rem] md:border">
-            <label className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3 ring-1 ring-[#08090A]/8"><Search className="h-4 w-4 text-[#F5871F]" /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar cocina mediterránea, quincho, piscina…" className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-[#9B8E84]" /></label>
-            <div className="mt-3 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{categories.map((item) => <button key={item.key} type="button" onClick={() => setActiveCategory(item.key)} className={`shrink-0 rounded-full px-4 py-2 text-xs font-black transition ${activeCategory === item.key ? 'bg-[#08090A] text-[#FFF9EE]' : 'bg-white text-[#BFB8AC] ring-1 ring-[#08090A]/7'}`}>{item.label}</button>)}</div>
+            <div className="sticky top-[64px] z-30 -mx-3 mt-5 border-y border-black/10 bg-[#F4EFE6]/96 px-3 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
+              <label className="flex min-h-12 items-center gap-3 rounded-xl bg-white px-4 shadow-sm ring-1 ring-black/5"><Search className="h-4 w-4 text-[#F5871F]"/><input value={query} onChange={(event)=>setQuery(event.target.value)} placeholder="Buscar casa, cocina, quincho, piscina…" className="min-w-0 flex-1 bg-transparent text-sm font-semibold outline-none placeholder:text-black/30"/><span className="text-[10px] font-black text-black/35">{filteredAlbums.length}</span></label>
+              <div className="mt-2 flex gap-2 overflow-x-auto pb-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{categories.map((item)=><button key={item.key} onClick={()=>setActiveCategory(item.key)} className={`shrink-0 rounded-full px-4 py-2 text-[10px] font-black uppercase tracking-[.08em] ${activeCategory===item.key?'bg-black text-white':'bg-white text-black/48'}`}>{item.label}</button>)}</div>
+            </div>
+
+            {notice ? <div className="mt-4 rounded-xl bg-amber-100 px-4 py-3 text-xs text-amber-900">{notice}</div> : null}
+            {loading ? <div className="mt-6 grid min-h-[40vh] place-items-center rounded-2xl bg-white"><div className="flex items-center gap-3 text-sm text-black/45"><Loader2 className="h-5 w-5 animate-spin text-[#F5871F]"/>Preparando álbumes…</div></div> : null}
+
+            {!loading && previewAssets.length ? <section className="mt-7"><div className="flex items-end justify-between"><div><p className="text-[9px] font-black uppercase tracking-[.18em] text-[#B96F00]">Vista rápida</p><h3 className="mt-1 text-2xl font-black tracking-[-.04em]">Mira referencias sin salir de la página.</h3></div><Eye className="hidden h-5 w-5 text-black/25 sm:block"/></div><div className="mt-4 flex snap-x gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">{previewAssets.map((asset)=><Link key={asset.id} href={`/inspiraciones/${asset.album}`} className="group relative min-w-[42%] snap-start overflow-hidden rounded-xl bg-white sm:min-w-[190px] lg:min-w-[220px]"><div className="aspect-[4/3] overflow-hidden"><img src={asset.thumb || asset.url} alt={asset.alt || asset.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-105"/></div><div className="p-3"><p className="line-clamp-1 text-[9px] font-black uppercase tracking-[.1em] text-[#B96F00]">{asset.album_title}</p><p className="mt-1 line-clamp-2 text-xs font-bold leading-4">{asset.title}</p></div></Link>)}</div></section> : null}
+
+            {!loading && filteredAlbums.length ? <div className="sf-album-grid mt-8">{filteredAlbums.map((album)=><AlbumCard key={album.key} album={album} assets={albumAssets.get(album.key) || []}/>)}</div> : null}
+            {!loading && !filteredAlbums.length ? <EmptyState title="No encontramos álbumes" text="Prueba otra categoría o cambia la búsqueda."/> : null}
           </div>
+        </section>
 
-          {notice ? <div className="mt-5 rounded-2xl bg-[#F2DFBB] p-4 text-sm text-[#BFB8AC]">{notice}</div> : null}
-          {loading ? <div className="mt-6 grid min-h-[42vh] place-items-center rounded-[2rem] bg-white"><div className="flex items-center gap-3 text-[#BFB8AC]"><Loader2 className="h-5 w-5 animate-spin text-[#F5871F]" /> Preparando álbumes desde Cloudinary…</div></div> : null}
-          {!loading && filteredAlbums.length ? <div className="mt-7 grid gap-5 sm:grid-cols-2 lg:grid-cols-3">{filteredAlbums.map((album, index) => <AlbumCard key={album.key} album={album} index={index} />)}</div> : null}
-          {!loading && !filteredAlbums.length ? <EmptyState title="No encontramos álbumes" text="Prueba otra categoría o cambia la búsqueda." /> : null}
-          <p className="sr-only">{assets.map((asset) => `${asset.title}. ${asset.alt || ''}. ${asset.description || ''}`).join(' ')}</p>
-        </div>
-      </section>
+        <section className="bg-[#E9DDCA] px-4 py-12 sm:px-6 lg:px-8 lg:py-16"><div className="mx-auto grid max-w-[1380px] gap-8 lg:grid-cols-[.8fr_1.2fr] lg:items-center"><div><span className="grid h-12 w-12 place-items-center rounded-xl bg-black text-[#FFB000]"><FolderOpen className="h-5 w-5"/></span><h2 className="mt-5 max-w-[12ch] text-4xl font-black leading-[.95] tracking-[-.05em] sm:text-5xl">De una referencia visual a una solución construible.</h2></div><div><p className="max-w-2xl text-sm leading-7 text-black/50">Una imagen inspira, pero el proyecto final depende de medidas, estructura existente, instalaciones, materiales y terminaciones. Usa el álbum como referencia y luego aterrizamos contigo lo que realmente se puede ejecutar.</p><div className="mt-5 flex flex-wrap gap-3"><Link href="/presupuesto" className="inline-flex min-h-12 items-center gap-2 rounded-full bg-black px-5 text-sm font-black text-white">Calcular mi proyecto <ArrowRight className="h-4 w-4"/></Link><a href={quoteUrl()} target="_blank" rel="noreferrer" className="inline-flex min-h-12 items-center gap-2 rounded-full border border-black/15 px-5 text-sm font-black">Hablar por WhatsApp <MessageCircle className="h-4 w-4"/></a></div></div></div></section>
+      </main>
 
-      <section className="bg-[#F2DFBB] px-4 py-14 sm:px-6 lg:px-10"><div className="mx-auto grid max-w-7xl gap-6 lg:grid-cols-[.78fr_1.22fr] lg:items-center"><div><span className="grid h-14 w-14 place-items-center rounded-2xl bg-[#08090A] text-[#FFB000]"><FolderOpen className="h-6 w-6" /></span><h2 className="mt-5 text-4xl font-black leading-[.96] tracking-[-.05em]">Guarda la idea. Nosotros aterrizamos la solución.</h2></div><div><p className="text-sm leading-7 text-[#BFB8AC]">Una referencia visual no define por sí sola el costo ni la factibilidad. Para convertirla en propuesta revisamos medidas, estructura existente, instalaciones, materiales, permisos y nivel de terminación.</p><a href="/presupuesto" className="mt-5 inline-flex min-h-12 items-center gap-2 rounded-full bg-[#08090A] px-6 text-sm font-black text-[#FFF9EE]">Abrir calculadoras de servicios <ArrowRight className="h-4 w-4" /></a></div></div></section>
-      <StoreBottomNav />
+      <div className="bg-[#111214] pb-24 text-white md:pb-0"><StoreFooter/></div>
+      <StoreBottomNav/>
     </div>
   );
 }
 
-function AlbumCard({ album, index }: { album: InspirationAlbum; index: number }) {
-  return (
-    <article className={`group relative overflow-hidden rounded-[2rem] bg-[#08090A] text-left shadow-[0_20px_70px_rgba(23,24,32,.12)] ${index % 5 === 0 ? 'sm:row-span-2' : ''}`}>
-      <Link href={`/inspiraciones/${album.key}`} className="block" aria-label={`Abrir álbum ${album.title}`}>
-        <figure>
-          <div className={index % 5 === 0 ? 'h-[520px]' : 'h-[360px]'}><img src={album.cover} alt={album.imageSearchCaption || album.title} width={820} height={index % 5 === 0 ? 1100 : 760} loading={index < 3 ? 'eager' : 'lazy'} decoding="async" className="h-full w-full object-cover transition duration-700 group-hover:scale-[1.045]" /></div>
-          <span className="absolute inset-0 bg-gradient-to-t from-[#08090A]/98 via-[#08090A]/18 to-transparent" />
-          <figcaption className="absolute inset-x-5 bottom-5">
-            <div className="flex flex-wrap items-center justify-between gap-2"><span className="inline-flex items-center gap-2 rounded-full bg-[#FFF9EE]/92 px-3 py-1.5 text-[9px] font-black uppercase tracking-[.14em] text-[#08090A]"><Images className="h-3 w-3" /> {album.count} referencias</span><InterestStars score={album.interestScore} label={album.interestLabel} compact tone="dark" /></div>
-            <h3 className="mt-3 text-2xl font-black text-white">{album.title}</h3>
-            <p className="mt-2 line-clamp-3 text-xs leading-5 text-[#D2C6BD]">{album.description}</p>
-            {album.primaryKeyword ? <p className="mt-3 text-[9px] font-black uppercase tracking-[.13em] text-[#FFB000]">Idea principal: {album.primaryKeyword}</p> : null}
-            <div className="mt-3 flex flex-wrap gap-1">{album.hashtags?.slice(0, 4).map((tag) => <span key={tag} className="rounded-full bg-white/8 px-2 py-1 text-[8px] font-black text-[#F2DFBB]">#{tag}</span>)}</div>
-            <span className="mt-4 inline-flex items-center gap-2 text-xs font-black text-[#F2DFBB]">Abrir carrusel y galería <ArrowRight className="h-4 w-4 transition group-hover:translate-x-1" /></span>
-          </figcaption>
-        </figure>
-      </Link>
-    </article>
-  );
+function AlbumCard({ album, assets }: { album: InspirationAlbum; assets: InspirationAsset[] }) {
+  const thumbs = assets.slice(0, 3);
+  return <article className="group overflow-hidden rounded-2xl bg-white shadow-[0_10px_35px_rgba(20,15,10,.06)] ring-1 ring-black/5">
+    <Link href={`/inspiraciones/${album.key}`} className="block">
+      <div className="relative aspect-[4/5] overflow-hidden bg-[#E8E1D5]"><img src={album.cover} alt={album.imageSearchCaption || album.title} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.03]"/><span className="absolute inset-0 bg-gradient-to-t from-black/65 via-transparent to-transparent"/><span className="absolute left-2 top-2 rounded-full bg-white/92 px-2.5 py-1 text-[8px] font-black uppercase tracking-[.1em] text-black"><Images className="mr-1 inline h-3 w-3"/>{album.count}</span><span className="absolute inset-x-3 bottom-3"><InterestStars score={album.interestScore} label={album.interestLabel} compact tone="dark"/></span></div>
+      <div className="p-3 sm:p-4"><p className="text-[8px] font-black uppercase tracking-[.13em] text-[#B96F00]">{album.category}</p><h3 className="mt-1 line-clamp-2 min-h-[2.4rem] text-sm font-black leading-[1.05] sm:text-lg">{album.title}</h3><p className="mt-2 line-clamp-2 text-[10px] leading-4 text-black/42 sm:text-xs sm:leading-5">{album.description}</p>
+      {thumbs.length ? <div className="mt-3 grid grid-cols-3 gap-1">{thumbs.map((asset)=><div key={asset.id} className="aspect-square overflow-hidden rounded-md bg-[#F2EEE7]"><img src={asset.thumb || asset.url} alt="" className="h-full w-full object-cover"/></div>)}</div>:null}
+      <div className="mt-3 flex items-center justify-between border-t border-black/8 pt-3"><span className="text-[10px] font-black text-black/45">Abrir álbum</span><ArrowRight className="h-4 w-4 text-[#F5871F] transition group-hover:translate-x-1"/></div></div>
+    </Link>
+  </article>;
 }
 
 function EmptyState({ title, text }: { title: string; text: string }) {
-  return <div className="mt-7 grid min-h-[32vh] place-items-center rounded-[2rem] bg-white p-8 text-center"><div><Images className="mx-auto h-9 w-9 text-[#F5871F]" /><h2 className="mt-4 text-2xl font-black">{title}</h2><p className="mt-2 text-sm text-[#BFB8AC]">{text}</p></div></div>;
+  return <div className="mt-7 grid min-h-[32vh] place-items-center rounded-2xl bg-white p-8 text-center"><div><Images className="mx-auto h-9 w-9 text-[#F5871F]"/><h2 className="mt-4 text-2xl font-black">{title}</h2><p className="mt-2 text-sm text-black/45">{text}</p></div></div>;
 }

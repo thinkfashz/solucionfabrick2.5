@@ -8,7 +8,7 @@ export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 export const metadata: Metadata = {
-  title: 'Presupuesto por partidas | Soluciones Fabrick',
+  title: 'Presupuesto por partidas',
   description: 'Calcula cada especialidad con medidas reales, arma un presupuesto preliminar con IVA incluido y comparte el resumen para confirmar alcance y precio final.',
   keywords: [
     'presupuesto construcción Linares',

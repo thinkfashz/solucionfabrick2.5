@@ -2,7 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useParams, useRouter } from 'next/navigation';
-import { ArrowLeft, Check, Heart, Minus, Plus, ShieldCheck, ShoppingCart, Star } from 'lucide-react';
+import { ArrowLeft, Check, Minus, Plus, ShieldCheck, ShoppingCart, Star } from 'lucide-react';
 import { useCartContext } from '@/context/CartContext';
 import { useCatalogProducts, type CatalogProduct } from '@/hooks/useCatalogProducts';
 import { useTenantBranding } from '@/hooks/useTenantBranding';
@@ -23,24 +23,19 @@ export default function ProductDetailClientV2() {
   const [qty, setQty] = useState(1);
   const [added, setAdded] = useState(false);
   const product = useMemo(() => products.find((item) => String(item.id) === String(params?.id)), [products, params?.id]);
-
   useEffect(() => { setQty(1); }, [params?.id]);
-
   if (!product) return <main className="min-h-screen bg-[#F4EFE6] px-5 py-20 text-center text-[#111214]"><p className="text-sm font-bold text-black/40">Cargando producto…</p></main>;
-
   const gross = finalPrice(product);
   const net = Math.round(gross / 1.19);
   const iva = gross - net;
   const d = discount(product);
   const stock = Number.isFinite(Number(product.stock)) ? Number(product.stock) : null;
   const rating = Math.max(0, Math.min(5, Number(product.rating || 0)));
-
   function add() {
     if (stock === 0) return;
-    for (let i = 0; i < qty; i++) addToCart({ id: product!.id, name: product!.name, price: product!.price, image_url: img(product!), category_id: product!.category_id, discount_percentage: d, stock: product!.stock } as Parameters<typeof addToCart>[0]);
+    for (let i = 0; i < qty; i++) addToCart({ id: product.id, name: product.name, price: product.price, image_url: img(product), category_id: product.category_id, discount_percentage: d, stock: product.stock } as Parameters<typeof addToCart>[0]);
     setAdded(true); window.setTimeout(() => setAdded(false), 1200);
   }
-
   return <div className="min-h-screen bg-[#F4EFE6] text-[#111214]">
     <StorefrontHeader onSearch={() => router.push('/tienda#catalogo')} />
     <main className="mx-auto max-w-6xl px-3 pb-32 pt-4 sm:px-6">

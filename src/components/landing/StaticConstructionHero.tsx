@@ -45,7 +45,7 @@ export default function StaticConstructionHero({ coverUrl }: StaticConstructionH
           src={customCover}
           alt="Proyecto residencial desarrollado por Soluciones Fabrick"
           data-parallax="-10"
-          className="absolute inset-0 -z-30 h-[115%] w-full object-cover object-[68%_center]"
+          className="absolute inset-0 -z-30 h-[115%] w-full object-cover object-[62%_center] sm:object-[68%_center] lg:object-center"
           loading="eager"
           fetchPriority="high"
           decoding="async"
@@ -55,7 +55,7 @@ export default function StaticConstructionHero({ coverUrl }: StaticConstructionH
           src={HERO_IMAGE}
           alt="Vivienda residencial en construcción con estructura liviana"
           data-parallax="-10"
-          className="-z-30 h-[115%] object-cover object-[68%_center] lg:object-center"
+          className="-z-30 h-[115%] object-cover object-[62%_center] sm:object-[68%_center] lg:object-center"
           fill
           priority
           quality={72}
@@ -63,8 +63,8 @@ export default function StaticConstructionHero({ coverUrl }: StaticConstructionH
         />
       )}
 
-      <div className="absolute inset-0 -z-20 bg-[linear-gradient(90deg,rgba(23,24,32,.99),rgba(23,24,32,.9)_55%,rgba(23,24,32,.42)),linear-gradient(180deg,rgba(23,24,32,.06),rgba(23,24,32,.94))]" />
-      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_16%_22%,rgba(204,177,150,.22),transparent_30%),radial-gradient(circle_at_90%_80%,rgba(182,144,108,.16),transparent_34%)]" />
+      <div className="absolute inset-0 -z-20 bg-[linear-gradient(90deg,rgba(8,9,10,.86),rgba(8,9,10,.62)_52%,rgba(8,9,10,.18)),linear-gradient(180deg,rgba(8,9,10,.03),rgba(8,9,10,.68))]" />
+      <div className="absolute inset-0 -z-10 bg-[radial-gradient(circle_at_16%_22%,rgba(204,177,150,.18),transparent_30%),radial-gradient(circle_at_90%_80%,rgba(182,144,108,.12),transparent_34%)]" />
 
       <div className="mx-auto grid min-h-[640px] max-w-[1320px] items-center gap-10 lg:grid-cols-[minmax(0,1.08fr)_minmax(360px,.62fr)]">
         <div className="max-w-4xl pb-4">

@@ -2,41 +2,16 @@ import { NextResponse, type NextRequest } from 'next/server';
 import { addSubscriber, buildUnsubscribeLink, normalizeEmail } from '@/lib/newsletter';
 import { getResendCredentials } from '@/lib/resendCredentials';
 import { insforgeAdmin } from '@/lib/insforge';
-import { sendWelcomeEmail } from '@/lib/emailDriver';
+import { sendEmail } from '@/lib/emailDriver';
+import WelcomeEmail from '@/emails/WelcomeEmail';
+import { getTenantById, getTenantBySlug } from '@/lib/tenant';
 import { v, parse, validationError } from '@/lib/validate';
+import type { ReactElement } from 'react';
 
 export const dynamic = 'force-dynamic';
 export const runtime = 'nodejs';
 
 const DEDUP_WINDOW_MS = 24 * 60 * 60 * 1000;
-
-interface WelcomeBody {
-  email?: unknown;
-  name?: unknown;
-}
-
-function pickLogoUrl(requestUrl: string): string | undefined {
-  const explicit = process.env.NEXT_PUBLIC_EMAIL_LOGO_URL?.trim();
-  if (explicit) return explicit;
-  const site = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (site) return `${site.replace(/\/+$/, '')}/brand/soluciones-fabrick-email.png`;
-  try {
-    const u = new URL(requestUrl);
-    return `${u.origin}/brand/soluciones-fabrick-email.png`;
-  } catch {
-    return undefined;
-  }
-}
-
-function pickShopUrl(requestUrl: string): string {
-  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-  if (explicit) return explicit.replace(/\/+$/, '');
-  try {
-    return new URL(requestUrl).origin;
-  } catch {
-    return '';
-  }
-}
 
 async function recentlySent(email: string): Promise<boolean> {
   try {
@@ -60,21 +35,38 @@ async function recordSent(email: string): Promise<void> {
       .from('welcome_emails_log')
       .upsert([{ email, sent_at: new Date().toISOString() }], { onConflict: 'email' });
   } catch {
-    /* best-effort */
+    // best-effort
   }
 }
 
-/**
- * POST /api/auth/welcome
- *
- * Llamado desde la página `/auth` tras un signUp exitoso. No requiere
- * sesión (el cliente recién registrado todavía no tiene token útil) —
- * la idempotencia evita abuso: cada email recibe a lo sumo un correo
- * de bienvenida cada 24h.
- */
+function shopUrl(request: NextRequest) {
+  try {
+    return request.nextUrl.origin;
+  } catch {
+    return process.env.NEXT_PUBLIC_SITE_URL || 'https://solucionesfabrick.com';
+  }
+}
+
+async function resolveBranding(request: NextRequest) {
+  const tenantId = request.headers.get('x-tenant-id') || '';
+  const tenantSlug = request.headers.get('x-tenant-slug') || '';
+  const tenant = tenantId
+    ? await getTenantById(tenantId)
+    : tenantSlug
+      ? await getTenantBySlug(tenantSlug)
+      : null;
+
+  return {
+    name: tenant?.name || 'Soluciones Fabrick',
+    logoUrl: tenant?.logoUrl || `${request.nextUrl.origin}/brand/soluciones-fabrick-email.png`,
+    accentColor: tenant?.primaryColor || '#F5871F',
+    contactEmail: tenant?.contactEmail || tenant?.ownerEmail || 'contacto@solucionesfabrick.com',
+  };
+}
+
 const welcomeSchema = {
   email: v.email({ required: true, max: 255 }),
-  name:  v.string({ max: 200 }),
+  name: v.string({ max: 200 }),
 };
 
 export async function POST(request: NextRequest) {
@@ -83,8 +75,7 @@ export async function POST(request: NextRequest) {
   if (!result.ok) return validationError(result.errors);
 
   const email = normalizeEmail(result.data.email as string);
-  const name  = (result.data.name as string | undefined) ?? null;
-
+  const name = (result.data.name as string | undefined) ?? null;
   const subscription = await addSubscriber({ email, name, source: 'signup' });
 
   if (await recentlySent(email)) {
@@ -93,34 +84,40 @@ export async function POST(request: NextRequest) {
 
   const creds = await getResendCredentials();
   if (!creds.ready) {
-    return NextResponse.json(
-      {
-        ok: true,
-        subscribed: subscription.ok,
-        emailed: false,
-        warning: 'Resend no está configurado. Agrega la API Key en /admin/integraciones.',
-      },
-      { status: 200 },
-    );
+    return NextResponse.json({
+      ok: true,
+      subscribed: subscription.ok,
+      emailed: false,
+      warning: 'El proveedor de correo aún no está configurado.',
+    });
   }
 
-  const shopUrl = pickShopUrl(request.url);
-  const logoUrl = pickLogoUrl(request.url);
-  const unsubscribeUrl = buildUnsubscribeLink(email, shopUrl || undefined);
+  const brand = await resolveBranding(request).catch(() => ({
+    name: 'Soluciones Fabrick',
+    logoUrl: `${request.nextUrl.origin}/brand/soluciones-fabrick-email.png`,
+    accentColor: '#F5871F',
+    contactEmail: 'contacto@solucionesfabrick.com',
+  }));
+  const appUrl = shopUrl(request);
+  const unsubscribeUrl = buildUnsubscribeLink(email, appUrl || undefined);
 
-  const emailResult = await sendWelcomeEmail({
+  const emailResult = await sendEmail({
     to: email,
-    name,
-    shopUrl: shopUrl || 'https://solucionesfabrick.cl',
-    unsubscribeUrl,
-    logoUrl,
+    subject: `¡Bienvenido a ${brand.name}!`,
+    replyTo: brand.contactEmail,
+    react: WelcomeEmail({
+      customerName: name ?? undefined,
+      shopUrl: appUrl,
+      unsubscribeUrl,
+      logoUrl: brand.logoUrl,
+      brandName: brand.name,
+      accentColor: brand.accentColor,
+      contactEmail: brand.contactEmail,
+    }) as ReactElement,
   });
 
   if (!emailResult.ok && !emailResult.simulated) {
-    return NextResponse.json(
-      { ok: false, subscribed: subscription.ok, emailed: false, error: emailResult.error },
-      { status: 502 },
-    );
+    return NextResponse.json({ ok: false, subscribed: subscription.ok, emailed: false, error: emailResult.error }, { status: 502 });
   }
   if (!emailResult.simulated) await recordSent(email);
   return NextResponse.json({ ok: true, subscribed: subscription.ok, emailed: !emailResult.simulated, id: emailResult.id ?? null });

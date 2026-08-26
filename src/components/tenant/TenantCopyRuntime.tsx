@@ -8,17 +8,20 @@ const TEXT_REPLACEMENTS = [
   'Soluciones Fabrick SpA',
   'Soluciones Fabrick',
   'SOLUCIONES FABRICK',
+  'Fabrick',
   'solucionesfabrick.cl',
   'solucionesfabrick.com',
+  'contacto@solucionesfabrick.com',
   'pagos@solucionesfabrick.cl',
   'admin@fabrick.cl',
 ];
 
+function isRootSurface(pathname: string) {
+  return pathname.startsWith('/admin/saas') || pathname.startsWith('/admin/superadmin');
+}
+
 function shouldApply(pathname: string) {
-  return !pathname.startsWith('/admin')
-    && !pathname.startsWith('/auth')
-    && !pathname.startsWith('/api')
-    && !pathname.startsWith('/registro');
+  return !pathname.startsWith('/api') && !isRootSurface(pathname);
 }
 
 function isSafeTextNode(node: Node) {
@@ -36,14 +39,35 @@ function isSafeTextNode(node: Node) {
 
 function replaceText(value: string, replacements: Record<string, string>) {
   let next = value;
-  for (const [from, to] of Object.entries(replacements)) {
+  const entries = Object.entries(replacements).sort(([a], [b]) => b.length - a.length);
+  for (const [from, to] of entries) {
     if (!to) continue;
     next = next.split(from).join(to);
   }
   return next;
 }
 
-function applyTenantCopy(root: ParentNode, replacements: Record<string, string>) {
+function applyBrandImages(root: ParentNode, logoUrl: string | null, brandName: string) {
+  if (!logoUrl) return;
+  const elements: HTMLImageElement[] = [];
+  if (root instanceof HTMLImageElement) elements.push(root);
+  root.querySelectorAll?.('img').forEach((item) => elements.push(item as HTMLImageElement));
+
+  elements.forEach((img) => {
+    const current = img.getAttribute('src') || '';
+    const original = img.dataset.tenantOriginalSrc || current;
+    const isBrandAsset = original.includes('/brand/soluciones-fabrick')
+      || original.includes('/app-icon')
+      || current.includes('/brand/soluciones-fabrick');
+    if (!isBrandAsset) return;
+    if (!img.dataset.tenantOriginalSrc) img.dataset.tenantOriginalSrc = original;
+    if (img.src !== logoUrl) img.src = logoUrl;
+    img.alt = brandName;
+    img.style.objectFit = 'contain';
+  });
+}
+
+function applyTenantCopy(root: ParentNode, replacements: Record<string, string>, logoUrl: string | null, brandName: string) {
   const walker = document.createTreeWalker(root, NodeFilter.SHOW_TEXT, {
     acceptNode(node) {
       if (!isSafeTextNode(node)) return NodeFilter.FILTER_REJECT;
@@ -61,14 +85,29 @@ function applyTenantCopy(root: ParentNode, replacements: Record<string, string>)
     if (next !== node.textContent) node.textContent = next;
   });
 
-  document.querySelectorAll<HTMLElement>('[alt], [title], [aria-label]').forEach((element) => {
-    for (const attr of ['alt', 'title', 'aria-label']) {
+  const attributes = root instanceof Element ? [root, ...Array.from(root.querySelectorAll<HTMLElement>('[alt], [title], [aria-label], [placeholder]'))] : Array.from(document.querySelectorAll<HTMLElement>('[alt], [title], [aria-label], [placeholder]'));
+  attributes.forEach((element) => {
+    for (const attr of ['alt', 'title', 'aria-label', 'placeholder']) {
       const current = element.getAttribute(attr);
       if (!current) continue;
       const next = replaceText(current, replacements);
       if (next !== current) element.setAttribute(attr, next);
     }
   });
+
+  applyBrandImages(root, logoUrl, brandName);
+}
+
+function applyFavicon(logoUrl: string | null) {
+  if (!logoUrl) return;
+  let link = document.querySelector<HTMLLinkElement>('link[data-tenant-favicon]');
+  if (!link) {
+    link = document.createElement('link');
+    link.rel = 'icon';
+    link.dataset.tenantFavicon = 'true';
+    document.head.appendChild(link);
+  }
+  link.href = logoUrl;
 }
 
 export function TenantCopyRuntime() {
@@ -80,23 +119,27 @@ export function TenantCopyRuntime() {
 
     const brandName = branding.name || 'Soluciones Fabrick';
     const brandUpper = brandName.toUpperCase();
-    const email = branding.billingEmail || branding.ownerEmail || 'pagos@solucionesfabrick.cl';
+    const email = branding.contactEmail || branding.ownerEmail || branding.billingEmail || 'contacto@solucionesfabrick.com';
+    const billingEmail = branding.billingEmail || email;
     const domain = branding.customDomain || `${branding.slug || 'fabrick'}.solucionesfabrick.com`;
 
     const replacements: Record<string, string> = {
       'Soluciones Fabrick SpA': brandName,
       'Soluciones Fabrick': brandName,
       'SOLUCIONES FABRICK': brandUpper,
-      'pagos@solucionesfabrick.cl': email,
+      'Fabrick': brandName,
+      'contacto@solucionesfabrick.com': email,
+      'pagos@solucionesfabrick.cl': billingEmail,
       'admin@fabrick.cl': email,
       'solucionesfabrick.cl': domain,
       'solucionesfabrick.com': domain,
     };
 
-    applyTenantCopy(document.body, replacements);
-    if (document.title.includes('Soluciones Fabrick')) {
-      document.title = replaceText(document.title, replacements);
-    }
+    applyTenantCopy(document.body, replacements, branding.logoUrl, brandName);
+    applyFavicon(branding.logoUrl);
+    document.documentElement.dataset.tenantBrand = branding.slug || 'fabrick';
+
+    if (document.title) document.title = replaceText(document.title, replacements);
 
     const observer = new MutationObserver((mutations) => {
       for (const mutation of mutations) {
@@ -107,14 +150,19 @@ export function TenantCopyRuntime() {
             if (next !== text.textContent) text.textContent = next;
             return;
           }
-          if (node.nodeType === Node.ELEMENT_NODE) applyTenantCopy(node as Element, replacements);
+          if (node.nodeType === Node.ELEMENT_NODE) {
+            applyTenantCopy(node as Element, replacements, branding.logoUrl, brandName);
+          }
         });
       }
     });
 
     observer.observe(document.body, { childList: true, subtree: true });
-    return () => observer.disconnect();
-  }, [branding.billingEmail, branding.customDomain, branding.name, branding.ownerEmail, branding.slug, enabled, pathname]);
+    return () => {
+      observer.disconnect();
+      delete document.documentElement.dataset.tenantBrand;
+    };
+  }, [branding.billingEmail, branding.contactEmail, branding.customDomain, branding.logoUrl, branding.name, branding.ownerEmail, branding.slug, enabled, pathname]);
 
   return null;
 }

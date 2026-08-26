@@ -1,12 +1,14 @@
 'use client';
 
-import { useState } from 'react';
+import { useMemo, useState, type ComponentType, type CSSProperties, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   AlertCircle,
   ArrowLeft,
   ArrowRight,
   CheckCircle2,
+  Eye,
+  EyeOff,
   KeyRound,
   LockKeyhole,
   Mail,
@@ -16,6 +18,7 @@ import {
 } from 'lucide-react';
 import { insforge } from '@/lib/insforge';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
+import { useTenantBranding } from '@/hooks/useTenantBranding';
 
 type Screen = 'login' | 'register' | 'verify' | 'reset-send' | 'reset-code' | 'reset-password';
 
@@ -26,7 +29,8 @@ type FieldProps = {
   onChange: (value: string) => void;
   placeholder?: string;
   autoComplete?: string;
-  icon: React.ComponentType<{ className?: string }>;
+  icon: ComponentType<{ className?: string }>;
+  trailing?: ReactNode;
 };
 
 const steps: Record<Exclude<Screen, 'login' | 'register'>, { current: number; total: number; label: string }> = {
@@ -55,20 +59,21 @@ function GithubIcon() {
   );
 }
 
-function Field({ label, type = 'text', value, onChange, placeholder, autoComplete, icon: Icon }: FieldProps) {
+function Field({ label, type = 'text', value, onChange, placeholder, autoComplete, icon: Icon, trailing }: FieldProps) {
   return (
     <label className="grid gap-2">
-      <span className="text-[10px] font-black uppercase tracking-[.2em] text-[#6f6259]">{label}</span>
-      <span className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5 shadow-[inset_0_0_0_1px_rgba(23,24,32,.1)] transition focus-within:shadow-[inset_0_0_0_2px_rgba(154,111,79,.55),0_12px_34px_rgba(23,24,32,.06)]">
-        <Icon className="h-4 w-4 shrink-0 text-[#F5871F]" />
+      <span className="text-[10px] font-black uppercase tracking-[.18em] text-[#665d55]">{label}</span>
+      <span className="flex min-h-14 items-center gap-3 rounded-[1.15rem] border border-black/10 bg-white px-4 shadow-[0_10px_30px_rgba(25,20,14,.035)] transition focus-within:border-[var(--auth-accent)] focus-within:ring-4 focus-within:ring-[color-mix(in_srgb,var(--auth-accent)_12%,transparent)]">
+        <Icon className="h-4 w-4 shrink-0 text-[var(--auth-accent)]" />
         <input
           type={type}
           value={value}
           onChange={(event) => onChange(event.target.value)}
           placeholder={placeholder}
           autoComplete={autoComplete}
-          className="min-w-0 flex-1 bg-transparent text-sm font-semibold text-[#08090A] outline-none placeholder:text-[#9b9088]"
+          className="min-w-0 flex-1 bg-transparent text-[15px] font-semibold text-[#11100e] outline-none placeholder:text-[#aaa29a]"
         />
+        {trailing}
       </span>
     </label>
   );
@@ -85,10 +90,15 @@ function Notice({ type, text }: { type: 'error' | 'success'; text: string }) {
   );
 }
 
-function PrimaryButton({ loading, children, onClick }: { loading: boolean; children: React.ReactNode; onClick: () => void }) {
+function PrimaryButton({ loading, children, onClick }: { loading: boolean; children: ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} disabled={loading} className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-2xl bg-[#F5871F] px-5 text-xs font-black uppercase tracking-[.16em] text-[#08090A] shadow-[0_16px_42px_rgba(94,65,43,.18)] transition hover:bg-[#FFB000] disabled:opacity-55">
-      {loading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-[#08090A]/25 border-t-[#08090A]" /> : null}
+    <button
+      type="button"
+      onClick={onClick}
+      disabled={loading}
+      className="inline-flex min-h-14 w-full items-center justify-center gap-2 rounded-[1.15rem] bg-[var(--auth-accent)] px-5 text-xs font-black uppercase tracking-[.16em] text-[#090909] shadow-[0_18px_42px_color-mix(in_srgb,var(--auth-accent)_24%,transparent)] transition hover:-translate-y-0.5 disabled:translate-y-0 disabled:opacity-55"
+    >
+      {loading ? <span className="h-4 w-4 animate-spin rounded-full border-2 border-black/20 border-t-black" /> : null}
       {loading ? 'Procesando…' : children}
       {!loading ? <ArrowRight className="h-4 w-4" /> : null}
     </button>
@@ -97,6 +107,7 @@ function PrimaryButton({ loading, children, onClick }: { loading: boolean; child
 
 export default function AuthPage() {
   const router = useRouter();
+  const { branding } = useTenantBranding();
   const [screen, setScreen] = useState<Screen>('login');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -107,6 +118,12 @@ export default function AuthPage() {
   const [otp, setOtp] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [resetToken, setResetToken] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+
+  const brandName = branding.name || 'Soluciones Fabrick';
+  const accent = branding.primaryColor || '#F5871F';
+  const contactEmail = branding.contactEmail || branding.ownerEmail || 'contacto@solucionesfabrick.com';
+  const brandStyle = useMemo(() => ({ '--auth-accent': accent } as CSSProperties), [accent]);
 
   const clearMessages = () => { setError(''); setSuccess(''); };
   const changeScreen = (next: Screen) => { clearMessages(); setScreen(next); };
@@ -142,13 +159,14 @@ export default function AuthPage() {
 
   async function handleVerify() {
     clearMessages();
+    if (otp.trim().length < 4) { setError('Ingresa el código recibido por correo.'); return; }
     setLoading(true);
     const { data, error: authError } = await insforge.auth.verifyEmail({ email, otp });
     setLoading(false);
     if (authError) { setError(authError.message); return; }
     if (data) {
       setSuccess('Correo verificado. Abriendo tu cuenta…');
-      window.setTimeout(() => router.push('/mi-cuenta'), 900);
+      window.setTimeout(() => router.push('/mi-cuenta'), 700);
     }
   }
 
@@ -162,6 +180,7 @@ export default function AuthPage() {
 
   async function handleResetSend() {
     clearMessages();
+    if (!email.trim()) { setError('Ingresa el correo asociado a tu cuenta.'); return; }
     setLoading(true);
     await insforge.auth.sendResetPasswordEmail({ email, redirectTo: `${window.location.origin}/auth` });
     setLoading(false);
@@ -183,13 +202,14 @@ export default function AuthPage() {
 
   async function handleResetPassword() {
     clearMessages();
+    if (newPassword.length < 6) { setError('La nueva contraseña debe tener al menos 6 caracteres.'); return; }
     setLoading(true);
     const { data, error: authError } = await insforge.auth.resetPassword({ newPassword, otp: resetToken });
     setLoading(false);
     if (authError) { setError(authError.message); return; }
     if (data) {
       setSuccess('Contraseña actualizada. Ya puedes iniciar sesión.');
-      window.setTimeout(() => setScreen('login'), 900);
+      window.setTimeout(() => setScreen('login'), 800);
     }
   }
 
@@ -203,92 +223,98 @@ export default function AuthPage() {
   const register = screen === 'register';
 
   return (
-    <main className="relative min-h-screen overflow-hidden bg-[#FFF9EE] px-4 py-8 text-[#08090A] sm:px-6 lg:py-12">
-      <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_8%_10%,rgba(182,144,108,.28),transparent_30rem),radial-gradient(circle_at_92%_85%,rgba(204,177,150,.32),transparent_30rem)]" />
-      <div aria-hidden className="absolute inset-0 opacity-[.045] [background-image:linear-gradient(#08090A_1px,transparent_1px),linear-gradient(90deg,#08090A_1px,transparent_1px)] [background-size:56px_56px]" />
+    <main style={brandStyle} className="relative min-h-[100dvh] overflow-hidden bg-[#f6f0e5] text-[#11100e]">
+      <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_8%_0%,rgba(255,255,255,.95),transparent_27rem),radial-gradient(circle_at_92%_88%,rgba(191,159,103,.22),transparent_28rem)]" />
+      <div aria-hidden className="absolute inset-0 opacity-[.035] [background-image:linear-gradient(#111_1px,transparent_1px),linear-gradient(90deg,#111_1px,transparent_1px)] [background-size:54px_54px]" />
 
-      <div className="relative mx-auto grid min-h-[calc(100vh-4rem)] max-w-[1180px] overflow-hidden rounded-[2.5rem] bg-white/60 shadow-[0_35px_120px_rgba(23,24,32,.18)] ring-1 ring-[#08090A]/10 backdrop-blur-xl lg:grid-cols-[.85fr_1.15fr]">
-        <aside className="relative hidden overflow-hidden bg-[#08090A] p-9 text-[#FFF9EE] lg:flex lg:flex-col lg:justify-between">
-          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,rgba(204,177,150,.24),transparent_25rem),linear-gradient(155deg,transparent,rgba(182,144,108,.08))]" />
+      <div className="relative mx-auto grid min-h-[100dvh] max-w-[1280px] lg:grid-cols-[.78fr_1.22fr] lg:items-stretch lg:px-6 lg:py-6">
+        <aside className="relative hidden overflow-hidden rounded-[2rem] bg-[#0c0d0f] p-8 text-white lg:flex lg:flex-col lg:justify-between">
+          <div aria-hidden className="absolute inset-0 bg-[radial-gradient(circle_at_20%_10%,color-mix(in_srgb,var(--auth-accent)_28%,transparent),transparent_26rem),linear-gradient(160deg,transparent,rgba(255,255,255,.025))]" />
           <div className="relative">
-            <button type="button" onClick={() => router.push('/')} className="rounded-2xl bg-[#FFF9EE]/5 p-4 ring-1 ring-[#FFF9EE]/10 transition hover:bg-[#FFF9EE]/10" aria-label="Volver al inicio">
-              <FabrickFullLogo compact priority theme="light" />
+            <button type="button" onClick={() => router.push('/')} className="inline-flex max-w-[300px] items-center rounded-2xl bg-white/[.035] px-4 py-3 ring-1 ring-white/10 transition hover:bg-white/[.07]" aria-label="Volver al inicio">
+              {branding.logoUrl ? <img src={branding.logoUrl} alt={brandName} className="h-16 w-auto max-w-full object-contain" /> : <FabrickFullLogo compact priority theme="light" />}
             </button>
-            <p className="mt-12 text-[10px] font-black uppercase tracking-[.26em] text-[#FFB000]">Cuenta Fabrick</p>
-            <h1 className="mt-4 text-5xl font-black leading-[.94] tracking-[-.06em]">Tus proyectos, pedidos y presupuestos en un mismo lugar.</h1>
-            <p className="mt-5 max-w-md text-sm leading-7 text-[#c6bab1]">Accede para revisar compras, seguir solicitudes y conservar la información que necesitas para avanzar con mayor orden.</p>
+            <p className="mt-12 text-[10px] font-black uppercase tracking-[.26em] text-[var(--auth-accent)]">Cuenta segura</p>
+            <h1 className="mt-4 max-w-lg text-5xl font-black leading-[.94] tracking-[-.06em]">Todo lo que necesitas para seguir avanzando con {brandName}.</h1>
+            <p className="mt-5 max-w-md text-sm leading-7 text-white/58">Pedidos, cotizaciones, proyectos guardados y soporte reunidos en un solo acceso.</p>
           </div>
           <div className="relative grid gap-3">
-            {['Acceso protegido', 'Historial de pedidos', 'Seguimiento y soporte'].map((item) => <div key={item} className="flex items-center gap-3 rounded-2xl bg-[#FFF9EE]/5 px-4 py-3 text-xs font-bold ring-1 ring-[#FFF9EE]/8"><CheckCircle2 className="h-4 w-4 text-[#FFB000]" />{item}</div>)}
+            {['Acceso protegido', 'Historial y seguimiento', `Soporte: ${contactEmail}`].map((item) => (
+              <div key={item} className="flex items-center gap-3 rounded-2xl bg-white/[.045] px-4 py-3 text-xs font-bold ring-1 ring-white/8"><CheckCircle2 className="h-4 w-4 text-[var(--auth-accent)]" />{item}</div>
+            ))}
           </div>
         </aside>
 
-        <section className="flex flex-col justify-center p-5 sm:p-9 lg:p-12">
-          <div className="mb-8 flex justify-center lg:hidden">
-            <button type="button" onClick={() => router.push('/')} aria-label="Volver al inicio" className="rounded-2xl bg-[#08090A] p-3 shadow-lg"><FabrickFullLogo compact priority theme="light" /></button>
-          </div>
+        <section className="flex min-h-[100dvh] items-center justify-center px-4 py-5 sm:px-6 lg:min-h-0 lg:px-10 lg:py-8">
+          <div className="w-full max-w-[590px] rounded-[2rem] border border-black/[.07] bg-[#fffaf1]/94 p-5 shadow-[0_26px_90px_rgba(42,32,18,.12)] backdrop-blur-xl sm:p-8 lg:p-10">
+            <div className="mb-6 flex items-center justify-between gap-4 lg:hidden">
+              <button type="button" onClick={() => router.push('/')} className="flex min-w-0 items-center gap-3" aria-label="Volver al inicio">
+                <span className="grid h-11 w-11 shrink-0 place-items-center overflow-hidden rounded-xl bg-[#0c0d0f]">
+                  {branding.logoUrl ? <img src={branding.logoUrl} alt={brandName} className="h-9 w-9 object-contain" /> : <ShieldCheck className="h-5 w-5 text-[var(--auth-accent)]" />}
+                </span>
+                <span className="min-w-0 text-left"><span className="block truncate text-sm font-black">{brandName}</span><span className="block text-[9px] font-black uppercase tracking-[.16em] text-[#948a80]">Cuenta de cliente</span></span>
+              </button>
+              <button type="button" onClick={() => router.push('/')} className="grid h-10 w-10 place-items-center rounded-full border border-black/10 bg-white" aria-label="Volver"><ArrowLeft className="h-4 w-4" /></button>
+            </div>
 
-          <div className="mx-auto w-full max-w-[520px]">
             {step ? (
-              <div className="mb-5 flex items-center justify-between gap-4">
-                <div><p className="text-[9px] font-black uppercase tracking-[.2em] text-[#F5871F]">Paso {step.current} de {step.total}</p><p className="mt-1 text-sm font-black">{step.label}</p></div>
-                <div className="flex gap-1.5">{Array.from({ length: step.total }).map((_, index) => <span key={index} className={`h-1.5 rounded-full ${index < step.current ? 'w-7 bg-[#F5871F]' : 'w-3 bg-[#08090A]/10'}`} />)}</div>
+              <div className="mb-6">
+                <div className="flex items-center justify-between text-[9px] font-black uppercase tracking-[.18em] text-[#948a80]"><span>{step.label}</span><span>{step.current}/{step.total}</span></div>
+                <div className="mt-2 h-1.5 overflow-hidden rounded-full bg-black/[.06]"><div className="h-full rounded-full bg-[var(--auth-accent)] transition-all" style={{ width: `${(step.current / step.total) * 100}%` }} /></div>
               </div>
             ) : null}
 
-            {(login || register) ? (
-              <div className="mb-7">
-                <p className="inline-flex items-center gap-2 rounded-full bg-[#FFB000]/35 px-3 py-1.5 text-[9px] font-black uppercase tracking-[.2em] text-[#C97700]"><Sparkles className="h-3.5 w-3.5" /> {login ? 'Bienvenido de vuelta' : 'Crea tu acceso'}</p>
-                <h2 className="mt-4 text-4xl font-black tracking-[-.055em] sm:text-5xl">{login ? 'Ingresa a tu cuenta.' : 'Regístrate en Fabrick.'}</h2>
-                <p className="mt-3 text-sm leading-6 text-[#BFB8AC]">{login ? 'Consulta tus pedidos, datos y herramientas guardadas.' : 'Crea una cuenta para organizar compras y solicitudes.'}</p>
+            <div className="flex items-start justify-between gap-4">
+              <div>
+                <div className="inline-flex items-center gap-2 rounded-full bg-[color-mix(in_srgb,var(--auth-accent)_14%,white)] px-3 py-1.5 text-[9px] font-black uppercase tracking-[.18em] text-[#7b5a1f]"><Sparkles className="h-3.5 w-3.5" />{login ? 'Bienvenido de vuelta' : register ? 'Crear cuenta' : step?.label}</div>
+                <h2 className="mt-4 text-[clamp(2rem,7vw,3rem)] font-black leading-[.96] tracking-[-.055em]">
+                  {login ? 'Ingresa a tu cuenta.' : register ? 'Crea tu espacio.' : screen === 'verify' ? 'Confirma tu correo.' : screen === 'reset-send' ? 'Recupera tu acceso.' : screen === 'reset-code' ? 'Verifica el código.' : 'Define una nueva clave.'}
+                </h2>
+                <p className="mt-3 text-sm leading-6 text-[#8e857d]">
+                  {login ? 'Consulta pedidos, datos y herramientas guardadas.' : register ? `Tu cuenta queda conectada con ${brandName}.` : 'Sigue los pasos y vuelve a tu cuenta de forma segura.'}
+                </p>
               </div>
-            ) : null}
+            </div>
 
-            {(login || register) ? (
-              <div className="grid grid-cols-2 gap-3">
-                <button type="button" onClick={() => void handleOAuth('google')} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-white text-sm font-black text-[#08090A] shadow-sm ring-1 ring-[#08090A]/10 transition hover:bg-[#f7f2ed]"><GoogleIcon /> Google</button>
-                <button type="button" onClick={() => void handleOAuth('github')} className="inline-flex min-h-12 items-center justify-center gap-2 rounded-2xl bg-[#08090A] text-sm font-black text-[#FFF9EE] transition hover:bg-[#2a2c37]"><GithubIcon /> GitHub</button>
-              </div>
-            ) : null}
-
-            {(login || register) ? <div className="my-6 flex items-center gap-3"><span className="h-px flex-1 bg-[#08090A]/10" /><span className="text-[9px] font-black uppercase tracking-[.2em] text-[#978a81]">o continúa con correo</span><span className="h-px flex-1 bg-[#08090A]/10" /></div> : null}
-
-            <div className="grid gap-4">
-              {register ? <Field label="Nombre completo" value={name} onChange={setName} placeholder="Nombre y apellido" autoComplete="name" icon={User} /> : null}
-              {(login || register || screen === 'reset-send') ? <Field label="Correo" type="email" value={email} onChange={setEmail} placeholder="correo@ejemplo.cl" autoComplete="email" icon={Mail} /> : null}
-              {(login || register) ? <Field label="Contraseña" type="password" value={password} onChange={setPassword} placeholder={register ? 'Mínimo 6 caracteres' : 'Tu contraseña'} autoComplete={register ? 'new-password' : 'current-password'} icon={LockKeyhole} /> : null}
-
-              {screen === 'verify' || screen === 'reset-code' ? (
-                <div>
-                  <div className="mb-6 text-center"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#08090A] text-[#FFB000]"><Mail className="h-6 w-6" /></span><h2 className="mt-4 text-3xl font-black">{screen === 'verify' ? 'Confirma tu correo' : 'Ingresa el código'}</h2><p className="mt-2 text-sm text-[#BFB8AC]">Enviado a <b className="text-[#C97700]">{email}</b></p></div>
-                  <label className="grid gap-2"><span className="text-[10px] font-black uppercase tracking-[.2em] text-[#6f6259]">Código de 6 dígitos</span><span className="flex items-center gap-3 rounded-2xl bg-white px-4 py-3.5 shadow-[inset_0_0_0_1px_rgba(23,24,32,.1)] focus-within:shadow-[inset_0_0_0_2px_rgba(154,111,79,.55)]"><KeyRound className="h-4 w-4 text-[#F5871F]" /><input value={otp} onChange={(event) => setOtp(event.target.value.replace(/\D/g, '').slice(0, 6))} inputMode="numeric" placeholder="000000" className="min-w-0 flex-1 bg-transparent text-center text-2xl font-black tracking-[.35em] text-[#08090A] outline-none placeholder:text-[#b6aaa1]" /></span></label>
-                </div>
+            <div className="mt-7 grid gap-4">
+              {(login || register) ? (
+                <>
+                  <div className="grid grid-cols-2 gap-3">
+                    <button type="button" onClick={() => void handleOAuth('google')} className="inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl border border-black/10 bg-white text-sm font-black transition hover:-translate-y-0.5"><GoogleIcon /> Google</button>
+                    <button type="button" onClick={() => void handleOAuth('github')} className="inline-flex min-h-13 items-center justify-center gap-2 rounded-2xl bg-[#0c0d0f] text-sm font-black text-white transition hover:-translate-y-0.5"><GithubIcon /> GitHub</button>
+                  </div>
+                  <div className="flex items-center gap-3"><span className="h-px flex-1 bg-black/10" /><span className="text-[9px] font-black uppercase tracking-[.18em] text-[#9a9189]">o continúa con correo</span><span className="h-px flex-1 bg-black/10" /></div>
+                </>
               ) : null}
 
-              {screen === 'reset-send' ? <div className="mb-1 text-center"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#08090A] text-[#FFB000]"><ShieldCheck className="h-6 w-6" /></span><h2 className="mt-4 text-3xl font-black">Recupera tu acceso</h2><p className="mt-2 text-sm leading-6 text-[#BFB8AC]">Te enviaremos un código para crear una nueva contraseña.</p></div> : null}
-              {screen === 'reset-password' ? <><div className="mb-1 text-center"><span className="mx-auto grid h-14 w-14 place-items-center rounded-full bg-[#08090A] text-[#FFB000]"><LockKeyhole className="h-6 w-6" /></span><h2 className="mt-4 text-3xl font-black">Nueva contraseña</h2><p className="mt-2 text-sm text-[#BFB8AC]">Elige una clave de al menos 6 caracteres.</p></div><Field label="Nueva contraseña" type="password" value={newPassword} onChange={setNewPassword} placeholder="Mínimo 6 caracteres" autoComplete="new-password" icon={LockKeyhole} /></> : null}
+              {register ? <Field label="Nombre" value={name} onChange={setName} placeholder="Tu nombre" autoComplete="name" icon={User} /> : null}
+              {(login || register || screen === 'reset-send') ? <Field label="Correo" type="email" value={email} onChange={setEmail} placeholder="correo@ejemplo.cl" autoComplete="email" icon={Mail} /> : null}
+              {(login || register) ? <Field label="Contraseña" type={showPassword ? 'text' : 'password'} value={password} onChange={setPassword} placeholder="Tu contraseña" autoComplete={login ? 'current-password' : 'new-password'} icon={LockKeyhole} trailing={<button type="button" onClick={() => setShowPassword((value) => !value)} className="text-[#9d958d]" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>} /> : null}
+              {(screen === 'verify' || screen === 'reset-code') ? <Field label="Código" value={otp} onChange={setOtp} placeholder="000000" autoComplete="one-time-code" icon={KeyRound} /> : null}
+              {screen === 'reset-password' ? <Field label="Nueva contraseña" type={showPassword ? 'text' : 'password'} value={newPassword} onChange={setNewPassword} placeholder="Mínimo 6 caracteres" autoComplete="new-password" icon={LockKeyhole} trailing={<button type="button" onClick={() => setShowPassword((value) => !value)} className="text-[#9d958d]" aria-label={showPassword ? 'Ocultar contraseña' : 'Mostrar contraseña'}>{showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}</button>} /> : null}
 
               <Notice type="error" text={error} />
               <Notice type="success" text={success} />
 
-              {login ? <PrimaryButton loading={loading} onClick={handleLogin}>Acceder a Fabrick</PrimaryButton> : null}
+              {login ? <PrimaryButton loading={loading} onClick={handleLogin}>Acceder</PrimaryButton> : null}
               {register ? <PrimaryButton loading={loading} onClick={handleRegister}>Crear cuenta</PrimaryButton> : null}
-              {screen === 'verify' ? <PrimaryButton loading={loading} onClick={handleVerify}>Confirmar código</PrimaryButton> : null}
+              {screen === 'verify' ? <PrimaryButton loading={loading} onClick={handleVerify}>Verificar correo</PrimaryButton> : null}
               {screen === 'reset-send' ? <PrimaryButton loading={loading} onClick={handleResetSend}>Enviar código</PrimaryButton> : null}
-              {screen === 'reset-code' ? <PrimaryButton loading={loading} onClick={handleResetCode}>Verificar código</PrimaryButton> : null}
+              {screen === 'reset-code' ? <PrimaryButton loading={loading} onClick={handleResetCode}>Validar código</PrimaryButton> : null}
               {screen === 'reset-password' ? <PrimaryButton loading={loading} onClick={handleResetPassword}>Actualizar contraseña</PrimaryButton> : null}
+
+              {login ? (
+                <div className="flex flex-wrap items-center justify-between gap-3 text-xs font-bold">
+                  <button type="button" onClick={() => changeScreen('register')} className="text-[#4e4842] hover:text-black">¿No tienes cuenta? <span className="text-[var(--auth-accent)]">Crear una</span></button>
+                  <button type="button" onClick={() => changeScreen('reset-send')} className="text-[#9a6b1e]">¿Olvidaste tu contraseña?</button>
+                </div>
+              ) : null}
+              {register ? <button type="button" onClick={() => changeScreen('login')} className="text-center text-xs font-bold text-[#625b54]">Ya tengo cuenta · <span className="text-[var(--auth-accent)]">Ingresar</span></button> : null}
+              {screen === 'verify' ? <div className="flex items-center justify-between gap-3 text-xs font-bold"><button type="button" onClick={() => changeScreen('register')} className="text-[#625b54]">← Cambiar correo</button><button type="button" onClick={() => void handleResend()} className="text-[var(--auth-accent)]">Reenviar código</button></div> : null}
+              {(screen === 'reset-send' || screen === 'reset-code' || screen === 'reset-password') ? <button type="button" onClick={() => changeScreen('login')} className="inline-flex items-center justify-center gap-2 text-xs font-bold text-[#625b54]"><ArrowLeft className="h-3.5 w-3.5" /> Volver al inicio de sesión</button> : null}
             </div>
 
-            {login ? <button type="button" onClick={() => changeScreen('reset-send')} className="mt-4 w-full text-right text-xs font-bold text-[#C97700] transition hover:text-[#08090A]">¿Olvidaste tu contraseña?</button> : null}
-            {screen === 'verify' ? <button type="button" onClick={() => void handleResend()} className="mt-4 w-full text-center text-xs font-bold text-[#C97700]">Reenviar código</button> : null}
-
-            {(login || register) ? (
-              <p className="mt-7 text-center text-sm text-[#BFB8AC]">{login ? '¿Aún no tienes cuenta?' : '¿Ya tienes una cuenta?'}{' '}<button type="button" onClick={() => changeScreen(login ? 'register' : 'login')} className="font-black text-[#C97700] hover:text-[#08090A]">{login ? 'Crear cuenta' : 'Iniciar sesión'}</button></p>
-            ) : (
-              <button type="button" onClick={() => changeScreen('login')} className="mt-6 inline-flex w-full items-center justify-center gap-2 text-xs font-black text-[#BFB8AC] transition hover:text-[#08090A]"><ArrowLeft className="h-4 w-4" /> Volver al inicio de sesión</button>
-            )}
-
-            <div className="mt-8 flex items-center justify-center gap-2 text-[10px] font-semibold text-[#887d75]"><ShieldCheck className="h-4 w-4 text-[#F5871F]" /> Plataforma protegida · Soluciones Fabrick</div>
+            <p className="mt-7 text-center text-[10px] leading-5 text-[#a0978e]">Acceso protegido · Al continuar aceptas las condiciones de uso y privacidad de {brandName}.</p>
           </div>
         </section>
       </div>

@@ -2,7 +2,10 @@ export const SAAS_RUNTIME_STORAGE_KEY = 'sf_saas_runtime_enabled';
 export const SAAS_RUNTIME_CHANGE_EVENT = 'sf-saas-runtime-change';
 
 export function getDefaultSaaSRuntimeEnabled() {
-  return process.env.NEXT_PUBLIC_SAAS_RUNTIME_ENABLED === 'true';
+  // Multi-tenant branding is safe for the original Fabrick tenant and should be
+  // active by default. Set NEXT_PUBLIC_SAAS_RUNTIME_ENABLED=false only for an
+  // intentional emergency rollback.
+  return process.env.NEXT_PUBLIC_SAAS_RUNTIME_ENABLED !== 'false';
 }
 
 export function isSaaSRuntimeEnabled() {

@@ -19,30 +19,35 @@ export interface WelcomeEmailProps {
   shopUrl: string;
   unsubscribeUrl: string;
   logoUrl?: string;
+  brandName?: string;
+  accentColor?: string;
+  contactEmail?: string | null;
 }
 
-const C = {
-  bg: '#08090A',
-  card: '#08090A',
-  border: '#262626',
-  text: '#FFF9EE',
-  muted: '#BFB8AC',
-  amber: '#F5871F',
-  amberSoft: '#FFB000',
-};
-
-export function WelcomeEmail({ customerName, shopUrl, unsubscribeUrl, logoUrl }: WelcomeEmailProps) {
+export function WelcomeEmail({
+  customerName,
+  shopUrl,
+  unsubscribeUrl,
+  logoUrl,
+  brandName = 'Soluciones Fabrick',
+  accentColor = '#F5871F',
+  contactEmail,
+}: WelcomeEmailProps) {
   const greet = customerName ? `Hola ${customerName},` : 'Hola,';
+  const softAccent = '#FFB000';
+  const muted = '#BFB8AC';
+  const text = '#FFF9EE';
+  const border = '#262626';
+
   return (
     <Html>
       <Head />
-      <Preview>Bienvenido a Soluciones Fabrick · Boletín activado</Preview>
+      <Preview>Bienvenido a {brandName} · Tu cuenta está lista</Preview>
       <Body
         style={{
-          backgroundColor: C.bg,
-          color: C.text,
-          fontFamily:
-            "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
+          backgroundColor: '#08090A',
+          color: text,
+          fontFamily: "Inter, -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif",
           margin: 0,
           padding: '32px 0',
         }}
@@ -51,76 +56,67 @@ export function WelcomeEmail({ customerName, shopUrl, unsubscribeUrl, logoUrl }:
           style={{
             maxWidth: '560px',
             margin: '0 auto',
-            backgroundColor: C.card,
-            border: `1px solid ${C.border}`,
+            backgroundColor: '#111214',
+            border: `1px solid ${border}`,
             borderRadius: '20px',
             padding: '32px 28px',
           }}
         >
           <Section style={{ textAlign: 'center', paddingBottom: '8px' }}>
             {logoUrl ? (
-              <Img src={logoUrl} alt="Soluciones Fabrick" width="160" height="44" style={{ display: 'inline-block', maxWidth: '160px', height: 'auto' }} />
+              <Img src={logoUrl} alt={brandName} width="180" style={{ display: 'inline-block', maxWidth: '180px', maxHeight: '72px', objectFit: 'contain', height: 'auto' }} />
             ) : (
-              <Text
-                style={{
-                  margin: 0,
-                  fontSize: '20px',
-                  fontWeight: 800,
-                  letterSpacing: '0.18em',
-                  textTransform: 'uppercase',
-                  color: C.amberSoft,
-                }}
-              >
-                Soluciones Fabrick
+              <Text style={{ margin: 0, fontSize: '20px', fontWeight: 800, letterSpacing: '0.12em', textTransform: 'uppercase', color: softAccent }}>
+                {brandName}
               </Text>
             )}
           </Section>
 
-          <Hr style={{ borderColor: C.border, margin: '24px 0' }} />
+          <Hr style={{ borderColor: border, margin: '24px 0' }} />
 
-          <Heading as="h1" style={{ fontSize: '24px', lineHeight: '1.3', margin: '0 0 12px', color: C.text }}>
-            {greet} bienvenido a Fabrick.
+          <Heading as="h1" style={{ fontSize: '24px', lineHeight: '1.3', margin: '0 0 12px', color: text }}>
+            {greet} bienvenido a {brandName}.
           </Heading>
 
-          <Text style={{ color: C.muted, fontSize: '15px', lineHeight: '1.65', margin: '0 0 14px' }}>
-            Acabamos de crear tu cuenta. Desde ya tienes acceso a la tienda, presupuestos personalizados y al
-            diseñador 3D de tu próximo proyecto.
+          <Text style={{ color: muted, fontSize: '15px', lineHeight: '1.65', margin: '0 0 14px' }}>
+            Tu cuenta ya está creada. Desde aquí podrás revisar pedidos, solicitudes, presupuestos y herramientas disponibles para tu experiencia.
           </Text>
 
-          <Text style={{ color: C.muted, fontSize: '15px', lineHeight: '1.65', margin: '0 0 18px' }}>
-            Como bonus quedaste suscrito a nuestro <strong style={{ color: C.amberSoft }}>boletín</strong>:
-            cada cierto tiempo te llegará una guía corta de construcción y remodelación —técnicas DIY,
-            errores típicos a evitar y comparativas de materiales—.
+          <Text style={{ color: muted, fontSize: '15px', lineHeight: '1.65', margin: '0 0 18px' }}>
+            Guarda este correo como referencia. Cuando necesites volver, utiliza el botón inferior para entrar directamente a la aplicación.
           </Text>
 
           <Section style={{ textAlign: 'center', margin: '8px 0 24px' }}>
             <Button
               href={shopUrl}
               style={{
-                backgroundColor: C.amber,
+                backgroundColor: accentColor,
                 color: '#08090A',
                 fontWeight: 800,
                 padding: '14px 28px',
                 borderRadius: '999px',
                 textDecoration: 'none',
                 fontSize: '14px',
-                letterSpacing: '0.06em',
+                letterSpacing: '0.04em',
                 display: 'inline-block',
               }}
             >
-              Explorar la tienda
+              Abrir {brandName}
             </Button>
           </Section>
 
-          <Hr style={{ borderColor: C.border, margin: '24px 0 12px' }} />
-          <Text style={{ color: C.muted, fontSize: '11px', textAlign: 'center', margin: 0 }}>
-            ¿No quieres recibir el boletín?{' '}
-            <Link href={unsubscribeUrl} style={{ color: C.amberSoft }}>
-              Darme de baja
-            </Link>
+          {contactEmail ? (
+            <Text style={{ color: muted, fontSize: '12px', lineHeight: '1.6', textAlign: 'center', margin: '0 0 12px' }}>
+              ¿Necesitas ayuda? Escríbenos a <Link href={`mailto:${contactEmail}`} style={{ color: softAccent }}>{contactEmail}</Link>.
+            </Text>
+          ) : null}
+
+          <Hr style={{ borderColor: border, margin: '24px 0 12px' }} />
+          <Text style={{ color: muted, fontSize: '11px', textAlign: 'center', margin: 0 }}>
+            ¿No quieres recibir comunicaciones? <Link href={unsubscribeUrl} style={{ color: softAccent }}>Darme de baja</Link>
           </Text>
-          <Text style={{ color: C.muted, fontSize: '11px', textAlign: 'center', margin: '8px 0 0' }}>
-            © {new Date().getFullYear()} Soluciones Fabrick · Construcción y remodelaciones
+          <Text style={{ color: muted, fontSize: '11px', textAlign: 'center', margin: '8px 0 0' }}>
+            © {new Date().getFullYear()} {brandName}
           </Text>
         </Container>
       </Body>

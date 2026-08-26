@@ -13,6 +13,7 @@ type PublicBrandingSource = {
   primaryColor: string;
   logoUrl: string | null;
   phone: string | null;
+  contactEmail: string | null;
   billingEmail: string | null;
   ownerEmail: string | null;
   ownerName: string | null;
@@ -27,11 +28,12 @@ const FALLBACK_BRANDING: PublicBrandingSource = {
   name: 'Soluciones Fabrick',
   primaryColor: '#F5871F',
   logoUrl: null,
-  phone: null,
-  billingEmail: null,
-  ownerEmail: null,
+  phone: '+56930121625',
+  contactEmail: 'contacto@solucionesfabrick.com',
+  billingEmail: 'pagos@solucionesfabrick.cl',
+  ownerEmail: 'admin@fabrick.cl',
   ownerName: null,
-  customDomain: null,
+  customDomain: 'solucionesfabrick.com',
   status: 'active',
   planId: 'pro',
 };
@@ -50,6 +52,7 @@ function publicBranding(tenant: PublicBrandingSource) {
     primaryColor: tenant.primaryColor,
     logoUrl: tenant.logoUrl,
     phone: tenant.phone,
+    contactEmail: tenant.contactEmail,
     billingEmail: tenant.billingEmail,
     ownerEmail: tenant.ownerEmail,
     ownerName: tenant.ownerName,

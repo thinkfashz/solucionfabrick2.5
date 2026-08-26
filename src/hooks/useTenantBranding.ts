@@ -11,6 +11,7 @@ export type TenantBranding = {
   primaryColor: string;
   logoUrl: string | null;
   phone: string | null;
+  contactEmail: string | null;
   billingEmail: string | null;
   ownerEmail: string | null;
   ownerName: string | null;
@@ -34,14 +35,15 @@ export const FALLBACK_TENANT_BRANDING: TenantBranding = {
   name: 'Soluciones Fabrick',
   primaryColor: '#F5871F',
   logoUrl: null,
-  phone: null,
+  phone: '+56930121625',
+  contactEmail: 'contacto@solucionesfabrick.com',
   billingEmail: 'pagos@solucionesfabrick.cl',
   ownerEmail: 'admin@fabrick.cl',
   ownerName: null,
-  customDomain: null,
+  customDomain: 'solucionesfabrick.com',
   status: 'active',
   planId: 'pro',
-  whatsappUrl: null,
+  whatsappUrl: 'https://wa.me/56930121625',
 };
 
 export function useTenantBranding() {

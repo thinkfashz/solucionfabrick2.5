@@ -26,11 +26,12 @@ const DEFAULTS = {
   name: 'Soluciones Fabrick',
 };
 
+function isRootSurface(pathname: string) {
+  return pathname.startsWith('/admin/saas') || pathname.startsWith('/admin/superadmin');
+}
+
 function shouldApplyTenantTheme(pathname: string) {
-  return !pathname.startsWith('/admin')
-    && !pathname.startsWith('/auth')
-    && !pathname.startsWith('/api')
-    && !pathname.startsWith('/registro');
+  return !pathname.startsWith('/api') && !isRootSurface(pathname);
 }
 
 function setVar(name: string, value: string) {

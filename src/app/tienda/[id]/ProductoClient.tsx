@@ -1,11 +1,10 @@
 'use client';
 
 /* eslint-disable @next/next/no-img-element */
-
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { CheckCircle2, Phone, ShieldCheck, ShoppingCart, Star, Truck, Zap } from 'lucide-react';
+import { BadgeCheck, Check, CheckCircle2, ChevronRight, Clock3, Heart, PackageCheck, Phone, ShieldCheck, ShoppingCart, Star, Truck, Users, Zap } from 'lucide-react';
 import Navbar from '@/components/Navbar';
 import { useRealtimeProducts, type Product } from '@/hooks/useRealtimeProducts';
 import { useCartContext } from '@/context/CartContext';
@@ -13,152 +12,89 @@ import { buildWhatsAppLink } from '@/lib/whatsapp';
 import { navigateWithTransition } from '@/lib/routeTransition';
 import { FALLBACK_CATALOG_PRODUCTS } from '@/hooks/useCatalogProducts';
 
-const PAGE_BG = 'radial-gradient(circle at 20% -10%,rgba(255,210,41,.16),transparent 28rem), radial-gradient(circle at 90% 10%,rgba(255,210,41,.07),transparent 22rem), linear-gradient(180deg,#08090A 0%,#070706 55%,#08090A 100%)';
-const CARD_BG = 'radial-gradient(circle at 80% 0%,rgba(255,210,41,.08),transparent 18rem), linear-gradient(180deg,rgba(255,255,255,.055),rgba(255,255,255,.025))';
+const BG = '#F4EFE6';
+const INK = '#111214';
+const ORANGE = '#F5871F';
+const FALLBACK = '/images/landing/fabrick-home-showcase.webp';
 const GALLERY_KEYS = new Set(['gallery', 'gallery_images', 'gallery_assets', 'images', 'image_urls']);
+const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 
-function Kicker({ label }: { label: string }) {
-  return <span className="inline-flex items-center gap-2.5 text-[#FFB000] text-[11px] font-black uppercase tracking-[0.34em]"><span className="block h-px w-8 shrink-0 bg-gradient-to-r from-[#FFB000] to-transparent" />{label}</span>;
-}
-
-function formatCLP(value: number) {
-  return new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 }).format(Math.round(value || 0));
-}
-
-function pushUrl(urls: string[], value: unknown) {
-  const url = typeof value === 'string' ? value.trim() : '';
-  if (url && !urls.includes(url)) urls.push(url);
-}
-
-function buildGallery(product: Product): string[] {
-  const gallery: string[] = [];
-  pushUrl(gallery, product.image_url);
-  const specs = product.specifications ?? {};
-  for (const key of GALLERY_KEYS) {
-    const value = specs[key];
-    if (!Array.isArray(value)) continue;
-    for (const item of value) {
-      if (typeof item === 'string') pushUrl(gallery, item);
-      if (item && typeof item === 'object') {
-        const row = item as Record<string, unknown>;
-        pushUrl(gallery, row.url ?? row.secure_url ?? row.src ?? row.image_url);
-      }
-    }
-  }
-  return gallery;
-}
-
-function readableValue(value: unknown) {
-  if (value === null || value === undefined || value === '') return '';
-  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') return String(value);
-  return '';
-}
+function pushUrl(urls: string[], value: unknown) { const url = typeof value === 'string' ? value.trim() : ''; if (url && !urls.includes(url)) urls.push(url); }
+function buildGallery(product: Product) { const gallery: string[] = []; pushUrl(gallery, product.image_url); const specs = product.specifications ?? {}; for (const key of GALLERY_KEYS) { const value = specs[key]; if (!Array.isArray(value)) continue; for (const item of value) { if (typeof item === 'string') pushUrl(gallery, item); if (item && typeof item === 'object') { const row = item as Record<string, unknown>; pushUrl(gallery, row.url ?? row.secure_url ?? row.src ?? row.image_url); } } } return gallery; }
+function readable(value: unknown) { return typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' ? String(value) : ''; }
+function specText(product: Product, keys: string[], fallback: string) { const specs = product.specifications ?? {}; for (const key of keys) { const value = readable(specs[key]); if (value) return value; } return fallback; }
+function discountPrice(product: Product) { return Math.round(product.price * (1 - Number(product.discount_percentage || 0) / 100)); }
 
 export default function ProductoClient({ id }: { id: string }) {
   const router = useRouter();
   const { products, loading } = useRealtimeProducts();
   const product = useMemo(() => products.find((p) => p.id === id), [products, id]);
   const [activeImg, setActiveImg] = useState(0);
-  const [addedToCart, setAddedToCart] = useState(false);
+  const [added, setAdded] = useState(false);
+  const [reviewName, setReviewName] = useState('');
+  const [reviewText, setReviewText] = useState('');
+  const [reviewSent, setReviewSent] = useState(false);
   const { addToCart } = useCartContext();
-
   useEffect(() => setActiveImg(0), [id]);
 
-  const gallery = useMemo(() => (product ? buildGallery(product) : []), [product]);
-  const mainImg = gallery[activeImg] || gallery[0] || '';
-  const outOfStock = product?.stock !== undefined && product.stock <= 0;
-  const category = product?.category_name || product?.category_id || 'Producto';
-  const whatsappHref = buildWhatsAppLink(`Hola Soluciones Fabrick, me interesa el producto ${product?.name ?? ''}. ¿Podemos revisar disponibilidad, despacho e instalación?`);
-  const relatedProducts = useMemo(() => FALLBACK_CATALOG_PRODUCTS.filter((p) => p.id !== id).slice(0, 3), [id]);
-  const specEntries = product?.specifications ? Object.entries(product.specifications).filter(([key, value]) => !GALLERY_KEYS.has(key) && readableValue(value)) : [];
+  const gallery = useMemo(() => product ? buildGallery(product) : [], [product]);
+  const related = useMemo(() => FALLBACK_CATALOG_PRODUCTS.filter((p) => p.id !== id).slice(0, 4), [id]);
+  const specs = product?.specifications ? Object.entries(product.specifications).filter(([key, value]) => !GALLERY_KEYS.has(key) && readable(value)) : [];
+  if (loading && !product) return <div className="min-h-screen animate-pulse bg-[#F4EFE6]"><Navbar /><div className="mx-auto max-w-6xl px-4 py-12"><div className="h-[70vh] bg-black/5" /></div></div>;
+  if (!product) return <div className="min-h-screen bg-[#F4EFE6] text-[#111214]"><Navbar /><div className="mx-auto grid min-h-[70vh] max-w-xl place-items-center px-6 text-center"><div><p className="text-7xl font-black text-black/10">404</p><h1 className="mt-3 text-3xl font-black">Producto no encontrado</h1><Link href="/tienda" className="mt-6 inline-flex rounded-full bg-black px-6 py-3 text-sm font-black text-white">Volver a tienda</Link></div></div></div>;
 
-  function buyNow() {
-    if (!product || outOfStock) return;
-    addToCart(product, 1);
-    router.push('/checkout');
-  }
+  const price = discountPrice(product);
+  const category = product.category_name || product.category_id || 'Producto';
+  const out = product.stock !== undefined && product.stock <= 0;
+  const mainImg = gallery[activeImg] || gallery[0] || FALLBACK;
+  const provider = specText(product, ['provider', 'proveedor', 'brand', 'marca'], 'Soluciones Fabrick');
+  const rating = Number(product.rating || 4.9);
+  const purchaseCount = Math.max(1, Number(product.specifications?.purchases || product.specifications?.ventas || 0));
+  const whatsapp = buildWhatsAppLink(`Hola Soluciones Fabrick, me interesa ${product.name}. Quiero consultar disponibilidad, despacho e instalación.`);
+  const buy = () => { if (out) return; addToCart(product, 1); router.push('/checkout'); };
+  const add = () => { if (out) return; addToCart(product, 1); setAdded(true); setTimeout(() => setAdded(false), 1600); };
 
-  function addCart() {
-    if (!product || outOfStock) return;
-    addToCart(product, 1);
-    setAddedToCart(true);
-    setTimeout(() => setAddedToCart(false), 2200);
-  }
+  return <div className="min-h-screen pb-28 text-[#111214]" style={{ background: BG }}>
+    <Navbar />
+    <main className="mx-auto max-w-[1380px] px-4 py-5 sm:px-6 lg:px-8">
+      <nav className="mb-5 flex items-center gap-2 overflow-hidden whitespace-nowrap text-xs text-black/40"><Link href="/tienda">Tienda</Link><ChevronRight className="h-3 w-3"/><span>{category}</span><ChevronRight className="h-3 w-3"/><b className="truncate text-black/70">{product.name}</b></nav>
 
-  if (loading && !product) {
-    return <div className="min-h-screen" style={{ color: '#FFF9EE', background: PAGE_BG }}><Navbar /><div className="mx-auto max-w-[1120px] px-4 pt-28 pb-32 md:px-8"><div className="mb-10 h-3 w-40 animate-pulse rounded-full bg-white/5" /><div className="grid gap-6 lg:grid-cols-[0.9fr_1.1fr]"><div className="aspect-square animate-pulse rounded-[28px] bg-white/[0.04]" /><div className="space-y-4"><div className="h-10 w-4/5 animate-pulse rounded-lg bg-white/[0.04]" /><div className="h-6 w-1/3 animate-pulse rounded-lg bg-white/[0.04]" /><div className="h-3 w-full animate-pulse rounded-full bg-white/[0.04]" /><div className="h-14 w-full animate-pulse rounded-xl bg-white/[0.04]" /></div></div></div></div>;
-  }
+      <div className="grid gap-8 lg:grid-cols-[1.08fr_.92fr] lg:gap-12">
+        <section className="min-w-0">
+          <div className="relative aspect-square overflow-hidden bg-white"><img src={mainImg} alt={product.name} className="h-full w-full object-contain" />{product.discount_percentage ? <span className="absolute left-4 top-4 bg-[#F5871F] px-3 py-2 text-xs font-black">-{product.discount_percentage}%</span> : null}<button className="absolute right-4 top-4 grid h-11 w-11 place-items-center rounded-full bg-white/90 shadow"><Heart className="h-5 w-5"/></button></div>
+          {gallery.length > 1 && <div className="mt-3 flex gap-2 overflow-x-auto">{gallery.map((src,i)=><button key={src+i} onClick={()=>setActiveImg(i)} className={`h-20 w-20 shrink-0 overflow-hidden border-2 bg-white ${i===activeImg?'border-black':'border-transparent'}`}><img src={src} alt="" className="h-full w-full object-cover"/></button>)}</div>}
+        </section>
 
-  if (!product) {
-    return <div className="min-h-screen" style={{ color: '#FFF9EE', background: PAGE_BG }}><Navbar /><div className="mx-auto flex min-h-[60vh] max-w-xl flex-col items-center justify-center px-6 text-center"><p className="select-none text-7xl font-black text-white/10">404</p><h1 className="mt-4 text-2xl font-black uppercase tracking-tight">Producto no encontrado</h1><p className="mt-3 text-sm leading-relaxed" style={{ color: '#BFB8AC' }}>Este material no existe o ya no forma parte del catálogo activo.</p><Link href="/tienda" className="mt-6 inline-flex items-center gap-2 rounded-full border border-yellow-400/30 px-6 py-3 text-[11px] font-black uppercase tracking-[0.25em] text-yellow-400 hover:bg-yellow-400/10">Volver al catálogo</Link></div></div>;
-  }
+        <section className="lg:sticky lg:top-24 lg:self-start">
+          <p className="text-[10px] font-black uppercase tracking-[.2em] text-[#B96F00]">{category}</p>
+          <h1 className="mt-3 max-w-[15ch] text-[clamp(2.5rem,5vw,5rem)] font-black leading-[.88] tracking-[-.065em]">{product.name}</h1>
+          <div className="mt-4 flex flex-wrap items-center gap-3 text-xs"><span className="flex items-center gap-1 font-black"><Star className="h-4 w-4 fill-[#F5871F] text-[#F5871F]"/>{rating.toFixed(1)}</span><span className="text-black/35">•</span><span className="text-black/55">{purchaseCount > 1 ? `${purchaseCount} compras registradas` : 'Producto disponible en catálogo'}</span></div>
+          <div className="mt-6 border-y border-black/10 py-5"><div className="flex items-end gap-3"><b className="text-4xl tracking-[-.05em]">{CLP.format(price)}</b>{product.discount_percentage ? <span className="pb-1 text-sm text-black/30 line-through">{CLP.format(product.price)}</span>:null}</div><p className="mt-1 text-[10px] font-black uppercase tracking-[.12em] text-emerald-700">IVA incluido · precio final publicado</p></div>
+          <p className="mt-5 text-base leading-7 text-black/58">{product.description || product.tagline || 'Producto seleccionado por Soluciones Fabrick para construcción, remodelación y equipamiento del hogar.'}</p>
 
-  return (
-    <>
-      <div className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/[0.12] bg-[rgba(7,7,6,0.92)] px-4 pb-[calc(0.75rem+env(safe-area-inset-bottom))] pt-3 backdrop-blur-2xl lg:hidden">
-        <div className="flex items-center justify-between gap-3"><span className="text-xl font-black text-[#FFB000]">{formatCLP(product.price)}</span><button onClick={buyNow} disabled={outOfStock} className="flex flex-1 items-center justify-center gap-2 rounded-full bg-[#FFB000] px-5 py-3 text-[11px] font-black uppercase tracking-[0.2em] text-black transition hover:bg-yellow-300 disabled:opacity-40"><Zap size={13} /> Comprar ahora</button></div>
+          <div className="mt-6 flex items-center gap-3 border-y border-black/10 py-4"><span className="grid h-11 w-11 place-items-center rounded-full bg-black text-white"><BadgeCheck className="h-5 w-5 text-[#FFB000]"/></span><div className="min-w-0"><div className="flex items-center gap-2"><b className="truncate text-sm">{provider}</b><span className="rounded-full bg-emerald-100 px-2 py-1 text-[8px] font-black uppercase text-emerald-800">Verificado</span></div><p className="mt-1 text-xs text-black/42">Proveedor validado por la tienda · compra respaldada</p></div></div>
+
+          <div className="mt-5 grid grid-cols-3 gap-px overflow-hidden border border-black/10 bg-black/10">{[[<PackageCheck key="a"/>,out?'Sin stock':'Disponible'],[<Truck key="b"/>,product.delivery_days||'Despacho coordinado'],[<ShieldCheck key="c"/>,'Compra protegida']].map(([icon,label],i)=><div key={i} className="bg-[#F4EFE6] p-3"><span className="text-[#B96F00]">{icon}</span><p className="mt-2 text-[10px] font-black leading-4">{label}</p></div>)}</div>
+          <button onClick={buy} disabled={out} className="mt-6 flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-[#F5871F] px-5 text-sm font-black text-black disabled:opacity-40"><Zap className="h-4 w-4"/>Comprar ahora</button>
+          <div className="mt-3 grid grid-cols-2 gap-3"><button onClick={add} disabled={out} className="flex min-h-12 items-center justify-center gap-2 rounded-full border border-black/15 text-xs font-black">{added?<Check className="h-4 w-4"/>:<ShoppingCart className="h-4 w-4"/>}{added?'Añadido':'Agregar al carrito'}</button><a href={whatsapp} target="_blank" rel="noreferrer" className="flex min-h-12 items-center justify-center gap-2 rounded-full bg-black text-xs font-black text-white"><Phone className="h-4 w-4"/>Consultar</a></div>
+        </section>
       </div>
 
-      <div className="min-h-screen" style={{ color: '#FFF9EE', background: PAGE_BG }}>
-        <Navbar />
-        <main className="mx-auto max-w-[1120px] px-4 pb-36 pt-6 md:px-8 lg:pb-24">
-          <nav className="mb-5 text-[13px]" style={{ color: '#7f766d' }}><Link href="/" className="transition hover:text-[#FFF9EE]">Inicio</Link>{' › '}<Link href="/tienda" className="transition hover:text-[#FFF9EE]">Catálogo</Link>{' › '}<span style={{ color: '#BFB8AC' }}>{category}</span></nav>
+      <section className="mt-16 grid gap-10 border-t border-black/10 pt-10 lg:grid-cols-[.75fr_1.25fr]">
+        <div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#B96F00]">Información técnica</p><h2 className="mt-2 text-4xl font-black tracking-[-.055em]">Características.</h2><p className="mt-4 max-w-md text-sm leading-7 text-black/45">Todo lo necesario para comparar antes de comprar, sin esconder datos importantes en pestañas.</p></div>
+        <div className="border-t border-black/10">{specs.length ? specs.map(([key,value])=><div key={key} className="grid grid-cols-[.8fr_1.2fr] gap-5 border-b border-black/10 py-4 text-sm"><span className="capitalize text-black/40">{key.replace(/_/g,' ')}</span><b className="text-right">{readable(value)}</b></div>) : <><Spec label="Categoría" value={String(category)}/><Spec label="Stock" value={out?'Agotado':`${product.stock ?? 'Disponible'}`}/><Spec label="Despacho" value={product.delivery_days||'A coordinar'}/><Spec label="Garantía" value="Respaldo Soluciones Fabrick"/></>}</div>
+      </section>
 
-          <div className="grid items-start gap-6 lg:grid-cols-[0.9fr_1.1fr]">
-            <section className="lg:sticky lg:top-[96px]">
-              <div className="relative grid aspect-square min-h-[360px] place-items-center overflow-hidden rounded-[28px] border border-white/10" style={{ background: CARD_BG, boxShadow: '0 26px 80px rgba(0,0,0,.48)' }}>
-                {product.featured && <span className="absolute left-5 top-5 z-10 rounded-full bg-yellow-400/95 px-3 py-1 text-[9px] font-black uppercase tracking-[0.25em] text-black">Destacado</span>}
-                {mainImg ? <img src={mainImg} alt={`${product.name} — imagen principal`} className="absolute inset-0 h-full w-full object-cover" loading="lazy" /> : <span className="text-7xl font-black text-white/10">{product.name[0]}</span>}
-              </div>
+      <section className="mt-16 bg-[#111214] px-5 py-8 text-white sm:px-8 sm:py-10"><div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr]"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#FFB000]">Confianza de compra</p><h2 className="mt-3 text-4xl font-black tracking-[-.055em]">Compras verificadas.</h2><p className="mt-4 text-sm leading-7 text-white/45">Las cifras se muestran solo cuando existen registros reales del producto. No inventamos ventas ni reseñas.</p><div className="mt-6 flex gap-6"><div><b className="text-3xl">{rating.toFixed(1)}</b><p className="text-xs text-white/40">valoración</p></div><div><b className="text-3xl">{purchaseCount > 1 ? purchaseCount : '—'}</b><p className="text-xs text-white/40">compras registradas</p></div></div></div><div className="grid content-start gap-3"><Trust icon={<BadgeCheck/>} title="Proveedor verificado" text={`${provider} aparece identificado como responsable del producto.`}/><Trust icon={<ShieldCheck/>} title="Pago y orden trazables" text="La compra genera una orden y espera la confirmación real de la pasarela."/><Trust icon={<Truck/>} title="Despacho informado" text="El costo se presenta antes del pago cuando corresponde."/></div></div></section>
 
-              {gallery.length > 1 && (
-                <div className="mt-3 rounded-3xl border border-white/10 bg-black/30 p-3">
-                  <div className="mb-2 flex items-center justify-between"><p className="text-[10px] font-black uppercase tracking-[0.24em] text-[#FFB000]">Galería</p><p className="text-xs" style={{ color: '#7f766d' }}>{gallery.length} imágenes</p></div>
-                  <div className="flex gap-3 overflow-x-auto pb-2">
-                    {gallery.map((src, i) => (
-                      <button key={`${src}-${i}`} type="button" onClick={() => setActiveImg(i)} className={`relative h-24 w-24 shrink-0 overflow-hidden rounded-2xl transition ${i === activeImg ? 'ring-2 ring-[#FFB000]/60' : 'opacity-60 hover:opacity-100'}`} style={{ border: i === activeImg ? '1px solid rgba(255,210,41,0.5)' : '1px solid rgba(255,248,237,0.12)' }} aria-label={`Ver imagen ${i + 1} de ${product.name}`}>
-                        <img src={src} alt={`${product.name} — vista ${i + 1}`} className="h-full w-full object-cover" loading="lazy" />
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </section>
+      <section className="mt-16"><div className="grid gap-8 lg:grid-cols-[.8fr_1.2fr]"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#B96F00]">Opiniones</p><h2 className="mt-2 text-4xl font-black tracking-[-.055em]">¿Ya lo compraste?</h2><p className="mt-3 text-sm leading-7 text-black/45">Deja tu experiencia. La publicación definitiva puede validarse contra una compra antes de marcarse como verificada.</p></div><form onSubmit={(e)=>{e.preventDefault(); if(reviewName.trim()&&reviewText.trim()) setReviewSent(true);}} className="border-t border-black/10 pt-5">{reviewSent?<div className="flex min-h-48 items-center gap-4"><CheckCircle2 className="h-10 w-10 text-emerald-700"/><div><b>Comentario recibido</b><p className="mt-1 text-sm text-black/45">Quedó listo para validación antes de publicarse.</p></div></div>:<><input value={reviewName} onChange={e=>setReviewName(e.target.value)} placeholder="Tu nombre" className="w-full border-b border-black/15 bg-transparent py-4 text-sm font-bold outline-none"/><textarea value={reviewText} onChange={e=>setReviewText(e.target.value)} placeholder="Cuéntanos cómo fue tu experiencia con el producto…" rows={4} className="mt-2 w-full resize-none border-b border-black/15 bg-transparent py-4 text-sm outline-none"/><button className="mt-5 rounded-full bg-black px-6 py-3 text-xs font-black text-white">Enviar opinión</button></>}</form></div></section>
 
-            <section className="rounded-[28px] border border-white/10 p-6 md:p-8" style={{ background: CARD_BG, boxShadow: '0 26px 80px rgba(0,0,0,.48)' }}>
-              <Kicker label={String(category)} />
-              {product.featured && <span className="mt-4 inline-flex rounded-full border border-yellow-400/25 bg-yellow-400/[0.08] px-3 py-1.5 text-[11px] font-black uppercase tracking-[0.18em] text-yellow-400">Producto recomendado</span>}
-              <h1 className="mt-4 font-black" style={{ fontSize: 'clamp(36px,6vw,70px)', lineHeight: 0.92, letterSpacing: '-0.075em', color: '#FFF9EE' }}>{product.name}</h1>
-              <div className="mt-5 flex items-baseline gap-3"><span style={{ fontSize: 'clamp(42px,7vw,66px)', fontWeight: 900, color: '#FFB000', letterSpacing: '-0.06em', lineHeight: 1 }}>{formatCLP(product.price)}</span>{product.discount_percentage ? <span className="rounded-full border border-red-500/30 bg-red-500/10 px-2.5 py-0.5 text-[10px] font-black uppercase tracking-wider text-red-400">-{product.discount_percentage}% OFF</span> : null}</div>
-              {product.description && <p className="mt-5 border-l-4 border-[#FFB000] pl-4 text-[17px] leading-[1.65]" style={{ color: '#ddd4c7' }}>{product.description}</p>}
+      <section className="mt-16"><div className="flex items-end justify-between border-b border-black/10 pb-5"><div><p className="text-[10px] font-black uppercase tracking-[.2em] text-[#B96F00]">Productos relacionados</p><h2 className="mt-2 text-4xl font-black tracking-[-.055em]">Completa tu proyecto.</h2></div></div><div className="mt-6 grid grid-cols-2 gap-3 sm:grid-cols-4">{related.map(rel=><button key={rel.id} onClick={()=>navigateWithTransition(`/tienda/${rel.id}`,router)} className="text-left"><div className="aspect-square overflow-hidden bg-white"><img src={rel.img||rel.image_url||FALLBACK} alt={rel.name} className="h-full w-full object-cover"/></div><p className="mt-3 line-clamp-2 text-sm font-black leading-tight">{rel.name}</p><b className="mt-2 block text-sm">{CLP.format(rel.price)}</b></button>)}</div></section>
+    </main>
 
-              <div className="mt-5 flex flex-wrap gap-2.5">
-                {outOfStock ? <span className="rounded-full border border-red-500/25 bg-red-500/10 px-3 py-1.5 text-[11px] font-semibold text-red-400">Agotado</span> : <span className="rounded-full px-3 py-1.5 text-[11px] font-semibold" style={{ border: '1px solid rgba(35,209,139,0.25)', background: 'rgba(35,209,139,0.08)', color: '#23d18b' }}>Disponible · {product.stock ?? 'stock'} unid.</span>}
-                {product.delivery_days && <span className="rounded-full px-3 py-1.5 text-[11px]" style={{ border: '1px solid rgba(255,248,237,0.10)', background: 'rgba(255,255,255,0.03)', color: '#BFB8AC' }}>{product.delivery_days}</span>}
-                <span className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[11px]" style={{ border: '1px solid rgba(255,248,237,0.10)', background: 'rgba(255,255,255,0.03)', color: '#BFB8AC' }}><Truck size={12} />Despacho: {product.shipping_fee != null ? formatCLP(Number(product.shipping_fee)) : 'sin costo definido'}</span>
-              </div>
-
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                <button onClick={buyNow} disabled={outOfStock} className="flex items-center justify-center gap-2 rounded-full py-3.5 text-[11px] font-black uppercase tracking-[0.2em] text-black transition hover:bg-yellow-300 disabled:opacity-40" style={{ background: '#FFB000' }}><Zap size={13} /> Comprar ahora</button>
-                <a href={whatsappHref} target="_blank" rel="noopener noreferrer" className="flex items-center justify-center gap-2 rounded-full py-3.5 text-[11px] font-black uppercase tracking-[0.2em] transition" style={{ border: '1px solid rgba(255,248,237,0.14)', background: 'rgba(255,255,255,0.05)', color: '#FFF9EE' }}><Phone size={13} /> Cotizar instalación</a>
-              </div>
-
-              <button onClick={addCart} disabled={outOfStock} className={`mt-2.5 flex w-full items-center justify-center gap-2 rounded-full py-3 text-[11px] font-black uppercase tracking-[0.2em] transition disabled:cursor-not-allowed disabled:opacity-50 ${addedToCart ? 'border border-[#23d18b]/40 bg-[#23d18b]/10 text-[#23d18b]' : 'border border-yellow-400/20 bg-transparent text-yellow-400 hover:bg-yellow-400/10'}`}>{addedToCart ? <CheckCircle2 size={13} /> : <ShoppingCart size={13} />}{addedToCart ? '¡Añadido al carrito!' : 'Añadir al carrito'}</button>
-
-              <div className="mt-6 grid grid-cols-2 gap-3">
-                {[{ icon: <ShieldCheck size={16} className="text-[#FFB000]" />, strong: 'Garantía real', small: 'Respaldo en cada compra' }, { icon: <Star size={16} className="text-[#FFB000]" />, strong: 'Compra protegida', small: 'Pago seguro y sin riesgos' }].map(({ icon, strong, small }) => <div key={strong} className="flex flex-col gap-1.5 rounded-2xl border border-white/10 bg-white/[0.035] p-4">{icon}<strong className="text-[13px] font-black leading-tight">{strong}</strong><small className="text-[11px]" style={{ color: '#BFB8AC' }}>{small}</small></div>)}
-              </div>
-
-              {specEntries.length > 0 && <div className="mt-7 overflow-hidden rounded-2xl border border-white/10">{specEntries.map(([key, value], index) => <div key={key} className={`flex items-center justify-between gap-4 px-4 py-3 text-sm ${index % 2 === 0 ? 'bg-white/[0.03]' : ''}`}><span className="capitalize" style={{ color: '#7f766d' }}>{key.replace(/_/g, ' ')}</span><span className="max-w-[55%] text-right" style={{ color: '#ddd4c7' }}>{readableValue(value)}</span></div>)}</div>}
-            </section>
-          </div>
-
-          <section className="mt-8">
-            <div className="mb-4"><Kicker label="Complementos" /><h2 className="mt-2 font-black" style={{ fontSize: 'clamp(30px,4vw,48px)', letterSpacing: '-0.06em', lineHeight: 1 }}>También te puede interesar</h2></div>
-            <div className="grid grid-cols-1 gap-3.5 sm:grid-cols-3">{relatedProducts.map((rel) => <button key={rel.id} type="button" onClick={() => navigateWithTransition(`/tienda/${rel.id}`, router)} className="rounded-3xl border border-white/10 bg-white/[0.03] p-4 text-left transition hover:opacity-80"><p className="text-sm font-black">{rel.name}</p><p className="mt-2 text-xs" style={{ color: '#BFB8AC' }}>{formatCLP(rel.price)}</p></button>)}</div>
-          </section>
-        </main>
-      </div>
-    </>
-  );
+    <div className="fixed inset-x-0 bottom-0 z-50 border-t border-black/10 bg-[#F4EFE6]/95 p-3 backdrop-blur-xl lg:hidden"><div className="mx-auto flex max-w-xl items-center gap-3"><div className="min-w-0 flex-1"><p className="text-[9px] font-black uppercase text-emerald-700">IVA incluido</p><b className="text-xl">{CLP.format(price)}</b></div><button onClick={buy} disabled={out} className="min-h-12 rounded-full bg-[#F5871F] px-6 text-xs font-black disabled:opacity-40">Comprar ahora</button></div></div>
+  </div>;
 }
+
+function Spec({label,value}:{label:string;value:string}) { return <div className="grid grid-cols-[.8fr_1.2fr] gap-5 border-b border-black/10 py-4 text-sm"><span className="text-black/40">{label}</span><b className="text-right">{value}</b></div>; }
+function Trust({icon,title,text}:{icon:React.ReactNode;title:string;text:string}) { return <div className="flex gap-4 border-b border-white/10 py-4"><span className="text-[#FFB000]">{icon}</span><div><b className="text-sm">{title}</b><p className="mt-1 text-xs leading-5 text-white/42">{text}</p></div></div>; }

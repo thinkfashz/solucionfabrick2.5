@@ -64,7 +64,7 @@ export default function TiendaSection({ limit = 6, title = 'Productos más solic
           const discount = Number(product.discountPercentage ?? product.discount_percentage ?? 0);
           return <article key={product.id} className="min-w-0">
             <button type="button" onClick={() => goToProduct(product)} className="relative aspect-square w-full overflow-hidden bg-white text-left" aria-label={`Ver ${displayProductName(product.name)}`}>
-              {product.img ? <img src={product.img} alt={displayProductName(product.name)} className="h-full w-full object-contain transition duration-500 hover:scale-[1.03]" /> : null}
+              {product.img ? <img src={product.img} alt={displayProductName(product.name)} width={480} height={480} loading="lazy" decoding="async" fetchPriority="low" className="h-full w-full object-contain transition duration-500 hover:scale-[1.03]" /> : null}
               {discount > 0 ? <span className="absolute left-2 top-2 rounded-full bg-[#F5871F] px-2 py-1 text-[9px] font-black text-[#08090A]">-{discount}%</span> : null}
             </button>
             <p className="mt-3 text-[9px] font-black uppercase tracking-[.12em] text-[#B96F00]">{product.category}</p>

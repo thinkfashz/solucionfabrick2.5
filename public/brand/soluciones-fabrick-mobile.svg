@@ -1,33 +1,32 @@
-<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 820 980" role="img" aria-labelledby="title desc">
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 760 250" role="img" aria-labelledby="title desc">
   <title id="title">Soluciones Fabrick</title>
-  <desc id="desc">Versión vertical compacta del logo de Soluciones Fabrick optimizada para teléfonos móviles.</desc>
+  <desc id="desc">Logo horizontal compacto de Soluciones Fabrick optimizado para navegación móvil.</desc>
   <defs>
-    <linearGradient id="steel" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fff"/><stop offset=".16" stop-color="#d5d8dc"/><stop offset=".34" stop-color="#fff"/><stop offset=".56" stop-color="#71757b"/><stop offset=".76" stop-color="#f7f7f7"/><stop offset="1" stop-color="#34383d"/>
-    </linearGradient>
     <linearGradient id="gold" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#fff3aa"/><stop offset=".18" stop-color="#ffd84b"/><stop offset=".4" stop-color="#f3a100"/><stop offset=".62" stop-color="#ffe373"/><stop offset=".82" stop-color="#c66a00"/><stop offset="1" stop-color="#793800"/>
+      <stop offset="0" stop-color="#fff0a4"/>
+      <stop offset=".28" stop-color="#ffc83d"/>
+      <stop offset=".58" stop-color="#f39a00"/>
+      <stop offset="1" stop-color="#9b4d00"/>
     </linearGradient>
-    <linearGradient id="goldEdge" x1="0" y1="0" x2="1" y2="1">
-      <stop offset="0" stop-color="#fff3a8"/><stop offset=".48" stop-color="#ee9f00"/><stop offset="1" stop-color="#713500"/>
+    <linearGradient id="steel" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset=".38" stop-color="#c9ccd1"/>
+      <stop offset=".72" stop-color="#70757b"/>
+      <stop offset="1" stop-color="#f5f6f7"/>
     </linearGradient>
-    <filter id="shadow" x="-20%" y="-20%" width="140%" height="160%"><feDropShadow dx="0" dy="12" stdDeviation="10" flood-color="#000" flood-opacity=".5"/></filter>
+    <filter id="soft" x="-10%" y="-20%" width="120%" height="150%">
+      <feDropShadow dx="0" dy="3" stdDeviation="2.5" flood-color="#000" flood-opacity=".28"/>
+    </filter>
   </defs>
 
-  <g transform="translate(32 76)" filter="url(#shadow)" stroke-linejoin="round">
-    <path d="M30 380 378 84l158 133v-70h66v126l139 117h-78L378 151 106 383Z" fill="url(#steel)" stroke="#fff" stroke-opacity=".56" stroke-width="9"/>
-    <path d="M67 386 378 128l166 140v25L378 164 112 390Z" fill="url(#goldEdge)"/>
-    <path d="M104 387 378 166l148 126v28L378 201 151 390Z" fill="#111318"/>
-    <path d="M536 217v-70h66v126l-22-19v-77h-25v58Z" fill="url(#steel)" stroke="#d9dbdf" stroke-width="5"/>
-    <path d="M545 218v-60h12v70Z" fill="url(#gold)"/>
+  <g filter="url(#soft)">
+    <path d="M63 118 238 30l104 53v-27h24v39l78 40h-36L238 48 92 122Z" fill="none" stroke="url(#steel)" stroke-width="13" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M64 124 238 41l104 53" fill="none" stroke="url(#gold)" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M342 83V56h24v39" fill="none" stroke="url(#steel)" stroke-width="10" stroke-linecap="round" stroke-linejoin="round"/>
   </g>
 
-  <g font-family="Arial Black, Arial, sans-serif" font-weight="900" text-anchor="middle">
-    <text x="410" y="610" font-size="100" letter-spacing="-3" fill="#4b2400" stroke="#2b1400" stroke-width="12">SOLUCIONES</text>
-    <text x="410" y="600" font-size="100" letter-spacing="-3" fill="url(#gold)" stroke="url(#goldEdge)" stroke-width="5">SOLUCIONES</text>
-    <text x="410" y="770" font-size="168" letter-spacing="-6" fill="#4b2400" stroke="#2b1400" stroke-width="15">FABRICK</text>
-    <text x="410" y="756" font-size="168" letter-spacing="-6" fill="url(#gold)" stroke="url(#goldEdge)" stroke-width="6">FABRICK</text>
+  <g font-family="Arial, Helvetica, sans-serif" font-weight="900" text-anchor="middle">
+    <text x="380" y="177" font-size="58" letter-spacing="-1.5" fill="url(#gold)">SOLUCIONES FABRICK</text>
+    <text x="380" y="205" font-size="17" font-weight="700" letter-spacing="4.2" fill="#f5f0e6" opacity=".78">CONSTRUCCIÓN · REMODELACIÓN</text>
   </g>
-  <path d="M145 840h530" stroke="url(#gold)" stroke-width="4" stroke-linecap="round" opacity=".6"/>
-  <text x="410" y="905" text-anchor="middle" font-family="Arial, sans-serif" font-size="24" font-weight="700" letter-spacing="5" fill="#d8d8d8">CONSTRUIMOS SOLUCIONES</text>
 </svg>

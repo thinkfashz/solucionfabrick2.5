@@ -108,12 +108,11 @@ export default function ProductDetailClientV2() {
   const visibleImage = selectedImage || gallery[0];
   const productName = displayProductName(product.name);
   const shippingText = product.shipping_fee === 0 ? 'Despacho configurado sin costo' : product.shipping_fee != null ? `Despacho configurado desde ${CLP.format(product.shipping_fee)}` : 'El costo final de despacho se calcula según la configuración del producto y la región.';
-
-  function cartProduct() { return toCartProduct(product); }
+  const cartProductValue = toCartProduct(product);
 
   function add(openCheckout = false) {
     if (stock === 0) return;
-    const nextProduct = cartProduct();
+    const nextProduct = cartProductValue;
     addToCart(nextProduct, qty);
     setAdded(true);
     window.setTimeout(() => setAdded(false), 1400);

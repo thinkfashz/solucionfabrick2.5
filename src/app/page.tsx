@@ -19,7 +19,6 @@ export default async function Home() {
     instagram: settings.social_instagram || 'https://www.instagram.com/solucionesfabrick/',
     tiktok: settings.social_tiktok,
   };
-
   const jsonLd = buildFabrickHomeJsonLd({ socialLinks });
 
   return (
@@ -28,7 +27,7 @@ export default async function Home() {
       <div className="min-h-screen overflow-x-hidden bg-[#08090A] pb-[calc(6rem+env(safe-area-inset-bottom))] selection:bg-[#FFB000] selection:text-[#08090A] md:pb-0">
         <Navbar />
         <main>
-          <StaticConstructionHero coverUrl="/images/landing/fabrick-home-showcase.webp" />
+          <StaticConstructionHero />
           <CalculatorPlanShowcase />
           <ConstructionM2Calculator />
           <LandingSections copyrightText={copyrightText} socialLinks={socialLinks} />

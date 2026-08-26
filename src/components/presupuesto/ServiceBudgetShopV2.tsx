@@ -19,6 +19,7 @@ const NUMBER = new Intl.NumberFormat('es-CL', { maximumFractionDigits: 2 });
 const money = (value: number) => CLP.format(Math.round(value || 0));
 const number = (value: number) => NUMBER.format(value || 0);
 const average = (service: BudgetService) => Math.round((service.marketMin + service.marketMax) / 2);
+const DEFAULT_SERVICE = BUDGET_SERVICES[0];
 
 function metaNumber(item: QuoteItem, key: string) {
   const value = item.meta?.[key];
@@ -46,10 +47,10 @@ function taxBreakdown(total: number) {
 function rangeText(low: number, high: number) { return low === high ? money(low) : `${money(low)} – ${money(high)}`; }
 
 export default function ServiceBudgetShopV2() {
-  const calculatorRef = useRef<HTMLDivElement>(null);
-  const [selectedId, setSelectedId] = useState(BUDGET_SERVICES[0].id);
-  const [category, setCategory] = useState<ServiceCategory | 'Todas'>('Todas');
-  const [values, setValues] = useState<MeasurementValues>(BUDGET_SERVICES[0].defaultValues);
+  const calculatorRef = useRef<HTMLElement>(null);
+  const [selectedId, setSelectedId] = useState(DEFAULT_SERVICE.id);
+  const [category, setCategory] = useState<ServiceCategory | 'Todas'>(DEFAULT_SERVICE.category);
+  const [values, setValues] = useState<MeasurementValues>(DEFAULT_SERVICE.defaultValues);
   const [customer, setCustomer] = useState({ name: '', place: '', note: '' });
   const [addedId, setAddedId] = useState('');
   const [reference] = useState(() => `FBK-${Date.now().toString(36).slice(-6).toUpperCase()}`);
@@ -58,6 +59,10 @@ export default function ServiceBudgetShopV2() {
   const service = getBudgetService(selectedId);
   const serviceItems = items.filter((item) => item.kind === 'service');
   const visibleServices = category === 'Todas' ? BUDGET_SERVICES : BUDGET_SERVICES.filter((item) => item.category === category);
+  const categoryCounts = useMemo(() => SERVICE_CATEGORIES.reduce<Record<ServiceCategory, number>>((result, item) => {
+    result[item] = BUDGET_SERVICES.filter((serviceItem) => serviceItem.category === item).length;
+    return result;
+  }, {} as Record<ServiceCategory, number>), []);
   const measurement = useMemo(() => calculateServiceMeasurement(service, values), [service, values]);
   const selectedLow = measurement.quantity * service.marketMin * measurement.priceFactor;
   const selectedHigh = measurement.quantity * service.marketMax * measurement.priceFactor;
@@ -103,6 +108,16 @@ export default function ServiceBudgetShopV2() {
       'Entiendo que este documento es referencial y que el precio final se confirma después de revisar alcance, medidas, acceso, materiales y condiciones reales.',
     ].filter(Boolean).join('\n');
   }, [customer, reference, serviceItems, taxHigh, taxLow, totals]);
+
+  function chooseCategory(nextCategory: ServiceCategory | 'Todas') {
+    setCategory(nextCategory);
+    if (nextCategory === 'Todas' || service.category === nextCategory) return;
+    const first = BUDGET_SERVICES.find((item) => item.category === nextCategory);
+    if (!first) return;
+    setSelectedId(first.id);
+    setValues(first.defaultValues);
+    setAddedId('');
+  }
 
   function chooseService(next: BudgetService, updateUrl = true) {
     setSelectedId(next.id);
@@ -201,22 +216,27 @@ export default function ServiceBudgetShopV2() {
         <div className="mx-auto max-w-[1260px]">
           <div className="grid gap-5 border-b border-black/10 pb-6 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
             <div><p className="text-[10px] font-black uppercase tracking-[.18em] text-[#B96F00]">Paso 1</p><h2 className="mt-2 text-3xl font-black tracking-[-.05em] sm:text-4xl">¿Qué trabajo quieres calcular?</h2></div>
-            <p className="max-w-2xl text-sm leading-6 text-black/45">Puedes añadir varias especialidades al mismo proyecto. Cada una conserva su propia fórmula, unidad y rango.</p>
+            <p className="max-w-2xl text-sm leading-6 text-black/45">Primero elige una familia de trabajos. Verás solo las especialidades relacionadas y podrás llegar a las medidas mucho más rápido.</p>
           </div>
 
-          <div className="mt-5 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden">
-            <button type="button" onClick={() => setCategory('Todas')} className={`shrink-0 rounded-full px-4 py-2.5 text-xs font-black ${category === 'Todas' ? 'bg-[#08090A] text-[#FFF9EE]' : 'border border-black/12'}`}>Todas</button>
-            {SERVICE_CATEGORIES.map((item) => <button key={item} type="button" onClick={() => setCategory(item)} className={`shrink-0 rounded-full px-4 py-2.5 text-xs font-black ${category === item ? 'bg-[#08090A] text-[#FFF9EE]' : 'border border-black/12'}`}>{item}</button>)}
+          <div className="mt-5 flex gap-2 overflow-x-auto pb-2 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden" aria-label="Categorías de trabajos">
+            {SERVICE_CATEGORIES.map((item) => <button key={item} type="button" onClick={() => chooseCategory(item)} className={`shrink-0 rounded-full px-4 py-2.5 text-xs font-black transition ${category === item ? 'bg-[#08090A] text-[#FFF9EE]' : 'border border-black/12 bg-white hover:border-[#F5871F]/45'}`}>{item} <span className={category === item ? 'text-white/45' : 'text-black/30'}>{categoryCounts[item]}</span></button>)}
+            <button type="button" onClick={() => chooseCategory('Todas')} className={`shrink-0 rounded-full px-4 py-2.5 text-xs font-black transition ${category === 'Todas' ? 'bg-[#08090A] text-[#FFF9EE]' : 'border border-black/12 bg-white hover:border-[#F5871F]/45'}`}>Todas <span className={category === 'Todas' ? 'text-white/45' : 'text-black/30'}>{BUDGET_SERVICES.length}</span></button>
           </div>
 
-          <div className="mt-4 grid grid-cols-2 gap-px overflow-hidden bg-black/10 sm:grid-cols-3 lg:grid-cols-4">
+          <div className="mt-3 flex items-center justify-between gap-4 text-[10px] text-black/38">
+            <span>{category === 'Todas' ? 'Todas las especialidades' : category}</span>
+            <span>{visibleServices.length} {visibleServices.length === 1 ? 'opción' : 'opciones'}</span>
+          </div>
+
+          <div className="mt-3 grid grid-cols-2 gap-px overflow-hidden bg-black/10 sm:grid-cols-3 lg:grid-cols-4">
             {visibleServices.map((item) => {
               const active = item.id === selectedId;
               const inCart = serviceItems.some((line) => metaString(line, 'serviceId') === item.id || line.id === `service_${item.id}`);
-              return <button key={item.id} type="button" onClick={() => chooseService(item)} className={`min-h-[145px] p-4 text-left transition ${active ? 'bg-[#08090A] text-[#FFF9EE]' : 'bg-white hover:bg-[#F2DFBB]/45'}`}>
-                <div className="flex items-start justify-between gap-2"><span className={`text-[9px] font-black uppercase tracking-[.12em] ${active ? 'text-[#FFB000]' : 'text-[#B96F00]'}`}>{item.category}</span>{inCart ? <span className="text-[9px] font-black text-emerald-600">Añadido</span> : null}</div>
+              return <button key={item.id} type="button" onClick={() => chooseService(item)} className={`min-h-[126px] p-4 text-left transition sm:min-h-[145px] ${active ? 'bg-[#08090A] text-[#FFF9EE]' : 'bg-white hover:bg-[#F2DFBB]/45'}`}>
+                <div className="flex items-start justify-between gap-2"><span className={`text-[8px] font-black uppercase tracking-[.1em] sm:text-[9px] sm:tracking-[.12em] ${active ? 'text-[#FFB000]' : 'text-[#B96F00]'}`}>{item.category}</span>{inCart ? <span className="text-[8px] font-black text-emerald-600 sm:text-[9px]">Añadido</span> : null}</div>
                 <h3 className="mt-3 text-sm font-black leading-[1.15] sm:text-base">{item.short}</h3>
-                <p className={`mt-3 text-[10px] leading-4 ${active ? 'text-white/45' : 'text-black/40'}`}>{money(item.marketMin)}–{money(item.marketMax)} / {item.unit}</p>
+                <p className={`mt-3 text-[9px] leading-4 sm:text-[10px] ${active ? 'text-white/45' : 'text-black/40'}`}>{money(item.marketMin)}–{money(item.marketMax)} / {item.unit}</p>
               </button>;
             })}
           </div>

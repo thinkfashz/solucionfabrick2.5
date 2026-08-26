@@ -78,12 +78,23 @@ export function generateFabrickBoletaPdfBase64(args: {
   const issuedAt = new Date(order.updated_at || order.created_at || Date.now()).toLocaleString('es-CL');
   const folio = invoice?.folio || order.id;
   const items = Array.isArray(order.items) ? order.items : [];
+
+  // El subtotal almacenado es el precio final de los productos y YA incluye IVA.
+  // El IVA se desglosa solo con fines informativos/tributarios y nunca se suma nuevamente.
+  const subtotal = Math.round(Number(order.subtotal || 0));
+  const neto = Math.round(Number(invoice?.neto || 0)) || Math.round(subtotal / 1.19);
+  const iva = Math.round(Number(invoice?.iva || 0)) || Math.max(0, subtotal - neto);
+  const despacho = Math.round(Number(order.shipping_fee || 0));
+  const total = Math.round(Number(order.total || invoice?.total || subtotal + despacho));
+
   const summary: CheckoutSummary = {
-    subtotal: Number(order.subtotal || 0),
-    iva: Number(order.tax || 0),
-    despacho: Number(order.shipping_fee || 0),
-    total: Number(order.total || invoice?.total || 0),
+    subtotal,
+    neto,
+    iva,
+    despacho,
+    total,
     moneda: 'CLP',
+    taxIncluded: true,
   };
 
   doc.setFillColor(250, 250, 250);
@@ -162,39 +173,44 @@ export function generateFabrickBoletaPdfBase64(args: {
   for (const item of printableItems.slice(0, 12)) {
     const qty = Number(item.cantidad || 1);
     const unit = Number(item.precioUnitario || 0);
-    const total = qty * unit;
+    const itemTotal = qty * unit;
     doc.text(clip(doc, item.nombre || `Producto ${item.productoId}`, 82), 27, y);
     doc.text(String(qty), 124, y, { align: 'right' });
     doc.text(money(unit), 154, y, { align: 'right' });
-    doc.text(money(total), 181, y, { align: 'right' });
+    doc.text(money(itemTotal), 181, y, { align: 'right' });
     y += 9;
     doc.setDrawColor(242, 242, 242);
     doc.line(27, y - 4, 181, y - 4);
   }
 
-  const totalY = Math.max(y + 8, 202);
+  const totalY = Math.max(y + 8, 194);
   doc.setFillColor(250, 250, 250);
-  doc.roundedRect(112, totalY - 8, 74, 39, 4, 4, 'F');
-  doc.setFontSize(9);
+  doc.roundedRect(106, totalY - 8, 80, 49, 4, 4, 'F');
+  doc.setFontSize(8.5);
   doc.setTextColor(70, 70, 70);
-  doc.text('Subtotal', 120, totalY);
+  doc.text('Productos (IVA incluido)', 112, totalY);
   doc.text(money(summary.subtotal), 180, totalY, { align: 'right' });
-  doc.text('IVA', 120, totalY + 8);
-  doc.text(money(summary.iva), 180, totalY + 8, { align: 'right' });
-  doc.text('Despacho', 120, totalY + 16);
-  doc.text(money(summary.despacho), 180, totalY + 16, { align: 'right' });
+  doc.text('Neto referencial', 112, totalY + 8);
+  doc.text(money(summary.neto), 180, totalY + 8, { align: 'right' });
+  doc.text('IVA contenido', 112, totalY + 16);
+  doc.text(money(summary.iva), 180, totalY + 16, { align: 'right' });
+  doc.text('Despacho', 112, totalY + 24);
+  doc.text(money(summary.despacho), 180, totalY + 24, { align: 'right' });
   doc.setFont('helvetica', 'bold');
   doc.setTextColor(10, 10, 10);
   doc.setFontSize(12);
-  doc.text('TOTAL', 120, totalY + 28);
-  doc.text(money(summary.total), 180, totalY + 28, { align: 'right' });
+  doc.text('TOTAL', 112, totalY + 36);
+  doc.text(money(summary.total), 180, totalY + 36, { align: 'right' });
 
   doc.setFont('helvetica', 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(115, 115, 115);
+  doc.text('El IVA está incluido en el precio de los productos y no se cobra nuevamente.', 22, 230);
   doc.setFontSize(8);
   doc.setTextColor(95, 95, 95);
-  doc.text(`Proveedor DTE: ${safe(invoice?.provider, 'Fabrick')}`, 22, 235);
-  doc.text(`Estado SII: ${safe(invoice?.sii_status, 'registro interno')}`, 22, 241);
-  if (trackingUrl) doc.text(`Seguimiento: ${trackingUrl}`, 22, 247, { maxWidth: 160 });
+  doc.text(`Proveedor DTE: ${safe(invoice?.provider, 'Fabrick')}`, 22, 237);
+  doc.text(`Estado SII: ${safe(invoice?.sii_status, 'registro interno')}`, 22, 243);
+  if (trackingUrl) doc.text(`Seguimiento: ${trackingUrl}`, 22, 249, { maxWidth: 160 });
 
   doc.setFillColor(245, 158, 11);
   doc.roundedRect(22, 252, 164, 5, 2, 2, 'F');

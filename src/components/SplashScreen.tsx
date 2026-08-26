@@ -4,24 +4,19 @@ import { useEffect, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import FabrickLoadingScreen from '@/components/FabrickLoadingScreen';
 
-const SESSION_FLAG = 'fabrick.splash.seen.v7';
-
 export default function SplashScreen() {
   const pathname = usePathname();
   const isAdmin = pathname?.startsWith('/admin') ?? false;
-  const [visible, setVisible] = useState(false);
+  const [visible, setVisible] = useState(!isAdmin);
   const [closing, setClosing] = useState(false);
 
   useEffect(() => {
-    if (isAdmin) return;
-    try {
-      if (window.sessionStorage.getItem(SESSION_FLAG) !== '1') {
-        window.sessionStorage.setItem(SESSION_FLAG, '1');
-        setVisible(true);
-      }
-    } catch {
-      setVisible(true);
+    if (isAdmin) {
+      setVisible(false);
+      return;
     }
+    setClosing(false);
+    setVisible(true);
   }, [isAdmin]);
 
   useEffect(() => {
@@ -30,8 +25,8 @@ export default function SplashScreen() {
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
 
-    const closeTimer = window.setTimeout(() => setClosing(true), reduced ? 180 : 920);
-    const hideTimer = window.setTimeout(() => setVisible(false), reduced ? 230 : 1240);
+    const closeTimer = window.setTimeout(() => setClosing(true), reduced ? 180 : 880);
+    const hideTimer = window.setTimeout(() => setVisible(false), reduced ? 230 : 1180);
 
     return () => {
       window.clearTimeout(closeTimer);
@@ -54,7 +49,7 @@ export default function SplashScreen() {
           opacity: 1;
           clip-path: inset(0 0 0 0);
           transform: translateY(0);
-          transition: opacity .32s ease, clip-path .62s cubic-bezier(.76,0,.24,1), transform .62s cubic-bezier(.76,0,.24,1);
+          transition: opacity .3s ease, clip-path .58s cubic-bezier(.76,0,.24,1), transform .58s cubic-bezier(.76,0,.24,1);
         }
         .sf-splash-shell.is-closing {
           opacity: 0;

@@ -12,6 +12,7 @@ import {
 import ContactForm from './ContactForm';
 import TiendaSection from './TiendaSection';
 import MetalconSeismicStory from '@/components/landing/MetalconSeismicStory';
+import SeismicStructureShowcase from '@/components/landing/SeismicStructureShowcase';
 import LandingProcessSection from '@/components/landing/LandingProcessSection';
 import { FabrickFullLogo } from '@/components/FabrickBrandIcon';
 import { FacebookBrandIcon, InstagramBrandIcon, TikTokBrandIcon, WhatsAppBrandIcon } from '@/components/SocialBrandIcons';
@@ -48,6 +49,7 @@ export default function LandingSections({ copyrightText, socialLinks }: LandingS
   return (
     <div className="overflow-x-hidden bg-[#08090A] text-[#FFF9EE]">
       <LandingProcessSection />
+      <SeismicStructureShowcase />
       <MetalconSeismicStory />
 
       <section id="mas-vendidos" className="scroll-mt-20 bg-[#FFF9EE] px-4 py-16 text-[#08090A] sm:px-6 md:px-12 lg:py-20">

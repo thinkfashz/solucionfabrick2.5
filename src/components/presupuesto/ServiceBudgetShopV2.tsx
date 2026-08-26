@@ -21,6 +21,10 @@ const number = (value: number) => NUMBER.format(value || 0);
 const average = (service: BudgetService) => Math.round((service.marketMin + service.marketMax) / 2);
 const DEFAULT_SERVICE = BUDGET_SERVICES[0];
 
+interface ServiceBudgetShopV2Props {
+  initialServiceId?: string;
+}
+
 function metaNumber(item: QuoteItem, key: string) {
   const value = item.meta?.[key];
   return typeof value === 'number' && Number.isFinite(value) ? value : 0;
@@ -46,11 +50,12 @@ function taxBreakdown(total: number) {
 }
 function rangeText(low: number, high: number) { return low === high ? money(low) : `${money(low)} – ${money(high)}`; }
 
-export default function ServiceBudgetShopV2() {
+export default function ServiceBudgetShopV2({ initialServiceId }: ServiceBudgetShopV2Props) {
+  const initialService = getBudgetService(initialServiceId);
   const calculatorRef = useRef<HTMLElement>(null);
-  const [selectedId, setSelectedId] = useState(DEFAULT_SERVICE.id);
-  const [category, setCategory] = useState<ServiceCategory | 'Todas'>(DEFAULT_SERVICE.category);
-  const [values, setValues] = useState<MeasurementValues>(DEFAULT_SERVICE.defaultValues);
+  const [selectedId, setSelectedId] = useState(initialService.id);
+  const [category, setCategory] = useState<ServiceCategory | 'Todas'>(initialService.category);
+  const [values, setValues] = useState<MeasurementValues>(initialService.defaultValues);
   const [customer, setCustomer] = useState({ name: '', place: '', note: '' });
   const [addedId, setAddedId] = useState('');
   const [reference] = useState(() => `FBK-${Date.now().toString(36).slice(-6).toUpperCase()}`);
@@ -76,14 +81,15 @@ export default function ServiceBudgetShopV2() {
   const taxHigh = useMemo(() => taxBreakdown(totals.high), [totals.high]);
 
   useEffect(() => {
-    const params = new URLSearchParams(window.location.search);
-    const requested = params.get('servicio');
-    if (!requested) return;
-    const next = getBudgetService(requested);
-    chooseService(next, false);
-    window.setTimeout(() => calculatorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 100);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+    if (!initialServiceId) return;
+    const next = getBudgetService(initialServiceId);
+    setSelectedId(next.id);
+    setCategory(next.category);
+    setValues(next.defaultValues);
+    setAddedId('');
+    const timer = window.setTimeout(() => calculatorRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 120);
+    return () => window.clearTimeout(timer);
+  }, [initialServiceId]);
 
   const whatsappMessage = useMemo(() => {
     const detail = serviceItems.map((item, index) => {

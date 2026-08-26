@@ -1,7 +1,7 @@
 'use client';
 
 /* eslint-disable @next/next/no-img-element */
-import { useMemo, useState, type MouseEvent } from 'react';
+import { useMemo, useState, type MouseEvent, type ReactNode } from 'react';
 import { useRouter } from 'next/navigation';
 import { ArrowRight, BadgePercent, Check, RefreshCw, Search, ShieldCheck, ShoppingBag, ShoppingCart, Sparkles, Truck } from 'lucide-react';
 import { FALLBACK_CATALOG_PRODUCTS, useCatalogProducts, type CatalogProduct } from '@/hooks/useCatalogProducts';
@@ -70,6 +70,31 @@ export default function TiendaClientV2() {
 
   return (
     <div className="min-h-screen bg-[#F4EFE6] text-[#111214]">
+      <style>{`
+        .sf-store-grid {
+          display: grid !important;
+          grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+          column-gap: .75rem;
+          row-gap: 2rem;
+          width: 100%;
+        }
+        .sf-store-grid > * { min-width: 0; max-width: none !important; }
+        @media (min-width: 640px) {
+          .sf-store-grid { column-gap: 1.25rem; row-gap: 2.4rem; }
+        }
+        @media (min-width: 900px) {
+          .sf-store-grid { grid-template-columns: repeat(3, minmax(0, 1fr)) !important; }
+        }
+        @media (min-width: 1280px) {
+          .sf-store-grid { grid-template-columns: repeat(4, minmax(0, 1fr)) !important; }
+        }
+        @media (max-width: 639px) {
+          .sf-store-grid .sf-product-title { font-size: .82rem; line-height: 1.08; min-height: 2.65rem; }
+          .sf-store-grid .sf-product-price { font-size: 1rem; }
+          .sf-store-grid .sf-product-cart { width: 2.35rem; height: 2.35rem; }
+        }
+      `}</style>
+
       <StorefrontHeader onSearch={() => document.getElementById('catalog-search')?.focus()} />
 
       {fetchComplete && source === 'fallback' ? (
@@ -121,7 +146,7 @@ export default function TiendaClientV2() {
           {featured.length ? (
             <section className="pt-12">
               <SectionHeading eyebrow="Selección Fabrick" title="Empieza por aquí." />
-              <div className="mt-6 grid grid-cols-2 gap-x-3 gap-y-8 sm:gap-x-5 lg:grid-cols-4">
+              <div className="sf-store-grid mt-6">
                 {featured.map((product) => (
                   <ProductTile key={product.id} product={product} added={added === product.id} onOpen={() => open(product)} onAdd={(event) => add(event, product)} />
                 ))}
@@ -133,13 +158,11 @@ export default function TiendaClientV2() {
             <section className="pt-14">
               <div className="flex items-end justify-between gap-5 border-b border-black/10 pb-4">
                 <SectionHeading eyebrow="Promociones" title="Ofertas sin letra pequeña." compact />
-                <span className="hidden text-xs text-black/35 sm:block">Desliza para ver más</span>
+                <span className="hidden text-xs text-black/35 sm:block">Compara productos lado a lado</span>
               </div>
-              <div className="mt-5 flex snap-x gap-3 overflow-x-auto pb-3 sm:gap-5">
+              <div className="sf-store-grid mt-5">
                 {promos.slice(0, 8).map((product) => (
-                  <div key={product.id} className="min-w-[47%] snap-start sm:min-w-[260px] lg:min-w-[290px]">
-                    <ProductTile product={product} added={added === product.id} onOpen={() => open(product)} onAdd={(event) => add(event, product)} />
-                  </div>
+                  <ProductTile key={product.id} product={product} added={added === product.id} onOpen={() => open(product)} onAdd={(event) => add(event, product)} />
                 ))}
               </div>
             </section>
@@ -148,7 +171,7 @@ export default function TiendaClientV2() {
           <section id="catalogo" className="scroll-mt-24 pt-16">
             <div className="flex flex-col gap-4 border-b border-black/10 pb-5 lg:flex-row lg:items-end lg:justify-between">
               <SectionHeading eyebrow="Catálogo completo" title="Encuentra lo que necesitas." />
-              <p className="max-w-md text-sm leading-6 text-black/42">Dos productos por fila en móvil, información directa y menos capas visuales para comparar más rápido.</p>
+              <p className="max-w-md text-sm leading-6 text-black/42">Dos productos por fila en móvil para comparar imagen, nombre y precio mientras bajas por el catálogo.</p>
             </div>
 
             <div className="sticky top-[68px] z-30 -mx-4 mt-5 border-y border-black/8 bg-[#F4EFE6]/96 px-4 py-3 backdrop-blur-xl sm:-mx-6 sm:px-6 lg:-mx-8 lg:px-8">
@@ -167,7 +190,7 @@ export default function TiendaClientV2() {
             </div>
 
             {filtered.length ? (
-              <div className="mt-6 grid grid-cols-2 gap-x-3 gap-y-9 sm:gap-x-5 lg:grid-cols-3 xl:grid-cols-4">
+              <div className="sf-store-grid mt-6">
                 {filtered.map((product) => (
                   <ProductTile key={product.id} product={product} added={added === product.id} onOpen={() => open(product)} onAdd={(event) => add(event, product)} />
                 ))}
@@ -200,24 +223,24 @@ function ProductTile({ product, added, onOpen, onAdd }: { product: Product; adde
   const price = priceOf(product);
 
   return (
-    <article className="group min-w-0">
-      <button onClick={onOpen} className="relative block aspect-square w-full overflow-hidden bg-[#E8E1D5] text-left">
-        <img src={imageOf(product)} alt={product.name} className="h-full w-full object-cover transition duration-500 group-hover:scale-[1.025]" />
-        {discount > 0 ? <span className="absolute left-2 top-2 bg-[#F5871F] px-2 py-1 text-[8px] font-black text-black sm:left-3 sm:top-3 sm:px-3 sm:text-[9px]">-{discount}%</span> : null}
+    <article className="group min-w-0 overflow-hidden">
+      <button onClick={onOpen} className="relative block aspect-square w-full overflow-hidden rounded-[1rem] bg-white text-left sm:rounded-[1.15rem]">
+        <img src={imageOf(product)} alt={product.name} className="h-full w-full object-contain transition duration-500 group-hover:scale-[1.025]" />
+        {discount > 0 ? <span className="absolute left-2 top-2 rounded-md bg-[#F5871F] px-2 py-1 text-[8px] font-black text-black sm:left-3 sm:top-3 sm:px-3 sm:text-[9px]">-{discount}%</span> : null}
         {stock === 0 ? <span className="absolute inset-x-0 bottom-0 bg-black/75 px-3 py-2 text-center text-[9px] font-black uppercase tracking-[.16em] text-white">Sin stock</span> : null}
       </button>
 
       <div className="pt-3 sm:pt-4">
-        <p className="truncate text-[8px] font-black uppercase tracking-[.14em] text-[#B96F00] sm:text-[9px]">{categoryOf(product)}</p>
-        <button onClick={onOpen} className="mt-1 line-clamp-2 min-h-[2.5rem] w-full text-left text-sm font-black leading-[1.05] sm:min-h-[3rem] sm:text-lg">{product.name}</button>
+        <p className="truncate text-[8px] font-black uppercase tracking-[.12em] text-[#B96F00] sm:text-[9px]">{categoryOf(product)}</p>
+        <button onClick={onOpen} className="sf-product-title mt-1 line-clamp-2 min-h-[2.5rem] w-full text-left text-sm font-black leading-[1.05] sm:min-h-[3rem] sm:text-lg">{product.name}</button>
         <p className="mt-2 line-clamp-2 hidden text-xs leading-5 text-black/40 sm:block">{product.tagline || product.description || 'Producto seleccionado para tu proyecto.'}</p>
 
         <div className="mt-3 flex items-end justify-between gap-2 border-t border-black/8 pt-3">
           <div className="min-w-0">
-            <b className="block truncate text-base tracking-[-.04em] sm:text-2xl">{CLP.format(price)}</b>
-            {discount > 0 ? <span className="block text-[9px] text-black/28 line-through sm:text-[10px]">{CLP.format(product.price)}</span> : <span className="block text-[8px] font-black uppercase tracking-[.1em] text-emerald-700 sm:text-[9px]">IVA incluido</span>}
+            <b className="sf-product-price block truncate text-base tracking-[-.04em] sm:text-2xl">{CLP.format(price)}</b>
+            {discount > 0 ? <span className="block text-[9px] text-black/28 line-through sm:text-[10px]">{CLP.format(product.price)}</span> : <span className="block text-[8px] font-black uppercase tracking-[.08em] text-emerald-700 sm:text-[9px]">IVA incluido</span>}
           </div>
-          <button disabled={stock === 0} onClick={onAdd} aria-label={`Añadir ${product.name} al carrito`} className={`grid h-10 w-10 shrink-0 place-items-center rounded-full transition sm:h-11 sm:w-11 ${added ? 'bg-emerald-300 text-black' : 'bg-black text-white'} disabled:opacity-25`}>
+          <button disabled={stock === 0} onClick={onAdd} aria-label={`Añadir ${product.name} al carrito`} className={`sf-product-cart grid h-10 w-10 shrink-0 place-items-center rounded-full transition sm:h-11 sm:w-11 ${added ? 'bg-emerald-300 text-black' : 'bg-black text-white'} disabled:opacity-25`}>
             {added ? <Check className="h-4 w-4" /> : <ShoppingCart className="h-4 w-4" />}
           </button>
         </div>
@@ -226,7 +249,7 @@ function ProductTile({ product, added, onOpen, onAdd }: { product: Product; adde
   );
 }
 
-function StoreFact({ icon, title, text }: { icon: React.ReactNode; title: string; text: string }) {
+function StoreFact({ icon, title, text }: { icon: ReactNode; title: string; text: string }) {
   return (
     <div className="flex gap-3">
       <span className="mt-0.5 text-[#B96F00]">{icon}</span>

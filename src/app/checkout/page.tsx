@@ -4,13 +4,32 @@ import CheckoutAppV2 from '@/components/checkout/CheckoutAppV2';
 
 export const dynamic = 'force-dynamic';
 
+const checkoutTitle = 'Checkout seguro | Soluciones Fabrick';
+const checkoutDescription = 'Finaliza tu compra en Soluciones Fabrick con validación de stock, despacho y pago seguro mediante Mercado Pago.';
+const checkoutUrl = 'https://www.solucionesfabrick.com/checkout';
+
 export const metadata: Metadata = {
-  title: { absolute: 'Checkout seguro | Soluciones Fabrick' },
-  description: 'Finaliza tu compra en Soluciones Fabrick con validación de stock, despacho y pago seguro mediante Mercado Pago.',
+  title: { absolute: checkoutTitle },
+  description: checkoutDescription,
+  keywords: null,
+  alternates: { canonical: checkoutUrl },
   robots: {
     index: false,
     follow: false,
     googleBot: { index: false, follow: false },
+  },
+  openGraph: {
+    title: checkoutTitle,
+    description: checkoutDescription,
+    url: checkoutUrl,
+    siteName: 'Soluciones Fabrick',
+    locale: 'es_CL',
+    type: 'website',
+  },
+  twitter: {
+    card: 'summary',
+    title: checkoutTitle,
+    description: checkoutDescription,
   },
 };
 

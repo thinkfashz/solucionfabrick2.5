@@ -152,6 +152,18 @@ function safeToken(value: string) {
   return value.replace(/[^a-zA-Z0-9_-]/g, '');
 }
 
+function elementSelector(section: string, field: string) {
+  const block = `[data-cms-block-id="${section}"]`;
+  const exact = `${block} [data-cms-field="${field}"]`;
+  const legacyGroup = field.match(/^([a-zA-Z0-9_]+)-(title|text|number|label)$/);
+  if (legacyGroup) {
+    const [, prefix, suffix] = legacyGroup;
+    return `${exact},${block} :where([data-cms-field^="${prefix}-"][data-cms-field$="-${suffix}"])`;
+  }
+  if (field === 'highlights') return `${exact},${block} :where([data-cms-field^="highlights-"])`;
+  return exact;
+}
+
 function fontFamily(value: VisualFontFamily | undefined) {
   if (value === 'Manrope') return 'Manrope,ui-sans-serif,system-ui,sans-serif';
   if (value === 'Sora') return 'Sora,Manrope,ui-sans-serif,system-ui,sans-serif';
@@ -203,7 +215,7 @@ export function buildElementTypographyCss(sectionId: string, style?: HomeVisualS
   for (const [rawField, element] of Object.entries(advanced.elements)) {
     const field = safeToken(rawField);
     if (!field || !element) continue;
-    const selector = `[data-cms-block-id="${section}"] [data-cms-field="${field}"]`;
+    const selector = elementSelector(section, field);
     const base: string[] = [];
     if (element.color) base.push(`color:${cssColor(element.color, 'inherit')}!important`);
     const family = fontFamily(element.fontFamily);

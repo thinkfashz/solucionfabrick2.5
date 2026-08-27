@@ -5,6 +5,7 @@ export type VisualShadow = 'none' | 'soft' | 'medium' | 'strong';
 export type VisualTextAlign = 'inherit' | 'left' | 'center' | 'right';
 export type VisualTextTransform = 'none' | 'uppercase' | 'lowercase' | 'capitalize';
 export type VisualFontFamily = 'inherit' | 'Manrope' | 'Sora' | 'serif' | 'mono';
+export type VisualBackgroundFit = 'cover' | 'contain';
 
 export interface VisualResponsiveLayout {
   paddingTop?: number;
@@ -37,6 +38,9 @@ export interface AdvancedHomeVisualStyle extends HomeVisualSectionStyle {
   borderColor?: string;
   maxWidth?: number;
   shadow?: VisualShadow;
+  backgroundFit?: VisualBackgroundFit;
+  backgroundPositionX?: number;
+  backgroundPositionY?: number;
   responsive?: Partial<Record<VisualDevice, VisualResponsiveLayout>>;
   elements?: Record<string, VisualElementStyle>;
 }
@@ -243,10 +247,13 @@ export function buildSectionFrameCss(
   const image = options.useFrameImage ? cssUrl(advanced.backgroundImage) : '';
   if (image) {
     const overlay = n(advanced.overlay, 0, 90, 35) / 100;
+    const fit = advanced.backgroundFit === 'contain' ? 'contain' : 'cover';
+    const positionX = n(advanced.backgroundPositionX, 0, 100, 50);
+    const positionY = n(advanced.backgroundPositionY, 0, 100, 50);
     common.push(
       `background-image:linear-gradient(rgba(0,0,0,${overlay}),rgba(0,0,0,${overlay})),url("${image}")`,
-      'background-size:cover',
-      'background-position:center',
+      `background-size:${fit}`,
+      `background-position:${positionX}% ${positionY}%`,
       'background-repeat:no-repeat',
     );
   }

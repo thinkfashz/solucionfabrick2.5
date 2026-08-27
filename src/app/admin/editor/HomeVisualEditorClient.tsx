@@ -10,11 +10,13 @@ import {
   GripVertical,
   Loader2,
   Monitor,
+  Redo2,
   RotateCcw,
   Save,
   Smartphone,
   Tablet,
   Type,
+  Undo2,
   X,
 } from 'lucide-react';
 import InsforgeMediaPicker from '@/components/admin/editor/InsforgeMediaPicker';
@@ -38,6 +40,7 @@ import {
   patchElementStyle,
   patchElementTypography,
   type AdvancedHomeVisualStyle,
+  type VisualBackgroundFit,
   type VisualDevice,
   type VisualElementStyle,
   type VisualFontFamily,
@@ -49,6 +52,8 @@ import {
 } from '@/lib/homeVisualLayout';
 
 const LOCAL_DRAFT_KEY = 'sf-home-visual-cms-draft-v1';
+const HISTORY_LIMIT = 40;
+const HISTORY_COALESCE_MS = 500;
 const WIDTHS: Record<VisualDevice, string> = { mobile: '390px', tablet: '768px', desktop: '100%' };
 const DEVICE_LABELS: Record<VisualDevice, string> = { mobile: 'Móvil', tablet: 'Tablet', desktop: 'PC' };
 const ANIMATIONS: Array<{ value: HomeVisualAnimation; label: string }> = [
@@ -78,6 +83,8 @@ const labelCls = 'mb-1.5 block text-[9px] font-black uppercase tracking-[.17em] 
 export default function HomeVisualEditorClient() {
   const [draft, setDraft] = useState<HomePageContent>(DEFAULT_HOME_PAGE);
   const [published, setPublished] = useState<HomePageContent>(DEFAULT_HOME_PAGE);
+  const [historyPast, setHistoryPast] = useState<HomePageContent[]>([]);
+  const [historyFuture, setHistoryFuture] = useState<HomePageContent[]>([]);
   const [selectedId, setSelectedId] = useState(DEFAULT_HOME_PAGE.sections[0].id);
   const [selectedField, setSelectedField] = useState<string | null>(null);
   const [device, setDevice] = useState<VisualDevice>('desktop');
@@ -87,6 +94,50 @@ export default function HomeVisualEditorClient() {
   const [iframeReady, setIframeReady] = useState(false);
   const [draggedId, setDraggedId] = useState<string | null>(null);
   const iframeRef = useRef<HTMLIFrameElement | null>(null);
+  const draftRef = useRef<HomePageContent>(DEFAULT_HOME_PAGE);
+  const lastHistoryAtRef = useRef(0);
+
+  function replaceDraft(next: HomePageContent, clearHistory = false) {
+    draftRef.current = next;
+    setDraft(next);
+    if (clearHistory) {
+      setHistoryPast([]);
+      setHistoryFuture([]);
+      lastHistoryAtRef.current = 0;
+    }
+  }
+
+  function commitDraft(updater: (current: HomePageContent) => HomePageContent, coalesce = true) {
+    const current = draftRef.current;
+    const next = updater(current);
+    if (JSON.stringify(next) === JSON.stringify(current)) return;
+    const now = Date.now();
+    const shouldPush = !coalesce || now - lastHistoryAtRef.current > HISTORY_COALESCE_MS;
+    if (shouldPush) setHistoryPast((past) => [...past.slice(-(HISTORY_LIMIT - 1)), current]);
+    setHistoryFuture([]);
+    lastHistoryAtRef.current = now;
+    replaceDraft(next);
+  }
+
+  function undo() {
+    if (!historyPast.length) return;
+    const previous = historyPast[historyPast.length - 1];
+    setHistoryPast(historyPast.slice(0, -1));
+    setHistoryFuture([draftRef.current, ...historyFuture].slice(0, HISTORY_LIMIT));
+    lastHistoryAtRef.current = 0;
+    replaceDraft(previous);
+    setStatus('Cambio deshecho.');
+  }
+
+  function redo() {
+    if (!historyFuture.length) return;
+    const next = historyFuture[0];
+    setHistoryFuture(historyFuture.slice(1));
+    setHistoryPast([...historyPast.slice(-(HISTORY_LIMIT - 1)), draftRef.current]);
+    lastHistoryAtRef.current = 0;
+    replaceDraft(next);
+    setStatus('Cambio rehecho.');
+  }
 
   const loadPublished = useCallback(async () => {
     setLoading(true);
@@ -100,7 +151,7 @@ export default function HomeVisualEditorClient() {
       if (localRaw) {
         try {
           const local = normalizeHomePage(JSON.parse(localRaw));
-          setDraft(local);
+          replaceDraft(local, true);
           setSelectedId(local.sections[0]?.id || 'home-hero');
           setSelectedField(null);
           setStatus('Borrador local recuperado. La web pública no ha cambiado.');
@@ -109,12 +160,12 @@ export default function HomeVisualEditorClient() {
           window.localStorage.removeItem(LOCAL_DRAFT_KEY);
         }
       }
-      setDraft(live);
+      replaceDraft(live, true);
       setSelectedId(live.sections[0]?.id || 'home-hero');
       setSelectedField(null);
       setStatus('Configuración publicada cargada.');
     } catch (e) {
-      setDraft(DEFAULT_HOME_PAGE);
+      replaceDraft(DEFAULT_HOME_PAGE, true);
       setPublished(DEFAULT_HOME_PAGE);
       setStatus(e instanceof Error ? `No se pudo cargar: ${e.message}` : 'No se pudo cargar.');
     } finally {
@@ -123,7 +174,11 @@ export default function HomeVisualEditorClient() {
   }, []);
 
   useEffect(() => { void loadPublished(); }, [loadPublished]);
-  useEffect(() => { if (!loading) window.localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(draft)); }, [draft, loading]);
+  useEffect(() => {
+    if (loading) return;
+    if (JSON.stringify(draft) === JSON.stringify(published)) window.localStorage.removeItem(LOCAL_DRAFT_KEY);
+    else window.localStorage.setItem(LOCAL_DRAFT_KEY, JSON.stringify(draft));
+  }, [draft, published, loading]);
 
   const postDraft = useCallback((next: HomePageContent) => {
     iframeRef.current?.contentWindow?.postMessage({ type: 'cms:home-preview', content: next }, window.location.origin);
@@ -154,6 +209,30 @@ export default function HomeVisualEditorClient() {
     return () => window.removeEventListener('message', handler);
   }, [draft, postDraft, postSelected, selectedId, selectedField]);
 
+  useEffect(() => {
+    if (!draft.sections.some((section) => section.id === selectedId)) {
+      setSelectedId(draft.sections[0]?.id || 'home-hero');
+      setSelectedField(null);
+    }
+  }, [draft.sections, selectedId]);
+
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (!(event.ctrlKey || event.metaKey)) return;
+      const key = event.key.toLowerCase();
+      if (key === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+      } else if (key === 'y') {
+        event.preventDefault();
+        redo();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [historyPast, historyFuture]);
+
   const ordered = useMemo(() => [...draft.sections].sort((a, b) => a.order - b.order), [draft.sections]);
   const selected = ordered.find((section) => section.id === selectedId) || ordered[0];
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(published), [draft, published]);
@@ -164,23 +243,23 @@ export default function HomeVisualEditorClient() {
   }
 
   function patchSection(id: string, updater: (section: HomeVisualSection) => HomeVisualSection) {
-    setDraft((current) => ({ ...current, sections: current.sections.map((section) => section.id === id ? updater(section) : section) }));
+    commitDraft((current) => ({ ...current, sections: current.sections.map((section) => section.id === id ? updater(section) : section) }));
   }
 
   function reorder(id: string, direction: -1 | 1) {
-    setDraft((current) => {
+    commitDraft((current) => {
       const list = [...current.sections].sort((a, b) => a.order - b.order);
       const index = list.findIndex((section) => section.id === id);
       const target = index + direction;
       if (index < 0 || target < 0 || target >= list.length) return current;
       [list[index], list[target]] = [list[target], list[index]];
       return { ...current, sections: list.map((section, i) => ({ ...section, order: (i + 1) * 10 })) };
-    });
+    }, false);
   }
 
   function moveSection(sourceId: string, targetId: string) {
     if (!sourceId || sourceId === targetId) return;
-    setDraft((current) => {
+    commitDraft((current) => {
       const list = [...current.sections].sort((a, b) => a.order - b.order);
       const sourceIndex = list.findIndex((section) => section.id === sourceId);
       if (sourceIndex < 0) return current;
@@ -189,7 +268,7 @@ export default function HomeVisualEditorClient() {
       if (targetIndex < 0) return current;
       list.splice(targetIndex, 0, moved);
       return { ...current, sections: list.map((section, index) => ({ ...section, order: (index + 1) * 10 })) };
-    });
+    }, false);
     selectSection(sourceId);
   }
 
@@ -202,7 +281,7 @@ export default function HomeVisualEditorClient() {
       style: JSON.parse(JSON.stringify(section.style)) as HomeVisualSectionStyle,
       content: JSON.parse(JSON.stringify(section.content)) as Record<string, unknown>,
     };
-    setDraft((current) => ({ ...current, sections: [...current.sections, copy] }));
+    commitDraft((current) => ({ ...current, sections: [...current.sections, copy] }), false);
     selectSection(copy.id);
   }
 
@@ -210,7 +289,7 @@ export default function HomeVisualEditorClient() {
     setPublishing(true);
     setStatus('Publicando en Insforge…');
     try {
-      const normalized = normalizeHomePage(draft);
+      const normalized = normalizeHomePage(draftRef.current);
       const res = await fetch('/api/admin/site-structure/home-page', {
         method: 'POST',
         credentials: 'same-origin',
@@ -221,7 +300,7 @@ export default function HomeVisualEditorClient() {
       if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`);
       const saved = normalizeHomePage(json.content ?? normalized);
       setPublished(saved);
-      setDraft(saved);
+      replaceDraft(saved, true);
       window.localStorage.removeItem(LOCAL_DRAFT_KEY);
       setStatus('Publicado. La página principal ya usa esta versión desde Insforge.');
     } catch (e) {
@@ -232,11 +311,10 @@ export default function HomeVisualEditorClient() {
   }
 
   function restorePublished() {
-    setDraft(published);
+    commitDraft(() => published, false);
     setSelectedId(published.sections[0]?.id || 'home-hero');
     setSelectedField(null);
-    window.localStorage.removeItem(LOCAL_DRAFT_KEY);
-    setStatus('Borrador descartado. Volviste a la versión publicada.');
+    setStatus('Borrador restaurado a la versión publicada. Puedes deshacer esta acción.');
   }
 
   if (loading) {
@@ -252,6 +330,10 @@ export default function HomeVisualEditorClient() {
         </div>
         {selectedField ? <span className="inline-flex items-center gap-1.5 rounded-full border border-sky-400/20 bg-sky-400/8 px-3 py-1 text-[9px] font-black text-sky-200"><Type className="h-3 w-3" /> {pretty(selectedField)}</span> : null}
         <div className="ml-auto flex items-center gap-2">
+          <div className="flex rounded-full border border-white/10 bg-black/30 p-1">
+            <button type="button" onClick={undo} disabled={!historyPast.length || publishing} title="Deshacer · Ctrl/Cmd + Z" className="grid h-8 w-8 place-items-center rounded-full text-white/55 transition hover:bg-white/5 disabled:opacity-20"><Undo2 className="h-3.5 w-3.5" /></button>
+            <button type="button" onClick={redo} disabled={!historyFuture.length || publishing} title="Rehacer · Ctrl/Cmd + Shift + Z / Ctrl + Y" className="grid h-8 w-8 place-items-center rounded-full text-white/55 transition hover:bg-white/5 disabled:opacity-20"><Redo2 className="h-3.5 w-3.5" /></button>
+          </div>
           <span className={`hidden rounded-full px-3 py-1 text-[9px] font-black uppercase tracking-[.12em] sm:inline-flex ${dirty ? 'bg-[#FFB000]/12 text-[#FFB000]' : 'bg-emerald-500/10 text-emerald-300'}`}>{dirty ? 'Cambios sin publicar' : 'Publicado'}</span>
           <button type="button" onClick={restorePublished} disabled={!dirty || publishing} className="inline-flex h-10 items-center gap-2 rounded-full border border-white/10 px-3 text-[10px] font-black text-white/55 disabled:opacity-25"><RotateCcw className="h-3.5 w-3.5" /><span className="hidden sm:inline">Restaurar</span></button>
           <button type="button" onClick={publish} disabled={!dirty || publishing} className="inline-flex h-10 items-center gap-2 rounded-full bg-[#FFB000] px-4 text-[10px] font-black text-black disabled:opacity-35">{publishing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Save className="h-3.5 w-3.5" />} Publicar</button>
@@ -268,7 +350,7 @@ export default function HomeVisualEditorClient() {
               </button>
             ))}
           </div>
-          <div className="mt-4 hidden rounded-xl border border-white/8 bg-black/30 p-3 text-[10px] leading-5 text-white/32 lg:block">Arrastra bloques para reordenar. Dentro de la vista previa, toca un título, párrafo o botón para editar ese elemento.</div>
+          <div className="mt-4 hidden rounded-xl border border-white/8 bg-black/30 p-3 text-[10px] leading-5 text-white/32 lg:block">Arrastra bloques para reordenar. Dentro de la vista previa, toca un título, párrafo o botón para editar ese elemento. El historial conserva hasta {HISTORY_LIMIT} pasos.</div>
         </aside>
 
         <section className="flex min-h-[620px] min-w-0 flex-col bg-[#121315] p-2 sm:p-3">
@@ -336,7 +418,22 @@ function Inspector({ section, device, selectedField, setSelectedField, patch, re
           <ColorField label="Fondo" value={section.style.background || '#08090A'} onChange={(value) => setStyle('background', value)} />
           <ColorField label="Texto" value={section.style.textColor || '#FFF9EE'} onChange={(value) => setStyle('textColor', value)} />
           <ColorField label="Acento" value={section.style.accent || '#FFB000'} onChange={(value) => setStyle('accent', value)} />
-          {section.type !== 'calculator' ? <div><label className={labelCls}>Imagen de fondo · Insforge</label><InsforgeMediaPicker value={section.style.backgroundImage || ''} onChange={(url) => setStyle('backgroundImage', url)} folder="home" />{section.style.backgroundImage ? <><label className={`${labelCls} mt-3`}>Oscurecer imagen · {Math.round(Number(section.style.overlay ?? 35))}%</label><input type="range" min="0" max="90" step="1" value={Number(section.style.overlay ?? 35)} onChange={(event) => setStyle('overlay', Number(event.target.value))} className="w-full accent-[#FFB000]" /></> : null}</div> : null}
+          {section.type !== 'calculator' ? (
+            <div>
+              <label className={labelCls}>Imagen de fondo · Insforge</label>
+              <InsforgeMediaPicker value={section.style.backgroundImage || ''} onChange={(url) => setStyle('backgroundImage', url)} folder="home" />
+              {section.style.backgroundImage ? (
+                <div className="mt-3 space-y-3">
+                  <div className="aspect-[16/7] overflow-hidden rounded-xl border border-white/10 bg-black/60" style={{ backgroundImage: `url(${section.style.backgroundImage})`, backgroundSize: advanced.backgroundFit === 'contain' ? 'contain' : 'cover', backgroundPosition: `${Number(advanced.backgroundPositionX ?? 50)}% ${Number(advanced.backgroundPositionY ?? 50)}%`, backgroundRepeat: 'no-repeat' }} />
+                  <div><label className={labelCls}>Ajuste de imagen</label><select className={inputCls} value={advanced.backgroundFit || 'cover'} onChange={(event) => setAdvanced('backgroundFit', event.target.value as VisualBackgroundFit)}><option value="cover">Cubrir el bloque</option><option value="contain">Mostrar imagen completa</option></select></div>
+                  <RangeField label="Foco horizontal" value={Number(advanced.backgroundPositionX ?? 50)} min={0} max={100} suffix="%" onChange={(value) => setAdvanced('backgroundPositionX', value)} />
+                  <RangeField label="Foco vertical" value={Number(advanced.backgroundPositionY ?? 50)} min={0} max={100} suffix="%" onChange={(value) => setAdvanced('backgroundPositionY', value)} />
+                  <RangeField label="Oscurecer imagen" value={Number(section.style.overlay ?? 35)} min={0} max={90} suffix="%" onChange={(value) => setStyle('overlay', value)} />
+                  <button type="button" onClick={() => { setAdvanced('backgroundPositionX', 50); setAdvanced('backgroundPositionY', 50); }} className="inline-flex h-9 items-center gap-2 rounded-full border border-white/10 px-3 text-[9px] font-black uppercase tracking-[.12em] text-white/40"><RotateCcw className="h-3 w-3" /> Centrar foco</button>
+                </div>
+              ) : null}
+            </div>
+          ) : null}
           <div className="grid grid-cols-2 gap-3"><NumberField label="Borde px" value={Number(advanced.borderWidth ?? 0)} min={0} max={16} onChange={(value) => setAdvanced('borderWidth', value)} /><NumberField label="Radio px" value={Number(advanced.borderRadius ?? 0)} min={0} max={96} onChange={(value) => setAdvanced('borderRadius', value)} /></div>
           {Number(advanced.borderWidth ?? 0) > 0 ? <ColorField label="Color del borde" value={advanced.borderColor || '#FFFFFF'} onChange={(value) => setAdvanced('borderColor', value)} /> : null}
           <NumberField label="Ancho máximo · 0 = completo" value={Number(advanced.maxWidth ?? 0)} min={0} max={2400} step={10} onChange={(value) => setAdvanced('maxWidth', value)} />
@@ -416,6 +513,11 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
 
 function NumberField({ label, value, min, max, step = 1, onChange }: { label: string; value: number; min: number; max: number; step?: number; onChange: (value: number) => void }) {
   return <div><label className={labelCls}>{label}</label><input type="number" className={inputCls} min={min} max={max} step={step} value={Number.isFinite(value) ? value : 0} onChange={(event) => onChange(Math.max(min, Math.min(max, Number(event.target.value) || 0)))} /></div>;
+}
+
+function RangeField({ label, value, min, max, suffix = '', onChange }: { label: string; value: number; min: number; max: number; suffix?: string; onChange: (value: number) => void }) {
+  const safe = Math.max(min, Math.min(max, Number.isFinite(value) ? value : min));
+  return <div><div className="mb-1.5 flex items-center justify-between"><label className="text-[9px] font-black uppercase tracking-[.17em] text-[#FFB000]/70">{label}</label><span className="text-[9px] font-bold text-white/35">{Math.round(safe)}{suffix}</span></div><input type="range" min={min} max={max} step="1" value={safe} onChange={(event) => onChange(Number(event.target.value))} className="w-full accent-[#FFB000]" /></div>;
 }
 
 function pretty(value: string) {

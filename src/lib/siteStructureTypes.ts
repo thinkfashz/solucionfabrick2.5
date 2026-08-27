@@ -1,3 +1,5 @@
+import { DEFAULT_HOME_PAGE, type HomePageContent } from './homeVisualCms';
+
 /**
  * Universal CMS — section schemas + defaults.
  *
@@ -13,6 +15,7 @@
  */
 
 export const SECTION_KEYS = [
+  'home-page',
   'global-styles',
   'nav-menu',
   'footer',
@@ -28,19 +31,13 @@ export function isSectionKey(value: unknown): value is SectionKey {
   return typeof value === 'string' && (SECTION_KEYS as readonly string[]).includes(value);
 }
 
-// ─────────────────────────────────────────────────────────────────────────────
-// Schemas
-// ─────────────────────────────────────────────────────────────────────────────
-
 export interface GlobalStylesContent {
-  /** CSS color tokens exposed as CSS variables on :root. */
   colors: {
     accent: string;
     accentSoft: string;
     background: string;
     foreground: string;
   };
-  /** Optional Google Fonts family name (e.g. "Inter"). */
   fontFamily?: string;
 }
 
@@ -118,8 +115,8 @@ export interface CustomInjectionContent {
   css: string;
 }
 
-// Discriminated map.
 export interface SectionContentMap {
+  'home-page': HomePageContent;
   'global-styles': GlobalStylesContent;
   'nav-menu': NavMenuContent;
   footer: FooterContent;
@@ -128,14 +125,6 @@ export interface SectionContentMap {
   'error-404': Error404Content;
   'custom-injection': CustomInjectionContent;
 }
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Defaults
-//   These mirror the literal copy currently rendered by each component, so
-//   that an empty `site_structure` table behaves identically to the
-//   pre-CMS build. Editing the defaults is a code change; admins edit
-//   their override through `/admin/editor`.
-// ─────────────────────────────────────────────────────────────────────────────
 
 export const DEFAULT_GLOBAL_STYLES: GlobalStylesContent = {
   colors: {
@@ -223,6 +212,7 @@ export const DEFAULT_CUSTOM_INJECTION: CustomInjectionContent = {
 };
 
 export const SECTION_DEFAULTS: SectionContentMap = {
+  'home-page': DEFAULT_HOME_PAGE,
   'global-styles': DEFAULT_GLOBAL_STYLES,
   'nav-menu': DEFAULT_NAV_MENU,
   footer: DEFAULT_FOOTER,
@@ -232,12 +222,6 @@ export const SECTION_DEFAULTS: SectionContentMap = {
   'custom-injection': DEFAULT_CUSTOM_INJECTION,
 };
 
-/**
- * Merge a partial JSON blob from the database into the typed default. Performs
- * a one-level shallow merge plus a second level for nested objects we care
- * about (so partial admin saves don't blow away unrelated fields). Unknown
- * keys are dropped silently.
- */
 export function mergeWithDefault<K extends SectionKey>(
   key: K,
   raw: unknown,
@@ -246,7 +230,7 @@ export function mergeWithDefault<K extends SectionKey>(
   if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return def;
   const result: Record<string, unknown> = { ...(def as unknown as Record<string, unknown>) };
   for (const [k, v] of Object.entries(raw as Record<string, unknown>)) {
-    if (!(k in result)) continue; // drop unknown keys
+    if (!(k in result)) continue;
     const defValue = result[k];
     if (
       defValue &&
@@ -264,16 +248,16 @@ export function mergeWithDefault<K extends SectionKey>(
   return result as unknown as SectionContentMap[K];
 }
 
-/** Public paths to invalidate when a given section changes. */
 export function pathsForSection(key: SectionKey): string[] {
   switch (key) {
+    case 'home-page':
+      return ['/'];
     case 'checkout':
       return ['/checkout'];
     case 'error-404':
       return ['/404-preview'];
     case 'producto':
       return ['/producto', '/tienda'];
-    // nav-menu, footer, global-styles, custom-injection affect every page.
     default:
       return ['/'];
   }

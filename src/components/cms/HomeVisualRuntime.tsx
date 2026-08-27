@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
 import StaticConstructionHero from '@/components/landing/StaticConstructionHero';
 import CalculatorPlanShowcase from '@/components/landing/CalculatorPlanShowcase';
 import ConstructionM2Calculator from '@/components/landing/ConstructionM2Calculator';
@@ -13,11 +13,13 @@ import {
   LandingStoreSection,
 } from '@/components/LandingSections';
 import CmsSectionMotion from '@/components/cms/CmsSectionMotion';
+import styles from '@/components/cms/HomeVisualRuntime.module.css';
 import {
   normalizeHomePage,
   type HomePageContent,
   type HomeVisualSection,
 } from '@/lib/homeVisualCms';
+import { getAdvancedStyle, getDeviceLayout, type VisualDevice, type VisualShadow } from '@/lib/homeVisualLayout';
 
 interface HomeVisualRuntimeProps {
   initialConfig: HomePageContent;
@@ -58,35 +60,102 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
   function selectFromPreview(event: MouseEvent<HTMLDivElement>, sectionId: string) {
     if (!previewMode) return;
     const target = event.target as HTMLElement | null;
-    if (target?.closest('a')) event.preventDefault();
+    if (target?.closest('a,button,input,select,textarea')) event.preventDefault();
     setSelectedPreviewId(sectionId);
     window.parent?.postMessage({ type: 'cms:home-select', sectionId }, window.location.origin);
   }
 
   return (
     <main data-cms-page="home">
-      {sections.map((section) => (
-        <div
-          key={section.id}
-          data-cms-block-id={section.id}
-          onClickCapture={(event) => selectFromPreview(event, section.id)}
-          className={previewMode ? 'relative cursor-default' : undefined}
-          style={previewMode && selectedPreviewId === section.id
-            ? { outline: '2px solid #FFB000', outlineOffset: '-2px', zIndex: 3 }
-            : undefined}
-        >
-          {previewMode && selectedPreviewId === section.id ? (
-            <span className="pointer-events-none absolute left-2 top-2 z-[999] rounded-full bg-[#FFB000] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-black shadow-lg">
-              {section.label}
-            </span>
-          ) : null}
-          <CmsSectionMotion style={section.style}>
-            <HomeBlock section={section} copyrightText={copyrightText} socialLinks={socialLinks} />
-          </CmsSectionMotion>
-        </div>
-      ))}
+      {sections.map((section) => {
+        const useFrameImage = section.type !== 'hero' && section.type !== 'calculator' && Boolean(section.style.backgroundImage?.trim());
+        const selected = previewMode && selectedPreviewId === section.id;
+        return (
+          <div
+            key={section.id}
+            data-cms-block-id={section.id}
+            onClickCapture={(event) => selectFromPreview(event, section.id)}
+            className={[styles.frame, useFrameImage ? styles.frameImage : '', previewMode ? 'relative cursor-default' : ''].filter(Boolean).join(' ')}
+            style={{
+              ...frameStyle(section, useFrameImage),
+              ...(selected ? { outline: '2px solid #FFB000', outlineOffset: '-2px', zIndex: 3 } : {}),
+            }}
+          >
+            {selected ? (
+              <span className="pointer-events-none absolute left-2 top-2 z-[999] rounded-full bg-[#FFB000] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-black shadow-lg">
+                {section.label}
+              </span>
+            ) : null}
+            <CmsSectionMotion style={section.style}>
+              <HomeBlock section={section} copyrightText={copyrightText} socialLinks={socialLinks} />
+            </CmsSectionMotion>
+          </div>
+        );
+      })}
     </main>
   );
+}
+
+function frameStyle(section: HomeVisualSection, useFrameImage: boolean): CSSProperties {
+  const advanced = getAdvancedStyle(section.style);
+  const variables: Record<string, string> = {};
+  const devices: VisualDevice[] = ['mobile', 'tablet', 'desktop'];
+  for (const device of devices) {
+    const layout = getDeviceLayout(section.style, device);
+    variables[`--cms-${device}-pt`] = `${num(layout.paddingTop, 0, 320)}px`;
+    variables[`--cms-${device}-pb`] = `${num(layout.paddingBottom, 0, 320)}px`;
+    variables[`--cms-${device}-px`] = `${num(layout.paddingInline, 0, 180)}px`;
+    variables[`--cms-${device}-mt`] = `${num(layout.marginTop, -160, 320)}px`;
+    variables[`--cms-${device}-mb`] = `${num(layout.marginBottom, -160, 320)}px`;
+    variables[`--cms-${device}-mh`] = `${num(layout.minHeight, 0, 1600)}px`;
+  }
+
+  const radius = num(advanced.borderRadius, 0, 96);
+  const border = num(advanced.borderWidth, 0, 16);
+  const maxWidth = num(advanced.maxWidth, 0, 2400);
+  const image = useFrameImage ? safeImage(section.style.backgroundImage) : '';
+  const overlay = num(section.style.overlay, 0, 90, 35) / 100;
+
+  return {
+    ...(variables as CSSProperties),
+    backgroundColor: safeColor(section.style.background, 'transparent'),
+    borderRadius: radius ? `${radius}px` : undefined,
+    borderWidth: border ? `${border}px` : undefined,
+    borderStyle: border ? 'solid' : undefined,
+    borderColor: border ? safeColor(advanced.borderColor, 'rgba(255,255,255,.12)') : undefined,
+    boxShadow: shadow(advanced.shadow),
+    maxWidth: maxWidth ? `${maxWidth}px` : undefined,
+    marginLeft: maxWidth ? 'auto' : undefined,
+    marginRight: maxWidth ? 'auto' : undefined,
+    overflow: radius || image ? 'hidden' : undefined,
+    backgroundImage: image ? `linear-gradient(rgba(0,0,0,${overlay}),rgba(0,0,0,${overlay})),url("${image}")` : undefined,
+    backgroundSize: image ? 'cover' : undefined,
+    backgroundPosition: image ? 'center' : undefined,
+    backgroundRepeat: image ? 'no-repeat' : undefined,
+  };
+}
+
+function num(value: unknown, min: number, max: number, fallback = 0) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
+}
+
+function safeColor(value: unknown, fallback: string) {
+  if (typeof value !== 'string') return fallback;
+  const trimmed = value.trim();
+  return /^#[0-9a-f]{3,8}$/i.test(trimmed) || /^rgba?\([\d\s.,%]+\)$/i.test(trimmed) ? trimmed : fallback;
+}
+
+function safeImage(value: unknown) {
+  return typeof value === 'string' ? value.trim().replace(/["'\\\n\r<>]/g, '') : '';
+}
+
+function shadow(value: VisualShadow | undefined) {
+  if (value === 'soft') return '0 12px 36px rgba(0,0,0,.12)';
+  if (value === 'medium') return '0 22px 64px rgba(0,0,0,.20)';
+  if (value === 'strong') return '0 30px 90px rgba(0,0,0,.34)';
+  return undefined;
 }
 
 function HomeBlock({

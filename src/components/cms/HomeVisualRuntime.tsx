@@ -134,6 +134,9 @@ function frameStyle(section: HomeVisualSection, useFrameImage: boolean): CSSProp
   const maxWidth = num(advanced.maxWidth, 0, 2400);
   const image = useFrameImage ? safeImage(section.style.backgroundImage) : '';
   const overlay = num(section.style.overlay, 0, 90, 35) / 100;
+  const fit = advanced.backgroundFit === 'contain' ? 'contain' : 'cover';
+  const positionX = num(advanced.backgroundPositionX, 0, 100, 50);
+  const positionY = num(advanced.backgroundPositionY, 0, 100, 50);
 
   return {
     ...(variables as CSSProperties),
@@ -148,8 +151,8 @@ function frameStyle(section: HomeVisualSection, useFrameImage: boolean): CSSProp
     marginRight: maxWidth ? 'auto' : undefined,
     overflow: radius || image ? 'hidden' : undefined,
     backgroundImage: image ? `linear-gradient(rgba(0,0,0,${overlay}),rgba(0,0,0,${overlay})),url("${image}")` : undefined,
-    backgroundSize: image ? 'cover' : undefined,
-    backgroundPosition: image ? 'center' : undefined,
+    backgroundSize: image ? fit : undefined,
+    backgroundPosition: image ? `${positionX}% ${positionY}%` : undefined,
     backgroundRepeat: image ? 'no-repeat' : undefined,
   };
 }

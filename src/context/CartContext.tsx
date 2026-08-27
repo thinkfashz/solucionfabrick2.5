@@ -26,6 +26,18 @@ interface CartContextValue {
 
 const CartContext = createContext<CartContextValue | null>(null);
 
+function maxAvailable(product: Product) {
+  const value = Number(product.stock);
+  return Number.isFinite(value) && value >= 0 ? Math.floor(value) : null;
+}
+
+function clampQuantity(product: Product, quantity: number) {
+  const requested = Math.max(1, Math.floor(quantity || 1));
+  const max = maxAvailable(product);
+  if (max === null) return requested;
+  return Math.min(requested, max);
+}
+
 export function CartProvider({ children }: { children: React.ReactNode }) {
   const router = useRouter();
   const [items, setItems] = useState<CartItem[]>([]);
@@ -37,7 +49,15 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
       const raw = localStorage.getItem(CART_STORAGE_KEY);
       if (raw) {
         const parsed = JSON.parse(raw) as { ts: number; data: CartItem[] };
-        if (parsed?.data && Array.isArray(parsed.data) && Date.now() - parsed.ts < CART_TTL_MS) setItems(parsed.data);
+        if (parsed?.data && Array.isArray(parsed.data) && Date.now() - parsed.ts < CART_TTL_MS) {
+          const normalized = parsed.data.flatMap((item) => {
+            if (!item?.product?.id) return [];
+            const max = maxAvailable(item.product);
+            if (max === 0) return [];
+            return [{ ...item, quantity: clampQuantity(item.product, item.quantity) }];
+          });
+          setItems(normalized);
+        }
       }
     } catch {}
     hydrated.current = true;
@@ -49,15 +69,19 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   }, [items]);
 
   const addToCart = useCallback((product: Product | undefined | null, qty = 1) => {
-    if (!product?.id || qty < 1) return;
+    if (!product?.id || qty < 1 || maxAvailable(product) === 0) return;
     setItems((prev) => {
       const idx = prev.findIndex((i) => i.product.id === product.id);
       if (idx !== -1) {
         const updated = [...prev];
-        updated[idx] = { ...updated[idx], quantity: updated[idx].quantity + qty };
+        const mergedProduct = { ...updated[idx].product, ...product };
+        updated[idx] = {
+          product: mergedProduct,
+          quantity: clampQuantity(mergedProduct, updated[idx].quantity + qty),
+        };
         return updated;
       }
-      return [...prev, { product, quantity: qty }];
+      return [...prev, { product, quantity: clampQuantity(product, qty) }];
     });
     setCartOpen(true);
   }, []);
@@ -65,7 +89,7 @@ export function CartProvider({ children }: { children: React.ReactNode }) {
   const removeFromCart = useCallback((productId: string) => setItems((prev) => prev.filter((i) => i.product.id !== productId)), []);
   const updateQuantity = useCallback((productId: string, quantity: number) => {
     if (quantity < 1) return;
-    setItems((prev) => prev.map((i) => i.product.id === productId ? { ...i, quantity } : i));
+    setItems((prev) => prev.map((item) => item.product.id === productId ? { ...item, quantity: clampQuantity(item.product, quantity) } : item));
   }, []);
   const clearCart = useCallback(() => setItems([]), []);
   const openCart = useCallback(() => setCartOpen(true), []);

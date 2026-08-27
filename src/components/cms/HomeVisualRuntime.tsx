@@ -19,7 +19,13 @@ import {
   type HomePageContent,
   type HomeVisualSection,
 } from '@/lib/homeVisualCms';
-import { getAdvancedStyle, getDeviceLayout, type VisualDevice, type VisualShadow } from '@/lib/homeVisualLayout';
+import {
+  buildElementTypographyCss,
+  getAdvancedStyle,
+  getDeviceLayout,
+  type VisualDevice,
+  type VisualShadow,
+} from '@/lib/homeVisualLayout';
 
 interface HomeVisualRuntimeProps {
   initialConfig: HomePageContent;
@@ -31,6 +37,7 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
   const [config, setConfig] = useState(() => normalizeHomePage(initialConfig));
   const [previewMode, setPreviewMode] = useState(false);
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
+  const [selectedPreviewField, setSelectedPreviewField] = useState<string | null>(null);
 
   useEffect(() => {
     const preview = new URLSearchParams(window.location.search).get('cms') === 'preview';
@@ -39,9 +46,12 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
 
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; content?: unknown; sectionId?: string } | null;
+      const data = event.data as { type?: string; content?: unknown; sectionId?: string; field?: string | null } | null;
       if (data?.type === 'cms:home-preview') setConfig(normalizeHomePage(data.content));
-      if (data?.type === 'cms:home-selected' && typeof data.sectionId === 'string') setSelectedPreviewId(data.sectionId);
+      if (data?.type === 'cms:home-selected' && typeof data.sectionId === 'string') {
+        setSelectedPreviewId(data.sectionId);
+        setSelectedPreviewField(typeof data.field === 'string' ? data.field : null);
+      }
     };
     window.addEventListener('message', handler);
     window.parent?.postMessage({ type: 'cms:home-preview-ready' }, window.location.origin);
@@ -59,10 +69,14 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
 
   function selectFromPreview(event: MouseEvent<HTMLDivElement>, sectionId: string) {
     if (!previewMode) return;
+    event.preventDefault();
+    event.stopPropagation();
     const target = event.target as HTMLElement | null;
-    if (target?.closest('a,button,input,select,textarea')) event.preventDefault();
+    const fieldNode = target?.closest<HTMLElement>('[data-cms-field]');
+    const field = fieldNode?.dataset.cmsField || null;
     setSelectedPreviewId(sectionId);
-    window.parent?.postMessage({ type: 'cms:home-select', sectionId }, window.location.origin);
+    setSelectedPreviewField(field);
+    window.parent?.postMessage({ type: 'cms:home-select', sectionId, field }, window.location.origin);
   }
 
   return (
@@ -70,6 +84,10 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
       {sections.map((section) => {
         const useFrameImage = section.type !== 'hero' && section.type !== 'calculator' && Boolean(section.style.backgroundImage?.trim());
         const selected = previewMode && selectedPreviewId === section.id;
+        const elementCss = buildElementTypographyCss(section.id, section.style);
+        const selectedFieldCss = selected && selectedPreviewField
+          ? `[data-cms-block-id="${token(section.id)}"] [data-cms-field="${token(selectedPreviewField)}"]{outline:2px solid #5CC8FF!important;outline-offset:3px!important;border-radius:3px;}`
+          : '';
         return (
           <div
             key={section.id}
@@ -81,9 +99,10 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
               ...(selected ? { outline: '2px solid #FFB000', outlineOffset: '-2px', zIndex: 3 } : {}),
             }}
           >
+            {elementCss || selectedFieldCss ? <style>{`${elementCss}\n${selectedFieldCss}`}</style> : null}
             {selected ? (
               <span className="pointer-events-none absolute left-2 top-2 z-[999] rounded-full bg-[#FFB000] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-black shadow-lg">
-                {section.label}
+                {section.label}{selectedPreviewField ? ` · ${selectedPreviewField}` : ''}
               </span>
             ) : null}
             <CmsSectionMotion style={section.style}>
@@ -149,6 +168,10 @@ function safeColor(value: unknown, fallback: string) {
 
 function safeImage(value: unknown) {
   return typeof value === 'string' ? value.trim().replace(/["'\\\n\r<>]/g, '') : '';
+}
+
+function token(value: string) {
+  return value.replace(/[^a-zA-Z0-9_-]/g, '');
 }
 
 function shadow(value: VisualShadow | undefined) {

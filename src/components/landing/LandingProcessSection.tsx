@@ -28,10 +28,10 @@ export default function LandingProcessSection({ section }: { section?: HomeVisua
         </div>
 
         <div className="grid gap-px bg-current/10 md:grid-cols-3">
-          {options.map(({ title, text }) => (
-            <article key={title} className="p-5 sm:p-7" style={{ backgroundColor: background }}>
-              <h3 data-cms-field="options-title" className="text-lg font-black tracking-[-.03em]">{title}</h3>
-              <p data-cms-field="options-text" className="mt-3 text-sm leading-7 opacity-45">{text}</p>
+          {options.map(({ title, text }, index) => (
+            <article key={`${title}-${index}`} className="p-5 sm:p-7" style={{ backgroundColor: background }}>
+              <h3 data-cms-field={`options-${index}-title`} className="text-lg font-black tracking-[-.03em]">{title}</h3>
+              <p data-cms-field={`options-${index}-text`} className="mt-3 text-sm leading-7 opacity-45">{text}</p>
             </article>
           ))}
         </div>

@@ -2,6 +2,9 @@ import type { HomeVisualSectionStyle } from './homeVisualCms';
 
 export type VisualDevice = 'mobile' | 'tablet' | 'desktop';
 export type VisualShadow = 'none' | 'soft' | 'medium' | 'strong';
+export type VisualTextAlign = 'inherit' | 'left' | 'center' | 'right';
+export type VisualTextTransform = 'none' | 'uppercase' | 'lowercase' | 'capitalize';
+export type VisualFontFamily = 'inherit' | 'Manrope' | 'Sora' | 'serif' | 'mono';
 
 export interface VisualResponsiveLayout {
   paddingTop?: number;
@@ -12,6 +15,22 @@ export interface VisualResponsiveLayout {
   minHeight?: number;
 }
 
+export interface VisualResponsiveTypography {
+  fontSize?: number;
+  lineHeight?: number;
+  letterSpacing?: number;
+  maxWidth?: number;
+}
+
+export interface VisualElementStyle {
+  color?: string;
+  fontFamily?: VisualFontFamily;
+  fontWeight?: number;
+  textAlign?: VisualTextAlign;
+  textTransform?: VisualTextTransform;
+  responsive?: Partial<Record<VisualDevice, VisualResponsiveTypography>>;
+}
+
 export interface AdvancedHomeVisualStyle extends HomeVisualSectionStyle {
   borderRadius?: number;
   borderWidth?: number;
@@ -19,9 +38,12 @@ export interface AdvancedHomeVisualStyle extends HomeVisualSectionStyle {
   maxWidth?: number;
   shadow?: VisualShadow;
   responsive?: Partial<Record<VisualDevice, VisualResponsiveLayout>>;
+  elements?: Record<string, VisualElementStyle>;
 }
 
 export const EMPTY_LAYOUT: VisualResponsiveLayout = {};
+export const EMPTY_TYPOGRAPHY: VisualResponsiveTypography = {};
+export const EMPTY_ELEMENT_STYLE: VisualElementStyle = {};
 
 export function getAdvancedStyle(style?: HomeVisualSectionStyle): AdvancedHomeVisualStyle {
   return (style || {}) as AdvancedHomeVisualStyle;
@@ -51,6 +73,60 @@ export function clearDeviceLayout(style: HomeVisualSectionStyle, device: VisualD
   return { ...advanced, responsive } as HomeVisualSectionStyle;
 }
 
+export function getElementStyle(style: HomeVisualSectionStyle | undefined, field: string): VisualElementStyle {
+  return getAdvancedStyle(style).elements?.[field] || EMPTY_ELEMENT_STYLE;
+}
+
+export function getElementTypography(style: HomeVisualSectionStyle | undefined, field: string, device: VisualDevice): VisualResponsiveTypography {
+  return getElementStyle(style, field).responsive?.[device] || EMPTY_TYPOGRAPHY;
+}
+
+export function patchElementStyle<K extends keyof Omit<VisualElementStyle, 'responsive'>>(
+  style: HomeVisualSectionStyle,
+  field: string,
+  key: K,
+  value: VisualElementStyle[K],
+): HomeVisualSectionStyle {
+  const advanced = getAdvancedStyle(style);
+  const elements = { ...(advanced.elements || {}) };
+  elements[field] = { ...(elements[field] || {}), [key]: value };
+  return { ...advanced, elements } as HomeVisualSectionStyle;
+}
+
+export function patchElementTypography<K extends keyof VisualResponsiveTypography>(
+  style: HomeVisualSectionStyle,
+  field: string,
+  device: VisualDevice,
+  key: K,
+  value: VisualResponsiveTypography[K],
+): HomeVisualSectionStyle {
+  const advanced = getAdvancedStyle(style);
+  const elements = { ...(advanced.elements || {}) };
+  const current = elements[field] || {};
+  const responsive = { ...(current.responsive || {}) };
+  responsive[device] = { ...(responsive[device] || {}), [key]: value };
+  elements[field] = { ...current, responsive };
+  return { ...advanced, elements } as HomeVisualSectionStyle;
+}
+
+export function clearElementStyle(style: HomeVisualSectionStyle, field: string): HomeVisualSectionStyle {
+  const advanced = getAdvancedStyle(style);
+  const elements = { ...(advanced.elements || {}) };
+  delete elements[field];
+  return { ...advanced, elements } as HomeVisualSectionStyle;
+}
+
+export function clearElementTypography(style: HomeVisualSectionStyle, field: string, device: VisualDevice): HomeVisualSectionStyle {
+  const advanced = getAdvancedStyle(style);
+  const elements = { ...(advanced.elements || {}) };
+  const current = elements[field];
+  if (!current) return style;
+  const responsive = { ...(current.responsive || {}) };
+  delete responsive[device];
+  elements[field] = { ...current, responsive };
+  return { ...advanced, elements } as HomeVisualSectionStyle;
+}
+
 function n(value: unknown, min: number, max: number, fallback = 0) {
   const parsed = Number(value);
   if (!Number.isFinite(parsed)) return fallback;
@@ -68,16 +144,24 @@ function cssUrl(value: unknown) {
   return value.trim().replace(/["'\\\n\r<>]/g, '');
 }
 
+function safeToken(value: string) {
+  return value.replace(/[^a-zA-Z0-9_-]/g, '');
+}
+
+function fontFamily(value: VisualFontFamily | undefined) {
+  if (value === 'Manrope') return 'Manrope,ui-sans-serif,system-ui,sans-serif';
+  if (value === 'Sora') return 'Sora,Manrope,ui-sans-serif,system-ui,sans-serif';
+  if (value === 'serif') return 'Georgia,Times New Roman,serif';
+  if (value === 'mono') return 'ui-monospace,SFMono-Regular,Menlo,monospace';
+  return '';
+}
+
 function shadowValue(shadow: VisualShadow | undefined) {
   switch (shadow) {
-    case 'soft':
-      return '0 12px 36px rgba(0,0,0,.12)';
-    case 'medium':
-      return '0 22px 64px rgba(0,0,0,.20)';
-    case 'strong':
-      return '0 30px 90px rgba(0,0,0,.34)';
-    default:
-      return 'none';
+    case 'soft': return '0 12px 36px rgba(0,0,0,.12)';
+    case 'medium': return '0 22px 64px rgba(0,0,0,.20)';
+    case 'strong': return '0 30px 90px rgba(0,0,0,.34)';
+    default: return 'none';
   }
 }
 
@@ -96,13 +180,52 @@ function layoutDeclarations(layout: VisualResponsiveLayout | undefined) {
   return declarations.join(';');
 }
 
+function typographyDeclarations(value: VisualResponsiveTypography | undefined) {
+  if (!value) return '';
+  const out: string[] = [];
+  if (value.fontSize !== undefined && Number(value.fontSize) > 0) out.push(`font-size:${n(value.fontSize, 8, 180)}px!important`);
+  if (value.lineHeight !== undefined && Number(value.lineHeight) > 0) out.push(`line-height:${n(value.lineHeight, .7, 3)}!important`);
+  if (value.letterSpacing !== undefined) out.push(`letter-spacing:${n(value.letterSpacing, -8, 20)}px!important`);
+  if (value.maxWidth !== undefined && Number(value.maxWidth) > 0) out.push(`max-width:${n(value.maxWidth, 80, 1800)}px!important`);
+  return out.join(';');
+}
+
+export function buildElementTypographyCss(sectionId: string, style?: HomeVisualSectionStyle) {
+  const advanced = getAdvancedStyle(style);
+  const section = safeToken(sectionId);
+  if (!section || !advanced.elements) return '';
+  const rules: string[] = [];
+
+  for (const [rawField, element] of Object.entries(advanced.elements)) {
+    const field = safeToken(rawField);
+    if (!field || !element) continue;
+    const selector = `[data-cms-block-id="${section}"] [data-cms-field="${field}"]`;
+    const base: string[] = [];
+    if (element.color) base.push(`color:${cssColor(element.color, 'inherit')}!important`);
+    const family = fontFamily(element.fontFamily);
+    if (family) base.push(`font-family:${family}!important`);
+    if (element.fontWeight !== undefined && Number(element.fontWeight) > 0) base.push(`font-weight:${n(element.fontWeight, 100, 900)}!important`);
+    if (element.textAlign && element.textAlign !== 'inherit') base.push(`text-align:${element.textAlign}!important`);
+    if (element.textTransform) base.push(`text-transform:${element.textTransform}!important`);
+    if (base.length) rules.push(`${selector}{${base.join(';')}}`);
+
+    const mobile = typographyDeclarations(element.responsive?.mobile);
+    const tablet = typographyDeclarations(element.responsive?.tablet);
+    const desktop = typographyDeclarations(element.responsive?.desktop);
+    if (mobile) rules.push(`@media(max-width:639px){${selector}{${mobile}}}`);
+    if (tablet) rules.push(`@media(min-width:640px) and (max-width:1023px){${selector}{${tablet}}}`);
+    if (desktop) rules.push(`@media(min-width:1024px){${selector}{${desktop}}}`);
+  }
+  return rules.join('\n');
+}
+
 export function buildSectionFrameCss(
   sectionId: string,
   style?: HomeVisualSectionStyle,
   options: { useFrameImage?: boolean } = {},
 ) {
   const advanced = getAdvancedStyle(style);
-  const id = sectionId.replace(/[^a-zA-Z0-9_-]/g, '');
+  const id = safeToken(sectionId);
   const selector = `[data-cms-block-id="${id}"]`;
   const common: string[] = [
     `background-color:${cssColor(advanced.background, 'transparent')}`,

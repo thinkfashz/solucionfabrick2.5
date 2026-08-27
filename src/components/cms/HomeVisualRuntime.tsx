@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useState, type MouseEvent } from 'react';
 import StaticConstructionHero from '@/components/landing/StaticConstructionHero';
 import CalculatorPlanShowcase from '@/components/landing/CalculatorPlanShowcase';
 import ConstructionM2Calculator from '@/components/landing/ConstructionM2Calculator';
@@ -27,15 +27,19 @@ interface HomeVisualRuntimeProps {
 
 export default function HomeVisualRuntime({ initialConfig, copyrightText, socialLinks }: HomeVisualRuntimeProps) {
   const [config, setConfig] = useState(() => normalizeHomePage(initialConfig));
+  const [previewMode, setPreviewMode] = useState(false);
+  const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
 
   useEffect(() => {
     const preview = new URLSearchParams(window.location.search).get('cms') === 'preview';
+    setPreviewMode(preview);
     if (!preview) return;
 
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; content?: unknown } | null;
+      const data = event.data as { type?: string; content?: unknown; sectionId?: string } | null;
       if (data?.type === 'cms:home-preview') setConfig(normalizeHomePage(data.content));
+      if (data?.type === 'cms:home-selected' && typeof data.sectionId === 'string') setSelectedPreviewId(data.sectionId);
     };
     window.addEventListener('message', handler);
     window.parent?.postMessage({ type: 'cms:home-preview-ready' }, window.location.origin);
@@ -51,12 +55,35 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
     [config.sections],
   );
 
+  function selectFromPreview(event: MouseEvent<HTMLDivElement>, sectionId: string) {
+    if (!previewMode) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('a')) event.preventDefault();
+    setSelectedPreviewId(sectionId);
+    window.parent?.postMessage({ type: 'cms:home-select', sectionId }, window.location.origin);
+  }
+
   return (
     <main data-cms-page="home">
       {sections.map((section) => (
-        <CmsSectionMotion key={section.id} style={section.style}>
-          <HomeBlock section={section} copyrightText={copyrightText} socialLinks={socialLinks} />
-        </CmsSectionMotion>
+        <div
+          key={section.id}
+          data-cms-block-id={section.id}
+          onClickCapture={(event) => selectFromPreview(event, section.id)}
+          className={previewMode ? 'relative cursor-default' : undefined}
+          style={previewMode && selectedPreviewId === section.id
+            ? { outline: '2px solid #FFB000', outlineOffset: '-2px', zIndex: 3 }
+            : undefined}
+        >
+          {previewMode && selectedPreviewId === section.id ? (
+            <span className="pointer-events-none absolute left-2 top-2 z-[999] rounded-full bg-[#FFB000] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-black shadow-lg">
+              {section.label}
+            </span>
+          ) : null}
+          <CmsSectionMotion style={section.style}>
+            <HomeBlock section={section} copyrightText={copyrightText} socialLinks={socialLinks} />
+          </CmsSectionMotion>
+        </div>
       ))}
     </main>
   );

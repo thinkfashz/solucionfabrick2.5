@@ -9,6 +9,7 @@ import { useTenantBranding } from '@/hooks/useTenantBranding';
 import { useCartContext } from '@/context/CartContext';
 import { navigateWithTransition } from '@/lib/routeTransition';
 import { StoreBottomNav, StoreFabrickLogo, StorefrontHeader } from '@/components/store/StorefrontChrome';
+import { toCartProduct } from '@/components/store/featuredProducts';
 
 const CLP = new Intl.NumberFormat('es-CL', { style: 'currency', currency: 'CLP', maximumFractionDigits: 0 });
 type Product = CatalogProduct;
@@ -19,19 +20,7 @@ function categoryOf(product: Product) { return product.category_name || product.
 function discountOf(product: Product) { return Math.max(0, Number(product.discountPercentage ?? product.discount_percentage ?? 0)); }
 function priceOf(product: Product) { return Math.round(Number(product.price || 0) * (1 - discountOf(product) / 100)); }
 function stockOf(product: Product) { return Number.isFinite(Number(product.stock)) ? Number(product.stock) : null; }
-function asCart(product: Product) {
-  return {
-    id: product.id,
-    name: product.name,
-    price: product.price,
-    image_url: imageOf(product),
-    category_id: categoryOf(product),
-    discount_percentage: discountOf(product),
-    stock: product.stock,
-    description: product.description,
-    tagline: product.tagline,
-  };
-}
+function asCart(product: Product) { return toCartProduct(product); }
 
 export default function TiendaClientV2() {
   const router = useRouter();
@@ -63,7 +52,7 @@ export default function TiendaClientV2() {
   function add(event: MouseEvent, product: Product) {
     event.stopPropagation();
     if ((stockOf(product) ?? 1) <= 0) return;
-    addToCart(asCart(product) as Parameters<typeof addToCart>[0]);
+    addToCart(asCart(product));
     setAdded(product.id);
     window.setTimeout(() => setAdded((current) => current === product.id ? null : current), 1200);
   }
@@ -225,7 +214,7 @@ function ProductTile({ product, added, onOpen, onAdd }: { product: Product; adde
   return (
     <article className="group min-w-0 overflow-hidden">
       <button onClick={onOpen} className="relative block aspect-square w-full overflow-hidden rounded-[1rem] bg-white text-left sm:rounded-[1.15rem]">
-        <img src={imageOf(product)} alt={product.name} className="h-full w-full object-contain transition duration-500 group-hover:scale-[1.025]" />
+        <img src={imageOf(product)} alt={product.name} loading="lazy" decoding="async" className="h-full w-full object-contain transition duration-500 group-hover:scale-[1.025]" />
         {discount > 0 ? <span className="absolute left-2 top-2 rounded-md bg-[#F5871F] px-2 py-1 text-[8px] font-black text-black sm:left-3 sm:top-3 sm:px-3 sm:text-[9px]">-{discount}%</span> : null}
         {stock === 0 ? <span className="absolute inset-x-0 bottom-0 bg-black/75 px-3 py-2 text-center text-[9px] font-black uppercase tracking-[.16em] text-white">Sin stock</span> : null}
       </button>

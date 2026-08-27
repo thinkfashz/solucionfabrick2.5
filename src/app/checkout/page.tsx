@@ -15,5 +15,16 @@ export const metadata: Metadata = {
 };
 
 export default function CheckoutPage() {
-  return <Suspense fallback={null}><CheckoutAppV2 /></Suspense>;
+  return (
+    <>
+      <style>{`
+        .checkout-hydration-boundary > main > div[class*="min-h-[60vh]"] {
+          visibility: hidden;
+        }
+      `}</style>
+      <div className="checkout-hydration-boundary">
+        <Suspense fallback={null}><CheckoutAppV2 /></Suspense>
+      </div>
+    </>
+  );
 }

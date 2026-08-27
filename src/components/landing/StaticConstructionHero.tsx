@@ -9,6 +9,7 @@ import {
   textContent,
   type HomeVisualSection,
 } from '@/lib/homeVisualCms';
+import { getAdvancedStyle } from '@/lib/homeVisualLayout';
 
 interface StaticConstructionHeroProps {
   section?: HomeVisualSection;
@@ -16,6 +17,7 @@ interface StaticConstructionHeroProps {
 
 export default function StaticConstructionHero({ section }: StaticConstructionHeroProps) {
   const current = section ?? getHomeSection(DEFAULT_HOME_PAGE, 'hero');
+  const advanced = getAdvancedStyle(current.style);
   const needs = objectList(current, 'needs');
   const highlights = stringList(current, 'highlights');
   const backgroundImage = current.style.backgroundImage?.trim();
@@ -23,6 +25,9 @@ export default function StaticConstructionHero({ section }: StaticConstructionHe
   const accent = current.style.accent || '#F5871F';
   const background = current.style.background || '#08090A';
   const textColor = current.style.textColor || '#FFF9EE';
+  const backgroundFit = advanced.backgroundFit === 'contain' ? 'contain' : 'cover';
+  const positionX = clampPercent(advanced.backgroundPositionX, 50);
+  const positionY = clampPercent(advanced.backgroundPositionY, 50);
 
   return (
     <section
@@ -31,7 +36,17 @@ export default function StaticConstructionHero({ section }: StaticConstructionHe
       className="relative isolate overflow-hidden px-4 pb-12 pt-20 sm:px-6 sm:pb-16 sm:pt-24 lg:px-8 lg:pb-20 lg:pt-28"
       style={{ backgroundColor: background, color: textColor }}
     >
-      {backgroundImage ? <div className="pointer-events-none absolute inset-0 -z-30 bg-cover bg-center" style={{ backgroundImage: `url(${backgroundImage})` }} /> : null}
+      {backgroundImage ? (
+        <div
+          className="pointer-events-none absolute inset-0 -z-30"
+          style={{
+            backgroundImage: `url(${backgroundImage})`,
+            backgroundSize: backgroundFit,
+            backgroundPosition: `${positionX}% ${positionY}%`,
+            backgroundRepeat: 'no-repeat',
+          }}
+        />
+      ) : null}
       <div className="pointer-events-none absolute inset-0 -z-20" style={{ background: backgroundImage ? `linear-gradient(rgba(8,9,10,${overlay}),rgba(8,9,10,${overlay}))` : `radial-gradient(circle at 12% 10%,${accent}29,transparent 30rem),radial-gradient(circle at 88% 72%,${accent}14,transparent 28rem)` }} />
       <div className="pointer-events-none absolute inset-0 -z-10 opacity-[.04] [background-image:linear-gradient(rgba(255,255,255,.55)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,.55)_1px,transparent_1px)] [background-size:64px_64px]" />
 
@@ -66,4 +81,10 @@ export default function StaticConstructionHero({ section }: StaticConstructionHe
       </div>
     </section>
   );
+}
+
+function clampPercent(value: unknown, fallback: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(0, Math.min(100, parsed));
 }

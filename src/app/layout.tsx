@@ -36,7 +36,7 @@ export const metadata: Metadata = {
     template: '%s | Soluciones Fabrick',
   },
   description:
-    'Construye, remodela, transforma o repara tu hogar con Soluciones Fabrick. Evaluación técnica, cotización clara y ejecución por etapas en Maule, Linares, Talca y proyectos seleccionados en Santiago.',
+    'Construcción, remodelación, instalaciones y soluciones para el hogar en Maule, Linares, Talca y proyectos seleccionados en Santiago. Calcula referencias, compara mano de obra y trabajo vendido, y encuentra productos para tu proyecto.',
   keywords: FABRICK_SEO_KEYWORDS,
   authors: [{ name: 'Soluciones Fabrick' }],
   creator: 'Soluciones Fabrick',
@@ -44,9 +44,9 @@ export const metadata: Metadata = {
   applicationName: 'Soluciones Fabrick',
   category: 'Construcción, remodelación y reparación del hogar',
   openGraph: {
-    title: 'Soluciones Fabrick | Construye y transforma con respaldo técnico',
+    title: 'Soluciones Fabrick | Construcción y soluciones para tu hogar',
     description:
-      'Construcción, remodelación y reparación con evaluación técnica, materiales duraderos y una ruta clara de ejecución.',
+      'Construcción, remodelación, instalaciones y productos para el hogar, con referencias de costo claras para resolver una partida o un proyecto completo.',
     url: SITE_URL,
     siteName: 'Soluciones Fabrick',
     locale: 'es_CL',
@@ -55,8 +55,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: 'summary_large_image',
-    title: 'Soluciones Fabrick | Construye y transforma con respaldo técnico',
-    description: 'Construcción, remodelación y reparación con evaluación clara, materiales duraderos y ejecución por etapas.',
+    title: 'Soluciones Fabrick | Construcción y soluciones para tu hogar',
+    description: 'Construcción, remodelación, instalaciones y productos con referencias claras de mano de obra y trabajo vendido.',
     images: ['/twitter-image'],
   },
   robots: {

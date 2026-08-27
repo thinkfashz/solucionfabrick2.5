@@ -37,7 +37,7 @@ export default function ContactForm() {
 
     if (!nombre || !email) {
       setStatus('error');
-      setErrorMessage('Necesitamos tu nombre y correo para responder la solicitud.');
+      setErrorMessage('Necesitamos tu nombre y correo para responder la consulta.');
       return;
     }
 
@@ -53,7 +53,7 @@ export default function ContactForm() {
       });
       if (!response.ok) {
         const data = (await response.json().catch(() => ({}))) as { error?: string };
-        throw new Error(data.error || 'No pudimos enviar la solicitud. Intenta nuevamente.');
+        throw new Error(data.error || 'No pudimos enviar la consulta. Intenta nuevamente.');
       }
       setStatus('ok');
       form.reset();
@@ -69,10 +69,10 @@ export default function ContactForm() {
   if (status === 'ok') {
     return (
       <div className="border-t border-[#08090A]/18 py-8 text-[#08090A]" role="status">
-        <p className="text-[10px] font-black uppercase tracking-[.2em] text-emerald-800">Solicitud enviada</p>
-        <h3 className="mt-3 text-3xl font-black tracking-[-.05em]">Ya tenemos el punto de partida.</h3>
-        <p className="mt-3 max-w-lg text-sm leading-7 text-[#5f5853]">Revisaremos la información y te contactaremos para confirmar ubicación, medidas y próximos pasos.</p>
-        <button type="button" onClick={() => setStatus(null)} className="mt-6 rounded-full bg-[#08090A] px-6 py-3 text-xs font-black text-[#FFF9EE]">Enviar otra solicitud</button>
+        <p className="text-[10px] font-black uppercase tracking-[.2em] text-emerald-800">Mensaje enviado</p>
+        <h3 className="mt-3 text-3xl font-black tracking-[-.05em]">Ya sabemos qué necesitas.</h3>
+        <p className="mt-3 max-w-lg text-sm leading-7 text-[#5f5853]">Te contactaremos para completar los datos que falten y conversar sobre el trabajo.</p>
+        <button type="button" onClick={() => setStatus(null)} className="mt-6 rounded-full bg-[#08090A] px-6 py-3 text-xs font-black text-[#FFF9EE]">Enviar otra consulta</button>
       </div>
     );
   }
@@ -101,17 +101,17 @@ export default function ContactForm() {
         <Field label="Prefiero que me contacten por">
           <select name="preferencia" className={`${fieldClass} appearance-none`} defaultValue="WhatsApp"><option>WhatsApp</option><option>Correo</option><option>Llamada</option></select>
         </Field>
-        <Field label="Datos para evaluar">
-          <textarea name="mensaje" rows={4} placeholder="Medidas aproximadas, estado actual, fecha ideal y resultado que buscas" className={`${fieldClass} min-h-28 resize-y`} />
+        <Field label="Cuéntanos un poco más">
+          <textarea name="mensaje" rows={4} placeholder="Medidas aproximadas, una breve descripción o cualquier detalle útil" className={`${fieldClass} min-h-28 resize-y`} />
         </Field>
       </div>
 
       {status === 'error' && errorMessage ? <p role="alert" className="border-l-2 border-red-700 pl-4 text-xs font-semibold text-red-800">{errorMessage}</p> : null}
 
       <div className="flex flex-col gap-3 border-t border-[#08090A]/18 pt-5 sm:flex-row sm:items-center sm:justify-between">
-        <p className="max-w-md text-[10px] leading-5 text-[#6f5d50]">Tus datos se usan únicamente para responder y organizar el seguimiento comercial del proyecto.</p>
+        <p className="max-w-md text-[10px] leading-5 text-[#6f5d50]">Tus datos se usan únicamente para responder tu consulta y mantener el contacto sobre este proyecto.</p>
         <button type="submit" disabled={sending} className="inline-flex min-h-13 items-center justify-center rounded-full bg-[#08090A] px-7 text-xs font-black text-[#FFF9EE] transition hover:bg-[#FFF9EE] hover:text-[#08090A] disabled:opacity-60">
-          {sending ? 'Enviando…' : 'Solicitar evaluación'}
+          {sending ? 'Enviando…' : 'Enviar proyecto'}
         </button>
       </div>
     </form>

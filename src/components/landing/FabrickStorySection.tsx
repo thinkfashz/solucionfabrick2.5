@@ -32,7 +32,7 @@ export default function FabrickStorySection({ section }: { section?: HomeVisualS
 
           <div className="border-t border-current/10">
             {areas.map(({ title, text }, index) => (
-              <article key={`${title}-${index}`} className="grid gap-2 border-b border-current/10 py-6 sm:grid-cols-[230px_1fr] sm:gap-5 sm:py-8">
+              <article data-cms-container={`areas-${index}`} key={`${title}-${index}`} className="grid gap-2 border-b border-current/10 py-6 sm:grid-cols-[230px_1fr] sm:gap-5 sm:py-8">
                 <h3 data-cms-field={`areas-${index}-title`} className="text-base font-black tracking-[-.025em] sm:text-lg">{title}</h3>
                 <p data-cms-field={`areas-${index}-text`} className="text-[13px] leading-6 opacity-50 sm:text-sm sm:leading-7">{text}</p>
               </article>

@@ -39,6 +39,13 @@ import {
   type VisualTextAlign,
   type VisualTextTransform,
 } from '@/lib/homeVisualLayout';
+import {
+  appendedSources,
+  deletedSources,
+  duplicatedSources,
+  movedSources,
+  remapRepeatedItemStyles,
+} from '@/lib/homeVisualRepeatedStyles';
 
 const DEVICE_LABELS: Record<VisualDevice, string> = { mobile: 'Móvil', tablet: 'Tablet', desktop: 'PC' };
 const ANIMATIONS: Array<{ value: HomeVisualAnimation; label: string }> = [
@@ -65,6 +72,13 @@ const FONTS: Array<{ value: VisualFontFamily; label: string }> = [
 const inputCls = 'w-full rounded-xl border border-white/10 bg-black/45 px-3 py-2.5 text-sm text-white outline-none transition focus:border-[#FFB000]/55';
 const labelCls = 'mb-1.5 block text-[9px] font-black uppercase tracking-[.17em] text-[#FFB000]/70';
 
+type RepeatedMutation = {
+  key: string;
+  next: unknown[];
+  sources: Array<number | null>;
+  selectField?: string | null;
+};
+
 interface InspectorProps {
   section: HomeVisualSection;
   device: VisualDevice;
@@ -84,6 +98,14 @@ export default function HomeVisualInspector({ section, device, selectedField, se
   const resetResponsive = () => patch((current) => ({ ...current, style: clearDeviceLayout(current.style, device) }));
   const setContent = (key: string, value: unknown) => patch((current) => ({ ...current, content: { ...current.content, [key]: value } }));
   const setFieldContent = (field: string, value: string) => patch((current) => ({ ...current, content: patchContentField(current.content, field, value) }));
+  const mutateRepeated = ({ key, next, sources, selectField }: RepeatedMutation) => {
+    patch((current) => ({
+      ...current,
+      content: { ...current.content, [key]: next },
+      style: remapRepeatedItemStyles(current.style, key, sources),
+    }));
+    if (selectField !== undefined) setSelectedField(selectField);
+  };
 
   return (
     <div className="space-y-5">
@@ -110,7 +132,7 @@ export default function HomeVisualInspector({ section, device, selectedField, se
 
       <details open className="rounded-2xl border border-white/8 bg-black/25 p-3">
         <summary className="cursor-pointer list-none text-[10px] font-black uppercase tracking-[.16em] text-white/65">Contenido</summary>
-        <div className="mt-4 space-y-4"><ContentFields content={section.content} selectedField={selectedField} onSelect={setSelectedField} onChange={setContent} /></div>
+        <div className="mt-4 space-y-4"><ContentFields content={section.content} selectedField={selectedField} onSelect={setSelectedField} onChange={setContent} onMutateRepeated={mutateRepeated} /></div>
       </details>
 
       <details className="rounded-2xl border border-white/8 bg-black/25 p-3">
@@ -205,28 +227,142 @@ function ElementInspector({ section, field, device, patch, setFieldContent, clos
   );
 }
 
-function ContentFields({ content, selectedField, onSelect, onChange }: { content: Record<string, unknown>; selectedField: string | null; onSelect: (field: string | null) => void; onChange: (key: string, value: unknown) => void }) {
-  return <>{Object.entries(content).map(([key, value]) => <ContentField key={key} fieldKey={key} value={value} selectedField={selectedField} onSelect={onSelect} onChange={(next) => onChange(key, next)} />)}</>;
+function ContentFields({ content, selectedField, onSelect, onChange, onMutateRepeated }: {
+  content: Record<string, unknown>;
+  selectedField: string | null;
+  onSelect: (field: string | null) => void;
+  onChange: (key: string, value: unknown) => void;
+  onMutateRepeated: (mutation: RepeatedMutation) => void;
+}) {
+  return <>{Object.entries(content).map(([key, value]) => <ContentField key={key} fieldKey={key} value={value} selectedField={selectedField} onSelect={onSelect} onChange={(next) => onChange(key, next)} onMutateRepeated={onMutateRepeated} />)}</>;
 }
 
-function ContentField({ fieldKey, value, selectedField, onSelect, onChange }: { fieldKey: string; value: unknown; selectedField: string | null; onSelect: (field: string | null) => void; onChange: (next: unknown) => void }) {
+function ContentField({ fieldKey, value, selectedField, onSelect, onChange, onMutateRepeated }: {
+  fieldKey: string;
+  value: unknown;
+  selectedField: string | null;
+  onSelect: (field: string | null) => void;
+  onChange: (next: unknown) => void;
+  onMutateRepeated: (mutation: RepeatedMutation) => void;
+}) {
   const title = pretty(fieldKey);
   if (typeof value === 'string') {
     const long = value.length > 72 || /(description|paragraph|text|note|subtitle)/i.test(fieldKey);
     const selected = selectedField === fieldKey;
     return <div className={selected ? 'rounded-xl ring-1 ring-sky-400/35 p-2 -m-2' : ''}><label className={labelCls}>{title}</label>{long ? <textarea onFocus={() => onSelect(fieldKey)} className={`${inputCls} min-h-24 resize-y`} value={value} onChange={(event) => onChange(event.target.value)} /> : <input onFocus={() => onSelect(fieldKey)} className={inputCls} value={value} onChange={(event) => onChange(event.target.value)} />}</div>;
   }
-  if (Array.isArray(value)) {
-    if (value.every((item) => typeof item === 'string')) {
-      const list = value as string[];
-      return <div><label className={labelCls}>{title}</label><div className="space-y-2">{list.map((item, index) => { const field = `${fieldKey}-${index}`; const containerField = `${fieldKey}-${index}-container`; const selected = selectedField === field || selectedField === containerField; return <div key={index} className={`flex gap-2 rounded-lg ${selected ? 'ring-1 ring-sky-400/35' : ''}`}><input onFocus={() => onSelect(field)} className={inputCls} value={item} onChange={(event) => onChange(list.map((current, i) => i === index ? event.target.value : current))} /><button type="button" onClick={() => onChange(list.filter((_, i) => i !== index))} className="w-9 shrink-0 rounded-lg border border-red-500/20 text-red-300/60">×</button></div>; })}<button type="button" onClick={() => onChange([...list, 'Nuevo texto'])} className="text-[10px] font-black text-[#FFB000]">+ Añadir texto</button></div></div>;
-    }
-    if (value.every((item) => item && typeof item === 'object' && !Array.isArray(item))) {
-      const list = value as Array<Record<string, unknown>>;
-      return <div><label className={labelCls}>{title}</label><div className="space-y-2">{list.map((item, index) => { const titleField = `${fieldKey}-${index}-title`; const textField = `${fieldKey}-${index}-text`; const containerField = `${fieldKey}-${index}-container`; const selected = selectedField === titleField || selectedField === textField || selectedField === containerField; return <div key={index} className={`rounded-xl border bg-black/25 p-2.5 ${selected ? 'border-sky-400/30' : 'border-white/8'}`}><input onFocus={() => onSelect(titleField)} className={inputCls} value={typeof item.title === 'string' ? item.title : ''} placeholder="Título" onChange={(event) => onChange(list.map((current, i) => i === index ? { ...current, title: event.target.value } : current))} /><textarea onFocus={() => onSelect(textField)} className={`${inputCls} mt-2 min-h-20 resize-y`} value={typeof item.text === 'string' ? item.text : ''} placeholder="Texto" onChange={(event) => onChange(list.map((current, i) => i === index ? { ...current, text: event.target.value } : current))} /><button type="button" onClick={() => onChange(list.filter((_, i) => i !== index))} className="mt-2 text-[9px] font-black uppercase text-red-300/55">Eliminar</button></div>; })}<button type="button" onClick={() => onChange([...list, { title: 'Nuevo', text: 'Describe este elemento.' }])} className="text-[10px] font-black text-[#FFB000]">+ Añadir elemento</button></div></div>;
-    }
+
+  if (!Array.isArray(value)) return null;
+
+  if (value.every((item) => typeof item === 'string')) {
+    const list = value as string[];
+    const move = (index: number, direction: -1 | 1) => {
+      const sources = movedSources(list.length, index, direction);
+      if (sources[index] === index) return;
+      const target = index + direction;
+      onMutateRepeated({ key: fieldKey, next: sources.map((source) => list[source]), sources, selectField: `${fieldKey}-${target}` });
+    };
+    const duplicateItem = (index: number) => {
+      const sources = duplicatedSources(list.length, index);
+      onMutateRepeated({ key: fieldKey, next: sources.map((source) => list[source]), sources, selectField: `${fieldKey}-${index + 1}` });
+    };
+    const remove = (index: number) => {
+      const sources = deletedSources(list.length, index);
+      const next = sources.map((source) => list[source]);
+      const nextIndex = next.length ? Math.min(index, next.length - 1) : -1;
+      onMutateRepeated({ key: fieldKey, next, sources, selectField: nextIndex >= 0 ? `${fieldKey}-${nextIndex}` : null });
+    };
+    const add = () => {
+      const sources = appendedSources(list.length);
+      onMutateRepeated({ key: fieldKey, next: [...list, 'Nuevo texto'], sources, selectField: `${fieldKey}-${list.length}` });
+    };
+
+    return (
+      <div>
+        <label className={labelCls}>{title}</label>
+        <div className="space-y-2">
+          {list.map((item, index) => {
+            const field = `${fieldKey}-${index}`;
+            const containerField = `${fieldKey}-${index}-container`;
+            const selected = selectedField === field || selectedField === containerField;
+            return (
+              <div key={index} className={`rounded-xl border bg-black/20 p-2 ${selected ? 'border-sky-400/30' : 'border-white/8'}`}>
+                <input onFocus={() => onSelect(field)} className={inputCls} value={item} onChange={(event) => onChange(list.map((current, i) => i === index ? event.target.value : current))} />
+                <div className="mt-2 grid grid-cols-4 gap-1.5">
+                  <MiniButton label="Subir" disabled={index === 0} onClick={() => move(index, -1)}><ChevronUp className="h-3.5 w-3.5" /></MiniButton>
+                  <MiniButton label="Bajar" disabled={index === list.length - 1} onClick={() => move(index, 1)}><ChevronDown className="h-3.5 w-3.5" /></MiniButton>
+                  <MiniButton label="Duplicar" onClick={() => duplicateItem(index)}><Copy className="h-3.5 w-3.5" /></MiniButton>
+                  <MiniButton label="Eliminar" danger onClick={() => remove(index)}><X className="h-3.5 w-3.5" /></MiniButton>
+                </div>
+              </div>
+            );
+          })}
+          <button type="button" onClick={add} className="text-[10px] font-black text-[#FFB000]">+ Añadir texto</button>
+        </div>
+      </div>
+    );
   }
+
+  if (value.every((item) => item && typeof item === 'object' && !Array.isArray(item))) {
+    const list = value as Array<Record<string, unknown>>;
+    const move = (index: number, direction: -1 | 1) => {
+      const sources = movedSources(list.length, index, direction);
+      if (sources[index] === index) return;
+      const target = index + direction;
+      onMutateRepeated({ key: fieldKey, next: sources.map((source) => list[source]), sources, selectField: `${fieldKey}-${target}-container` });
+    };
+    const duplicateItem = (index: number) => {
+      const sources = duplicatedSources(list.length, index);
+      const next = sources.map((source, newIndex) => newIndex === index + 1 ? { ...list[source] } : list[source]);
+      onMutateRepeated({ key: fieldKey, next, sources, selectField: `${fieldKey}-${index + 1}-container` });
+    };
+    const remove = (index: number) => {
+      const sources = deletedSources(list.length, index);
+      const next = sources.map((source) => list[source]);
+      const nextIndex = next.length ? Math.min(index, next.length - 1) : -1;
+      onMutateRepeated({ key: fieldKey, next, sources, selectField: nextIndex >= 0 ? `${fieldKey}-${nextIndex}-container` : null });
+    };
+    const add = () => {
+      const sources = appendedSources(list.length);
+      onMutateRepeated({ key: fieldKey, next: [...list, { title: 'Nuevo', text: 'Describe este elemento.' }], sources, selectField: `${fieldKey}-${list.length}-container` });
+    };
+
+    return (
+      <div>
+        <label className={labelCls}>{title}</label>
+        <div className="space-y-2">
+          {list.map((item, index) => {
+            const titleField = `${fieldKey}-${index}-title`;
+            const textField = `${fieldKey}-${index}-text`;
+            const containerField = `${fieldKey}-${index}-container`;
+            const selected = selectedField === titleField || selectedField === textField || selectedField === containerField;
+            return (
+              <div key={index} className={`rounded-xl border bg-black/25 p-2.5 ${selected ? 'border-violet-300/35' : 'border-white/8'}`}>
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <button type="button" onClick={() => onSelect(containerField)} className={`rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[.12em] ${selectedField === containerField ? 'border-violet-300/40 bg-violet-300/10 text-violet-100' : 'border-white/8 text-white/35'}`}>Tarjeta {index + 1}</button>
+                  <div className="flex gap-1">
+                    <MiniButton label="Subir" disabled={index === 0} onClick={() => move(index, -1)}><ChevronUp className="h-3.5 w-3.5" /></MiniButton>
+                    <MiniButton label="Bajar" disabled={index === list.length - 1} onClick={() => move(index, 1)}><ChevronDown className="h-3.5 w-3.5" /></MiniButton>
+                    <MiniButton label="Duplicar" onClick={() => duplicateItem(index)}><Copy className="h-3.5 w-3.5" /></MiniButton>
+                    <MiniButton label="Eliminar" danger onClick={() => remove(index)}><X className="h-3.5 w-3.5" /></MiniButton>
+                  </div>
+                </div>
+                <input onFocus={() => onSelect(titleField)} className={inputCls} value={typeof item.title === 'string' ? item.title : ''} placeholder="Título" onChange={(event) => onChange(list.map((current, i) => i === index ? { ...current, title: event.target.value } : current))} />
+                <textarea onFocus={() => onSelect(textField)} className={`${inputCls} mt-2 min-h-20 resize-y`} value={typeof item.text === 'string' ? item.text : ''} placeholder="Texto" onChange={(event) => onChange(list.map((current, i) => i === index ? { ...current, text: event.target.value } : current))} />
+              </div>
+            );
+          })}
+          <button type="button" onClick={add} className="text-[10px] font-black text-[#FFB000]">+ Añadir elemento</button>
+        </div>
+      </div>
+    );
+  }
+
   return null;
+}
+
+function MiniButton({ label, children, onClick, disabled = false, danger = false }: { label: string; children: React.ReactNode; onClick: () => void; disabled?: boolean; danger?: boolean }) {
+  return <button type="button" title={label} aria-label={label} disabled={disabled} onClick={onClick} className={`grid h-8 min-w-8 place-items-center rounded-lg border transition disabled:opacity-20 ${danger ? 'border-red-400/15 text-red-200/55 hover:bg-red-400/8' : 'border-white/8 text-white/38 hover:border-white/20 hover:text-white/70'}`}>{children}</button>;
 }
 
 function editableTokens(content: Record<string, unknown>) {

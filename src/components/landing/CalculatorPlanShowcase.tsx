@@ -28,7 +28,7 @@ export default function CalculatorPlanShowcase({ section }: { section?: HomeVisu
 
         <div className="grid gap-px bg-current/10 sm:grid-cols-3">
           {benefits.map(({ title, text }, index) => (
-            <article key={`${title}-${index}`} className="px-1 py-6 sm:px-5 sm:py-8" style={{ backgroundColor: background }}>
+            <article data-cms-container={`benefits-${index}`} key={`${title}-${index}`} className="px-1 py-6 sm:px-5 sm:py-8" style={{ backgroundColor: background }}>
               <span data-cms-field={`benefits-${index}-label`} className="inline-flex rounded-full px-2.5 py-1 text-[9px] font-black uppercase tracking-[.13em]" style={{ backgroundColor: `${accent}18`, color: accent }}>Referencia</span>
               <h3 data-cms-field={`benefits-${index}-title`} className="mt-3 text-xl font-black tracking-[-.035em]">{title}</h3>
               <p data-cms-field={`benefits-${index}-text`} className="mt-2 max-w-sm text-sm leading-6 opacity-50">{text}</p>

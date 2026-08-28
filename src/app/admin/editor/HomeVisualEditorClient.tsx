@@ -23,6 +23,7 @@ import {
   type HomeVisualSection,
   type HomeVisualSectionStyle,
 } from '@/lib/homeVisualCms';
+import { getContentFieldValue, patchContentField } from '@/lib/homeVisualContent';
 import {
   getContainerResponsive,
   patchContainerResponsive,
@@ -209,10 +210,30 @@ export default function HomeVisualEditorClient() {
     }
   }
 
+  function handlePreviewFieldChange(sectionId: string, field: string, value: string) {
+    let changed = false;
+    commitDraft((current) => {
+      const sections = current.sections.map((section) => {
+        if (section.id !== sectionId) return section;
+        const previous = getContentFieldValue(section.content, field);
+        if (typeof previous !== 'string' || previous === value) return section;
+        changed = true;
+        return { ...section, content: patchContentField(section.content, field, value) };
+      });
+      return changed ? { ...current, sections } : current;
+    }, false);
+
+    if (changed) {
+      setSelectedId(sectionId);
+      setSelectedField(field);
+      setStatus('Texto actualizado desde la vista previa.');
+    }
+  }
+
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; sectionId?: string; field?: string | null; container?: string; action?: PreviewCardAction } | null;
+      const data = event.data as { type?: string; sectionId?: string; field?: string | null; container?: string; action?: PreviewCardAction; value?: string } | null;
       if (data?.type === 'cms:home-preview-ready') {
         setIframeReady(true);
         postDraft(draft);
@@ -224,6 +245,9 @@ export default function HomeVisualEditorClient() {
       }
       if (data?.type === 'cms:home-card-action' && typeof data.sectionId === 'string' && typeof data.container === 'string' && data.action) {
         handlePreviewCardAction(data.sectionId, data.container, data.action);
+      }
+      if (data?.type === 'cms:home-field-change' && typeof data.sectionId === 'string' && typeof data.field === 'string' && typeof data.value === 'string') {
+        handlePreviewFieldChange(data.sectionId, data.field, data.value);
       }
     };
     window.addEventListener('message', handler);
@@ -371,7 +395,7 @@ export default function HomeVisualEditorClient() {
               </button>
             ))}
           </div>
-          <div className="mt-4 hidden rounded-xl border border-white/8 bg-black/30 p-3 text-[10px] leading-5 text-white/32 lg:block">Arrastra bloques para reordenar. Toca un elemento dentro de la vista previa o selecciónalo desde “Elementos del bloque”. Cada tarjeta repetida puede editarse por separado.</div>
+          <div className="mt-4 hidden rounded-xl border border-white/8 bg-black/30 p-3 text-[10px] leading-5 text-white/32 lg:block">Arrastra bloques para reordenar. Toca un elemento dentro de la vista previa o selecciónalo desde “Elementos del bloque”. Haz doble clic sobre un texto editable para cambiarlo directamente en la vista.</div>
         </aside>
 
         <section className="flex min-h-[620px] min-w-0 flex-col bg-[#121315] p-2 sm:p-3">

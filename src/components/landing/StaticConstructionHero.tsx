@@ -61,7 +61,7 @@ export default function StaticConstructionHero({ section }: StaticConstructionHe
           </div>
           {highlights.length ? (
             <div className="mt-7 grid grid-cols-3 gap-px overflow-hidden border-y border-white/9 bg-white/9 sm:mt-10 sm:flex sm:flex-wrap sm:gap-x-6 sm:gap-y-2 sm:border-t sm:border-b-0 sm:bg-transparent sm:pt-5">
-              {highlights.map((item, index) => <span data-cms-field={`highlights-${index}`} key={`${item}-${index}`} className="px-2 py-3 text-center text-[8px] font-bold uppercase leading-4 tracking-[.08em] opacity-45 sm:bg-transparent sm:px-0 sm:py-0 sm:text-left sm:text-[10px] sm:tracking-[.14em]">{item}</span>)}
+              {highlights.map((item, index) => <span data-cms-container={`highlights-${index}`} data-cms-field={`highlights-${index}`} key={`${item}-${index}`} className="px-2 py-3 text-center text-[8px] font-bold uppercase leading-4 tracking-[.08em] opacity-45 sm:bg-transparent sm:px-0 sm:py-0 sm:text-left sm:text-[10px] sm:tracking-[.14em]">{item}</span>)}
             </div>
           ) : null}
         </div>
@@ -70,7 +70,7 @@ export default function StaticConstructionHero({ section }: StaticConstructionHe
           <p data-cms-field="sideEyebrow" className="text-[9px] font-black uppercase tracking-[.2em]" style={{ color: accent }}>{textContent(current, 'sideEyebrow', '¿Qué quieres hacer?')}</p>
           <div className="mt-3 divide-y divide-white/10 border-y border-white/10 sm:mt-4">
             {needs.map(({ title, text }, index) => (
-              <div key={`${title}-${index}`} className="grid grid-cols-[92px_1fr] gap-3 py-4 sm:grid-cols-[110px_1fr] sm:py-5">
+              <div data-cms-container={`needs-${index}`} key={`${title}-${index}`} className="grid grid-cols-[92px_1fr] gap-3 py-4 sm:grid-cols-[110px_1fr] sm:py-5">
                 <h2 data-cms-field={`needs-${index}-title`} className="text-sm font-black sm:text-lg">{title}</h2>
                 <p data-cms-field={`needs-${index}-text`} className="text-xs leading-5 opacity-50 sm:leading-6">{text}</p>
               </div>

@@ -2,6 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
+  ChevronDown,
+  ChevronUp,
+  Copy,
   Eye,
   EyeOff,
   GripVertical,
@@ -10,6 +13,7 @@ import {
   Redo2,
   RotateCcw,
   Save,
+  SlidersHorizontal,
   Smartphone,
   Tablet,
   Type,
@@ -49,6 +53,7 @@ const WIDTHS: Record<VisualDevice, string> = { mobile: '390px', tablet: '768px',
 const DEVICE_LABELS: Record<VisualDevice, string> = { mobile: 'Móvil', tablet: 'Tablet', desktop: 'PC' };
 
 type PreviewCardAction = RepeatedItemAction | 'toggle-hidden' | 'inspect';
+type PreviewSectionAction = 'move-up' | 'move-down' | 'duplicate' | 'toggle-enabled' | 'inspect';
 
 export default function HomeVisualEditorClient() {
   const [draft, setDraft] = useState<HomePageContent>(DEFAULT_HOME_PAGE);
@@ -352,6 +357,7 @@ export default function HomeVisualEditorClient() {
   const ordered = useMemo(() => [...draft.sections].sort((a, b) => a.order - b.order), [draft.sections]);
   const selected = ordered.find((section) => section.id === selectedId) || ordered[0];
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(published), [draft, published]);
+  const selectedIndex = selected ? ordered.findIndex((section) => section.id === selected.id) : -1;
 
   function selectSection(id: string) {
     setSelectedId(id);
@@ -399,6 +405,36 @@ export default function HomeVisualEditorClient() {
     };
     commitDraft((current) => ({ ...current, sections: [...current.sections, copy] }), false);
     selectSection(copy.id);
+  }
+
+  function handlePreviewSectionAction(action: PreviewSectionAction) {
+    if (!selected) return;
+    if (action === 'move-up') {
+      if (selectedIndex <= 0) return;
+      reorder(selected.id, -1);
+      setStatus('Bloque movido una posición hacia arriba.');
+      return;
+    }
+    if (action === 'move-down') {
+      if (selectedIndex < 0 || selectedIndex >= ordered.length - 1) return;
+      reorder(selected.id, 1);
+      setStatus('Bloque movido una posición hacia abajo.');
+      return;
+    }
+    if (action === 'duplicate') {
+      duplicate(selected);
+      setStatus('Bloque duplicado con contenido y estilos.');
+      return;
+    }
+    if (action === 'toggle-enabled') {
+      const nextEnabled = !selected.enabled;
+      patchSection(selected.id, (section) => ({ ...section, enabled: nextEnabled }));
+      setStatus(nextEnabled ? 'Bloque visible nuevamente.' : 'Bloque oculto del sitio. Sigue disponible aquí para volver a mostrarlo.');
+      return;
+    }
+    setSelectedField(null);
+    setStatus('Inspector de diseño del bloque abierto.');
+    window.setTimeout(() => document.getElementById('home-visual-inspector-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
   }
 
   async function publish() {
@@ -477,7 +513,18 @@ export default function HomeVisualEditorClient() {
               {(['mobile', 'tablet', 'desktop'] as VisualDevice[]).map((item) => { const Icon = item === 'mobile' ? Smartphone : item === 'tablet' ? Tablet : Monitor; return <button key={item} type="button" onClick={() => setDevice(item)} className={`grid h-8 w-9 place-items-center rounded-full ${device === item ? 'bg-[#FFB000] text-black' : 'text-white/35'}`} aria-label={DEVICE_LABELS[item]}><Icon className="h-3.5 w-3.5" /></button>; })}
             </div>
           </div>
-          <div className="flex min-h-0 flex-1 justify-center overflow-auto rounded-2xl bg-black/60 p-2 sm:p-3">
+          <div className="relative flex min-h-0 flex-1 justify-center overflow-auto rounded-2xl bg-black/60 p-2 sm:p-3">
+            {selected && !selectedField ? (
+              <div className="sticky left-1/2 top-2 z-30 flex h-11 max-w-[calc(100vw-2rem)] -translate-x-1/2 items-center gap-1 self-start overflow-x-auto rounded-2xl border border-[#FFB000]/20 bg-[#08090A]/95 p-1.5 shadow-[0_18px_70px_rgba(0,0,0,.5)] backdrop-blur-xl">
+                <span className="max-w-[130px] shrink-0 truncate px-2 text-[9px] font-black uppercase tracking-[.12em] text-[#FFD879] sm:max-w-[210px]">{selected.label}</span>
+                <span className="h-5 w-px shrink-0 bg-white/10" />
+                <button type="button" title="Mover bloque arriba" aria-label="Mover bloque arriba" disabled={selectedIndex <= 0} onClick={() => handlePreviewSectionAction('move-up')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/8 bg-white/[.04] text-white/65 disabled:opacity-20"><ChevronUp className="h-3.5 w-3.5" /></button>
+                <button type="button" title="Mover bloque abajo" aria-label="Mover bloque abajo" disabled={selectedIndex < 0 || selectedIndex >= ordered.length - 1} onClick={() => handlePreviewSectionAction('move-down')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/8 bg-white/[.04] text-white/65 disabled:opacity-20"><ChevronDown className="h-3.5 w-3.5" /></button>
+                <button type="button" title="Duplicar bloque" aria-label="Duplicar bloque" onClick={() => handlePreviewSectionAction('duplicate')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-white/8 bg-white/[.04] text-white/65"><Copy className="h-3.5 w-3.5" /></button>
+                <button type="button" title={selected.enabled ? 'Ocultar bloque' : 'Mostrar bloque'} aria-label={selected.enabled ? 'Ocultar bloque' : 'Mostrar bloque'} onClick={() => handlePreviewSectionAction('toggle-enabled')} className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border ${selected.enabled ? 'border-emerald-300/15 bg-emerald-300/[.06] text-emerald-200' : 'border-white/8 bg-white/[.04] text-white/40'}`}>{selected.enabled ? <Eye className="h-3.5 w-3.5" /> : <EyeOff className="h-3.5 w-3.5" />}</button>
+                <button type="button" title="Inspector de diseño" aria-label="Inspector de diseño" onClick={() => handlePreviewSectionAction('inspect')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg border border-[#FFB000]/20 bg-[#FFB000]/10 text-[#FFD879]"><SlidersHorizontal className="h-3.5 w-3.5" /></button>
+              </div>
+            ) : null}
             <iframe ref={iframeRef} src="/?cms=preview" title="Vista previa de Inicio" onLoad={() => setIframeReady(false)} className="min-h-[780px] max-w-full bg-white shadow-[0_20px_70px_rgba(0,0,0,.4)] transition-[width] duration-300" style={{ width: WIDTHS[device], border: 0 }} />
           </div>
         </section>

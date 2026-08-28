@@ -19,6 +19,7 @@ import {
   type HomePageContent,
   type HomeVisualSection,
 } from '@/lib/homeVisualCms';
+import { buildContainerCss } from '@/lib/homeVisualContainers';
 import {
   buildElementTypographyCss,
   getAdvancedStyle,
@@ -73,7 +74,9 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
     event.stopPropagation();
     const target = event.target as HTMLElement | null;
     const fieldNode = target?.closest<HTMLElement>('[data-cms-field]');
-    const field = fieldNode?.dataset.cmsField || null;
+    const containerNode = target?.closest<HTMLElement>('[data-cms-container]');
+    const container = containerNode?.dataset.cmsContainer || null;
+    const field = fieldNode?.dataset.cmsField || (container ? `${container}-container` : null);
     setSelectedPreviewId(sectionId);
     setSelectedPreviewField(field);
     window.parent?.postMessage({ type: 'cms:home-select', sectionId, field }, window.location.origin);
@@ -85,8 +88,11 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
         const useFrameImage = section.type !== 'hero' && section.type !== 'calculator' && Boolean(section.style.backgroundImage?.trim());
         const selected = previewMode && selectedPreviewId === section.id;
         const elementCss = buildElementTypographyCss(section.id, section.style);
+        const containerCss = buildContainerCss(section.id, section.style);
         const selectedFieldCss = selected && selectedPreviewField
-          ? `[data-cms-block-id="${token(section.id)}"] [data-cms-field="${token(selectedPreviewField)}"]{outline:2px solid #5CC8FF!important;outline-offset:3px!important;border-radius:3px;}`
+          ? selectedPreviewField.endsWith('-container')
+            ? `[data-cms-block-id="${token(section.id)}"] [data-cms-container="${token(selectedPreviewField.slice(0, -'-container'.length))}"]{outline:2px solid #C4A7FF!important;outline-offset:3px!important;border-radius:4px;}`
+            : `[data-cms-block-id="${token(section.id)}"] [data-cms-field="${token(selectedPreviewField)}"]{outline:2px solid #5CC8FF!important;outline-offset:3px!important;border-radius:3px;}`
           : '';
         return (
           <div
@@ -99,7 +105,7 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
               ...(selected ? { outline: '2px solid #FFB000', outlineOffset: '-2px', zIndex: 3 } : {}),
             }}
           >
-            {elementCss || selectedFieldCss ? <style>{`${elementCss}\n${selectedFieldCss}`}</style> : null}
+            {elementCss || containerCss || selectedFieldCss ? <style>{`${elementCss}\n${containerCss}\n${selectedFieldCss}`}</style> : null}
             {selected ? (
               <span className="pointer-events-none absolute left-2 top-2 z-[999] rounded-full bg-[#FFB000] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-black shadow-lg">
                 {section.label}{selectedPreviewField ? ` · ${selectedPreviewField}` : ''}

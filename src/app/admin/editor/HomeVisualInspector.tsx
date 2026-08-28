@@ -11,6 +11,7 @@ import {
   X,
 } from 'lucide-react';
 import InsforgeMediaPicker from '@/components/admin/editor/InsforgeMediaPicker';
+import HomeVisualContainerInspector from './HomeVisualContainerInspector';
 import type {
   HomeVisualAnimation,
   HomeVisualSection,
@@ -104,7 +105,7 @@ export default function HomeVisualInspector({ section, device, selectedField, se
       {selectedField ? (
         <ElementInspector section={section} field={selectedField} device={device} patch={patch} setFieldContent={setFieldContent} close={() => setSelectedField(null)} />
       ) : (
-        <div className="rounded-xl border border-sky-400/15 bg-sky-400/5 p-3 text-[10px] leading-5 text-sky-100/55">Toca un título, párrafo, botón o elemento de una tarjeta dentro de la vista previa. Cada tarjeta repetida ahora puede tener contenido y tipografía propios.</div>
+        <div className="rounded-xl border border-sky-400/15 bg-sky-400/5 p-3 text-[10px] leading-5 text-sky-100/55">Toca un título, párrafo o una tarjeta dentro de la vista previa. El texto tiene su inspector tipográfico y las tarjetas repetidas tienen además fondo, borde, espacio, sombra y visibilidad responsive.</div>
       )}
 
       <details open className="rounded-2xl border border-white/8 bg-black/25 p-3">
@@ -161,14 +162,19 @@ function ElementNavigator({ content, selectedField, onSelect }: { content: Recor
   return (
     <details open className="rounded-2xl border border-white/8 bg-black/25 p-3">
       <summary className="cursor-pointer list-none text-[10px] font-black uppercase tracking-[.16em] text-white/65">Elementos del bloque</summary>
-      <div className="mt-3 flex max-h-36 flex-wrap gap-1.5 overflow-y-auto pr-1">
-        {groups.map(({ field, label }) => <button key={field} type="button" onClick={() => onSelect(field)} className={`rounded-full border px-2.5 py-1.5 text-[9px] font-bold transition ${selectedField === field ? 'border-sky-300/45 bg-sky-400/10 text-sky-100' : 'border-white/8 text-white/38 hover:border-white/20 hover:text-white/65'}`}>{label}</button>)}
+      <div className="mt-3 flex max-h-40 flex-wrap gap-1.5 overflow-y-auto pr-1">
+        {groups.map(({ field, label, kind }) => <button key={field} type="button" onClick={() => onSelect(field)} className={`rounded-full border px-2.5 py-1.5 text-[9px] font-bold transition ${selectedField === field ? kind === 'container' ? 'border-violet-300/45 bg-violet-300/10 text-violet-50' : 'border-sky-300/45 bg-sky-400/10 text-sky-100' : 'border-white/8 text-white/38 hover:border-white/20 hover:text-white/65'}`}>{label}</button>)}
       </div>
     </details>
   );
 }
 
 function ElementInspector({ section, field, device, patch, setFieldContent, close }: { section: HomeVisualSection; field: string; device: VisualDevice; patch: (updater: (section: HomeVisualSection) => HomeVisualSection) => void; setFieldContent: (field: string, value: string) => void; close: () => void }) {
+  const container = containerFromField(section.content, field);
+  if (field.endsWith('-container') && container) {
+    return <HomeVisualContainerInspector section={section} container={container} device={device} patch={patch} close={close} />;
+  }
+
   const element = getElementStyle(section.style, field);
   const typography = getElementTypography(section.style, field, device);
   const contentValue = getContentFieldValue(section.content, field);
@@ -178,20 +184,23 @@ function ElementInspector({ section, field, device, patch, setFieldContent, clos
   const clearAll = () => patch((current) => ({ ...current, style: clearElementStyle(current.style, field) }));
 
   return (
-    <div className="rounded-2xl border border-sky-400/25 bg-sky-400/[.06] p-3">
-      <div className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-sky-400/10 text-sky-200"><Type className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="text-[9px] font-black uppercase tracking-[.15em] text-sky-200/55">Elemento seleccionado</p><b className="block truncate text-sm text-sky-100">{prettyField(field)}</b></div><button type="button" onClick={close} className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-white/40"><X className="h-3.5 w-3.5" /></button></div>
-      {typeof contentValue === 'string' ? <div className="mt-4"><label className={labelCls}>Contenido de este elemento</label><textarea className={`${inputCls} min-h-20 resize-y`} value={contentValue} onChange={(event) => setFieldContent(field, event.target.value)} /></div> : <p className="mt-3 text-[9px] leading-4 text-white/30">Este elemento es visual o generado automáticamente. Puedes estilizarlo sin modificar su valor.</p>}
-      <div className="mt-4 grid grid-cols-2 gap-3">
-        <div><label className={labelCls}>Fuente</label><select className={inputCls} value={element.fontFamily || 'inherit'} onChange={(event) => setElement('fontFamily', event.target.value as VisualFontFamily)}>{FONTS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
-        <NumberField label="Peso" value={Number(element.fontWeight ?? 0)} min={0} max={900} step={100} onChange={(value) => setElement('fontWeight', value)} />
+    <div className="space-y-3">
+      <div className="rounded-2xl border border-sky-400/25 bg-sky-400/[.06] p-3">
+        <div className="flex items-center gap-2"><span className="grid h-8 w-8 place-items-center rounded-lg bg-sky-400/10 text-sky-200"><Type className="h-4 w-4" /></span><div className="min-w-0 flex-1"><p className="text-[9px] font-black uppercase tracking-[.15em] text-sky-200/55">Elemento seleccionado</p><b className="block truncate text-sm text-sky-100">{prettyField(field)}</b></div><button type="button" onClick={close} className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-white/40"><X className="h-3.5 w-3.5" /></button></div>
+        {typeof contentValue === 'string' ? <div className="mt-4"><label className={labelCls}>Contenido de este elemento</label><textarea className={`${inputCls} min-h-20 resize-y`} value={contentValue} onChange={(event) => setFieldContent(field, event.target.value)} /></div> : <p className="mt-3 text-[9px] leading-4 text-white/30">Este elemento es visual o generado automáticamente. Puedes estilizarlo sin modificar su valor.</p>}
+        <div className="mt-4 grid grid-cols-2 gap-3">
+          <div><label className={labelCls}>Fuente</label><select className={inputCls} value={element.fontFamily || 'inherit'} onChange={(event) => setElement('fontFamily', event.target.value as VisualFontFamily)}>{FONTS.map((item) => <option key={item.value} value={item.value}>{item.label}</option>)}</select></div>
+          <NumberField label="Peso" value={Number(element.fontWeight ?? 0)} min={0} max={900} step={100} onChange={(value) => setElement('fontWeight', value)} />
+        </div>
+        <div className="mt-3"><ColorField label="Color propio" value={element.color || section.style.textColor || '#FFFFFF'} onChange={(value) => setElement('color', value)} /></div>
+        <div className="mt-3 grid grid-cols-2 gap-3">
+          <div><label className={labelCls}>Alineación</label><select className={inputCls} value={element.textAlign || 'inherit'} onChange={(event) => setElement('textAlign', event.target.value as VisualTextAlign)}><option value="inherit">Heredar</option><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select></div>
+          <div><label className={labelCls}>Transformación</label><select className={inputCls} value={element.textTransform || 'none'} onChange={(event) => setElement('textTransform', event.target.value as VisualTextTransform)}><option value="none">Normal</option><option value="uppercase">Mayúsculas</option><option value="lowercase">Minúsculas</option><option value="capitalize">Capitalizar</option></select></div>
+        </div>
+        <div className="mt-4 border-t border-sky-300/10 pt-4"><p className="mb-3 text-[9px] font-black uppercase tracking-[.14em] text-sky-200/50">Tipografía · {DEVICE_LABELS[device]}</p><div className="grid grid-cols-2 gap-3"><NumberField label="Tamaño px · 0 hereda" value={Number(typography.fontSize ?? 0)} min={0} max={180} onChange={(value) => setTypography('fontSize', value)} /><NumberField label="Line height · 0 hereda" value={Number(typography.lineHeight ?? 0)} min={0} max={3} step={0.05} onChange={(value) => setTypography('lineHeight', value)} /><NumberField label="Tracking px" value={Number(typography.letterSpacing ?? 0)} min={-8} max={20} step={0.1} onChange={(value) => setTypography('letterSpacing', value)} /><NumberField label="Ancho máx px · 0 hereda" value={Number(typography.maxWidth ?? 0)} min={0} max={1800} step={10} onChange={(value) => setTypography('maxWidth', value)} /></div></div>
+        <div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={clearDevice} className="rounded-full border border-white/10 px-3 py-2 text-[9px] font-black text-white/40">Reset {DEVICE_LABELS[device]}</button><button type="button" onClick={clearAll} className="rounded-full border border-red-400/15 px-3 py-2 text-[9px] font-black text-red-200/45">Reset elemento</button></div>
       </div>
-      <div className="mt-3"><ColorField label="Color propio" value={element.color || section.style.textColor || '#FFFFFF'} onChange={(value) => setElement('color', value)} /></div>
-      <div className="mt-3 grid grid-cols-2 gap-3">
-        <div><label className={labelCls}>Alineación</label><select className={inputCls} value={element.textAlign || 'inherit'} onChange={(event) => setElement('textAlign', event.target.value as VisualTextAlign)}><option value="inherit">Heredar</option><option value="left">Izquierda</option><option value="center">Centro</option><option value="right">Derecha</option></select></div>
-        <div><label className={labelCls}>Transformación</label><select className={inputCls} value={element.textTransform || 'none'} onChange={(event) => setElement('textTransform', event.target.value as VisualTextTransform)}><option value="none">Normal</option><option value="uppercase">Mayúsculas</option><option value="lowercase">Minúsculas</option><option value="capitalize">Capitalizar</option></select></div>
-      </div>
-      <div className="mt-4 border-t border-sky-300/10 pt-4"><p className="mb-3 text-[9px] font-black uppercase tracking-[.14em] text-sky-200/50">Tipografía · {DEVICE_LABELS[device]}</p><div className="grid grid-cols-2 gap-3"><NumberField label="Tamaño px · 0 hereda" value={Number(typography.fontSize ?? 0)} min={0} max={180} onChange={(value) => setTypography('fontSize', value)} /><NumberField label="Line height · 0 hereda" value={Number(typography.lineHeight ?? 0)} min={0} max={3} step={0.05} onChange={(value) => setTypography('lineHeight', value)} /><NumberField label="Tracking px" value={Number(typography.letterSpacing ?? 0)} min={-8} max={20} step={0.1} onChange={(value) => setTypography('letterSpacing', value)} /><NumberField label="Ancho máx px · 0 hereda" value={Number(typography.maxWidth ?? 0)} min={0} max={1800} step={10} onChange={(value) => setTypography('maxWidth', value)} /></div></div>
-      <div className="mt-4 flex flex-wrap gap-2"><button type="button" onClick={clearDevice} className="rounded-full border border-white/10 px-3 py-2 text-[9px] font-black text-white/40">Reset {DEVICE_LABELS[device]}</button><button type="button" onClick={clearAll} className="rounded-full border border-red-400/15 px-3 py-2 text-[9px] font-black text-red-200/45">Reset elemento</button></div>
+      {container ? <HomeVisualContainerInspector section={section} container={container} device={device} patch={patch} /> : null}
     </div>
   );
 }
@@ -210,36 +219,59 @@ function ContentField({ fieldKey, value, selectedField, onSelect, onChange }: { 
   if (Array.isArray(value)) {
     if (value.every((item) => typeof item === 'string')) {
       const list = value as string[];
-      return <div><label className={labelCls}>{title}</label><div className="space-y-2">{list.map((item, index) => { const field = `${fieldKey}-${index}`; return <div key={index} className={`flex gap-2 rounded-lg ${selectedField === field ? 'ring-1 ring-sky-400/35' : ''}`}><input onFocus={() => onSelect(field)} className={inputCls} value={item} onChange={(event) => onChange(list.map((current, i) => i === index ? event.target.value : current))} /><button type="button" onClick={() => onChange(list.filter((_, i) => i !== index))} className="w-9 shrink-0 rounded-lg border border-red-500/20 text-red-300/60">×</button></div>; })}<button type="button" onClick={() => onChange([...list, 'Nuevo texto'])} className="text-[10px] font-black text-[#FFB000]">+ Añadir texto</button></div></div>;
+      return <div><label className={labelCls}>{title}</label><div className="space-y-2">{list.map((item, index) => { const field = `${fieldKey}-${index}`; const containerField = `${fieldKey}-${index}-container`; const selected = selectedField === field || selectedField === containerField; return <div key={index} className={`flex gap-2 rounded-lg ${selected ? 'ring-1 ring-sky-400/35' : ''}`}><input onFocus={() => onSelect(field)} className={inputCls} value={item} onChange={(event) => onChange(list.map((current, i) => i === index ? event.target.value : current))} /><button type="button" onClick={() => onChange(list.filter((_, i) => i !== index))} className="w-9 shrink-0 rounded-lg border border-red-500/20 text-red-300/60">×</button></div>; })}<button type="button" onClick={() => onChange([...list, 'Nuevo texto'])} className="text-[10px] font-black text-[#FFB000]">+ Añadir texto</button></div></div>;
     }
     if (value.every((item) => item && typeof item === 'object' && !Array.isArray(item))) {
       const list = value as Array<Record<string, unknown>>;
-      return <div><label className={labelCls}>{title}</label><div className="space-y-2">{list.map((item, index) => { const titleField = `${fieldKey}-${index}-title`; const textField = `${fieldKey}-${index}-text`; const selected = selectedField === titleField || selectedField === textField; return <div key={index} className={`rounded-xl border bg-black/25 p-2.5 ${selected ? 'border-sky-400/30' : 'border-white/8'}`}><input onFocus={() => onSelect(titleField)} className={inputCls} value={typeof item.title === 'string' ? item.title : ''} placeholder="Título" onChange={(event) => onChange(list.map((current, i) => i === index ? { ...current, title: event.target.value } : current))} /><textarea onFocus={() => onSelect(textField)} className={`${inputCls} mt-2 min-h-20 resize-y`} value={typeof item.text === 'string' ? item.text : ''} placeholder="Texto" onChange={(event) => onChange(list.map((current, i) => i === index ? { ...current, text: event.target.value } : current))} /><button type="button" onClick={() => onChange(list.filter((_, i) => i !== index))} className="mt-2 text-[9px] font-black uppercase text-red-300/55">Eliminar</button></div>; })}<button type="button" onClick={() => onChange([...list, { title: 'Nuevo', text: 'Describe este elemento.' }])} className="text-[10px] font-black text-[#FFB000]">+ Añadir elemento</button></div></div>;
+      return <div><label className={labelCls}>{title}</label><div className="space-y-2">{list.map((item, index) => { const titleField = `${fieldKey}-${index}-title`; const textField = `${fieldKey}-${index}-text`; const containerField = `${fieldKey}-${index}-container`; const selected = selectedField === titleField || selectedField === textField || selectedField === containerField; return <div key={index} className={`rounded-xl border bg-black/25 p-2.5 ${selected ? 'border-sky-400/30' : 'border-white/8'}`}><input onFocus={() => onSelect(titleField)} className={inputCls} value={typeof item.title === 'string' ? item.title : ''} placeholder="Título" onChange={(event) => onChange(list.map((current, i) => i === index ? { ...current, title: event.target.value } : current))} /><textarea onFocus={() => onSelect(textField)} className={`${inputCls} mt-2 min-h-20 resize-y`} value={typeof item.text === 'string' ? item.text : ''} placeholder="Texto" onChange={(event) => onChange(list.map((current, i) => i === index ? { ...current, text: event.target.value } : current))} /><button type="button" onClick={() => onChange(list.filter((_, i) => i !== index))} className="mt-2 text-[9px] font-black uppercase text-red-300/55">Eliminar</button></div>; })}<button type="button" onClick={() => onChange([...list, { title: 'Nuevo', text: 'Describe este elemento.' }])} className="text-[10px] font-black text-[#FFB000]">+ Añadir elemento</button></div></div>;
     }
   }
   return null;
 }
 
 function editableTokens(content: Record<string, unknown>) {
-  const result: Array<{ field: string; label: string }> = [];
+  const result: Array<{ field: string; label: string; kind: 'element' | 'container' }> = [];
   for (const [key, value] of Object.entries(content)) {
     if (typeof value === 'string') {
-      if (!/(Href|href|url)$/i.test(key)) result.push({ field: key, label: pretty(key) });
+      if (!/(Href|href|url)$/i.test(key)) result.push({ field: key, label: pretty(key), kind: 'element' });
       continue;
     }
     if (!Array.isArray(value)) continue;
     if (value.every((item) => typeof item === 'string')) {
-      value.forEach((_, index) => result.push({ field: `${key}-${index}`, label: `${pretty(key)} ${index + 1}` }));
+      value.forEach((_, index) => {
+        result.push({ field: `${key}-${index}-container`, label: `${pretty(key)} ${index + 1} · caja`, kind: 'container' });
+        result.push({ field: `${key}-${index}`, label: `${pretty(key)} ${index + 1} · texto`, kind: 'element' });
+      });
       continue;
     }
     value.forEach((item, index) => {
       if (!item || typeof item !== 'object' || Array.isArray(item)) return;
       const row = item as Record<string, unknown>;
-      if (typeof row.title === 'string') result.push({ field: `${key}-${index}-title`, label: `${pretty(key)} ${index + 1} · título` });
-      if (typeof row.text === 'string') result.push({ field: `${key}-${index}-text`, label: `${pretty(key)} ${index + 1} · texto` });
+      result.push({ field: `${key}-${index}-container`, label: `${pretty(key)} ${index + 1} · tarjeta`, kind: 'container' });
+      if (typeof row.title === 'string') result.push({ field: `${key}-${index}-title`, label: `${pretty(key)} ${index + 1} · título`, kind: 'element' });
+      if (typeof row.text === 'string') result.push({ field: `${key}-${index}-text`, label: `${pretty(key)} ${index + 1} · texto`, kind: 'element' });
     });
   }
   return result;
+}
+
+function containerFromField(content: Record<string, unknown>, field: string): string | null {
+  const clean = field.endsWith('-container') ? field.slice(0, -'-container'.length) : field;
+  const objectPath = clean.match(/^(.+)-(\d+)-(title|text|label|number)$/);
+  if (objectPath) {
+    const [, key, rawIndex] = objectPath;
+    const list = content[key];
+    const index = Number(rawIndex);
+    if (Array.isArray(list) && index >= 0 && index < list.length) return `${key}-${index}`;
+  }
+  const listPath = clean.match(/^(.+)-(\d+)$/);
+  if (listPath) {
+    const [, key, rawIndex] = listPath;
+    const list = content[key];
+    const index = Number(rawIndex);
+    if (Array.isArray(list) && index >= 0 && index < list.length) return `${key}-${index}`;
+  }
+  return null;
 }
 
 function getContentFieldValue(content: Record<string, unknown>, field: string): unknown {
@@ -307,8 +339,11 @@ function pretty(value: string) {
 }
 
 function prettyField(field: string) {
-  const objectPath = field.match(/^(.+)-(\d+)-(title|text)$/);
-  if (objectPath) return `${pretty(objectPath[1])} · ${Number(objectPath[2]) + 1} · ${objectPath[3] === 'title' ? 'Título' : 'Texto'}`;
+  const objectPath = field.match(/^(.+)-(\d+)-(title|text|label|number)$/);
+  if (objectPath) {
+    const labels: Record<string, string> = { title: 'Título', text: 'Texto', label: 'Etiqueta', number: 'Número' };
+    return `${pretty(objectPath[1])} · ${Number(objectPath[2]) + 1} · ${labels[objectPath[3]] || pretty(objectPath[3])}`;
+  }
   const stringPath = field.match(/^(.+)-(\d+)$/);
   if (stringPath) return `${pretty(stringPath[1])} · ${Number(stringPath[2]) + 1}`;
   return pretty(field);

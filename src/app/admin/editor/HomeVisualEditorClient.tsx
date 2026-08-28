@@ -23,6 +23,14 @@ import {
   type HomeVisualSection,
   type HomeVisualSectionStyle,
 } from '@/lib/homeVisualCms';
+import {
+  getContainerResponsive,
+  patchContainerResponsive,
+} from '@/lib/homeVisualContainers';
+import {
+  mutateRepeatedItem,
+  type RepeatedItemAction,
+} from '@/lib/homeVisualRepeatedStyles';
 import type { VisualDevice } from '@/lib/homeVisualLayout';
 
 const LOCAL_DRAFT_KEY = 'sf-home-visual-cms-draft-v1';
@@ -30,6 +38,8 @@ const HISTORY_LIMIT = 40;
 const HISTORY_COALESCE_MS = 500;
 const WIDTHS: Record<VisualDevice, string> = { mobile: '390px', tablet: '768px', desktop: '100%' };
 const DEVICE_LABELS: Record<VisualDevice, string> = { mobile: 'Móvil', tablet: 'Tablet', desktop: 'PC' };
+
+type PreviewCardAction = RepeatedItemAction | 'toggle-hidden' | 'inspect';
 
 export default function HomeVisualEditorClient() {
   const [draft, setDraft] = useState<HomePageContent>(DEFAULT_HOME_PAGE);
@@ -142,10 +152,67 @@ export default function HomeVisualEditorClient() {
   useEffect(() => { if (iframeReady) postDraft(draft); }, [draft, iframeReady, postDraft]);
   useEffect(() => { if (iframeReady && selectedId) postSelected(selectedId, selectedField); }, [selectedId, selectedField, iframeReady, postSelected]);
 
+  function handlePreviewCardAction(sectionId: string, container: string, action: PreviewCardAction) {
+    if (action === 'inspect') {
+      setSelectedId(sectionId);
+      setSelectedField(`${container}-container`);
+      setStatus('Inspector de tarjeta abierto.');
+      if (window.matchMedia('(max-width: 1023px)').matches) {
+        window.setTimeout(() => document.getElementById('home-visual-inspector-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+      }
+      return;
+    }
+
+    if (action === 'toggle-hidden') {
+      let changed = false;
+      let hidden = false;
+      commitDraft((current) => {
+        const sections = current.sections.map((section) => {
+          if (section.id !== sectionId) return section;
+          const currentResponsive = getContainerResponsive(section.style, container, device);
+          hidden = currentResponsive.hidden !== true;
+          changed = true;
+          return {
+            ...section,
+            style: patchContainerResponsive(section.style, container, device, 'hidden', hidden),
+          };
+        });
+        return changed ? { ...current, sections } : current;
+      }, false);
+      if (changed) {
+        setSelectedId(sectionId);
+        setSelectedField(`${container}-container`);
+        setStatus(hidden ? `Tarjeta oculta en ${DEVICE_LABELS[device]}. Usa Deshacer o el inspector para volver a mostrarla.` : `Tarjeta visible en ${DEVICE_LABELS[device]}.`);
+      }
+      return;
+    }
+
+    let nextField: string | null = null;
+    let changed = false;
+    commitDraft((current) => {
+      const sections = current.sections.map((section) => {
+        if (section.id !== sectionId) return section;
+        const result = mutateRepeatedItem(section, container, action);
+        if (!result) return section;
+        changed = true;
+        nextField = result.selectedField;
+        return result.section;
+      });
+      return changed ? { ...current, sections } : current;
+    }, false);
+
+    if (changed && nextField) {
+      setSelectedId(sectionId);
+      setSelectedField(nextField);
+      const labels: Record<RepeatedItemAction, string> = { 'move-up': 'Tarjeta movida hacia arriba.', 'move-down': 'Tarjeta movida hacia abajo.', duplicate: 'Tarjeta duplicada con sus estilos.' };
+      setStatus(labels[action]);
+    }
+  }
+
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; sectionId?: string; field?: string | null } | null;
+      const data = event.data as { type?: string; sectionId?: string; field?: string | null; container?: string; action?: PreviewCardAction } | null;
       if (data?.type === 'cms:home-preview-ready') {
         setIframeReady(true);
         postDraft(draft);
@@ -155,10 +222,13 @@ export default function HomeVisualEditorClient() {
         setSelectedId(data.sectionId);
         setSelectedField(typeof data.field === 'string' ? data.field : null);
       }
+      if (data?.type === 'cms:home-card-action' && typeof data.sectionId === 'string' && typeof data.container === 'string' && data.action) {
+        handlePreviewCardAction(data.sectionId, data.container, data.action);
+      }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [draft, postDraft, postSelected, selectedId, selectedField]);
+  }, [draft, postDraft, postSelected, selectedId, selectedField, device]);
 
   useEffect(() => {
     if (!draft.sections.some((section) => section.id === selectedId)) {
@@ -317,7 +387,7 @@ export default function HomeVisualEditorClient() {
           </div>
         </section>
 
-        <aside className="border-t border-white/8 bg-[#0B0C0E] p-4 lg:border-l lg:border-t-0">
+        <aside id="home-visual-inspector-panel" className="scroll-mt-20 border-t border-white/8 bg-[#0B0C0E] p-4 lg:border-l lg:border-t-0">
           {selected ? <HomeVisualInspector section={selected} device={device} selectedField={selectedField} setSelectedField={setSelectedField} patch={(updater) => patchSection(selected.id, updater)} reorder={(direction) => reorder(selected.id, direction)} duplicate={() => duplicate(selected)} /> : null}
           <p className="mt-5 border-t border-white/8 pt-4 text-[9px] leading-5 text-white/30">{status}</p>
         </aside>

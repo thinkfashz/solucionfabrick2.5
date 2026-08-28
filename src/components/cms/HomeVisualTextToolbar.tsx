@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, type ReactNode } from 'react';
+import { useEffect, useState, type CSSProperties, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   AlignCenter,
@@ -31,7 +31,7 @@ interface Props {
 
 export default function HomeVisualTextToolbar({ sectionId, field, editable, onEdit }: Props) {
   const [target, setTarget] = useState<HTMLElement | null>(null);
-  const [style, setStyle] = useState<React.CSSProperties>({ opacity: 0, pointerEvents: 'none' });
+  const [style, setStyle] = useState<CSSProperties>({ opacity: 0, pointerEvents: 'none' });
 
   useEffect(() => {
     const frame = window.requestAnimationFrame(() => {

@@ -1,6 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent } from 'react';
+import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
+import { ChevronDown, ChevronUp, Copy, EyeOff, SlidersHorizontal } from 'lucide-react';
 import StaticConstructionHero from '@/components/landing/StaticConstructionHero';
 import CalculatorPlanShowcase from '@/components/landing/CalculatorPlanShowcase';
 import ConstructionM2Calculator from '@/components/landing/ConstructionM2Calculator';
@@ -21,6 +23,10 @@ import {
 } from '@/lib/homeVisualCms';
 import { buildContainerCss } from '@/lib/homeVisualContainers';
 import {
+  getRepeatedItemPosition,
+  type RepeatedItemAction,
+} from '@/lib/homeVisualRepeatedStyles';
+import {
   buildElementTypographyCss,
   getAdvancedStyle,
   getDeviceLayout,
@@ -33,6 +39,8 @@ interface HomeVisualRuntimeProps {
   copyrightText?: string;
   socialLinks?: { facebook?: string; instagram?: string; tiktok?: string };
 }
+
+type PreviewCardAction = RepeatedItemAction | 'toggle-hidden' | 'inspect';
 
 export default function HomeVisualRuntime({ initialConfig, copyrightText, socialLinks }: HomeVisualRuntimeProps) {
   const [config, setConfig] = useState(() => normalizeHomePage(initialConfig));
@@ -70,9 +78,10 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
 
   function selectFromPreview(event: MouseEvent<HTMLDivElement>, sectionId: string) {
     if (!previewMode) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('[data-cms-toolbar]')) return;
     event.preventDefault();
     event.stopPropagation();
-    const target = event.target as HTMLElement | null;
     const fieldNode = target?.closest<HTMLElement>('[data-cms-field]');
     const containerNode = target?.closest<HTMLElement>('[data-cms-container]');
     const container = containerNode?.dataset.cmsContainer || null;
@@ -87,12 +96,17 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
       {sections.map((section) => {
         const useFrameImage = section.type !== 'hero' && section.type !== 'calculator' && Boolean(section.style.backgroundImage?.trim());
         const selected = previewMode && selectedPreviewId === section.id;
+        const selectedContainer = selected ? containerFromField(selectedPreviewField) : null;
+        const repeatedPosition = selectedContainer ? getRepeatedItemPosition(section, selectedContainer) : null;
         const elementCss = buildElementTypographyCss(section.id, section.style);
         const containerCss = buildContainerCss(section.id, section.style);
         const selectedFieldCss = selected && selectedPreviewField
           ? selectedPreviewField.endsWith('-container')
-            ? `[data-cms-block-id="${token(section.id)}"] [data-cms-container="${token(selectedPreviewField.slice(0, -'-container'.length))}"]{outline:2px solid #C4A7FF!important;outline-offset:3px!important;border-radius:4px;}`
+            ? `[data-cms-block-id="${token(section.id)}"] [data-cms-container="${token(selectedPreviewField.slice(0, -'-container'.length))}"]{outline:2px solid #C4A7FF!important;outline-offset:3px!important;border-radius:4px;position:relative!important;}`
             : `[data-cms-block-id="${token(section.id)}"] [data-cms-field="${token(selectedPreviewField)}"]{outline:2px solid #5CC8FF!important;outline-offset:3px!important;border-radius:3px;}`
+          : '';
+        const selectedContainerCss = selectedContainer
+          ? `[data-cms-block-id="${token(section.id)}"] [data-cms-container="${token(selectedContainer)}"]{position:relative!important;}`
           : '';
         return (
           <div
@@ -105,7 +119,7 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
               ...(selected ? { outline: '2px solid #FFB000', outlineOffset: '-2px', zIndex: 3 } : {}),
             }}
           >
-            {elementCss || containerCss || selectedFieldCss ? <style>{`${elementCss}\n${containerCss}\n${selectedFieldCss}`}</style> : null}
+            {elementCss || containerCss || selectedFieldCss || selectedContainerCss ? <style>{`${elementCss}\n${containerCss}\n${selectedFieldCss}\n${selectedContainerCss}`}</style> : null}
             {selected ? (
               <span className="pointer-events-none absolute left-2 top-2 z-[999] rounded-full bg-[#FFB000] px-2.5 py-1 text-[9px] font-black uppercase tracking-[.12em] text-black shadow-lg">
                 {section.label}{selectedPreviewField ? ` · ${selectedPreviewField}` : ''}
@@ -114,11 +128,79 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
             <CmsSectionMotion style={section.style}>
               <HomeBlock section={section} copyrightText={copyrightText} socialLinks={socialLinks} />
             </CmsSectionMotion>
+            {selected && selectedContainer && repeatedPosition ? (
+              <PreviewContainerToolbar section={section} container={selectedContainer} />
+            ) : null}
           </div>
         );
       })}
     </main>
   );
+}
+
+function PreviewContainerToolbar({ section, container }: { section: HomeVisualSection; container: string }) {
+  const [host, setHost] = useState<HTMLElement | null>(null);
+  const position = getRepeatedItemPosition(section, container);
+
+  useEffect(() => {
+    const frame = window.requestAnimationFrame(() => {
+      const root = document.querySelector<HTMLElement>(`[data-cms-block-id="${token(section.id)}"]`);
+      setHost(root?.querySelector<HTMLElement>(`[data-cms-container="${token(container)}"]`) || null);
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [section.id, section.content, container]);
+
+  if (!host || !position) return null;
+
+  const send = (action: PreviewCardAction) => {
+    window.parent?.postMessage({
+      type: 'cms:home-card-action',
+      sectionId: section.id,
+      container,
+      action,
+    }, window.location.origin);
+  };
+
+  return createPortal(
+    <div
+      data-cms-toolbar="card"
+      className="absolute right-2 top-2 z-[1200] flex max-w-[calc(100%-1rem)] items-center gap-1 rounded-xl border border-white/15 bg-[#08090A]/95 p-1 shadow-2xl backdrop-blur-xl"
+      onClick={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <span className="hidden whitespace-nowrap px-2 text-[8px] font-black uppercase tracking-[.12em] text-violet-200/70 sm:inline">Tarjeta {position.index + 1}</span>
+      <ToolbarButton label="Subir" disabled={position.index === 0} onClick={() => send('move-up')}><ChevronUp className="h-3.5 w-3.5" /></ToolbarButton>
+      <ToolbarButton label="Bajar" disabled={position.index === position.length - 1} onClick={() => send('move-down')}><ChevronDown className="h-3.5 w-3.5" /></ToolbarButton>
+      <ToolbarButton label="Duplicar" onClick={() => send('duplicate')}><Copy className="h-3.5 w-3.5" /></ToolbarButton>
+      <ToolbarButton label="Ocultar en este dispositivo" onClick={() => send('toggle-hidden')}><EyeOff className="h-3.5 w-3.5" /></ToolbarButton>
+      <ToolbarButton label="Abrir inspector de tarjeta" accent onClick={() => send('inspect')}><SlidersHorizontal className="h-3.5 w-3.5" /></ToolbarButton>
+    </div>,
+    host,
+  );
+}
+
+function ToolbarButton({ label, disabled = false, accent = false, onClick, children }: { label: string; disabled?: boolean; accent?: boolean; onClick: () => void; children: ReactNode }) {
+  return (
+    <button
+      type="button"
+      title={label}
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={`grid h-8 w-8 shrink-0 place-items-center rounded-lg border text-white transition disabled:cursor-not-allowed disabled:opacity-20 ${accent ? 'border-violet-300/30 bg-violet-300/12 text-violet-100 hover:bg-violet-300/20' : 'border-white/8 bg-white/[.04] text-white/65 hover:border-white/20 hover:bg-white/[.08]'}`}
+    >
+      {children}
+    </button>
+  );
+}
+
+function containerFromField(field: string | null): string | null {
+  if (!field) return null;
+  if (field.endsWith('-container')) return field.slice(0, -'-container'.length);
+  const nested = field.match(/^(.+)-(\d+)-(title|text|label|number)$/);
+  if (nested) return `${nested[1]}-${nested[2]}`;
+  const repeated = field.match(/^(.+)-(\d+)$/);
+  return repeated ? `${repeated[1]}-${repeated[2]}` : null;
 }
 
 function frameStyle(section: HomeVisualSection, useFrameImage: boolean): CSSProperties {

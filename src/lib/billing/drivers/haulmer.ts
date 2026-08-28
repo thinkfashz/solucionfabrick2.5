@@ -18,6 +18,7 @@ export interface HaulmerDriverConfig {
 }
 
 const DEFAULT_BASE = 'https://api.haulmer.com';
+const MAX_ITEM_NAME = 80;
 
 function fromEnv(): HaulmerDriverConfig {
   return {
@@ -39,13 +40,23 @@ function baseUrl(config: HaulmerDriverConfig): string {
   return (config.baseUrl || DEFAULT_BASE).replace(/\/$/, '');
 }
 
-async function haulmerFetch(config: HaulmerDriverConfig, path: string, init: RequestInit = {}): Promise<unknown> {
+function safeIdempotencyKey(value: string): string {
+  return value.replace(/[^a-zA-Z0-9._:-]/g, '-').slice(0, 180);
+}
+
+async function haulmerFetch(
+  config: HaulmerDriverConfig,
+  path: string,
+  init: RequestInit = {},
+  idempotencyKey?: string,
+): Promise<unknown> {
   if (!config.apiKey) throw new Error('BILLING_API_KEY no configurada');
   const res = await fetch(`${baseUrl(config)}${path}`, {
     ...init,
     headers: {
       apikey: config.apiKey,
       'Content-Type': 'application/json',
+      ...(idempotencyKey ? { 'Idempotency-Key': safeIdempotencyKey(idempotencyKey) } : {}),
       ...(init.headers ?? {}),
     },
     cache: 'no-store',
@@ -82,8 +93,8 @@ function buildPayload(config: HaulmerDriverConfig, req: EmitDteRequest): OpenFac
     const unitNeto = Math.round(lineNeto / Math.max(1, item.quantity));
     return {
       NroLinDet: idx + 1,
-      NmbItem: item.description,
-      ...(item.sku ? { CodItem: item.sku } : {}),
+      NmbItem: String(item.description || 'Ítem').trim().slice(0, MAX_ITEM_NAME),
+      ...(item.sku ? { CodItem: String(item.sku).slice(0, 35) } : {}),
       QtyItem: item.quantity,
       PrcItem: unitNeto,
       MontoItem: Math.round(lineNeto),
@@ -187,10 +198,12 @@ export function createHaulmerDriver(config: HaulmerDriverConfig): BillingDriver 
       if (!isReady(config)) throw new Error('Haulmer no configurado');
       const totals = computeDteTotals(req);
       const payload = buildPayload(config, req);
-      const raw = await haulmerFetch(config, '/v2/dte/document', {
-        method: 'POST',
-        body: JSON.stringify(payload),
-      }) as HaulmerRawResponse;
+      const raw = await haulmerFetch(
+        config,
+        '/v2/dte/document',
+        { method: 'POST', body: JSON.stringify(payload) },
+        `fabrick:dte:${req.dte_type}:${req.order_id}`,
+      ) as HaulmerRawResponse;
       return normalizeResponse(raw, totals);
     },
 
@@ -208,10 +221,12 @@ export function createHaulmerDriver(config: HaulmerDriverConfig): BillingDriver 
         reference: { dte_type: req.dte_type, folio: req.folio, reason: req.reason },
       };
       const totals = computeDteTotals(creditReq);
-      const raw = await haulmerFetch(config, '/v2/dte/document', {
-        method: 'POST',
-        body: JSON.stringify(buildPayload(config, creditReq)),
-      }) as HaulmerRawResponse;
+      const raw = await haulmerFetch(
+        config,
+        '/v2/dte/document',
+        { method: 'POST', body: JSON.stringify(buildPayload(config, creditReq)) },
+        `fabrick:dte:61:${req.invoice_id}:${req.folio}`,
+      ) as HaulmerRawResponse;
       return normalizeResponse(raw, totals);
     },
 

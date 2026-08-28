@@ -1,4 +1,5 @@
 import PaymentsOperationsPanel from './PaymentsOperationsPanel';
+import DteRecoveryPanel from './DteRecoveryPanel';
 import MercadoPagoPanelClient from './MercadoPagoPanelClient';
 
 export const metadata = {
@@ -9,6 +10,7 @@ export const metadata = {
 export default function AdminPagosPage() {
   return <main className="min-h-screen bg-[#08090A] pb-14">
     <PaymentsOperationsPanel />
+    <DteRecoveryPanel />
     <MercadoPagoPanelClient />
   </main>;
 }

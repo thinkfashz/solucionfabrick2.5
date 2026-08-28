@@ -1,8 +1,8 @@
 'use client';
 
-import { useEffect, useMemo, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type MouseEvent, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
-import { ChevronDown, ChevronUp, Copy, EyeOff, SlidersHorizontal } from 'lucide-react';
+import { Check, ChevronDown, ChevronUp, Copy, EyeOff, SlidersHorizontal, X } from 'lucide-react';
 import StaticConstructionHero from '@/components/landing/StaticConstructionHero';
 import CalculatorPlanShowcase from '@/components/landing/CalculatorPlanShowcase';
 import ConstructionM2Calculator from '@/components/landing/ConstructionM2Calculator';
@@ -21,6 +21,7 @@ import {
   type HomePageContent,
   type HomeVisualSection,
 } from '@/lib/homeVisualCms';
+import { getContentFieldValue, patchContentField } from '@/lib/homeVisualContent';
 import { buildContainerCss } from '@/lib/homeVisualContainers';
 import {
   getRepeatedItemPosition,
@@ -41,12 +42,14 @@ interface HomeVisualRuntimeProps {
 }
 
 type PreviewCardAction = RepeatedItemAction | 'toggle-hidden' | 'inspect';
+interface InlineEditState { sectionId: string; field: string; value: string }
 
 export default function HomeVisualRuntime({ initialConfig, copyrightText, socialLinks }: HomeVisualRuntimeProps) {
   const [config, setConfig] = useState(() => normalizeHomePage(initialConfig));
   const [previewMode, setPreviewMode] = useState(false);
   const [selectedPreviewId, setSelectedPreviewId] = useState<string | null>(null);
   const [selectedPreviewField, setSelectedPreviewField] = useState<string | null>(null);
+  const [inlineEdit, setInlineEdit] = useState<InlineEditState | null>(null);
 
   useEffect(() => {
     const preview = new URLSearchParams(window.location.search).get('cms') === 'preview';
@@ -91,6 +94,42 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
     window.parent?.postMessage({ type: 'cms:home-select', sectionId, field }, window.location.origin);
   }
 
+  function editFromPreview(event: MouseEvent<HTMLDivElement>, section: HomeVisualSection) {
+    if (!previewMode) return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest('[data-cms-toolbar]')) return;
+    const fieldNode = target?.closest<HTMLElement>('[data-cms-field]');
+    const field = fieldNode?.dataset.cmsField;
+    if (!field) return;
+    const value = getContentFieldValue(section.content, field);
+    if (typeof value !== 'string') return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedPreviewId(section.id);
+    setSelectedPreviewField(field);
+    setInlineEdit({ sectionId: section.id, field, value });
+    window.parent?.postMessage({ type: 'cms:home-select', sectionId: section.id, field }, window.location.origin);
+  }
+
+  function saveInlineEdit(value: string) {
+    if (!inlineEdit) return;
+    const edit = inlineEdit;
+    setConfig((current) => ({
+      ...current,
+      sections: current.sections.map((section) => section.id === edit.sectionId
+        ? { ...section, content: patchContentField(section.content, edit.field, value) }
+        : section),
+    }));
+    window.parent?.postMessage({
+      type: 'cms:home-field-change',
+      sectionId: edit.sectionId,
+      field: edit.field,
+      value,
+    }, window.location.origin);
+    setInlineEdit(null);
+  }
+
   return (
     <main data-cms-page="home">
       {sections.map((section) => {
@@ -113,6 +152,7 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
             key={section.id}
             data-cms-block-id={section.id}
             onClickCapture={(event) => selectFromPreview(event, section.id)}
+            onDoubleClickCapture={(event) => editFromPreview(event, section)}
             className={[styles.frame, useFrameImage ? styles.frameImage : '', previewMode ? 'relative cursor-default' : ''].filter(Boolean).join(' ')}
             style={{
               ...frameStyle(section, useFrameImage),
@@ -134,8 +174,113 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
           </div>
         );
       })}
+      {previewMode && inlineEdit ? (
+        <InlineFieldEditor edit={inlineEdit} onCancel={() => setInlineEdit(null)} onSave={saveInlineEdit} />
+      ) : null}
     </main>
   );
+}
+
+function InlineFieldEditor({ edit, onCancel, onSave }: { edit: InlineEditState; onCancel: () => void; onSave: (value: string) => void }) {
+  const [value, setValue] = useState(edit.value);
+  const [position, setPosition] = useState<CSSProperties>({ opacity: 0, pointerEvents: 'none' });
+  const inputRef = useRef<HTMLInputElement | HTMLTextAreaElement | null>(null);
+  const multiline = edit.value.length > 72 || /(description|paragraph|text|note|subtitle)/i.test(edit.field);
+
+  useEffect(() => {
+    setValue(edit.value);
+    const frame = window.requestAnimationFrame(() => {
+      inputRef.current?.focus();
+      if ('select' in (inputRef.current || {})) inputRef.current?.select();
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, [edit.sectionId, edit.field, edit.value]);
+
+  useEffect(() => {
+    const update = () => {
+      const root = document.querySelector<HTMLElement>(`[data-cms-block-id="${token(edit.sectionId)}"]`);
+      const target = root?.querySelector<HTMLElement>(`[data-cms-field="${token(edit.field)}"]`);
+      if (!target) {
+        setPosition({ opacity: 0, pointerEvents: 'none' });
+        return;
+      }
+      const rect = target.getBoundingClientRect();
+      const viewportWidth = Math.max(320, window.innerWidth);
+      const viewportHeight = Math.max(320, window.innerHeight);
+      const width = Math.min(Math.max(rect.width, 300), viewportWidth - 16, 620);
+      const left = Math.max(8, Math.min(rect.left, viewportWidth - width - 8));
+      const estimatedHeight = multiline ? 190 : 130;
+      const below = rect.bottom + 8;
+      const top = below + estimatedHeight <= viewportHeight
+        ? below
+        : Math.max(8, rect.top - estimatedHeight - 8);
+      setPosition({ position: 'fixed', left, top, width, zIndex: 2147483000, opacity: 1, pointerEvents: 'auto' });
+    };
+
+    update();
+    window.addEventListener('resize', update);
+    window.addEventListener('scroll', update, true);
+    return () => {
+      window.removeEventListener('resize', update);
+      window.removeEventListener('scroll', update, true);
+    };
+  }, [edit.sectionId, edit.field, multiline]);
+
+  const handleKeyDown = (event: React.KeyboardEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+    if (event.key === 'Escape') {
+      event.preventDefault();
+      onCancel();
+      return;
+    }
+    if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+      event.preventDefault();
+      onSave(value);
+      return;
+    }
+    if (!multiline && event.key === 'Enter') {
+      event.preventDefault();
+      onSave(value);
+    }
+  };
+
+  const editor = (
+    <div
+      data-cms-toolbar="inline-editor"
+      style={position}
+      className="rounded-2xl border border-sky-300/25 bg-[#08090A]/[.98] p-2.5 text-white shadow-[0_24px_80px_rgba(0,0,0,.55)] backdrop-blur-xl"
+      onClick={(event) => event.stopPropagation()}
+      onPointerDown={(event) => event.stopPropagation()}
+    >
+      <div className="mb-2 flex items-center gap-2 px-1">
+        <div className="min-w-0 flex-1">
+          <p className="text-[8px] font-black uppercase tracking-[.16em] text-sky-300/60">Edición directa</p>
+          <b className="block truncate text-[11px] text-white/80">{prettyField(edit.field)}</b>
+        </div>
+        <button type="button" onClick={onCancel} className="grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-white/50" aria-label="Cancelar"><X className="h-3.5 w-3.5" /></button>
+        <button type="button" onClick={() => onSave(value)} className="grid h-8 w-8 place-items-center rounded-lg bg-sky-300 text-black" aria-label="Guardar"><Check className="h-3.5 w-3.5" /></button>
+      </div>
+      {multiline ? (
+        <textarea
+          ref={(node) => { inputRef.current = node; }}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={handleKeyDown}
+          className="min-h-28 w-full resize-y rounded-xl border border-white/10 bg-black/55 px-3 py-2.5 text-sm leading-6 text-white outline-none focus:border-sky-300/50"
+        />
+      ) : (
+        <input
+          ref={(node) => { inputRef.current = node; }}
+          value={value}
+          onChange={(event) => setValue(event.target.value)}
+          onKeyDown={handleKeyDown}
+          className="h-11 w-full rounded-xl border border-white/10 bg-black/55 px-3 text-sm text-white outline-none focus:border-sky-300/50"
+        />
+      )}
+      <p className="mt-2 px-1 text-[8px] leading-4 text-white/30">Esc cancela · {multiline ? 'Ctrl/Cmd + Enter guarda' : 'Enter guarda'}</p>
+    </div>
+  );
+
+  return createPortal(editor, document.body);
 }
 
 function PreviewContainerToolbar({ section, container }: { section: HomeVisualSection; container: string }) {
@@ -201,6 +346,18 @@ function containerFromField(field: string | null): string | null {
   if (nested) return `${nested[1]}-${nested[2]}`;
   const repeated = field.match(/^(.+)-(\d+)$/);
   return repeated ? `${repeated[1]}-${repeated[2]}` : null;
+}
+
+function prettyField(field: string) {
+  const nested = field.match(/^(.+)-(\d+)-(title|text)$/);
+  if (nested) return `${pretty(nested[1])} · ${Number(nested[2]) + 1} · ${nested[3] === 'title' ? 'Título' : 'Texto'}`;
+  const repeated = field.match(/^(.+)-(\d+)$/);
+  if (repeated) return `${pretty(repeated[1])} · ${Number(repeated[2]) + 1}`;
+  return pretty(field);
+}
+
+function pretty(value: string) {
+  return value.replace(/([A-Z])/g, ' $1').replace(/[-_]/g, ' ').replace(/^./, (char) => char.toUpperCase()).trim();
 }
 
 function frameStyle(section: HomeVisualSection, useFrameImage: boolean): CSSProperties {

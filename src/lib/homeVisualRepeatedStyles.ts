@@ -62,6 +62,15 @@ export function movedSources(length: number, index: number, direction: -1 | 1): 
   return sources;
 }
 
+/** Moves one old index to any target position while preserving the order of the rest. */
+export function relocatedSources(length: number, from: number, to: number): number[] {
+  const sources = identitySources(length);
+  if (from < 0 || from >= length || to < 0 || to >= length || from === to) return sources;
+  const [moved] = sources.splice(from, 1);
+  sources.splice(to, 0, moved);
+  return sources;
+}
+
 export function deletedSources(length: number, index: number): number[] {
   return identitySources(length).filter((item) => item !== index);
 }

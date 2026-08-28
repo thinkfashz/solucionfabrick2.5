@@ -15,6 +15,7 @@ import {
   LandingStoreSection,
 } from '@/components/LandingSections';
 import CmsSectionMotion from '@/components/cms/CmsSectionMotion';
+import HomeVisualTextToolbar from '@/components/cms/HomeVisualTextToolbar';
 import styles from '@/components/cms/HomeVisualRuntime.module.css';
 import {
   normalizeHomePage,
@@ -94,22 +95,25 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
     window.parent?.postMessage({ type: 'cms:home-select', sectionId, field }, window.location.origin);
   }
 
+  function startInlineEdit(section: HomeVisualSection, field: string) {
+    const value = getContentFieldValue(section.content, field);
+    if (typeof value !== 'string') return;
+    setSelectedPreviewId(section.id);
+    setSelectedPreviewField(field);
+    setInlineEdit({ sectionId: section.id, field, value });
+    window.parent?.postMessage({ type: 'cms:home-select', sectionId: section.id, field }, window.location.origin);
+  }
+
   function editFromPreview(event: MouseEvent<HTMLDivElement>, section: HomeVisualSection) {
     if (!previewMode) return;
     const target = event.target as HTMLElement | null;
     if (target?.closest('[data-cms-toolbar]')) return;
     const fieldNode = target?.closest<HTMLElement>('[data-cms-field]');
     const field = fieldNode?.dataset.cmsField;
-    if (!field) return;
-    const value = getContentFieldValue(section.content, field);
-    if (typeof value !== 'string') return;
-
+    if (!field || typeof getContentFieldValue(section.content, field) !== 'string') return;
     event.preventDefault();
     event.stopPropagation();
-    setSelectedPreviewId(section.id);
-    setSelectedPreviewField(field);
-    setInlineEdit({ sectionId: section.id, field, value });
-    window.parent?.postMessage({ type: 'cms:home-select', sectionId: section.id, field }, window.location.origin);
+    startInlineEdit(section, field);
   }
 
   function saveInlineEdit(value: string) {
@@ -136,6 +140,7 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
         const useFrameImage = section.type !== 'hero' && section.type !== 'calculator' && Boolean(section.style.backgroundImage?.trim());
         const selected = previewMode && selectedPreviewId === section.id;
         const selectedContainer = selected ? containerFromField(selectedPreviewField) : null;
+        const selectedTextField = selected && selectedPreviewField && !selectedPreviewField.endsWith('-container') ? selectedPreviewField : null;
         const repeatedPosition = selectedContainer ? getRepeatedItemPosition(section, selectedContainer) : null;
         const elementCss = buildElementTypographyCss(section.id, section.style);
         const containerCss = buildContainerCss(section.id, section.style);
@@ -171,6 +176,14 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
             {selected && selectedContainer && repeatedPosition ? (
               <PreviewContainerToolbar section={section} container={selectedContainer} />
             ) : null}
+            {selectedTextField && !inlineEdit ? (
+              <HomeVisualTextToolbar
+                sectionId={section.id}
+                field={selectedTextField}
+                editable={typeof getContentFieldValue(section.content, selectedTextField) === 'string'}
+                onEdit={() => startInlineEdit(section, selectedTextField)}
+              />
+            ) : null}
           </div>
         );
       })}
@@ -191,7 +204,7 @@ function InlineFieldEditor({ edit, onCancel, onSave }: { edit: InlineEditState; 
     setValue(edit.value);
     const frame = window.requestAnimationFrame(() => {
       inputRef.current?.focus();
-      if ('select' in (inputRef.current || {})) inputRef.current?.select();
+      inputRef.current?.select();
     });
     return () => window.cancelAnimationFrame(frame);
   }, [edit.sectionId, edit.field, edit.value]);

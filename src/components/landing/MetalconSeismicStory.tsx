@@ -34,7 +34,7 @@ export default function MetalconSeismicStory({ section }: { section?: HomeVisual
 
           <div className="border-t border-current/10">
             {steps.map(({ title, text }, index) => (
-              <article key={`${title}-${index}`} className="grid gap-2 border-b border-current/10 py-6 sm:grid-cols-[52px_220px_1fr] sm:gap-5 sm:py-7">
+              <article data-cms-container={`steps-${index}`} key={`${title}-${index}`} className="grid gap-2 border-b border-current/10 py-6 sm:grid-cols-[52px_220px_1fr] sm:gap-5 sm:py-7">
                 <span data-cms-field={`steps-${index}-number`} className="text-sm font-black opacity-20">{String(index + 1).padStart(2, '0')}</span>
                 <h3 data-cms-field={`steps-${index}-title`} className="text-lg font-black tracking-[-.03em]">{title}</h3>
                 <p data-cms-field={`steps-${index}-text`} className="text-sm leading-7 opacity-50">{text}</p>

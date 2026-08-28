@@ -16,6 +16,7 @@ import {
   Undo2,
 } from 'lucide-react';
 import HomeVisualInspector from './HomeVisualInspector';
+import type { PreviewTextAction } from '@/components/cms/HomeVisualTextToolbar';
 import {
   DEFAULT_HOME_PAGE,
   normalizeHomePage,
@@ -32,7 +33,14 @@ import {
   mutateRepeatedItem,
   type RepeatedItemAction,
 } from '@/lib/homeVisualRepeatedStyles';
-import type { VisualDevice } from '@/lib/homeVisualLayout';
+import {
+  getElementStyle,
+  getElementTypography,
+  patchElementStyle,
+  patchElementTypography,
+  type VisualDevice,
+  type VisualTextAlign,
+} from '@/lib/homeVisualLayout';
 
 const LOCAL_DRAFT_KEY = 'sf-home-visual-cms-draft-v1';
 const HISTORY_LIMIT = 40;
@@ -230,10 +238,70 @@ export default function HomeVisualEditorClient() {
     }
   }
 
+  function handlePreviewTextAction(sectionId: string, field: string, action: PreviewTextAction, computedFontSize = 0, computedFontWeight = 0) {
+    if (action === 'inspect') {
+      setSelectedId(sectionId);
+      setSelectedField(field);
+      setStatus('Inspector avanzado de texto abierto.');
+      if (window.matchMedia('(max-width: 1023px)').matches) {
+        window.setTimeout(() => document.getElementById('home-visual-inspector-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 0);
+      }
+      return;
+    }
+
+    let changed = false;
+    let description = 'Formato de texto actualizado.';
+    commitDraft((current) => {
+      const sections = current.sections.map((section) => {
+        if (section.id !== sectionId) return section;
+        changed = true;
+
+        if (action === 'increase-size' || action === 'decrease-size') {
+          const typography = getElementTypography(section.style, field, device);
+          const explicit = Number(typography.fontSize || 0);
+          const base = explicit > 0 ? explicit : computedFontSize > 0 ? computedFontSize : 16;
+          const delta = action === 'increase-size' ? 2 : -2;
+          const next = Math.max(8, Math.min(180, Math.round(base + delta)));
+          description = `Tamaño de texto: ${next}px en ${DEVICE_LABELS[device]}.`;
+          return { ...section, style: patchElementTypography(section.style, field, device, 'fontSize', next) };
+        }
+
+        if (action === 'toggle-bold') {
+          const element = getElementStyle(section.style, field);
+          const explicit = Number(element.fontWeight || 0);
+          const base = explicit > 0 ? explicit : computedFontWeight > 0 ? computedFontWeight : 400;
+          const next = base >= 600 ? 400 : 700;
+          description = next >= 600 ? 'Negrita aplicada.' : 'Negrita desactivada.';
+          return { ...section, style: patchElementStyle(section.style, field, 'fontWeight', next) };
+        }
+
+        const alignMap: Partial<Record<PreviewTextAction, VisualTextAlign>> = {
+          'align-left': 'left',
+          'align-center': 'center',
+          'align-right': 'right',
+        };
+        const align = alignMap[action];
+        if (!align) {
+          changed = false;
+          return section;
+        }
+        description = align === 'left' ? 'Texto alineado a la izquierda.' : align === 'center' ? 'Texto centrado.' : 'Texto alineado a la derecha.';
+        return { ...section, style: patchElementStyle(section.style, field, 'textAlign', align) };
+      });
+      return changed ? { ...current, sections } : current;
+    }, false);
+
+    if (changed) {
+      setSelectedId(sectionId);
+      setSelectedField(field);
+      setStatus(description);
+    }
+  }
+
   useEffect(() => {
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; sectionId?: string; field?: string | null; container?: string; action?: PreviewCardAction; value?: string } | null;
+      const data = event.data as { type?: string; sectionId?: string; field?: string | null; container?: string; action?: string; value?: string; computedFontSize?: number; computedFontWeight?: number } | null;
       if (data?.type === 'cms:home-preview-ready') {
         setIframeReady(true);
         postDraft(draft);
@@ -243,11 +311,14 @@ export default function HomeVisualEditorClient() {
         setSelectedId(data.sectionId);
         setSelectedField(typeof data.field === 'string' ? data.field : null);
       }
-      if (data?.type === 'cms:home-card-action' && typeof data.sectionId === 'string' && typeof data.container === 'string' && data.action) {
-        handlePreviewCardAction(data.sectionId, data.container, data.action);
+      if (data?.type === 'cms:home-card-action' && typeof data.sectionId === 'string' && typeof data.container === 'string' && typeof data.action === 'string') {
+        handlePreviewCardAction(data.sectionId, data.container, data.action as PreviewCardAction);
       }
       if (data?.type === 'cms:home-field-change' && typeof data.sectionId === 'string' && typeof data.field === 'string' && typeof data.value === 'string') {
         handlePreviewFieldChange(data.sectionId, data.field, data.value);
+      }
+      if (data?.type === 'cms:home-text-action' && typeof data.sectionId === 'string' && typeof data.field === 'string' && typeof data.action === 'string') {
+        handlePreviewTextAction(data.sectionId, data.field, data.action as PreviewTextAction, Number(data.computedFontSize || 0), Number(data.computedFontWeight || 0));
       }
     };
     window.addEventListener('message', handler);
@@ -395,7 +466,7 @@ export default function HomeVisualEditorClient() {
               </button>
             ))}
           </div>
-          <div className="mt-4 hidden rounded-xl border border-white/8 bg-black/30 p-3 text-[10px] leading-5 text-white/32 lg:block">Arrastra bloques para reordenar. Toca un elemento dentro de la vista previa o selecciónalo desde “Elementos del bloque”. Haz doble clic sobre un texto editable para cambiarlo directamente en la vista.</div>
+          <div className="mt-4 hidden rounded-xl border border-white/8 bg-black/30 p-3 text-[10px] leading-5 text-white/32 lg:block">Arrastra bloques para reordenar. Toca un elemento dentro de la vista previa para mostrar herramientas rápidas. Haz doble clic sobre un texto editable para cambiar su contenido directamente.</div>
         </aside>
 
         <section className="flex min-h-[620px] min-w-0 flex-col bg-[#121315] p-2 sm:p-3">

@@ -3,6 +3,7 @@ import { AdminShellSwitcher } from '@/components/admin/AdminShellSwitcher';
 import AdminColombiaGradientBackground from '@/components/admin/visual/AdminColombiaGradientBackground';
 import AdminRouteStyler from '@/components/admin/AdminRouteStyler';
 import AdminEntrySplash from '@/components/admin/AdminEntrySplash';
+import AdminLiveSaleNotifier from '@/components/admin/AdminLiveSaleNotifier';
 import './fabrick-admin-theme.css';
 import './admin-professional-stage2.css';
 import './admin-professional-stage3.css';
@@ -20,11 +21,7 @@ export const metadata: Metadata = {
     follow: false,
     noarchive: true,
     nocache: true,
-    googleBot: {
-      index: false,
-      follow: false,
-      noimageindex: true,
-    },
+    googleBot: { index: false, follow: false, noimageindex: true },
   },
 };
 
@@ -35,6 +32,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
     <AdminColombiaGradientBackground>
       <AdminEntrySplash />
       <AdminRouteStyler />
+      <AdminLiveSaleNotifier />
       <AdminShellSwitcher>{children}</AdminShellSwitcher>
     </AdminColombiaGradientBackground>
   );

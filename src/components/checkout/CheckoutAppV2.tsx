@@ -4,16 +4,19 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useSearchParams } from 'next/navigation';
 import {
   ArrowLeft,
+  Building2,
   Check,
   CheckCircle2,
   ChevronRight,
   CreditCard,
+  FileText,
   Loader2,
   LockKeyhole,
   Mail,
   MapPin,
   PackageCheck,
   Phone,
+  ReceiptText,
   RefreshCw,
   ShieldCheck,
   ShoppingBag,
@@ -29,6 +32,7 @@ import { useTenantBranding } from '@/hooks/useTenantBranding';
 
 type Item = { product: Product; quantity: number };
 type PayState = 'idle' | 'creating' | 'pending' | 'approved' | 'failed' | 'abandoned';
+type DocumentType = 'boleta' | 'factura';
 type StatusPayload = { state: 'approved' | 'failed' | 'refunded' | 'abandoned' | 'pending'; status: string; paymentStatus: string; total: number; iva: number; despacho: number };
 type CheckoutResponse = { data?: { id?: string }; payment?: { checkoutUrl?: string | null }; error?: string; validationErrors?: Array<{ message?: string }> };
 
@@ -48,6 +52,12 @@ export default function CheckoutAppV2() {
   const [commune, setCommune] = useState('');
   const [address, setAddress] = useState('');
   const [region, setRegion] = useState('VII');
+  const [documentType, setDocumentType] = useState<DocumentType>('boleta');
+  const [taxRut, setTaxRut] = useState('');
+  const [taxBusinessName, setTaxBusinessName] = useState('');
+  const [taxGiro, setTaxGiro] = useState('');
+  const [taxAddress, setTaxAddress] = useState('');
+  const [taxCommune, setTaxCommune] = useState('');
   const [state, setState] = useState<PayState>('idle');
   const [orderId, setOrderId] = useState('');
   const [paymentUrl, setPaymentUrl] = useState('');
@@ -94,10 +104,18 @@ export default function CheckoutAppV2() {
   const regionRate = useMemo(() => getRegionRate(region), [region]);
   const contactChecks = [name.trim().length > 2, /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email), phone.replace(/\D/g, '').length >= 8];
   const deliveryChecks = [commune.trim().length > 2, address.trim().length > 5];
+  const invoiceChecks = documentType === 'boleta' ? [true] : [
+    /^\d{7,8}-[0-9kK]$/.test(taxRut.replace(/\./g, '').trim()),
+    taxBusinessName.trim().length > 1,
+    taxGiro.trim().length > 1,
+    taxAddress.trim().length > 4,
+    taxCommune.trim().length > 1,
+  ];
   const contactReady = contactChecks.every(Boolean);
   const deliveryReady = deliveryChecks.every(Boolean);
+  const billingReady = invoiceChecks.every(Boolean);
   const activeStep = !contactReady ? 0 : !deliveryReady ? 1 : 2;
-  const valid = items.length > 0 && contactReady && deliveryReady;
+  const valid = items.length > 0 && contactReady && deliveryReady && billingReady;
   const shippingAddress = [address.trim(), commune.trim()].filter(Boolean).join(', ');
   const unitCount = items.reduce((sum, item) => sum + item.quantity, 0);
 
@@ -135,7 +153,7 @@ export default function CheckoutAppV2() {
 
   async function pay() {
     if (!valid || state === 'creating') {
-      setError('Completa contacto, comuna y dirección para continuar.');
+      setError(documentType === 'factura' && !billingReady ? 'Completa los datos tributarios de la factura.' : 'Completa contacto, comuna y dirección para continuar.');
       return;
     }
     setError('');
@@ -149,6 +167,9 @@ export default function CheckoutAppV2() {
           region,
           shippingAddress,
           cliente: { nombre: name, email, telefono: phone },
+          billing: documentType === 'factura'
+            ? { documentType, rut: taxRut, razonSocial: taxBusinessName, giro: taxGiro, direccion: taxAddress, comuna: taxCommune }
+            : { documentType: 'boleta' },
           paymentMethod: 'mercadopago',
           clientOrderKey: `FBK-${Date.now()}-${Math.random().toString(36).slice(2, 8).toUpperCase()}`,
         }),
@@ -184,10 +205,10 @@ export default function CheckoutAppV2() {
           {ok ? <CheckCircle2 className="mx-auto mt-9 h-16 w-16 text-emerald-600"/> : fail ? <XCircle className="mx-auto mt-9 h-16 w-16 text-red-600"/> : <Loader2 className="mx-auto mt-9 h-16 w-16 animate-spin text-[#F5871F]"/>}
           <p className="mt-5 text-[9px] font-black uppercase tracking-[.16em] text-[#B96F00]">Orden {orderId || 'en proceso'}</p>
           <h1 className="mt-2 text-3xl font-black tracking-[-.045em]">{ok ? 'Compra confirmada' : fail ? 'Pago no aprobado' : abandoned ? 'Pago sin finalizar' : 'Confirmando tu pago'}</h1>
-          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-black/50">{ok ? 'El pago fue confirmado y la orden quedó registrada para seguimiento.' : fail ? 'Puedes volver a intentar el pago sin duplicar la compra.' : abandoned ? 'La orden sigue identificada y puedes retomar el pago cuando quieras.' : 'Estamos verificando automáticamente la confirmación de Mercado Pago.'}</p>
+          <p className="mx-auto mt-3 max-w-md text-sm leading-6 text-black/50">{ok ? 'El pago fue confirmado. El pedido pasó a preparación y recibirás el comprobante o documento tributario correspondiente por correo.' : fail ? 'Puedes volver a intentar el pago sin duplicar la compra.' : abandoned ? 'La orden sigue identificada y puedes retomar el pago cuando quieras.' : 'Estamos verificando automáticamente la confirmación de Mercado Pago.'}</p>
           {!ok && !fail ? <span className="mt-5 inline-flex items-center gap-2 text-xs text-black/40"><RefreshCw size={14}/> Actualización automática</span> : null}
         </div>
-        <div className="grid grid-cols-3 border-y border-black/10"><Metric label="Total" value={CLP.format(status?.total || summary.total)}/><Metric label="IVA" value={CLP.format(status?.iva || summary.iva)}/><Metric label="Despacho" value={CLP.format(status?.despacho || summary.despacho)}/></div>
+        <div className="grid grid-cols-3 border-y border-black/10"><Metric label="Total" value={CLP.format(status?.total || summary.total)}/><Metric label="IVA incluido" value={CLP.format(status?.iva || summary.iva)}/><Metric label="Despacho" value={CLP.format(status?.despacho || summary.despacho)}/></div>
         <div className="flex gap-2 p-5">{ok ? <a href="/mi-cuenta" className="flex min-h-12 flex-1 items-center justify-center rounded-full bg-[#F5871F] font-black">Ver mi pedido</a> : <>{paymentUrl ? <a href={paymentUrl} className="flex min-h-12 flex-1 items-center justify-center rounded-full bg-[#F5871F] font-black">Retomar pago</a> : null}<a href="/tienda" className="flex min-h-12 flex-1 items-center justify-center rounded-full bg-black/5 font-black">Volver a tienda</a></>}</div>
       </section>
     </CheckoutShell>;
@@ -212,7 +233,7 @@ export default function CheckoutAppV2() {
         <a href="/tienda" className="inline-flex items-center gap-2 text-[10px] font-black uppercase tracking-[.12em] text-black/42"><ArrowLeft size={14}/> Volver a la tienda</a>
         <p className="mt-6 text-[10px] font-black uppercase tracking-[.18em] text-[#A86700]">Finalizar compra</p>
         <h1 className="mt-2 max-w-[15ch] text-4xl font-black leading-[.96] tracking-[-.055em] sm:text-5xl">Confirma entrega y luego paga.</h1>
-        <p className="mt-4 max-w-2xl text-sm leading-6 text-black/48">Revisa tus productos, completa los datos de despacho y te llevaremos a Mercado Pago. El total del producto ya incluye IVA.</p>
+        <p className="mt-4 max-w-2xl text-sm leading-6 text-black/48">Revisa tus productos, selecciona boleta o factura y completa el despacho. Te llevaremos a Mercado Pago con el total final; el IVA ya está incluido.</p>
 
         <div className="mt-7 grid grid-cols-3 gap-px bg-black/10">
           {['Contacto', 'Entrega', 'Pago'].map((label, index) => {
@@ -225,7 +246,7 @@ export default function CheckoutAppV2() {
 
       <div className="mb-4 flex items-end justify-between bg-[#111214] p-4 text-white lg:hidden">
         <div><p className="text-[9px] font-black uppercase tracking-[.14em] text-[#FFB000]">Resumen · {unitCount} {unitCount === 1 ? 'unidad' : 'unidades'}</p><b className="mt-1 block text-2xl tracking-[-.04em]">{CLP.format(summary.total)}</b></div>
-        <div className="text-right"><span className="text-[9px] text-white/35">Despacho</span><b className="mt-1 block text-xs">{summary.despacho ? CLP.format(summary.despacho) : 'Gratis'}</b></div>
+        <div className="text-right"><span className="text-[9px] text-white/35">Documento</span><b className="mt-1 block text-xs">{documentType === 'factura' ? 'Factura' : 'Boleta'}</b></div>
       </div>
 
       <div className="grid gap-5 lg:grid-cols-[1fr_390px] lg:items-start">
@@ -247,8 +268,24 @@ export default function CheckoutAppV2() {
             <div className="mt-4 flex items-start gap-3 border-t border-black/8 pt-4"><Truck className="mt-0.5 h-4 w-4 shrink-0 text-[#B96F00]"/><div><b className="block text-xs">Entrega referencial: {regionRate.eta}</b><p className="mt-1 text-[10px] leading-4 text-black/42">El servidor vuelve a validar tarifa, stock y reglas de despacho antes de crear la orden.</p></div></div>
           </CheckoutCard>
 
-          <CheckoutCard number="03" title="Pago" icon={<CreditCard />} complete={false}>
-            <div className="flex items-start gap-4 border border-[#F5871F]/35 bg-[#FFF5E5] p-4"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F5871F]"><CreditCard size={18}/></span><div><b className="block text-sm">Mercado Pago</b><p className="mt-1 text-xs leading-5 text-black/48">El pago se completa fuera de esta pantalla mediante el checkout seguro del proveedor. Soluciones Fabrick registra primero la orden para evitar cobros sin pedido.</p></div></div>
+          <CheckoutCard number="03" title="Documento y pago" icon={<CreditCard />} complete={billingReady}>
+            <div className="grid grid-cols-2 gap-2">
+              <button type="button" onClick={() => { setDocumentType('boleta'); setError(''); }} className={`min-h-20 border p-3 text-left transition ${documentType === 'boleta' ? 'border-[#F5871F] bg-[#FFF5E5]' : 'border-black/10 bg-white'}`}><ReceiptText className="h-5 w-5 text-[#B96F00]"/><b className="mt-2 block text-sm">Boleta</b><span className="mt-1 block text-[10px] text-black/45">Compra personal / consumidor final</span></button>
+              <button type="button" onClick={() => { setDocumentType('factura'); setError(''); }} className={`min-h-20 border p-3 text-left transition ${documentType === 'factura' ? 'border-[#F5871F] bg-[#FFF5E5]' : 'border-black/10 bg-white'}`}><Building2 className="h-5 w-5 text-[#B96F00]"/><b className="mt-2 block text-sm">Factura</b><span className="mt-1 block text-[10px] text-black/45">Empresa / actividad comercial</span></button>
+            </div>
+
+            {documentType === 'factura' ? <div className="mt-4 border border-black/10 bg-[#FAF8F3] p-4">
+              <div className="mb-4 flex items-start gap-3"><FileText className="mt-0.5 h-5 w-5 text-[#B96F00]"/><div><b className="block text-sm">Datos tributarios</b><p className="mt-1 text-[10px] leading-4 text-black/45">Se guardan con esta orden y se usan para emitir el DTE cuando el pago sea aprobado.</p></div></div>
+              <div className="grid gap-4 sm:grid-cols-2">
+                <Field icon={<FileText/>} label="RUT empresa" value={taxRut} set={setTaxRut} placeholder="12345678-9" ok={invoiceChecks[0]} autoComplete="off"/>
+                <Field icon={<Building2/>} label="Razón social" value={taxBusinessName} set={setTaxBusinessName} placeholder="Empresa SpA" ok={invoiceChecks[1]} autoComplete="organization"/>
+                <Field icon={<FileText/>} label="Giro" value={taxGiro} set={setTaxGiro} placeholder="Construcción / comercio" ok={invoiceChecks[2]} autoComplete="off"/>
+                <Field icon={<MapPin/>} label="Comuna tributaria" value={taxCommune} set={setTaxCommune} placeholder="Comuna" ok={invoiceChecks[4]} autoComplete="address-level2"/>
+              </div>
+              <label className="mt-4 grid gap-2 text-xs font-bold"><span className="flex items-center">Dirección tributaria{invoiceChecks[3] ? <Check size={15} className="ml-auto text-emerald-700"/> : null}</span><input value={taxAddress} onChange={(event) => setTaxAddress(event.target.value)} placeholder="Calle y número" className="min-h-13 border border-black/10 bg-white px-3 text-sm outline-none focus:border-[#F5871F]"/></label>
+            </div> : null}
+
+            <div className="mt-4 flex items-start gap-4 border border-[#F5871F]/35 bg-[#FFF5E5] p-4"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-full bg-[#F5871F]"><CreditCard size={18}/></span><div><b className="block text-sm">Mercado Pago</b><p className="mt-1 text-xs leading-5 text-black/48">La orden se registra primero y después pasas al checkout seguro de Mercado Pago. Fabrick nunca almacena los datos de tu tarjeta.</p></div></div>
             <div className="mt-4 grid grid-cols-3 gap-px bg-black/8"><Trust icon={<ShieldCheck/>} title="Pago seguro"/><Trust icon={<PackageCheck/>} title="Pedido trazable"/><Trust icon={<Truck/>} title="Despacho validado"/></div>
           </CheckoutCard>
 
@@ -258,9 +295,9 @@ export default function CheckoutAppV2() {
         <aside className="h-fit bg-white p-5 shadow-[0_20px_60px_rgba(36,24,14,.09)] lg:sticky lg:top-5 sm:p-6">
           <div className="flex items-center justify-between"><h2 className="flex items-center gap-2 font-black"><ShoppingBag size={18} className="text-[#B96F00]"/> Resumen</h2><span className="text-xs text-black/40">{unitCount} {unitCount === 1 ? 'unidad' : 'unidades'}</span></div>
           <div className="mt-4 divide-y divide-black/10">{items.map((item) => <div key={item.product.id} className="flex gap-3 py-4"><img src={item.product.image_url || '/images/landing/fabrick-home-showcase.webp'} alt="" loading="lazy" decoding="async" className="h-20 w-20 bg-[#F5F5F5] object-contain p-1"/><div className="min-w-0 flex-1"><p className="line-clamp-2 text-sm font-bold leading-5">{item.product.name}</p><p className="mt-1 text-xs text-black/40">Cantidad: {item.quantity}</p><b className="mt-2 block">{CLP.format(discounted(item) * item.quantity)}</b></div></div>)}</div>
-          <div className="space-y-2 border-t border-black/10 pt-4 text-sm"><Row label="Productos" value={CLP.format(summary.subtotal)}/><Row label="IVA incluido (19%)" value={CLP.format(summary.iva)} muted/><Row label="Despacho" value={summary.despacho ? CLP.format(summary.despacho) : 'Gratis'}/><div className="flex items-end justify-between border-t border-black/10 pt-4"><span className="font-bold">Total</span><b className="text-2xl tracking-[-.04em]">{CLP.format(summary.total)}</b></div></div>
+          <div className="space-y-2 border-t border-black/10 pt-4 text-sm"><Row label="Productos" value={CLP.format(summary.subtotal)}/><Row label="Despacho" value={summary.despacho ? CLP.format(summary.despacho) : 'Gratis'}/><Row label="IVA incluido (19%)" value={CLP.format(summary.iva)} muted/><Row label="Documento" value={documentType === 'factura' ? 'Factura electrónica' : 'Boleta electrónica'}/><div className="flex items-end justify-between border-t border-black/10 pt-4"><span className="font-bold">Total final</span><b className="text-2xl tracking-[-.04em]">{CLP.format(summary.total)}</b></div></div>
           <button disabled={!valid || state === 'creating'} onClick={() => void pay()} className="mt-5 flex min-h-14 w-full items-center justify-center gap-2 rounded-full bg-[#F5871F] px-4 font-black transition hover:bg-[#111214] hover:text-white disabled:cursor-not-allowed disabled:opacity-35">{state === 'creating' ? <Loader2 className="animate-spin" size={19}/> : <CreditCard size={19}/>} {state === 'creating' ? 'Preparando pago…' : 'Continuar a Mercado Pago'}<ChevronRight size={17}/></button>
-          {!valid ? <p className="mt-3 text-center text-[10px] leading-4 text-black/40">Completa los datos marcados antes de continuar.</p> : <p className="mt-3 text-center text-[10px] leading-4 text-black/40">El total del producto ya incluye IVA. La orden se valida nuevamente antes del pago.</p>}
+          {!valid ? <p className="mt-3 text-center text-[10px] leading-4 text-black/40">Completa los datos marcados antes de continuar.</p> : <p className="mt-3 text-center text-[10px] leading-4 text-black/40">Productos y despacho forman el total final. El IVA está incluido y nunca se suma dos veces.</p>}
           <a href="/tienda" className="mt-4 flex min-h-10 items-center justify-center border-t border-black/8 pt-4 text-[10px] font-black text-[#B96F00]">Modificar carrito</a>
         </aside>
       </div>

@@ -1,27 +1,10 @@
-/**
- * Billing adapter (epic 1) — facturación electrónica SII.
- *
- * Strategy: never integrate directly with `webservices.sii.cl`. Always go
- * through a certified provider (Haulmer/OpenFactura, Bsale, Nubox, LibreDTE,
- * SimpleAPI). Each provider implements this interface; the active one is
- * picked via `BILLING_PROVIDER` env var. When unset, the `mock` driver is
- * used and emissions are simulated (no SII calls).
- *
- * DTE codes per SII:
- *   33 → Factura electrónica
- *   34 → Factura exenta
- *   39 → Boleta electrónica
- *   41 → Boleta exenta
- *   56 → Nota de débito
- *   61 → Nota de crédito
- */
-
+/** Billing adapter for Chilean electronic tax documents (DTE). */
 export type DteType = 33 | 34 | 39 | 41 | 56 | 61;
 
 export interface DteLineItem {
   description: string;
   quantity: number;
-  unit_price: number;       // CLP, neto if affecting IVA
+  unit_price: number;
   exempt?: boolean;
   sku?: string;
 }
@@ -29,16 +12,14 @@ export interface DteLineItem {
 export interface EmitDteRequest {
   dte_type: DteType;
   order_id: string;
-  rut_receptor?: string;       // required for facturas, optional for boletas
+  rut_receptor?: string;
   razon_social_receptor?: string;
   giro_receptor?: string;
   direccion_receptor?: string;
   comuna_receptor?: string;
   email_receptor?: string;
   items: DteLineItem[];
-  /** Discount applied to the subtotal (CLP). Reduces neto+iva proportionally. */
   discount_clp?: number;
-  /** Reference DTE for credit/debit notes (61 / 56). */
   reference?: { dte_type: DteType; folio: string; reason: string };
   metadata?: Record<string, unknown>;
 }
@@ -64,7 +45,6 @@ export interface VoidDteRequest {
   folio: string;
   dte_type: DteType;
   reason: string;
-  /** Original invoice amounts — used by Haulmer to build the credit note. */
   neto_clp?: number;
   iva_clp?: number;
   exento_clp?: number;
@@ -83,16 +63,12 @@ export interface BillingDriver {
 }
 
 import { mockBillingDriver } from './drivers/mock';
-import { haulmerDriver } from './drivers/haulmer';
+import { createHaulmerDriver, haulmerDriver } from './drivers/haulmer';
+import { resolveBillingCredentials } from './credentials';
 
 const ALL_DRIVERS: BillingDriver[] = [haulmerDriver, mockBillingDriver];
 
-/**
- * Pick the configured driver. Order:
- *   1. Driver matching `BILLING_PROVIDER` env var (if configured).
- *   2. First driver whose `isConfigured()` returns true.
- *   3. Mock driver (always available).
- */
+/** Legacy synchronous resolver for env-only installations. */
 export function getBillingDriver(): BillingDriver {
   const wanted = process.env.BILLING_PROVIDER?.toLowerCase();
   if (wanted) {
@@ -103,11 +79,33 @@ export function getBillingDriver(): BillingDriver {
   return auto ?? mockBillingDriver;
 }
 
+/**
+ * Runtime resolver used by production routes. It supports encrypted Insforge
+ * credentials, with env as backwards-compatible fallback.
+ */
+export async function getBillingDriverResolved(): Promise<BillingDriver> {
+  try {
+    const credentials = await resolveBillingCredentials();
+    if (credentials.ready) {
+      return createHaulmerDriver({
+        apiKey: credentials.apiKey,
+        rutEmisor: credentials.rutEmisor,
+        razonSocial: credentials.razonSocial,
+        giro: credentials.giro,
+        direccion: credentials.direccion,
+        comuna: credentials.comuna,
+        baseUrl: credentials.baseUrl,
+      });
+    }
+  } catch {
+    // Fall through to the legacy/env resolver, then mock.
+  }
+  return getBillingDriver();
+}
+
 export function isBillingConfigured(): boolean {
   return getBillingDriver().code !== 'mock';
 }
-
-// ─── Pricing math (Chile: IVA 19%) ───────────────────────────────────────────
 
 const IVA = 0.19;
 
@@ -119,9 +117,8 @@ export interface DteTotals {
 }
 
 /**
- * Compute the line totals for a DTE. Treats `unit_price` as gross (incl. IVA)
- * for boletas (39/41) and as neto for facturas (33/34). This is the SII
- * convention used by every Chilean provider.
+ * Boletas receive gross prices (IVA included). Facturas receive net prices.
+ * Exempt items are always represented by their final amount.
  */
 export function computeDteTotals(req: EmitDteRequest): DteTotals {
   const isBoleta = req.dte_type === 39 || req.dte_type === 41;
@@ -129,32 +126,22 @@ export function computeDteTotals(req: EmitDteRequest): DteTotals {
   let neto = 0;
 
   for (const item of req.items) {
-    const lineGross = item.quantity * item.unit_price;
+    const lineAmount = item.quantity * item.unit_price;
     if (item.exempt) {
-      exento += lineGross;
+      exento += lineAmount;
       continue;
     }
-    if (isBoleta) {
-      // unit_price brings IVA included; back it out.
-      neto += lineGross / (1 + IVA);
-    } else {
-      neto += lineGross;
-    }
+    neto += isBoleta ? lineAmount / (1 + IVA) : lineAmount;
   }
 
   if (req.discount_clp && req.discount_clp > 0) {
     const ratio = neto > 0 ? Math.min(1, req.discount_clp / (neto * (1 + IVA) + exento)) : 0;
-    neto = neto * (1 - ratio);
-    exento = exento * (1 - ratio);
+    neto *= 1 - ratio;
+    exento *= 1 - ratio;
   }
 
-  const ivaAmount = Math.round(neto * IVA);
   const netoR = Math.round(neto);
+  const ivaAmount = Math.round(neto * IVA);
   const exentoR = Math.round(exento);
-  return {
-    neto: netoR,
-    iva: ivaAmount,
-    exento: exentoR,
-    total: netoR + ivaAmount + exentoR,
-  };
+  return { neto: netoR, iva: ivaAmount, exento: exentoR, total: netoR + ivaAmount + exentoR };
 }

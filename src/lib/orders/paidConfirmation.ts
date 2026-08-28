@@ -1,34 +1,38 @@
 import 'server-only';
 import { emitBoletaForOrder } from '@/lib/billing/autoEmit';
 import { sendOrderBoletaEmail } from '@/lib/email/sendOrderBoletaEmail';
+import { sendAdminOrderNotification } from '@/lib/email/sendAdminOrderNotification';
 
 export type PaidConfirmationResult = {
   ok: boolean;
   invoice?: Awaited<ReturnType<typeof emitBoletaForOrder>>;
   email?: Awaited<ReturnType<typeof sendOrderBoletaEmail>>;
+  adminEmail?: Awaited<ReturnType<typeof sendAdminOrderNotification>>;
+  warnings?: string[];
   error?: string;
 };
 
 export async function confirmPaidOrderAndSendReceipt(orderId: string): Promise<PaidConfirmationResult> {
+  const warnings: string[] = [];
+  let invoice: Awaited<ReturnType<typeof emitBoletaForOrder>>;
   try {
-    const invoice = await emitBoletaForOrder(orderId);
-    if (!invoice.ok) {
-      return { ok: false, invoice, error: invoice.error || 'No se pudo emitir boleta.' };
-    }
-
-    const email = await sendOrderBoletaEmail(orderId);
-    return { ok: email.ok, invoice, email, error: email.error || email.reason };
-  } catch (err) {
-    return { ok: false, error: err instanceof Error ? err.message : 'Error enviando confirmación pagada.' };
+    invoice = await emitBoletaForOrder(orderId);
+    if (!invoice.ok) warnings.push(invoice.error || 'No se pudo emitir el documento tributario.');
+  } catch (error) {
+    invoice = { ok: false, error: error instanceof Error ? error.message : 'Falló la emisión DTE.' };
+    warnings.push(invoice.error || 'Falló la emisión DTE.');
   }
+  const [email, adminEmail] = await Promise.all([
+    sendOrderBoletaEmail(orderId).catch((error) => ({ ok: false, error: error instanceof Error ? error.message : 'Falló el correo al cliente.' })),
+    sendAdminOrderNotification(orderId).catch((error) => ({ ok: false, error: error instanceof Error ? error.message : 'Falló el aviso al administrador.' })),
+  ]);
+  if (!email.ok) warnings.push(email.error || email.reason || 'No se envió confirmación al cliente.');
+  if (!adminEmail.ok) warnings.push(adminEmail.error || adminEmail.reason || 'No se envió aviso al administrador.');
+  return { ok: true, invoice, email, adminEmail, warnings };
 }
 
 export function confirmPaidOrderAndSendReceiptAsync(orderId: string) {
   confirmPaidOrderAndSendReceipt(orderId).then((result) => {
-    if (!result.ok) {
-      console.warn('[orders] paid confirmation failed', orderId, result.error || result.email?.reason || result.email?.error);
-    }
-  }).catch((err) => {
-    console.warn('[orders] paid confirmation crashed', orderId, err);
-  });
+    if (result.warnings?.length) console.warn('[orders] paid confirmation warnings', orderId, result.warnings);
+  }).catch((err) => console.warn('[orders] paid confirmation crashed', orderId, err));
 }

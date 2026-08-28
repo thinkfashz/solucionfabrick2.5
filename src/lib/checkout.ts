@@ -1,11 +1,37 @@
 import { DEFAULT_SHIPPING_CONFIG, calculateShippingTotal, type ProductShippingMode, type ShippingConfig } from '@/lib/shipping';
 
-export interface LineItem { productoId: string | number; cantidad: number; precioUnitario: number; nombre?: string; shippingMode?: ProductShippingMode | null; shippingFee?: number | null; shippingWeightKg?: number | null; shippingDimensions?: string | null; shippingRegionOverrides?: Record<string, number> | null; }
-export interface ClienteCheckout { nombre: string; email: string; telefono?: string; }
-export interface CheckoutPayload { items: LineItem[]; region: string; cliente: ClienteCheckout; shippingAddress?: string; paymentMethod?: 'transfer' | 'mercadopago' | 'bricks'; clientOrderKey?: string; }
-export interface CheckoutValidationError { field: string; message: string; }
-export interface CheckoutSummary { subtotal: number; neto: number; iva: number; despacho: number; total: number; moneda: 'CLP'; taxIncluded: true; }
-export interface InternalShippingEstimate { amount: number; currency: 'CLP'; source: 'free-local-estimator'; confidence: 'baja' | 'media'; note: string; }
+export interface LineItem {
+  productoId: string | number;
+  cantidad: number;
+  precioUnitario: number;
+  nombre?: string;
+  shippingMode?: ProductShippingMode | null;
+  shippingFee?: number | null;
+  shippingWeightKg?: number | null;
+  shippingDimensions?: string | null;
+  shippingRegionOverrides?: Record<string, number> | null;
+}
+export interface ClienteCheckout { nombre: string; email: string; telefono?: string }
+export interface CheckoutBillingDetails {
+  documentType: 'boleta' | 'factura';
+  rut?: string;
+  razonSocial?: string;
+  giro?: string;
+  direccion?: string;
+  comuna?: string;
+}
+export interface CheckoutPayload {
+  items: LineItem[];
+  region: string;
+  cliente: ClienteCheckout;
+  shippingAddress?: string;
+  paymentMethod?: 'transfer' | 'mercadopago' | 'bricks';
+  clientOrderKey?: string;
+  billing?: CheckoutBillingDetails;
+}
+export interface CheckoutValidationError { field: string; message: string }
+export interface CheckoutSummary { subtotal: number; neto: number; iva: number; despacho: number; total: number; moneda: 'CLP'; taxIncluded: true }
+export interface InternalShippingEstimate { amount: number; currency: 'CLP'; source: 'free-local-estimator'; confidence: 'baja' | 'media'; note: string }
 
 const IVA = 0.19;
 const REGION_EXTREMA = ['XV', 'I', 'II', 'XI', 'XII'];
@@ -25,14 +51,17 @@ export function estimateInternalShipping(items: LineItem[], region: string, addr
   return { amount: Math.round((base + bulky + unitFee + valueFee) / 1000) * 1000, currency: 'CLP', source: 'free-local-estimator', confidence: 'media', note: 'Estimación interna para operación, comuna, dimensiones y operador logístico.' };
 }
 
-// Los precios del catálogo son precios finales de venta y YA INCLUYEN IVA.
-// Por eso IVA se desglosa informativamente y nunca se vuelve a sumar al cliente.
+/**
+ * Catálogo y despacho se expresan como precios finales. El total nunca suma
+ * un segundo IVA; neto e IVA son un desglose informativo del bruto cobrado.
+ */
 export function calculateCheckoutSummary(items: LineItem[], region: string, shippingConfig: ShippingConfig = DEFAULT_SHIPPING_CONFIG): CheckoutSummary {
   const subtotal = Math.round(items.reduce((acc, item) => acc + item.cantidad * item.precioUnitario, 0));
-  const neto = Math.round(subtotal / (1 + IVA));
-  const iva = subtotal - neto;
-  const despacho = calculateShippingTotal(items, normalizeRegion(region || 'VII'), subtotal, shippingConfig);
-  return { subtotal, neto, iva, despacho, total: subtotal + despacho, moneda: 'CLP', taxIncluded: true };
+  const despacho = Math.round(calculateShippingTotal(items, normalizeRegion(region || 'VII'), subtotal, shippingConfig));
+  const total = subtotal + despacho;
+  const neto = Math.round(total / (1 + IVA));
+  const iva = total - neto;
+  return { subtotal, neto, iva, despacho, total, moneda: 'CLP', taxIncluded: true };
 }
 
 export function validateCheckoutPayload(payload: CheckoutPayload): CheckoutValidationError[] {
@@ -52,5 +81,14 @@ export function validateCheckoutPayload(payload: CheckoutPayload): CheckoutValid
   const telefono = payload.cliente?.telefono?.replace(/\D/g, '') ?? '';
   if (telefono && telefono.length < 8) errors.push({ field: 'cliente.telefono', message: 'Teléfono inválido.' });
   if (payload.shippingAddress && payload.shippingAddress.trim().length < 6) errors.push({ field: 'shippingAddress', message: 'Dirección de despacho demasiado corta.' });
+
+  if (payload.billing?.documentType === 'factura') {
+    const rut = (payload.billing.rut || '').replace(/\./g, '').trim();
+    if (!/^\d{7,8}-[0-9kK]$/.test(rut)) errors.push({ field: 'billing.rut', message: 'RUT para factura inválido.' });
+    if ((payload.billing.razonSocial || '').trim().length < 2) errors.push({ field: 'billing.razonSocial', message: 'Indica la razón social.' });
+    if ((payload.billing.giro || '').trim().length < 2) errors.push({ field: 'billing.giro', message: 'Indica el giro.' });
+    if ((payload.billing.direccion || '').trim().length < 5) errors.push({ field: 'billing.direccion', message: 'Indica la dirección tributaria.' });
+    if ((payload.billing.comuna || '').trim().length < 2) errors.push({ field: 'billing.comuna', message: 'Indica la comuna tributaria.' });
+  }
   return errors;
 }

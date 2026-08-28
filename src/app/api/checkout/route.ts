@@ -44,18 +44,8 @@ function addDays(date: Date, days: number) {
 
 function buildInitialShipmentEvents(orderId: string, createdAt: string, trackingNumber: string) {
   return [
-    {
-      status: 'pedido_creado',
-      label: 'Pedido creado',
-      description: `Orden ${orderId} registrada en Soluciones Fabrick.`,
-      at: createdAt,
-    },
-    {
-      status: 'seguimiento_creado',
-      label: 'Seguimiento generado',
-      description: `Código automático asignado: ${trackingNumber}.`,
-      at: createdAt,
-    },
+    { status: 'pedido_creado', label: 'Pedido creado', description: `Orden ${orderId} registrada en Soluciones Fabrick.`, at: createdAt },
+    { status: 'seguimiento_creado', label: 'Seguimiento generado', description: `Código automático asignado: ${trackingNumber}.`, at: createdAt },
   ];
 }
 
@@ -73,15 +63,9 @@ function isDuplicateError(error: { message?: string } | null | undefined) {
 
 async function loadExistingOrder(id: string) {
   try {
-    const { data } = await insforgeAdmin.database
-      .from('orders')
-      .select('*')
-      .eq('id', id)
-      .limit(1);
+    const { data } = await insforgeAdmin.database.from('orders').select('*').eq('id', id).limit(1);
     return Array.isArray(data) ? data[0] as Record<string, unknown> | undefined : undefined;
-  } catch {
-    return undefined;
-  }
+  } catch { return undefined; }
 }
 
 async function ensureShipment(order: Record<string, unknown>, trackingNumber: string, createdAt: string) {
@@ -91,72 +75,32 @@ async function ensureShipment(order: Record<string, unknown>, trackingNumber: st
   const destination = String(order.shipping_address || '');
   const estimatedDeliveryAt = String(order.estimated_delivery_at || addDays(new Date(createdAt), 7));
   const events = buildInitialShipmentEvents(orderId, createdAt, trackingNumber);
-
   try {
     const { data } = await insforgeAdmin.database.from('order_shipments').select('id').eq('order_id', orderId).limit(1);
     if (Array.isArray(data) && data.length > 0) return;
-    await insforgeAdmin.database.from('order_shipments').insert([
-      {
-        order_id: orderId,
-        tracking_number: trackingNumber,
-        carrier,
-        status: 'pendiente',
-        origin: 'Bodega Soluciones Fabrick',
-        destination,
-        estimated_delivery_at: estimatedDeliveryAt,
-        events,
-        details: {
-          orderTotal: order.total ?? 0,
-          region: order.region ?? '',
-          source: 'checkout',
-        },
-        created_at: createdAt,
-        updated_at: createdAt,
-      },
-    ]);
-  } catch (error) {
-    console.warn('[checkout] could not create order shipment:', error);
-  }
+    await insforgeAdmin.database.from('order_shipments').insert([{
+      order_id: orderId, tracking_number: trackingNumber, carrier, status: 'pendiente',
+      origin: 'Bodega Soluciones Fabrick', destination, estimated_delivery_at: estimatedDeliveryAt, events,
+      details: { orderTotal: order.total ?? 0, region: order.region ?? '', source: 'checkout' },
+      created_at: createdAt, updated_at: createdAt,
+    }]);
+  } catch (error) { console.warn('[checkout] could not create order shipment:', error); }
 }
 
 function coreOrderRow(order: Record<string, unknown>) {
-  const {
-    tracking_number: _trackingNumber,
-    carrier: _carrier,
-    delivery_status: _deliveryStatus,
-    tracking_created_at: _trackingCreatedAt,
-    estimated_delivery_at: _estimatedDeliveryAt,
-    shipment_details: _shipmentDetails,
-    ...core
-  } = order;
+  const { tracking_number: _trackingNumber, carrier: _carrier, delivery_status: _deliveryStatus, tracking_created_at: _trackingCreatedAt, estimated_delivery_at: _estimatedDeliveryAt, shipment_details: _shipmentDetails, ...core } = order;
   return core;
 }
 
 export async function POST(request: Request) {
   try {
     if (!publicCheckoutEnabled()) {
-      return NextResponse.json(
-        {
-          error: 'Checkout pausado temporalmente por modo campaña. Puedes guardar el producto o contactarnos por WhatsApp.',
-          campaignMode: getCampaignMode(),
-        },
-        { status: 503, headers: campaignBusyHeaders() },
-      );
+      return NextResponse.json({ error: 'Checkout pausado temporalmente por modo campaña. Puedes guardar el producto o contactarnos por WhatsApp.', campaignMode: getCampaignMode() }, { status: 503, headers: campaignBusyHeaders() });
     }
 
     const ip = getClientIp(request);
-    const rl = await checkPersistentRateLimit({
-      namespace: 'public:checkout-mp',
-      identity: ip,
-      max: RATE_LIMIT_MAX,
-      windowMs: RATE_LIMIT_WINDOW_MS,
-    });
-    if (!rl.ok) {
-      return NextResponse.json(
-        { error: 'Demasiados intentos de checkout. Intenta nuevamente en unos minutos.', retry_after: rl.retryAfterSec },
-        { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } },
-      );
-    }
+    const rl = await checkPersistentRateLimit({ namespace: 'public:checkout-mp', identity: ip, max: RATE_LIMIT_MAX, windowMs: RATE_LIMIT_WINDOW_MS });
+    if (!rl.ok) return NextResponse.json({ error: 'Demasiados intentos de checkout. Intenta nuevamente en unos minutos.', retry_after: rl.retryAfterSec }, { status: 429, headers: { 'Retry-After': String(rl.retryAfterSec) } });
 
     const body = await readCheckoutBody(request);
     if (!body) return NextResponse.json({ error: 'Solicitud demasiado grande.' }, { status: 413 });
@@ -167,6 +111,15 @@ export async function POST(request: Request) {
       email: cleanText(cliente?.email, 180).toLowerCase(),
       telefono: cleanText(cliente?.telefono, 60) || undefined,
     };
+    const documentType = body.billing?.documentType === 'factura' ? 'factura' : 'boleta';
+    const safeBilling = {
+      documentType,
+      rut: cleanText(body.billing?.rut, 20).replace(/\./g, ''),
+      razonSocial: cleanText(body.billing?.razonSocial, 180),
+      giro: cleanText(body.billing?.giro, 180),
+      direccion: cleanText(body.billing?.direccion, 220),
+      comuna: cleanText(body.billing?.comuna, 120),
+    } as const;
     const safeBody: CheckoutPayload = {
       ...body,
       cliente: safeClient,
@@ -174,21 +127,17 @@ export async function POST(request: Request) {
       shippingAddress: cleanText(shippingAddress, 500),
       paymentMethod: 'mercadopago',
       clientOrderKey: sanitizeOrderId(body.clientOrderKey),
+      billing: safeBilling,
     };
 
     const validationErrors = validateCheckoutPayload(safeBody);
-    if (validationErrors.length > 0) {
-      return NextResponse.json({ error: 'Datos inválidos para checkout.', validationErrors }, { status: 422 });
-    }
+    if (validationErrors.length > 0) return NextResponse.json({ error: 'Datos inválidos para checkout.', validationErrors }, { status: 422 });
 
     const shippingConfig = await getShippingConfig();
     let hydratedItems;
-    try {
-      hydratedItems = await hydrateCheckoutItemsWithShipping(items);
-    } catch (error) {
-      if (error instanceof CheckoutHydrationError) {
-        return NextResponse.json({ error: error.message }, { status: error.status });
-      }
+    try { hydratedItems = await hydrateCheckoutItemsWithShipping(items); }
+    catch (error) {
+      if (error instanceof CheckoutHydrationError) return NextResponse.json({ error: error.message }, { status: error.status });
       throw error;
     }
 
@@ -225,6 +174,7 @@ export async function POST(request: Request) {
         trackingUrl,
         internalShippingEstimate,
         source: 'checkout',
+        billing: safeBilling,
       },
       created_at: createdAt,
       updated_at: createdAt,
@@ -239,54 +189,31 @@ export async function POST(request: Request) {
 
     if (insertError) {
       if (!isDuplicateError(insertError)) {
-        return NextResponse.json({
-          error: `No se pudo registrar la orden antes del pago: ${insertError.message}. No se abrió Mercado Pago para evitar pagos sin pedido.`,
-          code: 'ORDER_PERSISTENCE_FAILED',
-        }, { status: 500 });
+        return NextResponse.json({ error: `No se pudo registrar la orden antes del pago: ${insertError.message}. No se abrió Mercado Pago para evitar pagos sin pedido.`, code: 'ORDER_PERSISTENCE_FAILED' }, { status: 500 });
       }
-
       const existing = await loadExistingOrder(id);
       if (!existing) return NextResponse.json({ error: 'La orden ya existe, pero no se pudo recuperar.' }, { status: 409 });
       const existingTotal = Number(existing.total ?? 0);
-      if (Number.isFinite(existingTotal) && existingTotal > 0 && existingTotal !== resumen.total) {
-        return NextResponse.json({ error: 'La llave de orden ya fue usada con otro total.' }, { status: 409 });
-      }
+      if (Number.isFinite(existingTotal) && existingTotal > 0 && existingTotal !== resumen.total) return NextResponse.json({ error: 'La llave de orden ya fue usada con otro total.' }, { status: 409 });
       persistence = 'existing';
       persistedOrder = existing;
     } else {
-      dispatchHookAsync('order.created', { id, customer: { name: safeClient.nombre, email: safeClient.email, phone: safeClient.telefono ?? null }, region: safeBody.region, items: hydratedItems, summary: resumen, status: orderRow.status, trackingNumber: shipmentTrackingNumber });
-      syncOrderToSalesPipelineAsync(orderRow, {
-        stage: 'Checkout iniciado',
-        probability: 45,
-        attended: false,
-        nextAction: 'Confirmar pago y preparar despacho',
-      });
+      dispatchHookAsync('order.created', { id, customer: { name: safeClient.nombre, email: safeClient.email, phone: safeClient.telefono ?? null }, region: safeBody.region, items: hydratedItems, summary: resumen, status: orderRow.status, trackingNumber: shipmentTrackingNumber, billing: safeBilling });
+      syncOrderToSalesPipelineAsync(orderRow, { stage: 'Checkout iniciado', probability: 45, attended: false, nextAction: 'Confirmar pago y preparar despacho' });
     }
 
     await ensureShipment(persistedOrder, String(persistedOrder.tracking_number || shipmentTrackingNumber), String(persistedOrder.created_at || createdAt));
 
     const preference = await createMercadoPagoPreference({ orderId: id, payload: { ...safeBody, items: hydratedItems, paymentMethod: 'mercadopago' }, summary: resumen });
     const payment = { provider: 'mercado_pago', preferenceId: preference.id, checkoutUrl: preference.init_point || preference.sandbox_init_point || null };
-
     const orden = {
-      id,
-      cliente: safeClient,
-      items: hydratedItems,
-      resumen,
-      shippingAddress: safeBody.shippingAddress ?? '',
-      region: safeBody.region,
-      estado: 'pendiente_pago',
-      paymentMethod: 'mercadopago',
-      deliveryEstimate: '7 a 21 días hábiles',
-      internalShippingEstimate,
-      trackingToken,
-      trackingUrl,
-      trackingNumber: String(persistedOrder.tracking_number || shipmentTrackingNumber),
-      carrier: String(persistedOrder.carrier || DEFAULT_CARRIER),
-      creadoEn: createdAt,
+      id, cliente: safeClient, items: hydratedItems, resumen, billing: safeBilling,
+      shippingAddress: safeBody.shippingAddress ?? '', region: safeBody.region, estado: 'pendiente_pago', paymentMethod: 'mercadopago',
+      deliveryEstimate: '7 a 21 días hábiles', internalShippingEstimate, trackingToken, trackingUrl,
+      trackingNumber: String(persistedOrder.tracking_number || shipmentTrackingNumber), carrier: String(persistedOrder.carrier || DEFAULT_CARRIER), creadoEn: createdAt,
     };
 
-    return NextResponse.json({ data: orden, persistence, payment, shippingMode: shippingConfig.mode, notification: { ok: true, deferred: true, reason: 'Orden registrada. El correo, boleta, CRM y dashboard se actualizan al aprobarse el pago.' } }, { status: persistence === 'db' ? 201 : 200 });
+    return NextResponse.json({ data: orden, persistence, payment, shippingMode: shippingConfig.mode, notification: { ok: true, deferred: true, reason: 'Orden registrada. Al aprobarse el pago se actualizan pedido, stock, correo, aviso al administrador y DTE/comprobante.' } }, { status: persistence === 'db' ? 201 : 200 });
   } catch (error) {
     const message = error instanceof Error ? error.message : 'Error interno al procesar el checkout.';
     return NextResponse.json({ error: message }, { status: 500 });

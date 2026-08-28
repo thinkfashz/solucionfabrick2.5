@@ -1,8 +1,9 @@
 import { NextResponse } from 'next/server';
 import type { NextRequest } from 'next/server';
 import { requireAdminPermission } from '@/lib/adminPermissions';
-import { getBillingDriver } from '@/lib/billing/provider';
-import { insforge } from '@/lib/insforge';
+import { getBillingDriverResolved } from '@/lib/billing/provider';
+import { resolveBillingCredentials } from '@/lib/billing/credentials';
+import { insforgeAdmin } from '@/lib/insforge';
 import { ensureInvoicesTable, markInvoiceVoided } from '@/lib/billing/sql';
 
 export const dynamic = 'force-dynamic';
@@ -14,42 +15,27 @@ export async function POST(req: NextRequest) {
   const access = await requireAdminPermission(req, { resource: 'finance', action: 'delete' });
   if (!access.ok) return access.response;
   const tenantId = access.session.tenant_id ?? DEFAULT_TENANT_ID;
-
   await ensureInvoicesTable();
 
   let body: { invoice_id: string; reason: string };
-  try {
-    body = (await req.json()) as { invoice_id: string; reason: string };
-  } catch {
-    return NextResponse.json({ error: 'JSON inválido' }, { status: 400 });
-  }
-  if (!body.invoice_id || !body.reason?.trim()) {
-    return NextResponse.json({ error: 'Faltan campos requeridos: invoice_id, reason' }, { status: 422 });
-  }
+  try { body = (await req.json()) as { invoice_id: string; reason: string }; }
+  catch { return NextResponse.json({ error: 'JSON inválido' }, { status: 400 }); }
+  if (!body.invoice_id || !body.reason?.trim()) return NextResponse.json({ error: 'Faltan campos requeridos: invoice_id, reason' }, { status: 422 });
 
-  const { data: invoice, error: fetchErr } = await insforge.database
-    .from('invoices')
-    .select('*')
-    .eq('id', body.invoice_id)
-    .eq('tenant_id', tenantId)
-    .single();
+  const { data: invoice, error: fetchErr } = await insforgeAdmin.database.from('invoices').select('*').eq('id', body.invoice_id).eq('tenant_id', tenantId).single();
   if (fetchErr || !invoice) return NextResponse.json({ error: 'Factura no encontrada' }, { status: 404 });
 
   const inv = invoice as {
-    id: string;
-    folio: string | null;
-    dte_type: number;
-    voided: boolean;
-    neto: number;
-    iva: number;
-    exento: number;
-    total: number;
-    rut_receptor: string | null;
-    razon_social_receptor: string | null;
+    id: string; folio: string | null; dte_type: number; voided: boolean; neto: number; iva: number; exento: number; total: number;
+    rut_receptor: string | null; razon_social_receptor: string | null; provider?: string | null;
   };
-  if (inv.voided) return NextResponse.json({ error: 'La factura ya está anulada' }, { status: 409 });
+  if (inv.voided) return NextResponse.json({ error: 'El documento ya está anulado' }, { status: 409 });
 
-  const driver = getBillingDriver();
+  const [driver, billing] = await Promise.all([getBillingDriverResolved(), resolveBillingCredentials()]);
+  if (String(inv.provider || '') !== 'mock' && driver.code === 'mock') {
+    return NextResponse.json({ error: 'No puedes anular un DTE real mientras la integración tributaria está desconectada.' }, { status: 409 });
+  }
+
   let result;
   try {
     result = await driver.voidDte({
@@ -69,13 +55,12 @@ export async function POST(req: NextRequest) {
   }
 
   await markInvoiceVoided(body.invoice_id, tenantId);
-
-  const { data: creditNote } = await insforge.database.from('invoices').insert({
+  const { data: creditNote } = await insforgeAdmin.database.from('invoices').insert({
     tenant_id: tenantId,
     order_id: body.invoice_id,
     dte_type: 61,
     folio: result.folio ?? `NC-${Date.now().toString(36).toUpperCase()}`,
-    rut_emisor: process.env.BILLING_RUT_EMISOR ?? null,
+    rut_emisor: billing.rutEmisor || null,
     rut_receptor: inv.rut_receptor,
     razon_social_receptor: inv.razon_social_receptor,
     neto: result.neto,
@@ -85,10 +70,10 @@ export async function POST(req: NextRequest) {
     pdf_url: result.pdf_url ?? null,
     xml_url: result.xml_url ?? null,
     sii_track_id: result.sii_track_id ?? null,
-    sii_status: result.sii_status ?? 'accepted_mock',
+    sii_status: result.sii_status ?? (driver.code === 'mock' ? 'voided_mock' : 'pending'),
     provider: driver.code,
     provider_payload: result.raw ?? { reason: body.reason },
   }).select().single();
 
-  return NextResponse.json({ ok: true, credit_note: creditNote, result });
+  return NextResponse.json({ ok: true, credit_note: creditNote, result, simulated: driver.code === 'mock' });
 }

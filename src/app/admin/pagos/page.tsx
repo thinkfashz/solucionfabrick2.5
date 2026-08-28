@@ -1,13 +1,14 @@
-import type { Metadata } from 'next';
+import PaymentsOperationsPanel from './PaymentsOperationsPanel';
 import MercadoPagoPanelClient from './MercadoPagoPanelClient';
 
-export const metadata: Metadata = {
-  title: 'Mercado Pago protegido | Admin Fabrick',
-  description: 'Panel de solo lectura conectado a Mercado Pago para pagos aprobados, pendientes, fallidos, transferencias y montos recibidos.',
+export const metadata = {
+  title: 'Pagos, Mercado Pago y DTE',
+  description: 'Centro operativo de cobros, webhooks, ventas confirmadas y facturación electrónica.',
 };
 
-export const dynamic = 'force-dynamic';
-
 export default function AdminPagosPage() {
-  return <MercadoPagoPanelClient />;
+  return <main className="min-h-screen bg-[#08090A] pb-14">
+    <PaymentsOperationsPanel />
+    <MercadoPagoPanelClient />
+  </main>;
 }

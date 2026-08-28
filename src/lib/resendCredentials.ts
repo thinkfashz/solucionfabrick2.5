@@ -4,6 +4,7 @@ import { resolveIntegrationCredentials } from '@/lib/integrationCredentials';
 export interface ResendCredentials {
   apiKey: string;
   from: string | null;
+  notifyTo: string | null;
   source: 'env' | 'db' | 'missing';
   encryptedAtRest: boolean;
   ready: boolean;
@@ -15,6 +16,7 @@ export async function getResendCredentials(options: { preferDb?: boolean } = {})
   return {
     apiKey: resolved.values.api_key ?? '',
     from: resolved.values.from ?? null,
+    notifyTo: resolved.values.notify_to ?? null,
     source: resolved.source,
     encryptedAtRest: resolved.encryptedAtRest,
     ready: resolved.missing.length === 0,

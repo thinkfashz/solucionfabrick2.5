@@ -6,6 +6,7 @@ import {
   Copy,
   Eye,
   EyeOff,
+  GripVertical,
   RotateCcw,
   Type,
   X,
@@ -44,6 +45,7 @@ import {
   deletedSources,
   duplicatedSources,
   movedSources,
+  relocatedSources,
   remapRepeatedItemStyles,
 } from '@/lib/homeVisualRepeatedStyles';
 
@@ -262,6 +264,11 @@ function ContentField({ fieldKey, value, selectedField, onSelect, onChange, onMu
       const target = index + direction;
       onMutateRepeated({ key: fieldKey, next: sources.map((source) => list[source]), sources, selectField: `${fieldKey}-${target}` });
     };
+    const relocate = (from: number, to: number) => {
+      const sources = relocatedSources(list.length, from, to);
+      if (from === to || sources[to] !== from) return;
+      onMutateRepeated({ key: fieldKey, next: sources.map((source) => list[source]), sources, selectField: `${fieldKey}-${to}` });
+    };
     const duplicateItem = (index: number) => {
       const sources = duplicatedSources(list.length, index);
       onMutateRepeated({ key: fieldKey, next: sources.map((source) => list[source]), sources, selectField: `${fieldKey}-${index + 1}` });
@@ -286,8 +293,11 @@ function ContentField({ fieldKey, value, selectedField, onSelect, onChange, onMu
             const containerField = `${fieldKey}-${index}-container`;
             const selected = selectedField === field || selectedField === containerField;
             return (
-              <div key={index} className={`rounded-xl border bg-black/20 p-2 ${selected ? 'border-sky-400/30' : 'border-white/8'}`}>
-                <input onFocus={() => onSelect(field)} className={inputCls} value={item} onChange={(event) => onChange(list.map((current, i) => i === index ? event.target.value : current))} />
+              <div key={index} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; }} onDrop={(event) => { event.preventDefault(); const from = dragSource(event.dataTransfer.getData('text/plain'), fieldKey); if (from !== null) relocate(from, index); }} className={`rounded-xl border bg-black/20 p-2 ${selected ? 'border-sky-400/30' : 'border-white/8'}`}>
+                <div className="flex items-center gap-2">
+                  <DragHandle fieldKey={fieldKey} index={index} />
+                  <input onFocus={() => onSelect(field)} className={inputCls} value={item} onChange={(event) => onChange(list.map((current, i) => i === index ? event.target.value : current))} />
+                </div>
                 <div className="mt-2 grid grid-cols-4 gap-1.5">
                   <MiniButton label="Subir" disabled={index === 0} onClick={() => move(index, -1)}><ChevronUp className="h-3.5 w-3.5" /></MiniButton>
                   <MiniButton label="Bajar" disabled={index === list.length - 1} onClick={() => move(index, 1)}><ChevronDown className="h-3.5 w-3.5" /></MiniButton>
@@ -310,6 +320,11 @@ function ContentField({ fieldKey, value, selectedField, onSelect, onChange, onMu
       if (sources[index] === index) return;
       const target = index + direction;
       onMutateRepeated({ key: fieldKey, next: sources.map((source) => list[source]), sources, selectField: `${fieldKey}-${target}-container` });
+    };
+    const relocate = (from: number, to: number) => {
+      const sources = relocatedSources(list.length, from, to);
+      if (from === to || sources[to] !== from) return;
+      onMutateRepeated({ key: fieldKey, next: sources.map((source) => list[source]), sources, selectField: `${fieldKey}-${to}-container` });
     };
     const duplicateItem = (index: number) => {
       const sources = duplicatedSources(list.length, index);
@@ -337,9 +352,12 @@ function ContentField({ fieldKey, value, selectedField, onSelect, onChange, onMu
             const containerField = `${fieldKey}-${index}-container`;
             const selected = selectedField === titleField || selectedField === textField || selectedField === containerField;
             return (
-              <div key={index} className={`rounded-xl border bg-black/25 p-2.5 ${selected ? 'border-violet-300/35' : 'border-white/8'}`}>
+              <div key={index} onDragOver={(event) => { event.preventDefault(); event.dataTransfer.dropEffect = 'move'; }} onDrop={(event) => { event.preventDefault(); const from = dragSource(event.dataTransfer.getData('text/plain'), fieldKey); if (from !== null) relocate(from, index); }} className={`rounded-xl border bg-black/25 p-2.5 ${selected ? 'border-violet-300/35' : 'border-white/8'}`}>
                 <div className="mb-2 flex items-center justify-between gap-2">
-                  <button type="button" onClick={() => onSelect(containerField)} className={`rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[.12em] ${selectedField === containerField ? 'border-violet-300/40 bg-violet-300/10 text-violet-100' : 'border-white/8 text-white/35'}`}>Tarjeta {index + 1}</button>
+                  <div className="flex min-w-0 items-center gap-1.5">
+                    <DragHandle fieldKey={fieldKey} index={index} />
+                    <button type="button" onClick={() => onSelect(containerField)} className={`truncate rounded-full border px-2.5 py-1 text-[8px] font-black uppercase tracking-[.12em] ${selectedField === containerField ? 'border-violet-300/40 bg-violet-300/10 text-violet-100' : 'border-white/8 text-white/35'}`}>Tarjeta {index + 1}</button>
+                  </div>
                   <div className="flex gap-1">
                     <MiniButton label="Subir" disabled={index === 0} onClick={() => move(index, -1)}><ChevronUp className="h-3.5 w-3.5" /></MiniButton>
                     <MiniButton label="Bajar" disabled={index === list.length - 1} onClick={() => move(index, 1)}><ChevronDown className="h-3.5 w-3.5" /></MiniButton>
@@ -359,6 +377,17 @@ function ContentField({ fieldKey, value, selectedField, onSelect, onChange, onMu
   }
 
   return null;
+}
+
+function DragHandle({ fieldKey, index }: { fieldKey: string; index: number }) {
+  return <button type="button" draggable onDragStart={(event) => { event.dataTransfer.effectAllowed = 'move'; event.dataTransfer.setData('text/plain', `${fieldKey}:${index}`); }} title="Arrastrar tarjeta" aria-label="Arrastrar tarjeta" className="grid h-8 w-8 shrink-0 cursor-grab place-items-center rounded-lg border border-white/8 text-white/28 transition hover:border-violet-300/30 hover:text-violet-100 active:cursor-grabbing"><GripVertical className="h-4 w-4" /></button>;
+}
+
+function dragSource(raw: string, fieldKey: string) {
+  const prefix = `${fieldKey}:`;
+  if (!raw.startsWith(prefix)) return null;
+  const value = Number(raw.slice(prefix.length));
+  return Number.isInteger(value) && value >= 0 ? value : null;
 }
 
 function MiniButton({ label, children, onClick, disabled = false, danger = false }: { label: string; children: React.ReactNode; onClick: () => void; disabled?: boolean; danger?: boolean }) {

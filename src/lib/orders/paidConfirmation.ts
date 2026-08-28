@@ -14,6 +14,7 @@ export type PaidConfirmationResult = {
 
 export async function confirmPaidOrderAndSendReceipt(orderId: string): Promise<PaidConfirmationResult> {
   const warnings: string[] = [];
+
   let invoice: Awaited<ReturnType<typeof emitBoletaForOrder>>;
   try {
     invoice = await emitBoletaForOrder(orderId);
@@ -22,12 +23,24 @@ export async function confirmPaidOrderAndSendReceipt(orderId: string): Promise<P
     invoice = { ok: false, error: error instanceof Error ? error.message : 'Falló la emisión DTE.' };
     warnings.push(invoice.error || 'Falló la emisión DTE.');
   }
-  const [email, adminEmail] = await Promise.all([
-    sendOrderBoletaEmail(orderId).catch((error) => ({ ok: false, error: error instanceof Error ? error.message : 'Falló el correo al cliente.' })),
-    sendAdminOrderNotification(orderId).catch((error) => ({ ok: false, error: error instanceof Error ? error.message : 'Falló el aviso al administrador.' })),
-  ]);
+
+  let email: Awaited<ReturnType<typeof sendOrderBoletaEmail>>;
+  try {
+    email = await sendOrderBoletaEmail(orderId);
+  } catch (error) {
+    email = { ok: false, error: error instanceof Error ? error.message : 'Falló el correo al cliente.' };
+  }
+
+  let adminEmail: Awaited<ReturnType<typeof sendAdminOrderNotification>>;
+  try {
+    adminEmail = await sendAdminOrderNotification(orderId);
+  } catch (error) {
+    adminEmail = { ok: false, error: error instanceof Error ? error.message : 'Falló el aviso al administrador.' };
+  }
+
   if (!email.ok) warnings.push(email.error || email.reason || 'No se envió confirmación al cliente.');
   if (!adminEmail.ok) warnings.push(adminEmail.error || adminEmail.reason || 'No se envió aviso al administrador.');
+
   return { ok: true, invoice, email, adminEmail, warnings };
 }
 

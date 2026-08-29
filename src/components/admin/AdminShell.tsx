@@ -7,7 +7,7 @@ import {
   Activity, BarChart3, Bot, Boxes, Calculator, ChevronDown, ChevronRight,
   CircleDollarSign, FileText, Gauge, Globe2, Hammer, Image as ImageIcon,
   Inbox, KeyRound, LayoutDashboard, LayoutGrid, Link2, LogOut, Mail, Menu,
-  Newspaper, Package, PanelLeftClose, PanelLeftOpen, Receipt,
+  Newspaper, Package, Paintbrush, PanelLeftClose, PanelLeftOpen, Receipt,
   Search, Send, Settings, ShieldCheck, ShoppingCart, Sparkles, Store,
   Terminal, Truck, User, Users, Wallet, X, type LucideIcon,
 } from 'lucide-react';
@@ -72,7 +72,8 @@ const NAV: NavSection[] = [
   {
     id: 'content', label: 'Web & contenido', icon: LayoutGrid,
     items: [
-      { href: '/admin/editor', label: 'Editor del sitio', description: 'Home, tienda, navegación y estilos globales', icon: LayoutGrid },
+      { href: '/admin/editor', label: 'Visual CMS', description: 'Edita páginas, estilos y contenido visual', icon: Paintbrush, exact: true },
+      { href: '/admin/editor/home-structure', label: 'Estructura Home', description: 'Orden, bloques y estructura avanzada del inicio', icon: LayoutGrid },
       { href: '/admin/paginas', label: 'Páginas comerciales', description: 'Landings y páginas administrables', icon: Globe2 },
       { href: '/admin/blog', label: 'Blog', description: 'Artículos y comentarios', icon: Newspaper },
       { href: '/admin/medios', label: 'Biblioteca de medios', description: 'Imágenes, video y Cloudinary', icon: ImageIcon },

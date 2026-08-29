@@ -4,8 +4,10 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 
 type SelectionLevel = 'element' | 'container' | 'section';
+type HomeStructureAction = 'move-up' | 'move-down' | 'duplicate';
 
 type OverlayRect = { top: number; left: number; width: number; height: number };
+type HomeStructureState = { dirty: boolean; busy: boolean; status: string };
 
 const BLOCKED_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'HTML', 'BODY']);
 
@@ -51,6 +53,9 @@ function containerFor(element: HTMLElement): HTMLElement | null {
 }
 
 function sectionFor(element: HTMLElement): HTMLElement | null {
+  const managed = element.closest<HTMLElement>('[data-cms-block-id]');
+  if (managed && managed !== document.body && !isEditorElement(managed)) return managed;
+
   const semantic = element.closest<HTMLElement>('[data-cms-section], section, article, aside, header, footer, nav');
   if (semantic && semantic !== document.body && !isEditorElement(semantic)) return semantic;
 
@@ -95,6 +100,7 @@ export default function VisualCmsInlineSelectionOverlay() {
   const [base, setBase] = useState<HTMLElement | null>(null);
   const [level, setLevel] = useState<SelectionLevel>('element');
   const [rect, setRect] = useState<OverlayRect | null>(null);
+  const [homeStructure, setHomeStructure] = useState<HomeStructureState>({ dirty: false, busy: false, status: '' });
   const suppressBaseResetRef = useRef(false);
 
   useEffect(() => {
@@ -102,6 +108,18 @@ export default function VisualCmsInlineSelectionOverlay() {
     try { preview = new URLSearchParams(window.location.search).get('cmsVisual') === '1'; } catch { /* noop */ }
     setEnabled(preview && window.parent !== window);
   }, []);
+
+  useEffect(() => {
+    if (!enabled) return;
+    const handler = (event: MessageEvent) => {
+      if (event.origin !== window.location.origin) return;
+      const data = event.data as { type?: string; dirty?: boolean; busy?: boolean; status?: string } | null;
+      if (data?.type !== 'cms:visual-home-structure-state') return;
+      setHomeStructure({ dirty: data.dirty === true, busy: data.busy === true, status: typeof data.status === 'string' ? data.status : '' });
+    };
+    window.addEventListener('message', handler);
+    return () => window.removeEventListener('message', handler);
+  }, [enabled]);
 
   useEffect(() => {
     if (!enabled) return;
@@ -155,7 +173,8 @@ export default function VisualCmsInlineSelectionOverlay() {
   const textColor = cssColorToHex(computed.color, '#171612');
   const backgroundColor = cssColorToHex(computed.backgroundColor, '#ffffff');
   const fontSize = Number.parseFloat(computed.fontSize || '16') || 16;
-  const toolbarWidth = Math.min(590, Math.max(300, window.innerWidth - 16));
+  const managedSectionId = level === 'section' ? selected.dataset.cmsBlockId || null : null;
+  const toolbarWidth = Math.min(managedSectionId ? 760 : 590, Math.max(300, window.innerWidth - 16));
   const toolbarLeft = Math.max(8, Math.min(window.innerWidth - toolbarWidth - 8, rect.left));
   const toolbarTop = rect.top > 58 ? rect.top - 48 : Math.min(window.innerHeight - 52, rect.top + rect.height + 8);
 
@@ -177,6 +196,16 @@ export default function VisualCmsInlineSelectionOverlay() {
     window.parent.postMessage({ type: 'cms:visual-inline-action', action, value }, window.location.origin);
   };
 
+  const sendHomeStructure = (action: HomeStructureAction) => {
+    if (!managedSectionId || homeStructure.busy) return;
+    window.parent.postMessage({ type: 'cms:visual-home-structure-action', sectionId: managedSectionId, action }, window.location.origin);
+  };
+
+  const publishHomeStructure = () => {
+    if (!homeStructure.dirty || homeStructure.busy) return;
+    window.parent.postMessage({ type: 'cms:visual-home-structure-publish' }, window.location.origin);
+  };
+
   return createPortal(
     <div data-cms-editor-ignore="true" className="pointer-events-none fixed inset-0 z-[2147483000] font-sans">
       <div
@@ -195,10 +224,22 @@ export default function VisualCmsInlineSelectionOverlay() {
       <div
         className="pointer-events-auto absolute flex h-10 items-center gap-1 overflow-x-auto rounded-xl border border-white/10 bg-[#15140f]/95 p-1 text-[#fff8e9] shadow-[0_16px_42px_rgba(0,0,0,.34)] backdrop-blur-xl [scrollbar-width:none]"
         style={{ top: toolbarTop, left: toolbarLeft, width: toolbarWidth }}
+        title={homeStructure.status || undefined}
       >
         <button type="button" onClick={() => selectLevel('element')} className={`h-8 shrink-0 rounded-lg px-2 text-[9px] font-black ${level === 'element' ? 'bg-[#ffb000] text-black' : 'bg-white/5 text-white/70'}`}>Elemento</button>
         {candidates.container ? <button type="button" onClick={() => selectLevel('container')} className={`h-8 shrink-0 rounded-lg px-2 text-[9px] font-black ${level === 'container' ? 'bg-[#ffb000] text-black' : 'bg-white/5 text-white/70'}`}>Contenedor</button> : null}
         {candidates.section && candidates.section !== candidates.container ? <button type="button" onClick={() => selectLevel('section')} className={`h-8 shrink-0 rounded-lg px-2 text-[9px] font-black ${level === 'section' ? 'bg-[#ffb000] text-black' : 'bg-white/5 text-white/70'}`}>Sección</button> : null}
+
+        {managedSectionId ? (
+          <>
+            <span className="mx-0.5 h-5 w-px shrink-0 bg-[#ffb000]/25" />
+            <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('move-up')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#ffb000]/12 text-[13px] font-black text-[#ffd77a] disabled:opacity-35" title="Mover sección hacia arriba">↑</button>
+            <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('move-down')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#ffb000]/12 text-[13px] font-black text-[#ffd77a] disabled:opacity-35" title="Mover sección hacia abajo">↓</button>
+            <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('duplicate')} className="h-8 shrink-0 rounded-lg bg-[#ffb000]/12 px-2 text-[8px] font-black text-[#ffd77a] disabled:opacity-35" title="Duplicar sección">Duplicar</button>
+            {homeStructure.dirty ? <button type="button" disabled={homeStructure.busy} onClick={publishHomeStructure} className="h-8 shrink-0 rounded-lg bg-[#ffb000] px-2.5 text-[8px] font-black text-black disabled:opacity-45">{homeStructure.busy ? 'Guardando…' : 'Publicar estructura'}</button> : null}
+          </>
+        ) : null}
+
         <span className="mx-0.5 h-5 w-px shrink-0 bg-white/10" />
         <button type="button" onClick={() => send('focus-text')} className="h-8 shrink-0 rounded-lg bg-white/5 px-2 text-[9px] font-black text-white/70">Texto</button>
         <label className="flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-white/5 px-1.5 text-[8px] font-bold text-white/60" title="Color de texto/icono">

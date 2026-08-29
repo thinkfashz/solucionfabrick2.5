@@ -7,6 +7,7 @@ import {
   type HomeVisualSection,
   type HomeVisualSectionStyle,
 } from '@/lib/homeVisualCms';
+import { mutateRepeatedItem, type RepeatedItemAction } from '@/lib/homeVisualRepeatedStyles';
 
 const HOME_DRAFT_KEY = 'sf-home-visual-cms-draft-v1';
 
@@ -15,6 +16,7 @@ type StructureAction = 'move-up' | 'move-down' | 'duplicate';
 type StructureMessage = {
   type?: string;
   sectionId?: string;
+  container?: string;
   action?: StructureAction;
 };
 
@@ -42,7 +44,7 @@ function cloneSection(section: HomeVisualSection): HomeVisualSection {
   };
 }
 
-function applyStructureAction(content: HomePageContent, sectionId: string, action: StructureAction) {
+function applySectionAction(content: HomePageContent, sectionId: string, action: StructureAction) {
   const ordered = [...content.sections].sort((a, b) => a.order - b.order);
   const index = ordered.findIndex((section) => section.id === sectionId);
   if (index < 0) return content;
@@ -63,6 +65,18 @@ function applyStructureAction(content: HomePageContent, sectionId: string, actio
     ...content,
     sections: ordered.map((section, position) => ({ ...section, order: (position + 1) * 10 })),
   });
+}
+
+function applyCardAction(content: HomePageContent, sectionId: string, container: string, action: StructureAction) {
+  let changed = false;
+  const sections = content.sections.map((section) => {
+    if (section.id !== sectionId) return section;
+    const result = mutateRepeatedItem(section, container, action as RepeatedItemAction);
+    if (!result) return section;
+    changed = true;
+    return result.section;
+  });
+  return changed ? normalizeHomePage({ ...content, sections }) : content;
 }
 
 export default function VisualCmsHomeStructureBridge() {
@@ -123,6 +137,12 @@ export default function VisualCmsHomeStructureBridge() {
     finally { loadingRef.current = null; }
   }, []);
 
+  const commitDraft = useCallback((next: HomePageContent, status: string) => {
+    draftRef.current = next;
+    window.localStorage.setItem(HOME_DRAFT_KEY, JSON.stringify(next));
+    sendDraft(status);
+  }, [sendDraft]);
+
   useEffect(() => {
     const handler = (event: MessageEvent<StructureMessage>) => {
       if (event.origin !== window.location.origin) return;
@@ -137,16 +157,27 @@ export default function VisualCmsHomeStructureBridge() {
 
       if (data?.type === 'cms:visual-home-structure-action' && typeof data.sectionId === 'string' && data.action) {
         void ensureLoaded().then((current) => {
-          const next = applyStructureAction(current, data.sectionId!, data.action!);
+          const next = applySectionAction(current, data.sectionId!, data.action!);
           if (JSON.stringify(next) === JSON.stringify(current)) {
             emitState(data.action === 'move-up' ? 'La sección ya está al inicio.' : data.action === 'move-down' ? 'La sección ya está al final.' : 'No se pudo duplicar la sección.');
             return;
           }
-          draftRef.current = next;
-          window.localStorage.setItem(HOME_DRAFT_KEY, JSON.stringify(next));
           const label = data.action === 'move-up' ? 'Sección movida hacia arriba.' : data.action === 'move-down' ? 'Sección movida hacia abajo.' : 'Sección duplicada en el borrador.';
-          sendDraft(label);
+          commitDraft(next, label);
         }).catch((error) => emitState(error instanceof Error ? error.message : 'No se pudo modificar la estructura Home.'));
+        return;
+      }
+
+      if (data?.type === 'cms:visual-home-card-structure-action' && typeof data.sectionId === 'string' && typeof data.container === 'string' && data.action) {
+        void ensureLoaded().then((current) => {
+          const next = applyCardAction(current, data.sectionId!, data.container!, data.action!);
+          if (JSON.stringify(next) === JSON.stringify(current)) {
+            emitState(data.action === 'move-up' ? 'La tarjeta ya está al inicio.' : data.action === 'move-down' ? 'La tarjeta ya está al final.' : 'Este contenedor no admite duplicación estructural.');
+            return;
+          }
+          const label = data.action === 'move-up' ? 'Tarjeta movida hacia arriba.' : data.action === 'move-down' ? 'Tarjeta movida hacia abajo.' : 'Tarjeta duplicada en el borrador.';
+          commitDraft(next, label);
+        }).catch((error) => emitState(error instanceof Error ? error.message : 'No se pudo modificar la tarjeta.'));
         return;
       }
 
@@ -155,6 +186,7 @@ export default function VisualCmsHomeStructureBridge() {
         void ensureLoaded().then(async (draft) => {
           publishingRef.current = true;
           emitState('Publicando estructura Home…');
+          let finalStatus = '';
           try {
             const response = await fetch('/api/admin/site-structure/home-page', {
               method: 'POST',
@@ -169,12 +201,12 @@ export default function VisualCmsHomeStructureBridge() {
             draftRef.current = saved;
             window.localStorage.removeItem(HOME_DRAFT_KEY);
             postToPreview({ type: 'cms:visual-home-preview', content: saved });
-            emitState('Estructura Home publicada.');
+            finalStatus = 'Estructura Home publicada.';
           } catch (error) {
-            emitState(error instanceof Error ? `No se pudo publicar: ${error.message}` : 'No se pudo publicar la estructura Home.');
+            finalStatus = error instanceof Error ? `No se pudo publicar: ${error.message}` : 'No se pudo publicar la estructura Home.';
           } finally {
             publishingRef.current = false;
-            window.setTimeout(() => emitState(), 0);
+            emitState(finalStatus);
           }
         }).catch((error) => emitState(error instanceof Error ? error.message : 'No se pudo cargar la estructura Home.'));
       }
@@ -182,7 +214,7 @@ export default function VisualCmsHomeStructureBridge() {
 
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [emitState, ensureLoaded, postToPreview, sendDraft]);
+  }, [commitDraft, emitState, ensureLoaded, postToPreview, sendDraft]);
 
   return null;
 }

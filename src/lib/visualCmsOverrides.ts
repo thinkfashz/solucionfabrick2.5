@@ -36,6 +36,8 @@ export interface VisualCmsElementOverride {
   href?: string;
   src?: string;
   alt?: string;
+  iconUrl?: string;
+  iconAlt?: string;
   hidden?: boolean;
   styles?: Partial<Record<VisualCmsDevice | 'all', VisualCmsStylePatch>>;
 }
@@ -81,6 +83,8 @@ export function normalizeVisualCmsOverrides(value: unknown): VisualCmsOverridesC
         ...(typeof element.href === 'string' ? { href: element.href } : {}),
         ...(typeof element.src === 'string' ? { src: element.src } : {}),
         ...(typeof element.alt === 'string' ? { alt: element.alt } : {}),
+        ...(typeof element.iconUrl === 'string' ? { iconUrl: element.iconUrl } : {}),
+        ...(typeof element.iconAlt === 'string' ? { iconAlt: element.iconAlt } : {}),
         ...(typeof element.hidden === 'boolean' ? { hidden: element.hidden } : {}),
         ...(element.styles && typeof element.styles === 'object' && !Array.isArray(element.styles) ? { styles: element.styles } : {}),
       };

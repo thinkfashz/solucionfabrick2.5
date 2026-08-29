@@ -177,7 +177,8 @@ export default function VisualCmsInlineSelectionOverlay() {
   const backgroundColor = cssColorToHex(computed.backgroundColor, '#ffffff');
   const fontSize = Number.parseFloat(computed.fontSize || '16') || 16;
   const managedSectionId = level === 'section' ? selected.dataset.cmsBlockId || null : null;
-  const managedContainer = level === 'container' ? selected.dataset.cmsContainer || null : null;
+  const rawManagedContainer = level === 'container' ? selected.dataset.cmsContainer || null : null;
+  const managedContainer = rawManagedContainer && /^.+-\d+$/.test(rawManagedContainer) ? rawManagedContainer : null;
   const managedContainerSectionId = managedContainer ? selected.closest<HTMLElement>('[data-cms-block-id]')?.dataset.cmsBlockId || null : null;
   const hasManagedStructure = Boolean(managedSectionId || (managedContainer && managedContainerSectionId));
   const toolbarWidth = Math.min(hasManagedStructure ? 760 : 590, Math.max(300, window.innerWidth - 16));

@@ -7,7 +7,13 @@ type SelectionLevel = 'element' | 'container' | 'section';
 type HomeStructureAction = 'move-up' | 'move-down' | 'duplicate';
 
 type OverlayRect = { top: number; left: number; width: number; height: number };
-type HomeStructureState = { dirty: boolean; busy: boolean; status: string };
+type HomeStructureState = {
+  dirty: boolean;
+  busy: boolean;
+  canUndo: boolean;
+  canRedo: boolean;
+  status: string;
+};
 
 const BLOCKED_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'HTML', 'BODY']);
 
@@ -103,7 +109,13 @@ export default function VisualCmsInlineSelectionOverlay() {
   const [base, setBase] = useState<HTMLElement | null>(null);
   const [level, setLevel] = useState<SelectionLevel>('element');
   const [rect, setRect] = useState<OverlayRect | null>(null);
-  const [homeStructure, setHomeStructure] = useState<HomeStructureState>({ dirty: false, busy: false, status: '' });
+  const [homeStructure, setHomeStructure] = useState<HomeStructureState>({
+    dirty: false,
+    busy: false,
+    canUndo: false,
+    canRedo: false,
+    status: '',
+  });
   const suppressBaseResetRef = useRef(false);
 
   useEffect(() => {
@@ -116,9 +128,22 @@ export default function VisualCmsInlineSelectionOverlay() {
     if (!enabled) return;
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
-      const data = event.data as { type?: string; dirty?: boolean; busy?: boolean; status?: string } | null;
+      const data = event.data as {
+        type?: string;
+        dirty?: boolean;
+        busy?: boolean;
+        canUndo?: boolean;
+        canRedo?: boolean;
+        status?: string;
+      } | null;
       if (data?.type !== 'cms:visual-home-structure-state') return;
-      setHomeStructure({ dirty: data.dirty === true, busy: data.busy === true, status: typeof data.status === 'string' ? data.status : '' });
+      setHomeStructure({
+        dirty: data.dirty === true,
+        busy: data.busy === true,
+        canUndo: data.canUndo === true,
+        canRedo: data.canRedo === true,
+        status: typeof data.status === 'string' ? data.status : '',
+      });
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
@@ -181,7 +206,7 @@ export default function VisualCmsInlineSelectionOverlay() {
   const managedContainer = rawManagedContainer && /^.+-\d+$/.test(rawManagedContainer) ? rawManagedContainer : null;
   const managedContainerSectionId = managedContainer ? selected.closest<HTMLElement>('[data-cms-block-id]')?.dataset.cmsBlockId || null : null;
   const hasManagedStructure = Boolean(managedSectionId || (managedContainer && managedContainerSectionId));
-  const toolbarWidth = Math.min(hasManagedStructure ? 760 : 590, Math.max(300, window.innerWidth - 16));
+  const toolbarWidth = Math.min(hasManagedStructure ? 900 : 590, Math.max(300, window.innerWidth - 16));
   const toolbarLeft = Math.max(8, Math.min(window.innerWidth - toolbarWidth - 8, rect.left));
   const toolbarTop = rect.top > 58 ? rect.top - 48 : Math.min(window.innerHeight - 52, rect.top + rect.height + 8);
 
@@ -212,6 +237,11 @@ export default function VisualCmsInlineSelectionOverlay() {
     if (managedContainer && managedContainerSectionId) {
       window.parent.postMessage({ type: 'cms:visual-home-card-structure-action', sectionId: managedContainerSectionId, container: managedContainer, action }, window.location.origin);
     }
+  };
+
+  const sendHomeHistory = (action: 'undo' | 'redo' | 'restore') => {
+    if (homeStructure.busy) return;
+    window.parent.postMessage({ type: `cms:visual-home-structure-${action}` }, window.location.origin);
   };
 
   const publishHomeStructure = () => {
@@ -250,6 +280,9 @@ export default function VisualCmsInlineSelectionOverlay() {
             <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('move-up')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#ffb000]/12 text-[13px] font-black text-[#ffd77a] disabled:opacity-35" title={`Mover ${managedSectionId ? 'sección' : 'tarjeta'} hacia arriba`}>↑</button>
             <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('move-down')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#ffb000]/12 text-[13px] font-black text-[#ffd77a] disabled:opacity-35" title={`Mover ${managedSectionId ? 'sección' : 'tarjeta'} hacia abajo`}>↓</button>
             <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('duplicate')} className="h-8 shrink-0 rounded-lg bg-[#ffb000]/12 px-2 text-[8px] font-black text-[#ffd77a] disabled:opacity-35" title={`Duplicar ${managedSectionId ? 'sección' : 'tarjeta'}`}>Duplicar</button>
+            <button type="button" disabled={!homeStructure.canUndo || homeStructure.busy} onClick={() => sendHomeHistory('undo')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-[12px] font-black text-white/65 disabled:opacity-20" title="Deshacer cambio estructural">↶</button>
+            <button type="button" disabled={!homeStructure.canRedo || homeStructure.busy} onClick={() => sendHomeHistory('redo')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-white/5 text-[12px] font-black text-white/65 disabled:opacity-20" title="Rehacer cambio estructural">↷</button>
+            {homeStructure.dirty ? <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeHistory('restore')} className="h-8 shrink-0 rounded-lg bg-white/5 px-2 text-[8px] font-black text-white/60 disabled:opacity-35" title="Volver a la estructura publicada">Restaurar</button> : null}
             {homeStructure.dirty ? <button type="button" disabled={homeStructure.busy} onClick={publishHomeStructure} className="h-8 shrink-0 rounded-lg bg-[#ffb000] px-2.5 text-[8px] font-black text-black disabled:opacity-45">{homeStructure.busy ? 'Guardando…' : 'Publicar estructura'}</button> : null}
           </>
         ) : null}

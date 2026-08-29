@@ -137,13 +137,15 @@ function uniqueSelector(element: HTMLElement): string {
   const parts: string[] = [];
   let current: HTMLElement | null = element;
   while (current && current !== document.body) {
-    const tag = current.tagName.toLowerCase();
-    const parent = current.parentElement;
-    if (!parent) break;
-    const siblings = Array.from(parent.children).filter((child) => child.tagName === current!.tagName);
-    const index = siblings.indexOf(current) + 1;
+    const currentElement: HTMLElement = current;
+    const tag = currentElement.tagName.toLowerCase();
+    const parentElement: HTMLElement | null = currentElement.parentElement;
+    if (!parentElement) break;
+    const currentTagName = currentElement.tagName;
+    const siblings = Array.from(parentElement.children).filter((child) => child.tagName === currentTagName);
+    const index = siblings.indexOf(currentElement) + 1;
     parts.unshift(`${tag}:nth-of-type(${Math.max(1, index)})`);
-    current = parent;
+    current = parentElement;
     if (parts.length >= 7) break;
   }
   return `body > ${parts.join(' > ')}`;

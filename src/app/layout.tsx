@@ -19,6 +19,7 @@ import CmsRealtimeListener from '@/components/CmsRealtimeListener';
 import CustomInjectionRoot from '@/components/CustomInjectionRoot';
 import GlobalStylesRoot from '@/components/GlobalStylesRoot';
 import VisualCmsRuntime from '@/components/cms/VisualCmsRuntime';
+import VisualCmsInlineSelectionOverlay from '@/components/cms/VisualCmsInlineSelectionOverlay';
 import CmsPreviewOverlay from '@/components/admin/cms/CmsPreviewOverlay';
 import { TenantBrandingBar } from '@/components/tenant/TenantBrandingBar';
 import { TenantThemeRuntime } from '@/components/tenant/TenantThemeRuntime';
@@ -127,6 +128,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
                   <TenantThemeRuntime />
                   <TenantCopyRuntime />
                   <VisualCmsRuntime />
+                  <VisualCmsInlineSelectionOverlay />
                   {children}
                   <TenantBrandingBar />
                   <ServiceWorkerRegister />

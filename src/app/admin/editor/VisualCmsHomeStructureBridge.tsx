@@ -9,7 +9,8 @@ import {
 } from '@/lib/homeVisualCms';
 import { mutateRepeatedItem, type RepeatedItemAction } from '@/lib/homeVisualRepeatedStyles';
 
-const HOME_STRUCTURE_DRAFT_KEY = 'sf-visual-cms-home-structure-draft-v1';
+const HOME_STRUCTURE_DRAFT_KEY = 'sf-home-visual-cms-draft-v1';
+const HISTORY_LIMIT = 30;
 
 type StructureAction = 'move-up' | 'move-down' | 'duplicate';
 
@@ -19,6 +20,10 @@ type StructureMessage = {
   container?: string;
   action?: StructureAction;
 };
+
+function sameContent(a: HomePageContent | null, b: HomePageContent | null) {
+  return Boolean(a && b && JSON.stringify(a) === JSON.stringify(b));
+}
 
 function editorPreviewFrame() {
   const root = document.querySelector<HTMLElement>('main[data-admin-content]');
@@ -82,6 +87,8 @@ function applyCardAction(content: HomePageContent, sectionId: string, container:
 export default function VisualCmsHomeStructureBridge() {
   const publishedRef = useRef<HomePageContent | null>(null);
   const draftRef = useRef<HomePageContent | null>(null);
+  const historyPastRef = useRef<HomePageContent[]>([]);
+  const historyFutureRef = useRef<HomePageContent[]>([]);
   const loadingRef = useRef<Promise<HomePageContent> | null>(null);
   const publishingRef = useRef(false);
 
@@ -89,22 +96,26 @@ export default function VisualCmsHomeStructureBridge() {
     editorPreviewFrame()?.contentWindow?.postMessage(message, window.location.origin);
   }, []);
 
+  const persistDraft = useCallback((draft: HomePageContent) => {
+    if (sameContent(draft, publishedRef.current)) window.localStorage.removeItem(HOME_STRUCTURE_DRAFT_KEY);
+    else window.localStorage.setItem(HOME_STRUCTURE_DRAFT_KEY, JSON.stringify(draft));
+  }, []);
+
   const emitState = useCallback((status?: string) => {
     const published = publishedRef.current;
     const draft = draftRef.current;
-    const dirty = Boolean(published && draft && JSON.stringify(published) !== JSON.stringify(draft));
     postToPreview({
       type: 'cms:visual-home-structure-state',
-      dirty,
+      dirty: Boolean(published && draft && !sameContent(published, draft)),
       busy: publishingRef.current,
+      canUndo: historyPastRef.current.length > 0,
+      canRedo: historyFutureRef.current.length > 0,
       status: status || '',
     });
   }, [postToPreview]);
 
   const sendDraft = useCallback((status?: string) => {
-    if (draftRef.current) {
-      postToPreview({ type: 'cms:visual-home-preview', content: draftRef.current });
-    }
+    if (draftRef.current) postToPreview({ type: 'cms:visual-home-preview', content: draftRef.current });
     emitState(status);
   }, [emitState, postToPreview]);
 
@@ -129,6 +140,8 @@ export default function VisualCmsHomeStructureBridge() {
         catch { window.localStorage.removeItem(HOME_STRUCTURE_DRAFT_KEY); }
       }
       draftRef.current = draft;
+      historyPastRef.current = [];
+      historyFutureRef.current = [];
       return draft;
     })();
 
@@ -137,11 +150,55 @@ export default function VisualCmsHomeStructureBridge() {
     finally { loadingRef.current = null; }
   }, []);
 
-  const commitDraft = useCallback((next: HomePageContent, status: string) => {
+  const setDraft = useCallback((next: HomePageContent, status: string) => {
     draftRef.current = next;
-    window.localStorage.setItem(HOME_STRUCTURE_DRAFT_KEY, JSON.stringify(next));
+    persistDraft(next);
     sendDraft(status);
-  }, [sendDraft]);
+  }, [persistDraft, sendDraft]);
+
+  const commitDraft = useCallback((current: HomePageContent, next: HomePageContent, status: string) => {
+    if (sameContent(current, next)) return false;
+    historyPastRef.current = [...historyPastRef.current.slice(-(HISTORY_LIMIT - 1)), current];
+    historyFutureRef.current = [];
+    setDraft(next, status);
+    return true;
+  }, [setDraft]);
+
+  const undo = useCallback(() => {
+    const current = draftRef.current;
+    const previous = historyPastRef.current.at(-1);
+    if (!current || !previous) {
+      emitState('No hay más cambios estructurales para deshacer.');
+      return;
+    }
+    historyPastRef.current = historyPastRef.current.slice(0, -1);
+    historyFutureRef.current = [current, ...historyFutureRef.current].slice(0, HISTORY_LIMIT);
+    setDraft(previous, 'Cambio estructural deshecho.');
+  }, [emitState, setDraft]);
+
+  const redo = useCallback(() => {
+    const current = draftRef.current;
+    const next = historyFutureRef.current[0];
+    if (!current || !next) {
+      emitState('No hay cambios estructurales para rehacer.');
+      return;
+    }
+    historyFutureRef.current = historyFutureRef.current.slice(1);
+    historyPastRef.current = [...historyPastRef.current.slice(-(HISTORY_LIMIT - 1)), current];
+    setDraft(next, 'Cambio estructural rehecho.');
+  }, [emitState, setDraft]);
+
+  const restorePublished = useCallback(() => {
+    const current = draftRef.current;
+    const published = publishedRef.current;
+    if (!current || !published || sameContent(current, published)) {
+      emitState('El borrador ya coincide con la versión publicada.');
+      return;
+    }
+    historyPastRef.current = [...historyPastRef.current.slice(-(HISTORY_LIMIT - 1)), current];
+    historyFutureRef.current = [];
+    setDraft(published, 'Estructura restaurada a la versión publicada. Puedes deshacerlo.');
+  }, [emitState, setDraft]);
 
   useEffect(() => {
     const handler = (event: MessageEvent<StructureMessage>) => {
@@ -155,15 +212,25 @@ export default function VisualCmsHomeStructureBridge() {
         return;
       }
 
+      if (data?.type === 'cms:visual-home-structure-undo') {
+        undo();
+        return;
+      }
+      if (data?.type === 'cms:visual-home-structure-redo') {
+        redo();
+        return;
+      }
+      if (data?.type === 'cms:visual-home-structure-restore') {
+        restorePublished();
+        return;
+      }
+
       if (data?.type === 'cms:visual-home-structure-action' && typeof data.sectionId === 'string' && data.action) {
         void ensureLoaded().then((current) => {
           const next = applySectionAction(current, data.sectionId!, data.action!);
-          if (JSON.stringify(next) === JSON.stringify(current)) {
+          if (!commitDraft(current, next, data.action === 'move-up' ? 'Sección movida hacia arriba.' : data.action === 'move-down' ? 'Sección movida hacia abajo.' : 'Sección duplicada en el borrador.')) {
             emitState(data.action === 'move-up' ? 'La sección ya está al inicio.' : data.action === 'move-down' ? 'La sección ya está al final.' : 'No se pudo duplicar la sección.');
-            return;
           }
-          const label = data.action === 'move-up' ? 'Sección movida hacia arriba.' : data.action === 'move-down' ? 'Sección movida hacia abajo.' : 'Sección duplicada en el borrador.';
-          commitDraft(next, label);
         }).catch((error) => emitState(error instanceof Error ? error.message : 'No se pudo modificar la estructura Home.'));
         return;
       }
@@ -171,12 +238,9 @@ export default function VisualCmsHomeStructureBridge() {
       if (data?.type === 'cms:visual-home-card-structure-action' && typeof data.sectionId === 'string' && typeof data.container === 'string' && data.action) {
         void ensureLoaded().then((current) => {
           const next = applyCardAction(current, data.sectionId!, data.container!, data.action!);
-          if (JSON.stringify(next) === JSON.stringify(current)) {
+          if (!commitDraft(current, next, data.action === 'move-up' ? 'Tarjeta movida hacia arriba.' : data.action === 'move-down' ? 'Tarjeta movida hacia abajo.' : 'Tarjeta duplicada en el borrador.')) {
             emitState(data.action === 'move-up' ? 'La tarjeta ya está al inicio.' : data.action === 'move-down' ? 'La tarjeta ya está al final.' : 'Este contenedor no admite duplicación estructural.');
-            return;
           }
-          const label = data.action === 'move-up' ? 'Tarjeta movida hacia arriba.' : data.action === 'move-down' ? 'Tarjeta movida hacia abajo.' : 'Tarjeta duplicada en el borrador.';
-          commitDraft(next, label);
         }).catch((error) => emitState(error instanceof Error ? error.message : 'No se pudo modificar la tarjeta.'));
         return;
       }
@@ -199,6 +263,8 @@ export default function VisualCmsHomeStructureBridge() {
             const saved = normalizeHomePage(json.content ?? draft);
             publishedRef.current = saved;
             draftRef.current = saved;
+            historyPastRef.current = [];
+            historyFutureRef.current = [];
             window.localStorage.removeItem(HOME_STRUCTURE_DRAFT_KEY);
             postToPreview({ type: 'cms:visual-home-preview', content: saved });
             finalStatus = 'Estructura Home publicada.';
@@ -214,7 +280,7 @@ export default function VisualCmsHomeStructureBridge() {
 
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [commitDraft, emitState, ensureLoaded, postToPreview, sendDraft]);
+  }, [commitDraft, emitState, ensureLoaded, postToPreview, redo, restorePublished, sendDraft, undo]);
 
   return null;
 }

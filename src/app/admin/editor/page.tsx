@@ -5,6 +5,7 @@ import VisualCmsCloudinaryBridge from './VisualCmsCloudinaryBridge';
 import VisualCmsCloudinaryPolish from './VisualCmsCloudinaryPolish';
 import VisualCmsContextEditorBridge from './VisualCmsContextEditorBridge';
 import VisualCmsHistoryBridge from './VisualCmsHistoryBridge';
+import VisualCmsWorkspaceBridge from './VisualCmsWorkspaceBridge';
 
 export const dynamic = 'force-dynamic';
 
@@ -19,6 +20,7 @@ export default async function AdminEditorPage() {
       <VisualCmsCloudinaryPolish />
       <VisualCmsContextEditorBridge />
       <VisualCmsHistoryBridge />
+      <VisualCmsWorkspaceBridge />
     </>
   );
 }

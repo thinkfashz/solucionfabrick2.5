@@ -21,10 +21,13 @@ type Snapshot = {
   srcset: string | null;
   sizes: string | null;
   alt: string | null;
+  iconSvg: SVGElement | null;
+  iconSvgStyle: string | null;
 };
 
 const EDITOR_PARAM = 'cmsVisual';
 const BLOCKED_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'HTML']);
+const RUNTIME_ICON_ATTR = 'data-cms-runtime-icon';
 
 function deviceForWidth(width: number): VisualCmsDevice {
   if (width <= 640) return 'mobile';
@@ -74,6 +77,7 @@ function applyStylePatch(element: HTMLElement, patch: VisualCmsStylePatch | unde
 }
 
 function snapshotElement(element: HTMLElement): Snapshot {
+  const iconSvg = element.querySelector<SVGElement>('svg');
   return {
     element,
     style: element.getAttribute('style'),
@@ -83,10 +87,12 @@ function snapshotElement(element: HTMLElement): Snapshot {
     srcset: element instanceof HTMLImageElement ? element.getAttribute('srcset') : null,
     sizes: element instanceof HTMLImageElement ? element.getAttribute('sizes') : null,
     alt: element instanceof HTMLImageElement ? element.getAttribute('alt') : null,
+    iconSvg,
+    iconSvgStyle: iconSvg?.getAttribute('style') ?? null,
   };
 }
 
-function restoreAttribute(element: HTMLElement, name: string, value: string | null) {
+function restoreAttribute(element: Element, name: string, value: string | null) {
   if (value === null) element.removeAttribute(name);
   else element.setAttribute(name, value);
 }
@@ -103,6 +109,37 @@ function restoreSnapshot(snapshot: Snapshot) {
     restoreAttribute(element, 'sizes', snapshot.sizes);
     restoreAttribute(element, 'alt', snapshot.alt);
   }
+  element.querySelectorAll(`[${RUNTIME_ICON_ATTR}]`).forEach((node) => node.remove());
+  if (snapshot.iconSvg?.isConnected) restoreAttribute(snapshot.iconSvg, 'style', snapshot.iconSvgStyle);
+}
+
+function applyIconOverride(element: HTMLElement, override: VisualCmsElementOverride) {
+  const iconUrl = override.iconUrl?.trim();
+  if (!iconUrl) return;
+  const svg = element.querySelector<SVGElement>('svg');
+  if (!svg) return;
+
+  const parent = svg.parentElement;
+  if (!parent) return;
+  const rect = svg.getBoundingClientRect();
+  svg.style.setProperty('display', 'none', 'important');
+
+  let replacement = parent.querySelector<HTMLImageElement>(`img[${RUNTIME_ICON_ATTR}="1"]`);
+  if (!replacement) {
+    replacement = document.createElement('img');
+    replacement.setAttribute(RUNTIME_ICON_ATTR, '1');
+    replacement.setAttribute('data-cms-editor-ignore', 'true');
+    replacement.decoding = 'async';
+    replacement.loading = 'eager';
+    svg.insertAdjacentElement('afterend', replacement);
+  }
+  replacement.src = iconUrl;
+  replacement.alt = override.iconAlt || '';
+  replacement.style.width = `${Math.max(12, Math.round(rect.width || 18))}px`;
+  replacement.style.height = `${Math.max(12, Math.round(rect.height || 18))}px`;
+  replacement.style.objectFit = 'contain';
+  replacement.style.flex = '0 0 auto';
+  replacement.style.display = 'inline-block';
 }
 
 function applyOverride(element: HTMLElement, override: VisualCmsElementOverride, device: VisualCmsDevice) {
@@ -119,6 +156,7 @@ function applyOverride(element: HTMLElement, override: VisualCmsElementOverride,
   if (override.hidden === true) element.style.display = 'none';
   applyStylePatch(element, override.styles?.all);
   applyStylePatch(element, override.styles?.[device]);
+  applyIconOverride(element, override);
 }
 
 function escapeSelector(value: string) {
@@ -190,8 +228,7 @@ function uniqueSelector(element: HTMLElement): string {
     const tag = currentElement.tagName.toLowerCase();
     const parentElement: HTMLElement | null = currentElement.parentElement;
     if (!parentElement) break;
-    const currentTagName = currentElement.tagName;
-    const siblings = Array.from(parentElement.children).filter((child) => child.tagName === currentTagName);
+    const siblings = Array.from(parentElement.children).filter((child) => child.tagName === currentElement.tagName);
     const index = siblings.indexOf(currentElement) + 1;
     parts.unshift(`${tag}:nth-of-type(${Math.max(1, index)})`);
     current = parentElement;
@@ -200,12 +237,67 @@ function uniqueSelector(element: HTMLElement): string {
   return `body > ${parts.join(' > ')}`;
 }
 
+function relativePath(ancestor: HTMLElement, element: HTMLElement): string {
+  const parts: string[] = [];
+  let current: HTMLElement | null = element;
+  while (current && current !== ancestor) {
+    const parent: HTMLElement | null = current.parentElement;
+    if (!parent) return '';
+    const siblings = Array.from(parent.children).filter((child) => child.tagName === current!.tagName);
+    const index = siblings.indexOf(current) + 1;
+    parts.unshift(`${current.tagName.toLowerCase()}:nth-of-type(${Math.max(1, index)})`);
+    current = parent;
+  }
+  return current === ancestor ? parts.join(' > ') : '';
+}
+
+function repeatedRootSelector(element: HTMLElement): { selector: string; root: HTMLElement; count: number } | null {
+  let root: HTMLElement | null = element;
+  for (let depth = 0; root && root.parentElement && depth < 5; depth += 1) {
+    const parent = root.parentElement;
+    const tag = root.tagName.toLowerCase();
+    const sameTag = Array.from(parent.children).filter((child): child is HTMLElement => child instanceof HTMLElement && child.tagName === root!.tagName);
+    if (sameTag.length >= 2) {
+      const classes = Array.from(root.classList)
+        .filter((className) => sameTag.filter((sibling) => sibling.classList.contains(className)).length >= 2)
+        .slice(0, 3);
+      const classSelector = classes.map((className) => `.${escapeSelector(className)}`).join('');
+      const parentSelector = uniqueSelector(parent);
+      const selector = `${parentSelector} > ${tag}${classSelector}`;
+      try {
+        const count = document.querySelectorAll(selector).length;
+        if (count >= 2 && count <= 80) return { selector, root, count };
+      } catch {
+        // Try the next ancestor.
+      }
+    }
+    root = parent;
+  }
+  return null;
+}
+
+function similarSelectorFor(element: HTMLElement): { selector: string; count: number } | null {
+  const repeated = repeatedRootSelector(element);
+  if (!repeated) return null;
+  const path = relativePath(repeated.root, element);
+  const selector = path ? `${repeated.selector} > ${path}` : repeated.selector;
+  try {
+    const count = document.querySelectorAll(selector).length;
+    return count >= 2 && count <= 80 ? { selector, count } : null;
+  } catch {
+    return null;
+  }
+}
+
 function selectionPayload(element: HTMLElement) {
   const computed = window.getComputedStyle(element);
   const rect = element.getBoundingClientRect();
   const textEditable = element.childElementCount === 0 && !['IMG', 'INPUT', 'TEXTAREA', 'SELECT', 'VIDEO', 'CANVAS', 'SVG'].includes(element.tagName);
+  const similar = similarSelectorFor(element);
   return {
     selector: uniqueSelector(element),
+    similarSelector: similar?.selector || null,
+    similarCount: similar?.count || 0,
     tag: element.tagName.toLowerCase(),
     label: element.getAttribute('aria-label') || element.getAttribute('title') || element.textContent?.trim().slice(0, 70) || element.tagName.toLowerCase(),
     text: textEditable ? element.textContent || '' : null,
@@ -246,11 +338,24 @@ function selectionPayload(element: HTMLElement) {
   };
 }
 
+function runtimeOnlyMutation(mutation: MutationRecord): boolean {
+  const nodes = [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)];
+  return nodes.length > 0 && nodes.every((node) => node instanceof HTMLElement && node.hasAttribute(RUNTIME_ICON_ATTR));
+}
+
+function elementsForSelector(selector: string): HTMLElement[] {
+  try {
+    return Array.from(document.querySelectorAll<HTMLElement>(selector)).filter((element) => !BLOCKED_TAGS.has(element.tagName));
+  } catch {
+    return [];
+  }
+}
+
 export default function VisualCmsRuntime() {
   const pathname = usePathname() || '/';
   const stored = useSiteContent('visual-overrides');
   const content = useMemo(() => normalizeVisualCmsOverrides(stored), [stored]);
-  const snapshotsRef = useRef<Map<string, Snapshot>>(new Map());
+  const snapshotsRef = useRef<Map<HTMLElement, Snapshot>>(new Map());
   const selectedRef = useRef<HTMLElement | null>(null);
   const [domEpoch, setDomEpoch] = useState(0);
 
@@ -261,7 +366,7 @@ export default function VisualCmsRuntime() {
       frame = window.requestAnimationFrame(() => setDomEpoch((value) => value + 1));
     };
     const observer = new MutationObserver((mutations) => {
-      if (mutations.some((mutation) => mutation.type === 'childList' && (mutation.addedNodes.length || mutation.removedNodes.length))) invalidate();
+      if (mutations.some((mutation) => mutation.type === 'childList' && !runtimeOnlyMutation(mutation) && (mutation.addedNodes.length || mutation.removedNodes.length))) invalidate();
     });
     observer.observe(document.body, { childList: true, subtree: true });
     window.addEventListener('resize', invalidate, { passive: true });
@@ -286,14 +391,15 @@ export default function VisualCmsRuntime() {
     const device = deviceForWidth(window.innerWidth);
 
     for (const layer of layers) {
-      for (const override of Object.values(layer!.elements)) {
-        try {
-          const element = document.querySelector<HTMLElement>(override.selector);
-          if (!element || BLOCKED_TAGS.has(element.tagName)) continue;
-          if (!snapshots.has(override.selector)) snapshots.set(override.selector, snapshotElement(element));
+      const resolved = Object.values(layer!.elements)
+        .map((override) => ({ override, elements: elementsForSelector(override.selector) }))
+        .filter((entry) => entry.elements.length > 0)
+        .sort((a, b) => b.elements.length - a.elements.length);
+
+      for (const { override, elements } of resolved) {
+        for (const element of elements) {
+          if (!snapshots.has(element)) snapshots.set(element, snapshotElement(element));
           applyOverride(element, override, device);
-        } catch {
-          // A stale selector must never break the public page.
         }
       }
     }

@@ -267,8 +267,10 @@ export default function VisualCmsContextEditorBridge() {
   }
 
   function toggleSimilar(next: boolean) {
+    const currentSelection = selection;
+    if (!currentSelection) return;
     setSimilar(next);
-    clickInspectorAction('Contenido', next ? `${selection.similarCount} similares` : 'Solo este');
+    clickInspectorAction('Contenido', next ? `${currentSelection.similarCount} similares` : 'Solo este');
   }
 
   function toggleSiteWide(next: boolean) {

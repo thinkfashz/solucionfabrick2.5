@@ -53,21 +53,25 @@ export default function HomeVisualRuntime({ initialConfig, copyrightText, social
   const [inlineEdit, setInlineEdit] = useState<InlineEditState | null>(null);
 
   useEffect(() => {
-    const preview = new URLSearchParams(window.location.search).get('cms') === 'preview';
+    const params = new URLSearchParams(window.location.search);
+    const preview = params.get('cms') === 'preview';
+    const visualPreview = params.get('cmsVisual') === '1' && window.parent !== window;
     setPreviewMode(preview);
-    if (!preview) return;
+    if (!preview && !visualPreview) return;
 
     const handler = (event: MessageEvent) => {
       if (event.origin !== window.location.origin) return;
       const data = event.data as { type?: string; content?: unknown; sectionId?: string; field?: string | null } | null;
-      if (data?.type === 'cms:home-preview') setConfig(normalizeHomePage(data.content));
-      if (data?.type === 'cms:home-selected' && typeof data.sectionId === 'string') {
+      if (preview && data?.type === 'cms:home-preview') setConfig(normalizeHomePage(data.content));
+      if (visualPreview && data?.type === 'cms:visual-home-preview') setConfig(normalizeHomePage(data.content));
+      if (preview && data?.type === 'cms:home-selected' && typeof data.sectionId === 'string') {
         setSelectedPreviewId(data.sectionId);
         setSelectedPreviewField(typeof data.field === 'string' ? data.field : null);
       }
     };
     window.addEventListener('message', handler);
-    window.parent?.postMessage({ type: 'cms:home-preview-ready' }, window.location.origin);
+    if (preview) window.parent?.postMessage({ type: 'cms:home-preview-ready' }, window.location.origin);
+    if (visualPreview) window.parent?.postMessage({ type: 'cms:visual-home-ready' }, window.location.origin);
     return () => window.removeEventListener('message', handler);
   }, []);
 

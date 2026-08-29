@@ -16,6 +16,7 @@ type HomeStructureState = {
 };
 
 const BLOCKED_TAGS = new Set(['SCRIPT', 'STYLE', 'NOSCRIPT', 'HTML', 'BODY']);
+const TEXT_BLOCKED_TAGS = new Set(['IMG', 'INPUT', 'TEXTAREA', 'SELECT', 'VIDEO', 'CANVAS', 'SVG', 'IFRAME']);
 
 function resolveElement(target: EventTarget | null): HTMLElement | null {
   if (target instanceof HTMLElement) return target;
@@ -28,6 +29,10 @@ function resolveElement(target: EventTarget | null): HTMLElement | null {
 
 function isEditorElement(element: HTMLElement | null) {
   return Boolean(element?.closest('[data-cms-editor-ignore]'));
+}
+
+function isTextEditable(element: HTMLElement | null) {
+  return Boolean(element && element.childElementCount === 0 && !TEXT_BLOCKED_TAGS.has(element.tagName));
 }
 
 function clearLegacyOutline(element: HTMLElement | null) {
@@ -109,6 +114,8 @@ export default function VisualCmsInlineSelectionOverlay() {
   const [base, setBase] = useState<HTMLElement | null>(null);
   const [level, setLevel] = useState<SelectionLevel>('element');
   const [rect, setRect] = useState<OverlayRect | null>(null);
+  const [editingText, setEditingText] = useState(false);
+  const [textDraft, setTextDraft] = useState('');
   const [homeStructure, setHomeStructure] = useState<HomeStructureState>({
     dirty: false,
     busy: false,
@@ -162,6 +169,7 @@ export default function VisualCmsInlineSelectionOverlay() {
       const element = resolveElement(event.target);
       if (!element || BLOCKED_TAGS.has(element.tagName) || isEditorElement(element)) return;
       setSelected(element);
+      setEditingText(false);
       if (!suppressBaseResetRef.current) {
         setBase(element);
         setLevel('element');
@@ -201,6 +209,8 @@ export default function VisualCmsInlineSelectionOverlay() {
   const textColor = cssColorToHex(computed.color, '#171612');
   const backgroundColor = cssColorToHex(computed.backgroundColor, '#ffffff');
   const fontSize = Number.parseFloat(computed.fontSize || '16') || 16;
+  const textEditable = isTextEditable(selected);
+  const textMultiline = textDraft.length > 72 || ['P', 'LI', 'BLOCKQUOTE'].includes(selected.tagName);
   const managedSectionId = level === 'section' ? selected.dataset.cmsBlockId || null : null;
   const rawManagedContainer = level === 'container' ? selected.dataset.cmsContainer || null : null;
   const managedContainer = rawManagedContainer && /^.+-\d+$/.test(rawManagedContainer) ? rawManagedContainer : null;
@@ -209,11 +219,19 @@ export default function VisualCmsInlineSelectionOverlay() {
   const toolbarWidth = Math.min(hasManagedStructure ? 900 : 590, Math.max(300, window.innerWidth - 16));
   const toolbarLeft = Math.max(8, Math.min(window.innerWidth - toolbarWidth - 8, rect.left));
   const toolbarTop = rect.top > 58 ? rect.top - 48 : Math.min(window.innerHeight - 52, rect.top + rect.height + 8);
+  const textEditorWidth = Math.min(520, Math.max(280, window.innerWidth - 16));
+  const textEditorLeft = Math.max(8, Math.min(window.innerWidth - textEditorWidth - 8, rect.left));
+  const editorHeight = textMultiline ? 166 : 112;
+  const belowToolbar = toolbarTop + 46;
+  const textEditorTop = belowToolbar + editorHeight <= window.innerHeight - 8
+    ? belowToolbar
+    : Math.max(8, toolbarTop - editorHeight - 6);
 
   const selectLevel = (nextLevel: SelectionLevel) => {
     const target = candidates[nextLevel];
     if (!target) return;
     suppressBaseResetRef.current = true;
+    setEditingText(false);
     setLevel(nextLevel);
     setSelected(target);
     setRect(rectOf(target));
@@ -226,6 +244,21 @@ export default function VisualCmsInlineSelectionOverlay() {
 
   const send = (action: string, value?: string) => {
     window.parent.postMessage({ type: 'cms:visual-inline-action', action, value }, window.location.origin);
+  };
+
+  const openTextEditor = () => {
+    if (!textEditable) {
+      send('focus-text');
+      return;
+    }
+    setTextDraft(selected.textContent || '');
+    setEditingText(true);
+  };
+
+  const applyTextEditor = () => {
+    if (!textEditable) return;
+    send('text', textDraft);
+    setEditingText(false);
   };
 
   const sendHomeStructure = (action: HomeStructureAction) => {
@@ -288,7 +321,7 @@ export default function VisualCmsInlineSelectionOverlay() {
         ) : null}
 
         <span className="mx-0.5 h-5 w-px shrink-0 bg-white/10" />
-        <button type="button" onClick={() => send('focus-text')} className="h-8 shrink-0 rounded-lg bg-white/5 px-2 text-[9px] font-black text-white/70">Texto</button>
+        <button type="button" onClick={openTextEditor} className={`h-8 shrink-0 rounded-lg px-2 text-[9px] font-black ${editingText ? 'bg-[#ffb000] text-black' : 'bg-white/5 text-white/70'}`}>Texto</button>
         <label className="flex h-8 shrink-0 cursor-pointer items-center gap-1 rounded-lg bg-white/5 px-1.5 text-[8px] font-bold text-white/60" title="Color de texto/icono">
           <input type="color" value={textColor} onChange={(event) => send('color', event.target.value)} className="h-5 w-5 cursor-pointer border-0 bg-transparent p-0" /> T
         </label>
@@ -300,6 +333,48 @@ export default function VisualCmsInlineSelectionOverlay() {
         {selected instanceof HTMLImageElement ? <button type="button" onClick={() => send('image')} className="h-8 shrink-0 rounded-lg bg-[#ffb000]/15 px-2 text-[9px] font-black text-[#ffd77a]">Imagen</button> : null}
         <button type="button" onClick={() => send('advanced')} className="ml-auto h-8 shrink-0 rounded-lg border border-[#ffb000]/25 bg-[#ffb000]/10 px-2 text-[9px] font-black text-[#ffd77a]">Avanzado</button>
       </div>
+
+      {editingText && textEditable ? (
+        <div
+          data-cms-editor-ignore="true"
+          className="pointer-events-auto absolute rounded-2xl border border-[#ffb000]/25 bg-[#15140f]/95 p-2.5 text-[#fff8e9] shadow-[0_20px_60px_rgba(0,0,0,.38)] backdrop-blur-xl"
+          style={{ top: textEditorTop, left: textEditorLeft, width: textEditorWidth }}
+        >
+          <div className="mb-2 flex items-center gap-2 px-1">
+            <div className="min-w-0 flex-1">
+              <p className="text-[8px] font-black uppercase tracking-[.11em] text-[#ffd77a]/55">Edición directa</p>
+              <p className="truncate text-[10px] font-bold text-white/75">{shortLabel(selected)}</p>
+            </div>
+            <button type="button" onClick={() => setEditingText(false)} className="h-8 rounded-lg border border-white/10 px-2.5 text-[9px] font-black text-white/55">Cancelar</button>
+            <button type="button" onClick={applyTextEditor} className="h-8 rounded-lg bg-[#ffb000] px-3 text-[9px] font-black text-black">Aplicar</button>
+          </div>
+          {textMultiline ? (
+            <textarea
+              autoFocus
+              value={textDraft}
+              rows={4}
+              onChange={(event) => setTextDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') { event.preventDefault(); setEditingText(false); }
+                else if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') { event.preventDefault(); applyTextEditor(); }
+              }}
+              className="min-h-24 w-full resize-y rounded-xl border border-white/10 bg-black/45 px-3 py-2 text-[12px] leading-5 text-white outline-none focus:border-[#ffb000]/55"
+            />
+          ) : (
+            <input
+              autoFocus
+              value={textDraft}
+              onChange={(event) => setTextDraft(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Escape') { event.preventDefault(); setEditingText(false); }
+                else if (event.key === 'Enter') { event.preventDefault(); applyTextEditor(); }
+              }}
+              className="h-11 w-full rounded-xl border border-white/10 bg-black/45 px-3 text-[12px] text-white outline-none focus:border-[#ffb000]/55"
+            />
+          )}
+          <p className="mt-1.5 px-1 text-[8px] text-white/30">{textMultiline ? 'Ctrl/Cmd + Enter aplica · Esc cancela' : 'Enter aplica · Esc cancela'}</p>
+        </div>
+      ) : null}
     </div>,
     document.body,
   );

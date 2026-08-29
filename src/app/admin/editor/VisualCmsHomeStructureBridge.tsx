@@ -9,7 +9,7 @@ import {
 } from '@/lib/homeVisualCms';
 import { mutateRepeatedItem, type RepeatedItemAction } from '@/lib/homeVisualRepeatedStyles';
 
-const HOME_STRUCTURE_DRAFT_KEY = 'sf-home-visual-cms-draft-v1';
+const HOME_STRUCTURE_DRAFT_KEY = 'sf-visual-cms-home-structure-draft-v1';
 const HISTORY_LIMIT = 30;
 
 type StructureAction = 'move-up' | 'move-down' | 'duplicate';

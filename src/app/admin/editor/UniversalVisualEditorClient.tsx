@@ -78,6 +78,17 @@ function Field({ label, value, onChange, placeholder = '' }: { label: string; va
   );
 }
 
+function SelectField({ label, value, onChange, options }: { label: string; value: string; onChange: (value: string) => void; options: Array<[string, string]> }) {
+  return (
+    <label className="grid gap-1.5">
+      <span className="text-[9px] font-black uppercase tracking-[.14em] text-white/38">{label}</span>
+      <select value={value} onChange={(event) => onChange(event.target.value)} className="h-10 rounded-xl border border-white/10 bg-black/30 px-3 text-xs text-white outline-none transition focus:border-[#FFB000]/60">
+        {options.map(([optionValue, optionLabel]) => <option key={optionValue} value={optionValue}>{optionLabel}</option>)}
+      </select>
+    </label>
+  );
+}
+
 function ColorField({ label, value, onChange }: { label: string; value: string; onChange: (value: string) => void }) {
   const color = /^#[0-9a-f]{6}$/i.test(value) ? value : '#000000';
   return (
@@ -89,6 +100,13 @@ function ColorField({ label, value, onChange }: { label: string; value: string; 
       </div>
     </label>
   );
+}
+
+function extractBackgroundUrl(value: string): string {
+  const clean = value.trim();
+  if (!clean || clean === 'none') return '';
+  const match = clean.match(/^url\(["']?(.*?)["']?\)$/i);
+  return match?.[1] || clean;
 }
 
 export default function UniversalVisualEditorClient() {
@@ -191,6 +209,18 @@ export default function UniversalVisualEditorClient() {
     updateSelected({ styles: { [styleScope]: nextStyle } });
   }
 
+  function patchBackgroundImage(value: string) {
+    if (!selection) return;
+    const clean = value.trim();
+    const backgroundImage = clean ? `url("${clean.replace(/"/g, '\\"')}")` : 'none';
+    const nextStyle = {
+      ...(override?.styles?.[styleScope] || {}),
+      backgroundImage,
+      ...(clean ? { backgroundRepeat: 'no-repeat' } : {}),
+    };
+    updateSelected({ styles: { [styleScope]: nextStyle } });
+  }
+
   function resetSelected() {
     if (!selection) return;
     setDraft((current) => removeVisualElement(current, targetRoute, selection.selector));
@@ -239,6 +269,7 @@ export default function UniversalVisualEditorClient() {
   const previewSrc = `${route}${route.includes('?') ? '&' : '?'}cms=preview&cmsVisual=1`;
   const computed = selection?.computed || {};
   const valueFor = (key: keyof VisualCmsStylePatch) => String(activeStyle[key] ?? computed[key] ?? '');
+  const backgroundUrl = extractBackgroundUrl(valueFor('backgroundImage'));
 
   return (
     <div className="min-h-screen bg-[#08090A] text-white">
@@ -302,19 +333,24 @@ export default function UniversalVisualEditorClient() {
 
               {selection.textEditable ? <label className="grid gap-1.5"><span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[.14em] text-white/38"><Type className="h-3 w-3" /> Texto</span><textarea value={override?.text ?? selection.text ?? ''} onChange={(event) => updateSelected({ text: event.target.value })} rows={4} className="rounded-xl border border-white/10 bg-black/30 p-3 text-xs leading-5 text-white outline-none focus:border-[#FFB000]/60" /></label> : null}
               {selection.isLink ? <div className="grid gap-2"><p className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[.14em] text-white/38"><Link2 className="h-3 w-3" /> Enlace</p><Field label="Destino" value={override?.href ?? selection.href ?? ''} onChange={(value) => updateSelected({ href: value })} placeholder="/contacto" /></div> : null}
-              {selection.isImage ? <div className="grid gap-2"><p className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[.14em] text-white/38"><ImageIcon className="h-3 w-3" /> Imagen</p><Field label="URL / Cloudinary" value={override?.src ?? selection.src ?? ''} onChange={(value) => updateSelected({ src: value })} /><Field label="Texto alternativo" value={override?.alt ?? selection.alt ?? ''} onChange={(value) => updateSelected({ alt: value })} /></div> : null}
+              {selection.isImage ? <div className="grid gap-2"><p className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[.14em] text-white/38"><ImageIcon className="h-3 w-3" /> Imagen</p><Field label="URL / Cloudinary" value={override?.src ?? selection.src ?? ''} onChange={(value) => updateSelected({ src: value })} /><Field label="Texto alternativo" value={override?.alt ?? selection.alt ?? ''} onChange={(value) => updateSelected({ alt: value })} /><SelectField label="Ajuste de imagen" value={valueFor('objectFit') || 'cover'} onChange={(value) => patchStyle('objectFit', value)} options={[["cover","Cubrir"],["contain","Contener"],["fill","Estirar"],["none","Original"],["scale-down","Reducir"]]} /></div> : null}
 
               <div className="grid gap-2">
                 <div className="flex items-center justify-between"><p className="text-[9px] font-black uppercase tracking-[.14em] text-white/38">Estilos</p><select value={styleScope} onChange={(event) => setStyleScope(event.target.value as StyleScope)} className="h-8 rounded-lg border border-white/10 bg-black/40 px-2 text-[9px] font-bold text-white/60"><option value="all">Todos</option><option value="desktop">PC</option><option value="tablet">Tablet</option><option value="mobile">Móvil</option></select></div>
                 <div className="grid grid-cols-2 gap-2"><ColorField label="Texto / icono" value={valueFor('color')} onChange={(value) => patchStyle('color', value)} /><ColorField label="Fondo" value={valueFor('backgroundColor')} onChange={(value) => patchStyle('backgroundColor', value)} /></div>
+                <Field label="Imagen de fondo" value={backgroundUrl} onChange={patchBackgroundImage} placeholder="https://.../fondo.webp" />
+                <div className="grid grid-cols-2 gap-2"><SelectField label="Ajuste fondo" value={valueFor('backgroundSize') || 'cover'} onChange={(value) => patchStyle('backgroundSize', value)} options={[["cover","Cubrir"],["contain","Contener"],["auto","Original"]]} /><Field label="Posición fondo" value={valueFor('backgroundPosition')} onChange={(value) => patchStyle('backgroundPosition', value)} placeholder="center center" /></div>
                 <Field label="Tipografía" value={valueFor('fontFamily')} onChange={(value) => patchStyle('fontFamily', value)} placeholder="Manrope, sans-serif" />
                 <div className="grid grid-cols-2 gap-2"><Field label="Tamaño" value={valueFor('fontSize')} onChange={(value) => patchStyle('fontSize', value)} placeholder="16px" /><Field label="Peso" value={valueFor('fontWeight')} onChange={(value) => patchStyle('fontWeight', value)} placeholder="700" /></div>
                 <div className="grid grid-cols-2 gap-2"><Field label="Interlineado" value={valueFor('lineHeight')} onChange={(value) => patchStyle('lineHeight', value)} placeholder="1.4" /><Field label="Espaciado letras" value={valueFor('letterSpacing')} onChange={(value) => patchStyle('letterSpacing', value)} placeholder="0px" /></div>
+                <SelectField label="Alineación de texto" value={valueFor('textAlign') || 'left'} onChange={(value) => patchStyle('textAlign', value)} options={[["left","Izquierda"],["center","Centro"],["right","Derecha"],["justify","Justificado"]]} />
                 <div className="grid grid-cols-2 gap-2"><Field label="Radio" value={valueFor('borderRadius')} onChange={(value) => patchStyle('borderRadius', value)} placeholder="20px" /><Field label="Borde" value={valueFor('borderWidth')} onChange={(value) => patchStyle('borderWidth', value)} placeholder="1px" /></div>
                 <ColorField label="Color del borde" value={valueFor('borderColor')} onChange={(value) => patchStyle('borderColor', value)} />
                 <Field label="Padding" value={valueFor('padding')} onChange={(value) => patchStyle('padding', value)} placeholder="24px" />
                 <Field label="Margen" value={valueFor('margin')} onChange={(value) => patchStyle('margin', value)} placeholder="0 auto" />
-                <div className="grid grid-cols-2 gap-2"><Field label="Ancho" value={valueFor('width')} onChange={(value) => patchStyle('width', value)} placeholder="100%" /><Field label="Altura mínima" value={valueFor('minHeight')} onChange={(value) => patchStyle('minHeight', value)} placeholder="240px" /></div>
+                <div className="grid grid-cols-2 gap-2"><Field label="Ancho" value={valueFor('width')} onChange={(value) => patchStyle('width', value)} placeholder="100%" /><Field label="Ancho máximo" value={valueFor('maxWidth')} onChange={(value) => patchStyle('maxWidth', value)} placeholder="1280px" /></div>
+                <div className="grid grid-cols-2 gap-2"><Field label="Altura" value={valueFor('height')} onChange={(value) => patchStyle('height', value)} placeholder="auto" /><Field label="Altura mínima" value={valueFor('minHeight')} onChange={(value) => patchStyle('minHeight', value)} placeholder="240px" /></div>
+                <div className="grid grid-cols-2 gap-2"><Field label="Separación / gap" value={valueFor('gap')} onChange={(value) => patchStyle('gap', value)} placeholder="16px" /><Field label="Opacidad" value={valueFor('opacity')} onChange={(value) => patchStyle('opacity', value)} placeholder="1" /></div>
                 <Field label="Sombra" value={valueFor('boxShadow')} onChange={(value) => patchStyle('boxShadow', value)} placeholder="0 20px 60px rgba(0,0,0,.2)" />
               </div>
 

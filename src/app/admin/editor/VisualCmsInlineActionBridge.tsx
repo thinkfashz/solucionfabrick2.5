@@ -118,6 +118,9 @@ export default function VisualCmsInlineActionBridge() {
       else if (action === 'color' && value) setInspectorField('Apariencia', 'Texto / icono', value);
       else if (action === 'background' && value) setInspectorField('Apariencia', 'Fondo', value);
       else if (action === 'font-size' && value) setInspectorField('Apariencia', 'Tamaño', value);
+      else if (action === 'font-weight' && value) setInspectorField('Apariencia', 'Peso', value);
+      else if (action === 'text-align' && value) setInspectorField('Apariencia', 'Alineación', value);
+      else if (action === 'border-radius' && value) setInspectorField('Apariencia', 'Radio', value);
       else if (action === 'image') openContextImage();
       else if (action === 'advanced') openAdvancedInspector();
     };

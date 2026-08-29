@@ -22,6 +22,12 @@ function isEditorElement(element: HTMLElement | null) {
   return Boolean(element?.closest('[data-cms-editor-ignore]'));
 }
 
+function clearLegacyOutline(element: HTMLElement | null) {
+  if (!element) return;
+  element.style.removeProperty('outline');
+  element.style.removeProperty('outline-offset');
+}
+
 function rectOf(element: HTMLElement | null): OverlayRect | null {
   if (!element?.isConnected) return null;
   const rect = element.getBoundingClientRect();
@@ -114,7 +120,10 @@ export default function VisualCmsInlineSelectionOverlay() {
         setBase(element);
         setLevel('element');
       }
-      window.requestAnimationFrame(updateRect);
+      window.requestAnimationFrame(() => {
+        clearLegacyOutline(element);
+        updateRect();
+      });
     };
 
     document.addEventListener('click', handleClick, true);
@@ -158,7 +167,10 @@ export default function VisualCmsInlineSelectionOverlay() {
     setSelected(target);
     setRect(rectOf(target));
     target.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true, view: window }));
-    window.requestAnimationFrame(() => { suppressBaseResetRef.current = false; });
+    window.requestAnimationFrame(() => {
+      clearLegacyOutline(target);
+      suppressBaseResetRef.current = false;
+    });
   };
 
   const send = (action: string, value?: string) => {

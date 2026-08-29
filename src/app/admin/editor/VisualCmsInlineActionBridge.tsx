@@ -114,6 +114,7 @@ export default function VisualCmsInlineActionBridge() {
       if (event.data?.type !== 'cms:visual-inline-action') return;
       const { action, value } = event.data;
       if (action === 'focus-text') focusContextText();
+      else if (action === 'text' && typeof value === 'string') setInspectorField('Contenido', 'Texto', value);
       else if (action === 'color' && value) setInspectorField('Apariencia', 'Texto / icono', value);
       else if (action === 'background' && value) setInspectorField('Apariencia', 'Fondo', value);
       else if (action === 'font-size' && value) setInspectorField('Apariencia', 'Tamaño', value);

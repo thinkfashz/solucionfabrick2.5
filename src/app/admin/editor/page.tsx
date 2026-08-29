@@ -3,6 +3,7 @@ import { isAdminSession } from '@/lib/adminAuth';
 import UniversalVisualEditorClient from './UniversalVisualEditorClient';
 import VisualCmsCloudinaryBridge from './VisualCmsCloudinaryBridge';
 import VisualCmsCloudinaryPolish from './VisualCmsCloudinaryPolish';
+import VisualCmsContextEditorBridge from './VisualCmsContextEditorBridge';
 import VisualCmsHistoryBridge from './VisualCmsHistoryBridge';
 
 export const dynamic = 'force-dynamic';
@@ -16,6 +17,7 @@ export default async function AdminEditorPage() {
       <UniversalVisualEditorClient />
       <VisualCmsCloudinaryBridge />
       <VisualCmsCloudinaryPolish />
+      <VisualCmsContextEditorBridge />
       <VisualCmsHistoryBridge />
     </>
   );

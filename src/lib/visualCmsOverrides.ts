@@ -4,6 +4,10 @@ export const VISUAL_CMS_GLOBAL_ROUTE = '*';
 export interface VisualCmsStylePatch {
   color?: string;
   backgroundColor?: string;
+  backgroundImage?: string;
+  backgroundSize?: 'auto' | 'cover' | 'contain' | string;
+  backgroundPosition?: string;
+  backgroundRepeat?: 'repeat' | 'repeat-x' | 'repeat-y' | 'no-repeat' | string;
   fontFamily?: string;
   fontSize?: string;
   fontWeight?: string;
@@ -16,7 +20,10 @@ export interface VisualCmsStylePatch {
   padding?: string;
   margin?: string;
   width?: string;
+  maxWidth?: string;
+  height?: string;
   minHeight?: string;
+  gap?: string;
   opacity?: string;
   boxShadow?: string;
   objectFit?: 'cover' | 'contain' | 'fill' | 'none' | 'scale-down';

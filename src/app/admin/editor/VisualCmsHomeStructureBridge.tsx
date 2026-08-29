@@ -9,7 +9,7 @@ import {
 } from '@/lib/homeVisualCms';
 import { mutateRepeatedItem, type RepeatedItemAction } from '@/lib/homeVisualRepeatedStyles';
 
-const HOME_DRAFT_KEY = 'sf-home-visual-cms-draft-v1';
+const HOME_STRUCTURE_DRAFT_KEY = 'sf-visual-cms-home-structure-draft-v1';
 
 type StructureAction = 'move-up' | 'move-down' | 'duplicate';
 
@@ -123,10 +123,10 @@ export default function VisualCmsHomeStructureBridge() {
       publishedRef.current = published;
 
       let draft = published;
-      const local = window.localStorage.getItem(HOME_DRAFT_KEY);
+      const local = window.localStorage.getItem(HOME_STRUCTURE_DRAFT_KEY);
       if (local) {
         try { draft = normalizeHomePage(JSON.parse(local)); }
-        catch { window.localStorage.removeItem(HOME_DRAFT_KEY); }
+        catch { window.localStorage.removeItem(HOME_STRUCTURE_DRAFT_KEY); }
       }
       draftRef.current = draft;
       return draft;
@@ -139,7 +139,7 @@ export default function VisualCmsHomeStructureBridge() {
 
   const commitDraft = useCallback((next: HomePageContent, status: string) => {
     draftRef.current = next;
-    window.localStorage.setItem(HOME_DRAFT_KEY, JSON.stringify(next));
+    window.localStorage.setItem(HOME_STRUCTURE_DRAFT_KEY, JSON.stringify(next));
     sendDraft(status);
   }, [sendDraft]);
 
@@ -199,7 +199,7 @@ export default function VisualCmsHomeStructureBridge() {
             const saved = normalizeHomePage(json.content ?? draft);
             publishedRef.current = saved;
             draftRef.current = saved;
-            window.localStorage.removeItem(HOME_DRAFT_KEY);
+            window.localStorage.removeItem(HOME_STRUCTURE_DRAFT_KEY);
             postToPreview({ type: 'cms:visual-home-preview', content: saved });
             finalStatus = 'Estructura Home publicada.';
           } catch (error) {

@@ -77,6 +77,12 @@ function shortLabel(element: HTMLElement | null) {
   return element.tagName.toLowerCase();
 }
 
+function mutationTouchesOnlyEditorUi(mutation: MutationRecord) {
+  if (mutation.target instanceof HTMLElement && isEditorElement(mutation.target)) return true;
+  const nodes = [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)];
+  return nodes.length > 0 && nodes.every((node) => node instanceof HTMLElement && (node.matches('[data-cms-editor-ignore]') || isEditorElement(node)));
+}
+
 export default function VisualCmsInlineSelectionOverlay() {
   const [enabled, setEnabled] = useState(false);
   const [selected, setSelected] = useState<HTMLElement | null>(null);
@@ -114,7 +120,9 @@ export default function VisualCmsInlineSelectionOverlay() {
     document.addEventListener('click', handleClick, true);
     window.addEventListener('resize', updateRect, { passive: true });
     window.addEventListener('scroll', updateRect, true);
-    const observer = new MutationObserver(updateRect);
+    const observer = new MutationObserver((mutations) => {
+      if (mutations.some((mutation) => !mutationTouchesOnlyEditorUi(mutation))) updateRect();
+    });
     observer.observe(document.body, { childList: true, subtree: true, attributes: true, attributeFilter: ['style', 'class'] });
     updateRect();
 

@@ -17,6 +17,8 @@ type Snapshot = {
   text: string | null;
   href: string | null;
   src: string | null;
+  srcset: string | null;
+  sizes: string | null;
   alt: string | null;
 };
 
@@ -37,30 +39,29 @@ function cleanCssValue(value: unknown): string | undefined {
 
 function applyStylePatch(element: HTMLElement, patch: VisualCmsStylePatch | undefined) {
   if (!patch) return;
-  const style = element.style;
-  const entries: Array<[keyof VisualCmsStylePatch, keyof CSSStyleDeclaration]> = [
+  const entries: Array<[keyof VisualCmsStylePatch, string]> = [
     ['color', 'color'],
-    ['backgroundColor', 'backgroundColor'],
-    ['fontFamily', 'fontFamily'],
-    ['fontSize', 'fontSize'],
-    ['fontWeight', 'fontWeight'],
-    ['lineHeight', 'lineHeight'],
-    ['letterSpacing', 'letterSpacing'],
-    ['textAlign', 'textAlign'],
-    ['borderColor', 'borderColor'],
-    ['borderWidth', 'borderWidth'],
-    ['borderRadius', 'borderRadius'],
+    ['backgroundColor', 'background-color'],
+    ['fontFamily', 'font-family'],
+    ['fontSize', 'font-size'],
+    ['fontWeight', 'font-weight'],
+    ['lineHeight', 'line-height'],
+    ['letterSpacing', 'letter-spacing'],
+    ['textAlign', 'text-align'],
+    ['borderColor', 'border-color'],
+    ['borderWidth', 'border-width'],
+    ['borderRadius', 'border-radius'],
     ['padding', 'padding'],
     ['margin', 'margin'],
     ['width', 'width'],
-    ['minHeight', 'minHeight'],
+    ['minHeight', 'min-height'],
     ['opacity', 'opacity'],
-    ['boxShadow', 'boxShadow'],
-    ['objectFit', 'objectFit'],
+    ['boxShadow', 'box-shadow'],
+    ['objectFit', 'object-fit'],
   ];
-  for (const [source, target] of entries) {
+  for (const [source, cssProperty] of entries) {
     const value = cleanCssValue(patch[source]);
-    if (value !== undefined) (style[target] as string) = value;
+    if (value !== undefined) element.style.setProperty(cssProperty, value);
   }
 }
 
@@ -71,25 +72,28 @@ function snapshotElement(element: HTMLElement): Snapshot {
     text: element.childElementCount === 0 ? element.textContent : null,
     href: element instanceof HTMLAnchorElement ? element.getAttribute('href') : null,
     src: element instanceof HTMLImageElement ? element.getAttribute('src') : null,
+    srcset: element instanceof HTMLImageElement ? element.getAttribute('srcset') : null,
+    sizes: element instanceof HTMLImageElement ? element.getAttribute('sizes') : null,
     alt: element instanceof HTMLImageElement ? element.getAttribute('alt') : null,
   };
+}
+
+function restoreAttribute(element: HTMLElement, name: string, value: string | null) {
+  if (value === null) element.removeAttribute(name);
+  else element.setAttribute(name, value);
 }
 
 function restoreSnapshot(snapshot: Snapshot) {
   const { element } = snapshot;
   if (!element.isConnected) return;
-  if (snapshot.style === null) element.removeAttribute('style');
-  else element.setAttribute('style', snapshot.style);
+  restoreAttribute(element, 'style', snapshot.style);
   if (snapshot.text !== null && element.childElementCount === 0) element.textContent = snapshot.text;
-  if (element instanceof HTMLAnchorElement) {
-    if (snapshot.href === null) element.removeAttribute('href');
-    else element.setAttribute('href', snapshot.href);
-  }
+  if (element instanceof HTMLAnchorElement) restoreAttribute(element, 'href', snapshot.href);
   if (element instanceof HTMLImageElement) {
-    if (snapshot.src === null) element.removeAttribute('src');
-    else element.setAttribute('src', snapshot.src);
-    if (snapshot.alt === null) element.removeAttribute('alt');
-    else element.setAttribute('alt', snapshot.alt);
+    restoreAttribute(element, 'src', snapshot.src);
+    restoreAttribute(element, 'srcset', snapshot.srcset);
+    restoreAttribute(element, 'sizes', snapshot.sizes);
+    restoreAttribute(element, 'alt', snapshot.alt);
   }
 }
 
@@ -97,7 +101,11 @@ function applyOverride(element: HTMLElement, override: VisualCmsElementOverride,
   if (typeof override.text === 'string' && element.childElementCount === 0) element.textContent = override.text;
   if (element instanceof HTMLAnchorElement && typeof override.href === 'string') element.setAttribute('href', override.href);
   if (element instanceof HTMLImageElement) {
-    if (typeof override.src === 'string') element.setAttribute('src', override.src);
+    if (typeof override.src === 'string') {
+      element.removeAttribute('srcset');
+      element.removeAttribute('sizes');
+      element.setAttribute('src', override.src);
+    }
     if (typeof override.alt === 'string') element.setAttribute('alt', override.alt);
   }
   if (override.hidden === true) element.style.display = 'none';
@@ -157,7 +165,7 @@ function selectionPayload(element: HTMLElement) {
       fontWeight: computed.fontWeight,
       lineHeight: computed.lineHeight,
       letterSpacing: computed.letterSpacing,
-      textAlign: computed.textAlign,
+      textAlign: computed.textAlign as VisualCmsStylePatch['textAlign'],
       borderColor: computed.borderColor,
       borderWidth: computed.borderWidth,
       borderRadius: computed.borderRadius,
@@ -167,7 +175,7 @@ function selectionPayload(element: HTMLElement) {
       minHeight: computed.minHeight,
       opacity: computed.opacity,
       boxShadow: computed.boxShadow,
-      objectFit: computed.objectFit,
+      objectFit: computed.objectFit as VisualCmsStylePatch['objectFit'],
     },
   };
 }
@@ -222,9 +230,14 @@ export default function VisualCmsRuntime() {
       }
     };
 
+    const resolveElement = (target: EventTarget | null): HTMLElement | null => {
+      if (target instanceof HTMLElement) return target;
+      if (target instanceof SVGElement) return target.closest('button, a, [role="button"], svg')?.parentElement || target.parentElement;
+      return null;
+    };
+
     const click = (event: MouseEvent) => {
-      const raw = event.target;
-      const element = raw instanceof HTMLElement ? raw : raw instanceof SVGElement ? raw.parentElement : null;
+      const element = resolveElement(event.target);
       if (!element || BLOCKED_TAGS.has(element.tagName) || element.closest('[data-cms-editor-ignore]')) return;
       event.preventDefault();
       event.stopPropagation();
@@ -237,8 +250,7 @@ export default function VisualCmsRuntime() {
     };
 
     const hover = (event: MouseEvent) => {
-      const raw = event.target;
-      const element = raw instanceof HTMLElement ? raw : raw instanceof SVGElement ? raw.parentElement : null;
+      const element = resolveElement(event.target);
       if (!element || BLOCKED_TAGS.has(element.tagName) || element.closest('[data-cms-editor-ignore]')) return;
       element.style.setProperty('cursor', 'crosshair', 'important');
     };

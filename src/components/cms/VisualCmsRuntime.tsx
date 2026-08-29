@@ -241,12 +241,13 @@ function relativePath(ancestor: HTMLElement, element: HTMLElement): string {
   const parts: string[] = [];
   let current: HTMLElement | null = element;
   while (current && current !== ancestor) {
-    const parent: HTMLElement | null = current.parentElement;
-    if (!parent) return '';
-    const siblings = Array.from(parent.children).filter((child) => child.tagName === current!.tagName);
-    const index = siblings.indexOf(current) + 1;
-    parts.unshift(`${current.tagName.toLowerCase()}:nth-of-type(${Math.max(1, index)})`);
-    current = parent;
+    const currentElement: HTMLElement = current;
+    const parentElement: HTMLElement | null = currentElement.parentElement;
+    if (!parentElement) return '';
+    const siblings = Array.from(parentElement.children).filter((child) => child.tagName === currentElement.tagName);
+    const index = siblings.indexOf(currentElement) + 1;
+    parts.unshift(`${currentElement.tagName.toLowerCase()}:nth-of-type(${Math.max(1, index)})`);
+    current = parentElement;
   }
   return current === ancestor ? parts.join(' > ') : '';
 }
@@ -254,24 +255,27 @@ function relativePath(ancestor: HTMLElement, element: HTMLElement): string {
 function repeatedRootSelector(element: HTMLElement): { selector: string; root: HTMLElement; count: number } | null {
   let root: HTMLElement | null = element;
   for (let depth = 0; root && root.parentElement && depth < 5; depth += 1) {
-    const parent = root.parentElement;
-    const tag = root.tagName.toLowerCase();
-    const sameTag = Array.from(parent.children).filter((child): child is HTMLElement => child instanceof HTMLElement && child.tagName === root!.tagName);
+    const currentRoot: HTMLElement = root;
+    const parentElement: HTMLElement | null = currentRoot.parentElement;
+    if (!parentElement) break;
+    const tag = currentRoot.tagName.toLowerCase();
+    const currentTagName = currentRoot.tagName;
+    const sameTag = Array.from(parentElement.children).filter((child): child is HTMLElement => child instanceof HTMLElement && child.tagName === currentTagName);
     if (sameTag.length >= 2) {
-      const classes = Array.from(root.classList)
+      const classes = Array.from(currentRoot.classList)
         .filter((className) => sameTag.filter((sibling) => sibling.classList.contains(className)).length >= 2)
         .slice(0, 3);
       const classSelector = classes.map((className) => `.${escapeSelector(className)}`).join('');
-      const parentSelector = uniqueSelector(parent);
+      const parentSelector = uniqueSelector(parentElement);
       const selector = `${parentSelector} > ${tag}${classSelector}`;
       try {
         const count = document.querySelectorAll(selector).length;
-        if (count >= 2 && count <= 80) return { selector, root, count };
+        if (count >= 2 && count <= 80) return { selector, root: currentRoot, count };
       } catch {
         // Try the next ancestor.
       }
     }
-    root = parent;
+    root = parentElement;
   }
   return null;
 }

@@ -1,4 +1,5 @@
 export type VisualCmsDevice = 'desktop' | 'tablet' | 'mobile';
+export const VISUAL_CMS_GLOBAL_ROUTE = '*';
 
 export interface VisualCmsStylePatch {
   color?: string;
@@ -54,10 +55,10 @@ export function normalizeVisualCmsOverrides(value: unknown): VisualCmsOverridesC
   const pagesInput = raw.pages && typeof raw.pages === 'object' && !Array.isArray(raw.pages) ? raw.pages : {};
   const pages: Record<string, VisualCmsPageOverride> = {};
 
-  for (const [routeKey, pageRaw] of Object.entries(pagesInput)) {
+  for (const [routeEntry, pageRaw] of Object.entries(pagesInput)) {
     if (!pageRaw || typeof pageRaw !== 'object' || Array.isArray(pageRaw)) continue;
     const page = pageRaw as Partial<VisualCmsPageOverride>;
-    const route = typeof page.route === 'string' && page.route.trim() ? page.route.trim() : routeKey;
+    const route = routeKey(typeof page.route === 'string' && page.route.trim() ? page.route.trim() : routeEntry);
     const elementsInput = page.elements && typeof page.elements === 'object' && !Array.isArray(page.elements) ? page.elements : {};
     const elements: Record<string, VisualCmsElementOverride> = {};
 
@@ -89,7 +90,9 @@ export function normalizeVisualCmsOverrides(value: unknown): VisualCmsOverridesC
 }
 
 export function routeKey(pathname: string): string {
-  const clean = pathname.split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
+  const raw = String(pathname || '').trim();
+  if (raw === VISUAL_CMS_GLOBAL_ROUTE) return VISUAL_CMS_GLOBAL_ROUTE;
+  const clean = raw.split('?')[0].split('#')[0].replace(/\/+$/, '') || '/';
   return clean.startsWith('/') ? clean : `/${clean}`;
 }
 
@@ -136,6 +139,7 @@ export function removeVisualElement(
   const elements = { ...page.elements };
   delete elements[selector];
   const pages = { ...normalized.pages };
-  pages[key] = { ...page, elements };
+  if (Object.keys(elements).length === 0) delete pages[key];
+  else pages[key] = { ...page, elements };
   return { ...normalized, pages };
 }

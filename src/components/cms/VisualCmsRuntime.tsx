@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import {
+  VISUAL_CMS_GLOBAL_ROUTE,
   normalizeVisualCmsOverrides,
   routeKey,
   type VisualCmsDevice,
@@ -156,7 +157,7 @@ function selectionPayload(element: HTMLElement) {
     alt: element instanceof HTMLImageElement ? element.getAttribute('alt') || '' : null,
     isImage: element instanceof HTMLImageElement,
     isLink: element instanceof HTMLAnchorElement,
-    isIcon: element.tagName === 'SVG' || Boolean(element.closest('svg')),
+    isIcon: Boolean(element.querySelector('svg')) || Boolean(element.closest('svg')),
     computed: {
       color: computed.color,
       backgroundColor: computed.backgroundColor,
@@ -192,18 +193,21 @@ export default function VisualCmsRuntime() {
     for (const snapshot of snapshots.values()) restoreSnapshot(snapshot);
     snapshots.clear();
 
-    const page = content.pages[routeKey(pathname)];
-    if (!page) return;
+    const currentRoute = routeKey(pathname);
+    const layers = [content.pages[VISUAL_CMS_GLOBAL_ROUTE], content.pages[currentRoute]].filter(Boolean);
+    if (!layers.length) return;
     const device = deviceForWidth(window.innerWidth);
 
-    for (const override of Object.values(page.elements)) {
-      try {
-        const element = document.querySelector<HTMLElement>(override.selector);
-        if (!element || BLOCKED_TAGS.has(element.tagName)) continue;
-        snapshots.set(override.selector, snapshotElement(element));
-        applyOverride(element, override, device);
-      } catch {
-        // A stale selector must never break the public page.
+    for (const layer of layers) {
+      for (const override of Object.values(layer!.elements)) {
+        try {
+          const element = document.querySelector<HTMLElement>(override.selector);
+          if (!element || BLOCKED_TAGS.has(element.tagName)) continue;
+          if (!snapshots.has(override.selector)) snapshots.set(override.selector, snapshotElement(element));
+          applyOverride(element, override, device);
+        } catch {
+          // A stale selector must never break the public page.
+        }
       }
     }
 
@@ -232,7 +236,10 @@ export default function VisualCmsRuntime() {
 
     const resolveElement = (target: EventTarget | null): HTMLElement | null => {
       if (target instanceof HTMLElement) return target;
-      if (target instanceof SVGElement) return target.closest('button, a, [role="button"], svg')?.parentElement || target.parentElement;
+      if (target instanceof SVGElement) {
+        const svg = target.closest('svg');
+        return svg?.parentElement || target.parentElement;
+      }
       return null;
     };
 

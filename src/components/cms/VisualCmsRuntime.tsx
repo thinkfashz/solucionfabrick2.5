@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { usePathname } from 'next/navigation';
 import { useSiteContent } from '@/hooks/useSiteContent';
 import {
@@ -126,6 +126,44 @@ function escapeSelector(value: string) {
   return value.replace(/[^a-zA-Z0-9_-]/g, (char) => `\\${char}`);
 }
 
+function escapeAttributeValue(value: string) {
+  return value.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+}
+
+function uniqueAttributeSelector(element: HTMLElement, attribute: string): string | null {
+  const value = element.getAttribute(attribute)?.trim();
+  if (!value) return null;
+  const selector = `${element.tagName.toLowerCase()}[${attribute}="${escapeAttributeValue(value)}"]`;
+  try {
+    return document.querySelectorAll(selector).length === 1 ? selector : null;
+  } catch {
+    return null;
+  }
+}
+
+function setCmsId(element: HTMLElement | null, id: string) {
+  if (element && !element.dataset.cmsId) element.dataset.cmsId = id;
+}
+
+function ensureStableCmsIds() {
+  const navCandidates = Array.from(document.querySelectorAll<HTMLElement>('nav'));
+  const primaryNavbar = navCandidates.find((element) => {
+    const style = window.getComputedStyle(element);
+    const rect = element.getBoundingClientRect();
+    return style.position === 'fixed' && rect.top <= 32 && rect.width >= window.innerWidth * 0.7;
+  }) || null;
+  setCmsId(primaryNavbar, 'site-navbar');
+
+  const footer = document.querySelector<HTMLElement>('footer');
+  setCmsId(footer, 'site-footer');
+
+  const brand = document.querySelector<HTMLElement>('[aria-label="Soluciones Fabrick — inicio"]');
+  setCmsId(brand, 'site-navbar-brand');
+
+  const desktopCart = document.querySelector<HTMLElement>('[aria-label^="Carrito de compras"]');
+  setCmsId(desktopCart, 'site-navbar-cart');
+}
+
 function uniqueSelector(element: HTMLElement): string {
   const cmsId = element.dataset.cmsId;
   if (cmsId) return `[data-cms-id="${escapeSelector(cmsId)}"]`;
@@ -134,10 +172,21 @@ function uniqueSelector(element: HTMLElement): string {
     try { if (document.querySelectorAll(idSelector).length === 1) return idSelector; } catch { /* noop */ }
   }
 
+  const semanticSelector = uniqueAttributeSelector(element, 'aria-label')
+    || uniqueAttributeSelector(element, 'name')
+    || uniqueAttributeSelector(element, 'href')
+    || uniqueAttributeSelector(element, 'title');
+  if (semanticSelector) return semanticSelector;
+
   const parts: string[] = [];
   let current: HTMLElement | null = element;
   while (current && current !== document.body) {
     const currentElement: HTMLElement = current;
+    const currentCmsId = currentElement.dataset.cmsId;
+    if (currentCmsId) {
+      parts.unshift(`[data-cms-id="${escapeSelector(currentCmsId)}"]`);
+      return parts.join(' > ');
+    }
     const tag = currentElement.tagName.toLowerCase();
     const parentElement: HTMLElement | null = currentElement.parentElement;
     if (!parentElement) break;
@@ -203,12 +252,34 @@ export default function VisualCmsRuntime() {
   const content = useMemo(() => normalizeVisualCmsOverrides(stored), [stored]);
   const snapshotsRef = useRef<Map<string, Snapshot>>(new Map());
   const selectedRef = useRef<HTMLElement | null>(null);
+  const [domEpoch, setDomEpoch] = useState(0);
+
+  useEffect(() => {
+    let frame = 0;
+    const invalidate = () => {
+      window.cancelAnimationFrame(frame);
+      frame = window.requestAnimationFrame(() => setDomEpoch((value) => value + 1));
+    };
+    const observer = new MutationObserver((mutations) => {
+      if (mutations.some((mutation) => mutation.type === 'childList' && (mutation.addedNodes.length || mutation.removedNodes.length))) invalidate();
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+    window.addEventListener('resize', invalidate, { passive: true });
+    window.addEventListener('orientationchange', invalidate);
+    return () => {
+      observer.disconnect();
+      window.removeEventListener('resize', invalidate);
+      window.removeEventListener('orientationchange', invalidate);
+      window.cancelAnimationFrame(frame);
+    };
+  }, []);
 
   useEffect(() => {
     const snapshots = snapshotsRef.current;
     for (const snapshot of snapshots.values()) restoreSnapshot(snapshot);
     snapshots.clear();
 
+    ensureStableCmsIds();
     const currentRoute = routeKey(pathname);
     const layers = [content.pages[VISUAL_CMS_GLOBAL_ROUTE], content.pages[currentRoute]].filter(Boolean);
     if (!layers.length) return;
@@ -231,12 +302,14 @@ export default function VisualCmsRuntime() {
       for (const snapshot of snapshots.values()) restoreSnapshot(snapshot);
       snapshots.clear();
     };
-  }, [content, pathname]);
+  }, [content, pathname, domEpoch]);
 
   useEffect(() => {
     let preview = false;
     try { preview = new URLSearchParams(window.location.search).get(EDITOR_PARAM) === '1'; } catch { /* noop */ }
     if (!preview || window.parent === window) return;
+
+    ensureStableCmsIds();
 
     const mark = (next: HTMLElement | null) => {
       if (selectedRef.current && selectedRef.current !== next) {
@@ -264,6 +337,7 @@ export default function VisualCmsRuntime() {
       if (!element || BLOCKED_TAGS.has(element.tagName) || element.closest('[data-cms-editor-ignore]')) return;
       event.preventDefault();
       event.stopPropagation();
+      ensureStableCmsIds();
       mark(element);
       window.parent.postMessage({
         type: 'cms:visual-select',
@@ -286,7 +360,7 @@ export default function VisualCmsRuntime() {
       document.removeEventListener('mouseover', hover, true);
       mark(null);
     };
-  }, [pathname]);
+  }, [pathname, domEpoch]);
 
   return null;
 }

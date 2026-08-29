@@ -38,6 +38,9 @@ function rectOf(element: HTMLElement | null): OverlayRect | null {
 }
 
 function containerFor(element: HTMLElement): HTMLElement | null {
+  const managed = element.closest<HTMLElement>('[data-cms-container]');
+  if (managed && managed !== document.body && !isEditorElement(managed)) return managed;
+
   const sourceRect = element.getBoundingClientRect();
   let current = element.parentElement;
   for (let depth = 0; current && current !== document.body && depth < 6; depth += 1) {
@@ -174,7 +177,10 @@ export default function VisualCmsInlineSelectionOverlay() {
   const backgroundColor = cssColorToHex(computed.backgroundColor, '#ffffff');
   const fontSize = Number.parseFloat(computed.fontSize || '16') || 16;
   const managedSectionId = level === 'section' ? selected.dataset.cmsBlockId || null : null;
-  const toolbarWidth = Math.min(managedSectionId ? 760 : 590, Math.max(300, window.innerWidth - 16));
+  const managedContainer = level === 'container' ? selected.dataset.cmsContainer || null : null;
+  const managedContainerSectionId = managedContainer ? selected.closest<HTMLElement>('[data-cms-block-id]')?.dataset.cmsBlockId || null : null;
+  const hasManagedStructure = Boolean(managedSectionId || (managedContainer && managedContainerSectionId));
+  const toolbarWidth = Math.min(hasManagedStructure ? 760 : 590, Math.max(300, window.innerWidth - 16));
   const toolbarLeft = Math.max(8, Math.min(window.innerWidth - toolbarWidth - 8, rect.left));
   const toolbarTop = rect.top > 58 ? rect.top - 48 : Math.min(window.innerHeight - 52, rect.top + rect.height + 8);
 
@@ -197,8 +203,14 @@ export default function VisualCmsInlineSelectionOverlay() {
   };
 
   const sendHomeStructure = (action: HomeStructureAction) => {
-    if (!managedSectionId || homeStructure.busy) return;
-    window.parent.postMessage({ type: 'cms:visual-home-structure-action', sectionId: managedSectionId, action }, window.location.origin);
+    if (homeStructure.busy) return;
+    if (managedSectionId) {
+      window.parent.postMessage({ type: 'cms:visual-home-structure-action', sectionId: managedSectionId, action }, window.location.origin);
+      return;
+    }
+    if (managedContainer && managedContainerSectionId) {
+      window.parent.postMessage({ type: 'cms:visual-home-card-structure-action', sectionId: managedContainerSectionId, container: managedContainer, action }, window.location.origin);
+    }
   };
 
   const publishHomeStructure = () => {
@@ -230,12 +242,13 @@ export default function VisualCmsInlineSelectionOverlay() {
         {candidates.container ? <button type="button" onClick={() => selectLevel('container')} className={`h-8 shrink-0 rounded-lg px-2 text-[9px] font-black ${level === 'container' ? 'bg-[#ffb000] text-black' : 'bg-white/5 text-white/70'}`}>Contenedor</button> : null}
         {candidates.section && candidates.section !== candidates.container ? <button type="button" onClick={() => selectLevel('section')} className={`h-8 shrink-0 rounded-lg px-2 text-[9px] font-black ${level === 'section' ? 'bg-[#ffb000] text-black' : 'bg-white/5 text-white/70'}`}>Sección</button> : null}
 
-        {managedSectionId ? (
+        {hasManagedStructure ? (
           <>
             <span className="mx-0.5 h-5 w-px shrink-0 bg-[#ffb000]/25" />
-            <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('move-up')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#ffb000]/12 text-[13px] font-black text-[#ffd77a] disabled:opacity-35" title="Mover sección hacia arriba">↑</button>
-            <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('move-down')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#ffb000]/12 text-[13px] font-black text-[#ffd77a] disabled:opacity-35" title="Mover sección hacia abajo">↓</button>
-            <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('duplicate')} className="h-8 shrink-0 rounded-lg bg-[#ffb000]/12 px-2 text-[8px] font-black text-[#ffd77a] disabled:opacity-35" title="Duplicar sección">Duplicar</button>
+            <span className="hidden shrink-0 px-1 text-[7px] font-black uppercase tracking-[.08em] text-[#ffd77a]/60 sm:inline">{managedSectionId ? 'Sección' : 'Card'}</span>
+            <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('move-up')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#ffb000]/12 text-[13px] font-black text-[#ffd77a] disabled:opacity-35" title={`Mover ${managedSectionId ? 'sección' : 'tarjeta'} hacia arriba`}>↑</button>
+            <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('move-down')} className="grid h-8 w-8 shrink-0 place-items-center rounded-lg bg-[#ffb000]/12 text-[13px] font-black text-[#ffd77a] disabled:opacity-35" title={`Mover ${managedSectionId ? 'sección' : 'tarjeta'} hacia abajo`}>↓</button>
+            <button type="button" disabled={homeStructure.busy} onClick={() => sendHomeStructure('duplicate')} className="h-8 shrink-0 rounded-lg bg-[#ffb000]/12 px-2 text-[8px] font-black text-[#ffd77a] disabled:opacity-35" title={`Duplicar ${managedSectionId ? 'sección' : 'tarjeta'}`}>Duplicar</button>
             {homeStructure.dirty ? <button type="button" disabled={homeStructure.busy} onClick={publishHomeStructure} className="h-8 shrink-0 rounded-lg bg-[#ffb000] px-2.5 text-[8px] font-black text-black disabled:opacity-45">{homeStructure.busy ? 'Guardando…' : 'Publicar estructura'}</button> : null}
           </>
         ) : null}

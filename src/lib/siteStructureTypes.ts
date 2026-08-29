@@ -1,4 +1,8 @@
 import { DEFAULT_HOME_PAGE, type HomePageContent } from './homeVisualCms';
+import {
+  DEFAULT_VISUAL_CMS_OVERRIDES,
+  type VisualCmsOverridesContent,
+} from './visualCmsOverrides';
 
 /**
  * Universal CMS — section schemas + defaults.
@@ -23,6 +27,7 @@ export const SECTION_KEYS = [
   'producto',
   'error-404',
   'custom-injection',
+  'visual-overrides',
 ] as const;
 
 export type SectionKey = (typeof SECTION_KEYS)[number];
@@ -124,6 +129,7 @@ export interface SectionContentMap {
   producto: ProductContent;
   'error-404': Error404Content;
   'custom-injection': CustomInjectionContent;
+  'visual-overrides': VisualCmsOverridesContent;
 }
 
 export const DEFAULT_GLOBAL_STYLES: GlobalStylesContent = {
@@ -220,6 +226,7 @@ export const SECTION_DEFAULTS: SectionContentMap = {
   producto: DEFAULT_PRODUCTO,
   'error-404': DEFAULT_ERROR_404,
   'custom-injection': DEFAULT_CUSTOM_INJECTION,
+  'visual-overrides': DEFAULT_VISUAL_CMS_OVERRIDES,
 };
 
 export function mergeWithDefault<K extends SectionKey>(
@@ -258,6 +265,8 @@ export function pathsForSection(key: SectionKey): string[] {
       return ['/404-preview'];
     case 'producto':
       return ['/producto', '/tienda'];
+    case 'visual-overrides':
+      return ['*'];
     default:
       return ['/'];
   }

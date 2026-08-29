@@ -4,6 +4,7 @@ import AdminColombiaGradientBackground from '@/components/admin/visual/AdminColo
 import AdminRouteStyler from '@/components/admin/AdminRouteStyler';
 import AdminEntrySplash from '@/components/admin/AdminEntrySplash';
 import AdminLiveSaleNotifier from '@/components/admin/AdminLiveSaleNotifier';
+import AdminVisualCmsShortcut from '@/components/admin/AdminVisualCmsShortcut';
 import './fabrick-admin-theme.css';
 import './admin-professional-stage2.css';
 import './admin-professional-stage3.css';
@@ -33,6 +34,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
       <AdminEntrySplash />
       <AdminRouteStyler />
       <AdminLiveSaleNotifier />
+      <AdminVisualCmsShortcut />
       <AdminShellSwitcher>{children}</AdminShellSwitcher>
     </AdminColombiaGradientBackground>
   );

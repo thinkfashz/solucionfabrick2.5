@@ -176,13 +176,13 @@ export default function VisualCmsHistoryBridge() {
 
       const wrapper = document.createElement('div');
       wrapper.dataset.visualCmsHistoryToolbar = '1';
-      wrapper.className = 'hidden shrink-0 items-center gap-1 sm:flex';
+      wrapper.className = 'flex shrink-0 items-center gap-1';
 
       undoButton = document.createElement('button');
       undoButton.type = 'button';
       undoButton.title = 'Deshacer cambio visual';
       undoButton.setAttribute('aria-label', 'Deshacer cambio visual');
-      undoButton.className = 'grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-sm font-black text-white/55 transition hover:border-[#FFB000]/30 hover:text-[#FFB000] disabled:pointer-events-none';
+      undoButton.className = 'grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-sm font-black text-white/55 transition hover:border-[#FFB000]/30 hover:text-[#FFB000] disabled:pointer-events-none sm:h-9 sm:w-9';
       undoButton.textContent = '↶';
       undoButton.addEventListener('click', undo);
 
@@ -190,7 +190,7 @@ export default function VisualCmsHistoryBridge() {
       redoButton.type = 'button';
       redoButton.title = 'Rehacer cambio visual';
       redoButton.setAttribute('aria-label', 'Rehacer cambio visual');
-      redoButton.className = 'grid h-9 w-9 place-items-center rounded-lg border border-white/10 text-sm font-black text-white/55 transition hover:border-[#FFB000]/30 hover:text-[#FFB000] disabled:pointer-events-none';
+      redoButton.className = 'grid h-8 w-8 place-items-center rounded-lg border border-white/10 text-sm font-black text-white/55 transition hover:border-[#FFB000]/30 hover:text-[#FFB000] disabled:pointer-events-none sm:h-9 sm:w-9';
       redoButton.textContent = '↷';
       redoButton.addEventListener('click', redo);
 
@@ -207,9 +207,9 @@ export default function VisualCmsHistoryBridge() {
         const next = JSON.stringify(normalizeVisualCmsOverrides(body.content));
         if (!next) return;
         publishedSnapshot = next;
-        sessionStorage.setItem(BASE_KEY, next);
         if (resetIfClean && !localStorage.getItem(DRAFT_KEY)) {
           currentSnapshot = next;
+          sessionStorage.setItem(BASE_KEY, next);
           clearHistory();
         }
       } catch {
@@ -240,13 +240,13 @@ export default function VisualCmsHistoryBridge() {
     };
 
     const initialize = async () => {
+      const storedBaseBeforeFetch = sessionStorage.getItem(BASE_KEY);
       await refreshPublishedBaseline(false);
       if (disposed || !publishedSnapshot) return;
 
       const applying = sessionStorage.getItem(APPLYING_KEY) === '1';
       sessionStorage.removeItem(APPLYING_KEY);
-      const storedBase = sessionStorage.getItem(BASE_KEY);
-      if (!applying && storedBase && storedBase !== publishedSnapshot) clearHistory();
+      if (!applying && storedBaseBeforeFetch && storedBaseBeforeFetch !== publishedSnapshot) clearHistory();
       sessionStorage.setItem(BASE_KEY, publishedSnapshot);
 
       currentSnapshot = observedSnapshot();

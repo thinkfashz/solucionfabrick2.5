@@ -4,6 +4,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import Link from 'next/link';
 import {
   Eye,
+  Globe2,
   Image as ImageIcon,
   Link2,
   Loader2,
@@ -18,6 +19,7 @@ import {
 } from 'lucide-react';
 import {
   DEFAULT_VISUAL_CMS_OVERRIDES,
+  VISUAL_CMS_GLOBAL_ROUTE,
   normalizeVisualCmsOverrides,
   removeVisualElement,
   routeKey,
@@ -59,6 +61,7 @@ type Selection = {
 };
 
 type StyleScope = 'all' | VisualCmsDevice;
+type ElementScope = 'page' | 'global';
 
 const widthFor: Record<VisualCmsDevice, string> = {
   desktop: '100%',
@@ -96,6 +99,7 @@ export default function UniversalVisualEditorClient() {
   const [routeInput, setRouteInput] = useState('/');
   const [device, setDevice] = useState<VisualCmsDevice>('desktop');
   const [styleScope, setStyleScope] = useState<StyleScope>('desktop');
+  const [elementScope, setElementScope] = useState<ElementScope>('page');
   const [selection, setSelection] = useState<Selection | null>(null);
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
@@ -103,8 +107,10 @@ export default function UniversalVisualEditorClient() {
   const [iframeReady, setIframeReady] = useState(false);
 
   const dirty = useMemo(() => JSON.stringify(draft) !== JSON.stringify(published), [draft, published]);
-  const page = draft.pages[routeKey(route)];
-  const override = selection ? page?.elements[selection.selector] : undefined;
+  const currentRoute = routeKey(route);
+  const targetRoute = elementScope === 'global' ? VISUAL_CMS_GLOBAL_ROUTE : currentRoute;
+  const targetPage = draft.pages[targetRoute];
+  const override = selection ? targetPage?.elements[selection.selector] : undefined;
   const activeStyle = selection ? override?.styles?.[styleScope] || {} : {};
 
   const load = useCallback(async () => {
@@ -162,17 +168,21 @@ export default function UniversalVisualEditorClient() {
         setStatus('Vista lista. Toca cualquier elemento para editarlo.');
       }
       if (data?.type === 'cms:visual-select' && data.element) {
-        setSelection(data.element);
-        setStatus(`Editando ${data.element.tag}: ${data.element.label || data.element.selector}`);
+        const selected = data.element;
+        setSelection(selected);
+        const hasPageOverride = Boolean(draft.pages[currentRoute]?.elements[selected.selector]);
+        const hasGlobalOverride = Boolean(draft.pages[VISUAL_CMS_GLOBAL_ROUTE]?.elements[selected.selector]);
+        setElementScope(hasPageOverride ? 'page' : hasGlobalOverride ? 'global' : 'page');
+        setStatus(`Editando ${selected.tag}: ${selected.label || selected.selector}`);
       }
     };
     window.addEventListener('message', handler);
     return () => window.removeEventListener('message', handler);
-  }, [draft, sendPreview]);
+  }, [currentRoute, draft, sendPreview]);
 
   function updateSelected(patch: Partial<VisualCmsElementOverride>) {
     if (!selection) return;
-    setDraft((current) => upsertVisualElement(current, route, selection.selector, { label: selection.label, ...patch }));
+    setDraft((current) => upsertVisualElement(current, targetRoute, selection.selector, { label: selection.label, ...patch }));
   }
 
   function patchStyle(field: keyof VisualCmsStylePatch, value: string) {
@@ -183,8 +193,8 @@ export default function UniversalVisualEditorClient() {
 
   function resetSelected() {
     if (!selection) return;
-    setDraft((current) => removeVisualElement(current, route, selection.selector));
-    setStatus('Cambios de este elemento eliminados del borrador.');
+    setDraft((current) => removeVisualElement(current, targetRoute, selection.selector));
+    setStatus(elementScope === 'global' ? 'Personalización global eliminada.' : 'Personalización de esta página eliminada.');
   }
 
   function navigate(nextRoute: string) {
@@ -192,6 +202,7 @@ export default function UniversalVisualEditorClient() {
     setRoute(clean);
     setRouteInput(clean);
     setSelection(null);
+    setElementScope('page');
     setIframeReady(false);
     setStatus(`Abriendo ${clean}…`);
   }
@@ -279,7 +290,15 @@ export default function UniversalVisualEditorClient() {
             <div className="grid min-h-[360px] place-items-center rounded-2xl border border-dashed border-white/10 p-6 text-center"><div><Eye className="mx-auto h-7 w-7 text-[#FFB000]/50" /><h2 className="mt-3 text-sm font-black">Selecciona un elemento</h2><p className="mt-2 text-xs leading-5 text-white/35">Toca cualquier parte de la página. El inspector detectará el tipo de elemento y sus estilos actuales.</p></div></div>
           ) : (
             <div className="space-y-5">
-              <div className="flex items-start gap-3 border-b border-white/8 pb-4"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#FFB000] text-black"><Paintbrush className="h-4 w-4" /></span><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[.15em] text-white/30">{selection.tag}</p><h2 className="truncate text-sm font-black">{selection.label}</h2><p className="mt-1 truncate text-[9px] text-white/25">{selection.selector}</p></div></div>
+              <div className="flex items-start gap-3 border-b border-white/8 pb-4"><span className="grid h-10 w-10 shrink-0 place-items-center rounded-xl bg-[#FFB000] text-black"><Paintbrush className="h-4 w-4" /></span><div className="min-w-0"><p className="text-[9px] font-black uppercase tracking-[.15em] text-white/30">{selection.tag}{selection.isIcon ? ' · icono' : ''}</p><h2 className="truncate text-sm font-black">{selection.label}</h2><p className="mt-1 truncate text-[9px] text-white/25">{selection.selector}</p></div></div>
+
+              <div className="rounded-xl border border-white/8 bg-black/25 p-1">
+                <div className="grid grid-cols-2 gap-1">
+                  <button type="button" onClick={() => setElementScope('page')} className={`rounded-lg px-2 py-2 text-[9px] font-black ${elementScope === 'page' ? 'bg-white/10 text-white' : 'text-white/35'}`}>Solo {currentRoute}</button>
+                  <button type="button" onClick={() => setElementScope('global')} className={`inline-flex items-center justify-center gap-1.5 rounded-lg px-2 py-2 text-[9px] font-black ${elementScope === 'global' ? 'bg-[#FFB000] text-black' : 'text-white/35'}`}><Globe2 className="h-3 w-3" /> Todo el sitio</button>
+                </div>
+                <p className="px-2 pb-1 pt-2 text-[9px] leading-4 text-white/28">Usa “Todo el sitio” para navbar, footer, botones compartidos o identidad global. La personalización de una página siempre puede sobreescribirla.</p>
+              </div>
 
               {selection.textEditable ? <label className="grid gap-1.5"><span className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[.14em] text-white/38"><Type className="h-3 w-3" /> Texto</span><textarea value={override?.text ?? selection.text ?? ''} onChange={(event) => updateSelected({ text: event.target.value })} rows={4} className="rounded-xl border border-white/10 bg-black/30 p-3 text-xs leading-5 text-white outline-none focus:border-[#FFB000]/60" /></label> : null}
               {selection.isLink ? <div className="grid gap-2"><p className="flex items-center gap-1.5 text-[9px] font-black uppercase tracking-[.14em] text-white/38"><Link2 className="h-3 w-3" /> Enlace</p><Field label="Destino" value={override?.href ?? selection.href ?? ''} onChange={(value) => updateSelected({ href: value })} placeholder="/contacto" /></div> : null}
@@ -300,7 +319,7 @@ export default function UniversalVisualEditorClient() {
               </div>
 
               <label className="flex items-center justify-between rounded-xl border border-white/8 bg-black/25 px-3 py-2.5"><span><b className="block text-[10px]">Ocultar elemento</b><small className="text-[9px] text-white/30">No elimina su lógica ni datos</small></span><input type="checkbox" checked={override?.hidden === true} onChange={(event) => updateSelected({ hidden: event.target.checked })} /></label>
-              <button type="button" onClick={resetSelected} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-400/15 bg-red-400/5 text-[10px] font-black text-red-200/70"><Trash2 className="h-3.5 w-3.5" /> Quitar personalización de este elemento</button>
+              <button type="button" onClick={resetSelected} className="inline-flex h-10 w-full items-center justify-center gap-2 rounded-xl border border-red-400/15 bg-red-400/5 text-[10px] font-black text-red-200/70"><Trash2 className="h-3.5 w-3.5" /> Quitar personalización {elementScope === 'global' ? 'global' : 'de esta página'}</button>
             </div>
           )}
         </aside>

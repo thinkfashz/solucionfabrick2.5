@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import Link from 'next/link';
 import { usePathname, useRouter } from 'next/navigation';
 import {
@@ -12,13 +12,17 @@ import {
   Terminal, Truck, User, Users, Wallet, X, type LucideIcon,
 } from 'lucide-react';
 import { useAdminIdleLogout } from '@/hooks/useAdminIdleLogout';
-import { BrandMark } from '@/components/admin/ui';
+import { FabrickPeakIcon } from '@/components/FabrickBrandIcon';
 import WhatsNewBanner from '@/components/admin/WhatsNewBanner';
 import DemoSessionTracker from '@/components/admin/DemoSessionTracker';
 
 type AdminRole = 'superadmin' | 'admin' | 'editor' | 'ventas' | 'soporte' | 'viewer';
 type NavItem = { href: string; label: string; description?: string; icon: LucideIcon; exact?: boolean };
 type NavSection = { id: string; label: string; icon: LucideIcon; items: NavItem[]; rootOnly?: boolean };
+type AdminIdentity = { email: string; displayName: string; avatarUrl: string | null };
+
+const OPEN_SECTIONS_KEY = 'fabrick-admin-sidebar-open-sections-v2';
+const SIDEBAR_SCROLL_KEY = 'fabrick-admin-sidebar-scroll-v2';
 
 const NAV: NavSection[] = [
   {
@@ -54,7 +58,8 @@ const NAV: NavSection[] = [
     id: 'catalog', label: 'Catálogo & inventario', icon: Package,
     items: [
       { href: '/admin/productos', label: 'Productos', description: 'Catálogo, precios y stock', icon: Package },
-      { href: '/admin/inventario', label: 'Inventario', description: 'Existencias y movimientos', icon: Boxes },
+      { href: '/admin/inventario', label: 'Inventario', description: 'Existencias y movimientos', icon: Boxes, exact: true },
+      { href: '/admin/inventario/scan', label: 'Escáner de inventario', description: 'EAN, SKU y movimientos rápidos', icon: Activity },
       { href: '/admin/materiales', label: 'Materiales', description: 'Materiales y cotización', icon: Hammer },
     ],
   },
@@ -153,15 +158,18 @@ const pageTitle = (pathname: string) => {
   return (current.split('/').filter(Boolean).at(-1) || 'Admin').replace(/-/g, ' ').replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 const sectionForPath = (pathname: string) => NAV.find((section) => section.items.some((item) => itemIsActive(pathname, item)))?.label ?? 'Administración';
+const initials = (value: string) => value.split(/[\s@._-]+/).filter(Boolean).slice(0, 2).map((part) => part[0]?.toUpperCase()).join('') || 'SF';
 
 export function AdminShell({ children }: { children: ReactNode }) {
   const pathname = usePathname() || '/admin';
   const router = useRouter();
+  const sidebarNavRef = useRef<HTMLElement | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
   const [collapsed, setCollapsed] = useState(false);
   const [query, setQuery] = useState('');
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({});
   const [role, setRole] = useState<AdminRole | null>(null);
+  const [identity, setIdentity] = useState<AdminIdentity>({ email: '', displayName: '', avatarUrl: null });
 
   useAdminIdleLogout(30 * 60 * 1000);
   const authScreen = pathname === '/admin/login' || pathname.startsWith('/admin/plan-suspendido');
@@ -169,14 +177,23 @@ export function AdminShell({ children }: { children: ReactNode }) {
     () => NAV.filter((section) => !section.rootOnly || role === 'superadmin'),
     [role],
   );
+  const moduleCount = useMemo(() => availableNav.reduce((total, section) => total + section.items.length, 0), [availableNav]);
+  const allSectionsOpen = availableNav.length > 0 && availableNav.every((section) => openSections[section.id] === true);
 
   useEffect(() => {
     if (authScreen) return;
     let cancelled = false;
-    void fetch('/api/admin/me', { cache: 'no-store' })
+    void fetch('/api/admin/profile', { cache: 'no-store' })
       .then((response) => response.ok ? response.json() : null)
-      .then((data: { rol?: AdminRole } | null) => {
-        if (!cancelled) setRole(data?.rol ?? 'admin');
+      .then((data: { profile?: { email?: string; display_name?: string | null; avatar_url?: string | null }; session?: { rol?: AdminRole; email?: string } } | null) => {
+        if (cancelled) return;
+        const email = data?.profile?.email || data?.session?.email || '';
+        setRole(data?.session?.rol ?? 'admin');
+        setIdentity({
+          email,
+          displayName: data?.profile?.display_name || email.split('@')[0] || 'Administrador Fabrick',
+          avatarUrl: data?.profile?.avatar_url || null,
+        });
       })
       .catch(() => {
         if (!cancelled) setRole('admin');
@@ -185,14 +202,37 @@ export function AdminShell({ children }: { children: ReactNode }) {
   }, [authScreen]);
 
   useEffect(() => {
-    setMobileOpen(false);
-    const active = availableNav.find((section) => section.items.some((item) => itemIsActive(pathname, item)));
-    if (active) setOpenSections((value) => ({ ...value, [active.id]: true }));
-  }, [pathname, availableNav]);
+    try {
+      if (window.localStorage.getItem('fabrick-admin-sidebar-collapsed') === '1') setCollapsed(true);
+      const savedSections = window.localStorage.getItem(OPEN_SECTIONS_KEY);
+      if (savedSections) {
+        const parsed = JSON.parse(savedSections) as Record<string, unknown>;
+        setOpenSections(Object.fromEntries(Object.entries(parsed).filter(([, value]) => typeof value === 'boolean')) as Record<string, boolean>);
+      }
+    } catch { /* storage can be unavailable in private contexts */ }
+
+    const frame = window.requestAnimationFrame(() => {
+      try {
+        const savedScroll = Number(window.sessionStorage.getItem(SIDEBAR_SCROLL_KEY) || 0);
+        if (sidebarNavRef.current && Number.isFinite(savedScroll)) sidebarNavRef.current.scrollTop = Math.max(0, savedScroll);
+      } catch { /* noop */ }
+    });
+    return () => window.cancelAnimationFrame(frame);
+  }, []);
 
   useEffect(() => {
-    if (window.localStorage.getItem('fabrick-admin-sidebar-collapsed') === '1') setCollapsed(true);
-  }, []);
+    setMobileOpen(false);
+    setQuery('');
+    const active = availableNav.find((section) => section.items.some((item) => itemIsActive(pathname, item)));
+    if (active) {
+      setOpenSections((value) => {
+        if (value[active.id]) return value;
+        const next = { ...value, [active.id]: true };
+        try { window.localStorage.setItem(OPEN_SECTIONS_KEY, JSON.stringify(next)); } catch { /* noop */ }
+        return next;
+      });
+    }
+  }, [pathname, availableNav]);
 
   const filtered = useMemo(() => {
     const needle = query.trim().toLocaleLowerCase('es');
@@ -203,12 +243,35 @@ export function AdminShell({ children }: { children: ReactNode }) {
     })).filter((section) => section.items.length > 0);
   }, [availableNav, query]);
 
+  function persistOpenSections(next: Record<string, boolean>) {
+    try { window.localStorage.setItem(OPEN_SECTIONS_KEY, JSON.stringify(next)); } catch { /* noop */ }
+  }
+
+  function toggleSection(sectionId: string, open: boolean) {
+    setOpenSections((value) => {
+      const next = { ...value, [sectionId]: !open };
+      persistOpenSections(next);
+      return next;
+    });
+  }
+
+  function toggleAllSections() {
+    const nextOpen = !allSectionsOpen;
+    const next = Object.fromEntries(availableNav.map((section) => [section.id, nextOpen])) as Record<string, boolean>;
+    persistOpenSections(next);
+    setOpenSections(next);
+  }
+
   function toggleCollapse() {
     setCollapsed((value) => {
       const next = !value;
       window.localStorage.setItem('fabrick-admin-sidebar-collapsed', next ? '1' : '0');
       return next;
     });
+  }
+
+  function saveSidebarScroll(top: number) {
+    try { window.sessionStorage.setItem(SIDEBAR_SCROLL_KEY, String(Math.max(0, Math.round(top)))); } catch { /* noop */ }
   }
 
   async function logout() {
@@ -218,55 +281,115 @@ export function AdminShell({ children }: { children: ReactNode }) {
 
   if (authScreen) return <>{children}</>;
 
-  const Sidebar = ({ mobile = false }: { mobile?: boolean }) => (
-    <aside className={`fabrick-admin-sidebar ${collapsed && !mobile ? 'is-collapsed' : ''} ${mobile ? 'is-mobile' : ''}`} aria-label="Navegación administrativa">
-      <div className="fabrick-sidebar-brand">
-        <Link href="/admin" className="fabrick-brand-link" aria-label="Ir al centro de control"><BrandMark className="fabrick-brand-mark" /></Link>
-        {(!collapsed || mobile) && <div className="fabrick-brand-copy"><strong>{role === 'superadmin' ? 'Root' : 'Admin'}</strong><span>Soluciones Fabrick</span></div>}
-        {mobile ? (
-          <button className="fabrick-icon-button" onClick={() => setMobileOpen(false)} aria-label="Cerrar menú"><X size={18} /></button>
-        ) : (
-          <button className="fabrick-icon-button fabrick-collapse-button" onClick={toggleCollapse} aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}>{collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}</button>
-        )}
-      </div>
+  const renderSidebar = (mobile = false) => {
+    const compact = collapsed && !mobile;
+    const displayName = identity.displayName || identity.email.split('@')[0] || (role === 'superadmin' ? 'Root Fabrick' : 'Administrador Fabrick');
+    const roleLabel = role === 'superadmin' ? 'Root / Superadmin' : role ? role.charAt(0).toUpperCase() + role.slice(1) : 'Administrador';
 
-      {(!collapsed || mobile) && <div className="fabrick-sidebar-search"><Search size={15} /><input value={query} onChange={(event) => setQuery(event.target.value)} placeholder="Buscar módulo…" aria-label="Buscar módulo" />{query && <button onClick={() => setQuery('')} aria-label="Limpiar búsqueda"><X size={14} /></button>}</div>}
+    return (
+      <aside className={`fabrick-admin-sidebar ${compact ? 'is-collapsed' : ''} ${mobile ? 'is-mobile' : ''}`} aria-label="Navegación administrativa">
+        <div className="fabrick-sidebar-brand">
+          <Link href="/admin" className="fabrick-brand-link" aria-label="Ir al centro de control">
+            <FabrickPeakIcon size={34} theme="light" className="fabrick-brand-mark" />
+          </Link>
+          {!compact && <div className="fabrick-brand-copy"><strong>Soluciones Fabrick</strong><span>{role === 'superadmin' ? 'Root · administración' : 'Panel de administración'}</span></div>}
+          {mobile ? (
+            <button className="fabrick-icon-button" onClick={() => setMobileOpen(false)} aria-label="Cerrar menú"><X size={18} /></button>
+          ) : (
+            <button className="fabrick-icon-button fabrick-collapse-button" onClick={toggleCollapse} aria-label={collapsed ? 'Expandir menú' : 'Contraer menú'}>{collapsed ? <PanelLeftOpen size={18} /> : <PanelLeftClose size={18} />}</button>
+          )}
+        </div>
 
-      <nav className="fabrick-sidebar-nav">
-        {filtered.map((section) => {
-          const SectionIcon = section.icon;
-          const activeSection = section.items.some((item) => itemIsActive(pathname, item));
-          const open = query ? true : (openSections[section.id] ?? activeSection ?? section.id === 'overview');
-          return (
-            <div className={`fabrick-nav-section ${activeSection ? 'is-active-section' : ''}`} key={section.id}>
-              {collapsed && !mobile ? (
-                <div className="fabrick-collapsed-group"><span className="fabrick-collapsed-group-icon" title={section.label}><SectionIcon size={16} /></span>{section.items.map((item) => { const Icon = item.icon; return <Link key={item.href} href={item.href} className={`fabrick-nav-item compact ${itemIsActive(pathname, item) ? 'is-active' : ''}`} title={item.label}><Icon size={18} /></Link>; })}</div>
-              ) : (
-                <>
-                  <button type="button" className="fabrick-nav-section-trigger" onClick={() => setOpenSections((value) => ({ ...value, [section.id]: !open }))} aria-expanded={open}><span><SectionIcon size={15} />{section.label}</span>{open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>
-                  {open && <div className="fabrick-nav-items">{section.items.map((item) => { const Icon = item.icon; return <Link key={item.href} href={item.href} className={`fabrick-nav-item ${itemIsActive(pathname, item) ? 'is-active' : ''}`}><span className="fabrick-nav-icon"><Icon size={17} /></span><span className="fabrick-nav-copy"><strong>{item.label}</strong>{item.description && <small>{item.description}</small>}</span></Link>; })}</div>}
-                </>
-              )}
+        {!compact && (
+          <>
+            <div className="fabrick-sidebar-search">
+              <Search size={15} />
+              <input
+                type="search"
+                value={query}
+                onChange={(event) => setQuery(event.target.value)}
+                placeholder="Buscar módulo o página…"
+                aria-label="Buscar módulo o página"
+                autoComplete="off"
+                autoCapitalize="none"
+                spellCheck={false}
+              />
+              {query && <button type="button" onClick={() => setQuery('')} aria-label="Limpiar búsqueda"><X size={14} /></button>}
             </div>
-          );
-        })}
-      </nav>
 
-      <div className="fabrick-sidebar-footer">
-        {(!collapsed || mobile) && <Link href="/" target="_blank" className="fabrick-sidebar-site-link"><Globe2 size={16} /><span>Ver sitio público</span></Link>}
-        <button className="fabrick-sidebar-logout" onClick={() => void logout()} title="Cerrar sesión"><LogOut size={17} />{(!collapsed || mobile) && <span>Cerrar sesión</span>}</button>
-      </div>
-    </aside>
-  );
+            <div className="fabrick-sidebar-quick-tools">
+              <Link href="/admin/editor" className={`fabrick-sidebar-editor-link ${itemIsActive(pathname, { href: '/admin/editor', label: 'Visual CMS', icon: Paintbrush, exact: true }) ? 'is-active' : ''}`}>
+                <span className="fabrick-sidebar-editor-icon"><Paintbrush size={17} /></span>
+                <span><strong>Visual CMS</strong><small>Editar sitio y contenido</small></span>
+                <ChevronRight size={14} />
+              </Link>
+              <div className="fabrick-sidebar-module-tools">
+                <span>{moduleCount} módulos</span>
+                <button type="button" onClick={toggleAllSections}>{allSectionsOpen ? 'Cerrar todo' : 'Abrir todo'}</button>
+              </div>
+            </div>
+          </>
+        )}
+
+        <nav
+          ref={mobile ? undefined : sidebarNavRef}
+          className="fabrick-sidebar-nav"
+          onScroll={mobile ? undefined : (event) => saveSidebarScroll(event.currentTarget.scrollTop)}
+        >
+          {filtered.map((section) => {
+            const SectionIcon = section.icon;
+            const activeSection = section.items.some((item) => itemIsActive(pathname, item));
+            const open = query ? true : (openSections[section.id] ?? activeSection ?? section.id === 'overview');
+            return (
+              <div className={`fabrick-nav-section ${activeSection ? 'is-active-section' : ''}`} key={section.id}>
+                {compact ? (
+                  <div className="fabrick-collapsed-group"><span className="fabrick-collapsed-group-icon" title={section.label}><SectionIcon size={16} /></span>{section.items.map((item) => { const Icon = item.icon; return <Link key={item.href} href={item.href} className={`fabrick-nav-item compact ${itemIsActive(pathname, item) ? 'is-active' : ''}`} title={item.label}><Icon size={18} /></Link>; })}</div>
+                ) : (
+                  <>
+                    <button type="button" className="fabrick-nav-section-trigger" onClick={() => toggleSection(section.id, open)} aria-expanded={open}><span><SectionIcon size={15} />{section.label}</span>{open ? <ChevronDown size={14} /> : <ChevronRight size={14} />}</button>
+                    {open && <div className="fabrick-nav-items">{section.items.map((item) => { const Icon = item.icon; return <Link key={item.href} href={item.href} className={`fabrick-nav-item ${itemIsActive(pathname, item) ? 'is-active' : ''}`}><span className="fabrick-nav-icon"><Icon size={17} /></span><span className="fabrick-nav-copy"><strong>{item.label}</strong>{item.description && <small>{item.description}</small>}</span></Link>; })}</div>}
+                  </>
+                )}
+              </div>
+            );
+          })}
+          {!compact && query && filtered.length === 0 ? <div className="fabrick-sidebar-empty-search">No encontramos módulos para “{query}”.</div> : null}
+        </nav>
+
+        <div className="fabrick-sidebar-footer">
+          <Link href="/admin/perfil" className={`fabrick-sidebar-user ${compact ? 'compact' : ''}`} title="Abrir perfil administrador">
+            {identity.avatarUrl ? (
+              <img src={identity.avatarUrl} alt="Foto de perfil" className="fabrick-sidebar-avatar" referrerPolicy="no-referrer" />
+            ) : (
+              <span className="fabrick-sidebar-avatar fabrick-sidebar-avatar-fallback">{initials(displayName || identity.email)}</span>
+            )}
+            {!compact && <span className="fabrick-sidebar-user-copy"><strong>{displayName}</strong><small>{roleLabel}{identity.email ? ` · ${identity.email}` : ''}</small></span>}
+            {!compact && <ChevronRight size={14} />}
+          </Link>
+          {!compact && <Link href="/" target="_blank" className="fabrick-sidebar-site-link"><Globe2 size={16} /><span>Ver sitio público</span></Link>}
+          <button className="fabrick-sidebar-logout" onClick={() => void logout()} title="Cerrar sesión"><LogOut size={17} />{!compact && <span>Cerrar sesión</span>}</button>
+        </div>
+      </aside>
+    );
+  };
+
+  const topbarName = identity.displayName || identity.email.split('@')[0] || 'Administrador';
 
   return (
     <div data-admin-frame className={`fabrick-admin-frame ${collapsed ? 'sidebar-collapsed' : ''}`}>
-      <div className="fabrick-desktop-sidebar"><Sidebar /></div>
-      {mobileOpen && <div className="fabrick-mobile-sidebar-layer" role="dialog" aria-modal="true"><button className="fabrick-mobile-backdrop" onClick={() => setMobileOpen(false)} aria-label="Cerrar menú" /><Sidebar mobile /></div>}
+      <div className="fabrick-desktop-sidebar">{renderSidebar(false)}</div>
+      {mobileOpen && <div className="fabrick-mobile-sidebar-layer" role="dialog" aria-modal="true"><button className="fabrick-mobile-backdrop" onClick={() => setMobileOpen(false)} aria-label="Cerrar menú" />{renderSidebar(true)}</div>}
       <div className="fabrick-admin-workspace">
         <header className="fabrick-admin-topbar" data-admin-header>
           <div className="fabrick-topbar-left"><button className="fabrick-mobile-menu fabrick-icon-button" onClick={() => setMobileOpen(true)} aria-label="Abrir menú"><Menu size={19} /></button><div className="fabrick-page-heading"><span>{sectionForPath(pathname)}</span><h1>{pageTitle(pathname)}</h1></div></div>
-          <div className="fabrick-topbar-actions"><Link href="/admin/intelligence/today" className="fabrick-intelligence-shortcut"><Sparkles size={15} /><span>Prioridades de hoy</span></Link><Link href="/admin/configuracion" className="fabrick-icon-button" aria-label="Configuración"><Settings size={18} /></Link></div>
+          <div className="fabrick-topbar-actions">
+            <Link href="/admin/intelligence/today" className="fabrick-intelligence-shortcut"><Sparkles size={15} /><span>Prioridades de hoy</span></Link>
+            <Link href="/admin/editor" className="fabrick-topbar-editor-shortcut"><Paintbrush size={16} /><span>Editor</span></Link>
+            <Link href="/admin/configuracion" className="fabrick-icon-button" aria-label="Configuración"><Settings size={18} /></Link>
+            <Link href="/admin/perfil" className="fabrick-topbar-profile" aria-label={`Perfil de ${topbarName}`} title="Perfil administrador">
+              {identity.avatarUrl ? <img src={identity.avatarUrl} alt="" referrerPolicy="no-referrer" /> : <span>{initials(topbarName || identity.email)}</span>}
+            </Link>
+          </div>
         </header>
         <div className="fabrick-admin-notices"><WhatsNewBanner /><DemoSessionTracker /></div>
         <main className="fabrick-admin-content" data-admin-content>{children}</main>

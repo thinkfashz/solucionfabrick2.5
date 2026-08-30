@@ -33,6 +33,31 @@ function publicMeta(row: AdminProfileRow) {
   return normalizeFounderPublicProfile(metadata.public_profile);
 }
 
+function normalizePublicSocial(value: string | null | undefined, network: 'instagram' | 'facebook' | 'linkedin') {
+  const raw = value?.trim();
+  if (!raw) return null;
+  if (/^https?:\/\//i.test(raw)) return raw;
+
+  const withoutAt = raw.replace(/^@/, '');
+  if (network === 'instagram') {
+    const handle = withoutAt
+      .replace(/^(?:www\.)?instagram\.com\//i, '')
+      .replace(/^\/+|\/+$/g, '');
+    return handle ? `https://instagram.com/${handle}` : null;
+  }
+  if (network === 'facebook') {
+    const handle = withoutAt
+      .replace(/^(?:www\.)?facebook\.com\//i, '')
+      .replace(/^\/+|\/+$/g, '');
+    return handle ? `https://facebook.com/${handle}` : null;
+  }
+
+  const handle = withoutAt
+    .replace(/^(?:www\.)?linkedin\.com\/(?:in\/)?/i, '')
+    .replace(/^\/+|\/+$/g, '');
+  return handle ? `https://linkedin.com/in/${handle}` : null;
+}
+
 export async function getPublicFounderProfile(): Promise<PublicFounderProfile> {
   const client = getAdminInsforge();
   const { data, error } = await client.database
@@ -55,9 +80,9 @@ export async function getPublicFounderProfile(): Promise<PublicFounderProfile> {
     bio: selected.bio?.trim() || profile.summary,
     avatarUrl: selected.avatar_url || null,
     coverUrl,
-    instagram: selected.instagram || null,
-    facebook: selected.facebook || null,
-    linkedin: selected.linkedin || null,
+    instagram: normalizePublicSocial(selected.instagram, 'instagram'),
+    facebook: normalizePublicSocial(selected.facebook, 'facebook'),
+    linkedin: normalizePublicSocial(selected.linkedin, 'linkedin'),
     whatsapp: selected.whatsapp || null,
     website: selected.website || null,
     profile,

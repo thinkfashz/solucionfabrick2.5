@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import type { ReactNode } from 'react';
 import { ArrowUpRight, CheckCircle2, Quote, Sparkles } from 'lucide-react';
 import type { HomeVisualSection } from '@/lib/homeVisualCms';
 
@@ -31,7 +32,7 @@ function MediaTextBlock({ section }: { section: HomeVisualSection }) {
   const imagePosition = field(section, 'imagePosition', 'right');
   const imageFirst = imagePosition === 'left';
   return (
-    <section data-cms-section="cms-media-text" className="px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={sectionStyle(section, '#FFF9EE', '#08090A')}>
+    <section data-cms-id={`${section.id}-media-text`} data-cms-section="cms-media-text" className="px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={sectionStyle(section, '#FFF9EE', '#08090A')}>
       <div className="mx-auto grid max-w-[1280px] gap-8 lg:grid-cols-[minmax(0,.92fr)_minmax(420px,1.08fr)] lg:items-center lg:gap-14">
         <div className={imageFirst ? 'lg:order-2' : ''}>
           <p data-cms-field="eyebrow" className="text-[10px] font-black uppercase tracking-[.2em]" style={{ color: accent }}>{field(section, 'eyebrow')}</p>
@@ -43,7 +44,7 @@ function MediaTextBlock({ section }: { section: HomeVisualSection }) {
           </div>
           <div className="mt-8 grid gap-3 sm:grid-cols-2">
             {items(section, 'points').map((item, index) => (
-              <div data-cms-container={`points-${index}`} key={`${item.title}-${index}`} className="border-t border-current/12 pt-4">
+              <div data-cms-container={`points-${index}`} key={`${item.title}-${index}`} className="border-t border-current/10 pt-4">
                 <p data-cms-field={`points-${index}-title`} className="text-sm font-black">{item.title}</p>
                 <p data-cms-field={`points-${index}-text`} className="mt-1 text-xs leading-6 opacity-50">{item.text}</p>
               </div>
@@ -63,7 +64,7 @@ function MediaTextBlock({ section }: { section: HomeVisualSection }) {
 function CardsGridBlock({ section }: { section: HomeVisualSection }) {
   const accent = section.style.accent || '#B96F00';
   return (
-    <section data-cms-section="cms-cards-grid" className="px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={sectionStyle(section, '#FFF9EE', '#08090A')}>
+    <section data-cms-id={`${section.id}-cards-grid`} data-cms-section="cms-cards-grid" className="px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={sectionStyle(section, '#FFF9EE', '#08090A')}>
       <div className="mx-auto max-w-[1280px]">
         <header className="grid gap-5 border-b border-current/10 pb-7 lg:grid-cols-[.8fr_1.2fr] lg:items-end">
           <div>
@@ -93,7 +94,7 @@ function GalleryBlock({ section }: { section: HomeVisualSection }) {
   const accent = section.style.accent || '#F5871F';
   const gallery = items(section, 'gallery');
   return (
-    <section data-cms-section="cms-gallery" className="px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={sectionStyle(section, '#08090A', '#FFF9EE')}>
+    <section data-cms-id={`${section.id}-gallery`} data-cms-section="cms-gallery" className="px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={sectionStyle(section, '#08090A', '#FFF9EE')}>
       <div className="mx-auto max-w-[1320px]">
         <div className="flex flex-col gap-5 border-b border-current/10 pb-7 lg:flex-row lg:items-end lg:justify-between">
           <div>
@@ -125,8 +126,8 @@ function GalleryBlock({ section }: { section: HomeVisualSection }) {
 function CtaBannerBlock({ section }: { section: HomeVisualSection }) {
   const accent = section.style.accent || '#FFB000';
   return (
-    <section data-cms-section="cms-cta-banner" className="px-4 py-10 sm:px-6 md:px-12 lg:py-16" style={sectionStyle(section, '#08090A', '#FFF9EE')}>
-      <div className="mx-auto max-w-[1280px] border-y border-current/12 py-10 sm:py-14">
+    <section data-cms-id={`${section.id}-cta-banner`} data-cms-section="cms-cta-banner" className="px-4 py-10 sm:px-6 md:px-12 lg:py-16" style={sectionStyle(section, '#08090A', '#FFF9EE')}>
+      <div className="mx-auto max-w-[1280px] border-y border-current/10 py-10 sm:py-14">
         <div className="grid gap-8 lg:grid-cols-[1fr_auto] lg:items-end">
           <div>
             <p data-cms-field="eyebrow" className="text-[10px] font-black uppercase tracking-[.2em]" style={{ color: accent }}>{field(section, 'eyebrow')}</p>
@@ -154,7 +155,7 @@ function CtaBannerBlock({ section }: { section: HomeVisualSection }) {
 function ServicesGridBlock({ section }: { section: HomeVisualSection }) {
   const accent = section.style.accent || '#F5871F';
   return (
-    <section data-cms-section="cms-services-grid" className="px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={sectionStyle(section, '#FFF9EE', '#08090A')}>
+    <section data-cms-id={`${section.id}-services-grid`} data-cms-section="cms-services-grid" className="px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={sectionStyle(section, '#FFF9EE', '#08090A')}>
       <div className="mx-auto max-w-[1280px]">
         <div className="grid gap-6 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
           <div>
@@ -183,7 +184,7 @@ function ServicesGridBlock({ section }: { section: HomeVisualSection }) {
 function TestimonialsBlock({ section }: { section: HomeVisualSection }) {
   const accent = section.style.accent || '#FFB000';
   return (
-    <section data-cms-section="cms-testimonials" className="px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={sectionStyle(section, '#08090A', '#FFF9EE')}>
+    <section data-cms-id={`${section.id}-testimonials`} data-cms-section="cms-testimonials" className="px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={sectionStyle(section, '#08090A', '#FFF9EE')}>
       <div className="mx-auto max-w-[1280px]">
         <header className="max-w-3xl">
           <p data-cms-field="eyebrow" className="text-[10px] font-black uppercase tracking-[.2em]" style={{ color: accent }}>{field(section, 'eyebrow')}</p>
@@ -208,7 +209,7 @@ function TestimonialsBlock({ section }: { section: HomeVisualSection }) {
   );
 }
 
-function ActionLink({ href, children, fieldName, accent, secondary = false, compact = false }: { href: string; children: React.ReactNode; fieldName: string; accent?: string; secondary?: boolean; compact?: boolean }) {
+function ActionLink({ href, children, fieldName, accent, secondary = false, compact = false }: { href: string; children: ReactNode; fieldName: string; accent?: string; secondary?: boolean; compact?: boolean }) {
   const className = `${compact ? 'min-h-10 px-4 text-[10px]' : 'min-h-12 px-6 text-sm'} inline-flex items-center justify-center gap-2 rounded-full font-black transition hover:brightness-110 ${secondary ? 'border border-current/15' : ''}`;
   const style = secondary ? undefined : { backgroundColor: accent || '#FFB000', color: '#08090A' };
   const content = <><span data-cms-field={fieldName}>{children}</span><ArrowUpRight className="h-3.5 w-3.5" /></>;

@@ -4,6 +4,7 @@ export type HomeVisualBlockTemplateId =
   | 'promo-hero'
   | 'editorial'
   | 'info-cards'
+  | 'gallery'
   | 'cta-process'
   | 'products'
   | 'services'
@@ -64,64 +65,89 @@ export const HOME_VISUAL_BLOCK_TEMPLATES: HomeVisualBlockTemplate[] = [
   },
   {
     id: 'editorial',
-    label: 'Texto editorial',
-    description: 'Bloque de historia/propuesta con título, texto, botones y filas editables.',
-    icon: 'T',
+    label: 'Texto + imagen',
+    description: 'Bloque editorial propio con imagen, dos acciones y puntos secundarios.',
+    icon: '◫',
     sectionType: 'story',
-    style: { ...light },
+    style: { ...light, accent: '#F5871F' },
     content: {
+      _cmsTemplate: 'editorial',
       eyebrow: 'Sección editorial',
-      title: 'Cuenta una historia o explica una propuesta.',
-      description: 'Usa este bloque para desarrollar una idea con jerarquía clara y contenido que puedas modificar directamente.',
-      areas: [
-        { title: 'Primer punto', text: 'Explica el primer aspecto de esta sección.' },
-        { title: 'Segundo punto', text: 'Agrega información complementaria o un beneficio.' },
-        { title: 'Tercer punto', text: 'Cierra con una idea útil para la persona que visita la página.' },
-      ],
+      title: 'Combina una historia clara con una imagen protagonista.',
+      description: 'Usa este bloque para explicar una propuesta, servicio, proyecto o historia sin depender de la estructura de otra sección de Home.',
+      image: '',
+      imageAlt: 'Imagen principal de la sección',
+      imageCaption: 'Selecciona esta imagen desde el Visual CMS y reemplázala por un recurso de Cloudinary.',
+      imagePosition: 'right',
       primaryLabel: 'Acción principal',
       primaryHref: '/presupuesto',
-      secondaryLabel: 'Acción secundaria',
+      secondaryLabel: 'Ver proyectos',
       secondaryHref: '/proyectos',
+      points: [
+        { title: 'Mensaje directo', text: 'Resume aquí un beneficio o argumento importante.' },
+        { title: 'Contenido flexible', text: 'Cambia texto, imagen y presentación desde el editor.' },
+      ],
     },
   },
   {
     id: 'info-cards',
     label: 'Cards informativas',
-    description: 'Título, descripción y grupo de tarjetas repetidas que puedes mover o duplicar.',
+    description: 'Grid visual propio con cards repetidas, numeración y contenido editable.',
     icon: '▦',
     sectionType: 'price-guide',
     style: { ...light },
     content: {
+      _cmsTemplate: 'info-cards',
       eyebrow: 'Información destacada',
       title: 'Organiza la información en tarjetas claras.',
-      description: 'Cada tarjeta es administrada y puede reordenarse, duplicarse y editarse desde el preview.',
-      benefits: [
-        { title: 'Tarjeta uno', text: 'Describe el primer beneficio, característica o dato.' },
-        { title: 'Tarjeta dos', text: 'Describe el segundo beneficio, característica o dato.' },
-        { title: 'Tarjeta tres', text: 'Describe el tercer beneficio, característica o dato.' },
+      description: 'Cada tarjeta es administrada y puede reordenarse, duplicarse y editarse directamente desde el preview.',
+      cards: [
+        { number: '01', title: 'Tarjeta uno', text: 'Describe el primer beneficio, característica o dato.' },
+        { number: '02', title: 'Tarjeta dos', text: 'Describe el segundo beneficio, característica o dato.' },
+        { number: '03', title: 'Tarjeta tres', text: 'Describe el tercer beneficio, característica o dato.' },
+      ],
+    },
+  },
+  {
+    id: 'gallery',
+    label: 'Galería visual',
+    description: 'Galería responsive con imágenes, títulos y descripciones independientes.',
+    icon: '▤',
+    sectionType: 'story',
+    style: { ...dark, accent: '#F5871F' },
+    content: {
+      _cmsTemplate: 'gallery',
+      eyebrow: 'Galería',
+      title: 'Muestra proyectos, ambientes o resultados.',
+      description: 'Cada pieza puede tener su propia imagen y texto. Las imágenes vacías quedan preparadas para seleccionarlas desde el CMS.',
+      gallery: [
+        { title: 'Proyecto destacado', text: 'Añade una descripción breve de esta imagen.', image: '', alt: 'Proyecto destacado' },
+        { title: 'Detalle de trabajo', text: 'Usa esta tarjeta para mostrar terminaciones, procesos o detalles.', image: '', alt: 'Detalle de trabajo' },
+        { title: 'Resultado final', text: 'Completa la galería con otra vista o resultado.', image: '', alt: 'Resultado final' },
       ],
     },
   },
   {
     id: 'cta-process',
-    label: 'Proceso + CTA',
-    description: 'Tres opciones o pasos y un llamado a la acción final con botón.',
+    label: 'CTA visual',
+    description: 'Bloque de llamada a la acción propio con dos botones y tres argumentos breves.',
     icon: '→',
     sectionType: 'process',
     style: { ...dark },
     content: {
-      eyebrow: 'Cómo funciona',
-      title: 'Explica el camino y termina con una acción clara.',
-      description: 'Este bloque sirve para procesos, pasos de compra, modalidades o comparaciones simples.',
-      options: [
-        { title: 'Paso uno', text: 'Explica qué ocurre primero.' },
-        { title: 'Paso dos', text: 'Explica la segunda decisión o etapa.' },
-        { title: 'Paso tres', text: 'Explica cómo se completa el proceso.' },
-      ],
-      ctaTitle: '¿Listo para continuar?',
-      ctaText: 'Cambia este llamado a la acción por el objetivo que necesites.',
+      _cmsTemplate: 'cta-process',
+      eyebrow: 'Siguiente paso',
+      title: 'Convierte una visita en una acción clara.',
+      description: 'Usa este bloque para llevar a presupuesto, contacto, compra, registro o cualquier objetivo concreto.',
       ctaLabel: 'Continuar',
       ctaHref: '/presupuesto',
+      secondaryLabel: 'Hablar con Fabrick',
+      secondaryHref: '/contacto',
+      highlights: [
+        { title: 'Sin compromiso', text: 'Explica una ventaja breve antes del clic.' },
+        { title: 'Respuesta clara', text: 'Agrega una segunda razón para continuar.' },
+        { title: 'Proceso simple', text: 'Cierra con otro argumento de confianza.' },
+      ],
     },
   },
   {
@@ -143,41 +169,40 @@ export const HOME_VISUAL_BLOCK_TEMPLATES: HomeVisualBlockTemplate[] = [
   {
     id: 'services',
     label: 'Servicios',
-    description: 'Bloque editorial preparado para presentar servicios o áreas de trabajo.',
+    description: 'Listado visual propio con enlaces independientes por servicio.',
     icon: '⌂',
     sectionType: 'story',
-    style: { ...dark },
+    style: { ...light, accent: '#F5871F' },
     content: {
+      _cmsTemplate: 'services',
       eyebrow: 'Servicios',
       title: 'Presenta tus servicios principales.',
-      description: 'Puedes reemplazar estas filas por cualquier grupo de servicios, especialidades o soluciones.',
-      areas: [
-        { title: 'Servicio uno', text: 'Describe qué incluye este servicio y para quién está pensado.' },
-        { title: 'Servicio dos', text: 'Agrega una segunda especialidad o solución.' },
-        { title: 'Servicio tres', text: 'Completa la selección con otro servicio importante.' },
+      description: 'Cada fila funciona como un bloque administrado con título, descripción y enlace independiente.',
+      services: [
+        { number: '01', title: 'Construcción y ampliaciones', text: 'Casas, ampliaciones, estructuras y partidas de obra gruesa.', label: 'Ver servicio', href: '/servicios/ampliaciones' },
+        { number: '02', title: 'Instalaciones', text: 'Electricidad, gasfitería, climatización y soluciones técnicas para el hogar.', label: 'Ver servicios', href: '/servicios' },
+        { number: '03', title: 'Terminaciones y mejoras', text: 'Revestimientos, pintura, pisos, techumbre y mejoras de espacios existentes.', label: 'Cotizar', href: '/presupuesto' },
       ],
-      primaryLabel: 'Cotizar servicio',
-      primaryHref: '/presupuesto',
-      secondaryLabel: 'Ver servicios',
-      secondaryHref: '/servicios',
     },
   },
   {
     id: 'testimonials',
     label: 'Testimonios',
-    description: 'Grupo de cards preparado para opiniones, experiencias o casos breves.',
+    description: 'Sección visual propia para opiniones o casos breves, sin datos inventados publicados por defecto.',
     icon: '“”',
     sectionType: 'price-guide',
     style: { ...dark },
     content: {
+      _cmsTemplate: 'testimonials',
       eyebrow: 'Experiencias',
-      title: 'Agrega testimonios que generen confianza.',
-      description: 'Reemplaza estos textos por opiniones verificables de clientes o experiencias reales de proyectos.',
-      benefits: [
-        { title: 'Cliente / proyecto', text: '“Escribe aquí un testimonio breve y verificable.”' },
-        { title: 'Cliente / proyecto', text: '“Agrega una segunda experiencia o comentario.”' },
-        { title: 'Cliente / proyecto', text: '“Completa la sección con otra opinión real.”' },
+      title: 'Agrega testimonios reales que generen confianza.',
+      description: 'Reemplaza los textos de ejemplo por experiencias verificables antes de publicar esta sección.',
+      testimonials: [
+        { title: 'Cliente / proyecto', role: 'Testimonio por completar', text: '“Reemplaza este texto por una experiencia real y verificable.”' },
+        { title: 'Cliente / proyecto', role: 'Testimonio por completar', text: '“Agrega una segunda experiencia cuando tengas autorización para publicarla.”' },
+        { title: 'Cliente / proyecto', role: 'Testimonio por completar', text: '“Usa esta tercera tarjeta para otro comentario o caso breve.”' },
       ],
+      note: 'No publiques nombres, fotografías ni opiniones de clientes sin autorización correspondiente.',
     },
   },
 ];
@@ -187,7 +212,7 @@ export function getHomeVisualBlockTemplate(id: string | null | undefined) {
 }
 
 export function isHomeVisualLibraryBlockId(id: string | null | undefined) {
-  return typeof id === 'string' && /^cms-(promo-hero|editorial|info-cards|cta-process|products|services|testimonials|duplicate)-/.test(id);
+  return typeof id === 'string' && /^cms-(promo-hero|editorial|info-cards|gallery|cta-process|products|services|testimonials|duplicate)-/.test(id);
 }
 
 export function createHomeBlockFromTemplate(id: string, order = 0): HomeVisualSection | null {

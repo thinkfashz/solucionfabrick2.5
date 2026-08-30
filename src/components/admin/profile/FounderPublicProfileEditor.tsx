@@ -65,16 +65,20 @@ export default function FounderPublicProfileEditor({ value, displayName, avatarU
               <div className="flex items-center gap-2">
                 <span className="grid h-9 w-9 place-items-center rounded-xl bg-[#ffb000]/12 text-[#a56600]"><Sparkles className="h-4 w-4" /></span>
                 <div>
-                  <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Perfil público del propietario</p>
-                  <h2 className="mt-1 text-xl font-black tracking-[-.035em] text-[#171612]">Biografía, historia y visión</h2>
+                  <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#9b6a12]">Micrositio público independiente</p>
+                  <h2 className="mt-1 text-xl font-black tracking-[-.035em] text-[#171612]">Biografía, historia y visión del fundador</h2>
                 </div>
               </div>
-              <p className="mt-3 max-w-3xl text-xs leading-5 text-[#817a6f]">Este contenido alimenta la página pública que abre el QR. No publica tu correo ni información interna del administrador.</p>
+              <p className="mt-3 max-w-3xl text-xs leading-5 text-[#817a6f]">Este contenido vive únicamente en el enlace público del fundador. No se agrega a la Home, la Tienda ni los menús públicos. Tú decides cuándo compartirlo mediante el link o el QR.</p>
             </div>
             <label className="inline-flex min-h-10 shrink-0 items-center gap-2 rounded-xl border border-black/10 bg-white/65 px-3 text-xs font-black text-[#4f493f]">
               <input type="checkbox" checked={value.enabled} onChange={(event) => patch('enabled', event.target.checked)} className="h-4 w-4 accent-[#c77a00]" />
               Perfil público activo
             </label>
+          </div>
+
+          <div className="mt-4 rounded-2xl border border-emerald-700/10 bg-emerald-500/[.06] p-4 text-xs leading-6 text-emerald-950/75">
+            <strong className="font-black">Acceso controlado por ti.</strong> Al activarlo, cualquier persona con el enlace puede verlo. Al desactivarlo y guardar, `/fundador` deja de estar disponible públicamente. El perfil no se enlaza desde la navegación comercial.
           </div>
 
           <div className="mt-5 grid gap-4 sm:grid-cols-2">
@@ -96,7 +100,7 @@ export default function FounderPublicProfileEditor({ value, displayName, avatarU
               <RotateCcw className="h-4 w-4" /> Restaurar biografía recomendada
             </button>
             <a href={PUBLIC_FOUNDER_URL} target="_blank" rel="noreferrer" className="inline-flex min-h-10 items-center gap-2 rounded-xl bg-[#171612] px-3.5 text-xs font-black text-white transition hover:bg-[#2a2823]">
-              <Eye className="h-4 w-4" /> Ver página pública <ExternalLink className="h-3.5 w-3.5" />
+              <Eye className="h-4 w-4" /> Abrir micrositio público <ExternalLink className="h-3.5 w-3.5" />
             </a>
           </div>
         </div>
@@ -105,8 +109,8 @@ export default function FounderPublicProfileEditor({ value, displayName, avatarU
           <div className="flex items-center gap-3">
             <span className="grid h-10 w-10 place-items-center rounded-xl bg-[#ffb000]/12 text-[#ffbf33]"><QrCode className="h-5 w-5" /></span>
             <div>
-              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#ffbf33]">Tarjeta pública</p>
-              <h3 className="mt-1 text-base font-black tracking-[-.02em]">QR del fundador</h3>
+              <p className="text-[10px] font-black uppercase tracking-[.16em] text-[#ffbf33]">Compartir</p>
+              <h3 className="mt-1 text-base font-black tracking-[-.02em]">QR y enlace del fundador</h3>
             </div>
           </div>
 
@@ -135,7 +139,7 @@ export default function FounderPublicProfileEditor({ value, displayName, avatarU
             {copied ? <Check className="h-4 w-4 text-emerald-300" /> : <Clipboard className="h-4 w-4" />}
             {copied ? 'Link copiado' : 'Copiar link público'}
           </button>
-          <p className="mt-4 text-[10px] leading-5 text-white/35">Puedes mostrar este QR desde el teléfono. La persona llegará a una página pública de Soluciones Fabrick con tu foto de Cloudinary, biografía, tecnología, servicios y visión.</p>
+          <p className="mt-4 text-[10px] leading-5 text-white/35">Este enlace funciona como una tarjeta personal pública separada de la tienda y de la navegación principal. Puedes mostrar el QR directamente desde el teléfono o copiar el link para compartirlo.</p>
         </aside>
       </div>
     </AdminCard>

@@ -186,6 +186,10 @@ export function getHomeVisualBlockTemplate(id: string | null | undefined) {
   return HOME_VISUAL_BLOCK_TEMPLATES.find((template) => template.id === id) || null;
 }
 
+export function isHomeVisualLibraryBlockId(id: string | null | undefined) {
+  return typeof id === 'string' && /^cms-(promo-hero|editorial|info-cards|cta-process|products|services|testimonials|duplicate)-/.test(id);
+}
+
 export function createHomeBlockFromTemplate(id: string, order = 0): HomeVisualSection | null {
   const template = getHomeVisualBlockTemplate(id);
   if (!template) return null;

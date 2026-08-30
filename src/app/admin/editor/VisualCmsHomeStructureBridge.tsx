@@ -7,7 +7,11 @@ import {
   type HomeVisualSection,
   type HomeVisualSectionStyle,
 } from '@/lib/homeVisualCms';
-import { createHomeBlockFromTemplate, getHomeVisualBlockTemplate } from '@/lib/homeVisualBlockLibrary';
+import {
+  createHomeBlockFromTemplate,
+  getHomeVisualBlockTemplate,
+  isHomeVisualLibraryBlockId,
+} from '@/lib/homeVisualBlockLibrary';
 import {
   getRepeatedItemPosition,
   mutateRepeatedItem,
@@ -50,9 +54,10 @@ function editorPreviewFrame() {
 }
 
 function cloneSection(section: HomeVisualSection): HomeVisualSection {
+  const libraryCopy = isHomeVisualLibraryBlockId(section.id);
   return {
     ...section,
-    id: `${section.type}-${Date.now().toString(36)}`,
+    id: libraryCopy ? `cms-duplicate-${Date.now().toString(36)}` : `${section.type}-${Date.now().toString(36)}`,
     label: `${section.label} copia`,
     order: section.order + 5,
     style: JSON.parse(JSON.stringify(section.style)) as HomeVisualSectionStyle,
@@ -106,6 +111,14 @@ function applyInsertBlock(content: HomePageContent, templateId: string, afterSec
   if (!block) return content;
   ordered.splice(insertAt, 0, block);
   return normalizedSections(content, ordered);
+}
+
+function applyRemoveLibraryBlock(content: HomePageContent, sectionId: string) {
+  if (!isHomeVisualLibraryBlockId(sectionId)) return content;
+  const ordered = [...content.sections].sort((a, b) => a.order - b.order);
+  const next = ordered.filter((section) => section.id !== sectionId);
+  if (next.length === ordered.length) return content;
+  return normalizedSections(content, next);
 }
 
 function applyCardAction(content: HomePageContent, sectionId: string, container: string, action: StructureAction) {
@@ -291,6 +304,18 @@ export default function VisualCmsHomeStructureBridge() {
           const next = applyInsertBlock(current, data.templateId!, data.afterSectionId);
           if (!commitDraft(current, next, `${template.label} añadido al borrador.`)) emitState('No se pudo insertar el bloque.');
         }).catch((error) => emitState(error instanceof Error ? error.message : 'No se pudo insertar el bloque.'));
+        return;
+      }
+
+      if (data?.type === 'cms:visual-home-remove-block' && typeof data.sectionId === 'string') {
+        void ensureLoaded().then((current) => {
+          if (!isHomeVisualLibraryBlockId(data.sectionId)) {
+            emitState('Solo los bloques creados desde la biblioteca se eliminan desde este control.');
+            return;
+          }
+          const next = applyRemoveLibraryBlock(current, data.sectionId!);
+          if (!commitDraft(current, next, 'Bloque eliminado del borrador. Puedes deshacerlo.')) emitState('El bloque ya no existe en el borrador.');
+        }).catch((error) => emitState(error instanceof Error ? error.message : 'No se pudo eliminar el bloque.'));
         return;
       }
 

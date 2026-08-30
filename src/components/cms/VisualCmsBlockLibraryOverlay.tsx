@@ -2,7 +2,7 @@
 
 import { useEffect, useState, type CSSProperties } from 'react';
 import { createPortal } from 'react-dom';
-import { HOME_VISUAL_BLOCK_TEMPLATES } from '@/lib/homeVisualBlockLibrary';
+import { HOME_VISUAL_BLOCK_TEMPLATES, isHomeVisualLibraryBlockId } from '@/lib/homeVisualBlockLibrary';
 
 type Rect = { top: number; left: number; width: number; height: number };
 
@@ -22,6 +22,7 @@ export default function VisualCmsBlockLibraryOverlay() {
   const [section, setSection] = useState<HTMLElement | null>(null);
   const [rect, setRect] = useState<Rect | null>(null);
   const [open, setOpen] = useState(false);
+  const [confirmRemove, setConfirmRemove] = useState(false);
 
   useEffect(() => {
     let active = false;
@@ -46,6 +47,7 @@ export default function VisualCmsBlockLibraryOverlay() {
       if (!block) return;
       setSection(block);
       setOpen(false);
+      setConfirmRemove(false);
       window.requestAnimationFrame(() => setRect(rectOf(block)));
     };
     document.addEventListener('click', select, true);
@@ -64,12 +66,13 @@ export default function VisualCmsBlockLibraryOverlay() {
 
   const sectionId = section.dataset.cmsBlockId || '';
   if (!sectionId) return null;
+  const removable = isHomeVisualLibraryBlockId(sectionId);
 
   const mobile = window.innerWidth < 640;
-  const buttonWidth = 110;
+  const actionWidth = removable ? 196 : 110;
   const buttonLeft = mobile
-    ? Math.max(8, (window.innerWidth - buttonWidth) / 2)
-    : Math.max(8, Math.min(window.innerWidth - buttonWidth - 8, rect.left + rect.width - buttonWidth));
+    ? Math.max(8, (window.innerWidth - actionWidth) / 2)
+    : Math.max(8, Math.min(window.innerWidth - actionWidth - 8, rect.left + rect.width - actionWidth));
   const buttonTop = Math.max(8, Math.min(window.innerHeight - 42, rect.top + rect.height - 18));
 
   const insert = (templateId: string) => {
@@ -79,6 +82,20 @@ export default function VisualCmsBlockLibraryOverlay() {
       afterSectionId: sectionId,
     }, window.location.origin);
     setOpen(false);
+    setConfirmRemove(false);
+  };
+
+  const remove = () => {
+    if (!removable) return;
+    if (!confirmRemove) {
+      setConfirmRemove(true);
+      return;
+    }
+    window.parent.postMessage({ type: 'cms:visual-home-remove-block', sectionId }, window.location.origin);
+    setOpen(false);
+    setConfirmRemove(false);
+    setSection(null);
+    setRect(null);
   };
 
   const panelStyle: CSSProperties = mobile
@@ -87,20 +104,34 @@ export default function VisualCmsBlockLibraryOverlay() {
       width: 430,
       maxHeight: 'min(620px, 76vh)',
       left: Math.max(8, Math.min(window.innerWidth - 438, rect.left + rect.width - 430)),
-      top: buttonTop > 330 ? Math.max(8, buttonTop - Math.min(500, window.innerHeight * 0.72)) : Math.min(window.innerHeight - 360, buttonTop + 44),
+      top: buttonTop > 330 ? Math.max(8, buttonTop - Math.min(500, window.innerHeight * 0.72)) : Math.max(8, Math.min(window.innerHeight - 360, buttonTop + 44)),
     };
 
   return createPortal(
     <div data-cms-editor-ignore="true" className="pointer-events-none fixed inset-0 z-[2147483100] font-sans">
-      <button
-        type="button"
-        onClick={() => setOpen((value) => !value)}
-        className="pointer-events-auto absolute h-9 rounded-full border border-[#ffb000]/45 bg-[#15140f]/95 px-3 text-[9px] font-black uppercase tracking-[.08em] text-[#ffd77a] shadow-[0_12px_36px_rgba(0,0,0,.3)] backdrop-blur-xl"
-        style={{ left: buttonLeft, top: buttonTop, width: buttonWidth }}
-        title="Insertar un bloque después de esta sección"
+      <div
+        className="pointer-events-auto absolute flex h-9 items-center overflow-hidden rounded-full border border-[#ffb000]/45 bg-[#15140f]/95 shadow-[0_12px_36px_rgba(0,0,0,.3)] backdrop-blur-xl"
+        style={{ left: buttonLeft, top: buttonTop, width: actionWidth }}
       >
-        + Bloque
-      </button>
+        <button
+          type="button"
+          onClick={() => { setOpen((value) => !value); setConfirmRemove(false); }}
+          className="h-full flex-1 px-3 text-[9px] font-black uppercase tracking-[.08em] text-[#ffd77a]"
+          title="Insertar un bloque después de esta sección"
+        >
+          + Bloque
+        </button>
+        {removable ? (
+          <button
+            type="button"
+            onClick={remove}
+            className={`h-full border-l px-2.5 text-[8px] font-black uppercase tracking-[.06em] ${confirmRemove ? 'border-red-300/30 bg-red-400/15 text-red-200' : 'border-white/10 text-white/40'}`}
+            title={confirmRemove ? 'Pulsa otra vez para confirmar' : 'Eliminar este bloque de la biblioteca'}
+          >
+            {confirmRemove ? 'Confirmar' : 'Eliminar'}
+          </button>
+        ) : null}
+      </div>
 
       {open ? (
         <div

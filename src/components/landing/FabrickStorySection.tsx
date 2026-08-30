@@ -15,9 +15,10 @@ export default function FabrickStorySection({ section }: { section?: HomeVisualS
   const background = current.style.background || '#FFF9EE';
   const textColor = current.style.textColor || '#08090A';
   const accent = current.style.accent || '#B96F00';
+  const sectionAnchor = current.id === 'home-story' ? 'nosotros' : current.id;
 
   return (
-    <section id="nosotros" data-cms-section="home-story" className="px-4 py-14 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
+    <section id={sectionAnchor} data-cms-section="home-story" className="px-4 py-14 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
       <div className="mx-auto max-w-[1280px]">
         <div className="grid gap-9 lg:grid-cols-[.8fr_1.2fr] lg:items-start lg:gap-10">
           <div className="lg:sticky lg:top-24">

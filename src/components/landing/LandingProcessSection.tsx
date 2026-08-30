@@ -15,9 +15,10 @@ export default function LandingProcessSection({ section }: { section?: HomeVisua
   const background = current.style.background || '#08090A';
   const textColor = current.style.textColor || '#FFF9EE';
   const accent = current.style.accent || '#FFB000';
+  const sectionAnchor = current.id === 'home-process' ? 'como-funciona' : current.id;
 
   return (
-    <section id="como-funciona" data-cms-section="home-process" className="relative scroll-mt-20 px-4 py-14 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
+    <section id={sectionAnchor} data-cms-section="home-process" className="relative scroll-mt-20 px-4 py-14 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
       <div className="mx-auto max-w-[1280px]">
         <div className="grid gap-7 border-b border-current/10 pb-7 lg:grid-cols-[.75fr_1.25fr] lg:items-end lg:pb-8">
           <div>

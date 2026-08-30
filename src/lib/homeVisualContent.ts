@@ -1,7 +1,7 @@
 export function getContentFieldValue(content: Record<string, unknown>, field: string): unknown {
   if (typeof content[field] === 'string') return content[field];
 
-  const objectPath = field.match(/^(.+)-(\d+)-(title|text)$/);
+  const objectPath = field.match(/^(.+)-(\d+)-([a-zA-Z][a-zA-Z0-9]*)$/);
   if (objectPath) {
     const [, key, rawIndex, prop] = objectPath;
     const list = content[key];
@@ -25,14 +25,16 @@ export function getContentFieldValue(content: Record<string, unknown>, field: st
 export function patchContentField(content: Record<string, unknown>, field: string, value: string): Record<string, unknown> {
   if (typeof content[field] === 'string') return { ...content, [field]: value };
 
-  const objectPath = field.match(/^(.+)-(\d+)-(title|text)$/);
+  const objectPath = field.match(/^(.+)-(\d+)-([a-zA-Z][a-zA-Z0-9]*)$/);
   if (objectPath) {
     const [, key, rawIndex, prop] = objectPath;
     const list = content[key];
     const index = Number(rawIndex);
     if (Array.isArray(list) && list[index] && typeof list[index] === 'object' && !Array.isArray(list[index])) {
+      const current = list[index] as Record<string, unknown>;
+      if (typeof current[prop] !== 'string') return content;
       const next = [...list];
-      next[index] = { ...(next[index] as Record<string, unknown>), [prop]: value };
+      next[index] = { ...current, [prop]: value };
       return { ...content, [key]: next };
     }
   }

@@ -29,8 +29,9 @@ function sectionStyle(section: HomeVisualSection, fallbackBackground: string, fa
 export function LandingStoreSection({ section }: { section?: HomeVisualSection }) {
   const current = section ?? getHomeSection(DEFAULT_HOME_PAGE, 'store');
   const accent = current.style.accent || '#B96F00';
+  const sectionAnchor = current.id === 'home-store' ? 'mas-vendidos' : current.id;
   return (
-    <section id="mas-vendidos" data-cms-section="home-store" className="scroll-mt-20 px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={sectionStyle(current, '#FFF9EE', '#08090A')}>
+    <section id={sectionAnchor} data-cms-section="home-store" className="scroll-mt-20 px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={sectionStyle(current, '#FFF9EE', '#08090A')}>
       <div className="mx-auto max-w-[1320px]">
         <div className="grid gap-6 border-b border-current/10 pb-7 lg:grid-cols-[.72fr_1.28fr] lg:items-end">
           <div>
@@ -52,8 +53,9 @@ export function LandingContactSection({ section }: { section?: HomeVisualSection
   const background = current.style.background || '#F5871F';
   const textColor = current.style.textColor || '#08090A';
   const accent = current.style.accent || '#08090A';
+  const sectionAnchor = current.id === 'home-contact' ? 'contacto' : current.id;
   return (
-    <section id="contacto" data-cms-section="home-contact" className="scroll-mt-20 px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
+    <section id={sectionAnchor} data-cms-section="home-contact" className="scroll-mt-20 px-4 py-16 sm:px-6 md:px-12 lg:py-24" style={{ backgroundColor: background, color: textColor }}>
       <div className="mx-auto max-w-[1200px]">
         <div className="grid gap-10 lg:grid-cols-[.72fr_1.28fr] lg:items-start">
           <div>

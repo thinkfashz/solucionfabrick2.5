@@ -12,7 +12,10 @@ export default function CookieConsentBanner() {
   const [visible, setVisible] = useState(false);
 
   useEffect(() => {
-    if (pathname?.startsWith('/admin') || pathname?.startsWith('/auth')) return;
+    if (pathname?.startsWith('/admin') || pathname?.startsWith('/auth') || pathname?.startsWith('/fundador')) {
+      setVisible(false);
+      return;
+    }
     const saved = window.localStorage.getItem(STORAGE_KEY);
     setVisible(!saved);
   }, [pathname]);
@@ -22,7 +25,7 @@ export default function CookieConsentBanner() {
     setVisible(false);
   };
 
-  if (!visible) return null;
+  if (pathname?.startsWith('/fundador') || !visible) return null;
 
   return (
     <div className="fixed inset-x-0 bottom-0 z-[9998] px-4 pb-4 md:px-6 md:pb-6">

@@ -345,14 +345,14 @@ export default function AdminProfileUnifiedClient() {
         <AdminCard className="overflow-hidden p-0 sm:p-0">
           <div className="relative h-48 overflow-hidden bg-[#171612]">
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={coverOf(profile)} alt="Portada del propietario" className="h-full w-full object-cover opacity-78" />
+            <img src={coverOf(profile)} alt="Portada del propietario" className="h-full w-full object-cover opacity-75" />
             <div className="absolute inset-0 bg-gradient-to-t from-black/75 via-black/10 to-transparent" />
             <button type="button" onClick={() => coverRef.current?.click()} disabled={uploading} className="absolute right-3 top-3 inline-flex items-center gap-2 rounded-xl border border-white/15 bg-black/45 px-3 py-2 text-[11px] font-black text-white backdrop-blur-sm disabled:opacity-50">
               <UploadCloud className="h-3.5 w-3.5" /> Cambiar portada
             </button>
           </div>
           <div className="p-5 text-center">
-            <button type="button" onClick={() => avatarRef.current?.click()} disabled={uploading} className="group relative mx-auto -mt-17 grid h-30 w-30 place-items-center overflow-hidden rounded-full border-[6px] border-[#f8f3e9] bg-[#171612] text-2xl font-black text-white shadow-lg disabled:opacity-60">
+            <button type="button" onClick={() => avatarRef.current?.click()} disabled={uploading} className="group relative mx-auto -mt-[68px] grid h-[120px] w-[120px] place-items-center overflow-hidden rounded-full border-[6px] border-[#f8f3e9] bg-[#171612] text-2xl font-black text-white shadow-lg disabled:opacity-60">
               {profile.avatar_url ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={profile.avatar_url} alt={displayName} className="h-full w-full object-cover" />

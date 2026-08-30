@@ -7,7 +7,13 @@ import {
   type HomeVisualSection,
   type HomeVisualSectionStyle,
 } from '@/lib/homeVisualCms';
-import { mutateRepeatedItem, type RepeatedItemAction } from '@/lib/homeVisualRepeatedStyles';
+import {
+  getRepeatedItemPosition,
+  mutateRepeatedItem,
+  relocatedSources,
+  remapRepeatedItemStyles,
+  type RepeatedItemAction,
+} from '@/lib/homeVisualRepeatedStyles';
 
 const HOME_STRUCTURE_DRAFT_KEY = 'sf-visual-cms-home-structure-draft-v1';
 const HISTORY_LIMIT = 30;
@@ -17,7 +23,9 @@ type StructureAction = 'move-up' | 'move-down' | 'duplicate';
 type StructureMessage = {
   type?: string;
   sectionId?: string;
+  targetSectionId?: string;
   container?: string;
+  targetContainer?: string;
   action?: StructureAction;
 };
 
@@ -72,6 +80,19 @@ function applySectionAction(content: HomePageContent, sectionId: string, action:
   });
 }
 
+function applySectionRelocate(content: HomePageContent, sectionId: string, targetSectionId: string) {
+  const ordered = [...content.sections].sort((a, b) => a.order - b.order);
+  const from = ordered.findIndex((section) => section.id === sectionId);
+  const to = ordered.findIndex((section) => section.id === targetSectionId);
+  if (from < 0 || to < 0 || from === to) return content;
+  const [moved] = ordered.splice(from, 1);
+  ordered.splice(to, 0, moved);
+  return normalizeHomePage({
+    ...content,
+    sections: ordered.map((section, position) => ({ ...section, order: (position + 1) * 10 })),
+  });
+}
+
 function applyCardAction(content: HomePageContent, sectionId: string, container: string, action: StructureAction) {
   let changed = false;
   const sections = content.sections.map((section) => {
@@ -80,6 +101,26 @@ function applyCardAction(content: HomePageContent, sectionId: string, container:
     if (!result) return section;
     changed = true;
     return result.section;
+  });
+  return changed ? normalizeHomePage({ ...content, sections }) : content;
+}
+
+function applyCardRelocate(content: HomePageContent, sectionId: string, container: string, targetContainer: string) {
+  let changed = false;
+  const sections = content.sections.map((section) => {
+    if (section.id !== sectionId) return section;
+    const source = getRepeatedItemPosition(section, container);
+    const target = getRepeatedItemPosition(section, targetContainer);
+    if (!source || !target || source.key !== target.key || source.index === target.index || source.length !== target.length) return section;
+    const list = section.content[source.key] as unknown[];
+    const sources = relocatedSources(source.length, source.index, target.index);
+    if (sources[target.index] !== source.index) return section;
+    changed = true;
+    return {
+      ...section,
+      content: { ...section.content, [source.key]: sources.map((sourceIndex) => list[sourceIndex]) },
+      style: remapRepeatedItemStyles(section.style, source.key, sources),
+    };
   });
   return changed ? normalizeHomePage({ ...content, sections }) : content;
 }
@@ -222,6 +263,22 @@ export default function VisualCmsHomeStructureBridge() {
       }
       if (data?.type === 'cms:visual-home-structure-restore') {
         restorePublished();
+        return;
+      }
+
+      if (data?.type === 'cms:visual-home-structure-relocate' && typeof data.sectionId === 'string' && typeof data.targetSectionId === 'string') {
+        void ensureLoaded().then((current) => {
+          const next = applySectionRelocate(current, data.sectionId!, data.targetSectionId!);
+          if (!commitDraft(current, next, 'Sección reordenada por arrastre.')) emitState('La sección ya está en esa posición.');
+        }).catch((error) => emitState(error instanceof Error ? error.message : 'No se pudo reordenar la sección.'));
+        return;
+      }
+
+      if (data?.type === 'cms:visual-home-card-structure-relocate' && typeof data.sectionId === 'string' && typeof data.container === 'string' && typeof data.targetContainer === 'string') {
+        void ensureLoaded().then((current) => {
+          const next = applyCardRelocate(current, data.sectionId!, data.container!, data.targetContainer!);
+          if (!commitDraft(current, next, 'Tarjeta reordenada por arrastre.')) emitState('La tarjeta ya está en esa posición o no pertenece al mismo grupo.');
+        }).catch((error) => emitState(error instanceof Error ? error.message : 'No se pudo reordenar la tarjeta.'));
         return;
       }
 

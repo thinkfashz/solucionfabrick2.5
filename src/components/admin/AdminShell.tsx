@@ -183,21 +183,22 @@ export function AdminShell({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (authScreen) return;
     let cancelled = false;
-    void fetch('/api/admin/profile', { cache: 'no-store' })
-      .then((response) => response.ok ? response.json() : null)
-      .then((data: { profile?: { email?: string; display_name?: string | null; avatar_url?: string | null }; session?: { rol?: AdminRole; email?: string } } | null) => {
-        if (cancelled) return;
-        const email = data?.profile?.email || data?.session?.email || '';
-        setRole(data?.session?.rol ?? 'admin');
-        setIdentity({
-          email,
-          displayName: data?.profile?.display_name || email.split('@')[0] || 'Administrador Fabrick',
-          avatarUrl: data?.profile?.avatar_url || null,
-        });
-      })
-      .catch(() => {
-        if (!cancelled) setRole('admin');
+    void Promise.all([
+      fetch('/api/admin/me', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).catch(() => null),
+      fetch('/api/admin/profile', { cache: 'no-store' }).then((response) => response.ok ? response.json() : null).catch(() => null),
+    ]).then(([sessionData, profileData]: [
+      { rol?: AdminRole; email?: string } | null,
+      { profile?: { email?: string; display_name?: string | null; avatar_url?: string | null }; session?: { rol?: AdminRole; email?: string } } | null,
+    ]) => {
+      if (cancelled) return;
+      const email = profileData?.profile?.email || profileData?.session?.email || sessionData?.email || '';
+      setRole(profileData?.session?.rol ?? sessionData?.rol ?? 'admin');
+      setIdentity({
+        email,
+        displayName: profileData?.profile?.display_name || email.split('@')[0] || 'Administrador Fabrick',
+        avatarUrl: profileData?.profile?.avatar_url || null,
       });
+    });
     return () => { cancelled = true; };
   }, [authScreen]);
 
@@ -339,7 +340,7 @@ export function AdminShell({ children }: { children: ReactNode }) {
           {filtered.map((section) => {
             const SectionIcon = section.icon;
             const activeSection = section.items.some((item) => itemIsActive(pathname, item));
-            const open = query ? true : (openSections[section.id] ?? activeSection ?? section.id === 'overview');
+            const open = query ? true : (openSections[section.id] ?? (activeSection || section.id === 'overview'));
             return (
               <div className={`fabrick-nav-section ${activeSection ? 'is-active-section' : ''}`} key={section.id}>
                 {compact ? (

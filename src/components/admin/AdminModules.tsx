@@ -14,6 +14,7 @@ import {
   Hammer,
   LayoutGrid,
   Package,
+  Paintbrush,
   Rocket,
   ServerCog,
   Settings,
@@ -72,9 +73,10 @@ const SECTIONS: ModuleSection[] = [
   },
   {
     title: 'Web & contenido',
-    description: 'Experiencia pública, páginas y medios.',
+    description: 'Experiencia pública, páginas, estructura y medios.',
     items: [
-      { href: '/admin/editor', label: 'Editor del sitio', description: 'Home, tienda y estilos globales', icon: LayoutGrid },
+      { href: '/admin/editor', label: 'Visual CMS', description: 'Edita páginas, estilos y contenido directamente', icon: Paintbrush },
+      { href: '/admin/editor/home-structure', label: 'Estructura Home', description: 'Orden, bloques y estructura avanzada', icon: LayoutGrid },
       { href: '/admin/paginas', label: 'Páginas comerciales', description: 'Landings administrables', icon: Globe2 },
       { href: '/admin/blog', label: 'Blog', description: 'Artículos y contenido', icon: FileText },
       { href: '/admin/medios', label: 'Biblioteca de medios', description: 'Imágenes, video y Cloudinary', icon: LayoutGrid },

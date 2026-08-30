@@ -54,10 +54,9 @@ function editorPreviewFrame() {
 }
 
 function cloneSection(section: HomeVisualSection): HomeVisualSection {
-  const libraryCopy = isHomeVisualLibraryBlockId(section.id);
   return {
     ...section,
-    id: libraryCopy ? `cms-duplicate-${Date.now().toString(36)}` : `${section.type}-${Date.now().toString(36)}`,
+    id: `cms-duplicate-${section.type}-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6)}`,
     label: `${section.label} copia`,
     order: section.order + 5,
     style: JSON.parse(JSON.stringify(section.style)) as HomeVisualSectionStyle,

@@ -28,9 +28,24 @@ export type PublicFounderProfile = {
   profile: FounderPublicProfile;
 };
 
-function publicMeta(row: AdminProfileRow) {
+function rawPublicMeta(row: AdminProfileRow) {
   const metadata = row.metadata && typeof row.metadata === 'object' ? row.metadata : {};
-  return normalizeFounderPublicProfile(metadata.public_profile);
+  const value = metadata.public_profile;
+  return value && typeof value === 'object' && !Array.isArray(value)
+    ? value as Record<string, unknown>
+    : null;
+}
+
+function publicMeta(row: AdminProfileRow) {
+  return normalizeFounderPublicProfile(rawPublicMeta(row));
+}
+
+function isExplicitOwner(row: AdminProfileRow) {
+  return rawPublicMeta(row)?.is_owner === true;
+}
+
+function isExplicitlyEnabled(row: AdminProfileRow) {
+  return rawPublicMeta(row)?.enabled === true;
 }
 
 function normalizePublicSocial(value: string | null | undefined, network: 'instagram' | 'facebook' | 'linkedin') {
@@ -67,8 +82,8 @@ export async function getPublicFounderProfile(): Promise<PublicFounderProfile> {
     .limit(20);
 
   const rows = !error && Array.isArray(data) ? data as AdminProfileRow[] : [];
-  const selected = rows.find((row) => publicMeta(row).is_owner)
-    ?? rows.find((row) => publicMeta(row).enabled)
+  const selected = rows.find(isExplicitOwner)
+    ?? rows.find(isExplicitlyEnabled)
     ?? rows[0]
     ?? {};
   const profile = publicMeta(selected);

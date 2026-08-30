@@ -22,6 +22,7 @@ import {
 
 const HOME_STRUCTURE_DRAFT_KEY = 'sf-visual-cms-home-structure-draft-v1';
 const HISTORY_LIMIT = 30;
+const NON_DUPLICABLE_SECTION_TYPES = new Set(['calculator', 'seismic', 'contact', 'footer']);
 
 type StructureAction = 'move-up' | 'move-down' | 'duplicate';
 
@@ -77,6 +78,7 @@ function applySectionAction(content: HomePageContent, sectionId: string, action:
   if (index < 0) return content;
 
   if (action === 'duplicate') {
+    if (NON_DUPLICABLE_SECTION_TYPES.has(ordered[index].type)) return content;
     const copy = cloneSection(ordered[index]);
     ordered.splice(index + 1, 0, copy);
     return normalizedSections(content, ordered);
@@ -336,6 +338,13 @@ export default function VisualCmsHomeStructureBridge() {
 
       if (data?.type === 'cms:visual-home-structure-action' && typeof data.sectionId === 'string' && data.action) {
         void ensureLoaded().then((current) => {
+          if (data.action === 'duplicate') {
+            const selected = current.sections.find((section) => section.id === data.sectionId);
+            if (selected && NON_DUPLICABLE_SECTION_TYPES.has(selected.type)) {
+              emitState('Esta sección funcional está protegida y no se duplica.');
+              return;
+            }
+          }
           const next = applySectionAction(current, data.sectionId!, data.action!);
           if (!commitDraft(current, next, data.action === 'move-up' ? 'Sección movida hacia arriba.' : data.action === 'move-down' ? 'Sección movida hacia abajo.' : 'Sección duplicada en el borrador.')) {
             emitState(data.action === 'move-up' ? 'La sección ya está al inicio.' : data.action === 'move-down' ? 'La sección ya está al final.' : 'No se pudo duplicar la sección.');

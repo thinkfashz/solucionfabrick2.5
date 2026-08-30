@@ -37,14 +37,26 @@ function isSafeTextNode(node: Node) {
     && !parent.closest('[contenteditable="true"]');
 }
 
+function escapeRegExp(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+/**
+ * Replace copy in one pass so a replacement can never be processed again by a
+ * shorter rule. This is important when the tenant name itself contains
+ * "Fabrick": "Soluciones Fabrick" must not become
+ * "Soluciones Soluciones Fabrick" after the generic Fabrick rule runs.
+ */
 function replaceText(value: string, replacements: Record<string, string>) {
-  let next = value;
-  const entries = Object.entries(replacements).sort(([a], [b]) => b.length - a.length);
-  for (const [from, to] of entries) {
-    if (!to) continue;
-    next = next.split(from).join(to);
-  }
-  return next;
+  const entries = Object.entries(replacements)
+    .filter(([from, to]) => Boolean(from) && Boolean(to))
+    .sort(([a], [b]) => b.length - a.length);
+
+  if (!entries.length) return value;
+
+  const replacementMap = new Map(entries);
+  const pattern = new RegExp(entries.map(([from]) => escapeRegExp(from)).join('|'), 'g');
+  return value.replace(pattern, (match) => replacementMap.get(match) ?? match);
 }
 
 function applyBrandImages(root: ParentNode, logoUrl: string | null, brandName: string) {
